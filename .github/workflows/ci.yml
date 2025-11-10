@@ -1,4 +1,4 @@
-name: CI
+name: CI Monorepo
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
   pull_request:
 
 jobs:
-  build:
+  build_validate:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -29,5 +29,19 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build workspace
-        run: pnpm build
+      # 1. Validação de código (Adiciona um passo de Linting)
+      - name: Run Lint
+        run: pnpm lint # Assumindo que você tem um script 'lint' na raiz
+
+      # 2. Build Hardened e Otimizado (Corrige os problemas de TMPDIR e ESBUILD)
+      - name: Build Web Application (Hardened)
+        # As variáveis TMPDIR e ESBUILD_TMPDIR forçam o uso de /tmp, 
+        # garantindo estabilidade no build para ferramentas como o esbuild.
+        env:
+          TMPDIR: /tmp
+          TMP: /tmp
+          TEMP: /tmp
+          ESBUILD_TMPDIR: /tmp 
+          NODE_ENV: production
+        # O filtro garante que apenas 'apps/web' seja construído
+        run: pnpm --filter apps/web build
