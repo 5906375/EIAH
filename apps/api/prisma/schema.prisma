@@ -1,0 +1,286 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum RunStatus {
+  pending
+  running
+  success
+  error
+  blocked
+}
+
+enum PaymentStatus {
+  pending
+  succeeded
+  failed
+}
+
+model Tenant {
+  id          String      @id @default(cuid())
+  name        String
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  workspaces  Workspace[]
+  users       User[]
+  runEvents   RunEvent[]
+  runs        Run[]
+  apiTokens   ApiToken[]
+  uploadedDocuments UploadedDocument[]
+  memorySnapshots MemorySnapshot[]
+  memoryEvents MemoryEvent[]
+  embeddingChunks EmbeddingChunk[]
+
+  @@map("tenants")
+}
+
+model Workspace {
+  id          String      @id @default(cuid())
+  tenantId    String      @map("tenant_id")
+  name        String
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  runs        Run[]
+  runEvents   RunEvent[]
+  apiTokens   ApiToken[]
+  uploadedDocuments UploadedDocument[]
+  memorySnapshots MemorySnapshot[]
+  memoryEvents MemoryEvent[]
+  embeddingChunks EmbeddingChunk[]
+
+  @@index([tenantId, name])
+  @@map("workspaces")
+}
+
+model User {
+  id          String      @id @default(cuid())
+  tenantId    String      @map("tenant_id")
+  email       String      @unique
+  displayName String?    @map("display_name")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  tenant      Tenant      @relation(fields: [tenantId], references: [id])
+  runs        Run[]
+  runEvents   RunEvent[]
+  apiTokens   ApiToken[]
+
+  @@index([tenantId, email])
+  @@map("users")
+}
+
+model ApiToken {
+  id          String     @id @default(cuid())
+  token       String     @unique
+  tenantId    String      @map("tenant_id")
+  workspaceId String     @map("workspace_id")
+  userId      String?    @map("user_id")
+  description String?
+  expiresAt   DateTime?  @map("expires_at")
+  revoked     Boolean    @default(false)
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  tenant      Tenant     @relation(fields: [tenantId], references: [id])
+  workspace   Workspace  @relation(fields: [workspaceId], references: [id])
+  user        User?      @relation(fields: [userId], references: [id])
+
+  @@index([tenantId, workspaceId])
+  @@index([userId])
+  @@map("api_tokens")
+}
+
+model Run {
+  id          String    @id @default(cuid())
+  tenantId    String    @map("tenant_id")
+  workspaceId String   @map("workspace_id")
+  userId      String?  @map("user_id")
+  agent       String
+  status      RunStatus
+  request     Json
+  response    Json?
+  costCents   Int       @default(0)
+  traceId     String?
+  startedAt   DateTime  @default(now())
+  finishedAt  DateTime?
+  errorCode   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  user        User?     @relation(fields: [userId], references: [id])
+  events      RunEvent[]
+  memoryEvents MemoryEvent[]
+
+  @@index([tenantId, workspaceId, agent, createdAt])
+  @@index([status])
+  @@index([costCents])
+  @@map("runs")
+}
+
+model RunEvent {
+  id          String    @id @default(cuid())
+  runId       String    @map("run_id")
+  tenantId    String    @map("tenant_id")
+  workspaceId String   @map("workspace_id")
+  userId      String?  @map("user_id")
+  type        String
+  payload     Json?
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  run        Run        @relation(fields: [runId], references: [id])
+  tenant     Tenant     @relation(fields: [tenantId], references: [id])
+  workspace  Workspace  @relation(fields: [workspaceId], references: [id])
+  user       User?      @relation(fields: [userId], references: [id])
+
+  @@index([runId, createdAt])
+  @@index([tenantId, workspaceId, createdAt])
+  @@map("run_events")
+}
+
+model PlanQuota {
+  projectId       String   @id
+  softLimitCents  Int
+  hardLimitCents  Int
+  monthUsageCents Int      @default(0)
+  updatedAt       DateTime @updatedAt
+  createdAt       DateTime @default(now())
+
+  @@map("plan_quotas")
+}
+
+model Pricing {
+  id          String   @id @default(cuid())
+  agent       String
+  perRunCents Int      @default(0)
+  perMBcents  Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([agent, active])
+  @@map("pricing")
+}
+
+model AgentProfile {
+  id           String   @id @default(cuid())
+  agent        String   @unique
+  name         String
+  description  String?
+  model        String
+  systemPrompt String
+  tools        Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("agent_profiles")
+}
+
+model PaymentTx {
+  id          String         @id @default(cuid())
+  projectId   String
+  provider    String
+  externalId  String
+  amountCents Int
+  status      PaymentStatus
+  createdAt   DateTime       @default(now())
+
+  @@index([projectId, createdAt])
+  @@map("payment_tx")
+}
+
+model UploadedDocument {
+  id           String   @id @default(cuid())
+  tenantId     String   @map("tenant_id")
+  workspaceId  String   @map("workspace_id")
+  agentSlug    String   @map("agent_slug")
+  fileName     String   @map("file_name")
+  mimeType     String   @map("mime_type")
+  sizeBytes    Int      @map("size_bytes")
+  storageKey   String   @map("storage_key")
+  url          String
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@index([tenantId, workspaceId, agentSlug])
+  @@map("uploaded_documents")
+}
+
+model AgentRecommendationState {
+  id           String   @id @default(cuid())
+  tenantId     String   @map("tenant_id")
+  workspaceId  String   @map("workspace_id")
+  agent        String
+  state        Json
+  lastRunId    String?  @map("last_run_id")
+  version      Int      @default(1)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, workspaceId, agent])
+  @@index([agent])
+  @@map("agent_recommendation_state")
+}
+
+model MemorySnapshot {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  workspaceId String   @map("workspace_id")
+  agentId     String   @map("agent_id")
+  shortTerm   Json     @map("short_term")
+  longTerm    Json     @map("long_term")
+  vectorState Json?    @map("vector_state")
+  cursor      String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant     Tenant    @relation(fields: [tenantId], references: [id])
+  workspace  Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@unique([tenantId, workspaceId, agentId])
+  @@map("memory_snapshots")
+}
+
+model MemoryEvent {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  workspaceId String   @map("workspace_id")
+  agentId     String   @map("agent_id")
+  runId       String?  @map("run_id")
+  key         String
+  content     String
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant     Tenant    @relation(fields: [tenantId], references: [id])
+  workspace  Workspace @relation(fields: [workspaceId], references: [id])
+  run        Run?      @relation(fields: [runId], references: [id])
+
+  @@index([tenantId, workspaceId, agentId, createdAt])
+  @@map("memory_events")
+}
+
+model EmbeddingChunk {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  workspaceId String   @map("workspace_id")
+  agentId     String   @map("agent_id")
+  chunkKey    String   @map("chunk_key")
+  embedding   Float[]
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant     Tenant    @relation(fields: [tenantId], references: [id])
+  workspace  Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@unique([tenantId, workspaceId, agentId, chunkKey])
+  @@index([tenantId, workspaceId, agentId])
+  @@map("embedding_chunks")
+}

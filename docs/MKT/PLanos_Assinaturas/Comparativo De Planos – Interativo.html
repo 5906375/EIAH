@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Comparativo de Planos – Interativo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0B1020;
+            --card: #0F172A;
+            --muted: #6B7280;
+            --line: #334155;
+            --brand: #5B8CFF;
+            --ok: #22C55E;
+            --accent: #F59E0B
+        }
+
+        body {
+            font-family: Inter, system-ui, Segoe UI, Roboto, Helvetica, Arial
+        }
+
+        .title {
+            font-family: 'Space Grotesk', Inter, system-ui
+        }
+
+        .shadow-soft {
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .35)
+        }
+
+        .table-sticky thead th {
+            position: sticky;
+            top: 0;
+            background: #0F172A;
+            z-index: 5
+        }
+
+        .tooltip {
+            position: relative
+        }
+
+        .tooltip:hover .tip {
+            opacity: 1;
+            transform: translateY(0)
+        }
+
+        .tip {
+            transition: .2s;
+            opacity: 0;
+            transform: translateY(6px)
+        }
+
+        .cell-badge {
+            display: inline-block;
+            padding: .15rem .45rem;
+            border: 1px solid #334155;
+            border-radius: .5rem;
+            background: #0B1222
+        }
+    </style>
+</head>
+
+<body class="min-h-screen bg-[var(--bg)] text-slate-100">
+    <header class="px-6 md:px-10 py-8">
+        <h1 class="title text-3xl md:text-4xl font-bold">Comparativo de Planos – EIAH</h1>
+        <p class="text-slate-300 mt-2">Tabela interativa por tópico e descrição de cada plano. Filtre, oculte colunas,
+            exporte CSV ou imprima.</p>
+    </header>
+
+    <main class="px-6 md:px-10 pb-24">
+        <!-- Controles -->
+        <section class="grid md:grid-cols-3 gap-3 md:gap-4 mb-4">
+            <div class="col-span-1">
+                <label class="text-sm text-slate-300">Busca por tópico/termo</label>
+                <input id="search" type="search" placeholder="Pesquisar..."
+                    class="w-full mt-1 bg-[var(--card)] border border-[var(--line)] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--brand)]" />
+            </div>
+            <div class="col-span-2 flex flex-wrap items-end gap-2 md:justify-end">
+                <div class="tooltip">
+                    <button id="btn-export"
+                        class="px-4 py-2.5 rounded-xl bg-[var(--brand)] text-white font-semibold hover:opacity-95 shadow-soft">Exportar
+                        CSV</button>
+                    <div
+                        class="tip absolute left-0 mt-1 text-xs text-slate-300 bg-[var(--card)] border border-[var(--line)] px-2 py-1 rounded">
+                        Baixa o comparativo atual</div>
+                </div>
+                <button id="btn-print"
+                    class="px-4 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 font-semibold">Imprimir</button>
+                <details class="px-3 py-2 rounded-xl bg-[var(--card)] border border-[var(--line)]">
+                    <summary class="cursor-pointer font-semibold">Colunas</summary>
+                    <div class="mt-2 flex flex-wrap gap-3 text-sm">
+                        <label class="inline-flex items-center gap-2"><input data-col="Free" type="checkbox"
+                                class="toggle-col accent-[var(--brand)]" checked>Free</label>
+                        <label class="inline-flex items-center gap-2"><input data-col="Starter" type="checkbox"
+                                class="toggle-col accent-[var(--brand)]" checked>Starter</label>
+                        <label class="inline-flex items-center gap-2"><input data-col="Pro" type="checkbox"
+                                class="toggle-col accent-[var(--brand)]" checked>Pro</label>
+                        <label class="inline-flex items-center gap-2"><input data-col="Business" type="checkbox"
+                                class="toggle-col accent-[var(--brand)]" checked>Business</label>
+                        <label class="inline-flex items-center gap-2"><input data-col="Enterprise" type="checkbox"
+                                class="toggle-col accent-[var(--brand)]" checked>Enterprise</label>
+                    </div>
+                </details>
+            </div>
+        </section>
+
+        <!-- Tabela -->
+        <div class="rounded-2xl overflow-hidden border border-[var(--line)] bg-[var(--card)]">
+            <div class="overflow-x-auto table-sticky">
+                <table id="plansTable" class="min-w-full text-sm">
+                    <thead>
+                        <tr class="text-slate-300 border-b border-[var(--line)]">
+                            <th class="text-left p-3 md:p-4 w-56">Tópico
+                                <button id="sortTopic"
+                                    class="ml-2 text-xs px-2 py-1 border border-[var(--line)] rounded cell-badge">Ordenar</button>
+                            </th>
+                            <th data-col="Free" class="p-3 md:p-4 text-left">Free</th>
+                            <th data-col="Starter" class="p-3 md:p-4 text-left">Starter</th>
+                            <th data-col="Pro" class="p-3 md:p-4 text-left">Pro</th>
+                            <th data-col="Business" class="p-3 md:p-4 text-left">Business</th>
+                            <th data-col="Enterprise" class="p-3 md:p-4 text-left">Enterprise</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody" class="divide-y divide-[var(--line)]">
+                        <!-- Linhas dinâmicas -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <p class="text-xs text-slate-400 mt-3">Resumo consolidado a partir dos planos
+            Free/Starter/Pro/Business/Enterprise previamente definidos. Valores e recursos sob as condições descritas em
+            cada plano.</p>
+
+        <section class="mt-10 space-y-4 rounded-2xl border border-[var(--line)] bg-[var(--card)] p-6 shadow-soft">
+            <h2 class="title text-2xl font-semibold text-slate-100">Melhorias sugeridas</h2>
+            <ul class="list-disc space-y-3 pl-6 text-slate-300">
+                <li>
+                    Criar add-on de excedente vendido em blocos de 100 ou 500 runs para evitar fricção quando
+                    Starter ultrapassa 100 runs ou Pro excede 500 runs (gap evidenciado em <span class="cell-badge">Runs/mês</span>
+                    e <span class="cell-badge">Sinais de upgrade</span>).
+                </li>
+                <li>
+                    Introduzir plano anual com desconto e bundling de ações externas adicionais para Business/Enterprise,
+                    oferecendo previsibilidade de orçamento para quem consome alto volume de runs e integrações.
+                </li>
+                <li>
+                    Lançar um tier <strong>Scale</strong> entre Pro e Business (ex.: R$ 299/1.000 runs) incluindo webhooks básicos
+                    e retenção de 60 dias, suavizando o salto de preço e atendendo squads em crescimento.
+                </li>
+                <li>
+                    Disponibilizar pacote de consultoria sob demanda (créditos de mentoria ou QBR extra) como upsell para
+                    clientes Starter/Pro que ainda não exigem o pacote completo Business, aproveitando rituais existentes.
+                </li>
+            </ul>
+            <div class="rounded-xl border border-[var(--line)] bg-[#0b1222] p-5 text-slate-200">
+                <h3 class="title text-xl font-semibold">Agente recomendado</h3>
+                <p class="mt-2 text-sm text-slate-300">
+                    Indicar o agente <strong>Medium</strong> para squads em produção que seguem validando integrações e demandam
+                    mentoria e automações moderadas — perfil alinhado aos planos Starter/Pro.
+                </p>
+                <p class="mt-3 text-xs text-slate-400">
+                    Próximo passo sugerido: validar aceitação das ofertas com clientes-alvo e testar o modelo anual antes de
+                    escalar a divulgação.
+                </p>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // ==== Dados dos planos por tópico ====
+        const rows = [
+            { topic: 'Preço', values: { Free: 'R$ 0', Starter: 'R$ 49/mês', Pro: 'R$ 149/mês', Business: 'R$ 599/mês', Enterprise: 'Sob proposta' } },
+            { topic: 'Runs/mês', values: { Free: '15', Starter: '100', Pro: '500', Business: '2.000', Enterprise: '10k+' } },
+            { topic: 'Ações externas incluídas', values: { Free: '0', Starter: '100', Pro: '1.000', Business: '5.000', Enterprise: '25k+' } },
+            { topic: 'Agentes / Formulários', values: { Free: '2 agentes / 1 formulário', Starter: '5 agentes / 3 formulários', Pro: 'Todos / Ilimitado', Business: 'Todos / Ilimitado', Enterprise: 'Todos / Ilimitado' } },
+            { topic: 'Export / Dados', values: { Free: '—', Starter: 'CSV', Pro: 'CSV/JSON + API', Business: 'Exports + Webhooks', Enterprise: 'Datalake/ETL (Parquet/CSV/JSON)' } },
+            { topic: 'Logs & Retenção', values: { Free: '7 dias', Starter: '15 dias', Pro: '30 dias', Business: '90 dias', Enterprise: '180–365+ dias' } },
+            { topic: 'Suporte', values: { Free: 'Comunidade', Starter: 'E-mail ≤48h', Pro: 'E-mail ≤24h', Business: 'Prioritário', Enterprise: 'TAM + SLA (Sev1/Sev2)' } },
+
+            { topic: 'ICP (para quem é)', values: { Free: 'Makers iniciantes', Starter: 'Squads pequenos; PM/dev jr–pleno; agências', Pro: 'Squads em produção; PM/dev pleno; agências', Business: 'Times de ops/dados; arquitetura com integrações', Enterprise: 'Empresas com compliance, SSO/SCIM, lake/ETL' } },
+            { topic: 'Proposta de valor', values: { Free: 'Do 0 ao 1º run em 7 min', Starter: 'Fluxo em produção em 30 dias + mentoria', Pro: 'Produção com confiança + Agente Core', Business: 'Escala e confiabilidade com Exports + Webhooks', Enterprise: 'Missão crítica com governança, lake/ETL, TAM/SLA' } },
+            { topic: 'Rituais/Coorte', values: { Free: 'Kickstart • Template Drop • Ship Friday', Starter: 'Mentoria semanal + WhatsApp', Pro: 'Mentoria semanal + WhatsApp Pro + Office Hours', Business: 'Mentoria quinzenal + deep-dives + WA/Slack', Enterprise: 'Mentoria quinzenal + consultoria + QBR' } },
+
+            { topic: 'Onboarding/TTV', values: { Free: '1º run em 7 min', Starter: '1º fluxo ≤30 min (meta 7d)', Pro: '1º fluxo ≤30 min + 1 recomendação do Agente em 24h', Business: 'Wizard: Webhook 10 min + Export 5–15 min', Enterprise: 'Wizard + POC 4–6 sem (KPIs)' } },
+            { topic: 'Checklists & Templates', values: { Free: 'Template 7 min', Starter: 'Checklist Starter + template produção', Pro: 'Checklist Pro + Templates Pro #1/#2', Business: 'Blueprints Webhook/Export + runbooks', Enterprise: 'Blueprints Enterprise + arquitetura lake/ETL' } },
+
+            { topic: 'Webhooks', values: { Free: '—', Starter: '—', Pro: 'Básico via API', Business: 'HMAC • retries • DLQ • idempotência', Enterprise: 'HMAC • idempotência • retries • DLQ • auditoria' } },
+            { topic: 'Exports', values: { Free: '—', Starter: 'CSV', Pro: 'CSV/JSON + API', Business: 'Exports (cron/on‑demand)', Enterprise: 'Exports → Lake (Parquet/CSV/JSON)' } },
+            { topic: 'Observabilidade & Replay', values: { Free: 'Básico', Starter: 'Boas práticas + troubleshooting', Pro: 'Observabilidade + Replay • Alertas', Business: 'Runbooks: P95/P99, DLQ, alarmes', Enterprise: 'Métricas 2xx/4xx/5xx, P95/P99; auditoria' } },
+            { topic: 'Conectores Datalake/ETL', values: { Free: '—', Starter: '—', Pro: '—', Business: 'BI/ETL via exports', Enterprise: 'S3/GCS/Azure; Snowflake/BQ/Redshift; dbt/Glue/Airflow' } },
+
+            { topic: 'SLA & Governança', values: { Free: '—', Starter: '≤48h úteis', Pro: '≤24h úteis', Business: 'Prioritário (ex.: ≤12h)', Enterprise: 'Sev1 ~4h • Sev2 ~12h • TAM • on‑call' } },
+            { topic: 'Segurança/Identidade', values: { Free: '—', Starter: '—', Pro: '—', Business: '—', Enterprise: 'SSO/SAML/SCIM • RBAC • VPC peering (opcional)' } },
+
+            { topic: 'Metas 30/60/90', values: { Free: 'Ativação/rituais comunidade', Starter: '300→1.200 assinantes', Pro: '400→1.500 assinantes • D30≥80%', Business: '120→400 contas • 75% webhook', Enterprise: 'Pipeline 50 contas • 6–10 contratos' } },
+            { topic: 'Sinais de upgrade', values: { Free: '—', Starter: 'Excedentes + uso recorrente', Pro: 'Runs>350 ou Ações>800/mês', Business: 'Runs>1.400 ou Ações>3.500/mês; API intensa', Enterprise: 'Excedentes Business + exigência SSO/ETL/SLA' } },
+        ];
+
+        const orderDefault = [...rows];
+
+        // ==== Render ====
+        const tbody = document.getElementById('tbody');
+        function render(list) {
+            tbody.innerHTML = '';
+            list.forEach(r => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+        <td class="align-top p-3 md:p-4 font-semibold text-slate-200">${r.topic}</td>
+        <td data-col="Free" class="p-3 md:p-4 text-slate-300">${r.values.Free}</td>
+        <td data-col="Starter" class="p-3 md:p-4 text-slate-300">${r.values.Starter}</td>
+        <td data-col="Pro" class="p-3 md:p-4 text-slate-300">${r.values.Pro}</td>
+        <td data-col="Business" class="p-3 md:p-4 text-slate-300">${r.values.Business}</td>
+        <td data-col="Enterprise" class="p-3 md:p-4 text-slate-300">${r.values.Enterprise}</td>
+      `;
+                tbody.appendChild(tr);
+            })
+        }
+        render(rows);
+
+        // ==== Busca ====
+        const search = document.getElementById('search');
+        search.addEventListener('input', () => {
+            const q = search.value.toLowerCase();
+            const filtered = rows.filter(r => r.topic.toLowerCase().includes(q) || Object.values(r.values).some(v => (v || '').toLowerCase().includes(q)));
+            render(filtered);
+            applyColumnVisibility();
+        });
+
+        // ==== Ordenar por tópico ====
+        let asc = true;
+        document.getElementById('sortTopic').addEventListener('click', () => {
+            const data = [...(search.value ? rows.filter(r => r.topic.toLowerCase().includes(search.value.toLowerCase()) || Object.values(r.values).some(v => (v || '').toLowerCase().includes(search.value.toLowerCase()))) : rows)];
+            data.sort((a, b) => asc ? a.topic.localeCompare(b.topic) : b.topic.localeCompare(a.topic));
+            asc = !asc;
+            render(data);
+            applyColumnVisibility();
+        });
+
+        // ==== Alternar colunas ====
+        const toggles = document.querySelectorAll('.toggle-col');
+        toggles.forEach(t => t.addEventListener('change', applyColumnVisibility));
+        function applyColumnVisibility() {
+            const active = {};
+            document.querySelectorAll('.toggle-col').forEach(cb => active[cb.dataset.col] = cb.checked);
+            document.querySelectorAll('[data-col]').forEach(cell => {
+                const col = cell.getAttribute('data-col');
+                cell.style.display = active[col] ? '' : 'none';
+            });
+        }
+        applyColumnVisibility();
+
+        // ==== Exportar CSV ====
+        function toCSV() {
+            const active = {};
+            document.querySelectorAll('.toggle-col').forEach(cb => active[cb.dataset.col] = cb.checked);
+            const cols = ['Tópico', ...['Free', 'Starter', 'Pro', 'Business', 'Enterprise'].filter(c => active[c])];
+            const lines = [cols.join(',')];
+            const data = Array.from(tbody.querySelectorAll('tr')).map(tr => Array.from(tr.children).map(td => td.innerText));
+            data.forEach(row => {
+                const obj = { Tópico: row[0], Free: row[1], Starter: row[2], Pro: row[3], Business: row[4], Enterprise: row[5] };
+                const line = cols.map(c => '"' + String(obj[c] || '').replaceAll('"', '""') + '"').join(',');
+                lines.push(line);
+            });
+            return lines.join('\n');
+        }
+        document.getElementById('btn-export').addEventListener('click', () => {
+            const blob = new Blob([toCSV()], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'comparativo-planos-eiah.csv'; a.click();
+            URL.revokeObjectURL(url);
+        });
+
+        // ==== Imprimir ====
+        document.getElementById('btn-print').addEventListener('click', () => window.print());
+    </script>
+</body>
+
+</html>

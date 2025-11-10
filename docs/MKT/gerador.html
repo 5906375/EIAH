@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gerador de Prompt Mestre — Apps & DApps Corporativos · v2</title>
+    <style>
+        :root {
+            --bg: #f6f7fb;
+            --card: #ffffff;
+            --text: #1f2328;
+            --muted: #6b7280;
+            --accent: #2563eb;
+            --accent-2: #0ea5e9;
+            --code-bg: #0f172a;
+            --code-fg: #e5e7eb;
+            --border: #e5e7eb
+        }
+
+        [data-theme="dark"] {
+            --bg: #0b1020;
+            --card: #11172a;
+            --text: #e5e7eb;
+            --muted: #9ca3af;
+            --accent: #60a5fa;
+            --accent-2: #22d3ee;
+            --code-bg: #020617;
+            --code-fg: #d1d5db;
+            --border: #1f2937
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial
+        }
+
+        .wrap {
+            max-width: 1080px;
+            margin: 24px auto;
+            padding: 0 16px
+        }
+
+        header {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px
+        }
+
+        .title {
+            display: flex;
+            gap: 10px;
+            align-items: center
+        }
+
+        .badge {
+            font-size: 12px;
+            background: linear-gradient(90deg, var(--accent), var(--accent-2));
+            color: #fff;
+            border-radius: 999px;
+            padding: 4px 8px
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            margin: 12px 0
+        }
+
+        h1 {
+            font-size: 20px;
+            margin: 0
+        }
+
+        h2 {
+            font-size: 16px;
+            margin: 0 0 8px 0;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 6px
+        }
+
+        label {
+            font-weight: 600;
+            margin-top: 10px;
+            display: block
+        }
+
+        input[type="text"],
+        input[type="number"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: transparent;
+            color: var(--text)
+        }
+
+        textarea {
+            min-height: 70px;
+            resize: vertical
+        }
+
+        .row {
+            display: grid;
+            gap: 12px
+        }
+
+        @media(min-width:700px) {
+            .row.cols-2 {
+                grid-template-columns: 1fr 1fr
+            }
+
+            .row.cols-3 {
+                grid-template-columns: 1fr 1fr 1fr
+            }
+        }
+
+        .muted {
+            color: var(--muted);
+            font-size: 12px;
+            margin: 4px 0 10px
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            color: var(--text);
+            padding: 10px 14px;
+            border-radius: 10px;
+            cursor: pointer
+        }
+
+        .btn.primary {
+            background: var(--accent);
+            color: #fff;
+            border-color: transparent
+        }
+
+        .btn.block {
+            width: 100%
+        }
+
+        .btnbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse
+        }
+
+        .table th,
+        .table td {
+            border: 1px solid var(--border);
+            padding: 8px
+        }
+
+        .switch {
+            appearance: none;
+            width: 40px;
+            height: 24px;
+            border-radius: 999px;
+            background: var(--border);
+            position: relative;
+            outline: 0;
+            cursor: pointer
+        }
+
+        .switch:checked {
+            background: var(--accent)
+        }
+
+        .switch:before {
+            content: "";
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #fff;
+            transition: transform .2s
+        }
+
+        .switch:checked:before {
+            transform: translateX(16px)
+        }
+
+        pre {
+            background: var(--code-bg);
+            color: var(--code-fg);
+            padding: 16px;
+            border-radius: 10px;
+            overflow: auto;
+            min-height: 260px
+        }
+
+        .pill {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            font-size: 12px;
+            margin-right: 6px
+        }
+
+        .section-note {
+            font-size: 12px;
+            color: var(--muted)
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrap" id="app">
+        <header>
+            <div class="title">
+                <h1>🚀 Gerador de Prompt Mestre — Apps & DApps</h1>
+                <span class="badge">v2</span>
+            </div>
+            <div>
+                <label class="muted" for="themeToggle">Tema</label>
+                <input id="themeToggle" class="switch" type="checkbox" />
+            </div>
+        </header>
+
+        <div class="card">
+            <h2>1) Contexto</h2>
+            <div class="row cols-2">
+                <div>
+                    <label for="objetivo">Objetivo claro</label>
+                    <textarea id="objetivo"
+                        placeholder="Ex.: Sistema de gestão de ativos tokenizados com integração a legado."></textarea>
+                </div>
+                <div>
+                    <label for="escopo">Escopo e limites</label>
+                    <textarea id="escopo"
+                        placeholder="Ex.: Módulos: usuários, inventário, carteira. Fora do escopo: KYC."></textarea>
+                </div>
+            </div>
+            <div class="row cols-3">
+                <div>
+                    <label for="linguagem">Linguagem</label>
+                    <input id="linguagem" type="text" placeholder="TypeScript, Python, Solidity" />
+                </div>
+                <div>
+                    <label for="stack">Stack/Runtime</label>
+                    <input id="stack" type="text"
+                        placeholder="Node 20 + NestJS; Python 3.11 + Django; React 18 + Next.js" />
+                </div>
+                <div>
+                    <label for="padroes">Padrões</label>
+                    <input id="padroes" type="text" placeholder="Clean Architecture, Hexagonal, SOLID, SAGA" />
+                </div>
+            </div>
+            <div class="row cols-2">
+                <div>
+                    <label for="linters">Estilo/Linters</label>
+                    <input id="linters" type="text" placeholder="ESLint/Prettier, Black, Solhint" />
+                </div>
+                <div>
+                    <label for="dx">DX</label>
+                    <input id="dx" type="text" placeholder="scripts npm/pip/Make; dev, build, test" />
+                </div>
+            </div>
+            <div class="row cols-3">
+                <div>
+                    <label for="modelo">Modelo/provedor LLM</label>
+                    <input id="modelo" type="text" placeholder="Ex.: GPT-5, o3-mini, Bedrock, Vertex AI" />
+                </div>
+                <div>
+                    <label for="saida">Formato de saída</label>
+                    <input id="saida" type="text" placeholder="Somente blocos de código e índice de arquivos" />
+                </div>
+                <div>
+                    <label for="i18n">i18n</label>
+                    <input id="i18n" type="text" placeholder="pt-BR padrão; en-US opcional" />
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>2) Arquitetura corporativa</h2>
+            <div class="row cols-3">
+                <div>
+                    <label for="ms">Padrão de serviços</label>
+                    <input id="ms" type="text"
+                        placeholder="Monolito modular; 5 microserviços (User, Inventory, Wallet...)" />
+                </div>
+                <div>
+                    <label for="cloud">Plataforma Cloud</label>
+                    <input id="cloud" type="text" placeholder="AWS (Lambda/ECS), GCP (Cloud Run), Azure (AKS)" />
+                </div>
+                <div>
+                    <label for="logs">Observabilidade</label>
+                    <input id="logs" type="text" placeholder="ELK, Datadog, OpenTelemetry, Prometheus + Grafana" />
+                </div>
+            </div>
+            <div class="row cols-3">
+                <div>
+                    <label for="secrets">Segredos</label>
+                    <input id="secrets" type="text" placeholder="Vault, AWS Secrets Manager, env" />
+                </div>
+                <div>
+                    <label for="crypto">Criptografia em trânsito</label>
+                    <input id="crypto" type="text" placeholder="TLS 1.3, mTLS" />
+                </div>
+                <div>
+                    <label for="persist">Persistência</label>
+                    <input id="persist" type="text" placeholder="PostgreSQL, Redis (cache/DLQ), S3/IPFS" />
+                </div>
+            </div>
+            <div class="row cols-3">
+                <div>
+                    <label for="slo">SLO/SLA</label>
+                    <input id="slo" type="text" placeholder="API p95 < 100ms; uptime 99.9%" />
+                </div>
+                <div>
+                    <label for="cobertura">Cobertura de testes</label>
+                    <input id="cobertura" type="text" placeholder="80% backend/frontend; 95% contratos" />
+                </div>
+                <div>
+                    <label for="retries">Retries máximos</label>
+                    <input id="retries" type="number" min="1" value="3" />
+                </div>
+            </div>
+            <div class="row cols-2">
+                <div>
+                    <label for="compliance">Compliance</label>
+                    <input id="compliance" type="text" placeholder="LGPD, ISO 27001, SOC2" />
+                </div>
+                <div>
+                    <label for="custos">Limites de custo/FinOps</label>
+                    <input id="custos" type="text" placeholder="Budget mensal, custo por run, quotas" />
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>3) DApp (opcional)</h2>
+            <label><input id="isDapp" type="checkbox" /> Incluir especificações Web3</label>
+            <div id="dappFields" style="display:none">
+                <div class="row cols-3">
+                    <div>
+                        <label for="chain">Blockchain</label>
+                        <input id="chain" type="text" placeholder="Ethereum, Polygon, Solana, Hyperledger" />
+                    </div>
+                    <div>
+                        <label for="token">Padrão de token</label>
+                        <input id="token" type="text" placeholder="ERC-20, ERC-721, ERC-1155" />
+                    </div>
+                    <div>
+                        <label for="langContrato">Linguagem de contrato</label>
+                        <input id="langContrato" type="text" placeholder="Solidity 0.8.x, Rust, Vyper" />
+                    </div>
+                </div>
+                <div class="row cols-2">
+                    <div>
+                        <label for="oraculos">Oráculos</label>
+                        <input id="oraculos" type="text" placeholder="Chainlink, API feeder custom" />
+                    </div>
+                    <div>
+                        <label for="eventosOnchain">Eventos on-chain</label>
+                        <input id="eventosOnchain" type="text" placeholder="AssetMinted, Transfer, Approval" />
+                    </div>
+                </div>
+            </div>
+            <p class="section-note">Desmarque se não usar tecnologias Web3.</p>
+        </div>
+
+        <div class="card">
+            <h2>4) Requisitos funcionais e entradas/saídas</h2>
+            <div class="row cols-2">
+                <div>
+                    <label for="entradas">Entradas (API/CLI/Eventos)</label>
+                    <textarea id="entradas"
+                        placeholder="Ex.: POST /asset/mint {userId, amount, token}; CLI: mint --u --a --t"></textarea>
+                </div>
+                <div>
+                    <label for="saidas">Saídas</label>
+                    <textarea id="saidas" placeholder="JSON, status codes, erros padronizados"></textarea>
+                </div>
+            </div>
+            <div>
+                <label for="ideias">Notas/ideias de solução</label>
+                <textarea id="ideias" placeholder="Hipóteses, alternativas, trade-offs e riscos."></textarea>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>5) Variáveis de ambiente</h2>
+            <p class="muted">Adicione chave e valor. Matrizes por ambiente são opcionais.</p>
+            <div class="btnbar" style="margin-bottom:10px">
+                <button class="btn" type="button" id="addEnv">+ Variável</button>
+                <button class="btn" type="button" id="addEnvMatrix">+ Matriz DEV/STG/PRD</button>
+                <label class="muted"><input type="checkbox" id="prefixSecret" checked /> prefixar segredos com
+                    <code>SECRETS_</code></label>
+            </div>
+            <table class="table" id="envTable">
+                <thead>
+                    <tr>
+                        <th>Chave</th>
+                        <th>Valor</th>
+                        <th>Escopo</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>6) Links externos para comparação</h2>
+            <p class="muted">Inclua referências, benchmarks, artigos, repositórios ou docs.</p>
+            <div class="btnbar" style="margin-bottom:10px"><button class="btn" type="button" id="addLink">+
+                    Link</button></div>
+            <table class="table" id="linksTable">
+                <thead>
+                    <tr>
+                        <th>Rótulo</th>
+                        <th>URL</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div class="card">
+            <h2>Saída</h2>
+            <div class="btnbar" style="margin-bottom:10px">
+                <button class="btn primary" type="button" id="btnGenerate">Gerar Prompt</button>
+                <button class="btn" type="button" id="btnCopy">Copiar</button>
+                <button class="btn" type="button" id="btnDownload">Baixar .md</button>
+                <button class="btn" type="button" id="btnExport">Exportar JSON</button>
+                <input type="file" id="fileImport" accept="application/json" style="display:none" />
+                <button class="btn" type="button" id="btnImport">Importar JSON</button>
+                <button class="btn" type="button" id="btnReset">Limpar</button>
+                <span class="pill" id="charCount">0 chars</span>
+                <span class="pill" id="autosave">autosave</span>
+            </div>
+            <pre id="output">Preencha e clique em “Gerar Prompt”.</pre>
+        </div>
+
+        <footer class="muted" style="margin:18px 0">Este utilitário não envia dados. Tudo roda no seu navegador.
+        </footer>
+    </div>
+
+    <script>
+        (function () {
+            const $ = (q, root = document) => root.querySelector(q);
+            const $$ = (q, root = document) => Array.from(root.querySelectorAll(q));
+            const storeKey = 'prompt-v2-state';
+
+            const state = loadState() || {
+                contexto: { objetivo: '', escopo: '', linguagem: '', stack: '', padroes: '', linters: '', dx: '', modelo: '', saida: '', i18n: '' },
+                arch: { ms: '', cloud: '', logs: '', secrets: '', crypto: '', persist: '', slo: '', cobertura: '', retries: 3, compliance: '', custos: '' },
+                dapp: { enabled: false, chain: '', token: '', langContrato: '', oraculos: '', eventosOnchain: '' },
+                req: { entradas: '', saidas: '', ideias: '' },
+                env: [],
+                links: [],
+                theme: 'light',
+                output: ''
+            };
+
+            // THEME
+            const themeToggle = $('#themeToggle');
+            const applyTheme = () => {
+                document.documentElement.setAttribute('data-theme', state.theme === 'dark' ? 'dark' : 'light');
+                themeToggle.checked = state.theme === 'dark'
+            };
+            themeToggle.addEventListener('change', () => { state.theme = themeToggle.checked ? 'dark' : 'light'; saveState(); applyTheme() });
+            applyTheme();
+
+            // BIND INPUTS
+            bindText('#objetivo', state.contexto, 'objetivo');
+            bindText('#escopo', state.contexto, 'escopo');
+            bindText('#linguagem', state.contexto, 'linguagem');
+            bindText('#stack', state.contexto, 'stack');
+            bindText('#padroes', state.contexto, 'padroes');
+            bindText('#linters', state.contexto, 'linters');
+            bindText('#dx', state.contexto, 'dx');
+            bindText('#modelo', state.contexto, 'modelo');
+            bindText('#saida', state.contexto, 'saida');
+            bindText('#i18n', state.contexto, 'i18n');
+
+            bindText('#ms', state.arch, 'ms');
+            bindText('#cloud', state.arch, 'cloud');
+            bindText('#logs', state.arch, 'logs');
+            bindText('#secrets', state.arch, 'secrets');
+            bindText('#crypto', state.arch, 'crypto');
+            bindText('#persist', state.arch, 'persist');
+            bindText('#slo', state.arch, 'slo');
+            bindText('#cobertura', state.arch, 'cobertura');
+            bindNumber('#retries', state.arch, 'retries');
+            bindText('#compliance', state.arch, 'compliance');
+            bindText('#custos', state.arch, 'custos');
+
+            bindText('#entradas', state.req, 'entradas');
+            bindText('#saidas', state.req, 'saidas');
+            bindText('#ideias', state.req, 'ideias');
+
+            // DAPP TOGGLE
+            const isDapp = $('#isDapp');
+            const dappFields = $('#dappFields');
+            isDapp.checked = !!state.dapp.enabled;
+            dappFields.style.display = isDapp.checked ? 'block' : 'none';
+            isDapp.addEventListener('change', () => { state.dapp.enabled = isDapp.checked; dappFields.style.display = isDapp.checked ? 'block' : 'none'; saveState() });
+            bindText('#chain', state.dapp, 'chain');
+            bindText('#token', state.dapp, 'token');
+            bindText('#langContrato', state.dapp, 'langContrato');
+            bindText('#oraculos', state.dapp, 'oraculos');
+            bindText('#eventosOnchain', state.dapp, 'eventosOnchain');
+
+            // ENV TABLE
+            const envTableBody = $('#envTable tbody');
+            const prefixSecret = $('#prefixSecret');
+            prefixSecret.checked = true;
+            $('#addEnv').addEventListener('click', () => addEnvRow({ key: 'API_URL', value: 'http://localhost:3000', scope: 'global' }));
+            $('#addEnvMatrix').addEventListener('click', () => addEnvRow({ key: 'DB_URL', value: 'DEV=postgres://dev; STG=postgres://stg; PRD=postgres://prd', scope: 'matrix' }));
+            state.env.forEach(addEnvRow);
+
+            function addEnvRow(item) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+      <td><input type="text" value="${escapeHtml(item.key || '')}" placeholder="NOME"/></td>
+      <td><input type="text" value="${escapeHtml(item.value || '')}" placeholder="valor ou DEV=..;STG=..;PRD=.."/></td>
+      <td>
+        <select>
+          <option value="global" ${item.scope === 'global' ? 'selected' : ''}>global</option>
+          <option value="matrix" ${item.scope === 'matrix' ? 'selected' : ''}>matrix</option>
+          <option value="secret" ${item.scope === 'secret' ? 'selected' : ''}>secret</option>
+        </select>
+      </td>
+      <td><button class="btn" type="button">Remover</button></td>
+    `;
+                const [kEl, vEl, sEl, rmEl] = $$('input, select, button', tr);
+                kEl.addEventListener('input', sync);
+                vEl.addEventListener('input', sync);
+                sEl.addEventListener('change', sync);
+                rmEl.addEventListener('click', () => { tr.remove(); sync() });
+                envTableBody.appendChild(tr);
+                function sync() {
+                    state.env = Array.from(envTableBody.querySelectorAll('tr')).map(row => {
+                        const [k, v, s] = $$('input, select', row);
+                        return { key: k.value.trim(), value: v.value.trim(), scope: s.value }
+                    });
+                    saveState();
+                }
+                sync();
+            }
+
+            // LINKS TABLE
+            const linksBody = $('#linksTable tbody');
+            $('#addLink').addEventListener('click', () => addLinkRow({ label: 'Benchmark lib X', url: 'https://exemplo.dev' }));
+            state.links.forEach(addLinkRow);
+            function addLinkRow(item) {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+      <td><input type="text" value="${escapeHtml(item.label || '')}" placeholder="rótulo"/></td>
+      <td><input type="text" value="${escapeHtml(item.url || '')}" placeholder="https://..."/></td>
+      <td><button class="btn" type="button">Remover</button></td>
+    `;
+                const [lEl, uEl, rmEl] = $$('input, input, button', tr);
+                const sync = () => {
+                    state.links = Array.from(linksBody.querySelectorAll('tr')).map(row => {
+                        const [l, u] = $$('input', row); return { label: l.value.trim(), url: u.value.trim() }
+                    }); saveState()
+                };
+                lEl.addEventListener('input', sync);
+                uEl.addEventListener('input', sync);
+                rmEl.addEventListener('click', () => { tr.remove(); sync() });
+                linksBody.appendChild(tr);
+                sync();
+            }
+
+            // BUTTONS
+            $('#btnGenerate').addEventListener('click', () => {
+                const text = generatePrompt(state, { prefixSecret: prefixSecret.checked });
+                state.output = text; saveState(); setOutput(text)
+            });
+            $('#btnCopy').addEventListener('click', () => {
+                const ok = copyText($('#output').textContent);
+                if (!ok) alert('Não foi possível copiar automaticamente. Selecione e use Ctrl/Cmd + C.')
+            });
+            $('#btnDownload').addEventListener('click', () => {
+                download('prompt-mestre.md', $('#output').textContent)
+            });
+            $('#btnExport').addEventListener('click', () => {
+                download('preenchimento.json', JSON.stringify(state, null, 2))
+            });
+            $('#btnImport').addEventListener('click', () => $('#fileImport').click());
+            $('#fileImport').addEventListener('change', async (e) => {
+                const file = e.target.files[0]; if (!file) return; const txt = await file.text();
+                try { const data = JSON.parse(txt); Object.assign(state, data); saveState(); location.reload() } catch (err) { alert('JSON inválido') }
+            });
+            $('#btnReset').addEventListener('click', () => { if (confirm('Limpar tudo?')) { localStorage.removeItem(storeKey); location.reload() } });
+
+            // OUTPUT
+            setOutput(state.output || 'Preencha e clique em “Gerar Prompt”.');
+
+            // AUTOSAVE INDICATOR
+            let autosaveTimer = null; const autosaveEl = $('#autosave');
+            function saveState() {
+                localStorage.setItem(storeKey, JSON.stringify(state));
+                autosaveEl.textContent = 'salvo'; clearTimeout(autosaveTimer);
+                autosaveTimer = setTimeout(() => autosaveEl.textContent = 'autosave', 1000)
+            }
+            function loadState() { try { return JSON.parse(localStorage.getItem(storeKey) || '') } catch { return null } }
+
+            // HELPERS
+            function bindText(sel, obj, key) { const el = $(sel); el.value = obj[key] || ''; el.addEventListener('input', () => { obj[key] = el.value; saveState() }) }
+            function bindNumber(sel, obj, key) { const el = $(sel); el.value = obj[key] ?? ''; el.addEventListener('input', () => { obj[key] = Number(el.value || 0); saveState() }) }
+            function setOutput(text) { const out = $('#output'); out.textContent = text; $('#charCount').textContent = (text || '').length + ' chars' }
+            function copyText(text) { return navigator.clipboard ? (navigator.clipboard.writeText(text), true) : fallbackCopy(text) }
+            function fallbackCopy(text) { const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); return true } catch { return false } finally { document.body.removeChild(ta) } }
+            function download(name, content) { const blob = new Blob([content], { type: 'text/plain' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); URL.revokeObjectURL(a.href) }
+            function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c])) }
+
+            // PROMPT BUILDER
+            function generatePrompt(s, opts) {
+                const envLines = s.env.filter(e => e.key).map(e => {
+                    const key = e.scope === 'secret' || opts.prefixSecret ? ensurePrefixed(e.key) : e.key;
+                    return `- ${key}: ${e.value} (${e.scope})`;
+                }).join('\n');
+
+                const linkLines = s.links.filter(l => l.label && l.url).map(l => `- ${l.label}: ${l.url}`).join('\n');
+
+                const dappBlock = s.dapp.enabled ? `\nEspecificação Web3/DApp\nBlockchain: ${s.dapp.chain}\nPadrão de Token/Contrato: ${s.dapp.token}\nLinguagem de Contrato: ${s.dapp.langContrato}\nOráculos: ${s.dapp.oraculos}\nEventos on-chain: ${s.dapp.eventosOnchain}\n` : '';
+
+                const template = `
+Prompt mestre para geração de código App/DApp Corporativo
+Você é um gerador de código focado em aplicações empresariais e DApps. Responda apenas com blocos de código e índice de arquivos.
+
+Contexto
+Objetivo: ${s.contexto.objetivo}
+Escopo/limites: ${s.contexto.escopo}
+Linguagem: ${s.contexto.linguagem}
+Stack/Runtime: ${s.contexto.stack}
+Padrões: ${s.contexto.padroes}
+Estilo/Linters: ${s.contexto.linters}
+DX: ${s.contexto.dx}
+Modelo/Provedor LLM: ${s.contexto.modelo}
+Formato de saída: ${s.contexto.saida || 'somente código + índice'}
+i18n: ${s.contexto.i18n || 'pt-BR'}
+
+Arquitetura Corporativa
+Serviços: ${s.arch.ms}
+Cloud: ${s.arch.cloud}
+Observabilidade: ${s.arch.logs}
+Segredos: ${s.arch.secrets}
+Criptografia: ${s.arch.crypto}
+Persistência: ${s.arch.persist}
+SLO/SLA: ${s.arch.slo}
+Cobertura de testes: ${s.arch.cobertura}
+Retries máx.: ${s.arch.retries}
+Compliance: ${s.arch.compliance}
+FinOps/limites de custo: ${s.arch.custos}
+${dappBlock}
+Requisitos funcionais
+Entradas: ${s.req.entradas}
+Saídas: ${s.req.saidas || 'JSON normalizado, status codes, erros padronizados'}
+Notas/ideias: ${s.req.ideias}
+
+Variáveis de ambiente
+${envLines || '- (definir depois)'}
+
+Links externos para comparação e benchmark
+${linkLines || '- (nenhum)'}
+
+Requisitos não funcionais
+- Observabilidade completa (logs estruturados, métricas, tracing via ${s.arch.logs}).
+- RBAC, criptografia em trânsito (${s.arch.crypto}), rotação de segredos (${s.arch.secrets}), sem PII em logs.
+- Persistência com migrações e seeds; eventos on-chain indexados quando aplicável.
+- Testes unitários, contrato e integração (cobertura mínima ${s.arch.cobertura || 'definir'}).
+- DevEx com scripts de dev/test/lint/build.
+- Infra local com docker-compose opcional.
+- Idempotência onde crítico; falhas externas → backoff exponencial com jitter; após ${s.arch.retries} → DLQ.
+- Health-check: /healthz e /readyz.
+
+O que gerar
+- Estrutura de pastas e módulos.
+- Implementações completas de back/front/contratos.
+- Handlers HTTP/CLI com exemplos.
+- Integrações reais com stubs quando necessário.
+- Testes e fixtures (incluindo Hardhat/Foundry quando houver contratos).
+- Middleware de observabilidade.
+- Checagem de permissões por ação/recurso/carteira.
+- Scripts de desenvolvimento e documentação curta no README.
+
+Restrições
+- Não expor segredos; ler sempre de variáveis de ambiente.
+- Saída final: apenas blocos de código formatados e índice de arquivos.
+
+Gere agora conforme os campos preenchidos.`.trim();
+
+                return template;
+            }
+
+            function ensurePrefixed(key) {
+                if (/^SECRETS_/.test(key)) return key; return 'SECRETS_' + key.replace(/^ENV[_-]?/, '')
+            }
+        })();
+    </script>
+</body>
+
+</html>

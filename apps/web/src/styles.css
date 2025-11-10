@@ -1,0 +1,107 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Unbounded:wght@600&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply min-h-screen bg-background bg-hero-grid text-foreground antialiased;
+    background-attachment: fixed;
+  }
+
+  #root {
+    @apply min-h-screen;
+  }
+
+  ::selection {
+    @apply bg-accent/40 text-foreground;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply rounded-3xl border border-white/10 bg-surface backdrop-blur-2xl shadow-neon;
+  }
+
+  .glass-subtle {
+    @apply rounded-3xl border border-white/5 bg-surface-strong backdrop-blur-xl;
+  }
+
+  .pill {
+    @apply inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium uppercase tracking-wide text-muted-foreground;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 9999px;
+}
+
+.mission-control-tour {
+  @apply max-w-sm rounded-3xl border border-accent/30 bg-surface-strong/95 text-foreground shadow-[0_25px_60px_-25px_rgba(56,189,248,0.45)] backdrop-blur-2xl;
+}
+
+.mission-control-tour .introjs-tooltip-title {
+  @apply font-display text-lg font-semibold text-foreground;
+}
+
+.mission-control-tour .introjs-tooltiptext {
+  @apply text-sm leading-relaxed text-muted-foreground;
+}
+
+.mission-control-tour .introjs-progress {
+  @apply h-1 rounded-full bg-white/10;
+}
+
+.mission-control-tour .introjs-progressbar {
+  @apply bg-accent;
+}
+
+.mission-control-tour .introjs-button {
+  @apply rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-foreground transition hover:border-accent/60 hover:text-accent;
+}
+
+.mission-control-tour .introjs-button.introjs-disabled {
+  @apply cursor-not-allowed opacity-50;
+}
+
+.mission-control-tour .introjs-tooltipbuttons {
+  @apply flex gap-2;
+}
+
+.mission-control-tour .introjs-helperNumberLayer {
+  @apply hidden;
+}
+
+.mission-control-tour .introjs-tooltip-header {
+  @apply flex items-center justify-between;
+}
+
+.mission-control-tour .introjs-tooltip-header .introjs-skipbutton {
+  @apply text-xs font-semibold uppercase tracking-widest text-muted-foreground transition hover:text-accent;
+}
+
+.mission-control-highlight {
+  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.45), 0 12px 40px -20px rgba(14, 165, 233, 0.55);
+  border-radius: 24px !important;
+}

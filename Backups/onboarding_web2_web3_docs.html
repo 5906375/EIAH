@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Onboarding Técnico — Web2 & Web3</title>
+<style>
+:root {
+  --bg: #0b1117;
+  --panel: #0f1721;
+  --panel-2: #121b26;
+  --fg: #e5eef7;
+  --muted: #9fb3c8;
+  --accent: #3aa0ff;
+  --accent-2: #1f6fd6;
+  --border: #1a2633;
+  --chip: #182331;
+  --success: #47d19f;
+  --warn: #ffcc66;
+  --danger: #ff6b6b;
+}
+* { box-sizing: border-box; }
+html, body { margin:0; padding:0; background: var(--bg); color: var(--fg); font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+header { position: sticky; top:0; z-index:10; background: linear-gradient(0deg, var(--panel), var(--panel-2)); border-bottom:1px solid var(--border); }
+.header-wrap { max-width:1200px; margin:0 auto; padding: 18px 20px; }
+h1 { margin:0; font-size: 28px; letter-spacing: .2px; }
+.sub { color: var(--muted); margin-top:4px; }
+main { max-width:1200px; margin: 0 auto; padding: 18px 20px 80px; display:grid; grid-template-columns: 280px 1fr; gap:18px; }
+.nav { position: sticky; top:90px; height: calc(100vh - 110px); overflow:auto; background: var(--panel); border:1px solid var(--border); border-radius: 14px; padding: 12px; }
+.nav h3 { margin: 6px 8px 6px; font-size: 14px; color: var(--muted); }
+.nav a { display:block; padding:8px 10px; border-radius: 10px; color: var(--fg); }
+.nav a:hover { background: #142031; }
+.section { background: var(--panel); border:1px solid var(--border); border-radius: 14px; padding: 16px; }
+h2 { margin-top: 0; }
+.badge { background: #132237; border:1px solid var(--border); color: #9fcaef; padding: 4px 8px; border-radius: 999px; font-size: 12px; }
+.grid { display:grid; gap:12px; grid-template-columns: repeat(auto-fill, minmax(260px,1fr)); }
+.card { background: #0d1520; border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+.card h4 { margin: 0 0 4px; }
+.kv { display:flex; gap:8px; flex-wrap:wrap; margin:6px 0 0; }
+.chip { background: var(--chip); border:1px solid var(--border); color: var(--muted); padding: 4px 8px; border-radius: 999px; font-size: 12px; }
+.tabs { display:flex; gap:8px; flex-wrap: wrap; }
+.tab { padding: 8px 12px; border:1px solid var(--border); border-radius: 999px; cursor:pointer; background: #0d1520; color: var(--muted); }
+.tab.active { background: #183049; color: var(--fg); }
+.tabpanels > div { display:none; }
+.tabpanels > div.active { display:block; }
+pre { background: #0a1220; border:1px solid var(--border); border-radius: 12px; padding: 12px; overflow:auto; }
+.codebar { display:flex; justify-content: space-between; align-items:center; gap:8px; margin-top:8px; }
+.btn { padding:8px 12px; background: var(--chip); border:1px solid var(--border); border-radius: 10px; cursor:pointer; color: var(--fg); }
+.btn:hover { background:#1c2a3a; }
+.note { background: #101a29; border:1px dashed var(--border); border-radius: 12px; padding: 12px; color: var(--muted); }
+.list-check li::marker { content: "✔ "; color: var(--success); }
+.small { color: var(--muted); font-size: 12px; }
+hr.sep { border:0; border-top:1px solid var(--border); margin: 16px 0; }
+@media (max-width: 980px) {
+  main { grid-template-columns: 1fr; }
+  .nav { position: static; height:auto; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-wrap">
+    <h1>Onboarding Técnico — Aprenda em minutos</h1>
+    <div class="sub">Combine vídeos, snippets e templates low‑code para conectar seu fluxo sem escrever muito código.</div>
+  </div>
+</header>
+
+<main>
+  <nav class="nav" id="nav">
+    <h3>Conteúdo</h3>
+    <a href="#visao">Visão geral</a>
+    <a href="#como-usar">Como usar</a>
+    <a href="#abas">Abas: Vídeos · REST · SDK · Low‑code</a>
+    <a href="#templates">Templates low‑code</a>
+    <a href="#seguranca">Segurança & Guardrails</a>
+    <a href="#exemplos">Exemplos rápidos</a>
+    <a href="#faq">FAQ (Web2 & Web3)</a>
+    <a href="#troubleshooting">Troubleshooting</a>
+  </nav>
+
+  <div class="content">
+    <section id="visao" class="section">
+      <h2>Visão geral</h2>
+      <p>Este guia transforma o painel “Aprenda em minutos” em documentação prática para públicos <strong>Web2</strong> (Zapier, Make, planilhas, REST) e <strong>Web3</strong> (SDK, carteiras, simulações on‑chain). O foco é levar você do 0 ao 1 com passos claros e opções de integração.</p>
+      <div class="kv">
+        <span class="badge">Público misto</span>
+        <span class="badge">Baixa fricção</span>
+        <span class="badge">Produção segura</span>
+      </div>
+    </section>
+
+    <section id="como-usar" class="section">
+      <h2>Como usar</h2>
+      <ol class="list-check">
+        <li>Assista um vídeo ou escolha o snippet que mais combina com sua stack.</li>
+        <li>Configure o token (<code>EIAH_TOKEN</code>) e o <code>projectId</code> do cliente.</li>
+        <li>Rode uma <strong>simulação</strong> antes de liberar o fluxo real.</li>
+        <li>Conecte um <strong>template low‑code</strong> para pilotos rápidos ou squads não técnicas.</li>
+      </ol>
+      <p class="note">Os recursos abaixo começam como exemplos “mockados”. Substitua pelos links/IDs oficiais assim que os materiais do seu time estiverem prontos.</p>
+    </section>
+
+    <section id="abas" class="section">
+      <h2>Abas: Vídeos · REST · SDK · Low‑code</h2>
+      <div class="tabs">
+        <button class="tab active" data-tab="videos">Vídeos</button>
+        <button class="tab" data-tab="rest">REST</button>
+        <button class="tab" data-tab="sdk">SDK</button>
+        <button class="tab" data-tab="lowcode">Low‑code</button>
+      </div>
+      <div class="tabpanels">
+        <div id="tab-videos" class="active">
+          <p>Tutoriais rápidos de 2–5 minutos mostrando do zero ao deploy. Substitua pelos links quando os vídeos estiverem publicados.</p>
+          <ul>
+            <li>Integração com <strong>runs</strong> e simulação.</li>
+            <li>Como configurar <code>EIAH_TOKEN</code> e <code>projectId</code>.</li>
+            <li>Pipeline DeFi: simular → confirmar → registrar logs.</li>
+          </ul>
+        </div>
+        <div id="tab-rest">
+          <p>Para qualquer stack que faça HTTP. Snippet starter:</p>
+          <div class="codebar"><span class="small">cURL — simular um run</span><button class="btn" onclick="copyCode('curl1')">Copiar</button></div>
+<pre id="curl1">curl -X POST "$BASE_URL/api/runs/simulate" \
+  -H "Authorization: Bearer $EIAH_TOKEN" \
+  -H "Content-Type: application/json" \
+  --data '{"projectId":"demo","agent":"DeFi_1","payload":{"op":"mint","amount":"1e18"}}'</pre>
+          <div class="small">Resultado esperado: <code>{"ok":true,"meta":{"traceId":"trc-..."}}</code>. Use o <code>traceId</code> para auditoria.</div>
+        </div>
+        <div id="tab-sdk">
+          <p>Para quem prefere TypeScript/Node.</p>
+          <div class="codebar"><span class="small">JS/TS — cliente básico</span><button class="btn" onclick="copyCode('js1')">Copiar</button></div>
+<pre id="js1">import fetch from "node-fetch";
+const BASE_URL = process.env.EIAH_BASE_URL;
+const TOKEN = process.env.EIAH_TOKEN;
+
+async function simulate() {
+  const r = await fetch(`${BASE_URL}/api/runs/simulate`, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${TOKEN}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      projectId: "demo",
+      agent: "DeFi_1",
+      payload: { op: "mint", amount: "1e18" }
+    })
+  });
+  const data = await r.json();
+  console.log(data);
+}
+
+simulate();</pre>
+        </div>
+        <div id="tab-lowcode">
+          <p>Conectores prontos para Zapier/Make/PowerApps e planilha CSV para POST em <code>/runs</code>.</p>
+          <ul>
+            <li><strong>Zapier — disparar simulação</strong> (Webhook + Google Sheets).</li>
+            <li><strong>Make (Integromat) — pipeline DeFi</strong> (aciona agente, envia Slack, grava logs).</li>
+            <li><strong>PowerApps — painel jurídico</strong> (botão <em>CONFIRMAR</em> antes do run).</li>
+            <li><strong>Planilha fallback</strong> — CSV com colunas mínimas para POST.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="templates" class="section">
+      <h2>Templates low‑code</h2>
+      <div class="grid">
+        <div class="card">
+          <h4>Zapier — disparar simulação</h4>
+          <p>Webhook + Google Sheets para registrar pedidos.</p>
+          <a class="btn" href="#" onclick="alert('Substitua pelo link do template no Zapier.'); return false;">Abrir template</a>
+        </div>
+        <div class="card">
+          <h4>Make (Integromat) — pipeline DeFi</h4>
+          <p>Aciona agente, envia Slack e guarda logs.</p>
+          <a class="btn" href="#" onclick="alert('Substitua pelo link do scenario no Make.'); return false;">Abrir template</a>
+        </div>
+        <div class="card">
+          <h4>PowerApps — painel jurídico</h4>
+          <p>Aprovação humana com botão <strong>CONFIRMAR</strong> antes do run.</p>
+          <a class="btn" href="#" onclick="alert('Substitua pelo link da solução no PowerApps.'); return false;">Abrir template</a>
+        </div>
+        <div class="card">
+          <h4>Planilha fallback</h4>
+          <p>CSV pronto para POST em <code>/runs</code>.</p>
+          <a class="btn" href="#" onclick="downloadCSV(); return false;">Baixar CSV</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="seguranca" class="section">
+      <h2>Segurança & Guardrails</h2>
+      <ul>
+        <li><strong>Simular antes de executar</strong>: toda operação sensível deve passar por <code>/simulate</code>.</li>
+        <li><strong>Confirmação humana</strong>: exigir clique de confirmação em UIs (ex.: PowerApps) para “runs” reais.</li>
+        <li><strong>Tokens e escopos</strong>: use escopo mínimo; rotacione <code>EIAH_TOKEN</code> periodicamente.</li>
+        <li><strong>Auditoria</strong>: persista <code>traceId</code>, custo estimado/real, latência e payload reduzido.</li>
+      </ul>
+      <p class="note">Para Web3: mantenha <em>testnets</em> como padrão (ex.: Sepolia) e só promova para mainnet com checklist de risco.</p>
+    </section>
+
+    <section id="exemplos" class="section">
+      <h2>Exemplos rápidos</h2>
+      <div class="grid">
+        <div class="card">
+          <h4>Web2 — Planilha → API</h4>
+<pre>Planilha: colunas [projectId, agent, payload_json]
+Zapier: New Row in Google Sheets → Webhook POST /api/runs/simulate</pre>
+        </div>
+        <div class="card">
+          <h4>Web3 — SDK + carteira</h4>
+<pre>// 1) simular
+// 2) exibir resumo do custo
+// 3) pedir assinatura do usuário (se aplicável)
+// 4) registrar traceId e logs</pre>
+        </div>
+      </div>
+    </section>
+
+    <section id="faq" class="section">
+      <h2>FAQ (Web2 & Web3)</h2>
+      <h4>Sou “no‑code”. Por onde começo?</h4>
+      <p>Use os <strong>Templates low‑code</strong>. O de Zapier costuma ser o mais rápido para pilotos.</p>
+      <h4>Como testo sem risco?</h4>
+      <p>Sempre rode <code>/simulate</code> primeiro. Em Web3, use testnet e carteiras com fundos de teste.</p>
+      <h4>Posso usar qualquer linguagem?</h4>
+      <p>Sim. Via REST, qualquer linguagem que faça HTTP. Para DX melhor, use o SDK em JS/TS.</p>
+      <h4>Como habilito confirmação humana?</h4>
+      <p>No PowerApps, adicione um botão <em>CONFIRMAR</em> acoplado ao endpoint real. Em Web, exiba um modal de confirmação com resumo do run.</p>
+    </section>
+
+    <section id="troubleshooting" class="section">
+      <h2>Troubleshooting</h2>
+      <ul>
+        <li><strong>401/403</strong>: verifique <code>EIAH_TOKEN</code> e escopos.</li>
+        <li><strong>422</strong>: payload inválido — valide <code>agent</code> e <code>payload</code> conforme schema.</li>
+        <li><strong>Timeout</strong>: reduza o payload, aumente o timeout, ou simule primeiro para estimar custo.</li>
+      </ul>
+      <p class="small">Precisa de ajuda? Inclua <code>traceId</code> ao abrir um chamado interno.</p>
+    </section>
+  </div>
+</main>
+
+<script>
+// Tabs
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tabpanels > div').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// Smooth scroll
+document.querySelectorAll('.nav a[href^="#"]').forEach(a => {
+  a.addEventListener('click', (e) => {
+    e.preventDefault();
+    const id = a.getAttribute('href').slice(1);
+    const el = document.getElementById(id);
+    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 80, behavior: 'smooth' });
+  });
+});
+
+// Copy helper
+function copyCode(id) {
+  const el = document.getElementById(id);
+  const range = document.createRange();
+  range.selectNode(el);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+  document.execCommand('copy');
+  sel.removeAllRanges();
+  alert('Copiado!');
+}
+
+// Download CSV (Planilha fallback)
+function downloadCSV() {
+  const rows = [
+    ['projectId','agent','payload_json'],
+    ['demo','DeFi_1','{"op":"mint","amount":"1e18"}']
+  ];
+  const csv = rows.map(r => r.map(v => `"${String(v).replaceAll('"','""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = 'planilha_fallback_runs.csv';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+}
+</script>
+</body>
+</html>

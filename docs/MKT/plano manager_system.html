@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Plano Centralizado de Uso de IA — Manager Systems</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            /* slate-900 */
+            --panel: #111827;
+            /* gray-900 */
+            --muted: #94a3b8;
+            /* slate-400 */
+            --text: #e5e7eb;
+            /* gray-200 */
+            --primary: #22d3ee;
+            /* cyan-400 */
+            --accent: #60a5fa;
+            /* blue-400 */
+            --ok: #34d399;
+            /* green-400 */
+            --warn: #f59e0b;
+            /* amber-500 */
+            --danger: #f87171;
+            /* red-400 */
+            --card: #0b1220;
+            /* dark panel */
+            --border: #1f2937;
+            /* gray-800 */
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        html,
+        body {
+            height: 100%
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Ubuntu, Arial, sans-serif;
+            background: linear-gradient(180deg, #0b1020 0%, #0f172a 100%);
+            color: var(--text);
+        }
+
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: rgba(15, 23, 42, .7);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .wrap {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 16px 20px
+        }
+
+        .title {
+            display: flex;
+            align-items: center;
+            gap: 12px
+        }
+
+        .title h1 {
+            margin: 0;
+            font-size: clamp(18px, 3vw, 28px)
+        }
+
+        .sub {
+            color: var(--muted);
+            font-size: 14px
+        }
+
+        .bar {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 10px
+        }
+
+        button,
+        .btn {
+            background: linear-gradient(180deg, #0f233a, #0b182c);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 10px 12px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: .2s transform, .2s background, .2s border-color;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            border-color: #2b384a
+        }
+
+        .primary {
+            background: linear-gradient(180deg, #073041, #071f29);
+            border-color: #0e7490;
+            color: #ccfbf1
+        }
+
+        .ok {
+            border-color: #065f46
+        }
+
+        .warn {
+            border-color: #854d0e
+        }
+
+        .danger {
+            border-color: #7f1d1d
+        }
+
+        main {
+            max-width: 1100px;
+            margin: 18px auto;
+            padding: 0 20px 60px
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 18px
+        }
+
+        @media (max-width: 980px) {
+            .grid {
+                grid-template-columns: 1fr
+            }
+        }
+
+        /* TOC */
+        nav {
+            position: sticky;
+            top: 74px;
+            align-self: start
+        }
+
+        .toc {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 14px
+        }
+
+        .toc h3 {
+            margin: 0 0 8px 0;
+            font-size: 14px;
+            color: #bae6fd
+        }
+
+        .toc a {
+            display: block;
+            color: var(--muted);
+            text-decoration: none;
+            padding: 6px 8px;
+            border-radius: 8px;
+            font-size: 14px
+        }
+
+        .toc a:hover {
+            background: #0f1a2d;
+            color: #cbd5e1
+        }
+
+        .toc small {
+            color: #64748b
+        }
+
+        /* Sections */
+        section {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 18px;
+            margin-bottom: 16px
+        }
+
+        section h2 {
+            margin: 0 0 10px 0;
+            font-size: 20px
+        }
+
+        details {
+            border: 1px dashed var(--border);
+            border-radius: 14px;
+            padding: 12px;
+            background: #0c1426
+        }
+
+        details+details {
+            margin-top: 10px
+        }
+
+        summary {
+            cursor: pointer;
+            color: #93c5fd;
+            font-weight: 700
+        }
+
+        .meta {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            font-size: 12px;
+            color: var(--muted)
+        }
+
+        .pill {
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 4px 10px
+        }
+
+        /* Editable */
+        [contenteditable="true"] {
+            outline: none
+        }
+
+        .edit-hint {
+            font-size: 12px;
+            color: #93c5fd
+        }
+
+        .editable {
+            border: 1px dashed #1f2b44;
+            padding: 10px;
+            border-radius: 12px;
+            background: #0a1324
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px
+        }
+
+        th,
+        td {
+            border: 1px solid #1e293b;
+            padding: 8px;
+            vertical-align: top
+        }
+
+        th {
+            background: #0f1b33;
+            text-align: left
+        }
+
+        .kbd {
+            padding: 2px 6px;
+            border: 1px solid #334155;
+            border-radius: 6px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 12px;
+            color: #cbd5e1
+        }
+
+        code {
+            color: #a7f3d0
+        }
+
+        footer {
+            border-top: 1px solid var(--border);
+            color: var(--muted);
+            padding: 18px 20px;
+            text-align: center
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="wrap">
+            <div class="title">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 22 12 18.77 5.82 22 7 14.14l-5-4.87 6.91-1.01L12 2z"
+                        stroke="#22d3ee" />
+                </svg>
+                <h1>Plano Centralizado de Uso de IA — Manager Systems</h1>
+            </div>
+            <div class="sub">CNPJ 80.750.714/0001-56 • ~50 colaboradores • 6 lideranças • ISO/IEC 27001 • ISO/IEC 27701
+                • ISO/IEC 20000-1 • ISO 9001</div>
+            <div class="bar">
+                <button class="primary" id="toggleEdit">Alternar edição</button>
+                <button id="saveBtn" class="btn ok">Salvar local</button>
+                <button id="loadBtn" class="btn">Carregar</button>
+                <button id="exportJson" class="btn">Exportar JSON</button>
+                <input type="file" id="importJson" accept="application/json" style="display:none" />
+                <button id="importJsonBtn" class="btn">Importar JSON</button>
+                <button id="printBtn" class="btn">Imprimir / PDF</button>
+                <span class="edit-hint">Use o botão “Alternar edição” ou <span class="kbd">Ctrl</span> + <span
+                        class="kbd">E</span></span>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="grid">
+            <nav>
+                <div class="toc">
+                    <h3>Sumário</h3>
+                    <a href="#s1">1. Sumário executivo</a>
+                    <a href="#s2">2. Diagnóstico do estado atual</a>
+                    <a href="#s3">3. Estado-alvo e princípios</a>
+                    <a href="#s4">4. Arquitetura de referência</a>
+                    <a href="#s5">5. Políticas e SOPs</a>
+                    <a href="#s6">6. Controles e trilhas de auditoria</a>
+                    <a href="#s7">7. Riscos, DPIA, ROPA</a>
+                    <a href="#s8">8. Onboarding e catálogos</a>
+                    <a href="#s9">9. Métricas e OKRs</a>
+                    <a href="#s10">10. Roadmap 90 dias</a>
+                    <a href="#s11">11. Evidências para auditoria</a>
+                    <hr />
+                    <a href="#d1">A. Política corporativa (1 pág.)</a>
+                    <a href="#d2">B. Matriz RACI</a>
+                    <a href="#d3">C. Fluxo BPMN</a>
+                    <a href="#d4">D. Checklist fornecedores & DPA</a>
+                    <a href="#d5">E. Modelo DPIA</a>
+                    <a href="#d6">F. Classificação de dados</a>
+                    <a href="#d7">G. Playbook incidentes</a>
+                    <a href="#d8">H. Mapa LGPD ↔ ISO</a>
+                </div>
+            </nav>
+
+            <div>
+                <section id="contexto" class="editable" contenteditable="false">
+                    <h2>Contexto</h2>
+                    <p><strong>Empresa:</strong> MANAGER CONSULTORIA EM INFORMATICA (CNPJ 80.750.714/0001-56).
+                        <strong>Site:</strong> <a href="https://managersystems.com.br/" target="_blank"
+                            rel="noopener">managersystems.com.br</a>.</p>
+                    <p><strong>Perfil:</strong> ~50 colaboradores, 6 lideranças funcionais, software house com
+                        certificações ISO/IEC 27001, ISO/IEC 27701, ISO/IEC 20000-1 e ISO 9001.</p>
+                    <p><strong>Problema:</strong> uso disperso de ferramentas de IA por contas individuais, risco de não
+                        conformidade com LGPD e com requisitos das ISOs.</p>
+                    <p><strong>Objetivo:</strong> projetar uma <em>solução centralizada de IA</em> com governança,
+                        segurança, conformidade e custo previsível.</p>
+                </section>
+
+                <section id="s1" class="editable" contenteditable="false">
+                    <h2>1) Sumário executivo</h2>
+                    <ul>
+                        <li>Adotar plataforma de IA corporativa com SSO, RBAC, DLP/CASB e <em>gateway de prompts</em>.
+                        </li>
+                        <li>Padronizar políticas, classificação de dados e revisão humana por risco.</li>
+                        <li>Implantar trilhas de auditoria e mapeamento LGPD↔ISO.</li>
+                        <li>Reduzir <em>shadow AI</em> em 90 dias. Custo sob controle via limites e orçamentos.</li>
+                    </ul>
+                </section>
+
+                <section id="s2" class="editable" contenteditable="false">
+                    <h2>2) Diagnóstico do estado atual</h2>
+                    <details open>
+                        <summary>Inventário de usos e dados</summary>
+                        <ul>
+                            <li>Levantamento de ferramentas em uso, contas e dados processados.</li>
+                            <li>Classificação de dados por sensibilidade e bases legais (LGPD).</li>
+                            <li>Mapeamento de integrações e fluxos existentes.</li>
+                        </ul>
+                    </details>
+                    <details>
+                        <summary>Riscos prioritários</summary>
+                        <ul>
+                            <li>Exfiltração de dados pessoais/sensíveis.</li>
+                            <li>Logs sem retenção adequada.</li>
+                            <li>Contrato sem DPA com provedores.</li>
+                        </ul>
+                    </details>
+                </section>
+
+                <section id="s3" class="editable" contenteditable="false">
+                    <h2>3) Estado-alvo e princípios</h2>
+                    <ul>
+                        <li>Privacidade por padrão e por design.</li>
+                        <li>Menor privilégio e segregação de funções.</li>
+                        <li>Observabilidade, mensuração e melhoria contínua.</li>
+                    </ul>
+                </section>
+
+                <section id="s4" class="editable" contenteditable="false">
+                    <h2>4) Arquitetura de referência</h2>
+                    <p>Descreva até 3 opções com prós/contr as e TCO resumido. Inclua SSO, RBAC, DLP/CASB, gateway de
+                        prompts, logging, retenção, criptografia e KMS.</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Opção</th>
+                                <th>Descrição</th>
+                                <th>Prós</th>
+                                <th>Contras</th>
+                                <th>TCO (resumo)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>SaaS corporativo</td>
+                                <td>Plataforma gerenciada com SSO e controles nativos.</td>
+                                <td>Rápida adoção; menor esforço operacional.</td>
+                                <td>Menor controle de dados; dependência de fornecedor.</td>
+                                <td>Assinaturas por usuário + add-ons de segurança.</td>
+                            </tr>
+                            <tr>
+                                <td>On‑prem/privado</td>
+                                <td>Modelos hospedados em VPC; KMS próprio.</td>
+                                <td>Maior controle; residência de dados.</td>
+                                <td>Capex/opex altos; equipe especializada.</td>
+                                <td>Infra + licenças + MLOps.</td>
+                            </tr>
+                            <tr>
+                                <td>Híbrido</td>
+                                <td>SaaS para uso geral; privado para dados sensíveis.</td>
+                                <td>Equilíbrio custo/risco; flexível.</td>
+                                <td>Complexidade de governança.</td>
+                                <td>Tiers de uso + custos de trânsito.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="s5" class="editable" contenteditable="false">
+                    <h2>5) Conjunto de políticas e SOPs</h2>
+                    <ul>
+                        <li>Política de Uso Aceitável de IA.</li>
+                        <li>Classificação e tratamento de dados.</li>
+                        <li>Gestão de fornecedores e DPAs.</li>
+                        <li>Engenharia de prompts segura e revisão humana.</li>
+                        <li>Treinamento e conscientização.</li>
+                        <li>Resposta a incidentes.</li>
+                    </ul>
+                </section>
+
+                <section id="s6" class="editable" contenteditable="false">
+                    <h2>6) Controles e trilhas de auditoria</h2>
+                    <p>Mapeie ISO/IEC 27001 (ex.: A.5, A.8, A.12, A.18), ISO/IEC 27701, ISO/IEC 20000-1 e ISO 9001.
+                        Registre referência a artigos da LGPD.</p>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Requisito</th>
+                                <th>Referência</th>
+                                <th>Evidência</th>
+                                <th>Responsável</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Gestão de ativos</td>
+                                <td>ISO 27001 A.5/A.8</td>
+                                <td>Inventário de ferramentas/contas</td>
+                                <td>Segurança da Informação</td>
+                            </tr>
+                            <tr>
+                                <td>Logs e monitoramento</td>
+                                <td>ISO 27001 A.12</td>
+                                <td>SIEM + retenção</td>
+                                <td>Infra/SecOps</td>
+                            </tr>
+                            <tr>
+                                <td>Privacidade</td>
+                                <td>ISO 27701</td>
+                                <td>DPIA/ROPA</td>
+                                <td>DPO</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="s7" class="editable" contenteditable="false">
+                    <h2>7) Avaliação de riscos, DPIA e ROPA</h2>
+                    <ul>
+                        <li>DPIA simplificada por caso de uso de IA.</li>
+                        <li>Registro de Operações de Tratamento (ROPA).</li>
+                        <li>Minimização, anonimização e bases legais.</li>
+                    </ul>
+                </section>
+
+                <section id="s8" class="editable" contenteditable="false">
+                    <h2>8) Onboarding, aprovação e catálogos</h2>
+                    <ul>
+                        <li>Workflow de aprovação de casos de uso e modelos.</li>
+                        <li>Tiers de acesso por sensibilidade de dados.</li>
+                        <li>Limites de gasto, orçamentos e <em>rate limits</em>.</li>
+                        <li>Integração com ticketing e SIEM existentes.</li>
+                    </ul>
+                </section>
+
+                <section id="s9" class="editable" contenteditable="false">
+                    <h2>9) Métricas e OKRs</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Métrica</th>
+                                <th>Definição</th>
+                                <th>Meta 90d</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Aderência</td>
+                                <td>% de uso via plataforma oficial</td>
+                                <td>≥ 85%</td>
+                            </tr>
+                            <tr>
+                                <td>Shadow AI</td>
+                                <td>Ferramentas não autorizadas</td>
+                                <td>−80%</td>
+                            </tr>
+                            <tr>
+                                <td>Custos</td>
+                                <td>Gasto por equipe</td>
+                                <td>≤ orçamento mensal</td>
+                            </tr>
+                            <tr>
+                                <td>Risco</td>
+                                <td>Incidentes e quase-incidentes</td>
+                                <td>0 crítico</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="s10" class="editable" contenteditable="false">
+                    <h2>10) Roadmap de 90 dias (6 marcos)</h2>
+                    <ol>
+                        <li><strong>S0</strong> Semana 0–2: Inventário, risk triage, política 1 pág.</li>
+                        <li><strong>S1</strong> Semana 2–4: Escolha arquitetural e SSO/RBAC básicos.</li>
+                        <li><strong>S2</strong> Semana 4–6: DLP/CASB, gateway de prompts, logging.</li>
+                        <li><strong>S3</strong> Semana 6–8: DPIA/ROPA, treinamento, catálogo inicial.</li>
+                        <li><strong>S4</strong> Semana 8–10: Integração ticketing/SIEM, limites e orçamentos.</li>
+                        <li><strong>S5</strong> Semana 10–12: Auditoria interna, ajustes finais e handover.</li>
+                    </ol>
+                </section>
+
+                <section id="s11" class="editable" contenteditable="false">
+                    <h2>11) Pacote de evidências para auditoria</h2>
+                    <ul>
+                        <li>Templates, checklists e registros versionados.</li>
+                        <li>Relatórios de log, aprovações, DPIAs e ROPAs.</li>
+                        <li>Mapa de rastreabilidade LGPD↔ISO.</li>
+                    </ul>
+                </section>
+
+                <section id="d1" class="editable" contenteditable="false">
+                    <h2>A) Política corporativa de IA (1 página)</h2>
+                    <p><strong>Escopo:</strong> uso de IA por colaboradores, terceiros e sistemas.
+                        <strong>Princípios:</strong> legalidade, finalidade, necessidade, transparência, segurança e
+                        responsabilização. <strong>Obrigatório:</strong> uso via plataforma oficial; proibição de dados
+                        sensíveis sem autorização; revisão humana por risco; registro de prompts e saídas quando
+                        aplicável.</p>
+                </section>
+
+                <section id="d2" class="editable" contenteditable="false">
+                    <h2>B) Matriz RACI</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Atividade</th>
+                                <th>R</th>
+                                <th>A</th>
+                                <th>C</th>
+                                <th>I</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Definir arquitetura</td>
+                                <td>Gerência de Produto</td>
+                                <td>Diretoria</td>
+                                <td>Segurança, Infra</td>
+                                <td>Suporte, Jurídico</td>
+                            </tr>
+                            <tr>
+                                <td>Políticas e SOPs</td>
+                                <td>Segurança</td>
+                                <td>DPO</td>
+                                <td>Jurídico</td>
+                                <td>Times</td>
+                            </tr>
+                            <tr>
+                                <td>Operação plataforma IA</td>
+                                <td>Suporte</td>
+                                <td>Infra</td>
+                                <td>Segurança</td>
+                                <td>Todos</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="d3" class="editable" contenteditable="false">
+                    <h2>C) Fluxo BPMN do ciclo de vida</h2>
+                    <p>Representação textual simplificada:</p>
+                    <pre>
+[Solicitação de caso de uso] → [Classificação de dados] → [DPIA] →
+[Aprovação DPO/Segurança] → [Implementação no gateway] → [Monitoração/Logs] →
+[Revisão periódica] → [Encerramento/Archival]
+          </pre>
+                </section>
+
+                <section id="d4" class="editable" contenteditable="false">
+                    <h2>D) Checklist de fornecedores & critérios de DPA</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Item</th>
+                                <th>Critério</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Residência de dados</td>
+                                <td>País/região e cláusulas contratuais</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>Criptografia</td>
+                                <td>Em trânsito e em repouso; KMS</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>Logs e retenção</td>
+                                <td>SIEM, retenção mínima 12 meses</td>
+                                <td></td>
+                            </tr>
+                            <tr>
+                                <td>DPA</td>
+                                <td>Assinado; sub-processadores listados</td>
+                                <td></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="d5" class="editable" contenteditable="false">
+                    <h2>E) Modelo de DPIA simplificada</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Campo</th>
+                                <th>Descrição</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Finalidade</td>
+                                <td>Objetivo do tratamento</td>
+                            </tr>
+                            <tr>
+                                <td>Base legal</td>
+                                <td>LGPD art. 7º/11</td>
+                            </tr>
+                            <tr>
+                                <td>Dados pessoais</td>
+                                <td>Tipos e fonte</td>
+                            </tr>
+                            <tr>
+                                <td>Riscos</td>
+                                <td>Impactos e probabilidade</td>
+                            </tr>
+                            <tr>
+                                <td>Mitigações</td>
+                                <td>Controles aplicados</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="d6" class="editable" contenteditable="false">
+                    <h2>F) Classificação de dados e redaction/anonymização</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Classe</th>
+                                <th>Exemplos</th>
+                                <th>Regras de uso em IA</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Pública</td>
+                                <td>Site, materiais de marketing</td>
+                                <td>Permitido</td>
+                            </tr>
+                            <tr>
+                                <td>Interna</td>
+                                <td>Documentação técnica interna</td>
+                                <td>Permitido com gateway</td>
+                            </tr>
+                            <tr>
+                                <td>Confidencial</td>
+                                <td>Clientes, contratos</td>
+                                <td>Anonimizar/mascarar</td>
+                            </tr>
+                            <tr>
+                                <td>Sensível</td>
+                                <td>Dados pessoais sensíveis</td>
+                                <td>Proibido sem exceção formal</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="d7" class="editable" contenteditable="false">
+                    <h2>G) Playbook de resposta a incidentes de IA</h2>
+                    <ol>
+                        <li>Detecção e triagem.</li>
+                        <li>Containment: revogar chaves, bloquear contas, isolar gateway.</li>
+                        <li>Eradicação e análise de causa raiz.</li>
+                        <li>Notificação conforme LGPD e contratos.</li>
+                        <li>Lições aprendidas e reforço de controles.</li>
+                    </ol>
+                </section>
+
+                <section id="d8" class="editable" contenteditable="false">
+                    <h2>H) Mapa de Conformidade LGPD ↔ ISO</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>LGPD</th>
+                                <th>ISO 27001</th>
+                                <th>ISO 27701</th>
+                                <th>Evidência no plano</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Art. 6º princípios</td>
+                                <td>A.5, A.8</td>
+                                <td>6, 7</td>
+                                <td>Políticas e classificação</td>
+                            </tr>
+                            <tr>
+                                <td>Art. 7º bases legais</td>
+                                <td>A.18</td>
+                                <td>7.4</td>
+                                <td>DPIA/ROPA</td>
+                            </tr>
+                            <tr>
+                                <td>Art. 46 segurança</td>
+                                <td>A.12</td>
+                                <td>8</td>
+                                <td>Criptografia, logs, DLP</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section class="editable" contenteditable="false">
+                    <h2>Critérios de sucesso</h2>
+                    <ul>
+                        <li>Solução auditável.</li>
+                        <li>Redução de ferramentas não autorizadas.</li>
+                        <li>Trilhas de auditoria completas.</li>
+                        <li>Adequação LGPD e aderência às ISOs citadas.</li>
+                        <li>Custo sob controle em 3 meses.</li>
+                    </ul>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div>Documento interativo local. Edição salva no navegador. Nenhum dado é enviado para servidores.</div>
+    </footer>
+
+    <script>
+        // --- Edit mode toggle ---
+        const toggleBtn = document.getElementById('toggleEdit');
+        const editableBlocks = document.querySelectorAll('.editable');
+        let editing = false;
+
+        function setEditing(flag) {
+            editing = flag;
+            editableBlocks.forEach(b => b.setAttribute('contenteditable', String(flag)));
+            toggleBtn.textContent = flag ? 'Bloquear edição' : 'Alternar edição';
+            document.body.style.outline = flag ? '2px dashed #0ea5e9' : 'none';
+        }
+        toggleBtn.addEventListener('click', () => setEditing(!editing));
+        document.addEventListener('keydown', (e) => {
+            if (e.ctrlKey && (e.key === 'e' || e.key === 'E')) {
+                e.preventDefault(); setEditing(!editing);
+            }
+        });
+
+        // --- Persistence (localStorage) ---
+        const KEY = 'plano-ia-manager-systems-v1';
+        const saveBtn = document.getElementById('saveBtn');
+        const loadBtn = document.getElementById('loadBtn');
+        saveBtn.addEventListener('click', () => {
+            const data = collectData();
+            localStorage.setItem(KEY, JSON.stringify(data));
+            flash('Conteúdo salvo localmente.');
+        });
+        loadBtn.addEventListener('click', () => {
+            const raw = localStorage.getItem(KEY);
+            if (!raw) return flash('Nada salvo ainda.');
+            applyData(JSON.parse(raw));
+            flash('Conteúdo carregado.');
+        });
+
+        // --- Export / Import JSON ---
+        const exportBtn = document.getElementById('exportJson');
+        exportBtn.addEventListener('click', () => {
+            const blob = new Blob([JSON.stringify(collectData(), null, 2)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'plano-ia-manager-systems.json';
+            a.click();
+        });
+        const importBtn = document.getElementById('importJsonBtn');
+        const importInput = document.getElementById('importJson');
+        importBtn.addEventListener('click', () => importInput.click());
+        importInput.addEventListener('change', (e) => {
+            const file = e.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => { applyData(JSON.parse(reader.result)); flash('JSON importado.'); };
+            reader.readAsText(file);
+        });
+
+        // --- Print ---
+        document.getElementById('printBtn').addEventListener('click', () => window.print());
+
+        // --- Helper: collect/apply data ---
+        function collectData() {
+            const items = {};
+            document.querySelectorAll('section[id]').forEach(sec => {
+                items[sec.id] = sec.innerHTML;
+            });
+            return { version: 1, items };
+        }
+        function applyData(data) {
+            if (!data || !data.items) return;
+            Object.entries(data.items).forEach(([id, html]) => {
+                const sec = document.getElementById(id); if (sec) sec.innerHTML = html;
+            });
+        }
+
+        // --- Little toast ---
+        function flash(msg) {
+            const t = document.createElement('div');
+            t.textContent = msg;
+            t.style.position = 'fixed'; t.style.bottom = '20px'; t.style.right = '20px';
+            t.style.background = '#0b182c'; t.style.border = '1px solid #1f2b44'; t.style.padding = '10px 12px';
+            t.style.borderRadius = '10px'; t.style.zIndex = 9999; t.style.color = '#e5e7eb';
+            document.body.appendChild(t); setTimeout(() => t.remove(), 2000);
+        }
+    </script>
+</body>
+
+</html>

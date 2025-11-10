@@ -1,0 +1,58 @@
+EIAH Arquitetura Futura (H1 2026+)
+=================================
+
+Visão geral e princípios
+- Monorepo PNPM (`apps/*`, `packages/*`, `infra/*`) com TypeScript ponta a ponta, lint/build orquestrados via `pnpm` e pipelines GitHub Actions.
+- Plataforma 100% multi-tenant com isolamento por `Tenant` → `Workspace` → `User`/`ApiToken`; todo recurso segue trilha de auditoria (`createdBy`, `traceId`) e versionamento de schema Prisma.
+- Missão: operar agentes especializados auditáveis, com billing automático, painéis self-service (web) e superfície CLI para operações, mantendo FinOps e governança como requisitos de primeira ordem.
+
+Camadas arquiteturais alvo
+- **Plano agentic** – `packages/core/orchestrator/*` consolida perceive/plan/act/reflect, `DefaultPlanManager` gera planos multi-step e `RunEventStore` + `TelemetryBridge` persistem eventos em tempo real (API/CLI/Web consomem via SSE e WebSocket).
+- **Plano de ferramentas & guardrails** – `packages/core/actions/**` abriga toolings (DeFi, risco, notificações, conhecimento, billing) com contratos Zod compartilhados, versionamento, `requireIdempotency` e rate limit backed por Redis/Postgres.
+- **Plano de memória** – `packages/core/memory` oferece adaptadores `RedisShortTermMemory`, `PostgresLongTermMemory`, `VectorMemory` (pgvector/Weaviate). Jobs `memorySync`, `memoryRetention` e `knowledgeBackfill` mantêm consistência e saneamento.
+- **Plano de execução** – Filas BullMQ (`packages/core/queue`), workers principais (`apps/api/src/workers/runWorker.ts`, `apps/workers/action-runner`, pipelines Temporal especializados) e DLQs dedicadas por domínio com health-check exposto.
+- **Plano de experiência** – `apps/web` migra para Remix + TanStack Query com streaming de eventos, dashboards de métricas/billing/incidentes e RunViewer rico. `apps/cli` consolida automações (`eiah tokens`, `eiah runs replay`, `eiah billing reconcile`).
+- **Plano de dados & FinOps** – Prisma adiciona `MemorySnapshot`, `MemoryEvent`, `EmbeddingChunk`, `BillingLedger`, `LedgerAdjustment` e `OperationalIncident`. Lake híbrido (Postgres + S3) guarda snapshots, SSE alimenta data apps.
+
+Fluxo alvo de execução de run
+1. **Ingestão** – Cliente chama `POST /api/runs` ou `eiah runs trigger`. `enforceTenant` + `requireRole` validam escopo, `runSchema` (Zod) normaliza input e `RunIngestor` grava `Run` + `RunEvent(queued)` com `traceId`.
+2. **Despacho** – `RunDispatcher` aplica políticas (prioridade, custo máximo, quotas) e publica job `agent-runs`. Metadados (`tenantId`, `workspaceId`, `planKey`, `retryCount`) seguem para BullMQ + DLQ.
+3. **Orquestração** – Worker recupera memória curta (Redis), histórico/estado (Postgres) e embeddings relevantes. `AgentOrchestrator` instancia plano inicial e avalia condições (`awaiting_confirmation`, `tool_required`).
+4. **Execução de steps** – Steps `action` são roteados para `actionQueue` ou pipelines Temporal; steps internos chamam `simpleExecuteAgentRun`. Cada transição gera `RunEvent` persistido + streaming SSE.
+5. **FinOps** – `BillingEngine` calcula custo incremental (tokens, ferramentas, execuções externas) usando `PlanQuota`, `Pricing`, `VolumeDiscount`. Ledger (`BillingLedgerEntry`) registra cobranças e ajustes.
+6. **Conclusão/Replay** – `finalizeRunRecord` consolida status, métricas, custo e `MemoryPolicy` grava insights relevantes. CLI/Web podem disparar replay, rollback ou exportação assinada.
+
+Memória, conhecimento e dados
+- `ContextSnapshotService` compõe memória curta (Redis TTL), histórico relevante (Postgres particionado) e embeddings recentes (pgvector/Weaviate) respeitando orçamento token e políticas de privacidade por agente.
+- `KnowledgeBase` (Postgres + S3) armazena `MemorySnapshot` compactado e permite consultas analíticas, supervisionando dados sensíveis via mascaramento determinístico.
+- Jobs `memorySync` e `knowledgeBackfill` rodam em `apps/workers/memory-sync`, suportando reindexação/expurgo per tenant mediante comandos CLI.
+
+Automação operacional
+- `apps/cli` expõe comandos: `eiah tenants create/rotate`, `eiah tokens issue/revoke`, `eiah runs replay`, `eiah billing reconcile`, `eiah queue drain`, `eiah memory backfill`.
+- `apps/api/scripts/*` hospedam playbooks idempotentes (seed, migrations check, smoke tests). Pipelines CI validam lint/test/build, `prisma migrate diff`, generation de tipos, testes e2e (Playwright/Temporal harness).
+
+Segurança, governança e compliance
+- Tokens (`ApiToken`, `ServiceToken`) com escopos granulares, expiração rotativa, binding a IP/rate-limit e rotação automática integrada ao Secret Manager.
+- RBAC multi-nível: `RoleAssignment` em Tenant/Workspace/Agente; API aplica `requireRole` por rota e o frontend respeita feature flags/roles.
+- Guardrails persistentes: `RedisGuardrailStore` + ledger Postgres para ações não reexecutáveis (billing, DeFi). `RunEvent` armazena `traceId`, `actionId`, `sensitivityTag`.
+- Mascaramento/cripto: dados sensíveis em `Run.metadata` e `RunEvent.payload` passam por mascaramento antes de logar; campos críticos criptografados com KMS.
+- Auditoria exportável: `/api/audit/runs` e CLI entregam trilhas assinadas com verificações de integridade.
+
+Observabilidade e confiabilidade
+- Logging estruturado (Pino) com enriquecimento automático (tenant/workspace/agent/runId/costCents) enviado via Fluent Bit → Loki/Elastic.
+- Métricas OTel → Prometheus/Tempo: latência por agente, throughput por fila, sucessos/erros por ferramenta, uso de memória, custo por run.
+- Tracing distribuído une API, orquestrador e workers; `traceId` compartilhado com billing e incidentes.
+- Health multimodal (`/health` + `/health/queues` + `/health/memory`), SLOs (p95 run < X min, erro < Y%) e modo `degraded` com fallback de modelo/quotas.
+- Alertas (Opsgenie/Slack) automatizados para quota próxima do limite, DLQ acima do threshold, falhas de integrações externas ou degradação de memória.
+
+Roadmap macro
+1. **Fase 1 – Hardening operacional**: DLQs configuradas, health-check completos, logger estruturado, métricas/plano de incidentes e CLI mínima (`tokens`, `queue drain`).
+2. **Fase 2 – Memória & guardrails**: adaptadores Redis/Postgres/Vector prontos, `MemoryService` plugado no Orchestrator, guardrails persistentes, scripts de backfill/reindex.
+3. **Fase 3 – Governança & FinOps**: RBAC granular, auditoria exportável, `BillingLedger` reconciliado com gateway real, ajustes retroativos com `LedgerAdjustment`.
+4. **Fase 4 – Experiência & extensões**: Web Remix com streaming tempo real, replay/branching de runs, marketplace de agentes/ferramentas, integrações humanas (`awaiting_confirmation`) no painel.
+
+Indicadores de pronto
+- Todos os runs registram eventos completos com `traceId` e custo incremental.
+- Memória curta/longo prazo/vetorial fora do processo e conectada ao ciclo perceive.
+- Guardrails/quotas compartilhados entre API e workers, com DLQs monitoradas e automatismos de recuperação.
+- CLI e API oferecem superfícies para operar tokens, filas, memória e billing sem tocar diretamente no banco.

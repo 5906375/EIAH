@@ -1,0 +1,28 @@
+EIAH Arquitetura Atual (2025-10)
+================================
+
+Back-end (apps/api)
+- Express simples e síncrono (`apps/api/src/index.ts`) expondo rotas REST `/runs`, `/agents`, `/billing`, `/defi`.
+- Autenticação básica (`apps/api/src/middlewares/auth.ts`): valida apenas header Bearer e define `projectId` a partir de `x-project-id`, com fallback `demo-project`.
+- Execução de agentes centralizada em `executeAgentRun` (`apps/api/src/services/ai.ts`), que chama diretamente `chat/completions` da OpenAI usando `AgentProfile.model/systemPrompt`.
+- Nenhuma camada de orquestração: POST `/runs` (`apps/api/src/routes/runs.ts`) busca perfil, envia prompt, aguarda resposta e grava resultado final; tools do perfil são apenas encaminhadas ao LLM.
+- Persistência via Prisma (`apps/api/prisma/schema.prisma`) com tabelas planas: `runs`, `agent_profiles`, `pricing`, `plan_quotas`, `payment_tx`; runs armazenam snapshot único (request/response) por `projectId`.
+- Seeds (`apps/api/prisma/seed.ts`) preenchem pricing e perfis fixos, sem segregação multi-tenant.
+
+Front-end (apps/web)
+- SPA React/Vite (`apps/web/src/App.tsx`) com páginas Runs, Agents, Billing e Self-service.
+- Cliente HTTP (`apps/web/src/lib/api.ts`) usa `localStorage` para ler `eiah_token` e `project_id`, repassando para headers; não há separação de tenant/usuário.
+- Formulários self-service (`apps/web/src/pages/self-service/*.tsx`) mapeiam slugs para `agentId` via `config.ts`, gerando prompt estático e disparando POST `/runs`.
+- Viewer de runs (`apps/web/src/components/runs/RunViewer.tsx`) só exibe request/response final, sem histórico de passos.
+
+Fluxo de Execução
+1. Usuário escolhe agente (painel ou self-service) e envia prompt.
+2. API valida payload, injeta `projectId`, lê `AgentProfile` e chama OpenAI.
+3. Resultado é gravado em `runs` com status `success` ou `error`; custo calculado linearmente (`apps/api/src/services/billing.ts`).
+4. Front consulta `/runs` para listar execuções e `/runs/:id` para obter resposta final.
+
+Limitações estruturais
+- Multi-tenant frágil: `projectId` vem do header, sem vínculo ao token; “demo-project” usado como default.
+- Sem orquestração agentic: execuções single-shot, sem planejamento, ferramentas reais ou avaliação.
+- Ausência de memória/eventos: não há logs de passos intermediários, feedbacks ou armazenamento contextual.
+- Componentes utilitários duplicados entre backend e frontend (tipos de Run/Agent).

@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Comparativo de Planos – Interativo (v5 • USD base + Crypto)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#0B1020;--card:#0F172A;--muted:#6B7280;--line:#334155;--brand:#5B8CFF;--ok:#22C55E;--accent:#F59E0B}
+    body{font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial}
+    .title{font-family:'Space Grotesk',Inter,system-ui}
+    .shadow-soft{box-shadow:0 10px 30px rgba(0,0,0,.35)}
+    .table-sticky thead th{position:sticky;top:0;background:#0F172A;z-index:5}
+    .cell-badge{display:inline-block;padding:.15rem .45rem;border:1px solid #334155;border-radius:.5rem;background:#0B1222}
+    .tooltip{position:relative;display:inline-flex;align-items:center;gap:.35rem}
+    .tooltip .info-dot{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border:1px solid var(--line);border-radius:9999px;color:#9ca3af;font-size:.7rem;cursor:help}
+    .tooltip .tip{position:absolute;left:0;bottom:calc(100% + 6px);max-width:280px;background:var(--card);border:1px solid var(--line);padding:.5rem .6rem;border-radius:.5rem;color:#cbd5e1;font-size:.75rem;line-height:1.15;opacity:0;transform:translateY(6px);pointer-events:none;transition:.2s;z-index:10}
+    .tooltip:focus-within .tip,.tooltip:hover .tip{opacity:1;transform:translateY(0)}
+    .tip:after{content:"";position:absolute;top:100%;left:10px;border:6px solid transparent;border-top-color:var(--line)}
+    @media print{header,#controls{display:none}body{background:#fff;color:#111}table{font-size:12px}}
+  </style>
+</head>
+<body class="min-h-screen bg-[var(--bg)] text-slate-100">
+  <header class="px-6 md:px-10 py-8">
+    <h1 class="title text-3xl md:text-4xl font-bold">Comparativo de Planos – EIAH</h1>
+    <p class="text-slate-300 mt-2">v5: Moeda base USD, exibição BRL por conversão, pagamento opcional em USDC/USDT 1:1. Exporta CSV/JSON.</p>
+  </header>
+
+  <main class="px-6 md:px-10 pb-24">
+<!-- Tabela -->
+    <div class="rounded-2xl overflow-hidden border border-[var(--line)] bg-[var(--card)]">
+      <div class="overflow-x-auto table-sticky">
+        <table id="plansTable" class="min-w-full text-sm">
+          <thead>
+            <tr class="text-slate-300 border-b border-[var(--line)]">
+              <th scope="col" class="text-left p-3 md:p-4 w-56">
+                <div class="flex items-center gap-2">
+                  <span>Tópico</span>
+                  <button id="sortTopic" aria-label="Ordenar por tópico" aria-live="polite" class="text-xs px-2 py-1 border border-[var(--line)] rounded cell-badge">Ordenar ▲</button>
+                </div>
+              </th>
+            </tr>
+          </thead>
+          <tbody id="tbody" class="divide-y divide-[var(--line)]"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <p class="text-xs text-slate-400 mt-3">
+      Base USD. BRL via fx_rates. USDC/USDT 1:1 com USD durante a janela de 15 minutos.
+    </p>
+
+    <section class="mt-10 space-y-4 rounded-2xl border border-[var(--line)] bg-[var(--card)] p-6 shadow-soft">
+      <h2 class="title text-2xl font-semibold text-slate-100">Regras implementadas</h2>
+      <ul class="list-disc space-y-3 pl-6 text-slate-300">
+        <li><strong>Moeda base</strong>: USD. Conversão BRL por taxa configurável.</li>
+        <li><strong>Stablecoins</strong>: USDC/USDT 1:1. Redes: Ethereum e Polygon.</li>
+        <li><strong>Janela de cotação</strong>: 15 minutos com countdown.</li>
+        <li><strong>Exportações</strong>: CSV com linha de metadados; JSON com currency e payment_method.</li>
+      </ul>
+    </section>
+
+    <!-- Controles -->
+    <section id="controls" class="grid md:grid-cols-3 gap-3 md:gap-4 mb-4 items-end">
+      <div class="col-span-1">
+        <label for="search" class="text-sm text-slate-300">Busca por tópico/termo</label>
+        <input id="search" type="search" placeholder="Pesquisar..." class="w-full mt-1 bg-[var(--card)] border border-[var(--line)] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--brand)]" />
+        <p id="count" class="text-xs text-slate-400 mt-1" role="status" aria-live="polite"></p>
+      </div>
+
+      <div class="col-span-2 flex flex-wrap items-end gap-2 md:justify-end">
+        <div class="tooltip">
+          <label class="text-sm text-slate-300">Moeda</label>
+          <select id="currency" class="ml-2 px-3 py-2 rounded-xl bg-[var(--card)] border border-[var(--line)]">
+            <option value="USD" selected>USD</option>
+            <option value="BRL">BRL</option>
+          </select>
+          <div class="tip">Base em USD. BRL é conversão via fx_rates.</div>
+        </div>
+
+        <div class="tooltip">
+          <label class="text-sm text-slate-300">Pagamento</label>
+          <select id="payMethod" class="ml-2 px-3 py-2 rounded-xl bg-[var(--card)] border border-[var(--line)]">
+            <option value="card">Cartão</option>
+            <option value="pix">Pix</option>
+            <option value="usdc">USDC</option>
+            <option value="usdt">USDT</option>
+          </select>
+          <div class="tip">Stablecoins 1:1 com USD. Redes: Ethereum e Polygon.</div>
+        </div>
+
+        <div class="tooltip">
+          <label class="text-sm text-slate-300">Rede</label>
+          <select id="network" class="ml-2 px-3 py-2 rounded-xl bg-[var(--card)] border border-[var(--line)]">
+            <option value="polygon" selected>Polygon</option>
+            <option value="ethereum">Ethereum</option>
+          </select>
+          <div class="tip">Usado quando método for USDC/USDT.</div>
+        </div>
+
+        <div class="tooltip">
+          <button id="btn-export" class="px-4 py-2.5 rounded-xl bg-[var(--brand)] text-white font-semibold hover:opacity-95 shadow-soft">Exportar CSV</button>
+          <div class="tip">Baixa o comparativo atual em CSV. Inclui meta de currency e payment_method na primeira linha.</div>
+        </div>
+        <div class="tooltip">
+          <button id="btn-json" class="px-4 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 font-semibold">Exportar JSON</button>
+          <div class="tip">Exporta com metadados: versão, colunas visíveis, currency, payment_method e data.</div>
+        </div>
+        <div class="tooltip">
+          <button id="btn-print" class="px-4 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 font-semibold">Imprimir</button>
+          <div class="tip">Atalho <kbd>p</kbd> imprime a visualização atual.</div>
+        </div>
+
+        <details class="px-3 py-2 rounded-xl bg-[var(--card)] border border-[var(--line)]">
+          <summary class="cursor-pointer font-semibold">Colunas</summary>
+          <div class="mt-2 flex flex-wrap gap-3 text-sm">
+            <label class="inline-flex items-center gap-2"><input data-col="Free" type="checkbox" class="toggle-col accent-[var(--brand)]" checked>Free</label>
+            <label class="inline-flex items-center gap-2"><input data-col="Starter" type="checkbox" class="toggle-col accent-[var(--brand)]" checked>Starter</label>
+            <label class="inline-flex items-center gap-2"><input data-col="Pro" type="checkbox" class="toggle-col accent-[var(--brand)]" checked>Pro</label>
+            <label class="inline-flex items-center gap-2"><input data-col="Scale" type="checkbox" class="toggle-col accent-[var(--brand)]" checked>Scale</label>
+            <label class="inline-flex items-center gap-2"><input data-col="Business" type="checkbox" class="toggle-col accent-[var(--brand)]" checked>Business</label>
+            <label class="inline-flex items-center gap-2"><input data-col="Enterprise" type="checkbox" class="toggle-col accent-[var(--brand)]" checked>Enterprise</label>
+          </div>
+        </details>
+        <button id="btn-reset" class="px-3 py-2 rounded-xl border border-[var(--line)]">Resetar</button>
+      </div>
+    </section>
+
+    
+
+
+    <!-- Pagamento cripto: QR/Address + contador -->
+    <section id="cryptoBox" class="hidden mb-4 rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4 flex items-center gap-4">
+      <div>
+        <p class="text-sm text-slate-300">Endereço para pagamento (<span id="netLabel">Polygon</span>):</p>
+        <code id="payAddress" class="text-xs bg-slate-800 px-2 py-1 rounded">0x0000000000000000000000000000000000000000</code>
+        <p class="text-sm text-slate-300 mt-2">Valor (<span id="tokenLabel">USDC</span>): <strong id="amountToken">0.00</strong></p>
+      </div>
+      <div class="ml-auto text-right">
+        <p class="text-sm text-slate-300">Cotação travada por <span id="countdown">15:00</span></p>
+        <p class="text-xs text-slate-400">Após expirar, gere um novo intent.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    (function () {
+      const STORAGE = { query: "plans.v5.query", cols: "plans.v5.cols", currency: "plans.v5.currency", method: "plans.v5.method", network: "plans.v5.network" };
+      const ALL_COLS = ["Free","Starter","Pro","Scale","Business","Enterprise"];
+
+      // Tooltips de colunas e tópicos
+      const COLUMN_TIPS = {
+        Free:"Plano gratuito para makers e validação inicial.",
+        Starter:"Times pequenos iniciando operação recorrente.",
+        Pro:"Times em produção com maior cadência.",
+        Scale:"Degrau entre Pro e Business. 1.000 runs, 2.000 ações, 60d.",
+        Business:"Operação com integrações críticas e prioridade.",
+        Enterprise:"Missão crítica. SSO/SCIM, TAM, SLA formal."
+      };
+      const TOPIC_TIPS = {
+        "Preço":"Mensalidade padrão no ciclo mensal.",
+        "Preço anual (-%)":"Pagamento anual com desconto embutido.",
+        "Runs/mês":"Execuções computadas no mês. Reseta no próximo ciclo.",
+        "Ações externas incluídas":"Chamadas externas, webhooks e integrações.",
+        "Add-on excedentes":"Pacotes de runs adicionais por bloco.",
+        "Preço excedente /100 runs":"Preço por bloco de 100 runs.",
+        "Bundles de ações":"Ações extras em planos anuais.",
+        "Agentes / Formulários":"Quantidade de agentes e formulários.",
+        "Export / Dados":"Formatos e APIs de exportação.",
+        "Webhooks":"Envio de eventos para endpoints do cliente.",
+        "Logs & Retenção":"Janela de retenção e auditoria.",
+        "Suporte":"Canais e SLO de atendimento.",
+        "ICP (para quem é)":"Público-alvo do plano.",
+        "Proposta de valor":"Benefício principal.",
+        "Rituais/Coorte":"Rituais e sessões recorrentes.",
+        "Onboarding/TTV":"Tempo até valor e passos iniciais.",
+        "Checklists & Templates":"Materiais para adoção rápida.",
+        "Observabilidade & Replay":"Monitoramento e reprocessamento.",
+        "Conectores Datalake/ETL":"Integrações com lakes e ETL.",
+        "SLA & Governança":"SLA e governança operacional.",
+        "Consultoria sob demanda":"Horas de mentoria técnica.",
+        "Recomendação de agente":"Agente sugerido por plano.",
+        "Metas 30/60/90":"Objetivos por horizonte.",
+        "Sinais de upgrade":"Gatilhos de migração de plano."
+      };
+
+      // Sanitização
+      const escapeHTML = s => String(s ?? "").replace(/[&<>\"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+      const sanitize = s => escapeHTML(String(s ?? '').trim());
+
+      // FX e helpers de moeda
+      const fx_rates = { base: "USD", rates: { BRL: 5.00 } }; // ajuste conforme backoffice
+      function fmtMoney(amount, cur){
+        const val = Number(amount || 0);
+        if(cur === "BRL"){ return `R$ ${val.toFixed(2)}`; }
+        return `$ ${val.toFixed(2)}`; // USD
+      }
+      function cvt(amountUsd, cur){
+        if(cur === "BRL"){ return (amountUsd * fx_rates.rates.BRL); }
+        return amountUsd;
+      }
+
+      // Pricing base USD
+      const PRICING_USD = {
+        monthly: { Free: 0, Starter: 9.80, Pro: 29.80, Scale: 59.80, Business: 119.80, Enterprise: null }, // null = sob proposta
+        annual:  { Free: 0, Starter: 99.00, Pro: 303.00, Scale: 607.00, Business: 1179.00, Enterprise: null },
+        overage_per_100: { Free: null, Starter: 5.80, Pro: 5.00, Scale: 4.60, Business: null, Enterprise: null },
+        bundles: { Business: { actions_extra: 2000, price_usd_month: 24.00 }, Enterprise: null }
+      };
+
+      // Dados das linhas com placeholders que dependem de moeda
+      function rowsForCurrency(cur){
+        const moneyMonthly = {
+          Free: fmtMoney(cvt(PRICING_USD.monthly.Free,cur),cur),
+          Starter: fmtMoney(cvt(PRICING_USD.monthly.Starter,cur),cur)+"/mês",
+          Pro: fmtMoney(cvt(PRICING_USD.monthly.Pro,cur),cur)+"/mês",
+          Scale: fmtMoney(cvt(PRICING_USD.monthly.Scale,cur),cur)+"/mês",
+          Business: fmtMoney(cvt(PRICING_USD.monthly.Business,cur),cur)+"/mês",
+          Enterprise: "Sob proposta"
+        };
+        const moneyAnnual = {
+          Free: "—",
+          Starter: fmtMoney(cvt(PRICING_USD.annual.Starter,cur),cur)+"/ano (-15%)",
+          Pro: fmtMoney(cvt(PRICING_USD.annual.Pro,cur),cur)+"/ano (-15%)",
+          Scale: fmtMoney(cvt(PRICING_USD.annual.Scale,cur),cur)+"/ano (-15%)",
+          Business: fmtMoney(cvt(PRICING_USD.annual.Business,cur),cur)+"/ano (-18%)",
+          Enterprise: "Sob proposta"
+        };
+        const overage = {
+          Free:"—",
+          Starter: PRICING_USD.overage_per_100.Starter ? fmtMoney(cvt(PRICING_USD.overage_per_100.Starter,cur),cur) : "—",
+          Pro: PRICING_USD.overage_per_100.Pro ? fmtMoney(cvt(PRICING_USD.overage_per_100.Pro,cur),cur) : "—",
+          Scale: PRICING_USD.overage_per_100.Scale ? fmtMoney(cvt(PRICING_USD.overage_per_100.Scale,cur),cur) : "—",
+          Business: "Custom",
+          Enterprise: "Sob proposta"
+        };
+        const bundleBiz = PRICING_USD.bundles.Business ? `+2.000 por ${fmtMoney(cvt(PRICING_USD.bundles.Business.price_usd_month,cur),cur)}/mês (anual)` : "—";
+
+        return [
+          { topic:"Preço", values: { Free: moneyMonthly.Free, Starter: moneyMonthly.Starter, Pro: moneyMonthly.Pro, Scale: moneyMonthly.Scale, Business: moneyMonthly.Business, Enterprise: moneyMonthly.Enterprise } },
+          { topic:"Preço anual (-%)", values: { Free: moneyAnnual.Free, Starter: moneyAnnual.Starter, Pro: moneyAnnual.Pro, Scale: moneyAnnual.Scale, Business: moneyAnnual.Business, Enterprise: moneyAnnual.Enterprise } },
+          { topic:"Runs/mês", values: { Free:"20", Starter:"150", Pro:"500", Scale:"1.000", Business:"2.000", Enterprise:"10k+" } },
+          { topic:"Ações externas incluídas", values: { Free:"0", Starter:"150", Pro:"1.000", Scale:"2.000", Business:"5.000", Enterprise:"25k+" } },
+          { topic:"Add-on excedentes", values: { Free:"—", Starter:"Pacotes 100/500 runs", Pro:"Pacotes 100/500 runs", Scale:"Pacotes 100/500 runs", Business:"Custom", Enterprise:"Sob proposta" } },
+          { topic:"Preço excedente /100 runs", values: { Free:"—", Starter: overage.Starter, Pro: overage.Pro, Scale: overage.Scale, Business: overage.Business, Enterprise: overage.Enterprise } },
+          { topic:"Bundles de ações", values: { Free:"—", Starter:"—", Pro:"—", Scale:"—", Business: bundleBiz, Enterprise:"Sob proposta" } },
+          { topic:"Agentes / Formulários", values: { Free:"2 agentes / 1 formulário", Starter:"5 agentes / 3 formulários", Pro:"Todos / Ilimitado", Scale:"Todos / Ilimitado", Business:"Todos / Ilimitado", Enterprise:"Todos / Ilimitado" } },
+          { topic:"Export / Dados", values: { Free:"—", Starter:"CSV", Pro:"CSV/JSON + API", Scale:"CSV/JSON + API", Business:"Exports + Webhooks", Enterprise:"Datalake/ETL (Parquet/CSV/JSON)" } },
+          { topic:"Webhooks", values: { Free:"—", Starter:"—", Pro:"Básico via API", Scale:"Básico (callback)", Business:"HMAC • retries • DLQ • idempotência", Enterprise:"HMAC • idempotência • retries • DLQ • auditoria" } },
+          { topic:"Logs & Retenção", values: { Free:"7 dias", Starter:"15 dias", Pro:"30 dias", Scale:"60 dias", Business:"90 dias", Enterprise:"180–365+ dias" } },
+          { topic:"Suporte", values: { Free:"Comunidade", Starter:"E-mail ≤48h", Pro:"E-mail ≤24h", Scale:"E-mail ≤24h + prioridade leve", Business:"Prioritário", Enterprise:"TAM + SLA (Sev1/Sev2)" } },
+          { topic:"ICP (para quem é)", values: { Free:"Makers iniciantes", Starter:"Squads pequenos; PM/dev jr–pleno; agências", Pro:"Squads em produção; PM/dev pleno", Scale:"Squads crescendo com integrações", Business:"Times de ops/dados; integrações críticas", Enterprise:"Empresas com compliance, SSO/SCIM, lake/ETL" } },
+          { topic:"Proposta de valor", values: { Free:"Do 0 ao 1º run em 7 min", Starter:"Fluxo em produção em 30 dias + mentoria", Pro:"Produção com confiança + Agente Core", Scale:"Escala inicial com webhooks básicos", Business:"Escala e confiabilidade com Exports + Webhooks", Enterprise:"Missão crítica com governança e SLA" } },
+          { topic:"Rituais/Coorte", values: { Free:"Kickstart • Template Drop • Ship Friday", Starter:"Mentoria semanal + WhatsApp", Pro:"Mentoria semanal + WhatsApp Pro + Office Hours", Scale:"Mentoria quinzenal + WA", Business:"Mentoria quinzenal + deep-dives + Slack", Enterprise:"Mentoria quinzenal + consultoria + QBR" } },
+          { topic:"Onboarding/TTV", values: { Free:"1º run em 7 min", Starter:"1º fluxo ≤30 min (meta 7d)", Pro:"≤30 min + 1 recomendação do Agente em 24h", Scale:"Wizard + callbacks básicos", Business:"Wizard: Webhook 10 min + Export 5–15 min", Enterprise:"Wizard + POC 4–6 sem (KPIs)" } },
+          { topic:"Checklists & Templates", values: { Free:"Template 7 min", Starter:"Checklist Starter + template produção", Pro:"Checklist Pro + Templates Pro #1/#2", Scale:"Templates Scale + webhook básico", Business:"Blueprints Webhook/Export + runbooks", Enterprise:"Blueprints Enterprise + arquitetura lake/ETL" } },
+          { topic:"Observabilidade & Replay", values: { Free:"Básico", Starter:"Boas práticas + troubleshooting", Pro:"Obs + Replay • Alertas", Scale:"Obs + Retry básico", Business:"Runbooks: P95/P99, DLQ, alarmes", Enterprise:"Métricas 2xx/4xx/5xx; auditoria" } },
+          { topic:"Conectores Datalake/ETL", values: { Free:"—", Starter:"—", Pro:"—", Scale:"—", Business:"BI/ETL via exports", Enterprise:"S3/GCS/Azure; Snowflake/BQ/Redshift; dbt/Glue/Airflow" } },
+          { topic:"SLA & Governança", values: { Free:"—", Starter:"≤48h úteis", Pro:"≤24h úteis", Scale:"≤24h úteis + prioridade leve", Business:"Prioritário (ex.: ≤12h)", Enterprise:"Sev1 ~4h • Sev2 ~12h • TAM • on-call" } },
+          { topic:"Consultoria sob demanda", values: { Free:"—", Starter: (cur==="BRL" ? "5h ≈ R$ 690 • 10h ≈ R$ 1.290" : "5h ≈ $ 138 • 10h ≈ $ 258"), Pro:(cur==="BRL" ? "5h ≈ R$ 690 • 10h ≈ R$ 1.290" : "5h ≈ $ 138 • 10h ≈ $ 258"), Scale:(cur==="BRL" ? "5h ≈ R$ 690 • 10h ≈ R$ 1.290" : "5h ≈ $ 138 • 10h ≈ $ 258"), Business:"Sob medida", Enterprise:"Incluída no SOW" } },
+          { topic:"Recomendação de agente", values: { Free:"—", Starter:"Medium", Pro:"Medium", Scale:"Medium", Business:"Core", Enterprise:"Guardian" } },
+          { topic:"Metas 30/60/90", values: { Free:"Ativação/rituais comunidade", Starter:"300→700→1.200 assinantes", Pro:"400→900→1.500 • D30≥80%", Scale:"100→250→500 contas • D30≥75%", Business:"120→250→400 contas • 75% webhook", Enterprise:"6 POCs ativas • ≥60% win • 6–10 contratos" } },
+          { topic:"Sinais de upgrade", values: { Free:"≥10–15 runs/sem por 2 sem", Starter:">70% da franquia por 2 ciclos", Pro:"Runs>350 ou Ações>800/mês", Scale:"Uso de webhooks e retenção cheia", Business:"Runs>1.400 ou Ações>3.500/mês", Enterprise:"Exigência SSO/SCIM/ETL/SLA" } }
+        ];
+      }
+
+      // Estado
+      const state = {
+        visibleCols: loadVisibleCols(),
+        sortAsc: true,
+        filtered: [],
+        currency: loadPref("currency","USD"),
+        method: loadPref("method","card"),
+        network: loadPref("network","polygon"),
+        rows: []
+      };
+
+      // Elementos
+      const searchEl = document.getElementById('search');
+      const countEl = document.getElementById('count');
+      const sortBtn = document.getElementById('sortTopic');
+      const theadRow = document.querySelector('#plansTable thead tr');
+      const tbody = document.getElementById('tbody');
+      const curSel = document.getElementById('currency');
+      const methodSel = document.getElementById('payMethod');
+      const netSel = document.getElementById('network');
+      const cryptoBox = document.getElementById('cryptoBox');
+      const payAddrEl = document.getElementById('payAddress');
+      const tokenLabel = document.getElementById('tokenLabel');
+      const netLabel = document.getElementById('netLabel');
+      const amountTokenEl = document.getElementById('amountToken');
+      const countdownEl = document.getElementById('countdown');
+
+      // Persistência colunas
+      function loadVisibleCols() {
+        try { const raw = JSON.parse(localStorage.getItem(STORAGE.cols) || 'null'); if (Array.isArray(raw) && raw.length) return raw.filter(c => ALL_COLS.includes(c)); } catch {}
+        return ALL_COLS.slice();
+      }
+      function saveVisibleCols(cols) { localStorage.setItem(STORAGE.cols, JSON.stringify(cols)); }
+      function loadPref(k, def){ try{ return localStorage.getItem(STORAGE[k]) || def; }catch{ return def; } }
+      function savePref(k, v){ localStorage.setItem(STORAGE[k], v); }
+
+      // Sincroniza toggles
+      document.querySelectorAll('.toggle-col').forEach(cb => {
+        cb.checked = state.visibleCols.includes(cb.dataset.col);
+        cb.addEventListener('change', () => {
+          const col = cb.dataset.col;
+          if (cb.checked) { if (!state.visibleCols.includes(col)) state.visibleCols.push(col); }
+          else { state.visibleCols = state.visibleCols.filter(c => c !== col); if (!state.visibleCols.length) state.visibleCols = ALL_COLS.slice(); }
+          saveVisibleCols(state.visibleCols);
+          renderHeader(); renderBody(); updateCount();
+        });
+      });
+
+      // Debounce
+      function debounce(fn, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; }
+
+      // Busca persistente
+      const storedQ = localStorage.getItem(STORAGE.query) || '';
+      searchEl.value = storedQ;
+
+      // Filtro e ordenação
+      function filterRows(q) {
+        const s = String(q || '').toLowerCase();
+        if (!s) return state.rows.slice();
+        return state.rows.filter(r => r.topic.toLowerCase().includes(s) || ALL_COLS.some(c => (r.values[c] || '').toLowerCase().includes(s)));
+      }
+      function sortCurrent() { const dir = state.sortAsc ? 1 : -1; state.filtered.sort((a, b) => a.topic.localeCompare(b.topic, 'pt-BR') * dir); }
+
+      // Render cabeçalho com tooltips de coluna
+      function renderHeader() {
+        while (theadRow.children.length > 1) theadRow.removeChild(theadRow.lastElementChild);
+        state.visibleCols.forEach(col => {
+          const th = document.createElement('th');
+          th.scope = 'col'; th.dataset.col = col; th.className = 'p-3 md:p-4 text-left';
+          th.innerHTML = `
+            <span class="tooltip" tabindex="0" aria-describedby="tip-col-${col}">
+              <span>${sanitize(col)}</span>
+              <span class="info-dot">i</span>
+              <span id="tip-col-${col}" class="tip">${sanitize(COLUMN_TIPS[col] || '')}</span>
+            </span>`;
+          theadRow.appendChild(th);
+        });
+      }
+
+      // Render corpo com tooltip por tópico
+      function renderBody() {
+        tbody.innerHTML = '';
+        state.filtered.forEach(row => {
+          const tr = document.createElement('tr');
+          const tdTopic = document.createElement('td');
+          tdTopic.className = 'align-top p-3 md:p-4 font-semibold text-slate-200';
+          tdTopic.innerHTML = `
+            <span class="tooltip" tabindex="0" aria-describedby="tip-topic-${slug(row.topic)}">
+              <span>${sanitize(row.topic)}</span>
+              <span class="info-dot">i</span>
+              <span id="tip-topic-${slug(row.topic)}" class="tip">${sanitize(TOPIC_TIPS[row.topic] || '')}</span>
+            </span>`;
+          tr.appendChild(tdTopic);
+
+          state.visibleCols.forEach(col => {
+            const td = document.createElement('td');
+            td.dataset.col = col; td.className = 'p-3 md:p-4 text-slate-300';
+            td.textContent = sanitize(row.values[col] ?? '—');
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+      }
+
+      function slug(s) { return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-'); }
+      function updateCount() { countEl.textContent = `${state.filtered.length} linha(s)`; }
+
+      // Exportações
+      function visibleCols() { return state.visibleCols.slice(); }
+      function toCSV() {
+        const cols = ['Tópico', ...visibleCols()];
+        const lines = [];
+        // meta line
+        lines.push(`# currency=${state.currency}, payment_method=${state.method}, network=${state.network}`);
+        lines.push(cols.join(','));
+        state.filtered.forEach(r => {
+          const arr = [r.topic, ...visibleCols().map(c => r.values[c] ?? '')].map(v => `"${String(v).replace(/"/g, '""')}"`);
+          lines.push(arr.join(','));
+        });
+        return lines.join('\n');
+      }
+      function toJSON() {
+        const cols = visibleCols();
+        return JSON.stringify({
+          version: 'v5',
+          currency: state.currency,
+          payment_method: state.method,
+          network: state.network,
+          fx_rates,
+          generated_at: new Date().toISOString(),
+          visible_columns: cols,
+          rows: state.filtered.map(r => ({ topic: r.topic, values: Object.fromEntries(cols.map(c => [c, r.values[c] ?? ''])) }))
+        }, null, 2);
+      }
+
+      document.getElementById('btn-export').addEventListener('click', () => {
+        const blob = new Blob([toCSV()], { type: 'text/csv;charset=utf-8;' }), url = URL.createObjectURL(blob), a = document.createElement('a');
+        a.href = url; a.download = `comparativo-planos-eiah_${state.currency}_${state.method}.csv`; a.click(); URL.revokeObjectURL(url);
+      });
+      document.getElementById('btn-json').addEventListener('click', () => {
+        const blob = new Blob([toJSON()], { type: 'application/json;charset=utf-8;' }), url = URL.createObjectURL(blob), a = document.createElement('a');
+        a.href = url; a.download = `comparativo-planos-eiah_${state.currency}_${state.method}.json`; a.click(); URL.revokeObjectURL(url);
+      });
+
+      // Reset
+      document.getElementById('btn-reset').addEventListener('click', () => {
+        localStorage.removeItem(STORAGE.query); localStorage.removeItem(STORAGE.cols);
+        localStorage.removeItem(STORAGE.currency); localStorage.removeItem(STORAGE.method); localStorage.removeItem(STORAGE.network);
+        searchEl.value = ''; state.visibleCols = ALL_COLS.slice(); state.sortAsc = true;
+        state.currency = 'USD'; curSel.value = 'USD';
+        state.method = 'card'; methodSel.value = 'card';
+        state.network = 'polygon'; netSel.value = 'polygon';
+        document.querySelectorAll('.toggle-col').forEach(cb => cb.checked = true);
+        state.rows = rowsForCurrency(state.currency);
+        state.filtered = state.rows.slice(); sortCurrent(); renderHeader(); renderBody(); updateCount();
+        sortBtn.textContent = 'Ordenar ▲'; sortBtn.setAttribute('aria-sort', 'ascending');
+        stopCountdown(); cryptoBox.classList.add('hidden');
+      });
+
+      // Atalhos
+      document.addEventListener('keydown', e => {
+        if (e.key === '/' && document.activeElement !== searchEl) { e.preventDefault(); searchEl.focus(); }
+        if (e.key.toLowerCase() === 'p') { e.preventDefault(); window.print(); }
+        if (e.shiftKey && e.key.toLowerCase() === 'r') { e.preventDefault(); document.getElementById('btn-reset').click(); }
+      });
+
+      // Inicialização
+      function initRows(){ state.rows = rowsForCurrency(state.currency); state.filtered = filterRows(searchEl.value); sortCurrent(); }
+      initRows(); renderHeader(); renderBody(); updateCount();
+      sortBtn.setAttribute('aria-sort','ascending');
+
+      // Busca
+      searchEl.addEventListener('input', debounce(() => {
+        localStorage.setItem(STORAGE.query, searchEl.value);
+        state.filtered = filterRows(searchEl.value); sortCurrent(); renderBody(); updateCount();
+      }, 140));
+
+      // Moeda
+      curSel.value = state.currency;
+      curSel.addEventListener('change', () => {
+        state.currency = curSel.value; savePref('currency', state.currency);
+        initRows(); renderBody(); updateCount(); updateCryptoAmount();
+      });
+
+      // Método e rede
+      methodSel.value = state.method;
+      netSel.value = state.network;
+      methodSel.addEventListener('change', () => {
+        state.method = methodSel.value; savePref('method', state.method);
+        toggleCryptoUI(); updateCryptoAmount();
+      });
+      netSel.addEventListener('change', () => {
+        state.network = netSel.value; savePref('network', state.network);
+        netLabel.textContent = state.network === 'ethereum' ? 'Ethereum' : 'Polygon';
+      });
+
+      // UI de cripto
+      let timer = null, expiresAt = null;
+      function toggleCryptoUI(){
+        const isCrypto = (state.method === 'usdc' || state.method === 'usdt');
+        cryptoBox.classList.toggle('hidden', !isCrypto);
+        if(isCrypto){
+          tokenLabel.textContent = state.method.toUpperCase();
+          netLabel.textContent = state.network === 'ethereum' ? 'Ethereum' : 'Polygon';
+          payAddrEl.textContent = state.network === 'ethereum' ? '0x1111111111111111111111111111111111111111' : '0x2222222222222222222222222222222222222222';
+          startCountdown(15*60);
+          updateCryptoAmount();
+        } else {
+          stopCountdown();
+        }
+      }
+      function updateCryptoAmount(){
+        if(!(state.method === 'usdc' || state.method === 'usdt')) return;
+        // valor de referência: preço mensal do plano Pro como exemplo de cálculo (substituir por /payment-intents)
+        const exampleAmountUsd = PRICING_USD.monthly.Pro || 0;
+        amountTokenEl.textContent = exampleAmountUsd.toFixed(2);
+      }
+      function startCountdown(seconds){
+        expiresAt = Date.now() + seconds*1000;
+        if(timer) clearInterval(timer);
+        timer = setInterval(()=>{
+          const left = Math.max(0, Math.floor((expiresAt - Date.now())/1000));
+          const mm = String(Math.floor(left/60)).padStart(2,'0');
+          const ss = String(left%60).padStart(2,'0');
+          countdownEl.textContent = `${mm}:${ss}`;
+          if(left <= 0){ clearInterval(timer); timer = null; }
+        }, 250);
+      }
+      function stopCountdown(){ if(timer){ clearInterval(timer); timer=null; } countdownEl.textContent = '15:00'; }
+
+      toggleCryptoUI();
+    })();
+  </script>
+</body>
+</html>

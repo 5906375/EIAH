@@ -1,0 +1,10 @@
+.pnpm-store/
+node_modules/
+dist/
+build/
+apps/web/dist/
+*.log
+.env
+*.env
+apps/**/.env
+coverage/

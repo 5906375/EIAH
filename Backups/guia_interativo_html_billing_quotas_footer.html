@@ -1,0 +1,297 @@
+<!--
+Guia Interativo — Billing & Quotas (rodapé)
+
+Como usar:
+1) Cole este bloco no rodapé da página Billing & Quotas (aba Controle Financeiro) ou
+   inclua via partial/template (ex.: <%- include('billing-guide-footer') %> ).
+2) O estilo é autocontido (CSS variables). Não depende de libs externas.
+3) O gerador de HMAC é apenas para testes locais. NÃO publique com o segredo real em produção.
+-->
+
+<section id="billing-guide-footer" class="bq-wrap" data-current-mode="user" aria-label="Guia Interativo de Billing & Quotas">
+  <div class="bq-head">
+    <h2>Guia Interativo · Billing & Quotas</h2>
+    <div class="bq-actions"><select id="bq-mode" class="bq-select" title="Modo"><option value="user" selected>Usuário final</option><option value="dev">Desenvolvimento</option></select><button id="bq-theme" class="bq-btn" title="Alternar tema">🌓</button><button id="bq-collapse" class="bq-btn" title="Recolher/Expandir">▾</button></div>
+  </div>
+
+  <div id="bq-body" class="bq-grid">
+    <!-- VISÃO RÁPIDA -->
+    <article class="bq-card">
+      <header><h3>Visão rápida</h3></header>
+      <div class="bq-kv">
+        <div><span>Uso mensal</span><input type="number" id="bq-uso" value="2104.50" step="0.01"></div>
+        <div><span>Soft limit</span><input type="number" id="bq-soft" value="5000" step="0.01"></div>
+        <div><span>Hard limit</span><input type="number" id="bq-hard" value="8000" step="0.01"></div>
+      </div>
+      <div class="bq-row">
+        <button class="bq-btn" id="bq-calc-consumo">Calcular consumo</button>
+        <output id="bq-consumo-out" class="bq-out"></output>
+      </div>
+      <p class="bq-note">Regra: consumo atual = uso_mensal / hard_limit. 
+        Estimativas pendentes são substituídas por confirmadas (sem dupla contagem).</p>
+    </article>
+
+    <!-- PREVISÃO 30 DIAS -->
+    <article class="bq-card">
+      <header><h3>Previsão (30 dias)</h3></header>
+      <div class="bq-kv">
+        <div><span>Média diária (últimos 7d)</span><input type="number" id="bq-media7" value="107" step="0.01"></div>
+      </div>
+      <div class="bq-row">
+        <button class="bq-btn" id="bq-calc-prev">Projetar</button>
+        <output id="bq-prev-out" class="bq-out"></output>
+      </div>
+      <p class="bq-note">Sugestão: usar média móvel 7d com <em>winsorization</em> e histerese de alertas 70%/68% do soft.</p>
+    </article>
+
+    <!-- ALERTAS & HISTERSE -->
+    <article class="bq-card">
+      <header><h3>Alertas & Histerese 70% / 68%</h3></header>
+      <div class="bq-kv">
+        <div><span>Soft limit</span><input type="number" id="bq-soft2" value="5000" step="0.01"></div>
+        <div><span>Uso mensal</span><input type="number" id="bq-uso2" value="2104.50" step="0.01"></div>
+        <div><span>Estado atual</span>
+          <select id="bq-estado">
+            <option value="normal">normal</option>
+            <option value="alerta">alerta</option>
+          </select>
+        </div>
+      </div>
+      <div class="bq-row">
+        <button class="bq-btn" id="bq-check-hyst">Checar estado</button>
+        <output id="bq-hyst-out" class="bq-out"></output>
+      </div>
+      <details class="bq-details">
+        <summary>Como funciona</summary>
+        <ul>
+          <li>Dispara alerta quando <strong>uso ≥ 70% do soft</strong>.</li>
+          <li>Só volta a normal quando <strong>uso &lt; 68% do soft</strong>.</li>
+        </ul>
+      </details>
+    </article>
+
+    <!-- WEBHOOK TESTER / GERADOR DE HMAC -->
+    <article class="bq-card" data-mode="dev"><header><h3>Webhook tester (HMAC)</h3></header>
+      <label class="bq-label">Segredo (teste local — não use o real em produção)</label>
+      <input id="bq-secret" type="password" placeholder="ex.: test" value="test">
+
+      <label class="bq-label">Payload (JSON)</label>
+      <textarea id="bq-payload" rows="6">{
+  "type": "billing.soft_threshold.crossed",
+  "projectId": "demo-project"
+}</textarea>
+
+      <div class="bq-kv">
+        <div><span>X-Timestamp</span><input id="bq-ts" placeholder="auto" readonly></div>
+        <div><span>X-Event-Id</span><input id="bq-eid" placeholder="auto" readonly></div>
+        <div><span>X-Signature</span><input id="bq-sig" placeholder="sha256=..." readonly></div>
+      </div>
+
+      <div class="bq-row">
+        <button class="bq-btn" id="bq-gen">Gerar headers</button>
+        <button class="bq-btn" id="bq-copy-curl">Copiar cURL</button>
+      </div>
+      <p class="bq-note">Assinatura: <code>sha256(secret, ts + "." + rawBody)</code>. Verifique HMAC, timestamp ≤ 5 min e dedupe por <code>X-Event-Id</code>.</p>
+      <pre id="bq-curl" class="bq-pre" aria-live="polite"></pre>
+    </article>
+
+    <!-- BUILDER DE QUOTA PATCH -->
+    <article class="bq-card" data-mode="user"><header><h3>Quotas — Guia do Usuário</h3></header><p>Os limites de consumo do projeto são definidos pelo time administrador. Se você alcançar o <strong>soft limit</strong>, algumas funções podem ser temporariamente limitadas. Ao atingir o <strong>hard limit</strong>, novas execuções são bloqueadas.</p><ul><li><strong>O que você pode fazer:</strong> revise o consumo, use <em>Simular primeiro</em> para reduzir custos e, se necessário, solicite aumento de cota ao administrador.</li><li><strong>Transparência:</strong> o painel mostra consumo atual, previsão 30 dias e status de alertas.</li><li><strong>Suporte:</strong> clique em “Solicitar aumento” no aviso de bloqueio para abrir um ticket.</li></ul></article>
+<article class="bq-card" data-mode="dev"><header><h3>Quotas customizadas</h3></header>
+      <div class="bq-kv">
+        <div><span>Projeto (soft)</span><input id="bq-q-soft" type="number" value="600000" step="1000"></div>
+        <div><span>Projeto (hard)</span><input id="bq-q-hard" type="number" value="900000" step="1000"></div>
+      </div>
+      <table class="bq-table" aria-label="Limites por cliente">
+        <thead><tr><th>Cliente</th><th>Soft</th><th>Hard</th><th></th></tr></thead>
+        <tbody id="bq-rows">
+          <tr>
+            <td><input value="acme-corp"></td>
+            <td><input type="number" value="150000"></td>
+            <td><input type="number" value="250000"></td>
+            <td><button class="bq-icon" aria-label="remover">✖</button></td>
+          </tr>
+          <tr>
+            <td><input value="contoso"></td>
+            <td><input type="number" value="100000"></td>
+            <td><input type="number" value="200000"></td>
+            <td><button class="bq-icon" aria-label="remover">✖</button></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="bq-row">
+        <button class="bq-btn" id="bq-add">Adicionar cliente</button>
+        <button class="bq-btn" id="bq-build">Gerar PATCH</button>
+        <button class="bq-btn" id="bq-copy-json">Copiar JSON</button>
+      </div>
+      <pre id="bq-json" class="bq-pre" aria-live="polite"></pre>
+    </article>
+  </div>
+</section>
+
+<style>
+  .bq-wrap{--bg:#0b1220;--panel:#111a2b;--muted:#7f8ea3;--text:#e6eefc;--acc:#3aa0ff;--acc2:#00d4ff;--ok:#26d07c;--warn:#f6c048;--err:#ff4d4f;--br:16px;--bd:1px solid rgba(255,255,255,.06);
+    color:var(--text); background:linear-gradient(180deg, rgba(12,19,33,.0), rgba(12,19,33,.6)); border-radius:var(--br); padding:16px; border:var(--bd); backdrop-filter: blur(6px);}
+  .bq-wrap[data-theme="light"]{--bg:#f7f9fc;--panel:#fff;--muted:#56637a;--text:#0c1221;--acc:#2b7cff;--acc2:#00bcd4;--bd:1px solid rgba(0,0,0,.08);} 
+  .bq-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px}
+  .bq-actions{display:flex; gap:8px}
+  .bq-btn{background:linear-gradient(180deg, var(--acc), var(--acc2)); color:#001018; border:none; border-radius:12px; padding:8px 12px; font-weight:700; cursor:pointer}
+  .bq-btn:active{transform:translateY(1px)}
+  .bq-grid{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:16px}
+  .bq-card{background:var(--panel); border:var(--bd); border-radius:14px; padding:12px}
+  .bq-card header{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px}
+  .bq-kv{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:8px 0}
+  .bq-kv div{display:flex; flex-direction:column; gap:6px}
+  .bq-kv span{font-size:.85rem; color:var(--muted)}
+  .bq-row{display:flex; align-items:center; gap:8px; margin:8px 0}
+  .bq-out{font-weight:700}
+  input, textarea, select{background:#0e1726; color:var(--text); border:var(--bd); border-radius:10px; padding:8px}
+  .bq-wrap[data-theme="light"] input, .bq-wrap[data-theme="light"] textarea, .bq-wrap[data-theme="light"] select{background:#f3f7ff}
+  .bq-note{color:var(--muted); font-size:.9rem}
+  .bq-pre{background:#0a1322; border:var(--bd); border-radius:10px; padding:10px; overflow:auto; max-height:220px}
+  .bq-wrap[data-theme="light"] .bq-pre{background:#f0f4ff}
+  .bq-table{width:100%; border-collapse:separate; border-spacing:0 6px}
+  .bq-table thead th{color:var(--muted); font-weight:600; text-align:left}
+  .bq-table tbody td{padding:4px 6px}
+  .bq-icon{background:#18233a; color:#fff; border:none; border-radius:8px; padding:6px; cursor:pointer}
+  .bq-details summary{cursor:pointer}
+  @media (max-width:900px){.bq-grid{grid-template-columns:1fr}.bq-kv{grid-template-columns:1fr 1fr}}
+  .bq-select{background:#0e1726; color:var(--text); border:var(--bd); border-radius:10px; padding:8px}
+  .bq-wrap[data-theme="light"] .bq-select{background:#f3f7ff}
+  .bq-wrap[data-current-mode="user"] [data-mode="dev"]{display:none}
+  .bq-wrap[data-current-mode="dev"] [data-mode="user"]{display:none}
+</style>
+
+<script>
+(function(){
+  const $ = (q)=>document.querySelector(q);
+  const $$ = (q)=>document.querySelectorAll(q);
+  const fmtBRL = (n)=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(n);
+  const guide = document.getElementById('billing-guide-footer');
+
+  // Tema
+  $('#bq-theme').addEventListener('click',()=>{
+    const t = guide.getAttribute('data-theme')==='light'? 'dark':'light';
+    guide.setAttribute('data-theme', t);
+  });
+
+  // Modo (Usuário/Dev)
+  const modeSel = $('#bq-mode');
+  if (modeSel){
+    guide.setAttribute('data-current-mode', modeSel.value);
+    modeSel.addEventListener('change',()=>guide.setAttribute('data-current-mode', modeSel.value));
+  }
+
+  // Collapse
+  $('#bq-collapse').addEventListener('click',()=>{
+    const body = document.getElementById('bq-body');
+    body.style.display = body.style.display==='none'? 'grid':'none';
+    $('#bq-collapse').textContent = body.style.display==='none'? '▸':'▾';
+  });
+
+  // Consumo
+  $('#bq-calc-consumo').addEventListener('click',()=>{
+    const uso = parseFloat($('#bq-uso').value||0);
+    const hard = parseFloat($('#bq-hard').value||1);
+    const pct = (uso/hard)*100;
+    $('#bq-consumo-out').textContent = `Consumo atual: ${pct.toFixed(1)}% do hard`;
+  });
+
+  // Previsão
+  $('#bq-calc-prev').addEventListener('click',()=>{
+    const m7 = parseFloat($('#bq-media7').value||0);
+    $('#bq-prev-out').textContent = `Previsão 30d: ${fmtBRL(m7*30)}`;
+  });
+
+  // Histerese 70/68
+  $('#bq-check-hyst').addEventListener('click',()=>{
+    const soft = parseFloat($('#bq-soft2').value||0);
+    const uso = parseFloat($('#bq-uso2').value||0);
+    const estado = $('#bq-estado').value; // normal|alerta
+    const thOn = 0.70*soft;   // liga alerta
+    const thOff = 0.68*soft;  // desliga alerta
+
+    let novo = estado;
+    if(estado==='normal' && uso>=thOn) novo='alerta';
+    if(estado==='alerta' && uso<thOff) novo='normal';
+
+    const msg = `Estado: ${estado} → ${novo} · uso=${fmtBRL(uso)} · on≥${fmtBRL(thOn)} · off<${fmtBRL(thOff)}`;
+    $('#bq-hyst-out').textContent = msg;
+  });
+
+  // UUID v4
+  function uuidv4(){
+    return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g,c=>(c^crypto.getRandomValues(new Uint8Array(1))[0]&15>>c/4).toString(16));
+  }
+
+  // HMAC SHA-256 (WebCrypto)
+  async function hmacSHA256(key, data){
+    const enc = new TextEncoder();
+    const k = await crypto.subtle.importKey('raw', enc.encode(key), {name:'HMAC', hash:'SHA-256'}, false, ['sign']);
+    const sig = await crypto.subtle.sign('HMAC', k, enc.encode(data));
+    return Array.from(new Uint8Array(sig)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+
+  // Gerar headers e cURL
+  $('#bq-gen').addEventListener('click', async ()=>{
+    const secret = $('#bq-secret').value || 'test';
+    const payload = $('#bq-payload').value.trim();
+    const ts = Date.now().toString();
+    const eid = uuidv4();
+    const mac = await hmacSHA256(secret, ts + '.' + payload);
+
+    $('#bq-ts').value = ts;
+    $('#bq-eid').value = eid;
+    $('#bq-sig').value = 'sha256=' + mac;
+
+    const curl = `curl -i -X POST https://seu-dominio.com/webhooks/billing \
+  -H "Content-Type: application/json" \
+  -H "X-Timestamp: ${ts}" \
+  -H "X-Event-Id: ${eid}" \
+  -H "X-Signature: sha256=${mac}" \
+  --data '${payload.replace(/\n/g," ")}'`;
+    $('#bq-curl').textContent = curl;
+  });
+
+  async function copy(txt){
+    try{ await navigator.clipboard.writeText(txt); }catch(e){ alert('Copie manualmente'); }
+  }
+
+  $('#bq-copy-curl').addEventListener('click',()=>{
+    copy($('#bq-curl').textContent);
+  });
+
+  // Tabela per-client → JSON PATCH
+  $('#bq-add').addEventListener('click',()=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td><input value="cliente-${Math.floor(Math.random()*100)}"></td>
+      <td><input type="number" value="100000"></td>
+      <td><input type="number" value="200000"></td>
+      <td><button class="bq-icon" aria-label="remover">✖</button></td>`;
+    $('#bq-rows').appendChild(tr);
+  });
+
+  $('#bq-rows').addEventListener('click',(e)=>{
+    if(e.target.classList.contains('bq-icon')) e.target.closest('tr').remove();
+  });
+
+  function buildJSON(){
+    const soft = parseInt($('#bq-q-soft').value||0,10);
+    const hard = parseInt($('#bq-q-hard').value||0,10);
+    const rows = [...$('#bq-rows').querySelectorAll('tr')].map(tr=>{
+      const [name, soft, hard] = [...tr.querySelectorAll('input')].map(i=>i.value);
+      return [name, {soft: Number(soft), hard: Number(hard)}];
+    });
+    const perClient = Object.fromEntries(rows);
+    return JSON.stringify({softLimitCents: soft, hardLimitCents: hard, perClient}, null, 2);
+  }
+
+  $('#bq-build').addEventListener('click',()=>{
+    $('#bq-json').textContent = buildJSON();
+  });
+  $('#bq-copy-json').addEventListener('click',()=>{
+    const j = $('#bq-json').textContent || buildJSON();
+    copy(j);
+  });
+})();
+</script>

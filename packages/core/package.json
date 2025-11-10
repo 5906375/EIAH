@@ -1,0 +1,31 @@
+{
+  "name": "@eiah/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./queue/*": {
+      "import": "./dist/queue/*.js",
+      "types": "./dist/queue/*.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p .",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "bullmq": "^5.62.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.6.3"
+  }
+}

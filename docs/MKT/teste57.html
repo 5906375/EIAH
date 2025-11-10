@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plano de Campanha: Expansão Atende Fácil - Responsivo</title>
+    <style>
+        /* ==================================== */
+        /* ESTILOS BASE (MOBILE FIRST) */
+        /* ==================================== */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 15px;
+            /* Padding menor para mobile */
+            background-color: #f4f7f6;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            width: 100%;
+            /* Ocupa 100% da tela em mobile */
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h1,
+        h2,
+        h3 {
+            color: #007bff;
+            border-bottom: 1px solid #e9ecef;
+            padding-bottom: 8px;
+            margin-top: 15px;
+        }
+
+        h1 {
+            font-size: 1.8em;
+            text-align: center;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+
+        /* Estilo do Destaque */
+        .note {
+            background-color: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+
+        /* Estilo para a Estrutura de Acordeão */
+        .accordion {
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            padding: 15px;
+            width: 100%;
+            border: none;
+            text-align: left;
+            outline: none;
+            font-size: 1em;
+            transition: 0.4s;
+            border-radius: 4px;
+            margin-top: 8px;
+            display: block;
+            /* Garante que ocupe a linha inteira */
+        }
+
+        .active,
+        .accordion:hover {
+            background-color: #0056b3;
+        }
+
+        .panel {
+            padding: 0 15px;
+            background-color: white;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.2s ease-out;
+            border: 1px solid #e9ecef;
+            border-top: none;
+        }
+
+        /* Estilos de Tabela para Responsividade */
+        .panel table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+            display: block;
+            /* Torna a tabela um bloco para aplicar responsividade */
+            overflow-x: auto;
+            /* Adiciona rolagem horizontal se necessário (para garantir que nada se quebre) */
+        }
+
+        /* Em telas menores, a tabela se transforma em lista (card-like structure) */
+        .panel tr {
+            display: block;
+            border-bottom: 3px solid #f2f2f2;
+            margin-bottom: 10px;
+        }
+
+        .panel td {
+            display: block;
+            text-align: right;
+            padding: 8px;
+            border: none;
+            border-bottom: 1px dotted #ccc;
+        }
+
+        .panel td::before {
+            /* Cria um rótulo antes do conteúdo da célula para clareza em mobile */
+            content: attr(data-label);
+            float: left;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .panel th {
+            display: none;
+            /* Oculta o cabeçalho original da tabela em mobile */
+        }
+
+        /* Estilos de Lista */
+        ul {
+            padding-left: 20px;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+
+        .kpi-list li strong {
+            color: #28a745;
+        }
+
+        /* ==================================== */
+        /* MEDIA QUERIES (ADAPTAÇÃO PARA TABLETS E DESKTOPS) */
+        /* ==================================== */
+        @media (min-width: 768px) {
+            body {
+                padding: 30px;
+                /* Mais padding em telas maiores */
+            }
+
+            .container {
+                max-width: 1000px;
+                padding: 30px;
+            }
+
+            h1 {
+                font-size: 2.2em;
+            }
+
+            /* Reseta os estilos da tabela para o layout padrão de colunas em desktop */
+            .panel table {
+                display: table;
+                overflow-x: unset;
+            }
+
+            .panel tr {
+                display: table-row;
+                border: none;
+            }
+
+            .panel th,
+            .panel td {
+                display: table-cell;
+                border: 1px solid #dddddd;
+                padding: 12px;
+                text-align: left;
+            }
+
+            .panel th {
+                background-color: #f2f2f2;
+                display: table-cell;
+            }
+
+            .panel td::before {
+                content: none;
+                /* Remove o rótulo de mobile */
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>Plano de Campanha: Expansão da Base de Clínicas Assinantes do Atende Fácil</h1>
+
+        <div class="note">
+            <h2>🎯 Objetivo Principal</h2>
+            <p>Expandir a base de clínicas assinantes do Atende Fácil em **40% até Q2 2025**, focando em clínicas
+                pequenas (faturamento R$ 50k–200k/mês), com equipe reduzida, que buscam produtividade via automação e
+                previsibilidade.</p>
+            <p><strong>Tom/Voz:</strong> Pragmático e inspirador (“a tecnologia que trabalha por você”), com
+                storytelling baseado em casos reais e integração entre módulos (CRM, Agenda, Lead, Fideliza).</p>
+        </div>
+
+        <h2>📊 KPIs Principais</h2>
+        <ul class="kpi-list">
+            <li><strong>CPL ≤ R$ 40</strong></li>
+            <li>**CAC** (Custo de Aquisição de Cliente)</li>
+            <li>**Taxa de trial → pagante**</li>
+            <li>**Engajamento WhatsApp**</li>
+            <li>**Conversão por canal**</li>
+            <li>**Taxa de upgrade e cross-sell** entre módulos</li>
+        </ul>
+
+        <h2>🗓️ Cronograma e Fases da Campanha</h2>
+
+        <button class="accordion">1. Pré-campanha (01/02/2026 – 14/03/2026)</button>
+        <div class="panel">
+            <h3>Ações Principais</h3>
+            <ul>
+                <li>Levantamento de cases e depoimentos</li>
+                <li>Conteúdo teaser em redes e e-mail</li>
+                <li>Construção de landing pages</li>
+                <li>Treinamento equipe comercial e suporte</li>
+            </ul>
+        </div>
+
+        <button class="accordion">2. Lançamento da Campanha (15/03/2026 – 30/04/2026)</button>
+        <div class="panel">
+            <h3>Ações Principais</h3>
+            <ul>
+                <li>Divulgação massiva via canais escolhidos</li>
+                <li>Execução de paid media</li>
+                <li>Início do contato via WhatsApp e e-mail marketing</li>
+                <li>Webinars e lives com clientes em destaque</li>
+            </ul>
+        </div>
+
+        <button class="accordion">3. Otimização e Crescimento (01/05/2026 – 30/06/2026)</button>
+        <div class="panel">
+            <h3>Ações Principais</h3>
+            <ul>
+                <li>Acompanhamento e ajuste com base em métricas</li>
+                <li>Retargeting pagos e orgânicos</li>
+                <li>Incentivo a upgrade/cross-sell via comunicação segmentada</li>
+            </ul>
+        </div>
+
+        <h2>📱 Estratégias Detalhadas por Canal</h2>
+
+        <button class="accordion">Email Marketing</button>
+        <div class="panel">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Estratégia</th>
+                        <th>Métricas Principais</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td data-label="Estratégia">Sequência educativa e de nutrição baseada em storytelling, focando
+                            benefícios de automação e casos reais. CTA para trial e upgrade entre módulos.</td>
+                        <td data-label="Métricas Principais">Taxa abertura, CTR, conversão trial, CAC</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <button class="accordion">WhatsApp</button>
+        <div class="panel">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Estratégia</th>
+                        <th>Métricas Principais</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td data-label="Estratégia">Lista segmentada + broadcast com conteúdos rápidos, interativos e
+                            assistentes virtuais para dúvidas. Engajamento direto e personalizada.</td>
+                        <td data-label="Métricas Principais">Taxa de engajamento, respostas, conversão direta</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <button class="accordion">Redes Sociais (Instagram + LinkedIn)</button>
+        <div class="panel">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Estratégia</th>
+                        <th>Métricas Principais</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td data-label="Estratégia">Posts com storytelling visual, reels mostrando funcionalidades,
+                            depoimentos de usuários. LinkedIn para abordagem B2B e conteúdos técnicos.</td>
+                        <td data-label="Métricas Principais">Engajamento (likes, comentários), CTR para landing page
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <button class="accordion">Paid Media</button>
+        <div class="panel">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Estratégia</th>
+                        <th>Métricas Principais</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td data-label="Estratégia">Campanhas segmentadas por perfil/segmento; foco em **CPL ≤ R$40**.
+                            Remarketing para leads que acessaram trial mas não converteram.</td>
+                        <td data-label="Métricas Principais">CPL, CAC, taxa conversão, CPM</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <button class="accordion">YouTube (Orgânico e Ads)</button>
+        <div class="panel">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Estratégia</th>
+                        <th>Métricas Principais</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td data-label="Estratégia">Vídeos explicativos, demonstrações, entrevistas com clientes e
+                            tutoriais de integração entre módulos.</td>
+                        <td data-label="Métricas Principais">Visualizações, tempo médio de duração, CTR no vídeo</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <button class="accordion">Blog / SEO</button>
+        <div class="panel">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Estratégia</th>
+                        <th>Métricas Principais</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td data-label="Estratégia">Conteúdos focados em produtividade, automação e gestão em clínicas
+                            pequenas. SEO para atrair tráfego qualificado.</td>
+                        <td data-label="Métricas Principais">Visitas orgânicas, tempo de leitura, leads gerados</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <button class="accordion">Influencers</button>
+        <div class="panel">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Estratégia</th>
+                        <th>Métricas Principais</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td data-label="Estratégia">Parcerias com micro-influenciadores dos perfis alvo (odontologia,
+                            estética, psicol., nutrição, fisioter.) para usar e validar a plataforma.</td>
+                        <td data-label="Métricas Principais">Alcance, engajamento, leads gerados via código/rastreio
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h2>📝 Temas de Conteúdo e Mensagens Chave</h2>
+        <ul>
+            <li>**Storytelling com casos reais:** Vídeos, posts e e-mail contando o antes e depois da clínica, mostrando
+                ganhos em produtividade e faturamento.</li>
+            <li>**Demonstração da integração dos módulos:** Conteúdo explicativo (vídeos e artigos) sobre como CRM,
+                Agenda, Lead e Fideliza funcionam de forma integrada para maximizar resultados.</li>
+            <li>**Benefícios da automação e previsibilidade:** Conteúdos quantitativos e qualitativos ressaltando
+                redução de faltas, agendamentos automáticos e previsibilidade de receita.</li>
+            <li>**Testemunhos e reviews:** Depoimentos e reviews visuais para inspirar confiança.</li>
+            <li>**CTA claros para trials, upgrades e cross-sell:** Com mensagens focadas em "comece grátis" e "faça seu
+                faturamento trabalhar por você".</li>
+        </ul>
+
+        <h2>⚙️ Próximos Passos Imediatos</h2>
+        <ul>
+            <li>Reforçar levantamento de cases e material de storytelling, capturando depoimentos em vídeo e textos até
+                15/01/2026.</li>
+            <li>Definir orçamento e distribuição por canal, determinando investimento focalizado em CPL ≤ R$40 e maior
+                conversão.</li>
+            <li>Desenvolver/otimizar landing pages e fluxo de trial, garantindo experiência fluida e rastreável.</li>
+            <li>Treinar equipe comercial e de suporte com abordagens alinhadas ao tom pragmático e uso de objeções
+                usuais.</li>
+            <li>Mapear e iniciar contato com influencers, alinhando valores e contratos até fevereiro 2026.</li>
+            <li>Configurar monitoramento e dashboards para acompanhamento em tempo real dos KPIs principais para rápida
+                tomada de decisão e ajustes.</li>
+        </ul>
+
+    </div>
+
+    <script>
+        // Script JavaScript para o funcionamento do Acordeão (inalterado, pois já é funcional)
+        var acc = document.getElementsByClassName("accordion");
+        var i;
+
+        for (i = 0; i < acc.length; i++) {
+            acc[i].addEventListener("click", function () {
+                this.classList.toggle("active");
+                var panel = this.nextElementSibling;
+                if (panel.style.maxHeight) {
+                    panel.style.maxHeight = null;
+                } else {
+                    panel.style.maxHeight = panel.scrollHeight + "px";
+                }
+            });
+        }
+    </script>
+
+</body>
+
+</html>

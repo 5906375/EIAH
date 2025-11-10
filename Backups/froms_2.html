@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Formulário de Coleta de Prompts</title>
+    <meta name="description" content="Formulário simples para coletar prompts e enviar para um endpoint (POST JSON)." />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background:
+                radial-gradient(1200px 600px at 10% -10%, rgba(56, 189, 248, .08), transparent),
+                radial-gradient(1000px 500px at 100% 0%, rgba(99, 102, 241, .08), transparent),
+                linear-gradient(180deg, #0b1220, #0b1324 40%, #0f172a 100%);
+        }
+
+        .container {
+            max-width: 900px;
+        }
+
+        .card {
+            background: rgba(2, 6, 23, .6);
+            border: 1px solid rgba(148, 163, 184, .18);
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
+        }
+
+        .heading {
+            letter-spacing: .3px;
+        }
+
+        .field {
+            width: 100%;
+            border: 1px solid rgba(148, 163, 184, .25);
+            background: #0b1220;
+            color: #e5e7eb;
+            border-radius: 12px;
+            padding: .75rem .9rem;
+            font-size: .95rem;
+            outline: none;
+        }
+
+        .field::placeholder {
+            color: #94a3b8;
+        }
+
+        .field:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, .25);
+        }
+
+        .btn {
+            border: 1px solid rgba(148, 163, 184, .25);
+            background: #111827;
+            color: #e5e7eb;
+            border-radius: 14px;
+            padding: .6rem 1rem;
+            font-weight: 600;
+            transition: .15s;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
+        }
+
+        .btn-primary {
+            background: #4338ca;
+            border-color: transparent;
+        }
+
+        .btn-primary:hover {
+            background: #4f46e5;
+        }
+
+        .btn-disabled {
+            opacity: .6;
+            cursor: not-allowed;
+        }
+
+        .muted {
+            color: #94a3b8;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            padding: .35rem .6rem;
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, .25);
+            color: #cbd5e1;
+            font-size: .78rem;
+            background: rgba(30, 41, 59, .6);
+        }
+    </style>
+</head>
+
+<body class="min-h-screen text-slate-100">
+    <!-- Header -->
+    <header class="border-b border-slate-800/60 backdrop-blur-lg">
+        <div class="container mx-auto px-4 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div
+                    class="h-9 w-9 rounded-2xl bg-indigo-600 text-white grid place-items-center text-sm font-bold shadow-md">
+                    E
+                </div>
+                <div>
+                    <h1 class="heading text-xl font-semibold">EIAH - Agentes IA conectados</h1>
+                    <p class="text-xs muted">Configure intenções, teste prompts e monitore seus resultados.</p>
+                </div>
+            </div>
+            <span class="chip">STATUS: online</span>
+        </div>
+    </header>
+
+    <!-- Main -->
+    <main class="container mx-auto px-4 py-8">
+        <form id="formPrompt" class="card p-6 md:p-8 space-y-6">
+            <!-- título + nota + contador -->
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <h2 class="text-lg font-semibold">Enviar prompt para teste</h2>
+                    <p class="text-sm muted">Campos com <span class="text-rose-400">*</span> são obrigatórios.</p>
+                </div>
+                <div class="text-xs muted">Estimativa de tokens: ~<span id="estTokens">0</span></div>
+            </div>
+
+            <!-- Modelo + Limite -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">
+                        Modelo Agente IA<span class="text-rose-400">*</span>
+                    </label>
+                    <select id="modelo" required class="field">
+                        <option value="MKT" selected>MKT</option>
+                        <option value="Pitch">Pitch</option>
+                        <option value="J_360">J_360</option>
+                        <option value="OpPrompt">OpPrompt</option>
+                    </select>
+                    <div id="modeloHelp"
+                        class="mt-2 text-xs muted bg-slate-900/60 border border-slate-700 rounded-lg p-3"
+                        aria-live="polite"></div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Limite de exemplos (0–2)</label>
+                    <input id="limite_exemplos" type="number" min="0" max="2" step="1" value="0" class="field" />
+                </div>
+            </div>
+
+            <!-- Prompt Original -->
+            <div>
+                <label class="block text-sm font-medium mb-1">
+                    Insira Prompt<span class="text-rose-400">*</span>
+                </label>
+                <textarea id="prompt_original" required class="field min-h-[140px]"
+                    placeholder="Descreva a instrução em linguagem natural que deseja otimizar/testar"
+                    maxlength="4000"></textarea>
+                <div class="mt-2 flex items-center justify-between text-xs muted">
+                    <span><span id="charsUsed">0</span> / 4000 chars</span>
+                    <div class="w-40 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                        <div id="charsBar" class="h-full bg-indigo-500" style="width:0%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tarefa -->
+            <div>
+                <label class="block text-sm font-medium mb-1">
+                    Tarefa (objetivo da saída)
+                </label>
+                <input id="tarefa" type="text" class="field" placeholder="(será preenchido conforme o modelo escolhido)"
+                    maxlength="240" />
+            </div>
+
+            <!-- Nome/Grupo/Email -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Seu nome (opcional)</label>
+                    <input id="nome" type="text" class="field" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Empresa/Equipe (opcional)</label>
+                    <input id="grupo" type="text" class="field" />
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Email (opcional)</label>
+                    <input id="email" type="email" class="field" />
+                </div>
+            </div>
+
+            <!-- Ações -->
+            <div class="flex flex-wrap gap-3 md:justify-end">
+                <button id="btnLimpar" type="button" class="btn">Limpar</button>
+                <button id="btnEnviar" type="submit" class="btn btn-primary">Enviar</button>
+            </div>
+
+            <p class="text-xs muted">
+                Os resultados dos prompts testados serão enviados para o seu whatsapp.
+                Este site não usa cookies de terceiros.
+            </p>
+        </form>
+    </main>
+
+    <!-- Toast -->
+    <div id="toast"
+        class="fixed bottom-4 left-1/2 -translate-x-1/2 rounded-full border border-slate-700 bg-slate-900/90 shadow px-4 py-2 text-sm hidden"
+        aria-live="polite"></div>
+
+    <script>
+        // Detecta se está rodando preview ou produção
+        const ENDPOINT = (location.pathname.includes('_sitePreview') || location.pathname.includes('_partials/preview'))
+            ? '/_functions-dev/prompts'
+            : '/_functions/prompts';
+
+        // Mensagens de ajuda por modelo
+        const MODEL_HELP = {
+            MKT: 'MKT — marketing: headlines, variações de anúncio, CTA, persona/benefício.',
+            Pitch: 'Pitch — apresentação: problema → solução → proposta de valor → objeções → call to action.',
+            J_360: 'J_360 — visão 360°: contexto, riscos, métricas, impacto e próximos passos.',
+            OpPrompt: 'OpPrompt — operacional: checklists, SOPs, prompts de rotina e políticas para times.'
+        };
+
+        // Sugestões de "Tarefa" automáticas (placeholder/valor)
+        const TAREFA_INSTRUCAO = {
+            MKT: 'Ex. Descreva o briefing de campanha (produto, público, objetivo, verba, canais)',
+            J_360: 'Ex. Descreva o caso jurídico/contrato , análise de cláusulas com base legal...',
+            Pitch: 'Ex. Descreva roteiro textual, sugestão de imagem, roteiro de áudio e de vídeo.',
+            OpPrompt: 'Ex. Descreva a tarefa/uso-alvo para produzir prompts otimizados.'
+        };
+
+        // Helper rápido
+        const $ = (sel) => document.querySelector(sel);
+
+        function showToast(msg) {
+            const el = $('#toast');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+            setTimeout(() => el.classList.add('hidden'), 3200);
+        }
+
+        function updateCharCounter() {
+            const val = $('#prompt_original').value;
+            $('#charsUsed').textContent = val.length;
+            const pct = Math.min(100, Math.round((val.length / 4000) * 100));
+            $('#charsBar').style.width = pct + '%';
+        }
+
+        function estimateTokens() {
+            const chars = ($('#prompt_original').value.length) + ($('#tarefa').value.length);
+            $('#estTokens').textContent = Math.ceil(chars / 4);
+        }
+
+        function updateModeloHelp() {
+            const v = $('#modelo').value;
+            $('#modeloHelp').textContent = MODEL_HELP[v] || '';
+        }
+
+        // Atualiza campo "Tarefa" com base no modelo
+        function syncTarefaWithModelo() {
+            const modelo = $('#modelo').value;
+            const instr = TAREFA_INSTRUCAO[modelo] || 'Descreva a tarefa objetivamente.';
+            const t = $('#tarefa');
+            t.placeholder = instr;
+            t.value = instr;
+            t.dispatchEvent(new Event('input'));
+        }
+
+        // Limpa tudo após envio
+        function resetForm() {
+            $('#prompt_original').value = '';
+            $('#tarefa').value = '';
+            $('#modelo').value = 'MKT';
+            $('#limite_exemplos').value = '0';
+            $('#nome').value = '';
+            $('#grupo').value = '';
+            $('#email').value = '';
+            updateCharCounter();
+            estimateTokens();
+            updateModeloHelp();
+            syncTarefaWithModelo();
+        }
+
+        // Monta texto que vai pro WhatsApp (ordem = ordem do formulário)
+        function composeWhatsText() {
+            return (
+                `🔎 Novo envio de prompt
+
+1) Modelo: ${($('#modelo').value || '-')}
+2) Limite de exemplos: ${($('#limite_exemplos').value || '0')}
+
+3) Prompt:
+${($('#prompt_original').value || '-').slice(0, 2000)}
+
+4) Tarefa (objetivo da saída):
+${($('#tarefa').value || '-')}
+
+5) Nome: ${($('#nome').value || 'Anônimo')}
+6) Grupo/Equipe: ${($('#grupo').value || '-')}
+7) Email: ${($('#email').value || '-')}
+`
+            );
+        }
+
+        // Gera link wa.me para o seu número
+        function waLinkCarlos(texto) {
+            const phone = '5547999674434'; // DDI+DDD+Número, sem "+"
+            return 'https://wa.me/' + phone + '?text=' + encodeURIComponent(texto);
+        }
+
+        // SUBMIT PRINCIPAL
+        async function handleSubmit(e) {
+            e.preventDefault();
+
+            const payload = {
+                timestamp: new Date().toISOString(),
+                nome: $('#nome').value.trim(),
+                grupo: $('#grupo').value.trim(),
+                email: $('#email').value.trim(),
+                modelo: $('#modelo').value,
+                limite_exemplos: Number($('#limite_exemplos').value || 0),
+                prompt_original: $('#prompt_original').value.trim(),
+                tarefa: $('#tarefa').value.trim(),
+                meta: { userAgent: navigator.userAgent, referrer: document.referrer || null },
+            };
+
+            try {
+                // trava botão
+                $('#btnEnviar').disabled = true;
+                $('#btnEnviar').classList.add('btn-disabled');
+
+                // tenta salvar no backend primeiro (log/statística)
+                const res = await fetch(ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+
+                // deu certo o POST → agora abre WhatsApp com mensagem pronta
+                showToast('Enviado! Abrindo WhatsApp ✅');
+                window.open(waLinkCarlos(composeWhatsText()), '_blank', 'noopener,noreferrer');
+
+                resetForm();
+            } catch (err) {
+                console.error(err);
+                // se falhar o POST, ainda assim mandamos pro seu Whats
+                showToast('Backend indisponível. Abrindo WhatsApp mesmo assim. ✅');
+                window.open(waLinkCarlos(composeWhatsText()), '_blank', 'noopener,noreferrer');
+            } finally {
+                // libera botão
+                $('#btnEnviar').disabled = false;
+                $('#btnEnviar').classList.remove('btn-disabled');
+            }
+        }
+
+        // Listeners iniciais
+        document.addEventListener('DOMContentLoaded', () => {
+            // limpa possíveis valores de autofill
+            $('#tarefa').value = '';
+            $('#prompt_original').value = '';
+
+            updateCharCounter();
+            estimateTokens();
+            updateModeloHelp();
+            syncTarefaWithModelo();
+
+            // quando mudar o modelo, atualiza instrução e ajuda
+            $('#modelo').addEventListener('change', () => {
+                updateModeloHelp();
+                syncTarefaWithModelo();
+            });
+
+            // atualiza contadores em tempo real
+            ['prompt_original', 'tarefa', 'nome', 'grupo', 'email', 'limite_exemplos'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', () => {
+                        estimateTokens();
+                        updateCharCounter();
+                    });
+                }
+            });
+
+            // submit e limpar
+            $('#formPrompt').addEventListener('submit', handleSubmit);
+            $('#btnLimpar').addEventListener('click', resetForm);
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8" />
+    <title>EIAH Builder - Mapa de Infra</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #0b0d10;
+            --panel: rgba(32, 40, 52, 0.8);
+            --panel-border: rgba(93, 110, 140, 0.3);
+            --accent: #4cc2ff;
+            --accent-muted: rgba(76, 194, 255, 0.25);
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+            --shadow: 0 18px 40px rgba(12, 20, 34, 0.45);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            height: 100%;
+        }
+
+        body {
+            margin: 0;
+            font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+            background: radial-gradient(120% 140% at 50% -20%, #1c2840 0%, #0b0d10 65%, #050608 100%);
+            color: var(--text);
+            min-height: 100vh;
+        }
+
+        /* ===== Layout raiz com sidebar ===== */
+        .app {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            /* sidebar + conteúdo */
+            gap: 24px;
+            padding: 24px clamp(16px, 4vw, 48px) 40px;
+            align-items: start;
+        }
+
+        aside {
+            position: sticky;
+            top: 16px;
+            align-self: start;
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            border-radius: 18px;
+            padding: 16px;
+            box-shadow: var(--shadow);
+            max-height: calc(100vh - 32px);
+            overflow: auto;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .brand h1 {
+            font-size: 16px;
+            margin: 0;
+            letter-spacing: 0.02em;
+        }
+
+        .menu-search {
+            width: 100%;
+            background: rgba(15, 19, 26, 0.85);
+            border: 1px solid rgba(90, 106, 134, 0.5);
+            border-radius: 10px;
+            padding: 10px 12px;
+            color: var(--text);
+            font-size: 14px;
+            margin: 8px 0 12px;
+        }
+
+        .menu-search:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(76, 194, 255, 0.18);
+        }
+
+        .menu-group {
+            margin: 10px 0 16px;
+        }
+
+        .menu-group-title {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin: 10px 0 6px;
+        }
+
+        .menu-list {
+            display: grid;
+            gap: 6px;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            border-radius: 10px;
+            cursor: pointer;
+            background: rgba(60, 72, 92, 0.35);
+            border: 1px solid rgba(103, 128, 164, 0.35);
+            font-size: 13px;
+            transition: background 140ms ease, border-color 140ms ease, transform 80ms ease;
+            text-align: left;
+        }
+
+        .menu-item:hover {
+            background: rgba(76, 194, 255, 0.18);
+            border-color: var(--accent);
+        }
+
+        .menu-item[aria-current="true"] {
+            outline: 2px solid var(--accent);
+            background: rgba(76, 194, 255, 0.12);
+        }
+
+        .chip {
+            margin-left: auto;
+            font-size: 10px;
+            color: var(--accent);
+            background: var(--accent-muted);
+            border-radius: 999px;
+            padding: 2px 8px;
+        }
+
+        header.page-header {
+            margin: 0 0 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        header.page-header h2 {
+            margin: 0;
+            font-size: clamp(22px, 2.2vw, 34px);
+            letter-spacing: -0.02em;
+        }
+
+        header.page-header p {
+            margin: 0;
+            color: var(--text-muted);
+            max-width: 820px;
+            line-height: 1.55;
+        }
+
+        /* Conteúdo e cards */
+        main {
+            display: grid;
+            gap: 20px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .controls input[type="search"] {
+            flex: 1 1 320px;
+            background: rgba(15, 19, 26, 0.85);
+            border: 1px solid rgba(90, 106, 134, 0.5);
+            border-radius: 9999px;
+            padding: 12px 20px;
+            color: var(--text);
+            font-size: 15px;
+        }
+
+        .controls input[type="search"]:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(76, 194, 255, 0.18);
+        }
+
+        .stat {
+            padding: 10px 18px;
+            border-radius: 9999px;
+            background: rgba(62, 74, 96, 0.55);
+            color: var(--text-muted);
+            font-size: 13px;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+        }
+
+        .node-card {
+            position: relative;
+            background: var(--panel);
+            border: 1px solid var(--panel-border);
+            border-radius: 22px;
+            padding: 24px;
+            backdrop-filter: blur(12px);
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+        }
+
+        .node-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(76, 194, 255, 0.6);
+            box-shadow: 0 22px 50px rgba(18, 25, 40, 0.55);
+        }
+
+        .node-card.is-highlighted {
+            border-color: var(--accent);
+            box-shadow: 0 18px 60px rgba(76, 194, 255, 0.35);
+        }
+
+        .node-name {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 0;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .node-type {
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--accent);
+            padding: 2px 10px;
+            border-radius: 9999px;
+            background: var(--accent-muted);
+        }
+
+        .node-summary {
+            margin: 0;
+            color: var(--text-muted);
+            line-height: 1.55;
+            font-size: 14px;
+        }
+
+        .connections {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 13px;
+        }
+
+        .connections strong {
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .connection-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .connection-tag {
+            background: rgba(60, 72, 92, 0.6);
+            border: 1px solid rgba(103, 128, 164, 0.5);
+            padding: 6px 12px;
+            border-radius: 9999px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .connection-tag:hover {
+            border-color: var(--accent);
+            background: rgba(76, 194, 255, 0.18);
+        }
+
+        details {
+            background: rgba(22, 28, 40, 0.72);
+            border: 1px solid rgba(68, 84, 110, 0.45);
+            border-radius: 16px;
+            padding: 12px 16px;
+            font-size: 13px;
+            line-height: 1.52;
+            color: var(--text-muted);
+        }
+
+        details+details {
+            margin-top: 8px;
+        }
+
+        details[open] {
+            border-color: rgba(76, 194, 255, 0.45);
+            background: rgba(18, 26, 40, 0.9);
+        }
+
+        summary {
+            list-style: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            color: var(--text);
+            font-weight: 600;
+        }
+
+        summary::marker,
+        summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .file-meta {
+            display: inline-flex;
+            gap: 6px;
+            align-items: center;
+            margin-left: auto;
+            font-size: 11px;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: rgba(148, 163, 184, 0.65);
+        }
+
+        .file-description {
+            margin-top: 8px;
+        }
+
+        .file-links {
+            margin-top: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .file-links span {
+            background: rgba(52, 66, 92, 0.65);
+            border: 1px solid rgba(86, 108, 148, 0.45);
+            padding: 5px 10px;
+            border-radius: 9999px;
+            font-size: 11px;
+            cursor: pointer;
+        }
+
+        .file-links span:hover {
+            border-color: var(--accent);
+            background: rgba(76, 194, 255, 0.2);
+        }
+
+        .empty-state {
+            padding: 32px;
+            text-align: center;
+            border-radius: 16px;
+            border: 1px dashed rgba(76, 194, 255, 0.35);
+            background: rgba(13, 18, 28, 0.75);
+            color: var(--text-muted);
+            font-size: 15px;
+        }
+
+        @media (max-width: 960px) {
+            .app {
+                grid-template-columns: 1fr;
+            }
+
+            aside {
+                position: static;
+                max-height: initial;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app">
+        <aside>
+            <div class="brand">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M4 12L12 4l8 8-8 8-8-8Z" stroke="var(--accent)" stroke-width="1.6" />
+                    <circle cx="12" cy="12" r="2.5" fill="var(--accent)" />
+                </svg>
+                <h1>EIAH Builder</h1>
+            </div>
+            <input id="menu-search" class="menu-search" placeholder="Buscar módulo..." autocomplete="off" />
+
+            <div class="menu-group">
+                <div class="menu-group-title">Visão</div>
+                <div class="menu-list">
+                    <button class="menu-item" data-action="overview" aria-current="true">Todos os blocos <span
+                            class="chip" id="count-chip">0</span></button>
+                </div>
+            </div>
+
+            <div class="menu-group">
+                <div class="menu-group-title">Módulos</div>
+                <div id="menu-list" class="menu-list"></div>
+            </div>
+        </aside>
+
+        <section>
+            <header class="page-header">
+                <h2>Mapa Interativo da Infraestrutura</h2>
+                <p>Visão consolidada das partes críticas do monorepo EIAH Builder. Use o menu à esquerda para navegar.
+                    Clique nas conexões para saltar entre módulos.</p>
+                <div class="controls">
+                    <input type="search" id="filter-input" placeholder="Filtrar por nome, arquivo ou descrição..."
+                        autocomplete="off" />
+                    <span class="stat" id="result-counter"></span>
+                </div>
+            </header>
+
+            <main id="content"></main>
+        </section>
+    </div>
+
+    <script>
+        // ===== Dados =====
+        const nodes = [
+            { id: "database", name: "apps/api/prisma", type: "Banco de dados", summary: "Schema Prisma multi-tenant que concentra tenants, workspaces, runs, eventos, estados de recomendacao, quotas, pricing e ledger.", dependsOn: [], files: [{ path: "schema.prisma", description: "Modela Tenant, Workspace, Run, RunEvent, AgentRecommendationState, PlanQuota, Pricing, PaymentTx e UploadedDocument com indices por tenant/workspace.", links: ["api", "api-scripts"] }, { path: "migrations/**", description: "Historico de migracoes do Prisma para manter a base alinhada ao schema.", links: [] }, { path: "seed.ts", description: "Cria tenant demo, tokens de acesso, perfis de agentes e pricing default para ambientes locais.", links: ["api", "api-scripts"] }] },
+            { id: "core-types", name: "packages/core/types", type: "Contratos compartilhados", summary: "Colecao de schemas Zod reutilizados por API, web e motores internos para garantir consistencia de Run, RunEvent, AgentProfile e billing.", dependsOn: [], files: [{ path: "index.ts", description: "Exporta schemas e tipos de Run, RunEvent, AgentProfile, Pricing, PlanQuota, ApiToken e helpers de branding.", links: ["api", "web"] }] },
+            { id: "core-orchestrator", name: "packages/core/orchestrator", type: "Motor agentico", summary: "AgentOrchestrator orquestra ciclos perceive/plan/act/reflect, persiste eventos e expone hooks para telemetria e logs estruturados.", dependsOn: ["core-types"], files: [{ path: "agentOrchestrator.ts", description: "Executa planos multi-step, publica eventos de cada step, integra logger/telemetria e agrega outputs para persistencia.", links: ["api", "workers-action-runner", "core-recommendations"] }, { path: "planManager.ts", description: "DefaultPlanManager gera planos baseados no agente e em heuristicas simples, permitindo customizar percepcao/acao.", links: ["api"] }, { path: "runEventStore.ts", description: "Define interface RunEventStore e implementa CompositeRunEventStore para registrar eventos em multiplos destinos.", links: ["api", "database"] }, { path: "telemetryBridge.ts", description: "Fornece ConsoleTelemetryBridge e contrato para enviar eventos observaveis do orquestrador.", links: ["api"] }] },
+            { id: "core-queue", name: "packages/core/queue", type: "Infra fila", summary: "Abstracoes BullMQ reutilizaveis para filas de runs e actions com configuracao dinamica de Redis, backoff exponencial e eventos de falha.", dependsOn: [], files: [{ path: "runQueue.ts", description: "Publica jobs execute-agent-run, cria workers com concorrencia configuravel e expone eventos para monitoramento.", links: ["api", "workers-action-runner"] }, { path: "actionQueue.ts", description: "Encapsula fila de actions com publishAction, consumeActions e createActionQueueEvents reutilizados por workers dedicados.", links: ["api", "workers-action-runner", "core-actions"] }] },
+            { id: "core-actions", name: "packages/core/actions", type: "Biblioteca de acoes", summary: "Registro central de acoes agenticas com guardrails de idempotencia/rate limit e modulos para DeFi, risco, notificacoes, conhecimento e billing.", dependsOn: ["core-queue"], files: [{ path: "index.ts", description: "Expone registerAllActions agregando modulos e configurando stores in-memory de idempotencia e rate limit.", links: ["api", "workers-action-runner", "core-queue"] }, { path: "actionRegistry.ts", description: "Gerencia execucao de handlers com validacao opcional de input/output e aplica guardrails antes/depois.", links: ["api", "workers-action-runner"] }, { path: "guardrails.ts", description: "Implementa helpers requireIdempotency e rateLimit usando stores in-memory para proteger acoes.", links: ["api", "workers-action-runner"] }, { path: "knowledge.ts", description: "Define acoes knowledge.storeMemory e knowledge.queryMemory com TODO para integracao com camada de memoria persistente.", links: ["core-memory", "workers-action-runner"] }, { path: "billing.ts", description: "Acoes de billing criam planos white-label, emitem audit logs e reencaminham eventos para a fila de actions.", links: ["api", "core-queue"] }, { path: "defi.ts", description: "Mock de acoes DeFi com broadcastTransaction e rebalance aplicando guardrails e logs.", links: ["api", "workers-action-runner"] }] },
+            { id: "core-recommendations", name: "packages/core/recommendations", type: "Motor de recomendacoes", summary: "Motor stateful que ranqueia taticas com base em feedback historico, adota exploracao e atualiza estado por agente.", dependsOn: ["core-types"], files: [{ path: "statefulRecommendationEngine.ts", description: "Calcula scores, aplica decaimento temporal e prioriza recomendacoes com exploracao configuravel.", links: ["api"] }, { path: "__tests__/statefulRecommendationEngine.test.ts", description: "Testes unitarios que validam combinacao de feedback, exploracao e atualizacao de estado.", links: [] }] },
+            { id: "core-memory", name: "packages/core/memory", type: "Infra de memoria", summary: "APIs para manipular memoria curto, longo prazo e vetorial com implementacoes in-memory e jobs de sincronizacao/retencao.", dependsOn: ["core-orchestrator"], files: [{ path: "index.ts", description: "Expone MemoryService, MemorySyncJob, MemoryRetentionJob e helpers para converter escopo a partir do Orchestrator.", links: ["core-orchestrator", "api"] }, { path: "stores/inMemoryShortTermStore.ts", description: "Implementacao basica de short-term store em memoria com truncate configuravel.", links: [] }, { path: "stores/inMemoryLongTermStore.ts", description: "Mock de append/query para long-term memory armazenada em arrays locais.", links: [] }, { path: "stores/inMemoryVectorStore.ts", description: "Persistencia vetorial fake que aplica cosine-like scoring para testes locais.", links: [] }, { path: "README.md", description: "Notas sobre a modularizacao planejada da memoria.", links: [] }] },
+            { id: "api", name: "apps/api", type: "API HTTP", summary: "Servidor Express multi-tenant que autentica tokens, enfileira runs, integra Orchestrator/Actions e expone billing, agents, uploads e endpoints DeFi.", dependsOn: ["database", "core-queue", "core-actions", "core-orchestrator", "core-recommendations", "core-types"], files: [{ path: "src/index.ts", description: "Bootstrap do Express com CORS/JSON, registro de routers, health-check e bootstrap opcional do run worker local.", links: ["core-actions", "core-queue"] }, { path: "src/middlewares/enforceTenant.ts", description: "Valida bearer token via Prisma, checa expiracao e injeta authContext (tenant/workspace/user) no request.", links: ["database"] }, { path: "src/routes/runs.ts", description: "POST /runs valida payload com Zod, cria Run/RunEvent, estima custo e publica job BullMQ para execucao assincrona.", links: ["database", "core-queue"] }, { path: "src/workers/runWorker.ts", description: "Consumidor da fila de runs que usa AgentOrchestrator, publica actions, gera recomendacoes stateful e finaliza billing do run.", links: ["core-orchestrator", "core-actions", "core-queue", "core-recommendations", "database"] }, { path: "src/services/recommendations.ts", description: "Persiste AgentRecommendationState via Prisma, carrega estado anterior e salva progresso por run.", links: ["database", "core-recommendations"] }, { path: "src/services/runs.ts", description: "Helpers Prisma para criar, atualizar e listar runs incluindo listRecentRunsForAgent e finalizeRunRecord.", links: ["database"] }, { path: "src/routes/billing.ts", description: "Expone cobranca/estimativas, integra services/billing e sincroniza quotas de workspace.", links: ["database", "core-actions"] }, { path: "src/routes/uploads.ts", description: "Upload de documentos via multer, persistencia em UploadedDocument e servico para download autenticado.", links: ["database"] }] },
+            { id: "api-scripts", name: "apps/api/scripts", type: "CLI", summary: "Scripts tsx para operacoes administrativas ligadas ao schema Prisma e gestao de tokens.", dependsOn: ["database"], files: [{ path: "createApiToken.ts", description: "Gera tokens CLI vinculados a tenant/workspace, imprime credenciais e prepara pipeline para rotacao.", links: ["database", "api"] }] },
+            { id: "workers-action-runner", name: "apps/workers/action-runner", type: "Worker BullMQ", summary: "Worker dedicado a consumir fila de actions, reaproveitar guardrails e executar handlers registrados com logs estruturados.", dependsOn: ["core-actions", "core-queue"], files: [{ path: "src/index.ts", description: "Registra todas as acoes, inicia consumeActions, loga eventos por job e relanca erros retryable.", links: ["core-actions", "core-queue", "api"] }, { path: "package.json", description: "Configura scripts tsx para rodar o worker standalone e declara dependencias do runtime.", links: [] }] },
+            { id: "web", name: "apps/web", type: "Frontend", summary: "Aplicacao React/Vite com dashboards de runs, billing e agentes, consumo da API via store multi-tenant e componentes data-rich.", dependsOn: ["api"], files: [{ path: "src/lib/api.ts", description: "Cliente HTTP com headers multi-tenant, tratamento de erros e tipos compartilhados para runs, agentes e billing.", links: ["api"] }, { path: "src/state/sessionStore.ts", description: "Store reativa baseada em useSyncExternalStore, sincroniza tenant/workspace/token com localStorage e expose helpers globais.", links: ["api"] }, { path: "src/pages/app/runs/index.tsx", description: "Dashboard de runs com onboarding, filtros, polling automatico e envio de prompt via apiCreateRun.", links: ["api"] }, { path: "src/components/runs/RunViewer.tsx", description: "Consulta eventos do run, renderiza markdown estruturado e aciona downloads JSON/PDF.", links: ["api"] }, { path: "src/components/runs/RunTimeline.tsx", description: "Timeline visual dos RunEvents com badges por tipo e fallback para runs em progresso.", links: ["api"] }] },
+            { id: "web-self-service", name: "apps/web/src/pages/self-service", type: "Frontend self-service", summary: "Fluxos geradores de prompt para agentes (MKT, J_360, Flow Orchestrator, Risk Analyzer) com formularios configurados via metadata.", dependsOn: ["web", "api"], files: [{ path: "config.ts", description: "Tabela de configuracoes por agente com campos dinamicos e builder de prompt/metadados.", links: ["web"] }, { path: "router.tsx", description: "Define rotas internas self-service e carrega paginas especificas por slug.", links: ["web"] }, { path: "mkt.tsx", description: "Fluxo de briefing de campanha que monta prompt customizado para o agente MKT.", links: ["api", "web"] }, { path: "j360.tsx", description: "Formulario Visao 360 do cliente que consolida contexto e dispara runs do agente J_360.", links: ["api", "web"] }, { path: "fin-nexus.tsx", description: "Experiencia Flow Orchestrator com campos para chains, contratos e guardrails antes de enviar run.", links: ["api", "web"] }] },
+        ];
+
+        // ===== Infra de dependentes =====
+        const reverseDeps = new Map();
+        nodes.forEach((n) => n.dependsOn.forEach((d) => { if (!reverseDeps.has(d)) reverseDeps.set(d, new Set()); reverseDeps.get(d).add(n.id); }));
+
+        // ===== Elements =====
+        const content = document.getElementById('content');
+        const filterInput = document.getElementById('filter-input');
+        const counter = document.getElementById('result-counter');
+        const menuList = document.getElementById('menu-list');
+        const menuSearch = document.getElementById('menu-search');
+        const countChip = document.getElementById('count-chip');
+
+        let highlightedId = null;
+        let currentView = 'overview'; // 'overview' | nodeId
+
+        function highlightNode(nodeId) {
+            if (!nodeId) return;
+            const card = content.querySelector(`[data-node-id="${nodeId}"]`);
+            if (card) {
+                content.querySelectorAll('.node-card').forEach(c => c.classList.remove('is-highlighted'));
+                card.classList.add('is-highlighted');
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        function buildConnectionTags(ids) {
+            if (!ids || ids.length === 0) {
+                const span = document.createElement('span');
+                span.textContent = 'Nenhum';
+                span.style.color = 'var(--text-muted)';
+                return span;
+            }
+            const wrapper = document.createElement('div');
+            wrapper.className = 'connection-tags';
+            ids.forEach((id) => {
+                const target = nodes.find((node) => node.id === id);
+                if (!target) return;
+                const tag = document.createElement('button');
+                tag.type = 'button';
+                tag.className = 'connection-tag';
+                tag.dataset.target = id;
+                tag.textContent = target.name;
+                tag.addEventListener('click', () => {
+                    setView(id);
+                });
+                wrapper.appendChild(tag);
+            });
+            return wrapper;
+        }
+
+        function createFileDetails(node, file) {
+            const details = document.createElement('details');
+            details.open = true;
+            const summary = document.createElement('summary');
+            summary.textContent = file.path;
+            const meta = document.createElement('span');
+            meta.className = 'file-meta';
+            meta.innerHTML = `<span>arquivo</span>`;
+            summary.appendChild(meta);
+            details.appendChild(summary);
+            const desc = document.createElement('div');
+            desc.className = 'file-description';
+            desc.textContent = file.description;
+            details.appendChild(desc);
+            if (file.links && file.links.length) {
+                const linksWrapper = document.createElement('div');
+                linksWrapper.className = 'file-links';
+                file.links.forEach((id) => {
+                    const target = nodes.find((n) => n.id === id);
+                    if (!target) return;
+                    const badge = document.createElement('span');
+                    badge.dataset.target = id;
+                    badge.textContent = `Conecta a ${target.name}`;
+                    badge.addEventListener('click', () => setView(id));
+                    linksWrapper.appendChild(badge);
+                });
+                details.appendChild(linksWrapper);
+            }
+            return details;
+        }
+
+        // ===== Renderers =====
+        function renderOverview(filter = '') {
+            content.innerHTML = '';
+            const normalized = filter.trim().toLowerCase();
+            const filtered = nodes.filter((node) => {
+                if (!normalized) return true;
+                const haystack = [node.name, node.type, node.summary, node.dependsOn.join(' '), ...(node.files?.map((f) => `${f.path} ${f.description}`) ?? [])]
+                    .join(' ').toLowerCase();
+                return haystack.includes(normalized);
+            });
+            counter.textContent = `${filtered.length} de ${nodes.length} blocos`;
+            countChip.textContent = String(nodes.length);
+            if (filtered.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'empty-state';
+                empty.textContent = 'Nenhum bloco encontrado para este filtro.';
+                content.appendChild(empty);
+                return;
+            }
+            const grid = document.createElement('div');
+            grid.className = 'grid';
+            filtered.forEach((node) => grid.appendChild(renderNodeCard(node, filtered)));
+            content.appendChild(grid);
+        }
+
+        function renderNodeCard(node, visibleNodes = nodes) {
+            const card = document.createElement('article');
+            card.className = 'node-card';
+            card.dataset.nodeId = node.id;
+            card.id = `node-${node.id}`;
+
+            const header = document.createElement('header');
+            header.className = 'card-header';
+            const name = document.createElement('h2');
+            name.className = 'node-name';
+            name.textContent = node.name;
+            const type = document.createElement('span');
+            type.className = 'node-type';
+            type.textContent = node.type;
+            name.appendChild(type);
+            const summary = document.createElement('p');
+            summary.className = 'node-summary';
+            summary.textContent = node.summary;
+            header.appendChild(name);
+            header.appendChild(summary);
+            card.appendChild(header);
+
+            const dependsSection = document.createElement('div');
+            dependsSection.className = 'connections';
+            const dependsLabel = document.createElement('strong');
+            dependsLabel.textContent = 'Depende de';
+            dependsSection.appendChild(dependsLabel);
+            dependsSection.appendChild(buildConnectionTags(node.dependsOn));
+            card.appendChild(dependsSection);
+
+            const consumers = Array.from(reverseDeps.get(node.id) ?? []).filter((id) => visibleNodes.some((n) => n.id === id));
+            const consumersSection = document.createElement('div');
+            consumersSection.className = 'connections';
+            const consumersLabel = document.createElement('strong');
+            consumersLabel.textContent = 'Consumido por';
+            consumersSection.appendChild(consumersLabel);
+            consumersSection.appendChild(buildConnectionTags(consumers));
+            card.appendChild(consumersSection);
+
+            if (node.files && node.files.length) node.files.forEach((file) => card.appendChild(createFileDetails(node, file)));
+            return card;
+        }
+
+        function renderDetail(nodeId) {
+            const node = nodes.find(n => n.id === nodeId);
+            if (!node) return;
+            content.innerHTML = '';
+            counter.textContent = `1 de ${nodes.length} blocos`;
+            const card = renderNodeCard(node, [node]);
+            card.classList.add('is-highlighted');
+            content.appendChild(card);
+        }
+
+        // ===== Menu =====
+        function buildMenu(listFilter = '') {
+            menuList.innerHTML = '';
+            const q = listFilter.trim().toLowerCase();
+            nodes
+                .filter(n => !q || `${n.name} ${n.type}`.toLowerCase().includes(q))
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .forEach((n) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'menu-item';
+                    btn.dataset.nodeId = n.id;
+                    btn.innerHTML = `<span>${n.name}</span><span class="chip">${n.type}</span>`;
+                    btn.addEventListener('click', () => setView(n.id));
+                    menuList.appendChild(btn);
+                });
+            syncMenuAria();
+        }
+
+        function syncMenuAria() {
+            document.querySelectorAll('.menu-item').forEach(el => {
+                const isCurrent = (el.dataset.action === currentView) || (el.dataset.nodeId === currentView);
+                el.setAttribute('aria-current', isCurrent ? 'true' : 'false');
+            });
+        }
+
+        function setView(view) {
+            currentView = view;
+            if (view === 'overview') {
+                renderOverview(filterInput.value || '');
+            } else {
+                renderDetail(view);
+            }
+            syncMenuAria();
+            history.replaceState(null, '', view === 'overview' ? '#' : `#${view}`);
+        }
+
+        // ===== Eventos =====
+        filterInput.addEventListener('input', (e) => {
+            if (currentView !== 'overview') setView('overview');
+            renderOverview(e.target.value || '');
+        });
+        menuSearch.addEventListener('input', (e) => buildMenu(e.target.value || ''));
+        document.querySelector('[data-action="overview"]').addEventListener('click', () => setView('overview'));
+
+        // ===== Teclado: j/k navega na lista; Enter abre detalhe =====
+        let menuIndex = 0;
+        function focusMenuItem(i) {
+            const items = [...menuList.querySelectorAll('.menu-item')];
+            if (!items.length) return;
+            menuIndex = (i + items.length) % items.length;
+            items[menuIndex].focus();
+        }
+        document.addEventListener('keydown', (e) => {
+            const items = [...menuList.querySelectorAll('.menu-item')];
+            if (!items.length) return;
+            if (e.key === 'j') { e.preventDefault(); focusMenuItem(menuIndex + 1); }
+            if (e.key === 'k') { e.preventDefault(); focusMenuItem(menuIndex - 1); }
+            if (e.key === 'Enter' && document.activeElement?.classList.contains('menu-item')) {
+                const id = document.activeElement.dataset.nodeId;
+                if (id) setView(id);
+            }
+            if (e.key === '/' && document.activeElement !== menuSearch) { e.preventDefault(); menuSearch.focus(); }
+        });
+
+        // ===== Bootstrap =====
+        buildMenu('');
+        const initial = location.hash.replace('#', '');
+        setView(initial && nodes.some(n => n.id === initial) ? initial : 'overview');
+    </script>
+</body>
+
+</html>

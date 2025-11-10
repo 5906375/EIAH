@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Comparativo de Planos – Interativo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0B1020;
+            --card: #0F172A;
+            --muted: #6B7280;
+            --line: #334155;
+            --brand: #5B8CFF;
+            --ok: #22C55E;
+            --accent: #F59E0B
+        }
+
+        body {
+            font-family: Inter, system-ui, Segoe UI, Roboto, Helvetica, Arial
+        }
+
+        .title {
+            font-family: 'Space Grotesk', Inter, system-ui
+        }
+
+        .shadow-soft {
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .35)
+        }
+
+        .table-sticky thead th {
+            position: sticky;
+            top: 0;
+            background: #0F172A;
+            z-index: 5
+        }
+
+        .tooltip {
+            position: relative
+        }
+
+        .tooltip:hover .tip {
+            opacity: 1;
+            transform: translateY(0)
+        }
+
+        .tip {
+            transition: .2s;
+            opacity: 0;
+            transform: translateY(6px)
+        }
+
+        .cell-badge {
+            display: inline-block;
+            padding: .15rem .45rem;
+            border: 1px solid #334155;
+            border-radius: .5rem;
+            background: #0B1222
+        }
+
+        @media print {
+
+            header,
+            #controls {
+                display: none
+            }
+
+            body {
+                background: #fff;
+                color: #111
+            }
+
+            table {
+                font-size: 12px
+            }
+        }
+    </style>
+</head>
+
+<body class="min-h-screen bg-[var(--bg)] text-slate-100">
+    <header class="px-6 md:px-10 py-8">
+        <h1 class="title text-3xl md:text-4xl font-bold">Comparativo de Planos – EIAH</h1>
+        <p class="text-slate-300 mt-2">Tabela interativa por tópico e descrição de cada plano. Filtre, oculte colunas,
+            exporte CSV/JSON ou imprima.</p>
+    </header>
+
+    <main class="px-6 md:px-10 pb-24">
+        <!-- Controles -->
+        <section id="controls" class="grid md:grid-cols-3 gap-3 md:gap-4 mb-4 items-end">
+            <div class="col-span-1">
+                <label for="search" class="text-sm text-slate-300">Busca por tópico/termo</label>
+                <input id="search" type="search" placeholder="Pesquisar..."
+                    class="w-full mt-1 bg-[var(--card)] border border-[var(--line)] rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-[var(--brand)]" />
+                <p id="count" class="text-xs text-slate-400 mt-1" role="status" aria-live="polite"></p>
+            </div>
+            <div class="col-span-2 flex flex-wrap items-end gap-2 md:justify-end">
+                <div class="tooltip">
+                    <button id="btn-export"
+                        class="px-4 py-2.5 rounded-xl bg-[var(--brand)] text-white font-semibold hover:opacity-95 shadow-soft">Exportar
+                        CSV</button>
+                    <div
+                        class="tip absolute left-0 mt-1 text-xs text-slate-300 bg-[var(--card)] border border-[var(--line)] px-2 py-1 rounded">
+                        Baixa o comparativo atual</div>
+                </div>
+                <button id="btn-json"
+                    class="px-4 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 font-semibold">Exportar JSON</button>
+                <button id="btn-print"
+                    class="px-4 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 font-semibold">Imprimir</button>
+                <details class="px-3 py-2 rounded-xl bg-[var(--card)] border border-[var(--line)]">
+                    <summary class="cursor-pointer font-semibold">Colunas</summary>
+                    <div class="mt-2 flex flex-wrap gap-3 text-sm">
+                        <label class="inline-flex items-center gap-2"><input data-col="Free" type="checkbox"
+                                class="toggle-col accent-[var(--brand)]" checked>Free</label>
+                        <label class="inline-flex items-center gap-2"><input data-col="Starter" type="checkbox"
+                                class="toggle-col accent-[var(--brand)]" checked>Starter</label>
+                        <label class="inline-flex items-center gap-2"><input data-col="Pro" type="checkbox"
+                                class="toggle-col accent-[var(--brand)]" checked>Pro</label>
+                        <label class="inline-flex items-center gap-2"><input data-col="Scale" type="checkbox"
+                                class="toggle-col accent-[var(--brand)]" checked>Scale</label>
+                        <label class="inline-flex items-center gap-2"><input data-col="Business" type="checkbox"
+                                class="toggle-col accent-[var(--brand)]" checked>Business</label>
+                        <label class="inline-flex items-center gap-2"><input data-col="Enterprise" type="checkbox"
+                                class="toggle-col accent-[var(--brand)]" checked>Enterprise</label>
+                    </div>
+                </details>
+                <button id="btn-reset" class="px-3 py-2 rounded-xl border border-[var(--line)]">Resetar</button>
+            </div>
+        </section>
+
+        <!-- Tabela -->
+        <div class="rounded-2xl overflow-hidden border border-[var(--line)] bg-[var(--card)]">
+            <div class="overflow-x-auto table-sticky">
+                <table id="plansTable" class="min-w-full text-sm">
+                    <thead>
+                        <tr class="text-slate-300 border-b border-[var(--line)]">
+                            <th scope="col" class="text-left p-3 md:p-4 w-56">
+                                <div class="flex items-center gap-2">
+                                    <span>Tópico</span>
+                                    <button id="sortTopic" aria-label="Ordenar por tópico" aria-live="polite"
+                                        class="text-xs px-2 py-1 border border-[var(--line)] rounded cell-badge">Ordenar ▲</button>
+                                </div>
+                            </th>
+                            <th scope="col" data-col="Free" class="p-3 md:p-4 text-left">Free</th>
+                            <th scope="col" data-col="Starter" class="p-3 md:p-4 text-left">Starter</th>
+                            <th scope="col" data-col="Pro" class="p-3 md:p-4 text-left">Pro</th>
+                            <th scope="col" data-col="Scale" class="p-3 md:p-4 text-left">Scale</th>
+                            <th scope="col" data-col="Business" class="p-3 md:p-4 text-left">Business</th>
+                            <th scope="col" data-col="Enterprise" class="p-3 md:p-4 text-left">Enterprise</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbody" class="divide-y divide-[var(--line)]"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <p class="text-xs text-slate-400 mt-3">
+            Resumo consolidado. “Scale” insere degrau entre Pro e Business. Preços e quotas conforme remodelagem mais
+            recente.
+        </p>
+
+        <section class="mt-10 space-y-4 rounded-2xl border border-[var(--line)] bg-[var(--card)] p-6 shadow-soft">
+            <h2 class="title text-2xl font-semibold text-slate-100">Melhorias sugeridas</h2>
+            <ul class="list-disc space-y-3 pl-6 text-slate-300">
+                <li><strong>Excedentes</strong>: blocos de 100/500 runs — Starter R$29/100, Pro R$25/100, Scale
+                    R$23/100.</li>
+                <li><strong>Anual</strong>: -15% (Starter/Pro/Scale) e -18% (Business) + bundles de ações (+2.000 por
+                    R$120/mês no anual Business).</li>
+                <li><strong>Scale</strong>: 1.000 runs, 2.000 ações, retenção 60d, webhooks básicos, suporte ≤24h.</li>
+                <li><strong>Consultoria</strong>: 5h R$690 | 10h R$1.290 para Starter/Pro/Scale.</li>
+                <li><strong>Agente</strong>: Medium (Starter/Pro/Scale), Core (Business), Guardian (Enterprise).</li>
+            </ul>
+        </section>
+    </main>
+
+    <script>
+        (function () {
+            const STORAGE = {
+                query: "plans.v3.query",
+                cols: "plans.v3.cols"
+            };
+            const allColumns = ["Free", "Starter", "Pro", "Scale", "Business", "Enterprise"];
+
+            function loadVisibleCols() {
+                try {
+                    const raw = JSON.parse(localStorage.getItem(STORAGE.cols) || "null");
+                    if (Array.isArray(raw) && raw.length > 0) {
+                        return raw.filter((col) => allColumns.includes(col));
+                    }
+                } catch { /* ignore corrupted storage */ }
+                return allColumns.slice();
+            }
+
+            function saveVisibleCols(cols) {
+                localStorage.setItem(STORAGE.cols, JSON.stringify(cols));
+            }
+
+            function sanitize(text) {
+                return String(text ?? "").trim();
+            }
+
+            const rows = [
+                { topic: "Preço", values: { Free: "R$ 0", Starter: "R$ 49/mês", Pro: "R$ 149/mês", Scale: "R$ 299/mês", Business: "R$ 599/mês", Enterprise: "Sob proposta" } },
+                { topic: "Preço anual (-%)", values: { Free: "—", Starter: "R$ 499/ano (-15%)", Pro: "R$ 1.519/ano (-15%)", Scale: "R$ 3.039/ano (-15%)", Business: "R$ 5.899/ano (-18%)", Enterprise: "Sob proposta" } },
+                { topic: "Runs/mês", values: { Free: "20", Starter: "150", Pro: "500", Scale: "1.000", Business: "2.000", Enterprise: "10k+" } },
+                { topic: "Ações externas incluídas", values: { Free: "0", Starter: "150", Pro: "1.000", Scale: "2.000", Business: "5.000", Enterprise: "25k+" } },
+                { topic: "Add-on excedentes", values: { Free: "—", Starter: "Pacotes 100/500 runs", Pro: "Pacotes 100/500 runs", Scale: "Pacotes 100/500 runs", Business: "Custom", Enterprise: "Sob proposta" } },
+                { topic: "Preço excedente /100 runs", values: { Free: "—", Starter: "R$ 29", Pro: "R$ 25", Scale: "R$ 23", Business: "Custom", Enterprise: "Sob proposta" } },
+                { topic: "Bundles de ações", values: { Free: "—", Starter: "—", Pro: "—", Scale: "—", Business: "+2.000 por R$ 120/mês (anual)", Enterprise: "Sob proposta" } },
+                { topic: "Agentes / Formulários", values: { Free: "2 agentes / 1 formulário", Starter: "5 agentes / 3 formulários", Pro: "Todos / Ilimitado", Scale: "Todos / Ilimitado", Business: "Todos / Ilimitado", Enterprise: "Todos / Ilimitado" } },
+                { topic: "Export / Dados", values: { Free: "—", Starter: "CSV", Pro: "CSV/JSON + API", Scale: "CSV/JSON + API", Business: "Exports + Webhooks", Enterprise: "Datalake/ETL (Parquet/CSV/JSON)" } },
+                { topic: "Webhooks", values: { Free: "—", Starter: "—", Pro: "Básico via API", Scale: "Básico (callback)", Business: "HMAC • retries • DLQ • idempotência", Enterprise: "HMAC • idempotência • retries • DLQ • auditoria" } },
+                { topic: "Logs & Retenção", values: { Free: "7 dias", Starter: "15 dias", Pro: "30 dias", Scale: "60 dias", Business: "90 dias", Enterprise: "180–365+ dias" } },
+                { topic: "Suporte", values: { Free: "Comunidade", Starter: "E-mail ≤48h", Pro: "E-mail ≤24h", Scale: "E-mail ≤24h + prioridade leve", Business: "Prioritário", Enterprise: "TAM + SLA (Sev1/Sev2)" } },
+                { topic: "ICP (para quem é)", values: { Free: "Makers iniciantes", Starter: "Squads pequenos; PM/dev jr–pleno; agências", Pro: "Squads em produção; PM/dev pleno", Scale: "Squads crescendo com integrações", Business: "Times de ops/dados; integrações críticas", Enterprise: "Empresas com compliance, SSO/SCIM, lake/ETL" } },
+                { topic: "Proposta de valor", values: { Free: "Do 0 ao 1º run em 7 min", Starter: "Fluxo em produção em 30 dias + mentoria", Pro: "Produção com confiança + Agente Core", Scale: "Escala inicial com webhooks básicos", Business: "Escala e confiabilidade com Exports + Webhooks", Enterprise: "Missão crítica com governança e SLA" } },
+                { topic: "Rituais/Coorte", values: { Free: "Kickstart • Template Drop • Ship Friday", Starter: "Mentoria semanal + WhatsApp", Pro: "Mentoria semanal + WhatsApp Pro + Office Hours", Scale: "Mentoria quinzenal + WA", Business: "Mentoria quinzenal + deep-dives + Slack", Enterprise: "Mentoria quinzenal + consultoria + QBR" } },
+                { topic: "Onboarding/TTV", values: { Free: "1º run em 7 min", Starter: "1º fluxo ≤30 min (meta 7d)", Pro: "≤30 min + 1 recomendação do Agente em 24h", Scale: "Wizard + callbacks básicos", Business: "Wizard: Webhook 10 min + Export 5–15 min", Enterprise: "Wizard + POC 4–6 sem (KPIs)" } },
+                { topic: "Checklists & Templates", values: { Free: "Template 7 min", Starter: "Checklist Starter + template produção", Pro: "Checklist Pro + Templates Pro #1/#2", Scale: "Templates Scale + webhook básico", Business: "Blueprints Webhook/Export + runbooks", Enterprise: "Blueprints Enterprise + arquitetura lake/ETL" } },
+                { topic: "Observabilidade & Replay", values: { Free: "Básico", Starter: "Boas práticas + troubleshooting", Pro: "Obs + Replay • Alertas", Scale: "Obs + Retry básico", Business: "Runbooks: P95/P99, DLQ, alarmes", Enterprise: "Métricas 2xx/4xx/5xx; auditoria" } },
+                { topic: "Conectores Datalake/ETL", values: { Free: "—", Starter: "—", Pro: "—", Scale: "—", Business: "BI/ETL via exports", Enterprise: "S3/GCS/Azure; Snowflake/BQ/Redshift; dbt/Glue/Airflow" } },
+                { topic: "SLA & Governança", values: { Free: "—", Starter: "≤48h úteis", Pro: "≤24h úteis", Scale: "≤24h úteis + prioridade leve", Business: "Prioritário (ex.: ≤12h)", Enterprise: "Sev1 ~4h • Sev2 ~12h • TAM • on-call" } },
+                { topic: "Consultoria sob demanda", values: { Free: "—", Starter: "5h R$ 690 • 10h R$ 1.290", Pro: "5h R$ 690 • 10h R$ 1.290", Scale: "5h R$ 690 • 10h R$ 1.290", Business: "Sob medida", Enterprise: "Incluída no SOW" } },
+                { topic: "Recomendação de agente", values: { Free: "—", Starter: "Medium", Pro: "Medium", Scale: "Medium", Business: "Core", Enterprise: "Guardian" } },
+                { topic: "Metas 30/60/90", values: { Free: "Ativação/rituais comunidade", Starter: "300→700→1.200 assinantes", Pro: "400→900→1.500 • D30≥80%", Scale: "100→250→500 contas • D30≥75%", Business: "120→250→400 contas • 75% webhook", Enterprise: "6 POCs ativas • ≥60% win • 6–10 contratos" } },
+                { topic: "Sinais de upgrade", values: { Free: "≥10–15 runs/sem por 2 sem", Starter: ">70% da franquia por 2 ciclos", Pro: "Runs>350 ou Ações>800/mês", Scale: "Uso de webhooks e retenção cheia", Business: "Runs>1.400 ou Ações>3.500/mês", Enterprise: "Exigência SSO/SCIM/ETL/SLA" } },
+            ];
+
+            const state = {
+                visibleCols: loadVisibleCols(),
+                sortAsc: true,
+                filteredRows: []
+            };
+
+            const searchInput = document.getElementById("search");
+            const countEl = document.getElementById("count");
+            const sortBtn = document.getElementById("sortTopic");
+            const tableHeaderRow = document.querySelector("#plansTable thead tr");
+            const tbody = document.getElementById("tbody");
+            const columnToggles = Array.from(document.querySelectorAll(".toggle-col"));
+
+            function setSortLabel() {
+                sortBtn.textContent = `Ordenar ${state.sortAsc ? "▲" : "▼"}`;
+                sortBtn.setAttribute("aria-sort", state.sortAsc ? "ascending" : "descending");
+            }
+
+            function syncToggles() {
+                columnToggles.forEach((cb) => {
+                    cb.checked = state.visibleCols.includes(cb.dataset.col || "");
+                });
+            }
+
+            function filterRows(query) {
+                const normalized = sanitize(query).toLowerCase();
+                if (!normalized) {
+                    return rows.slice();
+                }
+                return rows.filter((row) => {
+                    if (row.topic.toLowerCase().includes(normalized)) return true;
+                    return allColumns.some((col) => (row.values[col] || "").toLowerCase().includes(normalized));
+                });
+            }
+
+            function sortCurrent() {
+                const direction = state.sortAsc ? 1 : -1;
+                state.filteredRows.sort((a, b) => a.topic.localeCompare(b.topic, "pt-BR") * direction);
+            }
+
+            function renderHeader() {
+                while (tableHeaderRow.children.length > 1) {
+                    tableHeaderRow.removeChild(tableHeaderRow.lastElementChild);
+                }
+                state.visibleCols.forEach((col) => {
+                    const th = document.createElement("th");
+                    th.scope = "col";
+                    th.dataset.col = col;
+                    th.className = "p-3 md:p-4 text-left";
+                    th.textContent = col;
+                    tableHeaderRow.appendChild(th);
+                });
+            }
+
+            function renderBody() {
+                tbody.innerHTML = "";
+                state.filteredRows.forEach((row) => {
+                    const tr = document.createElement("tr");
+                    const topicCell = document.createElement("td");
+                    topicCell.className = "align-top p-3 md:p-4 font-semibold text-slate-200";
+                    topicCell.textContent = sanitize(row.topic);
+                    tr.appendChild(topicCell);
+
+                    state.visibleCols.forEach((col) => {
+                        const td = document.createElement("td");
+                        td.dataset.col = col;
+                        td.className = "p-3 md:p-4 text-slate-300";
+                        td.textContent = sanitize(row.values[col] ?? "—");
+                        tr.appendChild(td);
+                    });
+
+                    tbody.appendChild(tr);
+                });
+            }
+
+            function updateCount() {
+                countEl.textContent = `${state.filteredRows.length} linha(s)`;
+            }
+
+            function applyQuery(value) {
+                localStorage.setItem(STORAGE.query, value);
+                state.filteredRows = filterRows(value);
+                sortCurrent();
+                renderBody();
+                updateCount();
+            }
+
+            function ensureAtLeastOneColumn() {
+                if (state.visibleCols.length === 0) {
+                    state.visibleCols = allColumns.slice();
+                    syncToggles();
+                }
+            }
+
+            function debounce(fn, wait) {
+                let timer;
+                return (...args) => {
+                    clearTimeout(timer);
+                    timer = setTimeout(() => fn(...args), wait);
+                };
+            }
+
+            // === Initial render ===
+            const storedQuery = localStorage.getItem(STORAGE.query) || "";
+            searchInput.value = storedQuery;
+            syncToggles();
+            setSortLabel();
+            state.filteredRows = filterRows(storedQuery);
+            sortCurrent();
+            renderHeader();
+            renderBody();
+            updateCount();
+
+            // === Event bindings ===
+            const handleSearch = debounce(() => {
+                applyQuery(searchInput.value);
+            }, 140);
+            searchInput.addEventListener("input", handleSearch);
+
+            sortBtn.addEventListener("click", () => {
+                state.sortAsc = !state.sortAsc;
+                setSortLabel();
+                sortCurrent();
+                renderBody();
+            });
+
+            columnToggles.forEach((cb) => {
+                cb.addEventListener("change", () => {
+                    const col = cb.dataset.col || "";
+                    if (cb.checked) {
+                        if (!state.visibleCols.includes(col)) {
+                            state.visibleCols.push(col);
+                        }
+                    } else {
+                        state.visibleCols = state.visibleCols.filter((item) => item !== col);
+                        ensureAtLeastOneColumn();
+                    }
+                    saveVisibleCols(state.visibleCols);
+                    renderHeader();
+                    renderBody();
+                    updateCount();
+                });
+            });
+
+            function visibleColumns() {
+                ensureAtLeastOneColumn();
+                return state.visibleCols.slice();
+            }
+
+            function toCSV() {
+                const cols = ["Tópico", ...visibleColumns()];
+                const lines = [cols.join(",")];
+                state.filteredRows.forEach((row) => {
+                    const record = [row.topic, ...visibleColumns().map((col) => row.values[col] ?? "")];
+                    const serialized = record.map((value) =>
+                        `"${String(value ?? "").replace(/"/g, '""')}"`
+                    );
+                    lines.push(serialized.join(","));
+                });
+                return lines.join("\n");
+            }
+
+            function toJSON() {
+                const cols = visibleColumns();
+                const payload = {
+                    version: "v3",
+                    generated_at: new Date().toISOString(),
+                    visible_columns: cols,
+                    rows: state.filteredRows.map((row) => {
+                        const values = {};
+                        cols.forEach((col) => {
+                            values[col] = row.values[col] ?? "";
+                        });
+                        return { topic: row.topic, values };
+                    }),
+                };
+                return JSON.stringify(payload, null, 2);
+            }
+
+            document.getElementById("btn-export").addEventListener("click", () => {
+                const blob = new Blob([toCSV()], { type: "text/csv;charset=utf-8;" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "comparativo-planos-eiah.csv";
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+
+            document.getElementById("btn-json").addEventListener("click", () => {
+                const blob = new Blob([toJSON()], { type: "application/json;charset=utf-8;" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "comparativo-planos-eiah.json";
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+
+            document.getElementById("btn-reset").addEventListener("click", () => {
+                searchInput.value = "";
+                localStorage.removeItem(STORAGE.query);
+                localStorage.removeItem(STORAGE.cols);
+                state.visibleCols = allColumns.slice();
+                state.sortAsc = true;
+                syncToggles();
+                setSortLabel();
+                state.filteredRows = rows.slice();
+                sortCurrent();
+                renderHeader();
+                renderBody();
+                updateCount();
+            });
+
+            document.addEventListener("keydown", (event) => {
+                if (event.key === "/" && document.activeElement !== searchInput) {
+                    event.preventDefault();
+                    searchInput.focus();
+                }
+                if (event.key.toLowerCase() === "p") {
+                    event.preventDefault();
+                    window.print();
+                }
+                if (event.shiftKey && event.key.toLowerCase() === "r") {
+                    event.preventDefault();
+                    document.getElementById("btn-reset").click();
+                }
+            });
+
+            document.getElementById("btn-print").addEventListener("click", () => window.print());
+        })();
+    </script>
+</body>
+
+</html>
