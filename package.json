@@ -3,7 +3,9 @@
   "private": true,
   "workspaces": [
     "apps/api",
-    "apps/web"
+    "apps/web",
+    "apps/cli",
+    "apps/workers/*"
   ],
   "scripts": {
     "build": "pnpm -r --filter \"./apps/*\" run build",
