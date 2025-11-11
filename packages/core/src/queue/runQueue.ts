@@ -9,12 +9,15 @@ import type {
   QueueEventsOptions,
   Job,
 } from "bullmq";
+import { createLogger, bindLogger } from "../logging";
 
 type BullModule = typeof import("bullmq");
 
 const DEFAULT_QUEUE_NAME = "agent-run-executions";
 const DEFAULT_JOB_NAME = "execute-agent-run";
+const DLQ_SUFFIX = "-dlq";
 const DEFAULT_CONCURRENCY = Number(process.env.RUN_QUEUE_CONCURRENCY ?? "1");
+const queueLogger = createLogger({ component: "run-queue" });
 
 export type RunQueuePayload = {
   runId: string;
@@ -32,6 +35,7 @@ export type RunQueueConsumer = (payload: RunQueuePayload) => Promise<void> | voi
 
 let bullmqModulePromise: Promise<BullModule> | null = null;
 let queuePromise: Promise<Queue> | null = null;
+let dlqQueuePromise: Promise<Queue> | null = null;
 
 async function loadBullMQ(): Promise<BullModule> {
   if (!bullmqModulePromise) {
@@ -55,6 +59,14 @@ function resolveJobName() {
   return process.env.RUN_QUEUE_JOB_NAME ?? DEFAULT_JOB_NAME;
 }
 
+function resolveDlqQueueName() {
+  return `${resolveQueueName()}${DLQ_SUFFIX}`;
+}
+
+function resolveDlqJobName() {
+  return `${resolveJobName()}${DLQ_SUFFIX}`;
+}
+
 function resolveConnection(): ConnectionOptions | undefined {
   const url =
     process.env.RUN_QUEUE_REDIS_URL ??
@@ -69,8 +81,14 @@ function resolveConnection(): ConnectionOptions | undefined {
   let parsed: URL;
   try {
     parsed = new URL(url);
-  } catch {
-    console.warn(`[core/runQueue] Invalid Redis URL "${url}", falling back to BullMQ defaults.`);
+  } catch (error) {
+    queueLogger.warn(
+      {
+        err: error,
+        url,
+      },
+      "run-queue.invalid_redis_url"
+    );
     return undefined;
   }
 
@@ -116,6 +134,19 @@ async function getQueue() {
   return queuePromise;
 }
 
+async function getDlqQueue() {
+  if (!dlqQueuePromise) {
+    dlqQueuePromise = (async () => {
+      const { Queue } = await loadBullMQ();
+      const connection = resolveConnection();
+      const options: QueueOptions | undefined = connection ? { connection } : undefined;
+      return new Queue(resolveDlqQueueName(), options);
+    })();
+  }
+
+  return dlqQueuePromise;
+}
+
 export async function publishRun(
   payload: RunQueuePayload,
   options: RunQueuePublishOptions = {}
@@ -152,15 +183,39 @@ export async function consume(handler: RunQueueConsumer, options: { concurrency?
   );
 
   worker.on("error", (error: Error) => {
-    console.error("[core/runQueue] worker error", error);
+    queueLogger.error(
+      {
+        err: error,
+      },
+      "run-queue.worker_error"
+    );
   });
 
-  worker.on("failed", (job: Job<RunQueuePayload> | undefined, err: Error) => {
+  worker.on("failed", async (job: Job<RunQueuePayload> | undefined, err: Error) => {
     if (!job) {
-      console.error("[core/runQueue] job failed with missing job reference", err);
+      queueLogger.error(
+        {
+          err,
+        },
+        "run-queue.job_failed_missing"
+      );
       return;
     }
-    console.error(`[core/runQueue] job ${job.id} failed`, err);
+    bindLogger(queueLogger, {
+      jobId: job.id,
+      runId: job.data?.runId,
+      tenantId: job.data?.tenantId,
+      workspaceId: job.data?.workspaceId,
+    }).error(
+      {
+        err,
+      },
+      "run-queue.job_failed"
+    );
+
+    if (isFinalAttempt(job)) {
+      await moveJobToDlq(job, err);
+    }
   });
 
   return worker;
@@ -173,7 +228,12 @@ export async function createRunQueueEvents() {
   const events = new QueueEvents(resolveQueueName(), eventOptions);
 
   events.on("failed", ({ jobId, failedReason }: { jobId?: string; failedReason?: string }) => {
-    console.error(`[core/runQueue] job ${jobId ?? "unknown"} failed: ${failedReason ?? "unknown"}`);
+    bindLogger(queueLogger, { jobId }).error(
+      {
+        reason: failedReason ?? "unknown",
+      },
+      "run-queue.job_failed_event"
+    );
   });
 
   return events;
@@ -182,4 +242,98 @@ export async function createRunQueueEvents() {
 export function resetRunQueueCache() {
   bullmqModulePromise = null;
   queuePromise = null;
+  dlqQueuePromise = null;
+}
+
+function isFinalAttempt(job: Job) {
+  const maxAttempts = job.opts?.attempts ?? 1;
+  return job.attemptsMade >= maxAttempts;
+}
+
+async function moveJobToDlq(job: Job<RunQueuePayload>, err: Error) {
+  try {
+    const dlq = (await getDlqQueue()) as Queue<RunQueuePayload & Record<string, unknown>>;
+    await dlq.add(
+      resolveDlqJobName(),
+      {
+        ...job.data,
+        failedReason: err.message,
+        failedAt: new Date().toISOString(),
+        attemptsMade: job.attemptsMade,
+      },
+      {
+        removeOnComplete: true,
+      }
+    );
+  } catch (dlqError) {
+    queueLogger.error(
+      {
+        err: dlqError,
+        jobId: job.id,
+      },
+      "run-queue.dlq_enqueue_failed"
+    );
+  }
+}
+
+function jobCountsToObject(counts: Record<string, number | undefined>) {
+  return {
+    waiting: counts.waiting ?? 0,
+    active: counts.active ?? 0,
+    completed: counts.completed ?? 0,
+    failed: counts.failed ?? 0,
+    delayed: counts.delayed ?? 0,
+    paused: counts.paused ?? 0,
+    waitingChildren: counts["waiting-children"] ?? 0,
+  };
+}
+
+export async function drainRunQueue(options: { includeDelayed?: boolean } = {}) {
+  const queue = (await getQueue()) as Queue<RunQueuePayload>;
+  await queue.drain(options.includeDelayed ?? true);
+  await queue.clean(0, 1000, "failed");
+  await queue.clean(0, 1000, "completed");
+}
+
+export async function drainRunDlq(options: { includeDelayed?: boolean } = {}) {
+  const queue = (await getDlqQueue()) as Queue<RunQueuePayload>;
+  await queue.drain(options.includeDelayed ?? true);
+  await queue.clean(0, 1000, "failed");
+  await queue.clean(0, 1000, "completed");
+}
+
+export async function getRunQueueCounts() {
+  const queue = (await getQueue()) as Queue<RunQueuePayload>;
+  const counts = await queue.getJobCounts(
+    "waiting",
+    "waiting-children",
+    "active",
+    "completed",
+    "failed",
+    "delayed",
+    "paused"
+  );
+  return jobCountsToObject(counts);
+}
+
+export async function getRunDlqCounts() {
+  const queue = (await getDlqQueue()) as Queue<RunQueuePayload>;
+  const counts = await queue.getJobCounts(
+    "waiting",
+    "waiting-children",
+    "active",
+    "completed",
+    "failed",
+    "delayed",
+    "paused"
+  );
+  return jobCountsToObject(counts);
+}
+
+export async function probeRunQueue() {
+  const [primary, dlq] = await Promise.all([getRunQueueCounts(), getRunDlqCounts()]);
+  return {
+    queue: primary,
+    dlq,
+  };
 }

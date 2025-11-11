@@ -1,0 +1,94 @@
+name: Deploy Monorepo
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Ambiente de destino'
+        type: choice
+        options:
+          - staging
+          - production
+        default: staging
+        required: true
+      version:
+        description: 'Tag/versão do artefato a implantar (docker/NPM)'
+        required: true
+      component:
+        description: 'Componente padrão a implantar'
+        type: choice
+        options:
+          - api
+          - workers
+          - cli
+        default: api
+        required: true
+
+jobs:
+  deploy:
+    name: Deploy ${{ github.event.inputs.component }} → ${{ github.event.inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ format('deploy-{0}', github.event.inputs.environment) }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to GHCR (opcional)
+        if: secrets.REGISTRY_PAT != ''
+        env:
+          REGISTRY_PAT: ${{ secrets.REGISTRY_PAT }}
+        run: |
+          echo "$REGISTRY_PAT" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Selecionar script de deploy
+        env:
+          COMPONENT: ${{ github.event.inputs.component }}
+          TARGET_ENV: ${{ github.event.inputs.environment }}
+          RELEASE_VERSION: ${{ github.event.inputs.version }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ADMIN_API_TOKEN: ${{ secrets.ADMIN_API_TOKEN }}
+          BULLMQ_REDIS_URL: ${{ secrets.BULLMQ_REDIS_URL }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+        run: |
+          set -euo pipefail
+
+          echo "Iniciando deploy do componente $COMPONENT no ambiente $TARGET_ENV com versão $RELEASE_VERSION"
+
+          case "$COMPONENT" in
+            api)
+              if [ -z "${DATABASE_URL:-}" ]; then
+                echo "::error title=DATABASE_URL ausente::Configure DATABASE_URL no environment deploy-$TARGET_ENV"
+                exit 1
+              fi
+              if [ -z "${ADMIN_API_TOKEN:-}" ]; then
+                echo "::error title=ADMIN_API_TOKEN ausente::Configure ADMIN_API_TOKEN no environment deploy-$TARGET_ENV"
+                exit 1
+              fi
+              echo ">> Executar aqui o script/helm/ssh que faz rollout da API"
+              echo ">> Exemplo: ./infra/deploy/api.sh \"$TARGET_ENV\" \"$RELEASE_VERSION\""
+              ;;
+            workers)
+              if [ -z "${DATABASE_URL:-}" ]; then
+                echo "::error title=DATABASE_URL ausente::Configure DATABASE_URL no environment deploy-$TARGET_ENV"
+                exit 1
+              fi
+              if [ -z "${BULLMQ_REDIS_URL:-${REDIS_URL:-}}"
+              ]; then
+                echo "::error title=REDIS/BULLMQ ausente::Configure BULLMQ_REDIS_URL ou REDIS_URL no environment deploy-$TARGET_ENV"
+                exit 1
+              fi
+              echo ">> Executar aqui o deploy dos workers (fila, DLQ etc.)"
+              ;;
+            cli)
+              echo ">> Executar aqui o rollout/distribuição da CLI (ex.: publicar pacote interno, atualizar runners)"
+              ;;
+            *)
+              echo "::error title=Componente inválido::Valor recebido: $COMPONENT"
+              exit 1
+              ;;
+          esac
+
+          echo "Deploy finalizado (customize os comandos acima conforme sua infraestrutura)."

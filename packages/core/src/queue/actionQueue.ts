@@ -10,12 +10,15 @@ import {
   type QueueOptions,
   type WorkerOptions,
 } from "bullmq";
+import { createLogger, bindLogger } from "../logging";
 import type { ActionExecutionResult } from "../actions/actionRegistry";
 
 const DEFAULT_QUEUE_NAME = process.env.ACTION_QUEUE_NAME ?? "agent-action-executions";
 const DEFAULT_JOB_NAME = process.env.ACTION_QUEUE_JOB_NAME ?? "execute-agent-action";
+const DLQ_SUFFIX = "-dlq";
 const DEFAULT_CONCURRENCY = Number(process.env.ACTION_QUEUE_CONCURRENCY ?? "2");
 const DEFAULT_CONNECTION_URL = "redis://127.0.0.1:6379/0";
+const actionQueueLogger = createLogger({ component: "action-queue" });
 
 export type ActionQueuePayload = {
   action: string;
@@ -45,6 +48,15 @@ const connectionUrl =
 const connection: ConnectionOptions = createConnectionOptions(connectionUrl);
 
 let queuePromise: Promise<Queue> | null = null;
+let dlqQueuePromise: Promise<Queue> | null = null;
+
+function resolveDlqQueueName() {
+  return `${DEFAULT_QUEUE_NAME}${DLQ_SUFFIX}`;
+}
+
+function resolveDlqJobName() {
+  return `${DEFAULT_JOB_NAME}${DLQ_SUFFIX}`;
+}
 
 function createConnectionOptions(url: string): ConnectionOptions {
   try {
@@ -78,10 +90,12 @@ function createConnectionOptions(url: string): ConnectionOptions {
 
     return options;
   } catch (error) {
-    console.warn(
-      `[core/actionQueue] Invalid Redis URL "${url}", using default connection. (${error instanceof Error ? error.message : String(
-        error
-      )})`
+    actionQueueLogger.warn(
+      {
+        err: error,
+        url,
+      },
+      "action-queue.invalid_redis_url"
     );
     return createConnectionOptions(DEFAULT_CONNECTION_URL);
   }
@@ -97,6 +111,18 @@ async function getQueue() {
   }
 
   return queuePromise;
+}
+
+async function getDlqQueue() {
+  if (!dlqQueuePromise) {
+    dlqQueuePromise = Promise.resolve(
+      new Queue(resolveDlqQueueName(), {
+        connection,
+      } satisfies QueueOptions)
+    );
+  }
+
+  return dlqQueuePromise;
 }
 
 export async function publishAction(
@@ -140,15 +166,40 @@ export async function consumeActions(
   );
 
   worker.on("error", (error: Error) => {
-    console.error("[core/actionQueue] worker error", error);
+    actionQueueLogger.error(
+      {
+        err: error,
+      },
+      "action-queue.worker_error"
+    );
   });
 
-  worker.on("failed", (job: Job | undefined, err: Error) => {
+  worker.on("failed", async (job: Job<ActionQueuePayload> | undefined, err: Error) => {
     if (!job) {
-      console.error("[core/actionQueue] job failed without reference", err);
+      actionQueueLogger.error(
+        {
+          err,
+        },
+        "action-queue.job_failed_missing"
+      );
       return;
     }
-    console.error(`[core/actionQueue] job ${job.id} failed`, err);
+    bindLogger(actionQueueLogger, {
+      jobId: job.id,
+      runId: job.data?.runId,
+      tenantId: job.data?.tenantId,
+      workspaceId: job.data?.workspaceId,
+      actionKind: job.data?.action,
+    }).error(
+      {
+        err,
+      },
+      "action-queue.job_failed"
+    );
+
+    if (isFinalAttempt(job)) {
+      await moveActionJobToDlq(job, err);
+    }
   });
 
   return worker;
@@ -160,8 +211,11 @@ export async function createActionQueueEvents() {
   } satisfies QueueEventsOptions);
 
   events.on("failed", ({ jobId, failedReason }: { jobId?: string; failedReason?: string }) => {
-    console.error(
-      `[core/actionQueue] job ${jobId ?? "unknown"} failed: ${failedReason ?? "unknown"}`
+    bindLogger(actionQueueLogger, { jobId }).error(
+      {
+        reason: failedReason ?? "unknown",
+      },
+      "action-queue.job_failed_event"
     );
   });
 
@@ -170,6 +224,103 @@ export async function createActionQueueEvents() {
 
 export function resetActionQueueCache() {
   queuePromise = null;
+  dlqQueuePromise = null;
+}
+
+function isFinalAttempt(job: Job) {
+  const maxAttempts = job.opts?.attempts ?? 1;
+  return job.attemptsMade >= maxAttempts;
+}
+
+async function moveActionJobToDlq(job: Job<ActionQueuePayload>, err: Error) {
+  try {
+    const dlq = (await getDlqQueue()) as Queue<ActionQueuePayload & Record<string, unknown>>;
+    await dlq.add(
+      resolveDlqJobName(),
+      {
+        ...job.data,
+        failedReason: err.message,
+        failedAt: new Date().toISOString(),
+        attemptsMade: job.attemptsMade,
+      },
+      {
+        removeOnComplete: true,
+      }
+    );
+  } catch (dlqError) {
+    actionQueueLogger.error(
+      {
+        err: dlqError,
+        jobId: job.id,
+      },
+      "action-queue.dlq_enqueue_failed"
+    );
+  }
+}
+
+function countsToObject(counts: Record<string, number | undefined>) {
+  return {
+    waiting: counts.waiting ?? 0,
+    active: counts.active ?? 0,
+    completed: counts.completed ?? 0,
+    failed: counts.failed ?? 0,
+    delayed: counts.delayed ?? 0,
+    paused: counts.paused ?? 0,
+    waitingChildren: counts["waiting-children"] ?? 0,
+  };
+}
+
+export async function drainActionQueue(options: { includeDelayed?: boolean } = {}) {
+  const queue = (await getQueue()) as Queue<ActionQueuePayload>;
+  await queue.drain(options.includeDelayed ?? true);
+  await queue.clean(0, 1000, "failed");
+  await queue.clean(0, 1000, "completed");
+}
+
+export async function drainActionDlq(options: { includeDelayed?: boolean } = {}) {
+  const queue = (await getDlqQueue()) as Queue<ActionQueuePayload>;
+  await queue.drain(options.includeDelayed ?? true);
+  await queue.clean(0, 1000, "failed");
+  await queue.clean(0, 1000, "completed");
+}
+
+export async function getActionQueueCounts() {
+  const queue = (await getQueue()) as Queue<ActionQueuePayload>;
+  const counts = await queue.getJobCounts(
+    "waiting",
+    "waiting-children",
+    "active",
+    "completed",
+    "failed",
+    "delayed",
+    "paused"
+  );
+  return countsToObject(counts);
+}
+
+export async function getActionDlqCounts() {
+  const queue = (await getDlqQueue()) as Queue<ActionQueuePayload>;
+  const counts = await queue.getJobCounts(
+    "waiting",
+    "waiting-children",
+    "active",
+    "completed",
+    "failed",
+    "delayed",
+    "paused"
+  );
+  return countsToObject(counts);
+}
+
+export async function probeActionQueue() {
+  const [queueCounts, dlqCounts] = await Promise.all([
+    getActionQueueCounts(),
+    getActionDlqCounts(),
+  ]);
+  return {
+    queue: queueCounts,
+    dlq: dlqCounts,
+  };
 }
 
 
