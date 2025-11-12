@@ -25,12 +25,12 @@ app.get("/health", async (_req, res) => {
   res.status(report.status === "ok" ? 200 : 503).json(report);
 });
 
+app.use("/api/ops", opsRouter);
 app.use("/api", billingRouter);
 app.use("/api", runsRouter);
 app.use("/api", agentsRouter);
 app.use("/api", defiRouter);
 app.use("/api", uploadsRouter);
-app.use("/api/ops", opsRouter);
 
 const port = process.env.PORT || 8080;
 const shouldStartWorker = (() => {

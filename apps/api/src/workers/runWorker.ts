@@ -9,6 +9,9 @@ import {
   publishAction,
   createActionQueueEvents,
   consume,
+  createLogger,
+  bindLogger,
+  withCostContext,
   type AgentRecommendationState,
   type RecommendationCandidate,
   type PreviousRun as EnginePreviousRun,
@@ -47,6 +50,7 @@ const DEFAULT_MEMORY_CONTENT_MAX_CHARS = 2000;
 
 let actionQueueEventsPromise: Promise<QueueEvents> | null = null;
 const memoryService = getMemoryService();
+const workerLogger = createLogger({ component: "run-worker" });
 
 function normalizeStoredAgentState(
   state: StoredRecommendationState | null | undefined
@@ -142,9 +146,22 @@ function createRunEventStoreAdapter(base: {
 export async function startRunQueueWorker() {
   return consume(async (payload) => {
     const { runId, tenantId, workspaceId, userId, agent, prompt, metadata } = payload;
+    const logger = bindLogger(workerLogger, {
+      runId,
+      tenantId,
+      workspaceId,
+      agentId: agent,
+    });
+    logger.info("run.worker.received");
 
     const profile = await getAgentProfile(agent);
     if (!profile) {
+      logger.warn(
+        {
+          reason: "agent_not_found",
+        },
+        "run.worker.aborted"
+      );
       await finalizeRunRecord({
         runId,
         tenantId,
@@ -176,6 +193,7 @@ export async function startRunQueueWorker() {
       status: "running",
       startedAt: new Date(),
     });
+    logger.info("run.worker.execution_started");
 
     const baseMetadata =
       metadata && typeof metadata === "object" && !Array.isArray(metadata)
@@ -431,6 +449,7 @@ export async function startRunQueueWorker() {
         tools: toolIdentifiers,
         workspaceId,
       });
+      const costAwareLogger = withCostContext(logger, estimate);
 
       let snapshot = executionResult as ExecutionSnapshot | null;
 
@@ -535,8 +554,22 @@ export async function startRunQueueWorker() {
           recommendationsGenerated: finalRecommendations?.recomendacoes.length ?? 0,
         },
       });
+      costAwareLogger.info(
+        {
+          tookMs: snapshot?.tookMs ?? Date.now() - startedAt,
+          recommendationsGenerated: finalRecommendations?.recomendacoes.length ?? 0,
+          toolsUsed: toolIdentifiers?.length ?? 0,
+        },
+        "run.worker.completed"
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : "Execution failed";
+      logger.error(
+        {
+          err: error,
+        },
+        "run.worker.failed"
+      );
 
       await finalizeRunRecord({
         runId,

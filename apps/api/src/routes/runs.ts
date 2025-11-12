@@ -3,7 +3,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { enforceTenant, TenantAwareRequest } from "../middlewares/enforceTenant";
 import { getAgentProfile } from "../services/agents";
-import { publishRun } from "@eiah/core";
+import { bindLogger, publishRun } from "@eiah/core";
 import { estimateCostCents } from "../services/billing";
 import { createRunRecord, finalizeRunRecord, getRun, listRuns } from "../services/runs";
 import { listRunEvents, recordRunEvent } from "../services/runEvents";
@@ -193,6 +193,20 @@ runsRouter.post("/runs", async (req, res) => {
     },
   });
 
+  const runLogger = req.logger
+    ? bindLogger(req.logger, {
+        runId: run.id,
+        agent,
+        costCents: estimate,
+      })
+    : undefined;
+  runLogger?.info(
+    {
+      metadataKeys: metadata && typeof metadata === "object" ? Object.keys(metadata) : [],
+    },
+    "run.request_received"
+  );
+
   try {
     await publishRun({
       runId: run.id,
@@ -205,6 +219,12 @@ runsRouter.post("/runs", async (req, res) => {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Failed to enqueue run";
+    runLogger?.error(
+      {
+        err: error,
+      },
+      "run.enqueue_failed"
+    );
 
     await finalizeRunRecord({
       runId: run.id,
@@ -251,6 +271,12 @@ runsRouter.post("/runs", async (req, res) => {
       estimateCostCents: estimate,
     },
   });
+  runLogger?.info(
+    {
+      queue: "runQueue",
+    },
+    "run.enqueued"
+  );
 
   return res.status(202).json({
     ok: true,

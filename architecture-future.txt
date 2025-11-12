@@ -30,6 +30,29 @@ Memória, conhecimento e dados
 Automação operacional
 - `apps/cli` expõe comandos: `eiah tenants create/rotate`, `eiah tokens issue/revoke`, `eiah runs replay`, `eiah billing reconcile`, `eiah queue drain`, `eiah memory backfill`.
 - `apps/api/scripts/*` hospedam playbooks idempotentes (seed, migrations check, smoke tests). Pipelines CI validam lint/test/build, `prisma migrate diff`, generation de tipos, testes e2e (Playwright/Temporal harness).
+- GitHub Actions mantém workflow base (`.github/workflows/ci.yml`) com Node 20 + PNPM cacheado, executando `pnpm install --frozen-lockfile` e `pnpm build` (que orquestra `apps/*`). Builds do web fixam `TMPDIR`/`TEMP` para `/tmp`, evitando dependência do filesystem Windows e garantindo consistência entre WSL e runners Linux.
+- **Status Fase 1 (Hardening operacional)** – concluído. DLQs com coleta/drenagem pronta (`packages/core/queue/*` + `/api/ops/queues/drain`), health-check profundo exposto (`/health`), logger estruturado com Pino em todos os workers, plano de incidentes amarrado ao novo workflow `deploy.yml` (staging/production com approvals) e CLI mínima entregue (`eiah tokens:issue`, `eiah queue:drain` operando via `/api/ops/tokens`). Próximas fases passam a focar em Fase 2 (expansão agentic) e Fase 3 (FinOps/experiência).
+
+Operação GitHub e colaboração
+- Branching padronizado (`main`, `release/*`, `feat/*`) com proteção obrigatória: status checks, revisão dupla CODEOWNERS e bloqueio de force-push, garantindo audit trail completo no GitHub.
+- Workflows separados (`ci.yml`, `release.yml`, `infra.yml`) reutilizam `workflow_call` para compartilhar setup PNPM/Prisma, deploys via GitHub Environments (staging/prod) e gates manuais antes de promover artefatos sensíveis.
+- GitHub Actions usa cache incremental (PNPM store, Prisma client, Playwright) e matriz (`node-version`, `app`) para acelerar feedback; artefatos publicados no GitHub Packages (`ghcr.io/eiah/*`) mantêm SBOM gerado por `pnpm dlx @cyclonedx/cdxgen`.
+- GitHub Advanced Security habilita CodeQL para `ts`/`js` + secret scanning obrigatório; Dependabot atualiza `package.json`/`pnpm-lock.yaml` semanalmente com labels automáticas e require da squad responsável.
+- GitHub Projects mantém roadmap cross-team com automações (states `Descoberta` → `Em progresso` → `QA/Validar` → `Done`), conectando issues épicas às milestones trimestrais.
+- `release.yml` dispara via `workflow_dispatch` ou tags `v*`, resolve versão única e publica `apps/cli` no npm (`environment: release-cli`) e imagens `apps/api`/`apps/workers` no GHCR (`release-api`/`release-workers`) com Buildx + login automático; jobs só executam se os respectivos `package.json`/`Dockerfile` existirem, evitando falhas até os artefatos estarem prontos.
+- `apps/cli` está registrado no workspace PNPM com pacote `@eiah/cli` (stub do comando `eiah`), garantindo superfície pronta para publicar quando `NPM_TOKEN` for provisionado.
+- Dockerfiles multi-stage (`apps/api/Dockerfile`, `apps/workers/action-runner/Dockerfile`) padronizam build com PNPM 9, cópia seletiva de artefatos e execução como usuário `node`, facilitando push para GHCR.
+
+Próximos passos focados em GitHub
+1. Criar `release.yml` com publish automatizado para `apps/cli` (npm) e imagens `apps/api` + `apps/workers` no GHCR, usando Environments para segurar deploy.
+2. Adotar `actions/cache` + `setup-node` com `cache-dependency-path` multi-lockfile para reduzir o tempo do pipeline atual.
+3. Habilitar `required_conversation_resolution` e template de PR (checklist de monitoria, FinOps, migrações) para elevar qualidade antes do merge.
+4. Configurar CodeQL custom queries focadas em uso de `traceId`, mascaramento e guardrails, garantindo alinhamento segurança/compliance.
+5. Sincronizar GitHub Projects ↔ Roadmap macro via GitHub Automations/`github-project-automation-plus` para manter estados em tempo real.
+
+Próximos passos imediatos para destravar releases
+- Provisionar secrets `NPM_TOKEN` e `REGISTRY_PAT` no repositório, vinculando-os aos environments `release-cli`, `release-api` e `release-workers` com approvals obrigatórios.
+- Revisar `release.yml` em ambiente de staging (workflow_dispatch) para validar resolução de versão, login no npm/GHCR e publicação controlada antes do primeiro release oficial.
 
 Segurança, governança e compliance
 - Tokens (`ApiToken`, `ServiceToken`) com escopos granulares, expiração rotativa, binding a IP/rate-limit e rotação automática integrada ao Secret Manager.
@@ -39,7 +62,8 @@ Segurança, governança e compliance
 - Auditoria exportável: `/api/audit/runs` e CLI entregam trilhas assinadas com verificações de integridade.
 
 Observabilidade e confiabilidade
-- Logging estruturado (Pino) com enriquecimento automático (tenant/workspace/agent/runId/costCents) enviado via Fluent Bit → Loki/Elastic.
+- Logging estruturado (Pino) com enriquecimento automático (tenant/workspace/agent/runId/costCents) enviado via Fluent Bit → Loki/Elastic. `LoggerFactory` único injeta metadados default (traceId, tenantId, workspaceId, costCents, actionKind) em API/Workers/CLI via middlewares (`requestLogger`, `workerContextLogger`) e expõe hooks (`withCostContext`) para atualizar custos incrementais em tempo real.
+- Próximos passos: configurar transporte via Fluent Bit/Vector para shippar `stdout` dos serviços para Loki/Elastic e validar a indexação de `service`, `tenantId`, `workspaceId`, `runId`, `costCents`, `actionKind` para habilitar dashboards/alertas FinOps/SRE. Em paralelo, propagar a mesma factory de logger para `apps/api/scripts/*` e futuro `apps/cli`, oferecendo flags (`--trace-id`, `--tenant-id`) para preservar metadados em toda a superfície operacional.
 - Métricas OTel → Prometheus/Tempo: latência por agente, throughput por fila, sucessos/erros por ferramenta, uso de memória, custo por run.
 - Tracing distribuído une API, orquestrador e workers; `traceId` compartilhado com billing e incidentes.
 - Health multimodal (`/health` + `/health/queues` + `/health/memory`), SLOs (p95 run < X min, erro < Y%) e modo `degraded` com fallback de modelo/quotas.

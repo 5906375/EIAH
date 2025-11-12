@@ -11,4 +11,5 @@ export * from "./memory/stores/inMemoryLongTermStore";
 export * from "./memory/stores/inMemoryVectorStore";
 export * from "./recommendations/statefulRecommendationEngine";
 export * from "./types";
+export * from "./logging";
 

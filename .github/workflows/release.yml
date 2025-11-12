@@ -103,6 +103,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+    environment:
+      name: release-api
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -136,6 +138,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+    environment:
+      name: release-workers
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

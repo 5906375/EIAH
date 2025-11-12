@@ -1,25 +1,99 @@
 import { randomBytes } from "crypto";
 import { PrismaClient } from "@prisma/client";
+import { bindLogger, createLogger, ensureTraceId } from "@eiah/core";
 
 const prisma = new PrismaClient();
 
+type CliOptions = {
+  tenantId?: string;
+  workspaceId?: string;
+  userEmail?: string;
+  traceId?: string;
+};
+
+function parseArgs(): CliOptions {
+  const options: CliOptions = {};
+  const positional: string[] = [];
+  const args = process.argv.slice(2);
+  for (let i = 0; i < args.length; i += 1) {
+    const arg = args[i];
+    if (arg.startsWith("--")) {
+      const [key, valueFromEq] = arg.split("=", 2);
+      const normalizedKey = key.replace(/^--/, "");
+      const nextValue = valueFromEq ?? args[i + 1];
+      if (valueFromEq === undefined && nextValue && !nextValue.startsWith("--")) {
+        i += 1;
+      }
+      const finalValue = valueFromEq ?? nextValue;
+      switch (normalizedKey) {
+        case "tenant-id":
+        case "tenantId":
+          options.tenantId = finalValue;
+          break;
+        case "workspace-id":
+        case "workspaceId":
+          options.workspaceId = finalValue;
+          break;
+        case "user-email":
+        case "userEmail":
+          options.userEmail = finalValue;
+          break;
+        case "trace-id":
+        case "traceId":
+          options.traceId = finalValue;
+          break;
+        default:
+          positional.push(arg);
+      }
+    } else {
+      positional.push(arg);
+    }
+  }
+
+  if (!options.tenantId && positional[0]) {
+    options.tenantId = positional[0];
+  }
+  if (!options.workspaceId && positional[1]) {
+    options.workspaceId = positional[1];
+  }
+  if (!options.userEmail && positional[2]) {
+    options.userEmail = positional[2];
+  }
+
+  return options;
+}
+
 async function main() {
-  const [, , tenantId, workspaceId, userEmail] = process.argv;
+  const { tenantId, workspaceId, userEmail, traceId } = parseArgs();
+  const logger = bindLogger(
+    createLogger({ component: "script.createApiToken" }),
+    {
+      traceId: ensureTraceId(traceId),
+      tenantId,
+      workspaceId,
+    }
+  );
 
   if (!tenantId || !workspaceId) {
-    console.error("Usage: pnpm tsx scripts/createApiToken.ts <tenantId> <workspaceId> [userEmail]");
+    logger.error(
+      {
+        usage:
+          "Usage: pnpm tsx scripts/createApiToken.ts --tenant-id <tenantId> --workspace-id <workspaceId> [--user-email <email>] [--trace-id <trace>]",
+      },
+      "script.invalid_arguments"
+    );
     process.exit(1);
   }
 
   const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
   if (!tenant) {
-    console.error(`Tenant ${tenantId} not found.`);
+    logger.error({ tenantId }, "script.tenant_not_found");
     process.exit(1);
   }
 
   const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId } });
   if (!workspace || workspace.tenantId !== tenantId) {
-    console.error(`Workspace ${workspaceId} not found for tenant ${tenantId}.`);
+    logger.error({ workspaceId }, "script.workspace_not_found");
     process.exit(1);
   }
 
@@ -30,7 +104,7 @@ async function main() {
     });
 
     if (!user) {
-      console.error(`User ${userEmail} not found in tenant ${tenantId}.`);
+      logger.error({ userEmail }, "script.user_not_found");
       process.exit(1);
     }
 
@@ -49,25 +123,22 @@ async function main() {
     },
   });
 
-  console.log(
-    JSON.stringify(
-      {
-        token: created.token,
-        tokenId: created.id,
-        tenantId: created.tenantId,
-        workspaceId: created.workspaceId,
-        userId: created.userId,
-        expiresAt: created.expiresAt,
-      },
-      null,
-      2
-    )
-  );
+  const output = {
+    token: created.token,
+    tokenId: created.id,
+    tenantId: created.tenantId,
+    workspaceId: created.workspaceId,
+    userId: created.userId,
+    expiresAt: created.expiresAt,
+  };
+  logger.info({ tokenId: created.id }, "script.token_created");
+  process.stdout.write(`${JSON.stringify(output, null, 2)}\n`);
 }
 
 main()
   .catch((err) => {
-    console.error("Failed to create token:", err);
+    const logger = createLogger({ component: "script.createApiToken" });
+    logger.error({ err }, "script.failed");
     process.exit(1);
   })
   .finally(async () => {

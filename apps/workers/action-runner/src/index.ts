@@ -1,49 +1,49 @@
-import { consumeActions, registerAllActions, executeRegisteredAction } from "@eiah/core";
+import {
+  consumeActions,
+  registerAllActions,
+  executeRegisteredAction,
+  createLogger,
+  bindLogger,
+} from "@eiah/core";
 import { pathToFileURL } from "node:url";
 
-function formatPayload(payload: unknown) {
-  if (payload === undefined || payload === null) {
-    return "";
-  }
-
-  if (typeof payload === "string") {
-    return payload;
-  }
-
-  try {
-    return JSON.stringify(payload);
-  } catch {
-    return String(payload);
-  }
-}
-
+const runnerLogger = createLogger({ component: "action-runner" });
 registerAllActions();
 
 export async function startActionRunner() {
-  console.log("[action-runner] starting worker");
+  runnerLogger.info("action-runner.starting");
 
   return consumeActions(async (payload, job) => {
-    const logger = (event: string, data?: Record<string, unknown>) => {
-      const extra = data ? ` ${formatPayload(data)}` : "";
-      console.log(`[action-runner] ${event} job=${job.id}${extra}`);
-    };
-
-    logger("action.received", {
-      action: payload.action,
+    const jobLogger = bindLogger(runnerLogger, {
+      jobId: job.id,
+      actionKind: payload.action,
       runId: payload.runId,
+      tenantId: payload.tenantId,
+      workspaceId: payload.workspaceId,
       stepId: payload.stepId,
     });
 
+    jobLogger.info("action.received");
+
     const result = await executeRegisteredAction(payload.action, {
       ...payload,
-      logger,
+      logger: (event: string, data?: Record<string, unknown>) =>
+        jobLogger.info(
+          {
+            event,
+            payload: data,
+          },
+          "action.log"
+        ),
     });
 
     if (result.status === "error") {
-      logger("action.error", {
-        action: payload.action,
-        error: result.error ?? "unknown",
-      });
+      jobLogger.error(
+        {
+          error: result.error ?? "unknown",
+        },
+        "action.failed"
+      );
 
       if (result.retryable) {
         throw new Error(result.error ?? `Action ${payload.action} failed`);
@@ -52,10 +52,7 @@ export async function startActionRunner() {
       return result;
     }
 
-    logger("action.completed", {
-      action: payload.action,
-      runId: payload.runId,
-    });
+    jobLogger.info("action.completed");
 
     return result;
   });
@@ -74,12 +71,15 @@ function isMainModule() {
 
 if (isMainModule()) {
   startActionRunner().catch((error) => {
-    console.error("[action-runner] bootstrap failed", error);
+    runnerLogger.error(
+      {
+        err: error,
+      },
+      "action-runner.failed"
+    );
     process.exit(1);
   });
 }
-
-
 
 
 

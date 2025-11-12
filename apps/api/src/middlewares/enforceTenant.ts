@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import { bindLogger } from "@eiah/core";
 import { findApiToken } from "../auth/apiTokenRepository";
 
 export type AuthContext = {
@@ -27,6 +28,12 @@ export async function enforceTenant(
   const token = extractBearerToken(header);
 
   if (!token) {
+    req.logger?.warn(
+      {
+        event: "auth.missing_bearer",
+      },
+      "request.unauthorized"
+    );
     return res.status(401).json({
       ok: false,
       error: {
@@ -38,6 +45,12 @@ export async function enforceTenant(
 
   const tokenRecord = await findApiToken(token);
   if (!tokenRecord || tokenRecord.revoked) {
+    req.logger?.warn(
+      {
+        event: "auth.invalid_token",
+      },
+      "request.unauthorized"
+    );
     return res.status(401).json({
       ok: false,
       error: {
@@ -48,6 +61,12 @@ export async function enforceTenant(
   }
 
   if (tokenRecord.expiresAt && tokenRecord.expiresAt.getTime() < Date.now()) {
+    req.logger?.warn(
+      {
+        event: "auth.token_expired",
+      },
+      "request.unauthorized"
+    );
     return res.status(401).json({
       ok: false,
       error: {
@@ -63,6 +82,14 @@ export async function enforceTenant(
     workspaceId: tokenRecord.workspaceId,
     userId: tokenRecord.userId,
   };
+  if (req.logger) {
+    req.logger = bindLogger(req.logger, {
+      tenantId: tokenRecord.tenantId,
+      workspaceId: tokenRecord.workspaceId,
+      userId: tokenRecord.userId,
+      tokenId: tokenRecord.tokenId,
+    });
+  }
 
   return next();
 }

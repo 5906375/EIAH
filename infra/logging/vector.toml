@@ -1,0 +1,35 @@
+# Collect JSON logs emitted by the services (API, workers, CLI)
+[sources.eiah]
+  type = "file"
+  include = ["/var/log/eiah/*.log"]
+  ignore_older = 86400
+  read_from = "beginning"
+
+[transforms.enrich]
+  type = "remap"
+  inputs = ["eiah"]
+  source = '''
+  .service = .service ?? .LOG.service ?? "unknown"
+  .tenantId = .tenantId ?? .LOG.tenantId
+  .workspaceId = .workspaceId ?? .LOG.workspaceId
+  .runId = .runId ?? .LOG.runId
+  .costCents = to_int!(.costCents ?? .LOG.costCents)
+  .actionKind = .actionKind ?? .LOG.actionKind
+  .traceId = .traceId ?? .LOG.traceId
+  .timestamp = string!(.timestamp ?? .LOG.time)
+  '''
+
+[sinks.loki]
+  type = "loki"
+  inputs = ["enrich"]
+  endpoint = "${LOKI_URL}"
+  encoding.codec = "json"
+  labels = { job = "eiah", service = "{{ service }}", tenant = "{{ tenantId | default(value=\"unknown\") }}" }
+
+[sinks.elastic]
+  type = "elasticsearch"
+  inputs = ["enrich"]
+  endpoints = ["${ELASTIC_URL}"]
+  auth.strategy = "basic"
+  bulk.index = "eiah-logs-%Y.%m.%d"
+  encoding.codec = "json"
