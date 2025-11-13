@@ -3,6 +3,7 @@ import { registerAction } from "./actionRegistry";
 import {
   rateLimit,
   requireIdempotency,
+  encodeGuardrailKey,
   type IdempotencyStore,
   type RateLimiter,
 } from "./guardrails";
@@ -63,9 +64,19 @@ export function registerNotificationActions(options: RegisterNotificationActions
         store: options.idempotencyStore,
         keyResolver: (context) => {
           const payload = context.input as z.infer<typeof slackInputSchema>;
-          return ["notify", "slack", context.workspaceId, payload?.correlationId ?? ""]
+          const idKey = [
+            "notify",
+            "slack",
+            context.workspaceId ?? context.tenantId ?? "global",
+            payload?.correlationId ?? context.runId ?? "",
+          ]
             .filter(Boolean)
             .join(":");
+          return encodeGuardrailKey({
+            tenantId: context.tenantId ?? "global",
+            actionType: context.action,
+            idempotencyKey: idKey,
+          });
         },
         ttlMs: 2 * 60 * 1000,
         onDuplicateMessage: "Slack notification already sent recently.",
@@ -109,9 +120,19 @@ export function registerNotificationActions(options: RegisterNotificationActions
         store: options.idempotencyStore,
         keyResolver: (context) => {
           const payload = context.input as z.infer<typeof pagerDutyInputSchema>;
-          return ["notify", "pagerduty", context.workspaceId, payload?.dedupKey ?? ""]
+          const idKey = [
+            "notify",
+            "pagerduty",
+            context.workspaceId ?? context.tenantId ?? "global",
+            payload?.dedupKey ?? context.runId ?? "",
+          ]
             .filter(Boolean)
             .join(":");
+          return encodeGuardrailKey({
+            tenantId: context.tenantId ?? "global",
+            actionType: context.action,
+            idempotencyKey: idKey,
+          });
         },
         ttlMs: 10 * 60 * 1000,
         onDuplicateMessage: "PagerDuty event already triggered for this dedup key.",
@@ -147,14 +168,19 @@ export function registerNotificationActions(options: RegisterNotificationActions
         store: options.idempotencyStore,
         keyResolver: (context) => {
           const payload = context.input as z.infer<typeof emailInputSchema>;
-          return [
+          const idKey = [
             "notify",
             "email",
-            context.workspaceId,
+            context.workspaceId ?? context.tenantId ?? "global",
             payload?.idempotencyKey ?? context.runId ?? "",
           ]
             .filter(Boolean)
             .join(":");
+          return encodeGuardrailKey({
+            tenantId: context.tenantId ?? "global",
+            actionType: context.action,
+            idempotencyKey: idKey,
+          });
         },
         ttlMs: 10 * 60 * 1000,
         onDuplicateMessage: "Duplicate email suppressed by idempotency guardrail.",

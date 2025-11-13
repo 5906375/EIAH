@@ -3,6 +3,7 @@ import { registerAction } from "./actionRegistry";
 import {
   rateLimit,
   requireIdempotency,
+  encodeGuardrailKey,
   type IdempotencyStore,
   type RateLimiter,
 } from "./guardrails";
@@ -60,16 +61,22 @@ export function registerDefiActions(options: RegisterDefiActionsOptions) {
     guardrails: [
       requireIdempotency({
         store: options.idempotencyStore,
-        keyResolver: (context) =>
-          [
+        keyResolver: (context) => {
+          const payload = context.input as z.infer<typeof broadcastInputSchema>;
+          const idKey = [
             "defi",
             "broadcast",
-            context.workspaceId,
-            (context.input as z.infer<typeof broadcastInputSchema>)?.retryToken ??
-              context.runId,
+            context.workspaceId ?? context.tenantId ?? "global",
+            payload?.retryToken ?? context.runId ?? "",
           ]
             .filter(Boolean)
-            .join(":"),
+            .join(":");
+          return encodeGuardrailKey({
+            tenantId: context.tenantId ?? "global",
+            actionType: context.action,
+            idempotencyKey: idKey,
+          });
+        },
         ttlMs: 10 * 60 * 1000,
         onDuplicateMessage: "Transaction already submitted recently.",
       }),

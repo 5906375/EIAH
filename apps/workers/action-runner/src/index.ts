@@ -6,9 +6,11 @@ import {
   bindLogger,
 } from "@eiah/core";
 import { pathToFileURL } from "node:url";
+import { createGuardrailLedgerStore } from "./services/guardrailLedgerStore";
 
 const runnerLogger = createLogger({ component: "action-runner" });
-registerAllActions();
+const guardrailStore = createGuardrailLedgerStore();
+registerAllActions({ idempotencyStore: guardrailStore });
 
 export async function startActionRunner() {
   runnerLogger.info("action-runner.starting");
@@ -80,7 +82,6 @@ if (isMainModule()) {
     process.exit(1);
   });
 }
-
 
 
 

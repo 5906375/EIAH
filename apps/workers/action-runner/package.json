@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@eiah/core": "workspace:*",
+    "@prisma/client": "^6.18.0",
     "bullmq": "^5.62.0"
   },
   "devDependencies": {

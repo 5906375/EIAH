@@ -36,6 +36,7 @@ model Tenant {
   memorySnapshots MemorySnapshot[]
   memoryEvents MemoryEvent[]
   embeddingChunks EmbeddingChunk[]
+  guardrailLedger GuardrailLedger[]
 
   @@map("tenants")
 }
@@ -284,4 +285,19 @@ model EmbeddingChunk {
   @@unique([tenantId, workspaceId, agentId, chunkKey])
   @@index([tenantId, workspaceId, agentId])
   @@map("embedding_chunks")
+}
+
+model GuardrailLedger {
+  id             String   @id @default(cuid())
+  tenantId       String   @map("tenant_id")
+  actionType     String   @map("action_type")
+  idempotencyKey String?  @map("idempotency_key")
+  usageCount     Int      @default(1) @map("usage_count")
+  timestamp      DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@index([actionType, timestamp])
+  @@unique([tenantId, actionType, idempotencyKey])
+  @@map("guardrail_ledger")
 }

@@ -3,6 +3,7 @@ import { registerAction } from "./actionRegistry";
 import {
   rateLimit,
   requireIdempotency,
+  encodeGuardrailKey,
   type IdempotencyStore,
   type RateLimiter,
 } from "./guardrails";
@@ -55,7 +56,14 @@ export function registerKnowledgeActions(options: RegisterKnowledgeActionsOption
         store: options.idempotencyStore,
         keyResolver: (context) => {
           const payload = context.input as z.infer<typeof storeInputSchema>;
-          return ["memory", payload?.memoryType, payload?.key].filter(Boolean).join(":");
+          const idKey = ["memory", payload?.memoryType, payload?.key]
+            .filter(Boolean)
+            .join(":");
+          return encodeGuardrailKey({
+            tenantId: context.tenantId ?? "global",
+            actionType: context.action,
+            idempotencyKey: idKey,
+          });
         },
         ttlMs: 60 * 60 * 1000,
         onDuplicateMessage: "Memory payload already stored recently.",

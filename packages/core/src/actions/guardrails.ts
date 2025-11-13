@@ -20,6 +20,66 @@ export function createInMemoryIdempotencyStore(): IdempotencyStore {
   };
 }
 
+export type GuardrailLedgerKeyPayload = {
+  tenantId: string;
+  actionType: string;
+  idempotencyKey: string;
+};
+
+export function encodeGuardrailKey(payload: GuardrailLedgerKeyPayload): string {
+  return JSON.stringify(payload);
+}
+
+export function decodeGuardrailKey(key: string): GuardrailLedgerKeyPayload | null {
+  try {
+    const parsed = JSON.parse(key) as GuardrailLedgerKeyPayload;
+    if (!parsed.idempotencyKey || !parsed.actionType || !parsed.tenantId) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export type GuardrailLedgerAdapter = {
+  insert(entry: GuardrailLedgerKeyPayload & { usageCount?: number }): Promise<void>;
+  cleanup?: (params: { tenantId: string; actionType: string; before: Date }) => Promise<void>;
+  isUniqueConstraintError?: (error: unknown) => boolean;
+};
+
+export function createLedgerBackedIdempotencyStore(
+  adapter: GuardrailLedgerAdapter
+): IdempotencyStore {
+  return {
+    async register(key, ttlMs) {
+      const decoded = decodeGuardrailKey(key);
+      if (!decoded) {
+        return false;
+      }
+
+      if (adapter.cleanup && ttlMs > 0) {
+        const cutoff = new Date(Date.now() - ttlMs);
+        await adapter.cleanup({
+          tenantId: decoded.tenantId,
+          actionType: decoded.actionType,
+          before: cutoff,
+        });
+      }
+
+      try {
+        await adapter.insert(decoded);
+        return true;
+      } catch (error) {
+        if (adapter.isUniqueConstraintError?.(error)) {
+          return false;
+        }
+        throw error;
+      }
+    },
+  };
+}
+
 export type RequireIdempotencyOptions = {
   store: IdempotencyStore;
   ttlMs?: number;

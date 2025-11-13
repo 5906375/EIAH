@@ -10,8 +10,10 @@ import { startRunQueueWorker } from "./workers/runWorker";
 import { registerAllActions, createLogger } from "@eiah/core";
 import { requestLogger } from "./middlewares/requestLogger";
 import { collectHealth } from "./services/health";
+import { createGuardrailLedgerStore } from "./services/guardrailLedgerStore";
 
-registerAllActions();
+const guardrailStore = createGuardrailLedgerStore();
+registerAllActions({ idempotencyStore: guardrailStore });
 
 const app = express();
 const bootstrapLogger = createLogger({ component: "api-bootstrap" });
