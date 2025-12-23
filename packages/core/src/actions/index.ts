@@ -5,12 +5,14 @@ export * from "./risk";
 export * from "./notifications";
 export * from "./knowledge";
 export * from "./billing";
+export * from "./reporting";
 
 import { registerDefiActions } from "./defi";
 import { registerRiskActions } from "./risk";
 import { registerNotificationActions } from "./notifications";
 import { registerKnowledgeActions } from "./knowledge";
 import { registerBillingActions } from "./billing";
+import { registerReportingActions } from "./reporting";
 import {
   createFixedWindowRateLimiter,
   createInMemoryIdempotencyStore,
@@ -34,4 +36,5 @@ export function registerAllActions(options: RegisterAllActionsOptions = {}) {
   registerNotificationActions({ idempotencyStore, rateLimiter });
   registerKnowledgeActions({ idempotencyStore, rateLimiter });
   registerBillingActions();
+  registerReportingActions({ idempotencyStore });
 }

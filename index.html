@@ -1,0 +1,1342 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cartilha Interativa — Organização Financeira + Eficiência Tributária (lícita) 2026</title>
+    <style>
+        :root {
+            --bg: #0b1220;
+            --card: #111a2e;
+            --muted: #8ea0c6;
+            --text: #e8efff;
+            --line: #263457;
+            --ok: #28d17c;
+            --warn: #ffcc66;
+            --bad: #ff6b6b;
+            --accent: #6ea8ff;
+            --accent2: #b79dff;
+            --shadow: 0 10px 30px rgba(0, 0, 0, .35);
+            --radius: 18px;
+        }
+
+        [data-theme="light"] {
+            --bg: #f6f7fb;
+            --card: #ffffff;
+            --muted: #55627a;
+            --text: #111827;
+            --line: #e5e7eb;
+            --ok: #16a34a;
+            --warn: #d97706;
+            --bad: #dc2626;
+            --accent: #2563eb;
+            --accent2: #7c3aed;
+            --shadow: 0 10px 30px rgba(17, 24, 39, .12);
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            margin: 0;
+            font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+            background: radial-gradient(1200px 800px at 20% 0%, rgba(110, 168, 255, .18), transparent 55%),
+                radial-gradient(900px 600px at 90% 15%, rgba(183, 157, 255, .18), transparent 50%),
+                var(--bg);
+            color: var(--text);
+        }
+
+        a {
+            color: inherit
+        }
+
+        .app {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            min-height: 100vh;
+        }
+
+        @media (max-width: 980px) {
+            .app {
+                grid-template-columns: 1fr
+            }
+
+            .side {
+                position: sticky;
+                top: 0;
+                z-index: 50
+            }
+        }
+
+        .side {
+            border-right: 1px solid var(--line);
+            padding: 18px 16px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, .03), transparent 45%);
+            backdrop-filter: blur(6px);
+        }
+
+        .brand {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 14px;
+        }
+
+        .logo {
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            background: conic-gradient(from 220deg, var(--accent), var(--accent2), var(--accent));
+            box-shadow: var(--shadow);
+        }
+
+        .brand h1 {
+            font-size: 14px;
+            line-height: 1.15;
+            margin: 0;
+            letter-spacing: .2px;
+        }
+
+        .brand p {
+            margin: 2px 0 0;
+            font-size: 12px;
+            color: var(--muted)
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin: 12px 0 14px;
+        }
+
+        .btn {
+            appearance: none;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, .03);
+            color: var(--text);
+            padding: 10px 12px;
+            border-radius: 14px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 12px;
+            display: inline-flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .btn:hover {
+            border-color: rgba(110, 168, 255, .5)
+        }
+
+        .btn.primary {
+            background: linear-gradient(135deg, rgba(110, 168, 255, .22), rgba(183, 157, 255, .18));
+            border-color: rgba(110, 168, 255, .5);
+        }
+
+        .btn.small {
+            padding: 8px 10px;
+            border-radius: 12px;
+            font-weight: 700
+        }
+
+        .search {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 14px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, .03);
+            color: var(--text);
+            outline: none;
+        }
+
+        .search::placeholder {
+            color: rgba(142, 160, 198, .85)
+        }
+
+        .nav {
+            margin-top: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .nav a {
+            text-decoration: none;
+            padding: 10px 12px;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            color: var(--text);
+            background: rgba(255, 255, 255, .02);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+        }
+
+        .nav a:hover {
+            border-color: rgba(110, 168, 255, .55)
+        }
+
+        .pill {
+            font-size: 11px;
+            color: var(--muted);
+            padding: 3px 8px;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, .02);
+        }
+
+        .progressWrap {
+            margin-top: 14px;
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            padding: 12px;
+            background: rgba(255, 255, 255, .02);
+        }
+
+        .progressRow {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
+        .bar {
+            height: 10px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, .06);
+            border: 1px solid var(--line);
+            overflow: hidden;
+        }
+
+        .bar>div {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--accent), var(--accent2));
+        }
+
+        .main {
+            padding: 20px 18px 40px;
+            max-width: 1100px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .hero {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .hero h2 {
+            margin: 0;
+            font-size: 22px;
+            letter-spacing: .2px;
+        }
+
+        .hero p {
+            margin: 8px 0 0;
+            color: var(--muted);
+            max-width: 72ch;
+            line-height: 1.45;
+            font-size: 13.5px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        @media (max-width: 980px) {
+            .grid {
+                grid-template-columns: 1fr
+            }
+        }
+
+        .card {
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, .03);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 14px;
+        }
+
+        .card h3 {
+            margin: 0 0 8px;
+            font-size: 14px
+        }
+
+        .muted {
+            color: var(--muted);
+            font-size: 12.5px;
+            line-height: 1.5
+        }
+
+        .kpis {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin: 12px 0 0;
+        }
+
+        @media (max-width: 980px) {
+            .kpis {
+                grid-template-columns: 1fr 1fr
+            }
+        }
+
+        .kpi {
+            padding: 12px;
+            border-radius: 16px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, .02);
+        }
+
+        .kpi .label {
+            color: var(--muted);
+            font-size: 11px
+        }
+
+        .kpi .value {
+            font-size: 18px;
+            font-weight: 800;
+            margin-top: 6px
+        }
+
+        .kpi .hint {
+            color: var(--muted);
+            font-size: 11px;
+            margin-top: 4px
+        }
+
+        details {
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, .02);
+            border-radius: 18px;
+            padding: 10px 12px;
+        }
+
+        details+details {
+            margin-top: 10px
+        }
+
+        summary {
+            cursor: pointer;
+            font-weight: 800;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            font-size: 13.5px;
+        }
+
+        summary::-webkit-details-marker {
+            display: none
+        }
+
+        .tag {
+            font-size: 11px;
+            padding: 3px 8px;
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            color: var(--muted);
+            background: rgba(255, 255, 255, .02);
+            white-space: nowrap;
+        }
+
+        ul.clean {
+            margin: 10px 0 0;
+            padding-left: 18px;
+            color: var(--text);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .checklist {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .item {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            padding: 10px 10px;
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            background: rgba(255, 255, 255, .02);
+        }
+
+        .item input[type="checkbox"] {
+            margin-top: 3px;
+            width: 18px;
+            height: 18px;
+            accent-color: var(--accent);
+            cursor: pointer;
+        }
+
+        .item .txt {
+            flex: 1
+        }
+
+        .item .txt b {
+            display: block;
+            font-size: 13px
+        }
+
+        .item .txt span {
+            display: block;
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 3px;
+            line-height: 1.4
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        @media (max-width: 980px) {
+            .row {
+                grid-template-columns: 1fr
+            }
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        label {
+            font-size: 12px;
+            color: var(--muted)
+        }
+
+        input[type="number"],
+        input[type="text"],
+        select {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 14px;
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, .02);
+            color: var(--text);
+            outline: none;
+        }
+
+        .result {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        @media (max-width: 980px) {
+            .result {
+                grid-template-columns: 1fr
+            }
+        }
+
+        .chip {
+            border: 1px solid var(--line);
+            background: rgba(255, 255, 255, .02);
+            border-radius: 16px;
+            padding: 12px;
+        }
+
+        .chip .big {
+            font-weight: 900;
+            font-size: 18px;
+            margin-top: 4px
+        }
+
+        .chip .small {
+            color: var(--muted);
+            font-size: 12px
+        }
+
+        .tableWrap {
+            overflow: auto;
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            background: rgba(255, 255, 255, .02);
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            min-width: 720px;
+            font-size: 13px;
+        }
+
+        th,
+        td {
+            border-bottom: 1px solid var(--line);
+            padding: 10px 10px;
+            vertical-align: top;
+        }
+
+        th {
+            text-align: left;
+            font-size: 12px;
+            color: var(--muted);
+            background: rgba(255, 255, 255, .02);
+            position: sticky;
+            top: 0;
+        }
+
+        td[contenteditable="true"] {
+            outline: none;
+        }
+
+        .toast {
+            position: fixed;
+            right: 16px;
+            bottom: 16px;
+            max-width: 360px;
+            padding: 12px 14px;
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            background: rgba(0, 0, 0, .25);
+            backdrop-filter: blur(8px);
+            color: var(--text);
+            box-shadow: var(--shadow);
+            display: none;
+            font-size: 12.5px;
+            line-height: 1.35;
+            z-index: 80;
+        }
+
+        [data-theme="light"] .toast {
+            background: rgba(255, 255, 255, .7)
+        }
+
+        .footer {
+            margin-top: 20px;
+            color: var(--muted);
+            font-size: 12px;
+            line-height: 1.5;
+            padding-top: 16px;
+            border-top: 1px solid var(--line);
+        }
+
+        .warnbox {
+            border: 1px solid rgba(255, 204, 102, .45);
+            background: rgba(255, 204, 102, .08);
+            padding: 12px;
+            border-radius: 16px;
+            color: var(--text);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app" id="app">
+        <aside class="side">
+            <div class="brand">
+                <div class="logo" aria-hidden="true"></div>
+                <div>
+                    <h1>Cartilha Interativa 2026</h1>
+                    <p>Organização financeira + eficiência tributária <b>lícita</b></p>
+                </div>
+            </div>
+
+            <div class="toolbar">
+                <button class="btn small primary" id="btnPrint" title="Imprimir / salvar como PDF">🖨️ Imprimir</button>
+                <button class="btn small" id="btnTheme" title="Alternar tema">🌓 Tema</button>
+                <button class="btn small" id="btnBackup" title="Exportar backup (JSON)">⬇️ Backup</button>
+            </div>
+
+            <input class="search" id="search" placeholder="Buscar… ex.: crédito, conciliação, checklist" />
+
+            <nav class="nav" id="nav">
+                <a href="#visao" data-nav><span>Visão 2026 + KPIs</span><span class="pill" id="pillDone">0%</span></a>
+                <a href="#pilares" data-nav><span>7 pilares</span><span class="pill">base</span></a>
+                <a href="#rotina" data-nav><span>Rotina mensal</span><span class="pill">D+5…D+20</span></a>
+                <a href="#checklists" data-nav><span>Checklists 2026</span><span class="pill" id="pillItems">0
+                        itens</span></a>
+                <a href="#calculadoras" data-nav><span>Calculadoras</span><span class="pill">caixa</span></a>
+                <a href="#modelos" data-nav><span>Modelos editáveis</span><span class="pill">tabela</span></a>
+                <a href="#governanca" data-nav><span>Governança</span><span class="pill">controle</span></a>
+            </nav>
+
+            <div class="progressWrap">
+                <div class="progressRow">
+                    <span>Progresso dos checklists</span>
+                    <b id="progressText">0%</b>
+                </div>
+                <div class="bar" aria-hidden="true">
+                    <div id="progressBar"></div>
+                </div>
+                <div class="muted" style="margin-top:8px">
+                    As marcações ficam salvas neste navegador (localStorage).
+                </div>
+            </div>
+        </aside>
+
+        <main class="main">
+            <section class="hero" id="visao">
+                <div>
+                    <h2>Organize seu dinheiro em 2026 sem “jeitinho”</h2>
+                    <p>
+                        Esta cartilha é um guia <b>operacional</b> para organizar caixa, documentos e rotinas (Fiscal +
+                        TI/ERP)
+                        de forma que você reduza retrabalho, evite pagamento indevido e esteja pronto(a) para exigências
+                        de
+                        documentação e conciliação. <br />
+                        <span class="muted">Obs.: não substitui contador/advogado e não traz instruções para burlar
+                            regras.</span>
+                    </p>
+                </div>
+            </section>
+
+            <div class="grid">
+                <div class="card">
+                    <h3>O que muda (na prática do seu financeiro)</h3>
+                    <div class="warnbox muted">
+                        2026 tende a exigir <b>mais disciplina</b> em: emissão/recebimento de documentos fiscais
+                        eletrônicos,
+                        cadastro, conciliação fiscal×financeira e controle de versões do ERP/integrações.
+                        <br><br>
+                        <b>Importante:</b> detalhes normativos (artigos, campos de XML, leiautes) dependem de fontes
+                        oficiais.
+                        Se você quiser, eu monto uma versão “com citações” assim que você me der as fontes/links
+                        oficiais
+                        ou um pacote/documento específico.
+                    </div>
+                    <div class="kpis" style="margin-top:12px">
+                        <div class="kpi">
+                            <div class="label">Notas divergentes (mês)</div>
+                            <div class="value" id="kpiDiverg">—</div>
+                            <div class="hint">Meta: cair mês a mês</div>
+                        </div>
+                        <div class="kpi">
+                            <div class="label">Tempo p/ corrigir</div>
+                            <div class="value" id="kpiTempo">—</div>
+                            <div class="hint">Meta: ≤ 7 dias</div>
+                        </div>
+                        <div class="kpi">
+                            <div class="label">Gap: Fiscal x Receb.</div>
+                            <div class="value" id="kpiGapRec">—</div>
+                            <div class="hint">Meta: justificar 100%</div>
+                        </div>
+                        <div class="kpi">
+                            <div class="label">Gap: Fiscal x Pag.</div>
+                            <div class="value" id="kpiGapPag">—</div>
+                            <div class="hint">Meta: justificar 100%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Quick setup (2 minutos)</h3>
+                    <div class="row">
+                        <div class="field">
+                            <label>Seu perfil</label>
+                            <select id="perfil">
+                                <option value="me">MEI / Micro / Autônomo</option>
+                                <option value="pm">Pequena empresa</option>
+                                <option value="mm">Média empresa</option>
+                                <option value="corp">Corporativo</option>
+                            </select>
+                        </div>
+                        <div class="field">
+                            <label>Seu foco em 2026</label>
+                            <select id="foco">
+                                <option value="caixa">Caixa + Conciliação</option>
+                                <option value="doc">Documentos + Evidências</option>
+                                <option value="erp">ERP/Integrações</option>
+                                <option value="tudo">Tudo</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row" style="margin-top:10px">
+                        <div class="field">
+                            <label>Notas divergentes (último mês)</label>
+                            <input type="number" id="inpDiverg" min="0" placeholder="ex.: 12" />
+                        </div>
+                        <div class="field">
+                            <label>Tempo médio p/ corrigir (dias)</label>
+                            <input type="number" id="inpTempo" min="0" placeholder="ex.: 9" />
+                        </div>
+                    </div>
+
+                    <div class="row" style="margin-top:10px">
+                        <div class="field">
+                            <label>Gap Fiscal x Recebimento (R$)</label>
+                            <input type="number" id="inpGapRec" step="0.01" placeholder="ex.: 2500" />
+                        </div>
+                        <div class="field">
+                            <label>Gap Fiscal x Pagamento (R$)</label>
+                            <input type="number" id="inpGapPag" step="0.01" placeholder="ex.: 1800" />
+                        </div>
+                    </div>
+
+                    <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap">
+                        <button class="btn primary" id="btnSalvarKPIs">💾 Salvar KPIs</button>
+                        <button class="btn" id="btnResetKPIs">↩️ Limpar</button>
+                    </div>
+
+                    <p class="muted" style="margin-top:10px">
+                        Esses KPIs são uma forma simples de “sentir” onde você está perdendo dinheiro: divergência de
+                        nota,
+                        demora de correção e gaps entre fiscal e financeiro.
+                    </p>
+                </div>
+            </div>
+
+            <section id="pilares" style="margin-top:14px">
+                <h3 style="margin:0 0 10px; font-size:14px;">2) Os 7 pilares (abra e aplique)</h3>
+
+                <details open>
+                    <summary><span>Pilar 1 — Separação de “bolsos”</span><span class="tag">caixa</span></summary>
+                    <ul class="clean">
+                        <li>Crie centros/contas separados: <b>Operação</b>, <b>Tributos</b>, <b>Investimentos</b>,
+                            <b>Reserva</b>.</li>
+                        <li>Regra simples: o que é de tributo não financia despesas do dia a dia.</li>
+                    </ul>
+                </details>
+
+                <details>
+                    <summary><span>Pilar 2 — Competência + Caixa</span><span class="tag">controle</span></summary>
+                    <ul class="clean">
+                        <li>Controle o que aconteceu (competência) e o que foi pago/recebido (caixa).</li>
+                        <li>As diferenças explicam “sumidos”: inadimplência, estorno, cancelamento, devolução.</li>
+                    </ul>
+                </details>
+
+                <details>
+                    <summary><span>Pilar 3 — Cadastro e classificação</span><span class="tag">cadastro</span></summary>
+                    <ul class="clean">
+                        <li>O maior vazamento costuma ser cadastro inconsistente (produto/serviço,
+                            clientes/fornecedores, natureza da operação).</li>
+                        <li>Padronize campos obrigatórios e mantenha trilha de auditoria (quem mudou o quê e quando).
+                        </li>
+                    </ul>
+                </details>
+
+                <details>
+                    <summary><span>Pilar 4 — Documentos e evidências</span><span class="tag">documentos</span></summary>
+                    <ul class="clean">
+                        <li>Sem documento, você perde controle — e normalmente perde direitos/controles (inclusive sobre
+                            créditos quando aplicável).</li>
+                        <li>Armazene XMLs, eventos (cancelamento, devolução), comprovantes e relatórios de conciliação
+                            por mês.</li>
+                    </ul>
+                </details>
+
+                <details>
+                    <summary><span>Pilar 5 — Conciliação Fiscal × Financeira</span><span class="tag">fechamento</span>
+                    </summary>
+                    <ul class="clean">
+                        <li>Notas emitidas precisam bater com pedidos/contratos e com recebimentos.</li>
+                        <li>Notas de compra precisam bater com recebimento/execução e com pagamentos.</li>
+                    </ul>
+                </details>
+
+                <details>
+                    <summary><span>Pilar 6 — Compras com foco em conformidade</span><span class="tag">compras</span>
+                    </summary>
+                    <ul class="clean">
+                        <li>Política: compra entra no contas a pagar só com documento válido + evidência de
+                            recebimento/execução.</li>
+                        <li>Combine padrão de nota com fornecedores (descrição, dados, prazo de envio do XML).</li>
+                    </ul>
+                </details>
+
+                <details>
+                    <summary><span>Pilar 7 — Rotina + KPIs</span><span class="tag">melhoria</span></summary>
+                    <ul class="clean">
+                        <li>Defina metas simples: reduzir divergências, reduzir tempo de correção, justificar gaps.</li>
+                        <li>Registre 3 ações de melhoria todo mês (e revisite no próximo fechamento).</li>
+                    </ul>
+                </details>
+            </section>
+
+            <section id="rotina" style="margin-top:14px">
+                <div class="card">
+                    <h3>3) Rotina mensal (fechamento) — sequência prática</h3>
+                    <p class="muted">Use esta sequência para reduzir erro, retrabalho e perda de dinheiro. Ajuste os
+                        prazos ao seu volume.</p>
+
+                    <div class="grid">
+                        <div>
+                            <details open>
+                                <summary><span>Semana 1 (até D+5)</span><span class="tag">banco</span></summary>
+                                <ul class="clean">
+                                    <li>Fechar extratos e conciliar entradas/saídas.</li>
+                                    <li>Revisar contas a receber (inadimplência/estornos).</li>
+                                    <li>Revisar contas a pagar (recorrências/duplicidades).</li>
+                                </ul>
+                            </details>
+
+                            <details>
+                                <summary><span>Semana 2 (até D+10)</span><span class="tag">fiscal</span></summary>
+                                <ul class="clean">
+                                    <li>Conciliação: notas emitidas × contratos/pedidos × recebimentos.</li>
+                                    <li>Conciliação: notas de compra × recebimento/execução × pagamentos.</li>
+                                    <li>Mapear divergências típicas: canceladas, devoluções, duplicadas.</li>
+                                </ul>
+                            </details>
+                        </div>
+
+                        <div>
+                            <details open>
+                                <summary><span>Semana 3 (até D+15)</span><span class="tag">cadastro</span></summary>
+                                <ul class="clean">
+                                    <li>Revisar cadastros críticos e registrar correções.</li>
+                                    <li>Fechar impostos do mês com base no que foi conciliado (com contador/fiscal).
+                                    </li>
+                                    <li>Classificar despesas por natureza (operação, tributos, investimento, etc.).</li>
+                                </ul>
+                            </details>
+
+                            <details>
+                                <summary><span>Semana 4 (até D+20)</span><span class="tag">planejamento</span></summary>
+                                <ul class="clean">
+                                    <li>Atualizar orçamento (previsto × realizado).</li>
+                                    <li>Definir 3 ações de melhoria para o próximo mês.</li>
+                                    <li>Atualizar KPIs e registrar lições aprendidas.</li>
+                                </ul>
+                            </details>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="checklists" style="margin-top:14px">
+                <div class="grid">
+                    <div class="card">
+                        <h3>4) Checklist geral (documentos + conciliação)</h3>
+                        <div class="checklist" id="checkGeral"></div>
+                    </div>
+                    <div class="card">
+                        <h3>5) Checklist 2026 (Fiscal + TI/ERP + governança)</h3>
+                        <div class="checklist" id="check2026"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="calculadoras" style="margin-top:14px">
+                <div class="card">
+                    <h3>6) Calculadoras (para decidir com calma)</h3>
+                    <p class="muted">
+                        São contas simples para planejamento. Não substituem apuração oficial.
+                        A ideia é manter caixa previsível e separar reserva de tributos.
+                    </p>
+
+                    <div class="grid">
+                        <div>
+                            <h3 style="margin-top:0">6.1 Reserva de tributos (planejamento)</h3>
+                            <div class="row">
+                                <div class="field">
+                                    <label>Receita do mês (R$)</label>
+                                    <input type="number" id="revMes" step="0.01" placeholder="ex.: 50000" />
+                                </div>
+                                <div class="field">
+                                    <label>% para reservar (ex.: 8)</label>
+                                    <input type="number" id="pctReserva" step="0.01" placeholder="ex.: 8" />
+                                </div>
+                            </div>
+                            <div class="result">
+                                <div class="chip">
+                                    <div class="small">Reserva sugerida (R$)</div>
+                                    <div class="big" id="outReserva">—</div>
+                                </div>
+                                <div class="chip">
+                                    <div class="small">Por semana (R$)</div>
+                                    <div class="big" id="outSemana">—</div>
+                                </div>
+                                <div class="chip">
+                                    <div class="small">Por dia útil (R$)</div>
+                                    <div class="big" id="outDia">—</div>
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap">
+                                <button class="btn primary" id="btnCalcReserva">🧮 Calcular</button>
+                                <button class="btn" id="btnSalvarReserva">💾 Salvar</button>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 style="margin-top:0">6.2 “Caixa de sobrevivência” (reserva)</h3>
+                            <div class="row">
+                                <div class="field">
+                                    <label>Despesas essenciais/mês (R$)</label>
+                                    <input type="number" id="despEss" step="0.01" placeholder="ex.: 18000" />
+                                </div>
+                                <div class="field">
+                                    <label>Meses de reserva (3 a 6)</label>
+                                    <input type="number" id="mesesRes" step="1" min="1" placeholder="ex.: 4" />
+                                </div>
+                            </div>
+                            <div class="result">
+                                <div class="chip">
+                                    <div class="small">Meta de reserva (R$)</div>
+                                    <div class="big" id="outMeta">—</div>
+                                </div>
+                                <div class="chip">
+                                    <div class="small">Aporte mensal (R$)</div>
+                                    <div class="big" id="outAporte">—</div>
+                                </div>
+                                <div class="chip">
+                                    <div class="small">Prazo se aportar (meses)</div>
+                                    <div class="big" id="outPrazo">—</div>
+                                </div>
+                            </div>
+                            <div class="row" style="margin-top:10px">
+                                <div class="field">
+                                    <label>Quanto você consegue aportar por mês (R$)</label>
+                                    <input type="number" id="aporte" step="0.01" placeholder="ex.: 1500" />
+                                </div>
+                                <div class="field">
+                                    <label>Observação (opcional)</label>
+                                    <input type="text" id="obsReserva" placeholder="ex.: meta até julho" />
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap">
+                                <button class="btn primary" id="btnCalcSurv">🧮 Calcular</button>
+                                <button class="btn" id="btnSalvarSurv">💾 Salvar</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="modelos" style="margin-top:14px">
+                <div class="card">
+                    <h3>7) Modelos editáveis (clique e edite)</h3>
+                    <p class="muted">Edite a tabela abaixo para virar seu “plano de contas” simples. Salva
+                        automaticamente.</p>
+
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px">
+                        <button class="btn primary" id="btnAddRow">➕ Adicionar linha</button>
+                        <button class="btn" id="btnExportCSV">📄 Exportar CSV</button>
+                        <button class="btn" id="btnResetTable">🧹 Restaurar modelo</button>
+                    </div>
+
+                    <div class="tableWrap">
+                        <table id="tbl">
+                            <thead>
+                                <tr>
+                                    <th style="width:28%">Grupo</th>
+                                    <th style="width:28%">Subgrupo</th>
+                                    <th style="width:44%">Exemplos</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tblBody"></tbody>
+                        </table>
+                    </div>
+
+                    <p class="muted" style="margin-top:10px">
+                        Dica: crie um subgrupo “Tributos (provisão)” separado de “Tributos (pagos)” para enxergar
+                        surpresas no caixa.
+                    </p>
+                </div>
+            </section>
+
+            <section id="governanca" style="margin-top:14px">
+                <div class="card">
+                    <h3>8) Governança mínima (para 2026 não virar caos)</h3>
+                    <div class="grid">
+                        <div>
+                            <h3 style="margin-top:0">Controles essenciais</h3>
+                            <ul class="clean">
+                                <li><b>Dono do processo (Fiscal)</b> e <b>dono do sistema (TI/ERP)</b>.</li>
+                                <li>Registro de mudanças: “o que mudou”, “por quê”, “quando”, “quem aprovou”.</li>
+                                <li>Controle de versão do ERP/integrações e evidências de testes (homologação).</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 style="margin-top:0">Regras de ouro</h3>
+                            <ul class="clean">
+                                <li>Sem documento e evidência, não entra no financeiro.</li>
+                                <li>Sem conciliação mensal, você não sabe onde perde dinheiro.</li>
+                                <li>Sem cadastro padronizado, você escala o erro.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="footer">
+                        <b>Nota de transparência:</b> este HTML é um organizador operacional. Para “eficiência
+                        tributária” com base legal
+                        (créditos, regras específicas de CBS/IBS, obrigações acessórias e detalhes de DF-e), eu preciso
+                        trabalhar com
+                        fontes oficiais (leis, notas técnicas, leiautes/XSD). Se você me mandar as fontes/links ou um
+                        PDF oficial, eu
+                        adapto a cartilha e adiciono as referências.
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+    // ---------- helpers ----------
+    const $ = (s) => document.querySelector(s);
+    const $$ = (s) => Array.from(document.querySelectorAll(s));
+    const fmtBRL = (n) => {
+      if (n === null || n === undefined || isNaN(n)) return "—";
+      return new Intl.NumberFormat("pt-BR", { style:"currency", currency:"BRL" }).format(n);
+    };
+    const store = {
+      get(key, fallback){
+        try{
+          const raw = localStorage.getItem(key);
+          return raw ? JSON.parse(raw) : fallback;
+        } catch { return fallback; }
+      },
+      set(key, val){
+        localStorage.setItem(key, JSON.stringify(val));
+      }
+    };
+    function toast(msg){
+      const el = $("#toast");
+      el.textContent = msg;
+      el.style.display = "block";
+      clearTimeout(window.__t);
+      window.__t = setTimeout(()=> el.style.display="none", 2400);
+    }
+
+    // ---------- theme ----------
+    const themeKey = "cartilha_theme";
+    const initTheme = store.get(themeKey, "dark");
+    document.documentElement.setAttribute("data-theme", initTheme === "light" ? "light" : "dark");
+    $("#btnTheme").addEventListener("click", () => {
+      const cur = document.documentElement.getAttribute("data-theme") || "dark";
+      const next = cur === "light" ? "dark" : "light";
+      document.documentElement.setAttribute("data-theme", next);
+      store.set(themeKey, next);
+      toast("Tema: " + (next === "light" ? "claro" : "escuro"));
+    });
+
+    // ---------- print ----------
+    $("#btnPrint").addEventListener("click", () => window.print());
+
+    // ---------- backup ----------
+    $("#btnBackup").addEventListener("click", () => {
+      const payload = {
+        version: "1.0",
+        savedAt: new Date().toISOString(),
+        theme: store.get(themeKey, "dark"),
+        kpis: store.get("kpis", {}),
+        reservaTrib: store.get("reservaTrib", {}),
+        reservaSurv: store.get("reservaSurv", {}),
+        checklist: store.get("checklist", {}),
+        table: store.get("planoContas", null),
+        settings: {
+          perfil: $("#perfil").value,
+          foco: $("#foco").value
+        }
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], {type:"application/json"});
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "backup_cartilha_2026.json";
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast("Backup exportado (JSON).");
+    });
+
+    // ---------- search (simple: highlights matching cards) ----------
+    $("#search").addEventListener("input", (e) => {
+      const q = e.target.value.trim().toLowerCase();
+      const nodes = $$("main .card, main details");
+      nodes.forEach(n => n.style.outline = "none");
+      if(!q) return;
+      nodes.forEach(n => {
+        const txt = n.innerText.toLowerCase();
+        if(txt.includes(q)){
+          n.style.outline = "2px solid rgba(110,168,255,.35)";
+          n.style.outlineOffset = "3px";
+        }
+      });
+    });
+
+    // ---------- KPIs ----------
+    function loadKPIs(){
+      const k = store.get("kpis", {});
+      $("#inpDiverg").value = k.diverg ?? "";
+      $("#inpTempo").value  = k.tempo  ?? "";
+      $("#inpGapRec").value = k.gapRec ?? "";
+      $("#inpGapPag").value = k.gapPag ?? "";
+      renderKPIs();
+    }
+    function renderKPIs(){
+      const k = store.get("kpis", {});
+      $("#kpiDiverg").textContent = (k.diverg ?? "—");
+      $("#kpiTempo").textContent  = (k.tempo ?? "—") + (k.tempo != null ? "d" : "");
+      $("#kpiGapRec").textContent = k.gapRec != null ? fmtBRL(k.gapRec) : "—";
+      $("#kpiGapPag").textContent = k.gapPag != null ? fmtBRL(k.gapPag) : "—";
+    }
+    $("#btnSalvarKPIs").addEventListener("click", () => {
+      const diverg = Number($("#inpDiverg").value);
+      const tempo  = Number($("#inpTempo").value);
+      const gapRec = Number($("#inpGapRec").value);
+      const gapPag = Number($("#inpGapPag").value);
+      const k = {
+        diverg: Number.isFinite(diverg) ? diverg : null,
+        tempo:  Number.isFinite(tempo)  ? tempo  : null,
+        gapRec: Number.isFinite(gapRec) ? gapRec : null,
+        gapPag: Number.isFinite(gapPag) ? gapPag : null
+      };
+      store.set("kpis", k);
+      renderKPIs();
+      toast("KPIs salvos.");
+    });
+    $("#btnResetKPIs").addEventListener("click", () => {
+      store.set("kpis", {});
+      loadKPIs();
+      toast("KPIs limpos.");
+    });
+
+    // ---------- checklists ----------
+    const checklistKey = "checklist";
+    const checklistState = store.get(checklistKey, {});
+
+    const checklistGeral = [
+      {id:"g1", title:"Conciliação bancária semanal", desc:"Banco/Cartão/PIX batendo com contas a pagar/receber."},
+      {id:"g2", title:"Notas emitidas conferidas", desc:"Cancelamentos/devoluções/estornos registrados."},
+      {id:"g3", title:"Notas de compra conferidas", desc:"Documento válido + evidência de recebimento/execução."},
+      {id:"g4", title:"Gaps explicados", desc:"Diferença fiscal×financeiro justificada (inadimplência, estorno, etc.)."},
+      {id:"g5", title:"Pastas/ GED do mês organizados", desc:"XMLs, eventos, comprovantes, relatórios e backups."}
+    ];
+
+    const checklist2026 = [
+      {id:"t1", title:"Mapa de documentos fiscais eletrônicos", desc:"Quais você emite/recebe e por qual sistema (ERP/PDV/marketplace)."},
+      {id:"t2", title:"Cadastro padronizado e auditável", desc:"Clientes/fornecedores/itens com campos obrigatórios e trilha de mudança."},
+      {id:"t3", title:"Plano de testes (operações reais)", desc:"Emissão, cancelamento, devolução, descontos, frete, serviços, marketplace."},
+      {id:"t4", title:"Controle de versões (ERP/integrações)", desc:"Registrar atualizações e manter evidências de homologação."},
+      {id:"t5", title:"Política de compras com documento", desc:"Só paga após documento + evidência; reduz perdas e retrabalho."},
+      {id:"t6", title:"Separação do “bolso” de tributos", desc:"Conta/centro de custo para provisionar e pagar sem surpresa no caixa."}
+    ];
+
+    function itemTemplate(item){
+      const checked = !!checklistState[item.id];
+      return `
+        <div class="item">
+          <input type="checkbox" data-check="${item.id}" ${checked ? "checked" : ""} />
+          <div class="txt">
+            <b>${item.title}</b>
+            <span>${item.desc}</span>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderChecklists(){
+      $("#checkGeral").innerHTML = checklistGeral.map(itemTemplate).join("");
+      $("#check2026").innerHTML = checklist2026.map(itemTemplate).join("");
+
+      const total = checklistGeral.length + checklist2026.length;
+      const done = Object.values(checklistState).filter(Boolean).length;
+
+      $("#pillItems").textContent = `${total} itens`;
+      const pct = total ? Math.round((done/total)*100) : 0;
+      $("#pillDone").textContent = `${pct}%`;
+      $("#progressText").textContent = `${pct}%`;
+      $("#progressBar").style.width = `${pct}%`;
+
+      $("#progressText").style.color = pct >= 80 ? "var(--ok)" : (pct >= 40 ? "var(--warn)" : "var(--muted)");
+    }
+
+    document.addEventListener("change", (e) => {
+      const id = e.target?.dataset?.check;
+      if(!id) return;
+      checklistState[id] = e.target.checked;
+      store.set(checklistKey, checklistState);
+      renderChecklists();
+    });
+
+    // ---------- calculators ----------
+    function calcReserva(){
+      const rev = Number($("#revMes").value);
+      const pct = Number($("#pctReserva").value);
+      if(!Number.isFinite(rev) || !Number.isFinite(pct)){
+        toast("Preencha receita e %.");
+        return;
+      }
+      const r = rev * (pct/100);
+      $("#outReserva").textContent = fmtBRL(r);
+      $("#outSemana").textContent  = fmtBRL(r/4);
+      $("#outDia").textContent     = fmtBRL(r/22);
+      return {rev, pct, r};
+    }
+    $("#btnCalcReserva").addEventListener("click", calcReserva);
+
+    $("#btnSalvarReserva").addEventListener("click", () => {
+      const res = calcReserva();
+      if(!res) return;
+      store.set("reservaTrib", { receitaMes: res.rev, pct: res.pct, reserva: res.r });
+      toast("Reserva de tributos salva.");
+    });
+
+    function calcSurv(){
+      const desp = Number($("#despEss").value);
+      const meses = Number($("#mesesRes").value);
+      const aporte = Number($("#aporte").value);
+      if(!Number.isFinite(desp) || !Number.isFinite(meses)){
+        toast("Preencha despesas essenciais e meses.");
+        return;
+      }
+      const meta = desp * meses;
+      $("#outMeta").textContent = fmtBRL(meta);
+
+      if(Number.isFinite(aporte) && aporte > 0){
+        $("#outAporte").textContent = fmtBRL(aporte);
+        $("#outPrazo").textContent = Math.ceil(meta / aporte) + " meses";
+      } else {
+        $("#outAporte").textContent = "—";
+        $("#outPrazo").textContent = "—";
+      }
+      return {desp, meses, meta, aporte: (Number.isFinite(aporte) ? aporte : null), obs: $("#obsReserva").value || ""};
+    }
+    $("#btnCalcSurv").addEventListener("click", calcSurv);
+
+    $("#btnSalvarSurv").addEventListener("click", () => {
+      const res = calcSurv();
+      if(!res) return;
+      store.set("reservaSurv", res);
+      toast("Meta de reserva salva.");
+    });
+
+    function loadCalculators(){
+      const r = store.get("reservaTrib", {});
+      if(r.receitaMes != null) $("#revMes").value = r.receitaMes;
+      if(r.pct != null) $("#pctReserva").value = r.pct;
+      if($("#revMes").value && $("#pctReserva").value) calcReserva();
+
+      const s = store.get("reservaSurv", {});
+      if(s.desp != null) $("#despEss").value = s.desp;
+      if(s.meses != null) $("#mesesRes").value = s.meses;
+      if(s.aporte != null) $("#aporte").value = s.aporte;
+      if(s.obs) $("#obsReserva").value = s.obs;
+      if($("#despEss").value && $("#mesesRes").value) calcSurv();
+    }
+
+    // ---------- editable table ----------
+    const tableKey = "planoContas";
+    const defaultRows = [
+      ["Receitas", "Vendas/Serviços", "Venda à vista, venda a prazo, assinatura, prestação de serviços"],
+      ["Custos", "CMV/Prestação", "Matéria-prima, frete de compra, terceirização ligada ao produto/serviço"],
+      ["Despesas Operacionais", "Admin/Comercial", "Aluguel, internet, marketing, folha, ferramentas"],
+      ["Tributos", "Provisão", "Separar provisão (a pagar) de pagos"],
+      ["Tributos", "Pagos", "Pagamentos realizados no mês"],
+      ["Investimentos", "CAPEX", "Máquinas, software, melhorias"],
+      ["Reserva", "Emergência", "Fundo para 3–6 meses de essenciais"]
+    ];
+
+    function renderTable(rows){
+      const body = $("#tblBody");
+      body.innerHTML = rows.map((r, idx) => `
+        <tr data-row="${idx}">
+          <td contenteditable="true" data-col="0">${escapeHTML(r[0] ?? "")}</td>
+          <td contenteditable="true" data-col="1">${escapeHTML(r[1] ?? "")}</td>
+          <td contenteditable="true" data-col="2">${escapeHTML(r[2] ?? "")}</td>
+        </tr>
+      `).join("");
+    }
+
+    function escapeHTML(s){
+      return String(s)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;");
+    }
+
+    function getTableRows(){
+      const rows = [];
+      $$("#tblBody tr").forEach(tr => {
+        const cols = Array.from(tr.querySelectorAll("td")).map(td => td.innerText.trim());
+        rows.push(cols);
+      });
+      return rows;
+    }
+
+    function saveTable(){
+      store.set(tableKey, getTableRows());
+    }
+
+    $("#tblBody").addEventListener("input", () => {
+      saveTable();
+    });
+
+    $("#btnAddRow").addEventListener("click", () => {
+      const rows = store.get(tableKey, defaultRows);
+      rows.push(["", "", ""]);
+      store.set(tableKey, rows);
+      renderTable(rows);
+      toast("Linha adicionada.");
+    });
+
+    $("#btnResetTable").addEventListener("click", () => {
+      store.set(tableKey, defaultRows);
+      renderTable(defaultRows);
+      toast("Modelo restaurado.");
+    });
+
+    $("#btnExportCSV").addEventListener("click", () => {
+      const rows = getTableRows();
+      const csv = [
+        ["Grupo","Subgrupo","Exemplos"],
+        ...rows
+      ].map(r => r.map(cell => `"${String(cell).replaceAll('"','""')}"`).join(",")).join("\n");
+      const blob = new Blob([csv], {type:"text/csv;charset=utf-8"});
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "plano_de_contas.csv";
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast("CSV exportado.");
+    });
+
+    // ---------- profile/focus save ----------
+    function loadSettings(){
+      const st = store.get("settings", {perfil:"me", foco:"caixa"});
+      $("#perfil").value = st.perfil ?? "me";
+      $("#foco").value = st.foco ?? "caixa";
+    }
+    function saveSettings(){
+      store.set("settings", {
+        perfil: $("#perfil").value,
+        foco: $("#foco").value
+      });
+    }
+    $("#perfil").addEventListener("change", () => { saveSettings(); toast("Perfil salvo."); });
+    $("#foco").addEventListener("change", () => { saveSettings(); toast("Foco salvo."); });
+
+    // ---------- init ----------
+    function init(){
+      loadSettings();
+      renderChecklists();
+      loadKPIs();
+      loadCalculators();
+
+      const savedRows = store.get(tableKey, null);
+      renderTable(savedRows && savedRows.length ? savedRows : defaultRows);
+
+      // update pills on first load
+      renderChecklists();
+    }
+    init();
+    </script>
+</body>
+
+</html>
