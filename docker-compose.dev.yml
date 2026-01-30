@@ -1,0 +1,183 @@
+###################################################################
+# 🧠 EIAH_BUILDER — Docker Compose (Ambiente de Desenvolvimento)
+# Fases 0–3: Infraestrutura Unificada + Execução Assíncrona + Governança Cognitiva
+###################################################################
+services:
+
+  #################################################################
+  # API — Gateway + Core Multi-Tenant
+  #################################################################
+  api:
+    image: node:20-bookworm
+    container_name: eiah-api
+    working_dir: /app
+    command: >
+      sh -c "
+        corepack enable &&
+        pnpm -C apps/api dev
+      "
+    env_file:
+      - .env
+      - ./apps/api/.env
+    environment:
+      - FRONTEND_URL=${FRONTEND_URL}
+    volumes:
+      - .:/app
+      - pnpm-store:/pnpm
+      # copia apenas o schema, não sobrescreve o client
+      - ./packages/db/prisma:/app/packages/db/prisma
+      - ./packages/mcp-runner:/app/packages/mcp-runner
+    ports:
+      - "8080:8080"
+    networks: [eiah-dev]
+    depends_on:
+      eiah-postgres:
+        condition: service_healthy
+      eiah-redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  #################################################################
+  # WEB — Frontend + RunViewer SSE
+  #################################################################
+  web:
+    image: node:20-bookworm
+    container_name: eiah-web
+    working_dir: /app
+    command: >
+      sh -c "
+        corepack enable &&
+        pnpm -C apps/web dev --host
+      "
+    env_file:
+      - .env
+      - ./apps/web/.env
+    
+    volumes:
+      - .:/app
+      - pnpm-store:/pnpm
+    ports:
+      - "5173:5173"
+    networks: [eiah-dev]
+    depends_on:
+      - api
+    extra_hosts:
+      - "eiah-api:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5173 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  #################################################################
+  # ACTION-RUNNER — Executor de Actions com Prisma Tenant-Aware
+  #################################################################
+  action-runner:
+    image: node:20-bookworm
+    container_name: eiah-action-runner
+    working_dir: /app
+    command: >
+      sh -c "
+        corepack enable &&
+        pnpm -C apps/workers/action-runner dev
+      "
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - pnpm-store:/pnpm
+      - ./packages/db:/app/packages/db
+      - ./packages/mcp-runner:/app/packages/mcp-runner
+    networks: [eiah-dev]
+    depends_on:
+      eiah-postgres:
+        condition: service_healthy
+      eiah-redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  #################################################################
+  # MAINTENANCE-WORKER — Housekeeping e Backfill
+  #################################################################
+  maintenance-worker:
+    image: node:20-bookworm
+    container_name: eiah-maintenance-worker
+    working_dir: /app
+    command: >
+      sh -c "
+        corepack enable &&
+        pnpm -C apps/workers/maintenance-worker dev
+      "
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - pnpm-store:/pnpm
+      - ./packages/db:/app/packages/db
+      - ./packages/mcp-runner:/app/packages/mcp-runner
+    networks: [eiah-dev]
+    depends_on:
+      eiah-postgres:
+        condition: service_healthy
+      eiah-redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  #################################################################
+  # DATABASE — PostgreSQL 16 (com schema unificado @repo/db)
+  #################################################################
+  eiah-postgres:
+    image: pgvector/pgvector:pg16
+    container_name: eiah-postgres
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      POSTGRES_PASSWORD: senha
+      POSTGRES_DB: eiah_builder
+    ports:
+      - "5433:5432" # Evita conflito local
+    volumes:
+      - eiah_builder_eiah_postgres_data:/var/lib/postgresql/data
+    networks: [eiah-dev]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  #################################################################
+  # REDIS — Mensageria + Cache + Fila BullMQ
+  #################################################################
+  eiah-redis:
+    image: redis:7
+    container_name: eiah-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - eiah_builder_eiah_redis_data:/data
+    networks: [eiah-dev]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+###################################################################
+# VOLUMES
+###################################################################
+volumes:
+  pnpm-store:
+  eiah_builder_eiah_postgres_data:
+  eiah_builder_eiah_redis_data:
+
+###################################################################
+# NETWORK
+###################################################################
+networks:
+  eiah-dev:
+    external: true

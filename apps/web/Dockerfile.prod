@@ -1,0 +1,16 @@
+# syntax=docker/dockerfile:1.7
+FROM node:20-bookworm
+ENV PNPM_HOME="/pnpm"
+ENV PNPM_STORE_DIR="/app/.pnpm-store"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable
+RUN apt-get update && apt-get install -y \
+  git python3 make g++ libc6 libstdc++6 libatomic1 libssl-dev \
+  && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY packages ./packages
+RUN pnpm install
+COPY apps/web ./apps/web
+RUN pnpm -C apps/web install
+CMD ["pnpm", "-C", "apps/web", "dev"]

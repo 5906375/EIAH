@@ -1,12 +1,55 @@
+# Node modules
 node_modules
-pnpm-debug.log
+**/node_modules
+
+# PNPM store
+.pnpm-store
+**/.pnpm-store
+
+# PNPM debug logs
+.pnpm-debug.log
+**/.pnpm-debug.log
+
+# npm / yarn logs
 npm-debug.log
 yarn-error.log
+
+# Git
 .git
 .gitignore
+
+# OS junk
 **/.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist
 **/dist
 **/*.tsbuildinfo
+
+# Environment files
+.env
+.env.*
 .env*
+
+# Temp / cache
 .tmp
+tmp
 coverage
+.cache
+**/.cache
+**/.turbo
+**/.eslintcache
+
+# Tooling state
+tsup.config.tsbuildinfo
+vite.config.tsbuildinfo
+eslintcache
+
+# Monorepo specific
+apps/**/node_modules
+packages/**/node_modules
+apps/**/dist
+packages/**/dist
+apps/**/.pnpm-store
+packages/**/.pnpm-store
