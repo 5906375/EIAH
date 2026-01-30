@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fundação Multi-Tenant - Arquitetura & Fluxos</title>
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --primary: #3b82f6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar Layout */
+        .sidebar {
+            width: 250px;
+            background-color: #020617;
+            border-right: 1px solid var(--border);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .logo {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+        }
+
+        button {
+            background-color: var(--bg-card);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+
+        button:hover {
+            background-color: var(--primary);
+            border-color: var(--primary);
+        }
+
+        button.active-flow {
+            background-color: var(--primary);
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Architecture Canvas */
+        .canvas {
+            flex: 1;
+            padding: 40px;
+            position: relative;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: auto auto auto;
+            gap: 30px;
+            align-content: start;
+        }
+
+        /* Connecting Lines (Simulated via positioning) */
+        .connector {
+            position: absolute;
+            z-index: 0;
+            border: 2px dashed var(--border);
+            pointer-events: none;
+            transition: border-color 0.3s;
+        }
+
+        /* Components (Nodes) */
+        .node {
+            background-color: var(--bg-card);
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            padding: 15px;
+            position: relative;
+            z-index: 1;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .node:hover {
+            border-color: var(--text-muted);
+            transform: translateY(-2px);
+        }
+
+        .node.highlight {
+            border-color: var(--primary);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+        }
+
+        .node.processing {
+            animation: pulse 1s infinite;
+            border-color: var(--success);
+        }
+
+        .node.error {
+            border-color: var(--danger);
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+        }
+
+        .node-title {
+            font-weight: bold;
+            font-size: 0.95rem;
+            margin-bottom: 5px;
+        }
+
+        .node-subtitle {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Specific Grid Positions */
+        #api-gateway {
+            grid-column: 2 / span 2;
+            grid-row: 1;
+            border-color: var(--primary);
+        }
+
+        #db-layer {
+            grid-column: 2 / span 2;
+            grid-row: 2;
+            border-color: var(--success);
+        }
+
+        #registry {
+            grid-column: 4;
+            grid-row: 2;
+        }
+
+        #run-worker {
+            grid-column: 1;
+            grid-row: 3;
+        }
+
+        #action-runner {
+            grid-column: 3;
+            grid-row: 3;
+        }
+
+        #maintenance-worker {
+            grid-column: 4;
+            grid-row: 3;
+        }
+
+        #dlq-run {
+            grid-column: 1;
+            grid-row: 4;
+            border-color: var(--danger);
+            opacity: 0.7;
+        }
+
+        #dlq-action {
+            grid-column: 3;
+            grid-row: 4;
+            border-color: var(--danger);
+            opacity: 0.7;
+        }
+
+        /* Logger/Details Panel */
+        .bottom-panel {
+            height: 250px;
+            background-color: #020617;
+            border-top: 1px solid var(--border);
+            display: flex;
+        }
+
+        .details-box {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            border-right: 1px solid var(--border);
+        }
+
+        .details-title {
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        .log-box {
+            flex: 1;
+            padding: 20px;
+            background-color: #000;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85rem;
+            color: var(--success);
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+        }
+
+        .log-entry.error {
+            color: var(--danger);
+        }
+
+        .log-entry.info {
+            color: var(--text-muted);
+        }
+
+        /* Badge */
+        .badge {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            background: #334155;
+            margin-top: 5px;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+            }
+        }
+
+        /* Arrow SVG Overlay */
+        #svg-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        path {
+            fill: none;
+            stroke: var(--border);
+            stroke-width: 2;
+        }
+
+        path.active-path {
+            stroke: var(--success);
+            stroke-dasharray: 10;
+            animation: dash 1s linear infinite;
+        }
+
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -20;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="sidebar">
+        <div class="logo">🏢 Multi-Tenant Fdn</div>
+        <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 10px;">CONTROLE DE FLUXO</div>
+
+        <button onclick="startFlow('run')">▶ 1.3 Execução de Run</button>
+        <button onclick="startFlow('action')">▶ 1.4 Execução de Action</button>
+        <button onclick="startFlow('version')">▶ 1.5 Versionamento</button>
+        <button onclick="startFlow('dlq')">▶ 1.6 DLQ & Redrive</button>
+        <button onclick="resetSystem()"
+            style="margin-top: auto; border-color: var(--danger); color: var(--danger);">Resetar Sistema</button>
+    </div>
+
+    <div class="main-content">
+
+        <div class="canvas" id="canvas">
+            <svg id="svg-layer">
+            </svg>
+
+            <div id="api-gateway" class="node" onclick="showDetails('api')">
+                <div class="node-title">API Gateway</div>
+                <div class="node-subtitle">Multi-Tenant Entry</div>
+                <span class="badge">req.prisma</span>
+            </div>
+
+            <div id="db-layer" class="node" onclick="showDetails('db')">
+                <div class="node-title">@repo/db</div>
+                <div class="node-subtitle">Persistence Layer</div>
+                <span class="badge">WHERE tenantId = ?</span>
+            </div>
+
+            <div id="registry" class="node" onclick="showDetails('registry')">
+                <div class="node-title">Action Registry</div>
+                <div class="node-subtitle">Version Control</div>
+                <span class="badge">Policies</span>
+            </div>
+
+            <div id="run-worker" class="node" onclick="showDetails('runWorker')">
+                <div class="node-title">run-worker</div>
+                <div class="node-subtitle">Workflow Engine</div>
+                <span class="badge">RunQueue</span>
+            </div>
+
+            <div id="action-runner" class="node" onclick="showDetails('actionRunner')">
+                <div class="node-title">action-runner</div>
+                <div class="node-subtitle">Task Executor</div>
+                <span class="badge">ActionQueue</span>
+            </div>
+
+            <div id="maintenance-worker" class="node" onclick="showDetails('maintenance')">
+                <div class="node-title">maint-worker</div>
+                <div class="node-subtitle">Cron Jobs</div>
+            </div>
+
+            <div id="dlq-run" class="node" onclick="showDetails('dlq')">
+                <div class="node-title">DLQ (Run)</div>
+                <div class="node-subtitle">Dead Letter Queue</div>
+            </div>
+
+            <div id="dlq-action" class="node" onclick="showDetails('dlq')">
+                <div class="node-title">DLQ (Action)</div>
+                <div class="node-subtitle">Dead Letter Queue</div>
+            </div>
+
+        </div>
+
+        <div class="bottom-panel">
+            <div class="details-box">
+                <div class="details-title" id="detail-title">Bem-vindo à Fundação Multi-Tenant</div>
+                <div id="detail-content" style="color: var(--text-muted); line-height: 1.6;">
+                    Selecione um componente no diagrama acima para ver suas especificações técnicas ou utilize os botões
+                    à esquerda para simular os fluxos de dados descritos no documento oficial.
+                    <br><br>
+                    <strong>Principais Pilares:</strong> Isolamento de dados, ações versionadas, rate-limit por tenant e
+                    observabilidade.
+                </div>
+            </div>
+            <div class="log-box" id="system-log">
+                <div class="log-entry info">> Sistema inicializado...</div>
+                <div class="log-entry info">> Aguardando comandos...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data from the Prompt
+        const componentsData = {
+            api: {
+                title: "C) Camada de API (Gateway Multi-Tenant)",
+                content: `
+                    <ul>
+                        <li><strong>Endpoints:</strong> Execução de Runs, Gestão de Agents, Uploads, Billing.</li>
+                        <li><strong>Tenant Aware:</strong> Injeta <code>req.prisma</code> com middleware de isolamento.</li>
+                        <li><strong>Observabilidade:</strong> Logs de requisição e métricas.</li>
+                    </ul>
+                `
+            },
+            db: {
+                title: "A) Camada de Persistência (@repo/db)",
+                content: `
+                    <ul>
+                        <li><strong>Prisma Client:</strong> Unificado com isolamento via Middleware.</li>
+                        <li><strong>Segurança:</strong> <code>WHERE tenantId = ? AND workspaceId = ?</code> forçado.</li>
+                        <li><strong>Modelos:</strong> Run, RunEvent, ActionRegistry, TenantActionPolicy.</li>
+                        <li><strong>Prevenção:</strong> ESLint proíbe prismaGlobal.</li>
+                    </ul>
+                `
+            },
+            runWorker: {
+                title: "B) Run Worker (Orquestrador)",
+                content: `
+                    <ul>
+                        <li>Executa fluxos passo a passo.</li>
+                        <li>Aplica <strong>Guardrails</strong>: Idempotência e Rate Limit.</li>
+                        <li>Registra eventos em <code>RunEvent</code>.</li>
+                        <li>Falhas são enviadas para DLQ.</li>
+                    </ul>
+                `
+            },
+            actionRunner: {
+                title: "B) Action Runner (Executor)",
+                content: `
+                    <ul>
+                        <li>Resolve versão da action via <code>VersionedActionRegistry</code>.</li>
+                        <li>Execução isolada por tenant/workspace.</li>
+                        <li>Consome da ActionQueue.</li>
+                    </ul>
+                `
+            },
+            registry: {
+                title: "E) Catálogo Versionado",
+                content: `
+                    <ul>
+                        <li>Snapshot em memória + Storage persistente.</li>
+                        <li>Permite <strong>Overrides</strong> via TenantActionPolicy.</li>
+                        <li>Admin registra versões via API.</li>
+                    </ul>
+                `
+            },
+            dlq: {
+                title: "Fluxo de DLQ e Redrive",
+                content: `
+                    <ul>
+                        <li>Armazena payloads com falha.</li>
+                        <li>Permite <strong>Redrive</strong> via API Ops.</li>
+                        <li>Métricas: pending, processed, failed.</li>
+                    </ul>
+                `
+            },
+            maintenance: {
+                title: "Maintenance Worker",
+                content: "Executa tarefas programadas (cron) específicas por tenant."
+            }
+        };
+
+        // UI Helpers
+        const log = (msg, type = 'info') => {
+            const el = document.getElementById('system-log');
+            const line = document.createElement('div');
+            line.className = `log-entry ${type}`;
+            const time = new Date().toLocaleTimeString().split(' ')[0];
+            line.innerHTML = `<span style="opacity:0.5">[${time}]</span> ${msg}`;
+            el.appendChild(line);
+            el.scrollTop = el.scrollHeight;
+        };
+
+        const showDetails = (key) => {
+            const data = componentsData[key];
+            if (data) {
+                document.getElementById('detail-title').innerText = data.title;
+                document.getElementById('detail-content').innerHTML = data.content;
+            }
+            // Highlight node
+            document.querySelectorAll('.node').forEach(n => n.classList.remove('highlight'));
+            const map = {
+                'api': 'api-gateway', 'db': 'db-layer', 'runWorker': 'run-worker',
+                'actionRunner': 'action-runner', 'registry': 'registry', 'dlq': 'dlq-run'
+            };
+            const id = map[key] || key;
+            const el = document.getElementById(id);
+            if(el) el.classList.add('highlight');
+        };
+
+        const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+        const highlightNode = async (id, duration = 1000, type='processing') => {
+            const el = document.getElementById(id);
+            if(!el) return;
+            el.classList.add(type);
+            await sleep(duration);
+            el.classList.remove(type);
+        };
+
+        // FLOW SIMULATIONS
+        let isRunning = false;
+
+        const startFlow = async (flowType) => {
+            if(isRunning) return;
+            isRunning = true;
+            resetSystem();
+            
+            document.querySelectorAll('button').forEach(b => b.disabled = true);
+            
+            try {
+                if (flowType === 'run') await runFlow1_3();
+                if (flowType === 'action') await actionFlow1_4();
+                if (flowType === 'version') await versionFlow1_5();
+                if (flowType === 'dlq') await dlqFlow1_6();
+            } catch (e) {
+                console.error(e);
+            }
+
+            isRunning = false;
+            document.querySelectorAll('button').forEach(b => b.disabled = false);
+            log("Fluxo finalizado.", "info");
+        };
+
+        const resetSystem = () => {
+            document.querySelectorAll('.node').forEach(n => {
+                n.classList.remove('processing', 'error', 'highlight');
+            });
+            document.getElementById('system-log').innerHTML = '';
+            log("Sistema pronto.");
+        };
+
+        // 1.3 FLUXO: Execução de Run
+        async function runFlow1_3() {
+            log("=== INICIANDO FLUXO 1.3: RUN EXECUTION ===");
+            showDetails('runWorker');
+
+            log("1. API: Recebe POST /api/runs/start");
+            await highlightNode('api-gateway');
+
+            log("2. API: getPrismaForTenant() (Autenticação e Isolamento)");
+            await highlightNode('db-layer');
+
+            log("3. Queue: Envia para RunQueue...");
+            await sleep(500);
+
+            log("4. Worker: Consome RunQueue");
+            document.getElementById('run-worker').classList.add('processing'); // Keep lit
+            await sleep(800);
+
+            log("5. Worker: Carrega Run do DB (Tenant Aware)");
+            await highlightNode('db-layer', 500);
+
+            log("6. Worker: Valida Guardrails (Rate Limit/Idempotência)");
+            await sleep(500);
+
+            log("7. Worker: Executa Steps e Grava RunEvent");
+            await highlightNode('db-layer', 500);
+
+            log("8. Worker: Atualiza Status -> Success");
+            document.getElementById('run-worker').classList.remove('processing');
+            document.getElementById('run-worker').style.borderColor = "var(--success)";
+            await sleep(500);
+            document.getElementById('run-worker').style.borderColor = "";
+        }
+
+        // 1.4 FLUXO: Execução de Action
+        async function actionFlow1_4() {
+            log("=== INICIANDO FLUXO 1.4: ACTION EXECUTION ===");
+            showDetails('actionRunner');
+
+            log("1. API: Solicita execução de Action");
+            await highlightNode('api-gateway');
+
+            log("2. Enqueue em ActionQueue");
+            await sleep(500);
+
+            log("3. Action Runner: Consome fila");
+            document.getElementById('action-runner').classList.add('processing');
+
+            log("4. Runner: Resolve versão via Registry");
+            await highlightNode('registry', 800);
+
+            log("5. Runner: Aplica Tenant Policies");
+            await highlightNode('db-layer', 500);
+
+            log("6. Runner: Executa Action");
+            await sleep(800);
+
+            log("7. Runner: Grava Logs e Finaliza");
+            document.getElementById('action-runner').classList.remove('processing');
+        }
+
+        // 1.5 FLUXO: Versionamento
+        async function versionFlow1_5() {
+            log("=== INICIANDO FLUXO 1.5: VERSIONAMENTO (ADMIN) ===");
+            showDetails('registry');
+
+            log("1. Admin: POST /api/actions/version");
+            await highlightNode('api-gateway');
+
+            log("2. Registry: registerVersion()");
+            document.getElementById('registry').classList.add('processing');
+            await sleep(800);
+
+            log("3. DB: Upsert em ActionRegistry (Persistência)");
+            await highlightNode('db-layer');
+            
+            document.getElementById('registry').classList.remove('processing');
+            log(">> Nova versão disponível para Workers (Snapshot update)");
+        }
+
+        // 1.6 FLUXO: DLQ
+        async function dlqFlow1_6() {
+            log("=== INICIANDO FLUXO 1.6: FALHA & REDRIVE ===");
+            showDetails('dlq');
+
+            log("1. Worker: Tenta executar Run...");
+            await highlightNode('run-worker', 500, 'processing');
+
+            log("!! ERRO: Falha detectada (Timeout/Crash) !!", "error");
+            document.getElementById('run-worker').classList.add('error');
+            await sleep(800);
+            document.getElementById('run-worker').classList.remove('error');
+
+            log("2. Sistema: Move payload para DLQ");
+            document.getElementById('dlq-run').classList.add('error');
+            await sleep(1000);
+
+            log("... Aguardando OPS ...");
+            await sleep(1000);
+
+            log("3. Ops: POST /api/ops/queues/run/redrive");
+            await highlightNode('api-gateway');
+
+            log("4. Redrive: Reenvia itens para o Worker");
+            document.getElementById('dlq-run').classList.remove('error');
+            
+            log("5. Worker: Processa novamente com sucesso");
+            await highlightNode('run-worker', 1000);
+            log(">> Processed++");
+        }
+
+    </script>
+</body>
+
+</html>
