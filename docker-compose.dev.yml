@@ -1,6 +1,14 @@
 ###################################################################
 # 🧠 EIAH_BUILDER — Docker Compose (Ambiente de Desenvolvimento)
 # Fases 0–3: Infraestrutura Unificada + Execução Assíncrona + Governança Cognitiva
+#
+# Correções aplicadas mantendo funcionalidades:
+# - Healthcheck sem curl (Node 20 fetch nativo)
+# - PNPM cache/store consistente via volume (pnpm-store:/pnpm/store)
+# - Mantém mounts do monorepo, schema do Prisma, MCP runner, etc.
+#
+# Obs: network externa exige pré-criação:
+#   docker network create eiah-dev
 ###################################################################
 services:
 
@@ -21,9 +29,12 @@ services:
       - ./apps/api/.env
     environment:
       - FRONTEND_URL=${FRONTEND_URL}
+      - PNPM_HOME=/pnpm
+      - PNPM_STORE_DIR=/pnpm/store
+      - PATH=/pnpm:$PATH
     volumes:
       - .:/app
-      - pnpm-store:/pnpm
+      - pnpm-store:/pnpm/store
       # copia apenas o schema, não sobrescreve o client
       - ./packages/db/prisma:/app/packages/db/prisma
       - ./packages/mcp-runner:/app/packages/mcp-runner
@@ -36,7 +47,12 @@ services:
       eiah-redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/health || exit 1"]
+      # Node 20 tem fetch nativo; evita depender de curl dentro da imagem base
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://localhost:8080/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -56,19 +72,27 @@ services:
     env_file:
       - .env
       - ./apps/web/.env
-    
+    environment:
+      - PNPM_HOME=/pnpm
+      - PNPM_STORE_DIR=/pnpm/store
+      - PATH=/pnpm:$PATH
     volumes:
       - .:/app
-      - pnpm-store:/pnpm
+      - pnpm-store:/pnpm/store
     ports:
       - "5173:5173"
     networks: [eiah-dev]
     depends_on:
       - api
     extra_hosts:
+      # Mantido como estava (pode ser redundante na mesma network, mas preserva comportamento)
       - "eiah-api:host-gateway"
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:5173 || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://localhost:5173').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -87,9 +111,13 @@ services:
       "
     env_file:
       - .env
+    environment:
+      - PNPM_HOME=/pnpm
+      - PNPM_STORE_DIR=/pnpm/store
+      - PATH=/pnpm:$PATH
     volumes:
       - .:/app
-      - pnpm-store:/pnpm
+      - pnpm-store:/pnpm/store
       - ./packages/db:/app/packages/db
       - ./packages/mcp-runner:/app/packages/mcp-runner
     networks: [eiah-dev]
@@ -114,9 +142,13 @@ services:
       "
     env_file:
       - .env
+    environment:
+      - PNPM_HOME=/pnpm
+      - PNPM_STORE_DIR=/pnpm/store
+      - PATH=/pnpm:$PATH
     volumes:
       - .:/app
-      - pnpm-store:/pnpm
+      - pnpm-store:/pnpm/store
       - ./packages/db:/app/packages/db
       - ./packages/mcp-runner:/app/packages/mcp-runner
     networks: [eiah-dev]

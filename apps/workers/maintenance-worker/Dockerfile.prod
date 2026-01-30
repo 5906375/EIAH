@@ -13,7 +13,7 @@ WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY packages ./packages
-COPY apps/workers/action-runner ./apps/workers/action-runner
+COPY apps/workers/maintenance-worker ./apps/workers/maintenance-worker
 
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
   pnpm install --frozen-lockfile
@@ -21,8 +21,8 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
 # Prisma: fonte de verdade em packages/db
 RUN pnpm --filter @repo/db prisma generate --schema packages/db/prisma/schema.prisma
 
-# Build do worker (usa filtro por caminho pra não depender do "name" do package.json)
-RUN pnpm --filter ./apps/workers/action-runner... run build
+# Build do worker
+RUN pnpm --filter ./apps/workers/maintenance-worker... run build
 
 # -------------------------
 
@@ -31,12 +31,10 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
-# deps do workspace (simples e funcional; otimiza depois)
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/packages ./packages
 
-# app buildado
-COPY --from=builder /app/apps/workers/action-runner/package.json ./apps/workers/action-runner/package.json
-COPY --from=builder /app/apps/workers/action-runner/dist ./apps/workers/action-runner/dist
+COPY --from=builder /app/apps/workers/maintenance-worker/package.json ./apps/workers/maintenance-worker/package.json
+COPY --from=builder /app/apps/workers/maintenance-worker/dist ./apps/workers/maintenance-worker/dist
 
-CMD ["node", "apps/workers/action-runner/dist/index.js"]
+CMD ["node", "apps/workers/maintenance-worker/dist/index.js"]
