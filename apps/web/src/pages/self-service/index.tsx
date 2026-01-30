@@ -339,13 +339,17 @@ export default function SelfServiceIndexPage() {
           validUntil: values.validUntil ?? prev[termsItem.id]?.validUntil ?? "",
         },
       }));
-      await apiSubscribeMarketplace(termsItem.id, {
+      const response = await apiSubscribeMarketplace(termsItem.id, {
         scope: nextScope,
         trustMin,
         validUntil,
       });
       await refreshDelegations();
-      setSubscribeNotice(`Assinatura criada para ${termsItem.name}.`);
+      if (response.status === "pending_approval") {
+        setSubscribeNotice(`Solicitacao enviada para ${termsItem.name}. Aguardando aprovacao.`);
+      } else {
+        setSubscribeNotice(`Assinatura criada para ${termsItem.name}.`);
+      }
       setTermsOpen(false);
       setTermsItem(null);
     } catch (error) {

@@ -299,7 +299,7 @@ export async function apiSubscribeMarketplace(
     policyHash?: string;
     signatureHash?: string;
   }
-): Promise<{ ok: boolean; delegationId: string }> {
+): Promise<{ ok: boolean; delegationId: string; status?: DelegationStatus }> {
   return http(`/marketplace/${id}/subscribe`, {
     method: "POST",
     body: JSON.stringify(body ?? {}),

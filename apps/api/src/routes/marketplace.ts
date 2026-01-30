@@ -276,6 +276,7 @@ marketplaceRouter.post("/marketplace/:id/subscribe", async (req, res) => {
   return res.json({
     ok: true,
     delegationId: delegation.id,
+    status: delegation.status,
     publisherName: item.publisher?.name ?? null,
   });
 });
