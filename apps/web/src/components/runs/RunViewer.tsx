@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useState, type ComponentPropsWithoutRef } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
-import { apiListRunEvents, RunEvent, RunStatus } from "@/lib/api";
+import { apiAdoptRecommendation, apiCreateSession, apiListRunEvents, BASE_URL, RunEvent, RunStatus } from "@/lib/api";
+import { centsToBRL, extractDuration, formatAgentLabel, formatClockTime, formatDuration } from "./utils";
 import RunTimeline from "./RunTimeline";
+import GovernancePanel from "./GovernancePanel";
+import { maskPII } from "@repo/utils";
 
 type RunData = {
   id: string;
@@ -12,12 +15,27 @@ type RunData = {
   request?: unknown;
   response?: unknown;
   costCents?: number;
+  startedAt?: string;
+  finishedAt?: string;
+};
+
+type DelegationInfo = {
+  id?: string;
+  delegatorId?: string;
+  marketplaceId?: string | null;
+  scope?: string;
+  trustMin?: number;
+  validUntil?: string;
 };
 
 type MarkdownElementProps<T extends keyof JSX.IntrinsicElements> = ComponentPropsWithoutRef<T> & { node?: unknown };
 
 function mergeClassName(...classes: Array<string | undefined>) {
   return classes.filter(Boolean).join(" ");
+}
+
+function getDisplayAgent(agent: string) {
+  return formatAgentLabel(agent);
 }
 
 type AgentTheme = {
@@ -120,11 +138,100 @@ const statusStyles: Record<RunStatus, { badge: string; label: string }> = {
   blocked: { badge: "bg-yellow-500/20 text-yellow-200", label: "Revisão" },
 };
 
+type DiagnosticSummary = {
+  totalPrevRuns: number;
+  exploracaoPct: number;
+  filtradosAdotados: number;
+  filtradosRejeitados: number;
+};
+
+function extractDiagnosticSummary(payload?: Record<string, unknown> | null): DiagnosticSummary | null {
+  if (!payload || !isPlainObject(payload.diagnostico)) return null;
+  const diagnostico = payload.diagnostico as Record<string, unknown>;
+  const toNumber = (value: unknown) => {
+    if (typeof value === "number") return value;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  };
+  return {
+    totalPrevRuns: toNumber(diagnostico.total_prev_runs),
+    exploracaoPct: toNumber(diagnostico.exploracao_pct),
+    filtradosAdotados: toNumber(diagnostico.filtrados_adotados),
+    filtradosRejeitados: toNumber(diagnostico.filtrados_rejeitados),
+  };
+}
+
 export default function RunViewer({ run }: { run: RunData }) {
   const [events, setEvents] = useState<RunEvent[]>([]);
   const [eventsError, setEventsError] = useState<string | null>(null);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   const [alertFeedback, setAlertFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
+  const [includeDetailsInExport, setIncludeDetailsInExport] = useState(false);
+  const delegationInfo = useMemo(() => extractDelegationInfo(run.request), [run.request]);
+  const guardrailBlockMessage =
+    "Sua solicitação foi interceptada pela nossa camada de Governança Cognitiva. O agente tentou responder que realizaria uma tarefa, mas não acionou a ferramenta técnica necessária para isso. Por segurança, bloqueamos essa resposta para evitar informações imprecisas sobre execuções que não foram registradas no nosso sistema de auditoria imutável (SCL/Ledger).";
+  const guardrailWarning = useMemo(() => {
+    if (run.status === "blocked") return null;
+    const evaluated = events.find((event) => event.type === "run.guardrails.evaluated");
+    if (!evaluated || typeof evaluated.payload !== "object" || evaluated.payload === null) return null;
+    const payload = evaluated.payload as { action?: string; maxSeverity?: string; findings?: unknown[] };
+    if (payload.action !== "block") return null;
+    const messages = Array.isArray(payload.findings)
+      ? payload.findings
+          .map((finding) =>
+            typeof finding === "object" && finding && "message" in finding
+              ? String((finding as { message?: unknown }).message ?? "")
+              : ""
+          )
+          .filter((message) => message)
+      : [];
+    return {
+      reason: messages.join(" | ") || "Guardrails sinalizaram bloqueio.",
+      severity: payload.maxSeverity ?? "warn",
+    };
+  }, [events, run.status]);
+  const guardrailBlocked = useMemo(() => {
+    if (run.status !== "blocked") return null;
+    const blocked = events.find((event) => event.type === "run.blocked.guardrails");
+    if (!blocked) return null;
+    return guardrailBlockMessage;
+  }, [events, guardrailBlockMessage, run.status]);
+  const promptText = useMemo(() => {
+    if (!isPlainObject(run.request)) return null;
+    const request = run.request as Record<string, unknown>;
+    const metadata = isPlainObject(request.metadata) ? (request.metadata as Record<string, unknown>) : null;
+    if (metadata && typeof metadata.originalPrompt === "string") return metadata.originalPrompt;
+    if (typeof request.prompt === "string") return request.prompt;
+    if (typeof request.message === "string") return request.message;
+    return null;
+  }, [run.request]);
+
+  const { structured: structuredOutput, text: outputText } = useMemo(() => {
+    return normalizeRunResponse(run.response);
+  }, [run.response]);
+  const maskedOutputText = useMemo(() => (outputText ? maskPII(outputText) : outputText), [outputText]);
+  const runAtivoArtifacts = useMemo(() => extractRunAtivoArtifacts(run.response), [run.response]);
+
+  const diagnosticSummary = useMemo(() => extractDiagnosticSummary(structuredOutput), [structuredOutput]);
+  const primaryRecommendation = useMemo(() => {
+    if (!structuredOutput || !Array.isArray(structuredOutput.recomendacoes)) return null;
+    const first = structuredOutput.recomendacoes[0];
+    if (!isPlainObject(first)) return null;
+    const rec = first as Record<string, unknown>;
+    return {
+      title: typeof rec.tatica === "string" ? rec.tatica : typeof rec.key === "string" ? rec.key : null,
+      rationale: typeof rec.rationale === "string" ? rec.rationale : null,
+      nextSteps: typeof rec.proximos_passos === "string" ? rec.proximos_passos : null,
+    };
+  }, [structuredOutput]);
+  const technicalJson = useMemo(() => safeStringify(run), [run]);
+  const startedAtLabel = useMemo(() => formatClockTime(run.startedAt), [run.startedAt]);
+  const durationLabel = useMemo(
+    () => formatDuration(extractDuration(run)),
+    [run.startedAt, run.finishedAt, run.meta?.tookMs]
+  );
+  const costLabel = useMemo(() => centsToBRL(run.costCents), [run.costCents]);
 
   useEffect(() => {
     if (!run?.id || run.id === "run_1234") {
@@ -135,59 +242,113 @@ export default function RunViewer({ run }: { run: RunData }) {
     }
 
     let cancelled = false;
+    let eventSource: EventSource | null = null;
     let pollTimer: ReturnType<typeof setInterval> | undefined;
-    let firstLoad = true;
+    let retryDelay = 2000;
+    let lastEventId: string | null = null;
 
-    const loadEvents = async () => {
-      if (cancelled) {
-        return;
-      }
-
-      if (firstLoad) {
-        setIsLoadingEvents(true);
-        setEventsError(null);
-      }
-
+    const connectSSE = () => {
+      if (cancelled) return;
       try {
-        const response = await apiListRunEvents(run.id);
-        if (cancelled) return;
-        setEvents(response.items ?? []);
-        setEventsError(null);
+        const baseUrl =
+          BASE_URL.startsWith("http") || BASE_URL.startsWith("https")
+            ? BASE_URL
+            : `${window.location.origin}${BASE_URL}`;
+        const url = new URL(`${baseUrl}/runs/${run.id}/stream`);
+        if (lastEventId) url.searchParams.set("cursor", lastEventId);
+
+        apiCreateSession()
+          .then(() => {
+            if (cancelled) return;
+            eventSource = new EventSource(url.toString(), { withCredentials: true });
+
+            eventSource.onmessage = (e) => {
+              try {
+                const parsed = JSON.parse(e.data) as RunEvent;
+                setEvents((prev) => {
+                  // evita duplicação de eventos no replay
+                  if (prev.find((ev) => ev.id === parsed.id)) return prev;
+                  return [...prev, parsed];
+                });
+                lastEventId = parsed.id;
+                retryDelay = 2000; // reset do backoff em sucesso
+              } catch (err) {
+                console.warn("[RunViewer] evento SSE inválido", err);
+              }
+            };
+
+            eventSource.onerror = () => {
+              console.warn("[RunViewer] erro SSE — tentando reconectar...");
+              eventSource?.close();
+              if (!cancelled) {
+                setTimeout(connectSSE, retryDelay);
+                retryDelay = Math.min(retryDelay * 2, 15000); // backoff exponencial
+              }
+            };
+
+            eventSource.onopen = () => {
+              console.info("[RunViewer] conexão SSE aberta");
+            };
+          })
+          .catch((err) => {
+            console.warn("[RunViewer] falha ao criar sessão SSE", err);
+            fallbackToPolling();
+          });
       } catch (err) {
-        if (cancelled) return;
-        const message = err instanceof Error ? err.message : "Falha ao carregar eventos.";
-        setEventsError(message);
-        if (firstLoad) {
-          setEvents([]);
-        }
-      } finally {
-        if (!cancelled && firstLoad) {
-          setIsLoadingEvents(false);
-          firstLoad = false;
-        }
+        console.warn("[RunViewer] falha ao conectar SSE", err);
+        fallbackToPolling();
       }
     };
 
-    loadEvents();
+    const fallbackToPolling = () => {
+      if (pollTimer) clearInterval(pollTimer);
+      console.info("[RunViewer] fallback → polling");
+      const loadEvents = async () => {
+        if (cancelled) return;
+        try {
+          const response = await apiListRunEvents(run.id, {
+            cursor: lastEventId ?? undefined,
+          });
+          if (cancelled) return;
+          const incoming = response.items ?? [];
+          if (!lastEventId) {
+            setEvents(incoming);
+          } else if (incoming.length > 0) {
+            setEvents((prev) => {
+              const seen = new Set(prev.map((ev) => ev.id));
+              const next = [...prev];
+              incoming.forEach((ev) => {
+                if (!seen.has(ev.id)) next.push(ev);
+              });
+              return next;
+            });
+          }
+          if (incoming.length > 0) {
+            lastEventId = incoming[incoming.length - 1]?.id ?? lastEventId;
+          }
+          setEventsError(null);
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Falha ao carregar eventos.";
+          setEventsError(message);
+        }
+      };
+      loadEvents();
+      pollTimer = setInterval(loadEvents, 4000);
+    };
 
-    if (run.status === "pending" || run.status === "running" || run.status === "blocked") {
-      pollTimer = setInterval(() => {
-        loadEvents();
-      }, 3000);
-    }
+    setIsLoadingEvents(true);
+    setEventsError(null);
+    connectSSE();
 
     return () => {
       cancelled = true;
+      if (eventSource) eventSource.close();
       if (pollTimer) clearInterval(pollTimer);
     };
-  }, [run?.id, run?.status]);
+  }, [run?.id]);
 
   const statusInfo = useMemo(() => statusStyles[run.status] ?? statusStyles.success, [run.status]);
-  const isInProgress = run.status === "pending" || run.status === "running" || run.status === "blocked";
-
-  const { structured: structuredOutput, text: outputText } = useMemo(() => {
-    return normalizeRunResponse(run.response);
-  }, [run.response]);
+  const isInProgress = run.status === "pending" || run.status === "running";
 
   const markdownComponents = useMemo<Components>(
     () => ({
@@ -242,8 +403,92 @@ export default function RunViewer({ run }: { run: RunData }) {
     []
   );
 
+  const legacyContent = structuredOutput ? (
+    <StructuredRecommendationView run={run} data={structuredOutput} markdownComponents={markdownComponents} />
+  ) : maskedOutputText ? (
+    <ReactMarkdown components={markdownComponents}>{maskedOutputText}</ReactMarkdown>
+  ) : (
+    <p className="text-xs text-muted-foreground">Resultado disponível no painel.</p>
+  );
+
+  const legacyPanel = (
+    <div className="max-h-[60vh] overflow-auto rounded-3xl bg-black/40 p-4 text-sm leading-relaxed text-foreground/90 md:max-h-[50vh]">
+      {legacyContent}
+    </div>
+  );
+
+  const summaryPanel = (
+    <section className="rounded-3xl border border-white/10 bg-white/5 p-4 text-sm text-foreground/90">
+      <header className="space-y-1">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">Resumo do run</p>
+        <p className="text-xs text-muted-foreground">Leitura rápida para decisão e impressão.</p>
+      </header>
+      <div className="mt-3 space-y-3 text-xs text-muted-foreground">
+        <p>
+          <span className="font-semibold text-foreground">Agente:</span> {getDisplayAgent(run.agent)}
+        </p>
+        <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+          <span className="pill bg-white/10 text-foreground">
+            Iniciado: {startedAtLabel ?? "—"}
+          </span>
+          <span className="pill bg-white/10 text-foreground">
+            Tempo: {durationLabel ?? "—"}
+          </span>
+          <span className="pill bg-white/10 text-foreground">
+            Custo: {costLabel ?? "—"}
+          </span>
+        </div>
+        {promptText && (
+          <p className="whitespace-pre-line">
+            <span className="font-semibold text-foreground">Pergunta original:</span> {promptText}
+          </p>
+        )}
+        {primaryRecommendation?.title && (
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+              Recomendação principal
+            </p>
+            <p className="mt-1 text-sm text-foreground">{primaryRecommendation.title}</p>
+            {primaryRecommendation.rationale && (
+              <p className="mt-2 text-xs text-foreground/85">{primaryRecommendation.rationale}</p>
+            )}
+            {primaryRecommendation.nextSteps && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                <span className="font-semibold text-foreground">Próximos passos:</span>{" "}
+                {primaryRecommendation.nextSteps}
+              </p>
+            )}
+          </div>
+        )}
+        {diagnosticSummary ? null : null}
+      </div>
+    </section>
+  );
+
+  const technicalDetailsPanel = (
+    <section className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-muted-foreground">
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-2"
+        onClick={() => setShowTechnicalDetails((value) => !value)}
+      >
+        <span className="text-[10px] font-semibold uppercase tracking-[0.35em] text-foreground/80">
+          Detalhes técnicos
+        </span>
+        <span className="pill bg-white/10 text-foreground">
+          {showTechnicalDetails ? "Fechar detalhes" : "Abrir detalhes completos"}
+        </span>
+      </button>
+      {showTechnicalDetails && (
+        <pre className="mt-3 max-h-64 overflow-auto rounded-2xl bg-black/60 p-4 text-[11px] text-foreground/80">
+          {technicalJson}
+        </pre>
+      )}
+    </section>
+  );
+
   const createReportHtml = useCallback(
-    (options?: { editable?: boolean; autoPrint?: boolean }) => {
+    (options?: { editable?: boolean; autoPrint?: boolean; includeRaw?: boolean }) => {
       const reportData = structuredOutput ?? createFallbackStructuredData(run, outputText ?? "");
       const reportForms = deriveFormsForReport(reportData);
       const reportSummary = deriveSummaryForReport(reportForms, run.agent);
@@ -254,11 +499,13 @@ export default function RunViewer({ run }: { run: RunData }) {
           summaryItems: reportSummary.items,
           summarySubtitle: reportSummary.subtitle,
           fallbackForms: reportForms,
+          promptText: promptText ?? undefined,
+          rawDetail: technicalJson,
         },
         options
       );
     },
-    [run, structuredOutput, outputText]
+    [run, structuredOutput, outputText, promptText, technicalJson]
   );
 
   const handleDownloadJson = useCallback(() => {
@@ -274,8 +521,12 @@ export default function RunViewer({ run }: { run: RunData }) {
   }, [run]);
 
   const handleDownloadPdf = useCallback(() => {
+    if (runAtivoArtifacts?.pdfHtml) {
+      downloadString(runAtivoArtifacts.pdfHtml, `run-${run.id}-report.html`, "text/html;charset=utf-8");
+      return;
+    }
     if (typeof window === "undefined") return;
-    const html = createReportHtml({ editable: false, autoPrint: true });
+    const html = createReportHtml({ editable: false, autoPrint: true, includeRaw: includeDetailsInExport });
     const blob = new Blob([html], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const pdfWindow = window.open(url, "_blank", "noopener,noreferrer");
@@ -288,11 +539,15 @@ export default function RunViewer({ run }: { run: RunData }) {
       document.body.removeChild(link);
     }
     setTimeout(() => URL.revokeObjectURL(url), 10000);
-  }, [createReportHtml, run.id]);
+  }, [createReportHtml, run.id, runAtivoArtifacts, includeDetailsInExport]);
 
   const handleDownloadHtml = useCallback(() => {
+    if (runAtivoArtifacts?.landingHtml) {
+      downloadString(runAtivoArtifacts.landingHtml, `run-${run.id}-landing.html`, "text/html;charset=utf-8");
+      return;
+    }
     if (typeof document === "undefined") return;
-    const html = createReportHtml({ editable: true });
+    const html = createReportHtml({ editable: true, includeRaw: includeDetailsInExport });
     const blob = new Blob([html], { type: "text/html;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -302,10 +557,10 @@ export default function RunViewer({ run }: { run: RunData }) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  }, [createReportHtml, run.id]);
+  }, [createReportHtml, run.id, runAtivoArtifacts, includeDetailsInExport]);
 
     const handleSendAlert = useCallback(() => {
-    const summary = `Run ${run.id.slice(0, 8)} (${run.agent})`;
+    const summary = `Run ${run.id.slice(0, 8)} (${getDisplayAgent(run.agent)})`;
     const payload = {
       id: run.id,
       agent: run.agent,
@@ -349,8 +604,9 @@ export default function RunViewer({ run }: { run: RunData }) {
         <div>
           <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Run ativo</p>
           <h3 className="text-lg font-semibold text-foreground">
-            #{run.id.slice(0, 8)} — {run.agent}
+            #{run.id.slice(0, 8)} — {getDisplayAgent(run.agent)}
           </h3>
+          <p className="mt-1 text-xs text-muted-foreground">ID completo: {run.id}</p>
         </div>
         <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
           <span className={`rounded-full px-3 py-1 font-semibold ${statusInfo.badge}`}>
@@ -363,6 +619,62 @@ export default function RunViewer({ run }: { run: RunData }) {
         </div>
       </header>
 
+      {delegationInfo && (
+        <section className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-muted-foreground">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
+            Delegacao ativa
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2 text-xs text-foreground/85">
+            {delegationInfo.delegatorId && (
+              <span className="pill bg-white/10 text-foreground">
+                Delegador: {delegationInfo.delegatorId.slice(0, 8)}
+              </span>
+            )}
+            {delegationInfo.scope && (
+              <span className="pill bg-white/10 text-foreground">Escopo: {delegationInfo.scope}</span>
+            )}
+            {typeof delegationInfo.trustMin === "number" && (
+              <span className="pill bg-white/10 text-foreground">Trust min: {delegationInfo.trustMin}</span>
+            )}
+            {delegationInfo.validUntil && (
+              <span className="pill bg-white/10 text-foreground">
+                Valido ate: {new Date(delegationInfo.validUntil).toLocaleDateString("pt-BR")}
+              </span>
+            )}
+          </div>
+        </section>
+      )}
+      {guardrailWarning && (
+        <section className="rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-xs text-amber-100">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-amber-200">
+            Aviso de guardrail
+          </p>
+          <p className="mt-2 text-xs text-amber-100/90">
+            {guardrailWarning.reason}
+          </p>
+        </section>
+      )}
+      {guardrailBlocked && (
+        <section className="rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-xs text-amber-100">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-amber-200">
+            Bloqueio de governanca
+          </p>
+          <p className="mt-2 text-xs text-amber-100/90">
+            {guardrailBlocked}
+          </p>
+        </section>
+      )}
+      {promptText && (
+        <section className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-muted-foreground">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
+            Pergunta enviada
+          </p>
+          <p className="mt-2 whitespace-pre-line text-sm text-foreground/90">
+            {promptText}
+          </p>
+        </section>
+      )}
+
       <div className="glass-panel flex-1 overflow-hidden">
         {isInProgress ? (
           <div className="flex h-full min-h-[160px] flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-amber-400/40 bg-amber-400/10 p-6 text-xs text-amber-100">
@@ -371,19 +683,18 @@ export default function RunViewer({ run }: { run: RunData }) {
               Execucao em andamento. A timeline abaixo sera atualizada automaticamente.
             </p>
           </div>
+        ) : runAtivoArtifacts ? (
+          <div className="space-y-6">
+            <RunAtivoArtifactsView artifacts={runAtivoArtifacts} runId={run.id} />
+            {summaryPanel}
+            {legacyPanel}
+            {technicalDetailsPanel}
+          </div>
         ) : (
-          <div className="max-h-[60vh] overflow-auto rounded-3xl bg-black/40 p-4 text-sm leading-relaxed text-foreground/90 md:max-h-[50vh]">
-            {structuredOutput ? (
-              <StructuredRecommendationView
-                run={run}
-                data={structuredOutput}
-                markdownComponents={markdownComponents}
-              />
-            ) : outputText ? (
-              <ReactMarkdown components={markdownComponents}>{outputText}</ReactMarkdown>
-            ) : (
-              <p className="text-xs text-muted-foreground">Resultado disponível no painel.</p>
-            )}
+          <div className="space-y-6">
+            {summaryPanel}
+            {legacyPanel}
+            {technicalDetailsPanel}
           </div>
         )}
       </div>
@@ -395,8 +706,19 @@ export default function RunViewer({ run }: { run: RunData }) {
         status={run.status}
       />
 
+      <GovernancePanel runId={run.id} />
+
       <footer className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
         <span>traceId: {run.meta?.traceId ?? "-"}</span>
+        <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
+          <input
+            type="checkbox"
+            className="h-3 w-3 accent-accent"
+            checked={includeDetailsInExport}
+            onChange={(event) => setIncludeDetailsInExport(event.target.checked)}
+          />
+          Incluir detalhes completos no export
+        </label>
         <button
           type="button"
           className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-foreground transition hover:border-accent/60 hover:text-accent"
@@ -447,17 +769,26 @@ type StructuredRecommendationViewProps = {
 
 function StructuredRecommendationView({ run, data, markdownComponents }: StructuredRecommendationViewProps) {
   const [copiedCopyKey, setCopiedCopyKey] = useState<string | null>(null);
+  const [adoptedOverrides, setAdoptedOverrides] = useState<Record<string, boolean>>({});
   const recommendations = Array.isArray(data.recomendacoes)
     ? (data.recomendacoes as Record<string, unknown>[])
     : [];
   const diagnostico = isPlainObject(data.diagnostico) ? (data.diagnostico as Record<string, unknown>) : null;
   const agentState = isPlainObject(data.agentState) ? (data.agentState as Record<string, unknown>) : null;
+  const maskedAgentState = useMemo(
+    () => (agentState ? maskPII(JSON.stringify(agentState, null, 2)) : ""),
+    [agentState]
+  );
   const briefingMarkdown =
     typeof data.breafing_markdown === "string"
       ? (data.breafing_markdown as string)
       : typeof data.briefing_markdown === "string"
       ? (data.briefing_markdown as string)
       : undefined;
+  const maskedBriefingMarkdown = useMemo(
+    () => (briefingMarkdown ? maskPII(briefingMarkdown) : briefingMarkdown),
+    [briefingMarkdown]
+  );
   const structuredForm = useMemo(() => extractCampaignForm(data), [data]);
   const requestForm = useMemo(() => {
     if (!isPlainObject(run.request)) return null;
@@ -476,6 +807,7 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
     return extractJ360Form(run.request as Record<string, unknown>);
   }, [run.request]);
   const j360Form = structuredJ360Form ?? requestJ360Form;
+  const maskedFallbackJson = useMemo(() => maskPII(JSON.stringify(data, null, 2)), [data]);
   const memory = isPlainObject(data.memory) ? (data.memory as Record<string, unknown>) : null;
   const previousAgentState =
     isPlainObject(memory?.agentStateBefore) &&
@@ -559,8 +891,22 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
   const hasSummaryData = summaryItems.length > 0;
 
 
-  const handleRecommendationAction = (action: "adopt" | "feedback", payload: { key?: unknown; tatica?: unknown }) => {
+  const handleRecommendationAction = async (
+    action: "adopt" | "feedback",
+    payload: { key?: unknown; tatica?: unknown }
+  ) => {
     if (typeof window === "undefined") return;
+    if (action === "adopt") {
+      const key = typeof payload.key === "string" ? payload.key : undefined;
+      const tatica = typeof payload.tatica === "string" ? payload.tatica : undefined;
+      try {
+        await apiAdoptRecommendation(run.id, { key, tatica, adopted: true });
+        const fallbackKey = key ?? tatica ?? `rec-${run.id}`;
+        setAdoptedOverrides((prev) => ({ ...prev, [fallbackKey]: true }));
+      } catch (error) {
+        console.warn("[RunViewer] falha ao marcar recomendacao como adotada", error);
+      }
+    }
     window.dispatchEvent(
       new CustomEvent("eiah:run-recommendation-action", {
         detail: {
@@ -572,6 +918,10 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
       })
     );
   };
+
+  useEffect(() => {
+    setAdoptedOverrides({});
+  }, [run.id]);
 
   const handleCopyBlock = async (title: string, content: string) => {
     try {
@@ -742,6 +1092,13 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
                   : execucao && typeof execucao.tokens === "number"
                   ? `${execucao.tokens} tokens`
                   : null;
+              const identityKey =
+                typeof rec.key === "string"
+                  ? rec.key
+                  : typeof rec.tatica === "string"
+                  ? rec.tatica
+                  : `rec-${index}`;
+              const adopted = adoptedOverrides[identityKey] ?? Boolean(rec.adopted);
 
               return (
                 <article
@@ -775,13 +1132,13 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
                         </span>
                       ) : null}
                       {critical && <span className="pill bg-amber-500/15 text-amber-200">Pontuação crítica</span>}
-                      {rec.adopted ? <span className="pill bg-emerald-500/20 text-emerald-200">Adotada</span> : null}
+                      {adopted ? <span className="pill bg-emerald-500/20 text-emerald-200">Adotada</span> : null}
                     </div>
                   </div>
                   {rationale && <p className="mt-3 text-sm text-foreground/90">{rationale}</p>}
                   {nextSteps && (
                     <p className="mt-2 text-xs text-muted-foreground">
-                      <span className="font-semibold text-foreground">Próximos passos:</span> {nextSteps}
+                      <span className="font-semibold text-foreground">Próximos passos sugeridos:</span> {nextSteps}
                     </p>
                   )}
                   {execucao && (
@@ -868,7 +1225,7 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
         <section className="space-y-2">
           <h4 className="text-base font-semibold text-foreground">Estado persistido</h4>
           <pre className="max-h-48 overflow-auto rounded-2xl bg-black/60 p-4 text-xs text-foreground/80">
-            {JSON.stringify(agentState, null, 2)}
+            {maskedAgentState}
           </pre>
         </section>
       )}
@@ -877,16 +1234,119 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
         <section className="space-y-2">
           <h4 className="text-base font-semibold text-foreground">Briefing estruturado</h4>
           <div className="prose prose-invert max-w-none text-sm">
-            <ReactMarkdown components={markdownComponents}>{briefingMarkdown}</ReactMarkdown>
+            <ReactMarkdown components={markdownComponents}>{maskedBriefingMarkdown}</ReactMarkdown>
           </div>
         </section>
       )}
 
       {!recommendations.length && !briefingMarkdown && !form && (
-        <ReactMarkdown components={markdownComponents}>{JSON.stringify(data, null, 2)}</ReactMarkdown>
+        <ReactMarkdown components={markdownComponents}>{maskedFallbackJson}</ReactMarkdown>
       )}
     </div>
   );
+}
+
+type RunAtivoArtifacts = {
+  landingHtml?: string;
+  pdfHtml?: string;
+  alert?: {
+    message?: string;
+    severity?: string;
+    highlight?: string;
+  };
+};
+
+function RunAtivoArtifactsView({ artifacts, runId }: { artifacts: RunAtivoArtifacts; runId: string }) {
+  return (
+    <section className="space-y-4">
+      <header>
+        <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">Run Ativo Universal</p>
+        <h4 className="text-base font-semibold text-foreground">Landing generada automaticamente</h4>
+        <p className="text-xs text-muted-foreground">
+          Este preview mostra o HTML que ja esta disponível para exportação e streaming no front-end.
+        </p>
+      </header>
+
+      {artifacts.landingHtml ? (
+        <div className="h-[520px] w-full overflow-hidden rounded-3xl border border-white/10 bg-black/30 shadow-inner">
+          <iframe
+            title={`run-${runId}-landing`}
+            srcDoc={artifacts.landingHtml}
+            className="h-full w-full rounded-3xl border-0"
+            sandbox="allow-same-origin"
+          />
+        </div>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          Landing ainda nao disponível neste run. Assim que o agente terminar, ela aparecerá aqui.
+        </p>
+      )}
+
+      {artifacts.alert && (
+        <div className="rounded-3xl border border-white/10 bg-white/5 p-4 text-sm leading-relaxed text-foreground/90">
+          <p className="text-xs uppercase tracking-[0.35em] text-muted-foreground">Alerta priorizado</p>
+          <h5 className="text-base font-semibold text-foreground">
+            {artifacts.alert.highlight ?? "Prioridade do run"}
+          </h5>
+          {artifacts.alert.severity && (
+            <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-0.5 text-[11px] uppercase tracking-[0.3em] text-muted-foreground">
+              {artifacts.alert.severity}
+            </span>
+          )}
+          <p className="mt-2 text-sm text-foreground/90">
+            {artifacts.alert.message ?? "Sem descrição adicional."}
+          </p>
+        </div>
+      )}
+
+      <p className="text-[11px] text-muted-foreground">
+        As opcoes de download abaixo utilizam estes artefatos prontos. Você também pode exportar via API ou CLI com
+        `eiah runs download`.
+      </p>
+    </section>
+  );
+}
+
+function extractRunAtivoArtifacts(response: unknown): RunAtivoArtifacts | null {
+  if (!isPlainObject(response)) return null;
+  const reporting = response.reporting;
+  if (!isPlainObject(reporting)) return null;
+  const runAtivo = reporting.runAtivoUniversal;
+  if (!isPlainObject(runAtivo)) return null;
+
+  const landingHtml = typeof runAtivo.landingHtml === "string" ? runAtivo.landingHtml : undefined;
+  const pdfHtml = typeof runAtivo.pdfHtml === "string" ? runAtivo.pdfHtml : undefined;
+
+  let alert: RunAtivoArtifacts["alert"];
+  const rawAlert = runAtivo.alert;
+  if (typeof rawAlert === "string") {
+    alert = { message: rawAlert };
+  } else if (isPlainObject(rawAlert)) {
+    alert = {
+      message: typeof rawAlert.message === "string" ? rawAlert.message : undefined,
+      severity: typeof rawAlert.severity === "string" ? rawAlert.severity : undefined,
+      highlight: typeof rawAlert.highlight === "string" ? rawAlert.highlight : undefined,
+    };
+  }
+
+  if (!landingHtml && !pdfHtml && !alert) {
+    return null;
+  }
+
+  return { landingHtml, pdfHtml, alert };
+}
+
+function downloadString(content: string, filename: string, mime: string) {
+  if (typeof document === "undefined") return;
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 function normalizeRunResponse(raw: unknown): { structured: Record<string, unknown> | null; text: string } {
@@ -965,12 +1425,32 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+function extractDelegationInfo(request: unknown): DelegationInfo | null {
+  if (!isPlainObject(request)) return null;
+  const metadata = request.metadata;
+  if (!isPlainObject(metadata)) return null;
+  const delegation = metadata.delegation;
+  if (!isPlainObject(delegation)) return null;
+
+  return {
+    id: typeof delegation.id === "string" ? delegation.id : undefined,
+    delegatorId: typeof delegation.delegatorId === "string" ? delegation.delegatorId : undefined,
+    marketplaceId:
+      typeof delegation.marketplaceId === "string" ? delegation.marketplaceId : null,
+    scope: typeof delegation.scope === "string" ? delegation.scope : undefined,
+    trustMin: typeof delegation.trustMin === "number" ? delegation.trustMin : undefined,
+    validUntil: typeof delegation.validUntil === "string" ? delegation.validUntil : undefined,
+  };
+}
+
 type BuildRunReportHtmlOptions = {
   run: RunData;
   data: Record<string, unknown>;
   summaryItems: SummaryItem[];
   summarySubtitle: string;
   fallbackForms: ReportForms;
+  promptText?: string;
+  rawDetail?: string;
 };
 
 type ReportForms = {
@@ -1046,11 +1526,12 @@ function deriveSummaryForReport(forms: ReportForms, agent: string): { items: Sum
 
 function buildRunReportHtml(
   options: BuildRunReportHtmlOptions,
-  opts: { editable?: boolean; autoPrint?: boolean } = {}
+  opts: { editable?: boolean; autoPrint?: boolean; includeRaw?: boolean } = {}
 ): string {
-  const { run, data, summaryItems, summarySubtitle, fallbackForms } = options;
+  const { run, data, summaryItems, summarySubtitle, fallbackForms, promptText, rawDetail } = options;
   const editable = Boolean(opts.editable);
   const autoPrint = Boolean(opts.autoPrint);
+  const includeRaw = Boolean(opts.includeRaw);
   const theme = getAgentTheme(run.agent);
   const usage = computeUsageStats(isPlainObject(data.usage) ? (data.usage as Record<string, unknown>) : data.usage);
   const memoryStats = computeMemoryStats(isPlainObject(data.memory) ? (data.memory as Record<string, unknown>) : data.memory);
@@ -1089,6 +1570,16 @@ function buildRunReportHtml(
     summarySection,
     fallbackForms,
   });
+
+  const promptBlock = promptText
+    ? `<section class="section">
+        <header>
+          <h2>Pergunta original</h2>
+          <p class="muted">Texto enviado pelo solicitante.</p>
+        </header>
+        <p>${sanitizeTextContent(promptText)}</p>
+      </section>`
+    : "";
 
   const recommendationsBlock = renderRecommendationsBlock(recommendations);
   const timelineCardsHtml = timelineRows
@@ -1190,6 +1681,19 @@ function buildRunReportHtml(
       <div><dt>Cursor</dt><dd>${sanitizeTextContent(memoryStats.cursor ?? "—")}</dd></div>
     </dl>
   </section>`;
+
+  const rawBlock =
+    includeRaw && rawDetail
+      ? `<section class="section">
+          <header>
+            <h2>Detalhes técnicos completos</h2>
+            <p class="muted">Registro integral do run para auditoria.</p>
+          </header>
+          <pre style="white-space: pre-wrap; font-size: 10px; background: #0f172a; color: #e2e8f0; padding: 16px; border-radius: 16px; overflow-wrap: break-word;">${sanitizeTextContent(
+            rawDetail
+          )}</pre>
+        </section>`
+      : "";
 
   const metricGridHtml = metricCards.length
     ? metricCards
@@ -1627,7 +2131,7 @@ function buildRunReportHtml(
       <div class="hero-content">
         <div>
           <p class="muted">Operação #${sanitizeTextContent(run.id.slice(0, 8))}</p>
-          <h1>Run ${sanitizeTextContent(run.agent)}</h1>
+          <h1>Run ${sanitizeTextContent(getDisplayAgent(run.agent))}</h1>
           <small>${sanitizeTextContent(formatDiagnostic(data.diagnostico))}</small>
           <div class="chip-group">
             ${(summaryItems.slice(0, 3) as SummaryItem[])
@@ -1649,6 +2153,7 @@ function buildRunReportHtml(
       </section>
 
       ${wrapEditable(summaryBlock)}
+      ${wrapEditable(promptBlock)}
       ${wrapEditable(agentSignature)}
       ${wrapEditable(recommendationsHtml)}
       ${wrapEditable(timelineBlock)}
@@ -1656,6 +2161,7 @@ function buildRunReportHtml(
       ${wrapEditable(ctaBlock)}
       ${wrapEditable(linksBlock)}
       ${wrapEditable(auditBlock)}
+      ${wrapEditable(rawBlock)}
       <footer class="report-footer"${editable ? ' data-editable contenteditable="false"' : ""}>
         <span>Confidencial — EIAH Builder</span>
         <span>${sanitizeTextContent(now.toLocaleDateString("pt-BR"))} · Página 1 de 1</span>
@@ -2053,12 +2559,6 @@ function recommendationExecSummary(execucao: Record<string, unknown> | null) {
 function formatCurrency(value?: number) {
   if (typeof value !== "number") return "—";
   return (value / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-}
-
-function formatDuration(value?: number) {
-  if (typeof value !== "number") return "—";
-  if (value < 1000) return `${value} ms`;
-  return `${(value / 1000).toFixed(1)} s`;
 }
 
 function formatNumberPtBR(value: number | null | undefined) {

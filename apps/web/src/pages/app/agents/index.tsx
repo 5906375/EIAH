@@ -1,467 +1,514 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import AgentSelect from "../../../components/agents/AgentSelect";
+import ChatAgentLauncher, { type LedgerEvent } from "../../../components/agents/ChatAgentLauncher";
+import PolicyPanel from "../../../components/agents/PolicyPanel";
+import type { ConversationPolicy, ConversationStatus } from "@/hooks/useConversation";
+import { useSession } from "@/state/sessionStore";
 
-const personaCopy: Record<string, string> = {
-  defi_1: "Especialista em simulacoes e estrategias de liquidez DeFi.",
-  j_360: "Assistente juridico 360 para contratos tokenizados.",
-  guardian: "Middleware de evidencias com LGPD-first, hash verificavel e auditoria on-chain.",
+type PlaybookConfig = {
+  title: string;
+  intro: React.ReactNode;
+  routes: React.ReactNode[];
+  directives: React.ReactNode[];
+  checklist: React.ReactNode;
 };
 
-const AgentsPage: React.FC = () => {
-  const [agentId, setAgentId] = useState<string>();
-  const isJ360 = agentId?.toLowerCase() === "j_360";
-  const isGuardian = agentId?.toLowerCase() === "guardian";
+const PLAYBOOKS: Record<string, PlaybookConfig> = {
+  mkt: {
+    title: "MKT — Briefing de Campanha",
+    intro:
+      "Use o MKT para consolidar objetivo, publico e canais. Ele gera um plano com KPIs, cronograma e orcamento.",
+    routes: [
+      "Definir objetivo, publico e oferta principal.",
+      "Estruturar canais, copys e criativos por etapa do funil.",
+      "Gerar KPIs alvo (CTR, CPL, CAC) e metas por canal.",
+      "Entregar plano multicanal com calendario e testes A/B.",
+    ],
+    directives: [
+      "Evitar promessas sem base ou claims nao verificaveis.",
+      "Indicar fonte dos dados quando usar benchmarks.",
+      "Separar estrategia, taticas e execucao.",
+      "Recomendar testes com minimo de 2 variacoes.",
+    ],
+    checklist: "Checklist rapido: defina meta principal, budget, canais prioritarios e prazo de campanha.",
+  },
+  j360: {
+    title: "J_360 — Guia juridico rapido",
+    intro:
+      "Use o J_360 para analisar contratos, identificar riscos e gerar minutas com confirmacao humana obrigatoria.",
+    routes: [
+      "Revisar clausulas criticas e riscos sensiveis.",
+      "Pesquisar fundamentos legais e jurisprudencia.",
+      "Gerar minuta com pontos de atencao destacados.",
+      "Sugerir melhorias e clausulas faltantes.",
+    ],
+    directives: [
+      "Sempre manter trilha de auditoria e referencias.",
+      "Nao aprovar envio sem confirmacao humana.",
+      "Destacar clausulas com alto impacto juridico.",
+      "Separar fatos, opiniao e recomendacao.",
+    ],
+    checklist: "Checklist rapido: envie contrato, identifique objetivo e informe prazo de analise.",
+  },
+  floworchestrator: {
+    title: "Flow Orchestrator — Orquestracao DeFi",
+    intro:
+      "Use o Flow Orchestrator para sequenciar passos DeFi com guardrails, validacoes e logs operacionais.",
+    routes: [
+      "Definir objetivo e redes alvo (L1/L2).",
+      "Mapear etapas: swap, pool, stake, bridge, etc.",
+      "Validar riscos e limites por etapa.",
+      "Gerar checklist operacional e rollback.",
+    ],
+    directives: [
+      "Sempre declarar limites de slippage e gas.",
+      "Prever fallback caso falhe uma etapa.",
+      "Separar simulacao e execucao.",
+      "Registrar hashes e referencias de transacao.",
+    ],
+    checklist: "Checklist rapido: redes, ativos, limites, slippage e parametros de seguranca.",
+  },
+  guardian: {
+    title: "Guardian — Evidencias com verificacao publica",
+    intro: (
+      <>
+        Use o Guardian como camada deterministica de compliance: ele so responde em JSON{" "}
+        {`{schema_version, action, status, data, errors?}`} e bloqueia qualquer PII antes da ancoragem.
+      </>
+    ),
+    routes: [
+      <>
+        <strong>POST /provas/processuais</strong>: consolida hash SHA-256, cadeia de custodia e fila Merkle com verify_url imediato.
+      </>,
+      <>
+        <strong>POST /runs/&lt;id&gt;/receipt</strong>: emite recibo assinado, prepara downloads (badge HTML, PDF) e expoe audit.chain_id.
+      </>,
+      <>
+        <strong>POST /privacy/erasure</strong>: confirma apagamento irrevogavel mantendo apenas hash residual para auditoria.
+      </>,
+      <>
+        <strong>POST /nft/mint</strong>: gera certificado hash_only em L2 com alerta automatico quando houver risco de PII.
+      </>,
+    ],
+    directives: [
+      <>
+        Sempre ecoar <code>trace_id</code> e <code>idempotency_key</code> em <code>data</code>.
+      </>,
+      <>
+        Fornecer <code>verify_url</code> valido; se indisponivel, usar <code>about:blank</code> com justificativa.
+      </>,
+      <>
+        Telemetria FinOps obrigatoria: <code>{`{l2, unit_cost_usd, batch_size, route}`}</code> com fallback quando custo &gt; US$0,01/1k eventos.
+      </>,
+      <>
+        Status de ancora deve respeitar {`{queued, anchoring, confirmed, reorged}`} com <code>audit.confirmations ≥ 12</code>.
+      </>,
+    ],
+    checklist:
+      "Checklist rapido: sanitize PII, informe MIME/bytes validos, configure consenso multi-L2 e publique download_mode adequado (links ou inline).",
+  },
+  riskanalyzer: {
+    title: "Risk Analyzer — Checklist de risco",
+    intro:
+      "Use o Risk Analyzer para identificar riscos, classificacao e mitigacoes com prioridade clara.",
+    routes: [
+      "Coletar contexto, escopo e ativos criticos.",
+      "Classificar risco (baixo/medio/alto).",
+      "Mapear mitigacoes e responsaveis.",
+      "Gerar plano de acompanhamento e KPIs.",
+    ],
+    directives: [
+      "Separar risco tecnico, legal e operacional.",
+      "Informar probabilidade e impacto.",
+      "Evitar conclusoes sem evidencias.",
+      "Recomendar acoes com dono e prazo.",
+    ],
+    checklist: "Checklist rapido: ativos, ameacas, dependencias e SLAs.",
+  },
+  finnexus: {
+    title: "Fin Nexus — Insight financeiro",
+    intro:
+      "Use o Fin Nexus para consolidar fluxo, indicadores e recomendacoes de otimizacao de custos.",
+    routes: [
+      "Coletar receitas, despesas e centros de custo.",
+      "Calcular margem, burn e runway.",
+      "Identificar gargalos e alavancas.",
+      "Gerar plano de otimizacao e metas.",
+    ],
+    directives: [
+      "Usar periodos comparaveis para analise.",
+      "Destacar variacoes significativas.",
+      "Separar custos fixos e variaveis.",
+      "Sugerir acoes com impacto estimado.",
+    ],
+    checklist: "Checklist rapido: receitas, custos, headcount, metas e horizonte de analise.",
+  },
+  onchainmonitor: {
+    title: "Onchain Monitor — Monitoramento on-chain",
+    intro:
+      "Use o Onchain Monitor para configurar alertas, eventos e rotinas de monitoramento.",
+    routes: [
+      "Definir contratos, wallets e eventos.",
+      "Configurar filtros e thresholds.",
+      "Criar alertas e rotas de notificacao.",
+      "Gerar relatorio de saude e riscos.",
+    ],
+    directives: [
+      "Priorizar eventos criticos com severidade.",
+      "Evitar ruido com thresholds claros.",
+      "Registrar origem e timestamp do evento.",
+      "Manter fallback de consulta manual.",
+    ],
+    checklist: "Checklist rapido: contratos, eventos, thresholds e canais de alerta.",
+  },
+  ibc: {
+    title: "I_BC — Inteligencia comercial",
+    intro:
+      "Use o I_BC para mapear pipeline, prioridades e estrategias de fechamento.",
+    routes: [
+      "Definir ICP e etapas do funil.",
+      "Qualificar oportunidades e riscos.",
+      "Recomendar proximas acoes.",
+      "Gerar metas e indicadores comerciais.",
+    ],
+    directives: [
+      "Separar dados confirmados e suposicoes.",
+      "Manter historico por conta.",
+      "Sugerir playbook por etapa do funil.",
+      "Mensurar impacto de cada acao.",
+    ],
+    checklist: "Checklist rapido: ICP, pipeline, tickets e prazos.",
+  },
+  diarias: {
+    title: "Diarias — Rotina operacional",
+    intro:
+      "Use o Diarias para consolidar resumo do dia, bloqueios e proximos passos.",
+    routes: [
+      "Reunir metricas e eventos do dia.",
+      "Identificar bloqueios e riscos.",
+      "Apontar destaques e prioridades.",
+      "Gerar plano de acao para o dia seguinte.",
+    ],
+    directives: [
+      "Priorizar itens por impacto.",
+      "Evitar jargao tecnico sem necessidade.",
+      "Separar fatos e opiniao.",
+      "Apontar dono para cada acao.",
+    ],
+    checklist: "Checklist rapido: KPIs, bloqueios, dependencias e prazos.",
+  },
+  nftpy: {
+    title: "NFT_PY — Planejamento de colecao NFT",
+    intro:
+      "Use o NFT_PY para definir narrativa, utilidade e roadmap de colecao.",
+    routes: [
+      "Definir narrativa e utilidade.",
+      "Planejar supply, tiers e raridade.",
+      "Criar cronograma de lancamento.",
+      "Listar riscos e compliance.",
+    ],
+    directives: [
+      "Evitar claims financeiros sem base.",
+      "Definir direitos do holder claramente.",
+      "Separar fases de pre e pos-lancamento.",
+      "Prever suporte e comunidade.",
+    ],
+    checklist: "Checklist rapido: narrativa, supply, utilidade e roadmap.",
+  },
+  imagenftdiarias: {
+    title: "ImageNFTDiarias — Prompts visuais diarios",
+    intro:
+      "Use o ImageNFTDiarias para criar prompts visuais consistentes com identidade.",
+    routes: [
+      "Definir estilo visual e paleta.",
+      "Gerar prompts diarios com variacoes.",
+      "Listar referencias e parametros.",
+      "Organizar entregas por lote.",
+    ],
+    directives: [
+      "Manter consistencia de identidade.",
+      "Evitar referencias sensiveis.",
+      "Registrar seeds e parametros.",
+      "Validar qualidade antes de publicar.",
+    ],
+    checklist: "Checklist rapido: estilo, parametros, referencias e calendario.",
+  },
+  defi1: {
+    title: "DeFi_1 — Simulacao DeFi",
+    intro:
+      "Use o DeFi_1 para simular operacoes e avaliar risco/retorno.",
+    routes: [
+      "Definir ativos e redes.",
+      "Simular taxas, slippage e gas.",
+      "Comparar rotas e pools.",
+      "Gerar recomendacao com risco.",
+    ],
+    directives: [
+      "Sempre indicar premissas.",
+      "Separar simulacao de execucao.",
+      "Estimar impacto de liquidez.",
+      "Alertar para volatilidade.",
+    ],
+    checklist: "Checklist rapido: ativos, rede, slippage, gas e premissas.",
+  },
+  pitch: {
+    title: "Pitch — Montar Pitch",
+    intro:
+      "Use o Pitch para estruturar narrativa, problema, solucao e tracao.",
+    routes: [
+      "Definir dor, publico e proposta.",
+      "Montar storyline e diferenciais.",
+      "Listar tracao, mercado e competidores.",
+      "Gerar slides e roteiro de fala.",
+    ],
+    directives: [
+      "Evitar claims sem dados.",
+      "Manter story curto e direto.",
+      "Incluir CTA e proximos passos.",
+      "Separar visao e execucao.",
+    ],
+    checklist: "Checklist rapido: problema, solucao, tracao e CTA.",
+  },
+  eiah: {
+    title: "EIAH — Central de ajuda",
+    intro:
+      "Use o EIAH para orientar fluxos, duvidas e melhores praticas do sistema.",
+    routes: [
+      "Identificar tema e contexto.",
+      "Responder com passo a passo.",
+      "Sugerir links e proximas acoes.",
+      "Registrar recomendacoes.",
+    ],
+    directives: [
+      "Manter linguagem simples.",
+      "Evitar respostas longas sem necessidade.",
+      "Indicar onde configurar cada item.",
+      "Sugerir validacoes finais.",
+    ],
+    checklist: "Checklist rapido: contexto, objetivo e passos esperados.",
+  },
+  fallback: {
+    title: "Playbook do agente",
+    intro: "Use este playbook como referencia para executar o agente de forma segura.",
+    routes: ["Definir objetivo e contexto.", "Executar com validacoes.", "Registrar saidas e auditoria.", "Revisar resultados."],
+    directives: ["Respeitar limites e politicas.", "Manter rastreabilidade.", "Separar simulacao e execucao.", "Confirmar acoes criticas."],
+    checklist: "Checklist rapido: objetivo, limites, dados e validacao.",
+  },
+};
 
-  const description = useMemo(() => {
-    if (!agentId) {
-      return "Selecione um agente para visualizar posicionamento, especialidade e escopos aprovados.";
-    }
-    const key = agentId.toLowerCase();
-    return personaCopy[key] ?? "Integracao cadastrada sem descricao personalizada ainda.";
+function normalizeAgentKey(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+const AgentsPage: React.FC = () => {
+  const { workspaceId } = useSession();
+  const [agentId, setAgentId] = useState<string>();
+  const [playbookAgent, setPlaybookAgent] = useState<string | null>(null);
+  const [showSse, setShowSse] = useState(false);
+  const [showLedger, setShowLedger] = useState(false);
+  const [showRbac, setShowRbac] = useState(false);
+  const [ledger, setLedger] = useState<LedgerEvent[]>([]);
+  const [sseStatus, setSseStatus] = useState<"idle" | "connecting" | "live" | "polling" | "error">("idle");
+  const [policyState, setPolicyState] = useState<{
+    intent: string | null;
+    policy: ConversationPolicy | null;
+    status: ConversationStatus;
+  }>({ intent: null, policy: null, status: "idle" });
+  const [currentRunId, setCurrentRunId] = useState<string | null>(null);
+
+  const playbookTargetId = agentId ? "playbook-panel" : null;
+
+  const playbookData = useMemo(() => {
+    if (!agentId) return null;
+    const key = normalizeAgentKey(agentId);
+    return PLAYBOOKS[key] ?? PLAYBOOKS.fallback;
   }, [agentId]);
+
+  const policyDraft = useMemo(() => {
+    const activeId = agentId?.trim() ? agentId : "geral";
+    return [
+      `agente.: ${activeId}`,
+      "scope: market:plan.write",
+      "trust_min: 85",
+      "requires_confirmation: true",
+      "ledger: guardrail_audit_ledger",
+    ];
+  }, [agentId]);
+
+  const scopedLedger = useMemo(() => {
+    if (!currentRunId) return [];
+    const allowed = new Set([
+      "run.started",
+      "run.orchestrator.started",
+      "run.action.plan",
+      "run.action.call",
+      "run.action.result",
+      "run.completed",
+      "run.blocked.guardrails",
+    ]);
+    return ledger.filter((event) => event.runId === currentRunId && allowed.has(event.label));
+  }, [currentRunId, ledger]);
+
+  useEffect(() => {
+    setPlaybookAgent(null);
+    setCurrentRunId(null);
+    setLedger([]);
+    setSseStatus("idle");
+  }, [agentId]);
+
+  const handlePlaybookClick = () => {
+    if (!agentId || !playbookTargetId) return;
+    setPlaybookAgent(agentId);
+    requestAnimationFrame(() => {
+      document.getElementById(playbookTargetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
 
   return (
     <>
-      <div className="glass-panel grid gap-8 p-8 lg:grid-cols-[0.6fr,0.4fr]">
-        <div className="space-y-6">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-accent">Catalogo</p>
+      <div className="glass-panel p-8">
+        <div className="grid gap-6 lg:grid-cols-[1fr,320px] lg:items-start">
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-accent">Catálogo</p>
             <h2 className="text-3xl font-display font-semibold text-foreground">Agentes conectados</h2>
             <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-              Configure intencoes, limites e credenciais; visualize rapidamente o pitch de cada modulo e seus diferenciais.
+              Configure intenções, limites e credenciais; visualize rapidamente cada agente e seus diferenciais.
             </p>
+            <div className="mt-6">
+              <ChatAgentLauncher
+                activeAgentId={agentId}
+                onLedgerChange={setLedger}
+                onRunIdChange={setCurrentRunId}
+                onSseStatusChange={setSseStatus}
+                onPolicyChange={setPolicyState}
+                workspaceId={workspaceId}
+              />
+            </div>
           </div>
-          <AgentSelect value={agentId} onChange={setAgentId} />
-          <div className="glass-subtle p-6">
-            <h3 className="text-sm font-semibold text-foreground">Resumo</h3>
-            <p className="mt-2 text-sm text-muted-foreground leading-relaxed">{description}</p>
-            {agentId && (
-              <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                <span className="pill">ID: {agentId}</span>
-                <span className="pill">Scopes configurados</span>
-                <span className="pill">Ultima atualizacao ha 2h</span>
-              </div>
-            )}
+          <div className="w-full lg:max-w-xs lg:justify-self-end lg:self-start">
+            <AgentSelect
+              value={agentId}
+              onChange={setAgentId}
+              showPlaybook={Boolean(agentId)}
+              onPlaybookClick={agentId ? handlePlaybookClick : undefined}
+            />
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+              <button
+                type="button"
+                onClick={() => setShowSse((prev) => !prev)}
+                className="pill transition hover:border-accent/40"
+                aria-pressed={showSse}
+              >
+                REAL-TIME
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowLedger((prev) => !prev)}
+                className="pill transition hover:border-accent/40"
+                aria-pressed={showLedger}
+              >
+                AUDIT & LOG
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowRbac((prev) => !prev)}
+                className="pill transition hover:border-accent/40"
+                aria-pressed={showRbac}
+              >
+                POLICY
+              </button>
+            </div>
+            <div className="mt-4 flex flex-col gap-4">
+              {showRbac && (
+                <PolicyPanel
+                  intent={policyState.intent}
+                  policy={policyState.policy}
+                  status={policyState.status}
+                />
+              )}
+
+              {showLedger && (
+                <div className="glass-subtle p-5">
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
+                    Ledger Stream
+                  </h3>
+                  <div className="mt-3 space-y-2 text-xs text-muted-foreground">
+                    {scopedLedger.length === 0 ? (
+                      <div className="rounded-2xl border border-white/10 bg-black/30 px-3 py-2">
+                        Nenhum evento registrado para o run atual.
+                      </div>
+                    ) : (
+                      scopedLedger.map((event) => (
+                        <div key={event.id} className="rounded-2xl border border-white/10 bg-black/30 px-3 py-2">
+                          <p className="text-[11px] font-semibold text-foreground">{event.label}</p>
+                          <p className="mt-1">{event.detail}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {showSse && (
+                <div className="glass-subtle p-5 text-xs text-muted-foreground">
+                  <h3 className="text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
+                    SSE Status
+                  </h3>
+                  <p className="mt-2">
+                    {sseStatus === "live"
+                      ? "Conexao SSE ativa."
+                      : sseStatus === "polling"
+                      ? "Fallback em polling via API."
+                      : sseStatus === "error"
+                      ? "Falha ao receber eventos."
+                      : "Aguardando envio."}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-        <aside className="glass-subtle flex flex-col justify-between gap-6 p-6 text-sm text-muted-foreground">
-          <div>
-            <h4 className="text-sm font-semibold text-foreground">Checklist de onboard</h4>
-            <ul className="mt-3 space-y-2">
-              <li>- Definir intencao primaria</li>
-              <li>- Configurar url_by_env e tokens</li>
-              <li>- Publicar schemas (input/output)</li>
-              <li>- Ativar guardrails e confirmacao</li>
-            </ul>
-          </div>
-          <p>
-            Use o Agent Builder para registrar Actions com{" "}
-            <code className="rounded bg-black/40 px-1">requires_confirmation</code> nas operacoes criticas e monitore os KPIs
-            na aba Billing.
-          </p>
-        </aside>
       </div>
-      {isJ360 && (
-        <section className="mt-8 space-y-4 rounded-3xl border border-white/10 bg-surface/80 p-8 text-sm text-muted-foreground shadow-lg shadow-black/20">
-          <header className="space-y-4">
+      {playbookAgent && playbookData && (
+        <section
+          id="playbook-panel"
+          className="mt-8 space-y-4 rounded-3xl border border-accent/30 bg-surface/80 p-8 text-sm text-muted-foreground shadow-lg shadow-accent/20"
+        >
+          <header className="space-y-2">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-accent">Guia do Usuario</p>
-                <h3 className="mt-2 text-2xl font-display font-semibold text-foreground">
-                  Guia do Usuario - Agente Juridico (J_360)
-                </h3>
+                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-accent">Playbook</p>
+                <h3 className="text-2xl font-display font-semibold text-foreground">{playbookData.title}</h3>
               </div>
-              <img src="assets/logo_projeto.png" alt="Logo do Projeto" width={140} className="shrink-0 rounded-lg" />
+              <button
+                type="button"
+                onClick={() => setPlaybookAgent(null)}
+                className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-foreground transition hover:border-accent/40"
+              >
+                Fechar
+              </button>
             </div>
-            <p className="max-w-3xl">
-              Bem-vindo(a)! Este guia explica como usar o Agente Juridico (J_360) no Mission Control para analisar contratos,
-              pesquisar fundamentos legais e gerar minutas/pareceres com seguranca, guardrails e auditoria.
-            </p>
-          </header>
-          <div className="grid gap-3">
-            <details className="glass-subtle rounded-2xl p-5" open>
-              <summary className="cursor-pointer text-sm font-semibold text-foreground">1) Visao geral</summary>
-              <p className="mt-3">
-                O <strong>J_360</strong> e especializado em direito civil/imobiliario, tokenizacao/CVM e tributario:
-              </p>
-              <ul className="mt-3 list-disc space-y-2 pl-5">
-                <li>Le contratos (PDF, DOCX ou link) e destaca riscos e clausulas sensiveis.</li>
-                <li>Pesquisa lei, jurisprudencia e doutrina em colecoes RAG internas (LGPD, CVM, tributario etc.).</li>
-                <li>Gera minutas e pareceres (ODT/PDF/Markdown) com confirmacao humana obrigatoria antes de qualquer envio.</li>
-              </ul>
-              <p className="mt-3 font-semibold text-accent">
-                Importante: o J_360 auxilia, mas a decisao final permanece humana. Guardrail requires_confirmation protege as acoes sensiveis.
-              </p>
-            </details>
-            <details className="glass-subtle rounded-2xl p-5">
-              <summary className="cursor-pointer text-sm font-semibold text-foreground">2) O que foi configurado</summary>
-              <ul className="mt-3 list-disc space-y-2 pl-5">
-                <li>Descricao do agente preenchida com escopo, diferenciais e pitch.</li>
-                <li>
-                  Ferramentas com contrato completo:
-                  <ul className="mt-2 list-[circle] space-y-1 pl-5">
-                    <li>
-                      <code>contract.parse</code> - extrai clausulas, obrigacoes, prazos, multas e riscos (upload/URL).
-                    </li>
-                    <li>
-                      <code>rag.searchLaw</code> - pesquisa colecoes LGPD/CVM/tributario e retorna trechos com citacoes.
-                    </li>
-                    <li>
-                      <code>doc.generateOpinion</code> - gera parecer/minuta com confirmacao humana antes de qualquer efeito externo.
-                    </li>
-                  </ul>
-                </li>
-                <li>Guardrails ativos: simulateFirst true por padrao; requires_confirmation true em operacoes de risco.</li>
-                <li>Scopes minimos por ferramenta (ex.: law:contract:read, law:opinion:write).</li>
-              </ul>
-            </details>
-            <details className="glass-subtle rounded-2xl p-5">
-              <summary className="cursor-pointer text-sm font-semibold text-foreground">2.1) Colecoes RAG ativas</summary>
-              <p className="mt-3">Colecoes disponiveis (podem ser ativadas por projeto/ambiente):</p>
-              <ul className="mt-3 space-y-3">
-                <li>
-                  <strong>LGPD (Lei 13.709/2018)</strong> - principios, bases legais, direitos do titular, ANPD.
-                  <div className="text-xs">Status: ativa • Ultima indexacao: {"{{PREENCHER_DATA}}"} • Responsavel: {"{{OWNER}}"}</div>
-                </li>
-                <li>
-                  <strong>CVM (Resolucoes 88/160/233 e correlatas)</strong> - tokenizacao, ofertas publicas, valores mobiliarios.
-                  <div className="text-xs">Status: ativa • Ultima indexacao: {"{{PREENCHER_DATA}}"} • Responsavel: {"{{OWNER}}"}</div>
-                </li>
-                <li>
-                  <strong>Tributario (CTN + ISS/IPTU/ITBI + normas locais)</strong> - incidencia, fatos geradores, isencoes.
-                  <div className="text-xs">Status: opcional • Ultima indexacao: {"{{PREENCHER_DATA}}"} </div>
-                </li>
-                <li>
-                  <strong>Consumidor (CDC) e Civil/Imobiliario</strong> - vicio oculto, clausulas abusivas, locacao, compra e venda.
-                  <div className="text-xs">Status: ativa • Ultima indexacao: {"{{PREENCHER_DATA}}"} </div>
-                </li>
-              </ul>
-              <p className="mt-3 text-xs">
-                Dica: ao usar <code>rag.searchLaw</code>, informe jurisdicao (ex.: BR) e dominio (civil, consumidor, cvm) para mais precisao.
-              </p>
-            </details>
-            <details className="glass-subtle rounded-2xl p-5">
-              <summary className="cursor-pointer text-sm font-semibold text-foreground">3) Como usar no Mission Control</summary>
-              <ol className="mt-3 list-decimal space-y-2 pl-5">
-                <li>Abra Catalogo {"->"} Agentes conectados e selecione "Juridico - R$ 2,30/run (ID: J_360)".</li>
-                <li>Envie o insumo: upload/URL de contrato ou pergunta juridica detalhada.</li>
-                <li>Clique em <strong>Simular primeiro</strong> (estima custo/tempo, valida schema e scopes).</li>
-                <li>Revise o preview; se estiver ok, confirme no modal humano para executar.</li>
-                <li>Monitore Runs recentes e a aba Billing para custos, limites e execucoes bloqueadas.</li>
-              </ol>
-            </details>
-            <details className="glass-subtle rounded-2xl p-5">
-              <summary className="cursor-pointer text-sm font-semibold text-foreground">4) Fluxos rapidos</summary>
-              <div className="mt-3 space-y-3">
-                <div>
-                  <p className="font-semibold text-foreground">A) Analisar contrato (detectar riscos)</p>
-                  <p>Use <code>contract.parse</code> -&gt; <code>rag.searchLaw</code> para montar resumo de riscos e sugestoes.</p>
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground">B) Pesquisar fundamento legal (RAG)</p>
-                  <p>Acione <code>rag.searchLaw</code> com palavra-chave, jurisdicao e dominio para receber citacoes.</p>
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground">C) Gerar parecer/minuta</p>
-                  <p>Execute <code>doc.generateOpinion</code> com contexto, referencias e pedido. Guardrail exige confirmacao.</p>
-                </div>
-              </div>
-            </details>
-            <details className="glass-subtle rounded-2xl p-5">
-              <summary className="cursor-pointer text-sm font-semibold text-foreground">5) Guardrails e confirmacao</summary>
-              <p className="mt-3">
-                Politicas aplicadas: simulateFirst true (sempre simular antes de efeitos externos); requires_confirmation true em envio
-                externo, efeito juridico imediato ou risco/custo alto; timeouts, retries e circuit breaker para evitar loops; PII mascarada nos logs.
-              </p>
-              <pre className="mt-3 overflow-x-auto rounded-xl bg-black/40 p-4 text-xs text-foreground">
-{`Usuario -> Simular -> Preview ok? -> (Sim) -> Modal de Confirmacao -> Executa -> Log & Billing
-                             \\-> (Nao) Ajustar inputs -> Simular de novo`}
-              </pre>
-            </details>
-            <details className="glass-subtle rounded-2xl p-5">
-              <summary className="cursor-pointer text-sm font-semibold text-foreground">6) Escopos, credenciais e ambientes</summary>
-              <p className="mt-3">Cada tool requer scopes minimos e tokens por ambiente (dev/stg/prod):</p>
-              <div className="mt-3 overflow-x-auto">
-                <table className="min-w-full border-separate border-spacing-y-2 text-sm">
-                  <thead className="text-left text-foreground">
-                    <tr>
-                      <th className="border-b border-white/10 pb-2 pr-6">Tool</th>
-                      <th className="border-b border-white/10 pb-2 pr-6">Scopes minimos</th>
-                      <th className="border-b border-white/10 pb-2">Efeito sensivel</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td className="pr-6 text-foreground">contract.parse</td>
-                      <td className="pr-6">
-                        <code>law:contract:read</code>
-                      </td>
-                      <td>Nao</td>
-                    </tr>
-                    <tr>
-                      <td className="pr-6 text-foreground">rag.searchLaw</td>
-                      <td className="pr-6">
-                        <code>law:rag:read</code>
-                      </td>
-                      <td>Nao</td>
-                    </tr>
-                    <tr>
-                      <td className="pr-6 text-foreground">doc.generateOpinion</td>
-                      <td className="pr-6">
-                        <code>law:opinion:write</code> (adicione <code>email:send</code> / <code>esign:request</code> se aplicavel)
-                      </td>
-                      <td className="font-semibold text-accent">Sim</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-              <p className="mt-3 text-xs">
-                Falta de scope causa erro de autorizacao; solicite habilitacao ao administrador do projeto/ambiente.
-              </p>
-            </details>
-            <details className="glass-subtle rounded-2xl p-5">
-              <summary className="cursor-pointer text-sm font-semibold text-foreground">7) Entradas e saidas (resumo)</summary>
-              <div className="mt-3 space-y-4">
-                <div>
-                  <p className="font-semibold text-foreground">contract.parse</p>
-                  <pre className="overflow-x-auto rounded-xl bg-black/40 p-4 text-xs text-foreground">
-{`Entrada:
-{
-  "source": { "type": "upload|url", "value": "..." },
-  "matter": "locacao_residencial|compra_venda|prestacao_servicos|...",
-  "notes": "pontos de atencao (opcional)"
-}
-
-Saida:
-{
-  "clauses": [{"title":"Multa rescisoria","risk":"alto","excerpt":"..."}],
-  "deadlines": [{"type":"prazo de denuncia","date":"2025-11-30"}],
-  "duties": ["responsabilidade por vicios","garantia"],
-  "risks": ["assimetria de penalidades","confissao de divida"],
-  "recommendations": ["incluir clausula de mediacao","rever multa"]
-}`}
-                  </pre>
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground">rag.searchLaw</p>
-                  <pre className="overflow-x-auto rounded-xl bg-black/40 p-4 text-xs text-foreground">
-{`Entrada:
-{ "query": "vicio oculto em imovel usado", "domains": ["civil","consumidor"], "jurisdiction": "BR" }
-
-Saida:
-{ "hits": [{"source":"CDC art. 18","snippet":"...","relevance":0.92,"ref":"..."}] }`}
-                  </pre>
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground">doc.generateOpinion</p>
-                  <pre className="overflow-x-auto rounded-xl bg-black/40 p-4 text-xs text-foreground">
-{`Entrada:
-{
-  "title": "Parecer sobre vicio oculto",
-  "facts": "resumo dos fatos relevantes",
-  "references": [{"type":"law","ref":"CDC art. 18"}],
-  "audience": "cliente leigo",
-  "length": "2_pages"
-}
-
-Saida: documento estruturado com Introducao -> Analise -> Fundamentos -> Conclusao -> Proximos passos.`}
-                  </pre>
-                </div>
-              </div>
-            </details>
-            <details className="glass-subtle rounded-2xl p-5">
-              <summary className="cursor-pointer text-sm font-semibold text-foreground">8) Privacidade, logs e auditoria</summary>
-              <ul className="mt-3 list-disc space-y-2 pl-5">
-                <li>PII mascarada (CPF, RG, e-mail, telefone, enderecos, dados sensiveis).</li>
-                <li>Trilha de auditoria por run: entrada/saida resumida, custo estimado/real, traceId, usuario, horario.</li>
-                <li>Retencao conforme politica interna do projeto.</li>
-              </ul>
-            </details>
-            <details className="glass-subtle rounded-2xl p-5">
-              <summary className="cursor-pointer text-sm font-semibold text-foreground">9) Custos e cotas</summary>
-              <p className="mt-3">
-                Formula: custo = perRun + (perMB x tamanho_do_payload_em_MB). Para o J_360: perRun = R$ 2,30 e perMB = R$ 0,11.
-              </p>
-              <pre className="mt-3 overflow-x-auto rounded-xl bg-black/40 p-4 text-xs text-foreground">
-{`Exemplo (contrato 350 KB ~ 0,34 MB):
-2,30 + (0,11 x 0,34) = 2,30 + 0,0374 ~= R$ 2,34`}
-              </pre>
-              <p className="text-xs">Soft limit gera aviso; hard limit bloqueia execucoes ate renovacao ou aumento de cota.</p>
-            </details>
-            <details className="glass-subtle rounded-2xl p-5">
-              <summary className="cursor-pointer text-sm font-semibold text-foreground">10) KPIs e Billing</summary>
-              <ul className="mt-3 list-disc space-y-2 pl-5">
-                <li>Runs simuladas vs confirmadas (eficiencia dos guardrails).</li>
-                <li>Custo evitado (simulacoes que nao viraram execucao).</li>
-                <li>Custo por caso/cliente (use metadados nas requisicoes).</li>
-                <li>Consumo vs cotas por periodo, agente e ambiente.</li>
-              </ul>
-            </details>
-            <details className="glass-subtle rounded-2xl p-5">
-              <summary className="cursor-pointer text-sm font-semibold text-foreground">11) Erros comuns e solucoes</summary>
-              <ul className="mt-3 list-disc space-y-2 pl-5">
-                <li>Escopo ausente/negado - solicite habilitacao (ex.: law:opinion:write).</li>
-                <li>Schema invalido - revise campos obrigatorios conforme exemplos.</li>
-                <li>Arquivo nao suportado/ilegivel - envie PDF/DOCX textual ou realize OCR antes.</li>
-                <li>Pendente de confirmacao - abra o modal humano e confirme.</li>
-                <li>Quota excedida (hard limit) - aguarde renovacao ou solicite aumento.</li>
-              </ul>
-            </details>
-            <details className="glass-subtle rounded-2xl p-5">
-              <summary className="cursor-pointer text-sm font-semibold text-foreground">12) Boas praticas</summary>
-              <ul className="mt-3 list-disc space-y-2 pl-5">
-                <li>Simule sempre antes de executar algo externo.</li>
-                <li>Contextualize fatos, objetivo e publico (tecnico/leigo).</li>
-                <li>Peca citacoes de lei/artigo/inciso quando relevante.</li>
-                <li>Garanta revisao humana antes de enviar a terceiros.</li>
-              </ul>
-            </details>
-            <details className="glass-subtle rounded-2xl p-5">
-              <summary className="cursor-pointer text-sm font-semibold text-foreground">13) FAQ</summary>
-              <ul className="mt-3 list-disc space-y-2 pl-5">
-                <li>O J_360 substitui advogado? Nao. Ele acelera leitura/pesquisa, mas a decisao e humana.</li>
-                <li>Posso usar minha base de leis? Sim, publique colecoes RAG internas e reindexe.</li>
-                <li>Como ajustar o tom do parecer? Informe publico/alvo ou use presets no formulario.</li>
-                <li>Consigo exportar ODT/PDF? Sim, via opcoes do resultado de <code>doc.generateOpinion</code>.</li>
-              </ul>
-            </details>
-            <details className="glass-subtle rounded-2xl p-5">
-              <summary className="cursor-pointer text-sm font-semibold text-foreground">14) Roadmap (sugestoes)</summary>
-              <ul className="mt-3 list-disc space-y-2 pl-5">
-                <li>Integracao com e-signature (<code>esign.requestSignature</code>) com confirmacao obrigatoria.</li>
-                <li>Templates de minuta padrao por tipo contratual.</li>
-                <li>Painel de clausulas proibidas/sensiveis com alerta automatico.</li>
-                <li>Metrica de tempo poupado por caso.</li>
-              </ul>
-            </details>
-            <details className="glass-subtle rounded-2xl p-5">
-              <summary className="cursor-pointer text-sm font-semibold text-foreground">15) Modelos de minuta padrao</summary>
-              <p className="mt-3">
-                Use os templates abaixo para acelerar a redacao. Substitua os tokens e sempre simule, revise e confirme antes de enviar.
-              </p>
-              <div className="mt-4 space-y-4">
-                <div className="space-y-2">
-                  <p className="font-semibold text-foreground">15.1) Contrato de locacao residencial</p>
-                  <p>
-                    Tokens obrigatorios: <code>{"{{LOCADOR_NOME}}"}</code>, <code>{"{{LOCATARIO_NOME}}"}</code>,{" "}
-                    <code>{"{{IMOVEL_ENDERECO}}"}</code>, <code>{"{{AREA}}"}</code>, <code>{"{{ALUGUEL_MENSAL}}"}</code>,{" "}
-                    <code>{"{{DATA_INICIO}}"}</code>, <code>{"{{PRAZO_MESES}}"}</code>, <code>{"{{GARANTIA_TIPO}}"}</code>,{" "}
-                    <code>{"{{MULTA_PERCENTUAL}}"}</code>, <code>{"{{INDICE_REAJUSTE}}"}</code>, <code>{"{{FORO_COMARCA}}"}</code>.
-                  </p>
-                  <ol className="list-decimal space-y-1 pl-5 text-xs">
-                    <li>Partes e qualificacao.</li>
-                    <li>Objeto e destinacao (uso residencial, proibicao de sublocacao).</li>
-                    <li>Prazo e renovacao.</li>
-                    <li>Aluguel, reajuste pelo {"{{INDICE_REAJUSTE}}"}, encargos e IPTU.</li>
-                    <li>Garantia locaticia {"{{GARANTIA_TIPO}}"} e condicoes.</li>
-                    <li>Vistoria inicial, conservacao e obras.</li>
-                    <li>Regras de uso e acesso do locador.</li>
-                    <li>Rescisao e multa de {"{{MULTA_PERCENTUAL}}"}%.</li>
-                    <li>Devolucao, vistoria final e entrega das chaves.</li>
-                    <li>Foro: {"{{FORO_COMARCA}}"}</li>
-                  </ol>
-                  <p className="text-xs">
-                    Clausulas sensiveis: multa desproporcional, transferencia indevida de riscos, retencao indevida de caucao.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <p className="font-semibold text-foreground">15.2) Compra e venda de imovel</p>
-                  <p>
-                    Tokens obrigatorios: <code>{"{{VENDEDOR_NOME}}"}</code>, <code>{"{{COMPRADOR_NOME}}"}</code>,{" "}
-                    <code>{"{{IMOVEL_MATRICULA}}"}</code>, <code>{"{{IMOVEL_ENDERECO}}"}</code>, <code>{"{{PRECO}}"}</code>,{" "}
-                    <code>{"{{SINAL}}"}</code>, <code>{"{{PARCELAS}}"}</code>, <code>{"{{VENCIMENTO}}"}</code>,{" "}
-                    <code>{"{{CONDICAO_FINANCIAMENTO}}"}</code>, <code>{"{{PRAZO_ESCRITURA}}"}</code>,{" "}
-                    <code>{"{{IMPOSTOS_DESPESAS}}"}</code>, <code>{"{{FORO_COMARCA}}"}</code>.
-                  </p>
-                  <ol className="list-decimal space-y-1 pl-5 text-xs">
-                    <li>Partes e objeto (imovel, matricula {"{{IMOVEL_MATRICULA}}" }).</li>
-                    <li>Titularidade, onus e gravames.</li>
-                    <li>Preco, sinal {"{{SINAL}}"}, parcelas {"{{PARCELAS}}"} / {"{{VENCIMENTO}}"} e condicoes suspensivas {"{{CONDICAO_FINANCIAMENTO}}"}.</li>
-                    <li>Documentos, prazos para escritura {"{{PRAZO_ESCRITURA}}"} e registro.</li>
-                    <li>Tributos e despesas {"{{IMPOSTOS_DESPESAS}}"}, corretagem (se houver).</li>
-                    <li>Posse, riscos, imissao e conservacao.</li>
-                    <li>Penalidades, inadimplemento e resolucao.</li>
-                    <li>Foro: {"{{FORO_COMARCA}}"}</li>
-                  </ol>
-                  <p className="text-xs">
-                    Clausulas sensiveis: venda a non domino, ausencia de certidoes, prazos inexequiveis para escritura/registro, condicao suspensiva mal definida.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <p className="font-semibold text-foreground">15.3) Prestacao de servicos</p>
-                  <p>
-                    Tokens obrigatorios: <code>{"{{CONTRATANTE}}"}</code>, <code>{"{{CONTRATADO}}"}</code>, <code>{"{{ESCOPO}}"}</code>,{" "}
-                    <code>{"{{ENTREGAVEIS}}"}</code>, <code>{"{{PRAZO}}"}</code>, <code>{"{{VALOR}}"}</code>, <code>{"{{FORMA_PAGAMENTO}}"}</code>,{" "}
-                    <code>{"{{SLA}}"}</code>, <code>{"{{MULTA_ATRASO}}"}</code>, <code>{"{{CONFIDENCIALIDADE}}"}</code>, <code>{"{{PI_DIREITOS}}"}</code>,{" "}
-                    <code>{"{{RESCISAO_PRAZO}}"}</code>, <code>{"{{FORO}}"}</code>.
-                  </p>
-                  <ol className="list-decimal space-y-1 pl-5 text-xs">
-                    <li>Objeto e escopo {"{{ESCOPO}}"} com entregaveis {"{{ENTREGAVEIS}}"}</li>
-                    <li>Prazo total {"{{PRAZO}}"} e marcos.</li>
-                    <li>Preco {"{{VALOR}}"}, forma de pagamento {"{{FORMA_PAGAMENTO}}"} e reajustes.</li>
-                    <li>Obrigacoes, subcontratacao e alocacao de equipe.</li>
-                    <li>SLA {"{{SLA}}"} e penalidades {"{{MULTA_ATRASO}}"}</li>
-                    <li>Confidencialidade {"{{CONFIDENCIALIDADE}}"} e protecao de dados.</li>
-                    <li>Direitos de PI {"{{PI_DIREITOS}}"} e licencas.</li>
-                    <li>Garantias, limitacao de responsabilidade e forca maior.</li>
-                    <li>Rescisao {"{{RESCISAO_PRAZO}}"}, efeitos e transicao.</li>
-                    <li>Compliance e foro {"{{FORO}}"}</li>
-                  </ol>
-                  <p className="text-xs">
-                    Clausulas sensiveis: cessao ampla de PI sem remuneracao, confidencialidade fraca, SLA irrealista, responsabilidade ilimitada.
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <p className="font-semibold text-foreground">Como usar os templates</p>
-                  <ol className="list-decimal space-y-1 pl-5 text-xs">
-                    <li>Duplique o bloco desejado e preencha os tokens {"{{...}}"}. </li>
-                    <li>Rode <strong>Simular primeiro</strong> com <code>doc.generateOpinion</code> ou <code>contract.parse</code> (caso inclua rascunho).</li>
-                    <li>Peca ao J_360 para sinalizar clausulas sensiveis e sugerir melhorias.</li>
-                    <li>Ao enviar/assinar, o fluxo exige confirmacao humana (<code>requires_confirmation</code>).</li>
-                  </ol>
-                  <p className="text-xs">Aviso: templates sao bases genericas; revise com advogado antes de uso vinculante.</p>
-                </div>
-              </div>
-            </details>
-          </div>
-          <footer className="pt-4 text-xs text-muted-foreground">
-            Pronto! Operacionalize o J_360 com confirmacao humana, rastreabilidade e custos sob controle. Consulte runs recentes
-            para auditoria completa de entradas e saidas.
-          </footer>
-        </section>
-      )}
-      {isGuardian && (
-        <section className="mt-8 space-y-4 rounded-3xl border border-accent/30 bg-surface/80 p-8 text-sm text-muted-foreground shadow-lg shadow-accent/20">
-          <header className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-accent">Playbook</p>
-            <h3 className="text-2xl font-display font-semibold text-foreground">Guardian — Evidências com verificação pública</h3>
-            <p>
-              Use o Guardian como camada determinística de compliance: ele só responde em JSON {`{schema_version, action, status, data, errors?}`} e bloqueia qualquer PII antes da ancoragem.
-            </p>
+            <p>{playbookData.intro}</p>
           </header>
           <div className="grid gap-4 md:grid-cols-2">
             <div className="glass-subtle rounded-2xl p-5">
               <h4 className="text-sm font-semibold text-foreground">Roteiros principais</h4>
               <ul className="mt-3 space-y-2 text-xs leading-relaxed">
-                <li>• <strong>POST /provas/processuais</strong>: consolida hash SHA-256, cadeia de custódia e fila Merkle com verify_url imediato.</li>
-                <li>• <strong>POST /runs/&lt;id&gt;/receipt</strong>: emite recibo assinado, prepara downloads (badge HTML, PDF) e expõe audit.chain_id.</li>
-                <li>• <strong>POST /privacy/erasure</strong>: confirma apagamento irrevogável mantendo apenas hash residual para auditoria.</li>
-                <li>• <strong>POST /nft/mint</strong>: gera certificado hash_only em L2 com alerta automático quando houver risco de PII.</li>
+                {playbookData.routes.map((item, index) => (
+                  <li key={`route-${index}`}>• {item}</li>
+                ))}
               </ul>
             </div>
             <div className="glass-subtle rounded-2xl p-5">
-              <h4 className="text-sm font-semibold text-foreground">Diretrizes críticas</h4>
+              <h4 className="text-sm font-semibold text-foreground">Diretrizes criticas</h4>
               <ul className="mt-3 space-y-2 text-xs leading-relaxed">
-                <li>• Sempre ecoar <code>trace_id</code> e <code>idempotency_key</code> em <code>data</code>.</li>
-                <li>• Fornecer <code>verify_url</code> válido; se indisponível, usar <code>about:blank</code> com justificativa.</li>
-                <li>• Telemetria FinOps obrigatória: <code>{`{l2, unit_cost_usd, batch_size, route}`}</code> com fallback quando custo &gt; US$0,01/1k eventos.</li>
-                <li>• status de âncora deve respeitar {`{queued, anchoring, confirmed, reorged}`} com <code>audit.confirmations ≥ 12</code>.</li>
+                {playbookData.directives.map((item, index) => (
+                  <li key={`directive-${index}`}>• {item}</li>
+                ))}
               </ul>
             </div>
           </div>
-          <footer className="text-xs text-muted-foreground">
-            Checklist rápido: sanitize PII, informe MIME/bytes válidos, configure consenso multi-L2 e publique download_mode adequado (links ou inline).
-          </footer>
+          <footer className="text-xs text-muted-foreground">{playbookData.checklist}</footer>
         </section>
       )}
     </>

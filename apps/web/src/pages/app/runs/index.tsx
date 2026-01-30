@@ -4,10 +4,23 @@ import "intro.js/minified/introjs.min.css";
 import AgentSelect from "../../../components/agents/AgentSelect";
 import CostBadge from "../../../components/billing/CostBadge";
 import RunViewer from "../../../components/runs/RunViewer";
-import { apiCreateRun, apiGetRun, apiListRuns, Run, RunStatus } from "../../../lib/api";
+import { RUN_STATUS_STYLES } from "@/components/runs/statusStyles";
+import {
+  centsToBRL,
+  extractDuration,
+  formatClockTime,
+  formatDuration,
+  formatAgentLabel,
+  formatRunId,
+  formatTrace,
+  getAgentInitials,
+} from "@/components/runs/utils";
+import { apiGetRun, apiListRuns, Run, RunStatus } from "../../../lib/api";
+import { useAgentExecution } from "@/hooks/useAgentExecution";
 import { useSession } from "@/state/sessionStore";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "https://api.eiah.local/api";
+const TENANT_PLACEHOLDER = import.meta.env.VITE_TENANT_ID ?? "tenant-demo";
 const WORKSPACE_PLACEHOLDER = import.meta.env.VITE_WORKSPACE_ID ?? "workspace-demo";
 const DEFAULT_WORKSPACE_ID = WORKSPACE_PLACEHOLDER;
 
@@ -30,7 +43,8 @@ const RUN_RESOURCES: Record<string, RunResource> = {
     prompt: "Simular fluxo de mint para cliente Alpha.",
     restSnippet: `curl -X POST "${API_BASE_URL}/defi1/simulate-mint" \
   -H "Authorization: Bearer $EIAH_TOKEN" \
-  -H "x-workspace-id: ${WORKSPACE_PLACEHOLDER}" \
+  -H "x-eiah-tenant: ${TENANT_PLACEHOLDER}" \
+  -H "x-eiah-workspace: ${WORKSPACE_PLACEHOLDER}" \
   -H "Content-Type: application/json" \
   -d '{
     "chainId": 11155111,
@@ -46,7 +60,8 @@ async function simulate() {
     method: "POST",
     headers: {
       "Authorization": "Bearer \${process.env.EIAH_TOKEN}",
-      "x-workspace-id": "${WORKSPACE_PLACEHOLDER}",
+      "x-eiah-tenant": "${TENANT_PLACEHOLDER}",
+      "x-eiah-workspace": "${WORKSPACE_PLACEHOLDER}",
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
@@ -90,7 +105,8 @@ simulate().catch(console.error);`,
     prompt: "Registrar prova processual com hash SHA-256 e verify_url imediato.",
     restSnippet: `curl -X POST "${API_BASE_URL}/guardian/provas/processuais" \
   -H "Authorization: Bearer $EIAH_TOKEN" \
-  -H "x-workspace-id: ${WORKSPACE_PLACEHOLDER}" \
+  -H "x-eiah-tenant: ${TENANT_PLACEHOLDER}" \
+  -H "x-eiah-workspace: ${WORKSPACE_PLACEHOLDER}" \
   -H "Content-Type: application/json" \
   -d '{
     "processo_id": "1234567-89.2025.8.26.0100",
@@ -107,7 +123,8 @@ async function registrarEvidencia() {
     method: "POST",
     headers: {
       "Authorization": "Bearer \${process.env.EIAH_TOKEN}",
-      "x-workspace-id": "${WORKSPACE_PLACEHOLDER}",
+      "x-eiah-tenant": "${TENANT_PLACEHOLDER}",
+      "x-eiah-workspace": "${WORKSPACE_PLACEHOLDER}",
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
@@ -144,79 +161,6 @@ registrarEvidencia().catch(console.error);`,
   },
 };
 
-const STATUS_STYLES: Record<RunStatus, { label: string; badgeClass: string; indicatorClass: string }> = {
-  pending: {
-    label: "Na fila",
-    badgeClass: "border-amber-400/40 bg-amber-400/10 text-amber-200 animate-pulse",
-    indicatorClass: "from-amber-400/70 via-amber-400/20 to-transparent",
-  },
-  running: {
-    label: "Em execução",
-    badgeClass: "border-amber-300/50 bg-amber-300/15 text-amber-100 animate-pulse",
-    indicatorClass: "from-amber-300/70 via-amber-300/20 to-transparent",
-  },
-  success: {
-    label: "Sucesso",
-    badgeClass: "border-emerald-400/40 bg-emerald-400/10 text-emerald-200",
-    indicatorClass: "from-emerald-400/60 via-emerald-400/20 to-transparent",
-  },
-  error: {
-    label: "Erro",
-    badgeClass: "border-rose-500/50 bg-rose-500/15 text-rose-200",
-    indicatorClass: "from-rose-500/70 via-rose-500/20 to-transparent",
-  },
-  blocked: {
-    label: "Revisão",
-    badgeClass: "border-yellow-500/40 bg-yellow-500/10 text-yellow-200",
-    indicatorClass: "from-yellow-500/60 via-yellow-500/20 to-transparent",
-  },
-};
-
-const getAgentInitials = (agent: string) => {
-  const compact = agent.replace(/[^a-zA-Z0-9]/g, "");
-  return (compact.slice(0, 2) || agent.slice(0, 2) || "AI").toUpperCase();
-};
-
-const formatRunId = (id: string) => (id.length > 14 ? `${id.slice(0, 6)}…${id.slice(-4)}` : id);
-
-const centsToBRL = (cents?: number) => {
-  if (cents === undefined) return null;
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
-};
-
-const formatClockTime = (iso?: string) => {
-  if (!iso) return null;
-  try {
-    return new Intl.DateTimeFormat("pt-BR", { hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
-  } catch {
-    return null;
-  }
-};
-
-const extractDuration = (run: Run) => {
-  if (run.meta?.tookMs !== undefined) return run.meta.tookMs;
-  if (run.startedAt && run.finishedAt) {
-    const started = new Date(run.startedAt).getTime();
-    const finished = new Date(run.finishedAt).getTime();
-    if (!Number.isNaN(started) && !Number.isNaN(finished)) {
-      return Math.max(0, finished - started);
-    }
-  }
-  return undefined;
-};
-
-const formatDuration = (ms?: number) => {
-  if (ms === undefined) return null;
-  if (ms < 1000) return `${ms} ms`;
-  if (ms < 60000) return `${(ms / 1000).toFixed(ms < 10000 ? 1 : 0).replace(".", ",")} s`;
-  return `${(ms / 60000).toFixed(1).replace(".", ",")} min`;
-};
-
-const formatTrace = (traceId?: string) => {
-  if (!traceId) return null;
-  return traceId.length > 12 ? `Trace ${traceId.slice(0, 4)}…${traceId.slice(-4)}` : `Trace ${traceId}`;
-};
-
 const RunsPage: React.FC = () => {
   const [agentId, setAgentId] = useState<string>();
   const [runs, setRuns] = useState<Run[]>([]);
@@ -228,7 +172,8 @@ const RunsPage: React.FC = () => {
   const [activeOnboardingTab, setActiveOnboardingTab] = useState<"video" | "rest" | "sdk" | "templates">("video");
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
 
-  const { workspaceId = DEFAULT_WORKSPACE_ID } = useSession();
+  const { tenantId, workspaceId = DEFAULT_WORKSPACE_ID } = useSession();
+  const { executeAgent } = useAgentExecution();
   const agentKey = (agentId ?? "").toLowerCase();
   const resources = RUN_RESOURCES[agentKey] ?? RUN_RESOURCES.__default;
   const onboardingTabs = [
@@ -238,7 +183,7 @@ const RunsPage: React.FC = () => {
     { id: "templates", label: "Low-code" },
   ] as const;
 
-  const inFlightStatuses: RunStatus[] = ["pending", "running", "blocked"];
+  const inFlightStatuses: RunStatus[] = ["pending", "running"];
   const runSummary = useMemo(() => {
     if (!runs.length) {
       return {
@@ -372,7 +317,7 @@ const RunsPage: React.FC = () => {
     setActionError(null);
     setIsSubmitting(true);
     try {
-      const response = await apiCreateRun({
+      const response = await executeAgent(agentId, {
         agent: agentId,
         prompt: resources.prompt,
         workspaceId,
@@ -479,9 +424,11 @@ const RunsPage: React.FC = () => {
                 Iniciar tour interativo
               </button>
             </div>
-            <span className="pill" data-tour="project-context">
-              Workspace {workspaceId}
-            </span>
+            <div className="flex flex-wrap items-center gap-2" data-tour="project-context">
+              <span className="pill">Tenant: {tenantId ?? "—"}</span>
+              <span className="pill">Workspace: {workspaceId}</span>
+              <span className="pill">Agente: {agentId ?? "—"}</span>
+            </div>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <div className="glass-subtle p-5" data-tour="agent-select">
@@ -688,108 +635,26 @@ const RunsPage: React.FC = () => {
           {error ? (
             <div className="rounded-2xl border border-red-500/30 bg-red-500/30 p-4 text-sm text-red-200">{error}</div>
           ) : (
-            <div className="grid gap-6 lg:grid-cols-[minmax(320px,0.42fr),minmax(0,0.58fr)] xl:grid-cols-[0.4fr,0.6fr]">
-              <div
-                className="glass-subtle flex h-full flex-col overflow-hidden rounded-3xl border border-white/10 bg-surface/70"
-                data-tour="run-history"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 px-5 py-3 text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-                  <span>Timeline de execução</span>
-                  {hasInFlightRuns && (
-                    <span className="inline-flex items-center gap-1 text-amber-200">
-                      <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />
-                      Atualizando em tempo real
-                    </span>
-                  )}
+            <div className="flex flex-col gap-6">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+                  Selecionar run
                 </div>
-                  <div className="no-scrollbar flex max-h-[75vh] flex-col gap-4 overflow-y-auto px-4 py-6 md:max-h-[65vh] xl:max-h-[70vh]">
-                  {runs.length === 0 && !isLoading ? (
-                    <div className="rounded-3xl border border-dashed border-white/10 bg-white/5 p-6 text-sm text-muted-foreground">
-                      Nenhum run encontrado para este contexto. Execute uma simulacao para comecar.
-                    </div>
+                <select
+                  value={selectedRun?.id ?? ""}
+                  onChange={(event) => handleSelectRun(event.target.value)}
+                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-foreground focus:border-accent/60 focus:outline-none"
+                >
+                  {runs.length === 0 ? (
+                    <option value="">Nenhum run encontrado</option>
                   ) : (
-                    runs.map((run) => {
-                      const isActive = selectedRun?.id === run.id;
-                      const statusStyle = STATUS_STYLES[run.status] ?? STATUS_STYLES.success;
-                      const startedAt = formatClockTime(run.startedAt);
-                      const duration = formatDuration(extractDuration(run));
-                      const cost = centsToBRL(run.costCents);
-                      const trace = formatTrace(run.meta?.traceId);
-                      const metaItems = [
-                        startedAt ? `Iniciado ${startedAt}` : null,
-                        duration ? `Tempo ${duration}` : null,
-                        cost ? `Custo ${cost}` : "Custo pendente",
-                      ].filter(Boolean);
-                      return (
-                        <button
-                          key={run.id}
-                          type="button"
-                          aria-pressed={isActive}
-                          onClick={() => handleSelectRun(run.id)}
-                          className={`group relative flex flex-col gap-4 rounded-3xl border px-5 py-5 text-left transition-all duration-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent ${
-                            isActive
-                              ? "border-accent/70 bg-gradient-to-br from-accent/15 via-surface/95 to-black/40 shadow-[0_30px_70px_-40px_rgba(56,189,248,0.65)]"
-                              : "border-white/10 bg-white/5 hover:border-accent/50 hover:bg-accent/10 hover:shadow-[0_24px_48px_-40px_rgba(56,189,248,0.55)]"
-                          }`}
-                        >
-                          <span
-                            aria-hidden="true"
-                            className={`pointer-events-none absolute inset-y-0 left-0 w-1 rounded-full bg-gradient-to-b ${statusStyle.indicatorClass}`}
-                          />
-                          <div className="flex flex-wrap items-start justify-between gap-4">
-                            <div className="flex min-w-0 items-center gap-3">
-                              <div
-                                className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl text-sm font-semibold uppercase tracking-wide ${
-                                  isActive
-                                    ? "bg-gradient-to-br from-accent/30 via-accent/10 to-transparent text-foreground shadow-[0_8px_18px_rgba(56,189,248,0.35)]"
-                                    : "bg-white/5 text-accent shadow-[0_4px_10px_rgba(15,23,42,0.45)]"
-                                }`}
-                              >
-                                {getAgentInitials(run.agent)}
-                              </div>
-                              <div className="min-w-0 space-y-1">
-                                <span className="block truncate text-base font-semibold text-foreground">{run.agent}</span>
-                                <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                                  <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5">
-                                    {formatRunId(run.id)}
-                                  </span>
-                                  {trace && (
-                                    <span className="hidden rounded-full border border-white/10 bg-white/5 px-2 py-0.5 sm:inline">
-                                      {trace}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                            <span
-                              className={`inline-flex items-center rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.3em] ${statusStyle.badgeClass}`}
-                            >
-                              {statusStyle.label}
-                            </span>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-                            {metaItems.map((item) => (
-                              <span
-                                key={item}
-                                className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-1"
-                              >
-                                <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-accent/70" />
-                                {item}
-                              </span>
-                            ))}
-                          </div>
-                          <div className="flex items-center justify-between border-t border-white/10 pt-3 text-[10px] font-semibold uppercase tracking-[0.25em] text-accent transition group-hover:text-accent">
-                            <span className="flex items-center gap-1">
-                              Ver detalhes
-                              <span aria-hidden="true" className="text-base leading-none">&gt;</span>
-                            </span>
-                            <span>{isActive ? "Aberto" : "Inspecionar"}</span>
-                          </div>
-                        </button>
-                      );
-                    })
+                    runs.map((run) => (
+                      <option key={run.id} value={run.id}>
+                        {formatAgentLabel(run.agent)} • {formatRunId(run.id)}
+                      </option>
+                    ))
                   )}
-                </div>
+                </select>
               </div>
               <div data-tour="run-viewer" className="flex min-h-[420px] flex-col">
                 <RunViewer run={displayRun} />

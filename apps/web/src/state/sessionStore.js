@@ -2,6 +2,7 @@ import { useSyncExternalStore } from "react";
 const DEFAULTS = {
     tenantId: import.meta.env.VITE_TENANT_ID || "tenant-demo",
     workspaceId: import.meta.env.VITE_WORKSPACE_ID || "workspace-demo",
+    token: import.meta.env.VITE_API_TOKEN || undefined,
 };
 function safeLocalStorage() {
     try {
@@ -19,6 +20,7 @@ function loadState() {
         return {
             tenantId: DEFAULTS.tenantId,
             workspaceId: DEFAULTS.workspaceId,
+            token: DEFAULTS.token,
         };
     }
     return {
@@ -27,7 +29,7 @@ function loadState() {
             storage.getItem("project_id") ||
             DEFAULTS.workspaceId,
         userId: storage.getItem("user_id") || undefined,
-        token: storage.getItem("eiah_token") || undefined,
+        token: storage.getItem("eiah_token") || DEFAULTS.token || undefined,
     };
 }
 let state = loadState();
@@ -76,6 +78,7 @@ export function clearSession() {
     notify({
         tenantId: DEFAULTS.tenantId,
         workspaceId: DEFAULTS.workspaceId,
+        token: DEFAULTS.token,
     });
 }
 if (typeof window !== "undefined") {

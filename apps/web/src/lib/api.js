@@ -24,10 +24,18 @@ async function http(path, init) {
     }
     if (token && !headers.has("authorization"))
         headers.set("authorization", `Bearer ${token}`);
-    if (tenantId && !headers.has("x-tenant-id"))
-        headers.set("x-tenant-id", tenantId);
-    if (workspaceId && !headers.has("x-workspace-id"))
-        headers.set("x-workspace-id", workspaceId);
+    if (tenantId) {
+        if (!headers.has("x-eiah-tenant"))
+            headers.set("x-eiah-tenant", tenantId);
+        if (!headers.has("x-tenant-id"))
+            headers.set("x-tenant-id", tenantId);
+    }
+    if (workspaceId) {
+        if (!headers.has("x-eiah-workspace"))
+            headers.set("x-eiah-workspace", workspaceId);
+        if (!headers.has("x-workspace-id"))
+            headers.set("x-workspace-id", workspaceId);
+    }
     const requestInit = {
         ...init,
         headers,
@@ -145,8 +153,11 @@ export async function apiCreatePlan(spec, options) {
         body: JSON.stringify(payload),
     });
 }
-export async function apiListRunEvents(runId) {
-    return http(`/runs/${runId}/events`, {
+export async function apiListRunEvents(runId, params) {
+    const query = new URLSearchParams();
+    if (params?.cursor) query.append("cursor", params.cursor);
+    const qs = query.toString() ? `?${query.toString()}` : "";
+    return http(`/runs/${runId}/events${qs}`, {
         method: "GET",
     });
 }

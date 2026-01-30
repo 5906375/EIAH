@@ -11,7 +11,8 @@
     "types": ["vite/client"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      "@repo/utils": ["../../packages/utils/src"]
     }
   },
   "include": ["src", "../../docs/RunViewer.js", "../../docs/AgentBuilder/RunTimeline.js"]

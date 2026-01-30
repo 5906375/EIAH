@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { Agent, Run } from "@/lib/api";
-import { apiCreateRun, apiEstimateCost, apiGetRun, apiListAgents } from "@/lib/api";
+import { apiEstimateCost, apiGetRun, apiListAgents } from "@/lib/api";
 import EstimateBadge from "./EstimateBadge";
 import RunStatusCard from "./RunStatusCard";
 import { useSession } from "@/state/sessionStore";
+import { useAgentExecution } from "@/hooks/useAgentExecution";
 import NeedMoreInfoDialog, {
   NeedMoreInfoField,
   NeedMoreInfoRequest,
@@ -234,6 +235,7 @@ export default function AgentFormShell<FormValues>({
   const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
   const [dismissedFollowUpRunId, setDismissedFollowUpRunId] = useState<string | null>(null);
   const { workspaceId = DEFAULT_WORKSPACE_ID } = useSession();
+  const { executeAgent } = useAgentExecution();
 
   const initialValuesKey = useMemo(() => JSON.stringify(initialValues), [initialValues]);
 
@@ -357,7 +359,7 @@ export default function AgentFormShell<FormValues>({
             rawPayload: currentRequest.rawPayload ?? combined,
           },
         };
-        const response = await apiCreateRun(payload);
+        const response = await executeAgent(agentId, payload);
         setLastRun(response.data);
         setTrackedRunId(response.data.id);
       } catch (err) {
@@ -508,4 +510,3 @@ export default function AgentFormShell<FormValues>({
     </div>
   );
 }
-

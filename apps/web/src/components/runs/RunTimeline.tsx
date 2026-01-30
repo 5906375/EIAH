@@ -13,18 +13,48 @@ const formatEventTimestamp = (iso: string) => {
 };
 
 
+function maskSensitive(value: string) {
+  return value
+    .replace(/([\w.+-]+)@([\w-]+\.[\w.-]+)/g, "***@***")
+    .replace(/(\+?\d[\d\s.-]{7,}\d)/g, "[masked-phone]");
+}
+
+function sanitizePayload(payload: unknown): unknown {
+  if (payload === null || payload === undefined) return payload;
+  if (typeof payload === "string") return maskSensitive(payload);
+  if (Array.isArray(payload)) return payload.map(sanitizePayload);
+  if (typeof payload === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(payload as Record<string, unknown>)) {
+      out[k] = sanitizePayload(v);
+    }
+    return out;
+  }
+  return payload;
+}
+
 const EVENT_LABELS: Record<string, string> = {
   "run.requested": "Briefing recebido",
   "run.enqueued": "Run enfileirado",
   "run.started": "Execução iniciada",
   "run.completed": "Execução concluída",
   "run.failed": "Execução falhou",
+  "run.token": "Token (stream)",
+  "run.token.summary": "Resumo de tokens",
+  "run.action.plan": "Plano (step)",
+  "run.action.call": "Execução (call)",
+  "run.action.result": "Resultado (step)",
+  "run.action.reflect": "Reflexão",
   "run.action.enqueued": "Ação enfileirada",
   "run.action.completed": "Ação concluída",
   "run.action.failed": "Ação falhou",
 };
 
 const ACTION_BADGES: Record<string, string> = {
+  "run.action.plan": "border-sky-400/40 bg-sky-400/10 text-sky-100",
+  "run.action.call": "border-cyan-400/40 bg-cyan-400/10 text-cyan-100",
+  "run.action.result": "border-emerald-400/40 bg-emerald-400/10 text-emerald-200",
+  "run.action.reflect": "border-violet-400/40 bg-violet-400/10 text-violet-100",
   "run.action.enqueued": "border-cyan-400/40 bg-cyan-400/10 text-cyan-100",
   "run.action.completed": "border-emerald-400/40 bg-emerald-400/10 text-emerald-200",
   "run.action.failed": "border-rose-500/40 bg-rose-500/15 text-rose-100",
@@ -43,6 +73,11 @@ type RunTimelineProps = {
 };
 
 export default function RunTimeline({ events, isLoading, error, status }: RunTimelineProps) {
+  const decorated = events.map((event) => ({
+    ...event,
+    depth: event.type.startsWith("run.action") ? 1 : 0,
+  }));
+
   return (
     <section className="glass-panel max-h-[26vh] overflow-hidden">
       <div className="mb-3 flex items-center justify-between gap-2">
@@ -65,13 +100,15 @@ export default function RunTimeline({ events, isLoading, error, status }: RunTim
         </div>
       ) : (
         <ul className="no-scrollbar flex max-h-[18vh] flex-col gap-2 overflow-y-auto pr-1 text-xs text-muted-foreground">
-          {events.map((event) => {
+          {decorated.map((event) => {
             const label = EVENT_LABELS[event.type] ?? event.type;
             const badgeClass = ACTION_BADGES[event.type] ?? "border-white/10 bg-white/5 text-foreground";
+            const payload = sanitizePayload(event.payload);
+            const indentClass = event.depth === 1 ? "ml-4 border-l border-white/10 pl-3" : "";
             return (
               <li
                 key={event.id}
-                className="rounded-2xl border border-white/5 bg-white/5 px-3 py-2 text-left"
+                className={`rounded-2xl border border-white/5 bg-white/5 px-3 py-2 text-left ${indentClass}`}
               >
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-[10px] uppercase tracking-[0.3em] text-accent">
@@ -83,11 +120,11 @@ export default function RunTimeline({ events, isLoading, error, status }: RunTim
                     </span>
                   </div>
                 </div>
-                {event.payload ? (
+                {payload ? (
                   <details className="mt-1 text-[11px] leading-snug text-muted-foreground">
                     <summary className="cursor-pointer text-foreground/80">Ver detalhes técnicos</summary>
                     <pre className="mt-1 max-h-40 overflow-auto rounded-2xl bg-black/50 p-3 text-[10px] leading-relaxed text-foreground/80 whitespace-pre-wrap">
-                      {JSON.stringify(event.payload, null, 2)}
+                      {JSON.stringify(payload, null, 2)}
                     </pre>
                   </details>
                 ) : null}

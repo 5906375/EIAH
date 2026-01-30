@@ -5,6 +5,8 @@ import BillingPage from "./pages/app/billing";
 import RunsPage from "./pages/app/runs";
 import SelfServiceIndexPage from "./pages/self-service";
 import SelfServiceRouter from "./pages/self-service/router";
+import SignupPage from "./pages/signup";
+import ProfilePage from "./pages/profile";
 import eiahLogo from "./assets/Eiah_logo.png";
 
 function NavigationLink({ to, label }: { to: string; label: string }) {
@@ -52,6 +54,7 @@ function Layout({ children }: { children: React.ReactNode }) {
               <NavigationLink to="/app/agents" label="Agentes" />
               <NavigationLink to="/app/billing" label="Billing" />
               <NavigationLink to="/self-service" label="Self-service" />
+              <NavigationLink to="/profile" label="Perfil" />
             </nav>
           </div>
         </header>
@@ -101,10 +104,34 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/app/self-service"
+        element={
+          <Layout>
+            <SelfServiceIndexPage />
+          </Layout>
+        }
+      />
+      <Route
         path="/self-service/:slug"
         element={
           <Layout>
             <SelfServiceRouter />
+          </Layout>
+        }
+      />
+      <Route
+        path="/signup"
+        element={
+          <Layout>
+            <SignupPage />
+          </Layout>
+        }
+      />
+      <Route
+        path="/profile"
+        element={
+          <Layout>
+            <ProfilePage />
           </Layout>
         }
       />

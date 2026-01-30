@@ -7,9 +7,10 @@ type SessionState = {
   token?: string;
 };
 
-const DEFAULTS = {
+const DEFAULTS: SessionState = {
   tenantId: import.meta.env.VITE_TENANT_ID || "tenant-demo",
   workspaceId: import.meta.env.VITE_WORKSPACE_ID || "workspace-demo",
+  token: import.meta.env.VITE_API_TOKEN || undefined,
 };
 
 function safeLocalStorage() {
@@ -27,6 +28,7 @@ function loadState(): SessionState {
     return {
       tenantId: DEFAULTS.tenantId,
       workspaceId: DEFAULTS.workspaceId,
+      token: DEFAULTS.token,
     };
   }
 
@@ -37,7 +39,7 @@ function loadState(): SessionState {
       storage.getItem("project_id") ||
       DEFAULTS.workspaceId,
     userId: storage.getItem("user_id") || undefined,
-    token: storage.getItem("eiah_token") || undefined,
+    token: storage.getItem("eiah_token") || DEFAULTS.token || undefined,
   };
 }
 
@@ -93,6 +95,7 @@ export function clearSession() {
   notify({
     tenantId: DEFAULTS.tenantId,
     workspaceId: DEFAULTS.workspaceId,
+    token: DEFAULTS.token,
   });
 }
 

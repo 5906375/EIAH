@@ -16,7 +16,7 @@ export const selfServiceConfigs = [
         description: "Reúna informações sobre a conta e obtenha um diagnóstico com recomendações priorizadas pelo agente J_360.",
     },
     {
-        kind: "generic",
+        kind: "custom",
         slug: "flow-orchestrator",
         agentId: "flow-orchestrator",
         label: "",
@@ -82,7 +82,7 @@ export const selfServiceConfigs = [
         },
     },
     {
-        kind: "generic",
+        kind: "custom",
         slug: "guardian",
         agentId: "guardian",
         label: "Guardian",
@@ -149,7 +149,7 @@ export const selfServiceConfigs = [
         },
     },
     {
-        kind: "generic",
+        kind: "custom",
         slug: "risk-analyzer",
         agentId: "risk-analyzer",
         label: "",
@@ -216,7 +216,7 @@ export const selfServiceConfigs = [
         description: "O FinNexus é a inteligência artificial do EIAH que cuida de toda a sua área de pagamentos e recebimentos.",
     },
     {
-        kind: "generic",
+        kind: "custom",
         slug: "onchain-monitor",
         agentId: "onchain-monitor",
         label: "",
@@ -275,7 +275,7 @@ export const selfServiceConfigs = [
         },
     },
     {
-        kind: "generic",
+        kind: "custom",
         slug: "i-bc",
         agentId: "I_BC",
         label: "",
@@ -336,7 +336,7 @@ export const selfServiceConfigs = [
         },
     },
     {
-        kind: "generic",
+        kind: "custom",
         slug: "diarias",
         agentId: "Diarias",
         label: "",
@@ -397,7 +397,7 @@ export const selfServiceConfigs = [
         },
     },
     {
-        kind: "generic",
+        kind: "custom",
         slug: "nft-py",
         agentId: "NFT_PY",
         label: "",
@@ -463,7 +463,7 @@ export const selfServiceConfigs = [
         },
     },
     {
-        kind: "generic",
+        kind: "custom",
         slug: "imagenftdiarias",
         agentId: "ImageNFTDiarias",
         label: "",
@@ -522,7 +522,7 @@ export const selfServiceConfigs = [
         },
     },
     {
-        kind: "generic",
+        kind: "custom",
         slug: "defi-1",
         agentId: "DeFi_1",
         label: "",
@@ -588,7 +588,7 @@ export const selfServiceConfigs = [
         },
     },
     {
-        kind: "generic",
+        kind: "custom",
         slug: "pitch",
         agentId: "Pitch",
         label: "",
@@ -649,7 +649,7 @@ export const selfServiceConfigs = [
         },
     },
     {
-        kind: "generic",
+        kind: "custom",
         slug: "eiah",
         agentId: "EIAH",
         label: "",

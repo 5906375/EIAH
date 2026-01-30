@@ -6,12 +6,14 @@ import SelfServiceMktPage from "./mkt";
 import SelfServiceJ360Page from "./j360";
 import SelfServiceFinNexusPage from "./fin-nexus";
 import SelfServicePitchPage from "./pitch";
+import SelfServiceAadvPage from "./aadv";
 
 const pageOverrides: Record<string, React.ReactNode> = {
   mkt: <SelfServiceMktPage />,
   j360: <SelfServiceJ360Page />,
   "fin-nexus": <SelfServiceFinNexusPage />,
   pitch: <SelfServicePitchPage />,
+  aadv: <SelfServiceAadvPage />,
 };
 
 export default function SelfServiceRouter() {
