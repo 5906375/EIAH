@@ -1,0 +1,25 @@
+{
+  "name": "@eiah/workers/run-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm exec cross-env TMPDIR=/tmp tsx src/index.ts",
+    "build": "tsup src/index.ts --format esm --dts --out-dir dist",
+    "prebuild": "bash ../../../scripts/prebuild-check.sh"
+  },
+  "dependencies": {
+    "@eiah/core": "workspace:*",
+    "@repo/db": "workspace:*",
+    "bullmq": "^5.63.1",
+    "dotenv": "^16.6.1",
+    "ioredis": "^5.8.2",
+    "pino": "^9.14.0"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "tsup": "^8.5.1",
+    "tsx": "^4.3.0",
+    "typescript": "^5.9.3"
+  }
+}

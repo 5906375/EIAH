@@ -1,9 +1,11 @@
-import { PrismaClient, Prisma } from "@prisma/client";
+import type { PrismaClient, Prisma } from "@repo/db";
 import { createLedgerBackedIdempotencyStore, type IdempotencyStore } from "@eiah/core";
 
-const prisma = new PrismaClient();
-
-export function createGuardrailLedgerStore(): IdempotencyStore {
+/**
+ * Guardrail ledger store sem criar Prisma internamente.
+ * O caller deve fornecer um PrismaClient já escopado (ex.: por tenant/workspace).
+ */
+export function createGuardrailLedgerStore(prisma: PrismaClient): IdempotencyStore {
   return createLedgerBackedIdempotencyStore({
     insert: async ({ tenantId, actionType, idempotencyKey, usageCount }) => {
       await prisma.guardrailLedger.create({
@@ -26,7 +28,9 @@ export function createGuardrailLedgerStore(): IdempotencyStore {
         },
       });
     },
-    isUniqueConstraintError: (error) =>
-      error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002",
+    isUniqueConstraintError: (error: unknown) => {
+      const typedError = error as Prisma.PrismaClientKnownRequestError | null | undefined;
+      return typedError?.code === "P2002";
+    },
   });
 }

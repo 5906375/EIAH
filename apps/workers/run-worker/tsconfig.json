@@ -1,0 +1,28 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2021",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "strict": false,
+    "skipLibCheck": true,
+    // 🔧 Ajuste para resolver os imports de forma consistente:
+    "baseUrl": ".",
+    // 📦 Permite usar aliases dos outros pacotes:
+    "paths": {
+      "@eiah/core/*": [
+        "../../../packages/core/src/*"
+      ],
+      "@repo/db/*": [
+        "../../../packages/db/src/*"
+      ]
+    },
+    // 🧱 Saída de build:
+    "outDir": "dist"
+  },
+  "include": [
+    "src"
+  ]
+}
