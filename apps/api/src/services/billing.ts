@@ -1,15 +1,69 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, prismaGlobal } from "@repo/db";
 
-const prisma = new PrismaClient();
+type WorkspaceScope = { tenantId: string; workspaceId: string };
 
-/** pricing simples: busca por agente; se não houver, 0 */
+/**
+ * Cria o client tenant-aware para qualquer operação de billing.
+ * Substitui o prisma global, garantindo isolamento e enforcement via tenantGuard.
+ */
+function resolveClient(
+  tenantId: string,
+  workspaceId: string,
+  client?: PrismaClient
+) {
+  return client ?? prismaGlobal;
+}
+
+/**
+ * Verifica se o workspace pertence ao tenant informado.
+ */
+async function workspaceBelongsToTenant(
+  client: PrismaClient,
+  scope: WorkspaceScope
+) {
+  const workspace = await client.workspace.findUnique({
+    where: { id: scope.workspaceId },
+    select: { tenantId: true },
+  });
+  return workspace?.tenantId === scope.tenantId;
+}
+
+/**
+ * Verifica se o run pertence ao mesmo tenant e workspace.
+ */
+async function runBelongsToTenantWorkspace(
+  client: PrismaClient,
+  scope: WorkspaceScope & { runId: string }
+) {
+  const run = await client.run.findUnique({
+    where: { id: scope.runId },
+    select: { tenantId: true, workspaceId: true },
+  });
+  return (
+    run?.tenantId === scope.tenantId && run?.workspaceId === scope.workspaceId
+  );
+}
+
+/**
+ * Calcula custo estimado em centavos de um run (baseado em pricing ativo).
+ * Multi-tenant seguro: client vem de prismaGlobal.
+ */
 export async function estimateCostCents(params: {
   agent: string;
   inputBytes: number;
   tools?: string[];
+  tenantId: string;
   workspaceId: string;
+  prisma?: PrismaClient;
 }) {
-  const pricing = await prisma.pricing.findFirst({
+  const client = resolveClient(params.tenantId, params.workspaceId, params.prisma);
+  const allowed = await workspaceBelongsToTenant(client, {
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+  });
+  if (!allowed) return null;
+
+  const pricing = await client.pricing.findFirst({
     where: { agent: params.agent, active: true },
   });
 
@@ -20,39 +74,64 @@ export async function estimateCostCents(params: {
   return perRun + perMB * mb;
 }
 
-export async function chargeRun(
-  workspaceId: string,
-  runId: string,
-  costCents: number
-) {
-  // atualiza consumo mensal
-  await prisma.planQuota
+/**
+ * Registra a cobrança de um run e atualiza quota de consumo.
+ */
+export async function chargeRun(params: {
+  tenantId: string;
+  workspaceId: string;
+  runId: string;
+  costCents: number;
+  prisma?: PrismaClient;
+}) {
+  const client = resolveClient(params.tenantId, params.workspaceId, params.prisma);
+  const runInScope = await runBelongsToTenantWorkspace(client, {
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    runId: params.runId,
+  });
+  if (!runInScope) return false;
+
+  // Atualiza consumo mensal
+  await client.planQuota
     .update({
-      where: { projectId: workspaceId },
-      data: { monthUsageCents: { increment: costCents } },
+      where: { projectId: params.workspaceId },
+      data: { monthUsageCents: { increment: params.costCents } },
     })
     .catch(async () => {
-      // cria se não existir
-      await prisma.planQuota.create({
+      // Cria se não existir
+      await client.planQuota.create({
         data: {
-          projectId: workspaceId,
+          projectId: params.workspaceId,
           softLimitCents: 5000,
           hardLimitCents: 10000,
-          monthUsageCents: costCents,
+          monthUsageCents: params.costCents,
         },
       });
     });
 
-  // anexa custo ao run
-  await prisma.run
-    .update({ where: { id: runId }, data: { costCents } })
+  // Anexa custo ao run
+  await client.run
+    .update({
+      where: { id: params.runId },
+      data: { costCents: params.costCents },
+    })
     .catch(() => undefined);
 
-  return { ok: true } as const;
+  return true;
 }
 
-export async function getQuota(workspaceId: string) {
-  const quota = await prisma.planQuota.findUnique({ where: { projectId: workspaceId } });
+/**
+ * Retorna a quota atual de uso (billing) do workspace.
+ */
+export async function getQuota(params: WorkspaceScope & { prisma?: PrismaClient }) {
+  const client = resolveClient(params.tenantId, params.workspaceId, params.prisma);
+  const allowed = await workspaceBelongsToTenant(client, params);
+  if (!allowed) return null;
+
+  const quota = await client.planQuota.findUnique({
+    where: { projectId: params.workspaceId },
+  });
 
   if (!quota) {
     return {

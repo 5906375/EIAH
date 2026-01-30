@@ -15,8 +15,8 @@ export const billingRouter = Router();
 billingRouter.use(enforceTenant);
 
 billingRouter.post("/billing/estimate", async (req, res) => {
-  const { authContext } = req as TenantAwareRequest;
-  if (!authContext) {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
     return res.status(500).json({
       ok: false,
       error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
@@ -40,15 +40,27 @@ billingRouter.post("/billing/estimate", async (req, res) => {
     agent,
     inputBytes,
     tools,
+    tenantId: authContext.tenantId,
     workspaceId,
+    prisma,
   });
+
+  if (estimateCents === null) {
+    return res.status(404).json({
+      ok: false,
+      error: {
+        code: "WORKSPACE_NOT_FOUND",
+        message: "Workspace not found for tenant",
+      },
+    });
+  }
 
   return res.json({ ok: true, data: { estimateCents, currency: "BRL" } });
 });
 
 billingRouter.post("/billing/charge", async (req, res) => {
-  const { authContext } = req as TenantAwareRequest;
-  if (!authContext) {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
     return res.status(500).json({
       ok: false,
       error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
@@ -68,7 +80,22 @@ billingRouter.post("/billing/charge", async (req, res) => {
     });
   }
 
-  await chargeRun(workspaceId, runId, costCents);
+  const charged = await chargeRun({
+    tenantId: authContext.tenantId,
+    workspaceId,
+    runId,
+    costCents,
+    prisma,
+  });
+  if (!charged) {
+    return res.status(404).json({
+      ok: false,
+      error: {
+        code: "RUN_NOT_FOUND",
+        message: "Run not found for tenant/workspace",
+      },
+    });
+  }
   return res.json({ ok: true });
 });
 
@@ -172,8 +199,8 @@ billingRouter.post("/plans", async (req, res) => {
 });
 
 billingRouter.get("/plans/quotas", async (req, res) => {
-  const { authContext } = req as TenantAwareRequest;
-  if (!authContext) {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
     return res.status(500).json({
       ok: false,
       error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
@@ -191,7 +218,21 @@ billingRouter.get("/plans/quotas", async (req, res) => {
     });
   }
 
-  const quota = await getQuota(workspaceId);
+  const quota = await getQuota({
+    tenantId: authContext.tenantId,
+    workspaceId,
+    prisma,
+  });
+
+  if (!quota) {
+    return res.status(404).json({
+      ok: false,
+      error: {
+        code: "WORKSPACE_NOT_FOUND",
+        message: "Workspace not found for tenant",
+      },
+    });
+  }
   return res.json({ ok: true, data: quota });
 });
 

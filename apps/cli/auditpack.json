@@ -1,0 +1,21 @@
+{
+  "generatedAt": "2025-12-27T13:41:47.831Z",
+  "totalRuns": 1,
+  "totalEvents": 1,
+  "totalSclLedger": 1,
+  "totalPayments": 0,
+  "mismatches": [
+    {
+      "runId": "run_001",
+      "runHash": null,
+      "runSclTxId": null,
+      "sclTxId": "tx_789xyz",
+      "sclHash": "hash_abc123",
+      "paymentTxId": null,
+      "paymentExternalId": null,
+      "matchedHash": null,
+      "matchedTx": null,
+      "matched": false
+    }
+  ]
+}

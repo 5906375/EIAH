@@ -11,7 +11,13 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx watch src/index.ts",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "prebuild": "bash ../../scripts/prebuild-check.sh"
+  },
+  "dependencies": {
+    "@eiah/core": "workspace:*",
+    "@repo/db": "workspace:*",
+    "dotenv": "^16.6.1"
   },
   "devDependencies": {
     "tsx": "^4.19.1",

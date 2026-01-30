@@ -1,8 +1,8 @@
 import { randomBytes } from "node:crypto";
 import type { Request, Response, NextFunction } from "express";
 import { Router } from "express";
-import { PrismaClient } from "@prisma/client";
 import { z } from "zod";
+import { prismaGlobal } from "@repo/db";
 import {
   drainRunDlq,
   drainRunQueue,
@@ -15,8 +15,14 @@ import {
   getActionDlqCounts,
   getActionQueueCounts,
 } from "@eiah/core/queue/actionQueue";
+import {
+  drainMaintenanceDlq,
+  drainMaintenanceQueue,
+  getMaintenanceDlqCounts,
+  getMaintenanceQueueCounts,
+} from "@eiah/core/queue/maintenanceQueue";
+import { redriveRunQueue } from "@eiah/core/queue/runQueue";
 
-const prisma = new PrismaClient();
 const opsRouter = Router();
 
 const adminTokenHeader = "x-eiah-admin-token";
@@ -76,7 +82,7 @@ opsRouter.post("/tokens", async (req, res) => {
 
   const { tenantId, workspaceId, userEmail, description } = parsed.data;
 
-  const tenant = await prisma.tenant.findUnique({
+  const tenant = await prismaGlobal.tenant.findUnique({
     where: { id: tenantId },
     select: { id: true },
   });
@@ -88,7 +94,7 @@ opsRouter.post("/tokens", async (req, res) => {
     return;
   }
 
-  const workspace = await prisma.workspace.findUnique({
+  const workspace = await prismaGlobal.workspace.findUnique({
     where: { id: workspaceId },
     select: { id: true, tenantId: true },
   });
@@ -102,7 +108,7 @@ opsRouter.post("/tokens", async (req, res) => {
 
   let userId: string | undefined;
   if (userEmail) {
-    const existingUser = await prisma.user.findFirst({
+    const existingUser = await prismaGlobal.user.findFirst({
       where: { tenantId, email: userEmail },
       select: { id: true },
     });
@@ -116,7 +122,7 @@ opsRouter.post("/tokens", async (req, res) => {
   }
 
   const tokenValue = `tok_${randomBytes(24).toString("hex")}`;
-  const created = await prisma.apiToken.create({
+  const created = await prismaGlobal.apiToken.create({
     data: {
       token: tokenValue,
       tenantId,
@@ -147,9 +153,13 @@ opsRouter.post("/tokens", async (req, res) => {
 });
 
 const drainQueueSchema = z.object({
-  queue: z.enum(["run", "action"]).default("run"),
+  queue: z.enum(["run", "action", "maintenance"]).default("run"),
   target: z.enum(["main", "dlq"]).default("main"),
   includeDelayed: z.boolean().optional(),
+});
+
+const redriveQueueSchema = z.object({
+  queue: z.enum(["run"]).default("run"),
 });
 
 opsRouter.post("/queues/drain", async (req, res) => {
@@ -171,9 +181,13 @@ opsRouter.post("/queues/drain", async (req, res) => {
       ? target === "dlq"
         ? await getRunDlqCounts()
         : await getRunQueueCounts()
-      : target === "dlq"
-        ? await getActionDlqCounts()
-        : await getActionQueueCounts();
+      : queue === "action"
+        ? target === "dlq"
+          ? await getActionDlqCounts()
+          : await getActionQueueCounts()
+        : target === "dlq"
+          ? await getMaintenanceDlqCounts()
+          : await getMaintenanceQueueCounts();
 
   if (queue === "run") {
     if (target === "dlq") {
@@ -181,10 +195,18 @@ opsRouter.post("/queues/drain", async (req, res) => {
     } else {
       await drainRunQueue({ includeDelayed: includeDelayedJobs });
     }
-  } else if (target === "dlq") {
-    await drainActionDlq({ includeDelayed: includeDelayedJobs });
-  } else {
-    await drainActionQueue({ includeDelayed: includeDelayedJobs });
+  } else if (queue === "action") {
+    if (target === "dlq") {
+      await drainActionDlq({ includeDelayed: includeDelayedJobs });
+    } else {
+      await drainActionQueue({ includeDelayed: includeDelayedJobs });
+    }
+  } else if (queue === "maintenance") {
+    if (target === "dlq") {
+      await drainMaintenanceDlq({ includeDelayed: includeDelayedJobs });
+    } else {
+      await drainMaintenanceQueue({ includeDelayed: includeDelayedJobs });
+    }
   }
 
   const after =
@@ -192,9 +214,13 @@ opsRouter.post("/queues/drain", async (req, res) => {
       ? target === "dlq"
         ? await getRunDlqCounts()
         : await getRunQueueCounts()
-      : target === "dlq"
-        ? await getActionDlqCounts()
-        : await getActionQueueCounts();
+      : queue === "action"
+        ? target === "dlq"
+          ? await getActionDlqCounts()
+          : await getActionQueueCounts()
+        : target === "dlq"
+          ? await getMaintenanceDlqCounts()
+          : await getMaintenanceQueueCounts();
 
   const drainedCount = Math.max(
     0,
@@ -208,6 +234,29 @@ opsRouter.post("/queues/drain", async (req, res) => {
     drained: drainedCount,
     before,
     after,
+  });
+});
+
+opsRouter.post("/queues/redrive", async (req, res) => {
+  const parsed = redriveQueueSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: "invalid_payload",
+      details: parsed.error.flatten(),
+    });
+  }
+
+  const { queue } = parsed.data;
+
+  let result;
+  if (queue === "run") {
+    result = await redriveRunQueue();
+  }
+
+  return res.json({
+    ok: true,
+    queue,
+    ...result,
   });
 });
 

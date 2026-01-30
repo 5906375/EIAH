@@ -1,0 +1,16 @@
+{
+  "default": {
+    "version": "default"
+  },
+  "tenantA": {
+    "version": "v1.4"
+  },
+  "tenantB": {
+    "version": "v1.6"
+  },
+  "tenantC": {
+    "version": "v1.4",
+    "overrides": {
+    }
+  }
+}

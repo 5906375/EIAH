@@ -1,8 +1,5 @@
-import { PrismaClient } from "@prisma/client";
-import { probeRunQueue } from "@eiah/core/queue/runQueue";
-import { probeActionQueue } from "@eiah/core/queue/actionQueue";
-
-const prisma = new PrismaClient();
+import { prismaGlobal } from "@repo/db";
+import { queueSnapshot } from "@eiah/core";
 
 type HealthCheckStatus = {
   healthy: boolean;
@@ -15,12 +12,13 @@ export async function collectHealth() {
     database: { healthy: false },
     runQueue: { healthy: false },
     actionQueue: { healthy: false },
+    maintenanceQueue: { healthy: false },
   };
 
   let status: "ok" | "degraded" = "ok";
 
   try {
-    await prisma.$queryRaw`SELECT 1`;
+    await prismaGlobal.$queryRaw`SELECT 1`;
     checks.database.healthy = true;
   } catch (error) {
     checks.database = {
@@ -30,33 +28,30 @@ export async function collectHealth() {
     status = "degraded";
   }
 
-  try {
-    const runQueue = await probeRunQueue();
-    checks.runQueue = {
-      healthy: true,
-      counts: runQueue,
-    };
-  } catch (error) {
-    checks.runQueue = {
-      healthy: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-    status = "degraded";
-  }
+  const snapshot = await queueSnapshot();
+  checks.runQueue = { healthy: true, counts: snapshot.runQueue };
+  checks.actionQueue = { healthy: true, counts: snapshot.actionQueue };
+  checks.maintenanceQueue = { healthy: true, counts: snapshot.maintenanceQueue };
 
-  try {
-    const actionQueue = await probeActionQueue();
-    checks.actionQueue = {
-      healthy: true,
-      counts: actionQueue,
-    };
-  } catch (error) {
-    checks.actionQueue = {
-      healthy: false,
-      error: error instanceof Error ? error.message : String(error),
-    };
-    status = "degraded";
-  }
+  return {
+    status,
+    checks,
+    timestamp: new Date().toISOString(),
+  };
+}
+
+export async function collectQueueHealth() {
+  const checks: Record<string, HealthCheckStatus> = {
+    runQueue: { healthy: false },
+    actionQueue: { healthy: false },
+    maintenanceQueue: { healthy: false },
+  };
+  let status: "ok" | "degraded" = "ok";
+
+  const snapshot = await queueSnapshot();
+  checks.runQueue = { healthy: true, counts: snapshot.runQueue };
+  checks.actionQueue = { healthy: true, counts: snapshot.actionQueue };
+  checks.maintenanceQueue = { healthy: true, counts: snapshot.maintenanceQueue };
 
   return {
     status,

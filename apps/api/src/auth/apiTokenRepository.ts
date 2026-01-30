@@ -1,6 +1,4 @@
-import { PrismaClient } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { prismaGlobal } from "@repo/db";
 
 export type AuthTokenContext = {
   tenantId: string;
@@ -12,7 +10,7 @@ export type AuthTokenContext = {
 };
 
 export async function findApiToken(token: string): Promise<AuthTokenContext | null> {
-  const record = await prisma.apiToken.findUnique({
+  const record = await prismaGlobal.apiToken.findUnique({
     where: { token },
     select: {
       id: true,

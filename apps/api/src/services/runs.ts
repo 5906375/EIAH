@@ -1,8 +1,26 @@
-import { PrismaClient, RunStatus, Prisma } from "@prisma/client";
+import { Prisma, PrismaClient, RunStatus, prismaGlobal } from "@repo/db";
 
-const prisma = new PrismaClient();
+function resolveClient(tenantId: string, workspaceId: string, client?: PrismaClient) {
+  return client ?? prismaGlobal;
+}
+
+async function assertRunScope(
+  client: PrismaClient,
+  params: { runId: string; tenantId: string; workspaceId: string }
+) {
+  const run = await client.run.findFirst({
+    where: {
+      id: params.runId,
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+    },
+    select: { id: true },
+  });
+  return run?.id ?? null;
+}
 
 export async function listRuns(opts: {
+  prisma?: PrismaClient;
   tenantId: string;
   workspaceId: string;
   agent?: string;
@@ -12,6 +30,7 @@ export async function listRuns(opts: {
   page: number;
   size: number;
 }) {
+  const client = resolveClient(opts.tenantId, opts.workspaceId, opts.prisma);
   const where: Prisma.RunWhereInput = {
     tenantId: opts.tenantId,
     workspaceId: opts.workspaceId,
@@ -27,20 +46,26 @@ export async function listRuns(opts: {
   }
 
   const [items, total] = await Promise.all([
-    prisma.run.findMany({
+    client.run.findMany({
       where,
       orderBy: { createdAt: "desc" },
       skip: (opts.page - 1) * opts.size,
       take: opts.size,
     }),
-    prisma.run.count({ where }),
+    client.run.count({ where }),
   ]);
 
   return { items, total };
 }
 
-export async function getRun(params: { id: string; tenantId: string; workspaceId: string }) {
-  return prisma.run.findFirst({
+export async function getRun(params: {
+  prisma?: PrismaClient;
+  id: string;
+  tenantId: string;
+  workspaceId: string;
+}) {
+  const client = resolveClient(params.tenantId, params.workspaceId, params.prisma);
+  return client.run.findFirst({
     where: {
       id: params.id,
       tenantId: params.tenantId,
@@ -50,6 +75,7 @@ export async function getRun(params: { id: string; tenantId: string; workspaceId
 }
 
 export async function createRunRecord(params: {
+  prisma?: PrismaClient;
   tenantId: string;
   workspaceId: string;
   userId?: string;
@@ -64,6 +90,7 @@ export async function createRunRecord(params: {
   startedAt?: Date;
   finishedAt?: Date | null;
 }) {
+  const client = resolveClient(params.tenantId, params.workspaceId, params.prisma);
   const now = new Date();
 
   const startedAt = params.startedAt ?? now;
@@ -82,7 +109,7 @@ export async function createRunRecord(params: {
       ? Prisma.JsonNull
       : (params.response as Prisma.InputJsonValue);
 
-  return prisma.run.create({
+  return client.run.create({
     data: {
       tenantId: params.tenantId,
       workspaceId: params.workspaceId,
@@ -101,6 +128,7 @@ export async function createRunRecord(params: {
 }
 
 export async function finalizeRunRecord(params: {
+  prisma?: PrismaClient;
   runId: string;
   tenantId: string;
   workspaceId: string;
@@ -110,6 +138,7 @@ export async function finalizeRunRecord(params: {
   traceId?: string | null;
   errorCode?: string | null;
 }) {
+  const client = resolveClient(params.tenantId, params.workspaceId, params.prisma);
   const responseData =
     params.response === undefined
       ? Prisma.DbNull
@@ -117,8 +146,21 @@ export async function finalizeRunRecord(params: {
       ? Prisma.JsonNull
       : (params.response as Prisma.InputJsonValue);
 
-  return prisma.run.update({
-    where: { id: params.runId },
+  const scopedRunId = await assertRunScope(client, {
+    runId: params.runId,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+  });
+  if (!scopedRunId) {
+    return null;
+  }
+
+  return client.run.update({
+    where: {
+      id: scopedRunId,
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+    },
     data: {
       status: params.status,
       response: responseData,
@@ -131,6 +173,7 @@ export async function finalizeRunRecord(params: {
 }
 
 export async function updateRunStatus(params: {
+  prisma?: PrismaClient;
   runId: string;
   tenantId: string;
   workspaceId: string;
@@ -138,6 +181,7 @@ export async function updateRunStatus(params: {
   startedAt?: Date | null;
   traceId?: string | null;
 }) {
+  const client = resolveClient(params.tenantId, params.workspaceId, params.prisma);
   const data: Prisma.RunUpdateInput = {
     status: params.status,
   };
@@ -155,19 +199,34 @@ export async function updateRunStatus(params: {
     data.errorCode = null;
   }
 
-  return prisma.run.update({
-    where: { id: params.runId },
+  const scopedRunId = await assertRunScope(client, {
+    runId: params.runId,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+  });
+  if (!scopedRunId) {
+    return null;
+  }
+
+  return client.run.update({
+    where: {
+      id: scopedRunId,
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+    },
     data,
   });
 }
 
 export async function listRecentRunsForAgent(params: {
+  prisma?: PrismaClient;
   tenantId: string;
   workspaceId: string;
   agent: string;
   limit: number;
 }) {
-  return prisma.run.findMany({
+  const client = resolveClient(params.tenantId, params.workspaceId, params.prisma);
+  return client.run.findMany({
     where: {
       tenantId: params.tenantId,
       workspaceId: params.workspaceId,

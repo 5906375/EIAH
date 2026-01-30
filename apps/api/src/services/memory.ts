@@ -1,5 +1,18 @@
+/* eslint-env node */
+/**********************************************************************************************
+ * EIAH BUILDER - MEMORY SERVICE (Multi-Tenant Tenant-Aware Version)
+ *
+ * 🔐 Atualizações:
+ * - Usa `prismaGlobal` como client padrão
+ * - Todas as queries passam automaticamente pelo middleware `tenantGuard`
+ * - Redis e PostgreSQL operam em isolamento por tenant/workspace
+ * - Mantém compatibilidade com MemoryService, PrismaMemorySnapshotStore e stores vetoriais
+ **********************************************************************************************/
+
+/* eslint-env node */
+
 import Redis from "ioredis";
-import { PrismaClient, Prisma } from "@prisma/client";
+import { Prisma, PrismaClient, prismaGlobal } from "@repo/db";
 import {
   MemoryService,
   PostgresLongTermMemoryStore,
@@ -9,13 +22,22 @@ import {
   type MemorySnapshotStore,
 } from "@eiah/core";
 
+type MemorySnapshot = Record<string, unknown>;
+type MemoryEvent = Record<string, unknown>;
+type EmbeddingChunk = Record<string, unknown>;
+
+type TenantPrismaClient = PrismaClient;
+
+
+
 const DEFAULT_REDIS_URL = "redis://127.0.0.1:6379";
 const DEFAULT_SHORT_TTL_SECONDS = 60 * 60 * 24;
 
 let redisClient: Redis | null = null;
-let prismaClient: PrismaClient | null = null;
-let memoryService: MemoryService | null = null;
-let snapshotStore: MemorySnapshotStore | null = null;
+
+/************************************************************************************************
+ * 🧠 Utilitários JSON ⇄ Prisma
+ ************************************************************************************************/
 
 function jsonValueToRecord(
   value: Prisma.JsonValue | null | undefined
@@ -34,13 +56,24 @@ function recordToJsonInput(
   return value as Prisma.InputJsonValue;
 }
 
-function buildMemoryAdapters(prisma: PrismaClient) {
+/************************************************************************************************
+ * 🧩 Builder de adaptadores Prisma-aware
+ * - Todas as chamadas usam prismaGlobal (tenantId/workspaceId seguem no payload)
+ * - Todas as operações respeitam tenantGuard
+ ************************************************************************************************/
+function buildMemoryAdapters(
+  tenantId: string,
+  workspaceId: string,
+  client?: TenantPrismaClient
+) {
+  const prisma = client ?? prismaGlobal;
+
   const memoryEvent = {
-    createMany: ({ data }: { data: Array<Omit<any, "id">> }) =>
+    createMany: async ({ data }: { data: Array<Omit<any, "id">> }) =>
       prisma.memoryEvent.createMany({
         data: data.map((row) => ({
-          tenantId: row.tenantId,
-          workspaceId: row.workspaceId,
+          tenantId,
+          workspaceId,
           agentId: row.agentId,
           runId: row.runId ?? null,
           key: row.key,
@@ -49,7 +82,8 @@ function buildMemoryAdapters(prisma: PrismaClient) {
           createdAt: row.createdAt,
         })),
       }),
-    findMany: (args: {
+
+    findMany: async (args: {
       where: {
         tenantId: string;
         workspaceId: string;
@@ -59,22 +93,22 @@ function buildMemoryAdapters(prisma: PrismaClient) {
       orderBy?: { createdAt: "asc" | "desc" };
       take?: number;
     }) =>
-      prisma.memoryEvent.findMany(args).then((rows) =>
+      prisma.memoryEvent.findMany(args as any).then((rows: any[]) =>
         rows.map((row) => ({
-          id: row.id,
-          tenantId: row.tenantId,
-          workspaceId: row.workspaceId,
-          agentId: row.agentId,
-          key: row.key,
-          content: row.content,
-          metadata: jsonValueToRecord(row.metadata),
-          createdAt: row.createdAt,
+          id: String(row.id),
+          tenantId: String(row.tenantId),
+          workspaceId: String(row.workspaceId),
+          agentId: String(row.agentId),
+          key: String(row.key),
+          content: String(row.content),
+          metadata: jsonValueToRecord(row.metadata as Prisma.JsonValue),
+          createdAt: row.createdAt as Date,
         }))
       ),
   };
 
   const embeddingChunk = {
-    upsert: (args: {
+    upsert: async (args: {
       where: {
         tenantId_workspaceId_agentId_chunkKey: {
           tenantId: string;
@@ -101,8 +135,8 @@ function buildMemoryAdapters(prisma: PrismaClient) {
         .upsert({
           where: args.where,
           create: {
-            tenantId: args.create.tenantId,
-            workspaceId: args.create.workspaceId,
+            tenantId,
+            workspaceId,
             agentId: args.create.agentId,
             chunkKey: args.create.chunkKey,
             embedding: args.create.embedding,
@@ -125,28 +159,29 @@ function buildMemoryAdapters(prisma: PrismaClient) {
           createdAt: row.createdAt,
           updatedAt: row.updatedAt,
         })),
-    findMany: (args: {
+
+    findMany: async (args: {
       where: { tenantId: string; workspaceId: string; agentId: string };
       take?: number;
       orderBy?: { updatedAt: "asc" | "desc" };
     }) =>
-      prisma.embeddingChunk.findMany(args).then((rows) =>
+      prisma.embeddingChunk.findMany(args as any).then((rows: any[]) =>
         rows.map((row) => ({
-          id: row.id,
-          tenantId: row.tenantId,
-          workspaceId: row.workspaceId,
-          agentId: row.agentId,
-          chunkKey: row.chunkKey,
-          embedding: row.embedding,
-          metadata: jsonValueToRecord(row.metadata),
-          createdAt: row.createdAt,
-          updatedAt: row.updatedAt,
+          id: String(row.id),
+          tenantId: String(row.tenantId),
+          workspaceId: String(row.workspaceId),
+          agentId: String(row.agentId),
+          chunkKey: String(row.chunkKey),
+          embedding: row.embedding as number[],
+          metadata: jsonValueToRecord(row.metadata as Prisma.JsonValue),
+          createdAt: row.createdAt as Date,
+          updatedAt: row.updatedAt as Date,
         }))
       ),
   };
 
   const memorySnapshot = {
-    findUnique: (args: {
+    findUnique: async (args: {
       where: {
         tenantId_workspaceId_agentId: {
           tenantId: string;
@@ -155,22 +190,23 @@ function buildMemoryAdapters(prisma: PrismaClient) {
         };
       };
     }) =>
-      prisma.memorySnapshot.findUnique(args).then((row) => {
+      prisma.memorySnapshot.findUnique(args as any).then((row: any | null) => {
         if (!row) return null;
         return {
-          id: row.id,
-          tenantId: row.tenantId,
-          workspaceId: row.workspaceId,
-          agentId: row.agentId,
+          id: String(row.id),
+          tenantId: String(row.tenantId),
+          workspaceId: String(row.workspaceId),
+          agentId: String(row.agentId),
           shortTerm: row.shortTerm ?? [],
           longTerm: row.longTerm ?? [],
-          vectorState: jsonValueToRecord(row.vectorState),
-          cursor: row.cursor,
-          createdAt: row.createdAt,
-          updatedAt: row.updatedAt,
+          vectorState: jsonValueToRecord(row.vectorState as Prisma.JsonValue),
+          cursor: row.cursor as string | null,
+          createdAt: row.createdAt as Date,
+          updatedAt: row.updatedAt as Date,
         };
       }),
-    upsert: (args: {
+
+    upsert: async (args: {
       where: {
         tenantId_workspaceId_agentId: {
           tenantId: string;
@@ -199,8 +235,8 @@ function buildMemoryAdapters(prisma: PrismaClient) {
         .upsert({
           where: args.where,
           create: {
-            tenantId: args.create.tenantId,
-            workspaceId: args.create.workspaceId,
+            tenantId,
+            workspaceId,
             agentId: args.create.agentId,
             shortTerm: args.create.shortTerm as Prisma.InputJsonValue,
             longTerm: args.create.longTerm as Prisma.InputJsonValue,
@@ -232,6 +268,9 @@ function buildMemoryAdapters(prisma: PrismaClient) {
   return { memoryEvent, embeddingChunk, memorySnapshot };
 }
 
+/************************************************************************************************
+ * 🔄 Redis Client
+ ************************************************************************************************/
 function resolveRedisUrl(): string {
   return (
     process.env.MEMORY_REDIS_URL ??
@@ -248,55 +287,54 @@ function getRedisClient(): Redis {
       lazyConnect: true,
       maxRetriesPerRequest: null,
     });
-
     redisClient.on("error", (error) => {
       console.error("[memory] Redis client error", error);
     });
   }
-
   return redisClient;
 }
 
-function getPrismaClient(): PrismaClient {
-  if (!prismaClient) {
-    prismaClient = new PrismaClient();
-  }
+/************************************************************************************************
+ * 🧩 Instância de serviço de memória multi-tenant
+ ************************************************************************************************/
+export function getMemoryService(
+  tenantId: string,
+  workspaceId: string,
+  client?: TenantPrismaClient
+): MemoryService {
+  const redis = getRedisClient();
+  const adapters = buildMemoryAdapters(tenantId, workspaceId, client);
 
-  return prismaClient;
+  const shortTermStore = new RedisShortTermMemoryStore(redis, {
+    prefix: `memory:${tenantId}:${workspaceId}`,
+    ttlSeconds: getShortTermTtl(),
+  });
+
+  const longTermStore = new PostgresLongTermMemoryStore(adapters as any);
+  const vectorStore = new PostgresVectorMemoryStore(adapters as any);
+
+  return new MemoryService({
+    shortTermStore,
+    longTermStore,
+    vectorStore,
+  });
 }
 
-export function getMemoryService(): MemoryService {
-  if (!memoryService) {
-    const redis = getRedisClient();
-    const prisma = getPrismaClient();
-    const adapters = buildMemoryAdapters(prisma);
-
-    const shortTermStore = new RedisShortTermMemoryStore(redis, {
-      prefix: process.env.MEMORY_SHORT_PREFIX ?? "memory:short",
-      ttlSeconds: getShortTermTtl(),
-    });
-    const longTermStore = new PostgresLongTermMemoryStore(adapters);
-    const vectorStore = new PostgresVectorMemoryStore(adapters);
-
-    memoryService = new MemoryService({
-      shortTermStore,
-      longTermStore,
-      vectorStore,
-    });
-
-    snapshotStore = new PrismaMemorySnapshotStore(adapters);
-  }
-
-  return memoryService;
+/************************************************************************************************
+ * 📸 Snapshot store isolado por tenant/workspace
+ ************************************************************************************************/
+export function getMemorySnapshotStore(
+  tenantId: string,
+  workspaceId: string,
+  client?: TenantPrismaClient
+): MemorySnapshotStore {
+  const adapters = buildMemoryAdapters(tenantId, workspaceId, client);
+  return new PrismaMemorySnapshotStore(adapters as any);
 }
 
-export function getMemorySnapshotStore(): MemorySnapshotStore {
-  if (!snapshotStore) {
-    getMemoryService();
-  }
-  return snapshotStore!;
-}
-
+/************************************************************************************************
+ * 🧮 TTL Helper
+ ************************************************************************************************/
 function getShortTermTtl(): number {
   const raw = process.env.MEMORY_SHORT_TTL_SECONDS;
   if (!raw) return DEFAULT_SHORT_TTL_SECONDS;
@@ -307,6 +345,12 @@ function getShortTermTtl(): number {
   return Math.floor(parsed);
 }
 
-export function getMemoryPrismaClient(): PrismaClient {
-  return getPrismaClient();
+/************************************************************************************************
+ * 🧱 Interface compatível com APIs antigas (mantida opcionalmente)
+ ************************************************************************************************/
+export function getMemoryPrismaClient(
+  tenantId: string,
+  workspaceId: string
+): TenantPrismaClient {
+  return prismaGlobal;
 }

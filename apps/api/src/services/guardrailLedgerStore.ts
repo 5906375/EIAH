@@ -1,32 +1,70 @@
-import { PrismaClient, Prisma } from "@prisma/client";
-import { createLedgerBackedIdempotencyStore, type IdempotencyStore } from "@eiah/core";
+import crypto from "node:crypto";
+import { Prisma, PrismaClient, prismaGlobal } from "@repo/db";
+import {
+  createLedgerBackedIdempotencyStore,
+  type IdempotencyStore,
+} from "@eiah/core";
 
-const prisma = new PrismaClient();
+// 🔧 substitui o uso direto de PrismaClient
+type TenantPrismaClient = PrismaClient;
 
-export function createGuardrailLedgerStore(): IdempotencyStore {
+export function createGuardrailLedgerStore(
+  tenantId: string,
+  workspaceId: string,
+  client?: TenantPrismaClient
+): IdempotencyStore {
+  const db = client ?? prismaGlobal;
+
   return createLedgerBackedIdempotencyStore({
-    insert: async ({ tenantId, actionType, idempotencyKey, usageCount }) => {
-      await prisma.guardrailLedger.create({
+    insert: async (entry) => {
+      const { tenantId, actionType, idempotencyKey, usageCount } = entry;
+      const runId =
+        typeof (entry as { runId?: unknown }).runId === "string"
+          ? (entry as { runId: string }).runId
+          : null;
+      const criticalHash = crypto
+        .createHash("sha256")
+        .update(
+          JSON.stringify({
+            event: "guardrail.ledger.insert",
+            tenantId,
+            actionType,
+            idempotencyKey,
+            usageCount: usageCount ?? 1,
+          })
+        )
+        .digest("hex");
+      const payloadHash = crypto
+        .createHash("sha256")
+        .update(
+          JSON.stringify({
+            idempotencyKey,
+            usageCount: usageCount ?? 1,
+          })
+        )
+        .digest("hex");
+      await db.guardrailLedger.create({
         data: {
           tenantId,
+          runId,
           actionType,
-          idempotencyKey,
-          usageCount: usageCount ?? 1,
+          criticalHash,
+          payloadHash,
         },
       });
     },
     cleanup: async ({ tenantId, actionType, before }) => {
-      await prisma.guardrailLedger.deleteMany({
+      await db.guardrailLedger.deleteMany({
         where: {
           tenantId,
           actionType,
-          timestamp: {
-            lt: before,
-          },
+          timestamp: { lt: before },
         },
       });
     },
-    isUniqueConstraintError: (error) =>
-      error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002",
+    isUniqueConstraintError: (error: unknown) => {
+      const typed = error as Prisma.PrismaClientKnownRequestError | null;
+      return typed?.code === "P2002";
+    },
   });
 }

@@ -28,8 +28,12 @@ uploadsRouter.post(
   upload.array("files"),
   async (req: TenantAwareRequest, res) => {
     const auth = req.authContext;
+    const client = req.prisma;
     if (!auth) {
       return res.status(401).json({ ok: false, error: { code: "UNAUTHORIZED", message: "Missing auth context" } });
+    }
+    if (!client) {
+      return res.status(500).json({ ok: false, error: { code: "PRISMA_MISSING", message: "Prisma client missing in request" } });
     }
 
     const agentSlug = (req.body?.agentSlug ?? req.query?.agentSlug ?? "").toString().trim();
@@ -59,6 +63,7 @@ uploadsRouter.post(
 
       const persisted = await persistBuffer(file.buffer, file.originalname);
       let record = await createUploadedDocument({
+        prisma: client,
         tenantId: auth.tenantId,
         workspaceId: auth.workspaceId,
         agentSlug,
@@ -70,7 +75,16 @@ uploadsRouter.post(
 
       const publicUrl = `/api/uploads/${record.id}`;
       if (record.url !== publicUrl) {
-        record = await updateDocumentUrl(record.id, publicUrl);
+        const updated = await updateDocumentUrl({
+          prisma: client,
+          id: record.id,
+          tenantId: auth.tenantId,
+          workspaceId: auth.workspaceId,
+          url: publicUrl,
+        });
+        if (updated) {
+          record = updated;
+        }
       }
 
       results.push({
@@ -89,13 +103,22 @@ uploadsRouter.post(
 
 uploadsRouter.get("/uploads/:id", async (req: TenantAwareRequest, res) => {
   const auth = req.authContext;
+  const client = req.prisma;
   if (!auth) {
     return res.status(401).json({ ok: false, error: { code: "UNAUTHORIZED", message: "Missing auth context" } });
   }
+  if (!client) {
+    return res.status(500).json({ ok: false, error: { code: "PRISMA_MISSING", message: "Prisma client missing in request" } });
+  }
 
   const documentId = req.params.id;
-  const doc = await findDocumentById(documentId);
-  if (!doc || doc.workspaceId !== auth.workspaceId || doc.tenantId !== auth.tenantId) {
+  const doc = await findDocumentById({
+    prisma: client,
+    id: documentId,
+    tenantId: auth.tenantId,
+    workspaceId: auth.workspaceId,
+  });
+  if (!doc) {
     return res.status(404).json({ ok: false, error: { code: "NOT_FOUND", message: "Document not found" } });
   }
 

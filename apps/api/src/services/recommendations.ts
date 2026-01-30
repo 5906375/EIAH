@@ -1,6 +1,4 @@
-import { PrismaClient, Prisma } from "@prisma/client";
-
-const prisma = new PrismaClient();
+import { Prisma, prismaGlobal } from "@repo/db";
 
 export type StoredRecommendationState = {
   recommendations: Record<
@@ -10,6 +8,7 @@ export type StoredRecommendationState = {
       accepts: number;
       rejects: number;
       lastAcceptedAt: string | null;
+      lastRejectedAt: string | null;
       lastSuggestedAt: string | null;
       score: number;
       status: "ADOTADO" | "REJEITADO" | "PENDENTE";
@@ -25,7 +24,7 @@ export async function getAgentRecommendationState(params: {
   workspaceId: string;
   agentId: string;
 }) {
-  const record = await prisma.agentRecommendationState.findUnique({
+  const record = await prismaGlobal.agentRecommendationState.findUnique({
     where: {
       tenantId_workspaceId_agent: {
         tenantId: params.tenantId,
@@ -72,7 +71,7 @@ export async function saveAgentRecommendationState(params: {
         : { increment: 1 },
   };
 
-  return prisma.agentRecommendationState.upsert({
+  return prismaGlobal.agentRecommendationState.upsert({
     where: {
       tenantId_workspaceId_agent: {
         tenantId: params.tenantId,
