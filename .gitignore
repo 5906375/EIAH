@@ -74,3 +74,5 @@ packages/**/src/**/*.tsbuildinfo
 # Temporários do repo
 .tmp/
 tmp_*
+# Backups (não versionar)
+Backups/
