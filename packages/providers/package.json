@@ -1,0 +1,19 @@
+{
+  "name": "@eiah/providers",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prebuild": "bash ../../scripts/prebuild-check.sh"
+  },
+  "dependencies": {
+    "@eiah/core": "workspace:*",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}
