@@ -9,7 +9,6 @@ datasource db {
   provider = "postgresql"
 }
 
-
 // ========================================
 // 🧠 Enums — Execução e Pagamentos
 // (necessários para validação e índices)
@@ -27,6 +26,13 @@ enum PaymentStatus {
   pending
   succeeded
   failed
+}
+
+enum DelegationStatus {
+  pending_approval
+  active
+  rejected
+  revoked
 }
 
 model Tenant {
@@ -116,41 +122,40 @@ model ApiToken {
 }
 
 model Run {
-  id           String        @id @default(cuid())
-  tenantId     String        @map("tenant_id")
-  workspaceId  String        @map("workspace_id")
-  userId       String?       @map("user_id")
-  agent        String
-  status       RunStatus
-  request      Json
-  response     Json?
-  costCents    Int           @default(0)
-  traceId      String?
-  startedAt    DateTime      @default(now())
-  finishedAt   DateTime?
-  errorCode    String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id          String    @id @default(cuid())
+  tenantId    String    @map("tenant_id")
+  workspaceId String    @map("workspace_id")
+  userId      String?   @map("user_id")
+  agent       String
+  status      RunStatus
+  request     Json
+  response    Json?
+  costCents   Int       @default(0)
+  traceId     String?
+  startedAt   DateTime  @default(now())
+  finishedAt  DateTime?
+  errorCode   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   // ⚙️ Adições necessárias para reconciliar Ledger e Runs
-  criticalHash String?       @map("critical_hash")
-  sclTxId      String?       @map("scl_tx_id")
-  txId         String?       @map("tx_id")
+  criticalHash String? @map("critical_hash")
+  sclTxId      String? @map("scl_tx_id")
+  txId         String? @map("tx_id")
 
   // 🔗 Relações
-  memoryEvents MemoryEvent[]
-  events       RunEvent[]
+  memoryEvents     MemoryEvent[]
+  events           RunEvent[]
   guardrailLedgers GuardrailLedger[]
-  tenant       Tenant        @relation(fields: [tenantId], references: [id])
-  user         User?         @relation(fields: [userId], references: [id])
-  workspace    Workspace     @relation(fields: [workspaceId], references: [id])
+  tenant           Tenant            @relation(fields: [tenantId], references: [id])
+  user             User?             @relation(fields: [userId], references: [id])
+  workspace        Workspace         @relation(fields: [workspaceId], references: [id])
 
   @@index([tenantId, workspaceId, agent, createdAt])
   @@index([status])
   @@index([costCents])
   @@map("runs")
 }
-
 
 model RunEvent {
   id           String    @id @default(cuid())
@@ -311,17 +316,17 @@ model MemoryEvent {
 }
 
 model EmbeddingChunk {
-  id          String    @id @default(cuid())
-  tenantId    String    @map("tenant_id")
-  workspaceId String    @map("workspace_id")
-  agentId     String    @map("agent_id")
-  chunkKey    String    @map("chunk_key")
+  id          String                      @id @default(cuid())
+  tenantId    String                      @map("tenant_id")
+  workspaceId String                      @map("workspace_id")
+  agentId     String                      @map("agent_id")
+  chunkKey    String                      @map("chunk_key")
   embedding   Unsupported("vector(1536)")
   metadata    Json?
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  tenant      Tenant    @relation(fields: [tenantId], references: [id])
-  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  createdAt   DateTime                    @default(now()) @map("created_at")
+  updatedAt   DateTime                    @updatedAt @map("updated_at")
+  tenant      Tenant                      @relation(fields: [tenantId], references: [id])
+  workspace   Workspace                   @relation(fields: [workspaceId], references: [id])
 
   @@unique([tenantId, workspaceId, agentId, chunkKey])
   @@index([tenantId, workspaceId, agentId])
@@ -458,9 +463,9 @@ model GuardrailLedger {
   signatureKeyId String?   @map("signature_key_id")
   signedAt       DateTime? @map("signed_at")
   timestamp      DateTime  @default(now())
-  
-  tenant         Tenant    @relation(fields: [tenantId], references: [id])
-  run            Run?      @relation(fields: [runId], references: [id])
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  run    Run?   @relation(fields: [runId], references: [id])
 
   @@index([tenantId, txId])
   @@index([tenantId, criticalHash])
@@ -478,7 +483,7 @@ model MarketplaceItem {
   isPublic    Boolean  @default(false) @map("is_public")
   createdAt   DateTime @default(now()) @map("created_at")
 
-  publisher   Tenant   @relation(fields: [publisherId], references: [id])
+  publisher   Tenant             @relation(fields: [publisherId], references: [id])
   delegations DelegationPolicy[]
 
   @@index([publisherId, type, name, version])
@@ -486,20 +491,23 @@ model MarketplaceItem {
 }
 
 model DelegationPolicy {
-  id            String   @id @default(cuid())
-  delegatorId   String   @map("delegator_id")
-  delegateeId   String   @map("delegatee_id")
-  marketplaceId String?  @map("marketplace_id")
-  scope         String
-  trustMin      Float    @map("trust_min")
-  validUntil    DateTime @map("valid_until")
-  policyHash    String   @map("policy_hash")
-  signatureHash String   @map("signature_hash")
-  createdAt     DateTime @default(now()) @map("created_at")
+  id                    String           @id @default(cuid())
+  delegatorId           String           @map("delegator_id")
+  delegateeId           String           @map("delegatee_id")
+  marketplaceId         String?          @map("marketplace_id")
+  scope                 String
+  trustMin              Float            @map("trust_min")
+  validUntil            DateTime         @map("valid_until")
+  policyHash            String           @map("policy_hash")
+  signatureHash         String           @map("signature_hash")
+  createdAt             DateTime         @default(now()) @map("created_at")
+  status                DelegationStatus @default(pending_approval)
+  providerSignatureHash String?          @map("provider_signature_hash")
+  decidedAt             DateTime?        @map("decided_at")
 
-  delegator     Tenant   @relation("DelegatorTenant", fields: [delegatorId], references: [id])
-  delegatee     Tenant   @relation("DelegateeTenant", fields: [delegateeId], references: [id])
-  marketplace   MarketplaceItem? @relation(fields: [marketplaceId], references: [id])
+  delegator   Tenant           @relation("DelegatorTenant", fields: [delegatorId], references: [id])
+  delegatee   Tenant           @relation("DelegateeTenant", fields: [delegateeId], references: [id])
+  marketplace MarketplaceItem? @relation(fields: [marketplaceId], references: [id])
 
   @@index([delegatorId, delegateeId, scope])
   @@index([marketplaceId])
@@ -527,19 +535,19 @@ model AgentMetadata {
 // ================================
 
 model AgentTrustScore {
-  id           String    @id @default(cuid())
-  tenantId     String    @map("tenant_id")
-  workspaceId  String?   @map("workspace_id")
-  agentId      String    @map("agent_id")
-  currentScore Int       @default(100)          // Score ativo (0–200)
-  baseline     Int       @default(100)          // Valor inicial ou de referência
-  lastDelta    Int       @default(0)            // Última variação aplicada
-  trend        String    @default("stable")     // stable | rising | falling
-  lastUpdated  DateTime  @updatedAt @map("last_updated")
-  createdAt    DateTime  @default(now()) @map("created_at")
+  id           String   @id @default(cuid())
+  tenantId     String   @map("tenant_id")
+  workspaceId  String?  @map("workspace_id")
+  agentId      String   @map("agent_id")
+  currentScore Int      @default(100) // Score ativo (0–200)
+  baseline     Int      @default(100) // Valor inicial ou de referência
+  lastDelta    Int      @default(0) // Última variação aplicada
+  trend        String   @default("stable") // stable | rising | falling
+  lastUpdated  DateTime @updatedAt @map("last_updated")
+  createdAt    DateTime @default(now()) @map("created_at")
 
-  tenant       Tenant     @relation(fields: [tenantId], references: [id])
-  workspace    Workspace? @relation(fields: [workspaceId], references: [id])
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  workspace Workspace? @relation(fields: [workspaceId], references: [id])
 
   @@unique([tenantId, workspaceId, agentId], name: "unique_trustscore_agent")
   @@index([tenantId, agentId, lastUpdated])

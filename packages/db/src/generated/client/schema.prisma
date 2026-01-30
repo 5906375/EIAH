@@ -28,6 +28,13 @@ enum PaymentStatus {
   failed
 }
 
+enum DelegationStatus {
+  pending_approval
+  active
+  rejected
+  revoked
+}
+
 model Tenant {
   id                   String                 @id @default(cuid())
   name                 String
@@ -484,16 +491,19 @@ model MarketplaceItem {
 }
 
 model DelegationPolicy {
-  id            String   @id @default(cuid())
-  delegatorId   String   @map("delegator_id")
-  delegateeId   String   @map("delegatee_id")
-  marketplaceId String?  @map("marketplace_id")
-  scope         String
-  trustMin      Float    @map("trust_min")
-  validUntil    DateTime @map("valid_until")
-  policyHash    String   @map("policy_hash")
-  signatureHash String   @map("signature_hash")
-  createdAt     DateTime @default(now()) @map("created_at")
+  id                    String           @id @default(cuid())
+  delegatorId           String           @map("delegator_id")
+  delegateeId           String           @map("delegatee_id")
+  marketplaceId         String?          @map("marketplace_id")
+  scope                 String
+  trustMin              Float            @map("trust_min")
+  validUntil            DateTime         @map("valid_until")
+  policyHash            String           @map("policy_hash")
+  signatureHash         String           @map("signature_hash")
+  createdAt             DateTime         @default(now()) @map("created_at")
+  status                DelegationStatus @default(pending_approval)
+  providerSignatureHash String?          @map("provider_signature_hash")
+  decidedAt             DateTime?        @map("decided_at")
 
   delegator   Tenant           @relation("DelegatorTenant", fields: [delegatorId], references: [id])
   delegatee   Tenant           @relation("DelegateeTenant", fields: [delegateeId], references: [id])
