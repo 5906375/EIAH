@@ -1,6 +1,7 @@
 {
   "name": "eiah-builder",
   "private": true,
+  "type": "module",
   "workspaces": [
     "apps/api",
     "apps/web",
@@ -9,9 +10,29 @@
   ],
   "scripts": {
     "build": "pnpm -r --filter \"./apps/*\" run build",
-    "lint": "echo \"Run linting via individual packages\""
+    "eiah": "pnpm --filter @eiah/cli start --",
+    "lint": "echo \"Run linting via individual packages\"",
+    "test": "pnpm --filter @eiah/core test",
+    "postinstall": "pnpm --filter @eiah/core build",
+    "env:validate": "node --experimental-strip-types \"scripts/env:validate.ts\"",
+    "check:governance": "npx tsx apps/api/src/services/checkGovernance.ts"
   },
   "devDependencies": {
-    "tsx": "^4.20.6"
+    "@eslint/js": "^9.39.1",
+    "@prisma/config": "^7.1.0",
+    "@types/node": "^25.0.1",
+    "@typescript-eslint/eslint-plugin": "^8.49.0",
+    "@typescript-eslint/parser": "^8.49.0",
+    "@typescript-eslint/utils": "^8.49.0",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-unused-imports": "^4.3.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@prisma/client": "^7.0.1",
+    "prisma": "^7.0.1"
   }
 }

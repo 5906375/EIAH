@@ -1,12 +1,12 @@
 packages:
-  - apps/*
-  - apps/workers/*
-  - packages/*
+  - "apps/*"
+  - "apps/workers/*"
+  - "packages/*"
 
 onlyBuiltDependencies:
-  - '@prisma/client'
-  - '@prisma/engines'
-  - core-js
-  - esbuild
-  - msgpackr-extract
-  - prisma
+  - "@prisma/client"
+  - "@prisma/engines"
+  - "core-js"
+  - "esbuild"
+  - "msgpackr-extract"
+  - "prisma"

@@ -4,9 +4,48 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "esModuleInterop": true,
+    "baseUrl": ".",
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "types": [
+      "node"
+    ],
+    "paths": {
+      "@repo/db": [
+        "packages/db/src"
+      ],
+      "@repo/db/*": [
+        "packages/db/src/*"
+      ],
+      "@repo/db/client": [
+        "packages/db/src/generated/client"
+      ],
+      "@eiah/core": [
+        "packages/core/src"
+      ],
+      "@eiah/core/*": [
+        "packages/core/src/*"
+      ],
+      "@eiah/providers": [
+        "packages/providers/src"
+      ],
+      "@eiah/providers/*": [
+        "packages/providers/src/*"
+      ],
+      "@eiah/contracts": [
+        "packages/contracts/src"
+      ],
+      "@eiah/contracts/*": [
+        "packages/contracts/src/*"
+      ],
+      "@repo/mcp-runner": [
+        "packages/mcp-runner/src"
+      ],
+      "@repo/mcp-runner/*": [
+        "packages/mcp-runner/src/*"
+      ]
+    }
   }
 }
