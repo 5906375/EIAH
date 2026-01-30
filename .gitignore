@@ -1,10 +1,76 @@
-.pnpm-store/
+# ============================================
+# 🧠 EIAH_BUILDER — .gitignore padrão corporativo
+# Fase 0–3: Infraestrutura, Governança e Observabilidade
+# ============================================
+
+# --------------------------------------------
+# Pacotes, builds e caches
+# --------------------------------------------
 node_modules/
 dist/
 build/
 apps/web/dist/
-*.log
-.env
-*.env
-apps/**/.env
+.pnpm-store/
+.pnp.*
+.cache/
 coverage/
+*.log
+*.zip
+*.odt
+
+# --------------------------------------------
+# Ambientes (.env) — política segura
+# --------------------------------------------
+# Nunca versionar env real
+.env
+**/.env
+.env.*
+**/.env.*
+
+# Permitir apenas templates / exemplos / hashes
+!.env.template
+!.env.example
+!.env.*.example
+!.env.hash
+!.env.governance.example
+
+# --------------------------------------------
+# Documentação e artefatos manuais
+# --------------------------------------------
+docs/*
+!docs/.keep
+
+# --------------------------------------------
+# Dados temporários e uploads
+# --------------------------------------------
+uploads/
+tmp/
+*.sqlite
+
+# --------------------------------------------
+# IDE / Sistema
+# --------------------------------------------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+
+# --------------------------------------------
+# Prisma legado e artefatos internos
+# --------------------------------------------
+apps/api/prisma_legacy/
+apps/api/prisma_legacy/**
+
+
+# Artefatos gerados indevidamente dentro de src
+packages/**/src/**/*.d.ts
+packages/**/src/**/*.js
+packages/**/src/**/*.js.map
+packages/**/src/**/*.d.ts.map
+packages/**/src/**/*.tsbuildinfo
+
+
+# Temporários do repo
+.tmp/
+tmp_*
