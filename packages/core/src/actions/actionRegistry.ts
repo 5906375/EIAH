@@ -1,4 +1,5 @@
 import type { ZodTypeAny } from "zod";
+import { appendSignedHash } from "../services/sclLedger";
 
 export type ActionExecutionContext = {
   action: string;
@@ -42,16 +43,19 @@ export type ActionContract = {
   output?: ZodTypeAny;
 };
 
-type RegisteredAction = {
+export type ActionCriticality = "low" | "medium" | "high" | "critical";
+
+export type RegisteredAction = {
   name: string;
   description?: string;
   version?: string;
   handler: ActionHandler;
   contract?: ActionContract;
   guardrails?: ActionGuardrail[];
+  criticality?: ActionCriticality;
 };
 
-type RegisteredActionMetadata = Omit<RegisteredAction, "handler" | "guardrails"> & {
+export type RegisteredActionMetadata = Omit<RegisteredAction, "handler" | "guardrails"> & {
   guardrails?: string[];
 };
 
@@ -67,6 +71,7 @@ export function registerAction(action: RegisteredAction) {
     ...action,
     version: action.version ?? "1.0.0",
     guardrails: action.guardrails ?? [],
+    criticality: action.criticality ?? "low",
   });
 }
 
@@ -85,7 +90,16 @@ export function listRegisteredActions(): RegisteredActionMetadata[] {
     version: action.version,
     contract: action.contract,
     guardrails: action.guardrails?.map((guard) => guard.name),
+    criticality: action.criticality ?? "low",
   }));
+}
+
+export function getRegisteredActionDefinitions() {
+  const catalog: Record<string, RegisteredAction> = {};
+  for (const [name, action] of registry.entries()) {
+    catalog[name] = action;
+  }
+  return catalog;
 }
 
 function applyGuardrailsBefore(
@@ -214,6 +228,47 @@ export async function executeRegisteredAction(
   }
 
   await applyGuardrailsAfterSuccess(guardrails, executionContext, result);
+  if (
+    result.status === "success" &&
+    (registered.criticality === "high" || registered.criticality === "critical")
+  ) {
+    const tenantId = executionContext.tenantId;
+    const runId = executionContext.runId;
+    if (tenantId && runId) {
+      try {
+        await appendSignedHash({
+          tenantId,
+          workspaceId: executionContext.workspaceId ?? null,
+          runId,
+          payload: {
+            action: name,
+            version,
+            input: executionContext.input ?? null,
+            output: result.output ?? null,
+            status: result.status,
+          },
+          riskLevel: registered.criticality,
+        });
+        executionContext.logger?.("action.scl.recorded", {
+          action: name,
+          criticality: registered.criticality,
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        executionContext.logger?.("action.scl.failed", {
+          action: name,
+          criticality: registered.criticality,
+          message,
+        });
+      }
+    } else {
+      executionContext.logger?.("action.scl.skipped", {
+        action: name,
+        criticality: registered.criticality,
+        reason: "missing_tenant_or_run",
+      });
+    }
+  }
   return result;
 }
 

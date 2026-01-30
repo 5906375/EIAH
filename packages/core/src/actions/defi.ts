@@ -54,6 +54,7 @@ export function registerDefiActions(options: RegisterDefiActionsOptions) {
     name: "defi.broadcastTransaction",
     description: "Broadcast a pre-signed transaction to the network.",
     version: "1.1.0",
+    criticality: "critical",
     contract: {
       input: broadcastInputSchema,
       output: broadcastOutputSchema,

@@ -47,6 +47,7 @@ export function registerKnowledgeActions(options: RegisterKnowledgeActionsOption
     name: "knowledge.storeMemory",
     description: "Persist memory payload for later retrieval.",
     version: "1.0.0",
+    criticality: "medium",
     contract: {
       input: storeInputSchema,
       output: storeOutputSchema,
@@ -90,6 +91,7 @@ export function registerKnowledgeActions(options: RegisterKnowledgeActionsOption
     name: "knowledge.queryMemory",
     description: "Query stored memory and return top matches.",
     version: "1.0.0",
+    criticality: "low",
     contract: {
       input: queryInputSchema,
       output: queryOutputSchema,

@@ -30,6 +30,7 @@ export function registerRiskActions(options: RegisterRiskActionsOptions) {
     name: "risk.runChecklist",
     description: "Execute a risk & compliance checklist pipeline.",
     version: "1.0.0",
+    criticality: "medium",
     contract: {
       input: checklistInputSchema,
       output: checklistOutputSchema,

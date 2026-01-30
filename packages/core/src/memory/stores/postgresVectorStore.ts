@@ -1,3 +1,4 @@
+import { Prisma } from "@repo/db";
 import { EmbeddingChunkSchema } from "../../types";
 import type { MemoryScope, VectorMemoryStore } from "../index";
 
@@ -43,6 +44,7 @@ type EmbeddingChunkDelegate = {
 
 type PrismaClientLike = {
   embeddingChunk: EmbeddingChunkDelegate;
+  $queryRaw?: <T = unknown>(query: TemplateStringsArray | Prisma.Sql, ...values: any[]) => Promise<T>;
 };
 
 function cosineSimilarity(a: number[], b: number[]): number {
@@ -66,12 +68,26 @@ function cosineSimilarity(a: number[], b: number[]): number {
 
 export class PostgresVectorMemoryStore implements VectorMemoryStore {
   private readonly candidateMultiplier: number;
+  private readonly metrics: (name: string, value: number, labels?: Record<string, string>) => void;
+  private readonly indexType: string;
+  private readonly vectorColumn: string;
+  private pgvectorAvailable: boolean;
 
   constructor(
     private readonly prisma: PrismaClientLike,
-    options: { candidateMultiplier?: number } = {}
+    options: {
+      candidateMultiplier?: number;
+      metrics?: (name: string, value: number, labels?: Record<string, string>) => void;
+      indexType?: "hnsw" | "ivfflat" | "none";
+      vectorColumn?: string;
+      pgvectorAvailable?: boolean;
+    } = {}
   ) {
     this.candidateMultiplier = options.candidateMultiplier ?? 5;
+    this.metrics = options.metrics ?? (() => undefined);
+    this.indexType = options.indexType ?? "none";
+    this.vectorColumn = options.vectorColumn ?? "embedding";
+    this.pgvectorAvailable = options.pgvectorAvailable ?? true;
   }
 
   async upsert(
@@ -117,6 +133,50 @@ export class PostgresVectorMemoryStore implements VectorMemoryStore {
       return [];
     }
 
+    if (!this.pgvectorAvailable || !this.prisma.$queryRaw) {
+      return this.searchInMemory(scope, params, { reason: "pgvector_unavailable" });
+    }
+
+    const startedAt = Date.now();
+    try {
+      const embeddingLiteral = `[${params.query.join(",")}]`;
+      const rows = await this.prisma.$queryRaw<
+        Array<{ chunk_key: string; metadata: Record<string, unknown> | null; score: number }>
+      >(
+        Prisma.sql`
+          SELECT chunk_key, metadata,
+                 1 - (${Prisma.raw(this.vectorColumn)} <=> ${embeddingLiteral}::vector) AS score
+          FROM embedding_chunks
+          WHERE tenant_id = ${scope.tenantId}
+            AND workspace_id = ${scope.workspaceId}
+            AND agent_id = ${scope.agentId}
+          ORDER BY ${Prisma.raw(this.vectorColumn)} <=> ${embeddingLiteral}::vector
+          LIMIT ${params.topK}
+        `
+      );
+
+      this.metrics("memory_pgvector_latency_ms", Date.now() - startedAt, { source: "pgvector" });
+      this.metrics("memory_pgvector_candidates", rows.length, { source: "pgvector" });
+      this.metrics("memory_pgvector_index_type", 1, { type: this.indexType });
+
+      return rows.map((row) => ({
+        key: row.chunk_key,
+        score: row.score,
+        metadata: row.metadata ?? undefined,
+      }));
+    } catch (_error) {
+      this.pgvectorAvailable = false;
+      this.metrics("memory_pgvector_latency_ms", Date.now() - startedAt, { source: "fallback" });
+      this.metrics("memory_pgvector_index_type", 1, { type: "fallback" });
+      return this.searchInMemory(scope, params, { reason: "pgvector_error" });
+    }
+  }
+
+  private async searchInMemory(
+    scope: MemoryScope,
+    params: { query: number[]; topK: number },
+    meta?: { reason?: string }
+  ): Promise<Array<{ key: string; score: number; metadata?: Record<string, unknown> }>> {
     const maxCandidates = Math.max(params.topK * this.candidateMultiplier, params.topK);
     const candidates = await this.prisma.embeddingChunk.findMany({
       where: {
@@ -130,7 +190,7 @@ export class PostgresVectorMemoryStore implements VectorMemoryStore {
       take: maxCandidates,
     });
 
-    return candidates
+    const results = candidates
       .map((row) => {
         const parsed = EmbeddingChunkSchema.parse({
           ...row,
@@ -144,5 +204,12 @@ export class PostgresVectorMemoryStore implements VectorMemoryStore {
       })
       .sort((a, b) => b.score - a.score)
       .slice(0, params.topK);
+
+    this.metrics("memory_pgvector_candidates", candidates.length, {
+      source: "fallback",
+      reason: meta?.reason ?? "unknown",
+    });
+
+    return results;
   }
 }

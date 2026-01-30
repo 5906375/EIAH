@@ -1,0 +1,52 @@
+{
+  "name": "@repo/db",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "prisma",
+    "src/generated"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./src/index.js",
+      "default": "./src/index.js"
+    },
+    "./client": {
+      "types": "./src/generated/client/index.d.ts",
+      "import": "./src/generated/client/index.js",
+      "default": "./src/generated/client/index.js"
+    }
+  },
+  "scripts": {
+    "prisma": "prisma",
+    "generate": "pnpm prisma generate",
+    "migrate:dev": "pnpm prisma migrate dev",
+    "migrate:deploy": "pnpm prisma migrate deploy",
+    "studio": "pnpm prisma studio",
+    "build:dts": "tsc --build tsconfig.json --force",
+    "build": "pnpm run generate && tsup --config tsup.config.ts && pnpm run build:dts",
+    "postbuild": "cp -r ./src/generated ./dist/generated || true",
+    "test": "node --test --import tsx \"src/**/*.test.ts\"",
+    "prepare": "pnpm run build",
+    "prebuild": "bash ../../scripts/prebuild-check.sh"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "7.2.0",
+    "@prisma/client": "7.2.0",
+    "@prisma/client-runtime-utils": "7.2.0",
+    "pg": "^8.11.0"
+  },
+  "devDependencies": {
+    "@prisma/config": "^7.1.0",
+    "@types/node": "latest",
+    "prisma": "7.2.0",
+    "tsup": "latest",
+    "typescript": "latest",
+    "fs-extra": "^11.2.0"
+  }
+}

@@ -1,0 +1,12 @@
+/**
+ * ✅ Prisma 7.x — Configuração ESM compatível
+ * Local: packages/db/prisma.config.js
+ */
+export default {
+    datasources: {
+        db: {
+            provider: "postgresql",
+            url: process.env.DATABASE_URL,
+        },
+    },
+};

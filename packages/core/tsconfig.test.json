@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {
+      "@eiah/contracts": ["../contracts/dist"],
+      "@repo/db": ["src/__mocks__/repo-db.ts"]
+    }
+  }
+}

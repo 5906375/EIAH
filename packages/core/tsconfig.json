@@ -1,16 +1,25 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "rootDir": "src",
     "outDir": "dist",
     "declaration": true,
+    "emitDeclarationOnly": true,
     "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "target": "ES2022",
-    "types": ["node"],
+    "target": "ES2020",
+    "moduleResolution": "Node",
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "strict": true,
+    "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
-    "sourceMap": true
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@eiah/contracts": ["../contracts/dist"],
+      "@repo/db": ["../db/dist"]
+    }
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["node_modules", "dist", "../contracts", "../db"]
 }

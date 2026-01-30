@@ -6,6 +6,9 @@ export * from "./notifications";
 export * from "./knowledge";
 export * from "./billing";
 export * from "./reporting";
+export * from "./agents";
+export * from "./registry/VersionedActionRegistry";
+export * from "./registry/TenantActionResolver";
 
 import { registerDefiActions } from "./defi";
 import { registerRiskActions } from "./risk";
@@ -13,19 +16,26 @@ import { registerNotificationActions } from "./notifications";
 import { registerKnowledgeActions } from "./knowledge";
 import { registerBillingActions } from "./billing";
 import { registerReportingActions } from "./reporting";
+import { registerAgentProfileActions } from "./agents";
 import {
   createFixedWindowRateLimiter,
   createInMemoryIdempotencyStore,
   type IdempotencyStore,
   type RateLimiter,
 } from "./guardrails";
+import type { TenantActionResolver } from "./registry/TenantActionResolver";
+import type { VersionedActionRegistry } from "./registry/VersionedActionRegistry";
 
 export type RegisterAllActionsOptions = {
   idempotencyStore?: IdempotencyStore;
   rateLimiter?: RateLimiter;
+  actionResolver?: TenantActionResolver;
 };
 
-export function registerAllActions(options: RegisterAllActionsOptions = {}) {
+export function registerAllActions(
+  registry: VersionedActionRegistry,
+  options: RegisterAllActionsOptions = {}
+) {
   const idempotencyStore =
     options.idempotencyStore ?? createInMemoryIdempotencyStore();
   const rateLimiter =
@@ -37,4 +47,10 @@ export function registerAllActions(options: RegisterAllActionsOptions = {}) {
   registerKnowledgeActions({ idempotencyStore, rateLimiter });
   registerBillingActions();
   registerReportingActions({ idempotencyStore });
+  registerAgentProfileActions();
+
+  return {
+    resolve: (tenantId: string) => options.actionResolver?.resolveActions(tenantId) ?? {},
+    registry,
+  };
 }

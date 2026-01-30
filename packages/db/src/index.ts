@@ -1,17 +1,21 @@
 import { PrismaClient } from "./generated/client";
+import { getPrismaForTenant, prismaGlobal } from "./client";
 
-const globalForPrisma = globalThis as unknown as {
-    prisma: PrismaClient | undefined;
-};
+/**
+ * Ponto de entrada oficial do pacote @repo/db.
+ *
+ * Reexporta:
+ * - PrismaClient (instância global segura)
+ * - Prisma namespace e enums
+ * - tenantGuard (middleware multi-tenant)
+ * - Helpers multi-tenant (getPrismaForTenant) e alias prisma
+ */
 
-export const prisma =
-    globalForPrisma.prisma ??
-    new PrismaClient({
-        log: ["error", "warn"]
-    });
+// Alias para manter compatibilidade com consumidores que importam `prisma`
+export const prisma = prismaGlobal;
 
-if (process.env.NODE_ENV !== "production") {
-    globalForPrisma.prisma = prisma;
-}
-
+// 🔹 Exports principais
+export { Prisma, RunStatus } from "./generated/client";
+export * from "./middleware/tenantGuard";
 export { PrismaClient };
+export { prismaGlobal, getPrismaForTenant };

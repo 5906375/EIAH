@@ -12,23 +12,20 @@ import {
 } from "bullmq";
 import { createLogger, bindLogger } from "../logging";
 import type { ActionExecutionResult } from "../actions/actionRegistry";
+import {
+  ActionJobName,
+  QueueName,
+  type ActionJobPayload,
+} from "@eiah/contracts";
 
-const DEFAULT_QUEUE_NAME = process.env.ACTION_QUEUE_NAME ?? "agent-action-executions";
-const DEFAULT_JOB_NAME = process.env.ACTION_QUEUE_JOB_NAME ?? "execute-agent-action";
+const DEFAULT_QUEUE_NAME = process.env.ACTION_QUEUE_NAME ?? QueueName.ACTIONS;
+const DEFAULT_JOB_NAME = process.env.ACTION_QUEUE_JOB_NAME ?? ActionJobName;
 const DLQ_SUFFIX = "-dlq";
 const DEFAULT_CONCURRENCY = Number(process.env.ACTION_QUEUE_CONCURRENCY ?? "2");
 const DEFAULT_CONNECTION_URL = "redis://127.0.0.1:6379/0";
 const actionQueueLogger = createLogger({ component: "action-queue" });
 
-export type ActionQueuePayload = {
-  action: string;
-  input?: unknown;
-  runId?: string;
-  stepId?: string;
-  tenantId?: string;
-  workspaceId?: string;
-  metadata?: Record<string, unknown>;
-};
+export type ActionQueuePayload = ActionJobPayload;
 
 export type ActionQueuePublishOptions = JobsOptions;
 

@@ -55,6 +55,7 @@ export function registerNotificationActions(options: RegisterNotificationActions
     name: "notification.sendSlack",
     description: "Send a message to Slack channel or user.",
     version: "1.1.0",
+    criticality: "medium",
     contract: {
       input: slackInputSchema,
       output: slackOutputSchema,
@@ -111,6 +112,7 @@ export function registerNotificationActions(options: RegisterNotificationActions
     name: "notification.triggerPagerDuty",
     description: "Trigger a PagerDuty incident with given payload.",
     version: "1.0.1",
+    criticality: "high",
     contract: {
       input: pagerDutyInputSchema,
       output: pagerDutyOutputSchema,
@@ -159,6 +161,7 @@ export function registerNotificationActions(options: RegisterNotificationActions
     name: "notification.sendEmail",
     description: "Send transactional email using configured provider.",
     version: "1.0.0",
+    criticality: "medium",
     contract: {
       input: emailInputSchema,
       output: emailOutputSchema,

@@ -137,6 +137,47 @@ export class MemoryRetentionJob {
   }
 }
 
+export type KnowledgeBackfillJobParams = {
+  scope: MemoryScope;
+  topK?: number;
+};
+
+function asNumberArray(value: unknown): number[] | null {
+  if (!Array.isArray(value)) return null;
+  return value.every((item) => typeof item === "number") ? (value as number[]) : null;
+}
+
+export class KnowledgeBackfillJob {
+  constructor(private readonly memory: MemoryService) {}
+
+  async run(params: KnowledgeBackfillJobParams) {
+    const snapshot = await this.memory.snapshot(params.scope, { topK: params.topK ?? 200 });
+
+    const candidates = snapshot.longTerm
+      .map((record) => {
+        const metadata = (record.metadata ?? {}) as Record<string, unknown>;
+        const vector =
+          asNumberArray(metadata.embedding) ?? asNumberArray(metadata.embeddings);
+        if (!vector) return null;
+        return {
+          key: record.key,
+          values: vector,
+          metadata,
+        };
+      })
+      .filter(
+        (value): value is { key: string; values: number[]; metadata: Record<string, unknown> } =>
+          value !== null
+      );
+
+    if (candidates.length === 0) {
+      return;
+    }
+
+    await this.memory.upsertVectors(params.scope, candidates);
+  }
+}
+
 export function scopeFromOrchestrator(input: OrchestratorInput, agentId: string): MemoryScope {
   return {
     tenantId: input.tenantId,
@@ -145,7 +186,7 @@ export function scopeFromOrchestrator(input: OrchestratorInput, agentId: string)
   };
 }
 
-export type { MemoryScope, MemoryRecord, MemoryVectorMatch } from "../types";
+export type { MemoryScope, MemoryRecord, MemoryVectorMatch, MemorySnapshot } from "../types";
 
 export { InMemoryShortTermMemoryStore } from "./stores/inMemoryShortTermStore";
 export { InMemoryLongTermMemoryStore } from "./stores/inMemoryLongTermStore";

@@ -10,24 +10,21 @@ import type {
   Job,
 } from "bullmq";
 import { createLogger, bindLogger } from "../logging";
+import {
+  QueueName,
+  RunJobName,
+  type RunJobPayload,
+} from "@eiah/contracts";
 
 type BullModule = typeof import("bullmq");
 
-const DEFAULT_QUEUE_NAME = "agent-run-executions";
-const DEFAULT_JOB_NAME = "execute-agent-run";
+const DEFAULT_QUEUE_NAME = QueueName.RUNS;
+const DEFAULT_JOB_NAME = RunJobName;
 const DLQ_SUFFIX = "-dlq";
 const DEFAULT_CONCURRENCY = Number(process.env.RUN_QUEUE_CONCURRENCY ?? "1");
 const queueLogger = createLogger({ component: "run-queue" });
 
-export type RunQueuePayload = {
-  runId: string;
-  tenantId: string;
-  workspaceId: string;
-  userId?: string;
-  agent: string;
-  prompt: string;
-  metadata?: Record<string, unknown>;
-};
+export type RunQueuePayload = RunJobPayload;
 
 export type RunQueuePublishOptions = JobsOptions;
 
@@ -68,15 +65,13 @@ function resolveDlqJobName() {
 }
 
 function resolveConnection(): ConnectionOptions | undefined {
+  const fallback: ConnectionOptions = { host: "127.0.0.1", port: 6379, db: 0 };
   const url =
     process.env.RUN_QUEUE_REDIS_URL ??
     process.env.REDIS_URL ??
     process.env.BULLMQ_REDIS_URL ??
-    process.env.QUEUE_REDIS_URL;
-
-  if (!url) {
-    return undefined;
-  }
+    process.env.QUEUE_REDIS_URL ??
+    "redis://127.0.0.1:6379/0";
 
   let parsed: URL;
   try {
@@ -89,7 +84,7 @@ function resolveConnection(): ConnectionOptions | undefined {
       },
       "run-queue.invalid_redis_url"
     );
-    return undefined;
+    return fallback;
   }
 
   const isTls = parsed.protocol === "rediss:";
@@ -332,8 +327,71 @@ export async function getRunDlqCounts() {
 
 export async function probeRunQueue() {
   const [primary, dlq] = await Promise.all([getRunQueueCounts(), getRunDlqCounts()]);
+
   return {
+    name: resolveQueueName(),
     queue: primary,
     dlq,
+    dlqCount: dlq.failed ?? 0,
+    timestamp: Date.now(),
   };
+}
+
+/**
+ * Redrive da DLQ → reenvia jobs para a fila principal.
+ *
+ * Sprint 1 requirement: redrive básico.
+ */
+export async function redriveRunQueue() {
+  const dlq = (await getDlqQueue()) as Queue<RunQueuePayload>;
+  const queue = (await getQueue()) as Queue<RunQueuePayload>;
+
+  const failedJobs = await dlq.getJobs(["failed", "waiting", "active", "delayed"]);
+
+  if (!failedJobs.length) {
+    queueLogger.info(
+      { queue: resolveQueueName(), dlq: resolveDlqQueueName() },
+      "run-queue.redrive.empty"
+    );
+    return { redriven: 0 };
+  }
+
+  let count = 0;
+
+  for (const job of failedJobs) {
+    try {
+      // Reenfileirar
+      await queue.add(resolveJobName(), job.data, {
+        attempts: 3,
+        backoff: { type: "exponential", delay: 250 },
+        removeOnComplete: true,
+      });
+
+      // Remover do DLQ
+      await job.remove();
+
+      count++;
+    } catch (err) {
+      queueLogger.error(
+        {
+          err,
+          jobId: job.id,
+          queue: resolveQueueName(),
+          dlqQueue: resolveDlqQueueName(),
+        },
+        "run-queue.redrive.failed_job"
+      );
+    }
+  }
+
+  queueLogger.info(
+    {
+      queue: resolveQueueName(),
+      dlqQueue: resolveDlqQueueName(),
+      count,
+    },
+    "run-queue.redrive.completed"
+  );
+
+  return { redriven: count };
 }

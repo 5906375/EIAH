@@ -1,0 +1,36 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    /* Importante: DB é uma lib, precisa dist de .d.ts */
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    /* Evita conflito com JS do Prisma Client */
+    "allowJs": false,
+    "module": "ESNext",
+    "target": "ES2022",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "isolatedModules": false,
+    /* Não tentar validar typings gigantes do Prisma */
+    "skipLibCheck": true,
+    "strict": false,
+    "types": [
+      "node"
+    ],
+    /* Necessário para tsup + TSC coexistirem */
+    "composite": true
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "src/generated/client/index.js",
+    "src/generated/client/*.js",
+    "node_modules",
+    "src/__tests__/**/*",
+    "src/middleware/**/*test.ts"
+  ]
+}

@@ -62,6 +62,7 @@ export type RecommendationStateEntry = {
   accepts: number;
   rejects: number;
   lastAcceptedAt: string | null;
+  lastRejectedAt: string | null;
   lastSuggestedAt: string | null;
   score: number;
   status: FeedbackStatus;
@@ -129,6 +130,7 @@ function defaultStateEntry(): RecommendationStateEntry {
     accepts: 0,
     rejects: 0,
     lastAcceptedAt: null,
+    lastRejectedAt: null,
     lastSuggestedAt: null,
     score: 0.5,
     status: "PENDENTE",
@@ -289,8 +291,16 @@ export function generateStatefulRecommendations(
   let filtradosAdotados = 0;
   let filtradosRejeitados = 0;
 
-  normalizedPreviousRuns.forEach((run) => {
+  const repetitionCounts = new Map<string, number>();
+  normalizedPreviousRuns.forEach((run, index) => {
     const runDate = safeParseDate(run.createdAt ?? undefined) ?? now;
+    if (index < 3) {
+      run.recomendacoes?.forEach((item) => {
+        if (!item || (!item.tatica && !item.key)) return;
+        const key = deriveKey(item);
+        repetitionCounts.set(key, (repetitionCounts.get(key) ?? 0) + 1);
+      });
+    }
     run.recomendacoes?.forEach((item) => {
       if (!item || (!item.tatica && !item.key)) {
         return;
@@ -312,6 +322,7 @@ export function generateStatefulRecommendations(
         entry.rejects += 1;
         entry.adopted = false;
         entry.status = "REJEITADO";
+        entry.lastRejectedAt = toIsoString(runDate);
       } else if (item.status) {
         const normalized = item.status.toLowerCase();
         if (["adotado", "implementado", "em_execucao", "em execução"].includes(normalized)) {
@@ -321,6 +332,7 @@ export function generateStatefulRecommendations(
         } else if (["rejeitado", "cancelado", "descartado"].includes(normalized)) {
           entry.adopted = false;
           entry.status = "REJEITADO";
+          entry.lastRejectedAt = toIsoString(runDate);
         }
       }
 
@@ -350,6 +362,8 @@ export function generateStatefulRecommendations(
         candidate.tatica,
         agentState.client_preferences
       );
+      const repetitionPenalty = repetitionCounts.get(key) ? 0.7 : 1;
+      const penalizedScore = clamp(adjustedScore * repetitionPenalty, 0, 1);
 
       const status = entry.status;
       if (status === "ADOTADO") {
@@ -365,9 +379,10 @@ export function generateStatefulRecommendations(
         entry,
         originalIndex: index,
         baseScore: entry.score,
-        adjustedScore,
+        adjustedScore: penalizedScore,
         decayWeight,
         qualityScore,
+        repetitionPenalty,
       };
     })
     .filter((item) => item.entry.status !== "ADOTADO" && item.entry.status !== "REJEITADO");
@@ -483,7 +498,7 @@ Sinais de aceitação: \`feedback.explicit=="aceito"\` OU \`feedback.click==true
 Chave estável: \`rec.key\`. Se faltar, derive hash de {tática, parâmetros}.
 
 Estado por agente (\`agentState\`):
-- recommendations[rec.key]: { adopted: bool, accepts: int, rejects: int, lastAcceptedAt: iso|null, lastSuggestedAt: iso|null, score: float, status: "ADOTADO"|"REJEITADO"|"PENDENTE" }
+- recommendations[rec.key]: { adopted: bool, accepts: int, rejects: int, lastAcceptedAt: iso|null, lastRejectedAt: iso|null, lastSuggestedAt: iso|null, score: float, status: "ADOTADO"|"REJEITADO"|"PENDENTE" }
 - client_preferences: pares chave→bool
 - best_performing_tactics: string[]
 - version: int

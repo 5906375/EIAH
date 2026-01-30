@@ -65,6 +65,7 @@ async function tryEmitAuditLog(input: EmitAuditLogInput, logger?: (event: string
 registerAction({
   name: "billing.emit_audit_log",
   description: "Persist a billing audit log entry.",
+  criticality: "low",
   contract: {
     input: EmitAuditLogInputSchema,
   },
@@ -92,6 +93,7 @@ registerAction({
 registerAction({
   name: "billing.create_white_label_plan",
   description: "Create a billing plan on the white-label gateway and emit audit logs.",
+  criticality: "high",
   contract: {
     input: CreateWhiteLabelPlanInputSchema,
     output: CreateWhiteLabelPlanOutputSchema,

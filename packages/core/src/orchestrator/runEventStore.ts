@@ -1,11 +1,6 @@
-export type OrchestratorRunEvent = {
-  runId: string;
-  tenantId: string;
-  workspaceId: string;
-  userId?: string;
-  type: string;
-  payload?: Record<string, unknown>;
-};
+import type { RunEvent } from "@eiah/contracts";
+
+export type OrchestratorRunEvent = Omit<RunEvent, "id" | "createdAt">;
 
 export interface RunEventStore {
   record(event: OrchestratorRunEvent): Promise<void>;
