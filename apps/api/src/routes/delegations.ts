@@ -2,6 +2,7 @@ import { Router } from "express";
 import crypto from "node:crypto";
 import { z } from "zod";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
+import { requireScope } from "../middlewares/requireScope";
 
 export const delegationsRouter = Router();
 delegationsRouter.use(enforceTenant);
@@ -23,6 +24,11 @@ const DelegationUpdateSchema = z.object({
   validUntil: z.string().datetime().optional(),
   policyHash: z.string().optional(),
   signatureHash: z.string().optional(),
+});
+
+const DelegationDecisionSchema = z.object({
+  providerSignatureHash: z.string().optional(),
+  reason: z.string().max(500).optional(),
 });
 
 delegationsRouter.get("/delegations", async (req, res) => {
@@ -201,3 +207,99 @@ delegationsRouter.delete("/delegations/:id", async (req, res) => {
   await request.prisma.delegationPolicy.delete({ where: { id: item.id } });
   return res.json({ ok: true });
 });
+
+delegationsRouter.post(
+  "/delegations/:id/approve",
+  requireScope("admin"),
+  async (req, res) => {
+    const request = req as TenantAwareRequest;
+    if (!request.authContext || !request.prisma) {
+      return res.status(500).json({
+        ok: false,
+        error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+      });
+    }
+
+    const parsed = DelegationDecisionSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD" } });
+    }
+
+    const item = await request.prisma.delegationPolicy.findUnique({
+      where: { id: req.params.id },
+    });
+
+    if (!item) {
+      return res.status(404).json({ ok: false, error: { code: "DELEGATION_NOT_FOUND" } });
+    }
+
+    if (item.delegatorId !== request.authContext.tenantId) {
+      return res.status(403).json({ ok: false, error: { code: "DELEGATION_FORBIDDEN" } });
+    }
+
+    if (item.status === "active") {
+      return res.json({ ok: true, item });
+    }
+
+    if (item.status !== "pending_approval") {
+      return res.status(409).json({ ok: false, error: { code: "DELEGATION_INVALID_STATUS" } });
+    }
+
+    const updated = await request.prisma.delegationPolicy.update({
+      where: { id: item.id },
+      data: {
+        status: "active",
+        providerSignatureHash: parsed.data.providerSignatureHash ?? null,
+        decidedAt: new Date(),
+      },
+    });
+
+    return res.json({ ok: true, item: updated });
+  }
+);
+
+delegationsRouter.post(
+  "/delegations/:id/reject",
+  requireScope("admin"),
+  async (req, res) => {
+    const request = req as TenantAwareRequest;
+    if (!request.authContext || !request.prisma) {
+      return res.status(500).json({
+        ok: false,
+        error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+      });
+    }
+
+    const parsed = DelegationDecisionSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD" } });
+    }
+
+    const item = await request.prisma.delegationPolicy.findUnique({
+      where: { id: req.params.id },
+    });
+
+    if (!item) {
+      return res.status(404).json({ ok: false, error: { code: "DELEGATION_NOT_FOUND" } });
+    }
+
+    if (item.delegatorId !== request.authContext.tenantId) {
+      return res.status(403).json({ ok: false, error: { code: "DELEGATION_FORBIDDEN" } });
+    }
+
+    if (item.status !== "pending_approval") {
+      return res.status(409).json({ ok: false, error: { code: "DELEGATION_INVALID_STATUS" } });
+    }
+
+    const updated = await request.prisma.delegationPolicy.update({
+      where: { id: item.id },
+      data: {
+        status: "rejected",
+        providerSignatureHash: parsed.data.providerSignatureHash ?? null,
+        decidedAt: new Date(),
+      },
+    });
+
+    return res.json({ ok: true, item: updated });
+  }
+);

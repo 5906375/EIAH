@@ -242,6 +242,7 @@ marketplaceRouter.post("/marketplace/:id/subscribe", async (req, res) => {
   const validUntil = parsed.data.validUntil
     ? new Date(parsed.data.validUntil)
     : new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+  const requiresApproval = item.type === "action" && scope !== "read";
 
   const policyPayload = {
     delegatorId: item.publisherId,
@@ -268,6 +269,7 @@ marketplaceRouter.post("/marketplace/:id/subscribe", async (req, res) => {
       validUntil,
       policyHash,
       signatureHash,
+      status: requiresApproval ? "pending_approval" : "active",
     },
   });
 

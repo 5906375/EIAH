@@ -2,8 +2,10 @@ import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { selfServiceConfigs } from "./config";
 import {
+  apiApproveDelegation,
   apiListDelegations,
   apiListMarketplace,
+  apiRejectDelegation,
   apiSubscribeMarketplace,
   type DelegationPolicy,
   type MarketplaceItem,
@@ -24,6 +26,7 @@ import eiahPitchVideo from "../../assets/eiah-pitch.mp4";
 import eiahCoreVideo from "../../assets/eiah-core.mp4";
 import eiahGeralVideo from "../../assets/eiah-geral.mp4";
 import SelfServiceNav from "./components/SelfServiceNav";
+import NeedMoreInfoDialog from "./components/NeedMoreInfoDialog";
 
 const primaryAgent = selfServiceConfigs[0];
 const agentArtwork: Record<string, string> = {};
@@ -61,12 +64,20 @@ export default function SelfServiceIndexPage() {
   );
   const [delegationsError, setDelegationsError] = React.useState<string | null>(null);
   const [subscribingIds, setSubscribingIds] = React.useState<Set<string>>(new Set());
-  const [subscribedIds, setSubscribedIds] = React.useState<Set<string>>(new Set());
   const [subscribeNotice, setSubscribeNotice] = React.useState<string | null>(null);
   const [itemErrors, setItemErrors] = React.useState<Record<string, string>>({});
+  const [decisionErrors, setDecisionErrors] = React.useState<Record<string, string>>({});
   const [formValues, setFormValues] = React.useState<
     Record<string, { scope: "read" | "execute" | "admin"; trustMin: string; validUntil: string }>
   >({});
+  const [providerDelegations, setProviderDelegations] = React.useState<DelegationPolicy[]>([]);
+  const [viewMode, setViewMode] = React.useState<"catalog" | "approvals">("catalog");
+  const [decisionLoading, setDecisionLoading] = React.useState<Record<string, "approve" | "reject">>(
+    {}
+  );
+  const [termsItem, setTermsItem] = React.useState<MarketplaceItem | null>(null);
+  const [termsOpen, setTermsOpen] = React.useState(false);
+  const [termsSubmitting, setTermsSubmitting] = React.useState(false);
 
   const delegationByMarketplaceId = React.useMemo(() => {
     const map = new Map<string, DelegationPolicy>();
@@ -95,7 +106,69 @@ export default function SelfServiceIndexPage() {
   const isDelegationActive = (delegation?: DelegationPolicy | null) => {
     if (!delegation?.validUntil) return false;
     const expiry = new Date(delegation.validUntil).getTime();
-    return Number.isFinite(expiry) && expiry > Date.now();
+    if (!Number.isFinite(expiry) || expiry <= Date.now()) return false;
+    if (delegation.status && delegation.status !== "active") return false;
+    return true;
+  };
+
+  const getDelegationStatus = (delegation?: DelegationPolicy | null) => {
+    if (!delegation) return "none";
+    if (delegation.status === "pending_approval") return "pending_approval";
+    if (delegation.status === "rejected") return "rejected";
+    if (delegation.status === "revoked") return "revoked";
+    const expiry = new Date(delegation.validUntil).getTime();
+    if (Number.isFinite(expiry) && expiry <= Date.now()) return "expired";
+    return "active";
+  };
+
+  const renderStatusChip = (status: string) => {
+    const styles: Record<string, { label: string; className: string }> = {
+      pending_approval: {
+        label: "Aguardando aprovacao",
+        className: "border-amber-400/40 bg-amber-400/10 text-amber-200",
+      },
+      active: {
+        label: "Ativo",
+        className: "border-emerald-400/40 bg-emerald-400/10 text-emerald-200",
+      },
+      expired: {
+        label: "Expirado",
+        className: "border-rose-400/40 bg-rose-400/10 text-rose-200",
+      },
+      rejected: {
+        label: "Rejeitado",
+        className: "border-rose-400/40 bg-rose-400/10 text-rose-200",
+      },
+      revoked: {
+        label: "Revogado",
+        className: "border-rose-400/40 bg-rose-400/10 text-rose-200",
+      },
+      none: {
+        label: "Nao assinado",
+        className: "border-white/10 bg-white/5 text-muted-foreground",
+      },
+    };
+
+    const style = styles[status] ?? styles.none;
+    return (
+      <span
+        className={`mt-2 inline-flex w-fit items-center rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.25em] ${style.className}`}
+      >
+        {style.label}
+      </span>
+    );
+  };
+
+  const formatDelegationStatus = (status: string) => {
+    const labels: Record<string, string> = {
+      pending_approval: "aguardando aprovacao",
+      active: "ativo",
+      rejected: "rejeitado",
+      revoked: "revogado",
+      expired: "expirado",
+      none: "nao assinado",
+    };
+    return labels[status] ?? status;
   };
 
   const activeDelegations = React.useMemo(
@@ -103,8 +176,13 @@ export default function SelfServiceIndexPage() {
     [delegations]
   );
   const expiredDelegations = React.useMemo(
-    () => delegations.filter((delegation) => !isDelegationActive(delegation)),
+    () => delegations.filter((delegation) => getDelegationStatus(delegation) === "expired"),
     [delegations]
+  );
+  const pendingApprovals = React.useMemo(
+    () =>
+      providerDelegations.filter((delegation) => delegation.status === "pending_approval"),
+    [providerDelegations]
   );
   const filteredMarketplaceItems = React.useMemo(() => {
     if (marketplaceFilter === "all") return marketplaceItems;
@@ -115,8 +193,12 @@ export default function SelfServiceIndexPage() {
     setDelegationsStatus("loading");
     setDelegationsError(null);
     try {
-      const response = await apiListDelegations({ role: "delegatee" });
-      setDelegations(response.items ?? []);
+      const [delegateeResponse, delegatorResponse] = await Promise.all([
+        apiListDelegations({ role: "delegatee" }),
+        apiListDelegations({ role: "delegator" }),
+      ]);
+      setDelegations(delegateeResponse.items ?? []);
+      setProviderDelegations(delegatorResponse.items ?? []);
       setDelegationsStatus("ready");
     } catch (error) {
       setDelegationsStatus("error");
@@ -131,12 +213,17 @@ export default function SelfServiceIndexPage() {
     setDelegationsStatus("loading");
     setDelegationsError(null);
 
-    Promise.all([apiListMarketplace(), apiListDelegations({ role: "delegatee" })])
-      .then(([marketplaceResponse, delegationResponse]) => {
+    Promise.all([
+      apiListMarketplace(),
+      apiListDelegations({ role: "delegatee" }),
+      apiListDelegations({ role: "delegator" }),
+    ])
+      .then(([marketplaceResponse, delegationResponse, delegatorResponse]) => {
         if (!active) return;
         setMarketplaceItems(marketplaceResponse.items ?? []);
         setMarketplaceStatus("ready");
         setDelegations(delegationResponse.items ?? []);
+        setProviderDelegations(delegatorResponse.items ?? []);
         setDelegationsStatus("ready");
       })
       .catch((error) => {
@@ -151,16 +238,6 @@ export default function SelfServiceIndexPage() {
       active = false;
     };
   }, []);
-
-  React.useEffect(() => {
-    const next = new Set<string>();
-    delegations.forEach((delegation) => {
-      if (delegation.marketplaceId && isDelegationActive(delegation)) {
-        next.add(delegation.marketplaceId);
-      }
-    });
-    setSubscribedIds(next);
-  }, [delegations]);
 
   React.useEffect(() => {
     setFormValues((prev) => {
@@ -181,38 +258,142 @@ export default function SelfServiceIndexPage() {
     });
   }, [marketplaceItems, delegationByMarketplaceId]);
 
-  const handleSubscribe = async (item: MarketplaceItem) => {
-    if (subscribingIds.has(item.id) || subscribedIds.has(item.id)) return;
+  const termsRequest = React.useMemo(() => {
+    if (!termsItem) return null;
+    return {
+      title: "Termos de Delegacao",
+      message:
+        "Revise os limites desta delegacao antes de assinar. O hash oficial sera calculado no backend.",
+      fields: [
+        {
+          key: "scope",
+          label: "Scope",
+          type: "select" as const,
+          options: [
+            { value: "read", label: "read" },
+            { value: "execute", label: "execute" },
+            { value: "admin", label: "admin" },
+          ],
+        },
+        {
+          key: "trustMin",
+          label: "Trust minimo",
+          type: "text" as const,
+          helper: "Use valores entre 0 e 100.",
+        },
+        {
+          key: "validUntil",
+          label: "Valido ate",
+          type: "text" as const,
+          helper: "Formato AAAA-MM-DD.",
+        },
+      ],
+    };
+  }, [termsItem]);
+
+  const termsCurrentValues = React.useMemo(() => {
+    if (!termsItem) return {};
+    const current = formValues[termsItem.id];
+    return {
+      scope: current?.scope ?? "execute",
+      trustMin: current?.trustMin ?? "",
+      validUntil: current?.validUntil ?? "",
+    };
+  }, [termsItem, formValues]);
+
+  const handleSubscribe = (item: MarketplaceItem) => {
+    if (subscribingIds.has(item.id)) return;
+    const status = getDelegationStatus(delegationByMarketplaceId.get(item.id));
+    if (status === "active" || status === "pending_approval") return;
     if (!session.token) {
       navigate(`/signup?marketplaceId=${encodeURIComponent(item.id)}&next=/self-service`);
       return;
     }
     setSubscribeNotice(null);
     setItemErrors((prev) => ({ ...prev, [item.id]: "" }));
-    setSubscribingIds((prev) => new Set(prev).add(item.id));
+    setTermsItem(item);
+    setTermsOpen(true);
+  };
+
+  const handleConfirmSubscribe = async (values: Record<string, string>) => {
+    if (!termsItem) return;
+    setTermsSubmitting(true);
+    setSubscribingIds((prev) => new Set(prev).add(termsItem.id));
     try {
-      const form = formValues[item.id];
-      const trustMinValue = form?.trustMin ? Number(form.trustMin) : undefined;
+      const nextScope =
+        values.scope === "read" || values.scope === "execute" || values.scope === "admin"
+          ? values.scope
+          : formValues[termsItem.id]?.scope ?? "execute";
+      const trustMinValue = values.trustMin ? Number(values.trustMin) : undefined;
       const trustMin = Number.isFinite(trustMinValue) ? trustMinValue : undefined;
-      const validUntilDate = form?.validUntil ? new Date(form.validUntil) : null;
+      const validUntilDate = values.validUntil ? new Date(values.validUntil) : null;
       const validUntil =
         validUntilDate && Number.isFinite(validUntilDate.getTime())
           ? validUntilDate.toISOString()
           : undefined;
-      await apiSubscribeMarketplace(item.id, {
-        scope: form?.scope ?? "execute",
+      setFormValues((prev) => ({
+        ...prev,
+        [termsItem.id]: {
+          scope: nextScope,
+          trustMin: values.trustMin ?? prev[termsItem.id]?.trustMin ?? "",
+          validUntil: values.validUntil ?? prev[termsItem.id]?.validUntil ?? "",
+        },
+      }));
+      await apiSubscribeMarketplace(termsItem.id, {
+        scope: nextScope,
         trustMin,
         validUntil,
       });
       await refreshDelegations();
-      setSubscribeNotice(`Assinatura criada para ${item.name}.`);
+      setSubscribeNotice(`Assinatura criada para ${termsItem.name}.`);
+      setTermsOpen(false);
+      setTermsItem(null);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Falha ao assinar item";
-      setItemErrors((prev) => ({ ...prev, [item.id]: message }));
+      setItemErrors((prev) => ({ ...prev, [termsItem.id]: message }));
     } finally {
+      setTermsSubmitting(false);
       setSubscribingIds((prev) => {
         const next = new Set(prev);
-        next.delete(item.id);
+        next.delete(termsItem.id);
+        return next;
+      });
+    }
+  };
+
+  const handleApprove = async (delegation: DelegationPolicy) => {
+    if (decisionLoading[delegation.id]) return;
+    setDecisionErrors((prev) => ({ ...prev, [delegation.id]: "" }));
+    setDecisionLoading((prev) => ({ ...prev, [delegation.id]: "approve" }));
+    try {
+      await apiApproveDelegation(delegation.id);
+      await refreshDelegations();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Falha ao aprovar delegacao";
+      setDecisionErrors((prev) => ({ ...prev, [delegation.id]: message }));
+    } finally {
+      setDecisionLoading((prev) => {
+        const next = { ...prev };
+        delete next[delegation.id];
+        return next;
+      });
+    }
+  };
+
+  const handleReject = async (delegation: DelegationPolicy) => {
+    if (decisionLoading[delegation.id]) return;
+    setDecisionErrors((prev) => ({ ...prev, [delegation.id]: "" }));
+    setDecisionLoading((prev) => ({ ...prev, [delegation.id]: "reject" }));
+    try {
+      await apiRejectDelegation(delegation.id);
+      await refreshDelegations();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Falha ao rejeitar delegacao";
+      setDecisionErrors((prev) => ({ ...prev, [delegation.id]: message }));
+    } finally {
+      setDecisionLoading((prev) => {
+        const next = { ...prev };
+        delete next[delegation.id];
         return next;
       });
     }
@@ -220,6 +401,19 @@ export default function SelfServiceIndexPage() {
 
   return (
     <div className="space-y-10">
+      <NeedMoreInfoDialog
+        open={termsOpen && !!termsItem}
+        request={termsRequest}
+        currentValues={termsCurrentValues}
+        isSubmitting={termsSubmitting}
+        onCancel={() => {
+          setTermsOpen(false);
+          setTermsItem(null);
+        }}
+        onSubmit={handleConfirmSubscribe}
+        submitLabel="Assinar e submeter"
+        cancelLabel="Voltar"
+      />
       
 
       <header className="rounded-3xl border border-white/10 bg-gradient-to-r from-accent/10 via-surface/80 to-transparent p-8">
@@ -383,6 +577,30 @@ export default function SelfServiceIndexPage() {
             >
               Registrar
             </Link>
+            <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 p-1">
+              <button
+                type="button"
+                onClick={() => setViewMode("catalog")}
+                className={`rounded-full px-4 py-2 text-[10px] uppercase tracking-[0.25em] transition ${
+                  viewMode === "catalog"
+                    ? "bg-accent/30 text-accent"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Catalogo
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("approvals")}
+                className={`rounded-full px-4 py-2 text-[10px] uppercase tracking-[0.25em] transition ${
+                  viewMode === "approvals"
+                    ? "bg-accent/30 text-accent"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Aprovacoes
+              </button>
+            </div>
             <select
               className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.25em] text-foreground"
               value={marketplaceFilter}
@@ -408,172 +626,218 @@ export default function SelfServiceIndexPage() {
           <p className="mt-6 text-sm text-red-300">{marketplaceError ?? "Falha ao carregar marketplace"}</p>
         ) : null}
         {marketplaceStatus === "ready" ? (
-          <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredMarketplaceItems.length === 0 ? (
-              <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-muted-foreground">
-                Nenhum item publicado no marketplace ainda.
-              </div>
-            ) : (
-              filteredMarketplaceItems.map((item) => {
-                const isSubscribing = subscribingIds.has(item.id);
-                const delegation = delegationByMarketplaceId.get(item.id);
-                const isSubscribed = subscribedIds.has(item.id);
-                const isActive = isDelegationActive(delegation);
-                const buttonLabel = isActive
-                  ? "Ativo"
-                  : delegation
-                  ? "Renovar"
-                  : "Assinar";
-                const itemError = itemErrors[item.id];
-                return (
-                  <div
-                    key={item.id}
-                    id={`marketplace-${item.id}`}
-                    className="flex h-full flex-col justify-between rounded-2xl border border-white/10 bg-[#0a1527] p-5"
-                  >
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-accent">
-                      <span className="rounded-full bg-accent/20 px-2 py-1">
-                        {item.type}
-                      </span>
-                      <span>{item.version}</span>
-                    </div>
-                    <h4 className="text-lg font-semibold text-foreground">{item.name}</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {item.description || "Sem descrição registrada."}
-                    </p>
-                  </div>
-                    {item.approvalStatus === "pending" ? (
-                      <span className="mt-3 inline-flex w-fit items-center rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-amber-200">
-                        Aguardando aprovacao
-                      </span>
-                    ) : null}
-                    {isSubscribing ? (
-                      <span className="mt-2 inline-flex w-fit items-center rounded-full border border-sky-400/40 bg-sky-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-sky-200">
-                        Processando
-                      </span>
-                    ) : null}
-                    {isActive ? (
-                      <span className="mt-2 inline-flex w-fit items-center rounded-full border border-emerald-400/40 bg-emerald-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-emerald-200">
-                        Ativo
-                      </span>
-                    ) : null}
-                    <div className="mt-4 flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                      <span>Trust sugerido: {item.trustScore ?? "—"}</span>
-                      <span>{item.isPublic ? "Publico" : "Privado"}</span>
-                    </div>
-                    {delegation && !isActive ? (
-                      <span className="mt-2 inline-flex w-fit items-center rounded-full border border-rose-400/40 bg-rose-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-rose-200">
-                        Expirado
-                      </span>
-                    ) : null}
-                    {delegation && !isActive ? (
-                      <span className="mt-2 inline-flex w-fit items-center rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-amber-200">
-                        Renovar
-                      </span>
-                    ) : null}
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Publisher: {item.publisherName ?? item.publisherId}
-                    </p>
-                    {delegationsStatus === "error" ? (
-                      <p className="mt-3 text-xs text-red-300">{delegationsError}</p>
-                    ) : null}
-                    {itemError ? (
-                      <p className="mt-3 text-xs text-red-300">{itemError}</p>
-                    ) : null}
-                    {(() => {
-                      const delegation = delegationByMarketplaceId.get(item.id);
-                      const active = isDelegationActive(delegation);
-                      if (!delegation) {
-                        return (
-                          <p className="mt-3 text-xs text-muted-foreground">
-                            Status: nao assinado.
-                          </p>
-                        );
-                      }
-                      return (
-                        <p className="mt-3 text-xs text-muted-foreground">
-                          Status: {active ? "ativo" : "expirado"} (ate {formatDate(delegation.validUntil)}).
-                        </p>
-                      );
-                    })()}
-                    <div className="mt-4 grid gap-3 text-xs text-muted-foreground">
-                      <label className="flex flex-col gap-2">
-                        <span className="uppercase tracking-[0.2em] text-[10px]">Scope</span>
-                        <select
-                          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-foreground"
-                          value={formValues[item.id]?.scope ?? "execute"}
-                          onChange={(event) => {
-                            const value = event.target.value as "read" | "execute" | "admin";
-                            setFormValues((prev) => ({
-                              ...prev,
-                              [item.id]: {
-                                scope: value,
-                                trustMin: prev[item.id]?.trustMin ?? "",
-                                validUntil: prev[item.id]?.validUntil ?? "",
-                              },
-                            }));
-                          }}
-                        >
-                          <option value="read">read</option>
-                          <option value="execute">execute</option>
-                          <option value="admin">admin</option>
-                        </select>
-                      </label>
-                      <label className="flex flex-col gap-2">
-                        <span className="uppercase tracking-[0.2em] text-[10px]">Trust minimo</span>
-                        <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-foreground"
-                          value={formValues[item.id]?.trustMin ?? ""}
-                          onChange={(event) => {
-                            const value = event.target.value;
-                            setFormValues((prev) => ({
-                              ...prev,
-                              [item.id]: {
-                                scope: prev[item.id]?.scope ?? "execute",
-                                trustMin: value,
-                                validUntil: prev[item.id]?.validUntil ?? "",
-                              },
-                            }));
-                          }}
-                        />
-                      </label>
-                      <label className="flex flex-col gap-2">
-                        <span className="uppercase tracking-[0.2em] text-[10px]">Valido ate</span>
-                        <input
-                          type="date"
-                          className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-foreground"
-                          value={formValues[item.id]?.validUntil ?? ""}
-                          onChange={(event) => {
-                            const value = event.target.value;
-                            setFormValues((prev) => ({
-                              ...prev,
-                              [item.id]: {
-                                scope: prev[item.id]?.scope ?? "execute",
-                                trustMin: prev[item.id]?.trustMin ?? "",
-                                validUntil: value,
-                              },
-                            }));
-                          }}
-                        />
-                      </label>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleSubscribe(item)}
-                      disabled={isSubscribing || isSubscribed}
-                      className="mt-5 inline-flex items-center justify-center rounded-full border border-accent/60 bg-accent/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-accent transition hover:border-accent hover:bg-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
+          viewMode === "catalog" ? (
+            <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {filteredMarketplaceItems.length === 0 ? (
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-muted-foreground">
+                  Nenhum item publicado no marketplace ainda.
+                </div>
+              ) : (
+                filteredMarketplaceItems.map((item) => {
+                  const isSubscribing = subscribingIds.has(item.id);
+                  const delegation = delegationByMarketplaceId.get(item.id);
+                  const delegationStatus = getDelegationStatus(delegation);
+                  const buttonLabel =
+                    delegationStatus === "active"
+                      ? "Ativo"
+                      : delegationStatus === "pending_approval"
+                      ? "Aguardando"
+                      : delegationStatus === "rejected" || delegationStatus === "revoked"
+                      ? "Reenviar"
+                      : delegationStatus === "expired"
+                      ? "Renovar"
+                      : "Solicitar acesso";
+                  const itemError = itemErrors[item.id];
+                  return (
+                    <div
+                      key={item.id}
+                      id={`marketplace-${item.id}`}
+                      className="flex h-full flex-col justify-between rounded-2xl border border-white/10 bg-[#0a1527] p-5"
                     >
-                      {isSubscribing ? "Assinando..." : buttonLabel}
-                    </button>
-                  </div>
-                );
-              })
-            )}
-          </div>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-accent">
+                          <span className="rounded-full bg-accent/20 px-2 py-1">{item.type}</span>
+                          <span>{item.version}</span>
+                        </div>
+                        <h4 className="text-lg font-semibold text-foreground">{item.name}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {item.description || "Sem descrição registrada."}
+                        </p>
+                      </div>
+                      {isSubscribing ? (
+                        <span className="mt-2 inline-flex w-fit items-center rounded-full border border-sky-400/40 bg-sky-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-sky-200">
+                          Processando
+                        </span>
+                      ) : null}
+                      {renderStatusChip(delegationStatus)}
+                      <div className="mt-4 flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                        <span>Trust sugerido: {item.trustScore ?? "—"}</span>
+                        <span>{item.isPublic ? "Publico" : "Privado"}</span>
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Publisher: {item.publisherName ?? item.publisherId}
+                      </p>
+                      {delegationsStatus === "error" ? (
+                        <p className="mt-3 text-xs text-red-300">{delegationsError}</p>
+                      ) : null}
+                      {itemError ? <p className="mt-3 text-xs text-red-300">{itemError}</p> : null}
+                      {delegation ? (
+                        <p className="mt-3 text-xs text-muted-foreground">
+                          Status: {formatDelegationStatus(delegationStatus)} (ate{" "}
+                          {formatDate(delegation.validUntil)}).
+                        </p>
+                      ) : (
+                        <p className="mt-3 text-xs text-muted-foreground">Status: nao assinado.</p>
+                      )}
+                      <div className="mt-4 grid gap-3 text-xs text-muted-foreground">
+                        <label className="flex flex-col gap-2">
+                          <span className="uppercase tracking-[0.2em] text-[10px]">Scope</span>
+                          <select
+                            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-foreground"
+                            value={formValues[item.id]?.scope ?? "execute"}
+                            onChange={(event) => {
+                              const value = event.target.value as "read" | "execute" | "admin";
+                              setFormValues((prev) => ({
+                                ...prev,
+                                [item.id]: {
+                                  scope: value,
+                                  trustMin: prev[item.id]?.trustMin ?? "",
+                                  validUntil: prev[item.id]?.validUntil ?? "",
+                                },
+                              }));
+                            }}
+                          >
+                            <option value="read">read</option>
+                            <option value="execute">execute</option>
+                            <option value="admin">admin</option>
+                          </select>
+                        </label>
+                        <label className="flex flex-col gap-2">
+                          <span className="uppercase tracking-[0.2em] text-[10px]">
+                            Trust minimo
+                          </span>
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-foreground"
+                            value={formValues[item.id]?.trustMin ?? ""}
+                            onChange={(event) => {
+                              const value = event.target.value;
+                              setFormValues((prev) => ({
+                                ...prev,
+                                [item.id]: {
+                                  scope: prev[item.id]?.scope ?? "execute",
+                                  trustMin: value,
+                                  validUntil: prev[item.id]?.validUntil ?? "",
+                                },
+                              }));
+                            }}
+                          />
+                        </label>
+                        <label className="flex flex-col gap-2">
+                          <span className="uppercase tracking-[0.2em] text-[10px]">Valido ate</span>
+                          <input
+                            type="date"
+                            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-foreground"
+                            value={formValues[item.id]?.validUntil ?? ""}
+                            onChange={(event) => {
+                              const value = event.target.value;
+                              setFormValues((prev) => ({
+                                ...prev,
+                                [item.id]: {
+                                  scope: prev[item.id]?.scope ?? "execute",
+                                  trustMin: prev[item.id]?.trustMin ?? "",
+                                  validUntil: value,
+                                },
+                              }));
+                            }}
+                          />
+                        </label>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleSubscribe(item)}
+                        disabled={
+                          isSubscribing ||
+                          delegationStatus === "active" ||
+                          delegationStatus === "pending_approval"
+                        }
+                        className="mt-5 inline-flex items-center justify-center rounded-full border border-accent/60 bg-accent/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-accent transition hover:border-accent hover:bg-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {isSubscribing ? "Assinando..." : buttonLabel}
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          ) : (
+            <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {pendingApprovals.length === 0 ? (
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-muted-foreground">
+                  Nenhuma delegacao aguardando aprovacao.
+                </div>
+              ) : (
+                pendingApprovals.map((delegation) => {
+                  const item = marketplaceItems.find(
+                    (marketplaceItem) => marketplaceItem.id === delegation.marketplaceId
+                  );
+                  const decision = decisionLoading[delegation.id];
+                  const decisionError = decisionErrors[delegation.id];
+                  return (
+                    <div
+                      key={delegation.id}
+                      className="flex h-full flex-col justify-between rounded-2xl border border-white/10 bg-[#0a1527] p-5"
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-accent">
+                          <span className="rounded-full bg-accent/20 px-2 py-1">
+                            {item?.type ?? "agent"}
+                          </span>
+                          <span>{item?.version ?? "v1"}</span>
+                        </div>
+                        <h4 className="text-lg font-semibold text-foreground">
+                          {item?.name ?? delegation.marketplaceId ?? "Item desconhecido"}
+                        </h4>
+                        <p className="text-sm text-muted-foreground">
+                          {item?.description || "Sem descrição registrada."}
+                        </p>
+                      </div>
+                      {renderStatusChip("pending_approval")}
+                      <div className="mt-4 text-xs text-muted-foreground">
+                        <p>Solicitante: {delegation.delegateeId}</p>
+                        <p>Scope: {delegation.scope}</p>
+                        <p>Trust minimo: {delegation.trustMin}</p>
+                        <p>Valido ate: {formatDate(delegation.validUntil)}</p>
+                      </div>
+                      {decisionError ? (
+                        <p className="mt-3 text-xs text-red-300">{decisionError}</p>
+                      ) : null}
+                      <div className="mt-5 flex flex-wrap items-center gap-3">
+                        <button
+                          type="button"
+                          onClick={() => handleApprove(delegation)}
+                          disabled={!!decision}
+                          className="inline-flex items-center justify-center rounded-full border border-emerald-400/50 bg-emerald-400/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-emerald-200 transition hover:border-emerald-400 hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {decision === "approve" ? "Aprovando..." : "Aprovar"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleReject(delegation)}
+                          disabled={!!decision}
+                          className="inline-flex items-center justify-center rounded-full border border-rose-400/50 bg-rose-400/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-rose-200 transition hover:border-rose-400 hover:bg-rose-400/20 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {decision === "reject" ? "Rejeitando..." : "Rejeitar"}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )
         ) : null}
         {delegationsStatus === "ready" ? (
           <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">

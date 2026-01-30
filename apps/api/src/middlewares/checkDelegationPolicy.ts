@@ -21,6 +21,7 @@ type DelegationPolicySummary = {
   validUntil: Date;
   policyHash: string;
   signatureHash: string;
+  status: "pending_approval" | "active" | "rejected" | "revoked";
   createdAt: Date;
 };
 
@@ -75,6 +76,7 @@ export async function checkDelegationPolicy(req: TenantAwareRequest, res: Respon
         scope: context.scope ?? "execute",
         ...(context.marketplaceId ? { marketplaceId: context.marketplaceId } : {}),
         validUntil: { gt: now },
+        status: "active",
       },
       orderBy: { createdAt: "desc" },
     })) as DelegationPolicySummary | null;
@@ -92,6 +94,22 @@ export async function checkDelegationPolicy(req: TenantAwareRequest, res: Respon
     res.status(403).json({
       ok: false,
       error: { code: "DELEGATION_EXPIRED", message: "Delegation policy expired" },
+    });
+    return false;
+  }
+
+  if (policy.status !== "active") {
+    const codeMap: Record<string, string> = {
+      pending_approval: "DELEGATION_PENDING_APPROVAL",
+      rejected: "DELEGATION_REJECTED",
+      revoked: "DELEGATION_REVOKED",
+    };
+    res.status(403).json({
+      ok: false,
+      error: {
+        code: codeMap[policy.status] ?? "DELEGATION_INACTIVE",
+        message: "Delegation policy is not active",
+      },
     });
     return false;
   }

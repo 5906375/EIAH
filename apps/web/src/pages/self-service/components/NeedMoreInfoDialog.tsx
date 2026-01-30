@@ -24,6 +24,8 @@ type NeedMoreInfoDialogProps = {
   request: NeedMoreInfoRequest | null;
   currentValues: Record<string, string | undefined>;
   isSubmitting?: boolean;
+  submitLabel?: string;
+  cancelLabel?: string;
   onCancel: () => void;
   onSubmit: (values: Record<string, string>) => void;
 };
@@ -57,6 +59,8 @@ export default function NeedMoreInfoDialog({
   request,
   currentValues,
   isSubmitting,
+  submitLabel,
+  cancelLabel,
   onCancel,
   onSubmit,
 }: NeedMoreInfoDialogProps) {
@@ -227,7 +231,7 @@ export default function NeedMoreInfoDialog({
             className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-foreground transition hover:border-accent/40 hover:text-accent"
             disabled={isSubmitting}
           >
-            Cancelar
+            {cancelLabel ?? "Cancelar"}
           </button>
           <button
             type="button"
@@ -235,11 +239,10 @@ export default function NeedMoreInfoDialog({
             className="rounded-full border border-accent/70 bg-accent/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-accent transition hover:border-accent hover:bg-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
             disabled={actionDisabled}
           >
-            {isSubmitting ? "Reenviando..." : "Reenviar ao agente"}
+            {isSubmitting ? "Processando..." : submitLabel ?? "Reenviar ao agente"}
           </button>
         </footer>
       </div>
     </div>
   );
 }
-

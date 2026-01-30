@@ -22,7 +22,9 @@ function normalizeAgentKey(value: string) {
 function isDelegationActive(delegation?: DelegationPolicy | null) {
   if (!delegation?.validUntil) return false;
   const expiry = new Date(delegation.validUntil).getTime();
-  return Number.isFinite(expiry) && expiry > Date.now();
+  if (!Number.isFinite(expiry) || expiry <= Date.now()) return false;
+  if (delegation.status && delegation.status !== "active") return false;
+  return true;
 }
 
 function findMarketplaceItemForAgent(items: MarketplaceItem[], agentId: string) {

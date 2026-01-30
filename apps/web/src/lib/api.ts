@@ -103,6 +103,8 @@ export type MarketplaceItem = {
   createdAt: string;
 };
 
+export type DelegationStatus = "pending_approval" | "active" | "rejected" | "revoked";
+
 export type DelegationPolicy = {
   id: string;
   delegatorId: string;
@@ -113,6 +115,9 @@ export type DelegationPolicy = {
   validUntil: string;
   policyHash: string;
   signatureHash: string;
+  status?: DelegationStatus;
+  providerSignatureHash?: string | null;
+  decidedAt?: string | null;
   createdAt: string;
 };
 
@@ -321,6 +326,20 @@ export async function apiListDelegations(params?: {
   if (params?.role) query.append("role", params.role);
   const qs = query.toString() ? `?${query.toString()}` : "";
   return http(`/delegations${qs}`, { method: "GET" });
+}
+
+export async function apiApproveDelegation(id: string, body?: { providerSignatureHash?: string }) {
+  return http<{ ok: boolean; item: DelegationPolicy }>(`/delegations/${id}/approve`, {
+    method: "POST",
+    body: JSON.stringify(body ?? {}),
+  });
+}
+
+export async function apiRejectDelegation(id: string, body?: { providerSignatureHash?: string }) {
+  return http<{ ok: boolean; item: DelegationPolicy }>(`/delegations/${id}/reject`, {
+    method: "POST",
+    body: JSON.stringify(body ?? {}),
+  });
 }
 
 /** Runs */
