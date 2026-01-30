@@ -1,0 +1,24 @@
+name: Lint
+
+on:
+  pull_request:
+    branches: [main, dev]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Run ESLint
+        run: pnpm eslint . --max-warnings=0
+
+      - name: Run @repo/db smoke tests
+        run: pnpm --filter @repo/db test
+
