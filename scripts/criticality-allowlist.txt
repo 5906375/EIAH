@@ -1,0 +1,3 @@
+# Actions temporarily excluded from criticality coverage gate.
+# Keep this list minimal and include a rationale in PRs.
+

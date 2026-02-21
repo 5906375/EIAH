@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eiah.ai/contracts/pou.v1.schema.json",
+  "title": "PoUResponseV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "schemaVersion", "data"],
+  "properties": {
+    "ok": { "const": true },
+    "schemaVersion": { "type": "string", "const": "pou.v1" },
+    "data": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "tenantId",
+        "workspaceId",
+        "runId",
+        "actionId",
+        "status",
+        "compositeTxId",
+        "hashes",
+        "trustSnapshot",
+        "failureReason",
+        "attestationKeyId",
+        "attestationSignature",
+        "canonicalResultRef",
+        "createdAt",
+        "finalizedAt",
+        "anchoring"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "tenantId": { "type": "string", "minLength": 1 },
+        "workspaceId": { "type": ["string", "null"] },
+        "runId": { "type": "string", "minLength": 1 },
+        "actionId": { "type": "string", "minLength": 1 },
+        "status": {
+          "type": "string",
+          "enum": ["PENDING", "FINALIZED", "FAILED", "PENDING_TRUST"]
+        },
+        "compositeTxId": { "type": "string", "minLength": 1 },
+        "hashes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["intentHash", "paramsHash", "signatureHash", "resultHash"],
+          "properties": {
+            "intentHash": { "type": "string", "minLength": 1 },
+            "paramsHash": { "type": "string", "minLength": 1 },
+            "signatureHash": { "type": "string", "minLength": 1 },
+            "resultHash": { "type": "string", "minLength": 1 }
+          }
+        },
+        "trustSnapshot": {
+          "anyOf": [
+            { "type": "object" },
+            { "type": "null" }
+          ]
+        },
+        "failureReason": { "type": ["string", "null"] },
+        "attestationKeyId": { "type": ["string", "null"] },
+        "attestationSignature": { "type": ["string", "null"] },
+        "canonicalResultRef": { "type": ["string", "null"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "finalizedAt": { "type": ["string", "null"], "format": "date-time" },
+        "anchoring": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["phase4Dependency", "status", "strength", "consistent", "pointers", "checks"],
+          "properties": {
+            "phase4Dependency": { "type": "string", "const": "required" },
+            "status": {
+              "type": "string",
+              "enum": ["anchored", "inconsistent", "missing_phase4_anchor"]
+            },
+            "strength": { "type": "string", "enum": ["strong", "weak"] },
+            "consistent": { "type": "boolean" },
+            "pointers": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["runCriticalHash", "runSclTxId", "runTxId"],
+              "properties": {
+                "runCriticalHash": { "type": ["string", "null"] },
+                "runSclTxId": { "type": ["string", "null"] },
+                "runTxId": { "type": ["string", "null"] }
+              }
+            },
+            "checks": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "hasRunPointers",
+                "sclFoundByTx",
+                "sclFoundByCriticalHash",
+                "hashConsistent",
+                "txConsistent",
+                "signaturePresent",
+                "guardrailLinked"
+              ],
+              "properties": {
+                "hasRunPointers": { "type": "boolean" },
+                "sclFoundByTx": { "type": "boolean" },
+                "sclFoundByCriticalHash": { "type": "boolean" },
+                "hashConsistent": { "type": "boolean" },
+                "txConsistent": { "type": "boolean" },
+                "signaturePresent": { "type": "boolean" },
+                "guardrailLinked": { "type": "boolean" }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

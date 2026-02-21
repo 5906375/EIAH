@@ -85,7 +85,7 @@
             position: relative;
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            grid-template-rows: auto auto auto;
+            grid-template-rows: auto auto auto auto auto;
             gap: 30px;
             align-content: start;
         }
@@ -161,6 +161,16 @@
             border-color: var(--success);
         }
 
+        #governance {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        #marketplace {
+            grid-column: 4;
+            grid-row: 1;
+        }
+
         #registry {
             grid-column: 4;
             grid-row: 2;
@@ -193,6 +203,16 @@
             grid-row: 4;
             border-color: var(--danger);
             opacity: 0.7;
+        }
+
+        #governance-ui {
+            grid-column: 1;
+            grid-row: 5;
+        }
+
+        #delegations {
+            grid-column: 4;
+            grid-row: 5;
         }
 
         /* Logger/Details Panel */
@@ -319,10 +339,22 @@
                 <span class="badge">req.prisma</span>
             </div>
 
+            <div id="marketplace" class="node" onclick="showDetails('marketplace')">
+                <div class="node-title">Marketplace</div>
+                <div class="node-subtitle">Catálogo & Delegação</div>
+                <span class="badge">/marketplace</span>
+            </div>
+
             <div id="db-layer" class="node" onclick="showDetails('db')">
                 <div class="node-title">@repo/db</div>
                 <div class="node-subtitle">Persistence Layer</div>
                 <span class="badge">WHERE tenantId = ?</span>
+            </div>
+
+            <div id="governance" class="node" onclick="showDetails('governance')">
+                <div class="node-title">Governança</div>
+                <div class="node-subtitle">Trust & Guardrails</div>
+                <span class="badge">GuardrailLedger</span>
             </div>
 
             <div id="registry" class="node" onclick="showDetails('registry')">
@@ -358,6 +390,18 @@
                 <div class="node-subtitle">Dead Letter Queue</div>
             </div>
 
+            <div id="governance-ui" class="node" onclick="showDetails('governanceUi')">
+                <div class="node-title">Governance UI</div>
+                <div class="node-subtitle">/governance</div>
+                <span class="badge">Trust + Policy</span>
+            </div>
+
+            <div id="delegations" class="node" onclick="showDetails('delegations')">
+                <div class="node-title">Delegations</div>
+                <div class="node-subtitle">/delegations</div>
+                <span class="badge">Policy Links</span>
+            </div>
+
         </div>
 
         <div class="bottom-panel">
@@ -369,6 +413,15 @@
                     <br><br>
                     <strong>Principais Pilares:</strong> Isolamento de dados, ações versionadas, rate-limit por tenant e
                     observabilidade.
+                    <br><br>
+                    <strong>Estado Atual (Q1/2026):</strong>
+                    <ul style="margin-top: 8px;">
+                        <li>Infra e cognição maduras; governança ativa.</li>
+                        <li>Execução imutável off-chain com reconciliação e Vault obrigatório.</li>
+                        <li>Observabilidade do scheduler (Prom/OTel) e dashboard de integridade com dados reais.</li>
+                        <li>Marketplace funcional, porém com UX de delegação limitada.</li>
+                        <li>On-chain e políticas avançadas seguem planejadas (PoU, approvals, PolicyEngine).</li>
+                    </ul>
                 </div>
             </div>
             <div class="log-box" id="system-log">
@@ -385,9 +438,9 @@
                 title: "C) Camada de API (Gateway Multi-Tenant)",
                 content: `
                     <ul>
-                        <li><strong>Endpoints:</strong> Execução de Runs, Gestão de Agents, Uploads, Billing.</li>
+                        <li><strong>Endpoints:</strong> /runs, /actions, /memory, /governance, /billing, /uploads, /marketplace, /delegations, /ops.</li>
                         <li><strong>Tenant Aware:</strong> Injeta <code>req.prisma</code> com middleware de isolamento.</li>
-                        <li><strong>Observabilidade:</strong> Logs de requisição e métricas.</li>
+                        <li><strong>Observabilidade:</strong> Logs de requisição, métricas Prom e stream SSE de runs.</li>
                     </ul>
                 `
             },
@@ -397,7 +450,7 @@
                     <ul>
                         <li><strong>Prisma Client:</strong> Unificado com isolamento via Middleware.</li>
                         <li><strong>Segurança:</strong> <code>WHERE tenantId = ? AND workspaceId = ?</code> forçado.</li>
-                        <li><strong>Modelos:</strong> Run, RunEvent, ActionRegistry, TenantActionPolicy.</li>
+                        <li><strong>Modelos:</strong> Run, RunEvent, ActionRegistry, GuardrailLedger, SclLedger, MarketplaceItem, DelegationPolicy.</li>
                         <li><strong>Prevenção:</strong> ESLint proíbe prismaGlobal.</li>
                     </ul>
                 `
@@ -406,9 +459,10 @@
                 title: "B) Run Worker (Orquestrador)",
                 content: `
                     <ul>
-                        <li>Executa fluxos passo a passo.</li>
-                        <li>Aplica <strong>Guardrails</strong>: Idempotência e Rate Limit.</li>
-                        <li>Registra eventos em <code>RunEvent</code>.</li>
+                        <li>Executa fluxos passo a passo com ReAct.</li>
+                        <li>Aplica <strong>Guardrails</strong>: Idempotência, Rate Limit e Trust Score.</li>
+                        <li>Registra eventos em <code>RunEvent</code> + GuardrailLedger.</li>
+                        <li>Integra com stream SSE e masking de PII no viewer.</li>
                         <li>Falhas são enviadas para DLQ.</li>
                     </ul>
                 `
@@ -419,6 +473,8 @@
                     <ul>
                         <li>Resolve versão da action via <code>VersionedActionRegistry</code>.</li>
                         <li>Execução isolada por tenant/workspace.</li>
+                        <li><strong>MCP Enforcement:</strong> validação JSON Schema + Tool Contracts.</li>
+                        <li><strong>Criticality:</strong> roteia ações high/critical para SCL.</li>
                         <li>Consome da ActionQueue.</li>
                     </ul>
                 `
@@ -429,6 +485,7 @@
                     <ul>
                         <li>Snapshot em memória + Storage persistente.</li>
                         <li>Permite <strong>Overrides</strong> via TenantActionPolicy.</li>
+                        <li>Suporta <strong>criticality</strong> por ação e políticas de delegação.</li>
                         <li>Admin registra versões via API.</li>
                     </ul>
                 `
@@ -445,7 +502,45 @@
             },
             maintenance: {
                 title: "Maintenance Worker",
-                content: "Executa tarefas programadas (cron) específicas por tenant."
+                content: "Executa tarefas programadas (cron) específicas por tenant, incluindo reconciliação de ledger e limpeza de jobs."
+            },
+            governance: {
+                title: "Governança Cognitiva",
+                content: `
+                    <ul>
+                        <li><strong>Trust Score Engine</strong> com gates em run/action.</li>
+                        <li><strong>Judge Gate</strong> configurável para anti-alucinação.</li>
+                        <li><strong>GuardrailLedger</strong> e auditoria estruturada.</li>
+                    </ul>
+                `
+            },
+            governanceUi: {
+                title: "Governance UI (/governance)",
+                content: `
+                    <ul>
+                        <li>Visão de runs, decisões e logs de governança.</li>
+                        <li>Exibe Trust Score, políticas e auditoria.</li>
+                    </ul>
+                `
+            },
+            marketplace: {
+                title: "Marketplace & Delegação",
+                content: `
+                    <ul>
+                        <li>Catálogo de agentes e planos com assinatura por tenant.</li>
+                        <li>DelegationPolicy aplicada via middleware.</li>
+                        <li>Auditoria de uso em GuardrailLedger.</li>
+                    </ul>
+                `
+            },
+            delegations: {
+                title: "Delegations (/delegations)",
+                content: `
+                    <ul>
+                        <li>Gerencia políticas de delegação e escopos por tenant.</li>
+                        <li>Validações e auditoria de uso.</li>
+                    </ul>
+                `
             }
         };
 
@@ -470,7 +565,9 @@
             document.querySelectorAll('.node').forEach(n => n.classList.remove('highlight'));
             const map = {
                 'api': 'api-gateway', 'db': 'db-layer', 'runWorker': 'run-worker',
-                'actionRunner': 'action-runner', 'registry': 'registry', 'dlq': 'dlq-run'
+                'actionRunner': 'action-runner', 'registry': 'registry', 'dlq': 'dlq-run',
+                'governance': 'governance', 'marketplace': 'marketplace',
+                'governanceUi': 'governance-ui', 'delegations': 'delegations'
             };
             const id = map[key] || key;
             const el = document.getElementById(id);
@@ -543,7 +640,7 @@
             log("6. Worker: Valida Guardrails (Rate Limit/Idempotência)");
             await sleep(500);
 
-            log("7. Worker: Executa Steps e Grava RunEvent");
+            log("7. Worker: Executa Steps e Grava RunEvent/GuardrailLedger");
             await highlightNode('db-layer', 500);
 
             log("8. Worker: Atualiza Status -> Success");
@@ -570,10 +667,10 @@
             log("4. Runner: Resolve versão via Registry");
             await highlightNode('registry', 800);
 
-            log("5. Runner: Aplica Tenant Policies");
+            log("5. Runner: MCP enforcement (schema/contracts) + Tenant Policies");
             await highlightNode('db-layer', 500);
 
-            log("6. Runner: Executa Action");
+            log("6. Runner: Executa Action (SCL se critical)");
             await sleep(800);
 
             log("7. Runner: Grava Logs e Finaliza");
@@ -596,7 +693,7 @@
             await highlightNode('db-layer');
             
             document.getElementById('registry').classList.remove('processing');
-            log(">> Nova versão disponível para Workers (Snapshot update)");
+            log(">> Nova versão disponível para Workers (Snapshot update + criticality)");
         }
 
         // 1.6 FLUXO: DLQ

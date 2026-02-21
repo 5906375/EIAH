@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eiah/contracts/real-estate/chargeItem.schema.json",
+  "title": "RealEstateChargeItem",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "tenantId",
+    "workspaceId",
+    "leaseId",
+    "period",
+    "dueRule",
+    "reminderOffsetBusinessDays",
+    "rentAmount",
+    "condoBaseAmount"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tenantId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workspaceId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "leaseId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "period": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])$"
+    },
+    "dueRule": {
+      "type": "string",
+      "const": "BUSINESS_DAY_NTH=6"
+    },
+    "reminderOffsetBusinessDays": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "rentAmount": {
+      "type": "number",
+      "minimum": 0
+    },
+    "condoBaseAmount": {
+      "type": "number",
+      "minimum": 0
+    },
+    "condoAdjustmentAmount": {
+      "type": "number"
+    },
+    "evidenceRefs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "dueDate": {
+      "type": "string",
+      "format": "date"
+    },
+    "reminderDate": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}

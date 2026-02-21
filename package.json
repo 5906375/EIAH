@@ -11,11 +11,12 @@
   "scripts": {
     "build": "pnpm -r --filter \"./apps/*\" run build",
     "eiah": "pnpm --filter @eiah/cli start --",
-    "lint": "echo \"Run linting via individual packages\"",
+    "lint": "pnpm run audit:criticality",
     "test": "pnpm --filter @eiah/core test",
     "postinstall": "pnpm --filter @eiah/core build",
     "env:validate": "node --experimental-strip-types \"scripts/env:validate.ts\"",
-    "check:governance": "npx tsx apps/api/src/services/checkGovernance.ts"
+    "check:governance": "pnpm exec tsx apps/api/src/services/checkGovernance.ts",
+    "audit:criticality": "pnpm exec tsx scripts/auditCriticalityCoverage.ts --out artifacts/criticality-coverage.json --allowlist scripts/criticality-allowlist.txt"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

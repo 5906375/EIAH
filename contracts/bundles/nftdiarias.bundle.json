@@ -1,0 +1,102 @@
+{
+  "bundleId": "nftdiarias.bundle",
+  "name": "NFTDiarias Bundle",
+  "version": "0.1.0",
+  "description": "Bundle/driver para contratos e evidencias (legal + IPFS + ancoragem Web3 por feature-flag).",
+  "drivers": [
+    {
+      "id": "nftdiarias.legal",
+      "name": "Legal Driver",
+      "operations": [
+        {
+          "operation": "legal.extract_clauses",
+          "action": "legal.extract_clauses",
+          "executor": "http",
+          "toolContract": {
+            "name": "legal.extract_clauses",
+            "version": "1.0.0",
+            "executor": "http",
+            "trustLevel": 85,
+            "inputSchema": {
+              "type": "object",
+              "required": ["documentRef"],
+              "properties": {
+                "documentRef": { "type": "string" },
+                "sanitizeFaq": { "type": "boolean" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "nftdiarias.ipfs",
+      "name": "IPFS Driver",
+      "operations": [
+        {
+          "operation": "ipfs.pin_document",
+          "action": "ipfs.pin_document",
+          "executor": "http",
+          "toolContract": {
+            "name": "ipfs.pin_document",
+            "version": "1.0.0",
+            "executor": "http",
+            "trustLevel": 80,
+            "inputSchema": {
+              "type": "object",
+              "required": ["documentRef"],
+              "properties": {
+                "documentRef": { "type": "string" },
+                "contentType": { "type": "string" }
+              }
+            }
+          }
+        },
+        {
+          "operation": "ipfs.get_document",
+          "action": "ipfs.get_document",
+          "executor": "http",
+          "toolContract": {
+            "name": "ipfs.get_document",
+            "version": "1.0.0",
+            "executor": "http",
+            "trustLevel": 70,
+            "inputSchema": {
+              "type": "object",
+              "required": ["cid"],
+              "properties": {
+                "cid": { "type": "string" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "id": "nftdiarias.web3",
+      "name": "Web3 Anchor Driver",
+      "operations": [
+        {
+          "operation": "web3.anchor_receipt",
+          "action": "web3.anchor_receipt",
+          "executor": "web3",
+          "featureFlag": "WEB3_EXECUTOR_ENABLED",
+          "toolContract": {
+            "name": "web3.anchor_receipt",
+            "version": "1.0.0",
+            "executor": "web3",
+            "trustLevel": 95,
+            "inputSchema": {
+              "type": "object",
+              "required": ["receiptHash"],
+              "properties": {
+                "receiptHash": { "type": "string" },
+                "runId": { "type": "string" }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
