@@ -76,3 +76,6 @@ packages/**/src/**/*.tsbuildinfo
 tmp_*
 # Backups (não versionar)
 Backups/
+# Playwright
+playwright-report/
+test-results/

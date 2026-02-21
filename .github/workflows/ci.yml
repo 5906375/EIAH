@@ -49,6 +49,9 @@ jobs:
       - name: Run Lint
         run: pnpm lint # Assumindo que você tem um script 'lint' na raiz
 
+      - name: Audit Action Criticality Coverage
+        run: pnpm audit:criticality
+
       - name: Run Tests
         run: pnpm test
 

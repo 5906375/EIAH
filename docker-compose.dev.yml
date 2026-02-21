@@ -67,7 +67,7 @@ services:
     command: >
       sh -c "
         corepack enable &&
-        pnpm -C apps/web dev --host
+        pnpm -C apps/web dev --host --force
       "
     env_file:
       - .env
