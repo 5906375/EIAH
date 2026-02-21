@@ -3,6 +3,17 @@ import assert from "node:assert/strict";
 import { AgentOrchestrator, type OrchestratorPlanStep } from "./agentOrchestrator";
 import type { PlanStepPayload } from "../services/planStepStore";
 
+const originalMcpProxy = process.env.MCP_PROXY_ALL_ACTIONS;
+process.env.MCP_PROXY_ALL_ACTIONS = "false";
+
+test.after(() => {
+  if (originalMcpProxy === undefined) {
+    delete process.env.MCP_PROXY_ALL_ACTIONS;
+  } else {
+    process.env.MCP_PROXY_ALL_ACTIONS = originalMcpProxy;
+  }
+});
+
 test("AgentOrchestrator respects maxSteps and persists plan/act steps", async () => {
   const recordedEvents: Array<{ type: string; payload: unknown }> = [];
   const persistedSteps: Array<{ stepIndex: number; stepType: string }> = [];
@@ -172,4 +183,45 @@ test("AgentOrchestrator can replan dynamically when shouldReplan returns true", 
 
   const replanEvent = recordedEvents.find((e) => e.type === "run.action.replan");
   assert.ok(replanEvent);
+});
+
+test("AgentOrchestrator clamps maxSteps to 30 and emits max-step termination event", async () => {
+  const recordedEvents: Array<{ type: string; payload: any }> = [];
+  const orchestrator = new AgentOrchestrator({
+    plan: async (): Promise<OrchestratorPlanStep[]> =>
+      Array.from({ length: 50 }, (_, index) => ({
+        id: `s-${index + 1}`,
+        description: `step ${index + 1}`,
+        status: "pending",
+        action: "noop",
+        params: { i: index + 1 },
+      })),
+    act: async (step) => ({ ok: true, stepId: step.id }),
+    eventStore: {
+      async record(event) {
+        recordedEvents.push({ type: event.type, payload: event.payload });
+      },
+    },
+  });
+
+  const context = await orchestrator.run({
+    objective: "test",
+    tenantId: "t1",
+    workspaceId: "w1",
+    runId: "r1",
+    maxSteps: 200,
+    metadata: {},
+  });
+
+  assert.equal(context.plan.length, 30);
+  assert.equal(context.outputs.length, 30);
+  assert.equal(context.input.metadata?.terminationReason, "MAX_STEPS");
+
+  const maxStepsEvent = recordedEvents.find((event) => event.type === "run.max_steps_reached");
+  assert.ok(maxStepsEvent);
+  assert.equal(maxStepsEvent.payload?.effectiveMaxSteps, 30);
+  assert.equal(maxStepsEvent.payload?.runId, "r1");
+  assert.equal(maxStepsEvent.payload?.tenantId, "t1");
+  assert.equal(maxStepsEvent.payload?.workspaceId, "w1");
+  assert.equal(maxStepsEvent.payload?.terminationReason, "MAX_STEPS");
 });

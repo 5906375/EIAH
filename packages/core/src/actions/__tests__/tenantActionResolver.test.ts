@@ -10,6 +10,7 @@ type TestContext = Parameters<RegisteredAction["handler"]>[0];
 function createAction(name: string, output: unknown): RegisteredAction {
   return {
     name,
+    criticality: "low",
     handler: async () => ({
       status: "success",
       output,

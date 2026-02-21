@@ -7,8 +7,10 @@ export * from "./knowledge";
 export * from "./billing";
 export * from "./reporting";
 export * from "./agents";
+export * from "./realEstate";
 export * from "./registry/VersionedActionRegistry";
 export * from "./registry/TenantActionResolver";
+export * from "./registry/criticalityAudit";
 
 import { registerDefiActions } from "./defi";
 import { registerRiskActions } from "./risk";
@@ -17,6 +19,7 @@ import { registerKnowledgeActions } from "./knowledge";
 import { registerBillingActions } from "./billing";
 import { registerReportingActions } from "./reporting";
 import { registerAgentProfileActions } from "./agents";
+import { registerRealEstateActions } from "./realEstate";
 import {
   createFixedWindowRateLimiter,
   createInMemoryIdempotencyStore,
@@ -48,6 +51,7 @@ export function registerAllActions(
   registerBillingActions();
   registerReportingActions({ idempotencyStore });
   registerAgentProfileActions();
+  registerRealEstateActions({ idempotencyStore, rateLimiter });
 
   return {
     resolve: (tenantId: string) => options.actionResolver?.resolveActions(tenantId) ?? {},

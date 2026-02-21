@@ -109,6 +109,7 @@ export function registerDefiActions(options: RegisterDefiActionsOptions) {
     name: "defi.rebalance",
     description: "Execute a portfolio rebalance strategy.",
     version: "1.0.0",
+    criticality: "high",
     contract: {
       input: rebalanceInputSchema,
       output: rebalanceOutputSchema,

@@ -8,6 +8,20 @@ import {
   tenantRateLimitKey,
   recordGuardrailAudit,
   appendSignedHash,
+  PrismaRunEventStore,
+  RedisRunEventOutbox,
+  CompositeRunEventStoreWithOutbox,
+  isCriticalKillSwitchEnabled,
+  incrCriticalCounter,
+  recordCriticalSample,
+  canonicalizeResult,
+  computeResultHash,
+  generateCompositeTxIdV1,
+  createProof,
+  finalizeProof,
+  failProof,
+  registerAllActions,
+  VersionedActionRegistry,
 } from "@eiah/core";
 import { getPrismaForTenant } from "@repo/db";
 import { tenantActionResolver } from "../../../api/src/actions/tenantActionRegistry";
@@ -17,10 +31,14 @@ import { executeWithMCP } from "./services/mcpAdapter";
 import { mcpEnforcementConfigFromEnv, resolveMcpToolVersion } from "./services/mcpEnforcement";
 import { evaluateTrustScore, trustScoreAllowsExecution } from "../../../api/src/services/trustScore";
 import { evaluateIntent } from "../../../api/src/services/intentValidator";
-import { evaluateHallucination } from "../../../api/src/services/judgeGate";
+import { evaluateHallucination } from "./services/judgeGateBridge";
 
 const runnerLogger = createLogger({ component: "action-runner" });
 const judgeCache = new Map<string, { ts: number; result: { confidence: number; reasons: string[]; modelVersion?: string } }>();
+const trustSnapshotByRun = new Map<string, { report: TrustScoreReport; createdAt: number }>();
+
+// Bootstraps core action registry (needed by runAtivo/reporting helpers).
+registerAllActions(new VersionedActionRegistry());
 
 function isNonRetryableMcpError(message: string) {
   return (
@@ -79,6 +97,33 @@ function verifyIntentSignature(params: {
   }
 }
 
+function sha256Hex(value: string) {
+  return crypto.createHash("sha256").update(value).digest("hex");
+}
+
+function createEventId(params: { runId: string; actionId: string; eventType: string; compositeTxId: string }) {
+  return sha256Hex(`${params.runId}:${params.actionId}:${params.eventType}:${params.compositeTxId}`);
+}
+
+type TrustGateReasonCode = "LOW_SCORE" | "SCHEMA_FAILURES" | "POLICY_BLOCK" | "UNKNOWN";
+
+async function getTrustSnapshot(params: {
+  prisma: ReturnType<typeof getPrismaForTenant>;
+  tenantId: string;
+  workspaceId: string;
+  runId?: string;
+}) {
+  if (params.runId) {
+    const cached = trustSnapshotByRun.get(params.runId);
+    if (cached) return cached.report;
+  }
+  const report = await evaluateTrustScore(params.prisma, params.tenantId, params.workspaceId);
+  if (params.runId) {
+    trustSnapshotByRun.set(params.runId, { report, createdAt: Date.now() });
+  }
+  return report;
+}
+
 type ActionRunnerDeps = {
   consumeActions: typeof consumeActions;
   getPrismaForTenant: typeof getPrismaForTenant;
@@ -115,8 +160,34 @@ const defaultDeps: ActionRunnerDeps = {
   appendSignedHash,
 };
 
+function createRunEventPublisher(prisma: ReturnType<typeof getPrismaForTenant>) {
+  const store = new PrismaRunEventStore(prisma as any);
+  const outbox = new RedisRunEventOutbox(store);
+  return new CompositeRunEventStoreWithOutbox([store], outbox);
+}
+
+async function safeRecordRunEvent(
+  runEventStore: ReturnType<typeof createRunEventPublisher> | null,
+  event: {
+    runId: string;
+    tenantId: string;
+    workspaceId: string;
+    userId?: string | null;
+    type: string;
+    payload?: unknown;
+  },
+  logger: { warn: (obj: Record<string, unknown>, msg: string) => void }
+) {
+  if (!runEventStore) return;
+  try {
+    await runEventStore.record(event);
+  } catch (error) {
+    logger.warn({ err: error, type: event.type }, "action.run_event_failed");
+  }
+}
+
 async function enforceTrustGateBeforeMcp(
-  deps: Pick<ActionRunnerDeps, "evaluateTrustScore" | "trustScoreAllowsExecution" | "recordGuardrailAudit">,
+  deps: Pick<ActionRunnerDeps, "trustScoreAllowsExecution" | "recordGuardrailAudit">,
   params: {
     prisma: ReturnType<typeof getPrismaForTenant>;
     tenantId: string;
@@ -125,16 +196,18 @@ async function enforceTrustGateBeforeMcp(
     action: string;
     version: string;
     stepId?: string;
+    trustSnapshot: TrustScoreReport;
   }
 ) {
   const thresholdRaw = process.env.TRUST_SCORE_THRESHOLD;
   const threshold = thresholdRaw ? Number(thresholdRaw) : 40;
-  const trustReport = await deps.evaluateTrustScore(params.prisma, params.tenantId, params.workspaceId);
+  const trustReport = params.trustSnapshot;
 
   if (deps.trustScoreAllowsExecution(trustReport, Number.isFinite(threshold) ? threshold : 40)) {
     return null;
   }
 
+  const reasonCode: TrustGateReasonCode = "LOW_SCORE";
   const message = `Trust score too low (${trustReport.score} < ${Number.isFinite(threshold) ? threshold : 40})`;
   await deps.recordGuardrailAudit({
     prisma: params.prisma as any,
@@ -150,10 +223,13 @@ async function enforceTrustGateBeforeMcp(
       stepId: params.stepId,
       trustScore: trustReport.score,
       trustLevel: trustReport.level,
+      reasonCode,
+      reasonDetail: message,
     },
   });
 
-  return { status: "error" as const, error: message, retryable: false as const };
+  await incrCriticalCounter("trust_gate_blocked_total", { reason: reasonCode });
+  return { status: "error" as const, error: message, retryable: false as const, reasonCode, reasonDetail: message };
 }
 
 function getIntentPrompt(payload: { action?: string; metadata?: unknown; input?: unknown }) {
@@ -579,6 +655,21 @@ export function createActionRunnerHandler(deps: ActionRunnerDeps = defaultDeps) 
       return { status: "error" as const, error: message, retryable: false as const };
     }
 
+    const actionDefinition = allowedActions[payload.action];
+    const criticality = actionDefinition?.criticality ?? "low";
+    const requiresSclGate =
+      (criticality === "high" || criticality === "critical") && Boolean(payload.runId);
+
+    if (requiresSclGate) {
+      await incrCriticalCounter("critical_runs_total");
+      const killSwitch = await isCriticalKillSwitchEnabled(tenantId);
+      if (killSwitch) {
+        const message = "Critical actions temporarily paused by kill switch";
+        jobLogger.warn({ action: payload.action }, "action.killswitch.blocked");
+        return { status: "error" as const, error: message, retryable: false as const };
+      }
+    }
+
     let prisma;
     try {
       prisma = deps.getPrismaForTenant(tenantId, workspaceId);
@@ -589,6 +680,7 @@ export function createActionRunnerHandler(deps: ActionRunnerDeps = defaultDeps) 
 
     const mcpConfig = deps.mcpEnforcementConfigFromEnv();
     const toolVersion = deps.resolveMcpToolVersion(payload.metadata, mcpConfig.defaultVersion);
+    const runEventStore = prisma ? createRunEventPublisher(prisma) : null;
 
     try {
       const rateLimitGuard = deps.rateLimit({
@@ -669,9 +761,14 @@ export function createActionRunnerHandler(deps: ActionRunnerDeps = defaultDeps) 
         return intentGateResult;
       }
 
+      const trustSnapshot = await getTrustSnapshot({
+        prisma,
+        tenantId,
+        workspaceId,
+        runId: payload.runId,
+      });
       const trustGateResult = await enforceTrustGateBeforeMcp(
         {
-          evaluateTrustScore: deps.evaluateTrustScore,
           trustScoreAllowsExecution: deps.trustScoreAllowsExecution,
           recordGuardrailAudit: deps.recordGuardrailAudit,
         },
@@ -683,10 +780,38 @@ export function createActionRunnerHandler(deps: ActionRunnerDeps = defaultDeps) 
           action: payload.action,
           version: toolVersion,
           stepId: payload.stepId,
+          trustSnapshot,
         }
       );
       if (trustGateResult) {
         jobLogger.warn({ message: trustGateResult.error }, "action.trust_gate.blocked");
+        if (payload.runId) {
+          await safeRecordRunEvent(
+            runEventStore,
+            {
+              runId: payload.runId,
+              tenantId,
+              workspaceId,
+              userId: null,
+              type: "run.trustscore.blocked",
+              payload: {
+                eventType: "run.trustscore.blocked",
+                eventVersion: 1,
+                eventId: sha256Hex(`${payload.runId}:${payload.action}:trust_blocked`),
+                timestamp: new Date().toISOString(),
+                runId: payload.runId,
+                actionId: payload.action,
+                reasonCode: trustGateResult.reasonCode ?? "UNKNOWN",
+                reasonDetail: trustGateResult.reasonDetail ?? trustGateResult.error,
+                trustSnapshot: {
+                  score: trustSnapshot.score,
+                  level: trustSnapshot.level,
+                },
+              },
+            },
+            jobLogger
+          );
+        }
         return trustGateResult;
       }
 
@@ -713,6 +838,106 @@ export function createActionRunnerHandler(deps: ActionRunnerDeps = defaultDeps) 
         return judgeGateResult;
       }
 
+      let preSigned: { criticalHash: string; txId: string; signature: string | null } | null = null;
+      if (requiresSclGate && payload.runId) {
+        await incrCriticalCounter("pending_signature_total");
+        await safeRecordRunEvent(
+          runEventStore,
+          {
+            runId: payload.runId,
+            tenantId,
+            workspaceId,
+            userId: null,
+            type: "run.action.pending_signature",
+            payload: {
+              action: payload.action,
+              stepId: payload.stepId,
+              version: toolVersion,
+              criticality,
+            },
+          },
+          jobLogger
+        );
+
+        try {
+          preSigned = await deps.appendSignedHash({
+            prisma: prisma as any,
+            tenantId,
+            workspaceId,
+            runId: payload.runId,
+            payload: {
+              stage: "pre_exec",
+              action: payload.action,
+              version: toolVersion,
+              input: payload.input ?? null,
+              stepId: payload.stepId ?? null,
+              metadata: payload.metadata ?? null,
+            },
+            riskLevel: criticality,
+          });
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          jobLogger.warn({ message, action: payload.action, criticality }, "action.scl.gate_failed");
+          return {
+            status: "error" as const,
+            error: `SCL signature required: ${message}`,
+            retryable: !message.startsWith("SignaturePolicyRejected"),
+          };
+        }
+
+        if (!preSigned.signature) {
+          const message = "SCL signature required but missing";
+          jobLogger.warn({ message, action: payload.action, criticality }, "action.scl.missing_signature");
+          return {
+            status: "error" as const,
+            error: message,
+            retryable: true as const,
+          };
+        }
+
+        await incrCriticalCounter("action_state_total", { state: "signed" });
+        await safeRecordRunEvent(
+          runEventStore,
+          {
+            runId: payload.runId,
+            tenantId,
+            workspaceId,
+            userId: null,
+            type: "run.action.signed",
+            payload: {
+              action: payload.action,
+              stepId: payload.stepId,
+              version: toolVersion,
+              criticality,
+              txId: preSigned.txId,
+              criticalHash: preSigned.criticalHash,
+            },
+          },
+          jobLogger
+        );
+      }
+
+      if (requiresSclGate && payload.runId) {
+        await incrCriticalCounter("action_state_total", { state: "execute_started" });
+        await safeRecordRunEvent(
+          runEventStore,
+          {
+            runId: payload.runId,
+            tenantId,
+            workspaceId,
+            userId: null,
+            type: "run.action.execute_started",
+            payload: {
+              action: payload.action,
+              stepId: payload.stepId,
+              version: toolVersion,
+              criticality,
+            },
+          },
+          jobLogger
+        );
+      }
+
       const { result: mcpResult, tool, hash } = await deps.executeWithMCP({
         prisma: prisma as any,
         tenantId,
@@ -733,9 +958,266 @@ export function createActionRunnerHandler(deps: ActionRunnerDeps = defaultDeps) 
         "action.mcp.executed"
       );
 
-      const actionDefinition = allowedActions[payload.action];
-      const criticality = actionDefinition?.criticality ?? "low";
-      if ((criticality === "high" || criticality === "critical") && payload.runId) {
+      if (requiresSclGate && payload.runId) {
+        await incrCriticalCounter("action_state_total", { state: "execute_finished" });
+        await safeRecordRunEvent(
+          runEventStore,
+          {
+            runId: payload.runId,
+            tenantId,
+            workspaceId,
+            userId: null,
+            type: "run.action.execute_finished",
+            payload: {
+              action: payload.action,
+              stepId: payload.stepId,
+              version: toolVersion,
+              criticality,
+              outputPreview:
+                typeof mcpResult === "string"
+                  ? mcpResult.slice(0, 200)
+                  : (() => {
+                      try {
+                        return JSON.stringify(mcpResult ?? "").slice(0, 200);
+                      } catch {
+                        return "[unserializable]";
+                      }
+                    })(),
+            },
+          },
+          jobLogger
+        );
+      }
+
+      if (requiresSclGate && payload.runId) {
+        try {
+          const intentPrompt = getIntentPrompt({
+            action: payload.action,
+            metadata: payload.metadata,
+            input: payload.input,
+          });
+          const intentCanonical = canonicalizeResult({
+            action: payload.action,
+            intent: intentPrompt,
+            metadata: payload.metadata ?? null,
+          });
+          const paramsCanonical = canonicalizeResult(payload.input ?? null);
+          if (mcpResult === undefined) {
+            throw new Error("output_unavailable");
+          }
+          const resultCanonical = canonicalizeResult(mcpResult ?? null);
+
+          const intentHash = computeResultHash(intentCanonical);
+          const paramsHash = computeResultHash(paramsCanonical);
+          const resultHash = computeResultHash(resultCanonical);
+
+          if (!preSigned?.signature) {
+            throw new Error("signature_missing");
+          }
+          const signatureHash = computeResultHash(preSigned.signature);
+
+          const trustReport = trustSnapshot;
+          const trustSnapshot = {
+            score: trustReport.score,
+            level: trustReport.level,
+            reasons: trustReport.reasons,
+            normalized: Number((trustReport.score / 100).toFixed(4)),
+          };
+
+          const thresholdRaw = process.env.TRUST_SCORE_THRESHOLD;
+          const threshold = thresholdRaw ? Number(thresholdRaw) : 40;
+          const trustAllowed = deps.trustScoreAllowsExecution(
+            trustReport,
+            Number.isFinite(threshold) ? threshold : 40
+          );
+
+          const pou = await createProof({
+            prisma: prisma as any,
+            tenantId,
+            workspaceId,
+            input: {
+              runId: payload.runId,
+              actionId: payload.action,
+              intentHash,
+              paramsHash,
+              signatureHash,
+              resultHash,
+              trustSnapshot,
+            },
+            status: trustAllowed ? "PENDING" : "PENDING_TRUST",
+            failStop: true,
+          });
+
+          if (pou) {
+            const compositeTxId = pou.compositeTxId;
+            if (!trustAllowed) {
+              await safeRecordRunEvent(
+                runEventStore,
+                {
+                  runId: payload.runId,
+                  tenantId,
+                  workspaceId,
+                  userId: null,
+                  type: "run.action.proof_pending_trust",
+                  payload: {
+                    eventType: "run.action.proof_pending_trust",
+                    eventVersion: 1,
+                    eventId: createEventId({
+                      runId: payload.runId,
+                      actionId: payload.action,
+                      eventType: "run.action.proof_pending_trust",
+                      compositeTxId,
+                    }),
+                    timestamp: new Date().toISOString(),
+                    runId: payload.runId,
+                    actionId: payload.action,
+                    criticality,
+                    pou: {
+                      pouId: pou.id,
+                      status: "PENDING_TRUST",
+                      compositeTxId,
+                      trustSnapshot: trustSnapshot.normalized,
+                      trustGate: {
+                        minThreshold: (Number.isFinite(threshold) ? threshold : 40) / 100,
+                        reasonCode: "LOW_SCORE",
+                        reasonDetail: `score=${trustReport.score}`,
+                      },
+                    },
+                  },
+                },
+                jobLogger
+              );
+            } else if (pou.status !== "FINALIZED") {
+              const finalized = await finalizeProof({
+                prisma: prisma as any,
+                pouId: pou.id,
+              });
+
+              await safeRecordRunEvent(
+                runEventStore,
+                {
+                  runId: payload.runId,
+                  tenantId,
+                  workspaceId,
+                  userId: null,
+                  type: "run.action.proof_finalized",
+                  payload: {
+                    eventType: "run.action.proof_finalized",
+                    eventVersion: 1,
+                    eventId: createEventId({
+                      runId: payload.runId,
+                      actionId: payload.action,
+                      eventType: "run.action.proof_finalized",
+                      compositeTxId,
+                    }),
+                    timestamp: new Date().toISOString(),
+                    runId: payload.runId,
+                    actionId: payload.action,
+                    criticality,
+                    pou: {
+                      pouId: finalized.id,
+                      status: "FINALIZED",
+                      compositeTxId,
+                      intentHash,
+                      paramsHash,
+                      signatureHash,
+                      resultHash,
+                      trustSnapshot: trustSnapshot.normalized,
+                      attestation: {
+                        keyId: finalized.attestationKeyId,
+                        signature: finalized.attestationSignature,
+                      },
+                    },
+                  },
+                },
+                jobLogger
+              );
+            }
+          }
+        } catch (pouError) {
+          const reason = (() => {
+            const message = pouError instanceof Error ? pouError.message : String(pouError);
+            if (message.includes("signature_missing")) return "HASH_ERROR";
+            if (message.includes("Invalid")) return "HASH_ERROR";
+            if (message.includes("Attestation")) return "ATTESTATION_FAILED";
+            if (message.includes("output_unavailable")) return "OUTPUT_UNAVAILABLE";
+            return "UNKNOWN";
+          })();
+
+          const fallbackInput = {
+            runId: payload.runId,
+            actionId: payload.action,
+            intentHash: computeResultHash(canonicalizeResult({ action: payload.action })),
+            paramsHash: computeResultHash(canonicalizeResult(payload.input ?? null)),
+            signatureHash: computeResultHash(canonicalizeResult("missing_signature")),
+            resultHash: computeResultHash(canonicalizeResult("missing_result")),
+            trustSnapshot: null,
+          };
+
+          const created = await createProof({
+            prisma: prisma as any,
+            tenantId,
+            workspaceId,
+            input: fallbackInput,
+            status: "PENDING",
+            failStop: false,
+          });
+
+          const failed = created
+            ? await failProof({
+                prisma: prisma as any,
+                pouId: created.id,
+                reason: reason as any,
+              }).catch(() => null)
+            : null;
+
+          await recordCriticalSample({
+            kind: "invalid_schema",
+            runId: payload.runId,
+            payload: {
+              action: payload.action,
+              error: pouError instanceof Error ? pouError.message : String(pouError),
+            },
+          });
+
+          const compositeTxId =
+            failed?.compositeTxId ?? generateCompositeTxIdV1(fallbackInput);
+          await safeRecordRunEvent(
+            runEventStore,
+            {
+              runId: payload.runId,
+              tenantId,
+              workspaceId,
+              userId: null,
+              type: "run.action.proof_failed",
+              payload: {
+                eventType: "run.action.proof_failed",
+                eventVersion: 1,
+                eventId: createEventId({
+                  runId: payload.runId,
+                  actionId: payload.action,
+                  eventType: "run.action.proof_failed",
+                  compositeTxId,
+                }),
+                timestamp: new Date().toISOString(),
+                runId: payload.runId,
+                actionId: payload.action,
+                criticality,
+                pou: {
+                  pouId: failed?.id ?? "unknown",
+                  status: "FAILED",
+                  failureReason: reason,
+                  compositeTxId,
+                  diagnosticsRef: `metrics:critical:sample:invalid_schema:${payload.runId}`,
+                },
+              },
+            },
+            jobLogger
+          );
+        }
+      }
+
+      if ((criticality === "high" || criticality === "critical") && payload.runId && !preSigned) {
         try {
           await deps.appendSignedHash({
             prisma: prisma as any,
@@ -766,6 +1248,88 @@ export function createActionRunnerHandler(deps: ActionRunnerDeps = defaultDeps) 
       const retryable = !isNonRetryableMcpError(message);
 
       jobLogger.error({ err: error, message, retryable }, "action.mcp.failed");
+
+      if (message.startsWith("Invalid payload:")) {
+        await incrCriticalCounter("invalid_schema_calls_total", {
+          action_id: payload.action,
+        });
+        const sampleRate = Number(process.env.CRITICAL_METRICS_SAMPLE_RATE ?? "0.01");
+        if (Math.random() < (Number.isFinite(sampleRate) ? sampleRate : 0.01)) {
+          await recordCriticalSample({
+            kind: "invalid_schema",
+            runId: payload.runId ?? `action-${payload.action}-${Date.now()}`,
+            payload: {
+              action: payload.action,
+              version: toolVersion,
+              input: payload.input ?? null,
+              metadata: payload.metadata ?? null,
+              error: message,
+            },
+          });
+        }
+      }
+
+      if (requiresSclGate && payload.runId) {
+        const reason =
+          message.startsWith("Invalid payload:") ? "HASH_ERROR" : "OUTPUT_UNAVAILABLE";
+        const fallbackInput = {
+          runId: payload.runId,
+          actionId: payload.action,
+          intentHash: computeResultHash(canonicalizeResult({ action: payload.action })),
+          paramsHash: computeResultHash(canonicalizeResult(payload.input ?? null)),
+          signatureHash: computeResultHash(canonicalizeResult("missing_signature")),
+          resultHash: computeResultHash(canonicalizeResult("missing_result")),
+          trustSnapshot: null,
+        };
+        const created = await createProof({
+          prisma: prisma as any,
+          tenantId,
+          workspaceId,
+          input: fallbackInput,
+          status: "PENDING",
+          failStop: false,
+        });
+        const failed = created
+          ? await failProof({
+              prisma: prisma as any,
+              pouId: created.id,
+              reason: reason as any,
+            }).catch(() => null)
+          : null;
+        const compositeTxId = failed?.compositeTxId ?? generateCompositeTxIdV1(fallbackInput);
+        await safeRecordRunEvent(
+          runEventStore,
+          {
+            runId: payload.runId,
+            tenantId,
+            workspaceId,
+            userId: null,
+            type: "run.action.proof_failed",
+            payload: {
+              eventType: "run.action.proof_failed",
+              eventVersion: 1,
+              eventId: createEventId({
+                runId: payload.runId,
+                actionId: payload.action,
+                eventType: "run.action.proof_failed",
+                compositeTxId,
+              }),
+              timestamp: new Date().toISOString(),
+              runId: payload.runId,
+              actionId: payload.action,
+              criticality,
+              pou: {
+                pouId: failed?.id ?? "unknown",
+                status: "FAILED",
+                failureReason: reason,
+                compositeTxId,
+                diagnosticsRef: `metrics:critical:sample:invalid_schema:${payload.runId}`,
+              },
+            },
+          },
+          jobLogger
+        );
+      }
 
       try {
         await deps.recordGuardrailAudit({

@@ -1,15 +1,15 @@
-import type { ConnectionOptions } from "bullmq";
+import type { RedisOptions } from "ioredis";
 
 const DEFAULT_URL = process.env.REDIS_URL ?? "redis://127.0.0.1:6379/0";
-let cachedConnection: ConnectionOptions | null = null;
+let cachedConnection: RedisOptions | null = null;
 
-function parseRedisUrl(url: string): ConnectionOptions {
-  const fallback: ConnectionOptions = { host: "127.0.0.1", port: 6379, db: 0 };
+function parseRedisUrl(url: string): RedisOptions {
+  const fallback: RedisOptions = { host: "127.0.0.1", port: 6379, db: 0 };
 
   try {
     const parsed = new URL(url);
     const isTls = parsed.protocol === "rediss:";
-    const connection: ConnectionOptions = {
+    const connection: RedisOptions = {
       host: parsed.hostname || fallback.host,
       port: parsed.port ? Number(parsed.port) : fallback.port,
       connectionName: "run-ativo-universal",
@@ -39,7 +39,7 @@ function resolveRedisUrl() {
   );
 }
 
-export function getRedisConnection(): ConnectionOptions {
+export function getRedisConnection(): RedisOptions {
   if (!cachedConnection) {
     const url = resolveRedisUrl();
     cachedConnection = parseRedisUrl(url);

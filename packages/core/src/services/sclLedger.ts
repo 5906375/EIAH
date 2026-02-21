@@ -1,5 +1,4 @@
 import crypto from "node:crypto";
-import { Prisma, prismaGlobal, type PrismaClient } from "@repo/db";
 import {
   evaluateSignaturePolicy,
   signaturePolicyConfigFromEnv,
@@ -7,6 +6,8 @@ import {
 } from "../policies/signaturePolicy";
 import { SignerManager } from "../security/signerManager";
 import { recordGuardrailAudit, recordGuardrailLedger } from "./guardrailLedgerStore";
+import { addCriticalLatency, incrCriticalCounter, recordCriticalSample } from "../metrics/criticalMetrics";
+import { Web3Executor } from "./web3Executor";
 
 export type TrustScoreReport = {
   score: number;
@@ -14,8 +15,51 @@ export type TrustScoreReport = {
   reasons: string[];
 };
 
+type SclPrismaLike = {
+  guardrailLedger: {
+    count: (args: {
+      where: {
+        tenantId: string;
+        actionType?: { startsWith: string };
+        timestamp?: { gte: Date };
+      };
+    }) => Promise<number>;
+  };
+  sclLedger: {
+    create: (args: {
+      data: {
+        tenantId: string;
+        workspaceId: string | null;
+        runId: string;
+        criticalHash: string;
+        txId: string;
+        payload: unknown;
+        signature: string | null;
+        signatureAlg: string | null;
+        signatureKeyId: string | null;
+        signatureNonce: string;
+        tenantHash: string;
+        signedAt: Date;
+      };
+    }) => Promise<unknown>;
+  };
+  guardrailAuditLedger: {
+    create: (args: {
+      data: {
+        tenantId: string;
+        workspaceId: string | null;
+        runId: string | null;
+        eventType: string;
+        severity: string;
+        message: string;
+        metadata: unknown;
+      };
+    }) => Promise<unknown>;
+  };
+};
+
 async function evaluateTrustScore(
-  prisma: PrismaClient,
+  prisma: SclPrismaLike,
   tenantId: string
 ): Promise<TrustScoreReport> {
   const now = new Date();
@@ -58,33 +102,50 @@ async function evaluateTrustScore(
 }
 
 function toJsonValue(payload: unknown) {
-  return payload === undefined
-    ? Prisma.DbNull
-    : payload === null
-    ? Prisma.JsonNull
-    : (payload as Prisma.InputJsonValue);
+  return payload === undefined ? null : payload;
 }
 
 function sha256Hex(value: string) {
   return crypto.createHash("sha256").update(value).digest("hex");
 }
 
+function envBool(name: string, fallback: boolean) {
+  const raw = process.env[name];
+  if (!raw) return fallback;
+  const normalized = raw.trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "on";
+}
+
+function parseOnchainRiskTiers() {
+  const raw = process.env.WEB3_ONCHAIN_RISK_TIERS ?? "critical";
+  const valid: RiskLevel[] = ["low", "medium", "high", "critical"];
+  return raw
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter((item): item is RiskLevel => valid.includes(item as RiskLevel));
+}
+
 export async function appendSignedHash(params: {
-  prisma?: PrismaClient;
+  prisma?: SclPrismaLike;
   tenantId: string;
   workspaceId?: string | null;
   runId: string;
   payload: unknown;
   riskLevel?: RiskLevel;
   trustScore?: TrustScoreReport;
+  requireSignature?: boolean;
 }) {
-  const client = params.prisma ?? prismaGlobal;
+  const client = params.prisma;
+  if (!client) {
+    throw new Error("appendSignedHash requires prisma instance");
+  }
   const riskLevel: RiskLevel = params.riskLevel ?? "medium";
+  const requireSignature = params.requireSignature ?? false;
 
   const criticalHash = sha256Hex(JSON.stringify({ runId: params.runId, payload: params.payload }));
   const tenantHash = sha256Hex(params.tenantId);
-  const txId = crypto.randomUUID();
-  const nonce = crypto.randomUUID();
+  let txId: string = crypto.randomUUID();
+  let nonce: string = crypto.randomUUID();
   const signedAt = new Date();
 
   const trustScore = params.trustScore ?? (await evaluateTrustScore(client, params.tenantId));
@@ -124,12 +185,35 @@ export async function appendSignedHash(params: {
     throw new Error(`SignaturePolicyRejected:${decision.reason ?? "unknown"}`);
   }
 
+  const onchainEnabled = envBool("WEB3_EXECUTOR_ENABLED", false);
+  const onchainRiskTiers = parseOnchainRiskTiers();
+  const shouldUseOnchain = onchainEnabled && onchainRiskTiers.includes(riskLevel);
+
+  if (shouldUseOnchain) {
+    const web3 = Web3Executor.fromEnv(client);
+    const web3Result = await web3.submitAndWait({
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId ?? null,
+      runId: params.runId,
+      criticalHash,
+      idempotencyKey: `web3:${params.runId}:${criticalHash}`,
+      nonce,
+    });
+    txId = web3Result.txId;
+    nonce = web3Result.nonce;
+
+    if (web3Result.status !== "confirmed" && envBool("WEB3_EXECUTOR_FAIL_CLOSED", true)) {
+      throw new Error(`Web3TxNotConfirmed:${web3Result.status}`);
+    }
+  }
+
   let signature: string | null = null;
   let signatureAlg: string | null = null;
   let signatureKeyId: string | null = null;
 
   if (decision.requireSignature) {
     const signer = SignerManager.fromEnv();
+    const signerStart = Date.now();
 
     // Sign a stable hash of the signing payload.
     const signingPayload = {
@@ -165,6 +249,9 @@ export async function appendSignedHash(params: {
       signatureAlg = signed.algorithm;
       signatureKeyId = signed.keyId;
 
+      await addCriticalLatency("vault_sign_latency", Date.now() - signerStart);
+      await incrCriticalCounter("vault_sign_ok_total");
+
       await recordGuardrailLedger({
         prisma: client,
         tenantId: params.tenantId,
@@ -191,6 +278,28 @@ export async function appendSignedHash(params: {
         },
       });
     } catch (error) {
+      const reason = (() => {
+        const message = error instanceof Error ? error.message : String(error);
+        if (message.includes("SignerCircuitOpen")) return "circuit_open";
+        if (message.toLowerCase().includes("timeout") || message.includes("AbortError")) {
+          return "timeout";
+        }
+        if (message.toLowerCase().includes("vault")) return "vault_error";
+        return "unknown";
+      })();
+      await incrCriticalCounter("vault_sign_fail_total", { reason });
+      await recordCriticalSample({
+        kind: "signer_fail",
+        runId: params.runId,
+        payload: {
+          tenantId: params.tenantId,
+          workspaceId: params.workspaceId ?? null,
+          runId: params.runId,
+          riskLevel,
+          reason,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
       await recordGuardrailLedger({
         prisma: client,
         tenantId: params.tenantId,
@@ -220,6 +329,27 @@ export async function appendSignedHash(params: {
         throw error;
       }
     }
+  }
+
+  if (requireSignature && !signature) {
+    await recordGuardrailLedger({
+      prisma: client,
+      tenantId: params.tenantId,
+      actionType: "signature.required_missing",
+      idempotencyKey: params.runId,
+      usageCount: 1,
+    });
+    await recordGuardrailAudit({
+      prisma: client,
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId ?? null,
+      runId: params.runId,
+      eventType: "signature.required_missing",
+      severity: "error",
+      message: "Signature required but missing",
+      metadata: { riskLevel },
+    });
+    throw new Error("SignatureRequiredMissing");
   }
 
   await client.sclLedger.create({

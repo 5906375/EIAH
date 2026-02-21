@@ -7,8 +7,14 @@ import {
   type KnowledgeBackfillJobParams,
   enqueueMaintenanceJob,
   reconcileLedgerService,
+  enableCriticalKillSwitch,
+  addCriticalLatency,
+  incrCriticalCounter,
   getRedisConnection,
   recordGuardrailAudit,
+  registerAllActions,
+  VersionedActionRegistry,
+  reconcileWeb3Transactions,
 } from "@eiah/core";
 import { consumeMaintenanceJobs } from "@eiah/core";
 import "./jobs/runAtivoUniversalJob";
@@ -17,11 +23,13 @@ import { getPrismaForTenant } from "@repo/db";
 import Redis from "ioredis";
 import { Queue } from "bullmq";
 import { MaintenanceJobName, QueueName } from "@eiah/contracts";
-const prisma = getPrismaForTenant(
+const _prisma = getPrismaForTenant(
   process.env.TENANT_ID ?? "tenant-demo",
   process.env.WORKSPACE_ID ?? "workspace-demo"
 );
 
+// Ensure core action registry is initialized for runAtivo reporting actions.
+registerAllActions(new VersionedActionRegistry());
 
 const workerLogger = createLogger({ component: "maintenance-worker" });
 const schedulerInstanceId = `${process.pid}-${Date.now()}`;
@@ -73,6 +81,17 @@ async function incrementLockSkipMetric(tenantId: string, lockKey: string) {
     { tenantId, lockKey, metricKey, value: nextValue },
     "maintenance.ledger_reconcile.lock_skip_metric"
   );
+}
+
+async function incrementSchedulerMetric(
+  tenantId: string,
+  metric: "scheduled" | "completed" | "failed"
+) {
+  const redis = getSchedulerRedis();
+  const metricKey = `metrics:maintenance:ledger_reconcile:${metric}:${tenantId}`;
+  const nextValue = await redis.incr(metricKey);
+  await redis.expire(metricKey, 60 * 60 * 24 * 7);
+  workerLogger.info({ tenantId, metric, metricKey, value: nextValue }, "maintenance.metric.incremented");
 }
 
 async function cleanupLedgerReconcileRepeatables(params: {
@@ -187,6 +206,7 @@ async function scheduleLedgerReconcile() {
       repeat: { every: intervalMs },
     }
   );
+  await incrementSchedulerMetric(tenantId, "scheduled");
 
   try {
     const prisma = getPrismaForTenant(
@@ -221,12 +241,59 @@ async function scheduleLedgerReconcile() {
   );
 }
 
+function scheduleWeb3ReconciliationLoop() {
+  const enabled = envFlag(process.env.WEB3_RECONCILE_ENABLED, false);
+  if (!enabled) return;
+
+  const tenantId = process.env.WEB3_RECONCILE_TENANT_ID ?? process.env.TENANT_ID;
+  if (!tenantId) {
+    workerLogger.warn("maintenance.web3_reconcile.missing_tenant");
+    return;
+  }
+
+  const workspaceId = process.env.WEB3_RECONCILE_WORKSPACE_ID ?? process.env.WORKSPACE_ID ?? null;
+  const intervalMs = Math.max(
+    15_000,
+    Number(process.env.WEB3_RECONCILE_INTERVAL_MS ?? "60000")
+  );
+  const limit = Math.max(10, Number(process.env.WEB3_RECONCILE_LIMIT ?? "100"));
+  const lookbackHours = Math.max(1, Number(process.env.WEB3_RECONCILE_LOOKBACK_HOURS ?? "24"));
+  const prisma = getPrismaForTenant(tenantId, workspaceId);
+
+  const tick = async () => {
+    try {
+      const report = await reconcileWeb3Transactions({
+        prisma: prisma as any,
+        tenantId,
+        limit,
+        lookbackHours,
+      });
+      workerLogger.info(
+        { tenantId, report },
+        "maintenance.web3_reconcile.completed"
+      );
+    } catch (error) {
+      workerLogger.warn(
+        { tenantId, err: error },
+        "maintenance.web3_reconcile.failed"
+      );
+    }
+  };
+
+  void tick();
+  const handle = setInterval(() => {
+    void tick();
+  }, intervalMs);
+  handle.unref?.();
+}
+
 async function bootstrap() {
   const { memoryService, snapshotStore } = getMemoryDeps();
   const memorySyncJob = new MemorySyncJob(memoryService, { snapshotStore });
   const knowledgeJob = new KnowledgeBackfillJob(memoryService);
 
   await scheduleLedgerReconcile();
+  scheduleWeb3ReconciliationLoop();
 
   await consumeMaintenanceJobs(async (job) => {
     switch (job.kind) {
@@ -270,30 +337,106 @@ async function bootstrap() {
           workerLogger.warn({ job }, "maintenance.ledger_reconcile.missing_tenant");
           break;
         }
-        const prisma = getPrismaForTenant(
-          params.tenantId,
-          params.workspaceId ?? process.env.WORKSPACE_ID ?? "workspace-demo"
-        );
-        const result = await reconcileLedgerService({
-          tenantId: params.tenantId,
-          since: params.since ? new Date(params.since) : undefined,
-          until: params.until ? new Date(params.until) : undefined,
-          limit: params.limit,
-          actionTypes: params.actionTypes,
-          persistReport: params.persistReport ?? true,
-          prisma,
-        });
-        workerLogger.info(
-          {
+        try {
+          const prisma = getPrismaForTenant(
+            params.tenantId,
+            params.workspaceId ?? process.env.WORKSPACE_ID ?? "workspace-demo"
+          );
+          const reconcileStart = Date.now();
+          const result = await reconcileLedgerService({
             tenantId: params.tenantId,
-            checkedGuardrail: result.checkedGuardrail,
-            checkedScl: result.checkedScl,
-            missingInScl: result.missingInScl.length,
-            missingInGuardrail: result.missingInGuardrail.length,
-            mismatchedTx: result.mismatchedTx.length,
-          },
-          "maintenance.ledger_reconcile.completed"
-        );
+            since: params.since ? new Date(params.since) : undefined,
+            until: params.until ? new Date(params.until) : undefined,
+            limit: params.limit,
+            actionTypes: params.actionTypes,
+            persistReport: params.persistReport ?? true,
+            prisma,
+          });
+          await addCriticalLatency("reconciler_latency", Date.now() - reconcileStart);
+          await incrCriticalCounter("reconciliation_ok_total");
+
+          const divergenceByType = result.divergences.reduce<Record<string, number>>(
+            (acc, item) => {
+              acc[item.type] = (acc[item.type] ?? 0) + 1;
+              return acc;
+            },
+            {}
+          );
+          for (const [type, count] of Object.entries(divergenceByType)) {
+            await incrCriticalCounter("reconciliation_divergence_total", { type }, count);
+          }
+          const divergenceCount = result.divergences.length;
+          const totalChecked = result.checkedGuardrail + result.checkedScl;
+          const threshold = Number(process.env.LEDGER_RECONCILE_KILLSWITCH_THRESHOLD ?? "0.2");
+          const minDivergences = Number(process.env.LEDGER_RECONCILE_KILLSWITCH_MIN ?? "5");
+
+          if (
+            totalChecked > 0 &&
+            divergenceCount >= (Number.isFinite(minDivergences) ? minDivergences : 5) &&
+            divergenceCount / totalChecked >= (Number.isFinite(threshold) ? threshold : 0.2)
+          ) {
+            await enableCriticalKillSwitch({
+              tenantId: params.tenantId,
+              ttlMs: Number(process.env.KILL_SWITCH_TTL_MS ?? "900000"),
+              reason: `ledger_reconcile_divergence_rate:${divergenceCount}/${totalChecked}`,
+            });
+            workerLogger.warn(
+              {
+                tenantId: params.tenantId,
+                divergenceCount,
+                totalChecked,
+              },
+              "maintenance.ledger_reconcile.killswitch_enabled"
+            );
+          }
+
+          const webhook = process.env.LEDGER_RECONCILE_ALERT_WEBHOOK;
+          if (webhook && divergenceCount > 0) {
+            try {
+              const payload = {
+                tenantId: params.tenantId,
+                workspaceId: params.workspaceId ?? null,
+                divergenceCount,
+                totalChecked,
+                sample: result.divergences.slice(0, 10),
+                runbook: "docs/runbooks/ledger-reconcile.md",
+              };
+              const controller = new AbortController();
+              const timer = setTimeout(() => controller.abort(), 2000);
+              await globalThis.fetch(webhook, {
+                method: "POST",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify(payload),
+                signal: controller.signal,
+              });
+              clearTimeout(timer);
+            } catch (alertError) {
+              workerLogger.warn(
+                { err: alertError, tenantId: params.tenantId },
+                "maintenance.ledger_reconcile.alert_failed"
+              );
+            }
+          }
+          workerLogger.info(
+            {
+              tenantId: params.tenantId,
+              checkedGuardrail: result.checkedGuardrail,
+              checkedScl: result.checkedScl,
+              missingInScl: result.missingInScl.length,
+              missingInGuardrail: result.missingInGuardrail.length,
+              mismatchedTx: result.mismatchedTx.length,
+              divergences: result.divergences.length,
+            },
+            "maintenance.ledger_reconcile.completed"
+          );
+          await incrementSchedulerMetric(params.tenantId, "completed");
+        } catch (error) {
+          const reason =
+            error instanceof Error && error.message ? error.message.split(":")[0] : "unknown";
+          await incrCriticalCounter("reconciliation_fail_total", { reason });
+          await incrementSchedulerMetric(params.tenantId, "failed");
+          throw error;
+        }
         break;
       }
       default:

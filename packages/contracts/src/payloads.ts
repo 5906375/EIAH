@@ -5,6 +5,7 @@ export const RunJobPayloadSchema = z.object({
   tenantId: z.string().optional(),
   workspaceId: z.string().optional(),
   userId: z.string().optional(),
+  runMode: z.enum(["LIVE", "DRY_RUN"]).optional(),
   agent: z.string(),
   prompt: z.string(),
   metadata: z.record(z.any()).optional()

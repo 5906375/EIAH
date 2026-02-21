@@ -39,6 +39,18 @@ export type ReconcileLedgerResult = {
     guardrailTxId: string | null;
     sclTxId: string;
   }>;
+  divergences: Array<{
+    type: "MISSING_SCL" | "HASH_MISMATCH" | "SIGNATURE_MISSING" | "DUPLICATE" | "OUT_OF_ORDER";
+    runId: string | null;
+    actionType: string | null;
+    criticalHash: string | null;
+    payloadHash: string | null;
+    sclId: string | null;
+    sclTxId: string | null;
+    guardrailId: string | null;
+    signature: string | null;
+    timestamp: Date | null;
+  }>;
 };
 
 export async function reconcileLedgerService(
@@ -62,6 +74,7 @@ export async function reconcileLedgerService(
         runId: true,
         actionType: true,
         criticalHash: true,
+        payloadHash: true,
         txId: true,
         timestamp: true,
       },
@@ -81,6 +94,7 @@ export async function reconcileLedgerService(
         runId: true,
         criticalHash: true,
         txId: true,
+        signature: true,
         createdAt: true,
       },
       take: limit,
@@ -91,9 +105,14 @@ export async function reconcileLedgerService(
 
   const sclByCritical = new Map<string, (typeof sclRows)[number]>();
   const sclByTx = new Map<string, (typeof sclRows)[number]>();
+  const sclCountByCritical = new Map<string, number>();
   for (const row of sclRows) {
     sclByCritical.set(row.criticalHash, row);
     sclByTx.set(row.txId, row);
+    sclCountByCritical.set(
+      row.criticalHash,
+      (sclCountByCritical.get(row.criticalHash) ?? 0) + 1
+    );
   }
 
   const guardrailByCritical = new Map<string, (typeof guardrailRows)[number]>();
@@ -103,6 +122,8 @@ export async function reconcileLedgerService(
 
   const missingInScl: ReconcileLedgerResult["missingInScl"] = [];
   const mismatchedTx: ReconcileLedgerResult["mismatchedTx"] = [];
+  const divergences: ReconcileLedgerResult["divergences"] = [];
+  const outOfOrderThresholdMs = Number(process.env.LEDGER_RECONCILE_OUT_OF_ORDER_MS ?? "60000");
 
   for (const row of guardrailRows) {
     const sclMatch = sclByCritical.get(row.criticalHash);
@@ -115,6 +136,18 @@ export async function reconcileLedgerService(
         txId: row.txId ?? null,
         timestamp: row.timestamp,
       });
+      divergences.push({
+        type: "MISSING_SCL",
+        runId: row.runId ?? null,
+        actionType: row.actionType ?? null,
+        criticalHash: row.criticalHash,
+        payloadHash: row.payloadHash ?? null,
+        sclId: null,
+        sclTxId: null,
+        guardrailId: row.id,
+        signature: null,
+        timestamp: row.timestamp,
+      });
       continue;
     }
 
@@ -125,6 +158,49 @@ export async function reconcileLedgerService(
         criticalHash: row.criticalHash,
         guardrailTxId: row.txId,
         sclTxId: sclMatch.txId,
+      });
+      divergences.push({
+        type: "HASH_MISMATCH",
+        runId: row.runId ?? null,
+        actionType: row.actionType ?? null,
+        criticalHash: row.criticalHash,
+        payloadHash: row.payloadHash ?? null,
+        sclId: sclMatch.id,
+        sclTxId: sclMatch.txId,
+        guardrailId: row.id,
+        signature: sclMatch.signature ?? null,
+        timestamp: row.timestamp,
+      });
+    }
+
+    if (!sclMatch.signature) {
+      divergences.push({
+        type: "SIGNATURE_MISSING",
+        runId: row.runId ?? null,
+        actionType: row.actionType ?? null,
+        criticalHash: row.criticalHash,
+        payloadHash: row.payloadHash ?? null,
+        sclId: sclMatch.id,
+        sclTxId: sclMatch.txId,
+        guardrailId: row.id,
+        signature: null,
+        timestamp: row.timestamp,
+      });
+    }
+
+    const deltaMs = Math.abs(row.timestamp.getTime() - sclMatch.createdAt.getTime());
+    if (Number.isFinite(outOfOrderThresholdMs) && deltaMs > outOfOrderThresholdMs) {
+      divergences.push({
+        type: "OUT_OF_ORDER",
+        runId: row.runId ?? null,
+        actionType: row.actionType ?? null,
+        criticalHash: row.criticalHash,
+        payloadHash: row.payloadHash ?? null,
+        sclId: sclMatch.id,
+        sclTxId: sclMatch.txId,
+        guardrailId: row.id,
+        signature: sclMatch.signature ?? null,
+        timestamp: row.timestamp,
       });
     }
   }
@@ -140,6 +216,21 @@ export async function reconcileLedgerService(
         createdAt: row.createdAt,
       });
     }
+
+    if ((sclCountByCritical.get(row.criticalHash) ?? 0) > 1) {
+      divergences.push({
+        type: "DUPLICATE",
+        runId: row.runId ?? null,
+        actionType: null,
+        criticalHash: row.criticalHash,
+        payloadHash: null,
+        sclId: row.id,
+        sclTxId: row.txId,
+        guardrailId: null,
+        signature: row.signature ?? null,
+        timestamp: row.createdAt,
+      });
+    }
   }
 
   const result: ReconcileLedgerResult = {
@@ -150,6 +241,7 @@ export async function reconcileLedgerService(
     missingInScl,
     missingInGuardrail,
     mismatchedTx,
+    divergences,
   };
 
   if (options.persistReport) {
@@ -181,6 +273,21 @@ export async function reconcileLedgerService(
         metadata,
       },
     });
+
+    if (divergences.length > 0) {
+      await client.guardrailAuditLedger.create({
+        data: {
+          tenantId: options.tenantId,
+          eventType: "ledger.reconcile.divergence",
+          severity: "warn",
+          message: "Ledger reconciliation divergences detected",
+          metadata: {
+            count: divergences.length,
+            sample: divergences.slice(0, 50),
+          },
+        },
+      });
+    }
   }
 
   return result;

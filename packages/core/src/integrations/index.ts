@@ -1,4 +1,5 @@
 export * from "./dataAdapter";
+export * from "./bundleManifest";
 export * from "./legacyApiConnector";
 
 import { callLegacyApi } from "./legacyApiConnector";

@@ -35,4 +35,29 @@ export class VaultSigner {
       clearTimeout(timer);
     }
   }
+
+  async healthCheck() {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), this.timeoutMs);
+    try {
+      const res = await fetch(`${this.baseUrl}/v1/sys/health`, {
+        method: "GET",
+        headers: {
+          "X-Vault-Token": this.token,
+          "content-type": "application/json",
+        },
+        signal: controller.signal,
+      });
+
+      if (!res.ok) {
+        return { ok: false, status: `vault:${res.status}` };
+      }
+
+      return { ok: true, status: "vault:ok" };
+    } catch (error) {
+      return { ok: false, status: error instanceof Error ? error.message : String(error) };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
 }

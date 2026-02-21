@@ -1,7 +1,74 @@
 import { z } from "zod";
 
-export const RunStatusSchema = z.enum(["pending", "running", "success", "error", "blocked"]);
+export const RunStatusSchema = z.enum([
+  "pending",
+  "awaiting_approval",
+  "running",
+  "success",
+  "error",
+  "blocked",
+]);
 export type RunStatus = z.infer<typeof RunStatusSchema>;
+
+export const RunModeSchema = z.enum(["LIVE", "DRY_RUN"]);
+export type RunMode = z.infer<typeof RunModeSchema>;
+
+export const PoUStatusSchema = z.enum(["PENDING", "FINALIZED", "FAILED", "PENDING_TRUST"]);
+export type PoUStatus = z.infer<typeof PoUStatusSchema>;
+
+const PoUAnchoringStatusSchema = z.enum(["anchored", "inconsistent", "missing_phase4_anchor"]);
+const PoUAnchoringStrengthSchema = z.enum(["strong", "weak"]);
+
+export const PoUResponseV1Schema = z.object({
+  ok: z.literal(true),
+  schemaVersion: z.literal("pou.v1"),
+  data: z.object({
+    id: z.string(),
+    tenantId: z.string(),
+    workspaceId: z.string().nullable(),
+    runId: z.string(),
+    actionId: z.string(),
+    status: PoUStatusSchema,
+    compositeTxId: z.string(),
+    hashes: z.object({
+      intentHash: z.string(),
+      paramsHash: z.string(),
+      signatureHash: z.string(),
+      resultHash: z.string(),
+    }),
+    trustSnapshot: z.record(z.unknown()).nullable(),
+    failureReason: z.string().nullable(),
+    attestationKeyId: z.string().nullable(),
+    attestationSignature: z.string().nullable(),
+    canonicalResultRef: z.string().nullable(),
+    createdAt: z.string().datetime({ offset: true }),
+    finalizedAt: z.string().datetime({ offset: true }).nullable(),
+    anchoring: z.object({
+      phase4Dependency: z.literal("required"),
+      status: PoUAnchoringStatusSchema,
+      strength: PoUAnchoringStrengthSchema,
+      consistent: z.boolean(),
+      pointers: z.object({
+        runCriticalHash: z.string().nullable(),
+        runSclTxId: z.string().nullable(),
+        runTxId: z.string().nullable(),
+      }),
+      checks: z.object({
+        hasRunPointers: z.boolean(),
+        sclFoundByTx: z.boolean(),
+        sclFoundByCriticalHash: z.boolean(),
+        hashConsistent: z.boolean(),
+        txConsistent: z.boolean(),
+        signaturePresent: z.boolean(),
+        guardrailLinked: z.boolean(),
+      }),
+    }),
+  }),
+});
+export type PoUResponseV1 = z.infer<typeof PoUResponseV1Schema>;
+
+export const ApprovalDecisionSchema = z.enum(["APPROVED", "REJECTED"]);
+export type ApprovalDecision = z.infer<typeof ApprovalDecisionSchema>;
 
 export const RUN_EVENT_TYPES = [
   "run.requested",
@@ -15,6 +82,8 @@ export const RUN_EVENT_TYPES = [
   "run.intent.evaluated",
   "run.blocked.guardrails",
   "run.guardrails.evaluated",
+  "run.approved",
+  "run.rejected",
   "run.replay.requested",
   "run.replay.enqueued",
   "run.replay.started",
@@ -27,6 +96,13 @@ export const RUN_EVENT_TYPES = [
   "run.action.replan",
   "run.action.reflect",
   "run.action.enqueued",
+  "run.action.proof_finalized",
+  "run.action.proof_pending_trust",
+  "run.action.proof_failed",
+  "run.action.pending_signature",
+  "run.action.signed",
+  "run.action.execute_started",
+  "run.action.execute_finished",
   "run.action.completed",
   "run.action.failed",
   "run.action.judge",
@@ -53,6 +129,7 @@ export const RunSchema = z.object({
   userId: z.string().optional().nullable(),
   agent: z.string(),
   status: RunStatusSchema,
+  runMode: RunModeSchema,
   request: z.unknown(),
   response: z.unknown().nullable().optional(),
   costCents: z.number().int(),
@@ -78,6 +155,38 @@ export const RunEventSchema = z.object({
   createdAt: z.coerce.date(),
 });
 export type RunEvent = z.infer<typeof RunEventSchema>;
+
+export const ApprovalRecordSchema = z.object({
+  id: z.string(),
+  runId: z.string(),
+  attempt: z.number().int(),
+  tenantId: z.string(),
+  approverId: z.string(),
+  decision: ApprovalDecisionSchema,
+  reason: z.string().nullable().optional(),
+  policyId: z.string().nullable().optional(),
+  policyVersion: z.string(),
+  requiredMinTrust: z.number().nullable().optional(),
+  approverTrust: z.number(),
+  intentHash: z.string(),
+  planHash: z.string(),
+  idempotencyKey: z.string().nullable().optional(),
+  payloadHash: z.string(),
+  sclSignature: z.string().nullable().optional(),
+  createdAt: z.coerce.date(),
+});
+export type ApprovalRecord = z.infer<typeof ApprovalRecordSchema>;
+
+export const PendingApprovalSchema = z.object({
+  runId: z.string(),
+  status: z.literal("awaiting_approval"),
+  reason: z.string().nullable().optional(),
+  requiredApprovals: z.number().int(),
+  criticality: z.enum(["low", "medium", "high", "critical", "unknown"]),
+  createdAt: z.coerce.date().nullable().optional(),
+  requestedBy: z.string().nullable().optional(),
+});
+export type PendingApproval = z.infer<typeof PendingApprovalSchema>;
 
 export const AgentToolSchema = z.union([
   z.string(),

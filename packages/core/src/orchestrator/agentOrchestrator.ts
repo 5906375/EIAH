@@ -62,6 +62,7 @@ export type OrchestratorTools = {
 };
 
 export class AgentOrchestrator {
+  private static readonly HARD_MAX_STEPS = 30;
   private readonly tools: OrchestratorTools;
 
   constructor(tools: OrchestratorTools) {
@@ -161,6 +162,33 @@ export class AgentOrchestrator {
     const maxReplans =
       Number.isFinite(maxReplansRaw) && maxReplansRaw > 0 ? Math.floor(maxReplansRaw) : 2;
     return { enabled, maxReplans };
+  }
+
+  private resolveMaxSteps(maxStepsRaw: number | undefined) {
+    if (typeof maxStepsRaw !== "number" || !Number.isFinite(maxStepsRaw) || maxStepsRaw <= 0) {
+      return AgentOrchestrator.HARD_MAX_STEPS;
+    }
+    return Math.min(Math.floor(maxStepsRaw), AgentOrchestrator.HARD_MAX_STEPS);
+  }
+
+  private annotateTermination(input: OrchestratorInput, reason: "MAX_STEPS") {
+    const existing =
+      input.metadata && typeof input.metadata === "object" && !Array.isArray(input.metadata)
+        ? input.metadata
+        : {};
+    input.metadata = { ...existing, terminationReason: reason };
+  }
+
+  private maxStepsEventPayload(input: OrchestratorInput, maxSteps: number, totalSteps: number) {
+    return {
+      runId: input.runId,
+      tenantId: input.tenantId,
+      workspaceId: input.workspaceId,
+      actorId: typeof input.metadata?.userId === "string" ? input.metadata.userId : null,
+      effectiveMaxSteps: maxSteps,
+      totalSteps,
+      terminationReason: "MAX_STEPS" as const,
+    };
   }
 
   private async shouldReplan(context: OrchestratorContext): Promise<boolean> {
@@ -282,15 +310,18 @@ export class AgentOrchestrator {
       -1
     );
 
-    const maxSteps =
-      typeof input.maxSteps === "number" && Number.isFinite(input.maxSteps) && input.maxSteps > 0
-        ? Math.floor(input.maxSteps)
-        : null;
-    if (maxSteps && context.plan.length > maxSteps) {
+    const maxSteps = this.resolveMaxSteps(input.maxSteps);
+    if (context.plan.length > maxSteps) {
       await this.recordEvent(input, "run.plan.truncated", {
         maxSteps,
         totalSteps: context.plan.length,
       });
+      this.annotateTermination(input, "MAX_STEPS");
+      await this.recordEvent(
+        input,
+        "run.max_steps_reached",
+        this.maxStepsEventPayload(input, maxSteps, context.plan.length)
+      );
       context.plan = context.plan.slice(0, maxSteps);
     }
 
@@ -521,20 +552,21 @@ export class AgentOrchestrator {
             );
 
             const completedPrefix = context.plan.slice(0, stepIndex);
-            const maxSteps =
-              typeof input.maxSteps === "number" && Number.isFinite(input.maxSteps) && input.maxSteps > 0
-                ? Math.floor(input.maxSteps)
-                : null;
-            const remainingBudget =
-              maxSteps === null ? null : Math.max(maxSteps - completedPrefix.length, 0);
-            const normalizedNewPlan =
-              remainingBudget === null ? newPlan : newPlan.slice(0, remainingBudget);
+            const maxSteps = this.resolveMaxSteps(input.maxSteps);
+            const remainingBudget = Math.max(maxSteps - completedPrefix.length, 0);
+            const normalizedNewPlan = newPlan.slice(0, remainingBudget);
 
-            if (remainingBudget !== null && newPlan.length > remainingBudget) {
+            if (newPlan.length > remainingBudget) {
               await this.recordEvent(input, "run.plan.truncated", {
                 maxSteps,
                 totalSteps: completedPrefix.length + newPlan.length,
               });
+              this.annotateTermination(input, "MAX_STEPS");
+              await this.recordEvent(
+                input,
+                "run.max_steps_reached",
+                this.maxStepsEventPayload(input, maxSteps, completedPrefix.length + newPlan.length)
+              );
             }
 
             context.plan = [...completedPrefix, ...normalizedNewPlan];
@@ -625,20 +657,21 @@ export class AgentOrchestrator {
           );
 
           const completedPrefix = context.plan.slice(0, stepIndex);
-          const maxSteps =
-            typeof input.maxSteps === "number" && Number.isFinite(input.maxSteps) && input.maxSteps > 0
-              ? Math.floor(input.maxSteps)
-              : null;
-          const remainingBudget =
-            maxSteps === null ? null : Math.max(maxSteps - completedPrefix.length, 0);
-          const normalizedNewPlan =
-            remainingBudget === null ? newPlan : newPlan.slice(0, remainingBudget);
+          const maxSteps = this.resolveMaxSteps(input.maxSteps);
+          const remainingBudget = Math.max(maxSteps - completedPrefix.length, 0);
+          const normalizedNewPlan = newPlan.slice(0, remainingBudget);
 
-          if (remainingBudget !== null && newPlan.length > remainingBudget) {
+          if (newPlan.length > remainingBudget) {
             await this.recordEvent(input, "run.plan.truncated", {
               maxSteps,
               totalSteps: completedPrefix.length + newPlan.length,
             });
+            this.annotateTermination(input, "MAX_STEPS");
+            await this.recordEvent(
+              input,
+              "run.max_steps_reached",
+              this.maxStepsEventPayload(input, maxSteps, completedPrefix.length + newPlan.length)
+            );
           }
 
           context.plan = [...completedPrefix, ...normalizedNewPlan];

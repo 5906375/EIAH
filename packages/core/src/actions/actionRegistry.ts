@@ -44,6 +44,7 @@ export type ActionContract = {
 };
 
 export type ActionCriticality = "low" | "medium" | "high" | "critical";
+export type ActionCriticalitySource = "explicit" | "default" | "inferred";
 
 export type RegisteredAction = {
   name: string;
@@ -52,7 +53,8 @@ export type RegisteredAction = {
   handler: ActionHandler;
   contract?: ActionContract;
   guardrails?: ActionGuardrail[];
-  criticality?: ActionCriticality;
+  criticality: ActionCriticality;
+  criticalitySource?: ActionCriticalitySource;
 };
 
 export type RegisteredActionMetadata = Omit<RegisteredAction, "handler" | "guardrails"> & {
@@ -71,7 +73,7 @@ export function registerAction(action: RegisteredAction) {
     ...action,
     version: action.version ?? "1.0.0",
     guardrails: action.guardrails ?? [],
-    criticality: action.criticality ?? "low",
+    criticalitySource: action.criticalitySource ?? "explicit",
   });
 }
 
@@ -90,7 +92,8 @@ export function listRegisteredActions(): RegisteredActionMetadata[] {
     version: action.version,
     contract: action.contract,
     guardrails: action.guardrails?.map((guard) => guard.name),
-    criticality: action.criticality ?? "low",
+    criticality: action.criticality,
+    criticalitySource: action.criticalitySource ?? "explicit",
   }));
 }
 
@@ -277,6 +280,7 @@ registerAction({
   name: "core.echo",
   description: "Return the received payload as-is for diagnostics.",
   version: "1.0.0",
+  criticality: "low",
   handler: async (context) => {
     context.logger?.("action.echo", { input: context.input });
     return {
