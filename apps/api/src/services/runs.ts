@@ -1,7 +1,8 @@
-import { Prisma, PrismaClient, RunStatus, prismaGlobal } from "@repo/db";
+import { Prisma, RunMode, RunStatus, getPrismaForTenant } from "@repo/db";
+import type { PrismaClient } from "@repo/db/client";
 
 function resolveClient(tenantId: string, workspaceId: string, client?: PrismaClient) {
-  return client ?? prismaGlobal;
+  return client ?? (getPrismaForTenant(tenantId, workspaceId) as PrismaClient);
 }
 
 async function assertRunScope(
@@ -80,10 +81,16 @@ export async function createRunRecord(params: {
   workspaceId: string;
   userId?: string;
   agent: string;
+  runMode?: RunMode;
   status: RunStatus;
   request: unknown;
   response?: unknown;
+  estimatedCostCents?: number | null;
+  finalCostCents?: number | null;
   costCents?: number;
+  charged?: boolean | null;
+  chargeReason?: string | null;
+  chargeAttemptedAt?: Date | null;
   traceId?: string | null;
   tookMs?: number;
   errorCode?: string | null;
@@ -115,10 +122,16 @@ export async function createRunRecord(params: {
       workspaceId: params.workspaceId,
       userId: params.userId ?? null,
       agent: params.agent,
+      runMode: params.runMode ?? "LIVE",
       status: params.status,
       request: requestData,
       response: responseData,
+      estimatedCostCents: params.estimatedCostCents ?? null,
+      finalCostCents: params.finalCostCents ?? null,
       costCents: params.costCents ?? 0,
+      charged: params.charged ?? null,
+      chargeReason: params.chargeReason ?? null,
+      chargeAttemptedAt: params.chargeAttemptedAt ?? null,
       traceId: params.traceId ?? null,
       startedAt,
       finishedAt,
@@ -134,7 +147,12 @@ export async function finalizeRunRecord(params: {
   workspaceId: string;
   status: RunStatus;
   response?: unknown;
+  estimatedCostCents?: number | null;
+  finalCostCents?: number | null;
   costCents?: number;
+  charged?: boolean | null;
+  chargeReason?: string | null;
+  chargeAttemptedAt?: Date | null;
   traceId?: string | null;
   errorCode?: string | null;
 }) {
@@ -164,7 +182,12 @@ export async function finalizeRunRecord(params: {
     data: {
       status: params.status,
       response: responseData,
+      estimatedCostCents: params.estimatedCostCents ?? null,
+      finalCostCents: params.finalCostCents ?? null,
       costCents: params.costCents ?? 0,
+      charged: params.charged ?? null,
+      chargeReason: params.chargeReason ?? null,
+      chargeAttemptedAt: params.chargeAttemptedAt ?? null,
       traceId: params.traceId ?? null,
       finishedAt: new Date(),
       errorCode: params.errorCode ?? null,

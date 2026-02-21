@@ -2,6 +2,8 @@ import {
   executeRegisteredAction,
   publishAction,
   type ActionExecutionResult,
+  registerAllActions,
+  VersionedActionRegistry,
 } from "@eiah/core";
 import type { RunAtivoReportingInput, RunAtivoEvents } from "@eiah/core";
 import { Prisma, prismaGlobal } from "@repo/db";
@@ -30,11 +32,14 @@ const ACTIONS = {
   alert: "reporting.runAtivo.buildAlert",
 } as const;
 
+// Ensure core action registry is initialized for reporting actions in this module context.
+registerAllActions(new VersionedActionRegistry());
+
 type Mode = "sync" | "queue";
 
 export type RunAtivoUniversalAgentOptions = {
   mode?: Mode;
-  logger?: (event: string, payload?: Record<string, unknown>) => void;
+  logger?: (_event: string, _payload?: Record<string, unknown>) => void;
 };
 
 export type RunAtivoUniversalAgentResult =
@@ -331,7 +336,7 @@ export async function runAtivoUniversalAgentFromRunId(params: {
   tenantId: string;
   workspaceId: string;
   mode?: Mode;
-  logger?: (event: string, payload?: Record<string, unknown>) => void;
+  logger?: (_event: string, _payload?: Record<string, unknown>) => void;
 }) {
   const run = await prismaGlobal.run.findFirst({
     where: {
@@ -392,7 +397,7 @@ async function emitSuccessAndReturn({
 type RunAtivoAgentContext = {
   traceId?: string | null;
   runEvents: {
-    append: (event: { type: RunAtivoEvents["type"]; payload?: Record<string, unknown> }) => Promise<void>;
+    append: (_event: { type: RunAtivoEvents["type"]; payload?: Record<string, unknown> }) => Promise<void>;
   };
 };
 

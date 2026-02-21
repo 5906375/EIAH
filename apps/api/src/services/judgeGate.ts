@@ -30,9 +30,9 @@ const MAX_METADATA_CHARS = 2000;
 function redact(text: string) {
   let masked = text ?? "";
   const rules = [
-    { regex: /\b\d{3}\.\d{3}\.\d{3}\-\d{2}\b/g, label: "CPF" },
+    { regex: /\b\d{3}\.\d{3}\.\d{3}-\d{2}\b/g, label: "CPF" },
     { regex: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z]{2,}\b/gi, label: "EMAIL" },
-    { regex: /\b\d{2}\s?\d{4,5}\-?\d{4}\b/g, label: "PHONE" },
+    { regex: /\b\d{2}\s?\d{4,5}-?\d{4}\b/g, label: "PHONE" },
     { regex: /token|secret|password|key/gi, label: "SECRET" },
   ];
   for (const { regex } of rules) {

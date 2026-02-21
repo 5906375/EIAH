@@ -1,4 +1,5 @@
-import { Prisma, PrismaClient } from "@repo/db";
+import { Prisma } from "@repo/db";
+import type { PrismaClient } from "@repo/db/client";
 import crypto from "node:crypto";
 import { z } from "zod";
 
@@ -117,7 +118,6 @@ export async function evaluateIntent(params: EvaluateIntentParams): Promise<Inte
   } catch (error) {
     const code = (error as Prisma.PrismaClientKnownRequestError | null)?.code;
     if (code !== "P2002") {
-      // eslint-disable-next-line no-console
       console.warn("intentValidator.guardrail_ledger_error", error);
     }
   }

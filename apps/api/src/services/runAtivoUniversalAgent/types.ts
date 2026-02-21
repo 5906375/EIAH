@@ -8,5 +8,5 @@ import type { RunAtivoUniversalInput } from "./validator/runAtivoUniversalInput.
 export type { RunAtivoUniversalInput, RunAtivoRecommendation, RunAtivoTimelineItem };
 
 export type RunAtivoInterpreter = (
-  input: RunAtivoUniversalInput
+  _input: RunAtivoUniversalInput
 ) => RunAtivoReportingInput;

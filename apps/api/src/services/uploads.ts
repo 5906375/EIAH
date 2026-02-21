@@ -1,7 +1,8 @@
-import { PrismaClient, prismaGlobal } from "@repo/db";
+import { getPrismaForTenant } from "@repo/db";
+import type { PrismaClient } from "@repo/db/client";
 
-function resolveClient(client?: PrismaClient) {
-  return client ?? prismaGlobal;
+function resolveClient(tenantId: string, workspaceId: string, client?: PrismaClient) {
+  return client ?? (getPrismaForTenant(tenantId, workspaceId) as PrismaClient);
 }
 
 export type UploadedDocumentRecord = {
@@ -28,7 +29,7 @@ export async function createUploadedDocument(data: {
   storageKey: string;
   url?: string;
 }) {
-  const client = resolveClient(data.prisma);
+  const client = resolveClient(data.tenantId, data.workspaceId, data.prisma);
   const record = await client.uploadedDocument.create({
     data: {
       tenantId: data.tenantId,
@@ -51,7 +52,7 @@ export async function findDocumentById(params: {
   tenantId: string;
   workspaceId: string;
 }) {
-  const client = resolveClient(params.prisma);
+  const client = resolveClient(params.tenantId, params.workspaceId, params.prisma);
   return client.uploadedDocument.findFirst({
     where: { id: params.id, tenantId: params.tenantId, workspaceId: params.workspaceId },
   });
@@ -64,7 +65,7 @@ export async function updateDocumentUrl(params: {
   workspaceId: string;
   url: string;
 }) {
-  const client = resolveClient(params.prisma);
+  const client = resolveClient(params.tenantId, params.workspaceId, params.prisma);
   const doc = await findDocumentById({ ...params, prisma: client });
   if (!doc) return null;
 

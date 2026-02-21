@@ -1,10 +1,16 @@
 import { prismaGlobal } from "@repo/db";
 import { queueSnapshot } from "@eiah/core";
+import { probeSignerHealth } from "./signerHealth";
 
 type HealthCheckStatus = {
   healthy: boolean;
   error?: string;
   counts?: unknown;
+  state?: string;
+  latencyMs?: number;
+  provider?: string;
+  status?: string;
+  timestamp?: string;
 };
 
 export async function collectHealth() {
@@ -13,6 +19,7 @@ export async function collectHealth() {
     runQueue: { healthy: false },
     actionQueue: { healthy: false },
     maintenanceQueue: { healthy: false },
+    signer: { healthy: false },
   };
 
   let status: "ok" | "degraded" = "ok";
@@ -33,6 +40,28 @@ export async function collectHealth() {
   checks.actionQueue = { healthy: true, counts: snapshot.actionQueue };
   checks.maintenanceQueue = { healthy: true, counts: snapshot.maintenanceQueue };
 
+  try {
+    const signer = await probeSignerHealth();
+    checks.signer = {
+      healthy: signer.state === "OK",
+      state: signer.state,
+      provider: signer.provider,
+      latencyMs: signer.latencyMs,
+      status: signer.status,
+      timestamp: signer.timestamp,
+      error: signer.error ?? undefined,
+    };
+    if (signer.state !== "OK") {
+      status = "degraded";
+    }
+  } catch (error) {
+    checks.signer = {
+      healthy: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+    status = "degraded";
+  }
+
   return {
     status,
     checks,
@@ -45,13 +74,31 @@ export async function collectQueueHealth() {
     runQueue: { healthy: false },
     actionQueue: { healthy: false },
     maintenanceQueue: { healthy: false },
+    signer: { healthy: false },
   };
-  let status: "ok" | "degraded" = "ok";
+  const status: "ok" | "degraded" = "ok";
 
   const snapshot = await queueSnapshot();
   checks.runQueue = { healthy: true, counts: snapshot.runQueue };
   checks.actionQueue = { healthy: true, counts: snapshot.actionQueue };
   checks.maintenanceQueue = { healthy: true, counts: snapshot.maintenanceQueue };
+  try {
+    const signer = await probeSignerHealth();
+    checks.signer = {
+      healthy: signer.state === "OK",
+      state: signer.state,
+      provider: signer.provider,
+      latencyMs: signer.latencyMs,
+      status: signer.status,
+      timestamp: signer.timestamp,
+      error: signer.error ?? undefined,
+    };
+  } catch (error) {
+    checks.signer = {
+      healthy: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
 
   return {
     status,

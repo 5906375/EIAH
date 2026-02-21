@@ -1,11 +1,28 @@
 import { Router } from "express";
 import crypto from "node:crypto";
 import { z } from "zod";
+import { normalizeReason, type ReasonCode } from "@eiah/core";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
 import { requireScope } from "../middlewares/requireScope";
+import { requirePermission } from "../middlewares/requirePermission";
 
 export const delegationsRouter = Router();
 delegationsRouter.use(enforceTenant);
+
+function respondDelegationError(
+  res: any,
+  params: { status: number; code: string; message: string; reason?: ReasonCode | null }
+) {
+  const normalizedReason = params.reason ? normalizeReason(params.reason) : undefined;
+  return res.status(params.status).json({
+    ok: false,
+    error: {
+      code: params.code,
+      reason: normalizedReason,
+      message: params.message,
+    },
+  });
+}
 
 const DelegationCreateSchema = z.object({
   delegateeId: z.string().min(1),
@@ -31,12 +48,14 @@ const DelegationDecisionSchema = z.object({
   reason: z.string().max(500).optional(),
 });
 
-delegationsRouter.get("/delegations", async (req, res) => {
+delegationsRouter.get("/delegations", requirePermission("delegation.view"), async (req, res) => {
   const request = req as TenantAwareRequest;
   if (!request.authContext || !request.prisma) {
-    return res.status(500).json({
-      ok: false,
-      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+    return respondDelegationError(res, {
+      status: 500,
+      code: "AUTH_CONTEXT_MISSING",
+      message: "Authentication context missing",
+      reason: "auth_context_missing",
     });
   }
 
@@ -61,12 +80,14 @@ delegationsRouter.get("/delegations", async (req, res) => {
   return res.json({ items });
 });
 
-delegationsRouter.get("/delegations/:id", async (req, res) => {
+delegationsRouter.get("/delegations/:id", requirePermission("delegation.view"), async (req, res) => {
   const request = req as TenantAwareRequest;
   if (!request.authContext || !request.prisma) {
-    return res.status(500).json({
-      ok: false,
-      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+    return respondDelegationError(res, {
+      status: 500,
+      code: "AUTH_CONTEXT_MISSING",
+      message: "Authentication context missing",
+      reason: "auth_context_missing",
     });
   }
 
@@ -75,29 +96,46 @@ delegationsRouter.get("/delegations/:id", async (req, res) => {
   });
 
   if (!item) {
-    return res.status(404).json({ ok: false, error: { code: "DELEGATION_NOT_FOUND" } });
+    return respondDelegationError(res, {
+      status: 404,
+      code: "DELEGATION_NOT_FOUND",
+      message: "Delegation not found",
+      reason: "delegation_not_found",
+    });
   }
 
   const tenantId = request.authContext.tenantId;
   if (item.delegatorId !== tenantId && item.delegateeId !== tenantId) {
-    return res.status(403).json({ ok: false, error: { code: "DELEGATION_FORBIDDEN" } });
+    return respondDelegationError(res, {
+      status: 403,
+      code: "DELEGATION_FORBIDDEN",
+      message: "Delegation access forbidden",
+      reason: "delegation_forbidden",
+    });
   }
 
   return res.json({ item });
 });
 
-delegationsRouter.post("/delegations", async (req, res) => {
+delegationsRouter.post("/delegations", requirePermission("delegation.manage"), async (req, res) => {
   const request = req as TenantAwareRequest;
   if (!request.authContext || !request.prisma) {
-    return res.status(500).json({
-      ok: false,
-      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+    return respondDelegationError(res, {
+      status: 500,
+      code: "AUTH_CONTEXT_MISSING",
+      message: "Authentication context missing",
+      reason: "auth_context_missing",
     });
   }
 
   const parsed = DelegationCreateSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD" } });
+    return respondDelegationError(res, {
+      status: 400,
+      code: "INVALID_PAYLOAD",
+      message: "Invalid payload",
+      reason: "invalid_payload",
+    });
   }
 
   const validUntil = new Date(parsed.data.validUntil);
@@ -133,18 +171,25 @@ delegationsRouter.post("/delegations", async (req, res) => {
   return res.json({ ok: true, item });
 });
 
-delegationsRouter.patch("/delegations/:id", async (req, res) => {
+delegationsRouter.patch("/delegations/:id", requirePermission("delegation.manage"), async (req, res) => {
   const request = req as TenantAwareRequest;
   if (!request.authContext || !request.prisma) {
-    return res.status(500).json({
-      ok: false,
-      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+    return respondDelegationError(res, {
+      status: 500,
+      code: "AUTH_CONTEXT_MISSING",
+      message: "Authentication context missing",
+      reason: "auth_context_missing",
     });
   }
 
   const parsed = DelegationUpdateSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD" } });
+    return respondDelegationError(res, {
+      status: 400,
+      code: "INVALID_PAYLOAD",
+      message: "Invalid payload",
+      reason: "invalid_payload",
+    });
   }
 
   const existing = await request.prisma.delegationPolicy.findUnique({
@@ -152,7 +197,12 @@ delegationsRouter.patch("/delegations/:id", async (req, res) => {
   });
 
   if (!existing || existing.delegatorId !== request.authContext.tenantId) {
-    return res.status(404).json({ ok: false, error: { code: "DELEGATION_NOT_FOUND" } });
+    return respondDelegationError(res, {
+      status: 404,
+      code: "DELEGATION_NOT_FOUND",
+      message: "Delegation not found",
+      reason: "delegation_not_found",
+    });
   }
 
   const validUntil = parsed.data.validUntil ? new Date(parsed.data.validUntil) : existing.validUntil;
@@ -187,12 +237,14 @@ delegationsRouter.patch("/delegations/:id", async (req, res) => {
   return res.json({ ok: true, item });
 });
 
-delegationsRouter.delete("/delegations/:id", async (req, res) => {
+delegationsRouter.delete("/delegations/:id", requirePermission("delegation.manage"), async (req, res) => {
   const request = req as TenantAwareRequest;
   if (!request.authContext || !request.prisma) {
-    return res.status(500).json({
-      ok: false,
-      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+    return respondDelegationError(res, {
+      status: 500,
+      code: "AUTH_CONTEXT_MISSING",
+      message: "Authentication context missing",
+      reason: "auth_context_missing",
     });
   }
 
@@ -201,7 +253,12 @@ delegationsRouter.delete("/delegations/:id", async (req, res) => {
   });
 
   if (!item || item.delegatorId !== request.authContext.tenantId) {
-    return res.status(404).json({ ok: false, error: { code: "DELEGATION_NOT_FOUND" } });
+    return respondDelegationError(res, {
+      status: 404,
+      code: "DELEGATION_NOT_FOUND",
+      message: "Delegation not found",
+      reason: "delegation_not_found",
+    });
   }
 
   await request.prisma.delegationPolicy.delete({ where: { id: item.id } });
@@ -210,19 +267,27 @@ delegationsRouter.delete("/delegations/:id", async (req, res) => {
 
 delegationsRouter.post(
   "/delegations/:id/approve",
+  requirePermission("approvals.approve"),
   requireScope("admin"),
   async (req, res) => {
     const request = req as TenantAwareRequest;
     if (!request.authContext || !request.prisma) {
-      return res.status(500).json({
-        ok: false,
-        error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+      return respondDelegationError(res, {
+        status: 500,
+        code: "AUTH_CONTEXT_MISSING",
+        message: "Authentication context missing",
+        reason: "auth_context_missing",
       });
     }
 
     const parsed = DelegationDecisionSchema.safeParse(req.body ?? {});
     if (!parsed.success) {
-      return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD" } });
+      return respondDelegationError(res, {
+        status: 400,
+        code: "INVALID_PAYLOAD",
+        message: "Invalid payload",
+        reason: "invalid_payload",
+      });
     }
 
     const item = await request.prisma.delegationPolicy.findUnique({
@@ -230,11 +295,21 @@ delegationsRouter.post(
     });
 
     if (!item) {
-      return res.status(404).json({ ok: false, error: { code: "DELEGATION_NOT_FOUND" } });
+      return respondDelegationError(res, {
+        status: 404,
+        code: "DELEGATION_NOT_FOUND",
+        message: "Delegation not found",
+        reason: "delegation_not_found",
+      });
     }
 
     if (item.delegatorId !== request.authContext.tenantId) {
-      return res.status(403).json({ ok: false, error: { code: "DELEGATION_FORBIDDEN" } });
+      return respondDelegationError(res, {
+        status: 403,
+        code: "DELEGATION_FORBIDDEN",
+        message: "Delegation access forbidden",
+        reason: "delegation_forbidden",
+      });
     }
 
     if (item.status === "active") {
@@ -242,7 +317,12 @@ delegationsRouter.post(
     }
 
     if (item.status !== "pending_approval") {
-      return res.status(409).json({ ok: false, error: { code: "DELEGATION_INVALID_STATUS" } });
+      return respondDelegationError(res, {
+        status: 409,
+        code: "DELEGATION_INVALID_STATUS",
+        message: "Delegation status invalid",
+        reason: "delegation_invalid_status",
+      });
     }
 
     const updated = await request.prisma.delegationPolicy.update({
@@ -260,19 +340,27 @@ delegationsRouter.post(
 
 delegationsRouter.post(
   "/delegations/:id/reject",
+  requirePermission("approvals.approve"),
   requireScope("admin"),
   async (req, res) => {
     const request = req as TenantAwareRequest;
     if (!request.authContext || !request.prisma) {
-      return res.status(500).json({
-        ok: false,
-        error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+      return respondDelegationError(res, {
+        status: 500,
+        code: "AUTH_CONTEXT_MISSING",
+        message: "Authentication context missing",
+        reason: "auth_context_missing",
       });
     }
 
     const parsed = DelegationDecisionSchema.safeParse(req.body ?? {});
     if (!parsed.success) {
-      return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD" } });
+      return respondDelegationError(res, {
+        status: 400,
+        code: "INVALID_PAYLOAD",
+        message: "Invalid payload",
+        reason: "invalid_payload",
+      });
     }
 
     const item = await request.prisma.delegationPolicy.findUnique({
@@ -280,15 +368,30 @@ delegationsRouter.post(
     });
 
     if (!item) {
-      return res.status(404).json({ ok: false, error: { code: "DELEGATION_NOT_FOUND" } });
+      return respondDelegationError(res, {
+        status: 404,
+        code: "DELEGATION_NOT_FOUND",
+        message: "Delegation not found",
+        reason: "delegation_not_found",
+      });
     }
 
     if (item.delegatorId !== request.authContext.tenantId) {
-      return res.status(403).json({ ok: false, error: { code: "DELEGATION_FORBIDDEN" } });
+      return respondDelegationError(res, {
+        status: 403,
+        code: "DELEGATION_FORBIDDEN",
+        message: "Delegation access forbidden",
+        reason: "delegation_forbidden",
+      });
     }
 
     if (item.status !== "pending_approval") {
-      return res.status(409).json({ ok: false, error: { code: "DELEGATION_INVALID_STATUS" } });
+      return respondDelegationError(res, {
+        status: 409,
+        code: "DELEGATION_INVALID_STATUS",
+        message: "Delegation status invalid",
+        reason: "delegation_invalid_status",
+      });
     }
 
     const updated = await request.prisma.delegationPolicy.update({

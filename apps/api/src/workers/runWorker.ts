@@ -34,18 +34,20 @@ import {
   defaultRunGuardrails,
   runGuardrails,
   recordGuardrailAudit,
+  ensureRunApproval,
+  requiresApprovalFromRequest,
+  incrCriticalCounter,
 } from "@eiah/core";
 
 import { MCPExecutor, ToolRegistry } from "@repo/mcp-runner";
 import type { MemoryRecord, MemoryScope, MemorySnapshot } from "@eiah/core";
-import { prismaGlobal } from "@repo/db";
+import { prismaGlobal, type RunMode } from "@repo/db";
 
 /* ──────────────────────────────────────────────
    LLM Execution (Gateway executor unificado)
    ────────────────────────────────────────────── */
 import {
   executeLlmStep,
-  type LlmExecutorResult,
 } from "../orchestrator/llmExecutor";
 
 /* ──────────────────────────────────────────────
@@ -65,6 +67,7 @@ import {
 } from "../services/runs";
 import { emitRunEvent } from "../services/runEventEmitter";
 import { judgeResult } from "../services/judge";
+import { evaluatePolicyEngine } from "../services/policyEngineAdapter";
 
 /* ──────────────────────────────────────────────
    Recommendations & Memory
@@ -78,6 +81,32 @@ import {
 import { getMemoryService } from "../services/memory";
 import { createGuardrailLedgerStore } from "../services/guardrailLedgerStore";
 import { appendSclRecord } from "../services/sclLedger";
+
+type ApprovalCriticality = "low" | "medium" | "high" | "critical" | "unknown";
+type ChargeReason =
+  | "DRY_RUN"
+  | "OK"
+  | "FREE_TIER_OR_DISABLED"
+  | "CHARGE_FAILED";
+
+function resolveApprovalCriticality(runRecord: { request?: unknown } | null): ApprovalCriticality {
+  const request =
+    runRecord && typeof runRecord.request === "object" && runRecord.request !== null
+      ? (runRecord.request as { metadata?: Record<string, unknown> })
+      : null;
+  const metadata = request?.metadata ?? null;
+  const raw =
+    typeof metadata?.criticality === "string"
+      ? metadata.criticality
+      : typeof (metadata as any)?.intent?.sensitivity === "string"
+      ? ((metadata as any).intent as { sensitivity?: string }).sensitivity
+      : null;
+  const normalized = raw ? raw.trim().toLowerCase() : "unknown";
+  if (normalized === "low" || normalized === "medium" || normalized === "high" || normalized === "critical") {
+    return normalized;
+  }
+  return "unknown";
+}
 
 /* ──────────────────────────────────────────────
    Action Registry / Tenant Actions
@@ -544,8 +573,66 @@ function getIntentKeyHints(prompt: string) {
   return [];
 }
 
+export function resolveRunModeFromPayload(payload: RunQueuePayload): RunMode {
+  if (payload.runMode === "LIVE" || payload.runMode === "DRY_RUN") {
+    return payload.runMode;
+  }
+  const metadata = payload.metadata;
+  if (metadata && typeof metadata === "object" && !Array.isArray(metadata)) {
+    const record = metadata as Record<string, unknown>;
+    const mode = record.mode;
+    if (typeof mode === "string" && mode.trim().toLowerCase() === "simulate") {
+      return "DRY_RUN";
+    }
+    if (record.runMode === "LIVE" || record.runMode === "DRY_RUN") {
+      return record.runMode;
+    }
+  }
+  return "LIVE";
+}
+
+export function isWriteLikeAction(actionName: string) {
+  const normalized = actionName.trim().toLowerCase();
+  return [
+    "create",
+    "update",
+    "delete",
+    "transfer",
+    "send",
+    "mint",
+    "burn",
+    "deploy",
+    "install",
+    "approve",
+    "execute",
+    "pay",
+    "charge",
+    "upload",
+    "write",
+  ].some((token) => normalized.includes(token));
+}
+
+function resolveChargeOutcome(params: {
+  runMode: RunMode;
+  billedCostCents: number;
+  chargeAttempted: boolean;
+  chargeSucceeded: boolean | null;
+}): { charged: boolean; chargeReason: ChargeReason } {
+  if (params.runMode === "DRY_RUN") {
+    return { charged: false, chargeReason: "DRY_RUN" };
+  }
+  if (params.chargeAttempted && params.chargeSucceeded === false) {
+    return { charged: false, chargeReason: "CHARGE_FAILED" };
+  }
+  if (params.billedCostCents === 0) {
+    return { charged: false, chargeReason: "FREE_TIER_OR_DISABLED" };
+  }
+  return { charged: true, chargeReason: "OK" };
+}
+
 export async function processRunPayload(payload: RunQueuePayload) {
     const { runId, tenantId, workspaceId, userId, prompt, metadata } = payload;
+    const runMode = resolveRunModeFromPayload(payload);
     const agent = resolveAgentId(payload.agent ?? "");
     if (!runId || !tenantId || !workspaceId || !agent || !prompt) {
       workerLogger.error(
@@ -560,6 +647,7 @@ export async function processRunPayload(payload: RunQueuePayload) {
       tenantId,
       workspaceId,
       agentId: agent,
+      runMode,
     });
     logger.info("run.worker.received");
     logGovernanceStatus(workerLogger);
@@ -620,6 +708,7 @@ export async function processRunPayload(payload: RunQueuePayload) {
       metadata && typeof metadata === "object" && !Array.isArray(metadata)
         ? { ...(metadata as Record<string, unknown>) }
         : {};
+    baseMetadata.runMode = runMode;
     const replayInfo = extractReplayInfo(baseMetadata);
 
     const memoryScope: MemoryScope = { tenantId, workspaceId, agentId: agent };
@@ -710,6 +799,44 @@ export async function processRunPayload(payload: RunQueuePayload) {
       .filter(Boolean)
       .join("\n\n");
 
+    const runRecord = await prismaGlobal.run.findUnique({ where: { id: runId } });
+    if (requiresApprovalFromRequest(runRecord?.request)) {
+      const approvalCheck = await ensureRunApproval({
+        prisma: prismaGlobal,
+        runId,
+        tenantId,
+        workspaceId,
+      });
+      if (!approvalCheck.ok) {
+        const criticality = resolveApprovalCriticality(runRecord);
+        await finalizeRunRecord({
+          prisma: prismaGlobal,
+          runId,
+          tenantId,
+          workspaceId,
+          status: "blocked",
+          errorCode: approvalCheck.reason,
+        });
+        await emitRunEvent({
+          runId,
+          tenantId,
+          workspaceId,
+          userId,
+          type: "run.blocked.guardrails",
+          payload: {
+            reason: approvalCheck.reason,
+            criticality,
+            planHash: approvalCheck.planHash ?? null,
+            approvedPlanHash: approvalCheck.approvedPlanHash ?? null,
+            approverId: approvalCheck.approverId ?? null,
+            trustSnapshot: approvalCheck.trustSnapshot ?? null,
+            approvalId: approvalCheck.approval?.id ?? null,
+          },
+        });
+        return;
+      }
+    }
+
     await emitRunEvent({
       runId,
       tenantId,
@@ -718,6 +845,7 @@ export async function processRunPayload(payload: RunQueuePayload) {
       type: "run.started",
         payload: {
           agent,
+          runMode,
           promptPreview: promptForExecution.slice(0, 200),
           memory: {
             previousRuns: trimmedPreviousRunsForPrompt.length,
@@ -840,6 +968,35 @@ export async function processRunPayload(payload: RunQueuePayload) {
         mcpExecutor: mcpExecutorTool as any,
         act: async (step: OrchestratorPlanStep, orchestratorContext) => {
           if (step.action) {
+            const isDryRun = runMode === "DRY_RUN";
+            const policyScope = isDryRun ? "read" : "execute";
+            const policyDecision = await evaluatePolicyEngine({
+              prisma: prismaGlobal,
+              tenantId,
+              workspaceId,
+              userId,
+              scope: policyScope,
+              action: `action.${step.action}`,
+            });
+            if (policyDecision.decision === "deny") {
+              if (policyDecision.mode === "shadow") {
+                void incrCriticalCounter("policy_shadow_denies_total", {
+                  action: `action.${step.action}`,
+                  reason: policyDecision.reason ?? "policy_denied",
+                });
+              } else {
+                throw new Error(
+                  `Policy denied for action ${step.action}: ${
+                    policyDecision.reason ?? "policy_denied"
+                  }`
+                );
+              }
+            }
+
+            if (isDryRun && isWriteLikeAction(step.action)) {
+              throw new Error(`DRY_RUN_POLICY_BLOCKED: write-like action "${step.action}" is blocked`);
+            }
+
             const catalog = orchestratorContext.actions ?? {};
             const referencedAction = catalog[step.action];
             if (!referencedAction) {
@@ -852,6 +1009,34 @@ export async function processRunPayload(payload: RunQueuePayload) {
                 prompt: promptForExecution,
                 metadata: runtimeMetadata,
               };
+
+            if (isDryRun) {
+              const simulatedOutput = {
+                dryRun: true,
+                simulated: true,
+                action: step.action,
+                stepId: step.id,
+                note: "Action execution skipped in DRY_RUN mode",
+                inputPreview:
+                  typeof inputPayload === "string"
+                    ? inputPayload.slice(0, 200)
+                    : truncateJson(inputPayload, 200),
+              };
+              await emitRunEvent({
+                runId,
+                tenantId,
+                workspaceId,
+                userId,
+                type: "run.action.completed",
+                payload: {
+                  action: step.action,
+                  stepId: step.id,
+                  simulated: true,
+                  runMode,
+                },
+              });
+              return simulatedOutput;
+            }
 
             if (mcpConfig.proxyAll) {
               // When proxy is enabled, execute via MCP directly (no BullMQ hop).
@@ -994,7 +1179,7 @@ export async function processRunPayload(payload: RunQueuePayload) {
                   getEnvNumber("MEMORY_OBSERVE_MAX_CHARS", DEFAULT_MEMORY_CONTENT_MAX_CHARS)
                 );
 
-          const { maskedText, flags } = await judgeResult(agentId, observeText, {
+          const { maskedText, flags } = await judgeResult(agent, observeText, {
             runId,
             tenantId,
             workspaceId,
@@ -1092,7 +1277,8 @@ export async function processRunPayload(payload: RunQueuePayload) {
       if (estimate === null) {
         throw new Error("Workspace not found for tenant while estimating cost");
       }
-      const costAwareLogger = withCostContext(logger, estimate);
+      const billedCostCents = runMode === "DRY_RUN" ? 0 : estimate;
+      const costAwareLogger = withCostContext(logger, billedCostCents);
 
       let snapshot = executionResult as ExecutionSnapshot | null;
 
@@ -1234,6 +1420,11 @@ export async function processRunPayload(payload: RunQueuePayload) {
           type: "run.blocked.guardrails",
           payload: {
             reason,
+            criticality: "unknown",
+            planHash: null,
+            approvedPlanHash: null,
+            approverId: null,
+            trustSnapshot: null,
             report: guardrailReport,
             txId: scl.txId,
             criticalHash: scl.criticalHash,
@@ -1322,28 +1513,73 @@ export async function processRunPayload(payload: RunQueuePayload) {
         riskLevel: "medium",
       });
 
+      const chargeAttempted = runMode !== "DRY_RUN";
+      const chargeAttemptedAt = chargeAttempted ? new Date() : null;
+      let chargeSucceeded: boolean | null = null;
+
+      if (chargeAttempted) {
+        try {
+          const charged = await chargeRun({
+            tenantId,
+            workspaceId,
+            runId,
+            costCents: billedCostCents,
+          });
+          chargeSucceeded = charged;
+          if (!charged) {
+            logger.warn(
+              { runId, tenantId, workspaceId },
+              "run.worker.charge_skipped_due_to_scope"
+            );
+          }
+        } catch (error) {
+          chargeSucceeded = false;
+          logger.warn(
+            { runId, tenantId, workspaceId, err: error },
+            "run.worker.charge_failed"
+          );
+        }
+      }
+
+      const chargeOutcome = resolveChargeOutcome({
+        runMode,
+        billedCostCents,
+        chargeAttempted,
+        chargeSucceeded,
+      });
+
       await finalizeRunRecord({
         runId,
         tenantId,
         workspaceId,
         status: "success",
         response: succeededResponse,
-        costCents: estimate,
+        estimatedCostCents: estimate,
+        finalCostCents: billedCostCents,
+        costCents: billedCostCents,
+        charged: chargeOutcome.charged,
+        chargeReason: chargeOutcome.chargeReason,
+        chargeAttemptedAt,
         traceId: snapshot?.traceId ?? null,
       });
 
-      const charged = await chargeRun({
-        tenantId,
-        workspaceId,
-        runId,
-        costCents: estimate,
-      });
-      if (!charged) {
-        logger.warn(
-          { runId, tenantId, workspaceId },
-          "run.worker.charge_skipped_due_to_scope"
-        );
-      }
+      const completedPayload = {
+        status: "success" as const,
+        costCents: billedCostCents,
+        estimatedCostCents: estimate,
+        finalCostCents: billedCostCents,
+        charged: chargeOutcome.charged,
+        chargeReason: chargeOutcome.chargeReason,
+        runMode,
+        tools: toolIdentifiers,
+        tookMs: snapshot?.tookMs ?? Date.now() - startedAt,
+        traceId: snapshot?.traceId,
+        planSteps: context.plan.length,
+        recommendationsGenerated: finalRecommendations?.recomendacoes.length ?? 0,
+        txId: scl.txId ?? null,
+        criticalHash: scl.criticalHash ?? null,
+        sclTxId: scl.txId ?? null,
+      };
 
       await emitRunEvent({
         runId,
@@ -1351,46 +1587,10 @@ export async function processRunPayload(payload: RunQueuePayload) {
         workspaceId,
         userId,
         type: "run.completed",
-        payload: {
-          status: "success",
-          costCents: estimate,
-          tools: toolIdentifiers,
-          tookMs: snapshot?.tookMs ?? Date.now() - startedAt,
-          traceId: snapshot?.traceId,
-          planSteps: context.plan.length,
-          recommendationsGenerated: finalRecommendations?.recomendacoes.length ?? 0,
-          txId: scl.txId,
-          criticalHash: scl.criticalHash,
-        },
+        payload: completedPayload,
         criticalHash: scl.criticalHash,
         sclTxId: scl.txId,
       });
-      costAwareLogger.info(
-        {
-          tookMs: snapshot?.tookMs ?? Date.now() - startedAt,
-          recommendationsGenerated: finalRecommendations?.recomendacoes.length ?? 0,
-          toolsUsed: toolIdentifiers?.length ?? 0,
-        },
-        "run.worker.completed"
-      );
-
-      await emitRunEvent({
-        runId,
-        tenantId,
-        workspaceId,
-        userId,
-        type: "run.completed",
-        payload: {
-          status: "success",
-          costCents: estimate,
-          tools: toolIdentifiers,
-          tookMs: snapshot?.tookMs ?? Date.now() - startedAt,
-          traceId: snapshot?.traceId,
-          planSteps: context.plan.length,
-          recommendationsGenerated: finalRecommendations?.recomendacoes.length ?? 0,
-        },
-      });
-
       costAwareLogger.info(
         {
           tookMs: snapshot?.tookMs ?? Date.now() - startedAt,

@@ -1,4 +1,5 @@
-import { prismaGlobal, type PrismaClient } from "@repo/db";
+import { getPrismaForTenant } from "@repo/db";
+import type { PrismaClient } from "@repo/db/client";
 import { recordGuardrailAudit, recordGuardrailLedger } from "@eiah/core";
 import { recordRunEvent } from "./runEvents";
 
@@ -41,7 +42,9 @@ function extractAlertReason(payload?: unknown) {
 
 export async function emitRunEvent(params: EmitRunEventParams) {
   const event = await recordRunEvent(params);
-  const prisma = params.prisma ?? prismaGlobal;
+  const prisma =
+    params.prisma ??
+    (getPrismaForTenant(params.tenantId, params.workspaceId) as PrismaClient);
 
   const ledgerActionType = LEDGER_EVENT_TYPES.get(event.type);
   if (ledgerActionType) {

@@ -17,7 +17,6 @@ type RunEvent = {
   sclTxId: string | null;
   createdAt: Date;
 };
-type RunEventSubscriber = (event: RunEvent) => void;
 
 const channelKey = (params: { tenantId: string; workspaceId: string; runId: string }) =>
   `${params.tenantId}:${params.workspaceId}:${params.runId}`;
@@ -32,7 +31,6 @@ redisSubscriber?.on("message", (channel, message) => {
     emitter.emit(channel, event);
   } catch (err) {
     // apenas loga no stderr local; não interrompe SSE
-    // eslint-disable-next-line no-console
     console.error("runEventStream.redis_parse_error", err);
   }
 });
@@ -50,7 +48,7 @@ export function publishRunEventToStream(event: RunEvent) {
 
 export function subscribeToRunEventStream(
   params: { tenantId: string; workspaceId: string; runId: string },
-  subscriber: RunEventSubscriber
+  subscriber: (event: RunEvent) => void
 ) {
   const channel = channelKey(params);
   emitter.on(channel, subscriber);
@@ -59,7 +57,6 @@ export function subscribeToRunEventStream(
     const count = subscriptionCount.get(channel) ?? 0;
     if (count === 0) {
       redisSubscriber.subscribe(`run-events:${channel}`).catch((err) => {
-        // eslint-disable-next-line no-console
         console.error("runEventStream.redis_subscribe_error", err);
       });
     }
@@ -75,7 +72,6 @@ export function subscribeToRunEventStream(
       if (next === 0) {
         subscriptionCount.delete(channel);
         redisSubscriber.unsubscribe(`run-events:${channel}`).catch((err) => {
-          // eslint-disable-next-line no-console
           console.error("runEventStream.redis_unsubscribe_error", err);
         });
       } else {

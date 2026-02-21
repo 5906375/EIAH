@@ -152,7 +152,8 @@ billingRouter.post("/plans", async (req, res) => {
     });
   }
 
-  const { idempotencyKey: _ignored, ...candidate } = body;
+  const candidate = { ...body };
+  delete candidate.idempotencyKey;
   const parseResult = safeParsePlanSpec(candidate);
 
   if (!parseResult.success) {

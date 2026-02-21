@@ -1,4 +1,5 @@
-import { PrismaClient, prismaGlobal } from "@repo/db";
+import { getPrismaForTenant } from "@repo/db";
+import type { PrismaClient } from "@repo/db/client";
 
 type WorkspaceScope = { tenantId: string; workspaceId: string };
 
@@ -11,7 +12,7 @@ function resolveClient(
   workspaceId: string,
   client?: PrismaClient
 ) {
-  return client ?? prismaGlobal;
+  return client ?? (getPrismaForTenant(tenantId, workspaceId) as PrismaClient);
 }
 
 /**

@@ -1,7 +1,9 @@
 import crypto from "node:crypto";
-import { Prisma, PrismaClient, prismaGlobal } from "@repo/db";
+import { Prisma, getPrismaForTenant } from "@repo/db";
+import type { PrismaClient } from "@repo/db/client";
 import {
   createLedgerBackedIdempotencyStore,
+  type GuardrailLedgerKeyPayload,
   type IdempotencyStore,
 } from "@eiah/core";
 
@@ -13,14 +15,16 @@ export function createGuardrailLedgerStore(
   workspaceId: string,
   client?: TenantPrismaClient
 ): IdempotencyStore {
-  const db = client ?? prismaGlobal;
+  const db =
+    client ?? (getPrismaForTenant(tenantId, workspaceId) as TenantPrismaClient);
 
   return createLedgerBackedIdempotencyStore({
     insert: async (entry) => {
       const { tenantId, actionType, idempotencyKey, usageCount } = entry;
+      const entryWithRunId = entry as GuardrailLedgerKeyPayload & { runId?: string | null };
       const runId =
-        typeof (entry as { runId?: unknown }).runId === "string"
-          ? (entry as { runId: string }).runId
+        typeof entryWithRunId.runId === "string"
+          ? entryWithRunId.runId
           : null;
       const criticalHash = crypto
         .createHash("sha256")

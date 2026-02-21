@@ -1,4 +1,3 @@
-/* eslint-env node */
 /**********************************************************************************************
  * EIAH BUILDER - MEMORY SERVICE (Multi-Tenant Tenant-Aware Version)
  *
@@ -9,10 +8,9 @@
  * - Mantém compatibilidade com MemoryService, PrismaMemorySnapshotStore e stores vetoriais
  **********************************************************************************************/
 
-/* eslint-env node */
-
 import Redis from "ioredis";
-import { Prisma, PrismaClient, prismaGlobal } from "@repo/db";
+import { Prisma, getPrismaForTenant } from "@repo/db";
+import type { PrismaClient } from "@repo/db/client";
 import {
   MemoryService,
   PostgresLongTermMemoryStore,
@@ -21,10 +19,6 @@ import {
   RedisShortTermMemoryStore,
   type MemorySnapshotStore,
 } from "@eiah/core";
-
-type MemorySnapshot = Record<string, unknown>;
-type MemoryEvent = Record<string, unknown>;
-type EmbeddingChunk = Record<string, unknown>;
 
 type TenantPrismaClient = PrismaClient;
 
@@ -66,7 +60,8 @@ function buildMemoryAdapters(
   workspaceId: string,
   client?: TenantPrismaClient
 ) {
-  const prisma = client ?? prismaGlobal;
+  const prisma =
+    client ?? (getPrismaForTenant(tenantId, workspaceId) as TenantPrismaClient);
 
   const memoryEvent = {
     createMany: async ({ data }: { data: Array<Omit<any, "id">> }) =>
@@ -130,25 +125,33 @@ function buildMemoryAdapters(
         metadata?: Record<string, unknown> | null;
         updatedAt?: Date;
       };
-    }) =>
-      prisma.embeddingChunk
-        .upsert({
-          where: args.where,
-          create: {
-            tenantId,
-            workspaceId,
-            agentId: args.create.agentId,
-            chunkKey: args.create.chunkKey,
-            embedding: args.create.embedding,
-            metadata: recordToJsonInput(args.create.metadata) ?? Prisma.JsonNull,
-          },
-          update: {
-            embedding: args.update.embedding,
-            metadata: recordToJsonInput(args.update.metadata) ?? Prisma.JsonNull,
-            updatedAt: args.update.updatedAt ?? new Date(),
-          },
+    }) => {
+      const embeddingDelegate = prisma.embeddingChunk as any;
+      return embeddingDelegate
+        .findUnique({ where: args.where })
+        .then(async (existing: any) => {
+          if (existing) {
+            return embeddingDelegate.update({
+              where: { id: existing.id },
+              data: {
+                embedding: args.update.embedding,
+                metadata: recordToJsonInput(args.update.metadata) ?? Prisma.JsonNull,
+                updatedAt: args.update.updatedAt ?? new Date(),
+              } as any,
+            });
+          }
+          return embeddingDelegate.create({
+            data: {
+              tenantId,
+              workspaceId,
+              agentId: args.create.agentId,
+              chunkKey: args.create.chunkKey,
+              embedding: args.create.embedding,
+              metadata: recordToJsonInput(args.create.metadata) ?? Prisma.JsonNull,
+            } as any,
+          });
         })
-        .then((row) => ({
+        .then((row: any) => ({
           id: row.id,
           tenantId: row.tenantId,
           workspaceId: row.workspaceId,
@@ -158,7 +161,8 @@ function buildMemoryAdapters(
           metadata: jsonValueToRecord(row.metadata),
           createdAt: row.createdAt,
           updatedAt: row.updatedAt,
-        })),
+        }));
+    },
 
     findMany: async (args: {
       where: { tenantId: string; workspaceId: string; agentId: string };
@@ -166,7 +170,7 @@ function buildMemoryAdapters(
       orderBy?: { updatedAt: "asc" | "desc" };
     }) =>
       prisma.embeddingChunk.findMany(args as any).then((rows: any[]) =>
-        rows.map((row) => ({
+        rows.map((row: any) => ({
           id: String(row.id),
           tenantId: String(row.tenantId),
           workspaceId: String(row.workspaceId),
@@ -352,5 +356,5 @@ export function getMemoryPrismaClient(
   tenantId: string,
   workspaceId: string
 ): TenantPrismaClient {
-  return prismaGlobal;
+  return getPrismaForTenant(tenantId, workspaceId) as TenantPrismaClient;
 }

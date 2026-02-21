@@ -1,4 +1,5 @@
-import { prismaGlobal, type PrismaClient } from "@repo/db";
+import { getPrismaForTenant } from "@repo/db";
+import type { PrismaClient } from "@repo/db/client";
 import { appendSignedHash, type RiskLevel, type TrustScoreReport } from "@eiah/core";
 
 export async function appendSclRecord(params: {
@@ -10,8 +11,11 @@ export async function appendSclRecord(params: {
   riskLevel?: RiskLevel;
   trustScore?: TrustScoreReport;
 }) {
+  const prisma =
+    params.prisma ??
+    (getPrismaForTenant(params.tenantId, params.workspaceId ?? "") as PrismaClient);
   return appendSignedHash({
-    prisma: params.prisma ?? prismaGlobal,
+    prisma,
     tenantId: params.tenantId,
     workspaceId: params.workspaceId ?? null,
     runId: params.runId,

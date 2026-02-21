@@ -1,4 +1,5 @@
-import { Prisma, PrismaClient, prismaGlobal } from "@repo/db";
+import { Prisma, getPrismaForTenant } from "@repo/db";
+import type { PrismaClient } from "@repo/db/client";
 import Redis from "ioredis";
 import { publishRunEventToStream } from "./runEventStream";
 
@@ -23,7 +24,9 @@ export async function recordRunEvent(params: {
   criticalHash?: string | null;
   sclTxId?: string | null;
 }) {
-  const client = params.prisma ?? prismaGlobal;
+  const client =
+    params.prisma ??
+    (getPrismaForTenant(params.tenantId, params.workspaceId) as PrismaClient);
   const payloadValue =
     params.payload === undefined
       ? Prisma.DbNull
@@ -55,8 +58,7 @@ export async function recordRunEvent(params: {
           timestamp: Date.now(),
         })
       );
-    } catch (err) {
-      // eslint-disable-next-line no-console
+  } catch (err) {
       console.error("runEvents.redis_outbox_error", err);
     }
   } else {
@@ -69,7 +71,6 @@ export async function recordRunEvent(params: {
           JSON.stringify({ ...event, timestamp: Date.now() })
         );
       } catch (err) {
-        // eslint-disable-next-line no-console
         console.error("runEvents.redis_publish_error", err);
       }
     }
@@ -85,7 +86,9 @@ export async function listRunEvents(params: {
   workspaceId: string;
   cursor?: string | null;
 }) {
-  const client = params.prisma ?? prismaGlobal;
+  const client =
+    params.prisma ??
+    (getPrismaForTenant(params.tenantId, params.workspaceId) as PrismaClient);
   let cursorEvent: { id: string; createdAt: Date } | null = null;
   if (params.cursor) {
     cursorEvent = await client.runEvent.findFirst({

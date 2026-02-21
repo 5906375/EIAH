@@ -1,6 +1,6 @@
 import { Response, NextFunction } from "express";
 import { TenantAwareRequest } from "./enforceTenant";
-import { checkScopePermission } from "packages/core/src/security/rbac.ts";
+import { checkScopePermission } from "@eiah/core/security/rbac";
 
 
 /**
@@ -17,6 +17,19 @@ export function requireScope(requiredScope: string) {
           ok: false,
           error: { code: "UNAUTHORIZED", message: "Missing auth context" },
         });
+      }
+
+      if (req.authContext.isGlobalAdmin) {
+        const isReadMethod = ["GET", "HEAD", "OPTIONS"].includes(req.method.toUpperCase());
+        if (req.authContext.overrideActive && !isReadMethod) {
+          return res.status(403).json({
+            ok: false,
+            error: { code: "FORBIDDEN", message: "Global admin override is read-only" },
+          });
+        }
+        if (isReadMethod) {
+          return next();
+        }
       }
 
       const { tenantId, workspaceId, userId, tokenId } = req.authContext;

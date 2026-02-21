@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Express } from "express";
 import multer from "multer";
 import type { TenantAwareRequest } from "../middlewares/enforceTenant";
 import { enforceTenant } from "../middlewares/enforceTenant";

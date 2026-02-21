@@ -86,6 +86,9 @@ type OutboxEvent = {
   workspaceId: string;
 };
 
+type RedisStreamEntry = [string, string[]];
+type RedisStreamResponse = Array<[string, RedisStreamEntry[]]>;
+
 export async function startRunEventOutboxProcessor() {
   if (!shouldUseOutbox()) return;
   if (!redisUrl) return;
@@ -98,7 +101,7 @@ export async function startRunEventOutboxProcessor() {
 
   const poll = async () => {
     try {
-      const response = await redis.xreadgroup(
+      const response = (await redis.xreadgroup(
         "GROUP",
         outboxGroup,
         outboxConsumer,
@@ -109,12 +112,12 @@ export async function startRunEventOutboxProcessor() {
         "STREAMS",
         outboxStreamKey,
         ">"
-      );
+      )) as RedisStreamResponse | null;
 
       if (!response) return;
 
       for (const [, entries] of response) {
-        for (const [entryId, fields] of entries as Array<[string, string[]]>) {
+        for (const [entryId, fields] of entries) {
           const payloadIndex = fields.findIndex((value) => value === "event");
           const payloadValue = payloadIndex >= 0 ? fields[payloadIndex + 1] : null;
           if (!payloadValue) {

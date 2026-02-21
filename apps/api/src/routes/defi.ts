@@ -32,8 +32,6 @@ defiRouter.post("/defi1/simulate-mint", async (req, res) => {
     });
   }
 
-  const { chainId, to, abiFragment, args, valueWei } = parse.data;
-
   // TODO: chamar simulador (ex: viem/publicClient.simulateContract)
   const gasEstimate = "120000";
   const calldata = "0x40c10f190000000000000000...";
@@ -62,8 +60,6 @@ defiRouter.post("/defi1/mint", requireIdempotency, async (req, res) => {
       },
     });
   }
-
-  const { chainId, to, abiFragment, args, valueWei, confirmationId } = parse.data;
 
   // TODO: validar confirmationId (guardrail), enviar tx (ex: viem/walletClient.writeContract)
   const txHash = "0xabc...789";

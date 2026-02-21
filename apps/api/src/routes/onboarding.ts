@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { Router } from "express";
 import { z } from "zod";
 import { prismaGlobal } from "@repo/db";
+import bcrypt from "bcryptjs";
 
 const onboardingRouter = Router();
 
@@ -9,6 +10,7 @@ const onboardingSchema = z.object({
   email: z.string().email(),
   name: z.string().min(1),
   orgName: z.string().min(1),
+  password: z.string().min(6).max(200).optional().nullable(),
   marketplaceId: z.string().min(1).optional(),
   mode: z.enum(["provision", "register_only"]).optional(),
 });
@@ -47,7 +49,7 @@ onboardingRouter.post("/auth/onboarding", async (req, res) => {
     });
   }
 
-  const { email, name, orgName, marketplaceId, mode } = parsed.data;
+  const { email, name, orgName, password, marketplaceId, mode } = parsed.data;
   const onboardingMode = mode ?? "provision";
   const trustBaseline = 60;
 
@@ -95,11 +97,24 @@ onboardingRouter.post("/auth/onboarding", async (req, res) => {
         },
       });
 
+      const passwordHash =
+        typeof password === "string" && password.trim()
+          ? await bcrypt.hash(password, 10)
+          : null;
       const user = await tx.user.create({
         data: {
           tenantId: tenant.id,
           email,
           displayName: name,
+          passwordHash,
+        },
+      });
+      await tx.tenantMembership.create({
+        data: {
+          tenantId: tenant.id,
+          userId: user.id,
+          role: "TENANT_ADMIN",
+          status: "ACTIVE",
         },
       });
 
@@ -123,7 +138,7 @@ onboardingRouter.post("/auth/onboarding", async (req, res) => {
       if (marketplaceId && onboardingMode === "provision") {
         const item = await tx.marketplaceItem.findUnique({
           where: { id: marketplaceId },
-          select: { id: true, publisherId: true, isPublic: true },
+          select: { id: true, name: true, publisherId: true, isPublic: true },
         });
         if (!item) {
           throw new OnboardingError(404, "MARKETPLACE_NOT_FOUND", "Marketplace item not found");
@@ -131,6 +146,8 @@ onboardingRouter.post("/auth/onboarding", async (req, res) => {
         if (!item.isPublic) {
           throw new OnboardingError(403, "MARKETPLACE_FORBIDDEN", "Marketplace item is not public");
         }
+
+        const agentId = item.name.trim();
 
         const validUntil = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
         const policyPayload = {
@@ -162,6 +179,54 @@ onboardingRouter.post("/auth/onboarding", async (req, res) => {
             signatureHash,
           },
           select: { id: true },
+        });
+
+        const tenantEntitlement = await tx.tenantEntitlement.upsert({
+          where: {
+            unique_tenant_entitlement_agent: {
+              tenantId: tenant.id,
+              agentId,
+            },
+          },
+          create: {
+            tenantId: tenant.id,
+            agentId,
+            marketplaceId: item.id,
+            status: "ACTIVE",
+            startsAt: new Date(),
+            metadata: { source: "onboarding.provision" },
+          },
+          update: {
+            marketplaceId: item.id,
+            status: "ACTIVE",
+            endsAt: null,
+            metadata: { source: "onboarding.provision" },
+          },
+        });
+
+        await tx.workspaceEntitlement.upsert({
+          where: {
+            unique_workspace_entitlement_agent: {
+              tenantId: tenant.id,
+              workspaceId: workspace.id,
+              agentId,
+            },
+          },
+          create: {
+            tenantId: tenant.id,
+            workspaceId: workspace.id,
+            agentId,
+            tenantEntitlementId: tenantEntitlement.id,
+            status: "ACTIVE",
+            activatedByUserId: user.id,
+            metadata: { source: "onboarding.provision" },
+          },
+          update: {
+            tenantEntitlementId: tenantEntitlement.id,
+            status: "ACTIVE",
+            activatedByUserId: user.id,
+            metadata: { source: "onboarding.provision" },
+          },
         });
 
         delegationId = delegation.id;

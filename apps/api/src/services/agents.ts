@@ -1,4 +1,5 @@
-import { Prisma, PrismaClient, prismaGlobal } from "@repo/db";
+import { Prisma, getPrismaForTenant } from "@repo/db";
+import type { PrismaClient } from "@repo/db/client";
 import { listRegisteredActions } from "@eiah/core";
 import {
   aadvProfile,
@@ -121,7 +122,7 @@ export async function listAgents(
   workspaceId: string,
   client?: PrismaClient
 ): Promise<AgentListing[]> {
-  const db = client ?? prismaGlobal;
+  const db = client ?? (getPrismaForTenant(tenantId, workspaceId) as PrismaClient);
 
   const [pricing, profiles] = await Promise.all([
     db.pricing.findMany({ where: { active: true } }),
@@ -134,8 +135,6 @@ export async function listAgents(
   for (const profile of profiles) {
     profileMap.set(resolveAgentId(profile.agent), profile);
   }
-
-  const registryNames = new Set<string>(registry.map((item) => item.name));
 
   const response: AgentListing[] = pricing.map((plan) => {
     const canonical = resolveAgentId(plan.agent);
@@ -223,7 +222,7 @@ export async function getAgentProfile(
   agent: string,
   client?: PrismaClient
 ) {
-  const db = client ?? prismaGlobal;
+  const db = client ?? (getPrismaForTenant(tenantId, workspaceId) as PrismaClient);
   const resolvedAgent = resolveAgentId(agent);
 
   const dbProfile = await db.agentProfile.findUnique({ where: { agent: resolvedAgent } });

@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { PrismaClient } from "@repo/db";
+import type { PrismaClient } from "@repo/db/client";
 
 export type TrustScoreReport = {
   score: number;
