@@ -4,6 +4,7 @@ import { apiEstimateCost, apiGetRun, apiListAgents } from "@/lib/api";
 import EstimateBadge from "./EstimateBadge";
 import RunStatusCard from "./RunStatusCard";
 import { useSession } from "@/state/sessionStore";
+import { canExecuteRuns, useTenantRole } from "@/lib/tenantRole";
 import { useAgentExecution } from "@/hooks/useAgentExecution";
 import NeedMoreInfoDialog, {
   NeedMoreInfoField,
@@ -235,6 +236,8 @@ export default function AgentFormShell<FormValues>({
   const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
   const [dismissedFollowUpRunId, setDismissedFollowUpRunId] = useState<string | null>(null);
   const { workspaceId = DEFAULT_WORKSPACE_ID } = useSession();
+  const tenantRole = useTenantRole();
+  const canExecute = canExecuteRuns(tenantRole);
   const { executeAgent } = useAgentExecution();
 
   const initialValuesKey = useMemo(() => JSON.stringify(initialValues), [initialValues]);
@@ -482,7 +485,8 @@ export default function AgentFormShell<FormValues>({
               type="button"
               onClick={() => executeRun("simulate")}
               className="rounded-full border border-accent/60 bg-accent/15 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-accent transition hover:border-accent hover:bg-accent/25 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !canExecute}
+              title={!canExecute ? "Apenas Tenant Admin/Operator podem executar runs." : undefined}
             >
               {isSubmitting ? "Executando..." : "Simular"}
             </button>
@@ -490,7 +494,8 @@ export default function AgentFormShell<FormValues>({
               type="button"
               onClick={() => executeRun("execute")}
               className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-foreground transition hover:border-accent/40 hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !canExecute}
+              title={!canExecute ? "Apenas Tenant Admin/Operator podem executar runs." : undefined}
             >
               {isSubmitting ? "Executando..." : "Rodar agora"}
             </button>

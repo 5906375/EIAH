@@ -114,7 +114,7 @@ const normalizeBoolean = (value: string | boolean) => {
 
 const WORKSPACE_PLACEHOLDER = import.meta.env.VITE_WORKSPACE_ID ?? "workspace-demo";
 const DEFAULT_WORKSPACE_ID = WORKSPACE_PLACEHOLDER;
-const IN_FLIGHT_STATUSES: RunStatus[] = ["pending", "running", "blocked"];
+const IN_FLIGHT_STATUSES: RunStatus[] = ["pending", "awaiting_approval", "running", "blocked"];
 
 function AadvRecentRuns() {
   const { workspaceId = DEFAULT_WORKSPACE_ID } = useSession();

@@ -4,6 +4,8 @@ import "intro.js/minified/introjs.min.css";
 import AgentSelect from "../../../components/agents/AgentSelect";
 import CostBadge from "../../../components/billing/CostBadge";
 import RunViewer from "../../../components/runs/RunViewer";
+import CockpitPanel from "../../../components/runs/CockpitPanel";
+import ChatAgentLauncher from "@/components/agents/ChatAgentLauncher";
 import { RUN_STATUS_STYLES } from "@/components/runs/statusStyles";
 import {
   centsToBRL,
@@ -15,14 +17,40 @@ import {
   formatTrace,
   getAgentInitials,
 } from "@/components/runs/utils";
-import { apiGetRun, apiListRuns, Run, RunStatus } from "../../../lib/api";
+import {
+  apiGetAuthMe,
+  apiGetRun,
+  apiInstallAgent,
+  apiListRuns,
+  Run,
+  RunStatus,
+} from "../../../lib/api";
 import { useAgentExecution } from "@/hooks/useAgentExecution";
-import { useSession } from "@/state/sessionStore";
+import { updateSession, useSession } from "@/state/sessionStore";
+import { canExecuteRuns, useTenantRole } from "@/lib/tenantRole";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "https://api.eiah.local/api";
 const TENANT_PLACEHOLDER = import.meta.env.VITE_TENANT_ID ?? "tenant-demo";
 const WORKSPACE_PLACEHOLDER = import.meta.env.VITE_WORKSPACE_ID ?? "workspace-demo";
 const DEFAULT_WORKSPACE_ID = WORKSPACE_PLACEHOLDER;
+const ENV = import.meta.env as Record<string, unknown>;
+
+function parseBoolEnv(value: unknown, fallback = false) {
+  if (typeof value !== "string") return fallback;
+  const normalized = value.trim().toLowerCase();
+  if (["1", "true", "on", "yes"].includes(normalized)) return true;
+  if (["0", "false", "off", "no"].includes(normalized)) return false;
+  return fallback;
+}
+
+const COCKPIT_CARDS_ENABLED = parseBoolEnv(
+  ENV.VITE_COCKPIT_CARDS_ENABLED ?? ENV.COCKPIT_CARDS_ENABLED,
+  false
+);
+const COCKPIT_QUEUES_ENABLED = parseBoolEnv(
+  ENV.VITE_COCKPIT_QUEUES_ENABLED ?? ENV.COCKPIT_QUEUES_ENABLED,
+  false
+);
 
 type LowCodeTemplate = {
   name: string;
@@ -169,10 +197,20 @@ const RunsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isInstallingAgent, setIsInstallingAgent] = useState(false);
+  const [pendingAgentInstall, setPendingAgentInstall] = useState<string | null>(null);
   const [activeOnboardingTab, setActiveOnboardingTab] = useState<"video" | "rest" | "sdk" | "templates">("video");
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+  const [permissions, setPermissions] = useState<Set<string>>(new Set());
+  const [authRole, setAuthRole] = useState<string>("");
 
   const { tenantId, workspaceId = DEFAULT_WORKSPACE_ID } = useSession();
+  const tenantRole = useTenantRole();
+  const isGlobalAdminSession = useMemo(() => {
+    const normalized = authRole.trim().toLowerCase();
+    return normalized.includes("global_admin") || normalized.includes("eiah_admin");
+  }, [authRole]);
+  const canExecute = isGlobalAdminSession || canExecuteRuns(tenantRole);
   const { executeAgent } = useAgentExecution();
   const agentKey = (agentId ?? "").toLowerCase();
   const resources = RUN_RESOURCES[agentKey] ?? RUN_RESOURCES.__default;
@@ -183,7 +221,30 @@ const RunsPage: React.FC = () => {
     { id: "templates", label: "Low-code" },
   ] as const;
 
-  const inFlightStatuses: RunStatus[] = ["pending", "running"];
+  const can = useCallback(
+    (permission: string) => isGlobalAdminSession || permissions.has(permission),
+    [isGlobalAdminSession, permissions]
+  );
+  const canViewRuns = can("runs.view");
+
+  useEffect(() => {
+    let active = true;
+    apiGetAuthMe()
+      .then((response) => {
+        if (!active || !response?.data) return;
+        setAuthRole(response.data.role ?? "");
+        setPermissions(new Set(response.data.permissions ?? []));
+      })
+      .catch(() => {
+        if (!active) return;
+        setAuthRole("");
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const inFlightStatuses: RunStatus[] = ["pending", "awaiting_approval", "running"];
   const runSummary = useMemo(() => {
     if (!runs.length) {
       return {
@@ -235,6 +296,12 @@ const RunsPage: React.FC = () => {
 
   const fetchRuns = useCallback(
     async (options?: { silent?: boolean }) => {
+      if (!canViewRuns) {
+        if (!options?.silent) {
+          setError("Sem permissao para visualizar runs.");
+        }
+        return;
+      }
       if (!options?.silent) {
         setIsLoading(true);
         setError(null);
@@ -264,12 +331,18 @@ const RunsPage: React.FC = () => {
         }
       }
     },
-    [agentId, workspaceId]
+    [agentId, workspaceId, canViewRuns]
   );
 
   useEffect(() => {
+    if (!canViewRuns) {
+      setRuns([]);
+      setSelectedRun(null);
+      setError("Sem permissao para visualizar runs.");
+      return;
+    }
     fetchRuns();
-  }, [fetchRuns]);
+  }, [fetchRuns, canViewRuns]);
 
   const hasInFlightRuns = useMemo(() => runs.some((run) => inFlightStatuses.includes(run.status)), [runs]);
 
@@ -285,7 +358,12 @@ const RunsPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [hasInFlightRuns, fetchRuns]);
 
+  useEffect(() => {
+    setPendingAgentInstall(null);
+  }, [agentId, workspaceId]);
+
   const handleSelectRun = async (id: string) => {
+    if (!canViewRuns) return;
     try {
       const fullRun = await apiGetRun(id);
       setSelectedRun(fullRun);
@@ -293,6 +371,18 @@ const RunsPage: React.FC = () => {
       console.error(err);
     }
   };
+
+  const handleLauncherRunIdChange = useCallback(async (newRunId: string | null) => {
+    if (!newRunId) return;
+    try {
+      const fullRun = await apiGetRun(newRunId);
+      setRuns((prev) => [fullRun, ...prev.filter((run) => run.id !== fullRun.id)]);
+      setSelectedRun(fullRun);
+      setLastUpdatedAt(new Date());
+    } catch {
+      // Keep launcher resilient if a background refresh fails.
+    }
+  }, []);
 
   const displayRun = useMemo(
     () =>
@@ -309,7 +399,27 @@ const RunsPage: React.FC = () => {
     [selectedRun, agentId, workspaceId]
   );
 
+  const resolveActionWorkspaceId = useCallback(async () => {
+    try {
+      const auth = await apiGetAuthMe();
+      const backendWorkspaceId =
+        auth?.data?.workspaceId?.trim() ||
+        auth?.data?.allowedWorkspaces?.[0]?.trim() ||
+        workspaceId;
+      if (backendWorkspaceId && backendWorkspaceId !== workspaceId) {
+        updateSession({ workspaceId: backendWorkspaceId });
+      }
+      return backendWorkspaceId || workspaceId;
+    } catch {
+      return workspaceId;
+    }
+  }, [workspaceId]);
+
   const triggerRun = async (mode: "simulate" | "execute") => {
+    if (!canViewRuns) {
+      setActionError("Sem permissao para executar runs.");
+      return;
+    }
     if (!agentId) {
       setActionError("Selecione um agente antes de executar.");
       return;
@@ -317,14 +427,16 @@ const RunsPage: React.FC = () => {
     setActionError(null);
     setIsSubmitting(true);
     try {
+      const actionWorkspaceId = await resolveActionWorkspaceId();
       const response = await executeAgent(agentId, {
         agent: agentId,
         prompt: resources.prompt,
-        workspaceId,
+        workspaceId: actionWorkspaceId,
         metadata: { mode },
       });
       const createdRun = response?.data;
       if (createdRun) {
+        setPendingAgentInstall(null);
         setRuns((prev) => [createdRun, ...prev.filter((run) => run.id !== createdRun.id)]);
         setSelectedRun(createdRun);
         setLastUpdatedAt(new Date());
@@ -337,10 +449,96 @@ const RunsPage: React.FC = () => {
         fetchRuns({ silent: true });
       }
     } catch (err) {
+      const apiError = err as
+        | { status?: number; message?: string; body?: { error?: { code?: string; message?: string } } }
+        | undefined;
+      const code = apiError?.body?.error?.code;
+      const bodyMessage = apiError?.body?.error?.message?.toLowerCase() ?? "";
+      const rawMessage = (apiError?.message ?? "").toLowerCase();
+      const isWorkspaceMismatch =
+        code === "WORKSPACE_FORBIDDEN" ||
+        bodyMessage.includes("workspace mismatch") ||
+        rawMessage.includes("workspace mismatch");
+
+      if (isWorkspaceMismatch) {
+        try {
+          const auth = await apiGetAuthMe();
+          const backendWorkspaceId = auth?.data?.workspaceId;
+          if (backendWorkspaceId && backendWorkspaceId !== workspaceId) {
+            updateSession({ workspaceId: backendWorkspaceId });
+            setActionError(`Workspace sincronizado para ${backendWorkspaceId}. Tente simular novamente.`);
+            return;
+          }
+        } catch {
+          // fall through to generic message
+        }
+      }
+
+      if (code === "AGENT_NOT_INSTALLED" && agentId) {
+          setPendingAgentInstall(agentId);
+          setActionError("Este agente ainda nao esta instalado no workspace atual.");
+          return;
+      }
       const message = err instanceof Error ? err.message : "Falha ao executar run.";
       setActionError(message);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const installSelectedAgent = async () => {
+    const targetAgent = pendingAgentInstall ?? agentId;
+    if (!targetAgent || !workspaceId) return;
+    setActionError(null);
+    setIsInstallingAgent(true);
+    try {
+      const actionWorkspaceId = await resolveActionWorkspaceId();
+      await apiInstallAgent(actionWorkspaceId, {
+        agentId: targetAgent,
+        version: "latest",
+        config: {},
+      });
+      setPendingAgentInstall(null);
+      setActionError(
+        `Agente instalado no workspace ${actionWorkspaceId}. Agora clique em 'Simular primeiro'.`
+      );
+    } catch (err) {
+      const apiError = err as
+        | { status?: number; message?: string; body?: { error?: { code?: string; message?: string } } }
+        | undefined;
+      const code = apiError?.body?.error?.code;
+      const bodyMessage = apiError?.body?.error?.message?.toLowerCase() ?? "";
+      const messageLower = (apiError?.message ?? "").toLowerCase();
+      const isWorkspaceMismatch =
+        code === "WORKSPACE_FORBIDDEN" ||
+        bodyMessage.includes("workspace mismatch") ||
+        messageLower.includes("workspace mismatch");
+
+      if (isWorkspaceMismatch) {
+        try {
+          const auth = await apiGetAuthMe();
+          const backendWorkspaceId = auth?.data?.workspaceId;
+          if (backendWorkspaceId && backendWorkspaceId !== workspaceId) {
+            updateSession({ workspaceId: backendWorkspaceId });
+            await apiInstallAgent(backendWorkspaceId, {
+              agentId: targetAgent,
+              version: "latest",
+              config: {},
+            });
+            setPendingAgentInstall(null);
+            setActionError(
+              `Agente instalado no workspace correto (${backendWorkspaceId}). Agora clique em 'Simular primeiro'.`
+            );
+            return;
+          }
+        } catch {
+          // fall through to generic message
+        }
+      }
+      const message = err instanceof Error ? err.message : "Falha ao instalar agente.";
+      setActionError(message);
+    } finally {
+      setIsInstallingAgent(false);
     }
   };
 
@@ -404,6 +602,11 @@ const RunsPage: React.FC = () => {
 
   return (
     <div className="space-y-10">
+      {!canViewRuns ? (
+        <div className="glass-panel p-6 text-sm text-muted-foreground">
+          Sem permissao para visualizar runs. Fale com um administrador para liberar acesso.
+        </div>
+      ) : null}
       <section className="glass-panel relative overflow-hidden p-8">
         <div className="absolute right-10 top-0 h-32 w-32 rounded-full bg-accent/30 blur-3xl" />
         <div className="space-y-6">
@@ -573,6 +776,21 @@ const RunsPage: React.FC = () => {
         </aside>
       </section>
 
+      <section className="glass-panel p-6">
+        <div className="mb-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-accent">Chat Launcher</p>
+          <h2 className="mt-2 text-2xl font-display font-semibold text-foreground">Imobiliaria Digital</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Execute no chat: <code>/imob dry-run</code> e <code>/imob apply ajuste 120</code>.
+          </p>
+        </div>
+        <ChatAgentLauncher
+          activeAgentId={agentId}
+          onRunIdChange={handleLauncherRunIdChange}
+          workspaceId={workspaceId}
+        />
+      </section>
+
       <section
         data-tour="run-actions"
         className="glass-subtle flex flex-col gap-3 p-6 text-sm text-muted-foreground lg:flex-row lg:items-center lg:justify-between"
@@ -588,7 +806,8 @@ const RunsPage: React.FC = () => {
             type="button"
             onClick={() => triggerRun("simulate")}
             className="rounded-full border border-accent/60 bg-accent/15 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.3em] text-accent transition hover:border-accent hover:bg-accent/25 sm:px-4 sm:py-2 sm:text-xs"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !canViewRuns || !canExecute}
+            title={!canExecute ? "Apenas Tenant Admin/Operator podem executar runs." : undefined}
           >
             {isSubmitting ? "Executando..." : "Simular primeiro"}
           </button>
@@ -596,7 +815,8 @@ const RunsPage: React.FC = () => {
             type="button"
             onClick={() => triggerRun("execute")}
             className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.3em] text-foreground transition hover:border-accent/40 hover:text-accent sm:px-4 sm:py-2 sm:text-xs"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !canViewRuns || !canExecute}
+            title={!canExecute ? "Apenas Tenant Admin/Operator podem executar runs." : undefined}
           >
             {isSubmitting ? "Executando..." : "Rodar agora"}
           </button>
@@ -606,6 +826,19 @@ const RunsPage: React.FC = () => {
             {actionError}
           </p>
         )}
+        {agentId ? (
+          <div className="flex w-full flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={installSelectedAgent}
+              disabled={isInstallingAgent || !canExecute}
+              className="rounded-full border border-accent/60 bg-accent/15 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.3em] text-accent transition hover:border-accent hover:bg-accent/25 disabled:opacity-60 sm:px-4 sm:py-2 sm:text-xs"
+            >
+              {isInstallingAgent ? "Instalando..." : "Instalar agente neste workspace"}
+            </button>
+            <p className="text-[11px] text-muted-foreground">Workspace atual: {workspaceId}</p>
+          </div>
+        ) : null}
       </section>
 
       <section className="glass-panel relative overflow-hidden p-0">
@@ -625,42 +858,54 @@ const RunsPage: React.FC = () => {
                 type="button"
                 onClick={() => fetchRuns()}
                 className="inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent/10 px-3 py-1 font-semibold uppercase tracking-[0.3em] text-accent transition hover:border-accent/60 hover:bg-accent/20 disabled:opacity-60"
-                disabled={isLoading}
+                disabled={isLoading || !canViewRuns}
               >
                 {isLoading ? "Atualizando..." : "Atualizar"}
               </button>
             </div>
           </header>
 
-          {error ? (
-            <div className="rounded-2xl border border-red-500/30 bg-red-500/30 p-4 text-sm text-red-200">{error}</div>
-          ) : (
-            <div className="flex flex-col gap-6">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-                  Selecionar run
+          <div className={COCKPIT_CARDS_ENABLED ? "grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start" : ""}>
+            <div>
+              {error ? (
+                <div className="rounded-2xl border border-red-500/30 bg-red-500/30 p-4 text-sm text-red-200">{error}</div>
+              ) : (
+                <div className="flex flex-col gap-6">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+                      Selecionar run
+                    </div>
+                    <select
+                      value={selectedRun?.id ?? ""}
+                      onChange={(event) => handleSelectRun(event.target.value)}
+                      className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-foreground focus:border-accent/60 focus:outline-none"
+                    >
+                      {runs.length === 0 ? (
+                        <option value="">Nenhum run encontrado</option>
+                      ) : (
+                        runs.map((run) => (
+                          <option key={run.id} value={run.id}>
+                            {formatAgentLabel(run.agent)} • {formatRunId(run.id)}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                  </div>
+                  <div data-tour="run-viewer" className="flex min-h-[420px] flex-col">
+                    <RunViewer run={displayRun} />
+                  </div>
                 </div>
-                <select
-                  value={selectedRun?.id ?? ""}
-                  onChange={(event) => handleSelectRun(event.target.value)}
-                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-foreground focus:border-accent/60 focus:outline-none"
-                >
-                  {runs.length === 0 ? (
-                    <option value="">Nenhum run encontrado</option>
-                  ) : (
-                    runs.map((run) => (
-                      <option key={run.id} value={run.id}>
-                        {formatAgentLabel(run.agent)} • {formatRunId(run.id)}
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
-              <div data-tour="run-viewer" className="flex min-h-[420px] flex-col">
-                <RunViewer run={displayRun} />
-              </div>
+              )}
             </div>
-          )}
+            {COCKPIT_CARDS_ENABLED ? (
+              <CockpitPanel
+                queuesEnabled={COCKPIT_QUEUES_ENABLED}
+                tenantId={tenantId}
+                workspaceId={workspaceId}
+                selectedRun={selectedRun}
+              />
+            ) : null}
+          </div>
         </div>
       </section>
     </div>

@@ -60,12 +60,19 @@ export default defineConfig(({ mode }) => {
       "Content-Security-Policy": cspBuild,
     },
   },
+  define: {
+    global: "globalThis",
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
       "@repo/utils": path.resolve(__dirname, "../../packages/utils/src"),
+      buffer: "buffer",
     },
     extensions: [".ts", ".tsx", ".js", ".jsx", ".mjs", ".json"],
+  },
+  optimizeDeps: {
+    include: ["buffer"],
   },
 };
 });

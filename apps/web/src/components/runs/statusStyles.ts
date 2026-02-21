@@ -6,6 +6,11 @@ export const RUN_STATUS_STYLES: Record<RunStatus, { label: string; badgeClass: s
     badgeClass: "border-amber-400/40 bg-amber-400/10 text-amber-200 animate-pulse",
     indicatorClass: "from-amber-400/70 via-amber-400/20 to-transparent",
   },
+  awaiting_approval: {
+    label: "Aguardando aprovacao",
+    badgeClass: "border-sky-400/40 bg-sky-400/10 text-sky-200 animate-pulse",
+    indicatorClass: "from-sky-400/70 via-sky-400/20 to-transparent",
+  },
   running: {
     label: "Em execução",
     badgeClass: "border-amber-300/50 bg-amber-300/15 text-amber-100 animate-pulse",

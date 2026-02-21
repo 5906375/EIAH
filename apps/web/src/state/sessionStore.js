@@ -2,7 +2,6 @@ import { useSyncExternalStore } from "react";
 const DEFAULTS = {
     tenantId: import.meta.env.VITE_TENANT_ID || "tenant-demo",
     workspaceId: import.meta.env.VITE_WORKSPACE_ID || "workspace-demo",
-    token: import.meta.env.VITE_API_TOKEN || undefined,
 };
 function safeLocalStorage() {
     try {
@@ -20,7 +19,6 @@ function loadState() {
         return {
             tenantId: DEFAULTS.tenantId,
             workspaceId: DEFAULTS.workspaceId,
-            token: DEFAULTS.token,
         };
     }
     return {
@@ -29,7 +27,6 @@ function loadState() {
             storage.getItem("project_id") ||
             DEFAULTS.workspaceId,
         userId: storage.getItem("user_id") || undefined,
-        token: storage.getItem("eiah_token") || DEFAULTS.token || undefined,
     };
 }
 let state = loadState();
@@ -61,8 +58,6 @@ export function updateSession(patch) {
             storage.setItem("workspace_id", patch.workspaceId);
         if (patch.userId !== undefined)
             storage.setItem("user_id", patch.userId);
-        if (patch.token !== undefined)
-            storage.setItem("eiah_token", patch.token);
     }
     notify(next);
 }
@@ -73,12 +68,10 @@ export function clearSession() {
         storage.removeItem("workspace_id");
         storage.removeItem("project_id");
         storage.removeItem("user_id");
-        storage.removeItem("eiah_token");
     }
     notify({
         tenantId: DEFAULTS.tenantId,
         workspaceId: DEFAULTS.workspaceId,
-        token: DEFAULTS.token,
     });
 }
 if (typeof window !== "undefined") {

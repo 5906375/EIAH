@@ -6,7 +6,7 @@ import { useSession } from "@/state/sessionStore";
 export default function AgentSelect({ value, onChange, }) {
     const [agents, setAgents] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    const { workspaceId, token } = useSession();
+    const { workspaceId, userId } = useSession();
     useEffect(() => {
         setIsLoading(true);
         const ensureGuardian = (items) => {
@@ -29,7 +29,7 @@ export default function AgentSelect({ value, onChange, }) {
             setAgents(ensureGuardian([]));
         })
             .finally(() => setIsLoading(false));
-    }, [workspaceId, token]);
+    }, [workspaceId, userId]);
     return (_jsxs("div", { className: "flex flex-col gap-2", children: [_jsx("label", { id: "agent-label", className: "text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground", children: "Agente" }), _jsxs(Select, { value: value, onValueChange: onChange, children: [_jsx(SelectTrigger, { "aria-labelledby": "agent-label", className: "w-full whitespace-nowrap border-white/10 bg-surface-strong/70 text-foreground shadow-lg shadow-black/20", children: _jsx(SelectValue, { placeholder: "Selecione um agente" }) }), _jsxs(SelectContent, { children: [agents.length === 0 && (_jsx(SelectItem, { disabled: true, value: "__empty", children: isLoading ? "Carregando..." : "Nenhum agente cadastrado" })), agents.map((agent) => {
                                 const pricingText = agent.pricing?.perRunCents
                                     ? ` - R$ ${(agent.pricing.perRunCents / 100).toFixed(2)}/run`

@@ -4,9 +4,10 @@ import { selfServiceConfigs } from "@/pages/self-service/config";
 import {
   apiApproveRun,
   apiAdoptRecommendation,
-  apiCreateSession,
   apiFinalizeConversation,
   apiGetGovernanceReport,
+  apiRealEstateApplyAdjustment,
+  apiRealEstateDryRun,
   apiGetRun,
   apiListRunEvents,
   BASE_URL,
@@ -150,6 +151,14 @@ function sanitizeAssistantContent(content: string) {
     .replace(/\btrace_id:\s*[^\s,]+/gi, "trace_id:[redacted]")
     .replace(/\btx_id:\s*[^\s,]+/gi, "tx_id:[redacted]")
     .replace(/\bpolicy_version:\s*[^\s,]+/gi, "policy_version:[redacted]");
+}
+
+function extractAdjustmentAmount(text: string) {
+  const normalized = text.replace(",", ".");
+  const match = normalized.match(/(?:ajuste|adjustment|valor)\s+(-?\d+(?:\.\d+)?)/i);
+  if (!match) return null;
+  const amount = Number(match[1]);
+  return Number.isFinite(amount) ? amount : null;
 }
 
 function maskIdentity(value: string, fallbackPrefix: string) {
@@ -335,6 +344,108 @@ export default function ChatAgentLauncher({
     updateSseStatus("idle");
   };
 
+  const defaultLease = useMemo(() => {
+    const tenant = session.tenantId ?? "tenant-demo";
+    const workspace = effectiveWorkspaceId ?? "workspace-demo";
+    return {
+      tenantId: tenant,
+      workspaceId: workspace,
+      leaseId: "lease-digital-001",
+      period: "2026-02",
+      dueRule: "BUSINESS_DAY_NTH=6" as const,
+      reminderOffsetBusinessDays: 2,
+      rentAmount: 3000,
+      condoBaseAmount: 800,
+      evidenceRefs: ["doc://lease/default"],
+      tenantName: "Locatario Demo",
+      tenantEmail: "locatario.demo@example.com",
+      tenantDocument: "12345678900",
+    };
+  }, [effectiveWorkspaceId, session.tenantId]);
+
+  const isRealEstateCommand = (value: string) => {
+    const lower = value.trim().toLowerCase();
+    return lower.startsWith("/imob") || lower.includes("imobiliaria digital");
+  };
+
+  const runRealEstateCommand = async (command: string) => {
+    const normalized = command.trim().toLowerCase();
+    if (normalized === "/imob" || normalized === "/imob help" || normalized.includes("help")) {
+      pushMessage({
+        id: `assistant-imob-help-${Date.now()}`,
+        role: "assistant",
+        content:
+          [
+            "Fluxo Imobiliaria Digital habilitado no chat launcher.",
+            "Comandos:",
+            "- `/imob dry-run` (gera preview com policyDecision, planHash, diffHash)",
+            "- `/imob apply ajuste 120` (aplica ajuste no lease demo usando run atual)",
+          ].join("\n"),
+        status: "done",
+      });
+      return true;
+    }
+
+    if (normalized.includes("dry-run")) {
+      const response = await apiRealEstateDryRun({
+        period: defaultLease.period,
+        nth: 6,
+        reminderOffset: 2,
+        leases: [defaultLease],
+      });
+      pushMessage({
+        id: `assistant-imob-dry-${Date.now()}`,
+        role: "assistant",
+        content: [
+          "Imobiliaria Digital • Dry-run executado",
+          `policyDecision: ${response.policyDecision?.decision ?? "n/a"}`,
+          `planHash: ${response.planHash ?? "n/a"}`,
+          `diffHash: ${response.diffHash ?? "n/a"}`,
+        ].join("\n"),
+        status: "done",
+      });
+      return true;
+    }
+
+    if (normalized.includes("apply") || normalized.includes("ajuste")) {
+      if (!runId) {
+        pushMessage({
+          id: `assistant-imob-run-missing-${Date.now()}`,
+          role: "assistant",
+          content: "Para aplicar ajuste, primeiro gere uma run no chat e tente novamente.",
+          status: "done",
+        });
+        return true;
+      }
+      const amount = extractAdjustmentAmount(command) ?? 120;
+      const response = await apiRealEstateApplyAdjustment({
+        period: defaultLease.period,
+        runId,
+        adjustmentAmount: amount,
+        lease: defaultLease,
+      });
+      pushMessage({
+        id: `assistant-imob-apply-${Date.now()}`,
+        role: "assistant",
+        content: [
+          `Imobiliaria Digital • Ajuste aplicado: ${amount}`,
+          `status: ${response.ok ? "ok" : "erro"}`,
+          `ledger txId: ${response.ledger?.txId ?? "n/a"}`,
+        ].join("\n"),
+        status: "done",
+      });
+      return true;
+    }
+
+    pushMessage({
+      id: `assistant-imob-unknown-${Date.now()}`,
+      role: "assistant",
+      content: "Comando Imobiliaria nao reconhecido. Use `/imob help`.",
+      status: "done",
+    });
+    return true;
+  };
+
   const handleIncomingEvent = (event: RunEvent) => {
     if (seenEventsRef.current.has(event.id)) return;
     seenEventsRef.current.add(event.id);
@@ -422,7 +533,6 @@ export default function ChatAgentLauncher({
   const startSse = async (targetRunId: string) => {
     updateSseStatus("connecting");
     try {
-      await apiCreateSession();
       const streamUrl = new URL(`${BASE_URL}/runs/${targetRunId}/stream`);
       if (lastEventIdRef.current) {
         streamUrl.searchParams.set("cursor", lastEventIdRef.current);
@@ -468,6 +578,12 @@ export default function ChatAgentLauncher({
     conversation.analyze(trimmed);
 
     try {
+      if (isRealEstateCommand(trimmed)) {
+        await runRealEstateCommand(trimmed);
+        setIsStreaming(false);
+        updateSseStatus("idle");
+        return;
+      }
       const response = await conversation.executeWithPolicy(resolvedAgentId, {
         agent: resolvedAgentId,
         prompt: buildOptimizedPrompt(trimmed),
@@ -939,7 +1055,7 @@ export default function ChatAgentLauncher({
             <textarea
               value={input}
               onChange={(event) => setInput(event.target.value)}
-              placeholder="Descreva o objetivo, contexto e restricoes..."
+              placeholder="Descreva o objetivo, contexto e restricoes... (dica: /imob dry-run)"
               className="min-h-[64px] flex-1 resize-none rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
             />
             {conversation.policy?.requiresConfirmation && runId ? (
@@ -1066,12 +1182,17 @@ export default function ChatAgentLauncher({
                         <div className="space-y-3">
                           {approvedItems.map((item) => {
                             const hash = item.ledgerHash ? `0x${item.ledgerHash}` : "0x?";
+                            const reason =
+                              item.payload && typeof item.payload === "object" && "reason" in item.payload
+                                ? String((item.payload as { reason?: unknown }).reason ?? "")
+                                : "";
                             return (
                               <article key={item.id} className="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-muted-foreground">
                                 <p className="text-sm font-semibold text-foreground">Execucao aprovada</p>
                                 <p className="mt-1">Run: {item.runId} • Agente: {item.agent ?? "-"}</p>
                                 <p className="mt-1">Ledger Hash: {hash}</p>
                                 <p className="mt-1">Timestamp: {item.createdAt}</p>
+                                {reason ? <p className="mt-1">Motivo: {reason}</p> : null}
                               </article>
                             );
                           })}

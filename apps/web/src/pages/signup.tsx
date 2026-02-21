@@ -1,12 +1,14 @@
 import React from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { apiOnboarding } from "@/lib/api";
+import { resolveErrorMessage } from "@/lib/errorMessage";
 import { updateSession } from "@/state/sessionStore";
 
 type FormState = {
   orgName: string;
   name: string;
   email: string;
+  password: string;
 };
 
 export default function SignupPage() {
@@ -16,6 +18,7 @@ export default function SignupPage() {
     orgName: "",
     name: "",
     email: "",
+    password: "",
   });
   const [status, setStatus] = React.useState<"idle" | "loading" | "error">("idle");
   const [error, setError] = React.useState<string | null>(null);
@@ -30,9 +33,15 @@ export default function SignupPage() {
   };
 
   const submitOnboarding = async (mode: "provision" | "register_only") => {
+    const trimmedPassword = form.password.trim();
     if (!form.orgName || !form.name || !form.email) {
       setStatus("error");
       setError("Preencha todos os campos.");
+      return;
+    }
+    if (trimmedPassword && trimmedPassword.length < 6) {
+      setStatus("error");
+      setError("A senha precisa ter no mínimo 6 caracteres.");
       return;
     }
 
@@ -44,19 +53,23 @@ export default function SignupPage() {
         orgName: form.orgName,
         name: form.name,
         email: form.email,
+        password: trimmedPassword ? trimmedPassword : undefined,
         marketplaceId,
         mode,
       });
       if (!response.ok || !response.data) {
-        throw new Error(response.error?.message ?? "Falha ao criar conta.");
+        throw new Error(
+          response.error?.message ??
+            response.error?.code ??
+            "Falha ao criar conta."
+        );
       }
 
-      if (mode === "provision" && response.data.token) {
+      if (mode === "provision") {
         updateSession({
           tenantId: response.data.tenantId,
           workspaceId: response.data.workspaceId,
           userId: response.data.userId,
-          token: response.data.token,
         });
         navigate(nextPath);
       } else {
@@ -64,7 +77,7 @@ export default function SignupPage() {
       }
     } catch (err) {
       setStatus("error");
-      setError(err instanceof Error ? err.message : "Falha ao criar conta.");
+      setError(resolveErrorMessage(err, "Falha ao criar conta."));
     } finally {
       setStatus("idle");
     }
@@ -93,7 +106,6 @@ export default function SignupPage() {
         </h1>
         <p className="text-sm text-muted-foreground">
           Em segundos você tera um ambiente privado com times, filiais, projetos e agentes.
-          
         </p>
       </header>
 
@@ -135,6 +147,17 @@ export default function SignupPage() {
             value={form.email}
             onChange={handleChange("email")}
             required
+          />
+        </label>
+
+        <label className="block text-sm text-muted-foreground">
+          Senha 
+          <input
+            className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
+            placeholder="Crie uma senha de acesso"
+            type="password"
+            value={form.password}
+            onChange={handleChange("password")}
           />
         </label>
 

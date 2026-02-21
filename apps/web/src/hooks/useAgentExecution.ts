@@ -42,7 +42,7 @@ export function useAgentExecution() {
 
   useEffect(() => {
     let active = true;
-    if (!session.token) {
+    if (!session.userId) {
       setMarketplaceItems([]);
       setDelegations([]);
       return () => {
@@ -65,7 +65,7 @@ export function useAgentExecution() {
     return () => {
       active = false;
     };
-  }, [session.token, session.tenantId, session.workspaceId]);
+  }, [session.userId, session.tenantId, session.workspaceId]);
 
   const activeDelegations = useMemo(
     () => delegations.filter((delegation) => isDelegationActive(delegation)),

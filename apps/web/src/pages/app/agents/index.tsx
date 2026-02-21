@@ -4,6 +4,7 @@ import ChatAgentLauncher, { type LedgerEvent } from "../../../components/agents/
 import PolicyPanel from "../../../components/agents/PolicyPanel";
 import type { ConversationPolicy, ConversationStatus } from "@/hooks/useConversation";
 import { useSession } from "@/state/sessionStore";
+import { apiGetAuthMe } from "@/lib/api";
 
 type PlaybookConfig = {
   title: string;
@@ -302,6 +303,8 @@ function normalizeAgentKey(value: string) {
 
 const AgentsPage: React.FC = () => {
   const { workspaceId } = useSession();
+  const [permissions, setPermissions] = useState<Set<string>>(new Set());
+  const [authRole, setAuthRole] = useState<string>("");
   const [agentId, setAgentId] = useState<string>();
   const [playbookAgent, setPlaybookAgent] = useState<string | null>(null);
   const [showSse, setShowSse] = useState(false);
@@ -317,6 +320,32 @@ const AgentsPage: React.FC = () => {
   const [currentRunId, setCurrentRunId] = useState<string | null>(null);
 
   const playbookTargetId = agentId ? "playbook-panel" : null;
+  const isGlobalAdminSession = useMemo(() => {
+    const normalized = authRole.trim().toLowerCase();
+    return normalized.includes("global_admin") || normalized.includes("eiah_admin");
+  }, [authRole]);
+  const can = (permission: string) => isGlobalAdminSession || permissions.has(permission);
+  const canViewAgents = can("runs.view");
+  const canViewLedger = can("ledger.view");
+  const canViewPolicy = can("governance.view");
+  const canViewSse = can("runs.view");
+
+  useEffect(() => {
+    let active = true;
+    apiGetAuthMe()
+      .then((response) => {
+        if (!active || !response?.data) return;
+        setAuthRole(response.data.role ?? "");
+        setPermissions(new Set(response.data.permissions ?? []));
+      })
+      .catch(() => {
+        if (!active) return;
+        setAuthRole("");
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const playbookData = useMemo(() => {
     if (!agentId) return null;
@@ -375,45 +404,69 @@ const AgentsPage: React.FC = () => {
               Configure intenções, limites e credenciais; visualize rapidamente cada agente e seus diferenciais.
             </p>
             <div className="mt-6">
-              <ChatAgentLauncher
-                activeAgentId={agentId}
-                onLedgerChange={setLedger}
-                onRunIdChange={setCurrentRunId}
-                onSseStatusChange={setSseStatus}
-                onPolicyChange={setPolicyState}
-                workspaceId={workspaceId}
-              />
+              {canViewAgents ? (
+                <ChatAgentLauncher
+                  activeAgentId={agentId}
+                  onLedgerChange={setLedger}
+                  onRunIdChange={setCurrentRunId}
+                  onSseStatusChange={setSseStatus}
+                  onPolicyChange={setPolicyState}
+                  workspaceId={workspaceId}
+                />
+              ) : (
+                <div className="glass-subtle p-4 text-xs text-muted-foreground">
+                  Sem permissao para iniciar agentes ou visualizar runs.
+                </div>
+              )}
             </div>
           </div>
           <div className="w-full lg:max-w-xs lg:justify-self-end lg:self-start">
-            <AgentSelect
-              value={agentId}
-              onChange={setAgentId}
-              showPlaybook={Boolean(agentId)}
-              onPlaybookClick={agentId ? handlePlaybookClick : undefined}
-            />
+            {canViewAgents ? (
+              <AgentSelect
+                value={agentId}
+                onChange={setAgentId}
+                showPlaybook={Boolean(agentId)}
+                onPlaybookClick={agentId ? handlePlaybookClick : undefined}
+              />
+            ) : (
+              <div className="glass-subtle p-4 text-xs text-muted-foreground">
+                Lista de agentes indisponível sem permissão.
+              </div>
+            )}
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
               <button
                 type="button"
-                onClick={() => setShowSse((prev) => !prev)}
-                className="pill transition hover:border-accent/40"
+                onClick={() => {
+                  if (!canViewSse) return;
+                  setShowSse((prev) => !prev);
+                }}
+                className={`pill transition ${canViewSse ? "hover:border-accent/40" : "opacity-50"}`}
                 aria-pressed={showSse}
+                disabled={!canViewSse}
               >
                 REAL-TIME
               </button>
               <button
                 type="button"
-                onClick={() => setShowLedger((prev) => !prev)}
-                className="pill transition hover:border-accent/40"
+                onClick={() => {
+                  if (!canViewLedger) return;
+                  setShowLedger((prev) => !prev);
+                }}
+                className={`pill transition ${canViewLedger ? "hover:border-accent/40" : "opacity-50"}`}
                 aria-pressed={showLedger}
+                disabled={!canViewLedger}
               >
                 AUDIT & LOG
               </button>
               <button
                 type="button"
-                onClick={() => setShowRbac((prev) => !prev)}
-                className="pill transition hover:border-accent/40"
+                onClick={() => {
+                  if (!canViewPolicy) return;
+                  setShowRbac((prev) => !prev);
+                }}
+                className={`pill transition ${canViewPolicy ? "hover:border-accent/40" : "opacity-50"}`}
                 aria-pressed={showRbac}
+                disabled={!canViewPolicy}
               >
                 POLICY
               </button>

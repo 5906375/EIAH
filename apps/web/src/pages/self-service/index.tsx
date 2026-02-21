@@ -3,14 +3,22 @@ import { Link, useNavigate } from "react-router-dom";
 import { selfServiceConfigs } from "./config";
 import {
   apiApproveDelegation,
+  apiCreateMarketplaceItem,
+  apiGetAuthMe,
+  apiListAgentInstalls,
+  apiListConnectors,
   apiListDelegations,
   apiListMarketplace,
   apiRejectDelegation,
   apiSubscribeMarketplace,
+  ApiError,
+  type AgentInstall,
+  type ConnectorInstance,
   type DelegationPolicy,
   type MarketplaceItem,
 } from "@/lib/api";
 import { useSession } from "@/state/sessionStore";
+import { canAdminTenant, useTenantRole } from "@/lib/tenantRole";
 import eiahAgentsVideo from "../../assets/eiah-agentes.mp4";
 import eiahMarketingVideo from "../../assets/eiah-marketing.mp4";
 import eiahJ360Video from "../../assets/eiah-j360.mp4";
@@ -27,6 +35,7 @@ import eiahCoreVideo from "../../assets/eiah-core.mp4";
 import eiahGeralVideo from "../../assets/eiah-geral.mp4";
 import SelfServiceNav from "./components/SelfServiceNav";
 import NeedMoreInfoDialog from "./components/NeedMoreInfoDialog";
+import LifecycleBadge, { type LifecycleStatus } from "@/components/marketplace/LifecycleBadge";
 
 const primaryAgent = selfServiceConfigs[0];
 const agentArtwork: Record<string, string> = {};
@@ -49,6 +58,8 @@ const agentVideoMap: Record<string, string> = {
 
 export default function SelfServiceIndexPage() {
   const session = useSession();
+  const tenantRole = useTenantRole();
+  const isTenantAdmin = canAdminTenant(tenantRole);
   const navigate = useNavigate();
   const [marketplaceItems, setMarketplaceItems] = React.useState<MarketplaceItem[]>([]);
   const [marketplaceFilter, setMarketplaceFilter] = React.useState<"all" | "agent" | "action">(
@@ -70,6 +81,17 @@ export default function SelfServiceIndexPage() {
   const [formValues, setFormValues] = React.useState<
     Record<string, { scope: "read" | "execute" | "admin"; trustMin: string; validUntil: string }>
   >({});
+
+  const formatReason = (error: unknown, fallback: string) => {
+    if (error instanceof ApiError) {
+      const body = error.body as { error?: { message?: string; reason?: string } } | undefined;
+      const reason = body?.error?.reason;
+      const message = body?.error?.message ?? error.message;
+      return reason ? `${message} (${reason})` : message;
+    }
+    if (error instanceof Error) return error.message;
+    return fallback;
+  };
   const [providerDelegations, setProviderDelegations] = React.useState<DelegationPolicy[]>([]);
   const [viewMode, setViewMode] = React.useState<"catalog" | "approvals">("catalog");
   const [decisionLoading, setDecisionLoading] = React.useState<Record<string, "approve" | "reject">>(
@@ -78,6 +100,101 @@ export default function SelfServiceIndexPage() {
   const [termsItem, setTermsItem] = React.useState<MarketplaceItem | null>(null);
   const [termsOpen, setTermsOpen] = React.useState(false);
   const [termsSubmitting, setTermsSubmitting] = React.useState(false);
+  const [permissions, setPermissions] = React.useState<Set<string>>(new Set());
+  const [authRole, setAuthRole] = React.useState<string>("");
+  const [connectorInstances, setConnectorInstances] = React.useState<ConnectorInstance[]>([]);
+  const [agentInstalls, setAgentInstalls] = React.useState<AgentInstall[]>([]);
+  const [lifecycleError, setLifecycleError] = React.useState<string | null>(null);
+  const [registerOpen, setRegisterOpen] = React.useState(false);
+  const [registerStatus, setRegisterStatus] = React.useState<"idle" | "saving">("idle");
+  const [registerError, setRegisterError] = React.useState<string | null>(null);
+  const [registerForm, setRegisterForm] = React.useState<{
+    type: "agent" | "action";
+    name: string;
+    version: string;
+    description: string;
+    trustScore: string;
+    isPublic: boolean;
+  }>({
+    type: "action",
+    name: "",
+    version: "v1",
+    description: "",
+    trustScore: "",
+    isPublic: true,
+  });
+
+  const isGlobalAdminSession = React.useMemo(() => {
+    const normalized = authRole.trim().toLowerCase();
+    return normalized.includes("global_admin") || normalized.includes("eiah_admin");
+  }, [authRole]);
+  const can = React.useCallback(
+    (permission: string) => isGlobalAdminSession || permissions.has(permission),
+    [isGlobalAdminSession, permissions]
+  );
+  const canViewMarketplace = can("delegation.view");
+  const canManageDelegation =
+    can("delegation.manage") && (isTenantAdmin || isGlobalAdminSession);
+  const canViewApprovals = can("approvals.view");
+  const canApproveDelegation =
+    can("approvals.approve") && (isTenantAdmin || isGlobalAdminSession);
+  const noAccess = !canViewMarketplace && !canViewApprovals && !canManageDelegation;
+
+  const handleRegisterMarketplaceItem = async () => {
+    if (!canManageDelegation || registerStatus === "saving") return;
+    const name = registerForm.name.trim();
+    const version = registerForm.version.trim();
+    if (!name || !version) {
+      setRegisterError("Informe nome e versão.");
+      return;
+    }
+    const trustRaw = registerForm.trustScore.trim();
+    const trustScore = trustRaw.length > 0 ? Number(trustRaw) : undefined;
+    if (trustRaw.length > 0 && (!Number.isFinite(trustScore) || trustScore < 0 || trustScore > 100)) {
+      setRegisterError("Trust score deve ficar entre 0 e 100.");
+      return;
+    }
+
+    setRegisterStatus("saving");
+    setRegisterError(null);
+    try {
+      const response = await apiCreateMarketplaceItem({
+        type: registerForm.type,
+        name,
+        version,
+        description: registerForm.description.trim() || undefined,
+        trustScore,
+        isPublic: registerForm.isPublic,
+      });
+      if (!response.ok || !response.item) {
+        setRegisterError("Falha ao registrar item no marketplace.");
+        return;
+      }
+      setMarketplaceItems((prev) => [response.item!, ...prev.filter((item) => item.id !== response.item!.id)]);
+      setViewMode("catalog");
+      setMarketplaceFilter(registerForm.type);
+      setRegisterOpen(false);
+      setRegisterForm({
+        type: "action",
+        name: "",
+        version: "v1",
+        description: "",
+        trustScore: "",
+        isPublic: true,
+      });
+      setSubscribeNotice(`Item ${response.item.name} publicado com sucesso.`);
+    } catch (error) {
+      setRegisterError(formatReason(error, "Falha ao registrar item no marketplace."));
+    } finally {
+      setRegisterStatus("idle");
+    }
+  };
+
+  React.useEffect(() => {
+    if (!canViewApprovals && viewMode === "approvals") {
+      setViewMode("catalog");
+    }
+  }, [canViewApprovals, viewMode]);
 
   const delegationByMarketplaceId = React.useMemo(() => {
     const map = new Map<string, DelegationPolicy>();
@@ -159,6 +276,44 @@ export default function SelfServiceIndexPage() {
     );
   };
 
+  const getInstallLifecycle = (delegationStatus: string): LifecycleStatus => {
+    if (delegationStatus === "active") return "ACTIVE";
+    if (delegationStatus === "pending_approval") return "DRAFT";
+    if (delegationStatus === "rejected" || delegationStatus === "revoked" || delegationStatus === "expired") {
+      return "DISABLED";
+    }
+    return "DRAFT";
+  };
+
+  const getConnectorLifecycle = (item: MarketplaceItem): LifecycleStatus => {
+    if (item.approvalStatus === "pending") return "DRAFT";
+    if (item.approvalStatus === "approved") return "ACTIVE";
+    if (item.approvalStatus === "rejected") return "DISABLED";
+    return item.isPublic ? "ACTIVE" : "DRAFT";
+  };
+
+  const normalizeKey = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+  const connectorByProvider = React.useMemo(() => {
+    const map = new Map<string, ConnectorInstance>();
+    connectorInstances.forEach((connector) => {
+      const key = normalizeKey(connector.provider);
+      if (!key) return;
+      if (!map.has(key)) map.set(key, connector);
+    });
+    return map;
+  }, [connectorInstances]);
+
+  const installByAgent = React.useMemo(() => {
+    const map = new Map<string, AgentInstall>();
+    agentInstalls.forEach((install) => {
+      const key = normalizeKey(install.agentId);
+      if (!key) return;
+      if (!map.has(key)) map.set(key, install);
+    });
+    return map;
+  }, [agentInstalls]);
+
   const formatDelegationStatus = (status: string) => {
     const labels: Record<string, string> = {
       pending_approval: "aguardando aprovacao",
@@ -190,15 +345,20 @@ export default function SelfServiceIndexPage() {
   }, [marketplaceItems, marketplaceFilter]);
 
   const refreshDelegations = React.useCallback(async () => {
+    if (!canViewMarketplace && !canViewApprovals && !canManageDelegation) {
+      return;
+    }
     setDelegationsStatus("loading");
     setDelegationsError(null);
     try {
       const [delegateeResponse, delegatorResponse] = await Promise.all([
-        apiListDelegations({ role: "delegatee" }),
-        apiListDelegations({ role: "delegator" }),
+        canViewMarketplace || canManageDelegation
+          ? apiListDelegations({ role: "delegatee" })
+          : Promise.resolve({ items: [] }),
+        canViewApprovals ? apiListDelegations({ role: "delegator" }) : Promise.resolve({ items: [] }),
       ]);
-      setDelegations(delegateeResponse.items ?? []);
-      setProviderDelegations(delegatorResponse.items ?? []);
+      setDelegations((delegateeResponse as { items?: DelegationPolicy[] }).items ?? []);
+      setProviderDelegations((delegatorResponse as { items?: DelegationPolicy[] }).items ?? []);
       setDelegationsStatus("ready");
     } catch (error) {
       setDelegationsStatus("error");
@@ -208,22 +368,67 @@ export default function SelfServiceIndexPage() {
 
   React.useEffect(() => {
     let active = true;
+    apiGetAuthMe()
+      .then((response) => {
+        if (!active || !response?.data) return;
+        setAuthRole(response.data.role ?? "");
+        setPermissions(new Set(response.data.permissions ?? []));
+      })
+      .catch(() => {
+        if (!active) return;
+        setAuthRole("");
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  React.useEffect(() => {
+    let active = true;
+    setLifecycleError(null);
+    Promise.all([apiListConnectors(session.workspaceId), apiListAgentInstalls(session.workspaceId)])
+      .then(([connectorsResponse, installsResponse]) => {
+        if (!active) return;
+        setConnectorInstances(connectorsResponse.items ?? []);
+        setAgentInstalls(installsResponse.items ?? []);
+      })
+      .catch((error) => {
+        if (!active) return;
+        setLifecycleError(error instanceof Error ? error.message : "Falha ao carregar estados.");
+      });
+    return () => {
+      active = false;
+    };
+  }, [session.workspaceId]);
+
+  React.useEffect(() => {
+    if (!canViewMarketplace && !canViewApprovals && !canManageDelegation) {
+      setMarketplaceStatus("ready");
+      setDelegationsStatus("ready");
+      setMarketplaceItems([]);
+      setDelegations([]);
+      setProviderDelegations([]);
+      return;
+    }
+    let active = true;
     setMarketplaceStatus("loading");
     setMarketplaceError(null);
     setDelegationsStatus("loading");
     setDelegationsError(null);
 
     Promise.all([
-      apiListMarketplace(),
-      apiListDelegations({ role: "delegatee" }),
-      apiListDelegations({ role: "delegator" }),
+      canViewMarketplace ? apiListMarketplace() : Promise.resolve({ items: [] }),
+      canViewMarketplace || canManageDelegation
+        ? apiListDelegations({ role: "delegatee" })
+        : Promise.resolve({ items: [] }),
+      canViewApprovals ? apiListDelegations({ role: "delegator" }) : Promise.resolve({ items: [] }),
     ])
       .then(([marketplaceResponse, delegationResponse, delegatorResponse]) => {
         if (!active) return;
-        setMarketplaceItems(marketplaceResponse.items ?? []);
+        setMarketplaceItems((marketplaceResponse as { items?: MarketplaceItem[] }).items ?? []);
         setMarketplaceStatus("ready");
-        setDelegations(delegationResponse.items ?? []);
-        setProviderDelegations(delegatorResponse.items ?? []);
+        setDelegations((delegationResponse as { items?: DelegationPolicy[] }).items ?? []);
+        setProviderDelegations((delegatorResponse as { items?: DelegationPolicy[] }).items ?? []);
         setDelegationsStatus("ready");
       })
       .catch((error) => {
@@ -237,7 +442,7 @@ export default function SelfServiceIndexPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [canViewMarketplace, canViewApprovals, canManageDelegation]);
 
   React.useEffect(() => {
     setFormValues((prev) => {
@@ -302,11 +507,15 @@ export default function SelfServiceIndexPage() {
   }, [termsItem, formValues]);
 
   const handleSubscribe = (item: MarketplaceItem) => {
+    if (!canManageDelegation) {
+      setSubscribeNotice("Sem permissao para assinar delegacoes.");
+      return;
+    }
     if (subscribingIds.has(item.id)) return;
     const status = getDelegationStatus(delegationByMarketplaceId.get(item.id));
     if (status === "active" || status === "pending_approval") return;
-    if (!session.token) {
-      navigate(`/signup?marketplaceId=${encodeURIComponent(item.id)}&next=/self-service`);
+    if (!session.userId) {
+      navigate(`/login?next=/self-service`);
       return;
     }
     setSubscribeNotice(null);
@@ -353,7 +562,7 @@ export default function SelfServiceIndexPage() {
       setTermsOpen(false);
       setTermsItem(null);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Falha ao assinar item";
+      const message = formatReason(error, "Falha ao assinar item");
       setItemErrors((prev) => ({ ...prev, [termsItem.id]: message }));
     } finally {
       setTermsSubmitting(false);
@@ -366,6 +575,7 @@ export default function SelfServiceIndexPage() {
   };
 
   const handleApprove = async (delegation: DelegationPolicy) => {
+    if (!canApproveDelegation) return;
     if (decisionLoading[delegation.id]) return;
     setDecisionErrors((prev) => ({ ...prev, [delegation.id]: "" }));
     setDecisionLoading((prev) => ({ ...prev, [delegation.id]: "approve" }));
@@ -373,7 +583,7 @@ export default function SelfServiceIndexPage() {
       await apiApproveDelegation(delegation.id);
       await refreshDelegations();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Falha ao aprovar delegacao";
+      const message = formatReason(error, "Falha ao aprovar delegacao");
       setDecisionErrors((prev) => ({ ...prev, [delegation.id]: message }));
     } finally {
       setDecisionLoading((prev) => {
@@ -385,6 +595,7 @@ export default function SelfServiceIndexPage() {
   };
 
   const handleReject = async (delegation: DelegationPolicy) => {
+    if (!canApproveDelegation) return;
     if (decisionLoading[delegation.id]) return;
     setDecisionErrors((prev) => ({ ...prev, [delegation.id]: "" }));
     setDecisionLoading((prev) => ({ ...prev, [delegation.id]: "reject" }));
@@ -392,7 +603,7 @@ export default function SelfServiceIndexPage() {
       await apiRejectDelegation(delegation.id);
       await refreshDelegations();
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Falha ao rejeitar delegacao";
+      const message = formatReason(error, "Falha ao rejeitar delegacao");
       setDecisionErrors((prev) => ({ ...prev, [delegation.id]: message }));
     } finally {
       setDecisionLoading((prev) => {
@@ -405,6 +616,11 @@ export default function SelfServiceIndexPage() {
 
   return (
     <div className="space-y-10">
+      {noAccess ? (
+        <div className="glass-panel p-6 text-sm text-muted-foreground">
+          Sem permissao para acessar marketplace ou delegacoes. Fale com um administrador para liberar acesso.
+        </div>
+      ) : null}
       <NeedMoreInfoDialog
         open={termsOpen && !!termsItem}
         request={termsRequest}
@@ -575,12 +791,15 @@ export default function SelfServiceIndexPage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <Link
-              to="/signup"
-              className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.25em] text-foreground transition hover:bg-white/10"
+            <button
+              type="button"
+              onClick={() => setRegisterOpen((prev) => !prev)}
+              className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.25em] text-foreground transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={!canManageDelegation}
+              title={!canManageDelegation ? "Apenas Tenant Admin pode registrar itens." : undefined}
             >
               Registrar
-            </Link>
+            </button>
             <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 p-1">
               <button
                 type="button"
@@ -595,12 +814,18 @@ export default function SelfServiceIndexPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setViewMode("approvals")}
+                onClick={() => {
+                  if (!canViewApprovals) return;
+                  setViewMode("approvals");
+                }}
                 className={`rounded-full px-4 py-2 text-[10px] uppercase tracking-[0.25em] transition ${
                   viewMode === "approvals"
                     ? "bg-accent/30 text-accent"
-                    : "text-muted-foreground hover:text-foreground"
+                    : canViewApprovals
+                    ? "text-muted-foreground hover:text-foreground"
+                    : "text-muted-foreground opacity-50"
                 }`}
+                disabled={!canViewApprovals}
               >
                 Aprovacoes
               </button>
@@ -611,6 +836,7 @@ export default function SelfServiceIndexPage() {
               onChange={(event) => {
                 setMarketplaceFilter(event.target.value as "all" | "agent" | "action");
               }}
+              disabled={!canViewMarketplace}
             >
               <option value="all">Todos</option>
               <option value="agent">Agents</option>
@@ -623,14 +849,120 @@ export default function SelfServiceIndexPage() {
             ) : null}
           </div>
         </div>
+        {registerOpen ? (
+          <div className="mt-6 rounded-2xl border border-white/10 bg-[#0a1527] p-4">
+            <p className="text-[10px] uppercase tracking-[0.25em] text-accent">Registrar item marketplace</p>
+            <div className="mt-3 grid gap-3 md:grid-cols-2">
+              <label className="text-xs text-muted-foreground">
+                Tipo
+                <select
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-foreground"
+                  value={registerForm.type}
+                  onChange={(event) =>
+                    setRegisterForm((prev) => ({
+                      ...prev,
+                      type: event.target.value as "agent" | "action",
+                    }))
+                  }
+                >
+                  <option value="action">action</option>
+                  <option value="agent">agent</option>
+                </select>
+              </label>
+              <label className="text-xs text-muted-foreground">
+                Versão
+                <input
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-foreground"
+                  value={registerForm.version}
+                  onChange={(event) =>
+                    setRegisterForm((prev) => ({ ...prev, version: event.target.value }))
+                  }
+                  placeholder="v1"
+                />
+              </label>
+              <label className="text-xs text-muted-foreground md:col-span-2">
+                Nome
+                <input
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-foreground"
+                  value={registerForm.name}
+                  onChange={(event) =>
+                    setRegisterForm((prev) => ({ ...prev, name: event.target.value }))
+                  }
+                  placeholder="Ex.: gerar-relatorio-financeiro"
+                />
+              </label>
+              <label className="text-xs text-muted-foreground md:col-span-2">
+                Descrição
+                <input
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-foreground"
+                  value={registerForm.description}
+                  onChange={(event) =>
+                    setRegisterForm((prev) => ({ ...prev, description: event.target.value }))
+                  }
+                  placeholder="Descrição curta do item"
+                />
+              </label>
+              <label className="text-xs text-muted-foreground">
+                Trust score (0-100)
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-foreground"
+                  value={registerForm.trustScore}
+                  onChange={(event) =>
+                    setRegisterForm((prev) => ({ ...prev, trustScore: event.target.value }))
+                  }
+                  placeholder="70"
+                />
+              </label>
+              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={registerForm.isPublic}
+                  onChange={(event) =>
+                    setRegisterForm((prev) => ({ ...prev, isPublic: event.target.checked }))
+                  }
+                />
+                Público
+              </label>
+            </div>
+            {registerError ? <p className="mt-3 text-xs text-rose-300">{registerError}</p> : null}
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={handleRegisterMarketplaceItem}
+                disabled={registerStatus === "saving"}
+                className="rounded-full border border-accent/60 bg-accent/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent transition hover:border-accent hover:bg-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {registerStatus === "saving" ? "Publicando..." : "Publicar"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setRegisterOpen(false)}
+                className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.25em] text-foreground transition hover:bg-white/10"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        ) : null}
         {marketplaceStatus === "loading" ? (
           <p className="mt-6 text-sm text-muted-foreground">Carregando itens do marketplace...</p>
         ) : null}
         {marketplaceStatus === "error" ? (
           <p className="mt-6 text-sm text-red-300">{marketplaceError ?? "Falha ao carregar marketplace"}</p>
         ) : null}
+        {lifecycleError ? (
+          <p className="mt-3 text-xs text-amber-200">{lifecycleError}</p>
+        ) : null}
         {marketplaceStatus === "ready" ? (
           viewMode === "catalog" ? (
+            !canViewMarketplace ? (
+              <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-muted-foreground">
+                Sem permissao para visualizar o marketplace.
+              </div>
+            ) : (
             <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {filteredMarketplaceItems.length === 0 ? (
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-6 text-sm text-muted-foreground">
@@ -641,16 +973,28 @@ export default function SelfServiceIndexPage() {
                   const isSubscribing = subscribingIds.has(item.id);
                   const delegation = delegationByMarketplaceId.get(item.id);
                   const delegationStatus = getDelegationStatus(delegation);
+                  const connector =
+                    item.type === "action"
+                      ? connectorByProvider.get(normalizeKey(item.name))
+                      : null;
+                  const install =
+                    item.type === "agent"
+                      ? installByAgent.get(normalizeKey(item.name))
+                      : null;
+                  const installLifecycle = install ? install.status : getInstallLifecycle(delegationStatus);
+                  const connectorLifecycle = connector
+                    ? connector.status
+                    : item.type === "action"
+                    ? getConnectorLifecycle(item)
+                    : null;
+                  const primaryLifecycle =
+                    item.type === "action" ? connectorLifecycle : installLifecycle;
                   const buttonLabel =
-                    delegationStatus === "active"
+                    primaryLifecycle === "ACTIVE"
                       ? "Ativo"
-                      : delegationStatus === "pending_approval"
-                      ? "Aguardando"
-                      : delegationStatus === "rejected" || delegationStatus === "revoked"
-                      ? "Reenviar"
-                      : delegationStatus === "expired"
-                      ? "Renovar"
-                      : "Solicitar acesso";
+                      : primaryLifecycle === "DISABLED"
+                      ? "Reativar"
+                      : "Ativar";
                   const itemError = itemErrors[item.id];
                   return (
                     <div
@@ -673,6 +1017,14 @@ export default function SelfServiceIndexPage() {
                           Processando
                         </span>
                       ) : null}
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {item.type === "action" && connectorLifecycle ? (
+                          <LifecycleBadge status={connectorLifecycle} />
+                        ) : null}
+                        {item.type === "agent" && installLifecycle ? (
+                          <LifecycleBadge status={installLifecycle} />
+                        ) : null}
+                      </div>
                       {renderStatusChip(delegationStatus)}
                       <div className="mt-4 flex items-center justify-between gap-3 text-xs text-muted-foreground">
                         <span>Trust sugerido: {item.trustScore ?? "—"}</span>
@@ -685,6 +1037,11 @@ export default function SelfServiceIndexPage() {
                         <p className="mt-3 text-xs text-red-300">{delegationsError}</p>
                       ) : null}
                       {itemError ? <p className="mt-3 text-xs text-red-300">{itemError}</p> : null}
+                      {!canManageDelegation ? (
+                        <p className="mt-3 text-xs text-amber-200">
+                          Apenas Tenant Admin pode instalar agentes/conectores.
+                        </p>
+                      ) : null}
                       {delegation ? (
                         <p className="mt-3 text-xs text-muted-foreground">
                           Status: {formatDelegationStatus(delegationStatus)} (ate{" "}
@@ -700,6 +1057,7 @@ export default function SelfServiceIndexPage() {
                             className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-foreground"
                             value={formValues[item.id]?.scope ?? "execute"}
                             onChange={(event) => {
+                              if (!canManageDelegation) return;
                               const value = event.target.value as "read" | "execute" | "admin";
                               setFormValues((prev) => ({
                                 ...prev,
@@ -710,6 +1068,7 @@ export default function SelfServiceIndexPage() {
                                 },
                               }));
                             }}
+                            disabled={!canManageDelegation}
                           >
                             <option value="read">read</option>
                             <option value="execute">execute</option>
@@ -727,6 +1086,7 @@ export default function SelfServiceIndexPage() {
                             className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-foreground"
                             value={formValues[item.id]?.trustMin ?? ""}
                             onChange={(event) => {
+                              if (!canManageDelegation) return;
                               const value = event.target.value;
                               setFormValues((prev) => ({
                                 ...prev,
@@ -737,6 +1097,7 @@ export default function SelfServiceIndexPage() {
                                 },
                               }));
                             }}
+                            disabled={!canManageDelegation}
                           />
                         </label>
                         <label className="flex flex-col gap-2">
@@ -746,6 +1107,7 @@ export default function SelfServiceIndexPage() {
                             className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-foreground"
                             value={formValues[item.id]?.validUntil ?? ""}
                             onChange={(event) => {
+                              if (!canManageDelegation) return;
                               const value = event.target.value;
                               setFormValues((prev) => ({
                                 ...prev,
@@ -756,6 +1118,7 @@ export default function SelfServiceIndexPage() {
                                 },
                               }));
                             }}
+                            disabled={!canManageDelegation}
                           />
                         </label>
                       </div>
@@ -765,9 +1128,15 @@ export default function SelfServiceIndexPage() {
                         disabled={
                           isSubscribing ||
                           delegationStatus === "active" ||
-                          delegationStatus === "pending_approval"
+                          delegationStatus === "pending_approval" ||
+                          !canManageDelegation
                         }
                         className="mt-5 inline-flex items-center justify-center rounded-full border border-accent/60 bg-accent/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-accent transition hover:border-accent hover:bg-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
+                        title={
+                          !canManageDelegation
+                            ? "Apenas Tenant Admin pode ativar ou reativar."
+                            : undefined
+                        }
                       >
                         {isSubscribing ? "Assinando..." : buttonLabel}
                       </button>
@@ -776,6 +1145,7 @@ export default function SelfServiceIndexPage() {
                 })
               )}
             </div>
+            )
           ) : (
             <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {pendingApprovals.length === 0 ? (
@@ -822,7 +1192,7 @@ export default function SelfServiceIndexPage() {
                         <button
                           type="button"
                           onClick={() => handleApprove(delegation)}
-                          disabled={!!decision}
+                          disabled={!!decision || !canApproveDelegation}
                           className="inline-flex items-center justify-center rounded-full border border-emerald-400/50 bg-emerald-400/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-emerald-200 transition hover:border-emerald-400 hover:bg-emerald-400/20 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {decision === "approve" ? "Aprovando..." : "Aprovar"}
@@ -830,12 +1200,17 @@ export default function SelfServiceIndexPage() {
                         <button
                           type="button"
                           onClick={() => handleReject(delegation)}
-                          disabled={!!decision}
+                          disabled={!!decision || !canApproveDelegation}
                           className="inline-flex items-center justify-center rounded-full border border-rose-400/50 bg-rose-400/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-rose-200 transition hover:border-rose-400 hover:bg-rose-400/20 disabled:cursor-not-allowed disabled:opacity-60"
                         >
                           {decision === "reject" ? "Rejeitando..." : "Rejeitar"}
                         </button>
                       </div>
+                      {!canApproveDelegation ? (
+                        <p className="mt-3 text-xs text-amber-200">
+                          Sem permissão para aprovação.
+                        </p>
+                      ) : null}
                     </div>
                   );
                 })

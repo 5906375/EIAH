@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useMemo, useState, type ComponentPropsWithoutRef } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
-import { apiAdoptRecommendation, apiCreateSession, apiListRunEvents, BASE_URL, RunEvent, RunStatus } from "@/lib/api";
+import {
+  apiAdoptRecommendation,
+  apiListRunApprovals,
+  apiListRunEvents,
+  BASE_URL,
+  RunEvent,
+  RunStatus,
+  type ApprovalRecord,
+} from "@/lib/api";
 import { centsToBRL, extractDuration, formatAgentLabel, formatClockTime, formatDuration } from "./utils";
 import RunTimeline from "./RunTimeline";
 import GovernancePanel from "./GovernancePanel";
@@ -132,6 +140,10 @@ type SummaryItem = { key: string; label: string; icon: string; value?: string };
 
 const statusStyles: Record<RunStatus, { badge: string; label: string }> = {
   pending: { badge: "bg-amber-500/20 text-amber-200 animate-pulse", label: "Na fila" },
+  awaiting_approval: {
+    badge: "bg-sky-500/20 text-sky-200 animate-pulse",
+    label: "Aguardando aprovacao",
+  },
   running: { badge: "bg-amber-400/20 text-amber-100 animate-pulse", label: "Em Execucao" },
   success: { badge: "bg-emerald-500/20 text-emerald-200", label: "Sucesso" },
   error: { badge: "bg-red-500/20 text-red-200", label: "Erro" },
@@ -165,6 +177,9 @@ export default function RunViewer({ run }: { run: RunData }) {
   const [events, setEvents] = useState<RunEvent[]>([]);
   const [eventsError, setEventsError] = useState<string | null>(null);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
+  const [approvals, setApprovals] = useState<ApprovalRecord[]>([]);
+  const [approvalsError, setApprovalsError] = useState<string | null>(null);
+  const [currentPlanHash, setCurrentPlanHash] = useState<string | null>(null);
   const [alertFeedback, setAlertFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
   const [includeDetailsInExport, setIncludeDetailsInExport] = useState(false);
@@ -232,12 +247,21 @@ export default function RunViewer({ run }: { run: RunData }) {
     [run.startedAt, run.finishedAt, run.meta?.tookMs]
   );
   const costLabel = useMemo(() => centsToBRL(run.costCents), [run.costCents]);
+  const approvalsSummary = useMemo(() => {
+    if (!approvals.length) return null;
+    const latest = approvals[0];
+    const planMatch = currentPlanHash ? latest.planHash === currentPlanHash : null;
+    return { latest, planMatch };
+  }, [approvals, currentPlanHash]);
 
   useEffect(() => {
     if (!run?.id || run.id === "run_1234") {
       setEvents([]);
       setEventsError(null);
       setIsLoadingEvents(false);
+      setApprovals([]);
+      setApprovalsError(null);
+      setCurrentPlanHash(null);
       return;
     }
 
@@ -257,43 +281,36 @@ export default function RunViewer({ run }: { run: RunData }) {
         const url = new URL(`${baseUrl}/runs/${run.id}/stream`);
         if (lastEventId) url.searchParams.set("cursor", lastEventId);
 
-        apiCreateSession()
-          .then(() => {
-            if (cancelled) return;
-            eventSource = new EventSource(url.toString(), { withCredentials: true });
+        if (cancelled) return;
+        eventSource = new EventSource(url.toString(), { withCredentials: true });
 
-            eventSource.onmessage = (e) => {
-              try {
-                const parsed = JSON.parse(e.data) as RunEvent;
-                setEvents((prev) => {
-                  // evita duplicação de eventos no replay
-                  if (prev.find((ev) => ev.id === parsed.id)) return prev;
-                  return [...prev, parsed];
-                });
-                lastEventId = parsed.id;
-                retryDelay = 2000; // reset do backoff em sucesso
-              } catch (err) {
-                console.warn("[RunViewer] evento SSE inválido", err);
-              }
-            };
+        eventSource.onmessage = (e) => {
+          try {
+            const parsed = JSON.parse(e.data) as RunEvent;
+            setEvents((prev) => {
+              // evita duplicação de eventos no replay
+              if (prev.find((ev) => ev.id === parsed.id)) return prev;
+              return [...prev, parsed];
+            });
+            lastEventId = parsed.id;
+            retryDelay = 2000; // reset do backoff em sucesso
+          } catch (err) {
+            console.warn("[RunViewer] evento SSE inválido", err);
+          }
+        };
 
-            eventSource.onerror = () => {
-              console.warn("[RunViewer] erro SSE — tentando reconectar...");
-              eventSource?.close();
-              if (!cancelled) {
-                setTimeout(connectSSE, retryDelay);
-                retryDelay = Math.min(retryDelay * 2, 15000); // backoff exponencial
-              }
-            };
+        eventSource.onerror = () => {
+          console.warn("[RunViewer] erro SSE — tentando reconectar...");
+          eventSource?.close();
+          if (!cancelled) {
+            setTimeout(connectSSE, retryDelay);
+            retryDelay = Math.min(retryDelay * 2, 15000); // backoff exponencial
+          }
+        };
 
-            eventSource.onopen = () => {
-              console.info("[RunViewer] conexão SSE aberta");
-            };
-          })
-          .catch((err) => {
-            console.warn("[RunViewer] falha ao criar sessão SSE", err);
-            fallbackToPolling();
-          });
+        eventSource.onopen = () => {
+          console.info("[RunViewer] conexão SSE aberta");
+        };
       } catch (err) {
         console.warn("[RunViewer] falha ao conectar SSE", err);
         fallbackToPolling();
@@ -344,6 +361,25 @@ export default function RunViewer({ run }: { run: RunData }) {
       cancelled = true;
       if (eventSource) eventSource.close();
       if (pollTimer) clearInterval(pollTimer);
+    };
+  }, [run?.id]);
+
+  useEffect(() => {
+    if (!run?.id || run.id === "run_1234") return;
+    let cancelled = false;
+    setApprovalsError(null);
+    apiListRunApprovals(run.id)
+      .then((response) => {
+        if (cancelled) return;
+        setApprovals(response.items ?? []);
+        setCurrentPlanHash(response.currentPlanHash ?? null);
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setApprovalsError(error instanceof Error ? error.message : "Falha ao carregar aprovacoes");
+      });
+    return () => {
+      cancelled = true;
     };
   }, [run?.id]);
 
@@ -664,6 +700,55 @@ export default function RunViewer({ run }: { run: RunData }) {
           </p>
         </section>
       )}
+      <section className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-muted-foreground">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
+          Aprovacoes
+        </p>
+        {approvalsError ? (
+          <p className="mt-2 text-xs text-rose-200/90">
+            {approvalsError}
+          </p>
+        ) : approvals.length === 0 ? (
+          <p className="mt-2 text-xs text-muted-foreground">
+            Nenhuma aprovacao registrada para esta run.
+          </p>
+        ) : (
+          <div className="mt-3 space-y-3">
+            {approvalsSummary && (
+              <div className="flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
+                <span className="pill bg-white/10 text-foreground">
+                  Ultima tentativa: {approvalsSummary.latest.attempt}
+                </span>
+                {approvalsSummary.planMatch === true && (
+                  <span className="pill bg-emerald-400/10 text-emerald-200">PlanHash ok</span>
+                )}
+                {approvalsSummary.planMatch === false && (
+                  <span className="pill bg-amber-400/10 text-amber-200">PlanHash divergente</span>
+                )}
+              </div>
+            )}
+            {approvals.map((approval) => (
+              <article key={approval.id} className="rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[10px] uppercase tracking-[0.25em] text-foreground/80">
+                    Tentativa {approval.attempt}
+                  </span>
+                  <span className="pill bg-white/10 text-foreground">
+                    {approval.decision}
+                  </span>
+                </div>
+                <p className="mt-2">Aprovador: {approval.approverId}</p>
+                <p className="mt-1">Timestamp: {new Date(approval.createdAt).toLocaleString("pt-BR")}</p>
+                <p className="mt-1">PlanHash: {approval.planHash}</p>
+                <p className="mt-1">IntentHash: {approval.intentHash}</p>
+                {approval.reason && (
+                  <p className="mt-1 text-amber-100/90">Motivo: {approval.reason}</p>
+                )}
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
       {promptText && (
         <section className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-muted-foreground">
           <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">

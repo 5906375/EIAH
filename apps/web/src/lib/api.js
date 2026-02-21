@@ -1,11 +1,29 @@
 // Cliente minimalista com tipos e helpers.
 // Ajuste BASE_URL e a forma de obter token/header do projeto.
-import { getSession, subscribeSession } from "@/state/sessionStore";
+import { clearSession, getSession, subscribeSession } from "@/state/sessionStore";
 export const BASE_URL = import.meta.env.VITE_API_URL || "https://dev.api.eiah.ai/api";
+const PROFILE_GROUP_KEY = "eiah_profile_group";
 let cachedSession = getSession();
 subscribeSession((next) => {
     cachedSession = next;
 });
+function getProfileGroupId() {
+    if (typeof window === "undefined")
+        return undefined;
+    try {
+        const existing = window.localStorage.getItem(PROFILE_GROUP_KEY);
+        if (existing && existing.trim())
+            return existing;
+        const generated = typeof crypto !== "undefined" && "randomUUID" in crypto
+            ? crypto.randomUUID()
+            : `pg_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+        window.localStorage.setItem(PROFILE_GROUP_KEY, generated);
+        return generated;
+    }
+    catch {
+        return undefined;
+    }
+}
 export class ApiError extends Error {
     constructor(status, message, body) {
         super(`HTTP ${status} ${message}`);
@@ -14,7 +32,6 @@ export class ApiError extends Error {
     }
 }
 async function http(path, init) {
-    const token = cachedSession.token;
     const tenantId = cachedSession.tenantId;
     const workspaceId = cachedSession.workspaceId;
     const headers = new Headers(init?.headers);
@@ -22,8 +39,6 @@ async function http(path, init) {
     if (!bodyIsFormData && init?.body !== undefined && !headers.has("Content-Type")) {
         headers.set("Content-Type", "application/json");
     }
-    if (token && !headers.has("authorization"))
-        headers.set("authorization", `Bearer ${token}`);
     if (tenantId) {
         if (!headers.has("x-eiah-tenant"))
             headers.set("x-eiah-tenant", tenantId);
@@ -36,12 +51,23 @@ async function http(path, init) {
         if (!headers.has("x-workspace-id"))
             headers.set("x-workspace-id", workspaceId);
     }
+    const profileGroupId = getProfileGroupId();
+    if (profileGroupId && !headers.has("x-profile-group")) {
+        headers.set("x-profile-group", profileGroupId);
+    }
     const requestInit = {
         ...init,
         headers,
+        credentials: "include",
     };
     const res = await fetch(`${BASE_URL}${path}`, requestInit);
     if (!res.ok) {
+        if (res.status === 401 && typeof window !== "undefined") {
+            clearSession();
+            if (!window.location.pathname.startsWith("/login")) {
+                window.location.assign(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+            }
+        }
         const contentType = res.headers.get("content-type") ?? "";
         let body;
         if (contentType.includes("application/json")) {

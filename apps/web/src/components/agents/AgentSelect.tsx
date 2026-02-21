@@ -7,6 +7,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  apiGetAuthMe,
   apiListAgents,
   apiListDelegations,
   apiListMarketplace,
@@ -63,7 +64,7 @@ export default function AgentSelect({
   const [agents, setAgents] = useState<Agent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const { workspaceId, token } = useSession();
+  const { workspaceId, tenantId, userId } = useSession();
 
   useEffect(() => {
     setIsLoading(true);
@@ -72,7 +73,8 @@ export default function AgentSelect({
     const mergeAgents = (
       items: Agent[] | null | undefined,
       marketplaceItems: MarketplaceItem[],
-      delegations: DelegationPolicy[]
+      delegations: DelegationPolicy[],
+      auth?: { role?: string; tenantRole?: string | null; permissions?: string[] } | null
     ): Agent[] => {
       const activeDelegations = new Set(
         delegations
@@ -86,7 +88,19 @@ export default function AgentSelect({
       const allowedKeys = new Set(
         activeMarketplaceAgents.map((item) => normalizeAgentKey(item.name))
       );
-      const allowAllAgents = import.meta.env.DEV && activeMarketplaceAgents.length === 0;
+      const roleRaw = String(auth?.tenantRole ?? auth?.role ?? "").toUpperCase();
+      const permissions = auth?.permissions ?? [];
+      const canExecuteRuns = permissions.includes("runs.execute");
+      const isAdminOrOperatorRole =
+        roleRaw.includes("GLOBAL_ADMIN") ||
+        roleRaw.includes("TENANT_ADMIN") ||
+        roleRaw.includes("TENANT_OPERATOR");
+      const isAdminTenant = (tenantId || "").toLowerCase().includes("admin");
+      const allowAllAgents =
+        isAdminTenant ||
+        isAdminOrOperatorRole ||
+        canExecuteRuns ||
+        (import.meta.env.DEV && activeMarketplaceAgents.length === 0);
       const catalog = new Map<string, Agent>();
 
       const upsert = (agent: Agent) => {
@@ -123,14 +137,26 @@ export default function AgentSelect({
       return Array.from(catalog.values()).sort((a, b) => a.name.localeCompare(b.name));
     };
 
-    Promise.all([apiListAgents(), apiListMarketplace(), apiListDelegations({ role: "delegatee" })])
-      .then(([agentsResponse, marketplaceResponse, delegationsResponse]) => {
+    Promise.all([
+      apiListAgents(),
+      apiListMarketplace(),
+      apiListDelegations({ role: "delegatee" }),
+      apiGetAuthMe().catch(() => null),
+    ])
+      .then(([agentsResponse, marketplaceResponse, delegationsResponse, authResponse]) => {
         const fromApi = Array.isArray((agentsResponse as any)?.items)
           ? (agentsResponse as any).items
           : [];
         const marketplaceItems = marketplaceResponse.items ?? [];
         const delegations = delegationsResponse.items ?? [];
-        const nextAgents = mergeAgents(fromApi, marketplaceItems, delegations);
+        const auth = authResponse?.data
+          ? {
+              role: authResponse.data.role,
+              tenantRole: authResponse.data.tenantRole ?? null,
+              permissions: authResponse.data.permissions ?? [],
+            }
+          : null;
+        const nextAgents = mergeAgents(fromApi, marketplaceItems, delegations, auth);
         setAgents(nextAgents);
         if (value && !nextAgents.some((agent) => agent.id === value)) {
           onChange("");
@@ -142,7 +168,7 @@ export default function AgentSelect({
         setAgents([]);
       })
       .finally(() => setIsLoading(false));
-  }, [workspaceId, token]);
+  }, [workspaceId, tenantId, userId]);
 
   return (
     <div className="rounded-3xl border border-white/10 bg-surface/70 p-4 shadow-lg shadow-black/20">
@@ -165,7 +191,7 @@ export default function AgentSelect({
               <SelectItem disabled value="__empty">
                 {isLoading
                   ? "Carregando..."
-                  : loadError ?? "Nenhum agente assinado no marketplace"}
+                  : loadError ?? "Nenhum agente disponivel para este contexto de tenant/workspace"}
               </SelectItem>
             )}
             {agents.map((agent) => {
