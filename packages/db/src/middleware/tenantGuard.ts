@@ -19,6 +19,11 @@ const MODEL_GUARD_MODE: Record<string, GuardMode> = {
 
   // GuardrailLedger is tenant-scoped (no workspace_id column)
   GuardrailLedger: "tenant",
+
+  TenantMembership: "tenant",
+  Workspace: "tenant",
+  ConnectorInstance: "tenant+workspace",
+  AgentInstall: "tenant+workspace",
 };
 
 function isPlainObject(value: unknown): value is Record<string, any> {

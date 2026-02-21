@@ -1,6 +1,7 @@
 import { PrismaClient } from "./generated/client";
 import { tenantGuard } from "./middleware/tenantGuard";
 import { PrismaPg } from "@prisma/adapter-pg";
+// @ts-expect-error pg ships types conditionally and may not resolve in this workspace graph.
 import pg from "pg";
 
 const { Pool } = pg;

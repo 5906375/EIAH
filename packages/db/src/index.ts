@@ -15,7 +15,7 @@ import { getPrismaForTenant, prismaGlobal } from "./client";
 export const prisma = prismaGlobal;
 
 // 🔹 Exports principais
-export { Prisma, RunStatus } from "./generated/client";
+export { Prisma, RunStatus, RunMode } from "./generated/client";
 export * from "./middleware/tenantGuard";
 export { PrismaClient };
 export { prismaGlobal, getPrismaForTenant };

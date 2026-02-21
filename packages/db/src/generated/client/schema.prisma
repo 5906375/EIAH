@@ -16,10 +16,16 @@ datasource db {
 
 enum RunStatus {
   pending
+  awaiting_approval
   running
   success
   error
   blocked
+}
+
+enum RunMode {
+  LIVE
+  DRY_RUN
 }
 
 enum PaymentStatus {
@@ -35,70 +41,325 @@ enum DelegationStatus {
   revoked
 }
 
+enum TenantRole {
+  TENANT_ADMIN
+  TENANT_OPERATOR
+  TENANT_VIEWER
+}
+
+enum MembershipStatus {
+  INVITED
+  PENDING
+  ACTIVE
+  SUSPENDED
+  REJECTED
+  DISABLED
+}
+
+enum LifecycleStatus {
+  DRAFT
+  ACTIVE
+  DISABLED
+}
+
+enum WorkspaceStatus {
+  ACTIVE
+  DISABLED
+}
+
 model Tenant {
-  id                   String                 @id @default(cuid())
-  name                 String
-  createdAt            DateTime               @default(now()) @map("created_at")
-  updatedAt            DateTime               @updatedAt @map("updated_at")
-  apiTokens            ApiToken[]
-  embeddingChunks      EmbeddingChunk[]
-  guardrailLedger      GuardrailLedger[]
-  memoryEvents         MemoryEvent[]
-  memorySnapshots      MemorySnapshot[]
-  runEvents            RunEvent[]
-  runs                 Run[]
-  uploadedDocuments    UploadedDocument[]
-  users                User[]
-  workspaces           Workspace[]
-  tenantActionPolicies TenantActionPolicy[]
-  guardrailAuditLedger GuardrailAuditLedger[]
-  sclLedger            SclLedger[]
-  toolContracts        ToolContract[]
-  marketplaceItems     MarketplaceItem[]
-  delegationsAsOwner   DelegationPolicy[]     @relation("DelegatorTenant")
-  delegationsAsGuest   DelegationPolicy[]     @relation("DelegateeTenant")
-  agentTrustScores     AgentTrustScore[]
+  id                    String                 @id @default(cuid())
+  name                  String
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+  apiTokens             ApiToken[]
+  customRoles           TenantRoleCustom[]
+  embeddingChunks       EmbeddingChunk[]
+  guardrailLedger       GuardrailLedger[]
+  memoryEvents          MemoryEvent[]
+  memorySnapshots       MemorySnapshot[]
+  runEvents             RunEvent[]
+  runs                  Run[]
+  uploadedDocuments     UploadedDocument[]
+  users                 User[]
+  workspaces            Workspace[]
+  tenantActionPolicies  TenantActionPolicy[]
+  guardrailAuditLedger  GuardrailAuditLedger[]
+  sclLedger             SclLedger[]
+  toolContracts         ToolContract[]
+  marketplaceItems      MarketplaceItem[]
+  delegationsAsOwner    DelegationPolicy[]     @relation("DelegatorTenant")
+  delegationsAsGuest    DelegationPolicy[]     @relation("DelegateeTenant")
+  agentTrustScores      AgentTrustScore[]
+  memberships           TenantMembership[]
+  connectorInstances    ConnectorInstance[]
+  agentInstalls         AgentInstall[]
+  tenantEntitlements    TenantEntitlement[]
+  workspaceEntitlements WorkspaceEntitlement[]
+  proofOfUsage          ProofOfUsage[]
+  approvalRecords       ApprovalRecord[]
+  walletIdentities      WalletIdentity[]
 
   @@map("tenants")
 }
 
 model Workspace {
-  id                   String                 @id @default(cuid())
-  tenantId             String                 @map("tenant_id")
-  name                 String
-  createdAt            DateTime               @default(now()) @map("created_at")
-  updatedAt            DateTime               @updatedAt @map("updated_at")
-  apiTokens            ApiToken[]
-  embeddingChunks      EmbeddingChunk[]
-  memoryEvents         MemoryEvent[]
-  memorySnapshots      MemorySnapshot[]
-  runEvents            RunEvent[]
-  runs                 Run[]
-  uploadedDocuments    UploadedDocument[]
-  tenant               Tenant                 @relation(fields: [tenantId], references: [id])
-  tenantActionPolicies TenantActionPolicy[]
-  guardrailAuditLedger GuardrailAuditLedger[]
-  sclLedger            SclLedger[]
-  agentTrustScores     AgentTrustScore[]
+  id                    String                 @id @default(cuid())
+  tenantId              String                 @map("tenant_id")
+  name                  String
+  status                WorkspaceStatus        @default(ACTIVE)
+  createdAt             DateTime               @default(now()) @map("created_at")
+  updatedAt             DateTime               @updatedAt @map("updated_at")
+  apiTokens             ApiToken[]
+  embeddingChunks       EmbeddingChunk[]
+  memoryEvents          MemoryEvent[]
+  memorySnapshots       MemorySnapshot[]
+  runEvents             RunEvent[]
+  runs                  Run[]
+  uploadedDocuments     UploadedDocument[]
+  tenant                Tenant                 @relation(fields: [tenantId], references: [id])
+  tenantActionPolicies  TenantActionPolicy[]
+  guardrailAuditLedger  GuardrailAuditLedger[]
+  sclLedger             SclLedger[]
+  agentTrustScores      AgentTrustScore[]
+  connectorInstances    ConnectorInstance[]
+  agentInstalls         AgentInstall[]
+  workspaceEntitlements WorkspaceEntitlement[]
+  proofOfUsage          ProofOfUsage[]
+  walletIdentities      WalletIdentity[]
 
   @@index([tenantId, name])
   @@map("workspaces")
 }
 
 model User {
-  id          String     @id @default(cuid())
-  tenantId    String     @map("tenant_id")
-  email       String     @unique
-  displayName String?    @map("display_name")
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-  apiTokens   ApiToken[]
-  runEvents   RunEvent[]
-  runs        Run[]
-  tenant      Tenant     @relation(fields: [tenantId], references: [id])
+  id                             String                 @id @default(cuid())
+  tenantId                       String                 @map("tenant_id")
+  email                          String                 @unique
+  displayName                    String?                @map("display_name")
+  passwordHash                   String?                @map("password_hash")
+  createdAt                      DateTime               @default(now()) @map("created_at")
+  updatedAt                      DateTime               @updatedAt @map("updated_at")
+  apiTokens                      ApiToken[]
+  runEvents                      RunEvent[]
+  runs                           Run[]
+  tenant                         Tenant                 @relation(fields: [tenantId], references: [id])
+  memberships                    TenantMembership[]
+  profiles                       UserProfile[]
+  connectorInstances             ConnectorInstance[]    @relation("ConnectorCreatedBy")
+  agentInstalls                  AgentInstall[]         @relation("AgentInstalledBy")
+  workspaceEntitlementsActivated WorkspaceEntitlement[] @relation("WorkspaceEntitlementActivatedBy")
+  walletIdentities               WalletIdentity[]
 
   @@index([tenantId, email])
   @@map("users")
+}
+
+model UserProfile {
+  id          String   @id @default(cuid())
+  groupId     String   @map("group_id")
+  userId      String?  @map("user_id")
+  fullName    String?  @map("full_name")
+  email       String?
+  phone       String?
+  cep         String?
+  company     String?
+  role        String?
+  website     String?
+  city        String?
+  country     String?
+  tenantId    String?  @map("tenant_id")
+  workspaceId String?  @map("workspace_id")
+  token       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user             User?            @relation(fields: [userId], references: [id])
+  walletIdentities WalletIdentity[]
+
+  @@index([groupId])
+  @@index([userId])
+  @@map("user_profiles")
+}
+
+model WalletIdentity {
+  id          String    @id @default(cuid())
+  address     String    @unique
+  chainId     Int?      @map("chain_id")
+  userId      String    @map("user_id")
+  profileId   String?   @map("profile_id")
+  tenantId    String    @map("tenant_id")
+  workspaceId String?   @map("workspace_id")
+  lastSeenAt  DateTime? @map("last_seen_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user      User         @relation(fields: [userId], references: [id])
+  profile   UserProfile? @relation(fields: [profileId], references: [id])
+  tenant    Tenant       @relation(fields: [tenantId], references: [id])
+  workspace Workspace?   @relation(fields: [workspaceId], references: [id])
+
+  @@index([userId])
+  @@index([tenantId, workspaceId])
+  @@map("wallet_identities")
+}
+
+model SiweNonce {
+  id         String    @id @default(cuid())
+  address    String
+  nonce      String    @unique
+  expiresAt  DateTime  @map("expires_at")
+  consumedAt DateTime? @map("consumed_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+
+  @@index([address])
+  @@index([expiresAt])
+  @@map("siwe_nonces")
+}
+
+model TenantMembership {
+  id           String           @id @default(cuid())
+  tenantId     String           @map("tenant_id")
+  userId       String           @map("user_id")
+  role         TenantRole       @default(TENANT_OPERATOR)
+  status       MembershipStatus @default(ACTIVE)
+  customRoleId String?          @map("custom_role_id")
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+
+  tenant     Tenant            @relation(fields: [tenantId], references: [id])
+  user       User              @relation(fields: [userId], references: [id])
+  customRole TenantRoleCustom? @relation(fields: [customRoleId], references: [id])
+
+  @@unique([tenantId, userId])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([customRoleId])
+  @@map("tenant_memberships")
+}
+
+model TenantRoleCustom {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  name        String
+  description String?  @map("description")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant      Tenant             @relation(fields: [tenantId], references: [id])
+  permissions RolePermission[]
+  memberships TenantMembership[]
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("tenant_role_customs")
+}
+
+model RolePermission {
+  id            String   @id @default(cuid())
+  roleId        String   @map("role_id")
+  permissionKey String   @map("permission_key")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  role TenantRoleCustom @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionKey])
+  @@index([roleId])
+  @@map("role_permissions")
+}
+
+model ConnectorInstance {
+  id               String          @id @default(cuid())
+  tenantId         String          @map("tenant_id")
+  workspaceId      String          @map("workspace_id")
+  provider         String
+  allowedResources Json            @map("allowed_resources")
+  limits           Json            @map("limits")
+  vaultSecretRef   String          @map("vault_secret_ref")
+  status           LifecycleStatus @default(DRAFT)
+  createdByUserId  String?         @map("created_by_user_id")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  createdBy User?     @relation("ConnectorCreatedBy", fields: [createdByUserId], references: [id])
+
+  @@index([tenantId])
+  @@index([workspaceId])
+  @@map("connector_instances")
+}
+
+model AgentInstall {
+  id                String          @id @default(cuid())
+  tenantId          String          @map("tenant_id")
+  workspaceId       String          @map("workspace_id")
+  agentId           String          @map("agent_id")
+  version           String
+  config            Json            @map("config")
+  status            LifecycleStatus @default(DRAFT)
+  installedByUserId String?         @map("installed_by_user_id")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  installedBy User?     @relation("AgentInstalledBy", fields: [installedByUserId], references: [id])
+
+  @@unique([tenantId, workspaceId, agentId], name: "unique_agent_install_workspace")
+  @@index([tenantId])
+  @@index([workspaceId])
+  @@index([agentId])
+  @@map("agent_installs")
+}
+
+model TenantEntitlement {
+  id            String          @id @default(cuid())
+  tenantId      String          @map("tenant_id")
+  agentId       String          @map("agent_id")
+  marketplaceId String?         @map("marketplace_id")
+  planRef       String?         @map("plan_ref")
+  quotaRef      String?         @map("quota_ref")
+  status        LifecycleStatus @default(ACTIVE)
+  startsAt      DateTime?       @map("starts_at")
+  endsAt        DateTime?       @map("ends_at")
+  metadata      Json?
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  tenant                Tenant                 @relation(fields: [tenantId], references: [id])
+  marketplace           MarketplaceItem?       @relation(fields: [marketplaceId], references: [id])
+  workspaceEntitlements WorkspaceEntitlement[]
+
+  @@unique([tenantId, agentId], name: "unique_tenant_entitlement_agent")
+  @@index([tenantId, status])
+  @@index([marketplaceId])
+  @@map("tenant_entitlements")
+}
+
+model WorkspaceEntitlement {
+  id                  String          @id @default(cuid())
+  tenantId            String          @map("tenant_id")
+  workspaceId         String          @map("workspace_id")
+  agentId             String          @map("agent_id")
+  tenantEntitlementId String?         @map("tenant_entitlement_id")
+  status              LifecycleStatus @default(ACTIVE)
+  activatedByUserId   String?         @map("activated_by_user_id")
+  metadata            Json?
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+
+  tenant            Tenant             @relation(fields: [tenantId], references: [id])
+  workspace         Workspace          @relation(fields: [workspaceId], references: [id])
+  tenantEntitlement TenantEntitlement? @relation(fields: [tenantEntitlementId], references: [id])
+  activatedBy       User?              @relation("WorkspaceEntitlementActivatedBy", fields: [activatedByUserId], references: [id])
+
+  @@unique([tenantId, workspaceId, agentId], name: "unique_workspace_entitlement_agent")
+  @@index([tenantId, status])
+  @@index([workspaceId, status])
+  @@index([tenantEntitlementId])
+  @@map("workspace_entitlements")
 }
 
 model ApiToken {
@@ -122,21 +383,27 @@ model ApiToken {
 }
 
 model Run {
-  id          String    @id @default(cuid())
-  tenantId    String    @map("tenant_id")
-  workspaceId String    @map("workspace_id")
-  userId      String?   @map("user_id")
-  agent       String
-  status      RunStatus
-  request     Json
-  response    Json?
-  costCents   Int       @default(0)
-  traceId     String?
-  startedAt   DateTime  @default(now())
-  finishedAt  DateTime?
-  errorCode   String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id                 String    @id @default(cuid())
+  tenantId           String    @map("tenant_id")
+  workspaceId        String    @map("workspace_id")
+  userId             String?   @map("user_id")
+  agent              String
+  status             RunStatus
+  runMode            RunMode   @default(LIVE) @map("run_mode")
+  request            Json
+  response           Json?
+  estimatedCostCents Int?      @map("estimated_cost_cents")
+  finalCostCents     Int?      @map("final_cost_cents")
+  costCents          Int       @default(0)
+  charged            Boolean?
+  chargeReason       String?   @map("charge_reason")
+  chargeAttemptedAt  DateTime? @map("charge_attempted_at")
+  traceId            String?
+  startedAt          DateTime  @default(now())
+  finishedAt         DateTime?
+  errorCode          String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   // ⚙️ Adições necessárias para reconciliar Ledger e Runs
   criticalHash String? @map("critical_hash")
@@ -150,6 +417,8 @@ model Run {
   tenant           Tenant            @relation(fields: [tenantId], references: [id])
   user             User?             @relation(fields: [userId], references: [id])
   workspace        Workspace         @relation(fields: [workspaceId], references: [id])
+  proofOfUsage     ProofOfUsage[]
+  approvalRecords  ApprovalRecord[]
 
   @@index([tenantId, workspaceId, agent, createdAt])
   @@index([status])
@@ -347,13 +616,18 @@ model ActionVersion {
 }
 
 model ActionRegistry {
-  id          String   @id @default(cuid())
-  name        String
-  version     Int      @default(1)
-  description String?
-  schema      Json?
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id                String   @id @default(cuid())
+  name              String
+  version           Int      @default(1)
+  description       String?
+  schema            Json?
+  criticality       String   @default("unknown")
+  criticalitySource String   @default("default") @map("criticality_source")
+  needsReview       Boolean  @default(true) @map("needs_review")
+  sideEffects       Boolean? @map("side_effects")
+  dataSensitivity   String?  @map("data_sensitivity")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   @@unique([name, version])
   @@map("action_registry")
@@ -472,6 +746,101 @@ model GuardrailLedger {
   @@map("guardrail_ledger")
 }
 
+enum PoUStatus {
+  PENDING
+  FINALIZED
+  FAILED
+  PENDING_TRUST
+}
+
+enum PoUFailureReason {
+  DB_WRITE_FAILED
+  VALIDATION_ERROR
+  SIGNER_ERROR
+  OUTPUT_UNAVAILABLE
+  HASH_ERROR
+  ATTESTATION_FAILED
+  UNKNOWN
+}
+
+enum ApprovalDecision {
+  APPROVED
+  REJECTED
+}
+
+model ProofOfUsage {
+  id                   String            @id @default(cuid())
+  tenantId             String            @map("tenant_id")
+  workspaceId          String?           @map("workspace_id")
+  runId                String            @map("run_id")
+  actionId             String            @map("action_id")
+  intentHash           String            @map("intent_hash")
+  paramsHash           String            @map("params_hash")
+  signatureHash        String            @map("signature_hash")
+  resultHash           String            @map("result_hash")
+  trustSnapshot        Json?             @map("trust_snapshot")
+  compositeTxId        String            @unique @map("composite_tx_id")
+  canonicalResultRef   String?           @map("canonical_result_ref")
+  status               PoUStatus         @default(PENDING)
+  attestationKeyId     String?           @map("attestation_key_id")
+  attestationSignature String?           @map("attestation_signature")
+  failureReason        PoUFailureReason? @map("failure_reason")
+  createdAt            DateTime          @default(now()) @map("created_at")
+  finalizedAt          DateTime?         @map("finalized_at")
+
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  workspace Workspace? @relation(fields: [workspaceId], references: [id])
+  run       Run        @relation(fields: [runId], references: [id])
+
+  @@unique([runId, actionId])
+  @@index([tenantId, workspaceId])
+  @@index([compositeTxId])
+  @@map("proof_of_usage")
+}
+
+model ApprovalRecord {
+  id               String           @id @default(cuid())
+  runId            String           @map("run_id")
+  attempt          Int
+  tenantId         String           @map("tenant_id")
+  approverId       String           @map("approver_id")
+  decision         ApprovalDecision
+  reason           String?
+  policyId         String?          @map("policy_id")
+  policyVersion    String           @map("policy_version")
+  requiredMinTrust Float?           @map("required_min_trust")
+  approverTrust    Float            @map("approver_trust")
+  intentHash       String           @map("intent_hash")
+  planHash         String           @map("plan_hash")
+  idempotencyKey   String?          @map("idempotency_key")
+  payloadHash      String           @map("payload_hash")
+  sclSignature     String?          @map("scl_signature")
+  createdAt        DateTime         @default(now()) @map("created_at")
+
+  run    Run    @relation(fields: [runId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([runId, attempt])
+  @@unique([runId, idempotencyKey])
+  @@index([tenantId, runId])
+  @@map("approval_records")
+}
+
+model RunExecutionLock {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  workspaceId String   @map("workspace_id")
+  runId       String   @map("run_id")
+  holderId    String   @map("holder_id")
+  attempt     Int      @default(1)
+  acquiredAt  DateTime @default(now()) @map("acquired_at")
+  expiresAt   DateTime @map("expires_at")
+
+  @@unique([tenantId, workspaceId, runId], name: "uniq_run_execution_lock")
+  @@index([tenantId, workspaceId])
+  @@map("run_execution_locks")
+}
+
 model MarketplaceItem {
   id          String   @id @default(cuid())
   type        String
@@ -483,8 +852,9 @@ model MarketplaceItem {
   isPublic    Boolean  @default(false) @map("is_public")
   createdAt   DateTime @default(now()) @map("created_at")
 
-  publisher   Tenant             @relation(fields: [publisherId], references: [id])
-  delegations DelegationPolicy[]
+  publisher          Tenant              @relation(fields: [publisherId], references: [id])
+  delegations        DelegationPolicy[]
+  tenantEntitlements TenantEntitlement[]
 
   @@index([publisherId, type, name, version])
   @@map("marketplace_items")
