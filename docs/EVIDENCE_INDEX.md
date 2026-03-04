@@ -78,6 +78,13 @@
 | Evidência DocOps ciclo 2 (auditável) | `ops/evidence/docops-ci-pass-2026-02-25.json` | Segundo ciclo em data distinta com `commitSha` e vínculo de estabilidade (`consecutivePassedCycles=2`, `criticalDriftDetected=false`). |
 | Runbook operacional de DocOps | `docs/ops/docops-runbook.md` | Rotina por ciclo, critérios de estabilidade e tratamento de drift documental. |
 
+## Operação contínua (marco 2026-03-04)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Smoke de ruleset/branch protection em `main` | `ops/evidence/latest/branch-protection-smoke-2026-03-04.md` | Confirmação operacional de que o fluxo de PR em `main` exige checks obrigatórios antes de merge. |
+| APE Weekly Cycle #1 (shadow/pilot) com GO hard metrics | `ops/evidence/latest/ape-weekly-cycle-run7-2026-03-04.md` | Run #7 em `main` com `decision=GO`, `hardMetricsGo=true`, `auditGap=0`, `duplicateSideEffects=0`, `breakGlass=0` e artefatos semanais completos. |
+
 ## Entry points
 
 | Assunto | Arquivo | Trecho/linhas | O que prova |
