@@ -49,6 +49,11 @@ jobs:
       - name: Run Lint
         run: pnpm lint # Assumindo que você tem um script 'lint' na raiz
 
+      - name: Prepare workspace artifacts for tests
+        run: |
+          pnpm --filter @eiah/contracts build
+          pnpm --filter @repo/db generate
+
       - name: Run Tests
         run: |
           TEST_FILES="$(find packages/core/src -name '*.test.ts' -type f)"
