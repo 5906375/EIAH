@@ -43,7 +43,7 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --ignore-scripts
 
       # 1. Validação de código (Adiciona um passo de Linting)
       - name: Run Lint
