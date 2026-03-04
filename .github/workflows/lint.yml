@@ -34,6 +34,9 @@ jobs:
       - name: Run lint
         run: pnpm lint
 
+      - name: Generate Prisma client for @repo/db tests
+        run: pnpm --filter @repo/db generate
+
       - name: Run @repo/db smoke tests
         run: |
           DB_TEST_FILES="$(find packages/db/src -name '*.test.ts' -type f)"
