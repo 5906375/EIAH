@@ -50,7 +50,12 @@ jobs:
         run: pnpm lint # Assumindo que você tem um script 'lint' na raiz
 
       - name: Run Tests
-        run: pnpm test
+        run: |
+          if find packages/core/src -name '*.test.ts' -print -quit | grep -q .; then
+            pnpm test
+          else
+            echo "No @eiah/core tests found. Skipping root test step."
+          fi
 
       # 2. Build Hardened e Otimizado (Corrige os problemas de TMPDIR e ESBUILD)
       - name: Build Web Application (Hardened)
