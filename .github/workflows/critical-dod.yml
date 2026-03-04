@@ -1,0 +1,24 @@
+name: Critical DoD
+
+on:
+  workflow_dispatch:
+
+jobs:
+  critical_dod:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm check:e2e-recency
+      - run: pnpm check:manifest-integrity
+      - run: pnpm check:billing-webhook-evidence
+      - run: pnpm check:interop-contract-matrix
+      - run: pnpm check:interop-spec-governance
+      - run: pnpm check:economy-invariants
