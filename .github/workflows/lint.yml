@@ -35,4 +35,10 @@ jobs:
         run: pnpm lint
 
       - name: Run @repo/db smoke tests
-        run: pnpm --filter @repo/db test
+        run: |
+          DB_TEST_FILES="$(find packages/db/src -name '*.test.ts' -type f)"
+          if [ -n "$DB_TEST_FILES" ]; then
+            echo "$DB_TEST_FILES" | tr '\n' '\0' | xargs -0 node --test --import tsx
+          else
+            echo "No @repo/db tests found. Skipping db smoke tests."
+          fi
