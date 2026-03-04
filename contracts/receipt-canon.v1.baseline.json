@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0.0",
+  "requiredReceipts": [
+    "PoUReceipt",
+    "TrustSnapshotReceipt",
+    "ApprovalReceipt",
+    "DelegationReceipt",
+    "TxLinkReceipt"
+  ],
+  "requiredReasonCodes": [
+    "pou_txid_mismatch",
+    "missing_trust_snapshot_for_pou",
+    "policy_blocked",
+    "approval_required",
+    "delegation_missing"
+  ]
+}
