@@ -1,0 +1,71 @@
+name: APE Weekly Cycle
+
+on:
+  workflow_dispatch:
+    inputs:
+      rollout_mode:
+        description: "shadow|enforce"
+        required: false
+        type: choice
+        options: [shadow, enforce]
+        default: shadow
+      canary_stage:
+        description: "pilot|small|general"
+        required: false
+        type: choice
+        options: [pilot, small, general]
+        default: pilot
+      break_glass_enabled:
+        description: "Break-glass"
+        required: false
+        type: boolean
+        default: false
+  schedule:
+    - cron: "0 11 * * 1"
+
+jobs:
+  ape_weekly_cycle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: LLM pricing snapshot
+        run: node scripts/ci/llm_provider_pricing_snapshot.cjs
+
+      - name: Infra pricing snapshot
+        run: node scripts/ci/infra_provider_pricing_snapshot.cjs
+
+      - name: Run APE cycle
+        env:
+          APE_ROLLOUT_MODE: ${{ github.event.inputs.rollout_mode || 'shadow' }}
+          APE_CANARY_STAGE: ${{ github.event.inputs.canary_stage || 'pilot' }}
+        run: pnpm ape:cycle:weekly
+
+      - name: Evidence linkage
+        run: pnpm check:ape-evidence-linkage
+
+      - name: Hard metrics
+        run: pnpm check:ape-hard-metrics
+
+      - name: Provider pricing recency
+        run: pnpm check:provider-pricing-recency
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ape-weekly-artifacts
+          path: |
+            artifacts/ape/provider-pricing-snapshot.json
+            artifacts/ape/infra-provider-pricing-snapshot.json
+            artifacts/ape/weekly-cycle-payload.json
+            artifacts/ape/weekly-cycle-response.json
+            artifacts/ape/weekly-cycle-decision.json
+            artifacts/ape/weekly-report.md
