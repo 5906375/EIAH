@@ -30,4 +30,9 @@
   - run: `APE Weekly Cycle #7` (`main`, commit `8dae850`).
   - artefatos foco: `weekly-cycle-decision.json`, `weekly-report.md`.
   - evidencia: `ops/evidence/latest/ape-weekly-cycle-run7-2026-03-04.md`.
-- [ ] Proximo passo: executar APE Weekly Cycle #2 (`shadow/pilot`) para estabilidade consecutiva.
+- [x] APE Weekly Cycle #2 (`shadow/pilot`): CONCLUIDO (GO hard metrics).
+  - evidence timestamp (`generatedAt`): `2026-03-04T15:15:29.925Z`.
+  - artefatos foco: `weekly-cycle-decision.json`, `weekly-report.md`.
+  - evidencia: `ops/evidence/latest/ape-weekly-cycle-run8-2026-03-04.md`.
+- [x] 2 ciclos estaveis consecutivos: CONCLUIDO.
+- [x] Pilot -> small: ELEGIVEL.
