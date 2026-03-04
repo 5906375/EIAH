@@ -51,8 +51,9 @@ jobs:
 
       - name: Run Tests
         run: |
-          if find packages/core/src -name '*.test.ts' -print -quit | grep -q .; then
-            pnpm test
+          TEST_FILES="$(find packages/core/src -name '*.test.ts' -type f)"
+          if [ -n "$TEST_FILES" ]; then
+            echo "$TEST_FILES" | tr '\n' '\0' | xargs -0 node --test --import tsx
           else
             echo "No @eiah/core tests found. Skipping root test step."
           fi
