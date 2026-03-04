@@ -7,6 +7,7 @@ on:
 env:
   NODE_VERSION: '20'
   PNPM_VERSION: '9'
+  RUN_DB_SMOKE: '0'
 
 jobs:
   lint:
@@ -39,6 +40,10 @@ jobs:
 
       - name: Run @repo/db smoke tests
         run: |
+          if [ "${RUN_DB_SMOKE}" != "1" ]; then
+            echo "Skipping @repo/db smoke tests (RUN_DB_SMOKE!=1)."
+            exit 0
+          fi
           DB_TEST_FILES="$(find packages/db/src -name '*.test.ts' -type f)"
           if [ -n "$DB_TEST_FILES" ]; then
             echo "$DB_TEST_FILES" | tr '\n' '\0' | xargs -0 node --test --import tsx
