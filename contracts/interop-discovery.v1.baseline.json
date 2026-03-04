@@ -1,0 +1,5 @@
+{
+  "specVersion": "v1",
+  "compatibility": "N,N-1",
+  "scenarios": ["discovery", "negotiate"]
+}
