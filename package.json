@@ -33,8 +33,8 @@
     "check:ape-hard-metrics": "node --experimental-strip-types scripts/checkApeCycleHardMetrics.ts",
     "check:evidence-index": "node --experimental-strip-types scripts/checkEvidenceIndex.ts",
     "check:receipt-canon-compat": "node --experimental-strip-types scripts/checkReceiptCanonVersioning.ts",
-    "check:src-dist-route-parity": "node --experimental-strip-types scripts/checkSrcDistRouteParity.ts",
-    "check:ledger-bundle-smoke": "node --experimental-strip-types scripts/checkLedgerBundleSmoke.ts",
+    "check:src-dist-route-parity": "pnpm exec tsx scripts/checkSrcDistRouteParity.ts",
+    "check:ledger-bundle-smoke": "pnpm exec tsx scripts/checkLedgerBundleSmoke.ts",
     "verify:receipt-canon": "node --experimental-strip-types scripts/verify-receipt-canon.ts",
     "ape:cycle:weekly": "node scripts/ci/ape_cycle_weekly.cjs",
     "audit:criticality": "pnpm exec tsx scripts/auditCriticalityCoverage.ts --out artifacts/criticality-coverage.json --allowlist scripts/criticality-allowlist.txt"
