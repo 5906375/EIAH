@@ -8,15 +8,28 @@ function fail(message: string, details?: Record<string, unknown>): never {
   process.exit(1);
 }
 
-function read(file: string) {
-  if (!fs.existsSync(file)) fail("file_not_found", { file });
-  return fs.readFileSync(file, "utf8");
+function readWithFallback(files: string[]) {
+  const resolved = files.map((file) => path.resolve(file));
+  const existing = resolved.find((file) => fs.existsSync(file));
+  if (!existing) {
+    fail("file_not_found", {
+      file: resolved[0],
+      candidates: resolved,
+    });
+  }
+  return fs.readFileSync(existing, "utf8");
 }
 
 const governanceSrc = read(path.resolve("apps/api/src/routes/governance.ts"));
 const runsSrc = read(path.resolve("apps/api/src/routes/runs.ts"));
-const ledgerContract = read(path.resolve("docs/ops/ledger-txid-api-contract.md"));
-const bundleContract = read(path.resolve("docs/ops/run-bundle-api-contract.md"));
+const ledgerContract = readWithFallback([
+  "docs/ops/ledger-txid-api-contract.md",
+  "ops/contracts/ledger-txid-api-contract.md",
+]);
+const bundleContract = readWithFallback([
+  "docs/ops/run-bundle-api-contract.md",
+  "ops/contracts/run-bundle-api-contract.md",
+]);
 
 const requiredChecks = [
   {
