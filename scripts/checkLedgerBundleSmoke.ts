@@ -20,8 +20,8 @@ function readWithFallback(files: string[]) {
   return fs.readFileSync(existing, "utf8");
 }
 
-const governanceSrc = read(path.resolve("apps/api/src/routes/governance.ts"));
-const runsSrc = read(path.resolve("apps/api/src/routes/runs.ts"));
+const governanceSrc = readWithFallback(["apps/api/src/routes/governance.ts"]);
+const runsSrc = readWithFallback(["apps/api/src/routes/runs.ts"]);
 const ledgerContract = readWithFallback([
   "docs/ops/ledger-txid-api-contract.md",
   "ops/contracts/ledger-txid-api-contract.md",
