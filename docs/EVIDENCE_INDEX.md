@@ -8,8 +8,8 @@
 | --- | --- | --- |
 | Guia de execucao S1-01 | `docs/ops/s1-f53-e2e-high-staging.md` | Procedimento oficial para validar cadeia HIGH em staging. |
 | Relatorio S1-01 (template) | `docs/ops/s1-01-e2e-high-staging-report.md` | Estrutura de evidencias por acao HIGH (Run/SCL/PoU/txId/bundle). |
-| Contrato publico txId | `ops/contracts/ledger-txid-api-contract.md` | Invariante `txId -> runId -> bundleHash -> bundle` do endpoint publico. |
-| Contrato de export bundle | `ops/contracts/run-bundle-api-contract.md` | Contrato canônico do endpoint `/api/runs/:id/bundle` para evidência externa. |
+| Contrato publico txId | `docs/ops/ledger-txid-api-contract.md` | Invariante `txId -> runId -> bundleHash -> bundle` do endpoint publico. |
+| Contrato de export bundle | `docs/ops/run-bundle-api-contract.md` | Contrato canônico do endpoint `/api/runs/:id/bundle` para evidência externa. |
 | Contrato de interop discovery/negotiate | `ops/contracts/interop-discovery-api-contract.md` | Contrato canônico dos endpoints `/api/actions/discovery` e `/api/actions/negotiate`. |
 | Regra de alerta S1-05 | `ops/alerts/ledger-integrity-alerts.v1.yml` | Alertas de integridade ledger com severidade e playbook operacional. |
 | Exposicao de metricas S1-05 | `apps/api/src/routes/metrics-prom.ts` | Publica gauges de missing/mismatch SCL/PoU/txId/bundle e flags de alerta. |

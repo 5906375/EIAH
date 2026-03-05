@@ -14,6 +14,8 @@ import { getAgentRecommendationState, saveAgentRecommendationState } from "../se
 import { listRunEvents } from "../services/runEvents";
 import { emitRunEvent } from "../services/runEventEmitter";
 import { subscribeToRunEventStream } from "../services/runEventStream";
+import { buildRunEvidenceBundle } from "../services/evidenceBundle";
+import { requireScope } from "../middlewares/requireScope";
 
 export const runsRouter = Router();
 runsRouter.use(enforceTenant);
@@ -1142,6 +1144,40 @@ runsRouter.get("/governance/report", async (req, res) => {
   });
 
   return res.json({ ok: true, items });
+});
+
+runsRouter.get("/runs/:id/bundle", requireScope("reports.view"), async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING" } });
+  }
+
+  const bundle = await buildRunEvidenceBundle({
+    prisma,
+    tenantId: authContext.tenantId,
+    workspaceId: authContext.workspaceId,
+    runId: req.params.id,
+  });
+  if (!bundle) {
+    return res.status(404).json({ ok: false, error: { code: "NOT_FOUND", message: "run" } });
+  }
+
+  const { run, bundleHash, files, hashes } = bundle;
+  await recordGovernanceLedger({
+    prisma,
+    tenantId: authContext.tenantId,
+    runId: run.id,
+    actionType: "bundle.exported.v1",
+    idempotencyKey: `bundle:${run.id}:${bundleHash}`,
+  });
+
+  return res.json({
+    ok: true,
+    runId: run.id,
+    bundleHash,
+    hashes,
+    files,
+  });
 });
 
 runsRouter.post("/runs/:id/conversation/finalize", async (req, res) => {
