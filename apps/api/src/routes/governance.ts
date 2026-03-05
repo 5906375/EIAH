@@ -6,6 +6,10 @@ import { getRun } from "../services/runs";
 import { evaluateTrustScore, trustScoreAllowsExecution } from "../services/trustScore";
 import { maskText } from "../services/masker";
 import { checkScopePermission } from "packages/core/src/security/rbac.ts";
+import { buildRunEvidenceBundle } from "../services/evidenceBundle";
+import { resolvePoUForLedger } from "../services/pouService";
+import { resolveTrustSnapshotForLedger } from "../services/trustSnapshotService";
+import { buildLedgerReceiptCanonV1 } from "../services/receiptCanonService";
 
 export const governanceRouter = Router();
 governanceRouter.use(enforceTenant);
@@ -65,6 +69,12 @@ function downsamplePoints<T>(points: T[], maxPoints = 200) {
   const step = Math.ceil(points.length / maxPoints);
   return points.filter((_, index) => index % step === 0);
 }
+
+const TX_ID_PATTERN = /^[A-Za-z0-9-]{16,}$/;
+const REASON_CODE_INVALID_TXID = "invalid_txid_format";
+const REASON_CODE_TXID_NOT_FOUND = "txid_not_found";
+const REASON_CODE_MISSING_RUN_FOR_TXID = "missing_run_for_txid";
+const REASON_CODE_MISSING_BUNDLE_HASH_FOR_RUN = "missing_bundle_hash_for_run";
 
 governanceRouter.get("/runs/:id/governance", async (req, res) => {
   const { authContext, prisma } = req as TenantAwareRequest;
@@ -189,6 +199,200 @@ governanceRouter.get("/runs/:id/governance", async (req, res) => {
       auditEventIds: auditEvents.map((event) => event.id),
     },
     canCalibrate: Boolean(canCalibrate),
+  });
+});
+
+governanceRouter.get("/ledger/:txId", requireScope("ledger.view"), async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({
+      ok: false,
+      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+    });
+  }
+
+  const txId = (req.params.txId ?? "").trim();
+  if (!txId || !TX_ID_PATTERN.test(txId)) {
+    return res.status(400).json({
+      ok: false,
+      error: {
+        code: "INVALID_TXID",
+        message: "txId",
+        reasonCodes: [REASON_CODE_INVALID_TXID],
+      },
+    });
+  }
+
+  const runByTx = await prisma.run.findFirst({
+    where: {
+      tenantId: authContext.tenantId,
+      OR: [{ txId }, { sclTxId: txId }],
+    },
+    select: {
+      id: true,
+      workspaceId: true,
+      status: true,
+      txId: true,
+      sclTxId: true,
+      criticalHash: true,
+      createdAt: true,
+      finishedAt: true,
+    },
+  });
+
+  const sclEntry = await prisma.sclLedger.findFirst({
+    where: {
+      tenantId: authContext.tenantId,
+      txId,
+      ...(runByTx?.id ? { runId: runByTx.id } : {}),
+    },
+    select: {
+      id: true,
+      runId: true,
+      txId: true,
+      criticalHash: true,
+      signature: true,
+      signedAt: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  if (!runByTx && !sclEntry) {
+    return res.status(404).json({
+      ok: false,
+      error: {
+        code: "NOT_FOUND",
+        message: "txId",
+        reasonCodes: [REASON_CODE_TXID_NOT_FOUND],
+      },
+    });
+  }
+
+  let bundleHash: string | null = null;
+  if (runByTx) {
+    const rebuiltBundle = await buildRunEvidenceBundle({
+      prisma,
+      tenantId: authContext.tenantId,
+      workspaceId: runByTx.workspaceId,
+      runId: runByTx.id,
+    });
+    bundleHash = rebuiltBundle?.bundleHash ?? null;
+  }
+
+  const hasRun = Boolean(runByTx);
+  const hasScl = Boolean(sclEntry);
+  const pou = await resolvePoUForLedger();
+  const hasPoU = pou.receiptsByRun.length > 0;
+  const trustSnapshot = await resolveTrustSnapshotForLedger();
+  const runSclAligned = Boolean(runByTx?.sclTxId) && Boolean(sclEntry?.txId) && runByTx?.sclTxId === sclEntry?.txId;
+  const runHashAligned =
+    Boolean(runByTx?.criticalHash) &&
+    Boolean(sclEntry?.criticalHash) &&
+    runByTx?.criticalHash === sclEntry?.criticalHash;
+
+  const invariant = {
+    txIdToRunId: Boolean(runByTx?.id),
+    runIdToBundleHash: Boolean(bundleHash),
+    exportBundlePath: runByTx ? `/api/runs/${runByTx.id}/bundle` : null,
+    status: "ok" as "ok" | "broken",
+    reasons: [] as string[],
+  };
+
+  if (!invariant.txIdToRunId) {
+    invariant.status = "broken";
+    invariant.reasons.push(REASON_CODE_MISSING_RUN_FOR_TXID);
+  }
+  if (invariant.txIdToRunId && !invariant.runIdToBundleHash) {
+    invariant.status = "broken";
+    invariant.reasons.push(REASON_CODE_MISSING_BUNDLE_HASH_FOR_RUN);
+  }
+
+  if (invariant.status === "broken") {
+    return res.status(409).json({
+      ok: false,
+      error: {
+        code: "RECEIPT_CANON_INCONSISTENT",
+        message: "receiptCanon",
+        reasonCodes: invariant.reasons,
+      },
+      txId,
+      runId: runByTx?.id ?? sclEntry?.runId ?? null,
+      invariant,
+      reconciliation: {
+        hasRun,
+        hasScl,
+        hasPoU,
+        runSclAligned,
+        runHashAligned,
+        matchedPoUByTxId: Boolean(pou.matchedByTxId),
+      },
+    });
+  }
+
+  return res.json({
+    ok: true,
+    txId,
+    run: runByTx
+      ? {
+          id: runByTx.id,
+          workspaceId: runByTx.workspaceId,
+          status: runByTx.status,
+          txId: runByTx.txId ?? null,
+          sclTxId: runByTx.sclTxId ?? null,
+          criticalHash: runByTx.criticalHash ?? null,
+          bundleHash,
+          createdAt: runByTx.createdAt,
+          finishedAt: runByTx.finishedAt,
+        }
+      : null,
+    scl: sclEntry
+      ? {
+          id: sclEntry.id,
+          runId: sclEntry.runId,
+          txId: sclEntry.txId,
+          criticalHash: sclEntry.criticalHash,
+          signaturePresent: Boolean(sclEntry.signature),
+          signedAt: sclEntry.signedAt,
+          createdAt: sclEntry.createdAt,
+        }
+      : null,
+    pou,
+    reconciliation: {
+      hasRun,
+      hasScl,
+      hasPoU,
+      runSclAligned,
+      runHashAligned,
+      matchedPoUByTxId: Boolean(pou.matchedByTxId),
+      runId: runByTx?.id ?? sclEntry?.runId ?? null,
+      bundleHash,
+      sclEntryId: sclEntry?.id ?? null,
+      pouReceiptIds: pou.receiptsByRun.map((item) => item.id),
+    },
+    invariant,
+    receiptCanon: runByTx
+      ? buildLedgerReceiptCanonV1({
+          txId,
+          runId: runByTx.id,
+          workspaceId: runByTx.workspaceId,
+          tenantId: authContext.tenantId,
+          actorId: authContext.userId ?? null,
+          actorType: authContext.userId ? "user" : "system",
+          bundleHash,
+          invariant,
+          pou,
+          trustSnapshot,
+          reconciliation: {
+            hasRun,
+            hasScl,
+            hasPoU,
+            runSclAligned,
+            runHashAligned,
+            matchedPoUByTxId: Boolean(pou.matchedByTxId),
+          },
+        })
+      : null,
   });
 });
 

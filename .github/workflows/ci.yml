@@ -66,6 +66,12 @@ jobs:
             echo "No @eiah/core tests found. Skipping root test step."
           fi
 
+      - name: Check src/dist route parity
+        run: pnpm check:src-dist-route-parity
+
+      - name: Check ledger/bundle smoke contracts
+        run: pnpm check:ledger-bundle-smoke
+
       # 2. Build Hardened e Otimizado (Corrige os problemas de TMPDIR e ESBUILD)
       - name: Build Web Application (Hardened)
         # As variáveis TMPDIR e ESBUILD_TMPDIR forçam o uso de /tmp, 

@@ -8,8 +8,8 @@
 | --- | --- | --- |
 | Guia de execucao S1-01 | `docs/ops/s1-f53-e2e-high-staging.md` | Procedimento oficial para validar cadeia HIGH em staging. |
 | Relatorio S1-01 (template) | `docs/ops/s1-01-e2e-high-staging-report.md` | Estrutura de evidencias por acao HIGH (Run/SCL/PoU/txId/bundle). |
-| Contrato publico txId | `ops/contracts/ledger-txid-api-contract.md` | Invariante `txId -> runId -> bundleHash -> bundle` do endpoint publico. |
-| Contrato de export bundle | `ops/contracts/run-bundle-api-contract.md` | Contrato canônico do endpoint `/api/runs/:id/bundle` para evidência externa. |
+| Contrato publico txId | `docs/ops/ledger-txid-api-contract.md` | Invariante `txId -> runId -> bundleHash -> bundle` do endpoint publico. |
+| Contrato de export bundle | `docs/ops/run-bundle-api-contract.md` | Contrato canônico do endpoint `/api/runs/:id/bundle` para evidência externa. |
 | Contrato de interop discovery/negotiate | `ops/contracts/interop-discovery-api-contract.md` | Contrato canônico dos endpoints `/api/actions/discovery` e `/api/actions/negotiate`. |
 | Regra de alerta S1-05 | `ops/alerts/ledger-integrity-alerts.v1.yml` | Alertas de integridade ledger com severidade e playbook operacional. |
 | Exposicao de metricas S1-05 | `apps/api/src/routes/metrics-prom.ts` | Publica gauges de missing/mismatch SCL/PoU/txId/bundle e flags de alerta. |
@@ -77,6 +77,14 @@
 | Evidência DocOps ciclo 1 (auditável) | `ops/evidence/docops-ci-pass-2026-02-24.json` | Registro de execução CI com metadados (`schema`, `timestamp`, `commitSha`, `workflow`, `jobs`, `diffSummary.drift=0`). |
 | Evidência DocOps ciclo 2 (auditável) | `ops/evidence/docops-ci-pass-2026-02-25.json` | Segundo ciclo em data distinta com `commitSha` e vínculo de estabilidade (`consecutivePassedCycles=2`, `criticalDriftDetected=false`). |
 | Runbook operacional de DocOps | `docs/ops/docops-runbook.md` | Rotina por ciclo, critérios de estabilidade e tratamento de drift documental. |
+
+## Operação contínua (marco 2026-03-04)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Smoke de ruleset/branch protection em `main` | `ops/evidence/latest/branch-protection-smoke-2026-03-04.md` | Confirmação operacional de que o fluxo de PR em `main` exige checks obrigatórios antes de merge. |
+| APE Weekly Cycle #1 (shadow/pilot) com GO hard metrics | `ops/evidence/latest/ape-weekly-cycle-run7-2026-03-04.md` | Run #7 em `main` com `decision=GO`, `hardMetricsGo=true`, `auditGap=0`, `duplicateSideEffects=0`, `breakGlass=0` e artefatos semanais completos. |
+| APE Weekly Cycle #2 (shadow/pilot) com GO hard metrics | `ops/evidence/latest/ape-weekly-cycle-run8-2026-03-04.md` | Segundo ciclo consecutivo com `decision=GO`, `hardMetricsGo=true`, `hardReasons=[]`, `auditGap=0`, `duplicateSideEffects=0`, `breakGlass=0` (estabilidade consecutiva atingida). |
 
 ## Entry points
 

@@ -33,11 +33,17 @@ em `GET /api/ledger/:txId`.
 7. (Opcional) baixar `/api/runs/:runId/bundle` e validar `bundleHash`.
 
 ## Verificador CLI (repo)
-Script: `scripts/verifyReceiptCanon.ts`
+Script oficial: `scripts/verify-receipt-canon.ts`  
+Compatibilidade legada: `scripts/verifyReceiptCanon.ts`
 
 ### Uso
 ```bash
 pnpm verify:receipt-canon --ledger ops/evidence/s2-ledger-txid-receipt-canon-2026-02-24.json --strict
+```
+
+Via endpoint:
+```bash
+pnpm verify:receipt-canon --url http://localhost:8080/api/ledger/<txId> --token <bearer> --strict
 ```
 
 Com bundle:
