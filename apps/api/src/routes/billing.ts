@@ -19,6 +19,19 @@ import {
 export const billingRouter = Router();
 billingRouter.use(enforceTenant);
 
+function getTenantBillingV2Client(prisma: unknown) {
+  const client = prisma as any;
+  const hasV2 =
+    client &&
+    typeof client === "object" &&
+    client.tenantBillingAccount &&
+    client.tenantQuotaPolicy &&
+    client.tenantQuotaUsage &&
+    client.workspaceQuotaGrant &&
+    client.billingLedger;
+  return hasV2 ? client : null;
+}
+
 function parseOptionalDate(value: unknown): Date | null {
   if (value == null || value === "") return null;
   const date = new Date(String(value));
@@ -264,6 +277,23 @@ billingRouter.get("/billing/tenant/summary", async (req, res) => {
     });
   }
 
+  const client = getTenantBillingV2Client(prisma);
+  if (!client) {
+    return res.json({
+      ok: true,
+      data: {
+        tenantId: authContext.tenantId,
+        cycleStart: new Date().toISOString(),
+        cycleEnd: new Date().toISOString(),
+        account: null,
+        policy: null,
+        totals: { runs: 0, costCents: 0, currency: "BRL" },
+        usage: null,
+        byWorkspace: [],
+      },
+    });
+  }
+
   const quotaUsageService = new QuotaUsageService(prisma);
   const from = parseOptionalDate(req.query.from);
   const to = parseOptionalDate(req.query.to);
@@ -271,7 +301,6 @@ billingRouter.get("/billing/tenant/summary", async (req, res) => {
     tenantId: authContext.tenantId,
   });
 
-  const client = prisma as any;
   const [account, policy, entries, usage] = await Promise.all([
     client.tenantBillingAccount.findUnique({ where: { tenantId: authContext.tenantId } }),
     client.tenantQuotaPolicy.findUnique({ where: { tenantId: authContext.tenantId } }),
@@ -389,7 +418,13 @@ billingRouter.get("/billing/tenant/usage", async (req, res) => {
     });
   }
 
-  const client = prisma as any;
+  const client = getTenantBillingV2Client(prisma);
+  if (!client) {
+    return res.json({
+      ok: true,
+      data: { tenantId: authContext.tenantId, items: [] },
+    });
+  }
   const where: Record<string, unknown> = { tenantId: authContext.tenantId };
   if (from && to) {
     where.cycleStart = { gte: from };
@@ -420,7 +455,18 @@ billingRouter.get("/billing/tenant/workspaces", async (req, res) => {
     });
   }
 
-  const client = prisma as any;
+  const client = getTenantBillingV2Client(prisma);
+  if (!client) {
+    return res.json({
+      ok: true,
+      data: {
+        tenantId: authContext.tenantId,
+        cycleStart: new Date().toISOString(),
+        cycleEnd: new Date().toISOString(),
+        items: [],
+      },
+    });
+  }
   const quotaUsageService = new QuotaUsageService(prisma);
   const cycle = await quotaUsageService.resolveCycle({ tenantId: authContext.tenantId });
 
@@ -516,7 +562,16 @@ billingRouter.patch("/billing/tenant/workspaces/:id/grant", async (req, res) => 
     });
   }
 
-  const client = prisma as any;
+  const client = getTenantBillingV2Client(prisma);
+  if (!client) {
+    return res.status(409).json({
+      ok: false,
+      error: {
+        code: "TENANT_BILLING_V2_UNAVAILABLE",
+        message: "Tenant billing v2 not available in current runtime",
+      },
+    });
+  }
   const workspace = await client.workspace.findUnique({
     where: { id: workspaceId },
     select: { id: true, tenantId: true },
@@ -584,7 +639,16 @@ billingRouter.patch("/billing/tenant/quotas", async (req, res) => {
     });
   }
 
-  const client = prisma as any;
+  const client = getTenantBillingV2Client(prisma);
+  if (!client) {
+    return res.status(409).json({
+      ok: false,
+      error: {
+        code: "TENANT_BILLING_V2_UNAVAILABLE",
+        message: "Tenant billing v2 not available in current runtime",
+      },
+    });
+  }
   const existing = await client.tenantQuotaPolicy.findUnique({
     where: { tenantId: authContext.tenantId },
   });
@@ -644,7 +708,13 @@ billingRouter.get("/billing/tenant/ledger", async (req, res) => {
     };
   }
 
-  const client = prisma as any;
+  const client = getTenantBillingV2Client(prisma);
+  if (!client) {
+    return res.json({
+      ok: true,
+      data: { tenantId: authContext.tenantId, items: [] },
+    });
+  }
   const [entries, workspaces] = await Promise.all([
     client.billingLedger.findMany({
       where,
@@ -695,7 +765,16 @@ billingRouter.post("/billing/tenant/adjustment", async (req, res) => {
     });
   }
 
-  const client = prisma as any;
+  const client = getTenantBillingV2Client(prisma);
+  if (!client) {
+    return res.status(409).json({
+      ok: false,
+      error: {
+        code: "TENANT_BILLING_V2_UNAVAILABLE",
+        message: "Tenant billing v2 not available in current runtime",
+      },
+    });
+  }
   if (workspaceId) {
     const workspace = await client.workspace.findUnique({
       where: { id: workspaceId },
