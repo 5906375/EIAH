@@ -27,6 +27,7 @@ import { onboardingRouter } from "./routes/onboarding";
 import { workspacesRouter } from "./routes/workspaces";
 import { authRouter } from "./routes/auth";
 import { profileRouter } from "./routes/profile";
+import { startTenantBillingReconciler } from "./services/tenantBillingReconciler";
 
 
 const app = express();
@@ -98,6 +99,7 @@ const shouldStartWorker = (() => {
 if (process.env.NODE_ENV !== "test") {
   assertGovernanceEnv();
   startRunEventOutboxProcessor();
+  startTenantBillingReconciler();
   if (shouldStartWorker) {
     try {
       startRunQueueBullMqWorker();

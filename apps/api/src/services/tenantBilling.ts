@@ -12,6 +12,32 @@ type UsageCycle = {
 
 type LedgerEntryType = "debit" | "credit" | "adjustment";
 export type TenantBillingGuardMode = "shadow" | "soft" | "hard";
+export type TenantBillingReconcileSource = "scheduler" | "admin" | "manual";
+
+export type TenantBillingReconcileResult = {
+  tenantId: string;
+  cycleStart: Date;
+  cycleEnd: Date;
+  expected: {
+    runs: number;
+    costCents: number;
+  };
+  before: {
+    runs: number;
+    costCents: number;
+    exists: boolean;
+  };
+  after: {
+    runs: number;
+    costCents: number;
+  };
+  divergence: {
+    runs: number;
+    costCents: number;
+  };
+  hasDivergence: boolean;
+  applied: boolean;
+};
 
 type InsertLedgerEntryParams = {
   tenantId: string;
@@ -384,6 +410,222 @@ export class QuotaUsageService {
 
     return { usage, cycle };
   }
+}
+
+type ReconcileCycleParams = {
+  tenantId: string;
+  cycleStart?: Date;
+  cycleEnd?: Date;
+  referenceDate?: Date;
+  apply?: boolean;
+  source?: TenantBillingReconcileSource;
+};
+
+function resolveExplicitCycle(input: { cycleStart?: Date; cycleEnd?: Date }) {
+  if (!input.cycleStart && !input.cycleEnd) return null;
+  if (!input.cycleStart || !input.cycleEnd) {
+    throw new Error("cycleStart and cycleEnd must be provided together");
+  }
+  if (input.cycleEnd.getTime() <= input.cycleStart.getTime()) {
+    throw new Error("cycleEnd must be greater than cycleStart");
+  }
+  return {
+    cycleStart: input.cycleStart,
+    cycleEnd: input.cycleEnd,
+  } satisfies UsageCycle;
+}
+
+export async function reconcileTenantQuotaUsageCycle(
+  prisma: PrismaClient,
+  params: ReconcileCycleParams
+): Promise<TenantBillingReconcileResult | null> {
+  const client = getClientWithTenantBillingV2(prisma);
+  if (!client) return null;
+
+  const usageService = new QuotaUsageService(prisma);
+  const explicitCycle = resolveExplicitCycle({
+    cycleStart: params.cycleStart,
+    cycleEnd: params.cycleEnd,
+  });
+  const cycle =
+    explicitCycle ??
+    (await usageService.resolveCycle({
+      tenantId: params.tenantId,
+      referenceDate: params.referenceDate,
+    }));
+
+  const [sumResult, debitRuns, existingUsage] = await Promise.all([
+    client.billingLedger.aggregate({
+      where: {
+        tenantId: params.tenantId,
+        createdAt: { gte: cycle.cycleStart, lt: cycle.cycleEnd },
+      },
+      _sum: { amountCents: true },
+    }),
+    client.billingLedger.count({
+      where: {
+        tenantId: params.tenantId,
+        entryType: "debit",
+        amountCents: { gt: 0 },
+        createdAt: { gte: cycle.cycleStart, lt: cycle.cycleEnd },
+      },
+    }),
+    client.tenantQuotaUsage.findUnique({
+      where: {
+        tenantId_cycleStart_cycleEnd: {
+          tenantId: params.tenantId,
+          cycleStart: cycle.cycleStart,
+          cycleEnd: cycle.cycleEnd,
+        },
+      },
+    }),
+  ]);
+
+  const expectedRuns = debitRuns;
+  const expectedCostCents = sumResult._sum.amountCents ?? 0;
+  const beforeRuns = existingUsage?.runs ?? 0;
+  const beforeCostCents = existingUsage?.costCents ?? 0;
+  const runDiff = expectedRuns - beforeRuns;
+  const costDiff = expectedCostCents - beforeCostCents;
+  const hasDivergence = runDiff !== 0 || costDiff !== 0;
+  const apply = params.apply !== false;
+
+  let afterRuns = beforeRuns;
+  let afterCostCents = beforeCostCents;
+
+  if (apply) {
+    const updated = await client.tenantQuotaUsage.upsert({
+      where: {
+        tenantId_cycleStart_cycleEnd: {
+          tenantId: params.tenantId,
+          cycleStart: cycle.cycleStart,
+          cycleEnd: cycle.cycleEnd,
+        },
+      },
+      create: {
+        tenantId: params.tenantId,
+        cycleStart: cycle.cycleStart,
+        cycleEnd: cycle.cycleEnd,
+        runs: expectedRuns,
+        costCents: expectedCostCents,
+      },
+      update: {
+        runs: expectedRuns,
+        costCents: expectedCostCents,
+        updatedAt: new Date(),
+      },
+    });
+    afterRuns = updated.runs;
+    afterCostCents = updated.costCents;
+  }
+
+  if (hasDivergence) {
+    await client.guardrailAuditLedger.create({
+      data: {
+        tenantId: params.tenantId,
+        workspaceId: null,
+        runId: null,
+        eventType: "billing.reconcile.divergence",
+        severity: "warn",
+        message: "Tenant billing usage diverges from ledger aggregation",
+        metadata: {
+          source: params.source ?? "manual",
+          apply,
+          cycleStart: cycle.cycleStart.toISOString(),
+          cycleEnd: cycle.cycleEnd.toISOString(),
+          expectedRuns,
+          expectedCostCents,
+          beforeRuns,
+          beforeCostCents,
+          runDiff,
+          costDiff,
+        },
+      },
+    });
+  }
+
+  return {
+    tenantId: params.tenantId,
+    cycleStart: cycle.cycleStart,
+    cycleEnd: cycle.cycleEnd,
+    expected: {
+      runs: expectedRuns,
+      costCents: expectedCostCents,
+    },
+    before: {
+      runs: beforeRuns,
+      costCents: beforeCostCents,
+      exists: Boolean(existingUsage),
+    },
+    after: {
+      runs: afterRuns,
+      costCents: afterCostCents,
+    },
+    divergence: {
+      runs: runDiff,
+      costCents: costDiff,
+    },
+    hasDivergence,
+    applied: apply,
+  };
+}
+
+export async function reconcileTenantQuotaUsageBatch(
+  prisma: PrismaClient,
+  params: {
+    tenantIds?: string[];
+    limit?: number;
+    cycleStart?: Date;
+    cycleEnd?: Date;
+    referenceDate?: Date;
+    apply?: boolean;
+    source?: TenantBillingReconcileSource;
+  } = {}
+) {
+  const client = getClientWithTenantBillingV2(prisma);
+  if (!client) {
+    return {
+      items: [] as TenantBillingReconcileResult[],
+      totals: {
+        tenantsProcessed: 0,
+        divergences: 0,
+        unavailable: true,
+      },
+    };
+  }
+
+  const tenantIds =
+    params.tenantIds && params.tenantIds.length > 0
+      ? params.tenantIds
+      : (
+          await client.tenant.findMany({
+            select: { id: true },
+            orderBy: { createdAt: "asc" },
+            take: params.limit ?? 1000,
+          })
+        ).map((tenant: { id: string }) => tenant.id);
+
+  const items: TenantBillingReconcileResult[] = [];
+  for (const tenantId of tenantIds) {
+    const result = await reconcileTenantQuotaUsageCycle(prisma, {
+      tenantId,
+      cycleStart: params.cycleStart,
+      cycleEnd: params.cycleEnd,
+      referenceDate: params.referenceDate,
+      apply: params.apply,
+      source: params.source,
+    });
+    if (result) items.push(result);
+  }
+
+  return {
+    items,
+    totals: {
+      tenantsProcessed: items.length,
+      divergences: items.filter((item) => item.hasDivergence).length,
+      unavailable: false,
+    },
+  };
 }
 
 export function isTenantBillingV2ShadowEnabled() {
