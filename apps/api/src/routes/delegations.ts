@@ -25,6 +25,14 @@ const DelegationUpdateSchema = z.object({
   signatureHash: z.string().optional(),
 });
 
+function scopeRank(scope: string) {
+  const normalized = scope.trim().toLowerCase();
+  if (normalized === "admin") return 3;
+  if (normalized === "execute") return 2;
+  if (normalized === "read") return 1;
+  return 0;
+}
+
 delegationsRouter.get("/delegations", async (req, res) => {
   const request = req as TenantAwareRequest;
   if (!request.authContext || !request.prisma) {
@@ -35,7 +43,10 @@ delegationsRouter.get("/delegations", async (req, res) => {
   }
 
   const role = typeof req.query.role === "string" ? req.query.role : "all";
-  const where =
+  const workspaceScoped = typeof req.query.workspaceScoped === "string"
+    ? req.query.workspaceScoped.trim().toLowerCase() === "true"
+    : false;
+  const baseWhere =
     role === "delegator"
       ? { delegatorId: request.authContext.tenantId }
       : role === "delegatee"
@@ -46,13 +57,117 @@ delegationsRouter.get("/delegations", async (req, res) => {
             { delegateeId: request.authContext.tenantId },
           ],
         };
+  const where = workspaceScoped
+    ? { delegateeId: request.authContext.tenantId }
+    : baseWhere;
 
   const items = await request.prisma.delegationPolicy.findMany({
     where,
     orderBy: { createdAt: "desc" },
+    include: {
+      marketplace: {
+        select: {
+          id: true,
+          type: true,
+          name: true,
+          publisherId: true,
+          publisher: { select: { name: true } },
+        },
+      },
+    },
   });
 
-  return res.json({ items });
+  if (!workspaceScoped) {
+    const serialized = items.map(({ marketplace, ...rest }) => ({
+      ...rest,
+      marketplaceName: marketplace?.name ?? null,
+      marketplaceType: marketplace?.type ?? null,
+      publisherId: marketplace?.publisherId ?? null,
+      publisherName: marketplace?.publisher?.name ?? null,
+    }));
+    return res.json({ items: serialized });
+  }
+
+  const allowedPolicies = await request.prisma.tenantActionPolicy.findMany({
+    where: {
+      tenantId: request.authContext.tenantId,
+      workspaceId: request.authContext.workspaceId,
+      allowed: true,
+    },
+    select: { actionName: true },
+  });
+
+  const allowedAgentNames = new Set(
+    allowedPolicies.map((policy) => policy.actionName.trim().toLowerCase())
+  );
+
+  const filtered = items.filter((item) => {
+    const marketplace = (item as typeof item & {
+      marketplace?: { id: string; type: string; name: string } | null;
+    }).marketplace;
+    if (!marketplace) return false;
+    if (marketplace.type !== "agent") return false;
+    return allowedAgentNames.has(marketplace.name.trim().toLowerCase());
+  });
+
+  const dedupedByAgentAndState = (() => {
+    const byKey = new Map<string, (typeof filtered)[number]>();
+    const now = Date.now();
+
+    for (const item of filtered) {
+      const marketplace = (item as typeof item & {
+        marketplace?: { id: string; type: string; name: string } | null;
+      }).marketplace;
+      if (!marketplace) continue;
+      const isActive = item.validUntil.getTime() > now;
+      const stateKey = isActive ? "active" : "expired";
+      const key = `${marketplace.name.trim().toLowerCase()}::${stateKey}`;
+
+      const existing = byKey.get(key);
+      if (!existing) {
+        byKey.set(key, item);
+        continue;
+      }
+
+      const scopeDelta = scopeRank(item.scope) - scopeRank(existing.scope);
+      if (scopeDelta > 0) {
+        byKey.set(key, item);
+        continue;
+      }
+      if (scopeDelta < 0) {
+        continue;
+      }
+
+      const trustDelta = Number(item.trustMin ?? 0) - Number(existing.trustMin ?? 0);
+      if (trustDelta > 0) {
+        byKey.set(key, item);
+        continue;
+      }
+      if (trustDelta < 0) {
+        continue;
+      }
+
+      if (item.validUntil.getTime() > existing.validUntil.getTime()) {
+        byKey.set(key, item);
+        continue;
+      }
+
+      if (item.createdAt.getTime() > existing.createdAt.getTime()) {
+        byKey.set(key, item);
+      }
+    }
+
+    return [...byKey.values()].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  })();
+
+  const serialized = dedupedByAgentAndState.map(({ marketplace, ...rest }) => ({
+    ...rest,
+    marketplaceName: marketplace?.name ?? null,
+    marketplaceType: marketplace?.type ?? null,
+    publisherId: marketplace?.publisherId ?? null,
+    publisherName: marketplace?.publisher?.name ?? null,
+  }));
+  return res.json({ items: serialized });
 });
 
 delegationsRouter.get("/delegations/:id", async (req, res) => {

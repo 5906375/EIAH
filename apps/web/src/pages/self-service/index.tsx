@@ -98,14 +98,6 @@ export default function SelfServiceIndexPage() {
     return Number.isFinite(expiry) && expiry > Date.now();
   };
 
-  const activeDelegations = React.useMemo(
-    () => delegations.filter((delegation) => isDelegationActive(delegation)),
-    [delegations]
-  );
-  const expiredDelegations = React.useMemo(
-    () => delegations.filter((delegation) => !isDelegationActive(delegation)),
-    [delegations]
-  );
   const filteredMarketplaceItems = React.useMemo(() => {
     if (marketplaceFilter === "all") return marketplaceItems;
     return marketplaceItems.filter((item) => item.type === marketplaceFilter);
@@ -115,7 +107,7 @@ export default function SelfServiceIndexPage() {
     setDelegationsStatus("loading");
     setDelegationsError(null);
     try {
-      const response = await apiListDelegations({ role: "delegatee" });
+      const response = await apiListDelegations({ role: "delegatee", workspaceScoped: true });
       setDelegations(response.items ?? []);
       setDelegationsStatus("ready");
     } catch (error) {
@@ -131,7 +123,10 @@ export default function SelfServiceIndexPage() {
     setDelegationsStatus("loading");
     setDelegationsError(null);
 
-    Promise.all([apiListMarketplace(), apiListDelegations({ role: "delegatee" })])
+    Promise.all([
+      apiListMarketplace(),
+      apiListDelegations({ role: "delegatee", workspaceScoped: true }),
+    ])
       .then(([marketplaceResponse, delegationResponse]) => {
         if (!active) return;
         setMarketplaceItems(marketplaceResponse.items ?? []);
@@ -150,7 +145,7 @@ export default function SelfServiceIndexPage() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [session.workspaceId, session.tenantId, session.token]);
 
   React.useEffect(() => {
     const next = new Set<string>();
@@ -572,96 +567,6 @@ export default function SelfServiceIndexPage() {
                   </div>
                 );
               })
-            )}
-          </div>
-        ) : null}
-        {delegationsStatus === "ready" ? (
-          <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h4 className="text-sm font-semibold uppercase tracking-[0.3em] text-foreground">
-                Delegacoes ativas
-              </h4>
-              <span className="text-xs text-muted-foreground">
-                {activeDelegations.length} ativo(s)
-              </span>
-            </div>
-            {activeDelegations.length === 0 ? (
-              <p className="mt-3 text-sm text-muted-foreground">
-                Nenhuma delegacao ativa encontrada.
-              </p>
-            ) : (
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
-                {activeDelegations.map((delegation) => {
-                  const item = marketplaceItems.find(
-                    (marketplaceItem) => marketplaceItem.id === delegation.marketplaceId
-                  );
-                  const publisherLabel =
-                    item?.publisherName ?? item?.publisherId ?? delegation.delegatorId;
-                  return (
-                    <div
-                      key={delegation.id}
-                      className="flex flex-col gap-2 rounded-xl border border-white/10 bg-[#0a1527] p-4 text-xs text-muted-foreground"
-                    >
-                      <span className="text-sm font-semibold text-foreground">
-                        {item?.name ?? delegation.marketplaceId ?? "Item desconhecido"}
-                      </span>
-                      <span>Publisher: {publisherLabel}</span>
-                      <span>Scope: {delegation.scope}</span>
-                      <span>Trust minimo: {delegation.trustMin}</span>
-                      <span>Valido ate: {formatDate(delegation.validUntil)}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        ) : null}
-        {delegationsStatus === "ready" ? (
-          <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h4 className="text-sm font-semibold uppercase tracking-[0.3em] text-foreground">
-                Delegacoes expiradas
-              </h4>
-              <span className="text-xs text-muted-foreground">
-                {expiredDelegations.length} expirado(s)
-              </span>
-            </div>
-            {expiredDelegations.length === 0 ? (
-              <p className="mt-3 text-sm text-muted-foreground">
-                Nenhuma delegacao expirada encontrada.
-              </p>
-            ) : (
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
-                {expiredDelegations.map((delegation) => {
-                  const item = marketplaceItems.find(
-                    (marketplaceItem) => marketplaceItem.id === delegation.marketplaceId
-                  );
-                  const publisherLabel =
-                    item?.publisherName ?? item?.publisherId ?? delegation.delegatorId;
-                  return (
-                    <div
-                      key={delegation.id}
-                      className="flex flex-col gap-2 rounded-xl border border-white/10 bg-[#0a1527] p-4 text-xs text-muted-foreground"
-                    >
-                      <span className="text-sm font-semibold text-foreground">
-                        {item?.name ?? delegation.marketplaceId ?? "Item desconhecido"}
-                      </span>
-                      <span>Publisher: {publisherLabel}</span>
-                      <span>Scope: {delegation.scope}</span>
-                      <span>Trust minimo: {delegation.trustMin}</span>
-                      <span>Valido ate: {formatDate(delegation.validUntil)}</span>
-                      {delegation.marketplaceId ? (
-                        <a
-                          className="mt-2 inline-flex w-fit items-center rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-amber-200"
-                          href={`#marketplace-${delegation.marketplaceId}`}
-                        >
-                          Renovar agora
-                        </a>
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </div>
             )}
           </div>
         ) : null}

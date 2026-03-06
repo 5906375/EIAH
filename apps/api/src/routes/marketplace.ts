@@ -78,6 +78,14 @@ function compareMarketplacePriority(
   return b.createdAt.getTime() - a.createdAt.getTime();
 }
 
+function scopePriority(scope: string) {
+  const normalized = scope.trim().toLowerCase();
+  if (normalized === "admin") return 3;
+  if (normalized === "execute") return 2;
+  if (normalized === "read") return 1;
+  return 0;
+}
+
 marketplaceRouter.get("/marketplace", async (req, res) => {
   const request = req as TenantAwareRequest;
   if (!request.authContext || !request.prisma) {
@@ -325,33 +333,92 @@ marketplaceRouter.post("/marketplace/:id/subscribe", async (req, res) => {
     parsed.data.signatureHash ??
     crypto.createHash("sha256").update(`${policyHash}:${item.publisherId}`).digest("hex");
 
-  const delegation = await request.prisma.delegationPolicy.create({
-    data: {
-      delegatorId: item.publisherId,
-      delegateeId: request.authContext.tenantId,
-      marketplaceId: item.id,
-      scope,
-      trustMin,
-      validUntil,
-      policyHash,
-      signatureHash,
-    },
-  });
+  const now = new Date();
+  let delegation = null as Awaited<ReturnType<typeof request.prisma.delegationPolicy.create>> | null;
 
   if (item.type === "agent") {
-    const existingWorkspacePolicy = await request.prisma.tenantActionPolicy.findFirst({
+    const existingActiveByAgentName = await request.prisma.delegationPolicy.findMany({
+      where: {
+        delegateeId: request.authContext.tenantId,
+        validUntil: { gt: now },
+        scope: { in: ["read", "execute", "admin"] },
+        marketplace: {
+          is: {
+            type: "agent",
+            name: { equals: item.name, mode: "insensitive" },
+          },
+        },
+      },
+      include: { marketplace: true },
+    });
+
+    if (existingActiveByAgentName.length > 0) {
+      const ranked = [...existingActiveByAgentName].sort((a, b) => {
+        const scopeDelta = scopePriority(b.scope) - scopePriority(a.scope);
+        if (scopeDelta !== 0) return scopeDelta;
+        const trustDelta = Number(b.trustMin ?? 0) - Number(a.trustMin ?? 0);
+        if (trustDelta !== 0) return trustDelta;
+        const validUntilDelta = b.validUntil.getTime() - a.validUntil.getTime();
+        if (validUntilDelta !== 0) return validUntilDelta;
+        return b.createdAt.getTime() - a.createdAt.getTime();
+      });
+      delegation = ranked[0];
+    }
+  } else {
+    const existingByMarketplace = await request.prisma.delegationPolicy.findFirst({
+      where: {
+        delegateeId: request.authContext.tenantId,
+        marketplaceId: item.id,
+        validUntil: { gt: now },
+        scope: { in: ["read", "execute", "admin"] },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    if (existingByMarketplace) {
+      delegation = existingByMarketplace;
+    }
+  }
+
+  if (!delegation) {
+    delegation = await request.prisma.delegationPolicy.create({
+      data: {
+        delegatorId: item.publisherId,
+        delegateeId: request.authContext.tenantId,
+        marketplaceId: item.id,
+        scope,
+        trustMin,
+        validUntil,
+        policyHash,
+        signatureHash,
+      },
+    });
+  }
+
+  if (item.type === "agent") {
+    const existingWorkspacePolicies = await request.prisma.tenantActionPolicy.findMany({
       where: {
         tenantId: request.authContext.tenantId,
         workspaceId: request.authContext.workspaceId,
-        actionName: item.name,
+        actionName: { equals: item.name, mode: "insensitive" },
       },
       orderBy: { createdAt: "desc" },
     });
 
-    if (existingWorkspacePolicy) {
+    const keeper = existingWorkspacePolicies[0];
+
+    if (keeper) {
+      const duplicateIds = existingWorkspacePolicies.slice(1).map((row) => row.id);
+      if (duplicateIds.length > 0) {
+        await request.prisma.tenantActionPolicy.deleteMany({
+          where: { id: { in: duplicateIds } },
+        });
+      }
       await request.prisma.tenantActionPolicy.update({
-        where: { id: existingWorkspacePolicy.id },
-        data: { allowed: true },
+        where: { id: keeper.id },
+        data: {
+          actionName: item.name,
+          allowed: true,
+        },
       });
     } else {
       await request.prisma.tenantActionPolicy.create({
