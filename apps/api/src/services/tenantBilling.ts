@@ -11,6 +11,7 @@ type UsageCycle = {
 };
 
 type LedgerEntryType = "debit" | "credit" | "adjustment";
+export type TenantBillingGuardMode = "shadow" | "soft" | "hard";
 
 type InsertLedgerEntryParams = {
   tenantId: string;
@@ -22,6 +23,31 @@ type InsertLedgerEntryParams = {
   requestId?: string | null;
   provider?: string | null;
   model?: string | null;
+};
+
+export type TenantBillingGuardReasonCode =
+  | "WORKSPACE_GRANT_DISABLED"
+  | "TENANT_RUNS_SOFT_LIMIT"
+  | "TENANT_RUNS_HARD_LIMIT"
+  | "TENANT_COST_SOFT_LIMIT"
+  | "TENANT_COST_HARD_LIMIT"
+  | "WORKSPACE_RUNS_LIMIT"
+  | "WORKSPACE_COST_LIMIT";
+
+export type TenantBillingGuardReason = {
+  code: TenantBillingGuardReasonCode;
+  message: string;
+  current: number;
+  projected: number;
+  limit: number;
+};
+
+export type TenantBillingGuardDecision = {
+  mode: TenantBillingGuardMode;
+  block: boolean;
+  workspaceEnabled: boolean;
+  reasons: TenantBillingGuardReason[];
+  cycle: UsageCycle;
 };
 
 function normalizeAnchorDay(day: number | null | undefined) {
@@ -274,6 +300,16 @@ export function isTenantBillingV2ShadowEnabled() {
   return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
 }
 
+export function getTenantBillingV2GuardMode(): TenantBillingGuardMode {
+  const raw = (process.env.TENANT_BILLING_V2_GUARD_MODE ?? "shadow").trim().toLowerCase();
+  if (raw === "hard" || raw === "soft" || raw === "shadow") return raw;
+  return "shadow";
+}
+
+function calculatePercentLimit(limit: number, pct: number) {
+  return Math.floor((limit * pct) / 100);
+}
+
 export async function ensureTenantBillingDefaults(
   prisma: PrismaClient,
   scope: TenantScope & { workspaceId: string }
@@ -284,4 +320,127 @@ export async function ensureTenantBillingDefaults(
     tenantId: scope.tenantId,
     workspaceId: scope.workspaceId,
   });
+}
+
+export async function evaluateTenantBillingExecutionGuard(params: {
+  prisma: PrismaClient;
+  tenantId: string;
+  workspaceId: string;
+  estimatedRunCostCents: number;
+  mode?: TenantBillingGuardMode;
+}): Promise<TenantBillingGuardDecision> {
+  const mode = params.mode ?? getTenantBillingV2GuardMode();
+  await ensureTenantBillingDefaults(params.prisma, {
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+  });
+
+  const policyService = new QuotaPolicyService(params.prisma);
+  const usageService = new QuotaUsageService(params.prisma);
+
+  const [policy, workspaceGrant, usageSnapshot] = await Promise.all([
+    policyService.resolveTenantPolicy(params.tenantId),
+    policyService.resolveWorkspaceGrant({
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+    }),
+    usageService.refreshFromLedger({ tenantId: params.tenantId }),
+  ]);
+
+  const currentRuns = usageSnapshot.usage.runs ?? 0;
+  const currentCost = usageSnapshot.usage.costCents ?? 0;
+  const projectedRuns = currentRuns + 1;
+  const projectedCost = currentCost + params.estimatedRunCostCents;
+
+  const reasons: TenantBillingGuardReason[] = [];
+  const workspaceEnabled = workspaceGrant?.enabled !== false;
+
+  if (!workspaceEnabled) {
+    reasons.push({
+      code: "WORKSPACE_GRANT_DISABLED",
+      message: "Workspace desabilitado para execucao.",
+      current: 0,
+      projected: 0,
+      limit: 0,
+    });
+  }
+
+  if (workspaceGrant?.localRunLimit != null && projectedRuns > workspaceGrant.localRunLimit) {
+    reasons.push({
+      code: "WORKSPACE_RUNS_LIMIT",
+      message: "Workspace excede limite local de runs.",
+      current: currentRuns,
+      projected: projectedRuns,
+      limit: workspaceGrant.localRunLimit,
+    });
+  }
+
+  if (workspaceGrant?.localCostCentsLimit != null && projectedCost > workspaceGrant.localCostCentsLimit) {
+    reasons.push({
+      code: "WORKSPACE_COST_LIMIT",
+      message: "Workspace excede limite local de custo.",
+      current: currentCost,
+      projected: projectedCost,
+      limit: workspaceGrant.localCostCentsLimit,
+    });
+  }
+
+  if (policy?.monthlyRunsLimit != null) {
+    const softLimit = calculatePercentLimit(policy.monthlyRunsLimit, policy.softLimitPct);
+    const hardLimit = calculatePercentLimit(policy.monthlyRunsLimit, policy.hardLimitPct);
+    if (projectedRuns >= softLimit && projectedRuns < hardLimit) {
+      reasons.push({
+        code: "TENANT_RUNS_SOFT_LIMIT",
+        message: "Tenant no limite soft de runs do ciclo.",
+        current: currentRuns,
+        projected: projectedRuns,
+        limit: softLimit,
+      });
+    }
+    if (projectedRuns >= hardLimit) {
+      reasons.push({
+        code: "TENANT_RUNS_HARD_LIMIT",
+        message: "Tenant no limite hard de runs do ciclo.",
+        current: currentRuns,
+        projected: projectedRuns,
+        limit: hardLimit,
+      });
+    }
+  }
+
+  if (policy?.monthlyCostCentsLimit != null) {
+    const softLimit = calculatePercentLimit(policy.monthlyCostCentsLimit, policy.softLimitPct);
+    const hardLimit = calculatePercentLimit(policy.monthlyCostCentsLimit, policy.hardLimitPct);
+    if (projectedCost >= softLimit && projectedCost < hardLimit) {
+      reasons.push({
+        code: "TENANT_COST_SOFT_LIMIT",
+        message: "Tenant no limite soft de custo do ciclo.",
+        current: currentCost,
+        projected: projectedCost,
+        limit: softLimit,
+      });
+    }
+    if (projectedCost >= hardLimit) {
+      reasons.push({
+        code: "TENANT_COST_HARD_LIMIT",
+        message: "Tenant no limite hard de custo do ciclo.",
+        current: currentCost,
+        projected: projectedCost,
+        limit: hardLimit,
+      });
+    }
+  }
+
+  const hasHardReason =
+    reasons.some((reason) =>
+      ["WORKSPACE_GRANT_DISABLED", "WORKSPACE_RUNS_LIMIT", "WORKSPACE_COST_LIMIT", "TENANT_RUNS_HARD_LIMIT", "TENANT_COST_HARD_LIMIT"].includes(reason.code)
+    );
+
+  return {
+    mode,
+    block: mode === "hard" && hasHardReason,
+    workspaceEnabled,
+    reasons,
+    cycle: usageSnapshot.cycle,
+  };
 }
