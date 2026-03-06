@@ -25,6 +25,25 @@ type InsertLedgerEntryParams = {
   model?: string | null;
 };
 
+function getClientWithTenantBillingV2(prisma: PrismaClient) {
+  const client = prisma as any;
+  const hasV2 =
+    client &&
+    typeof client === "object" &&
+    client.tenantQuotaPolicy &&
+    client.workspaceQuotaGrant &&
+    client.tenantQuotaUsage &&
+    client.tenantBillingAccount &&
+    client.billingLedger;
+  return hasV2 ? client : null;
+}
+
+function defaultCycle(referenceDate: Date = new Date()): UsageCycle {
+  const cycleStart = new Date(Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth(), 1, 0, 0, 0, 0));
+  const cycleEnd = new Date(Date.UTC(referenceDate.getUTCFullYear(), referenceDate.getUTCMonth() + 1, 1, 0, 0, 0, 0));
+  return { cycleStart, cycleEnd };
+}
+
 export type TenantBillingGuardReasonCode =
   | "WORKSPACE_GRANT_DISABLED"
   | "TENANT_RUNS_SOFT_LIMIT"
@@ -85,7 +104,16 @@ export class QuotaPolicyService {
   constructor(private readonly prisma: PrismaClient) {}
 
   async resolveTenantPolicy(tenantId: string) {
-    const client = this.prisma as any;
+    const client = getClientWithTenantBillingV2(this.prisma);
+    if (!client) {
+      return {
+        tenantId,
+        softLimitPct: 80,
+        hardLimitPct: 100,
+        monthlyRunsLimit: null,
+        monthlyCostCentsLimit: null,
+      };
+    }
     const existing = await client.tenantQuotaPolicy.findUnique({
       where: { tenantId },
     });
@@ -101,7 +129,16 @@ export class QuotaPolicyService {
   }
 
   async resolveWorkspaceGrant(params: { tenantId: string; workspaceId: string }) {
-    const client = this.prisma as any;
+    const client = getClientWithTenantBillingV2(this.prisma);
+    if (!client) {
+      return {
+        tenantId: params.tenantId,
+        workspaceId: params.workspaceId,
+        enabled: true,
+        localRunLimit: null,
+        localCostCentsLimit: null,
+      };
+    }
     const workspace = await client.workspace.findUnique({
       where: { id: params.workspaceId },
       select: { id: true, tenantId: true },
@@ -146,7 +183,26 @@ export class BillingLedgerService {
   }
 
   private async insertEntry(entryType: LedgerEntryType, params: InsertLedgerEntryParams) {
-    const client = this.prisma as any;
+    const client = getClientWithTenantBillingV2(this.prisma);
+    if (!client) {
+      return {
+        inserted: false as const,
+        entry: {
+          id: `shadow-unavailable:${params.requestId ?? "no-request-id"}`,
+          tenantId: params.tenantId,
+          workspaceId: params.workspaceId ?? null,
+          runId: params.runId ?? null,
+          entryType,
+          amountCents: params.amountCents,
+          currency: params.currency ?? "BRL",
+          description: params.description ?? null,
+          requestId: params.requestId ?? null,
+          provider: params.provider ?? null,
+          model: params.model ?? null,
+          createdAt: new Date(),
+        },
+      };
+    }
     if (params.requestId) {
       const existing = await client.billingLedger.findFirst({
         where: {
@@ -186,7 +242,10 @@ export class QuotaUsageService {
     tenantId: string;
     referenceDate?: Date;
   }): Promise<UsageCycle> {
-    const client = this.prisma as any;
+    const client = getClientWithTenantBillingV2(this.prisma);
+    if (!client) {
+      return defaultCycle(params.referenceDate ?? new Date());
+    }
     const account = await client.tenantBillingAccount.findUnique({
       where: { tenantId: params.tenantId },
       select: { cycleAnchorDay: true },
@@ -200,8 +259,24 @@ export class QuotaUsageService {
     tenantId: string;
     referenceDate?: Date;
   }) {
-    const client = this.prisma as any;
+    const client = getClientWithTenantBillingV2(this.prisma);
     const cycle = await this.resolveCycle(params);
+    if (!client) {
+      return {
+        usage: {
+          id: `usage-unavailable:${params.tenantId}`,
+          tenantId: params.tenantId,
+          cycleStart: cycle.cycleStart,
+          cycleEnd: cycle.cycleEnd,
+          runs: 0,
+          costCents: 0,
+          tokens: 0,
+          storageMb: 0,
+          updatedAt: new Date(),
+        },
+        cycle,
+      };
+    }
     const [sumResult, debitRuns] = await Promise.all([
       client.billingLedger.aggregate({
         where: {
@@ -255,11 +330,27 @@ export class QuotaUsageService {
     storageMbDelta?: number;
     referenceDate?: Date;
   }) {
-    const client = this.prisma as any;
+    const client = getClientWithTenantBillingV2(this.prisma);
     const cycle = await this.resolveCycle({
       tenantId: params.tenantId,
       referenceDate: params.referenceDate,
     });
+    if (!client) {
+      return {
+        usage: {
+          id: `usage-unavailable:${params.tenantId}`,
+          tenantId: params.tenantId,
+          cycleStart: cycle.cycleStart,
+          cycleEnd: cycle.cycleEnd,
+          runs: 0,
+          costCents: 0,
+          tokens: 0,
+          storageMb: 0,
+          updatedAt: new Date(),
+        },
+        cycle,
+      };
+    }
 
     const runDelta = params.entryType === "debit" && params.amountCents > 0 ? 1 : 0;
     const tokenDelta = Number.isFinite(params.tokensDelta) ? Number(params.tokensDelta) : 0;
@@ -314,6 +405,7 @@ export async function ensureTenantBillingDefaults(
   prisma: PrismaClient,
   scope: TenantScope & { workspaceId: string }
 ) {
+  if (!getClientWithTenantBillingV2(prisma)) return;
   const policyService = new QuotaPolicyService(prisma);
   await policyService.resolveTenantPolicy(scope.tenantId);
   await policyService.resolveWorkspaceGrant({
@@ -329,6 +421,15 @@ export async function evaluateTenantBillingExecutionGuard(params: {
   estimatedRunCostCents: number;
   mode?: TenantBillingGuardMode;
 }): Promise<TenantBillingGuardDecision> {
+  if (!getClientWithTenantBillingV2(params.prisma)) {
+    return {
+      mode: params.mode ?? getTenantBillingV2GuardMode(),
+      block: false,
+      workspaceEnabled: true,
+      reasons: [],
+      cycle: defaultCycle(),
+    };
+  }
   const mode = params.mode ?? getTenantBillingV2GuardMode();
   await ensureTenantBillingDefaults(params.prisma, {
     tenantId: params.tenantId,
