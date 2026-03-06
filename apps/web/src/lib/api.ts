@@ -111,6 +111,10 @@ export type DelegationPolicy = {
   delegatorId: string;
   delegateeId: string;
   marketplaceId?: string | null;
+  marketplaceName?: string | null;
+  marketplaceType?: "agent" | "action" | string | null;
+  publisherId?: string | null;
+  publisherName?: string | null;
   scope: "read" | "execute" | "admin";
   trustMin: number;
   validUntil: string;
@@ -514,9 +518,13 @@ export async function apiWalletLogin(body: {
 
 export async function apiListDelegations(params?: {
   role?: "delegator" | "delegatee" | "all";
+  workspaceScoped?: boolean;
 }): Promise<{ items: DelegationPolicy[] }> {
   const query = new URLSearchParams();
   if (params?.role) query.append("role", params.role);
+  if (typeof params?.workspaceScoped === "boolean") {
+    query.append("workspaceScoped", String(params.workspaceScoped));
+  }
   const qs = query.toString() ? `?${query.toString()}` : "";
   return http(`/delegations${qs}`, { method: "GET" });
 }
@@ -713,6 +721,216 @@ export async function apiGetQuota(workspaceId: string) {
       percent: number;
     };
   }>(`/plans/quotas${qs}`, { method: "GET" });
+}
+
+export type TenantBillingSummary = {
+  tenantId: string;
+  cycleStart: string;
+  cycleEnd: string;
+  account: {
+    planCode: string;
+    currency: string;
+    status: string;
+    cycleAnchorDay: number;
+  } | null;
+  policy: {
+    softLimitPct: number;
+    hardLimitPct: number;
+    monthlyRunsLimit: number | null;
+    monthlyCostCentsLimit: number | null;
+  } | null;
+  totals: {
+    runs: number;
+    costCents: number;
+    currency: string;
+  };
+  usage: {
+    runs: number;
+    costCents: number;
+    tokens: number;
+    storageMb: number;
+    updatedAt: string;
+  } | null;
+  byWorkspace: Array<{
+    workspaceId: string;
+    workspaceName: string;
+    runs: number;
+    costCents: number;
+  }>;
+};
+
+export type TenantBillingWorkspaceItem = {
+  workspaceId: string;
+  workspaceName: string;
+  isActiveWorkspace: boolean;
+  grant: {
+    enabled: boolean;
+    localRunLimit: number | null;
+    localCostCentsLimit: number | null;
+    updatedAt: string;
+  } | null;
+  usage: {
+    runs: number;
+    costCents: number;
+  };
+};
+
+export type TenantBillingLedgerItem = {
+  id: string;
+  tenantId: string;
+  workspaceId: string | null;
+  workspaceName: string | null;
+  runId: string | null;
+  entryType: string;
+  amountCents: number;
+  currency: string;
+  description: string | null;
+  requestId: string | null;
+  provider: string | null;
+  model: string | null;
+  createdAt: string;
+};
+
+export async function apiGetTenantBillingSummary(params?: { from?: string; to?: string }) {
+  const query = new URLSearchParams();
+  if (params?.from) query.set("from", params.from);
+  if (params?.to) query.set("to", params.to);
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  return http<{ ok: boolean; data: TenantBillingSummary }>(`/billing/tenant/summary${qs}`, {
+    method: "GET",
+  });
+}
+
+export async function apiGetTenantBillingUsage(params?: { from?: string; to?: string }) {
+  const query = new URLSearchParams();
+  if (params?.from) query.set("from", params.from);
+  if (params?.to) query.set("to", params.to);
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  return http<{
+    ok: boolean;
+    data: {
+      tenantId: string;
+      items: Array<{
+        id: string;
+        tenantId: string;
+        cycleStart: string;
+        cycleEnd: string;
+        runs: number;
+        costCents: number;
+        tokens: number;
+        storageMb: number;
+        updatedAt: string;
+      }>;
+    };
+  }>(`/billing/tenant/usage${qs}`, {
+    method: "GET",
+  });
+}
+
+export async function apiGetTenantBillingWorkspaces() {
+  return http<{
+    ok: boolean;
+    data: {
+      tenantId: string;
+      cycleStart: string;
+      cycleEnd: string;
+      items: TenantBillingWorkspaceItem[];
+    };
+  }>(`/billing/tenant/workspaces`, {
+    method: "GET",
+  });
+}
+
+export async function apiPatchTenantWorkspaceGrant(
+  workspaceId: string,
+  body: {
+    enabled?: boolean;
+    localRunLimit?: number;
+    localCostCentsLimit?: number;
+  }
+) {
+  return http<{ ok: boolean; data: TenantBillingWorkspaceItem["grant"] }>(
+    `/billing/tenant/workspaces/${encodeURIComponent(workspaceId)}/grant`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }
+  );
+}
+
+export async function apiPatchTenantQuotas(body: {
+  softLimitPct?: number;
+  hardLimitPct?: number;
+  monthlyRunsLimit?: number;
+  monthlyCostCentsLimit?: number;
+}) {
+  return http<{
+    ok: boolean;
+    data: {
+      softLimitPct: number;
+      hardLimitPct: number;
+      monthlyRunsLimit: number | null;
+      monthlyCostCentsLimit: number | null;
+    };
+  }>(`/billing/tenant/quotas`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function apiGetTenantBillingLedger(params?: {
+  from?: string;
+  to?: string;
+  type?: string;
+  workspaceId?: string;
+  limit?: number;
+}) {
+  const query = new URLSearchParams();
+  if (params?.from) query.set("from", params.from);
+  if (params?.to) query.set("to", params.to);
+  if (params?.type) query.set("type", params.type);
+  if (params?.workspaceId) query.set("workspaceId", params.workspaceId);
+  if (typeof params?.limit === "number") query.set("limit", String(params.limit));
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  return http<{
+    ok: boolean;
+    data: {
+      tenantId: string;
+      items: TenantBillingLedgerItem[];
+    };
+  }>(`/billing/tenant/ledger${qs}`, {
+    method: "GET",
+  });
+}
+
+export async function apiCreateTenantBillingAdjustment(body: {
+  amountCents: number;
+  workspaceId?: string;
+  runId?: string;
+  currency?: string;
+  description?: string;
+  requestId?: string;
+  provider?: string;
+  model?: string;
+}) {
+  return http<{
+    ok: boolean;
+    data: {
+      inserted: boolean;
+      ledger: TenantBillingLedgerItem;
+      usage: {
+        runs: number;
+        costCents: number;
+        tokens: number;
+        storageMb: number;
+      };
+      cycleStart: string;
+      cycleEnd: string;
+    };
+  }>(`/billing/tenant/adjustment`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
 }
 
 export async function apiSimulatePlan(spec: PlanSpec) {
