@@ -23,6 +23,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL ?? "https://api.eiah.local/api
 const TENANT_PLACEHOLDER = import.meta.env.VITE_TENANT_ID ?? "tenant-demo";
 const WORKSPACE_PLACEHOLDER = import.meta.env.VITE_WORKSPACE_ID ?? "workspace-demo";
 const DEFAULT_WORKSPACE_ID = WORKSPACE_PLACEHOLDER;
+const ORPHAN_PENDING_HIDE_MS = 2 * 60 * 1000;
 
 type LowCodeTemplate = {
   name: string;
@@ -172,7 +173,7 @@ const RunsPage: React.FC = () => {
   const [activeOnboardingTab, setActiveOnboardingTab] = useState<"video" | "rest" | "sdk" | "templates">("video");
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
 
-  const { tenantId, workspaceId = DEFAULT_WORKSPACE_ID } = useSession();
+  const { tenantId, workspaceId = DEFAULT_WORKSPACE_ID, userId } = useSession();
   const { executeAgent } = useAgentExecution();
   const agentKey = (agentId ?? "").toLowerCase();
   const resources = RUN_RESOURCES[agentKey] ?? RUN_RESOURCES.__default;
@@ -183,9 +184,23 @@ const RunsPage: React.FC = () => {
     { id: "templates", label: "Low-code" },
   ] as const;
 
+  const visibleRuns = useMemo(() => {
+    const now = Date.now();
+    return runs.filter((run) => {
+      if (!userId) return true;
+      if (run.userId) return true;
+      if (run.status !== "pending") return true;
+      const baseTime = run.createdAt ?? run.startedAt;
+      if (!baseTime) return true;
+      const parsed = Date.parse(baseTime);
+      if (!Number.isFinite(parsed)) return true;
+      return now - parsed < ORPHAN_PENDING_HIDE_MS;
+    });
+  }, [runs, userId]);
+
   const inFlightStatuses: RunStatus[] = ["pending", "running"];
   const runSummary = useMemo(() => {
-    if (!runs.length) {
+    if (!visibleRuns.length) {
       return {
         total: 0,
         success: 0,
@@ -197,21 +212,21 @@ const RunsPage: React.FC = () => {
       };
     }
 
-    const durations = runs
+    const durations = visibleRuns
       .map((run) => extractDuration(run))
       .filter((value): value is number => typeof value === "number");
 
     return {
-      total: runs.length,
-      success: runs.filter((run) => run.status === "success").length,
-      inFlight: runs.filter((run) => inFlightStatuses.includes(run.status)).length,
-      failed: runs.filter((run) => run.status === "error").length,
-      blocked: runs.filter((run) => run.status === "blocked").length,
-      totalCostCents: runs.reduce((sum, run) => sum + (run.costCents ?? 0), 0),
+      total: visibleRuns.length,
+      success: visibleRuns.filter((run) => run.status === "success").length,
+      inFlight: visibleRuns.filter((run) => inFlightStatuses.includes(run.status)).length,
+      failed: visibleRuns.filter((run) => run.status === "error").length,
+      blocked: visibleRuns.filter((run) => run.status === "blocked").length,
+      totalCostCents: visibleRuns.reduce((sum, run) => sum + (run.costCents ?? 0), 0),
       averageDurationMs:
         durations.length > 0 ? Math.round(durations.reduce((sum, ms) => sum + ms, 0) / durations.length) : null,
     };
-  }, [runs, inFlightStatuses]);
+  }, [visibleRuns, inFlightStatuses]);
 
   const averageDurationLabel = useMemo(() => {
     if (runSummary.averageDurationMs === null) return "—";
@@ -244,11 +259,19 @@ const RunsPage: React.FC = () => {
         const response = await apiListRuns({ workspaceId, agent: agentId });
         setRuns(response.items);
         setSelectedRun((current) => {
-          if (!current) {
-            return response.items[0] ?? null;
-          }
-          const updated = response.items.find((run) => run.id === current.id);
-          return updated ?? response.items[0] ?? null;
+          const nextItems = response.items.filter((run) => {
+            if (!userId) return true;
+            if (run.userId) return true;
+            if (run.status !== "pending") return true;
+            const baseTime = run.createdAt ?? run.startedAt;
+            if (!baseTime) return true;
+            const parsed = Date.parse(baseTime);
+            if (!Number.isFinite(parsed)) return true;
+            return Date.now() - parsed < ORPHAN_PENDING_HIDE_MS;
+          });
+          if (!current) return nextItems[0] ?? null;
+          const updated = nextItems.find((run) => run.id === current.id);
+          return updated ?? nextItems[0] ?? null;
         });
         setError(null);
         setLastUpdatedAt(new Date());
@@ -264,14 +287,17 @@ const RunsPage: React.FC = () => {
         }
       }
     },
-    [agentId, workspaceId]
+    [agentId, workspaceId, userId]
   );
 
   useEffect(() => {
     fetchRuns();
   }, [fetchRuns]);
 
-  const hasInFlightRuns = useMemo(() => runs.some((run) => inFlightStatuses.includes(run.status)), [runs]);
+  const hasInFlightRuns = useMemo(
+    () => visibleRuns.some((run) => inFlightStatuses.includes(run.status)),
+    [visibleRuns]
+  );
 
   useEffect(() => {
     if (!hasInFlightRuns) {
@@ -619,7 +645,7 @@ const RunsPage: React.FC = () => {
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-              <span className="pill">{runs.length} runs</span>
+                  <span className="pill">{visibleRuns.length} runs</span>
               <span className="pill">Atualizado {lastUpdatedLabel}</span>
               <button
                 type="button"
@@ -645,10 +671,10 @@ const RunsPage: React.FC = () => {
                   onChange={(event) => handleSelectRun(event.target.value)}
                   className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-foreground focus:border-accent/60 focus:outline-none"
                 >
-                  {runs.length === 0 ? (
+                  {visibleRuns.length === 0 ? (
                     <option value="">Nenhum run encontrado</option>
                   ) : (
-                    runs.map((run) => (
+                    visibleRuns.map((run) => (
                       <option key={run.id} value={run.id}>
                         {formatAgentLabel(run.agent)} • {formatRunId(run.id)}
                       </option>

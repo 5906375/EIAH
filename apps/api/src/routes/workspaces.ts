@@ -77,3 +77,32 @@ workspacesRouter.post("/workspaces", async (req, res) => {
     });
   }
 });
+
+workspacesRouter.get("/workspaces", async (req, res) => {
+  const { authContext } = req as TenantAwareRequest;
+  if (!authContext) {
+    return res.status(500).json({
+      ok: false,
+      error: { code: "MISSING_AUTH_CONTEXT", message: "Auth context missing" },
+    });
+  }
+
+  const items = await prismaGlobal.workspace.findMany({
+    where: { tenantId: authContext.tenantId },
+    select: { id: true, name: true, createdAt: true },
+    orderBy: { createdAt: "asc" },
+  });
+
+  return res.json({
+    ok: true,
+    data: {
+      currentWorkspaceId: authContext.workspaceId,
+      items: items.map((item) => ({
+        id: item.id,
+        name: item.name,
+        createdAt: item.createdAt,
+        isCurrent: item.id === authContext.workspaceId,
+      })),
+    },
+  });
+});

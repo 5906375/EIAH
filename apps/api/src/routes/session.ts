@@ -1,8 +1,14 @@
 import type { Request, Response } from "express";
 import { Router } from "express";
+import crypto from "node:crypto";
+import { z } from "zod";
+import { prismaGlobal } from "@repo/db";
 import { findApiToken } from "../auth/apiTokenRepository";
 
 const sessionRouter = Router();
+const switchWorkspaceSchema = z.object({
+  workspaceId: z.string().min(1),
+});
 
 function parseCookieHeader(headerValue?: string | null) {
   if (!headerValue) return {};
@@ -108,6 +114,111 @@ sessionRouter.post("/session", async (req: Request, res: Response) => {
       tenantId: tokenRecord.tenantId,
       workspaceId: tokenRecord.workspaceId,
       userId: tokenRecord.userId ?? null,
+      cookie: {
+        name,
+        sameSite: options.sameSite,
+        httpOnly: options.httpOnly,
+        secure: options.secure,
+        maxAgeMs: options.maxAge,
+      },
+    },
+  });
+});
+
+sessionRouter.post("/session/workspace", async (req: Request, res: Response) => {
+  const header = req.header("authorization") ?? req.header("Authorization");
+  const token = extractBearerToken(header);
+  if (!token) {
+    return res.status(401).json({
+      ok: false,
+      error: { code: "UNAUTHORIZED", message: "Missing bearer token" },
+    });
+  }
+
+  const currentToken = await findApiToken(token);
+  if (!currentToken || currentToken.revoked) {
+    return res.status(401).json({
+      ok: false,
+      error: { code: "UNAUTHORIZED", message: "Invalid token" },
+    });
+  }
+
+  if (currentToken.expiresAt && currentToken.expiresAt.getTime() < Date.now()) {
+    return res.status(401).json({
+      ok: false,
+      error: { code: "TOKEN_EXPIRED", message: "API token expired" },
+    });
+  }
+
+  const parsed = switchWorkspaceSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({
+      ok: false,
+      error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() },
+    });
+  }
+
+  const targetWorkspaceId = parsed.data.workspaceId.trim();
+  const workspace = await prismaGlobal.workspace.findUnique({
+    where: { id: targetWorkspaceId },
+    select: { id: true, tenantId: true },
+  });
+
+  if (!workspace || workspace.tenantId !== currentToken.tenantId) {
+    return res.status(403).json({
+      ok: false,
+      error: { code: "WORKSPACE_FORBIDDEN", message: "Workspace not available for this tenant" },
+    });
+  }
+
+  const existing = await prismaGlobal.apiToken.findFirst({
+    where: {
+      tenantId: currentToken.tenantId,
+      workspaceId: targetWorkspaceId,
+      userId: currentToken.userId ?? null,
+      revoked: false,
+      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+    },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      token: true,
+      tenantId: true,
+      workspaceId: true,
+      userId: true,
+    },
+  });
+
+  const record =
+    existing ??
+    (await prismaGlobal.apiToken.create({
+      data: {
+        token: `tok_${crypto.randomBytes(24).toString("hex")}`,
+        tenantId: currentToken.tenantId,
+        workspaceId: targetWorkspaceId,
+        userId: currentToken.userId ?? null,
+        description: "Workspace switch token",
+      },
+      select: {
+        id: true,
+        token: true,
+        tenantId: true,
+        workspaceId: true,
+        userId: true,
+      },
+    }));
+
+  const { name, options } = resolveSessionCookieOptions(req);
+  res.cookie(name, record.token, options);
+
+  return res.json({
+    ok: true,
+    data: {
+      tokenId: record.id,
+      token: record.token,
+      tenantId: record.tenantId,
+      workspaceId: record.workspaceId,
+      userId: record.userId ?? null,
       cookie: {
         name,
         sameSite: options.sameSite,

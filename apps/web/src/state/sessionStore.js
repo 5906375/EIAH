@@ -4,6 +4,7 @@ const DEFAULTS = {
     workspaceId: import.meta.env.VITE_WORKSPACE_ID || "workspace-demo",
     token: import.meta.env.VITE_API_TOKEN || undefined,
 };
+const LOGOUT_FLAG_KEY = "eiah_logged_out";
 function safeLocalStorage() {
     try {
         if (typeof window === "undefined")
@@ -23,13 +24,15 @@ function loadState() {
             token: DEFAULTS.token,
         };
     }
+    const persistedToken = storage.getItem("eiah_token");
+    const isLoggedOut = storage.getItem(LOGOUT_FLAG_KEY) === "1";
     return {
         tenantId: storage.getItem("tenant_id") || DEFAULTS.tenantId,
         workspaceId: storage.getItem("workspace_id") ||
             storage.getItem("project_id") ||
             DEFAULTS.workspaceId,
         userId: storage.getItem("user_id") || undefined,
-        token: storage.getItem("eiah_token") || DEFAULTS.token || undefined,
+        token: persistedToken || (isLoggedOut ? undefined : DEFAULTS.token || undefined),
     };
 }
 let state = loadState();
@@ -61,8 +64,16 @@ export function updateSession(patch) {
             storage.setItem("workspace_id", patch.workspaceId);
         if (patch.userId !== undefined)
             storage.setItem("user_id", patch.userId);
-        if (patch.token !== undefined)
-            storage.setItem("eiah_token", patch.token);
+        if (patch.token !== undefined) {
+            if (patch.token) {
+                storage.setItem("eiah_token", patch.token);
+                storage.removeItem(LOGOUT_FLAG_KEY);
+            }
+            else {
+                storage.removeItem("eiah_token");
+                storage.setItem(LOGOUT_FLAG_KEY, "1");
+            }
+        }
     }
     notify(next);
 }
@@ -74,11 +85,12 @@ export function clearSession() {
         storage.removeItem("project_id");
         storage.removeItem("user_id");
         storage.removeItem("eiah_token");
+        storage.setItem(LOGOUT_FLAG_KEY, "1");
     }
     notify({
         tenantId: DEFAULTS.tenantId,
         workspaceId: DEFAULTS.workspaceId,
-        token: DEFAULTS.token,
+        token: undefined,
     });
 }
 if (typeof window !== "undefined") {

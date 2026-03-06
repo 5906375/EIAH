@@ -123,21 +123,53 @@ export async function listAgents(
 ): Promise<AgentListing[]> {
   const db = client ?? prismaGlobal;
 
-  const [pricing, profiles] = await Promise.all([
+  const [pricing, profiles, activeDelegations, workspacePolicies] = await Promise.all([
     db.pricing.findMany({ where: { active: true } }),
     db.agentProfile.findMany(),
+    db.delegationPolicy.findMany({
+      where: {
+        delegateeId: tenantId,
+        validUntil: { gt: new Date() },
+        scope: { in: ["read", "execute", "admin"] },
+        marketplaceId: { not: null },
+      },
+      include: {
+        marketplace: true,
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    db.tenantActionPolicy.findMany({
+      where: {
+        tenantId,
+        workspaceId,
+        allowed: true,
+      },
+    }),
   ]);
 
   const registry = listRegisteredActions();
+  const subscribedAgentKeys = new Set<string>();
+  const workspaceAllowedKeys = new Set(
+    workspacePolicies.map((policy) => normalizeAgentKey(policy.actionName))
+  );
+
+  for (const delegation of activeDelegations) {
+    const marketplace = delegation.marketplace;
+    if (!marketplace || marketplace.type !== "agent") continue;
+    const normalizedMarketplaceName = normalizeAgentKey(marketplace.name);
+    if (!normalizedMarketplaceName) continue;
+    if (!workspaceAllowedKeys.has(normalizedMarketplaceName)) continue;
+    subscribedAgentKeys.add(normalizedMarketplaceName);
+  }
 
   const profileMap = new Map<string, (typeof profiles)[number]>();
   for (const profile of profiles) {
     profileMap.set(resolveAgentId(profile.agent), profile);
   }
 
-  const registryNames = new Set<string>(registry.map((item) => item.name));
-
-  const response: AgentListing[] = pricing.map((plan) => {
+  const response: AgentListing[] = pricing
+    .filter((plan) => subscribedAgentKeys.has(normalizeAgentKey(resolveAgentId(plan.agent))))
+    .map((plan) => {
     const canonical = resolveAgentId(plan.agent);
     const profile = profileMap.get(canonical);
     return {
@@ -158,10 +190,13 @@ export async function listAgents(
         }
         : undefined,
     };
-  });
+    });
 
   for (const profile of profiles) {
     const canonical = resolveAgentId(profile.agent);
+    if (!subscribedAgentKeys.has(normalizeAgentKey(canonical))) {
+      continue;
+    }
     if (!response.some((item) => item.id === canonical)) {
       response.push({
         id: canonical,
@@ -178,6 +213,9 @@ export async function listAgents(
   }
 
   for (const coreProfile of CORE_AGENT_PROFILES) {
+    if (!subscribedAgentKeys.has(normalizeAgentKey(coreProfile.agent))) {
+      continue;
+    }
     if (!response.some((item) => item.id === coreProfile.agent)) {
       response.push({
         id: coreProfile.agent,
@@ -195,6 +233,9 @@ export async function listAgents(
 
   for (const entry of registry) {
     const canonical = resolveAgentId(entry.name);
+    if (!subscribedAgentKeys.has(normalizeAgentKey(canonical))) {
+      continue;
+    }
     if (canonical !== entry.name) {
       // Avoid duplicating core agent entries through registry aliases (e.g. "riskAnalyzer" vs "risk-analyzer").
       continue;
