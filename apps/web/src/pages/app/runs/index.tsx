@@ -15,7 +15,7 @@ import {
   formatTrace,
   getAgentInitials,
 } from "@/components/runs/utils";
-import { apiGetRun, apiListRuns, Run, RunStatus } from "../../../lib/api";
+import { ApiError, apiGetRun, apiGetTenantBillingSummary, apiListRuns, Run, RunStatus } from "../../../lib/api";
 import { useAgentExecution } from "@/hooks/useAgentExecution";
 import { useSession } from "@/state/sessionStore";
 
@@ -169,9 +169,11 @@ const RunsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeOnboardingTab, setActiveOnboardingTab] = useState<"video" | "rest" | "sdk" | "templates">("video");
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
+  const [tenantQuotaPct, setTenantQuotaPct] = useState<number | null>(null);
 
   const { tenantId, workspaceId = DEFAULT_WORKSPACE_ID, userId } = useSession();
   const { executeAgent } = useAgentExecution();
@@ -248,6 +250,21 @@ const RunsPage: React.FC = () => {
     }
   }, [lastUpdatedAt]);
 
+  const fetchTenantQuota = useCallback(async () => {
+    try {
+      const response = await apiGetTenantBillingSummary();
+      const hardLimit = response.data.policy?.monthlyCostCentsLimit ?? 0;
+      const currentCost = response.data.totals?.costCents ?? 0;
+      if (hardLimit > 0) {
+        setTenantQuotaPct(Math.min(100, (currentCost / hardLimit) * 100));
+      } else {
+        setTenantQuotaPct(null);
+      }
+    } catch {
+      setTenantQuotaPct(null);
+    }
+  }, []);
+
   const fetchRuns = useCallback(
     async (options?: { silent?: boolean }) => {
       if (!options?.silent) {
@@ -275,6 +292,7 @@ const RunsPage: React.FC = () => {
         });
         setError(null);
         setLastUpdatedAt(new Date());
+        fetchTenantQuota();
       } catch (err) {
         if (!options?.silent) {
           setError("Nao foi possivel carregar os runs agora.");
@@ -287,12 +305,13 @@ const RunsPage: React.FC = () => {
         }
       }
     },
-    [agentId, workspaceId, userId]
+    [agentId, workspaceId, userId, fetchTenantQuota]
   );
 
   useEffect(() => {
     fetchRuns();
-  }, [fetchRuns]);
+    fetchTenantQuota();
+  }, [fetchRuns, fetchTenantQuota]);
 
   const hasInFlightRuns = useMemo(
     () => visibleRuns.some((run) => inFlightStatuses.includes(run.status)),
@@ -341,6 +360,7 @@ const RunsPage: React.FC = () => {
       return;
     }
     setActionError(null);
+    setActionNotice(null);
     setIsSubmitting(true);
     try {
       const response = await executeAgent(agentId, {
@@ -349,6 +369,9 @@ const RunsPage: React.FC = () => {
         workspaceId,
         metadata: { mode },
       });
+      if (Array.isArray(response?.warnings) && response.warnings.length > 0) {
+        setActionNotice(response.warnings[0]?.message ?? "Run enfileirado com aviso de quota.");
+      }
       const createdRun = response?.data;
       if (createdRun) {
         setRuns((prev) => [createdRun, ...prev.filter((run) => run.id !== createdRun.id)]);
@@ -363,7 +386,26 @@ const RunsPage: React.FC = () => {
         fetchRuns({ silent: true });
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Falha ao executar run.";
+      let message = err instanceof Error ? err.message : "Falha ao executar run.";
+      if (err instanceof ApiError && err.status === 403 && err.body && typeof err.body === "object") {
+        const body = err.body as {
+          error?: {
+            code?: string;
+            message?: string;
+            details?: {
+              reasons?: Array<{ message?: string }>;
+            };
+          };
+        };
+        if (body.error?.code === "BILLING_GUARD_BLOCKED") {
+          const reason = body.error.details?.reasons?.[0]?.message;
+          message = reason
+            ? `Bloqueado por quota de billing: ${reason}`
+            : "Bloqueado por quota de billing (hard limit ou workspace desabilitado).";
+        } else if (typeof body.error?.message === "string" && body.error.message.trim()) {
+          message = body.error.message;
+        }
+      }
       setActionError(message);
     } finally {
       setIsSubmitting(false);
@@ -454,6 +496,7 @@ const RunsPage: React.FC = () => {
               <span className="pill">Tenant: {tenantId ?? "—"}</span>
               <span className="pill">Workspace: {workspaceId}</span>
               <span className="pill">Agente: {agentId ?? "—"}</span>
+              {tenantQuotaPct !== null ? <span className="pill">Quota: {tenantQuotaPct.toFixed(1)}%</span> : null}
             </div>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
@@ -632,6 +675,11 @@ const RunsPage: React.FC = () => {
             {actionError}
           </p>
         )}
+        {actionNotice && !actionError ? (
+          <p className="text-xs text-amber-200" role="status">
+            {actionNotice}
+          </p>
+        ) : null}
       </section>
 
       <section className="glass-panel relative overflow-hidden p-0">

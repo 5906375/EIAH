@@ -73,6 +73,13 @@ export async function buildRunEvidenceBundle(params: BuildRunEvidenceBundleParam
   const toolOutputEvents = events.filter(
     (event) => event.type === "run.action.completed" || event.type === "run.action.failed"
   );
+  const billingUsageEvents = events.filter((event) => event.type === "billing.usage.updated");
+  const billingGuardEvents = events.filter(
+    (event) =>
+      event.type === "run.billing.shadow" ||
+      event.type === "run.billing.soft_limit" ||
+      event.type === "run.billing.blocked"
+  );
 
   const intentDoc = {
     runId: run.id,
@@ -103,6 +110,34 @@ export async function buildRunEvidenceBundle(params: BuildRunEvidenceBundleParam
       criticalHash: event.criticalHash ?? null,
       sclTxId: event.sclTxId ?? null,
     })),
+    billing: {
+      usageEvents: billingUsageEvents.map((event) => {
+        const payload =
+          event.payload && typeof event.payload === "object" && !Array.isArray(event.payload)
+            ? (event.payload as Record<string, unknown>)
+            : {};
+        return {
+          id: event.id,
+          type: event.type,
+          createdAt: event.createdAt,
+          ledgerId: typeof payload.ledgerId === "string" ? payload.ledgerId : null,
+          requestId: typeof payload.requestId === "string" ? payload.requestId : null,
+          mode: typeof payload.mode === "string" ? payload.mode : null,
+          cycleStart: typeof payload.cycleStart === "string" ? payload.cycleStart : null,
+          cycleEnd: typeof payload.cycleEnd === "string" ? payload.cycleEnd : null,
+          usage:
+            payload.usage && typeof payload.usage === "object" && !Array.isArray(payload.usage)
+              ? payload.usage
+              : null,
+        };
+      }),
+      guardEvents: billingGuardEvents.map((event) => ({
+        id: event.id,
+        type: event.type,
+        createdAt: event.createdAt,
+        payload: event.payload ?? null,
+      })),
+    },
   };
   const decisionsDoc = {
     guardrail: guardrailEntries.map((entry) => ({

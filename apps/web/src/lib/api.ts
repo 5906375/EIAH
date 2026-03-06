@@ -663,7 +663,15 @@ export async function apiCreateRunWithHeaders(
     payload.projectId = body.workspaceId;
   }
 
-  return http<{ ok: boolean; data: Run }>(`/runs`, {
+  return http<{
+    ok: boolean;
+    data: Run;
+    warnings?: Array<{
+      code: string;
+      message: string;
+      details?: unknown;
+    }>;
+  }>(`/runs`, {
     method: "POST",
     body: JSON.stringify(payload),
     headers,
