@@ -1,4 +1,11 @@
 import { PrismaClient, prismaGlobal } from "@repo/db";
+import { emitRunEvent } from "./runEventEmitter";
+import {
+  BillingLedgerService,
+  QuotaUsageService,
+  ensureTenantBillingDefaults,
+  isTenantBillingV2ShadowEnabled,
+} from "./tenantBilling";
 
 type WorkspaceScope = { tenantId: string; workspaceId: string };
 
@@ -117,6 +124,64 @@ export async function chargeRun(params: {
       data: { costCents: params.costCents },
     })
     .catch(() => undefined);
+
+  if (isTenantBillingV2ShadowEnabled()) {
+    try {
+      await ensureTenantBillingDefaults(client, {
+        tenantId: params.tenantId,
+        workspaceId: params.workspaceId,
+      });
+
+      const ledgerService = new BillingLedgerService(client);
+      const quotaUsageService = new QuotaUsageService(client);
+      const requestId = `run:${params.runId}:debit`;
+
+      const ledger = await ledgerService.insertDebit({
+        tenantId: params.tenantId,
+        workspaceId: params.workspaceId,
+        runId: params.runId,
+        amountCents: params.costCents,
+        currency: "BRL",
+        description: "Shadow charge for run execution",
+        requestId,
+      });
+
+      if (ledger.inserted) {
+        const usageSnapshot = await quotaUsageService.incrementFromEvent({
+          tenantId: params.tenantId,
+          amountCents: params.costCents,
+          entryType: "debit",
+        });
+
+        await emitRunEvent({
+          runId: params.runId,
+          tenantId: params.tenantId,
+          workspaceId: params.workspaceId,
+          type: "billing.usage.updated",
+          payload: {
+            mode: "shadow",
+            ledgerId: ledger.entry.id,
+            requestId,
+            cycleStart: usageSnapshot.cycle.cycleStart.toISOString(),
+            cycleEnd: usageSnapshot.cycle.cycleEnd.toISOString(),
+            usage: {
+              runs: usageSnapshot.usage.runs,
+              costCents: usageSnapshot.usage.costCents,
+              tokens: usageSnapshot.usage.tokens,
+              storageMb: usageSnapshot.usage.storageMb,
+            },
+          },
+        });
+      }
+    } catch (error) {
+      console.warn("[tenant-billing-shadow] failed to write shadow usage", {
+        tenantId: params.tenantId,
+        workspaceId: params.workspaceId,
+        runId: params.runId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
 
   return true;
 }
