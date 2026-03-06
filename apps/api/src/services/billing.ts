@@ -4,6 +4,7 @@ import {
   BillingLedgerService,
   QuotaUsageService,
   ensureTenantBillingDefaults,
+  isTenantBillingV2EnforceEnabled,
   isTenantBillingV2ShadowEnabled,
 } from "./tenantBilling";
 
@@ -98,26 +99,31 @@ export async function chargeRun(params: {
     runId: params.runId,
   });
   if (!runInScope) return false;
+  const enforceV2 = isTenantBillingV2EnforceEnabled();
+  const writeShadow = isTenantBillingV2ShadowEnabled();
+  const shouldWriteV2 = enforceV2 || writeShadow;
 
-  // Atualiza consumo mensal
-  await client.planQuota
-    .update({
-      where: { projectId: params.workspaceId },
-      data: { monthUsageCents: { increment: params.costCents } },
-    })
-    .catch(async () => {
-      // Cria se não existir
-      await client.planQuota.create({
-        data: {
-          projectId: params.workspaceId,
-          softLimitCents: 5000,
-          hardLimitCents: 10000,
-          monthUsageCents: params.costCents,
-        },
+  if (!enforceV2) {
+    // Atualiza consumo mensal legado por workspace (compatibilidade até cutover completo).
+    await client.planQuota
+      .update({
+        where: { projectId: params.workspaceId },
+        data: { monthUsageCents: { increment: params.costCents } },
+      })
+      .catch(async () => {
+        // Cria se não existir
+        await client.planQuota.create({
+          data: {
+            projectId: params.workspaceId,
+            softLimitCents: 5000,
+            hardLimitCents: 10000,
+            monthUsageCents: params.costCents,
+          },
+        });
       });
-    });
+  }
 
-  // Anexa custo ao run
+  // Anexa custo ao run (independente do modo de billing).
   await client.run
     .update({
       where: { id: params.runId },
@@ -125,7 +131,7 @@ export async function chargeRun(params: {
     })
     .catch(() => undefined);
 
-  if (isTenantBillingV2ShadowEnabled()) {
+  if (shouldWriteV2) {
     try {
       await ensureTenantBillingDefaults(client, {
         tenantId: params.tenantId,
@@ -142,7 +148,7 @@ export async function chargeRun(params: {
         runId: params.runId,
         amountCents: params.costCents,
         currency: "BRL",
-        description: "Shadow charge for run execution",
+        description: enforceV2 ? "Enforced charge for run execution" : "Shadow charge for run execution",
         requestId,
       });
 
@@ -159,7 +165,7 @@ export async function chargeRun(params: {
           workspaceId: params.workspaceId,
           type: "billing.usage.updated",
           payload: {
-            mode: "shadow",
+            mode: enforceV2 ? "enforce" : "shadow",
             ledgerId: ledger.entry.id,
             requestId,
             cycleStart: usageSnapshot.cycle.cycleStart.toISOString(),
@@ -174,10 +180,11 @@ export async function chargeRun(params: {
         });
       }
     } catch (error) {
-      console.warn("[tenant-billing-shadow] failed to write shadow usage", {
+      console.warn("[tenant-billing-v2] failed to write tenant usage", {
         tenantId: params.tenantId,
         workspaceId: params.workspaceId,
         runId: params.runId,
+        enforceV2,
         error: error instanceof Error ? error.message : String(error),
       });
     }
@@ -193,6 +200,68 @@ export async function getQuota(params: WorkspaceScope & { prisma?: PrismaClient 
   const client = resolveClient(params.tenantId, params.workspaceId, params.prisma);
   const allowed = await workspaceBelongsToTenant(client, params);
   if (!allowed) return null;
+  const enforceV2 = isTenantBillingV2EnforceEnabled();
+  const v2Client = client as any;
+  const hasV2 =
+    v2Client &&
+    typeof v2Client === "object" &&
+    v2Client.tenantQuotaPolicy &&
+    v2Client.workspaceQuotaGrant &&
+    v2Client.billingLedger;
+
+  if (enforceV2 && hasV2) {
+    try {
+      await ensureTenantBillingDefaults(v2Client, {
+        tenantId: params.tenantId,
+        workspaceId: params.workspaceId,
+      });
+
+      const quotaUsageService = new QuotaUsageService(v2Client);
+      const cycle = await quotaUsageService.resolveCycle({ tenantId: params.tenantId });
+      const [policy, workspaceGrant, workspaceCost] = await Promise.all([
+        v2Client.tenantQuotaPolicy.findUnique({
+          where: { tenantId: params.tenantId },
+        }),
+        v2Client.workspaceQuotaGrant.findUnique({
+          where: {
+            tenantId_workspaceId: {
+              tenantId: params.tenantId,
+              workspaceId: params.workspaceId,
+            },
+          },
+        }),
+        v2Client.billingLedger.aggregate({
+          where: {
+            tenantId: params.tenantId,
+            workspaceId: params.workspaceId,
+            createdAt: { gte: cycle.cycleStart, lt: cycle.cycleEnd },
+          },
+          _sum: { amountCents: true },
+        }),
+      ]);
+
+      const workspaceUsage = workspaceCost?._sum?.amountCents ?? 0;
+      const tenantHard = policy?.monthlyCostCentsLimit ?? null;
+      const workspaceHard = workspaceGrant?.localCostCentsLimit ?? null;
+      const effectiveHard = workspaceHard ?? tenantHard ?? 0;
+      const softPct = policy?.softLimitPct ?? 80;
+      const effectiveSoft = effectiveHard > 0 ? Math.floor((effectiveHard * softPct) / 100) : 0;
+      const percent = effectiveHard > 0 ? Math.min(100, (workspaceUsage / effectiveHard) * 100) : 0;
+
+      return {
+        softLimitCents: effectiveSoft,
+        hardLimitCents: effectiveHard,
+        monthUsageCents: workspaceUsage,
+        percent,
+      };
+    } catch (error) {
+      console.warn("[tenant-billing-v2] failed to resolve enforced quota, falling back to legacy", {
+        tenantId: params.tenantId,
+        workspaceId: params.workspaceId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
 
   const quota = await client.planQuota.findUnique({
     where: { projectId: params.workspaceId },

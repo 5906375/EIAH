@@ -633,10 +633,16 @@ export function isTenantBillingV2ShadowEnabled() {
   return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
 }
 
+export function isTenantBillingV2EnforceEnabled() {
+  const raw = (process.env.TENANT_BILLING_V2_ENFORCE ?? "false").trim().toLowerCase();
+  return raw === "1" || raw === "true" || raw === "yes" || raw === "on";
+}
+
 export function getTenantBillingV2GuardMode(): TenantBillingGuardMode {
-  const raw = (process.env.TENANT_BILLING_V2_GUARD_MODE ?? "shadow").trim().toLowerCase();
+  const configured = process.env.TENANT_BILLING_V2_GUARD_MODE;
+  const raw = (configured ?? "").trim().toLowerCase();
   if (raw === "hard" || raw === "soft" || raw === "shadow") return raw;
-  return "shadow";
+  return isTenantBillingV2EnforceEnabled() ? "hard" : "shadow";
 }
 
 function calculatePercentLimit(limit: number, pct: number) {
