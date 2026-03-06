@@ -1,65 +1,48 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import {
   apiCreateWorkspace,
-  apiListDelegations,
-  apiListMarketplace,
-  type DelegationPolicy,
-  type MarketplaceItem,
+  apiGetProfile,
+  apiDeleteSession,
+  apiListAgents,
+  apiSwitchWorkspaceSession,
+  apiUpdateProfile,
 } from "@/lib/api";
-import { useSession } from "@/state/sessionStore";
+import { clearSession, updateSession, useSession } from "@/state/sessionStore";
 
 type ProfileState = {
   fullName: string;
   email: string;
   phone: string;
   cep: string;
-  company: string;
   role: string;
   website: string;
   city: string;
   country: string;
 };
 
-const STORAGE_KEY = "eiah_profile";
-
 const DEFAULT_STATE: ProfileState = {
   fullName: "",
   email: "",
   phone: "",
   cep: "",
-  company: "",
   role: "",
   website: "",
   city: "",
   country: "",
 };
 
-function isDelegationActive(delegation?: DelegationPolicy | null) {
-  if (!delegation?.validUntil) return false;
-  const expiry = new Date(delegation.validUntil).getTime();
-  return Number.isFinite(expiry) && expiry > Date.now();
-}
-
-function normalizeAgentKey(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
-}
-
-function loadProfile(): ProfileState {
-  if (typeof window === "undefined") return DEFAULT_STATE;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_STATE;
-    const parsed = JSON.parse(raw) as Partial<ProfileState>;
-    return { ...DEFAULT_STATE, ...parsed };
-  } catch {
-    return DEFAULT_STATE;
-  }
-}
-
 export default function ProfilePage() {
-  const [form, setForm] = React.useState<ProfileState>(() => loadProfile());
+  const navigate = useNavigate();
+  const [form, setForm] = React.useState<ProfileState>(DEFAULT_STATE);
   const [status, setStatus] = React.useState<"idle" | "saved" | "error">("idle");
   const session = useSession();
+  const [profileLoading, setProfileLoading] = React.useState(true);
+  const [tenantName, setTenantName] = React.useState("—");
+  const [workspaceName, setWorkspaceName] = React.useState("—");
+  const [linkedWorkspaces, setLinkedWorkspaces] = React.useState<
+    Array<{ id: string; name: string; createdAt?: string; isCurrent: boolean }>
+  >([]);
   const [signedAgents, setSignedAgents] = React.useState<string[]>([]);
   const [signedAgentsLoading, setSignedAgentsLoading] = React.useState(false);
   const [signedAgentsError, setSignedAgentsError] = React.useState<string | null>(null);
@@ -72,6 +55,13 @@ export default function ProfilePage() {
     workspaceId: string;
     name: string;
   } | null>(null);
+  const [isSwitchingWorkspace, setIsSwitchingWorkspace] = React.useState(false);
+  const [workspaceSwitchMessage, setWorkspaceSwitchMessage] = React.useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+  const [signingOut, setSigningOut] = React.useState(false);
+  const [saveErrorMessage, setSaveErrorMessage] = React.useState<string | null>(null);
 
   const handleChange =
     (field: keyof ProfileState) => (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,15 +70,44 @@ export default function ProfilePage() {
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    try {
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(form));
-      }
-      setStatus("saved");
-      setTimeout(() => setStatus("idle"), 2500);
-    } catch {
-      setStatus("error");
-    }
+    setSaveErrorMessage(null);
+    apiUpdateProfile({
+      fullName: form.fullName,
+      email: form.email,
+      phone: form.phone,
+      cep: form.cep,
+      role: form.role,
+      website: form.website,
+      city: form.city,
+      country: form.country,
+      tenantName,
+      workspaceName,
+    })
+      .then((response) => {
+        if (!response.ok || !response.data) {
+          setStatus("error");
+          return;
+        }
+        setForm({
+          fullName: response.data.fullName,
+          email: response.data.email,
+          phone: response.data.phone,
+          cep: response.data.cep,
+          role: response.data.role,
+          website: response.data.website,
+          city: response.data.city,
+          country: response.data.country,
+        });
+        setTenantName(response.data.tenant.name);
+        setWorkspaceName(response.data.workspace.name);
+        setLinkedWorkspaces(response.data.workspaces);
+        setStatus("saved");
+        setTimeout(() => setStatus("idle"), 2500);
+      })
+      .catch(() => {
+        setStatus("error");
+        setSaveErrorMessage("Falha ao salvar perfil no backend. Tente novamente.");
+      });
   };
 
   const handleCreateWorkspace = async (event?: React.SyntheticEvent) => {
@@ -115,6 +134,12 @@ export default function ProfilePage() {
         `Workspace criado com sucesso. Hash: ${response.data.workspaceId}.`
       );
       setNewWorkspaceName("");
+      const refreshed = await apiGetProfile();
+      if (refreshed.ok && refreshed.data) {
+        setTenantName(refreshed.data.tenant.name);
+        setWorkspaceName(refreshed.data.workspace.name);
+        setLinkedWorkspaces(refreshed.data.workspaces);
+      }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Falha ao criar workspace. Tente novamente.";
@@ -123,12 +148,85 @@ export default function ProfilePage() {
     }
   };
 
+  const handleSelectWorkspace = async (workspace: {
+    id: string;
+    name: string;
+    createdAt?: string;
+    isCurrent: boolean;
+  }) => {
+    if (workspace.isCurrent || isSwitchingWorkspace) return;
+    setWorkspaceSwitchMessage(null);
+    setIsSwitchingWorkspace(true);
+    try {
+      // Reflect selection immediately in the profile field.
+      setWorkspaceName(workspace.name);
+      setLinkedWorkspaces((prev) =>
+        prev.map((item) => ({ ...item, isCurrent: item.id === workspace.id }))
+      );
+
+      const switched = await apiSwitchWorkspaceSession(workspace.id);
+      if (!switched.ok || !switched.data?.token) {
+        throw new Error(switched.error?.message ?? "Falha ao trocar workspace.");
+      }
+
+      updateSession({
+        tenantId: switched.data.tenantId,
+        workspaceId: switched.data.workspaceId,
+        userId: switched.data.userId ?? session.userId,
+        token: switched.data.token,
+      });
+
+      const refreshed = await apiGetProfile();
+      if (refreshed.ok && refreshed.data) {
+        setTenantName(refreshed.data.tenant.name);
+        const selectedFromResponse = refreshed.data.workspaces.find((item) => item.id === workspace.id);
+        setWorkspaceName(selectedFromResponse?.name ?? workspace.name);
+        setLinkedWorkspaces(refreshed.data.workspaces);
+      }
+
+      setWorkspaceSwitchMessage({ type: "success", text: `Workspace ativo: ${workspace.name}` });
+      setTimeout(() => setWorkspaceSwitchMessage(null), 2500);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Falha ao trocar workspace. Tente novamente.";
+      setWorkspaceSwitchMessage({ type: "error", text: message });
+    } finally {
+      setIsSwitchingWorkspace(false);
+    }
+  };
+
   React.useEffect(() => {
-    if (!session.tenantId) return;
-    setForm((prev) =>
-      prev.company === session.tenantId ? prev : { ...prev, company: session.tenantId }
-    );
-  }, [session.tenantId]);
+    if (!session.token) {
+      setProfileLoading(false);
+      return;
+    }
+    let active = true;
+    setProfileLoading(true);
+    apiGetProfile()
+      .then((response) => {
+        if (!active || !response.ok || !response.data) return;
+        setForm({
+          fullName: response.data.fullName,
+          email: response.data.email,
+          phone: response.data.phone,
+          cep: response.data.cep,
+          role: response.data.role,
+          website: response.data.website,
+          city: response.data.city,
+          country: response.data.country,
+        });
+        setTenantName(response.data.tenant.name);
+        setWorkspaceName(response.data.workspace.name);
+        setLinkedWorkspaces(response.data.workspaces);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (active) setProfileLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [session.token]);
 
   React.useEffect(() => {
     if (!session.token) {
@@ -138,36 +236,22 @@ export default function ProfilePage() {
     let active = true;
     setSignedAgentsLoading(true);
     setSignedAgentsError(null);
-    Promise.all([apiListMarketplace(), apiListDelegations({ role: "delegatee" })])
-      .then(([marketplaceResponse, delegationsResponse]) => {
+    apiListAgents()
+      .then((response) => {
         if (!active) return;
-        const items = marketplaceResponse.items ?? [];
-        const delegations = (delegationsResponse.items ?? []).filter((entry) => isDelegationActive(entry));
-        const byId = new Map(items.map((item) => [item.id, item]));
         const unique = new Set<string>();
-        delegations.forEach((delegation) => {
-          if (delegation.marketplaceId && byId.has(delegation.marketplaceId)) {
-            const item = byId.get(delegation.marketplaceId) as MarketplaceItem;
-            unique.add(item.name || item.id);
-            return;
-          }
-          if (delegation.marketplaceId) {
-            const normalized = normalizeAgentKey(delegation.marketplaceId);
-            const match =
-              items.find((item) => normalizeAgentKey(item.name || "") === normalized) ||
-              items.find((item) => normalizeAgentKey(item.id) === normalized);
-            if (match) {
-              unique.add(match.name || match.id);
-              return;
-            }
-          }
-          if (delegation.scope) unique.add(delegation.scope);
+        (response.items ?? []).forEach((agent) => {
+          const label = (agent.name ?? agent.id ?? "").trim();
+          if (label) unique.add(label);
         });
         setSignedAgents([...unique]);
       })
       .catch((error) => {
         if (!active) return;
-        const message = error instanceof Error ? error.message : "Falha ao carregar agentes assinados.";
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Falha ao carregar agentes do workspace ativo.";
         setSignedAgentsError(message);
         setSignedAgents([]);
       })
@@ -180,16 +264,39 @@ export default function ProfilePage() {
     };
   }, [session.token, session.tenantId, session.workspaceId]);
 
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    try {
+      await apiDeleteSession().catch(() => undefined);
+    } finally {
+      clearSession();
+      navigate("/access", { replace: true });
+      setSigningOut(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       <header className="rounded-3xl border border-white/10 bg-gradient-to-r from-accent/10 via-surface/80 to-transparent p-8">
-        <p className="text-xs uppercase tracking-[0.35em] text-accent">Perfil</p>
-        <h1 className="mt-2 text-2xl font-semibold text-foreground">
-          Cadastro completo do ambiente privado
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Preencha seus dados para personalizar o uso e facilitar suporte e faturamento.
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.35em] text-accent">Perfil</p>
+            <h1 className="mt-2 text-2xl font-semibold text-foreground">
+              Cadastro completo do ambiente privado
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Preencha seus dados para personalizar o uso e facilitar suporte e faturamento.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleSignOut}
+            disabled={signingOut}
+            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-foreground transition hover:border-accent/40 hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {signingOut ? "Saindo..." : "Sair da conta"}
+          </button>
+        </div>
       </header>
 
       <form
@@ -258,8 +365,8 @@ export default function ProfilePage() {
               <input
                 className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
                 placeholder="Nome da organização"
-                value={form.company}
-                onChange={handleChange("company")}
+                value={tenantName}
+                onChange={(event) => setTenantName(event.target.value)}
               />
             </label>
             <label className="block text-sm text-muted-foreground">
@@ -267,10 +374,43 @@ export default function ProfilePage() {
               <input
                 className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
                 placeholder="Workspace"
-                value={session.workspaceId ?? "—"}
-                readOnly
+                value={workspaceName}
+                onChange={(event) => setWorkspaceName(event.target.value)}
               />
             </label>
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-muted-foreground">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
+                Workspaces vinculados
+              </p>
+              {linkedWorkspaces.length > 0 ? (
+                <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-foreground/85">
+                  {linkedWorkspaces.map((workspace) => (
+                    <button
+                      type="button"
+                      key={workspace.id}
+                      onClick={() => handleSelectWorkspace(workspace)}
+                      disabled={isSwitchingWorkspace}
+                      className={`pill ${workspace.isCurrent ? "bg-accent/20 text-accent" : "bg-white/10 text-foreground"}`}
+                    >
+                      {workspace.name}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Nenhum workspace vinculado encontrado.
+                </p>
+              )}
+              {workspaceSwitchMessage ? (
+                <p
+                  className={`mt-2 text-xs ${
+                    workspaceSwitchMessage.type === "success" ? "text-emerald-300" : "text-rose-300"
+                  }`}
+                >
+                  {workspaceSwitchMessage.text}
+                </p>
+              ) : null}
+            </div>
             <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-muted-foreground">
               <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
                 Novo workspace
@@ -317,8 +457,7 @@ export default function ProfilePage() {
                       {workspaceCreated.name} · {workspaceCreated.workspaceId}
                     </p>
                     <p className="mt-1 text-[11px] text-muted-foreground">
-                      O workspace atual não foi alterado. Para usar o novo, atualize o workspaceId
-                      na sessão.
+                      Para usar o novo workspace, selecione-o no bloco "Workspaces vinculados".
                     </p>
                   </div>
                 )}
@@ -388,7 +527,12 @@ export default function ProfilePage() {
             <span className="text-sm text-emerald-300">Perfil atualizado.</span>
           ) : null}
           {status === "error" ? (
-            <span className="text-sm text-red-300">Falha ao salvar. Tente novamente.</span>
+            <span className="text-sm text-red-300">
+              {saveErrorMessage ?? "Falha ao salvar. Tente novamente."}
+            </span>
+          ) : null}
+          {profileLoading ? (
+            <span className="text-sm text-muted-foreground">Carregando perfil...</span>
           ) : null}
         </div>
       </form>

@@ -7,7 +7,9 @@ import SelfServiceIndexPage from "./pages/self-service";
 import SelfServiceRouter from "./pages/self-service/router";
 import SignupPage from "./pages/signup";
 import ProfilePage from "./pages/profile";
+import AccessPage from "./pages/access";
 import eiahLogo from "./assets/Eiah_logo.png";
+import { useSession } from "./state/sessionStore";
 
 function NavigationLink({ to, label }: { to: string; label: string }) {
   const location = useLocation();
@@ -30,7 +32,13 @@ function NavigationLink({ to, label }: { to: string; label: string }) {
   );
 }
 
-function Layout({ children }: { children: React.ReactNode }) {
+function Layout({
+  children,
+  showNavigation = true,
+}: {
+  children: React.ReactNode;
+  showNavigation?: boolean;
+}) {
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
       <div className="pointer-events-none absolute inset-0 bg-hero-grid" />
@@ -49,13 +57,15 @@ function Layout({ children }: { children: React.ReactNode }) {
                 <p className="text-sm font-medium text-muted-foreground">Agent Operations Console</p>
               </div>
             </div>
-            <nav className="flex max-w-[80vw] items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/5 px-2 py-1 no-scrollbar sm:max-w-none">
-              <NavigationLink to="/app/runs" label="Runs" />
-              <NavigationLink to="/app/agents" label="Agentes" />
-              <NavigationLink to="/app/billing" label="Billing" />
-              <NavigationLink to="/self-service" label="Self-service" />
-              <NavigationLink to="/profile" label="Perfil" />
-            </nav>
+            {showNavigation ? (
+              <nav className="flex max-w-[80vw] items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/5 px-2 py-1 no-scrollbar sm:max-w-none">
+                <NavigationLink to="/app/runs" label="Runs" />
+                <NavigationLink to="/app/agents" label="Agentes" />
+                <NavigationLink to="/app/billing" label="Billing" />
+                <NavigationLink to="/self-service" label="Self-service" />
+                <NavigationLink to="/profile" label="Perfil" />
+              </nav>
+            ) : null}
           </div>
         </header>
 
@@ -67,6 +77,16 @@ function Layout({ children }: { children: React.ReactNode }) {
   );
 }
 
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const session = useSession();
+  const location = useLocation();
+  if (!session.token) {
+    const next = `${location.pathname}${location.search}`;
+    return <Navigate to={`/access?next=${encodeURIComponent(next)}`} replace />;
+  }
+  return <>{children}</>;
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -75,7 +95,9 @@ function AppRoutes() {
         path="/app/runs"
         element={
           <Layout>
-            <RunsPage />
+            <RequireAuth>
+              <RunsPage />
+            </RequireAuth>
           </Layout>
         }
       />
@@ -83,7 +105,9 @@ function AppRoutes() {
         path="/app/agents"
         element={
           <Layout>
-            <AgentsPage />
+            <RequireAuth>
+              <AgentsPage />
+            </RequireAuth>
           </Layout>
         }
       />
@@ -91,7 +115,9 @@ function AppRoutes() {
         path="/app/billing"
         element={
           <Layout>
-            <BillingPage />
+            <RequireAuth>
+              <BillingPage />
+            </RequireAuth>
           </Layout>
         }
       />
@@ -99,7 +125,9 @@ function AppRoutes() {
         path="/self-service"
         element={
           <Layout>
-            <SelfServiceIndexPage />
+            <RequireAuth>
+              <SelfServiceIndexPage />
+            </RequireAuth>
           </Layout>
         }
       />
@@ -107,7 +135,9 @@ function AppRoutes() {
         path="/app/self-service"
         element={
           <Layout>
-            <SelfServiceIndexPage />
+            <RequireAuth>
+              <SelfServiceIndexPage />
+            </RequireAuth>
           </Layout>
         }
       />
@@ -115,15 +145,25 @@ function AppRoutes() {
         path="/self-service/:slug"
         element={
           <Layout>
-            <SelfServiceRouter />
+            <RequireAuth>
+              <SelfServiceRouter />
+            </RequireAuth>
           </Layout>
         }
       />
       <Route
         path="/signup"
         element={
-          <Layout>
+          <Layout showNavigation={false}>
             <SignupPage />
+          </Layout>
+        }
+      />
+      <Route
+        path="/access"
+        element={
+          <Layout showNavigation={false}>
+            <AccessPage />
           </Layout>
         }
       />
@@ -131,7 +171,9 @@ function AppRoutes() {
         path="/profile"
         element={
           <Layout>
-            <ProfilePage />
+            <RequireAuth>
+              <ProfilePage />
+            </RequireAuth>
           </Layout>
         }
       />

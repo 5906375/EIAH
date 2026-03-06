@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Select,
   SelectContent,
@@ -6,13 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  apiListAgents,
-  apiListDelegations,
-  apiListMarketplace,
-  type DelegationPolicy,
-  type MarketplaceItem,
-} from "@/lib/api";
+import { apiListAgents } from "@/lib/api";
 import { useSession } from "@/state/sessionStore";
 
 type Agent = {
@@ -21,33 +15,6 @@ type Agent = {
   description?: string;
   pricing?: { perRunCents?: number };
 };
-
-const ACTIVE_AGENTS: Agent[] = [
-  { id: "fin-nexus", name: "Fin Nexus", pricing: { perRunCents: 320 } },
-  { id: "flow-orchestrator", name: "Flow Orchestrator", pricing: { perRunCents: 250 } },
-  { id: "risk-analyzer", name: "Risk Analyzer", pricing: { perRunCents: 180 } },
-  { id: "onchain-monitor", name: "Onchain Monitor", pricing: { perRunCents: 120 } },
-  { id: "I_BC", name: "I_BC", pricing: { perRunCents: 150 } },
-  { id: "Diarias", name: "Diarias", pricing: { perRunCents: 200 } },
-  { id: "NFT_PY", name: "NFT_PY", pricing: { perRunCents: 220 } },
-  { id: "ImageNFTDiarias", name: "ImageNFTDiarias", pricing: { perRunCents: 260 } },
-  { id: "DeFi_1", name: "DeFi_1", pricing: { perRunCents: 280 } },
-  { id: "Pitch", name: "Pitch", pricing: { perRunCents: 190 } },
-  { id: "MKT", name: "MKT", pricing: { perRunCents: 210 } },
-  { id: "J_360", name: "J_360", pricing: { perRunCents: 230 } },
-  { id: "EIAH", name: "EIAH", pricing: { perRunCents: 170 } },
-  { id: "guardian", name: "Guardian", pricing: { perRunCents: 240 } },
-];
-
-function normalizeAgentKey(value: string) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "");
-}
-
-function isDelegationActive(delegation?: DelegationPolicy | null) {
-  if (!delegation?.validUntil) return false;
-  const expiry = new Date(delegation.validUntil).getTime();
-  return Number.isFinite(expiry) && expiry > Date.now();
-}
 
 export default function AgentSelect({
   value,
@@ -68,69 +35,13 @@ export default function AgentSelect({
   useEffect(() => {
     setIsLoading(true);
     setLoadError(null);
-
-    const mergeAgents = (
-      items: Agent[] | null | undefined,
-      marketplaceItems: MarketplaceItem[],
-      delegations: DelegationPolicy[]
-    ): Agent[] => {
-      const activeDelegations = new Set(
-        delegations
-          .filter((delegation) => isDelegationActive(delegation))
-          .map((delegation) => delegation.marketplaceId)
-          .filter(Boolean) as string[]
-      );
-      const activeMarketplaceAgents = marketplaceItems.filter(
-        (item) => item.type === "agent" && activeDelegations.has(item.id)
-      );
-      const allowedKeys = new Set(
-        activeMarketplaceAgents.map((item) => normalizeAgentKey(item.name))
-      );
-      const allowAllAgents = import.meta.env.DEV && activeMarketplaceAgents.length === 0;
-      const catalog = new Map<string, Agent>();
-
-      const upsert = (agent: Agent) => {
-        if (!agent?.id) return;
-        if (agent.id.includes(".")) return;
-        const key = normalizeAgentKey(agent.id);
-        if (
-          !allowAllAgents &&
-          !allowedKeys.has(key) &&
-          !allowedKeys.has(normalizeAgentKey(agent.name || ""))
-        ) {
-          return;
-        }
-        const existing = catalog.get(key);
-        catalog.set(key, {
-          ...existing,
-          ...agent,
-          id: agent.id,
-          name: agent.name || existing?.name || agent.id,
-          pricing: agent.pricing ?? existing?.pricing,
-        });
-      };
-
-      ACTIVE_AGENTS.forEach(upsert);
-      (items ?? []).forEach(upsert);
-      activeMarketplaceAgents.forEach((item) =>
-        upsert({
-          id: item.name,
-          name: item.name,
-          description: item.description,
-        })
-      );
-
-      return Array.from(catalog.values()).sort((a, b) => a.name.localeCompare(b.name));
-    };
-
-    Promise.all([apiListAgents(), apiListMarketplace(), apiListDelegations({ role: "delegatee" })])
-      .then(([agentsResponse, marketplaceResponse, delegationsResponse]) => {
-        const fromApi = Array.isArray((agentsResponse as any)?.items)
-          ? (agentsResponse as any).items
+    apiListAgents()
+      .then((agentsResponse) => {
+        const nextAgents = Array.isArray((agentsResponse as any)?.items)
+          ? ((agentsResponse as any).items as Agent[]).sort((a, b) =>
+              (a.name ?? a.id).localeCompare(b.name ?? b.id)
+            )
           : [];
-        const marketplaceItems = marketplaceResponse.items ?? [];
-        const delegations = delegationsResponse.items ?? [];
-        const nextAgents = mergeAgents(fromApi, marketplaceItems, delegations);
         setAgents(nextAgents);
         if (value && !nextAgents.some((agent) => agent.id === value)) {
           onChange("");

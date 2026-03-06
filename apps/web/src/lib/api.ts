@@ -28,6 +28,7 @@ export type Run = {
   workspaceId: string;
   tenantId?: string;
   projectId?: string;
+  userId?: string | null;
   agent: string;
   status: RunStatus;
   request?: unknown;
@@ -35,6 +36,8 @@ export type Run = {
   costCents?: number;
   startedAt?: string;
   finishedAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
   meta?: { traceId?: string; tookMs?: number };
 };
 
@@ -185,6 +188,81 @@ export type WorkspaceCreateResponse = {
   error?: { code?: string; message?: string; details?: unknown };
 };
 
+export type WorkspaceListResponse = {
+  ok: boolean;
+  data?: {
+    currentWorkspaceId: string;
+    items: Array<{
+      id: string;
+      name: string;
+      createdAt?: string;
+      isCurrent: boolean;
+    }>;
+  };
+  error?: { code?: string; message?: string; details?: unknown };
+};
+
+export type ProfileResponse = {
+  ok: boolean;
+  data?: {
+    fullName: string;
+    email: string;
+    phone: string;
+    cep: string;
+    role: string;
+    website: string;
+    city: string;
+    country: string;
+    tenant: {
+      id: string;
+      name: string;
+    };
+    workspace: {
+      id: string;
+      name: string;
+    };
+    workspaces: Array<{
+      id: string;
+      name: string;
+      createdAt?: string;
+      isCurrent: boolean;
+    }>;
+  };
+  error?: { code?: string; message?: string; details?: unknown };
+};
+
+export type LegacyLoginResponse = {
+  ok: boolean;
+  data?: {
+    token: string;
+    tenantId: string;
+    workspaceId: string;
+    userId?: string | null;
+    method: "password" | "token" | "wallet";
+  };
+  error?: { code?: string; message?: string; details?: unknown };
+};
+
+export type WalletChallengeResponse = {
+  ok: boolean;
+  data?: {
+    challengeId: string;
+    message: string;
+    expiresAt: string;
+  };
+  error?: { code?: string; message?: string; details?: unknown };
+};
+
+export type SetLegacyPasswordResponse = {
+  ok: boolean;
+  data?: {
+    email: string;
+    method: "token" | "current_password" | "bootstrap" | "email_recovery";
+    legacyAuthSource: "db";
+  };
+  error?: { code?: string; message?: string; details?: unknown };
+};
+
 type CreateRunBody = {
   agent: string;
   prompt: string;
@@ -226,8 +304,8 @@ async function http<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) {
     if (res.status === 401 && !token && typeof window !== "undefined") {
       const current = `${window.location.pathname}${window.location.search}`;
-      if (!current.startsWith("/signup")) {
-        window.location.assign(`/signup?next=${encodeURIComponent(current)}`);
+      if (!current.startsWith("/access")) {
+        window.location.assign(`/access?next=${encodeURIComponent(current)}`);
       }
     }
 
@@ -312,6 +390,126 @@ export async function apiOnboarding(body: {
     method: "POST",
     body: JSON.stringify(body),
   });
+}
+
+export async function apiLegacyLogin(body: {
+  email?: string;
+  password?: string;
+  token?: string;
+}): Promise<LegacyLoginResponse> {
+  const res = await fetch(`${BASE_URL}/auth/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  const contentType = res.headers.get("content-type") ?? "";
+  const payload = contentType.includes("application/json")
+    ? await res.json().catch(() => undefined)
+    : await res.text().catch(() => undefined);
+
+  if (!res.ok) {
+    let message = res.statusText || "Login failed";
+    if (payload && typeof payload === "object") {
+      const asObj = payload as { error?: { message?: string } };
+      if (asObj.error?.message) message = asObj.error.message;
+    } else if (typeof payload === "string" && payload.trim()) {
+      message = payload.trim();
+    }
+    throw new ApiError(res.status, message, payload);
+  }
+
+  return payload as LegacyLoginResponse;
+}
+
+export async function apiSetLegacyPassword(body: {
+  email: string;
+  newPassword: string;
+  confirmPassword?: string;
+  currentPassword?: string;
+  token?: string;
+}): Promise<SetLegacyPasswordResponse> {
+  const res = await fetch(`${BASE_URL}/auth/password/set`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  const contentType = res.headers.get("content-type") ?? "";
+  const payload = contentType.includes("application/json")
+    ? await res.json().catch(() => undefined)
+    : await res.text().catch(() => undefined);
+
+  if (!res.ok) {
+    let message = res.statusText || "Password update failed";
+    if (payload && typeof payload === "object") {
+      const asObj = payload as { error?: { message?: string } };
+      if (asObj.error?.message) message = asObj.error.message;
+    } else if (typeof payload === "string" && payload.trim()) {
+      message = payload.trim();
+    }
+    throw new ApiError(res.status, message, payload);
+  }
+
+  return payload as SetLegacyPasswordResponse;
+}
+
+export async function apiCreateWalletChallenge(body: {
+  address: string;
+}): Promise<WalletChallengeResponse> {
+  const res = await fetch(`${BASE_URL}/auth/wallet/challenge`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  const contentType = res.headers.get("content-type") ?? "";
+  const payload = contentType.includes("application/json")
+    ? await res.json().catch(() => undefined)
+    : await res.text().catch(() => undefined);
+
+  if (!res.ok) {
+    let message = res.statusText || "Wallet challenge failed";
+    if (payload && typeof payload === "object") {
+      const asObj = payload as { error?: { message?: string } };
+      if (asObj.error?.message) message = asObj.error.message;
+    } else if (typeof payload === "string" && payload.trim()) {
+      message = payload.trim();
+    }
+    throw new ApiError(res.status, message, payload);
+  }
+
+  return payload as WalletChallengeResponse;
+}
+
+export async function apiWalletLogin(body: {
+  address: string;
+  challengeId: string;
+  signature: string;
+}): Promise<LegacyLoginResponse> {
+  const res = await fetch(`${BASE_URL}/auth/wallet/login`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  const contentType = res.headers.get("content-type") ?? "";
+  const payload = contentType.includes("application/json")
+    ? await res.json().catch(() => undefined)
+    : await res.text().catch(() => undefined);
+
+  if (!res.ok) {
+    let message = res.statusText || "Wallet login failed";
+    if (payload && typeof payload === "object") {
+      const asObj = payload as { error?: { message?: string } };
+      if (asObj.error?.message) message = asObj.error.message;
+    } else if (typeof payload === "string" && payload.trim()) {
+      message = payload.trim();
+    }
+    throw new ApiError(res.status, message, payload);
+  }
+
+  return payload as LegacyLoginResponse;
 }
 
 export async function apiListDelegations(params?: {
@@ -574,6 +772,32 @@ export async function apiCreateWorkspace(body: { name: string }) {
   });
 }
 
+export async function apiListWorkspaces() {
+  return http<WorkspaceListResponse>("/workspaces", { method: "GET" });
+}
+
+export async function apiGetProfile() {
+  return http<ProfileResponse>("/profile/me", { method: "GET" });
+}
+
+export async function apiUpdateProfile(body: {
+  fullName?: string;
+  email?: string;
+  phone?: string;
+  cep?: string;
+  role?: string;
+  website?: string;
+  city?: string;
+  country?: string;
+  tenantName?: string;
+  workspaceName?: string;
+}) {
+  return http<ProfileResponse>("/profile/me", {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
 export async function apiCreateCalibration(payload: {
   runId: string;
   stepId?: string;
@@ -613,6 +837,54 @@ export async function apiCreateSession() {
   }
 
   return res.json();
+}
+
+export async function apiDeleteSession() {
+  const res = await fetch(`${BASE_URL}/session`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (!res.ok) {
+    const contentType = res.headers.get("content-type") ?? "";
+    const body = contentType.includes("application/json")
+      ? await res.json().catch(() => undefined)
+      : await res.text().catch(() => undefined);
+    throw new ApiError(res.status, res.statusText || "Session delete failed", body);
+  }
+  return res.json();
+}
+
+export async function apiSwitchWorkspaceSession(workspaceId: string) {
+  const token = cachedSession.token;
+  if (!token) {
+    throw new ApiError(401, "Missing token for workspace switch");
+  }
+  const res = await fetch(`${BASE_URL}/session/workspace`, {
+    method: "POST",
+    headers: {
+      authorization: `Bearer ${token}`,
+      "content-type": "application/json",
+    },
+    credentials: "include",
+    body: JSON.stringify({ workspaceId }),
+  });
+  if (!res.ok) {
+    const contentType = res.headers.get("content-type") ?? "";
+    const body = contentType.includes("application/json")
+      ? await res.json().catch(() => undefined)
+      : await res.text().catch(() => undefined);
+    throw new ApiError(res.status, res.statusText || "Workspace switch failed", body);
+  }
+  return res.json() as Promise<{
+    ok: boolean;
+    data?: {
+      token: string;
+      tenantId: string;
+      workspaceId: string;
+      userId?: string | null;
+    };
+    error?: { code?: string; message?: string; details?: unknown };
+  }>;
 }
 export async function apiUploadDocuments(formData: FormData, agentSlug: string) {
   const qs = new URLSearchParams({ agentSlug });

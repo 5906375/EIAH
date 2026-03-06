@@ -70,9 +70,10 @@ type RunTimelineProps = {
   isLoading?: boolean;
   error?: string | null;
   status?: RunStatus;
+  emptyStateMessage?: string;
 };
 
-export default function RunTimeline({ events, isLoading, error, status }: RunTimelineProps) {
+export default function RunTimeline({ events, isLoading, error, status, emptyStateMessage }: RunTimelineProps) {
   const decorated = events.map((event) => ({
     ...event,
     depth: event.type.startsWith("run.action") ? 1 : 0,
@@ -94,9 +95,10 @@ export default function RunTimeline({ events, isLoading, error, status }: RunTim
         </div>
       ) : events.length === 0 ? (
         <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-xs text-muted-foreground">
-          {status === "pending" || status === "running" || status === "blocked"
-            ? "Aguardando eventos do worker. Atualizaremos assim que o agente registrar progresso."
-            : "Nenhum evento registrado ainda para este run."}
+          {emptyStateMessage ??
+            (status === "pending" || status === "running" || status === "blocked"
+              ? "Aguardando eventos do worker. Atualizaremos assim que o agente registrar progresso."
+              : "Nenhum evento registrado ainda para este run.")}
         </div>
       ) : (
         <ul className="no-scrollbar flex max-h-[18vh] flex-col gap-2 overflow-y-auto pr-1 text-xs text-muted-foreground">

@@ -25,6 +25,8 @@ import { assertGovernanceEnv } from "./services/intentValidator";
 import { sessionRouter } from "./routes/session";
 import { onboardingRouter } from "./routes/onboarding";
 import { workspacesRouter } from "./routes/workspaces";
+import { authRouter } from "./routes/auth";
+import { profileRouter } from "./routes/profile";
 
 
 const app = express();
@@ -65,6 +67,9 @@ app.get("/health/queues", async (_req, res) => {
 });
 
 app.use("/api/ops", opsRouter);
+// Public auth routes must come before protected routers that apply enforceTenant.
+app.use("/api", authRouter);
+app.use("/api", onboardingRouter);
 app.use("/api", billingRouter);
 app.use("/api", runsRouter);
 app.use("/api", agentsRouter);
@@ -77,8 +82,8 @@ app.use("/api/tools", toolsRouter);
 app.use("/api", memoryRouter);
 app.use("/api/actions", actionsRouter);
 app.use("/api", sessionRouter);
-app.use("/api", onboardingRouter);
 app.use("/api", workspacesRouter);
+app.use("/api", profileRouter);
 app.use("/metrics", metricsRouter);
 app.use("/metrics/prom", metricsPromRouter);
 

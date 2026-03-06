@@ -162,6 +162,7 @@ function extractDiagnosticSummary(payload?: Record<string, unknown> | null): Dia
 }
 
 export default function RunViewer({ run }: { run: RunData }) {
+  const [nowTick, setNowTick] = useState(() => Date.now());
   const [events, setEvents] = useState<RunEvent[]>([]);
   const [eventsError, setEventsError] = useState<string | null>(null);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
@@ -232,6 +233,11 @@ export default function RunViewer({ run }: { run: RunData }) {
     [run.startedAt, run.finishedAt, run.meta?.tookMs]
   );
   const costLabel = useMemo(() => centsToBRL(run.costCents), [run.costCents]);
+  const startedAtMs = useMemo(() => {
+    if (!run.startedAt) return null;
+    const parsed = Date.parse(run.startedAt);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, [run.startedAt]);
 
   useEffect(() => {
     if (!run?.id || run.id === "run_1234") {
@@ -347,7 +353,30 @@ export default function RunViewer({ run }: { run: RunData }) {
     };
   }, [run?.id]);
 
-  const statusInfo = useMemo(() => statusStyles[run.status] ?? statusStyles.success, [run.status]);
+  const isPendingWithoutEvents = run.status === "pending" && events.length === 0;
+  const pendingWithoutEventsMs =
+    isPendingWithoutEvents && startedAtMs ? Math.max(0, nowTick - startedAtMs) : 0;
+  const pendingWithoutEventsExpired = isPendingWithoutEvents && pendingWithoutEventsMs >= 2 * 60 * 1000;
+
+  useEffect(() => {
+    if (!isPendingWithoutEvents || pendingWithoutEventsExpired) {
+      return;
+    }
+    const interval = setInterval(() => {
+      setNowTick(Date.now());
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [isPendingWithoutEvents, pendingWithoutEventsExpired]);
+
+  const statusInfo = useMemo(() => {
+    if (pendingWithoutEventsExpired) {
+      return {
+        badge: "bg-rose-500/20 text-rose-200",
+        label: "Run preso/expirado",
+      };
+    }
+    return statusStyles[run.status] ?? statusStyles.success;
+  }, [pendingWithoutEventsExpired, run.status]);
   const isInProgress = run.status === "pending" || run.status === "running";
 
   const markdownComponents = useMemo<Components>(
@@ -676,11 +705,20 @@ export default function RunViewer({ run }: { run: RunData }) {
       )}
 
       <div className="glass-panel flex-1 overflow-hidden">
-        {isInProgress ? (
+        {isInProgress && !pendingWithoutEventsExpired ? (
           <div className="flex h-full min-h-[160px] flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-amber-400/40 bg-amber-400/10 p-6 text-xs text-amber-100">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-amber-200 border-t-transparent" />
             <p className="text-center text-xs leading-relaxed text-amber-100/90">
               Execucao em andamento. A timeline abaixo sera atualizada automaticamente.
+            </p>
+          </div>
+        ) : pendingWithoutEventsExpired ? (
+          <div className="flex h-full min-h-[160px] flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-rose-400/40 bg-rose-400/10 p-6 text-xs text-rose-100">
+            <p className="text-center text-sm font-semibold text-rose-100">
+              Run preso/expirado
+            </p>
+            <p className="text-center text-xs leading-relaxed text-rose-100/90">
+              Este run está em fila há mais de 2 minutos sem eventos do worker. Atualize, reexecute ou verifique o worker.
             </p>
           </div>
         ) : runAtivoArtifacts ? (
@@ -701,9 +739,14 @@ export default function RunViewer({ run }: { run: RunData }) {
 
       <RunTimeline
         events={events}
-        isLoading={isLoadingEvents}
+        isLoading={pendingWithoutEventsExpired ? false : isLoadingEvents}
         error={eventsError}
         status={run.status}
+        emptyStateMessage={
+          pendingWithoutEventsExpired
+            ? "Run preso/expirado: pendente há mais de 2 minutos e sem eventos do worker."
+            : undefined
+        }
       />
 
       <GovernancePanel runId={run.id} />

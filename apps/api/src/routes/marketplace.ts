@@ -37,6 +37,47 @@ const MarketplaceSubscribeSchema = z.object({
   signatureHash: z.string().optional(),
 });
 
+function normalizeMarketplaceName(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function scoreApprovalStatus(value: string | null | undefined) {
+  if (value === "approved") return 3;
+  if (value === "pending") return 2;
+  if (value === "rejected") return 1;
+  return 0;
+}
+
+function compareMarketplacePriority(
+  a: {
+    publisherId: string;
+    approvalStatus?: string | null;
+    trustScore?: number | null;
+    createdAt: Date;
+  },
+  b: {
+    publisherId: string;
+    approvalStatus?: string | null;
+    trustScore?: number | null;
+    createdAt: Date;
+  },
+  tenantId: string
+) {
+  const aOwner = a.publisherId === tenantId ? 1 : 0;
+  const bOwner = b.publisherId === tenantId ? 1 : 0;
+  if (aOwner !== bOwner) return bOwner - aOwner;
+
+  const aApproval = scoreApprovalStatus(a.approvalStatus ?? null);
+  const bApproval = scoreApprovalStatus(b.approvalStatus ?? null);
+  if (aApproval !== bApproval) return bApproval - aApproval;
+
+  const aTrust = typeof a.trustScore === "number" ? a.trustScore : -1;
+  const bTrust = typeof b.trustScore === "number" ? b.trustScore : -1;
+  if (aTrust !== bTrust) return bTrust - aTrust;
+
+  return b.createdAt.getTime() - a.createdAt.getTime();
+}
+
 marketplaceRouter.get("/marketplace", async (req, res) => {
   const request = req as TenantAwareRequest;
   if (!request.authContext || !request.prisma) {
@@ -48,6 +89,10 @@ marketplaceRouter.get("/marketplace", async (req, res) => {
 
   const type = typeof req.query.type === "string" ? req.query.type : undefined;
   const publisherId = typeof req.query.publisherId === "string" ? req.query.publisherId : undefined;
+  const dedupeEnabled =
+    typeof req.query.dedupe === "string"
+      ? req.query.dedupe.trim().toLowerCase() !== "false"
+      : true;
 
   const items = await request.prisma.marketplaceItem.findMany({
     where: {
@@ -59,8 +104,30 @@ marketplaceRouter.get("/marketplace", async (req, res) => {
     include: { publisher: { select: { name: true } } },
   });
 
+  const deduped = dedupeEnabled
+    ? (() => {
+        const byKey = new Map<string, (typeof items)[number]>();
+        for (const item of items) {
+          const key = `${item.type}:${normalizeMarketplaceName(item.name)}`;
+          const existing = byKey.get(key);
+          if (!existing) {
+            byKey.set(key, item);
+            continue;
+          }
+          const pickExisting =
+            compareMarketplacePriority(existing, item, request.authContext.tenantId) <= 0;
+          if (!pickExisting) {
+            byKey.set(key, item);
+          }
+        }
+        return [...byKey.values()].sort(
+          (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+        );
+      })()
+    : items;
+
   return res.json({
-    items: items.map((item) => {
+    items: deduped.map((item) => {
       const { publisher, ...rest } = item;
       return { ...rest, publisherName: publisher?.name ?? null };
     }),
@@ -270,6 +337,33 @@ marketplaceRouter.post("/marketplace/:id/subscribe", async (req, res) => {
       signatureHash,
     },
   });
+
+  if (item.type === "agent") {
+    const existingWorkspacePolicy = await request.prisma.tenantActionPolicy.findFirst({
+      where: {
+        tenantId: request.authContext.tenantId,
+        workspaceId: request.authContext.workspaceId,
+        actionName: item.name,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (existingWorkspacePolicy) {
+      await request.prisma.tenantActionPolicy.update({
+        where: { id: existingWorkspacePolicy.id },
+        data: { allowed: true },
+      });
+    } else {
+      await request.prisma.tenantActionPolicy.create({
+        data: {
+          tenantId: request.authContext.tenantId,
+          workspaceId: request.authContext.workspaceId,
+          actionName: item.name,
+          allowed: true,
+        },
+      });
+    }
+  }
 
   return res.json({
     ok: true,

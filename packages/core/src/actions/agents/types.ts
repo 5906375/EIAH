@@ -4,6 +4,7 @@ export type AgentProfileSeed = {
   name: string;
   description: string;
   model: string;
+  models?: Record<string, unknown>;
   systemPrompt: string;
   tools: Array<Record<string, unknown>>;
   metadata?: unknown;
