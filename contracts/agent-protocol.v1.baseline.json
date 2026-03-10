@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "agent-protocol.v1",
+  "requiredTopLevelFields": [
+    "action",
+    "version",
+    "tier",
+    "inputSchema",
+    "receiptSchema",
+    "trustRequirements"
+  ],
+  "requiredTierValues": ["LOW", "MEDIUM", "HIGH"],
+  "requiredReceiptSpecVersion": "receipt.canon.v1"
+}

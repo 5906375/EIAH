@@ -1,0 +1,29 @@
+{
+  "ok": true,
+  "date": "2026-03-09",
+  "scope": "P1-201",
+  "artifact": "payment_intents schema + routes",
+  "table": {
+    "name": "payment_intents",
+    "requiredFields": [
+      "id",
+      "tenant_id",
+      "workspace_id",
+      "run_id",
+      "amount_cents",
+      "currency",
+      "status",
+      "provider",
+      "request_id"
+    ],
+    "indexes": [
+      "payment_intents_tenant_request_unique",
+      "payment_intents_tenant_workspace_status_idx",
+      "payment_intents_provider_status_idx"
+    ]
+  },
+  "api": [
+    "POST /api/billing/payment-intents",
+    "GET /api/billing/payment-intents/:id"
+  ]
+}

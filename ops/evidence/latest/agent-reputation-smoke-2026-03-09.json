@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "date": "2026-03-09",
+  "scope": "P1-301",
+  "api": [
+    "GET /api/billing/reputation?agentId=<agentId>",
+    "GET /api/billing/reputation"
+  ],
+  "model": {
+    "table": "agent_reputation",
+    "fields": [
+      "agent_id",
+      "completed_runs",
+      "disputes_total",
+      "dispute_rate",
+      "trust_score",
+      "verified_receipts"
+    ],
+    "unique": "tenant_id + workspace_id + agent_id"
+  },
+  "assertions": {
+    "snapshotReadable": true,
+    "tenantWorkspaceScoped": true
+  }
+}

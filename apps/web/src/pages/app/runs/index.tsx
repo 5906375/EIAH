@@ -15,9 +15,20 @@ import {
   formatTrace,
   getAgentInitials,
 } from "@/components/runs/utils";
-import { ApiError, apiGetRun, apiGetTenantBillingSummary, apiListRuns, Run, RunStatus } from "../../../lib/api";
+import {
+  ApiError,
+  apiGetImobFunnelHealth,
+  apiGetRun,
+  apiGetTenantBillingSummary,
+  apiListImobBlockedRuns,
+  apiListRuns,
+  ImobFunnelHealth,
+  Run,
+  RunStatus,
+} from "../../../lib/api";
 import { useAgentExecution } from "@/hooks/useAgentExecution";
 import { useSession } from "@/state/sessionStore";
+import { getDomainTerm } from "@/domain/semantics";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "https://api.eiah.local/api";
 const TENANT_PLACEHOLDER = import.meta.env.VITE_TENANT_ID ?? "tenant-demo";
@@ -174,8 +185,33 @@ const RunsPage: React.FC = () => {
   const [activeOnboardingTab, setActiveOnboardingTab] = useState<"video" | "rest" | "sdk" | "templates">("video");
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const [tenantQuotaPct, setTenantQuotaPct] = useState<number | null>(null);
+  const [imobHealth, setImobHealth] = useState<ImobFunnelHealth | null>(null);
+  const [imobBlockedRuns, setImobBlockedRuns] = useState<Array<{
+    runId: string;
+    status: string;
+    reasonCodes: string[];
+    ageHours: number;
+    bundleHash: string | null;
+    txId: string | null;
+    updatedAt: string;
+  }>>([]);
+  const [imobLoading, setImobLoading] = useState(false);
+  const [imobStatusFilter, setImobStatusFilter] = useState("blocked");
+  const [imobReasonFilter, setImobReasonFilter] = useState("all");
 
-  const { tenantId, workspaceId = DEFAULT_WORKSPACE_ID, userId } = useSession();
+  const session = useSession();
+  const { tenantId, workspaceId = DEFAULT_WORKSPACE_ID, userId, token } = session;
+  const isImobDomain = session.activeDomain === "imob";
+  const hasImobAccess = session.entitlements?.REAL_ESTATE_CORE === true;
+  const semanticDomain = isImobDomain ? "imob" : "core";
+  const runLabelPlural = getDomainTerm(semanticDomain, "runPlural");
+  const runLabelSingular = getDomainTerm(semanticDomain, "runSingular");
+  const blockedLabelPlural = getDomainTerm(semanticDomain, "blockedPlural");
+  const receiptLabel = getDomainTerm(semanticDomain, "receipt");
+  const bundleLabel = getDomainTerm(semanticDomain, "bundle");
+  const queueLabel = getDomainTerm(semanticDomain, "queue");
+  const riskLabel = getDomainTerm(semanticDomain, "risk");
+  const commandCenterLabel = getDomainTerm(semanticDomain, "commandCenter");
   const { executeAgent } = useAgentExecution();
   const agentKey = (agentId ?? "").toLowerCase();
   const resources = RUN_RESOURCES[agentKey] ?? RUN_RESOURCES.__default;
@@ -308,10 +344,75 @@ const RunsPage: React.FC = () => {
     [agentId, workspaceId, userId, fetchTenantQuota]
   );
 
+  const fetchImobCommandCenter = useCallback(async () => {
+    if (!isImobDomain || !hasImobAccess) return;
+    setImobLoading(true);
+    try {
+      const [healthRes, blockedRes] = await Promise.all([
+        apiGetImobFunnelHealth({ workspaceId }),
+        apiListImobBlockedRuns({
+          workspaceId,
+          status: imobStatusFilter,
+          reasonCode: imobReasonFilter === "all" ? undefined : imobReasonFilter,
+          limit: 12,
+        }),
+      ]);
+      setImobHealth(healthRes.data);
+      setImobBlockedRuns(blockedRes.data.items);
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? `Falha ao carregar Command Center IMOB (${error.status})`
+          : "Falha ao carregar Command Center IMOB";
+      setActionError(message);
+    } finally {
+      setImobLoading(false);
+    }
+  }, [hasImobAccess, imobReasonFilter, imobStatusFilter, isImobDomain, workspaceId]);
+
+  const downloadImobArtifact = useCallback(
+    async (type: "bundle" | "receipt", runId: string, txId?: string | null) => {
+      if (!token) {
+        setActionError("Sessao sem token para download de artefato.");
+        return;
+      }
+      if (type === "receipt" && !txId) {
+        setActionError("Run sem txId para exportar receipt.");
+        return;
+      }
+      const path = type === "bundle" ? `/runs/${runId}/bundle` : `/ledger/${txId}`;
+      const response = await fetch(`${API_BASE_URL}${path}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      if (!response.ok) {
+        setActionError(`Falha ao baixar ${type} (${response.status}).`);
+        return;
+      }
+      const payload = await response.text();
+      const blob = new Blob([payload], { type: "application/json;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = type === "bundle" ? `run-${runId}-bundle.json` : `run-${runId}-receipt.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    },
+    [token]
+  );
+
   useEffect(() => {
     fetchRuns();
     fetchTenantQuota();
   }, [fetchRuns, fetchTenantQuota]);
+
+  useEffect(() => {
+    void fetchImobCommandCenter();
+  }, [fetchImobCommandCenter]);
 
   const hasInFlightRuns = useMemo(
     () => visibleRuns.some((run) => inFlightStatuses.includes(run.status)),
@@ -472,6 +573,136 @@ const RunsPage: React.FC = () => {
 
   return (
     <div className="space-y-10">
+      {isImobDomain ? (
+        hasImobAccess ? (
+          <section className="glass-panel overflow-hidden p-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-accent">IMOB Command Center</p>
+                <h2 className="text-2xl font-display font-semibold text-foreground">{commandCenterLabel}</h2>
+                <p className="text-sm text-muted-foreground">
+                  Visao executiva de funil e bloqueios para operacao imobiliaria.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="pill">{blockedLabelPlural}: {imobHealth?.summary.blockedTotal ?? runSummary.blocked}</span>
+                <span className="pill">Aprovações pendentes: {imobHealth?.summary.pendingApprovals ?? runSummary.inFlight}</span>
+                <span className="pill">Custo acumulado: {totalCostLabel}</span>
+              </div>
+            </div>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-2xl border border-white/10 bg-surface/60 p-4">
+                <p className="text-[10px] uppercase tracking-[0.28em] text-muted-foreground">Bloqueios</p>
+                <p className="mt-2 text-2xl font-display font-semibold text-foreground">{imobHealth?.summary.blockedTotal ?? 0}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-surface/60 p-4">
+                <p className="text-[10px] uppercase tracking-[0.28em] text-muted-foreground">Pendente revisão</p>
+                <p className="mt-2 text-2xl font-display font-semibold text-foreground">{imobHealth?.summary.salesKitPendingReview ?? 0}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-surface/60 p-4">
+                <p className="text-[10px] uppercase tracking-[0.28em] text-muted-foreground">Pendências legais</p>
+                <p className="mt-2 text-2xl font-display font-semibold text-foreground">{imobHealth?.summary.pendingLegal ?? 0}</p>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-surface/60 p-4">
+                <p className="text-[10px] uppercase tracking-[0.28em] text-muted-foreground">Settlements parciais</p>
+                <p className="mt-2 text-2xl font-display font-semibold text-foreground">{imobHealth?.summary.partialSettlements ?? 0}</p>
+              </div>
+            </div>
+            <div className="mt-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-foreground"
+                  value={imobStatusFilter}
+                  onChange={(event) => setImobStatusFilter(event.target.value)}
+                >
+                  <option value="blocked">Estado: blocked</option>
+                  <option value="pending">Estado: pending</option>
+                  <option value="running">Estado: running</option>
+                  <option value="error">Estado: error</option>
+                </select>
+                <select
+                  className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-foreground"
+                  value={imobReasonFilter}
+                  onChange={(event) => setImobReasonFilter(event.target.value)}
+                >
+                  <option value="all">{riskLabel}: todos</option>
+                  {(imobHealth?.byReasonCode ?? []).map((item) => (
+                    <option key={item.reasonCode} value={item.reasonCode}>
+                      {item.reasonCode}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => fetchImobCommandCenter()}
+                  className="rounded-full border border-accent/40 bg-accent/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-accent transition hover:bg-accent/20"
+                >
+                  {imobLoading ? "Atualizando..." : `Atualizar ${queueLabel.toLowerCase()}`}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">Workspace: {workspaceId}</p>
+            </div>
+            <div className="mt-4 overflow-x-auto rounded-2xl border border-white/10">
+              <table className="w-full min-w-[760px] text-left text-xs">
+                <thead className="bg-white/5 text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
+                  <tr>
+                    <th className="px-4 py-3">{runLabelSingular}</th>
+                    <th className="px-4 py-3">Estado</th>
+                    <th className="px-4 py-3">{riskLabel}</th>
+                    <th className="px-4 py-3">Idade</th>
+                    <th className="px-4 py-3">Comprovantes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {imobBlockedRuns.length === 0 ? (
+                    <tr>
+                      <td className="px-4 py-4 text-muted-foreground" colSpan={5}>
+                        Nenhum caso para os filtros atuais.
+                      </td>
+                    </tr>
+                  ) : (
+                    imobBlockedRuns.map((item) => (
+                      <tr key={item.runId} className="border-t border-white/10">
+                        <td className="px-4 py-3 font-mono text-foreground/90">{formatRunId(item.runId)}</td>
+                        <td className="px-4 py-3 text-foreground/90">{item.status}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{item.reasonCodes.join(", ") || "—"}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{item.ageHours.toFixed(1)}h</td>
+                        <td className="px-4 py-3">
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => void downloadImobArtifact("bundle", item.runId)}
+                              className="rounded-full border border-white/15 bg-white/5 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-foreground hover:border-accent/40"
+                            >
+                              {bundleLabel}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void downloadImobArtifact("receipt", item.runId, item.txId)}
+                              disabled={!item.txId}
+                              className="rounded-full border border-white/15 bg-white/5 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-foreground hover:border-accent/40 disabled:opacity-40"
+                            >
+                              {receiptLabel}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ) : (
+          <section className="rounded-2xl border border-rose-500/40 bg-rose-500/10 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-rose-200">GateCard 403</p>
+            <p className="mt-2 text-sm text-rose-100">
+              Entitlement ausente para IMOB. Requer instalação ativa para habilitar a Central Operacional.
+            </p>
+          </section>
+        )
+      ) : null}
+
       <section className="glass-panel relative overflow-hidden p-8">
         <div className="absolute right-10 top-0 h-32 w-32 rounded-full bg-accent/30 blur-3xl" />
         <div className="space-y-6">
@@ -521,7 +752,7 @@ const RunsPage: React.FC = () => {
           </div>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-2xl border border-white/10 bg-surface/60 p-5 shadow-[0_25px_65px_-45px_rgba(56,189,248,0.8)]">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-muted-foreground">Runs totais</p>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-muted-foreground">{runLabelPlural} totais</p>
               <p className="mt-2 text-3xl font-display font-semibold text-foreground">{runSummary.total}</p>
               <p className="mt-1 text-xs text-muted-foreground">Ultima atualizacao {lastUpdatedLabel}</p>
             </div>
@@ -687,13 +918,13 @@ const RunsPage: React.FC = () => {
         <div className="space-y-6 p-6 sm:p-8">
           <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-2xl font-display font-semibold text-foreground">Runs recentes</h2>
+              <h2 className="text-2xl font-display font-semibold text-foreground">{runLabelPlural} recentes</h2>
               <p className="text-sm text-muted-foreground">
                 Visualize execucoes, tempos de resposta e confirme resultados antes do envio on-chain.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  <span className="pill">{visibleRuns.length} runs</span>
+                  <span className="pill">{visibleRuns.length} {runLabelPlural.toLowerCase()}</span>
               <span className="pill">Atualizado {lastUpdatedLabel}</span>
               <button
                 type="button"

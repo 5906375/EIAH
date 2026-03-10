@@ -1,0 +1,24 @@
+{
+  "name": "dispute-lifecycle-contract",
+  "version": "1.0.0",
+  "entity": "billing_disputes",
+  "statuses": ["open", "under_review", "resolved", "rejected"],
+  "transitions": {
+    "open": ["under_review"],
+    "under_review": ["resolved", "rejected"],
+    "resolved": [],
+    "rejected": []
+  },
+  "endpoints": [
+    "/billing/disputes",
+    "/billing/disputes/:id",
+    "/billing/disputes/:id/transition",
+    "/billing/reputation"
+  ],
+  "invariants": [
+    "transition invalid -> 409 INVALID_DISPUTE_TRANSITION",
+    "close transition emits dispute.closed reputation update",
+    "replay of same close event has no duplicate reputation side-effect"
+  ]
+}
+

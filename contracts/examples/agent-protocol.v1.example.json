@@ -1,0 +1,23 @@
+{
+  "action": "realestate.apply_adjustment",
+  "version": "1.2.0",
+  "tier": "HIGH",
+  "inputSchema": {
+    "type": "object",
+    "required": ["propertyId", "adjustmentType", "amountCents", "reason"],
+    "properties": {
+      "propertyId": { "type": "string", "minLength": 1 },
+      "adjustmentType": { "type": "string", "enum": ["discount", "fine", "correction"] },
+      "amountCents": { "type": "integer", "minimum": 1 },
+      "reason": { "type": "string", "minLength": 3 }
+    }
+  },
+  "receiptSchema": {
+    "specVersion": "receipt.canon.v1"
+  },
+  "trustRequirements": {
+    "minTrustScore": 60,
+    "requiresPoU": true
+  },
+  "defaultAgent": "fin-nexus"
+}

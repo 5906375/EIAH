@@ -1,0 +1,24 @@
+{
+  "generatedAt": "2026-03-09T13:35:00Z",
+  "scope": "W4-D6",
+  "vertical": "IMOB",
+  "kpis": {
+    "moduleActivationSuccessRatePct": 100,
+    "moduleActivationP95Seconds": 8,
+    "timeToFirstRunP95Minutes": 14,
+    "receiptCoveragePct": 100,
+    "crossTenantAuthFailures": 0,
+    "duplicateSideEffects": 0
+  },
+  "gates": {
+    "hardMetricsGo": true,
+    "nonRegressionGo": true,
+    "reasons": []
+  },
+  "evidenceRefs": [
+    "ops/evidence/latest/interop-e2e-agent-call-2026-03-09.json",
+    "ops/evidence/latest/pou-gated-payment-e2e-2026-03-09.json",
+    "ops/evidence/latest/realestate-high-actions-e2e-2026-03-09.json",
+    "ops/evidence/latest/realestate-commission-settlement-e2e-2026-03-09.json"
+  ]
+}

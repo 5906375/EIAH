@@ -3,13 +3,18 @@ import { BrowserRouter, Link, Navigate, Route, Routes, useLocation } from "react
 import AgentsPage from "./pages/app/agents";
 import BillingPage from "./pages/app/billing";
 import RunsPage from "./pages/app/runs";
+import MarketplacePage from "./pages/app/marketplace";
+import ImobMarketplacePage from "./pages/app/marketplace/imob";
+import ImobChatPage from "./pages/app/imob/chat";
+import ImobDashboardPage from "./pages/app/imob/dashboard";
 import SelfServiceIndexPage from "./pages/self-service";
 import SelfServiceRouter from "./pages/self-service/router";
 import SignupPage from "./pages/signup";
 import ProfilePage from "./pages/profile";
 import AccessPage from "./pages/access";
 import eiahLogo from "./assets/Eiah_logo.png";
-import { useSession } from "./state/sessionStore";
+import { updateSession, useSession } from "./state/sessionStore";
+import { apiGetSessionContext } from "./lib/api";
 
 function NavigationLink({ to, label }: { to: string; label: string }) {
   const location = useLocation();
@@ -39,8 +44,18 @@ function Layout({
   children: React.ReactNode;
   showNavigation?: boolean;
 }) {
+  const session = useSession();
+  const imobInstalled =
+    session.entitlements?.IMOB_INSTALLED === true ||
+    session.installedProducts?.some((item) => item.trim().toUpperCase() === "IMOB") === true;
+  const brandName = session.branding?.brandName?.trim() || "EIAH";
+  const logoUrl = session.branding?.logoUrl?.trim() || "";
+  const workspaceLabel = session.branding?.workspaceLabel?.trim() || session.workspaceId;
+  const brandPrimary = session.branding?.primaryColor?.trim() || "#22d3ee";
+  const subtitle = session.activeDomain === "imob" ? "Imobiliaria Digital Command Center" : "Agent Operations Console";
+
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background">
+    <div className="relative min-h-screen overflow-hidden bg-background" style={{ ["--brand-primary" as string]: brandPrimary }}>
       <div className="pointer-events-none absolute inset-0 bg-hero-grid" />
       <div className="pointer-events-none absolute -left-24 top-20 h-72 w-72 rounded-full bg-accent/30 blur-3xl" />
       <div className="pointer-events-none absolute right-0 top-60 h-64 w-64 rounded-full bg-fuchsia-500/20 blur-3xl" />
@@ -50,11 +65,12 @@ function Layout({
           <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl bg-white/10 shadow-[0_6px_18px_rgba(15,23,42,0.45)]">
-                <img src={eiahLogo} alt="EIAH logo" className="h-full w-full object-cover" />
+                <img src={logoUrl || eiahLogo} alt={`${brandName} logo`} className="h-full w-full object-cover" />
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-accent">EIAH</p>
-                <p className="text-sm font-medium text-muted-foreground">Agent Operations Console</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-accent">{brandName}</p>
+                <p className="text-sm font-medium text-muted-foreground">{subtitle}</p>
+                <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground/80">{workspaceLabel}</p>
               </div>
             </div>
             {showNavigation ? (
@@ -62,6 +78,8 @@ function Layout({
                 <NavigationLink to="/app/runs" label="Runs" />
                 <NavigationLink to="/app/agents" label="Agentes" />
                 <NavigationLink to="/app/billing" label="Billing" />
+                <NavigationLink to="/app/marketplace" label="Marketplace" />
+                {imobInstalled ? <NavigationLink to="/app/imob/chat" label="IMOB" /> : null}
                 <NavigationLink to="/self-service" label="Self-service" />
                 <NavigationLink to="/profile" label="Perfil" />
               </nav>
@@ -80,9 +98,50 @@ function Layout({
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const session = useSession();
   const location = useLocation();
+  React.useEffect(() => {
+    if (!session.token) return;
+    const targetDomain =
+      location.search.includes("domain=imob") || location.pathname.startsWith("/app/imob")
+        ? "imob"
+        : undefined;
+    void apiGetSessionContext(targetDomain)
+      .then((ctx) => {
+        if (!ctx.ok || !ctx.data) return;
+        updateSession({
+          tenantId: ctx.data.tenantId,
+          workspaceId: ctx.data.workspaceId,
+          userId: ctx.data.userId ?? undefined,
+          activeDomain: ctx.data.activeDomain,
+          availableDomains: ctx.data.availableDomains,
+          entitlements: ctx.data.entitlements,
+          installedProducts: (ctx.data.productInstallations ?? []).map((entry) => entry.product),
+          roles: ctx.data.roles,
+          branding: {
+            brandName: ctx.data.branding.brandName,
+            logoUrl: ctx.data.branding.logoUrl,
+            primaryColor: ctx.data.branding.primaryColor,
+            workspaceLabel: ctx.data.branding.workspaceLabel,
+          },
+        });
+      })
+      .catch(() => undefined);
+  }, [session.token, location.pathname, location.search]);
+
   if (!session.token) {
     const next = `${location.pathname}${location.search}`;
     return <Navigate to={`/access?next=${encodeURIComponent(next)}`} replace />;
+  }
+  return <>{children}</>;
+}
+
+function RequireImobInstall({ children }: { children: React.ReactNode }) {
+  const session = useSession();
+  const installed =
+    session.entitlements?.IMOB_INSTALLED === true ||
+    session.installedProducts?.some((item) => item.trim().toUpperCase() === "IMOB") === true;
+
+  if (!installed) {
+    return <Navigate to="/app/marketplace/imob" replace />;
   }
   return <>{children}</>;
 }
@@ -119,6 +178,68 @@ function AppRoutes() {
               <BillingPage />
             </RequireAuth>
           </Layout>
+        }
+      />
+      <Route
+        path="/app/marketplace"
+        element={
+          <Layout>
+            <RequireAuth>
+              <MarketplacePage />
+            </RequireAuth>
+          </Layout>
+        }
+      />
+      <Route
+        path="/app/marketplace/imob"
+        element={
+          <Layout>
+            <RequireAuth>
+              <ImobMarketplacePage />
+            </RequireAuth>
+          </Layout>
+        }
+      />
+      <Route
+        path="/app/imob/dashboard"
+        element={
+          <Layout>
+            <RequireAuth>
+              <RequireImobInstall>
+                <ImobDashboardPage />
+              </RequireImobInstall>
+            </RequireAuth>
+          </Layout>
+        }
+      />
+      <Route
+        path="/app/imob/chat"
+        element={
+          <Layout>
+            <RequireAuth>
+              <RequireImobInstall>
+                <ImobChatPage />
+              </RequireImobInstall>
+            </RequireAuth>
+          </Layout>
+        }
+      />
+      <Route
+        path="/app/imob/properties"
+        element={
+          <Navigate to="/app/imob/dashboard?section=imoveis#dashboard-hub" replace />
+        }
+      />
+      <Route
+        path="/app/imob/processes"
+        element={
+          <Navigate to="/app/imob/dashboard?section=processos#dashboard-hub" replace />
+        }
+      />
+      <Route
+        path="/app/imob/partners"
+        element={
+          <Navigate to="/app/imob/dashboard?section=parceiros#dashboard-hub" replace />
         }
       />
       <Route

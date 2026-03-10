@@ -1,0 +1,30 @@
+{
+  "date": "2026-03-09",
+  "scope": "F3 metrics panel in IMOB chat",
+  "status": "done",
+  "backend": {
+    "new_endpoints": [
+      "GET /api/imob/chat/telemetry/summary",
+      "POST /api/imob/chat/telemetry (already active, integrated)"
+    ],
+    "notes": [
+      "summary supports windowHours and conversationId",
+      "aggregates: avg/p95/min/max by event",
+      "totals expose message_to_plan, plan_to_execute, chat_to_run_coverage, persist_success_rate"
+    ]
+  },
+  "frontend": {
+    "page": "/app/imob/chat",
+    "features": [
+      "sidebar search local by title/preview",
+      "conversation preview with relative time and status badge",
+      "metrics panel with 4 KPIs",
+      "periodic telemetry refresh every 15s",
+      "telemetry emission on plan/execute/persist flows"
+    ]
+  },
+  "validation": {
+    "web_build": "pass",
+    "command": "pnpm -C apps/web build"
+  }
+}

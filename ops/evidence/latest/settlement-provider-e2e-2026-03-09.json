@@ -1,0 +1,28 @@
+{
+  "ok": true,
+  "date": "2026-03-09",
+  "scope": "P1-203",
+  "providers": [
+    { "id": "stripe", "mode": "full" },
+    { "id": "crypto", "mode": "stub" },
+    { "id": "bank", "mode": "stub" }
+  ],
+  "api": {
+    "list": "GET /api/payments/providers",
+    "settle": "POST /api/payments/providers/:provider/settle",
+    "webhook": "POST /api/webhooks/billing/:provider?"
+  },
+  "assertions": {
+    "settleStripe": {
+      "status": 200,
+      "paymentStatus": "settled",
+      "ledgerCreditWritten": true
+    },
+    "webhookReplay": {
+      "status": 200,
+      "idempotent": true,
+      "replayRejected": true,
+      "duplicateSideEffects": 0
+    }
+  }
+}

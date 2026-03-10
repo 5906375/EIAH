@@ -1,11 +1,13 @@
 import type { Request, Response } from "express";
 import { Router } from "express";
 import crypto from "node:crypto";
+import process from "node:process";
 import { z } from "zod";
 import { prismaGlobal } from "@repo/db";
 import { findApiToken } from "../auth/apiTokenRepository";
 
 const sessionRouter = Router();
+const DOMAIN_ALLOWLIST = new Set(["core", "imob"] as const);
 const switchWorkspaceSchema = z.object({
   workspaceId: z.string().min(1),
 });
@@ -34,6 +36,36 @@ function extractBodyToken(req: Request) {
   if (!body || typeof body.token !== "string") return null;
   const trimmed = body.token.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function resolveTokenFromRequest(req: Request) {
+  const header = req.header("authorization") ?? req.header("Authorization");
+  const bearer = extractBearerToken(header);
+  const cookieBag =
+    typeof (req as Request & { cookies?: Record<string, string> }).cookies === "object" &&
+    (req as Request & { cookies?: Record<string, string> }).cookies !== null
+      ? ((req as Request & { cookies?: Record<string, string> }).cookies as Record<string, string>)
+      : parseCookieHeader(req.header("cookie"));
+  const cookieToken = cookieBag.token ?? cookieBag.access_token ?? cookieBag.api_token;
+  const resolvedCookieToken =
+    typeof cookieToken === "string" && cookieToken.trim() ? cookieToken.trim() : null;
+  const bodyToken = extractBodyToken(req);
+  return bearer ?? resolvedCookieToken ?? bodyToken;
+}
+
+function resolveRequestedDomain(req: Request): "core" | "imob" {
+  const queryDomain = typeof req.query.domain === "string" ? req.query.domain.trim().toLowerCase() : "";
+  const headerDomain = (req.header("x-eiah-domain") ?? req.header("x-domain") ?? "").trim().toLowerCase();
+  const candidate = queryDomain || headerDomain || "core";
+  if (DOMAIN_ALLOWLIST.has(candidate as "core" | "imob")) {
+    return candidate as "core" | "imob";
+  }
+  return "core";
+}
+
+function paletteFromTenantId(tenantId: string) {
+  const digest = crypto.createHash("sha256").update(tenantId).digest("hex");
+  return `#${digest.slice(0, 6)}`;
 }
 
 function resolveSessionCookieOptions(req: Request) {
@@ -69,18 +101,7 @@ function resolveSessionCookieOptions(req: Request) {
 }
 
 sessionRouter.post("/session", async (req: Request, res: Response) => {
-  const header = req.header("authorization") ?? req.header("Authorization");
-  const bearer = extractBearerToken(header);
-  const cookieBag =
-    typeof (req as Request & { cookies?: Record<string, string> }).cookies === "object" &&
-    (req as Request & { cookies?: Record<string, string> }).cookies !== null
-      ? ((req as Request & { cookies?: Record<string, string> }).cookies as Record<string, string>)
-      : parseCookieHeader(req.header("cookie"));
-  const cookieToken = cookieBag.token ?? cookieBag.access_token ?? cookieBag.api_token;
-  const resolvedCookieToken =
-    typeof cookieToken === "string" && cookieToken.trim() ? cookieToken.trim() : null;
-  const bodyToken = extractBodyToken(req);
-  const token = bearer ?? resolvedCookieToken ?? bodyToken;
+  const token = resolveTokenFromRequest(req);
 
   if (!token) {
     return res.status(400).json({
@@ -120,6 +141,126 @@ sessionRouter.post("/session", async (req: Request, res: Response) => {
         httpOnly: options.httpOnly,
         secure: options.secure,
         maxAgeMs: options.maxAge,
+      },
+    },
+  });
+});
+
+sessionRouter.get("/session/context", async (req: Request, res: Response) => {
+  const token = resolveTokenFromRequest(req);
+  if (!token) {
+    return res.status(401).json({
+      ok: false,
+      error: { code: "UNAUTHORIZED", message: "Missing bearer token" },
+    });
+  }
+
+  const tokenRecord = await findApiToken(token);
+  if (!tokenRecord || tokenRecord.revoked) {
+    return res.status(401).json({
+      ok: false,
+      error: { code: "UNAUTHORIZED", message: "Invalid token" },
+    });
+  }
+  if (tokenRecord.expiresAt && tokenRecord.expiresAt.getTime() < Date.now()) {
+    return res.status(401).json({
+      ok: false,
+      error: { code: "TOKEN_EXPIRED", message: "API token expired" },
+    });
+  }
+
+  const requestedDomain = resolveRequestedDomain(req);
+  const [tenant, workspace, realEstatePolicies, realEstateItems, productInstallations] = await Promise.all([
+    prismaGlobal.tenant.findUnique({
+      where: { id: tokenRecord.tenantId },
+      select: { id: true, name: true },
+    }),
+    prismaGlobal.workspace.findUnique({
+      where: { id: tokenRecord.workspaceId },
+      select: { id: true, name: true },
+    }),
+    prismaGlobal.tenantActionPolicy.findMany({
+      where: {
+        tenantId: tokenRecord.tenantId,
+        OR: [{ workspaceId: tokenRecord.workspaceId }, { workspaceId: null }],
+        actionName: {
+          in: [
+            "realestate.apply_adjustment",
+            "action.realestate.apply_adjustment",
+            "realestate.register_property",
+            "realestate.create_contract",
+            "realestate.release_commission",
+          ],
+        },
+        allowed: true,
+      },
+      select: { id: true },
+      take: 1,
+    }),
+    prismaGlobal.marketplaceItem.findMany({
+      where: {
+        OR: [{ publisherId: tokenRecord.tenantId }, { isPublic: true }],
+        name: { contains: "imob", mode: "insensitive" },
+      },
+      select: { id: true },
+      take: 1,
+    }),
+    prismaGlobal
+      .$queryRaw<Array<{ product: string; status: string }>>`
+        SELECT product, status
+        FROM tenant_product_installations
+        WHERE tenant_id = ${tokenRecord.tenantId}
+          AND workspace_id = ${tokenRecord.workspaceId}
+      `
+      .catch(() => []),
+  ]);
+
+  const hasImobInstallation = productInstallations.some(
+    (entry) =>
+      entry.product.trim().toUpperCase() === "IMOB" &&
+      entry.status.trim().toLowerCase() === "active"
+  );
+  const realEstateCore = hasImobInstallation || realEstatePolicies.length > 0 || realEstateItems.length > 0;
+  const entitlements = {
+    REAL_ESTATE_CORE: realEstateCore,
+    EXPORTS_ADDON: true,
+    BILLING_INSIGHTS_ADDON: true,
+    IMOB_INSTALLED: hasImobInstallation,
+  };
+
+  if (requestedDomain === "imob" && !entitlements.REAL_ESTATE_CORE) {
+    return res.status(403).json({
+      ok: false,
+      error: {
+        code: "ENTITLEMENT_MISSING",
+        message: "REAL_ESTATE_CORE entitlement required for domain=imob",
+      },
+    });
+  }
+
+  const activeDomain = requestedDomain;
+  const availableDomains: Array<"core" | "imob"> = entitlements.REAL_ESTATE_CORE ? ["core", "imob"] : ["core"];
+  const roles = tokenRecord.userId ? ["admin"] : ["service"];
+
+  return res.json({
+    ok: true,
+    data: {
+      tenantId: tokenRecord.tenantId,
+      workspaceId: tokenRecord.workspaceId,
+      userId: tokenRecord.userId ?? null,
+      activeDomain,
+      availableDomains,
+      entitlements,
+      productInstallations: productInstallations.map((entry) => ({
+        product: entry.product,
+        status: entry.status,
+      })),
+      roles,
+      branding: {
+        brandName: tenant?.name ?? tokenRecord.tenantId,
+        logoUrl: null,
+        primaryColor: paletteFromTenantId(tokenRecord.tenantId),
+        workspaceLabel: workspace?.name ?? tokenRecord.workspaceId,
       },
     },
   });

@@ -240,6 +240,16 @@ export function resetRunQueueCache() {
   dlqQueuePromise = null;
 }
 
+export async function closeRunQueueConnections() {
+  const [queue, dlq] = await Promise.all([
+    queuePromise ? queuePromise.catch(() => null) : Promise.resolve(null),
+    dlqQueuePromise ? dlqQueuePromise.catch(() => null) : Promise.resolve(null),
+  ]);
+
+  await Promise.allSettled([queue?.close(), dlq?.close()]);
+  resetRunQueueCache();
+}
+
 function isFinalAttempt(job: Job) {
   const maxAttempts = job.opts?.attempts ?? 1;
   return job.attemptsMade >= maxAttempts;

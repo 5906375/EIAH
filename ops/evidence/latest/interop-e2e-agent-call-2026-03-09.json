@@ -1,0 +1,36 @@
+{
+  "ok": true,
+  "date": "2026-03-09",
+  "protocolVersion": "agent-protocol.v1",
+  "flow": [
+    "agentA -> discovery",
+    "agentA -> negotiate",
+    "agentA -> execute",
+    "agentB -> verify receipt"
+  ],
+  "assertions": {
+    "discovery": {
+      "status": 200,
+      "containsAction": "realestate.apply_adjustment"
+    },
+    "negotiate": {
+      "status": 200,
+      "contractVersion": "1.2.0",
+      "receiptSpecVersion": "receipt.canon.v1"
+    },
+    "execute": {
+      "status": 202,
+      "returnsRunId": true
+    },
+    "verifyReceipt": {
+      "status": 200,
+      "invariantStatus": "ok",
+      "receiptCanonSpecVersion": "receipt.canon.v1"
+    }
+  },
+  "links": {
+    "router": "apps/api/src/routes/agents.ts",
+    "test": "apps/api/src/tests/agents.interop.contract.test.ts",
+    "contractSchema": "contracts/agent-protocol.v1.schema.json"
+  }
+}

@@ -1,0 +1,39 @@
+{
+  "date": "2026-03-09",
+  "scope": "IMOB chat F2+F3",
+  "status": "done",
+  "changes": {
+    "f2_sidebar": {
+      "implemented": true,
+      "items": [
+        "sidebar com lista de conversas",
+        "busca local por titulo/preview",
+        "preview com tempo relativo",
+        "status visual por conversa (normal|attention|success)",
+        "acao nova conversa"
+      ]
+    },
+    "f3_binding": {
+      "implemented": true,
+      "items": [
+        "binding mensagem->runId/txId/receipt/bundle persistido",
+        "fallback de runId invalido sem quebra de persistencia",
+        "proof block atualizado no polling de run"
+      ]
+    },
+    "f3_telemetry": {
+      "implemented": true,
+      "endpoint": "POST /api/imob/chat/telemetry",
+      "events": [
+        "message_to_plan_ms",
+        "plan_to_execute_ms",
+        "chat_to_run_link_coverage",
+        "message_persist_success_rate"
+      ]
+    }
+  },
+  "validation": {
+    "web_build": "pass",
+    "command": "pnpm -C apps/web build"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "date": "2026-03-09",
+  "scope": "IMOB Chat F1 persistence",
+  "environment": {
+    "runner": "docker exec eiah-api",
+    "database": "postgres (eiah-postgres)",
+    "redis": "redis (eiah-redis)"
+  },
+  "test": {
+    "file": "apps/api/src/tests/imob.chat.persistence.contract.test.ts",
+    "command": "docker exec eiah-api sh -c 'cd /app && timeout 45s pnpm -C apps/api exec tsx --test src/tests/imob.chat.persistence.contract.test.ts'",
+    "result": "pass",
+    "assertions": [
+      "create conversation returns 201 + conversationId",
+      "append user message returns 201",
+      "append assistant message returns 201",
+      "list conversations returns created conversation",
+      "list messages returns persisted history in order"
+    ]
+  },
+  "notes": {
+    "process_exit": "timeout 45s ended with EXIT:124 due open handles in test runtime",
+    "functional_status": "test assertions completed successfully before timeout"
+  }
+}

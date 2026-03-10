@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eiah.local/contracts/agent-protocol.v1.schema.json",
+  "title": "Agent Protocol v1",
+  "type": "object",
+  "required": ["action", "version", "tier", "inputSchema", "receiptSchema", "trustRequirements"],
+  "properties": {
+    "action": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "tier": {
+      "type": "string",
+      "enum": ["LOW", "MEDIUM", "HIGH"]
+    },
+    "inputSchema": {
+      "type": "object"
+    },
+    "receiptSchema": {
+      "type": "object",
+      "required": ["specVersion"],
+      "properties": {
+        "specVersion": {
+          "type": "string",
+          "const": "receipt.canon.v1"
+        }
+      },
+      "additionalProperties": true
+    },
+    "trustRequirements": {
+      "type": "object",
+      "required": ["minTrustScore", "requiresPoU"],
+      "properties": {
+        "minTrustScore": {
+          "type": "number"
+        },
+        "requiresPoU": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "defaultAgent": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

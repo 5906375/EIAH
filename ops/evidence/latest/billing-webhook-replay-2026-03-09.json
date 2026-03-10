@@ -1,0 +1,9 @@
+{
+  "ok": true,
+  "date": "2026-03-09",
+  "provider": "stripe",
+  "eventId": "evt-mmiz3n4c-example",
+  "replayRejected": true,
+  "duplicateSideEffects": 0,
+  "sourceTest": "apps/api/src/tests/billing.economy.contract.test.ts"
+}

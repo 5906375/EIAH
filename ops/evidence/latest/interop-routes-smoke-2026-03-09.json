@@ -1,0 +1,32 @@
+{
+  "ok": true,
+  "check": "interop-routes-smoke",
+  "date": "2026-03-09",
+  "protocolVersion": "agent-protocol.v1",
+  "status": "implemented_code_level",
+  "routes": [
+    {
+      "method": "POST",
+      "path": "/api/agents/discovery",
+      "implemented": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/agents/negotiate",
+      "implemented": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/agents/execute",
+      "implemented": true
+    }
+  ],
+  "contracts": [
+    "contracts/agent-protocol.v1.schema.json",
+    "docs/ops/agent-protocol-api-contract.md"
+  ],
+  "notes": [
+    "Smoke atual valida implementacao em codigo (router + schemas + payload contract).",
+    "Validacao runtime HTTP 200/4xx deve ser executada em ambiente com API online."
+  ]
+}

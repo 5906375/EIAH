@@ -20,12 +20,14 @@ import {
   withCostContext,
   enqueueRunAtivoUniversal,
   PlanStepStore,
+  getRegisteredActionDefinitions,
   type AgentRecommendationState,
   type RecommendationCandidate,
   type PreviousRun as EnginePreviousRun,
   type GenerateRecommendationsResult,
   type PreviousRecommendation,
   type RecommendationExecution,
+  type RegisteredAction,
   type RunEventStore,
   type OrchestratorPlanStep,
   type OrchestratorRunEvent,
@@ -108,6 +110,71 @@ type ScopedRunAtivoJobPayload = RunAtivoUniversalJobPayload & {
   tenantId: string;
   workspaceId: string;
 };
+
+function normalizeActionName(value: string) {
+  return value.trim().toLowerCase();
+}
+
+async function resolveActionsForExecution(tenantId: string, workspaceId: string) {
+  const configured = tenantActionResolver(tenantId) ?? {};
+  const configuredCount = Object.keys(configured).length;
+  const definitions = getRegisteredActionDefinitions();
+
+  const registered = Object.keys(definitions).filter((name) => Boolean(name && name.trim()));
+  const canonicalByNormalized = new Map<string, string>();
+  for (const actionName of registered) {
+    const normalized = normalizeActionName(actionName);
+    if (!canonicalByNormalized.has(normalized)) {
+      canonicalByNormalized.set(normalized, actionName);
+    }
+  }
+
+  const dbPolicies = await prismaGlobal.tenantActionPolicy.findMany({
+    where: {
+      tenantId,
+      OR: [{ workspaceId }, { workspaceId: null }],
+      allowed: true,
+    },
+    select: { actionName: true },
+  });
+
+  const dbAllowedCanonical = dbPolicies
+    .map((row) => canonicalByNormalized.get(normalizeActionName(row.actionName)))
+    .filter((name): name is string => Boolean(name));
+  const dbAllowedRaw = dbPolicies
+    .map((row) => row.actionName.trim())
+    .filter((name): name is string => Boolean(name));
+
+  // Fallback seguro: sem policies resolvidas e sem resolver custom => libera catálogo registrado.
+  if (dbAllowedCanonical.length === 0 && dbAllowedRaw.length === 0 && configuredCount === 0) {
+    return definitions;
+  }
+
+  const merged: Record<string, RegisteredAction> = { ...(configured as Record<string, RegisteredAction>) };
+  for (const actionName of dbAllowedCanonical) {
+    const def = definitions[actionName];
+    if (def) {
+      merged[actionName] = def;
+    }
+  }
+  // Quando a policy permite ações IMOB que não estão no catálogo core,
+  // ainda marcamos como permitidas para não bloquear execução no guard local.
+  for (const rawName of dbAllowedRaw) {
+    if (merged[rawName]) continue;
+    const canonical = canonicalByNormalized.get(normalizeActionName(rawName));
+    if (canonical && definitions[canonical]) {
+      merged[canonical] = definitions[canonical];
+      continue;
+    }
+    merged[rawName] = {
+      name: rawName,
+      version: "1.0.0",
+      description: "Tenant policy allowed action",
+      handler: async () => ({ status: "error", error: `Action ${rawName} not registered in core catalog` }),
+    };
+  }
+  return merged;
+}
 
 function normalizeStoredAgentState(
   state: StoredRecommendationState | null | undefined
@@ -786,29 +853,65 @@ export async function processRunPayload(payload: RunQueuePayload) {
             throw new Error(`Action "${actionName}" is not allowed for tenant ${tenantId}`);
           }
 
+          const actionMetadata =
+            params && typeof params === "object" && !Array.isArray(params)
+              ? (params as Record<string, unknown>).metadata
+              : undefined;
+
           verifyIntentSignature({
             tenantId,
             workspaceId,
             runId,
             metadata:
-              params && typeof params === "object" && !Array.isArray(params)
-                ? (params as Record<string, unknown>).metadata
-                : undefined,
+              actionMetadata && typeof actionMetadata === "object" && !Array.isArray(actionMetadata)
+                ? (actionMetadata as Record<string, unknown>)
+                : runtimeMetadata,
           });
 
-          const version = resolveMcpToolVersion(payload.metadata, mcpConfig.defaultVersion);
-          const tool = await ToolRegistry.get(actionName, version, tenantId);
-          if (!tool) {
-            throw new Error(`ToolContract missing: ${actionName}@${version}`);
-          }
-
-          const executor = new MCPExecutor(tool);
           const effectivePayload =
             params ??
             {
               prompt: promptForExecution,
               metadata: runtimeMetadata,
             };
+          const version = resolveMcpToolVersion(payload.metadata, mcpConfig.defaultVersion);
+          const tool = await ToolRegistry.get(actionName, version, tenantId);
+          if (!tool) {
+            if (actionName.startsWith("realestate.")) {
+              await recordGuardrailAudit({
+                prisma: prismaGlobal,
+                tenantId,
+                workspaceId,
+                runId,
+                eventType: "mcp.tool.simulated",
+                severity: "warn",
+                message: `ToolContract missing for ${actionName}@${version}; simulated execution used`,
+                metadata: {
+                  tool: actionName,
+                  version,
+                  stepId: context?.currentStep?.id,
+                },
+              }).catch(() => undefined);
+
+              return {
+                ok: true,
+                simulated: true,
+                action: actionName,
+                version,
+                status: "success",
+                output: {
+                  message: `Simulated ${actionName} execution`,
+                  payloadPreview:
+                    effectivePayload && typeof effectivePayload === "object"
+                      ? Object.keys(effectivePayload as Record<string, unknown>).slice(0, 8)
+                      : null,
+                },
+              };
+            }
+            throw new Error(`ToolContract missing: ${actionName}@${version}`);
+          }
+
+          const executor = new MCPExecutor(tool);
           const result = await executor.run(effectivePayload);
 
           try {
@@ -1039,7 +1142,7 @@ export async function processRunPayload(payload: RunQueuePayload) {
           ? { ...(metadata as Record<string, unknown>), userId }
           : { userId };
 
-      const actionsForTenant = tenantActionResolver(tenantId);
+      const actionsForTenant = await resolveActionsForExecution(tenantId, workspaceId);
 
       const context = await orchestrator.run({
         objective: prompt,

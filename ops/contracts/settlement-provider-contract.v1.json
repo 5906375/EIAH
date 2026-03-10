@@ -1,0 +1,30 @@
+{
+  "name": "settlement-provider-contract",
+  "version": "1.0.0",
+  "providers": ["stripe", "crypto", "bank"],
+  "endpoints": [
+    "/payments/providers",
+    "/payments/providers/:provider/settle",
+    "/webhooks/billing/:provider?"
+  ],
+  "paymentIntent": {
+    "requiredFields": ["runId", "amountCents", "currency", "status", "provider", "requestId"],
+    "statuses": ["pending", "blocked", "released", "settled", "failed", "cancelled"],
+    "releaseGate": "PoU/SCL required for release"
+  },
+  "webhook": {
+    "requiredHeaders": ["x-billing-signature", "x-billing-timestamp"],
+    "requiredPayload": ["eventId", "paymentIntentId", "status", "amountCents"],
+    "security": {
+      "signatureAlgorithm": "hmac-sha256",
+      "antiReplayWindowSecondsEnv": "BILLING_WEBHOOK_REPLAY_WINDOW_SECONDS",
+      "clockSkewSecondsEnv": "BILLING_WEBHOOK_CLOCK_SKEW_SECONDS"
+    },
+    "idempotencyKey": "provider + eventId"
+  },
+  "ledgerLink": {
+    "entryTypeOnSettlement": "credit",
+    "requestIdPattern": "settlement:<paymentIntentId>:<providerSettlementId>"
+  }
+}
+

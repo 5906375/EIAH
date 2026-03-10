@@ -86,6 +86,63 @@
 | APE Weekly Cycle #1 (shadow/pilot) com GO hard metrics | `ops/evidence/latest/ape-weekly-cycle-run7-2026-03-04.md` | Run #7 em `main` com `decision=GO`, `hardMetricsGo=true`, `auditGap=0`, `duplicateSideEffects=0`, `breakGlass=0` e artefatos semanais completos. |
 | APE Weekly Cycle #2 (shadow/pilot) com GO hard metrics | `ops/evidence/latest/ape-weekly-cycle-run8-2026-03-04.md` | Segundo ciclo consecutivo com `decision=GO`, `hardMetricsGo=true`, `hardReasons=[]`, `auditGap=0`, `duplicateSideEffects=0`, `breakGlass=0` (estabilidade consecutiva atingida). |
 
+## Sprint P1 (Imobiliaria Digital) — Interop Protocol Layer (2026-03-09)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Contrato API do Agent Protocol (`discovery/negotiate/execute`) | `docs/ops/agent-protocol-api-contract.md` | Contrato canônico inicial da camada protocolar para interop entre agentes/sistemas. |
+| Schema versionado Agent Protocol v1 | `contracts/agent-protocol.v1.schema.json` | Forma oficial do contrato (`action/version/tier/inputSchema/receiptSchema/trustRequirements`). |
+| Baseline de compatibilidade Agent Protocol | `contracts/agent-protocol.v1.baseline.json` | Snapshot mínimo para detectar breaking changes sem major bump. |
+| Exemplo oficial do contrato v1 | `contracts/examples/agent-protocol.v1.example.json` | Exemplo validável para `realestate.apply_adjustment` v1.2.0. |
+| Política de versionamento Agent Protocol | `docs/ops/agent-protocol-versioning-policy.md` | Regras explícitas de versionamento/compatibilidade para o protocolo. |
+| Gate de CI Agent Protocol compat | `scripts/checkAgentProtocolVersioning.ts` | Check automatizado de compatibilidade/baseline no pipeline. |
+| Smoke de rotas interop | `ops/evidence/latest/interop-routes-smoke-2026-03-09.json` | Prova de implementação das rotas `POST /api/agents/discovery|negotiate|execute`. |
+| Evidência e2e da cadeia interop | `ops/evidence/latest/interop-e2e-agent-call-2026-03-09.json` | Prova da trilha `discovery -> negotiate -> execute -> verify receipt`. |
+
+## Sprint P1 (Imobiliaria Digital) — Economy Base (2026-03-09)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Evidência de schema e rotas PaymentIntent | `ops/evidence/latest/payment-intent-schema-2026-03-09.json` | Prova da camada `PaymentIntent` com campos mínimos e índices operacionais. |
+| Evidência e2e de PoU-gated payment release | `ops/evidence/latest/pou-gated-payment-e2e-2026-03-09.json` | Prova da bifurcação `blocked` sem PoU/SCL e `released` com PoU/SCL válido. |
+| Evidência e2e de settlement providers | `ops/evidence/latest/settlement-provider-e2e-2026-03-09.json` | Prova de adapters (`stripe` full, `crypto/bank` stub) + settlement com vínculo em ledger. |
+| Evidência de replay/idempotência webhook billing | `ops/evidence/latest/billing-webhook-replay-2026-03-09.json` | Prova de replay rejeitado com `duplicateSideEffects=0`. |
+| Contrato público de settlement provider | `ops/contracts/settlement-provider-contract.v1.json` | Contrato versionado de endpoints/providers/status e política de assinatura/idempotência. |
+| Runbook operacional de settlement provider | `docs/ops/settlement-provider-runbook.md` | Procedimento operacional para PaymentIntent, release gate, settlement e incidente de webhook. |
+| Gate CI de drift contrato/implementação | `scripts/checkSettlementContractDrift.ts` | Falha CI em drift entre contrato publicado e runtime (`providers/endpoints`). |
+| Evidência de execução do gate de drift | `ops/evidence/latest/settlement-contract-check-2026-03-09.md` | Resultado do check `pnpm check:settlement-contract-drift` com `ok=true`. |
+
+## Sprint P1 (Imobiliaria Digital) — Reputação + Disputas (2026-03-09)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Smoke de reputação por agente | `ops/evidence/latest/agent-reputation-smoke-2026-03-09.json` | Snapshot de reputação por `tenant/workspace/agent` com campos operacionais esperados. |
+| Fluxo de atualização por eventos | `ops/evidence/latest/reputation-update-flow-2026-03-09.json` | Atualização idempotente por `receipt.finalized` e `dispute.closed` com journal de eventos. |
+| Evidência e2e do lifecycle de disputa | `ops/evidence/latest/dispute-lifecycle-e2e-2026-03-09.json` | Fluxo `open -> under_review -> resolved` com bloqueio de transição inválida e impacto na reputação. |
+| API de reputação/disputas | `apps/api/src/routes/billing.ts` | Endpoints de reputação e ciclo de disputa em escopo tenant/workspace. |
+| Serviço core de reputação/disputas | `apps/api/src/services/reputationDisputes.ts` | Modelo operacional, regras de transição e idempotência de replay por `event_key`. |
+
+## Sprint P1 (Imobiliaria Digital) — Produto/Piloto (2026-03-09)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Ações críticas imobiliárias HIGH | `ops/evidence/latest/realestate-high-actions-e2e-2026-03-09.json` | Contrato/negociação com `tier=HIGH`, `txIdRequired=true` e receipt canon para ações imobiliárias críticas. |
+| Command Center IMOB (funnel + blocked runs) | `ops/evidence/latest/realestate-command-center-smoke-2026-03-09.md` | Visualização operacional no Runs por workspace, filtros por risco/estado e export bundle/receipt por run. |
+| Comissão integrada ao settlement | `ops/evidence/latest/realestate-commission-settlement-e2e-2026-03-09.json` | Fluxo comissão com PoU-gate, settlement e reconciliação com reprocessamento idempotente. |
+| Piloto comercial controlado | `ops/evidence/latest/realestate-pilot-rollout-2026-03-09.md` | Plano `shadow -> pilot -> small` com 3 tenants de referência para rollout da vertical. |
+| Rotas IMOB Command Center | `apps/api/src/routes/imob.ts` | Endpoints determinísticos de funil/bloqueios para operação imobiliária. |
+
+## Sprint P1 (Imobiliaria Digital) — W4 D5/D6 (2026-03-09)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Template multi-vertical reutilizável | `ops/verticals/template/vertical-template.md` | Padrão oficial para novos verticais (`IMOB/LEGAL/HEALTH`) sem regressão no core. |
+| Checklist de onboarding por vertical | `ops/verticals/vertical-onboarding-checklist.md` | Sequência operacional para ativação, gating, evidência e economia por vertical. |
+| KPI/gates de não-regressão | `ops/evidence/latest/w4-non-regression-kpis.json` | Métricas mínimas de W4 (`activation`, `first-run`, `receiptCoverage`, `crossTenantAuthFailures=0`). |
+| Evidência D5 (template + checklist) | `ops/evidence/latest/w4-vertical-template-onboarding-2026-03-09.md` | Conclusão operacional de D5 com status `GO`. |
+| Evidência APE final W4 | `ops/evidence/latest/ape-weekly-cycle-run9-2026-03-09.md` | Fechamento semanal com `hardMetricsGo=true` e `nonRegressionGo=true`. |
+| Gate CI W4 | `scripts/checkW4NonRegression.ts` + `.github/workflows/ci.yml` | Validação automatizada obrigatória de D6 no pipeline. |
+
 ## Entry points
 
 | Assunto | Arquivo | Trecho/linhas | O que prova |

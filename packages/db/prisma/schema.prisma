@@ -57,6 +57,7 @@ model Tenant {
   quotaUsages          TenantQuotaUsage[]
   workspaceQuotaGrants WorkspaceQuotaGrant[]
   billingLedgerEntries BillingLedger[]
+  productInstallations TenantProductInstallation[]
 
   @@map("tenants")
 }
@@ -81,6 +82,7 @@ model Workspace {
   agentTrustScores     AgentTrustScore[]
   workspaceQuotaGrants WorkspaceQuotaGrant[]
   billingLedgerEntries BillingLedger[]
+  productInstallations TenantProductInstallation[]
 
   @@index([tenantId, name])
   @@map("workspaces")
@@ -97,9 +99,32 @@ model User {
   runEvents   RunEvent[]
   runs        Run[]
   tenant      Tenant     @relation(fields: [tenantId], references: [id])
+  productInstallationsActivated TenantProductInstallation[] @relation("ProductInstallationActivatedBy")
 
   @@index([tenantId, email])
   @@map("users")
+}
+
+model TenantProductInstallation {
+  id                String    @id @default(cuid())
+  tenantId          String    @map("tenant_id")
+  workspaceId       String    @map("workspace_id")
+  product           String
+  status            String    @default("active")
+  activatedAt       DateTime  @default(now()) @map("activated_at")
+  activatedByUserId String?   @map("activated_by_user_id")
+  metadata          Json?
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  tenant            Tenant    @relation(fields: [tenantId], references: [id])
+  workspace         Workspace @relation(fields: [workspaceId], references: [id])
+  activatedByUser   User?     @relation("ProductInstallationActivatedBy", fields: [activatedByUserId], references: [id])
+
+  @@unique([tenantId, workspaceId, product], name: "tenant_workspace_product_unique")
+  @@index([tenantId, status])
+  @@index([workspaceId, product, status])
+  @@map("tenant_product_installations")
 }
 
 model ApiToken {
