@@ -5,6 +5,22 @@ type SessionState = {
   workspaceId: string;
   userId?: string;
   token?: string;
+  activeDomain?: "core" | "imob";
+  availableDomains?: Array<"core" | "imob">;
+  entitlements?: {
+    REAL_ESTATE_CORE?: boolean;
+    EXPORTS_ADDON?: boolean;
+    BILLING_INSIGHTS_ADDON?: boolean;
+    IMOB_INSTALLED?: boolean;
+  };
+  installedProducts?: string[];
+  roles?: string[];
+  branding?: {
+    brandName?: string;
+    logoUrl?: string | null;
+    primaryColor?: string;
+    workspaceLabel?: string;
+  };
 };
 
 const DEFAULTS: SessionState = {
@@ -44,6 +60,17 @@ function loadState(): SessionState {
       DEFAULTS.workspaceId,
     userId: storage.getItem("user_id") || undefined,
     token: persistedToken || (isLoggedOut ? undefined : DEFAULTS.token || undefined),
+    activeDomain: (storage.getItem("active_domain") as "core" | "imob" | null) ?? "core",
+    installedProducts: (storage.getItem("installed_products") || "")
+      .split(",")
+      .map((entry) => entry.trim().toUpperCase())
+      .filter(Boolean),
+    branding: {
+      brandName: storage.getItem("brand_name") || undefined,
+      logoUrl: storage.getItem("brand_logo_url") || undefined,
+      primaryColor: storage.getItem("brand_primary_color") || undefined,
+      workspaceLabel: storage.getItem("brand_workspace_label") || undefined,
+    },
   };
 }
 
@@ -89,6 +116,18 @@ export function updateSession(patch: Partial<SessionState>) {
         storage.setItem(LOGOUT_FLAG_KEY, "1");
       }
     }
+    if (patch.activeDomain !== undefined) storage.setItem("active_domain", patch.activeDomain);
+    if (patch.installedProducts !== undefined) {
+      storage.setItem("installed_products", patch.installedProducts.join(","));
+    }
+    if (patch.branding?.brandName !== undefined) storage.setItem("brand_name", patch.branding.brandName || "");
+    if (patch.branding?.logoUrl !== undefined) storage.setItem("brand_logo_url", patch.branding.logoUrl || "");
+    if (patch.branding?.primaryColor !== undefined) {
+      storage.setItem("brand_primary_color", patch.branding.primaryColor || "");
+    }
+    if (patch.branding?.workspaceLabel !== undefined) {
+      storage.setItem("brand_workspace_label", patch.branding.workspaceLabel || "");
+    }
   }
 
   notify(next);
@@ -102,6 +141,12 @@ export function clearSession() {
     storage.removeItem("project_id");
     storage.removeItem("user_id");
     storage.removeItem("eiah_token");
+    storage.removeItem("active_domain");
+    storage.removeItem("installed_products");
+    storage.removeItem("brand_name");
+    storage.removeItem("brand_logo_url");
+    storage.removeItem("brand_primary_color");
+    storage.removeItem("brand_workspace_label");
     storage.setItem(LOGOUT_FLAG_KEY, "1");
   }
 
@@ -109,6 +154,7 @@ export function clearSession() {
     tenantId: DEFAULTS.tenantId,
     workspaceId: DEFAULTS.workspaceId,
     token: undefined,
+    activeDomain: "core",
   });
 }
 

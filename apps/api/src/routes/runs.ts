@@ -16,6 +16,7 @@ import { emitRunEvent } from "../services/runEventEmitter";
 import { subscribeToRunEventStream } from "../services/runEventStream";
 import { buildRunEvidenceBundle } from "../services/evidenceBundle";
 import { requireScope } from "../middlewares/requireScope";
+import { evaluateTenantBillingExecutionGuard } from "../services/tenantBilling";
 
 export const runsRouter = Router();
 runsRouter.use(enforceTenant);
@@ -491,6 +492,63 @@ runsRouter.post("/runs", async (req, res) => {
     });
   }
 
+  const billingGuard = await evaluateTenantBillingExecutionGuard({
+    prisma,
+    tenantId: authContext.tenantId,
+    workspaceId: authContext.workspaceId,
+    estimatedRunCostCents: estimate,
+  });
+
+  if (billingGuard.block) {
+    const blockedRun = await createRunRecord({
+      prisma,
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      userId: authContext.userId,
+      agent,
+      status: "blocked",
+      request: requestPayload,
+      costCents: 0,
+      traceId: null,
+      finishedAt: new Date(),
+      errorCode: "BILLING_GUARD_BLOCKED",
+    });
+
+    await emitRunEvent({
+      prisma,
+      runId: blockedRun.id,
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      userId: authContext.userId,
+      type: "run.billing.blocked",
+      payload: {
+        mode: billingGuard.mode,
+        reasons: billingGuard.reasons,
+        cycleStart: billingGuard.cycle.cycleStart.toISOString(),
+        cycleEnd: billingGuard.cycle.cycleEnd.toISOString(),
+      },
+    });
+
+    return res.status(403).json({
+      ok: false,
+      error: {
+        code: "BILLING_GUARD_BLOCKED",
+        message: "Execucao bloqueada por quota/grant do workspace.",
+        details: {
+          mode: billingGuard.mode,
+          reasons: billingGuard.reasons,
+          cycleStart: billingGuard.cycle.cycleStart.toISOString(),
+          cycleEnd: billingGuard.cycle.cycleEnd.toISOString(),
+        },
+      },
+      data: serializeRun(blockedRun),
+    });
+  }
+
+  const hasGuardReasons = billingGuard.reasons.length > 0;
+  const shouldWarnWithoutBlock =
+    hasGuardReasons && (billingGuard.mode === "soft" || billingGuard.mode === "shadow");
+
   const trust = await evaluateTrustScore(prisma, authContext.tenantId, authContext.workspaceId);
 
   if (!trustScoreAllowsExecution(trust)) {
@@ -559,8 +617,27 @@ runsRouter.post("/runs", async (req, res) => {
         agent,
         promptPreview: prompt.slice(0, 200),
         metadata: resolvedMetadata,
+        billingGuardMode: billingGuard.mode,
+        billingGuardReasons: billingGuard.reasons,
       },
   });
+
+  if (shouldWarnWithoutBlock) {
+    await emitRunEvent({
+      prisma,
+      runId: run.id,
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      userId: authContext.userId,
+      type: billingGuard.mode === "soft" ? "run.billing.soft_limit" : "run.billing.shadow",
+      payload: {
+        mode: billingGuard.mode,
+        reasons: billingGuard.reasons,
+        cycleStart: billingGuard.cycle.cycleStart.toISOString(),
+        cycleEnd: billingGuard.cycle.cycleEnd.toISOString(),
+      },
+    });
+  }
 
   // Modo observação: avalia intenção, mas não bloqueia a execução
   try {
@@ -651,6 +728,23 @@ runsRouter.post("/runs", async (req, res) => {
       ok: true,
       data: serializeRun(run),
       queued: true,
+      ...(shouldWarnWithoutBlock
+        ? {
+            warnings: [
+              {
+                code: billingGuard.mode === "soft" ? "BILLING_SOFT_LIMIT" : "BILLING_GUARD_SHADOW",
+                message:
+                  billingGuard.mode === "soft"
+                    ? "Run enfileirado com alerta de limite soft de billing."
+                    : "Run enfileirado em modo shadow de billing guard.",
+                details: {
+                  mode: billingGuard.mode,
+                  reasons: billingGuard.reasons,
+                },
+              },
+            ],
+          }
+        : {}),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Execution failed";

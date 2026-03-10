@@ -22,6 +22,7 @@ import {
   getMaintenanceQueueCounts,
 } from "@eiah/core/queue/maintenanceQueue";
 import { redriveRunQueue } from "@eiah/core/queue/runQueue";
+import { reconcileTenantQuotaUsageBatch } from "../services/tenantBilling";
 
 const opsRouter = Router();
 
@@ -62,6 +63,77 @@ function requireAdminToken(req: Request, res: Response, next: NextFunction) {
 }
 
 opsRouter.use(requireAdminToken);
+
+const billingReconcileSchema = z
+  .object({
+    tenantId: z.string().min(1).optional(),
+    tenantIds: z.array(z.string().min(1)).optional(),
+    referenceDate: z.string().datetime().optional(),
+    cycleStart: z.string().datetime().optional(),
+    cycleEnd: z.string().datetime().optional(),
+    dryRun: z.boolean().optional(),
+    limitTenants: z.number().int().min(1).max(2000).optional(),
+  })
+  .superRefine((value, ctx) => {
+    const hasCycleStart = Boolean(value.cycleStart);
+    const hasCycleEnd = Boolean(value.cycleEnd);
+    if (hasCycleStart !== hasCycleEnd) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["cycleStart"],
+        message: "cycleStart and cycleEnd must be provided together",
+      });
+    }
+  });
+
+opsRouter.post("/billing/reconcile", async (req, res) => {
+  const parsed = billingReconcileSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({
+      error: "invalid_payload",
+      details: parsed.error.flatten(),
+    });
+  }
+
+  const payload = parsed.data;
+  const candidateTenantIds = [
+    ...(payload.tenantIds ?? []),
+    ...(payload.tenantId ? [payload.tenantId] : []),
+  ];
+  const tenantIds = Array.from(new Set(candidateTenantIds));
+
+  const referenceDate = payload.referenceDate ? new Date(payload.referenceDate) : undefined;
+  const cycleStart = payload.cycleStart ? new Date(payload.cycleStart) : undefined;
+  const cycleEnd = payload.cycleEnd ? new Date(payload.cycleEnd) : undefined;
+  const apply = payload.dryRun ? false : true;
+
+  const result = await reconcileTenantQuotaUsageBatch(prismaGlobal, {
+    tenantIds: tenantIds.length > 0 ? tenantIds : undefined,
+    limit: payload.limitTenants,
+    referenceDate,
+    cycleStart,
+    cycleEnd,
+    apply,
+    source: "admin",
+  });
+
+  return res.status(200).json({
+    ok: true,
+    mode: apply ? "apply" : "dry-run",
+    totals: result.totals,
+    items: result.items.map((item) => ({
+      tenantId: item.tenantId,
+      cycleStart: item.cycleStart.toISOString(),
+      cycleEnd: item.cycleEnd.toISOString(),
+      expected: item.expected,
+      before: item.before,
+      after: item.after,
+      divergence: item.divergence,
+      hasDivergence: item.hasDivergence,
+      applied: item.applied,
+    })),
+  });
+});
 
 const createTokenSchema = z.object({
   tenantId: z.string().min(1),

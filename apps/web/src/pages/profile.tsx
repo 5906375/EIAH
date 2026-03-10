@@ -5,6 +5,7 @@ import {
   apiGetProfile,
   apiDeleteSession,
   apiListAgents,
+  apiListDelegations,
   apiSwitchWorkspaceSession,
   apiUpdateProfile,
 } from "@/lib/api";
@@ -62,6 +63,32 @@ export default function ProfilePage() {
   } | null>(null);
   const [signingOut, setSigningOut] = React.useState(false);
   const [saveErrorMessage, setSaveErrorMessage] = React.useState<string | null>(null);
+  const [delegationsStatus, setDelegationsStatus] = React.useState<"loading" | "ready" | "error">(
+    "loading"
+  );
+  const [delegationsError, setDelegationsError] = React.useState<string | null>(null);
+  const [activeDelegations, setActiveDelegations] = React.useState<
+    Array<{
+      id: string;
+      marketplaceId?: string | null;
+      scope: string;
+      trustMin: number;
+      validUntil: string;
+      publisherLabel: string;
+      itemName: string;
+    }>
+  >([]);
+  const [expiredDelegations, setExpiredDelegations] = React.useState<
+    Array<{
+      id: string;
+      marketplaceId?: string | null;
+      scope: string;
+      trustMin: number;
+      validUntil: string;
+      publisherLabel: string;
+      itemName: string;
+    }>
+  >([]);
 
   const handleChange =
     (field: keyof ProfileState) => (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -264,6 +291,76 @@ export default function ProfilePage() {
     };
   }, [session.token, session.tenantId, session.workspaceId]);
 
+  React.useEffect(() => {
+    if (!session.token) {
+      setDelegationsStatus("ready");
+      setDelegationsError(null);
+      setActiveDelegations([]);
+      setExpiredDelegations([]);
+      return;
+    }
+    let mounted = true;
+    setDelegationsStatus("loading");
+    setDelegationsError(null);
+
+    apiListDelegations({ role: "delegatee", workspaceScoped: true })
+      .then((delegationResponse) => {
+        if (!mounted) return;
+        const toView = (delegation: {
+          id: string;
+          marketplaceId?: string | null;
+          marketplaceName?: string | null;
+          scope: string;
+          trustMin: number;
+          validUntil: string;
+          delegatorId: string;
+          publisherId?: string | null;
+          publisherName?: string | null;
+        }) => {
+          return {
+            id: delegation.id,
+            marketplaceId: delegation.marketplaceId,
+            scope: delegation.scope,
+            trustMin: delegation.trustMin,
+            validUntil: delegation.validUntil,
+            publisherLabel: delegation.publisherName ?? delegation.publisherId ?? delegation.delegatorId,
+            itemName: delegation.marketplaceName ?? delegation.marketplaceId ?? "Item desconhecido",
+          };
+        };
+
+        const isActive = (validUntil?: string) => {
+          if (!validUntil) return false;
+          const timestamp = new Date(validUntil).getTime();
+          return Number.isFinite(timestamp) && timestamp > Date.now();
+        };
+
+        const all = (delegationResponse.items ?? []).map(toView);
+        setActiveDelegations(all.filter((item) => isActive(item.validUntil)));
+        setExpiredDelegations(all.filter((item) => !isActive(item.validUntil)));
+        setDelegationsStatus("ready");
+      })
+      .catch((error) => {
+        if (!mounted) return;
+        setDelegationsStatus("error");
+        setDelegationsError(
+          error instanceof Error ? error.message : "Falha ao carregar delegacoes do workspace."
+        );
+        setActiveDelegations([]);
+        setExpiredDelegations([]);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [session.token, session.workspaceId, session.tenantId]);
+
+  const formatDate = (value?: string | null) => {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    return date.toLocaleDateString("pt-BR");
+  };
+
   const handleSignOut = async () => {
     setSigningOut(true);
     try {
@@ -378,91 +475,6 @@ export default function ProfilePage() {
                 onChange={(event) => setWorkspaceName(event.target.value)}
               />
             </label>
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-muted-foreground">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
-                Workspaces vinculados
-              </p>
-              {linkedWorkspaces.length > 0 ? (
-                <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-foreground/85">
-                  {linkedWorkspaces.map((workspace) => (
-                    <button
-                      type="button"
-                      key={workspace.id}
-                      onClick={() => handleSelectWorkspace(workspace)}
-                      disabled={isSwitchingWorkspace}
-                      className={`pill ${workspace.isCurrent ? "bg-accent/20 text-accent" : "bg-white/10 text-foreground"}`}
-                    >
-                      {workspace.name}
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Nenhum workspace vinculado encontrado.
-                </p>
-              )}
-              {workspaceSwitchMessage ? (
-                <p
-                  className={`mt-2 text-xs ${
-                    workspaceSwitchMessage.type === "success" ? "text-emerald-300" : "text-rose-300"
-                  }`}
-                >
-                  {workspaceSwitchMessage.text}
-                </p>
-              ) : null}
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-muted-foreground">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
-                Novo workspace
-              </p>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Crie um novo espaço de trabalho dentro do tenant atual. Um hash único será gerado
-                automaticamente.
-              </p>
-              <div className="mt-3 space-y-3">
-                <label className="block text-sm text-muted-foreground">
-                  Nome do novo workspace
-                  <input
-                    className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
-                    placeholder="Ex.: Financeiro, Contábil..."
-                    value={newWorkspaceName}
-                    onChange={(event) => setNewWorkspaceName(event.target.value)}
-                  />
-                </label>
-                <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                  <button
-                    type="button"
-                    className="rounded-full border border-accent/40 bg-accent/15 px-3 py-1 font-semibold uppercase tracking-[0.3em] text-accent transition hover:border-accent/70 hover:bg-accent/25 disabled:opacity-60"
-                    disabled={workspaceCreateState === "creating"}
-                    onClick={handleCreateWorkspace}
-                  >
-                    {workspaceCreateState === "creating" ? "Criando..." : "Criar workspace"}
-                  </button>
-                  {workspaceCreateMessage && (
-                    <span
-                      className={`text-xs ${
-                        workspaceCreateState === "success" ? "text-emerald-300" : "text-rose-300"
-                      }`}
-                    >
-                      {workspaceCreateMessage}
-                    </span>
-                  )}
-                </div>
-                {workspaceCreated && (
-                  <div className="rounded-xl border border-white/10 bg-black/30 p-3 text-xs text-foreground">
-                    <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
-                      Workspace criado
-                    </p>
-                    <p className="mt-2 text-xs text-foreground">
-                      {workspaceCreated.name} · {workspaceCreated.workspaceId}
-                    </p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      Para usar o novo workspace, selecione-o no bloco "Workspaces vinculados".
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
             <label className="block text-sm text-muted-foreground">
               Cargo
               <input
@@ -481,26 +493,6 @@ export default function ProfilePage() {
                 onChange={handleChange("website")}
               />
             </label>
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-muted-foreground">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
-                Agentes assinados
-              </p>
-              {signedAgentsLoading ? (
-                <p className="mt-2">Carregando assinaturas...</p>
-              ) : signedAgentsError ? (
-                <p className="mt-2 text-rose-300">{signedAgentsError}</p>
-              ) : signedAgents.length > 0 ? (
-                <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-foreground/85">
-                  {signedAgents.map((agent) => (
-                    <span key={agent} className="pill bg-white/10 text-foreground">
-                      {agent}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="mt-2 text-xs text-muted-foreground">Nenhuma assinatura ativa encontrada.</p>
-              )}
-            </div>
           </div>
         </div>
 
@@ -514,6 +506,113 @@ export default function ProfilePage() {
               onChange={handleChange("country")}
             />
           </label>
+        </div>
+        <div className="mt-6 space-y-4">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-muted-foreground">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
+              Workspaces vinculados
+            </p>
+            {linkedWorkspaces.length > 0 ? (
+              <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-foreground/85">
+                {linkedWorkspaces.map((workspace) => (
+                  <button
+                    type="button"
+                    key={workspace.id}
+                    onClick={() => handleSelectWorkspace(workspace)}
+                    disabled={isSwitchingWorkspace}
+                    className={`pill ${workspace.isCurrent ? "bg-accent/20 text-accent" : "bg-white/10 text-foreground"}`}
+                  >
+                    {workspace.name}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-muted-foreground">
+                Nenhum workspace vinculado encontrado.
+              </p>
+            )}
+            {workspaceSwitchMessage ? (
+              <p
+                className={`mt-2 text-xs ${
+                  workspaceSwitchMessage.type === "success" ? "text-emerald-300" : "text-rose-300"
+                }`}
+              >
+                {workspaceSwitchMessage.text}
+              </p>
+            ) : null}
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-muted-foreground">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
+              Novo workspace
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Crie um novo espaço de trabalho dentro do tenant atual. Um hash único será gerado
+              automaticamente.
+            </p>
+            <div className="mt-3 space-y-3">
+              <label className="block text-sm text-muted-foreground">
+                Nome do novo workspace
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
+                  placeholder="Ex.: Financeiro, Contábil..."
+                  value={newWorkspaceName}
+                  onChange={(event) => setNewWorkspaceName(event.target.value)}
+                />
+              </label>
+              <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                <button
+                  type="button"
+                  className="rounded-full border border-accent/40 bg-accent/15 px-3 py-1 font-semibold uppercase tracking-[0.3em] text-accent transition hover:border-accent/70 hover:bg-accent/25 disabled:opacity-60"
+                  disabled={workspaceCreateState === "creating"}
+                  onClick={handleCreateWorkspace}
+                >
+                  {workspaceCreateState === "creating" ? "Criando..." : "Criar workspace"}
+                </button>
+                {workspaceCreateMessage && (
+                  <span
+                    className={`text-xs ${
+                      workspaceCreateState === "success" ? "text-emerald-300" : "text-rose-300"
+                    }`}
+                  >
+                    {workspaceCreateMessage}
+                  </span>
+                )}
+              </div>
+              {workspaceCreated && (
+                <div className="rounded-xl border border-white/10 bg-black/30 p-3 text-xs text-foreground">
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-muted-foreground">
+                    Workspace criado
+                  </p>
+                  <p className="mt-2 text-xs text-foreground">
+                    {workspaceCreated.name} · {workspaceCreated.workspaceId}
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Para usar o novo workspace, selecione-o no bloco "Workspaces vinculados".
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-muted-foreground">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
+              Agentes assinados
+            </p>
+            {signedAgentsLoading ? (
+              <p className="mt-2">Carregando assinaturas...</p>
+            ) : signedAgentsError ? (
+              <p className="mt-2 text-rose-300">{signedAgentsError}</p>
+            ) : signedAgents.length > 0 ? (
+              <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-foreground/85">
+                {signedAgents.map((agent) => (
+                  <span key={agent} className="pill bg-white/10 text-foreground">
+                    {agent}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-muted-foreground">Nenhuma assinatura ativa encontrada.</p>
+            )}
+          </div>
         </div>
 
         <div className="mt-6 flex flex-wrap items-center gap-4">
@@ -534,6 +633,70 @@ export default function ProfilePage() {
           {profileLoading ? (
             <span className="text-sm text-muted-foreground">Carregando perfil...</span>
           ) : null}
+        </div>
+        <div className="mt-6 space-y-4">
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
+                Delegacoes ativas
+              </p>
+              <span className="text-xs text-muted-foreground">{activeDelegations.length} ativo(s)</span>
+            </div>
+            {delegationsStatus === "loading" ? (
+              <p className="mt-3 text-sm text-muted-foreground">Carregando delegacoes...</p>
+            ) : delegationsStatus === "error" ? (
+              <p className="mt-3 text-sm text-rose-300">{delegationsError ?? "Falha ao carregar delegacoes."}</p>
+            ) : activeDelegations.length === 0 ? (
+              <p className="mt-3 text-sm text-muted-foreground">Nenhuma delegacao ativa encontrada.</p>
+            ) : (
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                {activeDelegations.map((delegation) => (
+                  <div
+                    key={delegation.id}
+                    className="rounded-xl border border-white/10 bg-[#0a1527] p-4 text-xs text-muted-foreground"
+                  >
+                    <p className="text-sm font-semibold text-foreground">{delegation.itemName}</p>
+                    <p className="mt-2">Publisher: {delegation.publisherLabel}</p>
+                    <p>Scope: {delegation.scope}</p>
+                    <p>Trust minimo: {delegation.trustMin}</p>
+                    <p>Valido ate: {formatDate(delegation.validUntil)}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
+                Delegacoes expiradas
+              </p>
+              <span className="text-xs text-muted-foreground">
+                {expiredDelegations.length} expirado(s)
+              </span>
+            </div>
+            {delegationsStatus === "loading" ? (
+              <p className="mt-3 text-sm text-muted-foreground">Carregando delegacoes...</p>
+            ) : delegationsStatus === "error" ? (
+              <p className="mt-3 text-sm text-rose-300">{delegationsError ?? "Falha ao carregar delegacoes."}</p>
+            ) : expiredDelegations.length === 0 ? (
+              <p className="mt-3 text-sm text-muted-foreground">Nenhuma delegacao expirada encontrada.</p>
+            ) : (
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                {expiredDelegations.map((delegation) => (
+                  <div
+                    key={delegation.id}
+                    className="rounded-xl border border-white/10 bg-[#0a1527] p-4 text-xs text-muted-foreground"
+                  >
+                    <p className="text-sm font-semibold text-foreground">{delegation.itemName}</p>
+                    <p className="mt-2">Publisher: {delegation.publisherLabel}</p>
+                    <p>Scope: {delegation.scope}</p>
+                    <p>Trust minimo: {delegation.trustMin}</p>
+                    <p>Valido ate: {formatDate(delegation.validUntil)}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </form>
     </div>

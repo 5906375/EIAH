@@ -27,6 +27,8 @@ import { onboardingRouter } from "./routes/onboarding";
 import { workspacesRouter } from "./routes/workspaces";
 import { authRouter } from "./routes/auth";
 import { profileRouter } from "./routes/profile";
+import { startTenantBillingReconciler } from "./services/tenantBillingReconciler";
+import { imobRouter } from "./routes/imob";
 
 
 const app = express();
@@ -84,6 +86,7 @@ app.use("/api/actions", actionsRouter);
 app.use("/api", sessionRouter);
 app.use("/api", workspacesRouter);
 app.use("/api", profileRouter);
+app.use("/api/imob", imobRouter);
 app.use("/metrics", metricsRouter);
 app.use("/metrics/prom", metricsPromRouter);
 
@@ -98,6 +101,7 @@ const shouldStartWorker = (() => {
 if (process.env.NODE_ENV !== "test") {
   assertGovernanceEnv();
   startRunEventOutboxProcessor();
+  startTenantBillingReconciler();
   if (shouldStartWorker) {
     try {
       startRunQueueBullMqWorker();

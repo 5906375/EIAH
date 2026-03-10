@@ -1,18 +1,29 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSession } from "@/state/sessionStore";
-
-const quota = {
-  softLimitCents: 500_000,
-  hardLimitCents: 800_000,
-  monthUsageCents: 210_450,
-  forecastNextCents: 320_000,
-};
+import {
+  apiCreateTenantBillingAdjustment,
+  apiGetTenantBillingLedger,
+  apiGetTenantBillingSummary,
+  apiGetTenantBillingWorkspaces,
+  apiPatchTenantQuotas,
+  apiPatchTenantWorkspaceGrant,
+  type TenantBillingLedgerItem,
+  type TenantBillingSummary,
+  type TenantBillingWorkspaceItem,
+} from "@/lib/api";
 
 const formatBRL = (cents: number) =>
   (cents / 100).toLocaleString("pt-BR", {
     style: "currency",
     currency: "BRL",
   });
+
+const formatDateTime = (iso?: string | null) => {
+  if (!iso) return "-";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleString("pt-BR");
+};
 
 type Mode = "user" | "dev";
 type Theme = "dark" | "light";
@@ -494,7 +505,135 @@ const BillingGuideFooter: React.FC = () => {
 };
 
 const BillingPage: React.FC = () => {
-  const percent = Math.min(100, (quota.monthUsageCents / quota.hardLimitCents) * 100);
+  const { workspaceId } = useSession();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [summary, setSummary] = useState<TenantBillingSummary | null>(null);
+  const [workspaceItems, setWorkspaceItems] = useState<TenantBillingWorkspaceItem[]>([]);
+  const [ledgerItems, setLedgerItems] = useState<TenantBillingLedgerItem[]>([]);
+
+  const [quotaForm, setQuotaForm] = useState({
+    softLimitPct: "",
+    hardLimitPct: "",
+    monthlyRunsLimit: "",
+    monthlyCostCentsLimit: "",
+  });
+  const [quotaSaving, setQuotaSaving] = useState(false);
+  const [quotaMessage, setQuotaMessage] = useState<string | null>(null);
+
+  const [grantSavingId, setGrantSavingId] = useState<string | null>(null);
+
+  const [adjustmentAmount, setAdjustmentAmount] = useState("");
+  const [adjustmentDescription, setAdjustmentDescription] = useState("");
+  const [adjustmentWorkspaceId, setAdjustmentWorkspaceId] = useState<string>("");
+  const [adjustmentSaving, setAdjustmentSaving] = useState(false);
+  const [adjustmentMessage, setAdjustmentMessage] = useState<string | null>(null);
+
+  const loadData = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [summaryRes, workspacesRes, ledgerRes] = await Promise.all([
+        apiGetTenantBillingSummary(),
+        apiGetTenantBillingWorkspaces(),
+        apiGetTenantBillingLedger({ limit: 12 }),
+      ]);
+      setSummary(summaryRes.data);
+      setWorkspaceItems(workspacesRes.data.items || []);
+      setLedgerItems(ledgerRes.data.items || []);
+
+      const policy = summaryRes.data.policy;
+      setQuotaForm({
+        softLimitPct: policy?.softLimitPct != null ? String(policy.softLimitPct) : "",
+        hardLimitPct: policy?.hardLimitPct != null ? String(policy.hardLimitPct) : "",
+        monthlyRunsLimit: policy?.monthlyRunsLimit != null ? String(policy.monthlyRunsLimit) : "",
+        monthlyCostCentsLimit:
+          policy?.monthlyCostCentsLimit != null ? String(policy.monthlyCostCentsLimit) : "",
+      });
+
+      const activeWorkspace = workspacesRes.data.items.find((item) => item.isActiveWorkspace);
+      setAdjustmentWorkspaceId(activeWorkspace?.workspaceId ?? workspacesRes.data.items[0]?.workspaceId ?? "");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Falha ao carregar billing do tenant.";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadData();
+  }, [workspaceId]);
+
+  const percent = useMemo(() => {
+    if (!summary?.policy?.monthlyCostCentsLimit || summary.policy.monthlyCostCentsLimit <= 0) return 0;
+    return Math.min(100, (summary.totals.costCents / summary.policy.monthlyCostCentsLimit) * 100);
+  }, [summary]);
+
+  const forecastNextCents = useMemo(() => {
+    const current = summary?.totals.costCents ?? 0;
+    return Math.round(current * 1.3);
+  }, [summary]);
+
+  const activeWorkspace = workspaceItems.find((item) => item.isActiveWorkspace);
+
+  const onSaveQuotas = async () => {
+    setQuotaSaving(true);
+    setQuotaMessage(null);
+    try {
+      await apiPatchTenantQuotas({
+        softLimitPct: quotaForm.softLimitPct ? Number(quotaForm.softLimitPct) : undefined,
+        hardLimitPct: quotaForm.hardLimitPct ? Number(quotaForm.hardLimitPct) : undefined,
+        monthlyRunsLimit: quotaForm.monthlyRunsLimit ? Number(quotaForm.monthlyRunsLimit) : undefined,
+        monthlyCostCentsLimit: quotaForm.monthlyCostCentsLimit
+          ? Number(quotaForm.monthlyCostCentsLimit)
+          : undefined,
+      });
+      setQuotaMessage("Quotas atualizadas.");
+      await loadData();
+    } catch (err) {
+      setQuotaMessage(err instanceof Error ? err.message : "Falha ao salvar quotas.");
+    } finally {
+      setQuotaSaving(false);
+    }
+  };
+
+  const onToggleWorkspaceGrant = async (item: TenantBillingWorkspaceItem) => {
+    setGrantSavingId(item.workspaceId);
+    try {
+      await apiPatchTenantWorkspaceGrant(item.workspaceId, {
+        enabled: item.grant?.enabled === false ? true : false,
+      });
+      await loadData();
+    } finally {
+      setGrantSavingId(null);
+    }
+  };
+
+  const onCreateAdjustment = async () => {
+    const amount = Number(adjustmentAmount);
+    if (!Number.isFinite(amount) || amount === 0) {
+      setAdjustmentMessage("Informe um valor (centavos) diferente de zero.");
+      return;
+    }
+    setAdjustmentSaving(true);
+    setAdjustmentMessage(null);
+    try {
+      await apiCreateTenantBillingAdjustment({
+        amountCents: amount,
+        workspaceId: adjustmentWorkspaceId || undefined,
+        description: adjustmentDescription || undefined,
+      });
+      setAdjustmentAmount("");
+      setAdjustmentDescription("");
+      setAdjustmentMessage("Adjustment registrado no ledger.");
+      await loadData();
+    } catch (err) {
+      setAdjustmentMessage(err instanceof Error ? err.message : "Falha ao criar adjustment.");
+    } finally {
+      setAdjustmentSaving(false);
+    }
+  };
 
   return (
     <>
@@ -508,20 +647,24 @@ const BillingPage: React.FC = () => {
               Mantenha limites saudaveis por projeto e aprove licencas antes da operacao atingir o hard limit.
             </p>
           </div>
-          <span className="pill">Atualizado ha 3 min</span>
+          <span className="pill">
+            {loading ? "Carregando..." : `Tenant: ${summary?.tenantId ?? "-"}`}
+          </span>
         </header>
 
         <div className="mt-8 grid gap-6 md:grid-cols-2">
           <div className="glass-subtle space-y-3 p-5">
             <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Uso mensal</span>
-            <p className="text-2xl font-semibold text-foreground">{formatBRL(quota.monthUsageCents)}</p>
+            <p className="text-2xl font-semibold text-foreground">
+              {formatBRL(summary?.totals.costCents ?? 0)}
+            </p>
             <p className="text-xs text-muted-foreground">
-              Inclui custos de runs confirmados e estimativas pendentes.
+              Inclui ledger do ciclo ativo ({summary ? `${formatDateTime(summary.cycleStart)} - ${formatDateTime(summary.cycleEnd)}` : "-"}).
             </p>
           </div>
           <div className="glass-subtle space-y-3 p-5">
             <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Previsao 30 dias</span>
-            <p className="text-2xl font-semibold text-foreground">{formatBRL(quota.forecastNextCents)}</p>
+            <p className="text-2xl font-semibold text-foreground">{formatBRL(forecastNextCents)}</p>
             <p className="text-xs text-muted-foreground">Baseado na media dos ultimos 7 dias de atividade.</p>
           </div>
         </div>
@@ -529,11 +672,11 @@ const BillingPage: React.FC = () => {
         <div className="mt-8 space-y-4">
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>Soft limit</span>
-            <span>{formatBRL(quota.softLimitCents)}</span>
+            <span>{summary?.policy?.softLimitPct != null ? `${summary.policy.softLimitPct}%` : "-"}</span>
           </div>
           <div className="flex items-center justify-between text-sm text-muted-foreground">
             <span>Hard limit</span>
-            <span>{formatBRL(quota.hardLimitCents)}</span>
+            <span>{summary?.policy?.hardLimitPct != null ? `${summary.policy.hardLimitPct}%` : "-"}</span>
           </div>
           <div className="relative h-3 w-full overflow-hidden rounded-full bg-white/10">
             <div className="absolute inset-y-0 left-0 rounded-full bg-accent" style={{ width: `${percent}%` }} />
@@ -542,6 +685,24 @@ const BillingPage: React.FC = () => {
             <span>Consumo atual</span>
             <span>{percent.toFixed(1)}%</span>
           </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="glass-subtle p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Runs no ciclo</p>
+              <p className="mt-2 text-xl font-semibold text-foreground">{summary?.totals.runs ?? 0}</p>
+            </div>
+            <div className="glass-subtle p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Workspace ativo</p>
+              <p className="mt-2 text-sm font-semibold text-foreground">{activeWorkspace?.workspaceName ?? "-"}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {activeWorkspace?.grant
+                  ? activeWorkspace.grant.enabled
+                    ? "Grant habilitado"
+                    : "Grant desabilitado"
+                  : "Grant padrão"}
+              </p>
+            </div>
+          </div>
+          {error ? <p className="text-xs text-rose-300">{error}</p> : null}
         </div>
       </section>
 
@@ -561,12 +722,159 @@ const BillingPage: React.FC = () => {
             <li>- Disponibilize limites customizados por cliente</li>
           </ul>
         </div>
-        <p>
-          Precisa renegociar o limite? Abra um ticket no orquestrador ou registre um <em>PlanQuota override</em> direto
-          pela API.
-        </p>
+        <div className="glass-subtle space-y-3 p-4">
+          <h4 className="text-sm font-semibold text-foreground">Quotas do tenant</h4>
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-foreground"
+              placeholder="soft %"
+              value={quotaForm.softLimitPct}
+              onChange={(event) => setQuotaForm((prev) => ({ ...prev, softLimitPct: event.target.value }))}
+            />
+            <input
+              className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-foreground"
+              placeholder="hard %"
+              value={quotaForm.hardLimitPct}
+              onChange={(event) => setQuotaForm((prev) => ({ ...prev, hardLimitPct: event.target.value }))}
+            />
+            <input
+              className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-foreground"
+              placeholder="runs/mês"
+              value={quotaForm.monthlyRunsLimit}
+              onChange={(event) => setQuotaForm((prev) => ({ ...prev, monthlyRunsLimit: event.target.value }))}
+            />
+            <input
+              className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-foreground"
+              placeholder="custo/mês (centavos)"
+              value={quotaForm.monthlyCostCentsLimit}
+              onChange={(event) =>
+                setQuotaForm((prev) => ({ ...prev, monthlyCostCentsLimit: event.target.value }))
+              }
+            />
+          </div>
+          <button
+            type="button"
+            className="rounded-full border border-accent/40 bg-accent/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-accent"
+            onClick={onSaveQuotas}
+            disabled={quotaSaving}
+          >
+            {quotaSaving ? "Salvando..." : "Salvar quotas"}
+          </button>
+          {quotaMessage ? <p className="text-xs text-emerald-300">{quotaMessage}</p> : null}
+        </div>
       </aside>
       </div>
+
+      <section className="glass-panel mt-8 space-y-5 p-8">
+        <header className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-foreground">Grants por workspace</h3>
+          <button
+            type="button"
+            className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-[0.25em] text-muted-foreground"
+            onClick={() => void loadData()}
+          >
+            Atualizar
+          </button>
+        </header>
+        <div className="grid gap-3 md:grid-cols-2">
+          {workspaceItems.map((item) => (
+            <div key={item.workspaceId} className="glass-subtle space-y-3 p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-foreground">{item.workspaceName}</p>
+                <span className={`pill ${item.grant?.enabled === false ? "bg-rose-500/15 text-rose-200" : ""}`}>
+                  {item.grant?.enabled === false ? "Desabilitado" : "Habilitado"}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Runs: {item.usage.runs} · Custo: {formatBRL(item.usage.costCents)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Limites locais: runs {item.grant?.localRunLimit ?? "-"} · custo{" "}
+                {item.grant?.localCostCentsLimit != null ? formatBRL(item.grant.localCostCentsLimit) : "-"}
+              </p>
+              <button
+                type="button"
+                className="rounded-full border border-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.25em] text-muted-foreground"
+                onClick={() => void onToggleWorkspaceGrant(item)}
+                disabled={grantSavingId === item.workspaceId}
+              >
+                {grantSavingId === item.workspaceId
+                  ? "Salvando..."
+                  : item.grant?.enabled === false
+                  ? "Habilitar"
+                  : "Desabilitar"}
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="glass-panel mt-8 space-y-5 p-8">
+        <header>
+          <h3 className="text-lg font-semibold text-foreground">Ledger + adjustment</h3>
+        </header>
+        <div className="grid gap-4 md:grid-cols-[0.35fr,0.65fr]">
+          <div className="glass-subtle space-y-3 p-4">
+            <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Novo adjustment</p>
+            <input
+              className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-foreground"
+              placeholder="Valor em centavos (ex: 1500 ou -1500)"
+              value={adjustmentAmount}
+              onChange={(event) => setAdjustmentAmount(event.target.value)}
+            />
+            <select
+              className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-foreground"
+              value={adjustmentWorkspaceId}
+              onChange={(event) => setAdjustmentWorkspaceId(event.target.value)}
+            >
+              {workspaceItems.map((item) => (
+                <option key={item.workspaceId} value={item.workspaceId}>
+                  {item.workspaceName}
+                </option>
+              ))}
+            </select>
+            <input
+              className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-foreground"
+              placeholder="Descrição (opcional)"
+              value={adjustmentDescription}
+              onChange={(event) => setAdjustmentDescription(event.target.value)}
+            />
+            <button
+              type="button"
+              className="rounded-full border border-accent/40 bg-accent/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-accent"
+              onClick={onCreateAdjustment}
+              disabled={adjustmentSaving}
+            >
+              {adjustmentSaving ? "Gravando..." : "Criar adjustment"}
+            </button>
+            {adjustmentMessage ? <p className="text-xs text-emerald-300">{adjustmentMessage}</p> : null}
+          </div>
+          <div className="glass-subtle overflow-x-auto p-4">
+            <table className="w-full min-w-[680px] text-left text-xs">
+              <thead className="text-muted-foreground">
+                <tr>
+                  <th className="pb-2">Data</th>
+                  <th className="pb-2">Tipo</th>
+                  <th className="pb-2">Workspace</th>
+                  <th className="pb-2">Valor</th>
+                  <th className="pb-2">Run</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ledgerItems.map((item) => (
+                  <tr key={item.id} className="border-t border-white/5">
+                    <td className="py-2 text-muted-foreground">{formatDateTime(item.createdAt)}</td>
+                    <td className="py-2 text-foreground">{item.entryType}</td>
+                    <td className="py-2 text-foreground">{item.workspaceName ?? "-"}</td>
+                    <td className="py-2 text-foreground">{formatBRL(item.amountCents)}</td>
+                    <td className="py-2 text-muted-foreground">{item.runId ?? "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
       <BillingGuideFooter />
     </>
   );

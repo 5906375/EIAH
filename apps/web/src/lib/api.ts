@@ -38,7 +38,43 @@ export type Run = {
   finishedAt?: string;
   createdAt?: string;
   updatedAt?: string;
+  txId?: string | null;
+  criticalHash?: string | null;
   meta?: { traceId?: string; tookMs?: number };
+};
+
+export type ImobFunnelHealth = {
+  workspaceId: string;
+  module: "imob";
+  window: "7d" | "30d";
+  generatedAt: string;
+  summary: {
+    blockedTotal: number;
+    pendingApprovals: number;
+    pendingLegal: number;
+    salesKitPendingReview: number;
+    partialSettlements: number;
+  };
+  byStatus: Array<{
+    status: string;
+    count: number;
+    ageBuckets: { h24: number; h48: number; h72: number; gt72: number };
+  }>;
+  byReasonCode: Array<{
+    reasonCode: string;
+    count: number;
+    severity: "BLOCK" | "CRITICAL";
+  }>;
+  topBlockedRuns: Array<{
+    runId: string;
+    status: string;
+    reasonCodes: string[];
+    ageHours: number;
+    lastUpdatedAt: string;
+    txId?: string | null;
+    criticalHash?: string | null;
+  }>;
+  actions: Array<{ actionId: string; label: string; enabled: boolean }>;
 };
 
 export type RunEvent = {
@@ -92,6 +128,20 @@ export type Agent = {
   profile?: { model: string; systemPrompt: string; tools?: unknown };
 };
 
+export type AgentProtocolActionContract = {
+  action: string;
+  version: string;
+  tier: "LOW" | "MEDIUM" | "HIGH";
+  txIdRequired: boolean;
+  inputSchema: Record<string, unknown>;
+  receiptSchema: { specVersion: string };
+  trustRequirements: {
+    minTrustScore: number;
+    requiresPoU: boolean;
+  };
+  defaultAgent: string;
+};
+
 export type MarketplaceItem = {
   id: string;
   type: "agent" | "action";
@@ -111,6 +161,10 @@ export type DelegationPolicy = {
   delegatorId: string;
   delegateeId: string;
   marketplaceId?: string | null;
+  marketplaceName?: string | null;
+  marketplaceType?: "agent" | "action" | string | null;
+  publisherId?: string | null;
+  publisherName?: string | null;
   scope: "read" | "execute" | "admin";
   trustMin: number;
   validUntil: string;
@@ -263,6 +317,35 @@ export type SetLegacyPasswordResponse = {
   error?: { code?: string; message?: string; details?: unknown };
 };
 
+export type SessionContextResponse = {
+  ok: boolean;
+  data?: {
+    tenantId: string;
+    workspaceId: string;
+    userId?: string | null;
+    activeDomain: "core" | "imob";
+    availableDomains: Array<"core" | "imob">;
+    entitlements: {
+      REAL_ESTATE_CORE: boolean;
+      EXPORTS_ADDON: boolean;
+      BILLING_INSIGHTS_ADDON: boolean;
+      IMOB_INSTALLED?: boolean;
+    };
+    productInstallations?: Array<{
+      product: string;
+      status: string;
+    }>;
+    roles: string[];
+    branding: {
+      brandName: string;
+      logoUrl: string | null;
+      primaryColor: string;
+      workspaceLabel: string;
+    };
+  };
+  error?: { code?: string; message?: string; details?: unknown };
+};
+
 type CreateRunBody = {
   agent: string;
   prompt: string;
@@ -352,6 +435,74 @@ export async function apiListAgents(): Promise<{ items: Agent[] }> {
   return http(`/agents`, { method: "GET" });
 }
 
+export async function apiAgentsDiscovery(body: {
+  domain?: string;
+  actions?: string[];
+}): Promise<{
+  ok: boolean;
+  data: {
+    protocolVersion: string;
+    domain: string;
+    tenantId: string;
+    workspaceId: string;
+    actions: AgentProtocolActionContract[];
+    discoveredAt: string;
+  };
+}> {
+  return http(`/agents/discovery`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function apiAgentsNegotiate(body: {
+  domain?: string;
+  action: string;
+  version?: string;
+}): Promise<{
+  ok: boolean;
+  data: {
+    protocolVersion: string;
+    domain: string;
+    contract: AgentProtocolActionContract;
+    execution: { endpoint: string; method: string };
+    verification: { endpointTemplate: string; receiptSpecVersion: string };
+    negotiatedAt: string;
+  };
+}> {
+  return http(`/agents/negotiate`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function apiAgentsExecute(body: {
+  domain?: string;
+  action: string;
+  version?: string;
+  input?: Record<string, unknown>;
+  prompt?: string;
+  metadata?: Record<string, unknown>;
+}): Promise<{
+  ok: boolean;
+  data: {
+    runId: string;
+    status: string;
+    action: string;
+    version: string;
+    verify: {
+      txId: "required" | null;
+      ledgerEndpointTemplate: string;
+      runBundlePath: string;
+    };
+  };
+}> {
+  return http(`/agents/execute`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
 export async function apiListMarketplace(params?: {
   type?: "agent" | "action";
   publisherId?: string;
@@ -377,6 +528,40 @@ export async function apiSubscribeMarketplace(
     method: "POST",
     body: JSON.stringify(body ?? {}),
   });
+}
+
+export async function apiActivateMarketplaceInstallation(body: {
+  product: "IMOB";
+}): Promise<{
+  ok: boolean;
+  installation: {
+    tenantId: string;
+    workspaceId: string;
+    product: string;
+    status: string;
+    activatedAt: string;
+    activatedByUserId?: string | null;
+  };
+  releasedRoutes: string[];
+}> {
+  return http(`/marketplace/installations/activate`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function apiListMarketplaceInstallations(): Promise<{
+  ok: boolean;
+  items: Array<{
+    tenantId: string;
+    workspaceId: string;
+    product: string;
+    status: string;
+    activatedAt: string;
+    activatedByUserId?: string | null;
+  }>;
+}> {
+  return http(`/marketplace/installations`, { method: "GET" });
 }
 
 export async function apiOnboarding(body: {
@@ -514,9 +699,13 @@ export async function apiWalletLogin(body: {
 
 export async function apiListDelegations(params?: {
   role?: "delegator" | "delegatee" | "all";
+  workspaceScoped?: boolean;
 }): Promise<{ items: DelegationPolicy[] }> {
   const query = new URLSearchParams();
   if (params?.role) query.append("role", params.role);
+  if (typeof params?.workspaceScoped === "boolean") {
+    query.append("workspaceScoped", String(params.workspaceScoped));
+  }
   const qs = query.toString() ? `?${query.toString()}` : "";
   return http(`/delegations${qs}`, { method: "GET" });
 }
@@ -547,6 +736,264 @@ export async function apiListRuns(params: {
 
 export async function apiGetRun(id: string): Promise<Run> {
   return http<Run>(`/runs/${id}`, { method: "GET" });
+}
+
+export async function apiGetImobFunnelHealth(params?: {
+  workspaceId?: string;
+  window?: "7d" | "30d";
+}) {
+  const query = new URLSearchParams();
+  if (params?.workspaceId) query.append("workspaceId", params.workspaceId);
+  if (params?.window) query.append("window", params.window);
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  return http<{ ok: true; data: ImobFunnelHealth }>(`/imob/command-center/funnel-health${qs}`, {
+    method: "GET",
+  });
+}
+
+export async function apiListImobBlockedRuns(params?: {
+  workspaceId?: string;
+  status?: string;
+  reasonCode?: string;
+  minAgeHours?: number;
+  limit?: number;
+}) {
+  const query = new URLSearchParams();
+  if (params?.workspaceId) query.append("workspaceId", params.workspaceId);
+  if (params?.status) query.append("status", params.status);
+  if (params?.reasonCode) query.append("reasonCode", params.reasonCode);
+  if (typeof params?.minAgeHours === "number") query.append("minAgeHours", String(params.minAgeHours));
+  if (typeof params?.limit === "number") query.append("limit", String(params.limit));
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  return http<{
+    ok: true;
+    data: {
+      items: Array<{
+        runId: string;
+        status: string;
+        reasonCodes: string[];
+        ageHours: number;
+        bundleHash: string | null;
+        txId: string | null;
+        updatedAt: string;
+      }>;
+      page: { nextCursor: string | null; hasMore: boolean };
+      meta: { generatedAt: string; snapshotVersion: string };
+    };
+  }>(`/imob/command-center/blocked-runs${qs}`, { method: "GET" });
+}
+
+export type ImobChatConversation = {
+  conversationId: string;
+  title: string;
+  status: "active" | "archived";
+  createdAt: string;
+  updatedAt: string;
+  lastMessagePreview: string | null;
+  lastMessageAt?: string | null;
+  lastMessageRole?: "user" | "assistant" | "system" | null;
+  lastRunId?: string | null;
+  lastTxId?: string | null;
+};
+
+export type ImobChatMessage = {
+  id: string;
+  conversationId: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  intent?: string | null;
+  action?: string | null;
+  threadId?: string | null;
+  threadLabel?: string | null;
+  threadStatus?: "active" | "done" | "blocked" | null;
+  runId?: string | null;
+  txId?: string | null;
+  receiptPath?: string | null;
+  bundlePath?: string | null;
+  metadata?: Record<string, unknown> | null;
+  createdAt: string;
+};
+
+export type ImobChatThread = {
+  threadId: string;
+  label: string;
+  status: "active" | "done" | "blocked";
+  firstMessageAt: string;
+  lastMessageAt: string;
+  messageCount: number;
+};
+
+export async function apiListImobChatConversations(params?: { limit?: number }) {
+  const query = new URLSearchParams();
+  if (typeof params?.limit === "number") query.append("limit", String(params.limit));
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  return http<{ ok: true; items: ImobChatConversation[] }>(`/imob/chat/conversations${qs}`, { method: "GET" });
+}
+
+export async function apiCreateImobChatConversation(body?: {
+  title?: string;
+  metadata?: Record<string, unknown>;
+}) {
+  return http<{ ok: true; conversation: ImobChatConversation }>(`/imob/chat/conversations`, {
+    method: "POST",
+    body: JSON.stringify(body ?? {}),
+  });
+}
+
+export async function apiListImobChatMessages(conversationId: string, params?: { limit?: number }) {
+  const query = new URLSearchParams();
+  if (typeof params?.limit === "number") query.append("limit", String(params.limit));
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  return http<{ ok: true; items: ImobChatMessage[] }>(`/imob/chat/conversations/${conversationId}/messages${qs}`, {
+    method: "GET",
+  });
+}
+
+export async function apiListImobChatThreads(conversationId: string) {
+  return http<{ ok: true; items: ImobChatThread[] }>(
+    `/imob/chat/conversations/${conversationId}/threads`,
+    { method: "GET" }
+  );
+}
+
+export async function apiCreateImobChatMessage(
+  conversationId: string,
+  body: {
+    role: "user" | "assistant" | "system";
+    content: string;
+    intent?: string;
+    action?: string;
+    threadId?: string;
+    threadLabel?: string;
+    threadStatus?: "active" | "done" | "blocked";
+    runId?: string;
+    txId?: string;
+    receiptPath?: string;
+    bundlePath?: string;
+    metadata?: Record<string, unknown>;
+  }
+) {
+  return http<{ ok: true; message: ImobChatMessage }>(`/imob/chat/conversations/${conversationId}/messages`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function apiCreateImobChatTelemetry(
+  body: {
+    conversationId: string;
+    event:
+      | "message_to_plan_ms"
+      | "plan_to_execute_ms"
+      | "chat_to_run_link_coverage"
+      | "message_persist_success_rate"
+      | "ux_interaction";
+    value: number;
+    metadata?: Record<string, unknown>;
+  }
+) {
+  return http<{ ok: true; telemetry: { id: string; createdAt: string } }>(`/imob/chat/telemetry`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function apiGetImobChatTelemetrySummary(params?: {
+  conversationId?: string;
+  windowHours?: number;
+}) {
+  const query = new URLSearchParams();
+  if (params?.conversationId) query.append("conversationId", params.conversationId);
+  if (typeof params?.windowHours === "number") query.append("windowHours", String(params.windowHours));
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  return http<{
+    ok: true;
+    data: {
+      conversationId: string | null;
+      windowHours: number;
+      generatedAt: string;
+      totals: {
+        events: number;
+        messageToPlanAvgMs: number | null;
+        planToExecuteAvgMs: number | null;
+        chatToRunCoveragePct: number;
+        persistSuccessRatePct: number;
+      };
+      metrics: Array<{
+        event: string;
+        count: number;
+        avg: number;
+        p95: number;
+        min: number;
+        max: number;
+      }>;
+    };
+  }>(`/imob/chat/telemetry/summary${qs}`, { method: "GET" });
+}
+
+export async function apiGetImobChatConversationExport(conversationId: string) {
+  return http<{
+    ok: true;
+    export: {
+      generatedAt: string;
+      tenantId: string;
+      workspaceId: string;
+      conversation: {
+        conversationId: string;
+        title: string;
+        status: string;
+        createdAt: string;
+        messageCount: number;
+      };
+      links: {
+        runsBase: string;
+        ledgerBase: string;
+      };
+      messages: Array<{
+        id: string;
+        role: "user" | "assistant" | "system";
+        content: string;
+        intent: string | null;
+        action: string | null;
+        threadId: string | null;
+        threadLabel: string | null;
+        threadStatus: "active" | "done" | "blocked" | null;
+        runId: string | null;
+        txId: string | null;
+        receiptPath: string | null;
+        bundlePath: string | null;
+        createdAt: string;
+      }>;
+      threads: Array<{
+        threadId: string;
+        label: string;
+        status: "active" | "done" | "blocked";
+        firstMessageAt: string;
+        lastMessageAt: string;
+        messageCount: number;
+      }>;
+      telemetry: {
+        totals: {
+          messageToPlanAvgMs: number | null;
+          planToExecuteAvgMs: number | null;
+          chatToRunCoveragePct: number;
+          persistSuccessRatePct: number;
+        };
+        metrics: Array<{
+          event: string;
+          count: number;
+          avg: number;
+          p95: number;
+          min: number;
+          max: number;
+        }>;
+      };
+      audit: {
+        hash: string;
+        hashAlgo: "sha256";
+      };
+    };
+  }>(`/imob/chat/conversations/${conversationId}/export`, { method: "GET" });
 }
 
 export async function apiApproveRun(id: string, body?: { parentRunId?: string | null }) {
@@ -655,7 +1102,15 @@ export async function apiCreateRunWithHeaders(
     payload.projectId = body.workspaceId;
   }
 
-  return http<{ ok: boolean; data: Run }>(`/runs`, {
+  return http<{
+    ok: boolean;
+    data: Run;
+    warnings?: Array<{
+      code: string;
+      message: string;
+      details?: unknown;
+    }>;
+  }>(`/runs`, {
     method: "POST",
     body: JSON.stringify(payload),
     headers,
@@ -702,6 +1157,31 @@ export async function apiChargeUsage(body: {
   });
 }
 
+export async function apiSettleRealestateCommission(body: {
+  runId: string;
+  amountCents: number;
+  provider?: "stripe" | "crypto" | "bank";
+  requestId?: string;
+  agentId?: string;
+}) {
+  return http<{
+    ok: boolean;
+    data: {
+      paymentIntent: unknown;
+      settlement: unknown;
+      reconciliation: {
+        runId: string;
+        ledgerEntries: unknown[];
+        hasSettlementLedger: boolean;
+        duplicateSideEffects: number;
+      };
+    };
+  }>(`/billing/realestate/commission/settle`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
 export async function apiGetQuota(workspaceId: string) {
   const qs = `?projectId=${encodeURIComponent(workspaceId)}`;
   return http<{
@@ -713,6 +1193,216 @@ export async function apiGetQuota(workspaceId: string) {
       percent: number;
     };
   }>(`/plans/quotas${qs}`, { method: "GET" });
+}
+
+export type TenantBillingSummary = {
+  tenantId: string;
+  cycleStart: string;
+  cycleEnd: string;
+  account: {
+    planCode: string;
+    currency: string;
+    status: string;
+    cycleAnchorDay: number;
+  } | null;
+  policy: {
+    softLimitPct: number;
+    hardLimitPct: number;
+    monthlyRunsLimit: number | null;
+    monthlyCostCentsLimit: number | null;
+  } | null;
+  totals: {
+    runs: number;
+    costCents: number;
+    currency: string;
+  };
+  usage: {
+    runs: number;
+    costCents: number;
+    tokens: number;
+    storageMb: number;
+    updatedAt: string;
+  } | null;
+  byWorkspace: Array<{
+    workspaceId: string;
+    workspaceName: string;
+    runs: number;
+    costCents: number;
+  }>;
+};
+
+export type TenantBillingWorkspaceItem = {
+  workspaceId: string;
+  workspaceName: string;
+  isActiveWorkspace: boolean;
+  grant: {
+    enabled: boolean;
+    localRunLimit: number | null;
+    localCostCentsLimit: number | null;
+    updatedAt: string;
+  } | null;
+  usage: {
+    runs: number;
+    costCents: number;
+  };
+};
+
+export type TenantBillingLedgerItem = {
+  id: string;
+  tenantId: string;
+  workspaceId: string | null;
+  workspaceName: string | null;
+  runId: string | null;
+  entryType: string;
+  amountCents: number;
+  currency: string;
+  description: string | null;
+  requestId: string | null;
+  provider: string | null;
+  model: string | null;
+  createdAt: string;
+};
+
+export async function apiGetTenantBillingSummary(params?: { from?: string; to?: string }) {
+  const query = new URLSearchParams();
+  if (params?.from) query.set("from", params.from);
+  if (params?.to) query.set("to", params.to);
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  return http<{ ok: boolean; data: TenantBillingSummary }>(`/billing/tenant/summary${qs}`, {
+    method: "GET",
+  });
+}
+
+export async function apiGetTenantBillingUsage(params?: { from?: string; to?: string }) {
+  const query = new URLSearchParams();
+  if (params?.from) query.set("from", params.from);
+  if (params?.to) query.set("to", params.to);
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  return http<{
+    ok: boolean;
+    data: {
+      tenantId: string;
+      items: Array<{
+        id: string;
+        tenantId: string;
+        cycleStart: string;
+        cycleEnd: string;
+        runs: number;
+        costCents: number;
+        tokens: number;
+        storageMb: number;
+        updatedAt: string;
+      }>;
+    };
+  }>(`/billing/tenant/usage${qs}`, {
+    method: "GET",
+  });
+}
+
+export async function apiGetTenantBillingWorkspaces() {
+  return http<{
+    ok: boolean;
+    data: {
+      tenantId: string;
+      cycleStart: string;
+      cycleEnd: string;
+      items: TenantBillingWorkspaceItem[];
+    };
+  }>(`/billing/tenant/workspaces`, {
+    method: "GET",
+  });
+}
+
+export async function apiPatchTenantWorkspaceGrant(
+  workspaceId: string,
+  body: {
+    enabled?: boolean;
+    localRunLimit?: number;
+    localCostCentsLimit?: number;
+  }
+) {
+  return http<{ ok: boolean; data: TenantBillingWorkspaceItem["grant"] }>(
+    `/billing/tenant/workspaces/${encodeURIComponent(workspaceId)}/grant`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    }
+  );
+}
+
+export async function apiPatchTenantQuotas(body: {
+  softLimitPct?: number;
+  hardLimitPct?: number;
+  monthlyRunsLimit?: number;
+  monthlyCostCentsLimit?: number;
+}) {
+  return http<{
+    ok: boolean;
+    data: {
+      softLimitPct: number;
+      hardLimitPct: number;
+      monthlyRunsLimit: number | null;
+      monthlyCostCentsLimit: number | null;
+    };
+  }>(`/billing/tenant/quotas`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function apiGetTenantBillingLedger(params?: {
+  from?: string;
+  to?: string;
+  type?: string;
+  workspaceId?: string;
+  limit?: number;
+}) {
+  const query = new URLSearchParams();
+  if (params?.from) query.set("from", params.from);
+  if (params?.to) query.set("to", params.to);
+  if (params?.type) query.set("type", params.type);
+  if (params?.workspaceId) query.set("workspaceId", params.workspaceId);
+  if (typeof params?.limit === "number") query.set("limit", String(params.limit));
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  return http<{
+    ok: boolean;
+    data: {
+      tenantId: string;
+      items: TenantBillingLedgerItem[];
+    };
+  }>(`/billing/tenant/ledger${qs}`, {
+    method: "GET",
+  });
+}
+
+export async function apiCreateTenantBillingAdjustment(body: {
+  amountCents: number;
+  workspaceId?: string;
+  runId?: string;
+  currency?: string;
+  description?: string;
+  requestId?: string;
+  provider?: string;
+  model?: string;
+}) {
+  return http<{
+    ok: boolean;
+    data: {
+      inserted: boolean;
+      ledger: TenantBillingLedgerItem;
+      usage: {
+        runs: number;
+        costCents: number;
+        tokens: number;
+        storageMb: number;
+      };
+      cycleStart: string;
+      cycleEnd: string;
+    };
+  }>(`/billing/tenant/adjustment`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
 }
 
 export async function apiSimulatePlan(spec: PlanSpec) {
@@ -885,6 +1575,11 @@ export async function apiSwitchWorkspaceSession(workspaceId: string) {
     };
     error?: { code?: string; message?: string; details?: unknown };
   }>;
+}
+
+export async function apiGetSessionContext(domain?: "core" | "imob") {
+  const query = domain ? `?domain=${encodeURIComponent(domain)}` : "";
+  return http<SessionContextResponse>(`/session/context${query}`, { method: "GET" });
 }
 export async function apiUploadDocuments(formData: FormData, agentSlug: string) {
   const qs = new URLSearchParams({ agentSlug });

@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   apiCreateSession,
+  apiGetSessionContext,
   apiCreateWalletChallenge,
   apiLegacyLogin,
   apiSetLegacyPassword,
@@ -80,6 +81,22 @@ export default function AccessPage() {
         token: response.data.token,
       });
       await apiCreateSession().catch(() => undefined);
+      const context = await apiGetSessionContext().catch(() => null);
+      if (context?.ok && context.data) {
+        updateSession({
+          activeDomain: context.data.activeDomain,
+          availableDomains: context.data.availableDomains,
+          entitlements: context.data.entitlements,
+          installedProducts: (context.data.productInstallations ?? []).map((entry) => entry.product),
+          roles: context.data.roles,
+          branding: {
+            brandName: context.data.branding.brandName,
+            logoUrl: context.data.branding.logoUrl,
+            primaryColor: context.data.branding.primaryColor,
+            workspaceLabel: context.data.branding.workspaceLabel,
+          },
+        });
+      }
       navigate(nextPath, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha de autenticação.");
@@ -197,6 +214,22 @@ export default function AccessPage() {
         token: response.data.token,
       });
       await apiCreateSession().catch(() => undefined);
+      const context = await apiGetSessionContext().catch(() => null);
+      if (context?.ok && context.data) {
+        updateSession({
+          activeDomain: context.data.activeDomain,
+          availableDomains: context.data.availableDomains,
+          entitlements: context.data.entitlements,
+          installedProducts: (context.data.productInstallations ?? []).map((entry) => entry.product),
+          roles: context.data.roles,
+          branding: {
+            brandName: context.data.branding.brandName,
+            logoUrl: context.data.branding.logoUrl,
+            primaryColor: context.data.branding.primaryColor,
+            workspaceLabel: context.data.branding.workspaceLabel,
+          },
+        });
+      }
       navigate(nextPath, { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao conectar ou autenticar com wallet.");

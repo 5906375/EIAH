@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import type { Agent, Run } from "@/lib/api";
+import { ApiError, type Agent, type Run } from "@/lib/api";
 import { apiEstimateCost, apiGetRun, apiListAgents } from "@/lib/api";
 import EstimateBadge from "./EstimateBadge";
 import RunStatusCard from "./RunStatusCard";
@@ -363,7 +363,26 @@ export default function AgentFormShell<FormValues>({
         setLastRun(response.data);
         setTrackedRunId(response.data.id);
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Falha ao executar.";
+        let message = err instanceof Error ? err.message : "Falha ao executar.";
+        if (err instanceof ApiError && err.status === 403 && err.body && typeof err.body === "object") {
+          const body = err.body as {
+            error?: {
+              code?: string;
+              message?: string;
+              details?: {
+                reasons?: Array<{ message?: string }>;
+              };
+            };
+          };
+          if (body.error?.code === "BILLING_GUARD_BLOCKED") {
+            const reason = body.error.details?.reasons?.[0]?.message;
+            message = reason
+              ? `Bloqueado por quota de billing: ${reason}`
+              : "Bloqueado por quota de billing (hard limit ou workspace desabilitado).";
+          } else if (typeof body.error?.message === "string" && body.error.message.trim()) {
+            message = body.error.message;
+          }
+        }
         setError(message);
         setLastRun(null);
         setTrackedRunId(null);

@@ -48,6 +48,10 @@ const EVENT_LABELS: Record<string, string> = {
   "run.action.enqueued": "Ação enfileirada",
   "run.action.completed": "Ação concluída",
   "run.action.failed": "Ação falhou",
+  "run.billing.shadow": "Billing shadow",
+  "run.billing.soft_limit": "Billing soft limit",
+  "run.billing.blocked": "Billing bloqueou",
+  "billing.usage.updated": "Uso billing atualizado",
 };
 
 const ACTION_BADGES: Record<string, string> = {
@@ -63,6 +67,10 @@ const ACTION_BADGES: Record<string, string> = {
   "run.started": "border-amber-400/40 bg-amber-400/15 text-amber-100",
   "run.enqueued": "border-cyan-400/40 bg-cyan-400/10 text-cyan-100",
   "run.requested": "border-white/10 bg-white/5 text-foreground",
+  "run.billing.shadow": "border-indigo-400/40 bg-indigo-400/10 text-indigo-100",
+  "run.billing.soft_limit": "border-amber-400/40 bg-amber-400/15 text-amber-100",
+  "run.billing.blocked": "border-rose-500/40 bg-rose-500/15 text-rose-100",
+  "billing.usage.updated": "border-emerald-400/40 bg-emerald-400/10 text-emerald-200",
 };
 
 type RunTimelineProps = {

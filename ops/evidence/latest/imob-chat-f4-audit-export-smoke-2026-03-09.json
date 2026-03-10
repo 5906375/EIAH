@@ -1,0 +1,33 @@
+{
+  "date": "2026-03-09",
+  "scope": "F4 audit export (JSON/PDF)",
+  "status": "done",
+  "backend": {
+    "endpoint": "GET /api/imob/chat/conversations/:conversationId/export",
+    "payload": [
+      "conversation metadata",
+      "messages with runId/txId/receiptPath/bundlePath",
+      "telemetry totals and metrics",
+      "audit hash sha256"
+    ]
+  },
+  "frontend": {
+    "page": "/app/imob/chat",
+    "actions": [
+      "Export JSON button",
+      "Export PDF button"
+    ],
+    "files": [
+      "apps/web/src/pages/app/imob/chat.tsx",
+      "apps/web/src/lib/api.ts"
+    ],
+    "notes": [
+      "PDF is generated client-side from canonical export payload",
+      "JSON export preserves audit hash and proof links"
+    ]
+  },
+  "validation": {
+    "web_build": "pass",
+    "command": "pnpm -C apps/web build"
+  }
+}

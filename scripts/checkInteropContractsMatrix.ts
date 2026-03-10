@@ -1,9 +1,16 @@
 import fs from "node:fs";
 
 const CHECK = "check:interop-matrix";
-const file = "contracts/interop-discovery.v1.baseline.json";
-if (!fs.existsSync(file)) {
-  console.error(JSON.stringify({ ok: false, check: CHECK, message: "interop matrix baseline missing", file }, null, 2));
+const required = [
+  "contracts/interop-discovery.v1.baseline.json",
+  "contracts/agent-protocol.v1.baseline.json",
+  "contracts/agent-protocol.v1.schema.json",
+  "contracts/examples/agent-protocol.v1.example.json",
+];
+
+const missing = required.filter((file) => !fs.existsSync(file));
+if (missing.length > 0) {
+  console.error(JSON.stringify({ ok: false, check: CHECK, message: "interop matrix baseline missing", missing }, null, 2));
   process.exit(1);
 }
-console.log(JSON.stringify({ ok: true, check: CHECK, file }, null, 2));
+console.log(JSON.stringify({ ok: true, check: CHECK, files: required }, null, 2));
