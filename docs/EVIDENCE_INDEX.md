@@ -94,7 +94,7 @@
 | Schema versionado Agent Protocol v1 | `contracts/agent-protocol.v1.schema.json` | Forma oficial do contrato (`action/version/tier/inputSchema/receiptSchema/trustRequirements`). |
 | Baseline de compatibilidade Agent Protocol | `contracts/agent-protocol.v1.baseline.json` | Snapshot mínimo para detectar breaking changes sem major bump. |
 | Exemplo oficial do contrato v1 | `contracts/examples/agent-protocol.v1.example.json` | Exemplo validável para `realestate.apply_adjustment` v1.2.0. |
-| Política de versionamento Agent Protocol | `docs/ops/agent-protocol-versioning-policy.md` | Regras explícitas de versionamento/compatibilidade para o protocolo. |
+| Política de versionamento Agent Protocol | `ops/contracts/agent-protocol-versioning-policy.md` | Regras explícitas de versionamento/compatibilidade para o protocolo. |
 | Gate de CI Agent Protocol compat | `scripts/checkAgentProtocolVersioning.ts` | Check automatizado de compatibilidade/baseline no pipeline. |
 | Smoke de rotas interop | `ops/evidence/latest/interop-routes-smoke-2026-03-09.json` | Prova de implementação das rotas `POST /api/agents/discovery|negotiate|execute`. |
 | Evidência e2e da cadeia interop | `ops/evidence/latest/interop-e2e-agent-call-2026-03-09.json` | Prova da trilha `discovery -> negotiate -> execute -> verify receipt`. |

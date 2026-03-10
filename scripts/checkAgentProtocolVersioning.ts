@@ -6,7 +6,7 @@ const baselineFile = path.resolve("contracts/agent-protocol.v1.baseline.json");
 const schemaFile = path.resolve("contracts/agent-protocol.v1.schema.json");
 const exampleFile = path.resolve("contracts/examples/agent-protocol.v1.example.json");
 const changelogFile = path.resolve("contracts/CHANGELOG.agent-protocol.md");
-const policyFile = path.resolve("docs/ops/agent-protocol-versioning-policy.md");
+const policyFile = path.resolve("ops/contracts/agent-protocol-versioning-policy.md");
 
 function fail(message: string, details?: Record<string, unknown>): never {
   console.error(JSON.stringify({ ok: false, check: CHECK, message, details }, null, 2));
@@ -91,7 +91,7 @@ console.log(
         "contracts/agent-protocol.v1.schema.json",
         "contracts/examples/agent-protocol.v1.example.json",
         "contracts/CHANGELOG.agent-protocol.md",
-        "docs/ops/agent-protocol-versioning-policy.md",
+        "ops/contracts/agent-protocol-versioning-policy.md",
       ],
       schemaVersion,
     },
