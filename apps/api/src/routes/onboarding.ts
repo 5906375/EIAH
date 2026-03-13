@@ -2,6 +2,10 @@ import crypto from "node:crypto";
 import { Router } from "express";
 import { z } from "zod";
 import { prismaGlobal } from "@repo/db";
+import {
+  RESERVED_DEFAULT_WORKSPACE_ALLOWED_TENANT,
+  RESERVED_DEFAULT_WORKSPACE_NAME,
+} from "../services/workspaceNamingPolicy";
 
 const onboardingRouter = Router();
 
@@ -88,10 +92,14 @@ onboardingRouter.post("/auth/onboarding", async (req, res) => {
         },
       });
 
+      const shouldUseReservedDefault =
+        orgName.trim().toUpperCase() === RESERVED_DEFAULT_WORKSPACE_ALLOWED_TENANT.trim().toUpperCase();
+      const initialWorkspaceName = shouldUseReservedDefault ? RESERVED_DEFAULT_WORKSPACE_NAME : "Workspace Inicial";
+
       const workspace = await tx.workspace.create({
         data: {
           tenantId: tenant.id,
-          name: "Default",
+          name: initialWorkspaceName,
         },
       });
 

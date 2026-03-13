@@ -29,6 +29,7 @@ import { authRouter } from "./routes/auth";
 import { profileRouter } from "./routes/profile";
 import { startTenantBillingReconciler } from "./services/tenantBillingReconciler";
 import { imobRouter } from "./routes/imob";
+import { helpRouter } from "./routes/help";
 
 
 const app = express();
@@ -87,6 +88,7 @@ app.use("/api", sessionRouter);
 app.use("/api", workspacesRouter);
 app.use("/api", profileRouter);
 app.use("/api/imob", imobRouter);
+app.use("/api", helpRouter);
 app.use("/metrics", metricsRouter);
 app.use("/metrics/prom", metricsPromRouter);
 

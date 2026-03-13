@@ -575,6 +575,9 @@ const BillingPage: React.FC = () => {
     return Math.round(current * 1.3);
   }, [summary]);
 
+  const planSummary = summary?.plan ?? null;
+  const entitlementSummary = summary?.entitlements ?? null;
+
   const activeWorkspace = workspaceItems.find((item) => item.isActiveWorkspace);
 
   const onSaveQuotas = async () => {
@@ -637,7 +640,7 @@ const BillingPage: React.FC = () => {
 
   return (
     <>
-      <div className="grid gap-8 lg:grid-cols-[0.6fr,0.4fr]">
+      <div className="grid gap-8">
       <section className="glass-panel p-8">
         <header className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <div>
@@ -652,7 +655,39 @@ const BillingPage: React.FC = () => {
           </span>
         </header>
 
+        <div className="mt-6 rounded-2xl border border-accent/30 bg-accent/10 p-5">
+          <p className="text-xs uppercase tracking-[0.24em] text-accent">Seu plano e cobranca</p>
+          <div className="mt-3 grid gap-2 text-sm text-foreground md:grid-cols-2">
+            <p>
+              <span className="text-muted-foreground">Plano:</span> {planSummary?.label ?? "Starter B2B"}
+            </p>
+            <p>
+              <span className="text-muted-foreground">Mensalidade base:</span> {formatBRL(planSummary?.basePriceCents ?? 0)}
+            </p>
+            <p>
+              <span className="text-muted-foreground">Inclui:</span> {planSummary?.includedUsers ?? 0} usuarios e{" "}
+              {planSummary?.includedRuns ?? 0} runs
+            </p>
+            <p>
+              <span className="text-muted-foreground">Excedente:</span>{" "}
+              {formatBRL(planSummary?.overageRunCents ?? 0)}/run e{" "}
+              {formatBRL(planSummary?.extraUserCents ?? 0)}/usuario extra
+            </p>
+          </div>
+        </div>
+
         <div className="mt-8 grid gap-6 md:grid-cols-2">
+          <div className="glass-subtle space-y-3 p-5">
+            <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Plano atual</span>
+            <p className="text-2xl font-semibold text-foreground">{planSummary?.label ?? "Starter B2B"}</p>
+            <p className="text-xs text-muted-foreground">
+              Base: {formatBRL(planSummary?.basePriceCents ?? 0)} · Workspaces inclusos:{" "}
+              {planSummary?.includedWorkspaces ?? 0}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Usuarios: {entitlementSummary?.usersActive ?? 0}/{planSummary?.includedUsers ?? 0}
+            </p>
+          </div>
           <div className="glass-subtle space-y-3 p-5">
             <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Uso mensal</span>
             <p className="text-2xl font-semibold text-foreground">
@@ -666,6 +701,28 @@ const BillingPage: React.FC = () => {
             <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Previsao 30 dias</span>
             <p className="text-2xl font-semibold text-foreground">{formatBRL(forecastNextCents)}</p>
             <p className="text-xs text-muted-foreground">Baseado na media dos ultimos 7 dias de atividade.</p>
+          </div>
+          <div className="glass-subtle space-y-3 p-5">
+            <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Excedente e estimativa</span>
+            <p className="text-2xl font-semibold text-foreground">
+              {formatBRL(entitlementSummary?.estimatedInvoiceCents ?? 0)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Base + Runs extras + Usuarios extras = Total previsto
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {`${formatBRL(planSummary?.basePriceCents ?? 0)} + ${formatBRL(
+                entitlementSummary?.runOverageCents ?? 0
+              )} + ${formatBRL(entitlementSummary?.userOverageCents ?? 0)} = ${formatBRL(
+                entitlementSummary?.estimatedInvoiceCents ?? 0
+              )}`}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Runs extra: {entitlementSummary?.runOverage ?? 0} ({formatBRL(entitlementSummary?.runOverageCents ?? 0)})
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Usuarios extras: {entitlementSummary?.usersOverage ?? 0} ({formatBRL(entitlementSummary?.userOverageCents ?? 0)})
+            </p>
           </div>
         </div>
 
@@ -689,6 +746,9 @@ const BillingPage: React.FC = () => {
             <div className="glass-subtle p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Runs no ciclo</p>
               <p className="mt-2 text-xl font-semibold text-foreground">{summary?.totals.runs ?? 0}</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Incluidos: {entitlementSummary?.runsIncludedEffective ?? 0} · Extra: {entitlementSummary?.runOverage ?? 0}
+              </p>
             </div>
             <div className="glass-subtle p-4">
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Workspace ativo</p>
@@ -705,65 +765,67 @@ const BillingPage: React.FC = () => {
           {error ? <p className="text-xs text-rose-300">{error}</p> : null}
         </div>
       </section>
-
-      <aside className="glass-panel flex flex-col gap-6 p-8 text-sm text-muted-foreground">
-        <div>
-          <h3 className="text-lg font-semibold text-foreground">Automatize alertas</h3>
-          <p className="mt-2 leading-relaxed">
-            Configure webhooks e notificacoes para avisar stakeholders quando o consumo ultrapassar 70% do limite suave
-            ou quando uma cobranca falhar.
-          </p>
-        </div>
-        <div className="space-y-3">
-          <h4 className="text-sm font-semibold text-foreground">Proximos passos</h4>
-          <ul className="space-y-2">
-            <li>- Habilite o webhook <code className="rounded bg-black/40 px-1">/webhooks/billing</code></li>
-            <li>- Sincronize dashboards no Agent Builder</li>
-            <li>- Disponibilize limites customizados por cliente</li>
-          </ul>
-        </div>
-        <div className="glass-subtle space-y-3 p-4">
-          <h4 className="text-sm font-semibold text-foreground">Quotas do tenant</h4>
-          <div className="grid grid-cols-2 gap-2">
-            <input
-              className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-foreground"
-              placeholder="soft %"
-              value={quotaForm.softLimitPct}
-              onChange={(event) => setQuotaForm((prev) => ({ ...prev, softLimitPct: event.target.value }))}
-            />
-            <input
-              className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-foreground"
-              placeholder="hard %"
-              value={quotaForm.hardLimitPct}
-              onChange={(event) => setQuotaForm((prev) => ({ ...prev, hardLimitPct: event.target.value }))}
-            />
-            <input
-              className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-foreground"
-              placeholder="runs/mês"
-              value={quotaForm.monthlyRunsLimit}
-              onChange={(event) => setQuotaForm((prev) => ({ ...prev, monthlyRunsLimit: event.target.value }))}
-            />
-            <input
-              className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-foreground"
-              placeholder="custo/mês (centavos)"
-              value={quotaForm.monthlyCostCentsLimit}
-              onChange={(event) =>
-                setQuotaForm((prev) => ({ ...prev, monthlyCostCentsLimit: event.target.value }))
-              }
-            />
-          </div>
-          <button
-            type="button"
-            className="rounded-full border border-accent/40 bg-accent/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-accent"
-            onClick={onSaveQuotas}
-            disabled={quotaSaving}
-          >
-            {quotaSaving ? "Salvando..." : "Salvar quotas"}
-          </button>
-          {quotaMessage ? <p className="text-xs text-emerald-300">{quotaMessage}</p> : null}
-        </div>
-      </aside>
       </div>
+
+      <section className="glass-panel mt-8">
+        <div className="glass-subtle flex flex-col gap-6 p-6 text-sm text-muted-foreground">
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">Automatize alertas</h3>
+            <p className="mt-2 leading-relaxed">
+              Configure webhooks e notificacoes para avisar stakeholders quando o consumo ultrapassar 70% do limite suave
+              ou quando uma cobranca falhar.
+            </p>
+          </div>
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-foreground">Proximos passos</h4>
+            <ul className="space-y-2">
+              <li>- Habilite o webhook <code className="rounded bg-black/40 px-1">/webhooks/billing</code></li>
+              <li>- Sincronize dashboards no Agent Builder</li>
+              <li>- Disponibilize limites customizados por cliente</li>
+            </ul>
+          </div>
+          <div className="glass-subtle space-y-3 p-4">
+            <h4 className="text-sm font-semibold text-foreground">Quotas do tenant</h4>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-foreground"
+                placeholder="soft %"
+                value={quotaForm.softLimitPct}
+                onChange={(event) => setQuotaForm((prev) => ({ ...prev, softLimitPct: event.target.value }))}
+              />
+              <input
+                className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-foreground"
+                placeholder="hard %"
+                value={quotaForm.hardLimitPct}
+                onChange={(event) => setQuotaForm((prev) => ({ ...prev, hardLimitPct: event.target.value }))}
+              />
+              <input
+                className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-foreground"
+                placeholder="runs/mês"
+                value={quotaForm.monthlyRunsLimit}
+                onChange={(event) => setQuotaForm((prev) => ({ ...prev, monthlyRunsLimit: event.target.value }))}
+              />
+              <input
+                className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-foreground"
+                placeholder="custo/mês (centavos)"
+                value={quotaForm.monthlyCostCentsLimit}
+                onChange={(event) =>
+                  setQuotaForm((prev) => ({ ...prev, monthlyCostCentsLimit: event.target.value }))
+                }
+              />
+            </div>
+            <button
+              type="button"
+              className="rounded-full border border-accent/40 bg-accent/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-accent"
+              onClick={onSaveQuotas}
+              disabled={quotaSaving}
+            >
+              {quotaSaving ? "Salvando..." : "Salvar quotas"}
+            </button>
+            {quotaMessage ? <p className="text-xs text-emerald-300">{quotaMessage}</p> : null}
+          </div>
+        </div>
+      </section>
 
       <section className="glass-panel mt-8 space-y-5 p-8">
         <header className="flex items-center justify-between">

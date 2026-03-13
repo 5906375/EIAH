@@ -3,6 +3,11 @@ import { Router } from "express";
 import { z } from "zod";
 import { prismaGlobal } from "@repo/db";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
+import {
+  canTenantUseReservedDefaultWorkspaceName,
+  isReservedDefaultWorkspaceName,
+  RESERVED_DEFAULT_WORKSPACE_ALLOWED_TENANT,
+} from "../services/workspaceNamingPolicy";
 
 export const workspacesRouter = Router();
 workspacesRouter.use(enforceTenant);
@@ -42,6 +47,23 @@ workspacesRouter.post("/workspaces", async (req, res) => {
 
   const tenantId = authContext.tenantId;
   const name = parsed.data.name.trim();
+
+  if (isReservedDefaultWorkspaceName(name)) {
+    const allowed = await canTenantUseReservedDefaultWorkspaceName({
+      prisma: prismaGlobal,
+      tenantId,
+    });
+    if (!allowed) {
+      return res.status(403).json({
+        ok: false,
+        error: {
+          code: "WORKSPACE_NAME_RESERVED",
+          message: `Workspace ${name.toUpperCase()} is reserved for tenant ${RESERVED_DEFAULT_WORKSPACE_ALLOWED_TENANT}`,
+        },
+      });
+    }
+  }
+
   const workspaceId = await generateWorkspaceId();
 
   if (!workspaceId) {
