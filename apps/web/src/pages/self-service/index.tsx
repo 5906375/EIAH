@@ -44,6 +44,123 @@ const agentVideoMap: Record<string, string> = {
   eiah: eiahCoreVideo,
 };
 
+type PricingPlanId = "solo" | "starter" | "growth" | "scale";
+
+const PRICING_PLANS: Array<{
+  id: PricingPlanId;
+  label: string;
+  basePriceCents: number;
+  includedUsers: number;
+  includedRuns: number;
+  overageRunCents: number;
+  extraUserCents: number;
+  includes: string[];
+}> = [
+  {
+    id: "solo",
+    label: "Solo",
+    basePriceCents: 49_000,
+    includedUsers: 3,
+    includedRuns: 1_500,
+    overageRunCents: 35,
+    extraUserCents: 3_900,
+    includes: [
+      "3 usuários inclusos para operação enxuta",
+      "1.500 runs/mês para atendimento e follow-up",
+      "Trilha auditável por run com evidência exportável",
+      "Governança base: intent + trust + guardrails",
+      "Ideal para corretor autônomo ou micro-time",
+      "Suporte padrão em horário comercial",
+    ],
+  },
+  {
+    id: "starter",
+    label: "Starter",
+    basePriceCents: 149_000,
+    includedUsers: 10,
+    includedRuns: 5_000,
+    overageRunCents: 30,
+    extraUserCents: 3_900,
+    includes: [
+      "10 usuários inclusos no tenant/workspace",
+      "5.000 runs/mês com trilha auditável por run",
+      "Governança base: intent + trust score + guardrails",
+      "Evidência exportável (JSON/PDF/HTML) por execução",
+      "Chat operacional + dashboard de processos",
+      "Suporte padrão em horário comercial",
+    ],
+  },
+  {
+    id: "growth",
+    label: "Growth",
+    basePriceCents: 399_000,
+    includedUsers: 25,
+    includedRuns: 25_000,
+    overageRunCents: 22,
+    extraUserCents: 2_900,
+    includes: [
+      "25 usuários inclusos no tenant/workspace",
+      "25.000 runs/mês com PoU + Trust Gate",
+      "Aprovação humana e policies autoaplicáveis",
+      "Auditoria pública por txId com vínculo canônico",
+      "Interop A2A (discovery/negotiate/execute) pronta para operação",
+      "Suporte prioritário para operação B2B",
+    ],
+  },
+  {
+    id: "scale",
+    label: "Scale",
+    basePriceCents: 990_000,
+    includedUsers: 100,
+    includedRuns: 100_000,
+    overageRunCents: 15,
+    extraUserCents: 1_900,
+    includes: [
+      "100 usuários inclusos no tenant/workspace",
+      "100.000 runs/mês para operação crítica em escala",
+      "Economy avançada: PoU-gated payment + disputas auditáveis",
+      "Settlement provider com reconciliação e idempotência",
+      "Command center por vertical e rollout controlado",
+      "Suporte enterprise com acompanhamento dedicado",
+    ],
+  },
+];
+
+const PROPOSAL_OPTIONS = [
+  {
+    id: "micro-imob",
+    title: "Micro Imobiliaria",
+    profile: "Corretor + assistente + gestor",
+    recommendation: "Solo",
+    objective: "Entrada rapida com operacao enxuta e upgrade progressivo.",
+    nextStep: "Comece com Solo e revise em 30 dias.",
+  },
+  {
+    id: "operacao-starter",
+    title: "Operacao Estruturada",
+    profile: "Time comercial com multiplos atendentes",
+    recommendation: "Starter",
+    objective: "Escalar atendimento com governanca e trilha auditavel.",
+    nextStep: "Ative Starter e configure limites por workspace.",
+  },
+  {
+    id: "expansao-growth",
+    title: "Expansao Regional",
+    profile: "Multiplas frentes e alta demanda mensal",
+    recommendation: "Growth",
+    objective: "Ganhar escala sem perder controle de custo e qualidade.",
+    nextStep: "Ative Growth e acompanhe previsao de invoice no billing.",
+  },
+  {
+    id: "enterprise-custom",
+    title: "Enterprise Custom",
+    profile: "Operacao critica com requisitos proprios",
+    recommendation: "Enterprise",
+    objective: "Compor proposta tecnica e comercial sob consulta.",
+    nextStep: "Abrir proposta assistida com agente EIAH.",
+  },
+] as const;
+
 export default function SelfServiceIndexPage() {
   const session = useSession();
   const navigate = useNavigate();
@@ -67,6 +184,10 @@ export default function SelfServiceIndexPage() {
   const [formValues, setFormValues] = React.useState<
     Record<string, { scope: "read" | "execute" | "admin"; trustMin: string; validUntil: string }>
   >({});
+  const [selectedPlan, setSelectedPlan] = React.useState<PricingPlanId>("solo");
+  const [calcUsers, setCalcUsers] = React.useState("3");
+  const [calcRuns, setCalcRuns] = React.useState("1500");
+  const [selectedProposalOption, setSelectedProposalOption] = React.useState(PROPOSAL_OPTIONS[0].id);
 
   const delegationByMarketplaceId = React.useMemo(() => {
     const map = new Map<string, DelegationPolicy>();
@@ -102,6 +223,35 @@ export default function SelfServiceIndexPage() {
     if (marketplaceFilter === "all") return marketplaceItems;
     return marketplaceItems.filter((item) => item.type === marketplaceFilter);
   }, [marketplaceItems, marketplaceFilter]);
+  const selectedPlanDetails = React.useMemo(
+    () => PRICING_PLANS.find((plan) => plan.id === selectedPlan) ?? PRICING_PLANS[0],
+    [selectedPlan]
+  );
+  const formatBRL = React.useCallback((cents: number) => {
+    return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  }, []);
+  const formatInt = React.useCallback((value: number) => value.toLocaleString("pt-BR"), []);
+  const calculator = React.useMemo(() => {
+    const users = Number(calcUsers) > 0 ? Math.trunc(Number(calcUsers)) : 0;
+    const runs = Number(calcRuns) > 0 ? Math.trunc(Number(calcRuns)) : 0;
+    const extraRuns = Math.max(0, runs - selectedPlanDetails.includedRuns);
+    const extraUsers = Math.max(0, users - selectedPlanDetails.includedUsers);
+    const runOverageCents = extraRuns * selectedPlanDetails.overageRunCents;
+    const userOverageCents = extraUsers * selectedPlanDetails.extraUserCents;
+    const totalCents = selectedPlanDetails.basePriceCents + runOverageCents + userOverageCents;
+    return { users, runs, extraRuns, extraUsers, runOverageCents, userOverageCents, totalCents };
+  }, [calcRuns, calcUsers, selectedPlanDetails]);
+  React.useEffect(() => {
+    setCalcUsers(String(selectedPlanDetails.includedUsers));
+    setCalcRuns(String(selectedPlanDetails.includedRuns));
+  }, [selectedPlanDetails.id, selectedPlanDetails.includedUsers, selectedPlanDetails.includedRuns]);
+  const pricingUpdatedAtLabel = React.useMemo(() => {
+    return new Date().toLocaleDateString("pt-BR");
+  }, []);
+  const selectedProposal = React.useMemo(
+    () => PROPOSAL_OPTIONS.find((option) => option.id === selectedProposalOption) ?? PROPOSAL_OPTIONS[0],
+    [selectedProposalOption]
+  );
 
   const refreshDelegations = React.useCallback(async () => {
     setDelegationsStatus("loading");
@@ -556,6 +706,12 @@ export default function SelfServiceIndexPage() {
                         />
                       </label>
                     </div>
+                    <p className="mt-4 text-xs text-amber-200">
+                      Esta ativacao pode gerar cobranca conforme seu plano.{" "}
+                      <Link to="/app/billing" className="underline text-accent">
+                        Ver tabela de precos
+                      </Link>
+                    </p>
                     <button
                       type="button"
                       onClick={() => handleSubscribe(item)}
@@ -572,29 +728,184 @@ export default function SelfServiceIndexPage() {
         ) : null}
       </section>
 
-      <section className="grid gap-4 rounded-3xl border border-white/10 bg-surface/60 p-6 md:grid-cols-3">
-        <div>
-          <h3 className="text-lg font-semibold text-foreground">Plano Starter</h3>
-          <p className="mt-1 text-sm text-muted-foreground">50 execuções/mês + 3 formulários</p>
-          <p className="mt-2 text-xl font-semibold text-accent">R$ 49/mês</p>
-        </div>
-        <div>
-          <h3 className="text-lg font-semibold text-foreground">Plano Pro</h3>
-          <p className="mt-1 text-sm text-muted-foreground">200 execuções/mês, todos os agentes, export CSV/JSON</p>
-          <p className="mt-2 text-xl font-semibold text-accent">R$ 149/mês</p>
-        </div>
-        <div>
-          <h3 className="text-lg font-semibold text-foreground">Add-ons</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Acoes externas (Slack, PagerDuty, DeFi) cobradas por uso. Alertas proativos e memorias persistentes.
+      <section className="rounded-3xl border border-white/10 bg-surface/60 p-6">
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">Pricing oficial</h3>
+            <p className="text-sm text-muted-foreground">
+              Planos B2B para plataforma agentic com governança auditável e economia verificável.
+            </p>
+          </div>
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            {`Atualizado em ${pricingUpdatedAtLabel}`}
           </p>
-          <a
-            className="mt-3 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-accent"
-            href="mailto:contato@eiah.ai"
+        </div>
+
+        <div className="mt-5 overflow-x-auto">
+          <table className="w-full min-w-[760px] text-left text-sm">
+            <thead className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              <tr>
+                <th className="pb-2">Plano</th>
+                <th className="pb-2">Base mensal</th>
+                <th className="pb-2">Usuarios</th>
+                <th className="pb-2">Runs/mês</th>
+                <th className="pb-2">Excedente run</th>
+                <th className="pb-2">Usuario extra</th>
+              </tr>
+            </thead>
+            <tbody className="text-foreground">
+              {PRICING_PLANS.map((plan) => {
+                const isActive = selectedPlan === plan.id;
+                return (
+                  <tr key={plan.id} className="border-t border-white/10">
+                    <td className="py-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPlan(plan.id)}
+                        className={`font-semibold underline-offset-4 transition ${
+                          isActive ? "text-accent underline" : "text-foreground hover:text-accent hover:underline"
+                        }`}
+                        aria-pressed={isActive}
+                      >
+                        {plan.label}
+                      </button>
+                    </td>
+                    <td className="py-2">{formatBRL(plan.basePriceCents)}</td>
+                    <td className="py-2">{formatInt(plan.includedUsers)}</td>
+                    <td className="py-2">{formatInt(plan.includedRuns)}</td>
+                    <td className="py-2">{formatBRL(plan.overageRunCents)}</td>
+                    <td className="py-2">{`${formatBRL(plan.extraUserCents)}/mês`}</td>
+                  </tr>
+                );
+              })}
+              <tr className="border-t border-white/10 text-muted-foreground">
+                <td className="py-2 font-semibold">Enterprise</td>
+                <td className="py-2">Sob consulta</td>
+                <td className="py-2">Custom</td>
+                <td className="py-2">Custom</td>
+                <td className="py-2">Custom</td>
+                <td className="py-2">Custom</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-4 rounded-2xl border border-accent/30 bg-accent/10 p-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-accent">
+            O que está incluso no plano {selectedPlanDetails.label}
+          </p>
+          <div className="mt-3 grid gap-2 text-sm text-foreground md:grid-cols-2">
+            {selectedPlanDetails.includes.map((item) => (
+              <p key={`${selectedPlanDetails.id}-${item}`}>• {item}</p>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-5 grid gap-3 text-sm text-muted-foreground md:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <p className="font-semibold text-foreground">Exemplo 1 (Solo)</p>
+            <p>5 usuarios e 2.000 runs no mês:</p>
+            <p className="mt-1">R$ 490 + (500 x R$ 0,35) + (2 x R$ 39) = R$ 743</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <p className="font-semibold text-foreground">Exemplo 2 (Starter)</p>
+            <p>12 usuarios e 6.200 runs no mês:</p>
+            <p className="mt-1">R$ 1.490 + (1.200 x R$ 0,30) + (2 x R$ 39) = R$ 1.928</p>
+          </div>
+        </div>
+
+        <div className="mt-5 rounded-2xl border border-white/10 bg-black/20 p-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Calculadora interativa</p>
+          <div className="mt-3 grid gap-3 md:grid-cols-3">
+            <label className="text-sm text-muted-foreground">
+              Plano
+              <select
+                value={selectedPlan}
+                onChange={(event) => setSelectedPlan(event.target.value as PricingPlanId)}
+                className="mt-1 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-foreground"
+              >
+                {PRICING_PLANS.map((plan) => (
+                  <option key={`calc-${plan.id}`} value={plan.id}>
+                    {plan.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm text-muted-foreground">
+              Usuarios
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={calcUsers}
+                onChange={(event) => setCalcUsers(event.target.value)}
+                className="mt-1 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-foreground"
+              />
+            </label>
+            <label className="text-sm text-muted-foreground">
+              Runs/mês
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={calcRuns}
+                onChange={(event) => setCalcRuns(event.target.value)}
+                className="mt-1 w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm text-foreground"
+              />
+            </label>
+          </div>
+          <p className="mt-3 text-sm text-foreground">
+            {`${formatBRL(selectedPlanDetails.basePriceCents)} + ${formatBRL(
+              calculator.runOverageCents
+            )} + ${formatBRL(calculator.userOverageCents)} = ${formatBRL(calculator.totalCents)}`}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {`Extras: ${calculator.extraRuns.toLocaleString("pt-BR")} runs e ${calculator.extraUsers.toLocaleString("pt-BR")} usuários.`}
+          </p>
+        </div>
+
+        <div className="mt-4 space-y-3 rounded-2xl border border-accent/30 bg-accent/10 p-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-accent">Agente EIAH | atendimento de proposta</p>
+          <p className="text-sm text-foreground">
+            O agente EIAH sugere a proposta ideal conforme o perfil do solicitante.
+          </p>
+          <div className="grid gap-2 md:grid-cols-2">
+            {PROPOSAL_OPTIONS.map((option) => {
+              const isActive = option.id === selectedProposal.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => setSelectedProposalOption(option.id)}
+                  className={`rounded-xl border px-3 py-2 text-left text-sm transition ${
+                    isActive
+                      ? "border-accent/60 bg-accent/20 text-foreground"
+                      : "border-white/10 bg-black/20 text-muted-foreground hover:border-accent/40 hover:text-foreground"
+                  }`}
+                >
+                  <p className="font-semibold">{option.title}</p>
+                  <p className="text-xs">{option.profile}</p>
+                </button>
+              );
+            })}
+          </div>
+          <div className="rounded-xl border border-white/10 bg-black/20 p-3 text-sm">
+            <p className="text-foreground">
+              <span className="text-muted-foreground">Proposta sugerida:</span> {selectedProposal.recommendation}
+            </p>
+            <p className="mt-1 text-muted-foreground">{selectedProposal.objective}</p>
+            <p className="mt-1 text-muted-foreground">{selectedProposal.nextStep}</p>
+          </div>
+          <Link
+            to={`/app/agents?agent=eiah&topic=proposal&plan=${encodeURIComponent(selectedProposal.recommendation)}#chat-agent-launcher`}
+            className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-accent"
           >
             Solicitar proposta
-                <span aria-hidden>→</span>
-          </a>
+            <span aria-hidden>→</span>
+          </Link>
+          <p className="text-xs text-muted-foreground">
+            Enterprise: runs e usuários customizados, preço sob consulta.
+          </p>
         </div>
       </section>
     </div>

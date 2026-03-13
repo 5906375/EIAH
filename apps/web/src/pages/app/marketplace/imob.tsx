@@ -1,5 +1,5 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   ApiError,
   apiActivateMarketplaceInstallation,
@@ -157,14 +157,22 @@ const ImobMarketplacePage: React.FC = () => {
                 Abrir IMOB
               </button>
             ) : (
-              <button
-                type="button"
-                onClick={() => void handleActivate()}
-                disabled={activating}
-                className="rounded-full border border-accent/60 bg-accent/20 px-5 py-2 text-sm font-semibold uppercase tracking-[0.22em] text-accent transition hover:border-accent hover:bg-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {activating ? "Ativando..." : "Ativar módulo"}
-              </button>
+              <div className="space-y-2">
+                <p className="text-xs text-amber-200">
+                  Esta ativacao pode gerar cobranca conforme seu plano.{" "}
+                  <Link to="/app/billing" className="underline text-accent">
+                    Ver tabela de precos
+                  </Link>
+                </p>
+                <button
+                  type="button"
+                  onClick={() => void handleActivate()}
+                  disabled={activating}
+                  className="rounded-full border border-accent/60 bg-accent/20 px-5 py-2 text-sm font-semibold uppercase tracking-[0.22em] text-accent transition hover:border-accent hover:bg-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {activating ? "Ativando..." : "Ativar módulo"}
+                </button>
+              </div>
             )}
 
             <button

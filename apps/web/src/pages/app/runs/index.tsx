@@ -776,6 +776,7 @@ const RunsPage: React.FC = () => {
       </section>
 
       <section
+        id="runs-overview"
         data-tour="onboarding-panel"
         className="glass-panel grid gap-6 p-8 lg:grid-cols-[0.5fr,0.5fr]"
       >
@@ -874,6 +875,7 @@ const RunsPage: React.FC = () => {
       </section>
 
       <section
+        id="runs-criar"
         data-tour="run-actions"
         className="glass-subtle flex flex-col gap-3 p-6 text-sm text-muted-foreground lg:flex-row lg:items-center lg:justify-between"
       >
@@ -913,7 +915,7 @@ const RunsPage: React.FC = () => {
         ) : null}
       </section>
 
-      <section className="glass-panel relative overflow-hidden p-0">
+      <section id="runs-status" className="glass-panel relative overflow-hidden p-0">
         <div className="pointer-events-none absolute right-0 top-0 h-40 w-40 -translate-y-1/3 translate-x-1/4 rounded-full bg-accent/20 blur-3xl" />
         <div className="space-y-6 p-6 sm:p-8">
           <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -941,7 +943,7 @@ const RunsPage: React.FC = () => {
             <div className="rounded-2xl border border-red-500/30 bg-red-500/30 p-4 text-sm text-red-200">{error}</div>
           ) : (
             <div className="flex flex-col gap-6">
-              <div className="flex flex-wrap items-center justify-between gap-3">
+              <div id="runs-historico" className="flex flex-wrap items-center justify-between gap-3">
                 <div className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
                   Selecionar run
                 </div>
@@ -961,7 +963,7 @@ const RunsPage: React.FC = () => {
                   )}
                 </select>
               </div>
-              <div data-tour="run-viewer" className="flex min-h-[420px] flex-col">
+              <div id="runs-resultado" data-tour="run-viewer" className="flex min-h-[420px] flex-col">
                 <RunViewer run={displayRun} />
               </div>
             </div>
