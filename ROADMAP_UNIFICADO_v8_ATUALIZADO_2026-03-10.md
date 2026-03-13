@@ -57,11 +57,17 @@ O core da plataforma está operacional e auditável (F0-F3 concluídas), com F4/
 - Cobrir E2E HIGH por ação crítica definida em policy.
 - Fechar matriz de compatibilidade interop em CI.
 - Congelar versão de contrato interop com política explícita de evolução.
+- Tratar o **Agent Protocol** como contrato público canônico de interop A2A/B2B.
+- Garantir cobertura operacional das rotas canônicas `discovery -> negotiate -> execute`.
+- Formalizar política de evolução contratual entre agentes (compatibilidade, depreciação e sunset).
 
 **DoD P2**
 - E2E HIGH completo para ações críticas.
 - CI aprovado para matriz de compatibilidade.
 - Baseline interop atualizado sem breaking não-versionado.
+- Contrato público do Agent Protocol versionado e sincronizado com runtime.
+- Fluxo `discovery/negotiate/execute` validado por smoke + e2e.
+- Evolução contratual bloqueando breaking change sem major bump.
 
 ## P3 — Economy hardening
 - Evoluir settlement provider: reduzir/adaptar stubs (`crypto`/`bank`) para modo operacional.
@@ -134,14 +140,17 @@ Objetivo: concluir ponta a ponta os itens ainda parciais (governança/economy/au
 - Regressão de auditoria bloqueada por CI.
 
 ### 9.3) Interoperabilidade (fechamento F5.4)
+- Adotar Agent Protocol como contrato público canônico (A2A/B2B).
 - Congelar baseline de contratos interop versionados.
 - Bloquear breaking change sem major bump.
 - Manter política explícita de evolução contratual (depreciação/sunset e compatibilidade).
+- Garantir operação padrão do fluxo `discovery -> negotiate -> execute` entre agentes.
 
 **DoD Interop**
 - Matriz de compatibilidade 100% aprovada no CI.
 - Sem breaking não-versionado.
 - Baseline e política sincronizados com runtime.
+- Contrato canônico e rotas públicas de interop validados por evidência recorrente.
 
 ### 9.4) Economy (fechamento F5.6)
 - Evoluir providers `crypto`/`bank` de stub para modo operacional por ambiente (ou declarar suporte explícito por ambiente).

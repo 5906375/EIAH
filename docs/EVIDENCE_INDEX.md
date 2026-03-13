@@ -68,6 +68,12 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | Smoke de rotas interop | `ops/evidence/latest/interop-routes-smoke-2026-03-09.json` | Prova de implementação das rotas `POST /api/agents/discovery|negotiate|execute`. |
 | Evidência e2e da cadeia interop | `ops/evidence/latest/interop-e2e-agent-call-2026-03-09.json` | Prova da trilha `discovery -> negotiate -> execute -> verify receipt`. |
 
+### Trilha C (P2) — Foco A2A explícito
+
+- **Contrato canônico público**: Agent Protocol (`discovery/negotiate/execute`) é a base oficial de interop entre agentes.
+- **Operação padrão**: fluxo `discovery -> negotiate -> execute` com evidência de smoke e e2e.
+- **Evolução contratual**: versionamento, baseline e gate de compatibilidade bloqueiam breaking sem major.
+
 ## Sprint P1 (Imobiliaria Digital) — Economy Base (2026-03-09)
 
 | Assunto | Arquivo | O que prova |
