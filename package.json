@@ -21,6 +21,7 @@
     "check:billing-webhook-evidence": "node scripts/ci/check_billing_webhook_evidence.cjs",
     "check:interop-contract-matrix": "node --experimental-strip-types scripts/checkInteropContractsMatrix.ts",
     "check:interop-spec-governance": "node --experimental-strip-types scripts/checkInteropSpecGovernance.ts",
+    "check:p2-audit-interop": "node --experimental-strip-types scripts/checkP2AuditInterop.ts",
     "check:economy-invariants": "node --experimental-strip-types scripts/checkEconomyInvariants.ts",
     "check:secrets-vault": "node --experimental-strip-types scripts/checkSecretsVault.ts",
     "check:backup-restore": "node --experimental-strip-types scripts/checkBackupRestore.ts",
