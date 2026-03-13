@@ -71,13 +71,16 @@ O core da plataforma está operacional e auditável (F0-F3 concluídas), com F4/
 
 ## P3 — Economy hardening
 - Evoluir settlement provider: reduzir/adaptar stubs (`crypto`/`bank`) para modo operacional.
+- Consolidar geração de **invoice mensal** como trilha padrão de cobrança verificável.
 - Consolidar webhook billing (assinatura, replay, idempotência) com evidência periódica.
 - Expandir reputação/disputas para trilha verificável de produção.
+- Garantir vínculo econômico auditável `receipt -> ledger -> provider settlement` em fluxos críticos.
 
 **DoD P3**
 - Settlement multi-provider com modos explicitamente suportados por ambiente.
 - Métricas de replay/duplicidade estáveis.
 - Evidência de ciclo econômico completo em produção controlada.
+- Invoice, settlement, disputa e reputação reconciliados por tenant/workspace sem gaps críticos.
 
 ## P4 — Track P (produto e rollout)
 - Escalar verticais com checklist padrão e gates de não-regressão.
@@ -156,11 +159,13 @@ Objetivo: concluir ponta a ponta os itens ainda parciais (governança/economy/au
 - Evoluir providers `crypto`/`bank` de stub para modo operacional por ambiente (ou declarar suporte explícito por ambiente).
 - Consolidar webhook billing com assinatura, replay protection e idempotência com evidência periódica.
 - Fechar ciclo econômico completo: invoice mensal + settlement + disputa + reputação verificável.
+- Tornar obrigatório o vínculo canônico `receipt -> ledger -> provider` para reconciliação externa em trilhas HIGH.
 
 **DoD Economy**
 - Settlement multi-provider em modo suportado por ambiente.
 - `duplicateSideEffects=0` e métricas de replay estáveis.
 - Evidência de ciclo econômico completo em produção controlada.
+- Vínculo de cobrança e execução auditável (`run -> receipt -> ledger -> settlement`) consistente em evidência.
 
 ### 9.5) Rollout de produto (Track P)
 - Aplicar checklist padrão por vertical com gates de não-regressão.
