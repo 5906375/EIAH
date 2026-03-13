@@ -23,6 +23,7 @@
 | Baseline de compatibilidade | `contracts/receipt-canon.v1.baseline.json` | Snapshot base para avaliação de backward compatibility do schema ativo. |
 | Guia externo de consumo + verifier | `docs/ops/receipt-canon-external-verifier.md` | Passos 200/erro/limites e fluxo de validação externa do receipt canon. |
 | Verifier CLI de vínculo run/bundle/tx | `scripts/verifyReceiptCanon.ts` | Verificação automatizada de consistência canônica a partir da resposta `/api/ledger/:txId`. |
+| Gate CI da cadeia crítica P1 | `scripts/checkP1CriticalChain.ts` | Bloqueia regressão de approval/schema/receipt em fluxos críticos e exige evidência de fail-closed. |
 
 ## Sprint 4 (F5.5) — Outcome/experimentos (S4-03 a S4-06)
 
@@ -86,6 +87,7 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | Runbook operacional de settlement provider | `docs/ops/settlement-provider-runbook.md` | Procedimento operacional para PaymentIntent, release gate, settlement e incidente de webhook. |
 | Gate CI de drift contrato/implementação | `scripts/checkSettlementContractDrift.ts` | Falha CI em drift entre contrato publicado e runtime (`providers/endpoints`). |
 | Evidência de execução do gate de drift | `ops/evidence/latest/settlement-contract-check-2026-03-09.md` | Resultado do check `pnpm check:settlement-contract-drift` com `ok=true`. |
+| Gate CI de hardening econômico P3 | `scripts/checkP3EconomyHardening.ts` | Bloqueia regressão de invoice/settlement/webhook/disputa/reputação e vínculo `receipt -> ledger -> provider`. |
 
 ## Sprint P1 (Imobiliaria Digital) — Reputação + Disputas (2026-03-09)
 
@@ -96,6 +98,15 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | Evidência e2e do lifecycle de disputa | `ops/evidence/latest/dispute-lifecycle-e2e-2026-03-09.json` | Fluxo `open -> under_review -> resolved` com bloqueio de transição inválida e impacto na reputação. |
 | API de reputação/disputas | `apps/api/src/routes/billing.ts` | Endpoints de reputação e ciclo de disputa em escopo tenant/workspace. |
 | Serviço core de reputação/disputas | `apps/api/src/services/reputationDisputes.ts` | Modelo operacional, regras de transição e idempotência de replay por `event_key`. |
+
+### Trilha D (P3) — Foco Economy explícito (A2A/B2B)
+
+- **Invoice**: cálculo e fechamento mensal por tenant/workspace como base financeira verificável.
+- **Settlement**: execução por provider com contrato público e reconciliação operacional.
+- **Webhook billing**: assinatura + proteção de replay + idempotência como requisito de produção.
+- **Disputa + reputação**: ciclo de resolução com impacto verificável de confiança.
+- **Vínculo canônico de prova econômica**: `run -> receipt -> ledger -> provider settlement`.
+- **Objetivo A2A/B2B**: provar que cooperação entre agentes gera transação empresarial auditável, não apenas resposta de chat.
 
 ## Sprint P1 (Imobiliaria Digital) — Produto/Piloto (2026-03-09)
 
