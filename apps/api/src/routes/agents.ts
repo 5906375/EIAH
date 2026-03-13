@@ -140,6 +140,7 @@ const ExecuteSchema = z.object({
   input: z.record(z.any()).optional(),
   prompt: z.string().min(1).optional(),
   metadata: z.record(z.any()).optional(),
+  parentRunId: z.string().min(1).optional(),
 });
 
 function availableCatalog() {
@@ -349,6 +350,23 @@ agentsRouter.post("/agents/execute", async (req, res) => {
   const defaultPrompt = `Execute ${actionName} with deterministic protocol contract ${contract.version}.`;
   const prompt = parsed.data.prompt?.trim() || defaultPrompt;
   const agent = contract.defaultAgent;
+  const parentRunId = parsed.data.parentRunId?.trim() || null;
+  if (parentRunId) {
+    const parent = await request.prisma.run.findFirst({
+      where: {
+        id: parentRunId,
+        tenantId: request.authContext.tenantId,
+        workspaceId: request.authContext.workspaceId,
+      },
+      select: { id: true },
+    });
+    if (!parent) {
+      return res.status(404).json({
+        ok: false,
+        error: { code: "PARENT_RUN_NOT_FOUND", message: `parentRunId ${parentRunId} not found in scope` },
+      });
+    }
+  }
   const metadataBase = {
     ...(parsed.data.metadata ?? {}),
     protocol: AGENT_PROTOCOL_VERSION,
@@ -358,6 +376,7 @@ agentsRouter.post("/agents/execute", async (req, res) => {
     txIdRequired: contract.txIdRequired,
     contractVersion: contract.version,
     executionInput,
+    ...(parentRunId ? { parentRunId } : {}),
   };
   const requestPayloadBase = { prompt, metadata: metadataBase };
 
@@ -406,6 +425,7 @@ agentsRouter.post("/agents/execute", async (req, res) => {
       agent,
       metadata,
       protocolAction: actionName,
+      parentRunId,
     },
   });
 
@@ -430,6 +450,7 @@ agentsRouter.post("/agents/execute", async (req, res) => {
       agent,
       metadata,
       protocolAction: actionName,
+      parentRunId,
     },
   });
 
@@ -440,6 +461,7 @@ agentsRouter.post("/agents/execute", async (req, res) => {
       status: "pending",
       action: actionName,
       version: contract.version,
+      parentRunId,
       verify: {
         txId: contract.txIdRequired ? "required" : null,
         ledgerEndpointTemplate: "/api/ledger/:txId",

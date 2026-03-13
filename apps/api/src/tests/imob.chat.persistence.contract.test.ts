@@ -35,6 +35,8 @@ before(async () => {
 });
 
 after(async () => {
+  await prismaGlobal.runEvent.deleteMany({ where: { tenantId, workspaceId } });
+  await prismaGlobal.run.deleteMany({ where: { tenantId, workspaceId } });
   await prismaGlobal.$executeRaw`
     DELETE FROM memory_events
     WHERE tenant_id = ${tenantId}
@@ -53,9 +55,12 @@ test("IMOB chat persistence: create conversation, append messages and list histo
   assert.equal(createdConversation.status, 201);
   assert.equal(createdConversation.body?.ok, true);
   assert.equal(createdConversation.body?.conversation?.title, "Captação BC");
+  assert.equal(typeof createdConversation.body?.conversation?.auditRunId, "string");
 
   const conversationId = createdConversation.body?.conversation?.conversationId as string;
+  const auditRunId = createdConversation.body?.conversation?.auditRunId as string;
   assert.ok(conversationId);
+  assert.ok(auditRunId);
 
   const addUserMessage = await request
     .post(`/api/imob/chat/conversations/${conversationId}/messages`)
@@ -72,6 +77,9 @@ test("IMOB chat persistence: create conversation, append messages and list histo
 
   assert.equal(addUserMessage.status, 201);
   assert.equal(addUserMessage.body?.ok, true);
+  assert.equal(addUserMessage.body?.message?.auditRunId, auditRunId);
+  assert.equal(typeof addUserMessage.body?.message?.transcriptProof?.entryHash, "string");
+  assert.equal(addUserMessage.body?.message?.transcriptProof?.sequence, 1);
 
   const addAssistantMessage = await request
     .post(`/api/imob/chat/conversations/${conversationId}/messages`)
@@ -88,6 +96,9 @@ test("IMOB chat persistence: create conversation, append messages and list histo
 
   assert.equal(addAssistantMessage.status, 201);
   assert.equal(addAssistantMessage.body?.ok, true);
+  assert.equal(addAssistantMessage.body?.message?.auditRunId, auditRunId);
+  assert.equal(typeof addAssistantMessage.body?.message?.transcriptProof?.entryHash, "string");
+  assert.equal(addAssistantMessage.body?.message?.transcriptProof?.sequence, 2);
 
   const listConversations = await request
     .get("/api/imob/chat/conversations?limit=10")
@@ -98,6 +109,7 @@ test("IMOB chat persistence: create conversation, append messages and list histo
   const foundConversation = (listConversations.body?.items ?? []).find((row: any) => row.conversationId === conversationId);
   assert.ok(foundConversation);
   assert.equal(foundConversation.title, "Captação BC");
+  assert.equal(foundConversation.auditRunId, auditRunId);
 
   const listMessages = await request
     .get(`/api/imob/chat/conversations/${conversationId}/messages`)
@@ -111,6 +123,10 @@ test("IMOB chat persistence: create conversation, append messages and list histo
   assert.equal(listMessages.body.items[1].role, "assistant");
   assert.equal(listMessages.body.items[0].threadId, "thread_capture_itapema");
   assert.equal(listMessages.body.items[1].threadLabel, "Captação");
+  assert.equal(listMessages.body.items[0].auditRunId, auditRunId);
+  assert.equal(listMessages.body.items[1].auditRunId, auditRunId);
+  assert.equal(typeof listMessages.body.items[0].transcriptProof?.entryHash, "string");
+  assert.equal(typeof listMessages.body.items[1].transcriptProof?.entryHash, "string");
 
   const listThreads = await request
     .get(`/api/imob/chat/conversations/${conversationId}/threads`)

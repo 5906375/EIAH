@@ -483,6 +483,7 @@ export async function apiAgentsExecute(body: {
   input?: Record<string, unknown>;
   prompt?: string;
   metadata?: Record<string, unknown>;
+  parentRunId?: string;
 }): Promise<{
   ok: boolean;
   data: {
@@ -490,6 +491,7 @@ export async function apiAgentsExecute(body: {
     status: string;
     action: string;
     version: string;
+    parentRunId?: string | null;
     verify: {
       txId: "required" | null;
       ledgerEndpointTemplate: string;
@@ -823,6 +825,39 @@ export type ImobChatThread = {
   messageCount: number;
 };
 
+export type ImobContractPreview = {
+  contractType: "locacao" | "compra_venda" | "administracao" | "temporada";
+  schemaVersion: string;
+  legalVersion: string;
+  legalBase: string[];
+  review: {
+    riskLevel: "LOW" | "MEDIUM" | "HIGH";
+    warnings: string[];
+  };
+  hash: string;
+  clauses: Array<{
+    id: string;
+    number: number;
+    title: string;
+    category: string;
+    legalBase: string[];
+  }>;
+  contractText: string;
+  evidence: {
+    eventId: string;
+    createdAt: string;
+  };
+};
+
+export type ImobContractInterviewState = {
+  contractType: "locacao" | "compra_venda" | "administracao" | "temporada" | null;
+  currentStep: number;
+  answers: Record<string, unknown>;
+  status: "collecting" | "review" | "generating" | "generated";
+  runId?: string;
+  updatedAt: string;
+};
+
 export async function apiListImobChatConversations(params?: { limit?: number }) {
   const query = new URLSearchParams();
   if (typeof params?.limit === "number") query.append("limit", String(params.limit));
@@ -875,6 +910,42 @@ export async function apiCreateImobChatMessage(
 ) {
   return http<{ ok: true; message: ImobChatMessage }>(`/imob/chat/conversations/${conversationId}/messages`, {
     method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function apiGenerateImobContract(body: {
+  contractType: "locacao" | "compra_venda" | "administracao" | "temporada";
+  answers: Record<string, unknown>;
+  conversationId?: string;
+  legalVersion?: string;
+}) {
+  return http<{ ok: true; data: ImobContractPreview }>(`/imob/contracts/generate`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function apiGetImobChatInterviewState(conversationId: string) {
+  return http<{
+    ok: true;
+    state: ImobContractInterviewState | null;
+    updatedAt: string | null;
+  }>(`/imob/chat/conversations/${conversationId}/interview-state`, {
+    method: "GET",
+  });
+}
+
+export async function apiUpsertImobChatInterviewState(
+  conversationId: string,
+  body: { state: ImobContractInterviewState }
+) {
+  return http<{
+    ok: true;
+    state: ImobContractInterviewState;
+    updatedAt: string;
+  }>(`/imob/chat/conversations/${conversationId}/interview-state`, {
+    method: "PUT",
     body: JSON.stringify(body),
   });
 }
@@ -1211,6 +1282,25 @@ export type TenantBillingSummary = {
     monthlyRunsLimit: number | null;
     monthlyCostCentsLimit: number | null;
   } | null;
+  plan: {
+    code: "solo" | "starter" | "growth" | "scale";
+    label: string;
+    basePriceCents: number;
+    includedUsers: number;
+    includedRuns: number;
+    includedWorkspaces: number;
+    overageRunCents: number;
+    extraUserCents: number;
+  };
+  entitlements: {
+    usersActive: number;
+    usersOverage: number;
+    userOverageCents: number;
+    runsIncludedEffective: number;
+    runOverage: number;
+    runOverageCents: number;
+    estimatedInvoiceCents: number;
+  };
   totals: {
     runs: number;
     costCents: number;
@@ -1229,6 +1319,69 @@ export type TenantBillingSummary = {
     runs: number;
     costCents: number;
   }>;
+};
+
+export type BillingPricingQuotePlan = {
+  code: "solo" | "starter" | "growth" | "scale";
+  label: string;
+  basePriceCents: number;
+  includedUsers: number;
+  includedRuns: number;
+  overageRunCents: number;
+  extraUserCents: number;
+  totalCents: number;
+  runOverage: number;
+  userOverage: number;
+  runOverageCents: number;
+  userOverageCents: number;
+};
+
+export type BillingPricingQuote = {
+  tenantId: string;
+  inputs: {
+    users: number;
+    runs: number;
+  };
+  formula: string;
+  plans: BillingPricingQuotePlan[];
+  options: {
+    economica: {
+      track: "economica";
+      candidates: BillingPricingQuotePlan[];
+      recommended: BillingPricingQuotePlan | null;
+    };
+    equilibrio: {
+      track: "equilibrio";
+      candidates: BillingPricingQuotePlan[];
+      recommended: BillingPricingQuotePlan | null;
+    };
+    escala: {
+      track: "escala";
+      candidates: BillingPricingQuotePlan[];
+      recommended: BillingPricingQuotePlan | null;
+      enterprise: {
+        code: "enterprise";
+        label: string;
+        custom: true;
+        note: string;
+      };
+    };
+  };
+};
+
+export type EiahHelpQueryHit = {
+  key: string;
+  title: string;
+  sourcePath: string;
+  score: number;
+  snippet: string;
+};
+
+export type EiahHelpQueryResult = {
+  seededNow: boolean;
+  indexedDocs: number;
+  indexedChunks: number;
+  hits: EiahHelpQueryHit[];
 };
 
 export type TenantBillingWorkspaceItem = {
@@ -1270,6 +1423,51 @@ export async function apiGetTenantBillingSummary(params?: { from?: string; to?: 
   const qs = query.toString() ? `?${query.toString()}` : "";
   return http<{ ok: boolean; data: TenantBillingSummary }>(`/billing/tenant/summary${qs}`, {
     method: "GET",
+  });
+}
+
+export async function apiGetBillingPricingQuote(params: { users: number; runs: number }) {
+  const query = new URLSearchParams();
+  query.set("users", String(params.users));
+  query.set("runs", String(params.runs));
+  return http<{ ok: boolean; data: BillingPricingQuote }>(`/billing/pricing/quote?${query.toString()}`, {
+    method: "GET",
+  });
+}
+
+export async function apiQueryEiahHelp(params: { query: string; topK?: number }) {
+  const query = new URLSearchParams();
+  query.set("q", params.query);
+  if (typeof params.topK === "number") query.set("topK", String(params.topK));
+  return http<{ ok: boolean; data: EiahHelpQueryResult }>(`/help/eiah/query?${query.toString()}`, {
+    method: "GET",
+  });
+}
+
+export async function apiReindexEiahHelp() {
+  return http<{ ok: boolean; data: { seeded: boolean; docs: number; chunks: number } }>(`/help/eiah/reindex`, {
+    method: "POST",
+  });
+}
+
+export type HelpdeskSessionCreatePayload = {
+  tenantId: string;
+  workspaceId: string;
+  runId?: string | null;
+  intent: "help" | "proposal" | "product_explain" | "unknown";
+  confidence: number;
+  fallbackReason?: string | null;
+  message: string;
+  response: string;
+  recommendedPlan?: string | null;
+  estimatedValue?: number | null;
+  metadata?: Record<string, unknown>;
+};
+
+export async function apiCreateHelpdeskSession(payload: HelpdeskSessionCreatePayload) {
+  return http<{ ok: boolean; data: { id: string } }>(`/helpdesk/session`, {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 }
 

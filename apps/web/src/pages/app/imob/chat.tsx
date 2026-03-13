@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   ApiError,
   apiAgentsDiscovery,
@@ -8,20 +8,39 @@ import {
   apiCreateImobChatConversation,
   apiCreateImobChatMessage,
   apiCreateImobChatTelemetry,
+  apiGenerateImobContract,
+  apiGetImobChatInterviewState,
   apiGetImobChatConversationExport,
   apiGetImobChatTelemetrySummary,
   apiGetRun,
   apiListImobChatConversations,
   apiListImobChatMessages,
   apiListImobChatThreads,
+  apiUpsertImobChatInterviewState,
   type ImobChatConversation,
+  type ImobContractInterviewState,
   type ImobChatMessage,
   type ImobChatThread,
   type AgentProtocolActionContract,
 } from "@/lib/api";
 import { useSession } from "@/state/sessionStore";
 import { buildImobActionPlan, type ImobActionPlan } from "@/features/imob/chatOrchestrator";
+import {
+  applySingleFieldEditAnswer,
+  applyContractInterviewAnswer,
+  createInitialContractInterviewState,
+  extractEditFieldQuery,
+  getContractTypeLabel,
+  getStepQuestionText,
+  getContractTypePrompt,
+  isAffirmativeAnswer,
+  isNegativeAnswer,
+  moveInterviewToEditableField,
+  type ContractInterviewState,
+} from "@/features/imob/contractInterviewEngine";
 import { ThreadPanel } from "@/features/imob/ThreadPanel";
+import { formatDataInputTemplate, getDataInputTemplate } from "@/domain/inputTemplates";
+import { CONTRACT_SCHEMAS } from "@/features/imob/contractSchemas";
 
 type ChatState = "idle" | "typing" | "executing" | "awaiting_user_action" | "blocked" | "done";
 
@@ -32,7 +51,7 @@ type CardCta = {
   label: string;
   kind?: "primary" | "secondary" | "neutral";
   href?: string;
-  action?: "confirm_execution" | "reject_execution";
+  action?: "confirm_execution" | "reject_execution" | "export_contract_pdf";
 };
 
 type MessageCard = {
@@ -61,6 +80,15 @@ type MessageCard = {
     receiptPath?: string | null;
     bundlePath?: string | null;
   };
+  contract?: {
+    title?: string;
+    contractType?: string;
+    schemaVersion?: string;
+    legalVersion?: string;
+    generatedAt?: string;
+    hash?: string;
+    text: string;
+  };
   showConfirm?: boolean;
 };
 
@@ -87,6 +115,19 @@ type PendingExecution = {
   receiptEndpointTemplate?: string;
   preparedAt: number;
 };
+
+function buildSessionRunMapFromMessages(items: ChatMessage[]) {
+  const map: Record<string, string> = {};
+  for (const message of items) {
+    const threadId = message.thread?.id ?? message.card?.thread?.id ?? null;
+    const runId = message.card?.runId ?? null;
+    if (!threadId || !runId) continue;
+    if (!map[threadId]) {
+      map[threadId] = runId;
+    }
+  }
+  return map;
+}
 
 const SHOW_TECHNICAL_CHAT = false;
 const HISTORY_PAGE_SIZE = 30;
@@ -252,6 +293,12 @@ function formatRelativeTime(timestamp?: string | null) {
   return `${diffDays}d`;
 }
 
+function buildContractPdfFileName(contractType?: string) {
+  const type = (contractType ?? "imob").replace(/[^a-z0-9_-]/gi, "_").toLowerCase();
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+  return `contrato-${type}-${stamp}.pdf`;
+}
+
 function deriveConversationStatus(conversation: ImobChatConversation): "normal" | "attention" | "success" {
   const preview = (conversation.lastMessagePreview ?? "").toLowerCase();
   if (preview.includes("error") || preview.includes("bloquead")) return "attention";
@@ -354,21 +401,39 @@ function nextBusinessStep(status: string, threadLabel?: string | null) {
 }
 
 function buildRentalContractTemplateMessage(thread: { id: string; label: string; status?: "active" | "done" | "blocked" }): ChatMessage {
+  const rentalTemplate = getDataInputTemplate("imob.locacao_contrato_v2");
+  const fallbackLines = [
+    "Locador: Nome completo | CPF/CNPJ | Telefone | E-mail",
+    "Locatario: Nome completo | CPF | Telefone | E-mail",
+    "Imovel: Endereco completo | Tipo | Matricula (se houver)",
+    "Condicoes: Prazo (meses) | Valor aluguel | Vencimento | Garantia",
+  ];
+  const formattedTemplate = rentalTemplate
+    ? formatDataInputTemplate(rentalTemplate)
+    : `TEMPLATE DE DADOS (LOCACAO)\n${fallbackLines
+        .map((line) => {
+          const [label, values] = line.split(": ");
+          const withBrackets = (values ?? "")
+            .split("|")
+            .map((field) => `[${field.trim()}]`)
+            .join(" | ");
+          return `${label}: ${withBrackets}`;
+        })
+        .join("\n")}`;
+  const cardLines = rentalTemplate
+    ? rentalTemplate.sections.map((section) => `${section.label}: ${section.fields.join(" | ")}`)
+    : fallbackLines;
+
   return {
     id: makeId("assistant"),
     role: "assistant",
-    text: "Para concluir o contrato, preencha este template:",
+    text: ["Para concluir o contrato, preencha este template:", "", formattedTemplate].join("\n"),
     thread,
     card: {
       type: "action",
-      title: "Template de dados (locação)",
+      title: rentalTemplate?.title ?? "Template de dados (locacao)",
       thread,
-      lines: [
-        "Locador: Nome completo | CPF/CNPJ | Telefone | E-mail",
-        "Locatário: Nome completo | CPF | Telefone | E-mail",
-        "Imóvel: Endereço completo | Tipo | Matrícula (se houver)",
-        "Condições: Prazo (meses) | Valor aluguel | Vencimento | Garantia",
-      ],
+      lines: cardLines,
     },
   };
 }
@@ -406,8 +471,17 @@ function mapStoredMessageToChat(message: ImobChatMessage): ChatMessage {
 
 const ImobChatPage: React.FC = () => {
   const session = useSession();
+  const [searchParams] = useSearchParams();
   const brandName = session.branding?.brandName?.trim() || "Tenant";
   const workspaceLabel = session.branding?.workspaceLabel?.trim() || session.workspaceId;
+  const requestedConversationId = React.useMemo(() => {
+    const raw = searchParams.get("conversationId");
+    return raw && raw.trim().length > 0 ? raw.trim() : null;
+  }, [searchParams]);
+  const requestedThreadId = React.useMemo(() => {
+    const raw = searchParams.get("threadId");
+    return raw && raw.trim().length > 0 ? raw.trim() : null;
+  }, [searchParams]);
 
   const [state, setState] = React.useState<ChatState>("idle");
   const [input, setInput] = React.useState("");
@@ -444,8 +518,21 @@ const ImobChatPage: React.FC = () => {
   const [rejectLockedMessageId, setRejectLockedMessageId] = React.useState<string | null>(null);
   const [isNearBottom, setIsNearBottom] = React.useState(true);
   const [showJumpToLatest, setShowJumpToLatest] = React.useState(false);
+  const [contractInterviewState, setContractInterviewState] = React.useState<ContractInterviewState | null>(null);
+  const [compactTimelineMode, setCompactTimelineMode] = React.useState(true);
+  const [draftEditFieldId, setDraftEditFieldId] = React.useState("");
+  const [singleEditFieldId, setSingleEditFieldId] = React.useState<string | null>(null);
+  const [reviewActionLoading, setReviewActionLoading] = React.useState<"edit" | "confirm" | "decline" | null>(null);
+  const contractEditableFields = React.useMemo(() => {
+    if (!contractInterviewState?.contractType) return [];
+    return CONTRACT_SCHEMAS[contractInterviewState.contractType].fields.map((step) => ({
+      id: step.id,
+      label: step.question.replace(/\?$/, ""),
+    }));
+  }, [contractInterviewState?.contractType]);
 
   const listRef = React.useRef<HTMLDivElement | null>(null);
+  const sessionRunByThreadRef = React.useRef<Record<string, string>>({});
   const rejectedExecutionKeysRef = React.useRef<Set<string>>(new Set());
   const persistedRunStatusKeysRef = React.useRef<Set<string>>(new Set());
   const persistedContractTemplateKeysRef = React.useRef<Set<string>>(new Set());
@@ -455,6 +542,7 @@ const ImobChatPage: React.FC = () => {
       const history = await apiListImobChatMessages(targetConversationId, { limit });
       const mapped = history.items.map(mapStoredMessageToChat);
       setMessages(mapped);
+      sessionRunByThreadRef.current = buildSessionRunMapFromMessages(mapped);
       setHasMoreHistory(history.items.length >= limit);
     },
     []
@@ -506,6 +594,27 @@ const ImobChatPage: React.FC = () => {
       setState("idle");
     },
     [pendingExecution, trackUxEvent]
+  );
+
+  const withDashboardContext = React.useCallback(
+    (href: string, explicitThreadId?: string | null) => {
+      if (!href.startsWith("/app/imob/dashboard")) return href;
+      const hashIndex = href.indexOf("#");
+      const hash = hashIndex >= 0 ? href.slice(hashIndex) : "";
+      const base = hashIndex >= 0 ? href.slice(0, hashIndex) : href;
+      const [path, query = ""] = base.split("?");
+      const params = new URLSearchParams(query);
+      if (conversationId) {
+        params.set("conversationId", conversationId);
+      }
+      const threadIdForLink = explicitThreadId ?? selectedThreadId;
+      if (threadIdForLink) {
+        params.set("threadId", threadIdForLink);
+      }
+      const queryString = params.toString();
+      return `${path}${queryString ? `?${queryString}` : ""}${hash}`;
+    },
+    [conversationId, selectedThreadId]
   );
 
   const refreshConversations = React.useCallback(async (preferredConversationId?: string | null) => {
@@ -563,7 +672,7 @@ const ImobChatPage: React.FC = () => {
   const persistMessage = React.useCallback(
     async (
       message: ChatMessage,
-      extra?: { intent?: string; action?: string; conversationId?: string | null }
+      extra?: { intent?: string; action?: string; conversationId?: string | null; metadata?: Record<string, unknown> }
     ) => {
       const targetConversationId = extra?.conversationId ?? conversationId;
       if (!targetConversationId) return;
@@ -580,7 +689,10 @@ const ImobChatPage: React.FC = () => {
           txId: message.card?.proof?.txId ?? undefined,
           receiptPath: message.card?.proof?.receiptPath ?? undefined,
           bundlePath: message.card?.proof?.bundlePath ?? undefined,
-          metadata: { card: message.card ?? null },
+          metadata: {
+            card: message.card ?? null,
+            ...(extra?.metadata ?? {}),
+          },
         });
         void apiCreateImobChatTelemetry({
           conversationId: targetConversationId,
@@ -602,6 +714,25 @@ const ImobChatPage: React.FC = () => {
       }
     },
     [conversationId, refreshConversations, refreshTelemetry, refreshThreads]
+  );
+
+  const persistInterviewState = React.useCallback(
+    async (targetConversationId: string, state: ContractInterviewState) => {
+      const payload: ImobContractInterviewState = {
+        contractType: state.contractType,
+        currentStep: state.currentStep,
+        answers: state.answers,
+        status: state.status,
+        runId: state.runId,
+        updatedAt: state.updatedAt,
+      };
+      try {
+        await apiUpsertImobChatInterviewState(targetConversationId, { state: payload });
+      } catch {
+        // Persistencia de entrevista nao deve bloquear o chat.
+      }
+    },
+    []
   );
 
   React.useEffect(() => {
@@ -626,7 +757,10 @@ const ImobChatPage: React.FC = () => {
         if (!mounted) return;
         const withHistory = list.items.filter((item) => item.lastMessageAt || item.lastMessagePreview);
         setConversations(withHistory);
-        const selectedConversationId = withHistory[0]?.conversationId ?? null;
+        const selectedConversationId =
+          (requestedConversationId && withHistory.some((item) => item.conversationId === requestedConversationId)
+            ? requestedConversationId
+            : withHistory[0]?.conversationId) ?? null;
         if (!mounted) return;
         setConversationId(selectedConversationId);
         if (selectedConversationId) {
@@ -634,19 +768,34 @@ const ImobChatPage: React.FC = () => {
           setHistoryLimit(initialLimit);
           const history = await apiListImobChatMessages(selectedConversationId, { limit: initialLimit });
           if (!mounted) return;
-          setMessages(history.items.map(mapStoredMessageToChat));
+          const mappedHistory = history.items.map(mapStoredMessageToChat);
+          setMessages(mappedHistory);
+          sessionRunByThreadRef.current = buildSessionRunMapFromMessages(mappedHistory);
           setHasMoreHistory(history.items.length >= initialLimit);
           const threadList = await apiListImobChatThreads(selectedConversationId);
           if (!mounted) return;
           setThreads(threadList.items);
+          if (requestedThreadId && threadList.items.some((item) => item.threadId === requestedThreadId)) {
+            setSelectedThreadId(requestedThreadId);
+          }
+          const interview = await apiGetImobChatInterviewState(selectedConversationId);
+          if (!mounted) return;
+          setContractInterviewState((interview.state as ContractInterviewState | null) ?? null);
+          setSingleEditFieldId(null);
         } else {
           setMessages([]);
           setThreads([]);
+          setContractInterviewState(null);
+          setSingleEditFieldId(null);
+          sessionRunByThreadRef.current = {};
         }
       } catch {
         if (!mounted) return;
         setMessages([]);
         setThreads([]);
+        setContractInterviewState(null);
+        setSingleEditFieldId(null);
+        sessionRunByThreadRef.current = {};
       } finally {
         if (mounted) setHistoryLoading(false);
       }
@@ -656,7 +805,7 @@ const ImobChatPage: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, []);
+  }, [requestedConversationId, requestedThreadId]);
 
   const loadConversation = React.useCallback(async (nextConversationId: string) => {
     setHistoryLoading(true);
@@ -668,6 +817,9 @@ const ImobChatPage: React.FC = () => {
     setOpenOptionsMessageId(null);
     setRejectLockedMessageId(null);
     setSelectedThreadId(null);
+    setContractInterviewState(null);
+    setSingleEditFieldId(null);
+    sessionRunByThreadRef.current = {};
     trackUxEvent("conversation_selected", { nextConversationId });
     setHistoryLimit(HISTORY_PAGE_SIZE);
     setHasMoreHistory(false);
@@ -675,9 +827,15 @@ const ImobChatPage: React.FC = () => {
       await loadConversationMessages(nextConversationId, HISTORY_PAGE_SIZE);
       const threadList = await apiListImobChatThreads(nextConversationId);
       setThreads(threadList.items);
+      const interview = await apiGetImobChatInterviewState(nextConversationId);
+      setContractInterviewState((interview.state as ContractInterviewState | null) ?? null);
+      setSingleEditFieldId(null);
     } catch {
       setMessages([]);
       setThreads([]);
+      setContractInterviewState(null);
+      setSingleEditFieldId(null);
+      sessionRunByThreadRef.current = {};
     } finally {
       setHistoryLoading(false);
     }
@@ -700,6 +858,9 @@ const ImobChatPage: React.FC = () => {
     setSelectedThreadId(null);
     setActiveRunId(null);
     setRunStatus(null);
+    setContractInterviewState(null);
+    setSingleEditFieldId(null);
+    sessionRunByThreadRef.current = {};
     setHistoryLimit(HISTORY_PAGE_SIZE);
     setHasMoreHistory(false);
     trackUxEvent("conversation_new");
@@ -897,6 +1058,360 @@ const ImobChatPage: React.FC = () => {
     };
   }, [activeAssistantMessageId, activeRunId, activeThread, appendMessage, persistMessage, runStatus, state, updateMessageById]);
 
+  const startPlanExecution = async (
+    plan: ImobActionPlan,
+    operationThread: { id: string; label: string },
+    activeConversationId: string,
+    startedAt: number
+  ) => {
+      try {
+        const discovery = await apiAgentsDiscovery({
+          domain: "imob",
+          actions: [plan.action],
+        });
+        const discovered = discovery.data.actions.find((entry) => entry.action === plan.action);
+
+        if (!discovered) {
+          throw new Error(`Ação ${plan.action} não disponível para este tenant/workspace.`);
+        }
+
+        const negotiation = await apiAgentsNegotiate({
+          domain: "imob",
+          action: plan.action,
+        });
+        const contract = negotiation.data.contract;
+        const thread = operationThread;
+        const liveMessageId = makeId("assistant");
+        const executionPending: PendingExecution = {
+          plan,
+          contract,
+          messageId: liveMessageId,
+          thread,
+          receiptEndpointTemplate: negotiation.data.verification.endpointTemplate,
+          preparedAt: Date.now(),
+        };
+        setOpenOptionsMessageId(null);
+        setRejectLockedMessageId(null);
+        setActiveAssistantMessageId(liveMessageId);
+        setState("executing");
+
+        const planMessage: ChatMessage = {
+          id: liveMessageId,
+          role: "assistant",
+          text: "Preparando...",
+          thread: {
+            id: thread.id,
+            label: thread.label,
+            status: "active",
+          },
+          card: {
+            type: "queue",
+            title: "Preparando",
+            thread: {
+              id: thread.id,
+              label: thread.label,
+              status: "active",
+            },
+            lines: [],
+            queue: {
+              status: "running",
+              step: "prepare",
+            },
+          },
+        };
+        appendMessage(planMessage);
+        void persistMessage(planMessage, {
+          intent: plan.intent,
+          action: plan.action,
+          conversationId: activeConversationId,
+          metadata: contractInterviewState ? { contractInterview: contractInterviewState } : undefined,
+        });
+        void apiCreateImobChatTelemetry({
+          conversationId: activeConversationId,
+          event: "message_to_plan_ms",
+          value: Date.now() - startedAt,
+          metadata: { intent: plan.intent, action: plan.action },
+        });
+        await runExecutionFlow(executionPending);
+      } catch (error) {
+        const message =
+          error instanceof ApiError
+            ? `${error.message} (${error.status})`
+            : error instanceof Error
+              ? error.message
+              : "Falha ao orquestrar mensagem";
+        setState("blocked");
+        const blockedMessage: ChatMessage = {
+          id: makeId("assistant"),
+          role: "assistant",
+          text: "Não consegui continuar essa solicitação agora.",
+          thread: {
+            id: operationThread.id,
+            label: operationThread.label,
+            status: "blocked",
+          },
+          card: {
+            type: "risk",
+            title: "Ação pausada",
+            thread: {
+              id: operationThread.id,
+              label: operationThread.label,
+              status: "blocked",
+            },
+            lines: ["Identifiquei uma restrição de segurança para este passo."],
+            risk: {
+              level: "high",
+              reason: message,
+            },
+          },
+        };
+        appendMessage(blockedMessage);
+        void persistMessage(blockedMessage, { conversationId: activeConversationId });
+      }
+  };
+
+  const resolveInterviewOperationThread = React.useCallback(() => {
+    const selectedThread = selectedThreadId ? threads.find((item) => item.threadId === selectedThreadId) : null;
+    return selectedThread
+      ? { id: selectedThread.threadId, label: selectedThread.label }
+      : activeThread ?? {
+          id: makeId("thread"),
+          label: "Contrato",
+        };
+  }, [activeThread, selectedThreadId, threads]);
+
+  const handleReviewEditAction = React.useCallback(
+    async (
+      fieldQuery: string,
+      state: ContractInterviewState,
+      activeConversationId: string,
+      threadForInterview: { id: string; label: string; status: "active" }
+    ) => {
+      const editResult = moveInterviewToEditableField(state, fieldQuery);
+      if (!editResult.ok) {
+        const invalidEditMessage: ChatMessage = {
+          id: makeId("assistant"),
+          role: "assistant",
+          text: editResult.message,
+          thread: threadForInterview,
+        };
+        appendMessage(invalidEditMessage);
+        void persistMessage(invalidEditMessage, {
+          conversationId: activeConversationId,
+          intent: "contract",
+          action: "realestate.create_contract",
+          metadata: { contractInterview: state },
+        });
+        setState("awaiting_user_action");
+        return;
+      }
+      const editedState = editResult.state;
+      setContractInterviewState(editedState);
+      setSingleEditFieldId(editResult.fieldId);
+      await persistInterviewState(activeConversationId, editedState);
+      const editPromptMessage: ChatMessage = {
+        id: makeId("assistant"),
+        role: "assistant",
+        text: `Perfeito, vamos editar este campo.\n\n${editResult.question}`,
+        thread: threadForInterview,
+      };
+      appendMessage(editPromptMessage);
+      void persistMessage(editPromptMessage, {
+        conversationId: activeConversationId,
+        intent: "contract",
+        action: "realestate.create_contract",
+        metadata: { contractInterview: editedState },
+      });
+      setState("awaiting_user_action");
+    },
+    [appendMessage, persistInterviewState, persistMessage]
+  );
+
+  const handleReviewDeclineAction = React.useCallback(
+    async (
+      state: ContractInterviewState,
+      activeConversationId: string,
+      threadForInterview: { id: string; label: string; status: "active" }
+    ) => {
+      const restarted: ContractInterviewState = {
+        ...createInitialContractInterviewState(),
+        contractType: state.contractType,
+        updatedAt: new Date().toISOString(),
+      };
+      setContractInterviewState(restarted);
+      setSingleEditFieldId(null);
+      await persistInterviewState(activeConversationId, restarted);
+      const restartMessage: ChatMessage = {
+        id: makeId("assistant"),
+        role: "assistant",
+        text: `Sem problemas. Vamos revisar desde o inicio deste tipo de contrato.\n\n${getStepQuestionText(restarted) ?? "Qual o primeiro dado?"}`,
+        thread: threadForInterview,
+      };
+      appendMessage(restartMessage);
+      void persistMessage(restartMessage, {
+        conversationId: activeConversationId,
+        intent: "contract",
+        action: "realestate.create_contract",
+        metadata: { contractInterview: restarted },
+      });
+      setState("awaiting_user_action");
+    },
+    [appendMessage, persistInterviewState, persistMessage]
+  );
+
+  const handleReviewConfirmAction = React.useCallback(
+    async (
+      state: ContractInterviewState,
+      activeConversationId: string,
+      threadForInterview: { id: string; label: string; status: "active" }
+    ) => {
+      const generatingState: ContractInterviewState = {
+        ...state,
+        status: "generating",
+        updatedAt: new Date().toISOString(),
+      };
+      setContractInterviewState(generatingState);
+      setSingleEditFieldId(null);
+      await persistInterviewState(activeConversationId, generatingState);
+      const confirmMessage: ChatMessage = {
+        id: makeId("assistant"),
+        role: "assistant",
+        text: "Perfeito. Vou gerar o contrato com os dados validados.",
+        thread: threadForInterview,
+      };
+      appendMessage(confirmMessage);
+      void persistMessage(confirmMessage, {
+        conversationId: activeConversationId,
+        intent: "contract",
+        action: "realestate.create_contract",
+        metadata: { contractInterview: generatingState },
+      });
+      try {
+        if (!generatingState.contractType) {
+          throw new Error("Tipo de contrato nao definido.");
+        }
+        const generated = await apiGenerateImobContract({
+          contractType: generatingState.contractType,
+          answers: generatingState.answers ?? {},
+          conversationId: activeConversationId,
+          legalVersion: "BR_CIVIL_LOCACAO_2026_v1",
+        });
+        const generatedState: ContractInterviewState = {
+          ...generatingState,
+          status: "generated",
+          updatedAt: new Date().toISOString(),
+        };
+        setContractInterviewState(generatedState);
+        setSingleEditFieldId(null);
+        await persistInterviewState(activeConversationId, generatedState);
+
+        const reviewWarnings = generated.data.review.warnings ?? [];
+        const generatedMessage: ChatMessage = {
+          id: makeId("assistant"),
+          role: "assistant",
+          text: ["Contrato gerado com sucesso.", "", generated.data.contractText].join("\n"),
+          thread: {
+            ...threadForInterview,
+            status: "done",
+          },
+          card: {
+            type: "evidence",
+            title: "Contrato gerado",
+            thread: {
+              id: threadForInterview.id,
+              label: threadForInterview.label,
+              status: "done",
+            },
+            lines: [
+              `Tipo: ${getContractTypeLabel(generated.data.contractType)}`,
+              `Schema: ${generated.data.schemaVersion}`,
+              `Base legal: ${generated.data.legalVersion}`,
+              `Risco: ${generated.data.review.riskLevel}`,
+              ...reviewWarnings.slice(0, 2).map((warning) => `Alerta: ${warning}`),
+              `Evidencia: ${generated.data.evidence.eventId}`,
+              `Hash: ${generated.data.hash.slice(0, 16)}...`,
+            ],
+            contract: {
+              title: `Contrato IMOB - ${getContractTypeLabel(generated.data.contractType)}`,
+              contractType: generated.data.contractType,
+              schemaVersion: generated.data.schemaVersion,
+              legalVersion: generated.data.legalVersion,
+              generatedAt: generated.data.evidence.createdAt,
+              hash: generated.data.hash,
+              text: generated.data.contractText,
+            },
+            ctas: [
+              {
+                id: "export-contract-pdf",
+                label: "Exportar PDF",
+                kind: "neutral",
+                action: "export_contract_pdf",
+              },
+            ],
+          },
+        };
+        appendMessage(generatedMessage);
+        void persistMessage(generatedMessage, {
+          conversationId: activeConversationId,
+          intent: "contract",
+          action: "realestate.create_contract",
+          metadata: {
+            contractInterview: generatedState,
+            contractPreview: generated.data,
+          },
+        });
+        setState("done");
+      } catch (error) {
+        const recoveryState: ContractInterviewState = {
+          ...state,
+          status: "review",
+          updatedAt: new Date().toISOString(),
+        };
+        setContractInterviewState(recoveryState);
+        setSingleEditFieldId(null);
+        await persistInterviewState(activeConversationId, recoveryState);
+        const message =
+          error instanceof ApiError
+            ? `${error.message} (${error.status})`
+            : error instanceof Error
+              ? error.message
+              : "Falha ao gerar contrato";
+        const failedMessage: ChatMessage = {
+          id: makeId("assistant"),
+          role: "assistant",
+          text: "Nao consegui gerar o contrato agora. Revise os dados e tente novamente.",
+          thread: {
+            ...threadForInterview,
+            status: "blocked",
+          },
+          card: {
+            type: "risk",
+            title: "Geracao de contrato pausada",
+            thread: {
+              id: threadForInterview.id,
+              label: threadForInterview.label,
+              status: "blocked",
+            },
+            lines: ["A revisao segue disponivel no rascunho."],
+            risk: {
+              level: "high",
+              reason: message,
+            },
+          },
+        };
+        appendMessage(failedMessage);
+        void persistMessage(failedMessage, {
+          conversationId: activeConversationId,
+          intent: "contract",
+          action: "realestate.create_contract",
+          metadata: { contractInterview: recoveryState },
+        });
+        setState("awaiting_user_action");
+      }
+    },
+    [appendMessage, persistInterviewState, persistMessage]
+  );
+
   const sendMessageText = async (rawText: string) => {
     const text = rawText.trim();
     if (!text) return;
@@ -917,6 +1432,7 @@ const ImobChatPage: React.FC = () => {
         activeConversationId = created.conversation.conversationId;
         setConversationId(activeConversationId);
         setConversations((prev) => [created.conversation, ...prev]);
+        sessionRunByThreadRef.current = {};
       } catch {
         return;
       }
@@ -933,10 +1449,132 @@ const ImobChatPage: React.FC = () => {
       },
     };
     appendMessage(userMessage);
-    void persistMessage(userMessage, { conversationId: activeConversationId });
+    void persistMessage(userMessage, {
+      conversationId: activeConversationId,
+      metadata: contractInterviewState ? { contractInterview: contractInterviewState } : undefined,
+    });
     setInput("");
     setState("typing");
     const startedAt = Date.now();
+
+    const interviewIsActive =
+      !!contractInterviewState &&
+      (contractInterviewState.status === "collecting" ||
+        contractInterviewState.status === "review" ||
+        contractInterviewState.status === "generating");
+    if (interviewIsActive || plan.intent === "contract") {
+      const threadForInterview = {
+        id: operationThread.id,
+        label: "Contrato",
+        status: "active" as const,
+      };
+
+      if (!contractInterviewState || contractInterviewState.status === "generated") {
+        const initialInterview = createInitialContractInterviewState();
+        setContractInterviewState(initialInterview);
+        setSingleEditFieldId(null);
+        await persistInterviewState(activeConversationId, initialInterview);
+        const kickoffMessage: ChatMessage = {
+          id: makeId("assistant"),
+          role: "assistant",
+          text: getContractTypePrompt(),
+          thread: threadForInterview,
+        };
+        appendMessage(kickoffMessage);
+        void persistMessage(kickoffMessage, {
+          conversationId: activeConversationId,
+          intent: "contract",
+          action: "realestate.create_contract",
+          metadata: { contractInterview: initialInterview },
+        });
+        setState("awaiting_user_action");
+        return;
+      }
+
+      if (contractInterviewState.status === "review") {
+        const editQuery = extractEditFieldQuery(text);
+        if (editQuery) {
+          await handleReviewEditAction(editQuery, contractInterviewState, activeConversationId, threadForInterview);
+          return;
+        }
+        if (isAffirmativeAnswer(text)) {
+          await handleReviewConfirmAction(contractInterviewState, activeConversationId, threadForInterview);
+          return;
+        }
+        if (isNegativeAnswer(text)) {
+          await handleReviewDeclineAction(contractInterviewState, activeConversationId, threadForInterview);
+          return;
+        }
+        const reminderMessage: ChatMessage = {
+          id: makeId("assistant"),
+          role: "assistant",
+          text: "Use os controles no rascunho para editar, confirmar ou nao gerar.",
+          thread: threadForInterview,
+        };
+        appendMessage(reminderMessage);
+        void persistMessage(reminderMessage, {
+          conversationId: activeConversationId,
+          intent: "contract",
+          action: "realestate.create_contract",
+          metadata: { contractInterview: contractInterviewState },
+        });
+        setState("awaiting_user_action");
+        return;
+      }
+
+      if (singleEditFieldId) {
+        const editApplied = applySingleFieldEditAnswer(contractInterviewState, singleEditFieldId, text);
+        const updatedEditState: ContractInterviewState = {
+          ...editApplied.state,
+          updatedAt: new Date().toISOString(),
+        };
+        setContractInterviewState(updatedEditState);
+        await persistInterviewState(activeConversationId, updatedEditState);
+        const editMessage: ChatMessage = {
+          id: makeId("assistant"),
+          role: "assistant",
+          text: editApplied.ok
+            ? editApplied.message ?? "Rascunho atualizado."
+            : `${editApplied.message}\n\n${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."}`,
+          thread: threadForInterview,
+        };
+        appendMessage(editMessage);
+        void persistMessage(editMessage, {
+          conversationId: activeConversationId,
+          intent: "contract",
+          action: "realestate.create_contract",
+          metadata: { contractInterview: updatedEditState },
+        });
+        if (editApplied.ok) {
+          setSingleEditFieldId(null);
+        }
+        setState("awaiting_user_action");
+        return;
+      }
+
+      const result = applyContractInterviewAnswer(contractInterviewState, text);
+      const nextInterviewState: ContractInterviewState = {
+        ...result.state,
+        updatedAt: new Date().toISOString(),
+      };
+      setContractInterviewState(nextInterviewState);
+      await persistInterviewState(activeConversationId, nextInterviewState);
+      const interviewMessage: ChatMessage = {
+        id: makeId("assistant"),
+        role: "assistant",
+        text: result.message ?? "Resumo atualizado. Responda: sim, nao ou editar <campo>.",
+        thread: threadForInterview,
+      };
+      appendMessage(interviewMessage);
+      void persistMessage(interviewMessage, {
+        conversationId: activeConversationId,
+        intent: "contract",
+        action: "realestate.create_contract",
+        metadata: { contractInterview: nextInterviewState },
+      });
+      setState("awaiting_user_action");
+      return;
+    }
 
     if (plan.mode === "search") {
       const searchReply: ChatMessage = {
@@ -967,112 +1605,78 @@ const ImobChatPage: React.FC = () => {
       return;
     }
 
-    try {
-      const discovery = await apiAgentsDiscovery({
-        domain: "imob",
-        actions: [plan.action],
-      });
-      const discovered = discovery.data.actions.find((entry) => entry.action === plan.action);
-
-      if (!discovered) {
-        throw new Error(`Ação ${plan.action} não disponível para este tenant/workspace.`);
-      }
-
-      const negotiation = await apiAgentsNegotiate({
-        domain: "imob",
-        action: plan.action,
-      });
-      const contract = negotiation.data.contract;
-      const thread = operationThread;
-      const liveMessageId = makeId("assistant");
-      const executionPending: PendingExecution = {
-        plan,
-        contract,
-        messageId: liveMessageId,
-        thread,
-        receiptEndpointTemplate: negotiation.data.verification.endpointTemplate,
-        preparedAt: Date.now(),
-      };
-      setOpenOptionsMessageId(null);
-      setRejectLockedMessageId(null);
-      setActiveAssistantMessageId(liveMessageId);
-      setState("executing");
-
-      const planMessage: ChatMessage = {
-        id: liveMessageId,
-        role: "assistant",
-        text: "Preparando...",
-        thread: {
-          id: thread.id,
-          label: thread.label,
-          status: "active",
-        },
-        card: {
-          type: "queue",
-          title: "Preparando",
-          thread: {
-            id: thread.id,
-            label: thread.label,
-            status: "active",
-          },
-          lines: [],
-          queue: {
-            status: "running",
-            step: "prepare",
-          },
-        },
-      };
-      appendMessage(planMessage);
-      void persistMessage(planMessage, {
-        intent: plan.intent,
-        action: plan.action,
-        conversationId: activeConversationId,
-      });
-      if (activeConversationId) {
-        void apiCreateImobChatTelemetry({
-          conversationId: activeConversationId,
-          event: "message_to_plan_ms",
-          value: Date.now() - startedAt,
-          metadata: { intent: plan.intent, action: plan.action },
-        });
-      }
-      await runExecutionFlow(executionPending);
-    } catch (error) {
-      const message =
-        error instanceof ApiError
-          ? `${error.message} (${error.status})`
-          : error instanceof Error
-            ? error.message
-            : "Falha ao orquestrar mensagem";
-      setState("blocked");
-      const blockedMessage: ChatMessage = {
-        id: makeId("assistant"),
-        role: "assistant",
-        text: "Não consegui continuar essa solicitação agora.",
-        thread: {
-          id: operationThread.id,
-          label: operationThread.label,
-          status: "blocked",
-        },
-        card: {
-          type: "risk",
-          title: "Ação pausada",
-          thread: {
-            id: operationThread.id,
-            label: operationThread.label,
-            status: "blocked",
-          },
-          lines: ["Identifiquei uma restrição de segurança para este passo."],
-          risk: {
-            level: "high",
-            reason: message,
-          },
-        },
-      };
-      appendMessage(blockedMessage);
-      void persistMessage(blockedMessage, { conversationId: activeConversationId });
-    }
+    await startPlanExecution(plan, operationThread, activeConversationId, startedAt);
   };
+
+  React.useEffect(() => {
+    if (contractInterviewState?.status !== "review") return;
+    if (contractEditableFields.length === 0) return;
+    const found = contractEditableFields.some((item) => item.id === draftEditFieldId);
+    if (!found) {
+      setDraftEditFieldId(contractEditableFields[0].id);
+    }
+  }, [contractEditableFields, contractInterviewState?.status, draftEditFieldId]);
+
+  const handleDraftEditFromPanel = React.useCallback(async () => {
+    if (!conversationId || !contractInterviewState || contractInterviewState.status !== "review") return;
+    const query = draftEditFieldId || contractEditableFields[0]?.id;
+    if (!query) return;
+    const operationThread = resolveInterviewOperationThread();
+    const threadForInterview = {
+      id: operationThread.id,
+      label: "Contrato",
+      status: "active" as const,
+    };
+    setReviewActionLoading("edit");
+    try {
+      await handleReviewEditAction(query, contractInterviewState, conversationId, threadForInterview);
+    } finally {
+      setReviewActionLoading(null);
+    }
+  }, [
+    contractEditableFields,
+    contractInterviewState,
+    conversationId,
+    draftEditFieldId,
+    handleReviewEditAction,
+    resolveInterviewOperationThread,
+  ]);
+
+  const handleDraftConfirmFromPanel = React.useCallback(async () => {
+    if (!conversationId || !contractInterviewState || contractInterviewState.status !== "review") return;
+    const operationThread = resolveInterviewOperationThread();
+    const threadForInterview = {
+      id: operationThread.id,
+      label: "Contrato",
+      status: "active" as const,
+    };
+    setReviewActionLoading("confirm");
+    try {
+      await handleReviewConfirmAction(
+        contractInterviewState,
+        conversationId,
+        threadForInterview
+      );
+    } finally {
+      setReviewActionLoading(null);
+    }
+  }, [contractInterviewState, conversationId, handleReviewConfirmAction, resolveInterviewOperationThread]);
+
+  const handleDraftDeclineFromPanel = React.useCallback(async () => {
+    if (!conversationId || !contractInterviewState || contractInterviewState.status !== "review") return;
+    const operationThread = resolveInterviewOperationThread();
+    const threadForInterview = {
+      id: operationThread.id,
+      label: "Contrato",
+      status: "active" as const,
+    };
+    setReviewActionLoading("decline");
+    try {
+      await handleReviewDeclineAction(contractInterviewState, conversationId, threadForInterview);
+    } finally {
+      setReviewActionLoading(null);
+    }
+  }, [contractInterviewState, conversationId, handleReviewDeclineAction, resolveInterviewOperationThread]);
 
   const handleSend = async () => {
     const text = input.trim();
@@ -1116,22 +1720,44 @@ const ImobChatPage: React.FC = () => {
       });
 
       try {
+        const sessionRunId = sessionRunByThreadRef.current[executionPending.thread.id] ?? null;
+        const parentRunId = sessionRunId;
         const execution = await apiAgentsExecute({
           domain: "imob",
           action: executionPending.plan.action,
           version: executionPending.contract.version,
           input: executionPending.plan.input,
           prompt: executionPending.plan.prompt,
+          parentRunId: parentRunId ?? undefined,
           metadata: {
             chatFlow: "imob-operational-chat",
             intent: executionPending.plan.intent,
+            conversationId: conversationId ?? undefined,
+            threadId: executionPending.thread.id,
+            threadLabel: executionPending.thread.label,
+            sessionRunId: sessionRunId ?? undefined,
           },
         });
 
         const runId = execution.data.runId;
+        if (!sessionRunByThreadRef.current[executionPending.thread.id]) {
+          sessionRunByThreadRef.current[executionPending.thread.id] = runId;
+        }
         setActiveRunId(runId);
         setActiveThread(executionPending.thread);
         setRunStatus(execution.data.status);
+        if (contractInterviewState?.status === "generating") {
+          const generatedState: ContractInterviewState = {
+            ...contractInterviewState,
+            status: "generated",
+            runId,
+            updatedAt: new Date().toISOString(),
+          };
+          setContractInterviewState(generatedState);
+          if (conversationId) {
+            void persistInterviewState(conversationId, generatedState);
+          }
+        }
         persistedRunStatusKeysRef.current.delete(`${runId}:success`);
         persistedRunStatusKeysRef.current.delete(`${runId}:blocked`);
         persistedRunStatusKeysRef.current.delete(`${runId}:error`);
@@ -1225,13 +1851,24 @@ const ImobChatPage: React.FC = () => {
             conversationId,
             event: "plan_to_execute_ms",
             value: Date.now() - executionPending.preparedAt,
-            metadata: { runId, action: executionPending.plan.action },
+            metadata: {
+              runId,
+              action: executionPending.plan.action,
+              parentRunId: parentRunId ?? null,
+              sessionRunId: sessionRunByThreadRef.current[executionPending.thread.id] ?? runId,
+              threadId: executionPending.thread.id,
+            },
           });
           void apiCreateImobChatTelemetry({
             conversationId,
             event: "chat_to_run_link_coverage",
             value: runId ? 1 : 0,
-            metadata: { runId, hasCta: true },
+            metadata: {
+              runId,
+              hasCta: true,
+              parentRunId: parentRunId ?? null,
+              threadId: executionPending.thread.id,
+            },
           });
         }
       } catch (error) {
@@ -1275,7 +1912,7 @@ const ImobChatPage: React.FC = () => {
         void persistMessage(execBlockedMessage);
       }
     },
-    [conversationId, persistMessage, trackUxEvent, updateMessageById]
+    [contractInterviewState, conversationId, persistInterviewState, persistMessage, trackUxEvent, updateMessageById]
   );
 
   const handleConfirmExecution = async (message: ChatMessage) => {
@@ -1415,6 +2052,66 @@ const ImobChatPage: React.FC = () => {
     }
   };
 
+  const exportGeneratedContractPdf = React.useCallback(
+    async (message: ChatMessage) => {
+      const payload = message.card?.contract;
+      if (!payload?.text) return;
+      try {
+        const { jsPDF } = await import("jspdf");
+        const doc = new jsPDF({ unit: "pt", format: "a4" });
+        const margin = 36;
+        const lineH = 16;
+        const pageW = doc.internal.pageSize.getWidth();
+        const pageH = doc.internal.pageSize.getHeight();
+        const maxW = pageW - margin * 2;
+        let y = margin;
+
+        const push = (text: string, size = 10, bold = false) => {
+          doc.setFont("helvetica", bold ? "bold" : "normal");
+          doc.setFontSize(size);
+          const lines = doc.splitTextToSize(text, maxW) as string[];
+          for (const line of lines) {
+            if (y > pageH - margin) {
+              doc.addPage();
+              y = margin;
+            }
+            doc.text(line, margin, y);
+            y += lineH;
+          }
+        };
+
+        push(payload.title ?? `Contrato IMOB - ${payload.contractType ?? "N/A"}`, 14, true);
+        push(`Tipo: ${payload.contractType ?? "N/A"}`);
+        push(`Schema: ${payload.schemaVersion ?? "N/A"}`);
+        push(`Base legal: ${payload.legalVersion ?? "N/A"}`);
+        push(`Gerado em: ${payload.generatedAt ? new Date(payload.generatedAt).toLocaleString("pt-BR") : new Date().toLocaleString("pt-BR")}`);
+        if (payload.hash) push(`Hash: ${payload.hash}`);
+        y += 8;
+        push(payload.text, 11, false);
+
+        doc.save(buildContractPdfFileName(payload.contractType));
+        trackUxEvent("contract_pdf_exported", {
+          contractType: payload.contractType ?? null,
+          schemaVersion: payload.schemaVersion ?? null,
+        });
+      } catch {
+        const failedMessage: ChatMessage = {
+          id: makeId("assistant"),
+          role: "assistant",
+          text: "Nao consegui exportar o PDF agora. Tente novamente em instantes.",
+          thread: message.thread ?? message.card?.thread,
+        };
+        appendMessage(failedMessage);
+        void persistMessage(failedMessage, {
+          conversationId: conversationId ?? undefined,
+          intent: "contract",
+          action: "realestate.create_contract",
+        });
+      }
+    },
+    [appendMessage, conversationId, persistMessage, trackUxEvent]
+  );
+
   const filteredConversations = conversations.filter((conversation) => {
     const search = conversationSearch.trim().toLowerCase();
     if (!search) return true;
@@ -1429,15 +2126,25 @@ const ImobChatPage: React.FC = () => {
         return threadId === selectedThreadId;
       })
     : messages;
+  const compactVisibleLimit = 34;
+  const hiddenMessageCount = compactTimelineMode ? Math.max(0, visibleMessages.length - compactVisibleLimit) : 0;
+  const renderedMessages = compactTimelineMode ? visibleMessages.slice(-compactVisibleLimit) : visibleMessages;
   const lastVisibleMessage = visibleMessages.length > 0 ? visibleMessages[visibleMessages.length - 1] : null;
   const activeThreadCount = threads.filter((item) => item.status === "active").length;
   const shouldShowThreadPanel = showThreadPanel || activeThreadCount > 1 || Boolean(selectedThreadId);
-
+  const contractDraftLines = React.useMemo(() => {
+    if (!contractInterviewState?.contractType) return [];
+    const schema = CONTRACT_SCHEMAS[contractInterviewState.contractType];
+    const lines = schema.fields
+      .filter((step) => contractInterviewState.answers[step.id] !== undefined && contractInterviewState.answers[step.id] !== null)
+      .map((step) => `${step.question.replace(/\?$/, "")}: ${String(contractInterviewState.answers[step.id])}`);
+    return lines;
+  }, [contractInterviewState]);
   return (
     <div className="space-y-6">
       <section className="overflow-hidden rounded-3xl border border-white/10 bg-surface/70">
-        <div className="grid min-h-[70vh] lg:grid-cols-[300px,1fr]">
-          <aside className="flex h-full min-h-[70vh] flex-col border-b border-white/10 bg-black/30 p-3 lg:border-b-0 lg:border-r">
+        <div className="grid min-h-[70vh] lg:h-[78vh] lg:max-h-[78vh] lg:grid-cols-[300px,1fr]">
+          <aside className="flex h-full min-h-[70vh] flex-col border-b border-white/10 bg-black/30 p-3 lg:min-h-0 lg:border-b-0 lg:border-r">
             <div className="space-y-3 border-b border-white/10 pb-3">
               <div className="flex items-center justify-between gap-2">
                 <button
@@ -1468,26 +2175,29 @@ const ImobChatPage: React.FC = () => {
               />
 
               {conversationId && shouldShowThreadPanel ? (
-                <ThreadPanel
-                  threads={threads}
-                  selectedThreadId={selectedThreadId}
-                  onSelectThread={(thread) => {
-                    if (pendingExecution && pendingExecution.thread.id !== thread.threadId) {
-                      clearPendingExecution("thread_switched", { nextThreadId: thread.threadId });
-                    }
-                    setSelectedThreadId(thread.threadId);
-                    setActiveThread({ id: thread.threadId, label: thread.label });
-                    trackUxEvent("thread_selected", { threadId: thread.threadId, source: "shared_panel" });
-                  }}
-                  onClearSelection={() => {
-                    if (pendingExecution) {
-                      clearPendingExecution("thread_filter_cleared");
-                    }
-                    setSelectedThreadId(null);
-                    setActiveThread(null);
-                    trackUxEvent("thread_filter_cleared");
-                  }}
-                />
+                <div className="max-h-56 overflow-y-auto pr-1">
+                  <ThreadPanel
+                    threads={threads}
+                    selectedThreadId={selectedThreadId}
+                    onSelectThread={(thread) => {
+                      if (pendingExecution && pendingExecution.thread.id !== thread.threadId) {
+                        clearPendingExecution("thread_switched", { nextThreadId: thread.threadId });
+                      }
+                      setSelectedThreadId(thread.threadId);
+                      setActiveThread({ id: thread.threadId, label: thread.label });
+                      trackUxEvent("thread_selected", { threadId: thread.threadId, source: "shared_panel" });
+                    }}
+                    onClearSelection={() => {
+                      if (pendingExecution) {
+                        clearPendingExecution("thread_filter_cleared");
+                      }
+                      setSelectedThreadId(null);
+                      setActiveThread(null);
+                      trackUxEvent("thread_filter_cleared");
+                    }}
+                    resolveDashboardHref={(href, thread) => withDashboardContext(href, thread.threadId)}
+                  />
+                </div>
               ) : null}
             </div>
 
@@ -1531,7 +2241,7 @@ const ImobChatPage: React.FC = () => {
             </div>
           </aside>
 
-          <article className="relative flex min-h-[70vh] flex-col">
+          <article className="relative flex min-h-[70vh] flex-col lg:min-h-0">
             <header className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-6">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">Chat Operacional</p>
@@ -1548,6 +2258,65 @@ const ImobChatPage: React.FC = () => {
                 {statusLabel(state)}
               </span>
             </header>
+            {contractInterviewState?.contractType &&
+            contractDraftLines.length > 0 &&
+            (contractInterviewState.status === "review" ||
+              contractInterviewState.status === "generating" ||
+              contractInterviewState.status === "generated") ? (
+              <div className="border-b border-white/10 bg-black/20 px-4 py-2 sm:px-6">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-accent">
+                  Rascunho de contrato • {getContractTypeLabel(contractInterviewState.contractType)}
+                </p>
+                <div className="mt-1 max-h-16 space-y-0.5 overflow-y-auto pr-1 text-[11px] text-muted-foreground">
+                  {contractDraftLines.slice(-8).map((line, idx) => (
+                    <p key={`draft-${idx}`} className="truncate">{line}</p>
+                  ))}
+                </div>
+                {contractInterviewState.status === "review" ? (
+                  <div className="mt-2 flex flex-col gap-2 border-t border-white/10 pt-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 flex-1 items-center gap-2">
+                      <select
+                        value={draftEditFieldId}
+                        onChange={(event) => setDraftEditFieldId(event.target.value)}
+                        className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/30 px-2 py-1 text-xs text-foreground focus:border-accent/40 focus:outline-none"
+                      >
+                        {contractEditableFields.map((field) => (
+                          <option key={`draft-field-${field.id}`} value={field.id}>
+                            {field.label}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        onClick={() => void handleDraftEditFromPanel()}
+                        disabled={reviewActionLoading !== null || !draftEditFieldId}
+                        className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-foreground transition hover:border-accent/40 disabled:opacity-50"
+                      >
+                        Editar
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void handleDraftDeclineFromPanel()}
+                        disabled={reviewActionLoading !== null}
+                        className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-foreground transition hover:border-rose-300/40 disabled:opacity-50"
+                      >
+                        Nao gerar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleDraftConfirmFromPanel()}
+                        disabled={reviewActionLoading !== null}
+                        className="rounded-full border border-accent/40 bg-accent/15 px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-accent transition hover:bg-accent/25 disabled:opacity-50"
+                      >
+                        Confirmar e gerar
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
             <div
               ref={listRef}
@@ -1560,6 +2329,31 @@ const ImobChatPage: React.FC = () => {
               }}
               className="flex-1 space-y-3 overflow-y-auto px-4 py-3 sm:px-6 sm:py-4"
             >
+              {hiddenMessageCount > 0 ? (
+                <div className="flex items-center justify-between rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+                  <p className="text-[11px] text-muted-foreground">
+                    Mostrando {compactVisibleLimit} de {visibleMessages.length} mensagens.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setCompactTimelineMode(false)}
+                    className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.15em] text-foreground hover:border-accent/40"
+                  >
+                    Ver histórico completo
+                  </button>
+                </div>
+              ) : null}
+              {!compactTimelineMode && visibleMessages.length > compactVisibleLimit ? (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setCompactTimelineMode(true)}
+                    className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.15em] text-foreground hover:border-accent/40"
+                  >
+                    Voltar ao modo compacto
+                  </button>
+                </div>
+              ) : null}
               {historyLoading ? (
                 <p className="text-sm text-muted-foreground">Carregando histórico da conversa...</p>
               ) : visibleMessages.length === 0 ? (
@@ -1587,10 +2381,10 @@ const ImobChatPage: React.FC = () => {
                 </div>
               ) : null}
 
-              {visibleMessages.map((message, index) => {
+              {renderedMessages.map((message, index) => {
                 const isUser = message.role === "user";
                 const messageThread = message.thread ?? message.card?.thread;
-                const prevMessageThread = index > 0 ? visibleMessages[index - 1]?.thread ?? visibleMessages[index - 1]?.card?.thread : null;
+                const prevMessageThread = index > 0 ? renderedMessages[index - 1]?.thread ?? renderedMessages[index - 1]?.card?.thread : null;
                 const showThreadPill = Boolean(messageThread?.id && messageThread.id !== prevMessageThread?.id);
                 const threadTone =
                   messageThread?.status === "blocked"
@@ -1727,6 +2521,7 @@ const ImobChatPage: React.FC = () => {
                                 pendingExecution?.thread.id === messageThreadId;
                               const actionableCtas = normalizeCardCtas(message.card.ctas)?.filter((cta) => {
                                 if (!cta.action) return true;
+                                if (cta.action === "export_contract_pdf") return true;
                                 return isPendingTarget;
                               }) ?? [];
                               if (actionableCtas.length === 0) return null;
@@ -1737,7 +2532,7 @@ const ImobChatPage: React.FC = () => {
                                 cta.href ? (
                                   <Link
                                     key={`${message.id}-footer-cta-${cta.id}`}
-                                    to={cta.href}
+                                    to={withDashboardContext(cta.href, messageThreadId)}
                                     onClick={() => setOpenOptionsMessageId(null)}
                                     className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${getCtaClass(cta.kind)}`}
                                   >
@@ -1754,6 +2549,10 @@ const ImobChatPage: React.FC = () => {
                                       }
                                       if (cta.action === "reject_execution") {
                                         handleRejectExecution(message);
+                                        return;
+                                      }
+                                      if (cta.action === "export_contract_pdf") {
+                                        void exportGeneratedContractPdf(message);
                                       }
                                     }}
                                     disabled={cta.action === "reject_execution" && isRejectLocked}
