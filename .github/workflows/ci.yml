@@ -240,7 +240,6 @@ jobs:
 
       - name: Check P3 economy hardening
         run: pnpm check:p3-economy-hardening
-
   settlement_contract_drift:
     name: SettlementContractDrift
     runs-on: ubuntu-latest
