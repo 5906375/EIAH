@@ -10,13 +10,38 @@ export type ConversationPolicy = {
 
 export type ConversationStatus = "idle" | "policy_ready" | "awaiting_confirmation" | "executing";
 
+export type IntentResult = {
+  intent: "help" | "proposal" | "product_explain" | "unknown";
+  confidence: number;
+  fallbackReason?: string;
+};
+
 type PolicyState = {
   intent: string | null;
+  intentResult: IntentResult;
   policy: ConversationPolicy | null;
   status: ConversationStatus;
 };
 
-function normalizeIntent(text: string) {
+function detectIntent(message: string): IntentResult {
+  const msg = message.toLowerCase();
+  if (msg.includes("plano") || msg.includes("preco") || msg.includes("preço") || msg.includes("proposta")) {
+    return { intent: "proposal", confidence: 0.8 };
+  }
+  if (msg.includes("o que e") || msg.includes("o que é") || msg.includes("como funciona")) {
+    return { intent: "product_explain", confidence: 0.7 };
+  }
+  if (msg.includes("como") || msg.includes("ajuda") || msg.includes("suporte")) {
+    return { intent: "help", confidence: 0.75 };
+  }
+  return {
+    intent: "unknown",
+    confidence: 0.4,
+    fallbackReason: "low_confidence",
+  };
+}
+
+function normalizePolicyIntent(text: string) {
   const trimmed = text.trim().toLowerCase();
   if (!trimmed) return null;
   if (trimmed.includes("marketplace") || trimmed.includes("plano")) {
@@ -49,22 +74,36 @@ function resolvePolicy(intent: string | null): ConversationPolicy | null {
 export function useConversation() {
   const { executeAgent } = useAgentExecution();
   const [intent, setIntent] = useState<string | null>(null);
+  const [intentResult, setIntentResult] = useState<IntentResult>({
+    intent: "unknown",
+    confidence: 0,
+  });
   const [status, setStatus] = useState<ConversationStatus>("idle");
   const [approved, setApproved] = useState(false);
 
   const policy = useMemo(() => resolvePolicy(intent), [intent]);
 
   const analyze = useCallback((message: string) => {
-    const nextIntent = normalizeIntent(message);
-    setIntent(nextIntent);
-    const nextPolicy = resolvePolicy(nextIntent);
+    const detected = detectIntent(message);
+    const constrained: IntentResult =
+      detected.confidence < 0.6
+        ? {
+            intent: "unknown",
+            confidence: detected.confidence,
+            fallbackReason: detected.fallbackReason ?? "low_confidence",
+          }
+        : detected;
+    const nextPolicyIntent = normalizePolicyIntent(message);
+    setIntent(nextPolicyIntent);
+    setIntentResult(constrained);
+    const nextPolicy = resolvePolicy(nextPolicyIntent);
     setApproved(false);
     if (nextPolicy?.requiresConfirmation) {
       setStatus("awaiting_confirmation");
     } else {
-      setStatus(nextIntent ? "policy_ready" : "idle");
+      setStatus(nextPolicyIntent ? "policy_ready" : "idle");
     }
-    return nextIntent;
+    return constrained;
   }, []);
 
   const requestConfirmation = useCallback(() => {
@@ -93,10 +132,11 @@ export function useConversation() {
   const state: PolicyState = useMemo(
     () => ({
       intent,
+      intentResult,
       policy,
       status,
     }),
-    [intent, policy, status]
+    [intent, intentResult, policy, status]
   );
 
   return {
