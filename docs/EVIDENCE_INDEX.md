@@ -24,6 +24,7 @@
 | Guia externo de consumo + verifier | `docs/ops/receipt-canon-external-verifier.md` | Passos 200/erro/limites e fluxo de validação externa do receipt canon. |
 | Verifier CLI de vínculo run/bundle/tx | `scripts/verifyReceiptCanon.ts` | Verificação automatizada de consistência canônica a partir da resposta `/api/ledger/:txId`. |
 | Gate CI da cadeia crítica P1 | `scripts/checkP1CriticalChain.ts` | Bloqueia regressão de approval/schema/receipt em fluxos críticos e exige evidência de fail-closed. |
+| Gate CI de recorrência da reconciliação P1 | `scripts/checkP1ReconciliationRecurring.ts` | Exige ciclos semanais recentes com `auditGap=0` e `duplicateSideEffects=0` de forma contínua. |
 
 ## Sprint 4 (F5.5) — Outcome/experimentos (S4-03 a S4-06)
 
