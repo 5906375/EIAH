@@ -103,7 +103,9 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
     const targetDomain =
       location.search.includes("domain=imob") || location.pathname.startsWith("/app/imob")
         ? "imob"
-        : undefined;
+        : session.activeDomain === "imob"
+          ? "imob"
+          : undefined;
     void apiGetSessionContext(targetDomain)
       .then((ctx) => {
         if (!ctx.ok || !ctx.data) return;
@@ -125,7 +127,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
         });
       })
       .catch(() => undefined);
-  }, [session.token, location.pathname, location.search]);
+  }, [session.token, session.activeDomain, location.pathname, location.search]);
 
   if (!session.token) {
     const next = `${location.pathname}${location.search}`;
@@ -303,6 +305,13 @@ function AppRoutes() {
 }
 
 export default function App() {
+  React.useEffect(() => {
+    document.documentElement.classList.add("compact-ui");
+    return () => {
+      document.documentElement.classList.remove("compact-ui");
+    };
+  }, []);
+
   return (
     <BrowserRouter>
       <AppRoutes />

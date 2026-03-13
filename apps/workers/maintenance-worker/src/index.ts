@@ -6,14 +6,17 @@ import {
   type MemorySyncJobParams,
   type KnowledgeBackfillJobParams,
   enqueueMaintenanceJob,
+  generateMonthlyInvoice,
+  generateMonthlyInvoicesForAllTenants,
   reconcileLedgerService,
   getRedisConnection,
   recordGuardrailAudit,
+  resolvePreviousCalendarMonth,
 } from "@eiah/core";
 import { consumeMaintenanceJobs } from "@eiah/core";
 import "./jobs/runAtivoUniversalJob";
 import { getMemoryDeps, shutdownMemoryDeps } from "./services/memory.js";
-import { getPrismaForTenant } from "@repo/db";
+import { getPrismaForTenant, prismaGlobal } from "@repo/db";
 import Redis from "ioredis";
 import { Queue } from "bullmq";
 import { MaintenanceJobName, QueueName } from "@eiah/contracts";
@@ -35,6 +38,14 @@ type LedgerReconcileJobParams = {
   limit?: number;
   actionTypes?: string[];
   persistReport?: boolean;
+};
+
+type InvoiceGenerateJobParams = {
+  tenantId?: string;
+  periodStart?: string;
+  periodEnd?: string;
+  referenceDate?: string;
+  actor?: "scheduler" | "manual" | "api";
 };
 
 function envFlag(value: string | undefined, fallback = false) {
@@ -136,6 +147,37 @@ async function cleanupLedgerReconcileRepeatables(params: {
   }
 }
 
+async function cleanupInvoiceGenerateRepeatables(params: {
+  currentJobId?: string;
+  enabled: boolean;
+}) {
+  const queueName = process.env.MAINTENANCE_QUEUE_NAME ?? QueueName.MAINTENANCE;
+  const jobName = process.env.MAINTENANCE_QUEUE_JOB_NAME ?? MaintenanceJobName;
+  const connection = getRedisConnection();
+  const queue = new Queue(queueName, { connection });
+
+  try {
+    const repeatables = await queue.getRepeatableJobs();
+    const stale = repeatables.filter((job) => {
+      if (job.name !== jobName) return false;
+      if (!job.id || !job.id.startsWith("invoice-generate:")) return false;
+      if (!params.enabled) return true;
+      return params.currentJobId ? job.id !== params.currentJobId : true;
+    });
+
+    for (const job of stale) {
+      await queue.removeRepeatableByKey(job.key);
+    }
+
+    workerLogger.info(
+      { removed: stale.length },
+      "maintenance.invoice_generate.cleanup_completed"
+    );
+  } finally {
+    await queue.close().catch(() => undefined);
+  }
+}
+
 async function scheduleLedgerReconcile() {
   const enabled = envFlag(
     process.env.RECONCILE_LEDGER_ENABLED,
@@ -221,12 +263,62 @@ async function scheduleLedgerReconcile() {
   );
 }
 
+async function scheduleMonthlyInvoiceGeneration() {
+  const enabled = envFlag(
+    process.env.INVOICE_GENERATE_ENABLED,
+    process.env.NODE_ENV === "production"
+  );
+  const jobId = `invoice-generate:${process.env.INVOICE_GENERATE_TENANT_ID ?? "all-tenants"}`;
+
+  await cleanupInvoiceGenerateRepeatables({
+    currentJobId: enabled ? jobId : undefined,
+    enabled,
+  });
+
+  if (!enabled) {
+    workerLogger.info("maintenance.invoice_generate.disabled");
+    return;
+  }
+
+  const cronPattern = (process.env.INVOICE_GENERATE_CRON ?? "0 2 1 * *").trim();
+  const timezone = (process.env.INVOICE_GENERATE_TIMEZONE ?? "UTC").trim();
+  const lockKey = `maintenance:invoice-generate:scheduler:${jobId}`;
+  const lockAcquired = await acquireSchedulerLock(lockKey, 8 * 60 * 60 * 1000);
+  if (!lockAcquired) {
+    workerLogger.info({ lockKey }, "maintenance.invoice_generate.scheduler_lock_skipped");
+    return;
+  }
+
+  await enqueueMaintenanceJob(
+    {
+      kind: "invoice-generate",
+      params: {
+        tenantId: process.env.INVOICE_GENERATE_TENANT_ID ?? undefined,
+        actor: "scheduler",
+      },
+    },
+    {
+      jobId,
+      repeat: {
+        pattern: cronPattern,
+        tz: timezone,
+      },
+    }
+  );
+
+  workerLogger.info(
+    { jobId, cronPattern, timezone, tenantId: process.env.INVOICE_GENERATE_TENANT_ID ?? null },
+    "maintenance.invoice_generate.scheduled"
+  );
+}
+
 async function bootstrap() {
   const { memoryService, snapshotStore } = getMemoryDeps();
   const memorySyncJob = new MemorySyncJob(memoryService, { snapshotStore });
   const knowledgeJob = new KnowledgeBackfillJob(memoryService);
 
   await scheduleLedgerReconcile();
+  await scheduleMonthlyInvoiceGeneration();
 
   await consumeMaintenanceJobs(async (job) => {
     switch (job.kind) {
@@ -293,6 +385,51 @@ async function bootstrap() {
             mismatchedTx: result.mismatchedTx.length,
           },
           "maintenance.ledger_reconcile.completed"
+        );
+        break;
+      }
+      case "invoice-generate": {
+        const params = job.params as InvoiceGenerateJobParams;
+        const periodStart = params.periodStart ? new Date(params.periodStart) : undefined;
+        const periodEnd = params.periodEnd ? new Date(params.periodEnd) : undefined;
+        const inferred = resolvePreviousCalendarMonth(
+          params.referenceDate ? new Date(params.referenceDate) : new Date()
+        );
+
+        if (params.tenantId) {
+          const result = await generateMonthlyInvoice(prisma as any, {
+            tenantId: params.tenantId,
+            periodStart: periodStart ?? inferred.periodStart,
+            periodEnd: periodEnd ?? inferred.periodEnd,
+            actor: params.actor ?? "scheduler",
+          });
+          workerLogger.info(
+            {
+              tenantId: params.tenantId,
+              invoiceId: result.invoice.id,
+              totalCents: result.invoice.totalCents,
+              period: result.periodStart.toISOString().slice(0, 7),
+              idempotent: result.idempotent,
+            },
+            "maintenance.invoice_generate.completed_single"
+          );
+          break;
+        }
+
+        const result = await generateMonthlyInvoicesForAllTenants(prismaGlobal as any, {
+          periodStart: periodStart ?? inferred.periodStart,
+          periodEnd: periodEnd ?? inferred.periodEnd,
+          actor: params.actor ?? "scheduler",
+        });
+        workerLogger.info(
+          {
+            period: result.periodStart.toISOString().slice(0, 7),
+            processed: result.processed,
+            generated: result.generated,
+            idempotent: result.idempotent,
+            failed: result.failed.length,
+          },
+          "maintenance.invoice_generate.completed_batch"
         );
         break;
       }

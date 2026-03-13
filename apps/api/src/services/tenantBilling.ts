@@ -175,7 +175,7 @@ export class QuotaPolicyService {
 
     const existing = await client.workspaceQuotaGrant.findUnique({
       where: {
-        tenantId_workspaceId: {
+        workspace_quota_grant_unique: {
           tenantId: params.tenantId,
           workspaceId: params.workspaceId,
         },
@@ -325,7 +325,7 @@ export class QuotaUsageService {
 
     const usage = await client.tenantQuotaUsage.upsert({
       where: {
-        tenantId_cycleStart_cycleEnd: {
+        tenant_quota_usage_cycle_unique: {
           tenantId: params.tenantId,
           cycleStart: cycle.cycleStart,
           cycleEnd: cycle.cycleEnd,
@@ -384,7 +384,7 @@ export class QuotaUsageService {
 
     const usage = await client.tenantQuotaUsage.upsert({
       where: {
-        tenantId_cycleStart_cycleEnd: {
+        tenant_quota_usage_cycle_unique: {
           tenantId: params.tenantId,
           cycleStart: cycle.cycleStart,
           cycleEnd: cycle.cycleEnd,
@@ -472,7 +472,7 @@ export async function reconcileTenantQuotaUsageCycle(
     }),
     client.tenantQuotaUsage.findUnique({
       where: {
-        tenantId_cycleStart_cycleEnd: {
+        tenant_quota_usage_cycle_unique: {
           tenantId: params.tenantId,
           cycleStart: cycle.cycleStart,
           cycleEnd: cycle.cycleEnd,
@@ -496,7 +496,7 @@ export async function reconcileTenantQuotaUsageCycle(
   if (apply) {
     const updated = await client.tenantQuotaUsage.upsert({
       where: {
-        tenantId_cycleStart_cycleEnd: {
+        tenant_quota_usage_cycle_unique: {
           tenantId: params.tenantId,
           cycleStart: cycle.cycleStart,
           cycleEnd: cycle.cycleEnd,

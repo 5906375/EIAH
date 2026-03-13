@@ -5,6 +5,7 @@ import {
   apiGetSessionContext,
   apiCreateWalletChallenge,
   apiLegacyLogin,
+  apiOnboarding,
   apiSetLegacyPassword,
   apiWalletLogin,
 } from "@/lib/api";
@@ -26,6 +27,12 @@ type NewPasswordForm = {
   token: string;
 };
 
+type SignupForm = {
+  orgName: string;
+  name: string;
+  email: string;
+};
+
 export default function AccessPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -43,6 +50,12 @@ export default function AccessPage() {
     confirmPassword: "",
     token: "",
   });
+  const [signupForm, setSignupForm] = React.useState<SignupForm>({
+    orgName: "",
+    name: "",
+    email: "",
+  });
+  const [authMode, setAuthMode] = React.useState<"login" | "signup">("login");
   const [recoveryMode, setRecoveryMode] = React.useState(false);
   const [status, setStatus] = React.useState<"idle" | "loading">("idle");
   const [error, setError] = React.useState<string | null>(null);
@@ -53,6 +66,12 @@ export default function AccessPage() {
       setNewPasswordForm((prev) => ({ ...prev, email: passwordForm.email }));
     }
   }, [passwordForm.email, newPasswordForm.email]);
+
+  React.useEffect(() => {
+    if (!signupForm.email && passwordForm.email) {
+      setSignupForm((prev) => ({ ...prev, email: passwordForm.email }));
+    }
+  }, [passwordForm.email, signupForm.email]);
 
   const getEthereumProvider = () =>
     (
@@ -109,6 +128,62 @@ export default function AccessPage() {
     event.preventDefault();
     setError(null);
     setSuccess(null);
+    if (authMode === "signup") {
+      if (!signupForm.orgName.trim() || !signupForm.name.trim() || !signupForm.email.trim()) {
+        setError("Preencha empresa, nome e e-mail para cadastrar.");
+        return;
+      }
+      setStatus("loading");
+      void apiOnboarding({
+        orgName: signupForm.orgName.trim(),
+        name: signupForm.name.trim(),
+        email: signupForm.email.trim(),
+        mode: "provision",
+      })
+        .then(async (response) => {
+          if (!response.ok || !response.data) {
+            throw new Error(response.error?.message ?? "Falha ao criar conta.");
+          }
+          if (response.data.token) {
+            updateSession({
+              tenantId: response.data.tenantId,
+              workspaceId: response.data.workspaceId,
+              userId: response.data.userId,
+              token: response.data.token,
+            });
+            await apiCreateSession().catch(() => undefined);
+            const context = await apiGetSessionContext().catch(() => null);
+            if (context?.ok && context.data) {
+              updateSession({
+                activeDomain: context.data.activeDomain,
+                availableDomains: context.data.availableDomains,
+                entitlements: context.data.entitlements,
+                installedProducts: (context.data.productInstallations ?? []).map((entry) => entry.product),
+                roles: context.data.roles,
+                branding: {
+                  brandName: context.data.branding.brandName,
+                  logoUrl: context.data.branding.logoUrl,
+                  primaryColor: context.data.branding.primaryColor,
+                  workspaceLabel: context.data.branding.workspaceLabel,
+                },
+              });
+            }
+            navigate(nextPath, { replace: true });
+            return;
+          }
+          setSuccess("Cadastro concluído. Faça login para continuar.");
+          setAuthMode("login");
+          setPasswordForm((prev) => ({ ...prev, email: signupForm.email.trim() }));
+        })
+        .catch((err) => {
+          setError(err instanceof Error ? err.message : "Falha ao criar conta.");
+        })
+        .finally(() => {
+          setStatus("idle");
+        });
+      return;
+    }
+
     if (recoveryMode) {
       if (!newPasswordForm.email.trim()) {
         setError("Informe seu e-mail.");
@@ -239,23 +314,103 @@ export default function AccessPage() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-6">
-      <header className="rounded-3xl border border-white/10 bg-gradient-to-r from-accent/10 via-surface/80 to-transparent p-8">
-        <p className="text-xs uppercase tracking-[0.35em] text-accent">EIAH Access</p>
-        <h1 className="mt-2 text-2xl font-semibold text-foreground">Acessar ambiente</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Entre com e-mail/senha (modo legado) ou acesse com wallet cripto.
-        </p>
-      </header>
-
-      <div className="grid gap-6 lg:grid-cols-2">
+    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 sm:px-6 lg:px-8">
+      <div className="grid justify-items-center gap-6">
         <form
           onSubmit={handlePasswordLogin}
-          className="rounded-3xl border border-white/10 bg-surface/70 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.35)]"
+          className="w-full rounded-3xl border border-white/10 bg-surface/70 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.35)] lg:w-[40vw]"
         >
-          <h2 className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-            Email + senha
-          </h2>
+          <p className="text-sm font-semibold uppercase tracking-[0.25em] text-accent">EIAH Access</p>
+          <div className="mt-4 inline-flex flex-wrap rounded-full border border-white/10 bg-black/30 p-1 text-xs">
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode("login");
+                setRecoveryMode(false);
+                setError(null);
+                setSuccess(null);
+              }}
+              className={`rounded-full px-3 py-1 font-semibold transition ${
+                authMode === "login" ? "bg-accent/25 text-foreground" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Entrar
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode("signup");
+                setRecoveryMode(false);
+                setError(null);
+                setSuccess(null);
+                setSignupForm((prev) => ({ ...prev, email: passwordForm.email || prev.email }));
+              }}
+              className={`rounded-full px-3 py-1 font-semibold transition ${
+                authMode === "signup"
+                  ? "bg-accent/25 text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Cadastrar
+            </button>
+            <button
+              type="button"
+              onClick={handleConnectWallet}
+              disabled={status === "loading"}
+              className="rounded-full px-3 py-1 font-semibold text-muted-foreground transition hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {status === "loading" ? "Conectando..." : walletAddress ? "Wallet conectada" : "Wallet"}
+            </button>
+          </div>
+          {walletAddress ? (
+            <p className="mt-2 text-xs text-muted-foreground">Carteira: {walletAddress}</p>
+          ) : null}
+
+          {authMode === "signup" ? (
+            <>
+              <label className="mt-4 block text-sm text-muted-foreground">
+                Empresa
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
+                  type="text"
+                  placeholder="Nome da organização"
+                  value={signupForm.orgName}
+                  onChange={(event) =>
+                    setSignupForm((prev) => ({ ...prev, orgName: event.target.value }))
+                  }
+                  required
+                />
+              </label>
+              <label className="mt-4 block text-sm text-muted-foreground">
+                Nome
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
+                  type="text"
+                  placeholder="Seu nome"
+                  value={signupForm.name}
+                  onChange={(event) => setSignupForm((prev) => ({ ...prev, name: event.target.value }))}
+                  required
+                />
+              </label>
+              <label className="mt-4 block text-sm text-muted-foreground">
+                Email
+                <input
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
+                  type="email"
+                  placeholder="voce@empresa.com"
+                  value={signupForm.email}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setSignupForm((prev) => ({ ...prev, email: value }));
+                    setPasswordForm((prev) => ({ ...prev, email: value }));
+                    setNewPasswordForm((prev) => ({ ...prev, email: value }));
+                  }}
+                  required
+                />
+              </label>
+            </>
+          ) : (
+            <>
           <label className="mt-4 block text-sm text-muted-foreground">
             Email
             <input
@@ -328,68 +483,47 @@ export default function AccessPage() {
               />
             </label>
           )}
+            </>
+          )}
 
-          <button
-            type="button"
-            className="mt-4 text-sm text-accent hover:text-accent/80"
-            onClick={() => {
-              setError(null);
-              setSuccess(null);
-              setRecoveryMode((prev) => !prev);
-              setNewPasswordForm((prev) => ({
-                ...prev,
-                email: passwordForm.email || prev.email,
-                newPassword: "",
-                confirmPassword: "",
-                token: "",
-              }));
-            }}
-          >
-            {recoveryMode ? "Voltar para login" : "Esqueci minha senha"}
-          </button>
+          {authMode === "login" ? (
+            <button
+              type="button"
+              className="mt-4 text-sm text-accent hover:text-accent/80"
+              onClick={() => {
+                setError(null);
+                setSuccess(null);
+                setRecoveryMode((prev) => !prev);
+                setNewPasswordForm((prev) => ({
+                  ...prev,
+                  email: passwordForm.email || prev.email,
+                  newPassword: "",
+                  confirmPassword: "",
+                  token: "",
+                }));
+              }}
+            >
+              {recoveryMode ? "Voltar para login" : "Esqueci minha senha"}
+            </button>
+          ) : null}
           <button
             type="submit"
             disabled={status === "loading"}
             className="mt-6 w-full rounded-full border border-white/10 bg-accent/20 px-5 py-2 text-sm font-semibold text-foreground transition hover:bg-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {status === "loading"
-              ? recoveryMode
+              ? authMode === "signup"
+                ? "Criando conta..."
+                : recoveryMode
                 ? "Atualizando..."
                 : "Entrando..."
-              : recoveryMode
-                ? "Criar nova senha"
-                : "Entrar"}
+              : authMode === "signup"
+                ? "Criar conta"
+                : recoveryMode
+                  ? "Criar nova senha"
+                  : "Entrar"}
           </button>
         </form>
-
-        <div
-          className="rounded-3xl border border-white/10 bg-surface/70 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.35)]"
-        >
-          <h2 className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-            Wallet crypto
-          </h2>
-          <label className="mt-4 block text-sm text-muted-foreground">
-            Endereço conectado
-            <input
-              className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-sm text-foreground"
-              placeholder="0x..."
-              value={walletAddress}
-              readOnly
-            />
-          </label>
-          <button
-            type="button"
-            onClick={handleConnectWallet}
-            disabled={status === "loading"}
-            className="mt-6 w-full rounded-full border border-white/10 bg-white/10 px-5 py-2 text-sm font-semibold text-foreground transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {status === "loading"
-              ? "Conectando e assinando..."
-              : walletAddress
-                ? "Trocar conta e entrar"
-                : "Conectar carteira e entrar"}
-          </button>
-        </div>
       </div>
 
       {error ? (

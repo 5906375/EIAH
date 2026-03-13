@@ -25,6 +25,14 @@ export type LedgerReconcileJobParams = {
   persistReport?: boolean;
 };
 
+export type InvoiceGenerateJobParams = {
+  tenantId?: string;
+  periodStart?: string;
+  periodEnd?: string;
+  referenceDate?: string;
+  actor?: "scheduler" | "manual" | "api";
+};
+
 type BullModule = typeof import("bullmq");
 
 const DEFAULT_QUEUE_NAME = QueueName.MAINTENANCE;
@@ -164,6 +172,13 @@ export async function enqueueLedgerReconcileJob(
   options?: JobsOptions
 ) {
   return enqueueMaintenanceJob({ kind: "ledger-reconcile", params }, options);
+}
+
+export async function enqueueInvoiceGenerateJob(
+  params: InvoiceGenerateJobParams,
+  options?: JobsOptions
+) {
+  return enqueueMaintenanceJob({ kind: "invoice-generate", params }, options);
 }
 
 export type MaintenanceJobHandler = (job: MaintenanceJobPayload) => Promise<void> | void;

@@ -1,6 +1,10 @@
 import { Router } from "express";
 import crypto from "node:crypto";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
+import { generateContractPreview } from "../services/contracts/contractGenerator";
+import type { ContractType } from "../services/contracts/types";
+import { createRunRecord } from "../services/runs";
+import { emitRunEvent } from "../services/runEventEmitter";
 
 export const imobRouter = Router();
 imobRouter.use(enforceTenant);
@@ -59,9 +63,14 @@ function ageHours(dateRaw: unknown) {
 }
 
 const IMOB_CHAT_AGENT_ID = "imob-chat";
+const IMOB_CHAT_AUDIT_AGENT_ID = "imob-chat-audit";
 const CHAT_KEY_CONVERSATION_CREATED = "conversation.created";
 const CHAT_KEY_MESSAGE = "conversation.message";
 const CHAT_KEY_TELEMETRY = "conversation.telemetry";
+const CHAT_KEY_CONTRACT_INTERVIEW_STATE = "conversation.contract_interview_state";
+const CHAT_KEY_CONTRACT_PREVIEW = "conversation.contract_preview";
+const RUN_EVENT_CHAT_AUDIT_STARTED = "conversation.audit.started";
+const RUN_EVENT_CHAT_MESSAGE_RECORDED = "conversation.message.recorded";
 
 function asString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
@@ -108,6 +117,227 @@ function parseNumericTelemetryValue(content: string | null | undefined) {
   const chunks = source.split(":");
   const maybeValue = Number(chunks[chunks.length - 1]);
   return Number.isFinite(maybeValue) ? maybeValue : null;
+}
+
+function toSha256(value: unknown) {
+  return crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
+async function validateScopedRunId(params: {
+  prisma: NonNullable<TenantAwareRequest["prisma"]>;
+  tenantId: string;
+  workspaceId: string;
+  runId: string | null | undefined;
+}) {
+  const runId = asString(params.runId);
+  if (!runId) return null;
+  const run = await params.prisma.run.findFirst({
+    where: {
+      id: runId,
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+    },
+    select: { id: true },
+  });
+  return run?.id ?? null;
+}
+
+async function findConversationCreatedEvent(params: {
+  prisma: NonNullable<TenantAwareRequest["prisma"]>;
+  tenantId: string;
+  workspaceId: string;
+  conversationId: string;
+}) {
+  const rows = await params.prisma.memoryEvent.findMany({
+    where: {
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      agentId: IMOB_CHAT_AGENT_ID,
+      key: CHAT_KEY_CONVERSATION_CREATED,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 500,
+  });
+  return (
+    rows
+      .map((row) => ({ row, metadata: asObject(row.metadata) }))
+      .find((entry) => getConversationIdFromMetadata(entry.metadata) === params.conversationId) ?? null
+  );
+}
+
+async function resolveConversationAuditRunId(params: {
+  prisma: NonNullable<TenantAwareRequest["prisma"]>;
+  tenantId: string;
+  workspaceId: string;
+  userId?: string;
+  conversationId: string;
+  title?: string | null;
+}) {
+  const conversationCreated = await findConversationCreatedEvent({
+    prisma: params.prisma,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    conversationId: params.conversationId,
+  });
+
+  const persistedAuditRunId = await validateScopedRunId({
+    prisma: params.prisma,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    runId: asString(conversationCreated?.metadata?.auditRunId),
+  });
+  if (persistedAuditRunId) return persistedAuditRunId;
+
+  const existingAuditRuns = await params.prisma.run.findMany({
+    where: {
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      agent: IMOB_CHAT_AUDIT_AGENT_ID,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 500,
+  });
+
+  const matchedRun = existingAuditRuns.find((run) => {
+    const request = asObject(run.request);
+    const metadata = asObject(request?.metadata);
+    return getConversationIdFromMetadata(metadata) === params.conversationId;
+  });
+
+  const auditRun =
+    matchedRun ??
+    (await createRunRecord({
+      prisma: params.prisma,
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      userId: params.userId,
+      agent: IMOB_CHAT_AUDIT_AGENT_ID,
+      status: "success",
+      request: {
+        prompt: `Audit transcript for conversation ${params.conversationId}`,
+        metadata: {
+          domain: "imob",
+          kind: "conversation_audit",
+          conversationId: params.conversationId,
+          title: params.title ?? null,
+        },
+      },
+      response: {
+        status: "audit_initialized",
+        conversationId: params.conversationId,
+      },
+      costCents: 0,
+    }));
+
+  if (!matchedRun) {
+    await emitRunEvent({
+      prisma: params.prisma,
+      runId: auditRun.id,
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      userId: params.userId,
+      type: RUN_EVENT_CHAT_AUDIT_STARTED,
+      payload: {
+        conversationId: params.conversationId,
+        title: params.title ?? null,
+      },
+    });
+  }
+
+  if (conversationCreated && !asString(conversationCreated.metadata?.auditRunId)) {
+    await params.prisma.memoryEvent.update({
+      where: { id: conversationCreated.row.id },
+      data: {
+        metadata: {
+          ...(conversationCreated.metadata ?? {}),
+          auditRunId: auditRun.id,
+        } as any,
+      },
+    });
+  }
+
+  return auditRun.id;
+}
+
+async function recordConversationMessageProof(params: {
+  prisma: NonNullable<TenantAwareRequest["prisma"]>;
+  tenantId: string;
+  workspaceId: string;
+  userId?: string;
+  auditRunId: string;
+  conversationId: string;
+  messageId: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  createdAt: Date;
+  threadId: string | null;
+  threadLabel: string | null;
+  threadStatus: "active" | "done" | "blocked" | null;
+  messageRunId: string | null;
+  txId: string | null;
+}) {
+  const latestMessageEvent = await params.prisma.runEvent.findFirst({
+    where: {
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      runId: params.auditRunId,
+      type: RUN_EVENT_CHAT_MESSAGE_RECORDED,
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: { payload: true },
+  });
+
+  const latestPayload = asObject(latestMessageEvent?.payload);
+  const previousHash = asString(latestPayload?.entryHash);
+  const previousSequence = Number(latestPayload?.sequence);
+  const sequence = Number.isFinite(previousSequence) ? previousSequence + 1 : 1;
+  const contentHash = crypto.createHash("sha256").update(params.content).digest("hex");
+  const payloadBase = {
+    conversationId: params.conversationId,
+    messageId: params.messageId,
+    sequence,
+    role: params.role,
+    createdAt: toIso(params.createdAt),
+    contentHash,
+    contentLength: params.content.length,
+    threadId: params.threadId,
+    threadLabel: params.threadLabel,
+    threadStatus: params.threadStatus,
+    runId: params.messageRunId,
+    txId: params.txId,
+    prevHash: previousHash,
+  };
+  const entryHash = toSha256(payloadBase);
+  const payload = {
+    ...payloadBase,
+    entryHash,
+    contentPreview: params.content.slice(0, 180),
+  };
+
+  await emitRunEvent({
+    prisma: params.prisma,
+    runId: params.auditRunId,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    userId: params.userId,
+    type: RUN_EVENT_CHAT_MESSAGE_RECORDED,
+    payload,
+  });
+
+  return {
+    sequence,
+    entryHash,
+    prevHash: previousHash,
+    contentHash,
+  };
+}
+
+function isContractInterviewStatus(value: unknown): value is "collecting" | "review" | "generating" | "generated" {
+  return value === "collecting" || value === "review" || value === "generating" || value === "generated";
+}
+
+function isContractType(value: unknown): value is ContractType {
+  return value === "locacao" || value === "compra_venda" || value === "administracao" || value === "temporada";
 }
 
 imobRouter.get("/command-center/funnel-health", async (req, res) => {
@@ -294,6 +524,76 @@ imobRouter.get("/command-center/blocked-runs", async (req, res) => {
   });
 });
 
+imobRouter.post("/contracts/generate", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({
+      ok: false,
+      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+    });
+  }
+
+  const body = asObject(req.body) ?? {};
+  const contractType = body.contractType;
+  const answers = asObject(body.answers);
+  const conversationId = asString(body.conversationId);
+  const legalVersion = asString(body.legalVersion);
+
+  if (!isContractType(contractType) || !answers) {
+    return res.status(400).json({
+      ok: false,
+      error: {
+        code: "INVALID_PAYLOAD",
+        message: "contractType (locacao|compra_venda|administracao|temporada) and answers object are required",
+      },
+    });
+  }
+
+  const preview = generateContractPreview({
+    contractType,
+    answers,
+    legalVersion,
+  });
+
+  const memory = await prisma.memoryEvent.create({
+    data: {
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      agentId: IMOB_CHAT_AGENT_ID,
+      runId: null,
+      key: CHAT_KEY_CONTRACT_PREVIEW,
+      content: `contract_preview:${contractType}`,
+      metadata: {
+        conversationId,
+        contractType,
+        schemaVersion: preview.schemaVersion,
+        legalVersion: preview.legalVersion,
+        hash: preview.hash,
+        clauseCount: preview.clauses.length,
+        review: preview.review,
+      } as any,
+    },
+  });
+
+  return res.json({
+    ok: true,
+    data: {
+      contractType,
+      schemaVersion: preview.schemaVersion,
+      legalVersion: preview.legalVersion,
+      legalBase: preview.legalBase,
+      review: preview.review,
+      hash: preview.hash,
+      clauses: preview.clauses,
+      contractText: preview.contractText,
+      evidence: {
+        eventId: memory.id,
+        createdAt: toIso(memory.createdAt),
+      },
+    },
+  });
+});
+
 imobRouter.get("/chat/conversations", async (req, res) => {
   const { authContext, prisma } = req as TenantAwareRequest;
   if (!authContext || !prisma) {
@@ -341,6 +641,7 @@ imobRouter.get("/chat/conversations", async (req, res) => {
       lastMessageRole: "user" | "assistant" | "system" | null;
       lastRunId: string | null;
       lastTxId: string | null;
+      auditRunId: string | null;
     }
   >();
 
@@ -361,6 +662,7 @@ imobRouter.get("/chat/conversations", async (req, res) => {
       lastMessageRole: null,
       lastRunId: null,
       lastTxId: null,
+      auditRunId: asString(metadata?.auditRunId),
     });
   }
 
@@ -380,6 +682,7 @@ imobRouter.get("/chat/conversations", async (req, res) => {
         lastMessageRole: null,
         lastRunId: null,
         lastTxId: null,
+        auditRunId: null,
       });
     }
     const convo = conversationMap.get(conversationId)!;
@@ -395,6 +698,7 @@ imobRouter.get("/chat/conversations", async (req, res) => {
       convo.lastMessageRole = role;
       convo.lastRunId = runId;
       convo.lastTxId = txId;
+      convo.auditRunId = asString(metadata?.auditRunId) ?? convo.auditRunId;
     }
   }
 
@@ -436,6 +740,15 @@ imobRouter.post("/chat/conversations", async (req, res) => {
     },
   });
 
+  const auditRunId = await resolveConversationAuditRunId({
+    prisma,
+    tenantId: authContext.tenantId,
+    workspaceId: authContext.workspaceId,
+    userId: authContext.userId,
+    conversationId,
+    title,
+  });
+
   return res.status(201).json({
     ok: true,
     conversation: {
@@ -449,6 +762,7 @@ imobRouter.post("/chat/conversations", async (req, res) => {
       lastMessageRole: null,
       lastRunId: null,
       lastTxId: null,
+      auditRunId,
     },
   });
 });
@@ -503,6 +817,8 @@ imobRouter.get("/chat/conversations/:conversationId/messages", async (req, res) 
         txId: asString(metadata?.txId),
         receiptPath: asString(metadata?.receiptPath),
         bundlePath: asString(metadata?.bundlePath),
+        auditRunId: asString(metadata?.auditRunId),
+        transcriptProof: asObject(metadata?.transcriptProof),
         metadata,
         createdAt: toIso(row.createdAt),
       };
@@ -663,7 +979,51 @@ imobRouter.post("/chat/conversations/:conversationId/messages", async (req, res)
     },
   });
 
-  const messageMetadata = asObject(message.metadata);
+  const auditRunId = await resolveConversationAuditRunId({
+    prisma,
+    tenantId: authContext.tenantId,
+    workspaceId: authContext.workspaceId,
+    userId: authContext.userId,
+    conversationId,
+    title: null,
+  });
+
+  const proof = await recordConversationMessageProof({
+    prisma,
+    tenantId: authContext.tenantId,
+    workspaceId: authContext.workspaceId,
+    userId: authContext.userId,
+    auditRunId,
+    conversationId,
+    messageId: message.id,
+    role,
+    content: message.content,
+    createdAt: message.createdAt,
+    threadId,
+    threadLabel,
+    threadStatus,
+    messageRunId: message.runId ?? requestedRunId,
+    txId: asString(body.txId),
+  });
+
+  const messageMetadata: Record<string, unknown> = {
+    ...(asObject(message.metadata) ?? {}),
+    auditRunId,
+    transcriptProof: {
+      sequence: proof.sequence,
+      entryHash: proof.entryHash,
+      prevHash: proof.prevHash,
+      contentHash: proof.contentHash,
+    },
+  };
+
+  await prisma.memoryEvent.update({
+    where: { id: message.id },
+    data: {
+      metadata: messageMetadata as any,
+    },
+  });
+
   return res.status(201).json({
     ok: true,
     message: {
@@ -680,9 +1040,101 @@ imobRouter.post("/chat/conversations/:conversationId/messages", async (req, res)
       txId: asString(messageMetadata?.txId),
       receiptPath: asString(messageMetadata?.receiptPath),
       bundlePath: asString(messageMetadata?.bundlePath),
+      auditRunId: asString(messageMetadata?.auditRunId),
+      transcriptProof: asObject(messageMetadata?.transcriptProof),
       metadata: messageMetadata,
       createdAt: toIso(message.createdAt),
     },
+  });
+});
+
+imobRouter.get("/chat/conversations/:conversationId/interview-state", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({
+      ok: false,
+      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+    });
+  }
+
+  const conversationId = asString(req.params.conversationId);
+  if (!conversationId) {
+    return res.status(400).json({
+      ok: false,
+      error: { code: "INVALID_CONVERSATION_ID", message: "conversationId is required" },
+    });
+  }
+
+  const rows = await prisma.memoryEvent.findMany({
+    where: {
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      agentId: IMOB_CHAT_AGENT_ID,
+      key: CHAT_KEY_CONTRACT_INTERVIEW_STATE,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 300,
+  });
+
+  const row = rows.find((item) => getConversationIdFromMetadata(item.metadata) === conversationId) ?? null;
+  if (!row) {
+    return res.json({ ok: true, state: null, updatedAt: null });
+  }
+
+  const metadata = asObject(row.metadata);
+  const state = asObject(metadata?.state);
+  return res.json({
+    ok: true,
+    state: state ?? null,
+    updatedAt: toIso(row.createdAt),
+  });
+});
+
+imobRouter.put("/chat/conversations/:conversationId/interview-state", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({
+      ok: false,
+      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+    });
+  }
+
+  const conversationId = asString(req.params.conversationId);
+  if (!conversationId) {
+    return res.status(400).json({
+      ok: false,
+      error: { code: "INVALID_CONVERSATION_ID", message: "conversationId is required" },
+    });
+  }
+
+  const body = asObject(req.body) ?? {};
+  const state = asObject(body.state);
+  if (!state || !isContractInterviewStatus(state.status)) {
+    return res.status(400).json({
+      ok: false,
+      error: { code: "INVALID_PAYLOAD", message: "state with valid status is required" },
+    });
+  }
+
+  const created = await prisma.memoryEvent.create({
+    data: {
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      agentId: IMOB_CHAT_AGENT_ID,
+      runId: asString(state.runId),
+      key: CHAT_KEY_CONTRACT_INTERVIEW_STATE,
+      content: `state:${String(state.status)}`,
+      metadata: {
+        conversationId,
+        state: state as any,
+      },
+    },
+  });
+
+  return res.status(201).json({
+    ok: true,
+    state,
+    updatedAt: toIso(created.createdAt),
   });
 });
 
@@ -895,6 +1347,8 @@ imobRouter.get("/chat/conversations/:conversationId/export", async (req, res) =>
         txId,
         receiptPath,
         bundlePath,
+        auditRunId: asString(metadata?.auditRunId),
+        transcriptProof: asObject(metadata?.transcriptProof),
         createdAt: toIso(row.createdAt),
       };
     });
@@ -997,6 +1451,22 @@ imobRouter.get("/chat/conversations/:conversationId/export", async (req, res) =>
     links: {
       runsBase: "/app/runs?domain=imob",
       ledgerBase: "/api/ledger/:txId",
+    },
+    audit: {
+      runId:
+        asString(conversationRecord?.metadata?.auditRunId) ??
+        (messages.find((item) => asString(item.auditRunId))?.auditRunId ?? null),
+      eventType: RUN_EVENT_CHAT_MESSAGE_RECORDED,
+      hashAlgorithm: "sha256",
+      messageProofCoveragePct:
+        messages.length > 0
+          ? Number(
+              (
+                (messages.filter((item) => item.transcriptProof && asString(item.auditRunId)).length / messages.length) *
+                100
+              ).toFixed(2)
+            )
+          : 0,
     },
     threads,
     messages,

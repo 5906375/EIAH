@@ -9,6 +9,30 @@
     color-scheme: dark;
   }
 
+  html.compact-ui {
+    font-size: 85%;
+  }
+
+  html.compact-ui .text-2xl {
+    font-size: 1.4167rem;
+  }
+
+  html.compact-ui .text-3xl {
+    font-size: 1.7708rem;
+  }
+
+  html.compact-ui .text-4xl {
+    font-size: 2.125rem;
+  }
+
+  html.compact-ui .text-5xl {
+    font-size: 2.8333rem;
+  }
+
+  html.compact-ui .text-6xl {
+    font-size: 3.5417rem;
+  }
+
   body {
     @apply min-h-screen bg-background bg-hero-grid text-foreground antialiased;
     background-attachment: fixed;

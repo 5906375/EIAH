@@ -26,7 +26,7 @@ export const ActionJobPayloadSchema = z.object({
 export type ActionJobPayload = z.infer<typeof ActionJobPayloadSchema>;
 
 export const MaintenanceJobPayloadSchema = z.object({
-  kind: z.enum(["memory-sync", "knowledge-backfill", "ledger-reconcile"]),
+  kind: z.enum(["memory-sync", "knowledge-backfill", "ledger-reconcile", "invoice-generate"]),
   params: z.record(z.any())
 });
 

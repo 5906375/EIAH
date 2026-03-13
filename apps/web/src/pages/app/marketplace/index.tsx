@@ -232,14 +232,22 @@ const MarketplaceIndexPage: React.FC = () => {
 
               <div className="mt-4 flex flex-wrap gap-2">
                 {vertical.product === "IMOB" && !active ? (
-                  <button
-                    type="button"
-                    onClick={() => void activateImob()}
-                    disabled={activatingProduct === "IMOB"}
-                    className="rounded-full border border-accent/60 bg-accent/20 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-accent transition hover:border-accent hover:bg-accent/30 disabled:opacity-60"
-                  >
-                    {activatingProduct === "IMOB" ? "Ativando..." : "Ativar"}
-                  </button>
+                  <div className="space-y-2">
+                    <p className="text-xs text-amber-200">
+                      Esta ativacao pode gerar cobranca conforme seu plano.{" "}
+                      <Link to="/app/billing" className="underline text-accent">
+                        Ver tabela de precos
+                      </Link>
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void activateImob()}
+                      disabled={activatingProduct === "IMOB"}
+                      className="rounded-full border border-accent/60 bg-accent/20 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-accent transition hover:border-accent hover:bg-accent/30 disabled:opacity-60"
+                    >
+                      {activatingProduct === "IMOB" ? "Ativando..." : "Ativar"}
+                    </button>
+                  </div>
                 ) : null}
 
                 {vertical.product === "IMOB" && active ? (

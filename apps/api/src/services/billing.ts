@@ -190,6 +190,17 @@ export async function chargeRun(params: {
     }
   }
 
+  await emitRunEvent({
+    runId: params.runId,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    type: "run.usage_recorded",
+    payload: {
+      costCents: params.costCents,
+      mode: enforceV2 ? "enforce" : writeShadow ? "shadow" : "legacy",
+    },
+  });
+
   return true;
 }
 
@@ -224,7 +235,7 @@ export async function getQuota(params: WorkspaceScope & { prisma?: PrismaClient 
         }),
         v2Client.workspaceQuotaGrant.findUnique({
           where: {
-            tenantId_workspaceId: {
+            workspace_quota_grant_unique: {
               tenantId: params.tenantId,
               workspaceId: params.workspaceId,
             },

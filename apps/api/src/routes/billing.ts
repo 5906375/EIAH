@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { Router } from "express";
+import { calculateInvoiceAmounts, generateMonthlyInvoice, resolvePlanPricingProfile } from "@eiah/core";
 import { prismaGlobal } from "@repo/db";
 import { enforceTenant, TenantAwareRequest } from "../middlewares/enforceTenant";
 import {
@@ -998,6 +999,7 @@ billingRouter.get("/billing/tenant/summary", async (req, res) => {
 
   const client = getTenantBillingV2Client(prisma);
   if (!client) {
+    const fallbackPlan = resolvePlanPricingProfile("starter");
     return res.json({
       ok: true,
       data: {
@@ -1006,6 +1008,25 @@ billingRouter.get("/billing/tenant/summary", async (req, res) => {
         cycleEnd: new Date().toISOString(),
         account: null,
         policy: null,
+        plan: {
+          code: fallbackPlan.code,
+          label: fallbackPlan.label,
+          basePriceCents: fallbackPlan.basePriceCents,
+          includedUsers: fallbackPlan.includedUsers,
+          includedRuns: fallbackPlan.includedRuns,
+          includedWorkspaces: fallbackPlan.includedWorkspaces,
+          overageRunCents: fallbackPlan.overageRunCents,
+          extraUserCents: fallbackPlan.extraUserCents,
+        },
+        entitlements: {
+          usersActive: 0,
+          usersOverage: 0,
+          userOverageCents: 0,
+          runsIncludedEffective: fallbackPlan.includedRuns,
+          runOverage: 0,
+          runOverageCents: 0,
+          estimatedInvoiceCents: fallbackPlan.basePriceCents,
+        },
         totals: { runs: 0, costCents: 0, currency: "BRL" },
         usage: null,
         byWorkspace: [],
@@ -1038,7 +1059,7 @@ billingRouter.get("/billing/tenant/summary", async (req, res) => {
     }),
     client.tenantQuotaUsage.findUnique({
       where: {
-        tenantId_cycleStart_cycleEnd: {
+        tenant_quota_usage_cycle_unique: {
           tenantId: authContext.tenantId,
           cycleStart: cycle.cycleStart,
           cycleEnd: cycle.cycleEnd,
@@ -1050,6 +1071,9 @@ billingRouter.get("/billing/tenant/summary", async (req, res) => {
   const workspaces = await client.workspace.findMany({
     where: { tenantId: authContext.tenantId },
     select: { id: true, name: true },
+  });
+  const usersActive = await client.user.count({
+    where: { tenantId: authContext.tenantId },
   });
   const workspaceNameById = new Map(workspaces.map((ws: { id: string; name: string }) => [ws.id, ws.name]));
 
@@ -1082,6 +1106,14 @@ billingRouter.get("/billing/tenant/summary", async (req, res) => {
     byWorkspace.set(key, current);
   }
 
+  const planProfile = resolvePlanPricingProfile(account?.planCode);
+  const invoiceAmounts = calculateInvoiceAmounts({
+    plan: planProfile,
+    runsCount: totals.runs,
+    usersCount: usersActive,
+    includedRunsOverride: policy?.monthlyRunsLimit ?? null,
+  });
+
   return res.json({
     ok: true,
     data: {
@@ -1104,6 +1136,25 @@ billingRouter.get("/billing/tenant/summary", async (req, res) => {
             monthlyCostCentsLimit: policy.monthlyCostCentsLimit,
           }
         : null,
+      plan: {
+        code: planProfile.code,
+        label: planProfile.label,
+        basePriceCents: planProfile.basePriceCents,
+        includedUsers: planProfile.includedUsers,
+        includedRuns: planProfile.includedRuns,
+        includedWorkspaces: planProfile.includedWorkspaces,
+        overageRunCents: planProfile.overageRunCents,
+        extraUserCents: planProfile.extraUserCents,
+      },
+      entitlements: {
+        usersActive,
+        usersOverage: invoiceAmounts.userOverage,
+        userOverageCents: invoiceAmounts.userOverageCents,
+        runsIncludedEffective: invoiceAmounts.includedRuns,
+        runOverage: invoiceAmounts.runOverage,
+        runOverageCents: invoiceAmounts.runOverageCents,
+        estimatedInvoiceCents: invoiceAmounts.totalCents,
+      },
       totals,
       usage: usage
         ? {
@@ -1117,6 +1168,80 @@ billingRouter.get("/billing/tenant/summary", async (req, res) => {
       byWorkspace: Array.from(byWorkspace.values()).sort((a, b) => a.workspaceName.localeCompare(b.workspaceName)),
     },
   });
+});
+
+billingRouter.get("/billing/tenant/invoices", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({
+      ok: false,
+      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+    });
+  }
+
+  const client = getTenantBillingV2Client(prisma);
+  if (!client || !client.tenantInvoice) {
+    return res.json({
+      ok: true,
+      data: { tenantId: authContext.tenantId, items: [] },
+    });
+  }
+
+  const limit = Math.min(Math.max(parseOptionalInt(req.query.limit) ?? 12, 1), 36);
+  const items = await client.tenantInvoice.findMany({
+    where: { tenantId: authContext.tenantId },
+    orderBy: [{ periodStart: "desc" }, { createdAt: "desc" }],
+    take: limit,
+  });
+
+  return res.json({
+    ok: true,
+    data: {
+      tenantId: authContext.tenantId,
+      items,
+    },
+  });
+});
+
+billingRouter.post("/billing/tenant/invoices/generate", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({
+      ok: false,
+      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+    });
+  }
+
+  const periodStart = parseOptionalDate(req.body?.periodStart);
+  const periodEnd = parseOptionalDate(req.body?.periodEnd);
+  if ((periodStart && !periodEnd) || (!periodStart && periodEnd)) {
+    return res.status(400).json({
+      ok: false,
+      error: { code: "INVALID_RANGE", message: "periodStart and periodEnd must be provided together" },
+    });
+  }
+
+  try {
+    const result = await generateMonthlyInvoice(prisma as any, {
+      tenantId: authContext.tenantId,
+      periodStart: periodStart ?? undefined,
+      periodEnd: periodEnd ?? undefined,
+      actor: "api",
+    });
+
+    return res.status(201).json({
+      ok: true,
+      data: result,
+    });
+  } catch (error) {
+    return res.status(500).json({
+      ok: false,
+      error: {
+        code: "INVOICE_GENERATION_FAILED",
+        message: error instanceof Error ? error.message : String(error),
+      },
+    });
+  }
 });
 
 billingRouter.get("/billing/tenant/usage", async (req, res) => {
@@ -1309,7 +1434,7 @@ billingRouter.patch("/billing/tenant/workspaces/:id/grant", async (req, res) => 
 
   const grant = await client.workspaceQuotaGrant.upsert({
     where: {
-      tenantId_workspaceId: {
+      workspace_quota_grant_unique: {
         tenantId: authContext.tenantId,
         workspaceId,
       },

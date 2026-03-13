@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">
+  <rect width="1280" height="720" fill="#0b1220"/>
+  <rect x="40" y="40" width="1200" height="640" rx="20" fill="#111a2b" stroke="#2a3b57"/>
+  <text x="80" y="120" fill="#7dd3fc" font-family="Arial, sans-serif" font-size="28" font-weight="700">RUNS - Revisar historico</text>
+  <text x="80" y="170" fill="#cbd5e1" font-family="Arial, sans-serif" font-size="22">Substitua por print real deste contexto.</text>
+</svg>

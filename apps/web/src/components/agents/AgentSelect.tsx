@@ -16,16 +16,27 @@ type Agent = {
   pricing?: { perRunCents?: number };
 };
 
+function getDisplayAgentName(agent: Agent) {
+  const normalizedId = (agent.id ?? "").trim().toLowerCase();
+  const normalizedName = (agent.name ?? "").trim().toLowerCase();
+  if (normalizedId === "eiah" || normalizedName === "eiah core") {
+    return "Central de Ajuda EIAH";
+  }
+  return agent.name;
+}
+
 export default function AgentSelect({
   value,
   onChange,
   showPlaybook = false,
   onPlaybookClick,
+  inline = false,
 }: {
   value?: string;
   onChange: (v: string) => void;
   showPlaybook?: boolean;
   onPlaybookClick?: () => void;
+  inline?: boolean;
 }) {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,7 +67,13 @@ export default function AgentSelect({
   }, [workspaceId, token]);
 
   return (
-    <div className="rounded-3xl border border-white/10 bg-surface/70 p-4 shadow-lg shadow-black/20">
+    <div
+      className={
+        inline
+          ? "w-full sm:w-[300px]"
+          : "rounded-3xl border border-white/10 bg-surface/70 p-4 shadow-lg shadow-black/20"
+      }
+    >
       <div className="flex flex-col gap-2">
         <label
           id="agent-label"
@@ -67,7 +84,9 @@ export default function AgentSelect({
         <Select value={value} onValueChange={onChange}>
           <SelectTrigger
             aria-labelledby="agent-label"
-            className="w-full whitespace-nowrap border-white/10 bg-surface-strong/70 text-foreground shadow-lg shadow-black/20"
+            className={`w-full whitespace-nowrap border-white/10 bg-surface-strong/70 text-foreground shadow-lg shadow-black/20 ${
+              inline ? "h-10 rounded-xl" : ""
+            }`}
           >
             <SelectValue placeholder="Selecione um agente" />
           </SelectTrigger>
@@ -85,7 +104,7 @@ export default function AgentSelect({
                 : "";
               return (
                 <SelectItem key={agent.id} value={agent.id}>
-                  {agent.name}
+                  {getDisplayAgentName(agent)}
                   {pricingText}
                 </SelectItem>
               );
@@ -94,9 +113,6 @@ export default function AgentSelect({
         </Select>
         {value && (
           <div className="space-y-2">
-            <p className="text-xs text-muted-foreground" aria-live="polite">
-              ID: {value}
-            </p>
             {showPlaybook ? (
               <button
                 type="button"

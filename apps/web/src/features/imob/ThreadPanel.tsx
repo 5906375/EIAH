@@ -106,6 +106,7 @@ type ThreadPanelProps = {
   maxItems?: number;
   showNavigationCtas?: boolean;
   showTimelineLegend?: boolean;
+  resolveDashboardHref?: (href: string, thread: ImobChatThread) => string;
 };
 
 export const ThreadPanel: React.FC<ThreadPanelProps> = ({
@@ -117,6 +118,7 @@ export const ThreadPanel: React.FC<ThreadPanelProps> = ({
   maxItems = 6,
   showNavigationCtas = true,
   showTimelineLegend = false,
+  resolveDashboardHref,
 }) => {
   const [showDetails, setShowDetails] = React.useState(false);
 
@@ -154,6 +156,9 @@ export const ThreadPanel: React.FC<ThreadPanelProps> = ({
                   ? "text-emerald-200 border-emerald-300/40"
                   : "text-accent border-accent/40";
             const threadCta = getThreadPrimaryCta(thread);
+            const threadCtaHref = resolveDashboardHref
+              ? resolveDashboardHref(threadCta.href, thread)
+              : threadCta.href;
             const timeline = getThreadTimeline(thread);
             return (
               <div
@@ -214,7 +219,7 @@ export const ThreadPanel: React.FC<ThreadPanelProps> = ({
                       Continuar
                     </button>
                     <Link
-                      to={threadCta.href}
+                      to={threadCtaHref}
                       className="rounded-full border border-white/20 bg-white/10 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-foreground transition hover:border-accent/40"
                     >
                       {threadCta.label}

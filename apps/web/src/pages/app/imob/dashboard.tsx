@@ -1,7 +1,11 @@
 import React from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { useSession } from "@/state/sessionStore";
-import type { ImobChatThread } from "@/lib/api";
+import {
+  apiGetImobChatTelemetrySummary,
+  apiListImobChatThreads,
+  type ImobChatThread,
+} from "@/lib/api";
 import { ThreadPanel } from "@/features/imob/ThreadPanel";
 
 type Section = "imoveis" | "processos" | "parceiros";
@@ -84,20 +88,148 @@ function sectionLabel(section: Section) {
   return "Parceiros";
 }
 
+function formatLatencyMs(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+  if (value >= 1000) return `${(value / 1000).toFixed(1)} s`;
+  return `${Math.round(value)} ms`;
+}
+
+function formatPct(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
+  return `${value.toFixed(1)}%`;
+}
+
 const ImobDashboardPage: React.FC = () => {
   const session = useSession();
   const brandName = session.branding?.brandName?.trim() || "Tenant";
   const workspaceLabel = session.branding?.workspaceLabel?.trim() || session.workspaceId;
   const [searchParams, setSearchParams] = useSearchParams();
+  const conversationId = (searchParams.get("conversationId") || "").trim() || null;
+  const requestedThreadId = (searchParams.get("threadId") || "").trim() || null;
   const rawSection = (searchParams.get("section") || "imoveis").toLowerCase();
   const section: Section =
     rawSection === "processos" || rawSection === "parceiros" ? rawSection : "imoveis";
-  const [selectedThreadId, setSelectedThreadId] = React.useState<string | null>(null);
+  const [selectedThreadId, setSelectedThreadId] = React.useState<string | null>(requestedThreadId);
+  const [threads, setThreads] = React.useState<ImobChatThread[]>(syntheticThreads);
+  const [telemetrySummary, setTelemetrySummary] = React.useState<{
+    generatedAt: string;
+    totals: {
+      events: number;
+      messageToPlanAvgMs: number | null;
+      planToExecuteAvgMs: number | null;
+      chatToRunCoveragePct: number;
+      persistSuccessRatePct: number;
+    };
+  } | null>(null);
+  const [telemetryLoading, setTelemetryLoading] = React.useState(false);
 
   const setSection = (next: Section) => {
     const params = new URLSearchParams(searchParams);
     params.set("section", next);
     setSearchParams(params, { replace: true });
+  };
+
+  React.useEffect(() => {
+    setSelectedThreadId(requestedThreadId);
+  }, [requestedThreadId]);
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (selectedThreadId) {
+      params.set("threadId", selectedThreadId);
+    } else {
+      params.delete("threadId");
+    }
+    const current = searchParams.toString();
+    const next = params.toString();
+    if (current !== next) {
+      setSearchParams(params, { replace: true });
+    }
+  }, [searchParams, selectedThreadId, setSearchParams]);
+
+  React.useEffect(() => {
+    let mounted = true;
+    if (!conversationId) {
+      setThreads(syntheticThreads);
+      return () => {
+        mounted = false;
+      };
+    }
+    void apiListImobChatThreads(conversationId)
+      .then((result) => {
+        if (!mounted) return;
+        if (result.items.length > 0) {
+          setThreads(result.items);
+          if (requestedThreadId && !result.items.some((item) => item.threadId === requestedThreadId)) {
+            setSelectedThreadId(null);
+          }
+          return;
+        }
+        setThreads(syntheticThreads);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setThreads(syntheticThreads);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [conversationId, requestedThreadId]);
+
+  React.useEffect(() => {
+    let mounted = true;
+    if (!conversationId) {
+      setTelemetrySummary(null);
+      setTelemetryLoading(false);
+      return () => {
+        mounted = false;
+      };
+    }
+
+    const loadTelemetry = async () => {
+      setTelemetryLoading(true);
+      try {
+        const summary = await apiGetImobChatTelemetrySummary({
+          conversationId,
+          windowHours: 24,
+        });
+        if (!mounted) return;
+        setTelemetrySummary({
+          generatedAt: summary.data.generatedAt,
+          totals: summary.data.totals,
+        });
+      } catch {
+        if (!mounted) return;
+        setTelemetrySummary(null);
+      } finally {
+        if (mounted) setTelemetryLoading(false);
+      }
+    };
+
+    void loadTelemetry();
+    const interval = setInterval(() => {
+      void loadTelemetry();
+    }, 15000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [conversationId]);
+
+  const backToChatHref = React.useMemo(() => {
+    const params = new URLSearchParams();
+    if (conversationId) params.set("conversationId", conversationId);
+    if (selectedThreadId) params.set("threadId", selectedThreadId);
+    const query = params.toString();
+    return `/app/imob/chat${query ? `?${query}` : ""}`;
+  }, [conversationId, selectedThreadId]);
+
+  const metricSource = telemetrySummary?.totals ?? {
+    events: 0,
+    messageToPlanAvgMs: 138,
+    planToExecuteAvgMs: 2100,
+    chatToRunCoveragePct: 100,
+    persistSuccessRatePct: 100,
   };
 
   return (
@@ -111,7 +243,7 @@ const ImobDashboardPage: React.FC = () => {
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <Link
-            to="/app/imob/chat"
+            to={backToChatHref}
             className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground hover:border-accent/40"
           >
             Voltar ao chat
@@ -200,30 +332,39 @@ const ImobDashboardPage: React.FC = () => {
 
       <footer id="dashboard-hub" className="space-y-4">
         <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 text-xs text-muted-foreground sm:p-6">
-          <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Métricas Operacionais</h3>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Métricas Operacionais</h3>
+            <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground/80">
+              {conversationId
+                ? telemetryLoading
+                  ? "Atualizando..."
+                  : `Conversa ativa${telemetrySummary?.generatedAt ? ` • ${new Date(telemetrySummary.generatedAt).toLocaleTimeString("pt-BR")}` : ""}`
+                : "Sem conversa ativa"}
+            </p>
+          </div>
           <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-lg border border-white/10 bg-surface/40 p-2">
               <p className="text-[10px] uppercase tracking-[0.12em]">msg→plan</p>
-              <p className="mt-1 text-sm text-foreground">138 ms</p>
+              <p className="mt-1 text-sm text-foreground">{formatLatencyMs(metricSource.messageToPlanAvgMs)}</p>
             </div>
             <div className="rounded-lg border border-white/10 bg-surface/40 p-2">
               <p className="text-[10px] uppercase tracking-[0.12em]">plan→execute</p>
-              <p className="mt-1 text-sm text-foreground">2.1 s</p>
+              <p className="mt-1 text-sm text-foreground">{formatLatencyMs(metricSource.planToExecuteAvgMs)}</p>
             </div>
             <div className="rounded-lg border border-white/10 bg-surface/40 p-2">
               <p className="text-[10px] uppercase tracking-[0.12em]">cobertura chat→run</p>
-              <p className="mt-1 text-sm text-foreground">100.0%</p>
+              <p className="mt-1 text-sm text-foreground">{formatPct(metricSource.chatToRunCoveragePct)}</p>
             </div>
             <div className="rounded-lg border border-white/10 bg-surface/40 p-2">
               <p className="text-[10px] uppercase tracking-[0.12em]">persistência</p>
-              <p className="mt-1 text-sm text-foreground">100.0%</p>
+              <p className="mt-1 text-sm text-foreground">{formatPct(metricSource.persistSuccessRatePct)}</p>
             </div>
           </div>
         </section>
 
         <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 text-xs text-muted-foreground sm:p-6">
           <ThreadPanel
-            threads={syntheticThreads}
+            threads={threads}
             selectedThreadId={selectedThreadId}
             onSelectThread={(thread) => setSelectedThreadId(thread.threadId)}
             onClearSelection={() => setSelectedThreadId(null)}
