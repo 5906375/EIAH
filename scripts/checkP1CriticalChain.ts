@@ -18,10 +18,34 @@ function assertContains(content: string, needle: string, key: string) {
   if (!content.includes(needle)) fail("missing_required_pattern", { key, needle });
 }
 
+function normalizeAction(action: string): string {
+  return action.trim().replace(/^action\./, "");
+}
+
+function extractHighActionsFromPolicy(markdown: string): string[] {
+  const start = "<!-- HIGH_POLICY:START -->";
+  const end = "<!-- HIGH_POLICY:END -->";
+  const startIdx = markdown.indexOf(start);
+  const endIdx = markdown.indexOf(end);
+  if (startIdx < 0 || endIdx < 0 || endIdx <= startIdx) return [];
+  const block = markdown.slice(startIdx + start.length, endIdx);
+  const jsonMatch = block.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return [];
+  try {
+    const parsed = JSON.parse(jsonMatch[0]) as { highActions?: Array<{ action?: string }> };
+    return (parsed.highActions ?? [])
+      .map((item) => (typeof item.action === "string" ? item.action : ""))
+      .filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
 const prismaSchema = readFile("packages/db/prisma/schema.prisma");
 const runsRoute = readFile("apps/api/src/routes/runs.ts");
 const governanceRoute = readFile("apps/api/src/routes/governance.ts");
 const receiptCanonService = readFile("apps/api/src/services/receiptCanonService.ts");
+const riskPolicy = readFile("docs/ops/risk-tiering-by-action.md");
 const apeRun9 = readFile("ops/evidence/latest/ape-weekly-cycle-run9-2026-03-09.md");
 const highActions = JSON.parse(
   readFile("ops/evidence/latest/realestate-high-actions-e2e-2026-03-09.json")
@@ -44,6 +68,8 @@ assertContains(receiptCanonService, "approval_required", "receipt.reason_code_ap
 assertContains(receiptCanonService, "approval.policy.v1", "receipt.approval_policy");
 assertContains(apeRun9, "auditGap: 0", "evidence.audit_gap_zero");
 assertContains(apeRun9, "duplicateSideEffects: 0", "evidence.duplicate_side_effects_zero");
+assertContains(governanceRoute, "RECEIPT_CANON_INCONSISTENT", "ledger.fail_closed_receipt_inconsistent");
+assertContains(runsRoute, 'post("/runs/:id/approve"', "approval.route_available");
 
 if (highActions.ok !== true) fail("high_actions_evidence_not_ok");
 if (highActions.assertions?.receiptCanonSpec !== "receipt.canon.v1") {
@@ -62,6 +88,20 @@ if (highActions.assertions?.tierHigh !== true) {
   });
 }
 
+const policyHighActions = extractHighActionsFromPolicy(riskPolicy).map(normalizeAction);
+if (policyHighActions.length === 0) {
+  fail("risk_policy_high_actions_missing");
+}
+const evidenceHighActions = new Set((highActions.actions ?? []).map(normalizeAction));
+const missingPolicyActionsInEvidence = [...new Set(policyHighActions)].filter(
+  (action) => !evidenceHighActions.has(action)
+);
+if (missingPolicyActionsInEvidence.length > 0) {
+  fail("high_actions_receipt_coverage_missing", {
+    missingPolicyActionsInEvidence,
+  });
+}
+
 console.log(
   JSON.stringify(
     {
@@ -71,6 +111,7 @@ console.log(
         approvalChain: true,
         failClosedEvidence: true,
         receiptCanonOnHighFlows: true,
+        policyHighCoverage: true,
       },
     },
     null,

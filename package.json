@@ -23,6 +23,7 @@
     "check:interop-spec-governance": "node --experimental-strip-types scripts/checkInteropSpecGovernance.ts",
     "check:p2-audit-interop": "node --experimental-strip-types scripts/checkP2AuditInterop.ts",
     "check:p1-critical-chain": "node --experimental-strip-types scripts/checkP1CriticalChain.ts",
+    "check:p1-reconciliation-recurring": "node --experimental-strip-types scripts/checkP1ReconciliationRecurring.ts",
     "check:p3-economy-hardening": "node --experimental-strip-types scripts/checkP3EconomyHardening.ts",
     "check:economy-invariants": "node --experimental-strip-types scripts/checkEconomyInvariants.ts",
     "check:secrets-vault": "node --experimental-strip-types scripts/checkSecretsVault.ts",
