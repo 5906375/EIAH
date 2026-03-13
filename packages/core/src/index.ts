@@ -44,4 +44,5 @@ export * from "./services/ledgerService";
 export * from "./services/planStepStore";
 export * from "./services/reconcileLedgerService";
 export * from "./services/sclLedger";
+export * from "./services/tenantInvoiceService";
 export * from "./guardrails";
