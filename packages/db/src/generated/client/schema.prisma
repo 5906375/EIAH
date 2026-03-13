@@ -22,6 +22,13 @@ enum RunStatus {
   blocked
 }
 
+enum RunApprovalStatus {
+  not_required
+  pending
+  approved
+  rejected
+}
+
 enum PaymentStatus {
   pending
   succeeded
@@ -57,6 +64,7 @@ model Tenant {
   workspaceQuotaGrants WorkspaceQuotaGrant[]
   billingLedgerEntries BillingLedger[]
   invoices             TenantInvoice[]
+  helpdeskSessions     HelpdeskSession[]
   productInstallations TenantProductInstallation[]
 
   @@map("tenants")
@@ -82,6 +90,7 @@ model Workspace {
   agentTrustScores     AgentTrustScore[]
   workspaceQuotaGrants WorkspaceQuotaGrant[]
   billingLedgerEntries BillingLedger[]
+  helpdeskSessions     HelpdeskSession[]
   productInstallations TenantProductInstallation[]
 
   @@index([tenantId, name])
@@ -148,21 +157,24 @@ model ApiToken {
 }
 
 model Run {
-  id          String    @id @default(cuid())
-  tenantId    String    @map("tenant_id")
-  workspaceId String    @map("workspace_id")
-  userId      String?   @map("user_id")
-  agent       String
-  status      RunStatus
-  request     Json
-  response    Json?
-  costCents   Int       @default(0)
-  traceId     String?
-  startedAt   DateTime  @default(now())
-  finishedAt  DateTime?
-  errorCode   String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id             String            @id @default(cuid())
+  tenantId       String            @map("tenant_id")
+  workspaceId    String            @map("workspace_id")
+  userId         String?           @map("user_id")
+  agent          String
+  status         RunStatus
+  request        Json
+  response       Json?
+  costCents      Int               @default(0)
+  traceId        String?
+  startedAt      DateTime          @default(now())
+  finishedAt     DateTime?
+  errorCode      String?
+  approvalStatus RunApprovalStatus @default(not_required) @map("approval_status")
+  approvedBy     String?           @map("approved_by")
+  approvedAt     DateTime?         @map("approved_at")
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 
   // ⚙️ Adições necessárias para reconciliar Ledger e Runs
   criticalHash String? @map("critical_hash")
@@ -699,4 +711,27 @@ model TenantInvoice {
   @@unique([tenantId, periodStart, periodEnd], name: "tenant_invoice_period_unique")
   @@index([tenantId, periodStart, periodEnd])
   @@map("tenant_invoices")
+}
+
+model HelpdeskSession {
+  id              String   @id @default(cuid())
+  tenantId        String   @map("tenant_id")
+  workspaceId     String   @map("workspace_id")
+  runId           String?  @map("run_id")
+  intent          String
+  confidence      Float
+  fallbackReason  String?  @map("fallback_reason")
+  message         String
+  response        String
+  recommendedPlan String?  @map("recommended_plan")
+  estimatedValue  Float?   @map("estimated_value")
+  metadata        Json?
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@index([tenantId, workspaceId, createdAt])
+  @@index([intent, createdAt])
+  @@map("helpdesk_sessions")
 }

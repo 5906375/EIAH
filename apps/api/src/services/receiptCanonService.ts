@@ -40,6 +40,20 @@ export type BuildReceiptCanonParams = CommonReceiptContext & {
   reconciliation: Reconciliation;
   pou: PoULedgerResolution;
   trustSnapshot: Record<string, unknown> | null;
+  approval: {
+    required: boolean;
+    status: "not_required" | "pending" | "approved" | "rejected";
+    approvalId: string | null;
+    approvedBy: string | null;
+    approvedAt: string | null;
+  };
+  delegation: {
+    status: "active" | "expired" | "not_delegated";
+    delegationId: string | null;
+    scope: string[] | null;
+    trustMin: number | null;
+    validUntil: string | null;
+  };
 };
 
 function stableSort(value: unknown): unknown {
@@ -111,7 +125,7 @@ export function buildPoUReceipt(params: BuildReceiptCanonParams) {
       compositeTxId: matched?.compositeTxId ?? null,
       pouId: matched?.id ?? null,
       actionId: matched?.actionId ?? null,
-      status: matched?.status ?? "UNAVAILABLE",
+      status: matched?.status ?? "NOT_FOUND",
       reasonCodes: matched ? [] : ["pou_txid_mismatch"],
     },
     {
@@ -140,39 +154,80 @@ export function buildTrustSnapshotReceipt(params: BuildReceiptCanonParams) {
 }
 
 export function buildApprovalReceipt(params: BuildReceiptCanonParams) {
+  const decisionMap = {
+    approved: "APPROVED",
+    rejected: "REJECTED",
+    pending: "PENDING",
+    not_required: "NOT_REQUIRED",
+  } as const;
+  const approvalDecision = decisionMap[params.approval.status];
+  const reasonCodes = params.approval.required && params.approval.status !== "approved" ? ["approval_required"] : [];
+
   return withMeta(
     params,
     {
       receiptType: "ApprovalReceipt",
       txId: params.txId,
-      approvalId: null,
-      decision: "UNAVAILABLE",
-      reasonCodes: ["approval_required"],
+      approvalId: params.approval.approvalId,
+      approvedBy: params.approval.approvedBy,
+      approvedAt: params.approval.approvedAt,
+      required: params.approval.required,
+      decision: approvalDecision,
+      reasonCodes,
     },
     {
       id: "approval.policy.v1",
-      source: "approval.unavailable",
-      decision: "observe",
+      source: params.approval.required ? "approval.policy.required" : "approval.policy.not_required",
+      decision: params.approval.required && params.approval.status !== "approved" ? "block" : "allow",
     }
   );
 }
 
 export function buildDelegationReceipt(params: BuildReceiptCanonParams) {
+  const statusMap = {
+    active: "ACTIVE",
+    expired: "EXPIRED",
+    not_delegated: "NOT_DELEGATED",
+  } as const;
+  const status = statusMap[params.delegation.status];
   return withMeta(
     params,
     {
       receiptType: "DelegationReceipt",
       txId: params.txId,
-      delegationId: null,
-      status: "UNAVAILABLE",
-      reasonCodes: ["delegation_missing"],
+      delegationId: params.delegation.delegationId,
+      status,
+      scope: params.delegation.scope,
+      trustMin: params.delegation.trustMin,
+      validUntil: params.delegation.validUntil,
+      reasonCodes: params.delegation.status === "not_delegated" ? [] : params.delegation.status === "expired" ? ["delegation_expired"] : [],
     },
     {
       id: "delegation.policy.v1",
-      source: "delegation.unavailable",
-      decision: "observe",
+      source: params.delegation.status === "not_delegated" ? "delegation.absent" : "delegation.policy",
+      decision: params.delegation.status === "expired" ? "block" : "allow",
     }
   );
+}
+
+export function validateReceiptCanonCriticalChain(params: BuildReceiptCanonParams) {
+  const reasonCodes = new Set<string>();
+  if (params.invariant.status !== "ok") {
+    for (const reason of params.invariant.reasons) reasonCodes.add(reason);
+  }
+  if (params.reconciliation.matchedPoUByTxId && !params.trustSnapshot) {
+    reasonCodes.add("missing_trust_snapshot_for_pou");
+  }
+  if (params.approval.required && params.approval.status !== "approved") {
+    reasonCodes.add("approval_required");
+  }
+  if (params.delegation.status === "expired") {
+    reasonCodes.add("delegation_expired");
+  }
+  return {
+    ok: reasonCodes.size === 0,
+    reasonCodes: [...reasonCodes],
+  };
 }
 
 export function buildLedgerReceiptCanonV1(params: BuildReceiptCanonParams): ReceiptCanonEnvelope {

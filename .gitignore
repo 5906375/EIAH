@@ -39,6 +39,12 @@ coverage/
 # --------------------------------------------
 docs/*
 !docs/.keep
+!docs/EVIDENCE_INDEX.md
+!docs/ops/
+!docs/ops/**/
+!docs/ops/**/*.md
+!docs/ops/**/*.json
+docs/ops/**/*.mb
 
 # --------------------------------------------
 # Dados temporários e uploads

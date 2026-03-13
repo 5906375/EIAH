@@ -89,6 +89,9 @@ export async function createRunRecord(params: {
   errorCode?: string | null;
   startedAt?: Date;
   finishedAt?: Date | null;
+  approvalStatus?: "not_required" | "pending" | "approved" | "rejected";
+  approvedBy?: string | null;
+  approvedAt?: Date | null;
 }) {
   const client = resolveClient(params.tenantId, params.workspaceId, params.prisma);
   const now = new Date();
@@ -123,6 +126,9 @@ export async function createRunRecord(params: {
       startedAt,
       finishedAt,
       errorCode: params.errorCode ?? null,
+      approvalStatus: params.approvalStatus ?? "not_required",
+      approvedBy: params.approvedBy ?? null,
+      approvedAt: params.approvedAt ?? null,
     },
   });
 }

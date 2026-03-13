@@ -26,6 +26,18 @@ const serializeRun = (run: any) => ({
   projectId: run?.workspaceId,
 });
 
+function inferApprovalStatusFromMetadata(metadata: unknown): "pending" | "not_required" {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return "not_required";
+  const record = metadata as Record<string, unknown>;
+  const requiresApproval =
+    record.requiresApproval === true ||
+    record.requires_confirmation === true ||
+    record.approvalRequired === true;
+  const riskTier = typeof record.riskTier === "string" ? record.riskTier.toLowerCase() : null;
+  const isHighTier = riskTier === "high" || riskTier === "critical";
+  return requiresApproval || isHighTier ? "pending" : "not_required";
+}
+
 const serializeRunEvent = (event: any) => ({
   id: event.id,
   runId: event.runId,
@@ -604,6 +616,7 @@ runsRouter.post("/runs", async (req, res) => {
     costCents: estimate,
     traceId: null,
     finishedAt: null,
+    approvalStatus: inferApprovalStatusFromMetadata(resolvedMetadata),
   });
 
   await emitRunEvent({
@@ -786,6 +799,15 @@ runsRouter.post("/runs/:id/approve", async (req, res) => {
     agent: existing.agent,
     parentRunId,
   };
+
+  await (prisma as any).run.update({
+    where: { id: existing.id },
+    data: {
+      approvalStatus: "approved",
+      approvedBy: authContext.userId ?? null,
+      approvedAt: new Date(approvalPayload.approvedAt),
+    },
+  });
 
   const approvalIdempotencyKey = `run.approved:${existing.id}:${Date.now()}`;
   const approvalLedgerHash = await recordGovernanceLedger({
