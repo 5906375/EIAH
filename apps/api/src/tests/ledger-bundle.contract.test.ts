@@ -12,6 +12,8 @@ const userId = `user-ledger-bundle-${suffix}`;
 const runId = `run-ledger-bundle-${suffix}`;
 const validTxId = `tx-ledger-valid-${suffix}`;
 const orphanTxId = `tx-ledger-orphan-${suffix}`;
+const approvalPendingTxId = `tx-ledger-approval-pending-${suffix}`;
+const approvalApprovedTxId = `tx-ledger-approval-approved-${suffix}`;
 const apiToken = `tok-ledger-bundle-${suffix}`;
 
 before(async () => {
@@ -70,6 +72,43 @@ before(async () => {
     },
   });
 
+  await prismaGlobal.run.create({
+    data: {
+      id: `run-approval-pending-${suffix}`,
+      tenantId,
+      workspaceId,
+      userId,
+      agent: "agent-test",
+      status: "success",
+      request: { prompt: "approval pending", metadata: { requiresApproval: true } },
+      response: { ok: true },
+      approvalStatus: "pending",
+      criticalHash: `critical-approval-pending-${suffix}`,
+      txId: approvalPendingTxId,
+      sclTxId: approvalPendingTxId,
+    },
+  });
+
+  const approvedAt = new Date();
+  await prismaGlobal.run.create({
+    data: {
+      id: `run-approval-approved-${suffix}`,
+      tenantId,
+      workspaceId,
+      userId,
+      agent: "agent-test",
+      status: "success",
+      request: { prompt: "approval approved", metadata: { requiresApproval: true } },
+      response: { ok: true },
+      approvalStatus: "approved",
+      approvedBy: userId,
+      approvedAt,
+      criticalHash: `critical-approval-approved-${suffix}`,
+      txId: approvalApprovedTxId,
+      sclTxId: approvalApprovedTxId,
+    },
+  });
+
   await prismaGlobal.sclLedger.create({
     data: {
       tenantId,
@@ -93,17 +132,51 @@ before(async () => {
       payload: { source: "contract-test-orphan" },
     },
   });
+
+  await prismaGlobal.sclLedger.create({
+    data: {
+      tenantId,
+      workspaceId,
+      runId: `run-approval-pending-${suffix}`,
+      txId: approvalPendingTxId,
+      criticalHash: `critical-approval-pending-${suffix}`,
+      signature: "sig-contract-test",
+      payload: { source: "contract-test-approval-pending" },
+    },
+  });
+
+  await prismaGlobal.sclLedger.create({
+    data: {
+      tenantId,
+      workspaceId,
+      runId: `run-approval-approved-${suffix}`,
+      txId: approvalApprovedTxId,
+      criticalHash: `critical-approval-approved-${suffix}`,
+      signature: "sig-contract-test",
+      payload: { source: "contract-test-approval-approved" },
+    },
+  });
+
+  await prismaGlobal.runEvent.create({
+    data: {
+      tenantId,
+      workspaceId,
+      runId: `run-approval-approved-${suffix}`,
+      userId,
+      type: "run.approved",
+      payload: {
+        approvedBy: userId,
+        approvedAt: approvedAt.toISOString(),
+      },
+      criticalHash: `critical-approval-approved-${suffix}`,
+      sclTxId: approvalApprovedTxId,
+    },
+  });
 });
 
 after(async () => {
-  await prismaGlobal.guardrailLedger.deleteMany({ where: { tenantId } });
-  await prismaGlobal.sclLedger.deleteMany({ where: { tenantId } });
-  await prismaGlobal.runEvent.deleteMany({ where: { tenantId } });
-  await prismaGlobal.run.deleteMany({ where: { tenantId } });
-  await prismaGlobal.apiToken.deleteMany({ where: { tenantId } });
-  await prismaGlobal.user.deleteMany({ where: { tenantId } });
-  await prismaGlobal.workspace.deleteMany({ where: { tenantId } });
-  await prismaGlobal.tenant.deleteMany({ where: { id: tenantId } });
+  // guardrail_ledger is append-only; cleanup de runs/tenant pode acionar SET NULL e falhar.
+  // Mantemos registros de teste isolados por tenant sufixado para preservar trilha auditável.
   await prismaGlobal.$disconnect();
 });
 
@@ -173,6 +246,37 @@ test("GET /api/ledger/:txId retorna 409 para inconsistência canônica", async (
   assert.equal(res.body?.error?.code, "RECEIPT_CANON_INCONSISTENT");
   assert.ok(Array.isArray(res.body?.error?.reasonCodes));
   assert.ok(res.body?.error?.reasonCodes.includes("missing_run_for_txid"));
+});
+
+test("GET /api/ledger/:txId retorna 409 quando approval é obrigatório e pendente", async () => {
+  const res = await request
+    .get(`/api/ledger/${approvalPendingTxId}`)
+    .set("Authorization", `Bearer ${apiToken}`);
+
+  assert.equal(res.status, 409);
+  assert.equal(res.body?.ok, false);
+  assert.equal(res.body?.error?.code, "RECEIPT_CANON_INCONSISTENT");
+  assert.ok(Array.isArray(res.body?.error?.reasonCodes));
+  assert.ok(res.body?.error?.reasonCodes.includes("approval_required"));
+});
+
+test("GET /api/ledger/:txId retorna 200 quando approval obrigatório já está aprovado", async () => {
+  const res = await request
+    .get(`/api/ledger/${approvalApprovedTxId}`)
+    .set("Authorization", `Bearer ${apiToken}`);
+
+  assert.equal(res.status, 200);
+  assert.equal(res.body?.ok, true);
+  assert.equal(res.body?.txId, approvalApprovedTxId);
+  const approvalReceipt = (res.body?.receiptCanon?.receipts ?? []).find(
+    (item: unknown) =>
+      Boolean(item) &&
+      typeof item === "object" &&
+      "receiptType" in (item as Record<string, unknown>) &&
+      (item as Record<string, unknown>).receiptType === "ApprovalReceipt"
+  ) as Record<string, unknown> | undefined;
+  assert.ok(approvalReceipt);
+  assert.equal(approvalReceipt?.decision, "APPROVED");
 });
 
 test("GET /api/runs/:id/bundle retorna 200 com bundleHash", async () => {

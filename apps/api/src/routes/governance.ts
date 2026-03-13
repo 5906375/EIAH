@@ -9,7 +9,7 @@ import { checkScopePermission } from "packages/core/src/security/rbac.ts";
 import { buildRunEvidenceBundle } from "../services/evidenceBundle";
 import { resolvePoUForLedger } from "../services/pouService";
 import { resolveTrustSnapshotForLedger } from "../services/trustSnapshotService";
-import { buildLedgerReceiptCanonV1 } from "../services/receiptCanonService";
+import { buildLedgerReceiptCanonV1, validateReceiptCanonCriticalChain } from "../services/receiptCanonService";
 
 export const governanceRouter = Router();
 governanceRouter.use(enforceTenant);
@@ -39,6 +39,23 @@ type GateVerdict = {
   stepId?: string | null;
   createdAt?: Date;
 };
+
+function asObject(value: unknown): Record<string, unknown> | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  return value as Record<string, unknown>;
+}
+
+function asString(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+function asBoolean(value: unknown): boolean | null {
+  return typeof value === "boolean" ? value : null;
+}
+
+function asNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
 
 function sanitizeComment(comment?: string) {
   if (!comment) return undefined;
@@ -232,9 +249,13 @@ governanceRouter.get("/ledger/:txId", requireScope("ledger.view"), async (req, r
       id: true,
       workspaceId: true,
       status: true,
+      request: true,
       txId: true,
       sclTxId: true,
       criticalHash: true,
+      approvalStatus: true,
+      approvedBy: true,
+      approvedAt: true,
       createdAt: true,
       finishedAt: true,
     },
@@ -284,7 +305,14 @@ governanceRouter.get("/ledger/:txId", requireScope("ledger.view"), async (req, r
   const hasScl = Boolean(sclEntry);
   const pou = await resolvePoUForLedger();
   const hasPoU = pou.receiptsByRun.length > 0;
-  const trustSnapshot = await resolveTrustSnapshotForLedger();
+  const trustSnapshot = runByTx
+    ? await resolveTrustSnapshotForLedger({
+        prisma,
+        tenantId: authContext.tenantId,
+        workspaceId: runByTx.workspaceId,
+        runId: runByTx.id,
+      })
+    : null;
   const runSclAligned = Boolean(runByTx?.sclTxId) && Boolean(sclEntry?.txId) && runByTx?.sclTxId === sclEntry?.txId;
   const runHashAligned =
     Boolean(runByTx?.criticalHash) &&
@@ -315,6 +343,110 @@ governanceRouter.get("/ledger/:txId", requireScope("ledger.view"), async (req, r
         code: "RECEIPT_CANON_INCONSISTENT",
         message: "receiptCanon",
         reasonCodes: invariant.reasons,
+      },
+      txId,
+      runId: runByTx?.id ?? sclEntry?.runId ?? null,
+      invariant,
+      reconciliation: {
+        hasRun,
+        hasScl,
+        hasPoU,
+        runSclAligned,
+        runHashAligned,
+        matchedPoUByTxId: Boolean(pou.matchedByTxId),
+      },
+    });
+  }
+
+  const requestObj = asObject(runByTx?.request);
+  const metadata = asObject(requestObj?.metadata);
+  const requiresApprovalByMeta =
+    asBoolean(metadata?.requiresApproval) === true ||
+    asBoolean(metadata?.requires_confirmation) === true ||
+    asBoolean(metadata?.approvalRequired) === true;
+  const riskTier = asString(metadata?.riskTier)?.toLowerCase();
+  const requiresApprovalByTier = riskTier === "high" || riskTier === "critical";
+  const approvalRequired = Boolean(requiresApprovalByMeta || requiresApprovalByTier);
+
+  const approvalEvents = runByTx
+    ? await prisma.runEvent.findMany({
+        where: {
+          tenantId: authContext.tenantId,
+          runId: runByTx.id,
+          type: "run.approved",
+        },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+      })
+    : [];
+  const latestApproval = approvalEvents[0] ?? null;
+  const latestPayload = asObject(latestApproval?.payload);
+  const approvalStatus =
+    (runByTx?.approvalStatus as "not_required" | "pending" | "approved" | "rejected" | null) ??
+    (approvalRequired ? "pending" : "not_required");
+  const approval = {
+    required: approvalRequired,
+    status: approvalStatus,
+    approvalId: latestApproval?.id ?? null,
+    approvedBy: (runByTx?.approvedBy as string | null) ?? asString(latestPayload?.approvedBy),
+    approvedAt:
+      (runByTx?.approvedAt instanceof Date ? runByTx.approvedAt.toISOString() : null) ??
+      asString(latestPayload?.approvedAt),
+  };
+
+  const delegationMeta = asObject(metadata?.delegation);
+  const validUntil = asString(delegationMeta?.validUntil);
+  const delegationValidUntil = validUntil ? new Date(validUntil) : null;
+  const isDelegationExpired =
+    delegationValidUntil instanceof Date &&
+    !Number.isNaN(delegationValidUntil.getTime()) &&
+    delegationValidUntil.getTime() < Date.now();
+  const delegationStatus: "active" | "expired" | "not_delegated" = delegationMeta
+    ? isDelegationExpired
+      ? "expired"
+      : "active"
+    : "not_delegated";
+  const delegation = {
+    status: delegationStatus,
+    delegationId: asString(delegationMeta?.id),
+    scope: Array.isArray(delegationMeta?.scope)
+      ? (delegationMeta?.scope.filter((item) => typeof item === "string") as string[])
+      : null,
+    trustMin: asNumber(delegationMeta?.trustMin),
+    validUntil,
+  };
+
+  const canonValidation = runByTx
+    ? validateReceiptCanonCriticalChain({
+        txId,
+        runId: runByTx.id,
+        workspaceId: runByTx.workspaceId,
+        tenantId: authContext.tenantId,
+        actorId: authContext.userId ?? null,
+        actorType: authContext.userId ? "user" : "system",
+        bundleHash,
+        invariant,
+        pou,
+        trustSnapshot,
+        approval,
+        delegation,
+        reconciliation: {
+          hasRun,
+          hasScl,
+          hasPoU,
+          runSclAligned,
+          runHashAligned,
+          matchedPoUByTxId: Boolean(pou.matchedByTxId),
+        },
+      })
+    : { ok: true, reasonCodes: [] };
+  if (!canonValidation.ok) {
+    return res.status(409).json({
+      ok: false,
+      error: {
+        code: "RECEIPT_CANON_INCONSISTENT",
+        message: "receiptCanon",
+        reasonCodes: canonValidation.reasonCodes,
       },
       txId,
       runId: runByTx?.id ?? sclEntry?.runId ?? null,
@@ -383,6 +515,8 @@ governanceRouter.get("/ledger/:txId", requireScope("ledger.view"), async (req, r
           invariant,
           pou,
           trustSnapshot,
+          approval,
+          delegation,
           reconciliation: {
             hasRun,
             hasScl,
