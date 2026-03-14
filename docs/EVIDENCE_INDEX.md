@@ -24,7 +24,7 @@
 | Guia externo de consumo + verifier | `docs/ops/receipt-canon-external-verifier.md` | Passos 200/erro/limites e fluxo de validação externa do receipt canon. |
 | Verifier CLI de vínculo run/bundle/tx | `scripts/verifyReceiptCanon.ts` | Verificação automatizada de consistência canônica a partir da resposta `/api/ledger/:txId`. |
 | Gate CI da cadeia crítica P1 | `scripts/checkP1CriticalChain.ts` | Bloqueia regressão de approval/schema/receipt em fluxos críticos e exige evidência de fail-closed. |
-| Gate CI de recorrência da reconciliação P1 | `scripts/checkP1ReconciliationRecurring.ts` | Exige ciclos semanais recentes com `auditGap=0` e `duplicateSideEffects=0` de forma contínua. |
+| Gate CI de recorrência da reconciliação P1 | `scripts/checkP1ReconciliationRecurring.ts` | Exige, por padrão, **3 ciclos semanais recentes** com `auditGap=0` e `duplicateSideEffects=0` de forma contínua. |
 
 ## Sprint 4 (F5.5) — Outcome/experimentos (S4-03 a S4-06)
 
@@ -56,6 +56,7 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | Smoke de ruleset/branch protection em `main` | `ops/evidence/latest/branch-protection-smoke-2026-03-04.md` | Confirmação operacional de que o fluxo de PR em `main` exige checks obrigatórios antes de merge. |
 | APE Weekly Cycle #1 (shadow/pilot) com GO hard metrics | `ops/evidence/latest/ape-weekly-cycle-run7-2026-03-04.md` | Run #7 em `main` com `decision=GO`, `hardMetricsGo=true`, `auditGap=0`, `duplicateSideEffects=0`, `breakGlass=0` e artefatos semanais completos. |
 | APE Weekly Cycle #2 (shadow/pilot) com GO hard metrics | `ops/evidence/latest/ape-weekly-cycle-run8-2026-03-04.md` | Segundo ciclo consecutivo com `decision=GO`, `hardMetricsGo=true`, `hardReasons=[]`, `auditGap=0`, `duplicateSideEffects=0`, `breakGlass=0` (estabilidade consecutiva atingida). |
+| APE Weekly Cycle #3 (governança recorrente) | `ops/evidence/latest/ape-weekly-cycle-run9-2026-03-09.md` | Terceiro ciclo dentro da janela de recorrência com `auditGap=0` e `duplicateSideEffects=0`, sustentando fechamento operacional de P1. |
 
 ## Sprint P1 (Imobiliaria Digital) — Interop Protocol Layer (2026-03-09)
 
@@ -144,6 +145,19 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | Proposal assistant com cálculo guiado | `apps/web/src/components/agents/ChatAgentLauncher.tsx` + `apps/api/src/routes/billing.ts` | Coleta de contexto comercial e cálculo de proposta com regra de billing compatível ao backend. |
 | Central de Ajuda (query/reindex/sessões) | `apps/api/src/routes/help.ts` + `apps/api/src/services/eiahHelpKnowledge.ts` + `packages/db/prisma/schema.prisma` | Base interna consultável, reindexação e persistência analítica de atendimentos (`helpdesk_sessions`). |
 | IMOB chat ampliado (entrevista + telemetria + export) | `apps/api/src/routes/imob.ts` + `apps/web/src/pages/app/imob/chat.tsx` | Jornada assistida por thread com estado de entrevista, telemetria operacional e export auditável. |
+
+### Implemented Extra (pronto para PR/changelog)
+
+- **UX compacta global** (`apps/web/src/App.tsx`, `apps/web/src/styles.css`): redução de escala visual sem quebrar responsividade.
+- **EIAH Access unificado** (`apps/web/src/pages/access.tsx`, `apps/api/src/routes/auth.ts`): modos `Entrar/Cadastrar/Wallet` no mesmo fluxo.
+- **Chat Launcher operacional** (`apps/web/src/components/agents/ChatAgentLauncher.tsx`): histórico por agente, `Nova conversa`, texto dinâmico e estado `Pensando...`.
+- **Privacidade no UI** (`apps/web/src/pages/app/agents/index.tsx`, `apps/web/src/components/agents/ChatAgentLauncher.tsx`): remoção de metadados internos visíveis na interface.
+- **Fallback determinístico para unknown** (`apps/web/src/hooks/useConversation.ts`, `apps/web/src/components/agents/ChatAgentLauncher.tsx`): proteção contra roteamento indevido fora de escopo.
+- **Proposal assistant** (`apps/web/src/components/agents/ChatAgentLauncher.tsx`, `apps/api/src/routes/billing.ts`): coleta guiada comercial e cálculo coerente com billing real.
+- **Playbook expandido por página** (`apps/web/src/pages/app/agents/index.tsx`, `apps/web/src/assets/playbook/`): guia operacional em linguagem humana.
+- **Central de Ajuda EIAH** (`apps/api/src/routes/help.ts`, `apps/api/src/services/eiahHelpKnowledge.ts`, `packages/db/prisma/schema.prisma`): query/reindex + sessões analíticas.
+- **IMOB ampliado** (`apps/api/src/routes/imob.ts`, `apps/web/src/pages/app/imob/chat.tsx`, `apps/web/src/features/imob/`): entrevista de contrato, telemetria e export auditável.
+- **P2 global HIGH coverage** (`scripts/checkP2HighGlobalCoverage.ts`, `ops/evidence/latest/p2-high-global-coverage.json`, `packages/core/src/actions/__tests__/highGlobalCoverage.e2e.test.ts`): transição de “inventariado” para “covered” com gate bloqueante.
 
 ## Entry points
 

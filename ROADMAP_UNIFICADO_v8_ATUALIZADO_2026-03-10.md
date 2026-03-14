@@ -17,9 +17,9 @@ O core da plataforma está operacional e auditável (F0-F3 concluídas), com F4/
 | 3 — Governança cognitiva | ✅ Concluída | Evolução incremental |
 | 4 — Execução crítica imutável | ⚙️ Parcial avançada | Hardening operacional e validação externa contínua |
 | 5.0 — Marketplace/governança avançada | ✅ Concluída (core) | Fechar UX/auditoria avançada de delegação |
-| 5.1 — PoU + Trust Gate | ⚙️ Parcial avançada | Consolidar Receipt Canon v1 completo em todos os fluxos |
-| 5.2 — Policies autoaplicáveis + human approvals | ⚙️ Parcial | Fechar modelo de aprovação e consistência de schema/contratos |
-| 5.3 — Auditoria pública DLT | ⚙️ Parcial | Cobertura E2E HIGH completa + reconciliação contínua |
+| 5.1 — PoU + Trust Gate | ✅ Concluída (operacional) | Receipt Canon v1 obrigatório nos fluxos críticos com gate ativo em CI |
+| 5.2 — Policies autoaplicáveis + human approvals | ✅ Concluída (operacional) | Aprovação humana consistente (API/schema/evidência) validada por cadeia crítica fail-closed |
+| 5.3 — Auditoria pública DLT | ⚙️ Parcial avançada | Cobertura E2E HIGH global fortalecida (core + interop); manter reconciliação contínua recorrente (`auditGap=0`) |
 | 5.4 — Interoperabilidade | ⚙️ Parcial avançada | Matriz de compatibilidade CI e freeze de contrato |
 | 5.5 — Outcome/experimentos | ⚙️ Parcial avançada | Recomendação AXO e automações de promoção |
 | 5.6 — Economy | ⚙️ Parcial avançada | Settlement completo (reduzir stubs) + reputação verificável |
@@ -47,6 +47,9 @@ O core da plataforma está operacional e auditável (F0-F3 concluídas), com F4/
 - Completar hardening de F4 (alertas, reconciliação contínua, rotina operacional).
 - Consolidar F5.1: Receipt Canon v1 obrigatório para fluxos críticos.
 - Fechar F5.2: padronizar aprovação humana no modelo e contrato (sem lacunas de schema).
+
+**Status atual**
+- ✅ Fechado por evidência/gates (`check:p1-critical-chain` + `check:p1-reconciliation-recurring`).
 
 **DoD P1**
 - Evidência recorrente de reconciliação sem gaps críticos.
@@ -224,6 +227,18 @@ Itens já implementados que não eram requisito explícito do backlog P0-P4, mas
 - Entrevista de contrato no chat IMOB e persistência de contexto.
 - Export e trilha auditável de conversa/operação.
 - Telemetria operacional de chat para acompanhamento de adoção.
+
+### 10.9) Implemented Extra (pronto para PR/changelog)
+- **UX compacta global**: redução de escala visual (tipografia, paddings e densidade) sem quebrar responsividade.
+- **EIAH Access unificado**: modos `Entrar/Cadastrar/Wallet` no mesmo bloco com fluxo de onboarding simplificado.
+- **Chat Agent Launcher**: descrição dinâmica por agente, histórico preservado, ação `Nova conversa` e estado `Pensando...`.
+- **Privacidade no UI**: remoção de metadados internos sensíveis da interface, mantendo rastreabilidade no backend.
+- **Fallback determinístico (`unknown`)**: resposta contextual sem acionar provider fora de escopo.
+- **Proposal assistant**: coleta guiada comercial e recomendação estruturada com fórmula de billing alinhada ao backend.
+- **Playbook expandido**: guia por página/comando com linguagem humana e contexto acionável.
+- **Central de Ajuda EIAH**: query/reindex da base interna e persistência analítica de sessões (`helpdesk_sessions`).
+- **IMOB ampliado**: entrevista de contrato no chat, telemetria operacional e export auditável.
+- **Gate P2 global HIGH**: cobertura E2E para ações HIGH do core (`billing/finance/notifications`) com gate bloqueante.
 
 **Observação de governança**
 - Itens “implementado extra” não substituem DoD de P0-P4.

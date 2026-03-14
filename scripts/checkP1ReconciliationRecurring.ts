@@ -3,7 +3,7 @@ import path from "node:path";
 
 const CHECK = "check:p1-reconciliation-recurring";
 const EVIDENCE_DIR = path.resolve("ops/evidence/latest");
-const MIN_CYCLES = Number(process.env.P1_RECONCILE_MIN_CYCLES ?? 2);
+const MIN_CYCLES = Number(process.env.P1_RECONCILE_MIN_CYCLES ?? 3);
 const MAX_AGE_DAYS = Number(process.env.P1_RECONCILE_MAX_AGE_DAYS ?? 14);
 
 function fail(message: string, details?: Record<string, unknown>): never {
