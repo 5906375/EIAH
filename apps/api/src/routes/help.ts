@@ -50,6 +50,20 @@ helpRouter.get("/help/eiah/query", async (req, res) => {
     topK: parsed.data.topK,
   });
 
+  const allowed = new Set(["evidenciado", "parcial", "proposta", "canonica"]);
+  const hasInvalidHitStatus = result.hits.some(
+    (hit) => !hit.status || !allowed.has(String(hit.status))
+  );
+  if (hasInvalidHitStatus || !result.responseStatus || !allowed.has(result.responseStatus)) {
+    return res.status(500).json({
+      ok: false,
+      error: {
+        code: "HELP_RESPONSE_GUARDRAIL_FAILED",
+        message: "Help response status guardrail failed",
+      },
+    });
+  }
+
   return res.json({
     ok: true,
     data: result,

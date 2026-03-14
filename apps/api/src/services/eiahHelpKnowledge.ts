@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import { createHash } from "node:crypto";
 import type { PrismaClient } from "@repo/db";
 import type { MemoryRecord, MemoryScope } from "@eiah/core";
 import { getMemoryService } from "./memory";
@@ -7,6 +8,8 @@ import { getMemoryService } from "./memory";
 const HELP_AGENT_ID = "EIAH_HELP_CENTER";
 const HELP_SOURCE_TAG = "eiah_help_doc";
 const HELP_PLAYBOOK_TAG = "eiah_help_playbook";
+const HELP_CANONICAL_DOC_TAG = "eiah_help_canonical_doc";
+const HELP_INDEX_VERSION = "v2";
 const MAX_FILES = 500;
 const MAX_FILE_BYTES = 512 * 1024;
 const DEFAULT_TOP_K = 6;
@@ -17,10 +20,15 @@ const PRIMARY_HELP_SOURCE_FILES = [
 
 type HelpSearchHit = {
   key: string;
+  docId?: string;
   title: string;
   sourcePath: string;
   score: number;
   snippet: string;
+  tags?: string[];
+  track?: "P0" | "P1" | "P2" | "P3" | "P4";
+  status?: "evidenciado" | "parcial" | "proposta" | "canonica";
+  sourceFiles?: string[];
 };
 
 type HelpQueryResult = {
@@ -28,12 +36,27 @@ type HelpQueryResult = {
   indexedDocs: number;
   indexedChunks: number;
   hits: HelpSearchHit[];
+  sourcesUsed?: string[];
+  docIdsUsed?: string[];
+  responseStatus?: "evidenciado" | "parcial" | "proposta" | "canonica";
 };
 
 type HelpSeedResult = {
   seeded: boolean;
   docs: number;
   chunks: number;
+};
+
+type HelpDoc = {
+  id: string;
+  scope: "eiah";
+  question: string;
+  answer: string;
+  tags: string[];
+  track?: "P0" | "P1" | "P2" | "P3" | "P4";
+  status?: "evidenciado" | "parcial" | "proposta" | "canonica";
+  sourceFiles: string[];
+  updatedAt: string;
 };
 
 function clamp(value: number, min: number, max: number) {
@@ -79,6 +102,30 @@ function chunkContent(content: string, size = 1800, overlap = 240) {
   return chunks;
 }
 
+function hashContent(input: string) {
+  return createHash("sha256").update(input).digest("hex");
+}
+
+function resolveGuardrailStatus(params: {
+  metadata: Record<string, unknown>;
+  sourceKind: string;
+}): "evidenciado" | "parcial" | "proposta" | "canonica" {
+  const status = params.metadata.status;
+  if (status === "evidenciado" || status === "parcial" || status === "proposta" || status === "canonica") {
+    return status;
+  }
+  if (params.sourceKind === HELP_CANONICAL_DOC_TAG) return "canonica";
+  return "evidenciado";
+}
+
+function resolveTrack(metadata: Record<string, unknown>): "P0" | "P1" | "P2" | "P3" | "P4" | undefined {
+  const track = metadata.track;
+  if (track === "P0" || track === "P1" || track === "P2" || track === "P3" || track === "P4") {
+    return track;
+  }
+  return undefined;
+}
+
 function stripQuotes(value: string) {
   const trimmed = value.trim();
   if ((trimmed.startsWith("\"") && trimmed.endsWith("\"")) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
@@ -107,6 +154,18 @@ function parseStringField(block: string, key: string) {
   return stripQuotes(match[1]);
 }
 
+function parseQuotedStringList(block: string) {
+  const regex = /"([^"\\]*(?:\\.[^"\\]*)*)"/g;
+  const items: string[] = [];
+  let match: RegExpExecArray | null = regex.exec(block);
+  while (match) {
+    const value = match[1].replace(/\\"/g, "\"").trim();
+    if (value) items.push(value);
+    match = regex.exec(block);
+  }
+  return items;
+}
+
 function extractEiahPlaybookFromAgentsPage(content: string) {
   const blockMatch = content.match(/eiah\s*:\s*\{([\s\S]*?)\n\s*\},\n\s*fallback\s*:/m);
   if (!blockMatch) return null;
@@ -130,7 +189,125 @@ function extractEiahPlaybookFromAgentsPage(content: string) {
   return {
     title,
     content: composed.trim(),
+    block,
+    routes,
+    directives,
+    checklist,
+    intro,
   };
+}
+
+function extractGuideTabDocsFromEiahBlock(block: string, sourcePath: string, sourceMtime: string): HelpDoc[] {
+  const docs: HelpDoc[] = [];
+  const tabsMatch = block.match(/guideTabs\s*:\s*\[([\s\S]*?)\]\s*,\s*}/m);
+  if (!tabsMatch) return docs;
+  const tabsRaw = tabsMatch[1];
+  const tabRegex =
+    /\{\s*id:\s*"([^"]+)"[\s\S]*?label:\s*"([^"]+)"[\s\S]*?purpose:\s*"([^"]+)"[\s\S]*?howItWorks:\s*"([^"]+)"[\s\S]*?steps:\s*\[([\s\S]*?)\]\s*,?\s*\}/g;
+
+  let match: RegExpExecArray | null = tabRegex.exec(tabsRaw);
+  while (match) {
+    const tabId = match[1].trim();
+    const label = match[2].trim();
+    const purpose = match[3].trim();
+    const howItWorks = match[4].trim();
+    const steps = parseQuotedStringList(match[5]).slice(0, 8);
+    const answer = [
+      `${label}: ${purpose}`,
+      `Como funciona: ${howItWorks}`,
+      steps.length > 0 ? `Passo a passo:\n${steps.map((line) => `- ${line}`).join("\n")}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+
+    docs.push({
+      id: `help.eiah.page.${tabId}`,
+      scope: "eiah",
+      question: `Como usar a pagina ${label} no EIAH?`,
+      answer,
+      tags: ["help", "eiah", "pagina", tabId.toLowerCase()],
+      track: "P4",
+      status: "canonica",
+      sourceFiles: [sourcePath],
+      updatedAt: sourceMtime,
+    });
+    match = tabRegex.exec(tabsRaw);
+  }
+  return docs;
+}
+
+function buildCanonicalEiahDocs(params: {
+  sourcePath: string;
+  sourceMtime: string;
+  playbook: ReturnType<typeof extractEiahPlaybookFromAgentsPage>;
+}) {
+  const docs: HelpDoc[] = [];
+  const { sourcePath, sourceMtime, playbook } = params;
+  if (!playbook) return docs;
+
+  docs.push({
+    id: "help.eiah.agent-docs.role",
+    scope: "eiah",
+    question: "O que significa o conteúdo do Central de Ajuda virar um agente da documentação do EIAH?",
+    answer:
+      "Significa que ele atua como um agente de acesso ao conhecimento canônico do EIAH, recuperando e explicando a base indexada via /help/eiah/query. Ele não substitui a governança normativa nem a fonte primária de verdade; atua como camada consultiva e explicativa subordinada ao roadmap, ao índice de evidências e aos contratos/evidências indexadas.",
+    tags: ["help", "documentation", "eiah", "governance"],
+    track: "P0",
+    status: "canonica",
+    sourceFiles: [sourcePath, "ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-03-10.md", "docs/EVIDENCE_INDEX.md"],
+    updatedAt: sourceMtime,
+  });
+
+  docs.push({
+    id: "help.eiah.imob.contract-guided-flow",
+    scope: "eiah",
+    question: "Como o IMOB funciona e como iniciar geracao de contrato no EIAH?",
+    answer: [
+      "IMOB funciona como vertical operacional sobre o core agentic com operacao guiada, governanca/prova e economia integrada.",
+      "Operacao guiada: pipeline de lead, proposta, contrato e acompanhamento; chat assistido com historico auditavel.",
+      "Governanca e prova: trilha verificavel run -> receipt -> ledger, gates de risco HIGH e evidencia exportavel.",
+      "Economia integrada: billing, invoices e settlement com webhook idempotente, reputacao e disputa auditavel.",
+      "White label: personalizacao por tenant/workspace (plano, limites, identidade comercial e onboarding).",
+      "Para iniciar contrato no IMOB: Qual tipo de contrato voce deseja?\n1) Locacao\n2) Compra e venda\n3) Administracao\n4) Temporada\nResponda com o numero ou nome da opcao.",
+    ].join("\n\n"),
+    tags: ["help", "imob", "contrato", "white-label", "proposal"],
+    track: "P4",
+    status: "canonica",
+    sourceFiles: [sourcePath],
+    updatedAt: sourceMtime,
+  });
+
+  docs.push({
+    id: "help.eiah.proposal.mode",
+    scope: "eiah",
+    question: "Como funciona o modo proposal no Central de Ajuda EIAH?",
+    answer: [
+      "No modo proposal o agente coleta perfil, usuarios, runs/mes, vertical, prazo e resultado esperado.",
+      "Depois entrega recomendacao de plano, estimativa de custo, riscos/limites e proximos passos.",
+      "A estimativa segue a regra oficial de billing para evitar divergencia com backend.",
+    ].join("\n"),
+    tags: ["proposal", "billing", "pricing", "help"],
+    track: "P3",
+    status: "canonica",
+    sourceFiles: [sourcePath],
+    updatedAt: sourceMtime,
+  });
+
+  docs.push({
+    id: "help.eiah.governance.summary",
+    scope: "eiah",
+    question: "Como funciona governanca e prova no EIAH?",
+    answer:
+      "As execucoes seguem policy/trust e geram trilha verificavel (run -> receipt -> ledger), com gates para acoes HIGH e evidencias exportaveis para auditoria.",
+    tags: ["governance", "receipt", "ledger", "high-risk"],
+    track: "P1",
+    status: "canonica",
+    sourceFiles: [sourcePath, "ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-03-10.md", "docs/EVIDENCE_INDEX.md"],
+    updatedAt: sourceMtime,
+  });
+
+  docs.push(...extractGuideTabDocsFromEiahBlock(playbook.block, sourcePath, sourceMtime));
+  return docs;
 }
 
 async function loadPrimaryHelpRecords(baseDir: string) {
@@ -144,13 +321,17 @@ async function loadPrimaryHelpRecords(baseDir: string) {
     const raw = await fs.readFile(absolutePath, "utf8").catch(() => "");
     if (!raw.trim()) continue;
 
+    const sourceMtime = stat.mtime.toISOString();
+    const mtimeToken = String(Math.trunc(stat.mtimeMs));
+
     if (source.endsWith("apps/web/src/pages/app/agents/index.tsx")) {
       const playbook = extractEiahPlaybookFromAgentsPage(raw);
       if (!playbook || !playbook.content) continue;
       const chunks = chunkContent(playbook.content, 1200, 120);
       chunks.forEach((chunk, index) => {
+        const contentHash = hashContent(`${source}|${chunk}`);
         records.push({
-          key: `help:${source}:playbook:chunk:${index + 1}`,
+          key: `help:${source}:playbook:${HELP_INDEX_VERSION}:v${mtimeToken}:${contentHash.slice(0, 16)}:chunk:${index + 1}`,
           content: chunk,
           metadata: {
             sourceTag: HELP_SOURCE_TAG,
@@ -159,7 +340,46 @@ async function loadPrimaryHelpRecords(baseDir: string) {
             title: playbook.title,
             chunkIndex: index + 1,
             chunkTotal: chunks.length,
-            sourceMtime: stat.mtime.toISOString(),
+            sourceMtime,
+            indexVersion: HELP_INDEX_VERSION,
+            contentHash,
+            sourceFiles: [source],
+          },
+          createdAt: now,
+        });
+      });
+
+      const canonicalDocs = buildCanonicalEiahDocs({
+        sourcePath: source,
+        sourceMtime,
+        playbook,
+      });
+      canonicalDocs.forEach((doc) => {
+        const docContent = [
+          `Pergunta: ${doc.question}`,
+          `Resposta: ${doc.answer}`,
+          `Tags: ${doc.tags.join(", ")}`,
+          `Track: ${doc.track ?? "P0"}`,
+          `Status: ${doc.status ?? "canonica"}`,
+        ].join("\n");
+        const contentHash = hashContent(`${doc.id}|${docContent}|${doc.updatedAt}`);
+        records.push({
+          key: `help:${source}:canonical:${doc.id}:${HELP_INDEX_VERSION}:v${mtimeToken}:${contentHash.slice(0, 16)}`,
+          content: docContent,
+          metadata: {
+            sourceTag: HELP_SOURCE_TAG,
+            sourceKind: HELP_CANONICAL_DOC_TAG,
+            sourcePath: source,
+            title: doc.question,
+            docId: doc.id,
+            question: doc.question,
+            tags: doc.tags,
+            track: doc.track ?? "P0",
+            status: doc.status ?? "canonica",
+            sourceFiles: doc.sourceFiles,
+            sourceMtime: doc.updatedAt,
+            indexVersion: HELP_INDEX_VERSION,
+            contentHash,
           },
           createdAt: now,
         });
@@ -171,7 +391,7 @@ async function loadPrimaryHelpRecords(baseDir: string) {
     const chunks = chunkContent(raw);
     chunks.forEach((chunk, index) => {
       records.push({
-        key: `help:${source}:chunk:${index + 1}`,
+        key: `help:${source}:v${mtimeToken}:chunk:${index + 1}`,
         content: chunk,
         metadata: {
           sourceTag: HELP_SOURCE_TAG,
@@ -179,7 +399,7 @@ async function loadPrimaryHelpRecords(baseDir: string) {
           title: fallbackTitle,
           chunkIndex: index + 1,
           chunkTotal: chunks.length,
-          sourceMtime: stat.mtime.toISOString(),
+          sourceMtime,
         },
         createdAt: now,
       });
@@ -259,11 +479,13 @@ function scoreRecord(record: MemoryRecord, query: string) {
   const normalizedContent = normalizeText(content);
   const normalizedTitle = normalizeText(title);
   const normalizedPath = normalizeText(sourcePath);
+  const sourceKind = String(metadata.sourceKind ?? "");
 
   let score = 0;
   if (normalizedContent.includes(normalizedQuery)) score += 5;
   if (normalizedTitle.includes(normalizedQuery)) score += 8;
   if (normalizedPath.includes(normalizedQuery)) score += 6;
+  if (sourceKind === HELP_CANONICAL_DOC_TAG) score += 4;
 
   for (const token of tokens) {
     if (normalizedTitle.includes(token)) score += 3;
@@ -298,11 +520,14 @@ async function loadHelpRecords(baseDir: string) {
     const content = raw.trim();
     if (!content) continue;
     const sourcePath = path.relative(baseDir, absolutePath);
+    const sourceMtime = stat.mtime.toISOString();
+    const mtimeToken = String(Math.trunc(stat.mtimeMs));
     const title = buildTitleFromContent(sourcePath, content);
     const chunks = chunkContent(content);
     chunks.forEach((chunk, index) => {
+      const contentHash = hashContent(`${sourcePath}|${chunk}`);
       records.push({
-        key: `help:${sourcePath}:chunk:${index + 1}`,
+        key: `help:${sourcePath}:${HELP_INDEX_VERSION}:v${mtimeToken}:${contentHash.slice(0, 16)}:chunk:${index + 1}`,
         content: chunk,
         metadata: {
           sourceTag: HELP_SOURCE_TAG,
@@ -310,7 +535,9 @@ async function loadHelpRecords(baseDir: string) {
           title,
           chunkIndex: index + 1,
           chunkTotal: chunks.length,
-          sourceMtime: stat.mtime.toISOString(),
+          sourceMtime,
+          indexVersion: HELP_INDEX_VERSION,
+          contentHash,
         },
         createdAt: now,
       });
@@ -433,12 +660,22 @@ export async function queryEiahHelpKnowledge(params: {
     .map((record) => {
       const metadata = (record.metadata ?? {}) as Record<string, unknown>;
       const score = scoreRecord(record, query);
+      const sourceFiles = Array.isArray(metadata.sourceFiles)
+        ? metadata.sourceFiles.map((entry) => String(entry))
+        : [String(metadata.sourcePath ?? "desconhecido")];
+      const sourceKind = String(metadata.sourceKind ?? "");
+      const status = resolveGuardrailStatus({ metadata, sourceKind });
       return {
         key: record.key,
+        docId: typeof metadata.docId === "string" ? metadata.docId : undefined,
         title: String(metadata.title ?? "Documento EIAH"),
         sourcePath: String(metadata.sourcePath ?? "desconhecido"),
         score,
         snippet: buildSnippet(record.content, query),
+        tags: Array.isArray(metadata.tags) ? metadata.tags.map((entry) => String(entry)) : undefined,
+        track: resolveTrack(metadata),
+        status,
+        sourceFiles,
       };
     })
     .filter((entry) => entry.score > 0)
@@ -446,10 +683,26 @@ export async function queryEiahHelpKnowledge(params: {
 
   const topK = clamp(params.topK ?? DEFAULT_TOP_K, 1, 20);
 
+  const topHits = scored.slice(0, topK);
+  const sourcesUsed = Array.from(
+    new Set(
+      topHits.flatMap((hit) => (hit.sourceFiles && hit.sourceFiles.length > 0 ? hit.sourceFiles : [hit.sourcePath]))
+    )
+  );
+  const docIdsUsed = Array.from(new Set(topHits.map((hit) => hit.docId).filter(Boolean) as string[]));
+  const responseStatus = (topHits[0]?.status ?? "evidenciado") as
+    | "evidenciado"
+    | "parcial"
+    | "proposta"
+    | "canonica";
+
   return {
     seededNow: seedResult.seeded,
     indexedDocs: new Set(docsForQuery.map((item) => String(((item.metadata ?? {}) as Record<string, unknown>).sourcePath))).size,
     indexedChunks: docsForQuery.length,
-    hits: scored.slice(0, topK),
+    hits: topHits,
+    sourcesUsed,
+    docIdsUsed,
+    responseStatus,
   } satisfies HelpQueryResult;
 }

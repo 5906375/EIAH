@@ -1371,10 +1371,15 @@ export type BillingPricingQuote = {
 
 export type EiahHelpQueryHit = {
   key: string;
+  docId?: string;
   title: string;
   sourcePath: string;
   score: number;
   snippet: string;
+  tags?: string[];
+  track?: "P0" | "P1" | "P2" | "P3" | "P4";
+  status?: "evidenciado" | "parcial" | "proposta" | "canonica";
+  sourceFiles?: string[];
 };
 
 export type EiahHelpQueryResult = {
@@ -1382,6 +1387,9 @@ export type EiahHelpQueryResult = {
   indexedDocs: number;
   indexedChunks: number;
   hits: EiahHelpQueryHit[];
+  sourcesUsed?: string[];
+  docIdsUsed?: string[];
+  responseStatus?: "evidenciado" | "parcial" | "proposta" | "canonica";
 };
 
 export type TenantBillingWorkspaceItem = {

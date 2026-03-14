@@ -111,6 +111,32 @@ jobs:
       - name: Check Evidence Index
         run: pnpm check:evidence-index
 
+  help_playbook_drift:
+    name: HelpPlaybookDrift
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Check Help Playbook anti-drift
+        run: pnpm check:help-playbook-drift
+
   receipt_canon_compat:
     name: ReceiptCanonCompat
     runs-on: ubuntu-latest
@@ -319,6 +345,34 @@ jobs:
       - name: Check P3 recurring stability
         run: pnpm check:p3-stability-recurring
 
+  p3_settlement_support_by_env:
+    name: P3SettlementSupportByEnv
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Check P3 settlement support matrix by env
+        env:
+          SETTLEMENT_ENV: staging
+        run: pnpm check:p3-settlement-support-by-env
+
   settlement_contract_drift:
     name: SettlementContractDrift
     runs-on: ubuntu-latest
@@ -370,3 +424,29 @@ jobs:
 
       - name: Check W4 Non Regression Gates
         run: pnpm check:w4-non-regression
+
+  p4_trackp_rollout:
+    name: P4TrackPRollout
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Check P4 Track P rollout readiness
+        run: pnpm check:p4-trackp-rollout
