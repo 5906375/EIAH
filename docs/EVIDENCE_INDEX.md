@@ -91,7 +91,6 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | Gate CI de drift contrato/implementação | `scripts/checkSettlementContractDrift.ts` | Falha CI em drift entre contrato publicado e runtime (`providers/endpoints`). |
 | Evidência de execução do gate de drift | `ops/evidence/latest/settlement-contract-check-2026-03-09.md` | Resultado do check `pnpm check:settlement-contract-drift` com `ok=true`. |
 | Gate CI de hardening econômico P3 | `scripts/checkP3EconomyHardening.ts` | Bloqueia regressão de invoice/settlement/webhook/disputa/reputação e vínculo `receipt -> ledger -> provider`. |
-| Gate CI de estabilidade recorrente P3 | `scripts/checkP3StabilityRecurring.ts` | Exige recorrência recente com `auditGap=0` e `duplicateSideEffects=0` em ciclos APE. |
 
 ## Sprint P1 (Imobiliaria Digital) — Reputação + Disputas (2026-03-09)
 
