@@ -69,6 +69,8 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | Gate de CI Agent Protocol compat | `scripts/checkAgentProtocolVersioning.ts` | Check automatizado de compatibilidade/baseline no pipeline. |
 | Smoke de rotas interop | `ops/evidence/latest/interop-routes-smoke-2026-03-09.json` | Prova de implementação das rotas `POST /api/agents/discovery|negotiate|execute`. |
 | Evidência e2e da cadeia interop | `ops/evidence/latest/interop-e2e-agent-call-2026-03-09.json` | Prova da trilha `discovery -> negotiate -> execute -> verify receipt`. |
+| Gate complementar global de cobertura HIGH | `scripts/checkP2HighGlobalCoverage.ts` | Inventário completo das ações HIGH do core (`billing/finance/notifications`) e status explícito de cobertura E2E. |
+| Evidência do inventário HIGH global | `ops/evidence/latest/p2-high-global-coverage.json` | Matriz inicial de cobertura HIGH global (base para fechar P2 além do recorte IMOB). |
 
 ### Trilha C (P2) — Foco A2A explícito
 
@@ -82,7 +84,7 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | --- | --- | --- |
 | Evidência de schema e rotas PaymentIntent | `ops/evidence/latest/payment-intent-schema-2026-03-09.json` | Prova da camada `PaymentIntent` com campos mínimos e índices operacionais. |
 | Evidência e2e de PoU-gated payment release | `ops/evidence/latest/pou-gated-payment-e2e-2026-03-09.json` | Prova da bifurcação `blocked` sem PoU/SCL e `released` com PoU/SCL válido. |
-| Evidência e2e de settlement providers | `ops/evidence/latest/settlement-provider-e2e-2026-03-09.json` | Prova de adapters (`stripe` full, `crypto/bank` stub) + settlement com vínculo em ledger. |
+| Evidência e2e de settlement providers | `ops/evidence/latest/settlement-provider-e2e-2026-03-09.json` | Prova de adapters (`stripe` full, `crypto/bank` simulated) + settlement com vínculo em ledger. |
 | Evidência de replay/idempotência webhook billing | `ops/evidence/latest/billing-webhook-replay-2026-03-09.json` | Prova de replay rejeitado com `duplicateSideEffects=0`. |
 | Contrato público de settlement provider | `ops/contracts/settlement-provider-contract.v1.json` | Contrato versionado de endpoints/providers/status e política de assinatura/idempotência. |
 | Runbook operacional de settlement provider | `docs/ops/settlement-provider-runbook.md` | Procedimento operacional para PaymentIntent, release gate, settlement e incidente de webhook. |
