@@ -19,7 +19,7 @@ Operar `PaymentIntent` com liberação PoU-gated, settlement por provider e webh
 2. Rodar release gate:
   - sem PoU/SCL consistente -> `status=blocked` e `409 POU_REQUIRED_FOR_PAYMENT`;
   - com PoU/SCL -> `status=released`.
-3. Liquidar via provider (`stripe` full; `crypto`/`bank` stub funcional):
+3. Liquidar via provider (modo suportado por ambiente: `stripe=full`; `crypto/bank=simulated` por padrão):
   - sucesso -> `status=settled` + `BillingLedger.credit`.
 4. Confirmar via webhook assinado:
   - evento novo -> processa settlement;

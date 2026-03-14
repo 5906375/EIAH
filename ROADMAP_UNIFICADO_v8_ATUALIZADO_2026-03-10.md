@@ -78,6 +78,7 @@ O core da plataforma está operacional e auditável (F0-F3 concluídas), com F4/
 - Consolidar webhook billing (assinatura, replay, idempotência) com evidência periódica.
 - Expandir reputação/disputas para trilha verificável de produção.
 - Garantir vínculo econômico auditável `receipt -> ledger -> provider settlement` em fluxos críticos.
+- Sustentar recorrência contínua via gate dedicado (`check:p3-stability-recurring`) com janela mínima de ciclos APE.
 
 **DoD P3**
 - Settlement multi-provider com modos explicitamente suportados por ambiente.

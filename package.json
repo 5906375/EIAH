@@ -26,6 +26,7 @@
     "check:p1-critical-chain": "node --experimental-strip-types scripts/checkP1CriticalChain.ts",
     "check:p1-reconciliation-recurring": "node --experimental-strip-types scripts/checkP1ReconciliationRecurring.ts",
     "check:p3-economy-hardening": "node --experimental-strip-types scripts/checkP3EconomyHardening.ts",
+    "check:p3-stability-recurring": "node --experimental-strip-types scripts/checkP3StabilityRecurring.ts",
     "check:economy-invariants": "node --experimental-strip-types scripts/checkEconomyInvariants.ts",
     "check:secrets-vault": "node --experimental-strip-types scripts/checkSecretsVault.ts",
     "check:backup-restore": "node --experimental-strip-types scripts/checkBackupRestore.ts",

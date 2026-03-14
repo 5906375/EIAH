@@ -293,6 +293,32 @@ jobs:
       - name: Check P3 economy hardening
         run: pnpm check:p3-economy-hardening
 
+  p3_stability_recurring:
+    name: P3StabilityRecurring
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Check P3 recurring stability
+        run: pnpm check:p3-stability-recurring
+
   settlement_contract_drift:
     name: SettlementContractDrift
     runs-on: ubuntu-latest

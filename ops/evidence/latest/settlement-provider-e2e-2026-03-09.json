@@ -4,8 +4,8 @@
   "scope": "P1-203",
   "providers": [
     { "id": "stripe", "mode": "full" },
-    { "id": "crypto", "mode": "stub" },
-    { "id": "bank", "mode": "stub" }
+    { "id": "crypto", "mode": "simulated" },
+    { "id": "bank", "mode": "simulated" }
   ],
   "api": {
     "list": "GET /api/payments/providers",
