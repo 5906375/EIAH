@@ -1,0 +1,21 @@
+{
+  "name": "settlement-provider-support-matrix",
+  "version": "1.0.0",
+  "environments": {
+    "dev": {
+      "stripe": ["full", "simulated"],
+      "crypto": ["simulated"],
+      "bank": ["simulated"]
+    },
+    "staging": {
+      "stripe": ["full"],
+      "crypto": ["simulated"],
+      "bank": ["simulated"]
+    },
+    "production": {
+      "stripe": ["full"],
+      "crypto": ["simulated"],
+      "bank": ["simulated"]
+    }
+  }
+}
