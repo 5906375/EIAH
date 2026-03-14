@@ -13,8 +13,10 @@ Origem de policy em runtime:
 | `runs.execute` | `execute` | `medium` | `false` |
 | `runs.approve` | `admin` | `medium` | `false` |
 | `realestate.generate_monthly` | `execute` | `medium` | `false` |
+| `realestate.register_property` | `execute` | `high` | `true` |
+| `realestate.create_contract` | `execute` | `high` | `true` |
 | `realestate.apply_adjustment` | `execute` | `high` | `true` |
-| `action.realestate.apply_adjustment` | `execute` | `high` | `true` |
+| `realestate.release_commission` | `execute` | `high` | `true` |
 
 ## CI Gate Policy Payload
 
@@ -25,12 +27,20 @@ Origem de policy em runtime:
   "maxEvidenceAgeDays": 30,
   "highActions": [
     {
+      "action": "realestate.register_property",
+      "evidencePattern": "s1-01-high-e2e-realestate.register_property-*.json"
+    },
+    {
+      "action": "realestate.create_contract",
+      "evidencePattern": "s1-01-high-e2e-realestate.create_contract-*.json"
+    },
+    {
       "action": "realestate.apply_adjustment",
       "evidencePattern": "s1-01-high-e2e-realestate.apply_adjustment-*.json"
     },
     {
-      "action": "action.realestate.apply_adjustment",
-      "evidencePattern": "s1-01-high-e2e-action.realestate.apply_adjustment-*.json"
+      "action": "realestate.release_commission",
+      "evidencePattern": "s1-01-high-e2e-realestate.release_commission-*.json"
     }
   ]
 }
