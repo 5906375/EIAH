@@ -19,9 +19,11 @@ export type SettlementResult = {
   receipt: Record<string, unknown>;
 };
 
+export type SettlementProviderMode = "full" | "simulated";
+
 type SettlementProviderAdapter = {
   id: SettlementProviderId;
-  mode: "full" | "stub";
+  mode: SettlementProviderMode;
   settle: (input: SettlementRequest) => Promise<SettlementResult>;
 };
 
@@ -52,7 +54,7 @@ const stripeAdapter: SettlementProviderAdapter = {
 
 const cryptoAdapter: SettlementProviderAdapter = {
   id: "crypto",
-  mode: "stub",
+  mode: "simulated",
   async settle(input) {
     const settlementId = createSettlementId("crp");
     return {
@@ -61,7 +63,7 @@ const cryptoAdapter: SettlementProviderAdapter = {
       providerSettlementId: settlementId,
       status: "succeeded",
       receipt: {
-        adapterMode: "stub",
+        adapterMode: "simulated",
         network: "simulated",
         settledAt: new Date().toISOString(),
         amountCents: input.amountCents,
@@ -74,7 +76,7 @@ const cryptoAdapter: SettlementProviderAdapter = {
 
 const bankAdapter: SettlementProviderAdapter = {
   id: "bank",
-  mode: "stub",
+  mode: "simulated",
   async settle(input) {
     const settlementId = createSettlementId("bnk");
     return {
@@ -83,7 +85,7 @@ const bankAdapter: SettlementProviderAdapter = {
       providerSettlementId: settlementId,
       status: "succeeded",
       receipt: {
-        adapterMode: "stub",
+        adapterMode: "simulated",
         rail: "simulated_ted",
         settledAt: new Date().toISOString(),
         amountCents: input.amountCents,
@@ -100,11 +102,35 @@ const adapters = new Map<SettlementProviderId, SettlementProviderAdapter>([
   [bankAdapter.id, bankAdapter],
 ]);
 
+const DEFAULT_PROVIDER_MODE: Record<SettlementProviderId, SettlementProviderMode> = {
+  stripe: "full",
+  crypto: "simulated",
+  bank: "simulated",
+};
+
+function resolveProviderMode(provider: SettlementProviderId): SettlementProviderMode {
+  const envKey = `SETTLEMENT_PROVIDER_MODE_${provider.toUpperCase()}`;
+  const raw = String(process.env[envKey] ?? "").trim().toLowerCase();
+  if (raw === "full" || raw === "simulated") return raw;
+  return DEFAULT_PROVIDER_MODE[provider];
+}
+
+function getAdapter(provider: SettlementProviderId): SettlementProviderAdapter {
+  const adapter = adapters.get(provider);
+  if (!adapter) {
+    throw new Error(`Unsupported settlement provider: ${provider}`);
+  }
+  return {
+    ...adapter,
+    mode: resolveProviderMode(provider),
+  };
+}
+
 export function listSettlementProviders() {
-  return Array.from(adapters.values()).map((item) => ({
-    id: item.id,
-    mode: item.mode,
-  }));
+  return SETTLEMENT_PROVIDER_IDS.map((provider) => {
+    const adapter = getAdapter(provider);
+    return { id: adapter.id, mode: adapter.mode };
+  });
 }
 
 export function isSettlementProviderId(value: string): value is SettlementProviderId {
@@ -115,10 +141,6 @@ export async function settleWithProvider(
   provider: SettlementProviderId,
   payload: SettlementRequest
 ) {
-  const adapter = adapters.get(provider);
-  if (!adapter) {
-    throw new Error(`Unsupported settlement provider: ${provider}`);
-  }
+  const adapter = getAdapter(provider);
   return adapter.settle(payload);
 }
-

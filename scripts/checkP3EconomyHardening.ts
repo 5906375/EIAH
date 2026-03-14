@@ -24,6 +24,7 @@ function assertContains(content: string, needle: string, key: string) {
 
 const billingRoute = readFile("apps/api/src/routes/billing.ts");
 const paymentIntentsService = readFile("apps/api/src/services/paymentIntents.ts");
+const settlementProvidersService = readFile("apps/api/src/services/settlementProviders.ts");
 const invoiceService = readFile("packages/core/src/services/tenantInvoiceService.ts");
 
 const settlementE2E = readJson<{
@@ -80,11 +81,26 @@ assertContains(invoiceService, "invoice.generated", "service.invoice_generated_e
 assertContains(invoiceService, "tenantInvoice.upsert", "service.invoice_upsert");
 
 if (settlementE2E.ok !== true) fail("settlement_e2e_not_ok");
-const providerIds = new Set((settlementE2E.providers ?? []).map((item) => String(item.id ?? "")));
+const providers = (settlementE2E.providers ?? []).map((item) => ({
+  id: String(item.id ?? ""),
+  mode: String(item.mode ?? "").toLowerCase(),
+}));
+const providerIds = new Set(providers.map((item) => item.id));
 for (const provider of ["stripe", "crypto", "bank"]) {
   if (!providerIds.has(provider)) {
     fail("missing_settlement_provider_in_evidence", { provider });
   }
+}
+const invalidModes = providers.filter((item) => !["full", "simulated"].includes(item.mode));
+if (invalidModes.length > 0) {
+  fail("unsupported_settlement_provider_mode", { invalidModes });
+}
+const hasStubInEvidence = providers.some((item) => item.mode === "stub");
+if (hasStubInEvidence) {
+  fail("settlement_provider_stub_mode_not_allowed");
+}
+if (settlementProvidersService.includes('"stub"')) {
+  fail("settlement_provider_stub_mode_found_in_runtime");
 }
 
 if (settlementE2E.assertions?.webhookReplay?.replayRejected !== true) {
