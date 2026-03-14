@@ -1,0 +1,42 @@
+{
+  "ok": true,
+  "generatedAt": "2026-03-14T12:00:00Z",
+  "scope": "p2-global-core-high-inventory-v1",
+  "items": [
+    {
+      "action": "billing.create_white_label_plan",
+      "source": "billing",
+      "e2eCovered": false,
+      "evidence": null,
+      "notes": "Inventariado no gate global; evidência E2E dedicada ainda pendente."
+    },
+    {
+      "action": "finance.registerPayable",
+      "source": "finance",
+      "e2eCovered": false,
+      "evidence": null,
+      "notes": "Inventariado no gate global; evidência E2E dedicada ainda pendente."
+    },
+    {
+      "action": "finance.reconcileBankTransactions",
+      "source": "finance",
+      "e2eCovered": false,
+      "evidence": null,
+      "notes": "Inventariado no gate global; evidência E2E dedicada ainda pendente."
+    },
+    {
+      "action": "finance.archivePaymentDocument",
+      "source": "finance",
+      "e2eCovered": false,
+      "evidence": null,
+      "notes": "Inventariado no gate global; evidência E2E dedicada ainda pendente."
+    },
+    {
+      "action": "notification.triggerPagerDuty",
+      "source": "notifications",
+      "e2eCovered": false,
+      "evidence": null,
+      "notes": "Inventariado no gate global; evidência E2E dedicada ainda pendente."
+    }
+  ]
+}
