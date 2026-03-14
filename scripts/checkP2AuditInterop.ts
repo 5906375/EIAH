@@ -24,6 +24,16 @@ function normalizeAction(action: string): string {
   return action.trim().replace(/^action\./, "");
 }
 
+function extractHighActionsFromAgentContracts(tsSource: string): string[] {
+  const actions: string[] = [];
+  const entryRegex = /"([^"]+)"\s*:\s*\{[\s\S]*?tier:\s*"HIGH"[\s\S]*?txIdRequired:\s*true[\s\S]*?\}/g;
+  let match: RegExpExecArray | null;
+  while ((match = entryRegex.exec(tsSource)) !== null) {
+    actions.push(match[1]);
+  }
+  return actions;
+}
+
 function extractHighActionsFromPolicy(markdown: string): string[] {
   const start = "<!-- HIGH_POLICY:START -->";
   const end = "<!-- HIGH_POLICY:END -->";
@@ -51,6 +61,7 @@ const routesSmokeFile = path.join(root, "ops/evidence/latest/interop-routes-smok
 const e2eInteropFile = path.join(root, "ops/evidence/latest/interop-e2e-agent-call-2026-03-09.json");
 const highActionsFile = path.join(root, "ops/evidence/latest/realestate-high-actions-e2e-2026-03-09.json");
 const riskPolicyFile = path.join(root, "docs/ops/risk-tiering-by-action.md");
+const agentRoutesFile = path.join(root, "apps/api/src/routes/agents.ts");
 
 const routesSmoke = readJson<{
   ok?: boolean;
@@ -80,6 +91,7 @@ if (routesSmoke.ok !== true) fail("interop_routes_smoke_not_ok", { file: path.re
 if (interopE2E.ok !== true) fail("interop_e2e_not_ok", { file: path.relative(root, e2eInteropFile) });
 if (highActions.ok !== true) fail("high_actions_e2e_not_ok", { file: path.relative(root, highActionsFile) });
 if (!fs.existsSync(riskPolicyFile)) fail("missing_risk_policy", { file: path.relative(root, riskPolicyFile) });
+if (!fs.existsSync(agentRoutesFile)) fail("missing_agents_routes", { file: path.relative(root, agentRoutesFile) });
 
 const routePaths = new Set((routesSmoke.routes ?? []).filter((r) => r.implemented).map((r) => r.path ?? ""));
 const requiredRoutes = ["/api/agents/discovery", "/api/agents/negotiate", "/api/agents/execute"];
@@ -113,12 +125,19 @@ if (highActions.assertions?.receiptCanonSpec !== "receipt.canon.v1") {
 }
 
 const policyContent = fs.readFileSync(riskPolicyFile, "utf8");
+const agentsRoutesContent = fs.readFileSync(agentRoutesFile, "utf8");
 const policyHighActions = extractHighActionsFromPolicy(policyContent).map(normalizeAction);
 if (policyHighActions.length === 0) {
   fail("risk_policy_high_actions_missing", { file: path.relative(root, riskPolicyFile) });
 }
 
 const highEvidenceActions = new Set((highActions.actions ?? []).map(normalizeAction));
+const runtimeHighActions = extractHighActionsFromAgentContracts(agentsRoutesContent).map(normalizeAction);
+if (runtimeHighActions.length === 0) {
+  fail("runtime_high_actions_missing", {
+    file: path.relative(root, agentRoutesFile),
+  });
+}
 const missingPolicyActionsInEvidence = [...new Set(policyHighActions)].filter(
   (action) => !highEvidenceActions.has(action)
 );
@@ -130,6 +149,17 @@ if (missingPolicyActionsInEvidence.length > 0) {
   });
 }
 
+const missingRuntimeActionsInEvidence = [...new Set(runtimeHighActions)].filter(
+  (action) => !highEvidenceActions.has(action)
+);
+if (missingRuntimeActionsInEvidence.length > 0) {
+  fail("high_actions_evidence_missing_runtime_actions", {
+    missingRuntimeActionsInEvidence,
+    runtimeFile: path.relative(root, agentRoutesFile),
+    highEvidenceFile: path.relative(root, highActionsFile),
+  });
+}
+
 console.log(
   JSON.stringify(
     {
@@ -137,16 +167,17 @@ console.log(
       check: CHECK,
       routes: requiredRoutes,
       policyHighActions: [...new Set(policyHighActions)],
+      runtimeHighActions: [...new Set(runtimeHighActions)],
       highEvidenceActions: [...highEvidenceActions],
       files: {
         routesSmoke: path.relative(root, routesSmokeFile),
         interopE2E: path.relative(root, e2eInteropFile),
         highActions: path.relative(root, highActionsFile),
         riskPolicy: path.relative(root, riskPolicyFile),
+        runtimeAgents: path.relative(root, agentRoutesFile),
       },
     },
     null,
     2
   )
 );
-
