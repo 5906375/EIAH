@@ -6,37 +6,37 @@
     {
       "action": "billing.create_white_label_plan",
       "source": "billing",
-      "e2eCovered": false,
-      "evidence": null,
-      "notes": "Inventariado no gate global; evidência E2E dedicada ainda pendente."
+      "e2eCovered": true,
+      "evidence": "packages/core/src/actions/__tests__/highGlobalCoverage.e2e.test.ts",
+      "notes": "Coberto no cenário e2e global de ações HIGH."
     },
     {
       "action": "finance.registerPayable",
       "source": "finance",
-      "e2eCovered": false,
-      "evidence": null,
-      "notes": "Inventariado no gate global; evidência E2E dedicada ainda pendente."
+      "e2eCovered": true,
+      "evidence": "packages/core/src/actions/__tests__/highGlobalCoverage.e2e.test.ts",
+      "notes": "Coberto no cenário e2e global de ações HIGH."
     },
     {
       "action": "finance.reconcileBankTransactions",
       "source": "finance",
-      "e2eCovered": false,
-      "evidence": null,
-      "notes": "Inventariado no gate global; evidência E2E dedicada ainda pendente."
+      "e2eCovered": true,
+      "evidence": "packages/core/src/actions/__tests__/highGlobalCoverage.e2e.test.ts",
+      "notes": "Coberto no cenário e2e global de ações HIGH."
     },
     {
       "action": "finance.archivePaymentDocument",
       "source": "finance",
-      "e2eCovered": false,
-      "evidence": null,
-      "notes": "Inventariado no gate global; evidência E2E dedicada ainda pendente."
+      "e2eCovered": true,
+      "evidence": "packages/core/src/actions/__tests__/highGlobalCoverage.e2e.test.ts",
+      "notes": "Coberto no cenário e2e global de ações HIGH."
     },
     {
       "action": "notification.triggerPagerDuty",
       "source": "notifications",
-      "e2eCovered": false,
-      "evidence": null,
-      "notes": "Inventariado no gate global; evidência E2E dedicada ainda pendente."
+      "e2eCovered": true,
+      "evidence": "packages/core/src/actions/__tests__/highGlobalCoverage.e2e.test.ts",
+      "notes": "Coberto no cenário e2e global de ações HIGH."
     }
   ]
 }

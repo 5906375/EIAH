@@ -124,6 +124,13 @@ if (invalidCoveredWithoutEvidence.length > 0) {
   });
 }
 
+if (uncoveredActions.length > 0) {
+  fail("high_actions_without_e2e_coverage", {
+    uncoveredActions: uncoveredActions.sort(),
+    coverageFile: path.relative(root, coverageFile),
+  });
+}
+
 console.log(
   JSON.stringify(
     {
@@ -131,7 +138,7 @@ console.log(
       check: CHECK,
       runtimeHighActions: [...runtimeActions].sort(),
       coveredActions: coveredActions.sort(),
-      uncoveredActions: uncoveredActions.sort(),
+      uncoveredActions: [],
       files: {
         coverage: path.relative(root, coverageFile),
         billing: path.relative(root, billingActionsFile),
