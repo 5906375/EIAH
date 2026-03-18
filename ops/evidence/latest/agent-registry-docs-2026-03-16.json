@@ -1,0 +1,148 @@
+{
+  "ok": true,
+  "generatedAt": "2026-03-16T10:54:59.426Z",
+  "source": {
+    "registry": "packages/core/src/actions/agents/registry.ts",
+    "profiles": "packages/core/src/actions/agents/*.ts"
+  },
+  "agents": [
+    {
+      "id": "AADV",
+      "model": "gpt-4o-mini",
+      "llmUsageMode": "grounded_reasoning",
+      "deterministicSources": [
+        "finops.run-events",
+        "billing.ledger",
+        "security.rbac-audit"
+      ]
+    },
+    {
+      "id": "DeFi_1",
+      "model": "gpt-4.1",
+      "llmUsageMode": "grounded_reasoning",
+      "deterministicSources": [
+        "defi.protocol-simulation",
+        "defi.state-snapshot"
+      ]
+    },
+    {
+      "id": "Diarias",
+      "model": "gpt-4.1-mini",
+      "llmUsageMode": "format_only",
+      "deterministicSources": [
+        "ops.daily-snapshot"
+      ]
+    },
+    {
+      "id": "EIAH",
+      "model": "gpt-4.1",
+      "llmUsageMode": "grounded_reasoning",
+      "deterministicSources": [
+        "agent.registry",
+        "specialist.source-map"
+      ]
+    },
+    {
+      "id": "fin-nexus",
+      "model": "gpt-4.1-mini",
+      "llmUsageMode": "grounded_reasoning",
+      "deterministicSources": [
+        "finance.payables-registry",
+        "finance.bank-reconciliation-ledger",
+        "finance.payment-documents"
+      ]
+    },
+    {
+      "id": "flow-orchestrator",
+      "model": "gpt-4.1",
+      "llmUsageMode": "grounded_reasoning",
+      "deterministicSources": [
+        "runs.state-machine",
+        "workflow.policy-registry"
+      ]
+    },
+    {
+      "id": "guardian",
+      "model": "gpt-4.1",
+      "llmUsageMode": "disallowed_for_critical_execution",
+      "deterministicSources": [
+        "audit.receipt-bundles",
+        "audit.guardrail-logs",
+        "security.rbac-audit"
+      ]
+    },
+    {
+      "id": "I_BC",
+      "model": "gpt-4.1-mini",
+      "llmUsageMode": "grounded_reasoning",
+      "deterministicSources": [
+        "crm.account-history",
+        "sales.playbooks"
+      ]
+    },
+    {
+      "id": "ImageNFTDiarias",
+      "model": "gpt-4.1",
+      "llmUsageMode": "format_only",
+      "deterministicSources": [
+        "creative.style-guides"
+      ]
+    },
+    {
+      "id": "j360",
+      "model": "gpt-4o-mini",
+      "llmUsageMode": "grounded_reasoning",
+      "deterministicSources": [
+        "legal.contract-library",
+        "legal.approved-opinions",
+        "legal.policy-registry"
+      ]
+    },
+    {
+      "id": "MKT",
+      "model": "gpt-4.1-mini",
+      "llmUsageMode": "grounded_reasoning",
+      "deterministicSources": [
+        "marketing.campaign-history",
+        "marketing.playbooks"
+      ]
+    },
+    {
+      "id": "NFT_PY",
+      "model": "gpt-4.1",
+      "llmUsageMode": "grounded_reasoning",
+      "deterministicSources": [
+        "web3.collection-briefs",
+        "web3.launch-history"
+      ]
+    },
+    {
+      "id": "onchain-monitor",
+      "model": "gpt-4o-mini",
+      "llmUsageMode": "format_only",
+      "deterministicSources": [
+        "chain.event-stream",
+        "chain.alert-registry"
+      ]
+    },
+    {
+      "id": "Pitch",
+      "model": "gpt-4o",
+      "llmUsageMode": "grounded_reasoning",
+      "deterministicSources": [
+        "sales.positioning-briefs",
+        "sales.icp-library"
+      ]
+    },
+    {
+      "id": "risk-analyzer",
+      "model": "gpt-4.1-mini",
+      "llmUsageMode": "grounded_reasoning",
+      "deterministicSources": [
+        "risk.policy-rules",
+        "risk.incident-history",
+        "risk.control-matrix"
+      ]
+    }
+  ]
+}

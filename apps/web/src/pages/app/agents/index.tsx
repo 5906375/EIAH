@@ -7,6 +7,7 @@ import runsHistoryPrint from "../../../assets/playbook/runs/runs-historico.svg";
 import runsResultPrint from "../../../assets/playbook/runs/runs-resultado.svg";
 import AgentSelect from "../../../components/agents/AgentSelect";
 import ChatAgentLauncher from "../../../components/agents/ChatAgentLauncher";
+import { apiListAgents, type Agent } from "@/lib/api";
 import { useSession } from "@/state/sessionStore";
 
 type PlaybookConfig = {
@@ -139,6 +140,81 @@ function getGuideStepPreviewImage(tabId: string, stepIndex: number) {
 }
 
 const PLAYBOOKS: Record<string, PlaybookConfig> = {
+  aadv: {
+    title: "AADV Self-Service — Consolidação de evidências",
+    intro:
+      "Use o AADV para estruturar valor, FinOps e segurança em uma trilha clara antes da consolidação auditável do caso.",
+    routes: [
+      "Identificar o bloco principal do caso: valor, custo, risco, segurança ou governança.",
+      "Reunir evidências mínimas de operação, FinOps, RBAC e trilha assinada antes de concluir.",
+      "Separar hipótese, evidência validada, red flags e lacunas que ainda precisam ser fechadas.",
+      "Consolidar um resumo executivo auditável com decisão, ação corretiva e próximos passos objetivos.",
+    ],
+    directives: [
+      "Não concluir o caso sem indicar claramente o que ainda está faltando.",
+      "Separar dado validado, hipótese e decisão recomendada.",
+      "Explicar riscos de FinOps, RBAC e trilha assinada em linguagem clara.",
+      "Usar o resumo executivo apenas depois de confirmar as evidências mínimas.",
+      "Quando houver bloqueio, explicitar qual evidência está ausente e qual decisão depende dela.",
+      "Se existir dúvida operacional, indicar primeiro o bloco faltante em vez de pular direto para conclusão.",
+    ],
+    checklist:
+      "Checklist rápido: defina qual bloco está faltando, quais evidências já existem, quais riscos ainda não foram fechados e qual decisão depende dessa consolidação.",
+    documentationLinks: [
+      { label: "Agentes", to: "/app/agents" },
+      { label: "Billing", to: "/app/billing" },
+      { label: "Runs", to: "/app/runs#runs-overview" },
+      { label: "Runs: resultado", to: "/app/runs#runs-resultado" },
+      { label: "Perfil", to: "/profile" },
+    ],
+    guideTabs: [
+      {
+        id: "aadv-overview",
+        label: "Visão geral",
+        to: "/app/agents",
+        purpose:
+          "Entender qual bloco precisa ser consolidado antes de transformar o caso em resumo executivo auditável.",
+        howItWorks:
+          "O AADV organiza o caso em blocos de evidência, risco e decisão. Primeiro você identifica o bloco crítico, depois confirma o que já existe e só então consolida a recomendação final.",
+        steps: [
+          "Defina se o caso está travado por valor, custo, risco, segurança ou governança.",
+          "Liste o que já está validado e o que ainda é hipótese.",
+          "Aponte qual decisão depende dessa consolidação.",
+          "Só depois avance para o resumo executivo auditável.",
+        ],
+      },
+      {
+        id: "aadv-finops",
+        label: "FinOps e custo",
+        to: "/app/billing",
+        purpose:
+          "Validar se o caso tem base mínima de custo, reconciliação e previsibilidade antes da conclusão.",
+        howItWorks:
+          "O AADV usa sinais de billing e operação para mostrar se o caso já tem base suficiente de FinOps ou se ainda faltam reconciliação, quota ou leitura confiável de custo.",
+        steps: [
+          "Confirme se existe custo vivo por run ou ledger consolidado.",
+          "Verifique se a reconciliação foi concluída.",
+          "Confira se quota, limites e anomalias já foram avaliados.",
+          "Explique o impacto disso na decisão final do caso.",
+        ],
+      },
+      {
+        id: "aadv-governance",
+        label: "Governança",
+        to: "/profile",
+        purpose:
+          "Garantir que RBAC, trilha assinada e responsabilidades estejam claros antes de fechar o caso.",
+        howItWorks:
+          "O AADV ajuda a distinguir o que é risco operacional, o que é risco de segurança e o que ainda depende de aprovação ou visibilidade adequada no workspace.",
+        steps: [
+          "Confirme quem aprova, quem visualiza e quais papéis estão ativos.",
+          "Verifique se a trilha assinada e os logs mascarados estão válidos.",
+          "Aponte o risco se faltar RBAC, isolamento ou validação de auditoria.",
+          "Consolide a ação corretiva antes de emitir o veredito.",
+        ],
+      },
+    ],
+  },
   mkt: {
     title: "MKT — Briefing de Campanha",
     intro:
@@ -194,25 +270,25 @@ const PLAYBOOKS: Record<string, PlaybookConfig> = {
     checklist: "Checklist rapido: redes, ativos, limites, slippage e parametros de seguranca.",
   },
   guardian: {
-    title: "Guardian — Evidencias com verificacao publica",
+    title: "Guardian — Evidências com verificação pública",
     intro: (
       <>
-        Use o Guardian como camada deterministica de compliance: ele so responde em JSON{" "}
-        {`{schema_version, action, status, data, errors?}`} e bloqueia qualquer PII antes da ancoragem.
+        Use o Guardian como camada determinística de compliance. Ele responde em JSON{" "}
+        {`{schema_version, action, status, data, errors?}`} e bloqueia dados pessoais antes de qualquer ancoragem.
       </>
     ),
     routes: [
       <>
-        <strong>POST /provas/processuais</strong>: consolida hash SHA-256, cadeia de custodia e fila Merkle com verify_url imediato.
+        <strong>POST /provas/processuais</strong>: consolida hash SHA-256, cadeia de custódia e fila Merkle com <code>verify_url</code> imediato.
       </>,
       <>
-        <strong>POST /runs/&lt;id&gt;/receipt</strong>: emite recibo assinado, prepara downloads (badge HTML, PDF) e expoe audit.chain_id.
+        <strong>POST /runs/&lt;id&gt;/receipt</strong>: emite recibo assinado, prepara downloads (badge HTML, PDF) e expõe <code>audit.chain_id</code>.
       </>,
       <>
-        <strong>POST /privacy/erasure</strong>: confirma apagamento irrevogavel mantendo apenas hash residual para auditoria.
+        <strong>POST /privacy/erasure</strong>: confirma apagamento irrevogável mantendo apenas hash residual para auditoria.
       </>,
       <>
-        <strong>POST /nft/mint</strong>: gera certificado hash_only em L2 com alerta automatico quando houver risco de PII.
+        <strong>POST /nft/mint</strong>: gera certificado <code>hash_only</code> em L2 com alerta automático quando houver risco de dado pessoal.
       </>,
     ],
     directives: [
@@ -220,17 +296,17 @@ const PLAYBOOKS: Record<string, PlaybookConfig> = {
         Sempre ecoar <code>trace_id</code> e <code>idempotency_key</code> em <code>data</code>.
       </>,
       <>
-        Fornecer <code>verify_url</code> valido; se indisponivel, usar <code>about:blank</code> com justificativa.
+        Fornecer <code>verify_url</code> válido; se estiver indisponível, usar <code>about:blank</code> com justificativa.
       </>,
       <>
-        Telemetria FinOps obrigatoria: <code>{`{l2, unit_cost_usd, batch_size, route}`}</code> com fallback quando custo &gt; US$0,01/1k eventos.
+        Telemetria FinOps obrigatória: <code>{`{l2, unit_cost_usd, batch_size, route}`}</code> com fallback quando o custo for &gt; US$ 0,01 por 1 mil eventos.
       </>,
       <>
-        Status de ancora deve respeitar {`{queued, anchoring, confirmed, reorged}`} com <code>audit.confirmations ≥ 12</code>.
+        O status de âncora deve respeitar {`{queued, anchoring, confirmed, reorged}`} com <code>audit.confirmations ≥ 12</code>.
       </>,
     ],
     checklist:
-      "Checklist rapido: sanitize PII, informe MIME/bytes validos, configure consenso multi-L2 e publique download_mode adequado (links ou inline).",
+      "Checklist rápido: remova dados pessoais, informe MIME e bytes válidos, configure consenso multi-L2 e escolha o modo de download adequado (links ou inline).",
   },
   riskanalyzer: {
     title: "Risk Analyzer — Checklist de risco",
@@ -395,23 +471,30 @@ const PLAYBOOKS: Record<string, PlaybookConfig> = {
     checklist: "Checklist rapido: problema, solucao, tracao e CTA.",
   },
   eiah: {
-    title: "Central de Ajuda EIAH",
+    title: "EIAH",
     intro:
-      "Use a Central de Ajuda EIAH como guia oficial da plataforma SaaS: explicações claras, passo a passo prático e orientação comercial quando necessário.",
+      "Use o EIAH como front door da plataforma: ele explica o produto, orienta navegação, organiza o próximo passo e encaminha para especialistas quando o caso pede profundidade real.",
     routes: [
-      "Identificar o tipo de atendimento: help (suporte de uso da plataforma) ou proposal (solicitação comercial).",
-      "Explicar a plataforma em linguagem simples, sempre com foco na ação que o usuário deve executar.",
+      "Atuar como porta de entrada única da conversa: entender se o usuário precisa de ajuda geral, navegação, proposal, triagem ou especialista.",
+      "Explicar a plataforma em linguagem simples, sempre com foco na ação que o usuário deve executar em seguida.",
+      "Explicar o que cada agente faz, quando usar e qual limite de atuação cada um possui no workspace.",
+      "Usar a taxonomia do ecossistema com clareza: EIAH como front door; J_360, FinNexus, Guardian, AADV, DeFi One, On-chain Monitor e Risk Analyzer como especialistas de domínio; MKT, Pitch e I_BC como especialistas de negócio; Flow Orchestrator, Diarias, NFT PY e Image NFT Diarias como agentes mais operacionais ou internos.",
       "Usar o menu de guia por página abaixo para orientar Runs, Agentes, Billing, Marketplace, IMOB, Self-service e Perfil.",
-      "Quando o usuário perguntar sobre IMOB (ex.: 'como usar o IMOB'), responder com guia prático e atalhos para dashboard/chat.",
-      "Fechar cada resposta com próximo passo claro: onde clicar, o que preencher e qual resultado esperar.",
+      "Quando o pedido exigir profundidade de domínio, encaminhar para o especialista correto sem quebrar a continuidade da conversa.",
       "No modo proposal, apresentar recomendação de plano e estimativa de custo com a regra oficial de billing.",
     ],
     directives: [
+      "Assumir o papel de front door: responder primeiro com clareza e so depois encaminhar quando houver necessidade real de especialista.",
       "Usar apenas informacoes documentadas; se faltar dado, declarar explicitamente.",
       "Sempre priorizar linguagem de negocio: explicar o que o usuario ganha e qual acao deve tomar em seguida.",
       "Evitar termos tecnicos internos quando nao forem necessarios para a decisao do solicitante.",
       "Quando citar termos tecnicos, traduzir em seguida com frase simples e exemplo pratico.",
+      "Separar claramente agentes de uso direto de agentes mais operacionais: o usuario deve entender quem entra na conversa principal e quem serve mais a fluxos internos ou avançados.",
       "Explicar cada pagina com estrutura: para que serve, quando usar, passos principais e resultado esperado.",
+      "Explicar agentes com a estrutura: o que faz, quando usar, quando nao usar e qual especialista entra se o caso sair do escopo do EIAH.",
+      "Fazer transferência quando o caso exigir profundidade de dominio, por exemplo: J_360 para contratos e clausulas, FinNexus para pagamentos e conciliacao, Guardian para evidencias e integridade, AADV para consolidacao de evidencias e decisao executiva, e DeFi One para simulacao DeFi.",
+      "Usar verticais como contexto real da conversa: IMOB com linguagem e atalhos da jornada imobiliaria; LEGAL com linguagem juridica, coleta minima e handoff adequado.",
+      "Nao agir como especialista profundo em todos os dominios; o papel do EIAH e orientar, triar, explicar e encaminhar com clareza.",
       "Para comandos, explicar com verbo de acao: clicar, preencher, enviar, revisar, confirmar.",
       "Para duvidas de navegacao, orientar caminho completo: menu > pagina > bloco > acao.",
       "No modo proposal, usar a formula real de billing (mesma regra do backend) para evitar divergencia de preco.",
@@ -419,7 +502,7 @@ const PLAYBOOKS: Record<string, PlaybookConfig> = {
       "Finalizar atendimento comercial com CTA: abrir proposta, agendar demonstracao ou criar trial assistido.",
     ],
     checklist:
-      "Checklist rápido: tipo de atendimento (help/proposal), página solicitada, passo a passo em linguagem simples, fonte utilizada, cálculo validado (quando houver preço) e próximo passo recomendado.",
+      "Checklist rápido: papel do turno (help, triagem, handoff ou proposal), página ou agente correto, vertical ativa quando existir, passo a passo em linguagem simples, especialista elegível quando necessário, fonte utilizada, cálculo validado (quando houver preço) e próximo passo recomendado.",
     documentationLinks: [
       { label: "Visão geral do playbook", to: "/app/agents?agent=eiah#playbook-panel" },
       { label: "Runs (visão geral)", to: "/app/runs#runs-overview" },
@@ -435,6 +518,82 @@ const PLAYBOOKS: Record<string, PlaybookConfig> = {
       { label: "Perfil", to: "/profile" },
     ],
     guideTabs: [
+      {
+        id: "front-door",
+        label: "Front door",
+        to: "/app/agents#chat-agent-launcher",
+        purpose:
+          "Atuar como porta de entrada unica da conversa, organizando ajuda geral, navegacao, triagem e encaminhamento sem obrigar o usuario a entender a arquitetura interna.",
+        howItWorks:
+          "O EIAH recebe a pergunta, identifica o papel do turno e responde diretamente quando for tema geral da plataforma. Quando o caso pedir profundidade de dominio, ele encaminha para o especialista adequado sem quebrar a conversa.",
+        steps: [
+          "Receber a pergunta do usuário como ponto único de entrada da conversa.",
+          "Responder claramente quando o usuário quiser saber quem está falando, qual agente está ativo ou o que o EIAH é.",
+          "Explicar o papel de agentes como J_360, AADV, FinNexus, Guardian, DeFi One, MKT, Pitch, I_BC, Flow Orchestrator, Risk Analyzer, On-chain Monitor, Diarias, NFT PY e Image NFT Diarias antes de transferir quando isso ajudar o usuário a escolher melhor.",
+          "Identificar se o caso é help, navegação, triagem, transferência ou proposal.",
+          "Responder diretamente quando o tema for geral da plataforma ou de uso da interface.",
+          "Encaminhar para especialista quando o pedido exigir profundidade real de domínio.",
+          "Manter a continuidade da conversa, sem parecer troca brusca de bot.",
+        ],
+      },
+      {
+        id: "agentes-e-handoff",
+        label: "Agentes e transferência",
+        to: "/app/agents",
+        purpose:
+          "Explicar o papel de cada agente e definir quando o EIAH continua sozinho e quando faz transferência para especialista.",
+        howItWorks:
+          "O EIAH deve explicar o que cada agente faz, quando usar e quais limites existem. A transferência só deve acontecer quando o pedido realmente exigir profundidade de dominio ou execucao especializada.",
+        steps: [
+          "Explicar o papel de cada agente em linguagem simples para o usuário.",
+          "Deixar explícita a taxonomia: EIAH como front door; J_360, FinNexus, Guardian, AADV, DeFi One, On-chain Monitor e Risk Analyzer como especialistas de domínio; MKT, Pitch e I_BC como especialistas de negócio; Flow Orchestrator, Diarias, NFT PY e Image NFT Diarias como agentes operacionais ou internos.",
+          "Dizer quando vale usar um especialista e quando o próprio EIAH resolve a dúvida.",
+          "Explicar J_360 como especialista em contratos, cláusulas, riscos e organização da análise jurídica.",
+          "Explicar FinNexus como especialista em pagamentos, pendências, billing operacional e conciliação financeira.",
+          "Explicar Guardian como especialista em evidências, receipt, verify_url, integridade e verificabilidade auditável.",
+          "Explicar AADV como especialista em consolidar evidências, FinOps, risco e próximos passos executivos.",
+          "Explicar DeFi One como especialista em simulação DeFi, custo, risco e comparação de cenários antes da execução.",
+          "Explicar MKT, Pitch e I_BC como especialistas de negócio para campanhas, narrativa e inteligência comercial.",
+          "Explicar Flow Orchestrator, Diarias, NFT PY e Image NFT Diarias como agentes mais operacionais ou internos, usados em fluxos avançados e não como front door principal.",
+          "Fazer transferência só depois de explicar o papel do especialista e confirmar que ele é o próximo passo mais adequado.",
+        ],
+      },
+      {
+        id: "chat-launcher",
+        label: "Chat Launcher",
+        to: "/app/agents#chat-agent-launcher",
+        purpose:
+          "Usar o Chat Agent Launcher como canal principal para pedir orientação, executar fluxos com apoio de agente e seguir para o especialista certo sem sair da conversa.",
+        howItWorks:
+          "O launcher recebe a pergunta do usuário, deixa o agente ativo responder quando o caso for simples e, quando necessário, aciona transferência ou run sem quebrar a continuidade da experiência.",
+        steps: [
+          "Use o launcher quando quiser ajuda prática, próximo passo, explicação de página, ajuda para criar run ou triagem para especialista.",
+          "Peça orientação em linguagem natural, sem precisar escolher a arquitetura interna do sistema.",
+          "Quando a dúvida for geral, o EIAH responde diretamente com explicação, navegação ou guia rápido.",
+          "Se você escolher um agente no seletor, ganha foco e profundidade imediata no domínio certo, com menos triagem e menos ambiguidade.",
+          "Se não escolher, o EIAH continua como front door: entende a intenção, explica o caminho e te direciona para o especialista quando necessário.",
+          "Quando a dúvida for sobre um agente do seletor, o EIAH explica primeiro o papel desse agente e só então sugere a transferência quando fizer sentido.",
+          "Quando o caso exigir profundidade de domínio, o launcher mantém a conversa e aciona o especialista correto.",
+          "Quando a situação exigir execução real, o launcher pode seguir para run e depois conectar Policy, Real-time e Audit ao mesmo fluxo.",
+          "Use o playbook e o seletor de agentes para entender o papel de cada agente antes de executar casos mais específicos.",
+        ],
+      },
+      {
+        id: "verticais",
+        label: "Verticais",
+        to: "/app/agents?agent=eiah#playbook-panel",
+        purpose:
+          "Usar IMOB e LEGAL como contexto real da conversa, com linguagem, especialistas e affordances adequadas ao dominio.",
+        howItWorks:
+          "Quando a conversa estiver em IMOB, o EIAH deve priorizar jornada imobiliaria, pipeline, proposta e contrato. Quando estiver em LEGAL, deve usar linguagem juridica clara, pedir o minimo necessario e encaminhar para o Jurídico quando houver análise contratual ou risco jurídico.",
+        steps: [
+          "Identificar se a conversa está em contexto IMOB ou LEGAL antes de responder ou encaminhar.",
+          "Em IMOB, priorizar linguagem de jornada imobiliária, pipeline, proposta, imóvel e contrato.",
+          "Em LEGAL, usar linguagem jurídica clara, pedir apenas o mínimo necessário e preparar transferência para o Jurídico quando couber.",
+          "Filtrar quick replies, atalhos e especialistas pelo contexto ativo da vertical.",
+          "Evitar resposta genérica quando a vertical já indicar domínio, linguagem e próximo passo mais adequados.",
+        ],
+      },
       {
         id: "runs",
         label: "Runs",
@@ -553,12 +712,95 @@ function normalizeAgentKey(value: string) {
   return value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
+function formatGovernanceValue(value: string) {
+  return value
+    .split(/[_-]/g)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function formatModeContractsSummary(agent: Agent) {
+  if (!Array.isArray(agent.modeContracts) || agent.modeContracts.length === 0) return undefined;
+  return agent.modeContracts.map((contract) => formatGovernanceValue(contract.mode)).join(" • ");
+}
+
+function formatModeContractsDetails(agent: Agent) {
+  if (!Array.isArray(agent.modeContracts) || agent.modeContracts.length === 0) return undefined;
+  return agent.modeContracts
+    .map((contract) => {
+      const shape = contract.uxContract?.responseShape
+        ? formatGovernanceValue(contract.uxContract.responseShape)
+        : null;
+      return shape ? `${formatGovernanceValue(contract.mode)} (${shape})` : formatGovernanceValue(contract.mode);
+    })
+    .join(" • ");
+}
+
+function getCriticalityTone(criticality?: NonNullable<Agent["governance"]>["criticality"]) {
+  switch (criticality) {
+    case "critical":
+      return "border-red-400/40 bg-red-500/15 text-red-100";
+    case "high":
+      return "border-amber-400/40 bg-amber-500/15 text-amber-100";
+    case "medium":
+      return "border-sky-400/40 bg-sky-500/15 text-sky-100";
+    default:
+      return "border-white/10 bg-white/5 text-muted-foreground";
+  }
+}
+
+function GovernanceChips({ items, emptyLabel }: { items: string[]; emptyLabel: string }) {
+  if (items.length === 0) {
+    return <span className="text-xs text-muted-foreground">{emptyLabel}</span>;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {items.map((item) => (
+        <span
+          key={item}
+          className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-foreground"
+        >
+          {item}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function CompactAttributeList({
+  items,
+  emptyLabel,
+}: {
+  items: Array<{ label: string; value?: string }>;
+  emptyLabel: string;
+}) {
+  const visibleItems = items.filter((item) => item.value);
+  if (visibleItems.length === 0) {
+    return <span className="text-xs text-muted-foreground">{emptyLabel}</span>;
+  }
+
+  return (
+    <div className="space-y-1.5 text-xs text-muted-foreground">
+      {visibleItems.map((item) => (
+        <p key={item.label}>
+          <span className="text-foreground">{item.label}:</span> {item.value}
+        </p>
+      ))}
+    </div>
+  );
+}
+
 const AgentsPage: React.FC = () => {
   const location = useLocation();
-  const { workspaceId } = useSession();
+  const { workspaceId, token } = useSession();
   const [agentId, setAgentId] = useState<string>();
   const [playbookAgent, setPlaybookAgent] = useState<string | null>(null);
   const [activeGuideTabId, setActiveGuideTabId] = useState<string | null>(null);
+  const [catalogAgents, setCatalogAgents] = useState<Agent[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
 
   const playbookTargetId = agentId ? "playbook-panel" : null;
   const launcherTopic = useMemo(() => {
@@ -612,6 +854,22 @@ const AgentsPage: React.FC = () => {
     setActiveGuideTabId((current) => current ?? playbookData.guideTabs?.[0]?.id ?? null);
   }, [playbookData]);
 
+  useEffect(() => {
+    setCatalogLoading(true);
+    setCatalogError(null);
+    apiListAgents()
+      .then((response) => {
+        const items = Array.isArray(response?.items) ? response.items : [];
+        setCatalogAgents(items.sort((a, b) => (a.name ?? a.id).localeCompare(b.name ?? b.id)));
+      })
+      .catch((error) => {
+        console.error("Failed to load governance catalog", error);
+        setCatalogAgents([]);
+        setCatalogError("Nao foi possivel carregar o artefato de governanca dos agentes.");
+      })
+      .finally(() => setCatalogLoading(false));
+  }, [workspaceId, token]);
+
   const handlePlaybookClick = () => {
     if (!agentId || !playbookTargetId) return;
     setPlaybookAgent(agentId);
@@ -647,6 +905,286 @@ const AgentsPage: React.FC = () => {
           </div>
         </div>
       </div>
+      <section className="mt-8 rounded-3xl border border-white/10 bg-surface/80 p-6 shadow-lg shadow-black/20">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.35em] text-accent">Governanca</p>
+            <h2 className="text-2xl font-display font-semibold text-foreground">
+              Inventario governado de agentes
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
+              Catálogo operacional com governança, perfil cognitivo e contrato de UX por agente.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-xs text-muted-foreground">
+            {catalogLoading
+              ? "Atualizando catálogo..."
+              : `${catalogAgents.length} agente(s) com snapshot de governança`}
+          </div>
+        </div>
+
+        {catalogError ? (
+          <div className="mt-4 rounded-2xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-100">
+            {catalogError}
+          </div>
+        ) : null}
+
+        <div className="mt-6 hidden overflow-x-auto xl:block">
+          <table className="min-w-full table-fixed border-separate border-spacing-y-3 text-left text-sm">
+            <thead>
+              <tr className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                <th className="px-3 py-2">Agent id</th>
+                <th className="px-3 py-2">Nome</th>
+                <th className="px-3 py-2">Especialidade</th>
+                <th className="px-3 py-2">Model policy</th>
+                <th className="px-3 py-2">Tool capabilities</th>
+                <th className="px-3 py-2">Criticidade</th>
+                <th className="px-3 py-2">Approval</th>
+                <th className="px-3 py-2">Receipt policy</th>
+                <th className="px-3 py-2">Scope obrigatório</th>
+                <th className="px-3 py-2">Knowledge policy</th>
+                <th className="px-3 py-2">Cognitive profile</th>
+                <th className="px-3 py-2">UX contract</th>
+              </tr>
+            </thead>
+            <tbody>
+              {catalogAgents.map((agent) => {
+                const isSelected = normalizeAgentKey(agent.id) === normalizeAgentKey(agentId ?? "");
+                return (
+                  <tr
+                    key={agent.id}
+                    className={`rounded-2xl bg-black/20 align-top ${
+                      isSelected ? "ring-1 ring-accent/40" : ""
+                    }`}
+                  >
+                    <td className="rounded-l-2xl px-3 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-accent">
+                      {agent.id}
+                    </td>
+                    <td className="px-3 py-4 text-foreground">{agent.name}</td>
+                    <td className="px-3 py-4 text-muted-foreground">{agent.description ?? "Sem descrição"}</td>
+                    <td className="px-3 py-4 text-muted-foreground">
+                      {agent.governance?.modelPolicy ?? "unconfigured"}
+                    </td>
+                    <td className="px-3 py-4">
+                      <GovernanceChips
+                        items={agent.governance?.toolCapabilities ?? []}
+                        emptyLabel="Sem tools declaradas"
+                      />
+                    </td>
+                    <td className="px-3 py-4">
+                      <span
+                        className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] ${
+                          getCriticalityTone(agent.governance?.criticality)
+                        }`}
+                      >
+                        {agent.governance?.criticality ?? "low"}
+                      </span>
+                    </td>
+                    <td className="px-3 py-4 text-muted-foreground">
+                      {formatGovernanceValue(agent.governance?.approval ?? "not_required")}
+                    </td>
+                    <td className="px-3 py-4 text-muted-foreground">
+                      {formatGovernanceValue(agent.governance?.receiptPolicy ?? "not_applicable")}
+                    </td>
+                    <td className="rounded-r-2xl px-3 py-4">
+                      <GovernanceChips
+                        items={agent.governance?.requiredScopes ?? []}
+                        emptyLabel="Sem scopes declarados"
+                      />
+                    </td>
+                    <td className="px-3 py-4">
+                      <CompactAttributeList
+                        emptyLabel="Sem knowledge policy"
+                        items={[
+                          {
+                            label: "Sources",
+                            value:
+                              agent.knowledgePolicy?.deterministicSources.length
+                                ? `${agent.knowledgePolicy.deterministicSources.length} deterministic source(s)`
+                                : undefined,
+                          },
+                          {
+                            label: "LLM",
+                            value: formatGovernanceValue(agent.knowledgePolicy?.llmUsageMode ?? ""),
+                          },
+                          {
+                            label: "Conflict",
+                            value: formatGovernanceValue(agent.knowledgePolicy?.conflictResolution ?? ""),
+                          },
+                          {
+                            label: "Fallback",
+                            value: formatGovernanceValue(agent.knowledgePolicy?.fallbackPolicy ?? ""),
+                          },
+                          {
+                            label: "Provenance",
+                            value: formatGovernanceValue(agent.knowledgePolicy?.provenancePolicy ?? ""),
+                          },
+                        ]}
+                      />
+                    </td>
+                    <td className="px-3 py-4">
+                      <CompactAttributeList
+                        emptyLabel="Sem perfil cognitivo"
+                        items={[
+                          { label: "Mode", value: formatGovernanceValue(agent.cognitiveProfile?.reasoningMode ?? "") },
+                          { label: "Initiative", value: formatGovernanceValue(agent.cognitiveProfile?.initiativeLevel ?? "") },
+                          { label: "Ambiguity", value: formatGovernanceValue(agent.cognitiveProfile?.ambiguityStrategy ?? "") },
+                          { label: "Decision", value: formatGovernanceValue(agent.cognitiveProfile?.decisionPosture ?? "") },
+                          { label: "Delegation", value: formatGovernanceValue(agent.cognitiveProfile?.delegationPolicy ?? "") },
+                        ]}
+                      />
+                    </td>
+                    <td className="px-3 py-4">
+                      <CompactAttributeList
+                        emptyLabel="Sem contrato de UX"
+                        items={[
+                          { label: "Modes", value: formatModeContractsSummary(agent) },
+                          { label: "Mode contracts", value: formatModeContractsDetails(agent) },
+                          { label: "Value", value: agent.uxContract?.primaryUserValue },
+                          { label: "Shape", value: formatGovernanceValue(agent.uxContract?.responseShape ?? "") },
+                          { label: "Tone", value: formatGovernanceValue(agent.uxContract?.toneProfile ?? "") },
+                          { label: "Interaction", value: formatGovernanceValue(agent.uxContract?.interactionPattern ?? "") },
+                          { label: "CTA", value: agent.uxContract?.defaultCTA },
+                        ]}
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="mt-6 grid gap-4 xl:hidden">
+          {catalogAgents.map((agent) => {
+            const isSelected = normalizeAgentKey(agent.id) === normalizeAgentKey(agentId ?? "");
+            return (
+              <article
+                key={agent.id}
+                className={`rounded-2xl border border-white/10 bg-black/20 p-4 ${
+                  isSelected ? "ring-1 ring-accent/40" : ""
+                }`}
+              >
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-accent">{agent.id}</p>
+                    <h3 className="mt-1 text-base font-semibold text-foreground">{agent.name}</h3>
+                  </div>
+                  <span
+                    className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] ${
+                      getCriticalityTone(agent.governance?.criticality)
+                    }`}
+                  >
+                    {agent.governance?.criticality ?? "low"}
+                  </span>
+                </div>
+                <p className="mt-3 text-sm text-muted-foreground">{agent.description ?? "Sem descrição"}</p>
+                <dl className="mt-4 grid gap-3 text-sm">
+                  <div>
+                    <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Model policy</dt>
+                    <dd className="mt-1 text-foreground">{agent.governance?.modelPolicy ?? "unconfigured"}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Tool capabilities</dt>
+                    <dd className="mt-2">
+                      <GovernanceChips
+                        items={agent.governance?.toolCapabilities ?? []}
+                        emptyLabel="Sem tools declaradas"
+                      />
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Approval</dt>
+                    <dd className="mt-1 text-foreground">
+                      {formatGovernanceValue(agent.governance?.approval ?? "not_required")}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Receipt policy</dt>
+                    <dd className="mt-1 text-foreground">
+                      {formatGovernanceValue(agent.governance?.receiptPolicy ?? "not_applicable")}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Scope obrigatório</dt>
+                    <dd className="mt-2">
+                      <GovernanceChips
+                        items={agent.governance?.requiredScopes ?? []}
+                        emptyLabel="Sem scopes declarados"
+                      />
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Knowledge policy</dt>
+                    <dd className="mt-2">
+                      <CompactAttributeList
+                        emptyLabel="Sem knowledge policy"
+                        items={[
+                          {
+                            label: "Sources",
+                            value:
+                              agent.knowledgePolicy?.deterministicSources.length
+                                ? `${agent.knowledgePolicy.deterministicSources.length} deterministic source(s)`
+                                : undefined,
+                          },
+                          {
+                            label: "LLM",
+                            value: formatGovernanceValue(agent.knowledgePolicy?.llmUsageMode ?? ""),
+                          },
+                          {
+                            label: "Conflict",
+                            value: formatGovernanceValue(agent.knowledgePolicy?.conflictResolution ?? ""),
+                          },
+                          {
+                            label: "Fallback",
+                            value: formatGovernanceValue(agent.knowledgePolicy?.fallbackPolicy ?? ""),
+                          },
+                          {
+                            label: "Provenance",
+                            value: formatGovernanceValue(agent.knowledgePolicy?.provenancePolicy ?? ""),
+                          },
+                        ]}
+                      />
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Cognitive profile</dt>
+                    <dd className="mt-2">
+                      <CompactAttributeList
+                        emptyLabel="Sem perfil cognitivo"
+                        items={[
+                          { label: "Mode", value: formatGovernanceValue(agent.cognitiveProfile?.reasoningMode ?? "") },
+                          { label: "Initiative", value: formatGovernanceValue(agent.cognitiveProfile?.initiativeLevel ?? "") },
+                          { label: "Ambiguity", value: formatGovernanceValue(agent.cognitiveProfile?.ambiguityStrategy ?? "") },
+                          { label: "Decision", value: formatGovernanceValue(agent.cognitiveProfile?.decisionPosture ?? "") },
+                          { label: "Delegation", value: formatGovernanceValue(agent.cognitiveProfile?.delegationPolicy ?? "") },
+                        ]}
+                      />
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">UX contract</dt>
+                    <dd className="mt-2">
+                      <CompactAttributeList
+                        emptyLabel="Sem contrato de UX"
+                        items={[
+                          { label: "Modes", value: formatModeContractsSummary(agent) },
+                          { label: "Mode contracts", value: formatModeContractsDetails(agent) },
+                          { label: "Value", value: agent.uxContract?.primaryUserValue },
+                          { label: "Shape", value: formatGovernanceValue(agent.uxContract?.responseShape ?? "") },
+                          { label: "Tone", value: formatGovernanceValue(agent.uxContract?.toneProfile ?? "") },
+                          { label: "Interaction", value: formatGovernanceValue(agent.uxContract?.interactionPattern ?? "") },
+                          { label: "CTA", value: agent.uxContract?.defaultCTA },
+                        ]}
+                      />
+                    </dd>
+                  </div>
+                </dl>
+              </article>
+            );
+          })}
+        </div>
+      </section>
       {playbookAgent && playbookData && (
         <section
           id="playbook-panel"

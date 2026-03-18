@@ -196,6 +196,18 @@ FORMATO FINAL
 - Usar **negrito** para títulos dentro das seções.
 `,
   tools: [],
+  knowledgePolicy: {
+    deterministicSources: [
+      { sourceId: "sales.positioning-briefs", kind: "document_index", authorityLevel: "primary", required: true, version: "v1" },
+      { sourceId: "sales.icp-library", kind: "db", authorityLevel: "secondary", required: false, version: "v1" },
+    ],
+    sourcePrecedence: ["sales.positioning-briefs", "sales.icp-library"],
+    conflictResolution: "human_review",
+    llmUsageMode: "grounded_reasoning",
+    fallbackPolicy: "human_review",
+    provenancePolicy: "recommended",
+    maskingPolicy: "conditional",
+  },
 };
 
 export const pitchAgent = profileAction(pitchProfileThinking);

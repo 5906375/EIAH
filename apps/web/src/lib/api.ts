@@ -126,6 +126,127 @@ export type Agent = {
   description?: string;
   pricing?: { perRunCents?: number; perMBcents?: number };
   profile?: { model: string; systemPrompt: string; tools?: unknown };
+  knowledgePolicy?: {
+    deterministicSources: Array<{
+      sourceId: string;
+      kind: "db" | "ledger" | "event_store" | "document_index" | "api" | "snapshot";
+      authorityLevel: "primary" | "secondary" | "advisory";
+      required: boolean;
+      version: string;
+    }>;
+    sourcePrecedence: string[];
+    conflictResolution: "fail_closed" | "use_primary" | "human_review";
+    llmUsageMode:
+      | "none"
+      | "format_only"
+      | "grounded_reasoning"
+      | "open_reasoning_restricted"
+      | "disallowed_for_critical_execution";
+    fallbackPolicy: "block" | "approved_snapshot" | "human_review";
+    provenancePolicy: "required" | "recommended" | "none";
+    maskingPolicy: "required" | "conditional" | "none";
+  };
+  governance?: {
+    modelPolicy: string;
+    toolCapabilities: string[];
+    criticality: "low" | "medium" | "high" | "critical";
+    approval: string;
+    receiptPolicy: string;
+    requiredScopes: string[];
+  };
+  cognitiveProfile?: {
+    reasoningMode:
+      | "synthesis"
+      | "diagnostic"
+      | "orchestration"
+      | "simulation"
+      | "monitoring"
+      | "critique"
+      | "compliance";
+    initiativeLevel: "low" | "medium" | "high";
+    ambiguityStrategy: "ask_first" | "infer_conservatively" | "route_to_core";
+    confidenceBehavior: "explicit" | "implicit" | "gated";
+    memoryStyle: "session_only" | "contextual" | "evidence_anchored";
+    decisionPosture: "advisory" | "constrained_action" | "execution_guarded";
+    delegationPolicy: "never" | "optional" | "preferred" | "mandatory_for_sensitive";
+  };
+  uxContract?: {
+    primaryUserValue: string;
+    responseShape:
+      | "brief_answer"
+      | "executive_summary"
+      | "step_plan"
+      | "options_matrix"
+      | "risk_brief"
+      | "alert_card"
+      | "evidence_pack";
+    toneProfile: "executive" | "operational" | "analytical" | "commercial" | "supportive";
+    interactionPattern: "single_turn" | "guided_flow" | "review_loop" | "monitoring_loop";
+    defaultCTA: string;
+    maxCognitiveLoad: "low" | "medium" | "high";
+    clarificationPolicy: "minimal" | "targeted" | "strict";
+    progressExposure: "none" | "light" | "structured";
+    trustSignals: string[];
+  };
+  chatCopy?: {
+    whoIAm: string;
+    whatIDo: string[];
+    whenToUseMe: string[];
+    whatINotDo?: string[];
+    exampleRequests: string[];
+    quickReplies?: string[];
+    defaultNextStep?: string;
+    blockedMessages?: {
+      genericBlocked?: string;
+      missingContext?: string;
+      missingRequiredSource?: string;
+    };
+  };
+  attachmentContract?: {
+    acceptsAttachments: boolean;
+    acceptedAttachmentKinds: string[];
+    acceptedMimeTypes?: string[];
+    intakeModes: Array<"upload_file" | "paste_text" | "structured_form">;
+    analysisModes: Array<
+      | "full_review"
+      | "partial_review"
+      | "clause_review"
+      | "risk_scan"
+      | "missing_fields"
+      | "evidence_validation"
+      | "financial_check"
+    >;
+    defaultAnalysisMode?:
+      | "full_review"
+      | "partial_review"
+      | "clause_review"
+      | "risk_scan"
+      | "missing_fields"
+      | "evidence_validation"
+      | "financial_check";
+    requiredMetadata?: string[];
+    initialPrompts?: string[];
+    uploadHelpText?: string;
+  };
+  participation?: {
+    agentId: string;
+    status: "active" | "restricted" | "experimental" | "future" | "deprecated";
+    visibility: "visible" | "hidden" | "internal_only";
+    canBeSuggested: boolean;
+    canReceiveHandoff: boolean;
+    requiresEntitlement: boolean;
+    requiredModules?: string[];
+    requiredWorkspaceCapabilities?: string[];
+  };
+  modeContracts?: Array<{
+    mode: "help" | "orchestrator" | "proposal";
+    label: string;
+    description: string;
+    knowledgePolicy?: Agent["knowledgePolicy"];
+    cognitiveProfile?: Agent["cognitiveProfile"];
+    uxContract?: Agent["uxContract"];
+    chatCopy?: Agent["chatCopy"];
+  }>;
 };
 
 export type AgentProtocolActionContract = {
@@ -1472,10 +1593,86 @@ export type HelpdeskSessionCreatePayload = {
   metadata?: Record<string, unknown>;
 };
 
+export type HelpdeskUxIssueCategory =
+  | "clarification_overuse"
+  | "generic_fallback"
+  | "too_systemic"
+  | "natural_request_not_understood"
+  | "unnecessary_run_creation"
+  | "healthy_or_inconclusive";
+
+export type HelpdeskSessionExport = {
+  workspaceId: string;
+  generatedAt: string;
+  totalSessions: number;
+  totalRunGroups: number;
+  summary: Record<string, number>;
+  rolloutMetrics?: {
+    rolloutStageCounts: Record<string, number>;
+    chips: {
+      avgShownPerTurn: number;
+      quickReplyClicks: number;
+      quickReplyClickRate: number;
+    };
+    clarifications: {
+      total: number;
+      ratePerTurn: number;
+    };
+    handoff: {
+      offered: number;
+      eligible: number;
+      successfulRate: number;
+    };
+    abandonment: {
+      estimatedThreads: number;
+      estimatedRate: number;
+    };
+    qualitativeReview: {
+      needsReview: number;
+      healthySamples: number;
+    };
+  };
+  groups: Array<{
+    runId: string;
+    agent: string | null;
+    status: string | null;
+    entries: number;
+    lastInteractionAt: string | null;
+    uxIssueCategory: HelpdeskUxIssueCategory;
+    uxIssueLabel: string;
+    interactions: Array<{
+      id: string;
+      runId: string;
+      agent: string | null;
+      status: string | null;
+      intent: string;
+      confidence: number;
+      fallbackReason: string | null;
+      message: string;
+      response: string;
+      recommendedPlan: string | null;
+      estimatedValue: number | null;
+      createdAt: string;
+      uxIssueCategory: HelpdeskUxIssueCategory;
+    }>;
+  }>;
+  reportText: string;
+};
+
 export async function apiCreateHelpdeskSession(payload: HelpdeskSessionCreatePayload) {
   return http<{ ok: boolean; data: { id: string } }>(`/helpdesk/session`, {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export async function apiListHelpdeskSessions(params?: { workspaceId?: string; limit?: number }) {
+  const query = new URLSearchParams();
+  if (params?.workspaceId) query.set("workspaceId", params.workspaceId);
+  if (typeof params?.limit === "number") query.set("limit", String(params.limit));
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  return http<{ ok: boolean; data: HelpdeskSessionExport }>(`/helpdesk/sessions${qs}`, {
+    method: "GET",
   });
 }
 

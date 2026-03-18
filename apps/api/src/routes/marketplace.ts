@@ -545,11 +545,19 @@ marketplaceRouter.post("/marketplace/:id/subscribe", async (req, res) => {
       const duplicateIds = existingWorkspacePolicies.slice(1).map((row) => row.id);
       if (duplicateIds.length > 0) {
         await request.prisma.tenantActionPolicy.deleteMany({
-          where: { id: { in: duplicateIds } },
+          where: {
+            tenantId: request.authContext.tenantId,
+            workspaceId: request.authContext.workspaceId,
+            id: { in: duplicateIds },
+          },
         });
       }
       await request.prisma.tenantActionPolicy.update({
-        where: { id: keeper.id },
+        where: {
+          tenantId: request.authContext.tenantId,
+          workspaceId: request.authContext.workspaceId,
+          id: keeper.id,
+        },
         data: {
           actionName: item.name,
           allowed: true,

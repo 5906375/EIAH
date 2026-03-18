@@ -20,7 +20,7 @@ function getDisplayAgentName(agent: Agent) {
   const normalizedId = (agent.id ?? "").trim().toLowerCase();
   const normalizedName = (agent.name ?? "").trim().toLowerCase();
   if (normalizedId === "eiah" || normalizedName === "eiah core") {
-    return "Central de Ajuda EIAH";
+    return "EIAH";
   }
   return agent.name;
 }

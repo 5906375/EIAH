@@ -82,6 +82,82 @@ export const finNexusProfile: AgentProfileSeed = {
       temperature: 0.2,
     },
   ],
+  knowledgePolicy: {
+    deterministicSources: [
+      { sourceId: "finance.payables-registry", kind: "db", authorityLevel: "primary", required: true, version: "v1" },
+      { sourceId: "finance.bank-reconciliation-ledger", kind: "ledger", authorityLevel: "primary", required: true, version: "v1" },
+      { sourceId: "finance.payment-documents", kind: "document_index", authorityLevel: "secondary", required: false, version: "v1" },
+    ],
+    sourcePrecedence: [
+      "finance.payables-registry",
+      "finance.bank-reconciliation-ledger",
+      "finance.payment-documents",
+    ],
+    conflictResolution: "fail_closed",
+    llmUsageMode: "grounded_reasoning",
+    fallbackPolicy: "block",
+    provenancePolicy: "required",
+    maskingPolicy: "required",
+  },
+  chatCopy: {
+    whoIAm:
+      "Sou o FinNexus, o agente financeiro da plataforma. Eu ajudo a organizar pendências financeiras, revisar documentos de pagamento, orientar conciliação e dar clareza sobre risco operacional.",
+    whatIDo: [
+      "organizo contas a pagar, vencimentos e pendências financeiras",
+      "ajudo a revisar boletos, notas, contratos e documentos antes do pagamento",
+      "oriento conciliação bancária, fluxo de caixa e próximos passos financeiros",
+    ],
+    whenToUseMe: [
+      "quando você precisa revisar uma pendência financeira ou pagamento",
+      "quando quer entender risco, documentação faltante ou conciliação",
+    ],
+    whatINotDo: [
+      "não devo concluir execução financeira crítica sem base obrigatória disponível",
+      "não substituo validação humana final em decisões financeiras sensíveis",
+    ],
+    exampleRequests: [
+      "quais pendências financeiras devo priorizar agora?",
+      "o que falta para aprovar este pagamento?",
+      "como funciona a conciliação bancária aqui?",
+    ],
+    quickReplies: [
+      "Quais pendências financeiras devo priorizar?",
+      "O que falta para aprovar este pagamento?",
+      "Como funciona a conciliação bancária?",
+    ],
+    defaultNextStep: "Se quiser, me diga a pendência, documento ou pagamento que você quer revisar.",
+    blockedMessages: {
+      missingContext: "Para seguir com segurança, eu preciso do documento, pagamento ou contexto financeiro que você quer analisar.",
+      missingRequiredSource:
+        "Não consegui concluir essa análise financeira com segurança porque faltam fontes obrigatórias.",
+    },
+  },
+  attachmentContract: {
+    acceptsAttachments: true,
+    acceptedAttachmentKinds: ["invoice", "receipt", "spreadsheet", "proposal", "generic_document"],
+    acceptedMimeTypes: [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "text/plain",
+      "text/csv",
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "image/png",
+      "image/jpeg",
+    ],
+    intakeModes: ["upload_file", "paste_text", "structured_form"],
+    analysisModes: ["financial_check", "risk_scan", "missing_fields"],
+    defaultAnalysisMode: "financial_check",
+    requiredMetadata: ["document_type", "analysis_goal"],
+    initialPrompts: [
+      "Quero revisar um documento financeiro",
+      "Quero analisar uma invoice",
+      "Quero identificar o que falta para aprovar o pagamento",
+    ],
+    uploadHelpText:
+      "Envie a invoice, boleto, comprovante ou planilha que você quer revisar, ou cole o trecho financeiro principal.",
+  },
 };
 
 export const finNexusAgent = profileAction(finNexusProfile);

@@ -170,7 +170,7 @@ function extractEiahPlaybookFromAgentsPage(content: string) {
   const blockMatch = content.match(/eiah\s*:\s*\{([\s\S]*?)\n\s*\},\n\s*fallback\s*:/m);
   if (!blockMatch) return null;
   const block = blockMatch[1];
-  const title = parseStringField(block, "title") || "Central de Ajuda EIAH";
+  const title = parseStringField(block, "title") || "EIAH";
   const intro = parseStringField(block, "intro");
   const routes = parseArrayItems(block, "routes");
   const directives = parseArrayItems(block, "directives");
@@ -248,7 +248,7 @@ function buildCanonicalEiahDocs(params: {
   docs.push({
     id: "help.eiah.agent-docs.role",
     scope: "eiah",
-    question: "O que significa o conteúdo do Central de Ajuda virar um agente da documentação do EIAH?",
+    question: "O que significa o conteúdo do EIAH virar um agente da documentação do EIAH?",
     answer:
       "Significa que ele atua como um agente de acesso ao conhecimento canônico do EIAH, recuperando e explicando a base indexada via /help/eiah/query. Ele não substitui a governança normativa nem a fonte primária de verdade; atua como camada consultiva e explicativa subordinada ao roadmap, ao índice de evidências e aos contratos/evidências indexadas.",
     tags: ["help", "documentation", "eiah", "governance"],
@@ -280,7 +280,7 @@ function buildCanonicalEiahDocs(params: {
   docs.push({
     id: "help.eiah.proposal.mode",
     scope: "eiah",
-    question: "Como funciona o modo proposal no Central de Ajuda EIAH?",
+    question: "Como funciona o modo proposal no EIAH?",
     answer: [
       "No modo proposal o agente coleta perfil, usuarios, runs/mes, vertical, prazo e resultado esperado.",
       "Depois entrega recomendacao de plano, estimativa de custo, riscos/limites e proximos passos.",
