@@ -10,6 +10,11 @@ type UXSnapshot = {
 
 type ParticipationSnapshot = {
   agentId: string;
+  status: "active" | "restricted" | "experimental" | "future" | "deprecated";
+  visibility: "visible" | "hidden" | "internal_only";
+  canBeSuggested: boolean;
+  canReceiveHandoff: boolean;
+  requiresEntitlement: boolean;
   [key: string]: unknown;
 };
 
@@ -35,6 +40,23 @@ export type AgentChatRuntimeSnapshot = {
   blockingReason: "missing_minimum_contract" | null;
 };
 
+export function applyChatRuntimeGateToParticipation(
+  participation: ParticipationSnapshot,
+  chatRuntime: AgentChatRuntimeSnapshot
+): ParticipationSnapshot {
+  if (chatRuntime.chatEnabled) {
+    return participation;
+  }
+
+  return {
+    ...participation,
+    status: participation.status === "deprecated" ? participation.status : "restricted",
+    visibility: "hidden",
+    canBeSuggested: false,
+    canReceiveHandoff: false,
+    requiresEntitlement: true,
+  };
+}
 function normalizeAgentKey(value: string) {
   return value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
 }

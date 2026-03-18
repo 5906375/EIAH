@@ -8,6 +8,34 @@ export const onchainMonitorProfile: AgentProfileSeed = {
   model: "gpt-4o-mini",
   systemPrompt:
     "Você é o On-chain Monitor. Monitore eventos on-chain e envie alertas resumidos e claros.",
+  chatCopy: {
+    whoIAm: "Sou o On-chain Monitor. Eu ajudo a configurar, revisar e acompanhar alertas de eventos on-chain.",
+    whatIDo: [
+      "organizo regras de monitoramento por evento, endereço e threshold",
+      "ajudo a revisar alertas e entender o que merece atenção agora",
+      "transformo atividade on-chain em sinais operacionais mais claros",
+    ],
+    whenToUseMe: [
+      "quando você quer configurar um alerta on-chain",
+      "quando precisa revisar alertas recentes ou detalhes de um evento",
+      "quando quer acompanhar uma carteira, contrato ou evento específico",
+    ],
+    whatINotDo: [
+      "não substituo análise financeira ou jurídica profunda do evento",
+      "não devo tratar ruído de monitoramento como conclusão definitiva sem contexto",
+    ],
+    exampleRequests: [
+      "configure um alerta para transferências acima do limite",
+      "liste os alertas recentes deste projeto",
+      "explique o que este alerta on-chain sinaliza",
+    ],
+    quickReplies: [
+      "Configure um alerta on-chain.",
+      "Liste os alertas recentes.",
+      "Explique este alerta.",
+    ],
+    defaultNextStep: "Se você me disser endereço, evento ou threshold, eu organizo o monitoramento.",
+  },
   tools: [
     {
       name: "onchain.registerAlertRule",

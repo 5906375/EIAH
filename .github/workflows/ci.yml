@@ -137,6 +137,32 @@ jobs:
       - name: Check Help Playbook anti-drift
         run: pnpm check:help-playbook-drift
 
+  chat_agent_onboarding:
+    name: ChatAgentOnboarding
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Check chat agent onboarding gate
+        run: pnpm check:chat-agent-onboarding
+
   receipt_canon_compat:
     name: ReceiptCanonCompat
     runs-on: ubuntu-latest

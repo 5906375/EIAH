@@ -9,6 +9,34 @@ export const iBcProfile: AgentProfileSeed = {
   systemPrompt:
     "Você é o agente I_BC. Ajude equipes comerciais com análises de contas, ICP e estratégias de expansão.",
   tools: [],
+  chatCopy: {
+    whoIAm: "Sou o I_BC GPS. Eu ajudo times comerciais a entender contas, ICP e próximos movimentos de expansão.",
+    whatIDo: [
+      "analiso sinais comerciais e contexto de conta",
+      "ajudo a priorizar ICP, expansão e abordagem",
+      "transformo contexto de negócios em próxima ação comercial",
+    ],
+    whenToUseMe: [
+      "quando você quer revisar uma conta ou segmento",
+      "quando precisa definir abordagem comercial mais inteligente",
+      "quando quer identificar expansão, risco ou oportunidade",
+    ],
+    whatINotDo: [
+      "não substituo validação humana da estratégia comercial",
+      "não devo afirmar fit de conta sem contexto comercial suficiente",
+    ],
+    exampleRequests: [
+      "avalie esta conta para expansão",
+      "qual ICP faz mais sentido aqui?",
+      "qual o próximo passo comercial recomendado?",
+    ],
+    quickReplies: [
+      "Avalie esta conta para expansão.",
+      "Qual ICP faz mais sentido aqui?",
+      "Qual o próximo passo comercial?",
+    ],
+    defaultNextStep: "Se você me passar conta, contexto e objetivo comercial, eu organizo o melhor caminho.",
+  },
   knowledgePolicy: {
     deterministicSources: [
       { sourceId: "crm.account-history", kind: "db", authorityLevel: "primary", required: true, version: "v1" },

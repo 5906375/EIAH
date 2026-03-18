@@ -1,6 +1,10 @@
 import { Prisma, PrismaClient, prismaGlobal } from "@repo/db";
 import { listRegisteredActions } from "@eiah/core";
-import { buildChatRuntimeSnapshot, type AgentChatRuntimeSnapshot } from "./agentChatRuntime";
+import {
+  applyChatRuntimeGateToParticipation,
+  buildChatRuntimeSnapshot,
+  type AgentChatRuntimeSnapshot,
+} from "./agentChatRuntime";
 import {
   aadvProfile,
   defiOneProfile,
@@ -246,7 +250,7 @@ export function listCoreAgentCatalog(): AgentListing[] {
     cognitiveProfile: buildCognitiveSnapshot(profile.agent),
     uxContract: buildUXSnapshot(profile.agent),
     chatCopy: buildChatCopySnapshot(profile.agent, profile),
-    chatRuntime: buildChatRuntimeSnapshot(profile.agent, profile),
+    chatRuntime: buildChatRuntimeSnapshot(profile.agent, buildEffectiveChatRuntimeInput(profile.agent, true, profile)),
     attachmentContract: buildAttachmentContractSnapshot(profile.agent, profile),
     participation: buildParticipationSnapshot(profile.agent, true, profile),
     modeContracts: profile.modeContracts,
@@ -1059,30 +1063,12 @@ function buildParticipationSnapshot(
   };
 }
 
-function applyChatRuntimeGateToParticipation(
-  participation: AgentParticipationSnapshot,
-  chatRuntime: AgentChatRuntimeSnapshot
-): AgentParticipationSnapshot {
-  if (chatRuntime.chatEnabled) {
-    return participation;
-  }
-
-  return {
-    ...participation,
-    status: participation.status === "deprecated" ? participation.status : "restricted",
-    visibility: "hidden",
-    canBeSuggested: false,
-    canReceiveHandoff: false,
-    requiresEntitlement: true,
-  };
-}
-
 function buildChatParticipationBundle(
   agent: string,
   isAvailableInWorkspace: boolean,
   profile?: ({ participation?: AgentParticipationSnapshot | null } & Record<string, unknown>) | null
 ) {
-  const chatRuntime = buildChatRuntimeSnapshot(agent, profile);
+  const chatRuntime = buildChatRuntimeSnapshot(agent, buildEffectiveChatRuntimeInput(agent, isAvailableInWorkspace, profile));
   const participation = applyChatRuntimeGateToParticipation(
     buildParticipationSnapshot(agent, isAvailableInWorkspace, profile),
     chatRuntime
@@ -1090,6 +1076,24 @@ function buildChatParticipationBundle(
   return { chatRuntime, participation };
 }
 
+function buildEffectiveChatRuntimeInput(
+  agent: string,
+  isAvailableInWorkspace: boolean,
+  profile?: Record<string, unknown> | null
+) {
+  return {
+    chatCopy: buildChatCopySnapshot(agent, profile),
+    uxContract:
+      (profile as { uxContract?: AgentUXSnapshot | null } | null)?.uxContract ??
+      buildUXSnapshot(agent),
+    participation: buildParticipationSnapshot(agent, isAvailableInWorkspace, profile),
+    modeContracts:
+      (profile as { modeContracts?: AgentListing["modeContracts"] | null } | null)?.modeContracts ??
+      coreProfileForAgent(agent)?.modeContracts ??
+      null,
+    attachmentContract: buildAttachmentContractSnapshot(agent, profile),
+  };
+}
 /**
  * Lista agentes disponíveis, combinando dados de pricing,
  * perfis de agentes e ações registradas no core.
@@ -1344,22 +1348,13 @@ export async function getAgentProfile(
     const participationBase =
       (dbProfile as { participation?: AgentParticipationSnapshot | null }).participation ??
       buildParticipationSnapshot(resolvedAgent, isAvailableInWorkspace, coreProfileForAgent(resolvedAgent));
-    const chatRuntime = buildChatRuntimeSnapshot(resolvedAgent, {
-      chatCopy:
-        (dbProfile as { chatCopy?: AgentChatCopySnapshot | null }).chatCopy ??
-        buildChatCopySnapshot(resolvedAgent, coreProfileForAgent(resolvedAgent)),
-      uxContract:
-        (dbProfile as { uxContract?: AgentUXSnapshot | null }).uxContract ??
-        AGENT_EXPERIENCE_OVERRIDES[normalizeAgentKey(resolvedAgent)]?.uxContract ??
-        null,
-      participation: participationBase,
-      modeContracts:
-        (dbProfile as { modeContracts?: AgentListing["modeContracts"] | null }).modeContracts ??
-        coreProfileForAgent(resolvedAgent)?.modeContracts,
-      attachmentContract:
-        (dbProfile as { attachmentContract?: AgentAttachmentContractSnapshot | null }).attachmentContract ??
-        buildAttachmentContractSnapshot(resolvedAgent, coreProfileForAgent(resolvedAgent)),
-    } as Record<string, unknown>);
+    const chatRuntime = buildChatRuntimeSnapshot(
+      resolvedAgent,
+      buildEffectiveChatRuntimeInput(resolvedAgent, isAvailableInWorkspace, {
+        ...(dbProfile as Record<string, unknown>),
+        participation: participationBase,
+      })
+    );
     return {
       ...dbProfile,
       knowledgePolicy:
