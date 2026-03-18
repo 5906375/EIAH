@@ -1,5 +1,6 @@
 import { Prisma, PrismaClient, prismaGlobal } from "@repo/db";
 import { listRegisteredActions } from "@eiah/core";
+import { buildChatRuntimeSnapshot, type AgentChatRuntimeSnapshot } from "./agentChatRuntime";
 import {
   aadvProfile,
   defiOneProfile,
@@ -110,6 +111,17 @@ export type AgentListing = {
       missingRequiredSource?: string;
     };
   };
+  chatRuntime?: {
+    readiness: "ready" | "incomplete";
+    resolver: "agent_driven" | "legacy_compatible";
+    missingFields: string[];
+    hasModeContracts: boolean;
+    hasAttachmentIntake: boolean;
+    onboardingPolicy: "fail_closed_for_new_agents";
+    chatEnabled: boolean;
+    catalogVisibility: "visible" | "blocked";
+    blockingReason: "missing_minimum_contract" | null;
+  };
   attachmentContract?: {
     acceptsAttachments: boolean;
     acceptedAttachmentKinds: string[];
@@ -196,6 +208,7 @@ type CoreAgentProfile = {
   participation?: AgentParticipationSnapshot;
   modeContracts?: AgentListing["modeContracts"];
   chatCopy?: AgentChatCopySnapshot;
+  chatRuntime?: AgentChatRuntimeSnapshot;
   attachmentContract?: AgentAttachmentContractSnapshot;
 };
 
@@ -233,6 +246,7 @@ export function listCoreAgentCatalog(): AgentListing[] {
     cognitiveProfile: buildCognitiveSnapshot(profile.agent),
     uxContract: buildUXSnapshot(profile.agent),
     chatCopy: buildChatCopySnapshot(profile.agent, profile),
+    chatRuntime: buildChatRuntimeSnapshot(profile.agent, profile),
     attachmentContract: buildAttachmentContractSnapshot(profile.agent, profile),
     participation: buildParticipationSnapshot(profile.agent, true, profile),
     modeContracts: profile.modeContracts,
@@ -997,7 +1011,10 @@ function buildUXSnapshot(agent: string): AgentUXSnapshot {
   );
 }
 
-function buildChatCopySnapshot(agent: string, profile?: { chatCopy?: AgentChatCopySnapshot | null } | null) {
+function buildChatCopySnapshot(
+  agent: string,
+  profile?: ({ chatCopy?: AgentChatCopySnapshot | null } & Record<string, unknown>) | null
+) {
   if (profile?.chatCopy) {
     return profile.chatCopy;
   }
@@ -1006,7 +1023,7 @@ function buildChatCopySnapshot(agent: string, profile?: { chatCopy?: AgentChatCo
 
 function buildAttachmentContractSnapshot(
   agent: string,
-  profile?: { attachmentContract?: AgentAttachmentContractSnapshot | null } | null,
+  profile?: ({ attachmentContract?: AgentAttachmentContractSnapshot | null } & Record<string, unknown>) | null,
 ) {
   if (profile?.attachmentContract) {
     return profile.attachmentContract;
@@ -1017,7 +1034,7 @@ function buildAttachmentContractSnapshot(
 function buildParticipationSnapshot(
   agent: string,
   isAvailableInWorkspace: boolean,
-  profile?: { participation?: AgentParticipationSnapshot | null } | null
+  profile?: ({ participation?: AgentParticipationSnapshot | null } & Record<string, unknown>) | null
 ): AgentParticipationSnapshot {
   const base = profile?.participation ?? coreProfileForAgent(agent)?.participation;
   if (base) {
@@ -1040,6 +1057,37 @@ function buildParticipationSnapshot(
     requiredModules: [],
     requiredWorkspaceCapabilities: [],
   };
+}
+
+function applyChatRuntimeGateToParticipation(
+  participation: AgentParticipationSnapshot,
+  chatRuntime: AgentChatRuntimeSnapshot
+): AgentParticipationSnapshot {
+  if (chatRuntime.chatEnabled) {
+    return participation;
+  }
+
+  return {
+    ...participation,
+    status: participation.status === "deprecated" ? participation.status : "restricted",
+    visibility: "hidden",
+    canBeSuggested: false,
+    canReceiveHandoff: false,
+    requiresEntitlement: true,
+  };
+}
+
+function buildChatParticipationBundle(
+  agent: string,
+  isAvailableInWorkspace: boolean,
+  profile?: ({ participation?: AgentParticipationSnapshot | null } & Record<string, unknown>) | null
+) {
+  const chatRuntime = buildChatRuntimeSnapshot(agent, profile);
+  const participation = applyChatRuntimeGateToParticipation(
+    buildParticipationSnapshot(agent, isAvailableInWorkspace, profile),
+    chatRuntime
+  );
+  return { chatRuntime, participation };
 }
 
 /**
@@ -1105,6 +1153,8 @@ export async function listAgents(
     .map((plan) => {
     const canonical = resolveAgentId(plan.agent);
     const profile = profileMap.get(canonical);
+    const profileSnapshot = (profile ?? coreProfileForAgent(canonical)) as (CoreAgentProfile & Record<string, unknown>) | null;
+    const { chatRuntime, participation } = buildChatParticipationBundle(canonical, true, profileSnapshot);
     return {
       id: canonical,
       name: profile?.name ?? canonical,
@@ -1122,13 +1172,14 @@ export async function listAgents(
           tools: profile.tools,
         }
         : undefined,
-      knowledgePolicy: buildKnowledgeSnapshot(canonical, profile ?? coreProfileForAgent(canonical)),
-      governance: buildGovernanceSnapshot(canonical, profile ?? coreProfileForAgent(canonical)),
+      knowledgePolicy: buildKnowledgeSnapshot(canonical, profileSnapshot),
+      governance: buildGovernanceSnapshot(canonical, profileSnapshot),
       cognitiveProfile: buildCognitiveSnapshot(canonical),
       uxContract: buildUXSnapshot(canonical),
-      chatCopy: buildChatCopySnapshot(canonical, profile ?? coreProfileForAgent(canonical)),
-      attachmentContract: buildAttachmentContractSnapshot(canonical, profile ?? coreProfileForAgent(canonical)),
-      participation: buildParticipationSnapshot(canonical, true, profile ?? coreProfileForAgent(canonical)),
+      chatCopy: buildChatCopySnapshot(canonical, profileSnapshot),
+      chatRuntime,
+      attachmentContract: buildAttachmentContractSnapshot(canonical, profileSnapshot),
+      participation,
       modeContracts:
         ((profile as { modeContracts?: AgentListing["modeContracts"] | null } | undefined)?.modeContracts as
           | AgentListing["modeContracts"]
@@ -1138,6 +1189,8 @@ export async function listAgents(
 
   for (const profile of profiles) {
     const canonical = resolveAgentId(profile.agent);
+    const profileSnapshot = profile as CoreAgentProfile & Record<string, unknown>;
+    const { chatRuntime, participation } = buildChatParticipationBundle(canonical, true, profileSnapshot);
     if (!subscribedAgentKeys.has(normalizeAgentKey(canonical))) {
       continue;
     }
@@ -1152,13 +1205,14 @@ export async function listAgents(
           systemPrompt: profile.systemPrompt,
           tools: profile.tools,
         },
-        knowledgePolicy: buildKnowledgeSnapshot(canonical, profile),
-        governance: buildGovernanceSnapshot(canonical, profile),
+        knowledgePolicy: buildKnowledgeSnapshot(canonical, profileSnapshot),
+        governance: buildGovernanceSnapshot(canonical, profileSnapshot),
         cognitiveProfile: buildCognitiveSnapshot(canonical),
         uxContract: buildUXSnapshot(canonical),
-        chatCopy: buildChatCopySnapshot(canonical, profile),
-        attachmentContract: buildAttachmentContractSnapshot(canonical, profile),
-        participation: buildParticipationSnapshot(canonical, true, profile),
+        chatCopy: buildChatCopySnapshot(canonical, profileSnapshot),
+        chatRuntime,
+        attachmentContract: buildAttachmentContractSnapshot(canonical, profileSnapshot),
+        participation,
         modeContracts:
           ((profile as { modeContracts?: AgentListing["modeContracts"] | null }).modeContracts as
             | AgentListing["modeContracts"]
@@ -1172,6 +1226,7 @@ export async function listAgents(
       continue;
     }
     if (!response.some((item) => item.id === coreProfile.agent)) {
+      const { chatRuntime, participation } = buildChatParticipationBundle(coreProfile.agent, true, coreProfile);
       response.push({
         id: coreProfile.agent,
         name: coreProfile.name,
@@ -1187,8 +1242,9 @@ export async function listAgents(
         cognitiveProfile: buildCognitiveSnapshot(coreProfile.agent),
         uxContract: buildUXSnapshot(coreProfile.agent),
         chatCopy: buildChatCopySnapshot(coreProfile.agent, coreProfile),
+        chatRuntime,
         attachmentContract: buildAttachmentContractSnapshot(coreProfile.agent, coreProfile),
-        participation: buildParticipationSnapshot(coreProfile.agent, true, coreProfile),
+        participation,
         modeContracts: coreProfile.modeContracts,
       });
     }
@@ -1204,6 +1260,8 @@ export async function listAgents(
       continue;
     }
     if (!response.some((item) => item.id === entry.name)) {
+      const coreProfile = coreProfileForAgent(entry.name);
+      const { chatRuntime, participation } = buildChatParticipationBundle(entry.name, true, coreProfile);
       response.push({
         id: entry.name,
         name: entry.name,
@@ -1214,10 +1272,11 @@ export async function listAgents(
         governance: buildGovernanceSnapshot(entry.name, coreProfileForAgent(entry.name)),
         cognitiveProfile: buildCognitiveSnapshot(entry.name),
         uxContract: buildUXSnapshot(entry.name),
-        chatCopy: buildChatCopySnapshot(entry.name, coreProfileForAgent(entry.name)),
-        attachmentContract: buildAttachmentContractSnapshot(entry.name, coreProfileForAgent(entry.name)),
-        participation: buildParticipationSnapshot(entry.name, true, coreProfileForAgent(entry.name)),
-        modeContracts: coreProfileForAgent(entry.name)?.modeContracts,
+        chatCopy: buildChatCopySnapshot(entry.name, coreProfile),
+        chatRuntime,
+        attachmentContract: buildAttachmentContractSnapshot(entry.name, coreProfile),
+        participation,
+        modeContracts: coreProfile?.modeContracts,
       });
     }
   }
@@ -1282,17 +1341,36 @@ export async function getAgentProfile(
 
   const dbProfile = await db.agentProfile.findUnique({ where: { agent: resolvedAgent } });
   if (dbProfile) {
+    const participationBase =
+      (dbProfile as { participation?: AgentParticipationSnapshot | null }).participation ??
+      buildParticipationSnapshot(resolvedAgent, isAvailableInWorkspace, coreProfileForAgent(resolvedAgent));
+    const chatRuntime = buildChatRuntimeSnapshot(resolvedAgent, {
+      chatCopy:
+        (dbProfile as { chatCopy?: AgentChatCopySnapshot | null }).chatCopy ??
+        buildChatCopySnapshot(resolvedAgent, coreProfileForAgent(resolvedAgent)),
+      uxContract:
+        (dbProfile as { uxContract?: AgentUXSnapshot | null }).uxContract ??
+        AGENT_EXPERIENCE_OVERRIDES[normalizeAgentKey(resolvedAgent)]?.uxContract ??
+        null,
+      participation: participationBase,
+      modeContracts:
+        (dbProfile as { modeContracts?: AgentListing["modeContracts"] | null }).modeContracts ??
+        coreProfileForAgent(resolvedAgent)?.modeContracts,
+      attachmentContract:
+        (dbProfile as { attachmentContract?: AgentAttachmentContractSnapshot | null }).attachmentContract ??
+        buildAttachmentContractSnapshot(resolvedAgent, coreProfileForAgent(resolvedAgent)),
+    } as Record<string, unknown>);
     return {
       ...dbProfile,
       knowledgePolicy:
         (dbProfile as { knowledgePolicy?: AgentKnowledgeSnapshot | null }).knowledgePolicy ??
         buildKnowledgeSnapshot(resolvedAgent, coreProfileForAgent(resolvedAgent)),
       participation:
-        (dbProfile as { participation?: AgentParticipationSnapshot | null }).participation ??
-        buildParticipationSnapshot(resolvedAgent, isAvailableInWorkspace, coreProfileForAgent(resolvedAgent)),
+        applyChatRuntimeGateToParticipation(participationBase, chatRuntime),
       chatCopy:
         (dbProfile as { chatCopy?: AgentChatCopySnapshot | null }).chatCopy ??
         buildChatCopySnapshot(resolvedAgent, coreProfileForAgent(resolvedAgent)),
+      chatRuntime,
       modeContracts:
         (dbProfile as { modeContracts?: AgentListing["modeContracts"] | null }).modeContracts ??
         coreProfileForAgent(resolvedAgent)?.modeContracts,
@@ -1301,15 +1379,27 @@ export async function getAgentProfile(
 
   const coreSeed = coreSeedAsRecord(resolvedAgent);
   if (coreSeed) {
+    const { chatRuntime, participation } = buildChatParticipationBundle(
+      resolvedAgent,
+      isAvailableInWorkspace,
+      coreSeed as Record<string, unknown>
+    );
     return {
       ...coreSeed,
-      participation: buildParticipationSnapshot(resolvedAgent, isAvailableInWorkspace, coreProfileForAgent(resolvedAgent)),
+      chatRuntime,
+      participation,
     };
   }
 
   const registryEntry = listRegisteredActions().find((action) => action.name === resolvedAgent);
 
   if (registryEntry) {
+    const coreProfile = coreProfileForAgent(resolvedAgent);
+    const { chatRuntime, participation } = buildChatParticipationBundle(
+      resolvedAgent,
+      isAvailableInWorkspace,
+      coreProfile
+    );
     return {
       id: resolvedAgent,
       agent: resolvedAgent,
@@ -1319,9 +1409,10 @@ export async function getAgentProfile(
       systemPrompt: "",
       tools: null,
       knowledgePolicy: buildKnowledgeSnapshot(resolvedAgent, coreProfileForAgent(resolvedAgent)),
-      participation: buildParticipationSnapshot(resolvedAgent, isAvailableInWorkspace, coreProfileForAgent(resolvedAgent)),
-      chatCopy: buildChatCopySnapshot(resolvedAgent, coreProfileForAgent(resolvedAgent)),
-      modeContracts: coreProfileForAgent(resolvedAgent)?.modeContracts,
+      participation,
+      chatCopy: buildChatCopySnapshot(resolvedAgent, coreProfile),
+      chatRuntime,
+      modeContracts: coreProfile?.modeContracts,
       createdAt: new Date(),
       updatedAt: new Date(),
     };

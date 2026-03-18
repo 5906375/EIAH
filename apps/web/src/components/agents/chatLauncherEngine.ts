@@ -1,4 +1,14 @@
-import type { Agent } from "@/lib/api";
+import {
+  apiGetBillingPricingQuote,
+  apiQueryEiahHelp,
+  type Agent,
+  type EiahHelpQueryHit,
+  type HelpdeskSessionCreatePayload,
+} from "@/lib/api";
+import {
+  PRESENTATION_SNAPSHOT_VERSION,
+  type MessagePresentationSnapshot,
+} from "@/components/agents/chatPresentationSnapshot";
 import { j360Profile } from "../../../../../packages/core/src/actions/agents/j360Action";
 import { resolveLegalSpecialtyContext } from "../../../../../packages/core/src/actions/agents/resolveLegalSpecialtyContext";
 
@@ -107,6 +117,31 @@ export type LegacyEnrichmentIntent = {
   intent: string;
   confidence: number;
   fallbackReason?: string;
+};
+
+export type LauncherPersistedIntent = HelpdeskSessionCreatePayload["intent"];
+
+export type LauncherIntentResultLike = {
+  intent: string;
+  confidence: number;
+  fallbackReason?: string | null;
+};
+
+export type ConversationPersistenceTrigger =
+  | "approval_required"
+  | "critical_execution"
+  | "delegation"
+  | "provenance_required"
+  | "final_summary"
+  | "user_confirmed"
+  | "manual_save";
+
+export type ConversationPersistencePolicyInput = {
+  mode: "ephemeral" | "durable";
+  ttlMinutes: number;
+  promoteOn: ConversationPersistenceTrigger[];
+  persistSummary: boolean;
+  persistShortTermMemory: boolean;
 };
 
 type SpecialistExplainDefinition = {
@@ -746,6 +781,71 @@ function normalizeIntentText(value: string) {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
+function parsePtBrNumber(raw: string): number | null {
+  const compact = raw.toLowerCase().replace(/\s+/g, "");
+  const multiplier = compact.endsWith("k")
+    ? 1_000
+    : compact.endsWith("m")
+    ? 1_000_000
+    : compact.endsWith("mil")
+    ? 1_000
+    : 1;
+  const normalized = compact.replace(/[km]|mil$/g, "").replace(/[^\d.,]/g, "").replace(/\./g, "").replace(",", ".");
+  const value = Number.parseFloat(normalized);
+  return Number.isFinite(value) ? value * multiplier : null;
+}
+
+function extractProposalInputs(input: string): { users: number | null; runs: number | null } {
+  const normalized = normalizeIntentText(input);
+  let users: number | null = null;
+  let runs: number | null = null;
+
+  const userMatch = normalized.match(/(\d[\d\.,k]*|\d+\s*mil)\s*(usuarios|usuario|users|user|pessoas|equipe)\b/);
+  if (userMatch?.[1]) users = parsePtBrNumber(userMatch[1]);
+
+  const runsMatch = normalized.match(/(\d[\d\.,k]*|\d+\s*mil)\s*(runs|run|execucoes|execucoes\/mes|runs\/mes|runs\/m[eê]s)\b/);
+  if (runsMatch?.[1]) runs = parsePtBrNumber(runsMatch[1]);
+
+  return {
+    users: users !== null ? Math.max(0, Math.round(users)) : null,
+    runs: runs !== null ? Math.max(0, Math.round(runs)) : null,
+  };
+}
+
+function isLegalSpecialistAgent(agentProfile: Agent | null) {
+  const normalizedId = normalizeAgentKey(agentProfile?.id ?? "");
+  const normalizedName = normalizeAgentKey(agentProfile?.name ?? "");
+  return normalizedId === "j360" || normalizedName.includes("juridico");
+}
+
+function centsToBrl(cents: number) {
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
+}
+
+type LocalPlan = {
+  code: "solo" | "starter" | "growth" | "scale";
+  label: string;
+  basePriceCents: number;
+  includedUsers: number;
+  includedRuns: number;
+  overageRunCents: number;
+  extraUserCents: number;
+};
+
+const LOCAL_PLANS: LocalPlan[] = [
+  { code: "solo", label: "Solo", basePriceCents: 49000, includedUsers: 3, includedRuns: 1500, overageRunCents: 35, extraUserCents: 3900 },
+  { code: "starter", label: "Starter", basePriceCents: 149000, includedUsers: 10, includedRuns: 5000, overageRunCents: 30, extraUserCents: 3900 },
+  { code: "growth", label: "Growth", basePriceCents: 399000, includedUsers: 25, includedRuns: 25000, overageRunCents: 22, extraUserCents: 2900 },
+  { code: "scale", label: "Scale", basePriceCents: 990000, includedUsers: 100, includedRuns: 100000, overageRunCents: 15, extraUserCents: 1900 },
+];
+
+function quoteLocalPlan(plan: LocalPlan, users: number, runs: number) {
+  const runOverage = Math.max(0, runs - plan.includedRuns);
+  const userOverage = Math.max(0, users - plan.includedUsers);
+  const totalCents = plan.basePriceCents + runOverage * plan.overageRunCents + userOverage * plan.extraUserCents;
+  return { ...plan, totalCents };
+}
+
 function getAgentDisplayName(agent: Agent | null | undefined) {
   if (!agent) return "Agente";
   const normalizedId = normalizeAgentKey(agent.id ?? "");
@@ -1140,6 +1240,767 @@ export function buildInputPlaceholderForContext(params: {
   }
 
   return "Descreva o objetivo, contexto e restricoes...";
+}
+
+export function buildQuickRepliesForContext(params: {
+  agentProfile: Agent | null;
+  routeIntent: LauncherRouteIntent | "legal_handoff";
+  isHelpCenterMode: boolean;
+  proposalMode: boolean;
+  sourceInput?: string | null;
+}) {
+  const copyReplies =
+    params.agentProfile?.chatCopy?.quickReplies?.filter((value): value is string => Boolean(value && value.trim())) ?? [];
+  const resolvedVerticalContext = params.sourceInput ? resolveConversationVerticalContext(params.sourceInput) : null;
+  const imobReplies =
+    resolvedVerticalContext?.vertical === "IMOB" && params.sourceInput
+      ? buildImobQuickRepliesForInput(params.sourceInput)
+      : [];
+  const legalReplies =
+    resolvedVerticalContext?.vertical === "LEGAL" && params.sourceInput
+      ? buildLegalQuickRepliesForInput(params.sourceInput)
+      : [];
+
+  if (params.isHelpCenterMode) {
+    const engineReplies = buildEiahQuickReplies({
+      routeIntent: params.routeIntent,
+      proposalMode: params.proposalMode,
+    });
+    return [...copyReplies, ...imobReplies, ...legalReplies, ...engineReplies]
+      .filter((value): value is string => Boolean(value && value.trim()))
+      .filter((value, index, array) => array.indexOf(value) === index)
+      .slice(0, 3);
+  }
+
+  const specialistReplies = isLegalSpecialistAgent(params.agentProfile) ? legalReplies : [];
+  return [...specialistReplies, ...copyReplies]
+    .filter((value): value is string => Boolean(value && value.trim()))
+    .filter((value, index, array) => array.indexOf(value) === index)
+    .slice(0, 3);
+}
+
+export function buildLauncherContextualFallback(params: {
+  input: string;
+  routeIntent: LauncherRouteIntent;
+}) {
+  if (params.routeIntent === "proposal") {
+    const parsed = extractProposalInputs(params.input);
+    if (parsed.users && !parsed.runs) {
+      return "Entendi seu contexto comercial. Para calcular com precisão, me diga apenas os **runs/mês** estimados.";
+    }
+    if (!parsed.users && parsed.runs) {
+      return "Entendi seu contexto comercial. Para calcular com precisão, me diga apenas a quantidade de **usuários**.";
+    }
+    return "Entendi que você quer proposta comercial. Me passe `usuários` e `runs/mês` para eu calcular agora.";
+  }
+  if (params.routeIntent === "help") {
+    return "Me diga o que você quer resolver e eu te explico o melhor caminho dentro da plataforma.";
+  }
+  if (params.routeIntent === "orchestrator") {
+    return "Entendi que você quer coordenação operacional. Diga se o próximo passo é analisar, simular, executar ou auditar.";
+  }
+  return "Não consegui consolidar a resposta neste momento. Tente reformular em uma frase objetiva.";
+}
+
+export function createPresentationSnapshotV1(params: {
+  agentProfile: Agent | null;
+  routeIntent: MessagePresentationSnapshot["routeIntent"];
+  eiahMode?: EiahMode | null;
+  confidence?: number;
+  runId?: string | null;
+  renderVariant?: MessagePresentationSnapshot["renderVariant"];
+  sourceInput?: string;
+  isHelpCenterMode: boolean;
+  proposalMode: boolean;
+  attachmentIntake: AttachmentIntakeResolution;
+  usedReplyInputs?: string[];
+  excludeReplyInputs?: string[];
+}): MessagePresentationSnapshot {
+  const normalizedRouteIntent =
+    params.routeIntent === "self_intro" || params.routeIntent === "capabilities_summary"
+      ? "help"
+      : params.routeIntent;
+  const provenanceMode = params.agentProfile?.knowledgePolicy?.provenancePolicy ?? "none";
+  const signals = params.agentProfile?.uxContract?.trustSignals?.slice(0, 3) ?? [];
+  const showConfidence =
+    Boolean(params.runId) ||
+    !(
+      params.routeIntent === "help" ||
+      params.routeIntent === "playbook" ||
+      params.routeIntent === "imob" ||
+      params.routeIntent === "legal_handoff" ||
+      params.routeIntent === "self_intro" ||
+      params.routeIntent === "capabilities_summary"
+    );
+  const quickReplies = buildQuickRepliesForContext({
+    agentProfile: params.agentProfile,
+    routeIntent: normalizedRouteIntent,
+    isHelpCenterMode: params.isHelpCenterMode,
+    proposalMode: params.proposalMode,
+    sourceInput: params.sourceInput,
+  });
+  const excludedReplyKeys = new Set(
+    (params.excludeReplyInputs ?? []).map((value) => normalizeIntentText(value)).filter(Boolean)
+  );
+  const usedReplyKeys = new Set(
+    (params.usedReplyInputs ?? []).map((value) => normalizeIntentText(value)).filter(Boolean)
+  );
+  const filteredQuickReplies = quickReplies.filter((reply) => {
+    const normalizedReply = normalizeIntentText(reply);
+    return !usedReplyKeys.has(normalizedReply) && !excludedReplyKeys.has(normalizedReply);
+  });
+  const nextDecision =
+    params.routeIntent === "orchestrator"
+      ? params.agentProfile?.uxContract?.defaultCTA?.trim()
+      : undefined;
+  const verticalContext = params.sourceInput ? resolveConversationVerticalContext(params.sourceInput)?.vertical ?? null : null;
+  const nextSignals = verticalContext
+    ? [...signals, `vertical:${verticalContext.toLowerCase()}`].filter((value, index, array) => array.indexOf(value) === index)
+    : signals;
+
+  return {
+    snapshotVersion: PRESENTATION_SNAPSHOT_VERSION,
+    compatibilityMode: "snapshot",
+    verticalContext,
+    routeIntent: params.routeIntent,
+    eiahMode: params.eiahMode ?? null,
+    showConfidence,
+    confidencePercent: typeof params.confidence === "number" ? Math.round(params.confidence * 100) : undefined,
+    provenanceMode,
+    signals: nextSignals,
+    nextDecision,
+    quickReplies: filteredQuickReplies,
+    renderVariant: params.renderVariant ?? "guided_flow",
+    responseShape: params.agentProfile?.uxContract?.responseShape,
+    maxCognitiveLoad: params.agentProfile?.uxContract?.maxCognitiveLoad,
+    inputPlaceholder: buildInputPlaceholderForContext({
+      routeIntent: normalizedRouteIntent,
+      input: params.sourceInput,
+    }),
+    attachmentEnabled: params.attachmentIntake.enabled,
+    attachmentKinds: params.attachmentIntake.acceptedKinds,
+    attachmentIntakeModes: params.attachmentIntake.intakeModes,
+    attachmentAnalysisModes: params.attachmentIntake.analysisModes,
+    attachmentPrimaryActionLabel: params.attachmentIntake.primaryActionLabel,
+    attachmentSecondaryActionLabel: params.attachmentIntake.secondaryActionLabel,
+    attachmentHelpText: params.attachmentIntake.helpText,
+  };
+}
+
+export function resolveLauncherExecutionRenderVariant(params: {
+  routeIntent: LauncherRouteIntent;
+  phase: "run_created" | "run_error";
+}): MessagePresentationSnapshot["renderVariant"] {
+  if (params.routeIntent === "proposal") {
+    return "proposal";
+  }
+  if (params.phase === "run_created" && params.routeIntent === "orchestrator") {
+    return "handoff";
+  }
+  return "guided_flow";
+}
+
+export function createLauncherExecutionSnapshot(params: {
+  agentProfile: Agent | null;
+  routeIntent: LauncherRouteIntent;
+  eiahMode?: EiahMode | null;
+  confidence?: number;
+  runId?: string | null;
+  sourceInput?: string;
+  phase: "run_created" | "run_error";
+  isHelpCenterMode: boolean;
+  proposalMode: boolean;
+  attachmentIntake: AttachmentIntakeResolution;
+  usedReplyInputs?: string[];
+}): MessagePresentationSnapshot {
+  return createPresentationSnapshotV1({
+    agentProfile: params.agentProfile,
+    routeIntent: params.routeIntent,
+    eiahMode: params.eiahMode,
+    confidence: params.confidence,
+    runId: params.runId,
+    renderVariant: resolveLauncherExecutionRenderVariant({
+      routeIntent: params.routeIntent,
+      phase: params.phase,
+    }),
+    sourceInput: params.sourceInput,
+    isHelpCenterMode: params.isHelpCenterMode,
+    proposalMode: params.proposalMode,
+    attachmentIntake: params.attachmentIntake,
+    usedReplyInputs: params.usedReplyInputs,
+  });
+}
+
+export function resolveLauncherEiahUnifiedMode(params: {
+  isUnifiedEiah: boolean;
+  launcherTopic?: string | null;
+  routeIntent?: LauncherRouteIntent | null;
+}): EiahMode | null {
+  if (!params.isUnifiedEiah) return null;
+  if ((params.launcherTopic ?? "").trim().toLowerCase() === "proposal" || params.routeIntent === "proposal") {
+    return "proposal";
+  }
+  if (params.routeIntent === "orchestrator") {
+    return "orchestrator";
+  }
+  if (params.routeIntent === "help" || params.routeIntent === "imob" || params.routeIntent === "playbook") {
+    return "help";
+  }
+  return "orchestrator";
+}
+
+export function selectLauncherAgentContract(agent: Agent | null, mode: EiahMode | null) {
+  if (!agent) return null;
+  if (!mode || !Array.isArray(agent.modeContracts) || agent.modeContracts.length === 0) {
+    return agent;
+  }
+  const modeContract = agent.modeContracts.find((entry) => entry.mode === mode);
+  if (!modeContract) return agent;
+  return {
+    ...agent,
+    knowledgePolicy: modeContract.knowledgePolicy ?? agent.knowledgePolicy,
+    cognitiveProfile: modeContract.cognitiveProfile ?? agent.cognitiveProfile,
+    uxContract: modeContract.uxContract ?? agent.uxContract,
+    chatCopy: modeContract.chatCopy ?? agent.chatCopy,
+  };
+}
+
+export function resolveLauncherRunSummarySnapshot(params: {
+  existingSnapshot?: MessagePresentationSnapshot | null;
+  selectedAgent: Agent | null;
+  isUnifiedEiah: boolean;
+  launcherTopic?: string | null;
+  lastRouteIntent?: LauncherRouteIntent | null;
+  activeEiahMode?: EiahMode | null;
+  intentResult: LauncherIntentResultLike;
+  runId: string;
+  isHelpCenterMode: boolean;
+  proposalMode: boolean;
+  attachmentIntake: AttachmentIntakeResolution;
+  usedReplyInputs?: string[];
+}): MessagePresentationSnapshot {
+  if (params.existingSnapshot) {
+    return params.existingSnapshot;
+  }
+
+  const routeIntent: LauncherRouteIntent =
+    params.intentResult.intent === "proposal" ? "proposal" : (params.lastRouteIntent ?? "help");
+  const eiahMode =
+    params.activeEiahMode ??
+    resolveLauncherEiahUnifiedMode({
+      isUnifiedEiah: params.isUnifiedEiah,
+      launcherTopic: params.launcherTopic,
+      routeIntent,
+    });
+  const agentProfile = selectLauncherAgentContract(params.selectedAgent, eiahMode);
+
+  return createPresentationSnapshotV1({
+    agentProfile,
+    routeIntent,
+    eiahMode,
+    confidence: params.intentResult.confidence,
+    runId: params.runId,
+    isHelpCenterMode: params.isHelpCenterMode,
+    proposalMode: params.proposalMode,
+    attachmentIntake: params.attachmentIntake,
+    usedReplyInputs: params.usedReplyInputs,
+  });
+}
+
+export async function resolveLauncherProposalDecision(params: {
+  input: string;
+  routeIntent: LauncherRouteIntent;
+  eiahMode: EiahMode | null;
+  agentProfile: Agent | null;
+}): Promise<LauncherLocalDecision | null> {
+  if (params.routeIntent !== "proposal") return null;
+
+  const parsed = extractProposalInputs(params.input);
+  const normalized = normalizeIntentText(params.input);
+
+  if ((normalized.includes("reduzir custo") || normalized.includes("reduzir gastos")) && !parsed.users && !parsed.runs) {
+    return {
+      kind: "proposal_reply",
+      shouldCreateRun: false,
+      content: [
+        "**Como reduzir custo mensal no EIAH**",
+        "",
+        "- Reduza excedentes de runs e usuários extras.",
+        "- Use Simular primeiro para evitar execuções desnecessárias.",
+        "- Compare plano atual com o volume real do mês.",
+        "",
+        "**Para calcular economia potencial**",
+        "Me informe `usuários` e `runs/mês` estimados.",
+      ].join("\n"),
+      launcherRouteIntent: "proposal",
+      presentationRouteIntent: "proposal",
+      eiahMode: params.eiahMode ?? "proposal",
+      renderVariant: "proposal",
+    };
+  }
+
+  if (!parsed.users || !parsed.runs) {
+    const missingUsers = !parsed.users;
+    const missingRuns = !parsed.runs;
+    const missingQuestions = [
+      missingUsers ? "- Quantos usuários você terá no workspace?" : null,
+      missingRuns ? "- Quantos runs/mês você estima?" : null,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    const formatHint =
+      missingUsers && missingRuns
+        ? "Responda no formato: `X usuários e Y runs/mês`."
+        : missingUsers
+        ? "Responda no formato: `X usuários`."
+        : "Responda no formato: `Y runs/mês`.";
+
+    return {
+      kind: "proposal_reply",
+      shouldCreateRun: false,
+      content: [
+        "**Resumo do cenário**",
+        "Consigo montar sua proposta agora. Para fechar o cálculo, preciso apenas do dado que falta:",
+        "",
+        missingQuestions,
+        "",
+        "**Próximo passo**",
+        formatHint,
+      ].join("\n"),
+      launcherRouteIntent: "proposal",
+      presentationRouteIntent: "proposal",
+      eiahMode: params.eiahMode ?? "proposal",
+      renderVariant: "proposal",
+    };
+  }
+
+  try {
+    const quote = await apiGetBillingPricingQuote({ users: parsed.users, runs: parsed.runs });
+    const eco = quote.data.options.economica.recommended;
+    const eq = quote.data.options.equilibrio.recommended;
+    const scale = quote.data.options.escala.recommended;
+    const best = eq ?? eco ?? scale;
+    if (!best) throw new Error("no-recommendation");
+
+    return {
+      kind: "proposal_reply",
+      shouldCreateRun: false,
+      content: [
+        "**Resumo do cenário**",
+        `${parsed.users} usuários e ${parsed.runs} runs/mês.`,
+        "",
+        "**Plano recomendado**",
+        `${best.label} (${best.code.toUpperCase()})`,
+        "",
+        "**Estimativa de custo mensal**",
+        `${centsToBrl(best.totalCents)} (formula oficial: ${quote.data.formula})`,
+        "",
+        "**3 opções**",
+        `- Econômica: ${eco ? `${eco.label} — ${centsToBrl(eco.totalCents)}` : "sob consulta"}`,
+        `- Equilíbrio: ${eq ? `${eq.label} — ${centsToBrl(eq.totalCents)}` : "sob consulta"}`,
+        `- Escala: ${scale ? `${scale.label} — ${centsToBrl(scale.totalCents)}` : "Enterprise / sob consulta"}`,
+        "",
+        "**Próximos passos**",
+        "- Abrir proposta comercial",
+        "- Agendar demonstração",
+        "- Criar trial assistido",
+      ].join("\n"),
+      launcherRouteIntent: "proposal",
+      presentationRouteIntent: "proposal",
+      eiahMode: params.eiahMode ?? "proposal",
+      renderVariant: "proposal",
+    };
+  } catch {
+    const users = parsed.users as number;
+    const runs = parsed.runs as number;
+    const localQuotes = LOCAL_PLANS.map((plan) => quoteLocalPlan(plan, users, runs)).sort(
+      (a, b) => a.totalCents - b.totalCents
+    );
+    const eco = localQuotes.find((item) => item.code === "solo" || item.code === "starter") ?? localQuotes[0];
+    const eq = localQuotes.find((item) => item.code === "starter" || item.code === "growth") ?? localQuotes[1] ?? localQuotes[0];
+    const scale = localQuotes.find((item) => item.code === "growth" || item.code === "scale") ?? localQuotes[2] ?? localQuotes[0];
+    const best = eq ?? eco ?? scale;
+
+    return {
+      kind: "proposal_fallback_reply",
+      shouldCreateRun: false,
+      content: [
+        "**Resumo do cenário**",
+        `${parsed.users} usuários e ${parsed.runs} runs/mês.`,
+        "",
+        "**Plano recomendado**",
+        `${best.label} (${best.code.toUpperCase()})`,
+        "",
+        "**Estimativa de custo mensal (fallback local)**",
+        `${centsToBrl(best.totalCents)}`,
+        "",
+        "**3 opções**",
+        `- Econômica: ${eco ? `${eco.label} — ${centsToBrl(eco.totalCents)}` : "sob consulta"}`,
+        `- Equilíbrio: ${eq ? `${eq.label} — ${centsToBrl(eq.totalCents)}` : "sob consulta"}`,
+        `- Escala: ${scale ? `${scale.label} — ${centsToBrl(scale.totalCents)}` : "Enterprise / sob consulta"}`,
+        "",
+        "**Próximos passos**",
+        "- Abrir proposta comercial",
+        "- Agendar demonstração",
+        "- Criar trial assistido",
+      ].join("\n"),
+      launcherRouteIntent: "proposal",
+      presentationRouteIntent: "proposal",
+      eiahMode: params.eiahMode ?? "proposal",
+      renderVariant: "proposal",
+    };
+  }
+}
+
+export async function resolveLauncherTurnDecision(params: {
+  input: string;
+  trimmedInput: string;
+  routeIntent: LauncherRouteIntent;
+  proposalMode: boolean;
+  isUnifiedEiah: boolean;
+  eiahMode: EiahMode | null;
+  agentProfile: Agent | null;
+  catalogAgents: Agent[];
+  intentUnknown: boolean;
+  confidence: number;
+}): Promise<LauncherLocalDecision | null> {
+  const localDecision = resolveLauncherLocalDecision({
+    input: params.input,
+    routeIntent: params.routeIntent,
+    proposalMode: params.proposalMode,
+    isUnifiedEiah: params.isUnifiedEiah,
+    eiahMode: params.eiahMode,
+    agentProfile: params.agentProfile,
+    catalogAgents: params.catalogAgents,
+    intentUnknown: params.intentUnknown,
+  });
+  if (localDecision && !localDecision.shouldCreateRun && localDecision.content) {
+    return localDecision;
+  }
+
+  const clarificationPrompt = buildLauncherClarificationPrompt({
+    agentProfile: params.agentProfile,
+    routeIntent: params.routeIntent,
+    trimmedInput: params.trimmedInput,
+    confidence: params.confidence,
+  });
+  if (clarificationPrompt) {
+    return {
+      kind: "clarification",
+      shouldCreateRun: false,
+      content: clarificationPrompt,
+      launcherRouteIntent: params.routeIntent,
+      presentationRouteIntent: params.routeIntent === "help" ? "help" : params.routeIntent,
+      eiahMode:
+        params.eiahMode ?? (params.routeIntent === "proposal" ? "proposal" : params.routeIntent === "orchestrator" ? "orchestrator" : "help"),
+      renderVariant: "guided_flow",
+    };
+  }
+
+  const proposalDecision = await resolveLauncherProposalDecision({
+    input: params.input,
+    routeIntent: params.routeIntent,
+    eiahMode: params.eiahMode,
+    agentProfile: params.agentProfile,
+  });
+  if (proposalDecision?.content) {
+    return proposalDecision;
+  }
+
+  return null;
+}
+
+function buildOptimizedPrompt(input: string) {
+  const cleaned = input.trim().replace(/\s+/g, " ");
+  return [
+    "Contexto: usuário precisa de uma resposta clara e acionável.",
+    "Instruções: responda com estrutura, destaque próximos passos e evite jargão.",
+    `Pedido: ${cleaned}`,
+  ].join("\n");
+}
+
+function buildProposalAssistantPrompt(input: string, planHint?: string | null) {
+  const cleaned = input.trim().replace(/\s+/g, " ");
+  const normalizedPlanHint = planHint?.trim() ? planHint.trim() : "não informado";
+  return [
+    "Contexto: atendimento comercial do agente EIAH para solicitação de proposta.",
+    "Objetivo: recomendar plano e responder perguntas de forma consultiva.",
+    "Regras:",
+    "- Responder em portugues claro, sem jargao desnecessario.",
+    "- Sempre entregar: Resumo do cenario, Plano recomendado, 3 opcoes (economica, equilibrio, escala), Formula de preco, Proximos passos.",
+    "- Se faltarem dados (usuarios/runs), perguntar no maximo 2 perguntas objetivas.",
+    "- Quando houver dados, calcular usando: total = base + max(0,runs-includedRuns)*overageRun + max(0,users-includedUsers)*extraUser.",
+    `Plano sugerido no fluxo de entrada: ${normalizedPlanHint}.`,
+    `Pergunta do cliente: ${cleaned}`,
+  ].join("\n");
+}
+
+function buildHelpAssistantPrompt(input: string, hits: EiahHelpQueryHit[]) {
+  const cleaned = input.trim().replace(/\s+/g, " ");
+  const knowledge =
+    hits.length > 0
+      ? hits
+          .map(
+            (hit, index) =>
+              `[${index + 1}] ${hit.title} (${hit.sourcePath})\nTrecho: ${hit.snippet}`
+          )
+          .join("\n\n")
+      : "Nenhum trecho relevante foi encontrado na base interna do EIAH.";
+
+  return [
+    "Contexto: voce e o EIAH em modo help.",
+    "Objetivo: responder com base na documentacao oficial interna da plataforma EIAH.",
+    "Regras:",
+    "- Use os trechos documentais abaixo como fonte primaria.",
+    "- Nao invente endpoints ou funcionalidades nao documentadas.",
+    "- Se faltar informacao, diga explicitamente o que nao esta documentado.",
+    "- Estruture em: Resumo, Como fazer, Limites/observacoes, Proximo passo.",
+    "- So cite a base usada quando isso realmente ajudar o usuario.",
+    `Pergunta do solicitante: ${cleaned}`,
+    "Base interna consultada:",
+    knowledge,
+  ].join("\n");
+}
+
+export function buildConversationPersistencePolicy(params: {
+  agentProfile: Agent | null;
+  routeIntent: LauncherRouteIntent;
+  requiresConfirmation: boolean;
+  proposalMode: boolean;
+}): ConversationPersistencePolicyInput {
+  const triggers = new Set<ConversationPersistenceTrigger>([
+    "delegation",
+    "final_summary",
+    "provenance_required",
+  ]);
+
+  if (params.requiresConfirmation) {
+    triggers.add("approval_required");
+    triggers.add("user_confirmed");
+  }
+
+  if (
+    params.proposalMode ||
+    params.routeIntent === "orchestrator" ||
+    params.agentProfile?.knowledgePolicy?.llmUsageMode === "disallowed_for_critical_execution"
+  ) {
+    triggers.add("critical_execution");
+  }
+
+  return {
+    mode: "ephemeral",
+    ttlMinutes: params.routeIntent === "help" || params.routeIntent === "playbook" ? 60 : 180,
+    promoteOn: [...triggers],
+    persistSummary: true,
+    persistShortTermMemory: false,
+  };
+}
+
+export async function prepareLauncherRunExecution(params: {
+  turnInput: string;
+  effectiveInput: string;
+  routeIntent: LauncherRouteIntent;
+  eiahMode: EiahMode | null;
+  isEiahHelpCenter: boolean;
+  agentProfile: Agent | null;
+  requiresConfirmation: boolean;
+  planHint?: string | null;
+  agentFallback: boolean;
+}) {
+  let helpHits: EiahHelpQueryHit[] = [];
+  if (params.isEiahHelpCenter) {
+    try {
+      const knowledge = await apiQueryEiahHelp({ query: params.effectiveInput, topK: 6 });
+      helpHits = knowledge.data.hits ?? [];
+    } catch {
+      helpHits = [];
+    }
+  }
+
+  const prompt =
+    params.eiahMode === "proposal"
+      ? buildProposalAssistantPrompt(params.turnInput, params.planHint)
+      : params.isEiahHelpCenter
+      ? buildHelpAssistantPrompt(params.turnInput, helpHits)
+      : buildOptimizedPrompt(params.turnInput);
+
+  const conversationPersistence = buildConversationPersistencePolicy({
+    agentProfile: params.agentProfile,
+    routeIntent: params.routeIntent,
+    requiresConfirmation: params.requiresConfirmation,
+    proposalMode: params.eiahMode === "proposal",
+  });
+
+  return {
+    helpHits,
+    prompt,
+    metadata: {
+      source: "chat-agent-launcher",
+      promptOptimized: params.eiahMode === "orchestrator",
+      proposalMode: params.eiahMode === "proposal",
+      eiahMode: params.eiahMode,
+      conversationPersistence,
+      requiresConfirmation: params.requiresConfirmation,
+      provenancePolicy: params.agentProfile?.knowledgePolicy?.provenancePolicy ?? "none",
+      proposalPlanHint: params.planHint ?? null,
+      helpKnowledgeHits: helpHits.map((hit) => ({
+        title: hit.title,
+        sourcePath: hit.sourcePath,
+        score: hit.score,
+      })),
+      originalPrompt: params.turnInput,
+      agentFallback: params.agentFallback,
+    },
+    conversationPersistence,
+  };
+}
+
+export function normalizeLauncherPersistedIntentResult(params: {
+  intentResult: LauncherIntentResultLike;
+  decision?: LauncherLocalDecision | null;
+}): {
+  intent: LauncherPersistedIntent;
+  confidence: number;
+  fallbackReason?: string;
+} {
+  const persistedIntent = params.decision?.persistIntent?.intent;
+  const confidenceFloor = params.decision?.persistIntent?.confidenceFloor;
+
+  if (persistedIntent === "unknown") {
+    return {
+      intent: "unknown",
+      confidence: params.intentResult.confidence,
+      fallbackReason: params.intentResult.fallbackReason ?? "local_safe_fallback",
+    };
+  }
+
+  if (persistedIntent === "help" || persistedIntent === "proposal" || persistedIntent === "product_explain") {
+    return {
+      intent: persistedIntent,
+      confidence:
+        typeof confidenceFloor === "number"
+          ? Math.max(params.intentResult.confidence, confidenceFloor)
+          : params.intentResult.confidence,
+    };
+  }
+
+  const normalizedIntent: LauncherPersistedIntent =
+    params.intentResult.intent === "help" ||
+    params.intentResult.intent === "proposal" ||
+    params.intentResult.intent === "product_explain" ||
+    params.intentResult.intent === "unknown"
+      ? params.intentResult.intent
+      : "unknown";
+
+  return {
+    intent: normalizedIntent,
+    confidence: params.intentResult.confidence,
+    fallbackReason: normalizedIntent === "unknown" ? params.intentResult.fallbackReason ?? undefined : undefined,
+  };
+}
+
+export function buildLauncherDecisionTelemetry(params: {
+  decision: LauncherLocalDecision;
+}) {
+  return {
+    responseRejected:
+      params.decision.kind === "contextual_fallback" || params.decision.kind === "proposal_fallback_reply",
+    fallbackUsed:
+      params.decision.kind === "contextual_fallback" || params.decision.kind === "proposal_fallback_reply",
+    clarificationIssued: params.decision.kind === "clarification",
+    handoffOffered: params.decision.presentationRouteIntent === "legal_handoff",
+    handoffEligible:
+      params.decision.kind === "legal_context_entry" ||
+      params.decision.kind === "legal_handoff",
+  };
+}
+
+export function buildLauncherHelpdeskSessionPayload(params: {
+  tenantId?: string | null;
+  workspaceId?: string | null;
+  runId?: string | null;
+  message: string;
+  response: string;
+  intentResult: {
+    intent: LauncherPersistedIntent;
+    confidence: number;
+    fallbackReason?: string | null;
+  };
+  responseRejected?: boolean;
+  fallbackUsed?: boolean;
+  clarificationIssued?: boolean;
+  handoffOffered?: boolean;
+  handoffEligible?: boolean;
+  quickReplyUsed?: boolean;
+  quickRepliesShown?: number;
+  routeIntent?: MessagePresentationSnapshot["routeIntent"] | null;
+  verticalContext?: MessagePresentationSnapshot["verticalContext"];
+  recommendedPlan?: string | null;
+  estimatedValue?: number | null;
+  persist?: boolean;
+  rolloutStage: string;
+  threadKey: string;
+  activeAgentId: string;
+  activeAgentName: string;
+  chatRuntimeReadiness: string;
+  chatRuntimeResolver: string;
+  chatRuntimeMissingFields: string[];
+  attachmentOffered: boolean;
+  attachmentKinds: string[];
+  attachmentIntakeModes: string[];
+  attachmentAnalysisModes: string[];
+  attachmentUsed: boolean;
+  attachmentMode?: string | null;
+}): HelpdeskSessionCreatePayload | null {
+  if (!params.tenantId || !params.workspaceId) return null;
+
+  const shouldPersist =
+    params.persist === true ||
+    Boolean(params.runId) ||
+    Boolean(params.responseRejected) ||
+    Boolean(params.fallbackUsed) ||
+    params.recommendedPlan != null ||
+    params.estimatedValue != null;
+  if (!shouldPersist) return null;
+
+  return {
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    runId: params.runId ?? null,
+    intent: params.intentResult.intent,
+    confidence: params.intentResult.confidence,
+    fallbackReason: params.intentResult.fallbackReason ?? null,
+    message: params.message,
+    response: params.response,
+    recommendedPlan: params.recommendedPlan ?? null,
+    estimatedValue: params.estimatedValue ?? null,
+    metadata: {
+      rolloutStage: params.rolloutStage,
+      threadKey: params.threadKey,
+      activeAgentId: params.activeAgentId,
+      activeAgentName: params.activeAgentName,
+      chatRuntimeReadiness: params.chatRuntimeReadiness,
+      chatRuntimeResolver: params.chatRuntimeResolver,
+      chatRuntimeMissingFields: params.chatRuntimeMissingFields,
+      routeIntent: params.routeIntent ?? null,
+      verticalContext: params.verticalContext ?? null,
+      snapshotVersion: params.routeIntent ? PRESENTATION_SNAPSHOT_VERSION : null,
+      compatibilityMode: params.routeIntent ? "snapshot" : "legacy_conservative",
+      quickRepliesShown: params.quickRepliesShown ?? 0,
+      quickReplyUsed: params.quickReplyUsed ?? false,
+      clarificationIssued: params.clarificationIssued ?? false,
+      handoffOffered: params.handoffOffered ?? false,
+      handoffEligible: params.handoffEligible ?? false,
+      attachmentOffered: params.attachmentOffered,
+      attachmentKinds: params.attachmentKinds,
+      attachmentIntakeModes: params.attachmentIntakeModes,
+      attachmentAnalysisModes: params.attachmentAnalysisModes,
+      attachmentUsed: params.attachmentUsed,
+      attachmentMode: params.attachmentMode ?? null,
+      responseRejected: params.responseRejected ?? false,
+      fallbackUsed: params.fallbackUsed ?? false,
+    },
+  };
 }
 
 export function isLegalRoutingQuestion(input: string) {
@@ -2778,6 +3639,20 @@ function buildContextualFallback() {
   return "Posso te ajudar a entender a plataforma, explicar páginas e indicar o melhor próximo passo. Se você me disser o objetivo, eu sigo de forma mais direta.";
 }
 
+function buildChatRuntimeBlockedReply(agentProfile: Agent | null) {
+  const blockedMessage = agentProfile?.chatCopy?.blockedMessages?.genericBlocked?.trim();
+  if (blockedMessage) {
+    return blockedMessage;
+  }
+
+  const displayName = getAgentDisplayName(agentProfile);
+  const missingFields = agentProfile?.chatRuntime?.missingFields ?? [];
+  const missingBlock =
+    missingFields.length > 0 ? `\n\nCampos pendentes: ${missingFields.slice(0, 4).join(", ")}.` : "";
+
+  return `O agente ${displayName} ainda nao esta habilitado para conversa neste workspace.${missingBlock}\n\nUse um agente com contrato de chat completo ou conclua o onboarding antes de habilitar este fluxo.`;
+}
+
 export function resolveEiahDecision(params: {
   input: string;
   routeIntent: LauncherRouteIntent;
@@ -3044,6 +3919,19 @@ export function resolveLauncherLocalDecision(params: {
   catalogAgents: Agent[];
   intentUnknown: boolean;
 }): LauncherLocalDecision | null {
+  if (params.agentProfile?.chatRuntime?.chatEnabled === false) {
+    return {
+      kind: "chat_runtime_blocked",
+      shouldCreateRun: false,
+      content: buildChatRuntimeBlockedReply(params.agentProfile),
+      launcherRouteIntent: "help",
+      presentationRouteIntent: "help",
+      eiahMode: "help",
+      renderVariant: "simple_help",
+      persistIntent: { intent: "unknown", confidenceFloor: 1 },
+    };
+  }
+
   if (params.isUnifiedEiah) {
     return resolveEiahDecision({
       input: params.input,
