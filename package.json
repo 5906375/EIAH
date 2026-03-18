@@ -40,6 +40,7 @@
     "check:ape-evidence-linkage": "node --experimental-strip-types scripts/checkApeEvidenceLinkage.ts",
     "check:ape-hard-metrics": "node --experimental-strip-types scripts/checkApeCycleHardMetrics.ts",
     "check:evidence-index": "node --experimental-strip-types scripts/checkEvidenceIndex.ts",
+    "check:chat-agent-onboarding": "node --import tsx scripts/checkChatAgentOnboarding.ts",
     "generate:agent-registry-docs": "node --import tsx scripts/generateAgentRegistryDocs.ts",
     "check:help-playbook-drift": "node --experimental-strip-types scripts/checkHelpPlaybookDrift.ts",
     "check:receipt-canon-compat": "node --experimental-strip-types scripts/checkReceiptCanonVersioning.ts",

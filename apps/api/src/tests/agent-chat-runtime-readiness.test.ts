@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { buildChatRuntimeSnapshot } from "../services/agentChatRuntime";
+import { applyChatRuntimeGateToParticipation, buildChatRuntimeSnapshot } from "../services/agentChatRuntime";
 
 test("chat runtime readiness marks fully declared profile as ready", () => {
   const snapshot = buildChatRuntimeSnapshot("EIAH", {
@@ -65,4 +65,34 @@ test("chat runtime readiness marks incomplete profile conservatively", () => {
   assert.equal(snapshot.chatEnabled, false);
   assert.equal(snapshot.catalogVisibility, "blocked");
   assert.equal(snapshot.blockingReason, "missing_minimum_contract");
+});
+
+test("chat runtime gate hides incomplete agents from suggestion and handoff", () => {
+  const snapshot = buildChatRuntimeSnapshot("agent-x", {
+    chatCopy: {
+      whoIAm: "Sou um agente.",
+      whatIDo: ["faço algo"],
+      whenToUseMe: ["quando fizer sentido"],
+      exampleRequests: ["exemplo"],
+      quickReplies: [],
+    },
+  });
+
+  const gated = applyChatRuntimeGateToParticipation(
+    {
+      agentId: "agent-x",
+      status: "active",
+      visibility: "visible",
+      canBeSuggested: true,
+      canReceiveHandoff: true,
+      requiresEntitlement: false,
+    },
+    snapshot
+  );
+
+  assert.equal(gated.status, "restricted");
+  assert.equal(gated.visibility, "hidden");
+  assert.equal(gated.canBeSuggested, false);
+  assert.equal(gated.canReceiveHandoff, false);
+  assert.equal(gated.requiresEntitlement, true);
 });

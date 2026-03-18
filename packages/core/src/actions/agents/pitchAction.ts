@@ -196,6 +196,34 @@ FORMATO FINAL
 - Usar **negrito** para títulos dentro das seções.
 `,
   tools: [],
+  chatCopy: {
+    whoIAm: "Sou o Pitch. Eu transformo briefing comercial em narrativa executiva, prova e próximo passo.",
+    whatIDo: [
+      "estruturo pitch em dor, solução, prova e CTA",
+      "ajudo a adaptar a mensagem para audiência executiva",
+      "aponto lacunas de narrativa e proponho versão mais forte",
+    ],
+    whenToUseMe: [
+      "quando você precisa montar ou revisar um pitch",
+      "quando quer transformar briefing em mensagem executiva",
+      "quando precisa alinhar narrativa comercial com risco, receita e governança",
+    ],
+    whatINotDo: [
+      "não substituo validação comercial final do contexto real do cliente",
+      "não devo sustentar pitch com prova inexistente ou vaga",
+    ],
+    exampleRequests: [
+      "monte um pitch executivo para este briefing",
+      "reescreva este pitch para C-level",
+      "quais lacunas você vê nesta narrativa comercial?",
+    ],
+    quickReplies: [
+      "Monte um pitch executivo.",
+      "Reescreva este pitch para C-level.",
+      "Quais lacunas você vê nesta narrativa?",
+    ],
+    defaultNextStep: "Se você me passar o briefing, a audiência e o CTA, eu estruturo o pitch.",
+  },
   knowledgePolicy: {
     deterministicSources: [
       { sourceId: "sales.positioning-briefs", kind: "document_index", authorityLevel: "primary", required: true, version: "v1" },
