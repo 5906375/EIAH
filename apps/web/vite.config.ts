@@ -64,6 +64,7 @@ export default defineConfig(({ mode }) => {
     alias: {
       "@": path.resolve(__dirname, "src"),
       "@repo/utils": path.resolve(__dirname, "../../packages/utils/src"),
+      "@eiah/core": path.resolve(__dirname, "../../packages/core/src"),
     },
     extensions: [".ts", ".tsx", ".js", ".jsx", ".mjs", ".json"],
   },

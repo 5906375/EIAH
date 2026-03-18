@@ -44,6 +44,14 @@ const agentVideoMap: Record<string, string> = {
   eiah: eiahCoreVideo,
 };
 
+function normalizeCatalogText(value: string | null | undefined) {
+  return (value ?? "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "");
+}
+
 type PricingPlanId = "solo" | "starter" | "growth" | "scale";
 
 const PRICING_PLANS: Array<{
@@ -198,6 +206,27 @@ export default function SelfServiceIndexPage() {
     });
     return map;
   }, [delegations]);
+  const canonicalMarketplaceDisplay = React.useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        name: string;
+        description: string;
+      }
+    >();
+
+    selfServiceConfigs.forEach((config) => {
+      const canonical = {
+        name: config.title,
+        description: config.description,
+      };
+      map.set(normalizeCatalogText(config.title), canonical);
+      map.set(normalizeCatalogText(config.slug), canonical);
+      map.set(normalizeCatalogText(config.agentId), canonical);
+    });
+
+    return map;
+  }, []);
 
   const formatDate = (value?: string | null) => {
     if (!value) return "—";
@@ -564,6 +593,12 @@ export default function SelfServiceIndexPage() {
                 const delegation = delegationByMarketplaceId.get(item.id);
                 const isSubscribed = subscribedIds.has(item.id);
                 const isActive = isDelegationActive(delegation);
+                const canonicalDisplay =
+                  canonicalMarketplaceDisplay.get(normalizeCatalogText(item.name)) ??
+                  canonicalMarketplaceDisplay.get(normalizeCatalogText(item.description));
+                const itemName = canonicalDisplay?.name ?? item.name;
+                const itemDescription =
+                  canonicalDisplay?.description ?? item.description ?? "Sem descrição registrada.";
                 const buttonLabel = isActive
                   ? "Ativo"
                   : delegation
@@ -583,10 +618,8 @@ export default function SelfServiceIndexPage() {
                       </span>
                       <span>{item.version}</span>
                     </div>
-                    <h4 className="text-lg font-semibold text-foreground">{item.name}</h4>
-                    <p className="text-sm text-muted-foreground">
-                      {item.description || "Sem descrição registrada."}
-                    </p>
+                    <h4 className="text-lg font-semibold text-foreground">{itemName}</h4>
+                    <p className="text-sm text-muted-foreground">{itemDescription}</p>
                   </div>
                     {item.approvalStatus === "pending" ? (
                       <span className="mt-3 inline-flex w-fit items-center rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-amber-200">

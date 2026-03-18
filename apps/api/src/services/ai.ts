@@ -1,5 +1,6 @@
 import { AgentOrchestrator, DefaultPlanManager } from "@eiah/core";
 import { executeLlmStep, type LlmExecutorParams, type LlmExecutorResult } from "../orchestrator/llmExecutor";
+import { resolveKnowledgeContext } from "./knowledgeGate";
 
 export type ExecuteAgentRunParams = LlmExecutorParams & {
   runId?: string;
@@ -11,6 +12,20 @@ export type ExecuteAgentRunResult = LlmExecutorResult;
 
 export async function executeAgentRun(params: ExecuteAgentRunParams): Promise<ExecuteAgentRunResult> {
   const runId = params.runId ?? "run-" + Date.now();
+  const knowledgeResolution = resolveKnowledgeContext({
+    runId,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    agentId: params.profile.model,
+    prompt: params.userPrompt,
+    metadata: params.metadata,
+    knowledgePolicy: params.profile.knowledgePolicy as any,
+  });
+  if (knowledgeResolution.blocked) {
+    throw new Error(
+      `knowledge_policy.blocked: ${knowledgeResolution.reasonCode ?? "knowledge_gate_blocked"}`
+    );
+  }
   let lastResult: LlmExecutorResult | null = null;
   const planManager = new DefaultPlanManager({ agentId: params.profile.model });
   const orchestrator = new AgentOrchestrator({
@@ -19,7 +34,7 @@ export async function executeAgentRun(params: ExecuteAgentRunParams): Promise<Ex
       lastResult = await executeLlmStep({
         profile: params.profile,
         userPrompt: params.userPrompt,
-        metadata: params.metadata,
+        metadata: knowledgeResolution.metadata,
       });
       return lastResult.outputText;
     },

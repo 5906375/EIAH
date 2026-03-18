@@ -12,7 +12,9 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
-      "@repo/utils": ["../../packages/utils/src"]
+      "@repo/utils": ["../../packages/utils/src"],
+      "@eiah/core": ["../../packages/core/src"],
+      "@eiah/core/*": ["../../packages/core/src/*"]
     }
   },
   "include": ["src", "../../docs/RunViewer.js", "../../docs/AgentBuilder/RunTimeline.js"]

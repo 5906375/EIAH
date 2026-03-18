@@ -205,6 +205,75 @@ export const guardianProfile: AgentProfileSeed = {
   model: process.env.GUARDIAN_MODEL ?? "gpt-4.1",
   systemPrompt: guardianPrompt,
   tools: [],
+  knowledgePolicy: {
+    deterministicSources: [
+      { sourceId: "audit.receipt-bundles", kind: "ledger", authorityLevel: "primary", required: true, version: "v1" },
+      { sourceId: "audit.guardrail-logs", kind: "event_store", authorityLevel: "primary", required: true, version: "v1" },
+      { sourceId: "security.rbac-audit", kind: "api", authorityLevel: "secondary", required: false, version: "v1" },
+    ],
+    sourcePrecedence: ["audit.receipt-bundles", "audit.guardrail-logs", "security.rbac-audit"],
+    conflictResolution: "fail_closed",
+    llmUsageMode: "disallowed_for_critical_execution",
+    fallbackPolicy: "block",
+    provenancePolicy: "required",
+    maskingPolicy: "required",
+  },
+  chatCopy: {
+    whoIAm:
+      "Sou o Guardian, o agente de evidência, receipt e verificabilidade pública da plataforma. Eu ajudo a validar integridade, organizar provas e orientar o que falta para seguir com segurança.",
+    whatIDo: [
+      "valido evidências, receipts e verify_url antes de avançar",
+      "explico o que falta para uma prova auditável e verificável",
+      "oriento trilha de integridade, recibos e conformidade sem expor linguagem técnica desnecessária",
+    ],
+    whenToUseMe: [
+      "quando você precisa validar evidência, receipt, verify_url ou integridade",
+      "quando quer entender o que falta para uma prova ou trilha auditável",
+    ],
+    whatINotDo: [
+      "não devo seguir quando faltarem fontes obrigatórias de evidência",
+      "não devo expor PII ou aprovar trilha crítica sem validação suficiente",
+    ],
+    exampleRequests: [
+      "o que você valida aqui?",
+      "mostre um exemplo prático de receipt e verify_url",
+      "o que falta para essa evidência ficar verificável?",
+    ],
+    quickReplies: [
+      "O que você valida aqui?",
+      "Mostre um exemplo prático.",
+      "Como funcionam receipt e verify_url?",
+    ],
+    defaultNextStep: "Se quiser, me diga qual evidência, receipt ou verify_url você quer revisar.",
+    blockedMessages: {
+      missingContext: "Para seguir com segurança, eu preciso da evidência, receipt ou verify_url que você quer validar.",
+      missingRequiredSource:
+        "Não consegui validar isso com segurança porque faltam evidências obrigatórias, como receipt, verify_url ou trilha de integridade.",
+    },
+  },
+  attachmentContract: {
+    acceptsAttachments: true,
+    acceptedAttachmentKinds: ["evidence", "receipt", "notice", "generic_document"],
+    acceptedMimeTypes: [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "text/plain",
+      "image/png",
+      "image/jpeg",
+    ],
+    intakeModes: ["upload_file", "paste_text", "structured_form"],
+    analysisModes: ["evidence_validation", "missing_fields"],
+    defaultAnalysisMode: "evidence_validation",
+    requiredMetadata: ["artifact_type", "validation_goal"],
+    initialPrompts: [
+      "Quero validar uma evidência",
+      "Quero revisar um receipt",
+      "Quero conferir um verify_url",
+    ],
+    uploadHelpText:
+      "Envie a evidência, receipt ou artefato que você quer validar, ou cole um trecho com o verify_url e o contexto.",
+  },
 };
 
 export const guardianAgent = profileAction(guardianProfile);

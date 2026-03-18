@@ -134,6 +134,16 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | Evidência APE final W4 | `ops/evidence/latest/ape-weekly-cycle-run9-2026-03-09.md` | Fechamento semanal com `hardMetricsGo=true` e `nonRegressionGo=true`. |
 | Gate CI W4 | `scripts/checkW4NonRegression.ts` + `.github/workflows/ci.yml` | Validação automatizada obrigatória de D6 no pipeline. |
 
+## Governança de agentes e DocOps (2026-03-16)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Gerador DocOps do registry de agentes | `scripts/generateAgentRegistryDocs.ts` | Deriva catálogo e exemplos diretamente do registry canônico para reduzir drift entre perfis, docs e evidências. |
+| Catálogo de agentes derivado do registry | `docs/ops/agent-registry-catalog.md` | Snapshot documental dos agentes com modelo, `llmUsageMode`, resolução de conflito, fallback e fontes determinísticas declaradas. |
+| Exemplos de resposta derivados do registry | `docs/ops/agent-response-examples.md` | Exemplos canônicos de resposta/grounding por agente sem depender de LLM externa. |
+| Evidência gerada do DocOps de agentes | `ops/evidence/latest/agent-registry-docs-2026-03-16.json` | Evidência materializada da geração com contagem de agentes e fontes declaradas por perfil. |
+| Cobertura comportamental de knowledge policy | `apps/api/src/tests/knowledge-policy.behavior.test.ts` | Testes por agente para `source missing`, `source conflict`, `grounded response` e `blocked response` no `KnowledgeGate`. |
+
 ## Implementado extra (além do escopo normativo v8)
 
 | Assunto | Arquivo | O que prova |

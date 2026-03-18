@@ -9,14 +9,33 @@ import {
   apiGetGovernanceReport,
   apiListAgents,
   apiQueryEiahHelp,
+  apiUploadDocuments,
   apiCreateHelpdeskSession,
   apiGetBillingPricingQuote,
   apiGetRun,
   apiListRunEvents,
   BASE_URL,
+  type Agent,
   type EiahHelpQueryHit,
   type RunEvent,
+  type UploadedDocumentInfo,
 } from "@/lib/api";
+import {
+  buildInputPlaceholderForContext,
+  buildImobQuickRepliesForInput,
+  buildLegalQuickRepliesForInput,
+  buildEiahQuickReplies,
+  buildLauncherClarificationPrompt,
+  detectLauncherRouteIntent,
+  enrichLegacyAssistantContent,
+  resolveConversationVerticalContext,
+  resolveAttachmentIntake,
+  resolveLauncherLocalDecision,
+} from "@/components/agents/chatLauncherEngine";
+import {
+  PRESENTATION_SNAPSHOT_VERSION,
+  type MessagePresentationSnapshot,
+} from "@/components/agents/chatPresentationSnapshot";
 import { extractDocAndRecs, type ExtractedRec } from "@/utils";
 import { useSession } from "@/state/sessionStore";
 import { useAgentExecution } from "@/hooks/useAgentExecution";
@@ -32,6 +51,8 @@ type ChatMessage = {
   role: "user" | "assistant" | "system";
   content: string;
   status?: "streaming" | "done";
+  runId?: string;
+  presentationSnapshot?: MessagePresentationSnapshot;
 };
 
 type ThreadSnapshot = {
@@ -54,13 +75,26 @@ function isHelpCenterAgent(params: { id?: string | null; slug?: string | null; t
   return false;
 }
 
+function isUnifiedEiahAgent(params: { id?: string | null; slug?: string | null; title?: string | null }) {
+  const id = normalizeAgentKey(String(params.id ?? ""));
+  const slug = normalizeAgentKey(String(params.slug ?? ""));
+  const title = normalizeAgentKey(String(params.title ?? ""));
+  return id === "eiah" || slug === "eiah" || title === "eiahcore" || title === "eiah";
+}
+
 function getCatalogAgentDisplayName(agent: { id?: string; name?: string }) {
   const normalizedId = (agent.id ?? "").trim().toLowerCase();
   const normalizedName = (agent.name ?? "").trim().toLowerCase();
   if (normalizedId === "eiah" || normalizedName === "eiah core") {
-    return "Central de Ajuda EIAH";
+    return "EIAH";
   }
   return agent.name?.trim() || agent.id?.trim() || "Agente";
+}
+
+function isLegalSpecialistAgent(agentProfile: Agent | null) {
+  const normalizedId = normalizeAgentKey(agentProfile?.id ?? "");
+  const normalizedName = normalizeAgentKey(agentProfile?.name ?? "");
+  return normalizedId === "j360" || normalizedName.includes("juridico");
 }
 
 export type LedgerEvent = {
@@ -95,6 +129,13 @@ const FALLBACK_AGENT = {
   title: "EIAH",
   description: "",
 };
+
+const CHAT_ROLLOUT_STAGE = (
+  typeof import.meta.env.VITE_CHAT_ROLLOUT_STAGE === "string" &&
+  import.meta.env.VITE_CHAT_ROLLOUT_STAGE.trim().length > 0
+    ? import.meta.env.VITE_CHAT_ROLLOUT_STAGE.trim().toLowerCase()
+    : "shadow"
+) as "shadow" | "pilot" | "small";
 
 function formatLedgerDetail(payload?: RunEvent["payload"]) {
   if (!payload || typeof payload !== "object") return "event recebido";
@@ -199,14 +240,14 @@ function buildHelpAssistantPrompt(input: string, hits: EiahHelpQueryHit[]) {
       : "Nenhum trecho relevante foi encontrado na base interna do EIAH.";
 
   return [
-    "Contexto: voce e o EIAH Central de Ajuda.",
+    "Contexto: voce e o EIAH em modo help.",
     "Objetivo: responder com base na documentacao oficial interna da plataforma EIAH.",
     "Regras:",
     "- Use os trechos documentais abaixo como fonte primaria.",
     "- Nao invente endpoints ou funcionalidades nao documentadas.",
     "- Se faltar informacao, diga explicitamente o que nao esta documentado.",
     "- Estruture em: Resumo, Como fazer, Limites/observacoes, Proximo passo.",
-    "- Finalize com: Fontes consultadas.",
+    "- So cite a base usada quando isso realmente ajudar o usuario.",
     `Pergunta do solicitante: ${cleaned}`,
     "Base interna consultada:",
     knowledge,
@@ -218,233 +259,6 @@ function normalizeIntentText(value: string) {
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
-}
-
-function isPlaybookQuestion(input: string) {
-  const normalized = normalizeIntentText(input);
-  const patterns = [
-    "central de ajuda",
-    "roteiros principais",
-    "diretrizes criticas",
-    "diretrizes",
-    "checklist",
-    "playbook",
-    "modo help",
-    "modo proposal",
-    "solicitar proposta",
-    "como criar um run",
-    "pagina runs",
-    "pagina agentes",
-    "pagina billing",
-    "pagina marketplace",
-    "pagina imob",
-    "pagina self-service",
-    "pagina perfil",
-    "comandos do chat",
-  ];
-  return patterns.some((pattern) => normalized.includes(pattern));
-}
-
-function isImobGuideQuestion(input: string) {
-  const normalized = normalizeIntentText(input);
-  const patterns = [
-    "imob",
-    "como usar imob",
-    "como usar o imob",
-    "explica imob",
-    "explique imob",
-    "modulo imob",
-    "jornada imobiliaria",
-  ];
-  return patterns.some((pattern) => normalized.includes(pattern));
-}
-
-function buildDeterministicImobReply() {
-  return [
-    "**IMOB — Guia rapido de uso**",
-    "",
-    "**Para que serve**",
-    "O IMOB organiza a operacao imobiliaria com apoio de IA: leads, proposta, contrato e acompanhamento do processo comercial.",
-    "",
-    "**Como funciona**",
-    "O modulo estrutura as etapas da jornada, reduz retrabalho e ajuda o time a decidir o proximo passo com contexto.",
-    "",
-    "**Como usar (passo a passo)**",
-    "1. Abra o dashboard do IMOB para visualizar pipeline e contexto da operacao.",
-    "2. Use o chat IMOB para orientar a proxima acao com base no caso atual.",
-    "3. Acompanhe a evolucao das etapas com rastreabilidade.",
-    "4. Revise resultados e gargalos para melhorar a rotina do time.",
-    "",
-    "**Atalhos**",
-    "- Dashboard IMOB: `/app/imob/dashboard`",
-    "- Chat IMOB: `/app/imob/chat`",
-    "- Instalacao (se necessario): `/app/marketplace/imob`",
-    "",
-    "**Proximo passo recomendado**",
-    "Abra `/app/imob/dashboard` e me diga seu objetivo (ex.: captar leads, acelerar proposta ou organizar contratos).",
-    "",
-    "**Fontes consultadas**",
-    "- apps/web/src/pages/app/agents/index.tsx (guia de uso por pagina - IMOB)",
-  ].join("\n");
-}
-
-function buildDeterministicPlaybookReply() {
-  return [
-    "**Resumo**",
-    "A Central de Ajuda EIAH documenta toda a plataforma em linguagem humana e opera em dois modos: `help` (suporte documental) e `proposal` (solicitacao comercial).",
-    "",
-    "**Roteiros principais**",
-    "- Classificar o atendimento por modo: help (suporte documental) ou proposal (solicitacao de proposta).",
-    "- Explicar o funcionamento geral da plataforma: agentes, execucoes, governanca e resultados para o negocio.",
-    "- Explicar cada pagina principal: Runs, Agentes, Billing, Marketplace, IMOB, Self-service e Perfil.",
-    "- Na pagina Runs, orientar por contexto: criar run (/app/runs#runs-criar), acompanhar status (/app/runs#runs-status), revisar historico (/app/runs#runs-historico) e entender resultado (/app/runs#runs-resultado).",
-    "- Explicar comandos do usuario: Interagir com agente, Enviar, Encerrar conversa, Playbook e Solicitar proposta.",
-    "- No modo help: responder em passo a passo simples e fechar com Fontes consultadas.",
-    "- No modo proposal: coletar perfil, usuarios, runs/mes, vertical, prazo e resultado esperado.",
-    "- Entregar proposta estruturada: resumo do cenario, plano recomendado, estimativa de custo, riscos/limites e proximos passos.",
-    "",
-    "**Diretrizes criticas**",
-    "- Usar apenas informacoes documentadas; se faltar dado, declarar explicitamente.",
-    "- Priorizar linguagem de negocio e termos humanos; evitar jargao tecnico interno.",
-    "- Quando citar um termo tecnico, traduzir em seguida com explicacao simples.",
-    "- Explicar cada pagina com: para que serve, quando usar, passos e resultado esperado.",
-    "- No modo proposal, usar a formula real de billing (mesma regra do backend) para evitar divergencia de preco.",
-    "- Manter resposta objetiva e acionavel, sem bloco tecnico para o usuario final.",
-    "- Finalizar atendimento comercial com CTA: abrir proposta, agendar demonstracao ou criar trial assistido.",
-    "",
-    "**Checklist**",
-    "Modo (help/proposal), pagina ou comando solicitado, explicacao humana do fluxo, fontes usadas, calculo validado (quando houver preco) e proximo passo recomendado.",
-    "",
-    "**Fontes consultadas**",
-    "- apps/web/src/pages/app/agents/index.tsx (playbook `eiah`)",
-  ].join("\n");
-}
-
-function buildDeterministicHelpReply(input: string): string | null {
-  const normalized = normalizeIntentText(input);
-  if (
-    normalized.includes("acompanho o status") ||
-    normalized.includes("acompanhar status") ||
-    normalized.includes("status de uma run") ||
-    normalized.includes("status em tempo real")
-  ) {
-    return [
-      "**Como acompanhar status de run em tempo real**",
-      "",
-      "1. Abra `Runs` e selecione a execução que deseja acompanhar.",
-      "2. Observe os indicadores de andamento (em execução, sucesso, falha ou bloqueio).",
-      "3. Use o botão de atualizar para recarregar eventos recentes quando necessário.",
-      "4. Abra o resultado da run para validar saída, evidências e próximo passo.",
-      "",
-      "**Atalhos**",
-      "- `/app/runs#runs-status`",
-      "- `/app/runs#runs-resultado`",
-      "",
-      "**Fontes consultadas**",
-      "- apps/web/src/pages/app/agents/index.tsx (guia Runs)",
-    ].join("\n");
-  }
-  if (
-    normalized.includes("simular primeiro") ||
-    normalized.includes("rodar agora") ||
-    normalized.includes("diferenca entre simular")
-  ) {
-    return [
-      "**Simular primeiro x Rodar agora**",
-      "",
-      "- **Simular primeiro**: valida o fluxo com menor risco, ideal para primeiro envio.",
-      "- **Rodar agora**: executa direto em produção, ideal quando o fluxo já foi validado.",
-      "",
-      "**Regra prática**",
-      "Se for caso novo ou crítico, simule antes. Se o fluxo já estiver confiável, rode direto.",
-      "",
-      "**Fontes consultadas**",
-      "- apps/web/src/pages/app/agents/index.tsx (guia Runs)",
-    ].join("\n");
-  }
-  if (
-    normalized.includes("quais paginas devo usar") ||
-    normalized.includes("comecar hoje") ||
-    normalized.includes("por onde comecar")
-  ) {
-    return [
-      "**Por onde começar no EIAH (roteiro rápido)**",
-      "",
-      "1. **Runs**: criar e acompanhar execuções.",
-      "2. **Agentes**: selecionar agente e usar o launcher.",
-      "3. **Billing**: validar plano, franquia e custos.",
-      "4. **Marketplace**: instalar módulos necessários (ex.: IMOB).",
-      "5. **Perfil / Self-service**: ajustar configurações de equipe e workspace.",
-      "",
-      "**Atalhos**",
-      "- `/app/runs`",
-      "- `/app/agents`",
-      "- `/app/billing`",
-      "",
-      "**Fontes consultadas**",
-      "- apps/web/src/pages/app/agents/index.tsx (guia de uso por pagina)",
-    ].join("\n");
-  }
-  if (normalized.includes("como criar um run") || (normalized.includes("criar") && normalized.includes("run"))) {
-    return [
-      "**Como criar um run no EIAH**",
-      "",
-      "1. Abra `Runs` no menu principal.",
-      "2. Escolha o agente que vai executar a tarefa.",
-      "3. Escreva o objetivo em linguagem simples no campo de entrada.",
-      "4. Comece por **Simular primeiro** para validar sem risco.",
-      "5. Se o resultado estiver ok, clique em **Rodar agora**.",
-      "6. Acompanhe status, custo e resultado no histórico da própria página.",
-      "",
-      "**Atalho**",
-      "- `/app/runs#runs-criar`",
-      "",
-      "**Fontes consultadas**",
-      "- apps/web/src/pages/app/agents/index.tsx (guia Runs)",
-    ].join("\n");
-  }
-  if (normalized.includes("billing") || normalized.includes("invoice") || normalized.includes("cobranca")) {
-    return [
-      "**Billing e Invoices no EIAH**",
-      "",
-      "**Como funciona**",
-      "- O uso mensal (runs e usuários) é consolidado por tenant.",
-      "- O valor segue a fórmula oficial: base do plano + excedente de runs + usuários extras.",
-      "- O sistema gera invoice mensal com período, base, excedentes e total.",
-      "",
-      "**Como consultar**",
-      "- Resumo e uso: página `Billing`.",
-      "- Invoices: listagem por tenant e geração mensal.",
-      "",
-      "**Atalhos**",
-      "- `/app/billing`",
-      "",
-      "**Fontes consultadas**",
-      "- apps/api/src/routes/billing.ts",
-      "- apps/web/src/pages/app/billing/index.tsx",
-    ].join("\n");
-  }
-  if (normalized.includes("endpoint") || normalized.includes("api")) {
-    return [
-      "**API no EIAH (visão rápida)**",
-      "",
-      "- Runs: execução, eventos e histórico.",
-      "- Billing: resumo, usage, quote e invoices.",
-      "- Help: consulta da base interna do Central de Ajuda.",
-      "",
-      "**Exemplos**",
-      "- `/api/runs/*`",
-      "- `/api/billing/*`",
-      "- `/api/help/eiah/query`",
-      "",
-      "**Próximo passo**",
-      "Se quiser, te listo os endpoints por página (Runs, Billing, IMOB, Marketplace).",
-      "",
-      "**Fontes consultadas**",
-      "- apps/api/src/routes",
-    ].join("\n");
-  }
-  return null;
 }
 
 function parsePtBrNumber(raw: string): number | null {
@@ -478,94 +292,6 @@ function extractProposalInputs(input: string): { users: number | null; runs: num
   };
 }
 
-function detectRouteIntent(input: string, proposalMode: boolean): "proposal" | "imob" | "playbook" | "help" {
-  if (proposalMode) return "proposal";
-  const normalized = normalizeIntentText(input);
-  const strongProposalSignals = [
-    "proposta",
-    "plano",
-    "preco",
-    "preço",
-    "valor",
-    "custo",
-    "quanto vou pagar",
-    "quanto custa",
-    "mensalidade",
-    "orcamento",
-    "orçamento",
-    "comercial",
-  ];
-  const secondaryProposalSignals = [
-    "usuarios",
-    "usuario",
-    "pessoas",
-    "equipe",
-    "runs",
-    "run",
-    "implantacao",
-    "implantar",
-    "trial",
-    "demonstracao",
-    "demonstração",
-  ];
-  const helpOperationalSignals = [
-    "status",
-    "tempo real",
-    "simular",
-    "rodar agora",
-    "como criar run",
-    "como criar um run",
-    "pagina",
-    "página",
-    "endpoints",
-    "api",
-    "como funciona imob",
-  ];
-  const hasStrongProposal = strongProposalSignals.some((signal) => normalized.includes(signal));
-  const hasSecondaryProposal = secondaryProposalSignals.some((signal) => normalized.includes(signal));
-  const hasOperationalHelp = helpOperationalSignals.some((signal) => normalized.includes(signal));
-  if (hasStrongProposal || (hasSecondaryProposal && !hasOperationalHelp)) return "proposal";
-  if (isImobGuideQuestion(input)) return "imob";
-  if (isPlaybookQuestion(input)) return "playbook";
-  return "help";
-}
-
-function isRelatedToEiahTopic(input: string) {
-  const normalized = normalizeIntentText(input);
-  const productTerms = [
-    "runs",
-    "run",
-    "agentes",
-    "agente",
-    "billing",
-    "invoice",
-    "imob",
-    "marketplace",
-    "perfil",
-    "self-service",
-  ];
-  const proposalTerms = [
-    "plano",
-    "preco",
-    "preço",
-    "usuarios",
-    "usuários",
-    "runs/mes",
-    "runs/mês",
-    "trial",
-    "demonstracao",
-    "demonstração",
-    "proposta",
-  ];
-  const usageTerms = ["como", "onde", "status", "simular", "rodar"];
-  const all = [...productTerms, ...proposalTerms, ...usageTerms];
-  return all.some((term) => normalized.includes(term));
-}
-
-function deterministicContextualFallback() {
-  return "Não entendi essa solicitação dentro do contexto do EIAH. Posso te ajudar em: Runs, Agentes, Billing, IMOB ou proposta comercial.";
-}
-
 function centsToBrl(cents: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
 }
@@ -594,7 +320,7 @@ function quoteLocalPlan(plan: LocalPlan, users: number, runs: number) {
   return { ...plan, totalCents };
 }
 
-function buildContextualFallback(input: string, routeIntent: "proposal" | "imob" | "playbook" | "help") {
+function buildContextualFallback(input: string, routeIntent: "proposal" | "imob" | "playbook" | "help" | "orchestrator") {
   if (routeIntent === "proposal") {
     const parsed = extractProposalInputs(input);
     if (parsed.users && !parsed.runs) {
@@ -606,7 +332,10 @@ function buildContextualFallback(input: string, routeIntent: "proposal" | "imob"
     return "Entendi que você quer proposta comercial. Me passe `usuários` e `runs/mês` para eu calcular agora.";
   }
   if (routeIntent === "help") {
-    return "Não entendi sua pergunta com segurança. Se quiser, posso te guiar por página: Runs, Billing, Agentes ou IMOB.";
+    return "Me diga o que você quer resolver e eu te explico o melhor caminho dentro da plataforma.";
+  }
+  if (routeIntent === "orchestrator") {
+    return "Entendi que você quer coordenação operacional. Diga se o próximo passo é analisar, simular, executar ou auditar.";
   }
   return "Não consegui consolidar a resposta neste momento. Tente reformular em uma frase objetiva.";
 }
@@ -777,14 +506,13 @@ function isProposalStructuredResponse(input: Record<string, unknown>): input is 
 function fallbackHelpMarkdown() {
   return [
     "**Resumo**",
-    "Não consegui estruturar a resposta corretamente com base no retorno atual.",
+    "Não consegui montar uma resposta útil com clareza para esse pedido.",
     "",
-    "**Como fazer**",
-    "- Reformule a pergunta em uma frase objetiva (ex.: Como usar IMOB?).",
-    "- Se preferir, escolha uma das sugestões rápidas abaixo.",
-    "",
-    "**Fontes consultadas**",
-    "- fallback",
+    "Se quiser, você pode me pedir de um destes jeitos:",
+    "- `como usar o IMOB`",
+    "- `como criar um run`",
+    "- `quais agentes posso usar`",
+    "- `como funciona o billing`",
   ].join("\n");
 }
 
@@ -808,10 +536,15 @@ function toMarkdownFromStructuredResponse(
         parsed.steps && parsed.steps.length > 0
           ? `\n\n**Como fazer**\n${parsed.steps.map((step) => `- ${step}`).join("\n")}`
           : "";
+      const sources =
+        parsed.sources.length > 0
+          ? `\n\n**Base usada**\n${parsed.sources
+              .slice(0, 2)
+              .map((source) => `- ${source}`)
+              .join("\n")}`
+          : "";
       return {
-        content: `**Resumo**\n${parsed.summary}${steps}\n\n**Fontes consultadas**\n${parsed.sources
-          .map((source) => `- ${source}`)
-          .join("\n")}`,
+        content: `**Resumo**\n${parsed.summary}${steps}${sources}`,
         rejected: false,
         fallbackUsed: false,
       };
@@ -847,6 +580,130 @@ function maskIdentity(value: string, fallbackPrefix: string) {
     return `${trimmed.slice(0, prefix.length + 2)}…${trimmed.slice(-4)}`;
   }
   return `${prefix}…${trimmed.slice(-4)}`;
+}
+
+type EiahUnifiedMode = "help" | "orchestrator" | "proposal";
+type ConversationPersistenceTrigger =
+  | "approval_required"
+  | "critical_execution"
+  | "delegation"
+  | "provenance_required"
+  | "final_summary"
+  | "user_confirmed"
+  | "manual_save";
+
+type ConversationPersistencePolicyInput = {
+  mode: "ephemeral" | "durable";
+  ttlMinutes: number;
+  promoteOn: ConversationPersistenceTrigger[];
+  persistSummary: boolean;
+  persistShortTermMemory: boolean;
+};
+
+function resolveEiahUnifiedMode(params: {
+  isUnifiedEiah: boolean;
+  launcherTopic?: string | null;
+  routeIntent?: "proposal" | "imob" | "playbook" | "help" | "orchestrator" | null;
+}) {
+  if (!params.isUnifiedEiah) return null;
+  if ((params.launcherTopic ?? "").trim().toLowerCase() === "proposal" || params.routeIntent === "proposal") {
+    return "proposal";
+  }
+  if (params.routeIntent === "orchestrator") {
+    return "orchestrator";
+  }
+  if (params.routeIntent === "help" || params.routeIntent === "imob" || params.routeIntent === "playbook") {
+    return "help";
+  }
+  return "orchestrator";
+}
+
+function selectActiveAgentContract(agent: Agent | null, mode: EiahUnifiedMode | null) {
+  if (!agent) return null;
+  if (!mode || !Array.isArray(agent.modeContracts) || agent.modeContracts.length === 0) {
+    return agent;
+  }
+  const modeContract = agent.modeContracts.find((entry) => entry.mode === mode);
+  if (!modeContract) return agent;
+  return {
+    ...agent,
+    knowledgePolicy: modeContract.knowledgePolicy ?? agent.knowledgePolicy,
+    cognitiveProfile: modeContract.cognitiveProfile ?? agent.cognitiveProfile,
+    uxContract: modeContract.uxContract ?? agent.uxContract,
+    chatCopy: modeContract.chatCopy ?? agent.chatCopy,
+  };
+}
+
+function buildQuickRepliesForContext(params: {
+  agentProfile: Agent | null;
+  routeIntent: "proposal" | "imob" | "playbook" | "help" | "orchestrator" | "legal_handoff";
+  isHelpCenterMode: boolean;
+  proposalMode: boolean;
+  conversationIntent?: string | null;
+  sourceInput?: string | null;
+}) {
+  const copyReplies =
+    params.agentProfile?.chatCopy?.quickReplies?.filter((value): value is string => Boolean(value && value.trim())) ?? [];
+  const resolvedVerticalContext = params.sourceInput ? resolveConversationVerticalContext(params.sourceInput) : null;
+  const imobReplies =
+    resolvedVerticalContext?.vertical === "IMOB" && params.sourceInput
+      ? buildImobQuickRepliesForInput(params.sourceInput)
+      : [];
+  const legalReplies =
+    resolvedVerticalContext?.vertical === "LEGAL" && params.sourceInput
+      ? buildLegalQuickRepliesForInput(params.sourceInput)
+      : [];
+
+  if (params.isHelpCenterMode) {
+    const engineReplies = buildEiahQuickReplies({
+      routeIntent: params.routeIntent,
+      proposalMode: params.proposalMode,
+    });
+    return [...copyReplies, ...imobReplies, ...legalReplies, ...engineReplies]
+      .filter((value): value is string => Boolean(value && value.trim()))
+      .filter((value, index, array) => array.indexOf(value) === index)
+      .slice(0, 3);
+  }
+
+  const specialistReplies = isLegalSpecialistAgent(params.agentProfile) ? legalReplies : [];
+  return [...specialistReplies, ...copyReplies]
+    .filter((value): value is string => Boolean(value && value.trim()))
+    .filter((value, index, array) => array.indexOf(value) === index)
+    .slice(0, 3);
+}
+
+function buildConversationPersistencePolicy(params: {
+  agentProfile: Agent | null;
+  routeIntent: "proposal" | "imob" | "playbook" | "help" | "orchestrator";
+  requiresConfirmation: boolean;
+  proposalMode: boolean;
+}): ConversationPersistencePolicyInput {
+  const triggers = new Set<ConversationPersistenceTrigger>([
+    "delegation",
+    "final_summary",
+    "provenance_required",
+  ]);
+
+  if (params.requiresConfirmation) {
+    triggers.add("approval_required");
+    triggers.add("user_confirmed");
+  }
+
+  if (
+    params.proposalMode ||
+    params.routeIntent === "orchestrator" ||
+    params.agentProfile?.knowledgePolicy?.llmUsageMode === "disallowed_for_critical_execution"
+  ) {
+    triggers.add("critical_execution");
+  }
+
+  return {
+    mode: "ephemeral",
+    ttlMinutes: params.routeIntent === "help" || params.routeIntent === "playbook" ? 60 : 180,
+    promoteOn: [...triggers],
+    persistSummary: true,
+    persistShortTermMemory: false,
+  };
 }
 
 export default function ChatAgentLauncher({
@@ -903,8 +760,17 @@ export default function ChatAgentLauncher({
   const [governanceLoading, setGovernanceLoading] = useState(false);
   const [governanceError, setGovernanceError] = useState<string | null>(null);
   const [conversationFinalizing, setConversationFinalizing] = useState(false);
-  const [lastRouteIntent, setLastRouteIntent] = useState<"proposal" | "imob" | "playbook" | "help" | null>(null);
+  const [lastRouteIntent, setLastRouteIntent] = useState<"proposal" | "imob" | "playbook" | "help" | "orchestrator" | null>(null);
+  const [catalogAgents, setCatalogAgents] = useState<Agent[]>([]);
   const [selectedAgentLabel, setSelectedAgentLabel] = useState<string | null>(null);
+  const [selectedCatalogAgent, setSelectedCatalogAgent] = useState<Agent | null>(null);
+  const [attachmentMode, setAttachmentMode] = useState<"upload_file" | "paste_text">("upload_file");
+  const [pastedArtifactText, setPastedArtifactText] = useState("");
+  const [selectedAttachment, setSelectedAttachment] = useState<File | null>(null);
+  const [attachmentDocumentType, setAttachmentDocumentType] = useState("contract");
+  const [attachmentAnalysisMode, setAttachmentAnalysisMode] = useState("full_review");
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
+  const [attachmentUploadError, setAttachmentUploadError] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const pollTimerRef = useRef<number | null>(null);
   const seenEventsRef = useRef<Set<string>>(new Set());
@@ -912,6 +778,7 @@ export default function ChatAgentLauncher({
   const runSummaryLoadedRef = useRef<string | null>(null);
   const runPromptRef = useRef<Record<string, string>>({});
   const runIntentRef = useRef<Record<string, IntentResult>>({});
+  const runPresentationRef = useRef<Record<string, MessagePresentationSnapshot>>({});
   const runGuardrailRef = useRef<
     Record<
       string,
@@ -922,6 +789,21 @@ export default function ChatAgentLauncher({
     >
   >({});
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const attachmentInputRef = useRef<HTMLInputElement | null>(null);
+  const clearAttachmentComposer = useCallback(
+    (options?: { resetMode?: boolean }) => {
+      setPastedArtifactText("");
+      setSelectedAttachment(null);
+      setAttachmentUploadError(null);
+      if (options?.resetMode ?? true) {
+        setAttachmentMode("upload_file");
+      }
+      if (attachmentInputRef.current) {
+        attachmentInputRef.current.value = "";
+      }
+    },
+    []
+  );
   const session = useSession();
   const effectiveWorkspaceId = workspaceId ?? session.workspaceId;
   const { executeAgent } = useAgentExecution();
@@ -939,14 +821,13 @@ export default function ChatAgentLauncher({
   const proposalMode =
     (launcherContext?.topic ?? "").trim().toLowerCase() === "proposal" &&
     normalizeAgentKey(activeAgent?.id ?? FALLBACK_AGENT.id) === "eiah";
-  const isHelpCenterMode =
-    isHelpCenterAgent({
+  const isUnifiedEiahMode = isUnifiedEiahAgent({
       id: activeAgent?.id ?? FALLBACK_AGENT.id,
       slug: activeAgent?.slug ?? FALLBACK_AGENT.slug,
       title: activeAgent?.title ?? FALLBACK_AGENT.title,
-    }) &&
-    (launcherContext?.topic ?? "").trim().toLowerCase() !== "proposal";
-
+    });
+  const isHelpCenterMode =
+    isUnifiedEiahMode && (launcherContext?.topic ?? "").trim().toLowerCase() !== "proposal";
   useEffect(() => {
     if (identityShown) return;
     if (!session.userId && !session.tenantId) return;
@@ -1007,18 +888,25 @@ export default function ChatAgentLauncher({
   useEffect(() => {
     if (!activeAgentId) {
       setSelectedAgentLabel(null);
+      setSelectedCatalogAgent(null);
       return;
     }
     let cancelled = false;
     apiListAgents()
-      .then((response: any) => {
+      .then((response: { items?: Agent[] }) => {
         if (cancelled) return;
         const items = Array.isArray(response?.items) ? response.items : [];
-        const found = items.find((item: any) => String(item?.id ?? "") === activeAgentId);
+        setCatalogAgents(items);
+        const found = items.find((item) => String(item?.id ?? "") === activeAgentId) ?? null;
         setSelectedAgentLabel(found ? getCatalogAgentDisplayName(found) : null);
+        setSelectedCatalogAgent(found);
       })
       .catch(() => {
-        if (!cancelled) setSelectedAgentLabel(null);
+        if (!cancelled) {
+          setCatalogAgents([]);
+          setSelectedAgentLabel(null);
+          setSelectedCatalogAgent(null);
+        }
       });
     return () => {
       cancelled = true;
@@ -1065,6 +953,67 @@ export default function ChatAgentLauncher({
     });
   };
 
+  const pushAssistantMessageWithTyping = useCallback(
+    async (params: {
+      idPrefix: string;
+      content: string;
+      runId?: string | null;
+      presentationSnapshot?: MessagePresentationSnapshot;
+    }) => {
+      const chunks = params.content
+        .split(/(\s+)/)
+        .filter((chunk) => chunk.length > 0);
+      const messageId = `${params.idPrefix}-${Date.now()}`;
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: messageId,
+          role: "assistant",
+          content: "",
+          status: "streaming",
+          ...(params.runId ? { runId: params.runId } : {}),
+          ...(params.presentationSnapshot ? { presentationSnapshot: params.presentationSnapshot } : {}),
+        } as ChatMessage,
+      ]);
+
+      let rendered = "";
+      for (const chunk of chunks) {
+        rendered += chunk;
+        setMessages((prev) =>
+          prev.map((message) =>
+            message.id === messageId
+              ? {
+                  ...message,
+                  content: rendered,
+                  status: "streaming",
+                }
+              : message
+          )
+        );
+        requestAnimationFrame(() => {
+          scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+        });
+        // Mantém o ritmo de escrita sem travar a interface.
+        // Respostas curtas ficam naturais; respostas longas continuam rápidas.
+        await new Promise((resolve) => window.setTimeout(resolve, chunk.trim() ? 18 : 8));
+      }
+
+      setMessages((prev) =>
+        prev.map((message) =>
+          message.id === messageId
+            ? {
+                ...message,
+                content: rendered,
+                status: "done",
+              }
+            : message
+        )
+      );
+    },
+    []
+  );
+
   const persistHelpdeskSession = useCallback(
     (params: {
       runId?: string | null;
@@ -1073,10 +1022,26 @@ export default function ChatAgentLauncher({
       intentResult: IntentResult;
       responseRejected?: boolean;
       fallbackUsed?: boolean;
+      clarificationIssued?: boolean;
+      handoffOffered?: boolean;
+      handoffEligible?: boolean;
+      quickReplyUsed?: boolean;
+      quickRepliesShown?: number;
+      routeIntent?: MessagePresentationSnapshot["routeIntent"] | null;
+      verticalContext?: MessagePresentationSnapshot["verticalContext"];
       recommendedPlan?: string | null;
       estimatedValue?: number | null;
+      persist?: boolean;
     }) => {
       if (!session.tenantId || !effectiveWorkspaceId) return;
+      const shouldPersist =
+        params.persist === true ||
+        Boolean(params.runId) ||
+        Boolean(params.responseRejected) ||
+        Boolean(params.fallbackUsed) ||
+        params.recommendedPlan != null ||
+        params.estimatedValue != null;
+      if (!shouldPersist) return;
       void apiCreateHelpdeskSession({
         tenantId: session.tenantId,
         workspaceId: effectiveWorkspaceId,
@@ -1089,6 +1054,19 @@ export default function ChatAgentLauncher({
         recommendedPlan: params.recommendedPlan ?? null,
         estimatedValue: params.estimatedValue ?? null,
         metadata: {
+          rolloutStage: CHAT_ROLLOUT_STAGE,
+          threadKey,
+          activeAgentId: activeAgentId ?? FALLBACK_AGENT.id,
+          activeAgentName: selectedCatalogAgent?.name ?? activeAgent?.title ?? FALLBACK_AGENT.title,
+          routeIntent: params.routeIntent ?? null,
+          verticalContext: params.verticalContext ?? null,
+          quickRepliesShown: params.quickRepliesShown ?? 0,
+          quickReplyUsed: params.quickReplyUsed ?? false,
+          clarificationIssued: params.clarificationIssued ?? false,
+          handoffOffered: params.handoffOffered ?? false,
+          handoffEligible: params.handoffEligible ?? false,
+          attachmentUsed: Boolean(selectedAttachment) || Boolean(pastedArtifactText.trim()),
+          attachmentMode: selectedAttachment || pastedArtifactText.trim() ? attachmentMode : null,
           responseRejected: params.responseRejected ?? false,
           fallbackUsed: params.fallbackUsed ?? false,
         },
@@ -1096,25 +1074,18 @@ export default function ChatAgentLauncher({
         // fire-and-forget sem bloquear UX
       });
     },
-    [effectiveWorkspaceId, session.tenantId]
+    [
+      activeAgentId,
+      activeAgent?.title,
+      attachmentMode,
+      effectiveWorkspaceId,
+      pastedArtifactText,
+      selectedCatalogAgent?.name,
+      selectedAttachment,
+      session.tenantId,
+      threadKey,
+    ]
   );
-
-  useEffect(() => {
-    if (!proposalMode) return;
-    const storageKey = `eiah:proposal-mode-greeted:${threadKey}`;
-    if (typeof window !== "undefined") {
-      const storage = window.sessionStorage;
-      if (storage.getItem(storageKey) === "1") return;
-      storage.setItem(storageKey, "1");
-    }
-    pushMessage({
-      id: `assistant-proposal-mode-${Date.now()}`,
-      role: "assistant",
-      content:
-        "Estou em modo atendimento de proposta. Posso te recomendar o melhor plano e estimar valor mensal. Para começar, me diga: quantos usuários e quantos runs/mês você estima?",
-      status: "done",
-    });
-  }, [proposalMode, threadKey]);
 
   const stopStreaming = () => {
     if (eventSourceRef.current) {
@@ -1150,7 +1121,20 @@ export default function ChatAgentLauncher({
 
     const message = eventToAssistantMessage(event);
     if (message) {
-      pushMessage({ id: `assistant-${event.id}`, role: "assistant", content: message, status: "done" });
+      pushMessage({
+        id: `assistant-${event.id}`,
+        role: "assistant",
+        content: message,
+        status: "done",
+        runId: event.runId,
+        presentationSnapshot:
+          event.runId && runPresentationRef.current[event.runId]
+            ? {
+                ...runPresentationRef.current[event.runId],
+                showConfidence: true,
+              }
+            : undefined,
+      });
     }
 
     if (event.type === "run.orchestrator.finished") {
@@ -1190,11 +1174,43 @@ export default function ChatAgentLauncher({
           rejected: guarded.rejected,
           fallbackUsed: guarded.fallbackUsed,
         };
+        const summarySnapshot =
+          runPresentationRef.current[targetRunId] ??
+          createPresentationSnapshot({
+            agentProfile: selectActiveAgentContract(
+              selectedCatalogAgent,
+              isUnifiedEiahMode
+                ? resolveEiahUnifiedMode({
+                    isUnifiedEiah: true,
+                    launcherTopic: launcherContext?.topic,
+                    routeIntent: (intentResult.intent === "proposal"
+                      ? "proposal"
+                      : intentResult.intent === "agent_execute"
+                      ? "orchestrator"
+                      : lastRouteIntent ?? "help") as "proposal" | "imob" | "playbook" | "help" | "orchestrator",
+                  })
+                : null
+            ),
+            routeIntent:
+              intentResult.intent === "proposal"
+                ? "proposal"
+                : intentResult.intent === "agent_execute"
+                ? "orchestrator"
+                : (lastRouteIntent ?? "help"),
+            eiahMode: activeEiahMode,
+            confidence: intentResult.confidence,
+            runId: targetRunId,
+          });
         pushMessage({
           id: `assistant-summary-${targetRunId}`,
           role: "assistant",
           content: guarded.content,
           status: "done",
+          presentationSnapshot: {
+            ...summarySnapshot,
+            showConfidence: true,
+            confidencePercent: Math.round(intentResult.confidence * 100),
+          },
         });
         persistHelpdeskSession({
           runId: targetRunId,
@@ -1203,6 +1219,9 @@ export default function ChatAgentLauncher({
           intentResult,
           responseRejected: guarded.rejected,
           fallbackUsed: guarded.fallbackUsed,
+          quickRepliesShown: summarySnapshot.quickReplies.length,
+          routeIntent: summarySnapshot.routeIntent,
+          verticalContext: summarySnapshot.verticalContext ?? null,
         });
       }
     } catch (error) {
@@ -1260,105 +1279,239 @@ export default function ChatAgentLauncher({
 
   const handleSend = async () => {
     const trimmed = input.trim();
-    if (!trimmed || isStreaming) return;
+    const artifactText = pastedArtifactText.trim();
+    const hasAttachmentPayload = Boolean(selectedAttachment) || Boolean(artifactText);
+    if ((!trimmed && !hasAttachmentPayload) || isStreaming) return;
     const resolvedAgentId = activeAgentId ?? FALLBACK_AGENT.id;
-    const routeIntent = isHelpCenterMode ? detectRouteIntent(trimmed, proposalMode) : "help";
-    const shouldUseDeterministicProposalReply = isHelpCenterMode && routeIntent === "proposal";
-    const shouldUseDeterministicImobReply = isHelpCenterMode && routeIntent === "imob";
-    const shouldUseDeterministicPlaybookReply = isHelpCenterMode && routeIntent === "playbook";
-    if (isHelpCenterMode) setLastRouteIntent(routeIntent);
+    let uploadedArtifacts: UploadedDocumentInfo[] = [];
+    if (attachmentIntake.enabled && selectedAttachment) {
+      const formData = new FormData();
+      formData.append("files", selectedAttachment);
+      setIsUploadingAttachment(true);
+      setAttachmentUploadError(null);
+      try {
+        const uploadResponse = await apiUploadDocuments(formData, normalizeAgentKey(resolvedAgentId));
+        uploadedArtifacts = uploadResponse.data ?? [];
+      } catch (error) {
+        setIsUploadingAttachment(false);
+        setAttachmentUploadError(error instanceof Error ? error.message : "Falha ao enviar arquivo.");
+        return;
+      } finally {
+        setIsUploadingAttachment(false);
+      }
+    }
+    const attachmentSummary = selectedAttachment
+      ? `Arquivo anexado: ${selectedAttachment.name} (${Math.max(1, Math.round(selectedAttachment.size / 1024))} KB, ${selectedAttachment.type || "tipo não informado"}).`
+      : "";
+    const uploadedArtifactsBlock =
+      uploadedArtifacts.length > 0
+        ? [
+            "[ARTEFATOS_UPLOADADOS]",
+            ...uploadedArtifacts.map(
+              (artifact) =>
+                `- ${artifact.name} (${artifact.mimeType}, ${Math.max(1, Math.round(artifact.sizeBytes / 1024))} KB) -> ${artifact.url}`
+            ),
+          ].join("\n")
+        : "";
+    const effectiveInput = trimmed || (selectedAttachment ? "Quero revisar o arquivo anexado." : "Quero analisar o texto colado.");
+    const intakeContext =
+      attachmentIntake.enabled && hasAttachmentPayload
+        ? [
+            "[INTAKE_DE_ARTEFATO]",
+            `modo=${attachmentMode}`,
+            `document_type=${attachmentDocumentType}`,
+            `analysis_mode=${attachmentAnalysisMode}`,
+            attachmentSummary,
+            uploadedArtifactsBlock,
+            artifactText ? `texto_colado:\n${artifactText}` : "",
+          ]
+            .filter(Boolean)
+            .join("\n")
+        : "";
+    const turnInput = [effectiveInput, intakeContext].filter(Boolean).join("\n\n");
+    const quickReplyUsed = Boolean(
+      lastAssistantSnapshot?.quickReplies?.some(
+        (reply) => normalizeIntentText(reply) === normalizeIntentText(effectiveInput)
+      )
+    );
+    const routeIntent = isUnifiedEiahMode ? detectLauncherRouteIntent(effectiveInput, proposalMode) : "help";
+    const turnEiahMode = resolveEiahUnifiedMode({
+      isUnifiedEiah: isUnifiedEiahMode,
+      launcherTopic: launcherContext?.topic,
+      routeIntent,
+    });
+    const turnContractProfile = selectActiveAgentContract(selectedCatalogAgent, turnEiahMode);
+    const isEiahHelpCenter = turnEiahMode === "help";
+    const shouldUseDeterministicProposalReply = isUnifiedEiahMode && routeIntent === "proposal";
+    if (isUnifiedEiahMode) setLastRouteIntent(routeIntent);
     setInput("");
-    pushMessage({ id: `user-${Date.now()}`, role: "user", content: trimmed });
-    const localIntentResult = conversation.analyze(trimmed);
-    const relatedToEiah = isRelatedToEiahTopic(trimmed);
-    if (isHelpCenterMode && (localIntentResult.intent === "unknown" || !relatedToEiah)) {
-      const contextual = deterministicContextualFallback();
-      if (isHelpCenterMode) setLastRouteIntent("help");
-      pushMessage({
-        id: `assistant-unknown-contextual-${Date.now()}`,
-        role: "assistant",
-        content: contextual,
-        status: "done",
+    pushMessage({
+      id: `user-${Date.now()}`,
+      role: "user",
+      content: [effectiveInput, attachmentSummary].filter(Boolean).join("\n"),
+    });
+    const localIntentResult = conversation.analyze(effectiveInput);
+    const localDecision = resolveLauncherLocalDecision({
+      input: effectiveInput,
+      routeIntent,
+      proposalMode,
+      isUnifiedEiah: isUnifiedEiahMode,
+      eiahMode: turnEiahMode,
+      agentProfile: turnContractProfile,
+      catalogAgents,
+      intentUnknown: localIntentResult.intent === "unknown",
+    });
+    if (localDecision && !localDecision.shouldCreateRun && localDecision.content) {
+      setLastRouteIntent(localDecision.launcherRouteIntent);
+      const confidenceFloor = localDecision.persistIntent?.confidenceFloor;
+      const localSnapshot = createPresentationSnapshot({
+        agentProfile: turnContractProfile,
+        routeIntent: localDecision.presentationRouteIntent,
+        eiahMode: localDecision.eiahMode ?? turnEiahMode,
+        confidence:
+          typeof confidenceFloor === "number"
+            ? Math.max(localIntentResult.confidence, confidenceFloor)
+            : localIntentResult.confidence,
+        renderVariant: localDecision.renderVariant,
+        excludeReplyInputs: [trimmed],
+        sourceInput: effectiveInput,
+      });
+      await pushAssistantMessageWithTyping({
+        idPrefix: `assistant-${localDecision.kind}`,
+        content: localDecision.content,
+        presentationSnapshot: localSnapshot,
       });
       persistHelpdeskSession({
-        message: trimmed,
-        response: contextual,
-        intentResult: {
-          intent: "unknown",
-          confidence: localIntentResult.confidence,
-          fallbackReason: localIntentResult.fallbackReason ?? "out_of_scope",
-        },
-        responseRejected: true,
-        fallbackUsed: true,
+        message: turnInput,
+        response: localDecision.content,
+        intentResult: (() => {
+          const persistedIntent = localDecision.persistIntent?.intent;
+          if (persistedIntent === "unknown") {
+            return {
+              intent: "unknown" as const,
+              confidence: localIntentResult.confidence,
+              fallbackReason: localIntentResult.fallbackReason ?? "local_safe_fallback",
+            };
+          }
+          if (persistedIntent === "help" || persistedIntent === "proposal" || persistedIntent === "product_explain") {
+            return {
+              intent: persistedIntent,
+              confidence:
+                typeof confidenceFloor === "number"
+                  ? Math.max(localIntentResult.confidence, confidenceFloor)
+                  : localIntentResult.confidence,
+            };
+          }
+          return localIntentResult;
+        })(),
+        responseRejected: localDecision.kind === "contextual_fallback",
+        fallbackUsed: localDecision.kind === "contextual_fallback",
+        quickReplyUsed,
+        quickRepliesShown: localSnapshot.quickReplies.length,
+        routeIntent: localSnapshot.routeIntent,
+        verticalContext: localSnapshot.verticalContext ?? null,
+        clarificationIssued: false,
+        handoffOffered: localDecision.presentationRouteIntent === "legal_handoff",
+        handoffEligible:
+          localDecision.kind === "legal_context_entry" ||
+          localDecision.kind === "legal_handoff",
       });
+      clearAttachmentComposer();
+      return;
+    }
+    const clarificationPrompt = buildLauncherClarificationPrompt({
+      agentProfile: turnContractProfile,
+      routeIntent,
+      trimmedInput: effectiveInput,
+      confidence: localIntentResult.confidence,
+    });
+    if (clarificationPrompt) {
+      const clarificationSnapshot = createPresentationSnapshot({
+        agentProfile: turnContractProfile,
+        routeIntent: routeIntent === "help" ? "help" : routeIntent,
+        eiahMode: turnEiahMode,
+        confidence: localIntentResult.confidence,
+        renderVariant: "guided_flow",
+        excludeReplyInputs: [trimmed],
+        sourceInput: effectiveInput,
+      });
+      await pushAssistantMessageWithTyping({
+        idPrefix: "assistant-clarification",
+        content: clarificationPrompt,
+        presentationSnapshot: clarificationSnapshot,
+      });
+      persistHelpdeskSession({
+        message: turnInput,
+        response: clarificationPrompt,
+        intentResult: localIntentResult,
+        responseRejected: false,
+        fallbackUsed: false,
+        clarificationIssued: true,
+        quickReplyUsed,
+        quickRepliesShown: clarificationSnapshot.quickReplies.length,
+        routeIntent: clarificationSnapshot.routeIntent,
+        verticalContext: clarificationSnapshot.verticalContext ?? null,
+      });
+      clearAttachmentComposer();
       return;
     }
     if (shouldUseDeterministicProposalReply) {
       try {
-        const content = await buildDeterministicProposalReply(trimmed);
-        pushMessage({
-          id: `assistant-proposal-guide-${Date.now()}`,
-          role: "assistant",
+        const content = await buildDeterministicProposalReply(turnInput);
+        const proposalSnapshot = createPresentationSnapshot({
+          agentProfile: turnContractProfile,
+          routeIntent: "proposal",
+          eiahMode: turnEiahMode,
+          confidence: localIntentResult.confidence,
+          renderVariant: "proposal",
+          excludeReplyInputs: [trimmed],
+          sourceInput: effectiveInput,
+        });
+        await pushAssistantMessageWithTyping({
+          idPrefix: "assistant-proposal-guide",
           content,
-          status: "done",
+          presentationSnapshot: proposalSnapshot,
         });
         persistHelpdeskSession({
-          message: trimmed,
+          message: turnInput,
           response: content,
           intentResult: localIntentResult,
+          quickReplyUsed,
+          quickRepliesShown: proposalSnapshot.quickReplies.length,
+          routeIntent: proposalSnapshot.routeIntent,
+          verticalContext: proposalSnapshot.verticalContext ?? null,
         });
+        clearAttachmentComposer();
       } catch {
-        const content = buildContextualFallback(trimmed, routeIntent);
-        pushMessage({
-          id: `assistant-proposal-fallback-${Date.now()}`,
-          role: "assistant",
+        const content = buildContextualFallback(effectiveInput, routeIntent);
+        const proposalFallbackSnapshot = createPresentationSnapshot({
+          agentProfile: turnContractProfile,
+          routeIntent: "proposal",
+          eiahMode: turnEiahMode,
+          confidence: localIntentResult.confidence,
+          renderVariant: "proposal",
+          excludeReplyInputs: [trimmed],
+          sourceInput: effectiveInput,
+        });
+        await pushAssistantMessageWithTyping({
+          idPrefix: "assistant-proposal-fallback",
           content,
-          status: "done",
+          presentationSnapshot: proposalFallbackSnapshot,
         });
         persistHelpdeskSession({
-          message: trimmed,
+          message: turnInput,
           response: content,
           intentResult: localIntentResult,
           responseRejected: true,
           fallbackUsed: true,
+          quickReplyUsed,
+          quickRepliesShown: proposalFallbackSnapshot.quickReplies.length,
+          routeIntent: proposalFallbackSnapshot.routeIntent,
+          verticalContext: proposalFallbackSnapshot.verticalContext ?? null,
         });
+        clearAttachmentComposer();
       }
       return;
-    }
-    if (shouldUseDeterministicImobReply) {
-      pushMessage({
-        id: `assistant-imob-guide-${Date.now()}`,
-        role: "assistant",
-        content: buildDeterministicImobReply(),
-        status: "done",
-      });
-      return;
-    }
-    if (shouldUseDeterministicPlaybookReply) {
-      pushMessage({
-        id: `assistant-playbook-${Date.now()}`,
-        role: "assistant",
-        content: buildDeterministicPlaybookReply(),
-        status: "done",
-      });
-      return;
-    }
-    if (isHelpCenterMode && routeIntent === "help") {
-      const directHelp = buildDeterministicHelpReply(trimmed);
-      if (directHelp) {
-        pushMessage({
-          id: `assistant-help-direct-${Date.now()}`,
-          role: "assistant",
-          content: directHelp,
-          status: "done",
-        });
-        persistHelpdeskSession({
-          message: trimmed,
-          response: directHelp,
-          intentResult: localIntentResult,
-        });
-        return;
-      }
     }
     stopStreaming();
     onRunIdChange?.(null);
@@ -1370,59 +1523,93 @@ export default function ChatAgentLauncher({
     lastEventIdRef.current = null;
     runSummaryLoadedRef.current = null;
     const intentResult = localIntentResult;
-    const isEiahHelpCenter = isHelpCenterMode;
 
     let helpHits: EiahHelpQueryHit[] = [];
     if (isEiahHelpCenter) {
       try {
-        const knowledge = await apiQueryEiahHelp({ query: trimmed, topK: 6 });
+        const knowledge = await apiQueryEiahHelp({ query: effectiveInput, topK: 6 });
         helpHits = knowledge.data.hits ?? [];
       } catch {
         helpHits = [];
       }
     }
 
-    const prompt = proposalMode
-      ? buildProposalAssistantPrompt(trimmed, launcherContext?.planHint)
+    const prompt = turnEiahMode === "proposal"
+      ? buildProposalAssistantPrompt(turnInput, launcherContext?.planHint)
       : isEiahHelpCenter
-      ? buildHelpAssistantPrompt(trimmed, helpHits)
-      : buildOptimizedPrompt(trimmed);
+      ? buildHelpAssistantPrompt(turnInput, helpHits)
+      : buildOptimizedPrompt(turnInput);
 
     try {
+      const conversationPersistence = buildConversationPersistencePolicy({
+        agentProfile: turnContractProfile,
+        routeIntent,
+        requiresConfirmation: Boolean(conversation.policy?.requiresConfirmation),
+        proposalMode: turnEiahMode === "proposal",
+      });
+
       const response = await conversation.executeWithPolicy(resolvedAgentId, {
         agent: resolvedAgentId,
         prompt,
         workspaceId: effectiveWorkspaceId,
         metadata: {
           source: "chat-agent-launcher",
-          promptOptimized: !proposalMode && !isEiahHelpCenter,
-          proposalMode,
+          promptOptimized: turnEiahMode === "orchestrator",
+          proposalMode: turnEiahMode === "proposal",
+          eiahMode: turnEiahMode,
+          conversationPersistence,
+          requiresConfirmation: Boolean(conversation.policy?.requiresConfirmation),
+          provenancePolicy: turnContractProfile?.knowledgePolicy?.provenancePolicy ?? "none",
           proposalPlanHint: launcherContext?.planHint ?? null,
           helpKnowledgeHits: helpHits.map((hit) => ({
             title: hit.title,
             sourcePath: hit.sourcePath,
             score: hit.score,
           })),
-          originalPrompt: trimmed,
+          originalPrompt: turnInput,
           agentFallback: !activeAgentId,
         },
       });
       const created = response.data;
       setRunId(created.id);
       onRunIdChange?.(created.id);
-      runPromptRef.current[created.id] = trimmed;
+      runPromptRef.current[created.id] = turnInput;
       runIntentRef.current[created.id] = intentResult;
+      runPresentationRef.current[created.id] = createPresentationSnapshot({
+        agentProfile: turnContractProfile,
+        routeIntent,
+        eiahMode: turnEiahMode,
+        confidence: intentResult.confidence,
+        runId: created.id,
+        renderVariant: routeIntent === "proposal" ? "proposal" : routeIntent === "orchestrator" ? "handoff" : "guided_flow",
+        sourceInput: effectiveInput,
+      });
       pushMessage({
         id: `system-${created.id}`,
         role: "system",
         content: `Run criada: ${created.id}. Aguardando eventos...`,
       });
       await startSse(created.id);
+      clearAttachmentComposer();
     } catch (error) {
       setIsStreaming(false);
       updateSseStatus("error");
       const message = error instanceof Error ? error.message : "Falha ao iniciar run.";
-      pushMessage({ id: `assistant-error-${Date.now()}`, role: "assistant", content: message, status: "done" });
+      pushMessage({
+        id: `assistant-error-${Date.now()}`,
+        role: "assistant",
+        content: message,
+        status: "done",
+        presentationSnapshot: createPresentationSnapshot({
+          agentProfile: turnContractProfile,
+          routeIntent,
+          eiahMode: turnEiahMode,
+          confidence: intentResult.confidence,
+          renderVariant: routeIntent === "proposal" ? "proposal" : "guided_flow",
+          sourceInput: effectiveInput,
+        }),
+      });
+      clearAttachmentComposer();
     }
   };
 
@@ -1556,8 +1743,12 @@ export default function ChatAgentLauncher({
     runSummaryLoadedRef.current = null;
     runPromptRef.current = {};
     runIntentRef.current = {};
+    runPresentationRef.current = {};
     runGuardrailRef.current = {};
     setLastRouteIntent(null);
+    clearAttachmentComposer();
+    setAttachmentDocumentType("contract");
+    setAttachmentAnalysisMode("full_review");
     if (typeof window !== "undefined") {
       window.sessionStorage.removeItem(threadKey);
     }
@@ -1695,33 +1886,190 @@ export default function ChatAgentLauncher({
   const approvedItems = governanceItems.filter((item) => item.type === "run.approved");
   const conversationItems = governanceItems.filter((item) => item.type === "conversation.finalized");
   const activeAgentTitle = selectedAgentLabel ?? activeAgent?.title ?? "Curator";
+  const activeEiahMode = resolveEiahUnifiedMode({
+    isUnifiedEiah: isUnifiedEiahMode,
+    launcherTopic: launcherContext?.topic,
+    routeIntent: lastRouteIntent,
+  });
+  const activeContractProfile = selectActiveAgentContract(selectedCatalogAgent, activeEiahMode);
+  const attachmentIntake = useMemo(
+    () => resolveAttachmentIntake(activeContractProfile),
+    [activeContractProfile]
+  );
+  const usedQuickReplyKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const message of messages) {
+      if (message.role !== "user") continue;
+      keys.add(normalizeIntentText(message.content));
+    }
+    return keys;
+  }, [messages]);
+  function filterConversationQuickReplies(replies: string[]) {
+    return replies.filter((reply) => !usedQuickReplyKeys.has(normalizeIntentText(reply)));
+  }
+  function createPresentationSnapshot(params: {
+    agentProfile: Agent | null;
+    routeIntent: MessagePresentationSnapshot["routeIntent"];
+    eiahMode?: EiahUnifiedMode | null;
+    confidence?: number;
+    runId?: string | null;
+    renderVariant?: MessagePresentationSnapshot["renderVariant"];
+    excludeReplyInputs?: string[];
+    sourceInput?: string;
+  }): MessagePresentationSnapshot {
+      const provenanceMode = params.agentProfile?.knowledgePolicy?.provenancePolicy ?? "none";
+      const signals = params.agentProfile?.uxContract?.trustSignals?.slice(0, 3) ?? [];
+      const showConfidence =
+        Boolean(params.runId) ||
+        !(
+          params.routeIntent === "help" ||
+          params.routeIntent === "playbook" ||
+          params.routeIntent === "imob" ||
+          params.routeIntent === "legal_handoff" ||
+          params.routeIntent === "self_intro" ||
+          params.routeIntent === "capabilities_summary"
+        );
+      const quickReplies = buildQuickRepliesForContext({
+        agentProfile: params.agentProfile,
+        routeIntent:
+          params.routeIntent === "self_intro" || params.routeIntent === "capabilities_summary"
+            ? "help"
+            : params.routeIntent,
+        isHelpCenterMode: isUnifiedEiahMode,
+        proposalMode,
+        conversationIntent: conversation.intentResult.intent,
+        sourceInput: params.sourceInput,
+      });
+      const excludedReplyKeys = new Set(
+        (params.excludeReplyInputs ?? [])
+          .map((value) => normalizeIntentText(value))
+          .filter(Boolean)
+      );
+      const filteredQuickReplies = filterConversationQuickReplies(quickReplies).filter(
+        (reply) => !excludedReplyKeys.has(normalizeIntentText(reply))
+      );
+      const nextDecision =
+        params.routeIntent === "orchestrator"
+          ? params.agentProfile?.uxContract?.defaultCTA?.trim()
+          : undefined;
+      const verticalContext = params.sourceInput ? resolveConversationVerticalContext(params.sourceInput)?.vertical ?? null : null;
+      const nextSignals = verticalContext
+        ? [...signals, `vertical:${verticalContext.toLowerCase()}`].filter((value, index, array) => array.indexOf(value) === index)
+        : signals;
+
+    return {
+      snapshotVersion: PRESENTATION_SNAPSHOT_VERSION,
+      verticalContext,
+      routeIntent: params.routeIntent,
+      eiahMode: params.eiahMode ?? null,
+      showConfidence,
+      confidencePercent: typeof params.confidence === "number" ? Math.round(params.confidence * 100) : undefined,
+      provenanceMode,
+      signals: nextSignals,
+      nextDecision,
+      quickReplies: filteredQuickReplies,
+      renderVariant: params.renderVariant ?? "guided_flow",
+      responseShape: params.agentProfile?.uxContract?.responseShape,
+      maxCognitiveLoad: params.agentProfile?.uxContract?.maxCognitiveLoad,
+      inputPlaceholder: buildInputPlaceholderForContext({
+        routeIntent:
+          params.routeIntent === "self_intro" || params.routeIntent === "capabilities_summary"
+            ? "help"
+            : params.routeIntent,
+        input: params.sourceInput,
+        }),
+      attachmentEnabled: attachmentIntake.enabled,
+      attachmentPrimaryActionLabel: attachmentIntake.primaryActionLabel,
+      attachmentSecondaryActionLabel: attachmentIntake.secondaryActionLabel,
+      attachmentHelpText: attachmentIntake.helpText,
+    };
+  }
+
+  useEffect(() => {
+    if (!proposalMode) return;
+    const storageKey = `eiah:proposal-mode-greeted:${threadKey}`;
+    if (typeof window !== "undefined") {
+      const storage = window.sessionStorage;
+      if (storage.getItem(storageKey) === "1") return;
+      storage.setItem(storageKey, "1");
+    }
+    pushMessage({
+      id: `assistant-proposal-mode-${Date.now()}`,
+      role: "assistant",
+      content:
+        "Estou em modo atendimento de proposta. Posso te recomendar o melhor plano e estimar valor mensal. Para começar, me diga: quantos usuários e quantos runs/mês você estima?",
+      status: "done",
+      presentationSnapshot: createPresentationSnapshot({
+        agentProfile: activeContractProfile,
+        routeIntent: "proposal",
+        eiahMode: activeEiahMode,
+        confidence: 0.85,
+        renderVariant: "proposal",
+      }),
+    });
+  }, [activeContractProfile, activeEiahMode, proposalMode, threadKey]);
+
+  const lastUserMessage = useMemo(
+    () => [...messages].reverse().find((message) => message.role === "user")?.content ?? null,
+    [messages]
+  );
+  const lastAssistantSnapshot = useMemo(
+    () =>
+      [...messages]
+        .reverse()
+        .find((message) => message.role === "assistant" && message.presentationSnapshot)
+        ?.presentationSnapshot ?? null,
+    [messages]
+  );
+
   const quickReplies = useMemo(() => {
-    if (!isHelpCenterMode) {
-      return ["Mostre um exemplo pratico", "Explique integracao com BullMQ", "Quais riscos comuns?"];
+    const routeIntent =
+      lastAssistantSnapshot?.routeIntent === "self_intro" || lastAssistantSnapshot?.routeIntent === "capabilities_summary"
+        ? "help"
+        : lastAssistantSnapshot?.routeIntent ?? lastRouteIntent ?? "help";
+    return filterConversationQuickReplies(
+      buildQuickRepliesForContext({
+        agentProfile: activeContractProfile,
+        routeIntent,
+        isHelpCenterMode,
+        proposalMode,
+        conversationIntent: conversation.intentResult.intent,
+        sourceInput: lastUserMessage,
+      })
+    );
+  }, [
+    activeContractProfile,
+    conversation.intentResult.intent,
+    isHelpCenterMode,
+    proposalMode,
+    lastRouteIntent,
+    lastAssistantSnapshot,
+    lastUserMessage,
+    usedQuickReplyKeys,
+  ]);
+  const inputPlaceholder = useMemo(() => {
+    if (lastAssistantSnapshot?.inputPlaceholder?.trim()) {
+      return lastAssistantSnapshot.inputPlaceholder;
     }
-    if (proposalMode || lastRouteIntent === "proposal" || conversation.intentResult.intent === "proposal") {
-      return [
-        "Tenho 3 usuários e 2000 runs/mês. Qual plano?",
-        "Quero abrir proposta comercial.",
-        "Quero agendar demonstração.",
-        "Quero criar trial assistido.",
-      ];
-    }
-    if (lastRouteIntent === "imob") {
-      return [
-        "Como funciona IMOB do início ao fim?",
-        "Como usar o chat IMOB no dia a dia?",
-        "Onde acompanho pipeline e etapas no IMOB?",
-        "Quero instalar o IMOB no workspace.",
-      ];
-    }
-    return [
-      "Como criar um run no EIAH?",
-      "Como funciona billing e invoices?",
-      "Quais endpoints da API existem?",
-      "Quais são os roteiros principais do playbook?",
-    ];
-  }, [conversation.intentResult.intent, isHelpCenterMode, proposalMode, lastRouteIntent]);
+    return buildInputPlaceholderForContext({
+      routeIntent: lastRouteIntent ?? "help",
+      input: lastUserMessage,
+    });
+  }, [lastAssistantSnapshot, lastRouteIntent, lastUserMessage]);
+  const attachmentHelpText =
+    lastAssistantSnapshot?.attachmentHelpText?.trim() || attachmentIntake.helpText || "";
+  const attachmentPrimaryActionLabel =
+    lastAssistantSnapshot?.attachmentPrimaryActionLabel?.trim() || attachmentIntake.primaryActionLabel || "Anexar arquivo";
+  const attachmentSecondaryActionLabel =
+    lastAssistantSnapshot?.attachmentSecondaryActionLabel?.trim() || attachmentIntake.secondaryActionLabel || "Colar texto";
+  const attachmentAnalysisOptions = attachmentIntake.analysisModes ?? [];
+  const attachmentDocumentOptions = attachmentIntake.acceptedKinds ?? [];
+  const canSend =
+    Boolean(input.trim() || pastedArtifactText.trim() || selectedAttachment) && !isStreaming && !isUploadingAttachment;
+  const mainComposerPlaceholder =
+    attachmentIntake.enabled && (selectedAttachment || attachmentMode === "paste_text")
+      ? "Descreva o ponto que você quer analisar neste documento"
+      : inputPlaceholder;
 
   return (
     <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-surface/80 p-8 shadow-lg shadow-black/20">
@@ -1790,6 +2138,11 @@ export default function ChatAgentLauncher({
                               const { recs, docMarkdown, technicalRaw, runId: extractedRunId } =
                                 extractDocAndRecs(message.content);
                               const displayRunId = extractedRunId || (message as any).runId || "";
+                              const messageSnapshot = message.presentationSnapshot;
+                              const messageQuickReplies =
+                                messageSnapshot?.quickReplies && messageSnapshot.quickReplies.length > 0
+                                  ? messageSnapshot.quickReplies
+                                  : quickReplies;
 
                               return (
                                 <div className="flex w-full flex-col gap-4 overflow-hidden">
@@ -1821,7 +2174,32 @@ export default function ChatAgentLauncher({
                                             sanitizeAssistantContent(message.content).trim() ||
                                             technicalRaw.trim() ||
                                             "Ainda não encontrei conteúdo documental para essa pergunta.";
-                                          return helpContent;
+                                          return enrichLegacyAssistantContent({
+                                            content: helpContent,
+                                            agentProfile: activeContractProfile,
+                                            routeIntent:
+                                              messageSnapshot?.routeIntent === "self_intro" ||
+                                              messageSnapshot?.routeIntent === "capabilities_summary" ||
+                                              messageSnapshot?.routeIntent === "legal_handoff"
+                                                ? "help"
+                                                : (messageSnapshot?.routeIntent as
+                                                    | "proposal"
+                                                    | "imob"
+                                                    | "playbook"
+                                                    | "help"
+                                                    | "orchestrator"
+                                                    | null) ?? lastRouteIntent,
+                                            intentResult: {
+                                              intent: conversation.intentResult.intent,
+                                              confidence:
+                                                typeof messageSnapshot?.confidencePercent === "number"
+                                                  ? messageSnapshot.confidencePercent / 100
+                                                  : conversation.intentResult.confidence,
+                                              fallbackReason: conversation.intentResult.fallbackReason,
+                                            },
+                                            runId: displayRunId || runId,
+                                            presentationSnapshot: messageSnapshot,
+                                          });
                                         }
                                         const staged = buildStagedResponse(docMarkdown ?? "", recs);
                                         const paragraph = staged.paragraph || "Resposta disponivel sem resumo estruturado.";
@@ -1833,7 +2211,32 @@ export default function ChatAgentLauncher({
                                           staged.nextSteps.length > 0
                                             ? `\n\n**Próximos passos**\n${staged.nextSteps.map((step) => `- ${step}`).join("\n")}`
                                             : "";
-                                        return `${paragraph}${bulletsBlock}${nextStepsBlock}`;
+                                        return enrichLegacyAssistantContent({
+                                          content: `${paragraph}${bulletsBlock}${nextStepsBlock}`,
+                                          agentProfile: activeContractProfile,
+                                          routeIntent:
+                                            messageSnapshot?.routeIntent === "self_intro" ||
+                                            messageSnapshot?.routeIntent === "capabilities_summary" ||
+                                            messageSnapshot?.routeIntent === "legal_handoff"
+                                              ? "help"
+                                              : (messageSnapshot?.routeIntent as
+                                                  | "proposal"
+                                                  | "imob"
+                                                  | "playbook"
+                                                  | "help"
+                                                  | "orchestrator"
+                                                  | null) ?? lastRouteIntent,
+                                          intentResult: {
+                                            intent: conversation.intentResult.intent,
+                                            confidence:
+                                              typeof messageSnapshot?.confidencePercent === "number"
+                                                ? messageSnapshot.confidencePercent / 100
+                                                : conversation.intentResult.confidence,
+                                            fallbackReason: conversation.intentResult.fallbackReason,
+                                          },
+                                          runId: displayRunId || runId,
+                                          presentationSnapshot: messageSnapshot,
+                                        });
                                       })()}
                                     </ReactMarkdown>
                                   </div>
@@ -1841,7 +2244,7 @@ export default function ChatAgentLauncher({
                                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                                     <span>Quer aprofundar algo?</span>
                                     <div className="flex flex-wrap gap-2">
-                                      {quickReplies.map((reply) => (
+                                      {messageQuickReplies.map((reply) => (
                                         <button
                                           key={reply}
                                           type="button"
@@ -1901,12 +2304,112 @@ export default function ChatAgentLauncher({
           </div>
 
 	          <div className="glass-subtle flex items-end gap-3 p-4">
-            <textarea
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              placeholder="Descreva o objetivo, contexto e restricoes..."
-              className="min-h-[64px] flex-1 resize-none rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
-            />
+            <div className="flex-1 space-y-3">
+              {attachmentIntake.enabled ? (
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      ref={attachmentInputRef}
+                      type="file"
+                      accept={attachmentIntake.acceptedMimeTypes?.join(",")}
+                      className="hidden"
+                      onChange={(event) => {
+                        setSelectedAttachment(event.target.files?.[0] ?? null);
+                        setAttachmentMode("upload_file");
+                        setPastedArtifactText("");
+                        setAttachmentUploadError(null);
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => attachmentInputRef.current?.click()}
+                      className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-foreground transition hover:border-accent/40"
+                    >
+                      {attachmentPrimaryActionLabel}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAttachmentMode("paste_text");
+                        setSelectedAttachment(null);
+                        if (attachmentInputRef.current) {
+                          attachmentInputRef.current.value = "";
+                        }
+                        setAttachmentUploadError(null);
+                      }}
+                      className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] transition ${
+                        attachmentMode === "paste_text"
+                          ? "border-accent/40 bg-accent/15 text-accent"
+                          : "border-white/10 bg-white/5 text-foreground"
+                      }`}
+                    >
+                      {attachmentSecondaryActionLabel}
+                    </button>
+                    {attachmentDocumentOptions.length > 0 ? (
+                      <select
+                        value={attachmentDocumentType}
+                        onChange={(event) => setAttachmentDocumentType(event.target.value)}
+                        className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-foreground outline-none"
+                      >
+                        {attachmentDocumentOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option.replace(/_/g, " ")}
+                          </option>
+                        ))}
+                      </select>
+                    ) : null}
+                    {attachmentAnalysisOptions.length > 0 ? (
+                      <select
+                        value={attachmentAnalysisMode}
+                        onChange={(event) => setAttachmentAnalysisMode(event.target.value)}
+                        className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-foreground outline-none"
+                      >
+                        {attachmentAnalysisOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option.replace(/_/g, " ")}
+                          </option>
+                        ))}
+                      </select>
+                    ) : null}
+                  </div>
+                  {attachmentHelpText ? (
+                    <p className="mt-2 text-xs text-muted-foreground">{attachmentHelpText}</p>
+                  ) : null}
+                  {attachmentUploadError ? <p className="mt-2 text-xs text-red-400">{attachmentUploadError}</p> : null}
+                  {selectedAttachment ? (
+                    <div className="mt-3 flex flex-wrap items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-foreground">
+                      <span>{selectedAttachment.name}</span>
+                      <span className="text-muted-foreground">
+                        {Math.max(1, Math.round(selectedAttachment.size / 1024))} KB
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          clearAttachmentComposer({ resetMode: false });
+                        }}
+                        className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] text-muted-foreground transition hover:border-accent/40"
+                      >
+                        Remover
+                      </button>
+                    </div>
+                  ) : null}
+                  {attachmentMode === "paste_text" ? (
+                    <textarea
+                      value={pastedArtifactText}
+                      onChange={(event) => setPastedArtifactText(event.target.value)}
+                      placeholder="Cole aqui a cláusula, o trecho do contrato ou o texto que você quer analisar"
+                      className="mt-3 min-h-[96px] w-full resize-none rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/30"
+                    />
+                  ) : null}
+                </div>
+              ) : null}
+              <textarea
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                placeholder={mainComposerPlaceholder}
+                className="min-h-[64px] w-full resize-none rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
+              />
+            </div>
 	            <button
 	              type="button"
 	              onClick={handleNewConversation}
@@ -1927,9 +2430,9 @@ export default function ChatAgentLauncher({
 	              type="button"
 	              onClick={handleSend}
               className="rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-foreground transition hover:border-accent/40 disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={!input.trim() || isStreaming}
+              disabled={!canSend}
             >
-              Enviar
+              {isUploadingAttachment ? "Enviando..." : "Enviar"}
             </button>
           </div>
         </div>

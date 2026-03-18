@@ -216,6 +216,18 @@ export const defiOneProfile: AgentProfileSeed = {
       version: "1.0.0",
     },
   ],
+  knowledgePolicy: {
+    deterministicSources: [
+      { sourceId: "defi.protocol-simulation", kind: "api", authorityLevel: "primary", required: true, version: "v1" },
+      { sourceId: "defi.state-snapshot", kind: "snapshot", authorityLevel: "secondary", required: false, version: "v1" },
+    ],
+    sourcePrecedence: ["defi.protocol-simulation", "defi.state-snapshot"],
+    conflictResolution: "use_primary",
+    llmUsageMode: "grounded_reasoning",
+    fallbackPolicy: "approved_snapshot",
+    provenancePolicy: "recommended",
+    maskingPolicy: "conditional",
+  },
 };
 
 export const defiOneAgent = profileAction(defiOneProfile);

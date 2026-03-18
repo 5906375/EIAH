@@ -231,6 +231,18 @@ export const onchainMonitorProfile: AgentProfileSeed = {
       version: "1.0.0",
     },
   ],
+  knowledgePolicy: {
+    deterministicSources: [
+      { sourceId: "chain.event-stream", kind: "event_store", authorityLevel: "primary", required: true, version: "v1" },
+      { sourceId: "chain.alert-registry", kind: "db", authorityLevel: "primary", required: true, version: "v1" },
+    ],
+    sourcePrecedence: ["chain.event-stream", "chain.alert-registry"],
+    conflictResolution: "fail_closed",
+    llmUsageMode: "format_only",
+    fallbackPolicy: "block",
+    provenancePolicy: "required",
+    maskingPolicy: "conditional",
+  },
 };
 
 export const onchainMonitorAgent = profileAction(onchainMonitorProfile);

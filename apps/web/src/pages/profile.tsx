@@ -3,11 +3,13 @@ import { useNavigate } from "react-router-dom";
 import {
   apiCreateWorkspace,
   apiGetProfile,
+  apiListHelpdeskSessions,
   apiDeleteSession,
   apiListAgents,
   apiListDelegations,
   apiSwitchWorkspaceSession,
   apiUpdateProfile,
+  type HelpdeskSessionExport,
 } from "@/lib/api";
 import { clearSession, updateSession, useSession } from "@/state/sessionStore";
 
@@ -89,6 +91,9 @@ export default function ProfilePage() {
       itemName: string;
     }>
   >([]);
+  const [helpdeskExport, setHelpdeskExport] = React.useState<HelpdeskSessionExport | null>(null);
+  const [helpdeskStatus, setHelpdeskStatus] = React.useState<"loading" | "ready" | "error">("loading");
+  const [helpdeskError, setHelpdeskError] = React.useState<string | null>(null);
 
   const handleChange =
     (field: keyof ProfileState) => (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -354,11 +359,86 @@ export default function ProfilePage() {
     };
   }, [session.token, session.workspaceId, session.tenantId]);
 
+  React.useEffect(() => {
+    if (!session.token || !session.workspaceId) {
+      setHelpdeskExport(null);
+      setHelpdeskStatus("ready");
+      setHelpdeskError(null);
+      return;
+    }
+
+    let mounted = true;
+    setHelpdeskStatus("loading");
+    setHelpdeskError(null);
+
+    apiListHelpdeskSessions({ workspaceId: session.workspaceId, limit: 200 })
+      .then((response) => {
+        if (!mounted) return;
+        setHelpdeskExport(response.data);
+        setHelpdeskStatus("ready");
+      })
+      .catch((error) => {
+        if (!mounted) return;
+        setHelpdeskStatus("error");
+        setHelpdeskError(
+          error instanceof Error ? error.message : "Falha ao carregar histórico UX do Chat Launcher."
+        );
+        setHelpdeskExport(null);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [session.token, session.workspaceId]);
+
   const formatDate = (value?: string | null) => {
     if (!value) return "—";
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "—";
     return date.toLocaleDateString("pt-BR");
+  };
+
+  const formatDateTime = (value?: string | null) => {
+    if (!value) return "—";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "—";
+    return date.toLocaleString("pt-BR");
+  };
+
+  const handleDownloadHelpdeskJson = () => {
+    if (!helpdeskExport || typeof window === "undefined") return;
+    const blob = new Blob([JSON.stringify(helpdeskExport, null, 2)], { type: "application/json" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `chat-launcher-ux-${helpdeskExport.workspaceId}.json`;
+    link.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handlePrintHelpdeskReport = () => {
+    if (!helpdeskExport || typeof window === "undefined") return;
+    const popup = window.open("", "_blank", "width=960,height=720");
+    if (!popup) return;
+    popup.document.write(`
+      <html>
+        <head>
+          <title>Relatório UX Chat Launcher</title>
+          <style>
+            body { font-family: sans-serif; padding: 24px; line-height: 1.5; white-space: pre-wrap; }
+            h1 { margin: 0 0 16px; }
+            pre { white-space: pre-wrap; font-family: inherit; }
+          </style>
+        </head>
+        <body>
+          <h1>Relatório UX do Chat Launcher</h1>
+          <pre>${helpdeskExport.reportText.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>
+        </body>
+      </html>
+    `);
+    popup.document.close();
+    popup.focus();
+    popup.print();
   };
 
   const handleSignOut = async () => {
@@ -662,6 +742,104 @@ export default function ProfilePage() {
                     <p>Valido ate: {formatDate(delegation.validUntil)}</p>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
+                  Evidências UX do Chat Launcher
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Histórico persistido por workspace para demonstrar fricções do chat e apoiar melhoria de UX.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleDownloadHelpdeskJson}
+                  disabled={!helpdeskExport}
+                  className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.25em] text-foreground transition hover:bg-white/10 disabled:opacity-50"
+                >
+                  Exportar JSON
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePrintHelpdeskReport}
+                  disabled={!helpdeskExport}
+                  className="rounded-full border border-accent/40 bg-accent/15 px-3 py-1 text-[11px] uppercase tracking-[0.25em] text-accent transition hover:border-accent/70 hover:bg-accent/25 disabled:opacity-50"
+                >
+                  Imprimir
+                </button>
+              </div>
+            </div>
+            {helpdeskStatus === "loading" ? (
+              <p className="mt-3 text-sm text-muted-foreground">Carregando evidências UX...</p>
+            ) : helpdeskStatus === "error" ? (
+              <p className="mt-3 text-sm text-rose-300">{helpdeskError ?? "Falha ao carregar histórico UX."}</p>
+            ) : !helpdeskExport || helpdeskExport.groups.length === 0 ? (
+              <p className="mt-3 text-sm text-muted-foreground">Nenhum histórico persistido do Chat Launcher neste workspace.</p>
+            ) : (
+              <div className="mt-4 space-y-4">
+                <div className="grid gap-3 md:grid-cols-4">
+                  <div className="rounded-xl border border-white/10 bg-[#0a1527] p-4 text-xs text-muted-foreground">
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-accent/80">Sessões</p>
+                    <p className="mt-2 text-lg font-semibold text-foreground">{helpdeskExport.totalSessions}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-[#0a1527] p-4 text-xs text-muted-foreground">
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-accent/80">Runs agrupados</p>
+                    <p className="mt-2 text-lg font-semibold text-foreground">{helpdeskExport.totalRunGroups}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-[#0a1527] p-4 text-xs text-muted-foreground">
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-accent/80">Clarificação em excesso</p>
+                    <p className="mt-2 text-lg font-semibold text-foreground">{helpdeskExport.summary.clarification_overuse ?? 0}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-[#0a1527] p-4 text-xs text-muted-foreground">
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-accent/80">Fallback genérico</p>
+                    <p className="mt-2 text-lg font-semibold text-foreground">{helpdeskExport.summary.generic_fallback ?? 0}</p>
+                  </div>
+                </div>
+                <div className="grid gap-3">
+                  {helpdeskExport.groups.map((group) => {
+                    const latest = group.interactions[0];
+                    return (
+                      <div
+                        key={`${group.runId}-${group.lastInteractionAt ?? "na"}`}
+                        className="rounded-xl border border-white/10 bg-[#0a1527] p-4 text-xs text-muted-foreground"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">
+                              {group.runId === "DEFAULT" ? "Sem run vinculada" : `Run ${group.runId}`}
+                            </p>
+                            <p className="mt-1">
+                              Agente: {group.agent ?? "—"} • Categoria UX: {group.uxIssueLabel}
+                            </p>
+                          </div>
+                          <span className="pill bg-white/10 text-foreground">
+                            {group.entries} registro(s)
+                          </span>
+                        </div>
+                        <p className="mt-3 text-[11px] text-muted-foreground">
+                          Última interação: {formatDateTime(group.lastInteractionAt)}
+                        </p>
+                        {latest ? (
+                          <div className="mt-3 grid gap-3 md:grid-cols-2">
+                            <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                              <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Pergunta</p>
+                              <p className="mt-2 text-sm text-foreground">{latest.message}</p>
+                            </div>
+                            <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                              <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Resposta</p>
+                              <p className="mt-2 text-sm text-foreground whitespace-pre-wrap">{latest.response}</p>
+                            </div>
+                          </div>
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>

@@ -67,6 +67,8 @@ import {
 } from "../services/runs";
 import { emitRunEvent } from "../services/runEventEmitter";
 import { judgeResult } from "../services/judge";
+import { resolveKnowledgeContext } from "../services/knowledgeGate";
+import { resolveConversationPersistenceDecision } from "../services/conversationPersistencePolicy";
 
 /* ──────────────────────────────────────────────
    Recommendations & Memory
@@ -735,6 +737,16 @@ export async function processRunPayload(payload: RunQueuePayload) {
       agentState: existingStateRecord?.state ?? null,
       memorySnapshot: memorySnapshot ?? undefined,
     };
+    const knowledgeResolution = resolveKnowledgeContext({
+      runId,
+      tenantId,
+      workspaceId,
+      agentId: agent,
+      prompt,
+      metadata: runtimeMetadata,
+      knowledgePolicy: (profile as { knowledgePolicy?: Record<string, unknown> | undefined }).knowledgePolicy as any,
+    });
+    const runtimeMetadataResolved = knowledgeResolution.metadata;
 
     const recommendationsPrompt = buildRecommendationPrompt({
       agentId: agent,
@@ -808,6 +820,21 @@ export async function processRunPayload(payload: RunQueuePayload) {
       },
     });
 
+    await emitRunEvent({
+      runId,
+      tenantId,
+      workspaceId,
+      userId,
+      type: "run.knowledge.resolved",
+      payload: {
+        blocked: knowledgeResolution.blocked,
+        reasonCode: knowledgeResolution.reasonCode ?? null,
+        groundedFactKeys: Object.keys(knowledgeResolution.groundedFacts),
+        resolvedSources: knowledgeResolution.resolvedSources,
+        provenance: knowledgeResolution.provenance,
+      },
+    });
+
     if (replayInfo) {
       await emitRunEvent({
         runId,
@@ -865,14 +892,14 @@ export async function processRunPayload(payload: RunQueuePayload) {
             metadata:
               actionMetadata && typeof actionMetadata === "object" && !Array.isArray(actionMetadata)
                 ? (actionMetadata as Record<string, unknown>)
-                : runtimeMetadata,
+                : runtimeMetadataResolved,
           });
 
           const effectivePayload =
             params ??
             {
               prompt: promptForExecution,
-              metadata: runtimeMetadata,
+              metadata: runtimeMetadataResolved,
             };
           const version = resolveMcpToolVersion(payload.metadata, mcpConfig.defaultVersion);
           const tool = await ToolRegistry.get(actionName, version, tenantId);
@@ -953,8 +980,14 @@ export async function processRunPayload(payload: RunQueuePayload) {
               step.params ??
               {
                 prompt: promptForExecution,
-                metadata: runtimeMetadata,
+                metadata: runtimeMetadataResolved,
               };
+
+            if (knowledgeResolution.blocked) {
+              throw new Error(
+                `knowledge_policy.blocked: ${knowledgeResolution.reasonCode ?? "knowledge_gate_blocked"}`
+              );
+            }
 
             if (mcpConfig.proxyAll) {
               // When proxy is enabled, execute via MCP directly (no BullMQ hop).
@@ -1071,10 +1104,16 @@ export async function processRunPayload(payload: RunQueuePayload) {
             });
           }
 
+          if (knowledgeResolution.blocked) {
+            throw new Error(
+              `knowledge_policy.blocked: ${knowledgeResolution.reasonCode ?? "knowledge_gate_blocked"}`
+            );
+          }
+
           const result = await executeLlmStep({
             profile,
             userPrompt: promptForExecution,
-            metadata: runtimeMetadata,
+            metadata: runtimeMetadataResolved,
           });
 
           executionResult = {
@@ -1247,16 +1286,25 @@ export async function processRunPayload(payload: RunQueuePayload) {
         }
       }
 
-      await persistRunMemory(memoryService, memoryScope, {
-        runId,
-        prompt: promptForExecution,
-        outputText: snapshot?.outputText ?? null,
-        rawResponse: snapshot?.rawResponse,
-        metadata: {
-          traceId: snapshot?.traceId,
-          recommendations: finalRecommendations?.recomendacoes.length ?? 0,
-        },
+      const conversationPersistence = resolveConversationPersistenceDecision({
+        metadata: runtimeMetadataResolved,
+        knowledgePolicy:
+          (profile as { knowledgePolicy?: Record<string, unknown> | undefined }).knowledgePolicy ?? null,
       });
+
+      if (conversationPersistence.persistShortTermMemory) {
+        await persistRunMemory(memoryService, memoryScope, {
+          runId,
+          prompt: promptForExecution,
+          outputText: snapshot?.outputText ?? null,
+          rawResponse: snapshot?.rawResponse,
+          metadata: {
+            traceId: snapshot?.traceId,
+            recommendations: finalRecommendations?.recomendacoes.length ?? 0,
+            conversationPersistence,
+          },
+        });
+      }
 
       const guardrailReport = await runGuardrails(
         {

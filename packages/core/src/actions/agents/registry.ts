@@ -1,5 +1,6 @@
 import type { AgentProfileSeed } from "./types";
 
+import { aadvProfile } from "./aadvAction";
 import { finNexusProfile } from "./finNexusAction";
 import { flowOrchestratorProfile } from "./flowOrchestratorAction";
 import { riskAnalyzerProfile } from "./riskAnalyzerAction";
@@ -18,6 +19,7 @@ import { guardianProfile } from "./guardianAction";
 export type { AgentProfileSeed } from "./types";
 
 export const agentProfiles: AgentProfileSeed[] = [
+  aadvProfile,
   finNexusProfile,
   flowOrchestratorProfile,
   riskAnalyzerProfile,

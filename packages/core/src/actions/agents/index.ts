@@ -25,6 +25,7 @@ export * from "./guardianAction";
 export * from "./iBCAction";
 export * from "./imageNftDiariasAction";
 export * from "./j360Action";
+export * from "./resolveLegalSpecialtyContext";
 export * from "./mktAction";
 export * from "./nftPyAction";
 export * from "./onchainMonitorAction";

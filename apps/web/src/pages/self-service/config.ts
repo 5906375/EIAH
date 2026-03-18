@@ -717,9 +717,9 @@ export const selfServiceConfigs: SelfServiceAgentConfig[] = [
     slug: "eiah",
     agentId: "EIAH",
     label: "",
-    title: "Central de Ajuda EIAH",
+    title: "EIAH",
     description:
-      "Envie sua dúvida sobre a plataforma Mission Control e receba instruções passo a passo da Central de Ajuda EIAH.",
+      "Envie sua dúvida sobre a plataforma Mission Control e receba instruções passo a passo do EIAH.",
     fields: [
       {
         key: "question",
@@ -742,7 +742,7 @@ export const selfServiceConfigs: SelfServiceAgentConfig[] = [
     ],
     buildPrompt: (values) => {
       const lines = [
-        "Você é a Central de Ajuda EIAH.",
+        "Você é o EIAH.",
         "Responda com um guia prático passo a passo.",
         `Pergunta: ${values.question || "não informado"}.`,
         `Contexto adicional: ${values.context || "não informado"}.`,
