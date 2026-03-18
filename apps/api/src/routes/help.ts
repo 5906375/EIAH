@@ -102,6 +102,28 @@ function asStringRecord(value: unknown): Record<string, unknown> {
   return asRecord(value) ?? {};
 }
 
+type HelpdeskSessionRow = {
+  id: string;
+  runId: string;
+  metadata?: unknown;
+};
+
+type NormalizedHelpdeskSession = {
+  id: string;
+  runId: string;
+  agent: string | null;
+  status: string | null;
+  intent: string;
+  confidence: number;
+  fallbackReason: string | null;
+  message: string;
+  response: string;
+  recommendedPlan: string | null;
+  estimatedValue: number | null;
+  createdAt: string;
+  uxIssueCategory: HelpdeskUxIssueCategory;
+};
+
 function humanizeUxIssue(category: HelpdeskUxIssueCategory) {
   switch (category) {
     case "clarification_overuse":
@@ -368,7 +390,15 @@ helpRouter.get("/helpdesk/sessions", async (req, res) => {
     take: limit,
   });
 
-  const runIds = [...new Set(rows.map((row: { runId?: string | null }) => row.runId).filter(Boolean))];
+  const helpdeskRows = rows as HelpdeskSessionRow[];
+  const runIds = helpdeskRows.reduce((acc: string[], row) => {
+    const runId = row.runId;
+    if (typeof runId !== "string" || !runId.trim() || acc.includes(runId)) {
+      return acc;
+    }
+    acc.push(runId);
+    return acc;
+  }, []);
   const runs =
     runIds.length > 0
       ? await prisma.run.findMany({
@@ -382,7 +412,7 @@ helpRouter.get("/helpdesk/sessions", async (req, res) => {
       : [];
   const runById = new Map(runs.map((run) => [run.id, run]));
 
-  const normalized = rows.map((row: any) => {
+  const normalized: NormalizedHelpdeskSession[] = helpdeskRows.map((row: any) => {
     const uxIssueCategory = classifyHelpdeskUxIssue({
       runId: row.runId ?? null,
       intent: String(row.intent ?? "unknown"),
@@ -406,52 +436,64 @@ helpRouter.get("/helpdesk/sessions", async (req, res) => {
       uxIssueCategory,
     };
   });
-  const metadataById = new Map(
-    rows.map((row: any) => [row.id, asStringRecord(row.metadata)] as const)
+  const metadataById = new Map<string, Record<string, unknown>>(
+    helpdeskRows.map((row: HelpdeskSessionRow) => [row.id, asStringRecord(row.metadata)])
   );
 
   const groupsMap = new Map<string, typeof normalized>();
-  normalized.forEach((item) => {
+  normalized.forEach((item: NormalizedHelpdeskSession) => {
     const current = groupsMap.get(item.runId) ?? [];
     current.push(item);
     groupsMap.set(item.runId, current);
   });
 
-  const summary = normalized.reduce<Record<string, number>>((acc, item) => {
+  const summary = normalized.reduce((acc: Record<string, number>, item: NormalizedHelpdeskSession) => {
     acc[item.uxIssueCategory] = (acc[item.uxIssueCategory] ?? 0) + 1;
     return acc;
   }, {});
 
-  const rolloutStageCounts = normalized.reduce<Record<string, number>>((acc, item) => {
+  const rolloutStageCounts = normalized.reduce((acc: Record<string, number>, item: NormalizedHelpdeskSession) => {
     const metadata = metadataById.get(item.id) ?? {};
     const stage = typeof metadata.rolloutStage === "string" && metadata.rolloutStage.trim() ? metadata.rolloutStage.trim() : "shadow";
     acc[stage] = (acc[stage] ?? 0) + 1;
     return acc;
   }, {});
 
-  const totalQuickRepliesShown = normalized.reduce((acc, item) => {
+  const totalQuickRepliesShown = normalized.reduce((acc: number, item: NormalizedHelpdeskSession) => {
     const metadata = metadataById.get(item.id) ?? {};
     const shown = typeof metadata.quickRepliesShown === "number" ? metadata.quickRepliesShown : 0;
     return acc + shown;
   }, 0);
-  const quickReplyClicks = normalized.reduce((acc, item) => {
+  const quickReplyClicks = normalized.reduce((acc: number, item: NormalizedHelpdeskSession) => {
     const metadata = metadataById.get(item.id) ?? {};
     return acc + (metadata.quickReplyUsed === true ? 1 : 0);
   }, 0);
-  const clarificationCount = normalized.reduce((acc, item) => {
+  const clarificationCount = normalized.reduce((acc: number, item: NormalizedHelpdeskSession) => {
     const metadata = metadataById.get(item.id) ?? {};
     return acc + (metadata.clarificationIssued === true ? 1 : 0);
   }, 0);
-  const handoffOffered = normalized.reduce((acc, item) => {
+  const handoffOffered = normalized.reduce((acc: number, item: NormalizedHelpdeskSession) => {
     const metadata = metadataById.get(item.id) ?? {};
     return acc + (metadata.handoffOffered === true ? 1 : 0);
   }, 0);
-  const handoffEligible = normalized.reduce((acc, item) => {
+  const handoffEligible = normalized.reduce((acc: number, item: NormalizedHelpdeskSession) => {
     const metadata = metadataById.get(item.id) ?? {};
     return acc + (metadata.handoffEligible === true ? 1 : 0);
   }, 0);
+  const legacyCompatibilityTurns = normalized.reduce((acc: number, item: NormalizedHelpdeskSession) => {
+    const metadata = metadataById.get(item.id) ?? {};
+    return acc + (metadata.compatibilityMode === "legacy_conservative" ? 1 : 0);
+  }, 0);
+  const attachmentOffered = normalized.reduce((acc: number, item: NormalizedHelpdeskSession) => {
+    const metadata = metadataById.get(item.id) ?? {};
+    return acc + (metadata.attachmentOffered === true ? 1 : 0);
+  }, 0);
+  const attachmentUsed = normalized.reduce((acc: number, item: NormalizedHelpdeskSession) => {
+    const metadata = metadataById.get(item.id) ?? {};
+    return acc + (metadata.attachmentUsed === true ? 1 : 0);
+  }, 0);
 
-  const threadCounts = rows.reduce<Record<string, number>>((acc, row: any) => {
+  const threadCounts = helpdeskRows.reduce((acc: Record<string, number>, row: HelpdeskSessionRow) => {
     const metadata = asStringRecord(row.metadata);
     const threadKey =
       typeof metadata.threadKey === "string" && metadata.threadKey.trim()
@@ -463,7 +505,7 @@ helpRouter.get("/helpdesk/sessions", async (req, res) => {
   const estimatedAbandonedThreads = Object.values(threadCounts).filter((count) => count === 1).length;
 
   const groups = [...groupsMap.entries()].map(([runId, items]) => {
-    const categoryCount = items.reduce<Record<string, number>>((acc, item) => {
+    const categoryCount = items.reduce((acc: Record<string, number>, item: NormalizedHelpdeskSession) => {
       acc[item.uxIssueCategory] = (acc[item.uxIssueCategory] ?? 0) + 1;
       return acc;
     }, {});
@@ -501,6 +543,16 @@ helpRouter.get("/helpdesk/sessions", async (req, res) => {
       offered: handoffOffered,
       eligible: handoffEligible,
       successfulRate: handoffOffered > 0 ? Number((handoffEligible / handoffOffered).toFixed(4)) : 0,
+    },
+    compatibility: {
+      snapshotTurns: normalized.length - legacyCompatibilityTurns,
+      legacyCompatibilityTurns,
+      legacyTurnRate: Number((legacyCompatibilityTurns / totalSessions).toFixed(4)),
+    },
+    attachment: {
+      offered: attachmentOffered,
+      used: attachmentUsed,
+      adoptionRate: attachmentOffered > 0 ? Number((attachmentUsed / attachmentOffered).toFixed(4)) : 0,
     },
     abandonment: {
       estimatedThreads: estimatedAbandonedThreads,

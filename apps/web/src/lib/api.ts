@@ -202,6 +202,17 @@ export type Agent = {
       missingRequiredSource?: string;
     };
   };
+  chatRuntime?: {
+    readiness: "ready" | "incomplete";
+    resolver: "agent_driven" | "legacy_compatible";
+    missingFields: string[];
+    hasModeContracts: boolean;
+    hasAttachmentIntake: boolean;
+    onboardingPolicy: "fail_closed_for_new_agents";
+    chatEnabled: boolean;
+    catalogVisibility: "visible" | "blocked";
+    blockingReason: "missing_minimum_contract" | null;
+  };
   attachmentContract?: {
     acceptsAttachments: boolean;
     acceptedAttachmentKinds: string[];
