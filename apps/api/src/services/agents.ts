@@ -1094,7 +1094,6 @@ function buildEffectiveChatRuntimeInput(
     attachmentContract: buildAttachmentContractSnapshot(agent, profile),
   };
 }
-
 /**
  * Lista agentes disponíveis, combinando dados de pricing,
  * perfis de agentes e ações registradas no core.

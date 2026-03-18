@@ -57,7 +57,6 @@ export function applyChatRuntimeGateToParticipation(
     requiresEntitlement: true,
   };
 }
-
 function normalizeAgentKey(value: string) {
   return value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
 }
