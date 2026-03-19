@@ -1,4 +1,5 @@
 import type { Agent } from "@/lib/api";
+import type { ConversationStage, ProposalDomain } from "@/components/agents/proposalTypes";
 
 export const PRESENTATION_SNAPSHOT_VERSION = "v1" as const;
 
@@ -6,6 +7,8 @@ export type MessagePresentationSnapshot = {
   snapshotVersion: typeof PRESENTATION_SNAPSHOT_VERSION;
   compatibilityMode?: "snapshot" | "legacy_conservative";
   verticalContext?: "IMOB" | "LEGAL" | null;
+  proposalDomain?: ProposalDomain | null;
+  conversationStage?: ConversationStage | null;
   routeIntent:
     | "proposal"
     | "imob"

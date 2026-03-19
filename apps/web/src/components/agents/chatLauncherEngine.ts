@@ -3,14 +3,42 @@ import {
   apiQueryEiahHelp,
   type Agent,
   type EiahHelpQueryHit,
-  type HelpdeskSessionCreatePayload,
 } from "@/lib/api";
 import {
   PRESENTATION_SNAPSHOT_VERSION,
   type MessagePresentationSnapshot,
 } from "@/components/agents/chatPresentationSnapshot";
+import {
+  buildLauncherDecisionTelemetry,
+  buildLauncherHelpdeskSessionPayload,
+  normalizeLauncherPersistedIntentResult,
+  type LauncherPersistedIntent,
+} from "@/components/agents/chatDecisionTelemetry";
+import {
+  resolveProposalState,
+} from "@/components/agents/proposalDomainResolver";
+import {
+  buildProposalAssistedTrialReply,
+  buildProposalCostReductionReply,
+  buildProposalOpenCommercialReply,
+  buildProposalPurchaseContextReply,
+  buildProposalQuoteReply,
+  buildProposalScheduleDemoReply,
+  buildProposalUsagePromptReply,
+} from "@/components/agents/proposalCopy";
+import { buildProposalQuickReplies } from "@/components/agents/proposalQuickReplies";
+import type {
+  ConversationStage,
+  ProposalDomain,
+} from "@/components/agents/proposalTypes";
 import { j360Profile } from "../../../../../packages/core/src/actions/agents/j360Action";
 import { resolveLegalSpecialtyContext } from "../../../../../packages/core/src/actions/agents/resolveLegalSpecialtyContext";
+
+export {
+  buildLauncherDecisionTelemetry,
+  buildLauncherHelpdeskSessionPayload,
+  normalizeLauncherPersistedIntentResult,
+} from "@/components/agents/chatDecisionTelemetry";
 
 export type AgentParticipationSnapshot = NonNullable<Agent["participation"]>;
 
@@ -86,6 +114,11 @@ export type LauncherLocalDecision = {
     | "legal_handoff";
   eiahMode?: EiahMode | null;
   renderVariant: "simple_help" | "self_intro" | "handoff" | "guided_flow" | "proposal";
+  proposalDomain?: ProposalDomain | null;
+  conversationStage?: ConversationStage | null;
+  proposalContextRecovered?: boolean;
+  proposalContextLost?: boolean;
+  proposalDomainMismatch?: boolean;
   persistIntent?: {
     intent: string;
     confidenceFloor?: number;
@@ -118,8 +151,6 @@ export type LegacyEnrichmentIntent = {
   confidence: number;
   fallbackReason?: string;
 };
-
-export type LauncherPersistedIntent = HelpdeskSessionCreatePayload["intent"];
 
 export type LauncherIntentResultLike = {
   intent: string;
@@ -196,6 +227,15 @@ type LegalJourneyDefinition = {
   entrySignals: string[];
   answerShort: string;
   nextQuestion: string;
+};
+
+type ImobHelpIntent = "what_is" | "overview" | "end_to_end" | "navigation" | "install";
+
+type ImobShortcutSelection = {
+  key: "dashboard" | "chat" | "install";
+  label: string;
+  path: string;
+  helpText: string;
 };
 
 export function resolveAttachmentIntake(agentProfile: Agent | null): AttachmentIntakeResolution {
@@ -719,9 +759,108 @@ function isImobGuideQuestion(input: string) {
   return patterns.some((pattern) => normalized.includes(pattern));
 }
 
+function isAppShortcutInput(input: string) {
+  const normalized = normalizeIntentText(input);
+  return normalized.includes("/app/") || normalized.includes("/api/");
+}
+
 function resolveImobFaqSeed(input: string) {
   const normalized = normalizeIntentText(input);
   return IMOB_FAQ_SEEDS.find((seed) => seed.questionPatterns.some((pattern) => normalized.includes(pattern)));
+}
+
+function resolveImobHelpIntent(input: string): ImobHelpIntent | null {
+  const normalized = normalizeIntentText(input);
+
+  if (
+    (normalized.includes("o que e imob") || normalized.includes("o que eh imob") || normalized.includes("ta mas o que e imob")) &&
+    normalized.includes("imob")
+  ) {
+    return "what_is";
+  }
+
+  if (
+    normalized.includes("como funciona imob do inicio ao fim") ||
+    normalized.includes("como funciona imob do início ao fim") ||
+    normalized.includes("imob do inicio ao fim") ||
+    normalized.includes("imob do início ao fim") ||
+    normalized.includes("jornada do imob")
+  ) {
+    return "end_to_end";
+  }
+
+  if (
+    normalized.includes("onde acompanho pipeline") ||
+    normalized.includes("pipeline e etapas no imob") ||
+    normalized.includes("onde acompanho as etapas") ||
+    normalized.includes("acompanho pipeline") ||
+    normalized.includes("acompanho etapas no imob")
+  ) {
+    return "navigation";
+  }
+
+  if (
+    normalized.includes("instalar o imob") ||
+    normalized.includes("quero instalar o imob") ||
+    normalized.includes("instalacao do imob") ||
+    normalized.includes("instalação do imob") ||
+    normalized.includes("marketplace/imob")
+  ) {
+    return "install";
+  }
+
+  if (isImobGuideQuestion(input)) {
+    return "overview";
+  }
+
+  return null;
+}
+
+function resolveImobShortcutSelection(input: string): ImobShortcutSelection | null {
+  const normalized = normalizeIntentText(input);
+
+  if (
+    normalized.includes("/app/imob/dashboard") ||
+    normalized.includes("dashboard imob") ||
+    normalized.includes("abrir dashboard do imob")
+  ) {
+    return {
+      key: "dashboard",
+      label: "Dashboard IMOB",
+      path: "/app/imob/dashboard",
+      helpText: "Use esse atalho para acompanhar pipeline, contexto operacional e evolução das etapas do IMOB.",
+    };
+  }
+
+  if (
+    normalized.includes("/app/imob/chat") ||
+    normalized.includes("chat imob") ||
+    normalized.includes("abrir chat imob")
+  ) {
+    return {
+      key: "chat",
+      label: "Chat IMOB",
+      path: "/app/imob/chat",
+      helpText: "Use esse atalho quando quiser destravar o próximo passo do caso atual pela conversa.",
+    };
+  }
+
+  if (
+    normalized.includes("/app/marketplace/imob") ||
+    normalized.includes("instalacao (se necessario)") ||
+    normalized.includes("instalação (se necessário)") ||
+    normalized.includes("abrir instalacao do imob") ||
+    normalized.includes("abrir instalacao do imob")
+  ) {
+    return {
+      key: "install",
+      label: "Marketplace IMOB",
+      path: "/app/marketplace/imob",
+      helpText: "Use esse atalho para ativar o IMOB no workspace antes de seguir para dashboard e chat.",
+    };
+  }
+
+  return null;
 }
 
 function resolveImobJourneyStage(input: string): ImobJourneyDefinition | null {
@@ -982,6 +1121,7 @@ function isDirectAnswerFriendlyQuestion(input: string) {
 export function detectLauncherRouteIntent(input: string, proposalMode: boolean): LauncherRouteIntent {
   if (proposalMode) return "proposal";
   const normalized = normalizeIntentText(input);
+  if (isAppShortcutInput(input)) return "help";
   const strongProposalSignals = [
     "proposta",
     "plano",
@@ -1102,13 +1242,22 @@ export function buildOrchestratorGuidanceReply() {
   ].join("\n");
 }
 
-export function buildEiahQuickReplies(params: { routeIntent: LauncherRouteIntent | "legal_handoff"; proposalMode: boolean }) {
+export function buildEiahQuickReplies(params: {
+  routeIntent: LauncherRouteIntent | "legal_handoff";
+  proposalMode: boolean;
+  sourceInput?: string | null;
+  proposalDomain?: MessagePresentationSnapshot["proposalDomain"];
+  conversationStage?: MessagePresentationSnapshot["conversationStage"];
+}) {
   if (params.proposalMode || params.routeIntent === "proposal") {
-    return [
-      "Tenho 3 usuários e 2000 runs/mês. Qual plano?",
-      "Quero abrir proposta comercial.",
-      "Quero agendar demonstração.",
-    ];
+    if (params.proposalDomain === "imob") {
+      return buildImobQuickRepliesForInput(params.sourceInput ?? "");
+    }
+
+    return buildProposalQuickReplies({
+      proposalDomain: params.proposalDomain ?? "saas",
+      conversationStage: params.conversationStage,
+    });
   }
 
   if (params.routeIntent === "orchestrator") {
@@ -1143,6 +1292,22 @@ export function buildEiahQuickReplies(params: { routeIntent: LauncherRouteIntent
 }
 
 export function buildImobQuickRepliesForInput(input: string) {
+  const helpIntent = resolveImobHelpIntent(input);
+  switch (helpIntent) {
+    case "what_is":
+      return ["Como funciona IMOB do início ao fim?", "Onde acompanho pipeline e etapas no IMOB?", "Quero instalar o IMOB no workspace."];
+    case "end_to_end":
+      return ["Quero entender captação no IMOB", "Quero entender proposta no IMOB", "Onde acompanho pipeline e etapas no IMOB?"];
+    case "navigation":
+      return ["Dashboard IMOB: /app/imob/dashboard", "Chat IMOB: /app/imob/chat", "Instalação (se necessário): /app/marketplace/imob"];
+    case "install":
+      return ["O que o IMOB resolve?", "Onde acompanho pipeline e etapas no IMOB?", "Como funciona IMOB do início ao fim?"];
+    case "overview":
+      return ["O que é o IMOB?", "Como funciona IMOB do início ao fim?", "Onde acompanho pipeline e etapas no IMOB?"];
+    default:
+      break;
+  }
+
   const stage = resolveImobJourneyStage(input);
   switch (stage?.stage) {
     case "compra":
@@ -1248,10 +1413,13 @@ export function buildQuickRepliesForContext(params: {
   isHelpCenterMode: boolean;
   proposalMode: boolean;
   sourceInput?: string | null;
+  proposalDomain?: MessagePresentationSnapshot["proposalDomain"];
+  conversationStage?: MessagePresentationSnapshot["conversationStage"];
 }) {
   const copyReplies =
     params.agentProfile?.chatCopy?.quickReplies?.filter((value): value is string => Boolean(value && value.trim())) ?? [];
-  const resolvedVerticalContext = params.sourceInput ? resolveConversationVerticalContext(params.sourceInput) : null;
+  const resolvedVerticalContext =
+    params.proposalDomain === "saas" ? null : params.sourceInput ? resolveConversationVerticalContext(params.sourceInput) : null;
   const imobReplies =
     resolvedVerticalContext?.vertical === "IMOB" && params.sourceInput
       ? buildImobQuickRepliesForInput(params.sourceInput)
@@ -1265,6 +1433,9 @@ export function buildQuickRepliesForContext(params: {
     const engineReplies = buildEiahQuickReplies({
       routeIntent: params.routeIntent,
       proposalMode: params.proposalMode,
+      sourceInput: params.sourceInput,
+      proposalDomain: params.proposalDomain,
+      conversationStage: params.conversationStage,
     });
     return [...copyReplies, ...imobReplies, ...legalReplies, ...engineReplies]
       .filter((value): value is string => Boolean(value && value.trim()))
@@ -1315,6 +1486,8 @@ export function createPresentationSnapshotV1(params: {
   attachmentIntake: AttachmentIntakeResolution;
   usedReplyInputs?: string[];
   excludeReplyInputs?: string[];
+  proposalDomain?: MessagePresentationSnapshot["proposalDomain"];
+  conversationStage?: MessagePresentationSnapshot["conversationStage"];
 }): MessagePresentationSnapshot {
   const normalizedRouteIntent =
     params.routeIntent === "self_intro" || params.routeIntent === "capabilities_summary"
@@ -1338,6 +1511,8 @@ export function createPresentationSnapshotV1(params: {
     isHelpCenterMode: params.isHelpCenterMode,
     proposalMode: params.proposalMode,
     sourceInput: params.sourceInput,
+    proposalDomain: params.proposalDomain,
+    conversationStage: params.conversationStage,
   });
   const excludedReplyKeys = new Set(
     (params.excludeReplyInputs ?? []).map((value) => normalizeIntentText(value)).filter(Boolean)
@@ -1353,7 +1528,8 @@ export function createPresentationSnapshotV1(params: {
     params.routeIntent === "orchestrator"
       ? params.agentProfile?.uxContract?.defaultCTA?.trim()
       : undefined;
-  const verticalContext = params.sourceInput ? resolveConversationVerticalContext(params.sourceInput)?.vertical ?? null : null;
+  const verticalContext =
+    params.proposalDomain === "saas" ? null : params.sourceInput ? resolveConversationVerticalContext(params.sourceInput)?.vertical ?? null : null;
   const nextSignals = verticalContext
     ? [...signals, `vertical:${verticalContext.toLowerCase()}`].filter((value, index, array) => array.indexOf(value) === index)
     : signals;
@@ -1362,6 +1538,8 @@ export function createPresentationSnapshotV1(params: {
     snapshotVersion: PRESENTATION_SNAPSHOT_VERSION,
     compatibilityMode: "snapshot",
     verticalContext,
+    proposalDomain: params.proposalDomain ?? null,
+    conversationStage: params.conversationStage ?? null,
     routeIntent: params.routeIntent,
     eiahMode: params.eiahMode ?? null,
     showConfidence,
@@ -1510,67 +1688,148 @@ export function resolveLauncherRunSummarySnapshot(params: {
 export async function resolveLauncherProposalDecision(params: {
   input: string;
   routeIntent: LauncherRouteIntent;
+  proposalMode: boolean;
   eiahMode: EiahMode | null;
   agentProfile: Agent | null;
+  previousUserMessage?: string | null;
+  previousAssistantMessage?: string | null;
+  previousAssistantSnapshot?: MessagePresentationSnapshot | null;
 }): Promise<LauncherLocalDecision | null> {
   if (params.routeIntent !== "proposal") return null;
 
-  const parsed = extractProposalInputs(params.input);
   const normalized = normalizeIntentText(params.input);
+  const proposalState = resolveProposalState({
+    input: params.input,
+    routeIntent: params.routeIntent,
+    proposalMode: params.proposalMode,
+    previousUserMessage: params.previousUserMessage,
+    previousAssistantMessage: params.previousAssistantMessage,
+    previousAssistantSnapshot: params.previousAssistantSnapshot,
+  });
+  const parsed = proposalState?.usage ?? extractProposalInputs(params.input);
+
+  if (proposalState?.domain === "imob") {
+    return null;
+  }
 
   if ((normalized.includes("reduzir custo") || normalized.includes("reduzir gastos")) && !parsed.users && !parsed.runs) {
     return {
       kind: "proposal_reply",
       shouldCreateRun: false,
-      content: [
-        "**Como reduzir custo mensal no EIAH**",
-        "",
-        "- Reduza excedentes de runs e usuários extras.",
-        "- Use Simular primeiro para evitar execuções desnecessárias.",
-        "- Compare plano atual com o volume real do mês.",
-        "",
-        "**Para calcular economia potencial**",
-        "Me informe `usuários` e `runs/mês` estimados.",
-      ].join("\n"),
+      content: buildProposalCostReductionReply(),
       launcherRouteIntent: "proposal",
       presentationRouteIntent: "proposal",
       eiahMode: params.eiahMode ?? "proposal",
       renderVariant: "proposal",
+      proposalDomain: "saas",
+      conversationStage: "proposal_collecting_usage",
+      proposalContextRecovered: proposalState?.contextRecovered ?? false,
+      proposalContextLost: proposalState?.contextLost ?? false,
+      proposalDomainMismatch: proposalState?.domainMismatch ?? false,
     };
+  }
+
+  if (
+    proposalState?.requestedAction === "open_commercial_proposal" ||
+    proposalState?.requestedAction === "send_to_sales"
+  ) {
+    if (parsed.users && parsed.runs) {
+      return {
+        kind: "proposal_reply",
+        shouldCreateRun: false,
+        content: buildProposalOpenCommercialReply({ users: parsed.users, runs: parsed.runs }),
+        launcherRouteIntent: "proposal",
+        presentationRouteIntent: "proposal",
+        eiahMode: params.eiahMode ?? "proposal",
+        renderVariant: "proposal",
+        proposalDomain: "saas",
+        conversationStage: "proposal_ready_to_open",
+        proposalContextRecovered: proposalState?.contextRecovered ?? false,
+        proposalContextLost: proposalState?.contextLost ?? false,
+        proposalDomainMismatch: proposalState?.domainMismatch ?? false,
+      };
+    }
+  }
+
+  if (proposalState?.requestedAction === "schedule_demo") {
+    return {
+      kind: "proposal_reply",
+      shouldCreateRun: false,
+      content: buildProposalScheduleDemoReply({ users: parsed.users, runs: parsed.runs }),
+      launcherRouteIntent: "proposal",
+      presentationRouteIntent: "proposal",
+      eiahMode: params.eiahMode ?? "proposal",
+      renderVariant: "proposal",
+      proposalDomain: "saas",
+      conversationStage: parsed.users && parsed.runs ? "proposal_demo_ready" : "proposal_demo_requested",
+      proposalContextRecovered: proposalState?.contextRecovered ?? false,
+      proposalContextLost: proposalState?.contextLost ?? false,
+      proposalDomainMismatch: proposalState?.domainMismatch ?? false,
+    };
+  }
+
+  if (proposalState?.requestedAction === "create_assisted_trial") {
+    return {
+      kind: "proposal_reply",
+      shouldCreateRun: false,
+      content: buildProposalAssistedTrialReply({ users: parsed.users, runs: parsed.runs }),
+      launcherRouteIntent: "proposal",
+      presentationRouteIntent: "proposal",
+      eiahMode: params.eiahMode ?? "proposal",
+      renderVariant: "proposal",
+      proposalDomain: "saas",
+      conversationStage: parsed.users && parsed.runs ? "proposal_demo_ready" : "proposal_demo_requested",
+      proposalContextRecovered: proposalState?.contextRecovered ?? false,
+      proposalContextLost: proposalState?.contextLost ?? false,
+      proposalDomainMismatch: proposalState?.domainMismatch ?? false,
+    };
+  }
+
+  if (
+    proposalState?.requestedAction === "new_purchase" ||
+    proposalState?.requestedAction === "workspace_expansion"
+  ) {
+    if (parsed.users && parsed.runs) {
+      const purchaseLabel =
+        proposalState.requestedAction === "workspace_expansion" ? "expansão do workspace" : "compra nova";
+      return {
+        kind: "proposal_reply",
+        shouldCreateRun: false,
+        content: buildProposalPurchaseContextReply({
+          purchaseLabel,
+          users: parsed.users,
+          runs: parsed.runs,
+        }),
+        launcherRouteIntent: "proposal",
+        presentationRouteIntent: "proposal",
+        eiahMode: params.eiahMode ?? "proposal",
+        renderVariant: "proposal",
+        proposalDomain: "saas",
+        conversationStage: "proposal_opening",
+        proposalContextRecovered: proposalState?.contextRecovered ?? false,
+        proposalContextLost: proposalState?.contextLost ?? false,
+        proposalDomainMismatch: proposalState?.domainMismatch ?? false,
+      };
+    }
   }
 
   if (!parsed.users || !parsed.runs) {
     const missingUsers = !parsed.users;
     const missingRuns = !parsed.runs;
-    const missingQuestions = [
-      missingUsers ? "- Quantos usuários você terá no workspace?" : null,
-      missingRuns ? "- Quantos runs/mês você estima?" : null,
-    ]
-      .filter(Boolean)
-      .join("\n");
-    const formatHint =
-      missingUsers && missingRuns
-        ? "Responda no formato: `X usuários e Y runs/mês`."
-        : missingUsers
-        ? "Responda no formato: `X usuários`."
-        : "Responda no formato: `Y runs/mês`.";
 
     return {
       kind: "proposal_reply",
       shouldCreateRun: false,
-      content: [
-        "**Resumo do cenário**",
-        "Consigo montar sua proposta agora. Para fechar o cálculo, preciso apenas do dado que falta:",
-        "",
-        missingQuestions,
-        "",
-        "**Próximo passo**",
-        formatHint,
-      ].join("\n"),
+      content: buildProposalUsagePromptReply({ missingUsers, missingRuns }),
       launcherRouteIntent: "proposal",
       presentationRouteIntent: "proposal",
       eiahMode: params.eiahMode ?? "proposal",
       renderVariant: "proposal",
+      proposalDomain: "saas",
+      conversationStage: "proposal_collecting_usage",
+      proposalContextRecovered: proposalState?.contextRecovered ?? false,
+      proposalContextLost: proposalState?.contextLost ?? false,
+      proposalDomainMismatch: proposalState?.domainMismatch ?? false,
     };
   }
 
@@ -1585,30 +1844,26 @@ export async function resolveLauncherProposalDecision(params: {
     return {
       kind: "proposal_reply",
       shouldCreateRun: false,
-      content: [
-        "**Resumo do cenário**",
-        `${parsed.users} usuários e ${parsed.runs} runs/mês.`,
-        "",
-        "**Plano recomendado**",
-        `${best.label} (${best.code.toUpperCase()})`,
-        "",
-        "**Estimativa de custo mensal**",
-        `${centsToBrl(best.totalCents)} (formula oficial: ${quote.data.formula})`,
-        "",
-        "**3 opções**",
-        `- Econômica: ${eco ? `${eco.label} — ${centsToBrl(eco.totalCents)}` : "sob consulta"}`,
-        `- Equilíbrio: ${eq ? `${eq.label} — ${centsToBrl(eq.totalCents)}` : "sob consulta"}`,
-        `- Escala: ${scale ? `${scale.label} — ${centsToBrl(scale.totalCents)}` : "Enterprise / sob consulta"}`,
-        "",
-        "**Próximos passos**",
-        "- Abrir proposta comercial",
-        "- Agendar demonstração",
-        "- Criar trial assistido",
-      ].join("\n"),
+      content: buildProposalQuoteReply({
+        users: parsed.users,
+        runs: parsed.runs,
+        recommendedLabel: best.label,
+        recommendedCode: best.code,
+        estimateTitle: "Estimativa de custo mensal",
+        estimateLabel: `${centsToBrl(best.totalCents)} (formula oficial: ${quote.data.formula})`,
+        economicOption: eco ? `${eco.label} — ${centsToBrl(eco.totalCents)}` : "sob consulta",
+        balanceOption: eq ? `${eq.label} — ${centsToBrl(eq.totalCents)}` : "sob consulta",
+        scaleOption: scale ? `${scale.label} — ${centsToBrl(scale.totalCents)}` : "Enterprise / sob consulta",
+      }),
       launcherRouteIntent: "proposal",
       presentationRouteIntent: "proposal",
       eiahMode: params.eiahMode ?? "proposal",
       renderVariant: "proposal",
+      proposalDomain: "saas",
+      conversationStage: "proposal_recommended",
+      proposalContextRecovered: proposalState?.contextRecovered ?? false,
+      proposalContextLost: proposalState?.contextLost ?? false,
+      proposalDomainMismatch: proposalState?.domainMismatch ?? false,
     };
   } catch {
     const users = parsed.users as number;
@@ -1624,30 +1879,26 @@ export async function resolveLauncherProposalDecision(params: {
     return {
       kind: "proposal_fallback_reply",
       shouldCreateRun: false,
-      content: [
-        "**Resumo do cenário**",
-        `${parsed.users} usuários e ${parsed.runs} runs/mês.`,
-        "",
-        "**Plano recomendado**",
-        `${best.label} (${best.code.toUpperCase()})`,
-        "",
-        "**Estimativa de custo mensal (fallback local)**",
-        `${centsToBrl(best.totalCents)}`,
-        "",
-        "**3 opções**",
-        `- Econômica: ${eco ? `${eco.label} — ${centsToBrl(eco.totalCents)}` : "sob consulta"}`,
-        `- Equilíbrio: ${eq ? `${eq.label} — ${centsToBrl(eq.totalCents)}` : "sob consulta"}`,
-        `- Escala: ${scale ? `${scale.label} — ${centsToBrl(scale.totalCents)}` : "Enterprise / sob consulta"}`,
-        "",
-        "**Próximos passos**",
-        "- Abrir proposta comercial",
-        "- Agendar demonstração",
-        "- Criar trial assistido",
-      ].join("\n"),
+      content: buildProposalQuoteReply({
+        users: parsed.users,
+        runs: parsed.runs,
+        recommendedLabel: best.label,
+        recommendedCode: best.code,
+        estimateTitle: "Estimativa de custo mensal (fallback local)",
+        estimateLabel: `${centsToBrl(best.totalCents)}`,
+        economicOption: eco ? `${eco.label} — ${centsToBrl(eco.totalCents)}` : "sob consulta",
+        balanceOption: eq ? `${eq.label} — ${centsToBrl(eq.totalCents)}` : "sob consulta",
+        scaleOption: scale ? `${scale.label} — ${centsToBrl(scale.totalCents)}` : "Enterprise / sob consulta",
+      }),
       launcherRouteIntent: "proposal",
       presentationRouteIntent: "proposal",
       eiahMode: params.eiahMode ?? "proposal",
       renderVariant: "proposal",
+      proposalDomain: "saas",
+      conversationStage: "proposal_recommended",
+      proposalContextRecovered: proposalState?.contextRecovered ?? false,
+      proposalContextLost: proposalState?.contextLost ?? false,
+      proposalDomainMismatch: proposalState?.domainMismatch ?? false,
     };
   }
 }
@@ -1663,6 +1914,9 @@ export async function resolveLauncherTurnDecision(params: {
   catalogAgents: Agent[];
   intentUnknown: boolean;
   confidence: number;
+  previousUserMessage?: string | null;
+  previousAssistantMessage?: string | null;
+  previousAssistantSnapshot?: MessagePresentationSnapshot | null;
 }): Promise<LauncherLocalDecision | null> {
   const localDecision = resolveLauncherLocalDecision({
     input: params.input,
@@ -1700,8 +1954,12 @@ export async function resolveLauncherTurnDecision(params: {
   const proposalDecision = await resolveLauncherProposalDecision({
     input: params.input,
     routeIntent: params.routeIntent,
+    proposalMode: params.proposalMode,
     eiahMode: params.eiahMode,
     agentProfile: params.agentProfile,
+    previousUserMessage: params.previousUserMessage,
+    previousAssistantMessage: params.previousAssistantMessage,
+    previousAssistantSnapshot: params.previousAssistantSnapshot,
   });
   if (proposalDecision?.content) {
     return proposalDecision;
@@ -1852,154 +2110,6 @@ export async function prepareLauncherRunExecution(params: {
       agentFallback: params.agentFallback,
     },
     conversationPersistence,
-  };
-}
-
-export function normalizeLauncherPersistedIntentResult(params: {
-  intentResult: LauncherIntentResultLike;
-  decision?: LauncherLocalDecision | null;
-}): {
-  intent: LauncherPersistedIntent;
-  confidence: number;
-  fallbackReason?: string;
-} {
-  const persistedIntent = params.decision?.persistIntent?.intent;
-  const confidenceFloor = params.decision?.persistIntent?.confidenceFloor;
-
-  if (persistedIntent === "unknown") {
-    return {
-      intent: "unknown",
-      confidence: params.intentResult.confidence,
-      fallbackReason: params.intentResult.fallbackReason ?? "local_safe_fallback",
-    };
-  }
-
-  if (persistedIntent === "help" || persistedIntent === "proposal" || persistedIntent === "product_explain") {
-    return {
-      intent: persistedIntent,
-      confidence:
-        typeof confidenceFloor === "number"
-          ? Math.max(params.intentResult.confidence, confidenceFloor)
-          : params.intentResult.confidence,
-    };
-  }
-
-  const normalizedIntent: LauncherPersistedIntent =
-    params.intentResult.intent === "help" ||
-    params.intentResult.intent === "proposal" ||
-    params.intentResult.intent === "product_explain" ||
-    params.intentResult.intent === "unknown"
-      ? params.intentResult.intent
-      : "unknown";
-
-  return {
-    intent: normalizedIntent,
-    confidence: params.intentResult.confidence,
-    fallbackReason: normalizedIntent === "unknown" ? params.intentResult.fallbackReason ?? undefined : undefined,
-  };
-}
-
-export function buildLauncherDecisionTelemetry(params: {
-  decision: LauncherLocalDecision;
-}) {
-  return {
-    responseRejected:
-      params.decision.kind === "contextual_fallback" || params.decision.kind === "proposal_fallback_reply",
-    fallbackUsed:
-      params.decision.kind === "contextual_fallback" || params.decision.kind === "proposal_fallback_reply",
-    clarificationIssued: params.decision.kind === "clarification",
-    handoffOffered: params.decision.presentationRouteIntent === "legal_handoff",
-    handoffEligible:
-      params.decision.kind === "legal_context_entry" ||
-      params.decision.kind === "legal_handoff",
-  };
-}
-
-export function buildLauncherHelpdeskSessionPayload(params: {
-  tenantId?: string | null;
-  workspaceId?: string | null;
-  runId?: string | null;
-  message: string;
-  response: string;
-  intentResult: {
-    intent: LauncherPersistedIntent;
-    confidence: number;
-    fallbackReason?: string | null;
-  };
-  responseRejected?: boolean;
-  fallbackUsed?: boolean;
-  clarificationIssued?: boolean;
-  handoffOffered?: boolean;
-  handoffEligible?: boolean;
-  quickReplyUsed?: boolean;
-  quickRepliesShown?: number;
-  routeIntent?: MessagePresentationSnapshot["routeIntent"] | null;
-  verticalContext?: MessagePresentationSnapshot["verticalContext"];
-  recommendedPlan?: string | null;
-  estimatedValue?: number | null;
-  persist?: boolean;
-  rolloutStage: string;
-  threadKey: string;
-  activeAgentId: string;
-  activeAgentName: string;
-  chatRuntimeReadiness: string;
-  chatRuntimeResolver: string;
-  chatRuntimeMissingFields: string[];
-  attachmentOffered: boolean;
-  attachmentKinds: string[];
-  attachmentIntakeModes: string[];
-  attachmentAnalysisModes: string[];
-  attachmentUsed: boolean;
-  attachmentMode?: string | null;
-}): HelpdeskSessionCreatePayload | null {
-  if (!params.tenantId || !params.workspaceId) return null;
-
-  const shouldPersist =
-    params.persist === true ||
-    Boolean(params.runId) ||
-    Boolean(params.responseRejected) ||
-    Boolean(params.fallbackUsed) ||
-    params.recommendedPlan != null ||
-    params.estimatedValue != null;
-  if (!shouldPersist) return null;
-
-  return {
-    tenantId: params.tenantId,
-    workspaceId: params.workspaceId,
-    runId: params.runId ?? null,
-    intent: params.intentResult.intent,
-    confidence: params.intentResult.confidence,
-    fallbackReason: params.intentResult.fallbackReason ?? null,
-    message: params.message,
-    response: params.response,
-    recommendedPlan: params.recommendedPlan ?? null,
-    estimatedValue: params.estimatedValue ?? null,
-    metadata: {
-      rolloutStage: params.rolloutStage,
-      threadKey: params.threadKey,
-      activeAgentId: params.activeAgentId,
-      activeAgentName: params.activeAgentName,
-      chatRuntimeReadiness: params.chatRuntimeReadiness,
-      chatRuntimeResolver: params.chatRuntimeResolver,
-      chatRuntimeMissingFields: params.chatRuntimeMissingFields,
-      routeIntent: params.routeIntent ?? null,
-      verticalContext: params.verticalContext ?? null,
-      snapshotVersion: params.routeIntent ? PRESENTATION_SNAPSHOT_VERSION : null,
-      compatibilityMode: params.routeIntent ? "snapshot" : "legacy_conservative",
-      quickRepliesShown: params.quickRepliesShown ?? 0,
-      quickReplyUsed: params.quickReplyUsed ?? false,
-      clarificationIssued: params.clarificationIssued ?? false,
-      handoffOffered: params.handoffOffered ?? false,
-      handoffEligible: params.handoffEligible ?? false,
-      attachmentOffered: params.attachmentOffered,
-      attachmentKinds: params.attachmentKinds,
-      attachmentIntakeModes: params.attachmentIntakeModes,
-      attachmentAnalysisModes: params.attachmentAnalysisModes,
-      attachmentUsed: params.attachmentUsed,
-      attachmentMode: params.attachmentMode ?? null,
-      responseRejected: params.responseRejected ?? false,
-      fallbackUsed: params.fallbackUsed ?? false,
-    },
   };
 }
 
@@ -2279,6 +2389,98 @@ function buildDocumentationExplainReply() {
     "",
     "Se você quiser, eu posso resumir uma área específica, como Runs, Billing, Marketplace, IMOB ou Agentes.",
   ].join("\n");
+}
+
+function buildPlatformOverviewReply() {
+  return [
+    "**Como a plataforma EIAH se organiza**",
+    "",
+    "O EIAH combina chat, agentes, runs, billing e verticais para te ajudar a sair de uma dúvida até uma execução com mais contexto.",
+    "",
+    "Na prática, a plataforma se divide assim:",
+    "- `Runs`: executar, simular e acompanhar tarefas",
+    "- `Agentes`: ver especialistas disponíveis no workspace",
+    "- `Billing`: plano, uso, invoices e cobrança",
+    "- `Marketplace`: ativar agentes e módulos",
+    "- `IMOB`: contexto imobiliário, pipeline e acompanhamento",
+    "",
+    "Se você quiser, eu posso te explicar só uma dessas áreas agora.",
+  ].join("\n");
+}
+
+function buildPagesOverviewReply() {
+  return [
+    "**Como pensar as páginas do EIAH**",
+    "",
+    "- `Runs`: quando você quer criar, simular ou acompanhar execução",
+    "- `Agentes`: quando quer entender qual especialista usar",
+    "- `Billing`: quando quer ver plano, uso e invoices",
+    "- `Marketplace`: quando quer instalar agentes ou módulos",
+    "- `IMOB`: quando quer acompanhar jornada e contexto imobiliário",
+    "",
+    "Se você me disser a área, eu te explico a página certa e o próximo passo.",
+  ].join("\n");
+}
+
+function buildAppShortcutReply(input: string): string | null {
+  const normalized = normalizeIntentText(input);
+
+  if (normalized.includes("/app/runs#runs-criar")) {
+    return [
+      "**Abrir criação de run**",
+      "",
+      "Esse atalho te leva direto para o ponto de criação de execução em `Runs`.",
+      "",
+      "**Abrir agora**",
+      "- [Runs · criar](/app/runs#runs-criar)",
+    ].join("\n");
+  }
+
+  if (normalized.includes("/app/billing")) {
+    return [
+      "**Abrir Billing**",
+      "",
+      "Esse atalho leva para a área de plano, uso, invoices e cobrança do workspace.",
+      "",
+      "**Abrir agora**",
+      "- [Billing](/app/billing)",
+    ].join("\n");
+  }
+
+  if (normalized.includes("/app/imob/dashboard")) {
+    return [
+      "**Abrir Dashboard IMOB**",
+      "",
+      "Esse atalho leva para a visão de pipeline, contexto operacional e evolução das etapas do IMOB.",
+      "",
+      "**Abrir agora**",
+      "- [Dashboard IMOB](/app/imob/dashboard)",
+    ].join("\n");
+  }
+
+  if (normalized.includes("/app/imob/chat")) {
+    return [
+      "**Abrir Chat IMOB**",
+      "",
+      "Esse atalho leva para o chat contextual do IMOB para orientar o próximo passo do caso atual.",
+      "",
+      "**Abrir agora**",
+      "- [Chat IMOB](/app/imob/chat)",
+    ].join("\n");
+  }
+
+  if (normalized.includes("/app/marketplace/imob")) {
+    return [
+      "**Abrir Marketplace IMOB**",
+      "",
+      "Esse atalho leva para a instalação/ativação do IMOB no workspace.",
+      "",
+      "**Abrir agora**",
+      "- [Marketplace IMOB](/app/marketplace/imob)",
+    ].join("\n");
+  }
+
+  return null;
 }
 
 function isHostileInput(input: string) {
@@ -2780,25 +2982,123 @@ function buildLegalHandoffReply(params: { legalAgent: Agent | null; isAvailable:
   ].join("\n");
 }
 
-function buildDeterministicImobReply() {
+function buildImobWhatIsReply() {
+  return [
+    "**O que é o IMOB**",
+    "",
+    "O IMOB é a vertical do EIAH para operação imobiliária.",
+    "",
+    "Na prática, ele organiza a jornada comercial e operacional de imóveis com apoio de IA, cobrindo contexto como:",
+    "- captação",
+    "- compra",
+    "- venda",
+    "- locação",
+    "- proposta",
+    "- contrato e acompanhamento",
+    "",
+    "Ele serve para o time enxergar melhor a etapa atual, reduzir retrabalho e decidir o próximo passo com mais contexto.",
+  ].join("\n");
+}
+
+function buildImobOverviewReply() {
   return [
     "**IMOB — guia rápido**",
     "",
-    "O IMOB organiza a operacao imobiliaria com apoio de IA: leads, proposta, contrato e acompanhamento do processo comercial.",
+    "O IMOB organiza a operação imobiliária com apoio de IA: leads, proposta, contrato e acompanhamento do processo comercial.",
     "",
     "Ele ajuda o time a enxergar a jornada, reduzir retrabalho e decidir o próximo passo com mais contexto.",
     "",
     "**Como usar**",
-    "1. Abra o dashboard do IMOB para visualizar pipeline e contexto da operacao.",
-    "2. Use o chat IMOB para orientar a proxima acao com base no caso atual.",
-    "3. Acompanhe a evolucao das etapas com rastreabilidade.",
+    "1. Abra o dashboard do IMOB para visualizar pipeline e contexto da operação.",
+    "2. Use o chat IMOB para orientar a próxima ação com base no caso atual.",
+    "3. Acompanhe a evolução das etapas com rastreabilidade.",
     "4. Revise resultados e gargalos para melhorar a rotina do time.",
     "",
     "**Atalhos**",
     "- Dashboard IMOB: `/app/imob/dashboard`",
     "- Chat IMOB: `/app/imob/chat`",
-    "- Instalacao (se necessario): `/app/marketplace/imob`",
+    "- Instalação (se necessário): `/app/marketplace/imob`",
   ].join("\n");
+}
+
+function buildImobEndToEndReply() {
+  return [
+    "**Como o IMOB funciona do início ao fim**",
+    "",
+    "A jornada típica no IMOB segue esta linha:",
+    "1. captar ou entrar com o imóvel/oportunidade no contexto certo;",
+    "2. organizar etapa comercial: compra, venda ou locação;",
+    "3. estruturar proposta, condições e documentação inicial;",
+    "4. acompanhar negociação, contrato e próximos passos;",
+    "5. seguir o caso pelo dashboard e pelo chat até o fechamento.",
+    "",
+    "**Onde cada parte acontece**",
+    "- Dashboard: visão de pipeline, etapas e gargalos",
+    "- Chat IMOB: orientação do próximo passo no caso atual",
+    "",
+    "Se quiser, eu também posso detalhar só uma etapa: captação, proposta, negociação ou contrato.",
+  ].join("\n");
+}
+
+function buildImobNavigationReply() {
+  return [
+    "**Onde acompanhar pipeline e etapas no IMOB**",
+    "",
+    "- Use `/app/imob/dashboard` para ver pipeline, contexto operacional e evolução das etapas.",
+    "- Use `/app/imob/chat` quando quiser orientação do próximo passo com base no caso atual.",
+    "",
+    "**Regra prática**",
+    "- dashboard para visão de jornada e acompanhamento",
+    "- chat para destravar decisão, proposta, contrato ou próximo passo",
+  ].join("\n");
+}
+
+function buildImobInstallReply() {
+  return [
+    "**Como instalar o IMOB no workspace**",
+    "",
+    "1. Abra o Marketplace do workspace.",
+    "2. Procure por `IMOB`.",
+    "3. Revise descrição, escopo e disponibilidade do módulo.",
+    "4. Ative a vertical no workspace.",
+    "5. Depois disso, siga por `/app/imob/dashboard` ou `/app/imob/chat`.",
+    "",
+    "**Atalho**",
+    "- `/app/marketplace/imob`",
+  ].join("\n");
+}
+
+function buildImobShortcutReply(selection: ImobShortcutSelection) {
+  return [
+    `**${selection.label}**`,
+    "",
+    selection.helpText,
+    "",
+    `**Abrir agora**`,
+    `- [${selection.label}](${selection.path})`,
+  ].join("\n");
+}
+
+function buildDeterministicImobReply(input?: string) {
+  const shortcut = input ? resolveImobShortcutSelection(input) : null;
+  if (shortcut) {
+    return buildImobShortcutReply(shortcut);
+  }
+
+  const helpIntent = input ? resolveImobHelpIntent(input) : null;
+  switch (helpIntent) {
+    case "what_is":
+      return buildImobWhatIsReply();
+    case "end_to_end":
+      return buildImobEndToEndReply();
+    case "navigation":
+      return buildImobNavigationReply();
+    case "install":
+      return buildImobInstallReply();
+    case "overview":
+    default:
+      return buildImobOverviewReply();
+  }
 }
 
 function buildImobFaqReply(seed: ImobFaqSeed) {
@@ -2832,6 +3132,11 @@ function buildImobJourneyReply(stage: ImobJourneyDefinition) {
 }
 
 function buildImobContextEntryReply(input: string) {
+  const helpIntent = resolveImobHelpIntent(input);
+  if (helpIntent) {
+    return buildDeterministicImobReply(input);
+  }
+
   const faq = resolveImobFaqSeed(input);
   if (faq) return buildImobFaqReply(faq);
 
@@ -2870,6 +3175,27 @@ function buildDeterministicPlaybookReply() {
 
 function buildDeterministicHelpReply(input: string): string | null {
   const normalized = normalizeIntentText(input);
+  const appShortcut = buildAppShortcutReply(input);
+  if (appShortcut) {
+    return appShortcut;
+  }
+  if (
+    normalized.includes("explique a plataforma") ||
+    normalized.includes("explica a plataforma") ||
+    normalized.includes("como a plataforma funciona")
+  ) {
+    return buildPlatformOverviewReply();
+  }
+  if (
+    normalized.includes("explique as paginas") ||
+    normalized.includes("explique as páginas") ||
+    normalized.includes("explica as paginas") ||
+    normalized.includes("explica as páginas") ||
+    normalized.includes("quais paginas eu devo usar") ||
+    normalized.includes("quais páginas eu devo usar")
+  ) {
+    return buildPagesOverviewReply();
+  }
   if (
     normalized.includes("selecione um agente") ||
     normalized.includes("escolher um agente") ||
@@ -2935,12 +3261,17 @@ function buildDeterministicHelpReply(input: string): string | null {
   }
   if (normalized.includes("billing") || normalized.includes("invoice") || normalized.includes("cobranca")) {
     return [
-      "No EIAH, o billing reúne o uso do workspace e transforma isso em custo mensal.",
+      "No EIAH, o billing combina plano contratado com uso do workspace para compor o custo mensal.",
       "",
-      "Você consegue ver:",
-      "- resumo do plano",
-      "- uso de runs e usuários",
-      "- invoices e cobranças",
+      "O que entra nessa visão:",
+      "- resumo do plano ativo",
+      "- uso de runs e usuários do workspace",
+      "- invoices, cobranças e histórico",
+      "",
+      "Como ler isso rapidamente:",
+      "- plano define a base contratada",
+      "- usuários e runs mostram o volume operacional",
+      "- invoices mostram o fechamento financeiro",
       "",
       "Se quiser consultar isso agora, o melhor caminho é abrir `Billing` em `/app/billing`.",
     ].join("\n");
@@ -3838,7 +4169,7 @@ export function resolveEiahDecision(params: {
     return {
       kind: "imob_reply",
       shouldCreateRun: false,
-      content: buildDeterministicImobReply(),
+      content: buildDeterministicImobReply(input),
       launcherRouteIntent: "imob",
       presentationRouteIntent: "imob",
       eiahMode: "help",

@@ -756,6 +756,11 @@ export default function ChatAgentLauncher({
       quickRepliesShown?: number;
       routeIntent?: MessagePresentationSnapshot["routeIntent"] | null;
       verticalContext?: MessagePresentationSnapshot["verticalContext"];
+      proposalDomain?: MessagePresentationSnapshot["proposalDomain"];
+      conversationStage?: MessagePresentationSnapshot["conversationStage"];
+      proposalContextRecovered?: boolean;
+      proposalContextLost?: boolean;
+      proposalDomainMismatch?: boolean;
       recommendedPlan?: string | null;
       estimatedValue?: number | null;
       persist?: boolean;
@@ -776,6 +781,11 @@ export default function ChatAgentLauncher({
         quickRepliesShown: params.quickRepliesShown,
         routeIntent: params.routeIntent ?? null,
         verticalContext: params.verticalContext,
+        proposalDomain: params.proposalDomain ?? null,
+        conversationStage: params.conversationStage ?? null,
+        proposalContextRecovered: params.proposalContextRecovered ?? false,
+        proposalContextLost: params.proposalContextLost ?? false,
+        proposalDomainMismatch: params.proposalDomainMismatch ?? false,
         recommendedPlan: params.recommendedPlan ?? null,
         estimatedValue: params.estimatedValue ?? null,
         persist: params.persist,
@@ -936,6 +946,8 @@ export default function ChatAgentLauncher({
           quickRepliesShown: summarySnapshot.quickReplies.length,
           routeIntent: summarySnapshot.routeIntent,
           verticalContext: summarySnapshot.verticalContext ?? null,
+          proposalDomain: summarySnapshot.proposalDomain ?? null,
+          conversationStage: summarySnapshot.conversationStage ?? null,
         });
       }
     } catch (error) {
@@ -1075,6 +1087,9 @@ export default function ChatAgentLauncher({
       catalogAgents,
       intentUnknown: localIntentResult.intent === "unknown",
       confidence: localIntentResult.confidence,
+      previousUserMessage: lastUserMessage,
+      previousAssistantMessage: lastAssistantMessage,
+      previousAssistantSnapshot: lastAssistantSnapshot,
     });
     if (turnDecision?.content) {
       setLastRouteIntent(turnDecision.launcherRouteIntent);
@@ -1097,6 +1112,8 @@ export default function ChatAgentLauncher({
         renderVariant: turnDecision.renderVariant,
         excludeReplyInputs: [trimmed],
         sourceInput: effectiveInput,
+        proposalDomain: turnDecision.proposalDomain ?? null,
+        conversationStage: turnDecision.conversationStage ?? null,
       });
       await pushAssistantMessageWithTyping({
         idPrefix: `assistant-${turnDecision.kind}`,
@@ -1113,6 +1130,11 @@ export default function ChatAgentLauncher({
         quickRepliesShown: localSnapshot.quickReplies.length,
         routeIntent: localSnapshot.routeIntent,
         verticalContext: localSnapshot.verticalContext ?? null,
+        proposalDomain: localSnapshot.proposalDomain ?? null,
+        conversationStage: localSnapshot.conversationStage ?? null,
+        proposalContextRecovered: decisionTelemetry.proposalContextRecovered,
+        proposalContextLost: decisionTelemetry.proposalContextLost,
+        proposalDomainMismatch: decisionTelemetry.proposalDomainMismatch,
         clarificationIssued: decisionTelemetry.clarificationIssued,
         handoffOffered: decisionTelemetry.handoffOffered,
         handoffEligible: decisionTelemetry.handoffEligible,
@@ -1458,6 +1480,8 @@ export default function ChatAgentLauncher({
     renderVariant?: MessagePresentationSnapshot["renderVariant"];
     excludeReplyInputs?: string[];
     sourceInput?: string;
+    proposalDomain?: MessagePresentationSnapshot["proposalDomain"];
+    conversationStage?: MessagePresentationSnapshot["conversationStage"];
   }): MessagePresentationSnapshot {
     return createPresentationSnapshotV1({
       ...params,
@@ -1488,12 +1512,18 @@ export default function ChatAgentLauncher({
         eiahMode: activeEiahMode,
         confidence: 0.85,
         renderVariant: "proposal",
+        proposalDomain: "saas",
+        conversationStage: "proposal_collecting_usage",
       }),
     });
   }, [activeContractProfile, activeEiahMode, proposalMode, threadKey]);
 
   const lastUserMessage = useMemo(
     () => [...messages].reverse().find((message) => message.role === "user")?.content ?? null,
+    [messages]
+  );
+  const lastAssistantMessage = useMemo(
+    () => [...messages].reverse().find((message) => message.role === "assistant")?.content ?? null,
     [messages]
   );
   const lastAssistantSnapshot = useMemo(

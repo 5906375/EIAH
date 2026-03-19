@@ -1634,6 +1634,14 @@ export type HelpdeskSessionExport = {
       eligible: number;
       successfulRate: number;
     };
+    proposal: {
+      domains: Record<string, number>;
+      stages: Record<string, number>;
+      contextRecovered: number;
+      contextLost: number;
+      contextRecoveryRate: number;
+      domainMismatch: number;
+    };
     abandonment: {
       estimatedThreads: number;
       estimatedRate: number;
