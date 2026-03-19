@@ -83,10 +83,10 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 
 | Assunto | Arquivo | O que prova |
 | --- | --- | --- |
-| Evidência de schema e rotas PaymentIntent | `ops/evidence/latest/payment-intent-schema-2026-03-09.json` | Prova da camada `PaymentIntent` com campos mínimos e índices operacionais. |
-| Evidência e2e de PoU-gated payment release | `ops/evidence/latest/pou-gated-payment-e2e-2026-03-09.json` | Prova da bifurcação `blocked` sem PoU/SCL e `released` com PoU/SCL válido. |
-| Evidência e2e de settlement providers | `ops/evidence/latest/settlement-provider-e2e-2026-03-09.json` | Prova de providers em modo suportado por ambiente (`stripe=full`, `crypto/bank=simulated`) + settlement com vínculo em ledger. |
-| Evidência de replay/idempotência webhook billing | `ops/evidence/latest/billing-webhook-replay-2026-03-09.json` | Prova de replay rejeitado com `duplicateSideEffects=0`. |
+| Evidência de schema e rotas PaymentIntent | `ops/evidence/latest/payment-intent-schema-2026-03-19.json` | Prova da camada `PaymentIntent` com campos mínimos e índices operacionais. |
+| Evidência e2e de PoU-gated payment release | `ops/evidence/latest/pou-gated-payment-e2e-2026-03-19.json` | Prova da bifurcação `blocked` sem PoU/SCL e `released` com PoU/SCL válido. |
+| Evidência e2e de settlement providers | `ops/evidence/latest/settlement-provider-e2e-2026-03-19.json` | Prova de providers em modo suportado por ambiente (`stripe=full`, `crypto/bank=simulated`) + settlement com vínculo em ledger. |
+| Evidência de replay/idempotência webhook billing | `ops/evidence/latest/billing-webhook-replay-2026-03-19.json` | Prova de replay rejeitado com `duplicateSideEffects=0`. |
 | Contrato público de settlement provider | `ops/contracts/settlement-provider-contract.v1.json` | Contrato versionado de endpoints/providers/status e política de assinatura/idempotência. |
 | Runbook operacional de settlement provider | `docs/ops/settlement-provider-runbook.md` | Procedimento operacional para PaymentIntent, release gate, settlement e incidente de webhook. |
 | Gate CI de drift contrato/implementação | `scripts/checkSettlementContractDrift.ts` | Falha CI em drift entre contrato publicado e runtime (`providers/endpoints`). |
@@ -99,8 +99,8 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | Assunto | Arquivo | O que prova |
 | --- | --- | --- |
 | Smoke de reputação por agente | `ops/evidence/latest/agent-reputation-smoke-2026-03-09.json` | Snapshot de reputação por `tenant/workspace/agent` com campos operacionais esperados. |
-| Fluxo de atualização por eventos | `ops/evidence/latest/reputation-update-flow-2026-03-09.json` | Atualização idempotente por `receipt.finalized` e `dispute.closed` com journal de eventos. |
-| Evidência e2e do lifecycle de disputa | `ops/evidence/latest/dispute-lifecycle-e2e-2026-03-09.json` | Fluxo `open -> under_review -> resolved` com bloqueio de transição inválida e impacto na reputação. |
+| Fluxo de atualização por eventos | `ops/evidence/latest/reputation-update-flow-2026-03-19.json` | Atualização idempotente por `receipt.finalized` e `dispute.closed` com journal de eventos. |
+| Evidência e2e do lifecycle de disputa | `ops/evidence/latest/dispute-lifecycle-e2e-2026-03-19.json` | Fluxo `open -> under_review -> resolved` com bloqueio de transição inválida e impacto na reputação. |
 | API de reputação/disputas | `apps/api/src/routes/billing.ts` | Endpoints de reputação e ciclo de disputa em escopo tenant/workspace. |
 | Serviço core de reputação/disputas | `apps/api/src/services/reputationDisputes.ts` | Modelo operacional, regras de transição e idempotência de replay por `event_key`. |
 
@@ -119,7 +119,7 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | --- | --- | --- |
 | Ações críticas imobiliárias HIGH | `ops/evidence/latest/realestate-high-actions-e2e-2026-03-09.json` | Contrato/negociação com `tier=HIGH`, `txIdRequired=true` e receipt canon para ações imobiliárias críticas. |
 | Command Center IMOB (funnel + blocked runs) | `ops/evidence/latest/realestate-command-center-smoke-2026-03-09.md` | Visualização operacional no Runs por workspace, filtros por risco/estado e export bundle/receipt por run. |
-| Comissão integrada ao settlement | `ops/evidence/latest/realestate-commission-settlement-e2e-2026-03-09.json` | Fluxo comissão com PoU-gate, settlement e reconciliação com reprocessamento idempotente. |
+| Comissão integrada ao settlement | `ops/evidence/latest/realestate-commission-settlement-e2e-2026-03-19.json` | Fluxo comissão com PoU-gate, settlement e reconciliação com reprocessamento idempotente. |
 | Piloto comercial controlado | `ops/evidence/latest/realestate-pilot-rollout-2026-03-09.md` | Plano `shadow -> pilot -> small` com 3 tenants de referência para rollout da vertical. |
 | Rotas IMOB Command Center | `apps/api/src/routes/imob.ts` | Endpoints determinísticos de funil/bloqueios para operação imobiliária. |
 

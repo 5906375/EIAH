@@ -2,10 +2,23 @@ import fs from "node:fs";
 import path from "node:path";
 
 const CHECK = "check:p3-economy-hardening";
+const EVIDENCE_DIR = path.resolve("ops/evidence/latest");
 
 function fail(message: string, details?: Record<string, unknown>): never {
   console.error(JSON.stringify({ ok: false, check: CHECK, message, details }, null, 2));
   process.exit(1);
+}
+
+function findLatestEvidenceFile(pattern: RegExp): string {
+  if (!fs.existsSync(EVIDENCE_DIR)) {
+    fail("missing_evidence_directory", { dir: EVIDENCE_DIR });
+  }
+  const files = fs.readdirSync(EVIDENCE_DIR).filter((f) => pattern.test(f));
+  if (files.length === 0) {
+    fail("missing_evidence_file", { pattern: pattern.source, dir: EVIDENCE_DIR });
+  }
+  // Return the latest file (alphabetically, which works for YYYY-MM-DD format)
+  return path.join(EVIDENCE_DIR, files.sort().reverse()[0]);
 }
 
 function readFile(relativePath: string): string {
@@ -36,13 +49,13 @@ const settlementE2E = readJson<{
       duplicateSideEffects?: number;
     };
   };
-}>("ops/evidence/latest/settlement-provider-e2e-2026-03-09.json");
+}>(findLatestEvidenceFile(/^settlement-provider-e2e-\d{4}-\d{2}-\d{2}\.json$/));
 
 const webhookReplay = readJson<{
   ok?: boolean;
   replayRejected?: boolean;
   duplicateSideEffects?: number;
-}>("ops/evidence/latest/billing-webhook-replay-2026-03-09.json");
+}>(findLatestEvidenceFile(/^billing-webhook-replay-\d{4}-\d{2}-\d{2}\.json$/));
 
 const disputes = readJson<{
   ok?: boolean;
@@ -51,19 +64,19 @@ const disputes = readJson<{
     validTransitions?: boolean;
     disputeClosedTriggersReputation?: boolean;
   };
-}>("ops/evidence/latest/dispute-lifecycle-e2e-2026-03-09.json");
+}>(findLatestEvidenceFile(/^dispute-lifecycle-e2e-\d{4}-\d{2}-\d{2}\.json$/));
 
 const reputation = readJson<{
   ok?: boolean;
   events?: string[];
   idempotency?: { replaySafe?: boolean };
-}>("ops/evidence/latest/reputation-update-flow-2026-03-09.json");
+}>(findLatestEvidenceFile(/^reputation-update-flow-\d{4}-\d{2}-\d{2}\.json$/));
 
 const commissionFlow = readJson<{
   ok?: boolean;
   flow?: string[];
   assertions?: { duplicateSideEffects?: number };
-}>("ops/evidence/latest/realestate-commission-settlement-e2e-2026-03-09.json");
+}>(findLatestEvidenceFile(/^realestate-commission-settlement-e2e-\d{4}-\d{2}-\d{2}\.json$/));
 
 assertContains(billingRoute, 'get("/billing/tenant/invoices"', "route.invoices_list");
 assertContains(billingRoute, 'post("/billing/tenant/invoices/generate"', "route.invoices_generate");

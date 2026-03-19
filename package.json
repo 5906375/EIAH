@@ -46,6 +46,8 @@
     "check:receipt-canon-compat": "node --experimental-strip-types scripts/checkReceiptCanonVersioning.ts",
     "check:agent-protocol-compat": "node --experimental-strip-types scripts/checkAgentProtocolVersioning.ts",
     "check:settlement-contract-drift": "node --experimental-strip-types scripts/checkSettlementContractDrift.ts",
+    "check:p3-evidence-recency": "node --experimental-strip-types scripts/checkP3EvidenceRecency.ts",
+    "generate:p3-economy-evidence": "node --experimental-strip-types scripts/generateP3EconomyEvidence.ts",
     "check:w4-non-regression": "node --experimental-strip-types scripts/checkW4NonRegression.ts",
     "check:src-dist-route-parity": "pnpm exec tsx scripts/checkSrcDistRouteParity.ts",
     "check:ledger-bundle-smoke": "pnpm exec tsx scripts/checkLedgerBundleSmoke.ts",

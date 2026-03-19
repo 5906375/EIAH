@@ -1,11 +1,21 @@
 {
   "ok": true,
-  "date": "2026-03-09",
-  "scope": "P1-203",
+  "date": "2026-03-19",
+  "generatedAt": "2026-03-19T13:27:49.804Z",
+  "scope": "P3-settlement",
   "providers": [
-    { "id": "stripe", "mode": "full" },
-    { "id": "crypto", "mode": "simulated" },
-    { "id": "bank", "mode": "simulated" }
+    {
+      "id": "stripe",
+      "mode": "full"
+    },
+    {
+      "id": "crypto",
+      "mode": "simulated"
+    },
+    {
+      "id": "bank",
+      "mode": "simulated"
+    }
   ],
   "api": {
     "list": "GET /api/payments/providers",
@@ -24,5 +34,6 @@
       "replayRejected": true,
       "duplicateSideEffects": 0
     }
-  }
+  },
+  "source": "scripts/generateP3EconomyEvidence.ts"
 }

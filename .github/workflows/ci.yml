@@ -342,6 +342,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
+      - name: Generate P3 economy evidence
+        run: pnpm generate:p3-economy-evidence
+
+      - name: Check P3 evidence recency
+        run: pnpm check:p3-evidence-recency
+
       - name: Check P3 economy hardening
         run: pnpm check:p3-economy-hardening
 

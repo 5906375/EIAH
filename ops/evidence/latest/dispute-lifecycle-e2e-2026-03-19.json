@@ -1,7 +1,8 @@
 {
   "ok": true,
-  "date": "2026-03-09",
-  "scope": "P1-303",
+  "date": "2026-03-19",
+  "generatedAt": "2026-03-19T13:27:49.804Z",
+  "scope": "P3-disputes",
   "lifecycle": [
     "open",
     "under_review",
