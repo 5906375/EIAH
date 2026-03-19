@@ -3,7 +3,7 @@ import path from "node:path";
 
 const CHECK = "check:p3-settlement-support-by-env";
 const MATRIX_FILE = "ops/contracts/settlement-provider-support-matrix.v1.json";
-const EVIDENCE_FILE = "ops/evidence/latest/settlement-provider-e2e-2026-03-09.json";
+const EVIDENCE_FILE = "ops/evidence/latest/settlement-provider-e2e-2026-03-19.json";
 const ENVIRONMENT = String(process.env.SETTLEMENT_ENV ?? "staging").toLowerCase();
 
 type Matrix = {
