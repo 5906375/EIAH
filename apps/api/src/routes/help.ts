@@ -321,6 +321,8 @@ helpRouter.post("/helpdesk/session", async (req, res) => {
 
     const fallbackUsed = Boolean((parsed.data.metadata as Record<string, unknown> | undefined)?.fallbackUsed);
     const responseRejected = Boolean((parsed.data.metadata as Record<string, unknown> | undefined)?.responseRejected);
+    const proposalContextLost = Boolean((parsed.data.metadata as Record<string, unknown> | undefined)?.proposalContextLost);
+    const proposalDomainMismatch = Boolean((parsed.data.metadata as Record<string, unknown> | undefined)?.proposalDomainMismatch);
     if (fallbackUsed) {
       logger.warn(
         { tenantId: authContext.tenantId, workspaceId: authContext.workspaceId, runId: parsed.data.runId ?? null },
@@ -331,6 +333,18 @@ helpRouter.post("/helpdesk/session", async (req, res) => {
       logger.warn(
         { tenantId: authContext.tenantId, workspaceId: authContext.workspaceId, runId: parsed.data.runId ?? null },
         "helpdesk.response.rejected"
+      );
+    }
+    if (proposalContextLost) {
+      logger.warn(
+        { tenantId: authContext.tenantId, workspaceId: authContext.workspaceId, runId: parsed.data.runId ?? null },
+        "helpdesk.proposal.context_lost"
+      );
+    }
+    if (proposalDomainMismatch) {
+      logger.warn(
+        { tenantId: authContext.tenantId, workspaceId: authContext.workspaceId, runId: parsed.data.runId ?? null },
+        "helpdesk.proposal.domain_mismatch"
       );
     }
     logger.info(
@@ -492,6 +506,40 @@ helpRouter.get("/helpdesk/sessions", async (req, res) => {
     const metadata = metadataById.get(item.id) ?? {};
     return acc + (metadata.attachmentUsed === true ? 1 : 0);
   }, 0);
+  const proposalContextRecovered = normalized.reduce((acc: number, item: NormalizedHelpdeskSession) => {
+    const metadata = metadataById.get(item.id) ?? {};
+    return acc + (metadata.proposalContextRecovered === true ? 1 : 0);
+  }, 0);
+  const proposalContextLost = normalized.reduce((acc: number, item: NormalizedHelpdeskSession) => {
+    const metadata = metadataById.get(item.id) ?? {};
+    return acc + (metadata.proposalContextLost === true ? 1 : 0);
+  }, 0);
+  const proposalDomainMismatch = normalized.reduce((acc: number, item: NormalizedHelpdeskSession) => {
+    const metadata = metadataById.get(item.id) ?? {};
+    return acc + (metadata.proposalDomainMismatch === true ? 1 : 0);
+  }, 0);
+  const proposalDomainCounts = normalized.reduce((acc: Record<string, number>, item: NormalizedHelpdeskSession) => {
+    const metadata = metadataById.get(item.id) ?? {};
+    const proposalDomain =
+      typeof metadata.proposalDomain === "string" && metadata.proposalDomain.trim()
+        ? metadata.proposalDomain.trim()
+        : null;
+    if (proposalDomain) {
+      acc[proposalDomain] = (acc[proposalDomain] ?? 0) + 1;
+    }
+    return acc;
+  }, {});
+  const proposalStageCounts = normalized.reduce((acc: Record<string, number>, item: NormalizedHelpdeskSession) => {
+    const metadata = metadataById.get(item.id) ?? {};
+    const conversationStage =
+      typeof metadata.conversationStage === "string" && metadata.conversationStage.trim()
+        ? metadata.conversationStage.trim()
+        : null;
+    if (conversationStage) {
+      acc[conversationStage] = (acc[conversationStage] ?? 0) + 1;
+    }
+    return acc;
+  }, {});
 
   const threadCounts = helpdeskRows.reduce((acc: Record<string, number>, row: HelpdeskSessionRow) => {
     const metadata = asStringRecord(row.metadata);
@@ -553,6 +601,17 @@ helpRouter.get("/helpdesk/sessions", async (req, res) => {
       offered: attachmentOffered,
       used: attachmentUsed,
       adoptionRate: attachmentOffered > 0 ? Number((attachmentUsed / attachmentOffered).toFixed(4)) : 0,
+    },
+    proposal: {
+      domains: proposalDomainCounts,
+      stages: proposalStageCounts,
+      contextRecovered: proposalContextRecovered,
+      contextLost: proposalContextLost,
+      contextRecoveryRate:
+        proposalContextRecovered + proposalContextLost > 0
+          ? Number((proposalContextRecovered / (proposalContextRecovered + proposalContextLost)).toFixed(4))
+          : 0,
+      domainMismatch: proposalDomainMismatch,
     },
     abandonment: {
       estimatedThreads: estimatedAbandonedThreads,
