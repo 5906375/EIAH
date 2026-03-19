@@ -63,7 +63,7 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | Assunto | Arquivo | O que prova |
 | --- | --- | --- |
 | Contrato API do Agent Protocol (`discovery/negotiate/execute`) | `docs/ops/agent-protocol-api-contract.md` | Contrato canônico inicial da camada protocolar para interop entre agentes/sistemas. |
-| Schema versionado Agent Protocol v1 | `contracts/agent-protocol.v1.schema.json` | Forma oficial do contrato (`action/version/tier/inputSchema/receiptSchema/trustRequirements`). |
+| Schema versionado Agent Protocol v1 | `contracts/agent-protocol.v1.schema.json` | Forma oficial do contrato (`action/version/tier/txIdRequired/inputSchema/receiptSchema/trustRequirements`). |
 | Baseline de compatibilidade Agent Protocol | `contracts/agent-protocol.v1.baseline.json` | Snapshot mínimo para detectar breaking changes sem major bump. |
 | Exemplo oficial do contrato v1 | `contracts/examples/agent-protocol.v1.example.json` | Exemplo validável para `realestate.apply_adjustment` v1.2.0. |
 | Política de versionamento Agent Protocol | `ops/contracts/agent-protocol-versioning-policy.md` | Regras explícitas de versionamento/compatibilidade para o protocolo. |

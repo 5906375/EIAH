@@ -3,7 +3,7 @@
   "$id": "https://eiah.local/contracts/agent-protocol.v1.schema.json",
   "title": "Agent Protocol v1",
   "type": "object",
-  "required": ["action", "version", "tier", "inputSchema", "receiptSchema", "trustRequirements"],
+  "required": ["action", "version", "tier", "txIdRequired", "inputSchema", "receiptSchema", "trustRequirements"],
   "properties": {
     "action": {
       "type": "string",
@@ -16,6 +16,9 @@
     "tier": {
       "type": "string",
       "enum": ["LOW", "MEDIUM", "HIGH"]
+    },
+    "txIdRequired": {
+      "type": "boolean"
     },
     "inputSchema": {
       "type": "object"

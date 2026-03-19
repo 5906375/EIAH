@@ -9,6 +9,10 @@
   - `action`
   - `version`
   - `tier`
+  - `txIdRequired`
   - `inputSchema`
   - `receiptSchema`
   - `trustRequirements`
+- Freeze hardening:
+  - formalized `txIdRequired` in schema, baseline and official example;
+  - CI now cross-checks schema/baseline/example with runtime contract, API contract doc and evidence index linkage.

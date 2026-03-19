@@ -4,6 +4,7 @@
     "action",
     "version",
     "tier",
+    "txIdRequired",
     "inputSchema",
     "receiptSchema",
     "trustRequirements"

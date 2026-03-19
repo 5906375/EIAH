@@ -56,6 +56,7 @@ Response `200` (resumo):
       "action": "realestate.apply_adjustment",
       "version": "1.2.0",
       "tier": "HIGH",
+      "txIdRequired": true,
       "receiptSchema": { "specVersion": "receipt.canon.v1" }
     },
     "execution": { "endpoint": "/api/agents/execute", "method": "POST" },
@@ -105,3 +106,8 @@ Response `202` (resumo):
 - `403 TRUST_BLOCKED`
 - `404 ACTION_NOT_FOUND`
 - `409 VERSION_NOT_NEGOTIABLE`
+
+## Invariantes de Contrato v1
+- `protocolVersion` deve permanecer `agent-protocol.v1` durante toda a trilha `discovery -> negotiate -> execute`.
+- o contrato negociado deve expor `action`, `version`, `tier`, `txIdRequired`, `inputSchema`, `receiptSchema` e `trustRequirements`.
+- `receiptSchema.specVersion` deve permanecer `receipt.canon.v1`.
