@@ -43,6 +43,9 @@ jobs:
       - name: Infra pricing snapshot
         run: node scripts/ci/infra_provider_pricing_snapshot.cjs
 
+      - name: Generate P3 economy evidence
+        run: pnpm generate:p3-economy-evidence
+
       - name: Run APE cycle
         env:
           APE_ROLLOUT_MODE: ${{ github.event.inputs.rollout_mode || 'shadow' }}

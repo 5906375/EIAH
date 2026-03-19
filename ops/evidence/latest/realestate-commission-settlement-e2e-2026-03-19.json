@@ -1,7 +1,8 @@
 {
   "ok": true,
-  "date": "2026-03-09",
-  "scope": "P1-403",
+  "date": "2026-03-19",
+  "generatedAt": "2026-03-19T13:13:27.364Z",
+  "scope": "P3-commission",
   "flow": [
     "commission settle request",
     "PoU/SCL gate",
