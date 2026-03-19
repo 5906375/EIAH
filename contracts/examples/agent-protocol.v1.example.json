@@ -2,6 +2,7 @@
   "action": "realestate.apply_adjustment",
   "version": "1.2.0",
   "tier": "HIGH",
+  "txIdRequired": true,
   "inputSchema": {
     "type": "object",
     "required": ["propertyId", "adjustmentType", "amountCents", "reason"],
