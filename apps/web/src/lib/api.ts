@@ -3,7 +3,9 @@
 
 import { getSession, subscribeSession } from "@/state/sessionStore";
 
-export const BASE_URL = import.meta.env.VITE_API_URL || "https://dev.api.eiah.ai/api";
+const VITE_ENV = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env ?? {};
+
+export const BASE_URL = VITE_ENV.VITE_API_URL || "https://dev.api.eiah.ai/api";
 
 let cachedSession = getSession();
 subscribeSession((next) => {
