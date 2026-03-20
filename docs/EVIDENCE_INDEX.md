@@ -57,6 +57,8 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | APE Weekly Cycle #1 (shadow/pilot) com GO hard metrics | `ops/evidence/latest/ape-weekly-cycle-run7-2026-03-04.md` | Run #7 em `main` com `decision=GO`, `hardMetricsGo=true`, `auditGap=0`, `duplicateSideEffects=0`, `breakGlass=0` e artefatos semanais completos. |
 | APE Weekly Cycle #2 (shadow/pilot) com GO hard metrics | `ops/evidence/latest/ape-weekly-cycle-run8-2026-03-04.md` | Segundo ciclo consecutivo com `decision=GO`, `hardMetricsGo=true`, `hardReasons=[]`, `auditGap=0`, `duplicateSideEffects=0`, `breakGlass=0` (estabilidade consecutiva atingida). |
 | APE Weekly Cycle #3 (governança recorrente) | `ops/evidence/latest/ape-weekly-cycle-run9-2026-03-09.md` | Terceiro ciclo dentro da janela de recorrência com `auditGap=0` e `duplicateSideEffects=0`, sustentando fechamento operacional de P1. |
+| APE Weekly Cycle #10 (janela renovada) | `ops/evidence/latest/ape-weekly-cycle-run10-2026-03-18.md` | Renovação da janela recorrente com `decision=GO`, `hardMetricsGo=true`, `nonRegressionGo=true`, `auditGap=0`, `duplicateSideEffects=0` e `breakGlass=0`. |
+| APE Weekly Cycle #11 (continuidade operacional) | `ops/evidence/latest/ape-weekly-cycle-run11-2026-03-18.md` | Confirma que o conjunto mais recente de ciclos APE permanece dentro da janela exigida pelos gates P1, P3 e P4. |
 
 ## Sprint P1 (Imobiliaria Digital) — Interop Protocol Layer (2026-03-09)
 
@@ -156,6 +158,8 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | Proposal assistant com cálculo guiado | `apps/web/src/components/agents/ChatAgentLauncher.tsx` + `apps/api/src/routes/billing.ts` | Coleta de contexto comercial e cálculo de proposta com regra de billing compatível ao backend. |
 | Central de Ajuda (query/reindex/sessões) | `apps/api/src/routes/help.ts` + `apps/api/src/services/eiahHelpKnowledge.ts` + `packages/db/prisma/schema.prisma` | Base interna consultável, reindexação e persistência analítica de atendimentos (`helpdesk_sessions`). |
 | IMOB chat ampliado (entrevista + telemetria + export) | `apps/api/src/routes/imob.ts` + `apps/web/src/pages/app/imob/chat.tsx` | Jornada assistida por thread com estado de entrevista, telemetria operacional e export auditável. |
+| Hardening estrutural do chat agent-driven | `apps/web/src/components/agents/chatLauncherEngine.ts` + `apps/web/src/components/agents/proposalDomainResolver.ts` + `apps/web/src/components/agents/imobContextResolver.ts` + `apps/web/src/components/agents/legalContextResolver.ts` + `apps/web/src/components/agents/specialistExplainCatalog.ts` + `apps/web/src/components/agents/specialistGuidanceResolver.ts` + `apps/web/src/components/agents/specialistDecisionResolver.ts` + `apps/web/src/components/agents/platformHelpResolver.ts` + `apps/web/src/components/agents/agentPresentationResolver.ts` | Modularização do runtime do chat por domínio/papel, mantendo o `ChatAgentLauncher` em modo `render-first`. |
+| Cobertura e gate de regressão do chat | `apps/web/src/components/agents/chatLauncherEngine.test.ts` + `.github/workflows/ci.yml` | Cobertura determinística de proposal/help/IMOB/atalhos com gate obrigatório `ChatEngineRegression` no `CI Monorepo`. |
 
 ### Implemented Extra (pronto para PR/changelog)
 
@@ -169,6 +173,7 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 - **Central de Ajuda EIAH** (`apps/api/src/routes/help.ts`, `apps/api/src/services/eiahHelpKnowledge.ts`, `packages/db/prisma/schema.prisma`): query/reindex + sessões analíticas.
 - **IMOB ampliado** (`apps/api/src/routes/imob.ts`, `apps/web/src/pages/app/imob/chat.tsx`, `apps/web/src/features/imob/`): entrevista de contrato, telemetria e export auditável.
 - **P2 global HIGH coverage** (`scripts/checkP2HighGlobalCoverage.ts`, `ops/evidence/latest/p2-high-global-coverage.json`, `packages/core/src/actions/__tests__/highGlobalCoverage.e2e.test.ts`): transição de “inventariado” para “covered” com gate bloqueante.
+- **Chat agent-driven hardening** (`apps/web/src/components/agents/chatLauncherEngine.ts`, `apps/web/src/components/agents/proposalDomainResolver.ts`, `apps/web/src/components/agents/imobContextResolver.ts`, `apps/web/src/components/agents/legalContextResolver.ts`, `apps/web/src/components/agents/specialistGuidanceResolver.ts`, `apps/web/src/components/agents/specialistDecisionResolver.ts`, `apps/web/src/components/agents/platformHelpResolver.ts`, `apps/web/src/components/agents/agentPresentationResolver.ts`, `apps/web/src/components/agents/chatLauncherEngine.test.ts`, `.github/workflows/ci.yml`): engine modularizado por domínio/papel com cobertura de regressão e gate de CI.
 
 ## Entry points
 
