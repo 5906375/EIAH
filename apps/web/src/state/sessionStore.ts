@@ -1,5 +1,7 @@
 import { useSyncExternalStore } from "react";
 
+const VITE_ENV = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env ?? {};
+
 type SessionState = {
   tenantId: string;
   workspaceId: string;
@@ -24,9 +26,9 @@ type SessionState = {
 };
 
 const DEFAULTS: SessionState = {
-  tenantId: import.meta.env.VITE_TENANT_ID || "tenant-demo",
-  workspaceId: import.meta.env.VITE_WORKSPACE_ID || "workspace-demo",
-  token: import.meta.env.VITE_API_TOKEN || undefined,
+  tenantId: VITE_ENV.VITE_TENANT_ID || "tenant-demo",
+  workspaceId: VITE_ENV.VITE_WORKSPACE_ID || "workspace-demo",
+  token: VITE_ENV.VITE_API_TOKEN || undefined,
 };
 const LOGOUT_FLAG_KEY = "eiah_logged_out";
 

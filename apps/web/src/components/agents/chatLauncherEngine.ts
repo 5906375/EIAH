@@ -3079,7 +3079,7 @@ function buildImobShortcutReply(selection: ImobShortcutSelection) {
   ].join("\n");
 }
 
-function buildDeterministicImobReply(input?: string) {
+export function buildDeterministicImobReply(input?: string) {
   const shortcut = input ? resolveImobShortcutSelection(input) : null;
   if (shortcut) {
     return buildImobShortcutReply(shortcut);
@@ -3173,7 +3173,7 @@ function buildDeterministicPlaybookReply() {
   ].join("\n");
 }
 
-function buildDeterministicHelpReply(input: string): string | null {
+export function buildDeterministicHelpReply(input: string): string | null {
   const normalized = normalizeIntentText(input);
   const appShortcut = buildAppShortcutReply(input);
   if (appShortcut) {
