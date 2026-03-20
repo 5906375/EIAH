@@ -240,6 +240,8 @@ Itens já implementados que não eram requisito explícito do backlog P0-P4, mas
 - **Central de Ajuda EIAH**: query/reindex da base interna e persistência analítica de sessões (`helpdesk_sessions`).
 - **IMOB ampliado**: entrevista de contrato no chat, telemetria operacional e export auditável.
 - **Gate P2 global HIGH**: cobertura E2E para ações HIGH do core (`billing/finance/notifications`) com gate bloqueante.
+- **Hardening estrutural do chat agent-driven**: modularização do `chatLauncherEngine` por proposal, verticais, especialistas, help transversal e apresentação de agentes, mantendo o `ChatAgentLauncher` em modo `render-first`.
+- **Gate de regressão do chat no CI**: suíte `test:chat-engine` promovida a check obrigatório no `CI Monorepo`.
 
 **Observação de governança**
 - Itens “implementado extra” não substituem DoD de P0-P4.
