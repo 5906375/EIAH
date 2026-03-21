@@ -94,6 +94,26 @@ O core da plataforma está operacional e auditável (F0-F3 concluídas), com F4/
 - Garantir gate fail-closed por `tenantId`/`workspaceId` e assinatura ativa da vertical antes de expor busca, chat ou ações do `IMOB`.
 - Evoluir a busca por fases: handshake no chat -> busca por metadados -> sync de Drive -> expansão para uploads/web, preservando `sourceType` e isolamento multi-tenant/workspace.
 
+**Fluxo operacional das verticais no EIAH SaaS**
+
+`EIAH SaaS`
+→ `Cadastro`
+→ `Tenant`
+→ `Assinatura / Plano`
+→ `Pagamento / Billing`
+→ `Ativação / Entitlements`
+→ `Permissões / Roles / Scope`
+→ `Workspace`
+→ `Chat Agent Launcher EIAH`
+→ `Verticais (IMOB, LEGAL, etc.)`
+
+**Regra operacional**
+- as verticais não existem fora do SaaS;
+- o acesso à vertical depende de `tenantId`, `workspaceId` e `entitlements` válidos;
+- o `Chat Agent Launcher EIAH` funciona como front door;
+- o `engine` decide o handoff para a vertical;
+- sem entitlement ativo, o fluxo deve falhar em modo `fail-closed`.
+
 **DoD P4**
 - KPI mínimo por vertical atingido.
 - Sem regressão de isolamento multi-tenant/workspace.
@@ -182,6 +202,31 @@ Objetivo: concluir ponta a ponta os itens ainda parciais (governança/economy/au
 - Fortalecer command centers por vertical com export de provas por run.
 - Implementar `IMOB Knowledge Search` em fases, começando por handshake agent-driven no `EIAH`/`IMOB`, busca por metadados e sync pragmático do Drive antes de webhook/watch.
 - Exigir gating fail-closed por `tenantId` cadastrado e assinatura ativa da vertical para qualquer busca/chat/ação do `IMOB`.
+- Operar as verticais dentro do fluxo SaaS padrão: `Cadastro -> Tenant -> Assinatura/Plano -> Billing -> Entitlements -> Roles/Scope -> Workspace -> Chat Agent Launcher EIAH -> Vertical`.
+
+**Fase 1 — Handshake e roteamento**
+- Objetivo: fazer o `EIAH`, como front door do SaaS, reconhecer busca documental IMOB e encaminhar corretamente para a vertical, respeitando `tenant`, `workspace` e `entitlements`.
+- Entradas sugeridas no launcher:
+  - `Buscar no acervo IMOB`
+  - `Buscar contratos e propostas`
+  - `Buscar materiais de captação`
+  - `Buscar por cidade ou região`
+- Implementação:
+  - `chatLauncherEngine.ts`: detectar a intenção documental e decidir o handoff
+  - `imobContextResolver.ts`: qualificar recorte e preparar a entrada da vertical
+  - `platformHelpResolver.ts`: só educar/induzir UX, sem virar dono da lógica
+  - `chatOrchestrator.ts`: preparar `mode: "search_knowledge"`
+- Também entra aqui:
+  - validação de `tenantId`
+  - validação de `workspaceId`
+  - validação de assinatura/entitlement da vertical
+  - bloqueio `fail-closed` quando a vertical não estiver habilitada
+- DoD:
+  - intenção não cai em help genérico
+  - o `EIAH` encaminha corretamente para o contexto IMOB documental
+  - tenant sem assinatura recebe bloqueio `fail-closed`
+  - launcher continua sem regra nova relevante
+  - o handoff respeita o fluxo SaaS `tenant -> entitlement -> workspace -> vertical`
 
 **DoD Track P**
 - KPI mínimo por vertical atingido.
