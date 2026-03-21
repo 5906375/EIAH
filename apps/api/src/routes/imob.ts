@@ -5,6 +5,7 @@ import { generateContractPreview } from "../services/contracts/contractGenerator
 import type { ContractType } from "../services/contracts/types";
 import { createRunRecord } from "../services/runs";
 import { emitRunEvent } from "../services/runEventEmitter";
+import { searchImobKnowledge } from "../services/imob/imobKnowledgeSearch";
 
 export const imobRouter = Router();
 imobRouter.use(enforceTenant);
@@ -339,6 +340,123 @@ function isContractInterviewStatus(value: unknown): value is "collecting" | "rev
 function isContractType(value: unknown): value is ContractType {
   return value === "locacao" || value === "compra_venda" || value === "administracao" || value === "temporada";
 }
+
+async function resolveImobEntitlements(params: {
+  prisma: NonNullable<TenantAwareRequest["prisma"]>;
+  tenantId: string;
+  workspaceId: string;
+}) {
+  const [realEstatePolicies, productInstallations] = await Promise.all([
+    params.prisma.tenantActionPolicy.findMany({
+      where: {
+        tenantId: params.tenantId,
+        OR: [{ workspaceId: params.workspaceId }, { workspaceId: null }],
+        actionName: {
+          in: [
+            "realestate.apply_adjustment",
+            "action.realestate.apply_adjustment",
+            "realestate.register_property",
+            "realestate.create_contract",
+            "realestate.release_commission",
+            "realestate.search_knowledge_base",
+          ],
+        },
+        allowed: true,
+      },
+      select: { id: true },
+      take: 1,
+    }),
+    params.prisma
+      .$queryRaw<Array<{ product: string; status: string }>>`
+        SELECT product, status
+        FROM tenant_product_installations
+        WHERE tenant_id = ${params.tenantId}
+          AND workspace_id = ${params.workspaceId}
+      `
+      .catch(() => []),
+  ]);
+
+  const hasImobInstallation = productInstallations.some(
+    (entry) =>
+      entry.product.trim().toUpperCase() === "IMOB" &&
+      entry.status.trim().toLowerCase() === "active"
+  );
+  const realEstateCore = hasImobInstallation || realEstatePolicies.length > 0;
+  return {
+    REAL_ESTATE_CORE: realEstateCore,
+    IMOB_INSTALLED: hasImobInstallation,
+  };
+}
+
+imobRouter.post("/knowledge/search", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({
+      ok: false,
+      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+    });
+  }
+
+  const body = asObject(req.body) ?? {};
+  const query = asString(body.query);
+  if (!query) {
+    return res.status(400).json({
+      ok: false,
+      error: { code: "INVALID_QUERY", message: "query is required" },
+    });
+  }
+
+  const workspaceId = authContext.workspaceId;
+  const entitlements = await resolveImobEntitlements({
+    prisma,
+    tenantId: authContext.tenantId,
+    workspaceId,
+  });
+
+  if (!entitlements.REAL_ESTATE_CORE) {
+    return res.status(403).json({
+      ok: false,
+      error: {
+        code: "ENTITLEMENT_MISSING",
+        message: "REAL_ESTATE_CORE entitlement required for IMOB knowledge search",
+      },
+    });
+  }
+
+  const filters = asObject(body.filters) ?? {};
+  const region = asString(filters.region);
+  const segmentRaw = asString(filters.segment);
+  const segment =
+    segmentRaw === "locacao" || segmentRaw === "venda" || segmentRaw === "ambos" ? segmentRaw : null;
+  const documentType = asString(filters.documentType);
+  const operationType = asString(filters.operationType);
+  const tags = Array.isArray(filters.tags)
+    ? filters.tags.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    : [];
+
+  const result = await searchImobKnowledge({
+    tenantId: authContext.tenantId,
+    workspaceId,
+    query,
+    filters: {
+      region,
+      segment,
+      documentType,
+      operationType,
+      tags,
+    },
+  });
+
+  return res.json({
+    ok: true,
+    data: {
+      ...result,
+      tenantId: authContext.tenantId,
+      workspaceId,
+      entitlements,
+    },
+  });
+});
 
 imobRouter.get("/command-center/funnel-health", async (req, res) => {
   const { authContext, prisma } = req as TenantAwareRequest;

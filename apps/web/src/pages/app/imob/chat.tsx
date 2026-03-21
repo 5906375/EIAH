@@ -13,6 +13,7 @@ import {
   apiGetImobChatConversationExport,
   apiGetImobChatTelemetrySummary,
   apiGetRun,
+  apiSearchImobKnowledge,
   apiListImobChatConversations,
   apiListImobChatMessages,
   apiListImobChatThreads,
@@ -21,6 +22,7 @@ import {
   type ImobContractInterviewState,
   type ImobChatMessage,
   type ImobChatThread,
+  type ImobKnowledgeSearchResponse,
   type AgentProtocolActionContract,
 } from "@/lib/api";
 import { useSession } from "@/state/sessionStore";
@@ -946,6 +948,34 @@ const ImobChatPage: React.FC = () => {
     [session.entitlements]
   );
 
+  const buildKnowledgeSearchResponse = React.useCallback(
+    (result: ImobKnowledgeSearchResponse, plan: ImobActionPlan) => {
+      const items = result.items.slice(0, 4);
+      const itemLines =
+        items.length > 0
+          ? items.map(
+              (item) =>
+                `- ${item.title} • ${item.sourceType} • ${item.documentType} • ${item.region}\n  ${item.snippet}`
+            )
+          : ["- Não encontrei documentos com esse recorte no acervo atual."];
+      const sourceLines =
+        plan.search?.sources?.map((source) => `- ${source.label}: ${source.description}`) ?? [];
+
+      return [
+        `Encontrei ${result.total} resultado(s) documentais para esta busca no IMOB.`,
+        "",
+        "Resultados:",
+        ...itemLines,
+        "",
+        sourceLines.length > 0 ? "Fontes complementares:" : "",
+        ...sourceLines,
+      ]
+        .filter(Boolean)
+        .join("\n");
+    },
+    []
+  );
+
   const buildSearchCard = React.useCallback(
     (plan: ImobActionPlan, thread: { id: string; label: string; status?: "active" | "done" | "blocked" }): MessageCard | undefined => {
       const sources = plan.search?.sources ?? [];
@@ -961,6 +991,40 @@ const ImobChatPage: React.FC = () => {
           kind: index === 0 ? "primary" : "neutral",
           href: source.href,
         })),
+      };
+    },
+    []
+  );
+
+  const buildKnowledgeSearchCard = React.useCallback(
+    (
+      result: ImobKnowledgeSearchResponse,
+      plan: ImobActionPlan,
+      thread: { id: string; label: string; status?: "active" | "done" | "blocked" }
+    ): MessageCard | undefined => {
+      const items = result.items.slice(0, 3);
+      const sourceCtas =
+        plan.search?.sources?.map((source, index) => ({
+          id: source.id,
+          label: source.label,
+          kind: index === 0 ? ("primary" as const) : ("neutral" as const),
+          href: source.href,
+        })) ?? [];
+      const itemCtas = items.map((item) => ({
+        id: item.id,
+        label: `Abrir: ${item.title.slice(0, 36)}`,
+        kind: "secondary" as const,
+        href: item.href,
+      }));
+      return {
+        type: "action",
+        title: "Resultados do acervo IMOB",
+        thread,
+        lines:
+          items.length > 0
+            ? items.map((item) => `${item.title} • ${item.sourceType} • ${item.documentType}`)
+            : ["Nenhum documento encontrado com esse recorte."],
+        ctas: [...itemCtas, ...sourceCtas].slice(0, 5),
       };
     },
     []
@@ -1637,7 +1701,61 @@ const ImobChatPage: React.FC = () => {
       return;
     }
 
-    if (plan.mode === "search" || plan.mode === "search_knowledge") {
+    if (plan.mode === "search_knowledge") {
+      const searchThread = {
+        id: operationThread.id,
+        label: operationThread.label,
+        status: "active" as const,
+      };
+      try {
+        const search = await apiSearchImobKnowledge({
+          query: plan.search?.query ?? text,
+          filters: {
+            region: plan.search?.region ?? null,
+            segment: plan.search?.segment ?? null,
+          },
+        });
+        const searchReply: ChatMessage = {
+          id: makeId("assistant"),
+          role: "assistant",
+          text: buildKnowledgeSearchResponse(search.data, plan),
+          thread: searchThread,
+          card: buildKnowledgeSearchCard(search.data, plan, searchThread),
+        };
+        appendMessage(searchReply);
+        void persistMessage(searchReply, {
+          intent: plan.intent,
+          action: plan.action,
+          conversationId: activeConversationId,
+          metadata: { knowledgeSearch: search.data },
+        });
+        if (activeConversationId) {
+          void apiCreateImobChatTelemetry({
+            conversationId: activeConversationId,
+            event: "message_to_plan_ms",
+            value: Date.now() - startedAt,
+            metadata: { intent: plan.intent, action: plan.action, mode: plan.mode, resultTotal: search.data.total },
+          });
+        }
+        setState("done");
+      } catch (error) {
+        const errorMessage =
+          error instanceof ApiError && error.status === 403
+            ? "A busca documental do IMOB não está habilitada para este tenant/workspace."
+            : "Não consegui consultar o acervo IMOB agora. Tente novamente em instantes.";
+        const failureReply: ChatMessage = {
+          id: makeId("assistant"),
+          role: "assistant",
+          text: errorMessage,
+          thread: { ...searchThread, status: "blocked" },
+        };
+        appendMessage(failureReply);
+        setState("blocked");
+      }
+      return;
+    }
+
+    if (plan.mode === "search") {
       const searchThread = {
         id: operationThread.id,
         label: operationThread.label,
