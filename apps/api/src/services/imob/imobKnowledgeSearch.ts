@@ -1,3 +1,5 @@
+import { readImobDriveSyncSnapshot } from "./imobDriveSync";
+
 export type ImobKnowledgeSourceType = "drive" | "upload" | "web" | "internal_doc";
 
 export type ImobKnowledgeSearchFilters = {
@@ -222,7 +224,31 @@ export async function searchImobKnowledge(params: ImobKnowledgeSearchParams): Pr
   const filters = params.filters ?? {};
   const query = params.query.trim();
   const tokens = tokenize(query);
-  const documents = buildScopedDocuments({ tenantId: params.tenantId, workspaceId: params.workspaceId });
+  const seededDocuments = buildScopedDocuments({ tenantId: params.tenantId, workspaceId: params.workspaceId });
+  const driveSnapshot = await readImobDriveSyncSnapshot();
+  const driveDocuments: ImobKnowledgeSearchItem[] =
+    driveSnapshot?.documents
+      .filter((item) => item.tenantId === params.tenantId && item.workspaceId === params.workspaceId)
+      .map((item) => ({
+        id: item.id,
+        tenantId: item.tenantId,
+        workspaceId: item.workspaceId,
+        sourceType: item.sourceType,
+        externalId: item.externalId,
+        title: item.title,
+        href: item.href,
+        mimeType: item.mimeType,
+        region: item.region,
+        segment: item.segment,
+        documentType: item.documentType,
+        operationType: item.operationType,
+        tags: item.tags,
+        metadataJson: item.metadataJson,
+        contentText: null,
+        vectorEmbedding: null,
+        updatedAt: item.updatedAt,
+      })) ?? [];
+  const documents = [...driveDocuments, ...seededDocuments];
 
   const filtered = documents
     .filter((item) => item.tenantId === params.tenantId && item.workspaceId === params.workspaceId)

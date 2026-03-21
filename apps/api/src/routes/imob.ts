@@ -6,6 +6,7 @@ import type { ContractType } from "../services/contracts/types";
 import { createRunRecord } from "../services/runs";
 import { emitRunEvent } from "../services/runEventEmitter";
 import { searchImobKnowledge } from "../services/imob/imobKnowledgeSearch";
+import { readImobDriveSyncSnapshot } from "../services/imob/imobDriveSync";
 
 export const imobRouter = Router();
 imobRouter.use(enforceTenant);
@@ -387,6 +388,48 @@ async function resolveImobEntitlements(params: {
     IMOB_INSTALLED: hasImobInstallation,
   };
 }
+
+imobRouter.get("/knowledge/sync-status", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({
+      ok: false,
+      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+    });
+  }
+
+  const entitlements = await resolveImobEntitlements({
+    prisma,
+    tenantId: authContext.tenantId,
+    workspaceId: authContext.workspaceId,
+  });
+
+  if (!entitlements.REAL_ESTATE_CORE) {
+    return res.status(403).json({
+      ok: false,
+      error: {
+        code: "ENTITLEMENT_MISSING",
+        message: "REAL_ESTATE_CORE entitlement required for IMOB knowledge sync status",
+      },
+    });
+  }
+
+  const snapshot = await readImobDriveSyncSnapshot();
+  const workspaceSummary =
+    snapshot?.totalsByWorkspace.find(
+      (item) => item.tenantId === authContext.tenantId && item.workspaceId === authContext.workspaceId
+    ) ?? null;
+
+  return res.json({
+    ok: true,
+    data: {
+      syncedAt: snapshot?.syncedAt ?? null,
+      sourcePath: snapshot?.sourcePath ?? null,
+      totalDocuments: workspaceSummary?.totalDocuments ?? 0,
+      syncVersion: snapshot?.syncVersion ?? null,
+    },
+  });
+});
 
 imobRouter.post("/knowledge/search", async (req, res) => {
   const { authContext, prisma } = req as TenantAwareRequest;

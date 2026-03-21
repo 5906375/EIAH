@@ -1,0 +1,34 @@
+{
+  "documents": [
+    {
+      "tenantId": "tenant-demo",
+      "workspaceId": "workspace-demo",
+      "externalId": "drive-proposta-locacao-sp-sample",
+      "title": "Modelo de proposta de locação - São Paulo",
+      "href": "https://drive.google.com/file/d/drive-proposta-locacao-sp-sample/view",
+      "mimeType": "application/pdf",
+      "folderPath": "propostas/locacao",
+      "tags": ["proposta", "locacao", "sao paulo", "modelo"],
+      "region": "São Paulo",
+      "segment": "locacao",
+      "operationType": "locacao",
+      "documentType": "proposta",
+      "updatedAt": "2026-03-21T12:00:00.000Z"
+    },
+    {
+      "tenantId": "tenant-demo",
+      "workspaceId": "workspace-demo",
+      "externalId": "drive-captacao-venda-br-sample",
+      "title": "Checklist de captação para venda residencial",
+      "href": "https://drive.google.com/file/d/drive-captacao-venda-br-sample/view",
+      "mimeType": "application/pdf",
+      "folderPath": "captacao/venda",
+      "tags": ["captacao", "venda", "checklist", "residencial"],
+      "region": "Brasil",
+      "segment": "venda",
+      "operationType": "captacao",
+      "documentType": "checklist",
+      "updatedAt": "2026-03-21T12:00:00.000Z"
+    }
+  ]
+}
