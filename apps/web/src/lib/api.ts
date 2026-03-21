@@ -992,6 +992,40 @@ export type ImobContractInterviewState = {
   updatedAt: string;
 };
 
+export type ImobKnowledgeSearchItem = {
+  id: string;
+  sourceType: "drive" | "upload" | "web" | "internal_doc";
+  title: string;
+  href: string;
+  mimeType: string;
+  region: string;
+  segment: "locacao" | "venda" | "ambos";
+  documentType: string;
+  operationType: string;
+  tags: string[];
+  updatedAt: string;
+  snippet: string;
+};
+
+export type ImobKnowledgeSearchResponse = {
+  query: string;
+  appliedFilters: {
+    region?: string | null;
+    segment?: "locacao" | "venda" | "ambos" | null;
+    documentType?: string | null;
+    operationType?: string | null;
+    tags?: string[] | null;
+  };
+  total: number;
+  items: ImobKnowledgeSearchItem[];
+  tenantId: string;
+  workspaceId: string;
+  entitlements: {
+    REAL_ESTATE_CORE: boolean;
+    IMOB_INSTALLED?: boolean;
+  };
+};
+
 export async function apiListImobChatConversations(params?: { limit?: number }) {
   const query = new URLSearchParams();
   if (typeof params?.limit === "number") query.append("limit", String(params.limit));
@@ -1098,6 +1132,22 @@ export async function apiCreateImobChatTelemetry(
   }
 ) {
   return http<{ ok: true; telemetry: { id: string; createdAt: string } }>(`/imob/chat/telemetry`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function apiSearchImobKnowledge(body: {
+  query: string;
+  filters?: {
+    region?: string | null;
+    segment?: "locacao" | "venda" | "ambos" | null;
+    documentType?: string | null;
+    operationType?: string | null;
+    tags?: string[];
+  };
+}) {
+  return http<{ ok: true; data: ImobKnowledgeSearchResponse }>(`/imob/knowledge/search`, {
     method: "POST",
     body: JSON.stringify(body),
   });
