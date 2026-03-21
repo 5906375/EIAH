@@ -28,7 +28,7 @@ export type ImobJourneyDefinition = {
   pageShortcuts: string[];
 };
 
-export type ImobHelpIntent = "what_is" | "overview" | "end_to_end" | "navigation" | "install";
+export type ImobHelpIntent = "what_is" | "overview" | "end_to_end" | "navigation" | "install" | "shortcuts";
 
 export type ImobShortcutSelection = {
   key: "dashboard" | "chat" | "install";
@@ -61,6 +61,22 @@ const IMOB_FAQ_SEEDS: ImobFaqSeed[] = [
       "Captação é o processo de trazer imóveis para a carteira, com coleta de dados, documentos, fotos e estratégia comercial.",
     nextQuestion: "Você está captando para venda, locação ou leilão?",
     journeyStage: "captacao",
+  },
+  {
+    key: "captacao_locacao_comercial",
+    domain: "imobiliarias",
+    questionPatterns: [
+      "tenho imobiliaria e quero captar clientes para locacao",
+      "tenho imobiliária e quero captar clientes para locação",
+      "quero captar clientes para locacao",
+      "quero captar clientes para locação",
+      "quero captar para locacao",
+      "quero captar para locação",
+    ],
+    answerShort:
+      "Se o foco é locação, o IMOB pode te ajudar a organizar captação, entrada no pipeline, anúncio, proposta e acompanhamento até o contrato.",
+    nextQuestion: "Você quer organizar primeiro a captação, o anúncio ou a proposta de locação?",
+    journeyStage: "locacao",
   },
   {
     key: "construtora_incorporadora_diferenca",
@@ -217,6 +233,14 @@ export function resolveImobHelpIntent(input: string): ImobHelpIntent | null {
   }
 
   if (
+    normalized.includes("o que e o imob") ||
+    normalized.includes("o que eh o imob") ||
+    normalized.includes("fale sobre o imob")
+  ) {
+    return "what_is";
+  }
+
+  if (
     normalized.includes("como funciona imob do inicio ao fim") ||
     normalized.includes("como funciona imob do início ao fim") ||
     normalized.includes("imob do inicio ao fim") ||
@@ -244,6 +268,16 @@ export function resolveImobHelpIntent(input: string): ImobHelpIntent | null {
     normalized.includes("marketplace/imob")
   ) {
     return "install";
+  }
+
+  if (
+    normalized.includes("o que e esses atalhos") ||
+    normalized.includes("o que sao esses atalhos") ||
+    normalized.includes("o que são esses atalhos") ||
+    normalized.includes("para que servem esses atalhos") ||
+    normalized.includes("o que significa esses atalhos")
+  ) {
+    return "shortcuts";
   }
 
   if (isImobGuideQuestion(input)) {
@@ -417,6 +451,21 @@ function buildImobNavigationReply() {
   ].join("\n");
 }
 
+function buildImobShortcutsReply() {
+  return [
+    "**O que são esses atalhos no IMOB**",
+    "",
+    "- `Dashboard IMOB`: para acompanhar pipeline, etapas e gargalos da operação.",
+    "- `Chat IMOB`: para destravar o próximo passo do caso atual pela conversa.",
+    "- `Marketplace IMOB`: para instalar ou ativar a vertical no workspace.",
+    "",
+    "Regra prática:",
+    "- dashboard para visão e acompanhamento",
+    "- chat para decisão e orientação contextual",
+    "- marketplace para ativação",
+  ].join("\n");
+}
+
 function buildImobInstallReply() {
   return [
     "**Como instalar o IMOB no workspace**",
@@ -443,10 +492,46 @@ function buildImobShortcutReply(selection: ImobShortcutSelection) {
   ].join("\n");
 }
 
+function buildImobSellValueReply() {
+  return [
+    "**Como o IMOB ajuda a vender um imóvel**",
+    "",
+    "Na prática, o IMOB te ajuda a vender organizando a jornada comercial com mais contexto:",
+    "- entrada do imóvel e captação no pipeline certo",
+    "- acompanhamento de anúncio, interesse e próximos passos",
+    "- organização de proposta, negociação e documentação inicial",
+    "- continuidade do caso até contrato e fechamento",
+    "",
+    "Se você quiser, eu posso detalhar a etapa de captação, proposta, negociação ou contrato.",
+  ].join("\n");
+}
+
 export function buildDeterministicImobReply(input?: string) {
+  const normalized = input ? normalizeIntentText(input) : "";
+
   const shortcut = input ? resolveImobShortcutSelection(input) : null;
   if (shortcut) {
     return buildImobShortcutReply(shortcut);
+  }
+
+  if (
+    normalized.includes("como vai ajudar a vender um imovel") ||
+    normalized.includes("como vai ajudar a vender um imóvel") ||
+    normalized.includes("como o imob ajuda a vender") ||
+    normalized.includes("como ajuda a vender um imovel") ||
+    normalized.includes("como ajuda a vender um imóvel")
+  ) {
+    return buildImobSellValueReply();
+  }
+
+  const faq = input ? resolveImobFaqSeed(input) : null;
+  if (faq) {
+    return buildImobFaqReply(faq);
+  }
+
+  const stage = input ? resolveImobJourneyStage(input) : null;
+  if (stage) {
+    return buildImobJourneyReply(stage);
   }
 
   const helpIntent = input ? resolveImobHelpIntent(input) : null;
@@ -459,6 +544,8 @@ export function buildDeterministicImobReply(input?: string) {
       return buildImobNavigationReply();
     case "install":
       return buildImobInstallReply();
+    case "shortcuts":
+      return buildImobShortcutsReply();
     case "overview":
     default:
       return buildImobOverviewReply();

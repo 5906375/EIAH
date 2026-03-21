@@ -53,7 +53,12 @@ export function isPlatformSelfExplainQuestion(input: string) {
     "preciso entender o que o eiah e",
     "me explique o que e o eiah",
     "entender o que o eiah e",
+    "explique voce",
+    "me explique voce",
     "fala de voce",
+    "fale sobre voce",
+    "quem e voce",
+    "quem eh voce",
     "qual agente esta aqui",
     "qual agente está aqui",
     "quem esta falando comigo",
@@ -160,6 +165,34 @@ function buildPagesOverviewReply() {
     "- `IMOB`: quando quer acompanhar jornada e contexto imobiliário",
     "",
     "Se você me disser a área, eu te explico a página certa e o próximo passo.",
+  ].join("\n");
+}
+
+function buildAgentsOverviewReply() {
+  return [
+    "**Como pensar a área de Agentes**",
+    "",
+    "Use `Agentes` quando você quiser entender qual especialista faz mais sentido para o seu caso.",
+    "",
+    "Na prática, essa área te ajuda a:",
+    "- ver quais especialistas estão disponíveis no workspace",
+    "- entender o foco de cada agente",
+    "- decidir quando seguir com o EIAH ou quando aprofundar em um especialista",
+    "",
+    "Se quiser, eu também posso te dizer qual agente usar em um caso específico.",
+  ].join("\n");
+}
+
+function buildFastPathReply() {
+  return [
+    "**Caminho rápido sem burocracia**",
+    "",
+    "Se você quiser ir pelo caminho mais direto, use esta sequência:",
+    "1. diga o objetivo em uma frase;",
+    "2. eu te indico a área certa: Runs, Agentes, Billing, IMOB ou proposta;",
+    "3. se precisar, eu já te encaminho para o especialista certo.",
+    "",
+    "Se quiser começar agora, me diga o que você quer resolver.",
   ].join("\n");
 }
 
@@ -274,7 +307,11 @@ export function buildDeterministicHelpReply(input: string): string | null {
   if (
     normalized.includes("explique a plataforma") ||
     normalized.includes("explica a plataforma") ||
-    normalized.includes("como a plataforma funciona")
+    normalized.includes("como a plataforma funciona") ||
+    normalized.includes("o que da para fazer no site") ||
+    normalized.includes("o que dá para fazer no site") ||
+    normalized.includes("o que posso fazer no site") ||
+    normalized.includes("o que posso fazer aqui")
   ) {
     return buildPlatformOverviewReply();
   }
@@ -288,6 +325,18 @@ export function buildDeterministicHelpReply(input: string): string | null {
     normalized.includes("quais páginas eu devo usar")
   ) {
     return buildPagesOverviewReply();
+  }
+
+  if (
+    normalized === "agentes" ||
+    normalized.startsWith("agentes") ||
+    normalized.includes("sobre agentes") ||
+    normalized.includes("area de agentes") ||
+    normalized.includes("área de agentes") ||
+    normalized.includes("como funcionam os agentes") ||
+    normalized.includes("como funcionam agentes")
+  ) {
+    return buildAgentsOverviewReply();
   }
 
   if (
@@ -318,6 +367,14 @@ export function buildDeterministicHelpReply(input: string): string | null {
       "",
       "Se você ainda não souber qual agente usar, pode começar comigo no EIAH que eu direciono a conversa pelo caminho mais útil.",
     ].join("\n");
+  }
+
+  if (
+    normalized.includes("passo a passo rapido sem cair em burocracia") ||
+    normalized.includes("passo a passo rápido sem cair em burocracia") ||
+    normalized.includes("sem cair em burocracia")
+  ) {
+    return buildFastPathReply();
   }
 
   if (
@@ -374,7 +431,13 @@ export function buildDeterministicHelpReply(input: string): string | null {
     ].join("\n");
   }
 
-  if (normalized.includes("endpoint") || normalized.includes("api")) {
+  if (
+    normalized.includes("endpoint") ||
+    normalized.includes("/api/") ||
+    normalized.includes("api no eiah") ||
+    normalized.includes("rotas da api") ||
+    normalized.includes("endpoints da api")
+  ) {
     return [
       "**API no EIAH (visão rápida)**",
       "",
