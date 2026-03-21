@@ -16,6 +16,7 @@ import {
 import { consumeMaintenanceJobs } from "@eiah/core";
 import "./jobs/runAtivoUniversalJob";
 import { getMemoryDeps, shutdownMemoryDeps } from "./services/memory.js";
+import { scheduleImobDriveSyncWorker } from "./imobDriveSyncWorker";
 import { getPrismaForTenant, prismaGlobal } from "@repo/db";
 import Redis from "ioredis";
 import { Queue } from "bullmq";
@@ -319,6 +320,7 @@ async function bootstrap() {
 
   await scheduleLedgerReconcile();
   await scheduleMonthlyInvoiceGeneration();
+  await scheduleImobDriveSyncWorker();
 
   await consumeMaintenanceJobs(async (job) => {
     switch (job.kind) {
