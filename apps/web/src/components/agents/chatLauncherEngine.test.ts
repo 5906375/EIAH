@@ -9,6 +9,7 @@ import {
   buildDeterministicHelpReply,
   buildDeterministicImobReply,
   buildEiahQuickReplies,
+  resolveEiahDecision,
   detectLauncherRouteIntent,
   resolveLauncherProposalDecision,
 } from "./chatLauncherEngine.ts";
@@ -50,8 +51,48 @@ test("platform and pages help replies are distinct", () => {
   assert.match(pagesReply, /Runs|Agentes|Billing|Marketplace/i);
 });
 
+test("site capabilities follow-up maps to platform overview instead of generic fallback", () => {
+  const reply = buildDeterministicHelpReply("o que dá para fazer no site");
+
+  assert.ok(reply);
+  assert.match(reply, /Como a plataforma EIAH se organiza/i);
+  assert.match(reply, /Runs|Agentes|Billing|Marketplace|IMOB/i);
+});
+
+test("fast-path follow-up does not fall into API help", () => {
+  const reply = buildDeterministicHelpReply("passo a passo rápido sem cair em burocracia");
+
+  assert.ok(reply);
+  assert.match(reply, /Caminho rápido sem burocracia/i);
+  assert.doesNotMatch(reply ?? "", /API no EIAH/i);
+});
+
+test("agents follow-up returns agents overview", () => {
+  const reply = buildDeterministicHelpReply("Agentes.");
+
+  assert.ok(reply);
+  assert.match(reply, /Como pensar a área de Agentes/i);
+  assert.match(reply, /especialista|workspace/i);
+});
+
+test("eiah self explain handles 'explique você' as self intro instead of generic fallback", () => {
+  const decision = resolveEiahDecision({
+    input: "explique você",
+    routeIntent: "help",
+    eiahMode: "help",
+    agentProfile: null,
+    catalogAgents: [],
+    intentUnknown: false,
+  });
+
+  assert.equal(decision.kind, "platform_self_explain");
+  assert.match(decision.content ?? "", /assistente principal da plataforma/i);
+});
+
 test("imob deterministic replies differentiate what is, end-to-end, navigation and install", () => {
   assert.match(buildDeterministicImobReply("Tá mas o que é IMOB ?") ?? "", /O que é o IMOB/i);
+  assert.match(buildDeterministicImobReply("O que é o IMOB?") ?? "", /O que é o IMOB/i);
+  assert.match(buildDeterministicImobReply("fale sobre o IMOB") ?? "", /O que é o IMOB/i);
   assert.match(buildDeterministicImobReply("Como funciona IMOB do início ao fim?") ?? "", /do início ao fim/i);
   assert.match(
     buildDeterministicImobReply("Onde acompanho pipeline e etapas no IMOB?") ?? "",
@@ -61,6 +102,30 @@ test("imob deterministic replies differentiate what is, end-to-end, navigation a
     buildDeterministicImobReply("Quero instalar o IMOB no workspace.") ?? "",
     /\/app\/marketplace\/imob/
   );
+});
+
+test("imob deterministic reply prioritizes locacao context over generic overview", () => {
+  const reply = buildDeterministicImobReply("tenho imobiliária e quero captar clientes para locação");
+
+  assert.ok(reply);
+  assert.match(reply, /Se o foco é locação/i);
+  assert.match(reply, /captação|anúncio|proposta de locação/i);
+});
+
+test("imob sell-value follow-up explains how the vertical helps selling", () => {
+  const reply = buildDeterministicImobReply("como vai ajudar a vender um imóvel?");
+
+  assert.ok(reply);
+  assert.match(reply, /Como o IMOB ajuda a vender um imóvel/i);
+  assert.match(reply, /captação|proposta|negociação|contrato/i);
+});
+
+test("imob shortcuts follow-up explains what the shortcuts mean", () => {
+  const reply = buildDeterministicImobReply("o que é esses atalhos ?");
+
+  assert.ok(reply);
+  assert.match(reply, /O que são esses atalhos no IMOB/i);
+  assert.match(reply, /Dashboard IMOB|Chat IMOB|Marketplace IMOB/i);
 });
 
 test("imob shortcut selections return the chosen shortcut as a clickable link", () => {

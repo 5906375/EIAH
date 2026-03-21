@@ -1,6 +1,6 @@
 # EVIDENCE INDEX — EIAH
 
-> Roadmap atual (fonte da verdade): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-03-10.md` 
+> Roadmap atual (fonte da verdade): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-03-21.md` 
 
 ## Sprint 1 (F5.3) — Evidencias operacionais
 
@@ -158,6 +158,7 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | Proposal assistant com cálculo guiado | `apps/web/src/components/agents/ChatAgentLauncher.tsx` + `apps/api/src/routes/billing.ts` | Coleta de contexto comercial e cálculo de proposta com regra de billing compatível ao backend. |
 | Central de Ajuda (query/reindex/sessões) | `apps/api/src/routes/help.ts` + `apps/api/src/services/eiahHelpKnowledge.ts` + `packages/db/prisma/schema.prisma` | Base interna consultável, reindexação e persistência analítica de atendimentos (`helpdesk_sessions`). |
 | IMOB chat ampliado (entrevista + telemetria + export) | `apps/api/src/routes/imob.ts` + `apps/web/src/pages/app/imob/chat.tsx` | Jornada assistida por thread com estado de entrevista, telemetria operacional e export auditável. |
+| Track P — IMOB Knowledge Search (normativo) | `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-03-21.md` + `ops/verticals/vertical-onboarding-checklist.md` + `apps/api/src/routes/imob.ts` + `apps/web/src/features/imob/chatOrchestrator.ts` | Frente explícita de busca documental in-chat para a vertical IMOB, com roteamento agent-driven, gating por tenant/assinatura e evolução por `sourceType` sem regressão no core. |
 | Hardening estrutural do chat agent-driven | `apps/web/src/components/agents/chatLauncherEngine.ts` + `apps/web/src/components/agents/proposalDomainResolver.ts` + `apps/web/src/components/agents/imobContextResolver.ts` + `apps/web/src/components/agents/legalContextResolver.ts` + `apps/web/src/components/agents/specialistExplainCatalog.ts` + `apps/web/src/components/agents/specialistGuidanceResolver.ts` + `apps/web/src/components/agents/specialistDecisionResolver.ts` + `apps/web/src/components/agents/platformHelpResolver.ts` + `apps/web/src/components/agents/agentPresentationResolver.ts` | Modularização do runtime do chat por domínio/papel, mantendo o `ChatAgentLauncher` em modo `render-first`. |
 | Cobertura e gate de regressão do chat | `apps/web/src/components/agents/chatLauncherEngine.test.ts` + `.github/workflows/ci.yml` | Cobertura determinística de proposal/help/IMOB/atalhos com gate obrigatório `ChatEngineRegression` no `CI Monorepo`. |
 
@@ -172,6 +173,7 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 - **Playbook expandido por página** (`apps/web/src/pages/app/agents/index.tsx`, `apps/web/src/assets/playbook/`): guia operacional em linguagem humana.
 - **Central de Ajuda EIAH** (`apps/api/src/routes/help.ts`, `apps/api/src/services/eiahHelpKnowledge.ts`, `packages/db/prisma/schema.prisma`): query/reindex + sessões analíticas.
 - **IMOB ampliado** (`apps/api/src/routes/imob.ts`, `apps/web/src/pages/app/imob/chat.tsx`, `apps/web/src/features/imob/`): entrevista de contrato, telemetria e export auditável.
+- **Track P — IMOB Knowledge Search (normativo)** (`ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-03-21.md`, `ops/verticals/vertical-onboarding-checklist.md`, `apps/api/src/routes/imob.ts`, `apps/web/src/features/imob/chatOrchestrator.ts`): busca documental in-chat planejada para a vertical IMOB, com gating por `tenant/workspace` + assinatura ativa e evolução por `sourceType`.
 - **P2 global HIGH coverage** (`scripts/checkP2HighGlobalCoverage.ts`, `ops/evidence/latest/p2-high-global-coverage.json`, `packages/core/src/actions/__tests__/highGlobalCoverage.e2e.test.ts`): transição de “inventariado” para “covered” com gate bloqueante.
 - **Chat agent-driven hardening** (`apps/web/src/components/agents/chatLauncherEngine.ts`, `apps/web/src/components/agents/proposalDomainResolver.ts`, `apps/web/src/components/agents/imobContextResolver.ts`, `apps/web/src/components/agents/legalContextResolver.ts`, `apps/web/src/components/agents/specialistGuidanceResolver.ts`, `apps/web/src/components/agents/specialistDecisionResolver.ts`, `apps/web/src/components/agents/platformHelpResolver.ts`, `apps/web/src/components/agents/agentPresentationResolver.ts`, `apps/web/src/components/agents/chatLauncherEngine.test.ts`, `.github/workflows/ci.yml`): engine modularizado por domínio/papel com cobertura de regressão e gate de CI.
 

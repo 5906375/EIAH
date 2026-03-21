@@ -230,6 +230,10 @@ function normalizeCardCtas(ctas?: CardCta[]) {
   return ctas.map(normalizeCardCta);
 }
 
+function isExternalHref(href?: string) {
+  return typeof href === "string" && /^https?:\/\//i.test(href);
+}
+
 function getIntentActionCtas(intent: ImobActionPlan["intent"]): CardCta[] {
   switch (intent) {
     case "capture":
@@ -891,6 +895,9 @@ const ImobChatPage: React.FC = () => {
     (plan: ImobActionPlan) => {
       const region = plan.search?.region ?? "Brasil";
       const segment = plan.search?.segment ?? "ambos";
+      const searchSources = plan.search?.sources ?? [];
+      const driveSearchSource = searchSources.find((source) => source.id === "drive-search");
+      const driveFolderSource = searchSources.find((source) => source.id === "drive-folder");
       const internal = SYNTHETIC_SEARCH_CATALOG.filter((item) => {
         const regionMatch = region === "Brasil" ? true : item.region === region;
         const segmentMatch = segment === "ambos" ? true : item.segment === segment;
@@ -905,11 +912,15 @@ const ImobChatPage: React.FC = () => {
           : ["- Não encontrei resultados internos com esse recorte."];
       const externalLines = externalProviderAvailable
         ? [
+            driveSearchSource ? `- ${driveSearchSource.label} (Drive do IMOB)` : "- Drive do IMOB disponível para consulta direta.",
             "- Zap Imóveis (portal nacional)",
             "- Viva Real (portal nacional)",
             "- OLX Imóveis (regional e nacional)",
           ]
-        : ["- Provider externo não habilitado neste tenant/workspace."];
+        : [
+            driveSearchSource ? `- ${driveSearchSource.label} (Drive do IMOB)` : "- Drive do IMOB disponível para consulta direta.",
+            "- Provider externo não habilitado neste tenant/workspace.",
+          ];
 
       const segmentLabel = segment === "locacao" ? "locação" : segment === "venda" ? "venda" : "locação e venda";
       return [
@@ -921,13 +932,38 @@ const ImobChatPage: React.FC = () => {
         "Fontes externas:",
         ...externalLines,
         "",
+        driveFolderSource ? `Pasta base: ${driveFolderSource.href}` : "",
+        driveSearchSource ? "Use os atalhos abaixo para abrir a busca do acervo IMOB já filtrada." : "",
+        driveSearchSource || driveFolderSource ? "" : "",
         "Sugestões de busca no Brasil:",
         "- Região: Sul, Sudeste, Nordeste",
         "- Segmento: locação, venda ou ambos",
         "- Faixa: até R$ 500 mil, R$ 500 mil a R$ 1,5 mi, acima de R$ 1,5 mi",
-      ].join("\n");
+      ]
+        .filter(Boolean)
+        .join("\n");
     },
     [session.entitlements]
+  );
+
+  const buildSearchCard = React.useCallback(
+    (plan: ImobActionPlan, thread: { id: string; label: string; status?: "active" | "done" | "blocked" }): MessageCard | undefined => {
+      const sources = plan.search?.sources ?? [];
+      if (sources.length === 0) return undefined;
+      return {
+        type: "action",
+        title: "Fontes de busca",
+        thread,
+        lines: sources.map((source) => source.description),
+        ctas: sources.map((source, index) => ({
+          id: source.id,
+          label: source.label,
+          kind: index === 0 ? "primary" : "neutral",
+          href: source.href,
+        })),
+      };
+    },
+    []
   );
 
   React.useEffect(() => {
@@ -1577,15 +1613,17 @@ const ImobChatPage: React.FC = () => {
     }
 
     if (plan.mode === "search") {
+      const searchThread = {
+        id: operationThread.id,
+        label: operationThread.label,
+        status: "active" as const,
+      };
       const searchReply: ChatMessage = {
         id: makeId("assistant"),
         role: "assistant",
         text: buildSearchResponse(plan),
-        thread: {
-          id: operationThread.id,
-          label: operationThread.label,
-          status: "active",
-        },
+        thread: searchThread,
+        card: buildSearchCard(plan, searchThread),
       };
       appendMessage(searchReply);
       void persistMessage(searchReply, {
@@ -2530,14 +2568,27 @@ const ImobChatPage: React.FC = () => {
                               const isRejectLocked = rejectLockedMessageId === message.id;
                               const renderCta = (cta: CardCta) =>
                                 cta.href ? (
-                                  <Link
-                                    key={`${message.id}-footer-cta-${cta.id}`}
-                                    to={withDashboardContext(cta.href, messageThreadId)}
-                                    onClick={() => setOpenOptionsMessageId(null)}
-                                    className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${getCtaClass(cta.kind)}`}
-                                  >
-                                    {cta.label}
-                                  </Link>
+                                  isExternalHref(cta.href) ? (
+                                    <a
+                                      key={`${message.id}-footer-cta-${cta.id}`}
+                                      href={cta.href}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      onClick={() => setOpenOptionsMessageId(null)}
+                                      className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${getCtaClass(cta.kind)}`}
+                                    >
+                                      {cta.label}
+                                    </a>
+                                  ) : (
+                                    <Link
+                                      key={`${message.id}-footer-cta-${cta.id}`}
+                                      to={withDashboardContext(cta.href, messageThreadId)}
+                                      onClick={() => setOpenOptionsMessageId(null)}
+                                      className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${getCtaClass(cta.kind)}`}
+                                    >
+                                      {cta.label}
+                                    </Link>
+                                  )
                                 ) : (
                                   <button
                                     key={`${message.id}-footer-cta-${cta.id}`}

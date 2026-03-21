@@ -35,7 +35,7 @@ O core da plataforma está operacional e auditável (F0-F3 concluídas), com F4/
 ## 4) Backlog priorizado v8 (execução)
 
 ## P0 — Integridade documental e fonte da verdade
-- Definir e publicar arquivo único de roadmap canônico (`ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-03-10.md`).
+- Definir e publicar arquivo único de roadmap canônico (`ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-03-21.md`).
 - Atualizar `docs/EVIDENCE_INDEX.md` para apontar apenas fontes existentes.
 - Adicionar check de CI para falhar quando “source of truth” não existir.
 
@@ -90,11 +90,16 @@ O core da plataforma está operacional e auditável (F0-F3 concluídas), com F4/
 - Escalar verticais com checklist padrão e gates de não-regressão.
 - Fortalecer command centers por vertical (funil, bloqueios, export de prova).
 - Operar piloto comercial com critérios de avanço `shadow -> pilot -> small`.
+- Adicionar `IMOB Knowledge Search` como capacidade documental in-chat da vertical, com `EIAH` atuando como front door e `IMOB` como dono do fluxo de busca.
+- Garantir gate fail-closed por `tenantId`/`workspaceId` e assinatura ativa da vertical antes de expor busca, chat ou ações do `IMOB`.
+- Evoluir a busca por fases: handshake no chat -> busca por metadados -> sync de Drive -> expansão para uploads/web, preservando `sourceType` e isolamento multi-tenant/workspace.
 
 **DoD P4**
 - KPI mínimo por vertical atingido.
 - Sem regressão de isolamento multi-tenant/workspace.
 - Evidências semanais de operação e rollout.
+- `IMOB Knowledge Search` roteado pelo `engine`, sem lógica nova no `ChatAgentLauncher`.
+- Busca documental da vertical operando com gating por assinatura e retorno auditável por fonte (`drive`, `upload`, `web`, `internal_doc`).
 
 ## 5) Riscos principais e mitigação
 
@@ -175,14 +180,17 @@ Objetivo: concluir ponta a ponta os itens ainda parciais (governança/economy/au
 - Aplicar checklist padrão por vertical com gates de não-regressão.
 - Operar rollout controlado `shadow -> pilot -> small` com critérios explícitos de avanço.
 - Fortalecer command centers por vertical com export de provas por run.
+- Implementar `IMOB Knowledge Search` em fases, começando por handshake agent-driven no `EIAH`/`IMOB`, busca por metadados e sync pragmático do Drive antes de webhook/watch.
+- Exigir gating fail-closed por `tenantId` cadastrado e assinatura ativa da vertical para qualquer busca/chat/ação do `IMOB`.
 
 **DoD Track P**
 - KPI mínimo por vertical atingido.
 - Sem regressão de isolamento multi-tenant/workspace.
 - Evidência semanal de operação e rollout.
+- Busca documental `IMOB` disponível in-chat sem reabrir lógica no launcher e com fonte do resultado explicitada no payload/renderização.
 
 ### 9.6) P0 transversal (obrigatório durante todas as frentes)
-- Manter `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-03-10.md` e `docs/EVIDENCE_INDEX.md` sincronizados.
+- Manter `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-03-21.md` e `docs/EVIDENCE_INDEX.md` sincronizados.
 - Bloquear em CI referências inválidas e drift documental.
 - Tratar qualquer divergência doc/contrato/runtime como incidente P0.
 

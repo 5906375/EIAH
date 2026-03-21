@@ -1,5 +1,12 @@
 export type ImobIntent = "capture" | "match" | "proposal" | "contract" | "commission" | "adjustment";
 
+export type ImobSearchSource = {
+  id: string;
+  label: string;
+  href: string;
+  description: string;
+};
+
 export type ImobActionPlan = {
   intent: ImobIntent;
   action: string;
@@ -11,8 +18,14 @@ export type ImobActionPlan = {
     query: string;
     region: string;
     segment: "locacao" | "venda" | "ambos";
+    sources?: ImobSearchSource[];
   };
 };
+
+export const IMOB_DRIVE_FOLDER_URL =
+  "https://drive.google.com/drive/folders/1rwqbWQmL2eiXYBY5UaPReubZ2sbQsBu3";
+
+const IMOB_DRIVE_FOLDER_ID = "1rwqbWQmL2eiXYBY5UaPReubZ2sbQsBu3";
 
 function extractNumericToken(text: string) {
   const match = text.match(/#?([0-9]{2,})/);
@@ -61,6 +74,42 @@ function extractSegment(text: string): "locacao" | "venda" | "ambos" {
   return "ambos";
 }
 
+function buildDriveScopedSearchQuery(query: string) {
+  const safeQuery = query.trim().replace(/'/g, " ").replace(/\s+/g, " ").slice(0, 180);
+  return `'${IMOB_DRIVE_FOLDER_ID}' in parents and fullText contains '${safeQuery}'`;
+}
+
+export function buildImobDriveSearchUrl(query: string) {
+  return `https://drive.google.com/drive/search?q=${encodeURIComponent(buildDriveScopedSearchQuery(query))}`;
+}
+
+function buildSearchSourceDescription(region: string, segment: "locacao" | "venda" | "ambos") {
+  const segmentLabel = segment === "locacao" ? "locação" : segment === "venda" ? "venda" : "locação e venda";
+  return region === "Brasil" ? segmentLabel : `${segmentLabel} em ${region}`;
+}
+
+function buildImobSearchSources(
+  query: string,
+  region: string,
+  segment: "locacao" | "venda" | "ambos"
+): ImobSearchSource[] {
+  const scopeLabel = buildSearchSourceDescription(region, segment);
+  return [
+    {
+      id: "drive-search",
+      label: "Buscar no acervo IMOB",
+      href: buildImobDriveSearchUrl(query),
+      description: `Pesquisa direta no Drive do IMOB para ${scopeLabel}.`,
+    },
+    {
+      id: "drive-folder",
+      label: "Abrir pasta base IMOB",
+      href: IMOB_DRIVE_FOLDER_URL,
+      description: "Abre a pasta compartilhada para navegação manual no acervo do time.",
+    },
+  ];
+}
+
 function isResearchQuery(message: string) {
   const text = normalizeText(message);
   return (
@@ -82,6 +131,7 @@ export function buildImobActionPlan(message: string): ImobActionPlan {
     const region = extractRegion(message);
     const segment = extractSegment(message);
     const timestamp = new Date().toISOString();
+    const sources = buildImobSearchSources(message, region, segment);
     return {
       intent: "match",
       action: "realestate.search_inventory",
@@ -97,6 +147,7 @@ export function buildImobActionPlan(message: string): ImobActionPlan {
         query: message,
         region,
         segment,
+        sources,
       },
       suggestedNextAction: "Refinar região, faixa de preço e tipologia.",
     };
