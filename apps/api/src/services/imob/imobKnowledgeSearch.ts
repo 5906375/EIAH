@@ -8,6 +8,7 @@ export type ImobKnowledgeSearchFilters = {
   documentType?: string | null;
   operationType?: string | null;
   tags?: string[] | null;
+  sourceTypes?: ImobKnowledgeSourceType[] | null;
 };
 
 export type ImobKnowledgeSearchParams = {
@@ -192,6 +193,9 @@ function matchesFilters(item: ImobKnowledgeSearchItem, filters: ImobKnowledgeSea
     const tagSet = new Set(item.tags.map((tag) => normalizeText(tag)));
     const hasAnyTag = filters.tags.some((tag) => tagSet.has(normalizeText(tag)));
     if (!hasAnyTag) return false;
+  }
+  if (filters.sourceTypes && filters.sourceTypes.length > 0) {
+    if (!filters.sourceTypes.includes(item.sourceType)) return false;
   }
   return true;
 }

@@ -954,28 +954,34 @@ const ImobChatPage: React.FC = () => {
 
   const buildKnowledgeSearchResponse = React.useCallback(
     (result: ImobKnowledgeSearchResponse, plan: ImobActionPlan) => {
-      const items = result.items.slice(0, 4);
-      const itemLines =
-        items.length > 0
-          ? items.map(
-              (item) =>
-                `- ${item.title} • ${item.sourceType} • ${item.documentType} • ${item.region}\n  ${item.snippet}`
-            )
-          : ["- Não encontrei documentos com esse recorte no acervo atual."];
-      const sourceLines =
-        plan.search?.sources?.map((source) => `- ${source.label}: ${source.description}`) ?? [];
+      const sourceTypes = result.appliedFilters.sourceTypes ?? plan.search?.sourceTypes ?? [];
+      const sourceLabel =
+        sourceTypes.length > 0
+          ? ` em ${sourceTypes
+              .map((item) =>
+                item === "drive"
+                  ? "Drive"
+                  : item === "upload"
+                    ? "Uploads"
+                    : item === "web"
+                      ? "Web"
+                      : "Docs internos"
+              )
+              .join(", ")}`
+          : "";
+      if (result.total === 0) {
+        return [
+          `Não encontrei documentos com esse recorte${sourceLabel} no acervo IMOB.`,
+          "",
+          "Tente refinar por tipo documental, cidade, região ou operação.",
+        ].join("\n");
+      }
 
+      const hasComplementarySources = (plan.search?.sources?.length ?? 0) > 0;
       return [
-        `Encontrei ${result.total} resultado(s) documentais para esta busca no IMOB.`,
-        "",
-        "Resultados:",
-        ...itemLines,
-        "",
-        sourceLines.length > 0 ? "Fontes complementares:" : "",
-        ...sourceLines,
-      ]
-        .filter(Boolean)
-        .join("\n");
+        `Encontrei ${result.total} resultado(s) documentais${sourceLabel} para esta busca no IMOB.`,
+        hasComplementarySources ? "Os detalhes estão nos cards abaixo e as fontes complementares continuam disponíveis nos atalhos." : "Os detalhes estão nos cards abaixo.",
+      ].join("\n\n");
     },
     []
   );
@@ -1712,6 +1718,7 @@ const ImobChatPage: React.FC = () => {
           filters: {
             region: plan.search?.region ?? null,
             segment: plan.search?.segment ?? null,
+            sourceTypes: plan.search?.sourceTypes ?? [],
           },
         });
         const searchReply: ChatMessage = {

@@ -1015,6 +1015,7 @@ export type ImobKnowledgeSearchResponse = {
     documentType?: string | null;
     operationType?: string | null;
     tags?: string[] | null;
+    sourceTypes?: Array<"drive" | "upload" | "web" | "internal_doc"> | null;
   };
   total: number;
   items: ImobKnowledgeSearchItem[];
@@ -1145,6 +1146,7 @@ export async function apiSearchImobKnowledge(body: {
     documentType?: string | null;
     operationType?: string | null;
     tags?: string[];
+    sourceTypes?: Array<"drive" | "upload" | "web" | "internal_doc">;
   };
 }) {
   return http<{ ok: true; data: ImobKnowledgeSearchResponse }>(`/imob/knowledge/search`, {

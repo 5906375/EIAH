@@ -42,6 +42,17 @@ test("documentary IMOB search handshake produces search_knowledge mode when enti
   assert.equal(plan.search?.sources?.length, 2);
 });
 
+test("documentary IMOB search extracts explicit source filters", () => {
+  const plan = buildImobActionPlan("Buscar playbook interno e uploads de captação", {
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    entitlements: { REAL_ESTATE_CORE: true },
+  });
+
+  assert.equal(plan.mode, "search_knowledge");
+  assert.deepEqual(plan.search?.sourceTypes, ["upload", "internal_doc"]);
+});
+
 test("documentary IMOB search handshake is blocked without entitlement", () => {
   const plan = buildImobActionPlan("Buscar no acervo IMOB", {
     tenantId: "tenant-A",

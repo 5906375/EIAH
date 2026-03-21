@@ -36,3 +36,17 @@ test("IMOB knowledge search service filters by document type and operation", asy
   assert.ok(result.items.every((item) => item.operationType === "captacao"));
   assert.equal(result.items[0]?.sourceType, "internal_doc");
 });
+
+test("IMOB knowledge search service filters by source types", async () => {
+  const result = await searchImobKnowledge({
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    query: "guia proposta venda",
+    filters: {
+      sourceTypes: ["web"],
+    },
+  });
+
+  assert.ok(result.total >= 1);
+  assert.ok(result.items.every((item) => item.sourceType === "web"));
+});
