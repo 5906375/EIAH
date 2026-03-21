@@ -5,6 +5,7 @@ import type { ImobKnowledgeSearchItem } from "@/lib/api";
 type KnowledgeCardProps = {
   item: ImobKnowledgeSearchItem;
   resolveHref?: (href: string) => string;
+  onOpenInPlatform?: (item: ImobKnowledgeSearchItem) => void;
 };
 
 function sourceTypeLabel(sourceType: ImobKnowledgeSearchItem["sourceType"]) {
@@ -46,9 +47,9 @@ function isExternalHref(href: string) {
   return /^https?:\/\//i.test(href);
 }
 
-export const KnowledgeCard: React.FC<KnowledgeCardProps> = ({ item, resolveHref }) => {
+export const KnowledgeCard: React.FC<KnowledgeCardProps> = ({ item, resolveHref, onOpenInPlatform }) => {
   const href = resolveHref ? resolveHref(item.href) : item.href;
-  const openLabel = "Abrir documento";
+  const openExternalLabel = item.sourceType === "drive" ? "Abrir no Drive" : "Abrir documento";
 
   return (
     <article className="rounded-xl border border-white/10 bg-black/15 p-3">
@@ -99,22 +100,29 @@ export const KnowledgeCard: React.FC<KnowledgeCardProps> = ({ item, resolveHref 
         </div>
       </dl>
 
-      <div className="mt-3">
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => onOpenInPlatform?.(item)}
+          className="inline-flex rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground hover:border-accent/60"
+        >
+          Abrir no IMOB
+        </button>
         {isExternalHref(href) ? (
           <a
             href={href}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground hover:border-accent/60"
+            className="inline-flex rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground hover:border-white/30"
           >
-            {openLabel}
+            {openExternalLabel}
           </a>
         ) : (
           <Link
             to={href}
-            className="inline-flex rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground hover:border-accent/60"
+            className="inline-flex rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground hover:border-white/30"
           >
-            {openLabel}
+            {openExternalLabel}
           </Link>
         )}
       </div>

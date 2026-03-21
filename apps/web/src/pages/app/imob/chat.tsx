@@ -42,6 +42,7 @@ import {
 } from "@/features/imob/contractInterviewEngine";
 import { ThreadPanel } from "@/features/imob/ThreadPanel";
 import { KnowledgeCard } from "@/features/imob/KnowledgeCard";
+import { ImobKnowledgeViewer } from "@/features/imob/ImobKnowledgeViewer";
 import { formatDataInputTemplate, getDataInputTemplate } from "@/domain/inputTemplates";
 import { CONTRACT_SCHEMAS } from "@/features/imob/contractSchemas";
 
@@ -524,6 +525,7 @@ const ImobChatPage: React.FC = () => {
   const [messageFeedback, setMessageFeedback] = React.useState<Record<string, "up" | "down">>({});
   const [openOptionsMessageId, setOpenOptionsMessageId] = React.useState<string | null>(null);
   const [rejectLockedMessageId, setRejectLockedMessageId] = React.useState<string | null>(null);
+  const [selectedKnowledgeItem, setSelectedKnowledgeItem] = React.useState<ImobKnowledgeSearchResponse["items"][number] | null>(null);
   const [isNearBottom, setIsNearBottom] = React.useState(true);
   const [showJumpToLatest, setShowJumpToLatest] = React.useState(false);
   const [contractInterviewState, setContractInterviewState] = React.useState<ContractInterviewState | null>(null);
@@ -2632,6 +2634,7 @@ const ImobChatPage: React.FC = () => {
                                   <KnowledgeCard
                                     key={`${message.id}-${item.id}`}
                                     item={item}
+                                    onOpenInPlatform={setSelectedKnowledgeItem}
                                     resolveHref={(href) => withDashboardContext(href, messageThread?.id ?? null)}
                                   />
                                 ))}
@@ -2929,6 +2932,13 @@ const ImobChatPage: React.FC = () => {
           </article>
         </div>
       </section>
+
+      <ImobKnowledgeViewer
+        open={!!selectedKnowledgeItem}
+        item={selectedKnowledgeItem}
+        onClose={() => setSelectedKnowledgeItem(null)}
+        resolveHref={(href) => withDashboardContext(href)}
+      />
 
     </div>
   );
