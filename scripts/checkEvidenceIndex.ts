@@ -5,7 +5,7 @@ const CHECK = "check:evidence-index";
 const file = path.resolve("docs/EVIDENCE_INDEX.md");
 const ROOT = process.cwd();
 const CANONICAL_ROADMAP =
-  process.env.EIAH_CANONICAL_ROADMAP ?? "ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-03-10.md";
+  process.env.EIAH_CANONICAL_ROADMAP ?? "ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-03-21.md";
 
 function fail(message: string, details?: Record<string, unknown>): never {
   console.error(JSON.stringify({ ok: false, check: CHECK, message, details }, null, 2));
