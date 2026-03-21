@@ -1,0 +1,112 @@
+{
+  "name": "imob-search-provider-contract",
+  "version": "1.0.0",
+  "vertical": "IMOB",
+  "frontDoor": "EIAH",
+  "searchPolicy": {
+    "defaultMode": "internal_only",
+    "allowedModes": [
+      "internal_only",
+      "internal_preferred_with_web_fallback",
+      "federated_internal_plus_web"
+    ],
+    "priorityRule": "internal_first_web_complementary",
+    "maxUserFacingOptions": 3
+  },
+  "capabilities": {
+    "imob.search_internal_library": {
+      "purpose": "Consultar o acervo interno do IMOB por tenant/workspace.",
+      "sources": ["drive", "upload", "internal_doc"],
+      "requiredEntitlements": ["REAL_ESTATE_CORE"],
+      "requiredContext": ["tenantId", "workspaceId"],
+      "failClosed": true
+    },
+    "imob.search_web_sources": {
+      "purpose": "Buscar referências públicas complementares para o contexto imobiliário.",
+      "sources": ["web"],
+      "requiredEntitlements": ["REAL_ESTATE_CORE"],
+      "requiredContext": ["tenantId", "workspaceId"],
+      "failClosed": true,
+      "usagePolicy": "explicit_expand_or_internal_weak_match"
+    },
+    "imob.search_federated": {
+      "purpose": "Combinar resultados internos e externos com ordenação priorizando material interno.",
+      "sources": ["drive", "upload", "internal_doc", "web"],
+      "requiredEntitlements": ["REAL_ESTATE_CORE"],
+      "requiredContext": ["tenantId", "workspaceId"],
+      "failClosed": true,
+      "usagePolicy": "internal_first_ranked_mix"
+    }
+  },
+  "requestContract": {
+    "requiredFields": ["tenantId", "workspaceId", "query"],
+    "optionalFields": [
+      "region",
+      "segment",
+      "documentType",
+      "operationType",
+      "tags",
+      "sourceTypes",
+      "searchMode"
+    ],
+    "searchModeEnum": [
+      "internal_only",
+      "internal_preferred_with_web_fallback",
+      "federated_internal_plus_web"
+    ]
+  },
+  "responseContract": {
+    "requiredFields": ["query", "appliedFilters", "total", "items", "tenantId", "workspaceId"],
+    "itemFields": [
+      "id",
+      "sourceType",
+      "title",
+      "href",
+      "mimeType",
+      "region",
+      "segment",
+      "documentType",
+      "operationType",
+      "tags",
+      "updatedAt",
+      "snippet"
+    ],
+    "sourceClassEnum": ["internal", "web"],
+    "uiPolicy": {
+      "primaryDisplay": ["title", "snippet", "region", "operationType"],
+      "internalMetadataHiddenByDefault": ["sourceType", "documentType", "tags", "updatedAt"],
+      "maxActions": 3
+    }
+  },
+  "rankingPolicy": {
+    "strongInternalMatch": "web_not_called",
+    "weakInternalMatch": "web_optional_fallback",
+    "explicitExpandRequest": "allow_web_or_federated",
+    "sensitiveDecisions": "internal_required"
+  },
+  "governance": {
+    "sourceDisclosure": {
+      "internalLabel": "Material interno",
+      "webLabel": "Referencia externa"
+    },
+    "agentBehavior": {
+      "mustNotPresentWebAsInternalPolicy": true,
+      "mustKeepConversationInImobContext": true,
+      "mustUseConsultativeTone": true
+    }
+  },
+  "runtimeOwnership": {
+    "agent": "IMOB",
+    "engine": [
+      "resolve search mode",
+      "validate context and entitlements",
+      "choose capability",
+      "shape user-facing result"
+    ],
+    "launcher": [
+      "render resolved result",
+      "render viewer",
+      "render up to 3 actions"
+    ]
+  }
+}
