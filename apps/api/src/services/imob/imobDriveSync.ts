@@ -1,11 +1,15 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
+const IMOB_DRIVE_FOLDER_ID = "1rwqbWQmL2eiXYBY5UaPReubZ2sbQsBu3";
+const IMOB_DRIVE_FOLDER_URL = `https://drive.google.com/drive/folders/${IMOB_DRIVE_FOLDER_ID}`;
+
 export type ImobDriveManifestDocument = {
   tenantId: string;
   workspaceId: string;
   externalId: string;
   title: string;
+  driveFileId?: string | null;
   href: string;
   mimeType?: string | null;
   folderPath?: string | null;
@@ -23,6 +27,7 @@ export type ImobDriveSyncDocument = {
   workspaceId: string;
   sourceType: "drive";
   externalId: string;
+  driveFileId: string | null;
   title: string;
   href: string;
   mimeType: string;
@@ -75,12 +80,41 @@ function asStringArray(value: unknown) {
     : [];
 }
 
+function sanitizeDriveQuery(query: string) {
+  return query.replace(/'/g, " ").replace(/\s+/g, " ").trim().slice(0, 180);
+}
+
+export function buildImobDriveSearchUrl(query: string) {
+  const safeQuery = sanitizeDriveQuery(query);
+  const driveQuery = `'${IMOB_DRIVE_FOLDER_ID}' in parents and fullText contains '${safeQuery}'`;
+  return `https://drive.google.com/drive/search?q=${encodeURIComponent(driveQuery)}`;
+}
+
+export function buildImobDriveFileUrl(driveFileId: string) {
+  return `https://drive.google.com/file/d/${encodeURIComponent(driveFileId)}/view`;
+}
+
+function isLikelyPlaceholderDriveHref(href: string) {
+  if (!/^https:\/\/drive\.google\.com\/file\/d\//i.test(href)) return false;
+  return /\/file\/d\/(drive-|sample|placeholder)/i.test(href);
+}
+
+function resolveDriveHref(doc: ImobDriveManifestDocument, title: string) {
+  const driveFileId = asString(doc.driveFileId);
+  if (driveFileId) return buildImobDriveFileUrl(driveFileId);
+  const href = asString(doc.href);
+  if (!href) return buildImobDriveSearchUrl(title);
+  if (isLikelyPlaceholderDriveHref(href)) return buildImobDriveSearchUrl(title);
+  return href;
+}
+
 function normalizeDocument(doc: ImobDriveManifestDocument, index: number): ImobDriveSyncDocument {
   const tenantId = asString(doc.tenantId);
   const workspaceId = asString(doc.workspaceId);
   const externalId = asString(doc.externalId, `drive-doc-${index + 1}`);
+  const driveFileId = asString(doc.driveFileId) || null;
   const title = asString(doc.title, `Documento IMOB ${index + 1}`);
-  const href = asString(doc.href);
+  const href = resolveDriveHref(doc, title);
   if (!tenantId || !workspaceId || !href) {
     throw new Error(`Invalid IMOB drive manifest entry at index ${index}`);
   }
@@ -91,6 +125,7 @@ function normalizeDocument(doc: ImobDriveManifestDocument, index: number): ImobD
     workspaceId,
     sourceType: "drive",
     externalId,
+    driveFileId,
     title,
     href,
     mimeType: asString(doc.mimeType, "application/octet-stream"),
@@ -104,6 +139,9 @@ function normalizeDocument(doc: ImobDriveManifestDocument, index: number): ImobD
     metadataJson: {
       folderPath: asString(doc.folderPath, "") || null,
       importedFrom: "drive-manifest",
+      fallbackFolderHref: IMOB_DRIVE_FOLDER_URL,
+      hrefStrategy: driveFileId ? "file_id" : href === asString(doc.href) ? "direct" : "search_fallback",
+      driveFileId,
     },
     updatedAt: asString(doc.updatedAt, new Date().toISOString()),
   };

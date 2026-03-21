@@ -476,6 +476,12 @@ imobRouter.post("/knowledge/search", async (req, res) => {
   const tags = Array.isArray(filters.tags)
     ? filters.tags.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
     : [];
+  const sourceTypes = Array.isArray(filters.sourceTypes)
+    ? filters.sourceTypes.filter(
+        (item): item is "drive" | "upload" | "web" | "internal_doc" =>
+          item === "drive" || item === "upload" || item === "web" || item === "internal_doc"
+      )
+    : [];
 
   const result = await searchImobKnowledge({
     tenantId: authContext.tenantId,
@@ -487,6 +493,7 @@ imobRouter.post("/knowledge/search", async (req, res) => {
       documentType,
       operationType,
       tags,
+      sourceTypes,
     },
   });
 

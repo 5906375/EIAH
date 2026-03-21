@@ -7,6 +7,8 @@ export type ImobSearchSource = {
   description: string;
 };
 
+export type ImobKnowledgeSourceFilter = "drive" | "upload" | "web" | "internal_doc";
+
 export type ImobAccessContext = {
   tenantId?: string | null;
   workspaceId?: string | null;
@@ -27,6 +29,7 @@ export type ImobActionPlan = {
     query: string;
     region: string;
     segment: "locacao" | "venda" | "ambos";
+    sourceTypes?: ImobKnowledgeSourceFilter[];
     sources?: ImobSearchSource[];
   };
 };
@@ -119,6 +122,41 @@ function buildImobSearchSources(
   ];
 }
 
+function dedupeSourceTypes(items: ImobKnowledgeSourceFilter[]) {
+  return [...new Set(items)];
+}
+
+function extractKnowledgeSourceTypes(message: string): ImobKnowledgeSourceFilter[] {
+  const normalized = normalizeText(message);
+  const sourceTypes: ImobKnowledgeSourceFilter[] = [];
+
+  if (normalized.includes("drive") || normalized.includes("acervo")) {
+    sourceTypes.push("drive");
+  }
+  if (
+    normalized.includes("upload") ||
+    normalized.includes("arquivo") ||
+    normalized.includes("anexo") ||
+    normalized.includes("planilha") ||
+    normalized.includes("pdf")
+  ) {
+    sourceTypes.push("upload");
+  }
+  if (normalized.includes("site") || normalized.includes("sites") || normalized.includes("web")) {
+    sourceTypes.push("web");
+  }
+  if (
+    normalized.includes("interno") ||
+    normalized.includes("playbook") ||
+    normalized.includes("base interna") ||
+    normalized.includes("guia interno")
+  ) {
+    sourceTypes.push("internal_doc");
+  }
+
+  return dedupeSourceTypes(sourceTypes);
+}
+
 function hasImobKnowledgeAccess(access?: ImobAccessContext) {
   if (!access?.tenantId || !access?.workspaceId) return false;
   return access.entitlements?.REAL_ESTATE_CORE === true;
@@ -136,7 +174,17 @@ function isKnowledgeSearchQuery(message: string) {
     text.includes("documentos de loca") ||
     text.includes("documentos de venda") ||
     text.includes("modelos de proposta") ||
-    text.includes("checklists de capta")
+    text.includes("checklists de capta") ||
+    text.includes("playbook") ||
+    text.includes("base interna") ||
+    text.includes("documento interno") ||
+    text.includes("uploads") ||
+    text.includes("upload") ||
+    text.includes("arquivo") ||
+    text.includes("anexo") ||
+    text.includes("site") ||
+    text.includes("sites") ||
+    text.includes("web")
   );
 }
 
@@ -160,6 +208,7 @@ export function buildImobActionPlan(message: string, access?: ImobAccessContext)
   if (isKnowledgeSearchQuery(message)) {
     const region = extractRegion(message);
     const segment = extractSegment(message);
+    const sourceTypes = extractKnowledgeSourceTypes(message);
     const timestamp = new Date().toISOString();
     if (!hasImobKnowledgeAccess(access)) {
       return {
@@ -194,6 +243,7 @@ export function buildImobActionPlan(message: string, access?: ImobAccessContext)
         query: message,
         region,
         segment,
+        sourceTypes,
         sources,
       },
       suggestedNextAction: "Refinar tipo documental, cidade, operação ou etapa da jornada.",

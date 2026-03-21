@@ -42,6 +42,7 @@ import {
 } from "@/features/imob/contractInterviewEngine";
 import { ThreadPanel } from "@/features/imob/ThreadPanel";
 import { KnowledgeCard } from "@/features/imob/KnowledgeCard";
+import { ImobKnowledgeViewer } from "@/features/imob/ImobKnowledgeViewer";
 import { formatDataInputTemplate, getDataInputTemplate } from "@/domain/inputTemplates";
 import { CONTRACT_SCHEMAS } from "@/features/imob/contractSchemas";
 
@@ -524,6 +525,7 @@ const ImobChatPage: React.FC = () => {
   const [messageFeedback, setMessageFeedback] = React.useState<Record<string, "up" | "down">>({});
   const [openOptionsMessageId, setOpenOptionsMessageId] = React.useState<string | null>(null);
   const [rejectLockedMessageId, setRejectLockedMessageId] = React.useState<string | null>(null);
+  const [selectedKnowledgeItem, setSelectedKnowledgeItem] = React.useState<ImobKnowledgeSearchResponse["items"][number] | null>(null);
   const [isNearBottom, setIsNearBottom] = React.useState(true);
   const [showJumpToLatest, setShowJumpToLatest] = React.useState(false);
   const [contractInterviewState, setContractInterviewState] = React.useState<ContractInterviewState | null>(null);
@@ -952,28 +954,34 @@ const ImobChatPage: React.FC = () => {
 
   const buildKnowledgeSearchResponse = React.useCallback(
     (result: ImobKnowledgeSearchResponse, plan: ImobActionPlan) => {
-      const items = result.items.slice(0, 4);
-      const itemLines =
-        items.length > 0
-          ? items.map(
-              (item) =>
-                `- ${item.title} • ${item.sourceType} • ${item.documentType} • ${item.region}\n  ${item.snippet}`
-            )
-          : ["- Não encontrei documentos com esse recorte no acervo atual."];
-      const sourceLines =
-        plan.search?.sources?.map((source) => `- ${source.label}: ${source.description}`) ?? [];
+      const sourceTypes = result.appliedFilters.sourceTypes ?? plan.search?.sourceTypes ?? [];
+      const sourceLabel =
+        sourceTypes.length > 0
+          ? ` em ${sourceTypes
+              .map((item) =>
+                item === "drive"
+                  ? "Drive"
+                  : item === "upload"
+                    ? "Uploads"
+                    : item === "web"
+                      ? "Web"
+                      : "Docs internos"
+              )
+              .join(", ")}`
+          : "";
+      if (result.total === 0) {
+        return [
+          `Não encontrei documentos com esse recorte${sourceLabel} no acervo IMOB.`,
+          "",
+          "Tente refinar por tipo documental, cidade, região ou operação.",
+        ].join("\n");
+      }
 
+      const hasComplementarySources = (plan.search?.sources?.length ?? 0) > 0;
       return [
-        `Encontrei ${result.total} resultado(s) documentais para esta busca no IMOB.`,
-        "",
-        "Resultados:",
-        ...itemLines,
-        "",
-        sourceLines.length > 0 ? "Fontes complementares:" : "",
-        ...sourceLines,
-      ]
-        .filter(Boolean)
-        .join("\n");
+        `Encontrei ${result.total} resultado(s) documentais${sourceLabel} para esta busca no IMOB.`,
+        hasComplementarySources ? "Os detalhes estão nos cards abaixo e as fontes complementares continuam disponíveis nos atalhos." : "Os detalhes estão nos cards abaixo.",
+      ].join("\n\n");
     },
     []
   );
@@ -1710,6 +1718,7 @@ const ImobChatPage: React.FC = () => {
           filters: {
             region: plan.search?.region ?? null,
             segment: plan.search?.segment ?? null,
+            sourceTypes: plan.search?.sourceTypes ?? [],
           },
         });
         const searchReply: ChatMessage = {
@@ -2632,6 +2641,7 @@ const ImobChatPage: React.FC = () => {
                                   <KnowledgeCard
                                     key={`${message.id}-${item.id}`}
                                     item={item}
+                                    onOpenInPlatform={setSelectedKnowledgeItem}
                                     resolveHref={(href) => withDashboardContext(href, messageThread?.id ?? null)}
                                   />
                                 ))}
@@ -2929,6 +2939,13 @@ const ImobChatPage: React.FC = () => {
           </article>
         </div>
       </section>
+
+      <ImobKnowledgeViewer
+        open={!!selectedKnowledgeItem}
+        item={selectedKnowledgeItem}
+        onClose={() => setSelectedKnowledgeItem(null)}
+        resolveHref={(href) => withDashboardContext(href)}
+      />
 
     </div>
   );
