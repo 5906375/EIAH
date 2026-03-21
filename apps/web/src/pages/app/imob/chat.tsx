@@ -41,7 +41,7 @@ import {
   type ContractInterviewState,
 } from "@/features/imob/contractInterviewEngine";
 import { ThreadPanel } from "@/features/imob/ThreadPanel";
-import { KnowledgeCard } from "@/features/imob/KnowledgeCard";
+import { KnowledgeCard, type KnowledgeAction } from "@/features/imob/KnowledgeCard";
 import { ImobKnowledgeViewer } from "@/features/imob/ImobKnowledgeViewer";
 import { formatDataInputTemplate, getDataInputTemplate } from "@/domain/inputTemplates";
 import { CONTRACT_SCHEMAS } from "@/features/imob/contractSchemas";
@@ -119,6 +119,12 @@ type PendingExecution = {
   };
   receiptEndpointTemplate?: string;
   preparedAt: number;
+};
+
+type SelectedKnowledgeContext = {
+  item: ImobKnowledgeSearchResponse["items"][number];
+  sourceActions: KnowledgeAction[];
+  threadId: string | null;
 };
 
 function buildSessionRunMapFromMessages(items: ChatMessage[]) {
@@ -237,6 +243,49 @@ function normalizeCardCtas(ctas?: CardCta[]) {
 
 function isExternalHref(href?: string) {
   return typeof href === "string" && /^https?:\/\//i.test(href);
+}
+
+function mapKnowledgeActions(ctas: CardCta[] | undefined, threadId: string | null, resolveHref: (href: string, explicitThreadId?: string | null) => string) {
+  return (
+    normalizeCardCtas(ctas)
+      ?.filter((cta): cta is CardCta & { href: string } => Boolean(cta.href))
+      .map((cta) => ({
+        id: cta.id,
+        label: cta.label,
+        href: resolveHref(cta.href, threadId),
+      })) ?? []
+  );
+}
+
+function selectKnowledgeActions(item: ImobKnowledgeSearchResponse["items"][number], actions: KnowledgeAction[]) {
+  const byId = new Map(actions.map((action) => [action.id, action]));
+  const picked: KnowledgeAction[] = [];
+  const push = (action?: KnowledgeAction | null) => {
+    if (!action) return;
+    if (picked.some((current) => current.id === action.id || current.label === action.label)) return;
+    if (picked.length >= 2) return;
+    picked.push(action);
+  };
+
+  push(
+    item.sourceType === "drive"
+      ? { id: "knowledge-drive-primary", label: /\/file\/d\//i.test(item.href) || /open\?id=/i.test(item.href) ? "Abrir no Drive" : "Buscar no Drive", href: item.href }
+      : { id: "knowledge-open-primary", label: "Abrir documento", href: item.href }
+  );
+  push(byId.get("drive-search"));
+  if (picked.length < 2) {
+    push(byId.get("drive-folder"));
+  }
+  return picked;
+}
+
+function selectKnowledgeCardActions(actions: KnowledgeAction[]) {
+  const moreAction =
+    actions.find((action) => action.id === "drive-search") ??
+    actions.find((action) => action.id === "drive-folder") ??
+    actions[0];
+  if (!moreAction) return [];
+  return [{ ...moreAction, label: "Ver mais materiais" }];
 }
 
 function getIntentActionCtas(intent: ImobActionPlan["intent"]): CardCta[] {
@@ -525,7 +574,7 @@ const ImobChatPage: React.FC = () => {
   const [messageFeedback, setMessageFeedback] = React.useState<Record<string, "up" | "down">>({});
   const [openOptionsMessageId, setOpenOptionsMessageId] = React.useState<string | null>(null);
   const [rejectLockedMessageId, setRejectLockedMessageId] = React.useState<string | null>(null);
-  const [selectedKnowledgeItem, setSelectedKnowledgeItem] = React.useState<ImobKnowledgeSearchResponse["items"][number] | null>(null);
+  const [selectedKnowledgeContext, setSelectedKnowledgeContext] = React.useState<SelectedKnowledgeContext | null>(null);
   const [isNearBottom, setIsNearBottom] = React.useState(true);
   const [showJumpToLatest, setShowJumpToLatest] = React.useState(false);
   const [contractInterviewState, setContractInterviewState] = React.useState<ContractInterviewState | null>(null);
@@ -826,6 +875,7 @@ const ImobChatPage: React.FC = () => {
     setActiveAssistantMessageId(null);
     setOpenOptionsMessageId(null);
     setRejectLockedMessageId(null);
+    setSelectedKnowledgeContext(null);
     setSelectedThreadId(null);
     setContractInterviewState(null);
     setSingleEditFieldId(null);
@@ -864,6 +914,7 @@ const ImobChatPage: React.FC = () => {
     setActiveAssistantMessageId(null);
     setOpenOptionsMessageId(null);
     setRejectLockedMessageId(null);
+    setSelectedKnowledgeContext(null);
     setThreads([]);
     setSelectedThreadId(null);
     setActiveRunId(null);
@@ -977,10 +1028,8 @@ const ImobChatPage: React.FC = () => {
         ].join("\n");
       }
 
-      const hasComplementarySources = (plan.search?.sources?.length ?? 0) > 0;
       return [
-        `Encontrei ${result.total} resultado(s) documentais${sourceLabel} para esta busca no IMOB.`,
-        hasComplementarySources ? "Os detalhes estão nos cards abaixo e as fontes complementares continuam disponíveis nos atalhos." : "Os detalhes estão nos cards abaixo.",
+        `Abri ${result.total > 1 ? "o primeiro material útil" : "um material útil"} para esta busca.`,
       ].join("\n\n");
     },
     []
@@ -1728,6 +1777,17 @@ const ImobChatPage: React.FC = () => {
           thread: searchThread,
           card: buildKnowledgeSearchCard(search.data, plan, searchThread),
         };
+        if (search.data.items.length > 0) {
+          const sourceActions = selectKnowledgeActions(
+            search.data.items[0],
+            mapKnowledgeActions(searchReply.card?.ctas, searchThread.id, withDashboardContext)
+          );
+          setSelectedKnowledgeContext({
+            item: search.data.items[0],
+            sourceActions,
+            threadId: searchThread.id,
+          });
+        }
         appendMessage(searchReply);
         void persistMessage(searchReply, {
           intent: plan.intent,
@@ -2641,8 +2701,9 @@ const ImobChatPage: React.FC = () => {
                                   <KnowledgeCard
                                     key={`${message.id}-${item.id}`}
                                     item={item}
-                                    onOpenInPlatform={setSelectedKnowledgeItem}
-                                    resolveHref={(href) => withDashboardContext(href, messageThread?.id ?? null)}
+                                    sourceActions={selectKnowledgeCardActions(
+                                      mapKnowledgeActions(message.card?.ctas, messageThread?.id ?? null, withDashboardContext)
+                                    )}
                                   />
                                 ))}
                               </div>
@@ -2711,7 +2772,9 @@ const ImobChatPage: React.FC = () => {
                       </div>
 
                       <div className={`flex flex-wrap items-center gap-2 px-1 text-[10px] uppercase tracking-[0.15em] text-muted-foreground/80 ${isUser ? "justify-end" : "justify-start"}`}>
-                        {message.role === "assistant" && message.card?.ctas?.length ? (
+                        {message.role === "assistant" &&
+                        message.card?.ctas?.length &&
+                        !message.card.knowledgeResults?.length ? (
                           <>
                             {(() => {
                               const messageThreadId = message.thread?.id ?? message.card?.thread?.id ?? null;
@@ -2779,6 +2842,8 @@ const ImobChatPage: React.FC = () => {
                                   {renderCta(primary)}
                                   {secondary.length > 0 ? (
                                     message.card?.showConfirm ? (
+                                      <>{secondary.map((cta) => renderCta(cta))}</>
+                                    ) : message.card?.knowledgeResults?.length ? (
                                       <>{secondary.map((cta) => renderCta(cta))}</>
                                     ) : (
                                       <details
@@ -2941,10 +3006,11 @@ const ImobChatPage: React.FC = () => {
       </section>
 
       <ImobKnowledgeViewer
-        open={!!selectedKnowledgeItem}
-        item={selectedKnowledgeItem}
-        onClose={() => setSelectedKnowledgeItem(null)}
-        resolveHref={(href) => withDashboardContext(href)}
+        open={!!selectedKnowledgeContext}
+        item={selectedKnowledgeContext?.item ?? null}
+        onClose={() => setSelectedKnowledgeContext(null)}
+        sourceActions={selectedKnowledgeContext?.sourceActions ?? []}
+        resolveHref={(href) => withDashboardContext(href, selectedKnowledgeContext?.threadId ?? null)}
       />
 
     </div>
