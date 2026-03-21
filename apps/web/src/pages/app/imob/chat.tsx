@@ -41,6 +41,7 @@ import {
   type ContractInterviewState,
 } from "@/features/imob/contractInterviewEngine";
 import { ThreadPanel } from "@/features/imob/ThreadPanel";
+import { KnowledgeCard } from "@/features/imob/KnowledgeCard";
 import { formatDataInputTemplate, getDataInputTemplate } from "@/domain/inputTemplates";
 import { CONTRACT_SCHEMAS } from "@/features/imob/contractSchemas";
 
@@ -91,6 +92,7 @@ type MessageCard = {
     hash?: string;
     text: string;
   };
+  knowledgeResults?: ImobKnowledgeSearchResponse["items"];
   showConfirm?: boolean;
 };
 
@@ -1010,21 +1012,16 @@ const ImobChatPage: React.FC = () => {
           kind: index === 0 ? ("primary" as const) : ("neutral" as const),
           href: source.href,
         })) ?? [];
-      const itemCtas = items.map((item) => ({
-        id: item.id,
-        label: `Abrir: ${item.title.slice(0, 36)}`,
-        kind: "secondary" as const,
-        href: item.href,
-      }));
       return {
         type: "action",
         title: "Resultados do acervo IMOB",
         thread,
         lines:
           items.length > 0
-            ? items.map((item) => `${item.title} • ${item.sourceType} • ${item.documentType}`)
+            ? ["Resultados exibidos abaixo com fonte, recorte e CTA do documento."]
             : ["Nenhum documento encontrado com esse recorte."],
-        ctas: [...itemCtas, ...sourceCtas].slice(0, 5),
+        knowledgeResults: items,
+        ctas: sourceCtas.slice(0, 2),
       };
     },
     []
@@ -2628,6 +2625,18 @@ const ImobChatPage: React.FC = () => {
                                 <li key={`${message.id}-line-${idx}`}>{line}</li>
                                 ))}
                             </ul>
+
+                            {message.card.knowledgeResults?.length ? (
+                              <div className="mt-3 space-y-3">
+                                {message.card.knowledgeResults.map((item) => (
+                                  <KnowledgeCard
+                                    key={`${message.id}-${item.id}`}
+                                    item={item}
+                                    resolveHref={(href) => withDashboardContext(href, messageThread?.id ?? null)}
+                                  />
+                                ))}
+                              </div>
+                            ) : null}
 
                             {SHOW_TECHNICAL_CHAT && message.card.risk ? (
                               <div className="mt-3 rounded-lg border border-white/10 bg-surface/40 p-2">
