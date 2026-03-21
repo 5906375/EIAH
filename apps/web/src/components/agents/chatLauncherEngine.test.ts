@@ -75,6 +75,47 @@ test("agents follow-up returns agents overview", () => {
   assert.match(reply, /especialista|workspace/i);
 });
 
+test("documentary IMOB search entry routes to IMOB instead of generic help", () => {
+  assert.equal(detectLauncherRouteIntent("Buscar contratos e propostas", false), "imob");
+
+  const decision = resolveEiahDecision({
+    input: "Buscar contratos e propostas",
+    routeIntent: "imob",
+    eiahMode: "help",
+    agentProfile: null,
+    catalogAgents: [],
+    intentUnknown: false,
+    accessContext: {
+      tenantId: "tenant-A",
+      workspaceId: "workspace-A",
+      entitlements: { REAL_ESTATE_CORE: true },
+    },
+  });
+
+  assert.equal(decision.kind, "imob_context_entry");
+  assert.match(decision.content ?? "", /Busca documental IMOB/i);
+  assert.match(decision.content ?? "", /contratos e propostas/i);
+});
+
+test("documentary IMOB search is fail-closed without entitlement", () => {
+  const decision = resolveEiahDecision({
+    input: "Buscar no acervo IMOB",
+    routeIntent: "imob",
+    eiahMode: "help",
+    agentProfile: null,
+    catalogAgents: [],
+    intentUnknown: false,
+    accessContext: {
+      tenantId: "tenant-A",
+      workspaceId: "workspace-A",
+      entitlements: { REAL_ESTATE_CORE: false },
+    },
+  });
+
+  assert.equal(decision.kind, "help_reply");
+  assert.match(decision.content ?? "", /IMOB indisponível neste tenant\/workspace/i);
+});
+
 test("eiah self explain handles 'explique você' as self intro instead of generic fallback", () => {
   const decision = resolveEiahDecision({
     input: "explique você",
@@ -155,6 +196,22 @@ test("proposal quick replies change by saas stage", () => {
       conversationStage: "proposal_demo_requested",
     }),
     ["Quero agendar demonstração", "Criar trial assistido", "Quero falar com comercial"]
+  );
+});
+
+test("IMOB documentary search quick replies are specific to the knowledge handshake", () => {
+  assert.deepEqual(
+    buildEiahQuickReplies({
+      routeIntent: "imob",
+      proposalMode: false,
+      sourceInput: "Buscar materiais de captação",
+    }),
+    [
+      "Buscar no acervo IMOB",
+      "Buscar contratos e propostas",
+      "Buscar materiais de captação",
+      "Buscar por cidade ou região",
+    ]
   );
 });
 

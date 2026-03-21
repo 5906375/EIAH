@@ -1451,7 +1451,11 @@ const ImobChatPage: React.FC = () => {
   const sendMessageText = async (rawText: string) => {
     const text = rawText.trim();
     if (!text) return;
-    const plan = buildImobActionPlan(text);
+    const plan = buildImobActionPlan(text, {
+      tenantId: session.tenantId,
+      workspaceId: session.workspaceId,
+      entitlements: session.entitlements ?? null,
+    });
     const selectedThread = selectedThreadId ? threads.find((item) => item.threadId === selectedThreadId) : null;
     const operationThread = selectedThread
       ? { id: selectedThread.threadId, label: selectedThread.label }
@@ -1612,7 +1616,28 @@ const ImobChatPage: React.FC = () => {
       return;
     }
 
-    if (plan.mode === "search") {
+    if (plan.mode === "blocked") {
+      const blockedReply: ChatMessage = {
+        id: makeId("assistant"),
+        role: "assistant",
+        text: plan.prompt,
+        thread: {
+          id: operationThread.id,
+          label: operationThread.label,
+          status: "blocked",
+        },
+      };
+      appendMessage(blockedReply);
+      void persistMessage(blockedReply, {
+        intent: plan.intent,
+        action: plan.action,
+        conversationId: activeConversationId,
+      });
+      setState("blocked");
+      return;
+    }
+
+    if (plan.mode === "search" || plan.mode === "search_knowledge") {
       const searchThread = {
         id: operationThread.id,
         label: operationThread.label,
@@ -1636,7 +1661,7 @@ const ImobChatPage: React.FC = () => {
           conversationId: activeConversationId,
           event: "message_to_plan_ms",
           value: Date.now() - startedAt,
-          metadata: { intent: plan.intent, action: plan.action, mode: "search" },
+          metadata: { intent: plan.intent, action: plan.action, mode: plan.mode },
         });
       }
       setState("done");

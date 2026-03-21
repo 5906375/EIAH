@@ -30,6 +30,12 @@ export type ImobJourneyDefinition = {
 
 export type ImobHelpIntent = "what_is" | "overview" | "end_to_end" | "navigation" | "install" | "shortcuts";
 
+export type ImobKnowledgeSearchIntent =
+  | "library"
+  | "contracts_proposals"
+  | "capture_materials"
+  | "city_or_region";
+
 export type ImobShortcutSelection = {
   key: "dashboard" | "chat" | "install";
   label: string;
@@ -217,6 +223,57 @@ export function isImobGuideQuestion(input: string) {
   return patterns.some((pattern) => normalized.includes(pattern));
 }
 
+export function resolveImobKnowledgeSearchIntent(input: string): ImobKnowledgeSearchIntent | null {
+  const normalized = normalizeIntentText(input);
+
+  if (
+    normalized.includes("buscar no acervo imob") ||
+    normalized.includes("pesquisar no acervo imob") ||
+    normalized.includes("pesquisar no drive imob") ||
+    normalized.includes("buscar no drive imob") ||
+    normalized.includes("buscar no acervo")
+  ) {
+    return "library";
+  }
+
+  if (
+    normalized.includes("buscar contratos e propostas") ||
+    normalized.includes("pesquisar contratos e propostas") ||
+    normalized.includes("buscar contratos") ||
+    normalized.includes("buscar propostas") ||
+    normalized.includes("pesquisar documentos") ||
+    normalized.includes("documentos de locacao") ||
+    normalized.includes("documentos de locação")
+  ) {
+    return "contracts_proposals";
+  }
+
+  if (
+    normalized.includes("buscar materiais de captacao") ||
+    normalized.includes("buscar materiais de captação") ||
+    normalized.includes("pesquisar materiais de captacao") ||
+    normalized.includes("pesquisar materiais de captação") ||
+    normalized.includes("modelos de proposta") ||
+    normalized.includes("checklists de captacao") ||
+    normalized.includes("checklists de captação")
+  ) {
+    return "capture_materials";
+  }
+
+  if (
+    normalized.includes("buscar por cidade ou regiao") ||
+    normalized.includes("buscar por cidade ou região") ||
+    normalized.includes("pesquisar por cidade ou regiao") ||
+    normalized.includes("pesquisar por cidade ou região") ||
+    normalized.includes("pesquisar por regiao") ||
+    normalized.includes("pesquisar por região")
+  ) {
+    return "city_or_region";
+  }
+
+  return null;
+}
+
 export function resolveImobFaqSeed(input: string) {
   const normalized = normalizeIntentText(input);
   return IMOB_FAQ_SEEDS.find((seed) => seed.questionPatterns.some((pattern) => normalized.includes(pattern)));
@@ -345,6 +402,11 @@ export function resolveImobJourneyStage(input: string): ImobJourneyDefinition | 
 }
 
 export function buildImobQuickRepliesForInput(input: string) {
+  const knowledgeIntent = resolveImobKnowledgeSearchIntent(input);
+  if (knowledgeIntent) {
+    return buildImobKnowledgeSearchQuickReplies();
+  }
+
   const helpIntent = resolveImobHelpIntent(input);
   switch (helpIntent) {
     case "what_is":
@@ -378,6 +440,15 @@ export function buildImobQuickRepliesForInput(input: string) {
     default:
       return ["Como funciona IMOB do início ao fim?", "Onde acompanho pipeline e etapas no IMOB?", "Quero instalar o IMOB no workspace."];
   }
+}
+
+export function buildImobKnowledgeSearchQuickReplies() {
+  return [
+    "Buscar no acervo IMOB",
+    "Buscar contratos e propostas",
+    "Buscar materiais de captação",
+    "Buscar por cidade ou região",
+  ];
 }
 
 function buildImobWhatIsReply() {
@@ -478,6 +549,54 @@ function buildImobInstallReply() {
     "",
     "**Atalho**",
     "- `/app/marketplace/imob`",
+  ].join("\n");
+}
+
+export function buildImobKnowledgeSearchEntryReply(input?: string) {
+  const intent = input ? resolveImobKnowledgeSearchIntent(input) : null;
+  const title =
+    intent === "contracts_proposals"
+      ? "**Busca documental IMOB: contratos e propostas**"
+      : intent === "capture_materials"
+      ? "**Busca documental IMOB: materiais de captação**"
+      : intent === "city_or_region"
+      ? "**Busca documental IMOB: cidade ou região**"
+      : "**Busca documental IMOB**";
+  const nextStep =
+    intent === "contracts_proposals"
+      ? "No chat IMOB, me peça algo como: `buscar contratos de locação em São Paulo`."
+      : intent === "capture_materials"
+      ? "No chat IMOB, me peça algo como: `buscar materiais de captação para locação`."
+      : intent === "city_or_region"
+      ? "No chat IMOB, me peça algo como: `buscar documentos para locação em Santa Catarina`."
+      : "No chat IMOB, me diga o recorte documental que você quer encontrar.";
+
+  return [
+    title,
+    "",
+    "Eu consigo encaminhar sua busca documental do IMOB sem cair em help genérico.",
+    "",
+    "Você pode procurar por:",
+    "- contratos e propostas",
+    "- materiais de captação",
+    "- conteúdo por cidade ou região",
+    "- acervo base do time IMOB",
+    "",
+    nextStep,
+    "Se preferir, eu também posso seguir com um desses atalhos logo abaixo.",
+  ].join("\n");
+}
+
+export function buildImobKnowledgeAccessBlockedReply() {
+  return [
+    "**IMOB indisponível neste tenant/workspace**",
+    "",
+    "A busca documental do IMOB só pode ser usada por tenants cadastrados e com a vertical habilitada.",
+    "",
+    "Próximos passos sugeridos:",
+    "- ver opções no Marketplace",
+    "- falar com comercial",
+    "- entender quais planos habilitam a vertical",
   ].join("\n");
 }
 

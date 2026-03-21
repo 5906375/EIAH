@@ -29,6 +29,31 @@ test("imob search mode includes direct drive search and base folder sources", ()
   );
 });
 
+test("documentary IMOB search handshake produces search_knowledge mode when entitled", () => {
+  const plan = buildImobActionPlan("Buscar contratos e propostas", {
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    entitlements: { REAL_ESTATE_CORE: true },
+  });
+
+  assert.equal(plan.mode, "search_knowledge");
+  assert.equal(plan.action, "realestate.search_knowledge_base");
+  assert.match(plan.prompt, /acervo IMOB/i);
+  assert.equal(plan.search?.sources?.length, 2);
+});
+
+test("documentary IMOB search handshake is blocked without entitlement", () => {
+  const plan = buildImobActionPlan("Buscar no acervo IMOB", {
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    entitlements: { REAL_ESTATE_CORE: false },
+  });
+
+  assert.equal(plan.mode, "blocked");
+  assert.equal(plan.action, "realestate.search_knowledge_base");
+  assert.match(plan.prompt, /não está habilitado/i);
+});
+
 test("drive search url is scoped to the IMOB folder and preserves the query", () => {
   const href = buildImobDriveSearchUrl("casa para venda em Santa Catarina");
   const decoded = decodeURIComponent(href);

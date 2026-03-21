@@ -1090,6 +1090,11 @@ export default function ChatAgentLauncher({
       previousUserMessage: lastUserMessage,
       previousAssistantMessage: lastAssistantMessage,
       previousAssistantSnapshot: lastAssistantSnapshot,
+      accessContext: {
+        tenantId: session.tenantId,
+        workspaceId: effectiveWorkspaceId,
+        entitlements: session.entitlements ?? null,
+      },
     });
     if (turnDecision?.content) {
       setLastRouteIntent(turnDecision.launcherRouteIntent);
