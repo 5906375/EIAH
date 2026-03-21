@@ -7,13 +7,22 @@ export type ImobSearchSource = {
   description: string;
 };
 
+export type ImobAccessContext = {
+  tenantId?: string | null;
+  workspaceId?: string | null;
+  entitlements?: {
+    REAL_ESTATE_CORE?: boolean;
+    IMOB_INSTALLED?: boolean;
+  } | null;
+};
+
 export type ImobActionPlan = {
   intent: ImobIntent;
   action: string;
   prompt: string;
   input: Record<string, unknown>;
   suggestedNextAction?: string;
-  mode?: "execute" | "search";
+  mode?: "execute" | "search" | "search_knowledge" | "blocked";
   search?: {
     query: string;
     region: string;
@@ -110,6 +119,27 @@ function buildImobSearchSources(
   ];
 }
 
+function hasImobKnowledgeAccess(access?: ImobAccessContext) {
+  if (!access?.tenantId || !access?.workspaceId) return false;
+  return access.entitlements?.REAL_ESTATE_CORE === true;
+}
+
+function isKnowledgeSearchQuery(message: string) {
+  const text = normalizeText(message);
+  return (
+    text.includes("acervo imob") ||
+    text.includes("buscar contratos e propostas") ||
+    text.includes("contratos e propostas") ||
+    text.includes("materiais de capta") ||
+    text.includes("buscar por cidade ou regiao") ||
+    text.includes("buscar por cidade ou região") ||
+    text.includes("documentos de loca") ||
+    text.includes("documentos de venda") ||
+    text.includes("modelos de proposta") ||
+    text.includes("checklists de capta")
+  );
+}
+
 function isResearchQuery(message: string) {
   const text = normalizeText(message);
   return (
@@ -126,7 +156,50 @@ function isResearchQuery(message: string) {
   );
 }
 
-export function buildImobActionPlan(message: string): ImobActionPlan {
+export function buildImobActionPlan(message: string, access?: ImobAccessContext): ImobActionPlan {
+  if (isKnowledgeSearchQuery(message)) {
+    const region = extractRegion(message);
+    const segment = extractSegment(message);
+    const timestamp = new Date().toISOString();
+    if (!hasImobKnowledgeAccess(access)) {
+      return {
+        intent: "match",
+        action: "realestate.search_knowledge_base",
+        mode: "blocked",
+        prompt:
+          "O IMOB não está habilitado para este tenant/workspace. Ative a vertical antes de usar a busca documental.",
+        input: {
+          query: message,
+          region,
+          segment,
+          requestedAt: timestamp,
+          blockedReason: "imob_entitlement_missing",
+        },
+        suggestedNextAction: "Ativar o IMOB no workspace ou falar com comercial.",
+      };
+    }
+    const sources = buildImobSearchSources(message, region, segment);
+    return {
+      intent: "match",
+      action: "realestate.search_knowledge_base",
+      mode: "search_knowledge",
+      prompt: `Pesquisar documentos do acervo IMOB em ${region} para ${segment}.`,
+      input: {
+        query: message,
+        region,
+        segment,
+        requestedAt: timestamp,
+      },
+      search: {
+        query: message,
+        region,
+        segment,
+        sources,
+      },
+      suggestedNextAction: "Refinar tipo documental, cidade, operação ou etapa da jornada.",
+    };
+  }
+
   if (isResearchQuery(message)) {
     const region = extractRegion(message);
     const segment = extractSegment(message);

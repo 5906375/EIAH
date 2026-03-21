@@ -42,8 +42,12 @@ import {
 import {
   buildDeterministicImobReply,
   buildImobContextEntryReply,
+  buildImobKnowledgeAccessBlockedReply,
+  buildImobKnowledgeSearchEntryReply,
+  buildImobKnowledgeSearchQuickReplies,
   buildImobQuickRepliesForInput,
   isImobGuideQuestion,
+  resolveImobKnowledgeSearchIntent,
   resolveImobFaqSeed,
   resolveImobHelpIntent,
   resolveImobJourneyStage,
@@ -186,6 +190,15 @@ export type LauncherLocalDecision = {
     intent: string;
     confidenceFloor?: number;
   };
+};
+
+export type LauncherAccessContext = {
+  tenantId?: string | null;
+  workspaceId?: string | null;
+  entitlements?: {
+    REAL_ESTATE_CORE?: boolean;
+    IMOB_INSTALLED?: boolean;
+  } | null;
 };
 
 export type AttachmentIntakeResolution = {
@@ -452,6 +465,9 @@ function isAppShortcutInput(input: string) {
 export function resolveConversationVerticalContext(
   input: string
 ): { vertical: "IMOB"; stage?: ImobJourneyStage; faq?: ImobFaqSeed } | { vertical: "LEGAL"; stage?: LegalJourneyStage } | null {
+  if (resolveImobKnowledgeSearchIntent(input)) {
+    return { vertical: "IMOB" };
+  }
   const faq = resolveImobFaqSeed(input);
   if (faq) {
     return { vertical: "IMOB", stage: faq.journeyStage ?? undefined, faq };
@@ -472,7 +488,12 @@ function resolveVerticalContext(input: string) {
 }
 
 function isImobContextEntryQuestion(input: string) {
-  return resolveVerticalContext(input)?.vertical === "IMOB";
+  return resolveVerticalContext(input)?.vertical === "IMOB" || resolveImobKnowledgeSearchIntent(input) !== null;
+}
+
+function hasImobVerticalAccess(accessContext?: LauncherAccessContext | null) {
+  if (!accessContext?.tenantId || !accessContext?.workspaceId) return false;
+  return accessContext.entitlements?.REAL_ESTATE_CORE === true;
 }
 
 function normalizeAgentKey(value: string) {
@@ -688,6 +709,7 @@ export function detectLauncherRouteIntent(input: string, proposalMode: boolean):
   if (proposalMode) return "proposal";
   const normalized = normalizeIntentText(input);
   if (isAppShortcutInput(input)) return "help";
+  if (resolveImobKnowledgeSearchIntent(input)) return "imob";
   const strongProposalSignals = [
     "proposta",
     "plano",
@@ -783,6 +805,9 @@ export function buildEiahQuickReplies(params: {
   }
 
   if (params.routeIntent === "imob") {
+    if (params.sourceInput && resolveImobKnowledgeSearchIntent(params.sourceInput)) {
+      return buildImobKnowledgeSearchQuickReplies();
+    }
     return [
       "Como funciona IMOB do início ao fim?",
       "Onde acompanho pipeline e etapas no IMOB?",
@@ -1369,6 +1394,7 @@ export async function resolveLauncherTurnDecision(params: {
   previousUserMessage?: string | null;
   previousAssistantMessage?: string | null;
   previousAssistantSnapshot?: MessagePresentationSnapshot | null;
+  accessContext?: LauncherAccessContext | null;
 }): Promise<LauncherLocalDecision | null> {
   const localDecision = resolveLauncherLocalDecision({
     input: params.input,
@@ -1379,6 +1405,7 @@ export async function resolveLauncherTurnDecision(params: {
     agentProfile: params.agentProfile,
     catalogAgents: params.catalogAgents,
     intentUnknown: params.intentUnknown,
+    accessContext: params.accessContext,
   });
   if (localDecision && !localDecision.shouldCreateRun && localDecision.content) {
     return localDecision;
@@ -1714,6 +1741,7 @@ export function resolveEiahDecision(params: {
   agentProfile: Agent | null;
   catalogAgents: Agent[];
   intentUnknown: boolean;
+  accessContext?: LauncherAccessContext | null;
 }): EiahDecision {
   const input = params.input.trim();
   if (params.eiahMode === "proposal" || params.routeIntent === "proposal") {
@@ -1789,6 +1817,33 @@ export function resolveEiahDecision(params: {
       eiahMode: "help",
       renderVariant: "simple_help",
       persistIntent: { intent: "unknown", confidenceFloor: 0.78 },
+    };
+  }
+
+  const imobKnowledgeSearchIntent = resolveImobKnowledgeSearchIntent(input);
+  if (imobKnowledgeSearchIntent) {
+    if (!hasImobVerticalAccess(params.accessContext)) {
+      return {
+        kind: "help_reply",
+        shouldCreateRun: false,
+        content: buildImobKnowledgeAccessBlockedReply(),
+        launcherRouteIntent: "help",
+        presentationRouteIntent: "help",
+        eiahMode: "help",
+        renderVariant: "simple_help",
+        persistIntent: { intent: "product_explain", confidenceFloor: 0.86 },
+      };
+    }
+
+    return {
+      kind: "imob_context_entry",
+      shouldCreateRun: false,
+      content: buildImobKnowledgeSearchEntryReply(input),
+      launcherRouteIntent: "imob",
+      presentationRouteIntent: "imob",
+      eiahMode: "help",
+      renderVariant: "simple_help",
+      persistIntent: { intent: "product_explain", confidenceFloor: 0.84 },
     };
   }
 
@@ -1980,6 +2035,7 @@ export function resolveLauncherLocalDecision(params: {
   agentProfile: Agent | null;
   catalogAgents: Agent[];
   intentUnknown: boolean;
+  accessContext?: LauncherAccessContext | null;
 }): LauncherLocalDecision | null {
   if (params.agentProfile?.chatRuntime?.chatEnabled === false) {
     return {
@@ -2002,6 +2058,7 @@ export function resolveLauncherLocalDecision(params: {
       agentProfile: params.agentProfile,
       catalogAgents: params.catalogAgents,
       intentUnknown: params.intentUnknown,
+      accessContext: params.accessContext,
     });
   }
 
