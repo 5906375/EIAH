@@ -1,4 +1,4 @@
-import { readImobDriveSyncSnapshot } from "./imobDriveSync";
+import { buildImobDriveSearchUrl, readImobDriveSyncSnapshot } from "./imobDriveSync";
 
 export type ImobKnowledgeSourceType = "drive" | "upload" | "web" | "internal_doc";
 
@@ -23,6 +23,7 @@ export type ImobKnowledgeSearchItem = {
   workspaceId: string;
   sourceType: ImobKnowledgeSourceType;
   externalId: string;
+  driveFileId?: string | null;
   title: string;
   href: string;
   mimeType: string;
@@ -69,7 +70,7 @@ const SEED_DOCUMENTS: SeedDocument[] = [
     sourceType: "drive",
     externalId: "drive-proposta-locacao-sp",
     title: "Modelo de proposta de locação - São Paulo",
-    href: "https://drive.google.com/file/d/drive-proposta-locacao-sp/view",
+    href: buildImobDriveSearchUrl("Modelo de proposta de locação São Paulo"),
     mimeType: "application/pdf",
     region: "São Paulo",
     segment: "locacao",
@@ -86,7 +87,7 @@ const SEED_DOCUMENTS: SeedDocument[] = [
     sourceType: "drive",
     externalId: "drive-contrato-locacao-sc",
     title: "Checklist contratual de locação - Santa Catarina",
-    href: "https://drive.google.com/file/d/drive-contrato-locacao-sc/view",
+    href: buildImobDriveSearchUrl("Checklist contratual de locação Santa Catarina"),
     mimeType: "application/pdf",
     region: "Santa Catarina",
     segment: "locacao",
@@ -235,6 +236,7 @@ export async function searchImobKnowledge(params: ImobKnowledgeSearchParams): Pr
         workspaceId: item.workspaceId,
         sourceType: item.sourceType,
         externalId: item.externalId,
+        driveFileId: item.driveFileId,
         title: item.title,
         href: item.href,
         mimeType: item.mimeType,
