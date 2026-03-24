@@ -1007,6 +1007,111 @@ export type ImobKnowledgeSearchItem = {
   snippet: string;
 };
 
+export type ImobSearchSlotState = {
+  goal: "locacao" | "venda" | null;
+  city: string | null;
+  region: string | null;
+  neighborhood: string | null;
+  budgetMax: number | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  propertyType: "apartamento" | "casa" | "studio" | "sala" | "terreno" | "galpao" | null;
+};
+
+export type ImobThreadConversationState = {
+  slots: ImobSearchSlotState;
+  mode: "consult" | "search" | "execute" | "search_knowledge" | "blocked";
+  pendingSlot: "none" | "city" | "budget" | "bedrooms" | "bathrooms" | "propertyType";
+  resultOffset: number;
+};
+
+export type ImobPresentationCta = {
+  id: string;
+  label: string;
+  kind?: "primary" | "secondary" | "neutral";
+  href?: string;
+  action?: "confirm_execution" | "reject_execution" | "export_contract_pdf" | "continue_inventory_search";
+  nextMessage?: string;
+};
+
+export type ImobPresentationCard = {
+  title: string;
+  lines: string[];
+  ctas?: ImobPresentationCta[];
+};
+
+export type ImobExecutionRequest = {
+  intent: "capture" | "match" | "proposal" | "contract" | "commission" | "adjustment";
+  action: string;
+  prompt: string;
+  input: Record<string, unknown>;
+};
+
+export type ImobResolveTurnResponse = {
+  mode: "consult" | "search" | "execute" | "search_knowledge" | "blocked";
+  action: string;
+  threadLabel: string;
+  conversationState: ImobThreadConversationState;
+  presentation: {
+    text: string;
+    card?: ImobPresentationCard;
+    suggestedNextAction?: string;
+  };
+  executionRequest?: ImobExecutionRequest;
+  searchRequest?: {
+    query: string;
+    region?: string | null;
+    segment?: "locacao" | "venda" | "ambos" | null;
+    slots?: Partial<ImobSearchSlotState> | null;
+    offset?: number;
+    limit?: number;
+  };
+  knowledgeRequest?: {
+    query: string;
+    filters: {
+      region?: string | null;
+      segment?: "locacao" | "venda" | "ambos" | null;
+      sourceTypes?: Array<"drive" | "upload" | "web" | "internal_doc">;
+    };
+  };
+  entitlements?: {
+    REAL_ESTATE_CORE: boolean;
+    IMOB_INSTALLED?: boolean;
+  };
+};
+
+export type ImobInventorySearchResponse = {
+  query: string;
+  region: string;
+  segment: "locacao" | "venda" | "ambos";
+  items: Array<{
+    id: string;
+    title: string;
+    city: string;
+    region: string;
+    neighborhood?: string;
+    segment: "locacao" | "venda";
+    priceLabel: string;
+    priceAmount?: number | null;
+    bedrooms?: number;
+    bathrooms?: number;
+    propertyType?: string;
+  }>;
+  total: number;
+  offset: number;
+  limit: number;
+  presentation: {
+    text: string;
+    card?: ImobPresentationCard;
+  };
+  tenantId: string;
+  workspaceId: string;
+  entitlements: {
+    REAL_ESTATE_CORE: boolean;
+    IMOB_INSTALLED?: boolean;
+  };
+};
+
 export type ImobKnowledgeSearchResponse = {
   query: string;
   appliedFilters: {
@@ -1133,6 +1238,31 @@ export async function apiCreateImobChatTelemetry(
   }
 ) {
   return http<{ ok: true; telemetry: { id: string; createdAt: string } }>(`/imob/chat/telemetry`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function apiResolveImobTurn(body: {
+  message: string;
+  threadLabel?: string | null;
+  threadState?: ImobThreadConversationState | null;
+}) {
+  return http<{ ok: true; data: ImobResolveTurnResponse }>(`/imob/chat/resolve-turn`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function apiSearchImobInventory(body: {
+  query: string;
+  region?: string | null;
+  segment?: "locacao" | "venda" | "ambos" | null;
+  slots?: Partial<ImobSearchSlotState> | null;
+  offset?: number;
+  limit?: number;
+}) {
+  return http<{ ok: true; data: ImobInventorySearchResponse }>(`/imob/search/inventory`, {
     method: "POST",
     body: JSON.stringify(body),
   });

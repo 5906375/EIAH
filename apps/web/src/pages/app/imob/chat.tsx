@@ -26,7 +26,13 @@ import {
   type AgentProtocolActionContract,
 } from "@/lib/api";
 import { useSession } from "@/state/sessionStore";
-import { buildImobActionPlan, type ImobActionPlan } from "@/features/imob/chatOrchestrator";
+import {
+  resolveImobTurn,
+  searchImobInventory,
+  type ImobExecutionRequest,
+  type ImobResolveTurnResponse,
+  type ImobThreadConversationState,
+} from "@/features/imob/imobApiClient";
 import {
   applySingleFieldEditAnswer,
   applyContractInterviewAnswer,
@@ -55,7 +61,8 @@ type CardCta = {
   label: string;
   kind?: "primary" | "secondary" | "neutral";
   href?: string;
-  action?: "confirm_execution" | "reject_execution" | "export_contract_pdf";
+  action?: "confirm_execution" | "reject_execution" | "export_contract_pdf" | "continue_inventory_search";
+  nextMessage?: string;
 };
 
 type MessageCard = {
@@ -110,7 +117,7 @@ type ChatMessage = {
 };
 
 type PendingExecution = {
-  plan: ImobActionPlan;
+  plan: ImobExecutionRequest;
   contract: AgentProtocolActionContract;
   messageId: string;
   thread: {
@@ -120,6 +127,20 @@ type PendingExecution = {
   receiptEndpointTemplate?: string;
   preparedAt: number;
 };
+
+function mapApiPresentationCard(
+  card: ImobResolveTurnResponse["presentation"]["card"] | undefined,
+  thread: { id: string; label: string; status?: "active" | "done" | "blocked" }
+): MessageCard | undefined {
+  if (!card) return undefined;
+  return {
+    type: "action",
+    title: card.title,
+    thread,
+    lines: card.lines,
+    ctas: normalizeCardCtas(card.ctas),
+  };
+}
 
 type SelectedKnowledgeContext = {
   item: ImobKnowledgeSearchResponse["items"][number];
@@ -147,22 +168,6 @@ const QUICK_PROMPTS = [
   "Gerar proposta para cliente João",
   "Iniciar contrato do imóvel 82912",
   "Fechar comissão da venda X",
-];
-
-type SyntheticSearchProperty = {
-  title: string;
-  city: string;
-  region: string;
-  segment: "locacao" | "venda";
-  priceLabel: string;
-};
-
-const SYNTHETIC_SEARCH_CATALOG: SyntheticSearchProperty[] = [
-  { title: "Apto Centro 2Q", city: "Balneário Camboriú", region: "Santa Catarina", segment: "locacao", priceLabel: "R$ 4.200/mês" },
-  { title: "Casa Praia Brava", city: "Itajaí", region: "Santa Catarina", segment: "venda", priceLabel: "R$ 1.450.000" },
-  { title: "Studio Pinheiros", city: "São Paulo", region: "São Paulo", segment: "locacao", priceLabel: "R$ 3.800/mês" },
-  { title: "Apto Vila Mariana", city: "São Paulo", region: "São Paulo", segment: "venda", priceLabel: "R$ 980.000" },
-  { title: "Cobertura Copacabana", city: "Rio de Janeiro", region: "Rio de Janeiro", segment: "venda", priceLabel: "R$ 2.200.000" },
 ];
 
 function statusLabel(status: ChatState) {
@@ -288,7 +293,7 @@ function selectKnowledgeCardActions(actions: KnowledgeAction[]) {
   return [{ ...moreAction, label: "Ver mais materiais" }];
 }
 
-function getIntentActionCtas(intent: ImobActionPlan["intent"]): CardCta[] {
+function getIntentActionCtas(intent: ImobExecutionRequest["intent"]): CardCta[] {
   switch (intent) {
     case "capture":
       return [{ id: "go-dashboard", label: "Abrir Dashboard", kind: "neutral", href: "/app/imob/dashboard?section=imoveis#dashboard-hub" }];
@@ -310,7 +315,7 @@ function getCardTypeChip(type: CardType) {
   return "Próximo passo";
 }
 
-function getIntentThreadLabel(intent: ImobActionPlan["intent"]) {
+function getIntentThreadLabel(intent: ImobExecutionRequest["intent"]) {
   switch (intent) {
     case "capture":
       return "Captação";
@@ -399,7 +404,7 @@ function formatPct(value: number | null | undefined) {
   return `${value.toFixed(1)}%`;
 }
 
-function getHumanPlanLines(intent: ImobActionPlan["intent"]) {
+function getHumanPlanLines(intent: ImobExecutionRequest["intent"]) {
   switch (intent) {
     case "capture":
       return ["Posso iniciar a captação agora."];
@@ -592,6 +597,7 @@ const ImobChatPage: React.FC = () => {
 
   const listRef = React.useRef<HTMLDivElement | null>(null);
   const sessionRunByThreadRef = React.useRef<Record<string, string>>({});
+  const conversationStateByThreadRef = React.useRef<Record<string, ImobThreadConversationState>>({});
   const rejectedExecutionKeysRef = React.useRef<Set<string>>(new Set());
   const persistedRunStatusKeysRef = React.useRef<Set<string>>(new Set());
   const persistedContractTemplateKeysRef = React.useRef<Set<string>>(new Set());
@@ -847,6 +853,7 @@ const ImobChatPage: React.FC = () => {
           setContractInterviewState(null);
           setSingleEditFieldId(null);
           sessionRunByThreadRef.current = {};
+          conversationStateByThreadRef.current = {};
         }
       } catch {
         if (!mounted) return;
@@ -855,6 +862,7 @@ const ImobChatPage: React.FC = () => {
         setContractInterviewState(null);
         setSingleEditFieldId(null);
         sessionRunByThreadRef.current = {};
+        conversationStateByThreadRef.current = {};
       } finally {
         if (mounted) setHistoryLoading(false);
       }
@@ -880,6 +888,7 @@ const ImobChatPage: React.FC = () => {
     setContractInterviewState(null);
     setSingleEditFieldId(null);
     sessionRunByThreadRef.current = {};
+    conversationStateByThreadRef.current = {};
     trackUxEvent("conversation_selected", { nextConversationId });
     setHistoryLimit(HISTORY_PAGE_SIZE);
     setHasMoreHistory(false);
@@ -896,6 +905,7 @@ const ImobChatPage: React.FC = () => {
       setContractInterviewState(null);
       setSingleEditFieldId(null);
       sessionRunByThreadRef.current = {};
+      conversationStateByThreadRef.current = {};
     } finally {
       setHistoryLoading(false);
     }
@@ -922,6 +932,7 @@ const ImobChatPage: React.FC = () => {
     setContractInterviewState(null);
     setSingleEditFieldId(null);
     sessionRunByThreadRef.current = {};
+    conversationStateByThreadRef.current = {};
     setHistoryLimit(HISTORY_PAGE_SIZE);
     setHasMoreHistory(false);
     trackUxEvent("conversation_new");
@@ -948,64 +959,9 @@ const ImobChatPage: React.FC = () => {
     }
   };
 
-  const buildSearchResponse = React.useCallback(
-    (plan: ImobActionPlan) => {
-      const region = plan.search?.region ?? "Brasil";
-      const segment = plan.search?.segment ?? "ambos";
-      const searchSources = plan.search?.sources ?? [];
-      const driveSearchSource = searchSources.find((source) => source.id === "drive-search");
-      const driveFolderSource = searchSources.find((source) => source.id === "drive-folder");
-      const internal = SYNTHETIC_SEARCH_CATALOG.filter((item) => {
-        const regionMatch = region === "Brasil" ? true : item.region === region;
-        const segmentMatch = segment === "ambos" ? true : item.segment === segment;
-        return regionMatch && segmentMatch;
-      }).slice(0, 4);
-
-      const entitlements = (session.entitlements ?? {}) as Record<string, unknown>;
-      const externalProviderAvailable = entitlements.IMOB_EXTERNAL_PROVIDER === true;
-      const internalLines =
-        internal.length > 0
-          ? internal.map((item) => `- ${item.title} • ${item.city} • ${item.priceLabel}`)
-          : ["- Não encontrei resultados internos com esse recorte."];
-      const externalLines = externalProviderAvailable
-        ? [
-            driveSearchSource ? `- ${driveSearchSource.label} (Drive do IMOB)` : "- Drive do IMOB disponível para consulta direta.",
-            "- Zap Imóveis (portal nacional)",
-            "- Viva Real (portal nacional)",
-            "- OLX Imóveis (regional e nacional)",
-          ]
-        : [
-            driveSearchSource ? `- ${driveSearchSource.label} (Drive do IMOB)` : "- Drive do IMOB disponível para consulta direta.",
-            "- Provider externo não habilitado neste tenant/workspace.",
-          ];
-
-      const segmentLabel = segment === "locacao" ? "locação" : segment === "venda" ? "venda" : "locação e venda";
-      return [
-        `Encontrei opções para ${segmentLabel} em ${region}.`,
-        "",
-        "Base interna (prioridade):",
-        ...internalLines,
-        "",
-        "Fontes externas:",
-        ...externalLines,
-        "",
-        driveFolderSource ? `Pasta base: ${driveFolderSource.href}` : "",
-        driveSearchSource ? "Use os atalhos abaixo para abrir a busca do acervo IMOB já filtrada." : "",
-        driveSearchSource || driveFolderSource ? "" : "",
-        "Sugestões de busca no Brasil:",
-        "- Região: Sul, Sudeste, Nordeste",
-        "- Segmento: locação, venda ou ambos",
-        "- Faixa: até R$ 500 mil, R$ 500 mil a R$ 1,5 mi, acima de R$ 1,5 mi",
-      ]
-        .filter(Boolean)
-        .join("\n");
-    },
-    [session.entitlements]
-  );
-
   const buildKnowledgeSearchResponse = React.useCallback(
-    (result: ImobKnowledgeSearchResponse, plan: ImobActionPlan) => {
-      const sourceTypes = result.appliedFilters.sourceTypes ?? plan.search?.sourceTypes ?? [];
+    (result: ImobKnowledgeSearchResponse, turn: ImobResolveTurnResponse) => {
+      const sourceTypes = result.appliedFilters.sourceTypes ?? turn.knowledgeRequest?.filters.sourceTypes ?? [];
       const sourceLabel =
         sourceTypes.length > 0
           ? ` em ${sourceTypes
@@ -1035,40 +991,14 @@ const ImobChatPage: React.FC = () => {
     []
   );
 
-  const buildSearchCard = React.useCallback(
-    (plan: ImobActionPlan, thread: { id: string; label: string; status?: "active" | "done" | "blocked" }): MessageCard | undefined => {
-      const sources = plan.search?.sources ?? [];
-      if (sources.length === 0) return undefined;
-      return {
-        type: "action",
-        title: "Fontes de busca",
-        thread,
-        lines: sources.map((source) => source.description),
-        ctas: sources.map((source, index) => ({
-          id: source.id,
-          label: source.label,
-          kind: index === 0 ? "primary" : "neutral",
-          href: source.href,
-        })),
-      };
-    },
-    []
-  );
-
   const buildKnowledgeSearchCard = React.useCallback(
     (
       result: ImobKnowledgeSearchResponse,
-      plan: ImobActionPlan,
+      turn: ImobResolveTurnResponse,
       thread: { id: string; label: string; status?: "active" | "done" | "blocked" }
     ): MessageCard | undefined => {
       const items = result.items.slice(0, 3);
-      const sourceCtas =
-        plan.search?.sources?.map((source, index) => ({
-          id: source.id,
-          label: source.label,
-          kind: index === 0 ? ("primary" as const) : ("neutral" as const),
-          href: source.href,
-        })) ?? [];
+      const sourceCtas = turn.presentation.card?.ctas ?? [];
       return {
         type: "action",
         title: "Resultados do acervo IMOB",
@@ -1213,7 +1143,7 @@ const ImobChatPage: React.FC = () => {
   }, [activeAssistantMessageId, activeRunId, activeThread, appendMessage, persistMessage, runStatus, state, updateMessageById]);
 
   const startPlanExecution = async (
-    plan: ImobActionPlan,
+    plan: ImobExecutionRequest,
     operationThread: { id: string; label: string },
     activeConversationId: string,
     startedAt: number
@@ -1569,18 +1499,21 @@ const ImobChatPage: React.FC = () => {
   const sendMessageText = async (rawText: string) => {
     const text = rawText.trim();
     if (!text) return;
-    const plan = buildImobActionPlan(text, {
-      tenantId: session.tenantId,
-      workspaceId: session.workspaceId,
-      entitlements: session.entitlements ?? null,
-    });
     const selectedThread = selectedThreadId ? threads.find((item) => item.threadId === selectedThreadId) : null;
+    const currentThreadId = selectedThread?.threadId ?? activeThread?.id ?? null;
+    const currentThreadLabel = selectedThread?.label ?? activeThread?.label ?? null;
+    let turn = await resolveImobTurn({
+      message: text,
+      threadLabel: currentThreadLabel,
+      threadState: currentThreadId ? conversationStateByThreadRef.current[currentThreadId] ?? null : null,
+    });
     const operationThread = selectedThread
       ? { id: selectedThread.threadId, label: selectedThread.label }
       : activeThread ?? {
           id: makeId("thread"),
-          label: getIntentThreadLabel(plan.intent),
+          label: turn.threadLabel,
         };
+    conversationStateByThreadRef.current[operationThread.id] = turn.conversationState;
     let activeConversationId = conversationId;
     if (!activeConversationId) {
       try {
@@ -1620,7 +1553,7 @@ const ImobChatPage: React.FC = () => {
       (contractInterviewState.status === "collecting" ||
         contractInterviewState.status === "review" ||
         contractInterviewState.status === "generating");
-    if (interviewIsActive || plan.intent === "contract") {
+    if (interviewIsActive || turn.executionRequest?.intent === "contract") {
       const threadForInterview = {
         id: operationThread.id,
         label: "Contrato",
@@ -1693,7 +1626,9 @@ const ImobChatPage: React.FC = () => {
           role: "assistant",
           text: editApplied.ok
             ? editApplied.message ?? "Rascunho atualizado."
-            : `${editApplied.message}\n\n${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."}`,
+            : `${editApplied.message}
+
+${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."}`,
           thread: threadForInterview,
         };
         appendMessage(editMessage);
@@ -1734,64 +1669,74 @@ const ImobChatPage: React.FC = () => {
       return;
     }
 
-    if (plan.mode === "blocked") {
+    const baseThread = {
+      id: operationThread.id,
+      label: turn.threadLabel,
+      status: "active" as const,
+    };
+
+    if (turn.mode === "blocked") {
       const blockedReply: ChatMessage = {
         id: makeId("assistant"),
         role: "assistant",
-        text: plan.prompt,
-        thread: {
-          id: operationThread.id,
-          label: operationThread.label,
-          status: "blocked",
-        },
+        text: turn.presentation.text,
+        thread: { ...baseThread, status: "blocked" },
+        card: mapApiPresentationCard(turn.presentation.card, { ...baseThread, status: "blocked" }),
       };
       appendMessage(blockedReply);
       void persistMessage(blockedReply, {
-        intent: plan.intent,
-        action: plan.action,
+        action: turn.action,
         conversationId: activeConversationId,
       });
       setState("blocked");
       return;
     }
 
-    if (plan.mode === "search_knowledge") {
-      const searchThread = {
-        id: operationThread.id,
-        label: operationThread.label,
-        status: "active" as const,
+    if (turn.mode === "consult") {
+      const consultReply: ChatMessage = {
+        id: makeId("assistant"),
+        role: "assistant",
+        text: turn.presentation.text,
+        thread: baseThread,
+        card: mapApiPresentationCard(turn.presentation.card, baseThread),
       };
+      appendMessage(consultReply);
+      void persistMessage(consultReply, {
+        action: turn.action,
+        conversationId: activeConversationId,
+      });
+      setActiveThread({ id: baseThread.id, label: baseThread.label });
+      setState("done");
+      return;
+    }
+
+    if (turn.mode === "search_knowledge") {
       try {
         const search = await apiSearchImobKnowledge({
-          query: plan.search?.query ?? text,
-          filters: {
-            region: plan.search?.region ?? null,
-            segment: plan.search?.segment ?? null,
-            sourceTypes: plan.search?.sourceTypes ?? [],
-          },
+          query: turn.knowledgeRequest?.query ?? text,
+          filters: turn.knowledgeRequest?.filters,
         });
         const searchReply: ChatMessage = {
           id: makeId("assistant"),
           role: "assistant",
-          text: buildKnowledgeSearchResponse(search.data, plan),
-          thread: searchThread,
-          card: buildKnowledgeSearchCard(search.data, plan, searchThread),
+          text: buildKnowledgeSearchResponse(search.data, turn),
+          thread: baseThread,
+          card: buildKnowledgeSearchCard(search.data, turn, baseThread),
         };
         if (search.data.items.length > 0) {
           const sourceActions = selectKnowledgeActions(
             search.data.items[0],
-            mapKnowledgeActions(searchReply.card?.ctas, searchThread.id, withDashboardContext)
+            mapKnowledgeActions(searchReply.card?.ctas, baseThread.id, withDashboardContext)
           );
           setSelectedKnowledgeContext({
             item: search.data.items[0],
             sourceActions,
-            threadId: searchThread.id,
+            threadId: baseThread.id,
           });
         }
         appendMessage(searchReply);
         void persistMessage(searchReply, {
-          intent: plan.intent,
-          action: plan.action,
+          action: turn.action,
           conversationId: activeConversationId,
           metadata: { knowledgeSearch: search.data },
         });
@@ -1800,9 +1745,10 @@ const ImobChatPage: React.FC = () => {
             conversationId: activeConversationId,
             event: "message_to_plan_ms",
             value: Date.now() - startedAt,
-            metadata: { intent: plan.intent, action: plan.action, mode: plan.mode, resultTotal: search.data.total },
+            metadata: { action: turn.action, mode: turn.mode, resultTotal: search.data.total },
           });
         }
+        setActiveThread({ id: baseThread.id, label: baseThread.label });
         setState("done");
       } catch (error) {
         const errorMessage =
@@ -1813,7 +1759,7 @@ const ImobChatPage: React.FC = () => {
           id: makeId("assistant"),
           role: "assistant",
           text: errorMessage,
-          thread: { ...searchThread, status: "blocked" },
+          thread: { ...baseThread, status: "blocked" },
         };
         appendMessage(failureReply);
         setState("blocked");
@@ -1821,38 +1767,47 @@ const ImobChatPage: React.FC = () => {
       return;
     }
 
-    if (plan.mode === "search") {
-      const searchThread = {
-        id: operationThread.id,
-        label: operationThread.label,
-        status: "active" as const,
-      };
+    if (turn.mode === "search") {
+      const inventory = await searchImobInventory(turn.searchRequest ?? { query: text });
       const searchReply: ChatMessage = {
         id: makeId("assistant"),
         role: "assistant",
-        text: buildSearchResponse(plan),
-        thread: searchThread,
-        card: buildSearchCard(plan, searchThread),
+        text: inventory.presentation.text,
+        thread: baseThread,
+        card: mapApiPresentationCard(inventory.presentation.card, baseThread),
       };
       appendMessage(searchReply);
       void persistMessage(searchReply, {
-        intent: plan.intent,
-        action: plan.action,
+        action: turn.action,
         conversationId: activeConversationId,
+        metadata: { inventorySearch: inventory },
       });
       if (activeConversationId) {
         void apiCreateImobChatTelemetry({
           conversationId: activeConversationId,
           event: "message_to_plan_ms",
           value: Date.now() - startedAt,
-          metadata: { intent: plan.intent, action: plan.action, mode: plan.mode },
+          metadata: { action: turn.action, mode: turn.mode },
         });
       }
+      setActiveThread({ id: baseThread.id, label: baseThread.label });
       setState("done");
       return;
     }
 
-    await startPlanExecution(plan, operationThread, activeConversationId, startedAt);
+    if (!turn.executionRequest) {
+      const failedReply: ChatMessage = {
+        id: makeId("assistant"),
+        role: "assistant",
+        text: "Não consegui preparar esta etapa agora.",
+        thread: { ...baseThread, status: "blocked" },
+      };
+      appendMessage(failedReply);
+      setState("blocked");
+      return;
+    }
+
+    await startPlanExecution(turn.executionRequest, operationThread, activeConversationId, startedAt);
   };
 
   React.useEffect(() => {
@@ -2829,6 +2784,10 @@ const ImobChatPage: React.FC = () => {
                                       }
                                       if (cta.action === "export_contract_pdf") {
                                         void exportGeneratedContractPdf(message);
+                                        return;
+                                      }
+                                      if (cta.action === "continue_inventory_search") {
+                                        void sendMessageText(cta.nextMessage ?? cta.label);
                                       }
                                     }}
                                     disabled={cta.action === "reject_execution" && isRejectLocked}
