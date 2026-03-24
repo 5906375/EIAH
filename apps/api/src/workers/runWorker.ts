@@ -45,10 +45,8 @@ import { prismaGlobal } from "@repo/db";
 /* ──────────────────────────────────────────────
    LLM Execution (Gateway executor unificado)
    ────────────────────────────────────────────── */
-import {
-  executeLlmStep,
-  type LlmExecutorResult,
-} from "../orchestrator/llmExecutor";
+import type { LlmExecutorResult } from "../orchestrator/llmExecutor";
+import { executeCapability } from "../services/capabilityExecution";
 
 /* ──────────────────────────────────────────────
    Queue Events
@@ -1110,20 +1108,34 @@ export async function processRunPayload(payload: RunQueuePayload) {
             );
           }
 
-          const result = await executeLlmStep({
+          const capabilityResult = await executeCapability({
+            request: {
+              capability: "chat_response",
+              vertical: "core",
+              context: {
+                runId,
+                stepId: step.id,
+                action: step.action,
+              },
+              policyContext: {
+                tenantId,
+                workspaceId,
+                purpose: "run_worker_execute_step",
+              },
+            },
             profile,
             userPrompt: promptForExecution,
             metadata: runtimeMetadataResolved,
           });
 
           executionResult = {
-            outputText: result.outputText,
-            rawResponse: result.rawResponse,
-            traceId: result.traceId,
-            tookMs: result.tookMs,
+            outputText: String(capabilityResult.output.text ?? ""),
+            rawResponse: capabilityResult.rawResponse,
+            traceId: capabilityResult.telemetryRef,
+            tookMs: capabilityResult.tookMs,
           };
 
-          return result.outputText;
+          return executionResult.outputText;
         },
         observe: async (orchestratorContext, lastResult) => {
           const observeText =

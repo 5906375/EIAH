@@ -1,5 +1,5 @@
 import fetch from "node-fetch";
-import type { ChatCompletionRequest, ChatCompletionResponse } from "@eiah/core";
+import type { ChatCompletionRequest, ChatCompletionResponse } from "@eiah/core/llm/types";
 import { OpenAIProvider } from "./OpenAIProvider";
 import { AnthropicProvider } from "./AnthropicProvider";
 import { GeminiProvider } from "./GeminiProvider";

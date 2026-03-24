@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { executeLlmStep } from "../orchestrator/llmExecutor";
+import { executeCapability } from "./capabilityExecution";
 import { maskText } from "./masker";
 
 export type HallucinationJudgment = {
@@ -93,14 +93,30 @@ export async function evaluateHallucination(params: {
   ].join("\n");
 
   const result = await Promise.race([
-    executeLlmStep({
+    executeCapability({
+      request: {
+        capability: "hallucination_judgment",
+        vertical: "governance",
+        context: {
+          action: params.action,
+          toolVersion: params.toolVersion ?? null,
+        },
+        policyContext: {
+          purpose: "judgeGate",
+        },
+      },
       profile: {
         model,
         systemPrompt,
       },
       userPrompt,
       metadata: { purpose: "judgeGate", model },
-    }),
+    }).then((result) => ({
+      outputText: String(result.output.text ?? ""),
+      rawResponse: result.rawResponse,
+      traceId: result.telemetryRef,
+      tookMs: result.tookMs,
+    })),
     new Promise<never>((_, reject) =>
       setTimeout(() => reject(new Error("Judge LLM timeout")), Number.isFinite(timeoutMs) ? timeoutMs : 1000)
     ),

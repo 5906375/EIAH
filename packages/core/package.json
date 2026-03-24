@@ -13,6 +13,10 @@
     "./queue/*": {
       "import": "./dist/queue/*.js",
       "types": "./dist/queue/*.d.ts"
+    },
+    "./llm/*": {
+      "import": "./dist/llm/*.js",
+      "types": "./dist/llm/*.d.ts"
     }
   },
   "scripts": {
