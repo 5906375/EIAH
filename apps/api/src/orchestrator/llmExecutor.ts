@@ -1,6 +1,7 @@
-import { runCompletion, llmRegistry } from "@eiah/core";
+import { runCompletion } from "@eiah/core/llm/completionEngine";
+import { llmRegistry } from "@eiah/core/llm/LLMRegistry";
+import type { ChatMessage } from "@eiah/core/llm/types";
 import { OpenAIProvider, AnthropicProvider, GeminiProvider, DeepSeekProvider } from "@eiah/providers";
-import type { ChatMessage } from "@eiah/core";
 import { fullMask, maskText } from "../services/masker";
 
 export type LlmExecutorParams = {

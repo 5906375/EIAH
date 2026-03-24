@@ -1,5 +1,6 @@
 import { AgentOrchestrator, DefaultPlanManager } from "@eiah/core";
-import { executeLlmStep, type LlmExecutorParams, type LlmExecutorResult } from "../orchestrator/llmExecutor";
+import { type LlmExecutorParams, type LlmExecutorResult } from "../orchestrator/llmExecutor";
+import { executeCapability } from "./capabilityExecution";
 import { resolveKnowledgeContext } from "./knowledgeGate";
 
 export type ExecuteAgentRunParams = LlmExecutorParams & {
@@ -31,11 +32,30 @@ export async function executeAgentRun(params: ExecuteAgentRunParams): Promise<Ex
   const orchestrator = new AgentOrchestrator({
     planManager,
     act: async () => {
-      lastResult = await executeLlmStep({
+      const capabilityResult = await executeCapability({
+        request: {
+          capability: "chat_response",
+          vertical: "core",
+          context: {
+            runId,
+            objective: params.userPrompt,
+          },
+          policyContext: {
+            tenantId: params.tenantId,
+            workspaceId: params.workspaceId,
+            purpose: "execute_agent_run",
+          },
+        },
         profile: params.profile,
         userPrompt: params.userPrompt,
         metadata: knowledgeResolution.metadata,
       });
+      lastResult = {
+        outputText: String(capabilityResult.output.text ?? ""),
+        rawResponse: capabilityResult.rawResponse,
+        traceId: capabilityResult.telemetryRef,
+        tookMs: capabilityResult.tookMs,
+      };
       return lastResult.outputText;
     },
   });

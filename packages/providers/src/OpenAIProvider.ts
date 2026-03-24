@@ -1,5 +1,6 @@
 import fetch from "node-fetch";
-import { LLMProvider, type ChatCompletionRequest, type ChatCompletionResponse } from "@eiah/core";
+import { LLMProvider } from "@eiah/core/llm/LLMProvider";
+import type { ChatCompletionRequest, ChatCompletionResponse } from "@eiah/core/llm/types";
 
 export class OpenAIProvider extends LLMProvider {
   readonly name = "openai";

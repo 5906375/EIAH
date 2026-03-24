@@ -1,13 +1,13 @@
 import "dotenv/config";
-import {
+import type {
   Job,
   JobsOptions,
   Queue,
   QueueEvents,
-  Worker,
   type ConnectionOptions,
   type QueueEventsOptions,
   type QueueOptions,
+  type Worker,
   type WorkerOptions,
 } from "bullmq";
 import { createLogger, bindLogger } from "../logging";
@@ -17,6 +17,8 @@ import {
   QueueName,
   type ActionJobPayload,
 } from "@eiah/contracts";
+
+type BullModule = typeof import("bullmq");
 
 const DEFAULT_QUEUE_NAME = process.env.ACTION_QUEUE_NAME ?? QueueName.ACTIONS;
 const DEFAULT_JOB_NAME = process.env.ACTION_QUEUE_JOB_NAME ?? ActionJobName;
@@ -34,18 +36,34 @@ export type ActionQueueConsumer = (
   job: Job<ActionQueuePayload>
 ) => Promise<ActionExecutionResult | void> | ActionExecutionResult | void;
 
-const connectionUrl =
-  process.env.ACTION_QUEUE_REDIS_URL ??
-  process.env.RUN_QUEUE_REDIS_URL ??
-  process.env.REDIS_URL ??
-  process.env.BULLMQ_REDIS_URL ??
-  process.env.QUEUE_REDIS_URL ??
-  DEFAULT_CONNECTION_URL;
-
-const connection: ConnectionOptions = createConnectionOptions(connectionUrl);
-
+let bullmqModulePromise: Promise<BullModule> | null = null;
 let queuePromise: Promise<Queue> | null = null;
 let dlqQueuePromise: Promise<Queue> | null = null;
+
+async function loadBullMQ(): Promise<BullModule> {
+  if (!bullmqModulePromise) {
+    bullmqModulePromise = import("bullmq").catch((error) => {
+      throw new Error(
+        `BullMQ failed to load. Install it with \"pnpm add bullmq\" and ensure dependencies are available. Original error: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+    });
+  }
+
+  return bullmqModulePromise;
+}
+
+function getConnectionUrl() {
+  return (
+    process.env.ACTION_QUEUE_REDIS_URL ??
+    process.env.RUN_QUEUE_REDIS_URL ??
+    process.env.REDIS_URL ??
+    process.env.BULLMQ_REDIS_URL ??
+    process.env.QUEUE_REDIS_URL ??
+    DEFAULT_CONNECTION_URL
+  );
+}
 
 function resolveDlqQueueName() {
   return `${DEFAULT_QUEUE_NAME}${DLQ_SUFFIX}`;
@@ -98,13 +116,18 @@ function createConnectionOptions(url: string): ConnectionOptions {
   }
 }
 
+function resolveConnection(): ConnectionOptions {
+  return createConnectionOptions(getConnectionUrl());
+}
+
 async function getQueue() {
   if (!queuePromise) {
-    queuePromise = Promise.resolve(
-      new Queue(DEFAULT_QUEUE_NAME, {
-        connection,
-      } satisfies QueueOptions)
-    );
+    queuePromise = (async () => {
+      const { Queue } = await loadBullMQ();
+      return new Queue(DEFAULT_QUEUE_NAME, {
+        connection: resolveConnection(),
+      } satisfies QueueOptions);
+    })();
   }
 
   return queuePromise;
@@ -112,11 +135,12 @@ async function getQueue() {
 
 async function getDlqQueue() {
   if (!dlqQueuePromise) {
-    dlqQueuePromise = Promise.resolve(
-      new Queue(resolveDlqQueueName(), {
-        connection,
-      } satisfies QueueOptions)
-    );
+    dlqQueuePromise = (async () => {
+      const { Queue } = await loadBullMQ();
+      return new Queue(resolveDlqQueueName(), {
+        connection: resolveConnection(),
+      } satisfies QueueOptions);
+    })();
   }
 
   return dlqQueuePromise;
@@ -146,10 +170,11 @@ export async function consumeActions(
   handler: ActionQueueConsumer,
   options: { concurrency?: number } = {}
 ) {
+  const { Worker } = await loadBullMQ();
   const concurrency = options.concurrency ?? DEFAULT_CONCURRENCY;
 
   const workerOptions: WorkerOptions = {
-    connection,
+    connection: resolveConnection(),
     concurrency,
   };
 
@@ -203,8 +228,9 @@ export async function consumeActions(
 }
 
 export async function createActionQueueEvents() {
+  const { QueueEvents } = await loadBullMQ();
   const events = new QueueEvents(DEFAULT_QUEUE_NAME, {
-    connection,
+    connection: resolveConnection(),
   } satisfies QueueEventsOptions);
 
   events.on("failed", ({ jobId, failedReason }: { jobId?: string; failedReason?: string }) => {
@@ -319,6 +345,3 @@ export async function probeActionQueue() {
     dlq: dlqCounts,
   };
 }
-
-
-
