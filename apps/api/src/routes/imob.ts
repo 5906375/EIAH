@@ -7,6 +7,8 @@ import { createRunRecord } from "../services/runs";
 import { emitRunEvent } from "../services/runEventEmitter";
 import { searchImobKnowledge } from "../services/imob/imobKnowledgeSearch";
 import { readImobDriveSyncSnapshot } from "../services/imob/imobDriveSync";
+import { searchImobInventory } from "../services/imob/imobInventoryProvider";
+import { resolveImobTurn } from "../services/imob/imobTurnResolver";
 
 export const imobRouter = Router();
 imobRouter.use(enforceTenant);
@@ -503,6 +505,127 @@ imobRouter.post("/knowledge/search", async (req, res) => {
       ...result,
       tenantId: authContext.tenantId,
       workspaceId,
+      entitlements,
+    },
+  });
+});
+
+imobRouter.post("/chat/resolve-turn", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({
+      ok: false,
+      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+    });
+  }
+
+  const body = asObject(req.body) ?? {};
+  const message = asString(body.message);
+  if (!message) {
+    return res.status(400).json({
+      ok: false,
+      error: { code: "INVALID_MESSAGE", message: "message is required" },
+    });
+  }
+
+  const entitlements = await resolveImobEntitlements({
+    prisma,
+    tenantId: authContext.tenantId,
+    workspaceId: authContext.workspaceId,
+  });
+
+  const threadStateRaw = asObject(body.threadState);
+  const threadSlotsRaw = asObject(threadStateRaw?.slots);
+  const threadState = threadStateRaw
+    ? {
+        mode: asString(threadStateRaw.mode) ?? "consult",
+        pendingSlot: asString(threadStateRaw.pendingSlot) ?? "none",
+        resultOffset: Number.isFinite(Number(threadStateRaw.resultOffset)) ? Number(threadStateRaw.resultOffset) : 0,
+        slots: {
+          goal: asString(threadSlotsRaw?.goal) === "locacao" || asString(threadSlotsRaw?.goal) === "venda" ? asString(threadSlotsRaw?.goal) : null,
+          city: asString(threadSlotsRaw?.city),
+          region: asString(threadSlotsRaw?.region),
+          neighborhood: asString(threadSlotsRaw?.neighborhood),
+          budgetMax: Number.isFinite(Number(threadSlotsRaw?.budgetMax)) ? Number(threadSlotsRaw?.budgetMax) : null,
+          bedrooms: Number.isFinite(Number(threadSlotsRaw?.bedrooms)) ? Number(threadSlotsRaw?.bedrooms) : null,
+          bathrooms: Number.isFinite(Number(threadSlotsRaw?.bathrooms)) ? Number(threadSlotsRaw?.bathrooms) : null,
+          propertyType: asString(threadSlotsRaw?.propertyType),
+        },
+      }
+    : null;
+
+  const data = resolveImobTurn({
+    message,
+    threadLabel: asString(body.threadLabel),
+    threadState: threadState as any,
+    access: {
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      entitlements,
+    },
+  });
+
+  return res.json({
+    ok: true,
+    data: {
+      ...data,
+      entitlements,
+    },
+  });
+});
+
+imobRouter.post("/search/inventory", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({
+      ok: false,
+      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+    });
+  }
+
+  const body = asObject(req.body) ?? {};
+  const query = asString(body.query);
+  if (!query) {
+    return res.status(400).json({
+      ok: false,
+      error: { code: "INVALID_QUERY", message: "query is required" },
+    });
+  }
+
+  const entitlements = await resolveImobEntitlements({
+    prisma,
+    tenantId: authContext.tenantId,
+    workspaceId: authContext.workspaceId,
+  });
+
+  const slotsRaw = asObject(body.slots);
+  const segmentRaw = asString(body.segment);
+  const data = searchImobInventory({
+    query,
+    region: asString(body.region),
+    segment: segmentRaw === "locacao" || segmentRaw === "venda" || segmentRaw === "ambos" ? segmentRaw : null,
+    slots: slotsRaw
+      ? {
+          goal: asString(slotsRaw.goal) === "locacao" || asString(slotsRaw.goal) === "venda" ? asString(slotsRaw.goal) : null,
+          city: asString(slotsRaw.city),
+          region: asString(slotsRaw.region),
+          neighborhood: asString(slotsRaw.neighborhood),
+          budgetMax: Number.isFinite(Number(slotsRaw.budgetMax)) ? Number(slotsRaw.budgetMax) : null,
+          bedrooms: Number.isFinite(Number(slotsRaw.bedrooms)) ? Number(slotsRaw.bedrooms) : null,
+          bathrooms: Number.isFinite(Number(slotsRaw.bathrooms)) ? Number(slotsRaw.bathrooms) : null,
+          propertyType: asString(slotsRaw.propertyType),
+        } as any
+      : null,
+    offset: Number.isFinite(Number(body.offset)) ? Number(body.offset) : 0,
+    limit: Number.isFinite(Number(body.limit)) ? Number(body.limit) : 2,
+  });
+
+  return res.json({
+    ok: true,
+    data: {
+      ...data,
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
       entitlements,
     },
   });
