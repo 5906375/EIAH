@@ -197,3 +197,25 @@ test("IMOB turn resolver builds explicit contract.prepare operational state with
   assert.equal(result.conversationState.operational?.contractDraft?.approvalRequired, true);
   assert.match(result.presentation.text, /handoff juridico|handoff jurídico/i);
 });
+
+
+test("IMOB turn resolver builds explicit deal.review operational state", () => {
+  const result = resolveImobTurn({
+    message: "Revisar negócio 7788 do imóvel 4455 na fase de contrato com documentos pendentes e aprovação humana",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.mode, "execute");
+  assert.equal(result.executionRequest?.intent, "deal");
+  assert.equal(result.executionRequest?.operation, "deal.review");
+  assert.equal(result.executionRequest?.action, "realestate.review_deal");
+  assert.equal(result.threadLabel, "Deal Review");
+  assert.equal(result.conversationState.operational?.flow, "deal.review");
+  assert.equal(result.conversationState.operational?.dealDraft?.dealId, "deal-7788");
+  assert.equal(result.conversationState.operational?.dealDraft?.propertyId, "property-4455");
+  assert.equal(result.conversationState.operational?.dealDraft?.reviewStage, "contract");
+  assert.deepEqual(result.conversationState.operational?.dealDraft?.blockers, ["document_packet_pending", "human_approval_required"]);
+  assert.equal(result.conversationState.operational?.dealDraft?.handoffTarget, "LEGAL");
+  assert.equal(result.conversationState.operational?.dealDraft?.approvalRequired, true);
+  assert.match(result.presentation.text, /revisão do negócio/i);
+});
