@@ -42,7 +42,18 @@ export type ImobThreadConversationState = {
   resultOffset: number;
 };
 
-export type ImobIntent = "capture" | "match" | "proposal" | "contract" | "commission" | "adjustment";
+export type ImobIntent = "capture" | "match" | "lead" | "visit" | "listing" | "proposal" | "contract" | "commission" | "adjustment";
+
+export type ImobOperationalFlow =
+  | "owner.create"
+  | "property.create"
+  | "listing.activate"
+  | "lead.qualify"
+  | "visit.schedule"
+  | "proposal.create"
+  | "contract.prepare"
+  | "commission.settle"
+  | "adjustment.apply";
 
 export type ImobKnowledgeSourceFilter = "drive" | "upload" | "web" | "internal_doc";
 
@@ -79,6 +90,7 @@ export type ImobPresentationCard = {
 
 export type ImobExecutionRequest = {
   intent: ImobIntent;
+  operation: ImobOperationalFlow;
   action: string;
   prompt: string;
   input: Record<string, unknown>;
