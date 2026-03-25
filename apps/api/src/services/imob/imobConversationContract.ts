@@ -40,6 +40,7 @@ export type ImobThreadConversationState = {
   mode: ImobConversationMode;
   pendingSlot: ImobPendingSlot;
   resultOffset: number;
+  operational?: ImobOperationalState | null;
 };
 
 export type ImobIntent = "capture" | "match" | "lead" | "visit" | "listing" | "proposal" | "contract" | "commission" | "adjustment";
@@ -54,6 +55,40 @@ export type ImobOperationalFlow =
   | "contract.prepare"
   | "commission.settle"
   | "adjustment.apply";
+
+export type ImobOwnerDraft = {
+  ownerName: string | null;
+  ownerEmail: string | null;
+  ownerPhone: string | null;
+  ownerDocument: string | null;
+};
+
+export type ImobLeadDraft = {
+  leadName: string | null;
+  leadEmail: string | null;
+  leadPhone: string | null;
+  desiredGoal: "locacao" | "venda" | null;
+  desiredCity: string | null;
+  budgetMax: number | null;
+};
+
+export type ImobProposalDraft = {
+  buyerName: string | null;
+  buyerEmail: string | null;
+  buyerPhone: string | null;
+  propertyId: string | null;
+  offerAmount: number | null;
+  contractType: "rent" | "sale" | "management" | null;
+};
+
+export type ImobOperationalState = {
+  flow: "owner.create" | "lead.qualify" | "proposal.create";
+  status: "collecting" | "ready_for_review";
+  pendingFields: string[];
+  ownerDraft?: ImobOwnerDraft;
+  leadDraft?: ImobLeadDraft;
+  proposalDraft?: ImobProposalDraft;
+};
 
 export type ImobKnowledgeSourceFilter = "drive" | "upload" | "web" | "internal_doc";
 

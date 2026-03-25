@@ -1,5 +1,10 @@
 import {
   createEmptyImobSlots,
+  type ImobIntent,
+  type ImobLeadDraft,
+  type ImobOperationalState,
+  type ImobOwnerDraft,
+  type ImobProposalDraft,
   type ImobPendingSlot,
   type ImobSearchSlots,
   type ImobThreadConversationState,
@@ -204,9 +209,167 @@ export function createNextImobThreadState(previous: ImobThreadConversationState 
     mode: previous?.mode ?? "consult",
     pendingSlot: explicitPendingSlot ?? (fulfilledPendingSlot ? "none" : previous?.pendingSlot ?? "none"),
     resultOffset: continuesSearch ? (previous?.resultOffset ?? 0) + 2 : 0,
+    operational: previous?.operational ?? null,
   } satisfies ImobThreadConversationState;
 }
 
 export function hasMeaningfulSearchFilters(slots: ImobSearchSlots) {
   return Boolean(slots.city || slots.neighborhood || slots.budgetMax || slots.bedrooms || slots.bathrooms);
+}
+
+
+function extractEmail(raw: string) {
+  const match = raw.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  return match ? match[0].toLowerCase() : null;
+}
+
+function extractPhone(raw: string) {
+  const match = raw.match(/(?:\+?55\s*)?(?:\(?\d{2}\)?\s*)?\d{4,5}[-\s]?\d{4}/);
+  if (!match) return null;
+  return match[0].replace(/\s+/g, " ").trim();
+}
+
+function extractDocument(raw: string) {
+  const cpfLabeled = raw.match(/(?:cpf|documento)\s*:?\s*(\d{3}\.?\d{3}\.?\d{3}-?\d{2})/i);
+  if (cpfLabeled) return cpfLabeled[1];
+  const cnpjLabeled = raw.match(/(?:cnpj|documento)\s*:?\s*(\d{2}\.?\d{3}\.?\d{3}\/\d{4}-?\d{2})/i);
+  if (cnpjLabeled) return cnpjLabeled[1];
+  const cpfFormatted = raw.match(/\d{3}\.\d{3}\.\d{3}-\d{2}/);
+  if (cpfFormatted) return cpfFormatted[0];
+  const cnpjFormatted = raw.match(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/);
+  return cnpjFormatted ? cnpjFormatted[0] : null;
+}
+
+function trimNamedPartyCandidate(value: string) {
+  return value
+    .replace(/\b(no|na)\s+(imovel|imóvel|apartamento|apto|casa)\b.*$/i, "")
+    .replace(/\b(com|por)\s+(oferta|proposta|valor)\b.*$/i, "")
+    .replace(/\b(email|telefone|cpf|cnpj|documento|whatsapp)\b.*$/i, "")
+    .trim();
+}
+
+function extractNamedParty(message: string, role: "owner" | "lead") {
+  const normalized = normalizeImobText(message);
+  const patterns =
+    role === "owner"
+      ? [
+          /(?:proprietario|proprietaria|dono)\s+([a-z]+(?:\s+[a-z]+){0,2})/,
+          /(?:captar|cadastrar)\s+(?:proprietario\s+)?([a-z]+(?:\s+[a-z]+){0,2})/,
+        ]
+      : [
+          /(?:lead|cliente|comprador|locatario)\s+([a-z]+(?:\s+[a-z]+){0,2})/,
+          /(?:qualificar|atender)\s+(?:lead\s+)?([a-z]+(?:\s+[a-z]+){0,2})/,
+        ];
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    const candidate = match?.[1] ? trimNamedPartyCandidate(match[1]) : null;
+    if (candidate) return titleCaseWords(candidate);
+  }
+  return null;
+}
+
+function extractOfferAmount(raw: string) {
+  const match = raw.match(/(?:oferta|proposta|valor)\s*(?:de|por)?\s*r?\$?\s*(\d+(?:[\.,]\d+)?)/i);
+  if (!match) return null;
+  return Number.parseFloat(match[1].replace(/\./g, "").replace(",", "."));
+}
+
+function buildProposalDraft(previous: ImobProposalDraft | undefined, message: string): ImobProposalDraft {
+  const propertyId = message.match(/(?:imovel|imóvel|apartamento|apto|casa)\s*#?\s*(\d{2,})/i)?.[1] ?? previous?.propertyId ?? null;
+  return {
+    buyerName: extractNamedParty(message, "lead") ?? previous?.buyerName ?? null,
+    buyerEmail: extractEmail(message) ?? previous?.buyerEmail ?? null,
+    buyerPhone: extractPhone(message) ?? previous?.buyerPhone ?? null,
+    propertyId: propertyId ? `property-${propertyId}` : null,
+    offerAmount: extractOfferAmount(message) ?? previous?.offerAmount ?? null,
+    contractType: /loca|alug/i.test(message) ? "rent" : /gest|administra/i.test(message) ? "management" : /venda|compr|proposta|oferta/i.test(message) ? "sale" : previous?.contractType ?? null,
+  };
+}
+
+function buildProposalPendingFields(draft: ImobProposalDraft) {
+  const pending: string[] = [];
+  if (!draft.buyerName) pending.push("buyerName");
+  if (!draft.buyerPhone) pending.push("buyerPhone");
+  if (!draft.propertyId) pending.push("propertyId");
+  if (!draft.offerAmount) pending.push("offerAmount");
+  if (!draft.contractType) pending.push("contractType");
+  return pending;
+}
+
+function buildOwnerDraft(previous: ImobOwnerDraft | undefined, message: string): ImobOwnerDraft {
+  return {
+    ownerName: extractNamedParty(message, "owner") ?? previous?.ownerName ?? null,
+    ownerEmail: extractEmail(message) ?? previous?.ownerEmail ?? null,
+    ownerPhone: extractPhone(message) ?? previous?.ownerPhone ?? null,
+    ownerDocument: extractDocument(message) ?? previous?.ownerDocument ?? null,
+  };
+}
+
+function buildLeadDraft(previous: ImobLeadDraft | undefined, message: string, slots: ImobSearchSlots): ImobLeadDraft {
+  return {
+    leadName: extractNamedParty(message, "lead") ?? previous?.leadName ?? null,
+    leadEmail: extractEmail(message) ?? previous?.leadEmail ?? null,
+    leadPhone: extractPhone(message) ?? previous?.leadPhone ?? null,
+    desiredGoal: slots.goal ?? previous?.desiredGoal ?? null,
+    desiredCity: slots.city ?? previous?.desiredCity ?? null,
+    budgetMax: slots.budgetMax ?? previous?.budgetMax ?? null,
+  };
+}
+
+function buildOwnerPendingFields(draft: ImobOwnerDraft) {
+  const pending: string[] = [];
+  if (!draft.ownerName) pending.push("ownerName");
+  if (!draft.ownerPhone) pending.push("ownerPhone");
+  if (!draft.ownerEmail) pending.push("ownerEmail");
+  if (!draft.ownerDocument) pending.push("ownerDocument");
+  return pending;
+}
+
+function buildLeadPendingFields(draft: ImobLeadDraft) {
+  const pending: string[] = [];
+  if (!draft.leadName) pending.push("leadName");
+  if (!draft.leadPhone) pending.push("leadPhone");
+  if (!draft.desiredGoal) pending.push("desiredGoal");
+  if (!draft.desiredCity) pending.push("desiredCity");
+  if (!draft.budgetMax) pending.push("budgetMax");
+  return pending;
+}
+
+export function createNextImobOperationalState(
+  previous: ImobOperationalState | undefined | null,
+  intent: ImobIntent,
+  message: string,
+  slots: ImobSearchSlots
+): ImobOperationalState | null {
+  if (intent === "capture") {
+    const draft = buildOwnerDraft(previous?.flow === "owner.create" ? previous.ownerDraft : undefined, message);
+    const pendingFields = buildOwnerPendingFields(draft);
+    return {
+      flow: "owner.create",
+      status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
+      pendingFields,
+      ownerDraft: draft,
+    };
+  }
+  if (intent === "lead" || intent === "match") {
+    const draft = buildLeadDraft(previous?.flow === "lead.qualify" ? previous.leadDraft : undefined, message, slots);
+    const pendingFields = buildLeadPendingFields(draft);
+    return {
+      flow: "lead.qualify",
+      status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
+      pendingFields,
+      leadDraft: draft,
+    };
+  }
+  if (intent === "proposal") {
+    const draft = buildProposalDraft(previous?.flow === "proposal.create" ? previous.proposalDraft : undefined, message);
+    const pendingFields = buildProposalPendingFields(draft);
+    return {
+      flow: "proposal.create",
+      status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
+      pendingFields,
+      proposalDraft: draft,
+    };
+  }
+  return previous ?? null;
 }

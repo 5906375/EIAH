@@ -8,6 +8,7 @@ import {
   type ImobResolveTurnResponse,
 } from "./imobConversationContract";
 import {
+  createNextImobOperationalState,
   createNextImobThreadState,
   extractRegion,
   extractGoal,
@@ -19,6 +20,12 @@ const IMOB_DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1rwqbWQmL2
 
 function extractNumericToken(text: string) {
   const match = text.match(/#?([0-9]{2,})/);
+  return match ? match[1] : null;
+}
+
+function extractPropertyReferenceToken(message: string) {
+  const normalized = normalizeImobText(message);
+  const match = normalized.match(/(?:imovel|imóvel|apartamento|apto|casa)\s*#?\s*(\d{2,})/);
   return match ? match[1] : null;
 }
 
@@ -225,8 +232,9 @@ function getIntentThreadLabel(intent: ImobIntent) {
   }
 }
 
-function buildOperationalExecution(intent: ImobIntent, message: string, timestamp: string): ImobExecutionRequest {
+function buildOperationalExecution(intent: ImobIntent, message: string, timestamp: string, operationalState?: ImobResolveTurnResponse["conversationState"]["operational"] | null): ImobExecutionRequest {
   const numericId = extractNumericToken(message);
+  const propertyRef = extractPropertyReferenceToken(message);
   switch (intent) {
     case "commission": {
       const dealId = numericId ? `deal-${numericId}` : `deal-${Date.now()}`;
@@ -239,7 +247,7 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
       };
     }
     case "contract": {
-      const propertyId = numericId ? `property-${numericId}` : `property-${Date.now()}`;
+      const propertyId = propertyRef ? `property-${propertyRef}` : `property-${Date.now()}`;
       return {
         intent,
         operation: "contract.prepare",
@@ -255,7 +263,7 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
       };
     }
     case "proposal": {
-      const propertyId = numericId ? `property-${numericId}` : `property-${Date.now()}`;
+      const propertyId = propertyRef ? `property-${propertyRef}` : `property-${Date.now()}`;
       return {
         intent,
         operation: "proposal.create",
@@ -264,24 +272,35 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
         input: {
           propertyId,
           ownerRef: "owner-pending",
-          clientRef: "client-pending",
-          contractType: detectContractType(message),
+          clientRef: operationalState?.flow === "proposal.create" ? (operationalState.proposalDraft?.buyerName ?? "client-pending") : "client-pending",
+          buyerEmail: operationalState?.flow === "proposal.create" ? (operationalState.proposalDraft?.buyerEmail ?? null) : null,
+          buyerPhone: operationalState?.flow === "proposal.create" ? (operationalState.proposalDraft?.buyerPhone ?? null) : null,
+          offerAmount: operationalState?.flow === "proposal.create" ? (operationalState.proposalDraft?.offerAmount ?? null) : null,
+          contractType: operationalState?.flow === "proposal.create" ? (operationalState.proposalDraft?.contractType ?? detectContractType(message)) : detectContractType(message),
           requestedAt: timestamp,
         },
       };
     }
     case "capture": {
-      const propertyId = numericId ? `property-${numericId}` : `property-${Date.now()}`;
+      const propertyId = propertyRef ? `property-${propertyRef}` : `property-${Date.now()}`;
       return {
         intent,
-        operation: numericId ? "property.create" : "owner.create",
+        operation: propertyRef ? "property.create" : "owner.create",
         action: "realestate.register_property",
         prompt: `Cadastrar imóvel ${propertyId} para operação imobiliária.`,
-        input: { propertyId, address: "endereco-pendente", ownerRef: "owner-pending", requestedAt: timestamp },
+        input: {
+          propertyId,
+          ownerRef: operationalState?.flow === "owner.create" ? (operationalState.ownerDraft?.ownerName ?? "owner-pending") : "owner-pending",
+          ownerEmail: operationalState?.flow === "owner.create" ? (operationalState.ownerDraft?.ownerEmail ?? null) : null,
+          ownerPhone: operationalState?.flow === "owner.create" ? (operationalState.ownerDraft?.ownerPhone ?? null) : null,
+          ownerDocument: operationalState?.flow === "owner.create" ? (operationalState.ownerDraft?.ownerDocument ?? null) : null,
+          address: "endereco-pendente",
+          requestedAt: timestamp,
+        },
       };
     }
     case "listing": {
-      const propertyId = numericId ? `property-${numericId}` : `property-${Date.now()}`;
+      const propertyId = propertyRef ? `property-${propertyRef}` : `property-${Date.now()}`;
       return {
         intent,
         operation: "listing.activate",
@@ -297,11 +316,22 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
         operation: "lead.qualify",
         action: "realestate.apply_adjustment",
         prompt: `Qualificar lead imobiliário ${leadId}.`,
-        input: { leadId, adjustmentType: "lead_qualification", reason: "lead-qualification", requestedAt: timestamp },
+        input: {
+          leadId,
+          leadName: operationalState?.flow === "lead.qualify" ? (operationalState.leadDraft?.leadName ?? null) : null,
+          leadEmail: operationalState?.flow === "lead.qualify" ? (operationalState.leadDraft?.leadEmail ?? null) : null,
+          leadPhone: operationalState?.flow === "lead.qualify" ? (operationalState.leadDraft?.leadPhone ?? null) : null,
+          desiredGoal: operationalState?.flow === "lead.qualify" ? (operationalState.leadDraft?.desiredGoal ?? null) : null,
+          desiredCity: operationalState?.flow === "lead.qualify" ? (operationalState.leadDraft?.desiredCity ?? null) : null,
+          budgetMax: operationalState?.flow === "lead.qualify" ? (operationalState.leadDraft?.budgetMax ?? null) : null,
+          adjustmentType: "lead_qualification",
+          reason: "lead-qualification",
+          requestedAt: timestamp,
+        },
       };
     }
     case "visit": {
-      const propertyId = numericId ? `property-${numericId}` : `property-${Date.now()}`;
+      const propertyId = propertyRef ? `property-${propertyRef}` : `property-${Date.now()}`;
       return {
         intent,
         operation: "visit.schedule",
@@ -311,18 +341,28 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
       };
     }
     case "match": {
-      const propertyId = numericId ? `property-${numericId}` : `property-${Date.now()}`;
+      const propertyId = propertyRef ? `property-${propertyRef}` : `property-${Date.now()}`;
       return {
         intent,
         operation: "lead.qualify",
         action: "realestate.apply_adjustment",
         prompt: `Ajustar condições para matching operacional do imóvel ${propertyId}.`,
-        input: { propertyId, adjustmentType: "discount", amountCents: 5000, reason: "matching-request", requestedAt: timestamp },
+        input: {
+          propertyId,
+          leadName: operationalState?.flow === "lead.qualify" ? (operationalState.leadDraft?.leadName ?? null) : null,
+          desiredGoal: operationalState?.flow === "lead.qualify" ? (operationalState.leadDraft?.desiredGoal ?? null) : null,
+          desiredCity: operationalState?.flow === "lead.qualify" ? (operationalState.leadDraft?.desiredCity ?? null) : null,
+          budgetMax: operationalState?.flow === "lead.qualify" ? (operationalState.leadDraft?.budgetMax ?? null) : null,
+          adjustmentType: "discount",
+          amountCents: 5000,
+          reason: "matching-request",
+          requestedAt: timestamp,
+        },
       };
     }
     case "adjustment":
     default: {
-      const propertyId = numericId ? `property-${numericId}` : `property-${Date.now()}`;
+      const propertyId = propertyRef ? `property-${propertyRef}` : `property-${Date.now()}`;
       return {
         intent: "adjustment",
         operation: "adjustment.apply",
@@ -378,10 +418,15 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
 
   const resolvedRegion = nextThreadState.slots.city ?? nextThreadState.slots.region ?? extractRegion(normalizeImobText(message)) ?? "Brasil";
   const resolvedSegment = nextThreadState.slots.goal ?? extractSegment(message);
+  const intent = classifyImobIntent(message);
   const previousPendingSlot = request.threadState?.pendingSlot ?? "none";
   const pendingSlotChanged = nextThreadState.pendingSlot !== previousPendingSlot;
   const shouldStayInSearchThread = isSearchThread(request.threadLabel) && isSearchRefinementQuery(message) && !pendingSlotChanged;
-  const shouldUseConsultMode = nextThreadState.slots.goal !== null && (!hasMeaningfulSearchFilters(nextThreadState.slots) || nextThreadState.pendingSlot !== "none") && !shouldStayInSearchThread;
+  const shouldUseConsultMode =
+    intent === "match" &&
+    nextThreadState.slots.goal !== null &&
+    (!hasMeaningfulSearchFilters(nextThreadState.slots) || nextThreadState.pendingSlot !== "none") &&
+    !shouldStayInSearchThread;
 
   if (shouldUseConsultMode) {
     const response: ImobResolveTurnResponse = {
@@ -403,7 +448,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
     return response;
   }
 
-  if (isResearchQuery(message) || shouldStayInSearchThread || hasMeaningfulSearchFilters(nextThreadState.slots)) {
+  if (intent === "match" && (isResearchQuery(message) || shouldStayInSearchThread || hasMeaningfulSearchFilters(nextThreadState.slots))) {
     return {
       mode: "search",
       action: "realestate.search_inventory",
@@ -424,28 +469,34 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
     };
   }
 
-  const intent = classifyImobIntent(message);
-  const executionRequest = buildOperationalExecution(intent, message, new Date().toISOString());
+  const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, intent, message, nextThreadState.slots);
+  const executionRequest = buildOperationalExecution(intent, message, new Date().toISOString(), operationalState);
   return {
     mode: "execute",
     action: executionRequest.action,
     threadLabel: getIntentThreadLabel(intent),
-    conversationState: { slots: createEmptyImobSlots(), mode: "execute", pendingSlot: "none", resultOffset: 0 },
+    conversationState: { slots: createEmptyImobSlots(), mode: "execute", pendingSlot: "none", resultOffset: 0, operational: operationalState },
     executionRequest,
     presentation: {
       text:
         intent === "capture"
-          ? "Posso iniciar a captação agora."
+          ? operationalState?.flow === "owner.create" && operationalState.pendingFields.length > 0
+            ? `Posso iniciar a captação agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
+            : "Posso iniciar a captação agora."
           : intent === "match"
             ? "Posso começar a busca de opções agora."
             : intent === "lead"
-              ? "Posso iniciar a qualificação do lead agora."
+              ? operationalState?.flow === "lead.qualify" && operationalState.pendingFields.length > 0
+                ? `Posso iniciar a qualificação do lead agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
+                : "Posso iniciar a qualificação do lead agora."
               : intent === "visit"
                 ? "Posso organizar o agendamento da visita agora."
                 : intent === "listing"
                   ? "Posso preparar a ativação do anúncio agora."
                   : intent === "proposal"
-                    ? "Posso preparar a proposta agora."
+                    ? operationalState?.flow === "proposal.create" && operationalState.pendingFields.length > 0
+                      ? `Posso preparar a proposta agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
+                      : "Posso preparar a proposta agora."
                     : intent === "contract"
                       ? "Posso iniciar o fluxo de contrato agora."
                       : intent === "commission"

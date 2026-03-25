@@ -1018,11 +1018,46 @@ export type ImobSearchSlotState = {
   propertyType: "apartamento" | "casa" | "studio" | "sala" | "terreno" | "galpao" | null;
 };
 
+export type ImobOwnerDraftState = {
+  ownerName: string | null;
+  ownerEmail: string | null;
+  ownerPhone: string | null;
+  ownerDocument: string | null;
+};
+
+export type ImobLeadDraftState = {
+  leadName: string | null;
+  leadEmail: string | null;
+  leadPhone: string | null;
+  desiredGoal: "locacao" | "venda" | null;
+  desiredCity: string | null;
+  budgetMax: number | null;
+};
+
+export type ImobProposalDraftState = {
+  buyerName: string | null;
+  buyerEmail: string | null;
+  buyerPhone: string | null;
+  propertyId: string | null;
+  offerAmount: number | null;
+  contractType: "rent" | "sale" | "management" | null;
+};
+
+export type ImobOperationalState = {
+  flow: "owner.create" | "lead.qualify" | "proposal.create";
+  status: "collecting" | "ready_for_review";
+  pendingFields: string[];
+  ownerDraft?: ImobOwnerDraftState;
+  leadDraft?: ImobLeadDraftState;
+  proposalDraft?: ImobProposalDraftState;
+};
+
 export type ImobThreadConversationState = {
   slots: ImobSearchSlotState;
   mode: "consult" | "search" | "execute" | "search_knowledge" | "blocked";
   pendingSlot: "none" | "city" | "budget" | "bedrooms" | "bathrooms" | "propertyType";
   resultOffset: number;
+  operational?: ImobOperationalState | null;
 };
 
 export type ImobPresentationCta = {
