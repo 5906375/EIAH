@@ -39,6 +39,7 @@ function detectContractType(message: string): "rent" | "sale" | "management" {
 function classifyImobIntent(message: string): ImobIntent {
   const text = normalizeImobText(message);
   if (text.includes("comissao") || text.includes("comissão") || text.includes("repasse") || text.includes("sinal")) return "commission";
+  if (text.includes("document") || text.includes("anexo") || text.includes("arquivo") || text.includes("upload") || text.includes("matricula") || text.includes("matrícula") || text.includes("cpf") || text.includes("rg")) return "documents";
   if (text.includes("contrato") || text.includes("assinatura") || text.includes("minuta")) return "contract";
   if (text.includes("proposta") || text.includes("oferta") || text.includes("negocia")) return "proposal";
   if (text.includes("visita") || text.includes("agendar") || text.includes("agenda") || text.includes("tour")) return "visit";
@@ -98,6 +99,28 @@ function hasImobKnowledgeAccess(request?: ImobResolveTurnRequest) {
   const access = request?.access;
   if (!access?.tenantId || !access?.workspaceId) return false;
   return access.entitlements?.REAL_ESTATE_CORE === true;
+}
+
+function isDocumentCollectionRequest(message: string) {
+  const text = normalizeImobText(message);
+  const hasCollectionVerb =
+    text.includes("coletar") ||
+    text.includes("coleta") ||
+    text.includes("receber") ||
+    text.includes("enviar") ||
+    text.includes("subir") ||
+    text.includes("anexar");
+  const hasDocumentSubject =
+    text.includes("document") ||
+    text.includes("anexo") ||
+    text.includes("arquivo") ||
+    text.includes("upload") ||
+    text.includes("matricula") ||
+    text.includes("matrícula") ||
+    text.includes("cpf") ||
+    text.includes("rg") ||
+    text.includes("cnpj");
+  return hasCollectionVerb && hasDocumentSubject;
 }
 
 function isKnowledgeSearchQuery(message: string) {
@@ -222,6 +245,8 @@ function getIntentThreadLabel(intent: ImobIntent) {
       return "Listing";
     case "proposal":
       return "Proposta";
+    case "documents":
+      return "Documentos";
     case "contract":
       return "Contrato";
     case "commission":
@@ -258,6 +283,24 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
           ownerRef: "owner-pending",
           clientRef: "client-pending",
           contractType: detectContractType(message),
+          requestedAt: timestamp,
+        },
+      };
+    }
+    case "documents": {
+      const referenceId = operationalState?.flow === "documents.collect"
+        ? (operationalState.documentDraft?.referenceId ?? (propertyRef ? `property-${propertyRef}` : null))
+        : propertyRef ? `property-${propertyRef}` : null;
+      return {
+        intent,
+        operation: "documents.collect",
+        action: "realestate.collect_documents",
+        prompt: `Coletar documentos operacionais${referenceId ? ` para ${referenceId}` : ""}.`,
+        input: {
+          referenceId,
+          subjectType: operationalState?.flow === "documents.collect" ? (operationalState.documentDraft?.subjectType ?? null) : null,
+          documentTypes: operationalState?.flow === "documents.collect" ? (operationalState.documentDraft?.documentTypes ?? []) : [],
+          deliveryChannel: operationalState?.flow === "documents.collect" ? (operationalState.documentDraft?.deliveryChannel ?? null) : null,
           requestedAt: timestamp,
         },
       };
@@ -407,8 +450,9 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
 export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTurnResponse {
   const message = request.message.trim();
   const nextThreadState = createNextImobThreadState(request.threadState ?? undefined, message);
+  const intent = classifyImobIntent(message);
 
-  if (isKnowledgeSearchQuery(message)) {
+  if (isKnowledgeSearchQuery(message) && !(intent === "documents" && isDocumentCollectionRequest(message))) {
     const region = nextThreadState.slots.city ?? nextThreadState.slots.region ?? extractRegion(normalizeImobText(message)) ?? "Brasil";
     const segment = nextThreadState.slots.goal ?? extractSegment(message);
     const sourceTypes = extractKnowledgeSourceTypes(message);
@@ -448,7 +492,6 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
 
   const resolvedRegion = nextThreadState.slots.city ?? nextThreadState.slots.region ?? extractRegion(normalizeImobText(message)) ?? "Brasil";
   const resolvedSegment = nextThreadState.slots.goal ?? extractSegment(message);
-  const intent = classifyImobIntent(message);
   const previousPendingSlot = request.threadState?.pendingSlot ?? "none";
   const pendingSlotChanged = nextThreadState.pendingSlot !== previousPendingSlot;
   const shouldStayInSearchThread = isSearchThread(request.threadLabel) && isSearchRefinementQuery(message) && !pendingSlotChanged;
@@ -535,6 +578,10 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
                     ? operationalState?.flow === "proposal.create" && operationalState.pendingFields.length > 0
                       ? `Posso preparar a proposta agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
                       : "Posso preparar a proposta agora."
+                    : intent === "documents"
+                      ? operationalState?.flow === "documents.collect" && operationalState.pendingFields.length > 0
+                        ? `Posso iniciar a coleta documental agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
+                        : "Posso iniciar a coleta documental agora."
                     : intent === "contract"
                       ? "Posso iniciar o fluxo de contrato agora."
                       : intent === "commission"

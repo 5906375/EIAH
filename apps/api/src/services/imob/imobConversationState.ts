@@ -4,6 +4,7 @@ import {
   type ImobLeadDraft,
   type ImobOperationalState,
   type ImobListingDraft,
+  type ImobDocumentDraft,
   type ImobOwnerDraft,
   type ImobPropertyDraft,
   type ImobProposalDraft,
@@ -466,6 +467,61 @@ function buildListingPendingFields(draft: ImobListingDraft) {
   return pending;
 }
 
+function extractDocumentTypes(raw: string) {
+  const normalized = normalizeImobText(raw);
+  const documentTypes: string[] = [];
+  if (normalized.includes("matricula") || normalized.includes("matrícula")) documentTypes.push("matricula");
+  if (normalized.includes("cpf")) documentTypes.push("cpf");
+  if (normalized.includes("cnpj")) documentTypes.push("cnpj");
+  if (normalized.includes("rg")) documentTypes.push("rg");
+  if (normalized.includes("escritura")) documentTypes.push("escritura");
+  if (normalized.includes("comprovante")) documentTypes.push("comprovante_residencia");
+  if (normalized.includes("renda")) documentTypes.push("comprovante_renda");
+  if (normalized.includes("contrato social")) documentTypes.push("contrato_social");
+  return [...new Set(documentTypes)];
+}
+
+function extractDocumentSubjectType(raw: string): ImobDocumentDraft["subjectType"] {
+  const normalized = normalizeImobText(raw);
+  if (normalized.includes("propriet")) return "owner";
+  if (normalized.includes("lead") || normalized.includes("cliente") || normalized.includes("comprador") || normalized.includes("locatario")) return "lead";
+  if (normalized.includes("proposta") || normalized.includes("oferta")) return "proposal";
+  if (normalized.includes("contrato") || normalized.includes("minuta")) return "contract";
+  if (normalized.includes("imovel") || normalized.includes("imóvel") || normalized.includes("apartamento") || normalized.includes("apto") || normalized.includes("casa")) return "property";
+  return null;
+}
+
+function extractDocumentDeliveryChannel(raw: string): ImobDocumentDraft["deliveryChannel"] {
+  const normalized = normalizeImobText(raw);
+  if (normalized.includes("upload") || normalized.includes("anexo") || normalized.includes("arquivo")) return "upload";
+  if (normalized.includes("email") || normalized.includes("e-mail")) return "email";
+  if (normalized.includes("whatsapp") || normalized.includes("what")) return "whatsapp";
+  if (normalized.includes("drive")) return "drive";
+  return null;
+}
+
+function buildDocumentDraft(previous: ImobDocumentDraft | undefined, message: string): ImobDocumentDraft {
+  const propertyIdMatch = message.match(/(?:imovel|imóvel|apartamento|apto|casa)\s*#?\s*(\d{2,})/i)?.[1] ?? null;
+  const referenceId = propertyIdMatch ? `property-${propertyIdMatch}` : previous?.referenceId ?? null;
+  return {
+    referenceId,
+    subjectType: extractDocumentSubjectType(message) ?? previous?.subjectType ?? null,
+    documentTypes: (() => {
+      const next = extractDocumentTypes(message);
+      return next.length > 0 ? next : previous?.documentTypes ?? [];
+    })(),
+    deliveryChannel: extractDocumentDeliveryChannel(message) ?? previous?.deliveryChannel ?? null,
+  };
+}
+
+function buildDocumentPendingFields(draft: ImobDocumentDraft) {
+  const pending: string[] = [];
+  if (!draft.subjectType) pending.push("subjectType");
+  if (draft.documentTypes.length === 0) pending.push("documentTypes");
+  if (!draft.deliveryChannel) pending.push("deliveryChannel");
+  return pending;
+}
+
 export function createNextImobOperationalState(
   previous: ImobOperationalState | undefined | null,
   intent: ImobIntent,
@@ -520,6 +576,16 @@ export function createNextImobOperationalState(
       status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
       pendingFields,
       listingDraft: draft,
+    };
+  }
+  if (intent === "documents") {
+    const draft = buildDocumentDraft(previous?.flow === "documents.collect" ? previous.documentDraft : undefined, message);
+    const pendingFields = buildDocumentPendingFields(draft);
+    return {
+      flow: "documents.collect",
+      status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
+      pendingFields,
+      documentDraft: draft,
     };
   }
   if (intent === "proposal") {
