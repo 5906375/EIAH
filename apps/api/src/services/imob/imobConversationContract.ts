@@ -136,8 +136,17 @@ export type ImobDealDraft = {
   approvalRequired: boolean;
 };
 
+export type ImobCommissionDraft = {
+  dealId: string | null;
+  brokerRef: string | null;
+  amountCents: number | null;
+  settlementStatus: "pending" | "ready" | "paid" | null;
+  payoutChannel: "pix" | "ted" | "boleto" | null;
+  approvalRequired: boolean;
+};
+
 export type ImobOperationalState = {
-  flow: "owner.create" | "property.create" | "lead.qualify" | "visit.schedule" | "listing.activate" | "documents.collect" | "proposal.create" | "deal.review" | "contract.prepare";
+  flow: "owner.create" | "property.create" | "lead.qualify" | "visit.schedule" | "listing.activate" | "documents.collect" | "proposal.create" | "deal.review" | "contract.prepare" | "commission.settle";
   status: "collecting" | "ready_for_review";
   pendingFields: string[];
   ownerDraft?: ImobOwnerDraft;
@@ -149,6 +158,7 @@ export type ImobOperationalState = {
   proposalDraft?: ImobProposalDraft;
   dealDraft?: ImobDealDraft;
   contractDraft?: ImobContractDraft;
+  commissionDraft?: ImobCommissionDraft;
 };
 
 export type ImobKnowledgeSourceFilter = "drive" | "upload" | "web" | "internal_doc";

@@ -1087,6 +1087,15 @@ export type ImobDealDraftState = {
   approvalRequired: boolean;
 };
 
+export type ImobCommissionDraftState = {
+  dealId: string | null;
+  brokerRef: string | null;
+  amountCents: number | null;
+  settlementStatus: "pending" | "ready" | "paid" | null;
+  payoutChannel: "pix" | "ted" | "boleto" | null;
+  approvalRequired: boolean;
+};
+
 export type ImobProposalDraftState = {
   buyerName: string | null;
   buyerEmail: string | null;
@@ -1097,7 +1106,7 @@ export type ImobProposalDraftState = {
 };
 
 export type ImobOperationalState = {
-  flow: "owner.create" | "property.create" | "lead.qualify" | "visit.schedule" | "listing.activate" | "documents.collect" | "proposal.create" | "deal.review" | "contract.prepare";
+  flow: "owner.create" | "property.create" | "lead.qualify" | "visit.schedule" | "listing.activate" | "documents.collect" | "proposal.create" | "deal.review" | "contract.prepare" | "commission.settle";
   status: "collecting" | "ready_for_review";
   pendingFields: string[];
   ownerDraft?: ImobOwnerDraftState;
@@ -1109,6 +1118,7 @@ export type ImobOperationalState = {
   proposalDraft?: ImobProposalDraftState;
   dealDraft?: ImobDealDraftState;
   contractDraft?: ImobContractDraftState;
+  commissionDraft?: ImobCommissionDraftState;
 };
 
 export type ImobThreadConversationState = {
