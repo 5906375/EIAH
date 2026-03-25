@@ -7,6 +7,7 @@ import {
   type ImobDocumentDraft,
   type ImobContractDraft,
   type ImobDealDraft,
+  type ImobCommissionDraft,
   type ImobOwnerDraft,
   type ImobPropertyDraft,
   type ImobProposalDraft,
@@ -612,6 +613,70 @@ function buildDealPendingFields(draft: ImobDealDraft) {
   return pending;
 }
 
+function extractSettlementStatus(raw: string): ImobCommissionDraft["settlementStatus"] {
+  const normalized = normalizeImobText(raw);
+  if (normalized.includes("pago") || normalized.includes("liquidado") || normalized.includes("settled")) return "paid";
+  if (normalized.includes("pronto para pagar") || normalized.includes("ready") || normalized.includes("liberar comissao") || normalized.includes("liberar comissão")) return "ready";
+  if (normalized.includes("pendente") || normalized.includes("aguardando") || normalized.includes("em aberto")) return "pending";
+  return null;
+}
+
+function extractPayoutChannel(raw: string): ImobCommissionDraft["payoutChannel"] {
+  const normalized = normalizeImobText(raw);
+  if (normalized.includes("pix")) return "pix";
+  if (normalized.includes("ted") || normalized.includes("transferencia") || normalized.includes("transferência")) return "ted";
+  if (normalized.includes("boleto")) return "boleto";
+  return null;
+}
+
+function extractCommissionAmountCents(raw: string) {
+  const match = raw.match(/(?:comissao|comissão|valor)\s*(?:de|por)?\s*r?\$?\s*(\d+(?:[\.,]\d+)?)/i);
+  if (!match) return null;
+  const amount = Number.parseFloat(match[1].replace(/\./g, "").replace(",", "."));
+  return Number.isFinite(amount) ? Math.round(amount * 100) : null;
+}
+
+function extractBrokerRef(raw: string) {
+  const normalized = normalizeImobText(raw);
+  const markerMatch = normalized.match(/(?:corretor|broker)\s+(.+)/i);
+  const tail = markerMatch?.[1]?.trim();
+  if (!tail) return null;
+
+  const stopTokens = new Set(["valor", "comissao", "comissão", "via", "pix", "ted", "boleto", "pronto", "pagar", "negocio", "negócio"]);
+  const tokens = tail.split(/\s+/).filter(Boolean);
+  const nameTokens: string[] = [];
+  for (const token of tokens) {
+    if (stopTokens.has(token)) break;
+    nameTokens.push(token);
+    if (nameTokens.length === 3) break;
+  }
+
+  if (nameTokens.length === 0) return null;
+  return `broker-${nameTokens.join("-")}`;
+}
+
+function buildCommissionDraft(previous: ImobCommissionDraft | undefined, message: string): ImobCommissionDraft {
+  const dealIdMatch = message.match(/(?:deal|negocio|negócio)\s*#?\s*(\d{2,})/i)?.[1] ?? null;
+  return {
+    dealId: dealIdMatch ? `deal-${dealIdMatch}` : previous?.dealId ?? null,
+    brokerRef: extractBrokerRef(message) ?? previous?.brokerRef ?? null,
+    amountCents: extractCommissionAmountCents(message) ?? previous?.amountCents ?? null,
+    settlementStatus: extractSettlementStatus(message) ?? previous?.settlementStatus ?? null,
+    payoutChannel: extractPayoutChannel(message) ?? previous?.payoutChannel ?? null,
+    approvalRequired: true,
+  };
+}
+
+function buildCommissionPendingFields(draft: ImobCommissionDraft) {
+  const pending: string[] = [];
+  if (!draft.dealId) pending.push("dealId");
+  if (!draft.brokerRef) pending.push("brokerRef");
+  if (!draft.amountCents) pending.push("amountCents");
+  if (!draft.settlementStatus) pending.push("settlementStatus");
+  if (!draft.payoutChannel) pending.push("payoutChannel");
+  return pending;
+}
+
 export function createNextImobOperationalState(
   previous: ImobOperationalState | undefined | null,
   intent: ImobIntent,
@@ -676,6 +741,16 @@ export function createNextImobOperationalState(
       status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
       pendingFields,
       documentDraft: draft,
+    };
+  }
+  if (intent === "commission") {
+    const draft = buildCommissionDraft(previous?.flow === "commission.settle" ? previous.commissionDraft : undefined, message);
+    const pendingFields = buildCommissionPendingFields(draft);
+    return {
+      flow: "commission.settle",
+      status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
+      pendingFields,
+      commissionDraft: draft,
     };
   }
   if (intent === "deal") {

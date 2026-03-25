@@ -219,3 +219,25 @@ test("IMOB turn resolver builds explicit deal.review operational state", () => {
   assert.equal(result.conversationState.operational?.dealDraft?.approvalRequired, true);
   assert.match(result.presentation.text, /revisão do negócio/i);
 });
+
+
+test("IMOB turn resolver builds explicit commission.settle operational state", () => {
+  const result = resolveImobTurn({
+    message: "Liberar comissão do negócio 7788 para corretor Joao valor 12500 via pix pronta para pagar",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.mode, "execute");
+  assert.equal(result.executionRequest?.intent, "commission");
+  assert.equal(result.executionRequest?.operation, "commission.settle");
+  assert.equal(result.executionRequest?.action, "realestate.release_commission");
+  assert.equal(result.threadLabel, "Comissão");
+  assert.equal(result.conversationState.operational?.flow, "commission.settle");
+  assert.equal(result.conversationState.operational?.commissionDraft?.dealId, "deal-7788");
+  assert.equal(result.conversationState.operational?.commissionDraft?.brokerRef, "broker-joao");
+  assert.equal(result.conversationState.operational?.commissionDraft?.amountCents, 1250000);
+  assert.equal(result.conversationState.operational?.commissionDraft?.settlementStatus, "ready");
+  assert.equal(result.conversationState.operational?.commissionDraft?.payoutChannel, "pix");
+  assert.equal(result.conversationState.operational?.commissionDraft?.approvalRequired, true);
+  assert.match(result.presentation.text, /liquidação da comissão/i);
+});

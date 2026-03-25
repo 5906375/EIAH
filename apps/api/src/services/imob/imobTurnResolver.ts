@@ -265,13 +265,23 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
   const propertyRef = extractPropertyReferenceToken(message);
   switch (intent) {
     case "commission": {
-      const dealId = numericId ? `deal-${numericId}` : `deal-${Date.now()}`;
+      const dealId = operationalState?.flow === "commission.settle"
+        ? (operationalState.commissionDraft?.dealId ?? (numericId ? `deal-${numericId}` : `deal-${Date.now()}`))
+        : numericId ? `deal-${numericId}` : `deal-${Date.now()}`;
       return {
         intent,
         operation: "commission.settle",
         action: "realestate.release_commission",
         prompt: `Fechar comissão imobiliária para o negócio ${dealId}.`,
-        input: { dealId, brokerRef: "broker-default", amountCents: 100000, requestedAt: timestamp },
+        input: {
+          dealId,
+          brokerRef: operationalState?.flow === "commission.settle" ? (operationalState.commissionDraft?.brokerRef ?? "broker-pending") : "broker-pending",
+          amountCents: operationalState?.flow === "commission.settle" ? (operationalState.commissionDraft?.amountCents ?? null) : null,
+          settlementStatus: operationalState?.flow === "commission.settle" ? (operationalState.commissionDraft?.settlementStatus ?? null) : null,
+          payoutChannel: operationalState?.flow === "commission.settle" ? (operationalState.commissionDraft?.payoutChannel ?? null) : null,
+          approvalRequired: operationalState?.flow === "commission.settle" ? operationalState.commissionDraft?.approvalRequired ?? true : true,
+          requestedAt: timestamp,
+        },
       };
     }
     case "deal": {
@@ -620,7 +630,9 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
                         ? `Posso preparar o handoff jurídico do contrato agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
                         : "Posso preparar o handoff jurídico do contrato agora."
                       : intent === "commission"
-                        ? "Posso iniciar o fluxo de comissão agora."
+                        ? operationalState?.flow === "commission.settle" && operationalState.pendingFields.length > 0
+                          ? `Posso iniciar a liquidação da comissão agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
+                          : "Posso iniciar a liquidação da comissão agora."
                         : "Posso aplicar esse ajuste agora.",
     },
   };
