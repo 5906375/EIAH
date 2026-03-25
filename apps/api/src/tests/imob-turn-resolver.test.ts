@@ -50,3 +50,37 @@ test("IMOB turn resolver fail-closes knowledge search without entitlement", () =
   assert.equal(result.action, "realestate.search_knowledge_base");
   assert.match(result.presentation.text, /não está habilitado/i);
 });
+
+
+test("IMOB turn resolver maps visit scheduling to backend-owned operation metadata", () => {
+  const result = resolveImobTurn({
+    message: "Agendar visita para o imóvel 82912",
+    access: {
+      tenantId: "tenant-A",
+      workspaceId: "workspace-A",
+      entitlements: { REAL_ESTATE_CORE: true },
+    },
+  });
+
+  assert.equal(result.mode, "execute");
+  assert.equal(result.executionRequest?.intent, "visit");
+  assert.equal(result.executionRequest?.operation, "visit.schedule");
+  assert.equal(result.executionRequest?.action, "realestate.apply_adjustment");
+  assert.equal(result.threadLabel, "Visita");
+});
+
+test("IMOB turn resolver maps listing activation to backend-owned operation metadata", () => {
+  const result = resolveImobTurn({
+    message: "Publicar anúncio do imóvel 4455",
+    access: {
+      tenantId: "tenant-A",
+      workspaceId: "workspace-A",
+      entitlements: { REAL_ESTATE_CORE: true },
+    },
+  });
+
+  assert.equal(result.mode, "execute");
+  assert.equal(result.executionRequest?.intent, "listing");
+  assert.equal(result.executionRequest?.operation, "listing.activate");
+  assert.equal(result.threadLabel, "Listing");
+});

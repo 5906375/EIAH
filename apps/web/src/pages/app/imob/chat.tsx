@@ -296,8 +296,11 @@ function selectKnowledgeCardActions(actions: KnowledgeAction[]) {
 function getIntentActionCtas(intent: ImobExecutionRequest["intent"]): CardCta[] {
   switch (intent) {
     case "capture":
+    case "listing":
       return [{ id: "go-dashboard", label: "Abrir Dashboard", kind: "neutral", href: "/app/imob/dashboard?section=imoveis#dashboard-hub" }];
     case "match":
+    case "lead":
+    case "visit":
       return [{ id: "go-dashboard", label: "Abrir Dashboard", kind: "neutral", href: "/app/imob/dashboard?section=parceiros#dashboard-hub" }];
     case "proposal":
     case "contract":
@@ -321,6 +324,12 @@ function getIntentThreadLabel(intent: ImobExecutionRequest["intent"]) {
       return "Captação";
     case "match":
       return "Busca de imóveis";
+    case "lead":
+      return "Lead";
+    case "visit":
+      return "Visita";
+    case "listing":
+      return "Listing";
     case "proposal":
       return "Proposta";
     case "contract":
@@ -410,6 +419,12 @@ function getHumanPlanLines(intent: ImobExecutionRequest["intent"]) {
       return ["Posso iniciar a captação agora."];
     case "match":
       return ["Posso começar a busca de opções agora."];
+    case "lead":
+      return ["Posso iniciar a qualificação do lead agora."];
+    case "visit":
+      return ["Posso organizar o agendamento da visita agora."];
+    case "listing":
+      return ["Posso preparar a ativação do anúncio agora."];
     case "proposal":
       return ["Posso preparar a proposta agora."];
     case "contract":

@@ -31,9 +31,12 @@ function detectContractType(message: string): "rent" | "sale" | "management" {
 
 function classifyImobIntent(message: string): ImobIntent {
   const text = normalizeImobText(message);
-  if (text.includes("comissao") || text.includes("comissão")) return "commission";
-  if (text.includes("contrato") || text.includes("assinatura")) return "contract";
-  if (text.includes("proposta") || text.includes("oferta")) return "proposal";
+  if (text.includes("comissao") || text.includes("comissão") || text.includes("repasse") || text.includes("sinal")) return "commission";
+  if (text.includes("contrato") || text.includes("assinatura") || text.includes("minuta")) return "contract";
+  if (text.includes("proposta") || text.includes("oferta") || text.includes("negocia")) return "proposal";
+  if (text.includes("visita") || text.includes("agendar") || text.includes("agenda") || text.includes("tour")) return "visit";
+  if (text.includes("lead") || text.includes("triagem") || text.includes("qualificar cliente") || text.includes("qualificar lead")) return "lead";
+  if (text.includes("publicar") || text.includes("anuncio") || text.includes("anúncio") || text.includes("listing") || text.includes("portal")) return "listing";
   if (text.includes("cadastrar") || text.includes("capta") || text.includes("propriet") || text.includes("imovel") || text.includes("imóvel")) return "capture";
   if (text.includes("alugar") || text.includes("loca") || text.includes("procur") || text.includes("quartos")) return "match";
   return "adjustment";
@@ -204,6 +207,12 @@ function getIntentThreadLabel(intent: ImobIntent) {
       return "Captação";
     case "match":
       return "Busca de imóveis";
+    case "lead":
+      return "Lead";
+    case "visit":
+      return "Visita";
+    case "listing":
+      return "Listing";
     case "proposal":
       return "Proposta";
     case "contract":
@@ -223,21 +232,23 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
       const dealId = numericId ? `deal-${numericId}` : `deal-${Date.now()}`;
       return {
         intent,
+        operation: "commission.settle",
         action: "realestate.release_commission",
         prompt: `Fechar comissão imobiliária para o negócio ${dealId}.`,
-        input: { dealId, brokerId: "broker-default", amountCents: 100000, requestedAt: timestamp },
+        input: { dealId, brokerRef: "broker-default", amountCents: 100000, requestedAt: timestamp },
       };
     }
     case "contract": {
       const propertyId = numericId ? `property-${numericId}` : `property-${Date.now()}`;
       return {
         intent,
+        operation: "contract.prepare",
         action: "realestate.create_contract",
         prompt: `Gerar contrato imobiliário para ${propertyId}.`,
         input: {
           propertyId,
-          partyA: "proprietario-default",
-          partyB: "cliente-default",
+          ownerRef: "owner-pending",
+          clientRef: "client-pending",
           contractType: detectContractType(message),
           requestedAt: timestamp,
         },
@@ -247,12 +258,13 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
       const propertyId = numericId ? `property-${numericId}` : `property-${Date.now()}`;
       return {
         intent,
+        operation: "proposal.create",
         action: "realestate.create_contract",
-        prompt: `Converter proposta em minuta contratual para ${propertyId}.`,
+        prompt: `Preparar proposta operacional para ${propertyId}.`,
         input: {
           propertyId,
-          partyA: "proprietario-default",
-          partyB: "cliente-default",
+          ownerRef: "owner-pending",
+          clientRef: "client-pending",
           contractType: detectContractType(message),
           requestedAt: timestamp,
         },
@@ -262,15 +274,47 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
       const propertyId = numericId ? `property-${numericId}` : `property-${Date.now()}`;
       return {
         intent,
+        operation: numericId ? "property.create" : "owner.create",
         action: "realestate.register_property",
         prompt: `Cadastrar imóvel ${propertyId} para operação imobiliária.`,
-        input: { propertyId, address: "endereco-pendente", ownerDocument: "documento-pendente", requestedAt: timestamp },
+        input: { propertyId, address: "endereco-pendente", ownerRef: "owner-pending", requestedAt: timestamp },
+      };
+    }
+    case "listing": {
+      const propertyId = numericId ? `property-${numericId}` : `property-${Date.now()}`;
+      return {
+        intent,
+        operation: "listing.activate",
+        action: "realestate.apply_adjustment",
+        prompt: `Ativar listing operacional do imóvel ${propertyId}.`,
+        input: { propertyId, adjustmentType: "listing_activate", reason: "listing-operation", requestedAt: timestamp },
+      };
+    }
+    case "lead": {
+      const leadId = numericId ? `lead-${numericId}` : `lead-${Date.now()}`;
+      return {
+        intent,
+        operation: "lead.qualify",
+        action: "realestate.apply_adjustment",
+        prompt: `Qualificar lead imobiliário ${leadId}.`,
+        input: { leadId, adjustmentType: "lead_qualification", reason: "lead-qualification", requestedAt: timestamp },
+      };
+    }
+    case "visit": {
+      const propertyId = numericId ? `property-${numericId}` : `property-${Date.now()}`;
+      return {
+        intent,
+        operation: "visit.schedule",
+        action: "realestate.apply_adjustment",
+        prompt: `Agendar visita operacional para ${propertyId}.`,
+        input: { propertyId, adjustmentType: "visit_schedule", reason: "visit-scheduling", requestedAt: timestamp },
       };
     }
     case "match": {
       const propertyId = numericId ? `property-${numericId}` : `property-${Date.now()}`;
       return {
         intent,
+        operation: "lead.qualify",
         action: "realestate.apply_adjustment",
         prompt: `Ajustar condições para matching operacional do imóvel ${propertyId}.`,
         input: { propertyId, adjustmentType: "discount", amountCents: 5000, reason: "matching-request", requestedAt: timestamp },
@@ -281,6 +325,7 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
       const propertyId = numericId ? `property-${numericId}` : `property-${Date.now()}`;
       return {
         intent: "adjustment",
+        operation: "adjustment.apply",
         action: "realestate.apply_adjustment",
         prompt: `Aplicar ajuste operacional ao imóvel ${propertyId}.`,
         input: { propertyId, adjustmentType: "correction", amountCents: 1000, reason: "operational-adjustment", requestedAt: timestamp },
@@ -393,13 +438,19 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
           ? "Posso iniciar a captação agora."
           : intent === "match"
             ? "Posso começar a busca de opções agora."
-            : intent === "proposal"
-              ? "Posso preparar a proposta agora."
-              : intent === "contract"
-                ? "Posso iniciar o fluxo de contrato agora."
-                : intent === "commission"
-                  ? "Posso iniciar o fluxo de comissão agora."
-                  : "Posso aplicar esse ajuste agora.",
+            : intent === "lead"
+              ? "Posso iniciar a qualificação do lead agora."
+              : intent === "visit"
+                ? "Posso organizar o agendamento da visita agora."
+                : intent === "listing"
+                  ? "Posso preparar a ativação do anúncio agora."
+                  : intent === "proposal"
+                    ? "Posso preparar a proposta agora."
+                    : intent === "contract"
+                      ? "Posso iniciar o fluxo de contrato agora."
+                      : intent === "commission"
+                        ? "Posso iniciar o fluxo de comissão agora."
+                        : "Posso aplicar esse ajuste agora.",
     },
   };
 }

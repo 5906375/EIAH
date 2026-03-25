@@ -1041,7 +1041,17 @@ export type ImobPresentationCard = {
 };
 
 export type ImobExecutionRequest = {
-  intent: "capture" | "match" | "proposal" | "contract" | "commission" | "adjustment";
+  intent: "capture" | "match" | "lead" | "visit" | "listing" | "proposal" | "contract" | "commission" | "adjustment";
+  operation:
+    | "owner.create"
+    | "property.create"
+    | "listing.activate"
+    | "lead.qualify"
+    | "visit.schedule"
+    | "proposal.create"
+    | "contract.prepare"
+    | "commission.settle"
+    | "adjustment.apply";
   action: string;
   prompt: string;
   input: Record<string, unknown>;
