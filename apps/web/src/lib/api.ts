@@ -1068,6 +1068,16 @@ export type ImobDocumentDraftState = {
   deliveryChannel: "upload" | "email" | "whatsapp" | "drive" | null;
 };
 
+export type ImobContractDraftState = {
+  propertyId: string | null;
+  ownerName: string | null;
+  counterpartyName: string | null;
+  contractType: "rent" | "sale" | "management" | null;
+  documentPacketStatus: "pending" | "ready" | null;
+  handoffTarget: "LEGAL" | null;
+  approvalRequired: boolean;
+};
+
 export type ImobProposalDraftState = {
   buyerName: string | null;
   buyerEmail: string | null;
@@ -1078,7 +1088,7 @@ export type ImobProposalDraftState = {
 };
 
 export type ImobOperationalState = {
-  flow: "owner.create" | "property.create" | "lead.qualify" | "visit.schedule" | "listing.activate" | "documents.collect" | "proposal.create";
+  flow: "owner.create" | "property.create" | "lead.qualify" | "visit.schedule" | "listing.activate" | "documents.collect" | "proposal.create" | "contract.prepare";
   status: "collecting" | "ready_for_review";
   pendingFields: string[];
   ownerDraft?: ImobOwnerDraftState;
@@ -1088,6 +1098,7 @@ export type ImobOperationalState = {
   listingDraft?: ImobListingDraftState;
   documentDraft?: ImobDocumentDraftState;
   proposalDraft?: ImobProposalDraftState;
+  contractDraft?: ImobContractDraftState;
 };
 
 export type ImobThreadConversationState = {

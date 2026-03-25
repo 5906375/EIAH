@@ -39,8 +39,8 @@ function detectContractType(message: string): "rent" | "sale" | "management" {
 function classifyImobIntent(message: string): ImobIntent {
   const text = normalizeImobText(message);
   if (text.includes("comissao") || text.includes("comissão") || text.includes("repasse") || text.includes("sinal")) return "commission";
-  if (text.includes("document") || text.includes("anexo") || text.includes("arquivo") || text.includes("upload") || text.includes("matricula") || text.includes("matrícula") || text.includes("cpf") || text.includes("rg")) return "documents";
   if (text.includes("contrato") || text.includes("assinatura") || text.includes("minuta")) return "contract";
+  if (isDocumentCollectionRequest(message)) return "documents";
   if (text.includes("proposta") || text.includes("oferta") || text.includes("negocia")) return "proposal";
   if (text.includes("visita") || text.includes("agendar") || text.includes("agenda") || text.includes("tour")) return "visit";
   if (text.includes("lead") || text.includes("triagem") || text.includes("qualificar cliente") || text.includes("qualificar lead")) return "lead";
@@ -277,12 +277,15 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
         intent,
         operation: "contract.prepare",
         action: "realestate.create_contract",
-        prompt: `Gerar contrato imobiliário para ${propertyId}.`,
+        prompt: `Preparar contrato imobiliário para ${propertyId} com handoff jurídico.`,
         input: {
-          propertyId,
-          ownerRef: "owner-pending",
-          clientRef: "client-pending",
-          contractType: detectContractType(message),
+          propertyId: operationalState?.flow === "contract.prepare" ? (operationalState.contractDraft?.propertyId ?? propertyId) : propertyId,
+          ownerRef: operationalState?.flow === "contract.prepare" ? (operationalState.contractDraft?.ownerName ?? "owner-pending") : "owner-pending",
+          clientRef: operationalState?.flow === "contract.prepare" ? (operationalState.contractDraft?.counterpartyName ?? "client-pending") : "client-pending",
+          contractType: operationalState?.flow === "contract.prepare" ? (operationalState.contractDraft?.contractType ?? detectContractType(message)) : detectContractType(message),
+          documentPacketStatus: operationalState?.flow === "contract.prepare" ? (operationalState.contractDraft?.documentPacketStatus ?? null) : null,
+          handoffTarget: operationalState?.flow === "contract.prepare" ? (operationalState.contractDraft?.handoffTarget ?? "LEGAL") : "LEGAL",
+          approvalRequired: operationalState?.flow === "contract.prepare" ? operationalState.contractDraft?.approvalRequired ?? true : true,
           requestedAt: timestamp,
         },
       };
@@ -583,7 +586,9 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
                         ? `Posso iniciar a coleta documental agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
                         : "Posso iniciar a coleta documental agora."
                     : intent === "contract"
-                      ? "Posso iniciar o fluxo de contrato agora."
+                      ? operationalState?.flow === "contract.prepare" && operationalState.pendingFields.length > 0
+                        ? `Posso preparar o handoff jurídico do contrato agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
+                        : "Posso preparar o handoff jurídico do contrato agora."
                       : intent === "commission"
                         ? "Posso iniciar o fluxo de comissão agora."
                         : "Posso aplicar esse ajuste agora.",

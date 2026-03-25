@@ -5,6 +5,7 @@ import {
   type ImobOperationalState,
   type ImobListingDraft,
   type ImobDocumentDraft,
+  type ImobContractDraft,
   type ImobOwnerDraft,
   type ImobPropertyDraft,
   type ImobProposalDraft,
@@ -248,6 +249,7 @@ function trimNamedPartyCandidate(value: string) {
   return value
     .replace(/\b(no|na)\s+(imovel|imóvel|apartamento|apto|casa)\b.*$/i, "")
     .replace(/\b(com|por)\s+(oferta|proposta|valor)\b.*$/i, "")
+    .replace(/\bcom\s+documentos?\b.*$/i, "")
     .replace(/\b(email|telefone|cpf|cnpj|documento|whatsapp)\b.*$/i, "")
     .trim();
 }
@@ -276,6 +278,13 @@ function extractOfferAmount(raw: string) {
   const match = raw.match(/(?:oferta|proposta|valor)\s*(?:de|por)?\s*r?\$?\s*(\d+(?:[\.,]\d+)?)/i);
   if (!match) return null;
   return Number.parseFloat(match[1].replace(/\./g, "").replace(",", "."));
+}
+
+function inferContractType(raw: string): ImobProposalDraft["contractType"] {
+  if (/loca|alug/i.test(raw)) return "rent";
+  if (/gest|administra/i.test(raw)) return "management";
+  if (/venda|compr|proposta|oferta|contrato/i.test(raw)) return "sale";
+  return null;
 }
 
 function buildProposalDraft(previous: ImobProposalDraft | undefined, message: string): ImobProposalDraft {
@@ -522,6 +531,35 @@ function buildDocumentPendingFields(draft: ImobDocumentDraft) {
   return pending;
 }
 
+function extractDocumentPacketStatus(raw: string): ImobContractDraft["documentPacketStatus"] {
+  const normalized = normalizeImobText(raw);
+  if (normalized.includes("documentos completos") || normalized.includes("docs completos") || normalized.includes("checklist completo") || normalized.includes("pacote pronto")) return "ready";
+  if (normalized.includes("documentos pendentes") || normalized.includes("docs pendentes") || normalized.includes("faltando documento") || normalized.includes("pendencia documental")) return "pending";
+  return null;
+}
+
+function buildContractDraft(previous: ImobContractDraft | undefined, message: string): ImobContractDraft {
+  const propertyIdMatch = message.match(/(?:imovel|imóvel|apartamento|apto|casa)\s*#?\s*(\d{2,})/i)?.[1] ?? null;
+  return {
+    propertyId: propertyIdMatch ? `property-${propertyIdMatch}` : previous?.propertyId ?? null,
+    ownerName: extractNamedParty(message, "owner") ?? previous?.ownerName ?? null,
+    counterpartyName: extractNamedParty(message, "lead") ?? previous?.counterpartyName ?? null,
+    contractType: inferContractType(message) ?? previous?.contractType ?? null,
+    documentPacketStatus: extractDocumentPacketStatus(message) ?? previous?.documentPacketStatus ?? null,
+    handoffTarget: "LEGAL",
+    approvalRequired: true,
+  };
+}
+
+function buildContractPendingFields(draft: ImobContractDraft) {
+  const pending: string[] = [];
+  if (!draft.propertyId) pending.push("propertyId");
+  if (!draft.counterpartyName) pending.push("counterpartyName");
+  if (!draft.contractType) pending.push("contractType");
+  if (!draft.documentPacketStatus) pending.push("documentPacketStatus");
+  return pending;
+}
+
 export function createNextImobOperationalState(
   previous: ImobOperationalState | undefined | null,
   intent: ImobIntent,
@@ -586,6 +624,16 @@ export function createNextImobOperationalState(
       status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
       pendingFields,
       documentDraft: draft,
+    };
+  }
+  if (intent === "contract") {
+    const draft = buildContractDraft(previous?.flow === "contract.prepare" ? previous.contractDraft : undefined, message);
+    const pendingFields = buildContractPendingFields(draft);
+    return {
+      flow: "contract.prepare",
+      status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
+      pendingFields,
+      contractDraft: draft,
     };
   }
   if (intent === "proposal") {

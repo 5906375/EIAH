@@ -176,3 +176,24 @@ test("IMOB turn resolver builds explicit documents.collect operational state", (
   assert.equal(result.conversationState.operational?.documentDraft?.deliveryChannel, "upload");
   assert.match(result.presentation.text, /coleta documental/i);
 });
+
+
+test("IMOB turn resolver builds explicit contract.prepare operational state with legal handoff", () => {
+  const result = resolveImobTurn({
+    message: "Preparar contrato de venda do imóvel 4455 para lead Maria com documentos completos",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.mode, "execute");
+  assert.equal(result.executionRequest?.intent, "contract");
+  assert.equal(result.executionRequest?.operation, "contract.prepare");
+  assert.equal(result.threadLabel, "Contrato");
+  assert.equal(result.conversationState.operational?.flow, "contract.prepare");
+  assert.equal(result.conversationState.operational?.contractDraft?.propertyId, "property-4455");
+  assert.equal(result.conversationState.operational?.contractDraft?.counterpartyName, "Maria");
+  assert.equal(result.conversationState.operational?.contractDraft?.contractType, "sale");
+  assert.equal(result.conversationState.operational?.contractDraft?.documentPacketStatus, "ready");
+  assert.equal(result.conversationState.operational?.contractDraft?.handoffTarget, "LEGAL");
+  assert.equal(result.conversationState.operational?.contractDraft?.approvalRequired, true);
+  assert.match(result.presentation.text, /handoff juridico|handoff jurídico/i);
+});
