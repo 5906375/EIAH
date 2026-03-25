@@ -1034,6 +1034,17 @@ export type ImobLeadDraftState = {
   budgetMax: number | null;
 };
 
+export type ImobPropertyDraftState = {
+  propertyId: string | null;
+  propertyType: "apartamento" | "casa" | "studio" | "sala" | "terreno" | "galpao" | null;
+  goal: "locacao" | "venda" | null;
+  city: string | null;
+  neighborhood: string | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  address: string | null;
+};
+
 export type ImobProposalDraftState = {
   buyerName: string | null;
   buyerEmail: string | null;
@@ -1044,10 +1055,11 @@ export type ImobProposalDraftState = {
 };
 
 export type ImobOperationalState = {
-  flow: "owner.create" | "lead.qualify" | "proposal.create";
+  flow: "owner.create" | "property.create" | "lead.qualify" | "proposal.create";
   status: "collecting" | "ready_for_review";
   pendingFields: string[];
   ownerDraft?: ImobOwnerDraftState;
+  propertyDraft?: ImobPropertyDraftState;
   leadDraft?: ImobLeadDraftState;
   proposalDraft?: ImobProposalDraftState;
 };
