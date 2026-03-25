@@ -116,8 +116,18 @@ export type ImobDocumentDraft = {
   deliveryChannel: "upload" | "email" | "whatsapp" | "drive" | null;
 };
 
+export type ImobContractDraft = {
+  propertyId: string | null;
+  ownerName: string | null;
+  counterpartyName: string | null;
+  contractType: "rent" | "sale" | "management" | null;
+  documentPacketStatus: "pending" | "ready" | null;
+  handoffTarget: "LEGAL" | null;
+  approvalRequired: boolean;
+};
+
 export type ImobOperationalState = {
-  flow: "owner.create" | "property.create" | "lead.qualify" | "visit.schedule" | "listing.activate" | "documents.collect" | "proposal.create";
+  flow: "owner.create" | "property.create" | "lead.qualify" | "visit.schedule" | "listing.activate" | "documents.collect" | "proposal.create" | "contract.prepare";
   status: "collecting" | "ready_for_review";
   pendingFields: string[];
   ownerDraft?: ImobOwnerDraft;
@@ -127,6 +137,7 @@ export type ImobOperationalState = {
   listingDraft?: ImobListingDraft;
   documentDraft?: ImobDocumentDraft;
   proposalDraft?: ImobProposalDraft;
+  contractDraft?: ImobContractDraft;
 };
 
 export type ImobKnowledgeSourceFilter = "drive" | "upload" | "web" | "internal_doc";
