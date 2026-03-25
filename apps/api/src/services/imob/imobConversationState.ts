@@ -4,6 +4,7 @@ import {
   type ImobLeadDraft,
   type ImobOperationalState,
   type ImobOwnerDraft,
+  type ImobPropertyDraft,
   type ImobProposalDraft,
   type ImobPendingSlot,
   type ImobSearchSlots,
@@ -296,6 +297,48 @@ function buildProposalPendingFields(draft: ImobProposalDraft) {
   return pending;
 }
 
+function extractAddress(raw: string) {
+  const match = raw.match(/(?:endereco|endereço)\s*:?[ ]*([^,.;\n]+(?:,[^.;\n]+)?)/i);
+  return match?.[1]?.trim() ?? null;
+}
+
+function hasPropertyCaptureSignal(message: string, slots: ImobSearchSlots) {
+  const normalized = normalizeImobText(message);
+  return Boolean(
+    slots.propertyType ||
+      slots.city ||
+      slots.neighborhood ||
+      slots.bedrooms ||
+      slots.bathrooms ||
+      slots.goal ||
+      extractAddress(message) ||
+      /(?:imovel|imóvel|apartamento|apto|casa|studio|kitnet|terreno|galpao|galpão|sala)\s*#?\d*/.test(normalized)
+  );
+}
+
+function buildPropertyDraft(previous: ImobPropertyDraft | undefined, message: string, slots: ImobSearchSlots): ImobPropertyDraft {
+  const propertyIdMatch = message.match(/(?:imovel|imóvel|apartamento|apto|casa)\s*#?\s*(\d{2,})/i)?.[1] ?? null;
+  return {
+    propertyId: propertyIdMatch ? `property-${propertyIdMatch}` : previous?.propertyId ?? null,
+    propertyType: slots.propertyType ?? previous?.propertyType ?? null,
+    goal: slots.goal ?? previous?.goal ?? null,
+    city: slots.city ?? previous?.city ?? null,
+    neighborhood: slots.neighborhood ?? previous?.neighborhood ?? null,
+    bedrooms: slots.bedrooms ?? previous?.bedrooms ?? null,
+    bathrooms: slots.bathrooms ?? previous?.bathrooms ?? null,
+    address: extractAddress(message) ?? previous?.address ?? null,
+  };
+}
+
+function buildPropertyPendingFields(draft: ImobPropertyDraft) {
+  const pending: string[] = [];
+  if (!draft.propertyType) pending.push("propertyType");
+  if (!draft.goal) pending.push("goal");
+  if (!draft.city) pending.push("city");
+  if (!draft.address) pending.push("address");
+  return pending;
+}
+
 function buildOwnerDraft(previous: ImobOwnerDraft | undefined, message: string): ImobOwnerDraft {
   return {
     ownerName: extractNamedParty(message, "owner") ?? previous?.ownerName ?? null,
@@ -342,6 +385,16 @@ export function createNextImobOperationalState(
   slots: ImobSearchSlots
 ): ImobOperationalState | null {
   if (intent === "capture") {
+    if (hasPropertyCaptureSignal(message, slots)) {
+      const draft = buildPropertyDraft(previous?.flow === "property.create" ? previous.propertyDraft : undefined, message, slots);
+      const pendingFields = buildPropertyPendingFields(draft);
+      return {
+        flow: "property.create",
+        status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
+        pendingFields,
+        propertyDraft: draft,
+      };
+    }
     const draft = buildOwnerDraft(previous?.flow === "owner.create" ? previous.ownerDraft : undefined, message);
     const pendingFields = buildOwnerPendingFields(draft);
     return {

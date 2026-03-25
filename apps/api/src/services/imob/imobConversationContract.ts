@@ -81,11 +81,23 @@ export type ImobProposalDraft = {
   contractType: "rent" | "sale" | "management" | null;
 };
 
+export type ImobPropertyDraft = {
+  propertyId: string | null;
+  propertyType: ImobPropertyType;
+  goal: "locacao" | "venda" | null;
+  city: string | null;
+  neighborhood: string | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  address: string | null;
+};
+
 export type ImobOperationalState = {
-  flow: "owner.create" | "lead.qualify" | "proposal.create";
+  flow: "owner.create" | "property.create" | "lead.qualify" | "proposal.create";
   status: "collecting" | "ready_for_review";
   pendingFields: string[];
   ownerDraft?: ImobOwnerDraft;
+  propertyDraft?: ImobPropertyDraft;
   leadDraft?: ImobLeadDraft;
   proposalDraft?: ImobProposalDraft;
 };

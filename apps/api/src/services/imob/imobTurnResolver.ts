@@ -282,10 +282,12 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
       };
     }
     case "capture": {
-      const propertyId = propertyRef ? `property-${propertyRef}` : `property-${Date.now()}`;
+      const propertyId = operationalState?.flow === "property.create"
+        ? (operationalState.propertyDraft?.propertyId ?? (propertyRef ? `property-${propertyRef}` : `property-${Date.now()}`))
+        : propertyRef ? `property-${propertyRef}` : `property-${Date.now()}`;
       return {
         intent,
-        operation: propertyRef ? "property.create" : "owner.create",
+        operation: operationalState?.flow === "property.create" ? "property.create" : "owner.create",
         action: "realestate.register_property",
         prompt: `Cadastrar imóvel ${propertyId} para operação imobiliária.`,
         input: {
@@ -294,7 +296,13 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
           ownerEmail: operationalState?.flow === "owner.create" ? (operationalState.ownerDraft?.ownerEmail ?? null) : null,
           ownerPhone: operationalState?.flow === "owner.create" ? (operationalState.ownerDraft?.ownerPhone ?? null) : null,
           ownerDocument: operationalState?.flow === "owner.create" ? (operationalState.ownerDraft?.ownerDocument ?? null) : null,
-          address: "endereco-pendente",
+          propertyType: operationalState?.flow === "property.create" ? (operationalState.propertyDraft?.propertyType ?? null) : null,
+          goal: operationalState?.flow === "property.create" ? (operationalState.propertyDraft?.goal ?? null) : null,
+          city: operationalState?.flow === "property.create" ? (operationalState.propertyDraft?.city ?? null) : null,
+          neighborhood: operationalState?.flow === "property.create" ? (operationalState.propertyDraft?.neighborhood ?? null) : null,
+          bedrooms: operationalState?.flow === "property.create" ? (operationalState.propertyDraft?.bedrooms ?? null) : null,
+          bathrooms: operationalState?.flow === "property.create" ? (operationalState.propertyDraft?.bathrooms ?? null) : null,
+          address: operationalState?.flow === "property.create" ? (operationalState.propertyDraft?.address ?? "endereco-pendente") : "endereco-pendente",
           requestedAt: timestamp,
         },
       };
@@ -480,9 +488,13 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
     presentation: {
       text:
         intent === "capture"
-          ? operationalState?.flow === "owner.create" && operationalState.pendingFields.length > 0
-            ? `Posso iniciar a captação agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
-            : "Posso iniciar a captação agora."
+          ? operationalState?.flow === "property.create"
+            ? operationalState.pendingFields.length > 0
+              ? `Posso iniciar o cadastro do imóvel agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
+              : "Posso iniciar o cadastro do imóvel agora."
+            : operationalState?.flow === "owner.create" && operationalState.pendingFields.length > 0
+              ? `Posso iniciar a captação agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
+              : "Posso iniciar a captação agora."
           : intent === "match"
             ? "Posso começar a busca de opções agora."
             : intent === "lead"

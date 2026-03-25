@@ -99,6 +99,22 @@ test("IMOB turn resolver builds explicit owner.create operational state", () => 
   assert.ok(result.conversationState.operational?.pendingFields.includes("ownerDocument"));
 });
 
+test("IMOB turn resolver builds explicit property.create operational state", () => {
+  const result = resolveImobTurn({
+    message: "Cadastrar imóvel apartamento para venda em Itapema com 3 quartos endereco Rua 1000",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.mode, "execute");
+  assert.equal(result.executionRequest?.operation, "property.create");
+  assert.equal(result.conversationState.operational?.flow, "property.create");
+  assert.equal(result.conversationState.operational?.propertyDraft?.propertyType, "apartamento");
+  assert.equal(result.conversationState.operational?.propertyDraft?.city, "Itapema");
+  assert.equal(result.conversationState.operational?.propertyDraft?.goal, "venda");
+  assert.equal(result.conversationState.operational?.propertyDraft?.address, "Rua 1000");
+  assert.match(result.presentation.text, /cadastro do imovel|cadastro do imóvel/i);
+});
+
 test("IMOB turn resolver builds explicit lead.qualify operational state", () => {
   const result = resolveImobTurn({
     message: "Qualificar lead Maria para alugar em Itapema ate 3500 telefone 47999998888",
