@@ -43,7 +43,7 @@ export type ImobThreadConversationState = {
   operational?: ImobOperationalState | null;
 };
 
-export type ImobIntent = "capture" | "match" | "lead" | "visit" | "listing" | "documents" | "proposal" | "contract" | "commission" | "adjustment";
+export type ImobIntent = "capture" | "match" | "lead" | "visit" | "listing" | "documents" | "proposal" | "deal" | "contract" | "commission" | "adjustment";
 
 export type ImobOperationalFlow =
   | "owner.create"
@@ -53,6 +53,7 @@ export type ImobOperationalFlow =
   | "visit.schedule"
   | "documents.collect"
   | "proposal.create"
+  | "deal.review"
   | "contract.prepare"
   | "commission.settle"
   | "adjustment.apply";
@@ -126,8 +127,17 @@ export type ImobContractDraft = {
   approvalRequired: boolean;
 };
 
+export type ImobDealDraft = {
+  dealId: string | null;
+  propertyId: string | null;
+  reviewStage: "proposal" | "documentation" | "contract" | "closing" | null;
+  blockers: string[];
+  handoffTarget: "LEGAL" | "FINANCE" | "IMOB_OPS" | null;
+  approvalRequired: boolean;
+};
+
 export type ImobOperationalState = {
-  flow: "owner.create" | "property.create" | "lead.qualify" | "visit.schedule" | "listing.activate" | "documents.collect" | "proposal.create" | "contract.prepare";
+  flow: "owner.create" | "property.create" | "lead.qualify" | "visit.schedule" | "listing.activate" | "documents.collect" | "proposal.create" | "deal.review" | "contract.prepare";
   status: "collecting" | "ready_for_review";
   pendingFields: string[];
   ownerDraft?: ImobOwnerDraft;
@@ -137,6 +147,7 @@ export type ImobOperationalState = {
   listingDraft?: ImobListingDraft;
   documentDraft?: ImobDocumentDraft;
   proposalDraft?: ImobProposalDraft;
+  dealDraft?: ImobDealDraft;
   contractDraft?: ImobContractDraft;
 };
 

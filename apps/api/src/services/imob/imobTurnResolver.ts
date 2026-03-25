@@ -39,6 +39,7 @@ function detectContractType(message: string): "rent" | "sale" | "management" {
 function classifyImobIntent(message: string): ImobIntent {
   const text = normalizeImobText(message);
   if (text.includes("comissao") || text.includes("comissão") || text.includes("repasse") || text.includes("sinal")) return "commission";
+  if (text.includes("deal") || text.includes("negocio") || text.includes("negócio") || text.includes("review do negocio") || text.includes("review do negócio") || text.includes("revisar negocio") || text.includes("revisar negócio")) return "deal";
   if (text.includes("contrato") || text.includes("assinatura") || text.includes("minuta")) return "contract";
   if (isDocumentCollectionRequest(message)) return "documents";
   if (text.includes("proposta") || text.includes("oferta") || text.includes("negocia")) return "proposal";
@@ -245,6 +246,8 @@ function getIntentThreadLabel(intent: ImobIntent) {
       return "Listing";
     case "proposal":
       return "Proposta";
+    case "deal":
+      return "Deal Review";
     case "documents":
       return "Documentos";
     case "contract":
@@ -269,6 +272,29 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
         action: "realestate.release_commission",
         prompt: `Fechar comissão imobiliária para o negócio ${dealId}.`,
         input: { dealId, brokerRef: "broker-default", amountCents: 100000, requestedAt: timestamp },
+      };
+    }
+    case "deal": {
+      const dealId = operationalState?.flow === "deal.review"
+        ? (operationalState.dealDraft?.dealId ?? (numericId ? `deal-${numericId}` : null))
+        : numericId ? `deal-${numericId}` : null;
+      const propertyId = operationalState?.flow === "deal.review"
+        ? (operationalState.dealDraft?.propertyId ?? (propertyRef ? `property-${propertyRef}` : null))
+        : propertyRef ? `property-${propertyRef}` : null;
+      return {
+        intent,
+        operation: "deal.review",
+        action: "realestate.review_deal",
+        prompt: `Revisar negócio imobiliário${dealId ? ` ${dealId}` : propertyId ? ` para ${propertyId}` : ""}.`,
+        input: {
+          dealId,
+          propertyId,
+          reviewStage: operationalState?.flow === "deal.review" ? (operationalState.dealDraft?.reviewStage ?? null) : null,
+          blockers: operationalState?.flow === "deal.review" ? (operationalState.dealDraft?.blockers ?? []) : [],
+          handoffTarget: operationalState?.flow === "deal.review" ? (operationalState.dealDraft?.handoffTarget ?? "IMOB_OPS") : "IMOB_OPS",
+          approvalRequired: operationalState?.flow === "deal.review" ? operationalState.dealDraft?.approvalRequired ?? true : true,
+          requestedAt: timestamp,
+        },
       };
     }
     case "contract": {
@@ -581,6 +607,10 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
                     ? operationalState?.flow === "proposal.create" && operationalState.pendingFields.length > 0
                       ? `Posso preparar a proposta agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
                       : "Posso preparar a proposta agora."
+                    : intent === "deal"
+                      ? operationalState?.flow === "deal.review" && operationalState.pendingFields.length > 0
+                        ? `Posso iniciar a revisão do negócio agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
+                        : "Posso iniciar a revisão do negócio agora."
                     : intent === "documents"
                       ? operationalState?.flow === "documents.collect" && operationalState.pendingFields.length > 0
                         ? `Posso iniciar a coleta documental agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
