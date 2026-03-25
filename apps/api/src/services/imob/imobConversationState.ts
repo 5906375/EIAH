@@ -6,6 +6,7 @@ import {
   type ImobOwnerDraft,
   type ImobPropertyDraft,
   type ImobProposalDraft,
+  type ImobVisitDraft,
   type ImobPendingSlot,
   type ImobSearchSlots,
   type ImobThreadConversationState,
@@ -378,6 +379,45 @@ function buildLeadPendingFields(draft: ImobLeadDraft) {
   return pending;
 }
 
+function extractPreferredDate(raw: string) {
+  const iso = raw.match(/(20\d{2}-\d{2}-\d{2})/);
+  if (iso) return iso[1];
+  const dayMonth = raw.match(/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/);
+  if (!dayMonth) return null;
+  const day = dayMonth[1].padStart(2, "0");
+  const month = dayMonth[2].padStart(2, "0");
+  const year = dayMonth[3] ? dayMonth[3].padStart(4, "20") : String(new Date().getUTCFullYear());
+  return `${year}-${month}-${day}`;
+}
+
+function extractPreferredWindow(raw: string): ImobVisitDraft["preferredWindow"] {
+  const normalized = normalizeImobText(raw);
+  if (normalized.includes("manha") || normalized.includes("manhã")) return "manha";
+  if (normalized.includes("tarde")) return "tarde";
+  if (normalized.includes("noite")) return "noite";
+  return null;
+}
+
+function buildVisitDraft(previous: ImobVisitDraft | undefined, message: string): ImobVisitDraft {
+  const propertyIdMatch = message.match(/(?:imovel|imóvel|apartamento|apto|casa)\s*#?\s*(\d{2,})/i)?.[1] ?? null;
+  return {
+    propertyId: propertyIdMatch ? `property-${propertyIdMatch}` : previous?.propertyId ?? null,
+    visitorName: extractNamedParty(message, "lead") ?? previous?.visitorName ?? null,
+    visitorPhone: extractPhone(message) ?? previous?.visitorPhone ?? null,
+    preferredDate: extractPreferredDate(message) ?? previous?.preferredDate ?? null,
+    preferredWindow: extractPreferredWindow(message) ?? previous?.preferredWindow ?? null,
+  };
+}
+
+function buildVisitPendingFields(draft: ImobVisitDraft) {
+  const pending: string[] = [];
+  if (!draft.propertyId) pending.push("propertyId");
+  if (!draft.visitorName) pending.push("visitorName");
+  if (!draft.visitorPhone) pending.push("visitorPhone");
+  if (!draft.preferredDate) pending.push("preferredDate");
+  return pending;
+}
+
 export function createNextImobOperationalState(
   previous: ImobOperationalState | undefined | null,
   intent: ImobIntent,
@@ -412,6 +452,16 @@ export function createNextImobOperationalState(
       status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
       pendingFields,
       leadDraft: draft,
+    };
+  }
+  if (intent === "visit") {
+    const draft = buildVisitDraft(previous?.flow === "visit.schedule" ? previous.visitDraft : undefined, message);
+    const pendingFields = buildVisitPendingFields(draft);
+    return {
+      flow: "visit.schedule",
+      status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
+      pendingFields,
+      visitDraft: draft,
     };
   }
   if (intent === "proposal") {

@@ -339,13 +339,24 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
       };
     }
     case "visit": {
-      const propertyId = propertyRef ? `property-${propertyRef}` : `property-${Date.now()}`;
+      const propertyId = operationalState?.flow === "visit.schedule"
+        ? (operationalState.visitDraft?.propertyId ?? (propertyRef ? `property-${propertyRef}` : `property-${Date.now()}`))
+        : propertyRef ? `property-${propertyRef}` : `property-${Date.now()}`;
       return {
         intent,
         operation: "visit.schedule",
         action: "realestate.apply_adjustment",
         prompt: `Agendar visita operacional para ${propertyId}.`,
-        input: { propertyId, adjustmentType: "visit_schedule", reason: "visit-scheduling", requestedAt: timestamp },
+        input: {
+          propertyId,
+          visitorName: operationalState?.flow === "visit.schedule" ? (operationalState.visitDraft?.visitorName ?? null) : null,
+          visitorPhone: operationalState?.flow === "visit.schedule" ? (operationalState.visitDraft?.visitorPhone ?? null) : null,
+          preferredDate: operationalState?.flow === "visit.schedule" ? (operationalState.visitDraft?.preferredDate ?? null) : null,
+          preferredWindow: operationalState?.flow === "visit.schedule" ? (operationalState.visitDraft?.preferredWindow ?? null) : null,
+          adjustmentType: "visit_schedule",
+          reason: "visit-scheduling",
+          requestedAt: timestamp,
+        },
       };
     }
     case "match": {
@@ -502,7 +513,9 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
                 ? `Posso iniciar a qualificação do lead agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
                 : "Posso iniciar a qualificação do lead agora."
               : intent === "visit"
-                ? "Posso organizar o agendamento da visita agora."
+                ? operationalState?.flow === "visit.schedule" && operationalState.pendingFields.length > 0
+                  ? `Posso organizar o agendamento da visita agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
+                  : "Posso organizar o agendamento da visita agora."
                 : intent === "listing"
                   ? "Posso preparar a ativação do anúncio agora."
                   : intent === "proposal"
