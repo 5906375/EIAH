@@ -100,14 +100,23 @@ export type ImobVisitDraft = {
   preferredWindow: "manha" | "tarde" | "noite" | null;
 };
 
+export type ImobListingDraft = {
+  propertyId: string | null;
+  listingTitle: string | null;
+  publicationChannels: string[];
+  askingPrice: number | null;
+  publicationGoal: "locacao" | "venda" | null;
+};
+
 export type ImobOperationalState = {
-  flow: "owner.create" | "property.create" | "lead.qualify" | "visit.schedule" | "proposal.create";
+  flow: "owner.create" | "property.create" | "lead.qualify" | "visit.schedule" | "listing.activate" | "proposal.create";
   status: "collecting" | "ready_for_review";
   pendingFields: string[];
   ownerDraft?: ImobOwnerDraft;
   propertyDraft?: ImobPropertyDraft;
   leadDraft?: ImobLeadDraft;
   visitDraft?: ImobVisitDraft;
+  listingDraft?: ImobListingDraft;
   proposalDraft?: ImobProposalDraft;
 };
 

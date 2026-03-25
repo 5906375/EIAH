@@ -308,13 +308,24 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
       };
     }
     case "listing": {
-      const propertyId = propertyRef ? `property-${propertyRef}` : `property-${Date.now()}`;
+      const propertyId = operationalState?.flow === "listing.activate"
+        ? (operationalState.listingDraft?.propertyId ?? (propertyRef ? `property-${propertyRef}` : `property-${Date.now()}`))
+        : propertyRef ? `property-${propertyRef}` : `property-${Date.now()}`;
       return {
         intent,
         operation: "listing.activate",
         action: "realestate.apply_adjustment",
         prompt: `Ativar listing operacional do imóvel ${propertyId}.`,
-        input: { propertyId, adjustmentType: "listing_activate", reason: "listing-operation", requestedAt: timestamp },
+        input: {
+          propertyId,
+          listingTitle: operationalState?.flow === "listing.activate" ? (operationalState.listingDraft?.listingTitle ?? null) : null,
+          publicationChannels: operationalState?.flow === "listing.activate" ? (operationalState.listingDraft?.publicationChannels ?? []) : [],
+          askingPrice: operationalState?.flow === "listing.activate" ? (operationalState.listingDraft?.askingPrice ?? null) : null,
+          publicationGoal: operationalState?.flow === "listing.activate" ? (operationalState.listingDraft?.publicationGoal ?? null) : null,
+          adjustmentType: "listing_activate",
+          reason: "listing-operation",
+          requestedAt: timestamp,
+        },
       };
     }
     case "lead": {
@@ -517,7 +528,9 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
                   ? `Posso organizar o agendamento da visita agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
                   : "Posso organizar o agendamento da visita agora."
                 : intent === "listing"
-                  ? "Posso preparar a ativação do anúncio agora."
+                  ? operationalState?.flow === "listing.activate" && operationalState.pendingFields.length > 0
+                    ? `Posso preparar a ativação do anúncio agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
+                    : "Posso preparar a ativação do anúncio agora."
                   : intent === "proposal"
                     ? operationalState?.flow === "proposal.create" && operationalState.pendingFields.length > 0
                       ? `Posso preparar a proposta agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
