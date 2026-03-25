@@ -6,6 +6,7 @@ import {
   type ImobListingDraft,
   type ImobDocumentDraft,
   type ImobContractDraft,
+  type ImobDealDraft,
   type ImobOwnerDraft,
   type ImobPropertyDraft,
   type ImobProposalDraft,
@@ -560,6 +561,57 @@ function buildContractPendingFields(draft: ImobContractDraft) {
   return pending;
 }
 
+function extractReviewStage(raw: string): ImobDealDraft["reviewStage"] {
+  const normalized = normalizeImobText(raw);
+  if (normalized.includes("fechamento") || normalized.includes("closing")) return "closing";
+  if (normalized.includes("contrato") || normalized.includes("minuta")) return "contract";
+  if (normalized.includes("document") || normalized.includes("matricula") || normalized.includes("matrícula")) return "documentation";
+  if (normalized.includes("proposta") || normalized.includes("oferta")) return "proposal";
+  return null;
+}
+
+function extractDealBlockers(raw: string) {
+  const normalized = normalizeImobText(raw);
+  const blockers: string[] = [];
+  if (normalized.includes("documentos pendentes") || normalized.includes("faltando documento") || normalized.includes("pendencia documental")) blockers.push("document_packet_pending");
+  if (normalized.includes("juridico") || normalized.includes("jurídico") || normalized.includes("minuta pendente") || normalized.includes("aprovacao juridica")) blockers.push("legal_review_pending");
+  if (normalized.includes("comissao pendente") || normalized.includes("repasse pendente") || normalized.includes("pagamento pendente")) blockers.push("financial_pending");
+  if (normalized.includes("aprovação humana") || normalized.includes("aprovacao humana") || normalized.includes("review humano")) blockers.push("human_approval_required");
+  return [...new Set(blockers)];
+}
+
+function inferDealHandoffTarget(stage: ImobDealDraft["reviewStage"], blockers: string[]): ImobDealDraft["handoffTarget"] {
+  if (blockers.includes("legal_review_pending") || stage === "contract") return "LEGAL";
+  if (blockers.includes("financial_pending") || stage === "closing") return "FINANCE";
+  return "IMOB_OPS";
+}
+
+function buildDealDraft(previous: ImobDealDraft | undefined, message: string): ImobDealDraft {
+  const dealIdMatch = message.match(/(?:deal|negocio|negócio)\s*#?\s*(\d{2,})/i)?.[1] ?? null;
+  const propertyIdMatch = message.match(/(?:imovel|imóvel|apartamento|apto|casa)\s*#?\s*(\d{2,})/i)?.[1] ?? null;
+  const blockers = (() => {
+    const next = extractDealBlockers(message);
+    return next.length > 0 ? next : previous?.blockers ?? [];
+  })();
+  const reviewStage = extractReviewStage(message) ?? previous?.reviewStage ?? null;
+  return {
+    dealId: dealIdMatch ? `deal-${dealIdMatch}` : previous?.dealId ?? null,
+    propertyId: propertyIdMatch ? `property-${propertyIdMatch}` : previous?.propertyId ?? null,
+    reviewStage,
+    blockers,
+    handoffTarget: inferDealHandoffTarget(reviewStage, blockers),
+    approvalRequired: true,
+  };
+}
+
+function buildDealPendingFields(draft: ImobDealDraft) {
+  const pending: string[] = [];
+  if (!draft.dealId && !draft.propertyId) pending.push("dealReference");
+  if (!draft.reviewStage) pending.push("reviewStage");
+  if (draft.blockers.length === 0) pending.push("blockers");
+  return pending;
+}
+
 export function createNextImobOperationalState(
   previous: ImobOperationalState | undefined | null,
   intent: ImobIntent,
@@ -624,6 +676,16 @@ export function createNextImobOperationalState(
       status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
       pendingFields,
       documentDraft: draft,
+    };
+  }
+  if (intent === "deal") {
+    const draft = buildDealDraft(previous?.flow === "deal.review" ? previous.dealDraft : undefined, message);
+    const pendingFields = buildDealPendingFields(draft);
+    return {
+      flow: "deal.review",
+      status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
+      pendingFields,
+      dealDraft: draft,
     };
   }
   if (intent === "contract") {
