@@ -54,7 +54,7 @@ test("IMOB turn resolver fail-closes knowledge search without entitlement", () =
 
 test("IMOB turn resolver maps visit scheduling to backend-owned operation metadata", () => {
   const result = resolveImobTurn({
-    message: "Agendar visita para o imóvel 82912",
+    message: "Agendar visita para lead Maria no imóvel 82912 em 2026-03-30 telefone 47999998888 à tarde",
     access: {
       tenantId: "tenant-A",
       workspaceId: "workspace-A",
@@ -67,6 +67,12 @@ test("IMOB turn resolver maps visit scheduling to backend-owned operation metada
   assert.equal(result.executionRequest?.operation, "visit.schedule");
   assert.equal(result.executionRequest?.action, "realestate.apply_adjustment");
   assert.equal(result.threadLabel, "Visita");
+  assert.equal(result.conversationState.operational?.flow, "visit.schedule");
+  assert.equal(result.conversationState.operational?.visitDraft?.propertyId, "property-82912");
+  assert.equal(result.conversationState.operational?.visitDraft?.visitorName, "Maria");
+  assert.equal(result.conversationState.operational?.visitDraft?.visitorPhone, "47999998888");
+  assert.equal(result.conversationState.operational?.visitDraft?.preferredDate, "2026-03-30");
+  assert.equal(result.conversationState.operational?.visitDraft?.preferredWindow, "tarde");
 });
 
 test("IMOB turn resolver maps listing activation to backend-owned operation metadata", () => {

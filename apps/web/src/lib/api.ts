@@ -1045,6 +1045,14 @@ export type ImobPropertyDraftState = {
   address: string | null;
 };
 
+export type ImobVisitDraftState = {
+  propertyId: string | null;
+  visitorName: string | null;
+  visitorPhone: string | null;
+  preferredDate: string | null;
+  preferredWindow: "manha" | "tarde" | "noite" | null;
+};
+
 export type ImobProposalDraftState = {
   buyerName: string | null;
   buyerEmail: string | null;
@@ -1055,12 +1063,13 @@ export type ImobProposalDraftState = {
 };
 
 export type ImobOperationalState = {
-  flow: "owner.create" | "property.create" | "lead.qualify" | "proposal.create";
+  flow: "owner.create" | "property.create" | "lead.qualify" | "visit.schedule" | "proposal.create";
   status: "collecting" | "ready_for_review";
   pendingFields: string[];
   ownerDraft?: ImobOwnerDraftState;
   propertyDraft?: ImobPropertyDraftState;
   leadDraft?: ImobLeadDraftState;
+  visitDraft?: ImobVisitDraftState;
   proposalDraft?: ImobProposalDraftState;
 };
 
