@@ -156,3 +156,23 @@ test("IMOB turn resolver builds explicit proposal.create operational state", () 
   assert.ok(result.conversationState.operational?.pendingFields.includes("buyerPhone"));
   assert.match(result.presentation.text, /proposta agora/i);
 });
+
+
+test("IMOB turn resolver builds explicit documents.collect operational state", () => {
+  const result = resolveImobTurn({
+    message: "Coletar documentos do proprietário do imóvel 4455 via upload com matrícula e cpf",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.mode, "execute");
+  assert.equal(result.executionRequest?.intent, "documents");
+  assert.equal(result.executionRequest?.operation, "documents.collect");
+  assert.equal(result.executionRequest?.action, "realestate.collect_documents");
+  assert.equal(result.threadLabel, "Documentos");
+  assert.equal(result.conversationState.operational?.flow, "documents.collect");
+  assert.equal(result.conversationState.operational?.documentDraft?.referenceId, "property-4455");
+  assert.equal(result.conversationState.operational?.documentDraft?.subjectType, "owner");
+  assert.deepEqual(result.conversationState.operational?.documentDraft?.documentTypes, ["matricula", "cpf"]);
+  assert.equal(result.conversationState.operational?.documentDraft?.deliveryChannel, "upload");
+  assert.match(result.presentation.text, /coleta documental/i);
+});
