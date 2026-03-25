@@ -77,7 +77,7 @@ test("IMOB turn resolver maps visit scheduling to backend-owned operation metada
 
 test("IMOB turn resolver maps listing activation to backend-owned operation metadata", () => {
   const result = resolveImobTurn({
-    message: "Publicar anúncio do imóvel 4455",
+    message: "Publicar anúncio do imóvel 4455 título Vista Mar no portal e whatsapp valor 950000 para venda",
     access: {
       tenantId: "tenant-A",
       workspaceId: "workspace-A",
@@ -89,6 +89,12 @@ test("IMOB turn resolver maps listing activation to backend-owned operation meta
   assert.equal(result.executionRequest?.intent, "listing");
   assert.equal(result.executionRequest?.operation, "listing.activate");
   assert.equal(result.threadLabel, "Listing");
+  assert.equal(result.conversationState.operational?.flow, "listing.activate");
+  assert.equal(result.conversationState.operational?.listingDraft?.propertyId, "property-4455");
+  assert.equal(result.conversationState.operational?.listingDraft?.listingTitle, "Vista Mar");
+  assert.deepEqual(result.conversationState.operational?.listingDraft?.publicationChannels, ["portal", "whatsapp"]);
+  assert.equal(result.conversationState.operational?.listingDraft?.askingPrice, 950000);
+  assert.equal(result.conversationState.operational?.listingDraft?.publicationGoal, "venda");
 });
 
 

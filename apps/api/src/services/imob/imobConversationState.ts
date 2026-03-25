@@ -3,6 +3,7 @@ import {
   type ImobIntent,
   type ImobLeadDraft,
   type ImobOperationalState,
+  type ImobListingDraft,
   type ImobOwnerDraft,
   type ImobPropertyDraft,
   type ImobProposalDraft,
@@ -418,6 +419,53 @@ function buildVisitPendingFields(draft: ImobVisitDraft) {
   return pending;
 }
 
+function extractPriceAmount(raw: string) {
+  const match = raw.match(/(?:valor|preco|preço)\s*(?:de|por)?\s*r?\$?\s*(\d+(?:[\.,]\d+)?)/i);
+  if (!match) return null;
+  return Number.parseFloat(match[1].replace(/\./g, "").replace(",", "."));
+}
+
+function extractListingTitle(raw: string) {
+  const match = raw.match(/(?:titulo|título)\s*:?[ ]*(.+)$/i);
+  if (!match?.[1]) return null;
+  return match[1]
+    .split(/\s+(?:no|na)\s+(?:portal|site|instagram)\b|\s+whatsapp\b|\s+(?:valor|preco|preço)\b|\s+para\s+(?:venda|locacao|locação)\b/i)[0]
+    .trim() || null;
+}
+
+function extractPublicationChannels(raw: string) {
+  const normalized = normalizeImobText(raw);
+  const channels: string[] = [];
+  if (normalized.includes("portal") || normalized.includes("portais")) channels.push("portal");
+  if (normalized.includes("whatsapp") || normalized.includes("what")) channels.push("whatsapp");
+  if (normalized.includes("instagram") || normalized.includes("insta")) channels.push("instagram");
+  if (normalized.includes("site")) channels.push("site");
+  return [...new Set(channels)];
+}
+
+function buildListingDraft(previous: ImobListingDraft | undefined, message: string, slots: ImobSearchSlots): ImobListingDraft {
+  const propertyIdMatch = message.match(/(?:imovel|imóvel|apartamento|apto|casa)\s*#?\s*(\d{2,})/i)?.[1] ?? null;
+  return {
+    propertyId: propertyIdMatch ? `property-${propertyIdMatch}` : previous?.propertyId ?? null,
+    listingTitle: extractListingTitle(message) ?? previous?.listingTitle ?? null,
+    publicationChannels: (() => {
+      const next = extractPublicationChannels(message);
+      return next.length > 0 ? next : previous?.publicationChannels ?? [];
+    })(),
+    askingPrice: extractPriceAmount(message) ?? previous?.askingPrice ?? null,
+    publicationGoal: slots.goal ?? previous?.publicationGoal ?? null,
+  };
+}
+
+function buildListingPendingFields(draft: ImobListingDraft) {
+  const pending: string[] = [];
+  if (!draft.propertyId) pending.push("propertyId");
+  if (!draft.listingTitle) pending.push("listingTitle");
+  if (!draft.publicationGoal) pending.push("publicationGoal");
+  if (draft.publicationChannels.length === 0) pending.push("publicationChannels");
+  return pending;
+}
+
 export function createNextImobOperationalState(
   previous: ImobOperationalState | undefined | null,
   intent: ImobIntent,
@@ -462,6 +510,16 @@ export function createNextImobOperationalState(
       status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
       pendingFields,
       visitDraft: draft,
+    };
+  }
+  if (intent === "listing") {
+    const draft = buildListingDraft(previous?.flow === "listing.activate" ? previous.listingDraft : undefined, message, slots);
+    const pendingFields = buildListingPendingFields(draft);
+    return {
+      flow: "listing.activate",
+      status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
+      pendingFields,
+      listingDraft: draft,
     };
   }
   if (intent === "proposal") {
