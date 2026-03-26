@@ -241,3 +241,27 @@ test("IMOB turn resolver builds explicit commission.settle operational state", (
   assert.equal(result.conversationState.operational?.commissionDraft?.approvalRequired, true);
   assert.match(result.presentation.text, /liquidação da comissão/i);
 });
+
+
+test("IMOB turn resolver continues proposal.create flow when the user replies only with the missing phone", () => {
+  const first = resolveImobTurn({
+    message: "Gerar proposta para lead Maria no imóvel 4455 com oferta de 750000",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  const second = resolveImobTurn({
+    message: "47999998888",
+    threadLabel: first.threadLabel,
+    threadState: first.conversationState,
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(second.mode, "execute");
+  assert.equal(second.executionRequest?.intent, "proposal");
+  assert.equal(second.executionRequest?.operation, "proposal.create");
+  assert.equal(second.conversationState.operational?.flow, "proposal.create");
+  assert.equal(second.conversationState.operational?.proposalDraft?.buyerPhone, "47999998888");
+  assert.equal(second.conversationState.operational?.proposalDraft?.propertyId, "property-4455");
+  assert.equal(second.conversationState.operational?.proposalDraft?.offerAmount, 750000);
+  assert.ok(!second.conversationState.operational?.pendingFields.includes("buyerPhone"));
+});

@@ -175,6 +175,8 @@ export type ImobAccessContext = {
 export type ImobResolveTurnRequest = {
   message: string;
   threadLabel?: string | null;
+  threadId?: string | null;
+  caseId?: string | null;
   threadState?: ImobThreadConversationState | null;
   access?: ImobAccessContext;
 };
@@ -239,16 +241,58 @@ export type ImobSearchInventoryResponse = {
   };
 };
 
+export type ImobOperationalOwner = "Corretor" | "Jurídico" | "Financeiro" | "Cliente" | "IMOB Ops";
+
+export type ImobCaseContext = {
+  caseId: string;
+  flow: ImobOperationalFlow;
+  stage: string;
+  status: string;
+  ownerResponsible?: ImobOperationalOwner | null;
+  nextStep?: string | null;
+  blocker?: string | null;
+  pendingItems?: string[];
+  threadId?: string | null;
+  updatedAt?: string;
+};
+
+export type ImobOperationalPresentation = {
+  text: string;
+  card?: ImobPresentationCard;
+  suggestedNextAction?: string;
+  owner?: ImobOperationalOwner;
+  nextStep?: string;
+  blocker?: string | null;
+  pendingFieldLabels?: string[];
+  dedupeKey?: string;
+};
+
+export type ImobAttachmentValidationComparisonStatus = "confere" | "diverge" | "ilegivel";
+
+export type ImobAttachmentValidationFieldResult = {
+  field: "nome" | "cpf" | "rg";
+  label: string;
+  status: ImobAttachmentValidationComparisonStatus;
+  extractedValue?: string | null;
+  caseValue?: string | null;
+  note?: string;
+};
+
+export const IMOB_IDENTITY_ATTACHMENT_VALIDATION_CONTRACT = {
+  id: "imob.identity_document_validation.v1",
+  acceptedKinds: ["identity_document", "supporting_photo"],
+  extractedFields: ["nome", "cpf", "rg"],
+  comparisonStatuses: ["confere", "diverge", "ilegivel"],
+  biometricValidation: "not_in_scope",
+} as const;
+
 export type ImobResolveTurnResponse = {
   mode: ImobConversationMode;
   action: string;
   threadLabel: string;
   conversationState: ImobThreadConversationState;
-  presentation: {
-    text: string;
-    card?: ImobPresentationCard;
-    suggestedNextAction?: string;
-  };
+  presentation: ImobOperationalPresentation;
+  caseContext?: ImobCaseContext;
   executionRequest?: ImobExecutionRequest;
   searchRequest?: ImobSearchInventoryRequest;
   knowledgeRequest?: {

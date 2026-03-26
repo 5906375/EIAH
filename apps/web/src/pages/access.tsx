@@ -1,11 +1,13 @@
 import React from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
+  apiAcceptWorkspaceInvitation,
   apiCreateSession,
   apiGetSessionContext,
   apiCreateWalletChallenge,
   apiLegacyLogin,
   apiOnboarding,
+  apiPreviewWorkspaceInvitation,
   apiSetLegacyPassword,
   apiWalletLogin,
 } from "@/lib/api";
@@ -33,11 +35,28 @@ type SignupForm = {
   email: string;
 };
 
+type WorkspaceInvitationPreview = {
+  token: string;
+  tenantId: string;
+  tenantName: string;
+  workspaceId: string;
+  workspaceName: string;
+  email: string;
+  fullName: string;
+  roleKey: string;
+  roleLabel: string;
+  permissions: string[];
+  status: string;
+  expiresAt: string;
+  expired: boolean;
+};
+
 export default function AccessPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const nextParam = searchParams.get("next") ?? "/app/runs";
   const nextPath = nextParam.startsWith("/") ? nextParam : "/app/runs";
+  const inviteToken = searchParams.get("invite")?.trim() ?? "";
 
   const [passwordForm, setPasswordForm] = React.useState<PasswordForm>({
     email: "",
@@ -55,11 +74,14 @@ export default function AccessPage() {
     name: "",
     email: "",
   });
-  const [authMode, setAuthMode] = React.useState<"login" | "signup">("login");
+  const [authMode, setAuthMode] = React.useState<"login" | "signup">(() => (inviteToken ? "signup" : "login"));
   const [recoveryMode, setRecoveryMode] = React.useState(false);
   const [status, setStatus] = React.useState<"idle" | "loading">("idle");
   const [error, setError] = React.useState<string | null>(null);
   const [success, setSuccess] = React.useState<string | null>(null);
+  const [invitePreview, setInvitePreview] = React.useState<WorkspaceInvitationPreview | null>(null);
+  const [invitePreviewLoading, setInvitePreviewLoading] = React.useState(false);
+
 
   React.useEffect(() => {
     if (!newPasswordForm.email && passwordForm.email) {
@@ -73,12 +95,87 @@ export default function AccessPage() {
     }
   }, [passwordForm.email, signupForm.email]);
 
+  React.useEffect(() => {
+    if (inviteToken) {
+      setAuthMode("signup");
+    }
+  }, [inviteToken]);
+
   const getEthereumProvider = () =>
     (
       window as typeof window & {
         ethereum?: EthereumProvider;
       }
     ).ethereum;
+
+  React.useEffect(() => {
+    if (!inviteToken) {
+      setInvitePreview(null);
+      setInvitePreviewLoading(false);
+      return;
+    }
+    let active = true;
+    setInvitePreviewLoading(true);
+    apiPreviewWorkspaceInvitation(inviteToken)
+      .then((response) => {
+        if (!active) return;
+        if (response.ok && response.data) {
+          const data = response.data;
+          setInvitePreview(data);
+          setSignupForm((prev) => ({
+            ...prev,
+            orgName: data.tenantName,
+            name: prev.name || data.fullName,
+            email: prev.email || data.email,
+          }));
+          setPasswordForm((prev) => ({ ...prev, email: prev.email || data.email }));
+          setNewPasswordForm((prev) => ({ ...prev, email: prev.email || data.email }));
+          return;
+        }
+        setInvitePreview(null);
+      })
+      .catch(() => {
+        if (active) setInvitePreview(null);
+      })
+      .finally(() => {
+        if (active) setInvitePreviewLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [inviteToken]);
+
+  const finalizeAuthenticatedSession = async (payload: {
+    tenantId: string;
+    workspaceId: string;
+    userId?: string | null;
+    token: string;
+  }) => {
+    updateSession({
+      tenantId: payload.tenantId,
+      workspaceId: payload.workspaceId,
+      userId: payload.userId ?? undefined,
+      token: payload.token,
+    });
+    await apiCreateSession().catch(() => undefined);
+    const context = await apiGetSessionContext().catch(() => null);
+    if (context?.ok && context.data) {
+      updateSession({
+        activeDomain: context.data.activeDomain,
+        availableDomains: context.data.availableDomains,
+        entitlements: context.data.entitlements,
+        installedProducts: (context.data.productInstallations ?? []).map((entry) => entry.product),
+        roles: context.data.roles,
+        branding: {
+          brandName: context.data.branding.brandName,
+          logoUrl: context.data.branding.logoUrl,
+          primaryColor: context.data.branding.primaryColor,
+          workspaceLabel: context.data.branding.workspaceLabel,
+        },
+      });
+    }
+    navigate(nextPath, { replace: true });
+  };
 
   const loginWithPayload = async (payload: {
     email?: string;
@@ -93,30 +190,18 @@ export default function AccessPage() {
       if (!response.ok || !response.data) {
         throw new Error(response.error?.message ?? "Falha de autenticação.");
       }
-      updateSession({
-        tenantId: response.data.tenantId,
-        workspaceId: response.data.workspaceId,
-        userId: response.data.userId ?? undefined,
-        token: response.data.token,
-      });
-      await apiCreateSession().catch(() => undefined);
-      const context = await apiGetSessionContext().catch(() => null);
-      if (context?.ok && context.data) {
-        updateSession({
-          activeDomain: context.data.activeDomain,
-          availableDomains: context.data.availableDomains,
-          entitlements: context.data.entitlements,
-          installedProducts: (context.data.productInstallations ?? []).map((entry) => entry.product),
-          roles: context.data.roles,
-          branding: {
-            brandName: context.data.branding.brandName,
-            logoUrl: context.data.branding.logoUrl,
-            primaryColor: context.data.branding.primaryColor,
-            workspaceLabel: context.data.branding.workspaceLabel,
-          },
+      if (inviteToken) {
+        const accepted = await apiAcceptWorkspaceInvitation({
+          token: inviteToken,
+          loginToken: response.data.token,
         });
+        if (!accepted.ok || !accepted.data) {
+          throw new Error(accepted.error?.message ?? "Falha ao aceitar convite do workspace.");
+        }
+        await finalizeAuthenticatedSession(accepted.data);
+        return;
       }
-      navigate(nextPath, { replace: true });
+      await finalizeAuthenticatedSession(response.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha de autenticação.");
     } finally {
@@ -129,6 +214,33 @@ export default function AccessPage() {
     setError(null);
     setSuccess(null);
     if (authMode === "signup") {
+      if (inviteToken) {
+        if (!signupForm.name.trim() || !signupForm.email.trim() || !passwordForm.password.trim()) {
+          setError("Preencha nome, e-mail e senha para aceitar o convite.");
+          return;
+        }
+        setStatus("loading");
+        void apiAcceptWorkspaceInvitation({
+          token: inviteToken,
+          email: signupForm.email.trim(),
+          fullName: signupForm.name.trim(),
+          password: passwordForm.password,
+        })
+          .then(async (response) => {
+            if (!response.ok || !response.data) {
+              throw new Error(response.error?.message ?? "Falha ao aceitar convite do workspace.");
+            }
+            await finalizeAuthenticatedSession(response.data);
+          })
+          .catch((err) => {
+            setError(err instanceof Error ? err.message : "Falha ao aceitar convite do workspace.");
+          })
+          .finally(() => {
+            setStatus("idle");
+          });
+        return;
+      }
+
       if (!signupForm.orgName.trim() || !signupForm.name.trim() || !signupForm.email.trim()) {
         setError("Preencha empresa, nome e e-mail para cadastrar.");
         return;
@@ -144,31 +256,9 @@ export default function AccessPage() {
           if (!response.ok || !response.data) {
             throw new Error(response.error?.message ?? "Falha ao criar conta.");
           }
-          if (response.data.token) {
-            updateSession({
-              tenantId: response.data.tenantId,
-              workspaceId: response.data.workspaceId,
-              userId: response.data.userId,
-              token: response.data.token,
-            });
-            await apiCreateSession().catch(() => undefined);
-            const context = await apiGetSessionContext().catch(() => null);
-            if (context?.ok && context.data) {
-              updateSession({
-                activeDomain: context.data.activeDomain,
-                availableDomains: context.data.availableDomains,
-                entitlements: context.data.entitlements,
-                installedProducts: (context.data.productInstallations ?? []).map((entry) => entry.product),
-                roles: context.data.roles,
-                branding: {
-                  brandName: context.data.branding.brandName,
-                  logoUrl: context.data.branding.logoUrl,
-                  primaryColor: context.data.branding.primaryColor,
-                  workspaceLabel: context.data.branding.workspaceLabel,
-                },
-              });
-            }
-            navigate(nextPath, { replace: true });
+          const data = response.data;
+          if (data.token) {
+            await finalizeAuthenticatedSession({ ...data, token: data.token });
             return;
           }
           setSuccess("Cadastro concluído. Faça login para continuar.");
@@ -282,30 +372,7 @@ export default function AccessPage() {
         throw new Error(response.error?.message ?? "Falha ao autenticar com wallet.");
       }
 
-      updateSession({
-        tenantId: response.data.tenantId,
-        workspaceId: response.data.workspaceId,
-        userId: response.data.userId ?? undefined,
-        token: response.data.token,
-      });
-      await apiCreateSession().catch(() => undefined);
-      const context = await apiGetSessionContext().catch(() => null);
-      if (context?.ok && context.data) {
-        updateSession({
-          activeDomain: context.data.activeDomain,
-          availableDomains: context.data.availableDomains,
-          entitlements: context.data.entitlements,
-          installedProducts: (context.data.productInstallations ?? []).map((entry) => entry.product),
-          roles: context.data.roles,
-          branding: {
-            brandName: context.data.branding.brandName,
-            logoUrl: context.data.branding.logoUrl,
-            primaryColor: context.data.branding.primaryColor,
-            workspaceLabel: context.data.branding.workspaceLabel,
-          },
-        });
-      }
-      navigate(nextPath, { replace: true });
+      await finalizeAuthenticatedSession(response.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha ao conectar ou autenticar com wallet.");
     } finally {
@@ -316,6 +383,22 @@ export default function AccessPage() {
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 px-4 sm:px-6 lg:px-8">
       <div className="grid justify-items-center gap-6">
+      {inviteToken ? (
+        <div className="w-full rounded-3xl border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-foreground lg:w-[40vw]">
+          {invitePreviewLoading ? (
+            <p>Carregando convite do workspace...</p>
+          ) : invitePreview ? (
+            <div className="space-y-1">
+              <p className="text-[10px] uppercase tracking-[0.3em] text-accent">Convite do workspace</p>
+              <p>{invitePreview.tenantName} · {invitePreview.workspaceName}</p>
+              <p>Função atribuída: {invitePreview.roleLabel}</p>
+              <p>Email convidado: {invitePreview.email}</p>
+            </div>
+          ) : (
+            <p>Convite do workspace não encontrado ou expirado.</p>
+          )}
+        </div>
+      ) : null}
         <form
           onSubmit={handlePasswordLogin}
           className="w-full rounded-3xl border border-white/10 bg-surface/70 p-6 shadow-[0_20px_60px_rgba(15,23,42,0.35)] lg:w-[40vw]"
@@ -368,19 +451,26 @@ export default function AccessPage() {
 
           {authMode === "signup" ? (
             <>
-              <label className="mt-4 block text-sm text-muted-foreground">
-                Empresa
-                <input
-                  className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
-                  type="text"
-                  placeholder="Nome da organização"
-                  value={signupForm.orgName}
-                  onChange={(event) =>
-                    setSignupForm((prev) => ({ ...prev, orgName: event.target.value }))
-                  }
-                  required
-                />
-              </label>
+              {inviteToken ? (
+                <div className="mt-4 rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-sm text-muted-foreground">
+                  <p>Workspace: {invitePreview?.workspaceName ?? "Carregando..."}</p>
+                  <p>Função: {invitePreview?.roleLabel ?? "Carregando..."}</p>
+                </div>
+              ) : (
+                <label className="mt-4 block text-sm text-muted-foreground">
+                  Empresa
+                  <input
+                    className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
+                    type="text"
+                    placeholder="Nome da organização"
+                    value={signupForm.orgName}
+                    onChange={(event) =>
+                      setSignupForm((prev) => ({ ...prev, orgName: event.target.value }))
+                    }
+                    required
+                  />
+                </label>
+              )}
               <label className="mt-4 block text-sm text-muted-foreground">
                 Nome
                 <input
@@ -408,6 +498,21 @@ export default function AccessPage() {
                   required
                 />
               </label>
+              {inviteToken ? (
+                <label className="mt-4 block text-sm text-muted-foreground">
+                  Senha
+                  <input
+                    className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
+                    type="password"
+                    placeholder="Mínimo 8 caracteres"
+                    value={passwordForm.password}
+                    onChange={(event) =>
+                      setPasswordForm((prev) => ({ ...prev, password: event.target.value }))
+                    }
+                    required
+                  />
+                </label>
+              ) : null}
             </>
           ) : (
             <>

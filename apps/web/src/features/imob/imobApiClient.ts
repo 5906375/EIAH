@@ -12,6 +12,8 @@ export type { ImobExecutionRequest, ImobInventorySearchResponse, ImobResolveTurn
 export async function resolveImobTurn(body: {
   message: string;
   threadLabel?: string | null;
+  threadId?: string | null;
+  caseId?: string | null;
   threadState?: ImobThreadConversationState | null;
 }): Promise<ImobResolveTurnResponse> {
   const response = await apiResolveImobTurn(body);

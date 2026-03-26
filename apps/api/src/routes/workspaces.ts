@@ -8,6 +8,7 @@ import {
   isReservedDefaultWorkspaceName,
   RESERVED_DEFAULT_WORKSPACE_ALLOWED_TENANT,
 } from "../services/workspaceNamingPolicy";
+import { ensureWorkspaceMembershipForUser } from "../services/workspaceResponsibility";
 
 export const workspacesRouter = Router();
 workspacesRouter.use(enforceTenant);
@@ -82,6 +83,15 @@ workspacesRouter.post("/workspaces", async (req, res) => {
       },
       select: { id: true, name: true, createdAt: true },
     });
+
+    if (authContext.userId) {
+      await ensureWorkspaceMembershipForUser({
+        tenantId,
+        workspaceId: created.id,
+        userId: authContext.userId,
+        roleKey: "gestor",
+      });
+    }
 
     return res.status(201).json({
       ok: true,

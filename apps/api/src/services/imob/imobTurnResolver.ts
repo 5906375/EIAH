@@ -4,6 +4,7 @@ import {
   type ImobExecutionRequest,
   type ImobIntent,
   type ImobKnowledgeSourceFilter,
+  type ImobOperationalOwner,
   type ImobResolveTurnRequest,
   type ImobResolveTurnResponse,
 } from "./imobConversationContract";
@@ -49,6 +50,28 @@ function classifyImobIntent(message: string): ImobIntent {
   if (text.includes("cadastrar") || text.includes("capta") || text.includes("propriet") || text.includes("imovel") || text.includes("imóvel")) return "capture";
   if (text.includes("alugar") || text.includes("loca") || text.includes("procur") || text.includes("quartos")) return "match";
   return "adjustment";
+}
+
+function mapOperationalFlowToIntent(flow: NonNullable<ImobResolveTurnResponse["conversationState"]["operational"]>["flow"]): ImobIntent {
+  if (flow === "owner.create" || flow === "property.create") return "capture";
+  if (flow === "lead.qualify") return "lead";
+  if (flow === "visit.schedule") return "visit";
+  if (flow === "listing.activate") return "listing";
+  if (flow === "documents.collect") return "documents";
+  if (flow === "proposal.create") return "proposal";
+  if (flow === "deal.review") return "deal";
+  if (flow === "contract.prepare") return "contract";
+  if (flow === "commission.settle") return "commission";
+  return "adjustment";
+}
+
+function shouldContinueCurrentOperationalFlow(
+  previous: ImobResolveTurnRequest["threadState"]["operational"] | null | undefined,
+  intent: ImobIntent
+) {
+  if (!previous || previous.status !== "collecting") return false;
+  if (intent === "adjustment") return true;
+  return mapOperationalFlowToIntent(previous.flow) === intent;
 }
 
 function extractSegment(text: string): "locacao" | "venda" | "ambos" {
@@ -122,6 +145,137 @@ function isDocumentCollectionRequest(message: string) {
     text.includes("rg") ||
     text.includes("cnpj");
   return hasCollectionVerb && hasDocumentSubject;
+}
+
+function mapOperationalOwner(flow: NonNullable<ImobResolveTurnResponse["conversationState"]["operational"]>["flow"]): ImobOperationalOwner {
+  if (flow === "contract.prepare") return "Jurídico";
+  if (flow === "commission.settle") return "Financeiro";
+  if (flow === "documents.collect") return "IMOB Ops";
+  return "Corretor";
+}
+
+function mapOperationalPendingFieldLabel(
+  flow: NonNullable<ImobResolveTurnResponse["conversationState"]["operational"]>["flow"],
+  field: string
+) {
+  const common: Record<string, string> = {
+    propertyId: "imóvel de referência",
+    ownerName: "nome do proprietário",
+    ownerEmail: "e-mail do proprietário",
+    ownerPhone: "telefone do proprietário",
+    ownerDocument: "documento do proprietário",
+    propertyType: "tipo do imóvel",
+    goal: "finalidade do imóvel",
+    city: "cidade do imóvel",
+    neighborhood: "bairro do imóvel",
+    bedrooms: "quantidade de quartos",
+    bathrooms: "quantidade de banheiros",
+    address: "endereço do imóvel",
+    leadName: "nome do lead",
+    leadPhone: "telefone do lead",
+    leadEmail: "e-mail do lead",
+    desiredGoal: "objetivo do lead",
+    desiredCity: "cidade de interesse",
+    budgetMax: "faixa de orçamento",
+    buyerName: "nome do comprador",
+    buyerPhone: "telefone do comprador",
+    buyerEmail: "e-mail do comprador",
+    offerAmount: "valor da proposta",
+    visitorName: "nome do visitante",
+    visitorPhone: "telefone do visitante",
+    preferredDate: "data da visita",
+    preferredWindow: "turno da visita",
+    counterpartyName: "nome da contraparte",
+    contractType: "tipo de contrato",
+    documentPacketStatus: "pacote documental",
+    brokerRef: "corretor responsável",
+    amountCents: "valor da comissão",
+    payoutChannel: "canal de repasse",
+    settlementStatus: "status da liquidação",
+    dealId: "negócio",
+    approvalRequired: "aprovação humana",
+  };
+  if (flow === "proposal.create" && field === "propertyId") return "imóvel da proposta";
+  if (flow === "visit.schedule" && field === "propertyId") return "imóvel da visita";
+  if (flow === "contract.prepare" && field === "propertyId") return "imóvel do contrato";
+  if (flow === "commission.settle" && field === "dealId") return "negócio da comissão";
+  return common[field] ?? field;
+}
+
+function buildOperationalPresentationMeta(
+  operationalState: NonNullable<ImobResolveTurnResponse["conversationState"]["operational"]> | null | undefined
+) {
+  if (!operationalState) return {};
+  const flow = operationalState.flow;
+  const pendingFieldLabels = operationalState.pendingFields.map((field) => mapOperationalPendingFieldLabel(flow, field));
+  const owner = mapOperationalOwner(flow);
+  const nextStep =
+    flow === "commission.settle"
+      ? pendingFieldLabels.length > 0
+        ? "Confirmar pendências da comissão antes do repasse."
+        : "Validar liquidação e acompanhar repasse da comissão."
+      : flow === "contract.prepare"
+        ? pendingFieldLabels.length > 0
+          ? "Completar dados contratuais e validar pacote documental."
+          : "Revisar minuta e validar pacote documental."
+        : flow === "proposal.create"
+          ? pendingFieldLabels.length > 0
+            ? "Completar dados do comprador e ajustar a proposta."
+            : "Confirmar dados do comprador e acompanhar aceite da proposta."
+          : flow === "visit.schedule"
+            ? pendingFieldLabels.length > 0
+              ? "Completar dados da visita antes da confirmação."
+              : "Confirmar agenda com cliente e imóvel."
+            : flow === "lead.qualify"
+              ? pendingFieldLabels.length > 0
+                ? "Completar dados do lead e revisar o interesse comercial."
+                : "Qualificar interesse e vincular o próximo imóvel ou etapa comercial."
+              : flow === "owner.create"
+                ? pendingFieldLabels.length > 0
+                  ? "Completar dados do proprietário antes de avançar a captação."
+                  : "Vincular o proprietário ao próximo imóvel ou etapa documental."
+                : flow === "property.create"
+                  ? pendingFieldLabels.length > 0
+                    ? "Completar dados do imóvel antes de avançar a captação."
+                    : "Vincular o imóvel ao próximo lead ou etapa comercial/documental."
+                  : undefined;
+  const blocker =
+    flow === "commission.settle"
+      ? pendingFieldLabels.length > 0
+        ? "Validar dados de comissão antes do repasse."
+        : null
+      : flow === "contract.prepare"
+        ? pendingFieldLabels.length > 0
+          ? "Revisão jurídica ou pacote documental pendente."
+          : null
+        : flow === "proposal.create"
+          ? pendingFieldLabels.length > 0
+            ? "Dados do comprador ou proposta incompletos."
+            : null
+          : flow === "visit.schedule"
+            ? pendingFieldLabels.length > 0
+              ? "Confirmação de agenda ou contato pendente."
+              : null
+            : flow === "lead.qualify"
+              ? pendingFieldLabels.length > 0
+                ? "Dados do lead ainda estão incompletos para seguir."
+                : null
+              : flow === "owner.create"
+                ? pendingFieldLabels.length > 0
+                  ? "Dados do proprietário ainda estão incompletos para seguir."
+                  : null
+                : flow === "property.create"
+                  ? pendingFieldLabels.length > 0
+                    ? "Dados do imóvel ainda estão incompletos para seguir."
+                    : null
+                  : null;
+  return {
+    owner,
+    nextStep,
+    blocker,
+    pendingFieldLabels,
+    dedupeKey: `${flow}:${operationalState.status}`,
+  };
 }
 
 function isKnowledgeSearchQuery(message: string) {
@@ -488,8 +642,11 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
 
 export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTurnResponse {
   const message = request.message.trim();
+  const classifiedIntent = classifyImobIntent(message);
+  const intent = shouldContinueCurrentOperationalFlow(request.threadState?.operational ?? null, classifiedIntent)
+    ? mapOperationalFlowToIntent(request.threadState!.operational!.flow)
+    : classifiedIntent;
   const nextThreadState = createNextImobThreadState(request.threadState ?? undefined, message);
-  const intent = classifyImobIntent(message);
 
   if (isKnowledgeSearchQuery(message) && !(intent === "documents" && isDocumentCollectionRequest(message))) {
     const region = nextThreadState.slots.city ?? nextThreadState.slots.region ?? extractRegion(normalizeImobText(message)) ?? "Brasil";
@@ -582,6 +739,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
   }
 
   const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, intent, message, nextThreadState.slots);
+  const operationalPendingLabels = operationalState ? operationalState.pendingFields.map((field) => mapOperationalPendingFieldLabel(operationalState.flow, field)) : [];
   const executionRequest = buildOperationalExecution(intent, message, new Date().toISOString(), operationalState);
   return {
     mode: "execute",
@@ -590,14 +748,17 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
     conversationState: { slots: createEmptyImobSlots(), mode: "execute", pendingSlot: "none", resultOffset: 0, operational: operationalState },
     executionRequest,
     presentation: {
+      ...buildOperationalPresentationMeta(operationalState),
       text:
         intent === "capture"
           ? operationalState?.flow === "property.create"
-            ? operationalState.pendingFields.length > 0
-              ? `Posso iniciar o cadastro do imóvel agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
+            ? operationalPendingLabels.length > 0
+              ? `Posso iniciar o cadastro do imóvel agora. Ainda preciso de: ${operationalPendingLabels.join(", ")}.`
               : "Posso iniciar o cadastro do imóvel agora."
-            : operationalState?.flow === "owner.create" && operationalState.pendingFields.length > 0
-              ? `Posso iniciar a captação agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
+            : operationalState?.flow === "owner.create"
+              ? operationalPendingLabels.length > 0
+                ? `Posso iniciar o cadastro do proprietário agora. Ainda preciso de: ${operationalPendingLabels.join(", ")}.`
+                : "Posso iniciar o cadastro do proprietário agora."
               : "Posso iniciar a captação agora."
           : intent === "match"
             ? "Posso começar a busca de opções agora."

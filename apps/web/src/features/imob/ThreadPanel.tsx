@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import type { ImobChatThread } from "@/lib/api";
 
-type HumanTimelineStep = {
+type HumantimelineStep = {
   id: string;
   label: string;
   state: "done" | "current" | "pending";
@@ -34,7 +34,7 @@ function getThreadPrimaryCta(thread: ImobChatThread): { label: string; href: str
   return { label: "Abrir dashboard", href: "/app/imob/dashboard?section=processos#dashboard-hub" };
 }
 
-function getThreadTimeline(thread: ImobChatThread): HumanTimelineStep[] {
+function getThreadtimeline(thread: ImobChatThread): HumantimelineStep[] {
   const finalLabel = thread.status === "blocked" ? "atenção" : "concluído";
   if (thread.status === "done") {
     return [
@@ -89,7 +89,7 @@ function formatRelativeTime(timestamp?: string | null) {
   return `há ${diffDays} d`;
 }
 
-function timelineStepLabel(step: HumanTimelineStep) {
+function timelineStepLabel(step: HumantimelineStep) {
   if (step.id === "understanding") return "entendido";
   if (step.id === "preparation") return "preparação";
   if (step.id === "execution") return "execução";
@@ -125,26 +125,26 @@ export const ThreadPanel: React.FC<ThreadPanelProps> = ({
   return (
     <div className="rounded-xl border border-white/10 bg-black/20 p-2">
       <div className="mb-2 flex items-center justify-between">
-        <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Threads</p>
+        <p className="text-[10px] tracking-[0.18em] text-muted-foreground">Threads</p>
         <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={() => setShowDetails((prev) => !prev)}
-            className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-muted-foreground hover:border-white/30"
+            className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-muted-foreground hover:border-white/30"
           >
             {showDetails ? "Compacto" : "Detalhes"}
           </button>
           <button
             type="button"
             onClick={onClearSelection}
-            className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-[0.12em] text-muted-foreground hover:border-white/30"
+            className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] text-muted-foreground hover:border-white/30"
           >
             Todas
           </button>
         </div>
       </div>
       {threads.length === 0 ? (
-        <p className="text-xs text-muted-foreground">{emptyText}</p>
+        <p className="text-[10px] text-muted-foreground">{emptyText}</p>
       ) : (
         <div className="space-y-1">
           {threads.slice(0, maxItems).map((thread) => {
@@ -159,7 +159,7 @@ export const ThreadPanel: React.FC<ThreadPanelProps> = ({
             const threadCtaHref = resolveDashboardHref
               ? resolveDashboardHref(threadCta.href, thread)
               : threadCta.href;
-            const timeline = getThreadTimeline(thread);
+            const timeline = getThreadtimeline(thread);
             return (
               <div
                 key={thread.threadId}
@@ -173,15 +173,15 @@ export const ThreadPanel: React.FC<ThreadPanelProps> = ({
                   className="w-full text-left transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    <p className="truncate text-xs text-foreground">{thread.label}</p>
-                    <span className={`rounded-full border px-2 py-0.5 text-[9px] uppercase tracking-[0.12em] ${tone}`}>
+                    <p className="truncate text-[10px] text-foreground">{thread.label}</p>
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${tone}`}>
                       {threadStatusLabel(thread.status)}
                     </span>
                   </div>
-                  <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{getThreadStageSummary(thread)}</p>
+                  <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">{getThreadStageSummary(thread)}</p>
                   {showDetails ? (
                     <div className="mt-2">
-                      <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/80">timeline</p>
+                      <p className="text-[10px] text-muted-foreground/80">timeline</p>
                       <div className="mt-1 grid grid-cols-2 gap-1">
                         {timeline.map((step) => {
                           const toneClass =
@@ -198,14 +198,14 @@ export const ThreadPanel: React.FC<ThreadPanelProps> = ({
                               className={`flex items-center gap-1 rounded-md border px-2 py-1 ${toneClass}`}
                             >
                               <span className={`h-1.5 w-1.5 rounded-full ${bulletClass}`} />
-                              <span className="text-[9px] uppercase tracking-[0.1em]">{timelineStepLabel(step)}</span>
+                              <span className="text-[10px]">{timelineStepLabel(step)}</span>
                             </div>
                           );
                         })}
                       </div>
                     </div>
                   ) : null}
-                  <p className="mt-1 text-[10px] uppercase tracking-[0.12em] text-muted-foreground/80">
+                  <p className="mt-1 text-[10px] text-muted-foreground/80">
                     {thread.messageCount} mensagem{thread.messageCount === 1 ? "" : "ens"} • {formatRelativeTime(thread.lastMessageAt)}
                   </p>
                 </button>
@@ -214,13 +214,13 @@ export const ThreadPanel: React.FC<ThreadPanelProps> = ({
                     <button
                       type="button"
                       onClick={() => onSelectThread(thread)}
-                      className="rounded-full border border-accent/40 bg-accent/10 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-accent transition hover:bg-accent/20"
+                      className="rounded-full border border-accent/40 bg-accent/10 px-2 py-1 text-[10px] text-accent transition hover:bg-accent/20"
                     >
                       Continuar
                     </button>
                     <Link
                       to={threadCtaHref}
-                      className="rounded-full border border-white/20 bg-white/10 px-2 py-1 text-[10px] uppercase tracking-[0.14em] text-foreground transition hover:border-accent/40"
+                      className="rounded-full border border-white/20 bg-white/10 px-2 py-1 text-[10px] text-foreground transition hover:border-accent/40"
                     >
                       {threadCta.label}
                     </Link>
@@ -233,8 +233,8 @@ export const ThreadPanel: React.FC<ThreadPanelProps> = ({
       )}
       {showTimelineLegend ? (
         <div className="mt-3 rounded-xl border border-white/10 bg-black/15 p-3">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Significado da timeline</p>
-          <ul className="mt-2 space-y-2 text-[11px] text-muted-foreground">
+          <p className="text-[10px] tracking-[0.18em] text-muted-foreground">Significado da timeline</p>
+          <ul className="mt-2 space-y-2 text-[10px] text-muted-foreground">
             <li>
               <span className="font-medium text-foreground">Entendimento</span>: o chat interpretou sua intenção corretamente.
               Exemplo: identificou que você quer uma operação de captação.

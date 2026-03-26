@@ -4,6 +4,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prismaGlobal } from "@repo/db";
 import { findApiToken } from "../auth/apiTokenRepository";
+import { acceptWorkspaceInvitation, readWorkspaceInvitationByToken } from "../services/workspaceResponsibility";
 
 const scryptAsync = promisify(crypto.scrypt);
 
@@ -260,6 +261,135 @@ function walletAuthUnsafeModeEnabled() {
   }
   return process.env.NODE_ENV !== "production";
 }
+
+const WorkspaceInvitationPreviewSchema = z.object({
+  token: z.string().min(1),
+});
+
+const WorkspaceInvitationAcceptSchema = z
+  .object({
+    token: z.string().min(1),
+    loginToken: z.string().min(1).optional(),
+    email: z.string().email().optional(),
+    fullName: z.string().min(1).max(160).optional(),
+    password: z.string().min(8).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.loginToken) return;
+    if (!data.email) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["email"], message: "Email is required when loginToken is not provided" });
+    }
+    if (!data.fullName) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["fullName"], message: "Full name is required when loginToken is not provided" });
+    }
+    if (!data.password) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["password"], message: "Password is required when loginToken is not provided" });
+    }
+  });
+
+authRouter.post("/auth/workspace-invitations/preview", async (req, res) => {
+  const parsed = WorkspaceInvitationPreviewSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({
+      ok: false,
+      error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() },
+    });
+  }
+
+  const invitation = await readWorkspaceInvitationByToken({ token: parsed.data.token.trim() });
+  if (!invitation) {
+    return res.status(404).json({
+      ok: false,
+      error: { code: "WORKSPACE_INVITATION_NOT_FOUND", message: "Workspace invitation not found" },
+    });
+  }
+
+  return res.json({
+    ok: true,
+    data: {
+      token: invitation.token,
+      tenantId: invitation.tenantId,
+      tenantName: invitation.tenantName,
+      workspaceId: invitation.workspaceId,
+      workspaceName: invitation.workspaceName,
+      email: invitation.email,
+      fullName: invitation.fullName,
+      roleKey: invitation.roleKey,
+      roleLabel: invitation.roleLabel,
+      permissions: invitation.permissions,
+      status: invitation.status,
+      expiresAt: invitation.expiresAt,
+      expired: invitation.expired,
+    },
+  });
+});
+
+authRouter.post("/auth/workspace-invitations/accept", async (req, res) => {
+  const parsed = WorkspaceInvitationAcceptSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({
+      ok: false,
+      error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() },
+    });
+  }
+
+  try {
+    let authenticatedUserId: string | null = null;
+    if (parsed.data.loginToken) {
+      const tokenRecord = await validateActiveToken(parsed.data.loginToken.trim());
+      if (!tokenRecord || !tokenRecord.userId) {
+        return res.status(401).json({
+          ok: false,
+          error: { code: "UNAUTHORIZED", message: "Invalid login token" },
+        });
+      }
+      authenticatedUserId = tokenRecord.userId;
+    }
+
+    if (!authenticatedUserId && parsed.data.password) {
+      await ensureLegacyCredentialStore();
+    }
+    const passwordHash = !authenticatedUserId && parsed.data.password
+      ? await hashPassword(parsed.data.password)
+      : null;
+
+    const accepted = await acceptWorkspaceInvitation({
+      token: parsed.data.token.trim(),
+      authenticatedUserId,
+      email: parsed.data.email?.trim().toLowerCase(),
+      fullName: parsed.data.fullName?.trim(),
+      passwordHash,
+    });
+
+    return res.status(201).json({
+      ok: true,
+      data: {
+        token: accepted.token,
+        tenantId: accepted.tenantId,
+        workspaceId: accepted.workspaceId,
+        userId: accepted.userId,
+        email: accepted.email,
+        fullName: accepted.fullName,
+        roleKey: accepted.roleKey,
+        roleLabel: accepted.roleLabel,
+        responsibleLabel: accepted.responsibleLabel,
+        method: authenticatedUserId ? "token" : "password",
+      },
+    });
+  } catch (error) {
+    const maybe = error as { code?: string; status?: number; message?: string };
+    if (maybe?.status) {
+      return res.status(maybe.status).json({
+        ok: false,
+        error: { code: maybe.code ?? "WORKSPACE_INVITATION_ACCEPT_FAILED", message: maybe.message ?? "Invitation acceptance failed" },
+      });
+    }
+    return res.status(500).json({
+      ok: false,
+      error: { code: "WORKSPACE_INVITATION_ACCEPT_FAILED", message: "Failed to accept workspace invitation" },
+    });
+  }
+});
 
 authRouter.post("/auth/login", async (req, res) => {
   const parsed = LoginSchema.safeParse(req.body ?? {});

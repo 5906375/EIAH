@@ -66,6 +66,11 @@ model Tenant {
   invoices             TenantInvoice[]
   helpdeskSessions     HelpdeskSession[]
   productInstallations TenantProductInstallation[]
+  imobOwners           ImobOwner[]
+  imobProperties       ImobProperty[]
+  imobLeads            ImobLead[]
+  imobCases            ImobCase[]
+  imobCaseEvents       ImobCaseEvent[]
 
   @@map("tenants")
 }
@@ -92,6 +97,11 @@ model Workspace {
   billingLedgerEntries BillingLedger[]
   helpdeskSessions     HelpdeskSession[]
   productInstallations TenantProductInstallation[]
+  imobOwners           ImobOwner[]
+  imobProperties       ImobProperty[]
+  imobLeads            ImobLead[]
+  imobCases            ImobCase[]
+  imobCaseEvents       ImobCaseEvent[]
 
   @@index([tenantId, name])
   @@map("workspaces")
@@ -186,6 +196,7 @@ model Run {
   events               RunEvent[]
   guardrailLedgers     GuardrailLedger[]
   billingLedgerEntries BillingLedger[]
+  imobCaseEvents       ImobCaseEvent[]
   tenant               Tenant            @relation(fields: [tenantId], references: [id])
   user                 User?             @relation(fields: [userId], references: [id])
   workspace            Workspace         @relation(fields: [workspaceId], references: [id])
@@ -734,4 +745,148 @@ model HelpdeskSession {
   @@index([tenantId, workspaceId, createdAt])
   @@index([intent, createdAt])
   @@map("helpdesk_sessions")
+}
+
+model ImobOwner {
+  id           String         @id @default(cuid())
+  tenantId     String         @map("tenant_id")
+  workspaceId  String         @map("workspace_id")
+  name         String
+  document     String?
+  email        String?
+  phone        String?
+  personType   String         @default("person") @map("person_type")
+  status       String         @default("pending_data")
+  pendingItems Json?          @map("pending_items")
+  metadata     Json?
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+  tenant       Tenant         @relation(fields: [tenantId], references: [id])
+  workspace    Workspace      @relation(fields: [workspaceId], references: [id])
+  properties   ImobProperty[]
+  cases        ImobCase[]
+
+  @@index([tenantId, workspaceId, createdAt])
+  @@index([tenantId, workspaceId, status])
+  @@map("imob_owners")
+}
+
+model ImobProperty {
+  id               String     @id @default(cuid())
+  tenantId         String     @map("tenant_id")
+  workspaceId      String     @map("workspace_id")
+  ownerId          String?    @map("owner_id")
+  propertyType     String?    @map("property_type")
+  goal             String?
+  address          String?
+  city             String?
+  neighborhood     String?
+  bedrooms         Int?
+  bathrooms        Int?
+  areaM2           Int?       @map("area_m2")
+  garageSpots      Int?       @map("garage_spots")
+  askingPriceCents Int?       @map("asking_price_cents")
+  description      String?
+  status           String     @default("pending_data")
+  pendingItems     Json?      @map("pending_items")
+  metadata         Json?
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+  tenant           Tenant     @relation(fields: [tenantId], references: [id])
+  workspace        Workspace  @relation(fields: [workspaceId], references: [id])
+  owner            ImobOwner? @relation(fields: [ownerId], references: [id])
+  cases            ImobCase[]
+
+  @@index([tenantId, workspaceId, createdAt])
+  @@index([tenantId, workspaceId, status])
+  @@index([ownerId])
+  @@map("imob_properties")
+}
+
+model ImobLead {
+  id                 String     @id @default(cuid())
+  tenantId           String     @map("tenant_id")
+  workspaceId        String     @map("workspace_id")
+  name               String
+  document           String?
+  email              String?
+  phone              String?
+  goal               String?
+  targetCity         String?    @map("target_city")
+  targetNeighborhood String?    @map("target_neighborhood")
+  budgetMaxCents     Int?       @map("budget_max_cents")
+  stage              String     @default("incomplete")
+  temperature        String     @default("incomplete")
+  pendingItems       Json?      @map("pending_items")
+  metadata           Json?
+  createdAt          DateTime   @default(now()) @map("created_at")
+  updatedAt          DateTime   @updatedAt @map("updated_at")
+  tenant             Tenant     @relation(fields: [tenantId], references: [id])
+  workspace          Workspace  @relation(fields: [workspaceId], references: [id])
+  cases              ImobCase[]
+
+  @@index([tenantId, workspaceId, createdAt])
+  @@index([tenantId, workspaceId, stage])
+  @@index([tenantId, workspaceId, temperature])
+  @@map("imob_leads")
+}
+
+model ImobCase {
+  id               String          @id @default(cuid())
+  tenantId         String          @map("tenant_id")
+  workspaceId      String          @map("workspace_id")
+  threadId         String?         @map("thread_id")
+  flow             String
+  stage            String
+  status           String
+  ownerResponsible String?         @map("owner_responsible")
+  nextStep         String?         @map("next_step")
+  blockers         Json?
+  pendingItems     Json?           @map("pending_items")
+  ownerId          String?         @map("owner_id")
+  propertyId       String?         @map("property_id")
+  leadId           String?         @map("lead_id")
+  externalDealId   String?         @map("external_deal_id")
+  metadata         Json?
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+  tenant           Tenant          @relation(fields: [tenantId], references: [id])
+  workspace        Workspace       @relation(fields: [workspaceId], references: [id])
+  owner            ImobOwner?      @relation(fields: [ownerId], references: [id])
+  property         ImobProperty?   @relation(fields: [propertyId], references: [id])
+  lead             ImobLead?       @relation(fields: [leadId], references: [id])
+  events           ImobCaseEvent[]
+
+  @@index([tenantId, workspaceId, createdAt])
+  @@index([tenantId, workspaceId, flow, status])
+  @@index([tenantId, workspaceId, stage])
+  @@index([threadId])
+  @@index([ownerId])
+  @@index([propertyId])
+  @@index([leadId])
+  @@map("imob_cases")
+}
+
+model ImobCaseEvent {
+  id          String    @id @default(cuid())
+  caseId      String    @map("case_id")
+  tenantId    String    @map("tenant_id")
+  workspaceId String    @map("workspace_id")
+  runId       String?   @map("run_id")
+  type        String
+  actorType   String    @map("actor_type")
+  actorRef    String?   @map("actor_ref")
+  summary     String
+  evidenceRef String?   @map("evidence_ref")
+  payload     Json?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  imobCase    ImobCase  @relation(fields: [caseId], references: [id])
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  run         Run?      @relation(fields: [runId], references: [id])
+
+  @@index([caseId, createdAt])
+  @@index([tenantId, workspaceId, createdAt])
+  @@index([runId])
+  @@map("imob_case_events")
 }

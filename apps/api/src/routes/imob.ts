@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { z } from "zod";
 import crypto from "node:crypto";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
 import { generateContractPreview } from "../services/contracts/contractGenerator";
@@ -9,6 +10,8 @@ import { searchImobKnowledge } from "../services/imob/imobKnowledgeSearch";
 import { readImobDriveSyncSnapshot } from "../services/imob/imobDriveSync";
 import { searchImobInventory } from "../services/imob/imobInventoryProvider";
 import { resolveImobTurn } from "../services/imob/imobTurnResolver";
+import { validateImobIdentityAttachmentAgainstCase } from "../services/imob/imobAttachmentValidation";
+import { canWorkspaceOperateImobStage, hasWorkspacePermission, readWorkspaceResponsibleProfile } from "../services/workspaceResponsibility";
 
 export const imobRouter = Router();
 imobRouter.use(enforceTenant);
@@ -76,8 +79,1415 @@ const CHAT_KEY_CONTRACT_PREVIEW = "conversation.contract_preview";
 const RUN_EVENT_CHAT_AUDIT_STARTED = "conversation.audit.started";
 const RUN_EVENT_CHAT_MESSAGE_RECORDED = "conversation.message.recorded";
 
+const optionalShortString = (max: number) => z.union([z.string().trim().min(1).max(max), z.null()]).optional();
+const optionalStringArraySchema = z.array(z.string().trim().min(1).max(160)).max(100).optional();
+
+const imobOwnerCreateSchema = z.object({
+  name: z.string().trim().min(1).max(160),
+  document: optionalShortString(60),
+  email: z.union([z.string().trim().email().max(160), z.null()]).optional(),
+  phone: optionalShortString(40),
+  personType: optionalShortString(40),
+  status: optionalShortString(80),
+  pendingItems: optionalStringArraySchema,
+  metadata: z.unknown().optional(),
+});
+
+const imobOwnerUpdateSchema = imobOwnerCreateSchema.partial().refine((value) => Object.keys(value).length > 0, {
+  message: "At least one field is required",
+});
+
+const imobPropertyCreateSchema = z.object({
+  ownerId: optionalShortString(80),
+  propertyType: optionalShortString(60),
+  goal: optionalShortString(40),
+  address: optionalShortString(240),
+  city: optionalShortString(120),
+  neighborhood: optionalShortString(120),
+  bedrooms: z.number().int().min(0).max(50).optional(),
+  bathrooms: z.number().int().min(0).max(50).optional(),
+  areaM2: z.number().int().min(0).max(100000).optional(),
+  garageSpots: z.number().int().min(0).max(100).optional(),
+  askingPriceCents: z.number().int().min(0).max(1_000_000_000).optional(),
+  description: optionalShortString(4000),
+  status: optionalShortString(80),
+  pendingItems: optionalStringArraySchema,
+  metadata: z.unknown().optional(),
+});
+
+const imobPropertyUpdateSchema = imobPropertyCreateSchema.partial().refine((value) => Object.keys(value).length > 0, {
+  message: "At least one field is required",
+});
+
+const imobLeadCreateSchema = z.object({
+  name: z.string().trim().min(1).max(160),
+  document: optionalShortString(60),
+  email: z.union([z.string().trim().email().max(160), z.null()]).optional(),
+  phone: optionalShortString(40),
+  goal: optionalShortString(40),
+  targetCity: optionalShortString(120),
+  targetNeighborhood: optionalShortString(120),
+  budgetMaxCents: z.number().int().min(0).max(1_000_000_000).optional(),
+  stage: optionalShortString(80),
+  temperature: optionalShortString(80),
+  pendingItems: optionalStringArraySchema,
+  metadata: z.unknown().optional(),
+});
+
+const imobLeadUpdateSchema = imobLeadCreateSchema.partial().refine((value) => Object.keys(value).length > 0, {
+  message: "At least one field is required",
+});
+
+const imobCaseEventInputSchema = z.object({
+  type: z.string().trim().min(1).max(120),
+  actorType: z.string().trim().min(1).max(80),
+  actorRef: optionalShortString(120),
+  summary: z.string().trim().min(1).max(1000),
+  evidenceRef: optionalShortString(160),
+  payload: z.unknown().optional(),
+  runId: optionalShortString(80),
+});
+
+const imobCaseCreateSchema = z.object({
+  threadId: optionalShortString(120),
+  flow: z.string().trim().min(1).max(120),
+  stage: z.string().trim().min(1).max(120),
+  status: z.string().trim().min(1).max(120),
+  ownerResponsible: optionalShortString(80),
+  nextStep: optionalShortString(1000),
+  blockers: optionalStringArraySchema,
+  pendingItems: optionalStringArraySchema,
+  ownerId: optionalShortString(80),
+  propertyId: optionalShortString(80),
+  leadId: optionalShortString(80),
+  externalDealId: optionalShortString(120),
+  metadata: z.unknown().optional(),
+  initialEvent: imobCaseEventInputSchema.optional(),
+});
+
+const imobAttachmentResolveSchema = z.object({
+  caseId: optionalShortString(80),
+  threadId: optionalShortString(120),
+  documentIds: z.array(z.string().trim().min(1).max(80)).min(1).max(8),
+});
+
+const imobCaseUpdateSchema = z.object({
+  threadId: optionalShortString(120),
+  flow: optionalShortString(120),
+  stage: optionalShortString(120),
+  status: optionalShortString(120),
+  ownerResponsible: optionalShortString(80),
+  nextStep: optionalShortString(1000),
+  blockers: optionalStringArraySchema,
+  pendingItems: optionalStringArraySchema,
+  ownerId: optionalShortString(80),
+  propertyId: optionalShortString(80),
+  leadId: optionalShortString(80),
+  externalDealId: optionalShortString(120),
+  metadata: z.unknown().optional(),
+  eventSummary: optionalShortString(1000),
+  eventType: optionalShortString(120),
+  eventPayload: z.unknown().optional(),
+  eventRunId: optionalShortString(80),
+}).refine((value) => Object.keys(value).length > 0, {
+  message: "At least one field is required",
+});
+
 function asString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+
+function asStringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => (typeof item === "string" ? item.trim() : "")).filter(Boolean);
+}
+
+function normalizeImobRouteText(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
+}
+
+function titleCaseRouteWords(value: string) {
+  return value
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((token) => token.charAt(0).toUpperCase() + token.slice(1))
+    .join(" ");
+}
+
+function extractLeadEmailFromMessage(raw: string) {
+  const match = raw.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  return match ? match[0].toLowerCase() : null;
+}
+
+function extractLeadPhoneFromMessage(raw: string) {
+  const match = raw.match(/(?:\+?55\s*)?(?:\(?\d{2}\)?\s*)?\d{4,5}[-\s]?\d{4}/);
+  if (!match) return null;
+  return match[0].replace(/\s+/g, " ").trim();
+}
+
+function trimLeadNameCandidate(value: string) {
+  return value
+    .replace(/\b(no|na)\s+(imovel|imóvel|apartamento|apto|casa)\b.*$/i, "")
+    .replace(/\b(com|por)\s+(oferta|proposta|valor)\b.*$/i, "")
+    .replace(/\b(email|telefone|cpf|cnpj|documento|whatsapp)\b.*$/i, "")
+    .trim();
+}
+
+function extractLeadNameFromMessage(message: string) {
+  const normalized = normalizeImobRouteText(message);
+  const patterns = [
+    /(?:lead|cliente|comprador|locatario)\s+([a-z]+(?:\s+[a-z]+){0,2})/,
+    /(?:qualificar|atender|agendar visita para|gerar proposta para)\s+(?:lead\s+|cliente\s+)?([a-z]+(?:\s+[a-z]+){0,2})/,
+  ];
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    const candidate = match?.[1] ? trimLeadNameCandidate(match[1]) : null;
+    if (candidate) return titleCaseRouteWords(candidate);
+  }
+  return null;
+}
+
+function extractOwnerNameFromMessage(message: string) {
+  const normalized = normalizeImobRouteText(message);
+  const patterns = [
+    /(?:proprietario|proprietária|proprietaria|dono)\s+([a-z]+(?:\s+[a-z]+){0,2})/,
+    /(?:captar|cadastrar|mostrar)\s+(?:proprietario\s+|proprietária\s+|proprietaria\s+)?([a-z]+(?:\s+[a-z]+){0,2})/,
+  ];
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    const candidate = match?.[1] ? trimLeadNameCandidate(match[1]) : null;
+    if (candidate) return titleCaseRouteWords(candidate);
+  }
+  return null;
+}
+
+function extractPropertyRefFromMessage(message: string) {
+  const match = message.match(/(?:imovel|imóvel|apartamento|apto|casa|studio|terreno|galpao|galpão|sala)\s*#?\s*(\d{2,})/i);
+  return match?.[1] ?? null;
+}
+
+function extractAddressFromMessage(raw: string) {
+  const match = raw.match(new RegExp('(?:endereco|endereço)\\s*:?\\s*([^,.;\\n]+(?:,[^.;\\n]+)?)', 'i'));
+  return match?.[1]?.trim() ?? null;
+}
+
+function extractDocumentFromMessage(raw: string) {
+  const match = raw.match(new RegExp('\\b\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2}\\b|\\b\\d{11}\\b|\\b\\d{2}\\.\\d{3}\\.\\d{3}\\/\\d{4}-\\d{2}\\b|\\b\\d{14}\\b'));
+  return match?.[0] ?? null;
+}
+
+function extractAmountAfterKeywords(raw: string, keywords: string[]) {
+  const lower = raw.toLowerCase();
+  for (const keyword of keywords) {
+    const idx = lower.indexOf(keyword.toLowerCase());
+    if (idx === -1) continue;
+    const slice = raw.slice(idx + keyword.length);
+    const match = slice.match(/([0-9.]+(?:,[0-9]{1,2})?)/);
+    if (!match?.[1]) continue;
+    const normalized = match[1].replace(/\./g, "").replace(/,/g, ".");
+    const value = Number(normalized);
+    if (!Number.isFinite(value) || value <= 0) continue;
+    return Math.round(value * 100);
+  }
+  return null;
+}
+
+function extractFreeformCityAfterKeywords(raw: string, keywords: string[]) {
+  const lower = raw.toLowerCase();
+  for (const keyword of keywords) {
+    const idx = lower.indexOf(keyword.toLowerCase());
+    if (idx === -1) continue;
+    const slice = raw.slice(idx + keyword.length);
+    const match = slice.match(/([A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+){0,2})/);
+    if (match?.[1]) return match[1].trim();
+  }
+  return null;
+}
+
+function formatPropertyLookupLabel(item: { id: string; metadata?: unknown; propertyType?: string | null; address?: string | null }) {
+  const metadata = asObject(item.metadata);
+  const externalRef = asString(metadata?.externalPropertyRef);
+  if (externalRef) return `Imóvel ${externalRef}`;
+  if (item.address) return item.address;
+  if (item.propertyType) return `Imóvel ${item.propertyType}`;
+  return `Imóvel ${item.id}`;
+}
+function detectOperationalHydrationFlow(message: string, threadLabel?: string | null, operationalFlow?: string | null) {
+  if (operationalFlow === "proposal.create" || operationalFlow === "visit.schedule") return operationalFlow;
+  const normalizedThread = normalizeImobRouteText(threadLabel ?? "");
+  if (normalizedThread.includes("proposta")) return "proposal.create";
+  if (normalizedThread.includes("visita")) return "visit.schedule";
+  const normalizedMessage = normalizeImobRouteText(message);
+  if (normalizedMessage.includes("proposta") || normalizedMessage.includes("oferta")) return "proposal.create";
+  if (normalizedMessage.includes("visita") || normalizedMessage.includes("agendar") || normalizedMessage.includes("reuniao") || normalizedMessage.includes("reunião")) return "visit.schedule";
+  return null;
+}
+
+function createEmptyThreadState() {
+  return {
+    mode: "consult",
+    pendingSlot: "none",
+    resultOffset: 0,
+    slots: {
+      goal: null,
+      city: null,
+      region: null,
+      neighborhood: null,
+      budgetMax: null,
+      bedrooms: null,
+      bathrooms: null,
+      propertyType: null,
+    },
+    operational: null,
+  } as any;
+}
+
+async function hydrateThreadStateWithPersistedLead(params: {
+  prisma: NonNullable<TenantAwareRequest["prisma"]>;
+  tenantId: string;
+  workspaceId: string;
+  message: string;
+  caseId?: string | null;
+  threadLabel?: string | null;
+  threadState: any;
+}) {
+  const currentOperational = asObject(params.threadState?.operational);
+  const targetFlow = detectOperationalHydrationFlow(
+    params.message,
+    params.threadLabel,
+    asString(currentOperational?.flow)
+  );
+  if (targetFlow !== "proposal.create" && targetFlow !== "visit.schedule") {
+    return params.threadState;
+  }
+
+  let persistedLead: any | null = null;
+  if (params.caseId) {
+    const scopedCase = await params.prisma.imobCase.findFirst({
+      where: { id: params.caseId, tenantId: params.tenantId, workspaceId: params.workspaceId },
+      select: { leadId: true },
+    });
+    if (scopedCase?.leadId) {
+      persistedLead = await params.prisma.imobLead.findFirst({
+        where: { id: scopedCase.leadId, tenantId: params.tenantId, workspaceId: params.workspaceId },
+      });
+    }
+  }
+
+  if (!persistedLead) {
+    const proposalDraft = asObject(currentOperational?.proposalDraft);
+    const visitDraft = asObject(currentOperational?.visitDraft);
+    const name =
+      asString(targetFlow === "proposal.create" ? proposalDraft?.buyerName : visitDraft?.visitorName) ??
+      extractLeadNameFromMessage(params.message);
+    const email =
+      asString(targetFlow === "proposal.create" ? proposalDraft?.buyerEmail : null) ??
+      extractLeadEmailFromMessage(params.message);
+    const phone =
+      asString(targetFlow === "proposal.create" ? proposalDraft?.buyerPhone : visitDraft?.visitorPhone) ??
+      extractLeadPhoneFromMessage(params.message);
+
+    const conditions = [
+      phone ? { phone } : null,
+      email ? { email } : null,
+      name ? { name } : null,
+    ].filter(Boolean) as Array<Record<string, string>>;
+
+    if (conditions.length > 0) {
+      persistedLead = await params.prisma.imobLead.findFirst({
+        where: {
+          tenantId: params.tenantId,
+          workspaceId: params.workspaceId,
+          OR: conditions,
+        },
+        orderBy: { updatedAt: "desc" },
+      });
+    }
+
+    if (!persistedLead && name) {
+      persistedLead = await params.prisma.imobLead.findFirst({
+        where: {
+          tenantId: params.tenantId,
+          workspaceId: params.workspaceId,
+          name,
+        },
+        orderBy: { updatedAt: "desc" },
+      });
+    }
+  }
+
+  if (!persistedLead) return params.threadState;
+
+  const nextState = params.threadState
+    ? JSON.parse(JSON.stringify(params.threadState))
+    : createEmptyThreadState();
+  const nextOperational = asObject(nextState.operational) ?? {};
+
+  if (targetFlow === "proposal.create") {
+    const proposalDraft = asObject(nextOperational.proposalDraft) ?? {};
+    nextState.operational = {
+      ...nextOperational,
+      flow: "proposal.create",
+      status: asString(nextOperational.status) === "ready_for_review" ? "ready_for_review" : "collecting",
+      pendingFields: Array.isArray(nextOperational.pendingFields)
+        ? nextOperational.pendingFields.filter((item) => typeof item === "string")
+        : [],
+      proposalDraft: {
+        buyerName: asString(proposalDraft.buyerName) ?? persistedLead.name ?? null,
+        buyerEmail: asString(proposalDraft.buyerEmail) ?? persistedLead.email ?? null,
+        buyerPhone: asString(proposalDraft.buyerPhone) ?? persistedLead.phone ?? null,
+        propertyId: asString(proposalDraft.propertyId),
+        offerAmount: Number.isFinite(Number(proposalDraft.offerAmount)) ? Number(proposalDraft.offerAmount) : null,
+        contractType:
+          asString(proposalDraft.contractType) === "rent" ||
+          asString(proposalDraft.contractType) === "sale" ||
+          asString(proposalDraft.contractType) === "management"
+            ? asString(proposalDraft.contractType)
+            : null,
+      },
+    };
+    return nextState;
+  }
+
+  const visitDraft = asObject(nextOperational.visitDraft) ?? {};
+  nextState.operational = {
+    ...nextOperational,
+    flow: "visit.schedule",
+    status: asString(nextOperational.status) === "ready_for_review" ? "ready_for_review" : "collecting",
+    pendingFields: Array.isArray(nextOperational.pendingFields)
+      ? nextOperational.pendingFields.filter((item) => typeof item === "string")
+      : [],
+    visitDraft: {
+      propertyId: asString(visitDraft.propertyId),
+      visitorName: asString(visitDraft.visitorName) ?? persistedLead.name ?? null,
+      visitorPhone: asString(visitDraft.visitorPhone) ?? persistedLead.phone ?? null,
+      preferredDate: asString(visitDraft.preferredDate),
+      preferredWindow:
+        asString(visitDraft.preferredWindow) === "manha" ||
+        asString(visitDraft.preferredWindow) === "tarde" ||
+        asString(visitDraft.preferredWindow) === "noite"
+          ? asString(visitDraft.preferredWindow)
+          : null,
+    },
+  };
+  return nextState;
+}
+
+function formatBudgetCentsForImob(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(value / 100);
+}
+
+function formatImobCaseFlowLabel(flow: string) {
+  const labels: Record<string, string> = {
+    "lead.qualify": "Lead",
+    "proposal.create": "Proposta",
+    "visit.schedule": "Visita",
+    "contract.prepare": "Contrato",
+    "commission.settle": "Comissão",
+    "documents.collect": "Documentos",
+    "listing.activate": "Listing",
+    "owner.create": "Proprietário",
+    "property.create": "Imóvel",
+    "deal.review": "Deal review",
+  };
+  return labels[flow] ?? flow;
+}
+
+function formatImobPendingList(items: string[] | null | undefined) {
+  if (!items || items.length === 0) return "sem pendências";
+  return items.join(", ");
+}
+
+
+function buildOwnerPendingSuggestion(owner: { name: string; pendingItems?: unknown }) {
+  const pendingItems = asStringList(owner.pendingItems);
+  if (pendingItems.includes("ownerDocument") || pendingItems.includes("documento do proprietário")) {
+    return `Envie assim: documento do proprietário ${owner.name} 12345678901
+Ou envie o documento como anexo nesta conversa.`;
+  }
+  return null;
+}
+
+function buildLeadPendingSuggestion(lead: { name: string; pendingItems?: unknown }) {
+  const pendingItems = asStringList(lead.pendingItems);
+  if (pendingItems.includes("cidade de interesse")) {
+    return `Envie assim: cidade de interesse do lead ${lead.name} Itapema`;
+  }
+  if (pendingItems.includes("faixa de orçamento") || pendingItems.includes("budgetMax")) {
+    return `Envie assim: orçamento do lead ${lead.name} 750000`;
+  }
+  if (pendingItems.includes("telefone do lead") || pendingItems.includes("leadPhone")) {
+    return `Envie assim: telefone do lead ${lead.name} 47999998888`;
+  }
+  return null;
+}
+
+function buildPropertyPendingSuggestion(property: { id?: string; address?: string | null; pendingItems?: unknown }) {
+  const pendingItems = asStringList(property.pendingItems);
+  const ref = property.address?.trim() || property.id || "imóvel";
+  if (pendingItems.includes("askingPrice") || pendingItems.includes("preço do imóvel") || pendingItems.includes("valor do imóvel") || pendingItems.includes("propertyPrice")) {
+    return `Envie assim: preço do imóvel ${ref} 950000`;
+  }
+  return null;
+}
+
+function formatImobStatusLabel(status: string | null | undefined) {
+  const normalized = asString(status)?.toLowerCase() ?? null;
+  if (normalized === "pending_data") return "pendente de dados";
+  if (normalized === "ready_for_review") return "pronto para revisão";
+  if (normalized === "qualified") return "qualificado";
+  if (normalized === "new") return "novo";
+  if (normalized === "warm") return "quente";
+  if (normalized === "cold") return "frio";
+  return status ?? "n/a";
+}
+
+function extractListCityFilter(message: string) {
+  const normalized = normalizeImobRouteText(message);
+  const match = normalized.match(/\bem\s+([a-z]+(?:\s+[a-z]+){0,2})/);
+  return match?.[1] ?? null;
+}
+
+function buildCaseContextFromRecord(item: any) {
+  return {
+    caseId: item.id,
+    flow: item.flow,
+    stage: item.stage,
+    status: item.status,
+    ownerResponsible: item.ownerResponsible ?? null,
+    nextStep: item.nextStep ?? null,
+    blocker: Array.isArray(item.blockers) && item.blockers.length > 0 ? item.blockers[0] : null,
+    pendingItems: Array.isArray(item.pendingItems) ? item.pendingItems : [],
+    threadId: item.threadId ?? null,
+    updatedAt: item.updatedAt?.toISOString?.() ?? null,
+  } as any;
+}
+
+function injectResponsibleLabelIntoText(text: string, responsibleLabel: string) {
+  const nextLine = `Responsável agora: ${responsibleLabel}.`;
+  if (!text.trim()) return text;
+  if (text.includes("Responsável agora:")) {
+    return text
+      .split("\n")
+      .map((line) => line.trim().startsWith("Responsável agora:") ? nextLine : line)
+      .join("\n");
+  }
+  return text;
+}
+
+function applyResponsibleLabelToResolvedTurn<T extends { presentation?: Record<string, any> | null }>(
+  data: T,
+  responsibleLabel: string
+): T {
+  if (!data.presentation) return data;
+  const currentOwner = asString(data.presentation.owner);
+  const nextOwner = !currentOwner || currentOwner === "Corretor" ? responsibleLabel : currentOwner;
+  return {
+    ...data,
+    presentation: {
+      ...data.presentation,
+      owner: nextOwner,
+      text: injectResponsibleLabelIntoText(String(data.presentation.text ?? ""), nextOwner),
+    },
+  };
+}
+
+function normalizeBatchOperationalLine(raw: string) {
+  return raw.trim().replace(/^\d+\.\s*/, "").replace(/^[-*]\s*/, "").trim();
+}
+
+function isBatchOperationalLine(raw: string) {
+  const normalized = normalizeImobRouteText(normalizeBatchOperationalLine(raw));
+  return (
+    normalized.startsWith("captar proprietario") ||
+    normalized.startsWith("cadastrar imovel") ||
+    normalized.startsWith("cadastrar lead")
+  );
+}
+
+function extractImobOperationalBatches(message: string) {
+  const groups: string[][] = [];
+  let current: string[] = [];
+  for (const raw of message.split("\n")) {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      if (current.length > 0) {
+        groups.push(current);
+        current = [];
+      }
+      continue;
+    }
+    if (/^\d+\./.test(trimmed) && !isBatchOperationalLine(trimmed)) {
+      if (current.length > 0) {
+        groups.push(current);
+        current = [];
+      }
+      continue;
+    }
+    if (!isBatchOperationalLine(trimmed)) continue;
+    current.push(normalizeBatchOperationalLine(trimmed));
+  }
+  if (current.length > 0) groups.push(current);
+  return groups.filter((group) => group.length > 0);
+}
+
+function firstOperationalLine(text: string | null | undefined) {
+  return (text ?? "").split(/\n+/).map((item) => item.trim()).find(Boolean) ?? "";
+}
+
+function formatBatchLineSummary(resolved: any, fallbackLine: string) {
+  const operational = asObject(resolved?.conversationState?.operational);
+  const operationalFlow = asString(operational?.flow);
+  const label = operationalFlow ? formatImobCaseFlowLabel(operationalFlow) : asString(resolved?.threadLabel) ?? fallbackLine;
+  const pendingLabels = Array.isArray(asObject(resolved?.presentation)?.pendingFieldLabels)
+    ? (asObject(resolved?.presentation)?.pendingFieldLabels as unknown[]).filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    : Array.isArray(operational?.pendingFields)
+      ? (operational?.pendingFields as unknown[]).filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+      : [];
+
+  if (operationalFlow === "owner.create") {
+    return pendingLabels.length > 0
+      ? `${label} | O cadastro do proprietário ainda precisa de complementos: ${pendingLabels.join(", ")}.`
+      : `${label} | Proprietário cadastrado com sucesso.`;
+  }
+  if (operationalFlow === "property.create") {
+    return pendingLabels.length > 0
+      ? `${label} | O cadastro do imóvel ainda precisa de complementos: ${pendingLabels.join(", ")}.`
+      : `${label} | Imóvel cadastrado com sucesso.`;
+  }
+  if (operationalFlow === "lead.qualify") {
+    return pendingLabels.length > 0
+      ? `${label} | O cadastro do lead ainda precisa de complementos: ${pendingLabels.join(", ")}.`
+      : `${label} | Lead cadastrado e qualificado com sucesso.`;
+  }
+
+  const summary = firstOperationalLine(asString(asObject(resolved?.presentation)?.text) ?? "Operação processada.");
+  return `${label} | ${summary}`;
+}
+
+
+function buildResolvedPendingSuggestion(resolved: any) {
+  const operational = asObject(resolved?.conversationState?.operational);
+  const operationalFlow = asString(operational?.flow);
+  const presentation = asObject(resolved?.presentation);
+  const pendingFieldLabels = asStringList(presentation?.pendingFieldLabels);
+  if (pendingFieldLabels.length === 0) return null;
+
+  if (operationalFlow === "owner.create") {
+    const ownerDraft = asObject(operational?.ownerDraft);
+    return buildOwnerPendingSuggestion({
+      name: asString(ownerDraft?.ownerName) ?? "proprietário",
+      pendingItems: pendingFieldLabels,
+    });
+  }
+
+  if (operationalFlow === "property.create") {
+    const propertyDraft = asObject(operational?.propertyDraft);
+    return buildPropertyPendingSuggestion({
+      id: asString(propertyDraft?.propertyId) ?? undefined,
+      address: asString(propertyDraft?.address),
+      pendingItems: pendingFieldLabels,
+    });
+  }
+
+  if (operationalFlow === "lead.qualify") {
+    const leadDraft = asObject(operational?.leadDraft);
+    return buildLeadPendingSuggestion({
+      name: asString(leadDraft?.leadName) ?? "lead",
+      pendingItems: pendingFieldLabels,
+    });
+  }
+
+  return null;
+}
+
+function injectResolvedPendingSuggestion(resolved: any) {
+  const suggestion = buildResolvedPendingSuggestion(resolved);
+  if (!suggestion) return resolved;
+  const presentation = asObject(resolved?.presentation);
+  const currentText = asString(presentation?.text) ?? "";
+  const currentSuggestedNextAction = asString(presentation?.suggestedNextAction);
+  if (currentText.includes(suggestion) && currentSuggestedNextAction === suggestion) return resolved;
+
+  return {
+    ...resolved,
+    presentation: {
+      ...presentation,
+      text: currentText.includes(suggestion) ? currentText : [currentText, suggestion].filter(Boolean).join("\n"),
+      suggestedNextAction: suggestion,
+    },
+  };
+}
+
+async function resolveImobOperationalUpdate(params: {
+  prisma: NonNullable<TenantAwareRequest["prisma"]>;
+  tenantId: string;
+  workspaceId: string;
+  message: string;
+  caseId?: string | null;
+  threadState: any;
+}) {
+  const normalized = normalizeImobRouteText(params.message);
+  const ownerName = extractOwnerNameFromMessage(params.message);
+  const leadName = extractLeadNameFromMessage(params.message);
+  const document = extractDocumentFromMessage(params.message);
+  const address = extractAddressFromMessage(params.message);
+  const propertyRef = extractPropertyRefFromMessage(params.message);
+  const leadPhone = extractLeadPhoneFromMessage(params.message);
+  const leadEmail = extractLeadEmailFromMessage(params.message);
+  const budgetCents = extractAmountAfterKeywords(params.message, ["orcamento", "orçamento", "budget"]);
+  const priceCents = extractAmountAfterKeywords(params.message, ["preco", "preço", "valor"]);
+  const targetCity = extractFreeformCityAfterKeywords(params.message, ["cidade do lead", "cidade de interesse"]);
+
+  const wantsOwnerDocument = normalized.includes("documento do proprietario") || normalized.includes("documento do proprietário") || normalized.includes("cpf do proprietario") || normalized.includes("cpf do proprietário");
+  if (wantsOwnerDocument && document) {
+    let owner = null as any;
+    if (params.caseId) {
+      const scopedCase = await params.prisma.imobCase.findFirst({
+        where: { id: params.caseId, tenantId: params.tenantId, workspaceId: params.workspaceId },
+        select: { ownerId: true },
+      });
+      if (scopedCase?.ownerId) {
+        owner = await params.prisma.imobOwner.findFirst({ where: { id: scopedCase.ownerId, tenantId: params.tenantId, workspaceId: params.workspaceId } });
+      }
+    }
+    if (!owner && ownerName) {
+      owner = await params.prisma.imobOwner.findFirst({
+        where: { tenantId: params.tenantId, workspaceId: params.workspaceId, name: ownerName },
+        orderBy: { updatedAt: "desc" },
+      });
+    }
+    if (owner) {
+      const currentPending = asStringList(owner.pendingItems).filter((item) => item !== "ownerDocument" && item !== "documento do proprietário");
+      const status = currentPending.length > 0 ? "pending_data" : "ready_for_review";
+      const updated = await params.prisma.imobOwner.update({
+        where: { id: owner.id },
+        data: { document, pendingItems: currentPending, status },
+      });
+      return {
+        mode: "consult",
+        action: "crm.owner.update",
+        threadLabel: "Proprietário",
+        conversationState: params.threadState ?? createEmptyThreadState(),
+        presentation: {
+          text: [
+            `Documento do proprietário ${updated.name} atualizado com sucesso.`,
+            `Pendências atuais: ${formatImobPendingList(currentPending.map((item) => item === "ownerDocument" ? "documento do proprietário" : item))}.`,
+            currentPending.length > 0 ? buildOwnerPendingSuggestion({ name: updated.name, pendingItems: currentPending }) : null,
+            currentPending.length > 0 ? "Próximo passo: completar as pendências restantes do proprietário." : "Próximo passo: vincular o proprietário ao próximo imóvel ou etapa documental.",
+            "Responsável agora: Corretor.",
+          ].join("\n"),
+          owner: "Corretor" as any,
+          nextStep: currentPending.length > 0 ? "Completar as pendências restantes do proprietário." : "Vincular o proprietário ao próximo imóvel ou etapa documental.",
+          pendingFieldLabels: currentPending.map((item) => item === "ownerDocument" ? "documento do proprietário" : item),
+          dedupeKey: `crm.owner.update:${updated.id}:document`,
+        },
+      } as any;
+    }
+  }
+
+  const wantsLeadUpdate = normalized.includes("lead") || normalized.includes("cliente") || normalized.includes("comprador") || normalized.includes("locatario") || normalized.includes("locatário");
+  if (wantsLeadUpdate && (targetCity || budgetCents || leadPhone || leadEmail)) {
+    let lead = null as any;
+    if (params.caseId) {
+      const scopedCase = await params.prisma.imobCase.findFirst({
+        where: { id: params.caseId, tenantId: params.tenantId, workspaceId: params.workspaceId },
+        select: { leadId: true },
+      });
+      if (scopedCase?.leadId) {
+        lead = await params.prisma.imobLead.findFirst({ where: { id: scopedCase.leadId, tenantId: params.tenantId, workspaceId: params.workspaceId } });
+      }
+    }
+    if (!lead) {
+      const conditions = [leadPhone ? { phone: leadPhone } : null, leadEmail ? { email: leadEmail } : null, leadName ? { name: leadName } : null].filter(Boolean) as Array<Record<string, string>>;
+      if (conditions.length > 0) {
+        lead = await params.prisma.imobLead.findFirst({
+          where: { tenantId: params.tenantId, workspaceId: params.workspaceId, OR: conditions },
+          orderBy: { updatedAt: "desc" },
+        });
+      }
+    }
+    if (lead) {
+      const nextPending = asStringList(lead.pendingItems)
+        .filter((item) => !(item === "cidade de interesse" && targetCity))
+        .filter((item) => !(item === "faixa de orçamento" && budgetCents !== null))
+        .filter((item) => !(item === "budgetMax" && budgetCents !== null))
+        .filter((item) => !(item === "telefone do lead" && leadPhone))
+        .filter((item) => !(item === "leadPhone" && leadPhone));
+      const updated = await params.prisma.imobLead.update({
+        where: { id: lead.id },
+        data: {
+          targetCity: targetCity ?? lead.targetCity,
+          budgetMaxCents: budgetCents ?? lead.budgetMaxCents,
+          phone: leadPhone ?? lead.phone,
+          email: leadEmail ?? lead.email,
+          pendingItems: nextPending,
+          stage: nextPending.length > 0 ? (lead.stage ?? "pending_data") : "qualified",
+        },
+      });
+      return {
+        mode: "consult",
+        action: "crm.lead.update",
+        threadLabel: "Lead",
+        conversationState: params.threadState ?? createEmptyThreadState(),
+        presentation: {
+          text: [
+            `Cadastro do lead ${updated.name} atualizado com sucesso.`,
+            `Pendências atuais: ${formatImobPendingList(nextPending)}.`,
+            nextPending.length > 0 ? buildLeadPendingSuggestion({ name: updated.name, pendingItems: nextPending }) : null,
+            nextPending.length > 0 ? "Próximo passo: completar as pendências restantes do lead." : "Próximo passo: vincular o lead ao próximo imóvel ou etapa comercial.",
+            "Responsável agora: Corretor.",
+          ].join("\n"),
+          owner: "Corretor" as any,
+          nextStep: nextPending.length > 0 ? "Completar as pendências restantes do lead." : "Vincular o lead ao próximo imóvel ou etapa comercial.",
+          pendingFieldLabels: nextPending,
+          dedupeKey: `crm.lead.update:${updated.id}`,
+        },
+      } as any;
+    }
+  }
+
+  const wantsPropertyUpdate = normalized.includes("imovel") || normalized.includes("imóvel") || normalized.includes("apartamento") || normalized.includes("casa") || normalized.includes("sala") || normalized.includes("terreno");
+  const wantsPriceUpdate = normalized.includes("preco") || normalized.includes("preço") || normalized.includes("valor");
+  if (wantsPropertyUpdate && wantsPriceUpdate && priceCents) {
+    let property = null as any;
+    if (params.caseId) {
+      const scopedCase = await params.prisma.imobCase.findFirst({
+        where: { id: params.caseId, tenantId: params.tenantId, workspaceId: params.workspaceId },
+        select: { propertyId: true },
+      });
+      if (scopedCase?.propertyId) {
+        property = await params.prisma.imobProperty.findFirst({ where: { id: scopedCase.propertyId, tenantId: params.tenantId, workspaceId: params.workspaceId } });
+      }
+    }
+    if (!property && propertyRef) {
+      property = await params.prisma.imobProperty.findFirst({ where: { id: propertyRef, tenantId: params.tenantId, workspaceId: params.workspaceId } });
+    }
+    if (!property && address) {
+      property = await params.prisma.imobProperty.findFirst({
+        where: { tenantId: params.tenantId, workspaceId: params.workspaceId, address: { contains: address } },
+        orderBy: { updatedAt: "desc" },
+      });
+    }
+    if (property) {
+      const nextPending = asStringList(property.pendingItems).filter((item) => item !== "askingPrice" && item !== "preço do imóvel" && item !== "valor do imóvel" && item !== "propertyPrice");
+      const updated = await params.prisma.imobProperty.update({
+        where: { id: property.id },
+        data: {
+          askingPriceCents: priceCents,
+          pendingItems: nextPending,
+          status: nextPending.length > 0 ? "pending_data" : "ready_for_review",
+        },
+      });
+      return {
+        mode: "consult",
+        action: "crm.property.update",
+        threadLabel: "Imóvel",
+        conversationState: params.threadState ?? createEmptyThreadState(),
+        presentation: {
+          text: [
+            `Preço do imóvel ${formatPropertyLookupLabel(updated)} atualizado com sucesso.`,
+            `Pendências atuais: ${formatImobPendingList(nextPending)}.`,
+            nextPending.length > 0 ? buildPropertyPendingSuggestion({ id: updated.id, address: updated.address, pendingItems: nextPending }) : null,
+            nextPending.length > 0 ? "Próximo passo: completar as pendências restantes do imóvel." : "Próximo passo: vincular o imóvel ao próximo lead ou etapa comercial.",
+            "Responsável agora: Corretor.",
+          ].join("\n"),
+          owner: "Corretor" as any,
+          nextStep: nextPending.length > 0 ? "Completar as pendências restantes do imóvel." : "Vincular o imóvel ao próximo lead ou etapa comercial.",
+          pendingFieldLabels: nextPending,
+          dedupeKey: `crm.property.update:${updated.id}:price`,
+        },
+      } as any;
+    }
+  }
+
+  return null;
+}
+
+async function resolveImobOperationalConsult(params: {
+  prisma: NonNullable<TenantAwareRequest["prisma"]>;
+  tenantId: string;
+  workspaceId: string;
+  message: string;
+  caseId?: string | null;
+  threadState: any;
+}) {
+  const normalized = normalizeImobRouteText(params.message);
+  const wantsLead = normalized.includes("lead");
+  const wantsCase = normalized.includes("caso");
+  const wantsOwner = normalized.includes("proprietario") || normalized.includes("proprietária") || normalized.includes("proprietaria") || normalized.includes("proprietarios") || normalized.includes("proprietários") || normalized.includes("dono") || normalized.includes("owner");
+  const wantsProperty = normalized.includes("imovel") || normalized.includes("imóvel") || normalized.includes("imoveis") || normalized.includes("imóveis") || normalized.includes("apartamento") || normalized.includes("apto") || normalized.includes("casa") || normalized.includes("studio") || normalized.includes("terreno") || normalized.includes("galpao") || normalized.includes("galpão") || normalized.includes("sala");
+  const asksLeadCases = normalized.includes("casos do lead") || normalized.includes("quais casos do lead");
+  const asksCurrentCase = normalized.includes("nesse caso") || normalized.includes("deste caso");
+  const asksMissing = normalized.includes("o que falta") || normalized.includes("pendencia") || normalized.includes("pendência");
+  const asksShow = normalized.includes("mostrar") || normalized.includes("ver") || normalized.includes("consultar") || normalized.includes("quais") || normalized.includes("abrir");
+  const asksLeadList = wantsLead && (normalized.includes("listar leads") || normalized.includes("quais leads estao cadastrados") || normalized.includes("quais leads estão cadastrados") || normalized.includes("leads cadastrados"));
+  const asksOwnerList = wantsOwner && (normalized.includes("listar proprietarios") || normalized.includes("listar proprietários") || normalized.includes("quais proprietarios estao cadastrados") || normalized.includes("quais proprietários estão cadastrados") || normalized.includes("proprietarios cadastrados") || normalized.includes("proprietários cadastrados"));
+  const asksPropertyList = wantsProperty && (normalized.includes("listar imoveis") || normalized.includes("listar imóveis") || normalized.includes("quais imoveis estao cadastrados") || normalized.includes("quais imóveis estão cadastrados") || normalized.includes("imoveis cadastrados") || normalized.includes("imóveis cadastrados"));
+  const asksPendingOnly = normalized.includes("com pendencias") || normalized.includes("com pendências");
+  const asksQualifiedOnly = normalized.includes("qualificados") || normalized.includes("qualificado");
+  const asksReadyForReview = normalized.includes("prontos para revisao") || normalized.includes("prontos para revisão") || normalized.includes("pronto para revisao") || normalized.includes("pronto para revisão");
+  const asksGoalRent = normalized.includes("locacao") || normalized.includes("locação");
+  const asksGoalSale = normalized.includes("venda") || normalized.includes("compra");
+  const listCityFilter = extractListCityFilter(params.message);
+
+  if (!(wantsLead || wantsCase || wantsOwner || wantsProperty) || !(asksLeadCases || asksCurrentCase || asksMissing || asksShow || asksLeadList || asksOwnerList || asksPropertyList)) {
+    return null;
+  }
+
+
+
+  if (asksLeadList) {
+    const allLeads = await params.prisma.imobLead.findMany({
+      where: { tenantId: params.tenantId, workspaceId: params.workspaceId },
+      orderBy: { updatedAt: "desc" },
+      take: 50,
+    });
+    const leads = allLeads
+      .filter((item) => !asksPendingOnly || (Array.isArray(item.pendingItems) && item.pendingItems.filter((pending) => !(pending === "faixa de orçamento" && item.budgetMaxCents !== null && item.budgetMaxCents !== undefined)).length > 0))
+      .filter((item) => !asksQualifiedOnly || item.stage === "qualified")
+      .filter((item) => {
+        if (asksGoalRent) return item.goal === "locacao";
+        if (asksGoalSale) return item.goal === "venda" || item.goal === "compra";
+        return true;
+      })
+      .slice(0, 8);
+    const listTitle = asksPendingOnly
+      ? "Leads com pendências"
+      : asksQualifiedOnly
+        ? "Leads qualificados"
+        : asksGoalRent
+          ? "Leads de locação"
+          : asksGoalSale
+            ? "Leads de compra e venda"
+            : "Leads cadastrados";
+    return {
+      mode: "consult",
+      action: "crm.lead.list",
+      threadLabel: "Lead",
+      conversationState: params.threadState ?? createEmptyThreadState(),
+      presentation: {
+        text: [
+          leads.length > 0
+            ? `Encontrei ${leads.length} lead(s) no CRM operacional do IMOB.`
+            : asksPendingOnly
+              ? "Não encontrei leads com pendências no CRM operacional do IMOB."
+              : asksQualifiedOnly
+                ? "Não encontrei leads qualificados no CRM operacional do IMOB."
+                : asksGoalRent
+                  ? "Não encontrei leads de locação no CRM operacional do IMOB."
+                  : asksGoalSale
+                    ? "Não encontrei leads de compra e venda no CRM operacional do IMOB."
+                    : "Não encontrei leads cadastrados no CRM operacional do IMOB.",
+          leads.length > 0 ? `Resumo atual: ${leads.map((item) => `${item.name} (${formatImobStatusLabel(item.stage)})`).join(" | ")}.` : null,
+          leads.length > 0 ? "Próximo passo: abrir um lead para revisar pendências, qualificação e próximos vínculos comerciais." : null,
+        ].filter(Boolean).join("\n"),
+        owner: "Corretor" as any,
+        nextStep: leads.length > 0 ? "Abrir um lead para revisar pendências, qualificação e próximos vínculos comerciais." : "Cadastrar o primeiro lead para iniciar a qualificação comercial.",
+        dedupeKey: `crm.lead.list:${asksPendingOnly ? "pending" : asksQualifiedOnly ? "qualified" : asksGoalRent ? "rent" : asksGoalSale ? "sale" : "all"}`,
+        card: {
+          title: listTitle,
+          lines: leads.length > 0
+            ? leads.map((item) => {
+                const pendingItems = Array.isArray(item.pendingItems)
+                  ? item.pendingItems.filter((pending) => !(pending === "faixa de orçamento" && item.budgetMaxCents !== null && item.budgetMaxCents !== undefined))
+                  : item.pendingItems;
+                return `${item.name} | ${formatImobStatusLabel(item.stage)} | Objetivo: ${item.goal ?? "não informado"} | Pendências: ${formatImobPendingList(pendingItems)}`;
+              })
+            : [asksPendingOnly ? "Nenhum lead com pendências no momento." : asksQualifiedOnly ? "Nenhum lead qualificado no momento." : "Nenhum lead cadastrado até o momento."],
+        },
+      },
+    } as any;
+  }
+
+
+  if (asksOwnerList) {
+    const allOwners = await params.prisma.imobOwner.findMany({
+      where: { tenantId: params.tenantId, workspaceId: params.workspaceId },
+      orderBy: { updatedAt: "desc" },
+      take: 50,
+      include: { _count: { select: { properties: true, cases: true } } },
+    });
+    const owners = allOwners
+      .filter((item) => !asksPendingOnly || (Array.isArray(item.pendingItems) && item.pendingItems.length > 0))
+      .slice(0, 8);
+    return {
+      mode: "consult",
+      action: "crm.owner.list",
+      threadLabel: "Proprietário",
+      conversationState: params.threadState ?? createEmptyThreadState(),
+      presentation: {
+        text: [
+          owners.length > 0
+            ? `Encontrei ${owners.length} proprietário(s) no CRM operacional do IMOB.`
+            : asksPendingOnly
+              ? "Não encontrei proprietários com pendências no CRM operacional do IMOB."
+              : "Não encontrei proprietários cadastrados no CRM operacional do IMOB.",
+          owners.length > 0 ? `Resumo atual: ${owners.map((item) => `${item.name} (${formatImobStatusLabel(item.status)})`).join(" | ")}.` : null,
+          owners.length > 0 ? "Próximo passo: abrir um proprietário para revisar pendências ou vincular um novo imóvel." : null,
+        ].filter(Boolean).join("\n"),
+        owner: "Corretor" as any,
+        nextStep: owners.length > 0 ? "Abrir um proprietário para revisar pendências ou vincular um novo imóvel." : "Cadastrar o primeiro proprietário para iniciar a operação.",
+        dedupeKey: asksPendingOnly ? "crm.owner.list:pending" : "crm.owner.list",
+        card: {
+          title: asksPendingOnly ? "Proprietários com pendências" : "Proprietários cadastrados",
+          lines: owners.length > 0
+            ? owners.map((item) => `${item.name} | ${formatImobStatusLabel(item.status)} | Pendências: ${formatImobPendingList(Array.isArray(item.pendingItems) ? item.pendingItems.map((pending) => pending === "ownerDocument" ? "documento do proprietário" : pending) : item.pendingItems)} | Imóveis: ${item._count?.properties ?? 0}`)
+            : [asksPendingOnly ? "Nenhum proprietário com pendências no momento." : "Nenhum proprietário cadastrado até o momento."],
+        },
+      },
+    } as any;
+  }
+
+  if (asksPropertyList) {
+    const allProperties = await params.prisma.imobProperty.findMany({
+      where: { tenantId: params.tenantId, workspaceId: params.workspaceId },
+      orderBy: { updatedAt: "desc" },
+      take: 50,
+      include: { owner: { select: { name: true } }, _count: { select: { cases: true } } },
+    });
+    const properties = allProperties
+      .filter((item) => !asksReadyForReview || item.status === "ready_for_review")
+      .filter((item) => !listCityFilter || normalizeImobRouteText(item.city ?? "") == listCityFilter)
+      .slice(0, 8);
+    return {
+      mode: "consult",
+      action: "crm.property.list",
+      threadLabel: "Imóvel",
+      conversationState: params.threadState ?? createEmptyThreadState(),
+      presentation: {
+        text: [
+          properties.length > 0
+            ? `Encontrei ${properties.length} imóvel(is) no CRM operacional do IMOB.`
+            : asksReadyForReview
+              ? "Não encontrei imóveis prontos para revisão no CRM operacional do IMOB."
+              : listCityFilter
+                ? `Não encontrei imóveis cadastrados em ${titleCaseRouteWords(listCityFilter)} no CRM operacional do IMOB.`
+                : "Não encontrei imóveis cadastrados no CRM operacional do IMOB.",
+          properties.length > 0 ? `Resumo atual: ${properties.map((item) => `${formatPropertyLookupLabel(item)} (${formatImobStatusLabel(item.status)})`).join(" | ")}.` : null,
+          properties.length > 0 ? "Próximo passo: abrir um imóvel para revisar pendências, proprietário e próximos vínculos comerciais." : null,
+        ].filter(Boolean).join("\n"),
+        owner: "Corretor" as any,
+        nextStep: properties.length > 0 ? "Abrir um imóvel para revisar pendências, proprietário e próximos vínculos comerciais." : "Cadastrar o primeiro imóvel para iniciar a operação comercial.",
+        dedupeKey: asksReadyForReview ? "crm.property.list:review" : listCityFilter ? `crm.property.list:${listCityFilter}` : "crm.property.list",
+        card: {
+          title: asksReadyForReview ? "Imóveis prontos para revisão" : listCityFilter ? `Imóveis em ${titleCaseRouteWords(listCityFilter)}` : "Imóveis cadastrados",
+          lines: properties.length > 0
+            ? properties.map((item) => `${formatPropertyLookupLabel(item)} | ${item.goal ?? "sem finalidade"} | ${item.city ?? "sem cidade"} | ${formatImobStatusLabel(item.status)} | Proprietário: ${item.owner?.name ?? "não vinculado"}`)
+            : [asksReadyForReview ? "Nenhum imóvel pronto para revisão no momento." : listCityFilter ? `Nenhum imóvel cadastrado em ${titleCaseRouteWords(listCityFilter)}.` : "Nenhum imóvel cadastrado até o momento."],
+        },
+      },
+    } as any;
+  }
+
+  if (wantsOwner && (asksMissing || asksShow)) {
+    let owner = null as any;
+    if (params.caseId) {
+      const scopedCase = await params.prisma.imobCase.findFirst({
+        where: { id: params.caseId, tenantId: params.tenantId, workspaceId: params.workspaceId },
+        select: { ownerId: true },
+      });
+      if (scopedCase?.ownerId) {
+        owner = await params.prisma.imobOwner.findFirst({
+          where: { id: scopedCase.ownerId, tenantId: params.tenantId, workspaceId: params.workspaceId },
+          include: { _count: { select: { properties: true, cases: true } } },
+        });
+      }
+    }
+    if (!owner) {
+      const name = extractOwnerNameFromMessage(params.message);
+      const email = extractLeadEmailFromMessage(params.message);
+      const phone = extractLeadPhoneFromMessage(params.message);
+      const document = extractDocumentFromMessage(params.message);
+      const conditions = [
+        document ? { document } : null,
+        phone ? { phone } : null,
+        email ? { email } : null,
+        name ? { name } : null,
+      ].filter(Boolean) as Array<Record<string, string>>;
+      if (conditions.length > 0) {
+        owner = await params.prisma.imobOwner.findFirst({
+          where: {
+            tenantId: params.tenantId,
+            workspaceId: params.workspaceId,
+            OR: conditions,
+          },
+          orderBy: { updatedAt: "desc" },
+          include: { _count: { select: { properties: true, cases: true } } },
+        });
+      }
+    }
+
+    if (!owner) {
+      return {
+        mode: "consult",
+        action: "crm.owner.lookup",
+        threadLabel: "Proprietário",
+        conversationState: params.threadState ?? createEmptyThreadState(),
+        presentation: {
+          text: "Não encontrei esse proprietário no CRM operacional do IMOB.",
+          suggestedNextAction: "Cadastre ou atualize o proprietário antes de consultar o histórico dele.",
+          card: {
+            title: "Proprietário não encontrado",
+            lines: ["Use nome, telefone, e-mail ou documento do proprietário para localizar o cadastro operacional."],
+          },
+        },
+      } as any;
+    }
+
+    const ownerCases = await params.prisma.imobCase.findMany({
+      where: { tenantId: params.tenantId, workspaceId: params.workspaceId, ownerId: owner.id },
+      orderBy: { updatedAt: "desc" },
+      take: 5,
+      select: { id: true, flow: true, status: true, nextStep: true, ownerResponsible: true, updatedAt: true },
+    });
+    const latestCase = ownerCases[0] ?? null;
+    return {
+      mode: "consult",
+      action: "crm.owner.lookup",
+      threadLabel: "Proprietário",
+      conversationState: params.threadState ?? createEmptyThreadState(),
+      caseContext: latestCase ? buildCaseContextFromRecord({ ...latestCase, stage: latestCase.status, pendingItems: [], blockers: [] }) : undefined,
+      presentation: {
+        text: [
+          `Proprietário ${owner.name} localizado no CRM operacional.`,
+          `Pendências atuais: ${formatImobPendingList(Array.isArray(owner.pendingItems) ? owner.pendingItems.map((item) => item === "ownerDocument" ? "documento do proprietário" : item) : owner.pendingItems)}.`,
+          buildOwnerPendingSuggestion({ name: owner.name, pendingItems: Array.isArray(owner.pendingItems) ? owner.pendingItems.map((item) => item === "ownerDocument" ? "documento do proprietário" : item) : owner.pendingItems }),
+          "Próximo passo: vincular o proprietário ao próximo imóvel ou etapa documental.",
+          "Responsável agora: Corretor.",
+        ].filter(Boolean).join("\n"),
+        owner: "Corretor" as any,
+        nextStep: "Vincular o proprietário ao próximo imóvel ou etapa documental.",
+        pendingFieldLabels: Array.isArray(owner.pendingItems) ? owner.pendingItems.map((item) => item === "ownerDocument" ? "documento do proprietário" : item) : [],
+        dedupeKey: `crm.owner.lookup:${owner.id}`,
+        card: {
+          title: `Proprietário ${owner.name}`,
+          lines: [
+            owner.phone ? `Telefone: ${owner.phone}` : null,
+            owner.email ? `E-mail: ${owner.email}` : null,
+            owner.document ? `Documento: ${owner.document}` : null,
+            `Status: ${formatImobStatusLabel(owner.status)}`,
+            `Pendências: ${formatImobPendingList(Array.isArray(owner.pendingItems) ? owner.pendingItems.map((item) => item === "ownerDocument" ? "documento do proprietário" : item) : owner.pendingItems)}`,
+            `Imóveis: ${owner._count?.properties ?? 0}`,
+            `Casos: ${owner._count?.cases ?? 0}`,
+          ].filter(Boolean) as string[],
+        },
+      },
+    } as any;
+  }
+
+  if (wantsProperty && (asksMissing || asksShow)) {
+    let property = null as any;
+    if (params.caseId) {
+      const scopedCase = await params.prisma.imobCase.findFirst({
+        where: { id: params.caseId, tenantId: params.tenantId, workspaceId: params.workspaceId },
+        select: { propertyId: true },
+      });
+      if (scopedCase?.propertyId) {
+        property = await params.prisma.imobProperty.findFirst({
+          where: { id: scopedCase.propertyId, tenantId: params.tenantId, workspaceId: params.workspaceId },
+          include: { owner: { select: { id: true, name: true } }, _count: { select: { cases: true } } },
+        });
+      }
+    }
+    if (!property) {
+      const propertyRef = extractPropertyRefFromMessage(params.message);
+      const address = extractAddressFromMessage(params.message);
+      if (propertyRef) {
+        const recentProperties = await params.prisma.imobProperty.findMany({
+          where: { tenantId: params.tenantId, workspaceId: params.workspaceId },
+          orderBy: { updatedAt: "desc" },
+          take: 200,
+          include: { owner: { select: { id: true, name: true } }, _count: { select: { cases: true } } },
+        });
+        property = recentProperties.find((item) => {
+          const metadata = asObject(item.metadata);
+          const externalRef = asString(metadata?.externalPropertyRef);
+          return item.id === propertyRef || externalRef === propertyRef;
+        }) ?? null;
+      }
+      if (!property && address) {
+        property = await params.prisma.imobProperty.findFirst({
+          where: {
+            tenantId: params.tenantId,
+            workspaceId: params.workspaceId,
+            address: { contains: address },
+          },
+          orderBy: { updatedAt: "desc" },
+          include: { owner: { select: { id: true, name: true } }, _count: { select: { cases: true } } },
+        });
+      }
+    }
+
+    if (!property) {
+      return {
+        mode: "consult",
+        action: "crm.property.lookup",
+        threadLabel: "Imóvel",
+        conversationState: params.threadState ?? createEmptyThreadState(),
+        presentation: {
+          text: "Não encontrei esse imóvel no CRM operacional do IMOB.",
+          suggestedNextAction: "Use o identificador, endereço ou o caso ativo para localizar o imóvel.",
+          card: {
+            title: "Imóvel não encontrado",
+            lines: ["Use o número do imóvel, endereço ou o caso ativo para consultar a ficha operacional."],
+          },
+        },
+      } as any;
+    }
+
+    const propertyCases = await params.prisma.imobCase.findMany({
+      where: { tenantId: params.tenantId, workspaceId: params.workspaceId, propertyId: property.id },
+      orderBy: { updatedAt: "desc" },
+      take: 5,
+      select: {
+        id: true,
+        flow: true,
+        stage: true,
+        status: true,
+        nextStep: true,
+        pendingItems: true,
+        ownerResponsible: true,
+        blockers: true,
+        threadId: true,
+        updatedAt: true,
+      },
+    });
+    const latestCase = propertyCases[0] ?? null;
+    return {
+      mode: "consult",
+      action: "crm.property.lookup",
+      threadLabel: "Imóvel",
+      conversationState: params.threadState ?? createEmptyThreadState(),
+      caseContext: latestCase ? buildCaseContextFromRecord(latestCase) : undefined,
+      presentation: {
+        text: [
+          `${formatPropertyLookupLabel(property)} localizado no CRM operacional.`,
+          `Pendências atuais: ${formatImobPendingList(Array.isArray(property.pendingItems) ? property.pendingItems : property.pendingItems)}.`,
+          buildPropertyPendingSuggestion({ id: property.id, address: property.address, pendingItems: Array.isArray(property.pendingItems) ? property.pendingItems : property.pendingItems }),
+          "Próximo passo: vincular o imóvel ao próximo lead ou etapa comercial/documental.",
+          "Responsável agora: Corretor.",
+        ].filter(Boolean).join("\n"),
+        owner: "Corretor" as any,
+        nextStep: "Vincular o imóvel ao próximo lead ou etapa comercial/documental.",
+        pendingFieldLabels: Array.isArray(property.pendingItems) ? property.pendingItems : [],
+        dedupeKey: `crm.property.lookup:${property.id}`,
+        card: {
+          title: formatPropertyLookupLabel(property),
+          lines: [
+            property.propertyType ? `Tipo: ${property.propertyType}` : null,
+            property.goal ? `Finalidade: ${property.goal}` : null,
+            property.city ? `Cidade: ${property.city}` : null,
+            property.neighborhood ? `Bairro: ${property.neighborhood}` : null,
+            property.address ? `Endereço: ${property.address}` : null,
+            property.owner?.name ? `Proprietário: ${property.owner.name}` : null,
+            typeof property.askingPriceCents === "number" ? `Valor: ${formatBudgetCentsForImob(property.askingPriceCents)}` : null,
+            `Status: ${formatImobStatusLabel(property.status)}`,
+            `Pendências: ${formatImobPendingList(Array.isArray(property.pendingItems) ? property.pendingItems : property.pendingItems)}`,
+            `Casos: ${property._count?.cases ?? 0}`,
+          ].filter(Boolean) as string[],
+        },
+      },
+    } as any;
+  }
+
+  if (!asksLeadCases && wantsCase && (asksCurrentCase || asksMissing || asksShow)) {
+    const item = params.caseId
+      ? await params.prisma.imobCase.findFirst({
+          where: { id: params.caseId, tenantId: params.tenantId, workspaceId: params.workspaceId },
+          include: {
+            owner: { select: { id: true, name: true } },
+            property: { select: { id: true, propertyType: true, city: true, neighborhood: true } },
+            lead: { select: { id: true, name: true, phone: true, email: true } },
+            _count: { select: { events: true } },
+          },
+        })
+      : null;
+
+    if (!item) {
+      return {
+        mode: "consult",
+        action: "crm.case.lookup",
+        threadLabel: "Caso",
+        conversationState: params.threadState ?? createEmptyThreadState(),
+        presentation: {
+          text: "Não encontrei um caso operacional vinculado a esta conversa.",
+          suggestedNextAction: "Abra ou retome um caso antes de consultar pendências deste caso.",
+          card: {
+            title: "Caso não encontrado",
+            lines: ["Vincule esta conversa a um caso IMOB para consultar pendências e próximos passos."],
+          },
+        },
+      } as any;
+    }
+
+    const blocker = Array.isArray(item.blockers) && item.blockers.length > 0 ? item.blockers[0] : null;
+    return {
+      mode: "consult",
+      action: "crm.case.lookup",
+      threadLabel: formatImobCaseFlowLabel(item.flow),
+      conversationState: params.threadState ?? createEmptyThreadState(),
+      caseContext: buildCaseContextFromRecord(item),
+      presentation: {
+        text: [
+          `Caso ${formatImobCaseFlowLabel(item.flow)} localizado.`,
+          `Pendências atuais: ${formatImobPendingList(item.pendingItems)}.`,
+          item.nextStep ? `Próximo passo: ${item.nextStep}` : null,
+          item.ownerResponsible ? `Responsável agora: ${item.ownerResponsible}.` : null,
+          blocker ? `Bloqueio atual: ${blocker}` : null,
+        ].filter(Boolean).join("\n"),
+        owner: item.ownerResponsible ?? undefined,
+        nextStep: item.nextStep ?? undefined,
+        blocker,
+        pendingFieldLabels: Array.isArray(item.pendingItems) ? item.pendingItems : [],
+        dedupeKey: `crm.case.lookup:${item.id}`,
+        card: {
+          title: `Caso ${formatImobCaseFlowLabel(item.flow)}`,
+          lines: [
+            `Stage: ${item.stage}`,
+            `Status: ${formatImobStatusLabel(item.status)}`,
+            item.lead?.name ? `Lead: ${item.lead.name}` : null,
+            item.property?.id ? `Imóvel: ${item.property.id}` : null,
+            `Pendências: ${formatImobPendingList(item.pendingItems)}`,
+            item.nextStep ? `Próximo passo: ${item.nextStep}` : null,
+            `Evidências: ${item._count?.events ?? 0}`,
+          ].filter(Boolean) as string[],
+        },
+      },
+    } as any;
+  }
+
+  if (wantsLead && (asksLeadCases || asksMissing || asksShow)) {
+    let lead = null as any;
+    if (params.caseId) {
+      const scopedCase = await params.prisma.imobCase.findFirst({
+        where: { id: params.caseId, tenantId: params.tenantId, workspaceId: params.workspaceId },
+        include: { lead: true },
+      });
+      lead = scopedCase?.lead ?? null;
+    }
+    if (!lead) {
+      const name = extractLeadNameFromMessage(params.message);
+      const email = extractLeadEmailFromMessage(params.message);
+      const phone = extractLeadPhoneFromMessage(params.message);
+      const conditions = [phone ? { phone } : null, email ? { email } : null, name ? { name } : null].filter(Boolean) as Array<Record<string, string>>;
+      if (conditions.length > 0) {
+        lead = await params.prisma.imobLead.findFirst({
+          where: {
+            tenantId: params.tenantId,
+            workspaceId: params.workspaceId,
+            OR: conditions,
+          },
+          orderBy: { updatedAt: "desc" },
+        });
+      }
+    }
+
+    if (!lead) {
+      return {
+        mode: "consult",
+        action: "crm.lead.lookup",
+        threadLabel: "Lead",
+        conversationState: params.threadState ?? createEmptyThreadState(),
+        presentation: {
+          text: "Não encontrei esse lead no CRM operacional do IMOB.",
+          suggestedNextAction: "Cadastre ou qualifique o lead antes de consultar o histórico dele.",
+          card: {
+            title: "Lead não encontrado",
+            lines: ["Use nome, telefone ou e-mail do lead para localizar o cadastro operacional."],
+          },
+        },
+      } as any;
+    }
+
+    const leadCases = await params.prisma.imobCase.findMany({
+      where: { tenantId: params.tenantId, workspaceId: params.workspaceId, leadId: lead.id },
+      orderBy: { updatedAt: "desc" },
+      take: 5,
+      select: {
+        id: true,
+        flow: true,
+        stage: true,
+        status: true,
+        nextStep: true,
+        pendingItems: true,
+        ownerResponsible: true,
+        updatedAt: true,
+      },
+    });
+    const latestCase = leadCases[0] ?? null;
+    if (asksLeadCases) {
+      return {
+        mode: "consult",
+        action: "crm.lead.lookup",
+        threadLabel: "Lead",
+        conversationState: params.threadState ?? createEmptyThreadState(),
+        caseContext: latestCase ? buildCaseContextFromRecord(latestCase) : undefined,
+        presentation: {
+          text: [
+            `Lead ${lead.name} possui ${leadCases.length} caso(s) no CRM operacional.`,
+            leadCases.length > 0 ? `Casos atuais: ${leadCases.map((item) => `${formatImobCaseFlowLabel(item.flow)} (${formatImobStatusLabel(item.status)})`).join(" | ")}.` : "Casos atuais: nenhum caso vinculado.",
+            latestCase?.nextStep ? `Próximo passo mais recente: ${latestCase.nextStep}` : null,
+          ].filter(Boolean).join("\n"),
+          owner: (latestCase?.ownerResponsible ?? "Corretor") as any,
+          nextStep: latestCase?.nextStep ?? "Vincular o lead ao próximo imóvel ou etapa comercial.",
+          pendingFieldLabels: Array.isArray(lead.pendingItems)
+            ? lead.pendingItems.filter((item) => !(item === "faixa de orçamento" && lead.budgetMaxCents !== null && lead.budgetMaxCents !== undefined))
+            : [],
+          dedupeKey: `crm.lead.lookup:${lead.id}:cases`,
+          card: {
+            title: `Casos do lead ${lead.name}`,
+            lines: leadCases.length > 0
+              ? leadCases.map((item) => `${formatImobCaseFlowLabel(item.flow)} | ${formatImobStatusLabel(item.status)} | ${item.nextStep ?? "Sem próximo passo definido"}`)
+              : ["Nenhum caso vinculado a este lead."],
+          },
+        },
+      } as any;
+    }
+
+    return {
+      mode: "consult",
+      action: "crm.lead.lookup",
+      threadLabel: "Lead",
+      conversationState: params.threadState ?? createEmptyThreadState(),
+      caseContext: latestCase ? buildCaseContextFromRecord(latestCase) : undefined,
+      presentation: {
+        text: [
+          `Lead ${lead.name} localizado no CRM operacional.`,
+          `Pendências atuais: ${formatImobPendingList(Array.isArray(lead.pendingItems) ? lead.pendingItems.filter((item) => !(item === "faixa de orçamento" && lead.budgetMaxCents !== null && lead.budgetMaxCents !== undefined)) : lead.pendingItems)}.`,
+          buildLeadPendingSuggestion({ name: lead.name, pendingItems: Array.isArray(lead.pendingItems) ? lead.pendingItems.filter((item) => !(item === "faixa de orçamento" && lead.budgetMaxCents !== null && lead.budgetMaxCents !== undefined)) : lead.pendingItems }),
+          "Próximo passo: vincular o lead ao próximo imóvel ou etapa comercial.",
+          "Responsável agora: Corretor.",
+        ].filter(Boolean).join("\n"),
+        owner: "Corretor" as any,
+        nextStep: "Vincular o lead ao próximo imóvel ou etapa comercial.",
+        pendingFieldLabels: Array.isArray(lead.pendingItems) ? lead.pendingItems : [],
+        dedupeKey: `crm.lead.lookup:${lead.id}`,
+        card: {
+          title: `Lead ${lead.name}`,
+          lines: [
+            lead.phone ? `Telefone: ${lead.phone}` : null,
+            lead.email ? `E-mail: ${lead.email}` : null,
+            lead.goal ? `Objetivo: ${lead.goal}` : null,
+            lead.targetCity ? `Cidade: ${lead.targetCity}` : null,
+            lead.budgetMaxCents ? `Orçamento: ${formatBudgetCentsForImob(lead.budgetMaxCents)}` : null,
+            `Stage: ${lead.stage ?? "novo"}`,
+            `Temperatura: ${lead.temperature ?? "n/a"}`,
+            `Pendências: ${formatImobPendingList(Array.isArray(lead.pendingItems) ? lead.pendingItems.filter((item) => !(item === "faixa de orçamento" && lead.budgetMaxCents !== null && lead.budgetMaxCents !== undefined)) : lead.pendingItems)}`,
+            leadCases.length > 0 ? `Casos: ${leadCases.length}` : "Casos: nenhum caso vinculado",
+          ].filter(Boolean) as string[],
+        },
+      },
+    } as any;
+  }
+
+  return null;
 }
 
 function getConversationIdFromMetadata(metadata: unknown): string | null {
@@ -344,6 +1754,328 @@ function isContractType(value: unknown): value is ContractType {
   return value === "locacao" || value === "compra_venda" || value === "administracao" || value === "temporada";
 }
 
+function mapOperationalCaseStatus(operationalStatus: string) {
+  if (operationalStatus === "ready_for_review") return "ready_for_review";
+  return "pending_data";
+}
+
+async function upsertImobCaseFromResolvedTurn(params: {
+  prisma: NonNullable<TenantAwareRequest["prisma"]>;
+  tenantId: string;
+  workspaceId: string;
+  caseId?: string | null;
+  threadId?: string | null;
+  threadLabel?: string | null;
+  resolved: ReturnType<typeof resolveImobTurn>;
+}) {
+  const operational = params.resolved.conversationState.operational;
+  if (!operational || params.resolved.mode !== "execute") return null;
+
+  const nowIso = new Date().toISOString();
+  const pendingItems = params.resolved.presentation.pendingFieldLabels ?? operational.pendingFields;
+  const blockers = params.resolved.presentation.blocker ? [params.resolved.presentation.blocker] : [];
+
+  const ownerDraft = operational.ownerDraft;
+  const propertyDraft = operational.propertyDraft;
+  const leadDraft = operational.leadDraft;
+  const proposalDraft = operational.proposalDraft;
+  const visitDraft = operational.visitDraft;
+  const contractDraft = operational.contractDraft;
+  const commissionDraft = operational.commissionDraft;
+
+  const scopedCase = params.caseId
+    ? await params.prisma.imobCase.findFirst({
+        where: { id: params.caseId, tenantId: params.tenantId, workspaceId: params.workspaceId },
+        select: { id: true, leadId: true, ownerId: true, propertyId: true },
+      })
+    : null;
+
+  let persistedLeadId: string | null = scopedCase?.leadId ?? null;
+  let persistedOwnerId: string | null = scopedCase?.ownerId ?? null;
+  let persistedPropertyId: string | null = scopedCase?.propertyId ?? null;
+  const upsertLeadDraft = async (draft: {
+    leadName: string | null;
+    leadEmail?: string | null;
+    leadPhone?: string | null;
+    desiredGoal?: "locacao" | "venda" | null;
+    desiredCity?: string | null;
+    budgetMax?: number | null;
+  } | null | undefined, mode: "upsert" | "lookup_only") => {
+    if (!draft) return null;
+    const leadWhere = {
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      OR: [
+        draft.leadPhone ? { phone: draft.leadPhone } : null,
+        draft.leadEmail ? { email: draft.leadEmail } : null,
+        draft.leadName ? { name: draft.leadName } : null,
+      ].filter(Boolean),
+    } as any;
+    if (leadWhere.OR.length === 0) return null;
+
+    const existingLead = await params.prisma.imobLead.findFirst({
+      where: leadWhere,
+      select: { id: true },
+      orderBy: { updatedAt: "desc" },
+    });
+    if (mode === "lookup_only") return existingLead?.id ?? null;
+
+    const leadData = {
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      name: draft.leadName ?? "Lead sem nome",
+      email: draft.leadEmail ?? null,
+      phone: draft.leadPhone ?? null,
+      goal: draft.desiredGoal ?? null,
+      targetCity: draft.desiredCity ?? null,
+      budgetMaxCents: draft.budgetMax !== null && draft.budgetMax !== undefined ? Math.round(draft.budgetMax * 100) : null,
+      stage: operational.status === "ready_for_review" ? "qualified" : "new",
+      temperature: operational.status === "ready_for_review" ? "warm" : "cold",
+      pendingItems: pendingItems.filter((item) => !(item === "faixa de orçamento" && draft.budgetMax !== null && draft.budgetMax !== undefined)).length > 0
+        ? pendingItems.filter((item) => !(item === "faixa de orçamento" && draft.budgetMax !== null && draft.budgetMax !== undefined))
+        : undefined,
+      metadata: {
+        source: "imob-chat",
+        flow: operational.flow,
+        dedupeKey: params.resolved.presentation.dedupeKey ?? null,
+      } as any,
+    };
+
+    const persistedLead = existingLead
+      ? await params.prisma.imobLead.update({
+          where: { id: existingLead.id },
+          data: {
+            name: leadData.name,
+            email: leadData.email,
+            phone: leadData.phone,
+            goal: leadData.goal,
+            targetCity: leadData.targetCity,
+            budgetMaxCents: leadData.budgetMaxCents,
+            stage: leadData.stage,
+            temperature: leadData.temperature,
+            pendingItems: leadData.pendingItems,
+            metadata: leadData.metadata,
+          },
+        })
+      : await params.prisma.imobLead.create({ data: leadData });
+
+    return persistedLead.id;
+  };
+
+  const upsertOwnerDraft = async (draft: {
+    ownerName: string | null;
+    ownerEmail?: string | null;
+    ownerPhone?: string | null;
+    ownerDocument?: string | null;
+  } | null | undefined, mode: "upsert" | "lookup_only") => {
+    if (!draft) return null;
+    const ownerWhere = {
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      OR: [
+        draft.ownerDocument ? { document: draft.ownerDocument } : null,
+        draft.ownerPhone ? { phone: draft.ownerPhone } : null,
+        draft.ownerEmail ? { email: draft.ownerEmail } : null,
+        draft.ownerName ? { name: draft.ownerName } : null,
+      ].filter(Boolean),
+    } as any;
+    if (ownerWhere.OR.length === 0) return null;
+
+    const existingOwner = await params.prisma.imobOwner.findFirst({
+      where: ownerWhere,
+      select: { id: true },
+      orderBy: { updatedAt: "desc" },
+    });
+    if (mode === "lookup_only") return existingOwner?.id ?? null;
+
+    const ownerData = {
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      name: draft.ownerName ?? "Proprietário sem nome",
+      document: draft.ownerDocument ?? null,
+      email: draft.ownerEmail ?? null,
+      phone: draft.ownerPhone ?? null,
+      status: operational.status === "ready_for_review" ? "qualified" : "pending_data",
+      pendingItems: pendingItems.length > 0 ? pendingItems : undefined,
+      metadata: {
+        source: "imob-chat",
+        flow: operational.flow,
+        dedupeKey: params.resolved.presentation.dedupeKey ?? null,
+      } as any,
+    };
+
+    const persistedOwner = existingOwner
+      ? await params.prisma.imobOwner.update({ where: { id: existingOwner.id }, data: ownerData })
+      : await params.prisma.imobOwner.create({ data: ownerData });
+
+    return persistedOwner.id;
+  };
+
+  const upsertPropertyDraft = async (draft: {
+    propertyId?: string | null;
+    propertyType?: string | null;
+    goal?: string | null;
+    city?: string | null;
+    neighborhood?: string | null;
+    bedrooms?: number | null;
+    bathrooms?: number | null;
+    address?: string | null;
+  } | null | undefined, mode: "upsert" | "lookup_only") => {
+    if (!draft) return null;
+    const externalPropertyRef = draft.propertyId ?? null;
+    let existingProperty = null as { id: string } | null;
+    const recentProperties = await params.prisma.imobProperty.findMany({
+      where: { tenantId: params.tenantId, workspaceId: params.workspaceId },
+      orderBy: { updatedAt: "desc" },
+      take: 200,
+      select: { id: true, address: true, metadata: true },
+    });
+    existingProperty = recentProperties.find((item) => {
+      const metadata = asObject(item.metadata);
+      const metadataRef = asString(metadata?.externalPropertyRef);
+      if (externalPropertyRef && metadataRef === externalPropertyRef) return true;
+      if (draft.address && item.address && item.address.trim().toLowerCase() === draft.address.trim().toLowerCase()) return true;
+      return false;
+    }) ?? null;
+    if (mode === "lookup_only") return existingProperty?.id ?? null;
+
+    const propertyData = {
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      ownerId: persistedOwnerId ?? null,
+      propertyType: draft.propertyType ?? null,
+      goal: draft.goal ?? null,
+      city: draft.city ?? null,
+      neighborhood: draft.neighborhood ?? null,
+      bedrooms: draft.bedrooms ?? null,
+      bathrooms: draft.bathrooms ?? null,
+      address: draft.address ?? null,
+      status: operational.status === "ready_for_review" ? "ready_for_review" : "pending_data",
+      pendingItems: pendingItems.length > 0 ? pendingItems : undefined,
+      metadata: {
+        source: "imob-chat",
+        flow: operational.flow,
+        externalPropertyRef,
+        dedupeKey: params.resolved.presentation.dedupeKey ?? null,
+      } as any,
+    };
+
+    const persistedProperty = existingProperty
+      ? await params.prisma.imobProperty.update({ where: { id: existingProperty.id }, data: propertyData })
+      : await params.prisma.imobProperty.create({ data: propertyData });
+
+    return persistedProperty.id;
+  };
+
+  if (operational.flow === "owner.create" && ownerDraft) {
+    persistedOwnerId = await upsertOwnerDraft(ownerDraft, "upsert");
+  } else if (operational.flow === "property.create" && propertyDraft) {
+    persistedPropertyId = await upsertPropertyDraft(propertyDraft, "upsert");
+  } else if (operational.flow === "lead.qualify" && leadDraft) {
+    persistedLeadId = await upsertLeadDraft(leadDraft, "upsert");
+  } else if (operational.flow === "proposal.create" && proposalDraft) {
+    persistedLeadId = await upsertLeadDraft({
+      leadName: proposalDraft.buyerName,
+      leadEmail: proposalDraft.buyerEmail,
+      leadPhone: proposalDraft.buyerPhone,
+      desiredGoal: proposalDraft.contractType === "rent" ? "locacao" : proposalDraft.contractType === "sale" ? "venda" : null,
+      desiredCity: null,
+      budgetMax: proposalDraft.offerAmount,
+    }, "lookup_only") ?? persistedLeadId;
+  } else if (operational.flow === "visit.schedule" && visitDraft) {
+    persistedLeadId = await upsertLeadDraft({
+      leadName: visitDraft.visitorName,
+      leadPhone: visitDraft.visitorPhone,
+      desiredGoal: null,
+      desiredCity: null,
+      budgetMax: null,
+    }, "lookup_only") ?? persistedLeadId;
+  }
+
+  const baseData = {
+    threadId: params.threadId ?? null,
+    flow: operational.flow,
+    stage: operational.status,
+    status: mapOperationalCaseStatus(operational.status),
+    ownerResponsible: params.resolved.presentation.owner ?? null,
+    nextStep: params.resolved.presentation.nextStep ?? null,
+    blockers: blockers.length > 0 ? blockers : undefined,
+    pendingItems: pendingItems.length > 0 ? pendingItems : undefined,
+    ...(persistedLeadId ? { leadId: persistedLeadId } : {}),
+    ...(persistedOwnerId ? { ownerId: persistedOwnerId } : {}),
+    ...(persistedPropertyId ? { propertyId: persistedPropertyId } : {}),
+    metadata: {
+      threadLabel: params.threadLabel ?? params.resolved.threadLabel,
+      action: params.resolved.action,
+      mode: params.resolved.mode,
+      suggestedNextAction: params.resolved.presentation.suggestedNextAction ?? null,
+      dedupeKey: params.resolved.presentation.dedupeKey ?? null,
+    } as any,
+  };
+
+  const item = scopedCase
+    ? await params.prisma.imobCase.update({
+        where: { id: scopedCase.id },
+        data: {
+          ...baseData,
+          ...(proposalDraft?.propertyId ? { externalDealId: proposalDraft.propertyId } : {}),
+        },
+      })
+    : await params.prisma.imobCase.create({
+        data: {
+          tenantId: params.tenantId,
+          workspaceId: params.workspaceId,
+          ...baseData,
+          ...(proposalDraft?.propertyId ? { externalDealId: proposalDraft.propertyId } : {}),
+        },
+      });
+
+  await params.prisma.imobCaseEvent.create({
+    data: {
+      caseId: item.id,
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      runId: null,
+      type: scopedCase ? "case.turn_resolved" : "case.created_from_turn",
+      actorType: "system",
+      actorRef: null,
+      summary: params.resolved.presentation.text,
+      evidenceRef: params.resolved.presentation.dedupeKey ?? null,
+      payload: {
+        resolvedAt: nowIso,
+        flow: operational.flow,
+        operationalStatus: operational.status,
+        pendingFields: operational.pendingFields,
+        pendingFieldLabels: pendingItems,
+        ownerDraft: ownerDraft ?? null,
+        propertyDraft: propertyDraft ?? null,
+        leadDraft: leadDraft ?? null,
+        proposalDraft: proposalDraft ?? null,
+        visitDraft: visitDraft ?? null,
+        contractDraft: contractDraft ?? null,
+        commissionDraft: commissionDraft ?? null,
+        persistedLeadId,
+        persistedOwnerId,
+        persistedPropertyId,
+        executionRequest: params.resolved.executionRequest ?? null,
+      } as any,
+    },
+  });
+
+  return {
+    caseId: item.id,
+    flow: operational.flow,
+    stage: operational.status,
+    status: mapOperationalCaseStatus(operational.status),
+    ownerResponsible: params.resolved.presentation.owner ?? null,
+    nextStep: params.resolved.presentation.nextStep ?? null,
+    blocker: params.resolved.presentation.blocker ?? null,
+    pendingItems,
+    threadId: params.threadId ?? null,
+    updatedAt: nowIso,
+  };
+}
+
 async function resolveImobEntitlements(params: {
   prisma: NonNullable<TenantAwareRequest["prisma"]>;
   tenantId: string;
@@ -391,6 +2123,67 @@ async function resolveImobEntitlements(params: {
   };
 }
 
+async function readImobWorkspaceAccessProfile(params: {
+  prisma: NonNullable<TenantAwareRequest["prisma"]>;
+  authContext: NonNullable<TenantAwareRequest["authContext"]>;
+}) {
+  if (!params.authContext.userId) {
+    return {
+      responsibleLabel: "Corretor",
+      permissions: ["imob.chat.use", "imob.stage.*"],
+    };
+  }
+  return readWorkspaceResponsibleProfile({
+    prisma: params.prisma,
+    tenantId: params.authContext.tenantId,
+    workspaceId: params.authContext.workspaceId,
+    userId: params.authContext.userId,
+  });
+}
+
+function sendImobPermissionDenied(
+  res: any,
+  params: { code: string; message: string; stage?: string | null }
+) {
+  return res.status(403).json({
+    ok: false,
+    error: {
+      code: params.code,
+      message: params.message,
+      ...(params.stage ? { stage: params.stage } : {}),
+    },
+  });
+}
+
+function ensureImobWorkspacePermission(
+  res: any,
+  permissions: string[],
+  permission: string,
+  message: string
+) {
+  if (hasWorkspacePermission(permissions, permission)) return true;
+  sendImobPermissionDenied(res, {
+    code: "IMOB_WORKSPACE_PERMISSION_FORBIDDEN",
+    message,
+  });
+  return false;
+}
+
+function ensureImobStagePermission(
+  res: any,
+  permissions: string[],
+  stage: string | null | undefined,
+  message: string
+) {
+  if (canWorkspaceOperateImobStage(permissions, stage)) return true;
+  sendImobPermissionDenied(res, {
+    code: "IMOB_STAGE_FORBIDDEN",
+    message,
+    stage: stage ?? null,
+  });
+  return false;
+}
+
 imobRouter.get("/knowledge/sync-status", async (req, res) => {
   const { authContext, prisma } = req as TenantAwareRequest;
   if (!authContext || !prisma) {
@@ -398,6 +2191,11 @@ imobRouter.get("/knowledge/sync-status", async (req, res) => {
       ok: false,
       error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
     });
+  }
+
+  const workspaceAccess = await readImobWorkspaceAccessProfile({ prisma, authContext });
+  if (!ensureImobWorkspacePermission(res, workspaceAccess.permissions, "imob.chat.use", "Sua função atual não pode usar o IMOB neste workspace.")) {
+    return;
   }
 
   const entitlements = await resolveImobEntitlements({
@@ -452,6 +2250,10 @@ imobRouter.post("/knowledge/search", async (req, res) => {
   }
 
   const workspaceId = authContext.workspaceId;
+  const workspaceAccess = await readImobWorkspaceAccessProfile({ prisma, authContext });
+  if (!ensureImobWorkspacePermission(res, workspaceAccess.permissions, "imob.chat.use", "Sua função atual não pode usar o IMOB neste workspace.")) {
+    return;
+  }
   const entitlements = await resolveImobEntitlements({
     prisma,
     tenantId: authContext.tenantId,
@@ -521,11 +2323,42 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
 
   const body = asObject(req.body) ?? {};
   const message = asString(body.message);
+  const requestedCaseId = asString(body.caseId);
+  const requestedThreadId = asString(body.threadId);
   if (!message) {
     return res.status(400).json({
       ok: false,
       error: { code: "INVALID_MESSAGE", message: "message is required" },
     });
+  }
+
+  const workspaceAccess = await readImobWorkspaceAccessProfile({ prisma, authContext });
+  if (!ensureImobWorkspacePermission(res, workspaceAccess.permissions, "imob.chat.use", "Sua função atual não pode usar o IMOB neste workspace.")) {
+    return;
+  }
+
+  const existingScopedCase = requestedCaseId
+    ? await prisma.imobCase.findFirst({
+        where: { id: requestedCaseId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
+        select: { id: true, stage: true },
+      })
+    : requestedThreadId
+      ? await prisma.imobCase.findFirst({
+          where: { threadId: requestedThreadId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
+          orderBy: { updatedAt: "desc" },
+          select: { id: true, stage: true },
+        })
+      : null;
+  if (
+    existingScopedCase &&
+    !ensureImobStagePermission(
+      res,
+      workspaceAccess.permissions,
+      existingScopedCase.stage,
+      `Sua função atual não pode operar a etapa ${existingScopedCase.stage} neste workspace.`
+    )
+  ) {
+    return;
   }
 
   const entitlements = await resolveImobEntitlements({
@@ -534,9 +2367,12 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
     workspaceId: authContext.workspaceId,
   });
 
+  const workspaceResponsibleLabel = workspaceAccess.responsibleLabel;
+
   const threadStateRaw = asObject(body.threadState);
   const threadSlotsRaw = asObject(threadStateRaw?.slots);
-  const threadState = threadStateRaw
+  const threadOperationalRaw = asObject(threadStateRaw?.operational);
+  const parsedThreadState = threadStateRaw
     ? {
         mode: asString(threadStateRaw.mode) ?? "consult",
         pendingSlot: asString(threadStateRaw.pendingSlot) ?? "none",
@@ -551,27 +2387,1022 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
           bathrooms: Number.isFinite(Number(threadSlotsRaw?.bathrooms)) ? Number(threadSlotsRaw?.bathrooms) : null,
           propertyType: asString(threadSlotsRaw?.propertyType),
         },
+        operational: threadOperationalRaw ? (threadOperationalRaw as any) : null,
       }
     : null;
 
-  const data = resolveImobTurn({
-    message,
-    threadLabel: asString(body.threadLabel),
-    threadState: threadState as any,
-    access: {
+  const threadLabel = asString(body.threadLabel);
+
+  const processSingleOperationalTurn = async (params: {
+    message: string;
+    caseId?: string | null;
+    threadState: any;
+  }) => {
+    const hydratedThreadState = await hydrateThreadStateWithPersistedLead({
+      prisma,
       tenantId: authContext.tenantId,
       workspaceId: authContext.workspaceId,
-      entitlements,
-    },
+      message: params.message,
+      caseId: params.caseId,
+      threadLabel,
+      threadState: params.threadState,
+    });
+
+    const updateData = await resolveImobOperationalUpdate({
+      prisma,
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      message: params.message,
+      caseId: params.caseId,
+      threadState: hydratedThreadState,
+    });
+    if (updateData) {
+      const data = applyResponsibleLabelToResolvedTurn(updateData, workspaceResponsibleLabel);
+      return {
+        data,
+        caseContext: data.caseContext ?? null,
+      };
+    }
+
+    const consultData = await resolveImobOperationalConsult({
+      prisma,
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      message: params.message,
+      caseId: params.caseId,
+      threadState: hydratedThreadState,
+    });
+    if (consultData) {
+      const data = applyResponsibleLabelToResolvedTurn(consultData, workspaceResponsibleLabel);
+      return {
+        data,
+        caseContext: data.caseContext ?? null,
+      };
+    }
+
+    const resolvedTurn = resolveImobTurn({
+      message: params.message,
+      threadLabel,
+      threadId: requestedThreadId,
+      caseId: params.caseId,
+      threadState: hydratedThreadState as any,
+      access: {
+        tenantId: authContext.tenantId,
+        workspaceId: authContext.workspaceId,
+        entitlements,
+      },
+    });
+    const data = applyResponsibleLabelToResolvedTurn(injectResolvedPendingSuggestion(resolvedTurn), workspaceResponsibleLabel);
+
+    const caseContext = await upsertImobCaseFromResolvedTurn({
+      prisma,
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      caseId: params.caseId,
+      threadId: requestedThreadId,
+      threadLabel,
+      resolved: data,
+    });
+
+    return {
+      data,
+      caseContext: caseContext ?? data.caseContext ?? null,
+    };
+  };
+
+  const batches = extractImobOperationalBatches(message);
+  const totalBatchOperations = batches.reduce((count, group) => count + group.length, 0);
+  if (totalBatchOperations >= 2) {
+    const summaries: string[] = [];
+    let latestState: any = parsedThreadState ?? createEmptyThreadState();
+    let latestCaseContext: any = null;
+
+    for (const group of batches) {
+      let groupCaseId = requestedCaseId ?? null;
+      for (const line of group) {
+        const result = await processSingleOperationalTurn({
+          message: line,
+          caseId: groupCaseId,
+          threadState: latestState,
+        });
+        latestState = result.data.conversationState ?? latestState;
+        groupCaseId = result.caseContext?.caseId ?? groupCaseId;
+        latestCaseContext = result.caseContext ?? latestCaseContext;
+        summaries.push(formatBatchLineSummary(result.data, line));
+      }
+    }
+
+    const batchData = {
+      mode: "consult",
+      action: "crm.batch.intake",
+      threadLabel: "Lote",
+      conversationState: latestState,
+      caseContext: batches.length === 1 ? latestCaseContext : null,
+      presentation: {
+        text: [
+          `Processei ${totalBatchOperations} operação(ões) deste lote no IMOB.`,
+          ...summaries.map((summary, index) => `${index + 1}. ${summary}`),
+        ].join("\n"),
+        owner: workspaceResponsibleLabel,
+        nextStep: "Revisar os cadastros processados, completar pendências e seguir para os próximos vínculos comerciais.",
+        dedupeKey: `crm.batch.intake:${totalBatchOperations}`,
+        card: {
+          title: "Lote processado",
+          lines: summaries,
+        },
+      },
+    } as any;
+
+    return res.json({
+      ok: true,
+      data: {
+        ...batchData,
+        entitlements,
+      },
+    });
+  }
+
+  const singleResult = await processSingleOperationalTurn({
+    message,
+    caseId: requestedCaseId,
+    threadState: parsedThreadState,
   });
 
   return res.json({
     ok: true,
     data: {
-      ...data,
+      ...singleResult.data,
+      caseContext: singleResult.caseContext ?? singleResult.data.caseContext,
       entitlements,
     },
   });
+});
+
+imobRouter.post("/attachments/resolve", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+  }
+
+  const parsed = imobAttachmentResolveSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() } });
+  }
+
+  const documentIds = parsed.data.documentIds;
+  const docs = await prisma.uploadedDocument.findMany({
+    where: {
+      id: { in: documentIds },
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      agentSlug: "imob",
+    },
+  });
+  if (docs.length !== documentIds.length) {
+    return res.status(404).json({ ok: false, error: { code: "UPLOAD_NOT_FOUND", message: "One or more uploaded documents were not found" } });
+  }
+
+  const workspaceAccess = await readImobWorkspaceAccessProfile({ prisma, authContext });
+  if (!ensureImobWorkspacePermission(res, workspaceAccess.permissions, "imob.chat.use", "Sua função atual não pode usar o IMOB neste workspace.")) {
+    return;
+  }
+  const workspaceResponsibleLabel = workspaceAccess.responsibleLabel;
+
+  const caseItem = parsed.data.caseId
+    ? await prisma.imobCase.findFirst({
+        where: { id: parsed.data.caseId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
+        include: { owner: true },
+      })
+    : parsed.data.threadId
+      ? await prisma.imobCase.findFirst({
+          where: { threadId: parsed.data.threadId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
+          orderBy: { updatedAt: "desc" },
+          include: { owner: true },
+        })
+      : null;
+
+  if (
+    caseItem &&
+    !ensureImobStagePermission(
+      res,
+      workspaceAccess.permissions,
+      caseItem.stage,
+      `Sua função atual não pode operar a etapa ${caseItem.stage} neste workspace.`
+    )
+  ) {
+    return;
+  }
+
+  if (!caseItem || !caseItem.ownerId || !caseItem.owner) {
+    return res.json({
+      ok: true,
+      data: {
+        resolved: false,
+        presentation: {
+          text: "Documento anexado ao contexto desta conversa. Ainda preciso do caso ou proprietário correto para baixar a pendência automaticamente.",
+          nextStep: "Abra o proprietário ou o caso correto e tente anexar novamente.",
+          owner: workspaceResponsibleLabel,
+        },
+      },
+    });
+  }
+
+  const ownerPending = asStringList(caseItem.owner.pendingItems);
+  const shouldResolveOwnerDocument = caseItem.flow === "owner.create" || ownerPending.includes("ownerDocument") || ownerPending.includes("documento do proprietário");
+  if (!shouldResolveOwnerDocument) {
+    return res.json({
+      ok: true,
+      data: {
+        resolved: false,
+        caseContext: buildCaseContextFromRecord(caseItem),
+        presentation: {
+          text: "Documento anexado ao contexto desta conversa, mas ele ainda não corresponde a uma pendência documental automática deste caso.",
+          nextStep: "Revise as pendências atuais do caso para vincular este anexo na etapa correta.",
+          owner: workspaceResponsibleLabel,
+        },
+      },
+    });
+  }
+
+  const validation = await validateImobIdentityAttachmentAgainstCase({
+    docs,
+    caseItem,
+  });
+
+  const nextOwnerPending = validation.resolved
+    ? ownerPending.filter((item) => item !== "ownerDocument" && item !== "documento do proprietário")
+    : ownerPending;
+  const nextOwnerStatus = nextOwnerPending.length > 0 ? "pending_data" : "ready_for_review";
+  const nextCasePending = validation.resolved
+    ? asStringList(caseItem.pendingItems).filter((item) => item !== "ownerDocument" && item !== "documento do proprietário")
+    : asStringList(caseItem.pendingItems);
+  const nextCaseStatus = nextCasePending.length > 0 ? "pending_data" : "ready_for_review";
+  const resolvedNextStep = nextCasePending.length > 0
+    ? "Completar os dados restantes do proprietário antes de avançar a captação."
+    : "Vincular o proprietário ao próximo imóvel ou etapa documental.";
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const owner = validation.resolved
+      ? await tx.imobOwner.update({
+          where: { id: caseItem.ownerId! },
+          data: { status: nextOwnerStatus, pendingItems: nextOwnerPending },
+        })
+      : caseItem.owner!;
+
+    const imobCase = await tx.imobCase.update({
+      where: { id: caseItem.id },
+      data: {
+        ...(validation.resolved
+          ? {
+              stage: nextCaseStatus,
+              status: nextCaseStatus,
+              pendingItems: nextCasePending,
+              nextStep: resolvedNextStep,
+            }
+          : {}),
+        ownerResponsible: workspaceResponsibleLabel,
+      },
+    });
+
+    await tx.imobCaseEvent.create({
+      data: {
+        caseId: caseItem.id,
+        tenantId: authContext.tenantId,
+        workspaceId: authContext.workspaceId,
+        runId: null,
+        type: validation.eventType,
+        actorType: "user",
+        actorRef: null,
+        summary: validation.eventSummary,
+        evidenceRef: validation.document?.id ?? docs[0]?.id ?? null,
+        payload: {
+          documentIds,
+          fileNames: docs.map((item) => item.fileName),
+          ownerId: caseItem.ownerId,
+          validation: {
+            contractId: validation.contract.id,
+            resolved: validation.resolved,
+            fields: validation.fields,
+            extracted: validation.extracted,
+            photoDocumentId: validation.photo?.id ?? null,
+            primaryDocumentId: validation.document?.id ?? null,
+          },
+        },
+      },
+    });
+
+    return { owner, imobCase };
+  });
+
+  return res.json({
+    ok: true,
+    data: {
+      resolved: validation.resolved,
+      caseContext: {
+        caseId: updated.imobCase.id,
+        flow: updated.imobCase.flow,
+        stage: updated.imobCase.stage,
+        status: updated.imobCase.status,
+        ownerResponsible: updated.imobCase.ownerResponsible ?? workspaceResponsibleLabel,
+        nextStep: updated.imobCase.nextStep ?? validation.nextStep,
+        blocker: validation.resolved ? null : "Validação documental pendente de revisão.",
+        pendingItems: nextCasePending,
+        threadId: updated.imobCase.threadId ?? null,
+        updatedAt: updated.imobCase.updatedAt.toISOString(),
+      },
+      presentation: {
+        text: [
+          validation.summary,
+          `Próximo passo: ${validation.resolved ? resolvedNextStep : validation.nextStep}`,
+          `Responsável agora: ${updated.imobCase.ownerResponsible ?? workspaceResponsibleLabel}.`,
+        ].join("\n"),
+        card: validation.card,
+        owner: updated.imobCase.ownerResponsible ?? workspaceResponsibleLabel,
+        nextStep: validation.resolved ? resolvedNextStep : validation.nextStep,
+        blocker: validation.resolved ? null : "Validação documental pendente de revisão.",
+        pendingFieldLabels: validation.resolved
+          ? nextOwnerPending.map((item) => item === "ownerDocument" ? "documento do proprietário" : item)
+          : ["revisão documental do proprietário"],
+        dedupeKey: validation.dedupeKey,
+      },
+    },
+  });
+});
+
+imobRouter.get("/owners", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+  }
+
+  const items = await prisma.imobOwner.findMany({
+    where: { tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
+    orderBy: { createdAt: "desc" },
+    take: 200,
+  });
+
+  return res.json({ ok: true, data: { items } });
+});
+
+imobRouter.post("/owners", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+  }
+
+  const parsed = imobOwnerCreateSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() } });
+  }
+
+  const created = await prisma.imobOwner.create({
+    data: {
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      name: parsed.data.name,
+      document: parsed.data.document ?? null,
+      email: parsed.data.email ?? null,
+      phone: parsed.data.phone ?? null,
+      personType: parsed.data.personType ?? undefined,
+      status: parsed.data.status ?? undefined,
+      pendingItems: parsed.data.pendingItems ?? undefined,
+      metadata: parsed.data.metadata as any,
+    },
+  });
+
+  return res.status(201).json({ ok: true, data: created });
+});
+
+imobRouter.get("/owners/:ownerId", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+  }
+
+  const item = await prisma.imobOwner.findFirst({
+    where: { id: req.params.ownerId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
+  });
+
+  if (!item) {
+    return res.status(404).json({ ok: false, error: { code: "OWNER_NOT_FOUND", message: "Owner not found" } });
+  }
+
+  return res.json({ ok: true, data: item });
+});
+
+imobRouter.patch("/owners/:ownerId", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+  }
+
+  const existing = await prisma.imobOwner.findFirst({
+    where: { id: req.params.ownerId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
+    select: { id: true },
+  });
+  if (!existing) {
+    return res.status(404).json({ ok: false, error: { code: "OWNER_NOT_FOUND", message: "Owner not found" } });
+  }
+
+  const parsed = imobOwnerUpdateSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() } });
+  }
+
+  const updated = await prisma.imobOwner.update({
+    where: { id: existing.id },
+    data: {
+      ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
+      ...(parsed.data.document !== undefined ? { document: parsed.data.document } : {}),
+      ...(parsed.data.email !== undefined ? { email: parsed.data.email } : {}),
+      ...(parsed.data.phone !== undefined ? { phone: parsed.data.phone } : {}),
+      ...(parsed.data.personType !== undefined && parsed.data.personType !== null ? { personType: parsed.data.personType } : {}),
+      ...(parsed.data.status !== undefined && parsed.data.status !== null ? { status: parsed.data.status } : {}),
+      ...(parsed.data.pendingItems !== undefined ? { pendingItems: parsed.data.pendingItems } : {}),
+      ...(parsed.data.metadata !== undefined ? { metadata: parsed.data.metadata as any } : {}),
+    },
+  });
+
+  return res.json({ ok: true, data: updated });
+});
+
+imobRouter.get("/properties", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+  }
+
+  const items = await prisma.imobProperty.findMany({
+    where: { tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
+    orderBy: { createdAt: "desc" },
+    take: 200,
+    include: { owner: { select: { id: true, name: true } } },
+  });
+
+  return res.json({ ok: true, data: { items } });
+});
+
+imobRouter.post("/properties", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+  }
+
+  const parsed = imobPropertyCreateSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() } });
+  }
+
+  if (!ensureImobStagePermission(res, workspaceAccess.permissions, parsed.data.stage, `Sua função atual não pode operar a etapa ${parsed.data.stage} neste workspace.`)) {
+    return;
+  }
+
+  if (parsed.data.ownerId) {
+    const owner = await prisma.imobOwner.findFirst({
+      where: { id: parsed.data.ownerId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
+      select: { id: true },
+    });
+    if (!owner) {
+      return res.status(404).json({ ok: false, error: { code: "OWNER_NOT_FOUND", message: "Owner not found for property" } });
+    }
+  }
+
+  const created = await prisma.imobProperty.create({
+    data: {
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      ownerId: parsed.data.ownerId ?? null,
+      propertyType: parsed.data.propertyType ?? null,
+      goal: parsed.data.goal ?? null,
+      address: parsed.data.address ?? null,
+      city: parsed.data.city ?? null,
+      neighborhood: parsed.data.neighborhood ?? null,
+      bedrooms: parsed.data.bedrooms,
+      bathrooms: parsed.data.bathrooms,
+      areaM2: parsed.data.areaM2,
+      garageSpots: parsed.data.garageSpots,
+      askingPriceCents: parsed.data.askingPriceCents,
+      description: parsed.data.description ?? null,
+      status: parsed.data.status ?? undefined,
+      pendingItems: parsed.data.pendingItems ?? undefined,
+      metadata: parsed.data.metadata as any,
+    },
+    include: { owner: { select: { id: true, name: true } } },
+  });
+
+  return res.status(201).json({ ok: true, data: created });
+});
+
+imobRouter.get("/properties/:propertyId", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+  }
+
+  const item = await prisma.imobProperty.findFirst({
+    where: { id: req.params.propertyId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
+    include: { owner: { select: { id: true, name: true } } },
+  });
+
+  if (!item) {
+    return res.status(404).json({ ok: false, error: { code: "PROPERTY_NOT_FOUND", message: "Property not found" } });
+  }
+
+  return res.json({ ok: true, data: item });
+});
+
+imobRouter.patch("/properties/:propertyId", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+  }
+
+  const existing = await prisma.imobProperty.findFirst({
+    where: { id: req.params.propertyId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
+    select: { id: true },
+  });
+  if (!existing) {
+    return res.status(404).json({ ok: false, error: { code: "PROPERTY_NOT_FOUND", message: "Property not found" } });
+  }
+
+  const parsed = imobPropertyUpdateSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() } });
+  }
+  if (!ensureImobStagePermission(res, workspaceAccess.permissions, existing.stage, `Sua função atual não pode operar a etapa ${existing.stage} neste workspace.`)) {
+    return;
+  }
+  if (parsed.data.stage && !ensureImobStagePermission(res, workspaceAccess.permissions, parsed.data.stage, `Sua função atual não pode mover o caso para a etapa ${parsed.data.stage} neste workspace.`)) {
+    return;
+  }
+
+  if (parsed.data.ownerId) {
+    const owner = await prisma.imobOwner.findFirst({
+      where: { id: parsed.data.ownerId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
+      select: { id: true },
+    });
+    if (!owner) {
+      return res.status(404).json({ ok: false, error: { code: "OWNER_NOT_FOUND", message: "Owner not found for property" } });
+    }
+  }
+
+  const updated = await prisma.imobProperty.update({
+    where: { id: existing.id },
+    data: {
+      ...(parsed.data.ownerId !== undefined
+        ? { owner: parsed.data.ownerId ? { connect: { id: parsed.data.ownerId } } : { disconnect: true } }
+        : {}),
+      ...(parsed.data.propertyType !== undefined ? { propertyType: parsed.data.propertyType } : {}),
+      ...(parsed.data.goal !== undefined ? { goal: parsed.data.goal } : {}),
+      ...(parsed.data.address !== undefined ? { address: parsed.data.address } : {}),
+      ...(parsed.data.city !== undefined ? { city: parsed.data.city } : {}),
+      ...(parsed.data.neighborhood !== undefined ? { neighborhood: parsed.data.neighborhood } : {}),
+      ...(parsed.data.bedrooms !== undefined ? { bedrooms: parsed.data.bedrooms } : {}),
+      ...(parsed.data.bathrooms !== undefined ? { bathrooms: parsed.data.bathrooms } : {}),
+      ...(parsed.data.areaM2 !== undefined ? { areaM2: parsed.data.areaM2 } : {}),
+      ...(parsed.data.garageSpots !== undefined ? { garageSpots: parsed.data.garageSpots } : {}),
+      ...(parsed.data.askingPriceCents !== undefined ? { askingPriceCents: parsed.data.askingPriceCents } : {}),
+      ...(parsed.data.description !== undefined ? { description: parsed.data.description } : {}),
+      ...(parsed.data.status !== undefined && parsed.data.status !== null ? { status: parsed.data.status } : {}),
+      ...(parsed.data.pendingItems !== undefined ? { pendingItems: parsed.data.pendingItems } : {}),
+      ...(parsed.data.metadata !== undefined ? { metadata: parsed.data.metadata as any } : {}),
+    },
+    include: { owner: { select: { id: true, name: true } } },
+  });
+
+  return res.json({ ok: true, data: updated });
+});
+
+imobRouter.get("/leads", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+  }
+
+  const items = await prisma.imobLead.findMany({
+    where: { tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
+    orderBy: { createdAt: "desc" },
+    take: 200,
+  });
+
+  return res.json({ ok: true, data: { items } });
+});
+
+imobRouter.post("/leads", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+  }
+
+  const parsed = imobLeadCreateSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() } });
+  }
+
+  const created = await prisma.imobLead.create({
+    data: {
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      name: parsed.data.name,
+      document: parsed.data.document ?? null,
+      email: parsed.data.email ?? null,
+      phone: parsed.data.phone ?? null,
+      goal: parsed.data.goal ?? null,
+      targetCity: parsed.data.targetCity ?? null,
+      targetNeighborhood: parsed.data.targetNeighborhood ?? null,
+      budgetMaxCents: parsed.data.budgetMaxCents,
+      stage: parsed.data.stage ?? undefined,
+      temperature: parsed.data.temperature ?? undefined,
+      pendingItems: parsed.data.pendingItems ?? undefined,
+      metadata: parsed.data.metadata as any,
+    },
+  });
+
+  return res.status(201).json({ ok: true, data: created });
+});
+
+imobRouter.get("/leads/:leadId", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+  }
+
+  const item = await prisma.imobLead.findFirst({
+    where: { id: req.params.leadId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
+  });
+
+  if (!item) {
+    return res.status(404).json({ ok: false, error: { code: "LEAD_NOT_FOUND", message: "Lead not found" } });
+  }
+
+  return res.json({ ok: true, data: item });
+});
+
+imobRouter.patch("/leads/:leadId", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+  }
+
+  const existing = await prisma.imobLead.findFirst({
+    where: { id: req.params.leadId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
+    select: { id: true },
+  });
+  if (!existing) {
+    return res.status(404).json({ ok: false, error: { code: "LEAD_NOT_FOUND", message: "Lead not found" } });
+  }
+
+  const parsed = imobLeadUpdateSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() } });
+  }
+
+  const updated = await prisma.imobLead.update({
+    where: { id: existing.id },
+    data: {
+      ...(parsed.data.name !== undefined ? { name: parsed.data.name } : {}),
+      ...(parsed.data.document !== undefined ? { document: parsed.data.document } : {}),
+      ...(parsed.data.email !== undefined ? { email: parsed.data.email } : {}),
+      ...(parsed.data.phone !== undefined ? { phone: parsed.data.phone } : {}),
+      ...(parsed.data.goal !== undefined ? { goal: parsed.data.goal } : {}),
+      ...(parsed.data.targetCity !== undefined ? { targetCity: parsed.data.targetCity } : {}),
+      ...(parsed.data.targetNeighborhood !== undefined ? { targetNeighborhood: parsed.data.targetNeighborhood } : {}),
+      ...(parsed.data.budgetMaxCents !== undefined ? { budgetMaxCents: parsed.data.budgetMaxCents } : {}),
+      ...(parsed.data.stage !== undefined && parsed.data.stage !== null ? { stage: parsed.data.stage } : {}),
+      ...(parsed.data.temperature !== undefined && parsed.data.temperature !== null ? { temperature: parsed.data.temperature } : {}),
+      ...(parsed.data.pendingItems !== undefined ? { pendingItems: parsed.data.pendingItems } : {}),
+      ...(parsed.data.metadata !== undefined ? { metadata: parsed.data.metadata as any } : {}),
+    },
+  });
+
+  return res.json({ ok: true, data: updated });
+});
+
+imobRouter.get("/cases", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+  }
+
+  const workspaceAccess = await readImobWorkspaceAccessProfile({ prisma, authContext });
+  if (!ensureImobWorkspacePermission(res, workspaceAccess.permissions, "imob.chat.use", "Sua função atual não pode usar o IMOB neste workspace.")) {
+    return;
+  }
+
+  const flow = typeof req.query.flow === "string" ? req.query.flow.trim() : null;
+  const status = typeof req.query.status === "string" ? req.query.status.trim() : null;
+
+  const items = await prisma.imobCase.findMany({
+    where: {
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      ...(flow ? { flow } : {}),
+      ...(status ? { status } : {}),
+    },
+    orderBy: { updatedAt: "desc" },
+    take: 200,
+    include: {
+      owner: { select: { id: true, name: true } },
+      property: { select: { id: true, propertyType: true, city: true, neighborhood: true } },
+      lead: { select: { id: true, name: true } },
+      _count: { select: { events: true } },
+    },
+  });
+
+  const filteredItems = items.filter((item) => canWorkspaceOperateImobStage(workspaceAccess.permissions, item.stage));
+
+  return res.json({ ok: true, data: { items: filteredItems } });
+});
+
+imobRouter.post("/cases", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+  }
+
+  const workspaceAccess = await readImobWorkspaceAccessProfile({ prisma, authContext });
+  if (!ensureImobWorkspacePermission(res, workspaceAccess.permissions, "imob.chat.use", "Sua função atual não pode usar o IMOB neste workspace.")) {
+    return;
+  }
+
+  const parsed = imobCaseCreateSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() } });
+  }
+  if (!ensureImobStagePermission(res, workspaceAccess.permissions, parsed.data.stage, `Sua função atual não pode operar a etapa ${parsed.data.stage} neste workspace.`)) {
+    return;
+  }
+
+  if (parsed.data.ownerId) {
+    const owner = await prisma.imobOwner.findFirst({ where: { id: parsed.data.ownerId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId }, select: { id: true } });
+    if (!owner) return res.status(404).json({ ok: false, error: { code: "OWNER_NOT_FOUND", message: "Owner not found for case" } });
+  }
+  if (parsed.data.propertyId) {
+    const property = await prisma.imobProperty.findFirst({ where: { id: parsed.data.propertyId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId }, select: { id: true } });
+    if (!property) return res.status(404).json({ ok: false, error: { code: "PROPERTY_NOT_FOUND", message: "Property not found for case" } });
+  }
+  if (parsed.data.leadId) {
+    const lead = await prisma.imobLead.findFirst({ where: { id: parsed.data.leadId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId }, select: { id: true } });
+    if (!lead) return res.status(404).json({ ok: false, error: { code: "LEAD_NOT_FOUND", message: "Lead not found for case" } });
+  }
+
+  const created = await prisma.$transaction(async (tx) => {
+    const item = await tx.imobCase.create({
+      data: {
+        tenantId: authContext.tenantId,
+        workspaceId: authContext.workspaceId,
+        threadId: parsed.data.threadId ?? null,
+        flow: parsed.data.flow,
+        stage: parsed.data.stage,
+        status: parsed.data.status,
+        ownerResponsible: parsed.data.ownerResponsible ?? null,
+        nextStep: parsed.data.nextStep ?? null,
+        blockers: parsed.data.blockers ?? undefined,
+        pendingItems: parsed.data.pendingItems ?? undefined,
+        ownerId: parsed.data.ownerId ?? null,
+        propertyId: parsed.data.propertyId ?? null,
+        leadId: parsed.data.leadId ?? null,
+        externalDealId: parsed.data.externalDealId ?? null,
+        metadata: parsed.data.metadata as any,
+      },
+      include: {
+        owner: { select: { id: true, name: true } },
+        property: { select: { id: true, propertyType: true, city: true, neighborhood: true } },
+        lead: { select: { id: true, name: true } },
+      },
+    });
+
+    await tx.imobCaseEvent.create({
+      data: {
+        caseId: item.id,
+        tenantId: authContext.tenantId,
+        workspaceId: authContext.workspaceId,
+        runId: parsed.data.initialEvent?.runId ?? null,
+        type: parsed.data.initialEvent?.type ?? "case.created",
+        actorType: parsed.data.initialEvent?.actorType ?? "system",
+        actorRef: parsed.data.initialEvent?.actorRef ?? null,
+        summary: parsed.data.initialEvent?.summary ?? `Case ${item.flow} created`,
+        evidenceRef: parsed.data.initialEvent?.evidenceRef ?? null,
+        payload: (parsed.data.initialEvent?.payload as any) ?? { flow: item.flow, stage: item.stage, status: item.status },
+      },
+    });
+
+    return item;
+  });
+
+  return res.status(201).json({ ok: true, data: created });
+});
+
+imobRouter.get("/cases/:caseId", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+  }
+
+  const workspaceAccess = await readImobWorkspaceAccessProfile({ prisma, authContext });
+  if (!ensureImobWorkspacePermission(res, workspaceAccess.permissions, "imob.chat.use", "Sua função atual não pode usar o IMOB neste workspace.")) {
+    return;
+  }
+
+  const item = await prisma.imobCase.findFirst({
+    where: { id: req.params.caseId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
+    include: {
+      owner: true,
+      property: true,
+      lead: true,
+      events: { orderBy: { createdAt: "desc" }, take: 50 },
+    },
+  });
+
+  if (!item) {
+    return res.status(404).json({ ok: false, error: { code: "CASE_NOT_FOUND", message: "Case not found" } });
+  }
+  if (!ensureImobStagePermission(res, workspaceAccess.permissions, item.stage, `Sua função atual não pode operar a etapa ${item.stage} neste workspace.`)) {
+    return;
+  }
+
+  return res.json({ ok: true, data: item });
+});
+
+imobRouter.patch("/cases/:caseId", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+  }
+
+  const workspaceAccess = await readImobWorkspaceAccessProfile({ prisma, authContext });
+  if (!ensureImobWorkspacePermission(res, workspaceAccess.permissions, "imob.chat.use", "Sua função atual não pode usar o IMOB neste workspace.")) {
+    return;
+  }
+
+  const existing = await prisma.imobCase.findFirst({
+    where: { id: req.params.caseId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
+    select: { id: true, flow: true, stage: true, status: true },
+  });
+  if (!existing) {
+    return res.status(404).json({ ok: false, error: { code: "CASE_NOT_FOUND", message: "Case not found" } });
+  }
+
+  const parsed = imobCaseUpdateSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() } });
+  }
+  if (!ensureImobStagePermission(res, workspaceAccess.permissions, existing.stage, `Sua função atual não pode operar a etapa ${existing.stage} neste workspace.`)) {
+    return;
+  }
+  if (parsed.data.stage && !ensureImobStagePermission(res, workspaceAccess.permissions, parsed.data.stage, `Sua função atual não pode mover o caso para a etapa ${parsed.data.stage} neste workspace.`)) {
+    return;
+  }
+
+  if (parsed.data.ownerId) {
+    const owner = await prisma.imobOwner.findFirst({ where: { id: parsed.data.ownerId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId }, select: { id: true } });
+    if (!owner) return res.status(404).json({ ok: false, error: { code: "OWNER_NOT_FOUND", message: "Owner not found for case" } });
+  }
+  if (parsed.data.propertyId) {
+    const property = await prisma.imobProperty.findFirst({ where: { id: parsed.data.propertyId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId }, select: { id: true } });
+    if (!property) return res.status(404).json({ ok: false, error: { code: "PROPERTY_NOT_FOUND", message: "Property not found for case" } });
+  }
+  if (parsed.data.leadId) {
+    const lead = await prisma.imobLead.findFirst({ where: { id: parsed.data.leadId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId }, select: { id: true } });
+    if (!lead) return res.status(404).json({ ok: false, error: { code: "LEAD_NOT_FOUND", message: "Lead not found for case" } });
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const item = await tx.imobCase.update({
+      where: { id: existing.id },
+      data: {
+        ...(parsed.data.threadId !== undefined ? { threadId: parsed.data.threadId } : {}),
+        ...(parsed.data.flow !== undefined && parsed.data.flow !== null ? { flow: parsed.data.flow } : {}),
+        ...(parsed.data.stage !== undefined && parsed.data.stage !== null ? { stage: parsed.data.stage } : {}),
+        ...(parsed.data.status !== undefined && parsed.data.status !== null ? { status: parsed.data.status } : {}),
+        ...(parsed.data.ownerResponsible !== undefined ? { ownerResponsible: parsed.data.ownerResponsible } : {}),
+        ...(parsed.data.nextStep !== undefined ? { nextStep: parsed.data.nextStep } : {}),
+        ...(parsed.data.blockers !== undefined ? { blockers: parsed.data.blockers } : {}),
+        ...(parsed.data.pendingItems !== undefined ? { pendingItems: parsed.data.pendingItems } : {}),
+        ...(parsed.data.ownerId !== undefined
+          ? { owner: parsed.data.ownerId ? { connect: { id: parsed.data.ownerId } } : { disconnect: true } }
+          : {}),
+        ...(parsed.data.propertyId !== undefined
+          ? { property: parsed.data.propertyId ? { connect: { id: parsed.data.propertyId } } : { disconnect: true } }
+          : {}),
+        ...(parsed.data.leadId !== undefined
+          ? { lead: parsed.data.leadId ? { connect: { id: parsed.data.leadId } } : { disconnect: true } }
+          : {}),
+        ...(parsed.data.externalDealId !== undefined ? { externalDealId: parsed.data.externalDealId } : {}),
+        ...(parsed.data.metadata !== undefined ? { metadata: parsed.data.metadata as any } : {}),
+      },
+      include: {
+        owner: { select: { id: true, name: true } },
+        property: { select: { id: true, propertyType: true, city: true, neighborhood: true } },
+        lead: { select: { id: true, name: true } },
+      },
+    });
+
+    await tx.imobCaseEvent.create({
+      data: {
+        caseId: item.id,
+        tenantId: authContext.tenantId,
+        workspaceId: authContext.workspaceId,
+        runId: parsed.data.eventRunId ?? null,
+        type: parsed.data.eventType ?? "case.updated",
+        actorType: "system",
+        actorRef: null,
+        summary: parsed.data.eventSummary ?? `Case ${item.flow} updated`,
+        evidenceRef: null,
+        payload: (parsed.data.eventPayload as any) ?? { flow: item.flow, stage: item.stage, status: item.status },
+      },
+    });
+
+    return item;
+  });
+
+  return res.json({ ok: true, data: updated });
+});
+
+imobRouter.get("/cases/:caseId/events", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+  }
+
+  const workspaceAccess = await readImobWorkspaceAccessProfile({ prisma, authContext });
+  if (!ensureImobWorkspacePermission(res, workspaceAccess.permissions, "imob.chat.use", "Sua função atual não pode usar o IMOB neste workspace.")) {
+    return;
+  }
+
+  const caseItem = await prisma.imobCase.findFirst({
+    where: { id: req.params.caseId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
+    select: { id: true, stage: true },
+  });
+  if (!caseItem) {
+    return res.status(404).json({ ok: false, error: { code: "CASE_NOT_FOUND", message: "Case not found" } });
+  }
+  if (!ensureImobStagePermission(res, workspaceAccess.permissions, caseItem.stage, `Sua função atual não pode operar a etapa ${caseItem.stage} neste workspace.`)) {
+    return;
+  }
+
+  const items = await prisma.imobCaseEvent.findMany({
+    where: { caseId: caseItem.id, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
+    orderBy: { createdAt: "desc" },
+    take: 200,
+  });
+
+  return res.json({ ok: true, data: { items } });
+});
+
+imobRouter.post("/cases/:caseId/events", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+  }
+
+  const workspaceAccess = await readImobWorkspaceAccessProfile({ prisma, authContext });
+  if (!ensureImobWorkspacePermission(res, workspaceAccess.permissions, "imob.chat.use", "Sua função atual não pode usar o IMOB neste workspace.")) {
+    return;
+  }
+
+  const caseItem = await prisma.imobCase.findFirst({
+    where: { id: req.params.caseId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
+    select: { id: true, stage: true },
+  });
+  if (!caseItem) {
+    return res.status(404).json({ ok: false, error: { code: "CASE_NOT_FOUND", message: "Case not found" } });
+  }
+  if (!ensureImobStagePermission(res, workspaceAccess.permissions, caseItem.stage, `Sua função atual não pode operar a etapa ${caseItem.stage} neste workspace.`)) {
+    return;
+  }
+
+  const parsed = imobCaseEventInputSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() } });
+  }
+
+  if (parsed.data.runId) {
+    const run = await prisma.run.findFirst({
+      where: { id: parsed.data.runId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
+      select: { id: true },
+    });
+    if (!run) {
+      return res.status(404).json({ ok: false, error: { code: "RUN_NOT_FOUND", message: "Run not found for case event" } });
+    }
+  }
+
+  const created = await prisma.imobCaseEvent.create({
+    data: {
+      caseId: caseItem.id,
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      runId: parsed.data.runId ?? null,
+      type: parsed.data.type,
+      actorType: parsed.data.actorType,
+      actorRef: parsed.data.actorRef ?? null,
+      summary: parsed.data.summary,
+      evidenceRef: parsed.data.evidenceRef ?? null,
+      payload: parsed.data.payload as any,
+    },
+  });
+
+  return res.status(201).json({ ok: true, data: created });
 });
 
 imobRouter.post("/search/inventory", async (req, res) => {

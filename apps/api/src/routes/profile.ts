@@ -3,6 +3,11 @@ import { z } from "zod";
 import { prismaGlobal } from "@repo/db";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
 import {
+  createWorkspaceInvitation,
+  readWorkspaceManagementSummary,
+  upsertWorkspaceRoleConfig,
+} from "../services/workspaceResponsibility";
+import {
   canTenantUseReservedDefaultWorkspaceName,
   isReservedDefaultWorkspaceName,
   RESERVED_DEFAULT_WORKSPACE_ALLOWED_TENANT,
@@ -45,6 +50,20 @@ const profileUpdateSchema = z.object({
   country: z.string().max(120).optional(),
   tenantName: z.string().max(160).optional(),
   workspaceName: z.string().max(160).optional(),
+  workspaceRoleOptions: z.array(z.union([
+    z.string().max(120),
+    z.object({
+      label: z.string().max(120),
+      permissions: z.array(z.string().max(120)).max(20).optional(),
+    }),
+  ])).max(20).optional(),
+});
+
+const workspaceInvitationSchema = z.object({
+  email: z.string().email(),
+  fullName: z.string().max(160).optional(),
+  roleKey: z.string().min(1).max(120),
+  permissions: z.array(z.string().max(120)).max(20).optional(),
 });
 
 async function readProfileSummary(req: TenantAwareRequest) {
@@ -110,9 +129,15 @@ async function readProfileSummary(req: TenantAwareRequest) {
       `;
       extra = legacyRows[0] ?? null;
     } catch {
-      // Legacy table may not exist (or may be incompatible); ignore safely.
+      // Legacy table may not exist; ignore.
     }
   }
+
+  const workspaceSummary = await readWorkspaceManagementSummary({
+    tenantId: authContext.tenantId,
+    workspaceId: authContext.workspaceId,
+    userId: authContext.userId,
+  });
 
   return {
     fullName: user.displayName ?? "",
@@ -130,6 +155,14 @@ async function readProfileSummary(req: TenantAwareRequest) {
     workspace: {
       id: authContext.workspaceId,
       name: currentWorkspace?.name ?? authContext.workspaceId,
+      roleKey: workspaceSummary.selectedRoleKey ?? "",
+      roleLabel: workspaceSummary.selectedRoleLabel ?? "",
+      responsibleLabel: workspaceSummary.responsibleLabel,
+      roleOptions: workspaceSummary.options,
+      permissions: workspaceSummary.permissions,
+      canManageMembers: workspaceSummary.canManageMembers,
+      members: workspaceSummary.members,
+      invitations: workspaceSummary.invitations,
     },
     workspaces: workspaces.map((workspace) => ({
       id: workspace.id,
@@ -199,6 +232,18 @@ profileRouter.put("/profile/me", async (req, res) => {
   const normalizedFullName = payload.fullName?.trim();
   const normalizedTenantName = payload.tenantName?.trim();
   const normalizedWorkspaceName = payload.workspaceName?.trim();
+  const normalizedWorkspaceRoleOptions = payload.workspaceRoleOptions?.flatMap((item) => {
+    if (typeof item === "string") {
+      const label = item.trim();
+      return label ? [{ label }] : [];
+    }
+    const label = item.label.trim();
+    if (!label) return [];
+    return [{
+      label,
+      permissions: item.permissions?.map((permission) => permission.trim()).filter(Boolean),
+    }];
+  });
 
   if (normalizedWorkspaceName && isReservedDefaultWorkspaceName(normalizedWorkspaceName)) {
     const allowed = await canTenantUseReservedDefaultWorkspaceName({
@@ -270,6 +315,17 @@ profileRouter.put("/profile/me", async (req, res) => {
           country = EXCLUDED.country,
           updated_at = NOW()
       `;
+
+      if (normalizedWorkspaceRoleOptions !== undefined) {
+        await upsertWorkspaceRoleConfig({
+          prisma: tx,
+          tenantId: authContext.tenantId,
+          workspaceId: authContext.workspaceId,
+          userId: authContext.userId!,
+          roleLabels: normalizedWorkspaceRoleOptions,
+          selectedRoleKey: null,
+        });
+      }
     });
   } catch (error) {
     const maybe = error as { code?: string };
@@ -288,6 +344,54 @@ profileRouter.put("/profile/me", async (req, res) => {
 
   const summary = await readProfileSummary(typedReq);
   return res.json({ ok: true, data: summary });
+});
+
+profileRouter.post("/profile/workspace-members/invitations", async (req, res) => {
+  const typedReq = req as TenantAwareRequest;
+  const authContext = typedReq.authContext;
+  if (!authContext?.userId) {
+    return res.status(409).json({
+      ok: false,
+      error: {
+        code: "USER_CONTEXT_REQUIRED",
+        message: "Authenticated user context is required for workspace invitations",
+      },
+    });
+  }
+
+  const parsed = workspaceInvitationSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({
+      ok: false,
+      error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() },
+    });
+  }
+
+  try {
+    const invitation = await createWorkspaceInvitation({
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      invitedByUserId: authContext.userId,
+      email: parsed.data.email,
+      fullName: parsed.data.fullName,
+      roleKey: parsed.data.roleKey,
+      permissions: parsed.data.permissions,
+    });
+    return res.status(201).json({ ok: true, data: invitation });
+  } catch (error) {
+    const maybe = error as { code?: string; status?: number; message?: string };
+    if (maybe?.status) {
+      return res.status(maybe.status).json({
+        ok: false,
+        error: { code: maybe.code ?? "WORKSPACE_INVITATION_FAILED", message: maybe.message ?? "Invitation failed" },
+      });
+    }
+    typedReq.logger?.error({ error }, "workspace.invitation_failed");
+    return res.status(500).json({
+      ok: false,
+      error: { code: "WORKSPACE_INVITATION_FAILED", message: "Failed to create workspace invitation" },
+    });
+  }
 });
 
 export { profileRouter };

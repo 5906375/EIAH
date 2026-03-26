@@ -408,6 +408,39 @@ export type ProfileResponse = {
     workspace: {
       id: string;
       name: string;
+      roleKey: string;
+      roleLabel: string;
+      responsibleLabel: string;
+      roleOptions: Array<{
+        key: string;
+        label: string;
+        defaultPermissions: string[];
+      }>;
+      permissions: string[];
+      canManageMembers: boolean;
+      members: Array<{
+        userId: string;
+        email: string;
+        fullName: string;
+        roleKey: string;
+        roleLabel: string;
+        permissions: string[];
+        status: string;
+        isCurrentUser: boolean;
+        createdAt: string;
+      }>;
+      invitations: Array<{
+        id: string;
+        email: string;
+        fullName: string;
+        roleKey: string;
+        roleLabel: string;
+        permissions: string[];
+        status: string;
+        token: string;
+        expiresAt: string;
+        createdAt: string;
+      }>;
     };
     workspaces: Array<{
       id: string;
@@ -415,6 +448,59 @@ export type ProfileResponse = {
       createdAt?: string;
       isCurrent: boolean;
     }>;
+  };
+  error?: { code?: string; message?: string; details?: unknown };
+};
+
+export type WorkspaceInvitationPreviewResponse = {
+  ok: boolean;
+  data?: {
+    token: string;
+    tenantId: string;
+    tenantName: string;
+    workspaceId: string;
+    workspaceName: string;
+    email: string;
+    fullName: string;
+    roleKey: string;
+    roleLabel: string;
+    permissions: string[];
+    status: string;
+    expiresAt: string;
+    expired: boolean;
+  };
+  error?: { code?: string; message?: string; details?: unknown };
+};
+
+export type WorkspaceInvitationAcceptResponse = {
+  ok: boolean;
+  data?: {
+    token: string;
+    tenantId: string;
+    workspaceId: string;
+    userId: string;
+    email: string;
+    fullName: string;
+    roleKey: string;
+    roleLabel: string;
+    responsibleLabel: string;
+    method: "password" | "token";
+  };
+  error?: { code?: string; message?: string; details?: unknown };
+};
+
+export type WorkspaceInvitationCreateResponse = {
+  ok: boolean;
+  data?: {
+    id: string;
+    token: string;
+    email: string;
+    fullName: string;
+    roleKey: string;
+    roleLabel: string;
+    permissions: string[];
+    status: string;
+    expiresAt: string;
   };
   error?: { code?: string; message?: string; details?: unknown };
 };
@@ -713,6 +799,26 @@ export async function apiOnboarding(body: {
   });
 }
 
+export async function apiPreviewWorkspaceInvitation(token: string): Promise<WorkspaceInvitationPreviewResponse> {
+  return http(`/auth/workspace-invitations/preview`, {
+    method: "POST",
+    body: JSON.stringify({ token }),
+  });
+}
+
+export async function apiAcceptWorkspaceInvitation(body: {
+  token: string;
+  loginToken?: string;
+  email?: string;
+  fullName?: string;
+  password?: string;
+}): Promise<WorkspaceInvitationAcceptResponse> {
+  return http(`/auth/workspace-invitations/accept`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
 export async function apiLegacyLogin(body: {
   email?: string;
   password?: string;
@@ -983,6 +1089,91 @@ export type ImobContractPreview = {
   };
 };
 
+export type ImobOwner = {
+  id: string;
+  tenantId: string;
+  workspaceId: string;
+  name: string;
+  document: string | null;
+  email: string | null;
+  phone: string | null;
+  personType: string;
+  status: string;
+  pendingItems: unknown;
+  metadata: unknown;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ImobProperty = {
+  id: string;
+  tenantId: string;
+  workspaceId: string;
+  ownerId: string | null;
+  propertyType: string | null;
+  goal: string | null;
+  address: string | null;
+  city: string | null;
+  neighborhood: string | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  areaM2: number | null;
+  garageSpots: number | null;
+  askingPriceCents: number | null;
+  description: string | null;
+  status: string;
+  pendingItems: unknown;
+  metadata: unknown;
+  createdAt: string;
+  updatedAt: string;
+  owner?: { id: string; name: string } | null;
+};
+
+export type ImobLead = {
+  id: string;
+  tenantId: string;
+  workspaceId: string;
+  name: string;
+  document: string | null;
+  email: string | null;
+  phone: string | null;
+  goal: string | null;
+  targetCity: string | null;
+  targetNeighborhood: string | null;
+  budgetMaxCents: number | null;
+  stage: string;
+  temperature: string;
+  pendingItems: unknown;
+  metadata: unknown;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ImobCase = {
+  id: string;
+  tenantId: string;
+  workspaceId: string;
+  threadId: string | null;
+  flow: string;
+  stage: string;
+  status: string;
+  ownerResponsible: string | null;
+  nextStep: string | null;
+  blockers: unknown;
+  pendingItems: unknown;
+  ownerId: string | null;
+  propertyId: string | null;
+  leadId: string | null;
+  externalDealId: string | null;
+  metadata: unknown;
+  createdAt: string;
+  updatedAt: string;
+  owner?: { id: string; name: string } | null;
+  property?: { id: string; propertyType: string | null; city: string | null; neighborhood: string | null } | null;
+  lead?: { id: string; name: string } | null;
+  _count?: { events: number };
+};
+
 export type ImobContractInterviewState = {
   contractType: "locacao" | "compra_venda" | "administracao" | "temporada" | null;
   currentStep: number;
@@ -1163,16 +1354,38 @@ export type ImobExecutionRequest = {
   input: Record<string, unknown>;
 };
 
+export type ImobOperationalOwner = "Corretor" | "Jurídico" | "Financeiro" | "Cliente" | "IMOB Ops";
+
+export type ImobCaseContext = {
+  caseId: string;
+  flow: string;
+  stage: string;
+  status: string;
+  ownerResponsible?: ImobOperationalOwner | null;
+  nextStep?: string | null;
+  blocker?: string | null;
+  pendingItems?: string[];
+  threadId?: string | null;
+  updatedAt?: string;
+};
+
+export type ImobOperationalPresentation = {
+  text: string;
+  card?: ImobPresentationCard;
+  suggestedNextAction?: string;
+  owner?: ImobOperationalOwner;
+  nextStep?: string;
+  blocker?: string | null;
+  pendingFieldLabels?: string[];
+  dedupeKey?: string;
+};
+
 export type ImobResolveTurnResponse = {
   mode: "consult" | "search" | "execute" | "search_knowledge" | "blocked";
   action: string;
   threadLabel: string;
   conversationState: ImobThreadConversationState;
-  presentation: {
-    text: string;
-    card?: ImobPresentationCard;
-    suggestedNextAction?: string;
-  };
+  presentation: ImobOperationalPresentation;
   executionRequest?: ImobExecutionRequest;
   searchRequest?: {
     query: string;
@@ -1194,6 +1407,7 @@ export type ImobResolveTurnResponse = {
     REAL_ESTATE_CORE: boolean;
     IMOB_INSTALLED?: boolean;
   };
+  caseContext?: ImobCaseContext | null;
 };
 
 export type ImobInventorySearchResponse = {
@@ -1362,11 +1576,35 @@ export async function apiCreateImobChatTelemetry(
 export async function apiResolveImobTurn(body: {
   message: string;
   threadLabel?: string | null;
+  threadId?: string | null;
+  caseId?: string | null;
   threadState?: ImobThreadConversationState | null;
 }) {
   return http<{ ok: true; data: ImobResolveTurnResponse }>(`/imob/chat/resolve-turn`, {
     method: "POST",
     body: JSON.stringify(body),
+  });
+}
+
+export async function apiListImobOwners() {
+  return http<{ ok: true; data: { items: ImobOwner[] } }>(`/imob/owners`, {
+    method: "GET",
+  });
+}
+
+export async function apiListImobProperties() {
+  return http<{ ok: true; data: { items: ImobProperty[] } }>(`/imob/properties`, {
+    method: "GET",
+  });
+}
+
+export async function apiListImobCases(params?: { flow?: string; status?: string }) {
+  const query = new URLSearchParams();
+  if (params?.flow) query.append("flow", params.flow);
+  if (params?.status) query.append("status", params.status);
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  return http<{ ok: true; data: { items: ImobCase[] } }>(`/imob/cases${qs}`, {
+    method: "GET",
   });
 }
 
@@ -2188,6 +2426,18 @@ export async function apiListWorkspaces() {
   return http<WorkspaceListResponse>("/workspaces", { method: "GET" });
 }
 
+export async function apiCreateWorkspaceInvitation(body: {
+  email: string;
+  fullName?: string;
+  roleKey: string;
+  permissions?: string[];
+}) {
+  return http<WorkspaceInvitationCreateResponse>("/profile/workspace-members/invitations", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
 export async function apiGetProfile() {
   return http<ProfileResponse>("/profile/me", { method: "GET" });
 }
@@ -2203,6 +2453,11 @@ export async function apiUpdateProfile(body: {
   country?: string;
   tenantName?: string;
   workspaceName?: string;
+  workspaceRoleKey?: string;
+  workspaceRoleOptions?: Array<{
+    label: string;
+    permissions?: string[];
+  }>;
 }) {
   return http<ProfileResponse>("/profile/me", {
     method: "PUT",
@@ -2308,6 +2563,13 @@ export async function apiUploadDocuments(formData: FormData, agentSlug: string) 
   return http<{ ok: boolean; data: UploadedDocumentInfo[] }>(`/uploads?${qs.toString()}`, {
     method: "POST",
     body: formData,
+  });
+}
+
+export async function apiResolveImobAttachment(input: { caseId?: string | null; threadId?: string | null; documentIds: string[] }) {
+  return http<{ ok: boolean; data: { resolved: boolean; caseContext?: ImobCaseContext | null; presentation: ImobOperationalPresentation } }>(`/imob/attachments/resolve`, {
+    method: "POST",
+    body: JSON.stringify(input),
   });
 }
 

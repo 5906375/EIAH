@@ -3,53 +3,20 @@ import { useSearchParams, Link } from "react-router-dom";
 import { useSession } from "@/state/sessionStore";
 import {
   apiGetImobChatTelemetrySummary,
+  apiListImobCases,
   apiListImobChatThreads,
+  apiListImobOwners,
+  apiListImobProperties,
+  type ImobCase,
   type ImobChatThread,
+  type ImobOwner,
+  type ImobProperty,
 } from "@/lib/api";
 import { ThreadPanel } from "@/features/imob/ThreadPanel";
 
 type Section = "imoveis" | "processos" | "parceiros";
 
-type PropertyRow = {
-  id: string;
-  title: string;
-  city: string;
-  price: number;
-  status: "available" | "reserved" | "contract";
-};
-
-type ProcessRow = {
-  runId: string;
-  client: string;
-  action: string;
-  status: "running" | "blocked" | "success";
-};
-
-type PartnerRow = {
-  id: string;
-  name: string;
-  trust: number;
-  activeCases: number;
-  status: "ativo" | "revisao";
-};
-
-const syntheticProperties: PropertyRow[] = [
-  { id: "imob-82912", title: "Apto Vista Mar", city: "Itapema", price: 1450000, status: "available" },
-  { id: "imob-82913", title: "Apto Centro 2Q", city: "Balneário Camboriú", price: 920000, status: "reserved" },
-  { id: "imob-82914", title: "Cobertura Brava", city: "Itajaí", price: 2350000, status: "contract" },
-];
-
-const syntheticProcesses: ProcessRow[] = [
-  { runId: "run-imob-8421", client: "João Martins", action: "Agendar visita", status: "running" },
-  { runId: "run-imob-8422", client: "Marina Costa", action: "Criar contrato", status: "blocked" },
-  { runId: "run-imob-8423", client: "Ricardo Nunes", action: "Liberar comissão", status: "success" },
-];
-
-const syntheticPartners: PartnerRow[] = [
-  { id: "partner-prime", name: "Prime Imóveis", trust: 92, activeCases: 4, status: "ativo" },
-  { id: "partner-litoral", name: "Litoral Brokers", trust: 87, activeCases: 2, status: "ativo" },
-  { id: "partner-atlantica", name: "Atlântica Realty", trust: 78, activeCases: 1, status: "revisao" },
-];
+type DashboardSource = "real" | "empty";
 
 const syntheticThreads: ImobChatThread[] = [
   {
@@ -78,8 +45,9 @@ const syntheticThreads: ImobChatThread[] = [
   },
 ];
 
-function currency(value: number) {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(value);
+function currencyFromCents(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "Preço não informado";
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(value / 100);
 }
 
 function sectionLabel(section: Section) {
@@ -99,6 +67,85 @@ function formatPct(value: number | null | undefined) {
   return `${value.toFixed(1)}%`;
 }
 
+function asStringList(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => (typeof item === "string" ? item.trim() : "")).filter(Boolean);
+}
+
+function formatImobStatusLabel(status: string | null | undefined) {
+  const normalized = (status ?? "").trim().toLowerCase();
+  if (!normalized) return "sem status";
+  if (normalized === "pending_data") return "pendente de dados";
+  if (normalized === "ready_for_review") return "pronto para revisão";
+  if (normalized === "qualified") return "qualificado";
+  if (normalized === "running") return "em andamento";
+  if (normalized === "blocked") return "bloqueado";
+  if (normalized === "success" || normalized === "completed") return "concluído";
+  return normalized.replace(/_/g, " ");
+}
+
+function formatCaseFlowLabel(flow: string | null | undefined) {
+  const normalized = (flow ?? "").trim().toLowerCase();
+  if (normalized === "owner.create" || normalized === "property.create") return "Captação";
+  if (normalized === "lead.qualify") return "Lead";
+  if (normalized === "visit.schedule") return "Visita";
+  if (normalized === "proposal.create") return "Proposta";
+  if (normalized === "documents.collect") return "Documentos";
+  if (normalized === "deal.review") return "Deal review";
+  if (normalized === "contract.prepare") return "Contrato";
+  if (normalized === "commission.settle") return "Comissão";
+  if (normalized === "listing.activate") return "Listing";
+  return flow?.trim() || "Caso";
+}
+
+function propertyTitle(item: ImobProperty) {
+  const address = item.address?.trim();
+  if (address) return address;
+  const propertyType = item.propertyType?.trim();
+  if (propertyType) return `${propertyType} ${item.id.slice(-6)}`;
+  return `Imóvel ${item.id.slice(-6)}`;
+}
+
+function propertyStatusTone(status: string | null | undefined) {
+  const normalized = (status ?? "").trim().toLowerCase();
+  if (normalized === "ready_for_review") return "text-accent border-accent/40";
+  if (normalized === "pending_data") return "text-amber-200 border-amber-300/30";
+  if (normalized === "qualified" || normalized === "completed" || normalized === "success") return "text-emerald-300 border-emerald-400/40";
+  if (normalized === "blocked") return "text-rose-300 border-rose-400/40";
+  return "text-muted-foreground border-white/15";
+}
+
+function processStatusTone(status: string | null | undefined) {
+  const normalized = (status ?? "").trim().toLowerCase();
+  if (normalized === "success" || normalized === "completed" || normalized === "ready_for_review") return "text-emerald-300 border-emerald-400/40";
+  if (normalized === "blocked") return "text-rose-300 border-rose-400/40";
+  if (normalized === "running" || normalized === "collecting") return "text-amber-200 border-amber-300/30";
+  return "text-muted-foreground border-white/15";
+}
+
+function partnerStatusTone(status: string | null | undefined) {
+  const normalized = (status ?? "").trim().toLowerCase();
+  if (normalized === "ready_for_review" || normalized === "qualified") return "text-emerald-300 border-emerald-400/40";
+  if (normalized === "pending_data") return "text-amber-200 border-amber-300/30";
+  if (normalized === "blocked") return "text-rose-300 border-rose-400/40";
+  return "text-muted-foreground border-white/15";
+}
+
+function buildImobChatHref(base: {
+  conversationId: string | null;
+  caseId?: string | null;
+  threadId?: string | null;
+  autoprompt?: string | null;
+}) {
+  const params = new URLSearchParams();
+  if (base.conversationId) params.set("conversationId", base.conversationId);
+  if (base.caseId) params.set("caseId", base.caseId);
+  if (base.threadId) params.set("threadId", base.threadId);
+  if (base.autoprompt) params.set("autoprompt", base.autoprompt);
+  const query = params.toString();
+  return `/app/imob/chat${query ? `?${query}` : ""}`;
+}
+
 const ImobDashboardPage: React.FC = () => {
   const session = useSession();
   const brandName = session.branding?.brandName?.trim() || "Tenant";
@@ -107,8 +154,7 @@ const ImobDashboardPage: React.FC = () => {
   const conversationId = (searchParams.get("conversationId") || "").trim() || null;
   const requestedThreadId = (searchParams.get("threadId") || "").trim() || null;
   const rawSection = (searchParams.get("section") || "imoveis").toLowerCase();
-  const section: Section =
-    rawSection === "processos" || rawSection === "parceiros" ? rawSection : "imoveis";
+  const section: Section = rawSection === "processos" || rawSection === "parceiros" ? rawSection : "imoveis";
   const [selectedThreadId, setSelectedThreadId] = React.useState<string | null>(requestedThreadId);
   const [threads, setThreads] = React.useState<ImobChatThread[]>(syntheticThreads);
   const [telemetrySummary, setTelemetrySummary] = React.useState<{
@@ -122,6 +168,12 @@ const ImobDashboardPage: React.FC = () => {
     };
   } | null>(null);
   const [telemetryLoading, setTelemetryLoading] = React.useState(false);
+  const [owners, setOwners] = React.useState<ImobOwner[]>([]);
+  const [properties, setProperties] = React.useState<ImobProperty[]>([]);
+  const [cases, setCases] = React.useState<ImobCase[]>([]);
+  const [dashboardLoading, setDashboardLoading] = React.useState(true);
+  const [dashboardError, setDashboardError] = React.useState<string | null>(null);
+  const [dashboardSource, setDashboardSource] = React.useState<DashboardSource>("empty");
 
   const setSection = (next: Section) => {
     const params = new URLSearchParams(searchParams);
@@ -175,6 +227,40 @@ const ImobDashboardPage: React.FC = () => {
       mounted = false;
     };
   }, [conversationId, requestedThreadId]);
+
+  React.useEffect(() => {
+    let mounted = true;
+    setDashboardLoading(true);
+    setDashboardError(null);
+
+    Promise.all([apiListImobOwners(), apiListImobProperties(), apiListImobCases()])
+      .then(([ownersResponse, propertiesResponse, casesResponse]) => {
+        if (!mounted) return;
+        const nextOwners = ownersResponse.data.items ?? [];
+        const nextProperties = propertiesResponse.data.items ?? [];
+        const nextCases = casesResponse.data.items ?? [];
+        setOwners(nextOwners);
+        setProperties(nextProperties);
+        setCases(nextCases);
+        setDashboardSource(nextOwners.length > 0 || nextProperties.length > 0 || nextCases.length > 0 ? "real" : "empty");
+      })
+      .catch((error) => {
+        if (!mounted) return;
+        setOwners([]);
+        setProperties([]);
+        setCases([]);
+        setDashboardSource("empty");
+        setDashboardError(error instanceof Error ? error.message : "Falha ao carregar CRM operacional do IMOB");
+      })
+      .finally(() => {
+        if (!mounted) return;
+        setDashboardLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [session.workspaceId]);
 
   React.useEffect(() => {
     let mounted = true;
@@ -232,6 +318,46 @@ const ImobDashboardPage: React.FC = () => {
     persistSuccessRatePct: 100,
   };
 
+  const ownerPropertyCount = React.useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const item of properties) {
+      if (!item.ownerId) continue;
+      counts.set(item.ownerId, (counts.get(item.ownerId) ?? 0) + 1);
+    }
+    return counts;
+  }, [properties]);
+
+  const ownerCaseCount = React.useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const item of cases) {
+      if (!item.ownerId) continue;
+      counts.set(item.ownerId, (counts.get(item.ownerId) ?? 0) + 1);
+    }
+    return counts;
+  }, [cases]);
+
+  const activeProcessCount = cases.filter((item) => item.status === "collecting" || item.status === "running").length;
+  const blockedProcessCount = cases.filter((item) => item.status === "blocked").length;
+  const evidencedProcessCount = cases.filter((item) => (item._count?.events ?? 0) > 0).length;
+  const readyForReviewCount = properties.filter((item) => item.status === "ready_for_review").length;
+  const ownerPendingCount = owners.filter((item) => asStringList(item.pendingItems).length > 0).length;
+
+  const latestCaseByOwnerId = React.useMemo(() => {
+    const map = new Map<string, ImobCase>();
+    for (const item of cases) {
+      if (item.ownerId && !map.has(item.ownerId)) map.set(item.ownerId, item);
+    }
+    return map;
+  }, [cases]);
+
+  const latestCaseByPropertyId = React.useMemo(() => {
+    const map = new Map<string, ImobCase>();
+    for (const item of cases) {
+      if (item.propertyId && !map.has(item.propertyId)) map.set(item.propertyId, item);
+    }
+    return map;
+  }, [cases]);
+
   return (
     <div className="space-y-6">
       <header className="rounded-3xl border border-white/10 bg-gradient-to-r from-accent/10 via-surface/80 to-transparent p-8">
@@ -265,68 +391,228 @@ const ImobDashboardPage: React.FC = () => {
         </div>
       </header>
 
+      {dashboardError ? (
+        <section className="rounded-3xl border border-rose-400/20 bg-rose-500/5 p-4 text-sm text-rose-100 sm:p-6">
+          Falha ao carregar o CRM operacional do IMOB: {dashboardError}
+        </section>
+      ) : null}
+
       {section === "imoveis" ? (
         <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 sm:p-6">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">Imóveis</h2>
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
-            {syntheticProperties.map((item) => (
-              <article key={item.id} className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <p className="text-sm font-semibold text-foreground">{item.title}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{item.city} • {item.id}</p>
-                <p className="mt-2 text-base font-semibold text-foreground">{currency(item.price)}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {item.status === "available" ? "Disponível" : item.status === "reserved" ? "Reservado" : "Em contrato"}
-                </p>
-              </article>
-            ))}
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">Imóveis</h2>
+            <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              {dashboardLoading ? "atualizando" : dashboardSource === "real" ? "dados ao vivo" : "sem imóveis cadastrados"}
+            </span>
           </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {properties.map((item) => {
+              const relatedCase = latestCaseByPropertyId.get(item.id) ?? null;
+              const href = buildImobChatHref({
+                conversationId,
+                caseId: relatedCase?.id ?? null,
+                threadId: relatedCase?.threadId ?? null,
+                autoprompt: item.address?.trim() ? `mostrar imóvel endereço ${item.address.trim()}` : `mostrar imóvel ${item.id}`,
+              });
+              const pendingItems = asStringList(item.pendingItems);
+              const resolveHref = pendingItems.length > 0
+                ? buildImobChatHref({
+                    conversationId,
+                    caseId: relatedCase?.id ?? null,
+                    threadId: relatedCase?.threadId ?? null,
+                    autoprompt: item.address?.trim()
+                      ? `o que falta para imóvel endereço ${item.address.trim()}`
+                      : `o que falta para imóvel ${item.id}`,
+                  })
+                : null;
+              return (
+              <div key={item.id} className="rounded-2xl border border-white/10 bg-black/20 p-4 transition hover:border-accent/40">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <Link to={href} className="text-sm font-semibold text-foreground hover:text-accent">{propertyTitle(item)}</Link>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {item.city?.trim() || "Cidade não informada"} • {item.id}
+                    </p>
+                  </div>
+                  <span className={`rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.15em] ${propertyStatusTone(item.status)}`}>
+                    {formatImobStatusLabel(item.status)}
+                  </span>
+                </div>
+                <p className="mt-3 text-base font-semibold text-foreground">{currencyFromCents(item.askingPriceCents)}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {(item.goal?.trim() || "finalidade não informada")} • {(item.propertyType?.trim() || "tipo não informado")}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Proprietário: {item.owner?.name?.trim() || "não vinculado"}
+                </p>
+                {resolveHref ? (
+                  <div className="mt-3 flex justify-end">
+                    <Link to={resolveHref} className="text-[10px] uppercase tracking-[0.16em] text-accent hover:text-accent/80">
+                      Resolver no chat
+                    </Link>
+                  </div>
+                ) : null}
+              </div>
+              );
+            })}
+          </div>
+          {!dashboardLoading && properties.length === 0 ? (
+            <p className="mt-4 rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-muted-foreground">
+              Nenhum imóvel cadastrado no CRM operacional do IMOB.
+            </p>
+          ) : null}
         </section>
       ) : null}
 
       {section === "processos" ? (
-        <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 sm:p-6">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">Processos</h2>
-          <div className="mt-4 overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-white/10 text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                  <th className="px-3 py-2">Processo</th>
-                  <th className="px-3 py-2">Cliente</th>
-                  <th className="px-3 py-2">Etapa</th>
-                  <th className="px-3 py-2">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {syntheticProcesses.map((item) => (
-                  <tr key={item.runId} className="border-b border-white/5 text-muted-foreground">
-                    <td className="px-3 py-3 text-foreground">{item.runId}</td>
-                    <td className="px-3 py-3">{item.client}</td>
-                    <td className="px-3 py-3">{item.action}</td>
-                    <td className="px-3 py-3">
-                      {item.status === "running" ? "Em andamento" : item.status === "blocked" ? "Precisa de atenção" : "Concluído"}
-                    </td>
+        <section className="space-y-4">
+          <section className="grid gap-4 sm:grid-cols-3">
+            <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Processos ativos</p>
+              <p className="mt-2 text-2xl font-semibold text-foreground">{activeProcessCount}</p>
+            </article>
+            <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Bloqueados</p>
+              <p className="mt-2 text-2xl font-semibold text-foreground">{blockedProcessCount}</p>
+            </article>
+            <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Com evidências</p>
+              <p className="mt-2 text-2xl font-semibold text-foreground">{evidencedProcessCount}</p>
+            </article>
+          </section>
+
+          <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 sm:p-6">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">Processos</h2>
+              <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                {dashboardLoading ? "atualizando" : dashboardSource === "real" ? "dados ao vivo" : "sem processos cadastrados"}
+              </span>
+            </div>
+            <div className="mt-4 overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-white/10 text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    <th className="px-3 py-2">Processo</th>
+                    <th className="px-3 py-2">Contexto</th>
+                    <th className="px-3 py-2">Etapa</th>
+                    <th className="px-3 py-2">Status</th>
+                    <th className="px-3 py-2">Responsável</th>
+                    <th className="px-3 py-2">Evidências</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {cases.map((item) => {
+                    const href = buildImobChatHref({
+                      conversationId,
+                      caseId: item.id,
+                      threadId: item.threadId ?? null,
+                      autoprompt: "o que falta nesse caso",
+                    });
+                    return (
+                    <tr key={item.id} className="border-b border-white/5 text-muted-foreground">
+                      <td className="px-3 py-3 text-foreground"><Link to={href} className="hover:text-accent">{formatCaseFlowLabel(item.flow)}</Link></td>
+                      <td className="px-3 py-3">{item.lead?.name || item.owner?.name || item.property?.city || "Sem contexto vinculado"}</td>
+                      <td className="px-3 py-3">{item.nextStep?.trim() || item.stage}</td>
+                      <td className="px-3 py-3">
+                        <span className={`rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.15em] ${processStatusTone(item.status)}`}>
+                          {formatImobStatusLabel(item.status)}
+                        </span>
+                      </td>
+                      <td className="px-3 py-3">{item.ownerResponsible || "Responsável não definido"}</td>
+                      <td className="px-3 py-3 text-xs">{item._count?.events ?? 0}</td>
+                    </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {!dashboardLoading && cases.length === 0 ? (
+              <p className="mt-4 rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-muted-foreground">
+                Nenhum processo cadastrado no CRM operacional do IMOB.
+              </p>
+            ) : null}
+          </section>
         </section>
       ) : null}
 
       {section === "parceiros" ? (
-        <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 sm:p-6">
-          <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">Parceiros</h2>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {syntheticPartners.map((item) => (
-              <article key={item.id} className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                <p className="text-sm font-semibold text-foreground">{item.name}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Trust {item.trust} • {item.activeCases} casos ativos
-                </p>
-                <p className="mt-2 text-xs text-muted-foreground">{item.status === "ativo" ? "Ativo" : "Em revisão"}</p>
-              </article>
-            ))}
-          </div>
+        <section className="space-y-4">
+          <section className="grid gap-4 sm:grid-cols-3">
+            <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Proprietários</p>
+              <p className="mt-2 text-2xl font-semibold text-foreground">{owners.length}</p>
+            </article>
+            <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Com pendências</p>
+              <p className="mt-2 text-2xl font-semibold text-foreground">{ownerPendingCount}</p>
+            </article>
+            <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Imóveis prontos para revisão</p>
+              <p className="mt-2 text-2xl font-semibold text-foreground">{readyForReviewCount}</p>
+            </article>
+          </section>
+
+          <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 sm:p-6">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">Parceiros</h2>
+              <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                {dashboardLoading ? "atualizando" : dashboardSource === "real" ? "dados ao vivo" : "sem parceiros cadastrados"}
+              </span>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {owners.map((item) => {
+                const relatedCase = latestCaseByOwnerId.get(item.id) ?? null;
+                const href = buildImobChatHref({
+                  conversationId,
+                  caseId: relatedCase?.id ?? null,
+                  threadId: relatedCase?.threadId ?? null,
+                  autoprompt: `abrir proprietário ${item.name}`,
+                });
+                const pendingItems = asStringList(item.pendingItems);
+                const resolveHref = pendingItems.length > 0
+                  ? buildImobChatHref({
+                      conversationId,
+                      caseId: relatedCase?.id ?? null,
+                      threadId: relatedCase?.threadId ?? null,
+                      autoprompt: `o que falta para proprietário ${item.name}`,
+                    })
+                  : null;
+                return (
+                <div key={item.id} className="rounded-2xl border border-white/10 bg-black/20 p-4 transition hover:border-accent/40">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <Link to={href} className="text-sm font-semibold text-foreground hover:text-accent">{item.name}</Link>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {item.email?.trim() || item.phone?.trim() || "Contato não informado"}
+                      </p>
+                    </div>
+                    <span className={`rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.15em] ${partnerStatusTone(item.status)}`}>
+                      {formatImobStatusLabel(item.status)}
+                    </span>
+                  </div>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Imóveis: {ownerPropertyCount.get(item.id) ?? 0} • Casos: {ownerCaseCount.get(item.id) ?? 0}
+                  </p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Pendências: {pendingItems.length > 0 ? pendingItems.join(", ") : "sem pendências"}
+                  </p>
+                  {resolveHref ? (
+                    <div className="mt-3 flex justify-end">
+                      <Link to={resolveHref} className="text-[10px] uppercase tracking-[0.16em] text-accent hover:text-accent/80">
+                        Resolver no chat
+                      </Link>
+                    </div>
+                  ) : null}
+                </div>
+                );
+              })}
+            </div>
+            {!dashboardLoading && owners.length === 0 ? (
+              <p className="mt-4 rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-muted-foreground">
+                Nenhum parceiro cadastrado no CRM operacional do IMOB.
+              </p>
+            ) : null}
+          </section>
         </section>
       ) : null}
 
