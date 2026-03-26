@@ -58,10 +58,16 @@ function extractCount(text: string, label: "quarto" | "banheiro") {
 }
 
 export function extractBudgetMax(text: string) {
-  const normalized = text.replace(/\./g, "").replace(",", ".");
-  const currencyMatch = normalized.match(/(?:ate|até)\s*r?\$?\s*(\d+(?:\.\d+)?)/);
-  if (!currencyMatch) return null;
-  return Number.parseFloat(currencyMatch[1]);
+  const normalized = text.replace(/\./g, "").replace(/,/g, ".");
+  const patterns = [
+    /(?:ate|até)\s*r?\$?\s*(\d+(?:\.\d+)?)/,
+    /(?:orcamento|orçamento|budget|faixa)\s*(?:de|em|ate|até)?\s*r?\$?\s*(\d+(?:\.\d+)?)/,
+  ];
+  for (const pattern of patterns) {
+    const match = normalized.match(pattern);
+    if (match?.[1]) return Number.parseFloat(match[1]);
+  }
+  return null;
 }
 
 export function extractGoal(text: string): ImobSearchSlots["goal"] {
@@ -290,12 +296,12 @@ function inferContractType(raw: string): ImobProposalDraft["contractType"] {
 }
 
 function buildProposalDraft(previous: ImobProposalDraft | undefined, message: string): ImobProposalDraft {
-  const propertyId = message.match(/(?:imovel|imóvel|apartamento|apto|casa)\s*#?\s*(\d{2,})/i)?.[1] ?? previous?.propertyId ?? null;
+  const propertyIdMatch = message.match(/(?:imovel|imóvel|apartamento|apto|casa)\s*#?\s*(\d{2,})/i)?.[1] ?? null;
   return {
     buyerName: extractNamedParty(message, "lead") ?? previous?.buyerName ?? null,
     buyerEmail: extractEmail(message) ?? previous?.buyerEmail ?? null,
     buyerPhone: extractPhone(message) ?? previous?.buyerPhone ?? null,
-    propertyId: propertyId ? `property-${propertyId}` : null,
+    propertyId: propertyIdMatch ? `property-${propertyIdMatch}` : previous?.propertyId ?? null,
     offerAmount: extractOfferAmount(message) ?? previous?.offerAmount ?? null,
     contractType: /loca|alug/i.test(message) ? "rent" : /gest|administra/i.test(message) ? "management" : /venda|compr|proposta|oferta/i.test(message) ? "sale" : previous?.contractType ?? null,
   };

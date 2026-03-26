@@ -14,10 +14,13 @@ import {
   apiGetImobChatTelemetrySummary,
   apiGetRun,
   apiSearchImobKnowledge,
+  apiUploadDocuments,
+  apiResolveImobAttachment,
   apiListImobChatConversations,
   apiListImobChatMessages,
   apiListImobChatThreads,
   apiUpsertImobChatInterviewState,
+  type ImobCaseContext,
   type ImobChatConversation,
   type ImobContractInterviewState,
   type ImobChatMessage,
@@ -114,6 +117,7 @@ type ChatMessage = {
     status?: "active" | "done" | "blocked";
   };
   card?: MessageCard;
+  caseContext?: ImobCaseContext;
 };
 
 type PendingExecution = {
@@ -124,6 +128,11 @@ type PendingExecution = {
     id: string;
     label: string;
   };
+  flow?: ImobThreadConversationState["operational"] extends { flow: infer T } ? T : string;
+  pendingFields?: string[];
+  caseContext?: ImobCaseContext;
+  presentationMeta?: Pick<ImobResolveTurnResponse["presentation"], "owner" | "nextStep" | "blocker" | "pendingFieldLabels" | "dedupeKey" | "suggestedNextAction">;
+  presentationText: string;
   receiptEndpointTemplate?: string;
   preparedAt: number;
 };
@@ -159,6 +168,43 @@ function buildSessionRunMapFromMessages(items: ChatMessage[]) {
     }
   }
   return map;
+}
+
+function buildCaseMapFromMessages(items: ChatMessage[]) {
+  const map: Record<string, string> = {};
+  for (const message of items) {
+    const threadId = message.caseContext?.threadId ?? message.thread?.id ?? message.card?.thread?.id ?? null;
+    const caseId = message.caseContext?.caseId ?? null;
+    if (!threadId || !caseId) continue;
+    if (!map[threadId]) {
+      map[threadId] = caseId;
+    }
+  }
+  return map;
+}
+
+function dedupeRunMessages(items: ChatMessage[]) {
+  const deduped: ChatMessage[] = [];
+  for (const message of items) {
+    const threadId = message.thread?.id ?? message.card?.thread?.id ?? null;
+    const runId = message.card?.runId ?? null;
+    const last = deduped[deduped.length - 1];
+    const lastThreadId = last?.thread?.id ?? last?.card?.thread?.id ?? null;
+    const lastRunId = last?.card?.runId ?? null;
+    if (
+      message.role === "assistant" &&
+      last?.role === "assistant" &&
+      threadId &&
+      runId &&
+      threadId == lastThreadId &&
+      runId == lastRunId
+    ) {
+      deduped[deduped.length - 1] = message;
+      continue;
+    }
+    deduped.push(message);
+  }
+  return deduped;
 }
 
 const SHOW_TECHNICAL_CHAT = false;
@@ -215,6 +261,7 @@ function isCardLeadRedundant(messageText: string, cardTitle: string, firstLine?:
   const title = normalizeHumanText(cardTitle);
   const line = normalizeHumanText(firstLine);
   if (!msg || !line) return false;
+  if (title === "lote processado") return false;
   if (msg === line || msg.includes(line) || line.includes(msg)) return true;
   if (title && (msg === title || msg.includes(title) || title.includes(msg))) return true;
   return false;
@@ -344,7 +391,7 @@ function getIntentThreadLabel(intent: ImobExecutionRequest["intent"]) {
 
 function getCtaClass(kind: CardCta["kind"]) {
   if (kind === "primary") {
-    return "border-accent/60 bg-accent/20 text-accent transition hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50";
+    return "border-accent/60 bg-black/25 text-foreground transition hover:bg-black/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50";
   }
   if (kind === "secondary") {
     return "border-rose-300/50 bg-rose-500/10 text-rose-200 transition hover:bg-rose-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400/40";
@@ -413,6 +460,13 @@ function formatPct(value: number | null | undefined) {
   return `${value.toFixed(1)}%`;
 }
 
+function formatUploadSize(sizeBytes: number) {
+  if (!Number.isFinite(sizeBytes) || sizeBytes <= 0) return "0 B";
+  if (sizeBytes < 1024) return `${sizeBytes} B`;
+  if (sizeBytes < 1024 * 1024) return `${(sizeBytes / 1024).toFixed(1)} KB`;
+  return `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function getHumanPlanLines(intent: ImobExecutionRequest["intent"]) {
   switch (intent) {
     case "capture":
@@ -446,36 +500,254 @@ function humanRunStatus(status: string) {
   return "Estou avançando com a operação.";
 }
 
-function getThreadBusinessArea(threadLabel?: string | null) {
+function getThreadBusinessArea(threadLabel?: string | null, flow?: string | null) {
+  const normalizedFlow = (flow ?? "").toLowerCase();
+  if (normalizedFlow === "lead.qualify") return "lead";
+  if (normalizedFlow === "proposal.create") return "proposal";
+  if (normalizedFlow === "visit.schedule") return "visit";
+  if (normalizedFlow === "contract.prepare") return "contract";
+  if (normalizedFlow === "commission.settle") return "commission";
+  if (normalizedFlow === "owner.create" || normalizedFlow === "property.create") return "capture";
+
   const normalized = (threadLabel ?? "").toLowerCase();
   if (normalized.includes("contrato")) return "contract";
   if (normalized.includes("capta")) return "capture";
   if (normalized.includes("proposta")) return "proposal";
+  if (normalized.includes("visita")) return "visit";
+  if (normalized.includes("lead")) return "lead";
   if (normalized.includes("comiss")) return "commission";
   if (normalized.includes("busca") || normalized.includes("imove")) return "match";
   if (normalized.includes("ajuste")) return "adjustment";
   return "general";
 }
 
-function humanRunStatusBusiness(status: string, threadLabel?: string | null) {
-  const area = getThreadBusinessArea(threadLabel);
-  if (status === "success" && area === "contract") return "Contrato iniciado com sucesso.";
-  if (status === "success" && area === "proposal") return "Proposta registrada com sucesso.";
+function humanRunStatusBusiness(status: string, threadLabel?: string | null, flow?: string | null) {
+  const area = getThreadBusinessArea(threadLabel, flow);
+  if (status === "pending" || status === "running") {
+    if (area === "commission") return "Estou conduzindo a liquidação da comissão.";
+    if (area === "contract") return "Estou conduzindo o handoff jurídico do contrato.";
+    if (area === "proposal") return "Estou conduzindo a proposta imobiliária.";
+    if (area === "visit") return "Estou conduzindo o agendamento da visita.";
+    if (area === "lead") return "Estou conduzindo o cadastro e a qualificação do lead.";
+    if (flow === "owner.create") return "Estou conduzindo o cadastro do proprietário.";
+    if (flow === "property.create") return "Estou conduzindo o cadastro do imóvel.";
+    if (area === "capture") return "Estou conduzindo a captação imobiliária.";
+    if (area === "match") return "Estou conduzindo a busca operacional do IMOB.";
+  }
+  if (status === "success") {
+    if (area === "commission") return "Liquidação da comissão iniciada com sucesso.";
+    if (area === "contract") return "Handoff jurídico do contrato iniciado com sucesso.";
+    if (area === "proposal") return "Proposta registrada com sucesso.";
+    if (area === "visit") return "Visita agendada com sucesso.";
+    if (area === "lead") return "Lead cadastrado e qualificado com sucesso.";
+    if (flow === "owner.create") return "Cadastro do proprietário processado.";
+    if (flow === "property.create") return "Cadastro do imóvel processado.";
+    if (area === "capture") return "Cadastro operacional da captação processado.";
+    if (area === "match") return "Busca operacional concluída com sucesso.";
+  }
   return humanRunStatus(status);
 }
 
-function nextBusinessStep(status: string, threadLabel?: string | null) {
-  const area = getThreadBusinessArea(threadLabel);
-  if ((status === "pending" || status === "running" || status === "success") && area === "contract") {
-    return [
-      "Próximo passo: para contrato de locação, preciso destes dados:",
-      "Checklist: Nome • CPF/CNPJ • Imóvel • Prazo • Valor",
-    ];
+type OperationalOwner = "Corretor" | "Jurídico" | "Financeiro" | "Cliente" | "IMOB Ops";
+
+type OperationalPresentationMeta = Pick<
+  ImobResolveTurnResponse["presentation"],
+  "owner" | "nextStep" | "blocker" | "pendingFieldLabels" | "dedupeKey" | "suggestedNextAction"
+>;
+
+function formatOperationalPendingField(field: string, threadLabel?: string | null, flow?: string | null) {
+  const area = getThreadBusinessArea(threadLabel, flow);
+  const common: Record<string, string> = {
+    propertyId: "imóvel de referência",
+    contractType: "tipo de contrato",
+    approvalRequired: "aprovação humana",
+    dealId: "negócio",
+    buyerName: "nome do comprador",
+    buyerPhone: "telefone do comprador",
+    buyerEmail: "e-mail do comprador",
+    offerAmount: "valor da proposta",
+    leadName: "nome do lead",
+    leadPhone: "telefone do lead",
+    leadEmail: "e-mail do lead",
+    desiredGoal: "objetivo do lead",
+    desiredCity: "cidade de interesse",
+    budgetMax: "faixa de orçamento",
+    visitorName: "nome do visitante",
+    visitorPhone: "telefone do visitante",
+    preferredDate: "data da visita",
+    preferredWindow: "turno da visita",
+    counterpartyName: "nome da contraparte",
+    documentPacketStatus: "pacote documental",
+    brokerRef: "corretor responsável",
+    amountCents: "valor da comissão",
+    payoutChannel: "canal de repasse",
+    settlementStatus: "status da liquidação",
+  };
+  if (area === "contract" && field === "propertyId") return "imóvel do contrato";
+  if (area === "proposal" && field === "propertyId") return "imóvel da proposta";
+  if (area === "visit" && field === "propertyId") return "imóvel da visita";
+  if (area === "commission" && field === "dealId") return "negócio da comissão";
+  return common[field] ?? field;
+}
+
+function formatOperationalPendingFields(
+  pendingFields?: string[],
+  threadLabel?: string | null,
+  presentationMeta?: OperationalPresentationMeta,
+  flow?: string | null
+) {
+  if (presentationMeta?.pendingFieldLabels?.length) return presentationMeta.pendingFieldLabels;
+  if (!pendingFields?.length) return [];
+  return pendingFields.map((field) => formatOperationalPendingField(field, threadLabel, flow));
+}
+
+function buildOperationalNextStep(
+  threadLabel?: string | null,
+  runStatus?: string | null,
+  pendingFields?: string[],
+  presentationMeta?: OperationalPresentationMeta,
+  flow?: string | null
+): { owner: OperationalOwner; nextStep: string; blocker?: string | null; dedupeKey?: string } | null {
+  const area = getThreadBusinessArea(threadLabel, flow);
+  const isBlocked = runStatus === "blocked" || runStatus === "error";
+  const pending = formatOperationalPendingFields(pendingFields, threadLabel, presentationMeta, flow);
+
+  if (presentationMeta?.owner || presentationMeta?.nextStep || presentationMeta?.blocker || presentationMeta?.dedupeKey) {
+    return {
+      owner: (presentationMeta.owner as OperationalOwner | undefined) ?? (area === "contract" ? "Jurídico" : area === "commission" ? "Financeiro" : "Corretor"),
+      nextStep:
+        presentationMeta.nextStep ??
+        (area === "commission"
+          ? pending.length > 0
+            ? "Confirmar pendências da comissão antes do repasse."
+            : "Validar liquidação e acompanhar repasse da comissão."
+          : area === "contract"
+            ? pending.length > 0
+              ? "Completar dados contratuais e validar pacote documental."
+              : "Revisar minuta e validar pacote documental."
+            : area === "proposal"
+              ? pending.length > 0
+                ? "Completar dados do comprador e ajustar a proposta."
+                : "Confirmar dados do comprador e acompanhar aceite da proposta."
+              : area === "visit"
+                ? pending.length > 0
+                  ? "Completar dados da visita antes da confirmação."
+                  : "Confirmar agenda com cliente e imóvel."
+                : "Confirmar próximos passos operacionais."),
+      blocker: presentationMeta.blocker ?? null,
+      dedupeKey: presentationMeta.dedupeKey,
+    };
   }
-  if ((status === "pending" || status === "running" || status === "success") && area === "capture") {
-    return ["Próximo passo: confirmar endereço, tipo do imóvel e valor desejado."];
+
+  if (area === "commission") {
+    return {
+      owner: "Financeiro",
+      nextStep: pending.length > 0 ? "Confirmar pendências da comissão antes do repasse." : "Validar liquidação e acompanhar repasse da comissão.",
+      blocker: isBlocked ? "Validar dados de comissão antes do repasse." : null,
+    };
   }
-  return [];
+  if (area === "contract") {
+    return {
+      owner: "Jurídico",
+      nextStep: pending.length > 0 ? "Completar dados contratuais e validar pacote documental." : "Revisar minuta e validar pacote documental.",
+      blocker: isBlocked ? "Revisão jurídica ou pacote documental pendente." : null,
+    };
+  }
+  if (area === "proposal") {
+    return {
+      owner: "Corretor",
+      nextStep: pending.length > 0 ? "Completar dados do comprador e ajustar a proposta." : "Confirmar dados do comprador e acompanhar aceite da proposta.",
+      blocker: isBlocked ? "Dados do comprador ou proposta incompletos." : null,
+    };
+  }
+  if (area === "lead") {
+    return {
+      owner: "Corretor",
+      nextStep: pending.length > 0 ? "Completar dados do lead e revisar o interesse comercial." : "Qualificar interesse e vincular o próximo imóvel ou etapa comercial.",
+      blocker: isBlocked ? "Dados do lead ainda estão incompletos para seguir." : null,
+    };
+  }
+  if (area === "visit") {
+    return {
+      owner: "Corretor",
+      nextStep: pending.length > 0 ? "Completar dados da visita antes da confirmação." : "Confirmar agenda com cliente e imóvel.",
+      blocker: isBlocked ? "Confirmação de agenda ou contato pendente." : null,
+    };
+  }
+  if (area === "capture") {
+    return {
+      owner: "Corretor",
+      nextStep:
+        flow === "owner.create"
+          ? pending.length > 0
+            ? "Completar dados do proprietário antes de avançar a captação."
+            : "Vincular o proprietário ao próximo imóvel ou etapa documental."
+          : flow === "property.create"
+            ? pending.length > 0
+              ? "Completar dados do imóvel antes de avançar a captação."
+              : "Vincular o imóvel ao próximo lead ou etapa comercial/documental."
+            : pending.length > 0
+              ? "Completar dados da captação antes de avançar."
+              : "Confirmar endereço, tipo do imóvel e valor desejado.",
+      blocker: null,
+    };
+  }
+  return null;
+}
+
+function nextBusinessStep(
+  status: string,
+  threadLabel?: string | null,
+  pendingFields?: string[],
+  presentationMeta?: OperationalPresentationMeta,
+  flow?: string | null
+) {
+  const operational = buildOperationalNextStep(threadLabel, status, pendingFields, presentationMeta, flow);
+  if (!operational) return [];
+
+  const lines: string[] = [];
+  const pending = formatOperationalPendingFields(pendingFields, threadLabel, presentationMeta, flow);
+
+  if (operational.blocker) {
+    lines.push(`Bloqueio atual: ${operational.blocker}`);
+  }
+  if (pending.length > 0) {
+    lines.push(`Pendências atuais: ${pending.join(", ")}.`);
+  }
+  if (presentationMeta?.suggestedNextAction) {
+    lines.push(presentationMeta.suggestedNextAction);
+  }
+
+  lines.push(`Próximo passo: ${operational.nextStep}`);
+  lines.push(`Responsável agora: ${operational.owner}.`);
+
+  return lines;
+}
+
+function buildHumanOperationalUpdate(
+  status: string,
+  threadLabel?: string | null,
+  pendingFields?: string[],
+  presentationMeta?: OperationalPresentationMeta,
+  flow?: string | null
+) {
+  const area = getThreadBusinessArea(threadLabel, flow);
+  const hasPending = Boolean((presentationMeta?.pendingFieldLabels?.length ?? 0) || pendingFields?.length || presentationMeta?.suggestedNextAction);
+  const summary = (() => {
+    if (!hasPending) return humanRunStatusBusiness(status, threadLabel, flow);
+    if (area === "proposal") return "A proposta ainda precisa de complementos para seguir.";
+    if (area === "visit") return "A visita ainda precisa de confirmações para seguir.";
+    if (area === "lead") return "O cadastro do lead ainda precisa de complementos para seguir.";
+    if (flow === "owner.create") return "O cadastro do proprietário ainda precisa de complementos para seguir.";
+    if (flow === "property.create") return "O cadastro do imóvel ainda precisa de complementos para seguir.";
+    if (area === "contract") return "O fluxo de contrato ainda precisa de complementos para seguir.";
+    if (area === "commission") return "A liquidação da comissão ainda precisa de confirmações para seguir.";
+    return humanRunStatusBusiness(status, threadLabel, flow);
+  })();
+  const followUps = nextBusinessStep(status, threadLabel, pendingFields, presentationMeta, flow);
+  if (!["commission", "contract", "proposal", "visit", "lead"].includes(area) && flow !== "owner.create" && flow !== "property.create" && !presentationMeta?.suggestedNextAction) return summary;
+  if (followUps.length === 0) return summary;
+  return [summary, ...followUps].join("\n");
 }
 
 function buildRentalContractTemplateMessage(thread: { id: string; label: string; status?: "active" | "done" | "blocked" }): ChatMessage {
@@ -531,6 +803,11 @@ function mapStoredMessageToChat(message: ImobChatMessage): ChatMessage {
         ctas: normalizeCardCtas(card.ctas),
       }
     : undefined;
+  const caseContextCandidate = metadata?.caseContext;
+  const caseContext =
+    caseContextCandidate && typeof caseContextCandidate === "object" && !Array.isArray(caseContextCandidate)
+      ? (caseContextCandidate as ImobCaseContext)
+      : undefined;
 
   return {
     id: message.id,
@@ -544,6 +821,7 @@ function mapStoredMessageToChat(message: ImobChatMessage): ChatMessage {
         }
       : undefined,
     card: normalizedCard,
+    caseContext,
   };
 }
 
@@ -560,9 +838,19 @@ const ImobChatPage: React.FC = () => {
     const raw = searchParams.get("threadId");
     return raw && raw.trim().length > 0 ? raw.trim() : null;
   }, [searchParams]);
+  const requestedCaseId = React.useMemo(() => {
+    const raw = searchParams.get("caseId");
+    return raw && raw.trim().length > 0 ? raw.trim() : null;
+  }, [searchParams]);
+  const requestedAutoprompt = React.useMemo(() => {
+    const raw = searchParams.get("autoprompt");
+    return raw && raw.trim().length > 0 ? raw.trim() : null;
+  }, [searchParams]);
 
   const [state, setState] = React.useState<ChatState>("idle");
   const [input, setInput] = React.useState("");
+  const [uploadingDocuments, setUploadingDocuments] = React.useState(false);
+  const [attachmentMenuOpen, setAttachmentMenuOpen] = React.useState(false);
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
   const [pendingExecution, setPendingExecution] = React.useState<PendingExecution | null>(null);
   const [activeThread, setActiveThread] = React.useState<{ id: string; label: string } | null>(null);
@@ -611,18 +899,34 @@ const ImobChatPage: React.FC = () => {
   }, [contractInterviewState?.contractType]);
 
   const listRef = React.useRef<HTMLDivElement | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const attachmentMenuRef = React.useRef<HTMLDivElement | null>(null);
   const sessionRunByThreadRef = React.useRef<Record<string, string>>({});
+  const caseIdByThreadRef = React.useRef<Record<string, string>>({});
   const conversationStateByThreadRef = React.useRef<Record<string, ImobThreadConversationState>>({});
   const rejectedExecutionKeysRef = React.useRef<Set<string>>(new Set());
   const persistedRunStatusKeysRef = React.useRef<Set<string>>(new Set());
   const persistedContractTemplateKeysRef = React.useRef<Set<string>>(new Set());
 
+  React.useEffect(() => {
+    const handlePointerDown = (event: MouseEvent) => {
+      const container = attachmentMenuRef.current;
+      if (!container) return;
+      if (container.contains(event.target as Node)) return;
+      setAttachmentMenuOpen(false);
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => document.removeEventListener("mousedown", handlePointerDown);
+  }, []);
+
   const loadConversationMessages = React.useCallback(
     async (targetConversationId: string, limit: number) => {
       const history = await apiListImobChatMessages(targetConversationId, { limit });
-      const mapped = history.items.map(mapStoredMessageToChat);
+      const mapped = dedupeRunMessages(history.items.map(mapStoredMessageToChat));
       setMessages(mapped);
       sessionRunByThreadRef.current = buildSessionRunMapFromMessages(mapped);
+      caseIdByThreadRef.current = buildCaseMapFromMessages(mapped);
       setHasMoreHistory(history.items.length >= limit);
     },
     []
@@ -771,6 +1075,7 @@ const ImobChatPage: React.FC = () => {
           bundlePath: message.card?.proof?.bundlePath ?? undefined,
           metadata: {
             card: message.card ?? null,
+            caseContext: message.caseContext ?? null,
             ...(extra?.metadata ?? {}),
           },
         });
@@ -848,9 +1153,10 @@ const ImobChatPage: React.FC = () => {
           setHistoryLimit(initialLimit);
           const history = await apiListImobChatMessages(selectedConversationId, { limit: initialLimit });
           if (!mounted) return;
-          const mappedHistory = history.items.map(mapStoredMessageToChat);
+          const mappedHistory = dedupeRunMessages(history.items.map(mapStoredMessageToChat));
           setMessages(mappedHistory);
           sessionRunByThreadRef.current = buildSessionRunMapFromMessages(mappedHistory);
+          caseIdByThreadRef.current = buildCaseMapFromMessages(mappedHistory);
           setHasMoreHistory(history.items.length >= initialLimit);
           const threadList = await apiListImobChatThreads(selectedConversationId);
           if (!mounted) return;
@@ -869,6 +1175,7 @@ const ImobChatPage: React.FC = () => {
           setSingleEditFieldId(null);
           sessionRunByThreadRef.current = {};
           conversationStateByThreadRef.current = {};
+          caseIdByThreadRef.current = {};
         }
       } catch {
         if (!mounted) return;
@@ -878,6 +1185,7 @@ const ImobChatPage: React.FC = () => {
         setSingleEditFieldId(null);
         sessionRunByThreadRef.current = {};
         conversationStateByThreadRef.current = {};
+        caseIdByThreadRef.current = {};
       } finally {
         if (mounted) setHistoryLoading(false);
       }
@@ -904,6 +1212,7 @@ const ImobChatPage: React.FC = () => {
     setSingleEditFieldId(null);
     sessionRunByThreadRef.current = {};
     conversationStateByThreadRef.current = {};
+    caseIdByThreadRef.current = {};
     trackUxEvent("conversation_selected", { nextConversationId });
     setHistoryLimit(HISTORY_PAGE_SIZE);
     setHasMoreHistory(false);
@@ -921,6 +1230,7 @@ const ImobChatPage: React.FC = () => {
       setSingleEditFieldId(null);
       sessionRunByThreadRef.current = {};
       conversationStateByThreadRef.current = {};
+      caseIdByThreadRef.current = {};
     } finally {
       setHistoryLoading(false);
     }
@@ -948,6 +1258,7 @@ const ImobChatPage: React.FC = () => {
     setSingleEditFieldId(null);
     sessionRunByThreadRef.current = {};
     conversationStateByThreadRef.current = {};
+    caseIdByThreadRef.current = {};
     setHistoryLimit(HISTORY_PAGE_SIZE);
     setHasMoreHistory(false);
     trackUxEvent("conversation_new");
@@ -1073,7 +1384,7 @@ const ImobChatPage: React.FC = () => {
                   ? "Precisa de atenção"
                   : "Andamento",
             thread: updatedThread,
-            lines: [humanRunStatusBusiness(run.status, updatedThread?.label), ...nextBusinessStep(run.status, updatedThread?.label)],
+            lines: nextBusinessStep(run.status, updatedThread?.label, updatedThread?.id ? (conversationStateByThreadRef.current[updatedThread.id]?.operational?.pendingFields ?? pendingExecution?.pendingFields) : pendingExecution?.pendingFields, pendingExecution?.presentationMeta, pendingExecution?.flow),
             runId: activeRunId,
             queue: {
               status: run.status,
@@ -1096,17 +1407,19 @@ const ImobChatPage: React.FC = () => {
 
           if (activeAssistantMessageId) {
             updateMessageById(activeAssistantMessageId, {
-              text: humanRunStatusBusiness(run.status, updatedThread?.label),
+              text: buildHumanOperationalUpdate(run.status, updatedThread?.label, updatedThread?.id ? (conversationStateByThreadRef.current[updatedThread.id]?.operational?.pendingFields ?? pendingExecution?.pendingFields) : pendingExecution?.pendingFields, pendingExecution?.presentationMeta, pendingExecution?.flow),
               thread: updatedThread,
               card: updatedCard,
+              caseContext: pendingExecution?.caseContext,
             });
           } else {
             appendMessage({
               id: makeId("assistant"),
               role: "assistant",
-              text: humanRunStatusBusiness(run.status, updatedThread?.label),
+              text: buildHumanOperationalUpdate(run.status, updatedThread?.label, updatedThread?.id ? (conversationStateByThreadRef.current[updatedThread.id]?.operational?.pendingFields ?? pendingExecution?.pendingFields) : pendingExecution?.pendingFields, pendingExecution?.presentationMeta, pendingExecution?.flow),
               thread: updatedThread,
               card: updatedCard,
+              caseContext: pendingExecution?.caseContext,
             });
           }
 
@@ -1124,15 +1437,16 @@ const ImobChatPage: React.FC = () => {
               const terminalMessage: ChatMessage = {
                 id: makeId("assistant"),
                 role: "assistant",
-                text: humanRunStatusBusiness(run.status, updatedThread?.label),
+                text: buildHumanOperationalUpdate(run.status, updatedThread?.label, updatedThread?.id ? (conversationStateByThreadRef.current[updatedThread.id]?.operational?.pendingFields ?? pendingExecution?.pendingFields) : pendingExecution?.pendingFields, pendingExecution?.presentationMeta, pendingExecution?.flow),
                 thread: updatedThread,
                 card: updatedCard,
+                caseContext: pendingExecution?.caseContext,
               };
               void persistMessage(terminalMessage);
             }
           }
 
-          const area = getThreadBusinessArea(updatedThread?.label);
+          const area = getThreadBusinessArea(updatedThread?.label, pendingExecution?.flow);
           if (run.status === "success" && area === "contract") {
             const templateKey = `${activeRunId}:contract-template`;
             if (!persistedContractTemplateKeysRef.current.has(templateKey)) {
@@ -1161,7 +1475,12 @@ const ImobChatPage: React.FC = () => {
     plan: ImobExecutionRequest,
     operationThread: { id: string; label: string },
     activeConversationId: string,
-    startedAt: number
+    startedAt: number,
+    presentationText?: string,
+    flow?: ImobThreadConversationState["operational"] extends { flow: infer T } ? T : string,
+    pendingFields?: string[],
+    caseContext?: ImobCaseContext,
+    presentationMeta?: PendingExecution["presentationMeta"]
   ) => {
       try {
         const discovery = await apiAgentsDiscovery({
@@ -1186,23 +1505,30 @@ const ImobChatPage: React.FC = () => {
           contract,
           messageId: liveMessageId,
           thread,
+          flow,
+          pendingFields,
+          caseContext,
+          presentationMeta,
+          presentationText: presentationText?.trim() || "Preparando...",
           receiptEndpointTemplate: negotiation.data.verification.endpointTemplate,
           preparedAt: Date.now(),
         };
         setOpenOptionsMessageId(null);
         setRejectLockedMessageId(null);
         setActiveAssistantMessageId(liveMessageId);
+        setPendingExecution(executionPending);
         setState("executing");
 
         const planMessage: ChatMessage = {
           id: liveMessageId,
           role: "assistant",
-          text: "Preparando...",
+          text: executionPending.presentationText,
           thread: {
             id: thread.id,
             label: thread.label,
             status: "active",
           },
+          caseContext: executionPending.caseContext,
           card: {
             type: "queue",
             title: "Preparando",
@@ -1268,6 +1594,16 @@ const ImobChatPage: React.FC = () => {
         void persistMessage(blockedMessage, { conversationId: activeConversationId });
       }
   };
+
+  const autopromptConsumedRef = React.useRef<string | null>(null);
+
+  React.useEffect(() => {
+    if (!requestedAutoprompt) return;
+    if (historyLoading || historyLoadingMore || pendingExecution) return;
+    if (autopromptConsumedRef.current === requestedAutoprompt) return;
+    autopromptConsumedRef.current = requestedAutoprompt;
+    void sendMessageText(requestedAutoprompt);
+  }, [historyLoading, historyLoadingMore, pendingExecution, requestedAutoprompt]);
 
   const resolveInterviewOperationThread = React.useCallback(() => {
     const selectedThread = selectedThreadId ? threads.find((item) => item.threadId === selectedThreadId) : null;
@@ -1517,18 +1853,57 @@ const ImobChatPage: React.FC = () => {
     const selectedThread = selectedThreadId ? threads.find((item) => item.threadId === selectedThreadId) : null;
     const currentThreadId = selectedThread?.threadId ?? activeThread?.id ?? null;
     const currentThreadLabel = selectedThread?.label ?? activeThread?.label ?? null;
-    let turn = await resolveImobTurn({
-      message: text,
-      threadLabel: currentThreadLabel,
-      threadState: currentThreadId ? conversationStateByThreadRef.current[currentThreadId] ?? null : null,
-    });
+    let turn: ImobResolveTurnResponse;
+    try {
+      const resolvedCaseId = currentThreadId
+        ? caseIdByThreadRef.current[currentThreadId] ?? requestedCaseId ?? null
+        : requestedCaseId ?? null;
+      turn = await resolveImobTurn({
+        message: text,
+        threadLabel: currentThreadLabel,
+        threadId: currentThreadId,
+        caseId: resolvedCaseId,
+        threadState: currentThreadId ? conversationStateByThreadRef.current[currentThreadId] ?? null : null,
+      });
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? `${error.message} (${error.status})`
+          : error instanceof Error
+            ? error.message
+            : "Falha ao resolver esta mensagem";
+      appendMessage({
+        id: makeId("assistant"),
+        role: "assistant",
+        text: "Nao consegui preparar sua solicitacao agora. Tente novamente em instantes.",
+        thread: currentThreadId && currentThreadLabel ? { id: currentThreadId, label: currentThreadLabel, status: "blocked" } : undefined,
+        card: {
+          type: "risk",
+          title: "Falha no envio",
+          thread: currentThreadId && currentThreadLabel ? { id: currentThreadId, label: currentThreadLabel, status: "blocked" } : undefined,
+          lines: [message],
+          risk: {
+            level: "high",
+            reason: message,
+          },
+        },
+      });
+      setState("blocked");
+      return;
+    }
+    const resolvedIntent = turn.executionRequest?.intent ?? null;
     const operationThread = selectedThread
       ? { id: selectedThread.threadId, label: selectedThread.label }
-      : activeThread ?? {
-          id: makeId("thread"),
-          label: turn.threadLabel,
-        };
+      : activeThread && activeThread.label === turn.threadLabel
+        ? activeThread
+        : {
+            id: makeId("thread"),
+            label: turn.threadLabel,
+          };
     conversationStateByThreadRef.current[operationThread.id] = turn.conversationState;
+    if (turn.caseContext?.caseId) {
+      caseIdByThreadRef.current[operationThread.id] = turn.caseContext.caseId;
+    }
     let activeConversationId = conversationId;
     if (!activeConversationId) {
       try {
@@ -1539,7 +1914,39 @@ const ImobChatPage: React.FC = () => {
         setConversationId(activeConversationId);
         setConversations((prev) => [created.conversation, ...prev]);
         sessionRunByThreadRef.current = {};
-      } catch {
+      } catch (error) {
+        const message =
+          error instanceof ApiError
+            ? `${error.message} (${error.status})`
+            : error instanceof Error
+              ? error.message
+              : "Falha ao criar conversa";
+        appendMessage({
+          id: makeId("assistant"),
+          role: "assistant",
+          text: "Nao consegui abrir a conversa operacional agora.",
+          thread: {
+            id: operationThread.id,
+            label: operationThread.label,
+            status: "blocked",
+          },
+          card: {
+            type: "risk",
+            title: "Conversa nao iniciada",
+            thread: {
+              id: operationThread.id,
+              label: operationThread.label,
+              status: "blocked",
+            },
+            lines: [message],
+            risk: {
+              level: "high",
+              reason: message,
+            },
+          },
+          caseContext: turn.caseContext,
+        });
+        setState("blocked");
         return;
       }
     }
@@ -1554,21 +1961,25 @@ const ImobChatPage: React.FC = () => {
         status: "active",
       },
     };
-    appendMessage(userMessage);
-    void persistMessage(userMessage, {
-      conversationId: activeConversationId,
-      metadata: contractInterviewState ? { contractInterview: contractInterviewState } : undefined,
-    });
-    setInput("");
-    setState("typing");
-    const startedAt = Date.now();
-
     const interviewIsActive =
       !!contractInterviewState &&
       (contractInterviewState.status === "collecting" ||
         contractInterviewState.status === "review" ||
         contractInterviewState.status === "generating");
-    if (interviewIsActive || turn.executionRequest?.intent === "contract") {
+    const shouldContinueContractInterview =
+      interviewIsActive &&
+      (resolvedIntent === null || resolvedIntent === "adjustment" || resolvedIntent === "contract");
+
+    appendMessage(userMessage);
+    void persistMessage(userMessage, {
+      conversationId: activeConversationId,
+      metadata: shouldContinueContractInterview ? { contractInterview: contractInterviewState } : undefined,
+    });
+    setInput("");
+    setState("typing");
+    const startedAt = Date.now();
+
+    if (shouldContinueContractInterview || resolvedIntent === "contract") {
       const threadForInterview = {
         id: operationThread.id,
         label: "Contrato",
@@ -1684,10 +2095,11 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       return;
     }
 
+    const baseThreadStatus = turn.action === "crm.batch.intake" ? ("done" as const) : ("active" as const);
     const baseThread = {
       id: operationThread.id,
       label: turn.threadLabel,
-      status: "active" as const,
+      status: baseThreadStatus,
     };
 
     if (turn.mode === "blocked") {
@@ -1697,6 +2109,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         text: turn.presentation.text,
         thread: { ...baseThread, status: "blocked" },
         card: mapApiPresentationCard(turn.presentation.card, { ...baseThread, status: "blocked" }),
+        caseContext: turn.caseContext,
       };
       appendMessage(blockedReply);
       void persistMessage(blockedReply, {
@@ -1714,6 +2127,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         text: turn.presentation.text,
         thread: baseThread,
         card: mapApiPresentationCard(turn.presentation.card, baseThread),
+        caseContext: turn.caseContext,
       };
       appendMessage(consultReply);
       void persistMessage(consultReply, {
@@ -1790,6 +2204,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         text: inventory.presentation.text,
         thread: baseThread,
         card: mapApiPresentationCard(inventory.presentation.card, baseThread),
+        caseContext: turn.caseContext,
       };
       appendMessage(searchReply);
       void persistMessage(searchReply, {
@@ -1822,7 +2237,24 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       return;
     }
 
-    await startPlanExecution(turn.executionRequest, operationThread, activeConversationId, startedAt);
+    await startPlanExecution(
+      turn.executionRequest,
+      operationThread,
+      activeConversationId,
+      startedAt,
+      turn.presentation.text,
+      turn.conversationState.operational?.flow,
+      turn.conversationState.operational?.pendingFields,
+      turn.caseContext,
+      {
+        owner: turn.presentation.owner,
+        nextStep: turn.presentation.nextStep,
+        blocker: turn.presentation.blocker,
+        pendingFieldLabels: turn.presentation.pendingFieldLabels,
+        dedupeKey: turn.presentation.dedupeKey,
+        suggestedNextAction: turn.presentation.suggestedNextAction,
+      }
+    );
   };
 
   React.useEffect(() => {
@@ -1898,8 +2330,149 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
   const handleSend = async () => {
     const text = input.trim();
     if (!text) return;
-    setInput("");
     await sendMessageText(text);
+  };
+
+  const handleDocumentUpload = async (files: FileList | null) => {
+    const selectedFiles = Array.from(files ?? []);
+    if (selectedFiles.length === 0) return;
+
+    const selectedThread = selectedThreadId ? threads.find((item) => item.threadId === selectedThreadId) : null;
+    const uploadThread = selectedThread
+      ? { id: selectedThread.threadId, label: selectedThread.label }
+      : activeThread ?? { id: makeId("thread"), label: "Documentos" };
+
+    let activeConversationId = conversationId;
+    if (!activeConversationId) {
+      try {
+        const created = await apiCreateImobChatConversation({
+          title: getConversationTitleFromMessage(`Anexo ${selectedFiles[0].name}`, conversations),
+        });
+        activeConversationId = created.conversation.conversationId;
+        setConversationId(activeConversationId);
+        setConversations((prev) => [created.conversation, ...prev]);
+        sessionRunByThreadRef.current = {};
+      } catch (error) {
+        const message =
+          error instanceof ApiError
+            ? `${error.message} (${error.status})`
+            : error instanceof Error
+              ? error.message
+              : "Falha ao criar conversa para upload";
+        appendMessage({
+          id: makeId("assistant"),
+          role: "assistant",
+          text: "Nao consegui abrir a conversa para anexar o documento.",
+          thread: { id: uploadThread.id, label: uploadThread.label, status: "blocked" },
+          card: {
+            type: "risk",
+            title: "Upload nao iniciado",
+            thread: { id: uploadThread.id, label: uploadThread.label, status: "blocked" },
+            lines: [message],
+            risk: { level: "high", reason: message },
+          },
+        });
+        setState("blocked");
+        return;
+      }
+    }
+
+    setUploadingDocuments(true);
+    try {
+      const formData = new FormData();
+      for (const file of selectedFiles) formData.append("files", file);
+      const uploaded = await apiUploadDocuments(formData, "imob");
+      const uploadedItems = uploaded.data ?? [];
+      const uploadMessage: ChatMessage = {
+        id: makeId("assistant"),
+        role: "assistant",
+        text: uploadedItems.length === 1
+          ? "Documento anexado ao contexto desta conversa."
+          : `${uploadedItems.length} documento(s) anexados ao contexto desta conversa.`,
+        thread: { id: uploadThread.id, label: uploadThread.label, status: "active" },
+        caseContext: uploadThread.id && caseIdByThreadRef.current[uploadThread.id]
+          ? {
+              caseId: caseIdByThreadRef.current[uploadThread.id],
+              flow: "documents.collect",
+              stage: "collecting",
+              status: "pending_data",
+              threadId: uploadThread.id,
+            }
+          : undefined,
+        card: {
+          type: "evidence",
+          title: uploadedItems.length === 1 ? "Documento anexado" : "Documentos anexados",
+          thread: { id: uploadThread.id, label: uploadThread.label, status: "active" },
+          lines: uploadedItems.map((item) => `${item.name} | ${formatUploadSize(item.sizeBytes)}`),
+          ctas: uploadedItems.slice(0, 2).map((item) => ({ id: `upload-${item.id}`, label: item.name, kind: "neutral" as const, href: item.url })),
+        },
+      };
+      appendMessage(uploadMessage);
+      await persistMessage(uploadMessage, {
+        conversationId: activeConversationId,
+        metadata: {
+          uploadedDocuments: uploadedItems,
+          attachmentUsed: true,
+        },
+      });
+
+      const attachmentResolution = await apiResolveImobAttachment({
+        caseId: uploadThread.id ? caseIdByThreadRef.current[uploadThread.id] ?? null : null,
+        threadId: uploadThread.id,
+        documentIds: uploadedItems.map((item) => item.id),
+      });
+      if (attachmentResolution.data.caseContext?.caseId && uploadThread.id) {
+        caseIdByThreadRef.current[uploadThread.id] = attachmentResolution.data.caseContext.caseId;
+      }
+      const attachmentFollowUp: ChatMessage = {
+        id: makeId("assistant"),
+        role: "assistant",
+        text: attachmentResolution.data.presentation.text,
+        thread: { id: uploadThread.id, label: uploadThread.label, status: attachmentResolution.data.resolved ? "done" : "active" },
+        card: mapApiPresentationCard(attachmentResolution.data.presentation.card, {
+          id: uploadThread.id,
+          label: uploadThread.label,
+          status: attachmentResolution.data.resolved ? "done" : "active",
+        }),
+        caseContext: attachmentResolution.data.caseContext ?? uploadMessage.caseContext,
+      };
+      appendMessage(attachmentFollowUp);
+      await persistMessage(attachmentFollowUp, {
+        conversationId: activeConversationId,
+        metadata: {
+          uploadedDocuments: uploadedItems,
+          attachmentResolution: attachmentResolution.data,
+        },
+      });
+      setState("idle");
+      void refreshConversations(activeConversationId);
+      void refreshThreads(activeConversationId);
+      void refreshTelemetry(activeConversationId);
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? `${error.message} (${error.status})`
+          : error instanceof Error
+            ? error.message
+            : "Falha no upload do documento";
+      appendMessage({
+        id: makeId("assistant"),
+        role: "assistant",
+        text: "Nao consegui anexar o documento agora.",
+        thread: { id: uploadThread.id, label: uploadThread.label, status: "blocked" },
+        card: {
+          type: "risk",
+          title: "Upload com falha",
+          thread: { id: uploadThread.id, label: uploadThread.label, status: "blocked" },
+          lines: [message],
+          risk: { level: "high", reason: message },
+        },
+      });
+      setState("blocked");
+    } finally {
+      setUploadingDocuments(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const runExecutionFlow = React.useCallback(
@@ -1914,7 +2487,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       setOpenOptionsMessageId(null);
       setState("executing");
       updateMessageById(executionPending.messageId, {
-        text: "Vou preparar esta operação agora.",
+        text: executionPending.presentationText,
         thread: {
           id: executionPending.thread.id,
           label: executionPending.thread.label,
@@ -1978,11 +2551,11 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         persistedRunStatusKeysRef.current.delete(`${runId}:success`);
         persistedRunStatusKeysRef.current.delete(`${runId}:blocked`);
         persistedRunStatusKeysRef.current.delete(`${runId}:error`);
-        setPendingExecution(null);
+        setPendingExecution(executionPending);
         setState("executing");
 
         updateMessageById(executionPending.messageId, {
-          text: "Operação iniciada.",
+          text: executionPending.presentationText,
           thread: {
             id: executionPending.thread.id,
             label: executionPending.thread.label,
@@ -2026,7 +2599,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
           void persistMessage({
             id: makeId("assistant"),
             role: "assistant",
-            text: "Operação iniciada.",
+            text: executionPending.presentationText,
             thread: {
               id: executionPending.thread.id,
               label: executionPending.thread.label,
@@ -2360,14 +2933,14 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
   return (
     <div className="space-y-6">
       <section className="overflow-hidden rounded-3xl border border-white/10 bg-surface/70">
-        <div className="grid min-h-[70vh] lg:h-[78vh] lg:max-h-[78vh] lg:grid-cols-[300px,1fr]">
+        <div className="grid min-h-[70vh] lg:h-[78vh] lg:max-h-[78vh] lg:grid-cols-[260px,1fr]">
           <aside className="flex h-full min-h-[70vh] flex-col border-b border-white/10 bg-black/30 p-3 lg:min-h-0 lg:border-b-0 lg:border-r">
             <div className="space-y-3 border-b border-white/10 pb-3">
               <div className="flex items-center justify-between gap-2">
                 <button
                   type="button"
                   onClick={() => void handleNewConversation()}
-                  className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm font-medium text-foreground transition hover:border-accent/40"
+                  className="rounded-lg bg-black/25 px-3 py-2 text-[10px] font-medium text-foreground transition hover:border-accent/40"
                 >
                   + Nova conversa
                 </button>
@@ -2378,7 +2951,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                     setShowThreadPanel(next);
                     trackUxEvent(next ? "thread_panel_opened" : "thread_panel_hidden", { activeThreads: activeThreadCount });
                   }}
-                  className="rounded-full border border-white/15 bg-white/5 px-2 py-1 text-[10px] uppercase tracking-[0.12em] text-muted-foreground hover:border-white/30"
+                  className="rounded-full bg-black/25 px-2 py-1 text-[10px] tracking-[0.12em] text-muted-foreground hover:border-white/30"
                 >
                   {shouldShowThreadPanel ? "Ocultar operações" : "Ver operações"}
                 </button>
@@ -2388,7 +2961,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                 value={conversationSearch}
                 onChange={(event) => setConversationSearch(event.target.value)}
                 placeholder="Buscar conversa..."
-                className="w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-accent/40 focus:outline-none"
+                className="w-full rounded-xl bg-black/25 px-3 py-2 text-[10px] text-foreground placeholder:text-muted-foreground focus:border-accent/40 focus:outline-none"
               />
 
               {conversationId && shouldShowThreadPanel ? (
@@ -2420,7 +2993,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
 
             <div className="mt-3 flex-1 space-y-1 overflow-y-auto pr-1">
               {filteredConversations.length === 0 ? (
-                <p className="px-1 text-xs text-muted-foreground">Nenhuma conversa registrada.</p>
+                <p className="px-1 text-[10px] text-muted-foreground">Nenhuma conversa registrada.</p>
               ) : (
                 filteredConversations.map((conversation) => {
                   const selected = conversation.conversationId === conversationId;
@@ -2430,11 +3003,11 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                       type="button"
                       onClick={() => void loadConversation(conversation.conversationId)}
                       className={`w-full rounded-lg px-3 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
-                        selected ? "bg-accent/10 text-foreground" : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                        selected ? "bg-accent/10 text-foreground" : "text-muted-foreground hover:bg-black/25 hover:text-foreground"
                       }`}
                     >
-                      <p className="truncate text-sm font-medium">{conversation.title}</p>
-                      <p className="mt-1 truncate text-xs opacity-80">
+                      <p className="truncate text-[10px] font-medium">{conversation.title}</p>
+                      <p className="mt-1 truncate text-[10px] opacity-80">
                         {conversation.lastMessagePreview ?? "Sem mensagens ainda"}
                       </p>
                     </button>
@@ -2443,30 +3016,17 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
               )}
             </div>
 
-            <div className="mt-3 border-t border-white/10 pt-3 text-xs text-muted-foreground">
-              <div className="flex items-center justify-between">
-                <Link to="/self-service" className="rounded-md px-2 py-1 hover:bg-white/5 hover:text-foreground">
-                  Configurações e ajuda
-                </Link>
-                <Link to="/profile" className="rounded-md px-2 py-1 hover:bg-white/5 hover:text-foreground">
-                  Perfil
-                </Link>
-              </div>
-              <p className="mt-2 truncate text-[11px] text-foreground/90">
-                {brandName} • {workspaceLabel}
-              </p>
-            </div>
           </aside>
 
           <article className="relative flex min-h-[70vh] flex-col lg:min-h-0">
             <header className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-6">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">Chat Operacional</p>
-                <p className="mt-1 text-xs uppercase tracking-[0.18em] text-muted-foreground/80">
+                <p className="mt-1 text-[10px] tracking-[0.18em] text-muted-foreground/80">
                   {brandName} • {workspaceLabel}
                 </p>
                 {selectedThreadId ? (
-                  <p className="mt-1 text-[11px] text-accent">
+                  <p className="mt-1 text-[10px] text-foreground">
                     Thread ativa: {threads.find((t) => t.threadId === selectedThreadId)?.label ?? "Operação"}
                   </p>
                 ) : null}
@@ -2481,7 +3041,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
               contractInterviewState.status === "generating" ||
               contractInterviewState.status === "generated") ? (
               <div className="border-b border-white/10 bg-black/20 px-4 py-2 sm:px-6">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-accent">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-foreground">
                   Rascunho de contrato • {getContractTypeLabel(contractInterviewState.contractType)}
                 </p>
                 <div className="mt-1 max-h-16 space-y-0.5 overflow-y-auto pr-1 text-[11px] text-muted-foreground">
@@ -2495,7 +3055,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                       <select
                         value={draftEditFieldId}
                         onChange={(event) => setDraftEditFieldId(event.target.value)}
-                        className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/30 px-2 py-1 text-xs text-foreground focus:border-accent/40 focus:outline-none"
+                        className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/30 px-2 py-1 text-[10px] text-foreground focus:border-accent/40 focus:outline-none"
                       >
                         {contractEditableFields.map((field) => (
                           <option key={`draft-field-${field.id}`} value={field.id}>
@@ -2525,7 +3085,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                         type="button"
                         onClick={() => void handleDraftConfirmFromPanel()}
                         disabled={reviewActionLoading !== null}
-                        className="rounded-full border border-accent/40 bg-accent/15 px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-accent transition hover:bg-accent/25 disabled:opacity-50"
+                        className="rounded-full border border-accent/40 bg-accent/15 px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-foreground transition hover:bg-accent/25 disabled:opacity-50"
                       >
                         Confirmar e gerar
                       </button>
@@ -2574,11 +3134,11 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
               {historyLoading ? (
                 <p className="text-sm text-muted-foreground">Carregando histórico da conversa...</p>
               ) : visibleMessages.length === 0 ? (
-                <div className="rounded-2xl border border-white/10 bg-black/15 p-4">
+                <div className="rounded-xl border border-white/10 bg-black/15 p-4">
                   <p className="text-sm text-foreground">
                     {selectedThreadId ? "Sem mensagens nesta thread." : "Comece descrevendo uma operação imobiliária."}
                   </p>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className="mt-1 text-[10px] text-muted-foreground">
                     {selectedThreadId
                       ? "Selecione outra thread ou remova o filtro para ver toda a conversa."
                       : "Exemplo: \"Tenho um proprietário com apartamento em Itapema\"."}
@@ -2608,7 +3168,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                     ? "border-rose-300/40 bg-rose-500/10 text-rose-200"
                     : messageThread?.status === "done"
                       ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-200"
-                      : "border-accent/40 bg-accent/10 text-accent";
+                      : "border-accent/40 bg-accent/10 text-foreground";
                 return (
                   <div key={message.id} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
                     <div className={`max-w-[94%] space-y-1.5 sm:max-w-[82%] ${isUser ? "items-end" : "items-start"}`}>
@@ -2618,43 +3178,33 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                         </div>
                       ) : null}
                       <div
-                        className={`rounded-2xl border px-4 py-3 text-sm ${
+                        className={`rounded-2xl px-4 py-3 text-sm ${
                           isUser
-                            ? "border-accent/35 bg-accent/15 text-foreground"
-                            : "border-white/10 bg-black/20 text-foreground"
+                            ? "bg-accent/15 text-foreground"
+                            : "bg-black/20 text-foreground"
                         } transition`}
                       >
                         <p className="whitespace-pre-wrap">{message.text}</p>
 
                         {message.card &&
                         message.card.type === "queue" &&
-                        !(message.card.type === "action" && message.card.compactConfirm) ? (
-                          <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[11px] text-muted-foreground">
-                            <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-                            <span className="font-medium text-foreground">
-                              {message.card.title || "Em andamento"}...
-                            </span>
-                            {message.card.lines?.[0] &&
-                            !isCardLeadRedundant(message.text, message.card?.title ?? "", message.card.lines[0]) ? (
-                              <span className="hidden sm:inline">• {message.card.lines[0]}</span>
-                            ) : null}
-                          </div>
-                        ) : null}
+                        !(message.card.type === "action" && message.card.compactConfirm) ? null : null}
 
                         {message.card &&
                         message.card.type !== "queue" &&
-                        !(message.card.type === "action" && message.card.compactConfirm) ? (
+                        !(message.card.type === "action" && message.card.compactConfirm) &&
+                        message.card.title !== "Lote processado" ? (
                           <div className="mt-3 rounded-xl border border-white/10 bg-surface/50 p-3">
                             <div className="flex items-center justify-between gap-2">
-                              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">{message.card.title}</p>
+                              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground">{message.card.title}</p>
                               {message.card.type !== "action" ? (
-                                <span className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+                                <span className="rounded-full bg-black/25 px-2 py-0.5 text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
                                   {getCardTypeChip(message.card.type)}
                                 </span>
                               ) : null}
                             </div>
 
-                            <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                            <ul className="mt-2 space-y-1 text-[10px] text-muted-foreground">
                               {message.card.lines
                                 .filter((line, idx) => {
                                   if (idx !== 0) return true;
@@ -2681,23 +3231,23 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
 
                             {SHOW_TECHNICAL_CHAT && message.card.risk ? (
                               <div className="mt-3 rounded-lg border border-white/10 bg-surface/40 p-2">
-                                <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Risco</p>
-                                <p className="mt-1 text-xs text-foreground">
+                                <p className="text-[10px] tracking-[0.18em] text-muted-foreground">Risco</p>
+                                <p className="mt-1 text-[10px] text-foreground">
                                   Nível: <span className="uppercase">{message.card.risk.level}</span>
                                   {typeof message.card.risk.trustScore === "number"
                                     ? ` • Trust min ${message.card.risk.trustScore}`
                                     : ""}
                                 </p>
                                 {message.card.risk.reason ? (
-                                  <p className="mt-1 text-xs text-muted-foreground">{message.card.risk.reason}</p>
+                                  <p className="mt-1 text-[10px] text-muted-foreground">{message.card.risk.reason}</p>
                                 ) : null}
                               </div>
                             ) : null}
 
                             {SHOW_TECHNICAL_CHAT && message.card.queue ? (
                               <div className="mt-3 rounded-lg border border-white/10 bg-surface/40 p-2">
-                                <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Fila</p>
-                                <p className="mt-1 text-xs text-foreground">
+                                <p className="text-[10px] tracking-[0.18em] text-muted-foreground">Fila</p>
+                                <p className="mt-1 text-[10px] text-foreground">
                                   Status: {message.card.queue.status ?? "—"} • Step: {message.card.queue.step ?? "—"}
                                 </p>
                               </div>
@@ -2705,12 +3255,12 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
 
                             {SHOW_TECHNICAL_CHAT && message.card.proof ? (
                               <div className="mt-3 rounded-lg border border-white/10 bg-surface/40 p-2">
-                                <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Bloco de prova</p>
-                                <p className="mt-1 text-xs text-foreground">txId: {message.card.proof.txId ?? "pendente"}</p>
-                                <p className="mt-1 text-xs text-foreground">
+                                <p className="text-[10px] tracking-[0.18em] text-muted-foreground">Bloco de prova</p>
+                                <p className="mt-1 text-[10px] text-foreground">txId: {message.card.proof.txId ?? "pendente"}</p>
+                                <p className="mt-1 text-[10px] text-foreground">
                                   receipt: {message.card.proof.receiptPath ?? "não disponível"}
                                 </p>
-                                <p className="mt-1 text-xs text-foreground">
+                                <p className="mt-1 text-[10px] text-foreground">
                                   bundle: {message.card.proof.bundlePath ?? "não disponível"}
                                 </p>
                               </div>
@@ -2733,7 +3283,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                             pendingExecution &&
                             pendingExecution.messageId === message.id &&
                             pendingExecution.thread.id === (message.thread?.id ?? message.card?.thread?.id) ? (
-                              <p className="mt-3 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                              <p className="mt-3 text-[10px] tracking-[0.18em] text-muted-foreground">
                                 Aguardando sua decisão para seguir.
                               </p>
                             ) : null}
@@ -2770,18 +3320,18 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                       target="_blank"
                                       rel="noreferrer"
                                       onClick={() => setOpenOptionsMessageId(null)}
-                                      className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${getCtaClass(cta.kind)}`}
+                                      className={`text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline ${cta.kind === "danger" ? "text-rose-200 hover:text-rose-100" : ""}`}
                                     >
-                                      {cta.label}
+                                      {cta.label.replace(/^Ver\s+/i, "").toLowerCase()}
                                     </a>
                                   ) : (
                                     <Link
                                       key={`${message.id}-footer-cta-${cta.id}`}
                                       to={withDashboardContext(cta.href, messageThreadId)}
                                       onClick={() => setOpenOptionsMessageId(null)}
-                                      className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${getCtaClass(cta.kind)}`}
+                                      className={`text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline ${cta.kind === "danger" ? "text-rose-200 hover:text-rose-100" : ""}`}
                                     >
-                                      {cta.label}
+                                      {cta.label.replace(/^Ver\s+/i, "").toLowerCase()}
                                     </Link>
                                   )
                                 ) : (
@@ -2806,9 +3356,9 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                       }
                                     }}
                                     disabled={cta.action === "reject_execution" && isRejectLocked}
-                                    className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${getCtaClass(cta.kind)}`}
+                                    className={`text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline ${cta.kind === "danger" ? "text-rose-200 hover:text-rose-100" : ""}`}
                                   >
-                                    {cta.label}
+                                    {cta.label.replace(/^Ver\s+/i, "").toLowerCase()}
                                   </button>
                                 );
                               return (
@@ -2831,10 +3381,10 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                           }
                                         }}
                                       >
-                                        <summary className="cursor-pointer list-none rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-foreground hover:border-accent/40">
-                                          Ver opções
+                                        <summary className="cursor-pointer list-none text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+                                          opções
                                         </summary>
-                                        <div className="absolute left-0 top-8 z-20 min-w-[180px] rounded-xl border border-white/10 bg-surface/95 p-2 shadow-xl backdrop-blur">
+                                        <div className="absolute left-0 top-6 z-20 min-w-[180px] rounded-xl border border-white/10 bg-surface/95 p-1.5 shadow-xl backdrop-blur">
                                           <div className="flex flex-col gap-1">{secondary.map((cta) => renderCta(cta))}</div>
                                         </div>
                                       </details>
@@ -2847,14 +3397,16 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                         ) : null}
 
                         {message.role === "assistant" && message.card?.proof ? (
-                          <details className="w-full rounded-lg border border-white/10 bg-black/15 p-2">
-                            <summary className="cursor-pointer list-none text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                              Ver detalhes
+                          <details className="group relative">
+                            <summary className="cursor-pointer list-none text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+                              detalhes
                             </summary>
-                            <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-                              <p>Recibo e histórico desta etapa estão registrados.</p>
-                              {message.card.proof.receiptPath ? <p className="truncate">Recibo: {message.card.proof.receiptPath}</p> : null}
-                              {message.card.proof.bundlePath ? <p className="truncate">Dossiê: {message.card.proof.bundlePath}</p> : null}
+                            <div className="absolute left-0 top-6 z-20 min-w-[220px] max-w-[min(80vw,320px)] rounded-xl border border-white/10 bg-surface/95 p-3 shadow-xl backdrop-blur">
+                              <div className="space-y-1 text-[11px] normal-case tracking-normal text-muted-foreground">
+                                <p>Recibo e histórico desta etapa estão registrados.</p>
+                                {message.card.proof.receiptPath ? <p className="truncate">Recibo: {message.card.proof.receiptPath}</p> : null}
+                                {message.card.proof.bundlePath ? <p className="truncate">Dossiê: {message.card.proof.bundlePath}</p> : null}
+                              </div>
                             </div>
                           </details>
                         ) : null}
@@ -2866,7 +3418,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
               })}
 
               {lastVisibleMessage ? (
-                <div className="flex items-center gap-2 px-1 text-[10px] uppercase tracking-[0.15em] text-muted-foreground/80">
+                <div className="flex flex-wrap items-center gap-2 px-1 text-[10px] normal-case tracking-normal text-muted-foreground/80">
                   <button
                     type="button"
                     onClick={() => {
@@ -2876,12 +3428,13 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                     }}
                     aria-label="Copiar mensagem"
                     title="Copiar mensagem"
-                    className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-white/15 bg-white/5 hover:border-white/30"
+                    className="text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
                   >
-                    ⧉
+                    copiar
                   </button>
                   {lastVisibleMessage.role === "assistant" ? (
                     <>
+                      <span className="text-white/25">•</span>
                       <button
                         type="button"
                         onClick={() =>
@@ -2889,14 +3442,15 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                         }
                         aria-label="Resposta útil"
                         title="Resposta útil"
-                        className={`inline-flex h-6 w-6 items-center justify-center rounded-full border hover:border-white/30 ${
+                        className={`text-[10px] normal-case tracking-normal underline-offset-2 hover:underline ${
                           messageFeedback[lastVisibleMessage.id] === "up"
-                            ? "border-emerald-300/40 text-emerald-200"
-                            : "border-white/15 bg-white/5"
+                            ? "text-emerald-200"
+                            : "text-muted-foreground hover:text-foreground"
                         }`}
                       >
-                        👍
+                        útil
                       </button>
+                      <span className="text-white/25">•</span>
                       <button
                         type="button"
                         onClick={() =>
@@ -2904,13 +3458,13 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                         }
                         aria-label="Resposta não útil"
                         title="Resposta não útil"
-                        className={`inline-flex h-6 w-6 items-center justify-center rounded-full border hover:border-white/30 ${
+                        className={`text-[10px] normal-case tracking-normal underline-offset-2 hover:underline ${
                           messageFeedback[lastVisibleMessage.id] === "down"
-                            ? "border-rose-300/40 text-rose-200"
-                            : "border-white/15 bg-white/5"
+                            ? "text-rose-200"
+                            : "text-muted-foreground hover:text-foreground"
                         }`}
                       >
-                        👎
+                        não útil
                       </button>
                     </>
                   ) : null}
@@ -2928,7 +3482,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                     setIsNearBottom(true);
                     setShowJumpToLatest(false);
                   }}
-                  className="pointer-events-auto rounded-full border border-accent/50 bg-accent/20 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-accent transition hover:bg-accent/30"
+                  className="pointer-events-auto rounded-full border border-accent/50 bg-black/25 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-foreground transition hover:bg-black/30"
                 >
                   Voltar ao final
                 </button>
@@ -2943,7 +3497,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                       key={prompt}
                       type="button"
                       onClick={() => setInput(prompt)}
-                      className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-muted-foreground hover:border-accent/40"
+                      className="rounded-full bg-black/25 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-muted-foreground hover:border-accent/40"
                     >
                       {prompt.length > 34 ? `${prompt.slice(0, 34)}...` : prompt}
                     </button>
@@ -2951,7 +3505,42 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                 </div>
               ) : null}
 
-              <div className="flex items-end gap-2 rounded-2xl border border-white/10 bg-surface/80 p-2 backdrop-blur">
+              <div className="flex items-center gap-2 rounded-xl bg-black/25 p-2 backdrop-blur">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
+                  multiple
+                  className="hidden"
+                  onChange={(event) => void handleDocumentUpload(event.target.files)}
+                />
+                <div ref={attachmentMenuRef} className="relative shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setAttachmentMenuOpen((prev) => !prev)}
+                    disabled={uploadingDocuments || state === "typing" || state === "executing"}
+                    aria-label="Abrir menu de anexos"
+                    title="Adicionar fotos e arquivos"
+                    className="flex h-[24px] w-[24px] items-center justify-center rounded-full border-y border-white/12 bg-black/25 text-[10px] leading-none text-foreground transition hover:border-accent/40 hover:bg-black/30 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {uploadingDocuments ? "…" : "+"}
+                  </button>
+                  {attachmentMenuOpen && !(uploadingDocuments || state === "typing" || state === "executing") ? (
+                    <div className="absolute bottom-full left-0 z-30 mb-1 w-[180px] overflow-hidden rounded-xl border border-white/10 bg-[#2f2f2f]/95 p-1.5 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAttachmentMenuOpen(false);
+                          fileInputRef.current?.click();
+                        }}
+                        className="flex w-full items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-left text-[10px] text-white transition hover:bg-white/8"
+                      >
+                        <span className="text-[10px] leading-none">📎</span>
+                        <span>Adicionar fotos e arquivos</span>
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
                 <textarea
                   value={input}
                   onChange={(event) => setInput(event.target.value)}
@@ -2963,15 +3552,15 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                   }}
                   placeholder="Descreva uma operação imobiliária..."
                   rows={1}
-                  className="max-h-40 min-h-[46px] w-full resize-y rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30"
+                  className="max-h-40 min-h-[46px] w-full resize-y rounded-xl bg-black/25 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => void handleSend()}
-                  disabled={state === "typing" || state === "executing"}
-                  className="h-[46px] shrink-0 rounded-xl border border-accent/50 bg-accent/20 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-accent transition hover:bg-accent/30 disabled:cursor-not-allowed disabled:opacity-50"
+                  disabled={uploadingDocuments || state === "typing" || state === "executing"}
+                  className="h-[46px] shrink-0 rounded-xl bg-black/25 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-foreground transition hover:bg-black/30 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {state === "typing" || state === "executing" ? "Enviando..." : "Enviar"}
+                  {uploadingDocuments || state === "typing" || state === "executing" ? "Enviando..." : "Enviar"}
                 </button>
               </div>
             </div>

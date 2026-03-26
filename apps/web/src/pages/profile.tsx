@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import {
   apiCreateWorkspace,
+  apiCreateWorkspaceInvitation,
   apiGetProfile,
   apiListHelpdeskSessions,
   apiDeleteSession,
@@ -12,6 +13,37 @@ import {
   type HelpdeskSessionExport,
 } from "@/lib/api";
 import { clearSession, updateSession, useSession } from "@/state/sessionStore";
+
+type WorkspaceRoleOption = {
+  key: string;
+  label: string;
+  defaultPermissions: string[];
+};
+
+type WorkspaceMember = {
+  userId: string;
+  email: string;
+  fullName: string;
+  roleKey: string;
+  roleLabel: string;
+  permissions: string[];
+  status: string;
+  isCurrentUser: boolean;
+  createdAt: string;
+};
+
+type WorkspaceInvitation = {
+  id: string;
+  email: string;
+  fullName: string;
+  roleKey: string;
+  roleLabel: string;
+  permissions: string[];
+  status: string;
+  token: string;
+  expiresAt: string;
+  createdAt: string;
+};
 
 type ProfileState = {
   fullName: string;
@@ -35,6 +67,64 @@ const DEFAULT_STATE: ProfileState = {
   country: "",
 };
 
+function normalizeWorkspaceRoleKey(value: string) {
+  const normalized = value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  return normalized || "funcao";
+}
+
+const IMOB_STAGE_OPTIONS = [
+  { key: "new", label: "Novo" },
+  { key: "collecting", label: "Coleta" },
+  { key: "pending_data", label: "Dados pendentes" },
+  { key: "ready_for_review", label: "Pronto para revisão" },
+  { key: "qualified", label: "Qualificado" },
+] as const;
+
+function buildImobStagePermission(stageKey: string) {
+  return `imob.stage.${stageKey}`;
+}
+
+const WORKSPACE_PERMISSION_GROUPS = [
+  {
+    key: "imob_access",
+    label: "Acesso ao IMOB",
+    options: [
+      { key: "imob.chat.use", label: "Usar IMOB" },
+      { key: "imob.case.review", label: "Revisar casos" },
+      { key: "imob.stage.*", label: "Todas as etapas do IMOB" },
+    ],
+  },
+  {
+    key: "workspace_management",
+    label: "Gestão do workspace",
+    options: [
+      { key: "workspace.manage_members", label: "Convidar membros" },
+      { key: "workspace.manage_roles", label: "Gerir funções" },
+    ],
+  },
+] as const;
+
+function formatWorkspacePermissionLabel(permission: string) {
+  const normalized = permission.trim();
+  if (!normalized) return permission;
+  if (normalized === "workspace.manage_members") return "Convidar membros";
+  if (normalized === "workspace.manage_roles") return "Gerir funções";
+  if (normalized === "imob.chat.use") return "Usar IMOB";
+  if (normalized === "imob.case.review") return "Revisar casos";
+  if (normalized === "imob.stage.*") return "Todas as etapas do IMOB";
+  if (normalized.startsWith("imob.stage.")) {
+    const stageKey = normalized.slice("imob.stage.".length);
+    return IMOB_STAGE_OPTIONS.find((item) => item.key === stageKey)?.label ?? stageKey;
+  }
+  return normalized;
+}
+
+
 export default function ProfilePage() {
   const navigate = useNavigate();
   const [form, setForm] = React.useState<ProfileState>(DEFAULT_STATE);
@@ -43,6 +133,21 @@ export default function ProfilePage() {
   const [profileLoading, setProfileLoading] = React.useState(true);
   const [tenantName, setTenantName] = React.useState("—");
   const [workspaceName, setWorkspaceName] = React.useState("—");
+  const [workspaceRoleKey, setWorkspaceRoleKey] = React.useState("");
+  const [workspaceRoleOptions, setWorkspaceRoleOptions] = React.useState<WorkspaceRoleOption[]>([]);
+  const [workspacePermissions, setWorkspacePermissions] = React.useState<string[]>([]);
+  const [workspaceCanManageMembers, setWorkspaceCanManageMembers] = React.useState(false);
+  const [workspaceMembers, setWorkspaceMembers] = React.useState<WorkspaceMember[]>([]);
+  const [workspaceInvitations, setWorkspaceInvitations] = React.useState<WorkspaceInvitation[]>([]);
+  const [newWorkspaceRoleLabel, setNewWorkspaceRoleLabel] = React.useState("");
+  const [newWorkspaceRolePermissions, setNewWorkspaceRolePermissions] = React.useState<string[]>([]);
+  const [inviteFullName, setInviteFullName] = React.useState("");
+  const [inviteEmail, setInviteEmail] = React.useState("");
+  const [inviteRoleKey, setInviteRoleKey] = React.useState("");
+  const [inviteStagePermissions, setInviteStagePermissions] = React.useState<string[]>([]);
+  const [inviteState, setInviteState] = React.useState<"idle" | "creating" | "success" | "error">("idle");
+  const [inviteMessage, setInviteMessage] = React.useState<string | null>(null);
+  const [workspaceResponsibleLabel, setWorkspaceResponsibleLabel] = React.useState("Responsável não definido");
   const [linkedWorkspaces, setLinkedWorkspaces] = React.useState<
     Array<{ id: string; name: string; createdAt?: string; isCurrent: boolean }>
   >([]);
@@ -100,6 +205,30 @@ export default function ProfilePage() {
       setForm((prev) => ({ ...prev, [field]: event.target.value }));
     };
 
+  const applyProfileData = React.useCallback((data: NonNullable<Awaited<ReturnType<typeof apiGetProfile>>["data"]>) => {
+    setForm({
+      fullName: data.fullName,
+      email: data.email,
+      phone: data.phone,
+      cep: data.cep,
+      role: data.role,
+      website: data.website,
+      city: data.city,
+      country: data.country,
+    });
+    setTenantName(data.tenant.name);
+    setWorkspaceName(data.workspace.name);
+    setWorkspaceRoleKey(data.workspace.roleKey);
+    setWorkspaceRoleOptions(data.workspace.roleOptions);
+    setWorkspacePermissions(data.workspace.permissions);
+    setWorkspaceCanManageMembers(data.workspace.canManageMembers);
+    setWorkspaceMembers(data.workspace.members);
+    setWorkspaceInvitations(data.workspace.invitations);
+    setWorkspaceResponsibleLabel(data.workspace.responsibleLabel);
+    setInviteRoleKey((prev) => prev || data.workspace.roleOptions[0]?.key || "");
+    setLinkedWorkspaces(data.workspaces);
+  }, []);
+
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSaveErrorMessage(null);
@@ -114,25 +243,14 @@ export default function ProfilePage() {
       country: form.country,
       tenantName,
       workspaceName,
+      workspaceRoleOptions: workspaceRoleOptions.map((item) => ({ label: item.label, permissions: item.defaultPermissions })),
     })
       .then((response) => {
         if (!response.ok || !response.data) {
           setStatus("error");
           return;
         }
-        setForm({
-          fullName: response.data.fullName,
-          email: response.data.email,
-          phone: response.data.phone,
-          cep: response.data.cep,
-          role: response.data.role,
-          website: response.data.website,
-          city: response.data.city,
-          country: response.data.country,
-        });
-        setTenantName(response.data.tenant.name);
-        setWorkspaceName(response.data.workspace.name);
-        setLinkedWorkspaces(response.data.workspaces);
+        applyProfileData(response.data);
         setStatus("saved");
         setTimeout(() => setStatus("idle"), 2500);
       })
@@ -140,6 +258,98 @@ export default function ProfilePage() {
         setStatus("error");
         setSaveErrorMessage("Falha ao salvar perfil no backend. Tente novamente.");
       });
+  };
+
+  const handleAddWorkspaceRole = async () => {
+    const trimmed = newWorkspaceRoleLabel.trim();
+    if (!trimmed) return;
+    const label = trimmed
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((token) => token.charAt(0).toUpperCase() + token.slice(1).toLowerCase())
+      .join(" ");
+    const key = normalizeWorkspaceRoleKey(label);
+    const nextRole = { key, label, defaultPermissions: newWorkspaceRolePermissions };
+    const nextOptions = workspaceRoleOptions.some((item) => item.key === key)
+      ? workspaceRoleOptions.map((item) => item.key === key ? nextRole : item)
+      : [...workspaceRoleOptions, nextRole];
+    setWorkspaceRoleOptions(nextOptions);
+    setInviteRoleKey((prev) => prev || key);
+    setNewWorkspaceRoleLabel("");
+    setNewWorkspaceRolePermissions([]);
+    try {
+      const response = await apiUpdateProfile({
+        workspaceRoleOptions: nextOptions.map((item) => ({ label: item.label, permissions: item.defaultPermissions })),
+      });
+      if (response.ok && response.data) {
+        applyProfileData(response.data);
+      }
+    } catch {
+      setSaveErrorMessage("Falha ao salvar a nova função do workspace.");
+      setStatus("error");
+    }
+  };
+
+  const handleInviteWorkspaceMember = async () => {
+    const email = inviteEmail.trim().toLowerCase();
+    const roleKey = inviteRoleKey.trim();
+    if (!email || !roleKey) {
+      setInviteState("error");
+      setInviteMessage("Informe email e função para criar o convite.");
+      return;
+    }
+    if (roleKey === "assistente" && inviteStagePermissions.length === 0) {
+      setInviteState("error");
+      setInviteMessage("Selecione ao menos uma etapa do IMOB para o assistente.");
+      return;
+    }
+
+    setInviteState("creating");
+    setInviteMessage(null);
+    const selectedRole = workspaceRoleOptions.find((item) => item.key === roleKey);
+    const permissions = roleKey === "assistente"
+      ? inviteStagePermissions.map((stageKey) => buildImobStagePermission(stageKey))
+      : selectedRole?.defaultPermissions;
+    try {
+      const response = await apiCreateWorkspaceInvitation({
+        email,
+        fullName: inviteFullName.trim() || undefined,
+        roleKey,
+        permissions,
+      });
+      if (!response.ok || !response.data) {
+        setInviteState("error");
+        setInviteMessage("Falha ao criar convite para o workspace.");
+        return;
+      }
+      const data = response.data;
+      const inviteUrl = typeof window !== "undefined"
+        ? `${window.location.origin}/access?invite=${encodeURIComponent(data.token)}`
+        : data.token;
+      setWorkspaceInvitations((prev) => [
+        {
+          id: data.id,
+          email: data.email,
+          fullName: data.fullName,
+          roleKey: data.roleKey,
+          roleLabel: data.roleLabel,
+          permissions: data.permissions,
+          status: data.status,
+          token: data.token,
+          expiresAt: data.expiresAt,
+          createdAt: new Date().toISOString(),
+        },
+        ...prev,
+      ]);
+      setInviteState("success");
+      setInviteMessage(`Convite criado: ${inviteUrl}`);
+      setInviteFullName("");
+      setInviteEmail("");
+      setInviteStagePermissions([]);
+    } catch (error) {
+      setInviteState("error");
+      setInviteMessage(error instanceof Error ? error.message : "Falha ao criar convite para o workspace.");
+    }
   };
 
   const handleCreateWorkspace = async (event?: React.SyntheticEvent) => {
@@ -168,9 +378,7 @@ export default function ProfilePage() {
       setNewWorkspaceName("");
       const refreshed = await apiGetProfile();
       if (refreshed.ok && refreshed.data) {
-        setTenantName(refreshed.data.tenant.name);
-        setWorkspaceName(refreshed.data.workspace.name);
-        setLinkedWorkspaces(refreshed.data.workspaces);
+        applyProfileData(refreshed.data);
       }
     } catch (error) {
       const message =
@@ -210,10 +418,9 @@ export default function ProfilePage() {
 
       const refreshed = await apiGetProfile();
       if (refreshed.ok && refreshed.data) {
-        setTenantName(refreshed.data.tenant.name);
+        applyProfileData(refreshed.data);
         const selectedFromResponse = refreshed.data.workspaces.find((item) => item.id === workspace.id);
         setWorkspaceName(selectedFromResponse?.name ?? workspace.name);
-        setLinkedWorkspaces(refreshed.data.workspaces);
       }
 
       setWorkspaceSwitchMessage({ type: "success", text: `Workspace ativo: ${workspace.name}` });
@@ -237,19 +444,7 @@ export default function ProfilePage() {
     apiGetProfile()
       .then((response) => {
         if (!active || !response.ok || !response.data) return;
-        setForm({
-          fullName: response.data.fullName,
-          email: response.data.email,
-          phone: response.data.phone,
-          cep: response.data.cep,
-          role: response.data.role,
-          website: response.data.website,
-          city: response.data.city,
-          country: response.data.country,
-        });
-        setTenantName(response.data.tenant.name);
-        setWorkspaceName(response.data.workspace.name);
-        setLinkedWorkspaces(response.data.workspaces);
+        applyProfileData(response.data);
       })
       .catch(() => undefined)
       .finally(() => {
@@ -258,7 +453,7 @@ export default function ProfilePage() {
     return () => {
       active = false;
     };
-  }, [session.token]);
+  }, [applyProfileData, session.token]);
 
   React.useEffect(() => {
     if (!session.token) {
@@ -404,6 +599,11 @@ export default function ProfilePage() {
     if (Number.isNaN(date.getTime())) return "—";
     return date.toLocaleString("pt-BR");
   };
+
+  const selectedWorkspaceRoleLabel = workspaceRoleOptions.find((item) => item.key === workspaceRoleKey)?.label ?? "";
+  const workspaceResponsiblePreview = selectedWorkspaceRoleLabel
+    ? `${form.fullName || form.email || "Usuário"} (${selectedWorkspaceRoleLabel})`
+    : workspaceResponsibleLabel || form.fullName || form.email || "Usuário";
 
   const handleDownloadHelpdeskJson = () => {
     if (!helpdeskExport || typeof window === "undefined") return;
@@ -556,10 +756,10 @@ export default function ProfilePage() {
               />
             </label>
             <label className="block text-sm text-muted-foreground">
-              Cargo
+              Cargo geral
               <input
                 className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
-                placeholder="Seu cargo"
+                placeholder="Seu cargo geral"
                 value={form.role}
                 onChange={handleChange("role")}
               />
@@ -621,6 +821,263 @@ export default function ProfilePage() {
               </p>
             ) : null}
           </div>
+
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-muted-foreground">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
+                Função no workspace
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                O IMOB usa a membership oficial do workspace para identificar quem é o responsável real no chat e no dashboard.
+              </p>
+              <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3">
+                <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">Sua membership atual</p>
+                <p className="mt-2 text-sm text-foreground">{selectedWorkspaceRoleLabel || "Sem função atribuída"}</p>
+                <p className="mt-1 text-xs text-foreground/90">Responsável exibido no IMOB: {workspaceResponsiblePreview}</p>
+                {workspacePermissions.length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-foreground/80">
+                    {workspacePermissions.map((permission) => (
+                      <span key={permission} className="pill bg-white/10 text-foreground/80">
+                        {formatWorkspacePermissionLabel(permission)}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+              {workspaceRoleOptions.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-foreground/85">
+                  {workspaceRoleOptions.map((option) => (
+                    <span
+                      key={option.key}
+                      className={`pill ${workspaceRoleKey === option.key ? "bg-accent/20 text-accent" : "bg-white/10 text-foreground"}`}
+                      title={option.defaultPermissions.map((permission) => formatWorkspacePermissionLabel(permission)).join(" • ")}
+                    >
+                      {option.label}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <input
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
+                  placeholder="Adicionar função, ex.: Captador"
+                  value={newWorkspaceRoleLabel}
+                  onChange={(event) => setNewWorkspaceRoleLabel(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void handleAddWorkspaceRole();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleAddWorkspaceRole()}
+                  className="rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-sm font-medium text-foreground transition hover:border-accent/40 hover:text-accent"
+                >
+                  Adicionar função
+                </button>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">Permissões padrão da nova função</p>
+                <div className="mt-3 space-y-3">
+                  {WORKSPACE_PERMISSION_GROUPS.map((group) => (
+                    <div key={group.key} className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+                      <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">{group.label}</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {group.options.map((permissionOption) => {
+                          const selected = newWorkspaceRolePermissions.includes(permissionOption.key);
+                          return (
+                            <button
+                              key={permissionOption.key}
+                              type="button"
+                              onClick={() => {
+                                setNewWorkspaceRolePermissions((prev) => selected
+                                  ? prev.filter((item) => item !== permissionOption.key)
+                                  : [...prev, permissionOption.key]);
+                              }}
+                              className={`pill transition ${selected ? "bg-accent/20 text-accent" : "bg-white/10 text-foreground"}`}
+                            >
+                              {permissionOption.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                  <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Etapas permitidas</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {IMOB_STAGE_OPTIONS.map((stageOption) => {
+                        const permissionKey = buildImobStagePermission(stageOption.key);
+                        const selected = newWorkspaceRolePermissions.includes(permissionKey);
+                        const disabled = newWorkspaceRolePermissions.includes("imob.stage.*");
+                        return (
+                          <button
+                            key={stageOption.key}
+                            type="button"
+                            disabled={disabled}
+                            onClick={() => {
+                              if (disabled) return;
+                              setNewWorkspaceRolePermissions((prev) => selected
+                                ? prev.filter((item) => item !== permissionKey)
+                                : [...prev, permissionKey]);
+                            }}
+                            className={`pill transition ${selected ? "bg-accent/20 text-accent" : "bg-white/10 text-foreground"} ${disabled ? "cursor-not-allowed opacity-50" : ""}`}
+                          >
+                            {stageOption.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {newWorkspaceRolePermissions.includes("imob.stage.*")
+                        ? "Todas as etapas do IMOB estão liberadas para esta função."
+                        : "Selecione as etapas do IMOB que essa função pode operar."}
+                    </p>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  A função criada passa a carregar esse acesso padrão dentro do workspace e os convites dessa função herdam essas permissões.
+                </p>
+              </div>
+              <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">Gestão de membros</p>
+                  <span className={`text-xs ${workspaceCanManageMembers ? "text-emerald-300" : "text-amber-300"}`}>
+                    {workspaceCanManageMembers ? "Você pode convidar membros" : "Somente gestor/admin pode convidar"}
+                  </span>
+                </div>
+                <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                  <input
+                    className="rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-sm text-foreground"
+                    placeholder="Nome do convidado"
+                    value={inviteFullName}
+                    onChange={(event) => setInviteFullName(event.target.value)}
+                    disabled={!workspaceCanManageMembers}
+                  />
+                  <input
+                    className="rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-sm text-foreground"
+                    placeholder="email@empresa.com"
+                    value={inviteEmail}
+                    onChange={(event) => setInviteEmail(event.target.value)}
+                    disabled={!workspaceCanManageMembers}
+                  />
+                  <select
+                    className="rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-sm text-foreground"
+                    value={inviteRoleKey}
+                    onChange={(event) => {
+                      const nextRoleKey = event.target.value;
+                      setInviteRoleKey(nextRoleKey);
+                      if (nextRoleKey !== "assistente") {
+                        setInviteStagePermissions([]);
+                      }
+                    }}
+                    disabled={!workspaceCanManageMembers}
+                  >
+                    <option value="">Selecione a função</option>
+                    {workspaceRoleOptions.map((option) => (
+                      <option key={option.key} value={option.key}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {inviteRoleKey === "assistente" ? (
+                  <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-3">
+                    <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">Etapas permitidas para assistente</p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {IMOB_STAGE_OPTIONS.map((stageOption) => {
+                        const selected = inviteStagePermissions.includes(stageOption.key);
+                        return (
+                          <button
+                            key={stageOption.key}
+                            type="button"
+                            onClick={() => {
+                              setInviteStagePermissions((prev) => selected
+                                ? prev.filter((item) => item !== stageOption.key)
+                                : [...prev, stageOption.key]);
+                            }}
+                            disabled={!workspaceCanManageMembers}
+                            className={`pill transition ${selected ? "bg-accent/20 text-accent" : "bg-white/10 text-foreground"}`}
+                          >
+                            {stageOption.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      Assistente só poderá atuar nas etapas marcadas acima. Gestor/admin têm acesso total. Corretor usa o IMOB sem permissão de convite.
+                    </p>
+                  </div>
+                ) : null}
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleInviteWorkspaceMember()}
+                    disabled={!workspaceCanManageMembers || inviteState === "creating"}
+                    className="rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-sm font-medium text-foreground transition hover:border-accent/40 hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {inviteState === "creating" ? "Criando convite..." : "Convidar por email"}
+                  </button>
+                  {inviteMessage ? (
+                    <span className={`text-xs ${inviteState === "success" ? "text-emerald-300" : "text-rose-300"}`}>
+                      {inviteMessage}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                  <div className="rounded-xl border border-white/10 bg-[#0a1527] p-3">
+                    <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">Membros do workspace</p>
+                    {workspaceMembers.length > 0 ? (
+                      <div className="mt-3 space-y-2">
+                        {workspaceMembers.map((member) => (
+                          <div key={member.userId} className="rounded-xl border border-white/10 bg-black/20 p-3 text-xs text-muted-foreground">
+                            <p className="text-sm font-medium text-foreground">
+                              {member.fullName}
+                              {member.isCurrentUser ? " (você)" : ""}
+                            </p>
+                            <p className="mt-1">{member.email}</p>
+                            <p className="mt-1">Função: {member.roleLabel}</p>
+                            <p className="mt-1">Status: {member.status}</p>
+                            {member.permissions.length > 0 ? (
+                              <p className="mt-1">Permissões: {member.permissions.map((permission) => formatWorkspacePermissionLabel(permission)).join(" • ")}</p>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-xs text-muted-foreground">Nenhum membro oficial encontrado neste workspace.</p>
+                    )}
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-[#0a1527] p-3">
+                    <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">Convites pendentes</p>
+                    {workspaceInvitations.length > 0 ? (
+                      <div className="mt-3 space-y-2">
+                        {workspaceInvitations.map((invitation) => {
+                          const inviteUrl = typeof window !== "undefined"
+                            ? `${window.location.origin}/access?invite=${encodeURIComponent(invitation.token)}`
+                            : invitation.token;
+                          return (
+                            <div key={invitation.id} className="rounded-xl border border-white/10 bg-black/20 p-3 text-xs text-muted-foreground">
+                              <p className="text-sm font-medium text-foreground">{invitation.fullName}</p>
+                              <p className="mt-1">{invitation.email}</p>
+                              <p className="mt-1">Função: {invitation.roleLabel}</p>
+                              {invitation.permissions.length > 0 ? (
+                                <p className="mt-1">Permissões: {invitation.permissions.map((permission) => formatWorkspacePermissionLabel(permission)).join(" • ")}</p>
+                              ) : null}
+                              <p className="mt-1">Expira em: {formatDateTime(invitation.expiresAt)}</p>
+                              <p className="mt-2 break-all text-[11px] text-accent">{inviteUrl}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-xs text-muted-foreground">Nenhum convite pendente neste workspace.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-muted-foreground">
             <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
               Novo workspace
