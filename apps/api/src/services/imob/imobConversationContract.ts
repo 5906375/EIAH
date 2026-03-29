@@ -58,14 +58,20 @@ export type ImobOperationalFlow =
   | "commission.settle"
   | "adjustment.apply";
 
+export type ImobOwnerPersona = "proprietario" | "vendedor" | "locador";
+
 export type ImobOwnerDraft = {
+  ownerPersona: ImobOwnerPersona;
   ownerName: string | null;
   ownerEmail: string | null;
   ownerPhone: string | null;
   ownerDocument: string | null;
 };
 
+export type ImobLeadPersona = "lead" | "comprador" | "locatario";
+
 export type ImobLeadDraft = {
+  leadPersona: ImobLeadPersona;
   leadName: string | null;
   leadEmail: string | null;
   leadPhone: string | null;
@@ -172,8 +178,12 @@ export type ImobAccessContext = {
   } | null;
 };
 
+import type { ParsedImobIntent } from "./imobIntentCatalog";
+
 export type ImobResolveTurnRequest = {
   message: string;
+  semanticIntent?: ParsedImobIntent | null;
+  semanticIntentSource?: "openai" | "parser_fallback" | null;
   threadLabel?: string | null;
   threadId?: string | null;
   caseId?: string | null;
@@ -181,19 +191,77 @@ export type ImobResolveTurnRequest = {
   access?: ImobAccessContext;
 };
 
+export type ImobAttachmentCrmSuggestionMode = "include" | "edit" | "discard";
+
+export type ImobAttachmentCrmSuggestionField = {
+  field: "name" | "document" | "rg";
+  label: string;
+  currentValue?: string | null;
+  suggestedValue?: string | null;
+};
+
+export type ImobAttachmentCrmSuggestion = {
+  entityType: "owner";
+  ownerId: string;
+  ownerName: string;
+  fields: ImobAttachmentCrmSuggestionField[];
+  documentIds: string[];
+  availableModes: ImobAttachmentCrmSuggestionMode[];
+};
+
 export type ImobPresentationCta = {
   id: string;
   label: string;
   kind?: "primary" | "secondary" | "neutral";
   href?: string;
-  action?: "confirm_execution" | "reject_execution" | "export_contract_pdf" | "continue_inventory_search";
+  action?:
+    | "confirm_execution"
+    | "reject_execution"
+    | "export_contract_pdf"
+    | "continue_inventory_search"
+    | "apply_attachment_crm_include"
+    | "apply_attachment_crm_edit"
+    | "apply_attachment_crm_discard"
+    | "open_attachment_menu"
+    | "send_suggested_message"
+    | "print_card";
   nextMessage?: string;
+  payload?: Record<string, unknown>;
 };
 
 export type ImobPresentationCard = {
   title: string;
   lines: string[];
   ctas?: ImobPresentationCta[];
+  actionsLayout?: "inline";
+};
+
+export type ImobPresentationFormField = {
+  name: string;
+  label: string;
+  type: "text" | "tel" | "email";
+  required?: boolean;
+  placeholder?: string;
+  value?: string | null;
+  helperText?: string;
+  allowAttachment?: boolean;
+  attachmentLabel?: string;
+};
+
+export type ImobPresentationFormAction = {
+  id: "cancel" | "submit";
+  label: string;
+  kind?: "primary" | "secondary" | "neutral";
+};
+
+export type ImobPresentationForm = {
+  entity: string;
+  action: string;
+  label: string;
+  description?: string;
+  subjectId?: string;
+  fields: ImobPresentationFormField[];
+  actions?: ImobPresentationFormAction[];
 };
 
 export type ImobExecutionRequest = {
@@ -256,9 +324,31 @@ export type ImobCaseContext = {
   updatedAt?: string;
 };
 
+export type ImobPresentationConfidence = {
+  entity: ImobEntityKey | null;
+  source?: "openai" | "parser_fallback";
+  action: ImobActionKey | null;
+  matchedEntityAlias: string | null;
+  matchedActionAlias: string | null;
+  entityScore: number;
+  actionScore: number;
+  pluralityHint: "singular" | "plural" | null;
+  canonicalLabel: string | null;
+  lowConfidence?: boolean;
+};
+
+export type ImobPresentationChoiceStyle = "inline";
+
+export type ImobPresentationMetadata = {
+  confidence?: ImobPresentationConfidence;
+  choiceStyle?: ImobPresentationChoiceStyle;
+};
+
 export type ImobOperationalPresentation = {
   text: string;
+  metadata?: ImobPresentationMetadata;
   card?: ImobPresentationCard;
+  form?: ImobPresentationForm;
   suggestedNextAction?: string;
   owner?: ImobOperationalOwner;
   nextStep?: string;
@@ -268,6 +358,7 @@ export type ImobOperationalPresentation = {
 };
 
 export type ImobAttachmentValidationComparisonStatus = "confere" | "diverge" | "ilegivel";
+export type ImobAttachmentValidationDecision = "approved" | "review_needed";
 
 export type ImobAttachmentValidationFieldResult = {
   field: "nome" | "cpf" | "rg";
@@ -279,10 +370,18 @@ export type ImobAttachmentValidationFieldResult = {
 };
 
 export const IMOB_IDENTITY_ATTACHMENT_VALIDATION_CONTRACT = {
-  id: "imob.identity_document_validation.v1",
+  id: "imob.identity_document_validation.v2",
   acceptedKinds: ["identity_document", "supporting_photo"],
+  supportedMimeTypesForAutoValidation: ["text/plain", "application/pdf", "image/png", "image/jpeg"],
   extractedFields: ["nome", "cpf", "rg"],
   comparisonStatuses: ["confere", "diverge", "ilegivel"],
+  decisions: ["approved", "review_needed"],
+  autoApprovalRule: {
+    description: "Aprovar automaticamente apenas quando nome confere e ao menos um identificador documental disponível no caso confere sem divergência crítica.",
+    required: ["nome"],
+    oneOf: ["cpf", "rg"],
+    fallback: "review_needed",
+  },
   biometricValidation: "not_in_scope",
 } as const;
 

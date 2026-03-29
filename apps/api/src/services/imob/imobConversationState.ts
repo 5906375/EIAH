@@ -2,6 +2,7 @@ import {
   createEmptyImobSlots,
   type ImobIntent,
   type ImobLeadDraft,
+  type ImobOwnerPersona,
   type ImobOperationalState,
   type ImobListingDraft,
   type ImobDocumentDraft,
@@ -324,16 +325,19 @@ function extractAddress(raw: string) {
 
 function hasPropertyCaptureSignal(message: string, slots: ImobSearchSlots) {
   const normalized = normalizeImobText(message);
-  return Boolean(
+  const explicitPropertySignal = Boolean(
     slots.propertyType ||
       slots.city ||
       slots.neighborhood ||
       slots.bedrooms ||
       slots.bathrooms ||
-      slots.goal ||
       extractAddress(message) ||
       /(?:imovel|imóvel|apartamento|apto|casa|studio|kitnet|terreno|galpao|galpão|sala)\s*#?\d*/.test(normalized)
   );
+  if (normalized.includes("locador") || normalized.includes("locadora")) {
+    return explicitPropertySignal;
+  }
+  return Boolean(explicitPropertySignal || slots.goal);
 }
 
 function buildPropertyDraft(previous: ImobPropertyDraft | undefined, message: string, slots: ImobSearchSlots): ImobPropertyDraft {
@@ -359,8 +363,20 @@ function buildPropertyPendingFields(draft: ImobPropertyDraft) {
   return pending;
 }
 
+function detectOwnerPersona(message: string, previous?: ImobOwnerDraft): ImobOwnerPersona {
+  const normalized = normalizeImobText(message);
+  if (normalized.includes("locador") || normalized.includes("locadora")) {
+    return "locador";
+  }
+  if (normalized.includes("vendedor") || normalized.includes("vendedora")) {
+    return "vendedor";
+  }
+  return previous?.ownerPersona ?? "proprietario";
+}
+
 function buildOwnerDraft(previous: ImobOwnerDraft | undefined, message: string): ImobOwnerDraft {
   return {
+    ownerPersona: detectOwnerPersona(message, previous),
     ownerName: extractNamedParty(message, "owner") ?? previous?.ownerName ?? null,
     ownerEmail: extractEmail(message) ?? previous?.ownerEmail ?? null,
     ownerPhone: extractPhone(message) ?? previous?.ownerPhone ?? null,
@@ -368,8 +384,20 @@ function buildOwnerDraft(previous: ImobOwnerDraft | undefined, message: string):
   };
 }
 
+function detectLeadPersona(message: string, previous?: ImobLeadDraft): ImobLeadPersona {
+  const normalized = normalizeImobText(message);
+  if (normalized.includes("locatario") || normalized.includes("locatário") || normalized.includes("inquilino") || normalized.includes("inquilina")) {
+    return "locatario";
+  }
+  if (normalized.includes("comprador") || normalized.includes("compradora")) {
+    return "comprador";
+  }
+  return previous?.leadPersona ?? "lead";
+}
+
 function buildLeadDraft(previous: ImobLeadDraft | undefined, message: string, slots: ImobSearchSlots): ImobLeadDraft {
   return {
+    leadPersona: detectLeadPersona(message, previous),
     leadName: extractNamedParty(message, "lead") ?? previous?.leadName ?? null,
     leadEmail: extractEmail(message) ?? previous?.leadEmail ?? null,
     leadPhone: extractPhone(message) ?? previous?.leadPhone ?? null,
