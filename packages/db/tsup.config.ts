@@ -1,11 +1,12 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/index.ts"],
-  format: ["esm", "cjs"],
+  entry: ["src/index.ts", "src/client.ts", "src/middleware/tenantGuard.ts"],
+  format: ["esm"],
   dts: false,
   clean: true,
-  // 🚫 NÃO empacote dependências — mantenha prisma client fora do bundle
+  bundle: false,
+  outDir: "dist",
   external: [
     "@prisma/client",
     "@prisma/client-runtime-utils",
