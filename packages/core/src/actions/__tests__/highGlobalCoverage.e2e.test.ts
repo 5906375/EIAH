@@ -13,8 +13,9 @@ const tenantId = "tenant-p2-global";
 const workspaceId = "workspace-p2-global";
 const runId = "run-p2-global";
 
-function baseContext() {
+function baseContext(action: string) {
   return {
+    action,
     tenantId,
     workspaceId,
     runId,
@@ -34,7 +35,7 @@ test("P2 global HIGH coverage: billing/finance/notifications actions execute suc
   registerHighCoreActions();
 
   const billingResult = await executeRegisteredAction("billing.create_white_label_plan", {
-    ...baseContext(),
+    ...baseContext("billing.create_white_label_plan"),
     input: {
       tenantId,
       workspaceId,
@@ -65,7 +66,7 @@ test("P2 global HIGH coverage: billing/finance/notifications actions execute suc
   assert.equal((billingResult.output as { status?: string } | undefined)?.status, "need_more_info");
 
   const registerPayableResult = await executeRegisteredAction("finance.registerPayable", {
-    ...baseContext(),
+    ...baseContext("finance.registerPayable"),
     input: {
       supplierName: "Fornecedor A",
       supplierTaxId: "12345678901",
@@ -78,7 +79,7 @@ test("P2 global HIGH coverage: billing/finance/notifications actions execute suc
   assert.equal(registerPayableResult.status, "success");
 
   const reconcileResult = await executeRegisteredAction("finance.reconcileBankTransactions", {
-    ...baseContext(),
+    ...baseContext("finance.reconcileBankTransactions"),
     input: {
       bankTransactions: [
         {
@@ -102,7 +103,7 @@ test("P2 global HIGH coverage: billing/finance/notifications actions execute suc
   assert.equal(reconcileResult.status, "success");
 
   const archiveResult = await executeRegisteredAction("finance.archivePaymentDocument", {
-    ...baseContext(),
+    ...baseContext("finance.archivePaymentDocument"),
     input: {
       documentId: "doc-archive-1",
       fileName: "boleto.pdf",
@@ -112,7 +113,7 @@ test("P2 global HIGH coverage: billing/finance/notifications actions execute suc
   assert.equal(archiveResult.status, "success");
 
   const pagerDutyResult = await executeRegisteredAction("notification.triggerPagerDuty", {
-    ...baseContext(),
+    ...baseContext("notification.triggerPagerDuty"),
     input: {
       routingKey: "route-key-123456",
       summary: "Pagamento bloqueado por reconciliação",
