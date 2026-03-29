@@ -61,7 +61,7 @@ jobs:
       - name: Prepare workspace artifacts for tests
         run: |
           pnpm --filter @eiah/contracts build
-          pnpm --filter @repo/db generate
+          pnpm --filter @repo/db build
 
       - name: Run Tests
         env:
