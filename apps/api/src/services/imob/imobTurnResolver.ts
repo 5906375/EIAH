@@ -1,4 +1,12 @@
 import { buildImobDriveSearchUrl } from "./imobDriveSync";
+import { type ImobActionKey } from "./imobActionCatalog";
+import {
+  buildImobCanonicalMessage,
+  getSupportedActions,
+  listImobIntentChoicesForAction,
+  parseImobIntent,
+  resolveCanonicalLabel,
+} from "./imobIntentCatalog";
 import {
   createEmptyImobSlots,
   type ImobExecutionRequest,
@@ -50,6 +58,40 @@ function classifyImobIntent(message: string): ImobIntent {
   if (text.includes("cadastrar") || text.includes("capta") || text.includes("propriet") || text.includes("imovel") || text.includes("imóvel")) return "capture";
   if (text.includes("alugar") || text.includes("loca") || text.includes("procur") || text.includes("quartos")) return "match";
   return "adjustment";
+}
+
+function mapCatalogIntentToImobIntent(parsed: { entity: string | null; action: string | null }): ImobIntent | null {
+  if (!parsed.entity || !parsed.action) return null;
+
+  if (["proprietario", "imovel", "vendedor", "locador"].includes(parsed.entity) && parsed.action === "create") {
+    return "capture";
+  }
+
+  if (["comprador", "locatario", "lead"].includes(parsed.entity) && parsed.action === "create") {
+    return "lead";
+  }
+
+  if (parsed.entity === "anuncio" && ["create", "publish", "unpublish", "edit"].includes(parsed.action)) {
+    return "listing";
+  }
+
+  if (parsed.entity === "documento" && ["validate", "send", "create", "edit"].includes(parsed.action)) {
+    return "documents";
+  }
+
+  if (parsed.entity === "contrato" && ["create", "edit", "history", "sendForSignature", "approve", "get"].includes(parsed.action)) {
+    return "contract";
+  }
+
+  if (parsed.entity === "proposta" && ["create", "edit", "approve", "reject", "send", "history", "get"].includes(parsed.action)) {
+    return "proposal";
+  }
+
+  if (parsed.entity === "visita" && ["create", "edit", "confirm", "reschedule", "get", "list"].includes(parsed.action)) {
+    return "visit";
+  }
+
+  return null;
 }
 
 function mapOperationalFlowToIntent(flow: NonNullable<ImobResolveTurnResponse["conversationState"]["operational"]>["flow"]): ImobIntent {
@@ -147,6 +189,226 @@ function isDocumentCollectionRequest(message: string) {
   return hasCollectionVerb && hasDocumentSubject;
 }
 
+function isDocumentUploadOnlyRequest(message: string) {
+  const text = normalizeImobText(message);
+  const hasUploadVerb =
+    text.includes("enviar") ||
+    text.includes("anexar") ||
+    text.includes("subir") ||
+    text.includes("mandar");
+  const hasDocumentSubject =
+    text.includes("document") ||
+    text.includes("anexo") ||
+    text.includes("arquivo") ||
+    text.includes("upload") ||
+    text.includes("cpf") ||
+    text.includes("rg") ||
+    text.includes("cnpj");
+  const hasConcreteData = /\b\d{11,14}\b/.test(text) || text.includes("matricula") || text.includes("matrícula");
+  return hasUploadVerb && hasDocumentSubject && !hasConcreteData;
+}
+
+function isAttachmentReferenceMessage(message: string) {
+  const text = normalizeImobText(message);
+  const hasAttachmentReference =
+    text.includes("anexo") ||
+    text.includes("arquivo") ||
+    text.includes("upload") ||
+    text.includes("conversa");
+  const hasDocumentReference =
+    text.includes("document") ||
+    text.includes("cpf") ||
+    text.includes("rg") ||
+    text.includes("cnpj");
+  return hasAttachmentReference && hasDocumentReference;
+}
+
+function isGenericCadastroRequest(message: string) {
+  const text = normalizeImobText(message);
+  const asksCadastro = text.includes("cadastrar") || text.includes("cadastro") || text.includes("incluir");
+  if (!asksCadastro) return false;
+  const hasSpecificTarget =
+    text.includes("propriet") ||
+    text.includes("imovel") ||
+    text.includes("imóvel") ||
+    text.includes("lead") ||
+    text.includes("cliente") ||
+    text.includes("comprador") ||
+    text.includes("vendedor") ||
+    text.includes("locador") ||
+    text.includes("locatario") ||
+    text.includes("locatário");
+  return !hasSpecificTarget;
+}
+
+function buildCatalogActionLines(actionLabel: string, entityLabels: string[]) {
+  return [`Posso seguir com ${actionLabel.toLowerCase()} para ${entityLabels.join(", ")}.`];
+}
+
+function buildLeadCreationChoices() {
+  const allowedEntities = new Set(["comprador", "locatario", "lead"]);
+  return listImobIntentChoicesForAction("create").filter((choice) => allowedEntities.has(choice.entity));
+}
+
+function buildCadastroCreationChoices() {
+  return listImobIntentChoicesForAction("create").filter((choice) => choice.entity !== "lead");
+}
+
+function isGenericLeadRequest(parsed: ReturnType<typeof parseImobIntent>, normalizedMessage: string) {
+  return parsed.entity === "lead" && !parsed.action && normalizedMessage === "lead";
+}
+
+function humanizeCatalogEntity(entity: string) {
+  if (entity === "imovel") return "Imóvel";
+  if (entity === "proprietario") return "Proprietário";
+  if (entity === "locatario") return "Locatário";
+  if (entity === "anuncio") return "Anúncio";
+  return entity.charAt(0).toUpperCase() + entity.slice(1);
+}
+
+const LOW_CONFIDENCE_ACTION_SCORE = 95;
+const LOW_CONFIDENCE_ENTITY_SCORE = 95;
+
+function isGenericCatalogActionAlias(alias: string | null) {
+  const normalized = normalizeImobText(alias ?? "");
+  return normalized === "ver" || normalized === "mostrar" || normalized === "abrir" || normalized === "buscar";
+}
+
+function shouldClarifyCatalogIntent(parsed: ReturnType<typeof parseImobIntent>) {
+  if (!parsed.action || !parsed.entity || parsed.action === "create") {
+    return false;
+  }
+  const hasReliablePluralitySignal = parsed.pluralityHint !== null;
+  if (parsed.actionScore < LOW_CONFIDENCE_ACTION_SCORE) {
+    return true;
+  }
+  if (parsed.entityScore < LOW_CONFIDENCE_ENTITY_SCORE && !hasReliablePluralitySignal) {
+    return true;
+  }
+  if ((parsed.action === "list" || parsed.action === "get" || parsed.action === "view") && isGenericCatalogActionAlias(parsed.matchedActionAlias) && !parsed.pluralityHint) {
+    return true;
+  }
+  return false;
+}
+
+function buildCatalogActionClarification(
+  parsed: ReturnType<typeof parseImobIntent>,
+  source: "openai" | "parser_fallback" = "parser_fallback"
+) {
+  if (!parsed.entity) {
+    return null;
+  }
+  const entityLabel = humanizeCatalogEntity(parsed.entity);
+  const supportedActions = getSupportedActions(parsed.entity);
+  const preferredOrder: ImobActionKey[] = ["get", "list", "history", "update", "status"];
+  const choices = preferredOrder
+    .filter((action) => supportedActions.includes(action))
+    .slice(0, 3)
+    .map((action, index) => ({
+      id: `clarify-${action}-${parsed.entity}`,
+      label: resolveCanonicalLabel(buildImobCanonicalMessage(parsed.entity!, action)) ?? buildImobCanonicalMessage(parsed.entity!, action),
+      kind: index === 0 ? "primary" : index === 1 ? "secondary" : "neutral",
+      action: "send_suggested_message" as const,
+      nextMessage: buildImobCanonicalMessage(parsed.entity, action),
+    }));
+
+  if (choices.length === 0) {
+    return null;
+  }
+
+  return {
+    mode: "consult" as const,
+    action: "crm.catalog.clarify_action",
+    presentation: {
+      text: [`Quero confirmar sua intenção sobre ${entityLabel.toLowerCase()}.`, "Escolha a ação mais próxima do que você quer fazer agora."].join("\n"),
+      suggestedNextAction: `Escolha se você quer consultar, listar ou ajustar ${entityLabel.toLowerCase()}.`,
+      metadata: buildCatalogConfidenceMetadata(parsed, true, { source }),
+      card: {
+        title: `O que você quer fazer com ${entityLabel.toLowerCase()}?`,
+        lines: ["Identifiquei o alvo, mas a ação ficou ambígua nesta frase."],
+        ctas: choices,
+      },
+    },
+  };
+}
+
+function buildCatalogConfidenceMetadata(
+  parsed: ReturnType<typeof parseImobIntent>,
+  lowConfidence = false,
+  options?: { choiceStyle?: "inline"; source?: "openai" | "parser_fallback" }
+) {
+  return {
+    confidence: {
+      entity: parsed.entity,
+      source: options?.source ?? "parser_fallback",
+      action: parsed.action,
+      matchedEntityAlias: parsed.matchedEntityAlias,
+      matchedActionAlias: parsed.matchedActionAlias,
+      entityScore: parsed.entityScore,
+      actionScore: parsed.actionScore,
+      pluralityHint: parsed.pluralityHint,
+      canonicalLabel: parsed.canonicalLabel,
+      lowConfidence,
+    },
+    ...(options?.choiceStyle ? { choiceStyle: options.choiceStyle } : {}),
+  };
+}
+
+function buildCatalogEntityActionPresentation(entityLabel: string, action: ImobActionKey, canonicalLabel: string) {
+  if (action === "delete") {
+    return {
+      text: `Entendi: ${canonicalLabel}. Envie o nome, documento ou identificador do cadastro para eu confirmar a exclusão.`,
+      suggestedNextAction: `Informe a referência do ${entityLabel.toLowerCase()} para eu confirmar a exclusão.`,
+      card: {
+        title: canonicalLabel,
+        lines: [`A exclusão de ${entityLabel.toLowerCase()} exige confirmação com uma referência objetiva do cadastro.`],
+      },
+    };
+  }
+
+  if (action === "edit" || action === "update" || action === "status") {
+    return {
+      text: `Entendi: ${canonicalLabel}. Envie o nome, documento ou identificador do cadastro e o ajuste desejado.`,
+      suggestedNextAction: `Informe a referência do ${entityLabel.toLowerCase()} e o que precisa mudar.`,
+      card: {
+        title: canonicalLabel,
+        lines: [`Posso continuar assim que você indicar qual ${entityLabel.toLowerCase()} deve ser alterado e quais dados mudar.`],
+      },
+    };
+  }
+
+  if (action === "list" || action === "view" || action === "indicators" || action === "reports") {
+    return {
+      text: `Entendi: ${canonicalLabel}. Se quiser, posso seguir com esse recorte agora.`,
+      suggestedNextAction: `Refine o recorte do ${entityLabel.toLowerCase()} se quiser filtrar melhor a consulta.`,
+      card: {
+        title: canonicalLabel,
+        lines: [`Posso montar a consulta de ${entityLabel.toLowerCase()} com o filtro que você indicar.`],
+      },
+    };
+  }
+
+  if (action === "get" || action === "history" || action === "sendDocuments" || action === "send") {
+    return {
+      text: `Entendi: ${canonicalLabel}. Envie o nome, documento ou identificador do cadastro para eu localizar o item certo.`,
+      suggestedNextAction: `Informe a referência do ${entityLabel.toLowerCase()} para eu continuar.`,
+      card: {
+        title: canonicalLabel,
+        lines: [`Posso continuar assim que você indicar qual ${entityLabel.toLowerCase()} deve ser consultado.`],
+      },
+    };
+  }
+
+  return {
+    text: `Entendi: ${canonicalLabel}. Posso continuar assim que você indicar o contexto desse ${entityLabel.toLowerCase()}.`,
+    suggestedNextAction: `Envie mais detalhes do ${entityLabel.toLowerCase()} para eu seguir com ${canonicalLabel.toLowerCase()}.`,
+    card: {
+      title: canonicalLabel,
+      lines: [`Posso continuar com ${canonicalLabel.toLowerCase()} quando você indicar a referência correta.`],
+    },
+  };
+}
+
 function mapOperationalOwner(flow: NonNullable<ImobResolveTurnResponse["conversationState"]["operational"]>["flow"]): ImobOperationalOwner {
   if (flow === "contract.prepare") return "Jurídico";
   if (flow === "commission.settle") return "Financeiro";
@@ -154,16 +416,554 @@ function mapOperationalOwner(flow: NonNullable<ImobResolveTurnResponse["conversa
   return "Corretor";
 }
 
+function getOwnerPersonaCopy(ownerDraft?: { ownerPersona?: "proprietario" | "vendedor" | "locador" } | null) {
+  if (ownerDraft?.ownerPersona === "vendedor") {
+    return {
+      entity: "vendedor",
+      singular: "vendedor",
+      article: "do vendedor",
+      label: "Cadastrar vendedor",
+      description: "Preencha os dados abaixo para iniciar o cadastro.",
+      nameLabel: "Nome completo",
+      phoneLabel: "Telefone",
+      emailLabel: "E-mail",
+      documentLabel: "Documento",
+      nextStep: "Completar dados do vendedor antes de avançar a captação.",
+      blocker: "Dados do vendedor ainda estão incompletos para seguir.",
+    };
+  }
+  if (ownerDraft?.ownerPersona === "locador") {
+    return {
+      entity: "locador",
+      singular: "locador",
+      article: "do locador",
+      label: "Cadastrar locador",
+      description: "Preencha os dados abaixo para iniciar o cadastro.",
+      nameLabel: "Nome completo",
+      phoneLabel: "Telefone",
+      emailLabel: "E-mail",
+      documentLabel: "Documento",
+      nextStep: "Completar dados do locador antes de avançar a captação.",
+      blocker: "Dados do locador ainda estão incompletos para seguir.",
+    };
+  }
+  return {
+    entity: "proprietario",
+    singular: "proprietário",
+    article: "do proprietário",
+    label: "Cadastrar proprietário",
+    description: "Preencha os dados abaixo para iniciar o cadastro.",
+    nameLabel: "Nome completo",
+    phoneLabel: "Telefone",
+    emailLabel: "E-mail",
+    documentLabel: "Documento",
+    nextStep: "Completar dados do proprietário antes de avançar a captação.",
+    blocker: "Dados do proprietário ainda estão incompletos para seguir.",
+  };
+}
+
+function getLeadPersonaCopy(leadDraft?: { leadPersona?: "lead" | "comprador" | "locatario" } | null) {
+  if (leadDraft?.leadPersona === "comprador") {
+    return {
+      entity: "comprador",
+      singular: "comprador",
+      article: "do comprador",
+      qualification: "do comprador",
+      label: "Cadastrar comprador",
+      description: "Preencha os dados abaixo para iniciar o cadastro do comprador.",
+      nameLabel: "Nome completo do comprador",
+      phoneLabel: "Telefone do comprador",
+      emailLabel: "E-mail do comprador",
+      goalLabel: "Finalidade do comprador",
+      cityLabel: "Cidade de interesse do comprador",
+      budgetLabel: "Faixa de orçamento do comprador",
+      nextStep: "Completar dados do comprador e revisar o interesse comercial.",
+      blocker: "Dados do comprador ainda estão incompletos para seguir.",
+    };
+  }
+  if (leadDraft?.leadPersona === "locatario") {
+    return {
+      entity: "locatario",
+      singular: "locatário",
+      article: "do locatário",
+      qualification: "do locatário",
+      label: "Cadastrar locatário",
+      description: "Preencha os dados abaixo para iniciar o cadastro do locatário.",
+      nameLabel: "Nome completo do locatário",
+      phoneLabel: "Telefone do locatário",
+      emailLabel: "E-mail do locatário",
+      goalLabel: "Finalidade do locatário",
+      cityLabel: "Cidade de interesse do locatário",
+      budgetLabel: "Faixa de orçamento do locatário",
+      nextStep: "Completar dados do locatário e revisar o interesse comercial.",
+      blocker: "Dados do locatário ainda estão incompletos para seguir.",
+    };
+  }
+  return {
+    entity: "lead",
+    singular: "lead",
+    article: "do lead",
+    qualification: "do lead",
+    label: "Cadastrar lead",
+    description: "Preencha os dados abaixo para iniciar a qualificação do lead.",
+    nameLabel: "Nome completo do lead",
+    phoneLabel: "Telefone do lead",
+    emailLabel: "E-mail do lead",
+    goalLabel: "Finalidade do lead",
+    cityLabel: "Cidade de interesse do lead",
+    budgetLabel: "Faixa de orçamento do lead",
+    nextStep: "Completar dados do lead e revisar o interesse comercial.",
+    blocker: "Dados do lead ainda estão incompletos para seguir.",
+  };
+}
+
+function buildOwnerCreateForm(ownerDraft?: {
+  ownerPersona?: "proprietario" | "vendedor" | "locador";
+  ownerName?: string | null;
+  ownerPhone?: string | null;
+  ownerEmail?: string | null;
+  ownerDocument?: string | null;
+} | null) {
+  const ownerCopy = getOwnerPersonaCopy(ownerDraft);
+  return {
+    entity: ownerCopy.entity,
+    action: "create",
+    label: ownerCopy.label,
+    description: ownerCopy.description,
+    fields: [
+      {
+        name: "ownerName",
+        label: ownerCopy.nameLabel,
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: João da Silva",
+        value: ownerDraft?.ownerName ?? "",
+      },
+      {
+        name: "ownerPhone",
+        label: ownerCopy.phoneLabel,
+        type: "tel" as const,
+        required: true,
+        placeholder: "Ex.: (11) 99999-9999",
+        value: ownerDraft?.ownerPhone ?? "",
+      },
+      {
+        name: "ownerEmail",
+        label: ownerCopy.emailLabel,
+        type: "email" as const,
+        required: true,
+        placeholder: "Ex.: joao@email.com",
+        value: ownerDraft?.ownerEmail ?? "",
+      },
+      {
+        name: "ownerDocument",
+        label: ownerCopy.documentLabel,
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: CPF ou CNPJ",
+        value: ownerDraft?.ownerDocument ?? "",
+        helperText: "Informe CPF/CNPJ ou anexe o documento.",
+        allowAttachment: true,
+        attachmentLabel: "Anexar documento",
+      },
+    ],
+    actions: [
+      {
+        id: "cancel" as const,
+        label: "Cancelar",
+        kind: "secondary" as const,
+      },
+      {
+        id: "submit" as const,
+        label: "Continuar cadastro",
+        kind: "primary" as const,
+      },
+    ],
+  };
+}
+
+function buildPropertyCreateForm(propertyDraft?: {
+  propertyType?: string | null;
+  goal?: "locacao" | "venda" | null;
+  city?: string | null;
+  address?: string | null;
+} | null) {
+  return {
+    entity: "imovel",
+    action: "create",
+    label: "Cadastrar imóvel",
+    description: "Preencha os dados abaixo para iniciar o cadastro do imóvel.",
+    fields: [
+      {
+        name: "propertyType",
+        label: "Tipo do imóvel",
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: apartamento, casa, terreno",
+        value: propertyDraft?.propertyType ?? "",
+      },
+      {
+        name: "goal",
+        label: "Finalidade do imóvel",
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: venda ou locação",
+        value: propertyDraft?.goal ?? "",
+      },
+      {
+        name: "city",
+        label: "Cidade do imóvel",
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: Itapema",
+        value: propertyDraft?.city ?? "",
+      },
+      {
+        name: "address",
+        label: "Endereço do imóvel",
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: Rua 1000, 123",
+        value: propertyDraft?.address ?? "",
+      },
+    ],
+    actions: [
+      {
+        id: "cancel" as const,
+        label: "Cancelar",
+        kind: "secondary" as const,
+      },
+      {
+        id: "submit" as const,
+        label: "Continuar cadastro",
+        kind: "primary" as const,
+      },
+    ],
+  };
+}
+
+function buildLeadCreateForm(leadDraft?: {
+  leadPersona?: "lead" | "comprador" | "locatario";
+  leadName?: string | null;
+  leadPhone?: string | null;
+  leadEmail?: string | null;
+  desiredGoal?: "locacao" | "venda" | null;
+  desiredCity?: string | null;
+  budgetMax?: number | null;
+} | null) {
+  const leadCopy = getLeadPersonaCopy(leadDraft);
+  return {
+    entity: leadCopy.entity,
+    action: "create",
+    label: leadCopy.label,
+    description: leadCopy.description,
+    fields: [
+      {
+        name: "leadName",
+        label: leadCopy.nameLabel,
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: Maria da Silva",
+        value: leadDraft?.leadName ?? "",
+      },
+      {
+        name: "leadPhone",
+        label: leadCopy.phoneLabel,
+        type: "tel" as const,
+        required: true,
+        placeholder: "Ex.: (11) 99999-9999",
+        value: leadDraft?.leadPhone ?? "",
+      },
+      {
+        name: "leadEmail",
+        label: leadCopy.emailLabel,
+        type: "email" as const,
+        placeholder: "Ex.: maria@email.com",
+        value: leadDraft?.leadEmail ?? "",
+      },
+      {
+        name: "desiredGoal",
+        label: leadCopy.goalLabel,
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: compra ou locação",
+        value: leadDraft?.desiredGoal ?? "",
+      },
+      {
+        name: "desiredCity",
+        label: leadCopy.cityLabel,
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: Itapema",
+        value: leadDraft?.desiredCity ?? "",
+      },
+      {
+        name: "budgetMax",
+        label: leadCopy.budgetLabel,
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: 500000 ou 3500",
+        value: leadDraft?.budgetMax ? String(leadDraft.budgetMax) : "",
+      },
+    ],
+    actions: [
+      {
+        id: "cancel" as const,
+        label: "Cancelar",
+        kind: "secondary" as const,
+      },
+      {
+        id: "submit" as const,
+        label: "Continuar cadastro",
+        kind: "primary" as const,
+      },
+    ],
+  };
+}
+
+function buildListingActivateForm(listingDraft?: {
+  propertyId?: string | null;
+  listingTitle?: string | null;
+  publicationGoal?: "locacao" | "venda" | null;
+  publicationChannels?: string[] | null;
+} | null) {
+  return {
+    entity: "anuncio",
+    action: "publish",
+    label: "Publicar anúncio",
+    description: "Preencha os dados abaixo para iniciar a ativação do anúncio.",
+    fields: [
+      {
+        name: "propertyId",
+        label: "Imóvel de referência",
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: 4455",
+        value: listingDraft?.propertyId?.replace(/^property-/, "") ?? "",
+      },
+      {
+        name: "listingTitle",
+        label: "Título do anúncio",
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: Vista Mar",
+        value: listingDraft?.listingTitle ?? "",
+      },
+      {
+        name: "publicationGoal",
+        label: "Finalidade do anúncio",
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: venda ou locação",
+        value: listingDraft?.publicationGoal ?? "",
+      },
+      {
+        name: "publicationChannels",
+        label: "Canais de publicação",
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: portal, whatsapp, instagram",
+        value: listingDraft?.publicationChannels?.join(", ") ?? "",
+      },
+    ],
+    actions: [
+      {
+        id: "cancel" as const,
+        label: "Cancelar",
+        kind: "secondary" as const,
+      },
+      {
+        id: "submit" as const,
+        label: "Continuar ativação",
+        kind: "primary" as const,
+      },
+    ],
+  };
+}
+
+
+function buildDocumentValidationForm(documentDraft?: {
+  referenceId?: string | null;
+  subjectType?: "owner" | "property" | "lead" | "proposal" | "contract" | null;
+  documentTypes?: string[] | null;
+  deliveryChannel?: "upload" | "email" | "whatsapp" | "drive" | null;
+} | null) {
+  return {
+    entity: "documento",
+    action: "validate",
+    label: "Validar documento",
+    description: "Preencha os dados abaixo para iniciar a validação do documento.",
+    fields: [
+      {
+        name: "referenceId",
+        label: "Imóvel ou referência",
+        type: "text" as const,
+        placeholder: "Ex.: 4455",
+        value: documentDraft?.referenceId?.replace(/^property-/, "") ?? "",
+      },
+      {
+        name: "subjectType",
+        label: "Documento de quem",
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: proprietário, imóvel, comprador, contrato",
+        value: documentDraft?.subjectType ?? "",
+      },
+      {
+        name: "documentTypes",
+        label: "Tipo documental",
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: matrícula, cpf, rg",
+        value: documentDraft?.documentTypes?.join(", ") ?? "",
+        allowAttachment: true,
+        attachmentLabel: "Anexar documento",
+      },
+      {
+        name: "deliveryChannel",
+        label: "Canal de envio",
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: upload, email, whatsapp, drive",
+        value: documentDraft?.deliveryChannel ?? "",
+      },
+    ],
+    actions: [
+      {
+        id: "cancel" as const,
+        label: "Cancelar",
+        kind: "secondary" as const,
+      },
+      {
+        id: "submit" as const,
+        label: "Continuar validação",
+        kind: "primary" as const,
+      },
+    ],
+  };
+}
+
+function buildContractActionForm(
+  contractDraft: {
+    propertyId?: string | null;
+    counterpartyName?: string | null;
+    contractType?: "rent" | "sale" | "management" | null;
+    documentPacketStatus?: "pending" | "ready" | null;
+  } | null | undefined,
+  action: "create" | "sendForSignature"
+) {
+  const sendForSignature = action === "sendForSignature";
+  return {
+    entity: "contrato",
+    action,
+    label: sendForSignature ? "Enviar contrato para assinatura" : "Criar contrato",
+    description: sendForSignature
+      ? "Preencha os dados abaixo para preparar o envio do contrato para assinatura."
+      : "Preencha os dados abaixo para preparar o contrato.",
+    fields: [
+      {
+        name: "propertyId",
+        label: "Imóvel do contrato",
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: 4455",
+        value: contractDraft?.propertyId?.replace(/^property-/, "") ?? "",
+      },
+      {
+        name: "counterpartyName",
+        label: "Comprador ou contraparte",
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: Maria da Silva",
+        value: contractDraft?.counterpartyName ?? "",
+      },
+      {
+        name: "contractType",
+        label: "Tipo de contrato",
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: venda, locação, administração",
+        value: contractDraft?.contractType ?? "",
+      },
+      {
+        name: "documentPacketStatus",
+        label: "Status documental",
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: documentos completos ou documentos pendentes",
+        value: contractDraft?.documentPacketStatus === "ready"
+          ? "documentos completos"
+          : contractDraft?.documentPacketStatus === "pending"
+            ? "documentos pendentes"
+            : "",
+      },
+    ],
+    actions: [
+      {
+        id: "cancel" as const,
+        label: "Cancelar",
+        kind: "secondary" as const,
+      },
+      {
+        id: "submit" as const,
+        label: sendForSignature ? "Continuar envio" : "Continuar contrato",
+        kind: "primary" as const,
+      },
+    ],
+  };
+}
+
+function buildContractHistoryForm() {
+  return {
+    entity: "contrato",
+    action: "history",
+    label: "Ver histórico do contrato",
+    description: "Informe a referência para eu localizar o contrato certo.",
+    fields: [
+      {
+        name: "propertyId",
+        label: "Imóvel do contrato",
+        type: "text" as const,
+        placeholder: "Ex.: 4455",
+      },
+      {
+        name: "counterpartyName",
+        label: "Comprador ou contraparte",
+        type: "text" as const,
+        placeholder: "Ex.: Maria da Silva",
+      },
+    ],
+    actions: [
+      {
+        id: "cancel" as const,
+        label: "Cancelar",
+        kind: "secondary" as const,
+      },
+      {
+        id: "submit" as const,
+        label: "Consultar histórico",
+        kind: "primary" as const,
+      },
+    ],
+  };
+}
+
 function mapOperationalPendingFieldLabel(
   flow: NonNullable<ImobResolveTurnResponse["conversationState"]["operational"]>["flow"],
-  field: string
+  field: string,
+  options?: {
+    leadPersona?: "lead" | "comprador" | "locatario" | null;
+    ownerPersona?: "proprietario" | "vendedor" | "locador" | null;
+  }
 ) {
+  const leadPersonaCopy = getLeadPersonaCopy(options?.leadPersona ? { leadPersona: options.leadPersona } : null);
+  const ownerPersonaCopy = getOwnerPersonaCopy(options?.ownerPersona ? { ownerPersona: options.ownerPersona } : null);
   const common: Record<string, string> = {
     propertyId: "imóvel de referência",
-    ownerName: "nome do proprietário",
-    ownerEmail: "e-mail do proprietário",
-    ownerPhone: "telefone do proprietário",
-    ownerDocument: "documento do proprietário",
+    ownerName: `nome ${ownerPersonaCopy.article}`,
+    ownerEmail: `e-mail ${ownerPersonaCopy.article}`,
+    ownerPhone: `telefone ${ownerPersonaCopy.article}`,
+    ownerDocument: `documento ${ownerPersonaCopy.article}`,
     propertyType: "tipo do imóvel",
     goal: "finalidade do imóvel",
     city: "cidade do imóvel",
@@ -171,10 +971,10 @@ function mapOperationalPendingFieldLabel(
     bedrooms: "quantidade de quartos",
     bathrooms: "quantidade de banheiros",
     address: "endereço do imóvel",
-    leadName: "nome do lead",
-    leadPhone: "telefone do lead",
-    leadEmail: "e-mail do lead",
-    desiredGoal: "objetivo do lead",
+    leadName: `nome ${leadPersonaCopy.article}`,
+    leadPhone: `telefone ${leadPersonaCopy.article}`,
+    leadEmail: `e-mail ${leadPersonaCopy.article}`,
+    desiredGoal: `objetivo ${leadPersonaCopy.article}`,
     desiredCity: "cidade de interesse",
     budgetMax: "faixa de orçamento",
     buyerName: "nome do comprador",
@@ -207,7 +1007,12 @@ function buildOperationalPresentationMeta(
 ) {
   if (!operationalState) return {};
   const flow = operationalState.flow;
-  const pendingFieldLabels = operationalState.pendingFields.map((field) => mapOperationalPendingFieldLabel(flow, field));
+  const pendingFieldLabels = operationalState.pendingFields.map((field) =>
+    mapOperationalPendingFieldLabel(flow, field, {
+      leadPersona: flow === "lead.qualify" ? (operationalState.leadDraft?.leadPersona ?? "lead") : null,
+      ownerPersona: flow === "owner.create" ? (operationalState.ownerDraft?.ownerPersona ?? "proprietario") : null,
+    })
+  );
   const owner = mapOperationalOwner(flow);
   const nextStep =
     flow === "commission.settle"
@@ -228,12 +1033,12 @@ function buildOperationalPresentationMeta(
               : "Confirmar agenda com cliente e imóvel."
             : flow === "lead.qualify"
               ? pendingFieldLabels.length > 0
-                ? "Completar dados do lead e revisar o interesse comercial."
+                ? getLeadPersonaCopy(operationalState.leadDraft).nextStep
                 : "Qualificar interesse e vincular o próximo imóvel ou etapa comercial."
               : flow === "owner.create"
                 ? pendingFieldLabels.length > 0
-                  ? "Completar dados do proprietário antes de avançar a captação."
-                  : "Vincular o proprietário ao próximo imóvel ou etapa documental."
+                  ? getOwnerPersonaCopy(operationalState.ownerDraft).nextStep
+                  : `Vincular ${getOwnerPersonaCopy(operationalState.ownerDraft).article} ao próximo imóvel ou etapa documental.`
                 : flow === "property.create"
                   ? pendingFieldLabels.length > 0
                     ? "Completar dados do imóvel antes de avançar a captação."
@@ -258,11 +1063,11 @@ function buildOperationalPresentationMeta(
               : null
             : flow === "lead.qualify"
               ? pendingFieldLabels.length > 0
-                ? "Dados do lead ainda estão incompletos para seguir."
+                ? getLeadPersonaCopy(operationalState.leadDraft).blocker
                 : null
               : flow === "owner.create"
                 ? pendingFieldLabels.length > 0
-                  ? "Dados do proprietário ainda estão incompletos para seguir."
+                  ? getOwnerPersonaCopy(operationalState.ownerDraft).blocker
                   : null
                 : flow === "property.create"
                   ? pendingFieldLabels.length > 0
@@ -642,11 +1447,70 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
 
 export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTurnResponse {
   const message = request.message.trim();
+  const normalizedMessage = normalizeImobText(message);
+  const parsedCatalogIntent = request.semanticIntent ?? parseImobIntent(message);
+  const hasExplicitCatalogTarget = Boolean(parsedCatalogIntent.action && parsedCatalogIntent.entity);
+  const catalogDrivenIntent = mapCatalogIntentToImobIntent(parsedCatalogIntent);
   const classifiedIntent = classifyImobIntent(message);
-  const intent = shouldContinueCurrentOperationalFlow(request.threadState?.operational ?? null, classifiedIntent)
+  const baseIntent = catalogDrivenIntent ?? classifiedIntent;
+  const intent = !hasExplicitCatalogTarget && shouldContinueCurrentOperationalFlow(request.threadState?.operational ?? null, baseIntent)
     ? mapOperationalFlowToIntent(request.threadState!.operational!.flow)
-    : classifiedIntent;
+    : baseIntent;
+  const wantsDocumentValidation =
+    (parsedCatalogIntent.action === "validate" && parsedCatalogIntent.entity === "documento") ||
+    /\b(validar|conferir)\s+document/.test(normalizedMessage);
+  const wantsContractHistory =
+    (parsedCatalogIntent.action === "history" && parsedCatalogIntent.entity === "contrato") ||
+    /historico\s+de\s+contrato/.test(normalizedMessage);
+  const wantsSendForSignature =
+    (parsedCatalogIntent.action === "sendForSignature" && parsedCatalogIntent.entity === "contrato") ||
+    /(?:enviar|mandar)\s+contrato\s+para\s+assinatura|envio\s+para\s+assinatura/.test(normalizedMessage);
   const nextThreadState = createNextImobThreadState(request.threadState ?? undefined, message);
+  const semanticIntentSource = request.semanticIntentSource ?? "parser_fallback";
+  const activeOperationalState = request.threadState?.operational ?? null;
+  const shouldPreferActiveAttachmentFlow =
+    activeOperationalState?.status === "collecting" &&
+    isAttachmentReferenceMessage(message);
+
+  if (shouldPreferActiveAttachmentFlow && activeOperationalState) {
+    const presentationMeta = buildOperationalPresentationMeta(activeOperationalState);
+    return {
+      mode: "consult",
+      action: "realestate.collect_documents",
+      threadLabel: getIntentThreadLabel(mapOperationalFlowToIntent(activeOperationalState.flow)),
+      conversationState: {
+        slots: createEmptyImobSlots(),
+        mode: "consult",
+        pendingSlot: "none",
+        resultOffset: 0,
+        operational: activeOperationalState,
+      },
+      presentation: {
+        ...presentationMeta,
+        text: [
+          "Posso receber esse documento por anexo nesta conversa.",
+          "Use o botão de anexo para enviar o arquivo agora.",
+          presentationMeta.nextStep ? `Próximo passo: ${presentationMeta.nextStep}` : null,
+        ].filter(Boolean).join("\n"),
+        suggestedNextAction: "Anexe o documento nesta conversa para validar e continuar o cadastro.",
+        card: {
+          title: "Anexo aguardado",
+          lines: [
+            "Envie o documento pelo botão de anexo desta conversa.",
+            "Se preferir texto, informe o tipo do documento e os dados principais.",
+          ],
+          ctas: [
+            {
+              id: "open-attachment-menu",
+              label: "Anexar agora",
+              kind: "primary",
+              action: "open_attachment_menu",
+            },
+          ],
+        },
+      },
+    };
+  }
 
   if (isKnowledgeSearchQuery(message) && !(intent === "documents" && isDocumentCollectionRequest(message))) {
     const region = nextThreadState.slots.city ?? nextThreadState.slots.region ?? extractRegion(normalizeImobText(message)) ?? "Brasil";
@@ -717,6 +1581,171 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
     return response;
   }
 
+
+  if (isGenericLeadRequest(parsedCatalogIntent, normalizedMessage)) {
+    const leadChoices = buildLeadCreationChoices();
+    return {
+      mode: "consult",
+      action: "crm.lead.clarify_target",
+      threadLabel: getIntentThreadLabel(intent),
+      conversationState: { ...nextThreadState, mode: "consult" },
+      presentation: {
+        text: "",
+        suggestedNextAction: "Escolha como você quer iniciar esse lead.",
+        metadata: buildCatalogConfidenceMetadata(parsedCatalogIntent, false, { choiceStyle: "inline", source: semanticIntentSource }),
+        card: {
+          title: "Escolha uma opção",
+          lines: ["Escolha como você quer iniciar o lead."],
+          ctas: leadChoices.map((choice, index) => ({
+            id: `lead-create-${choice.entity}`,
+            label: choice.label,
+            kind: index === 0 ? "primary" : index === 1 ? "secondary" : "neutral",
+            action: "send_suggested_message" as const,
+            nextMessage: choice.nextMessage,
+          })),
+        },
+      },
+    };
+  }
+
+  if (parsedCatalogIntent.action && !parsedCatalogIntent.entity && (parsedCatalogIntent.action === "create" || intent === "adjustment")) {
+    const actionChoices = parsedCatalogIntent.action === "create" ? buildCadastroCreationChoices() : listImobIntentChoicesForAction(parsedCatalogIntent.action);
+    if (actionChoices.length > 0) {
+      const actionLabel = parsedCatalogIntent.matchedActionAlias ?? parsedCatalogIntent.action;
+      return {
+        mode: "consult",
+        action: parsedCatalogIntent.action === "create" ? "crm.capture.clarify_target" : "crm.catalog.clarify_entity",
+        threadLabel: getIntentThreadLabel(intent),
+        conversationState: { ...nextThreadState, mode: "consult" },
+        presentation: {
+          text: parsedCatalogIntent.action === "create"
+            ? ""
+            : [
+                "Escolha uma opção.",
+                `Selecione o alvo para ${actionLabel.toLowerCase()} agora.`,
+              ].join("\n"),
+          suggestedNextAction: parsedCatalogIntent.action === "create"
+            ? "Escolha um cadastro para eu abrir a próxima etapa."
+            : `Escolha o alvo para ${actionLabel.toLowerCase()} na próxima etapa.`,
+          metadata: buildCatalogConfidenceMetadata(
+            parsedCatalogIntent,
+            false,
+            parsedCatalogIntent.action === "create" ? { choiceStyle: "inline" } : undefined
+          ),
+          card: {
+            title: "Escolha uma opção",
+            lines: parsedCatalogIntent.action === "create"
+              ? ["Escolha o cadastro que você quer iniciar."]
+              : buildCatalogActionLines(actionLabel, actionChoices.map((choice) => choice.label.toLowerCase())),
+            ctas: actionChoices.map((choice, index) => ({
+              id: `${parsedCatalogIntent.action}-${choice.entity}`,
+              label: choice.label,
+              kind: index === 0 ? "primary" : index === 1 ? "secondary" : "neutral",
+              action: "send_suggested_message",
+              nextMessage: choice.nextMessage,
+            })),
+          },
+        },
+      };
+    }
+  }
+
+  if (wantsContractHistory || (parsedCatalogIntent.action === "history" && parsedCatalogIntent.entity === "contrato")) {
+    return {
+      mode: "consult",
+      action: "crm.catalog.history",
+      threadLabel: getIntentThreadLabel(intent),
+      conversationState: { ...nextThreadState, mode: "consult" },
+      presentation: {
+        text: "",
+        form: buildContractHistoryForm(),
+        metadata: buildCatalogConfidenceMetadata(parsedCatalogIntent, false, { source: semanticIntentSource }),
+      },
+    };
+  }
+
+  if (wantsDocumentValidation) {
+    const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, intent, message, nextThreadState.slots);
+    return {
+      mode: "execute",
+      action: "realestate.collect_documents",
+      threadLabel: getIntentThreadLabel(intent),
+      conversationState: { slots: createEmptyImobSlots(), mode: "execute", pendingSlot: "none", resultOffset: 0, operational: operationalState },
+      executionRequest: buildOperationalExecution(intent === "documents" ? intent : "documents", message, new Date().toISOString(), operationalState),
+      presentation: {
+        ...buildOperationalPresentationMeta(operationalState),
+        text: "",
+        form: buildDocumentValidationForm(operationalState?.documentDraft),
+        metadata: buildCatalogConfidenceMetadata(parsedCatalogIntent, false, { source: semanticIntentSource }),
+      },
+    };
+  }
+
+  if (parsedCatalogIntent.action && parsedCatalogIntent.entity && parsedCatalogIntent.action !== "create" && !["listing", "documents", "proposal", "visit", "lead", "contract", "deal", "commission"].includes(intent)) {
+    if (shouldClarifyCatalogIntent(parsedCatalogIntent)) {
+      const clarification = buildCatalogActionClarification(parsedCatalogIntent, semanticIntentSource);
+      if (clarification) {
+        return {
+          ...clarification,
+          threadLabel: getIntentThreadLabel(intent),
+          conversationState: { ...nextThreadState, mode: "consult" },
+        };
+      }
+    }
+
+    const canonicalLabel = resolveCanonicalLabel(message);
+    if (canonicalLabel) {
+      return {
+        mode: "consult",
+        action: `crm.catalog.${parsedCatalogIntent.action}`,
+        threadLabel: getIntentThreadLabel(intent),
+        conversationState: { ...nextThreadState, mode: "consult" },
+        presentation: {
+          ...buildCatalogEntityActionPresentation(
+          humanizeCatalogEntity(parsedCatalogIntent.entity),
+          parsedCatalogIntent.action,
+          canonicalLabel,
+          ),
+          metadata: buildCatalogConfidenceMetadata(parsedCatalogIntent, false, { source: semanticIntentSource }),
+        },
+      };
+    }
+  }
+  if (intent === "documents" && isDocumentUploadOnlyRequest(message)) {
+    const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, intent, message, nextThreadState.slots);
+    const presentationMeta = buildOperationalPresentationMeta(operationalState);
+    return {
+      mode: "consult",
+      action: "realestate.collect_documents",
+      threadLabel: getIntentThreadLabel(intent),
+      conversationState: { slots: createEmptyImobSlots(), mode: "consult", pendingSlot: "none", resultOffset: 0, operational: operationalState },
+      presentation: {
+        ...presentationMeta,
+        text: [
+          "Posso receber esse documento por anexo nesta conversa.",
+          "Use o botão de anexo para enviar o arquivo agora.",
+          presentationMeta.nextStep ? `Próximo passo: ${presentationMeta.nextStep}` : null,
+        ].filter(Boolean).join("\n"),
+        suggestedNextAction: "Anexe o documento nesta conversa para validar e continuar o cadastro.",
+        card: {
+          title: "Anexo aguardado",
+          lines: [
+            "Envie o documento pelo botão de anexo desta conversa.",
+            "Se preferir texto, informe o tipo do documento e os dados principais.",
+          ],
+          ctas: [
+            {
+              id: "open-attachment-menu",
+              label: "Anexar agora",
+              kind: "primary",
+              action: "open_attachment_menu",
+            },
+          ],
+        },
+      },
+    };
+  }
+
   if (intent === "match" && (isResearchQuery(message) || shouldStayInSearchThread || hasMeaningfulSearchFilters(nextThreadState.slots))) {
     return {
       mode: "search",
@@ -739,7 +1768,13 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
   }
 
   const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, intent, message, nextThreadState.slots);
-  const operationalPendingLabels = operationalState ? operationalState.pendingFields.map((field) => mapOperationalPendingFieldLabel(operationalState.flow, field)) : [];
+  const operationalPendingLabels = operationalState
+    ? operationalState.pendingFields.map((field) =>
+        mapOperationalPendingFieldLabel(operationalState.flow, field, {
+          leadPersona: operationalState.flow === "lead.qualify" ? (operationalState.leadDraft?.leadPersona ?? "lead") : null,
+        })
+      )
+    : [];
   const executionRequest = buildOperationalExecution(intent, message, new Date().toISOString(), operationalState);
   return {
     mode: "execute",
@@ -749,6 +1784,28 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
     executionRequest,
     presentation: {
       ...buildOperationalPresentationMeta(operationalState),
+      metadata: buildCatalogConfidenceMetadata(parsedCatalogIntent, false, { source: semanticIntentSource }),
+      form:
+        operationalState?.status === "collecting"
+          ? operationalState.flow === "owner.create"
+            ? buildOwnerCreateForm(operationalState.ownerDraft)
+            : operationalState.flow === "property.create"
+              ? buildPropertyCreateForm(operationalState.propertyDraft)
+              : operationalState.flow === "lead.qualify"
+                ? buildLeadCreateForm(operationalState.leadDraft)
+                : operationalState.flow === "listing.activate"
+                  ? buildListingActivateForm(operationalState.listingDraft)
+                  : operationalState.flow === "documents.collect"
+                    ? buildDocumentValidationForm(operationalState.documentDraft)
+                    : operationalState.flow === "contract.prepare"
+                      ? buildContractActionForm(
+                          operationalState.contractDraft,
+                          wantsSendForSignature || (parsedCatalogIntent.action === "sendForSignature" && parsedCatalogIntent.entity === "contrato")
+                            ? "sendForSignature"
+                            : "create"
+                        )
+                      : undefined
+          : undefined,
       text:
         intent === "capture"
           ? operationalState?.flow === "property.create"
@@ -757,22 +1814,22 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
               : "Posso iniciar o cadastro do imóvel agora."
             : operationalState?.flow === "owner.create"
               ? operationalPendingLabels.length > 0
-                ? `Posso iniciar o cadastro do proprietário agora. Ainda preciso de: ${operationalPendingLabels.join(", ")}.`
-                : "Posso iniciar o cadastro do proprietário agora."
+                ? ""
+                : "Cadastro do proprietário pronto para revisão."
               : "Posso iniciar a captação agora."
           : intent === "match"
             ? "Posso começar a busca de opções agora."
             : intent === "lead"
               ? operationalState?.flow === "lead.qualify" && operationalState.pendingFields.length > 0
-                ? `Posso iniciar a qualificação do lead agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
-                : "Posso iniciar a qualificação do lead agora."
+                ? `Posso iniciar o cadastro ${getLeadPersonaCopy(operationalState.leadDraft).article} agora. Ainda preciso de: ${operationalPendingLabels.join(", ")}.`
+                : `Posso iniciar o cadastro ${getLeadPersonaCopy(operationalState?.leadDraft).article} agora.`
               : intent === "visit"
                 ? operationalState?.flow === "visit.schedule" && operationalState.pendingFields.length > 0
                   ? `Posso organizar o agendamento da visita agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
                   : "Posso organizar o agendamento da visita agora."
                 : intent === "listing"
-                  ? operationalState?.flow === "listing.activate" && operationalState.pendingFields.length > 0
-                    ? `Posso preparar a ativação do anúncio agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
+                  ? operationalState?.flow === "listing.activate"
+                    ? ""
                     : "Posso preparar a ativação do anúncio agora."
                   : intent === "proposal"
                     ? operationalState?.flow === "proposal.create" && operationalState.pendingFields.length > 0
@@ -783,12 +1840,20 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
                         ? `Posso iniciar a revisão do negócio agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
                         : "Posso iniciar a revisão do negócio agora."
                     : intent === "documents"
-                      ? operationalState?.flow === "documents.collect" && operationalState.pendingFields.length > 0
-                        ? `Posso iniciar a coleta documental agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
+                      ? operationalState?.flow === "documents.collect"
+                        ? wantsDocumentValidation
+                          ? ""
+                          : operationalState.pendingFields.length > 0
+                            ? `Posso iniciar a coleta documental agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
+                            : "Posso iniciar a coleta documental agora."
                         : "Posso iniciar a coleta documental agora."
                     : intent === "contract"
-                      ? operationalState?.flow === "contract.prepare" && operationalState.pendingFields.length > 0
-                        ? `Posso preparar o handoff jurídico do contrato agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
+                      ? operationalState?.flow === "contract.prepare"
+                        ? wantsSendForSignature
+                          ? ""
+                          : operationalState.pendingFields.length > 0
+                            ? `Posso preparar o handoff jurídico do contrato agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
+                            : "Posso preparar o handoff jurídico do contrato agora."
                         : "Posso preparar o handoff jurídico do contrato agora."
                       : intent === "commission"
                         ? operationalState?.flow === "commission.settle" && operationalState.pendingFields.length > 0

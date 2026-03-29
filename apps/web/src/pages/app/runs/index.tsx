@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import introJs from "intro.js";
 import "intro.js/minified/introjs.min.css";
 import AgentSelect from "../../../components/agents/AgentSelect";
@@ -20,8 +21,9 @@ import {
   apiGetImobFunnelHealth,
   apiGetRun,
   apiGetTenantBillingSummary,
-  apiListImobBlockedRuns,
+  apiListImobCases,
   apiListRuns,
+  ImobCase,
   ImobFunnelHealth,
   Run,
   RunStatus,
@@ -49,6 +51,447 @@ type RunResource = {
   templates: LowCodeTemplate[];
   tools?: string[];
 };
+
+function imobCaseAgeHours(updatedAt: string) {
+  const parsed = Date.parse(updatedAt);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.max(0, (Date.now() - parsed) / 36e5);
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+}
+
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : [];
+}
+
+function buildImobCaseRiskLabel(item: ImobCase) {
+  const blockers = asStringArray(item.blockers);
+  if (blockers.length > 0) return blockers.slice(0, 2).join(", ");
+  const pending = asStringArray(item.pendingItems);
+  if (pending.length > 0) return pending.slice(0, 2).join(", ");
+  return item.stage || "—";
+}
+
+function mapImobStatusFilterToCaseStatus(filter: string): string | undefined {
+  if (filter === "all") return undefined;
+  if (filter === "pending_data") return "pending_data";
+  if (filter === "ready_for_review") return "ready_for_review";
+  if (filter === "blocked") return "blocked";
+  if (filter === "done") return "done";
+  return "__none__";
+}
+
+function formatImobCaseStatusLabel(status: string) {
+  if (status === "pending_data") return "pendente de dados";
+  if (status === "ready_for_review") return "pronto para revisão";
+  if (status === "blocked") return "bloqueado";
+  if (status === "done") return "concluído";
+  return status || "—";
+}
+
+function formatImobPendingLabel(value: string) {
+  const normalized = value.trim();
+  if (!normalized) return "pendência operacional";
+  if (normalized === "budgetMax") return "faixa de orçamento";
+  if (normalized === "ownerDocument") return "documento";
+  if (normalized === "ownerName") return "nome completo";
+  if (normalized === "ownerPhone") return "telefone";
+  if (normalized === "ownerEmail") return "e-mail";
+  if (normalized === "propertyType") return "tipo do imóvel";
+  if (normalized === "goal") return "finalidade";
+  if (normalized === "city") return "cidade";
+  if (normalized === "address") return "endereço";
+  if (normalized === "propertyId") return "imóvel de referência";
+  if (normalized === "listingTitle") return "título do anúncio";
+  if (normalized === "publicationGoal") return "finalidade do anúncio";
+  if (normalized === "publicationChannels") return "canais de publicação";
+  return normalized;
+}
+
+function formatImobFlowLabel(flow: string | null | undefined) {
+  if (flow === "lead.qualify") return "Qualificação de lead";
+  if (flow === "owner.create") return "Cadastro de proprietário";
+  if (flow === "property.create") return "Cadastro de imóvel";
+  if (flow === "listing.activate") return "Publicação de anúncio";
+  if (flow === "proposal.create") return "Proposta";
+  if (flow === "contract.prepare") return "Contrato";
+  return "Atendimento operacional";
+}
+
+function formatImobStageLabel(stage: string | null | undefined) {
+  if (stage === "collecting") return "coleta de dados";
+  if (stage === "review") return "revisão";
+  if (stage === "approval") return "aprovação";
+  if (stage === "closing") return "fechamento";
+  return "andamento operacional";
+}
+
+function buildImobResolutionSteps(values: string[]) {
+  const unique = Array.from(new Set(values.map(formatImobPendingLabel)));
+  if (!unique.length) return ["Revisar a ficha do caso e validar o próximo passo operacional."];
+  return unique.map((item) => `Preencher ou confirmar ${item}.`);
+}
+
+function buildImobCurrentSituation(data: any) {
+  const caseData = data?.case ?? data;
+  const pending = asStringArray(caseData?.pendingItems);
+  const blockers = asStringArray(caseData?.blockers);
+  if (caseData?.status === "ready_for_review") {
+    return "Este atendimento já está pronto para revisão operacional.";
+  }
+  if (caseData?.status === "blocked") {
+    return blockers.length
+      ? `Este atendimento está bloqueado por: ${blockers.map(formatImobPendingLabel).join(", ")}.`
+      : "Este atendimento está bloqueado e precisa de intervenção antes de avançar.";
+  }
+  if (pending.length) {
+    return `Este atendimento ainda não pode avançar porque faltam: ${pending.map(formatImobPendingLabel).join(", ")}.`;
+  }
+  return "Este atendimento segue em acompanhamento operacional.";
+}
+
+function buildImobReasonSummary(data: any) {
+  const caseData = data?.case ?? data;
+  const pending = asStringArray(caseData?.pendingItems);
+  const blockers = asStringArray(caseData?.blockers);
+  const source = blockers.length ? blockers : pending;
+  if (!source.length) return "Não há bloqueio crítico registrado no momento.";
+  return source.map(formatImobPendingLabel).join(" | ");
+}
+
+function buildImobClientApproachExamples(data: any) {
+  const caseData = data?.case ?? data;
+  const pending = asStringArray(caseData?.pendingItems).map(formatImobPendingLabel);
+  const flow = caseData?.flow ?? "";
+  if (flow === "lead.qualify" && pending.includes("faixa de orçamento")) {
+    return [
+      "Qual faixa de valor você pretende investir?",
+      "Se preferir, posso trabalhar com uma faixa aproximada para já filtrar os imóveis compatíveis.",
+    ];
+  }
+  if (flow === "owner.create" && pending.includes("documento")) {
+    return [
+      "Pode me enviar seu documento para eu concluir o cadastro do proprietário?",
+      "Se preferir, você pode anexar o documento agora para eu seguir com a análise.",
+    ];
+  }
+  if (flow === "property.create") {
+    return [
+      "Pode me confirmar os dados do imóvel que faltam para eu concluir o cadastro?",
+      "Assim que eu tiver essas informações, sigo para a próxima etapa da captação.",
+    ];
+  }
+  if (flow === "listing.activate") {
+    return [
+      "Vou confirmar os dados do anúncio para já publicar nos canais corretos.",
+      "Com essas informações preenchidas, seguimos para ativação do anúncio.",
+    ];
+  }
+  if (flow === "contract.prepare") {
+    return [
+      "Preciso confirmar os dados pendentes para preparar o contrato sem retrabalho.",
+      "Assim que esses pontos forem resolvidos, seguimos para revisão ou assinatura.",
+    ];
+  }
+  if (pending.includes("telefone") || pending.includes("e-mail")) {
+    return [
+      "Qual é o melhor telefone e e-mail para seguirmos com seu atendimento?",
+      "Com esses dados eu consigo continuar o cadastro e as próximas etapas.",
+    ];
+  }
+  return [
+    "Vou confirmar os dados pendentes para poder avançar com segurança.",
+    "Assim que esses dados forem preenchidos, seguimos para a próxima etapa.",
+  ];
+}
+
+function buildImobWhatToDoNow(data: any) {
+  const caseData = data?.case ?? data;
+  const flow = caseData?.flow ?? "";
+  const pending = asStringArray(caseData?.pendingItems);
+  const blockers = asStringArray(caseData?.blockers);
+  const items = buildImobResolutionSteps(blockers.length ? blockers : pending);
+  if (flow === "lead.qualify") {
+    return [...items, "Depois, retome a qualificação para identificar imóveis compatíveis."];
+  }
+  if (flow === "owner.create") {
+    return [...items, "Depois, revise a ficha do proprietário e avance para o vínculo com o imóvel."];
+  }
+  if (flow === "property.create") {
+    return [...items, "Depois, revise o cadastro do imóvel e siga para anúncio, visita ou proposta."];
+  }
+  if (flow === "listing.activate") {
+    return [...items, "Depois, valide canais e publique o anúncio."];
+  }
+  if (flow === "contract.prepare") {
+    return [...items, "Depois, gere a minuta e siga para revisão ou assinatura."];
+  }
+  return items;
+}
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function renderHtmlList(items: string[]) {
+  return items.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+}
+
+type ImobHtmlActionLink = {
+  label: string;
+  href: string | null;
+};
+
+function buildImobReturnToHref() {
+  return "/app/runs?domain=imob";
+}
+
+function renderHtmlLinkList(items: ImobHtmlActionLink[]) {
+  return items
+    .map((item) => {
+      if (!item.href) return `<li>${escapeHtml(item.label)}</li>`;
+      return `<li><a href="${escapeHtml(item.href)}" target="_self" rel="noopener noreferrer">${escapeHtml(item.label)}</a></li>`;
+    })
+    .join("");
+}
+
+function buildImobFlowSummary(data: any) {
+  const caseData = data?.case ?? data;
+  const flow = caseData?.flow ?? "";
+  if (flow === "lead.qualify") {
+    return "Atendimento de qualificação comercial para entender o perfil do cliente e liberar a próxima etapa da busca.";
+  }
+  if (flow === "owner.create") {
+    return "Atendimento de cadastro do proprietário para estruturar a captação e o vínculo com o imóvel.";
+  }
+  if (flow === "property.create") {
+    return "Atendimento de cadastro do imóvel para deixar a ficha pronta para anúncio, visita ou proposta.";
+  }
+  if (flow === "listing.activate") {
+    return "Atendimento de publicação para preparar o anúncio e ativar os canais de divulgação.";
+  }
+  if (flow === "contract.prepare") {
+    return "Atendimento de contrato para preparar a minuta e seguir para revisão ou assinatura.";
+  }
+  return "Atendimento operacional em andamento na vertical imobiliária.";
+}
+
+function buildImobChatActionHref(base: {
+  caseId?: string | null;
+  threadId?: string | null;
+  autoprompt?: string | null;
+  returnTo?: string | null;
+}) {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams();
+  if (base.caseId) params.set("caseId", base.caseId);
+  if (base.threadId) params.set("threadId", base.threadId);
+  if (base.autoprompt) params.set("autoprompt", base.autoprompt);
+  if (base.returnTo) params.set("returnTo", base.returnTo);
+  const query = params.toString();
+  return `${window.location.origin}/app/imob/chat${query ? `?${query}` : ""}`;
+}
+
+function buildImobEntityActions(root: any) {
+  const caseData = root?.case ?? root ?? null;
+  const caseId = typeof caseData?.id === "string" && caseData.id.trim().length > 0 ? caseData.id.trim() : null;
+  const threadId = typeof caseData?.threadId === "string" && caseData.threadId.trim().length > 0 ? caseData.threadId.trim() : null;
+  const owner = root?.entities?.owner ?? root?.owner ?? null;
+  const property = root?.entities?.property ?? root?.property ?? null;
+  const lead = root?.entities?.lead ?? root?.lead ?? null;
+  const returnTo = buildImobReturnToHref();
+  const ownerLabel = owner?.name ? `Editar cadastro do proprietário: ${owner.name}` : "Incluir proprietário no cadastro";
+  const propertyRef = property?.address ?? property?.id ?? null;
+  const propertyLabel = propertyRef ? `Editar cadastro do imóvel: ${propertyRef}` : "Incluir imóvel no cadastro";
+  const leadLabel = lead?.name ? `Editar cadastro do lead: ${lead.name}` : "Incluir lead no cadastro";
+  return [
+    {
+      label: ownerLabel,
+      href: buildImobChatActionHref({
+        caseId,
+        threadId,
+        autoprompt: owner?.name ? `editar proprietário ${owner.name}` : "cadastrar proprietário",
+        returnTo,
+      }),
+    },
+    {
+      label: propertyLabel,
+      href: buildImobChatActionHref({
+        caseId,
+        threadId,
+        autoprompt: propertyRef ? `editar imóvel ${propertyRef}` : "cadastrar imóvel",
+        returnTo,
+      }),
+    },
+    {
+      label: leadLabel,
+      href: buildImobChatActionHref({
+        caseId,
+        threadId,
+        autoprompt: lead?.name ? `editar lead ${lead.name}` : "cadastrar lead",
+        returnTo,
+      }),
+    },
+  ] satisfies ImobHtmlActionLink[];
+}
+
+function buildImobArtifactViewModel(payload: any) {
+  const root = payload?.data ?? payload;
+  const caseData = root?.case ?? root;
+  const events = Array.isArray(root?.events) ? root.events : [];
+  return {
+    generatedAt: root?.generatedAt ?? new Date().toISOString(),
+    title: formatImobFlowLabel(caseData?.flow),
+    summary: buildImobFlowSummary(root),
+    stage: formatImobStageLabel(caseData?.stage),
+    status: formatImobCaseStatusLabel(caseData?.status ?? ""),
+    currentSituation: buildImobCurrentSituation(root),
+    reason: buildImobReasonSummary(root),
+    whatToDoNow: buildImobWhatToDoNow(root),
+    clientExamples: buildImobClientApproachExamples(root),
+    nextStep: caseData?.nextStep ?? null,
+    entityActionLinks: buildImobEntityActions(root),
+    entityActions: buildImobEntityActions(root).map((item) => item.label),
+    history: events.slice(0, 20).map((event) => {
+      if (typeof event.summary === "string" && event.summary.trim().length > 0) return event.summary;
+      return "Evento operacional registrado.";
+    }),
+  };
+}
+
+function saveImobArtifactHtml(type: "bundle" | "receipt", payload: any, caseId: string) {
+  const view = buildImobArtifactViewModel(payload);
+  const html = `<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>${escapeHtml(type === "bundle" ? "Dossiê Operacional IMOB" : "Comprovante Operacional IMOB")}</title>
+  <style>
+    body { font-family: Arial, sans-serif; color: #142033; margin: 40px; line-height: 1.5; }
+    h1 { font-size: 24px; margin-bottom: 8px; }
+    h2 { font-size: 16px; margin-top: 24px; margin-bottom: 8px; }
+    p, li { font-size: 12px; }
+    .meta { color: #4a5568; }
+    .box { border: 1px solid #cbd5e1; border-radius: 10px; padding: 16px; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <h1>${escapeHtml(type === "bundle" ? "IMOB Dossiê Operacional" : "IMOB Comprovante Operacional")}</h1>
+  <p class="meta">Gerado em: ${escapeHtml(view.generatedAt)}</p>
+  <p><strong>Atendimento:</strong> ${escapeHtml(view.title)}</p>
+  <p><strong>Resumo:</strong> ${escapeHtml(view.summary)}</p>
+  <p><strong>Etapa atual:</strong> ${escapeHtml(view.stage)}</p>
+  <p><strong>Status:</strong> ${escapeHtml(view.status)}</p>
+  <div class="box">
+    <h2>Situação atual</h2>
+    <p>${escapeHtml(view.currentSituation)}</p>
+    <h2>Motivo</h2>
+    <p>${escapeHtml(view.reason)}</p>
+    <h2>O que fazer agora</h2>
+    <ul>${renderHtmlList(view.whatToDoNow)}</ul>
+    ${view.nextStep ? `<p><strong>Próxima ação sugerida:</strong> ${escapeHtml(view.nextStep)}</p>` : ""}
+    <h2>Exemplo de abordagem ao cliente</h2>
+    <ul>${renderHtmlList(view.clientExamples)}</ul>
+    <h2>Cadastro e vínculos</h2>
+    <ul>${renderHtmlLinkList(view.entityActionLinks)}</ul>
+    ${type === "bundle" ? `<h2>Histórico recente</h2><ul>${renderHtmlList(view.history.length ? view.history : ["Nenhum evento operacional registrado até o momento."])}</ul>` : ""}
+  </div>
+</body>
+</html>`;
+  const blob = new Blob([html], { type: "text/html;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = type === "bundle" ? `imob-case-${caseId}-dossier.html` : `imob-case-${caseId}-receipt.html`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
+async function saveImobArtifactPdf(type: "bundle" | "receipt", payload: any, caseId: string) {
+  const { jsPDF } = await import("jspdf");
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  const margin = 36;
+  const lineH = 16;
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  const maxW = pageW - margin * 2;
+  let y = margin;
+
+  const push = (text: string, size = 10, bold = false) => {
+    doc.setFont("helvetica", bold ? "bold" : "normal");
+    doc.setFontSize(size);
+    const lines = doc.splitTextToSize(text, maxW) as string[];
+    for (const line of lines) {
+      if (y > pageH - margin) {
+        doc.addPage();
+        y = margin;
+      }
+      doc.text(line, margin, y);
+      y += lineH;
+    }
+  };
+
+  const view = buildImobArtifactViewModel(payload);
+  push(type === "bundle" ? "IMOB Dossiê Operacional" : "IMOB Comprovante Operacional", 14, true);
+  push(`Gerado em: ${view.generatedAt}`);
+  push(`Atendimento: ${view.title}`);
+  push(`Resumo: ${view.summary}`);
+  push(`Etapa atual: ${view.stage}`);
+  push(`Status: ${view.status}`);
+  y += 6;
+  push("Situação atual", 12, true);
+  push(view.currentSituation);
+  y += 4;
+  push("Motivo", 12, true);
+  push(view.reason);
+  y += 4;
+  push("O que fazer agora", 12, true);
+  for (const step of view.whatToDoNow) push(`- ${step}`);
+  if (view.nextStep) push(`Próxima ação sugerida: ${view.nextStep}`);
+  y += 4;
+  push("Exemplo de abordagem ao cliente", 12, true);
+  for (const line of view.clientExamples) push(`- ${line}`);
+  y += 6;
+  push("Cadastro e vínculos", 12, true);
+  for (const line of view.entityActions) push(`- ${line}`);
+  if (type === "bundle") {
+    y += 6;
+    push("Histórico recente", 12, true);
+    for (const line of (view.history.length ? view.history : ["Nenhum evento operacional registrado até o momento."])) push(`- ${line}`);
+  }
+
+  doc.save(type === "bundle" ? `imob-case-${caseId}-dossier.pdf` : `imob-case-${caseId}-receipt.pdf`);
+}
+
+function buildImobCaseList(items: ImobCase[], reasonFilter: string, statusFilter: string) {
+  const targetStatus = mapImobStatusFilterToCaseStatus(statusFilter);
+  if (targetStatus === "__none__") return [];
+
+  return items
+    .map((item) => {
+      const riskLabel = buildImobCaseRiskLabel(item);
+      return {
+        processId: item.id,
+        status: item.status,
+        riskLabel,
+        ageHours: Number(imobCaseAgeHours(item.updatedAt).toFixed(1)),
+        updatedAt: item.updatedAt,
+      };
+    })
+    .filter((item) => !targetStatus || item.status === targetStatus)
+    .filter((item) => reasonFilter === "all" || item.riskLabel.includes(reasonFilter))
+    .sort((a, b) => b.ageHours - a.ageHours)
+    .slice(0, 12);
+}
 
 const RUN_RESOURCES: Record<string, RunResource> = {
   __default: {
@@ -186,23 +629,25 @@ const RunsPage: React.FC = () => {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const [tenantQuotaPct, setTenantQuotaPct] = useState<number | null>(null);
   const [imobHealth, setImobHealth] = useState<ImobFunnelHealth | null>(null);
-  const [imobBlockedRuns, setImobBlockedRuns] = useState<Array<{
-    runId: string;
+  const [imobCasesList, setImobCasesList] = useState<Array<{
+    processId: string;
     status: string;
-    reasonCodes: string[];
+    riskLabel: string;
     ageHours: number;
-    bundleHash: string | null;
-    txId: string | null;
     updatedAt: string;
   }>>([]);
   const [imobLoading, setImobLoading] = useState(false);
-  const [imobStatusFilter, setImobStatusFilter] = useState("blocked");
+  const [imobStatusFilter, setImobStatusFilter] = useState("pending_data");
   const [imobReasonFilter, setImobReasonFilter] = useState("all");
 
   const session = useSession();
+  const [searchParams] = useSearchParams();
+  const requestedDomain = (searchParams.get("domain") || "").trim().toLowerCase();
   const { tenantId, workspaceId = DEFAULT_WORKSPACE_ID, userId, token } = session;
-  const isImobDomain = session.activeDomain === "imob";
-  const hasImobAccess = session.entitlements?.REAL_ESTATE_CORE === true;
+  const brandName = session.branding?.brandName?.trim() || "Tenant";
+  const workspaceLabel = session.branding?.workspaceLabel?.trim() || "DEFAULT";
+  const isImobDomain = requestedDomain === "imob" || session.activeDomain === "imob";
+  const hasImobAccess = requestedDomain === "imob" || session.entitlements?.REAL_ESTATE_CORE === true;
   const semanticDomain = isImobDomain ? "imob" : "core";
   const runLabelPlural = getDomainTerm(semanticDomain, "runPlural");
   const runLabelSingular = getDomainTerm(semanticDomain, "runSingular");
@@ -348,17 +793,12 @@ const RunsPage: React.FC = () => {
     if (!isImobDomain || !hasImobAccess) return;
     setImobLoading(true);
     try {
-      const [healthRes, blockedRes] = await Promise.all([
+      const [healthRes, casesRes] = await Promise.all([
         apiGetImobFunnelHealth({ workspaceId }),
-        apiListImobBlockedRuns({
-          workspaceId,
-          status: imobStatusFilter,
-          reasonCode: imobReasonFilter === "all" ? undefined : imobReasonFilter,
-          limit: 12,
-        }),
+        apiListImobCases({ status: mapImobStatusFilterToCaseStatus(imobStatusFilter) }),
       ]);
       setImobHealth(healthRes.data);
-      setImobBlockedRuns(blockedRes.data.items);
+      setImobCasesList(buildImobCaseList(casesRes.data.items, imobReasonFilter, imobStatusFilter));
     } catch (error) {
       const message =
         error instanceof ApiError
@@ -371,16 +811,12 @@ const RunsPage: React.FC = () => {
   }, [hasImobAccess, imobReasonFilter, imobStatusFilter, isImobDomain, workspaceId]);
 
   const downloadImobArtifact = useCallback(
-    async (type: "bundle" | "receipt", runId: string, txId?: string | null) => {
+    async (type: "bundle" | "receipt", format: "pdf" | "html", caseId: string) => {
       if (!token) {
         setActionError("Sessao sem token para download de artefato.");
         return;
       }
-      if (type === "receipt" && !txId) {
-        setActionError("Run sem txId para exportar receipt.");
-        return;
-      }
-      const path = type === "bundle" ? `/runs/${runId}/bundle` : `/ledger/${txId}`;
+      const path = type === "bundle" ? `/imob/cases/${caseId}/dossier` : `/imob/cases/${caseId}/receipt`;
       const response = await fetch(`${API_BASE_URL}${path}`, {
         method: "GET",
         headers: {
@@ -391,16 +827,12 @@ const RunsPage: React.FC = () => {
         setActionError(`Falha ao baixar ${type} (${response.status}).`);
         return;
       }
-      const payload = await response.text();
-      const blob = new Blob([payload], { type: "application/json;charset=utf-8" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = type === "bundle" ? `run-${runId}-bundle.json` : `run-${runId}-receipt.json`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      const payload = await response.json();
+      if (format === "html") {
+        saveImobArtifactHtml(type, payload, caseId);
+        return;
+      }
+      await saveImobArtifactPdf(type, payload, caseId);
     },
     [token]
   );
@@ -615,10 +1047,11 @@ const RunsPage: React.FC = () => {
                   value={imobStatusFilter}
                   onChange={(event) => setImobStatusFilter(event.target.value)}
                 >
-                  <option value="blocked">Estado: blocked</option>
-                  <option value="pending">Estado: pending</option>
-                  <option value="running">Estado: running</option>
-                  <option value="error">Estado: error</option>
+                  <option value="all">Estado: todos</option>
+                  <option value="pending_data">Estado: pendente de dados</option>
+                  <option value="ready_for_review">Estado: pronto para revisão</option>
+                  <option value="blocked">Estado: bloqueado</option>
+                  <option value="done">Estado: concluído</option>
                 </select>
                 <select
                   className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-foreground"
@@ -640,7 +1073,6 @@ const RunsPage: React.FC = () => {
                   {imobLoading ? "Atualizando..." : `Atualizar ${queueLabel.toLowerCase()}`}
                 </button>
               </div>
-              <p className="text-xs text-muted-foreground">Workspace: {workspaceId}</p>
             </div>
             <div className="mt-4 overflow-x-auto rounded-2xl border border-white/10">
               <table className="w-full min-w-[760px] text-left text-xs">
@@ -654,36 +1086,59 @@ const RunsPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {imobBlockedRuns.length === 0 ? (
+                  {imobCasesList.length === 0 ? (
                     <tr>
                       <td className="px-4 py-4 text-muted-foreground" colSpan={5}>
                         Nenhum caso para os filtros atuais.
                       </td>
                     </tr>
                   ) : (
-                    imobBlockedRuns.map((item) => (
-                      <tr key={item.runId} className="border-t border-white/10">
-                        <td className="px-4 py-3 font-mono text-foreground/90">{formatRunId(item.runId)}</td>
-                        <td className="px-4 py-3 text-foreground/90">{item.status}</td>
-                        <td className="px-4 py-3 text-muted-foreground">{item.reasonCodes.join(", ") || "—"}</td>
+                    imobCasesList.map((item) => (
+                      <tr key={item.processId} className="border-t border-white/10">
+                        <td className="px-4 py-3 font-mono text-foreground/90">{formatRunId(item.processId)}</td>
+                        <td className="px-4 py-3 text-foreground/90">{formatImobCaseStatusLabel(item.status)}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{item.riskLabel || "—"}</td>
                         <td className="px-4 py-3 text-muted-foreground">{item.ageHours.toFixed(1)}h</td>
                         <td className="px-4 py-3">
-                          <div className="flex flex-wrap gap-2">
-                            <button
-                              type="button"
-                              onClick={() => void downloadImobArtifact("bundle", item.runId)}
-                              className="rounded-full border border-white/15 bg-white/5 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-foreground hover:border-accent/40"
-                            >
-                              {bundleLabel}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => void downloadImobArtifact("receipt", item.runId, item.txId)}
-                              disabled={!item.txId}
-                              className="rounded-full border border-white/15 bg-white/5 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-foreground hover:border-accent/40 disabled:opacity-40"
-                            >
-                              {receiptLabel}
-                            </button>
+                          <div className="flex flex-nowrap items-start justify-center gap-6">
+                            <div className="min-w-[120px] space-y-0 text-center">
+                              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground leading-none">Dossiê</p>
+                              <div className="flex flex-wrap justify-center gap-0 -mt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => void downloadImobArtifact("bundle", "pdf", item.processId)}
+                                  className="rounded-full bg-transparent px-1 py-1 text-[6px] font-normal uppercase tracking-[0.12em] text-foreground/90 hover:text-accent"
+                                >
+                                  PDF
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void downloadImobArtifact("bundle", "html", item.processId)}
+                                  className="rounded-full bg-transparent px-1 py-1 text-[6px] font-normal uppercase tracking-[0.12em] text-foreground/90 hover:text-accent"
+                                >
+                                  HTML
+                                </button>
+                              </div>
+                            </div>
+                            <div className="min-w-[120px] space-y-0 text-center">
+                              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground leading-none">{receiptLabel}</p>
+                              <div className="flex flex-wrap justify-center gap-0 -mt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => void downloadImobArtifact("receipt", "pdf", item.processId)}
+                                  className="rounded-full bg-transparent px-1 py-1 text-[6px] font-normal uppercase tracking-[0.12em] text-foreground/90 hover:text-accent"
+                                >
+                                  PDF
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void downloadImobArtifact("receipt", "html", item.processId)}
+                                  className="rounded-full bg-transparent px-1 py-1 text-[6px] font-normal uppercase tracking-[0.12em] text-foreground/90 hover:text-accent"
+                                >
+                                  HTML
+                                </button>
+                              </div>
+                            </div>
                           </div>
                         </td>
                       </tr>
@@ -703,6 +1158,7 @@ const RunsPage: React.FC = () => {
         )
       ) : null}
 
+      <React.Fragment>
       <section className="glass-panel relative overflow-hidden p-8">
         <div className="absolute right-10 top-0 h-32 w-32 rounded-full bg-accent/30 blur-3xl" />
         <div className="space-y-6">
@@ -724,8 +1180,7 @@ const RunsPage: React.FC = () => {
               </button>
             </div>
             <div className="flex flex-wrap items-center gap-2" data-tour="project-context">
-              <span className="pill">Tenant: {tenantId ?? "—"}</span>
-              <span className="pill">Workspace: {workspaceId}</span>
+              <span className="pill">Contexto: {brandName} • {workspaceLabel}</span>
               <span className="pill">Agente: {agentId ?? "—"}</span>
               {tenantQuotaPct !== null ? <span className="pill">Quota: {tenantQuotaPct.toFixed(1)}%</span> : null}
             </div>
@@ -970,6 +1425,7 @@ const RunsPage: React.FC = () => {
           )}
         </div>
       </section>
+      </React.Fragment>
     </div>
   );
 };

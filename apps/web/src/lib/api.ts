@@ -1325,14 +1325,54 @@ export type ImobPresentationCta = {
   label: string;
   kind?: "primary" | "secondary" | "neutral";
   href?: string;
-  action?: "confirm_execution" | "reject_execution" | "export_contract_pdf" | "continue_inventory_search";
+  action?:
+    | "confirm_execution"
+    | "reject_execution"
+    | "export_contract_pdf"
+    | "continue_inventory_search"
+    | "apply_attachment_crm_include"
+    | "apply_attachment_crm_edit"
+    | "apply_attachment_crm_discard"
+    | "open_attachment_menu"
+    | "send_suggested_message"
+    | "print_card";
   nextMessage?: string;
+  payload?: Record<string, unknown>;
 };
 
 export type ImobPresentationCard = {
   title: string;
   lines: string[];
   ctas?: ImobPresentationCta[];
+  actionsLayout?: "inline";
+};
+
+export type ImobPresentationFormField = {
+  name: string;
+  label: string;
+  type: "text" | "tel" | "email";
+  required?: boolean;
+  placeholder?: string;
+  value?: string | null;
+  helperText?: string;
+  allowAttachment?: boolean;
+  attachmentLabel?: string;
+};
+
+export type ImobPresentationFormAction = {
+  id: "cancel" | "submit";
+  label: string;
+  kind?: "primary" | "secondary" | "neutral";
+};
+
+export type ImobPresentationForm = {
+  entity: string;
+  action: string;
+  label: string;
+  description?: string;
+  subjectId?: string;
+  fields: ImobPresentationFormField[];
+  actions?: ImobPresentationFormAction[];
 };
 
 export type ImobExecutionRequest = {
@@ -1369,9 +1409,31 @@ export type ImobCaseContext = {
   updatedAt?: string;
 };
 
+export type ImobPresentationConfidence = {
+  entity: ImobEntityKey | null;
+  source?: "openai" | "parser_fallback";
+  action: ImobActionKey | null;
+  matchedEntityAlias: string | null;
+  matchedActionAlias: string | null;
+  entityScore: number;
+  actionScore: number;
+  pluralityHint: "singular" | "plural" | null;
+  canonicalLabel: string | null;
+  lowConfidence?: boolean;
+};
+
+export type ImobPresentationChoiceStyle = "inline";
+
+export type ImobPresentationMetadata = {
+  confidence?: ImobPresentationConfidence;
+  choiceStyle?: ImobPresentationChoiceStyle;
+};
+
 export type ImobOperationalPresentation = {
   text: string;
+  metadata?: ImobPresentationMetadata;
   card?: ImobPresentationCard;
+  form?: ImobPresentationForm;
   suggestedNextAction?: string;
   owner?: ImobOperationalOwner;
   nextStep?: string;
@@ -2573,8 +2635,59 @@ export async function apiResolveImobAttachment(input: { caseId?: string | null; 
   });
 }
 
+export async function apiFetchUploadBlob(path: string) {
+  const token = cachedSession.token;
+  const tenantId = cachedSession.tenantId;
+  const workspaceId = cachedSession.workspaceId;
+  const headers = new Headers();
+  if (token) headers.set("authorization", `Bearer ${token}`);
+  if (tenantId) {
+    headers.set("x-eiah-tenant", tenantId);
+    headers.set("x-tenant-id", tenantId);
+  }
+  if (workspaceId) {
+    headers.set("x-eiah-workspace", workspaceId);
+    headers.set("x-workspace-id", workspaceId);
+  }
 
+  const normalizedPath = path.startsWith("/api/") ? path.slice(4) : path;
+  const res = await fetch(`${BASE_URL}${normalizedPath}`, {
+    method: "GET",
+    headers,
+  });
 
+  if (!res.ok) {
+    const contentType = res.headers.get("content-type") ?? "";
+    const body = contentType.includes("application/json")
+      ? await res.json().catch(() => undefined)
+      : await res.text().catch(() => undefined);
+    throw new ApiError(res.status, res.statusText || "Upload fetch failed", body);
+  }
+
+  return {
+    blob: await res.blob(),
+    contentType: res.headers.get("content-type") ?? undefined,
+  };
+}
+
+export async function apiApplyImobAttachmentCrmSuggestion(input: {
+  caseId?: string | null;
+  threadId?: string | null;
+  documentIds: string[];
+  mode: "include" | "edit" | "discard";
+}) {
+  return http<{
+    ok: boolean;
+    data: {
+      applied: boolean;
+      caseContext?: ImobCaseContext | null;
+      presentation: ImobOperationalPresentation;
+    };
+  }>(`/imob/attachments/crm-suggestion`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
 
 export async function apiReplayRun(id: string) {
   const res = await fetch(`/api/runs/${id}/replay`, { method: "POST" });

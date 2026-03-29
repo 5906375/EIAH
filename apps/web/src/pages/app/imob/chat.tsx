@@ -1,5 +1,5 @@
 import React from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ApiError,
   apiAgentsDiscovery,
@@ -16,6 +16,8 @@ import {
   apiSearchImobKnowledge,
   apiUploadDocuments,
   apiResolveImobAttachment,
+  apiApplyImobAttachmentCrmSuggestion,
+  apiFetchUploadBlob,
   apiListImobChatConversations,
   apiListImobChatMessages,
   apiListImobChatThreads,
@@ -27,6 +29,8 @@ import {
   type ImobChatThread,
   type ImobKnowledgeSearchResponse,
   type AgentProtocolActionContract,
+  type ImobPresentationMetadata,
+  type ImobPresentationForm,
 } from "@/lib/api";
 import { useSession } from "@/state/sessionStore";
 import {
@@ -64,8 +68,19 @@ type CardCta = {
   label: string;
   kind?: "primary" | "secondary" | "neutral";
   href?: string;
-  action?: "confirm_execution" | "reject_execution" | "export_contract_pdf" | "continue_inventory_search";
+  action?:
+    | "confirm_execution"
+    | "reject_execution"
+    | "export_contract_pdf"
+    | "continue_inventory_search"
+    | "apply_attachment_crm_include"
+    | "apply_attachment_crm_edit"
+    | "apply_attachment_crm_discard"
+    | "open_attachment_menu"
+    | "send_suggested_message"
+    | "print_card";
   nextMessage?: string;
+  payload?: Record<string, unknown>;
 };
 
 type MessageCard = {
@@ -105,12 +120,15 @@ type MessageCard = {
   };
   knowledgeResults?: ImobKnowledgeSearchResponse["items"];
   showConfirm?: boolean;
+  actionsLayout?: "inline";
 };
 
 type ChatMessage = {
   id: string;
   role: "user" | "assistant" | "system";
   text: string;
+  presentationMetadata?: ImobPresentationMetadata;
+  form?: ImobPresentationForm;
   thread?: {
     id: string;
     label: string;
@@ -133,6 +151,7 @@ type PendingExecution = {
   caseContext?: ImobCaseContext;
   presentationMeta?: Pick<ImobResolveTurnResponse["presentation"], "owner" | "nextStep" | "blocker" | "pendingFieldLabels" | "dedupeKey" | "suggestedNextAction">;
   presentationText: string;
+  presentationForm?: ImobResolveTurnResponse["presentation"]["form"];
   receiptEndpointTemplate?: string;
   preparedAt: number;
 };
@@ -148,6 +167,18 @@ function mapApiPresentationCard(
     thread,
     lines: card.lines,
     ctas: normalizeCardCtas(card.ctas),
+    actionsLayout: card.actionsLayout,
+  };
+}
+
+function mapApiPresentationForm(
+  form: ImobResolveTurnResponse["presentation"]["form"] | undefined,
+): ImobPresentationForm | undefined {
+  if (!form) return undefined;
+  return {
+    ...form,
+    fields: form.fields.map((field) => ({ ...field })),
+    actions: form.actions?.map((action) => ({ ...action })),
   };
 }
 
@@ -294,7 +325,172 @@ function normalizeCardCtas(ctas?: CardCta[]) {
 }
 
 function isExternalHref(href?: string) {
-  return typeof href === "string" && /^https?:\/\//i.test(href);
+  return typeof href === "string" && (/^https?:\/\//i.test(href) || href.startsWith("/api/uploads/"));
+}
+
+async function openUploadDocument(href: string) {
+  const { blob } = await apiFetchUploadBlob(href);
+  const objectUrl = URL.createObjectURL(blob);
+  const opened = window.open(objectUrl, "_blank", "noopener,noreferrer");
+  if (!opened) {
+    window.location.href = objectUrl;
+  }
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+}
+
+function isAttachmentCrmSuggestionAction(action?: CardCta["action"]): action is "apply_attachment_crm_include" | "apply_attachment_crm_edit" | "apply_attachment_crm_discard" {
+  return action === "apply_attachment_crm_include" || action === "apply_attachment_crm_edit" || action === "apply_attachment_crm_discard";
+}
+
+function isOpenAttachmentMenuAction(action?: CardCta["action"]): action is "open_attachment_menu" {
+  return action === "open_attachment_menu";
+}
+
+function isSendSuggestedMessageAction(action?: CardCta["action"]): action is "send_suggested_message" {
+  return action === "send_suggested_message";
+}
+
+function isInlineChoicePresentation(message: ChatMessage) {
+  return (
+    message.role === "assistant" &&
+    message.presentationMetadata?.choiceStyle === "inline" &&
+    Boolean(message.card?.ctas?.length)
+  );
+}
+
+function normalizeImobFormValue(value: string) {
+  return value.trim();
+}
+
+function buildPresentationFormDisplayText(form: ImobPresentationForm, actionId: "cancel" | "submit") {
+  const actionLabel = form.actions?.find((action) => action.id === actionId)?.label?.trim();
+  if (actionId === "submit") {
+    if (actionLabel && /salvar/i.test(actionLabel)) return actionLabel;
+    return form.label;
+  }
+  return actionLabel || form.label;
+}
+
+function printMessageCard(message: ChatMessage) {
+  if (!message.card) return;
+  const printWindow = window.open("", "_blank", "noopener,noreferrer,width=900,height=700");
+  if (!printWindow) return;
+  const safeTitle = message.card.title.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const safeLines = message.card.lines
+    .map((line) => line.replace(/</g, "&lt;").replace(/>/g, "&gt;"))
+    .map((line) => `<li>${line}</li>`)
+    .join("");
+  printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${safeTitle}</title><style>body{font-family:Arial,sans-serif;padding:32px;color:#111}h1{font-size:24px;margin:0 0 16px}ul{padding-left:20px}li{margin:8px 0}</style></head><body><h1>${safeTitle}</h1><ul>${safeLines}</ul></body></html>`);
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+}
+
+function buildPresentationFormSubmission(form: ImobPresentationForm, values: Record<string, string>) {
+  const normalized: Record<string, string> = {};
+  for (const field of form.fields) {
+    normalized[field.name] = normalizeImobFormValue(values[field.name] ?? String(field.value ?? ""));
+  }
+  const linesByEntity: Record<string, Array<string | null>> = {
+    proprietario: [
+      normalized.ownerName ? `nome do proprietário ${normalized.ownerName}` : null,
+      normalized.ownerPhone ? `telefone do proprietário ${normalized.ownerPhone}` : null,
+      normalized.ownerEmail ? `e-mail do proprietário ${normalized.ownerEmail}` : null,
+      normalized.ownerDocument ? `documento do proprietário ${normalized.ownerDocument}` : null,
+    ],
+    vendedor: [
+      normalized.ownerName ? `nome do vendedor ${normalized.ownerName}` : null,
+      normalized.ownerPhone ? `telefone do vendedor ${normalized.ownerPhone}` : null,
+      normalized.ownerEmail ? `e-mail do vendedor ${normalized.ownerEmail}` : null,
+      normalized.ownerDocument ? `documento do vendedor ${normalized.ownerDocument}` : null,
+    ],
+    locador: [
+      normalized.ownerName ? `nome do locador ${normalized.ownerName}` : null,
+      normalized.ownerPhone ? `telefone do locador ${normalized.ownerPhone}` : null,
+      normalized.ownerEmail ? `e-mail do locador ${normalized.ownerEmail}` : null,
+      normalized.ownerDocument ? `documento do locador ${normalized.ownerDocument}` : null,
+    ],
+    imovel: [
+      normalized.propertyType ? `tipo do imóvel ${normalized.propertyType}` : null,
+      normalized.goal ? `finalidade do imóvel ${normalized.goal}` : null,
+      normalized.city ? `cidade do imóvel ${normalized.city}` : null,
+      normalized.address ? `endereço do imóvel ${normalized.address}` : null,
+    ],
+    comprador: [
+      normalized.leadName ? `nome do comprador ${normalized.leadName}` : null,
+      normalized.leadPhone ? `telefone do comprador ${normalized.leadPhone}` : null,
+      normalized.leadEmail ? `e-mail do comprador ${normalized.leadEmail}` : null,
+      normalized.desiredGoal ? `objetivo do comprador ${normalized.desiredGoal}` : null,
+      normalized.desiredCity ? `cidade de interesse do comprador ${normalized.desiredCity}` : null,
+      normalized.budgetMax ? `faixa de orçamento do comprador ${normalized.budgetMax}` : null,
+    ],
+    locatario: [
+      normalized.leadName ? `nome do locatário ${normalized.leadName}` : null,
+      normalized.leadPhone ? `telefone do locatário ${normalized.leadPhone}` : null,
+      normalized.leadEmail ? `e-mail do locatário ${normalized.leadEmail}` : null,
+      normalized.desiredGoal ? `objetivo do locatário ${normalized.desiredGoal}` : null,
+      normalized.desiredCity ? `cidade de interesse do locatário ${normalized.desiredCity}` : null,
+      normalized.budgetMax ? `faixa de orçamento do locatário ${normalized.budgetMax}` : null,
+    ],
+    lead: [
+      normalized.leadName ? `nome do lead ${normalized.leadName}` : null,
+      normalized.leadPhone ? `telefone do lead ${normalized.leadPhone}` : null,
+      normalized.leadEmail ? `e-mail do lead ${normalized.leadEmail}` : null,
+      normalized.desiredGoal ? `objetivo do lead ${normalized.desiredGoal}` : null,
+      normalized.desiredCity ? `cidade de interesse do lead ${normalized.desiredCity}` : null,
+      normalized.budgetMax ? `faixa de orçamento do lead ${normalized.budgetMax}` : null,
+    ],
+    anuncio: [
+      normalized.propertyId ? `imóvel ${normalized.propertyId}` : null,
+      normalized.listingTitle ? `título ${normalized.listingTitle}` : null,
+      normalized.publicationGoal ? `para ${normalized.publicationGoal}` : null,
+      normalized.publicationChannels ? `canais ${normalized.publicationChannels}` : null,
+    ],
+    documento: [
+      normalized.referenceId ? `imóvel ${normalized.referenceId}` : null,
+      normalized.subjectType ? `documento de ${normalized.subjectType}` : null,
+      normalized.documentTypes ? `tipos ${normalized.documentTypes}` : null,
+      normalized.deliveryChannel ? `via ${normalized.deliveryChannel}` : null,
+    ],
+    "contrato:history": [
+      normalized.propertyId ? `histórico do contrato do imóvel ${normalized.propertyId}` : "histórico do contrato",
+      normalized.counterpartyName ? `lead ${normalized.counterpartyName}` : null,
+    ],
+    "contrato:create": [
+      normalized.propertyId ? `preparar contrato do imóvel ${normalized.propertyId}` : "preparar contrato",
+      normalized.counterpartyName ? `lead ${normalized.counterpartyName}` : null,
+      normalized.contractType ? `contrato ${normalized.contractType}` : null,
+      normalized.documentPacketStatus ? normalized.documentPacketStatus : null,
+    ],
+    "contrato:sendForSignature": [
+      normalized.propertyId ? `enviar contrato para assinatura do imóvel ${normalized.propertyId}` : "enviar contrato para assinatura",
+      normalized.counterpartyName ? `lead ${normalized.counterpartyName}` : null,
+      normalized.contractType ? `contrato ${normalized.contractType}` : null,
+      normalized.documentPacketStatus ? normalized.documentPacketStatus : null,
+    ],
+  };
+  const compositeKey = `${form.entity}:${form.action}`;
+  if (compositeKey === "proprietario:update" || compositeKey === "vendedor:update" || compositeKey === "locador:update") {
+    return [
+      form.subjectId ? `atualizar proprietário ${form.subjectId}` : "atualizar proprietário",
+      ...(linesByEntity[form.entity] ?? []),
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  if (compositeKey === "imovel:update") {
+    return [
+      form.subjectId ? `atualizar imóvel ${form.subjectId}` : "atualizar imóvel",
+      ...(linesByEntity[form.entity] ?? []),
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  return (linesByEntity[compositeKey] ?? linesByEntity[form.entity] ?? [])
+    .filter(Boolean)
+    .join("\n");
 }
 
 function mapKnowledgeActions(ctas: CardCta[] | undefined, threadId: string | null, resolveHref: (href: string, explicitThreadId?: string | null) => string) {
@@ -719,7 +915,6 @@ function nextBusinessStep(
   }
 
   lines.push(`Próximo passo: ${operational.nextStep}`);
-  lines.push(`Responsável agora: ${operational.owner}.`);
 
   return lines;
 }
@@ -808,11 +1003,23 @@ function mapStoredMessageToChat(message: ImobChatMessage): ChatMessage {
     caseContextCandidate && typeof caseContextCandidate === "object" && !Array.isArray(caseContextCandidate)
       ? (caseContextCandidate as ImobCaseContext)
       : undefined;
+  const presentationMetadataCandidate = metadata?.presentationMetadata;
+  const presentationMetadata =
+    presentationMetadataCandidate && typeof presentationMetadataCandidate === "object" && !Array.isArray(presentationMetadataCandidate)
+      ? (presentationMetadataCandidate as ImobPresentationMetadata)
+      : undefined;
+  const formCandidate = metadata?.form;
+  const form =
+    formCandidate && typeof formCandidate === "object" && !Array.isArray(formCandidate)
+      ? (formCandidate as ImobPresentationForm)
+      : undefined;
 
   return {
     id: message.id,
     role: message.role,
     text: message.content,
+    presentationMetadata,
+    form,
     thread: message.threadId
       ? {
           id: message.threadId,
@@ -827,6 +1034,7 @@ function mapStoredMessageToChat(message: ImobChatMessage): ChatMessage {
 
 const ImobChatPage: React.FC = () => {
   const session = useSession();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const brandName = session.branding?.brandName?.trim() || "Tenant";
   const workspaceLabel = session.branding?.workspaceLabel?.trim() || session.workspaceId;
@@ -845,6 +1053,10 @@ const ImobChatPage: React.FC = () => {
   const requestedAutoprompt = React.useMemo(() => {
     const raw = searchParams.get("autoprompt");
     return raw && raw.trim().length > 0 ? raw.trim() : null;
+  }, [searchParams]);
+  const requestedReturnTo = React.useMemo(() => {
+    const raw = searchParams.get("returnTo");
+    return raw && raw.trim().startsWith("/app/") ? raw.trim() : null;
   }, [searchParams]);
 
   const [state, setState] = React.useState<ChatState>("idle");
@@ -882,7 +1094,10 @@ const ImobChatPage: React.FC = () => {
   const [messageFeedback, setMessageFeedback] = React.useState<Record<string, "up" | "down">>({});
   const [openOptionsMessageId, setOpenOptionsMessageId] = React.useState<string | null>(null);
   const [rejectLockedMessageId, setRejectLockedMessageId] = React.useState<string | null>(null);
+  const [crmSuggestionLoadingId, setCrmSuggestionLoadingId] = React.useState<string | null>(null);
   const [selectedKnowledgeContext, setSelectedKnowledgeContext] = React.useState<SelectedKnowledgeContext | null>(null);
+  const [formValuesByMessageId, setFormValuesByMessageId] = React.useState<Record<string, Record<string, string>>>({});
+  const [formErrorsByMessageId, setFormErrorsByMessageId] = React.useState<Record<string, Record<string, string>>>({});
   const [isNearBottom, setIsNearBottom] = React.useState(true);
   const [showJumpToLatest, setShowJumpToLatest] = React.useState(false);
   const [contractInterviewState, setContractInterviewState] = React.useState<ContractInterviewState | null>(null);
@@ -980,6 +1195,7 @@ const ImobChatPage: React.FC = () => {
     [pendingExecution, trackUxEvent]
   );
 
+
   const withDashboardContext = React.useCallback(
     (href: string, explicitThreadId?: string | null) => {
       if (!href.startsWith("/app/imob/dashboard")) return href;
@@ -1076,6 +1292,8 @@ const ImobChatPage: React.FC = () => {
           metadata: {
             card: message.card ?? null,
             caseContext: message.caseContext ?? null,
+            presentationMetadata: message.presentationMetadata ?? null,
+            form: message.form ?? null,
             ...(extra?.metadata ?? {}),
           },
         });
@@ -1480,7 +1698,8 @@ const ImobChatPage: React.FC = () => {
     flow?: ImobThreadConversationState["operational"] extends { flow: infer T } ? T : string,
     pendingFields?: string[],
     caseContext?: ImobCaseContext,
-    presentationMeta?: PendingExecution["presentationMeta"]
+    presentationMeta?: PendingExecution["presentationMeta"],
+    presentationForm?: ImobResolveTurnResponse["presentation"]["form"]
   ) => {
       try {
         const discovery = await apiAgentsDiscovery({
@@ -1510,6 +1729,7 @@ const ImobChatPage: React.FC = () => {
           caseContext,
           presentationMeta,
           presentationText: presentationText?.trim() || "Preparando...",
+          presentationForm,
           receiptEndpointTemplate: negotiation.data.verification.endpointTemplate,
           preparedAt: Date.now(),
         };
@@ -1529,6 +1749,7 @@ const ImobChatPage: React.FC = () => {
             status: "active",
           },
           caseContext: executionPending.caseContext,
+          form: mapApiPresentationForm(executionPending.presentationForm),
           card: {
             type: "queue",
             title: "Preparando",
@@ -1847,8 +2068,9 @@ const ImobChatPage: React.FC = () => {
     [appendMessage, persistInterviewState, persistMessage]
   );
 
-  const sendMessageText = async (rawText: string) => {
+  const sendMessageText = async (rawText: string, options?: { displayText?: string }) => {
     const text = rawText.trim();
+    const displayText = options?.displayText?.trim() || text;
     if (!text) return;
     const selectedThread = selectedThreadId ? threads.find((item) => item.threadId === selectedThreadId) : null;
     const currentThreadId = selectedThread?.threadId ?? activeThread?.id ?? null;
@@ -1904,11 +2126,14 @@ const ImobChatPage: React.FC = () => {
     if (turn.caseContext?.caseId) {
       caseIdByThreadRef.current[operationThread.id] = turn.caseContext.caseId;
     }
+    if (turn.presentation.card?.ctas?.some((cta) => isOpenAttachmentMenuAction(cta.action))) {
+      setAttachmentMenuOpen(true);
+    }
     let activeConversationId = conversationId;
     if (!activeConversationId) {
       try {
         const created = await apiCreateImobChatConversation({
-          title: getConversationTitleFromMessage(text, conversations),
+          title: getConversationTitleFromMessage(displayText, conversations),
         });
         activeConversationId = created.conversation.conversationId;
         setConversationId(activeConversationId);
@@ -1954,7 +2179,7 @@ const ImobChatPage: React.FC = () => {
     const userMessage: ChatMessage = {
       id: makeId("user"),
       role: "user",
-      text,
+      text: displayText,
       thread: {
         id: operationThread.id,
         label: operationThread.label,
@@ -2107,6 +2332,8 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         id: makeId("assistant"),
         role: "assistant",
         text: turn.presentation.text,
+        presentationMetadata: turn.presentation.metadata,
+        form: mapApiPresentationForm(turn.presentation.form),
         thread: { ...baseThread, status: "blocked" },
         card: mapApiPresentationCard(turn.presentation.card, { ...baseThread, status: "blocked" }),
         caseContext: turn.caseContext,
@@ -2125,6 +2352,8 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         id: makeId("assistant"),
         role: "assistant",
         text: turn.presentation.text,
+        presentationMetadata: turn.presentation.metadata,
+        form: mapApiPresentationForm(turn.presentation.form),
         thread: baseThread,
         card: mapApiPresentationCard(turn.presentation.card, baseThread),
         caseContext: turn.caseContext,
@@ -2253,7 +2482,8 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         pendingFieldLabels: turn.presentation.pendingFieldLabels,
         dedupeKey: turn.presentation.dedupeKey,
         suggestedNextAction: turn.presentation.suggestedNextAction,
-      }
+      },
+      turn.presentation.form,
     );
   };
 
@@ -2416,34 +2646,69 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         },
       });
 
-      const attachmentResolution = await apiResolveImobAttachment({
-        caseId: uploadThread.id ? caseIdByThreadRef.current[uploadThread.id] ?? null : null,
-        threadId: uploadThread.id,
-        documentIds: uploadedItems.map((item) => item.id),
-      });
-      if (attachmentResolution.data.caseContext?.caseId && uploadThread.id) {
-        caseIdByThreadRef.current[uploadThread.id] = attachmentResolution.data.caseContext.caseId;
+      try {
+        const attachmentResolution = await apiResolveImobAttachment({
+          caseId: uploadThread.id ? caseIdByThreadRef.current[uploadThread.id] ?? null : null,
+          threadId: uploadThread.id,
+          documentIds: uploadedItems.map((item) => item.id),
+        });
+        if (attachmentResolution.data.caseContext?.caseId && uploadThread.id) {
+          caseIdByThreadRef.current[uploadThread.id] = attachmentResolution.data.caseContext.caseId;
+        }
+        const attachmentFollowUp: ChatMessage = {
+          id: makeId("assistant"),
+          role: "assistant",
+          text: attachmentResolution.data.presentation.text,
+          thread: { id: uploadThread.id, label: uploadThread.label, status: attachmentResolution.data.resolved ? "done" : "active" },
+          card: mapApiPresentationCard(attachmentResolution.data.presentation.card, {
+            id: uploadThread.id,
+            label: uploadThread.label,
+            status: attachmentResolution.data.resolved ? "done" : "active",
+          }),
+          caseContext: attachmentResolution.data.caseContext ?? uploadMessage.caseContext,
+        };
+        appendMessage(attachmentFollowUp);
+        await persistMessage(attachmentFollowUp, {
+          conversationId: activeConversationId,
+          metadata: {
+            uploadedDocuments: uploadedItems,
+            attachmentResolution: attachmentResolution.data,
+          },
+        });
+      } catch (resolutionError) {
+        const resolutionMessage =
+          resolutionError instanceof ApiError
+            ? `${resolutionError.message} (${resolutionError.status})`
+            : resolutionError instanceof Error
+              ? resolutionError.message
+              : "Falha ao validar o documento anexado";
+        const validationFollowUp: ChatMessage = {
+          id: makeId("assistant"),
+          role: "assistant",
+          text: "Documento anexado com sucesso, mas nao consegui validar esse anexo agora.",
+          thread: { id: uploadThread.id, label: uploadThread.label, status: "active" },
+          caseContext: uploadMessage.caseContext,
+          card: {
+            type: "risk",
+            title: "Validacao pendente",
+            thread: { id: uploadThread.id, label: uploadThread.label, status: "active" },
+            lines: [
+              "O documento ficou salvo no contexto da conversa.",
+              resolutionMessage,
+              "Tente novamente em instantes ou siga com revisao manual.",
+            ],
+            risk: { level: "medium", reason: resolutionMessage },
+          },
+        };
+        appendMessage(validationFollowUp);
+        await persistMessage(validationFollowUp, {
+          conversationId: activeConversationId,
+          metadata: {
+            uploadedDocuments: uploadedItems,
+            attachmentResolutionError: resolutionMessage,
+          },
+        });
       }
-      const attachmentFollowUp: ChatMessage = {
-        id: makeId("assistant"),
-        role: "assistant",
-        text: attachmentResolution.data.presentation.text,
-        thread: { id: uploadThread.id, label: uploadThread.label, status: attachmentResolution.data.resolved ? "done" : "active" },
-        card: mapApiPresentationCard(attachmentResolution.data.presentation.card, {
-          id: uploadThread.id,
-          label: uploadThread.label,
-          status: attachmentResolution.data.resolved ? "done" : "active",
-        }),
-        caseContext: attachmentResolution.data.caseContext ?? uploadMessage.caseContext,
-      };
-      appendMessage(attachmentFollowUp);
-      await persistMessage(attachmentFollowUp, {
-        conversationId: activeConversationId,
-        metadata: {
-          uploadedDocuments: uploadedItems,
-          attachmentResolution: attachmentResolution.data,
-        },
-      });
       setState("idle");
       void refreshConversations(activeConversationId);
       void refreshThreads(activeConversationId);
@@ -2474,6 +2739,162 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
+
+  const handleAttachmentCrmSuggestionAction = React.useCallback(
+    async (message: ChatMessage, cta: CardCta) => {
+      if (!conversationId || !isAttachmentCrmSuggestionAction(cta.action)) return;
+      const payload = cta.payload ?? {};
+      const documentIds = Array.isArray(payload.documentIds)
+        ? payload.documentIds.filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+        : [];
+      const mode = payload.mode;
+      const caseId = typeof payload.caseId === "string" && payload.caseId.trim().length > 0 ? payload.caseId : null;
+      const threadId = typeof payload.threadId === "string" && payload.threadId.trim().length > 0
+        ? payload.threadId
+        : message.caseContext?.threadId ?? message.thread?.id ?? message.card?.thread?.id ?? null;
+      if (documentIds.length === 0 || (mode !== "include" && mode !== "edit" && mode !== "discard")) {
+        return;
+      }
+
+      setCrmSuggestionLoadingId(message.id);
+      try {
+        const response = await apiApplyImobAttachmentCrmSuggestion({
+          caseId,
+          threadId,
+          documentIds,
+          mode,
+        });
+        const thread = {
+          id: threadId ?? message.thread?.id ?? message.card?.thread?.id ?? makeId("thread"),
+          label: message.thread?.label ?? message.card?.thread?.label ?? "Documentos",
+          status: response.data.applied ? "done" as const : "active" as const,
+        };
+        if (response.data.caseContext?.caseId && thread.id) {
+          caseIdByThreadRef.current[thread.id] = response.data.caseContext.caseId;
+        }
+        const followUp: ChatMessage = {
+          id: makeId("assistant"),
+          role: "assistant",
+          text: response.data.presentation.text,
+          presentationMetadata: response.data.presentation.metadata,
+          form: mapApiPresentationForm(response.data.presentation.form),
+          thread,
+          card: mapApiPresentationCard(response.data.presentation.card, thread),
+          caseContext: response.data.caseContext ?? message.caseContext,
+        };
+        appendMessage(followUp);
+        await persistMessage(followUp, {
+          conversationId,
+          metadata: {
+            attachmentCrmSuggestionDecision: {
+              mode,
+              documentIds,
+              caseId,
+              threadId: thread.id,
+            },
+            attachmentCrmSuggestionResponse: response.data,
+          },
+        });
+      } catch (error) {
+        const reason =
+          error instanceof ApiError
+            ? `${error.message} (${error.status})`
+            : error instanceof Error
+              ? error.message
+              : "Falha ao aplicar sugestao de cadastro no CRM";
+        const thread = {
+          id: message.thread?.id ?? message.card?.thread?.id ?? makeId("thread"),
+          label: message.thread?.label ?? message.card?.thread?.label ?? "Documentos",
+          status: "blocked" as const,
+        };
+        const failedMessage: ChatMessage = {
+          id: makeId("assistant"),
+          role: "assistant",
+          text: "Nao consegui aplicar essa sugestao de cadastro no CRM agora.",
+          thread,
+          caseContext: message.caseContext,
+          card: {
+            type: "risk",
+            title: "Sugestao de CRM pendente",
+            thread,
+            lines: [
+              "A leitura do documento continua disponivel no chat.",
+              reason,
+              "Tente novamente ou siga com o cadastro manualmente.",
+            ],
+            risk: { level: "medium", reason },
+          },
+        };
+        appendMessage(failedMessage);
+        await persistMessage(failedMessage, {
+          conversationId,
+          metadata: {
+            attachmentCrmSuggestionError: reason,
+            attachmentCrmSuggestionPayload: cta.payload ?? null,
+          },
+        });
+      } finally {
+        setCrmSuggestionLoadingId(null);
+      }
+    },
+    [appendMessage, conversationId, persistMessage]
+  );
+
+  const updateFormFieldValue = React.useCallback((messageId: string, fieldName: string, value: string) => {
+    setFormValuesByMessageId((prev) => ({
+      ...prev,
+      [messageId]: {
+        ...(prev[messageId] ?? {}),
+        [fieldName]: value,
+      },
+    }));
+    setFormErrorsByMessageId((prev) => {
+      if (!prev[messageId]?.[fieldName]) return prev;
+      const nextFieldErrors = { ...(prev[messageId] ?? {}) };
+      delete nextFieldErrors[fieldName];
+      return { ...prev, [messageId]: nextFieldErrors };
+    });
+  }, []);
+
+
+  async function handlePresentationFormAction(message: ChatMessage, actionId: "cancel" | "submit") {
+    if (!message.form) return;
+    if (actionId === "cancel") {
+      setFormValuesByMessageId((prev) => ({
+        ...prev,
+        [message.id]: Object.fromEntries(message.form.fields.map((field) => [field.name, String(field.value ?? "")])),
+      }));
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+      return;
+    }
+
+    const currentValues = Object.fromEntries(
+      message.form.fields.map((field) => [field.name, formValuesByMessageId[message.id]?.[field.name] ?? String(field.value ?? "")])
+    );
+    const nextErrors: Record<string, string> = {};
+    for (const field of message.form.fields) {
+      const value = normalizeImobFormValue(currentValues[field.name] ?? "");
+      const requiresTypedValue = field.required && !field.allowAttachment;
+      if (requiresTypedValue && !value) {
+        nextErrors[field.name] = "Preencha este campo para continuar.";
+      }
+    }
+    if (Object.keys(nextErrors).length > 0) {
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: nextErrors }));
+      return;
+    }
+
+    const payload = buildPresentationFormSubmission(message.form, currentValues);
+    if (!payload.trim()) {
+      setFormErrorsByMessageId((prev) => ({
+        ...prev,
+        [message.id]: { ownerName: "Informe ao menos um dado para continuar." },
+      }));
+      return;
+    }
+
+    await sendMessageText(payload, { displayText: buildPresentationFormDisplayText(message.form, actionId) });
+  }
 
   const runExecutionFlow = React.useCallback(
     async (executionPending: PendingExecution, options?: { trackConfirm?: boolean }) => {
@@ -2806,7 +3227,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       push("IMOB Chat Audit Export", 14, true);
       push(`Conversation: ${exported.conversation.title} (${exported.conversation.conversationId})`);
       push(`GeneratedAt: ${exported.generatedAt}`);
-      push(`Tenant/Workspace: ${exported.tenantId} / ${exported.workspaceId}`);
+      push(`Contexto: ${brandName} • ${workspaceLabel}`);
       push(`Audit Hash (${exported.audit.hashAlgo}): ${exported.audit.hash}`);
       y += 6;
       push("Totals", 12, true);
@@ -3031,9 +3452,20 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                   </p>
                 ) : null}
               </div>
-              <span className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${statusTone(state)}`}>
-                {statusLabel(state)}
-              </span>
+              <div className="flex items-center gap-2">
+                {requestedReturnTo ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate(requestedReturnTo)}
+                    className="rounded-full border border-white/15 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition hover:border-accent/40 hover:text-accent"
+                  >
+                    Voltar ao Command Center
+                  </button>
+                ) : null}
+                <span className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${statusTone(state)}`}>
+                  {statusLabel(state)}
+                </span>
+              </div>
             </header>
             {contractInterviewState?.contractType &&
             contractDraftLines.length > 0 &&
@@ -3169,6 +3601,14 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                     : messageThread?.status === "done"
                       ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-200"
                       : "border-accent/40 bg-accent/10 text-foreground";
+                const inlineChoicePresentation = isInlineChoicePresentation(message);
+                const showMessageCard =
+                  Boolean(message.card) &&
+                  message.card?.type !== "queue" &&
+                  !(message.card?.type === "action" && message.card.compactConfirm) &&
+                  message.card?.title !== "Lote processado" &&
+                  !inlineChoicePresentation;
+                const showBubble = isUser || Boolean(message.text.trim()) || showMessageCard || Boolean(message.form);
                 return (
                   <div key={message.id} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
                     <div className={`max-w-[94%] space-y-1.5 sm:max-w-[82%] ${isUser ? "items-end" : "items-start"}`}>
@@ -3177,24 +3617,22 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                           {messageThread?.label}
                         </div>
                       ) : null}
-                      <div
-                        className={`rounded-2xl px-4 py-3 text-sm ${
-                          isUser
-                            ? "bg-accent/15 text-foreground"
-                            : "bg-black/20 text-foreground"
-                        } transition`}
-                      >
-                        <p className="whitespace-pre-wrap">{message.text}</p>
+                      {showBubble ? (
+                        <div
+                          className={`rounded-2xl px-4 py-3 text-sm ${
+                            isUser
+                              ? "bg-accent/15 text-foreground"
+                              : "bg-black/20 text-foreground"
+                          } transition`}
+                        >
+                          {message.text.trim().length > 0 && !message.form ? <p className="whitespace-pre-wrap">{message.text}</p> : null}
 
-                        {message.card &&
-                        message.card.type === "queue" &&
-                        !(message.card.type === "action" && message.card.compactConfirm) ? null : null}
+                          {message.card &&
+                          message.card.type === "queue" &&
+                          !(message.card.type === "action" && message.card.compactConfirm) ? null : null}
 
-                        {message.card &&
-                        message.card.type !== "queue" &&
-                        !(message.card.type === "action" && message.card.compactConfirm) &&
-                        message.card.title !== "Lote processado" ? (
-                          <div className="mt-3 rounded-xl border border-white/10 bg-surface/50 p-3">
+                          {showMessageCard ? (
+                            <div className="mt-3 rounded-xl border border-white/10 bg-surface/50 p-3">
                             <div className="flex items-center justify-between gap-2">
                               <p className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground">{message.card.title}</p>
                               {message.card.type !== "action" ? (
@@ -3278,8 +3716,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                 </Link>
                               </div>
                             ) : null}
-
-                            {message.card.showConfirm &&
+                            {message.card?.showConfirm &&
                             pendingExecution &&
                             pendingExecution.messageId === message.id &&
                             pendingExecution.thread.id === (message.thread?.id ?? message.card?.thread?.id) ? (
@@ -3288,10 +3725,74 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                               </p>
                             ) : null}
                           </div>
-                        ) : null}
-                      </div>
+                          ) : null}
 
-                      <div className={`flex flex-wrap items-center gap-2 px-1 text-[10px] uppercase tracking-[0.15em] text-muted-foreground/80 ${isUser ? "justify-end" : "justify-start"}`}>
+                          {message.form ? (() => {
+                            const formValues = formValuesByMessageId[message.id] ?? Object.fromEntries(
+                              message.form.fields.map((field) => [field.name, String(field.value ?? "")])
+                            );
+                            const formErrors = formErrorsByMessageId[message.id] ?? {};
+                            return (
+                              <div className="mt-3 space-y-3 rounded-xl border border-white/10 bg-surface/50 p-3">
+                                <div className="space-y-1">
+                                  <p className="text-sm font-medium text-foreground">{message.form.label}</p>
+                                  {message.form.description ? (
+                                    <p className="text-[11px] normal-case tracking-normal text-muted-foreground">{message.form.description}</p>
+                                  ) : null}
+                                </div>
+                                <div className="space-y-3">
+                                  {message.form.fields.map((field) => (
+                                    <div key={`${message.id}-${field.name}`} className="space-y-1.5">
+                                      <label className="text-[11px] normal-case tracking-normal text-foreground/90">{field.label}</label>
+                                      <div className="flex gap-2">
+                                        <input
+                                          type={field.type}
+                                          value={formValues[field.name] ?? ""}
+                                          onChange={(event) => updateFormFieldValue(message.id, field.name, event.target.value)}
+                                          placeholder={field.placeholder}
+                                          className="min-h-[36px] w-full rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-[12px] normal-case tracking-normal text-foreground placeholder:text-muted-foreground focus:outline-none"
+                                        />
+                                        {field.allowAttachment ? (
+                                          <button
+                                            type="button"
+                                            onClick={() => setAttachmentMenuOpen(true)}
+                                            className="shrink-0 rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-[11px] normal-case tracking-normal text-foreground hover:bg-black/30"
+                                          >
+                                            {field.attachmentLabel ?? "Anexar"}
+                                          </button>
+                                        ) : null}
+                                      </div>
+                                      {field.helperText ? (
+                                        <p className="text-[10px] normal-case tracking-normal text-muted-foreground">{field.helperText}</p>
+                                      ) : null}
+                                      {formErrors[field.name] ? (
+                                        <p className="text-[10px] normal-case tracking-normal text-rose-200">{formErrors[field.name]}</p>
+                                      ) : null}
+                                    </div>
+                                  ))}
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  {(message.form.actions ?? []).map((action) => (
+                                    <button
+                                      key={`${message.id}-form-${action.id}`}
+                                      type="button"
+                                      onClick={() => void handlePresentationFormAction(message, action.id)}
+                                      className={`rounded-full px-3 py-1.5 text-[11px] normal-case tracking-normal ${action.kind === "primary" ? "bg-accent/15 text-foreground" : "bg-black/25 text-muted-foreground hover:text-foreground"}`}
+                                    >
+                                      {action.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })() : null}
+                        </div>
+                      ) : null}
+
+                      <div className={`px-1 text-[10px] uppercase tracking-[0.15em] text-muted-foreground/80 ${inlineChoicePresentation ? "flex flex-col items-start gap-1.5" : `flex flex-wrap items-center gap-2 ${isUser ? "justify-end" : "justify-start"}`}`}>
+                        {inlineChoicePresentation && message.presentationMetadata?.confidence?.action === "create" ? (
+                          <p className="text-[10px] normal-case tracking-normal text-muted-foreground">Opções para Cadastro:</p>
+                        ) : null}
                         {message.role === "assistant" &&
                         message.card?.ctas?.length &&
                         !message.card.knowledgeResults?.length ? (
@@ -3305,24 +3806,38 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                               const actionableCtas = normalizeCardCtas(message.card.ctas)?.filter((cta) => {
                                 if (!cta.action) return true;
                                 if (cta.action === "export_contract_pdf") return true;
+                                if (isAttachmentCrmSuggestionAction(cta.action)) return true;
+                                if (isOpenAttachmentMenuAction(cta.action)) return true;
+                                if (isSendSuggestedMessageAction(cta.action)) return true;
                                 return isPendingTarget;
                               }) ?? [];
                               if (actionableCtas.length === 0) return null;
                               const primary = actionableCtas[0];
                               const secondary = actionableCtas.slice(1);
                               const isRejectLocked = rejectLockedMessageId === message.id;
-                              const renderCta = (cta: CardCta) =>
-                                cta.href ? (
+                              const renderCta = (cta: CardCta) => {
+                                const ctaLabel = inlineChoicePresentation
+                                  ? cta.label
+                                  : cta.label.replace(/^Ver\s+/i, "").toLowerCase();
+                                return cta.href ? (
                                   isExternalHref(cta.href) ? (
                                     <a
                                       key={`${message.id}-footer-cta-${cta.id}`}
                                       href={cta.href}
                                       target="_blank"
                                       rel="noreferrer"
-                                      onClick={() => setOpenOptionsMessageId(null)}
+                                      onClick={(event) => {
+                                        setOpenOptionsMessageId(null);
+                                        if (cta.href?.startsWith("/api/uploads/")) {
+                                          event.preventDefault();
+                                          void openUploadDocument(cta.href).catch((error) => {
+                                            console.error("open upload failed", error);
+                                          });
+                                        }
+                                      }}
                                       className={`text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline ${cta.kind === "danger" ? "text-rose-200 hover:text-rose-100" : ""}`}
                                     >
-                                      {cta.label.replace(/^Ver\s+/i, "").toLowerCase()}
+                                      {ctaLabel}
                                     </a>
                                   ) : (
                                     <Link
@@ -3331,7 +3846,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                       onClick={() => setOpenOptionsMessageId(null)}
                                       className={`text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline ${cta.kind === "danger" ? "text-rose-200 hover:text-rose-100" : ""}`}
                                     >
-                                      {cta.label.replace(/^Ver\s+/i, "").toLowerCase()}
+                                      {ctaLabel}
                                     </Link>
                                   )
                                 ) : (
@@ -3351,17 +3866,39 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                         void exportGeneratedContractPdf(message);
                                         return;
                                       }
+                                      if (isAttachmentCrmSuggestionAction(cta.action)) {
+                                        void handleAttachmentCrmSuggestionAction(message, cta);
+                                        return;
+                                      }
+                                      if (isOpenAttachmentMenuAction(cta.action)) {
+                                        setAttachmentMenuOpen(true);
+                                        setOpenOptionsMessageId(null);
+                                        return;
+                                      }
+                                      if (isSendSuggestedMessageAction(cta.action)) {
+                                        setOpenOptionsMessageId(null);
+                                        void sendMessageText(cta.nextMessage ?? cta.label);
+                                        return;
+                                      }
+                                      if (cta.action === "print_card") {
+                                        setOpenOptionsMessageId(null);
+                                        printMessageCard(message);
+                                        return;
+                                      }
                                       if (cta.action === "continue_inventory_search") {
                                         void sendMessageText(cta.nextMessage ?? cta.label);
                                       }
                                     }}
-                                    disabled={cta.action === "reject_execution" && isRejectLocked}
+                                    disabled={(cta.action === "reject_execution" && isRejectLocked) || crmSuggestionLoadingId === message.id}
                                     className={`text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline ${cta.kind === "danger" ? "text-rose-200 hover:text-rose-100" : ""}`}
                                   >
-                                    {cta.label.replace(/^Ver\s+/i, "").toLowerCase()}
+                                    {ctaLabel}
                                   </button>
                                 );
-                              return (
+                              };
+                              return inlineChoicePresentation || message.card?.actionsLayout === "inline" || Boolean(message.form) ? (
+                                <>{actionableCtas.map((cta) => renderCta(cta))}</>
+                              ) : (
                                 <>
                                   {renderCta(primary)}
                                   {secondary.length > 0 ? (
@@ -3395,7 +3932,6 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                             })()}
                           </>
                         ) : null}
-
                         {message.role === "assistant" && message.card?.proof ? (
                           <details className="group relative">
                             <summary className="cursor-pointer list-none text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
