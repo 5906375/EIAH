@@ -4,11 +4,11 @@ import type {
   JobsOptions,
   Queue,
   QueueEvents,
-  type ConnectionOptions,
-  type QueueEventsOptions,
-  type QueueOptions,
-  type Worker,
-  type WorkerOptions,
+  ConnectionOptions,
+  QueueEventsOptions,
+  QueueOptions,
+  Worker,
+  WorkerOptions,
 } from "bullmq";
 import { createLogger, bindLogger } from "../logging";
 import type { ActionExecutionResult } from "../actions/actionRegistry";

@@ -42,6 +42,15 @@ jobs:
           cache: 'pnpm'
           cache-dependency-path: pnpm-lock.yaml
 
+      - name: Enforce lockfile policy
+        run: |
+          test ! -f package-lock.json || (echo "package-lock.json is forbidden; use pnpm-lock.yaml" && exit 1)
+          test ! -f yarn.lock || (echo "yarn.lock is forbidden; use pnpm-lock.yaml" && exit 1)
+          test ! -f bun.lockb || (echo "bun.lockb is forbidden; use pnpm-lock.yaml" && exit 1)
+          test ! -f bun.lock || (echo "bun.lock is forbidden; use pnpm-lock.yaml" && exit 1)
+          EXTRA_PNPM_LOCKFILES=$(find . -path './node_modules' -prune -o -name 'pnpm-lock.yaml' -print | grep -v '^./pnpm-lock.yaml$' || true)
+          test -z "$EXTRA_PNPM_LOCKFILES" || (echo "extra pnpm lockfiles are forbidden in workspace packages:" && echo "$EXTRA_PNPM_LOCKFILES" && exit 1)
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 

@@ -7,19 +7,28 @@
   "types": "dist/index.d.ts",
   "files": [
     "dist",
-    "prisma",
-    "src/generated"
+    "prisma"
   ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./src/index.js",
-      "default": "./src/index.js"
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
     },
     "./client": {
-      "types": "./src/generated/client/index.d.ts",
-      "import": "./src/generated/client/index.js",
-      "default": "./src/generated/client/index.js"
+      "types": "./dist/generated/client/index.d.ts",
+      "import": "./dist/generated/client/index.js",
+      "default": "./dist/generated/client/index.js"
+    },
+    "./generated/client": {
+      "types": "./dist/generated/client/index.d.ts",
+      "import": "./dist/generated/client/index.js",
+      "default": "./dist/generated/client/index.js"
+    },
+    "./generated/client/*": {
+      "types": "./dist/generated/client/*",
+      "import": "./dist/generated/client/*",
+      "default": "./dist/generated/client/*"
     }
   },
   "scripts": {
@@ -30,7 +39,7 @@
     "studio": "pnpm prisma studio",
     "build:dts": "tsc --build tsconfig.json --force",
     "build": "pnpm run generate && tsup --config tsup.config.ts && pnpm run build:dts",
-    "postbuild": "cp -r ./src/generated ./dist/generated || true",
+    "postbuild": "node ./scripts/copy-publish-artifacts.mjs",
     "test": "node --test --import tsx \"src/**/*.test.ts\"",
     "prepare": "pnpm run build",
     "prebuild": "bash ../../scripts/prebuild-check.sh"
