@@ -51,6 +51,17 @@ type InsertLedgerEntryParams = {
   model?: string | null;
 };
 
+type WorkspaceUsageEventParams = {
+  tenantId: string;
+  workspaceId: string;
+  cycleStart: Date;
+  cycleEnd: Date;
+  runs?: number;
+  costCents?: number;
+  tokens?: number;
+  storageMb?: number;
+};
+
 function getClientWithTenantBillingV2(prisma: PrismaClient) {
   const client = prisma as any;
   const hasV2 =
@@ -410,6 +421,236 @@ export class QuotaUsageService {
 
     return { usage, cycle };
   }
+}
+
+export async function incrementWorkspaceUsageFromEvent(
+  prisma: PrismaClient,
+  params: WorkspaceUsageEventParams
+) {
+  const client = getClientWithTenantBillingV2(prisma);
+  if (!client) {
+    return {
+      usage: {
+        id: `workspace-usage-unavailable:${params.workspaceId}`,
+        tenantId: params.tenantId,
+        workspaceId: params.workspaceId,
+        cycleStart: params.cycleStart,
+        cycleEnd: params.cycleEnd,
+        runs: params.runs ?? 0,
+        costCents: params.costCents ?? 0,
+        tokens: params.tokens ?? 0,
+        storageMb: params.storageMb ?? 0,
+        updatedAt: new Date(),
+      },
+    };
+  }
+
+  const usage = await client.workspaceQuotaUsage.upsert({
+    where: {
+      workspace_quota_usage_cycle_unique: {
+        tenantId: params.tenantId,
+        workspaceId: params.workspaceId,
+        cycleStart: params.cycleStart,
+        cycleEnd: params.cycleEnd,
+      },
+    },
+    create: {
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      cycleStart: params.cycleStart,
+      cycleEnd: params.cycleEnd,
+      runs: params.runs ?? 0,
+      costCents: params.costCents ?? 0,
+      tokens: params.tokens ?? 0,
+      storageMb: params.storageMb ?? 0,
+    },
+    update: {
+      runs: { increment: params.runs ?? 0 },
+      costCents: { increment: params.costCents ?? 0 },
+      tokens: { increment: params.tokens ?? 0 },
+      storageMb: { increment: params.storageMb ?? 0 },
+      updatedAt: new Date(),
+    },
+  });
+
+  return { usage };
+}
+
+export async function getWorkspaceBillingSummary(
+  prisma: PrismaClient,
+  params: {
+    tenantId: string;
+    workspaceId: string;
+    cycleStart?: Date;
+    cycleEnd?: Date;
+  }
+) {
+  const client = getClientWithTenantBillingV2(prisma);
+  const usageService = new QuotaUsageService(prisma);
+  const cycle =
+    params.cycleStart && params.cycleEnd
+      ? { cycleStart: params.cycleStart, cycleEnd: params.cycleEnd }
+      : await usageService.resolveCycle({ tenantId: params.tenantId });
+
+  if (!client) {
+    return {
+      runs: 0,
+      costCents: 0,
+      tokens: 0,
+      storageMb: 0,
+      byAgent: [],
+      byModel: [],
+    };
+  }
+
+  const [workspaceUsage, breakdownItems] = await Promise.all([
+    client.workspaceQuotaUsage.findUnique({
+      where: {
+        workspace_quota_usage_cycle_unique: {
+          tenantId: params.tenantId,
+          workspaceId: params.workspaceId,
+          cycleStart: cycle.cycleStart,
+          cycleEnd: cycle.cycleEnd,
+        },
+      },
+    }),
+    client.runUsageBreakdown.findMany({
+      where: {
+        tenantId: params.tenantId,
+        workspaceId: params.workspaceId,
+        createdAt: { gte: cycle.cycleStart, lt: cycle.cycleEnd },
+      },
+      select: {
+        runId: true,
+        agent: true,
+        agentVersion: true,
+        provider: true,
+        model: true,
+        amountCents: true,
+        totalTokens: true,
+      },
+    }),
+  ]);
+
+  const byAgentMap = new Map<
+    string,
+    { agent: string; agentVersion: string | null; costCents: number; tokens: number; runIds: Set<string> }
+  >();
+  const byModelMap = new Map<
+    string,
+    { provider: string; model: string; costCents: number; tokens: number }
+  >();
+
+  for (const item of breakdownItems) {
+    const agentKey = `${item.agent}::${item.agentVersion ?? ""}`;
+    const agentCurrent =
+      byAgentMap.get(agentKey) ??
+      {
+        agent: item.agent,
+        agentVersion: item.agentVersion ?? null,
+        costCents: 0,
+        tokens: 0,
+        runIds: new Set<string>(),
+      };
+    agentCurrent.costCents += item.amountCents ?? 0;
+    agentCurrent.tokens += item.totalTokens ?? 0;
+    agentCurrent.runIds.add(item.runId);
+    byAgentMap.set(agentKey, agentCurrent);
+
+    const modelKey = `${item.provider}::${item.model}`;
+    const modelCurrent =
+      byModelMap.get(modelKey) ??
+      {
+        provider: item.provider,
+        model: item.model,
+        costCents: 0,
+        tokens: 0,
+      };
+    modelCurrent.costCents += item.amountCents ?? 0;
+    modelCurrent.tokens += item.totalTokens ?? 0;
+    byModelMap.set(modelKey, modelCurrent);
+  }
+
+  return {
+    runs: workspaceUsage?.runs ?? 0,
+    costCents: workspaceUsage?.costCents ?? 0,
+    tokens: workspaceUsage?.tokens ?? 0,
+    storageMb: workspaceUsage?.storageMb ?? 0,
+    byAgent: Array.from(byAgentMap.values()).map((item) => ({
+      agent: item.agent,
+      agentVersion: item.agentVersion,
+      costCents: item.costCents,
+      runs: item.runIds.size,
+      tokens: item.tokens,
+    })),
+    byModel: Array.from(byModelMap.values()),
+  };
+}
+
+export async function getAgentBillingSummary(
+  prisma: PrismaClient,
+  params: {
+    tenantId: string;
+    workspaceId?: string | null;
+    cycleStart?: Date;
+    cycleEnd?: Date;
+  }
+) {
+  const client = getClientWithTenantBillingV2(prisma);
+  const usageService = new QuotaUsageService(prisma);
+  const cycle =
+    params.cycleStart && params.cycleEnd
+      ? { cycleStart: params.cycleStart, cycleEnd: params.cycleEnd }
+      : await usageService.resolveCycle({ tenantId: params.tenantId });
+
+  if (!client) {
+    return [];
+  }
+
+  const items = await client.runUsageBreakdown.findMany({
+    where: {
+      tenantId: params.tenantId,
+      ...(params.workspaceId ? { workspaceId: params.workspaceId } : {}),
+      createdAt: { gte: cycle.cycleStart, lt: cycle.cycleEnd },
+    },
+    select: {
+      runId: true,
+      agent: true,
+      agentVersion: true,
+      amountCents: true,
+      totalTokens: true,
+    },
+  });
+
+  const grouped = new Map<
+    string,
+    { agent: string; agentVersion: string | null; runs: Set<string>; costCents: number; tokens: number }
+  >();
+
+  for (const item of items) {
+    const key = `${item.agent}::${item.agentVersion ?? ""}`;
+    const current =
+      grouped.get(key) ??
+      {
+        agent: item.agent,
+        agentVersion: item.agentVersion ?? null,
+        runs: new Set<string>(),
+        costCents: 0,
+        tokens: 0,
+      };
+    current.runs.add(item.runId);
+    current.costCents += item.amountCents ?? 0;
+    current.tokens += item.totalTokens ?? 0;
+    grouped.set(key, current);
+  }
+
+  return Array.from(grouped.values()).map((item) => ({
+    agent: item.agent,
+    agentVersion: item.agentVersion,
+    runs: item.runs.size,
+    costCents: item.costCents,
+    tokens: item.tokens,
+  }));
 }
 
 type ReconcileCycleParams = {

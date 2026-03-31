@@ -1,6 +1,6 @@
 import { runCompletion } from "@eiah/core/llm/completionEngine";
 import { llmRegistry } from "@eiah/core/llm/LLMRegistry";
-import type { ChatMessage } from "@eiah/core/llm/types";
+import type { ChatMessage, ChatCompletionUsage } from "@eiah/core/llm/types";
 import { OpenAIProvider, AnthropicProvider, GeminiProvider, DeepSeekProvider } from "@eiah/providers";
 import { fullMask, maskText } from "../services/masker";
 
@@ -28,6 +28,10 @@ export type LlmExecutorResult = {
   rawResponse: unknown;
   traceId?: string;
   tookMs?: number;
+  provider?: string;
+  model?: string;
+  requestId?: string;
+  usage?: ChatCompletionUsage | null;
 };
 
 let providersRegistered = false;
@@ -203,6 +207,10 @@ export async function executeLlmStep({
         source: "metadata.deterministicResponse",
       },
       tookMs: 0,
+      provider: profile.model.includes(":") ? profile.model.split(":")[0] : undefined,
+      model: profile.model.includes(":") ? profile.model.split(":").slice(1).join(":") : profile.model,
+      requestId: undefined,
+      usage: null,
     };
   }
 
@@ -246,5 +254,9 @@ export async function executeLlmStep({
     rawResponse: response.raw,
     traceId: response.id,
     tookMs: Date.now() - startedAt,
+    provider: response.provider,
+    model: response.model,
+    requestId: response.requestId ?? response.id,
+    usage: response.usage ?? null,
   };
 }

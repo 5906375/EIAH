@@ -7,7 +7,7 @@ import runsHistoryPrint from "../../../assets/playbook/runs/runs-historico.svg";
 import runsResultPrint from "../../../assets/playbook/runs/runs-resultado.svg";
 import AgentSelect from "../../../components/agents/AgentSelect";
 import ChatAgentLauncher from "../../../components/agents/ChatAgentLauncher";
-import { apiListAgents, type Agent } from "@/lib/api";
+import { apiGetAgentBillingSummary, apiListAgents, type Agent, type AgentBillingSummaryItem } from "@/lib/api";
 import { useSession } from "@/state/sessionStore";
 
 type PlaybookConfig = {
@@ -720,6 +720,14 @@ function formatGovernanceValue(value: string) {
     .join(" ");
 }
 
+function formatAgentCostLabel(cents?: number | null) {
+  if (typeof cents !== "number") return "—";
+  return (cents / 100).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
+}
+
 function formatModeContractsSummary(agent: Agent) {
   if (!Array.isArray(agent.modeContracts) || agent.modeContracts.length === 0) return undefined;
   return agent.modeContracts.map((contract) => formatGovernanceValue(contract.mode)).join(" • ");
@@ -799,6 +807,7 @@ const AgentsPage: React.FC = () => {
   const [playbookAgent, setPlaybookAgent] = useState<string | null>(null);
   const [activeGuideTabId, setActiveGuideTabId] = useState<string | null>(null);
   const [catalogAgents, setCatalogAgents] = useState<Agent[]>([]);
+  const [agentBillingSummary, setAgentBillingSummary] = useState<AgentBillingSummaryItem[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState<string | null>(null);
 
@@ -857,18 +866,31 @@ const AgentsPage: React.FC = () => {
   useEffect(() => {
     setCatalogLoading(true);
     setCatalogError(null);
-    apiListAgents()
-      .then((response) => {
+    Promise.all([
+      apiListAgents(),
+      apiGetAgentBillingSummary({ workspaceId }).catch(() => null),
+    ])
+      .then(([response, billingResponse]) => {
         const items = Array.isArray(response?.items) ? response.items : [];
         setCatalogAgents(items.sort((a, b) => (a.name ?? a.id).localeCompare(b.name ?? b.id)));
+        setAgentBillingSummary(Array.isArray(billingResponse?.data?.items) ? billingResponse.data.items : []);
       })
       .catch((error) => {
         console.error("Failed to load governance catalog", error);
         setCatalogAgents([]);
+        setAgentBillingSummary([]);
         setCatalogError("Nao foi possivel carregar o artefato de governanca dos agentes.");
       })
       .finally(() => setCatalogLoading(false));
   }, [workspaceId, token]);
+
+  const billingSummaryByAgent = useMemo(() => {
+    const map = new Map<string, AgentBillingSummaryItem>();
+    for (const item of agentBillingSummary) {
+      map.set(normalizeAgentKey(item.agent), item);
+    }
+    return map;
+  }, [agentBillingSummary]);
 
   const handlePlaybookClick = () => {
     if (!agentId || !playbookTargetId) return;
@@ -936,6 +958,7 @@ const AgentsPage: React.FC = () => {
                 <th className="px-3 py-2">Agent id</th>
                 <th className="px-3 py-2">Nome</th>
                 <th className="px-3 py-2">Especialidade</th>
+                <th className="px-3 py-2">FinOps</th>
                 <th className="px-3 py-2">Model policy</th>
                 <th className="px-3 py-2">Tool capabilities</th>
                 <th className="px-3 py-2">Criticidade</th>
@@ -950,6 +973,7 @@ const AgentsPage: React.FC = () => {
             <tbody>
               {catalogAgents.map((agent) => {
                 const isSelected = normalizeAgentKey(agent.id) === normalizeAgentKey(agentId ?? "");
+                const billing = billingSummaryByAgent.get(normalizeAgentKey(agent.id));
                 return (
                   <tr
                     key={agent.id}
@@ -962,6 +986,16 @@ const AgentsPage: React.FC = () => {
                     </td>
                     <td className="px-3 py-4 text-foreground">{agent.name}</td>
                     <td className="px-3 py-4 text-muted-foreground">{agent.description ?? "Sem descrição"}</td>
+                    <td className="px-3 py-4">
+                      <CompactAttributeList
+                        emptyLabel="Sem custo operacional"
+                        items={[
+                          { label: "Custo", value: formatAgentCostLabel(billing?.costCents) },
+                          { label: "Runs", value: typeof billing?.runs === "number" ? String(billing.runs) : undefined },
+                          { label: "Tokens", value: typeof billing?.tokens === "number" ? String(billing.tokens) : undefined },
+                        ]}
+                      />
+                    </td>
                     <td className="px-3 py-4 text-muted-foreground">
                       {agent.governance?.modelPolicy ?? "unconfigured"}
                     </td>
@@ -986,7 +1020,7 @@ const AgentsPage: React.FC = () => {
                     <td className="px-3 py-4 text-muted-foreground">
                       {formatGovernanceValue(agent.governance?.receiptPolicy ?? "not_applicable")}
                     </td>
-                    <td className="rounded-r-2xl px-3 py-4">
+                    <td className="px-3 py-4">
                       <GovernanceChips
                         items={agent.governance?.requiredScopes ?? []}
                         emptyLabel="Sem scopes declarados"
@@ -1034,7 +1068,7 @@ const AgentsPage: React.FC = () => {
                         ]}
                       />
                     </td>
-                    <td className="px-3 py-4">
+                    <td className="rounded-r-2xl px-3 py-4">
                       <CompactAttributeList
                         emptyLabel="Sem contrato de UX"
                         items={[
@@ -1058,6 +1092,7 @@ const AgentsPage: React.FC = () => {
         <div className="mt-6 grid gap-4 xl:hidden">
           {catalogAgents.map((agent) => {
             const isSelected = normalizeAgentKey(agent.id) === normalizeAgentKey(agentId ?? "");
+            const billing = billingSummaryByAgent.get(normalizeAgentKey(agent.id));
             return (
               <article
                 key={agent.id}
@@ -1080,6 +1115,19 @@ const AgentsPage: React.FC = () => {
                 </div>
                 <p className="mt-3 text-sm text-muted-foreground">{agent.description ?? "Sem descrição"}</p>
                 <dl className="mt-4 grid gap-3 text-sm">
+                  <div>
+                    <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">FinOps</dt>
+                    <dd className="mt-2">
+                      <CompactAttributeList
+                        emptyLabel="Sem custo operacional"
+                        items={[
+                          { label: "Custo", value: formatAgentCostLabel(billing?.costCents) },
+                          { label: "Runs", value: typeof billing?.runs === "number" ? String(billing.runs) : undefined },
+                          { label: "Tokens", value: typeof billing?.tokens === "number" ? String(billing.tokens) : undefined },
+                        ]}
+                      />
+                    </dd>
+                  </div>
                   <div>
                     <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Model policy</dt>
                     <dd className="mt-1 text-foreground">{agent.governance?.modelPolicy ?? "unconfigured"}</dd>

@@ -1,11 +1,11 @@
 import { Router } from "express";
 import { z } from "zod";
+import { checkScopePermission } from "@eiah/core";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
 import { requireScope } from "../middlewares/requireScope";
 import { getRun } from "../services/runs";
 import { evaluateTrustScore, trustScoreAllowsExecution } from "../services/trustScore";
 import { maskText } from "../services/masker";
-import { checkScopePermission } from "packages/core/src/security/rbac.ts";
 import { buildRunEvidenceBundle } from "../services/evidenceBundle";
 import { resolvePoUForLedger } from "../services/pouService";
 import { resolveTrustSnapshotForLedger } from "../services/trustSnapshotService";

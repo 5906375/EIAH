@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import introJs from "intro.js";
 import "intro.js/minified/introjs.min.css";
 import AgentSelect from "../../../components/agents/AgentSelect";
@@ -18,14 +18,18 @@ import {
 } from "@/components/runs/utils";
 import {
   ApiError,
+  apiGetBillingReconciliationSummary,
   apiGetImobFunnelHealth,
   apiGetRun,
+  apiGetRunCostBreakdown,
   apiGetTenantBillingSummary,
   apiListImobCases,
   apiListRuns,
+  BillingReconciliationSummary,
   ImobCase,
   ImobFunnelHealth,
   Run,
+  RunCostBreakdown,
   RunStatus,
 } from "../../../lib/api";
 import { useAgentExecution } from "@/hooks/useAgentExecution";
@@ -51,6 +55,43 @@ type RunResource = {
   templates: LowCodeTemplate[];
   tools?: string[];
 };
+
+function formatReconciliationIssue(issue: string) {
+  if (issue === "missing_breakdown") return "Sem breakdown";
+  if (issue === "missing_ledger") return "Sem ledger";
+  if (issue === "run_vs_breakdown_mismatch") return "Run divergente";
+  if (issue === "breakdown_vs_ledger_mismatch") return "Ledger divergente";
+  return issue || "—";
+}
+
+function formatMeterTypeLabel(value: string) {
+  if (value === "llm_completion") return "LLM completion";
+  if (value === "vision") return "Vision";
+  if (value === "embedding") return "Embedding";
+  return value || "—";
+}
+
+function resolveImobGateTitle(reasonCode?: string) {
+  if (reasonCode === "IMOB_INSTALLATION_INACTIVE") return "Instalação inativa";
+  if (reasonCode === "IMOB_PERMISSION_DENIED") return "Acesso restrito";
+  return "Acesso indisponível";
+}
+
+function resolveImobGateBody(gate: {
+  reasonCode?: string;
+  message?: string;
+  scope?: { workspaceId: string };
+  traceId?: string;
+}) {
+  if (gate.message?.trim()) return gate.message.trim();
+  if (gate.reasonCode === "IMOB_INSTALLATION_INACTIVE") {
+    return "A instalação do IMOB neste workspace não está ativa. Reative a instalação para acessar a Central Operacional.";
+  }
+  if (gate.reasonCode === "IMOB_PERMISSION_DENIED") {
+    return "Você não possui permissão para acessar a Central Operacional do IMOB neste workspace.";
+  }
+  return "IMOB não está habilitado neste workspace. É necessária uma instalação ativa para acessar a Central Operacional.";
+}
 
 function imobCaseAgeHours(updatedAt: string) {
   const parsed = Date.parse(updatedAt);
@@ -299,6 +340,47 @@ function buildImobChatActionHref(base: {
   return `${window.location.origin}/app/imob/chat${query ? `?${query}` : ""}`;
 }
 
+function getRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+}
+
+function getStringValue(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+function extractImobContextFromRun(run: Run | null) {
+  const explicitCaseId = getStringValue(run?.caseId);
+  const explicitThreadId = getStringValue(run?.threadId);
+  const request = getRecord(run?.request);
+  const requestMetadata = getRecord(request?.metadata);
+  const requestInput = getRecord(request?.input);
+  const meta = getRecord(run?.meta);
+  const nestedMeta = getRecord(meta?.metadata);
+  const caseId =
+    explicitCaseId ??
+    getStringValue(request?.caseId) ??
+    getStringValue(requestInput?.caseId) ??
+    getStringValue(requestMetadata?.caseId) ??
+    getStringValue(meta?.caseId) ??
+    getStringValue(nestedMeta?.caseId) ??
+    null;
+  const threadId =
+    explicitThreadId ??
+    getStringValue(request?.threadId) ??
+    getStringValue(requestInput?.threadId) ??
+    getStringValue(requestMetadata?.threadId) ??
+    getStringValue(meta?.threadId) ??
+    getStringValue(nestedMeta?.threadId) ??
+    null;
+  const conversationId =
+    getStringValue(request?.conversationId) ??
+    getStringValue(requestMetadata?.conversationId) ??
+    getStringValue(meta?.conversationId) ??
+    getStringValue(nestedMeta?.conversationId) ??
+    null;
+  return { caseId, threadId, conversationId };
+}
+
 function buildImobEntityActions(root: any) {
   const caseData = root?.case ?? root ?? null;
   const caseId = typeof caseData?.id === "string" && caseData.id.trim().length > 0 ? caseData.id.trim() : null;
@@ -342,6 +424,22 @@ function buildImobEntityActions(root: any) {
   ] satisfies ImobHtmlActionLink[];
 }
 
+function buildImobOperationalLinks(root: any) {
+  const caseData = root?.case ?? root ?? null;
+  const runId = typeof caseData?.runId === "string" && caseData.runId.trim().length > 0 ? caseData.runId.trim() : null;
+  if (!runId) return [] as ImobHtmlActionLink[];
+  return [
+    {
+      label: "Ver execução",
+      href: typeof window === "undefined" ? null : `${window.location.origin}/app/runs?domain=imob&runId=${encodeURIComponent(runId)}`,
+    },
+    {
+      label: "Abrir reconciliação",
+      href: typeof window === "undefined" ? null : `${window.location.origin}/app/billing?runId=${encodeURIComponent(runId)}`,
+    },
+  ] satisfies ImobHtmlActionLink[];
+}
+
 function buildImobArtifactViewModel(payload: any) {
   const root = payload?.data ?? payload;
   const caseData = root?.case ?? root;
@@ -359,6 +457,8 @@ function buildImobArtifactViewModel(payload: any) {
     nextStep: caseData?.nextStep ?? null,
     entityActionLinks: buildImobEntityActions(root),
     entityActions: buildImobEntityActions(root).map((item) => item.label),
+    operationalLinks: buildImobOperationalLinks(root),
+    operationalActions: buildImobOperationalLinks(root).map((item) => item.label),
     history: events.slice(0, 20).map((event) => {
       if (typeof event.summary === "string" && event.summary.trim().length > 0) return event.summary;
       return "Evento operacional registrado.";
@@ -401,6 +501,7 @@ function saveImobArtifactHtml(type: "bundle" | "receipt", payload: any, caseId: 
     <ul>${renderHtmlList(view.clientExamples)}</ul>
     <h2>Cadastro e vínculos</h2>
     <ul>${renderHtmlLinkList(view.entityActionLinks)}</ul>
+    ${view.operationalLinks.length ? `<h2>Execução operacional</h2><ul>${renderHtmlLinkList(view.operationalLinks)}</ul>` : ""}
     ${type === "bundle" ? `<h2>Histórico recente</h2><ul>${renderHtmlList(view.history.length ? view.history : ["Nenhum evento operacional registrado até o momento."])}</ul>` : ""}
   </div>
 </body>
@@ -463,6 +564,11 @@ async function saveImobArtifactPdf(type: "bundle" | "receipt", payload: any, cas
   y += 6;
   push("Cadastro e vínculos", 12, true);
   for (const line of view.entityActions) push(`- ${line}`);
+  if (view.operationalActions.length) {
+    y += 6;
+    push("Execução operacional", 12, true);
+    for (const line of view.operationalActions) push(`- ${line}`);
+  }
   if (type === "bundle") {
     y += 6;
     push("Histórico recente", 12, true);
@@ -620,6 +726,8 @@ const RunsPage: React.FC = () => {
   const [agentId, setAgentId] = useState<string>();
   const [runs, setRuns] = useState<Run[]>([]);
   const [selectedRun, setSelectedRun] = useState<Run | null>(null);
+  const [selectedRunCost, setSelectedRunCost] = useState<RunCostBreakdown | null>(null);
+  const [selectedRunReconciliation, setSelectedRunReconciliation] = useState<BillingReconciliationSummary | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -643,11 +751,13 @@ const RunsPage: React.FC = () => {
   const session = useSession();
   const [searchParams] = useSearchParams();
   const requestedDomain = (searchParams.get("domain") || "").trim().toLowerCase();
+  const requestedRunId = (searchParams.get("runId") || "").trim() || null;
   const { tenantId, workspaceId = DEFAULT_WORKSPACE_ID, userId, token } = session;
   const brandName = session.branding?.brandName?.trim() || "Tenant";
   const workspaceLabel = session.branding?.workspaceLabel?.trim() || "DEFAULT";
   const isImobDomain = requestedDomain === "imob" || session.activeDomain === "imob";
-  const hasImobAccess = requestedDomain === "imob" || session.entitlements?.REAL_ESTATE_CORE === true;
+  const imobAccessGate = isImobDomain && session.accessGate?.product === "IMOB" ? session.accessGate : null;
+  const hasImobAccess = session.entitlements?.REAL_ESTATE_CORE === true && !imobAccessGate;
   const semanticDomain = isImobDomain ? "imob" : "core";
   const runLabelPlural = getDomainTerm(semanticDomain, "runPlural");
   const runLabelSingular = getDomainTerm(semanticDomain, "runSingular");
@@ -717,6 +827,37 @@ const RunsPage: React.FC = () => {
   }, [runSummary.averageDurationMs]);
 
   const totalCostLabel = useMemo(() => centsToBRL(runSummary.totalCostCents) ?? "—", [runSummary.totalCostCents]);
+  const selectedRunFinance = useMemo(() => {
+    const issue = selectedRunReconciliation?.items.auditGaps?.[0]?.issue ?? null;
+    return {
+      amountLabel: centsToBRL(selectedRunCost?.totals.amountCents) ?? "—",
+      tokens: selectedRunCost?.totals.tokens ?? 0,
+      issueLabel: issue ? formatReconciliationIssue(issue) : "Reconciliado",
+      hasGap: Boolean(issue),
+    };
+  }, [selectedRunCost, selectedRunReconciliation]);
+  const selectedRunBreakdownItems = useMemo(() => selectedRunCost?.items ?? [], [selectedRunCost]);
+  const selectedRunAuditGaps = useMemo(() => selectedRunReconciliation?.items.auditGaps ?? [], [selectedRunReconciliation]);
+  const selectedRunDuplicateCharges = useMemo(
+    () => selectedRunReconciliation?.items.duplicateCharges ?? [],
+    [selectedRunReconciliation]
+  );
+  const selectedRunLedgerGaps = useMemo(() => selectedRunReconciliation?.items.ledgerGaps ?? [], [selectedRunReconciliation]);
+  const selectedRunOrphanUsage = useMemo(
+    () => selectedRunReconciliation?.items.orphanUsage ?? [],
+    [selectedRunReconciliation]
+  );
+  const selectedRunImobContext = useMemo(() => extractImobContextFromRun(selectedRun), [selectedRun]);
+  const selectedRunImobHref = useMemo(() => {
+    if (!selectedRunImobContext.caseId && !selectedRunImobContext.threadId) return null;
+    const params = new URLSearchParams();
+    if (selectedRunImobContext.caseId) params.set("caseId", selectedRunImobContext.caseId);
+    if (selectedRunImobContext.threadId) params.set("threadId", selectedRunImobContext.threadId);
+    if (selectedRunImobContext.conversationId) params.set("conversationId", selectedRunImobContext.conversationId);
+    if (selectedRun?.id) params.set("returnTo", `/app/runs?domain=imob&runId=${encodeURIComponent(selectedRun.id)}`);
+    const query = params.toString();
+    return query ? `/app/imob/chat?${query}` : null;
+  }, [selectedRun?.id, selectedRunImobContext]);
 
   const lastUpdatedLabel = useMemo(() => {
     if (!lastUpdatedAt) return "Nunca";
@@ -886,6 +1027,41 @@ const RunsPage: React.FC = () => {
       },
     [selectedRun, agentId, workspaceId]
   );
+
+  useEffect(() => {
+    if (!selectedRun?.id) {
+      setSelectedRunCost(null);
+      setSelectedRunReconciliation(null);
+      return;
+    }
+    let cancelled = false;
+    void Promise.all([
+      apiGetRunCostBreakdown(selectedRun.id).catch(() => null),
+      apiGetBillingReconciliationSummary({ runId: selectedRun.id, limit: 1 }).catch(() => null),
+    ]).then(([costResponse, reconciliationResponse]) => {
+      if (cancelled) return;
+      setSelectedRunCost(costResponse?.data ?? null);
+      setSelectedRunReconciliation(reconciliationResponse?.data ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedRun?.id]);
+
+  useEffect(() => {
+    if (!requestedRunId) return;
+    if (selectedRun?.id === requestedRunId) return;
+    const existing = visibleRuns.find((run) => run.id === requestedRunId) ?? null;
+    if (existing) {
+      setSelectedRun(existing);
+      return;
+    }
+    void apiGetRun(requestedRunId)
+      .then((run) => {
+        setSelectedRun(run);
+      })
+      .catch(() => undefined);
+  }, [requestedRunId, selectedRun?.id, visibleRuns]);
 
   const triggerRun = async (mode: "simulate" | "execute") => {
     if (!agentId) {
@@ -1151,9 +1327,27 @@ const RunsPage: React.FC = () => {
         ) : (
           <section className="rounded-2xl border border-rose-500/40 bg-rose-500/10 p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-rose-200">GateCard 403</p>
-            <p className="mt-2 text-sm text-rose-100">
-              Entitlement ausente para IMOB. Requer instalação ativa para habilitar a Central Operacional.
+            <p className="mt-2 text-sm font-semibold text-rose-100">
+              {resolveImobGateTitle(imobAccessGate?.reasonCode)}
             </p>
+            <p className="mt-2 text-sm text-rose-100">
+              {resolveImobGateBody(imobAccessGate ?? {})}
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              {imobAccessGate?.cta?.target ? (
+                <Link
+                  to={imobAccessGate.cta.target}
+                  className="rounded-full border border-rose-300/30 bg-rose-200/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-rose-100 transition hover:bg-rose-200/20"
+                >
+                  {imobAccessGate.cta.label}
+                </Link>
+              ) : null}
+              {imobAccessGate?.traceId ? (
+                <span className="text-[10px] uppercase tracking-[0.2em] text-rose-200/80">
+                  Trace: {imobAccessGate.traceId}
+                </span>
+              ) : null}
+            </div>
           </section>
         )
       ) : null}
@@ -1402,21 +1596,146 @@ const RunsPage: React.FC = () => {
                 <div className="text-xs font-semibold uppercase tracking-[0.3em] text-muted-foreground">
                   Selecionar run
                 </div>
-                <select
-                  value={selectedRun?.id ?? ""}
-                  onChange={(event) => handleSelectRun(event.target.value)}
-                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-foreground focus:border-accent/60 focus:outline-none"
-                >
-                  {visibleRuns.length === 0 ? (
-                    <option value="">Nenhum run encontrado</option>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {selectedRun?.id ? (
+                    <Link
+                      to={`/app/billing?runId=${encodeURIComponent(selectedRun.id)}`}
+                      className="pill hover:border-accent/40 hover:text-foreground"
+                    >
+                      Abrir reconciliação
+                    </Link>
+                  ) : null}
+                  {selectedRunImobHref ? (
+                    <Link
+                      to={selectedRunImobHref}
+                      className="pill hover:border-accent/40 hover:text-foreground"
+                    >
+                      Abrir caso IMOB
+                    </Link>
+                  ) : null}
+                  <span className={`pill ${selectedRunFinance.hasGap ? "bg-amber-500/15 text-amber-200" : ""}`}>
+                    {selectedRunFinance.issueLabel}
+                  </span>
+                  <span className="pill">Custo: {selectedRunFinance.amountLabel}</span>
+                  <span className="pill">Tokens: {selectedRunFinance.tokens}</span>
+                  <select
+                    value={selectedRun?.id ?? ""}
+                    onChange={(event) => handleSelectRun(event.target.value)}
+                    className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-foreground focus:border-accent/60 focus:outline-none"
+                  >
+                    {visibleRuns.length === 0 ? (
+                      <option value="">Nenhum run encontrado</option>
+                    ) : (
+                      visibleRuns.map((run) => (
+                        <option key={run.id} value={run.id}>
+                          {formatAgentLabel(run.agent)} • {formatRunId(run.id)}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+              </div>
+              <div className="grid gap-4 lg:grid-cols-[1.1fr,0.9fr]">
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+                      Breakdown operacional
+                    </p>
+                    <span className="pill">{selectedRunBreakdownItems.length} item(ns)</span>
+                  </div>
+                  {selectedRunBreakdownItems.length === 0 ? (
+                    <p className="mt-3 text-sm text-muted-foreground">
+                      Nenhuma linha de breakdown encontrada para este run.
+                    </p>
                   ) : (
-                    visibleRuns.map((run) => (
-                      <option key={run.id} value={run.id}>
-                        {formatAgentLabel(run.agent)} • {formatRunId(run.id)}
-                      </option>
-                    ))
+                    <div className="mt-3 space-y-2">
+                      {selectedRunBreakdownItems.slice(0, 6).map((item) => (
+                        <div
+                          key={item.id}
+                          className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-muted-foreground"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="font-semibold text-foreground">
+                              {item.provider} • {item.model}
+                            </p>
+                            <span className="pill">{centsToBRL(item.amountCents) ?? "—"}</span>
+                          </div>
+                          <p className="mt-1">
+                            {formatMeterTypeLabel(item.meterType)} • {item.requestClass} • {item.totalTokens} tokens
+                          </p>
+                          <p className="mt-1 text-[11px]">
+                            requestId: {item.requestId} {item.estimated ? "• estimado" : ""}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
                   )}
-                </select>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+                      Reconciliação do run
+                    </p>
+                    <span className={`pill ${selectedRunFinance.hasGap ? "bg-amber-500/15 text-amber-200" : ""}`}>
+                      {selectedRunFinance.issueLabel}
+                    </span>
+                  </div>
+                  {selectedRunAuditGaps.length === 0 &&
+                  selectedRunDuplicateCharges.length === 0 &&
+                  selectedRunLedgerGaps.length === 0 &&
+                  selectedRunOrphanUsage.length === 0 ? (
+                    <p className="mt-3 text-sm text-muted-foreground">Nenhum gap auditável encontrado para este run.</p>
+                  ) : (
+                    <div className="mt-3 space-y-2">
+                      {selectedRunAuditGaps.map((item) => (
+                        <div
+                          key={`${item.runId}-${item.issue}`}
+                          className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-muted-foreground"
+                        >
+                          <p className="font-semibold text-foreground">{formatReconciliationIssue(item.issue)}</p>
+                          <p className="mt-1">
+                            Run: {centsToBRL(item.runCostCents) ?? "—"} • Breakdown: {centsToBRL(item.breakdownCostCents) ?? "—"} • Ledger: {centsToBRL(item.ledgerCostCents) ?? "—"}
+                          </p>
+                        </div>
+                      ))}
+                      {selectedRunDuplicateCharges.map((item) => (
+                        <div
+                          key={`dup-${item.runId ?? "sem-run"}-${item.requestId ?? "sem-request"}`}
+                          className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-muted-foreground"
+                        >
+                          <p className="font-semibold text-foreground">Charge duplicado</p>
+                          <p className="mt-1">
+                            requestId: {item.requestId ?? "—"} • count: {item.count} • valor: {centsToBRL(item.amountCents) ?? "—"}
+                          </p>
+                        </div>
+                      ))}
+                      {selectedRunLedgerGaps.map((item) => (
+                        <div
+                          key={`ledger-${item.ledgerId}`}
+                          className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-muted-foreground"
+                        >
+                          <p className="font-semibold text-foreground">
+                            {item.issue === "missing_workspace" ? "Ledger sem workspace" : "Ledger sem run"}
+                          </p>
+                          <p className="mt-1">
+                            ledgerId: {item.ledgerId} • requestId: {item.requestId ?? "—"} • valor: {centsToBRL(item.amountCents) ?? "—"}
+                          </p>
+                        </div>
+                      ))}
+                      {selectedRunOrphanUsage.map((item) => (
+                        <div
+                          key={`usage-${item.runId}-${item.requestId}-${item.meterType}`}
+                          className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-muted-foreground"
+                        >
+                          <p className="font-semibold text-foreground">Usage órfão</p>
+                          <p className="mt-1">
+                            requestId: {item.requestId} • {formatMeterTypeLabel(item.meterType)} • valor: {centsToBRL(item.amountCents) ?? "—"}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
               <div id="runs-resultado" data-tour="run-viewer" className="flex min-h-[420px] flex-col">
                 <RunViewer run={displayRun} />

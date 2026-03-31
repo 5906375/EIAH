@@ -1,4 +1,6 @@
 import { Prisma, PrismaClient, RunStatus, prismaGlobal } from "@repo/db";
+import { randomUUID } from "node:crypto";
+import { assertWorkspaceAgentEnabled } from "./workspaceAgentAssignments";
 
 function resolveClient(tenantId: string, workspaceId: string, client?: PrismaClient) {
   return client ?? prismaGlobal;
@@ -17,6 +19,66 @@ async function assertRunScope(
     select: { id: true },
   });
   return run?.id ?? null;
+}
+
+function toJsonData(input: unknown) {
+  if (input === undefined) return Prisma.DbNull;
+  if (input === null) return Prisma.JsonNull;
+  return input as Prisma.InputJsonValue;
+}
+
+function asRecord(input: unknown): Record<string, unknown> | null {
+  return input && typeof input === "object" && !Array.isArray(input) ? (input as Record<string, unknown>) : null;
+}
+
+function asNonEmptyString(input: unknown): string | null {
+  return typeof input === "string" && input.trim().length > 0 ? input.trim() : null;
+}
+
+function extractRunContextFromRequest(request: unknown) {
+  const root = asRecord(request);
+  const metadata = asRecord(root?.metadata);
+  const executionInput = asRecord(metadata?.executionInput);
+  const nestedInput = asRecord(root?.input);
+  return {
+    caseId:
+      asNonEmptyString(root?.caseId) ??
+      asNonEmptyString(nestedInput?.caseId) ??
+      asNonEmptyString(metadata?.caseId) ??
+      asNonEmptyString(executionInput?.caseId) ??
+      null,
+    threadId:
+      asNonEmptyString(root?.threadId) ??
+      asNonEmptyString(nestedInput?.threadId) ??
+      asNonEmptyString(metadata?.threadId) ??
+      asNonEmptyString(executionInput?.threadId) ??
+      null,
+  };
+}
+
+function ensureTraceId(traceId?: string | null) {
+  const normalized = traceId?.trim();
+  return normalized ? normalized : randomUUID();
+}
+
+export async function deriveRunCostFromBreakdown(params: {
+  prisma?: PrismaClient;
+  runId: string;
+  tenantId: string;
+  workspaceId: string;
+}) {
+  const client = resolveClient(params.tenantId, params.workspaceId, params.prisma);
+  const aggregate = await client.runUsageBreakdown.aggregate({
+    where: {
+      runId: params.runId,
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+    },
+    _sum: {
+      amountCents: true,
+    },
+  });
+  return aggregate._sum.amountCents ?? 0;
 }
 
 export async function listRuns(opts: {
@@ -83,7 +145,6 @@ export async function createRunRecord(params: {
   status: RunStatus;
   request: unknown;
   response?: unknown;
-  costCents?: number;
   traceId?: string | null;
   tookMs?: number;
   errorCode?: string | null;
@@ -95,6 +156,12 @@ export async function createRunRecord(params: {
 }) {
   const client = resolveClient(params.tenantId, params.workspaceId, params.prisma);
   const now = new Date();
+  const assignment = await assertWorkspaceAgentEnabled({
+    prisma: client,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    agentKey: params.agent,
+  });
 
   const startedAt = params.startedAt ?? now;
   const finishedAt =
@@ -105,24 +172,24 @@ export async function createRunRecord(params: {
       : params.finishedAt;
 
   const requestData = params.request as Prisma.InputJsonValue;
-  const responseData =
-    params.response === undefined
-      ? Prisma.DbNull
-      : params.response === null
-      ? Prisma.JsonNull
-      : (params.response as Prisma.InputJsonValue);
+  const responseData = toJsonData(params.response);
+  const runContext = extractRunContextFromRequest(params.request);
 
-  return client.run.create({
+  return (client.run as any).create({
     data: {
       tenantId: params.tenantId,
       workspaceId: params.workspaceId,
       userId: params.userId ?? null,
+      caseId: runContext.caseId,
+      threadId: runContext.threadId,
       agent: params.agent,
+      agentVersion: assignment.agentVersion,
+      assignmentId: assignment.id,
       status: params.status,
       request: requestData,
       response: responseData,
-      costCents: params.costCents ?? 0,
-      traceId: params.traceId ?? null,
+      costCents: 0,
+      traceId: ensureTraceId(params.traceId),
       startedAt,
       finishedAt,
       errorCode: params.errorCode ?? null,
@@ -140,17 +207,11 @@ export async function finalizeRunRecord(params: {
   workspaceId: string;
   status: RunStatus;
   response?: unknown;
-  costCents?: number;
   traceId?: string | null;
   errorCode?: string | null;
 }) {
   const client = resolveClient(params.tenantId, params.workspaceId, params.prisma);
-  const responseData =
-    params.response === undefined
-      ? Prisma.DbNull
-      : params.response === null
-      ? Prisma.JsonNull
-      : (params.response as Prisma.InputJsonValue);
+  const responseData = toJsonData(params.response);
 
   const scopedRunId = await assertRunScope(client, {
     runId: params.runId,
@@ -161,17 +222,20 @@ export async function finalizeRunRecord(params: {
     return null;
   }
 
+  const derivedCostCents = await deriveRunCostFromBreakdown({
+    prisma: client,
+    runId: scopedRunId,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+  });
+
   return client.run.update({
-    where: {
-      id: scopedRunId,
-      tenantId: params.tenantId,
-      workspaceId: params.workspaceId,
-    },
+    where: { id: scopedRunId },
     data: {
       status: params.status,
       response: responseData,
-      costCents: params.costCents ?? 0,
-      traceId: params.traceId ?? null,
+      costCents: derivedCostCents,
+      traceId: ensureTraceId(params.traceId),
       finishedAt: new Date(),
       errorCode: params.errorCode ?? null,
     },
@@ -215,11 +279,7 @@ export async function updateRunStatus(params: {
   }
 
   return client.run.update({
-    where: {
-      id: scopedRunId,
-      tenantId: params.tenantId,
-      workspaceId: params.workspaceId,
-    },
+    where: { id: scopedRunId },
     data,
   });
 }

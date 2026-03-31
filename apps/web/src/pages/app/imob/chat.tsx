@@ -8,11 +8,13 @@ import {
   apiCreateImobChatConversation,
   apiCreateImobChatMessage,
   apiCreateImobChatTelemetry,
+  apiGetBillingReconciliationSummary,
   apiGenerateImobContract,
   apiGetImobChatInterviewState,
   apiGetImobChatConversationExport,
   apiGetImobChatTelemetrySummary,
   apiGetRun,
+  apiGetRunCostBreakdown,
   apiSearchImobKnowledge,
   apiUploadDocuments,
   apiResolveImobAttachment,
@@ -156,6 +158,32 @@ type PendingExecution = {
   preparedAt: number;
 };
 
+type RunFinanceSummary = {
+  amountCents: number;
+  tokens: number;
+  issueLabel: string;
+  hasGap: boolean;
+};
+
+type ImobAccessGate = NonNullable<ReturnType<typeof useSession>["accessGate"]>;
+
+function resolveImobGateTitle(reasonCode?: string) {
+  if (reasonCode === "IMOB_INSTALLATION_INACTIVE") return "Instalação inativa";
+  if (reasonCode === "IMOB_PERMISSION_DENIED") return "Acesso restrito";
+  return "Acesso indisponível";
+}
+
+function resolveImobGateBody(gate: Partial<ImobAccessGate>) {
+  if (gate.message?.trim()) return gate.message.trim();
+  if (gate.reasonCode === "IMOB_INSTALLATION_INACTIVE") {
+    return "A instalação do IMOB neste workspace não está ativa. Reative a instalação para usar este recurso.";
+  }
+  if (gate.reasonCode === "IMOB_PERMISSION_DENIED") {
+    return "Você não possui permissão para usar o IMOB neste workspace.";
+  }
+  return "IMOB não está habilitado neste workspace. É necessária uma instalação ativa para usar este recurso.";
+}
+
 function mapApiPresentationCard(
   card: ImobResolveTurnResponse["presentation"]["card"] | undefined,
   thread: { id: string; label: string; status?: "active" | "done" | "blocked" }
@@ -270,6 +298,21 @@ function statusTone(status: ChatState) {
   if (status === "executing" || status === "typing") return "text-amber-200 border-amber-300/30";
   if (status === "done") return "text-emerald-300 border-emerald-400/40";
   return "text-muted-foreground border-white/15";
+}
+
+function formatReconciliationIssue(issue: string) {
+  if (issue === "missing_breakdown") return "Sem breakdown";
+  if (issue === "missing_ledger") return "Sem ledger";
+  if (issue === "run_vs_breakdown_mismatch") return "Run divergente";
+  if (issue === "breakdown_vs_ledger_mismatch") return "Ledger divergente";
+  return issue || "—";
+}
+
+function formatCurrencyCents(amountCents: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format((amountCents ?? 0) / 100);
 }
 
 function makeId(prefix: string) {
@@ -1034,10 +1077,12 @@ function mapStoredMessageToChat(message: ImobChatMessage): ChatMessage {
 
 const ImobChatPage: React.FC = () => {
   const session = useSession();
+  const imobAccessGate = session.accessGate?.product === "IMOB" ? session.accessGate : null;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const brandName = session.branding?.brandName?.trim() || "Tenant";
   const workspaceLabel = session.branding?.workspaceLabel?.trim() || session.workspaceId;
+  const isGateBlocked = Boolean(imobAccessGate);
   const requestedConversationId = React.useMemo(() => {
     const raw = searchParams.get("conversationId");
     return raw && raw.trim().length > 0 ? raw.trim() : null;
@@ -1105,6 +1150,7 @@ const ImobChatPage: React.FC = () => {
   const [draftEditFieldId, setDraftEditFieldId] = React.useState("");
   const [singleEditFieldId, setSingleEditFieldId] = React.useState<string | null>(null);
   const [reviewActionLoading, setReviewActionLoading] = React.useState<"edit" | "confirm" | "decline" | null>(null);
+  const [runFinanceByRunId, setRunFinanceByRunId] = React.useState<Record<string, RunFinanceSummary>>({});
   const contractEditableFields = React.useMemo(() => {
     if (!contractInterviewState?.contractType) return [];
     return CONTRACT_SCHEMAS[contractInterviewState.contractType].fields.map((step) => ({
@@ -1122,6 +1168,7 @@ const ImobChatPage: React.FC = () => {
   const rejectedExecutionKeysRef = React.useRef<Set<string>>(new Set());
   const persistedRunStatusKeysRef = React.useRef<Set<string>>(new Set());
   const persistedContractTemplateKeysRef = React.useRef<Set<string>>(new Set());
+  const loadingRunFinanceIdsRef = React.useRef<Set<string>>(new Set());
 
   React.useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -1567,6 +1614,59 @@ const ImobChatPage: React.FC = () => {
     }, 15000);
     return () => clearInterval(interval);
   }, [conversationId, refreshTelemetry, refreshThreads]);
+
+  const explicitRunIds = React.useMemo(
+    () =>
+      Array.from(
+        new Set(
+          messages
+            .map((message) => message.card?.runId)
+            .filter((runId): runId is string => typeof runId === "string" && runId.trim().length > 0)
+        )
+      ),
+    [messages]
+  );
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    for (const runId of explicitRunIds) {
+      if (runFinanceByRunId[runId] || loadingRunFinanceIdsRef.current.has(runId)) continue;
+      loadingRunFinanceIdsRef.current.add(runId);
+      void Promise.allSettled([
+        apiGetRunCostBreakdown(runId),
+        apiGetBillingReconciliationSummary({ runId, limit: 1 }),
+      ])
+        .then((results) => {
+          if (cancelled) return;
+          const breakdownResult = results[0];
+          const reconciliationResult = results[1];
+          if (breakdownResult.status !== "fulfilled") return;
+          const amountCents = breakdownResult.value.data.totals.amountCents ?? 0;
+          const tokens = breakdownResult.value.data.totals.tokens ?? 0;
+          const issue =
+            reconciliationResult.status === "fulfilled"
+              ? reconciliationResult.value.data.items.auditGaps[0]?.issue ?? null
+              : null;
+          setRunFinanceByRunId((prev) => ({
+            ...prev,
+            [runId]: {
+              amountCents,
+              tokens,
+              issueLabel: issue ? formatReconciliationIssue(issue) : "Reconciliado",
+              hasGap: Boolean(issue),
+            },
+          }));
+        })
+        .finally(() => {
+          loadingRunFinanceIdsRef.current.delete(runId);
+        });
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [explicitRunIds, runFinanceByRunId]);
 
   React.useEffect(() => {
     if (!activeRunId) return;
@@ -2411,7 +2511,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       } catch (error) {
         const errorMessage =
           error instanceof ApiError && error.status === 403
-            ? "A busca documental do IMOB não está habilitada para este tenant/workspace."
+            ? resolveImobGateBody(imobAccessGate ?? {})
             : "Não consegui consultar o acervo IMOB agora. Tente novamente em instantes.";
         const failureReply: ChatMessage = {
           id: makeId("assistant"),
@@ -3343,6 +3443,17 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
   const lastVisibleMessage = visibleMessages.length > 0 ? visibleMessages[visibleMessages.length - 1] : null;
   const activeThreadCount = threads.filter((item) => item.status === "active").length;
   const shouldShowThreadPanel = showThreadPanel || activeThreadCount > 1 || Boolean(selectedThreadId);
+  const activeThreadContext = React.useMemo(() => {
+    const selectedThread = selectedThreadId ? threads.find((item) => item.threadId === selectedThreadId) : null;
+    const currentThreadId = selectedThread?.threadId ?? activeThread?.id ?? null;
+    const currentThreadLabel = selectedThread?.label ?? activeThread?.label ?? null;
+    return {
+      threadId: currentThreadId,
+      threadLabel: currentThreadLabel,
+      runId: currentThreadId ? sessionRunByThreadRef.current[currentThreadId] ?? null : null,
+      caseId: currentThreadId ? caseIdByThreadRef.current[currentThreadId] ?? null : null,
+    };
+  }, [activeThread?.id, activeThread?.label, selectedThreadId, threads]);
   const contractDraftLines = React.useMemo(() => {
     if (!contractInterviewState?.contractType) return [];
     const schema = CONTRACT_SCHEMAS[contractInterviewState.contractType];
@@ -3407,6 +3518,14 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                       trackUxEvent("thread_filter_cleared");
                     }}
                     resolveDashboardHref={(href, thread) => withDashboardContext(href, thread.threadId)}
+                    resolveRunHref={(thread) => {
+                      const runId = sessionRunByThreadRef.current[thread.threadId] ?? null;
+                      return runId ? `/app/runs?domain=imob&runId=${encodeURIComponent(runId)}` : null;
+                    }}
+                    resolveReconciliationHref={(thread) => {
+                      const runId = sessionRunByThreadRef.current[thread.threadId] ?? null;
+                      return runId ? `/app/billing?runId=${encodeURIComponent(runId)}` : null;
+                    }}
                   />
                 </div>
               ) : null}
@@ -3446,10 +3565,32 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                 <p className="mt-1 text-[10px] tracking-[0.18em] text-muted-foreground/80">
                   {brandName} • {workspaceLabel}
                 </p>
-                {selectedThreadId ? (
-                  <p className="mt-1 text-[10px] text-foreground">
-                    Thread ativa: {threads.find((t) => t.threadId === selectedThreadId)?.label ?? "Operação"}
-                  </p>
+                {activeThreadContext.threadId ? (
+                  <>
+                    <p className="mt-1 text-[10px] text-foreground">
+                      Thread ativa: {activeThreadContext.threadLabel ?? "Operação"}
+                    </p>
+                    {activeThreadContext.runId ? (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Link
+                          to={`/app/runs?domain=imob&runId=${encodeURIComponent(activeThreadContext.runId)}`}
+                          className="rounded-full border border-white/15 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition hover:border-accent/40 hover:text-accent"
+                        >
+                          Ver execução
+                        </Link>
+                        <Link
+                          to={`/app/billing?runId=${encodeURIComponent(activeThreadContext.runId)}`}
+                          className="rounded-full border border-white/15 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition hover:border-accent/40 hover:text-accent"
+                        >
+                          Abrir reconciliação
+                        </Link>
+                      </div>
+                    ) : activeThreadContext.caseId ? (
+                      <p className="mt-2 text-[10px] text-muted-foreground">
+                        Esta thread já está vinculada a um caso. A execução ficará disponível assim que houver um run registrado.
+                      </p>
+                    ) : null}
+                  </>
                 ) : null}
               </div>
               <div className="flex items-center gap-2">
@@ -3467,6 +3608,34 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                 </span>
               </div>
             </header>
+            {imobAccessGate ? (
+              <div className="border-b border-white/10 px-4 py-4 sm:px-6">
+                <section className="rounded-2xl border border-rose-500/40 bg-rose-500/10 p-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.3em] text-rose-200">GateCard 403</p>
+                  <p className="mt-2 text-sm font-semibold text-rose-100">
+                    {resolveImobGateTitle(imobAccessGate.reasonCode)}
+                  </p>
+                  <p className="mt-2 text-sm text-rose-100">
+                    {resolveImobGateBody(imobAccessGate)}
+                  </p>
+                  <div className="mt-4 flex flex-wrap items-center gap-3">
+                    {imobAccessGate.cta?.target ? (
+                      <Link
+                        to={imobAccessGate.cta.target}
+                        className="rounded-full border border-rose-300/30 bg-rose-200/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-rose-100 transition hover:bg-rose-200/20"
+                      >
+                        {imobAccessGate.cta.label}
+                      </Link>
+                    ) : null}
+                    {imobAccessGate.traceId ? (
+                      <span className="text-[10px] uppercase tracking-[0.2em] text-rose-200/80">
+                        Trace: {imobAccessGate.traceId}
+                      </span>
+                    ) : null}
+                  </div>
+                </section>
+              </div>
+            ) : null}
             {contractInterviewState?.contractType &&
             contractDraftLines.length > 0 &&
             (contractInterviewState.status === "review" ||
@@ -3602,12 +3771,14 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                       ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-200"
                       : "border-accent/40 bg-accent/10 text-foreground";
                 const inlineChoicePresentation = isInlineChoicePresentation(message);
+                const runFinance = message.card?.runId ? runFinanceByRunId[message.card.runId] : null;
                 const showMessageCard =
                   Boolean(message.card) &&
                   message.card?.type !== "queue" &&
                   !(message.card?.type === "action" && message.card.compactConfirm) &&
                   message.card?.title !== "Lote processado" &&
                   !inlineChoicePresentation;
+                const messageCard = showMessageCard ? message.card ?? null : null;
                 const showBubble = isUser || Boolean(message.text.trim()) || showMessageCard || Boolean(message.form);
                 return (
                   <div key={message.id} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
@@ -3627,99 +3798,134 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                         >
                           {message.text.trim().length > 0 && !message.form ? <p className="whitespace-pre-wrap">{message.text}</p> : null}
 
-                          {message.card &&
-                          message.card.type === "queue" &&
-                          !(message.card.type === "action" && message.card.compactConfirm) ? null : null}
-
-                          {showMessageCard ? (
+                          {messageCard ? (
                             <div className="mt-3 rounded-xl border border-white/10 bg-surface/50 p-3">
                             <div className="flex items-center justify-between gap-2">
-                              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground">{message.card.title}</p>
-                              {message.card.type !== "action" ? (
+                              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground">{messageCard.title}</p>
+                              {messageCard.type !== "action" ? (
                                 <span className="rounded-full bg-black/25 px-2 py-0.5 text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
-                                  {getCardTypeChip(message.card.type)}
+                                  {getCardTypeChip(messageCard.type)}
                                 </span>
                               ) : null}
                             </div>
 
                             <ul className="mt-2 space-y-1 text-[10px] text-muted-foreground">
-                              {message.card.lines
+                              {messageCard.lines
                                 .filter((line, idx) => {
                                   if (idx !== 0) return true;
-                                  return !isCardLeadRedundant(message.text, message.card?.title ?? "", line);
+                                  return !isCardLeadRedundant(message.text, messageCard.title, line);
                                 })
                                 .map((line, idx) => (
                                 <li key={`${message.id}-line-${idx}`}>{line}</li>
                                 ))}
                             </ul>
 
-                            {message.card.knowledgeResults?.length ? (
+                            {runFinance ? (
+                              <div className="mt-3 rounded-lg border border-white/10 bg-black/20 p-2">
+                                <p className="text-[10px] tracking-[0.18em] text-muted-foreground">Execução</p>
+                                <div className="mt-1 flex flex-wrap gap-2">
+                                  <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-foreground">
+                                    Custo: {formatCurrencyCents(runFinance.amountCents)}
+                                  </span>
+                                  <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-foreground">
+                                    Tokens: {new Intl.NumberFormat("pt-BR").format(runFinance.tokens)}
+                                  </span>
+                                  <span
+                                    className={`rounded-full border px-2 py-1 text-[10px] ${
+                                      runFinance.hasGap
+                                        ? "border-amber-300/30 bg-amber-500/10 text-amber-100"
+                                        : "border-emerald-300/30 bg-emerald-500/10 text-emerald-100"
+                                    }`}
+                                  >
+                                    {runFinance.issueLabel}
+                                  </span>
+                                </div>
+                                {messageCard.runId ? (
+                                  <div className="mt-2 flex flex-wrap gap-2">
+                                    <Link
+                                      to={`/app/runs?domain=imob&runId=${encodeURIComponent(messageCard.runId)}`}
+                                      className="text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                                    >
+                                      Ver execução
+                                    </Link>
+                                    <Link
+                                      to={`/app/billing?runId=${encodeURIComponent(messageCard.runId)}`}
+                                      className="text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                                    >
+                                      Abrir reconciliação
+                                    </Link>
+                                  </div>
+                                ) : null}
+                              </div>
+                            ) : null}
+
+                            {messageCard.knowledgeResults?.length ? (
                               <div className="mt-3 space-y-3">
-                                {message.card.knowledgeResults.map((item) => (
+                                {messageCard.knowledgeResults.map((item) => (
                                   <KnowledgeCard
                                     key={`${message.id}-${item.id}`}
                                     item={item}
                                     sourceActions={selectKnowledgeCardActions(
-                                      mapKnowledgeActions(message.card?.ctas, messageThread?.id ?? null, withDashboardContext)
+                                      mapKnowledgeActions(messageCard.ctas, messageThread?.id ?? null, withDashboardContext)
                                     )}
                                   />
                                 ))}
                               </div>
                             ) : null}
 
-                            {SHOW_TECHNICAL_CHAT && message.card.risk ? (
+                            {SHOW_TECHNICAL_CHAT && messageCard.risk ? (
                               <div className="mt-3 rounded-lg border border-white/10 bg-surface/40 p-2">
                                 <p className="text-[10px] tracking-[0.18em] text-muted-foreground">Risco</p>
                                 <p className="mt-1 text-[10px] text-foreground">
-                                  Nível: <span className="uppercase">{message.card.risk.level}</span>
-                                  {typeof message.card.risk.trustScore === "number"
-                                    ? ` • Trust min ${message.card.risk.trustScore}`
+                                  Nível: <span className="uppercase">{messageCard.risk.level}</span>
+                                  {typeof messageCard.risk.trustScore === "number"
+                                    ? ` • Trust min ${messageCard.risk.trustScore}`
                                     : ""}
                                 </p>
-                                {message.card.risk.reason ? (
-                                  <p className="mt-1 text-[10px] text-muted-foreground">{message.card.risk.reason}</p>
+                                {messageCard.risk.reason ? (
+                                  <p className="mt-1 text-[10px] text-muted-foreground">{messageCard.risk.reason}</p>
                                 ) : null}
                               </div>
                             ) : null}
 
-                            {SHOW_TECHNICAL_CHAT && message.card.queue ? (
+                            {SHOW_TECHNICAL_CHAT && messageCard.queue ? (
                               <div className="mt-3 rounded-lg border border-white/10 bg-surface/40 p-2">
                                 <p className="text-[10px] tracking-[0.18em] text-muted-foreground">Fila</p>
                                 <p className="mt-1 text-[10px] text-foreground">
-                                  Status: {message.card.queue.status ?? "—"} • Step: {message.card.queue.step ?? "—"}
+                                  Status: {messageCard.queue.status ?? "—"} • Step: {messageCard.queue.step ?? "—"}
                                 </p>
                               </div>
                             ) : null}
 
-                            {SHOW_TECHNICAL_CHAT && message.card.proof ? (
+                            {SHOW_TECHNICAL_CHAT && messageCard.proof ? (
                               <div className="mt-3 rounded-lg border border-white/10 bg-surface/40 p-2">
                                 <p className="text-[10px] tracking-[0.18em] text-muted-foreground">Bloco de prova</p>
-                                <p className="mt-1 text-[10px] text-foreground">txId: {message.card.proof.txId ?? "pendente"}</p>
+                                <p className="mt-1 text-[10px] text-foreground">txId: {messageCard.proof.txId ?? "pendente"}</p>
                                 <p className="mt-1 text-[10px] text-foreground">
-                                  receipt: {message.card.proof.receiptPath ?? "não disponível"}
+                                  receipt: {messageCard.proof.receiptPath ?? "não disponível"}
                                 </p>
                                 <p className="mt-1 text-[10px] text-foreground">
-                                  bundle: {message.card.proof.bundlePath ?? "não disponível"}
+                                  bundle: {messageCard.proof.bundlePath ?? "não disponível"}
                                 </p>
                               </div>
                             ) : null}
 
                             {SHOW_TECHNICAL_CHAT &&
-                            message.card.runId &&
-                            !message.card.ctas?.some((cta) => cta.href?.includes("/app/runs")) ? (
+                            messageCard.runId &&
+                            !messageCard.ctas?.some((cta) => cta.href?.includes("/app/runs")) ? (
                               <div className="mt-3 flex flex-wrap gap-2">
                                 <Link
-                                  to={`/app/runs?domain=imob&runId=${encodeURIComponent(message.card.runId)}`}
+                                  to={`/app/runs?domain=imob&runId=${encodeURIComponent(messageCard.runId)}`}
                                   className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-foreground hover:border-accent/40"
                                 >
                                   Ver execução
                                 </Link>
                               </div>
                             ) : null}
-                            {message.card?.showConfirm &&
+                            {messageCard.showConfirm &&
                             pendingExecution &&
                             pendingExecution.messageId === message.id &&
-                            pendingExecution.thread.id === (message.thread?.id ?? message.card?.thread?.id) ? (
+                            pendingExecution.thread.id === (message.thread?.id ?? messageCard.thread?.id) ? (
                               <p className="mt-3 text-[10px] tracking-[0.18em] text-muted-foreground">
                                 Aguardando sua decisão para seguir.
                               </p>
@@ -4054,14 +4260,14 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                   <button
                     type="button"
                     onClick={() => setAttachmentMenuOpen((prev) => !prev)}
-                    disabled={uploadingDocuments || state === "typing" || state === "executing"}
+                    disabled={isGateBlocked || uploadingDocuments || state === "typing" || state === "executing"}
                     aria-label="Abrir menu de anexos"
                     title="Adicionar fotos e arquivos"
                     className="flex h-[24px] w-[24px] items-center justify-center rounded-full border-y border-white/12 bg-black/25 text-[10px] leading-none text-foreground transition hover:border-accent/40 hover:bg-black/30 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {uploadingDocuments ? "…" : "+"}
                   </button>
-                  {attachmentMenuOpen && !(uploadingDocuments || state === "typing" || state === "executing") ? (
+                  {attachmentMenuOpen && !(isGateBlocked || uploadingDocuments || state === "typing" || state === "executing") ? (
                     <div className="absolute bottom-full left-0 z-30 mb-1 w-[180px] overflow-hidden rounded-xl border border-white/10 bg-[#2f2f2f]/95 p-1.5 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur">
                       <button
                         type="button"
@@ -4086,14 +4292,15 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                       void handleSend();
                     }
                   }}
-                  placeholder="Descreva uma operação imobiliária..."
+                  placeholder={isGateBlocked ? "Acesso bloqueado para este workspace." : "Descreva uma operação imobiliária..."}
                   rows={1}
+                  disabled={isGateBlocked}
                   className="max-h-40 min-h-[46px] w-full resize-y rounded-xl bg-black/25 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => void handleSend()}
-                  disabled={uploadingDocuments || state === "typing" || state === "executing"}
+                  disabled={isGateBlocked || uploadingDocuments || state === "typing" || state === "executing"}
                   className="h-[46px] shrink-0 rounded-xl bg-black/25 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-foreground transition hover:bg-black/30 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {uploadingDocuments || state === "typing" || state === "executing" ? "Enviando..." : "Enviar"}

@@ -31,6 +31,14 @@ export class OpenAIProvider extends LLMProvider {
 
     const msg = json.choices?.[0]?.message?.content ?? "";
     const finish = json.choices?.[0]?.finish_reason ?? "stop";
+    const usage = json.usage
+      ? {
+          promptTokens: json.usage.prompt_tokens ?? undefined,
+          completionTokens: json.usage.completion_tokens ?? undefined,
+          cachedTokens: json.usage.prompt_tokens_details?.cached_tokens ?? undefined,
+          totalTokens: json.usage.total_tokens ?? undefined,
+        }
+      : null;
 
     return {
       id: json.id ?? "openai",
@@ -39,6 +47,8 @@ export class OpenAIProvider extends LLMProvider {
       finishReason: finish,
       provider: this.name,
       model,
+      requestId: json.id ?? "openai",
+      usage,
     };
   }
 }

@@ -1,5 +1,5 @@
 import { Response } from "express";
-import { recordGuardrailLedger } from "@eiah/core";
+import { recordGuardrailLedger } from "@eiah/core/services/guardrailLedgerStore";
 import { DEFAULT_TRUST_SCORE } from "../services/trustScoreEngine";
 import type { TenantAwareRequest } from "./enforceTenant";
 import { Prisma } from "@repo/db";

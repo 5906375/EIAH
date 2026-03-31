@@ -62,7 +62,10 @@ model Tenant {
   billingAccount       TenantBillingAccount?
   quotaPolicy          TenantQuotaPolicy?
   quotaUsages          TenantQuotaUsage[]
+  workspaceQuotaUsages WorkspaceQuotaUsage[]
   workspaceQuotaGrants WorkspaceQuotaGrant[]
+  workspaceAgentAssignments WorkspaceAgentAssignment[]
+  runUsageBreakdowns   RunUsageBreakdown[]
   billingLedgerEntries BillingLedger[]
   invoices             TenantInvoice[]
   helpdeskSessions     HelpdeskSession[]
@@ -94,7 +97,10 @@ model Workspace {
   guardrailAuditLedger GuardrailAuditLedger[]
   sclLedger            SclLedger[]
   agentTrustScores     AgentTrustScore[]
+  workspaceQuotaUsages WorkspaceQuotaUsage[]
   workspaceQuotaGrants WorkspaceQuotaGrant[]
+  workspaceAgentAssignments WorkspaceAgentAssignment[]
+  runUsageBreakdowns   RunUsageBreakdown[]
   billingLedgerEntries BillingLedger[]
   helpdeskSessions     HelpdeskSession[]
   productInstallations TenantProductInstallation[]
@@ -118,6 +124,7 @@ model User {
   apiTokens   ApiToken[]
   runEvents   RunEvent[]
   runs        Run[]
+  workspaceAgentAssignmentsSigned WorkspaceAgentAssignment[] @relation("WorkspaceAgentAssignmentSignedBy")
   tenant      Tenant     @relation(fields: [tenantId], references: [id])
   productInstallationsActivated TenantProductInstallation[] @relation("ProductInstallationActivatedBy")
 
@@ -172,7 +179,11 @@ model Run {
   tenantId     String        @map("tenant_id")
   workspaceId  String        @map("workspace_id")
   userId       String?       @map("user_id")
+  caseId       String?       @map("case_id")
+  threadId     String?       @map("thread_id")
   agent        String
+  agentVersion String?       @map("agent_version")
+  assignmentId String?       @map("assignment_id")
   status       RunStatus
   request      Json
   response     Json?
@@ -197,12 +208,17 @@ model Run {
   events       RunEvent[]
   guardrailLedgers GuardrailLedger[]
   billingLedgerEntries BillingLedger[]
+  usageBreakdowns      RunUsageBreakdown[]
   imobCaseEvents       ImobCaseEvent[]
+  assignment           WorkspaceAgentAssignment? @relation(fields: [assignmentId], references: [id])
   tenant       Tenant        @relation(fields: [tenantId], references: [id])
   user         User?         @relation(fields: [userId], references: [id])
   workspace    Workspace     @relation(fields: [workspaceId], references: [id])
 
   @@index([tenantId, workspaceId, agent, createdAt])
+  @@index([assignmentId])
+  @@index([caseId])
+  @@index([threadId])
   @@index([status])
   @@index([costCents])
   @@map("runs")
@@ -654,6 +670,27 @@ model TenantQuotaUsage {
   @@map("tenant_quota_usage")
 }
 
+model WorkspaceQuotaUsage {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  workspaceId String   @map("workspace_id")
+  cycleStart  DateTime @map("cycle_start")
+  cycleEnd    DateTime @map("cycle_end")
+  runs        Int      @default(0)
+  costCents   Int      @default(0) @map("cost_cents")
+  tokens      Int      @default(0)
+  storageMb   Int      @default(0) @map("storage_mb")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@unique([tenantId, workspaceId, cycleStart, cycleEnd], name: "workspace_quota_usage_cycle_unique")
+  @@index([tenantId, workspaceId, cycleStart, cycleEnd])
+  @@map("workspace_quota_usage")
+}
+
 model WorkspaceQuotaGrant {
   id                 String   @id @default(cuid())
   tenantId           String   @map("tenant_id")
@@ -671,6 +708,30 @@ model WorkspaceQuotaGrant {
   @@index([tenantId, enabled])
   @@index([workspaceId])
   @@map("workspace_quota_grant")
+}
+
+model WorkspaceAgentAssignment {
+  id             String   @id @default(cuid())
+  tenantId       String   @map("tenant_id")
+  workspaceId    String   @map("workspace_id")
+  agentKey       String   @map("agent_key")
+  agentVersion   String   @map("agent_version")
+  enabled        Boolean  @default(true)
+  signedByUserId String?  @map("signed_by_user_id")
+  signedAt       DateTime? @map("signed_at")
+  signatureRef   String?  @map("signature_ref")
+  metadata       Json?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  tenant         Tenant    @relation(fields: [tenantId], references: [id])
+  workspace      Workspace @relation(fields: [workspaceId], references: [id])
+  signedByUser   User?     @relation("WorkspaceAgentAssignmentSignedBy", fields: [signedByUserId], references: [id])
+  runs           Run[]
+
+  @@index([tenantId, workspaceId, agentKey])
+  @@unique([tenantId, workspaceId, agentKey, agentVersion], name: "workspace_agent_assignment_version_unique")
+  @@map("workspace_agent_assignments")
 }
 
 model BillingLedger {
@@ -695,6 +756,40 @@ model BillingLedger {
   @@index([tenantId, workspaceId, createdAt])
   @@index([runId])
   @@map("billing_ledger")
+}
+
+model RunUsageBreakdown {
+  id               String   @id @default(cuid())
+  runId            String   @map("run_id")
+  tenantId         String   @map("tenant_id")
+  workspaceId      String   @map("workspace_id")
+  agent            String
+  agentVersion     String?  @map("agent_version")
+  provider         String
+  model            String
+  pricingVersion   String   @map("pricing_version")
+  requestId        String   @map("request_id")
+  traceId          String?  @map("trace_id")
+  meterType        String   @map("meter_type")
+  requestClass     String   @map("request_class")
+  promptTokens     Int      @default(0) @map("prompt_tokens")
+  completionTokens Int      @default(0) @map("completion_tokens")
+  cachedTokens     Int      @default(0) @map("cached_tokens")
+  totalTokens      Int      @default(0) @map("total_tokens")
+  amountCents      Int      @default(0) @map("amount_cents")
+  currency         String   @default("BRL")
+  estimated        Boolean  @default(false)
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  run              Run      @relation(fields: [runId], references: [id])
+  tenant           Tenant   @relation(fields: [tenantId], references: [id])
+  workspace        Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@index([runId])
+  @@index([tenantId, workspaceId])
+  @@index([requestId])
+  @@unique([runId, requestId, meterType], name: "run_usage_breakdown_idempotency_unique")
+  @@map("run_usage_breakdowns")
 }
 
 model TenantInvoice {

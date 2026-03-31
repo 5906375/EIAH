@@ -388,7 +388,6 @@ agentsRouter.post("/agents/execute", async (req, res) => {
     agent,
     status: "pending",
     request: requestPayloadBase,
-    costCents: 0,
     traceId: null,
     finishedAt: null,
   });

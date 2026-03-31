@@ -520,7 +520,6 @@ runsRouter.post("/runs", async (req, res) => {
       agent,
       status: "blocked",
       request: requestPayload,
-      costCents: 0,
       traceId: null,
       finishedAt: new Date(),
       errorCode: "BILLING_GUARD_BLOCKED",
@@ -572,7 +571,6 @@ runsRouter.post("/runs", async (req, res) => {
       agent,
       status: "blocked",
       request: requestPayload,
-      costCents: 0,
       traceId: null,
       finishedAt: new Date(),
     });
@@ -613,7 +611,6 @@ runsRouter.post("/runs", async (req, res) => {
     agent,
     status: "pending",
     request: requestPayload,
-    costCents: estimate,
     traceId: null,
     finishedAt: null,
     approvalStatus: inferApprovalStatusFromMetadata(resolvedMetadata),

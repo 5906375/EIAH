@@ -1,9 +1,14 @@
-import { PrismaClient } from "./generated/client";
-import { tenantGuard } from "./middleware/tenantGuard";
+import { PrismaClient } from "./generated/client/index.js";
+import { tenantGuard } from "./middleware/tenantGuard.js";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
 
 const { Pool } = pg;
+const globalRef = globalThis as unknown as { __globalPrisma?: PrismaClient };
+
+let sharedPgPool: pg.Pool | undefined;
+let sharedPgAdapter: PrismaPg | undefined;
+const activeTenantClients = new Set<PrismaClient>();
 
 function getDatabaseUrl() {
   const url = process.env.DATABASE_URL;
@@ -16,22 +21,21 @@ function getDatabaseUrl() {
 }
 
 const sharedPool = (() => {
-  let pool: pg.Pool | undefined;
   return () => {
-    if (!pool) {
-      pool = new Pool({ connectionString: getDatabaseUrl() });
+    if (!sharedPgPool) {
+      sharedPgPool = new Pool({ connectionString: getDatabaseUrl() });
+      sharedPgPool.setMaxListeners(0);
     }
-    return pool;
+    return sharedPgPool;
   };
 })();
 
 const sharedAdapter = (() => {
-  let adapter: PrismaPg | undefined;
   return () => {
-    if (!adapter) {
-      adapter = new PrismaPg(sharedPool());
+    if (!sharedPgAdapter) {
+      sharedPgAdapter = new PrismaPg(sharedPool());
     }
-    return adapter;
+    return sharedPgAdapter;
   };
 })();
 
@@ -45,16 +49,14 @@ const sharedAdapter = (() => {
  * - FeatureFlags
  */
 const globalSingleton = (() => {
-  const g = globalThis as unknown as { __globalPrisma?: PrismaClient };
-
-  if (!g.__globalPrisma) {
-    g.__globalPrisma = new PrismaClient({
+  if (!globalRef.__globalPrisma) {
+    globalRef.__globalPrisma = new PrismaClient({
       log: ["warn", "error"],
       adapter: sharedAdapter(),
     });
   }
 
-  return g.__globalPrisma;
+  return globalRef.__globalPrisma;
 })();
 
 export const prismaGlobal = globalSingleton;
@@ -76,10 +78,31 @@ export function getPrismaForTenant(tenantId: string, workspaceId: string) {
     log: ["warn", "error"],
     adapter: sharedAdapter(),
   });
+  activeTenantClients.add(prisma);
 
   // ✅ Prisma 7+: Client Extensions substituem middlewares $use
   // `tenantGuard` deve exportar um objeto compatível com $extends()
   return prisma.$extends(tenantGuard(tenantId, workspaceId));
+}
+
+export async function closePrismaResources() {
+  if (activeTenantClients.size > 0) {
+    const clients = Array.from(activeTenantClients);
+    activeTenantClients.clear();
+    await Promise.allSettled(clients.map((client) => client.$disconnect()));
+  }
+
+  if (globalRef.__globalPrisma) {
+    await globalRef.__globalPrisma.$disconnect();
+    delete globalRef.__globalPrisma;
+  }
+
+  if (sharedPgPool) {
+    await sharedPgPool.end();
+    sharedPgPool = undefined;
+  }
+
+  sharedPgAdapter = undefined;
 }
 
 // Reexporta a classe original, caso seja necessária externamente

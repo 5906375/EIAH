@@ -3,9 +3,9 @@ import {
   PlanSpec,
   PlanSpecSchema,
   evaluatePlanSpecAdditionalInfo,
-  publishAction,
   type NeedMoreInfoPayload,
-} from "@eiah/core";
+} from "@eiah/contracts";
+import { publishAction } from "@eiah/core/queue/actionQueue";
 
 export function safeParsePlanSpec(candidate: unknown) {
   return PlanSpecSchema.safeParse(candidate);

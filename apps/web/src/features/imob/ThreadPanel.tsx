@@ -107,6 +107,8 @@ type ThreadPanelProps = {
   showNavigationCtas?: boolean;
   showTimelineLegend?: boolean;
   resolveDashboardHref?: (href: string, thread: ImobChatThread) => string;
+  resolveRunHref?: (thread: ImobChatThread) => string | null;
+  resolveReconciliationHref?: (thread: ImobChatThread) => string | null;
 };
 
 export const ThreadPanel: React.FC<ThreadPanelProps> = ({
@@ -119,6 +121,8 @@ export const ThreadPanel: React.FC<ThreadPanelProps> = ({
   showNavigationCtas = true,
   showTimelineLegend = false,
   resolveDashboardHref,
+  resolveRunHref,
+  resolveReconciliationHref,
 }) => {
   const [showDetails, setShowDetails] = React.useState(false);
 
@@ -159,6 +163,8 @@ export const ThreadPanel: React.FC<ThreadPanelProps> = ({
             const threadCtaHref = resolveDashboardHref
               ? resolveDashboardHref(threadCta.href, thread)
               : threadCta.href;
+            const threadRunHref = resolveRunHref ? resolveRunHref(thread) : null;
+            const threadReconciliationHref = resolveReconciliationHref ? resolveReconciliationHref(thread) : null;
             const timeline = getThreadtimeline(thread);
             return (
               <div
@@ -210,7 +216,7 @@ export const ThreadPanel: React.FC<ThreadPanelProps> = ({
                   </p>
                 </button>
                 {showDetails && showNavigationCtas ? (
-                  <div className="mt-2 flex items-center gap-2">
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
                     <button
                       type="button"
                       onClick={() => onSelectThread(thread)}
@@ -224,6 +230,22 @@ export const ThreadPanel: React.FC<ThreadPanelProps> = ({
                     >
                       {threadCta.label}
                     </Link>
+                    {threadRunHref ? (
+                      <Link
+                        to={threadRunHref}
+                        className="rounded-full border border-white/20 bg-white/10 px-2 py-1 text-[10px] text-foreground transition hover:border-accent/40"
+                      >
+                        Ver execução
+                      </Link>
+                    ) : null}
+                    {threadReconciliationHref ? (
+                      <Link
+                        to={threadReconciliationHref}
+                        className="rounded-full border border-white/20 bg-white/10 px-2 py-1 text-[10px] text-foreground transition hover:border-accent/40"
+                      >
+                        Reconciliação
+                      </Link>
+                    ) : null}
                   </div>
                 ) : null}
               </div>

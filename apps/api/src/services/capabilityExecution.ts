@@ -1,4 +1,6 @@
+import type { ChatCompletionUsage } from "@eiah/core/llm/types";
 import { executeLlmStep, type LlmExecutorParams, type LlmExecutorResult } from "../orchestrator/llmExecutor";
+import { recordRunUsageBreakdown } from "./billing";
 
 export const CANONICAL_CAPABILITIES = [
   "chat_response",
@@ -33,6 +35,8 @@ export type CapabilityResult = {
   output: Record<string, unknown>;
   providerUsed?: string;
   modelUsed?: string;
+  requestId?: string;
+  usage?: ChatCompletionUsage | null;
   normalized: boolean;
   telemetryRef?: string;
   rawResponse?: unknown;
@@ -181,12 +185,64 @@ function normalizeCapabilityResult(
     },
     providerUsed,
     modelUsed,
+    requestId: llmResult.requestId,
+    usage: llmResult.usage ?? null,
     normalized: true,
     telemetryRef: llmResult.traceId,
     rawResponse: llmResult.rawResponse,
     tookMs: llmResult.tookMs,
     routeAttempted: attemptedRoutes,
   };
+}
+
+async function recordCapabilityUsage(
+  params: CapabilityExecutionParams,
+  route: CapabilityExecutionRoute,
+  llmResult: LlmExecutorResult
+) {
+  const runId =
+    params.request.context && typeof params.request.context.runId === "string"
+      ? params.request.context.runId
+      : null;
+  const tenantId = params.request.policyContext?.tenantId ?? null;
+  const workspaceId = params.request.policyContext?.workspaceId ?? null;
+  const requestId = llmResult.requestId?.trim();
+  if (!runId || !tenantId || !workspaceId || !requestId) {
+    return;
+  }
+
+  const usage = llmResult.usage ?? null;
+  const totalTokens =
+    usage?.totalTokens ??
+    (usage?.promptTokens ?? 0) + (usage?.completionTokens ?? 0) + (usage?.cachedTokens ?? 0);
+
+  await recordRunUsageBreakdown({
+    tenantId,
+    workspaceId,
+    runId,
+    agent:
+      typeof params.metadata?.agentId === "string" && params.metadata.agentId.trim().length > 0
+        ? params.metadata.agentId.trim()
+        : params.request.capability,
+    agentVersion:
+      typeof params.metadata?.agentVersion === "string" && params.metadata.agentVersion.trim().length > 0
+        ? params.metadata.agentVersion.trim()
+        : null,
+    provider: llmResult.provider ?? route.provider,
+    model: llmResult.model ?? stripProviderPrefix(route.model),
+    pricingVersion: "provider-usage.v1",
+    requestId,
+    traceId: llmResult.traceId ?? null,
+    meterType: "llm_completion",
+    requestClass: params.request.capability,
+    promptTokens: usage?.promptTokens ?? 0,
+    completionTokens: usage?.completionTokens ?? 0,
+    cachedTokens: usage?.cachedTokens ?? 0,
+    totalTokens,
+    amountCents: 0,
+    currency: "BRL",
+    estimated: true,
+  });
 }
 
 export function buildCapabilityExecutionPlan(params: CapabilityExecutionParams): CapabilityExecutionPlan {
@@ -256,6 +312,8 @@ export async function executeCapability(params: CapabilityExecutionParams): Prom
         userPrompt: params.userPrompt,
         metadata: buildCapabilityMetadata(params, route, plan, index),
       });
+
+      await recordCapabilityUsage(params, route, result);
 
       return normalizeCapabilityResult(route, attemptedRoutes, result, index > 0);
     } catch (error) {

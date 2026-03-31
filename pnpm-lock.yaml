@@ -54,6 +54,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@eiah/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@eiah/core':
         specifier: workspace:*
         version: link:../../packages/core

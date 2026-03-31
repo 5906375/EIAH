@@ -23,19 +23,26 @@ const channelKey = (params: { tenantId: string; workspaceId: string; runId: stri
   `${params.tenantId}:${params.workspaceId}:${params.runId}`;
 
 const redisUrl = process.env.RUN_EVENTS_REDIS_URL || process.env.REDIS_URL;
-const redisSubscriber = redisUrl ? new Redis(redisUrl) : null;
+let redisSubscriber: Redis | null = null;
 const subscriptionCount = new Map<string, number>();
 
-redisSubscriber?.on("message", (channel, message) => {
-  try {
-    const event = JSON.parse(message) as RunEvent;
-    emitter.emit(channel, event);
-  } catch (err) {
-    // apenas loga no stderr local; não interrompe SSE
-    // eslint-disable-next-line no-console
-    console.error("runEventStream.redis_parse_error", err);
+function getRedisSubscriber() {
+  if (!redisUrl) return null;
+  if (!redisSubscriber) {
+    redisSubscriber = new Redis(redisUrl);
+    redisSubscriber.on("message", (channel, message) => {
+      try {
+        const event = JSON.parse(message) as RunEvent;
+        emitter.emit(channel, event);
+      } catch (err) {
+        // apenas loga no stderr local; não interrompe SSE
+        // eslint-disable-next-line no-console
+        console.error("runEventStream.redis_parse_error", err);
+      }
+    });
   }
-});
+  return redisSubscriber;
+}
 
 export function publishRunEventToStream(event: RunEvent) {
   emitter.emit(
@@ -55,10 +62,11 @@ export function subscribeToRunEventStream(
   const channel = channelKey(params);
   emitter.on(channel, subscriber);
 
-  if (redisSubscriber) {
+  const subscriberClient = getRedisSubscriber();
+  if (subscriberClient) {
     const count = subscriptionCount.get(channel) ?? 0;
     if (count === 0) {
-      redisSubscriber.subscribe(`run-events:${channel}`).catch((err) => {
+      subscriberClient.subscribe(`run-events:${channel}`).catch((err) => {
         // eslint-disable-next-line no-console
         console.error("runEventStream.redis_subscribe_error", err);
       });
@@ -69,12 +77,12 @@ export function subscribeToRunEventStream(
   return () => {
     emitter.off(channel, subscriber);
 
-    if (redisSubscriber) {
+    if (subscriberClient) {
       const count = subscriptionCount.get(channel) ?? 0;
       const next = Math.max(count - 1, 0);
       if (next === 0) {
         subscriptionCount.delete(channel);
-        redisSubscriber.unsubscribe(`run-events:${channel}`).catch((err) => {
+        subscriberClient.unsubscribe(`run-events:${channel}`).catch((err) => {
           // eslint-disable-next-line no-console
           console.error("runEventStream.redis_unsubscribe_error", err);
         });
@@ -83,4 +91,14 @@ export function subscribeToRunEventStream(
       }
     }
   };
+}
+
+export async function closeRunEventStream() {
+  subscriptionCount.clear();
+  emitter.removeAllListeners();
+  if (redisSubscriber) {
+    const current = redisSubscriber;
+    redisSubscriber = null;
+    await current.quit().catch(() => current.disconnect());
+  }
 }
