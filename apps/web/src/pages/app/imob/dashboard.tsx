@@ -8,32 +8,16 @@ import {
   apiListImobChatThreads,
   apiListImobOwners,
   apiListImobProperties,
+  apiListRuns,
   type ImobCase,
   type ImobChatThread,
   type ImobOwner,
   type ImobProperty,
+  type Run,
 } from "@/lib/api";
+import { ImobAccessGateCard } from "@/components/imob/ImobAccessGateCard";
+import { resolveImobAccessGateCopy } from "@/features/imob/accessGateCatalog";
 import { ThreadPanel } from "@/features/imob/ThreadPanel";
-
-function resolveImobGateTitle(reasonCode?: string) {
-  if (reasonCode === "IMOB_INSTALLATION_INACTIVE") return "Instalação inativa";
-  if (reasonCode === "IMOB_PERMISSION_DENIED") return "Acesso restrito";
-  return "Acesso indisponível";
-}
-
-function resolveImobGateBody(gate: {
-  reasonCode?: string;
-  message?: string;
-}) {
-  if (gate.message?.trim()) return gate.message.trim();
-  if (gate.reasonCode === "IMOB_INSTALLATION_INACTIVE") {
-    return "A instalação do IMOB neste workspace não está ativa. Reative a instalação para usar este recurso.";
-  }
-  if (gate.reasonCode === "IMOB_PERMISSION_DENIED") {
-    return "Você não possui permissão para usar o IMOB neste workspace.";
-  }
-  return "IMOB não está habilitado neste workspace. É necessária uma instalação ativa para usar este recurso.";
-}
 
 type Section = "imoveis" | "processos" | "parceiros";
 
@@ -193,6 +177,7 @@ const ImobDashboardPage: React.FC = () => {
   const [owners, setOwners] = React.useState<ImobOwner[]>([]);
   const [properties, setProperties] = React.useState<ImobProperty[]>([]);
   const [cases, setCases] = React.useState<ImobCase[]>([]);
+  const [runs, setRuns] = React.useState<Run[]>([]);
   const [dashboardLoading, setDashboardLoading] = React.useState(true);
   const [dashboardError, setDashboardError] = React.useState<string | null>(null);
   const [dashboardSource, setDashboardSource] = React.useState<DashboardSource>("empty");
@@ -256,6 +241,7 @@ const ImobDashboardPage: React.FC = () => {
       setOwners([]);
       setProperties([]);
       setCases([]);
+      setRuns([]);
       setDashboardSource("empty");
       setDashboardError(null);
       setDashboardLoading(false);
@@ -266,26 +252,36 @@ const ImobDashboardPage: React.FC = () => {
     setDashboardLoading(true);
     setDashboardError(null);
 
-    Promise.all([apiListImobOwners(), apiListImobProperties(), apiListImobCases()])
-      .then(([ownersResponse, propertiesResponse, casesResponse]) => {
+    Promise.all([apiListImobOwners(), apiListImobProperties(), apiListImobCases(), apiListRuns({ page: 1, size: 100, workspaceId: session.workspaceId })])
+      .then(([ownersResponse, propertiesResponse, casesResponse, runsResponse]) => {
         if (!mounted) return;
         const nextOwners = ownersResponse.data.items ?? [];
         const nextProperties = propertiesResponse.data.items ?? [];
         const nextCases = casesResponse.data.items ?? [];
+        const nextRuns = (runsResponse.items ?? []).filter((run) => {
+          const request =
+            run.request && typeof run.request === "object" ? (run.request as Record<string, unknown>) : null;
+          const action = typeof request?.action === "string" ? String(request.action) : run.agent;
+          return action.includes("realestate.") || action.toLowerCase().includes("imob") || Boolean(run.caseId) || Boolean(run.threadId);
+        });
         setOwners(nextOwners);
         setProperties(nextProperties);
         setCases(nextCases);
-        setDashboardSource(nextOwners.length > 0 || nextProperties.length > 0 || nextCases.length > 0 ? "real" : "empty");
+        setRuns(nextRuns);
+        setDashboardSource(
+          nextOwners.length > 0 || nextProperties.length > 0 || nextCases.length > 0 || nextRuns.length > 0 ? "real" : "empty"
+        );
       })
       .catch((error) => {
         if (!mounted) return;
         setOwners([]);
         setProperties([]);
         setCases([]);
+        setRuns([]);
         setDashboardSource("empty");
         if (error instanceof ApiError && error.status === 403 && error.body && typeof error.body === "object") {
           const payload = error.body as { error?: { message?: string; reasonCode?: string } };
-          setDashboardError(resolveImobGateBody(payload.error ?? {}));
+          setDashboardError(resolveImobAccessGateCopy(payload.error).body);
         } else {
           setDashboardError(error instanceof Error ? error.message : "Falha ao carregar CRM operacional do IMOB");
         }
@@ -379,6 +375,56 @@ const ImobDashboardPage: React.FC = () => {
   const evidencedProcessCount = cases.filter((item) => (item._count?.events ?? 0) > 0).length;
   const readyForReviewCount = properties.filter((item) => item.status === "ready_for_review").length;
   const ownerPendingCount = owners.filter((item) => asStringList(item.pendingItems).length > 0).length;
+  const caseRunMap = React.useMemo(() => {
+    const map = new Map<string, Run[]>();
+    for (const run of runs) {
+      const keys = [run.caseId ?? null, run.threadId ?? null].filter(
+        (value): value is string => typeof value === "string" && value.trim().length > 0
+      );
+      for (const key of keys) {
+        const current = map.get(key) ?? [];
+        current.push(run);
+        map.set(key, current);
+      }
+    }
+    return map;
+  }, [runs]);
+  const totalImobRunCostCents = React.useMemo(
+    () => runs.reduce((sum, run) => sum + (typeof run.costCents === "number" ? run.costCents : 0), 0),
+    [runs]
+  );
+  const casesWithRunCount = React.useMemo(
+    () =>
+      cases.filter((item) => {
+        const byCase = caseRunMap.get(item.id)?.length ?? 0;
+        const byThread = item.threadId ? caseRunMap.get(item.threadId)?.length ?? 0 : 0;
+        return byCase + byThread > 0;
+      }).length,
+    [caseRunMap, cases]
+  );
+  const averageCaseCostCents = casesWithRunCount > 0 ? Math.round(totalImobRunCostCents / casesWithRunCount) : 0;
+  const stageCostSummary = React.useMemo(() => {
+    const grouped = new Map<string, { cases: number; costCents: number }>();
+    for (const item of cases) {
+      const relatedRuns = [
+        ...(caseRunMap.get(item.id) ?? []),
+        ...(item.threadId ? caseRunMap.get(item.threadId) ?? [] : []),
+      ];
+      const costCents = relatedRuns.reduce(
+        (sum, run) => sum + (typeof run.costCents === "number" ? run.costCents : 0),
+        0
+      );
+      const key = formatCaseFlowLabel(item.flow);
+      const current = grouped.get(key) ?? { cases: 0, costCents: 0 };
+      current.cases += 1;
+      current.costCents += costCents;
+      grouped.set(key, current);
+    }
+    return Array.from(grouped.entries())
+      .map(([label, value]) => ({ label, ...value }))
+      .sort((a, b) => b.costCents - a.costCents);
+  }, [caseRunMap, cases]);
+  const topCostStage = stageCostSummary[0] ?? null;
 
   const latestCaseByOwnerId = React.useMemo(() => {
     const map = new Map<string, ImobCase>();
@@ -405,6 +451,27 @@ const ImobDashboardPage: React.FC = () => {
         <p className="mt-3 text-xs uppercase tracking-[0.22em] text-muted-foreground/80">
           {brandName} • {workspaceLabel}
         </p>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Custo operacional IMOB</p>
+            <p className="mt-2 text-2xl font-semibold text-foreground">{currencyFromCents(totalImobRunCostCents)}</p>
+          </article>
+          <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Casos com run</p>
+            <p className="mt-2 text-2xl font-semibold text-foreground">{casesWithRunCount}</p>
+          </article>
+          <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Custo médio por caso</p>
+            <p className="mt-2 text-2xl font-semibold text-foreground">{currencyFromCents(averageCaseCostCents)}</p>
+          </article>
+          <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Etapa mais custosa</p>
+            <p className="mt-2 text-sm font-semibold text-foreground">{topCostStage?.label ?? "-"}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {topCostStage ? currencyFromCents(topCostStage.costCents) : "Sem custo ainda"}
+            </p>
+          </article>
+        </div>
         <div className="mt-4 flex flex-wrap gap-2">
           <Link
             to={backToChatHref}
@@ -430,30 +497,7 @@ const ImobDashboardPage: React.FC = () => {
       </header>
 
       {imobAccessGate ? (
-        <section className="rounded-2xl border border-rose-500/40 bg-rose-500/10 p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-rose-200">GateCard 403</p>
-          <p className="mt-2 text-sm font-semibold text-rose-100">
-            {resolveImobGateTitle(imobAccessGate.reasonCode)}
-          </p>
-          <p className="mt-2 text-sm text-rose-100">
-            {resolveImobGateBody(imobAccessGate)}
-          </p>
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            {imobAccessGate.cta?.target ? (
-              <Link
-                to={imobAccessGate.cta.target}
-                className="rounded-full border border-rose-300/30 bg-rose-200/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-rose-100 transition hover:bg-rose-200/20"
-              >
-                {imobAccessGate.cta.label}
-              </Link>
-            ) : null}
-            {imobAccessGate.traceId ? (
-              <span className="text-[10px] uppercase tracking-[0.2em] text-rose-200/80">
-                Trace: {imobAccessGate.traceId}
-              </span>
-            ) : null}
-          </div>
-        </section>
+        <ImobAccessGateCard gate={imobAccessGate} />
       ) : null}
 
       {dashboardError ? (
@@ -548,6 +592,27 @@ const ImobDashboardPage: React.FC = () => {
 
           <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 sm:p-6">
             <div className="flex items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">Custo resumido do funil</h2>
+              <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                {stageCostSummary.length} etapa(s)
+              </span>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {stageCostSummary.slice(0, 6).map((item) => (
+                <article key={item.label} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <p className="text-sm font-semibold text-foreground">{item.label}</p>
+                  <p className="mt-2 text-lg font-semibold text-foreground">{currencyFromCents(item.costCents)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{item.cases} caso(s)</p>
+                </article>
+              ))}
+              {stageCostSummary.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhum custo operacional associado ao funil IMOB neste recorte.</p>
+              ) : null}
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 sm:p-6">
+            <div className="flex items-center justify-between gap-2">
               <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">Processos</h2>
               <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                 {dashboardLoading ? "atualizando" : dashboardSource === "real" ? "dados ao vivo" : "sem processos cadastrados"}
@@ -573,6 +638,15 @@ const ImobDashboardPage: React.FC = () => {
                       threadId: item.threadId ?? null,
                       autoprompt: "o que falta nesse caso",
                     });
+                    const relatedRuns = [
+                      ...(caseRunMap.get(item.id) ?? []),
+                      ...(item.threadId ? caseRunMap.get(item.threadId) ?? [] : []),
+                    ];
+                    const latestRun = relatedRuns[0] ?? null;
+                    const relatedCostCents = relatedRuns.reduce(
+                      (sum, run) => sum + (typeof run.costCents === "number" ? run.costCents : 0),
+                      0
+                    );
                     return (
                     <tr key={item.id} className="border-b border-white/5 text-muted-foreground">
                       <td className="px-3 py-3 text-foreground"><Link to={href} className="hover:text-accent">{formatCaseFlowLabel(item.flow)}</Link></td>
@@ -584,7 +658,28 @@ const ImobDashboardPage: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-3 py-3">{item.ownerResponsible || "Responsável não definido"}</td>
-                      <td className="px-3 py-3 text-xs">{item._count?.events ?? 0}</td>
+                      <td className="px-3 py-3 text-xs">
+                        <div className="space-y-1">
+                          <p>{item._count?.events ?? 0} evento(s)</p>
+                          <p className="text-foreground">{currencyFromCents(relatedCostCents)}</p>
+                          {latestRun ? (
+                            <div className="flex flex-wrap gap-2">
+                              <Link
+                                to={`/app/runs?domain=imob&runId=${encodeURIComponent(latestRun.id)}`}
+                                className="text-[10px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                              >
+                                execução
+                              </Link>
+                              <Link
+                                to={`/app/billing?runId=${encodeURIComponent(latestRun.id)}`}
+                                className="text-[10px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                              >
+                                reconciliação
+                              </Link>
+                            </div>
+                          ) : null}
+                        </div>
+                      </td>
                     </tr>
                     );
                   })}

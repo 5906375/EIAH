@@ -617,6 +617,8 @@ export async function getAgentBillingSummary(
       runId: true,
       agent: true,
       agentVersion: true,
+      provider: true,
+      model: true,
       amountCents: true,
       totalTokens: true,
     },
@@ -624,7 +626,23 @@ export async function getAgentBillingSummary(
 
   const grouped = new Map<
     string,
-    { agent: string; agentVersion: string | null; runs: Set<string>; costCents: number; tokens: number }
+    {
+      agent: string;
+      agentVersion: string | null;
+      runs: Set<string>;
+      costCents: number;
+      tokens: number;
+      byModel: Map<
+        string,
+        {
+          provider: string;
+          model: string;
+          runs: Set<string>;
+          costCents: number;
+          tokens: number;
+        }
+      >;
+    }
   >();
 
   for (const item of items) {
@@ -637,10 +655,25 @@ export async function getAgentBillingSummary(
         runs: new Set<string>(),
         costCents: 0,
         tokens: 0,
+        byModel: new Map(),
       };
     current.runs.add(item.runId);
     current.costCents += item.amountCents ?? 0;
     current.tokens += item.totalTokens ?? 0;
+    const modelKey = `${item.provider}::${item.model}`;
+    const currentModel =
+      current.byModel.get(modelKey) ??
+      {
+        provider: item.provider,
+        model: item.model,
+        runs: new Set<string>(),
+        costCents: 0,
+        tokens: 0,
+      };
+    currentModel.runs.add(item.runId);
+    currentModel.costCents += item.amountCents ?? 0;
+    currentModel.tokens += item.totalTokens ?? 0;
+    current.byModel.set(modelKey, currentModel);
     grouped.set(key, current);
   }
 
@@ -650,6 +683,15 @@ export async function getAgentBillingSummary(
     runs: item.runs.size,
     costCents: item.costCents,
     tokens: item.tokens,
+    byModel: Array.from(item.byModel.values())
+      .map((model) => ({
+        provider: model.provider,
+        model: model.model,
+        runs: model.runs.size,
+        costCents: model.costCents,
+        tokens: model.tokens,
+      }))
+      .sort((a, b) => b.costCents - a.costCents),
   }));
 }
 

@@ -4,6 +4,7 @@ import introJs from "intro.js";
 import "intro.js/minified/introjs.min.css";
 import AgentSelect from "../../../components/agents/AgentSelect";
 import CostBadge from "../../../components/billing/CostBadge";
+import { ImobAccessGateCard } from "@/components/imob/ImobAccessGateCard";
 import RunViewer from "../../../components/runs/RunViewer";
 import { RUN_STATUS_STYLES } from "@/components/runs/statusStyles";
 import {
@@ -69,28 +70,6 @@ function formatMeterTypeLabel(value: string) {
   if (value === "vision") return "Vision";
   if (value === "embedding") return "Embedding";
   return value || "—";
-}
-
-function resolveImobGateTitle(reasonCode?: string) {
-  if (reasonCode === "IMOB_INSTALLATION_INACTIVE") return "Instalação inativa";
-  if (reasonCode === "IMOB_PERMISSION_DENIED") return "Acesso restrito";
-  return "Acesso indisponível";
-}
-
-function resolveImobGateBody(gate: {
-  reasonCode?: string;
-  message?: string;
-  scope?: { workspaceId: string };
-  traceId?: string;
-}) {
-  if (gate.message?.trim()) return gate.message.trim();
-  if (gate.reasonCode === "IMOB_INSTALLATION_INACTIVE") {
-    return "A instalação do IMOB neste workspace não está ativa. Reative a instalação para acessar a Central Operacional.";
-  }
-  if (gate.reasonCode === "IMOB_PERMISSION_DENIED") {
-    return "Você não possui permissão para acessar a Central Operacional do IMOB neste workspace.";
-  }
-  return "IMOB não está habilitado neste workspace. É necessária uma instalação ativa para acessar a Central Operacional.";
 }
 
 function imobCaseAgeHours(updatedAt: string) {
@@ -459,7 +438,7 @@ function buildImobArtifactViewModel(payload: any) {
     entityActions: buildImobEntityActions(root).map((item) => item.label),
     operationalLinks: buildImobOperationalLinks(root),
     operationalActions: buildImobOperationalLinks(root).map((item) => item.label),
-    history: events.slice(0, 20).map((event) => {
+    history: events.slice(0, 20).map((event: any) => {
       if (typeof event.summary === "string" && event.summary.trim().length > 0) return event.summary;
       return "Evento operacional registrado.";
     }),
@@ -847,6 +826,59 @@ const RunsPage: React.FC = () => {
     () => selectedRunReconciliation?.items.orphanUsage ?? [],
     [selectedRunReconciliation]
   );
+  const selectedRunBreakdownByModel = useMemo(() => {
+    const groups = new Map<
+      string,
+      {
+        provider: string;
+        model: string;
+        amountCents: number;
+        tokens: number;
+        requests: number;
+        estimatedRequests: number;
+      }
+    >();
+    for (const item of selectedRunBreakdownItems) {
+      const key = `${item.provider}::${item.model}`;
+      const current = groups.get(key) ?? {
+        provider: item.provider,
+        model: item.model,
+        amountCents: 0,
+        tokens: 0,
+        requests: 0,
+        estimatedRequests: 0,
+      };
+      current.amountCents += item.amountCents;
+      current.tokens += item.totalTokens;
+      current.requests += 1;
+      if (item.estimated) current.estimatedRequests += 1;
+      groups.set(key, current);
+    }
+    return Array.from(groups.values()).sort((a, b) => b.amountCents - a.amountCents);
+  }, [selectedRunBreakdownItems]);
+  const selectedRunNarrative = useMemo(() => {
+    if (!selectedRun?.id) {
+      return {
+        title: "Resumo executivo",
+        lines: ["Selecione um run para ver o custo, o uso de tokens e a situação financeira desta execução."],
+      };
+    }
+    const topModel = selectedRunBreakdownByModel[0] ?? null;
+    const hasEstimated = selectedRunBreakdownItems.some((item) => item.estimated);
+    return {
+      title: "Resumo não técnico",
+      lines: [
+        `Esta execução consumiu ${selectedRunFinance.amountLabel} e ${selectedRunFinance.tokens} tokens.`,
+        topModel
+          ? `O maior peso de custo veio de ${topModel.provider} / ${topModel.model}, com ${centsToBRL(topModel.amountCents) ?? "—"}.`
+          : "Não há breakdown operacional suficiente para apontar provider/model dominante.",
+        selectedRunFinance.hasGap
+          ? `A reconciliação está com alerta: ${selectedRunFinance.issueLabel.toLowerCase()}.`
+          : "A reconciliação financeira deste run está consistente.",
+        hasEstimated ? "Há linhas estimadas no breakdown; o custo pode ser refinado quando o provider devolver usage real." : "Todas as linhas disponíveis já vieram com breakdown operacional registrado.",
+      ],
+    };
+  }, [selectedRun?.id, selectedRunBreakdownByModel, selectedRunBreakdownItems, selectedRunFinance]);
   const selectedRunImobContext = useMemo(() => extractImobContextFromRun(selectedRun), [selectedRun]);
   const selectedRunImobHref = useMemo(() => {
     if (!selectedRunImobContext.caseId && !selectedRunImobContext.threadId) return null;
@@ -871,6 +903,35 @@ const RunsPage: React.FC = () => {
       return "Agora";
     }
   }, [lastUpdatedAt]);
+
+  const onExportRunFinance = useCallback(() => {
+    if (!selectedRun?.id) return;
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      run: {
+        id: selectedRun.id,
+        agent: selectedRun.agent,
+        status: selectedRun.status,
+        workspaceId: selectedRun.workspaceId,
+        costCents: selectedRun.costCents ?? null,
+        startedAt: selectedRun.startedAt ?? null,
+        finishedAt: selectedRun.finishedAt ?? null,
+        traceId: getStringValue(selectedRun.meta?.traceId) ?? null,
+        caseId: selectedRun.caseId ?? null,
+        threadId: selectedRun.threadId ?? null,
+      },
+      costBreakdown: selectedRunCost,
+      reconciliation: selectedRunReconciliation,
+      groupedByProviderModel: selectedRunBreakdownByModel,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `run-finance-${selectedRun.id}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }, [selectedRun, selectedRunBreakdownByModel, selectedRunCost, selectedRunReconciliation]);
 
   const fetchTenantQuota = useCallback(async () => {
     try {
@@ -1325,30 +1386,7 @@ const RunsPage: React.FC = () => {
             </div>
           </section>
         ) : (
-          <section className="rounded-2xl border border-rose-500/40 bg-rose-500/10 p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-rose-200">GateCard 403</p>
-            <p className="mt-2 text-sm font-semibold text-rose-100">
-              {resolveImobGateTitle(imobAccessGate?.reasonCode)}
-            </p>
-            <p className="mt-2 text-sm text-rose-100">
-              {resolveImobGateBody(imobAccessGate ?? {})}
-            </p>
-            <div className="mt-4 flex flex-wrap items-center gap-3">
-              {imobAccessGate?.cta?.target ? (
-                <Link
-                  to={imobAccessGate.cta.target}
-                  className="rounded-full border border-rose-300/30 bg-rose-200/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-rose-100 transition hover:bg-rose-200/20"
-                >
-                  {imobAccessGate.cta.label}
-                </Link>
-              ) : null}
-              {imobAccessGate?.traceId ? (
-                <span className="text-[10px] uppercase tracking-[0.2em] text-rose-200/80">
-                  Trace: {imobAccessGate.traceId}
-                </span>
-              ) : null}
-            </div>
-          </section>
+          <ImobAccessGateCard gate={imobAccessGate} />
         )
       ) : null}
 
@@ -1613,6 +1651,15 @@ const RunsPage: React.FC = () => {
                       Abrir caso IMOB
                     </Link>
                   ) : null}
+                  {selectedRun?.id ? (
+                    <button
+                      type="button"
+                      onClick={onExportRunFinance}
+                      className="pill hover:border-accent/40 hover:text-foreground"
+                    >
+                      Exportar detalhe financeiro
+                    </button>
+                  ) : null}
                   <span className={`pill ${selectedRunFinance.hasGap ? "bg-amber-500/15 text-amber-200" : ""}`}>
                     {selectedRunFinance.issueLabel}
                   </span>
@@ -1636,6 +1683,55 @@ const RunsPage: React.FC = () => {
                 </div>
               </div>
               <div className="grid gap-4 lg:grid-cols-[1.1fr,0.9fr]">
+                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 lg:col-span-2">
+                  <div className="grid gap-4 lg:grid-cols-[0.55fr,0.45fr]">
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+                        {selectedRunNarrative.title}
+                      </p>
+                      <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+                        {selectedRunNarrative.lines.map((line) => (
+                          <li key={line} className="leading-relaxed">
+                            {line}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+                          Agrupamento provider/model
+                        </p>
+                        <span className="pill">{selectedRunBreakdownByModel.length} grupo(s)</span>
+                      </div>
+                      {selectedRunBreakdownByModel.length === 0 ? (
+                        <p className="mt-3 text-sm text-muted-foreground">
+                          Nenhum provider/model consolidado para este run.
+                        </p>
+                      ) : (
+                        <div className="mt-3 space-y-2">
+                          {selectedRunBreakdownByModel.slice(0, 6).map((item) => (
+                            <div
+                              key={`${item.provider}:${item.model}`}
+                              className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-muted-foreground"
+                            >
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <p className="font-semibold text-foreground">
+                                  {item.provider} • {item.model}
+                                </p>
+                                <span className="pill">{centsToBRL(item.amountCents) ?? "—"}</span>
+                              </div>
+                              <p className="mt-1">
+                                {item.tokens} tokens • {item.requests} chamada(s)
+                                {item.estimatedRequests > 0 ? ` • ${item.estimatedRequests} estimada(s)` : ""}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
                 <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">

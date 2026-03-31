@@ -47,6 +47,9 @@ type SessionState = {
   } | null;
 };
 
+export type ImobAccessGateState = NonNullable<SessionState["accessGate"]>;
+export type AppSessionState = SessionState;
+
 const DEFAULTS: SessionState = {
   tenantId: VITE_ENV.VITE_TENANT_ID || "tenant-demo",
   workspaceId: VITE_ENV.VITE_WORKSPACE_ID || "workspace-demo",

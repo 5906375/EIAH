@@ -7,6 +7,7 @@ import type { TenantAwareRequest } from "../middlewares/enforceTenant";
 import { getAgentProfile, listAgents, resolveAgentId } from "../services/agents";
 import { createRunRecord } from "../services/runs";
 import { emitRunEvent } from "../services/runEventEmitter";
+import { WorkspaceAgentAssignmentError } from "../services/workspaceAgentAssignments";
 import { evaluateTrustScore, trustScoreAllowsExecution } from "../services/trustScore";
 
 export const agentsRouter = Router();
@@ -380,17 +381,33 @@ agentsRouter.post("/agents/execute", async (req, res) => {
   };
   const requestPayloadBase = { prompt, metadata: metadataBase };
 
-  const run = await createRunRecord({
-    prisma: request.prisma,
-    tenantId: request.authContext.tenantId,
-    workspaceId: request.authContext.workspaceId,
-    userId: request.authContext.userId,
-    agent,
-    status: "pending",
-    request: requestPayloadBase,
-    traceId: null,
-    finishedAt: null,
-  });
+  let run;
+  try {
+    run = await createRunRecord({
+      prisma: request.prisma,
+      tenantId: request.authContext.tenantId,
+      workspaceId: request.authContext.workspaceId,
+      userId: request.authContext.userId,
+      agent,
+      status: "pending",
+      request: requestPayloadBase,
+      traceId: null,
+      finishedAt: null,
+    });
+  } catch (error) {
+    if (error instanceof WorkspaceAgentAssignmentError) {
+      return res.status(403).json({
+        ok: false,
+        error: {
+          code: error.reasonCode,
+          reasonCode: error.reasonCode,
+          message: error.message,
+          context: error.context,
+        },
+      });
+    }
+    throw error;
+  }
 
   const intentSignature = createIntentSignature({
     tenantId: request.authContext.tenantId,

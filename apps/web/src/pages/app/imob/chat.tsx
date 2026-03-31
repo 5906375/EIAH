@@ -13,8 +13,10 @@ import {
   apiGetImobChatInterviewState,
   apiGetImobChatConversationExport,
   apiGetImobChatTelemetrySummary,
+  apiGetQuota,
   apiGetRun,
   apiGetRunCostBreakdown,
+  apiGetTenantBillingSummary,
   apiSearchImobKnowledge,
   apiUploadDocuments,
   apiResolveImobAttachment,
@@ -33,6 +35,7 @@ import {
   type AgentProtocolActionContract,
   type ImobPresentationMetadata,
   type ImobPresentationForm,
+  type TenantBillingSummary,
 } from "@/lib/api";
 import { useSession } from "@/state/sessionStore";
 import {
@@ -58,6 +61,9 @@ import {
 import { ThreadPanel } from "@/features/imob/ThreadPanel";
 import { KnowledgeCard, type KnowledgeAction } from "@/features/imob/KnowledgeCard";
 import { ImobKnowledgeViewer } from "@/features/imob/ImobKnowledgeViewer";
+import { ImobAccessGateCard } from "@/components/imob/ImobAccessGateCard";
+import { ContextualCostPanel } from "@/components/billing/ContextualCostPanel";
+import { resolveImobAccessGateCopy } from "@/features/imob/accessGateCatalog";
 import { formatDataInputTemplate, getDataInputTemplate } from "@/domain/inputTemplates";
 import { CONTRACT_SCHEMAS } from "@/features/imob/contractSchemas";
 
@@ -160,29 +166,20 @@ type PendingExecution = {
 
 type RunFinanceSummary = {
   amountCents: number;
+  estimatedAmountCents: number | null;
   tokens: number;
   issueLabel: string;
   hasGap: boolean;
 };
 
-type ImobAccessGate = NonNullable<ReturnType<typeof useSession>["accessGate"]>;
-
-function resolveImobGateTitle(reasonCode?: string) {
-  if (reasonCode === "IMOB_INSTALLATION_INACTIVE") return "Instalação inativa";
-  if (reasonCode === "IMOB_PERMISSION_DENIED") return "Acesso restrito";
-  return "Acesso indisponível";
-}
-
-function resolveImobGateBody(gate: Partial<ImobAccessGate>) {
-  if (gate.message?.trim()) return gate.message.trim();
-  if (gate.reasonCode === "IMOB_INSTALLATION_INACTIVE") {
-    return "A instalação do IMOB neste workspace não está ativa. Reative a instalação para usar este recurso.";
-  }
-  if (gate.reasonCode === "IMOB_PERMISSION_DENIED") {
-    return "Você não possui permissão para usar o IMOB neste workspace.";
-  }
-  return "IMOB não está habilitado neste workspace. É necessária uma instalação ativa para usar este recurso.";
-}
+type WorkspaceBillingContext = {
+  workspaceCostCents: number;
+  workspaceRuns: number;
+  quotaPercent: number;
+  monthUsageCents: number;
+  softLimitCents: number;
+  hardLimitCents: number;
+};
 
 function mapApiPresentationCard(
   card: ImobResolveTurnResponse["presentation"]["card"] | undefined,
@@ -1151,6 +1148,7 @@ const ImobChatPage: React.FC = () => {
   const [singleEditFieldId, setSingleEditFieldId] = React.useState<string | null>(null);
   const [reviewActionLoading, setReviewActionLoading] = React.useState<"edit" | "confirm" | "decline" | null>(null);
   const [runFinanceByRunId, setRunFinanceByRunId] = React.useState<Record<string, RunFinanceSummary>>({});
+  const [workspaceBillingContext, setWorkspaceBillingContext] = React.useState<WorkspaceBillingContext | null>(null);
   const contractEditableFields = React.useMemo(() => {
     if (!contractInterviewState?.contractType) return [];
     return CONTRACT_SCHEMAS[contractInterviewState.contractType].fields.map((step) => ({
@@ -1652,6 +1650,7 @@ const ImobChatPage: React.FC = () => {
             ...prev,
             [runId]: {
               amountCents,
+              estimatedAmountCents: breakdownResult.value.data.estimate?.amountCents ?? null,
               tokens,
               issueLabel: issue ? formatReconciliationIssue(issue) : "Reconciliado",
               hasGap: Boolean(issue),
@@ -1667,6 +1666,33 @@ const ImobChatPage: React.FC = () => {
       cancelled = true;
     };
   }, [explicitRunIds, runFinanceByRunId]);
+
+  React.useEffect(() => {
+    if (!session.workspaceId) {
+      setWorkspaceBillingContext(null);
+      return;
+    }
+    let cancelled = false;
+    void Promise.all([
+      apiGetTenantBillingSummary().catch(() => null),
+      apiGetQuota(session.workspaceId).catch(() => null),
+    ]).then(([summaryResponse, quotaResponse]) => {
+      if (cancelled) return;
+      const billingSummary = summaryResponse?.data as TenantBillingSummary | undefined;
+      const workspaceSummary = billingSummary?.byWorkspace?.find((item) => item.workspaceId === session.workspaceId);
+      setWorkspaceBillingContext({
+        workspaceCostCents: workspaceSummary?.costCents ?? 0,
+        workspaceRuns: workspaceSummary?.runs ?? 0,
+        quotaPercent: quotaResponse?.data?.percent ?? 0,
+        monthUsageCents: quotaResponse?.data?.monthUsageCents ?? workspaceSummary?.costCents ?? 0,
+        softLimitCents: quotaResponse?.data?.softLimitCents ?? 0,
+        hardLimitCents: quotaResponse?.data?.hardLimitCents ?? 0,
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [session.workspaceId]);
 
   React.useEffect(() => {
     if (!activeRunId) return;
@@ -2511,7 +2537,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       } catch (error) {
         const errorMessage =
           error instanceof ApiError && error.status === 403
-            ? resolveImobGateBody(imobAccessGate ?? {})
+            ? resolveImobAccessGateCopy(imobAccessGate).body
             : "Não consegui consultar o acervo IMOB agora. Tente novamente em instantes.";
         const failureReply: ChatMessage = {
           id: makeId("assistant"),
@@ -3454,6 +3480,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       caseId: currentThreadId ? caseIdByThreadRef.current[currentThreadId] ?? null : null,
     };
   }, [activeThread?.id, activeThread?.label, selectedThreadId, threads]);
+  const activeThreadRunFinance = activeThreadContext.runId ? runFinanceByRunId[activeThreadContext.runId] ?? null : null;
   const contractDraftLines = React.useMemo(() => {
     if (!contractInterviewState?.contractType) return [];
     const schema = CONTRACT_SCHEMAS[contractInterviewState.contractType];
@@ -3571,20 +3598,23 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                       Thread ativa: {activeThreadContext.threadLabel ?? "Operação"}
                     </p>
                     {activeThreadContext.runId ? (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        <Link
-                          to={`/app/runs?domain=imob&runId=${encodeURIComponent(activeThreadContext.runId)}`}
-                          className="rounded-full border border-white/15 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition hover:border-accent/40 hover:text-accent"
-                        >
-                          Ver execução
-                        </Link>
-                        <Link
-                          to={`/app/billing?runId=${encodeURIComponent(activeThreadContext.runId)}`}
-                          className="rounded-full border border-white/15 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition hover:border-accent/40 hover:text-accent"
-                        >
-                          Abrir reconciliação
-                        </Link>
-                      </div>
+                      <>
+                        <div className="mt-2">
+                          <ContextualCostPanel
+                            compact
+                            run={{
+                              runId: activeThreadContext.runId,
+                              actualCostCents: activeThreadRunFinance?.amountCents ?? null,
+                              estimatedCostCents: activeThreadRunFinance?.estimatedAmountCents ?? null,
+                              tokens: activeThreadRunFinance?.tokens ?? null,
+                              issueLabel: activeThreadRunFinance?.issueLabel ?? null,
+                              hasGap: activeThreadRunFinance?.hasGap ?? false,
+                              runHref: `/app/runs?domain=imob&runId=${encodeURIComponent(activeThreadContext.runId)}`,
+                              billingHref: `/app/billing?runId=${encodeURIComponent(activeThreadContext.runId)}`,
+                            }}
+                          />
+                        </div>
+                      </>
                     ) : activeThreadContext.caseId ? (
                       <p className="mt-2 text-[10px] text-muted-foreground">
                         Esta thread já está vinculada a um caso. A execução ficará disponível assim que houver um run registrado.
@@ -3608,32 +3638,30 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                 </span>
               </div>
             </header>
+            {workspaceBillingContext ? (
+              <div className="border-b border-white/10 px-4 py-3 sm:px-6">
+                <ContextualCostPanel
+                  run={
+                    activeThreadContext.runId
+                      ? {
+                          runId: activeThreadContext.runId,
+                          actualCostCents: activeThreadRunFinance?.amountCents ?? null,
+                          estimatedCostCents: activeThreadRunFinance?.estimatedAmountCents ?? null,
+                          tokens: activeThreadRunFinance?.tokens ?? null,
+                          issueLabel: activeThreadRunFinance?.issueLabel ?? null,
+                          hasGap: activeThreadRunFinance?.hasGap ?? false,
+                          runHref: `/app/runs?domain=imob&runId=${encodeURIComponent(activeThreadContext.runId)}`,
+                          billingHref: `/app/billing?runId=${encodeURIComponent(activeThreadContext.runId)}`,
+                        }
+                      : null
+                  }
+                  workspace={workspaceBillingContext}
+                />
+              </div>
+            ) : null}
             {imobAccessGate ? (
               <div className="border-b border-white/10 px-4 py-4 sm:px-6">
-                <section className="rounded-2xl border border-rose-500/40 bg-rose-500/10 p-5">
-                  <p className="text-xs font-semibold uppercase tracking-[0.3em] text-rose-200">GateCard 403</p>
-                  <p className="mt-2 text-sm font-semibold text-rose-100">
-                    {resolveImobGateTitle(imobAccessGate.reasonCode)}
-                  </p>
-                  <p className="mt-2 text-sm text-rose-100">
-                    {resolveImobGateBody(imobAccessGate)}
-                  </p>
-                  <div className="mt-4 flex flex-wrap items-center gap-3">
-                    {imobAccessGate.cta?.target ? (
-                      <Link
-                        to={imobAccessGate.cta.target}
-                        className="rounded-full border border-rose-300/30 bg-rose-200/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-rose-100 transition hover:bg-rose-200/20"
-                      >
-                        {imobAccessGate.cta.label}
-                      </Link>
-                    ) : null}
-                    {imobAccessGate.traceId ? (
-                      <span className="text-[10px] uppercase tracking-[0.2em] text-rose-200/80">
-                        Trace: {imobAccessGate.traceId}
-                      </span>
-                    ) : null}
-                  </div>
-                </section>
+                <ImobAccessGateCard gate={imobAccessGate} />
               </div>
             ) : null}
             {contractInterviewState?.contractType &&
@@ -3823,39 +3851,25 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                             {runFinance ? (
                               <div className="mt-3 rounded-lg border border-white/10 bg-black/20 p-2">
                                 <p className="text-[10px] tracking-[0.18em] text-muted-foreground">Execução</p>
-                                <div className="mt-1 flex flex-wrap gap-2">
-                                  <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-foreground">
-                                    Custo: {formatCurrencyCents(runFinance.amountCents)}
-                                  </span>
-                                  <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] text-foreground">
-                                    Tokens: {new Intl.NumberFormat("pt-BR").format(runFinance.tokens)}
-                                  </span>
-                                  <span
-                                    className={`rounded-full border px-2 py-1 text-[10px] ${
-                                      runFinance.hasGap
-                                        ? "border-amber-300/30 bg-amber-500/10 text-amber-100"
-                                        : "border-emerald-300/30 bg-emerald-500/10 text-emerald-100"
-                                    }`}
-                                  >
-                                    {runFinance.issueLabel}
-                                  </span>
+                                <div className="mt-2">
+                                  <ContextualCostPanel
+                                    compact
+                                    run={
+                                      messageCard.runId
+                                        ? {
+                                            runId: messageCard.runId,
+                                            actualCostCents: runFinance.amountCents,
+                                            estimatedCostCents: runFinance.estimatedAmountCents,
+                                            tokens: runFinance.tokens,
+                                            issueLabel: runFinance.issueLabel,
+                                            hasGap: runFinance.hasGap,
+                                            runHref: `/app/runs?domain=imob&runId=${encodeURIComponent(messageCard.runId)}`,
+                                            billingHref: `/app/billing?runId=${encodeURIComponent(messageCard.runId)}`,
+                                          }
+                                        : null
+                                    }
+                                  />
                                 </div>
-                                {messageCard.runId ? (
-                                  <div className="mt-2 flex flex-wrap gap-2">
-                                    <Link
-                                      to={`/app/runs?domain=imob&runId=${encodeURIComponent(messageCard.runId)}`}
-                                      className="text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-                                    >
-                                      Ver execução
-                                    </Link>
-                                    <Link
-                                      to={`/app/billing?runId=${encodeURIComponent(messageCard.runId)}`}
-                                      className="text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-                                    >
-                                      Abrir reconciliação
-                                    </Link>
-                                  </div>
-                                ) : null}
                               </div>
                             ) : null}
 

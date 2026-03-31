@@ -1021,6 +1021,12 @@ export type RunCostBreakdown = {
     amountCents: number;
     tokens: number;
   };
+  estimate: {
+    amountCents: number | null;
+    available: boolean;
+    source: "backend_pricing" | null;
+    varianceCents: number | null;
+  };
   items: Array<{
     id: string;
     requestId: string;
@@ -2209,6 +2215,17 @@ export type TenantBillingWorkspaceItem = {
   };
 };
 
+export type WorkspaceAgentAssignmentItem = {
+  id: string;
+  tenantId: string;
+  workspaceId: string;
+  agentKey: string;
+  agentVersion: string;
+  enabled: boolean;
+  signedAt: string | null;
+  signatureRef: string | null;
+};
+
 export type TenantBillingLedgerItem = {
   id: string;
   tenantId: string;
@@ -2231,6 +2248,13 @@ export type AgentBillingSummaryItem = {
   runs: number;
   costCents: number;
   tokens: number;
+  byModel?: Array<{
+    provider: string;
+    model: string;
+    runs: number;
+    costCents: number;
+    tokens: number;
+  }>;
 };
 
 export type BillingReconciliationRunGap = {
@@ -2274,6 +2298,7 @@ export type BillingReconciliationSummary = {
     tenantId: string;
     workspaceId: string | null;
     runId: string | null;
+    agent: string | null;
     from: string | null;
     to: string | null;
     limit: number;
@@ -2501,6 +2526,20 @@ export async function apiGetTenantBillingWorkspaces() {
   });
 }
 
+export async function apiGetWorkspaceAgentAssignments(workspaceId: string) {
+  return http<{
+    ok: boolean;
+    data: {
+      tenantId: string;
+      workspaceId: string;
+      workspaceName: string;
+      items: WorkspaceAgentAssignmentItem[];
+    };
+  }>(`/billing/workspaces/${encodeURIComponent(workspaceId)}/agents`, {
+    method: "GET",
+  });
+}
+
 export async function apiPatchTenantWorkspaceGrant(
   workspaceId: string,
   body: {
@@ -2566,6 +2605,7 @@ export async function apiGetTenantBillingLedger(params?: {
 export async function apiGetBillingReconciliationSummary(params?: {
   workspaceId?: string;
   runId?: string;
+  agent?: string;
   from?: string;
   to?: string;
   limit?: number;
@@ -2573,6 +2613,7 @@ export async function apiGetBillingReconciliationSummary(params?: {
   const query = new URLSearchParams();
   if (params?.workspaceId) query.set("workspaceId", params.workspaceId);
   if (params?.runId) query.set("runId", params.runId);
+  if (params?.agent) query.set("agent", params.agent);
   if (params?.from) query.set("from", params.from);
   if (params?.to) query.set("to", params.to);
   if (typeof params?.limit === "number") query.set("limit", String(params.limit));

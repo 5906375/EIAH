@@ -86,6 +86,29 @@ function parseNonEmptyString(value: unknown): string | null {
   return trimmed ? trimmed : null;
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+}
+
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string" && entry.trim().length > 0) : [];
+}
+
+function extractRunEstimateInput(request: unknown) {
+  const root = asRecord(request);
+  const metadata = asRecord(root?.metadata);
+  const input = asRecord(root?.input);
+  const tools = [
+    ...asStringArray(root?.tools),
+    ...asStringArray(metadata?.tools),
+    ...asStringArray(input?.tools),
+  ];
+  return {
+    inputBytes: Buffer.byteLength(JSON.stringify(request ?? {}), "utf8"),
+    tools: Array.from(new Set(tools)),
+  };
+}
+
 function parseReplayWindowSeconds() {
   const raw = Number(process.env.BILLING_WEBHOOK_REPLAY_WINDOW_SECONDS ?? "600");
   return Number.isFinite(raw) && raw > 0 ? Math.trunc(raw) : 600;
@@ -1317,6 +1340,7 @@ billingRouter.get("/billing/reconciliation/summary", async (req, res) => {
 
   const workspaceId = parseNonEmptyString(req.query.workspaceId);
   const runId = parseNonEmptyString(req.query.runId);
+  const agent = parseNonEmptyString(req.query.agent);
   const limit = parseOptionalInt(req.query.limit) ?? 50;
   const from = parseOptionalDate(req.query.from);
   const to = parseOptionalDate(req.query.to);
@@ -1355,6 +1379,7 @@ billingRouter.get("/billing/reconciliation/summary", async (req, res) => {
     tenantId: authContext.tenantId,
     workspaceId,
     runId,
+    agent,
     from,
     to,
     limit,
@@ -1433,6 +1458,7 @@ billingRouter.get("/runs/:id/cost-breakdown", async (req, res) => {
       costCents: true,
       traceId: true,
       status: true,
+      request: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -1450,6 +1476,17 @@ billingRouter.get("/runs/:id/cost-breakdown", async (req, res) => {
     workspaceId: authContext.workspaceId,
     runId: req.params.id,
   });
+  const estimateInput = extractRunEstimateInput(run.request);
+  const estimatedAmountCents = await estimateCostCents({
+    agent: run.agent,
+    inputBytes: estimateInput.inputBytes,
+    tools: estimateInput.tools,
+    tenantId: authContext.tenantId,
+    workspaceId: authContext.workspaceId,
+    prisma,
+  });
+  const actualAmountCents = items.reduce((sum, item) => sum + Number(item.amountCents ?? 0), 0);
+  const actualTokens = items.reduce((sum, item) => sum + Number(item.totalTokens ?? 0), 0);
 
   return res.json({
     ok: true,
@@ -1468,8 +1505,15 @@ billingRouter.get("/runs/:id/cost-breakdown", async (req, res) => {
         updatedAt: run.updatedAt,
       },
       totals: {
-        amountCents: items.reduce((sum, item) => sum + Number(item.amountCents ?? 0), 0),
-        tokens: items.reduce((sum, item) => sum + Number(item.totalTokens ?? 0), 0),
+        amountCents: actualAmountCents,
+        tokens: actualTokens,
+      },
+      estimate: {
+        amountCents: estimatedAmountCents,
+        available: typeof estimatedAmountCents === "number",
+        source: estimatedAmountCents != null ? "backend_pricing" : null,
+        varianceCents:
+          typeof estimatedAmountCents === "number" ? actualAmountCents - estimatedAmountCents : null,
       },
       items: items.map((item) => ({
         id: item.id,
