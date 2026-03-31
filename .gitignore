@@ -44,6 +44,9 @@ docs/*
 !docs/ops/**/
 !docs/ops/**/*.md
 !docs/ops/**/*.json
+!docs/operations/
+!docs/operations/**/
+!docs/operations/**/*.md
 docs/ops/**/*.mb
 
 # --------------------------------------------

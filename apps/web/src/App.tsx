@@ -13,7 +13,7 @@ import SignupPage from "./pages/signup";
 import ProfilePage from "./pages/profile";
 import AccessPage from "./pages/access";
 import eiahLogo from "./assets/Eiah_logo.png";
-import { updateSession, useSession } from "./state/sessionStore";
+import { updateSession, useSession, type ImobAccessGateState } from "./state/sessionStore";
 import { ApiError, apiGetSessionContext } from "./lib/api";
 
 function NavigationLink({ to, label }: { to: string; label: string }) {
@@ -136,21 +136,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
           typeof error.body === "object"
         ) {
           const payload = error.body as {
-            error?: {
-              code?: string;
-              reasonCode?: "IMOB_ENTITLEMENT_MISSING" | "IMOB_INSTALLATION_INACTIVE" | "IMOB_PERMISSION_DENIED";
-              message?: string;
-              traceId?: string;
-              product?: "IMOB";
-              capability?: "CENTRAL_OPERACIONAL" | "KNOWLEDGE_SYNC_STATUS" | "KNOWLEDGE_SEARCH";
-              scope?: { tenantId: string; workspaceId: string };
-              cta?: { type: "INSTALL" | "ACTIVATE" | "CONTACT_ADMIN" | "OPEN_BILLING"; label: string; target: string };
-              details?: {
-                entitlementRequired?: "IMOB_ACTIVE_INSTALLATION";
-                installationStatus?: "missing" | "inactive" | "active";
-                stage?: string | null;
-              };
-            };
+            error?: ImobAccessGateState;
           };
           updateSession({
             accessGate: payload.error ?? {

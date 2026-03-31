@@ -8,7 +8,9 @@ import {
   apiFinalizeConversation,
   apiGetBillingReconciliationSummary,
   apiGetGovernanceReport,
+  apiGetQuota,
   apiGetRunCostBreakdown,
+  apiGetTenantBillingSummary,
   apiListAgents,
   apiUploadDocuments,
   apiCreateHelpdeskSession,
@@ -17,6 +19,7 @@ import {
   BASE_URL,
   type Agent,
   type RunEvent,
+  type TenantBillingSummary,
   type UploadedDocumentInfo,
 } from "@/lib/api";
 import {
@@ -52,6 +55,7 @@ import {
   type ConversationPolicy,
   type IntentResult,
 } from "@/hooks/useConversation";
+import { ContextualCostPanel } from "@/components/billing/ContextualCostPanel";
 
 type ChatMessage = {
   id: string;
@@ -69,9 +73,19 @@ type ThreadSnapshot = {
 
 type RunFinanceSummary = {
   amountCents: number;
+  estimatedAmountCents: number | null;
   tokens: number;
   issueLabel: string;
   hasGap: boolean;
+};
+
+type WorkspaceBillingContext = {
+  workspaceCostCents: number;
+  workspaceRuns: number;
+  quotaPercent: number;
+  monthUsageCents: number;
+  softLimitCents: number;
+  hardLimitCents: number;
 };
 
 function normalizeAgentKey(value: string) {
@@ -516,6 +530,7 @@ export default function ChatAgentLauncher({
   const [selectedAgentLabel, setSelectedAgentLabel] = useState<string | null>(null);
   const [selectedCatalogAgent, setSelectedCatalogAgent] = useState<Agent | null>(null);
   const [runFinanceByRunId, setRunFinanceByRunId] = useState<Record<string, RunFinanceSummary>>({});
+  const [workspaceBillingContext, setWorkspaceBillingContext] = useState<WorkspaceBillingContext | null>(null);
   const [attachmentMode, setAttachmentMode] = useState<"upload_file" | "paste_text">("upload_file");
   const [pastedArtifactText, setPastedArtifactText] = useState("");
   const [selectedAttachment, setSelectedAttachment] = useState<File | null>(null);
@@ -582,6 +597,10 @@ export default function ChatAgentLauncher({
   const isHelpCenterMode =
     isUnifiedEiahMode && (launcherContext?.topic ?? "").trim().toLowerCase() !== "proposal";
   const activeRunFinance = runId ? runFinanceByRunId[runId] ?? null : null;
+  const estimatedRunCostCents =
+    typeof selectedCatalogAgent?.pricing?.perRunCents === "number" && selectedCatalogAgent.pricing.perRunCents > 0
+      ? selectedCatalogAgent.pricing.perRunCents
+      : null;
   useEffect(() => {
     if (identityShown) return;
     if (!session.userId && !session.tenantId) return;
@@ -674,6 +693,7 @@ export default function ChatAgentLauncher({
             ...prev,
             [currentRunId]: {
               amountCents: breakdownResult.value.data.totals.amountCents ?? 0,
+              estimatedAmountCents: breakdownResult.value.data.estimate?.amountCents ?? null,
               tokens: breakdownResult.value.data.totals.tokens ?? 0,
               issueLabel: issue ? formatReconciliationIssue(issue) : "Reconciliado",
               hasGap: Boolean(issue),
@@ -689,6 +709,33 @@ export default function ChatAgentLauncher({
       cancelled = true;
     };
   }, [explicitRunIds, runFinanceByRunId]);
+
+  useEffect(() => {
+    if (!effectiveWorkspaceId) {
+      setWorkspaceBillingContext(null);
+      return;
+    }
+    let cancelled = false;
+    void Promise.all([
+      apiGetTenantBillingSummary().catch(() => null),
+      apiGetQuota(effectiveWorkspaceId).catch(() => null),
+    ]).then(([summaryResponse, quotaResponse]) => {
+      if (cancelled) return;
+      const billingSummary = summaryResponse?.data as TenantBillingSummary | undefined;
+      const workspaceSummary = billingSummary?.byWorkspace?.find((item) => item.workspaceId === effectiveWorkspaceId);
+      setWorkspaceBillingContext({
+        workspaceCostCents: workspaceSummary?.costCents ?? 0,
+        workspaceRuns: workspaceSummary?.runs ?? 0,
+        quotaPercent: quotaResponse?.data?.percent ?? 0,
+        monthUsageCents: quotaResponse?.data?.monthUsageCents ?? workspaceSummary?.costCents ?? 0,
+        softLimitCents: quotaResponse?.data?.softLimitCents ?? 0,
+        hardLimitCents: quotaResponse?.data?.hardLimitCents ?? 0,
+      });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveWorkspaceId]);
 
   useEffect(() => {
     if (!activeAgentId) {
@@ -1688,32 +1735,37 @@ export default function ChatAgentLauncher({
                       {copyToast}
                     </div>
                   ) : null}
-                  {runId ? (
-                    <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                      Run: {runId}
-                    </div>
-                  ) : null}
-                  {activeRunFinance ? (
-                    <>
-                      <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                        Custo: {formatCurrencyCents(activeRunFinance.amountCents)}
-                      </div>
-                      <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                        Tokens: {new Intl.NumberFormat("pt-BR").format(activeRunFinance.tokens)}
-                      </div>
-                      <div
-                        className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${
-                          activeRunFinance.hasGap
-                            ? "border-amber-300/30 bg-amber-500/10 text-amber-100"
-                            : "border-emerald-300/30 bg-emerald-500/10 text-emerald-100"
-                        }`}
-                      >
-                        {activeRunFinance.issueLabel}
-                      </div>
-                    </>
+                  {runId || activeRunFinance || estimatedRunCostCents != null || workspaceBillingContext ? (
+                    <ContextualCostPanel
+                      compact
+                      run={{
+                        runId,
+                        actualCostCents: activeRunFinance?.amountCents ?? null,
+                        estimatedCostCents: activeRunFinance?.estimatedAmountCents ?? estimatedRunCostCents ?? null,
+                        tokens: activeRunFinance?.tokens ?? null,
+                        issueLabel: activeRunFinance?.issueLabel ?? null,
+                        hasGap: activeRunFinance?.hasGap ?? false,
+                      }}
+                      workspace={workspaceBillingContext}
+                    />
                   ) : null}
                 </div>
               </div>
+
+              {workspaceBillingContext ? (
+                <ContextualCostPanel
+                  className="mb-4"
+                  run={{
+                    runId,
+                    actualCostCents: activeRunFinance?.amountCents ?? null,
+                    estimatedCostCents: activeRunFinance?.estimatedAmountCents ?? estimatedRunCostCents ?? null,
+                    tokens: activeRunFinance?.tokens ?? null,
+                    issueLabel: activeRunFinance?.issueLabel ?? null,
+                    hasGap: activeRunFinance?.hasGap ?? false,
+                  }}
+                  workspace={workspaceBillingContext}
+                />
+              ) : null}
 
             <div
               ref={scrollRef}

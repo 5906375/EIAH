@@ -17,6 +17,7 @@ import { subscribeToRunEventStream } from "../services/runEventStream";
 import { buildRunEvidenceBundle } from "../services/evidenceBundle";
 import { requireScope } from "../middlewares/requireScope";
 import { evaluateTenantBillingExecutionGuard } from "../services/tenantBilling";
+import { WorkspaceAgentAssignmentError } from "../services/workspaceAgentAssignments";
 
 export const runsRouter = Router();
 runsRouter.use(enforceTenant);
@@ -603,18 +604,34 @@ runsRouter.post("/runs", async (req, res) => {
     });
   }
 
-  const run = await createRunRecord({
-    prisma,
-    tenantId: authContext.tenantId,
-    workspaceId: authContext.workspaceId,
-    userId: authContext.userId,
-    agent,
-    status: "pending",
-    request: requestPayload,
-    traceId: null,
-    finishedAt: null,
-    approvalStatus: inferApprovalStatusFromMetadata(resolvedMetadata),
-  });
+  let run;
+  try {
+    run = await createRunRecord({
+      prisma,
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      userId: authContext.userId,
+      agent,
+      status: "pending",
+      request: requestPayload,
+      traceId: null,
+      finishedAt: null,
+      approvalStatus: inferApprovalStatusFromMetadata(resolvedMetadata),
+    });
+  } catch (error) {
+    if (error instanceof WorkspaceAgentAssignmentError) {
+      return res.status(403).json({
+        ok: false,
+        error: {
+          code: error.reasonCode,
+          reasonCode: error.reasonCode,
+          message: error.message,
+          context: error.context,
+        },
+      });
+    }
+    throw error;
+  }
 
   await emitRunEvent({
     prisma,

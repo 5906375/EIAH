@@ -728,6 +728,11 @@ function formatAgentCostLabel(cents?: number | null) {
   });
 }
 
+function formatCompactNumber(value?: number | null) {
+  if (typeof value !== "number") return "—";
+  return value.toLocaleString("pt-BR");
+}
+
 function formatModeContractsSummary(agent: Agent) {
   if (!Array.isArray(agent.modeContracts) || agent.modeContracts.length === 0) return undefined;
   return agent.modeContracts.map((contract) => formatGovernanceValue(contract.mode)).join(" • ");
@@ -891,6 +896,39 @@ const AgentsPage: React.FC = () => {
     }
     return map;
   }, [agentBillingSummary]);
+  const rankedAgentsByCost = useMemo(
+    () => [...agentBillingSummary].sort((a, b) => b.costCents - a.costCents),
+    [agentBillingSummary]
+  );
+  const rankedAgentsByRuns = useMemo(
+    () => [...agentBillingSummary].sort((a, b) => b.runs - a.runs),
+    [agentBillingSummary]
+  );
+  const rankedAgentsByTokens = useMemo(
+    () => [...agentBillingSummary].sort((a, b) => b.tokens - a.tokens),
+    [agentBillingSummary]
+  );
+  const selectedAgentBilling = useMemo(() => {
+    if (!agentId) return null;
+    return billingSummaryByAgent.get(normalizeAgentKey(agentId)) ?? null;
+  }, [agentId, billingSummaryByAgent]);
+  const selectedAgentImpactSummary = useMemo(() => {
+    if (!selectedAgentBilling) {
+      return [
+        "Selecione um agente para ver custo, volume e impacto financeiro no workspace atual.",
+      ];
+    }
+    const totalCost = agentBillingSummary.reduce((sum, item) => sum + item.costCents, 0);
+    const costShare = totalCost > 0 ? (selectedAgentBilling.costCents / totalCost) * 100 : 0;
+    const topModel = selectedAgentBilling.byModel?.[0] ?? null;
+    return [
+      `${selectedAgentBilling.agent} consumiu ${formatAgentCostLabel(selectedAgentBilling.costCents)} em ${formatCompactNumber(selectedAgentBilling.runs)} run(s).`,
+      `Isso representa ${costShare.toFixed(1)}% do custo agregado dos agentes deste workspace.`,
+      topModel
+        ? `O maior peso veio de ${topModel.provider} / ${topModel.model}, com ${formatAgentCostLabel(topModel.costCents)} e ${formatCompactNumber(topModel.tokens)} tokens.`
+        : "Ainda não há drill-down por provider/model suficiente para este agente.",
+    ];
+  }, [agentBillingSummary, selectedAgentBilling]);
 
   const handlePlaybookClick = () => {
     if (!agentId || !playbookTargetId) return;
@@ -950,6 +988,96 @@ const AgentsPage: React.FC = () => {
             {catalogError}
           </div>
         ) : null}
+
+        <div className="mt-6 grid gap-4 xl:grid-cols-4">
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">Maior custo</p>
+            <p className="mt-2 text-lg font-semibold text-foreground">
+              {rankedAgentsByCost[0]?.agent ?? "—"}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {formatAgentCostLabel(rankedAgentsByCost[0]?.costCents)}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">Maior volume</p>
+            <p className="mt-2 text-lg font-semibold text-foreground">
+              {rankedAgentsByRuns[0]?.agent ?? "—"}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {formatCompactNumber(rankedAgentsByRuns[0]?.runs)} run(s)
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">Maior uso de tokens</p>
+            <p className="mt-2 text-lg font-semibold text-foreground">
+              {rankedAgentsByTokens[0]?.agent ?? "—"}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {formatCompactNumber(rankedAgentsByTokens[0]?.tokens)} tokens
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">Agentes com custo</p>
+            <p className="mt-2 text-lg font-semibold text-foreground">
+              {agentBillingSummary.filter((item) => item.costCents > 0).length}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              de {agentBillingSummary.length} com atividade financeira
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-6 grid gap-4 xl:grid-cols-[0.45fr,0.55fr]">
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+              Leitura simples de impacto financeiro
+            </p>
+            <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+              {selectedAgentImpactSummary.map((line) => (
+                <li key={line} className="leading-relaxed">
+                  {line}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+                Drill-down por provider/model
+              </p>
+              <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-muted-foreground">
+                {selectedAgentBilling?.byModel?.length ?? 0} grupo(s)
+              </span>
+            </div>
+            {!selectedAgentBilling?.byModel?.length ? (
+              <p className="mt-3 text-sm text-muted-foreground">
+                Selecione um agente com uso real para ver a composição de custo por provider/model.
+              </p>
+            ) : (
+              <div className="mt-3 space-y-2">
+                {selectedAgentBilling.byModel.slice(0, 6).map((item) => (
+                  <div
+                    key={`${selectedAgentBilling.agent}:${item.provider}:${item.model}`}
+                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-muted-foreground"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-semibold text-foreground">
+                        {item.provider} • {item.model}
+                      </p>
+                      <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[11px] text-foreground">
+                        {formatAgentCostLabel(item.costCents)}
+                      </span>
+                    </div>
+                    <p className="mt-1">
+                      {formatCompactNumber(item.runs)} run(s) • {formatCompactNumber(item.tokens)} tokens
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
 
         <div className="mt-6 hidden overflow-x-auto xl:block">
           <table className="min-w-full table-fixed border-separate border-spacing-y-3 text-left text-sm">

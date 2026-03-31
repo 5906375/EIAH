@@ -1,6 +1,8 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { ApiError, apiListRuns, type Run } from "@/lib/api";
+import { ImobAccessGateCard } from "@/components/imob/ImobAccessGateCard";
+import { resolveImobAccessGateCopy } from "@/features/imob/accessGateCatalog";
 import { useSession } from "@/state/sessionStore";
 
 type ProcessRow = {
@@ -8,30 +10,12 @@ type ProcessRow = {
   client: string;
   partner: string;
   action: string;
+  stageLabel: string;
   status: string;
   risk: "low" | "medium" | "high";
   txId: string | null;
+  costCents: number;
 };
-
-function resolveImobGateTitle(reasonCode?: string) {
-  if (reasonCode === "IMOB_INSTALLATION_INACTIVE") return "Instalação inativa";
-  if (reasonCode === "IMOB_PERMISSION_DENIED") return "Acesso restrito";
-  return "Acesso indisponível";
-}
-
-function resolveImobGateBody(gate: {
-  reasonCode?: string;
-  message?: string;
-}) {
-  if (gate.message?.trim()) return gate.message.trim();
-  if (gate.reasonCode === "IMOB_INSTALLATION_INACTIVE") {
-    return "A instalação do IMOB neste workspace não está ativa. Reative a instalação para usar este recurso.";
-  }
-  if (gate.reasonCode === "IMOB_PERMISSION_DENIED") {
-    return "Você não possui permissão para usar o IMOB neste workspace.";
-  }
-  return "IMOB não está habilitado neste workspace. É necessária uma instalação ativa para usar este recurso.";
-}
 
 function humanActionLabel(action: string) {
   if (action.includes("realestate.schedule_visit_partner")) return "Agendar visita com parceiro";
@@ -62,33 +46,46 @@ function humanProofLabel(process: ProcessRow) {
   return "Comprovante pendente";
 }
 
+function formatBRL(cents: number) {
+  return (cents / 100).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
+}
+
 const syntheticProcesses: ProcessRow[] = [
   {
     runId: "run-imob-8421",
     client: "João Martins",
     partner: "Prime Imóveis",
     action: "realestate.schedule_visit_partner",
+    stageLabel: "Agendar visita com parceiro",
     status: "running",
     risk: "low",
     txId: null,
+    costCents: 0,
   },
   {
     runId: "run-imob-8422",
     client: "Marina Costa",
     partner: "Litoral Brokers",
     action: "realestate.create_contract",
+    stageLabel: "Criar contrato",
     status: "blocked",
     risk: "high",
     txId: null,
+    costCents: 0,
   },
   {
     runId: "run-imob-8423",
     client: "Ricardo Nunes",
     partner: "Atlântica Realty",
     action: "realestate.release_commission",
+    stageLabel: "Liberar comissão",
     status: "success",
     risk: "medium",
     txId: "0x9fa2f2ab781",
+    costCents: 0,
   },
 ];
 
@@ -105,9 +102,11 @@ function mapRunToProcess(run: Run): ProcessRow {
     client,
     partner,
     action,
+    stageLabel: humanActionLabel(action),
     status: run.status,
     risk,
     txId: run.txId ?? (typeof metadata?.txId === "string" ? metadata.txId : null),
+    costCents: typeof run.costCents === "number" ? run.costCents : 0,
   };
 }
 
@@ -127,6 +126,22 @@ const ImobProcessesPage: React.FC = () => {
   const [source, setSource] = React.useState<"real" | "fallback">("fallback");
   const [loading, setLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<string | null>(null);
+  const stageCostSummary = React.useMemo(() => {
+    const grouped = new Map<string, { runs: number; costCents: number }>();
+    for (const item of processes) {
+      const current = grouped.get(item.stageLabel) ?? { runs: 0, costCents: 0 };
+      current.runs += 1;
+      current.costCents += item.costCents ?? 0;
+      grouped.set(item.stageLabel, current);
+    }
+    return Array.from(grouped.entries())
+      .map(([stageLabel, value]) => ({ stageLabel, ...value }))
+      .sort((a, b) => b.costCents - a.costCents);
+  }, [processes]);
+  const totalProcessCostCents = React.useMemo(
+    () => processes.reduce((sum, item) => sum + (item.costCents ?? 0), 0),
+    [processes]
+  );
 
   React.useEffect(() => {
     let mounted = true;
@@ -163,7 +178,7 @@ const ImobProcessesPage: React.FC = () => {
         setSource("fallback");
         if (error instanceof ApiError && error.status === 403 && error.body && typeof error.body === "object") {
           const payload = error.body as { error?: { message?: string; reasonCode?: string } };
-          setFetchError(resolveImobGateBody(payload.error ?? {}));
+          setFetchError(resolveImobAccessGateCopy(payload.error).body);
         } else {
           setFetchError(error instanceof Error ? error.message : "Falha ao buscar processos");
         }
@@ -198,30 +213,7 @@ const ImobProcessesPage: React.FC = () => {
       </header>
 
       {imobAccessGate ? (
-        <section className="rounded-2xl border border-rose-500/40 bg-rose-500/10 p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-rose-200">GateCard 403</p>
-          <p className="mt-2 text-sm font-semibold text-rose-100">
-            {resolveImobGateTitle(imobAccessGate.reasonCode)}
-          </p>
-          <p className="mt-2 text-sm text-rose-100">
-            {resolveImobGateBody(imobAccessGate)}
-          </p>
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            {imobAccessGate.cta?.target ? (
-              <Link
-                to={imobAccessGate.cta.target}
-                className="rounded-full border border-rose-300/30 bg-rose-200/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-rose-100 transition hover:bg-rose-200/20"
-              >
-                {imobAccessGate.cta.label}
-              </Link>
-            ) : null}
-            {imobAccessGate.traceId ? (
-              <span className="text-[10px] uppercase tracking-[0.2em] text-rose-200/80">
-                Trace: {imobAccessGate.traceId}
-              </span>
-            ) : null}
-          </div>
-        </section>
+        <ImobAccessGateCard gate={imobAccessGate} />
       ) : null}
 
       <section className="grid gap-4 sm:grid-cols-3">
@@ -243,6 +235,33 @@ const ImobProcessesPage: React.FC = () => {
             {processes.filter((item) => Boolean(item.txId)).length}
           </p>
         </article>
+        <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Custo operacional</p>
+          <p className="mt-2 text-2xl font-semibold text-foreground">{formatBRL(totalProcessCostCents)}</p>
+        </article>
+      </section>
+
+      <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 sm:p-6">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            Agregação por etapa
+          </h2>
+          <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+            {stageCostSummary.length} etapa(s)
+          </span>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          {stageCostSummary.slice(0, 6).map((item) => (
+            <article key={item.stageLabel} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <p className="text-sm font-semibold text-foreground">{item.stageLabel}</p>
+              <p className="mt-2 text-lg font-semibold text-foreground">{formatBRL(item.costCents)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{item.runs} processo(s)</p>
+            </article>
+          ))}
+          {stageCostSummary.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhuma etapa com custo operacional no recorte atual.</p>
+          ) : null}
+        </div>
       </section>
 
       <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 sm:p-6">
@@ -263,6 +282,7 @@ const ImobProcessesPage: React.FC = () => {
                 <th className="px-3 py-2">Parceiro</th>
                 <th className="px-3 py-2">Etapa</th>
                 <th className="px-3 py-2">Status</th>
+                <th className="px-3 py-2">Custo</th>
                 <th className="px-3 py-2">Risco</th>
                 <th className="px-3 py-2">Comprovante</th>
               </tr>
@@ -273,12 +293,13 @@ const ImobProcessesPage: React.FC = () => {
                   <td className="px-3 py-3 text-foreground">{item.runId}</td>
                   <td className="px-3 py-3">{item.client}</td>
                   <td className="px-3 py-3">{item.partner}</td>
-                  <td className="px-3 py-3">{humanActionLabel(item.action)}</td>
+                  <td className="px-3 py-3">{item.stageLabel}</td>
                   <td className="px-3 py-3">
                     <span className={`rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.15em] ${statusTone(item.status)}`}>
                       {humanStatusLabel(item.status)}
                     </span>
                   </td>
+                  <td className="px-3 py-3 text-foreground">{formatBRL(item.costCents)}</td>
                   <td className="px-3 py-3">{humanRiskLabel(item.risk)}</td>
                   <td className="px-3 py-3 text-xs">
                     <div className="flex flex-wrap items-center gap-2">

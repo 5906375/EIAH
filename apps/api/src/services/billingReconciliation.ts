@@ -4,6 +4,7 @@ type BillingReconciliationScope = {
   tenantId: string;
   workspaceId?: string | null;
   runId?: string | null;
+  agent?: string | null;
   from?: Date | null;
   to?: Date | null;
   limit?: number | null;
@@ -50,6 +51,7 @@ export type BillingReconciliationSummary = {
     tenantId: string;
     workspaceId: string | null;
     runId: string | null;
+    agent: string | null;
     from: string | null;
     to: string | null;
     limit: number;
@@ -100,6 +102,7 @@ export async function getBillingReconciliationSummary(
     tenantId: params.tenantId,
     ...(params.workspaceId ? { workspaceId: params.workspaceId } : {}),
     ...(params.runId ? { id: params.runId } : {}),
+    ...(params.agent ? { agent: params.agent } : {}),
     ...(createdAt ? { createdAt } : {}),
   };
 
@@ -107,6 +110,7 @@ export async function getBillingReconciliationSummary(
     tenantId: params.tenantId,
     ...(params.workspaceId ? { workspaceId: params.workspaceId } : {}),
     ...(params.runId ? { runId: params.runId } : {}),
+    ...(params.agent ? { agent: params.agent } : {}),
     ...(createdAt ? { createdAt } : {}),
   };
 
@@ -118,7 +122,7 @@ export async function getBillingReconciliationSummary(
     ...(createdAt ? { createdAt } : {}),
   };
 
-  const [runs, breakdowns, ledgerRows] = await Promise.all([
+  const [runs, breakdowns, ledgerRowsRaw] = await Promise.all([
     prisma.run.findMany({
       where: runWhere,
       select: {
@@ -159,6 +163,9 @@ export async function getBillingReconciliationSummary(
   ]);
 
   const runIds = new Set(runs.map((item) => item.id));
+  const ledgerRows = params.agent
+    ? ledgerRowsRaw.filter((item) => item.runId && runIds.has(item.runId))
+    : ledgerRowsRaw;
   const breakdownByRun = new Map<string, number>();
   const ledgerByRun = new Map<string, number>();
 
@@ -300,6 +307,7 @@ export async function getBillingReconciliationSummary(
       tenantId: params.tenantId,
       workspaceId: params.workspaceId ?? null,
       runId: params.runId ?? null,
+      agent: params.agent ?? null,
       from: params.from?.toISOString() ?? null,
       to: params.to?.toISOString() ?? null,
       limit,

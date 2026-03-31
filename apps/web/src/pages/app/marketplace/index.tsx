@@ -3,8 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   ApiError,
   apiActivateMarketplaceInstallation,
+  apiGetAgentBillingSummary,
   apiGetSessionContext,
+  apiGetTenantBillingSummary,
   apiListMarketplaceInstallations,
+  type AgentBillingSummaryItem,
+  type TenantBillingSummary,
 } from "@/lib/api";
 import { updateSession, useSession } from "@/state/sessionStore";
 
@@ -69,6 +73,18 @@ function fmtDate(value?: string | null) {
   return date.toLocaleString("pt-BR");
 }
 
+function formatBRL(cents: number) {
+  return (cents / 100).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
+}
+
+function averageCostPerRun(item: { costCents: number; runs: number } | null | undefined) {
+  if (!item || item.runs <= 0) return 0;
+  return Math.round(item.costCents / item.runs);
+}
+
 const MarketplaceIndexPage: React.FC = () => {
   const session = useSession();
   const navigate = useNavigate();
@@ -79,16 +95,22 @@ const MarketplaceIndexPage: React.FC = () => {
   const [error, setError] = React.useState<string | null>(null);
   const [checks, setChecks] = React.useState<CheckResult[]>([]);
   const [runningChecks, setRunningChecks] = React.useState(false);
+  const [billingSummary, setBillingSummary] = React.useState<TenantBillingSummary | null>(null);
+  const [agentBilling, setAgentBilling] = React.useState<AgentBillingSummaryItem[]>([]);
 
   const refresh = React.useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [installs, context] = await Promise.all([
+      const [installs, context, billing, agents] = await Promise.all([
         apiListMarketplaceInstallations(),
         apiGetSessionContext().catch(() => null),
+        apiGetTenantBillingSummary().catch(() => null),
+        apiGetAgentBillingSummary({ workspaceId: session.workspaceId }).catch(() => null),
       ]);
       setInstallations((installs.items ?? []) as InstallRow[]);
+      setBillingSummary(billing?.data ?? null);
+      setAgentBilling(Array.isArray(agents?.data?.items) ? agents.data.items : []);
 
       if (context?.ok && context.data) {
         updateSession({
@@ -110,7 +132,7 @@ const MarketplaceIndexPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [session.workspaceId]);
 
   React.useEffect(() => {
     void refresh();
@@ -190,6 +212,25 @@ const MarketplaceIndexPage: React.FC = () => {
 
   const brand = session.branding?.brandName?.trim() || "Tenant";
   const workspace = session.branding?.workspaceLabel?.trim() || session.workspaceId;
+  const activeWorkspaceBilling = React.useMemo(
+    () => billingSummary?.byWorkspace.find((item) => item.workspaceId === session.workspaceId) ?? null,
+    [billingSummary, session.workspaceId]
+  );
+  const topAgent = React.useMemo(() => {
+    const items = [...agentBilling];
+    items.sort((a, b) => b.costCents - a.costCents);
+    return items[0] ?? null;
+  }, [agentBilling]);
+  const runnerUpAgent = React.useMemo(() => {
+    const items = [...agentBilling].sort((a, b) => b.costCents - a.costCents);
+    return items[1] ?? null;
+  }, [agentBilling]);
+  const activeCostAgents = React.useMemo(() => agentBilling.filter((item) => item.costCents > 0), [agentBilling]);
+  const topAgentSharePct = React.useMemo(() => {
+    const total = activeCostAgents.reduce((sum, item) => sum + item.costCents, 0);
+    if (!topAgent || total <= 0) return 0;
+    return (topAgent.costCents / total) * 100;
+  }, [activeCostAgents, topAgent]);
 
   return (
     <div className="space-y-8">
@@ -202,6 +243,39 @@ const MarketplaceIndexPage: React.FC = () => {
         <p className="mt-3 text-xs uppercase tracking-[0.22em] text-muted-foreground/80">
           {brand} • {workspace}
         </p>
+        <div className="mt-6 grid gap-3 md:grid-cols-4">
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Custo do tenant</p>
+            <p className="mt-2 text-lg font-semibold text-foreground">
+              {formatBRL(billingSummary?.totals.costCents ?? 0)}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Workspace atual</p>
+            <p className="mt-2 text-lg font-semibold text-foreground">
+              {formatBRL(activeWorkspaceBilling?.costCents ?? 0)}
+            </p>
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              {activeWorkspaceBilling?.runs ?? 0} runs no ciclo
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Agentes com custo</p>
+            <p className="mt-2 text-lg font-semibold text-foreground">
+              {agentBilling.filter((item) => item.costCents > 0).length}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Agente dominante</p>
+            <p className="mt-2 text-sm font-semibold text-foreground">{topAgent?.agent ?? "-"}</p>
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              {topAgent ? formatBRL(topAgent.costCents) : "Sem custo ainda"}
+            </p>
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              {topAgent ? `${topAgentSharePct.toFixed(0)}% do custo dos agentes` : "—"}
+            </p>
+          </div>
+        </div>
       </header>
 
       <section className="grid gap-4 md:grid-cols-3">
@@ -229,6 +303,28 @@ const MarketplaceIndexPage: React.FC = () => {
 
               <p className="mt-2 text-sm text-muted-foreground">{vertical.summary}</p>
               <p className="mt-3 text-xs text-muted-foreground">Ativado em: {fmtDate(install?.activatedAt)}</p>
+              {active ? (
+                <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3 text-xs text-muted-foreground">
+                  <p>
+                    Custo do workspace:{" "}
+                    <span className="text-foreground">{formatBRL(activeWorkspaceBilling?.costCents ?? 0)}</span>
+                  </p>
+                  <p className="mt-1">
+                    Runs do workspace:{" "}
+                    <span className="text-foreground">
+                      {new Intl.NumberFormat("pt-BR").format(activeWorkspaceBilling?.runs ?? 0)}
+                    </span>
+                  </p>
+                  <p className="mt-1">
+                    Agente mais custoso:{" "}
+                    <span className="text-foreground">{topAgent?.agent ?? "Sem uso financeiro ainda"}</span>
+                  </p>
+                  <p className="mt-1">
+                    Custo médio por run:{" "}
+                    <span className="text-foreground">{formatBRL(averageCostPerRun(activeWorkspaceBilling))}</span>
+                  </p>
+                </div>
+              ) : null}
 
               <div className="mt-4 flex flex-wrap gap-2">
                 {vertical.product === "IMOB" && !active ? (
@@ -278,6 +374,39 @@ const MarketplaceIndexPage: React.FC = () => {
             </article>
           );
         })}
+      </section>
+
+      <section className="grid gap-4 lg:grid-cols-3">
+        <article className="rounded-2xl border border-white/10 bg-surface/70 p-5">
+          <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Comparação financeira</p>
+          <p className="mt-3 text-sm text-foreground">
+            {topAgent
+              ? `${topAgent.agent} lidera o consumo com ${formatBRL(topAgent.costCents)}`
+              : "Sem comparação financeira ainda neste workspace."}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {runnerUpAgent
+              ? `Segundo lugar: ${runnerUpAgent.agent} com ${formatBRL(runnerUpAgent.costCents)}`
+              : "Ainda não há um segundo agente com custo material."}
+          </p>
+        </article>
+        <article className="rounded-2xl border border-white/10 bg-surface/70 p-5 lg:col-span-2">
+          <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Agentes por custo</p>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {activeCostAgents.slice(0, 3).map((item) => (
+              <div key={`marketplace-cost-${item.agent}`} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <p className="text-sm font-semibold text-foreground">{item.agent}</p>
+                <p className="mt-2 text-sm text-foreground">{formatBRL(item.costCents)}</p>
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  {item.runs} runs • {formatBRL(averageCostPerRun(item))}/run
+                </p>
+              </div>
+            ))}
+            {!activeCostAgents.length ? (
+              <p className="text-sm text-muted-foreground">Ainda não há agentes com custo real para comparar.</p>
+            ) : null}
+          </div>
+        </article>
       </section>
 
       <section className="rounded-2xl border border-white/10 bg-surface/70 p-6">

@@ -3,8 +3,12 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   ApiError,
   apiActivateMarketplaceInstallation,
+  apiGetAgentBillingSummary,
   apiGetSessionContext,
+  apiGetTenantBillingSummary,
   apiListMarketplaceInstallations,
+  type AgentBillingSummaryItem,
+  type TenantBillingSummary,
 } from "@/lib/api";
 import { updateSession, useSession } from "@/state/sessionStore";
 
@@ -12,6 +16,18 @@ function hasActiveImobInstall(items: Array<{ product: string; status: string }>)
   return items.some(
     (item) => item.product.trim().toUpperCase() === "IMOB" && item.status.trim().toLowerCase() === "active"
   );
+}
+
+function formatBRL(cents: number) {
+  return (cents / 100).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
+}
+
+function averageCostPerRun(item: { costCents: number; runs: number } | null | undefined) {
+  if (!item || item.runs <= 0) return 0;
+  return Math.round(item.costCents / item.runs);
 }
 
 const ImobMarketplacePage: React.FC = () => {
@@ -23,6 +39,8 @@ const ImobMarketplacePage: React.FC = () => {
   const [activatedAt, setActivatedAt] = React.useState<string | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [notice, setNotice] = React.useState<string | null>(null);
+  const [billingSummary, setBillingSummary] = React.useState<TenantBillingSummary | null>(null);
+  const [agentBilling, setAgentBilling] = React.useState<AgentBillingSummaryItem[]>([]);
   const brandName = session.branding?.brandName?.trim() || "Tenant";
   const workspaceLabel = session.branding?.workspaceLabel?.trim() || session.workspaceId;
 
@@ -30,10 +48,14 @@ const ImobMarketplacePage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [installations, context] = await Promise.all([
+      const [installations, context, billing, agents] = await Promise.all([
         apiListMarketplaceInstallations(),
         apiGetSessionContext().catch(() => null),
+        apiGetTenantBillingSummary().catch(() => null),
+        apiGetAgentBillingSummary({ workspaceId: session.workspaceId }).catch(() => null),
       ]);
+      setBillingSummary(billing?.data ?? null);
+      setAgentBilling(Array.isArray(agents?.data?.items) ? agents.data.items : []);
 
       const active = hasActiveImobInstall(installations.items ?? []);
       setIsInstalled(active);
@@ -64,7 +86,7 @@ const ImobMarketplacePage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [session.workspaceId]);
 
   React.useEffect(() => {
     void refreshStatus();
@@ -109,6 +131,20 @@ const ImobMarketplacePage: React.FC = () => {
     }
   };
 
+  const activeWorkspaceBilling = React.useMemo(
+    () => billingSummary?.byWorkspace.find((item) => item.workspaceId === session.workspaceId) ?? null,
+    [billingSummary, session.workspaceId]
+  );
+  const topAgent = React.useMemo(() => {
+    const items = [...agentBilling];
+    items.sort((a, b) => b.costCents - a.costCents);
+    return items[0] ?? null;
+  }, [agentBilling]);
+  const comparedAgents = React.useMemo(
+    () => [...agentBilling].filter((item) => item.costCents > 0).sort((a, b) => b.costCents - a.costCents).slice(0, 3),
+    [agentBilling]
+  );
+
   return (
     <div className="space-y-8">
       <header className="rounded-3xl border border-white/10 bg-gradient-to-r from-accent/10 via-surface/80 to-transparent p-8">
@@ -143,6 +179,15 @@ const ImobMarketplacePage: React.FC = () => {
               </p>
               <p>
                 Ativado em: <span className="text-foreground">{activatedAt ? new Date(activatedAt).toLocaleString("pt-BR") : "—"}</span>
+              </p>
+              <p>
+                Custo do workspace: <span className="text-foreground">{formatBRL(activeWorkspaceBilling?.costCents ?? 0)}</span>
+              </p>
+              <p>
+                Runs do workspace: <span className="text-foreground">{activeWorkspaceBilling?.runs ?? 0}</span>
+              </p>
+              <p>
+                Agente com maior custo: <span className="text-foreground">{topAgent?.agent ?? "Sem uso financeiro ainda"}</span>
               </p>
             </div>
           ) : null}
@@ -189,7 +234,27 @@ const ImobMarketplacePage: React.FC = () => {
         </article>
 
         <aside className="rounded-3xl border border-white/10 bg-surface/60 p-6">
-          <h3 className="text-sm font-semibold uppercase tracking-[0.28em] text-muted-foreground">Rotas liberadas</h3>
+          <h3 className="text-sm font-semibold uppercase tracking-[0.28em] text-muted-foreground">Impacto operacional</h3>
+          <div className="mt-4 space-y-3 text-sm text-foreground">
+            <p>Workspace no ciclo: {formatBRL(activeWorkspaceBilling?.costCents ?? 0)}</p>
+            <p>Runs no ciclo: {activeWorkspaceBilling?.runs ?? 0}</p>
+            <p>Agentes com custo: {agentBilling.filter((item) => item.costCents > 0).length}</p>
+            <p>Custo médio por run: {formatBRL(averageCostPerRun(activeWorkspaceBilling))}</p>
+          </div>
+          <h3 className="mt-6 text-sm font-semibold uppercase tracking-[0.28em] text-muted-foreground">Comparação financeira</h3>
+          <div className="mt-4 space-y-2 text-sm text-foreground">
+            {comparedAgents.length > 0 ? (
+              comparedAgents.map((item, index) => (
+                <p key={`imob-market-cost-${item.agent}`}>
+                  #{index + 1} {item.agent}: {formatBRL(item.costCents)} • {item.runs} runs • {formatBRL(averageCostPerRun(item))}/run
+                </p>
+              ))
+            ) : (
+              <p>Sem agentes com custo real ainda.</p>
+            )}
+            {topAgent ? <p className="text-xs text-muted-foreground">Agente dominante no workspace: {topAgent.agent}</p> : null}
+          </div>
+          <h3 className="mt-6 text-sm font-semibold uppercase tracking-[0.28em] text-muted-foreground">Rotas liberadas</h3>
           <ul className="mt-4 space-y-2 text-sm text-foreground">
             <li>/app/imob/chat</li>
             <li>/app/imob/properties</li>

@@ -2,19 +2,23 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useSession } from "@/state/sessionStore";
 import {
+  apiGetAgentBillingSummary,
   apiGetBillingReconciliationSummary,
   apiCreateTenantBillingAdjustment,
   apiGetRun,
   apiGetTenantBillingLedger,
   apiGetTenantBillingSummary,
   apiGetTenantBillingWorkspaces,
+  apiGetWorkspaceAgentAssignments,
   apiPatchTenantQuotas,
   apiPatchTenantWorkspaceGrant,
   type BillingReconciliationSummary,
   type Run,
+  type AgentBillingSummaryItem,
   type TenantBillingLedgerItem,
   type TenantBillingSummary,
   type TenantBillingWorkspaceItem,
+  type WorkspaceAgentAssignmentItem,
 } from "@/lib/api";
 
 const formatBRL = (cents: number) =>
@@ -30,8 +34,16 @@ const formatDateTime = (iso?: string | null) => {
   return date.toLocaleString("pt-BR");
 };
 
+const formatDateInputValue = (iso?: string | null) => {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toISOString().slice(0, 10);
+};
+
 type Mode = "user" | "dev";
 type Theme = "dark" | "light";
+type BillingProfileView = "operacao" | "financeiro" | "executivo";
 
 const randomClient = () => `cliente-${Math.floor(Math.random() * 1000)}`;
 const DEFAULT_WORKSPACE_ID = import.meta.env.VITE_WORKSPACE_ID || "workspace-demo";
@@ -558,10 +570,20 @@ const BillingPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<TenantBillingSummary | null>(null);
   const [workspaceItems, setWorkspaceItems] = useState<TenantBillingWorkspaceItem[]>([]);
+  const [workspaceAgentsByWorkspaceId, setWorkspaceAgentsByWorkspaceId] = useState<
+    Record<string, WorkspaceAgentAssignmentItem[]>
+  >({});
   const [ledgerItems, setLedgerItems] = useState<TenantBillingLedgerItem[]>([]);
   const [reconciliation, setReconciliation] = useState<BillingReconciliationSummary | null>(null);
   const [reconciliationWorkspaceId, setReconciliationWorkspaceId] = useState<string>("");
+  const [reconciliationAgent, setReconciliationAgent] = useState<string>("");
+  const [reconciliationAgents, setReconciliationAgents] = useState<AgentBillingSummaryItem[]>([]);
   const [requestedRun, setRequestedRun] = useState<Run | null>(null);
+  const [billingProfile, setBillingProfile] = useState<BillingProfileView>("operacao");
+  const [periodFromInput, setPeriodFromInput] = useState("");
+  const [periodToInput, setPeriodToInput] = useState("");
+  const [periodFromApplied, setPeriodFromApplied] = useState("");
+  const [periodToApplied, setPeriodToApplied] = useState("");
 
   const [quotaForm, setQuotaForm] = useState({
     softLimitPct: "",
@@ -584,20 +606,46 @@ const BillingPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [summaryRes, workspacesRes, ledgerRes, reconciliationRes] = await Promise.all([
-        apiGetTenantBillingSummary(),
+      const [summaryRes, workspacesRes, ledgerRes, reconciliationRes, agentSummaryRes] = await Promise.all([
+        apiGetTenantBillingSummary({
+          from: periodFromApplied || undefined,
+          to: periodToApplied || undefined,
+        }),
         apiGetTenantBillingWorkspaces(),
-        apiGetTenantBillingLedger({ limit: 12 }),
+        apiGetTenantBillingLedger({
+          limit: 12,
+          from: periodFromApplied || undefined,
+          to: periodToApplied || undefined,
+          workspaceId: reconciliationWorkspaceId || undefined,
+        }),
         apiGetBillingReconciliationSummary({
           limit: 12,
           workspaceId: reconciliationWorkspaceId || undefined,
           runId: requestedRunId || undefined,
+          agent: reconciliationAgent || undefined,
+          from: periodFromApplied || undefined,
+          to: periodToApplied || undefined,
         }),
+        apiGetAgentBillingSummary({
+          workspaceId: reconciliationWorkspaceId || undefined,
+          from: periodFromApplied || undefined,
+          to: periodToApplied || undefined,
+        }).catch(() => null),
       ]);
+      const workspaceData = workspacesRes.data.items || [];
+      const activeWorkspaceItem = workspaceData.find((item) => item.isActiveWorkspace);
+      const workspaceAgentsEntries = await Promise.all(
+        workspaceData.map(async (item) => {
+          const response = await apiGetWorkspaceAgentAssignments(item.workspaceId).catch(() => null);
+          return [item.workspaceId, response?.data?.items ?? []] as const;
+        })
+      );
       setSummary(summaryRes.data);
-      setWorkspaceItems(workspacesRes.data.items || []);
+      setWorkspaceItems(workspaceData);
+      setWorkspaceAgentsByWorkspaceId(Object.fromEntries(workspaceAgentsEntries));
       setLedgerItems(ledgerRes.data.items || []);
       setReconciliation(reconciliationRes.data);
+      setReconciliationAgents(Array.isArray(agentSummaryRes?.data?.items) ? agentSummaryRes.data.items : []);
 
       const policy = summaryRes.data.policy;
       setQuotaForm({
@@ -608,10 +656,18 @@ const BillingPage: React.FC = () => {
           policy?.monthlyCostCentsLimit != null ? String(policy.monthlyCostCentsLimit) : "",
       });
 
-      const activeWorkspace = workspacesRes.data.items.find((item) => item.isActiveWorkspace);
-      setAdjustmentWorkspaceId(activeWorkspace?.workspaceId ?? workspacesRes.data.items[0]?.workspaceId ?? "");
+      setAdjustmentWorkspaceId((current) =>
+        current && workspaceData.some((item) => item.workspaceId === current)
+          ? current
+          : activeWorkspaceItem?.workspaceId ?? workspaceData[0]?.workspaceId ?? ""
+      );
       setReconciliationWorkspaceId((current) =>
-        current && workspacesRes.data.items.some((item) => item.workspaceId === current)
+        current && workspaceData.some((item) => item.workspaceId === current)
+          ? current
+          : ""
+      );
+      setReconciliationAgent((current) =>
+        current && (agentSummaryRes?.data?.items ?? []).some((item) => item.agent === current)
           ? current
           : ""
       );
@@ -625,7 +681,7 @@ const BillingPage: React.FC = () => {
 
   useEffect(() => {
     void loadData();
-  }, [workspaceId, reconciliationWorkspaceId, requestedRunId]);
+  }, [workspaceId, reconciliationWorkspaceId, reconciliationAgent, requestedRunId, periodFromApplied, periodToApplied]);
 
   useEffect(() => {
     if (!requestedRunId) {
@@ -671,6 +727,101 @@ const BillingPage: React.FC = () => {
   const entitlementSummary = summary?.entitlements ?? null;
 
   const activeWorkspace = workspaceItems.find((item) => item.isActiveWorkspace);
+  const selectedWorkspace =
+    (reconciliationWorkspaceId
+      ? workspaceItems.find((item) => item.workspaceId === reconciliationWorkspaceId)
+      : null) ??
+    activeWorkspace ??
+    workspaceItems[0] ??
+    null;
+  const enabledGrantCount = workspaceItems.filter((item) => item.grant?.enabled !== false).length;
+  const disabledGrantCount = workspaceItems.filter((item) => item.grant?.enabled === false).length;
+  const workspaceAgentCounts = useMemo(
+    () =>
+      Object.fromEntries(
+        Object.entries(workspaceAgentsByWorkspaceId).map(([workspaceId, items]) => [
+          workspaceId,
+          {
+            total: items.length,
+            enabled: items.filter((item) => item.enabled).length,
+          },
+        ])
+      ) as Record<string, { total: number; enabled: number }>,
+    [workspaceAgentsByWorkspaceId]
+  );
+  const totalEnabledWorkspaceAgents = useMemo(
+    () =>
+      Object.values(workspaceAgentsByWorkspaceId).reduce(
+        (sum, items) => sum + items.filter((item) => item.enabled).length,
+        0
+      ),
+    [workspaceAgentsByWorkspaceId]
+  );
+  const workspacesWithEnabledAgents = useMemo(
+    () => Object.values(workspaceAgentCounts).filter((item) => item.enabled > 0).length,
+    [workspaceAgentCounts]
+  );
+  const selectedWorkspaceAgents = useMemo(() => {
+    if (!selectedWorkspace?.workspaceId) return [];
+    return workspaceAgentsByWorkspaceId[selectedWorkspace.workspaceId] ?? [];
+  }, [selectedWorkspace, workspaceAgentsByWorkspaceId]);
+  const workspaceShare = useMemo(() => {
+    const total = summary?.totals.costCents ?? 0;
+    const workspaceCost = selectedWorkspace?.usage.costCents ?? 0;
+    if (total <= 0) return 0;
+    return Math.min(100, (workspaceCost / total) * 100);
+  }, [selectedWorkspace, summary]);
+  const ledgerSummary = useMemo(() => {
+    const withRun = ledgerItems.filter((item) => item.runId).length;
+    const withoutRun = ledgerItems.length - withRun;
+    const totalAmountCents = ledgerItems.reduce((sum, item) => sum + (item.amountCents ?? 0), 0);
+    return {
+      totalItems: ledgerItems.length,
+      withRun,
+      withoutRun,
+      totalAmountCents,
+    };
+  }, [ledgerItems]);
+  const topWorkspace = useMemo(() => {
+    const items = [...(summary?.byWorkspace ?? [])];
+    items.sort((a, b) => b.costCents - a.costCents);
+    return items[0] ?? null;
+  }, [summary]);
+  const executiveSummary = useMemo(() => {
+    const total = summary?.totals.costCents ?? 0;
+    const estimatedInvoice = entitlementSummary?.estimatedInvoiceCents ?? 0;
+    const auditGaps = reconciliation?.totals.auditGapCount ?? 0;
+    const ledgerGaps = reconciliation?.totals.ledgerGapCount ?? 0;
+
+    if (billingProfile === "financeiro") {
+      return {
+        title: "Resumo financeiro",
+        lines: [
+          `Faturamento previsto do ciclo: ${formatBRL(estimatedInvoice)}.`,
+          `Custo consolidado no ledger: ${formatBRL(total)}.`,
+          `Pendências abertas: ${ledgerGaps} ledger gaps e ${auditGaps} audit gaps.`,
+        ],
+      };
+    }
+    if (billingProfile === "executivo") {
+      return {
+        title: "Resumo executivo",
+        lines: [
+          `Tenant em ${formatBRL(total)} no ciclo atual.`,
+          `Workspace mais custoso: ${topWorkspace?.workspaceName ?? "-"} com ${formatBRL(topWorkspace?.costCents ?? 0)}.`,
+          `Risco operacional atual: ${auditGaps + ledgerGaps} ocorrências relevantes.`,
+        ],
+      };
+    }
+    return {
+      title: "Resumo operacional",
+      lines: [
+        `${summary?.totals.runs ?? 0} runs consolidados e ${formatBRL(total)} em custo.`,
+        `Workspace em foco: ${selectedWorkspace?.workspaceName ?? "-"} com ${selectedWorkspace?.usage.runs ?? 0} runs.`,
+        `Reconciliação aberta: ${auditGaps} audit gaps e ${ledgerGaps} ledger gaps.`,
+      ],
+    };
+  }, [billingProfile, entitlementSummary, reconciliation, selectedWorkspace, summary, topWorkspace]);
 
   const onSaveQuotas = async () => {
     setQuotaSaving(true);
@@ -730,6 +881,76 @@ const BillingPage: React.FC = () => {
     }
   };
 
+  const onApplyPeriodFilter = () => {
+    setPeriodFromApplied(periodFromInput);
+    setPeriodToApplied(periodToInput);
+  };
+
+  const onClearPeriodFilter = () => {
+    setPeriodFromInput("");
+    setPeriodToInput("");
+    setPeriodFromApplied("");
+    setPeriodToApplied("");
+  };
+
+  const onExportReconciliation = () => {
+    if (!reconciliation) return;
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      profile: billingProfile,
+      filters: {
+        workspaceId: reconciliationWorkspaceId || null,
+        agent: reconciliationAgent || null,
+        runId: requestedRunId || null,
+        from: periodFromApplied || null,
+        to: periodToApplied || null,
+      },
+      summary: {
+        tenantId: summary?.tenantId ?? null,
+        cycleStart: summary?.cycleStart ?? null,
+        cycleEnd: summary?.cycleEnd ?? null,
+        totalRuns: summary?.totals.runs ?? 0,
+        totalCostCents: summary?.totals.costCents ?? 0,
+      },
+      divergences: reconciliation.items.auditGaps,
+      duplicateCharges: reconciliation.items.duplicateCharges,
+      ledgerGaps: reconciliation.items.ledgerGaps,
+      orphanUsage: reconciliation.items.orphanUsage,
+      totals: reconciliation.totals,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `billing-divergencias-${summary?.tenantId ?? "tenant"}-${new Date()
+      .toISOString()
+      .slice(0, 10)}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const onExportLedger = () => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      filters: {
+        workspaceId: reconciliationWorkspaceId || null,
+        from: periodFromApplied || null,
+        to: periodToApplied || null,
+      },
+      totals: ledgerSummary,
+      items: ledgerItems,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `billing-ledger-${summary?.tenantId ?? "tenant"}-${new Date()
+      .toISOString()
+      .slice(0, 10)}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <>
       <div className="grid gap-8">
@@ -742,10 +963,115 @@ const BillingPage: React.FC = () => {
               Mantenha limites saudaveis por projeto e aprove licencas antes da operacao atingir o hard limit.
             </p>
           </div>
-          <span className="pill">
-            {loading ? "Carregando..." : `Tenant: ${summary?.tenantId ?? "-"}`}
-          </span>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <select
+              className="rounded-full border border-white/10 bg-black/30 px-4 py-2 text-xs uppercase tracking-[0.2em] text-muted-foreground"
+              value={billingProfile}
+              onChange={(event) => setBillingProfile(event.target.value as BillingProfileView)}
+            >
+              <option value="operacao">Perfil operação</option>
+              <option value="financeiro">Perfil financeiro</option>
+              <option value="executivo">Perfil executivo</option>
+            </select>
+            <span className="pill">
+              {loading ? "Carregando..." : `Tenant: ${summary?.tenantId ?? "-"}`}
+            </span>
+          </div>
         </header>
+
+        <div className="mt-6 grid gap-4 lg:grid-cols-[0.6fr,0.4fr]">
+          <div className="glass-subtle space-y-4 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-xs uppercase tracking-[0.24em] text-accent">Filtro por período</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Aplica o mesmo recorte em summary, ledger e reconciliação.
+                </p>
+              </div>
+              {(periodFromApplied || periodToApplied) ? (
+                <span className="pill">
+                  {periodFromApplied || formatDateInputValue(summary?.cycleStart)} até{" "}
+                  {periodToApplied || formatDateInputValue(summary?.cycleEnd)}
+                </span>
+              ) : (
+                <span className="pill">Ciclo ativo</span>
+              )}
+            </div>
+            <div className="grid gap-3 md:grid-cols-[1fr,1fr,auto,auto]">
+              <input
+                type="date"
+                className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-foreground"
+                value={periodFromInput}
+                onChange={(event) => setPeriodFromInput(event.target.value)}
+              />
+              <input
+                type="date"
+                className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-xs text-foreground"
+                value={periodToInput}
+                onChange={(event) => setPeriodToInput(event.target.value)}
+              />
+              <button
+                type="button"
+                className="rounded-full border border-accent/40 bg-accent/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent"
+                onClick={onApplyPeriodFilter}
+              >
+                Aplicar
+              </button>
+              <button
+                type="button"
+                className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-[0.25em] text-muted-foreground"
+                onClick={onClearPeriodFilter}
+              >
+                Limpar
+              </button>
+            </div>
+          </div>
+          <div className="glass-subtle space-y-3 p-5">
+            <p className="text-xs uppercase tracking-[0.24em] text-accent">{executiveSummary.title}</p>
+            <ul className="space-y-2 text-sm text-foreground">
+              {executiveSummary.lines.map((line) => (
+                <li key={line} className="leading-relaxed">
+                  {line}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <div className="mt-8 grid gap-4 md:grid-cols-4">
+          <div className="glass-subtle space-y-2 p-5">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Custo total do tenant</p>
+            <p className="text-2xl font-semibold text-foreground">{formatBRL(summary?.totals.costCents ?? 0)}</p>
+            <p className="text-xs text-muted-foreground">
+              {summary?.totals.runs ?? 0} runs no ciclo ativo
+            </p>
+          </div>
+          <div className="glass-subtle space-y-2 p-5">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              {reconciliationWorkspaceId ? "Custo do workspace filtrado" : "Custo do workspace ativo"}
+            </p>
+            <p className="text-2xl font-semibold text-foreground">
+              {formatBRL(selectedWorkspace?.usage.costCents ?? 0)}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {selectedWorkspace?.workspaceName ?? "-"} · {workspaceShare.toFixed(1)}% do tenant
+            </p>
+          </div>
+          <div className="glass-subtle space-y-2 p-5">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Ledger gaps</p>
+            <p className="text-2xl font-semibold text-foreground">{reconciliation?.totals.ledgerGapCount ?? 0}</p>
+            <p className="text-xs text-muted-foreground">
+              ledgerRows: {reconciliation?.totals.ledgerRows ?? 0}
+            </p>
+          </div>
+          <div className="glass-subtle space-y-2 p-5">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Audit gaps</p>
+            <p className="text-2xl font-semibold text-foreground">{reconciliation?.totals.auditGapCount ?? 0}</p>
+            <p className="text-xs text-muted-foreground">
+              runsChecked: {reconciliation?.totals.runsChecked ?? 0}
+            </p>
+          </div>
+        </div>
 
         <div className="mt-6 rounded-2xl border border-accent/30 bg-accent/10 p-5">
           <p className="text-xs uppercase tracking-[0.24em] text-accent">Seu plano e cobranca</p>
@@ -876,6 +1202,34 @@ const BillingPage: React.FC = () => {
               <li>- Disponibilize limites customizados por cliente</li>
             </ul>
           </div>
+          <div className="grid gap-3 md:grid-cols-4">
+            <div className="glass-subtle p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Soft limit</p>
+              <p className="mt-2 text-xl font-semibold text-foreground">
+                {summary?.policy?.softLimitPct != null ? `${summary.policy.softLimitPct}%` : "-"}
+              </p>
+            </div>
+            <div className="glass-subtle p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Hard limit</p>
+              <p className="mt-2 text-xl font-semibold text-foreground">
+                {summary?.policy?.hardLimitPct != null ? `${summary.policy.hardLimitPct}%` : "-"}
+              </p>
+            </div>
+            <div className="glass-subtle p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Runs/mês</p>
+              <p className="mt-2 text-xl font-semibold text-foreground">
+                {summary?.policy?.monthlyRunsLimit ?? "-"}
+              </p>
+            </div>
+            <div className="glass-subtle p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Custo/mês</p>
+              <p className="mt-2 text-xl font-semibold text-foreground">
+                {summary?.policy?.monthlyCostCentsLimit != null
+                  ? formatBRL(summary.policy.monthlyCostCentsLimit)
+                  : "-"}
+              </p>
+            </div>
+          </div>
           <div className="glass-subtle space-y-3 p-4">
             <h4 className="text-sm font-semibold text-foreground">Quotas do tenant</h4>
             <div className="grid grid-cols-2 gap-2">
@@ -921,7 +1275,12 @@ const BillingPage: React.FC = () => {
 
       <section className="glass-panel mt-8 space-y-5 p-8">
         <header className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-foreground">Grants por workspace</h3>
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">Grants por workspace</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Leia habilitação, limites locais e consumo do workspace no mesmo bloco operacional.
+            </p>
+          </div>
           <button
             type="button"
             className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-[0.25em] text-muted-foreground"
@@ -930,6 +1289,59 @@ const BillingPage: React.FC = () => {
             Atualizar
           </button>
         </header>
+        <div className="grid gap-3 md:grid-cols-4">
+          <div className="glass-subtle p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Workspace em foco</p>
+            <p className="mt-2 text-sm font-semibold text-foreground">{selectedWorkspace?.workspaceName ?? "-"}</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {reconciliationWorkspaceId ? "baseado no filtro da reconciliação" : "baseado no workspace ativo"}
+            </p>
+          </div>
+          <div className="glass-subtle p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Grants habilitados</p>
+            <p className="mt-2 text-xl font-semibold text-foreground">{enabledGrantCount}</p>
+          </div>
+          <div className="glass-subtle p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Agentes habilitados</p>
+            <p className="mt-2 text-xl font-semibold text-foreground">{totalEnabledWorkspaceAgents}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{workspacesWithEnabledAgents} workspaces com agentes ativos</p>
+          </div>
+          <div className="glass-subtle p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Custo do workspace em foco</p>
+            <p className="mt-2 text-xl font-semibold text-foreground">
+              {formatBRL(selectedWorkspace?.usage.costCents ?? 0)}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {selectedWorkspace?.usage.runs ?? 0} runs no ciclo
+            </p>
+          </div>
+        </div>
+        <div className="glass-subtle grid gap-3 p-4 md:grid-cols-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Grant do workspace em foco</p>
+            <p className="mt-2 text-sm font-semibold text-foreground">
+              {selectedWorkspace?.grant?.enabled === false ? "Desabilitado" : "Habilitado"}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Limite local de runs</p>
+            <p className="mt-2 text-sm font-semibold text-foreground">{selectedWorkspace?.grant?.localRunLimit ?? "-"}</p>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Limite local de custo</p>
+            <p className="mt-2 text-sm font-semibold text-foreground">
+              {selectedWorkspace?.grant?.localCostCentsLimit != null
+                ? formatBRL(selectedWorkspace.grant.localCostCentsLimit)
+                : "-"}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Agentes no workspace em foco</p>
+            <p className="mt-2 text-sm font-semibold text-foreground">
+              {selectedWorkspaceAgents.filter((item) => item.enabled).length} habilitados · {selectedWorkspaceAgents.length} total
+            </p>
+          </div>
+        </div>
         <div className="grid gap-3 md:grid-cols-2">
           {workspaceItems.map((item) => (
             <div key={item.workspaceId} className="glass-subtle space-y-3 p-4">
@@ -946,6 +1358,30 @@ const BillingPage: React.FC = () => {
                 Limites locais: runs {item.grant?.localRunLimit ?? "-"} · custo{" "}
                 {item.grant?.localCostCentsLimit != null ? formatBRL(item.grant.localCostCentsLimit) : "-"}
               </p>
+              <div className="space-y-2">
+                <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Agentes habilitados</p>
+                {(workspaceAgentsByWorkspaceId[item.workspaceId] ?? []).length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {(workspaceAgentsByWorkspaceId[item.workspaceId] ?? []).map((agent) => (
+                      <span
+                        key={agent.id}
+                        className={`pill ${agent.enabled ? "" : "bg-rose-500/15 text-rose-200"}`}
+                        title={agent.signatureRef ?? undefined}
+                      >
+                        {agent.agentKey}
+                        {agent.agentVersion ? ` · v${agent.agentVersion}` : ""}
+                        {agent.enabled ? "" : " · off"}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Nenhum agente atribuído a este workspace.</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Painel consolidado: {item.usage.runs} runs, {formatBRL(item.usage.costCents)} e{" "}
+                  {workspaceAgentCounts[item.workspaceId]?.enabled ?? 0} agentes ativos.
+                </p>
+              </div>
               <button
                 type="button"
                 className="rounded-full border border-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.25em] text-muted-foreground"
@@ -961,6 +1397,10 @@ const BillingPage: React.FC = () => {
             </div>
           ))}
         </div>
+        <p className="text-xs text-muted-foreground">
+          Grants desabilitados no tenant: {disabledGrantCount}. O bloco cruza grant financeiro, limites locais,
+          consumo do ciclo e agentes habilitados por workspace.
+        </p>
       </section>
 
       <section className="glass-panel mt-8 space-y-5 p-8">
@@ -975,6 +1415,12 @@ const BillingPage: React.FC = () => {
             {requestedRunId ? (
               <span className="pill">Run filtrado: {requestedRunId}</span>
             ) : null}
+            {(periodFromApplied || periodToApplied) ? (
+              <span className="pill">
+                Período: {periodFromApplied || "-"} → {periodToApplied || "-"}
+              </span>
+            ) : null}
+            {reconciliationAgent ? <span className="pill">Agente: {reconciliationAgent}</span> : null}
             {requestedRunImobHref ? (
               <Link to={requestedRunImobHref} className="pill hover:border-accent/40 hover:text-foreground">
                 Abrir caso IMOB
@@ -992,12 +1438,32 @@ const BillingPage: React.FC = () => {
                 </option>
               ))}
             </select>
+            <select
+              className="rounded-full border border-white/10 bg-black/30 px-4 py-2 text-xs uppercase tracking-[0.2em] text-muted-foreground"
+              value={reconciliationAgent}
+              onChange={(event) => setReconciliationAgent(event.target.value)}
+            >
+              <option value="">Todos os agentes</option>
+              {reconciliationAgents.map((item) => (
+                <option key={`${item.agent}:${item.agentVersion ?? ""}`} value={item.agent}>
+                  {item.agent}
+                </option>
+              ))}
+            </select>
             <button
               type="button"
               className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-[0.25em] text-muted-foreground"
               onClick={() => void loadData()}
             >
               Atualizar
+            </button>
+            <button
+              type="button"
+              className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-[0.25em] text-muted-foreground"
+              onClick={onExportReconciliation}
+              disabled={!reconciliation}
+            >
+              Exportar divergências
             </button>
           </div>
         </header>
@@ -1114,9 +1580,40 @@ const BillingPage: React.FC = () => {
       </section>
 
       <section className="glass-panel mt-8 space-y-5 p-8">
-        <header>
-          <h3 className="text-lg font-semibold text-foreground">Ledger + adjustment</h3>
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">Ledger + adjustment</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Lançamentos financeiros com vínculo de workspace e navegação direta para o run quando existir.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-[0.25em] text-muted-foreground"
+            onClick={onExportLedger}
+            disabled={ledgerItems.length === 0}
+          >
+            Exportar financeiro
+          </button>
         </header>
+        <div className="grid gap-3 md:grid-cols-4">
+          <div className="glass-subtle p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Lançamentos</p>
+            <p className="mt-2 text-xl font-semibold text-foreground">{ledgerSummary.totalItems}</p>
+          </div>
+          <div className="glass-subtle p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Com run</p>
+            <p className="mt-2 text-xl font-semibold text-foreground">{ledgerSummary.withRun}</p>
+          </div>
+          <div className="glass-subtle p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Sem run</p>
+            <p className="mt-2 text-xl font-semibold text-foreground">{ledgerSummary.withoutRun}</p>
+          </div>
+          <div className="glass-subtle p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Total exibido</p>
+            <p className="mt-2 text-xl font-semibold text-foreground">{formatBRL(ledgerSummary.totalAmountCents)}</p>
+          </div>
+        </div>
         <div className="grid gap-4 md:grid-cols-[0.35fr,0.65fr]">
           <div className="glass-subtle space-y-3 p-4">
             <p className="text-xs uppercase tracking-[0.25em] text-muted-foreground">Novo adjustment</p>
@@ -1154,7 +1651,7 @@ const BillingPage: React.FC = () => {
             {adjustmentMessage ? <p className="text-xs text-emerald-300">{adjustmentMessage}</p> : null}
           </div>
           <div className="glass-subtle overflow-x-auto p-4">
-            <table className="w-full min-w-[680px] text-left text-xs">
+            <table className="w-full min-w-[860px] text-left text-xs">
               <thead className="text-muted-foreground">
                 <tr>
                   <th className="pb-2">Data</th>
@@ -1162,6 +1659,7 @@ const BillingPage: React.FC = () => {
                   <th className="pb-2">Workspace</th>
                   <th className="pb-2">Valor</th>
                   <th className="pb-2">Run</th>
+                  <th className="pb-2">Vínculo</th>
                 </tr>
               </thead>
               <tbody>
@@ -1171,9 +1669,44 @@ const BillingPage: React.FC = () => {
                     <td className="py-2 text-foreground">{item.entryType}</td>
                     <td className="py-2 text-foreground">{item.workspaceName ?? "-"}</td>
                     <td className="py-2 text-foreground">{formatBRL(item.amountCents)}</td>
-                    <td className="py-2 text-muted-foreground">{item.runId ?? "-"}</td>
+                    <td className="py-2 text-muted-foreground">
+                      {item.runId ? (
+                        <Link to={`/app/runs?runId=${encodeURIComponent(item.runId)}`} className="hover:text-foreground">
+                          {item.runId}
+                        </Link>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    <td className="py-2 text-muted-foreground">
+                      <div className="space-y-1">
+                        <p>
+                          requestId: {item.requestId ?? "-"}
+                        </p>
+                        <p>
+                          provider/model: {item.provider ?? "-"} / {item.model ?? "-"}
+                        </p>
+                        {item.runId ? (
+                          <p>
+                            <Link
+                              to={`/app/billing?runId=${encodeURIComponent(item.runId)}`}
+                              className="hover:text-foreground"
+                            >
+                              Abrir reconciliação do run
+                            </Link>
+                          </p>
+                        ) : null}
+                      </div>
+                    </td>
                   </tr>
                 ))}
+                {ledgerItems.length === 0 ? (
+                  <tr>
+                    <td className="py-2 text-muted-foreground" colSpan={6}>
+                      Nenhum lançamento financeiro encontrado para os filtros atuais.
+                    </td>
+                  </tr>
+                ) : null}
               </tbody>
             </table>
           </div>

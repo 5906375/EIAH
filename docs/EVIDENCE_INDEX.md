@@ -47,6 +47,8 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | Policy canônica de risco por ação | `docs/ops/risk-tiering-by-action.md` | Fonte oficial `action -> tier -> txIdRequired` usada pelo gate HIGH no CI. |
 | Runbook operacional de Economy/disputas | `docs/ops/economy-dispute-runbook.md` | Procedimento, incidentes e critérios operacionais para F5.6. |
 | Runbook operacional de webhook billing | `docs/ops/billing-webhook-runbook.md` | Operação de assinatura/replay/idempotência e playbook de incidente. |
+| Política operacional de billing da EIAH | `docs/operations/eiah-billing-operational-policy.md` | Política executiva e runbook de operação para custos, reconciliação, quotas, gates e resposta por perfil. |
+| Matriz de acesso da plataforma EIAH | `docs/operations/eiah-access-matrix.md` | Separação formal entre Founder Global, Tenant Admin, Workspace Admin e Usuário final, com escopo e telas esperadas. |
 | Runbook operacional de DocOps | `docs/ops/docops-runbook.md` | Rotina por ciclo, critérios de estabilidade e tratamento de drift documental. |
 
 ## Operação contínua (marco 2026-03-04)

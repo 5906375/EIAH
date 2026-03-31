@@ -6,6 +6,7 @@ import { generateContractPreview } from "../services/contracts/contractGenerator
 import type { ContractType } from "../services/contracts/types";
 import { createRunRecord } from "../services/runs";
 import { emitRunEvent } from "../services/runEventEmitter";
+import { WorkspaceAgentAssignmentError } from "../services/workspaceAgentAssignments";
 import { searchImobKnowledge } from "../services/imob/imobKnowledgeSearch";
 import { readImobDriveSyncSnapshot } from "../services/imob/imobDriveSync";
 import { searchImobInventory } from "../services/imob/imobInventoryProvider";
@@ -2386,29 +2387,37 @@ async function resolveConversationAuditRunId(params: {
     return getConversationIdFromMetadata(metadata) === params.conversationId;
   });
 
-  const auditRun =
-    matchedRun ??
-    (await createRunRecord({
-      prisma: params.prisma,
-      tenantId: params.tenantId,
-      workspaceId: params.workspaceId,
-      userId: params.userId,
-      agent: IMOB_CHAT_AUDIT_AGENT_ID,
-      status: "success",
-      request: {
-        prompt: `Audit transcript for conversation ${params.conversationId}`,
-        metadata: {
-          domain: "imob",
-          kind: "conversation_audit",
-          conversationId: params.conversationId,
-          title: params.title ?? null,
+  let auditRun = matchedRun;
+  if (!auditRun) {
+    try {
+      auditRun = await createRunRecord({
+        prisma: params.prisma,
+        tenantId: params.tenantId,
+        workspaceId: params.workspaceId,
+        userId: params.userId,
+        agent: IMOB_CHAT_AUDIT_AGENT_ID,
+        status: "success",
+        request: {
+          prompt: `Audit transcript for conversation ${params.conversationId}`,
+          metadata: {
+            domain: "imob",
+            kind: "conversation_audit",
+            conversationId: params.conversationId,
+            title: params.title ?? null,
+          },
         },
-      },
-      response: {
-        status: "audit_initialized",
-        conversationId: params.conversationId,
-      },
-    }));
+        response: {
+          status: "audit_initialized",
+          conversationId: params.conversationId,
+        },
+      });
+    } catch (error) {
+      if (error instanceof WorkspaceAgentAssignmentError) {
+        return null;
+      }
+      throw error;
+    }
+  }
 
   if (!matchedRun) {
     await emitRunEvent({
