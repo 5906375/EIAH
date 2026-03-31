@@ -1,6 +1,6 @@
 import fetch from "node-fetch";
 import { LLMProvider } from "@eiah/core/llm/LLMProvider";
-import type { ChatCompletionRequest, ChatCompletionResponse } from "@eiah/core/llm/types";
+import type { ChatCompletionRequest, ChatCompletionResponse, ChatMessage } from "@eiah/core/llm/types";
 
 export class GeminiProvider extends LLMProvider {
   readonly name = "gemini";
@@ -14,7 +14,7 @@ export class GeminiProvider extends LLMProvider {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${this.apiKey}`;
 
     const payload = {
-      contents: req.messages.map((m) => ({
+      contents: req.messages.map((m: ChatMessage) => ({
         role: m.role === "user" ? "user" : "model",
         parts: [{ text: m.content }],
       })),
@@ -29,6 +29,14 @@ export class GeminiProvider extends LLMProvider {
     const json = (await response.json()) as any;
 
     const output = json.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+    const usage = json.usageMetadata
+      ? {
+          promptTokens: json.usageMetadata.promptTokenCount ?? undefined,
+          completionTokens: json.usageMetadata.candidatesTokenCount ?? undefined,
+          cachedTokens: json.usageMetadata.cachedContentTokenCount ?? undefined,
+          totalTokens: json.usageMetadata.totalTokenCount ?? undefined,
+        }
+      : null;
 
     return {
       id: json.candidates?.[0]?.index?.toString() ?? "gemini",
@@ -37,6 +45,8 @@ export class GeminiProvider extends LLMProvider {
       finishReason: json.candidates?.[0]?.finishReason ?? "stop",
       provider: this.name,
       model,
+      requestId: json.responseId ?? json.candidates?.[0]?.index?.toString() ?? "gemini",
+      usage,
     };
   }
 }

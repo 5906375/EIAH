@@ -17,6 +17,14 @@
     "./llm/*": {
       "import": "./dist/llm/*.js",
       "types": "./dist/llm/*.d.ts"
+    },
+    "./logging/*": {
+      "import": "./dist/logging/*.js",
+      "types": "./dist/logging/*.d.ts"
+    },
+    "./services/*": {
+      "import": "./dist/services/*.js",
+      "types": "./dist/services/*.d.ts"
     }
   },
   "scripts": {

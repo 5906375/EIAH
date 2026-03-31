@@ -1,6 +1,6 @@
 import { Response, NextFunction } from "express";
+import { checkScopePermission } from "@eiah/core";
 import { TenantAwareRequest } from "./enforceTenant";
-import { checkScopePermission } from "packages/core/src/security/rbac.ts";
 
 
 /**

@@ -5,6 +5,10 @@ import process from "node:process";
 import { z } from "zod";
 import { prismaGlobal } from "@repo/db";
 import { findApiToken } from "../auth/apiTokenRepository";
+import {
+  resolveImobInstallationStatus,
+  sendImobAccessDenied,
+} from "../services/imob/imobAccessGate";
 
 const sessionRouter = Router();
 const DOMAIN_ALLOWLIST = new Set(["core", "imob"] as const);
@@ -215,11 +219,8 @@ sessionRouter.get("/session/context", async (req: Request, res: Response) => {
       .catch(() => []),
   ]);
 
-  const hasImobInstallation = productInstallations.some(
-    (entry) =>
-      entry.product.trim().toUpperCase() === "IMOB" &&
-      entry.status.trim().toLowerCase() === "active"
-  );
+  const installationStatus = resolveImobInstallationStatus(productInstallations);
+  const hasImobInstallation = installationStatus === "active";
   const realEstateCore = hasImobInstallation || realEstatePolicies.length > 0 || realEstateItems.length > 0;
   const entitlements = {
     REAL_ESTATE_CORE: realEstateCore,
@@ -229,12 +230,15 @@ sessionRouter.get("/session/context", async (req: Request, res: Response) => {
   };
 
   if (requestedDomain === "imob" && !entitlements.REAL_ESTATE_CORE) {
-    return res.status(403).json({
-      ok: false,
-      error: {
-        code: "ENTITLEMENT_MISSING",
-        message: "REAL_ESTATE_CORE entitlement required for domain=imob",
-      },
+    return sendImobAccessDenied(res, {
+      req,
+      code: "ENTITLEMENT_MISSING",
+      reasonCode:
+        installationStatus === "inactive" ? "IMOB_INSTALLATION_INACTIVE" : "IMOB_ENTITLEMENT_MISSING",
+      capability: "CENTRAL_OPERACIONAL",
+      tenantId: tokenRecord.tenantId,
+      workspaceId: tokenRecord.workspaceId,
+      installationStatus,
     });
   }
 

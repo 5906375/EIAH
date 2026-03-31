@@ -31,6 +31,8 @@ export type Run = {
   tenantId?: string;
   projectId?: string;
   userId?: string | null;
+  caseId?: string | null;
+  threadId?: string | null;
   agent: string;
   status: RunStatus;
   request?: unknown;
@@ -563,7 +565,28 @@ export type SessionContextResponse = {
       workspaceLabel: string;
     };
   };
-  error?: { code?: string; message?: string; details?: unknown };
+  error?: {
+    code?: string;
+    reasonCode?: "IMOB_ENTITLEMENT_MISSING" | "IMOB_INSTALLATION_INACTIVE" | "IMOB_PERMISSION_DENIED";
+    message?: string;
+    traceId?: string;
+    product?: "IMOB";
+    capability?: "CENTRAL_OPERACIONAL" | "KNOWLEDGE_SYNC_STATUS" | "KNOWLEDGE_SEARCH";
+    scope?: {
+      tenantId: string;
+      workspaceId: string;
+    };
+    cta?: {
+      type: "INSTALL" | "ACTIVATE" | "CONTACT_ADMIN" | "OPEN_BILLING";
+      label: string;
+      target: string;
+    };
+    details?: {
+      entitlementRequired?: "IMOB_ACTIVE_INSTALLATION";
+      installationStatus?: "missing" | "inactive" | "active";
+      stage?: string | null;
+    };
+  };
 };
 
 type CreateRunBody = {
@@ -978,6 +1001,52 @@ export async function apiListRuns(params: {
 
 export async function apiGetRun(id: string): Promise<Run> {
   return http<Run>(`/runs/${id}`, { method: "GET" });
+}
+
+export type RunCostBreakdown = {
+  run: {
+    id: string;
+    workspaceId: string;
+    caseId?: string | null;
+    threadId?: string | null;
+    agent: string;
+    agentVersion?: string | null;
+    status: string;
+    costCents: number;
+    traceId?: string | null;
+    createdAt?: string;
+    updatedAt?: string;
+  };
+  totals: {
+    amountCents: number;
+    tokens: number;
+  };
+  items: Array<{
+    id: string;
+    requestId: string;
+    traceId?: string | null;
+    agent: string;
+    agentVersion?: string | null;
+    provider: string;
+    model: string;
+    pricingVersion: string;
+    meterType: string;
+    requestClass: string;
+    promptTokens: number;
+    completionTokens: number;
+    cachedTokens: number;
+    totalTokens: number;
+    amountCents: number;
+    currency: string;
+    estimated: boolean;
+    createdAt: string;
+  }>;
+};
+
+export async function apiGetRunCostBreakdown(id: string) {
+  return http<{ ok: boolean; data: RunCostBreakdown }>(`/runs/${encodeURIComponent(id)}/cost-breakdown`, {
+    method: "GET",
+  });
 }
 
 export async function apiGetImobFunnelHealth(params?: {
@@ -2156,12 +2225,109 @@ export type TenantBillingLedgerItem = {
   createdAt: string;
 };
 
+export type AgentBillingSummaryItem = {
+  agent: string;
+  agentVersion?: string | null;
+  runs: number;
+  costCents: number;
+  tokens: number;
+};
+
+export type BillingReconciliationRunGap = {
+  runId: string;
+  workspaceId: string;
+  agent: string;
+  traceId: string | null;
+  runCostCents: number;
+  breakdownCostCents: number;
+  ledgerCostCents: number;
+  issue: "missing_breakdown" | "missing_ledger" | "run_vs_breakdown_mismatch" | "breakdown_vs_ledger_mismatch";
+};
+
+export type BillingReconciliationDuplicateCharge = {
+  runId: string | null;
+  workspaceId: string | null;
+  requestId: string | null;
+  count: number;
+  amountCents: number;
+};
+
+export type BillingReconciliationOrphanUsage = {
+  runId: string;
+  workspaceId: string;
+  requestId: string;
+  meterType: string;
+  amountCents: number;
+};
+
+export type BillingReconciliationLedgerGap = {
+  ledgerId: string;
+  runId: string | null;
+  workspaceId: string | null;
+  requestId: string | null;
+  amountCents: number;
+  issue: "missing_workspace" | "ledger_without_run";
+};
+
+export type BillingReconciliationSummary = {
+  filters: {
+    tenantId: string;
+    workspaceId: string | null;
+    runId: string | null;
+    from: string | null;
+    to: string | null;
+    limit: number;
+  };
+  totals: {
+    runsChecked: number;
+    breakdownRows: number;
+    ledgerRows: number;
+    auditGapCount: number;
+    orphanUsageCount: number;
+    duplicateChargesCount: number;
+    ledgerGapCount: number;
+    missingBreakdownCount: number;
+    missingLedgerCount: number;
+    costMismatchCount: number;
+  };
+  items: {
+    auditGaps: BillingReconciliationRunGap[];
+    orphanUsage: BillingReconciliationOrphanUsage[];
+    duplicateCharges: BillingReconciliationDuplicateCharge[];
+    ledgerGaps: BillingReconciliationLedgerGap[];
+  };
+};
+
 export async function apiGetTenantBillingSummary(params?: { from?: string; to?: string }) {
   const query = new URLSearchParams();
   if (params?.from) query.set("from", params.from);
   if (params?.to) query.set("to", params.to);
   const qs = query.toString() ? `?${query.toString()}` : "";
   return http<{ ok: boolean; data: TenantBillingSummary }>(`/billing/tenant/summary${qs}`, {
+    method: "GET",
+  });
+}
+
+export async function apiGetAgentBillingSummary(params?: {
+  workspaceId?: string;
+  from?: string;
+  to?: string;
+}) {
+  const query = new URLSearchParams();
+  if (params?.workspaceId) query.set("workspaceId", params.workspaceId);
+  if (params?.from) query.set("from", params.from);
+  if (params?.to) query.set("to", params.to);
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  return http<{
+    ok: boolean;
+    data: {
+      tenantId: string;
+      workspaceId: string | null;
+      cycleStart: string | null;
+      cycleEnd: string | null;
+      items: AgentBillingSummaryItem[];
+    };
+  }>(`/billing/agents/summary${qs}`, {
     method: "GET",
   });
 }
@@ -2393,6 +2559,28 @@ export async function apiGetTenantBillingLedger(params?: {
       items: TenantBillingLedgerItem[];
     };
   }>(`/billing/tenant/ledger${qs}`, {
+    method: "GET",
+  });
+}
+
+export async function apiGetBillingReconciliationSummary(params?: {
+  workspaceId?: string;
+  runId?: string;
+  from?: string;
+  to?: string;
+  limit?: number;
+}) {
+  const query = new URLSearchParams();
+  if (params?.workspaceId) query.set("workspaceId", params.workspaceId);
+  if (params?.runId) query.set("runId", params.runId);
+  if (params?.from) query.set("from", params.from);
+  if (params?.to) query.set("to", params.to);
+  if (typeof params?.limit === "number") query.set("limit", String(params.limit));
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  return http<{
+    ok: boolean;
+    data: BillingReconciliationSummary;
+  }>(`/billing/reconciliation/summary${qs}`, {
     method: "GET",
   });
 }

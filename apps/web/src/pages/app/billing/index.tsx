@@ -1,12 +1,17 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { useSession } from "@/state/sessionStore";
 import {
+  apiGetBillingReconciliationSummary,
   apiCreateTenantBillingAdjustment,
+  apiGetRun,
   apiGetTenantBillingLedger,
   apiGetTenantBillingSummary,
   apiGetTenantBillingWorkspaces,
   apiPatchTenantQuotas,
   apiPatchTenantWorkspaceGrant,
+  type BillingReconciliationSummary,
+  type Run,
   type TenantBillingLedgerItem,
   type TenantBillingSummary,
   type TenantBillingWorkspaceItem,
@@ -36,6 +41,47 @@ const createDefaultPayload = (workspaceId: string) =>
   "type": "billing.soft_threshold.crossed",
   "workspaceId": "${workspaceId}"
 }`;
+
+function getRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+}
+
+function getStringValue(value: unknown): string | null {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+function extractImobContextFromRun(run: Run | null) {
+  const explicitCaseId = getStringValue(run?.caseId);
+  const explicitThreadId = getStringValue(run?.threadId);
+  const request = getRecord(run?.request);
+  const requestMetadata = getRecord(request?.metadata);
+  const requestInput = getRecord(request?.input);
+  const meta = getRecord(run?.meta);
+  const nestedMeta = getRecord(meta?.metadata);
+  const caseId =
+    explicitCaseId ??
+    getStringValue(request?.caseId) ??
+    getStringValue(requestInput?.caseId) ??
+    getStringValue(requestMetadata?.caseId) ??
+    getStringValue(meta?.caseId) ??
+    getStringValue(nestedMeta?.caseId) ??
+    null;
+  const threadId =
+    explicitThreadId ??
+    getStringValue(request?.threadId) ??
+    getStringValue(requestInput?.threadId) ??
+    getStringValue(requestMetadata?.threadId) ??
+    getStringValue(meta?.threadId) ??
+    getStringValue(nestedMeta?.threadId) ??
+    null;
+  const conversationId =
+    getStringValue(request?.conversationId) ??
+    getStringValue(requestMetadata?.conversationId) ??
+    getStringValue(meta?.conversationId) ??
+    getStringValue(nestedMeta?.conversationId) ??
+    null;
+  return { caseId, threadId, conversationId };
+}
 
 const BillingGuideFooter: React.FC = () => {
   const [theme, setTheme] = useState<Theme>("dark");
@@ -506,11 +552,16 @@ const BillingGuideFooter: React.FC = () => {
 
 const BillingPage: React.FC = () => {
   const { workspaceId } = useSession();
+  const [searchParams] = useSearchParams();
+  const requestedRunId = (searchParams.get("runId") || "").trim() || null;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<TenantBillingSummary | null>(null);
   const [workspaceItems, setWorkspaceItems] = useState<TenantBillingWorkspaceItem[]>([]);
   const [ledgerItems, setLedgerItems] = useState<TenantBillingLedgerItem[]>([]);
+  const [reconciliation, setReconciliation] = useState<BillingReconciliationSummary | null>(null);
+  const [reconciliationWorkspaceId, setReconciliationWorkspaceId] = useState<string>("");
+  const [requestedRun, setRequestedRun] = useState<Run | null>(null);
 
   const [quotaForm, setQuotaForm] = useState({
     softLimitPct: "",
@@ -533,14 +584,20 @@ const BillingPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [summaryRes, workspacesRes, ledgerRes] = await Promise.all([
+      const [summaryRes, workspacesRes, ledgerRes, reconciliationRes] = await Promise.all([
         apiGetTenantBillingSummary(),
         apiGetTenantBillingWorkspaces(),
         apiGetTenantBillingLedger({ limit: 12 }),
+        apiGetBillingReconciliationSummary({
+          limit: 12,
+          workspaceId: reconciliationWorkspaceId || undefined,
+          runId: requestedRunId || undefined,
+        }),
       ]);
       setSummary(summaryRes.data);
       setWorkspaceItems(workspacesRes.data.items || []);
       setLedgerItems(ledgerRes.data.items || []);
+      setReconciliation(reconciliationRes.data);
 
       const policy = summaryRes.data.policy;
       setQuotaForm({
@@ -553,6 +610,11 @@ const BillingPage: React.FC = () => {
 
       const activeWorkspace = workspacesRes.data.items.find((item) => item.isActiveWorkspace);
       setAdjustmentWorkspaceId(activeWorkspace?.workspaceId ?? workspacesRes.data.items[0]?.workspaceId ?? "");
+      setReconciliationWorkspaceId((current) =>
+        current && workspacesRes.data.items.some((item) => item.workspaceId === current)
+          ? current
+          : ""
+      );
     } catch (err) {
       const message = err instanceof Error ? err.message : "Falha ao carregar billing do tenant.";
       setError(message);
@@ -563,7 +625,37 @@ const BillingPage: React.FC = () => {
 
   useEffect(() => {
     void loadData();
-  }, [workspaceId]);
+  }, [workspaceId, reconciliationWorkspaceId, requestedRunId]);
+
+  useEffect(() => {
+    if (!requestedRunId) {
+      setRequestedRun(null);
+      return;
+    }
+    let cancelled = false;
+    void apiGetRun(requestedRunId)
+      .then((run) => {
+        if (!cancelled) setRequestedRun(run);
+      })
+      .catch(() => {
+        if (!cancelled) setRequestedRun(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [requestedRunId]);
+
+  const requestedRunImobContext = useMemo(() => extractImobContextFromRun(requestedRun), [requestedRun]);
+  const requestedRunImobHref = useMemo(() => {
+    if (!requestedRunImobContext.caseId && !requestedRunImobContext.threadId) return null;
+    const params = new URLSearchParams();
+    if (requestedRunImobContext.caseId) params.set("caseId", requestedRunImobContext.caseId);
+    if (requestedRunImobContext.threadId) params.set("threadId", requestedRunImobContext.threadId);
+    if (requestedRunImobContext.conversationId) params.set("conversationId", requestedRunImobContext.conversationId);
+    if (requestedRunId) params.set("returnTo", `/app/billing?runId=${encodeURIComponent(requestedRunId)}`);
+    const query = params.toString();
+    return query ? `/app/imob/chat?${query}` : null;
+  }, [requestedRunId, requestedRunImobContext]);
 
   const percent = useMemo(() => {
     if (!summary?.policy?.monthlyCostCentsLimit || summary.policy.monthlyCostCentsLimit <= 0) return 0;
@@ -868,6 +960,156 @@ const BillingPage: React.FC = () => {
               </button>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="glass-panel mt-8 space-y-5 p-8">
+        <header className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">Reconciliação</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Conferência entre custo derivado do run, breakdown operacional e ledger financeiro.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {requestedRunId ? (
+              <span className="pill">Run filtrado: {requestedRunId}</span>
+            ) : null}
+            {requestedRunImobHref ? (
+              <Link to={requestedRunImobHref} className="pill hover:border-accent/40 hover:text-foreground">
+                Abrir caso IMOB
+              </Link>
+            ) : null}
+            <select
+              className="rounded-full border border-white/10 bg-black/30 px-4 py-2 text-xs uppercase tracking-[0.2em] text-muted-foreground"
+              value={reconciliationWorkspaceId}
+              onChange={(event) => setReconciliationWorkspaceId(event.target.value)}
+            >
+              <option value="">Todos os workspaces</option>
+              {workspaceItems.map((item) => (
+                <option key={item.workspaceId} value={item.workspaceId}>
+                  {item.workspaceName}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="rounded-full border border-white/10 px-4 py-2 text-xs uppercase tracking-[0.25em] text-muted-foreground"
+              onClick={() => void loadData()}
+            >
+              Atualizar
+            </button>
+          </div>
+        </header>
+        <div className="grid gap-3 md:grid-cols-4">
+          <div className="glass-subtle space-y-2 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Audit gaps</p>
+            <p className="text-2xl font-semibold text-foreground">{reconciliation?.totals.auditGapCount ?? 0}</p>
+          </div>
+          <div className="glass-subtle space-y-2 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Charges duplicados</p>
+            <p className="text-2xl font-semibold text-foreground">{reconciliation?.totals.duplicateChargesCount ?? 0}</p>
+          </div>
+          <div className="glass-subtle space-y-2 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Ledger gaps</p>
+            <p className="text-2xl font-semibold text-foreground">{reconciliation?.totals.ledgerGapCount ?? 0}</p>
+          </div>
+          <div className="glass-subtle space-y-2 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Runs verificados</p>
+            <p className="text-2xl font-semibold text-foreground">{reconciliation?.totals.runsChecked ?? 0}</p>
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="glass-subtle overflow-x-auto p-4">
+            <p className="mb-3 text-xs uppercase tracking-[0.2em] text-muted-foreground">Divergências</p>
+            <table className="w-full min-w-[520px] text-left text-xs">
+              <thead className="text-muted-foreground">
+                <tr>
+                  <th className="pb-2">Run</th>
+                  <th className="pb-2">Issue</th>
+                  <th className="pb-2">Run</th>
+                  <th className="pb-2">Breakdown</th>
+                  <th className="pb-2">Ledger</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(reconciliation?.items.auditGaps ?? []).slice(0, 8).map((item) => (
+                  <tr key={`${item.runId}:${item.issue}`} className="border-t border-white/5">
+                    <td className="py-2 text-muted-foreground">
+                      <Link to={`/app/runs?runId=${encodeURIComponent(item.runId)}`} className="hover:text-foreground">
+                        {item.runId}
+                      </Link>
+                    </td>
+                    <td className="py-2 text-foreground">{item.issue}</td>
+                    <td className="py-2 text-foreground">{formatBRL(item.runCostCents)}</td>
+                    <td className="py-2 text-foreground">{formatBRL(item.breakdownCostCents)}</td>
+                    <td className="py-2 text-foreground">{formatBRL(item.ledgerCostCents)}</td>
+                  </tr>
+                ))}
+                {(reconciliation?.items.auditGaps?.length ?? 0) === 0 ? (
+                  <tr>
+                    <td className="py-2 text-muted-foreground" colSpan={5}>
+                      Nenhuma divergência encontrada.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+          <div className="glass-subtle overflow-x-auto p-4">
+            <p className="mb-3 text-xs uppercase tracking-[0.2em] text-muted-foreground">Gaps e duplicidades</p>
+            <table className="w-full min-w-[520px] text-left text-xs">
+              <thead className="text-muted-foreground">
+                <tr>
+                  <th className="pb-2">Tipo</th>
+                  <th className="pb-2">Referência</th>
+                  <th className="pb-2">Detalhe</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(reconciliation?.items.duplicateCharges ?? []).slice(0, 4).map((item) => (
+                  <tr key={`duplicate:${item.runId ?? "null"}:${item.requestId ?? "null"}`} className="border-t border-white/5">
+                    <td className="py-2 text-foreground">duplicate_charge</td>
+                    <td className="py-2 text-muted-foreground">
+                      {item.runId ? (
+                        <Link to={`/app/runs?runId=${encodeURIComponent(item.runId)}`} className="hover:text-foreground">
+                          {item.runId}
+                        </Link>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                    <td className="py-2 text-foreground">
+                      {item.requestId ?? "-"} · {item.count}x · {formatBRL(item.amountCents)}
+                    </td>
+                  </tr>
+                ))}
+                {(reconciliation?.items.ledgerGaps ?? []).slice(0, 4).map((item) => (
+                  <tr key={`ledger-gap:${item.ledgerId}:${item.issue}`} className="border-t border-white/5">
+                    <td className="py-2 text-foreground">{item.issue}</td>
+                    <td className="py-2 text-muted-foreground">
+                      {item.runId ? (
+                        <Link to={`/app/runs?runId=${encodeURIComponent(item.runId)}`} className="hover:text-foreground">
+                          {item.runId}
+                        </Link>
+                      ) : (
+                        item.ledgerId
+                      )}
+                    </td>
+                    <td className="py-2 text-foreground">{item.requestId ?? "-"}</td>
+                  </tr>
+                ))}
+                {(reconciliation?.items.duplicateCharges?.length ?? 0) === 0 &&
+                (reconciliation?.items.ledgerGaps?.length ?? 0) === 0 ? (
+                  <tr>
+                    <td className="py-2 text-muted-foreground" colSpan={3}>
+                      Nenhum gap financeiro encontrado.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 

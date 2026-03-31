@@ -16,6 +16,13 @@ export interface ChatCompletionRequest {
   metadata?: Record<string, any>;
 }
 
+export interface ChatCompletionUsage {
+  promptTokens?: number;
+  completionTokens?: number;
+  cachedTokens?: number;
+  totalTokens?: number;
+}
+
 export interface ChatCompletionResponse {
   id: string;
   output: string;
@@ -23,4 +30,6 @@ export interface ChatCompletionResponse {
   finishReason: string;
   provider: string;
   model: string;
+  requestId?: string;
+  usage?: ChatCompletionUsage | null;
 }

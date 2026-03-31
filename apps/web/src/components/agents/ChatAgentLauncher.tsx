@@ -6,7 +6,9 @@ import {
   apiAdoptRecommendation,
   apiCreateSession,
   apiFinalizeConversation,
+  apiGetBillingReconciliationSummary,
   apiGetGovernanceReport,
+  apiGetRunCostBreakdown,
   apiListAgents,
   apiUploadDocuments,
   apiCreateHelpdeskSession,
@@ -63,6 +65,13 @@ type ChatMessage = {
 type ThreadSnapshot = {
   messages: ChatMessage[];
   runId: string | null;
+};
+
+type RunFinanceSummary = {
+  amountCents: number;
+  tokens: number;
+  issueLabel: string;
+  hasGap: boolean;
 };
 
 function normalizeAgentKey(value: string) {
@@ -218,6 +227,21 @@ function sanitizeAssistantContent(content: string) {
     .replace(/\btrace_id:\s*[^\s,]+/gi, "trace_id:[redacted]")
     .replace(/\btx_id:\s*[^\s,]+/gi, "tx_id:[redacted]")
     .replace(/\bpolicy_version:\s*[^\s,]+/gi, "policy_version:[redacted]");
+}
+
+function formatReconciliationIssue(issue: string) {
+  if (issue === "missing_breakdown") return "Sem breakdown";
+  if (issue === "missing_ledger") return "Sem ledger";
+  if (issue === "run_vs_breakdown_mismatch") return "Run divergente";
+  if (issue === "breakdown_vs_ledger_mismatch") return "Ledger divergente";
+  return issue || "—";
+}
+
+function formatCurrencyCents(amountCents: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format((amountCents ?? 0) / 100);
 }
 
 type HelpStructuredResponse = {
@@ -491,6 +515,7 @@ export default function ChatAgentLauncher({
   const [catalogAgents, setCatalogAgents] = useState<Agent[]>([]);
   const [selectedAgentLabel, setSelectedAgentLabel] = useState<string | null>(null);
   const [selectedCatalogAgent, setSelectedCatalogAgent] = useState<Agent | null>(null);
+  const [runFinanceByRunId, setRunFinanceByRunId] = useState<Record<string, RunFinanceSummary>>({});
   const [attachmentMode, setAttachmentMode] = useState<"upload_file" | "paste_text">("upload_file");
   const [pastedArtifactText, setPastedArtifactText] = useState("");
   const [selectedAttachment, setSelectedAttachment] = useState<File | null>(null);
@@ -515,6 +540,7 @@ export default function ChatAgentLauncher({
       }
     >
   >({});
+  const loadingRunFinanceIdsRef = useRef<Set<string>>(new Set());
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const attachmentInputRef = useRef<HTMLInputElement | null>(null);
   const clearAttachmentComposer = useCallback(
@@ -555,6 +581,7 @@ export default function ChatAgentLauncher({
     });
   const isHelpCenterMode =
     isUnifiedEiahMode && (launcherContext?.topic ?? "").trim().toLowerCase() !== "proposal";
+  const activeRunFinance = runId ? runFinanceByRunId[runId] ?? null : null;
   useEffect(() => {
     if (identityShown) return;
     if (!session.userId && !session.tenantId) return;
@@ -611,6 +638,57 @@ export default function ChatAgentLauncher({
     const payload: ThreadSnapshot = { messages, runId };
     window.sessionStorage.setItem(threadKey, JSON.stringify(payload));
   }, [threadKey, messages, runId]);
+
+  const explicitRunIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          [runId, ...messages.map((message) => message.runId ?? null)].filter(
+            (value): value is string => typeof value === "string" && value.trim().length > 0
+          )
+        )
+      ),
+    [messages, runId]
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    for (const currentRunId of explicitRunIds) {
+      if (runFinanceByRunId[currentRunId] || loadingRunFinanceIdsRef.current.has(currentRunId)) continue;
+      loadingRunFinanceIdsRef.current.add(currentRunId);
+      void Promise.allSettled([
+        apiGetRunCostBreakdown(currentRunId),
+        apiGetBillingReconciliationSummary({ runId: currentRunId, limit: 1 }),
+      ])
+        .then((results) => {
+          if (cancelled) return;
+          const breakdownResult = results[0];
+          if (breakdownResult.status !== "fulfilled") return;
+          const reconciliationResult = results[1];
+          const issue =
+            reconciliationResult.status === "fulfilled"
+              ? reconciliationResult.value.data.items.auditGaps[0]?.issue ?? null
+              : null;
+          setRunFinanceByRunId((prev) => ({
+            ...prev,
+            [currentRunId]: {
+              amountCents: breakdownResult.value.data.totals.amountCents ?? 0,
+              tokens: breakdownResult.value.data.totals.tokens ?? 0,
+              issueLabel: issue ? formatReconciliationIssue(issue) : "Reconciliado",
+              hasGap: Boolean(issue),
+            },
+          }));
+        })
+        .finally(() => {
+          loadingRunFinanceIdsRef.current.delete(currentRunId);
+        });
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [explicitRunIds, runFinanceByRunId]);
 
   useEffect(() => {
     if (!activeAgentId) {
@@ -1615,6 +1693,25 @@ export default function ChatAgentLauncher({
                       Run: {runId}
                     </div>
                   ) : null}
+                  {activeRunFinance ? (
+                    <>
+                      <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                        Custo: {formatCurrencyCents(activeRunFinance.amountCents)}
+                      </div>
+                      <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                        Tokens: {new Intl.NumberFormat("pt-BR").format(activeRunFinance.tokens)}
+                      </div>
+                      <div
+                        className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${
+                          activeRunFinance.hasGap
+                            ? "border-amber-300/30 bg-amber-500/10 text-amber-100"
+                            : "border-emerald-300/30 bg-emerald-500/10 text-emerald-100"
+                        }`}
+                      >
+                        {activeRunFinance.issueLabel}
+                      </div>
+                    </>
+                  ) : null}
                 </div>
               </div>
 
@@ -1639,7 +1736,8 @@ export default function ChatAgentLauncher({
                             {(() => {
                               const { recs, docMarkdown, technicalRaw, runId: extractedRunId } =
                                 extractDocAndRecs(message.content);
-                              const displayRunId = extractedRunId || (message as any).runId || "";
+                              const displayRunId = extractedRunId || message.runId || "";
+                              const messageRunFinance = message.runId ? runFinanceByRunId[message.runId] ?? null : null;
                               const messageSnapshot = message.presentationSnapshot;
                               const messageQuickReplies =
                                 messageSnapshot?.quickReplies && messageSnapshot.quickReplies.length > 0
@@ -1692,6 +1790,26 @@ export default function ChatAgentLauncher({
                                       })()}
                                     </ReactMarkdown>
                                   </div>
+
+                                  {messageRunFinance ? (
+                                    <div className="flex flex-wrap gap-2 text-[10px]">
+                                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-muted-foreground">
+                                        Custo: {formatCurrencyCents(messageRunFinance.amountCents)}
+                                      </span>
+                                      <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-muted-foreground">
+                                        Tokens: {new Intl.NumberFormat("pt-BR").format(messageRunFinance.tokens)}
+                                      </span>
+                                      <span
+                                        className={`rounded-full border px-3 py-1 ${
+                                          messageRunFinance.hasGap
+                                            ? "border-amber-300/30 bg-amber-500/10 text-amber-100"
+                                            : "border-emerald-300/30 bg-emerald-500/10 text-emerald-100"
+                                        }`}
+                                      >
+                                        {messageRunFinance.issueLabel}
+                                      </span>
+                                    </div>
+                                  ) : null}
 
                                   <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
                                     <span>Quer aprofundar algo?</span>

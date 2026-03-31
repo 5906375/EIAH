@@ -48,6 +48,13 @@ export async function generateText(
       finishReason: "stop",
       provider: input.provider,
       model: input.model,
+      requestId: "mock-request-id",
+      usage: {
+        promptTokens: 0,
+        completionTokens: 0,
+        cachedTokens: 0,
+        totalTokens: 0,
+      },
     };
     if (opts?.onToken) opts.onToken(mock.output);
     return mock;

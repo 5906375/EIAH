@@ -4,11 +4,35 @@ import {
   BillingLedgerService,
   QuotaUsageService,
   ensureTenantBillingDefaults,
+  incrementWorkspaceUsageFromEvent,
   isTenantBillingV2EnforceEnabled,
   isTenantBillingV2ShadowEnabled,
 } from "./tenantBilling";
 
 type WorkspaceScope = { tenantId: string; workspaceId: string };
+
+type RecordRunUsageBreakdownParams = {
+  tenantId: string;
+  workspaceId: string;
+  runId: string;
+  agent: string;
+  agentVersion?: string | null;
+  provider: string;
+  model: string;
+  pricingVersion: string;
+  requestId: string;
+  traceId?: string | null;
+  meterType: string;
+  requestClass: string;
+  promptTokens?: number;
+  completionTokens?: number;
+  cachedTokens?: number;
+  totalTokens?: number;
+  amountCents: number;
+  currency?: string;
+  estimated?: boolean;
+  prisma?: PrismaClient;
+};
 
 /**
  * Cria o client tenant-aware para qualquer operação de billing.
@@ -82,54 +106,168 @@ export async function estimateCostCents(params: {
   return perRun + perMB * mb;
 }
 
-/**
- * Registra a cobrança de um run e atualiza quota de consumo.
- */
-export async function chargeRun(params: {
-  tenantId: string;
-  workspaceId: string;
-  runId: string;
-  costCents: number;
-  prisma?: PrismaClient;
-}) {
+export async function recordRunUsageBreakdown(params: RecordRunUsageBreakdownParams) {
   const client = resolveClient(params.tenantId, params.workspaceId, params.prisma);
   const runInScope = await runBelongsToTenantWorkspace(client, {
     tenantId: params.tenantId,
     workspaceId: params.workspaceId,
     runId: params.runId,
   });
-  if (!runInScope) return false;
+  if (!runInScope) {
+    return { inserted: false as const, item: null };
+  }
+
+  const existing = await client.runUsageBreakdown.findUnique({
+    where: {
+      run_usage_breakdown_idempotency_unique: {
+        runId: params.runId,
+        requestId: params.requestId,
+        meterType: params.meterType,
+      },
+    },
+  });
+  if (existing) {
+    return { inserted: false as const, item: existing };
+  }
+
+  const item = await client.runUsageBreakdown.create({
+    data: {
+      runId: params.runId,
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      agent: params.agent,
+      agentVersion: params.agentVersion ?? null,
+      provider: params.provider,
+      model: params.model,
+      pricingVersion: params.pricingVersion,
+      requestId: params.requestId,
+      traceId: params.traceId ?? null,
+      meterType: params.meterType,
+      requestClass: params.requestClass,
+      promptTokens: params.promptTokens ?? 0,
+      completionTokens: params.completionTokens ?? 0,
+      cachedTokens: params.cachedTokens ?? 0,
+      totalTokens:
+        params.totalTokens ??
+        (params.promptTokens ?? 0) + (params.completionTokens ?? 0) + (params.cachedTokens ?? 0),
+      amountCents: params.amountCents,
+      currency: params.currency ?? "BRL",
+      estimated: params.estimated ?? false,
+    },
+  });
+
+  return { inserted: true as const, item };
+}
+
+export async function deriveRunCostCents(params: {
+  tenantId: string;
+  workspaceId: string;
+  runId: string;
+  prisma?: PrismaClient;
+}) {
+  const client = resolveClient(params.tenantId, params.workspaceId, params.prisma);
+  const aggregate = await client.runUsageBreakdown.aggregate({
+    where: {
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      runId: params.runId,
+    },
+    _sum: {
+      amountCents: true,
+    },
+  });
+  return aggregate._sum.amountCents ?? 0;
+}
+
+export async function listRunUsageBreakdowns(params: {
+  tenantId: string;
+  workspaceId: string;
+  runId: string;
+  prisma?: PrismaClient;
+}) {
+  const client = resolveClient(params.tenantId, params.workspaceId, params.prisma);
+  return client.runUsageBreakdown.findMany({
+    where: {
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      runId: params.runId,
+    },
+    orderBy: [{ createdAt: "asc" }, { meterType: "asc" }],
+  });
+}
+
+export async function chargeRunFromBreakdown(params: {
+  tenantId: string;
+  workspaceId: string;
+  runId: string;
+  requestId: string;
+  provider?: string | null;
+  model?: string | null;
+  prisma?: PrismaClient;
+}) {
+  const client = resolveClient(params.tenantId, params.workspaceId, params.prisma);
+  const run = await client.run.findUnique({
+    where: { id: params.runId },
+    select: {
+      id: true,
+      tenantId: true,
+      workspaceId: true,
+      traceId: true,
+    },
+  });
+  if (!run || run.tenantId !== params.tenantId || run.workspaceId !== params.workspaceId) {
+    return false;
+  }
+
+  const breakdowns = await client.runUsageBreakdown.findMany({
+    where: {
+      runId: params.runId,
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+    },
+    orderBy: { createdAt: "asc" },
+  });
+  if (breakdowns.length === 0) {
+    return false;
+  }
+
+  const costCents = await deriveRunCostCents({
+    prisma: client,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    runId: params.runId,
+  });
+  const totalTokens = breakdowns.reduce((sum, item) => sum + (item.totalTokens ?? 0), 0);
+
+  await client.run.update({
+    where: { id: params.runId },
+    data: {
+      costCents,
+      traceId: run.traceId ?? breakdowns.find((item) => item.traceId)?.traceId ?? null,
+    },
+  });
+
   const enforceV2 = isTenantBillingV2EnforceEnabled();
   const writeShadow = isTenantBillingV2ShadowEnabled();
-  const shouldWriteV2 = enforceV2 || writeShadow;
+  const shouldWriteV2 = true;
 
   if (!enforceV2) {
-    // Atualiza consumo mensal legado por workspace (compatibilidade até cutover completo).
     await client.planQuota
       .update({
         where: { projectId: params.workspaceId },
-        data: { monthUsageCents: { increment: params.costCents } },
+        data: { monthUsageCents: { increment: costCents } },
       })
       .catch(async () => {
-        // Cria se não existir
         await client.planQuota.create({
           data: {
             projectId: params.workspaceId,
             softLimitCents: 5000,
             hardLimitCents: 10000,
-            monthUsageCents: params.costCents,
+            monthUsageCents: costCents,
           },
         });
       });
   }
-
-  // Anexa custo ao run (independente do modo de billing).
-  await client.run
-    .update({
-      where: { id: params.runId },
-      data: { costCents: params.costCents },
-    })
-    .catch(() => undefined);
 
   if (shouldWriteV2) {
     try {
@@ -140,23 +278,33 @@ export async function chargeRun(params: {
 
       const ledgerService = new BillingLedgerService(client);
       const quotaUsageService = new QuotaUsageService(client);
-      const requestId = `run:${params.runId}:debit`;
-
       const ledger = await ledgerService.insertDebit({
         tenantId: params.tenantId,
         workspaceId: params.workspaceId,
         runId: params.runId,
-        amountCents: params.costCents,
-        currency: "BRL",
+        amountCents: costCents,
+        currency: breakdowns[0]?.currency ?? "BRL",
         description: enforceV2 ? "Enforced charge for run execution" : "Shadow charge for run execution",
-        requestId,
+        requestId: params.requestId,
+        provider: params.provider ?? breakdowns[0]?.provider ?? null,
+        model: params.model ?? breakdowns[0]?.model ?? null,
       });
 
       if (ledger.inserted) {
         const usageSnapshot = await quotaUsageService.incrementFromEvent({
           tenantId: params.tenantId,
-          amountCents: params.costCents,
+          amountCents: costCents,
           entryType: "debit",
+          tokensDelta: totalTokens,
+        });
+        await incrementWorkspaceUsageFromEvent(client, {
+          tenantId: params.tenantId,
+          workspaceId: params.workspaceId,
+          cycleStart: usageSnapshot.cycle.cycleStart,
+          cycleEnd: usageSnapshot.cycle.cycleEnd,
+          runs: costCents > 0 ? 1 : 0,
+          costCents,
+          tokens: totalTokens,
         });
 
         await emitRunEvent({
@@ -167,7 +315,7 @@ export async function chargeRun(params: {
           payload: {
             mode: enforceV2 ? "enforce" : "shadow",
             ledgerId: ledger.entry.id,
-            requestId,
+            requestId: params.requestId,
             cycleStart: usageSnapshot.cycle.cycleStart.toISOString(),
             cycleEnd: usageSnapshot.cycle.cycleEnd.toISOString(),
             usage: {
@@ -196,12 +344,80 @@ export async function chargeRun(params: {
     workspaceId: params.workspaceId,
     type: "run.usage_recorded",
     payload: {
-      costCents: params.costCents,
+      costCents,
       mode: enforceV2 ? "enforce" : writeShadow ? "shadow" : "legacy",
+      requestId: params.requestId,
+      traceId: run.traceId,
+      breakdownCount: breakdowns.length,
     },
   });
 
   return true;
+}
+
+/**
+ * Registra a cobrança de um run e atualiza quota de consumo.
+ */
+export async function chargeRun(params: {
+  tenantId: string;
+  workspaceId: string;
+  runId: string;
+  costCents: number;
+  prisma?: PrismaClient;
+}) {
+  const client = resolveClient(params.tenantId, params.workspaceId, params.prisma);
+  const run = await client.run.findUnique({
+    where: { id: params.runId },
+    select: {
+      id: true,
+      tenantId: true,
+      workspaceId: true,
+      agent: true,
+      agentVersion: true,
+      traceId: true,
+    },
+  });
+  const runInScope =
+    run?.tenantId === params.tenantId && run?.workspaceId === params.workspaceId;
+  if (!runInScope || !run) return false;
+
+  const requestId = `run:${params.runId}:debit`;
+  const existingBreakdowns = await listRunUsageBreakdowns({
+    prisma: client,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    runId: params.runId,
+  });
+  const hasRunChargeBreakdown = existingBreakdowns.some((item) => item.meterType === "run");
+
+  if (!hasRunChargeBreakdown) {
+    await recordRunUsageBreakdown({
+      prisma: client,
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      runId: params.runId,
+      agent: run.agent,
+      agentVersion: run.agentVersion,
+      provider: "internal",
+      model: "legacy-estimate",
+      pricingVersion: "legacy-estimate:v1",
+      requestId,
+      traceId: run.traceId,
+      meterType: "run",
+      requestClass: "execution",
+      amountCents: params.costCents,
+      estimated: true,
+    });
+  }
+  return chargeRunFromBreakdown({
+    prisma: client,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    runId: params.runId,
+    requestId,
+    provider: "internal",
+    model: "legacy-estimate",
+  });
 }
 
 /**

@@ -645,7 +645,6 @@ export async function processRunPayload(payload: RunQueuePayload) {
         workspaceId,
         status: "error",
         response: { error: `Agent ${agent} not found` },
-        costCents: 0,
         errorCode: "AGENT_NOT_FOUND",
       });
 
@@ -853,6 +852,15 @@ export async function processRunPayload(payload: RunQueuePayload) {
       rawResponse: unknown;
       traceId?: string;
       tookMs?: number;
+      provider?: string;
+      model?: string;
+      requestId?: string;
+      usage?: {
+        promptTokens?: number;
+        completionTokens?: number;
+        cachedTokens?: number;
+        totalTokens?: number;
+      } | null;
     };
     let executionResult: ExecutionSnapshot | null = null;
 
@@ -1133,6 +1141,10 @@ export async function processRunPayload(payload: RunQueuePayload) {
             rawResponse: capabilityResult.rawResponse,
             traceId: capabilityResult.telemetryRef,
             tookMs: capabilityResult.tookMs,
+            provider: capabilityResult.providerUsed,
+            model: capabilityResult.modelUsed,
+            requestId: capabilityResult.requestId,
+            usage: capabilityResult.usage ?? null,
           };
 
           return executionResult.outputText;
@@ -1435,7 +1447,6 @@ export async function processRunPayload(payload: RunQueuePayload) {
             workspaceId,
             status: "blocked",
             response: { error: reason, guardrails: guardrailReport },
-            costCents: 0,
             traceId: snapshot?.traceId ?? null,
             errorCode: "GUARDRAILS_BLOCKED",
           });
@@ -1491,7 +1502,6 @@ export async function processRunPayload(payload: RunQueuePayload) {
         workspaceId,
         status: "success",
         response: succeededResponse,
-        costCents: estimate,
         traceId: snapshot?.traceId ?? null,
       });
 
@@ -1600,7 +1610,6 @@ export async function processRunPayload(payload: RunQueuePayload) {
         workspaceId,
         status: "error",
         response: { error: message },
-        costCents: 0,
         errorCode: "EXECUTION_FAILED",
       });
 

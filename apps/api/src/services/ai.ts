@@ -55,6 +55,10 @@ export async function executeAgentRun(params: ExecuteAgentRunParams): Promise<Ex
         rawResponse: capabilityResult.rawResponse,
         traceId: capabilityResult.telemetryRef,
         tookMs: capabilityResult.tookMs,
+        provider: capabilityResult.providerUsed,
+        model: capabilityResult.modelUsed,
+        requestId: capabilityResult.requestId,
+        usage: capabilityResult.usage ?? null,
       };
       return lastResult.outputText;
     },

@@ -23,6 +23,28 @@ type SessionState = {
     primaryColor?: string;
     workspaceLabel?: string;
   };
+  accessGate?: {
+    code?: string;
+    reasonCode?: "IMOB_ENTITLEMENT_MISSING" | "IMOB_INSTALLATION_INACTIVE" | "IMOB_PERMISSION_DENIED";
+    message?: string;
+    traceId?: string;
+    product?: "IMOB";
+    capability?: "CENTRAL_OPERACIONAL" | "KNOWLEDGE_SYNC_STATUS" | "KNOWLEDGE_SEARCH";
+    scope?: {
+      tenantId: string;
+      workspaceId: string;
+    };
+    cta?: {
+      type: "INSTALL" | "ACTIVATE" | "CONTACT_ADMIN" | "OPEN_BILLING";
+      label: string;
+      target: string;
+    };
+    details?: {
+      entitlementRequired?: "IMOB_ACTIVE_INSTALLATION";
+      installationStatus?: "missing" | "inactive" | "active";
+      stage?: string | null;
+    };
+  } | null;
 };
 
 const DEFAULTS: SessionState = {

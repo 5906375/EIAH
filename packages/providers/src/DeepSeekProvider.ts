@@ -29,6 +29,14 @@ export class DeepSeekProvider extends LLMProvider {
     const json = (await response.json()) as any;
 
     const msg = json.choices?.[0]?.message?.content ?? "";
+    const usage = json.usage
+      ? {
+          promptTokens: json.usage.prompt_tokens ?? undefined,
+          completionTokens: json.usage.completion_tokens ?? undefined,
+          cachedTokens: json.usage.prompt_tokens_details?.cached_tokens ?? undefined,
+          totalTokens: json.usage.total_tokens ?? undefined,
+        }
+      : null;
 
     return {
       id: json.id ?? "deepseek",
@@ -37,6 +45,8 @@ export class DeepSeekProvider extends LLMProvider {
       finishReason: json.choices?.[0]?.finish_reason ?? "stop",
       provider: this.name,
       model,
+      requestId: json.id ?? "deepseek",
+      usage,
     };
   }
 }

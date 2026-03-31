@@ -1,4 +1,4 @@
-import { Prisma } from "../generated/client";
+import { Prisma } from "../generated/client/index.js";
 
 type GuardMode = "tenant" | "tenant+workspace";
 

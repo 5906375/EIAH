@@ -1,0 +1,208 @@
+import { PrismaClient, prismaGlobal } from "@repo/db";
+
+type WorkspaceAgentScope = {
+  tenantId: string;
+  workspaceId: string;
+  agentKey: string;
+};
+
+export type WorkspaceAgentAssignmentRecord = {
+  id: string;
+  tenantId: string;
+  workspaceId: string;
+  agentKey: string;
+  agentVersion: string;
+  enabled: boolean;
+  signedAt: Date | null;
+  signatureRef: string | null;
+};
+
+export class WorkspaceAgentAssignmentError extends Error {
+  readonly reasonCode = "AGENT_NOT_ENABLED_IN_WORKSPACE";
+
+  constructor(
+    message: string,
+    readonly context: {
+      tenantId: string;
+      workspaceId: string;
+      agentKey: string;
+    }
+  ) {
+    super(message);
+    this.name = "WorkspaceAgentAssignmentError";
+  }
+}
+
+function resolveClient(client?: PrismaClient) {
+  return client ?? prismaGlobal;
+}
+
+function normalizeAgentKey(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+async function resolveCanonicalAgentKey(client: PrismaClient, agentKey: string) {
+  const trimmed = agentKey.trim();
+  if (!trimmed) return trimmed;
+
+  const exactMetadata = await client.agentMetadata.findUnique({
+    where: { agent: trimmed },
+    select: { agent: true },
+  });
+  if (exactMetadata?.agent) return exactMetadata.agent;
+
+  const exactProfile = await client.agentProfile.findUnique({
+    where: { agent: trimmed },
+    select: { agent: true },
+  });
+  if (exactProfile?.agent) return exactProfile.agent;
+
+  const normalizedInput = normalizeAgentKey(trimmed);
+  if (!normalizedInput) return trimmed;
+
+  const [metadataAgents, profileAgents] = await Promise.all([
+    client.agentMetadata.findMany({
+      select: { agent: true },
+    }),
+    client.agentProfile.findMany({
+      select: { agent: true },
+    }),
+  ]);
+
+  const candidates = [...metadataAgents, ...profileAgents].map(item => item.agent);
+  const matched = candidates.find(candidate => normalizeAgentKey(candidate) === normalizedInput);
+  return matched ?? trimmed;
+}
+
+function toRecord(
+  assignment: {
+    id: string;
+    tenantId: string;
+    workspaceId: string;
+    agentKey: string;
+    agentVersion: string;
+    enabled: boolean;
+    signedAt: Date | null;
+    signatureRef: string | null;
+  }
+): WorkspaceAgentAssignmentRecord {
+  return assignment;
+}
+
+async function findLatestAssignment(
+  client: PrismaClient,
+  params: WorkspaceAgentScope
+) {
+  const normalizedInput = normalizeAgentKey(params.agentKey);
+  const assignments = await client.workspaceAgentAssignment.findMany({
+    where: {
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+    },
+    orderBy: [{ enabled: "desc" }, { updatedAt: "desc" }, { createdAt: "desc" }],
+  });
+  return assignments.find(assignment => normalizeAgentKey(assignment.agentKey) === normalizedInput) ?? null;
+}
+
+async function bootstrapAssignment(
+  client: PrismaClient,
+  params: WorkspaceAgentScope
+) {
+  const canonicalAgentKey = await resolveCanonicalAgentKey(client, params.agentKey);
+  const workspace = await client.workspace.findUnique({
+    where: { id: params.workspaceId },
+    select: { id: true, tenantId: true },
+  });
+  if (!workspace || workspace.tenantId !== params.tenantId) {
+    return null;
+  }
+
+  const metadata = await client.agentMetadata.findUnique({
+    where: { agent: canonicalAgentKey },
+    select: { version: true },
+  });
+  const profile = await client.agentProfile.findUnique({
+    where: { agent: canonicalAgentKey },
+    select: { updatedAt: true },
+  });
+
+  if (!metadata && !profile) {
+    return null;
+  }
+
+  return client.workspaceAgentAssignment.create({
+    data: {
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      agentKey: canonicalAgentKey,
+      agentVersion: metadata?.version ?? "1.0.0",
+      enabled: true,
+      signedAt: profile?.updatedAt ?? new Date(),
+      signatureRef: "bootstrap-legacy-compat",
+      metadata: {
+        source: "bootstrap-legacy-compat",
+      },
+    },
+  });
+}
+
+export async function getActiveWorkspaceAgentAssignment(params: {
+  prisma?: PrismaClient;
+  tenantId: string;
+  workspaceId: string;
+  agentKey: string;
+}): Promise<WorkspaceAgentAssignmentRecord | null> {
+  const client = resolveClient(params.prisma);
+  const current =
+    (await findLatestAssignment(client, params)) ??
+    (await bootstrapAssignment(client, params));
+
+  if (!current || !current.enabled) {
+    return null;
+  }
+
+  return toRecord(current);
+}
+
+export async function assertWorkspaceAgentEnabled(params: {
+  prisma?: PrismaClient;
+  tenantId: string;
+  workspaceId: string;
+  agentKey: string;
+}): Promise<WorkspaceAgentAssignmentRecord> {
+  const client = resolveClient(params.prisma);
+  const current =
+    (await findLatestAssignment(client, params)) ??
+    (await bootstrapAssignment(client, params));
+
+  if (!current || !current.enabled) {
+    throw new WorkspaceAgentAssignmentError(
+      `Agent ${params.agentKey.trim()} is not enabled in workspace ${params.workspaceId}`,
+      {
+        tenantId: params.tenantId,
+        workspaceId: params.workspaceId,
+        agentKey: params.agentKey.trim(),
+      }
+    );
+  }
+
+  return toRecord(current);
+}
+
+export async function listWorkspaceAgentAssignments(params: {
+  prisma?: PrismaClient;
+  tenantId: string;
+  workspaceId: string;
+  enabled?: boolean;
+}): Promise<WorkspaceAgentAssignmentRecord[]> {
+  const client = resolveClient(params.prisma);
+  const items = await client.workspaceAgentAssignment.findMany({
+    where: {
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      ...(params.enabled === undefined ? {} : { enabled: params.enabled }),
+    },
+    orderBy: [{ agentKey: "asc" }, { updatedAt: "desc" }],
+  });
+  return items.map(toRecord);
+}

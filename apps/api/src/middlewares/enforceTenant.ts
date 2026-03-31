@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import crypto from "node:crypto";
-import { bindLogger, recordGuardrailLedger } from "@eiah/core";
+import { bindLogger } from "@eiah/core/logging/logger";
+import { recordGuardrailLedger } from "@eiah/core/services/guardrailLedgerStore";
 import { findApiToken, type AuthTokenContext } from "../auth/apiTokenRepository";
 import { checkDelegationPolicy } from "./checkDelegationPolicy";
 
@@ -127,6 +128,17 @@ export async function enforceTenant(
       tokenRecord.tenantId,
       tokenRecord.workspaceId
     );
+    const requestPrisma = req.prisma;
+    let prismaClosed = false;
+    const closeRequestPrisma = () => {
+      if (prismaClosed) return;
+      prismaClosed = true;
+      void requestPrisma.$disconnect().catch((disconnectError) => {
+        req.logger?.warn({ error: disconnectError }, "auth.enforce.prisma_disconnect_failed");
+      });
+    };
+    res.once("finish", closeRequestPrisma);
+    res.once("close", closeRequestPrisma);
 
     const delegationOk = await checkDelegationPolicy(req, res);
     if (!delegationOk) {

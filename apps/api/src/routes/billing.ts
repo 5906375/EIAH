@@ -1,18 +1,26 @@
 import crypto from "node:crypto";
 import { Router } from "express";
-import { calculateInvoiceAmounts, generateMonthlyInvoice, resolvePlanPricingProfile } from "@eiah/core";
+import {
+  calculateInvoiceAmounts,
+  generateMonthlyInvoice,
+  resolvePlanPricingProfile,
+} from "@eiah/core/services/tenantInvoiceService";
 import { prismaGlobal } from "@repo/db";
 import { enforceTenant, TenantAwareRequest } from "../middlewares/enforceTenant";
 import {
   chargeRun,
   estimateCostCents,
   getQuota,
+  listRunUsageBreakdowns,
 } from "../services/billing";
 import {
   BillingLedgerService,
   QuotaUsageService,
   ensureTenantBillingDefaults,
+  getAgentBillingSummary,
+  getWorkspaceBillingSummary,
 } from "../services/tenantBilling";
+import { listWorkspaceAgentAssignments } from "../services/workspaceAgentAssignments";
 import {
   enqueuePlanCreationJob,
   evaluatePlanSpecNeeds,
@@ -41,6 +49,7 @@ import {
   listBillingDisputes,
   transitionBillingDispute,
 } from "../services/reputationDisputes";
+import { getBillingReconciliationSummary } from "../services/billingReconciliation";
 
 export const billingRouter = Router();
 
@@ -1041,7 +1050,7 @@ billingRouter.get("/billing/tenant/summary", async (req, res) => {
     tenantId: authContext.tenantId,
   });
 
-  const [account, policy, entries, usage] = await Promise.all([
+  const [account, policy, entries, usage, byAgent, byModelRaw] = await Promise.all([
     client.tenantBillingAccount.findUnique({ where: { tenantId: authContext.tenantId } }),
     client.tenantQuotaPolicy.findUnique({ where: { tenantId: authContext.tenantId } }),
     client.billingLedger.findMany({
@@ -1066,6 +1075,23 @@ billingRouter.get("/billing/tenant/summary", async (req, res) => {
         },
       },
     }),
+    getAgentBillingSummary(prisma, {
+      tenantId: authContext.tenantId,
+      cycleStart: cycle.cycleStart,
+      cycleEnd: cycle.cycleEnd,
+    }),
+    client.runUsageBreakdown.findMany({
+      where: {
+        tenantId: authContext.tenantId,
+        createdAt: { gte: cycle.cycleStart, lt: cycle.cycleEnd },
+      },
+      select: {
+        provider: true,
+        model: true,
+        amountCents: true,
+        totalTokens: true,
+      },
+    }),
   ]);
 
   const workspaces = await client.workspace.findMany({
@@ -1086,6 +1112,7 @@ billingRouter.get("/billing/tenant/summary", async (req, res) => {
     string,
     { workspaceId: string; workspaceName: string; runs: number; costCents: number }
   >();
+  const byModel = new Map<string, { provider: string; model: string; costCents: number; tokens: number }>();
 
   for (const entry of entries) {
     totals.costCents += Number(entry.amountCents ?? 0);
@@ -1104,6 +1131,19 @@ billingRouter.get("/billing/tenant/summary", async (req, res) => {
       current.runs += 1;
     }
     byWorkspace.set(key, current);
+  }
+
+  for (const item of byModelRaw) {
+    const key = `${item.provider}::${item.model}`;
+    const current = byModel.get(key) ?? {
+      provider: item.provider,
+      model: item.model,
+      costCents: 0,
+      tokens: 0,
+    };
+    current.costCents += Number(item.amountCents ?? 0);
+    current.tokens += Number(item.totalTokens ?? 0);
+    byModel.set(key, current);
   }
 
   const planProfile = resolvePlanPricingProfile(account?.planCode);
@@ -1165,7 +1205,292 @@ billingRouter.get("/billing/tenant/summary", async (req, res) => {
             updatedAt: usage.updatedAt,
           }
         : null,
+      byAgent,
+      byModel: Array.from(byModel.values()).sort((a, b) =>
+        `${a.provider}:${a.model}`.localeCompare(`${b.provider}:${b.model}`)
+      ),
       byWorkspace: Array.from(byWorkspace.values()).sort((a, b) => a.workspaceName.localeCompare(b.workspaceName)),
+    },
+  });
+});
+
+billingRouter.get("/billing/workspaces/:workspaceId/summary", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({
+      ok: false,
+      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+    });
+  }
+
+  const workspaceId = String(req.params.workspaceId ?? "");
+  if (!workspaceId) {
+    return res.status(400).json({
+      ok: false,
+      error: { code: "MISSING_REQUIRED", message: "workspaceId" },
+    });
+  }
+
+  const workspace = await prisma.workspace.findUnique({
+    where: { id: workspaceId },
+    select: { id: true, tenantId: true, name: true },
+  });
+  if (!workspace || workspace.tenantId !== authContext.tenantId) {
+    return res.status(404).json({
+      ok: false,
+      error: { code: "WORKSPACE_NOT_FOUND", message: "Workspace not found for tenant" },
+    });
+  }
+
+  const from = parseOptionalDate(req.query.from);
+  const to = parseOptionalDate(req.query.to);
+  const summary = await getWorkspaceBillingSummary(prisma, {
+    tenantId: authContext.tenantId,
+    workspaceId,
+    ...(from && to ? { cycleStart: from, cycleEnd: to } : {}),
+  });
+
+  return res.json({
+    ok: true,
+    data: {
+      tenantId: authContext.tenantId,
+      workspaceId,
+      workspaceName: workspace.name,
+      cycleStart: from?.toISOString() ?? null,
+      cycleEnd: to?.toISOString() ?? null,
+      ...summary,
+    },
+  });
+});
+
+billingRouter.get("/billing/agents/summary", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({
+      ok: false,
+      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+    });
+  }
+
+  const workspaceId = parseNonEmptyString(req.query.workspaceId);
+  if (workspaceId) {
+    const workspace = await prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { tenantId: true },
+    });
+    if (!workspace || workspace.tenantId !== authContext.tenantId) {
+      return res.status(404).json({
+        ok: false,
+        error: { code: "WORKSPACE_NOT_FOUND", message: "Workspace not found for tenant" },
+      });
+    }
+  }
+
+  const from = parseOptionalDate(req.query.from);
+  const to = parseOptionalDate(req.query.to);
+  const items = await getAgentBillingSummary(prisma, {
+    tenantId: authContext.tenantId,
+    workspaceId,
+    ...(from && to ? { cycleStart: from, cycleEnd: to } : {}),
+  });
+
+  return res.json({
+    ok: true,
+    data: {
+      tenantId: authContext.tenantId,
+      workspaceId: workspaceId ?? null,
+      cycleStart: from?.toISOString() ?? null,
+      cycleEnd: to?.toISOString() ?? null,
+      items,
+    },
+  });
+});
+
+billingRouter.get("/billing/reconciliation/summary", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({
+      ok: false,
+      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+    });
+  }
+
+  const workspaceId = parseNonEmptyString(req.query.workspaceId);
+  const runId = parseNonEmptyString(req.query.runId);
+  const limit = parseOptionalInt(req.query.limit) ?? 50;
+  const from = parseOptionalDate(req.query.from);
+  const to = parseOptionalDate(req.query.to);
+
+  if (workspaceId) {
+    const workspace = await prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { tenantId: true },
+    });
+    if (!workspace || workspace.tenantId !== authContext.tenantId) {
+      return res.status(404).json({
+        ok: false,
+        error: { code: "WORKSPACE_NOT_FOUND", message: "Workspace not found for tenant" },
+      });
+    }
+  }
+
+  if (runId) {
+    const run = await prisma.run.findUnique({
+      where: { id: runId },
+      select: { tenantId: true, workspaceId: true },
+    });
+    if (
+      !run ||
+      run.tenantId !== authContext.tenantId ||
+      (workspaceId && run.workspaceId !== workspaceId)
+    ) {
+      return res.status(404).json({
+        ok: false,
+        error: { code: "RUN_NOT_FOUND", message: "Run not found for tenant/workspace" },
+      });
+    }
+  }
+
+  const summary = await getBillingReconciliationSummary(prismaGlobal as any, {
+    tenantId: authContext.tenantId,
+    workspaceId,
+    runId,
+    from,
+    to,
+    limit,
+  });
+
+  return res.json({
+    ok: true,
+    data: summary,
+  });
+});
+
+billingRouter.get("/workspaces/:workspaceId/agents", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({
+      ok: false,
+      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+    });
+  }
+
+  const workspaceId = String(req.params.workspaceId ?? "");
+  if (!workspaceId) {
+    return res.status(400).json({
+      ok: false,
+      error: { code: "MISSING_REQUIRED", message: "workspaceId" },
+    });
+  }
+
+  const workspace = await prisma.workspace.findUnique({
+    where: { id: workspaceId },
+    select: { id: true, tenantId: true, name: true },
+  });
+  if (!workspace || workspace.tenantId !== authContext.tenantId) {
+    return res.status(404).json({
+      ok: false,
+      error: { code: "WORKSPACE_NOT_FOUND", message: "Workspace not found for tenant" },
+    });
+  }
+
+  const items = await listWorkspaceAgentAssignments({
+    prisma,
+    tenantId: authContext.tenantId,
+    workspaceId,
+  });
+
+  return res.json({
+    ok: true,
+    data: {
+      tenantId: authContext.tenantId,
+      workspaceId,
+      workspaceName: workspace.name,
+      items,
+    },
+  });
+});
+
+billingRouter.get("/runs/:id/cost-breakdown", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({
+      ok: false,
+      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+    });
+  }
+
+  const run = await (prisma.run as any).findUnique({
+    where: { id: req.params.id },
+    select: {
+      id: true,
+      tenantId: true,
+      workspaceId: true,
+      caseId: true,
+      threadId: true,
+      agent: true,
+      agentVersion: true,
+      costCents: true,
+      traceId: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+  if (!run || run.tenantId !== authContext.tenantId || run.workspaceId !== authContext.workspaceId) {
+    return res.status(404).json({
+      ok: false,
+      error: { code: "NOT_FOUND", message: "run" },
+    });
+  }
+
+  const items = await listRunUsageBreakdowns({
+    prisma,
+    tenantId: authContext.tenantId,
+    workspaceId: authContext.workspaceId,
+    runId: req.params.id,
+  });
+
+  return res.json({
+    ok: true,
+    data: {
+      run: {
+        id: run.id,
+        workspaceId: run.workspaceId,
+        caseId: run.caseId ?? null,
+        threadId: run.threadId ?? null,
+        agent: run.agent,
+        agentVersion: run.agentVersion,
+        status: run.status,
+        costCents: run.costCents,
+        traceId: run.traceId,
+        createdAt: run.createdAt,
+        updatedAt: run.updatedAt,
+      },
+      totals: {
+        amountCents: items.reduce((sum, item) => sum + Number(item.amountCents ?? 0), 0),
+        tokens: items.reduce((sum, item) => sum + Number(item.totalTokens ?? 0), 0),
+      },
+      items: items.map((item) => ({
+        id: item.id,
+        requestId: item.requestId,
+        traceId: item.traceId,
+        agent: item.agent,
+        agentVersion: item.agentVersion,
+        provider: item.provider,
+        model: item.model,
+        pricingVersion: item.pricingVersion,
+        meterType: item.meterType,
+        requestClass: item.requestClass,
+        promptTokens: item.promptTokens,
+        completionTokens: item.completionTokens,
+        cachedTokens: item.cachedTokens,
+        totalTokens: item.totalTokens,
+        amountCents: item.amountCents,
+        currency: item.currency,
+        estimated: item.estimated,
+        createdAt: item.createdAt,
+      })),
     },
   });
 });

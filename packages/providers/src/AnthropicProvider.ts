@@ -30,6 +30,19 @@ export class AnthropicProvider extends LLMProvider {
 
     const output = json.content?.[0]?.text ?? "";
     const finish = json.stop_reason ?? "stop";
+    const promptTokens = json.usage?.input_tokens ?? undefined;
+    const completionTokens = json.usage?.output_tokens ?? undefined;
+    const cachedTokens = json.usage?.cache_read_input_tokens ?? undefined;
+    const hasTokenUsage =
+      promptTokens !== undefined || completionTokens !== undefined || cachedTokens !== undefined;
+    const usage = json.usage
+      ? {
+          promptTokens,
+          completionTokens,
+          cachedTokens,
+          totalTokens: hasTokenUsage ? (promptTokens ?? 0) + (completionTokens ?? 0) + (cachedTokens ?? 0) : undefined,
+        }
+      : null;
 
     return {
       id: json.id ?? "anthropic",
@@ -38,6 +51,8 @@ export class AnthropicProvider extends LLMProvider {
       finishReason: finish,
       provider: this.name,
       model,
+      requestId: json.id ?? "anthropic",
+      usage,
     };
   }
 }

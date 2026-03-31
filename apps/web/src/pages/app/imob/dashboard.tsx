@@ -2,6 +2,7 @@ import React from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import { useSession } from "@/state/sessionStore";
 import {
+  ApiError,
   apiGetImobChatTelemetrySummary,
   apiListImobCases,
   apiListImobChatThreads,
@@ -13,6 +14,26 @@ import {
   type ImobProperty,
 } from "@/lib/api";
 import { ThreadPanel } from "@/features/imob/ThreadPanel";
+
+function resolveImobGateTitle(reasonCode?: string) {
+  if (reasonCode === "IMOB_INSTALLATION_INACTIVE") return "Instalação inativa";
+  if (reasonCode === "IMOB_PERMISSION_DENIED") return "Acesso restrito";
+  return "Acesso indisponível";
+}
+
+function resolveImobGateBody(gate: {
+  reasonCode?: string;
+  message?: string;
+}) {
+  if (gate.message?.trim()) return gate.message.trim();
+  if (gate.reasonCode === "IMOB_INSTALLATION_INACTIVE") {
+    return "A instalação do IMOB neste workspace não está ativa. Reative a instalação para usar este recurso.";
+  }
+  if (gate.reasonCode === "IMOB_PERMISSION_DENIED") {
+    return "Você não possui permissão para usar o IMOB neste workspace.";
+  }
+  return "IMOB não está habilitado neste workspace. É necessária uma instalação ativa para usar este recurso.";
+}
 
 type Section = "imoveis" | "processos" | "parceiros";
 
@@ -148,6 +169,7 @@ function buildImobChatHref(base: {
 
 const ImobDashboardPage: React.FC = () => {
   const session = useSession();
+  const imobAccessGate = session.accessGate?.product === "IMOB" ? session.accessGate : null;
   const brandName = session.branding?.brandName?.trim() || "Tenant";
   const workspaceLabel = session.branding?.workspaceLabel?.trim() || session.workspaceId;
   const [searchParams, setSearchParams] = useSearchParams();
@@ -230,6 +252,17 @@ const ImobDashboardPage: React.FC = () => {
 
   React.useEffect(() => {
     let mounted = true;
+    if (imobAccessGate) {
+      setOwners([]);
+      setProperties([]);
+      setCases([]);
+      setDashboardSource("empty");
+      setDashboardError(null);
+      setDashboardLoading(false);
+      return () => {
+        mounted = false;
+      };
+    }
     setDashboardLoading(true);
     setDashboardError(null);
 
@@ -250,7 +283,12 @@ const ImobDashboardPage: React.FC = () => {
         setProperties([]);
         setCases([]);
         setDashboardSource("empty");
-        setDashboardError(error instanceof Error ? error.message : "Falha ao carregar CRM operacional do IMOB");
+        if (error instanceof ApiError && error.status === 403 && error.body && typeof error.body === "object") {
+          const payload = error.body as { error?: { message?: string; reasonCode?: string } };
+          setDashboardError(resolveImobGateBody(payload.error ?? {}));
+        } else {
+          setDashboardError(error instanceof Error ? error.message : "Falha ao carregar CRM operacional do IMOB");
+        }
       })
       .finally(() => {
         if (!mounted) return;
@@ -260,7 +298,7 @@ const ImobDashboardPage: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, [session.workspaceId]);
+  }, [imobAccessGate, session.workspaceId]);
 
   React.useEffect(() => {
     let mounted = true;
@@ -390,6 +428,33 @@ const ImobDashboardPage: React.FC = () => {
           ))}
         </div>
       </header>
+
+      {imobAccessGate ? (
+        <section className="rounded-2xl border border-rose-500/40 bg-rose-500/10 p-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-rose-200">GateCard 403</p>
+          <p className="mt-2 text-sm font-semibold text-rose-100">
+            {resolveImobGateTitle(imobAccessGate.reasonCode)}
+          </p>
+          <p className="mt-2 text-sm text-rose-100">
+            {resolveImobGateBody(imobAccessGate)}
+          </p>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            {imobAccessGate.cta?.target ? (
+              <Link
+                to={imobAccessGate.cta.target}
+                className="rounded-full border border-rose-300/30 bg-rose-200/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-rose-100 transition hover:bg-rose-200/20"
+              >
+                {imobAccessGate.cta.label}
+              </Link>
+            ) : null}
+            {imobAccessGate.traceId ? (
+              <span className="text-[10px] uppercase tracking-[0.2em] text-rose-200/80">
+                Trace: {imobAccessGate.traceId}
+              </span>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
 
       {dashboardError ? (
         <section className="rounded-3xl border border-rose-400/20 bg-rose-500/5 p-4 text-sm text-rose-100 sm:p-6">

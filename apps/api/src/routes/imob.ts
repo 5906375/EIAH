@@ -12,6 +12,10 @@ import { searchImobInventory } from "../services/imob/imobInventoryProvider";
 import { resolveImobTurn } from "../services/imob/imobTurnResolver";
 import { resolveImobSemanticIntent } from "../services/imob/imobSemanticIntentResolver";
 import { validateImobIdentityAttachmentAgainstCase } from "../services/imob/imobAttachmentValidation";
+import {
+  resolveImobInstallationStatus,
+  sendImobAccessDenied,
+} from "../services/imob/imobAccessGate";
 import { canWorkspaceOperateImobStage, hasWorkspacePermission, readWorkspaceResponsibleProfile } from "../services/workspaceResponsibility";
 
 export const imobRouter = Router();
@@ -2404,7 +2408,6 @@ async function resolveConversationAuditRunId(params: {
         status: "audit_initialized",
         conversationId: params.conversationId,
       },
-      costCents: 0,
     }));
 
   if (!matchedRun) {
@@ -2874,15 +2877,13 @@ async function resolveImobEntitlements(params: {
       .catch(() => []),
   ]);
 
-  const hasImobInstallation = productInstallations.some(
-    (entry) =>
-      entry.product.trim().toUpperCase() === "IMOB" &&
-      entry.status.trim().toLowerCase() === "active"
-  );
+  const installationStatus = resolveImobInstallationStatus(productInstallations);
+  const hasImobInstallation = installationStatus === "active";
   const realEstateCore = hasImobInstallation || realEstatePolicies.length > 0;
   return {
     REAL_ESTATE_CORE: realEstateCore,
     IMOB_INSTALLED: hasImobInstallation,
+    IMOB_INSTALLATION_STATUS: installationStatus,
   };
 }
 
@@ -2905,43 +2906,64 @@ async function readImobWorkspaceAccessProfile(params: {
 }
 
 function sendImobPermissionDenied(
+  req: TenantAwareRequest | undefined,
   res: any,
-  params: { code: string; message: string; stage?: string | null }
+  params: { code: string; message: string; stage?: string | null; capability?: "CENTRAL_OPERACIONAL" | "KNOWLEDGE_SYNC_STATUS" | "KNOWLEDGE_SEARCH" }
 ) {
-  return res.status(403).json({
-    ok: false,
-    error: {
-      code: params.code,
-      message: params.message,
-      ...(params.stage ? { stage: params.stage } : {}),
-    },
+  return sendImobAccessDenied(res, {
+    req,
+    code: params.code,
+    reasonCode: "IMOB_PERMISSION_DENIED",
+    capability: params.capability ?? "CENTRAL_OPERACIONAL",
+    tenantId: req?.authContext?.tenantId ?? "",
+    workspaceId: req?.authContext?.workspaceId ?? "",
+    installationStatus: "active",
+    stage: params.stage ?? undefined,
+    message: params.message,
   });
 }
 
 function ensureImobWorkspacePermission(
-  res: any,
-  permissions: string[],
-  permission: string,
-  message: string
+  reqOrRes: TenantAwareRequest | any,
+  resOrPermissions: any,
+  permissionsOrPermission: string[] | string,
+  permissionOrMessage: string,
+  messageOrCapability?: string,
+  capability?: "CENTRAL_OPERACIONAL" | "KNOWLEDGE_SYNC_STATUS" | "KNOWLEDGE_SEARCH"
 ) {
+  const hasExplicitRequest = Array.isArray(permissionsOrPermission);
+  const req = hasExplicitRequest ? (reqOrRes as TenantAwareRequest) : undefined;
+  const res = hasExplicitRequest ? resOrPermissions : reqOrRes;
+  const permissions = (hasExplicitRequest ? permissionsOrPermission : resOrPermissions) as string[];
+  const permission = hasExplicitRequest ? permissionOrMessage : (permissionsOrPermission as string);
+  const message = (hasExplicitRequest ? messageOrCapability : permissionOrMessage) as string;
+  const resolvedCapability = hasExplicitRequest ? capability : undefined;
   if (hasWorkspacePermission(permissions, permission)) return true;
-  sendImobPermissionDenied(res, {
+  sendImobPermissionDenied(req, res, {
     code: "IMOB_WORKSPACE_PERMISSION_FORBIDDEN",
     message,
+    capability: resolvedCapability,
   });
   return false;
 }
 
 function ensureImobStagePermission(
-  res: any,
-  permissions: string[],
-  stage: string | null | undefined,
-  message: string
+  reqOrRes: TenantAwareRequest | any,
+  resOrPermissions: any,
+  permissionsOrStage: string[] | string | null | undefined,
+  stageOrMessage: string | null | undefined,
+  message?: string
 ) {
+  const hasExplicitRequest = Array.isArray(permissionsOrStage);
+  const req = hasExplicitRequest ? (reqOrRes as TenantAwareRequest) : undefined;
+  const res = hasExplicitRequest ? resOrPermissions : reqOrRes;
+  const permissions = (hasExplicitRequest ? permissionsOrStage : resOrPermissions) as string[];
+  const stage = hasExplicitRequest ? stageOrMessage : permissionsOrStage;
+  const resolvedMessage = (hasExplicitRequest ? message : stageOrMessage) as string;
   if (canWorkspaceOperateImobStage(permissions, stage)) return true;
-  sendImobPermissionDenied(res, {
+  sendImobPermissionDenied(req, res, {
     code: "IMOB_STAGE_FORBIDDEN",
-    message,
+    message: resolvedMessage,
     stage: stage ?? null,
   });
   return false;
@@ -2957,7 +2979,7 @@ imobRouter.get("/knowledge/sync-status", async (req, res) => {
   }
 
   const workspaceAccess = await readImobWorkspaceAccessProfile({ prisma, authContext });
-  if (!ensureImobWorkspacePermission(res, workspaceAccess.permissions, "imob.chat.use", "Sua função atual não pode usar o IMOB neste workspace.")) {
+  if (!ensureImobWorkspacePermission(req as TenantAwareRequest, res, workspaceAccess.permissions, "imob.chat.use", "Sua função atual não pode usar o IMOB neste workspace.", "KNOWLEDGE_SYNC_STATUS")) {
     return;
   }
 
@@ -2968,12 +2990,17 @@ imobRouter.get("/knowledge/sync-status", async (req, res) => {
   });
 
   if (!entitlements.REAL_ESTATE_CORE) {
-    return res.status(403).json({
-      ok: false,
-      error: {
-        code: "ENTITLEMENT_MISSING",
-        message: "REAL_ESTATE_CORE entitlement required for IMOB knowledge sync status",
-      },
+    return sendImobAccessDenied(res, {
+      req: req as TenantAwareRequest,
+      code: "ENTITLEMENT_MISSING",
+      reasonCode:
+        entitlements.IMOB_INSTALLATION_STATUS === "inactive"
+          ? "IMOB_INSTALLATION_INACTIVE"
+          : "IMOB_ENTITLEMENT_MISSING",
+      capability: "KNOWLEDGE_SYNC_STATUS",
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      installationStatus: entitlements.IMOB_INSTALLATION_STATUS,
     });
   }
 
@@ -3014,7 +3041,7 @@ imobRouter.post("/knowledge/search", async (req, res) => {
 
   const workspaceId = authContext.workspaceId;
   const workspaceAccess = await readImobWorkspaceAccessProfile({ prisma, authContext });
-  if (!ensureImobWorkspacePermission(res, workspaceAccess.permissions, "imob.chat.use", "Sua função atual não pode usar o IMOB neste workspace.")) {
+  if (!ensureImobWorkspacePermission(req as TenantAwareRequest, res, workspaceAccess.permissions, "imob.chat.use", "Sua função atual não pode usar o IMOB neste workspace.", "KNOWLEDGE_SEARCH")) {
     return;
   }
   const entitlements = await resolveImobEntitlements({
@@ -3024,12 +3051,17 @@ imobRouter.post("/knowledge/search", async (req, res) => {
   });
 
   if (!entitlements.REAL_ESTATE_CORE) {
-    return res.status(403).json({
-      ok: false,
-      error: {
-        code: "ENTITLEMENT_MISSING",
-        message: "REAL_ESTATE_CORE entitlement required for IMOB knowledge search",
-      },
+    return sendImobAccessDenied(res, {
+      req: req as TenantAwareRequest,
+      code: "ENTITLEMENT_MISSING",
+      reasonCode:
+        entitlements.IMOB_INSTALLATION_STATUS === "inactive"
+          ? "IMOB_INSTALLATION_INACTIVE"
+          : "IMOB_ENTITLEMENT_MISSING",
+      capability: "KNOWLEDGE_SEARCH",
+      tenantId: authContext.tenantId,
+      workspaceId,
+      installationStatus: entitlements.IMOB_INSTALLATION_STATUS,
     });
   }
 

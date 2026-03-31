@@ -1,11 +1,15 @@
 import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
+import express from "express";
 import supertest from "supertest";
-import { prismaGlobal } from "@repo/db";
+import { closePrismaResources, prismaGlobal } from "@repo/db";
 import {
   buildWebhookSignatureBase,
   computeWebhookSignature,
 } from "../services/paymentIntents";
+import { closeRunEventsTransport } from "../services/runEvents";
+import { closeRunEventStream } from "../services/runEventStream";
+import { billingRouter } from "../routes/billing";
 
 let request: ReturnType<typeof supertest>;
 
@@ -17,12 +21,21 @@ const apiToken = `tok-economy-${suffix}`;
 const runId = `run-economy-${suffix}`;
 const webhookSecret = "whsec-eiah-local";
 
+function resolveCurrentCycle() {
+  const now = new Date();
+  const cycleStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0));
+  const cycleEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 0, 0, 0, 0));
+  return { cycleStart, cycleEnd };
+}
+
 before(async () => {
   process.env.NODE_ENV = "test";
   process.env.BILLING_WEBHOOK_SECRET = webhookSecret;
   process.env.BILLING_WEBHOOK_REPLAY_WINDOW_SECONDS = "600";
   process.env.BILLING_WEBHOOK_CLOCK_SKEW_SECONDS = "30";
-  const { default: app } = await import("../index");
+  const app = express();
+  app.use(express.json({ limit: "10mb" }));
+  app.use("/api", billingRouter);
   request = supertest(app);
 
   await prismaGlobal.tenant.create({
@@ -49,6 +62,18 @@ before(async () => {
       revoked: false,
     },
   });
+  await prismaGlobal.workspaceAgentAssignment.create({
+    data: {
+      tenantId,
+      workspaceId,
+      agentKey: "fin-nexus",
+      agentVersion: "1.0.0",
+      enabled: true,
+      signedByUserId: userId,
+      signedAt: new Date(),
+      signatureRef: "sig-economy-assignment",
+    },
+  });
 
   await prismaGlobal.run.create({
     data: {
@@ -62,10 +87,131 @@ before(async () => {
       response: null,
     },
   });
+
+  const { cycleStart, cycleEnd } = resolveCurrentCycle();
+  await prismaGlobal.runUsageBreakdown.create({
+    data: {
+      runId,
+      tenantId,
+      workspaceId,
+      agent: "fin-nexus",
+      agentVersion: "1.0.0",
+      provider: "openai",
+      model: "gpt-4o-mini",
+      pricingVersion: "provider-usage.v1",
+      requestId: `req-breakdown-${suffix}`,
+      traceId: `trace-${suffix}`,
+      meterType: "llm_completion",
+      requestClass: "chat_response",
+      promptTokens: 120,
+      completionTokens: 80,
+      cachedTokens: 10,
+      totalTokens: 210,
+      amountCents: 123,
+      currency: "BRL",
+      estimated: true,
+    },
+  });
+  await prismaGlobal.billingLedger.create({
+    data: {
+      tenantId,
+      workspaceId,
+      runId,
+      entryType: "debit",
+      amountCents: 123,
+      currency: "BRL",
+      description: "billing-economy-contract-test",
+      requestId: `req-breakdown-${suffix}`,
+      provider: "openai",
+      model: "gpt-4o-mini",
+    },
+  });
+  await prismaGlobal.tenantQuotaUsage.create({
+    data: {
+      tenantId,
+      cycleStart,
+      cycleEnd,
+      runs: 1,
+      costCents: 123,
+      tokens: 210,
+      storageMb: 0,
+    },
+  });
+  await prismaGlobal.workspaceQuotaUsage.create({
+    data: {
+      tenantId,
+      workspaceId,
+      cycleStart,
+      cycleEnd,
+      runs: 1,
+      costCents: 123,
+      tokens: 210,
+      storageMb: 0,
+    },
+  });
 });
 
 after(async () => {
-  await prismaGlobal.$disconnect();
+  const cleanupClient = prismaGlobal as any;
+  await cleanupClient.webhookEvent?.deleteMany?.({ where: { tenantId } }).catch(() => undefined);
+  await cleanupClient.billingDispute?.deleteMany?.({ where: { tenantId } }).catch(() => undefined);
+  await cleanupClient.paymentIntent?.deleteMany?.({ where: { tenantId } }).catch(() => undefined);
+  await prismaGlobal.workspaceQuotaUsage.deleteMany({ where: { tenantId } });
+  await prismaGlobal.tenantQuotaUsage.deleteMany({ where: { tenantId } });
+  await prismaGlobal.runUsageBreakdown.deleteMany({ where: { tenantId } });
+  await closeRunEventsTransport();
+  await closeRunEventStream();
+  await closePrismaResources();
+});
+
+test("Billing summaries and run cost breakdown expose the baseline P1 contract", async () => {
+  const tenantSummaryRes = await request
+    .get("/api/billing/tenant/summary")
+    .set("Authorization", `Bearer ${apiToken}`);
+  assert.equal(tenantSummaryRes.status, 200);
+  assert.equal(tenantSummaryRes.body?.ok, true);
+  assert.equal(tenantSummaryRes.body?.data?.tenantId, tenantId);
+  assert.ok(Array.isArray(tenantSummaryRes.body?.data?.byAgent));
+  assert.ok(Array.isArray(tenantSummaryRes.body?.data?.byModel));
+
+  const workspaceSummaryRes = await request
+    .get(`/api/billing/workspaces/${workspaceId}/summary`)
+    .set("Authorization", `Bearer ${apiToken}`);
+  assert.equal(workspaceSummaryRes.status, 200);
+  assert.equal(workspaceSummaryRes.body?.ok, true);
+  assert.equal(workspaceSummaryRes.body?.data?.workspaceId, workspaceId);
+  assert.equal(workspaceSummaryRes.body?.data?.costCents, 123);
+  assert.equal(workspaceSummaryRes.body?.data?.tokens, 210);
+  assert.equal(workspaceSummaryRes.body?.data?.byAgent?.[0]?.agent, "fin-nexus");
+  assert.equal(workspaceSummaryRes.body?.data?.byModel?.[0]?.provider, "openai");
+
+  const agentSummaryRes = await request
+    .get("/api/billing/agents/summary")
+    .set("Authorization", `Bearer ${apiToken}`);
+  assert.equal(agentSummaryRes.status, 200);
+  assert.equal(agentSummaryRes.body?.ok, true);
+  assert.equal(agentSummaryRes.body?.data?.items?.[0]?.agent, "fin-nexus");
+  assert.equal(agentSummaryRes.body?.data?.items?.[0]?.costCents, 123);
+
+  const assignmentsRes = await request
+    .get(`/api/workspaces/${workspaceId}/agents`)
+    .set("Authorization", `Bearer ${apiToken}`);
+  assert.equal(assignmentsRes.status, 200);
+  assert.equal(assignmentsRes.body?.ok, true);
+  assert.equal(assignmentsRes.body?.data?.items?.[0]?.agentKey, "fin-nexus");
+  assert.equal(assignmentsRes.body?.data?.items?.[0]?.agentVersion, "1.0.0");
+
+  const breakdownRes = await request
+    .get(`/api/runs/${runId}/cost-breakdown`)
+    .set("Authorization", `Bearer ${apiToken}`);
+  assert.equal(breakdownRes.status, 200);
+  assert.equal(breakdownRes.body?.ok, true);
+  assert.equal(breakdownRes.body?.data?.run?.id, runId);
+  assert.equal(breakdownRes.body?.data?.totals?.amountCents, 123);
+  assert.equal(breakdownRes.body?.data?.totals?.tokens, 210);
+  assert.equal(breakdownRes.body?.data?.items?.[0]?.provider, "openai");
+  assert.equal(breakdownRes.body?.data?.items?.[0]?.model, "gpt-4o-mini");
+  assert.equal(breakdownRes.body?.data?.items?.[0]?.meterType, "llm_completion");
 });
 
 test("PaymentIntent: create -> blocked sem PoU -> released com PoU/SCL -> settled", async () => {
@@ -233,4 +379,3 @@ test("Webhook billing: assinatura válida + replay idempotente sem side effect",
   assert.equal(replay.body?.replayRejected, true);
   assert.equal(replay.body?.duplicateSideEffects, 0);
 });
-

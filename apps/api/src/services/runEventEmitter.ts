@@ -1,5 +1,8 @@
 import { prismaGlobal, type PrismaClient } from "@repo/db";
-import { recordGuardrailAudit, recordGuardrailLedger } from "@eiah/core";
+import {
+  recordGuardrailAudit,
+  recordGuardrailLedger,
+} from "@eiah/core/services/guardrailLedgerStore";
 import { recordRunEvent } from "./runEvents";
 
 type EmitRunEventParams = {

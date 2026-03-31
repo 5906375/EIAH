@@ -1,0 +1,2 @@
+-- no-op placeholder
+-- kept only to preserve migration history after an interrupted local generation attempt
