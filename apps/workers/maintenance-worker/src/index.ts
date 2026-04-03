@@ -21,10 +21,6 @@ import { getPrismaForTenant, prismaGlobal } from "@repo/db";
 import Redis from "ioredis";
 import { Queue } from "bullmq";
 import { MaintenanceJobName, QueueName } from "@eiah/contracts";
-const prisma = getPrismaForTenant(
-  process.env.TENANT_ID ?? "tenant-demo",
-  process.env.WORKSPACE_ID ?? "workspace-demo"
-);
 
 
 const workerLogger = createLogger({ component: "maintenance-worker" });
@@ -399,7 +395,7 @@ async function bootstrap() {
         );
 
         if (params.tenantId) {
-          const result = await generateMonthlyInvoice(prisma as any, {
+          const result = await generateMonthlyInvoice(prismaGlobal as any, {
             tenantId: params.tenantId,
             periodStart: periodStart ?? inferred.periodStart,
             periodEnd: periodEnd ?? inferred.periodEnd,

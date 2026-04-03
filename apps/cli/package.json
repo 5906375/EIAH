@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "tsx watch src/index.ts",
+    "dev": "tsx watch --exclude '/app/node_modules/**' --exclude '/pnpm/store/**' src/index.ts",
     "start": "node dist/index.js",
     "prebuild": "bash ../../scripts/prebuild-check.sh"
   },
