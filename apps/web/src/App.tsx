@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import AgentsPage from "./pages/app/agents";
 import BillingPage from "./pages/app/billing";
+import EconomyPage from "./pages/app/economy";
 import RunsPage from "./pages/app/runs";
 import MarketplacePage from "./pages/app/marketplace";
 import ImobMarketplacePage from "./pages/app/marketplace/imob";
@@ -14,9 +15,9 @@ import ProfilePage from "./pages/profile";
 import AccessPage from "./pages/access";
 import eiahLogo from "./assets/Eiah_logo.png";
 import { updateSession, useSession, type ImobAccessGateState } from "./state/sessionStore";
-import { ApiError, apiGetSessionContext } from "./lib/api";
+import { ApiError, apiGetSessionContext, apiPostExperienceAudit } from "./lib/api";
 
-function NavigationLink({ to, label }: { to: string; label: string }) {
+function NavigationLink({ to, label, prioritized = false }: { to: string; label: string; prioritized?: boolean }) {
   const location = useLocation();
   const active = location.pathname === to || location.pathname.startsWith(`${to}/`);
 
@@ -26,14 +27,80 @@ function NavigationLink({ to, label }: { to: string; label: string }) {
       className={`relative px-4 py-2 text-sm font-medium transition ${
         active
           ? "text-foreground"
-          : "text-muted-foreground hover:text-foreground"
+          : prioritized
+            ? "text-foreground/90 hover:text-foreground"
+            : "text-muted-foreground hover:text-foreground"
       }`}
+      aria-current={active ? "page" : undefined}
+      aria-label={prioritized ? `${label} (navegação prioritária)` : label}
     >
+      {prioritized && !active ? (
+        <span className="absolute left-2 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-accent/80" aria-hidden="true" />
+      ) : null}
       <span className="relative z-10">{label}</span>
       {active && (
         <span className="absolute inset-0 -z-0 rounded-full bg-accent/10 blur-sm" />
       )}
     </Link>
+  );
+}
+
+type ShellNavItem = {
+  to: string;
+  label: string;
+  hiddenForRoles?: Array<
+    "workspace_member" | "workspace_admin" | "tenant_admin" | "founder_global" | "service_operator"
+  >;
+  requiresImob?: boolean;
+};
+
+const SHELL_NAV_ITEMS: ShellNavItem[] = [
+  { to: "/app/runs", label: "Runs" },
+  { to: "/app/agents", label: "Agentes" },
+  { to: "/app/billing", label: "Billing", hiddenForRoles: ["workspace_member"] },
+  { to: "/app/economy", label: "Economy", hiddenForRoles: ["workspace_member"] },
+  { to: "/app/marketplace", label: "Marketplace" },
+  { to: "/app/imob/chat", label: "IMOB", requiresImob: true },
+  { to: "/self-service", label: "Self-service" },
+  { to: "/profile", label: "Perfil" },
+];
+
+function RecommendedActionsBar() {
+  const session = useSession();
+  const location = useLocation();
+  const recommendedActions = session.experience?.recommendedActions ?? [];
+
+  if (!recommendedActions.length) return null;
+
+  return (
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-6 pb-4 pt-1 sm:flex-row sm:items-center sm:justify-between">
+      <div className="min-w-0">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-accent/90">Acoes sugeridas</p>
+        <p className="text-sm text-muted-foreground">Resolvidas pelo contexto atual de papel, dominio e produtos.</p>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {recommendedActions.map((action) => {
+          const active = location.pathname === action.path || location.pathname.startsWith(`${action.path}/`);
+          const primary = action.priority === "primary";
+          return (
+            <Link
+              key={action.actionId}
+              to={action.path}
+              className={`rounded-full border px-3 py-1.5 text-sm transition ${
+                active
+                  ? "border-accent/40 bg-accent/15 text-foreground"
+                  : primary
+                    ? "border-accent/30 bg-accent/10 text-foreground hover:bg-accent/15"
+                    : "border-white/10 bg-white/5 text-muted-foreground hover:text-foreground"
+              }`}
+              aria-current={active ? "page" : undefined}
+            >
+              {action.label}
+            </Link>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -53,6 +120,13 @@ function Layout({
   const workspaceLabel = session.branding?.workspaceLabel?.trim() || session.workspaceId;
   const brandPrimary = session.branding?.primaryColor?.trim() || "#22d3ee";
   const subtitle = session.activeDomain === "imob" ? "Imobiliaria Digital Command Center" : "Agent Operations Console";
+  const prioritizedPaths = new Set((session.experience?.primaryNavigation ?? []).map((item) => item.path));
+  const roleProfile = session.experience?.roleProfile;
+  const visibleNavItems = SHELL_NAV_ITEMS.filter((item) => {
+    if (item.requiresImob && !imobInstalled) return false;
+    if (item.hiddenForRoles?.includes(roleProfile ?? "workspace_member")) return false;
+    return true;
+  });
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background" style={{ ["--brand-primary" as string]: brandPrimary }}>
@@ -75,16 +149,18 @@ function Layout({
             </div>
             {showNavigation ? (
               <nav className="flex max-w-[80vw] items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/5 px-2 py-1 no-scrollbar sm:max-w-none">
-                <NavigationLink to="/app/runs" label="Runs" />
-                <NavigationLink to="/app/agents" label="Agentes" />
-                <NavigationLink to="/app/billing" label="Billing" />
-                <NavigationLink to="/app/marketplace" label="Marketplace" />
-                {imobInstalled ? <NavigationLink to="/app/imob/chat" label="IMOB" /> : null}
-                <NavigationLink to="/self-service" label="Self-service" />
-                <NavigationLink to="/profile" label="Perfil" />
+                {visibleNavItems.map((item) => (
+                  <NavigationLink
+                    key={item.to}
+                    to={item.to}
+                    label={item.label}
+                    prioritized={prioritizedPaths.has(item.to)}
+                  />
+                ))}
               </nav>
             ) : null}
           </div>
+          {showNavigation ? <RecommendedActionsBar /> : null}
         </header>
 
         <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-10 sm:px-6">
@@ -117,7 +193,9 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
           availableDomains: ctx.data.availableDomains,
           entitlements: ctx.data.entitlements,
           installedProducts: (ctx.data.productInstallations ?? []).map((entry) => entry.product),
+          verticals: ctx.data.verticals,
           roles: ctx.data.roles,
+          experience: ctx.data.experience,
           branding: {
             brandName: ctx.data.branding.brandName,
             logoUrl: ctx.data.branding.logoUrl,
@@ -171,10 +249,49 @@ function RequireImobInstall({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function DefaultLanding() {
+  const session = useSession();
+  const hasTrackedAlignmentRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (!session.token || hasTrackedAlignmentRef.current) return;
+    const experience = session.experience;
+    const primaryAction = experience?.recommendedActions?.[0];
+    if (!experience || !primaryAction) return;
+
+    hasTrackedAlignmentRef.current = true;
+    void apiPostExperienceAudit(
+      {
+        auditType: "landing_action_alignment",
+        surfaceId: experience.landingSurface,
+        action: primaryAction.path === experience.landingPath ? "aligned" : "diverged",
+        landingPath: experience.landingPath,
+        primaryActionId: primaryAction.actionId,
+        primaryActionPath: primaryAction.path,
+        reasonCodes: [
+          primaryAction.path === experience.landingPath
+            ? "LANDING_MATCHES_PRIMARY_ACTION"
+            : "LANDING_DIFFERS_FROM_PRIMARY_ACTION",
+        ],
+        metadata: {
+          source: "default_landing",
+        },
+      },
+      session.activeDomain
+    ).catch(() => undefined);
+  }, [session.token, session.activeDomain, session.experience]);
+
+  if (!session.token) {
+    return <Navigate to="/app/runs" replace />;
+  }
+
+  return <Navigate to={session.experience?.landingPath || "/app/runs"} replace />;
+}
+
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/app/runs" replace />} />
+      <Route path="/" element={<DefaultLanding />} />
       <Route
         path="/app/runs"
         element={
@@ -201,6 +318,16 @@ function AppRoutes() {
           <Layout>
             <RequireAuth>
               <BillingPage />
+            </RequireAuth>
+          </Layout>
+        }
+      />
+      <Route
+        path="/app/economy"
+        element={
+          <Layout>
+            <RequireAuth>
+              <EconomyPage />
             </RequireAuth>
           </Layout>
         }

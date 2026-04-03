@@ -1,18 +1,33 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   apiCreateWorkspace,
   apiCreateWorkspaceInvitation,
+  apiAutoRenewDelegations,
+  apiGetShadowExecution,
+  apiGetTenantEconomyOpportunities,
   apiGetProfile,
+  apiListShadowExecutions,
   apiListHelpdeskSessions,
   apiDeleteSession,
   apiListAgents,
   apiListDelegations,
+  apiPreviewDelegationRenewal,
+  apiRenewDelegation,
   apiSwitchWorkspaceSession,
   apiUpdateProfile,
+  type DelegationRenewalPreview,
   type HelpdeskSessionExport,
+  type ShadowExecutionContract,
 } from "@/lib/api";
 import { clearSession, updateSession, useSession } from "@/state/sessionStore";
+import type {
+  EconomyOpportunitySnapshot,
+  ExperienceDiagnosticSnapshot,
+  FrictionEventSummary,
+  OperationalInsightSnapshot,
+  OptimizationRecommendationSnapshot,
+} from "@/types";
 
 type WorkspaceRoleOption = {
   key: string;
@@ -43,6 +58,16 @@ type WorkspaceInvitation = {
   token: string;
   expiresAt: string;
   createdAt: string;
+};
+
+type DelegationView = {
+  id: string;
+  marketplaceId?: string | null;
+  scope: string;
+  trustMin: number;
+  validUntil: string;
+  publisherLabel: string;
+  itemName: string;
 };
 
 type ProfileState = {
@@ -89,6 +114,33 @@ function buildImobStagePermission(stageKey: string) {
   return `imob.stage.${stageKey}`;
 }
 
+function getTopEntry(record: Record<string, number>) {
+  return Object.entries(record).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "—";
+}
+
+function countShadowExecutionsByStage(items: ShadowExecutionContract[]) {
+  return items.reduce<Record<ShadowExecutionContract["currentStage"], number>>(
+    (acc, item) => {
+      acc[item.currentStage] += 1;
+      return acc;
+    },
+    {
+      sandbox: 0,
+      preview: 0,
+      approval: 0,
+      promotion: 0,
+      production: 0,
+    }
+  );
+}
+
+function formatBRL(cents: number) {
+  return (cents / 100).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
+}
+
 const WORKSPACE_PERMISSION_GROUPS = [
   {
     key: "imob_access",
@@ -107,6 +159,12 @@ const WORKSPACE_PERMISSION_GROUPS = [
       { key: "workspace.manage_roles", label: "Gerir funções" },
     ],
   },
+] as const;
+
+const PROFILE_AREAS = [
+  { id: "profile-personal", label: "Meu perfil" },
+  { id: "profile-workspace-admin", label: "Workspace admin" },
+  { id: "profile-governance", label: "Governança & evidências" },
 ] as const;
 
 function formatWorkspacePermissionLabel(permission: string) {
@@ -174,31 +232,36 @@ export default function ProfilePage() {
     "loading"
   );
   const [delegationsError, setDelegationsError] = React.useState<string | null>(null);
-  const [activeDelegations, setActiveDelegations] = React.useState<
-    Array<{
-      id: string;
-      marketplaceId?: string | null;
-      scope: string;
-      trustMin: number;
-      validUntil: string;
-      publisherLabel: string;
-      itemName: string;
-    }>
-  >([]);
-  const [expiredDelegations, setExpiredDelegations] = React.useState<
-    Array<{
-      id: string;
-      marketplaceId?: string | null;
-      scope: string;
-      trustMin: number;
-      validUntil: string;
-      publisherLabel: string;
-      itemName: string;
-    }>
-  >([]);
+  const [activeDelegations, setActiveDelegations] = React.useState<DelegationView[]>([]);
+  const [expiredDelegations, setExpiredDelegations] = React.useState<DelegationView[]>([]);
+  const [delegationRenewalPreviews, setDelegationRenewalPreviews] = React.useState<
+    Record<string, DelegationRenewalPreview>
+  >({});
+  const [delegationRenewalStatus, setDelegationRenewalStatus] = React.useState<
+    Record<string, "idle" | "loading" | "ready" | "error">
+  >({});
+  const [delegationRenewalError, setDelegationRenewalError] = React.useState<Record<string, string>>({});
+  const [delegationRenewalNotice, setDelegationRenewalNotice] = React.useState<string | null>(null);
+  const [delegationBulkRenewalState, setDelegationBulkRenewalState] = React.useState<"idle" | "loading">("idle");
   const [helpdeskExport, setHelpdeskExport] = React.useState<HelpdeskSessionExport | null>(null);
   const [helpdeskStatus, setHelpdeskStatus] = React.useState<"loading" | "ready" | "error">("loading");
   const [helpdeskError, setHelpdeskError] = React.useState<string | null>(null);
+  const [diagnosticsWindow, setDiagnosticsWindow] = React.useState<"7d" | "30d">("7d");
+  const [diagnosticSnapshot, setDiagnosticSnapshot] = React.useState<ExperienceDiagnosticSnapshot | null>(null);
+  const [frictionSummary, setFrictionSummary] = React.useState<FrictionEventSummary | null>(null);
+  const [optimizationSnapshot, setOptimizationSnapshot] = React.useState<OptimizationRecommendationSnapshot | null>(null);
+  const [economyOpportunitySnapshot, setEconomyOpportunitySnapshot] = React.useState<EconomyOpportunitySnapshot | null>(null);
+  const [operationalInsightSnapshot, setOperationalInsightSnapshot] = React.useState<OperationalInsightSnapshot | null>(null);
+  const [shadowExecutions, setShadowExecutions] = React.useState<ShadowExecutionContract[]>([]);
+  const [shadowExecutionsStatus, setShadowExecutionsStatus] = React.useState<"loading" | "ready" | "error">("loading");
+  const [shadowExecutionsError, setShadowExecutionsError] = React.useState<string | null>(null);
+  const [shadowCurrentStageFilter, setShadowCurrentStageFilter] = React.useState<ShadowExecutionContract["currentStage"] | "all">("all");
+  const [shadowApprovalStatusFilter, setShadowApprovalStatusFilter] = React.useState<ShadowExecutionContract["approvalStatus"] | "all">("all");
+  const [shadowAgentFilter, setShadowAgentFilter] = React.useState("");
+  const [expandedShadowExecutionId, setExpandedShadowExecutionId] = React.useState<string | null>(null);
+  const [shadowExecutionDetail, setShadowExecutionDetail] = React.useState<ShadowExecutionContract | null>(null);
+  const [shadowExecutionDetailStatus, setShadowExecutionDetailStatus] = React.useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [shadowExecutionDetailError, setShadowExecutionDetailError] = React.useState<string | null>(null);
 
   const handleChange =
     (field: keyof ProfileState) => (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -227,7 +290,29 @@ export default function ProfilePage() {
     setWorkspaceResponsibleLabel(data.workspace.responsibleLabel);
     setInviteRoleKey((prev) => prev || data.workspace.roleOptions[0]?.key || "");
     setLinkedWorkspaces(data.workspaces);
+    setDiagnosticSnapshot(data.experienceDiagnostics.diagnosticSnapshot);
+    setFrictionSummary(data.experienceDiagnostics.frictionSummary);
+    setOptimizationSnapshot(data.experienceDiagnostics.optimizationSnapshot);
+    setOperationalInsightSnapshot(data.experienceDiagnostics.operationalInsightSnapshot);
   }, []);
+
+  const loadProfileBundle = React.useCallback(
+    async (window: "7d" | "30d") => {
+      const [profileResponse, economyResponse] = await Promise.all([
+        apiGetProfile(window),
+        apiGetTenantEconomyOpportunities().catch(() => null),
+      ]);
+      if (!profileResponse.ok || !profileResponse.data) return null;
+      applyProfileData(profileResponse.data);
+      setEconomyOpportunitySnapshot(
+        economyResponse?.ok && economyResponse.data
+          ? economyResponse.data
+          : profileResponse.data.experienceDiagnostics.economyOpportunitySnapshot
+      );
+      return profileResponse.data;
+    },
+    [applyProfileData]
+  );
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -376,10 +461,7 @@ export default function ProfilePage() {
         `Workspace criado com sucesso. Hash: ${response.data.workspaceId}.`
       );
       setNewWorkspaceName("");
-      const refreshed = await apiGetProfile();
-      if (refreshed.ok && refreshed.data) {
-        applyProfileData(refreshed.data);
-      }
+      await loadProfileBundle(diagnosticsWindow);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Falha ao criar workspace. Tente novamente.";
@@ -416,10 +498,9 @@ export default function ProfilePage() {
         token: switched.data.token,
       });
 
-      const refreshed = await apiGetProfile();
-      if (refreshed.ok && refreshed.data) {
-        applyProfileData(refreshed.data);
-        const selectedFromResponse = refreshed.data.workspaces.find((item) => item.id === workspace.id);
+      const refreshed = await loadProfileBundle(diagnosticsWindow);
+      if (refreshed) {
+        const selectedFromResponse = refreshed.workspaces.find((item) => item.id === workspace.id);
         setWorkspaceName(selectedFromResponse?.name ?? workspace.name);
       }
 
@@ -441,10 +522,9 @@ export default function ProfilePage() {
     }
     let active = true;
     setProfileLoading(true);
-    apiGetProfile()
+    loadProfileBundle(diagnosticsWindow)
       .then((response) => {
-        if (!active || !response.ok || !response.data) return;
-        applyProfileData(response.data);
+        if (!active || !response) return;
       })
       .catch(() => undefined)
       .finally(() => {
@@ -453,7 +533,7 @@ export default function ProfilePage() {
     return () => {
       active = false;
     };
-  }, [applyProfileData, session.token]);
+  }, [diagnosticsWindow, loadProfileBundle, session.token]);
 
   React.useEffect(() => {
     if (!session.token) {
@@ -586,6 +666,190 @@ export default function ProfilePage() {
     };
   }, [session.token, session.workspaceId]);
 
+  const handleInspectShadowExecution = React.useCallback(async (shadowExecutionId: string) => {
+    if (expandedShadowExecutionId === shadowExecutionId) {
+      setExpandedShadowExecutionId(null);
+      setShadowExecutionDetail(null);
+      setShadowExecutionDetailStatus("idle");
+      setShadowExecutionDetailError(null);
+      return;
+    }
+
+    setExpandedShadowExecutionId(shadowExecutionId);
+    setShadowExecutionDetail(null);
+    setShadowExecutionDetailStatus("loading");
+    setShadowExecutionDetailError(null);
+    try {
+      const response = await apiGetShadowExecution(shadowExecutionId);
+      setShadowExecutionDetail(response.data);
+      setShadowExecutionDetailStatus("ready");
+    } catch (error) {
+      setShadowExecutionDetail(null);
+      setShadowExecutionDetailStatus("error");
+      setShadowExecutionDetailError(
+        error instanceof Error ? error.message : "Falha ao carregar snapshot completo."
+      );
+    }
+  }, [expandedShadowExecutionId]);
+
+  const handlePreviewDelegationRenewal = React.useCallback(async (delegationId: string) => {
+    setDelegationRenewalNotice(null);
+    setDelegationRenewalStatus((prev) => ({ ...prev, [delegationId]: "loading" }));
+    setDelegationRenewalError((prev) => ({ ...prev, [delegationId]: "" }));
+    try {
+      const response = await apiPreviewDelegationRenewal(delegationId);
+      setDelegationRenewalPreviews((prev) => ({ ...prev, [delegationId]: response.preview }));
+      setDelegationRenewalStatus((prev) => ({ ...prev, [delegationId]: "ready" }));
+    } catch (error) {
+      setDelegationRenewalStatus((prev) => ({ ...prev, [delegationId]: "error" }));
+      setDelegationRenewalError((prev) => ({
+        ...prev,
+        [delegationId]: error instanceof Error ? error.message : "Falha ao carregar preview de renewal.",
+      }));
+    }
+  }, []);
+
+  const handleApplyDelegationRenewal = React.useCallback(async (delegation: DelegationView) => {
+    setDelegationRenewalNotice(null);
+    setDelegationRenewalStatus((prev) => ({ ...prev, [delegation.id]: "loading" }));
+    setDelegationRenewalError((prev) => ({ ...prev, [delegation.id]: "" }));
+    try {
+      await apiRenewDelegation(delegation.id);
+      setDelegationRenewalNotice(`Renewal aplicada para ${delegation.itemName}.`);
+      await Promise.allSettled([handlePreviewDelegationRenewal(delegation.id)]);
+      if (session.token) {
+        const delegationResponse = await apiListDelegations({ role: "delegatee", workspaceScoped: true });
+        const isActive = (value?: string | null) => {
+          if (!value) return false;
+          const timestamp = new Date(value).getTime();
+          return Number.isFinite(timestamp) && timestamp > Date.now();
+        };
+        const toView = (item: {
+          id: string;
+          marketplaceId?: string | null;
+          scope: string;
+          trustMin: number;
+          validUntil: string;
+          publisherName?: string | null;
+          publisherId?: string | null;
+          delegatorId: string;
+          marketplaceName?: string | null;
+        }): DelegationView => ({
+          id: item.id,
+          marketplaceId: item.marketplaceId,
+          scope: item.scope,
+          trustMin: item.trustMin,
+          validUntil: item.validUntil,
+          publisherLabel: item.publisherName ?? item.publisherId ?? item.delegatorId,
+          itemName: item.marketplaceName ?? item.marketplaceId ?? "Item desconhecido",
+        });
+        const all = (delegationResponse.items ?? []).map(toView);
+        setActiveDelegations(all.filter((item) => isActive(item.validUntil)));
+        setExpiredDelegations(all.filter((item) => !isActive(item.validUntil)));
+      }
+      setDelegationRenewalStatus((prev) => ({ ...prev, [delegation.id]: "ready" }));
+    } catch (error) {
+      setDelegationRenewalStatus((prev) => ({ ...prev, [delegation.id]: "error" }));
+      setDelegationRenewalError((prev) => ({
+        ...prev,
+        [delegation.id]: error instanceof Error ? error.message : "Falha ao aplicar renewal.",
+      }));
+    }
+  }, [handlePreviewDelegationRenewal, session.token]);
+
+  const handleAutoRenewDelegations = React.useCallback(async () => {
+    setDelegationBulkRenewalState("loading");
+    setDelegationRenewalNotice(null);
+    try {
+      const response = await apiAutoRenewDelegations();
+      const renewed = response.data.renewed;
+      setDelegationRenewalNotice(
+        renewed > 0
+          ? `${renewed} delegação(ões) renovada(s) automaticamente pela policy.`
+          : "Nenhuma delegação elegível para renewal automática nesta janela."
+      );
+      if (session.token) {
+        const delegationResponse = await apiListDelegations({ role: "delegatee", workspaceScoped: true });
+        const isActive = (value?: string | null) => {
+          if (!value) return false;
+          const timestamp = new Date(value).getTime();
+          return Number.isFinite(timestamp) && timestamp > Date.now();
+        };
+        const toView = (item: {
+          id: string;
+          marketplaceId?: string | null;
+          scope: string;
+          trustMin: number;
+          validUntil: string;
+          publisherName?: string | null;
+          publisherId?: string | null;
+          delegatorId: string;
+          marketplaceName?: string | null;
+        }): DelegationView => ({
+          id: item.id,
+          marketplaceId: item.marketplaceId,
+          scope: item.scope,
+          trustMin: item.trustMin,
+          validUntil: item.validUntil,
+          publisherLabel: item.publisherName ?? item.publisherId ?? item.delegatorId,
+          itemName: item.marketplaceName ?? item.marketplaceId ?? "Item desconhecido",
+        });
+        const all = (delegationResponse.items ?? []).map(toView);
+        setActiveDelegations(all.filter((item) => isActive(item.validUntil)));
+        setExpiredDelegations(all.filter((item) => !isActive(item.validUntil)));
+      }
+    } catch (error) {
+      setDelegationRenewalNotice(
+        error instanceof Error ? error.message : "Falha ao executar renewal automática."
+      );
+    } finally {
+      setDelegationBulkRenewalState("idle");
+    }
+  }, [session.token]);
+
+  React.useEffect(() => {
+    if (!session.token || !session.workspaceId) {
+      setShadowExecutions([]);
+      setShadowExecutionsStatus("ready");
+      setShadowExecutionsError(null);
+      return;
+    }
+
+    let mounted = true;
+    setShadowExecutionsStatus("loading");
+    setShadowExecutionsError(null);
+
+    apiListShadowExecutions({
+      workspaceId: session.workspaceId,
+      limit: 5,
+      currentStage: shadowCurrentStageFilter === "all" ? undefined : shadowCurrentStageFilter,
+      approvalStatus: shadowApprovalStatusFilter === "all" ? undefined : shadowApprovalStatusFilter,
+      agentId: shadowAgentFilter.trim() || undefined,
+    })
+      .then((response) => {
+        if (!mounted) return;
+        setShadowExecutions(response.data.items ?? []);
+        setShadowExecutionsStatus("ready");
+      })
+      .catch((error) => {
+        if (!mounted) return;
+        setShadowExecutions([]);
+        setShadowExecutionsStatus("error");
+        setShadowExecutionsError(
+          error instanceof Error ? error.message : "Falha ao carregar shadow executions persistidas."
+        );
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, [session.token, session.workspaceId, shadowAgentFilter, shadowApprovalStatusFilter, shadowCurrentStageFilter]);
+
+  const shadowExecutionsByStage = React.useMemo(
+    () => countShadowExecutionsByStage(shadowExecutions),
+    [shadowExecutions]
+  );
+
   const formatDate = (value?: string | null) => {
     if (!value) return "—";
     const date = new Date(value);
@@ -607,7 +871,19 @@ export default function ProfilePage() {
 
   const handleDownloadHelpdeskJson = () => {
     if (!helpdeskExport || typeof window === "undefined") return;
-    const blob = new Blob([JSON.stringify(helpdeskExport, null, 2)], { type: "application/json" });
+    const payload = {
+      ...helpdeskExport,
+      experienceDiagnostics: diagnosticSnapshot
+        ? {
+            window: diagnosticsWindow,
+            diagnosticSnapshot,
+            optimizationSnapshot,
+            economyOpportunitySnapshot,
+            operationalInsightSnapshot,
+          }
+        : null,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -620,6 +896,12 @@ export default function ProfilePage() {
     if (!helpdeskExport || typeof window === "undefined") return;
     const popup = window.open("", "_blank", "width=960,height=720");
     if (!popup) return;
+    const alignmentSummaryBlock = diagnosticSnapshot
+      ? `
+          <h2>Diagnóstico do Experience Resolver</h2>
+          <p>${diagnosticSnapshot.alignment.summary.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
+        `
+      : "";
     popup.document.write(`
       <html>
         <head>
@@ -632,6 +914,7 @@ export default function ProfilePage() {
         </head>
         <body>
           <h1>Relatório UX do Chat Launcher</h1>
+          ${alignmentSummaryBlock}
           <pre>${helpdeskExport.reportText.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>
         </body>
       </html>
@@ -676,10 +959,28 @@ export default function ProfilePage() {
         </div>
       </header>
 
+      <div className="flex flex-wrap gap-2">
+        {PROFILE_AREAS.map((area) => (
+          <a
+            key={area.id}
+            href={`#${area.id}`}
+            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground transition hover:border-accent/40 hover:text-foreground"
+          >
+            {area.label}
+          </a>
+        ))}
+      </div>
+
       <form
         className="rounded-3xl border border-white/10 bg-surface/70 p-8 shadow-[0_20px_60px_rgba(15,23,42,0.35)]"
         onSubmit={handleSubmit}
       >
+        <div id="profile-personal" className="mb-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">Meu perfil</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Dados pessoais e dados básicos da organização usados para identidade e suporte.
+          </p>
+        </div>
         <div className="grid gap-6 lg:grid-cols-2">
           <div className="space-y-4">
             <h2 className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">
@@ -786,6 +1087,12 @@ export default function ProfilePage() {
               onChange={handleChange("country")}
             />
           </label>
+        </div>
+        <div id="profile-workspace-admin" className="mt-6 mb-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">Workspace admin</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Membership, funções, membros, convites, criação e troca do workspace atual.
+          </p>
         </div>
         <div className="mt-6 space-y-4">
           <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-muted-foreground">
@@ -1171,6 +1478,12 @@ export default function ProfilePage() {
             <span className="text-sm text-muted-foreground">Carregando perfil...</span>
           ) : null}
         </div>
+        <div id="profile-governance" className="mt-6 mb-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">Governança & evidências</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Delegações, evidências UX e diagnósticos operacionais do resolver e da fricção.
+          </p>
+        </div>
         <div className="mt-6 space-y-4">
           <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1302,13 +1615,563 @@ export default function ProfilePage() {
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
-                Delegacoes expiradas
-              </p>
-              <span className="text-xs text-muted-foreground">
-                {expiredDelegations.length} expirado(s)
-              </span>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
+                  Diagnóstico do Experience Resolver
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Convergência entre landing resolvida e ação primária sugerida, com base na auditoria operacional recente.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center rounded-full border border-white/10 bg-white/5 p-1">
+                  {(["7d", "30d"] as const).map((window) => (
+                    <button
+                      key={window}
+                      type="button"
+                      onClick={() => setDiagnosticsWindow(window)}
+                      className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.25em] transition ${
+                        diagnosticsWindow === window
+                          ? "bg-accent/20 text-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {window}
+                    </button>
+                  ))}
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {diagnosticSnapshot?.latestEventAt
+                    ? `Último evento: ${formatDateTime(diagnosticSnapshot.latestEventAt)}`
+                    : "Sem eventos"}
+                </span>
+              </div>
             </div>
+            {!diagnosticSnapshot || (diagnosticSnapshot.totals.aligned === 0 && diagnosticSnapshot.totals.diverged === 0) ? (
+              <p className="mt-3 text-sm text-muted-foreground">
+                Nenhuma evidência recente de alinhamento/divergência entre landing e ação primária neste workspace na janela {diagnosticsWindow}.
+              </p>
+            ) : (
+              <div className="mt-4 space-y-4">
+                <div className="rounded-xl border border-white/10 bg-[#0a1527] p-4 text-sm text-foreground">
+                  {diagnosticSnapshot.alignment.summary}
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Origem dominante: {diagnosticSnapshot.alignment.dominantSource}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Origem aligned dominante: {diagnosticSnapshot.alignment.dominantAlignedSource}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Origem diverged dominante: {diagnosticSnapshot.alignment.dominantDivergedSource}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Surface aligned dominante: {diagnosticSnapshot.alignment.dominantAlignedSurface}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Surface diverged dominante: {diagnosticSnapshot.alignment.dominantDivergedSurface}
+                  </p>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    {diagnosticSnapshot.alignment.convergenceSummary}
+                  </p>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    {diagnosticSnapshot.alignment.divergenceSummary}
+                  </p>
+                </div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  <div className="rounded-xl border border-white/10 bg-[#0a1527] p-4 text-xs text-muted-foreground">
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-accent/80">Aligned</p>
+                    <p className="mt-2 text-lg font-semibold text-foreground">{diagnosticSnapshot.totals.aligned}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-[#0a1527] p-4 text-xs text-muted-foreground">
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-accent/80">Diverged</p>
+                    <p className="mt-2 text-lg font-semibold text-foreground">{diagnosticSnapshot.totals.diverged}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-[#0a1527] p-4 text-xs text-muted-foreground">
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-accent/80">Alignment rate</p>
+                    <p className="mt-2 text-lg font-semibold text-foreground">
+                      {diagnosticSnapshot.alignment.rate !== null ? `${diagnosticSnapshot.alignment.rate}%` : "—"}
+                    </p>
+                    <p
+                      className={`mt-1 text-[11px] font-semibold uppercase tracking-[0.2em] ${
+                        diagnosticSnapshot.alignment.status === "healthy"
+                          ? "text-emerald-300"
+                          : diagnosticSnapshot.alignment.status === "watch"
+                            ? "text-amber-300"
+                            : diagnosticSnapshot.alignment.status === "poor"
+                              ? "text-rose-300"
+                              : "text-muted-foreground"
+                      }`}
+                    >
+                      {diagnosticSnapshot.alignment.status}
+                    </p>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-[#0a1527] p-4 text-sm text-foreground">
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-accent/80">Operational insight</p>
+                  {!operationalInsightSnapshot ? (
+                    <p className="mt-3 text-sm text-muted-foreground">
+                      Sem leitura cruzada entre fricção e eficiência para a janela {diagnosticsWindow}.
+                    </p>
+                  ) : (
+                    <div className="mt-3 space-y-4">
+                      <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                        <p className="text-sm text-foreground">{operationalInsightSnapshot.summary}</p>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {operationalInsightSnapshot.recommendedFocus}
+                        </p>
+                      </div>
+                      <div className="grid gap-3 md:grid-cols-4">
+                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                          <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Priority</p>
+                          <p className="mt-2 text-sm text-foreground">{operationalInsightSnapshot.priority}</p>
+                        </div>
+                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                          <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Friction total</p>
+                          <p className="mt-2 text-sm text-foreground">{operationalInsightSnapshot.frictionTotal}</p>
+                        </div>
+                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                          <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Optimization total</p>
+                          <p className="mt-2 text-sm text-foreground">{operationalInsightSnapshot.optimizationTotal}</p>
+                        </div>
+                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                          <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Top pair</p>
+                          <p className="mt-2 text-xs text-foreground">
+                            {operationalInsightSnapshot.topFrictionKind ?? "—"} /{" "}
+                            {operationalInsightSnapshot.topOptimizationType ?? "—"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="rounded-xl border border-white/10 bg-[#0a1527] p-4 text-sm text-foreground">
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-accent/80">Shadow executions</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Inspeção leve dos previews e promoções persistidos do workspace ativo, usando a trilha durável do backend.
+                  </p>
+                  <div className="mt-4 grid gap-3 md:grid-cols-3">
+                    <label className="text-xs text-muted-foreground">
+                      <span className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Current stage</span>
+                      <select
+                        value={shadowCurrentStageFilter}
+                        onChange={(event) =>
+                          setShadowCurrentStageFilter(
+                            event.target.value as ShadowExecutionContract["currentStage"] | "all"
+                          )
+                        }
+                        className="mt-2 w-full rounded-xl border border-white/10 bg-[#0a1527] px-3 py-2 text-sm text-foreground"
+                      >
+                        <option value="all">Todos</option>
+                        <option value="sandbox">sandbox</option>
+                        <option value="preview">preview</option>
+                        <option value="approval">approval</option>
+                        <option value="promotion">promotion</option>
+                        <option value="production">production</option>
+                      </select>
+                    </label>
+                    <label className="text-xs text-muted-foreground">
+                      <span className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Approval status</span>
+                      <select
+                        value={shadowApprovalStatusFilter}
+                        onChange={(event) =>
+                          setShadowApprovalStatusFilter(
+                            event.target.value as ShadowExecutionContract["approvalStatus"] | "all"
+                          )
+                        }
+                        className="mt-2 w-full rounded-xl border border-white/10 bg-[#0a1527] px-3 py-2 text-sm text-foreground"
+                      >
+                        <option value="all">Todos</option>
+                        <option value="not_required">not_required</option>
+                        <option value="pending">pending</option>
+                        <option value="approved">approved</option>
+                        <option value="rejected">rejected</option>
+                      </select>
+                    </label>
+                    <label className="text-xs text-muted-foreground">
+                      <span className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Agent</span>
+                      <input
+                        value={shadowAgentFilter}
+                        onChange={(event) => setShadowAgentFilter(event.target.value)}
+                        placeholder="Filtrar por agentId"
+                        className="mt-2 w-full rounded-xl border border-white/10 bg-[#0a1527] px-3 py-2 text-sm text-foreground"
+                      />
+                    </label>
+                  </div>
+                  {shadowExecutions.length > 0 ? (
+                    <div className="mt-4 grid gap-3 md:grid-cols-5">
+                      {(["sandbox", "preview", "approval", "promotion", "production"] as const).map((stage) => (
+                        <div key={stage} className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-muted-foreground">
+                          <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">{stage}</p>
+                          <p className="mt-2 text-lg font-semibold text-foreground">{shadowExecutionsByStage[stage]}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  {shadowExecutionsStatus === "loading" ? (
+                    <p className="mt-3 text-sm text-muted-foreground">Carregando snapshots persistidos...</p>
+                  ) : shadowExecutionsStatus === "error" ? (
+                    <p className="mt-3 text-sm text-rose-300">{shadowExecutionsError ?? "Falha ao carregar snapshots persistidos."}</p>
+                  ) : shadowExecutions.length === 0 ? (
+                    <p className="mt-3 text-sm text-muted-foreground">Nenhuma shadow execution persistida para o workspace ativo.</p>
+                  ) : (
+                    <div className="mt-4 grid gap-3">
+                      {shadowExecutions.map((item) => (
+                        <div
+                          key={item.shadowExecutionId}
+                          className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-muted-foreground"
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-foreground">{item.agentId}</p>
+                              <p className="mt-1 break-all">{item.shadowExecutionId}</p>
+                            </div>
+                            <span className="pill bg-white/10 text-foreground">{item.currentStage}</span>
+                          </div>
+                          <div className="mt-3 grid gap-3 md:grid-cols-4">
+                            <div className="rounded-lg border border-white/10 bg-[#0a1527] p-3">
+                              <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Approval</p>
+                              <p className="mt-2 text-sm text-foreground">{item.approvalStatus}</p>
+                            </div>
+                            <div className="rounded-lg border border-white/10 bg-[#0a1527] p-3">
+                              <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Side effect</p>
+                              <p className="mt-2 text-xs text-foreground">{item.sideEffectMode}</p>
+                            </div>
+                            <div className="rounded-lg border border-white/10 bg-[#0a1527] p-3">
+                              <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Custo estimado</p>
+                              <p className="mt-2 text-sm text-foreground">{formatBRL(item.preview.estimatedCostCents)}</p>
+                            </div>
+                            <div className="rounded-lg border border-white/10 bg-[#0a1527] p-3">
+                              <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Produção</p>
+                              <p className="mt-2 break-all text-xs text-foreground">{item.promotion.productionRunId ?? "—"}</p>
+                            </div>
+                          </div>
+                          <p className="mt-3 text-xs text-foreground">{item.preview.summary}</p>
+                          <div className="mt-3">
+                            <button
+                              type="button"
+                              onClick={() => void handleInspectShadowExecution(item.shadowExecutionId)}
+                              className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.25em] text-foreground transition hover:border-accent/40 hover:text-accent"
+                            >
+                              {expandedShadowExecutionId === item.shadowExecutionId ? "Ocultar snapshot" : "Ver snapshot completo"}
+                            </button>
+                          </div>
+                          {expandedShadowExecutionId === item.shadowExecutionId ? (
+                            <div className="mt-4 rounded-lg border border-white/10 bg-[#0a1527] p-3">
+                              {shadowExecutionDetailStatus === "loading" ? (
+                                <p className="text-xs text-muted-foreground">Carregando snapshot completo...</p>
+                              ) : shadowExecutionDetailStatus === "error" ? (
+                                <p className="text-xs text-rose-300">{shadowExecutionDetailError ?? "Falha ao carregar snapshot completo."}</p>
+                              ) : shadowExecutionDetail ? (
+                                <div className="space-y-3 text-xs text-muted-foreground">
+                                  <div className="grid gap-3 md:grid-cols-3">
+                                    <div>
+                                      <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Input ref</p>
+                                      <p className="mt-1 break-all text-foreground">{shadowExecutionDetail.inputRef}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Target</p>
+                                      <p className="mt-1 text-foreground">{shadowExecutionDetail.promotion.target}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Promoted at</p>
+                                      <p className="mt-1 text-foreground">
+                                        {shadowExecutionDetail.promotion.promotedAt
+                                          ? formatDateTime(shadowExecutionDetail.promotion.promotedAt)
+                                          : "—"}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Warnings</p>
+                                    {shadowExecutionDetail.preview.warnings.length > 0 ? (
+                                      <ul className="mt-2 space-y-1">
+                                        {shadowExecutionDetail.preview.warnings.map((warning) => (
+                                          <li key={warning}>- {warning}</li>
+                                        ))}
+                                      </ul>
+                                    ) : (
+                                      <p className="mt-1 text-foreground">—</p>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Next actions</p>
+                                    {shadowExecutionDetail.preview.nextActions.length > 0 ? (
+                                      <ul className="mt-2 space-y-1">
+                                        {shadowExecutionDetail.preview.nextActions.map((step) => (
+                                          <li key={step}>- {step}</li>
+                                        ))}
+                                      </ul>
+                                    ) : (
+                                      <p className="mt-1 text-foreground">—</p>
+                                    )}
+                                  </div>
+                                  <div>
+                                    <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Evidence refs</p>
+                                    <div className="mt-2 space-y-2">
+                                      {shadowExecutionDetail.evidenceRefs.map((evidence) => (
+                                        <div key={`${evidence.source}-${evidence.refId}`} className="rounded-md border border-white/10 bg-black/20 p-2">
+                                          <p className="text-foreground">{evidence.label}</p>
+                                          <p className="mt-1 break-all">{evidence.source} · {evidence.refId}</p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="rounded-xl border border-white/10 bg-[#0a1527] p-4 text-sm text-foreground">
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-accent/80">Friction summary</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Leitura agregada do contrato normalizado de fricção no backend para alimentar PX-109 sem parsing ad hoc.
+                  </p>
+                  {!frictionSummary || frictionSummary.total === 0 ? (
+                    <p className="mt-3 text-sm text-muted-foreground">
+                      Nenhum evento normalizado de fricção na janela {diagnosticsWindow}.
+                    </p>
+                  ) : (
+                    <div className="mt-4 grid gap-3 md:grid-cols-3">
+                      <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                        <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Total</p>
+                        <p className="mt-2 text-lg font-semibold text-foreground">{frictionSummary.total}</p>
+                      </div>
+                      <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                        <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Top kind</p>
+                        <p className="mt-2 text-sm text-foreground">
+                          {getTopEntry(frictionSummary.byKind)}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                        <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Top source</p>
+                        <p className="mt-2 text-sm text-foreground">
+                          {getTopEntry(frictionSummary.bySource)}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                        <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Top domain</p>
+                        <p className="mt-2 text-sm text-foreground">
+                          {getTopEntry(frictionSummary.byDomain)}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                        <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Top surface</p>
+                        <p className="mt-2 text-sm text-foreground">
+                          {getTopEntry(frictionSummary.bySurface)}
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                        <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Top reason code</p>
+                        <p className="mt-2 text-sm text-foreground">
+                          {getTopEntry(frictionSummary.byReasonCode)}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="rounded-xl border border-white/10 bg-[#0a1527] p-4 text-sm text-foreground">
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-accent/80">Efficiency Intelligence</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Snapshot agregado das recomendações heurísticas de custo/eficiência do tenant, separado do payload bruto de billing.
+                  </p>
+                  {!optimizationSnapshot || optimizationSnapshot.total === 0 ? (
+                    <p className="mt-3 text-sm text-muted-foreground">
+                      Nenhuma recomendação heurística agregada para o ciclo atual.
+                    </p>
+                  ) : (
+                    <div className="mt-4 space-y-4">
+                      <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                        <p className="text-sm text-foreground">{optimizationSnapshot.summary}</p>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Janela do ciclo: {formatDateTime(optimizationSnapshot.scope.cycleStart)} até{" "}
+                          {formatDateTime(optimizationSnapshot.scope.cycleEnd)}
+                        </p>
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Fonte oficial: {optimizationSnapshot.sourceOfTruth.cost} / {optimizationSnapshot.sourceOfTruth.usage} /{" "}
+                          {optimizationSnapshot.sourceOfTruth.agents}
+                        </p>
+                      </div>
+                      <div className="grid gap-3 md:grid-cols-4">
+                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                          <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Total</p>
+                          <p className="mt-2 text-lg font-semibold text-foreground">{optimizationSnapshot.total}</p>
+                        </div>
+                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                          <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Economia potencial</p>
+                          <p className="mt-2 text-lg font-semibold text-foreground">
+                            {formatBRL(optimizationSnapshot.totalEstimatedSavingsCents)}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                          <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Top type</p>
+                          <p className="mt-2 text-sm text-foreground">{optimizationSnapshot.topType ?? "—"}</p>
+                        </div>
+                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                          <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Top workspace</p>
+                          <p className="mt-2 text-sm text-foreground">{optimizationSnapshot.topWorkspace ?? "—"}</p>
+                        </div>
+                      </div>
+                      {optimizationSnapshot.topRecommendation ? (
+                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                          <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Top recommendation</p>
+                          <p className="mt-2 text-sm font-semibold text-foreground">
+                            {optimizationSnapshot.topRecommendation.title}
+                          </p>
+                          <p className="mt-1 text-xs text-muted-foreground">
+                            {optimizationSnapshot.topRecommendation.recommendationType} ·{" "}
+                            {formatBRL(optimizationSnapshot.topRecommendation.estimatedSavingsCents)} · confiança{" "}
+                            {Math.round(optimizationSnapshot.topRecommendation.confidence * 100)}%
+                          </p>
+                        </div>
+                      ) : null}
+                      {optimizationSnapshot.fleetPolicyCandidates.length > 0 ? (
+                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                          <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Fleet policy candidates</p>
+                          <div className="mt-3 grid gap-3 md:grid-cols-3">
+                            {optimizationSnapshot.fleetPolicyCandidates.map((item) => (
+                              <div key={`profile-fleet-${item.subjectId}`} className="rounded-lg border border-white/10 bg-white/5 p-3">
+                                <p className="text-sm font-semibold text-foreground">{item.label}</p>
+                                <p className="mt-2 text-xs text-muted-foreground">
+                                  {item.priority} · {item.recommendationType} · {formatBRL(item.estimatedSavingsCents)} · confiança{" "}
+                                  {Math.round(item.confidence * 100)}%
+                                </p>
+                                <p className="mt-2 text-xs text-muted-foreground">
+                                  Ação sugerida: {item.suggestedAction.label}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+                <div className="grid gap-3">
+                  {session.verticals?.length ? (
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                      <p className="text-[10px] uppercase tracking-[0.3em] text-accent/80">Vertical rollout registry</p>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Leitura resumida do estágio canônico de rollout das verticais no contexto atual.
+                      </p>
+                      <div className="mt-4 grid gap-3 md:grid-cols-2">
+                        {session.verticals.map((item) => (
+                          <div key={`profile-vertical-${item.verticalId}`} className="rounded-lg border border-white/10 bg-black/20 p-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-sm font-semibold text-foreground">{item.label}</p>
+                              <span className="pill">{item.rolloutStage}</span>
+                            </div>
+                            <p className="mt-2 text-xs text-muted-foreground">
+                              Domínio: {item.activeDomain} • Enabled: {item.enabled ? "sim" : "não"}
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Front door: {item.frontDoorSurface ?? "—"} • Hub: {item.operationalHubSurface ?? "—"}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                  {economyOpportunitySnapshot ? (
+                    <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                      <p className="text-[10px] uppercase tracking-[0.3em] text-accent/80">Economy Opportunity</p>
+                      <p className="mt-2 text-xs text-muted-foreground">{economyOpportunitySnapshot.summary}</p>
+                      <p className="mt-2 text-xs text-muted-foreground">{economyOpportunitySnapshot.consolidatedSummary}</p>
+                      <p className="mt-2 text-xs text-foreground">
+                        Recomendação: {economyOpportunitySnapshot.tenantRecommendation}
+                      </p>
+                      <p className="mt-2 text-xs">
+                        <Link to="/app/economy" className="text-accent underline">
+                          Abrir diagnóstico econômico
+                        </Link>
+                      </p>
+                      <div className="mt-4 grid gap-3 md:grid-cols-4">
+                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                          <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Total</p>
+                          <p className="mt-2 text-lg font-semibold text-foreground">{economyOpportunitySnapshot.total}</p>
+                        </div>
+                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                          <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Top status</p>
+                          <p className="mt-2 text-sm text-foreground">{economyOpportunitySnapshot.topStatus}</p>
+                        </div>
+                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                          <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Top priority</p>
+                          <p className="mt-2 text-sm text-foreground">{economyOpportunitySnapshot.topPriority ?? "—"}</p>
+                        </div>
+                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                          <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Economy status</p>
+                          <p className="mt-2 text-sm text-foreground">{economyOpportunitySnapshot.consolidatedClassification}</p>
+                        </div>
+                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                          <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Audit attention</p>
+                          <p className="mt-2 text-sm text-foreground">
+                            {economyOpportunitySnapshot.auditableCostAttention.classification}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border border-white/10 bg-black/20 p-3 md:col-span-2">
+                          <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Fonte oficial</p>
+                          <p className="mt-2 text-xs text-foreground">
+                            {economyOpportunitySnapshot.sourceOfTruth.cost} / {economyOpportunitySnapshot.sourceOfTruth.audit}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+                  {diagnosticSnapshot.recentEvents.map((item, index) => (
+                    <div key={`${item.eventType}-${item.createdAt}-${index}`} className="rounded-xl border border-white/10 bg-[#0a1527] p-4 text-xs text-muted-foreground">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            {item.eventType === "experience.recommended_action.aligned" ? "Landing alinhada" : "Landing divergente"}
+                          </p>
+                          <p className="mt-1">
+                            Surface: {item.surfaceId ?? "—"} • Origem: {item.source ?? "—"}
+                          </p>
+                        </div>
+                        <span className="pill bg-white/10 text-foreground">{formatDateTime(item.createdAt)}</span>
+                      </div>
+                      <div className="mt-3 grid gap-3 md:grid-cols-2">
+                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                          <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Landing</p>
+                          <p className="mt-2 text-sm text-foreground">{item.landingPath ?? "—"}</p>
+                        </div>
+                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                          <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Ação primária</p>
+                          <p className="mt-2 text-sm text-foreground">{item.primaryActionPath ?? "—"}</p>
+                          <p className="mt-1 text-[11px] text-muted-foreground">{item.primaryActionId ?? "—"}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
+                  Delegacoes expiradas
+                </p>
+                <span className="text-xs text-muted-foreground">
+                  {expiredDelegations.length} expirado(s)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleAutoRenewDelegations()}
+                disabled={delegationBulkRenewalState === "loading"}
+                className="rounded-full border border-accent/40 bg-accent/15 px-3 py-1 text-[11px] uppercase tracking-[0.25em] text-accent transition hover:border-accent/70 hover:bg-accent/25 disabled:opacity-50"
+              >
+                {delegationBulkRenewalState === "loading" ? "Aplicando..." : "Auto-renew elegíveis"}
+              </button>
+            </div>
+            {delegationRenewalNotice ? (
+              <p className="mt-3 text-xs text-emerald-200">{delegationRenewalNotice}</p>
+            ) : null}
             {delegationsStatus === "loading" ? (
               <p className="mt-3 text-sm text-muted-foreground">Carregando delegacoes...</p>
             ) : delegationsStatus === "error" ? (
@@ -1327,6 +2190,44 @@ export default function ProfilePage() {
                     <p>Scope: {delegation.scope}</p>
                     <p>Trust minimo: {delegation.trustMin}</p>
                     <p>Valido ate: {formatDate(delegation.validUntil)}</p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void handlePreviewDelegationRenewal(delegation.id)}
+                        disabled={delegationRenewalStatus[delegation.id] === "loading"}
+                        className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-foreground transition hover:bg-white/10 disabled:opacity-50"
+                      >
+                        Sugerir renewal
+                      </button>
+                      {delegationRenewalPreviews[delegation.id]?.canApplyRenewal ? (
+                        <button
+                          type="button"
+                          onClick={() => void handleApplyDelegationRenewal(delegation)}
+                          disabled={delegationRenewalStatus[delegation.id] === "loading"}
+                          className="rounded-full border border-accent/40 bg-accent/15 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-accent transition hover:border-accent/70 hover:bg-accent/25 disabled:opacity-50"
+                        >
+                          Aplicar renewal
+                        </button>
+                      ) : null}
+                    </div>
+                    {delegationRenewalError[delegation.id] ? (
+                      <p className="mt-3 text-xs text-rose-300">{delegationRenewalError[delegation.id]}</p>
+                    ) : null}
+                    {delegationRenewalPreviews[delegation.id] ? (
+                      <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3">
+                        <p className="text-[10px] uppercase tracking-[0.25em] text-accent">
+                          {delegationRenewalPreviews[delegation.id].evaluation}
+                        </p>
+                        <p className="mt-2">{delegationRenewalPreviews[delegation.id].summary}</p>
+                        <p className="mt-2">
+                          Próxima validade sugerida:{" "}
+                          {formatDate(delegationRenewalPreviews[delegation.id].recommendedValidUntil)}
+                        </p>
+                        <p className="mt-2">
+                          Auto-elegível: {delegationRenewalPreviews[delegation.id].autoEligible ? "sim" : "não"}
+                        </p>
+                      </div>
+                    ) : null}
                   </div>
                 ))}
               </div>

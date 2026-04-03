@@ -4,6 +4,7 @@ import {
   apiAcceptWorkspaceInvitation,
   apiCreateSession,
   apiGetSessionContext,
+  apiPostExperienceAudit,
   apiCreateWalletChallenge,
   apiLegacyLogin,
   apiOnboarding,
@@ -54,6 +55,7 @@ type WorkspaceInvitationPreview = {
 export default function AccessPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const hasExplicitNext = searchParams.has("next");
   const nextParam = searchParams.get("next") ?? "/app/runs";
   const nextPath = nextParam.startsWith("/") ? nextParam : "/app/runs";
   const inviteToken = searchParams.get("invite")?.trim() ?? "";
@@ -166,6 +168,7 @@ export default function AccessPage() {
         entitlements: context.data.entitlements,
         installedProducts: (context.data.productInstallations ?? []).map((entry) => entry.product),
         roles: context.data.roles,
+        experience: context.data.experience,
         branding: {
           brandName: context.data.branding.brandName,
           logoUrl: context.data.branding.logoUrl,
@@ -173,8 +176,33 @@ export default function AccessPage() {
           workspaceLabel: context.data.branding.workspaceLabel,
         },
       });
+      const experience = context.data.experience;
+      const primaryAction = experience?.recommendedActions?.[0];
+      if (experience && primaryAction) {
+        void apiPostExperienceAudit(
+          {
+            auditType: "landing_action_alignment",
+            surfaceId: experience.landingSurface,
+            action: primaryAction.path === experience.landingPath ? "aligned" : "diverged",
+            landingPath: experience.landingPath,
+            primaryActionId: primaryAction.actionId,
+            primaryActionPath: primaryAction.path,
+            reasonCodes: [
+              primaryAction.path === experience.landingPath
+                ? "LANDING_MATCHES_PRIMARY_ACTION"
+                : "LANDING_DIFFERS_FROM_PRIMARY_ACTION",
+            ],
+            metadata: {
+              source: "post_login",
+              hasExplicitNext,
+            },
+          },
+          context.data.activeDomain
+        ).catch(() => undefined);
+      }
     }
-    navigate(nextPath, { replace: true });
+    const resolvedNextPath = hasExplicitNext ? nextPath : context?.data?.experience?.landingPath || nextPath;
+    navigate(resolvedNextPath, { replace: true });
   };
 
   const loginWithPayload = async (payload: {

@@ -1,10 +1,14 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useSession } from "@/state/sessionStore";
 import {
+  apiGetShadowExecution,
   apiGetAgentBillingSummary,
   apiGetBillingReconciliationSummary,
+  apiGetTenantEconomyOpportunities,
   apiCreateTenantBillingAdjustment,
+  apiListShadowExecutions,
+  apiPostExperienceAudit,
   apiGetRun,
   apiGetTenantBillingLedger,
   apiGetTenantBillingSummary,
@@ -15,6 +19,8 @@ import {
   type BillingReconciliationSummary,
   type Run,
   type AgentBillingSummaryItem,
+  type OptimizationRecommendation,
+  type ShadowExecutionContract,
   type TenantBillingLedgerItem,
   type TenantBillingSummary,
   type TenantBillingWorkspaceItem,
@@ -40,6 +46,24 @@ const formatDateInputValue = (iso?: string | null) => {
   if (Number.isNaN(date.getTime())) return "";
   return date.toISOString().slice(0, 10);
 };
+
+const formatPercent = (value: number) => `${Math.round(value * 100)}%`;
+
+function countShadowExecutionsByStage(items: ShadowExecutionContract[]) {
+  return items.reduce<Record<ShadowExecutionContract["currentStage"], number>>(
+    (acc, item) => {
+      acc[item.currentStage] += 1;
+      return acc;
+    },
+    {
+      sandbox: 0,
+      preview: 0,
+      approval: 0,
+      promotion: 0,
+      production: 0,
+    }
+  );
+}
 
 type Mode = "user" | "dev";
 type Theme = "dark" | "light";
@@ -563,12 +587,16 @@ const BillingGuideFooter: React.FC = () => {
 };
 
 const BillingPage: React.FC = () => {
-  const { workspaceId } = useSession();
+  const { workspaceId, activeDomain, experience } = useSession();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const requestedRunId = (searchParams.get("runId") || "").trim() || null;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<TenantBillingSummary | null>(null);
+  const [economyOpportunitySnapshot, setEconomyOpportunitySnapshot] = useState<
+    TenantBillingSummary["economyOpportunitySnapshot"] | null
+  >(null);
   const [workspaceItems, setWorkspaceItems] = useState<TenantBillingWorkspaceItem[]>([]);
   const [workspaceAgentsByWorkspaceId, setWorkspaceAgentsByWorkspaceId] = useState<
     Record<string, WorkspaceAgentAssignmentItem[]>
@@ -579,11 +607,22 @@ const BillingPage: React.FC = () => {
   const [reconciliationAgent, setReconciliationAgent] = useState<string>("");
   const [reconciliationAgents, setReconciliationAgents] = useState<AgentBillingSummaryItem[]>([]);
   const [requestedRun, setRequestedRun] = useState<Run | null>(null);
+  const [shadowExecutions, setShadowExecutions] = useState<ShadowExecutionContract[]>([]);
+  const [shadowExecutionsStatus, setShadowExecutionsStatus] = useState<"loading" | "ready" | "error">("loading");
+  const [shadowExecutionsError, setShadowExecutionsError] = useState<string | null>(null);
+  const [shadowCurrentStageFilter, setShadowCurrentStageFilter] = useState<ShadowExecutionContract["currentStage"] | "all">("all");
+  const [shadowApprovalStatusFilter, setShadowApprovalStatusFilter] = useState<ShadowExecutionContract["approvalStatus"] | "all">("all");
+  const [shadowAgentFilter, setShadowAgentFilter] = useState("");
+  const [expandedShadowExecutionId, setExpandedShadowExecutionId] = useState<string | null>(null);
+  const [shadowExecutionDetail, setShadowExecutionDetail] = useState<ShadowExecutionContract | null>(null);
+  const [shadowExecutionDetailStatus, setShadowExecutionDetailStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [shadowExecutionDetailError, setShadowExecutionDetailError] = useState<string | null>(null);
   const [billingProfile, setBillingProfile] = useState<BillingProfileView>("operacao");
   const [periodFromInput, setPeriodFromInput] = useState("");
   const [periodToInput, setPeriodToInput] = useState("");
   const [periodFromApplied, setPeriodFromApplied] = useState("");
   const [periodToApplied, setPeriodToApplied] = useState("");
+  const [isInvestigationMode, setIsInvestigationMode] = useState(Boolean(requestedRunId));
 
   const [quotaForm, setQuotaForm] = useState({
     softLimitPct: "",
@@ -606,7 +645,7 @@ const BillingPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const [summaryRes, workspacesRes, ledgerRes, reconciliationRes, agentSummaryRes] = await Promise.all([
+      const [summaryRes, workspacesRes, ledgerRes, reconciliationRes, agentSummaryRes, economyRes] = await Promise.all([
         apiGetTenantBillingSummary({
           from: periodFromApplied || undefined,
           to: periodToApplied || undefined,
@@ -631,6 +670,7 @@ const BillingPage: React.FC = () => {
           from: periodFromApplied || undefined,
           to: periodToApplied || undefined,
         }).catch(() => null),
+        apiGetTenantEconomyOpportunities().catch(() => null),
       ]);
       const workspaceData = workspacesRes.data.items || [];
       const activeWorkspaceItem = workspaceData.find((item) => item.isActiveWorkspace);
@@ -641,6 +681,7 @@ const BillingPage: React.FC = () => {
         })
       );
       setSummary(summaryRes.data);
+      setEconomyOpportunitySnapshot(economyRes?.data ?? summaryRes.data.economyOpportunitySnapshot ?? null);
       setWorkspaceItems(workspaceData);
       setWorkspaceAgentsByWorkspaceId(Object.fromEntries(workspaceAgentsEntries));
       setLedgerItems(ledgerRes.data.items || []);
@@ -679,6 +720,59 @@ const BillingPage: React.FC = () => {
     }
   };
 
+  const loadShadowExecutions = useCallback(async () => {
+    if (!workspaceId) {
+      setShadowExecutions([]);
+      setShadowExecutionsStatus("ready");
+      setShadowExecutionsError(null);
+      return;
+    }
+    setShadowExecutionsStatus("loading");
+    setShadowExecutionsError(null);
+    try {
+      const response = await apiListShadowExecutions({
+        workspaceId,
+        limit: 5,
+        currentStage: shadowCurrentStageFilter === "all" ? undefined : shadowCurrentStageFilter,
+        approvalStatus: shadowApprovalStatusFilter === "all" ? undefined : shadowApprovalStatusFilter,
+        agentId: shadowAgentFilter.trim() || undefined,
+      });
+      setShadowExecutions(response.data.items ?? []);
+      setShadowExecutionsStatus("ready");
+    } catch (err) {
+      setShadowExecutions([]);
+      setShadowExecutionsStatus("error");
+      setShadowExecutionsError(
+        err instanceof Error ? err.message : "Falha ao carregar shadow executions persistidas."
+      );
+    }
+  }, [shadowAgentFilter, shadowApprovalStatusFilter, shadowCurrentStageFilter, workspaceId]);
+
+  const inspectShadowExecution = useCallback(async (shadowExecutionId: string) => {
+    if (expandedShadowExecutionId === shadowExecutionId) {
+      setExpandedShadowExecutionId(null);
+      setShadowExecutionDetail(null);
+      setShadowExecutionDetailStatus("idle");
+      setShadowExecutionDetailError(null);
+      return;
+    }
+    setExpandedShadowExecutionId(shadowExecutionId);
+    setShadowExecutionDetail(null);
+    setShadowExecutionDetailStatus("loading");
+    setShadowExecutionDetailError(null);
+    try {
+      const response = await apiGetShadowExecution(shadowExecutionId);
+      setShadowExecutionDetail(response.data);
+      setShadowExecutionDetailStatus("ready");
+    } catch (err) {
+      setShadowExecutionDetail(null);
+      setShadowExecutionDetailStatus("error");
+      setShadowExecutionDetailError(
+        err instanceof Error ? err.message : "Falha ao carregar snapshot completo."
+      );
+    }
+  }, [expandedShadowExecutionId]);
+
   useEffect(() => {
     void loadData();
   }, [workspaceId, reconciliationWorkspaceId, reconciliationAgent, requestedRunId, periodFromApplied, periodToApplied]);
@@ -712,6 +806,42 @@ const BillingPage: React.FC = () => {
     const query = params.toString();
     return query ? `/app/imob/chat?${query}` : null;
   }, [requestedRunId, requestedRunImobContext]);
+  const billingInvestigationReasons = useMemo(() => {
+    const reasons: string[] = [];
+    if (requestedRunId) reasons.push("run_deeplink");
+    if (reconciliationWorkspaceId) reasons.push("workspace_filter");
+    if (reconciliationAgent) reasons.push("agent_filter");
+    return reasons;
+  }, [reconciliationAgent, reconciliationWorkspaceId, requestedRunId]);
+  const auditInvestigationMode = useCallback(
+    (action: "entered" | "exited" | "changed", nextMode: boolean, reasonCodes: string[]) => {
+      void apiPostExperienceAudit(
+        {
+          surfaceId: "billing",
+          action,
+          fromMode: nextMode ? "standard" : "investigation",
+          toMode: nextMode ? "investigation" : "standard",
+          reasonCodes,
+          metadata: {
+            requestedRunId,
+            reconciliationWorkspaceId: reconciliationWorkspaceId || null,
+            reconciliationAgent: reconciliationAgent || null,
+          },
+        },
+        activeDomain === "imob" ? "imob" : "core"
+      ).catch(() => undefined);
+    },
+    [activeDomain, reconciliationAgent, reconciliationWorkspaceId, requestedRunId]
+  );
+  useEffect(() => {
+    if (billingInvestigationReasons.length === 0) return;
+    if (!isInvestigationMode) {
+      setIsInvestigationMode(true);
+      auditInvestigationMode("entered", true, billingInvestigationReasons);
+      return;
+    }
+    auditInvestigationMode("changed", true, billingInvestigationReasons);
+  }, [auditInvestigationMode, billingInvestigationReasons, isInvestigationMode]);
 
   const percent = useMemo(() => {
     if (!summary?.policy?.monthlyCostCentsLimit || summary.policy.monthlyCostCentsLimit <= 0) return 0;
@@ -725,6 +855,28 @@ const BillingPage: React.FC = () => {
 
   const planSummary = summary?.plan ?? null;
   const entitlementSummary = summary?.entitlements ?? null;
+  const workspaceCostOverview = summary?.costOverview?.workspaceConsumption ?? null;
+  const auditableCostOverview = summary?.costOverview?.auditableCost ?? null;
+  const roleProfile = experience?.roleProfile ?? "workspace_member";
+  const isBillingAdminView =
+    roleProfile === "workspace_admin" ||
+    roleProfile === "tenant_admin" ||
+    roleProfile === "founder_global" ||
+    roleProfile === "service_operator";
+  const operationalInsightSnapshot = summary?.operationalInsightSnapshot ?? null;
+  const effectiveEconomyOpportunitySnapshot =
+    economyOpportunitySnapshot ?? summary?.economyOpportunitySnapshot ?? null;
+  const optimizationRecommendations = summary?.optimizationRecommendations?.items ?? [];
+  const topOptimizationRecommendations = optimizationRecommendations.slice(0, 3);
+  const shadowExecutionsByStage = useMemo(
+    () => countShadowExecutionsByStage(shadowExecutions),
+    [shadowExecutions]
+  );
+
+  useEffect(() => {
+    if (!isBillingAdminView) return;
+    void loadShadowExecutions();
+  }, [isBillingAdminView, loadShadowExecutions]);
 
   const activeWorkspace = workspaceItems.find((item) => item.isActiveWorkspace);
   const selectedWorkspace =
@@ -1040,7 +1192,7 @@ const BillingPage: React.FC = () => {
 
         <div className="mt-8 grid gap-4 md:grid-cols-4">
           <div className="glass-subtle space-y-2 p-5">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Custo total do tenant</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Consumo do tenant</p>
             <p className="text-2xl font-semibold text-foreground">{formatBRL(summary?.totals.costCents ?? 0)}</p>
             <p className="text-xs text-muted-foreground">
               {summary?.totals.runs ?? 0} runs no ciclo ativo
@@ -1048,7 +1200,7 @@ const BillingPage: React.FC = () => {
           </div>
           <div className="glass-subtle space-y-2 p-5">
             <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-              {reconciliationWorkspaceId ? "Custo do workspace filtrado" : "Custo do workspace ativo"}
+              {reconciliationWorkspaceId ? "Consumo do workspace filtrado" : "Consumo do workspace ativo"}
             </p>
             <p className="text-2xl font-semibold text-foreground">
               {formatBRL(selectedWorkspace?.usage.costCents ?? 0)}
@@ -1072,6 +1224,370 @@ const BillingPage: React.FC = () => {
             </p>
           </div>
         </div>
+
+        {(workspaceCostOverview || auditableCostOverview) ? (
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
+            {workspaceCostOverview ? (
+              <div className="glass-subtle space-y-2 p-5">
+                <p className="text-xs uppercase tracking-[0.2em] text-accent">{workspaceCostOverview.title}</p>
+                <p className="text-2xl font-semibold text-foreground">{formatBRL(workspaceCostOverview.amountCents)}</p>
+                <p className="text-xs text-muted-foreground">{workspaceCostOverview.summary}</p>
+              </div>
+            ) : null}
+            {auditableCostOverview ? (
+              <div className="glass-subtle space-y-2 p-5">
+                <p className="text-xs uppercase tracking-[0.2em] text-accent">{auditableCostOverview.title}</p>
+                <p className="text-2xl font-semibold text-foreground">{formatBRL(auditableCostOverview.amountCents)}</p>
+                <p className="text-xs text-muted-foreground">{auditableCostOverview.summary}</p>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {isBillingAdminView ? (
+          <div className="mt-6 glass-subtle space-y-4 p-5">
+            {operationalInsightSnapshot ? (
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-accent">Operational insight</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{operationalInsightSnapshot.summary}</p>
+                  </div>
+                  <span className="pill">{operationalInsightSnapshot.priority}</span>
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground">{operationalInsightSnapshot.recommendedFocus}</p>
+                <div className="mt-4 grid gap-3 md:grid-cols-4">
+                  <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                    <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Friction total</p>
+                    <p className="mt-2 text-sm text-foreground">{operationalInsightSnapshot.frictionTotal}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                    <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Optimization total</p>
+                    <p className="mt-2 text-sm text-foreground">{operationalInsightSnapshot.optimizationTotal}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                    <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Top friction</p>
+                    <p className="mt-2 text-xs text-foreground">
+                      {operationalInsightSnapshot.topFrictionKind ?? "—"} /{" "}
+                      {operationalInsightSnapshot.topFrictionSurface ?? "—"}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                    <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Top optimization</p>
+                    <p className="mt-2 text-xs text-foreground">
+                      {operationalInsightSnapshot.topOptimizationType ?? "—"} /{" "}
+                      {operationalInsightSnapshot.topOptimizationWorkspace ?? "—"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-accent">Shadow executions</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Inspeção leve dos previews e promoções persistidos do workspace ativo.
+                  </p>
+                </div>
+                <span className="pill">{workspaceId ?? "workspace-demo"}</span>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-3">
+                <label className="text-xs text-muted-foreground">
+                  <span className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Current stage</span>
+                  <select
+                    value={shadowCurrentStageFilter}
+                    onChange={(event) =>
+                      setShadowCurrentStageFilter(
+                        event.target.value as ShadowExecutionContract["currentStage"] | "all"
+                      )
+                    }
+                    className="mt-2 w-full rounded-xl border border-white/10 bg-[#0a1527] px-3 py-2 text-sm text-foreground"
+                  >
+                    <option value="all">Todos</option>
+                    <option value="sandbox">sandbox</option>
+                    <option value="preview">preview</option>
+                    <option value="approval">approval</option>
+                    <option value="promotion">promotion</option>
+                    <option value="production">production</option>
+                  </select>
+                </label>
+                <label className="text-xs text-muted-foreground">
+                  <span className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Approval status</span>
+                  <select
+                    value={shadowApprovalStatusFilter}
+                    onChange={(event) =>
+                      setShadowApprovalStatusFilter(
+                        event.target.value as ShadowExecutionContract["approvalStatus"] | "all"
+                      )
+                    }
+                    className="mt-2 w-full rounded-xl border border-white/10 bg-[#0a1527] px-3 py-2 text-sm text-foreground"
+                  >
+                    <option value="all">Todos</option>
+                    <option value="not_required">not_required</option>
+                    <option value="pending">pending</option>
+                    <option value="approved">approved</option>
+                    <option value="rejected">rejected</option>
+                  </select>
+                </label>
+                <label className="text-xs text-muted-foreground">
+                  <span className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Agent</span>
+                  <input
+                    value={shadowAgentFilter}
+                    onChange={(event) => setShadowAgentFilter(event.target.value)}
+                    placeholder="Filtrar por agentId"
+                    className="mt-2 w-full rounded-xl border border-white/10 bg-[#0a1527] px-3 py-2 text-sm text-foreground"
+                  />
+                </label>
+              </div>
+              {shadowExecutions.length > 0 ? (
+                <div className="mt-4 grid gap-3 md:grid-cols-5">
+                  {(["sandbox", "preview", "approval", "promotion", "production"] as const).map((stage) => (
+                    <div key={stage} className="rounded-lg border border-white/10 bg-[#0a1527] p-3 text-xs text-muted-foreground">
+                      <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">{stage}</p>
+                      <p className="mt-2 text-lg font-semibold text-foreground">{shadowExecutionsByStage[stage]}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {shadowExecutionsStatus === "loading" ? (
+                <p className="mt-4 text-sm text-muted-foreground">Carregando snapshots persistidos...</p>
+              ) : shadowExecutionsStatus === "error" ? (
+                <p className="mt-4 text-sm text-rose-300">
+                  {shadowExecutionsError ?? "Falha ao carregar shadow executions persistidas."}
+                </p>
+              ) : shadowExecutions.length === 0 ? (
+                <p className="mt-4 text-sm text-muted-foreground">
+                  Nenhuma shadow execution persistida para o workspace ativo.
+                </p>
+              ) : (
+                <div className="mt-4 grid gap-3">
+                  {shadowExecutions.map((item) => (
+                    <div key={item.shadowExecutionId} className="rounded-xl border border-white/10 bg-[#0a1527] p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">{item.agentId}</p>
+                          <p className="mt-1 break-all text-xs text-muted-foreground">{item.shadowExecutionId}</p>
+                        </div>
+                        <span className="pill">{item.currentStage}</span>
+                      </div>
+                      <div className="mt-3 grid gap-3 md:grid-cols-4">
+                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                          <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Approval</p>
+                          <p className="mt-2 text-sm text-foreground">{item.approvalStatus}</p>
+                        </div>
+                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                          <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Side effect</p>
+                          <p className="mt-2 text-xs text-foreground">{item.sideEffectMode}</p>
+                        </div>
+                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                          <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Custo estimado</p>
+                          <p className="mt-2 text-sm text-foreground">{formatBRL(item.preview.estimatedCostCents)}</p>
+                        </div>
+                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                          <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Produção</p>
+                          <p className="mt-2 break-all text-xs text-foreground">{item.promotion.productionRunId ?? "—"}</p>
+                        </div>
+                      </div>
+                      <p className="mt-3 text-xs text-foreground">{item.preview.summary}</p>
+                      <div className="mt-3">
+                        <button
+                          type="button"
+                          onClick={() => void inspectShadowExecution(item.shadowExecutionId)}
+                          className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.25em] text-foreground transition hover:border-accent/40 hover:text-accent"
+                        >
+                          {expandedShadowExecutionId === item.shadowExecutionId ? "Ocultar snapshot" : "Ver snapshot completo"}
+                        </button>
+                      </div>
+                      {expandedShadowExecutionId === item.shadowExecutionId ? (
+                        <div className="mt-4 rounded-lg border border-white/10 bg-black/20 p-3">
+                          {shadowExecutionDetailStatus === "loading" ? (
+                            <p className="text-xs text-muted-foreground">Carregando snapshot completo...</p>
+                          ) : shadowExecutionDetailStatus === "error" ? (
+                            <p className="text-xs text-rose-300">
+                              {shadowExecutionDetailError ?? "Falha ao carregar snapshot completo."}
+                            </p>
+                          ) : shadowExecutionDetail ? (
+                            <div className="space-y-3 text-xs text-muted-foreground">
+                              <div className="grid gap-3 md:grid-cols-3">
+                                <div>
+                                  <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Input ref</p>
+                                  <p className="mt-1 break-all text-foreground">{shadowExecutionDetail.inputRef}</p>
+                                </div>
+                                <div>
+                                  <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Target</p>
+                                  <p className="mt-1 text-foreground">{shadowExecutionDetail.promotion.target}</p>
+                                </div>
+                                <div>
+                                  <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Promoted at</p>
+                                  <p className="mt-1 text-foreground">{formatDateTime(shadowExecutionDetail.promotion.promotedAt)}</p>
+                                </div>
+                              </div>
+                              <div>
+                                <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Warnings</p>
+                                {shadowExecutionDetail.preview.warnings.length > 0 ? (
+                                  <ul className="mt-2 space-y-1">
+                                    {shadowExecutionDetail.preview.warnings.map((warning) => (
+                                      <li key={warning}>- {warning}</li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <p className="mt-1 text-foreground">—</p>
+                                )}
+                              </div>
+                              <div>
+                                <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Next actions</p>
+                                {shadowExecutionDetail.preview.nextActions.length > 0 ? (
+                                  <ul className="mt-2 space-y-1">
+                                    {shadowExecutionDetail.preview.nextActions.map((step) => (
+                                      <li key={step}>- {step}</li>
+                                    ))}
+                                  </ul>
+                                ) : (
+                                  <p className="mt-1 text-foreground">—</p>
+                                )}
+                              </div>
+                              <div>
+                                <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Evidence refs</p>
+                                <div className="mt-2 space-y-2">
+                                  {shadowExecutionDetail.evidenceRefs.map((evidence) => (
+                                    <div key={`${evidence.source}-${evidence.refId}`} className="rounded-md border border-white/10 bg-[#0a1527] p-2">
+                                      <p className="text-foreground">{evidence.label}</p>
+                                      <p className="mt-1 break-all">{evidence.source} · {evidence.refId}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-accent">Efficiency Intelligence</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Recomendações heurísticas geradas a partir do resumo financeiro do tenant no ciclo atual.
+                </p>
+                {summary?.optimizationSnapshot?.sourceOfTruth ? (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Fonte oficial: {summary.optimizationSnapshot.sourceOfTruth.cost} /{" "}
+                    {summary.optimizationSnapshot.sourceOfTruth.usage} /{" "}
+                    {summary.optimizationSnapshot.sourceOfTruth.agents}
+                  </p>
+                ) : null}
+              </div>
+              <span className="pill">
+                {summary?.optimizationRecommendations?.generatedAt
+                  ? `Gerado em ${formatDateTime(summary.optimizationRecommendations.generatedAt)}`
+                  : `${topOptimizationRecommendations.length} sugestoes`}
+              </span>
+            </div>
+            {topOptimizationRecommendations.length > 0 ? (
+              <div className="grid gap-3 md:grid-cols-3">
+                {topOptimizationRecommendations.map((item: OptimizationRecommendation) => (
+                  <div key={item.id} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm font-semibold text-foreground">{item.title}</p>
+                      <span className="pill">{formatPercent(item.confidence)}</span>
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">{item.summary}</p>
+                    <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                      <p>
+                        <span className="text-foreground">Economia estimada:</span>{" "}
+                        {formatBRL(item.estimatedSavingsCents)}
+                      </p>
+                      <p>
+                        <span className="text-foreground">Custo atual:</span> {formatBRL(item.currentCostCents)}
+                      </p>
+                      <p>
+                        <span className="text-foreground">Custo projetado:</span>{" "}
+                        {formatBRL(item.projectedCostCents)}
+                      </p>
+                      <p>
+                        <span className="text-foreground">Aplicação:</span> {item.applyMode.replaceAll("_", " ")}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-muted-foreground">
+                Nenhuma recomendação heurística disponível no ciclo atual.
+              </div>
+            )}
+            {summary?.optimizationSnapshot?.fleetPolicyCandidates?.length ? (
+              <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+                <p className="text-[10px] uppercase tracking-[0.25em] text-accent">Fleet policy candidates</p>
+                <div className="mt-3 grid gap-3 md:grid-cols-3">
+                  {summary.optimizationSnapshot.fleetPolicyCandidates.map((item) => (
+                    <div key={`fleet-${item.subjectId}`} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                      <p className="text-sm font-semibold text-foreground">{item.label}</p>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {item.priority} · {item.recommendationType} · economia {formatBRL(item.estimatedSavingsCents)} · confiança{" "}
+                        {formatPercent(item.confidence)}
+                      </p>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Ação sugerida: {item.suggestedAction.label}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {effectiveEconomyOpportunitySnapshot ? (
+              <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-[0.25em] text-accent">Economy Opportunity</p>
+                    <p className="mt-2 text-sm text-muted-foreground">{effectiveEconomyOpportunitySnapshot.summary}</p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {effectiveEconomyOpportunitySnapshot.consolidatedSummary}
+                    </p>
+                    <p className="mt-2 text-xs text-foreground">
+                      Recomendação: {effectiveEconomyOpportunitySnapshot.tenantRecommendation}
+                    </p>
+                    <p className="mt-2 text-xs">
+                      <Link to="/app/economy" className="text-accent underline">
+                        Abrir diagnóstico econômico
+                      </Link>
+                    </p>
+                  </div>
+                  <span className="pill">
+                    {effectiveEconomyOpportunitySnapshot.topStatus} · {effectiveEconomyOpportunitySnapshot.topPriority ?? "sem prioridade"}
+                  </span>
+                </div>
+                <div className="mt-3 grid gap-3 md:grid-cols-3">
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-accent/80">Cost opportunities</p>
+                    <p className="mt-2 text-lg font-semibold text-foreground">
+                      {effectiveEconomyOpportunitySnapshot.costOpportunities.length}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-accent/80">Fleet policy</p>
+                    <p className="mt-2 text-lg font-semibold text-foreground">
+                      {effectiveEconomyOpportunitySnapshot.fleetPolicyOpportunities.length}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-accent/80">Economy status</p>
+                    <p className="mt-2 text-sm font-semibold text-foreground">
+                      {effectiveEconomyOpportunitySnapshot.consolidatedClassification}
+                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Audit: {effectiveEconomyOpportunitySnapshot.auditableCostAttention.classification}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="mt-6 rounded-2xl border border-accent/30 bg-accent/10 p-5">
           <p className="text-xs uppercase tracking-[0.24em] text-accent">Seu plano e cobranca</p>
@@ -1307,7 +1823,7 @@ const BillingPage: React.FC = () => {
             <p className="mt-1 text-xs text-muted-foreground">{workspacesWithEnabledAgents} workspaces com agentes ativos</p>
           </div>
           <div className="glass-subtle p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Custo do workspace em foco</p>
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Consumo do workspace em foco</p>
             <p className="mt-2 text-xl font-semibold text-foreground">
               {formatBRL(selectedWorkspace?.usage.costCents ?? 0)}
             </p>
@@ -1412,6 +1928,28 @@ const BillingPage: React.FC = () => {
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
+            <button
+              type="button"
+              className={`pill hover:border-accent/40 hover:text-foreground ${
+                isInvestigationMode ? "bg-accent/15 text-accent" : ""
+              }`}
+              onClick={() => {
+                if (isInvestigationMode) {
+                  const params = new URLSearchParams(searchParams);
+                  params.delete("runId");
+                  setReconciliationWorkspaceId("");
+                  setReconciliationAgent("");
+                  setIsInvestigationMode(false);
+                  auditInvestigationMode("exited", false, ["manual_exit"]);
+                  navigate(`/app/billing${params.toString() ? `?${params.toString()}` : ""}`, { replace: true });
+                  return;
+                }
+                setIsInvestigationMode(true);
+                auditInvestigationMode("entered", true, ["manual_toggle"]);
+              }}
+            >
+              {isInvestigationMode ? "Sair do modo investigação" : "Entrar no modo investigação"}
+            </button>
             {requestedRunId ? (
               <span className="pill">Run filtrado: {requestedRunId}</span>
             ) : null}
@@ -1421,6 +1959,7 @@ const BillingPage: React.FC = () => {
               </span>
             ) : null}
             {reconciliationAgent ? <span className="pill">Agente: {reconciliationAgent}</span> : null}
+            {isInvestigationMode ? <span className="pill bg-accent/15 text-accent">Investigação ativa</span> : null}
             {requestedRunImobHref ? (
               <Link to={requestedRunImobHref} className="pill hover:border-accent/40 hover:text-foreground">
                 Abrir caso IMOB
@@ -1486,7 +2025,7 @@ const BillingPage: React.FC = () => {
           </div>
         </div>
         <div className="grid gap-4 md:grid-cols-2">
-          <div className="glass-subtle overflow-x-auto p-4">
+          <div className={`glass-subtle overflow-x-auto p-4 ${isInvestigationMode ? "border border-accent/30" : ""}`}>
             <p className="mb-3 text-xs uppercase tracking-[0.2em] text-muted-foreground">Divergências</p>
             <table className="w-full min-w-[520px] text-left text-xs">
               <thead className="text-muted-foreground">
@@ -1522,7 +2061,7 @@ const BillingPage: React.FC = () => {
               </tbody>
             </table>
           </div>
-          <div className="glass-subtle overflow-x-auto p-4">
+          <div className={`glass-subtle overflow-x-auto p-4 ${isInvestigationMode ? "border border-accent/30" : ""}`}>
             <p className="mb-3 text-xs uppercase tracking-[0.2em] text-muted-foreground">Gaps e duplicidades</p>
             <table className="w-full min-w-[520px] text-left text-xs">
               <thead className="text-muted-foreground">
@@ -1650,7 +2189,7 @@ const BillingPage: React.FC = () => {
             </button>
             {adjustmentMessage ? <p className="text-xs text-emerald-300">{adjustmentMessage}</p> : null}
           </div>
-          <div className="glass-subtle overflow-x-auto p-4">
+          <div className={`glass-subtle overflow-x-auto p-4 ${isInvestigationMode ? "border border-accent/30" : ""}`}>
             <table className="w-full min-w-[860px] text-left text-xs">
               <thead className="text-muted-foreground">
                 <tr>
