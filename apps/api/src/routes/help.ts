@@ -1,7 +1,11 @@
 import { Router } from "express";
+import crypto from "node:crypto";
 import { z } from "zod";
+import { prismaGlobal } from "@repo/db";
+import { recordGuardrailAudit } from "@eiah/core/services/guardrailLedgerStore";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
 import { queryEiahHelpKnowledge, seedEiahHelpKnowledge } from "../services/eiahHelpKnowledge";
+import { buildFrictionEvent, mapHelpdeskUxIssueToFrictionKind } from "../types/frictionEventContract";
 
 const helpRouter = Router();
 helpRouter.use(enforceTenant);
@@ -323,9 +327,60 @@ helpRouter.post("/helpdesk/session", async (req, res) => {
     const responseRejected = Boolean((parsed.data.metadata as Record<string, unknown> | undefined)?.responseRejected);
     const proposalContextLost = Boolean((parsed.data.metadata as Record<string, unknown> | undefined)?.proposalContextLost);
     const proposalDomainMismatch = Boolean((parsed.data.metadata as Record<string, unknown> | undefined)?.proposalDomainMismatch);
+    const uxIssueCategory = classifyHelpdeskUxIssue({
+      runId: parsed.data.runId ?? null,
+      intent: parsed.data.intent,
+      message: parsed.data.message,
+      response: parsed.data.response,
+      metadata: parsed.data.metadata,
+    });
+    const frictionKind = mapHelpdeskUxIssueToFrictionKind(uxIssueCategory);
+    const frictionEvent = frictionKind
+      ? buildFrictionEvent({
+          eventId: crypto.randomUUID(),
+          source: "helpdesk",
+          kind: frictionKind,
+          severity:
+            uxIssueCategory === "clarification_overuse" || uxIssueCategory === "generic_fallback" ? "medium" : "low",
+          tenantId: authContext.tenantId,
+          workspaceId: authContext.workspaceId,
+          surfaceId: "profile",
+          summary: humanizeUxIssue(uxIssueCategory),
+          occurredAt: new Date().toISOString(),
+          metadata: {
+            runId: parsed.data.runId ?? null,
+            intent: parsed.data.intent,
+            confidence: parsed.data.confidence,
+            fallbackReason: parsed.data.fallbackReason ?? null,
+            helpdeskSessionId: created.id,
+          },
+        })
+      : null;
+    if (frictionEvent) {
+      await recordGuardrailAudit({
+        prisma: prismaGlobal,
+        tenantId: authContext.tenantId,
+        workspaceId: authContext.workspaceId,
+        runId: parsed.data.runId ?? null,
+        eventType: "helpdesk.friction.detected",
+        severity:
+          frictionEvent.severity === "high"
+            ? "error"
+            : frictionEvent.severity === "medium"
+              ? "warn"
+              : "info",
+        message: frictionEvent.summary,
+        metadata: { frictionEvent },
+      });
+    }
     if (fallbackUsed) {
       logger.warn(
-        { tenantId: authContext.tenantId, workspaceId: authContext.workspaceId, runId: parsed.data.runId ?? null },
+        {
+          tenantId: authContext.tenantId,
+          workspaceId: authContext.workspaceId,
+          runId: parsed.data.runId ?? null,
+          frictionEvent,
+        },
         "helpdesk.fallback.used"
       );
     }
@@ -348,7 +403,13 @@ helpRouter.post("/helpdesk/session", async (req, res) => {
       );
     }
     logger.info(
-      { tenantId: authContext.tenantId, workspaceId: authContext.workspaceId, runId: parsed.data.runId ?? null, id: created.id },
+      {
+        tenantId: authContext.tenantId,
+        workspaceId: authContext.workspaceId,
+        runId: parsed.data.runId ?? null,
+        id: created.id,
+        frictionEvent,
+      },
       "helpdesk.response.generated"
     );
 

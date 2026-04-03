@@ -50,6 +50,12 @@ import {
   transitionBillingDispute,
 } from "../services/reputationDisputes";
 import { getBillingReconciliationSummary } from "../services/billingReconciliation";
+import { buildTenantEfficiencyIntelligence } from "../services/optimizationRecommendationAggregator";
+import { readTenantEconomyOpportunitySnapshot } from "../services/economyOpportunityAggregator";
+import { summarizeFrictionEvents } from "../services/frictionEventAggregator";
+import { buildOperationalInsight } from "../services/operationalInsightAggregator";
+import { buildCostOverviewBlock, buildCostSemanticSnapshot } from "../types/costSemanticsContract";
+import { buildFrictionEventSummary } from "../types/frictionEventSummary";
 
 export const billingRouter = Router();
 
@@ -1032,6 +1038,43 @@ billingRouter.get("/billing/tenant/summary", async (req, res) => {
   const client = getTenantBillingV2Client(prisma);
   if (!client) {
     const fallbackPlan = resolvePlanPricingProfile("starter");
+    const fallbackEfficiencyIntelligence = buildTenantEfficiencyIntelligence({
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      cycleStart: new Date(),
+      cycleEnd: new Date(),
+      totalCostCents: 0,
+      byWorkspace: [],
+      byAgent: [],
+      byModel: [],
+    });
+    const fallbackEconomyOpportunitySnapshot = await readTenantEconomyOpportunitySnapshot(prisma, {
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      cycleStart: new Date(),
+      cycleEnd: new Date(),
+    });
+    const fallbackOperationalInsight = buildOperationalInsight({
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      window: "7d",
+      frictionSummary: buildFrictionEventSummary({
+        scope: {
+          tenantId: authContext.tenantId,
+          workspaceId: authContext.workspaceId,
+          windowStart: null,
+        },
+        total: 0,
+        byKind: {},
+        bySource: {},
+        byDomain: {},
+        bySurface: {},
+        byReasonCode: {},
+        byWorkspace: {},
+        recentEvents: [],
+      }),
+      optimizationSnapshot: fallbackEfficiencyIntelligence.snapshot,
+    });
     return res.json({
       ok: true,
       data: {
@@ -1061,6 +1104,37 @@ billingRouter.get("/billing/tenant/summary", async (req, res) => {
         },
         totals: { runs: 0, costCents: 0, currency: "BRL" },
         usage: null,
+        costOverview: buildCostOverviewBlock({
+          workspaceConsumption: buildCostSemanticSnapshot({
+            kind: "workspace_consumption",
+            title: "Consumo do workspace",
+            summary: "Sem uso consolidado do workspace no ciclo atual.",
+            amountCents: 0,
+            currency: "BRL",
+            status: "actual",
+            scope: {
+              tenantId: authContext.tenantId,
+              workspaceId: authContext.workspaceId,
+            },
+            sourceOfTruth: "usage_ledger",
+          }),
+          auditableCost: buildCostSemanticSnapshot({
+            kind: "auditable_cost",
+            title: "Custo auditável",
+            summary: "Sem trilha financeira consolidada no ciclo atual.",
+            amountCents: 0,
+            currency: "BRL",
+            status: "reconciled",
+            scope: {
+              tenantId: authContext.tenantId,
+            },
+            sourceOfTruth: "billing_reconciliation",
+        }),
+      }),
+      optimizationRecommendations: fallbackEfficiencyIntelligence.bundle,
+      optimizationSnapshot: fallbackEfficiencyIntelligence.snapshot,
+      economyOpportunitySnapshot: fallbackEconomyOpportunitySnapshot,
+      operationalInsightSnapshot: fallbackOperationalInsight,
         byWorkspace: [],
       },
     });
@@ -1073,7 +1147,8 @@ billingRouter.get("/billing/tenant/summary", async (req, res) => {
     tenantId: authContext.tenantId,
   });
 
-  const [account, policy, entries, usage, byAgent, byModelRaw] = await Promise.all([
+  const diagnosticsWindowStart = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const [account, policy, entries, usage, byAgent, byModelRaw, frictionSummary] = await Promise.all([
     client.tenantBillingAccount.findUnique({ where: { tenantId: authContext.tenantId } }),
     client.tenantQuotaPolicy.findUnique({ where: { tenantId: authContext.tenantId } }),
     client.billingLedger.findMany({
@@ -1114,6 +1189,12 @@ billingRouter.get("/billing/tenant/summary", async (req, res) => {
         amountCents: true,
         totalTokens: true,
       },
+    }),
+    summarizeFrictionEvents({
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      windowStart: diagnosticsWindowStart,
+      limit: 200,
     }),
   ]);
 
@@ -1176,6 +1257,37 @@ billingRouter.get("/billing/tenant/summary", async (req, res) => {
     usersCount: usersActive,
     includedRunsOverride: policy?.monthlyRunsLimit ?? null,
   });
+  const activeWorkspaceUsage =
+    Array.from(byWorkspace.values()).find((item) => item.workspaceId === authContext.workspaceId) ?? null;
+  const tenantAuditStatus =
+    totals.costCents === 0 ? "reconciled" : usage ? "reconciled" : "attention_required";
+  const sortedByWorkspace = Array.from(byWorkspace.values()).sort((a, b) => a.workspaceName.localeCompare(b.workspaceName));
+  const sortedByModel = Array.from(byModel.values()).sort((a, b) =>
+    `${a.provider}:${a.model}`.localeCompare(`${b.provider}:${b.model}`)
+  );
+  const efficiencyIntelligence = buildTenantEfficiencyIntelligence({
+    tenantId: authContext.tenantId,
+    workspaceId: authContext.workspaceId,
+    cycleStart: cycle.cycleStart,
+    cycleEnd: cycle.cycleEnd,
+    totalCostCents: totals.costCents,
+    byWorkspace: sortedByWorkspace,
+    byAgent,
+    byModel: sortedByModel,
+  });
+  const operationalInsightSnapshot = buildOperationalInsight({
+    tenantId: authContext.tenantId,
+    workspaceId: authContext.workspaceId,
+    window: "7d",
+    frictionSummary,
+    optimizationSnapshot: efficiencyIntelligence.snapshot,
+  });
+  const economyOpportunitySnapshot = await readTenantEconomyOpportunitySnapshot(prisma, {
+    tenantId: authContext.tenantId,
+    workspaceId: authContext.workspaceId,
+    cycleStart: cycle.cycleStart,
+    cycleEnd: cycle.cycleEnd,
+  });
 
   return res.json({
     ok: true,
@@ -1228,11 +1340,46 @@ billingRouter.get("/billing/tenant/summary", async (req, res) => {
             updatedAt: usage.updatedAt,
           }
         : null,
+      costOverview: buildCostOverviewBlock({
+        workspaceConsumption: buildCostSemanticSnapshot({
+          kind: "workspace_consumption",
+          title: "Consumo do workspace",
+          summary: activeWorkspaceUsage
+            ? `${activeWorkspaceUsage.workspaceName} acumulou ${activeWorkspaceUsage.runs} runs no ciclo atual.`
+            : "Sem consumo consolidado para o workspace ativo no ciclo atual.",
+          amountCents: activeWorkspaceUsage?.costCents ?? 0,
+          currency: "BRL",
+          status: "actual",
+          scope: {
+            tenantId: authContext.tenantId,
+            workspaceId: authContext.workspaceId,
+            cycleStart: cycle.cycleStart,
+            cycleEnd: cycle.cycleEnd,
+          },
+          sourceOfTruth: "usage_ledger",
+        }),
+        auditableCost: buildCostSemanticSnapshot({
+          kind: "auditable_cost",
+          title: "Custo auditável",
+          summary: `Ledger do tenant no ciclo atual com ${totals.runs} runs e ${invoiceAmounts.totalCents} previstos em fatura.`,
+          amountCents: totals.costCents,
+          currency: "BRL",
+          status: tenantAuditStatus,
+          scope: {
+            tenantId: authContext.tenantId,
+            cycleStart: cycle.cycleStart,
+            cycleEnd: cycle.cycleEnd,
+          },
+          sourceOfTruth: "billing_reconciliation",
+        }),
+      }),
+      optimizationRecommendations: efficiencyIntelligence.bundle,
+      optimizationSnapshot: efficiencyIntelligence.snapshot,
+      economyOpportunitySnapshot,
+      operationalInsightSnapshot,
       byAgent,
-      byModel: Array.from(byModel.values()).sort((a, b) =>
-        `${a.provider}:${a.model}`.localeCompare(`${b.provider}:${b.model}`)
-      ),
-      byWorkspace: Array.from(byWorkspace.values()).sort((a, b) => a.workspaceName.localeCompare(b.workspaceName)),
+      byModel: sortedByModel,
+      byWorkspace: sortedByWorkspace,
     },
   });
 });
@@ -1487,6 +1634,8 @@ billingRouter.get("/runs/:id/cost-breakdown", async (req, res) => {
   });
   const actualAmountCents = items.reduce((sum, item) => sum + Number(item.amountCents ?? 0), 0);
   const actualTokens = items.reduce((sum, item) => sum + Number(item.totalTokens ?? 0), 0);
+  const executionStatus =
+    actualAmountCents > 0 ? "actual" : estimatedAmountCents != null ? "estimated" : "attention_required";
 
   return res.json({
     ok: true,
@@ -1515,6 +1664,27 @@ billingRouter.get("/runs/:id/cost-breakdown", async (req, res) => {
         varianceCents:
           typeof estimatedAmountCents === "number" ? actualAmountCents - estimatedAmountCents : null,
       },
+      costOverview: buildCostOverviewBlock({
+        executionCost: buildCostSemanticSnapshot({
+          kind: "execution_cost",
+          title: "Custo desta execução",
+          summary:
+            actualAmountCents > 0
+              ? `${actualTokens} tokens registrados para este run.`
+              : estimatedAmountCents != null
+                ? "Sem uso real consolidado ainda; exibindo estimativa backend."
+                : "Sem custo consolidado disponível para este run.",
+          amountCents: actualAmountCents > 0 ? actualAmountCents : estimatedAmountCents ?? 0,
+          currency: "BRL",
+          status: executionStatus,
+          scope: {
+            tenantId: authContext.tenantId,
+            workspaceId: authContext.workspaceId,
+            runId: run.id,
+          },
+          sourceOfTruth: actualAmountCents > 0 ? "usage_ledger" : "run",
+        }),
+      }),
       items: items.map((item) => ({
         id: item.id,
         requestId: item.requestId,
