@@ -1218,6 +1218,9 @@ export default function ChatAgentLauncher({
       accessContext: {
         tenantId: session.tenantId,
         workspaceId: effectiveWorkspaceId,
+        roleProfile: session.experience?.roleProfile ?? null,
+        activeDomain: session.activeDomain ?? null,
+        installedProducts: session.installedProducts ?? null,
         entitlements: session.entitlements ?? null,
       },
     });
@@ -1244,6 +1247,8 @@ export default function ChatAgentLauncher({
         sourceInput: effectiveInput,
         proposalDomain: turnDecision.proposalDomain ?? null,
         conversationStage: turnDecision.conversationStage ?? null,
+        resolvedQuickReplies: turnDecision.resolvedQuickReplies,
+        journeyContext: turnDecision.journeyContext ?? null,
       });
       await pushAssistantMessageWithTyping({
         idPrefix: `assistant-${turnDecision.kind}`,
@@ -1612,6 +1617,8 @@ export default function ChatAgentLauncher({
     sourceInput?: string;
     proposalDomain?: MessagePresentationSnapshot["proposalDomain"];
     conversationStage?: MessagePresentationSnapshot["conversationStage"];
+    resolvedQuickReplies?: string[];
+    journeyContext?: MessagePresentationSnapshot["journeyContext"];
   }): MessagePresentationSnapshot {
     return createPresentationSnapshotV1({
       ...params,

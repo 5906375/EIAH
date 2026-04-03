@@ -49,6 +49,88 @@ export const eiahProfile: AgentProfileSeed = {
       missingRequiredSource: "Eu não encontrei a base necessária para confirmar isso com segurança agora. Posso te orientar pelo próximo passo ou encaminhar para o agente certo.",
     },
   },
+  journeyContract: {
+    version: "v1",
+    sourceOfTruth: "agent_contract",
+    roleJourneys: [
+      {
+        roleProfile: "workspace_member",
+        frontDoorSurface: "self_service",
+        frontDoorLabel: "Self-service",
+        firstStepLabel: "Executar um fluxo guiado",
+        firstStepDescription: "Comece pelas tarefas homologadas e ações já liberadas no workspace.",
+        beginnerExplanation:
+          "Seu ponto de partida é o Self-service. Aqui você executa fluxos prontos e tarefas guiadas. Se quiser acompanhar resultado depois, eu te levo para Runs.",
+        prioritySurfaces: ["self_service", "runs"],
+        secondarySurfaces: ["profile", "imob_chat"],
+        initialQuickReplies: ["Começar agora", "O que posso fazer aqui?", "Ver meu caminho ideal"],
+      },
+      {
+        roleProfile: "workspace_admin",
+        frontDoorSurface: "runs",
+        frontDoorLabel: "Runs",
+        firstStepLabel: "Acompanhar a operação do workspace",
+        firstStepDescription: "Veja execuções, simule antes de rodar e revise o estado atual.",
+        beginnerExplanation:
+          "Seu ponto de partida é Runs. Aqui você acompanha a operação do workspace. Se precisar revisar agentes, seguimos para Agentes. Se quiser ativar capacidades, vamos para Marketplace.",
+        prioritySurfaces: ["runs", "agents", "marketplace"],
+        secondarySurfaces: ["profile", "billing", "self_service", "imob_chat"],
+        initialQuickReplies: ["Abrir runs", "Revisar agentes", "Ver rollout das verticais"],
+      },
+      {
+        roleProfile: "service_operator",
+        frontDoorSurface: "runs",
+        frontDoorLabel: "Runs",
+        firstStepLabel: "Monitorar e investigar execuções",
+        firstStepDescription: "Acompanhe runs, bloqueios, divergências e execuções críticas.",
+        beginnerExplanation:
+          "Seu ponto de partida é Runs. Aqui você monitora execução e investiga bloqueios. Se precisar aprofundar custo ou reconciliação, eu te levo para Billing. Se quiser priorizar eficiência, seguimos para Economy.",
+        prioritySurfaces: ["runs", "billing", "economy"],
+        secondarySurfaces: ["profile", "marketplace", "agents", "imob_chat"],
+        initialQuickReplies: ["Abrir runs", "Checar billing", "Abrir economy"],
+      },
+      {
+        roleProfile: "tenant_admin",
+        frontDoorSurface: "economy",
+        frontDoorLabel: "Economy",
+        firstStepLabel: "Avaliar custo, eficiência e prioridade do tenant",
+        firstStepDescription: "Veja oportunidades, classificações e prioridades operacionais.",
+        beginnerExplanation:
+          "Seu ponto de partida é Economy. Aqui você enxerga custo, eficiência e prioridades do tenant. Se quiser cobrança e reconciliação, seguimos para Billing. Se quiser ativar capacidades, vamos para Marketplace.",
+        prioritySurfaces: ["economy", "billing", "marketplace"],
+        secondarySurfaces: ["runs", "profile", "agents", "imob_chat"],
+        initialQuickReplies: ["Abrir economy", "Checar billing", "Ver rollout das verticais"],
+      },
+      {
+        roleProfile: "founder_global",
+        frontDoorSurface: "economy",
+        frontDoorLabel: "Economy",
+        firstStepLabel: "Ler a saúde transversal da plataforma",
+        firstStepDescription: "Veja eficiência, expansão, rollout, gaps e prioridades globais.",
+        beginnerExplanation:
+          "Seu ponto de partida é Economy. Aqui você vê a visão transversal da plataforma. Se quiser revisar operação real, seguimos para Runs. Se quiser olhar expansão, vamos para Marketplace.",
+        prioritySurfaces: ["economy", "billing", "runs", "marketplace"],
+        secondarySurfaces: ["profile", "agents", "self_service", "imob_chat"],
+        initialQuickReplies: ["Abrir economy", "Ver rollout das verticais", "Abrir runs"],
+      },
+    ],
+    domainOverrides: [
+      {
+        domain: "imob",
+        installedProduct: "IMOB",
+        appliesToRoles: ["workspace_member", "workspace_admin", "service_operator", "tenant_admin", "founder_global"],
+        overrideFrontDoorSurface: "imob_chat",
+        overrideFrontDoorLabel: "IMOB",
+        overrideFirstStepLabel: "Continuar atendimento imobiliário",
+        overrideFirstStepDescription: "Entre pelo chat IMOB e continue a operação no contexto da vertical.",
+        overrideBeginnerExplanation:
+          "Como IMOB está ativo neste contexto, seu melhor ponto de partida é a experiência IMOB. Eu continuo sua jornada por lá e te levo para dashboard, runs ou billing quando fizer sentido.",
+        overridePrioritySurfaces: ["imob_chat", "imob_dashboard", "runs"],
+        overrideSecondarySurfaces: ["billing", "economy", "profile"],
+        overrideQuickReplies: ["Abrir atendimento IMOB", "Abrir runs", "Checar billing"],
+      },
+    ],
+  },
   knowledgePolicy: {
     deterministicSources: [
       { sourceId: "agent.registry", kind: "db", authorityLevel: "primary", required: true, version: "v1" },

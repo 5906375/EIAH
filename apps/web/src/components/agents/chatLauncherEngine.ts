@@ -124,6 +124,7 @@ export type SpecialistAvailability = {
 export type LauncherRouteIntent = "proposal" | "imob" | "playbook" | "help" | "orchestrator";
 export type EiahMode = "help" | "orchestrator" | "proposal";
 export type EiahDecisionKind =
+  | "initial_journey"
   | "self_intro"
   | "capabilities_summary"
   | "agent_explain"
@@ -147,6 +148,11 @@ export type EiahDecision = {
   kind: EiahDecisionKind;
   shouldCreateRun: boolean;
   content?: string;
+  resolvedQuickReplies?: string[];
+  journeyContext?: {
+    frontDoorLabel: string;
+    firstStepLabel: string;
+  } | null;
   launcherRouteIntent: LauncherRouteIntent;
   presentationRouteIntent:
     | LauncherRouteIntent
@@ -173,6 +179,11 @@ export type LauncherLocalDecision = {
   kind: string;
   shouldCreateRun: boolean;
   content?: string;
+  resolvedQuickReplies?: string[];
+  journeyContext?: {
+    frontDoorLabel: string;
+    firstStepLabel: string;
+  } | null;
   launcherRouteIntent: LauncherRouteIntent;
   presentationRouteIntent:
     | LauncherRouteIntent
@@ -195,10 +206,26 @@ export type LauncherLocalDecision = {
 export type LauncherAccessContext = {
   tenantId?: string | null;
   workspaceId?: string | null;
+  roleProfile?: "workspace_member" | "workspace_admin" | "tenant_admin" | "founder_global" | "service_operator" | null;
+  activeDomain?: "core" | "imob" | null;
+  installedProducts?: string[] | null;
   entitlements?: {
     REAL_ESTATE_CORE?: boolean;
     IMOB_INSTALLED?: boolean;
   } | null;
+};
+
+type ResolvedEiahJourneyContract = {
+  roleProfile: NonNullable<LauncherAccessContext["roleProfile"]>;
+  activeDomain: "core" | "imob";
+  frontDoorSurface: string;
+  frontDoorLabel: string;
+  firstStepLabel: string;
+  firstStepDescription: string;
+  beginnerExplanation: string;
+  prioritySurfaces: string[];
+  secondarySurfaces: string[];
+  initialQuickReplies: string[];
 };
 
 export type AttachmentIntakeResolution = {
@@ -892,7 +919,14 @@ export function buildQuickRepliesForContext(params: {
   sourceInput?: string | null;
   proposalDomain?: MessagePresentationSnapshot["proposalDomain"];
   conversationStage?: MessagePresentationSnapshot["conversationStage"];
+  resolvedQuickReplies?: string[] | null;
 }) {
+  if (params.resolvedQuickReplies?.length) {
+    return params.resolvedQuickReplies
+      .filter((value): value is string => Boolean(value && value.trim()))
+      .filter((value, index, array) => array.indexOf(value) === index)
+      .slice(0, 3);
+  }
   const copyReplies =
     params.agentProfile?.chatCopy?.quickReplies?.filter((value): value is string => Boolean(value && value.trim())) ?? [];
   const resolvedVerticalContext =
@@ -965,6 +999,8 @@ export function createPresentationSnapshotV1(params: {
   excludeReplyInputs?: string[];
   proposalDomain?: MessagePresentationSnapshot["proposalDomain"];
   conversationStage?: MessagePresentationSnapshot["conversationStage"];
+  resolvedQuickReplies?: string[];
+  journeyContext?: MessagePresentationSnapshot["journeyContext"];
 }): MessagePresentationSnapshot {
   const normalizedRouteIntent =
     params.routeIntent === "self_intro" || params.routeIntent === "capabilities_summary"
@@ -990,6 +1026,7 @@ export function createPresentationSnapshotV1(params: {
     sourceInput: params.sourceInput,
     proposalDomain: params.proposalDomain,
     conversationStage: params.conversationStage,
+    resolvedQuickReplies: params.resolvedQuickReplies,
   });
   const excludedReplyKeys = new Set(
     (params.excludeReplyInputs ?? []).map((value) => normalizeIntentText(value)).filter(Boolean)
@@ -1025,6 +1062,7 @@ export function createPresentationSnapshotV1(params: {
     signals: nextSignals,
     nextDecision,
     quickReplies: filteredQuickReplies,
+    journeyContext: params.journeyContext ?? null,
     renderVariant: params.renderVariant ?? "guided_flow",
     responseShape: params.agentProfile?.uxContract?.responseShape,
     maxCognitiveLoad: params.agentProfile?.uxContract?.maxCognitiveLoad,
@@ -1040,6 +1078,78 @@ export function createPresentationSnapshotV1(params: {
     attachmentSecondaryActionLabel: params.attachmentIntake.secondaryActionLabel,
     attachmentHelpText: params.attachmentIntake.helpText,
   };
+}
+
+function hasInstalledProduct(installedProducts: string[] | null | undefined, product: string) {
+  return (installedProducts ?? []).some((item) => item.trim().toUpperCase() === product);
+}
+
+function isJourneyEntryQuestion(input: string) {
+  const normalized = normalizeIntentText(input);
+  const signals = [
+    "por onde comeco",
+    "por onde eu comeco",
+    "como comecar",
+    "como eu comeco",
+    "o que posso fazer aqui",
+    "o que eu posso fazer aqui",
+    "meu caminho ideal",
+    "qual meu caminho",
+    "qual e meu caminho",
+    "como navegar",
+    "como usar a plataforma",
+    "como usar o eiah",
+  ];
+  return signals.some((signal) => normalized.includes(signal));
+}
+
+export function resolveEiahJourneyContract(params: {
+  agentProfile: Agent | null;
+  accessContext?: LauncherAccessContext | null;
+}): ResolvedEiahJourneyContract | null {
+  const contract = params.agentProfile?.journeyContract;
+  const roleProfile = params.accessContext?.roleProfile;
+  if (!contract || !roleProfile) return null;
+
+  const base = contract.roleJourneys.find((entry) => entry.roleProfile === roleProfile);
+  if (!base) return null;
+
+  const activeDomain = params.accessContext?.activeDomain ?? "core";
+  const installedProducts = params.accessContext?.installedProducts ?? [];
+  const override = contract.domainOverrides?.find((entry) => {
+    if (entry.domain !== activeDomain) return false;
+    if (entry.appliesToRoles?.length && !entry.appliesToRoles.includes(roleProfile)) return false;
+    if (entry.installedProduct && !hasInstalledProduct(installedProducts, entry.installedProduct)) return false;
+    return true;
+  });
+
+  return {
+    roleProfile,
+    activeDomain,
+    frontDoorSurface: override?.overrideFrontDoorSurface ?? base.frontDoorSurface,
+    frontDoorLabel: override?.overrideFrontDoorLabel ?? base.frontDoorLabel,
+    firstStepLabel: override?.overrideFirstStepLabel ?? base.firstStepLabel,
+    firstStepDescription: override?.overrideFirstStepDescription ?? base.firstStepDescription,
+    beginnerExplanation: override?.overrideBeginnerExplanation ?? base.beginnerExplanation,
+    prioritySurfaces: override?.overridePrioritySurfaces ?? base.prioritySurfaces,
+    secondarySurfaces: override?.overrideSecondarySurfaces ?? base.secondarySurfaces,
+    initialQuickReplies: override?.overrideQuickReplies ?? base.initialQuickReplies,
+  };
+}
+
+function buildEiahJourneyReply(journey: ResolvedEiahJourneyContract) {
+  const priority = journey.prioritySurfaces.slice(0, 3).join(", ");
+  const secondary = journey.secondarySurfaces.slice(0, 3).join(", ");
+  return [
+    `Seu ponto de partida é ${journey.frontDoorLabel}.`,
+    journey.beginnerExplanation,
+    "",
+    `Primeiro passo: ${journey.firstStepLabel}.`,
+    journey.firstStepDescription,
+    "",
+    `Prioridade agora: ${priority || "—"}.`,
+    `Depois você pode aprofundar em: ${secondary || "—"}.`,
+  ].join("\n");
 }
 
 export function resolveLauncherExecutionRenderVariant(params: {
@@ -1744,6 +1854,10 @@ export function resolveEiahDecision(params: {
   accessContext?: LauncherAccessContext | null;
 }): EiahDecision {
   const input = params.input.trim();
+  const journey = resolveEiahJourneyContract({
+    agentProfile: params.agentProfile,
+    accessContext: params.accessContext,
+  });
   if (params.eiahMode === "proposal" || params.routeIntent === "proposal") {
     return {
       kind: "needs_run",
@@ -1752,6 +1866,24 @@ export function resolveEiahDecision(params: {
       presentationRouteIntent: params.routeIntent,
       eiahMode: params.eiahMode,
       renderVariant: "proposal",
+    };
+  }
+
+  if (journey && (isJourneyEntryQuestion(input) || isPlatformSelfExplainQuestion(input))) {
+    return {
+      kind: "initial_journey",
+      shouldCreateRun: false,
+      content: buildEiahJourneyReply(journey),
+      resolvedQuickReplies: journey.initialQuickReplies,
+      journeyContext: {
+        frontDoorLabel: journey.frontDoorLabel,
+        firstStepLabel: journey.firstStepLabel,
+      },
+      launcherRouteIntent: "help",
+      presentationRouteIntent: "help",
+      eiahMode: "help",
+      renderVariant: "guided_flow",
+      persistIntent: { intent: "product_explain", confidenceFloor: 0.84 },
     };
   }
 

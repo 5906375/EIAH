@@ -25,6 +25,10 @@ export type MessagePresentationSnapshot = {
   signals: string[];
   nextDecision?: string;
   quickReplies: string[];
+  journeyContext?: {
+    frontDoorLabel: string;
+    firstStepLabel: string;
+  } | null;
   renderVariant: "simple_help" | "self_intro" | "handoff" | "guided_flow" | "proposal";
   responseShape?: Agent["uxContract"] extends { responseShape: infer T } ? T : string;
   maxCognitiveLoad?: Agent["uxContract"] extends { maxCognitiveLoad: infer T } ? T : string;

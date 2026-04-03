@@ -150,6 +150,61 @@ export type AgentModeContract = {
   chatCopy?: AgentChatCopy;
 };
 
+export type AgentJourneyRoleProfile =
+  | "workspace_member"
+  | "workspace_admin"
+  | "tenant_admin"
+  | "founder_global"
+  | "service_operator";
+
+export type AgentJourneySurfaceId =
+  | "runs"
+  | "agents"
+  | "billing"
+  | "economy"
+  | "marketplace"
+  | "self_service"
+  | "profile"
+  | "imob_chat"
+  | "imob_dashboard";
+
+export type AgentJourneyDomain = "core" | "imob";
+
+export type AgentJourneyQuickReply = string;
+
+export type AgentJourneyRoleContract = {
+  roleProfile: AgentJourneyRoleProfile;
+  frontDoorSurface: AgentJourneySurfaceId;
+  frontDoorLabel: string;
+  firstStepLabel: string;
+  firstStepDescription: string;
+  beginnerExplanation: string;
+  prioritySurfaces: AgentJourneySurfaceId[];
+  secondarySurfaces: AgentJourneySurfaceId[];
+  initialQuickReplies: AgentJourneyQuickReply[];
+};
+
+export type AgentJourneyDomainOverride = {
+  domain: AgentJourneyDomain;
+  installedProduct?: "IMOB";
+  appliesToRoles?: AgentJourneyRoleProfile[];
+  overrideFrontDoorSurface?: AgentJourneySurfaceId;
+  overrideFrontDoorLabel?: string;
+  overrideFirstStepLabel?: string;
+  overrideFirstStepDescription?: string;
+  overrideBeginnerExplanation?: string;
+  overridePrioritySurfaces?: AgentJourneySurfaceId[];
+  overrideSecondarySurfaces?: AgentJourneySurfaceId[];
+  overrideQuickReplies?: AgentJourneyQuickReply[];
+};
+
+export type AgentJourneyContract = {
+  version: "v1";
+  sourceOfTruth: "agent_contract";
+  roleJourneys: AgentJourneyRoleContract[];
+  domainOverrides?: AgentJourneyDomainOverride[];
+};
+
 export type AgentProfileSeed = {
   id?: string;
   agent: string;
@@ -163,6 +218,7 @@ export type AgentProfileSeed = {
   participation?: AgentParticipation;
   modeContracts?: AgentModeContract[];
   chatCopy?: AgentChatCopy;
+  journeyContract?: AgentJourneyContract;
   legalSpecialties?: Record<string, LegalSpecialty>;
   attachmentContract?: AgentAttachmentContract;
   metadata?: unknown;
