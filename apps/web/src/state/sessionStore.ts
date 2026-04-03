@@ -16,7 +16,114 @@ type SessionState = {
     IMOB_INSTALLED?: boolean;
   };
   installedProducts?: string[];
+  verticals?: Array<{
+    verticalId: "IMOB" | "LEGAL" | "HEALTH";
+    label: string;
+    activeDomain: "core" | "imob";
+    installedProduct: string | null;
+    rolloutStage: "context_only" | "installed_surface" | "operationalized";
+    enabled: boolean;
+    frontDoorSurface:
+      | "runs"
+      | "billing"
+      | "economy"
+      | "self_service"
+      | "agents"
+      | "marketplace"
+      | "profile"
+      | "imob_chat"
+      | "imob_dashboard"
+      | null;
+    operationalHubSurface:
+      | "runs"
+      | "billing"
+      | "economy"
+      | "self_service"
+      | "agents"
+      | "marketplace"
+      | "profile"
+      | "imob_chat"
+      | "imob_dashboard"
+      | null;
+    governanceHubSurface:
+      | "runs"
+      | "billing"
+      | "economy"
+      | "self_service"
+      | "agents"
+      | "marketplace"
+      | "profile"
+      | "imob_chat"
+      | "imob_dashboard"
+      | null;
+    investigationSurfaces: Array<
+      | "runs"
+      | "billing"
+      | "economy"
+      | "self_service"
+      | "agents"
+      | "marketplace"
+      | "profile"
+      | "imob_chat"
+      | "imob_dashboard"
+    >;
+    contextSpecRef: string;
+  }>;
   roles?: string[];
+  experience?: {
+    resolverVersion: string;
+    roleProfile?: "workspace_member" | "workspace_admin" | "tenant_admin" | "founder_global" | "service_operator";
+    landingSurface:
+      | "runs"
+      | "billing"
+      | "economy"
+      | "self_service"
+      | "agents"
+      | "marketplace"
+      | "profile"
+      | "imob_chat"
+      | "imob_dashboard";
+    landingPath: string;
+    primaryNavigation: Array<{
+      surfaceId:
+        | "runs"
+        | "billing"
+        | "economy"
+        | "self_service"
+        | "agents"
+        | "marketplace"
+        | "profile"
+        | "imob_chat"
+        | "imob_dashboard";
+      path: string;
+      label: string;
+    }>;
+    recommendedActions: Array<{
+      actionId: string;
+      surfaceId:
+        | "runs"
+        | "billing"
+        | "economy"
+        | "self_service"
+        | "agents"
+        | "marketplace"
+        | "profile"
+        | "imob_chat"
+        | "imob_dashboard";
+      path: string;
+      label: string;
+      priority: "primary" | "secondary";
+    }>;
+    allowedSurfaceClasses: Array<
+      "front_door" | "operational_hub" | "governance_hub" | "investigation_surface"
+    >;
+    fallbackMode: "fail_closed" | "core_safe_default" | "context_incomplete";
+    cachePolicy: {
+      strategy: "session_context_only";
+      sourceOfTruth: "runtime";
+      mode: "fail_safe_accelerator";
+    };
+  };
   branding?: {
     brandName?: string;
     logoUrl?: string | null;
