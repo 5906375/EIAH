@@ -2,6 +2,17 @@
 // Ajuste BASE_URL e a forma de obter token/header do projeto.
 
 import { getSession, subscribeSession } from "@/state/sessionStore";
+import type {
+  EconomyOpportunitySnapshot,
+  ExperienceDiagnosticSnapshot,
+  FrictionEventSummary,
+  OnboardingContext,
+  OperationalInsightSnapshot,
+  OptimizationRecommendationSnapshot,
+  TenantRecipe,
+  TenantRecipeStatus,
+  TenantRecipeWorkspaceScope,
+} from "@/types";
 
 const VITE_ENV = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env ?? {};
 
@@ -45,6 +56,29 @@ export type Run = {
   txId?: string | null;
   criticalHash?: string | null;
   meta?: { traceId?: string; tookMs?: number };
+};
+
+export type CostSemanticSnapshot = {
+  kind: "execution_cost" | "workspace_consumption" | "auditable_cost";
+  title: string;
+  summary: string;
+  amountCents: number;
+  currency: "BRL";
+  status: "estimated" | "actual" | "reconciled" | "attention_required";
+  scope: {
+    tenantId?: string;
+    workspaceId?: string;
+    runId?: string;
+    cycleStart?: string;
+    cycleEnd?: string;
+  };
+  sourceOfTruth: "run" | "usage_ledger" | "billing_reconciliation";
+};
+
+export type CostOverviewBlock = {
+  executionCost?: CostSemanticSnapshot;
+  workspaceConsumption?: CostSemanticSnapshot;
+  auditableCost?: CostSemanticSnapshot;
 };
 
 export type ImobFunnelHealth = {
@@ -206,6 +240,34 @@ export type Agent = {
       missingRequiredSource?: string;
     };
   };
+  journeyContract?: {
+    version: "v1";
+    sourceOfTruth: "agent_contract";
+    roleJourneys: Array<{
+      roleProfile: "workspace_member" | "workspace_admin" | "tenant_admin" | "founder_global" | "service_operator";
+      frontDoorSurface: "runs" | "agents" | "billing" | "economy" | "marketplace" | "self_service" | "profile" | "imob_chat" | "imob_dashboard";
+      frontDoorLabel: string;
+      firstStepLabel: string;
+      firstStepDescription: string;
+      beginnerExplanation: string;
+      prioritySurfaces: Array<"runs" | "agents" | "billing" | "economy" | "marketplace" | "self_service" | "profile" | "imob_chat" | "imob_dashboard">;
+      secondarySurfaces: Array<"runs" | "agents" | "billing" | "economy" | "marketplace" | "self_service" | "profile" | "imob_chat" | "imob_dashboard">;
+      initialQuickReplies: string[];
+    }>;
+    domainOverrides?: Array<{
+      domain: "core" | "imob";
+      installedProduct?: "IMOB";
+      appliesToRoles?: Array<"workspace_member" | "workspace_admin" | "tenant_admin" | "founder_global" | "service_operator">;
+      overrideFrontDoorSurface?: "runs" | "agents" | "billing" | "economy" | "marketplace" | "self_service" | "profile" | "imob_chat" | "imob_dashboard";
+      overrideFrontDoorLabel?: string;
+      overrideFirstStepLabel?: string;
+      overrideFirstStepDescription?: string;
+      overrideBeginnerExplanation?: string;
+      overridePrioritySurfaces?: Array<"runs" | "agents" | "billing" | "economy" | "marketplace" | "self_service" | "profile" | "imob_chat" | "imob_dashboard">;
+      overrideSecondarySurfaces?: Array<"runs" | "agents" | "billing" | "economy" | "marketplace" | "self_service" | "profile" | "imob_chat" | "imob_dashboard">;
+      overrideQuickReplies?: string[];
+    }>;
+  };
   chatRuntime?: {
     readiness: "ready" | "incomplete";
     resolver: "agent_driven" | "legacy_compatible";
@@ -307,6 +369,43 @@ export type DelegationPolicy = {
   policyHash: string;
   signatureHash: string;
   createdAt: string;
+};
+
+export type DelegationRenewalPreview = {
+  policy: {
+    renewalMode: "manual_only" | "assisted" | "auto_eligible";
+    renewalWindowDays: number;
+    extensionDays: number;
+    minTrustToAutoRenew: number;
+    failClosed: boolean;
+    allowedScopes: Array<"read" | "execute" | "admin">;
+  };
+  evaluation: "eligible" | "review_required" | "too_early" | "blocked";
+  summary: string;
+  recommendedValidUntil?: string | null;
+  daysUntilExpiry: number;
+  canApplyRenewal: boolean;
+  autoEligible: boolean;
+};
+
+export type TenantRecipeCreateInput = {
+  agentId: string;
+  title: string;
+  summary: string;
+  instructions?: string;
+  status?: TenantRecipeStatus;
+  workspaceScope?: TenantRecipeWorkspaceScope;
+  tags?: string[];
+};
+
+export type TenantRecipeUpdateInput = {
+  agentId?: string;
+  title?: string;
+  summary?: string;
+  instructions?: string | null;
+  status?: TenantRecipeStatus;
+  workspaceScope?: TenantRecipeWorkspaceScope;
+  tags?: string[];
 };
 
 export type UploadedDocumentInfo = {
@@ -444,6 +543,7 @@ export type ProfileResponse = {
         createdAt: string;
       }>;
     };
+    experienceDiagnostics: ExperienceDiagnosticsBlock;
     workspaces: Array<{
       id: string;
       name: string;
@@ -452,6 +552,66 @@ export type ProfileResponse = {
     }>;
   };
   error?: { code?: string; message?: string; details?: unknown };
+};
+
+export type ExperienceDiagnosticsBlock = {
+  window: "7d" | "30d";
+  diagnosticSnapshot: ExperienceDiagnosticSnapshot;
+  frictionSummary: FrictionEventSummary;
+  optimizationSnapshot: OptimizationRecommendationSnapshot;
+  economyOpportunitySnapshot: EconomyOpportunitySnapshot;
+  operationalInsightSnapshot: OperationalInsightSnapshot;
+};
+
+export type TenantOperationalInsightResponse = {
+  ok: boolean;
+  data?: {
+    window: "7d" | "30d";
+    frictionSummary: FrictionEventSummary;
+    optimizationSnapshot: OptimizationRecommendationSnapshot;
+    economyOpportunitySnapshot: EconomyOpportunitySnapshot;
+    operationalInsightSnapshot: OperationalInsightSnapshot;
+  };
+  error?: { code?: string; message?: string; details?: unknown };
+};
+
+export type TenantEconomyOpportunityResponse = {
+  ok: boolean;
+  data?: EconomyOpportunitySnapshot;
+  error?: { code?: string; message?: string; details?: unknown };
+};
+
+export type ShadowExecutionContract = {
+  shadowExecutionId: string;
+  tenantId: string;
+  workspaceId: string;
+  agentId: string;
+  inputRef: string;
+  currentStage: "sandbox" | "preview" | "approval" | "promotion" | "production";
+  sideEffectMode:
+    | "zero_side_effect"
+    | "simulated_external_write"
+    | "preview_only"
+    | "production_write";
+  approvalStatus: "not_required" | "pending" | "approved" | "rejected";
+  preview: {
+    summary: string;
+    estimatedCostCents: number;
+    currency: string;
+    warnings: string[];
+    nextActions: string[];
+  };
+  promotion: {
+    target: "none" | "workspace_production" | "tenant_production";
+    promotedByUserId: string | null;
+    promotedAt: string | null;
+    productionRunId: string | null;
+  };
+  evidenceRefs: Array<{
+    source: "run" | "run_receipt" | "billing_estimate" | "guardrail_audit" | "governance_ledger";
+    refId: string;
+    label: string;
+  }>;
 };
 
 export type WorkspaceInvitationPreviewResponse = {
@@ -557,7 +717,119 @@ export type SessionContextResponse = {
       product: string;
       status: string;
     }>;
+    verticals?: Array<{
+      verticalId: "IMOB" | "LEGAL" | "HEALTH";
+      label: string;
+      activeDomain: "core" | "imob";
+      installedProduct: string | null;
+      rolloutStage: "context_only" | "installed_surface" | "operationalized";
+      enabled: boolean;
+      frontDoorSurface:
+        | "runs"
+        | "billing"
+        | "economy"
+        | "self_service"
+        | "agents"
+        | "marketplace"
+        | "profile"
+        | "imob_chat"
+        | "imob_dashboard"
+        | null;
+      operationalHubSurface:
+        | "runs"
+        | "billing"
+        | "economy"
+        | "self_service"
+        | "agents"
+        | "marketplace"
+        | "profile"
+        | "imob_chat"
+        | "imob_dashboard"
+        | null;
+      governanceHubSurface:
+        | "runs"
+        | "billing"
+        | "economy"
+        | "self_service"
+        | "agents"
+        | "marketplace"
+        | "profile"
+        | "imob_chat"
+        | "imob_dashboard"
+        | null;
+      investigationSurfaces: Array<
+        | "runs"
+        | "billing"
+        | "economy"
+        | "self_service"
+        | "agents"
+        | "marketplace"
+        | "profile"
+        | "imob_chat"
+        | "imob_dashboard"
+      >;
+      contextSpecRef: string;
+    }>;
     roles: string[];
+    experience?: {
+      resolverVersion: string;
+      roleProfile:
+        | "workspace_member"
+        | "workspace_admin"
+        | "tenant_admin"
+        | "founder_global"
+        | "service_operator";
+      landingSurface:
+        | "runs"
+        | "billing"
+        | "economy"
+        | "self_service"
+        | "agents"
+        | "marketplace"
+        | "profile"
+        | "imob_chat"
+        | "imob_dashboard";
+      landingPath: string;
+      primaryNavigation: Array<{
+        surfaceId:
+          | "runs"
+          | "billing"
+          | "economy"
+          | "self_service"
+          | "agents"
+          | "marketplace"
+          | "profile"
+          | "imob_chat"
+          | "imob_dashboard";
+        path: string;
+        label: string;
+      }>;
+      recommendedActions: Array<{
+        actionId: string;
+        surfaceId:
+          | "runs"
+          | "billing"
+          | "economy"
+          | "self_service"
+          | "agents"
+          | "marketplace"
+          | "profile"
+          | "imob_chat"
+          | "imob_dashboard";
+        path: string;
+        label: string;
+        priority: "primary" | "secondary";
+      }>;
+      allowedSurfaceClasses: Array<
+        "front_door" | "operational_hub" | "governance_hub" | "investigation_surface"
+      >;
+      fallbackMode: "fail_closed" | "core_safe_default" | "context_incomplete";
+      cachePolicy: {
+        strategy: "session_context_only";
+        sourceOfTruth: "runtime";
+        mode: "fail_safe_accelerator";
+      };
+    };
     branding: {
       brandName: string;
       logoUrl: string | null;
@@ -587,6 +859,46 @@ export type SessionContextResponse = {
       stage?: string | null;
     };
   };
+};
+
+export type ExperienceAuditResponse = {
+  ok: boolean;
+  data?: {
+    eventType: string;
+    traceId?: string | null;
+    resolverAuditEvent?: {
+      eventId: string;
+      resolverVersion: string;
+      tenantId: string;
+      workspaceId: string;
+      role: "workspace_member" | "workspace_admin" | "tenant_admin" | "founder_global" | "service_operator";
+      activeDomain: "core" | "imob";
+      installedProducts: string[];
+      surfaceId:
+        | "runs"
+        | "billing"
+        | "economy"
+        | "self_service"
+        | "agents"
+        | "marketplace"
+        | "profile"
+        | "imob_chat"
+        | "imob_dashboard";
+      decisionType:
+        | "landing_resolved"
+        | "investigation_mode.entered"
+        | "investigation_mode.exited"
+        | "investigation_mode.changed";
+      decisionValue: string;
+      fallbackMode: "fail_closed" | "core_safe_default" | "context_incomplete";
+      fromMode?: string;
+      toMode?: string;
+      reasonCodes?: string[];
+      traceId?: string;
+      occurredAt: string;
+    };
+  };
+  error?: { code?: string; message?: string; details?: unknown };
 };
 
 type CreateRunBody = {
@@ -822,6 +1134,49 @@ export async function apiOnboarding(body: {
   });
 }
 
+export async function apiGetOnboardingContext(): Promise<{ ok: boolean; data: OnboardingContext }> {
+  return http(`/onboarding/context`, { method: "GET" });
+}
+
+export async function apiGetTenantEconomyOpportunities(params?: {
+  scope?: "tenant" | "workspace";
+  cycle?: "current" | "previous";
+}): Promise<TenantEconomyOpportunityResponse> {
+  const query = new URLSearchParams();
+  if (params?.scope) query.set("scope", params.scope);
+  if (params?.cycle) query.set("cycle", params.cycle);
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  return http(`/economy-opportunities/tenant/summary${qs}`, { method: "GET" });
+}
+
+export async function apiListTenantRecipes(params?: {
+  view?: "workspace" | "tenant";
+}): Promise<{ items: TenantRecipe[] }> {
+  const query = new URLSearchParams();
+  if (params?.view) query.append("view", params.view);
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  return http(`/tenant-recipes${qs}`, { method: "GET" });
+}
+
+export async function apiCreateTenantRecipe(
+  body: TenantRecipeCreateInput
+): Promise<{ ok: boolean; item: TenantRecipe }> {
+  return http(`/tenant-recipes`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function apiUpdateTenantRecipe(
+  id: string,
+  body: TenantRecipeUpdateInput
+): Promise<{ ok: boolean; item: TenantRecipe }> {
+  return http(`/tenant-recipes/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
 export async function apiPreviewWorkspaceInvitation(token: string): Promise<WorkspaceInvitationPreviewResponse> {
   return http(`/auth/workspace-invitations/preview`, {
     method: "POST",
@@ -975,6 +1330,34 @@ export async function apiListDelegations(params?: {
   return http(`/delegations${qs}`, { method: "GET" });
 }
 
+export async function apiPreviewDelegationRenewal(
+  id: string
+): Promise<{ ok: boolean; preview: DelegationRenewalPreview }> {
+  return http(`/delegations/${id}/renewal-preview`, { method: "GET" });
+}
+
+export async function apiRenewDelegation(
+  id: string
+): Promise<{ ok: boolean; item: DelegationPolicy; preview: DelegationRenewalPreview }> {
+  return http(`/delegations/${id}/renew`, { method: "POST" });
+}
+
+export async function apiAutoRenewDelegations(): Promise<{
+  ok: boolean;
+  data: {
+    processed: number;
+    renewed: number;
+    results: Array<{
+      delegationId: string;
+      evaluation: string;
+      renewed: boolean;
+      nextValidUntil?: string | null;
+    }>;
+  };
+}> {
+  return http(`/delegations/renew-expiring`, { method: "POST" });
+}
+
 /** Runs */
 export async function apiListRuns(params: {
   agent?: string;
@@ -1027,6 +1410,7 @@ export type RunCostBreakdown = {
     source: "backend_pricing" | null;
     varianceCents: number | null;
   };
+  costOverview?: CostOverviewBlock;
   items: Array<{
     id: string;
     requestId: string;
@@ -1983,6 +2367,7 @@ export async function apiCreateRunWithHeaders(
   return http<{
     ok: boolean;
     data: Run;
+    shadowExecutionId?: string;
     warnings?: Array<{
       code: string;
       message: string;
@@ -2120,12 +2505,70 @@ export type TenantBillingSummary = {
     storageMb: number;
     updatedAt: string;
   } | null;
+  costOverview?: CostOverviewBlock;
+  optimizationRecommendations?: OptimizationRecommendationBundle;
+  optimizationSnapshot?: OptimizationRecommendationSnapshot;
+  economyOpportunitySnapshot?: EconomyOpportunitySnapshot;
+  operationalInsightSnapshot?: OperationalInsightSnapshot;
+  byAgent?: AgentBillingSummaryItem[];
+  byModel?: Array<{
+    provider: string;
+    model: string;
+    costCents: number;
+    tokens: number;
+  }>;
   byWorkspace: Array<{
     workspaceId: string;
     workspaceName: string;
     runs: number;
     costCents: number;
   }>;
+};
+
+export type OptimizationRecommendationEvidenceRef = {
+  source:
+    | "tenant_billing_summary"
+    | "agent_billing_summary"
+    | "run_cost_breakdown"
+    | "billing_reconciliation"
+    | "usage_ledger";
+  refId: string;
+  label: string;
+};
+
+export type OptimizationRecommendation = {
+  id: string;
+  tenantId: string;
+  workspaceId?: string;
+  recommendationType:
+    | "fleet_policy_change"
+    | "model_switch"
+    | "workspace_rebalance"
+    | "agent_efficiency_review"
+    | "cost_opportunity";
+  subjectType: "tenant" | "workspace" | "agent" | "model";
+  subjectId: string;
+  title: string;
+  summary: string;
+  timeWindow: {
+    label: string;
+    from: string;
+    to: string;
+  };
+  currentCostCents: number;
+  projectedCostCents: number;
+  estimatedSavingsCents: number;
+  confidence: number;
+  evidenceRefs: OptimizationRecommendationEvidenceRef[];
+  status: "proposed" | "accepted" | "rejected" | "applied" | "expired";
+  applyMode: "manual_review" | "one_click_apply" | "policy_backed";
+};
+
+export type OptimizationRecommendationBundle = {
+  tenantId: string;
+  workspaceId?: string;
+  generatedAt: string;
+  items: OptimizationRecommendation[];
 };
 
 export type BillingPricingQuotePlan = {
@@ -2729,8 +3172,80 @@ export async function apiCreateWorkspaceInvitation(body: {
   });
 }
 
-export async function apiGetProfile() {
-  return http<ProfileResponse>("/profile/me", { method: "GET" });
+export async function apiGetProfile(window: "7d" | "30d" = "7d") {
+  const qs = new URLSearchParams({ window });
+  return http<ProfileResponse>(`/profile/me?${qs.toString()}`, { method: "GET" });
+}
+
+export async function apiGetTenantOperationalInsight(window: "7d" | "30d" = "7d") {
+  const qs = new URLSearchParams({ window });
+  return http<TenantOperationalInsightResponse>(`/operational-insights/tenant/summary?${qs.toString()}`, {
+    method: "GET",
+  });
+}
+
+export async function apiCreateShadowExecutionPreview(body: {
+  agent: string;
+  prompt: string;
+  workspaceId?: string;
+  metadata?: Record<string, unknown>;
+  tools?: string[];
+  inputRef?: string;
+}) {
+  return http<{ ok: boolean; data: ShadowExecutionContract }>("/shadow-executions/preview", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function apiGetShadowExecution(id: string) {
+  return http<{ ok: boolean; data: ShadowExecutionContract }>(`/shadow-executions/${encodeURIComponent(id)}`, {
+    method: "GET",
+  });
+}
+
+export async function apiListShadowExecutions(params?: {
+  workspaceId?: string;
+  limit?: number;
+  currentStage?: ShadowExecutionContract["currentStage"];
+  approvalStatus?: ShadowExecutionContract["approvalStatus"];
+  agentId?: string;
+}) {
+  const qs = new URLSearchParams();
+  if (params?.workspaceId) qs.set("workspaceId", params.workspaceId);
+  if (typeof params?.limit === "number") qs.set("limit", String(params.limit));
+  if (params?.currentStage) qs.set("currentStage", params.currentStage);
+  if (params?.approvalStatus) qs.set("approvalStatus", params.approvalStatus);
+  if (params?.agentId) qs.set("agentId", params.agentId);
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return http<{
+    ok: boolean;
+    data: {
+      items: ShadowExecutionContract[];
+      count: number;
+      workspaceId: string;
+      filters: {
+        currentStage: ShadowExecutionContract["currentStage"] | null;
+        approvalStatus: ShadowExecutionContract["approvalStatus"] | null;
+        agentId: string | null;
+      };
+    };
+  }>(`/shadow-executions${suffix}`, {
+    method: "GET",
+  });
+}
+
+export async function apiPromoteShadowExecution(id: string, body?: { target?: "workspace_production" }) {
+  return http<{
+    ok: boolean;
+    data: {
+      shadowExecution: ShadowExecutionContract | null;
+      productionRun: Run;
+    };
+  }>(`/shadow-executions/${encodeURIComponent(id)}/promote-to-production`, {
+    method: "POST",
+    body: JSON.stringify(body ?? {}),
+  });
 }
 
 export async function apiUpdateProfile(body: {
@@ -2848,6 +3363,45 @@ export async function apiSwitchWorkspaceSession(workspaceId: string) {
 export async function apiGetSessionContext(domain?: "core" | "imob") {
   const query = domain ? `?domain=${encodeURIComponent(domain)}` : "";
   return http<SessionContextResponse>(`/session/context${query}`, { method: "GET" });
+}
+
+export async function apiPostExperienceAudit(
+  payload:
+    | {
+        auditType?: "investigation_mode";
+        surfaceId: "runs" | "billing";
+        action: "entered" | "exited" | "changed";
+        fromMode?: string;
+        toMode?: string;
+        reasonCodes?: string[];
+        metadata?: Record<string, unknown>;
+      }
+      | {
+        auditType: "landing_action_alignment";
+        surfaceId:
+          | "runs"
+          | "billing"
+          | "economy"
+          | "self_service"
+          | "agents"
+          | "marketplace"
+          | "profile"
+          | "imob_chat"
+          | "imob_dashboard";
+        action: "aligned" | "diverged";
+        landingPath: string;
+        primaryActionId?: string;
+        primaryActionPath?: string;
+        reasonCodes?: string[];
+        metadata?: Record<string, unknown>;
+      },
+  domain?: "core" | "imob"
+) {
+  const query = domain ? `?domain=${encodeURIComponent(domain)}` : "";
+  return http<ExperienceAuditResponse>(`/session/experience/audit${query}`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 }
 export async function apiUploadDocuments(formData: FormData, agentSlug: string) {
   const qs = new URLSearchParams({ agentSlug });

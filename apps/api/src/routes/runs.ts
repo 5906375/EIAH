@@ -18,6 +18,11 @@ import { buildRunEvidenceBundle } from "../services/evidenceBundle";
 import { requireScope } from "../middlewares/requireScope";
 import { evaluateTenantBillingExecutionGuard } from "../services/tenantBilling";
 import { WorkspaceAgentAssignmentError } from "../services/workspaceAgentAssignments";
+import { inferApprovalStatusFromMetadata, isSimulateMode } from "../services/runApprovalPolicy";
+import {
+  createShadowExecutionSnapshot,
+  updateShadowExecutionApprovalByRunId,
+} from "../services/shadowExecutionStore";
 
 export const runsRouter = Router();
 runsRouter.use(enforceTenant);
@@ -26,18 +31,6 @@ const serializeRun = (run: any) => ({
   ...run,
   projectId: run?.workspaceId,
 });
-
-function inferApprovalStatusFromMetadata(metadata: unknown): "pending" | "not_required" {
-  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return "not_required";
-  const record = metadata as Record<string, unknown>;
-  const requiresApproval =
-    record.requiresApproval === true ||
-    record.requires_confirmation === true ||
-    record.approvalRequired === true;
-  const riskTier = typeof record.riskTier === "string" ? record.riskTier.toLowerCase() : null;
-  const isHighTier = riskTier === "high" || riskTier === "critical";
-  return requiresApproval || isHighTier ? "pending" : "not_required";
-}
 
 const serializeRunEvent = (event: any) => ({
   id: event.id,
@@ -649,6 +642,37 @@ runsRouter.post("/runs", async (req, res) => {
       },
   });
 
+  let shadowExecution = null;
+  if (isSimulateMode(resolvedMetadata)) {
+    shadowExecution = await createShadowExecutionSnapshot({
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      agentId: agent,
+      inputRef: run.id,
+      runId: run.id,
+      approvalStatus: inferApprovalStatusFromMetadata(resolvedMetadata),
+      preview: {
+        summary: "Run enfileirado a partir de fluxo de simulação.",
+        estimatedCostCents: 0,
+        currency: "BRL",
+        warnings: shouldWarnWithoutBlock
+          ? [billingGuard.reasons[0]?.message ?? "Run em modo shadow com alerta."]
+          : [],
+        nextActions:
+          inferApprovalStatusFromMetadata(resolvedMetadata) === "pending"
+            ? ["Aguardar ou registrar aprovação antes da promoção para produção."]
+            : ["Revisar preview e decidir promoção para produção."],
+      },
+      evidenceRefs: [
+        { source: "run", refId: run.id, label: `run:${run.id}` },
+      ],
+      executionPayload: {
+        prompt,
+        metadata: resolvedMetadata ?? undefined,
+      },
+    });
+  }
+
   if (shouldWarnWithoutBlock) {
     await emitRunEvent({
       prisma,
@@ -754,6 +778,7 @@ runsRouter.post("/runs", async (req, res) => {
     return res.status(202).json({
       ok: true,
       data: serializeRun(run),
+      ...(shadowExecution ? { shadowExecutionId: shadowExecution.shadowExecutionId } : {}),
       queued: true,
       ...(shouldWarnWithoutBlock
         ? {
@@ -767,6 +792,7 @@ runsRouter.post("/runs", async (req, res) => {
                 details: {
                   mode: billingGuard.mode,
                   reasons: billingGuard.reasons,
+                  shadowExecutionId: shadowExecution?.shadowExecutionId ?? null,
                 },
               },
             ],
@@ -854,6 +880,14 @@ runsRouter.post("/runs/:id/approve", async (req, res) => {
     }),
     0
   );
+
+  await updateShadowExecutionApprovalByRunId({
+    tenantId: authContext.tenantId,
+    workspaceId: authContext.workspaceId,
+    runId: existing.id,
+    approvedByUserId: authContext.userId ?? null,
+    productionRunId: existing.id,
+  });
 
   return res.status(200).json({ ok: true, event: serializeRunEvent(event) });
 });

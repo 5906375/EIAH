@@ -1,6 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ApiError, type Agent, type Run } from "@/lib/api";
-import { apiEstimateCost, apiGetRun, apiListAgents } from "@/lib/api";
+import { ApiError, type Agent, type Run, type ShadowExecutionContract } from "@/lib/api";
+import {
+  apiCreateShadowExecutionPreview,
+  apiEstimateCost,
+  apiGetRun,
+  apiListAgents,
+  apiPromoteShadowExecution,
+} from "@/lib/api";
 import EstimateBadge from "./EstimateBadge";
 import RunStatusCard from "./RunStatusCard";
 import { useSession } from "@/state/sessionStore";
@@ -233,6 +239,7 @@ export default function AgentFormShell<FormValues>({
   const [trackedRunId, setTrackedRunId] = useState<string | null>(null);
   const [followUpDialog, setFollowUpDialog] = useState<NeedMoreInfoDialogState>(null);
   const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
+  const [shadowPreview, setShadowPreview] = useState<ShadowExecutionContract | null>(null);
   const [dismissedFollowUpRunId, setDismissedFollowUpRunId] = useState<string | null>(null);
   const { workspaceId = DEFAULT_WORKSPACE_ID } = useSession();
   const { executeAgent } = useAgentExecution();
@@ -359,9 +366,25 @@ export default function AgentFormShell<FormValues>({
             rawPayload: currentRequest.rawPayload ?? combined,
           },
         };
+
+        if (mode === "simulate") {
+          const previewResponse = await apiCreateShadowExecutionPreview({
+            agent: agentId,
+            prompt: currentRequest.prompt,
+            workspaceId,
+            metadata: payload.metadata,
+            inputRef: `self-service:${agentId}:${workspaceId}`,
+          });
+          setShadowPreview(previewResponse.data);
+          setLastRun(null);
+          setTrackedRunId(null);
+          return;
+        }
+
         const response = await executeAgent(agentId, payload);
         setLastRun(response.data);
         setTrackedRunId(response.data.id);
+        setShadowPreview(null);
       } catch (err) {
         let message = err instanceof Error ? err.message : "Falha ao executar.";
         if (err instanceof ApiError && err.status === 403 && err.body && typeof err.body === "object") {
@@ -461,6 +484,35 @@ export default function AgentFormShell<FormValues>({
     setIsFollowUpOpen(false);
   }, [followUpDialog]);
 
+  const promoteShadowToProduction = useCallback(async () => {
+    if (!shadowPreview) return;
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      const response = await apiPromoteShadowExecution(shadowPreview.shadowExecutionId, {
+        target: "workspace_production",
+      });
+      setShadowPreview(response.data.shadowExecution);
+      setLastRun(response.data.productionRun);
+      setTrackedRunId(response.data.productionRun.id);
+    } catch (err) {
+      let message = err instanceof Error ? err.message : "Falha ao promover preview para produção.";
+      if (err instanceof ApiError && err.body && typeof err.body === "object") {
+        const body = err.body as {
+          error?: {
+            message?: string;
+          };
+        };
+        if (typeof body.error?.message === "string" && body.error.message.trim()) {
+          message = body.error.message;
+        }
+      }
+      setError(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [shadowPreview]);
+
   return (
     <div className="space-y-6">
       <header className="space-y-3 rounded-3xl border border-white/10 bg-surface/80 p-6">
@@ -514,6 +566,70 @@ export default function AgentFormShell<FormValues>({
               {isSubmitting ? "Executando..." : "Rodar agora"}
             </button>
           </div>
+          {shadowPreview ? (
+            <div className="mt-6 rounded-2xl border border-accent/30 bg-accent/10 p-4 text-xs text-foreground">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-accent">Shadow preview</p>
+                  <p className="mt-2 text-sm font-semibold text-foreground">{shadowPreview.preview.summary}</p>
+                </div>
+                <span className="pill">{shadowPreview.currentStage}</span>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-4">
+                <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                  <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Custo estimado</p>
+                  <p className="mt-2 text-sm text-foreground">
+                    {(shadowPreview.preview.estimatedCostCents / 100).toLocaleString("pt-BR", {
+                      style: "currency",
+                      currency: shadowPreview.preview.currency || "BRL",
+                    })}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                  <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Approval</p>
+                  <p className="mt-2 text-sm text-foreground">{shadowPreview.approvalStatus}</p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                  <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Side effect</p>
+                  <p className="mt-2 text-xs text-foreground">{shadowPreview.sideEffectMode}</p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                  <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Shadow ID</p>
+                  <p className="mt-2 break-all text-xs text-foreground">{shadowPreview.shadowExecutionId}</p>
+                </div>
+              </div>
+              {shadowPreview.preview.warnings.length > 0 ? (
+                <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-amber-100">
+                  {shadowPreview.preview.warnings[0]}
+                </div>
+              ) : null}
+              {shadowPreview.preview.nextActions.length > 0 ? (
+                <div className="mt-4">
+                  <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Próximos passos</p>
+                  <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                    {shadowPreview.preview.nextActions.map((step) => (
+                      <li key={step}>- {step}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => void promoteShadowToProduction()}
+                  className="rounded-full border border-accent/60 bg-accent/15 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.3em] text-accent transition hover:border-accent hover:bg-accent/25 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={isSubmitting || shadowPreview.approvalStatus === "pending"}
+                >
+                  {isSubmitting ? "Promovendo..." : "Promover para produção"}
+                </button>
+                {shadowPreview.approvalStatus === "pending" ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    Este preview ainda exige aprovação antes da promoção.
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
         </div>
         <RunStatusCard run={lastRun} error={error} />
       </section>

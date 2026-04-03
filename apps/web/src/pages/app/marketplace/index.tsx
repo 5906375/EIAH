@@ -118,6 +118,7 @@ const MarketplaceIndexPage: React.FC = () => {
           availableDomains: context.data.availableDomains,
           entitlements: context.data.entitlements,
           installedProducts: (context.data.productInstallations ?? []).map((entry) => entry.product),
+          verticals: context.data.verticals,
           roles: context.data.roles,
           branding: {
             brandName: context.data.branding.brandName,
@@ -231,6 +232,15 @@ const MarketplaceIndexPage: React.FC = () => {
     if (!topAgent || total <= 0) return 0;
     return (topAgent.costCents / total) * 100;
   }, [activeCostAgents, topAgent]);
+  const workspaceCostOverview = billingSummary?.costOverview?.workspaceConsumption ?? null;
+  const auditableCostOverview = billingSummary?.costOverview?.auditableCost ?? null;
+  const verticalRegistry = session.verticals ?? [];
+  const marketplaceStages = [
+    { id: "discovery", label: "Discovery" },
+    { id: "readiness", label: "Readiness" },
+    { id: "impact", label: "Impacto" },
+    { id: "activation", label: "Ativação" },
+  ] as const;
 
   return (
     <div className="space-y-8">
@@ -243,9 +253,20 @@ const MarketplaceIndexPage: React.FC = () => {
         <p className="mt-3 text-xs uppercase tracking-[0.22em] text-muted-foreground/80">
           {brand} • {workspace}
         </p>
+        <div className="mt-5 flex flex-wrap gap-2">
+          {marketplaceStages.map((stage) => (
+            <a
+              key={stage.id}
+              href={`#marketplace-${stage.id}`}
+              className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground transition hover:border-accent/40 hover:text-foreground"
+            >
+              {stage.label}
+            </a>
+          ))}
+        </div>
         <div className="mt-6 grid gap-3 md:grid-cols-4">
           <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Custo do tenant</p>
+            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Consumo do tenant</p>
             <p className="mt-2 text-lg font-semibold text-foreground">
               {formatBRL(billingSummary?.totals.costCents ?? 0)}
             </p>
@@ -278,35 +299,90 @@ const MarketplaceIndexPage: React.FC = () => {
         </div>
       </header>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section id="marketplace-discovery" className="space-y-4">
+        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">Discovery</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Descoberta das verticais disponíveis e leitura inicial do status de instalação por workspace.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-surface/70 p-5">
+          <p className="text-[10px] uppercase tracking-[0.22em] text-accent/80">Vertical rollout registry</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Estágio canônico exposto pelo `session/context` para cada vertical do tenant atual.
+          </p>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {verticalRegistry.length ? (
+              verticalRegistry.map((item) => (
+                <div key={`vertical-registry-${item.verticalId}`} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-foreground">{item.label}</p>
+                    <span className="pill">{item.rolloutStage}</span>
+                  </div>
+                  <p className="mt-2 text-[11px] text-muted-foreground">
+                    Domínio: {item.activeDomain} • Enabled: {item.enabled ? "sim" : "não"}
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Front door: {item.frontDoorSurface ?? "—"}
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Hub operacional: {item.operationalHubSurface ?? "—"}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground">Nenhuma vertical registrada no contexto atual.</p>
+            )}
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
         {VERTICALS.map((vertical) => {
           const active = isActiveInstall(installations, vertical.product);
           const install = installations.find(
             (item) => item.product.trim().toUpperCase() === vertical.product && item.status.trim().toLowerCase() === "active"
           );
+          const runtimeVertical = verticalRegistry.find((item) => item.verticalId === vertical.product);
+          const rolloutStage = runtimeVertical?.rolloutStage ?? (vertical.status === "preview" ? "context_only" : "installed_surface");
+          const rolloutBadgeClass = active
+            ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-200"
+            : rolloutStage === "operationalized"
+              ? "border-amber-300/40 bg-amber-500/10 text-amber-200"
+              : "border-white/20 bg-white/5 text-muted-foreground";
+          const rolloutBadgeLabel = active
+            ? "ativo"
+            : rolloutStage === "operationalized"
+              ? "operacional"
+              : rolloutStage === "installed_surface"
+                ? "instalado"
+                : "contexto";
           return (
             <article key={vertical.product} className="rounded-2xl border border-white/10 bg-surface/70 p-5">
               <div className="flex items-start justify-between gap-2">
                 <h2 className="text-base font-semibold text-foreground">{vertical.title}</h2>
-                <span
-                  className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.22em] ${
-                    active
-                      ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-200"
-                      : vertical.status === "preview"
-                      ? "border-white/20 bg-white/5 text-muted-foreground"
-                      : "border-amber-300/40 bg-amber-500/10 text-amber-200"
-                  }`}
-                >
-                  {active ? "ativo" : vertical.status === "preview" ? "preview" : "disponível"}
+                <span className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.22em] ${rolloutBadgeClass}`}>
+                  {rolloutBadgeLabel}
                 </span>
               </div>
 
               <p className="mt-2 text-sm text-muted-foreground">{vertical.summary}</p>
+              {runtimeVertical ? (
+                <div className="mt-3 space-y-1 text-[11px] text-muted-foreground">
+                  <p>
+                    Rollout canônico: <span className="text-foreground">{runtimeVertical.rolloutStage}</span>
+                  </p>
+                  <p>
+                    Front door: <span className="text-foreground">{runtimeVertical.frontDoorSurface ?? "—"}</span>
+                  </p>
+                  <p>
+                    Hub operacional: <span className="text-foreground">{runtimeVertical.operationalHubSurface ?? "—"}</span>
+                  </p>
+                </div>
+              ) : null}
               <p className="mt-3 text-xs text-muted-foreground">Ativado em: {fmtDate(install?.activatedAt)}</p>
               {active ? (
                 <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-3 text-xs text-muted-foreground">
                   <p>
-                    Custo do workspace:{" "}
+                    Consumo do workspace:{" "}
                     <span className="text-foreground">{formatBRL(activeWorkspaceBilling?.costCents ?? 0)}</span>
                   </p>
                   <p className="mt-1">
@@ -320,7 +396,7 @@ const MarketplaceIndexPage: React.FC = () => {
                     <span className="text-foreground">{topAgent?.agent ?? "Sem uso financeiro ainda"}</span>
                   </p>
                   <p className="mt-1">
-                    Custo médio por run:{" "}
+                    Custo desta execução (médio por run):{" "}
                     <span className="text-foreground">{formatBRL(averageCostPerRun(activeWorkspaceBilling))}</span>
                   </p>
                 </div>
@@ -374,8 +450,34 @@ const MarketplaceIndexPage: React.FC = () => {
             </article>
           );
         })}
+        </div>
       </section>
 
+      <section id="marketplace-impact" className="space-y-4">
+        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">Impacto</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Leitura financeira e operacional para entender custo, dominância e efeito no workspace atual.
+          </p>
+        </div>
+        {(workspaceCostOverview || auditableCostOverview) ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            {workspaceCostOverview ? (
+              <article className="rounded-2xl border border-white/10 bg-surface/70 p-5">
+                <p className="text-[10px] uppercase tracking-[0.22em] text-accent/80">{workspaceCostOverview.title}</p>
+                <p className="mt-2 text-lg font-semibold text-foreground">{formatBRL(workspaceCostOverview.amountCents)}</p>
+                <p className="mt-2 text-xs text-muted-foreground">{workspaceCostOverview.summary}</p>
+              </article>
+            ) : null}
+            {auditableCostOverview ? (
+              <article className="rounded-2xl border border-white/10 bg-surface/70 p-5">
+                <p className="text-[10px] uppercase tracking-[0.22em] text-accent/80">{auditableCostOverview.title}</p>
+                <p className="mt-2 text-lg font-semibold text-foreground">{formatBRL(auditableCostOverview.amountCents)}</p>
+                <p className="mt-2 text-xs text-muted-foreground">{auditableCostOverview.summary}</p>
+              </article>
+            ) : null}
+          </div>
+        ) : null}
       <section className="grid gap-4 lg:grid-cols-3">
         <article className="rounded-2xl border border-white/10 bg-surface/70 p-5">
           <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Comparação financeira</p>
@@ -408,7 +510,15 @@ const MarketplaceIndexPage: React.FC = () => {
           </div>
         </article>
       </section>
+      </section>
 
+      <section id="marketplace-readiness" className="space-y-4">
+        <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">Readiness</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Smoke test e validação operacional mínima antes de tratar uma vertical como pronta para uso local.
+          </p>
+        </div>
       <section className="rounded-2xl border border-white/10 bg-surface/70 p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className="text-sm font-semibold uppercase tracking-[0.28em] text-muted-foreground">Smoke test do ambiente</h3>
@@ -446,6 +556,15 @@ const MarketplaceIndexPage: React.FC = () => {
 
         {notice ? <p className="mt-4 text-sm text-emerald-300">{notice}</p> : null}
         {error ? <p className="mt-4 text-sm text-rose-300">{error}</p> : null}
+      </section>
+      </section>
+
+      <section id="marketplace-activation" className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-muted-foreground">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">Ativação</p>
+        <p className="mt-2">
+          A ativação continua acontecendo dentro dos cards da vertical, para preservar o fluxo atual, mas agora a página deixa explícito o funil:
+          descobrir, validar readiness, medir impacto e só então ativar.
+        </p>
       </section>
 
       <footer className="text-xs text-muted-foreground">

@@ -2,11 +2,17 @@ import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { selfServiceConfigs } from "./config";
 import {
+  apiCreateTenantRecipe,
+  apiGetOnboardingContext,
   apiListDelegations,
   apiListMarketplace,
+  apiListTenantRecipes,
   apiSubscribeMarketplace,
+  apiUpdateTenantRecipe,
   type DelegationPolicy,
   type MarketplaceItem,
+  type OnboardingContext,
+  type TenantRecipe,
 } from "@/lib/api";
 import { useSession } from "@/state/sessionStore";
 import eiahAgentsVideo from "../../assets/eiah-agentes.mp4";
@@ -189,6 +195,22 @@ export default function SelfServiceIndexPage() {
   const [subscribedIds, setSubscribedIds] = React.useState<Set<string>>(new Set());
   const [subscribeNotice, setSubscribeNotice] = React.useState<string | null>(null);
   const [itemErrors, setItemErrors] = React.useState<Record<string, string>>({});
+  const [workspaceRecipes, setWorkspaceRecipes] = React.useState<TenantRecipe[]>([]);
+  const [tenantRecipes, setTenantRecipes] = React.useState<TenantRecipe[]>([]);
+  const [tenantRecipesStatus, setTenantRecipesStatus] = React.useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [tenantRecipesError, setTenantRecipesError] = React.useState<string | null>(null);
+  const [tenantRecipeNotice, setTenantRecipeNotice] = React.useState<string | null>(null);
+  const [tenantRecipeSubmitting, setTenantRecipeSubmitting] = React.useState(false);
+  const [onboardingContext, setOnboardingContext] = React.useState<OnboardingContext | null>(null);
+  const [onboardingContextStatus, setOnboardingContextStatus] = React.useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [onboardingContextError, setOnboardingContextError] = React.useState<string | null>(null);
+  const [tenantRecipeForm, setTenantRecipeForm] = React.useState({
+    agentId: selfServiceConfigs[0]?.agentId ?? "EIAH",
+    title: "",
+    summary: "",
+    instructions: "",
+    scopeMode: "current_workspace" as "current_workspace" | "all_workspaces",
+  });
   const [formValues, setFormValues] = React.useState<
     Record<string, { scope: "read" | "execute" | "admin"; trustMin: string; validUntil: string }>
   >({});
@@ -225,6 +247,13 @@ export default function SelfServiceIndexPage() {
       map.set(normalizeCatalogText(config.agentId), canonical);
     });
 
+    return map;
+  }, []);
+  const selfServiceConfigByAgentId = React.useMemo(() => {
+    const map = new Map<string, (typeof selfServiceConfigs)[number]>();
+    selfServiceConfigs.forEach((config) => {
+      map.set(normalizeCatalogText(config.agentId), config);
+    });
     return map;
   }, []);
 
@@ -295,6 +324,30 @@ export default function SelfServiceIndexPage() {
     }
   }, []);
 
+  const refreshTenantRecipes = React.useCallback(async () => {
+    if (!session.token) {
+      setWorkspaceRecipes([]);
+      setTenantRecipes([]);
+      setTenantRecipesStatus("idle");
+      setTenantRecipesError(null);
+      return;
+    }
+    setTenantRecipesStatus("loading");
+    setTenantRecipesError(null);
+    try {
+      const [workspaceResponse, tenantResponse] = await Promise.all([
+        apiListTenantRecipes({ view: "workspace" }),
+        apiListTenantRecipes({ view: "tenant" }),
+      ]);
+      setWorkspaceRecipes(workspaceResponse.items ?? []);
+      setTenantRecipes(tenantResponse.items ?? []);
+      setTenantRecipesStatus("ready");
+    } catch (error) {
+      setTenantRecipesStatus("error");
+      setTenantRecipesError(error instanceof Error ? error.message : "Falha ao carregar recipes do tenant");
+    }
+  }, [session.token]);
+
   React.useEffect(() => {
     let active = true;
     setMarketplaceStatus("loading");
@@ -325,6 +378,42 @@ export default function SelfServiceIndexPage() {
       active = false;
     };
   }, [session.workspaceId, session.tenantId, session.token]);
+
+  React.useEffect(() => {
+    void refreshTenantRecipes();
+  }, [refreshTenantRecipes]);
+
+  React.useEffect(() => {
+    if (!session.token) {
+      setOnboardingContext(null);
+      setOnboardingContextStatus("idle");
+      setOnboardingContextError(null);
+      return;
+    }
+
+    let active = true;
+    setOnboardingContextStatus("loading");
+    setOnboardingContextError(null);
+
+    apiGetOnboardingContext()
+      .then((response) => {
+        if (!active) return;
+        setOnboardingContext(response.data);
+        setOnboardingContextStatus("ready");
+      })
+      .catch((error) => {
+        if (!active) return;
+        setOnboardingContext(null);
+        setOnboardingContextStatus("error");
+        setOnboardingContextError(
+          error instanceof Error ? error.message : "Falha ao carregar onboarding contextual."
+        );
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [session.token, session.workspaceId]);
 
   React.useEffect(() => {
     const next = new Set<string>();
@@ -389,6 +478,62 @@ export default function SelfServiceIndexPage() {
         next.delete(item.id);
         return next;
       });
+    }
+  };
+
+  const handleCreateTenantRecipe = async (status: "draft" | "homologated") => {
+    if (!session.token || tenantRecipeSubmitting) return;
+    setTenantRecipeSubmitting(true);
+    setTenantRecipeNotice(null);
+    setTenantRecipesError(null);
+    try {
+      await apiCreateTenantRecipe({
+        agentId: tenantRecipeForm.agentId,
+        title: tenantRecipeForm.title.trim(),
+        summary: tenantRecipeForm.summary.trim(),
+        instructions: tenantRecipeForm.instructions.trim() || undefined,
+        status,
+        workspaceScope:
+          tenantRecipeForm.scopeMode === "all_workspaces"
+            ? { mode: "all_workspaces", workspaceIds: [] }
+            : { mode: "selected_workspaces", workspaceIds: [session.workspaceId] },
+      });
+      setTenantRecipeForm((prev) => ({
+        ...prev,
+        title: "",
+        summary: "",
+        instructions: "",
+      }));
+      await refreshTenantRecipes();
+      setTenantRecipeNotice(
+        status === "homologated"
+          ? "Recipe homologada e publicada para consumo."
+          : "Recipe salva como rascunho."
+      );
+    } catch (error) {
+      setTenantRecipesError(error instanceof Error ? error.message : "Falha ao salvar tenant recipe");
+    } finally {
+      setTenantRecipeSubmitting(false);
+    }
+  };
+
+  const handleUpdateTenantRecipeStatus = async (
+    recipe: TenantRecipe,
+    status: "homologated" | "deprecated"
+  ) => {
+    if (!session.token) return;
+    setTenantRecipeNotice(null);
+    setTenantRecipesError(null);
+    try {
+      await apiUpdateTenantRecipe(recipe.id, { status });
+      await refreshTenantRecipes();
+      setTenantRecipeNotice(
+        status === "homologated"
+          ? `Recipe ${recipe.title} homologada.`
+          : `Recipe ${recipe.title} marcada como deprecated.`
+      );
+    } catch (error) {
+      setTenantRecipesError(error instanceof Error ? error.message : "Falha ao atualizar tenant recipe");
     }
   };
 
@@ -539,6 +684,323 @@ export default function SelfServiceIndexPage() {
             </Link>
           );
         })}
+      </section>
+
+      <section className="rounded-3xl border border-white/10 bg-surface/70 p-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Onboarding contextual</p>
+            <h3 className="mt-2 text-xl font-semibold text-foreground">Guia de sobrevivência do workspace</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Leitura curta do que já está liberado e de qual trilha faz mais sentido abrir primeiro.
+            </p>
+          </div>
+        </div>
+        {!session.token ? (
+          <p className="mt-6 text-sm text-muted-foreground">
+            Entre com um workspace ativo para receber onboarding contextual por recipes e produtos liberados.
+          </p>
+        ) : onboardingContextStatus === "loading" ? (
+          <p className="mt-6 text-sm text-muted-foreground">Carregando onboarding contextual...</p>
+        ) : onboardingContextStatus === "error" ? (
+          <p className="mt-6 text-sm text-red-300">
+            {onboardingContextError ?? "Falha ao carregar onboarding contextual."}
+          </p>
+        ) : onboardingContext ? (
+          <div className="mt-6 grid gap-4 lg:grid-cols-[0.9fr,1.1fr]">
+            <div className="rounded-2xl border border-white/10 bg-[#0a1527] p-5">
+              <p className="text-[10px] uppercase tracking-[0.25em] text-accent">
+                {onboardingContext.roleProfile} • {onboardingContext.activeDomain}
+              </p>
+              <p className="mt-3 text-sm text-foreground">{onboardingContext.summary}</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {onboardingContext.installedProducts.length === 0 ? (
+                  <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                    sem produtos instalados
+                  </span>
+                ) : (
+                  onboardingContext.installedProducts.map((product) => (
+                    <span
+                      key={`product-${product}`}
+                      className="rounded-full border border-accent/40 bg-accent/15 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-accent"
+                    >
+                      {product}
+                    </span>
+                  ))
+                )}
+              </div>
+              <div className="mt-4 space-y-2 text-xs text-muted-foreground">
+                <p className="uppercase tracking-[0.2em] text-[10px]">Recipes visíveis</p>
+                {onboardingContext.visibleRecipes.length === 0 ? (
+                  <p>Nenhuma recipe homologada visível neste workspace.</p>
+                ) : (
+                  onboardingContext.visibleRecipes.map((recipe) => (
+                    <p key={`context-recipe-${recipe.id}`}>
+                      {recipe.title} • {recipe.agentId}
+                    </p>
+                  ))
+                )}
+              </div>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-2xl border border-white/10 bg-[#0a1527] p-5">
+                <p className="text-[10px] uppercase tracking-[0.25em] text-accent">Próximos passos</p>
+                <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+                  {onboardingContext.nextSteps.map((step) => (
+                    <li key={step}>{step}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-[#0a1527] p-5">
+                <p className="text-[10px] uppercase tracking-[0.25em] text-accent">Restrições</p>
+                <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+                  {onboardingContext.constraints.map((constraint) => (
+                    <li key={constraint}>{constraint}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </section>
+
+      <section className="rounded-3xl border border-white/10 bg-surface/70 p-6">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.3em] text-muted-foreground">Tenant recipes</p>
+            <h3 className="mt-2 text-xl font-semibold text-foreground">Catálogo interno homologado</h3>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Recipes do tenant permitem homologar um agente e liberar um caminho guiado por workspace.
+            </p>
+          </div>
+          {tenantRecipeNotice ? (
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-muted-foreground">
+              {tenantRecipeNotice}
+            </span>
+          ) : null}
+        </div>
+
+        {!session.token ? (
+          <p className="mt-6 text-sm text-muted-foreground">
+            Entre com um workspace ativo para ver e publicar recipes do tenant.
+          </p>
+        ) : null}
+        {session.token && tenantRecipesStatus === "loading" ? (
+          <p className="mt-6 text-sm text-muted-foreground">Carregando recipes do tenant...</p>
+        ) : null}
+        {session.token && tenantRecipesStatus === "error" ? (
+          <p className="mt-6 text-sm text-red-300">{tenantRecipesError ?? "Falha ao carregar recipes do tenant"}</p>
+        ) : null}
+
+        {session.token ? (
+          <div className="mt-6 grid gap-6 lg:grid-cols-[1.2fr,0.8fr]">
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.25em] text-accent">Receitas visíveis neste workspace</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Apenas recipes homologadas e liberadas para o workspace atual aparecem aqui.
+                </p>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                {workspaceRecipes.length === 0 ? (
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-sm text-muted-foreground">
+                    Nenhuma recipe homologada disponível para este workspace.
+                  </div>
+                ) : (
+                  workspaceRecipes.map((recipe) => {
+                    const config = selfServiceConfigByAgentId.get(normalizeCatalogText(recipe.agentId));
+                    const recipePath = config ? `/self-service/${config.slug}` : null;
+                    return (
+                      <div key={recipe.id} className="rounded-2xl border border-white/10 bg-[#0a1527] p-5">
+                        <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-accent">
+                          <span className="rounded-full bg-accent/20 px-2 py-1">{recipe.status}</span>
+                          <span>{recipe.agentId}</span>
+                        </div>
+                        <h4 className="mt-3 text-lg font-semibold text-foreground">{recipe.title}</h4>
+                        <p className="mt-2 text-sm text-muted-foreground">{recipe.summary}</p>
+                        {recipe.instructions ? (
+                          <p className="mt-3 text-xs text-muted-foreground">{recipe.instructions}</p>
+                        ) : null}
+                        <p className="mt-3 text-xs text-muted-foreground">
+                          Escopo:{" "}
+                          {recipe.workspaceScope.mode === "all_workspaces"
+                            ? "todos os workspaces"
+                            : "workspace selecionado"}
+                        </p>
+                        {recipe.tags.length > 0 ? (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {recipe.tags.map((tag) => (
+                              <span
+                                key={`${recipe.id}-${tag}`}
+                                className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
+                        {recipePath ? (
+                          <Link
+                            to={recipePath}
+                            className="mt-4 inline-flex items-center gap-2 rounded-full border border-accent/60 bg-accent/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent transition hover:border-accent hover:bg-accent/30"
+                          >
+                            Abrir no self-service
+                          </Link>
+                        ) : (
+                          <span className="mt-4 inline-flex items-center rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.25em] text-muted-foreground">
+                            Agente sem rota guiada
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-white/10 bg-[#0a1527] p-5">
+                <p className="text-xs uppercase tracking-[0.25em] text-accent">Publicar nova recipe</p>
+                <div className="mt-4 grid gap-3 text-xs text-muted-foreground">
+                  <label className="flex flex-col gap-2">
+                    <span className="uppercase tracking-[0.2em] text-[10px]">Agente</span>
+                    <select
+                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-foreground"
+                      value={tenantRecipeForm.agentId}
+                      onChange={(event) =>
+                        setTenantRecipeForm((prev) => ({ ...prev, agentId: event.target.value }))
+                      }
+                    >
+                      {selfServiceConfigs.map((config) => (
+                        <option key={config.slug} value={config.agentId}>
+                          {config.title}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="flex flex-col gap-2">
+                    <span className="uppercase tracking-[0.2em] text-[10px]">Título</span>
+                    <input
+                      type="text"
+                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-foreground"
+                      value={tenantRecipeForm.title}
+                      onChange={(event) =>
+                        setTenantRecipeForm((prev) => ({ ...prev, title: event.target.value }))
+                      }
+                    />
+                  </label>
+                  <label className="flex flex-col gap-2">
+                    <span className="uppercase tracking-[0.2em] text-[10px]">Resumo</span>
+                    <textarea
+                      rows={3}
+                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-foreground"
+                      value={tenantRecipeForm.summary}
+                      onChange={(event) =>
+                        setTenantRecipeForm((prev) => ({ ...prev, summary: event.target.value }))
+                      }
+                    />
+                  </label>
+                  <label className="flex flex-col gap-2">
+                    <span className="uppercase tracking-[0.2em] text-[10px]">Instruções</span>
+                    <textarea
+                      rows={4}
+                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-foreground"
+                      value={tenantRecipeForm.instructions}
+                      onChange={(event) =>
+                        setTenantRecipeForm((prev) => ({ ...prev, instructions: event.target.value }))
+                      }
+                    />
+                  </label>
+                  <label className="flex flex-col gap-2">
+                    <span className="uppercase tracking-[0.2em] text-[10px]">Escopo</span>
+                    <select
+                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-foreground"
+                      value={tenantRecipeForm.scopeMode}
+                      onChange={(event) =>
+                        setTenantRecipeForm((prev) => ({
+                          ...prev,
+                          scopeMode: event.target.value as "current_workspace" | "all_workspaces",
+                        }))
+                      }
+                    >
+                      <option value="current_workspace">Workspace atual</option>
+                      <option value="all_workspaces">Todos os workspaces</option>
+                    </select>
+                  </label>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    disabled={
+                      tenantRecipeSubmitting ||
+                      !tenantRecipeForm.title.trim() ||
+                      !tenantRecipeForm.summary.trim()
+                    }
+                    onClick={() => void handleCreateTenantRecipe("draft")}
+                    className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-foreground transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Salvar draft
+                  </button>
+                  <button
+                    type="button"
+                    disabled={
+                      tenantRecipeSubmitting ||
+                      !tenantRecipeForm.title.trim() ||
+                      !tenantRecipeForm.summary.trim()
+                    }
+                    onClick={() => void handleCreateTenantRecipe("homologated")}
+                    className="rounded-full border border-accent/60 bg-accent/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent transition hover:border-accent hover:bg-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    Homologar e publicar
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-white/10 bg-[#0a1527] p-5">
+                <p className="text-xs uppercase tracking-[0.25em] text-accent">Gerenciar catálogo do tenant</p>
+                <div className="mt-4 space-y-3">
+                  {tenantRecipes.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Nenhuma recipe criada neste tenant ainda.</p>
+                  ) : (
+                    tenantRecipes.map((recipe) => (
+                      <div key={`tenant-recipe-${recipe.id}`} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">{recipe.title}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {recipe.agentId} • {recipe.status}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {recipe.status !== "homologated" ? (
+                              <button
+                                type="button"
+                                onClick={() => void handleUpdateTenantRecipeStatus(recipe, "homologated")}
+                                className="rounded-full border border-accent/60 bg-accent/20 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-accent transition hover:border-accent hover:bg-accent/30"
+                              >
+                                Homologar
+                              </button>
+                            ) : null}
+                            {recipe.status !== "deprecated" ? (
+                              <button
+                                type="button"
+                                onClick={() => void handleUpdateTenantRecipeStatus(recipe, "deprecated")}
+                                className="rounded-full border border-amber-400/40 bg-amber-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-amber-200 transition hover:bg-amber-400/20"
+                              >
+                                Deprecar
+                              </button>
+                            ) : null}
+                          </div>
+                        </div>
+                        <p className="mt-3 text-xs text-muted-foreground">{recipe.summary}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </section>
 
       <section className="rounded-3xl border border-white/10 bg-surface/70 p-6">

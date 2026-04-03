@@ -19,8 +19,11 @@ import {
 } from "@/components/runs/utils";
 import {
   ApiError,
+  apiCreateShadowExecutionPreview,
   apiGetBillingReconciliationSummary,
   apiGetImobFunnelHealth,
+  apiPromoteShadowExecution,
+  apiPostExperienceAudit,
   apiGetRun,
   apiGetRunCostBreakdown,
   apiGetTenantBillingSummary,
@@ -32,6 +35,7 @@ import {
   Run,
   RunCostBreakdown,
   RunStatus,
+  ShadowExecutionContract,
 } from "../../../lib/api";
 import { useAgentExecution } from "@/hooks/useAgentExecution";
 import { useSession } from "@/state/sessionStore";
@@ -712,6 +716,7 @@ const RunsPage: React.FC = () => {
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [shadowPreview, setShadowPreview] = useState<ShadowExecutionContract | null>(null);
   const [activeOnboardingTab, setActiveOnboardingTab] = useState<"video" | "rest" | "sdk" | "templates">("video");
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const [tenantQuotaPct, setTenantQuotaPct] = useState<number | null>(null);
@@ -731,6 +736,10 @@ const RunsPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const requestedDomain = (searchParams.get("domain") || "").trim().toLowerCase();
   const requestedRunId = (searchParams.get("runId") || "").trim() || null;
+  const [runPageMode, setRunPageMode] = useState<"overview" | "execution" | "investigation">(
+    requestedRunId ? "investigation" : "overview"
+  );
+  const [isInvestigationMode, setIsInvestigationMode] = useState(Boolean(requestedRunId));
   const { tenantId, workspaceId = DEFAULT_WORKSPACE_ID, userId, token } = session;
   const brandName = session.branding?.brandName?.trim() || "Tenant";
   const workspaceLabel = session.branding?.workspaceLabel?.trim() || "DEFAULT";
@@ -754,6 +763,11 @@ const RunsPage: React.FC = () => {
     { id: "rest", label: "REST" },
     { id: "sdk", label: "SDK" },
     { id: "templates", label: "Low-code" },
+  ] as const;
+  const runModes = [
+    { id: "overview", label: "Overview" },
+    { id: "execution", label: "Execução" },
+    { id: "investigation", label: "Investigação" },
   ] as const;
 
   const visibleRuns = useMemo(() => {
@@ -815,6 +829,7 @@ const RunsPage: React.FC = () => {
       hasGap: Boolean(issue),
     };
   }, [selectedRunCost, selectedRunReconciliation]);
+  const runExecutionCostOverview = selectedRunCost?.costOverview?.executionCost ?? null;
   const selectedRunBreakdownItems = useMemo(() => selectedRunCost?.items ?? [], [selectedRunCost]);
   const selectedRunAuditGaps = useMemo(() => selectedRunReconciliation?.items.auditGaps ?? [], [selectedRunReconciliation]);
   const selectedRunDuplicateCharges = useMemo(
@@ -890,6 +905,28 @@ const RunsPage: React.FC = () => {
     const query = params.toString();
     return query ? `/app/imob/chat?${query}` : null;
   }, [selectedRun?.id, selectedRunImobContext]);
+  const isOverviewMode = runPageMode === "overview";
+  const isExecutionMode = runPageMode === "execution";
+  const isInvestigationPageMode = runPageMode === "investigation";
+  const auditInvestigationMode = useCallback(
+    (action: "entered" | "exited" | "changed", nextMode: boolean, reasonCodes: string[]) => {
+      void apiPostExperienceAudit(
+        {
+          surfaceId: "runs",
+          action,
+          fromMode: nextMode ? "standard" : "investigation",
+          toMode: nextMode ? "investigation" : "standard",
+          reasonCodes,
+          metadata: {
+            selectedRunId: selectedRun?.id ?? null,
+            requestedRunId,
+          },
+        },
+        isImobDomain ? "imob" : "core"
+      ).catch(() => undefined);
+    },
+    [isImobDomain, requestedRunId, selectedRun?.id]
+  );
 
   const lastUpdatedLabel = useMemo(() => {
     if (!lastUpdatedAt) return "Nunca";
@@ -1069,6 +1106,13 @@ const RunsPage: React.FC = () => {
     try {
       const fullRun = await apiGetRun(id);
       setSelectedRun(fullRun);
+      setRunPageMode("investigation");
+      if (!isInvestigationMode) {
+        setIsInvestigationMode(true);
+        auditInvestigationMode("entered", true, ["manual_run_selection"]);
+      } else {
+        auditInvestigationMode("changed", true, ["run_selection_changed"]);
+      }
     } catch (err) {
       console.error(err);
     }
@@ -1111,6 +1155,11 @@ const RunsPage: React.FC = () => {
 
   useEffect(() => {
     if (!requestedRunId) return;
+    setRunPageMode("investigation");
+    if (!isInvestigationMode) {
+      setIsInvestigationMode(true);
+      auditInvestigationMode("entered", true, ["run_deeplink"]);
+    }
     if (selectedRun?.id === requestedRunId) return;
     const existing = visibleRuns.find((run) => run.id === requestedRunId) ?? null;
     if (existing) {
@@ -1122,7 +1171,7 @@ const RunsPage: React.FC = () => {
         setSelectedRun(run);
       })
       .catch(() => undefined);
-  }, [requestedRunId, selectedRun?.id, visibleRuns]);
+  }, [auditInvestigationMode, isInvestigationMode, requestedRunId, selectedRun?.id, visibleRuns]);
 
   const triggerRun = async (mode: "simulate" | "execute") => {
     if (!agentId) {
@@ -1133,6 +1182,27 @@ const RunsPage: React.FC = () => {
     setActionNotice(null);
     setIsSubmitting(true);
     try {
+      if (mode === "simulate") {
+        const previewResponse = await apiCreateShadowExecutionPreview({
+          agent: agentId,
+          prompt: resources.prompt,
+          workspaceId,
+          metadata: { mode, workspaceId },
+          tools: resources.tools,
+          inputRef: `runs:${agentId}:${workspaceId}`,
+        });
+        const preview = previewResponse?.data ?? null;
+        setShadowPreview(preview);
+        setActionNotice(
+          preview
+            ? `Preview gerado em ${preview.currentStage} com ${centsToBRL(
+                preview.preview.estimatedCostCents
+              )} estimados.`
+            : "Preview gerado."
+        );
+        return;
+      }
+
       const response = await executeAgent(agentId, {
         agent: agentId,
         prompt: resources.prompt,
@@ -1146,6 +1216,7 @@ const RunsPage: React.FC = () => {
       if (createdRun) {
         setRuns((prev) => [createdRun, ...prev.filter((run) => run.id !== createdRun.id)]);
         setSelectedRun(createdRun);
+        setRunPageMode("execution");
         setLastUpdatedAt(new Date());
         if (createdRun.status === "pending" || createdRun.status === "running") {
           setTimeout(() => {
@@ -1176,6 +1247,31 @@ const RunsPage: React.FC = () => {
           message = body.error.message;
         }
       }
+      setActionError(message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const promoteShadowToProduction = async () => {
+    if (!shadowPreview) return;
+    setActionError(null);
+    setActionNotice(null);
+    setIsSubmitting(true);
+    try {
+      const response = await apiPromoteShadowExecution(shadowPreview.shadowExecutionId, {
+        target: "workspace_production",
+      });
+      const promotedShadow = response.data.shadowExecution;
+      const productionRun = response.data.productionRun;
+      setShadowPreview(promotedShadow);
+      setSelectedRun(productionRun);
+      setRuns((prev) => [productionRun, ...prev.filter((run) => run.id !== productionRun.id)]);
+      setRunPageMode("execution");
+      setLastUpdatedAt(new Date());
+      setActionNotice(`Preview promovido para produção com run ${formatRunId(productionRun.id)}.`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Falha ao promover preview para produção.";
       setActionError(message);
     } finally {
       setIsSubmitting(false);
@@ -1410,6 +1506,22 @@ const RunsPage: React.FC = () => {
               >
                 Iniciar tour interativo
               </button>
+              <div className="flex flex-wrap gap-2">
+                {runModes.map((mode) => (
+                  <button
+                    key={mode.id}
+                    type="button"
+                    onClick={() => setRunPageMode(mode.id)}
+                    className={`rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.26em] transition ${
+                      runPageMode === mode.id
+                        ? "border-accent/50 bg-accent/15 text-accent"
+                        : "border-white/10 bg-white/5 text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-2" data-tour="project-context">
               <span className="pill">Contexto: {brandName} • {workspaceLabel}</span>
@@ -1424,7 +1536,7 @@ const RunsPage: React.FC = () => {
             </div>
             <div className="glass-subtle flex flex-col justify-between gap-4 p-5" data-tour="cost-estimate">
               <div>
-                <h3 className="text-sm font-medium text-muted-foreground">Estimativa de custo</h3>
+                <h3 className="text-sm font-medium text-muted-foreground">Custo desta execução</h3>
                 <p className="text-xs text-muted-foreground">
                   Considerando payload de <strong>{resources.prompt.length}</strong> bytes.
                 </p>
@@ -1437,7 +1549,7 @@ const RunsPage: React.FC = () => {
               />
             </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+	          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-2xl border border-white/10 bg-surface/60 p-5 shadow-[0_25px_65px_-45px_rgba(56,189,248,0.8)]">
               <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-muted-foreground">{runLabelPlural} totais</p>
               <p className="mt-2 text-3xl font-display font-semibold text-foreground">{runSummary.total}</p>
@@ -1453,15 +1565,40 @@ const RunsPage: React.FC = () => {
               <p className="mt-2 text-3xl font-display font-semibold text-foreground">{runSummary.success}</p>
               <p className="mt-1 text-xs text-muted-foreground">Falhas {runSummary.failed}</p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-surface/60 p-5">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-muted-foreground">Tempo medio</p>
-              <p className="mt-2 text-3xl font-display font-semibold text-foreground">{averageDurationLabel}</p>
-              <p className="mt-1 text-xs text-muted-foreground">Custo acumulado {totalCostLabel}</p>
-            </div>
-          </div>
-        </div>
-      </section>
+	            <div className="rounded-2xl border border-white/10 bg-surface/60 p-5">
+	              <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-muted-foreground">Tempo medio</p>
+	              <p className="mt-2 text-3xl font-display font-semibold text-foreground">{averageDurationLabel}</p>
+	              <p className="mt-1 text-xs text-muted-foreground">Consumo do workspace {totalCostLabel}</p>
+	            </div>
+	          </div>
+            {session.verticals?.length ? (
+              <div className="rounded-2xl border border-white/10 bg-surface/60 p-5">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">Vertical rollout registry</p>
+                  <span className="pill">{session.verticals.length} verticais</span>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Leitura canônica do estágio de rollout disponível neste contexto operacional.
+                </p>
+                <div className="mt-4 grid gap-3 md:grid-cols-3">
+                  {session.verticals.map((item) => (
+                    <div key={`runs-vertical-${item.verticalId}`} className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-foreground">{item.label}</p>
+                        <span className="pill">{item.rolloutStage}</span>
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Front door: {item.frontDoorSurface ?? "—"} • Hub: {item.operationalHubSurface ?? "—"}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+	        </div>
+	      </section>
 
+      {isOverviewMode ? (
       <section
         id="runs-overview"
         data-tour="onboarding-panel"
@@ -1560,7 +1697,9 @@ const RunsPage: React.FC = () => {
           </p>
         </aside>
       </section>
+      ) : null}
 
+      {isExecutionMode ? (
       <section
         id="runs-criar"
         data-tour="run-actions"
@@ -1600,16 +1739,83 @@ const RunsPage: React.FC = () => {
             {actionNotice}
           </p>
         ) : null}
+        {shadowPreview ? (
+          <div className="w-full rounded-2xl border border-accent/30 bg-accent/10 p-4 text-xs text-foreground">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.3em] text-accent">Shadow preview</p>
+                <p className="mt-2 text-sm font-semibold text-foreground">{shadowPreview.preview.summary}</p>
+              </div>
+              <span className="pill">{shadowPreview.currentStage}</span>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-4">
+              <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Custo estimado</p>
+                <p className="mt-2 text-sm text-foreground">
+                  {centsToBRL(shadowPreview.preview.estimatedCostCents)}
+                </p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Approval</p>
+                <p className="mt-2 text-sm text-foreground">{shadowPreview.approvalStatus}</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Side effect</p>
+                <p className="mt-2 text-xs text-foreground">{shadowPreview.sideEffectMode}</p>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Shadow ID</p>
+                <p className="mt-2 break-all text-xs text-foreground">{shadowPreview.shadowExecutionId}</p>
+              </div>
+            </div>
+            {shadowPreview.preview.warnings.length > 0 ? (
+              <div className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 text-amber-100">
+                {shadowPreview.preview.warnings[0]}
+              </div>
+            ) : null}
+            {shadowPreview.preview.nextActions.length > 0 ? (
+              <div className="mt-4">
+                <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Próximos passos</p>
+                <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                  {shadowPreview.preview.nextActions.map((step) => (
+                    <li key={step}>- {step}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void promoteShadowToProduction()}
+                className="rounded-full border border-accent/60 bg-accent/15 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.3em] text-accent transition hover:border-accent hover:bg-accent/25 sm:px-4 sm:py-2 sm:text-xs disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={isSubmitting || shadowPreview.approvalStatus === "pending"}
+              >
+                {isSubmitting ? "Promovendo..." : "Promover para produção"}
+              </button>
+              {shadowPreview.approvalStatus === "pending" ? (
+                <span className="text-[11px] text-amber-200">
+                  Aprovação pendente antes da promoção para produção.
+                </span>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
       </section>
+      ) : null}
 
+      {!isOverviewMode ? (
       <section id="runs-status" className="glass-panel relative overflow-hidden p-0">
         <div className="pointer-events-none absolute right-0 top-0 h-40 w-40 -translate-y-1/3 translate-x-1/4 rounded-full bg-accent/20 blur-3xl" />
         <div className="space-y-6 p-6 sm:p-8">
           <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <h2 className="text-2xl font-display font-semibold text-foreground">{runLabelPlural} recentes</h2>
+              <h2 className="text-2xl font-display font-semibold text-foreground">
+                {isInvestigationPageMode ? "Investigação de run" : `${runLabelPlural} recentes`}
+              </h2>
               <p className="text-sm text-muted-foreground">
-                Visualize execucoes, tempos de resposta e confirme resultados antes do envio on-chain.
+                {isInvestigationPageMode
+                  ? "Detalhe operacional, financeiro e auditável do run selecionado."
+                  : "Visualize execucoes, tempos de resposta e confirme resultados antes do envio on-chain."}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -1635,6 +1841,21 @@ const RunsPage: React.FC = () => {
                   Selecionar run
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextMode = !isInvestigationMode;
+                      setIsInvestigationMode(nextMode);
+                      auditInvestigationMode(nextMode ? "entered" : "exited", nextMode, [
+                        nextMode ? "manual_toggle" : "manual_exit",
+                      ]);
+                    }}
+                    className={`pill hover:border-accent/40 hover:text-foreground ${
+                      isInvestigationMode ? "bg-accent/15 text-accent" : ""
+                    }`}
+                  >
+                    {isInvestigationMode ? "Sair do modo investigação" : "Entrar no modo investigação"}
+                  </button>
                   {selectedRun?.id ? (
                     <Link
                       to={`/app/billing?runId=${encodeURIComponent(selectedRun.id)}`}
@@ -1663,7 +1884,8 @@ const RunsPage: React.FC = () => {
                   <span className={`pill ${selectedRunFinance.hasGap ? "bg-amber-500/15 text-amber-200" : ""}`}>
                     {selectedRunFinance.issueLabel}
                   </span>
-                  <span className="pill">Custo: {selectedRunFinance.amountLabel}</span>
+                  {isInvestigationMode ? <span className="pill bg-accent/15 text-accent">Investigação ativa</span> : null}
+                  <span className="pill">Custo desta execução: {selectedRunFinance.amountLabel}</span>
                   <span className="pill">Tokens: {selectedRunFinance.tokens}</span>
                   <select
                     value={selectedRun?.id ?? ""}
@@ -1682,8 +1904,24 @@ const RunsPage: React.FC = () => {
                   </select>
                 </div>
               </div>
+              {isInvestigationPageMode ? (
               <div className="grid gap-4 lg:grid-cols-[1.1fr,0.9fr]">
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4 lg:col-span-2">
+                <div
+                  className={`rounded-2xl border bg-white/5 p-4 lg:col-span-2 ${
+                    isInvestigationMode ? "border-accent/30" : "border-white/10"
+                  }`}
+                >
+                  {runExecutionCostOverview ? (
+                    <div className="mb-4 rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-foreground">
+                      <p className="text-[10px] uppercase tracking-[0.3em] text-accent/80">
+                        {runExecutionCostOverview.title}
+                      </p>
+                      <p className="mt-2 text-lg font-semibold">
+                        {centsToBRL(runExecutionCostOverview.amountCents) ?? "—"}
+                      </p>
+                      <p className="mt-2 text-xs text-muted-foreground">{runExecutionCostOverview.summary}</p>
+                    </div>
+                  ) : null}
                   <div className="grid gap-4 lg:grid-cols-[0.55fr,0.45fr]">
                     <div>
                       <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
@@ -1732,7 +1970,11 @@ const RunsPage: React.FC = () => {
                     </div>
                   </div>
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div
+                  className={`rounded-2xl border bg-white/5 p-4 ${
+                    isInvestigationMode ? "border-accent/30" : "border-white/10"
+                  }`}
+                >
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
                       Breakdown operacional
@@ -1767,7 +2009,11 @@ const RunsPage: React.FC = () => {
                     </div>
                   )}
                 </div>
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div
+                  className={`rounded-2xl border bg-white/5 p-4 ${
+                    isInvestigationMode ? "border-accent/30" : "border-white/10"
+                  }`}
+                >
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-muted-foreground">
                       Reconciliação do run
@@ -1833,6 +2079,7 @@ const RunsPage: React.FC = () => {
                   )}
                 </div>
               </div>
+              ) : null}
               <div id="runs-resultado" data-tour="run-viewer" className="flex min-h-[420px] flex-col">
                 <RunViewer run={displayRun} />
               </div>
@@ -1840,6 +2087,7 @@ const RunsPage: React.FC = () => {
           )}
         </div>
       </section>
+      ) : null}
       </React.Fragment>
     </div>
   );

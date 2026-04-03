@@ -115,6 +115,34 @@ export type AgentListing = {
       missingRequiredSource?: string;
     };
   };
+  journeyContract?: {
+    version: "v1";
+    sourceOfTruth: "agent_contract";
+    roleJourneys: Array<{
+      roleProfile: "workspace_member" | "workspace_admin" | "tenant_admin" | "founder_global" | "service_operator";
+      frontDoorSurface: "runs" | "agents" | "billing" | "economy" | "marketplace" | "self_service" | "profile" | "imob_chat" | "imob_dashboard";
+      frontDoorLabel: string;
+      firstStepLabel: string;
+      firstStepDescription: string;
+      beginnerExplanation: string;
+      prioritySurfaces: Array<"runs" | "agents" | "billing" | "economy" | "marketplace" | "self_service" | "profile" | "imob_chat" | "imob_dashboard">;
+      secondarySurfaces: Array<"runs" | "agents" | "billing" | "economy" | "marketplace" | "self_service" | "profile" | "imob_chat" | "imob_dashboard">;
+      initialQuickReplies: string[];
+    }>;
+    domainOverrides?: Array<{
+      domain: "core" | "imob";
+      installedProduct?: "IMOB";
+      appliesToRoles?: Array<"workspace_member" | "workspace_admin" | "tenant_admin" | "founder_global" | "service_operator">;
+      overrideFrontDoorSurface?: "runs" | "agents" | "billing" | "economy" | "marketplace" | "self_service" | "profile" | "imob_chat" | "imob_dashboard";
+      overrideFrontDoorLabel?: string;
+      overrideFirstStepLabel?: string;
+      overrideFirstStepDescription?: string;
+      overrideBeginnerExplanation?: string;
+      overridePrioritySurfaces?: Array<"runs" | "agents" | "billing" | "economy" | "marketplace" | "self_service" | "profile" | "imob_chat" | "imob_dashboard">;
+      overrideSecondarySurfaces?: Array<"runs" | "agents" | "billing" | "economy" | "marketplace" | "self_service" | "profile" | "imob_chat" | "imob_dashboard">;
+      overrideQuickReplies?: string[];
+    }>;
+  };
   chatRuntime?: {
     readiness: "ready" | "incomplete";
     resolver: "agent_driven" | "legacy_compatible";
@@ -212,6 +240,7 @@ type CoreAgentProfile = {
   participation?: AgentParticipationSnapshot;
   modeContracts?: AgentListing["modeContracts"];
   chatCopy?: AgentChatCopySnapshot;
+  journeyContract?: AgentListing["journeyContract"];
   chatRuntime?: AgentChatRuntimeSnapshot;
   attachmentContract?: AgentAttachmentContractSnapshot;
 };
@@ -1181,6 +1210,7 @@ export async function listAgents(
       cognitiveProfile: buildCognitiveSnapshot(canonical),
       uxContract: buildUXSnapshot(canonical),
       chatCopy: buildChatCopySnapshot(canonical, profileSnapshot),
+      journeyContract: (profileSnapshot as { journeyContract?: AgentListing["journeyContract"] | null })?.journeyContract ?? coreProfileForAgent(canonical)?.journeyContract,
       chatRuntime,
       attachmentContract: buildAttachmentContractSnapshot(canonical, profileSnapshot),
       participation,
@@ -1214,6 +1244,7 @@ export async function listAgents(
         cognitiveProfile: buildCognitiveSnapshot(canonical),
         uxContract: buildUXSnapshot(canonical),
         chatCopy: buildChatCopySnapshot(canonical, profileSnapshot),
+        journeyContract: (profileSnapshot as { journeyContract?: AgentListing["journeyContract"] | null })?.journeyContract ?? coreProfileForAgent(canonical)?.journeyContract,
         chatRuntime,
         attachmentContract: buildAttachmentContractSnapshot(canonical, profileSnapshot),
         participation,
@@ -1246,6 +1277,7 @@ export async function listAgents(
         cognitiveProfile: buildCognitiveSnapshot(coreProfile.agent),
         uxContract: buildUXSnapshot(coreProfile.agent),
         chatCopy: buildChatCopySnapshot(coreProfile.agent, coreProfile),
+        journeyContract: coreProfile.journeyContract,
         chatRuntime,
         attachmentContract: buildAttachmentContractSnapshot(coreProfile.agent, coreProfile),
         participation,
@@ -1277,6 +1309,7 @@ export async function listAgents(
         cognitiveProfile: buildCognitiveSnapshot(entry.name),
         uxContract: buildUXSnapshot(entry.name),
         chatCopy: buildChatCopySnapshot(entry.name, coreProfile),
+        journeyContract: coreProfile?.journeyContract,
         chatRuntime,
         attachmentContract: buildAttachmentContractSnapshot(entry.name, coreProfile),
         participation,
@@ -1365,6 +1398,9 @@ export async function getAgentProfile(
       chatCopy:
         (dbProfile as { chatCopy?: AgentChatCopySnapshot | null }).chatCopy ??
         buildChatCopySnapshot(resolvedAgent, coreProfileForAgent(resolvedAgent)),
+      journeyContract:
+        (dbProfile as { journeyContract?: AgentListing["journeyContract"] | null }).journeyContract ??
+        coreProfileForAgent(resolvedAgent)?.journeyContract,
       chatRuntime,
       modeContracts:
         (dbProfile as { modeContracts?: AgentListing["modeContracts"] | null }).modeContracts ??
@@ -1381,6 +1417,9 @@ export async function getAgentProfile(
     );
     return {
       ...coreSeed,
+      journeyContract:
+        (coreSeed as { journeyContract?: AgentListing["journeyContract"] | null }).journeyContract ??
+        coreProfileForAgent(resolvedAgent)?.journeyContract,
       chatRuntime,
       participation,
     };
@@ -1406,6 +1445,7 @@ export async function getAgentProfile(
       knowledgePolicy: buildKnowledgeSnapshot(resolvedAgent, coreProfileForAgent(resolvedAgent)),
       participation,
       chatCopy: buildChatCopySnapshot(resolvedAgent, coreProfile),
+      journeyContract: coreProfile?.journeyContract,
       chatRuntime,
       modeContracts: coreProfile?.modeContracts,
       createdAt: new Date(),

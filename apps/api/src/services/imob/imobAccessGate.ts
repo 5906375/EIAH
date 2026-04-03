@@ -1,5 +1,8 @@
 import crypto from "node:crypto";
 import type { Request, Response } from "express";
+import { prismaGlobal } from "@repo/db";
+import { recordGuardrailAudit } from "@eiah/core/services/guardrailLedgerStore";
+import { buildFrictionEvent, mapImobAccessDeniedToFrictionKind } from "../../types/frictionEventContract";
 
 export type ImobAccessGateReasonCode =
   | "IMOB_ENTITLEMENT_MISSING"
@@ -92,6 +95,37 @@ function resolveTraceId(req?: Request) {
 }
 
 function auditImobAccessDenied(req: Request | undefined, payload: ImobAccessGateError) {
+  const frictionEvent = buildFrictionEvent({
+    eventId: crypto.randomUUID(),
+    source: "access_gate",
+    kind: mapImobAccessDeniedToFrictionKind(),
+    severity: "high",
+    tenantId: payload.scope.tenantId,
+    workspaceId: payload.scope.workspaceId,
+    activeDomain: "imob",
+    surfaceId: "imob_chat",
+    reasonCode: payload.reasonCode,
+    traceId: payload.traceId,
+    summary: payload.message,
+    occurredAt: new Date().toISOString(),
+    metadata: {
+      product: payload.product,
+      capability: payload.capability,
+      cta: payload.cta.type,
+      installationStatus: payload.details.installationStatus,
+    },
+  });
+  void recordGuardrailAudit({
+    prisma: prismaGlobal,
+    tenantId: payload.scope.tenantId,
+    workspaceId: payload.scope.workspaceId,
+    eventType: "imob.access_denied",
+    severity: "warn",
+    message: payload.message,
+    metadata: { frictionEvent },
+  }).catch((error) => {
+    req?.logger?.error?.({ error }, "imob.access_denied.audit_failed");
+  });
   if (!req?.logger?.warn) return;
   req.logger.warn(
     {
@@ -103,6 +137,7 @@ function auditImobAccessDenied(req: Request | undefined, payload: ImobAccessGate
       capability: payload.capability,
       reasonCode: payload.reasonCode,
       cta: payload.cta.type,
+      frictionEvent,
     },
     "imob.access_denied"
   );

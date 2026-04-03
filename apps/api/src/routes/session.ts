@@ -4,17 +4,29 @@ import crypto from "node:crypto";
 import process from "node:process";
 import { z } from "zod";
 import { prismaGlobal } from "@repo/db";
+import { recordGuardrailAudit } from "@eiah/core/services/guardrailLedgerStore";
 import { findApiToken } from "../auth/apiTokenRepository";
+import { buildFrictionEvent, mapResolverDecisionToFrictionKind } from "../types/frictionEventContract";
 import {
   resolveImobInstallationStatus,
   sendImobAccessDenied,
 } from "../services/imob/imobAccessGate";
+import { resolvePlatformExperience } from "../services/experienceResolver";
+import { resolveVerticalExperienceRegistry } from "../services/verticalExperienceRegistry";
+import {
+  buildResolverAuditEvent,
+  ExperienceAuditRequestSchema,
+  type ResolverAuditDecisionType,
+} from "../types/resolverAuditEvent";
+import { mapLandingSurfaceToExperienceSurface } from "../types/experienceSurfaceContract";
 
 const sessionRouter = Router();
 const DOMAIN_ALLOWLIST = new Set(["core", "imob"] as const);
 const switchWorkspaceSchema = z.object({
   workspaceId: z.string().min(1),
 });
+
+type SessionTokenRecord = NonNullable<Awaited<ReturnType<typeof findApiToken>>>;
 
 function parseCookieHeader(headerValue?: string | null) {
   if (!headerValue) return {};
@@ -104,6 +116,80 @@ function resolveSessionCookieOptions(req: Request) {
   };
 }
 
+async function resolveExperienceSnapshot(
+  tokenRecord: Pick<SessionTokenRecord, "tenantId" | "workspaceId" | "userId">,
+  requestedDomain: "core" | "imob"
+) {
+  const [realEstatePolicies, realEstateItems, productInstallations] = await Promise.all([
+    prismaGlobal.tenantActionPolicy.findMany({
+      where: {
+        tenantId: tokenRecord.tenantId,
+        OR: [{ workspaceId: tokenRecord.workspaceId }, { workspaceId: null }],
+        actionName: {
+          in: [
+            "realestate.apply_adjustment",
+            "action.realestate.apply_adjustment",
+            "realestate.register_property",
+            "realestate.create_contract",
+            "realestate.release_commission",
+          ],
+        },
+        allowed: true,
+      },
+      select: { id: true },
+      take: 1,
+    }),
+    prismaGlobal.marketplaceItem.findMany({
+      where: {
+        OR: [{ publisherId: tokenRecord.tenantId }, { isPublic: true }],
+        name: { contains: "imob", mode: "insensitive" },
+      },
+      select: { id: true },
+      take: 1,
+    }),
+    prismaGlobal
+      .$queryRaw<Array<{ product: string; status: string }>>`
+        SELECT product, status
+        FROM tenant_product_installations
+        WHERE tenant_id = ${tokenRecord.tenantId}
+          AND workspace_id = ${tokenRecord.workspaceId}
+      `
+      .catch(() => []),
+  ]);
+
+  const installationStatus = resolveImobInstallationStatus(productInstallations);
+  const hasImobInstallation = installationStatus === "active";
+  const realEstateCore = hasImobInstallation || realEstatePolicies.length > 0 || realEstateItems.length > 0;
+  const entitlements = {
+    REAL_ESTATE_CORE: realEstateCore,
+    EXPORTS_ADDON: true,
+    BILLING_INSIGHTS_ADDON: true,
+    IMOB_INSTALLED: hasImobInstallation,
+  };
+  const activeDomain = requestedDomain;
+  const availableDomains: Array<"core" | "imob"> = entitlements.REAL_ESTATE_CORE ? ["core", "imob"] : ["core"];
+  const roles = tokenRecord.userId ? ["admin"] : ["service"];
+  const experience = resolvePlatformExperience({
+    roles,
+    tenantId: tokenRecord.tenantId,
+    workspaceId: tokenRecord.workspaceId,
+    activeDomain,
+    availableDomains,
+    entitlements,
+    productInstallations,
+  });
+
+  return {
+    installationStatus,
+    entitlements,
+    activeDomain,
+    availableDomains,
+    roles,
+    productInstallations,
+    experience,
+  };
+}
+
 sessionRouter.post("/session", async (req: Request, res: Response) => {
   const token = resolveTokenFromRequest(req);
 
@@ -174,7 +260,7 @@ sessionRouter.get("/session/context", async (req: Request, res: Response) => {
   }
 
   const requestedDomain = resolveRequestedDomain(req);
-  const [tenant, workspace, realEstatePolicies, realEstateItems, productInstallations] = await Promise.all([
+  const [tenant, workspace, snapshot] = await Promise.all([
     prismaGlobal.tenant.findUnique({
       where: { id: tokenRecord.tenantId },
       select: { id: true, name: true },
@@ -183,68 +269,44 @@ sessionRouter.get("/session/context", async (req: Request, res: Response) => {
       where: { id: tokenRecord.workspaceId },
       select: { id: true, name: true },
     }),
-    prismaGlobal.tenantActionPolicy.findMany({
-      where: {
-        tenantId: tokenRecord.tenantId,
-        OR: [{ workspaceId: tokenRecord.workspaceId }, { workspaceId: null }],
-        actionName: {
-          in: [
-            "realestate.apply_adjustment",
-            "action.realestate.apply_adjustment",
-            "realestate.register_property",
-            "realestate.create_contract",
-            "realestate.release_commission",
-          ],
-        },
-        allowed: true,
-      },
-      select: { id: true },
-      take: 1,
-    }),
-    prismaGlobal.marketplaceItem.findMany({
-      where: {
-        OR: [{ publisherId: tokenRecord.tenantId }, { isPublic: true }],
-        name: { contains: "imob", mode: "insensitive" },
-      },
-      select: { id: true },
-      take: 1,
-    }),
-    prismaGlobal
-      .$queryRaw<Array<{ product: string; status: string }>>`
-        SELECT product, status
-        FROM tenant_product_installations
-        WHERE tenant_id = ${tokenRecord.tenantId}
-          AND workspace_id = ${tokenRecord.workspaceId}
-      `
-      .catch(() => []),
+    resolveExperienceSnapshot(tokenRecord, requestedDomain),
   ]);
 
-  const installationStatus = resolveImobInstallationStatus(productInstallations);
-  const hasImobInstallation = installationStatus === "active";
-  const realEstateCore = hasImobInstallation || realEstatePolicies.length > 0 || realEstateItems.length > 0;
-  const entitlements = {
-    REAL_ESTATE_CORE: realEstateCore,
-    EXPORTS_ADDON: true,
-    BILLING_INSIGHTS_ADDON: true,
-    IMOB_INSTALLED: hasImobInstallation,
-  };
-
-  if (requestedDomain === "imob" && !entitlements.REAL_ESTATE_CORE) {
+  if (requestedDomain === "imob" && !snapshot.entitlements.REAL_ESTATE_CORE) {
     return sendImobAccessDenied(res, {
       req,
       code: "ENTITLEMENT_MISSING",
       reasonCode:
-        installationStatus === "inactive" ? "IMOB_INSTALLATION_INACTIVE" : "IMOB_ENTITLEMENT_MISSING",
+        snapshot.installationStatus === "inactive" ? "IMOB_INSTALLATION_INACTIVE" : "IMOB_ENTITLEMENT_MISSING",
       capability: "CENTRAL_OPERACIONAL",
       tenantId: tokenRecord.tenantId,
       workspaceId: tokenRecord.workspaceId,
-      installationStatus,
+      installationStatus: snapshot.installationStatus,
     });
   }
+  const resolverEvent = buildResolverAuditEvent({
+    resolverVersion: snapshot.experience.resolverVersion,
+    tenantId: tokenRecord.tenantId,
+    workspaceId: tokenRecord.workspaceId,
+    role: snapshot.experience.roleProfile,
+    activeDomain: snapshot.activeDomain,
+    installedProducts: snapshot.productInstallations.map((entry) => entry.product),
+    surfaceId: mapLandingSurfaceToExperienceSurface(snapshot.experience.landingSurface),
+    decisionType: "landing_resolved",
+    decisionValue: snapshot.experience.landingPath,
+    fallbackMode: snapshot.experience.fallbackMode,
+    traceId: req.traceId ?? undefined,
+  });
 
-  const activeDomain = requestedDomain;
-  const availableDomains: Array<"core" | "imob"> = entitlements.REAL_ESTATE_CORE ? ["core", "imob"] : ["core"];
-  const roles = tokenRecord.userId ? ["admin"] : ["service"];
+  req.logger?.info(
+    {
+      event: "experience.resolved",
+      resolverAuditEvent: resolverEvent,
+      tenantId: tokenRecord.tenantId,
+      workspaceId: tokenRecord.workspaceId,
+    },
+    "experience.resolved"
+  );
 
   return res.json({
     ok: true,
@@ -252,14 +314,18 @@ sessionRouter.get("/session/context", async (req: Request, res: Response) => {
       tenantId: tokenRecord.tenantId,
       workspaceId: tokenRecord.workspaceId,
       userId: tokenRecord.userId ?? null,
-      activeDomain,
-      availableDomains,
-      entitlements,
-      productInstallations: productInstallations.map((entry) => ({
+      activeDomain: snapshot.activeDomain,
+      availableDomains: snapshot.availableDomains,
+      entitlements: snapshot.entitlements,
+      productInstallations: snapshot.productInstallations.map((entry) => ({
         product: entry.product,
         status: entry.status,
       })),
-      roles,
+      verticals: resolveVerticalExperienceRegistry({
+        installedProducts: snapshot.productInstallations,
+      }),
+      roles: snapshot.roles,
+      experience: snapshot.experience,
       branding: {
         brandName: tenant?.name ?? tokenRecord.tenantId,
         logoUrl: null,
@@ -379,6 +445,145 @@ sessionRouter.delete("/session", (req: Request, res: Response) => {
   const { name, options } = resolveSessionCookieOptions(req);
   res.clearCookie(name, options);
   return res.json({ ok: true });
+});
+
+sessionRouter.post("/session/experience/audit", async (req: Request, res: Response) => {
+  const token = resolveTokenFromRequest(req);
+  if (!token) {
+    return res.status(401).json({
+      ok: false,
+      error: { code: "UNAUTHORIZED", message: "Missing bearer token" },
+    });
+  }
+
+  const tokenRecord = await findApiToken(token);
+  if (!tokenRecord || tokenRecord.revoked) {
+    return res.status(401).json({
+      ok: false,
+      error: { code: "UNAUTHORIZED", message: "Invalid token" },
+    });
+  }
+  if (tokenRecord.expiresAt && tokenRecord.expiresAt.getTime() < Date.now()) {
+    return res.status(401).json({
+      ok: false,
+      error: { code: "TOKEN_EXPIRED", message: "API token expired" },
+    });
+  }
+
+  const parsed = ExperienceAuditRequestSchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json({
+      ok: false,
+      error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() },
+    });
+  }
+
+  const snapshot = await resolveExperienceSnapshot(tokenRecord, resolveRequestedDomain(req));
+  const payload = parsed.data;
+  const isInvestigationAudit = payload.auditType !== "landing_action_alignment";
+  const eventType = isInvestigationAudit
+    ? `surface.investigation_mode.${payload.action}`
+    : `experience.recommended_action.${payload.action}`;
+  const decisionType: ResolverAuditDecisionType = isInvestigationAudit
+    ? payload.action === "entered"
+      ? "investigation_mode.entered"
+      : payload.action === "exited"
+        ? "investigation_mode.exited"
+        : "investigation_mode.changed"
+    : payload.action === "aligned"
+      ? "recommended_action.aligned"
+      : "recommended_action.diverged";
+  const resolverEvent = buildResolverAuditEvent({
+    resolverVersion: snapshot.experience.resolverVersion,
+    tenantId: tokenRecord.tenantId,
+    workspaceId: tokenRecord.workspaceId,
+    role: snapshot.experience.roleProfile,
+    activeDomain: snapshot.activeDomain,
+    installedProducts: snapshot.productInstallations.map((entry) => entry.product),
+    surfaceId: payload.surfaceId,
+    decisionType,
+    decisionValue: isInvestigationAudit
+      ? payload.toMode ?? (payload.action === "exited" ? "standard" : "investigation")
+      : payload.primaryActionPath ?? payload.landingPath,
+    fallbackMode: snapshot.experience.fallbackMode,
+    fromMode: isInvestigationAudit ? payload.fromMode : payload.landingPath,
+    toMode: isInvestigationAudit ? payload.toMode : payload.primaryActionPath,
+    reasonCodes: payload.reasonCodes,
+    traceId: req.traceId ?? undefined,
+  });
+  const frictionKind = mapResolverDecisionToFrictionKind(decisionType);
+  const frictionEvent = frictionKind
+    ? buildFrictionEvent({
+        eventId: crypto.randomUUID(),
+        source: "resolver_audit",
+        kind: frictionKind,
+        severity: decisionType === "recommended_action.diverged" ? "medium" : "low",
+        tenantId: tokenRecord.tenantId,
+        workspaceId: tokenRecord.workspaceId,
+        activeDomain: snapshot.activeDomain,
+        surfaceId: payload.surfaceId,
+        reasonCode: payload.reasonCodes?.[0],
+        traceId: req.traceId ?? undefined,
+        summary: isInvestigationAudit
+          ? `Investigation mode ${payload.action} on ${payload.surfaceId}`
+          : `Recommended action ${payload.action} for ${payload.surfaceId}`,
+        occurredAt: new Date().toISOString(),
+        metadata: {
+          resolverDecisionType: decisionType,
+          resolverAuditEvent: resolverEvent,
+        },
+      })
+    : null;
+
+  await recordGuardrailAudit({
+    prisma: prismaGlobal,
+    tenantId: tokenRecord.tenantId,
+    workspaceId: tokenRecord.workspaceId,
+    eventType,
+    severity: "info",
+    message: isInvestigationAudit
+      ? `Investigation mode ${payload.action} on ${payload.surfaceId}`
+      : `Recommended action ${payload.action} for ${payload.surfaceId}`,
+    metadata: {
+      frictionEvent,
+      resolverAuditEvent: resolverEvent,
+      extra: payload.metadata
+        ? {
+            ...payload.metadata,
+            ...(isInvestigationAudit
+              ? {}
+              : {
+                  landingPath: payload.landingPath,
+                  primaryActionId: payload.primaryActionId ?? null,
+                  primaryActionPath: payload.primaryActionPath ?? null,
+                }),
+          }
+        : isInvestigationAudit
+          ? null
+          : {
+              landingPath: payload.landingPath,
+              primaryActionId: payload.primaryActionId ?? null,
+              primaryActionPath: payload.primaryActionPath ?? null,
+            },
+    },
+  });
+
+  req.logger?.info(
+    {
+      event: eventType,
+      resolverAuditEvent: resolverEvent,
+    },
+    eventType
+  );
+
+  return res.json({
+    ok: true,
+    data: {
+      eventType,
+      traceId: req.traceId ?? null,
+      resolverAuditEvent: resolverEvent,
+    },
+  });
 });
 
 export { sessionRouter };

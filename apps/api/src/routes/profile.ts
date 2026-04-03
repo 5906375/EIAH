@@ -1,7 +1,13 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prismaGlobal } from "@repo/db";
+import {
+  buildExperienceDiagnosticSnapshot,
+  experienceDiagnosticsWindowSchema,
+  type ExperienceDiagnosticsWindow,
+} from "../types/experienceDiagnosticSnapshot";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
+import { readTenantOperationalInsight } from "../services/tenantOperationalInsight";
 import {
   createWorkspaceInvitation,
   readWorkspaceManagementSummary,
@@ -65,6 +71,11 @@ const workspaceInvitationSchema = z.object({
   roleKey: z.string().min(1).max(120),
   permissions: z.array(z.string().max(120)).max(20).optional(),
 });
+
+function resolveProfileDiagnosticsWindow(req: TenantAwareRequest): ExperienceDiagnosticsWindow {
+  const parsed = experienceDiagnosticsWindowSchema.safeParse(req.query.window);
+  return parsed.success ? parsed.data : "7d";
+}
 
 async function readProfileSummary(req: TenantAwareRequest) {
   const authContext = req.authContext;
@@ -138,7 +149,217 @@ async function readProfileSummary(req: TenantAwareRequest) {
     workspaceId: authContext.workspaceId,
     userId: authContext.userId,
   });
+  const diagnosticsWindow = resolveProfileDiagnosticsWindow(req);
+  const diagnosticsWindowStart = new Date(
+    Date.now() - (diagnosticsWindow === "7d" ? 7 : 30) * 24 * 60 * 60 * 1000
+  );
+  const operationalInsight = await readTenantOperationalInsight(prismaGlobal, {
+    tenantId: authContext.tenantId,
+    workspaceId: authContext.workspaceId,
+    window: diagnosticsWindow,
+  });
+  const recommendedActionAuditRows = await prismaGlobal.guardrailAuditLedger.findMany({
+    where: {
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      eventType: {
+        in: ["experience.recommended_action.aligned", "experience.recommended_action.diverged"],
+      },
+      createdAt: {
+        gte: diagnosticsWindowStart,
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 12,
+  });
+  const alignedCount = recommendedActionAuditRows.filter(
+    (item) => item.eventType === "experience.recommended_action.aligned"
+  ).length;
+  const divergedCount = recommendedActionAuditRows.filter(
+    (item) => item.eventType === "experience.recommended_action.diverged"
+  ).length;
+  const totalAlignmentEvents = alignedCount + divergedCount;
+  const alignmentRate = totalAlignmentEvents > 0 ? Math.round((alignedCount / totalAlignmentEvents) * 100) : null;
+  const alignmentStatus =
+    alignmentRate === null ? "unknown" : alignmentRate >= 80 ? "healthy" : alignmentRate >= 50 ? "watch" : "poor";
+  const alignmentSummary =
+    alignmentRate === null
+      ? `Sem eventos de convergência entre landing e ação primária na janela ${diagnosticsWindow}.`
+      : alignmentStatus === "healthy"
+        ? `Convergência saudável na janela ${diagnosticsWindow}: ${alignmentRate}% aligned (${alignedCount}) vs ${divergedCount} diverged.`
+        : alignmentStatus === "watch"
+          ? `Convergência em observação na janela ${diagnosticsWindow}: ${alignmentRate}% aligned (${alignedCount}) vs ${divergedCount} diverged.`
+          : `Convergência baixa na janela ${diagnosticsWindow}: ${alignmentRate}% aligned (${alignedCount}) vs ${divergedCount} diverged.`;
+  const recentSources = recommendedActionAuditRows
+    .slice(0, 6)
+    .map((item) => {
+      const metadata =
+        item.metadata && typeof item.metadata === "object" && !Array.isArray(item.metadata)
+          ? (item.metadata as Record<string, unknown>)
+          : null;
+      const extra =
+        metadata?.extra && typeof metadata.extra === "object" && !Array.isArray(metadata.extra)
+          ? (metadata.extra as Record<string, unknown>)
+          : null;
+      return typeof extra?.source === "string" ? extra.source : null;
+    })
+    .filter((item): item is string => Boolean(item));
+  const sourceCounts = recentSources.reduce<Record<string, number>>((acc, source) => {
+    acc[source] = (acc[source] ?? 0) + 1;
+    return acc;
+  }, {});
+  const sortedSources = Object.entries(sourceCounts).sort((a, b) => b[1] - a[1]);
+  const dominantSource =
+    sortedSources.length === 0
+      ? "unknown"
+      : sortedSources.length > 1 && sortedSources[0]?.[1] === sortedSources[1]?.[1]
+        ? "mixed"
+        : sortedSources[0]?.[0] ?? "unknown";
+  const resolveDominantSource = (
+    rows: typeof recommendedActionAuditRows
+  ) => {
+    const filteredSources = rows
+      .slice(0, 6)
+      .map((item) => {
+        const metadata =
+          item.metadata && typeof item.metadata === "object" && !Array.isArray(item.metadata)
+            ? (item.metadata as Record<string, unknown>)
+            : null;
+        const extra =
+          metadata?.extra && typeof metadata.extra === "object" && !Array.isArray(metadata.extra)
+            ? (metadata.extra as Record<string, unknown>)
+            : null;
+        return typeof extra?.source === "string" ? extra.source : null;
+      })
+      .filter((item): item is string => Boolean(item));
+    const filteredCounts = filteredSources.reduce<Record<string, number>>((acc, source) => {
+      acc[source] = (acc[source] ?? 0) + 1;
+      return acc;
+    }, {});
+    const sortedFilteredSources = Object.entries(filteredCounts).sort((a, b) => b[1] - a[1]);
+    return sortedFilteredSources.length === 0
+      ? "unknown"
+      : sortedFilteredSources.length > 1 && sortedFilteredSources[0]?.[1] === sortedFilteredSources[1]?.[1]
+        ? "mixed"
+        : sortedFilteredSources[0]?.[0] ?? "unknown";
+  };
+  const resolveDominantSurface = (
+    rows: typeof recommendedActionAuditRows
+  ) => {
+    const recentSurfaces = rows
+      .slice(0, 6)
+      .map((item) => {
+        const metadata =
+          item.metadata && typeof item.metadata === "object" && !Array.isArray(item.metadata)
+            ? (item.metadata as Record<string, unknown>)
+            : null;
+        const resolverAuditEvent =
+          metadata?.resolverAuditEvent &&
+          typeof metadata.resolverAuditEvent === "object" &&
+          !Array.isArray(metadata.resolverAuditEvent)
+            ? (metadata.resolverAuditEvent as Record<string, unknown>)
+            : null;
+        return typeof resolverAuditEvent?.surfaceId === "string" ? resolverAuditEvent.surfaceId : null;
+      })
+      .filter((item): item is string => Boolean(item));
+    const surfaceCounts = recentSurfaces.reduce<Record<string, number>>((acc, surface) => {
+      acc[surface] = (acc[surface] ?? 0) + 1;
+      return acc;
+    }, {});
+    const sortedSurfaces = Object.entries(surfaceCounts).sort((a, b) => b[1] - a[1]);
+    return sortedSurfaces.length === 0
+      ? "unknown"
+      : sortedSurfaces.length > 1 && sortedSurfaces[0]?.[1] === sortedSurfaces[1]?.[1]
+        ? "mixed"
+        : sortedSurfaces[0]?.[0] ?? "unknown";
+  };
+  const dominantAlignedSurface = resolveDominantSurface(
+    recommendedActionAuditRows.filter((item) => item.eventType === "experience.recommended_action.aligned")
+  );
+  const dominantDivergedSurface = resolveDominantSurface(
+    recommendedActionAuditRows.filter((item) => item.eventType === "experience.recommended_action.diverged")
+  );
+  const dominantAlignedSource = resolveDominantSource(
+    recommendedActionAuditRows.filter((item) => item.eventType === "experience.recommended_action.aligned")
+  );
+  const dominantDivergedSource = resolveDominantSource(
+    recommendedActionAuditRows.filter((item) => item.eventType === "experience.recommended_action.diverged")
+  );
+  const convergenceSummary =
+    alignedCount === 0
+      ? `Nenhuma convergência recente entre landing e ação primária na janela ${diagnosticsWindow}.`
+      : dominantAlignedSource === "unknown" && dominantAlignedSurface === "unknown"
+        ? `Há ${alignedCount} convergência(s) na janela ${diagnosticsWindow}, mas sem concentração clara de origem ou surface.`
+        : `As convergências na janela ${diagnosticsWindow} estão mais concentradas em origem ${dominantAlignedSource} e surface ${dominantAlignedSurface}.`;
+  const divergenceSummary =
+    divergedCount === 0
+      ? `Nenhuma divergência recente entre landing e ação primária na janela ${diagnosticsWindow}.`
+      : dominantDivergedSource === "unknown" && dominantDivergedSurface === "unknown"
+        ? `Há ${divergedCount} divergência(s) na janela ${diagnosticsWindow}, mas sem concentração clara de origem ou surface.`
+        : `As divergências na janela ${diagnosticsWindow} estão mais concentradas em origem ${dominantDivergedSource} e surface ${dominantDivergedSurface}.`;
 
+  const recommendedActionSummary = {
+    aligned: alignedCount,
+    diverged: divergedCount,
+    alignmentRate,
+    alignmentStatus,
+    alignmentSummary,
+    dominantSource,
+    dominantAlignedSource,
+    dominantDivergedSource,
+    dominantAlignedSurface,
+    dominantDivergedSurface,
+    convergenceSummary,
+    divergenceSummary,
+    latestEventAt: recommendedActionAuditRows[0]?.createdAt ?? null,
+    recentEvents: recommendedActionAuditRows.slice(0, 6).map((item) => {
+      const metadata =
+        item.metadata && typeof item.metadata === "object" && !Array.isArray(item.metadata)
+          ? (item.metadata as Record<string, unknown>)
+          : null;
+      const resolverAuditEvent =
+        metadata?.resolverAuditEvent &&
+        typeof metadata.resolverAuditEvent === "object" &&
+        !Array.isArray(metadata.resolverAuditEvent)
+          ? (metadata.resolverAuditEvent as Record<string, unknown>)
+          : null;
+      const extra =
+        metadata?.extra && typeof metadata.extra === "object" && !Array.isArray(metadata.extra)
+          ? (metadata.extra as Record<string, unknown>)
+          : null;
+      return {
+        eventType: item.eventType,
+        message: item.message,
+        createdAt: item.createdAt,
+        surfaceId: typeof resolverAuditEvent?.surfaceId === "string" ? resolverAuditEvent.surfaceId : null,
+        landingPath: typeof extra?.landingPath === "string" ? extra.landingPath : null,
+        primaryActionId: typeof extra?.primaryActionId === "string" ? extra.primaryActionId : null,
+        primaryActionPath: typeof extra?.primaryActionPath === "string" ? extra.primaryActionPath : null,
+        source: typeof extra?.source === "string" ? extra.source : null,
+      };
+    }),
+  };
+  const diagnosticSnapshot = buildExperienceDiagnosticSnapshot({
+    window: diagnosticsWindow,
+    totals: {
+      aligned: alignedCount,
+      diverged: divergedCount,
+    },
+    alignment: {
+      rate: alignmentRate,
+      status: alignmentStatus,
+      summary: alignmentSummary,
+      dominantSource,
+      dominantAlignedSource,
+      dominantDivergedSource,
+      dominantAlignedSurface,
+      dominantDivergedSurface,
+      convergenceSummary,
+      divergenceSummary,
+    },
+    latestEventAt: recommendedActionAuditRows[0]?.createdAt ?? null,
+    recentEvents: recommendedActionSummary.recentEvents,
+  });
   return {
     fullName: user.displayName ?? "",
     email: user.email,
@@ -163,6 +384,14 @@ async function readProfileSummary(req: TenantAwareRequest) {
       canManageMembers: workspaceSummary.canManageMembers,
       members: workspaceSummary.members,
       invitations: workspaceSummary.invitations,
+    },
+    experienceDiagnostics: {
+      window: diagnosticsWindow,
+      diagnosticSnapshot,
+      frictionSummary: operationalInsight.frictionSummary,
+      optimizationSnapshot: operationalInsight.optimizationSnapshot,
+      economyOpportunitySnapshot: operationalInsight.economyOpportunitySnapshot,
+      operationalInsightSnapshot: operationalInsight.operationalInsightSnapshot,
     },
     workspaces: workspaces.map((workspace) => ({
       id: workspace.id,
