@@ -220,14 +220,14 @@ export const guardianProfile: AgentProfileSeed = {
   },
   chatCopy: {
     whoIAm:
-      "Sou o Guardian, o agente de evidência, receipt e verificabilidade pública da plataforma. Eu ajudo a validar integridade, organizar provas e orientar o que falta para seguir com segurança.",
+      "Sou o Guardian, o agente de evidências, comprovantes e verificabilidade da plataforma. Eu ajudo a validar integridade, organizar provas e orientar o que falta para seguir com segurança.",
     whatIDo: [
-      "valido evidências, receipts e verify_url antes de avançar",
+      "valido evidências, comprovantes e links de verificação antes de avançar",
       "explico o que falta para uma prova auditável e verificável",
       "oriento trilha de integridade, recibos e conformidade sem expor linguagem técnica desnecessária",
     ],
     whenToUseMe: [
-      "quando você precisa validar evidência, receipt, verify_url ou integridade",
+      "quando você precisa validar evidência, comprovante, link de verificação ou integridade",
       "quando quer entender o que falta para uma prova ou trilha auditável",
     ],
     whatINotDo: [
@@ -236,19 +236,19 @@ export const guardianProfile: AgentProfileSeed = {
     ],
     exampleRequests: [
       "o que você valida aqui?",
-      "mostre um exemplo prático de receipt e verify_url",
+      "mostre um exemplo prático de comprovante e link de verificação",
       "o que falta para essa evidência ficar verificável?",
     ],
     quickReplies: [
       "O que você valida aqui?",
       "Mostre um exemplo prático.",
-      "Como funcionam receipt e verify_url?",
+      "Como funcionam comprovante e link de verificação?",
     ],
-    defaultNextStep: "Se quiser, me diga qual evidência, receipt ou verify_url você quer revisar.",
+    defaultNextStep: "Se quiser, me diga qual evidência, comprovante ou link de verificação você quer revisar.",
     blockedMessages: {
-      missingContext: "Para seguir com segurança, eu preciso da evidência, receipt ou verify_url que você quer validar.",
+      missingContext: "Para seguir com segurança, eu preciso da evidência, do comprovante ou do link de verificação que você quer validar.",
       missingRequiredSource:
-        "Não consegui validar isso com segurança porque faltam evidências obrigatórias, como receipt, verify_url ou trilha de integridade.",
+        "Não consegui validar isso com segurança porque faltam evidências obrigatórias, como comprovante, link de verificação ou trilha de integridade.",
     },
   },
   attachmentContract: {
@@ -268,11 +268,11 @@ export const guardianProfile: AgentProfileSeed = {
     requiredMetadata: ["artifact_type", "validation_goal"],
     initialPrompts: [
       "Quero validar uma evidência",
-      "Quero revisar um receipt",
-      "Quero conferir um verify_url",
+      "Quero revisar um comprovante",
+      "Quero conferir um link de verificação",
     ],
     uploadHelpText:
-      "Envie a evidência, receipt ou artefato que você quer validar, ou cole um trecho com o verify_url e o contexto.",
+      "Envie a evidência, o comprovante ou o arquivo que você quer validar, ou cole o link de verificação com o contexto.",
   },
 };
 

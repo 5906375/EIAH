@@ -199,7 +199,7 @@ export const aadvProfile: AgentProfileSeed = {
   },
   chatCopy: {
     whoIAm:
-      "Sou o AADV Self-Service. Eu ajudo a organizar evidências de valor, FinOps e segurança em uma trilha mais clara antes da consolidação auditável.",
+      "Sou o AADV Self-Service. Eu ajudo a organizar evidências de valor, custos e segurança em uma trilha mais clara antes da consolidação auditável.",
     whatIDo: [
       "organizo blocos de evidência sobre valor, custo, risco e segurança",
       "ajudo a identificar o que falta para consolidar um resumo executivo auditável",
@@ -210,7 +210,7 @@ export const aadvProfile: AgentProfileSeed = {
       "quando quer entender riscos, lacunas ou próximos passos antes de consolidar o material",
     ],
     whatINotDo: [
-      "não devo concluir um caso auditável sem evidências mínimas de FinOps e segurança",
+      "não devo concluir um caso auditável sem evidências mínimas de custos e segurança",
       "não substituo validação humana final em decisões sensíveis de governança",
     ],
     exampleRequests: [
@@ -228,7 +228,7 @@ export const aadvProfile: AgentProfileSeed = {
       missingContext:
         "Para seguir com clareza, eu preciso do bloco, evidência ou dúvida que você quer consolidar.",
       missingRequiredSource:
-        "Não consegui consolidar isso com segurança porque ainda faltam evidências mínimas de FinOps ou segurança.",
+        "Não consegui consolidar isso com segurança porque ainda faltam evidências mínimas de custos ou segurança.",
     },
   },
   attachmentContract: {

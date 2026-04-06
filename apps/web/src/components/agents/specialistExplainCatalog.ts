@@ -61,7 +61,7 @@ const SPECIALIST_EXPLAIN_DEFINITIONS: SpecialistExplainDefinition[] = [
       "para que serve o aadv",
       "quando usar o aadv",
     ],
-    summary: "o especialista em consolidar evidências, FinOps, risco e próximos passos executivos",
+    summary: "o especialista em consolidar evidências, custos, risco e próximos passos executivos",
     fallbackCapabilities: [
       "organiza blocos de evidência sobre valor, custo, risco e segurança",
       "ajuda a identificar o que falta para consolidar um resumo executivo auditável",
@@ -89,7 +89,7 @@ const SPECIALIST_EXPLAIN_DEFINITIONS: SpecialistExplainDefinition[] = [
       "quando usar o fin-nexus",
       "quando usar o fin nexus",
     ],
-    summary: "o especialista financeiro da plataforma para pagamentos, pendências, billing operacional e conciliação",
+    summary: "o especialista financeiro da plataforma para pagamentos, pendências, cobrança operacional e conciliação",
     fallbackCapabilities: [
       "organiza contas a pagar, vencimentos e pendências financeiras",
       "ajuda a revisar boletos, notas, contratos e documentos antes do pagamento",
@@ -113,14 +113,14 @@ const SPECIALIST_EXPLAIN_DEFINITIONS: SpecialistExplainDefinition[] = [
       "para que serve o guardian",
       "quando usar o guardian",
     ],
-    summary: "o especialista em evidências, receipt, verify_url, integridade e verificabilidade auditável",
+    summary: "o especialista em evidências, comprovantes, links de verificação, integridade e verificabilidade auditável",
     fallbackCapabilities: [
-      "valida evidências, receipts e verify_url antes de avançar",
+      "valida evidências, comprovantes e links de verificação antes de avançar",
       "explica o que falta para uma prova auditável e verificável",
       "orienta trilha de integridade, recibos e conformidade em linguagem clara",
     ],
     fallbackWhenToUse: [
-      "quando você precisa validar evidência, receipt, verify_url ou integridade",
+      "quando você precisa validar evidência, comprovante, link de verificação ou integridade",
       "quando quer preparar material para auditoria ou verificabilidade pública",
     ],
   },
@@ -145,7 +145,7 @@ const SPECIALIST_EXPLAIN_DEFINITIONS: SpecialistExplainDefinition[] = [
     fallbackCapabilities: [
       "simula operações DeFi antes da execução",
       "compara cenários de custo, slippage, gas e risco",
-      "separa claramente simulação de execução on-chain",
+      "separa claramente simulação de execução em blockchain",
     ],
     fallbackWhenToUse: [
       "quando você quer comparar cenários DeFi antes de agir",
@@ -201,9 +201,9 @@ const SPECIALIST_EXPLAIN_DEFINITIONS: SpecialistExplainDefinition[] = [
     key: "flow-orchestrator",
     displayName: "Flow Orchestrator",
     hints: ["flow orchestrator", "orchestrator", "flow"],
-    summary: "o agente operacional para sequenciar fluxos, guardrails, validações e execução coordenada",
+    summary: "o agente operacional para sequenciar fluxos, regras de segurança, validações e execução coordenada",
     fallbackCapabilities: [
-      "organiza etapas de execução em sequência com verificações e guardrails",
+      "organiza etapas de execução em sequência com verificações e regras de segurança",
       "ajuda a coordenar fluxos mais técnicos ou multi-etapa",
       "deixa explícito o próximo passo operacional antes de executar",
     ],
@@ -231,14 +231,14 @@ const SPECIALIST_EXPLAIN_DEFINITIONS: SpecialistExplainDefinition[] = [
     key: "onchain-monitor",
     displayName: "On-chain Monitor",
     hints: ["on-chain monitor", "onchain monitor", "onchain-monitor"],
-    summary: "o especialista de domínio para monitoramento on-chain, eventos e alertas operacionais",
+    summary: "o especialista de domínio para monitoramento em blockchain, eventos e alertas operacionais",
     fallbackCapabilities: [
-      "acompanha eventos on-chain e ajuda a estruturar regras de monitoramento",
+      "acompanha eventos em blockchain e ajuda a estruturar regras de monitoramento",
       "organiza alertas, sinais e próximos passos em contexto blockchain",
-      "apoia leitura operacional de atividade e exceções on-chain",
+      "apoia leitura operacional de atividade e exceções em blockchain",
     ],
     fallbackWhenToUse: [
-      "quando você precisa monitorar eventos ou atividade on-chain",
+      "quando você precisa monitorar eventos ou atividade em blockchain",
       "quando quer estruturar alertas e acompanhamento operacional de blockchain",
     ],
   },

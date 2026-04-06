@@ -31,12 +31,14 @@ import {
   buildHostileInputReply,
   buildInternalTechnicalAccessReply,
   buildOrchestratorGuidanceReply,
+  buildPlatformSwitchOfferReply,
   buildPlatformSelfExplainReply,
   isAgentSignupHelpQuestion,
   isDocumentationExplainQuestion,
   isFlowGuidanceQuestion,
   isHostileInput,
   isInternalTechnicalAccessQuestion,
+  isPlatformUiExplainQuestion,
   isPlatformSelfExplainQuestion,
 } from "@/components/agents/platformHelpResolver";
 import {
@@ -201,6 +203,7 @@ export type LauncherLocalDecision = {
     intent: string;
     confidenceFloor?: number;
   };
+  agentSwitchRequest?: MessagePresentationSnapshot["agentSwitchRequest"];
 };
 
 export type LauncherAccessContext = {
@@ -300,7 +303,7 @@ export function resolveAttachmentIntake(agentProfile: Agent | null): AttachmentI
   const secondaryActionLabel = isLegal
     ? "Colar cláusula"
     : isEvidence
-    ? "Colar verify_url"
+    ? "Colar link de verificação"
     : isFinancial
     ? "Colar trecho"
     : "Colar texto";
@@ -413,7 +416,7 @@ export function enrichLegacyAssistantContent(params: {
   if (isGuardianAgent && /knowledge_policy\.blocked:\s*knowledge_required_source_missing/i.test(next)) {
     next =
       params.agentProfile?.chatCopy?.blockedMessages?.missingRequiredSource?.trim() ||
-      "Não consegui validar isso com segurança porque faltam evidências obrigatórias, como receipt, verify_url ou trilha de integridade.";
+      "Não consegui validar isso com segurança porque faltam evidências obrigatórias, como comprovante, link de verificação ou trilha de integridade.";
   }
 
   if (maxLoad === "low" && responseShape === "alert_card") {
@@ -1001,6 +1004,7 @@ export function createPresentationSnapshotV1(params: {
   conversationStage?: MessagePresentationSnapshot["conversationStage"];
   resolvedQuickReplies?: string[];
   journeyContext?: MessagePresentationSnapshot["journeyContext"];
+  agentSwitchRequest?: MessagePresentationSnapshot["agentSwitchRequest"];
 }): MessagePresentationSnapshot {
   const normalizedRouteIntent =
     params.routeIntent === "self_intro" || params.routeIntent === "capabilities_summary"
@@ -1077,6 +1081,34 @@ export function createPresentationSnapshotV1(params: {
     attachmentPrimaryActionLabel: params.attachmentIntake.primaryActionLabel,
     attachmentSecondaryActionLabel: params.attachmentIntake.secondaryActionLabel,
     attachmentHelpText: params.attachmentIntake.helpText,
+    agentSwitchRequest: params.agentSwitchRequest ?? null,
+  };
+}
+
+function isAffirmativeInput(input: string) {
+  const normalized = normalizeIntentText(input);
+  return ["sim", "s", "quero", "ok", "pode ser", "claro", "pode", "afirmativo"].includes(normalized);
+}
+
+function resolveAgentSwitchDecision(params: {
+  input: string;
+  previousAssistantSnapshot?: MessagePresentationSnapshot | null;
+}): LauncherLocalDecision | null {
+  const request = params.previousAssistantSnapshot?.agentSwitchRequest;
+  if (!request || request.trigger !== "affirmative") return null;
+  if (!isAffirmativeInput(params.input)) return null;
+  return {
+    kind: "agent_switch",
+    shouldCreateRun: false,
+    content: "Perfeito. Vou mudar para o agente EIAH para te ajudar com a plataforma.",
+    launcherRouteIntent: "help",
+    presentationRouteIntent: "help",
+    eiahMode: "help",
+    renderVariant: "simple_help",
+    agentSwitchRequest: {
+      ...request,
+      switchImmediately: true,
+    },
   };
 }
 
@@ -1506,6 +1538,13 @@ export async function resolveLauncherTurnDecision(params: {
   previousAssistantSnapshot?: MessagePresentationSnapshot | null;
   accessContext?: LauncherAccessContext | null;
 }): Promise<LauncherLocalDecision | null> {
+  const agentSwitchDecision = resolveAgentSwitchDecision({
+    input: params.input,
+    previousAssistantSnapshot: params.previousAssistantSnapshot,
+  });
+  if (agentSwitchDecision) {
+    return agentSwitchDecision;
+  }
   const localDecision = resolveLauncherLocalDecision({
     input: params.input,
     routeIntent: params.routeIntent,
@@ -2192,6 +2231,25 @@ export function resolveLauncherLocalDecision(params: {
       intentUnknown: params.intentUnknown,
       accessContext: params.accessContext,
     });
+  }
+
+  if (isPlatformUiExplainQuestion(params.input)) {
+    return {
+      kind: "platform_ui_redirect",
+      shouldCreateRun: false,
+      content: buildPlatformSwitchOfferReply(),
+      resolvedQuickReplies: ["Sim", "Não"],
+      launcherRouteIntent: "help",
+      presentationRouteIntent: "help",
+      eiahMode: "help",
+      renderVariant: "simple_help",
+      persistIntent: { intent: "product_explain", confidenceFloor: 0.84 },
+      agentSwitchRequest: {
+        targetAgentId: "EIAH",
+        replayInput: params.input.trim(),
+        trigger: "affirmative",
+      },
+    };
   }
 
   const normalizedId = normalizeAgentKey(params.agentProfile?.id ?? "");

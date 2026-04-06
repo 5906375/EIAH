@@ -17,7 +17,7 @@ import eiahLogo from "./assets/Eiah_logo.png";
 import { updateSession, useSession, type ImobAccessGateState } from "./state/sessionStore";
 import { ApiError, apiGetSessionContext, apiPostExperienceAudit } from "./lib/api";
 
-function NavigationLink({ to, label, prioritized = false }: { to: string; label: string; prioritized?: boolean }) {
+function NavigationLink({ to, label }: { to: string; label: string }) {
   const location = useLocation();
   const active = location.pathname === to || location.pathname.startsWith(`${to}/`);
 
@@ -25,18 +25,11 @@ function NavigationLink({ to, label, prioritized = false }: { to: string; label:
     <Link
       to={to}
       className={`relative px-4 py-2 text-sm font-medium transition ${
-        active
-          ? "text-foreground"
-          : prioritized
-            ? "text-foreground/90 hover:text-foreground"
-            : "text-muted-foreground hover:text-foreground"
+        active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
       }`}
       aria-current={active ? "page" : undefined}
-      aria-label={prioritized ? `${label} (navegação prioritária)` : label}
+      aria-label={label}
     >
-      {prioritized && !active ? (
-        <span className="absolute left-2 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-accent/80" aria-hidden="true" />
-      ) : null}
       <span className="relative z-10">{label}</span>
       {active && (
         <span className="absolute inset-0 -z-0 rounded-full bg-accent/10 blur-sm" />
@@ -65,51 +58,14 @@ const SHELL_NAV_ITEMS: ShellNavItem[] = [
   { to: "/profile", label: "Perfil" },
 ];
 
-function RecommendedActionsBar() {
-  const session = useSession();
-  const location = useLocation();
-  const recommendedActions = session.experience?.recommendedActions ?? [];
-
-  if (!recommendedActions.length) return null;
-
-  return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-6 pb-4 pt-1 sm:flex-row sm:items-center sm:justify-between">
-      <div className="min-w-0">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-accent/90">Acoes sugeridas</p>
-        <p className="text-sm text-muted-foreground">Resolvidas pelo contexto atual de papel, dominio e produtos.</p>
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        {recommendedActions.map((action) => {
-          const active = location.pathname === action.path || location.pathname.startsWith(`${action.path}/`);
-          const primary = action.priority === "primary";
-          return (
-            <Link
-              key={action.actionId}
-              to={action.path}
-              className={`rounded-full border px-3 py-1.5 text-sm transition ${
-                active
-                  ? "border-accent/40 bg-accent/15 text-foreground"
-                  : primary
-                    ? "border-accent/30 bg-accent/10 text-foreground hover:bg-accent/15"
-                    : "border-white/10 bg-white/5 text-muted-foreground hover:text-foreground"
-              }`}
-              aria-current={active ? "page" : undefined}
-            >
-              {action.label}
-            </Link>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 function Layout({
   children,
   showNavigation = true,
+  showWorkspaceLabel = true,
 }: {
   children: React.ReactNode;
   showNavigation?: boolean;
+  showWorkspaceLabel?: boolean;
 }) {
   const session = useSession();
   const imobInstalled =
@@ -120,7 +76,6 @@ function Layout({
   const workspaceLabel = session.branding?.workspaceLabel?.trim() || session.workspaceId;
   const brandPrimary = session.branding?.primaryColor?.trim() || "#22d3ee";
   const subtitle = session.activeDomain === "imob" ? "Imobiliaria Digital Command Center" : "Agent Operations Console";
-  const prioritizedPaths = new Set((session.experience?.primaryNavigation ?? []).map((item) => item.path));
   const roleProfile = session.experience?.roleProfile;
   const visibleNavItems = SHELL_NAV_ITEMS.filter((item) => {
     if (item.requiresImob && !imobInstalled) return false;
@@ -144,7 +99,9 @@ function Layout({
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.35em] text-accent">{brandName}</p>
                 <p className="text-sm font-medium text-muted-foreground">{subtitle}</p>
-                <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground/80">{workspaceLabel}</p>
+                {showWorkspaceLabel ? (
+                  <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground/80">{workspaceLabel}</p>
+                ) : null}
               </div>
             </div>
             {showNavigation ? (
@@ -154,13 +111,11 @@ function Layout({
                     key={item.to}
                     to={item.to}
                     label={item.label}
-                    prioritized={prioritizedPaths.has(item.to)}
                   />
                 ))}
               </nav>
             ) : null}
           </div>
-          {showNavigation ? <RecommendedActionsBar /> : null}
         </header>
 
         <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-10 sm:px-6">
@@ -427,7 +382,7 @@ function AppRoutes() {
       <Route
         path="/signup"
         element={
-          <Layout showNavigation={false}>
+          <Layout showNavigation={false} showWorkspaceLabel={false}>
             <SignupPage />
           </Layout>
         }
@@ -435,7 +390,7 @@ function AppRoutes() {
       <Route
         path="/access"
         element={
-          <Layout showNavigation={false}>
+          <Layout showNavigation={false} showWorkspaceLabel={false}>
             <AccessPage />
           </Layout>
         }

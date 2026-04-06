@@ -161,6 +161,7 @@ export async function createRunRecord(params: {
     tenantId: params.tenantId,
     workspaceId: params.workspaceId,
     agentKey: params.agent,
+    userId: params.userId,
   });
 
   const startedAt = params.startedAt ?? now;

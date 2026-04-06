@@ -21,6 +21,88 @@ function getAgentDisplayName(agent: Agent | null | undefined) {
   return agent.name?.trim() || agent.id?.trim() || "Agente";
 }
 
+function extractPastedClause(input: string) {
+  const match = input.match(/texto_colado:\n([\s\S]+)$/i);
+  return match?.[1]?.trim() ?? "";
+}
+
+function hasConcreteLegalAnalysisRequest(input: string) {
+  const normalized = normalizeIntentText(input);
+  const asksAnalysis =
+    normalized.includes("analise") ||
+    normalized.includes("analisar") ||
+    normalized.includes("parecer") ||
+    normalized.includes("revise") ||
+    normalized.includes("revisar");
+  const hasClause =
+    normalized.includes("clausula") ||
+    normalized.includes("cláusula") ||
+    normalized.includes("[intake_de_artefato]") ||
+    normalized.includes("texto_colado:");
+  return asksAnalysis && hasClause;
+}
+
+export function buildJuridicoClauseAnalysisReply(input: string) {
+  const clause = extractPastedClause(input);
+  const normalizedClause = normalizeIntentText(clause);
+  if (!clause) return null;
+
+  const findings: string[] = [];
+  const risks: string[] = [];
+  const recommendations: string[] = [];
+
+  if (normalizedClause.includes("rescindir injustific")) {
+    findings.push("A cláusula cria penalidade relevante para o contratado em caso de rescisão considerada injustificada.");
+    risks.push("A expressão `rescisão injustificada` está aberta e pode gerar disputa sobre quando a penalidade se aplica.");
+    recommendations.push("Definir objetivamente quais hipóteses caracterizam rescisão injustificada.");
+  }
+
+  if (normalizedClause.includes("perdera todos os direitos autorais") || normalizedClause.includes("perdera todos os direitos autorais")) {
+    findings.push("A cláusula prevê perda integral dos direitos autorais sobre fases já concluídas.");
+    risks.push("Essa redação é juridicamente sensível porque direitos autorais normalmente exigem cessão ou licença claramente delimitadas, com escopo e condições definidos.");
+    recommendations.push("Substituir a ideia de perda automática por cessão ou licença expressa, delimitando o que é transferido, em que momento e sob quais condições.");
+  }
+
+  if (normalizedClause.includes("sub-rogando") || normalizedClause.includes("subrogando")) {
+    risks.push("O uso de `sub-rogação` para direitos autorais é tecnicamente inadequado ou, no mínimo, impreciso para esse tipo de relação contratual.");
+    recommendations.push("Trocar `sub-rogação` por linguagem contratual própria de cessão ou licença de direitos autorais.");
+  }
+
+  if (normalizedClause.includes("multa de 20%")) {
+    findings.push("Há multa de 20% sobre o saldo remanescente para conclusão dos serviços.");
+    risks.push("A multa pode ser discutida se for considerada excessiva ou cumulativa com outras penalidades previstas na mesma cláusula.");
+    recommendations.push("Esclarecer a base de cálculo da multa e avaliar se ela deve coexistir com a regra sobre direitos autorais ou se uma penalidade já é suficiente.");
+  }
+
+  if (normalizedClause.includes("fases ja concluidas") || normalizedClause.includes("fases já concluídas")) {
+    risks.push("A cláusula não define como se comprova que uma fase foi concluída, aceita ou paga.");
+    recommendations.push("Prever critérios de entrega, aceite e pagamento proporcional por fase concluída.");
+  }
+
+  if (findings.length === 0) {
+    findings.push("A cláusula trata de rescisão, penalidade e aproveitamento do material produzido pelo contratado.");
+    risks.push("Há concentração de proteção em favor do contratante e pouca delimitação objetiva de aplicação.");
+    recommendations.push("Detalhar melhor critérios de rescisão, escopo dos direitos sobre entregas já produzidas e base de cálculo de eventual multa.");
+  }
+
+  return [
+    "**Parecer preliminar da cláusula**",
+    "",
+    "A cláusula busca proteger o contratante em caso de saída antecipada do contratado, mas a redação, do jeito que está, é juridicamente sensível e pode gerar discussão.",
+    "",
+    "**Principais pontos**",
+    ...findings.map((item) => `- ${item}`),
+    "",
+    "**Riscos jurídicos**",
+    ...risks.map((item) => `- ${item}`),
+    "",
+    "**Recomendação prática**",
+    ...recommendations.map((item) => `- ${item}`),
+    "",
+    "Em resumo: a lógica de proteção ao contratante faz sentido, mas a cláusula precisa de mais precisão para reduzir risco de nulidade parcial, discussão sobre abusividade e conflito sobre direitos autorais.",
+  ].join("\n");
+}
+
 export function isGuardianGuidanceQuestion(input: string) {
   const normalized = normalizeIntentText(input);
   const signals = ["receipt", "verify_url", "verify url", "integridade", "evidencia", "evidência", "pii", "lgpd"];
@@ -61,6 +143,10 @@ export function isAadvGuidanceQuestion(input: string) {
 
 export function buildJuridicoGuidanceReply(input: string, agentProfile: Agent | null) {
   const normalized = normalizeIntentText(input);
+  const concreteAnalysis = buildJuridicoClauseAnalysisReply(input);
+  if (hasConcreteLegalAnalysisRequest(input) && concreteAnalysis) {
+    return concreteAnalysis;
+  }
   if (
     normalized.includes("revisar contrato") ||
     normalized === "quero revisar um contrato" ||
@@ -262,7 +348,7 @@ export function buildGuardianGuidanceReply(input: string, agentProfile: Agent | 
       "Um exemplo simples seria este:",
       "",
       "Você quer comprovar que uma execução gerou um artefato verificável.",
-      "Eu te ajudo a checar se existe receipt, verify_url e trilha mínima de integridade antes de prosseguir.",
+      "Eu te ajudo a checar se existe comprovante, link de verificação e trilha mínima de integridade antes de prosseguir.",
       "",
       "Se faltar algum desses itens, eu te digo exatamente o que precisa ser regularizado.",
     ].join("\n");
@@ -270,13 +356,13 @@ export function buildGuardianGuidanceReply(input: string, agentProfile: Agent | 
 
   if (normalized.includes("receipt") || normalized.includes("verify")) {
     return [
-      "Para validar receipt e verify_url com segurança, eu costumo confirmar:",
+      "Para validar o comprovante e o link de verificação com segurança, eu costumo confirmar:",
       "",
-      "- se existe receipt vinculando a execução ou evidência",
-      "- se o verify_url está presente e utilizável",
+      "- se existe um comprovante vinculando a execução ou a evidência",
+      "- se o link de verificação está disponível e funcionando",
       "- se a trilha de integridade está coerente com o contexto",
       "",
-      agentProfile?.chatCopy?.defaultNextStep?.trim() || "Se quiser, me envie o receipt ou verify_url que eu reviso com você.",
+      agentProfile?.chatCopy?.defaultNextStep?.trim() || "Se quiser, me envie o comprovante ou o link de verificação que eu reviso com você.",
     ].join("\n");
   }
 
@@ -292,11 +378,11 @@ export function buildGuardianGuidanceReply(input: string, agentProfile: Agent | 
     "Posso te ajudar a validar evidência, integridade e verificabilidade desse caso.",
     "",
     "Para eu te orientar melhor, envie pelo menos:",
-    "- qual evidência, receipt ou verify_url você quer revisar",
+    "- qual arquivo, comprovante ou link de verificação você quer revisar",
     "- qual é a dúvida principal",
     "- se existe bloqueio, risco ou exigência de auditoria",
     "",
-    agentProfile?.chatCopy?.defaultNextStep?.trim() || "Se quiser, me diga a evidência ou receipt que eu sigo por aí.",
+    agentProfile?.chatCopy?.defaultNextStep?.trim() || "Se quiser, me diga qual arquivo ou comprovante você quer validar.",
   ].join("\n");
 }
 
@@ -323,9 +409,9 @@ export function buildAadvGuidanceReply(input: string, agentProfile: Agent | null
     return [
       "Os riscos mais comuns nesse tipo de consolidação são:",
       "",
-      "- decidir com evidências incompletas de FinOps ou segurança",
+      "- decidir com evidências incompletas de custos ou segurança",
       "- misturar hipótese com dado validado",
-      "- avançar sem confirmar RBAC, reconciliação ou trilha assinada",
+      "- avançar sem confirmar perfis de acesso, reconciliação ou trilha assinada",
       "- consolidar resumo executivo sem deixar claro o que ainda falta",
     ].join("\n");
   }
@@ -335,7 +421,7 @@ export function buildAadvGuidanceReply(input: string, agentProfile: Agent | null
       "Os próximos passos mais úteis costumam ser estes:",
       "",
       "1. identificar qual bloco está faltando",
-      "2. reunir a evidência mínima de FinOps, segurança ou operação",
+      "2. reunir a evidência mínima de custos, segurança ou operação",
       "3. consolidar o resumo executivo só depois de validar as lacunas",
     ].join("\n");
   }

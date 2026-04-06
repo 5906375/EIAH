@@ -151,7 +151,7 @@ const ImobMarketplacePage: React.FC = () => {
         <p className="text-xs uppercase tracking-[0.35em] text-accent">Marketplace</p>
         <h1 className="mt-2 text-2xl font-semibold text-foreground">IMOB Network</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Ative a vertical imobiliária para liberar Chat Operacional, Properties, Processes e Partners.
+          Ative a vertical imobiliária para liberar Chat Operacional, Imóveis, Processos e Parceiros.
         </p>
         <p className="mt-3 text-xs uppercase tracking-[0.22em] text-muted-foreground/80">
           White-label ativo: {brandName} • {workspaceLabel}
@@ -163,7 +163,7 @@ const ImobMarketplacePage: React.FC = () => {
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-semibold text-foreground">Estado da instalação</h2>
             <span className="rounded-full border border-white/15 bg-black/20 px-3 py-1 text-xs uppercase tracking-[0.2em] text-muted-foreground">
-              {session.workspaceId}
+              {workspaceLabel}
             </span>
           </div>
 
@@ -256,10 +256,26 @@ const ImobMarketplacePage: React.FC = () => {
           </div>
           <h3 className="mt-6 text-sm font-semibold uppercase tracking-[0.28em] text-muted-foreground">Rotas liberadas</h3>
           <ul className="mt-4 space-y-2 text-sm text-foreground">
-            <li>/app/imob/chat</li>
-            <li>/app/imob/properties</li>
-            <li>/app/imob/processes</li>
-            <li>/app/imob/partners</li>
+            <li>
+              <Link to="/app/imob/chat?domain=imob" className="text-accent underline underline-offset-4 hover:text-accent/80">
+                Chat Operacional
+              </Link>
+            </li>
+            <li>
+              <Link to="/app/imob/properties" className="text-accent underline underline-offset-4 hover:text-accent/80">
+                Imóveis
+              </Link>
+            </li>
+            <li>
+              <Link to="/app/imob/processes" className="text-accent underline underline-offset-4 hover:text-accent/80">
+                Processos
+              </Link>
+            </li>
+            <li>
+              <Link to="/app/imob/partners" className="text-accent underline underline-offset-4 hover:text-accent/80">
+                Parceiros
+              </Link>
+            </li>
           </ul>
         </aside>
       </section>

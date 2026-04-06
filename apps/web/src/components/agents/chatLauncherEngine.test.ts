@@ -51,6 +51,52 @@ test("platform and pages help replies are distinct", () => {
   assert.match(pagesReply, /Runs|Agentes|Billing|Marketplace/i);
 });
 
+test("self-service help reply explains guided flows and recipes", () => {
+  const reply = buildDeterministicHelpReply("como funciona o self-service?");
+
+  assert.ok(reply);
+  assert.match(reply, /Como funciona o Self-service/i);
+  assert.match(reply, /fluxos guiados|recipes|workspace/i);
+});
+
+test("recipes help reply explains draft and homologated states", () => {
+  const reply = buildDeterministicHelpReply("qual a diferenca entre draft e homologado?");
+
+  assert.ok(reply);
+  assert.match(reply, /Como funcionam recipes/i);
+  assert.match(reply, /draft|homologated/i);
+});
+
+test("preview and production help reply differentiates simulation from execution", () => {
+  const reply = buildDeterministicHelpReply("qual a diferenca entre preview e producao?");
+
+  assert.ok(reply);
+  assert.match(reply, /Preview, rodar agora e promover para producao/i);
+  assert.match(reply, /Simular|Promover para producao|execucao real/i);
+});
+
+test("run creation help reply exposes clickable shortcut markdown", () => {
+  const reply = buildDeterministicHelpReply("como criar um run no eiah?");
+
+  assert.ok(reply);
+  assert.match(reply, /\[Runs · criar\]\(\/app\/runs#runs-criar\)/);
+});
+
+test("billing help reply exposes clickable billing link", () => {
+  const reply = buildDeterministicHelpReply("como funciona o billing?");
+
+  assert.ok(reply);
+  assert.match(reply, /\[Billing\]\(\/app\/billing\)/);
+});
+
+test("agent not enabled help reply explains assignment versus billing", () => {
+  const reply = buildDeterministicHelpReply("por que o agente nao esta habilitado no workspace?");
+
+  assert.ok(reply);
+  assert.match(reply, /agente nao esta habilitado no workspace/i);
+  assert.match(reply, /workspaceAgentAssignment|billing|assignment/i);
+});
+
 test("site capabilities follow-up maps to platform overview instead of generic fallback", () => {
   const reply = buildDeterministicHelpReply("o que dá para fazer no site");
 
@@ -167,6 +213,24 @@ test("imob shortcuts follow-up explains what the shortcuts mean", () => {
   assert.ok(reply);
   assert.match(reply, /O que são esses atalhos no IMOB/i);
   assert.match(reply, /Dashboard IMOB|Chat IMOB|Marketplace IMOB/i);
+});
+
+test("imob overview reply exposes clickable shortcut markdown", () => {
+  const reply = buildDeterministicImobReply("explique como funciona a vertical imob");
+
+  assert.ok(reply);
+  assert.match(reply ?? "", /\[Dashboard IMOB\]\(\/app\/imob\/dashboard\)/);
+  assert.match(reply ?? "", /\[Chat IMOB\]\(\/app\/imob\/chat\)/);
+  assert.match(reply ?? "", /\[Instalação do IMOB\]\(\/app\/marketplace\/imob\)/);
+});
+
+test("imob install reply exposes clickable shortcut markdown", () => {
+  const reply = buildDeterministicImobReply("Quero instalar o IMOB no workspace.");
+
+  assert.ok(reply);
+  assert.match(reply ?? "", /\[Marketplace IMOB\]\(\/app\/marketplace\/imob\)/);
+  assert.match(reply ?? "", /\[Dashboard IMOB\]\(\/app\/imob\/dashboard\)/);
+  assert.match(reply ?? "", /\[Chat IMOB\]\(\/app\/imob\/chat\)/);
 });
 
 test("imob shortcut selections return the chosen shortcut as a clickable link", () => {

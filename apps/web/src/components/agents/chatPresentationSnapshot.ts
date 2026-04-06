@@ -40,6 +40,12 @@ export type MessagePresentationSnapshot = {
   attachmentPrimaryActionLabel?: string;
   attachmentSecondaryActionLabel?: string;
   attachmentHelpText?: string;
+  agentSwitchRequest?: {
+    targetAgentId: string;
+    replayInput?: string;
+    switchImmediately?: boolean;
+    trigger?: "affirmative";
+  } | null;
 };
 
 export function isSnapshotV1(value: unknown): value is MessagePresentationSnapshot {

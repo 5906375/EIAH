@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import { Link } from "react-router-dom";
 import { selfServiceConfigs } from "@/pages/self-service/config";
 import {
   apiApproveRun,
@@ -16,6 +17,7 @@ import {
   apiCreateHelpdeskSession,
   apiGetRun,
   apiListRunEvents,
+  ApiError,
   BASE_URL,
   type Agent,
   type RunEvent,
@@ -117,6 +119,36 @@ function getCatalogAgentDisplayName(agent: { id?: string; name?: string }) {
     return "EIAH";
   }
   return agent.name?.trim() || agent.id?.trim() || "Agente";
+}
+
+function formatAttachmentKindLabel(value: string) {
+  const labels: Record<string, string> = {
+    contract: "Contrato",
+    clause: "Cláusula",
+    addendum: "Aditivo",
+    proposal: "Proposta",
+    public_notice: "Edital",
+    evidence: "Evidência",
+    receipt: "Comprovante",
+    notice: "Notificação",
+    generic_document: "Documento",
+    invoice: "Fatura",
+    spreadsheet: "Planilha",
+  };
+  return labels[value] ?? value.replace(/_/g, " ");
+}
+
+function formatAttachmentAnalysisLabel(value: string) {
+  const labels: Record<string, string> = {
+    full_review: "Revisão completa",
+    partial_review: "Revisão parcial",
+    clause_review: "Revisão de cláusula",
+    risk_scan: "Análise de risco",
+    missing_fields: "Campos faltantes",
+    evidence_validation: "Validação de evidência",
+    financial_check: "Conferência financeira",
+  };
+  return labels[value] ?? value.replace(/_/g, " ");
 }
 
 export type LedgerEvent = {
@@ -473,6 +505,7 @@ function maskIdentity(value: string, fallbackPrefix: string) {
 
 export default function ChatAgentLauncher({
   activeAgentId,
+  onAgentChangeRequest,
   onLedgerChange,
   onRunIdChange,
   onSseStatusChange,
@@ -483,6 +516,7 @@ export default function ChatAgentLauncher({
   launcherContext,
 }: {
   activeAgentId?: string;
+  onAgentChangeRequest?: (agentId: string) => void;
   onLedgerChange?: (ledger: LedgerEvent[]) => void;
   onRunIdChange?: (runId: string | null) => void;
   onSseStatusChange?: (status: "idle" | "connecting" | "live" | "polling" | "error") => void;
@@ -538,6 +572,7 @@ export default function ChatAgentLauncher({
   const [attachmentAnalysisMode, setAttachmentAnalysisMode] = useState("full_review");
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
   const [attachmentUploadError, setAttachmentUploadError] = useState<string | null>(null);
+  const [pendingAgentReplayInput, setPendingAgentReplayInput] = useState<string | null>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const pollTimerRef = useRef<number | null>(null);
   const seenEventsRef = useRef<Set<string>>(new Set());
@@ -574,6 +609,7 @@ export default function ChatAgentLauncher({
   );
   const session = useSession();
   const effectiveWorkspaceId = workspaceId ?? session.workspaceId;
+  const workspaceDisplayLabel = session.branding?.workspaceLabel?.trim() || effectiveWorkspaceId || "workspace atual";
   const { executeAgent } = useAgentExecution();
   const conversation = useConversation();
   const threadKey = useMemo(() => {
@@ -797,6 +833,13 @@ export default function ChatAgentLauncher({
       }
     );
   }, [activeAgentId, agents]);
+
+  useEffect(() => {
+    if (!pendingAgentReplayInput) return;
+    if (normalizeAgentKey(activeAgentId ?? "") !== "eiah") return;
+    setInput(pendingAgentReplayInput);
+    setPendingAgentReplayInput(null);
+  }, [activeAgentId, pendingAgentReplayInput]);
 
   const pushMessage = (message: ChatMessage) => {
     setMessages((prev) => [...prev, message]);
@@ -1249,7 +1292,14 @@ export default function ChatAgentLauncher({
         conversationStage: turnDecision.conversationStage ?? null,
         resolvedQuickReplies: turnDecision.resolvedQuickReplies,
         journeyContext: turnDecision.journeyContext ?? null,
+        agentSwitchRequest: turnDecision.agentSwitchRequest,
       });
+      if (turnDecision.agentSwitchRequest?.switchImmediately && onAgentChangeRequest) {
+        setPendingAgentReplayInput(turnDecision.agentSwitchRequest.replayInput ?? null);
+        onAgentChangeRequest(turnDecision.agentSwitchRequest.targetAgentId);
+        clearAttachmentComposer();
+        return;
+      }
       await pushAssistantMessageWithTyping({
         idPrefix: `assistant-${turnDecision.kind}`,
         content: turnDecision.content,
@@ -1335,7 +1385,7 @@ export default function ChatAgentLauncher({
     } catch (error) {
       setIsStreaming(false);
       updateSseStatus("error");
-      const message = error instanceof Error ? error.message : "Falha ao iniciar run.";
+      const message = formatLauncherError(error);
       pushMessage({
         id: `assistant-error-${Date.now()}`,
         role: "assistant",
@@ -1619,6 +1669,7 @@ export default function ChatAgentLauncher({
     conversationStage?: MessagePresentationSnapshot["conversationStage"];
     resolvedQuickReplies?: string[];
     journeyContext?: MessagePresentationSnapshot["journeyContext"];
+    agentSwitchRequest?: MessagePresentationSnapshot["agentSwitchRequest"];
   }): MessagePresentationSnapshot {
     return createPresentationSnapshotV1({
       ...params,
@@ -1680,6 +1731,29 @@ export default function ChatAgentLauncher({
     lastAssistantSnapshot,
     usedQuickReplyKeys,
   ]);
+  const markdownComponents = useMemo(
+    () => ({
+      a: ({ href, children, ...props }: React.ComponentPropsWithoutRef<"a">) => {
+        const resolvedHref = typeof href === "string" ? href : "";
+        const className = "font-medium text-accent underline underline-offset-4 hover:text-accent/80";
+
+        if (resolvedHref.startsWith("/")) {
+          return (
+            <Link to={resolvedHref} className={className}>
+              {children}
+            </Link>
+          );
+        }
+
+        return (
+          <a {...props} href={resolvedHref} target="_blank" rel="noreferrer" className={className}>
+            {children}
+          </a>
+        );
+      },
+    }),
+    []
+  );
   const inputPlaceholder = useMemo(() => {
     const snapshotPlaceholder = resolveSnapshotInputPlaceholder(lastAssistantSnapshot);
     if (snapshotPlaceholder) {
@@ -1704,6 +1778,28 @@ export default function ChatAgentLauncher({
     attachmentIntake.enabled && (selectedAttachment || attachmentMode === "paste_text")
       ? "Descreva o ponto que você quer analisar neste documento"
       : inputPlaceholder;
+  const formatLauncherError = useCallback(
+    (error: unknown) => {
+      if (error instanceof ApiError && error.body && typeof error.body === "object") {
+        const payload = error.body as {
+          error?: {
+            code?: string;
+            context?: {
+              agentKey?: string;
+            };
+          };
+        };
+
+        if (payload.error?.code === "AGENT_NOT_ENABLED_IN_WORKSPACE") {
+          const agentLabel = payload.error.context?.agentKey?.trim() || activeAgentId || "este agente";
+          return `O agente ${agentLabel} ainda não está habilitado no workspace ${workspaceDisplayLabel}.`;
+        }
+      }
+
+      return error instanceof Error ? error.message : "Falha ao iniciar run.";
+    },
+    [activeAgentId, workspaceDisplayLabel]
+  );
 
   return (
     <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-surface/80 p-8 shadow-lg shadow-black/20">
@@ -1759,21 +1855,6 @@ export default function ChatAgentLauncher({
                 </div>
               </div>
 
-              {workspaceBillingContext ? (
-                <ContextualCostPanel
-                  className="mb-4"
-                  run={{
-                    runId,
-                    actualCostCents: activeRunFinance?.amountCents ?? null,
-                    estimatedCostCents: activeRunFinance?.estimatedAmountCents ?? estimatedRunCostCents ?? null,
-                    tokens: activeRunFinance?.tokens ?? null,
-                    issueLabel: activeRunFinance?.issueLabel ?? null,
-                    hasGap: activeRunFinance?.hasGap ?? false,
-                  }}
-                  workspace={workspaceBillingContext}
-                />
-              ) : null}
-
             <div
               ref={scrollRef}
               className="no-scrollbar h-[360px] overflow-y-auto rounded-3xl border border-white/5 bg-black/20 p-4"
@@ -1825,7 +1906,7 @@ export default function ChatAgentLauncher({
                                   ) : null}
 
                                   <div className="prose prose-invert prose-sm max-w-full break-words leading-relaxed prose-pre:border prose-pre:border-white/10 prose-pre:bg-black/50">
-                                    <ReactMarkdown>
+                                    <ReactMarkdown components={markdownComponents}>
                                       {(() => {
                                         return buildRenderableAssistantMarkdown({
                                           messageContent: message.content,
@@ -1982,7 +2063,7 @@ export default function ChatAgentLauncher({
                       >
                         {attachmentDocumentOptions.map((option) => (
                           <option key={option} value={option}>
-                            {option.replace(/_/g, " ")}
+                            {formatAttachmentKindLabel(option)}
                           </option>
                         ))}
                       </select>
@@ -1995,7 +2076,7 @@ export default function ChatAgentLauncher({
                       >
                         {attachmentAnalysisOptions.map((option) => (
                           <option key={option} value={option}>
-                            {option.replace(/_/g, " ")}
+                            {formatAttachmentAnalysisLabel(option)}
                           </option>
                         ))}
                       </select>

@@ -12,7 +12,7 @@ export const defiOneProfile: AgentProfileSeed = {
     whoIAm: "Sou o DeFi One. Eu ajudo a simular, estimar e organizar operações DeFi com mais segurança.",
     whatIDo: [
       "organizo fluxos DeFi como simulação, custo e execução",
-      "ajudo a comparar opções antes de uma ação on-chain",
+      "ajudo a comparar opções antes de uma ação em blockchain",
       "mostro o que precisa ser confirmado antes de seguir",
     ],
     whenToUseMe: [

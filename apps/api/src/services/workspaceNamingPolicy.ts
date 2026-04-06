@@ -25,3 +25,18 @@ export async function canTenantUseReservedDefaultWorkspaceName(params: {
   );
 }
 
+export async function tenantAlreadyHasReservedDefaultWorkspace(params: {
+  prisma: PrismaClient;
+  tenantId: string;
+  excludeWorkspaceId?: string | null;
+}) {
+  const existing = await params.prisma.workspace.findFirst({
+    where: {
+      tenantId: params.tenantId,
+      name: RESERVED_DEFAULT_WORKSPACE_NAME,
+      ...(params.excludeWorkspaceId ? { id: { not: params.excludeWorkspaceId } } : {}),
+    },
+    select: { id: true },
+  });
+  return Boolean(existing);
+}

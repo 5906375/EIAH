@@ -517,6 +517,123 @@ function getLeadPersonaCopy(leadDraft?: { leadPersona?: "lead" | "comprador" | "
   };
 }
 
+function getProposalPersonaCopy(proposalDraft?: {
+  contractType?: "rent" | "sale" | "management" | null;
+} | null) {
+  if (proposalDraft?.contractType === "rent") {
+    return {
+      singular: "locatário",
+      article: "do locatário",
+      label: "Criar proposta para locatário",
+      description: "Preencha os dados abaixo para preparar a proposta comercial para o locatário.",
+      nameLabel: "Nome do locatário",
+      phoneLabel: "Telefone do locatário",
+      emailLabel: "E-mail do locatário",
+      offerLabel: "Valor da proposta de locação",
+      nextStep: "Completar dados do locatário e ajustar a proposta.",
+      blocker: "Dados do locatário ou proposta incompletos.",
+    };
+  }
+
+  return {
+    singular: "comprador",
+    article: "do comprador",
+    label: "Criar proposta para comprador",
+    description: "Preencha os dados abaixo para preparar a proposta comercial para o comprador.",
+    nameLabel: "Nome do comprador",
+    phoneLabel: "Telefone do comprador",
+    emailLabel: "E-mail do comprador",
+    offerLabel: "Valor da proposta",
+    nextStep: "Completar dados do comprador e ajustar a proposta.",
+    blocker: "Dados do comprador ou proposta incompletos.",
+  };
+}
+
+function buildProposalCreateForm(proposalDraft?: {
+  buyerName?: string | null;
+  buyerPhone?: string | null;
+  buyerEmail?: string | null;
+  propertyId?: string | null;
+  offerAmount?: number | null;
+  contractType?: "rent" | "sale" | "management" | null;
+} | null) {
+  const proposalCopy = getProposalPersonaCopy(proposalDraft);
+  return {
+    entity: "proposta",
+    action: "create",
+    label: proposalCopy.label,
+    description: proposalCopy.description,
+    fields: [
+      {
+        name: "propertyId",
+        label: "Imóvel da proposta",
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: 4455",
+        value: proposalDraft?.propertyId?.replace(/^property-/, "") ?? "",
+      },
+      {
+        name: "buyerName",
+        label: proposalCopy.nameLabel,
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: Maria da Silva",
+        value: proposalDraft?.buyerName ?? "",
+      },
+      {
+        name: "buyerPhone",
+        label: proposalCopy.phoneLabel,
+        type: "tel" as const,
+        required: true,
+        placeholder: "Ex.: (11) 99999-9999",
+        value: proposalDraft?.buyerPhone ?? "",
+      },
+      {
+        name: "buyerEmail",
+        label: proposalCopy.emailLabel,
+        type: "email" as const,
+        placeholder: "Ex.: maria@email.com",
+        value: proposalDraft?.buyerEmail ?? "",
+      },
+      {
+        name: "offerAmount",
+        label: proposalCopy.offerLabel,
+        type: "text" as const,
+        required: true,
+        placeholder: proposalDraft?.contractType === "rent" ? "Ex.: 3500" : "Ex.: 500000",
+        value: proposalDraft?.offerAmount ? String(proposalDraft.offerAmount) : "",
+      },
+      {
+        name: "contractType",
+        label: "Tipo de proposta",
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: venda ou locação",
+        value:
+          proposalDraft?.contractType === "rent"
+            ? "locação"
+            : proposalDraft?.contractType === "sale"
+              ? "venda"
+              : proposalDraft?.contractType === "management"
+                ? "administração"
+                : "",
+      },
+    ],
+    actions: [
+      {
+        id: "cancel" as const,
+        label: "Cancelar",
+        kind: "secondary" as const,
+      },
+      {
+        id: "submit" as const,
+        label: "Continuar proposta",
+        kind: "primary" as const,
+      },
+    ],
+  };
+}
+
 function buildOwnerCreateForm(ownerDraft?: {
   ownerPersona?: "proprietario" | "vendedor" | "locador";
   ownerName?: string | null;
@@ -977,9 +1094,15 @@ function mapOperationalPendingFieldLabel(
     desiredGoal: `objetivo ${leadPersonaCopy.article}`,
     desiredCity: "cidade de interesse",
     budgetMax: "faixa de orçamento",
-    buyerName: "nome do comprador",
-    buyerPhone: "telefone do comprador",
-    buyerEmail: "e-mail do comprador",
+    buyerName: `nome ${getProposalPersonaCopy({
+      contractType: flow === "proposal.create" ? ((options as { contractType?: "rent" | "sale" | "management" | null } | undefined)?.contractType ?? null) : null,
+    }).article}`,
+    buyerPhone: `telefone ${getProposalPersonaCopy({
+      contractType: flow === "proposal.create" ? ((options as { contractType?: "rent" | "sale" | "management" | null } | undefined)?.contractType ?? null) : null,
+    }).article}`,
+    buyerEmail: `e-mail ${getProposalPersonaCopy({
+      contractType: flow === "proposal.create" ? ((options as { contractType?: "rent" | "sale" | "management" | null } | undefined)?.contractType ?? null) : null,
+    }).article}`,
     offerAmount: "valor da proposta",
     visitorName: "nome do visitante",
     visitorPhone: "telefone do visitante",
@@ -1011,9 +1134,11 @@ function buildOperationalPresentationMeta(
     mapOperationalPendingFieldLabel(flow, field, {
       leadPersona: flow === "lead.qualify" ? (operationalState.leadDraft?.leadPersona ?? "lead") : null,
       ownerPersona: flow === "owner.create" ? (operationalState.ownerDraft?.ownerPersona ?? "proprietario") : null,
+      ...(flow === "proposal.create" ? { contractType: operationalState.proposalDraft?.contractType ?? null } : {}),
     })
   );
   const owner = mapOperationalOwner(flow);
+  const proposalCopy = flow === "proposal.create" ? getProposalPersonaCopy(operationalState.proposalDraft) : null;
   const nextStep =
     flow === "commission.settle"
       ? pendingFieldLabels.length > 0
@@ -1025,8 +1150,8 @@ function buildOperationalPresentationMeta(
           : "Revisar minuta e validar pacote documental."
         : flow === "proposal.create"
           ? pendingFieldLabels.length > 0
-            ? "Completar dados do comprador e ajustar a proposta."
-            : "Confirmar dados do comprador e acompanhar aceite da proposta."
+            ? proposalCopy?.nextStep ?? "Completar dados da proposta e ajustar a negociação."
+            : `Confirmar dados ${proposalCopy?.article ?? "da contraparte"} e acompanhar aceite da proposta.`
           : flow === "visit.schedule"
             ? pendingFieldLabels.length > 0
               ? "Completar dados da visita antes da confirmação."
@@ -1055,7 +1180,7 @@ function buildOperationalPresentationMeta(
           : null
         : flow === "proposal.create"
           ? pendingFieldLabels.length > 0
-            ? "Dados do comprador ou proposta incompletos."
+            ? proposalCopy?.blocker ?? "Dados da proposta incompletos."
             : null
           : flow === "visit.schedule"
             ? pendingFieldLabels.length > 0
@@ -1776,37 +1901,33 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
       )
     : [];
   const executionRequest = buildOperationalExecution(intent, message, new Date().toISOString(), operationalState);
-  return {
-    mode: "execute",
-    action: executionRequest.action,
-    threadLabel: getIntentThreadLabel(intent),
-    conversationState: { slots: createEmptyImobSlots(), mode: "execute", pendingSlot: "none", resultOffset: 0, operational: operationalState },
-    executionRequest,
-    presentation: {
-      ...buildOperationalPresentationMeta(operationalState),
-      metadata: buildCatalogConfidenceMetadata(parsedCatalogIntent, false, { source: semanticIntentSource }),
-      form:
-        operationalState?.status === "collecting"
-          ? operationalState.flow === "owner.create"
-            ? buildOwnerCreateForm(operationalState.ownerDraft)
-            : operationalState.flow === "property.create"
-              ? buildPropertyCreateForm(operationalState.propertyDraft)
-              : operationalState.flow === "lead.qualify"
-                ? buildLeadCreateForm(operationalState.leadDraft)
-                : operationalState.flow === "listing.activate"
-                  ? buildListingActivateForm(operationalState.listingDraft)
-                  : operationalState.flow === "documents.collect"
-                    ? buildDocumentValidationForm(operationalState.documentDraft)
-                    : operationalState.flow === "contract.prepare"
-                      ? buildContractActionForm(
-                          operationalState.contractDraft,
-                          wantsSendForSignature || (parsedCatalogIntent.action === "sendForSignature" && parsedCatalogIntent.entity === "contrato")
-                            ? "sendForSignature"
-                            : "create"
-                        )
-                      : undefined
-          : undefined,
-      text:
+  const presentation = {
+    ...buildOperationalPresentationMeta(operationalState),
+    metadata: buildCatalogConfidenceMetadata(parsedCatalogIntent, false, { source: semanticIntentSource }),
+    form:
+      operationalState?.status === "collecting"
+        ? operationalState.flow === "owner.create"
+          ? buildOwnerCreateForm(operationalState.ownerDraft)
+          : operationalState.flow === "property.create"
+            ? buildPropertyCreateForm(operationalState.propertyDraft)
+            : operationalState.flow === "lead.qualify"
+              ? buildLeadCreateForm(operationalState.leadDraft)
+              : operationalState.flow === "proposal.create"
+                ? buildProposalCreateForm(operationalState.proposalDraft)
+              : operationalState.flow === "listing.activate"
+                ? buildListingActivateForm(operationalState.listingDraft)
+                : operationalState.flow === "documents.collect"
+                  ? buildDocumentValidationForm(operationalState.documentDraft)
+                  : operationalState.flow === "contract.prepare"
+                    ? buildContractActionForm(
+                        operationalState.contractDraft,
+                        wantsSendForSignature || (parsedCatalogIntent.action === "sendForSignature" && parsedCatalogIntent.entity === "contrato")
+                          ? "sendForSignature"
+                          : "create"
+                      )
+                    : undefined
+        : undefined,
+    text:
         intent === "capture"
           ? operationalState?.flow === "property.create"
             ? operationalPendingLabels.length > 0
@@ -1833,8 +1954,8 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
                     : "Posso preparar a ativação do anúncio agora."
                   : intent === "proposal"
                     ? operationalState?.flow === "proposal.create" && operationalState.pendingFields.length > 0
-                      ? `Posso preparar a proposta agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
-                      : "Posso preparar a proposta agora."
+                      ? `Posso preparar a proposta para ${getProposalPersonaCopy(operationalState.proposalDraft).singular} agora. Ainda preciso de: ${operationalPendingLabels.join(", ")}.`
+                      : `Posso preparar a proposta para ${getProposalPersonaCopy(operationalState?.proposalDraft).singular} agora.`
                     : intent === "deal"
                       ? operationalState?.flow === "deal.review" && operationalState.pendingFields.length > 0
                         ? `Posso iniciar a revisão do negócio agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
@@ -1856,10 +1977,28 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
                             : "Posso preparar o handoff jurídico do contrato agora."
                         : "Posso preparar o handoff jurídico do contrato agora."
                       : intent === "commission"
-                        ? operationalState?.flow === "commission.settle" && operationalState.pendingFields.length > 0
+                      ? operationalState?.flow === "commission.settle" && operationalState.pendingFields.length > 0
                           ? `Posso iniciar a liquidação da comissão agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
                           : "Posso iniciar a liquidação da comissão agora."
-                        : "Posso aplicar esse ajuste agora.",
-    },
+      : "Posso aplicar esse ajuste agora.",
+  };
+
+  if (presentation.form) {
+    return {
+      mode: "consult",
+      action: executionRequest.action,
+      threadLabel: getIntentThreadLabel(intent),
+      conversationState: { slots: createEmptyImobSlots(), mode: "consult", pendingSlot: "none", resultOffset: 0, operational: operationalState },
+      presentation,
+    };
+  }
+
+  return {
+    mode: "execute",
+    action: executionRequest.action,
+    threadLabel: getIntentThreadLabel(intent),
+    conversationState: { slots: createEmptyImobSlots(), mode: "execute", pendingSlot: "none", resultOffset: 0, operational: operationalState },
+    executionRequest,
+    presentation,
   };
 }

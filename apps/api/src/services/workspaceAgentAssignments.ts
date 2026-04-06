@@ -1,9 +1,11 @@
 import { PrismaClient, prismaGlobal } from "@repo/db";
+import { readWorkspaceManagementSummary } from "./workspaceResponsibility";
 
 type WorkspaceAgentScope = {
   tenantId: string;
   workspaceId: string;
   agentKey: string;
+  userId?: string;
 };
 
 export type WorkspaceAgentAssignmentRecord = {
@@ -39,6 +41,74 @@ function resolveClient(client?: PrismaClient) {
 
 function normalizeAgentKey(value: string) {
   return value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function isGlobalPlatformEiahAgent(agentKey: string) {
+  return normalizeAgentKey(agentKey) === "eiah";
+}
+
+async function canProvisionGlobalFounderAssignment(
+  client: PrismaClient,
+  params: WorkspaceAgentScope
+) {
+  if (!params.userId || !isGlobalPlatformEiahAgent(params.agentKey)) {
+    return false;
+  }
+
+  const workspaceSummary = await readWorkspaceManagementSummary({
+    prisma: client,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    userId: params.userId,
+  });
+  const normalizedRoleKey = (workspaceSummary.selectedRoleKey ?? "").trim().toLowerCase();
+  return normalizedRoleKey === "founder" || normalizedRoleKey === "global_admin";
+}
+
+async function provisionGlobalFounderAssignment(
+  client: PrismaClient,
+  params: WorkspaceAgentScope
+) {
+  if (!(await canProvisionGlobalFounderAssignment(client, params))) {
+    return null;
+  }
+
+  const canonicalAgentKey = await resolveCanonicalAgentKey(client, params.agentKey);
+  const workspace = await client.workspace.findUnique({
+    where: { id: params.workspaceId },
+    select: { id: true, tenantId: true },
+  });
+  if (!workspace || workspace.tenantId !== params.tenantId) {
+    return null;
+  }
+
+  const metadata = await client.agentMetadata.findUnique({
+    where: { agent: canonicalAgentKey },
+    select: { version: true },
+  });
+  const profile = await client.agentProfile.findUnique({
+    where: { agent: canonicalAgentKey },
+    select: { updatedAt: true },
+  });
+
+  if (!metadata && !profile) {
+    return null;
+  }
+
+  return client.workspaceAgentAssignment.create({
+    data: {
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      agentKey: canonicalAgentKey,
+      agentVersion: metadata?.version ?? "1.0.0",
+      enabled: true,
+      signedAt: profile?.updatedAt ?? new Date(),
+      signatureRef: "global-founder-access",
+      metadata: {
+        source: "global-founder-access",
+      },
+    },
+  });
 }
 
 async function resolveCanonicalAgentKey(client: PrismaClient, agentKey: string) {
@@ -169,6 +239,7 @@ export async function assertWorkspaceAgentEnabled(params: {
   tenantId: string;
   workspaceId: string;
   agentKey: string;
+  userId?: string;
 }): Promise<WorkspaceAgentAssignmentRecord> {
   const client = resolveClient(params.prisma);
   const current =
@@ -176,6 +247,11 @@ export async function assertWorkspaceAgentEnabled(params: {
     (await bootstrapAssignment(client, params));
 
   if (!current || !current.enabled) {
+    const provisioned = await provisionGlobalFounderAssignment(client, params);
+    if (provisioned?.enabled) {
+      return toRecord(provisioned);
+    }
+
     throw new WorkspaceAgentAssignmentError(
       `Agent ${params.agentKey.trim()} is not enabled in workspace ${params.workspaceId}`,
       {

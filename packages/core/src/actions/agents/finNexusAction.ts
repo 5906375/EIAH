@@ -152,11 +152,11 @@ export const finNexusProfile: AgentProfileSeed = {
     requiredMetadata: ["document_type", "analysis_goal"],
     initialPrompts: [
       "Quero revisar um documento financeiro",
-      "Quero analisar uma invoice",
+      "Quero analisar uma fatura",
       "Quero identificar o que falta para aprovar o pagamento",
     ],
     uploadHelpText:
-      "Envie a invoice, boleto, comprovante ou planilha que você quer revisar, ou cole o trecho financeiro principal.",
+      "Envie a fatura, boleto, comprovante ou planilha que você quer revisar, ou cole o trecho financeiro principal.",
   },
 };
 

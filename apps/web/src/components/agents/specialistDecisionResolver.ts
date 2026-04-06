@@ -3,6 +3,7 @@ import {
   buildAadvGuidanceReply,
   buildFinNexusGuidanceReply,
   buildGuardianGuidanceReply,
+  buildJuridicoClauseAnalysisReply,
   buildJuridicoGuidanceReply,
   isAadvGuidanceQuestion,
   isFinanceGuidanceQuestion,
@@ -80,10 +81,11 @@ export function resolveJuridicoDecision(
     normalized.includes("aluguel") ||
     normalized.includes("venda")
   ) {
+    const concreteAnalysis = buildJuridicoClauseAnalysisReply(input);
     return {
       kind: "specialist_guidance",
       shouldCreateRun: false,
-      content: buildJuridicoGuidanceReply(input, resolvedAgentProfile),
+      content: concreteAnalysis ?? buildJuridicoGuidanceReply(input, resolvedAgentProfile),
       presentationRouteIntent: "help",
       renderVariant: "simple_help",
     };
@@ -225,7 +227,7 @@ export function resolveGuardianDecision(
       kind: "contextual_fallback",
       shouldCreateRun: false,
       content:
-        "Posso te ajudar com evidências, receipt, verify_url, integridade e trilha de auditoria. Se você me disser qual artefato quer validar, eu sigo de forma mais direta.",
+        "Posso te ajudar com evidências, comprovantes, links de verificação, integridade e trilha de auditoria. Se você me disser qual arquivo ou prova quer validar, eu sigo de forma mais direta.",
       presentationRouteIntent: "help",
       renderVariant: "simple_help",
     };
@@ -290,7 +292,7 @@ export function resolveAadvDecision(
       kind: "contextual_fallback",
       shouldCreateRun: false,
       content:
-        "Posso te ajudar a organizar evidências, riscos, FinOps e próximos passos desse caso. Se você me disser qual bloco ou evidência quer consolidar, eu sigo de forma mais direta.",
+        "Posso te ajudar a organizar evidências, riscos, custos e próximos passos desse caso. Se você me disser qual bloco ou evidência quer consolidar, eu sigo de forma mais direta.",
       presentationRouteIntent: "help",
       renderVariant: "simple_help",
     };
