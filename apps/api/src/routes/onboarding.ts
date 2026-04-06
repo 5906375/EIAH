@@ -5,7 +5,9 @@ import { prismaGlobal } from "@repo/db";
 import {
   RESERVED_DEFAULT_WORKSPACE_ALLOWED_TENANT,
   RESERVED_DEFAULT_WORKSPACE_NAME,
+  tenantAlreadyHasReservedDefaultWorkspace,
 } from "../services/workspaceNamingPolicy";
+import { ensureWorkspaceMembershipForUser } from "../services/workspaceResponsibility";
 
 const onboardingRouter = Router();
 
@@ -96,6 +98,16 @@ onboardingRouter.post("/auth/onboarding", async (req, res) => {
         orgName.trim().toUpperCase() === RESERVED_DEFAULT_WORKSPACE_ALLOWED_TENANT.trim().toUpperCase();
       const initialWorkspaceName = shouldUseReservedDefault ? RESERVED_DEFAULT_WORKSPACE_NAME : "Workspace Inicial";
 
+      if (shouldUseReservedDefault) {
+        const defaultAlreadyExists = await tenantAlreadyHasReservedDefaultWorkspace({
+          prisma: tx,
+          tenantId,
+        });
+        if (defaultAlreadyExists) {
+          throw new OnboardingError(409, "DEFAULT_WORKSPACE_ALREADY_EXISTS", "Workspace DEFAULT already exists for this tenant");
+        }
+      }
+
       const workspace = await tx.workspace.create({
         data: {
           tenantId: tenant.id,
@@ -109,6 +121,14 @@ onboardingRouter.post("/auth/onboarding", async (req, res) => {
           email,
           displayName: name,
         },
+      });
+
+      await ensureWorkspaceMembershipForUser({
+        prisma: tx,
+        tenantId: tenant.id,
+        workspaceId: workspace.id,
+        userId: user.id,
+        roleKey: shouldUseReservedDefault ? "founder" : "gestor",
       });
 
       let tokenValue: string | null = null;

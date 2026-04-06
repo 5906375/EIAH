@@ -7,6 +7,7 @@ import {
   canTenantUseReservedDefaultWorkspaceName,
   isReservedDefaultWorkspaceName,
   RESERVED_DEFAULT_WORKSPACE_ALLOWED_TENANT,
+  tenantAlreadyHasReservedDefaultWorkspace,
 } from "../services/workspaceNamingPolicy";
 import { ensureWorkspaceMembershipForUser } from "../services/workspaceResponsibility";
 
@@ -60,6 +61,20 @@ workspacesRouter.post("/workspaces", async (req, res) => {
         error: {
           code: "WORKSPACE_NAME_RESERVED",
           message: `Workspace ${name.toUpperCase()} is reserved for tenant ${RESERVED_DEFAULT_WORKSPACE_ALLOWED_TENANT}`,
+        },
+      });
+    }
+
+    const alreadyExists = await tenantAlreadyHasReservedDefaultWorkspace({
+      prisma: prismaGlobal,
+      tenantId,
+    });
+    if (alreadyExists) {
+      return res.status(409).json({
+        ok: false,
+        error: {
+          code: "DEFAULT_WORKSPACE_ALREADY_EXISTS",
+          message: "O workspace DEFAULT já existe neste tenant.",
         },
       });
     }
