@@ -71,6 +71,45 @@ export function isPlatformSelfExplainQuestion(input: string) {
   return signals.some((signal) => normalized.includes(signal));
 }
 
+export function isPlatformUiExplainQuestion(input: string) {
+  const normalized = normalizeIntentText(input);
+  const directSignals = [
+    "essa tela",
+    "este bloco",
+    "esse bloco",
+    "essa coluna",
+    "essa tabela",
+    "esse card",
+    "esses cards",
+    "esse botao",
+    "esse botão",
+    "inventario governado de agentes",
+    "inventario de agentes",
+    "inventario governado",
+    "governanca de agentes",
+    "governança de agentes",
+    "bloco de governanca",
+    "bloco de governança",
+  ];
+  const hasUiNoun =
+    normalized.includes("tela") ||
+    normalized.includes("bloco") ||
+    normalized.includes("coluna") ||
+    normalized.includes("card") ||
+    normalized.includes("cards") ||
+    normalized.includes("tabela") ||
+    normalized.includes("botao") ||
+    normalized.includes("botão");
+  const hasExplainVerb =
+    normalized.includes("explique") ||
+    normalized.includes("explica") ||
+    normalized.includes("o que e") ||
+    normalized.includes("o que eh") ||
+    normalized.includes("qual o sentido") ||
+    normalized.includes("para que serve");
+  return directSignals.some((signal) => normalized.includes(signal)) || (hasUiNoun && hasExplainVerb);
+}
+
 export function buildPlatformSelfExplainReply(agentProfile: Agent | null) {
   const displayName = getAgentDisplayName(agentProfile);
   return [
@@ -146,7 +185,7 @@ function buildPlatformOverviewReply() {
     "Na prática, a plataforma se divide assim:",
     "- `Runs`: executar, simular e acompanhar tarefas",
     "- `Agentes`: ver especialistas disponíveis no workspace",
-    "- `Billing`: plano, uso, invoices e cobrança",
+    "- `Billing`: plano, uso, faturas e cobrança",
     "- `Marketplace`: ativar agentes e módulos",
     "- `IMOB`: contexto imobiliário, pipeline e acompanhamento",
     "",
@@ -160,7 +199,7 @@ function buildPagesOverviewReply() {
     "",
     "- `Runs`: quando você quer criar, simular ou acompanhar execução",
     "- `Agentes`: quando quer entender qual especialista usar",
-    "- `Billing`: quando quer ver plano, uso e invoices",
+    "- `Billing`: quando quer ver plano, uso e faturas",
     "- `Marketplace`: quando quer instalar agentes ou módulos",
     "- `IMOB`: quando quer acompanhar jornada e contexto imobiliário",
     "",
@@ -180,6 +219,100 @@ function buildAgentsOverviewReply() {
     "- decidir quando seguir com o EIAH ou quando aprofundar em um especialista",
     "",
     "Se quiser, eu também posso te dizer qual agente usar em um caso específico.",
+  ].join("\n");
+}
+
+function buildAgentsGovernanceInventoryReply() {
+  return [
+    "**Como ler o inventário governado de agentes**",
+    "",
+    "Esse bloco mostra como o agente foi configurado para operar no workspace.",
+    "",
+    "Na prática, ele te ajuda a ver:",
+    "- especialidade do agente",
+    "- custo e uso quando houver atividade real",
+    "- ferramentas ou integrações declaradas",
+    "- nível de risco e necessidade de aprovação",
+    "- comprovante e contexto exigidos para uso",
+    "",
+    "Se você quiser, eu posso te explicar item por item desse bloco.",
+  ].join("\n");
+}
+
+export function buildPlatformSwitchOfferReply() {
+  return [
+    "Essa pergunta é sobre a plataforma, não sobre a especialidade deste agente.",
+    "",
+    "Quer entender melhor a plataforma?",
+    "O agente EIAH pode ajudar!",
+  ].join("\n");
+}
+
+function buildSelfServiceOverviewReply() {
+  return [
+    "**Como funciona o Self-service**",
+    "",
+    "O `Self-service` e a area de fluxos guiados da plataforma.",
+    "",
+    "Na pratica, ele serve para:",
+    "- abrir formularios prontos por agente",
+    "- coletar contexto de forma guiada",
+    "- simular antes de executar",
+    "- transformar o formulario em uma run real quando o agente estiver liberado no workspace",
+    "",
+    "O catalogo de recipes do tenant controla quais caminhos guiados aparecem para cada workspace.",
+  ].join("\n");
+}
+
+function buildRecipesOverviewReply() {
+  return [
+    "**Como funcionam recipes**",
+    "",
+    "Recipe e a camada de governanca que libera um caminho guiado por agente no workspace.",
+    "",
+    "Estados principais:",
+    "- `draft`: salva no catalogo do tenant, mas ainda nao libera para uso visivel no workspace",
+    "- `homologated`: libera a recipe para aparecer no self-service conforme o escopo configurado",
+    "",
+    "Importante: a recipe publica contexto e visibilidade. Ela nao cria sozinha um formulario novo se a rota do agente ja for fixa no codigo.",
+  ].join("\n");
+}
+
+function buildPreviewProductionReply() {
+  return [
+    "**Preview, rodar agora e promover para producao**",
+    "",
+    "- `Simular`: gera uma prévia técnica sem executar o efeito real",
+    "- `Rodar agora`: tenta criar a run real diretamente",
+    "- `Promover para producao`: pega uma prévia aprovada e transforma em execucao real",
+    "",
+    "Em resumo: simular e ensaio. Producao e execucao real do agente.",
+  ].join("\n");
+}
+
+function buildAgentNotEnabledReply() {
+  return [
+    "**Por que o agente nao esta habilitado no workspace**",
+    "",
+    "Esse bloqueio normalmente significa que esse agente ainda nao foi liberado para uso nesse workspace.",
+    "",
+    "Isso e diferente de billing:",
+    "- plano e limites: controlam se o workspace pode executar dentro da politica de cobranca",
+    "- habilitacao do agente: controla se um agente especifico esta liberado naquele workspace",
+    "",
+    "Por isso, voce pode conseguir simular e ainda assim ficar bloqueado para rodar em producao.",
+  ].join("\n");
+}
+
+function buildWorkspaceEnablementReply() {
+  return [
+    "**O que precisa para liberar um agente no workspace**",
+    "",
+    "Para um agente rodar em producao, normalmente voce precisa de duas coisas:",
+    "1. o workspace com plano e limites habilitados;",
+    "2. o agente liberado para uso naquele workspace.",
+    "",
+    "Se faltar a liberacao do agente, aparece o erro de agente nao habilitado. Se faltarem plano ou limites, o bloqueio tende a ser de cobranca.",
   ].join("\n");
 }
 
@@ -370,6 +503,69 @@ export function buildDeterministicHelpReply(input: string): string | null {
   }
 
   if (
+    normalized.includes("inventario governado de agentes") ||
+    normalized.includes("inventário governado de agentes") ||
+    normalized.includes("inventario de agentes") ||
+    normalized.includes("inventário de agentes") ||
+    normalized.includes("governanca de agentes") ||
+    normalized.includes("governança de agentes")
+  ) {
+    return buildAgentsGovernanceInventoryReply();
+  }
+
+  if (
+    normalized.includes("self-service") ||
+    normalized.includes("self service") ||
+    normalized.includes("formulario guiado") ||
+    normalized.includes("formulario guiado do agente")
+  ) {
+    return buildSelfServiceOverviewReply();
+  }
+
+  if (
+    normalized.includes("recipe") ||
+    normalized.includes("recipes") ||
+    normalized.includes("draft e homologado") ||
+    normalized.includes("draft ou homologado") ||
+    normalized.includes("homologar recipe") ||
+    normalized.includes("catalogo interno homologado")
+  ) {
+    return buildRecipesOverviewReply();
+  }
+
+  if (
+    normalized.includes("preview") ||
+    normalized.includes("simular") ||
+    normalized.includes("promover para producao") ||
+    normalized.includes("promover para produção") ||
+    normalized.includes("rodar agora") ||
+    normalized.includes("diferenca entre simular e rodar") ||
+    normalized.includes("diferenca entre preview e producao") ||
+    normalized.includes("diferença entre preview e produção")
+  ) {
+    return buildPreviewProductionReply();
+  }
+
+  if (
+    normalized.includes("nao esta habilitado no workspace") ||
+    normalized.includes("nao está habilitado no workspace") ||
+    normalized.includes("agent not enabled") ||
+    normalized.includes("agente nao habilitado") ||
+    normalized.includes("agente não habilitado")
+  ) {
+    return buildAgentNotEnabledReply();
+  }
+
+  if (
+    normalized.includes("habilitar agente no workspace") ||
+    normalized.includes("liberar agente no workspace") ||
+    normalized.includes("enablement do agente") ||
+    normalized.includes("assignment do agente")
+  ) {
+    return buildWorkspaceEnablementReply();
+  }
+
+  if (
     normalized.includes("passo a passo rapido sem cair em burocracia") ||
     normalized.includes("passo a passo rápido sem cair em burocracia") ||
     normalized.includes("sem cair em burocracia")
@@ -392,8 +588,8 @@ export function buildDeterministicHelpReply(input: string): string | null {
       "4. Abra o resultado da run para validar saída, evidências e próximo passo.",
       "",
       "**Atalhos**",
-      "- `/app/runs#runs-status`",
-      "- `/app/runs#runs-resultado`",
+      "- [Runs · status](/app/runs#runs-status)",
+      "- [Runs · resultado](/app/runs#runs-resultado)",
     ].join("\n");
   }
 
@@ -409,7 +605,7 @@ export function buildDeterministicHelpReply(input: string): string | null {
       "6. Acompanhe status, custo e resultado no histórico da própria página.",
       "",
       "**Atalho**",
-      "- `/app/runs#runs-criar`",
+      "- [Runs · criar](/app/runs#runs-criar)",
     ].join("\n");
   }
 
@@ -420,14 +616,14 @@ export function buildDeterministicHelpReply(input: string): string | null {
       "O que entra nessa visão:",
       "- resumo do plano ativo",
       "- uso de runs e usuários do workspace",
-      "- invoices, cobranças e histórico",
+      "- faturas, cobranças e histórico",
       "",
       "Como ler isso rapidamente:",
       "- plano define a base contratada",
       "- usuários e runs mostram o volume operacional",
-      "- invoices mostram o fechamento financeiro",
+      "- faturas mostram o fechamento financeiro",
       "",
-      "Se quiser consultar isso agora, o melhor caminho é abrir `Billing` em `/app/billing`.",
+      "Se quiser consultar isso agora, o melhor caminho é abrir [Billing](/app/billing).",
     ].join("\n");
   }
 
@@ -442,7 +638,7 @@ export function buildDeterministicHelpReply(input: string): string | null {
       "**API no EIAH (visão rápida)**",
       "",
       "- Runs: execução, eventos e histórico.",
-      "- Billing: resumo, usage, quote e invoices.",
+      "- Billing: resumo, uso, limites e faturas.",
       "- Help: consulta da base interna documental do EIAH.",
       "",
       "**Exemplos**",

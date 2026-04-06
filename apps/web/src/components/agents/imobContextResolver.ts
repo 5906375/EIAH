@@ -484,9 +484,9 @@ function buildImobOverviewReply() {
     "4. Revise resultados e gargalos para melhorar a rotina do time.",
     "",
     "**Atalhos**",
-    "- Dashboard IMOB: `/app/imob/dashboard`",
-    "- Chat IMOB: `/app/imob/chat`",
-    "- Instalação (se necessário): `/app/marketplace/imob`",
+    "- [Instalação do IMOB](/app/marketplace/imob)",
+    "- [Chat IMOB](/app/imob/chat)",
+    "- [Dashboard IMOB](/app/imob/dashboard)",
   ].join("\n");
 }
 
@@ -513,8 +513,8 @@ function buildImobNavigationReply() {
   return [
     "**Onde acompanhar pipeline e etapas no IMOB**",
     "",
-    "- Use `/app/imob/dashboard` para ver pipeline, contexto operacional e evolução das etapas.",
-    "- Use `/app/imob/chat` quando quiser orientação do próximo passo com base no caso atual.",
+    "- Use [Dashboard IMOB](/app/imob/dashboard) para ver pipeline, contexto operacional e evolução das etapas.",
+    "- Use [Chat IMOB](/app/imob/chat) quando quiser orientação do próximo passo com base no caso atual.",
     "",
     "**Regra prática**",
     "- dashboard para visão de jornada e acompanhamento",
@@ -545,10 +545,10 @@ function buildImobInstallReply() {
     "2. Procure por `IMOB`.",
     "3. Revise descrição, escopo e disponibilidade do módulo.",
     "4. Ative a vertical no workspace.",
-    "5. Depois disso, siga por `/app/imob/dashboard` ou `/app/imob/chat`.",
+    "5. Depois disso, siga por [Dashboard IMOB](/app/imob/dashboard) ou [Chat IMOB](/app/imob/chat).",
     "",
     "**Atalho**",
-    "- `/app/marketplace/imob`",
+    "- [Marketplace IMOB](/app/marketplace/imob)",
   ].join("\n");
 }
 
