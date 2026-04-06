@@ -763,6 +763,34 @@ function getCriticalityTone(criticality?: NonNullable<Agent["governance"]>["crit
   }
 }
 
+const AGENT_SPECIALTY_TAGS: Record<string, string[]> = {
+  j360: ["Contratos", "Clausulas", "Risco", "Imobiliario", "Rescisao", "Garantias"],
+  aadv: ["Evidencias", "Custos", "Seguranca", "Decisao", "Resumo executivo"],
+  finnexus: ["Pagamentos", "Conciliacao", "Fluxo de caixa", "Cobranca"],
+  guardian: ["Evidencias", "Comprovantes", "Auditoria", "Integridade"],
+  "defi-one": ["Simulacao", "Custo", "Risco", "Swap", "Yield"],
+  mkt: ["Campanhas", "Canais", "Briefing", "Metricas"],
+  pitch: ["Narrativa", "Proposta de valor", "CTA", "Apresentacao"],
+  i_bc: ["Pipeline", "ICP", "Expansao", "Fechamento"],
+  "flow-orchestrator": ["Fluxos", "Sequencia", "Validacoes", "Execucao"],
+  "risk-analyzer": ["Risco", "Impacto", "Mitigacao", "Compliance"],
+  "onchain-monitor": ["Alertas", "Carteiras", "Eventos", "Blockchain"],
+  diarias: ["Rotina", "Resumo do dia", "Backlog", "Bloqueios"],
+};
+
+function buildAgentSpecialtyPresentation(agent: Agent) {
+  const normalizedId = normalizeAgentKey(agent.id);
+  const description = (agent.description ?? "").trim();
+  const summary = description
+    ? description.split(/[.!?]/)[0]?.trim() || description
+    : "Sem especialidade declarada.";
+  const tags = AGENT_SPECIALTY_TAGS[normalizedId] ?? [];
+  return {
+    summary: summary.length > 110 ? `${summary.slice(0, 107).trimEnd()}...` : summary,
+    tags,
+  };
+}
+
 function GovernanceChips({ items, emptyLabel }: { items: string[]; emptyLabel: string }) {
   if (items.length === 0) {
     return <span className="text-xs text-muted-foreground">{emptyLabel}</span>;
@@ -896,22 +924,40 @@ const AgentsPage: React.FC = () => {
     }
     return map;
   }, [agentBillingSummary]);
+  const visibleCatalogAgents = useMemo(() => {
+    if (!agentId) return catalogAgents;
+    const filtered = catalogAgents.filter(
+      (agent) => normalizeAgentKey(agent.id) === normalizeAgentKey(agentId)
+    );
+    return filtered.length > 0 ? filtered : catalogAgents;
+  }, [agentId, catalogAgents]);
+  const visibleAgentBillingSummary = useMemo(() => {
+    if (!agentId) return agentBillingSummary;
+    const filtered = agentBillingSummary.filter(
+      (item) => normalizeAgentKey(item.agent) === normalizeAgentKey(agentId)
+    );
+    return filtered.length > 0 ? filtered : agentBillingSummary;
+  }, [agentBillingSummary, agentId]);
+  const showGovernanceSummaryCards = visibleCatalogAgents.length > 1;
   const rankedAgentsByCost = useMemo(
-    () => [...agentBillingSummary].sort((a, b) => b.costCents - a.costCents),
-    [agentBillingSummary]
+    () => [...visibleAgentBillingSummary].sort((a, b) => b.costCents - a.costCents),
+    [visibleAgentBillingSummary]
   );
   const rankedAgentsByRuns = useMemo(
-    () => [...agentBillingSummary].sort((a, b) => b.runs - a.runs),
-    [agentBillingSummary]
+    () => [...visibleAgentBillingSummary].sort((a, b) => b.runs - a.runs),
+    [visibleAgentBillingSummary]
   );
   const rankedAgentsByTokens = useMemo(
-    () => [...agentBillingSummary].sort((a, b) => b.tokens - a.tokens),
-    [agentBillingSummary]
+    () => [...visibleAgentBillingSummary].sort((a, b) => b.tokens - a.tokens),
+    [visibleAgentBillingSummary]
   );
   const selectedAgentBilling = useMemo(() => {
     if (!agentId) return null;
     return billingSummaryByAgent.get(normalizeAgentKey(agentId)) ?? null;
   }, [agentId, billingSummaryByAgent]);
+  const showImpactPanels =
+    Boolean(selectedAgentBilling?.byModel?.length) ||
+    visibleAgentBillingSummary.some((item) => item.costCents > 0 || item.runs > 0 || item.tokens > 0);
   const selectedAgentImpactSummary = useMemo(() => {
     if (!selectedAgentBilling) {
       return [
@@ -946,6 +992,7 @@ const AgentsPage: React.FC = () => {
             <div className="mt-6" id="chat-agent-launcher">
               <ChatAgentLauncher
                 activeAgentId={agentId}
+                onAgentChangeRequest={setAgentId}
                 onPlaybookClick={agentId ? handlePlaybookClick : undefined}
                 headerControls={
                   <AgentSelect
@@ -972,14 +1019,11 @@ const AgentsPage: React.FC = () => {
             <h2 className="text-2xl font-display font-semibold text-foreground">
               Inventario governado de agentes
             </h2>
-            <p className="mt-2 max-w-3xl text-sm text-muted-foreground">
-              Catálogo operacional com governança, perfil cognitivo e contrato de UX por agente.
-            </p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-xs text-muted-foreground">
             {catalogLoading
               ? "Atualizando catálogo..."
-              : `${catalogAgents.length} agente(s) com snapshot de governança`}
+              : `${visibleCatalogAgents.length} agente(s) com snapshot de governança`}
           </div>
         </div>
 
@@ -989,76 +1033,74 @@ const AgentsPage: React.FC = () => {
           </div>
         ) : null}
 
-        <div className="mt-6 grid gap-4 xl:grid-cols-4">
-          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">Maior custo</p>
-            <p className="mt-2 text-lg font-semibold text-foreground">
-              {rankedAgentsByCost[0]?.agent ?? "—"}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {formatAgentCostLabel(rankedAgentsByCost[0]?.costCents)}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">Maior volume</p>
-            <p className="mt-2 text-lg font-semibold text-foreground">
-              {rankedAgentsByRuns[0]?.agent ?? "—"}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {formatCompactNumber(rankedAgentsByRuns[0]?.runs)} run(s)
-            </p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">Maior uso de tokens</p>
-            <p className="mt-2 text-lg font-semibold text-foreground">
-              {rankedAgentsByTokens[0]?.agent ?? "—"}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {formatCompactNumber(rankedAgentsByTokens[0]?.tokens)} tokens
-            </p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">Agentes com custo</p>
-            <p className="mt-2 text-lg font-semibold text-foreground">
-              {agentBillingSummary.filter((item) => item.costCents > 0).length}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              de {agentBillingSummary.length} com atividade financeira
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-6 grid gap-4 xl:grid-cols-[0.45fr,0.55fr]">
-          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-              Leitura simples de impacto financeiro
-            </p>
-            <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-              {selectedAgentImpactSummary.map((line) => (
-                <li key={line} className="leading-relaxed">
-                  {line}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-                Drill-down por provider/model
+        {showGovernanceSummaryCards ? (
+          <div className="mt-6 grid gap-4 xl:grid-cols-4">
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">Maior custo</p>
+              <p className="mt-2 text-lg font-semibold text-foreground">
+                {rankedAgentsByCost[0]?.agent ?? "—"}
               </p>
-              <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-muted-foreground">
-                {selectedAgentBilling?.byModel?.length ?? 0} grupo(s)
-              </span>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {formatAgentCostLabel(rankedAgentsByCost[0]?.costCents)}
+              </p>
             </div>
-            {!selectedAgentBilling?.byModel?.length ? (
-              <p className="mt-3 text-sm text-muted-foreground">
-                Selecione um agente com uso real para ver a composição de custo por provider/model.
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">Maior volume</p>
+              <p className="mt-2 text-lg font-semibold text-foreground">
+                {rankedAgentsByRuns[0]?.agent ?? "—"}
               </p>
-            ) : (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {formatCompactNumber(rankedAgentsByRuns[0]?.runs)} run(s)
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">Maior uso de tokens</p>
+              <p className="mt-2 text-lg font-semibold text-foreground">
+                {rankedAgentsByTokens[0]?.agent ?? "—"}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {formatCompactNumber(rankedAgentsByTokens[0]?.tokens)} tokens
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">Agentes com custo</p>
+              <p className="mt-2 text-lg font-semibold text-foreground">
+                {visibleAgentBillingSummary.filter((item) => item.costCents > 0).length}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                de {visibleAgentBillingSummary.length} com atividade financeira
+              </p>
+            </div>
+          </div>
+        ) : null}
+
+        {showImpactPanels ? (
+          <div className="mt-6 grid gap-4 xl:grid-cols-[0.45fr,0.55fr]">
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+                Leitura simples de impacto financeiro
+              </p>
+              <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
+                {selectedAgentImpactSummary.map((line) => (
+                  <li key={line} className="leading-relaxed">
+                    {line}
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+                  Drill-down por provider/model
+                </p>
+                <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] text-muted-foreground">
+                  {selectedAgentBilling?.byModel?.length ?? 0} grupo(s)
+                </span>
+              </div>
               <div className="mt-3 space-y-2">
-                {selectedAgentBilling.byModel.slice(0, 6).map((item) => (
+                {(selectedAgentBilling?.byModel ?? []).slice(0, 6).map((item) => (
                   <div
-                    key={`${selectedAgentBilling.agent}:${item.provider}:${item.model}`}
+                    key={`${selectedAgentBilling?.agent ?? "agent"}:${item.provider}:${item.model}`}
                     className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-muted-foreground"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1075,33 +1117,32 @@ const AgentsPage: React.FC = () => {
                   </div>
                 ))}
               </div>
-            )}
+            </div>
           </div>
-        </div>
+        ) : null}
 
         <div className="mt-6 hidden overflow-x-auto xl:block">
           <table className="min-w-full table-fixed border-separate border-spacing-y-3 text-left text-sm">
             <thead>
-              <tr className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                <th className="px-3 py-2">Agent id</th>
+              <tr className="text-[10px] tracking-[0.12em] text-muted-foreground">
                 <th className="px-3 py-2">Nome</th>
                 <th className="px-3 py-2">Especialidade</th>
                 <th className="px-3 py-2">FinOps</th>
-                <th className="px-3 py-2">Model policy</th>
-                <th className="px-3 py-2">Tool capabilities</th>
-                <th className="px-3 py-2">Criticidade</th>
-                <th className="px-3 py-2">Approval</th>
-                <th className="px-3 py-2">Receipt policy</th>
-                <th className="px-3 py-2">Scope obrigatório</th>
-                <th className="px-3 py-2">Knowledge policy</th>
-                <th className="px-3 py-2">Cognitive profile</th>
-                <th className="px-3 py-2">UX contract</th>
+                <th className="px-3 py-2">Ferramentas</th>
+                <th className="px-3 py-2">Risco</th>
+                <th className="px-3 py-2">Aprovação</th>
+                <th className="px-3 py-2">Comprovante</th>
+                <th className="px-3 py-2">Contexto</th>
+                <th className="px-3 py-2">Conhecimento</th>
+                <th className="px-3 py-2">Cognitivo</th>
+                <th className="px-3 py-2">Contrato</th>
               </tr>
             </thead>
             <tbody>
-              {catalogAgents.map((agent) => {
+              {visibleCatalogAgents.map((agent) => {
                 const isSelected = normalizeAgentKey(agent.id) === normalizeAgentKey(agentId ?? "");
                 const billing = billingSummaryByAgent.get(normalizeAgentKey(agent.id));
+                const specialty = buildAgentSpecialtyPresentation(agent);
                 return (
                   <tr
                     key={agent.id}
@@ -1109,11 +1150,16 @@ const AgentsPage: React.FC = () => {
                       isSelected ? "ring-1 ring-accent/40" : ""
                     }`}
                   >
-                    <td className="rounded-l-2xl px-3 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-accent">
-                      {agent.id}
+                    <td className="rounded-l-2xl px-3 py-4 text-foreground">{agent.name}</td>
+                    <td className="px-3 py-4">
+                      <div className="space-y-3">
+                        <p className="text-sm leading-relaxed text-muted-foreground">{specialty.summary}</p>
+                        <GovernanceChips
+                          items={specialty.tags}
+                          emptyLabel="Sem especialidades detalhadas"
+                        />
+                      </div>
                     </td>
-                    <td className="px-3 py-4 text-foreground">{agent.name}</td>
-                    <td className="px-3 py-4 text-muted-foreground">{agent.description ?? "Sem descrição"}</td>
                     <td className="px-3 py-4">
                       <CompactAttributeList
                         emptyLabel="Sem custo operacional"
@@ -1124,13 +1170,10 @@ const AgentsPage: React.FC = () => {
                         ]}
                       />
                     </td>
-                    <td className="px-3 py-4 text-muted-foreground">
-                      {agent.governance?.modelPolicy ?? "unconfigured"}
-                    </td>
                     <td className="px-3 py-4">
                       <GovernanceChips
                         items={agent.governance?.toolCapabilities ?? []}
-                        emptyLabel="Sem tools declaradas"
+                        emptyLabel="Sem ferramentas declaradas"
                       />
                     </td>
                     <td className="px-3 py-4">
@@ -1151,7 +1194,7 @@ const AgentsPage: React.FC = () => {
                     <td className="px-3 py-4">
                       <GovernanceChips
                         items={agent.governance?.requiredScopes ?? []}
-                        emptyLabel="Sem scopes declarados"
+                        emptyLabel="Sem contexto declarado"
                       />
                     </td>
                     <td className="px-3 py-4">
@@ -1218,9 +1261,10 @@ const AgentsPage: React.FC = () => {
         </div>
 
         <div className="mt-6 grid gap-4 xl:hidden">
-          {catalogAgents.map((agent) => {
+          {visibleCatalogAgents.map((agent) => {
             const isSelected = normalizeAgentKey(agent.id) === normalizeAgentKey(agentId ?? "");
             const billing = billingSummaryByAgent.get(normalizeAgentKey(agent.id));
+            const specialty = buildAgentSpecialtyPresentation(agent);
             return (
               <article
                 key={agent.id}
@@ -1230,8 +1274,7 @@ const AgentsPage: React.FC = () => {
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-accent">{agent.id}</p>
-                    <h3 className="mt-1 text-base font-semibold text-foreground">{agent.name}</h3>
+                    <h3 className="text-base font-semibold text-foreground">{agent.name}</h3>
                   </div>
                   <span
                     className={`inline-flex rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] ${
@@ -1241,10 +1284,16 @@ const AgentsPage: React.FC = () => {
                     {agent.governance?.criticality ?? "low"}
                   </span>
                 </div>
-                <p className="mt-3 text-sm text-muted-foreground">{agent.description ?? "Sem descrição"}</p>
+                <div className="mt-3 space-y-3">
+                  <p className="text-sm text-muted-foreground">{specialty.summary}</p>
+                  <GovernanceChips
+                    items={specialty.tags}
+                    emptyLabel="Sem especialidades detalhadas"
+                  />
+                </div>
                 <dl className="mt-4 grid gap-3 text-sm">
                   <div>
-                    <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">FinOps</dt>
+                    <dt className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">FinOps</dt>
                     <dd className="mt-2">
                       <CompactAttributeList
                         emptyLabel="Sem custo operacional"
@@ -1257,41 +1306,37 @@ const AgentsPage: React.FC = () => {
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Model policy</dt>
-                    <dd className="mt-1 text-foreground">{agent.governance?.modelPolicy ?? "unconfigured"}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Tool capabilities</dt>
+                    <dt className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">Ferramentas</dt>
                     <dd className="mt-2">
                       <GovernanceChips
                         items={agent.governance?.toolCapabilities ?? []}
-                        emptyLabel="Sem tools declaradas"
+                        emptyLabel="Sem ferramentas declaradas"
                       />
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Approval</dt>
+                    <dt className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">Aprovação</dt>
                     <dd className="mt-1 text-foreground">
                       {formatGovernanceValue(agent.governance?.approval ?? "not_required")}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Receipt policy</dt>
+                    <dt className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">Comprovante</dt>
                     <dd className="mt-1 text-foreground">
                       {formatGovernanceValue(agent.governance?.receiptPolicy ?? "not_applicable")}
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Scope obrigatório</dt>
+                    <dt className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">Contexto</dt>
                     <dd className="mt-2">
                       <GovernanceChips
                         items={agent.governance?.requiredScopes ?? []}
-                        emptyLabel="Sem scopes declarados"
+                        emptyLabel="Sem contexto declarado"
                       />
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Knowledge policy</dt>
+                    <dt className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">Conhecimento</dt>
                     <dd className="mt-2">
                       <CompactAttributeList
                         emptyLabel="Sem knowledge policy"
@@ -1324,7 +1369,7 @@ const AgentsPage: React.FC = () => {
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Cognitive profile</dt>
+                    <dt className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">Cognitivo</dt>
                     <dd className="mt-2">
                       <CompactAttributeList
                         emptyLabel="Sem perfil cognitivo"
@@ -1339,7 +1384,7 @@ const AgentsPage: React.FC = () => {
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">UX contract</dt>
+                    <dt className="text-[10px] font-semibold tracking-[0.12em] text-muted-foreground">Contrato</dt>
                     <dd className="mt-2">
                       <CompactAttributeList
                         emptyLabel="Sem contrato de UX"

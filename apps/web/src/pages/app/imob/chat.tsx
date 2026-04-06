@@ -266,11 +266,23 @@ function dedupeRunMessages(items: ChatMessage[]) {
 const SHOW_TECHNICAL_CHAT = false;
 const HISTORY_PAGE_SIZE = 30;
 const QUICK_PROMPTS = [
-  "Captar apartamento 2 quartos em Itapema",
-  "Gerar proposta para cliente João",
-  "Iniciar contrato do imóvel 82912",
-  "Fechar comissão da venda X",
-];
+  {
+    label: "Captar imóvel",
+    prompt: "Quero captar um imóvel novo e iniciar o cadastro da operação.",
+  },
+  {
+    label: "Gerar proposta",
+    prompt: "Quero gerar uma proposta comercial para um cliente.",
+  },
+  {
+    label: "Iniciar contrato",
+    prompt: "Quero iniciar a coleta de dados para gerar um contrato imobiliário.",
+  },
+  {
+    label: "Fechar venda",
+    prompt: "Quero avançar a operação até o fechamento da venda e registrar os próximos passos.",
+  },
+] as const;
 
 function statusLabel(status: ChatState) {
   switch (status) {
@@ -3592,35 +3604,22 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                 <p className="mt-1 text-[10px] tracking-[0.18em] text-muted-foreground/80">
                   {brandName} • {workspaceLabel}
                 </p>
-                {activeThreadContext.threadId ? (
-                  <>
-                    <p className="mt-1 text-[10px] text-foreground">
-                      Thread ativa: {activeThreadContext.threadLabel ?? "Operação"}
-                    </p>
-                    {activeThreadContext.runId ? (
-                      <>
-                        <div className="mt-2">
-                          <ContextualCostPanel
-                            compact
-                            run={{
-                              runId: activeThreadContext.runId,
-                              actualCostCents: activeThreadRunFinance?.amountCents ?? null,
-                              estimatedCostCents: activeThreadRunFinance?.estimatedAmountCents ?? null,
-                              tokens: activeThreadRunFinance?.tokens ?? null,
-                              issueLabel: activeThreadRunFinance?.issueLabel ?? null,
-                              hasGap: activeThreadRunFinance?.hasGap ?? false,
-                              runHref: `/app/runs?domain=imob&runId=${encodeURIComponent(activeThreadContext.runId)}`,
-                              billingHref: `/app/billing?runId=${encodeURIComponent(activeThreadContext.runId)}`,
-                            }}
-                          />
-                        </div>
-                      </>
-                    ) : activeThreadContext.caseId ? (
-                      <p className="mt-2 text-[10px] text-muted-foreground">
-                        Esta thread já está vinculada a um caso. A execução ficará disponível assim que houver um run registrado.
-                      </p>
-                    ) : null}
-                  </>
+                {activeThreadContext.threadId && activeThreadContext.runId ? (
+                  <div className="mt-2">
+                    <ContextualCostPanel
+                      compact
+                      run={{
+                        runId: activeThreadContext.runId,
+                        actualCostCents: activeThreadRunFinance?.amountCents ?? null,
+                        estimatedCostCents: activeThreadRunFinance?.estimatedAmountCents ?? null,
+                        tokens: activeThreadRunFinance?.tokens ?? null,
+                        issueLabel: activeThreadRunFinance?.issueLabel ?? null,
+                        hasGap: activeThreadRunFinance?.hasGap ?? false,
+                        runHref: `/app/runs?domain=imob&runId=${encodeURIComponent(activeThreadContext.runId)}`,
+                        billingHref: `/app/billing?runId=${encodeURIComponent(activeThreadContext.runId)}`,
+                      }}
+                    />
+                  </div>
                 ) : null}
               </div>
               <div className="flex items-center gap-2">
@@ -3639,8 +3638,9 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
               </div>
             </header>
             {workspaceBillingContext ? (
-              <div className="border-b border-white/10 px-4 py-3 sm:px-6">
+              <div className="border-b border-white/10 px-4 py-2.5 sm:px-6">
                 <ContextualCostPanel
+                  compact
                   run={
                     activeThreadContext.runId
                       ? {
@@ -3770,7 +3770,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                   <p className="mt-1 text-[10px] text-muted-foreground">
                     {selectedThreadId
                       ? "Selecione outra thread ou remova o filtro para ver toda a conversa."
-                      : "Exemplo: \"Tenho um proprietário com apartamento em Itapema\"."}
+                      : "Exemplo: \"Quero captar um imóvel para locação\"."}
                   </p>
                 </div>
               ) : null}
@@ -4250,12 +4250,12 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                 <div className="mb-3 flex flex-wrap gap-2">
                   {QUICK_PROMPTS.map((prompt) => (
                     <button
-                      key={prompt}
+                      key={prompt.label}
                       type="button"
-                      onClick={() => setInput(prompt)}
-                      className="rounded-full bg-black/25 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-muted-foreground hover:border-accent/40"
+                      onClick={() => setInput(prompt.prompt)}
+                      className="rounded-full border border-white/10 bg-black/25 px-3 py-1 text-[10px] tracking-[0.04em] text-muted-foreground transition hover:border-accent/40 hover:text-foreground"
                     >
-                      {prompt.length > 34 ? `${prompt.slice(0, 34)}...` : prompt}
+                      {prompt.label}
                     </button>
                   ))}
                 </div>

@@ -161,11 +161,79 @@ const WORKSPACE_PERMISSION_GROUPS = [
   },
 ] as const;
 
-const PROFILE_AREAS = [
-  { id: "profile-personal", label: "Meu perfil" },
-  { id: "profile-workspace-admin", label: "Workspace admin" },
-  { id: "profile-governance", label: "Governança & evidências" },
-] as const;
+type CollapsiblePanelProps = {
+  title: string;
+  description: string;
+  badge?: string | null;
+  defaultOpen?: boolean;
+  headerActions?: React.ReactNode;
+  headerExtras?: React.ReactNode;
+  children: React.ReactNode;
+};
+
+function CollapsiblePanel({
+  title,
+  description,
+  badge,
+  defaultOpen = false,
+  headerActions,
+  headerExtras,
+  children,
+}: CollapsiblePanelProps) {
+  const [open, setOpen] = React.useState(defaultOpen);
+
+  return (
+    <section className="rounded-2xl border border-white/10 bg-white/5">
+      <div className="px-4 py-4 sm:px-5">
+        <div className="flex items-start justify-between gap-4">
+          <button
+            type="button"
+            onClick={() => setOpen((prev) => !prev)}
+            className="min-w-0 flex-1 text-left transition hover:text-foreground"
+            aria-expanded={open}
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">{title}</p>
+              {badge ? <span className="pill bg-white/10 text-foreground/80">{badge}</span> : null}
+            </div>
+            {description ? <p className="mt-2 text-xs text-muted-foreground">{description}</p> : null}
+          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            {headerActions}
+          </div>
+        </div>
+        {headerExtras ? <div className="mt-3">{headerExtras}</div> : null}
+      </div>
+      {open ? <div className="border-t border-white/10 px-4 py-4 sm:px-5">{children}</div> : null}
+    </section>
+  );
+}
+
+type ExpandableListProps = {
+  initialCount?: number;
+  itemCount: number;
+  children: (expanded: boolean) => React.ReactNode;
+};
+
+function ExpandableList({ initialCount = 4, itemCount, children }: ExpandableListProps) {
+  const [expanded, setExpanded] = React.useState(false);
+  const needsToggle = itemCount > initialCount;
+
+  return (
+    <div className="space-y-3">
+      {children(expanded)}
+      {needsToggle ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((prev) => !prev)}
+          className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-foreground transition hover:bg-white/10"
+        >
+          {expanded ? "Mostrar menos" : `Mostrar mais ${itemCount - initialCount}`}
+        </button>
+      ) : null}
+    </div>
+  );
+}
 
 function formatWorkspacePermissionLabel(permission: string) {
   const normalized = permission.trim();
@@ -184,9 +252,20 @@ function formatWorkspacePermissionLabel(permission: string) {
 
 
 export default function ProfilePage() {
+  type WorkspaceAdminView =
+    | "include_workspace"
+    | "edit_workspace"
+    | "delete_workspace"
+    | "linked_workspaces"
+    | "roles_members"
+    | "signed_agents";
+  type SaveScope = "cadastro" | "workspace";
   const navigate = useNavigate();
   const [form, setForm] = React.useState<ProfileState>(DEFAULT_STATE);
-  const [status, setStatus] = React.useState<"idle" | "saved" | "error">("idle");
+  const [saveStatus, setSaveStatus] = React.useState<Record<SaveScope, "idle" | "saving" | "saved" | "error">>({
+    cadastro: "idle",
+    workspace: "idle",
+  });
   const session = useSession();
   const [profileLoading, setProfileLoading] = React.useState(true);
   const [tenantName, setTenantName] = React.useState("—");
@@ -226,8 +305,14 @@ export default function ProfilePage() {
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [workspaceAdminView, setWorkspaceAdminView] = React.useState<WorkspaceAdminView>("linked_workspaces");
+  const [showLinkedWorkspaceMenu, setShowLinkedWorkspaceMenu] = React.useState(false);
+  const [workspaceOptionListExpanded, setWorkspaceOptionListExpanded] = React.useState(true);
   const [signingOut, setSigningOut] = React.useState(false);
-  const [saveErrorMessage, setSaveErrorMessage] = React.useState<string | null>(null);
+  const [saveErrorMessage, setSaveErrorMessage] = React.useState<Record<SaveScope, string | null>>({
+    cadastro: null,
+    workspace: null,
+  });
   const [delegationsStatus, setDelegationsStatus] = React.useState<"loading" | "ready" | "error">(
     "loading"
   );
@@ -262,6 +347,9 @@ export default function ProfilePage() {
   const [shadowExecutionDetail, setShadowExecutionDetail] = React.useState<ShadowExecutionContract | null>(null);
   const [shadowExecutionDetailStatus, setShadowExecutionDetailStatus] = React.useState<"idle" | "loading" | "ready" | "error">("idle");
   const [shadowExecutionDetailError, setShadowExecutionDetailError] = React.useState<string | null>(null);
+  const linkedWorkspaceTooltip = linkedWorkspaces.length > 0
+    ? linkedWorkspaces.map((workspace) => workspace.name).join(" • ")
+    : "Nenhum workspace vinculado";
 
   const handleChange =
     (field: keyof ProfileState) => (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -314,35 +402,44 @@ export default function ProfilePage() {
     [applyProfileData]
   );
 
+  const saveProfileSection = async (scope: SaveScope) => {
+    setSaveErrorMessage((prev) => ({ ...prev, [scope]: null }));
+    setSaveStatus((prev) => ({ ...prev, [scope]: "saving" }));
+    try {
+      const response = await apiUpdateProfile({
+        fullName: form.fullName,
+        email: form.email,
+        phone: form.phone,
+        cep: form.cep,
+        role: form.role,
+        website: form.website,
+        city: form.city,
+        country: form.country,
+        tenantName,
+        workspaceName,
+        workspaceRoleOptions: workspaceRoleOptions.map((item) => ({ label: item.label, permissions: item.defaultPermissions })),
+      });
+      if (!response.ok || !response.data) {
+        setSaveStatus((prev) => ({ ...prev, [scope]: "error" }));
+        return;
+      }
+      applyProfileData(response.data);
+      setSaveStatus((prev) => ({ ...prev, [scope]: "saved" }));
+      setTimeout(() => {
+        setSaveStatus((prev) => ({ ...prev, [scope]: "idle" }));
+      }, 2500);
+    } catch {
+      setSaveStatus((prev) => ({ ...prev, [scope]: "error" }));
+      setSaveErrorMessage((prev) => ({
+        ...prev,
+        [scope]: "Falha ao salvar perfil no backend. Tente novamente.",
+      }));
+    }
+  };
+
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setSaveErrorMessage(null);
-    apiUpdateProfile({
-      fullName: form.fullName,
-      email: form.email,
-      phone: form.phone,
-      cep: form.cep,
-      role: form.role,
-      website: form.website,
-      city: form.city,
-      country: form.country,
-      tenantName,
-      workspaceName,
-      workspaceRoleOptions: workspaceRoleOptions.map((item) => ({ label: item.label, permissions: item.defaultPermissions })),
-    })
-      .then((response) => {
-        if (!response.ok || !response.data) {
-          setStatus("error");
-          return;
-        }
-        applyProfileData(response.data);
-        setStatus("saved");
-        setTimeout(() => setStatus("idle"), 2500);
-      })
-      .catch(() => {
-        setStatus("error");
-        setSaveErrorMessage("Falha ao salvar perfil no backend. Tente novamente.");
-      });
+    void saveProfileSection("cadastro");
   };
 
   const handleAddWorkspaceRole = async () => {
@@ -370,8 +467,8 @@ export default function ProfilePage() {
         applyProfileData(response.data);
       }
     } catch {
-      setSaveErrorMessage("Falha ao salvar a nova função do workspace.");
-      setStatus("error");
+      setSaveErrorMessage((prev) => ({ ...prev, workspace: "Falha ao salvar a nova função do workspace." }));
+      setSaveStatus((prev) => ({ ...prev, workspace: "error" }));
     }
   };
 
@@ -937,199 +1034,275 @@ export default function ProfilePage() {
 
   return (
     <div className="space-y-8">
-      <header className="rounded-3xl border border-white/10 bg-gradient-to-r from-accent/10 via-surface/80 to-transparent p-8">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs uppercase tracking-[0.35em] text-accent">Perfil</p>
-            <h1 className="mt-2 text-2xl font-semibold text-foreground">
-              Cadastro completo do ambiente privado
-            </h1>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Preencha seus dados para personalizar o uso e facilitar suporte e faturamento.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={handleSignOut}
-            disabled={signingOut}
-            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-foreground transition hover:border-accent/40 hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {signingOut ? "Saindo..." : "Sair da conta"}
-          </button>
-        </div>
-      </header>
-
-      <div className="flex flex-wrap gap-2">
-        {PROFILE_AREAS.map((area) => (
-          <a
-            key={area.id}
-            href={`#${area.id}`}
-            className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-muted-foreground transition hover:border-accent/40 hover:text-foreground"
-          >
-            {area.label}
-          </a>
-        ))}
-      </div>
-
       <form
         className="rounded-3xl border border-white/10 bg-surface/70 p-8 shadow-[0_20px_60px_rgba(15,23,42,0.35)]"
         onSubmit={handleSubmit}
       >
-        <div id="profile-personal" className="mb-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">Meu perfil</p>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Dados pessoais e dados básicos da organização usados para identidade e suporte.
-          </p>
-        </div>
-        <div className="grid gap-6 lg:grid-cols-2">
-          <div className="space-y-4">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-              Dados pessoais
-            </h2>
-            <label className="block text-sm text-muted-foreground">
-              Nome completo
-              <input
-                className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
-                placeholder="Seu nome completo"
-                value={form.fullName}
-                onChange={handleChange("fullName")}
-              />
-            </label>
-            <label className="block text-sm text-muted-foreground">
-              Email
-              <input
-                className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
-                placeholder="voce@empresa.com"
-                type="email"
-                value={form.email}
-                onChange={handleChange("email")}
-              />
-            </label>
-            <label className="block text-sm text-muted-foreground">
-              Telefone
-              <input
-                className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
-                placeholder="+55 11 99999-9999"
-                value={form.phone}
-                onChange={handleChange("phone")}
-              />
-            </label>
-            <label className="block text-sm text-muted-foreground">
-              CEP
-              <input
-                className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
-                placeholder="00000-000"
-                value={form.cep}
-                onChange={handleChange("cep")}
-              />
-            </label>
-            <label className="block text-sm text-muted-foreground">
-              Cidade
-              <input
-                className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
-                placeholder="Cidade"
-                value={form.city}
-                onChange={handleChange("city")}
-              />
-            </label>
-          </div>
+        <div className="space-y-4 rounded-3xl border border-white/10 bg-black/10 p-4 sm:p-5">
+          <div id="profile-personal" className="scroll-mt-24">
+            <CollapsiblePanel
+              title="Cadastro"
+              description=""
+              headerActions={
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  disabled={signingOut}
+                  className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-foreground transition hover:border-accent/40 hover:text-accent disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {signingOut ? "Saindo..." : "Sair"}
+                </button>
+              }
+              defaultOpen
+            >
+              <div className="grid gap-6 lg:grid-cols-2">
+                <div className="space-y-4">
+                  <h2 className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+                    Dados pessoais
+                  </h2>
+                  <label className="block text-sm text-muted-foreground">
+                    Nome completo
+                    <input
+                      className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
+                      placeholder="Seu nome completo"
+                      value={form.fullName}
+                      onChange={handleChange("fullName")}
+                    />
+                  </label>
+                  <label className="block text-sm text-muted-foreground">
+                    Email
+                    <input
+                      className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
+                      placeholder="voce@empresa.com"
+                      type="email"
+                      value={form.email}
+                      onChange={handleChange("email")}
+                    />
+                  </label>
+                  <label className="block text-sm text-muted-foreground">
+                    Telefone
+                    <input
+                      className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
+                      placeholder="+55 11 99999-9999"
+                      value={form.phone}
+                      onChange={handleChange("phone")}
+                    />
+                  </label>
+                  <label className="block text-sm text-muted-foreground">
+                    CEP
+                    <input
+                      className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
+                      placeholder="00000-000"
+                      value={form.cep}
+                      onChange={handleChange("cep")}
+                    />
+                  </label>
+                  <label className="block text-sm text-muted-foreground">
+                    Cidade
+                    <input
+                      className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
+                      placeholder="Cidade"
+                      value={form.city}
+                      onChange={handleChange("city")}
+                    />
+                  </label>
+                </div>
 
-          <div className="space-y-4">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">
-              Organização
-            </h2>
-            <label className="block text-sm text-muted-foreground">
-              Empresa (nome da organização)
-              <input
-                className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
-                placeholder="Nome da organização"
-                value={tenantName}
-                onChange={(event) => setTenantName(event.target.value)}
-              />
-            </label>
-            <label className="block text-sm text-muted-foreground">
-              Workspace
-              <input
-                className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
-                placeholder="Workspace"
-                value={workspaceName}
-                onChange={(event) => setWorkspaceName(event.target.value)}
-              />
-            </label>
-            <label className="block text-sm text-muted-foreground">
-              Cargo geral
-              <input
-                className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
-                placeholder="Seu cargo geral"
-                value={form.role}
-                onChange={handleChange("role")}
-              />
-            </label>
-            <label className="block text-sm text-muted-foreground">
-              Website
-              <input
-                className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
-                placeholder="https://empresa.com"
-                value={form.website}
-                onChange={handleChange("website")}
-              />
-            </label>
-          </div>
-        </div>
-
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <label className="block text-sm text-muted-foreground">
-            Pais
-            <input
-              className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
-              placeholder="Pais"
-              value={form.country}
-              onChange={handleChange("country")}
-            />
-          </label>
-        </div>
-        <div id="profile-workspace-admin" className="mt-6 mb-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">Workspace admin</p>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Membership, funções, membros, convites, criação e troca do workspace atual.
-          </p>
-        </div>
-        <div className="mt-6 space-y-4">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-muted-foreground">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
-              Workspaces vinculados
-            </p>
-            {linkedWorkspaces.length > 0 ? (
-              <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-foreground/85">
-                {linkedWorkspaces.map((workspace) => (
-                  <button
-                    type="button"
-                    key={workspace.id}
-                    onClick={() => handleSelectWorkspace(workspace)}
-                    disabled={isSwitchingWorkspace}
-                    className={`pill ${workspace.isCurrent ? "bg-accent/20 text-accent" : "bg-white/10 text-foreground"}`}
-                  >
-                    {workspace.name}
-                  </button>
-                ))}
+                <div className="space-y-4">
+                  <h2 className="text-sm font-semibold uppercase tracking-[0.3em] text-muted-foreground">
+                    Organização
+                  </h2>
+                  <label className="block text-sm text-muted-foreground">
+                    Empresa (nome da organização)
+                    <input
+                      className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
+                      placeholder="Nome da organização"
+                      value={tenantName}
+                      onChange={(event) => setTenantName(event.target.value)}
+                    />
+                  </label>
+                  <label className="block text-sm text-muted-foreground">
+                    Workspace
+                    <input
+                      className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
+                      placeholder="Workspace"
+                      value={workspaceName}
+                      onChange={(event) => setWorkspaceName(event.target.value)}
+                    />
+                  </label>
+                  <label className="block text-sm text-muted-foreground">
+                    Cargo geral
+                    <input
+                      className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
+                      placeholder="Seu cargo geral"
+                      value={form.role}
+                      onChange={handleChange("role")}
+                    />
+                  </label>
+                  <label className="block text-sm text-muted-foreground">
+                    Website
+                    <input
+                      className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
+                      placeholder="https://empresa.com"
+                      value={form.website}
+                      onChange={handleChange("website")}
+                    />
+                  </label>
+                  <label className="block text-sm text-muted-foreground">
+                    Pais
+                    <input
+                      className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
+                      placeholder="Pais"
+                      value={form.country}
+                      onChange={handleChange("country")}
+                    />
+                  </label>
+                </div>
               </div>
-            ) : (
-              <p className="mt-2 text-xs text-muted-foreground">
-                Nenhum workspace vinculado encontrado.
-              </p>
-            )}
-            {workspaceSwitchMessage ? (
-              <p
-                className={`mt-2 text-xs ${
-                  workspaceSwitchMessage.type === "success" ? "text-emerald-300" : "text-rose-300"
-                }`}
-              >
-                {workspaceSwitchMessage.text}
-              </p>
-            ) : null}
+              <div className="mt-6 flex flex-wrap items-center gap-4">
+                <button
+                  type="submit"
+                  className="rounded-full border border-white/10 bg-accent/20 px-6 py-2 text-sm font-semibold text-foreground transition hover:bg-accent/30 disabled:opacity-60"
+                  disabled={saveStatus.cadastro === "saving"}
+                >
+                  {saveStatus.cadastro === "saving" ? "Salvando..." : "Salvar"}
+                </button>
+                {saveStatus.cadastro === "saved" ? (
+                  <span className="text-sm text-emerald-300">Cadastro atualizado.</span>
+                ) : null}
+                {saveStatus.cadastro === "error" ? (
+                  <span className="text-sm text-red-300">
+                    {saveErrorMessage.cadastro ?? "Falha ao salvar. Tente novamente."}
+                  </span>
+                ) : null}
+                {profileLoading ? (
+                  <span className="text-sm text-muted-foreground">Carregando perfil...</span>
+                ) : null}
+              </div>
+            </CollapsiblePanel>
           </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-muted-foreground">
+          <div id="profile-workspace-admin" className="scroll-mt-24">
+            <CollapsiblePanel
+              title="Workspace"
+              description=""
+            >
+              <div className="space-y-4">
+                <div className="flex flex-col gap-2">
+                  {[
+                    {
+                      key: "include_workspace" as const,
+                      label: "Incluir",
+                      badge: workspaceCreated ? "novo" : null,
+                      title: "Criar um novo workspace neste tenant",
+                    },
+                    {
+                      key: "edit_workspace" as const,
+                      label: "Editar",
+                      badge: null,
+                      title: "Editar o nome do workspace atual",
+                    },
+                    {
+                      key: "delete_workspace" as const,
+                      label: "Excluir",
+                      badge: null,
+                      title: "Excluir workspace",
+                    },
+                    {
+                      key: "linked_workspaces" as const,
+                      label: "Vinculados",
+                      badge: `${linkedWorkspaces.length}`,
+                      title: linkedWorkspaceTooltip,
+                    },
+                    {
+                      key: "roles_members" as const,
+                      label: "Membros",
+                      badge: null,
+                      title: "Funções, permissões, convites e membros do workspace",
+                    },
+                    {
+                      key: "signed_agents" as const,
+                      label: "Agentes assinados",
+                      badge: `${signedAgents.length}`,
+                      title: signedAgents.length > 0 ? signedAgents.join(" • ") : "Nenhuma assinatura ativa encontrada",
+                    },
+                  ]
+                    .filter((item) => workspaceOptionListExpanded || workspaceAdminView === item.key)
+                    .map((item) => {
+                      const active = workspaceAdminView === item.key;
+                      return (
+                        <button
+                          key={item.key}
+                          type="button"
+                          onClick={() => {
+                            if (active && !workspaceOptionListExpanded) {
+                              setWorkspaceOptionListExpanded(true);
+                              if (item.key === "linked_workspaces") {
+                                setShowLinkedWorkspaceMenu(false);
+                              }
+                              return;
+                            }
+
+                            setWorkspaceAdminView(item.key);
+                            setWorkspaceOptionListExpanded(false);
+                            if (item.key === "linked_workspaces") {
+                              setShowLinkedWorkspaceMenu(true);
+                            } else {
+                              setShowLinkedWorkspaceMenu(false);
+                            }
+                          }}
+                          title={item.title}
+                          className={`rounded-xl border px-3 py-2 text-left text-[10px] font-semibold uppercase tracking-[0.22em] transition ${
+                            active
+                              ? "border-accent/40 bg-accent/15 text-foreground"
+                              : "border-white/10 bg-black/20 text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          {item.label}
+                          {item.badge ? ` · ${item.badge}` : ""}
+                        </button>
+                      );
+                    })}
+                </div>
+                {workspaceAdminView === "linked_workspaces" && showLinkedWorkspaceMenu && linkedWorkspaces.length > 0 ? (
+                  <div className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-black/20 p-3">
+                    {linkedWorkspaces.map((workspace) => (
+                      <button
+                        key={`workspace-submenu-${workspace.id}`}
+                        type="button"
+                        onClick={() => handleSelectWorkspace(workspace)}
+                        disabled={isSwitchingWorkspace}
+                        title={workspace.name}
+                        className={`rounded-xl border px-3 py-2 text-left text-[11px] font-medium transition ${
+                          workspace.isCurrent
+                            ? "border-accent/40 bg-accent/15 text-accent"
+                            : "border-white/10 bg-white/5 text-foreground hover:border-accent/30"
+                        }`}
+                      >
+                        {workspace.name}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
+                {workspaceAdminView === "linked_workspaces" ? (
+                  <div className="rounded-2xl border border-white/10 bg-black/10 p-4 text-xs text-muted-foreground">
+                    {linkedWorkspaces.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">Nenhum workspace vinculado encontrado.</p>
+                    ) : null}
+                    {workspaceSwitchMessage ? (
+                      <p
+                        className={`${linkedWorkspaces.length === 0 ? "mt-3 " : ""}text-xs ${
+                          workspaceSwitchMessage.type === "success" ? "text-emerald-300" : "text-rose-300"
+                        }`}
+                      >
+                        {workspaceSwitchMessage.text}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {workspaceAdminView === "roles_members" ? (
+                  <div className="rounded-2xl border border-white/10 bg-black/10 p-4 text-sm text-muted-foreground">
               <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
                 Função no workspace
               </p>
@@ -1336,22 +1509,26 @@ export default function ProfilePage() {
                   <div className="rounded-xl border border-white/10 bg-[#0a1527] p-3">
                     <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">Membros do workspace</p>
                     {workspaceMembers.length > 0 ? (
-                      <div className="mt-3 space-y-2">
-                        {workspaceMembers.map((member) => (
-                          <div key={member.userId} className="rounded-xl border border-white/10 bg-black/20 p-3 text-xs text-muted-foreground">
-                            <p className="text-sm font-medium text-foreground">
-                              {member.fullName}
-                              {member.isCurrentUser ? " (você)" : ""}
-                            </p>
-                            <p className="mt-1">{member.email}</p>
-                            <p className="mt-1">Função: {member.roleLabel}</p>
-                            <p className="mt-1">Status: {member.status}</p>
-                            {member.permissions.length > 0 ? (
-                              <p className="mt-1">Permissões: {member.permissions.map((permission) => formatWorkspacePermissionLabel(permission)).join(" • ")}</p>
-                            ) : null}
+                      <ExpandableList itemCount={workspaceMembers.length}>
+                        {(expanded) => (
+                          <div className="mt-3 space-y-2">
+                            {workspaceMembers.slice(0, expanded ? workspaceMembers.length : 4).map((member) => (
+                              <div key={member.userId} className="rounded-xl border border-white/10 bg-black/20 p-3 text-xs text-muted-foreground">
+                                <p className="text-sm font-medium text-foreground">
+                                  {member.fullName}
+                                  {member.isCurrentUser ? " (você)" : ""}
+                                </p>
+                                <p className="mt-1">{member.email}</p>
+                                <p className="mt-1">Função: {member.roleLabel}</p>
+                                <p className="mt-1">Status: {member.status}</p>
+                                {member.permissions.length > 0 ? (
+                                  <p className="mt-1">Permissões: {member.permissions.map((permission) => formatWorkspacePermissionLabel(permission)).join(" • ")}</p>
+                                ) : null}
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
+                        )}
+                      </ExpandableList>
                     ) : (
                       <p className="mt-3 text-xs text-muted-foreground">Nenhum membro oficial encontrado neste workspace.</p>
                     )}
@@ -1359,35 +1536,42 @@ export default function ProfilePage() {
                   <div className="rounded-xl border border-white/10 bg-[#0a1527] p-3">
                     <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">Convites pendentes</p>
                     {workspaceInvitations.length > 0 ? (
-                      <div className="mt-3 space-y-2">
-                        {workspaceInvitations.map((invitation) => {
-                          const inviteUrl = typeof window !== "undefined"
-                            ? `${window.location.origin}/access?invite=${encodeURIComponent(invitation.token)}`
-                            : invitation.token;
-                          return (
-                            <div key={invitation.id} className="rounded-xl border border-white/10 bg-black/20 p-3 text-xs text-muted-foreground">
-                              <p className="text-sm font-medium text-foreground">{invitation.fullName}</p>
-                              <p className="mt-1">{invitation.email}</p>
-                              <p className="mt-1">Função: {invitation.roleLabel}</p>
-                              {invitation.permissions.length > 0 ? (
-                                <p className="mt-1">Permissões: {invitation.permissions.map((permission) => formatWorkspacePermissionLabel(permission)).join(" • ")}</p>
-                              ) : null}
-                              <p className="mt-1">Expira em: {formatDateTime(invitation.expiresAt)}</p>
-                              <p className="mt-2 break-all text-[11px] text-accent">{inviteUrl}</p>
-                            </div>
-                          );
-                        })}
-                      </div>
+                      <ExpandableList itemCount={workspaceInvitations.length}>
+                        {(expanded) => (
+                          <div className="mt-3 space-y-2">
+                            {workspaceInvitations.slice(0, expanded ? workspaceInvitations.length : 4).map((invitation) => {
+                              const inviteUrl = typeof window !== "undefined"
+                                ? `${window.location.origin}/access?invite=${encodeURIComponent(invitation.token)}`
+                                : invitation.token;
+                              return (
+                                <div key={invitation.id} className="rounded-xl border border-white/10 bg-black/20 p-3 text-xs text-muted-foreground">
+                                  <p className="text-sm font-medium text-foreground">{invitation.fullName}</p>
+                                  <p className="mt-1">{invitation.email}</p>
+                                  <p className="mt-1">Função: {invitation.roleLabel}</p>
+                                  {invitation.permissions.length > 0 ? (
+                                    <p className="mt-1">Permissões: {invitation.permissions.map((permission) => formatWorkspacePermissionLabel(permission)).join(" • ")}</p>
+                                  ) : null}
+                                  <p className="mt-1">Expira em: {formatDateTime(invitation.expiresAt)}</p>
+                                  <p className="mt-2 break-all text-[11px] text-accent">{inviteUrl}</p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </ExpandableList>
                     ) : (
                       <p className="mt-3 text-xs text-muted-foreground">Nenhum convite pendente neste workspace.</p>
                     )}
                   </div>
                 </div>
               </div>
-            </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-muted-foreground">
+                  </div>
+                ) : null}
+
+                {workspaceAdminView === "include_workspace" ? (
+                  <div className="rounded-2xl border border-white/10 bg-black/10 p-4 text-xs text-muted-foreground">
             <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
-              Novo workspace
+              Incluir workspace
             </p>
             <p className="mt-2 text-xs text-muted-foreground">
               Crie um novo espaço de trabalho dentro do tenant atual. Um hash único será gerado
@@ -1436,8 +1620,87 @@ export default function ProfilePage() {
                 </div>
               )}
             </div>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-xs text-muted-foreground">
+                  </div>
+                ) : null}
+
+                {workspaceAdminView === "edit_workspace" ? (
+                  <div className="rounded-2xl border border-white/10 bg-black/10 p-4 text-xs text-muted-foreground">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
+                      Editar workspace
+                    </p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Escolha um workspace vinculado e atualize o nome do workspace em foco. A alteração é persistida pelo botão Salvar deste bloco.
+                    </p>
+                    <div className="mt-3 space-y-3">
+                      {linkedWorkspaces.length > 0 ? (
+                        <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                          <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+                            Workspaces vinculados
+                          </p>
+                          <div className="mt-3 flex flex-col gap-2">
+                            {linkedWorkspaces.map((workspace) => (
+                              <button
+                                key={`workspace-edit-${workspace.id}`}
+                                type="button"
+                                onClick={() => handleSelectWorkspace(workspace)}
+                                disabled={isSwitchingWorkspace}
+                                title={workspace.name}
+                                className={`rounded-xl border px-3 py-2 text-left text-[11px] font-medium transition ${
+                                  workspace.isCurrent
+                                    ? "border-accent/40 bg-accent/15 text-accent"
+                                    : "border-white/10 bg-white/5 text-foreground hover:border-accent/30"
+                                }`}
+                              >
+                                {workspace.name}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                      <label className="block text-sm text-muted-foreground">
+                        Nome do workspace atual
+                        <input
+                          className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-2 text-base text-foreground"
+                          placeholder="Workspace"
+                          value={workspaceName}
+                          onChange={(event) => setWorkspaceName(event.target.value)}
+                        />
+                      </label>
+                      <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                        <p className="text-[11px] uppercase tracking-[0.25em] text-muted-foreground">
+                          Workspace em foco
+                        </p>
+                        <p className="mt-2 text-sm text-foreground">{workspaceName || "—"}</p>
+                      </div>
+                      {workspaceSwitchMessage ? (
+                        <p
+                          className={`text-xs ${
+                            workspaceSwitchMessage.type === "success" ? "text-emerald-300" : "text-rose-300"
+                          }`}
+                        >
+                          {workspaceSwitchMessage.text}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+
+                {workspaceAdminView === "delete_workspace" ? (
+                  <div className="rounded-2xl border border-white/10 bg-black/10 p-4 text-xs text-muted-foreground">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
+                      Excluir workspace
+                    </p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      A exclusão ainda não está disponível nesta tela porque o frontend atual não possui API de remoção de workspace.
+                    </p>
+                    <div className="mt-3 rounded-xl border border-amber-400/20 bg-amber-400/10 p-3 text-xs text-amber-100">
+                      Workspace atual: {workspaceName || "—"}
+                    </div>
+                  </div>
+                ) : null}
+
+                {workspaceAdminView === "signed_agents" ? (
+                  <div className="rounded-2xl border border-white/10 bg-black/10 p-4 text-xs text-muted-foreground">
             <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
               Agentes assinados
             </p>
@@ -1456,36 +1719,45 @@ export default function ProfilePage() {
             ) : (
               <p className="mt-2 text-xs text-muted-foreground">Nenhuma assinatura ativa encontrada.</p>
             )}
+                  </div>
+                ) : null}
+                <div className="flex flex-wrap items-center gap-4 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => void saveProfileSection("workspace")}
+                    className="rounded-full border border-white/10 bg-accent/20 px-6 py-2 text-sm font-semibold text-foreground transition hover:bg-accent/30 disabled:opacity-60"
+                    disabled={saveStatus.workspace === "saving"}
+                  >
+                    {saveStatus.workspace === "saving" ? "Salvando..." : "Salvar"}
+                  </button>
+                  {saveStatus.workspace === "saved" ? (
+                    <span className="text-sm text-emerald-300">Workspace atualizado.</span>
+                  ) : null}
+                  {saveStatus.workspace === "error" ? (
+                    <span className="text-sm text-red-300">
+                      {saveErrorMessage.workspace ?? "Falha ao salvar. Tente novamente."}
+                    </span>
+                  ) : null}
+                  {profileLoading ? (
+                    <span className="text-sm text-muted-foreground">Carregando perfil...</span>
+                  ) : null}
+                </div>
+              </div>
+            </CollapsiblePanel>
           </div>
-        </div>
 
-        <div className="mt-6 flex flex-wrap items-center gap-4">
-          <button
-            type="submit"
-            className="rounded-full border border-white/10 bg-accent/20 px-6 py-2 text-sm font-semibold text-foreground transition hover:bg-accent/30"
+          <div id="profile-governance" className="scroll-mt-24">
+            <CollapsiblePanel
+              title="Governança & evidências"
+              description="Delegações, evidências UX e diagnósticos operacionais do resolver e da fricção."
+            >
+              <div className="space-y-4">
+          <CollapsiblePanel
+            title="Delegacoes ativas"
+            description="Visao das delegacoes em vigor. Mantidas acessiveis, mas agora resumidas em um painel proprio."
+            badge={`${activeDelegations.length} ativos`}
+            defaultOpen
           >
-            Salvar perfil
-          </button>
-          {status === "saved" ? (
-            <span className="text-sm text-emerald-300">Perfil atualizado.</span>
-          ) : null}
-          {status === "error" ? (
-            <span className="text-sm text-red-300">
-              {saveErrorMessage ?? "Falha ao salvar. Tente novamente."}
-            </span>
-          ) : null}
-          {profileLoading ? (
-            <span className="text-sm text-muted-foreground">Carregando perfil...</span>
-          ) : null}
-        </div>
-        <div id="profile-governance" className="mt-6 mb-6 rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">Governança & evidências</p>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Delegações, evidências UX e diagnósticos operacionais do resolver e da fricção.
-          </p>
-        </div>
-        <div className="mt-6 space-y-4">
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
                 Delegacoes ativas
@@ -1499,23 +1771,31 @@ export default function ProfilePage() {
             ) : activeDelegations.length === 0 ? (
               <p className="mt-3 text-sm text-muted-foreground">Nenhuma delegacao ativa encontrada.</p>
             ) : (
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
-                {activeDelegations.map((delegation) => (
-                  <div
-                    key={delegation.id}
-                    className="rounded-xl border border-white/10 bg-[#0a1527] p-4 text-xs text-muted-foreground"
-                  >
-                    <p className="text-sm font-semibold text-foreground">{delegation.itemName}</p>
-                    <p className="mt-2">Publisher: {delegation.publisherLabel}</p>
-                    <p>Scope: {delegation.scope}</p>
-                    <p>Trust minimo: {delegation.trustMin}</p>
-                    <p>Valido ate: {formatDate(delegation.validUntil)}</p>
+              <ExpandableList itemCount={activeDelegations.length}>
+                {(expanded) => (
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    {activeDelegations.slice(0, expanded ? activeDelegations.length : 4).map((delegation) => (
+                      <div
+                        key={delegation.id}
+                        className="rounded-xl border border-white/10 bg-[#0a1527] p-4 text-xs text-muted-foreground"
+                      >
+                        <p className="text-sm font-semibold text-foreground">{delegation.itemName}</p>
+                        <p className="mt-2">Publisher: {delegation.publisherLabel}</p>
+                        <p>Scope: {delegation.scope}</p>
+                        <p>Trust minimo: {delegation.trustMin}</p>
+                        <p>Valido ate: {formatDate(delegation.validUntil)}</p>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                )}
+              </ExpandableList>
             )}
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          </CollapsiblePanel>
+          <CollapsiblePanel
+            title="Evidencias UX do Chat Launcher"
+            description="Historico de friccao do chat agora fica fechado por padrao e mostra poucas entradas primeiro."
+            badge={helpdeskExport ? `${helpdeskExport.totalSessions} sessoes` : null}
+          >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
@@ -1570,60 +1850,63 @@ export default function ProfilePage() {
                     <p className="mt-2 text-lg font-semibold text-foreground">{helpdeskExport.summary.generic_fallback ?? 0}</p>
                   </div>
                 </div>
-                <div className="grid gap-3">
-                  {helpdeskExport.groups.map((group) => {
-                    const latest = group.interactions[0];
-                    return (
-                      <div
-                        key={`${group.runId}-${group.lastInteractionAt ?? "na"}`}
-                        className="rounded-xl border border-white/10 bg-[#0a1527] p-4 text-xs text-muted-foreground"
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-semibold text-foreground">
-                              {group.runId === "DEFAULT" ? "Sem run vinculada" : `Run ${group.runId}`}
-                            </p>
-                            <p className="mt-1">
-                              Agente: {group.agent ?? "—"} • Categoria UX: {group.uxIssueLabel}
-                            </p>
-                          </div>
-                          <span className="pill bg-white/10 text-foreground">
-                            {group.entries} registro(s)
-                          </span>
-                        </div>
-                        <p className="mt-3 text-[11px] text-muted-foreground">
-                          Última interação: {formatDateTime(group.lastInteractionAt)}
-                        </p>
-                        {latest ? (
-                          <div className="mt-3 grid gap-3 md:grid-cols-2">
-                            <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-                              <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Pergunta</p>
-                              <p className="mt-2 text-sm text-foreground">{latest.message}</p>
+                <ExpandableList itemCount={helpdeskExport.groups.length} initialCount={3}>
+                  {(expanded) => (
+                    <div className="grid gap-3">
+                      {helpdeskExport.groups.slice(0, expanded ? helpdeskExport.groups.length : 3).map((group) => {
+                        const latest = group.interactions[0];
+                        return (
+                          <div
+                            key={`${group.runId}-${group.lastInteractionAt ?? "na"}`}
+                            className="rounded-xl border border-white/10 bg-[#0a1527] p-4 text-xs text-muted-foreground"
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-semibold text-foreground">
+                                  {group.runId === "DEFAULT" ? "Sem run vinculada" : `Run ${group.runId}`}
+                                </p>
+                                <p className="mt-1">
+                                  Agente: {group.agent ?? "—"} • Categoria UX: {group.uxIssueLabel}
+                                </p>
+                              </div>
+                              <span className="pill bg-white/10 text-foreground">
+                                {group.entries} registro(s)
+                              </span>
                             </div>
-                            <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-                              <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Resposta</p>
-                              <p className="mt-2 text-sm text-foreground whitespace-pre-wrap">{latest.response}</p>
-                            </div>
+                            <p className="mt-3 text-[11px] text-muted-foreground">
+                              Última interação: {formatDateTime(group.lastInteractionAt)}
+                            </p>
+                            {latest ? (
+                              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                                <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                                  <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Pergunta</p>
+                                  <p className="mt-2 text-sm text-foreground">{latest.message}</p>
+                                </div>
+                                <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                                  <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Resposta</p>
+                                  <p className="mt-2 text-sm text-foreground whitespace-pre-wrap">{latest.response}</p>
+                                </div>
+                              </div>
+                            ) : null}
                           </div>
-                        ) : null}
-                      </div>
-                    );
-                  })}
-                </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </ExpandableList>
               </div>
             )}
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
-                  Diagnóstico do Experience Resolver
-                </p>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Convergência entre landing resolvida e ação primária sugerida, com base na auditoria operacional recente.
-                </p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
+          </CollapsiblePanel>
+          <CollapsiblePanel
+            title="Diagnostico operacional"
+            description="Resolver, friccao, shadow executions, efficiency e rollout em um painel tecnico recolhivel."
+            badge={diagnosticSnapshot?.alignment.rate !== null ? `${diagnosticSnapshot?.alignment.rate}% aligned` : null}
+          >
+            <CollapsiblePanel
+              title="Diagnóstico do Experience Resolver"
+              description="Convergência entre landing resolvida e ação primária sugerida, com base na auditoria operacional recente."
+              defaultOpen
+              headerActions={
                 <div className="flex items-center rounded-full border border-white/10 bg-white/5 p-1">
                   {(["7d", "30d"] as const).map((window) => (
                     <button
@@ -1640,19 +1923,21 @@ export default function ProfilePage() {
                     </button>
                   ))}
                 </div>
+              }
+              headerExtras={
                 <span className="text-xs text-muted-foreground">
                   {diagnosticSnapshot?.latestEventAt
                     ? `Último evento: ${formatDateTime(diagnosticSnapshot.latestEventAt)}`
                     : "Sem eventos"}
                 </span>
-              </div>
-            </div>
-            {!diagnosticSnapshot || (diagnosticSnapshot.totals.aligned === 0 && diagnosticSnapshot.totals.diverged === 0) ? (
-              <p className="mt-3 text-sm text-muted-foreground">
-                Nenhuma evidência recente de alinhamento/divergência entre landing e ação primária neste workspace na janela {diagnosticsWindow}.
-              </p>
-            ) : (
-              <div className="mt-4 space-y-4">
+              }
+            >
+              {!diagnosticSnapshot || (diagnosticSnapshot.totals.aligned === 0 && diagnosticSnapshot.totals.diverged === 0) ? (
+                <p className="text-sm text-muted-foreground">
+                  Nenhuma evidência recente de alinhamento/divergência entre landing e ação primária neste workspace na janela {diagnosticsWindow}.
+                </p>
+              ) : (
+                <div className="space-y-4">
                 <div className="rounded-xl border border-white/10 bg-[#0a1527] p-4 text-sm text-foreground">
                   {diagnosticSnapshot.alignment.summary}
                   <p className="mt-2 text-xs text-muted-foreground">
@@ -1814,12 +2099,14 @@ export default function ProfilePage() {
                   ) : shadowExecutions.length === 0 ? (
                     <p className="mt-3 text-sm text-muted-foreground">Nenhuma shadow execution persistida para o workspace ativo.</p>
                   ) : (
-                    <div className="mt-4 grid gap-3">
-                      {shadowExecutions.map((item) => (
-                        <div
-                          key={item.shadowExecutionId}
-                          className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-muted-foreground"
-                        >
+                    <ExpandableList itemCount={shadowExecutions.length} initialCount={3}>
+                      {(expanded) => (
+                        <div className="mt-4 grid gap-3">
+                          {shadowExecutions.slice(0, expanded ? shadowExecutions.length : 3).map((item) => (
+                            <div
+                              key={item.shadowExecutionId}
+                              className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-muted-foreground"
+                            >
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
                               <p className="text-sm font-semibold text-foreground">{item.agentId}</p>
@@ -1921,8 +2208,10 @@ export default function ProfilePage() {
                             </div>
                           ) : null}
                         </div>
-                      ))}
-                    </div>
+                          ))}
+                        </div>
+                      )}
+                    </ExpandableList>
                   )}
                 </div>
                 <div className="rounded-xl border border-white/10 bg-[#0a1527] p-4 text-sm text-foreground">
@@ -2052,12 +2341,12 @@ export default function ProfilePage() {
                 </div>
                 <div className="grid gap-3">
                   {session.verticals?.length ? (
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-                      <p className="text-[10px] uppercase tracking-[0.3em] text-accent/80">Vertical rollout registry</p>
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        Leitura resumida do estágio canônico de rollout das verticais no contexto atual.
-                      </p>
-                      <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    <CollapsiblePanel
+                      title="Vertical rollout registry"
+                      description="Leitura resumida do estágio canônico de rollout das verticais no contexto atual."
+                      defaultOpen
+                    >
+                      <div className="grid gap-3 md:grid-cols-2">
                         {session.verticals.map((item) => (
                           <div key={`profile-vertical-${item.verticalId}`} className="rounded-lg border border-white/10 bg-black/20 p-3">
                             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -2073,7 +2362,7 @@ export default function ProfilePage() {
                           </div>
                         ))}
                       </div>
-                    </div>
+                    </CollapsiblePanel>
                   ) : null}
                   {economyOpportunitySnapshot ? (
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
@@ -2120,37 +2409,48 @@ export default function ProfilePage() {
                       </div>
                     </div>
                   ) : null}
-                  {diagnosticSnapshot.recentEvents.map((item, index) => (
-                    <div key={`${item.eventType}-${item.createdAt}-${index}`} className="rounded-xl border border-white/10 bg-[#0a1527] p-4 text-xs text-muted-foreground">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">
-                            {item.eventType === "experience.recommended_action.aligned" ? "Landing alinhada" : "Landing divergente"}
-                          </p>
-                          <p className="mt-1">
-                            Surface: {item.surfaceId ?? "—"} • Origem: {item.source ?? "—"}
-                          </p>
-                        </div>
-                        <span className="pill bg-white/10 text-foreground">{formatDateTime(item.createdAt)}</span>
-                      </div>
-                      <div className="mt-3 grid gap-3 md:grid-cols-2">
-                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-                          <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Landing</p>
-                          <p className="mt-2 text-sm text-foreground">{item.landingPath ?? "—"}</p>
-                        </div>
-                        <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-                          <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Ação primária</p>
-                          <p className="mt-2 text-sm text-foreground">{item.primaryActionPath ?? "—"}</p>
-                          <p className="mt-1 text-[11px] text-muted-foreground">{item.primaryActionId ?? "—"}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                  <ExpandableList itemCount={diagnosticSnapshot.recentEvents.length} initialCount={3}>
+                    {(expanded) => (
+                      <>
+                        {diagnosticSnapshot.recentEvents.slice(0, expanded ? diagnosticSnapshot.recentEvents.length : 3).map((item, index) => (
+                          <div key={`${item.eventType}-${item.createdAt}-${index}`} className="rounded-xl border border-white/10 bg-[#0a1527] p-4 text-xs text-muted-foreground">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-semibold text-foreground">
+                                  {item.eventType === "experience.recommended_action.aligned" ? "Landing alinhada" : "Landing divergente"}
+                                </p>
+                                <p className="mt-1">
+                                  Surface: {item.surfaceId ?? "—"} • Origem: {item.source ?? "—"}
+                                </p>
+                              </div>
+                              <span className="pill bg-white/10 text-foreground">{formatDateTime(item.createdAt)}</span>
+                            </div>
+                            <div className="mt-3 grid gap-3 md:grid-cols-2">
+                              <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                                <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Landing</p>
+                                <p className="mt-2 text-sm text-foreground">{item.landingPath ?? "—"}</p>
+                              </div>
+                              <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                                <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">Ação primária</p>
+                                <p className="mt-2 text-sm text-foreground">{item.primaryActionPath ?? "—"}</p>
+                                <p className="mt-1 text-[11px] text-muted-foreground">{item.primaryActionId ?? "—"}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </ExpandableList>
                 </div>
               </div>
             )}
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+          </CollapsiblePanel>
+          </CollapsiblePanel>
+          <CollapsiblePanel
+            title="Delegacoes expiradas"
+            description="Itens vencidos ficam compactados, com renovacao ainda disponivel no mesmo lugar."
+            badge={`${expiredDelegations.length} expirados`}
+          >
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-accent/80">
@@ -2179,59 +2479,66 @@ export default function ProfilePage() {
             ) : expiredDelegations.length === 0 ? (
               <p className="mt-3 text-sm text-muted-foreground">Nenhuma delegacao expirada encontrada.</p>
             ) : (
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
-                {expiredDelegations.map((delegation) => (
-                  <div
-                    key={delegation.id}
-                    className="rounded-xl border border-white/10 bg-[#0a1527] p-4 text-xs text-muted-foreground"
-                  >
-                    <p className="text-sm font-semibold text-foreground">{delegation.itemName}</p>
-                    <p className="mt-2">Publisher: {delegation.publisherLabel}</p>
-                    <p>Scope: {delegation.scope}</p>
-                    <p>Trust minimo: {delegation.trustMin}</p>
-                    <p>Valido ate: {formatDate(delegation.validUntil)}</p>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => void handlePreviewDelegationRenewal(delegation.id)}
-                        disabled={delegationRenewalStatus[delegation.id] === "loading"}
-                        className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-foreground transition hover:bg-white/10 disabled:opacity-50"
+              <ExpandableList itemCount={expiredDelegations.length}>
+                {(expanded) => (
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    {expiredDelegations.slice(0, expanded ? expiredDelegations.length : 4).map((delegation) => (
+                      <div
+                        key={delegation.id}
+                        className="rounded-xl border border-white/10 bg-[#0a1527] p-4 text-xs text-muted-foreground"
                       >
-                        Sugerir renewal
-                      </button>
-                      {delegationRenewalPreviews[delegation.id]?.canApplyRenewal ? (
-                        <button
-                          type="button"
-                          onClick={() => void handleApplyDelegationRenewal(delegation)}
-                          disabled={delegationRenewalStatus[delegation.id] === "loading"}
-                          className="rounded-full border border-accent/40 bg-accent/15 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-accent transition hover:border-accent/70 hover:bg-accent/25 disabled:opacity-50"
-                        >
-                          Aplicar renewal
-                        </button>
-                      ) : null}
-                    </div>
-                    {delegationRenewalError[delegation.id] ? (
-                      <p className="mt-3 text-xs text-rose-300">{delegationRenewalError[delegation.id]}</p>
-                    ) : null}
-                    {delegationRenewalPreviews[delegation.id] ? (
-                      <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3">
-                        <p className="text-[10px] uppercase tracking-[0.25em] text-accent">
-                          {delegationRenewalPreviews[delegation.id].evaluation}
-                        </p>
-                        <p className="mt-2">{delegationRenewalPreviews[delegation.id].summary}</p>
-                        <p className="mt-2">
-                          Próxima validade sugerida:{" "}
-                          {formatDate(delegationRenewalPreviews[delegation.id].recommendedValidUntil)}
-                        </p>
-                        <p className="mt-2">
-                          Auto-elegível: {delegationRenewalPreviews[delegation.id].autoEligible ? "sim" : "não"}
-                        </p>
+                        <p className="text-sm font-semibold text-foreground">{delegation.itemName}</p>
+                        <p className="mt-2">Publisher: {delegation.publisherLabel}</p>
+                        <p>Scope: {delegation.scope}</p>
+                        <p>Trust minimo: {delegation.trustMin}</p>
+                        <p>Valido ate: {formatDate(delegation.validUntil)}</p>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void handlePreviewDelegationRenewal(delegation.id)}
+                            disabled={delegationRenewalStatus[delegation.id] === "loading"}
+                            className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-foreground transition hover:bg-white/10 disabled:opacity-50"
+                          >
+                            Sugerir renewal
+                          </button>
+                          {delegationRenewalPreviews[delegation.id]?.canApplyRenewal ? (
+                            <button
+                              type="button"
+                              onClick={() => void handleApplyDelegationRenewal(delegation)}
+                              disabled={delegationRenewalStatus[delegation.id] === "loading"}
+                              className="rounded-full border border-accent/40 bg-accent/15 px-3 py-1 text-[10px] uppercase tracking-[0.25em] text-accent transition hover:border-accent/70 hover:bg-accent/25 disabled:opacity-50"
+                            >
+                              Aplicar renewal
+                            </button>
+                          ) : null}
+                        </div>
+                        {delegationRenewalError[delegation.id] ? (
+                          <p className="mt-3 text-xs text-rose-300">{delegationRenewalError[delegation.id]}</p>
+                        ) : null}
+                        {delegationRenewalPreviews[delegation.id] ? (
+                          <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3">
+                            <p className="text-[10px] uppercase tracking-[0.25em] text-accent">
+                              {delegationRenewalPreviews[delegation.id].evaluation}
+                            </p>
+                            <p className="mt-2">{delegationRenewalPreviews[delegation.id].summary}</p>
+                            <p className="mt-2">
+                              Próxima validade sugerida:{" "}
+                              {formatDate(delegationRenewalPreviews[delegation.id].recommendedValidUntil)}
+                            </p>
+                            <p className="mt-2">
+                              Auto-elegível: {delegationRenewalPreviews[delegation.id].autoEligible ? "sim" : "não"}
+                            </p>
+                          </div>
+                        ) : null}
                       </div>
-                    ) : null}
+                    ))}
                   </div>
-                ))}
-              </div>
+                )}
+              </ExpandableList>
             )}
+          </CollapsiblePanel>
+              </div>
+            </CollapsiblePanel>
           </div>
         </div>
       </form>
