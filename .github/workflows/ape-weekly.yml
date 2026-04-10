@@ -23,11 +23,17 @@ on:
   schedule:
     - cron: "0 11 * * 1"
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   ape_weekly_cycle:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with:
           version: 10.12.4
@@ -61,6 +67,9 @@ jobs:
       - name: Provider pricing recency
         run: pnpm check:provider-pricing-recency
 
+      - name: Evidence index
+        run: pnpm check:evidence-index
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -72,3 +81,17 @@ jobs:
             artifacts/ape/weekly-cycle-response.json
             artifacts/ape/weekly-cycle-decision.json
             artifacts/ape/weekly-report.md
+
+      - name: Create PR with renewed APE evidence
+        uses: peter-evans/create-pull-request@v7
+        with:
+          branch: bot/ape-weekly-evidence-${{ github.run_id }}
+          commit-message: docs(ops): renew weekly APE evidence window
+          title: docs(ops): renew weekly APE evidence window
+          body: |
+            Renovação automática da janela semanal de evidência APE.
+
+            Arquivos atualizados:
+            - `ops/evidence/latest/ape-weekly-cycle-run*.md`
+            - `docs/EVIDENCE_INDEX.md`
+          delete-branch: true

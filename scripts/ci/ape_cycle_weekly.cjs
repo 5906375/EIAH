@@ -7,6 +7,7 @@ const rolloutMode = (process.env.APE_ROLLOUT_MODE || 'shadow').trim().toLowerCas
 const canaryStage = (process.env.APE_CANARY_STAGE || 'pilot').trim().toLowerCase();
 const ARTIFACTS_DIR = path.resolve('artifacts/ape');
 const EVIDENCE_DIR = path.resolve('ops/evidence/latest');
+const EVIDENCE_INDEX_FILE = path.resolve('docs/EVIDENCE_INDEX.md');
 
 const checks = [
   ['check:e2e-recency', ['pnpm', 'check:e2e-recency']],
@@ -75,6 +76,29 @@ function buildEvidenceMarkdown(params) {
   return `# APE Weekly Cycle #${runNumber} — ${date}\n\n- decision: ${decision}\n- hardMetricsGo: ${hardMetricsGo}\n- nonRegressionGo: ${hardMetricsGo}\n- auditGap: 0\n- duplicateSideEffects: 0\n- breakGlass: 0\n- rolloutMode: ${rolloutMode}\n- canaryStage: ${canaryStage}\n- hardReasons: ${hardReasons.length ? hardReasons.join(', ') : 'none'}\n\n## Checks\n${checksMd}\n\n## W4 focus\n${focus.join('\n')}\n\n## Resultado\n${result}\n`;
 }
 
+function updateEvidenceIndex(params) {
+  if (!fs.existsSync(EVIDENCE_INDEX_FILE)) return false;
+
+  const { runNumber, date, hardMetricsGo } = params;
+  const evidencePath = `ops/evidence/latest/ape-weekly-cycle-run${runNumber}-${date}.md`;
+  const entry = `| APE Weekly Cycle #${runNumber} (janela recorrente automatizada) | \`${evidencePath}\` | ${hardMetricsGo ? 'Ciclo semanal automatizado com hard metrics em GO, reconciliacao estavel e renovacao da janela recorrente.' : 'Ciclo semanal automatizado registrando o estado atual dos gates recorrentes para acompanhamento operacional.'} |`;
+  const current = fs.readFileSync(EVIDENCE_INDEX_FILE, 'utf8');
+
+  if (current.includes(`\`${evidencePath}\``)) return false;
+
+  const sectionHeader = '## Operação contínua (marco 2026-03-04)';
+  const sectionStart = current.indexOf(sectionHeader);
+  if (sectionStart < 0) return false;
+
+  const nextSectionStart = current.indexOf('\n## ', sectionStart + sectionHeader.length);
+  const sectionEnd = nextSectionStart >= 0 ? nextSectionStart : current.length;
+  const before = current.slice(0, sectionEnd).trimEnd();
+  const after = current.slice(sectionEnd);
+  const updated = `${before}\n${entry}\n${after}`;
+  fs.writeFileSync(EVIDENCE_INDEX_FILE, updated);
+  return true;
+}
+
 const results = checks.map(([id, cmd]) => runOne(id, cmd));
 const failed = results.filter((r) => r.status !== 'PASS');
 const hardReasons = failed.map((f) => `required_check_failed=${f.id}`);
@@ -122,6 +146,7 @@ const evidenceContent = buildEvidenceMarkdown({
   checks: results,
 });
 fs.writeFileSync(path.join(EVIDENCE_DIR, evidenceName), evidenceContent);
+const evidenceIndexUpdated = updateEvidenceIndex({ runNumber, date, hardMetricsGo });
 
 console.log(JSON.stringify({
   ok: true,
@@ -129,5 +154,6 @@ console.log(JSON.stringify({
   hardMetricsGo,
   failed: failed.map((f) => f.id),
   publishedEvidence: path.posix.join('ops/evidence/latest', evidenceName),
+  evidenceIndexUpdated,
 }, null, 2));
 if (!hardMetricsGo && rolloutMode === 'enforce') process.exit(1);
