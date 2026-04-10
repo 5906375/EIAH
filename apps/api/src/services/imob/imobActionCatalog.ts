@@ -23,6 +23,7 @@ export type ImobActionKey =
   | "list"
   | "get"
   | "update"
+  | "configure"
   | "status"
   | "sendDocuments"
   | "history"
@@ -115,6 +116,7 @@ export const IMOB_ACTION_CATALOG: ImobActionCatalog = {
       list: defaultAction("Listar imóveis", "building-2"),
       get: defaultAction("Consultar imóvel", "search"),
       update: defaultAction("Atualizar dados do imóvel", "file-pen"),
+      configure: defaultAction("Configurar regras do imóvel", "sliders-horizontal", false, true),
       status: defaultAction("Atualizar status do imóvel", "badge-check"),
       sendDocuments: defaultAction("Enviar documentos do imóvel", "file-up"),
       history: defaultAction("Ver histórico do imóvel", "history"),

@@ -491,8 +491,32 @@ test("IMOB turn resolver builds guided form for property.create", () => {
   assert.equal(result.presentation.form?.label, "Cadastrar imóvel");
   assert.deepEqual(
     result.presentation.form?.fields.map((field) => field.name),
-    ["propertyType", "goal", "city", "address"],
+    ["propertyType", "goal", "cep", "city", "address"],
   );
+  assert.equal(result.presentation.form?.fields.find((field) => field.name === "cep")?.lookup?.kind, "cep");
+});
+
+test("IMOB turn resolver prioritizes explicit property capture over options token", () => {
+  const result = resolveImobTurn({
+    message: "cadastrar imóvel opções",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.notEqual(result.action, "crm.capture.entry_options");
+  assert.equal(result.conversationState.operational?.flow, "property.create");
+  assert.equal(result.presentation.form?.entity, "imovel");
+});
+
+test("IMOB turn resolver treats plural imóveis as property.create capture", () => {
+  const result = resolveImobTurn({
+    message: "quero cadastrar 10 imóveis",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.mode, "consult");
+  assert.equal(result.action, "realestate.register_property");
+  assert.equal(result.conversationState.operational?.flow, "property.create");
+  assert.equal(result.presentation.form?.entity, "imovel");
 });
 
 test("IMOB turn resolver builds guided form for comprador on lead.qualify", () => {
@@ -521,6 +545,18 @@ test("IMOB turn resolver builds guided form for locatário on lead.qualify", () 
   assert.equal(result.executionRequest?.operation, "lead.qualify");
   assert.equal(result.presentation.form?.entity, "locatario");
   assert.equal(result.presentation.form?.label, "Cadastrar locatário");
+});
+
+test("IMOB turn resolver accepts form-style lead budget labels", () => {
+  const result = resolveImobTurn({
+    message: "nome do lead Merlo telefone do lead 47 999674434 e-mail do lead mmerlon.adv@gmail.com objetivo do lead locacao cidade de interesse do lead Balneário Camboriú faixa de orçamento do lead 2000",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.mode, "execute");
+  assert.equal(result.executionRequest?.operation, "lead.qualify");
+  assert.equal(result.conversationState.operational?.leadDraft?.budgetMax, 2000);
+  assert.ok(!result.conversationState.operational?.pendingFields.includes("budgetMax"));
 });
 
 test("IMOB turn resolver builds explicit property.create operational state", () => {
@@ -654,6 +690,94 @@ test("IMOB turn resolver builds explicit commission.settle operational state", (
   assert.match(result.presentation.text, /liquidação da comissão/i);
 });
 
+test("IMOB turn resolver starts rules.configure only for seasonal rental rules", () => {
+  const result = resolveImobTurn({
+    message: "Configurar regras do imóvel 4455 para aluguel por temporada",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.mode, "consult");
+  assert.equal(result.action, "realestate.configure_property_rules");
+  assert.equal(result.threadLabel, "Regras do imóvel");
+  assert.equal(result.conversationState.operational?.flow, "rules.configure");
+  assert.equal(result.conversationState.operational?.status, "collecting");
+  assert.equal(result.conversationState.operational?.rulesDraft?.propertyId, "property-4455");
+  assert.equal(result.conversationState.operational?.rulesDraft?.propertyFinality, "aluguel_por_temporada");
+  assert.deepEqual(result.conversationState.operational?.pendingFields, ["checkin", "checkout", "minHospedes", "maxHospedes"]);
+  assert.equal(result.presentation.form?.action, "configureRules");
+  assert.match(result.presentation.text, /regras de temporada/i);
+});
+
+test("IMOB turn resolver maps semantic imovel.configure to rules.configure", () => {
+  const result = resolveImobTurn({
+    message: "Definir check-in do imóvel 4455 para aluguel por temporada",
+    semanticIntent: {
+      entity: "imovel",
+      action: "configure",
+      matchedEntityAlias: null,
+      matchedActionAlias: null,
+      entityScore: 120,
+      actionScore: 120,
+      pluralityHint: "singular",
+      canonicalLabel: "Configurar regras do imóvel",
+    },
+    semanticIntentSource: "openai",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.mode, "consult");
+  assert.equal(result.action, "realestate.configure_property_rules");
+  assert.equal(result.threadLabel, "Regras do imóvel");
+  assert.equal(result.conversationState.operational?.flow, "rules.configure");
+  assert.equal(result.presentation.metadata?.confidence?.source, "openai");
+});
+
+test("IMOB turn resolver blocks rules.configure outside seasonal rental", () => {
+  const result = resolveImobTurn({
+    message: "Configurar regras do imóvel 4455 para locação",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.mode, "blocked");
+  assert.equal(result.action, "realestate.configure_property_rules");
+  assert.equal(result.threadLabel, "Regras do imóvel");
+  assert.equal(result.conversationState.operational?.flow, "rules.configure");
+  assert.equal(result.conversationState.operational?.rulesDraft?.propertyFinality, "locacao");
+  assert.equal(result.presentation.metadata?.reasonCode, "rules_configure_requires_seasonal_rental");
+  assert.match(result.presentation.text, /não é aluguel por temporada/i);
+});
+
+test("IMOB turn resolver continues rules.configure until governed execution request", () => {
+  const first = resolveImobTurn({
+    message: "Configurar regras do imóvel 4455 para aluguel por temporada",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  const second = resolveImobTurn({
+    message: "checkin 15h checkout 11h 1 a 4 hospedes regras: sem festas",
+    threadLabel: first.threadLabel,
+    threadState: first.conversationState,
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(second.mode, "execute");
+  assert.equal(second.action, "realestate.configure_property_rules");
+  assert.equal(second.executionRequest?.intent, "rules");
+  assert.equal(second.executionRequest?.operation, "rules.configure");
+  assert.equal(second.executionRequest?.action, "realestate.configure_property_rules");
+  assert.equal(second.conversationState.operational?.flow, "rules.configure");
+  assert.equal(second.conversationState.operational?.status, "ready_for_review");
+  assert.equal(second.conversationState.operational?.rulesDraft?.propertyId, "property-4455");
+  assert.equal(second.conversationState.operational?.rulesDraft?.propertyFinality, "aluguel_por_temporada");
+  assert.equal(second.conversationState.operational?.rulesDraft?.checkin, "15:00");
+  assert.equal(second.conversationState.operational?.rulesDraft?.checkout, "11:00");
+  assert.equal(second.conversationState.operational?.rulesDraft?.minHospedes, 1);
+  assert.equal(second.conversationState.operational?.rulesDraft?.maxHospedes, 4);
+  assert.equal(second.executionRequest?.input.propertyFinality, "aluguel_por_temporada");
+  assert.equal(second.executionRequest?.input.approvalRequired, true);
+  assert.match(second.presentation.text, /prontas para revisão/i);
+});
+
 
 test("IMOB turn resolver continues proposal.create flow when the user replies only with the missing phone", () => {
   const first = resolveImobTurn({
@@ -676,4 +800,348 @@ test("IMOB turn resolver continues proposal.create flow when the user replies on
   assert.equal(second.conversationState.operational?.proposalDraft?.propertyId, "property-4455");
   assert.equal(second.conversationState.operational?.proposalDraft?.offerAmount, 750000);
   assert.ok(!second.conversationState.operational?.pendingFields.includes("buyerPhone"));
+});
+
+test("IMOB turn resolver pivots owner collecting flow to property capture on explicit selling intent", () => {
+  const result = resolveImobTurn({
+    message: "quero vender",
+    threadState: {
+      slots: {
+        query: null,
+        city: null,
+        region: null,
+        neighborhood: null,
+        goal: null,
+        propertyType: null,
+        bedrooms: null,
+        bathrooms: null,
+        budgetMax: null,
+        hasPool: null,
+        petsAllowed: null,
+      },
+      mode: "execute",
+      pendingSlot: "none",
+      resultOffset: 0,
+      operational: {
+        flow: "owner.create",
+        status: "collecting",
+        pendingFields: ["ownerDocument"],
+        ownerDraft: {
+          ownerPersona: "proprietario",
+          ownerName: "Nilsen Majolo",
+          ownerEmail: "nilsen@gmail.com",
+          ownerPhone: "47999886868",
+          ownerDocument: null,
+        },
+      },
+    },
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.conversationState.operational?.flow, "property.create");
+  assert.equal(result.conversationState.operational?.propertyDraft?.goal, "venda");
+  assert.equal(result.conversationState.operational?.ownerDraft, undefined);
+});
+
+test("IMOB turn resolver returns vertical guidance menu on generic continuity request during collecting flow", () => {
+  const result = resolveImobTurn({
+    message: "como continuar aqui",
+    threadState: {
+      slots: {
+        query: null,
+        city: null,
+        region: null,
+        neighborhood: null,
+        goal: null,
+        propertyType: null,
+        bedrooms: null,
+        bathrooms: null,
+        budgetMax: null,
+        hasPool: null,
+        petsAllowed: null,
+      },
+      mode: "execute",
+      pendingSlot: "none",
+      resultOffset: 0,
+      operational: {
+        flow: "owner.create",
+        status: "collecting",
+        pendingFields: ["ownerDocument"],
+        ownerDraft: {
+          ownerPersona: "proprietario",
+          ownerName: "Nilsen Majolo",
+          ownerEmail: "nilsen@gmail.com",
+          ownerPhone: "47999886868",
+          ownerDocument: null,
+        },
+      },
+    },
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.mode, "consult");
+  assert.equal(result.action, "crm.capture.flow_guidance");
+  assert.match(result.presentation.text ?? "", /direcionar agora no fluxo imobiliário/i);
+  assert.equal(result.presentation.card?.title, "Posso seguir com uma destas ações agora.");
+  assert.ok((result.presentation.card?.ctas ?? []).some((cta) => cta.label === "Continuar proprietário"));
+  assert.ok((result.presentation.card?.ctas ?? []).some((cta) => cta.label === "Cadastrar imóvel"));
+});
+
+test("IMOB turn resolver returns EIAH front door guidance on generic navigation request", () => {
+  const result = resolveImobTurn({
+    message: "me perdi",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.mode, "consult");
+  assert.equal(result.action, "crm.capture.flow_guidance");
+  assert.match(result.presentation.text ?? "", /jornada imobiliaria|jornada imobiliária/i);
+  assert.equal(result.presentation.card?.title, "Posso seguir com uma destas ações agora.");
+  assert.equal(result.presentation.metadata?.frontDoorAgentId, "EIAH");
+  assert.ok((result.presentation.card?.ctas ?? []).some((cta) => cta.label === "Cadastrar imóvel"));
+});
+
+test("IMOB turn resolver accepts freeform lead city when informed with explicit label", () => {
+  const result = resolveImobTurn({
+    message: "cidade de interesse do lead sarandi",
+    threadState: {
+      slots: {
+        query: null,
+        city: null,
+        region: null,
+        neighborhood: null,
+        goal: "venda",
+        propertyType: null,
+        bedrooms: null,
+        bathrooms: null,
+        budgetMax: 500000,
+        hasPool: null,
+        petsAllowed: null,
+      },
+      mode: "execute",
+      pendingSlot: "none",
+      resultOffset: 0,
+      operational: {
+        flow: "lead.qualify",
+        status: "collecting",
+        pendingFields: ["desiredCity"],
+        leadDraft: {
+          leadPersona: "lead",
+          leadName: "Maria",
+          leadEmail: "maria@gmail.com",
+          leadPhone: "11999999999",
+          desiredGoal: "venda",
+          desiredCity: null,
+          budgetMax: 500000,
+        },
+      },
+    },
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.conversationState.operational?.flow, "lead.qualify");
+  assert.equal(result.conversationState.operational?.leadDraft?.desiredCity, "Sarandi");
+  assert.ok(!result.conversationState.operational?.pendingFields.includes("desiredCity"));
+});
+
+test("IMOB turn resolver prioritizes pending field parse over generic guidance in active flow", () => {
+  const result = resolveImobTurn({
+    message: "continuar cadastro cpf 12345678901",
+    threadState: {
+      slots: {
+        query: null,
+        city: null,
+        region: null,
+        neighborhood: null,
+        goal: null,
+        propertyType: null,
+        bedrooms: null,
+        bathrooms: null,
+        budgetMax: null,
+        hasPool: null,
+        petsAllowed: null,
+      },
+      mode: "execute",
+      pendingSlot: "none",
+      resultOffset: 0,
+      operational: {
+        flow: "owner.create",
+        status: "collecting",
+        pendingFields: ["ownerDocument"],
+        ownerDraft: {
+          ownerPersona: "proprietario",
+          ownerName: "Nilsen Majolo",
+          ownerEmail: "nilsen@gmail.com",
+          ownerPhone: "47999886868",
+          ownerDocument: null,
+        },
+      },
+    },
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.notEqual(result.action, "crm.capture.flow_guidance");
+  assert.equal(result.conversationState.operational?.flow, "owner.create");
+  assert.equal(result.conversationState.operational?.ownerDraft?.ownerDocument, "12345678901");
+  assert.ok(!result.conversationState.operational?.pendingFields.includes("ownerDocument"));
+});
+
+test("IMOB turn resolver parses 'documento do proprietário' for owner document pending", () => {
+  const result = resolveImobTurn({
+    message: "continuar cadastro documento do proprietário 41411414410",
+    threadState: {
+      slots: {
+        query: null,
+        city: null,
+        region: null,
+        neighborhood: null,
+        goal: null,
+        propertyType: null,
+        bedrooms: null,
+        bathrooms: null,
+        budgetMax: null,
+        hasPool: null,
+        petsAllowed: null,
+      },
+      mode: "execute",
+      pendingSlot: "none",
+      resultOffset: 0,
+      operational: {
+        flow: "owner.create",
+        status: "collecting",
+        pendingFields: ["ownerDocument"],
+        ownerDraft: {
+          ownerPersona: "proprietario",
+          ownerName: "Proprio Ontario",
+          ownerEmail: "pro@gmail.com",
+          ownerPhone: "11646466464",
+          ownerDocument: null,
+        },
+      },
+    },
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.conversationState.operational?.ownerDraft?.ownerDocument, "41411414410");
+  assert.ok(!result.conversationState.operational?.pendingFields.includes("ownerDocument"));
+});
+
+test("IMOB turn resolver parses 'cpf do proprietário' for owner document pending", () => {
+  const result = resolveImobTurn({
+    message: "cpf do proprietário 12345678901",
+    threadState: {
+      slots: {
+        query: null,
+        city: null,
+        region: null,
+        neighborhood: null,
+        goal: null,
+        propertyType: null,
+        bedrooms: null,
+        bathrooms: null,
+        budgetMax: null,
+        hasPool: null,
+        petsAllowed: null,
+      },
+      mode: "execute",
+      pendingSlot: "none",
+      resultOffset: 0,
+      operational: {
+        flow: "owner.create",
+        status: "collecting",
+        pendingFields: ["ownerDocument"],
+        ownerDraft: {
+          ownerPersona: "proprietario",
+          ownerName: "Proprio Ontario",
+          ownerEmail: "pro@gmail.com",
+          ownerPhone: "11646466464",
+          ownerDocument: null,
+        },
+      },
+    },
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.conversationState.operational?.ownerDraft?.ownerDocument, "12345678901");
+  assert.ok(!result.conversationState.operational?.pendingFields.includes("ownerDocument"));
+});
+
+test("IMOB turn resolver parses 'cnpj do proprietário' for owner document pending", () => {
+  const result = resolveImobTurn({
+    message: "cnpj do proprietário 12345678000199",
+    threadState: {
+      slots: {
+        query: null,
+        city: null,
+        region: null,
+        neighborhood: null,
+        goal: null,
+        propertyType: null,
+        bedrooms: null,
+        bathrooms: null,
+        budgetMax: null,
+        hasPool: null,
+        petsAllowed: null,
+      },
+      mode: "execute",
+      pendingSlot: "none",
+      resultOffset: 0,
+      operational: {
+        flow: "owner.create",
+        status: "collecting",
+        pendingFields: ["ownerDocument"],
+        ownerDraft: {
+          ownerPersona: "proprietario",
+          ownerName: "Proprio Ontario",
+          ownerEmail: "pro@gmail.com",
+          ownerPhone: "11646466464",
+          ownerDocument: null,
+        },
+      },
+    },
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.conversationState.operational?.ownerDraft?.ownerDocument, "12345678000199");
+  assert.ok(!result.conversationState.operational?.pendingFields.includes("ownerDocument"));
+});
+
+test("IMOB turn resolver keeps active case continuity on explicit continuation request", () => {
+  const result = resolveImobTurn({
+    message: "continuar este cadastro deste caso",
+    threadState: {
+      slots: {
+        query: null,
+        city: null,
+        region: null,
+        neighborhood: null,
+        goal: null,
+        propertyType: null,
+        bedrooms: null,
+        bathrooms: null,
+        budgetMax: null,
+        hasPool: null,
+        petsAllowed: null,
+      },
+      mode: "execute",
+      pendingSlot: "none",
+      resultOffset: 0,
+      operational: {
+        flow: "owner.create",
+        status: "collecting",
+        pendingFields: ["ownerDocument"],
+        ownerDraft: {
+          ownerPersona: "proprietario",
+          ownerName: "Nilsen Majolo",
+          ownerEmail: "nilsen@gmail.com",
+          ownerPhone: "47999886868",
+          ownerDocument: null,
+        },
+      },
+    },
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.conversationState.operational?.flow, "owner.create");
+  assert.notEqual(result.action, "crm.capture.flow_guidance");
 });

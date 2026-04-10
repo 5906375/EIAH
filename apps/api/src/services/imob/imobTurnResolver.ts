@@ -12,6 +12,7 @@ import {
   type ImobExecutionRequest,
   type ImobIntent,
   type ImobKnowledgeSourceFilter,
+  type ImobOperationalState,
   type ImobOperationalOwner,
   type ImobResolveTurnRequest,
   type ImobResolveTurnResponse,
@@ -24,6 +25,8 @@ import {
   hasMeaningfulSearchFilters,
   normalizeImobText,
 } from "./imobConversationState";
+import { IMOB_CRM_PROPERTY_GOAL_OPTIONS, normalizeImobCrmPropertyGoal } from "./crm/imobCrmPropertyGoals";
+import { IMOB_CRM_PROPERTY_TYPE_OPTIONS, normalizeImobCrmPropertyType } from "./crm/imobCrmPropertyTypes";
 
 const IMOB_DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1rwqbWQmL2eiXYBY5UaPReubZ2sbQsBu3";
 
@@ -45,8 +48,33 @@ function detectContractType(message: string): "rent" | "sale" | "management" {
   return "sale";
 }
 
+function isRulesConfigurationRequest(message: string) {
+  const text = normalizeImobText(message);
+  const hasRulesSignal =
+    text.includes("regras") ||
+    text.includes("regra") ||
+    text.includes("checkin") ||
+    text.includes("check in") ||
+    text.includes("checkout") ||
+    text.includes("check out") ||
+    text.includes("hospedes") ||
+    text.includes("hóspedes") ||
+    text.includes("hospedagem");
+  const hasPropertyContext =
+    text.includes("imovel") ||
+    text.includes("imóvel") ||
+    text.includes("temporada") ||
+    text.includes("diaria") ||
+    text.includes("diária") ||
+    text.includes("locacao") ||
+    text.includes("locação") ||
+    text.includes("aluguel");
+  return hasRulesSignal && hasPropertyContext;
+}
+
 function classifyImobIntent(message: string): ImobIntent {
   const text = normalizeImobText(message);
+  if (isRulesConfigurationRequest(message)) return "rules";
   if (text.includes("comissao") || text.includes("comissão") || text.includes("repasse") || text.includes("sinal")) return "commission";
   if (text.includes("deal") || text.includes("negocio") || text.includes("negócio") || text.includes("review do negocio") || text.includes("review do negócio") || text.includes("revisar negocio") || text.includes("revisar negócio")) return "deal";
   if (text.includes("contrato") || text.includes("assinatura") || text.includes("minuta")) return "contract";
@@ -55,7 +83,14 @@ function classifyImobIntent(message: string): ImobIntent {
   if (text.includes("visita") || text.includes("agendar") || text.includes("agenda") || text.includes("tour")) return "visit";
   if (text.includes("lead") || text.includes("triagem") || text.includes("qualificar cliente") || text.includes("qualificar lead")) return "lead";
   if (text.includes("publicar") || text.includes("anuncio") || text.includes("anúncio") || text.includes("listing") || text.includes("portal")) return "listing";
-  if (text.includes("cadastrar") || text.includes("capta") || text.includes("propriet") || text.includes("imovel") || text.includes("imóvel")) return "capture";
+  if (
+    text.includes("cadastrar") ||
+    text.includes("capta") ||
+    text.includes("propriet") ||
+    text.includes("imovel") ||
+    text.includes("imóvel") ||
+    text.includes("vender")
+  ) return "capture";
   if (text.includes("alugar") || text.includes("loca") || text.includes("procur") || text.includes("quartos")) return "match";
   return "adjustment";
 }
@@ -65,6 +100,10 @@ function mapCatalogIntentToImobIntent(parsed: { entity: string | null; action: s
 
   if (["proprietario", "imovel", "vendedor", "locador"].includes(parsed.entity) && parsed.action === "create") {
     return "capture";
+  }
+
+  if (parsed.entity === "imovel" && parsed.action === "configure") {
+    return "rules";
   }
 
   if (["comprador", "locatario", "lead"].includes(parsed.entity) && parsed.action === "create") {
@@ -103,17 +142,155 @@ function mapOperationalFlowToIntent(flow: NonNullable<ImobResolveTurnResponse["c
   if (flow === "proposal.create") return "proposal";
   if (flow === "deal.review") return "deal";
   if (flow === "contract.prepare") return "contract";
+  if (flow === "rules.configure") return "rules";
   if (flow === "commission.settle") return "commission";
   return "adjustment";
 }
 
-function shouldContinueCurrentOperationalFlow(
+function shouldBreakOwnerCaptureContinuation(
   previous: ImobResolveTurnRequest["threadState"]["operational"] | null | undefined,
-  intent: ImobIntent
+  baseIntent: ImobIntent,
+  message: string,
 ) {
-  if (!previous || previous.status !== "collecting") return false;
-  if (intent === "adjustment") return true;
-  return mapOperationalFlowToIntent(previous.flow) === intent;
+  if (!previous || previous.status !== "collecting" || previous.flow !== "owner.create" || baseIntent !== "capture") {
+    return false;
+  }
+  const text = normalizeImobText(message);
+  if (text.includes("propriet")) return false;
+  return (
+    text.includes("vender") ||
+    text.includes("venda") ||
+    text.includes("alugar") ||
+    text.includes("locacao") ||
+    text.includes("locação") ||
+    text.includes("cadastrar imovel") ||
+    text.includes("cadastrar imóvel") ||
+    text.includes("captar imovel") ||
+    text.includes("captar imóvel")
+  );
+}
+
+function isExplicitCaseContinuationRequest(message: string) {
+  const text = normalizeImobText(message);
+  return (
+    text.includes("continuar este cadastro") ||
+    text.includes("retomar este cadastro") ||
+    text.includes("continuar desse caso") ||
+    text.includes("continuar deste caso") ||
+    text.includes("retomar desse caso") ||
+    text.includes("retomar deste caso")
+  );
+}
+
+function hasPendingFieldSignalForActiveFlow(
+  activeOperationalState: ImobOperationalState,
+  message: string,
+  nextSlots: ReturnType<typeof createNextImobThreadState>["slots"],
+) {
+  const pending = new Set(activeOperationalState.pendingFields ?? []);
+  if (pending.size === 0) return false;
+  const normalized = normalizeImobText(message);
+  const hasEmail = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i.test(message);
+  const hasPhone = /(?:\+?55\s*)?(?:\(?\d{2}\)?\s*)?\d{4,5}[-\s]?\d{4}/.test(message);
+  const hasDocumentDigits = message.replace(/\D/g, "").length >= 11;
+
+  if (activeOperationalState.flow === "owner.create") {
+    if (pending.has("ownerEmail") && hasEmail) return true;
+    if (pending.has("ownerPhone") && hasPhone) return true;
+    if (
+      pending.has("ownerDocument")
+      && (
+        hasDocumentDigits
+        || normalized.includes("cpf")
+        || normalized.includes("cnpj")
+        || normalized.includes("documento")
+      )
+    ) return true;
+    if (pending.has("ownerName") && normalized.includes("nome")) return true;
+    return false;
+  }
+
+  if (activeOperationalState.flow === "property.create") {
+    if (pending.has("propertyType") && Boolean(nextSlots.propertyType)) return true;
+    if (pending.has("goal") && Boolean(nextSlots.goal)) return true;
+    if (pending.has("city") && Boolean(nextSlots.city)) return true;
+    if (
+      pending.has("address")
+      && (normalized.includes("endereco") || normalized.includes("endereço") || /\b(rua|av|avenida|alameda|travessa|rodovia)\b/.test(normalized))
+    ) return true;
+    return false;
+  }
+
+  if (activeOperationalState.flow === "lead.qualify") {
+    if (pending.has("leadEmail") && hasEmail) return true;
+    if (pending.has("leadPhone") && hasPhone) return true;
+    if (pending.has("desiredGoal") && Boolean(nextSlots.goal)) return true;
+    if (pending.has("desiredCity") && Boolean(nextSlots.city)) return true;
+    if (pending.has("budgetMax") && typeof nextSlots.budgetMax === "number") return true;
+    if (pending.has("leadName") && normalized.includes("nome")) return true;
+    return false;
+  }
+
+  if (activeOperationalState.flow === "proposal.create") {
+    if (pending.has("buyerEmail") && hasEmail) return true;
+    if (pending.has("buyerPhone") && hasPhone) return true;
+    if (pending.has("buyerName") && normalized.includes("nome")) return true;
+    if (pending.has("offerAmount") && /\b\d+(?:[.,]\d+)?\b/.test(message)) return true;
+    return false;
+  }
+
+  if (activeOperationalState.flow === "rules.configure") {
+    if (pending.has("checkin") && normalized.includes("checkin")) return true;
+    if (pending.has("checkout") && normalized.includes("checkout")) return true;
+    if (pending.has("minHospedes") && /(min|mín).*(hosped|hospede)|\b1 a \d+ hospedes\b/.test(normalized)) return true;
+    if (pending.has("maxHospedes") && /(max|máx).*(hosped|hospede)|\b\d+ a \d+ hospedes\b/.test(normalized)) return true;
+    if (pending.has("regras") && normalized.includes("regras")) return true;
+    return false;
+  }
+
+  return false;
+}
+
+type ImobTurnDecisionStage =
+  | "pending_field_parse"
+  | "explicit_continuity"
+  | "same_journey_context"
+  | "explicit_route_change"
+  | "front_door_generic"
+  | "default";
+
+function resolveImobTurnDecision(params: {
+  activeOperationalState: ImobOperationalState | null | undefined;
+  message: string;
+  nextSlots: ReturnType<typeof createNextImobThreadState>["slots"];
+  baseIntent: ImobIntent;
+  hasExplicitCatalogTarget: boolean;
+}) {
+  const active = params.activeOperationalState;
+  const activeIntent = active ? mapOperationalFlowToIntent(active.flow) : null;
+  const collecting = Boolean(active && active.status === "collecting");
+
+  if (collecting && active && hasPendingFieldSignalForActiveFlow(active, params.message, params.nextSlots)) {
+    return { stage: "pending_field_parse" as const, intent: activeIntent ?? params.baseIntent };
+  }
+
+  if (collecting && active && isExplicitCaseContinuationRequest(params.message)) {
+    return { stage: "explicit_continuity" as const, intent: activeIntent ?? params.baseIntent };
+  }
+
+  if (collecting && active && !params.hasExplicitCatalogTarget && activeIntent === params.baseIntent) {
+    return { stage: "same_journey_context" as const, intent: activeIntent ?? params.baseIntent };
+  }
+
+  if (collecting && shouldBreakOwnerCaptureContinuation(active, params.baseIntent, params.message)) {
+    return { stage: "explicit_route_change" as const, intent: params.baseIntent };
+  }
+
+  if (isOperationalFlowGuidanceRequest(params.message)) {
+    return { stage: "front_door_generic" as const, intent: params.baseIntent };
+  }
+
+  return { stage: "default" as const, intent: params.baseIntent };
 }
 
 function extractSegment(text: string): "locacao" | "venda" | "ambos" {
@@ -252,6 +429,144 @@ function buildLeadCreationChoices() {
 
 function buildCadastroCreationChoices() {
   return listImobIntentChoicesForAction("create").filter((choice) => choice.entity !== "lead");
+}
+
+function isCaptureEntryOptionsRequest(message: string) {
+  const text = normalizeImobText(message);
+  const hasExplicitPropertyCreate =
+    text.includes("cadastrar imovel") ||
+    text.includes("cadastrar imóvel") ||
+    text.includes("cadastro de imovel") ||
+    text.includes("cadastro de imóvel") ||
+    text.includes("incluir imovel") ||
+    text.includes("incluir imóvel");
+  if (hasExplicitPropertyCreate) return false;
+  const asksOptions =
+    text.includes("me ofereca opcoes") ||
+    text.includes("me ofereça opcoes") ||
+    text.includes("me ofereça opções") ||
+    text.includes("me ofereca opções") ||
+    text.includes("me mostre opcoes") ||
+    text.includes("me mostre opções") ||
+    text.includes("escolher entre");
+  const hasCaptureContext =
+    text.includes("captacao no imob") ||
+    text.includes("captação no imob") ||
+    (text.includes("capt") && text.includes("imob"));
+  const asksNextStepOptions =
+    text.includes("proximos passos") ||
+    text.includes("próximos passos") ||
+    text.includes("opcoes de proximos passos") ||
+    text.includes("opções de próximos passos");
+  return (asksOptions || asksNextStepOptions) && hasCaptureContext;
+}
+
+function isOperationalFlowGuidanceRequest(message: string) {
+  const text = normalizeImobText(message);
+  if (text === "continuar" || text === "como continuar" || text === "como continuar aqui") return true;
+  if (text === "me perdi" || text === "nao entendi" || text === "não entendi") return true;
+  if (text === "voltar" || text === "recomecar" || text === "recomeçar") return true;
+  if (text.includes("nao da continuidade") || text.includes("não dá continuidade")) return true;
+  if (text.includes("isso e generico") || text.includes("isso é generico") || text.includes("isso é genérico")) return true;
+  if (text.includes("voltar ao fluxo") || text.includes("direcionar conversa para a vertical")) return true;
+  return false;
+}
+
+function buildCaptureEntryChoices() {
+  return [
+    {
+      id: "capture-entry-property",
+      label: "Cadastrar imóvel",
+      kind: "primary" as const,
+      action: "send_suggested_message" as const,
+      nextMessage: "cadastrar imóvel",
+    },
+    {
+      id: "capture-entry-owner",
+      label: "Cadastrar proprietário",
+      kind: "secondary" as const,
+      action: "send_suggested_message" as const,
+      nextMessage: "cadastrar proprietário",
+    },
+    {
+      id: "capture-entry-lead",
+      label: "Qualificar lead",
+      kind: "neutral" as const,
+      action: "send_suggested_message" as const,
+      nextMessage: "qualificar lead",
+    },
+    {
+      id: "capture-entry-case",
+      label: "Consultar caso",
+      kind: "neutral" as const,
+      action: "send_suggested_message" as const,
+      nextMessage: "consultar caso",
+    },
+  ];
+}
+
+function buildDocumentEntryChoices() {
+  return [
+    {
+      id: "document-entry-owner",
+      label: "Documentos do proprietário",
+      kind: "primary" as const,
+      action: "send_suggested_message" as const,
+      nextMessage: "documentos do proprietário por upload",
+    },
+    {
+      id: "document-entry-property",
+      label: "Documentos do imóvel",
+      kind: "secondary" as const,
+      action: "send_suggested_message" as const,
+      nextMessage: "documentos do imóvel por upload",
+    },
+    {
+      id: "document-entry-lead",
+      label: "Documentos do lead",
+      kind: "neutral" as const,
+      action: "send_suggested_message" as const,
+      nextMessage: "documentos do lead por upload",
+    },
+    {
+      id: "document-entry-attach",
+      label: "Anexar agora",
+      kind: "neutral" as const,
+      action: "open_attachment_menu" as const,
+    },
+  ];
+}
+
+function buildCaptureFlowGuidanceChoices(activeFlow: ImobOperationalState["flow"]) {
+  const continueLabel =
+    activeFlow === "owner.create"
+      ? "Continuar proprietário"
+      : activeFlow === "property.create"
+        ? "Continuar imóvel"
+        : activeFlow === "lead.qualify"
+          ? "Continuar lead"
+          : "Continuar fluxo atual";
+  const continueNextMessage =
+    activeFlow === "owner.create"
+      ? "cadastrar proprietário"
+      : activeFlow === "property.create"
+        ? "cadastrar imóvel"
+        : activeFlow === "lead.qualify"
+          ? "qualificar lead deste caso"
+          : "consultar caso";
+  return [
+    {
+      id: "capture-guidance-continue",
+      label: continueLabel,
+      kind: "primary" as const,
+      action: "send_suggested_message" as const,
+      nextMessage: continueNextMessage,
+    },
+    ...buildCaptureEntryChoices().map((cta, index) => ({
+      ...cta,
+      kind: index === 0 ? ("secondary" as const) : "neutral" as const,
+    })),
+  ];
 }
 
 function isGenericLeadRequest(parsed: ReturnType<typeof parseImobIntent>, normalizedMessage: string) {
@@ -692,7 +1007,7 @@ function buildOwnerCreateForm(ownerDraft?: {
       },
       {
         id: "submit" as const,
-        label: "Continuar cadastro",
+        label: "Salvar cadastro",
         kind: "primary" as const,
       },
     ],
@@ -701,46 +1016,71 @@ function buildOwnerCreateForm(ownerDraft?: {
 
 function buildPropertyCreateForm(propertyDraft?: {
   propertyType?: string | null;
-  goal?: "locacao" | "venda" | null;
+  goal?: "locacao" | "venda" | "aluguel_por_temporada" | null;
+  cep?: string | null;
   city?: string | null;
   address?: string | null;
 } | null) {
+  const normalizedPropertyType = normalizeImobCrmPropertyType(propertyDraft?.propertyType ?? null) ?? null;
+  const normalizedGoal = normalizeImobCrmPropertyGoal(propertyDraft?.goal ?? null) ?? null;
   return {
     entity: "imovel",
     action: "create",
     label: "Cadastrar imóvel",
-    description: "Preencha os dados abaixo para iniciar o cadastro do imóvel.",
+    description: "",
     fields: [
       {
         name: "propertyType",
-        label: "Tipo do imóvel",
-        type: "text" as const,
+        label: "Tipo",
+        type: "select" as const,
         required: true,
-        placeholder: "Ex.: apartamento, casa, terreno",
-        value: propertyDraft?.propertyType ?? "",
+        placeholder: "",
+        value: normalizedPropertyType ?? "",
+        options: IMOB_CRM_PROPERTY_TYPE_OPTIONS.map((option) => ({
+          value: option.value,
+          label: option.label,
+          group: option.category === "residential" ? "Residencial" : "Comercial",
+        })),
       },
       {
         name: "goal",
-        label: "Finalidade do imóvel",
-        type: "text" as const,
+        label: "Finalidade",
+        type: "select" as const,
         required: true,
-        placeholder: "Ex.: venda ou locação",
-        value: propertyDraft?.goal ?? "",
+        placeholder: "",
+        value: normalizedGoal ?? "",
+        options: IMOB_CRM_PROPERTY_GOAL_OPTIONS.map((option) => ({
+          value: option.value,
+          label: option.label,
+        })),
+      },
+      {
+        name: "cep",
+        label: "CEP",
+        type: "text" as const,
+        inputMode: "numeric" as const,
+        maxLength: 9,
+        value: propertyDraft?.cep ?? "",
+        lookup: {
+          kind: "cep" as const,
+          autoFillTargets: {
+            city: "city",
+            address: "address",
+          },
+        },
       },
       {
         name: "city",
-        label: "Cidade do imóvel",
+        label: "Cidade",
         type: "text" as const,
         required: true,
-        placeholder: "Ex.: Itapema",
         value: propertyDraft?.city ?? "",
       },
       {
         name: "address",
-        label: "Endereço do imóvel",
+        label: "Endereço",
         type: "text" as const,
         required: true,
-        placeholder: "Ex.: Rua 1000, 123",
         value: propertyDraft?.address ?? "",
       },
     ],
@@ -752,11 +1092,26 @@ function buildPropertyCreateForm(propertyDraft?: {
       },
       {
         id: "submit" as const,
-        label: "Continuar cadastro",
+        label: "Salvar cadastro",
         kind: "primary" as const,
       },
     ],
   };
+}
+
+function shouldReturnConsultWithForm(params: {
+  message: string;
+  operationalState: ImobOperationalState | null;
+}) {
+  const { message, operationalState } = params;
+  if (!operationalState) return false;
+  if (operationalState.flow === "rules.configure" && operationalState.status === "collecting") return true;
+  if (
+    operationalState.flow === "property.create"
+    && operationalState.status === "collecting"
+    && /\b\d+\s+(?:imoveis|imóveis)\b/i.test(message)
+  ) return true;
+  return false;
 }
 
 function buildLeadCreateForm(leadDraft?: {
@@ -831,7 +1186,7 @@ function buildLeadCreateForm(leadDraft?: {
       },
       {
         id: "submit" as const,
-        label: "Continuar cadastro",
+        label: "Salvar cadastro",
         kind: "primary" as const,
       },
     ],
@@ -1030,6 +1385,93 @@ function buildContractActionForm(
   };
 }
 
+function buildRulesConfigureForm(rulesDraft?: {
+  propertyId?: string | null;
+  propertyFinality?: "aluguel_por_temporada" | "locacao" | "venda" | null;
+  checkin?: string | null;
+  checkout?: string | null;
+  minHospedes?: number | null;
+  maxHospedes?: number | null;
+  regras?: string | null;
+} | null) {
+  return {
+    entity: "imovel",
+    action: "configureRules",
+    label: "Configurar regras do imóvel",
+    description: "Preencha as regras de hospedagem. Este fluxo só segue para aluguel por temporada.",
+    fields: [
+      {
+        name: "propertyId",
+        label: "Imóvel das regras",
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: 4455",
+        value: rulesDraft?.propertyId?.replace(/^property-/, "") ?? "",
+      },
+      {
+        name: "propertyFinality",
+        label: "Finalidade do imóvel",
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: aluguel por temporada",
+        value: rulesDraft?.propertyFinality === "aluguel_por_temporada" ? "aluguel por temporada" : rulesDraft?.propertyFinality ?? "",
+        helperText: "Regras de check-in, check-out e hóspedes só são habilitadas para aluguel por temporada.",
+      },
+      {
+        name: "checkin",
+        label: "Check-in",
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: 15:00",
+        value: rulesDraft?.checkin ?? "",
+      },
+      {
+        name: "checkout",
+        label: "Check-out",
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: 11:00",
+        value: rulesDraft?.checkout ?? "",
+      },
+      {
+        name: "minHospedes",
+        label: "Mínimo de hóspedes",
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: 1",
+        value: rulesDraft?.minHospedes != null ? String(rulesDraft.minHospedes) : "",
+      },
+      {
+        name: "maxHospedes",
+        label: "Máximo de hóspedes",
+        type: "text" as const,
+        required: true,
+        placeholder: "Ex.: 4",
+        value: rulesDraft?.maxHospedes != null ? String(rulesDraft.maxHospedes) : "",
+      },
+      {
+        name: "regras",
+        label: "Regras adicionais",
+        type: "text" as const,
+        placeholder: "Ex.: sem festas, não fumar, aceitar pets",
+        value: rulesDraft?.regras ?? "",
+      },
+    ],
+    actions: [
+      {
+        id: "cancel" as const,
+        label: "Cancelar",
+        kind: "secondary" as const,
+      },
+      {
+        id: "submit" as const,
+        label: "Continuar regras",
+        kind: "primary" as const,
+      },
+    ],
+  };
+}
+
 function buildContractHistoryForm() {
   return {
     entity: "contrato",
@@ -1081,13 +1523,13 @@ function mapOperationalPendingFieldLabel(
     ownerEmail: `e-mail ${ownerPersonaCopy.article}`,
     ownerPhone: `telefone ${ownerPersonaCopy.article}`,
     ownerDocument: `documento ${ownerPersonaCopy.article}`,
-    propertyType: "tipo do imóvel",
-    goal: "finalidade do imóvel",
-    city: "cidade do imóvel",
+    propertyType: "tipo",
+    goal: "finalidade",
+    city: "cidade",
     neighborhood: "bairro do imóvel",
     bedrooms: "quantidade de quartos",
     bathrooms: "quantidade de banheiros",
-    address: "endereço do imóvel",
+    address: "endereço",
     leadName: `nome ${leadPersonaCopy.article}`,
     leadPhone: `telefone ${leadPersonaCopy.article}`,
     leadEmail: `e-mail ${leadPersonaCopy.article}`,
@@ -1111,16 +1553,28 @@ function mapOperationalPendingFieldLabel(
     counterpartyName: "nome da contraparte",
     contractType: "tipo de contrato",
     documentPacketStatus: "pacote documental",
+    referenceId: "imóvel ou referência",
+    subjectType: "documento de quem",
+    documentTypes: "tipo documental",
+    deliveryChannel: "canal de envio",
     brokerRef: "corretor responsável",
     amountCents: "valor da comissão",
     payoutChannel: "canal de repasse",
     settlementStatus: "status da liquidação",
     dealId: "negócio",
+    propertyFinality: "finalidade do imóvel",
+    checkin: "horário de check-in",
+    checkout: "horário de check-out",
+    minHospedes: "mínimo de hóspedes",
+    maxHospedes: "máximo de hóspedes",
+    guestRange: "faixa de hóspedes coerente",
+    regras: "regras do imóvel",
     approvalRequired: "aprovação humana",
   };
   if (flow === "proposal.create" && field === "propertyId") return "imóvel da proposta";
   if (flow === "visit.schedule" && field === "propertyId") return "imóvel da visita";
   if (flow === "contract.prepare" && field === "propertyId") return "imóvel do contrato";
+  if (flow === "rules.configure" && field === "propertyId") return "imóvel das regras";
   if (flow === "commission.settle" && field === "dealId") return "negócio da comissão";
   return common[field] ?? field;
 }
@@ -1148,6 +1602,10 @@ function buildOperationalPresentationMeta(
         ? pendingFieldLabels.length > 0
           ? "Completar dados contratuais e validar pacote documental."
           : "Revisar minuta e validar pacote documental."
+        : flow === "rules.configure"
+          ? pendingFieldLabels.length > 0
+            ? "Completar regras de hospedagem antes da revisão."
+            : "Revisar regras do imóvel para temporada."
         : flow === "proposal.create"
           ? pendingFieldLabels.length > 0
             ? proposalCopy?.nextStep ?? "Completar dados da proposta e ajustar a negociação."
@@ -1159,11 +1617,11 @@ function buildOperationalPresentationMeta(
             : flow === "lead.qualify"
               ? pendingFieldLabels.length > 0
                 ? getLeadPersonaCopy(operationalState.leadDraft).nextStep
-                : "Qualificar interesse e vincular o próximo imóvel ou etapa comercial."
+                : "Escolher a próxima ação: cadastrar imóvel, cadastrar proprietário, revisar documentos ou consultar caso."
               : flow === "owner.create"
                 ? pendingFieldLabels.length > 0
                   ? getOwnerPersonaCopy(operationalState.ownerDraft).nextStep
-                  : `Vincular ${getOwnerPersonaCopy(operationalState.ownerDraft).article} ao próximo imóvel ou etapa documental.`
+                  : `Vincular o ${getOwnerPersonaCopy(operationalState.ownerDraft).singular} ao próximo imóvel ou etapa documental.`
                 : flow === "property.create"
                   ? pendingFieldLabels.length > 0
                     ? "Completar dados do imóvel antes de avançar a captação."
@@ -1178,6 +1636,12 @@ function buildOperationalPresentationMeta(
         ? pendingFieldLabels.length > 0
           ? "Revisão jurídica ou pacote documental pendente."
           : null
+        : flow === "rules.configure"
+          ? pendingFieldLabels.length > 0
+            ? operationalState.rulesDraft?.propertyFinality && operationalState.rulesDraft.propertyFinality !== "aluguel_por_temporada"
+              ? "Regras de hospedagem só podem seguir para aluguel por temporada."
+              : "Dados de regras do imóvel ainda estão incompletos."
+            : null
         : flow === "proposal.create"
           ? pendingFieldLabels.length > 0
             ? proposalCopy?.blocker ?? "Dados da proposta incompletos."
@@ -1316,6 +1780,26 @@ function buildConsultPresentationText(response: ImobResolveTurnResponse) {
     : `Posso te ajudar com ${goalLabel}${cityLabel}. Quer seguir por cidade, faixa de valor ou número de quartos?`;
 }
 
+function isStructuredOperationalDataSubmission(message: string) {
+  const normalized = normalizeImobText(message);
+  return (
+    normalized.includes("nome do propriet") ||
+    normalized.includes("telefone do propriet") ||
+    normalized.includes("email do propriet") ||
+    normalized.includes("e mail do propriet") ||
+    normalized.includes("documento do propriet") ||
+    normalized.includes("tipo do imovel") ||
+    normalized.includes("finalidade do imovel") ||
+    normalized.includes("cidade do imovel") ||
+    normalized.includes("endereco do imovel") ||
+    normalized.includes("nome do lead") ||
+    normalized.includes("telefone do lead") ||
+    normalized.includes("email do lead") ||
+    normalized.includes("cidade de interesse") ||
+    normalized.includes("faixa de orcamento")
+  );
+}
+
 function getIntentThreadLabel(intent: ImobIntent) {
   switch (intent) {
     case "capture":
@@ -1336,6 +1820,8 @@ function getIntentThreadLabel(intent: ImobIntent) {
       return "Documentos";
     case "contract":
       return "Contrato";
+    case "rules":
+      return "Regras do imóvel";
     case "commission":
       return "Comissão";
     case "adjustment":
@@ -1406,6 +1892,29 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
           documentPacketStatus: operationalState?.flow === "contract.prepare" ? (operationalState.contractDraft?.documentPacketStatus ?? null) : null,
           handoffTarget: operationalState?.flow === "contract.prepare" ? (operationalState.contractDraft?.handoffTarget ?? "LEGAL") : "LEGAL",
           approvalRequired: operationalState?.flow === "contract.prepare" ? operationalState.contractDraft?.approvalRequired ?? true : true,
+          requestedAt: timestamp,
+        },
+      };
+    }
+    case "rules": {
+      const propertyId = operationalState?.flow === "rules.configure"
+        ? (operationalState.rulesDraft?.propertyId ?? (propertyRef ? `property-${propertyRef}` : null))
+        : propertyRef ? `property-${propertyRef}` : null;
+      return {
+        intent,
+        operation: "rules.configure",
+        action: "realestate.configure_property_rules",
+        prompt: `Configurar regras do imóvel${propertyId ? ` ${propertyId}` : ""} para aluguel por temporada.`,
+        input: {
+          propertyId,
+          propertyFinality: operationalState?.flow === "rules.configure" ? (operationalState.rulesDraft?.propertyFinality ?? null) : null,
+          checkin: operationalState?.flow === "rules.configure" ? (operationalState.rulesDraft?.checkin ?? null) : null,
+          checkout: operationalState?.flow === "rules.configure" ? (operationalState.rulesDraft?.checkout ?? null) : null,
+          minHospedes: operationalState?.flow === "rules.configure" ? (operationalState.rulesDraft?.minHospedes ?? null) : null,
+          maxHospedes: operationalState?.flow === "rules.configure" ? (operationalState.rulesDraft?.maxHospedes ?? null) : null,
+          regras: operationalState?.flow === "rules.configure" ? (operationalState.rulesDraft?.regras ?? null) : null,
+          outrasRegras: operationalState?.flow === "rules.configure" ? (operationalState.rulesDraft?.outrasRegras ?? null) : null,
+          approvalRequired: true,
           requestedAt: timestamp,
         },
       };
@@ -1578,9 +2087,20 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
   const catalogDrivenIntent = mapCatalogIntentToImobIntent(parsedCatalogIntent);
   const classifiedIntent = classifyImobIntent(message);
   const baseIntent = catalogDrivenIntent ?? classifiedIntent;
-  const intent = !hasExplicitCatalogTarget && shouldContinueCurrentOperationalFlow(request.threadState?.operational ?? null, baseIntent)
-    ? mapOperationalFlowToIntent(request.threadState!.operational!.flow)
-    : baseIntent;
+  const nextThreadState = createNextImobThreadState(request.threadState ?? undefined, message);
+  const activeOperationalState = request.threadState?.operational ?? null;
+  const turnDecision = resolveImobTurnDecision({
+    activeOperationalState,
+    message,
+    nextSlots: nextThreadState.slots,
+    baseIntent,
+    hasExplicitCatalogTarget,
+  });
+  const isDocumentationStageRequest =
+    normalizedMessage.includes("etapa documental") ||
+    normalizedMessage.includes("fase documental") ||
+    normalizedMessage.includes("fluxo documental");
+  const intent = isDocumentationStageRequest ? "documents" : turnDecision.intent;
   const wantsDocumentValidation =
     (parsedCatalogIntent.action === "validate" && parsedCatalogIntent.entity === "documento") ||
     /\b(validar|conferir)\s+document/.test(normalizedMessage);
@@ -1590,9 +2110,63 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
   const wantsSendForSignature =
     (parsedCatalogIntent.action === "sendForSignature" && parsedCatalogIntent.entity === "contrato") ||
     /(?:enviar|mandar)\s+contrato\s+para\s+assinatura|envio\s+para\s+assinatura/.test(normalizedMessage);
-  const nextThreadState = createNextImobThreadState(request.threadState ?? undefined, message);
   const semanticIntentSource = request.semanticIntentSource ?? "parser_fallback";
-  const activeOperationalState = request.threadState?.operational ?? null;
+  if (!activeOperationalState && turnDecision.stage === "front_door_generic") {
+    return {
+      mode: "consult",
+      action: "crm.capture.flow_guidance",
+      threadLabel: getIntentThreadLabel("capture"),
+      conversationState: { ...nextThreadState, mode: "consult" },
+      presentation: {
+        text: "Posso te direcionar agora na jornada imobiliária.",
+        suggestedNextAction: "Escolha por onde você quer continuar na captação.",
+        metadata: {
+          confidence: {
+            source: semanticIntentSource,
+            action: "create",
+            entity: null,
+          },
+          choiceStyle: "inline",
+          frontDoorAgentId: "EIAH",
+        },
+        card: {
+          title: "Posso seguir com uma destas ações agora.",
+          lines: ["Escolha a ação para continuar a jornada imobiliária."],
+          ctas: buildCaptureEntryChoices(),
+        },
+      },
+    };
+  }
+  if (activeOperationalState?.status === "collecting" && turnDecision.stage === "front_door_generic") {
+    const guidanceChoices = buildCaptureFlowGuidanceChoices(activeOperationalState.flow);
+    return {
+      mode: "consult",
+      action: "crm.capture.flow_guidance",
+      threadLabel: getIntentThreadLabel(mapOperationalFlowToIntent(activeOperationalState.flow)),
+      conversationState: {
+        ...(request.threadState ?? nextThreadState),
+        mode: "consult",
+      },
+      presentation: {
+        text: "Posso te direcionar agora no fluxo imobiliário.",
+        suggestedNextAction: "Escolha se você quer continuar este cadastro ou mudar para outra ação da captação.",
+        metadata: {
+          confidence: {
+            source: semanticIntentSource,
+            action: "create",
+            entity: null,
+          },
+          choiceStyle: "inline",
+          frontDoorAgentId: "EIAH",
+        },
+        card: {
+          title: "Posso seguir com uma destas ações agora.",
+          lines: ["Escolha a ação para continuar a captação no IMOB."],
+          ctas: guidanceChoices,
+        },
+      },
+    };
+  }
   const shouldPreferActiveAttachmentFlow =
     activeOperationalState?.status === "collecting" &&
     isAttachmentReferenceMessage(message);
@@ -1706,6 +2280,32 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
     return response;
   }
 
+  if (isCaptureEntryOptionsRequest(message)) {
+    return {
+      mode: "consult",
+      action: "crm.capture.entry_options",
+      threadLabel: getIntentThreadLabel("capture"),
+      conversationState: { ...nextThreadState, mode: "consult" },
+      presentation: {
+        text: "Posso seguir por uma destas opções agora.",
+        suggestedNextAction: "Escolha se você quer cadastrar imóvel, cadastrar proprietário, qualificar lead ou consultar caso.",
+        metadata: {
+          confidence: {
+            source: semanticIntentSource,
+            action: "create",
+            entity: null,
+          },
+          choiceStyle: "inline",
+        },
+        card: {
+          title: "Escolha uma opção",
+          lines: ["Selecione como você quer iniciar a captação no IMOB."],
+          ctas: buildCaptureEntryChoices(),
+        },
+      },
+    };
+  }
+
 
   if (isGenericLeadRequest(parsedCatalogIntent, normalizedMessage)) {
     const leadChoices = buildLeadCreationChoices();
@@ -1733,7 +2333,12 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
     };
   }
 
-  if (parsedCatalogIntent.action && !parsedCatalogIntent.entity && (parsedCatalogIntent.action === "create" || intent === "adjustment")) {
+  if (
+    parsedCatalogIntent.action
+    && !parsedCatalogIntent.entity
+    && (parsedCatalogIntent.action === "create" || intent === "adjustment")
+    && !["pending_field_parse", "same_journey_context", "explicit_continuity"].includes(turnDecision.stage)
+  ) {
     const actionChoices = parsedCatalogIntent.action === "create" ? buildCadastroCreationChoices() : listImobIntentChoicesForAction(parsedCatalogIntent.action);
     if (actionChoices.length > 0) {
       const actionLabel = parsedCatalogIntent.matchedActionAlias ?? parsedCatalogIntent.action;
@@ -1806,7 +2411,28 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
     };
   }
 
-  if (parsedCatalogIntent.action && parsedCatalogIntent.entity && parsedCatalogIntent.action !== "create" && !["listing", "documents", "proposal", "visit", "lead", "contract", "deal", "commission"].includes(intent)) {
+  if (intent === "documents" && isDocumentationStageRequest) {
+    const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, intent, message, nextThreadState.slots);
+    return {
+      mode: "consult",
+      action: "realestate.collect_documents",
+      threadLabel: getIntentThreadLabel(intent),
+      conversationState: { slots: createEmptyImobSlots(), mode: "consult", pendingSlot: "none", resultOffset: 0, operational: operationalState },
+      presentation: {
+        ...buildOperationalPresentationMeta(operationalState),
+        text: "Escolha qual etapa documental você quer abrir agora.",
+        suggestedNextAction: "Selecione se vai enviar documentos do proprietário, do imóvel ou do lead.",
+        metadata: buildCatalogConfidenceMetadata(parsedCatalogIntent, false, { choiceStyle: "inline", source: semanticIntentSource }),
+        card: {
+          title: "Etapa documental",
+          lines: ["Posso abrir o fluxo documental já no contexto certo."],
+          ctas: buildDocumentEntryChoices(),
+        },
+      },
+    };
+  }
+
+  if (parsedCatalogIntent.action && parsedCatalogIntent.entity && parsedCatalogIntent.action !== "create" && !["listing", "documents", "proposal", "visit", "lead", "contract", "deal", "rules", "commission"].includes(intent)) {
     if (shouldClarifyCatalogIntent(parsedCatalogIntent)) {
       const clarification = buildCatalogActionClarification(parsedCatalogIntent, semanticIntentSource);
       if (clarification) {
@@ -1900,10 +2526,71 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
         })
       )
     : [];
+  if (
+    operationalState?.flow === "rules.configure" &&
+    operationalState.rulesDraft?.propertyFinality &&
+    operationalState.rulesDraft.propertyFinality !== "aluguel_por_temporada"
+  ) {
+    return {
+      mode: "blocked",
+      action: "realestate.configure_property_rules",
+      threadLabel: getIntentThreadLabel(intent),
+      conversationState: { slots: createEmptyImobSlots(), mode: "blocked", pendingSlot: "none", resultOffset: 0, operational: operationalState },
+      presentation: {
+        ...buildOperationalPresentationMeta(operationalState),
+        text: "Não vou abrir regras de hospedagem para esse imóvel porque a finalidade informada não é aluguel por temporada.",
+        suggestedNextAction: "Confirme a finalidade do imóvel ou altere para aluguel por temporada antes de configurar check-in, check-out e hóspedes.",
+        metadata: {
+          ...buildCatalogConfidenceMetadata(parsedCatalogIntent, false, { source: semanticIntentSource }),
+          reasonCode: "rules_configure_requires_seasonal_rental",
+        } as any,
+      },
+    };
+  }
+
   const executionRequest = buildOperationalExecution(intent, message, new Date().toISOString(), operationalState);
+  const propertyReadyMenuCard =
+    operationalState?.flow === "property.create" && operationalPendingLabels.length === 0
+      ? {
+          title: "Próximos passos",
+          lines: [],
+          actionsLayout: "inline" as const,
+          ctas: [
+            {
+              id: "property-next-qualify-lead",
+              label: "Qualificar lead",
+              kind: "primary" as const,
+              action: "send_suggested_message" as const,
+              nextMessage: "qualificar lead deste caso",
+            },
+            {
+              id: "property-next-consult-case",
+              label: "Consultar caso",
+              kind: "secondary" as const,
+              action: "send_suggested_message" as const,
+              nextMessage: "consultar caso deste imóvel",
+            },
+            {
+              id: "property-next-documents",
+              label: "Revisar documentos",
+              kind: "neutral" as const,
+              action: "send_suggested_message" as const,
+              nextMessage: "coletar documentos deste imóvel",
+            },
+            {
+              id: "property-next-owner",
+              label: "Cadastrar proprietário",
+              kind: "neutral" as const,
+              action: "send_suggested_message" as const,
+              nextMessage: "cadastrar proprietário",
+            },
+          ],
+        }
+      : undefined;
   const presentation = {
     ...buildOperationalPresentationMeta(operationalState),
     metadata: buildCatalogConfidenceMetadata(parsedCatalogIntent, false, { source: semanticIntentSource }),
+    card: propertyReadyMenuCard,
     form:
       operationalState?.status === "collecting"
         ? operationalState.flow === "owner.create"
@@ -1914,6 +2601,8 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
               ? buildLeadCreateForm(operationalState.leadDraft)
               : operationalState.flow === "proposal.create"
                 ? buildProposalCreateForm(operationalState.proposalDraft)
+              : operationalState.flow === "rules.configure"
+                ? buildRulesConfigureForm(operationalState.rulesDraft)
               : operationalState.flow === "listing.activate"
                 ? buildListingActivateForm(operationalState.listingDraft)
                 : operationalState.flow === "documents.collect"
@@ -1931,18 +2620,24 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
         intent === "capture"
           ? operationalState?.flow === "property.create"
             ? operationalPendingLabels.length > 0
-              ? `Posso iniciar o cadastro do imóvel agora. Ainda preciso de: ${operationalPendingLabels.join(", ")}.`
+              ? isStructuredOperationalDataSubmission(message)
+                ? `Dados do imóvel salvos parcialmente. Pendências: ${operationalPendingLabels.join(", ")}.`
+                : `Posso iniciar o cadastro do imóvel agora. Ainda preciso de: ${operationalPendingLabels.join(", ")}.`
               : "Posso iniciar o cadastro do imóvel agora."
             : operationalState?.flow === "owner.create"
               ? operationalPendingLabels.length > 0
-                ? ""
+                ? isStructuredOperationalDataSubmission(message)
+                  ? `Cadastro do proprietário salvo parcialmente. Pendências: ${operationalPendingLabels.join(", ")}.`
+                  : ""
                 : "Cadastro do proprietário pronto para revisão."
               : "Posso iniciar a captação agora."
           : intent === "match"
             ? "Posso começar a busca de opções agora."
             : intent === "lead"
               ? operationalState?.flow === "lead.qualify" && operationalState.pendingFields.length > 0
-                ? `Posso iniciar o cadastro ${getLeadPersonaCopy(operationalState.leadDraft).article} agora. Ainda preciso de: ${operationalPendingLabels.join(", ")}.`
+                ? isStructuredOperationalDataSubmission(message)
+                  ? `Cadastro ${getLeadPersonaCopy(operationalState.leadDraft).article} salvo parcialmente. Pendências: ${operationalPendingLabels.join(", ")}.`
+                  : `Posso iniciar o cadastro ${getLeadPersonaCopy(operationalState.leadDraft).article} agora. Ainda preciso de: ${operationalPendingLabels.join(", ")}.`
                 : `Posso iniciar o cadastro ${getLeadPersonaCopy(operationalState?.leadDraft).article} agora.`
               : intent === "visit"
                 ? operationalState?.flow === "visit.schedule" && operationalState.pendingFields.length > 0
@@ -1952,9 +2647,9 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
                   ? operationalState?.flow === "listing.activate"
                     ? ""
                     : "Posso preparar a ativação do anúncio agora."
-                  : intent === "proposal"
-                    ? operationalState?.flow === "proposal.create" && operationalState.pendingFields.length > 0
-                      ? `Posso preparar a proposta para ${getProposalPersonaCopy(operationalState.proposalDraft).singular} agora. Ainda preciso de: ${operationalPendingLabels.join(", ")}.`
+                    : intent === "proposal"
+                      ? operationalState?.flow === "proposal.create" && operationalState.pendingFields.length > 0
+                      ? `Posso preparar a proposta agora para ${getProposalPersonaCopy(operationalState.proposalDraft).singular}. Ainda preciso de: ${operationalPendingLabels.join(", ")}.`
                       : `Posso preparar a proposta para ${getProposalPersonaCopy(operationalState?.proposalDraft).singular} agora.`
                     : intent === "deal"
                       ? operationalState?.flow === "deal.review" && operationalState.pendingFields.length > 0
@@ -1976,19 +2671,38 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
                             ? `Posso preparar o handoff jurídico do contrato agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
                             : "Posso preparar o handoff jurídico do contrato agora."
                         : "Posso preparar o handoff jurídico do contrato agora."
-                      : intent === "commission"
+                      : intent === "rules"
+                      ? operationalState?.flow === "rules.configure"
+                        ? operationalState.rulesDraft?.propertyFinality && operationalState.rulesDraft.propertyFinality !== "aluguel_por_temporada"
+                          ? "Esse fluxo de regras só segue para imóvel com finalidade de aluguel por temporada."
+                          : operationalState.pendingFields.length > 0
+                            ? `Posso configurar as regras de temporada agora. Ainda preciso de: ${operationalPendingLabels.join(", ")}.`
+                            : "Regras de temporada prontas para revisão."
+                        : "Posso configurar as regras do imóvel agora."
+                    : intent === "commission"
                       ? operationalState?.flow === "commission.settle" && operationalState.pendingFields.length > 0
                           ? `Posso iniciar a liquidação da comissão agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
                           : "Posso iniciar a liquidação da comissão agora."
       : "Posso aplicar esse ajuste agora.",
   };
 
-  if (presentation.form) {
+  if (presentation.form && shouldReturnConsultWithForm({ message, operationalState })) {
     return {
       mode: "consult",
       action: executionRequest.action,
       threadLabel: getIntentThreadLabel(intent),
       conversationState: { slots: createEmptyImobSlots(), mode: "consult", pendingSlot: "none", resultOffset: 0, operational: operationalState },
+      presentation,
+    };
+  }
+
+  if (presentation.form) {
+    return {
+      mode: "execute",
+      action: executionRequest.action,
+      threadLabel: getIntentThreadLabel(intent),
+      conversationState: { slots: createEmptyImobSlots(), mode: "execute", pendingSlot: "none", resultOffset: 0, operational: operationalState },
+      executionRequest,
       presentation,
     };
   }

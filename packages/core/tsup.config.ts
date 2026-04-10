@@ -1,7 +1,7 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/index.ts", "src/queue/*.ts", "src/llm/*.ts"],
+  entry: ["src/index.ts", "src/queue/*.ts", "src/llm/*.ts", "src/logging/*.ts", "src/services/*.ts"],
   outDir: "dist",
   format: ["esm"],
   target: "node20",

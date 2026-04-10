@@ -138,3 +138,89 @@ test("IMOB chat persistence: create conversation, append messages and list histo
   assert.equal(listThreads.body.items.length >= 1, true);
   assert.equal(listThreads.body.items[0].threadId, "thread_capture_itapema");
 });
+
+test("IMOB chat persistence enforces run correlation and derives completion proof metadata", async () => {
+  const conversation = await request
+    .post("/api/imob/chat/conversations")
+    .set("Authorization", `Bearer ${apiToken}`)
+    .send({ title: "Captação com run" });
+
+  assert.equal(conversation.status, 201);
+  const conversationId = conversation.body?.conversation?.conversationId as string;
+  assert.ok(conversationId);
+
+  const scopedRun = await prismaGlobal.run.create({
+    data: {
+      tenantId,
+      workspaceId,
+      userId,
+      agent: "EIAH",
+      status: "success",
+      request: {
+        prompt: "Cadastrar imóvel",
+        metadata: {
+          conversationId,
+          threadId: "thread_capture_run",
+          txIdRequired: true,
+        },
+      } as any,
+      response: { ok: true } as any,
+      txId: "tx-imob-chat-proof-1",
+      criticalHash: "critical-imob-chat-proof-1",
+    },
+  });
+
+  const linkedMessage = await request
+    .post(`/api/imob/chat/conversations/${conversationId}/messages`)
+    .set("Authorization", `Bearer ${apiToken}`)
+    .send({
+      role: "assistant",
+      content: "Cadastro do imóvel processado com sucesso.",
+      runId: scopedRun.id,
+      threadStatus: "done",
+    });
+
+  assert.equal(linkedMessage.status, 201);
+  assert.equal(linkedMessage.body?.message?.txId, "tx-imob-chat-proof-1");
+  assert.equal(linkedMessage.body?.message?.bundlePath, `/api/runs/${scopedRun.id}/bundle`);
+  assert.equal(linkedMessage.body?.message?.receiptPath, "/api/ledger/tx-imob-chat-proof-1");
+  assert.equal(linkedMessage.body?.message?.metadata?.completionState, "success_full");
+  assert.equal(linkedMessage.body?.message?.threadId, "thread_capture_run");
+
+  const mismatch = await request
+    .post(`/api/imob/chat/conversations/${conversationId}/messages`)
+    .set("Authorization", `Bearer ${apiToken}`)
+    .send({
+      role: "assistant",
+      content: "Mensagem inválida por mismatch",
+      runId: scopedRun.id,
+      threadId: "thread_outro",
+    });
+
+  assert.equal(mismatch.status, 409);
+  assert.equal(mismatch.body?.error?.code, "RUN_THREAD_MISMATCH");
+
+  const snapshot = await request
+    .get(`/api/imob/chat/conversations/${conversationId}/snapshot`)
+    .set("Authorization", `Bearer ${apiToken}`);
+
+  assert.equal(snapshot.status, 200);
+  assert.equal(snapshot.body?.ok, true);
+  assert.equal(snapshot.body?.snapshot?.business?.linkedRuns >= 1, true);
+  assert.equal(snapshot.body?.snapshot?.business?.linkedReceipts >= 1, true);
+  assert.equal(snapshot.body?.snapshot?.business?.linkedBundles >= 1, true);
+
+  const exported = await request
+    .get(`/api/imob/chat/conversations/${conversationId}/export?format=json`)
+    .set("Authorization", `Bearer ${apiToken}`);
+
+  assert.equal(exported.status, 200);
+  assert.equal(exported.body?.ok, true);
+  const messageWithProof = (exported.body?.exported?.messages ?? []).find(
+    (item: any) => item.runId === scopedRun.id
+  );
+  assert.ok(messageWithProof);
+  assert.equal(messageWithProof.txId, "tx-imob-chat-proof-1");
+  assert.equal(messageWithProof.bundlePath, `/api/runs/${scopedRun.id}/bundle`);
+  assert.equal(messageWithProof.receiptPath, "/api/ledger/tx-imob-chat-proof-1");
+});

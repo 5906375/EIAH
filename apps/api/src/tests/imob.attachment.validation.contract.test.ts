@@ -106,6 +106,11 @@ before(async () => {
 });
 
 after(async () => {
+  await prismaGlobal.$executeRaw`
+    DELETE FROM memory_events
+    WHERE tenant_id = ${tenantId}
+      AND workspace_id = ${workspaceId}
+  `;
   await prismaGlobal.imobCaseEvent.deleteMany({ where: { tenantId } });
   await prismaGlobal.imobCase.deleteMany({ where: { tenantId } });
   await prismaGlobal.imobOwner.deleteMany({ where: { tenantId } });
@@ -173,6 +178,158 @@ test("IMOB attachment resolve validates owner document against case data", async
   assert.equal(response.body?.data?.presentation?.card?.lines?.[1]?.includes("Nome: Confere"), true);
   assert.equal(response.body?.data?.presentation?.card?.lines?.[2]?.includes("CPF: Confere"), true);
   assert.equal(response.body?.data?.presentation?.card?.lines?.[3]?.includes("RG: Confere"), true);
+  assert.equal(response.body?.data?.presentation?.metadata?.context?.caseId, imobCase.id);
+  assert.equal(response.body?.data?.presentation?.metadata?.context?.threadId, imobCase.threadId);
+  assert.equal(response.body?.data?.presentation?.metadata?.context?.resolutionSource, "case_id");
+  assert.equal(response.body?.data?.conversationState?.operational?.ownerDraft?.ownerDocument, "12345678901");
+});
+
+test("IMOB attachment resolve resolves case by conversationId when caseId/threadId are missing", async () => {
+  const owner = await prismaGlobal.imobOwner.create({
+    data: {
+      tenantId,
+      workspaceId,
+      name: "Ana Lopes",
+      document: "12345678901",
+      status: "pending_data",
+      pendingItems: ["ownerDocument"],
+      metadata: { rg: "11222333" },
+    },
+  });
+  const imobCase = await prismaGlobal.imobCase.create({
+    data: {
+      tenantId,
+      workspaceId,
+      flow: "owner.create",
+      stage: "pending_data",
+      status: "pending_data",
+      ownerId: owner.id,
+      threadId: "thread-" + suffix + "-conversation-fallback",
+      pendingItems: ["ownerDocument"],
+    },
+  });
+  const conversationId = "conv-" + suffix + "-conversation-fallback";
+  await prismaGlobal.memoryEvent.create({
+    data: {
+      tenantId,
+      workspaceId,
+      agentId: "imob-chat",
+      runId: null,
+      key: "conversation.message",
+      content: "Documento anexado para validação",
+      metadata: {
+        conversationId,
+        threadId: imobCase.threadId,
+        caseContext: { caseId: imobCase.id, threadId: imobCase.threadId },
+      },
+    },
+  });
+
+  const upload = await createTextUpload(
+    "documento_conversation_fallback.txt",
+    ["Nome: Ana Lopes", "CPF: 123.456.789-01", "RG: 11.222.333"].join("\n")
+  );
+
+  const response = await request
+    .post("/api/imob/attachments/resolve")
+    .set("Authorization", "Bearer " + apiToken)
+    .send({ conversationId, documentIds: [upload.id] });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body?.ok, true);
+  assert.equal(response.body?.data?.resolved, true);
+  assert.equal(response.body?.data?.caseContext?.caseId, imobCase.id);
+  assert.equal(response.body?.data?.presentation?.metadata?.context?.caseId, imobCase.id);
+  assert.equal(response.body?.data?.presentation?.metadata?.context?.threadId, imobCase.threadId);
+  assert.equal(response.body?.data?.presentation?.metadata?.context?.conversationId, conversationId);
+  assert.equal(response.body?.data?.presentation?.metadata?.context?.resolutionSource, "conversation_case_context");
+});
+
+test("IMOB attachment resolve blocks ambiguous context when conversationId/caseId/threadId conflict", async () => {
+  const ownerA = await prismaGlobal.imobOwner.create({
+    data: {
+      tenantId,
+      workspaceId,
+      name: "Owner A",
+      document: "12345678901",
+      status: "pending_data",
+      pendingItems: ["ownerDocument"],
+      metadata: { rg: "11111111" },
+    },
+  });
+  const caseA = await prismaGlobal.imobCase.create({
+    data: {
+      tenantId,
+      workspaceId,
+      flow: "owner.create",
+      stage: "pending_data",
+      status: "pending_data",
+      ownerId: ownerA.id,
+      threadId: "thread-" + suffix + "-mismatch-a",
+      pendingItems: ["ownerDocument"],
+    },
+  });
+  const ownerB = await prismaGlobal.imobOwner.create({
+    data: {
+      tenantId,
+      workspaceId,
+      name: "Owner B",
+      document: "98765432100",
+      status: "pending_data",
+      pendingItems: ["ownerDocument"],
+      metadata: { rg: "22222222" },
+    },
+  });
+  const caseB = await prismaGlobal.imobCase.create({
+    data: {
+      tenantId,
+      workspaceId,
+      flow: "owner.create",
+      stage: "pending_data",
+      status: "pending_data",
+      ownerId: ownerB.id,
+      threadId: "thread-" + suffix + "-mismatch-b",
+      pendingItems: ["ownerDocument"],
+    },
+  });
+
+  const conversationId = "conv-" + suffix + "-mismatch";
+  await prismaGlobal.memoryEvent.create({
+    data: {
+      tenantId,
+      workspaceId,
+      agentId: "imob-chat",
+      runId: null,
+      key: "conversation.message",
+      content: "Conversa vinculada ao caso A",
+      metadata: {
+        conversationId,
+        threadId: caseA.threadId,
+        caseContext: { caseId: caseA.id, threadId: caseA.threadId },
+      },
+    },
+  });
+
+  const upload = await createTextUpload(
+    "documento_mismatch.txt",
+    ["Nome: Owner A", "CPF: 123.456.789-01", "RG: 11.111.111"].join("\n")
+  );
+
+  const response = await request
+    .post("/api/imob/attachments/resolve")
+    .set("Authorization", "Bearer " + apiToken)
+    .send({
+      conversationId,
+      caseId: caseA.id,
+      threadId: caseB.threadId,
+      documentIds: [upload.id],
+    });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body?.ok, true);
+  assert.equal(response.body?.data?.resolved, false);
+  assert.match(response.body?.data?.presentation?.text ?? "", /contexto informado ficou inconsistente/i);
+  assert.equal(response.body?.data?.presentation?.metadata?.context?.resolutionSource, "identifier_mismatch");
 });
 
 test("IMOB attachment resolve returns structured divergence when document conflicts with case", async () => {
