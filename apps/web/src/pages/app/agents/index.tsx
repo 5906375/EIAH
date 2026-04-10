@@ -65,7 +65,7 @@ const GUIDE_STEP_EXPLANATIONS: Record<string, string[]> = {
   ],
   imob: [
     "O dashboard mostra visão da operação imobiliária em andamento.",
-    "O chat IMOB orienta decisões de forma assistida e contextual.",
+    "O chat IMOB atua como assistente operacional agent-driven, com contexto de caso e próximo passo governado.",
     "A rastreabilidade garante histórico claro de cada avanço no processo.",
     "Essa revisão final ajuda a melhorar produtividade e qualidade comercial.",
   ],

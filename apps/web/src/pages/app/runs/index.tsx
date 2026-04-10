@@ -98,6 +98,30 @@ function buildImobCaseRiskLabel(item: ImobCase) {
   return item.stage || "—";
 }
 
+function formatImobJourneyTypeLabel(value: string | null | undefined) {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (normalized === "property_capture") return "Captação";
+  if (normalized === "lead_qualification") return "Qualificação";
+  if (normalized === "proposal") return "Proposta";
+  if (normalized === "visit_follow_up") return "Visita";
+  if (normalized === "negotiation") return "Negociação";
+  if (normalized === "documentation") return "Documentação";
+  if (normalized === "contract") return "Contrato";
+  if (normalized === "commission") return "Comissão";
+  if (normalized === "temporada_rules") return "Regras de temporada";
+  return "Operação";
+}
+
+function buildImobCasePriority(item: ImobCase) {
+  const blocked = asStringArray(item.canonical?.blockedActions).length;
+  const missing = asStringArray(item.canonical?.missingContext).length;
+  const recommended = item.canonical?.recommendedActions?.length ?? 0;
+  const ageHours = imobCaseAgeHours(item.updatedAt);
+  const score = blocked * 5 + missing * 3 + Math.min(4, Math.floor(ageHours / 12)) + (recommended === 0 ? 2 : 0);
+  const label = blocked > 0 ? "alta" : missing > 0 || ageHours >= 24 ? "média" : "normal";
+  return { score, label };
+}
+
 function mapImobStatusFilterToCaseStatus(filter: string): string | undefined {
   if (filter === "all") return undefined;
   if (filter === "pending_data") return "pending_data";
@@ -117,12 +141,17 @@ function formatImobCaseStatusLabel(status: string) {
 
 function formatImobPendingLabel(value: string) {
   const normalized = value.trim();
+  const lowered = normalized.toLowerCase();
   if (!normalized) return "pendência operacional";
   if (normalized === "budgetMax") return "faixa de orçamento";
   if (normalized === "ownerDocument") return "documento";
   if (normalized === "ownerName") return "nome completo";
   if (normalized === "ownerPhone") return "telefone";
   if (normalized === "ownerEmail") return "e-mail";
+  if (lowered === "nome do proprietário") return "nome do proprietário";
+  if (lowered === "telefone do proprietário") return "telefone do proprietário";
+  if (lowered === "e-mail do proprietário") return "e-mail do proprietário";
+  if (lowered === "documento do proprietário") return "documento do proprietário";
   if (normalized === "propertyType") return "tipo do imóvel";
   if (normalized === "goal") return "finalidade";
   if (normalized === "city") return "cidade";
@@ -132,6 +161,27 @@ function formatImobPendingLabel(value: string) {
   if (normalized === "publicationGoal") return "finalidade do anúncio";
   if (normalized === "publicationChannels") return "canais de publicação";
   return normalized;
+}
+
+function trimImobSentencePunctuation(value: string) {
+  return value.trim().replace(/[.。…]+$/g, "").trim();
+}
+
+function formatImobSentence(value: string) {
+  const trimmed = trimImobSentencePunctuation(value);
+  if (!trimmed) return "";
+  const withUppercase = trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+  return `${withUppercase}.`;
+}
+
+function isDescriptivePendingSentence(value: string) {
+  const normalized = value.trim().toLowerCase();
+  return (
+    normalized.includes("dados do proprietário") ||
+    normalized.includes("dados do proprietario") ||
+    normalized.includes("ainda estão incompletos") ||
+    normalized.includes("ainda estao incompletos")
+  );
 }
 
 function formatImobFlowLabel(flow: string | null | undefined) {
@@ -155,7 +205,12 @@ function formatImobStageLabel(stage: string | null | undefined) {
 function buildImobResolutionSteps(values: string[]) {
   const unique = Array.from(new Set(values.map(formatImobPendingLabel)));
   if (!unique.length) return ["Revisar a ficha do caso e validar o próximo passo operacional."];
-  return unique.map((item) => `Preencher ou confirmar ${item}.`);
+  return unique.map((item) => {
+    if (isDescriptivePendingSentence(item)) {
+      return formatImobSentence(item);
+    }
+    return `Preencher ou confirmar ${trimImobSentencePunctuation(item)}.`;
+  });
 }
 
 function buildImobCurrentSituation(data: any) {
@@ -182,7 +237,11 @@ function buildImobReasonSummary(data: any) {
   const blockers = asStringArray(caseData?.blockers);
   const source = blockers.length ? blockers : pending;
   if (!source.length) return "Não há bloqueio crítico registrado no momento.";
-  return source.map(formatImobPendingLabel).join(" | ");
+  const formatted = source.map(formatImobPendingLabel);
+  if (formatted.length === 1 && isDescriptivePendingSentence(formatted[0])) {
+    return formatImobSentence(formatted[0]);
+  }
+  return formatted.map((item) => trimImobSentencePunctuation(item)).join(" | ");
 }
 
 function buildImobClientApproachExamples(data: any) {
@@ -191,43 +250,43 @@ function buildImobClientApproachExamples(data: any) {
   const flow = caseData?.flow ?? "";
   if (flow === "lead.qualify" && pending.includes("faixa de orçamento")) {
     return [
-      "Qual faixa de valor você pretende investir?",
-      "Se preferir, posso trabalhar com uma faixa aproximada para já filtrar os imóveis compatíveis.",
+      "Confirmar faixa de orçamento do lead.",
+      "Validar cidade e objetivo de busca.",
     ];
   }
   if (flow === "owner.create" && pending.includes("documento")) {
     return [
-      "Pode me enviar seu documento para eu concluir o cadastro do proprietário?",
-      "Se preferir, você pode anexar o documento agora para eu seguir com a análise.",
+      "Solicitar documento do proprietário.",
+      "Orientar anexo do documento na conversa.",
     ];
   }
   if (flow === "property.create") {
     return [
-      "Pode me confirmar os dados do imóvel que faltam para eu concluir o cadastro?",
-      "Assim que eu tiver essas informações, sigo para a próxima etapa da captação.",
+      "Confirmar dados pendentes do imóvel.",
+      "Validar endereço e finalidade da captação.",
     ];
   }
   if (flow === "listing.activate") {
     return [
-      "Vou confirmar os dados do anúncio para já publicar nos canais corretos.",
-      "Com essas informações preenchidas, seguimos para ativação do anúncio.",
+      "Confirmar dados essenciais do anúncio.",
+      "Validar canais antes da publicação.",
     ];
   }
   if (flow === "contract.prepare") {
     return [
-      "Preciso confirmar os dados pendentes para preparar o contrato sem retrabalho.",
-      "Assim que esses pontos forem resolvidos, seguimos para revisão ou assinatura.",
+      "Confirmar pendências do contrato.",
+      "Validar dados para revisão e assinatura.",
     ];
   }
   if (pending.includes("telefone") || pending.includes("e-mail")) {
     return [
-      "Qual é o melhor telefone e e-mail para seguirmos com seu atendimento?",
-      "Com esses dados eu consigo continuar o cadastro e as próximas etapas.",
+      "Confirmar telefone e e-mail de contato.",
+      "Atualizar cadastro para seguir atendimento.",
     ];
   }
   return [
-    "Vou confirmar os dados pendentes para poder avançar com segurança.",
-    "Assim que esses dados forem preenchidos, seguimos para a próxima etapa.",
+    "Confirmar dados pendentes do atendimento.",
+    "Avançar para a próxima etapa operacional.",
   ];
 }
 
@@ -238,19 +297,31 @@ function buildImobWhatToDoNow(data: any) {
   const blockers = asStringArray(caseData?.blockers);
   const items = buildImobResolutionSteps(blockers.length ? blockers : pending);
   if (flow === "lead.qualify") {
-    return [...items, "Depois, retome a qualificação para identificar imóveis compatíveis."];
+    return [
+      ...items,
+      "Revisar qualificação do lead.",
+      "Vincular imóvel compatível ao lead.",
+    ];
   }
   if (flow === "owner.create") {
-    return [...items, "Depois, revise a ficha do proprietário e avance para o vínculo com o imóvel."];
+    return [
+      ...items,
+      "Revisar cadastro do proprietário.",
+      "Vincular proprietário ao imóvel.",
+    ];
   }
   if (flow === "property.create") {
-    return [...items, "Depois, revise o cadastro do imóvel e siga para anúncio, visita ou proposta."];
+    return [
+      ...items,
+      "Revisar cadastro do imóvel.",
+      "Vincular imóvel à próxima etapa comercial.",
+    ];
   }
   if (flow === "listing.activate") {
-    return [...items, "Depois, valide canais e publique o anúncio."];
+    return [...items, "Validar canais de publicação.", "Publicar anúncio."];
   }
   if (flow === "contract.prepare") {
-    return [...items, "Depois, gere a minuta e siga para revisão ou assinatura."];
+    return [...items, "Gerar minuta contratual.", "Enviar para revisão ou assinatura."];
   }
   return items;
 }
@@ -273,8 +344,21 @@ type ImobHtmlActionLink = {
   href: string | null;
 };
 
-function buildImobReturnToHref() {
-  return "/app/runs?domain=imob";
+type ImobRouteContext = {
+  conversationId?: string | null;
+  threadId?: string | null;
+  caseId?: string | null;
+  runId?: string | null;
+};
+
+function buildImobReturnToHref(context?: ImobRouteContext) {
+  const params = new URLSearchParams();
+  params.set("domain", "imob");
+  if (context?.runId) params.set("runId", context.runId);
+  if (context?.conversationId) params.set("conversationId", context.conversationId);
+  if (context?.threadId) params.set("threadId", context.threadId);
+  if (context?.caseId) params.set("caseId", context.caseId);
+  return `/app/runs?${params.toString()}`;
 }
 
 function renderHtmlLinkList(items: ImobHtmlActionLink[]) {
@@ -308,6 +392,7 @@ function buildImobFlowSummary(data: any) {
 }
 
 function buildImobChatActionHref(base: {
+  conversationId?: string | null;
   caseId?: string | null;
   threadId?: string | null;
   autoprompt?: string | null;
@@ -315,6 +400,7 @@ function buildImobChatActionHref(base: {
 }) {
   if (typeof window === "undefined") return null;
   const params = new URLSearchParams();
+  if (base.conversationId) params.set("conversationId", base.conversationId);
   if (base.caseId) params.set("caseId", base.caseId);
   if (base.threadId) params.set("threadId", base.threadId);
   if (base.autoprompt) params.set("autoprompt", base.autoprompt);
@@ -323,12 +409,46 @@ function buildImobChatActionHref(base: {
   return `${window.location.origin}/app/imob/chat${query ? `?${query}` : ""}`;
 }
 
+function buildImobChatRoute(base: {
+  conversationId?: string | null;
+  caseId?: string | null;
+  threadId?: string | null;
+  autoprompt?: string | null;
+  returnTo?: string | null;
+}) {
+  const params = new URLSearchParams();
+  if (base.conversationId) params.set("conversationId", base.conversationId);
+  if (base.caseId) params.set("caseId", base.caseId);
+  if (base.threadId) params.set("threadId", base.threadId);
+  if (base.autoprompt) params.set("autoprompt", base.autoprompt);
+  if (base.returnTo) params.set("returnTo", base.returnTo);
+  const query = params.toString();
+  return `/app/imob/chat${query ? `?${query}` : ""}`;
+}
+
 function getRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
 }
 
 function getStringValue(value: unknown): string | null {
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  if (!normalized) return null;
+  if (normalized.toLowerCase() === "null" || normalized.toLowerCase() === "undefined") return null;
+  return normalized;
+}
+
+function dedupeHistoryLines(lines: string[]) {
+  const result: string[] = [];
+  const seen = new Set<string>();
+  for (const line of lines) {
+    const normalized = line.trim().replace(/\s+/g, " ").toLowerCase();
+    if (!normalized) continue;
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    result.push(line.trim());
+  }
+  return result;
 }
 
 function extractImobContextFromRun(run: Run | null) {
@@ -368,27 +488,36 @@ function buildImobEntityActions(root: any) {
   const caseData = root?.case ?? root ?? null;
   const caseId = typeof caseData?.id === "string" && caseData.id.trim().length > 0 ? caseData.id.trim() : null;
   const threadId = typeof caseData?.threadId === "string" && caseData.threadId.trim().length > 0 ? caseData.threadId.trim() : null;
+  const context = extractImobContextFromRun(root);
   const owner = root?.entities?.owner ?? root?.owner ?? null;
   const property = root?.entities?.property ?? root?.property ?? null;
   const lead = root?.entities?.lead ?? root?.lead ?? null;
-  const returnTo = buildImobReturnToHref();
-  const ownerLabel = owner?.name ? `Editar cadastro do proprietário: ${owner.name}` : "Incluir proprietário no cadastro";
-  const propertyRef = property?.address ?? property?.id ?? null;
+  const returnTo = buildImobReturnToHref({
+    conversationId: context.conversationId,
+    threadId: context.threadId ?? threadId,
+    caseId: context.caseId ?? caseId,
+  });
+  const ownerName = getStringValue(owner?.name);
+  const ownerLabel = ownerName ? `Editar cadastro do proprietário: ${ownerName}` : "Incluir proprietário no cadastro";
+  const propertyRef = getStringValue(property?.address) ?? getStringValue(property?.id) ?? null;
   const propertyLabel = propertyRef ? `Editar cadastro do imóvel: ${propertyRef}` : "Incluir imóvel no cadastro";
-  const leadLabel = lead?.name ? `Editar cadastro do lead: ${lead.name}` : "Incluir lead no cadastro";
+  const leadName = getStringValue(lead?.name);
+  const leadLabel = leadName ? `Editar cadastro do lead: ${leadName}` : "Incluir lead no cadastro";
   return [
     {
       label: ownerLabel,
       href: buildImobChatActionHref({
+        conversationId: context.conversationId,
         caseId,
         threadId,
-        autoprompt: owner?.name ? `editar proprietário ${owner.name}` : "cadastrar proprietário",
+        autoprompt: ownerName ? `editar proprietário ${ownerName}` : "cadastrar proprietário",
         returnTo,
       }),
     },
     {
       label: propertyLabel,
       href: buildImobChatActionHref({
+        conversationId: context.conversationId,
         caseId,
         threadId,
         autoprompt: propertyRef ? `editar imóvel ${propertyRef}` : "cadastrar imóvel",
@@ -398,9 +527,10 @@ function buildImobEntityActions(root: any) {
     {
       label: leadLabel,
       href: buildImobChatActionHref({
+        conversationId: context.conversationId,
         caseId,
         threadId,
-        autoprompt: lead?.name ? `editar lead ${lead.name}` : "cadastrar lead",
+        autoprompt: leadName ? `editar lead ${leadName}` : "cadastrar lead",
         returnTo,
       }),
     },
@@ -427,6 +557,12 @@ function buildImobArtifactViewModel(payload: any) {
   const root = payload?.data ?? payload;
   const caseData = root?.case ?? root;
   const events = Array.isArray(root?.events) ? root.events : [];
+  const history = dedupeHistoryLines(
+    events.slice(0, 20).map((event: any) => {
+      if (typeof event.summary === "string" && event.summary.trim().length > 0) return event.summary;
+      return "Evento operacional registrado.";
+    }),
+  );
   return {
     generatedAt: root?.generatedAt ?? new Date().toISOString(),
     title: formatImobFlowLabel(caseData?.flow),
@@ -442,10 +578,7 @@ function buildImobArtifactViewModel(payload: any) {
     entityActions: buildImobEntityActions(root).map((item) => item.label),
     operationalLinks: buildImobOperationalLinks(root),
     operationalActions: buildImobOperationalLinks(root).map((item) => item.label),
-    history: events.slice(0, 20).map((event: any) => {
-      if (typeof event.summary === "string" && event.summary.trim().length > 0) return event.summary;
-      return "Evento operacional registrado.";
-    }),
+    history,
   };
 }
 
@@ -568,17 +701,25 @@ function buildImobCaseList(items: ImobCase[], reasonFilter: string, statusFilter
   return items
     .map((item) => {
       const riskLabel = buildImobCaseRiskLabel(item);
+      const priority = buildImobCasePriority(item);
+      const primaryAction = item.canonical?.recommendedActions?.[0] ?? null;
       return {
         processId: item.id,
+        caseId: item.id,
+        threadId: item.threadId,
         status: item.status,
         riskLabel,
         ageHours: Number(imobCaseAgeHours(item.updatedAt).toFixed(1)),
         updatedAt: item.updatedAt,
+        priorityLabel: priority.label,
+        priorityScore: priority.score,
+        nextAction: primaryAction?.label ?? item.nextStep ?? "Revisar caso",
+        journeyLabel: formatImobJourneyTypeLabel(item.canonical?.journeyType),
       };
     })
     .filter((item) => !targetStatus || item.status === targetStatus)
     .filter((item) => reasonFilter === "all" || item.riskLabel.includes(reasonFilter))
-    .sort((a, b) => b.ageHours - a.ageHours)
+    .sort((a, b) => b.priorityScore - a.priorityScore || b.ageHours - a.ageHours)
     .slice(0, 12);
 }
 
@@ -723,6 +864,8 @@ const RunsPage: React.FC = () => {
   const [imobHealth, setImobHealth] = useState<ImobFunnelHealth | null>(null);
   const [imobCasesList, setImobCasesList] = useState<Array<{
     processId: string;
+    caseId: string;
+    threadId: string | null;
     status: string;
     riskLabel: string;
     ageHours: number;
@@ -736,6 +879,9 @@ const RunsPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const requestedDomain = (searchParams.get("domain") || "").trim().toLowerCase();
   const requestedRunId = (searchParams.get("runId") || "").trim() || null;
+  const requestedConversationId = (searchParams.get("conversationId") || "").trim() || null;
+  const requestedThreadId = (searchParams.get("threadId") || "").trim() || null;
+  const requestedCaseId = (searchParams.get("caseId") || "").trim() || null;
   const [runPageMode, setRunPageMode] = useState<"overview" | "execution" | "investigation">(
     requestedRunId ? "investigation" : "overview"
   );
@@ -895,16 +1041,34 @@ const RunsPage: React.FC = () => {
     };
   }, [selectedRun?.id, selectedRunBreakdownByModel, selectedRunBreakdownItems, selectedRunFinance]);
   const selectedRunImobContext = useMemo(() => extractImobContextFromRun(selectedRun), [selectedRun]);
+  const selectedRunContextMerged = useMemo(
+    () => ({
+      conversationId: selectedRunImobContext.conversationId ?? requestedConversationId,
+      threadId: selectedRunImobContext.threadId ?? requestedThreadId,
+      caseId: selectedRunImobContext.caseId ?? requestedCaseId,
+    }),
+    [requestedCaseId, requestedConversationId, requestedThreadId, selectedRunImobContext]
+  );
+  const runsContextReturnToHref = useMemo(
+    () =>
+      buildImobReturnToHref({
+        runId: selectedRun?.id ?? requestedRunId,
+        conversationId: selectedRunContextMerged.conversationId,
+        threadId: selectedRunContextMerged.threadId,
+        caseId: selectedRunContextMerged.caseId,
+      }),
+    [requestedRunId, selectedRun?.id, selectedRunContextMerged]
+  );
   const selectedRunImobHref = useMemo(() => {
-    if (!selectedRunImobContext.caseId && !selectedRunImobContext.threadId) return null;
+    if (!selectedRunContextMerged.caseId && !selectedRunContextMerged.threadId && !selectedRunContextMerged.conversationId) return null;
     const params = new URLSearchParams();
-    if (selectedRunImobContext.caseId) params.set("caseId", selectedRunImobContext.caseId);
-    if (selectedRunImobContext.threadId) params.set("threadId", selectedRunImobContext.threadId);
-    if (selectedRunImobContext.conversationId) params.set("conversationId", selectedRunImobContext.conversationId);
-    if (selectedRun?.id) params.set("returnTo", `/app/runs?domain=imob&runId=${encodeURIComponent(selectedRun.id)}`);
+    if (selectedRunContextMerged.caseId) params.set("caseId", selectedRunContextMerged.caseId);
+    if (selectedRunContextMerged.threadId) params.set("threadId", selectedRunContextMerged.threadId);
+    if (selectedRunContextMerged.conversationId) params.set("conversationId", selectedRunContextMerged.conversationId);
+    params.set("returnTo", runsContextReturnToHref);
     const query = params.toString();
     return query ? `/app/imob/chat?${query}` : null;
-  }, [selectedRun?.id, selectedRunImobContext]);
+  }, [runsContextReturnToHref, selectedRunContextMerged]);
   const isOverviewMode = runPageMode === "overview";
   const isExecutionMode = runPageMode === "execution";
   const isInvestigationPageMode = runPageMode === "investigation";
@@ -1413,15 +1577,17 @@ const RunsPage: React.FC = () => {
                   <tr>
                     <th className="px-4 py-3">{runLabelSingular}</th>
                     <th className="px-4 py-3">Estado</th>
+                    <th className="px-4 py-3">Jornada</th>
                     <th className="px-4 py-3">{riskLabel}</th>
                     <th className="px-4 py-3">Idade</th>
+                    <th className="px-4 py-3">Sincronização</th>
                     <th className="px-4 py-3">Comprovantes</th>
                   </tr>
                 </thead>
                 <tbody>
                   {imobCasesList.length === 0 ? (
                     <tr>
-                      <td className="px-4 py-4 text-muted-foreground" colSpan={5}>
+                      <td className="px-4 py-4 text-muted-foreground" colSpan={7}>
                         Nenhum caso para os filtros atuais.
                       </td>
                     </tr>
@@ -1429,9 +1595,40 @@ const RunsPage: React.FC = () => {
                     imobCasesList.map((item) => (
                       <tr key={item.processId} className="border-t border-white/10">
                         <td className="px-4 py-3 font-mono text-foreground/90">{formatRunId(item.processId)}</td>
-                        <td className="px-4 py-3 text-foreground/90">{formatImobCaseStatusLabel(item.status)}</td>
+                        <td className="px-4 py-3 text-foreground/90">
+                          <div className="space-y-1">
+                            <p>{formatImobCaseStatusLabel(item.status)}</p>
+                            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">prioridade {item.priorityLabel}</p>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          <div className="space-y-1">
+                            <p>{item.journeyLabel}</p>
+                            <p className="text-[10px] text-foreground/80">{item.nextAction}</p>
+                          </div>
+                        </td>
                         <td className="px-4 py-3 text-muted-foreground">{item.riskLabel || "—"}</td>
                         <td className="px-4 py-3 text-muted-foreground">{item.ageHours.toFixed(1)}h</td>
+                        <td className="px-4 py-3 text-xs">
+                          <div className="space-y-1">
+                            <p className="font-mono text-foreground/90">{formatRunId(item.caseId)}</p>
+                            <p className="font-mono text-muted-foreground">
+                              {item.threadId ? formatRunId(item.threadId) : "thread não vinculado"}
+                            </p>
+                            <Link
+                              to={buildImobChatRoute({
+                                conversationId: selectedRunContextMerged.conversationId,
+                                caseId: item.caseId,
+                                threadId: item.threadId,
+                                autoprompt: "consultar caso",
+                                returnTo: runsContextReturnToHref,
+                              })}
+                              className="text-[10px] text-accent underline-offset-2 hover:text-accent/80 hover:underline"
+                            >
+                              abrir no chat
+                            </Link>
+                          </div>
+                        </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-nowrap items-start justify-center gap-6">
                             <div className="min-w-[120px] space-y-0 text-center">

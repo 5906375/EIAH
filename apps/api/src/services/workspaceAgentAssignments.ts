@@ -106,6 +106,7 @@ async function provisionGlobalFounderAssignment(
       signatureRef: "global-founder-access",
       metadata: {
         source: "global-founder-access",
+        profileSource: metadata || profile ? "persisted" : "core-runtime",
       },
     },
   });

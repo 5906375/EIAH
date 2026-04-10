@@ -8,9 +8,18 @@ type HumantimelineStep = {
   state: "done" | "current" | "pending";
 };
 
-function threadStatusLabel(status: "active" | "done" | "blocked") {
+type JourneyGroupKey = "imovel" | "proprietario" | "lead";
+
+const JOURNEY_GROUPS: Array<{ key: JourneyGroupKey; label: string }> = [
+  { key: "imovel", label: "Imóvel" },
+  { key: "proprietario", label: "Proprietário" },
+  { key: "lead", label: "Lead" },
+];
+
+function threadStatusLabel(status: "active" | "waiting" | "done" | "blocked") {
   if (status === "done") return "Concluído";
   if (status === "blocked") return "Atenção";
+  if (status === "waiting") return "Em espera";
   return "Em andamento";
 }
 
@@ -18,6 +27,7 @@ function getThreadStageSummary(thread: ImobChatThread) {
   const label = thread.label.toLowerCase();
   if (thread.status === "blocked") return "Aguardando sua revisão para continuar com segurança.";
   if (thread.status === "done") return "Etapa concluída. Pode seguir para a próxima ação.";
+  if (thread.status === "waiting") return "Etapa em espera enquanto outra frente está em andamento.";
   if (label.includes("captação")) return "Coletando dados e preparando cadastro do imóvel.";
   if (label.includes("busca")) return "Refinando opções para encontrar melhores matches.";
   if (label.includes("proposta")) return "Preparando proposta para aprovação e envio.";
@@ -35,7 +45,7 @@ function getThreadPrimaryCta(thread: ImobChatThread): { label: string; href: str
 }
 
 function getThreadtimeline(thread: ImobChatThread): HumantimelineStep[] {
-  const finalLabel = thread.status === "blocked" ? "atenção" : "concluído";
+  const finalLabel = thread.status === "done" ? "concluído" : thread.status === "blocked" ? "atenção" : "finalização";
   if (thread.status === "done") {
     return [
       { id: "understanding", label: "entendimento", state: "done" },
@@ -93,8 +103,34 @@ function timelineStepLabel(step: HumantimelineStep) {
   if (step.id === "understanding") return "entendido";
   if (step.id === "preparation") return "preparação";
   if (step.id === "execution") return "execução";
-  if (step.id === "final") return step.label === "atenção" ? "atenção" : "concluído";
+  if (step.id === "final") return step.label;
   return step.label;
+}
+
+function normalizeThreadLabel(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
+}
+
+function resolveJourneyGroup(thread: ImobChatThread): JourneyGroupKey {
+  const normalized = normalizeThreadLabel(thread.label);
+  if (normalized.includes("propriet")) return "proprietario";
+  if (normalized.includes("lead") || normalized.includes("qualific")) return "lead";
+  return "imovel";
+}
+
+function sortByLastMessageDesc(items: ImobChatThread[]) {
+  return [...items].sort((a, b) => {
+    const aTime = new Date(a.lastMessageAt).getTime();
+    const bTime = new Date(b.lastMessageAt).getTime();
+    return (Number.isFinite(bTime) ? bTime : 0) - (Number.isFinite(aTime) ? aTime : 0);
+  });
+}
+
+function isJourneyVisibleStatus(status: ImobChatThread["status"]) {
+  return status === "active" || status === "waiting" || status === "blocked";
 }
 
 type ThreadPanelProps = {
@@ -106,6 +142,7 @@ type ThreadPanelProps = {
   maxItems?: number;
   showNavigationCtas?: boolean;
   showTimelineLegend?: boolean;
+  groupByJourneyActiveOnly?: boolean;
   resolveDashboardHref?: (href: string, thread: ImobChatThread) => string;
   resolveRunHref?: (thread: ImobChatThread) => string | null;
   resolveReconciliationHref?: (thread: ImobChatThread) => string | null;
@@ -120,11 +157,40 @@ export const ThreadPanel: React.FC<ThreadPanelProps> = ({
   maxItems = 6,
   showNavigationCtas = true,
   showTimelineLegend = false,
+  groupByJourneyActiveOnly = false,
   resolveDashboardHref,
   resolveRunHref,
   resolveReconciliationHref,
 }) => {
   const [showDetails, setShowDetails] = React.useState(false);
+  const visibleThreadGroups = React.useMemo(() => {
+    if (!groupByJourneyActiveOnly) {
+      return [
+        {
+          key: "all" as const,
+          label: null as string | null,
+          items: threads.slice(0, maxItems),
+        },
+      ];
+    }
+
+    const activeThreads = sortByLastMessageDesc(threads.filter((thread) => isJourneyVisibleStatus(thread.status)));
+    const bestByGroup = new Map<JourneyGroupKey, ImobChatThread>();
+    for (const thread of activeThreads) {
+      const group = resolveJourneyGroup(thread);
+      if (!bestByGroup.has(group)) bestByGroup.set(group, thread);
+    }
+
+    return JOURNEY_GROUPS
+      .map((group) => ({
+        key: group.key,
+        label: group.label,
+        items: bestByGroup.get(group.key) ? [bestByGroup.get(group.key) as ImobChatThread] : [],
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [groupByJourneyActiveOnly, maxItems, threads]);
+
+  const visibleThreads = visibleThreadGroups.flatMap((group) => group.items);
 
   return (
     <div className="rounded-xl border border-white/10 bg-black/20 p-2">
@@ -147,110 +213,119 @@ export const ThreadPanel: React.FC<ThreadPanelProps> = ({
           </button>
         </div>
       </div>
-      {threads.length === 0 ? (
+      {visibleThreads.length === 0 ? (
         <p className="text-[10px] text-muted-foreground">{emptyText}</p>
       ) : (
         <div className="space-y-1">
-          {threads.slice(0, maxItems).map((thread) => {
-            const selected = selectedThreadId === thread.threadId;
-            const tone =
-              thread.status === "blocked"
-                ? "text-rose-200 border-rose-300/40"
-                : thread.status === "done"
-                  ? "text-emerald-200 border-emerald-300/40"
-                  : "text-accent border-accent/40";
-            const threadCta = getThreadPrimaryCta(thread);
-            const threadCtaHref = resolveDashboardHref
-              ? resolveDashboardHref(threadCta.href, thread)
-              : threadCta.href;
-            const threadRunHref = resolveRunHref ? resolveRunHref(thread) : null;
-            const threadReconciliationHref = resolveReconciliationHref ? resolveReconciliationHref(thread) : null;
-            const timeline = getThreadtimeline(thread);
-            return (
-              <div
-                key={thread.threadId}
-                className={`w-full rounded-lg border px-2 py-2 ${
-                  selected ? "border-accent/40 bg-accent/10" : "border-white/10 bg-black/15"
-                }`}
-              >
-                <button
-                  type="button"
-                  onClick={() => onSelectThread(thread)}
-                  className="w-full text-left transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="truncate text-[10px] text-foreground">{thread.label}</p>
-                    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${tone}`}>
-                      {threadStatusLabel(thread.status)}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">{getThreadStageSummary(thread)}</p>
-                  {showDetails ? (
-                    <div className="mt-2">
-                      <p className="text-[10px] text-muted-foreground/80">timeline</p>
-                      <div className="mt-1 grid grid-cols-2 gap-1">
-                        {timeline.map((step) => {
-                          const toneClass =
-                            step.state === "done"
-                              ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-200"
-                              : step.state === "current"
-                                ? "border-accent/40 bg-accent/10 text-accent"
-                                : "border-white/10 bg-black/20 text-muted-foreground";
-                          const bulletClass =
-                            step.state === "done" ? "bg-emerald-300" : step.state === "current" ? "bg-accent" : "bg-white/30";
-                          return (
-                            <div
-                              key={`${thread.threadId}-${step.id}`}
-                              className={`flex items-center gap-1 rounded-md border px-2 py-1 ${toneClass}`}
-                            >
-                              <span className={`h-1.5 w-1.5 rounded-full ${bulletClass}`} />
-                              <span className="text-[10px]">{timelineStepLabel(step)}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ) : null}
-                  <p className="mt-1 text-[10px] text-muted-foreground/80">
-                    {thread.messageCount} mensagem{thread.messageCount === 1 ? "" : "ens"} • {formatRelativeTime(thread.lastMessageAt)}
-                  </p>
-                </button>
-                {showDetails && showNavigationCtas ? (
-                  <div className="mt-2 flex flex-wrap items-center gap-2">
+          {visibleThreadGroups.map((group) => (
+            <div key={group.key} className="space-y-1">
+              {groupByJourneyActiveOnly && group.label ? (
+                <p className="px-1 text-[10px] uppercase tracking-[0.14em] text-muted-foreground/90">{group.label}</p>
+              ) : null}
+              {group.items.map((thread) => {
+                const selected = selectedThreadId === thread.threadId;
+                const tone =
+                  thread.status === "blocked"
+                    ? "text-rose-200 border-rose-300/40"
+                    : thread.status === "done"
+                      ? "text-emerald-200 border-emerald-300/40"
+                      : thread.status === "waiting"
+                        ? "text-amber-200 border-amber-300/30"
+                        : "text-accent border-accent/40";
+                const threadCta = getThreadPrimaryCta(thread);
+                const threadCtaHref = resolveDashboardHref
+                  ? resolveDashboardHref(threadCta.href, thread)
+                  : threadCta.href;
+                const threadRunHref = resolveRunHref ? resolveRunHref(thread) : null;
+                const threadReconciliationHref = resolveReconciliationHref ? resolveReconciliationHref(thread) : null;
+                const timeline = getThreadtimeline(thread);
+                return (
+                  <div
+                    key={thread.threadId}
+                    className={`w-full rounded-lg border px-2 py-2 ${
+                      selected ? "border-accent/40 bg-accent/10" : "border-white/10 bg-black/15"
+                    }`}
+                  >
                     <button
                       type="button"
                       onClick={() => onSelectThread(thread)}
-                      className="rounded-full border border-accent/40 bg-accent/10 px-2 py-1 text-[10px] text-accent transition hover:bg-accent/20"
+                      className="w-full text-left transition hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"
                     >
-                      Continuar
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="truncate text-[10px] text-foreground">{thread.label}</p>
+                        <span className={`rounded-full border px-2 py-0.5 text-[10px] ${tone}`}>
+                          {threadStatusLabel(thread.status)}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">{getThreadStageSummary(thread)}</p>
+                      {showDetails ? (
+                        <div className="mt-2">
+                          <p className="text-[10px] text-muted-foreground/80">timeline</p>
+                          <div className="mt-1 grid grid-cols-2 gap-1">
+                            {timeline.map((step) => {
+                              const toneClass =
+                                step.state === "done"
+                                  ? "border-emerald-300/40 bg-emerald-500/10 text-emerald-200"
+                                  : step.state === "current"
+                                    ? "border-accent/40 bg-accent/10 text-accent"
+                                    : "border-white/10 bg-black/20 text-muted-foreground";
+                              const bulletClass =
+                                step.state === "done" ? "bg-emerald-300" : step.state === "current" ? "bg-accent" : "bg-white/30";
+                              return (
+                                <div
+                                  key={`${thread.threadId}-${step.id}`}
+                                  className={`flex items-center gap-1 rounded-md border px-2 py-1 ${toneClass}`}
+                                >
+                                  <span className={`h-1.5 w-1.5 rounded-full ${bulletClass}`} />
+                                  <span className="text-[10px]">{timelineStepLabel(step)}</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : null}
+                      <p className="mt-1 text-[10px] text-muted-foreground/80">
+                        {thread.messageCount} {thread.messageCount === 1 ? "mensagem" : "mensagens"} • {formatRelativeTime(thread.lastMessageAt)}
+                      </p>
                     </button>
-                    <Link
-                      to={threadCtaHref}
-                      className="rounded-full border border-white/20 bg-white/10 px-2 py-1 text-[10px] text-foreground transition hover:border-accent/40"
-                    >
-                      {threadCta.label}
-                    </Link>
-                    {threadRunHref ? (
-                      <Link
-                        to={threadRunHref}
-                        className="rounded-full border border-white/20 bg-white/10 px-2 py-1 text-[10px] text-foreground transition hover:border-accent/40"
-                      >
-                        Ver execução
-                      </Link>
-                    ) : null}
-                    {threadReconciliationHref ? (
-                      <Link
-                        to={threadReconciliationHref}
-                        className="rounded-full border border-white/20 bg-white/10 px-2 py-1 text-[10px] text-foreground transition hover:border-accent/40"
-                      >
-                        Reconciliação
-                      </Link>
+                    {showDetails && showNavigationCtas ? (
+                      <div className="mt-2 flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => onSelectThread(thread)}
+                          className="rounded-full border border-accent/40 bg-accent/10 px-2 py-1 text-[10px] text-accent transition hover:bg-accent/20"
+                        >
+                          Continuar
+                        </button>
+                        <Link
+                          to={threadCtaHref}
+                          className="rounded-full border border-white/20 bg-white/10 px-2 py-1 text-[10px] text-foreground transition hover:border-accent/40"
+                        >
+                          {threadCta.label}
+                        </Link>
+                        {threadRunHref ? (
+                          <Link
+                            to={threadRunHref}
+                            className="rounded-full border border-white/20 bg-white/10 px-2 py-1 text-[10px] text-foreground transition hover:border-accent/40"
+                          >
+                            Ver execução
+                          </Link>
+                        ) : null}
+                        {threadReconciliationHref ? (
+                          <Link
+                            to={threadReconciliationHref}
+                            className="rounded-full border border-white/20 bg-white/10 px-2 py-1 text-[10px] text-foreground transition hover:border-accent/40"
+                          >
+                            Reconciliação
+                          </Link>
+                        ) : null}
+                      </div>
                     ) : null}
                   </div>
-                ) : null}
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          ))}
         </div>
       )}
       {showTimelineLegend ? (

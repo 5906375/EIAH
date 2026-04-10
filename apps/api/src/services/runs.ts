@@ -210,6 +210,9 @@ export async function finalizeRunRecord(params: {
   response?: unknown;
   traceId?: string | null;
   errorCode?: string | null;
+  txId?: string | null;
+  criticalHash?: string | null;
+  sclTxId?: string | null;
 }) {
   const client = resolveClient(params.tenantId, params.workspaceId, params.prisma);
   const responseData = toJsonData(params.response);
@@ -239,6 +242,9 @@ export async function finalizeRunRecord(params: {
       traceId: ensureTraceId(params.traceId),
       finishedAt: new Date(),
       errorCode: params.errorCode ?? null,
+      ...(params.txId !== undefined ? { txId: params.txId } : {}),
+      ...(params.criticalHash !== undefined ? { criticalHash: params.criticalHash } : {}),
+      ...(params.sclTxId !== undefined ? { sclTxId: params.sclTxId } : {}),
     },
   });
 }
