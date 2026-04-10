@@ -80,6 +80,7 @@ import {
 import { getMemoryService } from "../services/memory";
 import { createGuardrailLedgerStore } from "../services/guardrailLedgerStore";
 import { appendSclRecord } from "../services/sclLedger";
+import { resolveObserveAgentId } from "./runWorkerObserve";
 
 /* ──────────────────────────────────────────────
    Action Registry / Tenant Actions
@@ -1160,7 +1161,11 @@ export async function processRunPayload(payload: RunQueuePayload) {
                   getEnvNumber("MEMORY_OBSERVE_MAX_CHARS", DEFAULT_MEMORY_CONTENT_MAX_CHARS)
                 );
 
-          const { maskedText, flags } = await judgeResult(agentId, observeText, {
+          const judgeAgentId = resolveObserveAgentId({
+            contextAgentId: (orchestratorContext as { agentId?: unknown } | null)?.agentId,
+            runAgentId: agent,
+          });
+          const { maskedText, flags } = await judgeResult(judgeAgentId, observeText, {
             runId,
             tenantId,
             workspaceId,
@@ -1192,6 +1197,7 @@ export async function processRunPayload(payload: RunQueuePayload) {
               action: orchestratorContext.currentStep?.action ?? null,
               masked: flags.length > 0,
               judgeFlags: flags,
+              judgeAgentId,
             },
           });
         },
@@ -1449,6 +1455,9 @@ export async function processRunPayload(payload: RunQueuePayload) {
             response: { error: reason, guardrails: guardrailReport },
             traceId: snapshot?.traceId ?? null,
             errorCode: "GUARDRAILS_BLOCKED",
+            txId: scl.txId,
+            criticalHash: scl.criticalHash,
+            sclTxId: scl.txId,
           });
 
           return;
@@ -1503,6 +1512,9 @@ export async function processRunPayload(payload: RunQueuePayload) {
         status: "success",
         response: succeededResponse,
         traceId: snapshot?.traceId ?? null,
+        txId: scl.txId,
+        criticalHash: scl.criticalHash,
+        sclTxId: scl.txId,
       });
 
       const charged = await chargeRun({
@@ -1611,6 +1623,9 @@ export async function processRunPayload(payload: RunQueuePayload) {
         status: "error",
         response: { error: message },
         errorCode: "EXECUTION_FAILED",
+        txId: scl.txId,
+        criticalHash: scl.criticalHash,
+        sclTxId: scl.txId,
       });
 
       await emitRunEvent({
