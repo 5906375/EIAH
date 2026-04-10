@@ -10,6 +10,7 @@ import {
   type AgentBillingSummaryItem,
   type TenantBillingSummary,
 } from "@/lib/api";
+import { IMOB_BUSINESS_QUICK_ACTIONS } from "@/features/imob/businessQuickActions";
 import { updateSession, useSession } from "@/state/sessionStore";
 
 function hasActiveImobInstall(items: Array<{ product: string; status: string }>) {
@@ -151,7 +152,7 @@ const ImobMarketplacePage: React.FC = () => {
         <p className="text-xs uppercase tracking-[0.35em] text-accent">Marketplace</p>
         <h1 className="mt-2 text-2xl font-semibold text-foreground">IMOB Network</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Ative a vertical imobiliária para liberar Chat Operacional, Imóveis, Processos e Parceiros.
+          Ative a vertical imobiliária para liberar um assistente operacional agent-driven com chat contextual, acompanhamento de casos e execução governada no workspace.
         </p>
         <p className="mt-3 text-xs uppercase tracking-[0.22em] text-muted-foreground/80">
           White-label ativo: {brandName} • {workspaceLabel}
@@ -278,6 +279,40 @@ const ImobMarketplacePage: React.FC = () => {
             </li>
           </ul>
         </aside>
+      </section>
+
+      <section className="rounded-3xl border border-white/10 bg-surface/60 p-6">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Soluções rápidas para o negócio imobiliário</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Entradas diretas para lead, compra, venda, locação, cadastro e documentação sem abrir uma interface nova.
+            </p>
+          </div>
+          <span className="rounded-full border border-white/15 bg-black/20 px-3 py-1 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+            negócio primeiro
+          </span>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {IMOB_BUSINESS_QUICK_ACTIONS.map((item) => {
+            const target = isInstalled
+              ? `/app/imob/chat?domain=imob&autoprompt=${encodeURIComponent(item.autoprompt)}`
+              : "/app/marketplace/imob";
+            return (
+              <Link
+                key={item.id}
+                to={target}
+                className="rounded-2xl border border-white/10 bg-black/20 p-4 transition hover:border-accent/40"
+              >
+                <p className="text-sm font-semibold text-foreground">{item.title}</p>
+                <p className="mt-2 text-sm text-muted-foreground">{item.summary}</p>
+                <p className="mt-3 text-[10px] uppercase tracking-[0.18em] text-accent">
+                  {isInstalled ? "Abrir no chat IMOB" : "Ativar IMOB para usar"}
+                </p>
+              </Link>
+            );
+          })}
+        </div>
       </section>
     </div>
   );

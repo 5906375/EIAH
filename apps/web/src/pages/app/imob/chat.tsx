@@ -11,22 +11,20 @@ import {
   apiGetBillingReconciliationSummary,
   apiGenerateImobContract,
   apiGetImobChatInterviewState,
-  apiGetImobChatConversationExport,
-  apiGetImobChatTelemetrySummary,
-  apiGetQuota,
   apiGetRun,
   apiGetRunCostBreakdown,
-  apiGetTenantBillingSummary,
   apiSearchImobKnowledge,
   apiUploadDocuments,
   apiResolveImobAttachment,
   apiApplyImobAttachmentCrmSuggestion,
   apiFetchUploadBlob,
+  apiLookupImobCep,
   apiListImobChatConversations,
   apiListImobChatMessages,
   apiListImobChatThreads,
   apiUpsertImobChatInterviewState,
   type ImobCaseContext,
+  type ImobCaseRecommendedAction,
   type ImobChatConversation,
   type ImobContractInterviewState,
   type ImobChatMessage,
@@ -34,8 +32,9 @@ import {
   type ImobKnowledgeSearchResponse,
   type AgentProtocolActionContract,
   type ImobPresentationMetadata,
+  type ImobPresentationBlock,
   type ImobPresentationForm,
-  type TenantBillingSummary,
+  type ImobPresentationWidget,
 } from "@/lib/api";
 import { useSession } from "@/state/sessionStore";
 import {
@@ -59,6 +58,7 @@ import {
   type ContractInterviewState,
 } from "@/features/imob/contractInterviewEngine";
 import { ThreadPanel } from "@/features/imob/ThreadPanel";
+import { ImobChatWidgets } from "@/features/imob/ImobChatWidgets";
 import { KnowledgeCard, type KnowledgeAction } from "@/features/imob/KnowledgeCard";
 import { ImobKnowledgeViewer } from "@/features/imob/ImobKnowledgeViewer";
 import { ImobAccessGateCard } from "@/components/imob/ImobAccessGateCard";
@@ -99,7 +99,7 @@ type MessageCard = {
   thread?: {
     id: string;
     label: string;
-    status?: "active" | "done" | "blocked";
+    status?: "active" | "waiting" | "done" | "blocked";
   };
   runId?: string;
   ctas?: CardCta[];
@@ -135,12 +135,15 @@ type ChatMessage = {
   id: string;
   role: "user" | "assistant" | "system";
   text: string;
+  hiddenFromTimeline?: boolean;
   presentationMetadata?: ImobPresentationMetadata;
+  blocks?: ImobPresentationBlock[];
+  widget?: ImobPresentationWidget;
   form?: ImobPresentationForm;
   thread?: {
     id: string;
     label: string;
-    status?: "active" | "done" | "blocked";
+    status?: "active" | "waiting" | "done" | "blocked";
   };
   card?: MessageCard;
   caseContext?: ImobCaseContext;
@@ -160,6 +163,8 @@ type PendingExecution = {
   presentationMeta?: Pick<ImobResolveTurnResponse["presentation"], "owner" | "nextStep" | "blocker" | "pendingFieldLabels" | "dedupeKey" | "suggestedNextAction">;
   presentationText: string;
   presentationForm?: ImobResolveTurnResponse["presentation"]["form"];
+  presentationCard?: ImobResolveTurnResponse["presentation"]["card"];
+  presentationBlocks?: ImobResolveTurnResponse["presentation"]["blocks"];
   receiptEndpointTemplate?: string;
   preparedAt: number;
 };
@@ -172,18 +177,9 @@ type RunFinanceSummary = {
   hasGap: boolean;
 };
 
-type WorkspaceBillingContext = {
-  workspaceCostCents: number;
-  workspaceRuns: number;
-  quotaPercent: number;
-  monthUsageCents: number;
-  softLimitCents: number;
-  hardLimitCents: number;
-};
-
 function mapApiPresentationCard(
   card: ImobResolveTurnResponse["presentation"]["card"] | undefined,
-  thread: { id: string; label: string; status?: "active" | "done" | "blocked" }
+  thread: { id: string; label: string; status?: "active" | "waiting" | "done" | "blocked" }
 ): MessageCard | undefined {
   if (!card) return undefined;
   return {
@@ -202,9 +198,26 @@ function mapApiPresentationForm(
   if (!form) return undefined;
   return {
     ...form,
-    fields: form.fields.map((field) => ({ ...field })),
+    fields: form.fields.map((field) => ({ ...field, options: field.options?.map((option) => ({ ...option })) })),
     actions: form.actions?.map((action) => ({ ...action })),
   };
+}
+
+function mapApiPresentationBlocks(
+  blocks: ImobResolveTurnResponse["presentation"]["blocks"] | undefined,
+): ImobPresentationBlock[] | undefined {
+  if (!blocks || blocks.length === 0) return undefined;
+  return blocks.map((block) => ({
+    ...block,
+    ctas: normalizeCardCtas(block.ctas),
+  }));
+}
+
+function mapPresentationWidget(
+  widget: ImobPresentationWidget | undefined,
+): ImobPresentationWidget | undefined {
+  if (!widget) return undefined;
+  return JSON.parse(JSON.stringify(widget)) as ImobPresentationWidget;
 }
 
 type SelectedKnowledgeContext = {
@@ -239,6 +252,35 @@ function buildCaseMapFromMessages(items: ChatMessage[]) {
   return map;
 }
 
+function resolveBestCaseIdForThread(
+  items: ChatMessage[],
+  threadId: string | null | undefined,
+  threadCaseMap: Record<string, string>,
+  explicitCaseId?: string | null,
+) {
+  if (explicitCaseId && explicitCaseId.trim().length > 0) return explicitCaseId.trim();
+
+  const scopedThreadId = typeof threadId === "string" && threadId.trim().length > 0 ? threadId.trim() : null;
+  if (scopedThreadId && threadCaseMap[scopedThreadId]) return threadCaseMap[scopedThreadId];
+
+  if (scopedThreadId) {
+    for (let index = items.length - 1; index >= 0; index -= 1) {
+      const message = items[index];
+      const messageThreadId = message.caseContext?.threadId ?? message.thread?.id ?? message.card?.thread?.id ?? null;
+      const messageCaseId = message.caseContext?.caseId ?? null;
+      if (messageThreadId === scopedThreadId && messageCaseId) {
+        return messageCaseId;
+      }
+    }
+  }
+
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    const messageCaseId = items[index].caseContext?.caseId ?? null;
+    if (messageCaseId) return messageCaseId;
+  }
+  return null;
+}
+
 function dedupeRunMessages(items: ChatMessage[]) {
   const deduped: ChatMessage[] = [];
   for (const message of items) {
@@ -264,11 +306,12 @@ function dedupeRunMessages(items: ChatMessage[]) {
 }
 
 const SHOW_TECHNICAL_CHAT = false;
+const SHOW_CHAT_FEEDBACK = false;
 const HISTORY_PAGE_SIZE = 30;
 const QUICK_PROMPTS = [
   {
     label: "Captar imóvel",
-    prompt: "Quero captar um imóvel novo e iniciar o cadastro da operação.",
+    prompt: "Quero iniciar uma captação no IMOB. Me mostre opções de próximos passos no chat.",
   },
   {
     label: "Gerar proposta",
@@ -284,29 +327,185 @@ const QUICK_PROMPTS = [
   },
 ] as const;
 
-function statusLabel(status: ChatState) {
-  switch (status) {
-    case "typing":
-      return "Pensando...";
-    case "executing":
-      return "Processando";
-    case "awaiting_user_action":
-      return "Aguardando sua confirmação";
-    case "blocked":
-      return "Precisa de atenção";
-    case "done":
-      return "Concluído";
-    case "idle":
-    default:
-      return "Pronto";
-  }
+const TYPEWRITER_INTERVAL_MS = 12;
+const TYPEWRITER_CHUNK_SIZE = 2;
+const BLOCK_SEQUENCE_INTERVAL_MS = 36;
+
+function TypewriterText(props: {
+  text: string;
+  animate: boolean;
+  onComplete?: () => void;
+}) {
+  const { text, animate, onComplete } = props;
+  const [visibleLength, setVisibleLength] = React.useState(() => (animate ? 0 : text.length));
+  const onCompleteRef = React.useRef(onComplete);
+
+  React.useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  React.useEffect(() => {
+    if (!animate) {
+      setVisibleLength(text.length);
+      return;
+    }
+    setVisibleLength(0);
+    if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      setVisibleLength(text.length);
+      onCompleteRef.current?.();
+      return;
+    }
+    const interval = window.setInterval(() => {
+      setVisibleLength((current) => {
+        const next = Math.min(text.length, current + TYPEWRITER_CHUNK_SIZE);
+        if (next >= text.length) {
+          window.clearInterval(interval);
+          window.setTimeout(() => onCompleteRef.current?.(), 0);
+        }
+        return next;
+      });
+    }, TYPEWRITER_INTERVAL_MS);
+    return () => window.clearInterval(interval);
+  }, [animate, text]);
+
+  const visibleText = animate ? text.slice(0, visibleLength) : text;
+
+  return (
+    <p className="whitespace-pre-wrap">
+      {visibleText}
+      {animate && visibleLength < text.length ? <span className="ml-0.5 inline-block h-[1em] w-[1px] animate-pulse bg-current align-[-0.15em]" /> : null}
+    </p>
+  );
 }
 
-function statusTone(status: ChatState) {
-  if (status === "blocked") return "text-rose-300 border-rose-400/40";
-  if (status === "executing" || status === "typing") return "text-amber-200 border-amber-300/30";
-  if (status === "done") return "text-emerald-300 border-emerald-400/40";
-  return "text-muted-foreground border-white/15";
+function isInternalOpsCta(cta: CardCta) {
+  const label = cta.label.trim().toLowerCase();
+  if (cta.href?.includes("/app/runs")) return true;
+  return (
+    label.includes("execução") ||
+    label.includes("execucao") ||
+    label.includes("detalhes") ||
+    label.includes("histórico") ||
+    label.includes("historico") ||
+    label.includes("recibo")
+  );
+}
+
+function TypingIndicatorBubble() {
+  return (
+    <div className="rounded-2xl bg-black/20 px-4 py-3 text-sm text-foreground transition">
+      <div className="flex items-center gap-1.5">
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current [animation-delay:-0.2s]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current [animation-delay:-0.1s]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-current" />
+      </div>
+    </div>
+  );
+}
+
+function SequentialInlineChoices(props: {
+  items: CardCta[];
+  animateSequence: boolean;
+  renderItem: (cta: CardCta, index: number, visibleLabel: string, isTyping: boolean) => React.ReactNode;
+  onComplete?: () => void;
+}) {
+  const { items, animateSequence, renderItem, onComplete } = props;
+  const [activeIndex, setActiveIndex] = React.useState(() => (animateSequence ? 0 : Math.max(items.length - 1, 0)));
+  const [activeLength, setActiveLength] = React.useState(() => (animateSequence ? 0 : (items[items.length - 1]?.label.length ?? 0)));
+  const [completedCount, setCompletedCount] = React.useState(() => (animateSequence ? 0 : items.length));
+  const labelsKey = React.useMemo(() => items.map((item) => item.id).join("|"), [items]);
+  const onCompleteRef = React.useRef(onComplete);
+
+  React.useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  React.useEffect(() => {
+    if (!animateSequence) {
+      setActiveIndex(Math.max(items.length - 1, 0));
+      setActiveLength(items[items.length - 1]?.label.length ?? 0);
+      setCompletedCount(items.length);
+      return;
+    }
+    setActiveIndex(0);
+    setActiveLength(0);
+    setCompletedCount(0);
+    if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
+      setActiveIndex(Math.max(items.length - 1, 0));
+      setActiveLength(items[items.length - 1]?.label.length ?? 0);
+      setCompletedCount(items.length);
+      onCompleteRef.current?.();
+      return;
+    }
+    if (items.length === 0) {
+      onCompleteRef.current?.();
+      return;
+    }
+  }, [animateSequence, items, labelsKey]);
+
+  React.useEffect(() => {
+    if (!animateSequence) return;
+    if (items.length === 0) return;
+    if (completedCount >= items.length) return;
+    const currentItem = items[activeIndex];
+    if (!currentItem) return;
+
+    const timer = window.setTimeout(() => {
+      if (activeLength < currentItem.label.length) {
+        setActiveLength((current) => Math.min(currentItem.label.length, current + 1));
+        return;
+      }
+
+      const nextCompleted = activeIndex + 1;
+      setCompletedCount(nextCompleted);
+
+      if (nextCompleted >= items.length) {
+        onCompleteRef.current?.();
+        return;
+      }
+
+      setActiveIndex(nextCompleted);
+      setActiveLength(0);
+    }, BLOCK_SEQUENCE_INTERVAL_MS);
+
+    return () => window.clearTimeout(timer);
+  }, [activeIndex, activeLength, animateSequence, completedCount, items]);
+
+  return (
+    <>
+      {items.map((cta, index) => {
+        const visibleLength =
+          index < completedCount
+            ? cta.label.length
+            : index === activeIndex
+              ? activeLength
+              : 0;
+        if (visibleLength <= 0) return null;
+        const isTyping = animateSequence && index === activeIndex && visibleLength < cta.label.length;
+        return renderItem(cta, index, cta.label.slice(0, visibleLength), isTyping);
+      })}
+    </>
+  );
+}
+
+function SequentialBlockLines(props: {
+  items: string[];
+  animateSequence: boolean;
+  renderItem: (text: string, index: number, visibleText: string, isTyping: boolean) => React.ReactNode;
+  onComplete?: () => void;
+}) {
+  const mappedItems = React.useMemo(
+    () => props.items.map((text, index) => ({ id: `line-${index}-${text.slice(0, 18)}`, label: text })),
+    [props.items],
+  );
+  return (
+    <SequentialInlineChoices
+      items={mappedItems}
+      animateSequence={props.animateSequence}
+      onComplete={props.onComplete}
+      renderItem={(item, index, visibleLabel, isTyping) => props.renderItem(item.label, index, visibleLabel, isTyping)}
+    />
+  );
 }
 
 function formatReconciliationIssue(issue: string) {
@@ -376,6 +575,92 @@ function normalizeCardCtas(ctas?: CardCta[]) {
   return ctas.map(normalizeCardCta);
 }
 
+function buildCanonicalRecommendedActionCtas(caseContext?: ImobCaseContext | null): CardCta[] {
+  const recommended = (caseContext?.canonical?.recommendedActions ?? []) as ImobCaseRecommendedAction[];
+  return recommended.slice(0, 3).map((action, index) => ({
+    id: `canonical-${action.id}`,
+    label: action.label,
+    kind: index === 0 ? "primary" : "neutral",
+    action: "send_suggested_message",
+    nextMessage: action.inputHint ?? action.label,
+    payload: {
+      recommendedActionId: action.id,
+      recommendedActionType: action.actionType,
+      journeyType: caseContext?.canonical?.journeyType ?? null,
+      stage: caseContext?.stage ?? null,
+      reasonCode: action.reasonCode ?? null,
+    },
+  }));
+}
+
+function mergeRecommendedActionCtas(existing: CardCta[] | undefined, caseContext?: ImobCaseContext | null) {
+  const canonicalCtas = buildCanonicalRecommendedActionCtas(caseContext);
+  const normalizedExisting = normalizeCardCtas(existing) ?? [];
+  if (canonicalCtas.length === 0) return normalizedExisting.length > 0 ? normalizedExisting : undefined;
+  const merged: CardCta[] = [...normalizedExisting];
+  for (const cta of canonicalCtas) {
+    if (merged.some((item) => item.id === cta.id || item.label === cta.label)) continue;
+    merged.push(cta);
+  }
+  return merged;
+}
+
+function formatCanonicalJourneyType(value: string | null | undefined) {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (normalized === "property_capture") return "Captação";
+  if (normalized === "lead_qualification") return "Qualificação";
+  if (normalized === "proposal") return "Proposta";
+  if (normalized === "visit_follow_up") return "Visita";
+  if (normalized === "negotiation") return "Negociação";
+  if (normalized === "documentation") return "Documentação";
+  if (normalized === "contract") return "Contrato";
+  if (normalized === "closing") return "Fechamento";
+  if (normalized === "commission") return "Comissão";
+  if (normalized === "temporada_rules") return "Regras de temporada";
+  return "Operação";
+}
+
+function buildCanonicalJourneyCard(caseContext?: ImobCaseContext | null): MessageCard | undefined {
+  const recommended = caseContext?.canonical?.recommendedActions ?? [];
+  if (!caseContext?.canonical?.journeyType || recommended.length === 0) return undefined;
+  return {
+    type: "action",
+    title: "Próximas ações da jornada",
+    lines: [
+      `Jornada: ${formatCanonicalJourneyType(caseContext.canonical.journeyType)}`,
+      `Etapa atual: ${caseContext.stage}`,
+      ...(caseContext.nextStep ? [`Próximo passo recomendado: ${caseContext.nextStep}`] : []),
+    ],
+    ctas: mergeRecommendedActionCtas(undefined, caseContext),
+    actionsLayout: "inline",
+  };
+}
+
+function mapReplyCard(
+  card: ImobResolveTurnResponse["presentation"]["card"] | undefined,
+  thread: { id: string; label: string; status?: "active" | "waiting" | "done" | "blocked" },
+  caseContext?: ImobCaseContext | null,
+): MessageCard | undefined {
+  const mapped = mapApiPresentationCard(card, thread);
+  if (mapped) {
+    return {
+      ...mapped,
+      ctas: mergeRecommendedActionCtas(mapped.ctas, caseContext),
+    };
+  }
+  return buildCanonicalJourneyCard(caseContext);
+}
+
+function buildJourneyTelemetryMetadata(caseContext?: ImobCaseContext | null, extra?: Record<string, unknown>) {
+  return {
+    journeyType: caseContext?.canonical?.journeyType ?? null,
+    stage: caseContext?.stage ?? null,
+    recommendedActionCount: caseContext?.canonical?.recommendedActions?.length ?? 0,
+    caseId: caseContext?.caseId ?? null,
+    ...extra,
+  };
+}
+
 function isExternalHref(href?: string) {
   return typeof href === "string" && (/^https?:\/\//i.test(href) || href.startsWith("/api/uploads/"));
 }
@@ -414,13 +699,64 @@ function normalizeImobFormValue(value: string) {
   return value.trim();
 }
 
+function isLikelyEmail(value: string) {
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed) return true;
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(trimmed)) return false;
+  if (trimmed.endsWith(".cm")) return false;
+  return true;
+}
+
+function isLikelyPhone(value: string) {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return true;
+  return digits.length >= 10 && digits.length <= 11;
+}
+
+function normalizeCepValue(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 8);
+  if (digits.length <= 5) return digits;
+  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+}
+
+function resolveFieldAutofillTarget(
+  field: ImobPresentationForm["fields"][number],
+  target: "address" | "city" | "neighborhood",
+) {
+  return field.lookup?.kind === "cep" ? field.lookup.autoFillTargets[target] ?? null : null;
+}
+
 function buildPresentationFormDisplayText(form: ImobPresentationForm, actionId: "cancel" | "submit") {
   const actionLabel = form.actions?.find((action) => action.id === actionId)?.label?.trim();
+  const formLabel = form.label?.trim();
+  const fallbackByEntity =
+    form.entity === "imovel"
+      ? "Cadastrar imóvel"
+      : form.entity === "proprietario" || form.entity === "vendedor" || form.entity === "locador"
+        ? "Cadastrar proprietário"
+        : form.entity === "lead" || form.entity === "comprador" || form.entity === "locatario"
+          ? "Qualificar lead"
+          : form.entity === "documentos"
+            ? "Revisar documentos"
+            : "Continuar";
   if (actionId === "submit") {
     if (actionLabel && /salvar/i.test(actionLabel)) return actionLabel;
-    return form.label;
+    return formLabel || fallbackByEntity;
   }
-  return actionLabel || form.label;
+  return actionLabel || formLabel || fallbackByEntity;
+}
+
+function allowsPartialCreateSave(form: ImobPresentationForm) {
+  if (form.action !== "create") return false;
+  return [
+    "proprietario",
+    "vendedor",
+    "locador",
+    "imovel",
+    "lead",
+    "comprador",
+    "locatario",
+  ].includes(form.entity);
 }
 
 function printMessageCard(message: ChatMessage) {
@@ -465,6 +801,7 @@ function buildPresentationFormSubmission(form: ImobPresentationForm, values: Rec
     imovel: [
       normalized.propertyType ? `tipo do imóvel ${normalized.propertyType}` : null,
       normalized.goal ? `finalidade do imóvel ${normalized.goal}` : null,
+      normalized.cep ? `cep do imóvel ${normalized.cep}` : null,
       normalized.city ? `cidade do imóvel ${normalized.city}` : null,
       normalized.address ? `endereço do imóvel ${normalized.address}` : null,
     ],
@@ -522,6 +859,15 @@ function buildPresentationFormSubmission(form: ImobPresentationForm, values: Rec
     ],
   };
   const compositeKey = `${form.entity}:${form.action}`;
+  if ((form.entity === "proprietario" || form.entity === "vendedor" || form.entity === "locador") && form.action !== "update") {
+    return [
+      "cadastrar proprietário",
+      ...(linesByEntity[form.entity] ?? []),
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+
   if (compositeKey === "proprietario:update" || compositeKey === "vendedor:update" || compositeKey === "locador:update") {
     return [
       form.subjectId ? `atualizar proprietário ${form.subjectId}` : "atualizar proprietário",
@@ -803,6 +1149,12 @@ type OperationalPresentationMeta = Pick<
   "owner" | "nextStep" | "blocker" | "pendingFieldLabels" | "dedupeKey" | "suggestedNextAction"
 >;
 
+function sanitizeOperationalNextStepCopy(value: string | null | undefined) {
+  const text = (value ?? "").trim();
+  if (!text) return null;
+  return text.replace(/^vincular\s+do\s+/i, "Vincular o ");
+}
+
 function formatOperationalPendingField(field: string, threadLabel?: string | null, flow?: string | null) {
   const area = getThreadBusinessArea(threadLabel, flow);
   const common: Record<string, string> = {
@@ -864,7 +1216,7 @@ function buildOperationalNextStep(
     return {
       owner: (presentationMeta.owner as OperationalOwner | undefined) ?? (area === "contract" ? "Jurídico" : area === "commission" ? "Financeiro" : "Corretor"),
       nextStep:
-        presentationMeta.nextStep ??
+        sanitizeOperationalNextStepCopy(presentationMeta.nextStep) ??
         (area === "commission"
           ? pending.length > 0
             ? "Confirmar pendências da comissão antes do repasse."
@@ -962,7 +1314,7 @@ function nextBusinessStep(
   if (pending.length > 0) {
     lines.push(`Pendências atuais: ${pending.join(", ")}.`);
   }
-  if (presentationMeta?.suggestedNextAction) {
+  if (pending.length > 0 && presentationMeta?.suggestedNextAction) {
     lines.push(presentationMeta.suggestedNextAction);
   }
 
@@ -976,10 +1328,11 @@ function buildHumanOperationalUpdate(
   threadLabel?: string | null,
   pendingFields?: string[],
   presentationMeta?: OperationalPresentationMeta,
-  flow?: string | null
+  flow?: string | null,
+  options?: { suppressNextStep?: boolean }
 ) {
   const area = getThreadBusinessArea(threadLabel, flow);
-  const hasPending = Boolean((presentationMeta?.pendingFieldLabels?.length ?? 0) || pendingFields?.length || presentationMeta?.suggestedNextAction);
+  const hasPending = Boolean((presentationMeta?.pendingFieldLabels?.length ?? 0) || pendingFields?.length);
   const summary = (() => {
     if (!hasPending) return humanRunStatusBusiness(status, threadLabel, flow);
     if (area === "proposal") return "A proposta ainda precisa de complementos para seguir.";
@@ -991,13 +1344,32 @@ function buildHumanOperationalUpdate(
     if (area === "commission") return "A liquidação da comissão ainda precisa de confirmações para seguir.";
     return humanRunStatusBusiness(status, threadLabel, flow);
   })();
-  const followUps = nextBusinessStep(status, threadLabel, pendingFields, presentationMeta, flow);
+  const followUps = options?.suppressNextStep ? [] : nextBusinessStep(status, threadLabel, pendingFields, presentationMeta, flow);
   if (!["commission", "contract", "proposal", "visit", "lead"].includes(area) && flow !== "owner.create" && flow !== "property.create" && !presentationMeta?.suggestedNextAction) return summary;
   if (followUps.length === 0) return summary;
   return [summary, ...followUps].join("\n");
 }
 
-function buildRentalContractTemplateMessage(thread: { id: string; label: string; status?: "active" | "done" | "blocked" }): ChatMessage {
+function pickPostSuccessBlocks(blocks: ImobPresentationBlock[] | undefined) {
+  if (!blocks?.length) return [];
+  return blocks.filter((block) => block.phase === "post_success");
+}
+
+function buildPostSuccessPresentationFromBlocks(blocks: ImobPresentationBlock[]) {
+  const confirmation = blocks.find((block) => block.kind === "confirmation" && block.text?.trim());
+  const summary = blocks.find((block) => block.kind === "summary");
+  const nextActions = blocks.find((block) => block.kind === "next_actions" && (block.ctas?.length ?? 0) > 0);
+  return {
+    text: confirmation?.text?.trim() ?? null,
+    lines: summary?.lines?.filter((line): line is string => typeof line === "string" && line.trim().length > 0) ?? [],
+    ctas: nextActions?.ctas ? normalizeCardCtas(nextActions.ctas) : undefined,
+    actionsLayout: nextActions?.actionsLayout,
+    title: nextActions?.title ?? "Próximos passos",
+    blocks,
+  };
+}
+
+function buildRentalContractTemplateMessage(thread: { id: string; label: string; status?: "active" | "waiting" | "done" | "blocked" }): ChatMessage {
   const rentalTemplate = getDataInputTemplate("imob.locacao_contrato_v2");
   const fallbackLines = [
     "Locador: Nome completo | CPF/CNPJ | Telefone | E-mail",
@@ -1065,12 +1437,26 @@ function mapStoredMessageToChat(message: ImobChatMessage): ChatMessage {
     formCandidate && typeof formCandidate === "object" && !Array.isArray(formCandidate)
       ? (formCandidate as ImobPresentationForm)
       : undefined;
+  const widgetCandidate = metadata?.widget;
+  const widget =
+    widgetCandidate && typeof widgetCandidate === "object" && !Array.isArray(widgetCandidate)
+      ? (widgetCandidate as ImobPresentationWidget)
+      : undefined;
+  const blocksCandidate = metadata?.blocks;
+  const blocks =
+    Array.isArray(blocksCandidate)
+      ? (blocksCandidate as ImobPresentationBlock[]).map((block) => ({ ...block, ctas: normalizeCardCtas(block.ctas) }))
+      : undefined;
+  const hiddenFromTimeline = metadata?.hiddenFromTimeline === true;
 
   return {
     id: message.id,
     role: message.role,
     text: message.content,
+    hiddenFromTimeline,
     presentationMetadata,
+    blocks,
+    widget,
     form,
     thread: message.threadId
       ? {
@@ -1089,7 +1475,6 @@ const ImobChatPage: React.FC = () => {
   const imobAccessGate = session.accessGate?.product === "IMOB" ? session.accessGate : null;
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const brandName = session.branding?.brandName?.trim() || "Tenant";
   const workspaceLabel = session.branding?.workspaceLabel?.trim() || session.workspaceId;
   const isGateBlocked = Boolean(imobAccessGate);
   const requestedConversationId = React.useMemo(() => {
@@ -1133,25 +1518,16 @@ const ImobChatPage: React.FC = () => {
   const [historyLimit, setHistoryLimit] = React.useState(HISTORY_PAGE_SIZE);
   const [historyLoadingMore, setHistoryLoadingMore] = React.useState(false);
   const [hasMoreHistory, setHasMoreHistory] = React.useState(false);
-  const [telemetrySummary, setTelemetrySummary] = React.useState<{
-    totals: {
-      events: number;
-      messageToPlanAvgMs: number | null;
-      planToExecuteAvgMs: number | null;
-      chatToRunCoveragePct: number;
-      persistSuccessRatePct: number;
-    };
-    generatedAt: string;
-  } | null>(null);
-  const [telemetryLoading, setTelemetryLoading] = React.useState(false);
-  const [exportingFormat, setExportingFormat] = React.useState<"json" | "pdf" | null>(null);
   const [messageFeedback, setMessageFeedback] = React.useState<Record<string, "up" | "down">>({});
   const [openOptionsMessageId, setOpenOptionsMessageId] = React.useState<string | null>(null);
   const [rejectLockedMessageId, setRejectLockedMessageId] = React.useState<string | null>(null);
   const [crmSuggestionLoadingId, setCrmSuggestionLoadingId] = React.useState<string | null>(null);
+  const [typewriterMessageIds, setTypewriterMessageIds] = React.useState<Record<string, true>>({});
+  const [sequentialChoiceMessageIds, setSequentialChoiceMessageIds] = React.useState<Record<string, true>>({});
   const [selectedKnowledgeContext, setSelectedKnowledgeContext] = React.useState<SelectedKnowledgeContext | null>(null);
   const [formValuesByMessageId, setFormValuesByMessageId] = React.useState<Record<string, Record<string, string>>>({});
   const [formErrorsByMessageId, setFormErrorsByMessageId] = React.useState<Record<string, Record<string, string>>>({});
+  const [formLookupLoadingByMessageId, setFormLookupLoadingByMessageId] = React.useState<Record<string, Record<string, boolean>>>({});
   const [isNearBottom, setIsNearBottom] = React.useState(true);
   const [showJumpToLatest, setShowJumpToLatest] = React.useState(false);
   const [contractInterviewState, setContractInterviewState] = React.useState<ContractInterviewState | null>(null);
@@ -1160,7 +1536,6 @@ const ImobChatPage: React.FC = () => {
   const [singleEditFieldId, setSingleEditFieldId] = React.useState<string | null>(null);
   const [reviewActionLoading, setReviewActionLoading] = React.useState<"edit" | "confirm" | "decline" | null>(null);
   const [runFinanceByRunId, setRunFinanceByRunId] = React.useState<Record<string, RunFinanceSummary>>({});
-  const [workspaceBillingContext, setWorkspaceBillingContext] = React.useState<WorkspaceBillingContext | null>(null);
   const contractEditableFields = React.useMemo(() => {
     if (!contractInterviewState?.contractType) return [];
     return CONTRACT_SCHEMAS[contractInterviewState.contractType].fields.map((step) => ({
@@ -1197,6 +1572,8 @@ const ImobChatPage: React.FC = () => {
       const history = await apiListImobChatMessages(targetConversationId, { limit });
       const mapped = dedupeRunMessages(history.items.map(mapStoredMessageToChat));
       setMessages(mapped);
+      setTypewriterMessageIds({});
+      setSequentialChoiceMessageIds({});
       sessionRunByThreadRef.current = buildSessionRunMapFromMessages(mapped);
       caseIdByThreadRef.current = buildCaseMapFromMessages(mapped);
       setHasMoreHistory(history.items.length >= limit);
@@ -1206,6 +1583,24 @@ const ImobChatPage: React.FC = () => {
 
   const appendMessage = React.useCallback((message: ChatMessage) => {
     setMessages((prev) => [...prev, message]);
+    if (message.role === "assistant" && message.text.trim().length > 0) {
+      setTypewriterMessageIds((prev) => ({ ...prev, [message.id]: true }));
+    }
+    const hasAnimatedBlocks = Boolean(
+      message.blocks?.some((block) => (block.ctas?.length ?? 0) > 0 || (block.lines?.length ?? 0) > 0)
+    );
+    if (
+      message.role === "assistant" &&
+      (
+        (
+          message.presentationMetadata?.choiceStyle === "inline" &&
+          (message.card?.ctas?.length ?? 0) > 0
+        ) ||
+        hasAnimatedBlocks
+      )
+    ) {
+      setSequentialChoiceMessageIds((prev) => ({ ...prev, [message.id]: true }));
+    }
   }, []);
 
   const updateMessageById = React.useCallback((messageId: string, patch: Partial<ChatMessage>) => {
@@ -1267,9 +1662,38 @@ const ImobChatPage: React.FC = () => {
       const threadIdForLink = explicitThreadId ?? selectedThreadId;
       if (threadIdForLink) {
         params.set("threadId", threadIdForLink);
+        const caseIdForThread = caseIdByThreadRef.current[threadIdForLink] ?? null;
+        if (caseIdForThread) {
+          params.set("caseId", caseIdForThread);
+        } else {
+          params.delete("caseId");
+        }
+      } else {
+        params.delete("caseId");
       }
       const queryString = params.toString();
       return `${path}${queryString ? `?${queryString}` : ""}${hash}`;
+    },
+    [conversationId, selectedThreadId]
+  );
+
+  const withRunContext = React.useCallback(
+    (runId: string, explicitThreadId?: string | null, explicitCaseId?: string | null) => {
+      const params = new URLSearchParams();
+      params.set("domain", "imob");
+      params.set("runId", runId);
+      if (conversationId) {
+        params.set("conversationId", conversationId);
+      }
+      const threadIdForLink = explicitThreadId ?? selectedThreadId;
+      if (threadIdForLink) {
+        params.set("threadId", threadIdForLink);
+        const caseIdForThread = explicitCaseId ?? caseIdByThreadRef.current[threadIdForLink] ?? null;
+        if (caseIdForThread) {
+          params.set("caseId", caseIdForThread);
+        }
+      }
+      return `/app/runs?${params.toString()}`;
     },
     [conversationId, selectedThreadId]
   );
@@ -1306,37 +1730,17 @@ const ImobChatPage: React.FC = () => {
     }
   }, [conversationId, selectedThreadId]);
 
-  const refreshTelemetry = React.useCallback(async (forConversationId?: string | null) => {
-    const currentConversationId = forConversationId ?? conversationId;
-    if (!currentConversationId) return;
-    setTelemetryLoading(true);
-    try {
-      const summary = await apiGetImobChatTelemetrySummary({
-        conversationId: currentConversationId,
-        windowHours: 24,
-      });
-      setTelemetrySummary({
-        totals: summary.data.totals,
-        generatedAt: summary.data.generatedAt,
-      });
-    } catch {
-      // Não quebra UX.
-    } finally {
-      setTelemetryLoading(false);
-    }
-  }, [conversationId]);
-
   const persistMessage = React.useCallback(
     async (
       message: ChatMessage,
-      extra?: { intent?: string; action?: string; conversationId?: string | null; metadata?: Record<string, unknown> }
+      extra?: { intent?: string; action?: string; conversationId?: string | null; metadata?: Record<string, unknown>; contentOverride?: string }
     ) => {
       const targetConversationId = extra?.conversationId ?? conversationId;
       if (!targetConversationId) return;
       try {
         await apiCreateImobChatMessage(targetConversationId, {
           role: message.role,
-          content: message.text,
+          content: extra?.contentOverride ?? message.text,
           intent: extra?.intent,
           action: extra?.action,
           threadId: message.thread?.id ?? message.card?.thread?.id,
@@ -1350,7 +1754,10 @@ const ImobChatPage: React.FC = () => {
             card: message.card ?? null,
             caseContext: message.caseContext ?? null,
             presentationMetadata: message.presentationMetadata ?? null,
+            blocks: message.blocks ?? null,
+            widget: message.widget ?? null,
             form: message.form ?? null,
+            hiddenFromTimeline: message.hiddenFromTimeline === true ? true : undefined,
             ...(extra?.metadata ?? {}),
           },
         });
@@ -1362,7 +1769,6 @@ const ImobChatPage: React.FC = () => {
         });
         void refreshConversations(targetConversationId);
         void refreshThreads(targetConversationId);
-        void refreshTelemetry(targetConversationId);
       } catch {
         void apiCreateImobChatTelemetry({
           conversationId: targetConversationId,
@@ -1373,7 +1779,7 @@ const ImobChatPage: React.FC = () => {
         // F1: falha de persistencia nao bloqueia o fluxo operacional do chat.
       }
     },
-    [conversationId, refreshConversations, refreshTelemetry, refreshThreads]
+    [conversationId, refreshConversations, refreshThreads]
   );
 
   const persistInterviewState = React.useCallback(
@@ -1510,8 +1916,7 @@ const ImobChatPage: React.FC = () => {
       setHistoryLoading(false);
     }
     void refreshThreads(nextConversationId);
-    void refreshTelemetry(nextConversationId);
-  }, [loadConversationMessages, refreshTelemetry, refreshThreads, trackUxEvent]);
+  }, [loadConversationMessages, refreshThreads, trackUxEvent]);
 
   const handleNewConversation = async () => {
     if (pendingExecution) {
@@ -1596,7 +2001,7 @@ const ImobChatPage: React.FC = () => {
     (
       result: ImobKnowledgeSearchResponse,
       turn: ImobResolveTurnResponse,
-      thread: { id: string; label: string; status?: "active" | "done" | "blocked" }
+      thread: { id: string; label: string; status?: "active" | "waiting" | "done" | "blocked" }
     ): MessageCard | undefined => {
       const items = result.items.slice(0, 3);
       const sourceCtas = turn.presentation.card?.ctas ?? [];
@@ -1617,13 +2022,12 @@ const ImobChatPage: React.FC = () => {
 
   React.useEffect(() => {
     if (!conversationId) return;
-    void refreshTelemetry(conversationId);
     void refreshThreads(conversationId);
     const interval = setInterval(() => {
-      void refreshTelemetry(conversationId);
+      void refreshThreads(conversationId);
     }, 15000);
     return () => clearInterval(interval);
-  }, [conversationId, refreshTelemetry, refreshThreads]);
+  }, [conversationId, refreshThreads]);
 
   const explicitRunIds = React.useMemo(
     () =>
@@ -1680,33 +2084,6 @@ const ImobChatPage: React.FC = () => {
   }, [explicitRunIds, runFinanceByRunId]);
 
   React.useEffect(() => {
-    if (!session.workspaceId) {
-      setWorkspaceBillingContext(null);
-      return;
-    }
-    let cancelled = false;
-    void Promise.all([
-      apiGetTenantBillingSummary().catch(() => null),
-      apiGetQuota(session.workspaceId).catch(() => null),
-    ]).then(([summaryResponse, quotaResponse]) => {
-      if (cancelled) return;
-      const billingSummary = summaryResponse?.data as TenantBillingSummary | undefined;
-      const workspaceSummary = billingSummary?.byWorkspace?.find((item) => item.workspaceId === session.workspaceId);
-      setWorkspaceBillingContext({
-        workspaceCostCents: workspaceSummary?.costCents ?? 0,
-        workspaceRuns: workspaceSummary?.runs ?? 0,
-        quotaPercent: quotaResponse?.data?.percent ?? 0,
-        monthUsageCents: quotaResponse?.data?.monthUsageCents ?? workspaceSummary?.costCents ?? 0,
-        softLimitCents: quotaResponse?.data?.softLimitCents ?? 0,
-        hardLimitCents: quotaResponse?.data?.hardLimitCents ?? 0,
-      });
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [session.workspaceId]);
-
-  React.useEffect(() => {
     if (!activeRunId) return;
     if (!(state === "executing" || state === "done")) return;
 
@@ -1731,6 +2108,27 @@ const ImobChatPage: React.FC = () => {
                         : ("active" as const),
                 }
               : undefined;
+          const postSuccessBlocks =
+            run.status === "success"
+              ? pickPostSuccessBlocks(pendingExecution?.presentationBlocks)
+              : [];
+          const postSuccessPresentation = buildPostSuccessPresentationFromBlocks(postSuccessBlocks);
+          const successMenuCtas =
+            run.status === "success"
+              ? (postSuccessPresentation.ctas ?? normalizeCardCtas(pendingExecution?.presentationCard?.ctas))?.filter((cta) => isSendSuggestedMessageAction(cta.action))
+              : undefined;
+          const hasSuccessDirectMenu = Boolean(successMenuCtas && successMenuCtas.length > 0);
+          const statusText = buildHumanOperationalUpdate(
+            run.status,
+            updatedThread?.label,
+            updatedThread?.id ? (conversationStateByThreadRef.current[updatedThread.id]?.operational?.pendingFields ?? pendingExecution?.pendingFields) : pendingExecution?.pendingFields,
+            pendingExecution?.presentationMeta,
+            pendingExecution?.flow,
+            hasSuccessDirectMenu ? { suppressNextStep: true } : undefined,
+          );
+          const finalStatusText = run.status === "success" && postSuccessPresentation.text
+            ? postSuccessPresentation.text
+            : statusText;
           const updatedCard: MessageCard = {
             type: run.status === "blocked" || run.status === "error" ? "risk" : "queue",
             title:
@@ -1740,7 +2138,15 @@ const ImobChatPage: React.FC = () => {
                   ? "Precisa de atenção"
                   : "Andamento",
             thread: updatedThread,
-            lines: nextBusinessStep(run.status, updatedThread?.label, updatedThread?.id ? (conversationStateByThreadRef.current[updatedThread.id]?.operational?.pendingFields ?? pendingExecution?.pendingFields) : pendingExecution?.pendingFields, pendingExecution?.presentationMeta, pendingExecution?.flow),
+            lines: hasSuccessDirectMenu
+              ? postSuccessPresentation.lines
+              : nextBusinessStep(
+                run.status,
+                updatedThread?.label,
+                updatedThread?.id ? (conversationStateByThreadRef.current[updatedThread.id]?.operational?.pendingFields ?? pendingExecution?.pendingFields) : pendingExecution?.pendingFields,
+                pendingExecution?.presentationMeta,
+                pendingExecution?.flow,
+              ),
             runId: activeRunId,
             queue: {
               status: run.status,
@@ -1751,19 +2157,23 @@ const ImobChatPage: React.FC = () => {
               receiptPath: run.txId ? `/api/ledger/${encodeURIComponent(run.txId)}` : null,
               bundlePath: run.criticalHash ? `/api/runs/${encodeURIComponent(activeRunId)}/bundle` : null,
             },
-            ctas: [
-              {
-                id: "view-run",
-                label: "Ver execução",
-                kind: "neutral",
-                href: `/app/runs?domain=imob&runId=${encodeURIComponent(activeRunId)}`,
-              },
-            ],
+            actionsLayout: hasSuccessDirectMenu ? (postSuccessPresentation.actionsLayout ?? "inline") : undefined,
+            ctas: hasSuccessDirectMenu
+              ? successMenuCtas
+              : [
+                  {
+                    id: "view-run",
+                    label: "Ver execução",
+                    kind: "neutral",
+                    href: withRunContext(activeRunId, updatedThread?.id ?? null, pendingExecution?.caseContext?.caseId ?? null),
+                  },
+                ],
           };
 
           if (activeAssistantMessageId) {
             updateMessageById(activeAssistantMessageId, {
-              text: buildHumanOperationalUpdate(run.status, updatedThread?.label, updatedThread?.id ? (conversationStateByThreadRef.current[updatedThread.id]?.operational?.pendingFields ?? pendingExecution?.pendingFields) : pendingExecution?.pendingFields, pendingExecution?.presentationMeta, pendingExecution?.flow),
+              text: finalStatusText,
+              blocks: postSuccessBlocks.length > 0 ? postSuccessBlocks : undefined,
               thread: updatedThread,
               card: updatedCard,
               caseContext: pendingExecution?.caseContext,
@@ -1772,7 +2182,8 @@ const ImobChatPage: React.FC = () => {
             appendMessage({
               id: makeId("assistant"),
               role: "assistant",
-              text: buildHumanOperationalUpdate(run.status, updatedThread?.label, updatedThread?.id ? (conversationStateByThreadRef.current[updatedThread.id]?.operational?.pendingFields ?? pendingExecution?.pendingFields) : pendingExecution?.pendingFields, pendingExecution?.presentationMeta, pendingExecution?.flow),
+              text: finalStatusText,
+              blocks: postSuccessBlocks.length > 0 ? postSuccessBlocks : undefined,
               thread: updatedThread,
               card: updatedCard,
               caseContext: pendingExecution?.caseContext,
@@ -1793,7 +2204,8 @@ const ImobChatPage: React.FC = () => {
               const terminalMessage: ChatMessage = {
                 id: makeId("assistant"),
                 role: "assistant",
-                text: buildHumanOperationalUpdate(run.status, updatedThread?.label, updatedThread?.id ? (conversationStateByThreadRef.current[updatedThread.id]?.operational?.pendingFields ?? pendingExecution?.pendingFields) : pendingExecution?.pendingFields, pendingExecution?.presentationMeta, pendingExecution?.flow),
+                text: finalStatusText,
+                blocks: postSuccessBlocks.length > 0 ? postSuccessBlocks : undefined,
                 thread: updatedThread,
                 card: updatedCard,
                 caseContext: pendingExecution?.caseContext,
@@ -1837,7 +2249,9 @@ const ImobChatPage: React.FC = () => {
     pendingFields?: string[],
     caseContext?: ImobCaseContext,
     presentationMeta?: PendingExecution["presentationMeta"],
-    presentationForm?: ImobResolveTurnResponse["presentation"]["form"]
+    presentationForm?: ImobResolveTurnResponse["presentation"]["form"],
+    presentationCard?: ImobResolveTurnResponse["presentation"]["card"],
+    presentationBlocks?: ImobResolveTurnResponse["presentation"]["blocks"]
   ) => {
       try {
         const discovery = await apiAgentsDiscovery({
@@ -1868,6 +2282,8 @@ const ImobChatPage: React.FC = () => {
           presentationMeta,
           presentationText: presentationText?.trim() || "Preparando...",
           presentationForm,
+          presentationCard,
+          presentationBlocks,
           receiptEndpointTemplate: negotiation.data.verification.endpointTemplate,
           preparedAt: Date.now(),
         };
@@ -1881,6 +2297,7 @@ const ImobChatPage: React.FC = () => {
           id: liveMessageId,
           role: "assistant",
           text: executionPending.presentationText,
+          blocks: executionPending.presentationBlocks?.filter((block) => block.phase === "pre_execution"),
           thread: {
             id: thread.id,
             label: thread.label,
@@ -2206,16 +2623,36 @@ const ImobChatPage: React.FC = () => {
     [appendMessage, persistInterviewState, persistMessage]
   );
 
-  const sendMessageText = async (rawText: string, options?: { displayText?: string }) => {
+  const sendMessageText = async (rawText: string, options?: { displayText?: string; suppressUserEcho?: boolean }) => {
     const text = rawText.trim();
     const displayText = options?.displayText?.trim() || text;
     if (!text) return;
     const selectedThread = selectedThreadId ? threads.find((item) => item.threadId === selectedThreadId) : null;
     const currentThreadId = selectedThread?.threadId ?? activeThread?.id ?? null;
     const currentThreadLabel = selectedThread?.label ?? activeThread?.label ?? null;
+    const userMessageId = makeId("user");
+    if (!options?.suppressUserEcho) {
+      appendMessage({
+        id: userMessageId,
+        role: "user",
+        text: displayText,
+        thread:
+          currentThreadId && currentThreadLabel
+            ? {
+                id: currentThreadId,
+                label: currentThreadLabel,
+                status: "active",
+              }
+            : undefined,
+      });
+    }
+    setInput("");
+    setState("typing");
+    const startedAt = Date.now();
     let turn: ImobResolveTurnResponse;
+    let resolvedCaseId: string | null = null;
     try {
-      const resolvedCaseId = currentThreadId
+      resolvedCaseId = currentThreadId
         ? caseIdByThreadRef.current[currentThreadId] ?? requestedCaseId ?? null
         : requestedCaseId ?? null;
       turn = await resolveImobTurn({
@@ -2252,8 +2689,29 @@ const ImobChatPage: React.FC = () => {
       return;
     }
     const resolvedIntent = turn.executionRequest?.intent ?? null;
+    const caseContextThreadId = typeof turn.caseContext?.threadId === "string" && turn.caseContext.threadId.trim().length > 0
+      ? turn.caseContext.threadId.trim()
+      : null;
+    const sameCaseAsCurrentThread = Boolean(
+      currentThreadId
+      && turn.caseContext?.caseId
+      && (
+        (resolvedCaseId && turn.caseContext.caseId === resolvedCaseId)
+        || caseIdByThreadRef.current[currentThreadId] === turn.caseContext.caseId
+      ),
+    );
     const operationThread = selectedThread
       ? { id: selectedThread.threadId, label: selectedThread.label }
+      : caseContextThreadId
+        ? {
+            id: caseContextThreadId,
+            label: turn.threadLabel,
+          }
+      : sameCaseAsCurrentThread && currentThreadId
+        ? {
+            id: currentThreadId,
+            label: turn.threadLabel,
+          }
       : activeThread && activeThread.label === turn.threadLabel
         ? activeThread
         : {
@@ -2307,23 +2765,22 @@ const ImobChatPage: React.FC = () => {
               reason: message,
             },
           },
-          caseContext: turn.caseContext,
+          caseContext: turn.caseContext ?? undefined,
         });
         setState("blocked");
         return;
       }
     }
 
-    const userMessage: ChatMessage = {
-      id: makeId("user"),
-      role: "user",
-      text: displayText,
-      thread: {
-        id: operationThread.id,
-        label: operationThread.label,
-        status: "active",
-      },
-    };
+    if (!options?.suppressUserEcho) {
+      updateMessageById(userMessageId, {
+        thread: {
+          id: operationThread.id,
+          label: operationThread.label,
+          status: "active",
+        },
+      });
+    }
     const interviewIsActive =
       !!contractInterviewState &&
       (contractInterviewState.status === "collecting" ||
@@ -2333,15 +2790,24 @@ const ImobChatPage: React.FC = () => {
       interviewIsActive &&
       (resolvedIntent === null || resolvedIntent === "adjustment" || resolvedIntent === "contract");
 
-    appendMessage(userMessage);
-    void persistMessage(userMessage, {
+    void persistMessage(
+      {
+        id: userMessageId,
+        role: "user",
+        text: options?.suppressUserEcho ? "" : displayText,
+        hiddenFromTimeline: options?.suppressUserEcho === true,
+        thread: {
+          id: operationThread.id,
+          label: operationThread.label,
+          status: "active",
+        },
+      },
+      {
       conversationId: activeConversationId,
+      contentOverride: text,
       metadata: shouldContinueContractInterview ? { contractInterview: contractInterviewState } : undefined,
-    });
-    setInput("");
-    setState("typing");
-    const startedAt = Date.now();
-
+      }
+    );
     if (shouldContinueContractInterview || resolvedIntent === "contract") {
       const threadForInterview = {
         id: operationThread.id,
@@ -2471,15 +2937,23 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         role: "assistant",
         text: turn.presentation.text,
         presentationMetadata: turn.presentation.metadata,
+        blocks: mapApiPresentationBlocks(turn.presentation.blocks),
+        widget: mapPresentationWidget(turn.presentation.widget),
         form: mapApiPresentationForm(turn.presentation.form),
         thread: { ...baseThread, status: "blocked" },
-        card: mapApiPresentationCard(turn.presentation.card, { ...baseThread, status: "blocked" }),
-        caseContext: turn.caseContext,
+        card: mapReplyCard(turn.presentation.card, { ...baseThread, status: "blocked" }, turn.caseContext),
+        caseContext: turn.caseContext ?? undefined,
       };
       appendMessage(blockedReply);
       void persistMessage(blockedReply, {
         action: turn.action,
         conversationId: activeConversationId,
+      });
+      void apiCreateImobChatTelemetry({
+        conversationId: activeConversationId,
+        event: "message_to_plan_ms",
+        value: Date.now() - startedAt,
+        metadata: buildJourneyTelemetryMetadata(turn.caseContext, { action: turn.action, mode: turn.mode }),
       });
       setState("blocked");
       return;
@@ -2491,15 +2965,32 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         role: "assistant",
         text: turn.presentation.text,
         presentationMetadata: turn.presentation.metadata,
+        blocks: mapApiPresentationBlocks(turn.presentation.blocks),
+        widget: mapPresentationWidget(turn.presentation.widget),
         form: mapApiPresentationForm(turn.presentation.form),
         thread: baseThread,
-        card: mapApiPresentationCard(turn.presentation.card, baseThread),
-        caseContext: turn.caseContext,
+        card: mapReplyCard(turn.presentation.card, baseThread, turn.caseContext),
+        caseContext: turn.caseContext ?? undefined,
       };
       appendMessage(consultReply);
       void persistMessage(consultReply, {
         action: turn.action,
         conversationId: activeConversationId,
+      });
+      void apiCreateImobChatTelemetry({
+        conversationId: activeConversationId,
+        event: "message_to_plan_ms",
+        value: Date.now() - startedAt,
+        metadata: buildJourneyTelemetryMetadata(turn.caseContext, { action: turn.action, mode: turn.mode }),
+      });
+      void apiCreateImobChatTelemetry({
+        conversationId: activeConversationId,
+        event: "ux_interaction",
+        value: 1,
+        metadata: {
+          action: "journey_turn_resolved",
+          ...buildJourneyTelemetryMetadata(turn.caseContext, { action: turn.action, mode: turn.mode }),
+        },
       });
       setActiveThread({ id: baseThread.id, label: baseThread.label });
       setState("done");
@@ -2541,7 +3032,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
             conversationId: activeConversationId,
             event: "message_to_plan_ms",
             value: Date.now() - startedAt,
-            metadata: { action: turn.action, mode: turn.mode, resultTotal: search.data.total },
+            metadata: buildJourneyTelemetryMetadata(turn.caseContext, { action: turn.action, mode: turn.mode, resultTotal: search.data.total }),
           });
         }
         setActiveThread({ id: baseThread.id, label: baseThread.label });
@@ -2569,9 +3060,10 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         id: makeId("assistant"),
         role: "assistant",
         text: inventory.presentation.text,
+        widget: mapPresentationWidget(inventory.presentation.widget),
         thread: baseThread,
-        card: mapApiPresentationCard(inventory.presentation.card, baseThread),
-        caseContext: turn.caseContext,
+        card: mapReplyCard(inventory.presentation.card, baseThread, turn.caseContext),
+        caseContext: turn.caseContext ?? undefined,
       };
       appendMessage(searchReply);
       void persistMessage(searchReply, {
@@ -2584,7 +3076,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
           conversationId: activeConversationId,
           event: "message_to_plan_ms",
           value: Date.now() - startedAt,
-          metadata: { action: turn.action, mode: turn.mode },
+          metadata: buildJourneyTelemetryMetadata(turn.caseContext, { action: turn.action, mode: turn.mode }),
         });
       }
       setActiveThread({ id: baseThread.id, label: baseThread.label });
@@ -2612,7 +3104,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       turn.presentation.text,
       turn.conversationState.operational?.flow,
       turn.conversationState.operational?.pendingFields,
-      turn.caseContext,
+      turn.caseContext ?? undefined,
       {
         owner: turn.presentation.owner,
         nextStep: turn.presentation.nextStep,
@@ -2622,6 +3114,8 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         suggestedNextAction: turn.presentation.suggestedNextAction,
       },
       turn.presentation.form,
+      turn.presentation.card,
+      turn.presentation.blocks,
     );
   };
 
@@ -2701,6 +3195,20 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     await sendMessageText(text);
   };
 
+  const handleWidgetAction = React.useCallback(
+    (action: { id: string; label: string; autoprompt: string }, caseContext?: ImobCaseContext | null) => {
+      trackUxEvent(
+        "widget_action_selected",
+        buildJourneyTelemetryMetadata(caseContext, {
+          widgetActionId: action.id,
+          widgetActionLabel: action.label,
+        }),
+      );
+      void sendMessageText(action.autoprompt, { displayText: action.label });
+    },
+    [sendMessageText, trackUxEvent]
+  );
+
   const handleDocumentUpload = async (files: FileList | null) => {
     const selectedFiles = Array.from(files ?? []);
     if (selectedFiles.length === 0) return;
@@ -2709,6 +3217,12 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     const uploadThread = selectedThread
       ? { id: selectedThread.threadId, label: selectedThread.label }
       : activeThread ?? { id: makeId("thread"), label: "Documentos" };
+    const resolvedUploadCaseId = resolveBestCaseIdForThread(
+      messages,
+      uploadThread.id,
+      caseIdByThreadRef.current,
+      null,
+    );
 
     let activeConversationId = conversationId;
     if (!activeConversationId) {
@@ -2758,9 +3272,9 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
           ? "Documento anexado ao contexto desta conversa."
           : `${uploadedItems.length} documento(s) anexados ao contexto desta conversa.`,
         thread: { id: uploadThread.id, label: uploadThread.label, status: "active" },
-        caseContext: uploadThread.id && caseIdByThreadRef.current[uploadThread.id]
+        caseContext: resolvedUploadCaseId
           ? {
-              caseId: caseIdByThreadRef.current[uploadThread.id],
+              caseId: resolvedUploadCaseId,
               flow: "documents.collect",
               stage: "collecting",
               status: "pending_data",
@@ -2783,11 +3297,17 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
           attachmentUsed: true,
         },
       });
+      trackUxEvent("attachment_uploaded", {
+        threadId: uploadThread.id,
+        uploadedDocuments: uploadedItems.length,
+        caseId: resolvedUploadCaseId,
+      });
 
       try {
         const attachmentResolution = await apiResolveImobAttachment({
-          caseId: uploadThread.id ? caseIdByThreadRef.current[uploadThread.id] ?? null : null,
+          caseId: resolvedUploadCaseId,
           threadId: uploadThread.id,
+          conversationId: activeConversationId,
           documentIds: uploadedItems.map((item) => item.id),
         });
         if (attachmentResolution.data.caseContext?.caseId && uploadThread.id) {
@@ -2797,12 +3317,14 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
           id: makeId("assistant"),
           role: "assistant",
           text: attachmentResolution.data.presentation.text,
+          blocks: mapApiPresentationBlocks(attachmentResolution.data.presentation.blocks),
+          widget: mapPresentationWidget(attachmentResolution.data.presentation.widget),
           thread: { id: uploadThread.id, label: uploadThread.label, status: attachmentResolution.data.resolved ? "done" : "active" },
-          card: mapApiPresentationCard(attachmentResolution.data.presentation.card, {
+          card: mapReplyCard(attachmentResolution.data.presentation.card, {
             id: uploadThread.id,
             label: uploadThread.label,
             status: attachmentResolution.data.resolved ? "done" : "active",
-          }),
+          }, attachmentResolution.data.caseContext ?? uploadMessage.caseContext),
           caseContext: attachmentResolution.data.caseContext ?? uploadMessage.caseContext,
         };
         appendMessage(attachmentFollowUp);
@@ -2813,6 +3335,14 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
             attachmentResolution: attachmentResolution.data,
           },
         });
+        trackUxEvent(
+          "attachment_validated",
+          buildJourneyTelemetryMetadata(attachmentResolution.data.caseContext ?? uploadMessage.caseContext, {
+            threadId: uploadThread.id,
+            uploadedDocuments: uploadedItems.length,
+            resolved: attachmentResolution.data.resolved,
+          }),
+        );
       } catch (resolutionError) {
         const resolutionMessage =
           resolutionError instanceof ApiError
@@ -2850,7 +3380,6 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       setState("idle");
       void refreshConversations(activeConversationId);
       void refreshThreads(activeConversationId);
-      void refreshTelemetry(activeConversationId);
     } catch (error) {
       const message =
         error instanceof ApiError
@@ -2886,10 +3415,15 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         ? payload.documentIds.filter((value): value is string => typeof value === "string" && value.trim().length > 0)
         : [];
       const mode = payload.mode;
-      const caseId = typeof payload.caseId === "string" && payload.caseId.trim().length > 0 ? payload.caseId : null;
       const threadId = typeof payload.threadId === "string" && payload.threadId.trim().length > 0
         ? payload.threadId
         : message.caseContext?.threadId ?? message.thread?.id ?? message.card?.thread?.id ?? null;
+      const caseId = resolveBestCaseIdForThread(
+        messages,
+        threadId,
+        caseIdByThreadRef.current,
+        typeof payload.caseId === "string" && payload.caseId.trim().length > 0 ? payload.caseId : null,
+      );
       if (documentIds.length === 0 || (mode !== "include" && mode !== "edit" && mode !== "discard")) {
         return;
       }
@@ -2899,6 +3433,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         const response = await apiApplyImobAttachmentCrmSuggestion({
           caseId,
           threadId,
+          conversationId,
           documentIds,
           mode,
         });
@@ -2915,9 +3450,11 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
           role: "assistant",
           text: response.data.presentation.text,
           presentationMetadata: response.data.presentation.metadata,
+          blocks: mapApiPresentationBlocks(response.data.presentation.blocks),
+          widget: mapPresentationWidget(response.data.presentation.widget),
           form: mapApiPresentationForm(response.data.presentation.form),
           thread,
-          card: mapApiPresentationCard(response.data.presentation.card, thread),
+          card: mapReplyCard(response.data.presentation.card, thread, response.data.caseContext ?? message.caseContext),
           caseContext: response.data.caseContext ?? message.caseContext,
         };
         appendMessage(followUp);
@@ -2975,7 +3512,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         setCrmSuggestionLoadingId(null);
       }
     },
-    [appendMessage, conversationId, persistMessage]
+    [appendMessage, conversationId, messages, persistMessage]
   );
 
   const updateFormFieldValue = React.useCallback((messageId: string, fieldName: string, value: string) => {
@@ -2994,27 +3531,109 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     });
   }, []);
 
+  const setFormLookupLoading = React.useCallback((messageId: string, fieldName: string, isLoading: boolean) => {
+    setFormLookupLoadingByMessageId((prev) => ({
+      ...prev,
+      [messageId]: {
+        ...(prev[messageId] ?? {}),
+        [fieldName]: isLoading,
+      },
+    }));
+  }, []);
+
+  const applyCepLookupToForm = React.useCallback(async (message: ChatMessage, fieldName: string, rawValue: string) => {
+    const form = message.form;
+    const field = form?.fields.find((item) => item.name === fieldName);
+    if (!form || !field || field.lookup?.kind !== "cep") return null;
+
+    const normalizedCep = normalizeCepValue(rawValue);
+    updateFormFieldValue(message.id, fieldName, normalizedCep);
+    if (normalizedCep.replace(/\D/g, "").length !== 8) return null;
+
+    setFormLookupLoading(message.id, fieldName, true);
+    try {
+      const response = await apiLookupImobCep(normalizedCep);
+      const nextValues: Array<[string, string | null]> = [
+        [fieldName, response.data.cep],
+        [resolveFieldAutofillTarget(field, "city") ?? "", response.data.city],
+        [resolveFieldAutofillTarget(field, "address") ?? "", response.data.street ?? response.data.address],
+        [resolveFieldAutofillTarget(field, "neighborhood") ?? "", response.data.neighborhood],
+      ];
+      const appliedValues: Record<string, string> = {};
+
+      for (const [targetFieldName, nextValue] of nextValues) {
+        if (!targetFieldName || !nextValue) continue;
+        appliedValues[targetFieldName] = nextValue;
+        updateFormFieldValue(message.id, targetFieldName, nextValue);
+      }
+      return appliedValues;
+    } catch (error) {
+      const reason =
+        error instanceof ApiError
+          ? error.status === 404
+            ? "CEP não encontrado."
+            : `Não consegui consultar o CEP agora. (${error.status})`
+          : "Não consegui consultar o CEP agora.";
+      setFormErrorsByMessageId((prev) => ({
+        ...prev,
+        [message.id]: {
+          ...(prev[message.id] ?? {}),
+          [fieldName]: reason,
+        },
+      }));
+      return null;
+    } finally {
+      setFormLookupLoading(message.id, fieldName, false);
+    }
+  }, [setFormLookupLoading, updateFormFieldValue]);
+
 
   async function handlePresentationFormAction(message: ChatMessage, actionId: "cancel" | "submit") {
-    if (!message.form) return;
+    const form = message.form;
+    if (!form) return;
     if (actionId === "cancel") {
       setFormValuesByMessageId((prev) => ({
         ...prev,
-        [message.id]: Object.fromEntries(message.form.fields.map((field) => [field.name, String(field.value ?? "")])),
+        [message.id]: Object.fromEntries(form.fields.map((field) => [field.name, String(field.value ?? "")])),
       }));
       setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
       return;
     }
 
     const currentValues = Object.fromEntries(
-      message.form.fields.map((field) => [field.name, formValuesByMessageId[message.id]?.[field.name] ?? String(field.value ?? "")])
+      form.fields.map((field) => [field.name, formValuesByMessageId[message.id]?.[field.name] ?? String(field.value ?? "")])
     );
+    const cepField = form.fields.find((field) => field.lookup?.kind === "cep");
+    if (cepField) {
+      const needsAutofill = [
+        resolveFieldAutofillTarget(cepField, "city"),
+        resolveFieldAutofillTarget(cepField, "address"),
+      ].some((targetFieldName) => targetFieldName && !normalizeImobFormValue(currentValues[targetFieldName] ?? ""));
+      if (needsAutofill && normalizeCepValue(currentValues[cepField.name] ?? "").replace(/\D/g, "").length === 8) {
+        const appliedValues = await applyCepLookupToForm(message, cepField.name, currentValues[cepField.name] ?? "");
+        if (appliedValues) {
+          for (const [fieldName, value] of Object.entries(appliedValues)) {
+            currentValues[fieldName] = value;
+          }
+        }
+      }
+    }
+    const partialCreateSave = allowsPartialCreateSave(form);
     const nextErrors: Record<string, string> = {};
-    for (const field of message.form.fields) {
+    for (const field of form.fields) {
       const value = normalizeImobFormValue(currentValues[field.name] ?? "");
       const requiresTypedValue = field.required && !field.allowAttachment;
-      if (requiresTypedValue && !value) {
+      if (!partialCreateSave && requiresTypedValue && !value) {
         nextErrors[field.name] = "Preencha este campo para continuar.";
+        continue;
+      }
+      const normalizedFieldName = field.name.toLowerCase();
+      if (value && (normalizedFieldName.includes("email") || field.type === "email") && !isLikelyEmail(value)) {
+        nextErrors[field.name] = "Informe um e-mail válido.";
+        continue;
+      }
+      if (value && normalizedFieldName.includes("phone") && !isLikelyPhone(value)) {
+        nextErrors[field.name] = "Informe um telefone válido com DDD.";
       }
     }
     if (Object.keys(nextErrors).length > 0) {
@@ -3022,16 +3641,19 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       return;
     }
 
-    const payload = buildPresentationFormSubmission(message.form, currentValues);
+    const payload = buildPresentationFormSubmission(form, currentValues);
     if (!payload.trim()) {
       setFormErrorsByMessageId((prev) => ({
         ...prev,
-        [message.id]: { ownerName: "Informe ao menos um dado para continuar." },
+        [message.id]: { [form.fields[0]?.name ?? "form"]: "Informe ao menos um dado para salvar." },
       }));
       return;
     }
 
-    await sendMessageText(payload, { displayText: buildPresentationFormDisplayText(message.form, actionId) });
+    await sendMessageText(payload, {
+      displayText: buildPresentationFormDisplayText(form, actionId),
+      suppressUserEcho: true,
+    });
   }
 
   const runExecutionFlow = React.useCallback(
@@ -3144,7 +3766,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                 id: "view-run",
                 label: "Ver execução",
                 kind: "neutral",
-                href: `/app/runs?domain=imob&runId=${encodeURIComponent(runId)}`,
+                href: withRunContext(runId, executionPending.thread.id, executionPending.caseContext?.caseId ?? null),
               },
               ...(execution.data.verify.runBundlePath
                 ? [{ id: "open-bundle", label: "Ver dossiê", kind: "neutral" as const, href: execution.data.verify.runBundlePath }]
@@ -3188,7 +3810,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                   id: "view-run",
                   label: "Ver execução",
                   kind: "neutral",
-                  href: `/app/runs?domain=imob&runId=${encodeURIComponent(runId)}`,
+                  href: withRunContext(runId, executionPending.thread.id, executionPending.caseContext?.caseId ?? null),
                 },
               ],
             },
@@ -3200,24 +3822,24 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
             conversationId,
             event: "plan_to_execute_ms",
             value: Date.now() - executionPending.preparedAt,
-            metadata: {
+            metadata: buildJourneyTelemetryMetadata(executionPending.caseContext, {
               runId,
               action: executionPending.plan.action,
               parentRunId: parentRunId ?? null,
               sessionRunId: sessionRunByThreadRef.current[executionPending.thread.id] ?? runId,
               threadId: executionPending.thread.id,
-            },
+            }),
           });
           void apiCreateImobChatTelemetry({
             conversationId,
             event: "chat_to_run_link_coverage",
             value: runId ? 1 : 0,
-            metadata: {
+            metadata: buildJourneyTelemetryMetadata(executionPending.caseContext, {
               runId,
               hasCta: true,
               parentRunId: parentRunId ?? null,
               threadId: executionPending.thread.id,
-            },
+            }),
           });
         }
       } catch (error) {
@@ -3317,90 +3939,6 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     void persistMessage(rejectedMessage);
   };
 
-  const exportConversation = async (format: "json" | "pdf") => {
-    if (!conversationId) return;
-    setExportingFormat(format);
-    try {
-      const payload = await apiGetImobChatConversationExport(conversationId);
-      const exported = payload.export;
-      const safeId = exported.conversation.conversationId.replace(/[^a-zA-Z0-9_-]/g, "");
-      if (format === "json") {
-        const jsonBlob = new Blob([JSON.stringify(exported, null, 2)], {
-          type: "application/json;charset=utf-8",
-        });
-        const url = URL.createObjectURL(jsonBlob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = `imob-chat-${safeId}-audit.json`;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(url);
-        return;
-      }
-
-      const { jsPDF } = await import("jspdf");
-      const doc = new jsPDF({ unit: "pt", format: "a4" });
-      const margin = 36;
-      const lineH = 16;
-      const pageW = doc.internal.pageSize.getWidth();
-      const pageH = doc.internal.pageSize.getHeight();
-      const maxW = pageW - margin * 2;
-      let y = margin;
-
-      const push = (text: string, size = 10, bold = false) => {
-        doc.setFont("helvetica", bold ? "bold" : "normal");
-        doc.setFontSize(size);
-        const lines = doc.splitTextToSize(text, maxW) as string[];
-        for (const line of lines) {
-          if (y > pageH - margin) {
-            doc.addPage();
-            y = margin;
-          }
-          doc.text(line, margin, y);
-          y += lineH;
-        }
-      };
-
-      push("IMOB Chat Audit Export", 14, true);
-      push(`Conversation: ${exported.conversation.title} (${exported.conversation.conversationId})`);
-      push(`GeneratedAt: ${exported.generatedAt}`);
-      push(`Contexto: ${brandName} • ${workspaceLabel}`);
-      push(`Audit Hash (${exported.audit.hashAlgo}): ${exported.audit.hash}`);
-      y += 6;
-      push("Totals", 12, true);
-      push(`message_to_plan_avg_ms: ${exported.telemetry.totals.messageToPlanAvgMs ?? "-"}`);
-      push(`plan_to_execute_avg_ms: ${exported.telemetry.totals.planToExecuteAvgMs ?? "-"}`);
-      push(`chat_to_run_coverage_pct: ${exported.telemetry.totals.chatToRunCoveragePct}`);
-      push(`persist_success_rate_pct: ${exported.telemetry.totals.persistSuccessRatePct}`);
-      y += 6;
-      push("Threads", 12, true);
-      if (!exported.threads.length) {
-        push("nenhuma thread registrada");
-      } else {
-        for (const thread of exported.threads) {
-          push(
-            `${thread.label} (${thread.threadId}) • status=${thread.status} • msgs=${thread.messageCount}`
-          );
-        }
-      }
-      y += 6;
-      push("Messages", 12, true);
-      for (const msg of exported.messages) {
-        push(`[${msg.createdAt}] ${msg.role.toUpperCase()}: ${msg.content}`);
-        push(`intent=${msg.intent ?? "-"} action=${msg.action ?? "-"}`);
-        push(`thread=${msg.threadLabel ?? "-"} (${msg.threadId ?? "-"}) status=${msg.threadStatus ?? "-"}`);
-        push(`runId=${msg.runId ?? "-"} txId=${msg.txId ?? "-"}`);
-        push(`receipt=${msg.receiptPath ?? "-"} bundle=${msg.bundlePath ?? "-"}`);
-        y += 4;
-      }
-
-      doc.save(`imob-chat-${safeId}-audit.pdf`);
-    } finally {
-      setExportingFormat(null);
-    }
-  };
-
   const exportGeneratedContractPdf = React.useCallback(
     async (message: ChatMessage) => {
       const payload = message.card?.contract;
@@ -3471,10 +4009,11 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
   });
   const visibleMessages = selectedThreadId
     ? messages.filter((message) => {
+        if (message.hiddenFromTimeline) return false;
         const threadId = message.thread?.id ?? message.card?.thread?.id ?? null;
         return threadId === selectedThreadId;
       })
-    : messages;
+    : messages.filter((message) => !message.hiddenFromTimeline);
   const compactVisibleLimit = 34;
   const hiddenMessageCount = compactTimelineMode ? Math.max(0, visibleMessages.length - compactVisibleLimit) : 0;
   const renderedMessages = compactTimelineMode ? visibleMessages.slice(-compactVisibleLimit) : visibleMessages;
@@ -3503,7 +4042,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
   }, [contractInterviewState]);
   return (
     <div className="space-y-6">
-      <section className="overflow-hidden rounded-3xl border border-white/10 bg-surface/70">
+      <section className="overflow-hidden rounded-3xl border border-white/10 bg-black/30">
         <div className="grid min-h-[70vh] lg:h-[78vh] lg:max-h-[78vh] lg:grid-cols-[260px,1fr]">
           <aside className="flex h-full min-h-[70vh] flex-col border-b border-white/10 bg-black/30 p-3 lg:min-h-0 lg:border-b-0 lg:border-r">
             <div className="space-y-3 border-b border-white/10 pb-3">
@@ -3540,6 +4079,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                   <ThreadPanel
                     threads={threads}
                     selectedThreadId={selectedThreadId}
+                    groupByJourneyActiveOnly
                     onSelectThread={(thread) => {
                       if (pendingExecution && pendingExecution.thread.id !== thread.threadId) {
                         clearPendingExecution("thread_switched", { nextThreadId: thread.threadId });
@@ -3559,7 +4099,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                     resolveDashboardHref={(href, thread) => withDashboardContext(href, thread.threadId)}
                     resolveRunHref={(thread) => {
                       const runId = sessionRunByThreadRef.current[thread.threadId] ?? null;
-                      return runId ? `/app/runs?domain=imob&runId=${encodeURIComponent(runId)}` : null;
+                      return runId ? withRunContext(runId, thread.threadId, null) : null;
                     }}
                     resolveReconciliationHref={(thread) => {
                       const runId = sessionRunByThreadRef.current[thread.threadId] ?? null;
@@ -3597,68 +4137,15 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
 
           </aside>
 
-          <article className="relative flex min-h-[70vh] flex-col lg:min-h-0">
-            <header className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-6">
+          <article className="relative flex min-h-[70vh] flex-col bg-black/30 lg:min-h-0">
+            <header className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">Chat Operacional</p>
-                <p className="mt-1 text-[10px] tracking-[0.18em] text-muted-foreground/80">
-                  {brandName} • {workspaceLabel}
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
+                  Chat - {workspaceLabel}
                 </p>
-                {activeThreadContext.threadId && activeThreadContext.runId ? (
-                  <div className="mt-2">
-                    <ContextualCostPanel
-                      compact
-                      run={{
-                        runId: activeThreadContext.runId,
-                        actualCostCents: activeThreadRunFinance?.amountCents ?? null,
-                        estimatedCostCents: activeThreadRunFinance?.estimatedAmountCents ?? null,
-                        tokens: activeThreadRunFinance?.tokens ?? null,
-                        issueLabel: activeThreadRunFinance?.issueLabel ?? null,
-                        hasGap: activeThreadRunFinance?.hasGap ?? false,
-                        runHref: `/app/runs?domain=imob&runId=${encodeURIComponent(activeThreadContext.runId)}`,
-                        billingHref: `/app/billing?runId=${encodeURIComponent(activeThreadContext.runId)}`,
-                      }}
-                    />
-                  </div>
-                ) : null}
               </div>
-              <div className="flex items-center gap-2">
-                {requestedReturnTo ? (
-                  <button
-                    type="button"
-                    onClick={() => navigate(requestedReturnTo)}
-                    className="rounded-full border border-white/15 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition hover:border-accent/40 hover:text-accent"
-                  >
-                    Voltar ao Command Center
-                  </button>
-                ) : null}
-                <span className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.2em] ${statusTone(state)}`}>
-                  {statusLabel(state)}
-                </span>
-              </div>
+              <div className="flex items-center gap-2" />
             </header>
-            {workspaceBillingContext ? (
-              <div className="border-b border-white/10 px-4 py-2.5 sm:px-6">
-                <ContextualCostPanel
-                  compact
-                  run={
-                    activeThreadContext.runId
-                      ? {
-                          runId: activeThreadContext.runId,
-                          actualCostCents: activeThreadRunFinance?.amountCents ?? null,
-                          estimatedCostCents: activeThreadRunFinance?.estimatedAmountCents ?? null,
-                          tokens: activeThreadRunFinance?.tokens ?? null,
-                          issueLabel: activeThreadRunFinance?.issueLabel ?? null,
-                          hasGap: activeThreadRunFinance?.hasGap ?? false,
-                          runHref: `/app/runs?domain=imob&runId=${encodeURIComponent(activeThreadContext.runId)}`,
-                          billingHref: `/app/billing?runId=${encodeURIComponent(activeThreadContext.runId)}`,
-                        }
-                      : null
-                  }
-                  workspace={workspaceBillingContext}
-                />
-              </div>
-            ) : null}
             {imobAccessGate ? (
               <div className="border-b border-white/10 px-4 py-4 sm:px-6">
                 <ImobAccessGateCard gate={imobAccessGate} />
@@ -3763,16 +4250,18 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
               {historyLoading ? (
                 <p className="text-sm text-muted-foreground">Carregando histórico da conversa...</p>
               ) : visibleMessages.length === 0 ? (
-                <div className="rounded-xl border border-white/10 bg-black/15 p-4">
-                  <p className="text-sm text-foreground">
-                    {selectedThreadId ? "Sem mensagens nesta thread." : "Comece descrevendo uma operação imobiliária."}
-                  </p>
-                  <p className="mt-1 text-[10px] text-muted-foreground">
-                    {selectedThreadId
-                      ? "Selecione outra thread ou remova o filtro para ver toda a conversa."
-                      : "Exemplo: \"Quero captar um imóvel para locação\"."}
-                  </p>
-                </div>
+                selectedThreadId ? (
+                  <div className="rounded-xl border border-white/10 bg-black/15 p-4">
+                    <p className="text-sm text-foreground">Sem mensagens nesta thread.</p>
+                    <p className="mt-1 text-[10px] text-muted-foreground">
+                      Selecione outra thread ou remova o filtro para ver toda a conversa.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-white/10 bg-black/15 p-4">
+                    <p className="text-sm text-muted-foreground">Nova conversa pronta.</p>
+                  </div>
+                )
               ) : null}
               {!historyLoading && hasMoreHistory && !selectedThreadId ? (
                 <div className="flex justify-center">
@@ -3800,14 +4289,17 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                       : "border-accent/40 bg-accent/10 text-foreground";
                 const inlineChoicePresentation = isInlineChoicePresentation(message);
                 const runFinance = message.card?.runId ? runFinanceByRunId[message.card.runId] : null;
+                const shouldAnimateAssistantText = !isUser && typewriterMessageIds[message.id] === true;
+                const shouldDelayForm = !isUser && Boolean(message.form) && typewriterMessageIds[message.id] === true;
                 const showMessageCard =
                   Boolean(message.card) &&
                   message.card?.type !== "queue" &&
                   !(message.card?.type === "action" && message.card.compactConfirm) &&
                   message.card?.title !== "Lote processado" &&
+                  message.card?.title !== "Imóvel já cadastrado" &&
                   !inlineChoicePresentation;
                 const messageCard = showMessageCard ? message.card ?? null : null;
-                const showBubble = isUser || Boolean(message.text.trim()) || showMessageCard || Boolean(message.form);
+                const showBubble = isUser || Boolean(message.text.trim()) || Boolean(message.blocks?.length) || Boolean(message.widget) || showMessageCard || Boolean(message.form);
                 return (
                   <div key={message.id} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
                     <div className={`max-w-[94%] space-y-1.5 sm:max-w-[82%] ${isUser ? "items-end" : "items-start"}`}>
@@ -3824,7 +4316,126 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                               : "bg-black/20 text-foreground"
                           } transition`}
                         >
-                          {message.text.trim().length > 0 && !message.form ? <p className="whitespace-pre-wrap">{message.text}</p> : null}
+                          {message.text.trim().length > 0 ? (
+                            <TypewriterText
+                              text={message.text}
+                              animate={shouldAnimateAssistantText}
+                              onComplete={() =>
+                                setTypewriterMessageIds((prev) => {
+                                  if (!prev[message.id]) return prev;
+                                  const next = { ...prev };
+                                  delete next[message.id];
+                                  return next;
+                                })
+                              }
+                            />
+                          ) : null}
+
+                          {message.blocks?.length ? (
+                            <div className="mt-3 space-y-2">
+                              {message.blocks
+                                .filter((block) => block.kind !== "confirmation" && block.kind !== "summary" && block.kind !== "details")
+                                .map((block, blockIndex) => (
+                                  <div key={`${message.id}-block-${block.kind}-${blockIndex}`} className="space-y-1.5">
+                                    {block.title && block.title.trim().toLowerCase() !== message.text.trim().toLowerCase() ? (
+                                      <p className="text-[11px] font-medium text-foreground/95">{block.title}</p>
+                                    ) : null}
+                                    {block.text && block.text.trim().toLowerCase() !== message.text.trim().toLowerCase() ? (
+                                      <p className="text-[10px] text-muted-foreground">{block.text}</p>
+                                    ) : null}
+                                    {block.lines?.length ? (
+                                      (() => {
+                                        const shouldDelayBlockContent = typewriterMessageIds[message.id] === true;
+                                        if (shouldDelayBlockContent) return null;
+                                        return (
+                                          <ul className="space-y-1 text-[10px] text-muted-foreground">
+                                            <SequentialBlockLines
+                                              items={block.lines}
+                                              animateSequence={sequentialChoiceMessageIds[message.id] === true}
+                                              renderItem={(line, lineIndex, visibleLine, isTyping) => (
+                                                <li key={`${message.id}-block-line-${blockIndex}-${lineIndex}`}>
+                                                  {visibleLine}
+                                                  {isTyping ? <span className="ml-0.5 inline-block h-[1em] w-[1px] animate-pulse bg-current align-[-0.15em]" /> : null}
+                                                </li>
+                                              )}
+                                            />
+                                          </ul>
+                                        );
+                                      })()
+                                    ) : null}
+                                    {block.kind === "next_actions" && block.ctas?.length ? (
+                                      <div className="rounded-xl bg-black/20 p-2">
+                                        {(() => {
+                                          const items = normalizeCardCtas(block.ctas) ?? [];
+                                          if (items.length === 0) return null;
+                                          const shouldDelayBlockChoices = typewriterMessageIds[message.id] === true;
+                                          if (shouldDelayBlockChoices) return null;
+                                          return (
+                                            <SequentialInlineChoices
+                                              items={items}
+                                              animateSequence={sequentialChoiceMessageIds[message.id] === true}
+                                              onComplete={() =>
+                                                setSequentialChoiceMessageIds((prev) => {
+                                                  if (!prev[message.id]) return prev;
+                                                  const next = { ...prev };
+                                                  delete next[message.id];
+                                                  return next;
+                                                })
+                                              }
+                                              renderItem={(cta, _index, visibleLabel, isTyping) => (
+                                                <button
+                                                  key={`${message.id}-block-next-cta-${cta.id}`}
+                                                  type="button"
+                                                  onClick={() => void sendMessageText(cta.nextMessage ?? cta.label, { displayText: cta.label })}
+                                                  className="block text-left text-[11px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                                                >
+                                                  {visibleLabel}
+                                                  {isTyping ? <span className="ml-0.5 inline-block h-[1em] w-[1px] animate-pulse bg-current align-[-0.15em]" /> : null}
+                                                </button>
+                                              )}
+                                            />
+                                          );
+                                        })()}
+                                      </div>
+                                    ) : null}
+                                    {block.kind === "details" && block.ctas?.length ? (
+                                      (() => {
+                                        const items = normalizeCardCtas(block.ctas) ?? [];
+                                        if (items.length === 0) return null;
+                                        const shouldDelayBlockChoices = typewriterMessageIds[message.id] === true;
+                                        if (shouldDelayBlockChoices) return null;
+                                        return (
+                                          <div className="flex flex-wrap items-center gap-2">
+                                            <SequentialInlineChoices
+                                              items={items}
+                                              animateSequence={sequentialChoiceMessageIds[message.id] === true}
+                                              renderItem={(cta, _index, visibleLabel, isTyping) => (
+                                                <button
+                                                  key={`${message.id}-block-cta-${cta.id}`}
+                                                  type="button"
+                                                  onClick={() => void sendMessageText(cta.nextMessage ?? cta.label, { displayText: cta.label })}
+                                                  className="text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                                                >
+                                                  {visibleLabel}
+                                                  {isTyping ? <span className="ml-0.5 inline-block h-[1em] w-[1px] animate-pulse bg-current align-[-0.15em]" /> : null}
+                                                </button>
+                                              )}
+                                            />
+                                          </div>
+                                        );
+                                      })()
+                                    ) : null}
+                                  </div>
+                                ))}
+                            </div>
+                          ) : null}
+
+                          {message.widget ? (
+                            <ImobChatWidgets
+                              widget={message.widget}
+                              onAction={(action) => handleWidgetAction(action, message.caseContext)}
+                            />
+                          ) : null}
 
                           {messageCard ? (
                             <div className="mt-3 rounded-xl border border-white/10 bg-surface/50 p-3">
@@ -3863,7 +4474,11 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                             tokens: runFinance.tokens,
                                             issueLabel: runFinance.issueLabel,
                                             hasGap: runFinance.hasGap,
-                                            runHref: `/app/runs?domain=imob&runId=${encodeURIComponent(messageCard.runId)}`,
+                                            runHref: withRunContext(
+                                              messageCard.runId,
+                                              messageThread?.id ?? null,
+                                              message.caseContext?.caseId ?? null
+                                            ),
                                             billingHref: `/app/billing?runId=${encodeURIComponent(messageCard.runId)}`,
                                           }
                                         : null
@@ -3929,7 +4544,11 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                             !messageCard.ctas?.some((cta) => cta.href?.includes("/app/runs")) ? (
                               <div className="mt-3 flex flex-wrap gap-2">
                                 <Link
-                                  to={`/app/runs?domain=imob&runId=${encodeURIComponent(messageCard.runId)}`}
+                                  to={withRunContext(
+                                    messageCard.runId,
+                                    messageThread?.id ?? null,
+                                    message.caseContext?.caseId ?? null
+                                  )}
                                   className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-foreground hover:border-accent/40"
                                 >
                                   Ver execução
@@ -3947,31 +4566,76 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                           </div>
                           ) : null}
 
-                          {message.form ? (() => {
+                          {!shouldDelayForm && message.form ? (() => {
                             const formValues = formValuesByMessageId[message.id] ?? Object.fromEntries(
                               message.form.fields.map((field) => [field.name, String(field.value ?? "")])
                             );
                             const formErrors = formErrorsByMessageId[message.id] ?? {};
+                            const formLookupLoading = formLookupLoadingByMessageId[message.id] ?? {};
+                            const formLabel = message.form.label?.trim() ?? "";
+                            const formDescription = message.form.description?.trim() ?? "";
                             return (
                               <div className="mt-3 space-y-3 rounded-xl border border-white/10 bg-surface/50 p-3">
-                                <div className="space-y-1">
-                                  <p className="text-sm font-medium text-foreground">{message.form.label}</p>
-                                  {message.form.description ? (
-                                    <p className="text-[11px] normal-case tracking-normal text-muted-foreground">{message.form.description}</p>
-                                  ) : null}
-                                </div>
+                                {formLabel || formDescription ? (
+                                  <div className="space-y-1">
+                                    {formLabel ? <p className="text-sm font-medium text-foreground">{formLabel}</p> : null}
+                                    {formDescription ? (
+                                      <p className="text-[11px] normal-case tracking-normal text-muted-foreground">{formDescription}</p>
+                                    ) : null}
+                                  </div>
+                                ) : null}
                                 <div className="space-y-3">
                                   {message.form.fields.map((field) => (
                                     <div key={`${message.id}-${field.name}`} className="space-y-1.5">
                                       <label className="text-[11px] normal-case tracking-normal text-foreground/90">{field.label}</label>
                                       <div className="flex gap-2">
-                                        <input
-                                          type={field.type}
-                                          value={formValues[field.name] ?? ""}
-                                          onChange={(event) => updateFormFieldValue(message.id, field.name, event.target.value)}
-                                          placeholder={field.placeholder}
-                                          className="min-h-[36px] w-full rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-[12px] normal-case tracking-normal text-foreground placeholder:text-muted-foreground focus:outline-none"
-                                        />
+                                        {field.type === "select" ? (
+                                          <select
+                                            value={formValues[field.name] ?? ""}
+                                            onChange={(event) => updateFormFieldValue(message.id, field.name, event.target.value)}
+                                            className="min-h-[36px] w-full rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-[12px] normal-case tracking-normal text-foreground focus:outline-none"
+                                          >
+                                            <option value="">{field.placeholder ?? ""}</option>
+                                            {Array.from(new Set((field.options ?? []).map((option) => option.group ?? "")))
+                                              .map((group) => {
+                                                const groupedOptions = (field.options ?? []).filter((option) => (option.group ?? "") === group);
+                                                if (!group) {
+                                                  return groupedOptions.map((option) => (
+                                                    <option key={`${message.id}-${field.name}-${option.value}`} value={option.value}>
+                                                      {option.label}
+                                                    </option>
+                                                  ));
+                                                }
+                                                return (
+                                                  <optgroup key={`${message.id}-${field.name}-${group}`} label={group}>
+                                                    {groupedOptions.map((option) => (
+                                                      <option key={`${message.id}-${field.name}-${option.value}`} value={option.value}>
+                                                        {option.label}
+                                                      </option>
+                                                    ))}
+                                                  </optgroup>
+                                                );
+                                              })}
+                                          </select>
+                                        ) : (
+                                          <input
+                                            type={field.type}
+                                            value={formValues[field.name] ?? ""}
+                                            inputMode={field.inputMode}
+                                            maxLength={field.maxLength}
+                                            onChange={(event) => updateFormFieldValue(
+                                              message.id,
+                                              field.name,
+                                              field.lookup?.kind === "cep" ? normalizeCepValue(event.target.value) : event.target.value,
+                                            )}
+                                            onBlur={() => {
+                                              if (field.lookup?.kind !== "cep") return;
+                                              void applyCepLookupToForm(message, field.name, formValues[field.name] ?? "");
+                                            }}
+                                            placeholder={field.placeholder}
+                                            className="min-h-[36px] w-full rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-[12px] normal-case tracking-normal text-foreground placeholder:text-muted-foreground focus:outline-none"
+                                          />
+                                        )}
                                         {field.allowAttachment ? (
                                           <button
                                             type="button"
@@ -3984,6 +4648,9 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                       </div>
                                       {field.helperText ? (
                                         <p className="text-[10px] normal-case tracking-normal text-muted-foreground">{field.helperText}</p>
+                                      ) : null}
+                                      {formLookupLoading[field.name] ? (
+                                        <p className="text-[10px] normal-case tracking-normal text-muted-foreground">Consultando CEP...</p>
                                       ) : null}
                                       {formErrors[field.name] ? (
                                         <p className="text-[10px] normal-case tracking-normal text-rose-200">{formErrors[field.name]}</p>
@@ -4010,12 +4677,10 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                       ) : null}
 
                       <div className={`px-1 text-[10px] uppercase tracking-[0.15em] text-muted-foreground/80 ${inlineChoicePresentation ? "flex flex-col items-start gap-1.5" : `flex flex-wrap items-center gap-2 ${isUser ? "justify-end" : "justify-start"}`}`}>
-                        {inlineChoicePresentation && message.presentationMetadata?.confidence?.action === "create" ? (
-                          <p className="text-[10px] normal-case tracking-normal text-muted-foreground">Opções para Cadastro:</p>
-                        ) : null}
                         {message.role === "assistant" &&
                         message.card?.ctas?.length &&
-                        !message.card.knowledgeResults?.length ? (
+                        !message.card.knowledgeResults?.length &&
+                        !message.blocks?.some((block) => block.kind === "next_actions" && (block.ctas?.length ?? 0) > 0) ? (
                           <>
                             {(() => {
                               const messageThreadId = message.thread?.id ?? message.card?.thread?.id ?? null;
@@ -4024,6 +4689,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                 pendingExecution?.messageId === message.id &&
                                 pendingExecution?.thread.id === messageThreadId;
                               const actionableCtas = normalizeCardCtas(message.card.ctas)?.filter((cta) => {
+                                if (!SHOW_TECHNICAL_CHAT && isInternalOpsCta(cta)) return false;
                                 if (!cta.action) return true;
                                 if (cta.action === "export_contract_pdf") return true;
                                 if (isAttachmentCrmSuggestionAction(cta.action)) return true;
@@ -4035,10 +4701,18 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                               const primary = actionableCtas[0];
                               const secondary = actionableCtas.slice(1);
                               const isRejectLocked = rejectLockedMessageId === message.id;
-                              const renderCta = (cta: CardCta) => {
+                              const shouldDelayInlineChoices = inlineChoicePresentation && typewriterMessageIds[message.id] === true;
+                              if (shouldDelayInlineChoices) return null;
+                              const renderCta = (cta: CardCta, ctaLabelOverride?: string, isTypingChoice = false) => {
                                 const ctaLabel = inlineChoicePresentation
-                                  ? cta.label
+                                  ? (ctaLabelOverride ?? cta.label)
                                   : cta.label.replace(/^Ver\s+/i, "").toLowerCase();
+                                const renderedLabel = (
+                                  <>
+                                    {ctaLabel}
+                                    {isTypingChoice ? <span className="ml-0.5 inline-block h-[1em] w-[1px] animate-pulse bg-current align-[-0.15em]" /> : null}
+                                  </>
+                                );
                                 return cta.href ? (
                                   isExternalHref(cta.href) ? (
                                     <a
@@ -4055,18 +4729,18 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                           });
                                         }
                                       }}
-                                      className={`text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline ${cta.kind === "danger" ? "text-rose-200 hover:text-rose-100" : ""}`}
+                                      className="text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
                                     >
-                                      {ctaLabel}
+                                      {renderedLabel}
                                     </a>
                                   ) : (
                                     <Link
                                       key={`${message.id}-footer-cta-${cta.id}`}
                                       to={withDashboardContext(cta.href, messageThreadId)}
                                       onClick={() => setOpenOptionsMessageId(null)}
-                                      className={`text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline ${cta.kind === "danger" ? "text-rose-200 hover:text-rose-100" : ""}`}
+                                      className="text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
                                     >
-                                      {ctaLabel}
+                                      {renderedLabel}
                                     </Link>
                                   )
                                 ) : (
@@ -4096,8 +4770,25 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                         return;
                                       }
                                       if (isSendSuggestedMessageAction(cta.action)) {
+                                        trackUxEvent(
+                                          "recommended_action_selected",
+                                          buildJourneyTelemetryMetadata(message.caseContext, {
+                                            recommendedActionId:
+                                              typeof cta.payload?.recommendedActionId === "string"
+                                                ? cta.payload.recommendedActionId
+                                                : null,
+                                            recommendedActionType:
+                                              typeof cta.payload?.recommendedActionType === "string"
+                                                ? cta.payload.recommendedActionType
+                                                : null,
+                                            action:
+                                              typeof cta.payload?.recommendedActionId === "string"
+                                                ? cta.payload.recommendedActionId
+                                                : cta.label,
+                                          }),
+                                        );
                                         setOpenOptionsMessageId(null);
-                                        void sendMessageText(cta.nextMessage ?? cta.label);
+                                        void sendMessageText(cta.nextMessage ?? cta.label, { suppressUserEcho: true });
                                         return;
                                       }
                                       if (cta.action === "print_card") {
@@ -4106,18 +4797,34 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                         return;
                                       }
                                       if (cta.action === "continue_inventory_search") {
-                                        void sendMessageText(cta.nextMessage ?? cta.label);
+                                        void sendMessageText(cta.nextMessage ?? cta.label, { suppressUserEcho: true });
                                       }
                                     }}
                                     disabled={(cta.action === "reject_execution" && isRejectLocked) || crmSuggestionLoadingId === message.id}
-                                    className={`text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline ${cta.kind === "danger" ? "text-rose-200 hover:text-rose-100" : ""}`}
+                                    className="text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
                                   >
-                                    {ctaLabel}
+                                    {renderedLabel}
                                   </button>
                                 );
                               };
                               return inlineChoicePresentation || message.card?.actionsLayout === "inline" || Boolean(message.form) ? (
-                                <>{actionableCtas.map((cta) => renderCta(cta))}</>
+                                inlineChoicePresentation ? (
+                                  <SequentialInlineChoices
+                                    items={actionableCtas}
+                                    animateSequence={sequentialChoiceMessageIds[message.id] === true}
+                                    onComplete={() =>
+                                      setSequentialChoiceMessageIds((prev) => {
+                                        if (!prev[message.id]) return prev;
+                                        const next = { ...prev };
+                                        delete next[message.id];
+                                        return next;
+                                      })
+                                    }
+                                    renderItem={(cta, _index, visibleLabel, isTyping) => renderCta(cta, visibleLabel, isTyping)}
+                                  />
+                                ) : (
+                                  <>{actionableCtas.map((cta) => renderCta(cta))}</>
+                                )
                               ) : (
                                 <>
                                   {renderCta(primary)}
@@ -4152,98 +4859,79 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                             })()}
                           </>
                         ) : null}
-                        {message.role === "assistant" && message.card?.proof ? (
-                          <details className="group relative">
-                            <summary className="cursor-pointer list-none text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
-                              detalhes
-                            </summary>
-                            <div className="absolute left-0 top-6 z-20 min-w-[220px] max-w-[min(80vw,320px)] rounded-xl border border-white/10 bg-surface/95 p-3 shadow-xl backdrop-blur">
-                              <div className="space-y-1 text-[11px] normal-case tracking-normal text-muted-foreground">
-                                <p>Recibo e histórico desta etapa estão registrados.</p>
-                                {message.card.proof.receiptPath ? <p className="truncate">Recibo: {message.card.proof.receiptPath}</p> : null}
-                                {message.card.proof.bundlePath ? <p className="truncate">Dossiê: {message.card.proof.bundlePath}</p> : null}
-                              </div>
-                            </div>
-                          </details>
-                        ) : null}
-
                       </div>
                     </div>
                   </div>
                 );
               })}
 
-              {lastVisibleMessage ? (
+              {SHOW_CHAT_FEEDBACK && lastVisibleMessage ? (
                 <div className="flex flex-wrap items-center gap-2 px-1 text-[10px] normal-case tracking-normal text-muted-foreground/80">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (navigator?.clipboard?.writeText) {
-                        void navigator.clipboard.writeText(lastVisibleMessage.text);
-                      }
-                    }}
-                    aria-label="Copiar mensagem"
-                    title="Copiar mensagem"
-                    className="text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-                  >
-                    copiar
-                  </button>
-                  {lastVisibleMessage.role === "assistant" ? (
+                  {state === "typing" || state === "executing" ? (
+                    <span className="text-[10px] normal-case tracking-normal text-muted-foreground">pensando...</span>
+                  ) : (
                     <>
-                      <span className="text-white/25">•</span>
                       <button
                         type="button"
-                        onClick={() =>
-                          setMessageFeedback((prev) => ({ ...prev, [lastVisibleMessage.id]: "up" }))
-                        }
-                        aria-label="Resposta útil"
-                        title="Resposta útil"
-                        className={`text-[10px] normal-case tracking-normal underline-offset-2 hover:underline ${
-                          messageFeedback[lastVisibleMessage.id] === "up"
-                            ? "text-emerald-200"
-                            : "text-muted-foreground hover:text-foreground"
-                        }`}
+                        onClick={() => {
+                          if (navigator?.clipboard?.writeText) {
+                            void navigator.clipboard.writeText(lastVisibleMessage.text);
+                          }
+                        }}
+                        aria-label="Copiar mensagem"
+                        title="Copiar mensagem"
+                        className="text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
                       >
-                        útil
+                        copiar
                       </button>
-                      <span className="text-white/25">•</span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setMessageFeedback((prev) => ({ ...prev, [lastVisibleMessage.id]: "down" }))
-                        }
-                        aria-label="Resposta não útil"
-                        title="Resposta não útil"
-                        className={`text-[10px] normal-case tracking-normal underline-offset-2 hover:underline ${
-                          messageFeedback[lastVisibleMessage.id] === "down"
-                            ? "text-rose-200"
-                            : "text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        não útil
-                      </button>
+                      {lastVisibleMessage.role === "assistant" ? (
+                        <>
+                          <span className="text-white/25">•</span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setMessageFeedback((prev) => ({ ...prev, [lastVisibleMessage.id]: "up" }))
+                            }
+                            aria-label="Resposta útil"
+                            title="Resposta útil"
+                            className={`text-[10px] normal-case tracking-normal underline-offset-2 hover:underline ${
+                              messageFeedback[lastVisibleMessage.id] === "up"
+                                ? "text-emerald-200"
+                                : "text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            útil
+                          </button>
+                          <span className="text-white/25">•</span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setMessageFeedback((prev) => ({ ...prev, [lastVisibleMessage.id]: "down" }))
+                            }
+                            aria-label="Resposta não útil"
+                            title="Resposta não útil"
+                            className={`text-[10px] normal-case tracking-normal underline-offset-2 hover:underline ${
+                              messageFeedback[lastVisibleMessage.id] === "down"
+                                ? "text-rose-200"
+                                : "text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            não útil
+                          </button>
+                        </>
+                      ) : null}
                     </>
-                  ) : null}
+                  )}
+                </div>
+              ) : null}
+              {state === "typing" ? (
+                <div className="flex justify-start">
+                  <div className="max-w-[94%] sm:max-w-[82%]">
+                    <TypingIndicatorBubble />
+                  </div>
                 </div>
               ) : null}
             </div>
-
-            {showJumpToLatest ? (
-              <div className="pointer-events-none absolute bottom-24 right-4 z-20 sm:right-6">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const container = listRef.current;
-                    if (container) container.scrollTop = container.scrollHeight;
-                    setIsNearBottom(true);
-                    setShowJumpToLatest(false);
-                  }}
-                  className="pointer-events-auto rounded-full border border-accent/50 bg-black/25 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-foreground transition hover:bg-black/30"
-                >
-                  Voltar ao final
-                </button>
-              </div>
-            ) : null}
 
             <div className="sticky bottom-0 z-20 border-t border-white/10 bg-black/40 px-4 py-3 backdrop-blur sm:px-6">
               {messages.length === 0 ? (
@@ -4252,7 +4940,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                     <button
                       key={prompt.label}
                       type="button"
-                      onClick={() => setInput(prompt.prompt)}
+                      onClick={() => void sendMessageText(prompt.prompt, { displayText: prompt.label })}
                       className="rounded-full border border-white/10 bg-black/25 px-3 py-1 text-[10px] tracking-[0.04em] text-muted-foreground transition hover:border-accent/40 hover:text-foreground"
                     >
                       {prompt.label}
@@ -4260,7 +4948,6 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                   ))}
                 </div>
               ) : null}
-
               <div className="flex items-center gap-2 rounded-xl bg-black/25 p-2 backdrop-blur">
                 <input
                   ref={fileInputRef}

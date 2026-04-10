@@ -237,7 +237,7 @@ function DefaultLanding() {
   }, [session.token, session.activeDomain, session.experience]);
 
   if (!session.token) {
-    return <Navigate to="/app/runs" replace />;
+    return <Navigate to="/access" replace />;
   }
 
   return <Navigate to={session.experience?.landingPath || "/app/runs"} replace />;
