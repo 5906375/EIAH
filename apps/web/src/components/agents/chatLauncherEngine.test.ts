@@ -219,6 +219,7 @@ test("imob overview reply exposes clickable shortcut markdown", () => {
   const reply = buildDeterministicImobReply("explique como funciona a vertical imob");
 
   assert.ok(reply);
+  assert.match(reply ?? "", /assistente operacional agent-driven/i);
   assert.match(reply ?? "", /\[Dashboard IMOB\]\(\/app\/imob\/dashboard\)/);
   assert.match(reply ?? "", /\[Chat IMOB\]\(\/app\/imob\/chat\)/);
   assert.match(reply ?? "", /\[Instalação do IMOB\]\(\/app\/marketplace\/imob\)/);

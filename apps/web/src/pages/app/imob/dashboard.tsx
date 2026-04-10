@@ -4,19 +4,27 @@ import { useSession } from "@/state/sessionStore";
 import {
   ApiError,
   apiGetImobChatTelemetrySummary,
+  apiGetImobKpiFunnel,
+  apiGetImobKpiPerformance,
   apiListImobCases,
   apiListImobChatThreads,
+  apiListImobFollowUps,
   apiListImobOwners,
   apiListImobProperties,
   apiListRuns,
   type ImobCase,
   type ImobChatThread,
+  type ImobCrmFollowUpItem,
+  type ImobKpiFunnel,
+  type ImobKpiPerformance,
   type ImobOwner,
   type ImobProperty,
   type Run,
 } from "@/lib/api";
+import { getImobPropertyTypeLabel } from "@/features/imob/propertyTypes";
 import { ImobAccessGateCard } from "@/components/imob/ImobAccessGateCard";
 import { resolveImobAccessGateCopy } from "@/features/imob/accessGateCatalog";
+import { IMOB_BUSINESS_QUICK_ACTIONS } from "@/features/imob/businessQuickActions";
 import { ThreadPanel } from "@/features/imob/ThreadPanel";
 
 type Section = "imoveis" | "processos" | "parceiros";
@@ -77,6 +85,56 @@ function asStringList(value: unknown): string[] {
   return value.map((item) => (typeof item === "string" ? item.trim() : "")).filter(Boolean);
 }
 
+function formatJourneyTypeLabel(value: string | null | undefined) {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (normalized === "property_capture") return "Captação";
+  if (normalized === "lead_qualification") return "Qualificação";
+  if (normalized === "proposal") return "Proposta";
+  if (normalized === "visit_follow_up") return "Visita";
+  if (normalized === "negotiation") return "Negociação";
+  if (normalized === "documentation") return "Documentação";
+  if (normalized === "contract") return "Contrato";
+  if (normalized === "commission") return "Comissão";
+  if (normalized === "closing") return "Fechamento";
+  if (normalized === "temporada_rules") return "Regras de temporada";
+  return "Operação";
+}
+
+function buildCasePriority(item: ImobCase) {
+  const blocked = asStringList(item.canonical?.blockedActions).length;
+  const missing = asStringList(item.canonical?.missingContext).length;
+  const recommended = item.canonical?.recommendedActions?.length ?? 0;
+  const ageHours = (() => {
+    const parsed = Date.parse(item.updatedAt);
+    if (!Number.isFinite(parsed)) return 0;
+    return Math.max(0, (Date.now() - parsed) / 36e5);
+  })();
+  const score = blocked * 5 + missing * 3 + Math.min(4, Math.floor(ageHours / 12)) + (recommended === 0 ? 2 : 0);
+  const label = blocked > 0 ? "alta" : missing > 0 || ageHours >= 24 ? "média" : "normal";
+  return { score, label };
+}
+
+function priorityTone(label: string) {
+  if (label === "alta") return "text-rose-300 border-rose-400/40";
+  if (label === "média") return "text-amber-200 border-amber-300/30";
+  return "text-emerald-300 border-emerald-400/40";
+}
+
+function buildRecommendedCaseHref(base: {
+  conversationId: string | null;
+  caseId: string | null;
+  threadId: string | null;
+  actionLabel?: string | null;
+  actionHint?: string | null;
+}) {
+  return buildImobChatHref({
+    conversationId: base.conversationId,
+    caseId: base.caseId,
+    threadId: base.threadId,
+    autoprompt: base.actionHint?.trim() || base.actionLabel?.trim() || "mostrar próximo passo deste caso",
+  });
+}
+
 function formatImobStatusLabel(status: string | null | undefined) {
   const normalized = (status ?? "").trim().toLowerCase();
   if (!normalized) return "sem status";
@@ -106,9 +164,9 @@ function formatCaseFlowLabel(flow: string | null | undefined) {
 function propertyTitle(item: ImobProperty) {
   const address = item.address?.trim();
   if (address) return address;
-  const propertyType = item.propertyType?.trim();
-  if (propertyType) return `${propertyType} ${item.id.slice(-6)}`;
-  return `Imóvel ${item.id.slice(-6)}`;
+  const propertyType = getImobPropertyTypeLabel(item.propertyType?.trim());
+  if (propertyType) return propertyType;
+  return "Imóvel em cadastro";
 }
 
 function propertyStatusTone(status: string | null | undefined) {
@@ -151,6 +209,43 @@ function buildImobChatHref(base: {
   return `/app/imob/chat${query ? `?${query}` : ""}`;
 }
 
+function formatDashboardCaseLabel(item: ImobCase | null) {
+  if (!item) return "Sem caso vinculado";
+  const flowLabel = formatCaseFlowLabel(item.flow);
+  const propertyCity = item.property?.city?.trim();
+  if (propertyCity) return `${flowLabel} • ${propertyCity}`;
+  const ownerName = item.owner?.name?.trim();
+  if (ownerName) return `${flowLabel} • ${ownerName}`;
+  return flowLabel;
+}
+
+function buildCaseFallbackActions(item: ImobCase): Array<{ id: string; label: string; inputHint: string }> {
+  const pending = asStringList(item.pendingItems).map((entry) => entry.toLowerCase());
+  const flow = (item.flow ?? "").trim().toLowerCase();
+  const joined = pending.join(" ");
+  const actions: Array<{ id: string; label: string; inputHint: string }> = [];
+  const addAction = (id: string, label: string, inputHint: string) => {
+    if (actions.some((current) => current.id === id)) return;
+    actions.push({ id, label, inputHint });
+  };
+
+  if (flow.includes("owner.create") || joined.includes("propriet")) {
+    addAction("owner.register", "Cadastrar proprietário", "cadastrar proprietário deste caso");
+  }
+  if (flow.includes("property.create") || joined.includes("imóvel") || joined.includes("imovel")) {
+    addAction("property.create", "Cadastrar imóvel", "cadastrar imóvel deste caso");
+  }
+  if (joined.includes("document") || flow.includes("documents.collect")) {
+    addAction("documents.review", "Revisar documentos", "revisar documentos deste caso");
+  }
+  if (flow.includes("lead.qualify") || joined.includes("lead")) {
+    addAction("lead.qualify", "Qualificar lead", "qualificar lead deste caso");
+  }
+  addAction("case.consult", "Consultar caso", "consultar caso deste atendimento");
+
+  return actions.slice(0, 4);
+}
+
 const ImobDashboardPage: React.FC = () => {
   const session = useSession();
   const imobAccessGate = session.accessGate?.product === "IMOB" ? session.accessGate : null;
@@ -159,6 +254,7 @@ const ImobDashboardPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const conversationId = (searchParams.get("conversationId") || "").trim() || null;
   const requestedThreadId = (searchParams.get("threadId") || "").trim() || null;
+  const requestedCaseId = (searchParams.get("caseId") || "").trim() || null;
   const rawSection = (searchParams.get("section") || "imoveis").toLowerCase();
   const section: Section = rawSection === "processos" || rawSection === "parceiros" ? rawSection : "imoveis";
   const [selectedThreadId, setSelectedThreadId] = React.useState<string | null>(requestedThreadId);
@@ -178,6 +274,11 @@ const ImobDashboardPage: React.FC = () => {
   const [properties, setProperties] = React.useState<ImobProperty[]>([]);
   const [cases, setCases] = React.useState<ImobCase[]>([]);
   const [runs, setRuns] = React.useState<Run[]>([]);
+  const [followUps, setFollowUps] = React.useState<ImobCrmFollowUpItem[]>([]);
+  const [followUpLoading, setFollowUpLoading] = React.useState(false);
+  const [kpiFunnel, setKpiFunnel] = React.useState<ImobKpiFunnel | null>(null);
+  const [kpiPerformance, setKpiPerformance] = React.useState<ImobKpiPerformance | null>(null);
+  const [kpiLoading, setKpiLoading] = React.useState(false);
   const [dashboardLoading, setDashboardLoading] = React.useState(true);
   const [dashboardError, setDashboardError] = React.useState<string | null>(null);
   const [dashboardSource, setDashboardSource] = React.useState<DashboardSource>("empty");
@@ -298,6 +399,68 @@ const ImobDashboardPage: React.FC = () => {
 
   React.useEffect(() => {
     let mounted = true;
+    if (imobAccessGate) {
+      setFollowUps([]);
+      setFollowUpLoading(false);
+      return () => {
+        mounted = false;
+      };
+    }
+    setFollowUpLoading(true);
+    void apiListImobFollowUps({ onlyOverdue: false, limit: 120, caseId: requestedCaseId ?? undefined })
+      .then((response) => {
+        if (!mounted) return;
+        setFollowUps(response.data.items ?? []);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setFollowUps([]);
+      })
+      .finally(() => {
+        if (!mounted) return;
+        setFollowUpLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [imobAccessGate, requestedCaseId]);
+
+  React.useEffect(() => {
+    let mounted = true;
+    if (imobAccessGate) {
+      setKpiFunnel(null);
+      setKpiPerformance(null);
+      setKpiLoading(false);
+      return () => {
+        mounted = false;
+      };
+    }
+    setKpiLoading(true);
+    Promise.all([
+      apiGetImobKpiFunnel({ windowDays: 30 }),
+      apiGetImobKpiPerformance({ windowDays: 30 }),
+    ])
+      .then(([funnelResponse, performanceResponse]) => {
+        if (!mounted) return;
+        setKpiFunnel(funnelResponse.data);
+        setKpiPerformance(performanceResponse.data);
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setKpiFunnel(null);
+        setKpiPerformance(null);
+      })
+      .finally(() => {
+        if (!mounted) return;
+        setKpiLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [imobAccessGate]);
+
+  React.useEffect(() => {
+    let mounted = true;
     if (!conversationId) {
       setTelemetrySummary(null);
       setTelemetryLoading(false);
@@ -343,6 +506,20 @@ const ImobDashboardPage: React.FC = () => {
     const query = params.toString();
     return `/app/imob/chat${query ? `?${query}` : ""}`;
   }, [conversationId, selectedThreadId]);
+  const buildImobRunHref = React.useCallback(
+    (runId: string, options?: { threadId?: string | null; caseId?: string | null }) => {
+      const params = new URLSearchParams();
+      params.set("domain", "imob");
+      params.set("runId", runId);
+      if (conversationId) params.set("conversationId", conversationId);
+      const scopedThreadId = options?.threadId ?? selectedThreadId ?? null;
+      if (scopedThreadId) params.set("threadId", scopedThreadId);
+      const scopedCaseId = options?.caseId ?? null;
+      if (scopedCaseId) params.set("caseId", scopedCaseId);
+      return `/app/runs?${params.toString()}`;
+    },
+    [conversationId, selectedThreadId]
+  );
 
   const metricSource = telemetrySummary?.totals ?? {
     events: 0,
@@ -442,6 +619,93 @@ const ImobDashboardPage: React.FC = () => {
     return map;
   }, [cases]);
 
+  const prioritizedCases = React.useMemo(
+    () =>
+      [...cases]
+        .map((item) => ({ item, priority: buildCasePriority(item) }))
+        .sort((a, b) => b.priority.score - a.priority.score)
+        .slice(0, 5),
+    [cases]
+  );
+  const selectedThread = React.useMemo(
+    () => threads.find((item) => item.threadId === selectedThreadId) ?? null,
+    [threads, selectedThreadId]
+  );
+  const contextCase = React.useMemo(() => {
+    if (requestedCaseId) return cases.find((item) => item.id === requestedCaseId) ?? null;
+    if (selectedThreadId) {
+      const byThread = cases
+        .filter((item) => item.threadId === selectedThreadId)
+        .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+      if (byThread[0]) return byThread[0];
+
+      const byRun = [...runs]
+        .filter((run) => run.threadId === selectedThreadId && typeof run.caseId === "string" && run.caseId.trim().length > 0)
+        .sort((a, b) => Date.parse(b.createdAt ?? b.updatedAt ?? "") - Date.parse(a.createdAt ?? a.updatedAt ?? ""));
+      for (const run of byRun) {
+        const fromRun = cases.find((item) => item.id === run.caseId);
+        if (fromRun) return fromRun;
+      }
+    }
+
+    const threadLabel = selectedThread?.label?.trim().toLowerCase() ?? "";
+    if (threadLabel.includes("imóvel") || threadLabel.includes("imovel") || threadLabel.includes("captação") || threadLabel.includes("captacao")) {
+      const byFlow = [...cases]
+        .filter((item) => {
+          const flow = (item.flow ?? "").toLowerCase();
+          return flow.includes("property.create") || flow.includes("owner.create");
+        })
+        .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+      if (byFlow[0]) return byFlow[0];
+    }
+    if (threadLabel.includes("lead")) {
+      const byFlow = [...cases]
+        .filter((item) => (item.flow ?? "").toLowerCase().includes("lead.qualify"))
+        .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+      if (byFlow[0]) return byFlow[0];
+    }
+    if (threadLabel.includes("document")) {
+      const byFlow = [...cases]
+        .filter((item) => (item.flow ?? "").toLowerCase().includes("documents.collect"))
+        .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
+      if (byFlow[0]) return byFlow[0];
+    }
+
+    return null;
+  }, [cases, requestedCaseId, runs, selectedThread, selectedThreadId]);
+  const contextConversationLabel = conversationId ? "Conversa ativa no chat" : "Visão geral";
+  const contextThreadLabel = selectedThread?.label?.trim() || "Sem thread selecionada";
+  const contextCaseLabel = formatDashboardCaseLabel(contextCase);
+  const contextPendingItems = contextCase ? asStringList(contextCase.pendingItems) : [];
+  const followUpsByCaseId = React.useMemo(() => {
+    const map = new Map<string, ImobCrmFollowUpItem[]>();
+    for (const item of followUps) {
+      const current = map.get(item.caseId) ?? [];
+      current.push(item);
+      map.set(item.caseId, current);
+    }
+    return map;
+  }, [followUps]);
+  const overdueFollowUpCount = React.useMemo(
+    () => followUps.filter((item) => item.isOverdue).length,
+    [followUps]
+  );
+  const contextFollowUps = React.useMemo(
+    () => (contextCase ? followUpsByCaseId.get(contextCase.id) ?? [] : []),
+    [contextCase, followUpsByCaseId]
+  );
+  const contextActions = React.useMemo(() => {
+    if (!contextCase) return [];
+    if (contextCase.canonical?.recommendedActions?.length) {
+      return contextCase.canonical.recommendedActions.map((item) => ({
+        id: item.id,
+        label: item.label,
+        inputHint: item.inputHint?.trim() || item.label,
+      }));
+    }
+    return buildCaseFallbackActions(contextCase);
+  }, [contextCase]);
+
   return (
     <div className="space-y-6">
       <header className="rounded-3xl border border-white/10 bg-gradient-to-r from-accent/10 via-surface/80 to-transparent p-8">
@@ -472,7 +736,60 @@ const ImobDashboardPage: React.FC = () => {
             </p>
           </article>
         </div>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Conversão proposta → fechamento</p>
+            <p className="mt-2 text-2xl font-semibold text-foreground">
+              {kpiLoading ? "..." : formatPct(kpiFunnel?.conversions.proposalToClosingPct)}
+            </p>
+          </article>
+          <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Tempo médio até fechamento</p>
+            <p className="mt-2 text-2xl font-semibold text-foreground">
+              {kpiLoading
+                ? "..."
+                : kpiFunnel?.averageDurationHours != null
+                  ? `${kpiFunnel.averageDurationHours.toFixed(1)}h`
+                  : "—"}
+            </p>
+          </article>
+          <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Pendências resolvidas em 48h</p>
+            <p className="mt-2 text-2xl font-semibold text-foreground">
+              {kpiLoading ? "..." : formatPct(kpiFunnel?.docsResolved48hPct)}
+            </p>
+          </article>
+          <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Receita por corretor (30d)</p>
+            <p className="mt-2 text-sm font-semibold text-foreground">
+              {kpiLoading
+                ? "..."
+                : kpiPerformance?.ranking?.[0]
+                  ? `${kpiPerformance.ranking[0].broker}: ${currencyFromCents(kpiPerformance.ranking[0].revenueCents)}`
+                  : "Sem dados"}
+            </p>
+          </article>
+        </div>
         <div className="mt-4 flex flex-wrap gap-2">
+          {prioritizedCases.slice(0, 3).map(({ item, priority }) => {
+            const primaryAction = item.canonical?.recommendedActions?.[0];
+            const href = buildRecommendedCaseHref({
+              conversationId,
+              caseId: item.id,
+              threadId: item.threadId ?? null,
+              actionLabel: primaryAction?.label,
+              actionHint: primaryAction?.inputHint,
+            });
+            return (
+              <Link
+                key={`priority-chip-${item.id}`}
+                to={href}
+                className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.18em] ${priorityTone(priority.label)}`}
+              >
+                {formatJourneyTypeLabel(item.canonical?.journeyType)}: {primaryAction?.label ?? "revisar caso"}
+              </Link>
+            );
+          })}
           <Link
             to={backToChatHref}
             className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground hover:border-accent/40"
@@ -493,6 +810,9 @@ const ImobDashboardPage: React.FC = () => {
               {sectionLabel(item)}
             </button>
           ))}
+          <span className="rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-amber-100">
+            SLA em atraso: {followUpLoading ? "..." : overdueFollowUpCount}
+          </span>
         </div>
       </header>
 
@@ -505,6 +825,119 @@ const ImobDashboardPage: React.FC = () => {
           Falha ao carregar o CRM operacional do IMOB: {dashboardError}
         </section>
       ) : null}
+
+      <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">Soluções rápidas</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Atalhos da conversa ativa para resolver pendências e avançar a jornada.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <span className="rounded-full border border-accent/35 bg-accent/10 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-accent">
+              Contexto do Chat
+            </span>
+            <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              lead • venda • locação
+            </span>
+          </div>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <article className="rounded-2xl border border-white/10 bg-black/20 p-3">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Conversa</p>
+            <p className="mt-1 text-sm font-medium text-foreground">{contextConversationLabel}</p>
+          </article>
+          <article className="rounded-2xl border border-white/10 bg-black/20 p-3">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Thread</p>
+            <p className="mt-1 text-sm font-medium text-foreground">{contextThreadLabel}</p>
+          </article>
+          <article className="rounded-2xl border border-white/10 bg-black/20 p-3">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Caso</p>
+            <p className="mt-1 text-sm font-medium text-foreground">{contextCaseLabel}</p>
+          </article>
+        </div>
+        {contextCase ? (
+          <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 p-3">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Pendências do caso ativo</p>
+            <p className="mt-1 text-sm text-foreground">
+              {contextPendingItems.length > 0 ? `${contextPendingItems.length} item(ns) pendente(s)` : "Sem pendências"}
+            </p>
+            {contextPendingItems.length > 0 ? (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {contextPendingItems.slice(0, 6).map((item) => (
+                  <span
+                    key={`context-pending-${item}`}
+                    className="rounded-full border border-amber-300/35 bg-amber-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.12em] text-amber-100"
+                  >
+                    {item}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            {contextFollowUps.length > 0 ? (
+              <div className="mt-3 rounded-xl border border-amber-300/25 bg-amber-500/5 p-3">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-amber-200">
+                  Follow-up com SLA ({contextFollowUps.length})
+                </p>
+                <p className="mt-1 text-xs text-amber-100/90">
+                  {contextFollowUps[0]?.title} • {contextFollowUps[0]?.isOverdue ? "em atraso" : "a vencer"} • ação:{" "}
+                  {contextFollowUps[0]?.nextAction}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <Link
+                    to={buildImobChatHref({
+                      conversationId,
+                      caseId: contextCase.id,
+                      threadId: contextCase.threadId ?? selectedThreadId ?? null,
+                      autoprompt: contextFollowUps[0]?.suggestedMessage ?? "cobrar retorno deste caso",
+                    })}
+                    className="rounded-full border border-amber-300/45 bg-amber-500/15 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-amber-100 hover:border-amber-200/70"
+                  >
+                    Enviar follow-up
+                  </Link>
+                </div>
+              </div>
+            ) : null}
+            {contextActions.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {contextActions.map((item) => (
+                  <Link
+                    key={`context-action-${item.id}`}
+                    to={buildImobChatHref({
+                      conversationId,
+                      caseId: contextCase.id,
+                      threadId: contextCase.threadId ?? selectedThreadId ?? null,
+                      autoprompt: item.inputHint,
+                    })}
+                    className="rounded-full border border-accent/45 bg-accent/15 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-accent hover:border-accent/70"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {IMOB_BUSINESS_QUICK_ACTIONS.map((item) => (
+            <Link
+              key={`business-quick-action-${item.id}`}
+              to={buildImobChatHref({
+                conversationId,
+                caseId: contextCase?.id ?? null,
+                threadId: contextCase?.threadId ?? selectedThreadId ?? null,
+                autoprompt: item.autoprompt,
+              })}
+              className="rounded-2xl border border-white/10 bg-black/20 p-4 transition hover:border-accent/40"
+            >
+              <p className="text-sm font-semibold text-foreground">{item.title}</p>
+              <p className="mt-2 text-xs text-muted-foreground">{item.summary}</p>
+              <p className="mt-3 text-[10px] uppercase tracking-[0.16em] text-accent">Abrir no chat</p>
+            </Link>
+          ))}
+        </div>
+      </section>
 
       {section === "imoveis" ? (
         <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 sm:p-6">
@@ -521,7 +954,11 @@ const ImobDashboardPage: React.FC = () => {
                 conversationId,
                 caseId: relatedCase?.id ?? null,
                 threadId: relatedCase?.threadId ?? null,
-                autoprompt: item.address?.trim() ? `mostrar imóvel endereço ${item.address.trim()}` : `mostrar imóvel ${item.id}`,
+                autoprompt: item.address?.trim()
+                  ? `mostrar imóvel endereço ${item.address.trim()}`
+                  : relatedCase?.id
+                    ? "mostrar imóvel deste caso"
+                    : "mostrar imóvel selecionado",
               });
               const pendingItems = asStringList(item.pendingItems);
               const resolveHref = pendingItems.length > 0
@@ -531,7 +968,9 @@ const ImobDashboardPage: React.FC = () => {
                     threadId: relatedCase?.threadId ?? null,
                     autoprompt: item.address?.trim()
                       ? `o que falta para imóvel endereço ${item.address.trim()}`
-                      : `o que falta para imóvel ${item.id}`,
+                      : relatedCase?.id
+                        ? "o que falta para este imóvel deste caso"
+                        : "o que falta para este imóvel",
                   })
                 : null;
               return (
@@ -540,7 +979,7 @@ const ImobDashboardPage: React.FC = () => {
                   <div>
                     <Link to={href} className="text-sm font-semibold text-foreground hover:text-accent">{propertyTitle(item)}</Link>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {item.city?.trim() || "Cidade não informada"} • {item.id}
+                      {item.city?.trim() || "Cidade não informada"}
                     </p>
                   </div>
                   <span className={`rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.15em] ${propertyStatusTone(item.status)}`}>
@@ -549,7 +988,7 @@ const ImobDashboardPage: React.FC = () => {
                 </div>
                 <p className="mt-3 text-base font-semibold text-foreground">{currencyFromCents(item.askingPriceCents)}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {(item.goal?.trim() || "finalidade não informada")} • {(item.propertyType?.trim() || "tipo não informado")}
+                  {(item.goal?.trim() || "finalidade não informada")} • {(getImobPropertyTypeLabel(item.propertyType?.trim()) || "tipo não informado")}
                 </p>
                 <p className="mt-2 text-xs text-muted-foreground">
                   Proprietário: {item.owner?.name?.trim() || "não vinculado"}
@@ -638,6 +1077,15 @@ const ImobDashboardPage: React.FC = () => {
                       threadId: item.threadId ?? null,
                       autoprompt: "o que falta nesse caso",
                     });
+                    const priority = buildCasePriority(item);
+                    const primaryAction = item.canonical?.recommendedActions?.[0];
+                    const actionHref = buildRecommendedCaseHref({
+                      conversationId,
+                      caseId: item.id,
+                      threadId: item.threadId ?? null,
+                      actionLabel: primaryAction?.label,
+                      actionHint: primaryAction?.inputHint,
+                    });
                     const relatedRuns = [
                       ...(caseRunMap.get(item.id) ?? []),
                       ...(item.threadId ? caseRunMap.get(item.threadId) ?? [] : []),
@@ -651,21 +1099,37 @@ const ImobDashboardPage: React.FC = () => {
                     <tr key={item.id} className="border-b border-white/5 text-muted-foreground">
                       <td className="px-3 py-3 text-foreground"><Link to={href} className="hover:text-accent">{formatCaseFlowLabel(item.flow)}</Link></td>
                       <td className="px-3 py-3">{item.lead?.name || item.owner?.name || item.property?.city || "Sem contexto vinculado"}</td>
-                      <td className="px-3 py-3">{item.nextStep?.trim() || item.stage}</td>
                       <td className="px-3 py-3">
-                        <span className={`rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.15em] ${processStatusTone(item.status)}`}>
-                          {formatImobStatusLabel(item.status)}
-                        </span>
+                        <div className="space-y-1">
+                          <p>{item.nextStep?.trim() || item.stage}</p>
+                          <p className="text-[10px] text-foreground/80">{primaryAction?.label ?? "Revisar caso"}</p>
+                        </div>
+                      </td>
+                      <td className="px-3 py-3">
+                        <div className="flex flex-wrap gap-2">
+                          <span className={`rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.15em] ${processStatusTone(item.status)}`}>
+                            {formatImobStatusLabel(item.status)}
+                          </span>
+                          <span className={`rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.15em] ${priorityTone(priority.label)}`}>
+                            prioridade {priority.label}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-3 py-3">{item.ownerResponsible || "Responsável não definido"}</td>
                       <td className="px-3 py-3 text-xs">
                         <div className="space-y-1">
                           <p>{item._count?.events ?? 0} evento(s)</p>
                           <p className="text-foreground">{currencyFromCents(relatedCostCents)}</p>
+                          <Link
+                            to={actionHref}
+                            className="text-[10px] text-accent underline-offset-2 hover:text-accent/80 hover:underline"
+                          >
+                            agir: {primaryAction?.label ?? "revisar caso"}
+                          </Link>
                           {latestRun ? (
                             <div className="flex flex-wrap gap-2">
                               <Link
-                                to={`/app/runs?domain=imob&runId=${encodeURIComponent(latestRun.id)}`}
+                                to={buildImobRunHref(latestRun.id, { threadId: item.threadId ?? null, caseId: item.id })}
                                 className="text-[10px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
                               >
                                 execução
@@ -737,6 +1201,16 @@ const ImobDashboardPage: React.FC = () => {
                       autoprompt: `o que falta para proprietário ${item.name}`,
                     })
                   : null;
+                const primaryAction = relatedCase?.canonical?.recommendedActions?.[0];
+                const actionHref = relatedCase
+                  ? buildRecommendedCaseHref({
+                      conversationId,
+                      caseId: relatedCase.id,
+                      threadId: relatedCase.threadId ?? null,
+                      actionLabel: primaryAction?.label,
+                      actionHint: primaryAction?.inputHint,
+                    })
+                  : null;
                 return (
                 <div key={item.id} className="rounded-2xl border border-white/10 bg-black/20 p-4 transition hover:border-accent/40">
                   <div className="flex items-start justify-between gap-3">
@@ -756,11 +1230,18 @@ const ImobDashboardPage: React.FC = () => {
                   <p className="mt-2 text-xs text-muted-foreground">
                     Pendências: {pendingItems.length > 0 ? pendingItems.join(", ") : "sem pendências"}
                   </p>
-                  {resolveHref ? (
-                    <div className="mt-3 flex justify-end">
+                  {resolveHref || actionHref ? (
+                    <div className="mt-3 flex justify-end gap-3">
+                      {actionHref ? (
+                        <Link to={actionHref} className="text-[10px] uppercase tracking-[0.16em] text-foreground hover:text-accent">
+                          {primaryAction?.label ?? "agir no caso"}
+                        </Link>
+                      ) : null}
+                      {resolveHref ? (
                       <Link to={resolveHref} className="text-[10px] uppercase tracking-[0.16em] text-accent hover:text-accent/80">
                         Resolver no chat
                       </Link>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
@@ -812,6 +1293,7 @@ const ImobDashboardPage: React.FC = () => {
           <ThreadPanel
             threads={threads}
             selectedThreadId={selectedThreadId}
+            groupByJourneyActiveOnly
             onSelectThread={(thread) => setSelectedThreadId(thread.threadId)}
             onClearSelection={() => setSelectedThreadId(null)}
             maxItems={3}

@@ -2,6 +2,8 @@
 // Ajuste BASE_URL e a forma de obter token/header do projeto.
 
 import { getSession, subscribeSession } from "@/state/sessionStore";
+import type { ImobPropertyType } from "@/features/imob/propertyTypes";
+import type { ImobPropertyGoal } from "@/features/imob/propertyGoals";
 import type {
   EconomyOpportunitySnapshot,
   ExperienceDiagnosticSnapshot,
@@ -1506,7 +1508,7 @@ export type ImobChatMessage = {
   action?: string | null;
   threadId?: string | null;
   threadLabel?: string | null;
-  threadStatus?: "active" | "done" | "blocked" | null;
+  threadStatus?: "active" | "waiting" | "done" | "blocked" | null;
   runId?: string | null;
   txId?: string | null;
   receiptPath?: string | null;
@@ -1518,7 +1520,7 @@ export type ImobChatMessage = {
 export type ImobChatThread = {
   threadId: string;
   label: string;
-  status: "active" | "done" | "blocked";
+  status: "active" | "waiting" | "done" | "blocked";
   firstMessageAt: string;
   lastMessageAt: string;
   messageCount: number;
@@ -1627,10 +1629,76 @@ export type ImobCase = {
   metadata: unknown;
   createdAt: string;
   updatedAt: string;
+  canonical?: ImobCanonicalCase;
   owner?: { id: string; name: string } | null;
   property?: { id: string; propertyType: string | null; city: string | null; neighborhood: string | null } | null;
   lead?: { id: string; name: string } | null;
   _count?: { events: number };
+};
+
+export type ImobCrmFollowUpItem = {
+  caseId: string;
+  threadId: string | null;
+  flow: string;
+  stage: string;
+  status: string;
+  ownerResponsible: string | null;
+  ruleId: string;
+  title: string;
+  severity: "low" | "medium" | "high";
+  reason: string;
+  nextAction: string;
+  suggestedMessage: string;
+  dueAt: string;
+  overdueHours: number;
+  isOverdue: boolean;
+};
+
+export type ImobKpiFunnel = {
+  period: { from: string; to: string };
+  totals: {
+    cases: number;
+    qualified: number;
+    visits: number;
+    proposals: number;
+    closings: number;
+  };
+  conversions: {
+    caseToQualifiedPct: number;
+    qualifiedToVisitPct: number;
+    visitToProposalPct: number;
+    proposalToClosingPct: number;
+  };
+  averageDurationHours: number | null;
+  docsResolved48hPct: number;
+  steps: Array<{
+    id: "opened" | "qualified" | "visit" | "proposal" | "closing";
+    label: string;
+    count: number;
+    conversionPct: number;
+  }>;
+  generatedAt: string;
+};
+
+export type ImobKpiPerformance = {
+  period: { from: string; to: string };
+  totals: {
+    brokers: number;
+    cases: number;
+    closings: number;
+    revenueCents: number;
+  };
+  ranking: Array<{
+    broker: string;
+    cases: number;
+    closings: number;
+    closingRatePct: number;
+    avgPendingItems: number;
+    avgCycleHours: number;
+    revenueCents: number;
+    updatedAt: string;
+  }>;
+  generatedAt: string;
 };
 
 export type ImobContractInterviewState = {
@@ -1658,14 +1726,14 @@ export type ImobKnowledgeSearchItem = {
 };
 
 export type ImobSearchSlotState = {
-  goal: "locacao" | "venda" | null;
+  goal: ImobPropertyGoal | null;
   city: string | null;
   region: string | null;
   neighborhood: string | null;
   budgetMax: number | null;
   bedrooms: number | null;
   bathrooms: number | null;
-  propertyType: "apartamento" | "casa" | "studio" | "sala" | "terreno" | "galpao" | null;
+  propertyType: ImobPropertyType | null;
 };
 
 export type ImobOwnerDraftState = {
@@ -1679,15 +1747,16 @@ export type ImobLeadDraftState = {
   leadName: string | null;
   leadEmail: string | null;
   leadPhone: string | null;
-  desiredGoal: "locacao" | "venda" | null;
+  desiredGoal: ImobPropertyGoal | null;
   desiredCity: string | null;
   budgetMax: number | null;
 };
 
 export type ImobPropertyDraftState = {
   propertyId: string | null;
-  propertyType: "apartamento" | "casa" | "studio" | "sala" | "terreno" | "galpao" | null;
-  goal: "locacao" | "venda" | null;
+  propertyType: ImobPropertyType | null;
+  goal: ImobPropertyGoal | null;
+  cep: string | null;
   city: string | null;
   neighborhood: string | null;
   bedrooms: number | null;
@@ -1806,16 +1875,151 @@ export type ImobPresentationCard = {
   actionsLayout?: "inline";
 };
 
+export type ImobPresentationBlockPhase = "pre_execution" | "post_success";
+
+export type ImobPresentationBlock = {
+  kind: "confirmation" | "next_actions" | "summary" | "details";
+  title?: string;
+  text?: string;
+  lines?: string[];
+  ctas?: ImobPresentationCta[];
+  actionsLayout?: "inline";
+  persistent?: boolean;
+  phase?: ImobPresentationBlockPhase;
+};
+
+export type ImobResolvedBackingSpecialist = {
+  key: "commercial_intelligence" | "daily_ops" | "legal" | "financial" | "audit";
+  primaryAgentId: string;
+  responsibility: string;
+  visibleToUserByDefault: false;
+  escalationTriggers: string[];
+  rationale: string;
+};
+
+export type ImobCommercialHomeWidget = {
+  kind: "commercial_home";
+  title: string;
+  subtitle: string;
+  quickActions: Array<{
+    id: string;
+    title: string;
+    summary: string;
+    autoprompt: string;
+  }>;
+  priorities?: Array<{
+    id: string;
+    title: string;
+    detail: string;
+    autoprompt: string;
+  }>;
+};
+
+export type ImobInventoryShowcaseWidget = {
+  kind: "inventory_showcase";
+  title: string;
+  subtitle?: string;
+  items: Array<{
+    id: string;
+    title: string;
+    city: string;
+    region: string;
+    neighborhood?: string;
+    segment: "locacao" | "venda";
+    priceLabel: string;
+    priceAmount?: number | null;
+    bedrooms?: number;
+    bathrooms?: number;
+    propertyType?: string;
+    autoprompt?: string | null;
+  }>;
+};
+
+export type ImobCaseSummaryWidget = {
+  kind: "case_summary";
+  title: string;
+  journeyLabel: string;
+  stageLabel: string;
+  nextStep?: string | null;
+  blocker?: string | null;
+  recommendedActions: Array<{
+    id: string;
+    label: string;
+    autoprompt?: string | null;
+  }>;
+  specialists: ImobResolvedBackingSpecialist[];
+};
+
+export type ImobDocumentChecklistWidget = {
+  kind: "document_checklist";
+  title: string;
+  checklist: string[];
+  blocker?: string | null;
+  nextStep?: string | null;
+  specialists: ImobResolvedBackingSpecialist[];
+};
+
+export type ImobPrintBundleWidget = {
+  kind: "print_bundle";
+  title: string;
+  items: Array<{
+    label: string;
+    value: string;
+  }>;
+};
+
+export type ImobPresentationWidget =
+  | ImobCommercialHomeWidget
+  | ImobInventoryShowcaseWidget
+  | ImobCaseSummaryWidget
+  | ImobDocumentChecklistWidget
+  | ImobPrintBundleWidget;
+
+export type ImobConversationSnapshot = {
+  conversationId: string;
+  title: string;
+  status: string;
+  createdAt: string | null;
+  lastMessageAt: string | null;
+  recoverable: boolean;
+  recoveryPrompt: string | null;
+  caseContext: ImobCaseContext | null;
+  widget: ImobPresentationWidget | null;
+  printBundle: ImobPrintBundleWidget;
+  business: {
+    uploadedDocuments: number;
+    validatedAttachments: number;
+    linkedRuns: number;
+    linkedReceipts: number;
+    linkedBundles: number;
+  };
+};
+
+export type ImobPresentationFormFieldOption = {
+  value: string;
+  label: string;
+  group?: string;
+};
+
+export type ImobPresentationFormFieldLookup = {
+  kind: "cep";
+  autoFillTargets: Partial<Record<"address" | "city" | "neighborhood", string>>;
+};
+
 export type ImobPresentationFormField = {
   name: string;
   label: string;
-  type: "text" | "tel" | "email";
+  type: "text" | "tel" | "email" | "select";
   required?: boolean;
   placeholder?: string;
   value?: string | null;
   helperText?: string;
   allowAttachment?: boolean;
   attachmentLabel?: string;
+  inputMode?: "text" | "numeric";
+  maxLength?: number;
+  options?: ImobPresentationFormFieldOption[];
+  lookup?: ImobPresentationFormFieldLookup;
 };
 
 export type ImobPresentationFormAction = {
@@ -1855,6 +2059,86 @@ export type ImobExecutionRequest = {
 
 export type ImobOperationalOwner = "Corretor" | "Jurídico" | "Financeiro" | "Cliente" | "IMOB Ops";
 
+export type ImobCaseJourneyType =
+  | "property_capture"
+  | "lead_qualification"
+  | "proposal"
+  | "visit_follow_up"
+  | "negotiation"
+  | "documentation"
+  | "contract"
+  | "closing"
+  | "commission"
+  | "temporada_rules"
+  | "operations";
+
+export type ImobCasePartyRole =
+  | "broker"
+  | "manager"
+  | "owner"
+  | "buyer"
+  | "seller"
+  | "tenant"
+  | "landlord"
+  | "operator";
+
+export type ImobCaseCommercialGoal =
+  | "captacao"
+  | "qualificacao"
+  | "proposta"
+  | "visita"
+  | "negociacao"
+  | "documentacao"
+  | "contrato"
+  | "fechamento"
+  | "comissao"
+  | "temporada"
+  | "operacao";
+
+export type ImobCaseRecommendedAction = {
+  id: string;
+  label: string;
+  actionType: "consultive" | "operational" | "governed";
+  inputHint?: string;
+  reasonCode?: string;
+};
+
+export type ImobEntityKey =
+  | "owner"
+  | "property"
+  | "lead"
+  | "visit"
+  | "listing"
+  | "documents"
+  | "proposal"
+  | "deal"
+  | "contract"
+  | "commission"
+  | "adjustment";
+
+export type ImobActionKey =
+  | "create"
+  | "update"
+  | "search"
+  | "qualify"
+  | "schedule"
+  | "activate"
+  | "collect"
+  | "review"
+  | "prepare"
+  | "settle"
+  | "adjust";
+
+export type ImobCanonicalCase = {
+  journeyType?: ImobCaseJourneyType;
+  partyRole?: ImobCasePartyRole;
+  commercialGoal?: ImobCaseCommercialGoal;
+  recommendedActions?: ImobCaseRecommendedAction[];
+  blockedActions?: string[];
+  missingContext?: string[];
+  reasonCodes?: string[];
+};
+
 export type ImobCaseContext = {
   caseId: string;
   flow: string;
@@ -1866,6 +2150,7 @@ export type ImobCaseContext = {
   pendingItems?: string[];
   threadId?: string | null;
   updatedAt?: string;
+  canonical?: ImobCanonicalCase;
 };
 
 export type ImobPresentationConfidence = {
@@ -1892,6 +2177,8 @@ export type ImobOperationalPresentation = {
   text: string;
   metadata?: ImobPresentationMetadata;
   card?: ImobPresentationCard;
+  blocks?: ImobPresentationBlock[];
+  widget?: ImobPresentationWidget;
   form?: ImobPresentationForm;
   suggestedNextAction?: string;
   owner?: ImobOperationalOwner;
@@ -1954,6 +2241,7 @@ export type ImobInventorySearchResponse = {
   presentation: {
     text: string;
     card?: ImobPresentationCard;
+    widget?: ImobPresentationWidget;
   };
   tenantId: string;
   workspaceId: string;
@@ -2025,7 +2313,7 @@ export async function apiCreateImobChatMessage(
     action?: string;
     threadId?: string;
     threadLabel?: string;
-    threadStatus?: "active" | "done" | "blocked";
+    threadStatus?: "active" | "waiting" | "done" | "blocked";
     runId?: string;
     txId?: string;
     receiptPath?: string;
@@ -2107,6 +2395,21 @@ export async function apiResolveImobTurn(body: {
   });
 }
 
+export type ImobCepLookupResponse = {
+  cep: string;
+  city: string;
+  state: string;
+  neighborhood: string | null;
+  street: string | null;
+  address: string | null;
+};
+
+export async function apiLookupImobCep(cep: string) {
+  return http<{ ok: true; data: ImobCepLookupResponse }>(`/imob/lookup/cep/${encodeURIComponent(cep)}`, {
+    method: "GET",
+  });
+}
+
 export async function apiListImobOwners() {
   return http<{ ok: true; data: { items: ImobOwner[] } }>(`/imob/owners`, {
     method: "GET",
@@ -2127,6 +2430,56 @@ export async function apiListImobCases(params?: { flow?: string; status?: string
   return http<{ ok: true; data: { items: ImobCase[] } }>(`/imob/cases${qs}`, {
     method: "GET",
   });
+}
+
+export async function apiListImobFollowUps(params?: { onlyOverdue?: boolean; limit?: number; caseId?: string }) {
+  const query = new URLSearchParams();
+  if (params?.onlyOverdue !== undefined) query.set("onlyOverdue", params.onlyOverdue ? "true" : "false");
+  if (typeof params?.limit === "number" && Number.isFinite(params.limit)) query.set("limit", String(params.limit));
+  if (params?.caseId) query.set("caseId", params.caseId);
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  return http<{
+    ok: true;
+    data: {
+      generatedAt: string;
+      totals: { items: number; overdue: number; highSeverity: number };
+      items: ImobCrmFollowUpItem[];
+    };
+  }>(`/imob/followups/pending${qs}`, { method: "GET" });
+}
+
+export async function apiRunImobFollowUps(body?: { dryRun?: boolean; onlyOverdue?: boolean; limit?: number; caseId?: string | null }) {
+  return http<{
+    ok: true;
+    data: {
+      dryRun: boolean;
+      scanned: number;
+      triggered: number;
+      suppressed: number;
+      items: ImobCrmFollowUpItem[];
+    };
+  }>(`/imob/followups/run`, {
+    method: "POST",
+    body: JSON.stringify(body ?? {}),
+  });
+}
+
+export async function apiGetImobKpiFunnel(params?: { windowDays?: number; from?: string; to?: string }) {
+  const query = new URLSearchParams();
+  if (typeof params?.windowDays === "number" && Number.isFinite(params.windowDays)) query.set("windowDays", String(params.windowDays));
+  if (params?.from) query.set("from", params.from);
+  if (params?.to) query.set("to", params.to);
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  return http<{ ok: true; data: ImobKpiFunnel }>(`/imob/kpis/funnel${qs}`, { method: "GET" });
+}
+
+export async function apiGetImobKpiPerformance(params?: { windowDays?: number; from?: string; to?: string }) {
+  const query = new URLSearchParams();
+  if (typeof params?.windowDays === "number" && Number.isFinite(params.windowDays)) query.set("windowDays", String(params.windowDays));
+  if (params?.from) query.set("from", params.from);
+  if (params?.to) query.set("to", params.to);
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  return http<{ ok: true; data: ImobKpiPerformance }>(`/imob/kpis/performance${qs}`, { method: "GET" });
 }
 
 export async function apiSearchImobInventory(body: {
@@ -2189,8 +2542,30 @@ export async function apiGetImobChatTelemetrySummary(params?: {
         min: number;
         max: number;
       }>;
+      commercial: {
+        recommendedActionSelections: number;
+        widgetActionSelections: number;
+        businessExports: number;
+        caseRecoveries: number;
+        attachmentReads: number;
+      };
+      byJourney: Array<{
+        journeyType: string;
+        events: number;
+        stages: string[];
+        actions: string[];
+      }>;
     };
   }>(`/imob/chat/telemetry/summary${qs}`, { method: "GET" });
+}
+
+export async function apiGetImobChatConversationSnapshot(conversationId: string) {
+  return http<{
+    ok: true;
+    snapshot: ImobConversationSnapshot;
+  }>(`/imob/chat/conversations/${conversationId}/snapshot`, {
+    method: "GET",
+  });
 }
 
 export async function apiGetImobChatConversationExport(conversationId: string) {
@@ -2219,7 +2594,7 @@ export async function apiGetImobChatConversationExport(conversationId: string) {
         action: string | null;
         threadId: string | null;
         threadLabel: string | null;
-        threadStatus: "active" | "done" | "blocked" | null;
+        threadStatus: "active" | "waiting" | "done" | "blocked" | null;
         runId: string | null;
         txId: string | null;
         receiptPath: string | null;
@@ -2229,11 +2604,40 @@ export async function apiGetImobChatConversationExport(conversationId: string) {
       threads: Array<{
         threadId: string;
         label: string;
-        status: "active" | "done" | "blocked";
+        status: "active" | "waiting" | "done" | "blocked";
         firstMessageAt: string;
         lastMessageAt: string;
         messageCount: number;
       }>;
+      snapshot: ImobConversationSnapshot;
+      business: {
+        summary: {
+          journeyType: string | null;
+          stage: string | null;
+          status: string | null;
+          nextStep: string | null;
+          blocker: string | null;
+        };
+        opportunities: {
+          recommendedActions: string[];
+          missingContext: string[];
+          blockedActions: string[];
+          reasonCodes: string[];
+        };
+        attachments: {
+          uploadedDocuments: number;
+          validatedAttachments: number;
+        };
+        governance: {
+          linkedRuns: number;
+          linkedReceipts: number;
+          linkedBundles: number;
+        };
+        printableSections: Array<{
+          label: string;
+          value: string;
+        }>;
+      };
       telemetry: {
         totals: {
           messageToPlanAvgMs: number | null;
@@ -2248,6 +2652,19 @@ export async function apiGetImobChatConversationExport(conversationId: string) {
           p95: number;
           min: number;
           max: number;
+        }>;
+        commercial: {
+          recommendedActionSelections: number;
+          widgetActionSelections: number;
+          businessExports: number;
+          caseRecoveries: number;
+          attachmentReads: number;
+        };
+        byJourney: Array<{
+          journeyType: string;
+          events: number;
+          stages: string[];
+          actions: string[];
         }>;
       };
       audit: {
@@ -3411,7 +3828,12 @@ export async function apiUploadDocuments(formData: FormData, agentSlug: string) 
   });
 }
 
-export async function apiResolveImobAttachment(input: { caseId?: string | null; threadId?: string | null; documentIds: string[] }) {
+export async function apiResolveImobAttachment(input: {
+  caseId?: string | null;
+  threadId?: string | null;
+  conversationId?: string | null;
+  documentIds: string[];
+}) {
   return http<{ ok: boolean; data: { resolved: boolean; caseContext?: ImobCaseContext | null; presentation: ImobOperationalPresentation } }>(`/imob/attachments/resolve`, {
     method: "POST",
     body: JSON.stringify(input),
@@ -3456,6 +3878,7 @@ export async function apiFetchUploadBlob(path: string) {
 export async function apiApplyImobAttachmentCrmSuggestion(input: {
   caseId?: string | null;
   threadId?: string | null;
+  conversationId?: string | null;
   documentIds: string[];
   mode: "include" | "edit" | "discard";
 }) {
