@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   detectEntityPlurality,
+  matchImobConversationalIntents,
   parseImobIntent,
   resolveCanonicalLabel,
 } from "../services/imob/imobIntentCatalog";
@@ -79,4 +80,42 @@ test("IMOB intent catalog treats edição noun variants as edit intent", () => {
   assert.equal(parsed.entity, "imovel");
   assert.equal(parsed.action, "edit");
   assert.equal(parsed.canonicalLabel, "Editar imóvel");
+});
+
+test("IMOB conversational catalog exposes pipeline status intent", () => {
+  const matches = matchImobConversationalIntents("qual status do negócio?");
+
+  assert.equal(matches[0]?.intentId, "pipeline_status");
+  assert.equal(matches[0]?.nextActionPolicy, "read_pipeline_status");
+  assert.ok(matches[0]?.relatedJourneys?.includes("temporada_rules"));
+});
+
+test("IMOB conversational catalog treats case status phrasing as pipeline status", () => {
+  const matches = matchImobConversationalIntents("qual status desse caso?");
+
+  assert.equal(matches[0]?.intentId, "pipeline_status");
+  assert.equal(matches[0]?.nextActionPolicy, "read_pipeline_status");
+});
+
+test("IMOB conversational catalog exposes blocked run resolution intent", () => {
+  const matches = matchImobConversationalIntents("como destravar esse caso?");
+
+  assert.equal(matches[0]?.intentId, "blocked_run_resolution");
+  assert.equal(matches[0]?.nextActionPolicy, "resolve_blocked_run");
+  assert.ok(matches[0]?.relatedJourneys?.includes("temporada_rules"));
+});
+
+test("IMOB conversational catalog exposes next best action intent", () => {
+  const matches = matchImobConversationalIntents("qual próximo passo?");
+
+  assert.equal(matches[0]?.intentId, "next_best_action");
+  assert.equal(matches[0]?.nextActionPolicy, "recommend_next_best_action");
+  assert.ok(matches[0]?.relatedJourneys?.includes("temporada_rules"));
+});
+
+test("IMOB conversational catalog treats short follow-up as next best action", () => {
+  const matches = matchImobConversationalIntents("vamos seguir");
+
+  assert.equal(matches[0]?.intentId, "next_best_action");
+  assert.equal(matches[0]?.nextActionPolicy, "recommend_next_best_action");
 });

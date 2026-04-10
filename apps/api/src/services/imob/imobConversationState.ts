@@ -7,6 +7,7 @@ import {
   type ImobListingDraft,
   type ImobDocumentDraft,
   type ImobContractDraft,
+  type ImobRulesDraft,
   type ImobDealDraft,
   type ImobCommissionDraft,
   type ImobOwnerDraft,
@@ -17,6 +18,7 @@ import {
   type ImobSearchSlots,
   type ImobThreadConversationState,
 } from "./imobConversationContract";
+import { findImobCrmPropertyTypeInText } from "./crm/imobCrmPropertyTypes";
 
 export function normalizeImobText(value: string) {
   return value
@@ -62,7 +64,7 @@ export function extractBudgetMax(text: string) {
   const normalized = text.replace(/\./g, "").replace(/,/g, ".");
   const patterns = [
     /(?:ate|até)\s*r?\$?\s*(\d+(?:\.\d+)?)/,
-    /(?:orcamento|orçamento|budget|faixa)\s*(?:de|em|ate|até)?\s*r?\$?\s*(\d+(?:\.\d+)?)/,
+    /(?:orcamento|orçamento|budget|faixa)(?:\s+(?:de|do|da|em|ate|até|para|por|lead|comprador|locatario|locatário|cliente|orçamento))*\s*r?\$?\s*(\d+(?:\.\d+)?)/,
   ];
   for (const pattern of patterns) {
     const match = normalized.match(pattern);
@@ -72,22 +74,28 @@ export function extractBudgetMax(text: string) {
 }
 
 export function extractGoal(text: string): ImobSearchSlots["goal"] {
+  if (text.includes("temporada")) return "aluguel_por_temporada";
   if (text.includes("alug") || text.includes("loca")) return "locacao";
-  if (text.includes("compr") || text.includes("venda")) return "venda";
+  if (text.includes("compr") || text.includes("vend")) return "venda";
   return null;
 }
 
 function extractPropertyType(text: string): ImobSearchSlots["propertyType"] {
-  if (text.includes("apto") || text.includes("apart")) return "apartamento";
-  if (text.includes("casa")) return "casa";
-  if (text.includes("studio") || text.includes("kitnet")) return "studio";
-  if (text.includes("sala")) return "sala";
-  if (text.includes("terreno")) return "terreno";
-  if (text.includes("galpao")) return "galpao";
-  return null;
+  return findImobCrmPropertyTypeInText(text);
 }
 
 export function extractCity(text: string) {
+  const explicitCityMatch = text.match(
+    /(?:cidade(?:\s+de\s+interesse)?(?:\s+do\s+(?:lead|imovel|imóvel))?)\s*:?\s*([a-z]+(?:\s+[a-z]+){0,4})/i,
+  );
+  if (explicitCityMatch?.[1]) {
+    const rawCandidate = explicitCityMatch[1]
+      .split(/\b(?:faixa|orcamento|orçamento|telefone|email|e-mail|documento|endereco|endereço|tipo|finalidade)\b/i)[0]
+      ?.trim();
+    if (rawCandidate && rawCandidate.length >= 2) {
+      return titleCaseWords(rawCandidate);
+    }
+  }
   if (text.includes("balnepario camboriu") || text.includes("balneario camboriu") || text.includes("camboriu") || /\bbc\b/.test(text)) {
     return "Balneário Camboriú";
   }
@@ -244,13 +252,17 @@ function extractPhone(raw: string) {
 }
 
 function extractDocument(raw: string) {
-  const cpfLabeled = raw.match(/(?:cpf|documento)\s*:?\s*(\d{3}\.?\d{3}\.?\d{3}-?\d{2})/i);
+  const cpfLabeled = raw.match(
+    /(?:cpf|documento)(?:\s+do\s+(?:proprietario|proprietário|proprietária|proprietaria|vendedor|locador))?\s*:?\s*(\d{3}\.?\d{3}\.?\d{3}-?\d{2}|\d{11})/i
+  );
   if (cpfLabeled) return cpfLabeled[1];
-  const cnpjLabeled = raw.match(/(?:cnpj|documento)\s*:?\s*(\d{2}\.?\d{3}\.?\d{3}\/\d{4}-?\d{2})/i);
+  const cnpjLabeled = raw.match(
+    /(?:cnpj|documento)(?:\s+do\s+(?:proprietario|proprietário|proprietária|proprietaria|vendedor|locador))?\s*:?\s*(\d{2}\.?\d{3}\.?\d{3}\/\d{4}-?\d{2}|\d{14})/i
+  );
   if (cnpjLabeled) return cnpjLabeled[1];
-  const cpfFormatted = raw.match(/\d{3}\.\d{3}\.\d{3}-\d{2}/);
+  const cpfFormatted = raw.match(/\b\d{3}\.\d{3}\.\d{3}-\d{2}\b/);
   if (cpfFormatted) return cpfFormatted[0];
-  const cnpjFormatted = raw.match(/\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}/);
+  const cnpjFormatted = raw.match(/\b\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2}\b/);
   return cnpjFormatted ? cnpjFormatted[0] : null;
 }
 
@@ -319,12 +331,29 @@ function buildProposalPendingFields(draft: ImobProposalDraft) {
 }
 
 function extractAddress(raw: string) {
-  const match = raw.match(/(?:endereco|endereço)\s*:?[ ]*([^,.;\n]+(?:,[^.;\n]+)?)/i);
+  const match = raw.match(/(?:endereco|endereço)(?: do imovel| do imóvel)?\s*:?[ ]*([^,.;\n]+(?:,[^.;\n]+)?)/i);
   return match?.[1]?.trim() ?? null;
+}
+
+function formatCep(raw: string) {
+  const digits = raw.replace(/\D/g, "").slice(0, 8);
+  if (digits.length !== 8) return digits || null;
+  return `${digits.slice(0, 5)}-${digits.slice(5)}`;
+}
+
+function extractCep(raw: string) {
+  const labeled = raw.match(/(?:\bcep\b)(?:\s+do\s+imovel|\s+do\s+imóvel)?\s*:?\s*(\d{5}-?\d{3})/i);
+  if (labeled?.[1]) return formatCep(labeled[1]);
+  const generic = raw.match(/\b\d{5}-?\d{3}\b/);
+  return generic?.[0] ? formatCep(generic[0]) : null;
 }
 
 function hasPropertyCaptureSignal(message: string, slots: ImobSearchSlots) {
   const normalized = normalizeImobText(message);
+  const hasOwnerOnlyContext =
+    (normalized.includes("propriet") || normalized.includes("vendedor") || normalized.includes("locador"))
+    && !/(imovel|imóvel|imoveis|imóveis|apartamento|apartamentos|apto|aptos|casa|casas|studio|studios|kitnet|kitnets|terreno|terrenos|galpao|galpão|galpoes|galpões|sala|salas)/.test(normalized);
+  if (hasOwnerOnlyContext) return false;
   const explicitPropertySignal = Boolean(
     slots.propertyType ||
       slots.city ||
@@ -332,7 +361,7 @@ function hasPropertyCaptureSignal(message: string, slots: ImobSearchSlots) {
       slots.bedrooms ||
       slots.bathrooms ||
       extractAddress(message) ||
-      /(?:imovel|imóvel|apartamento|apto|casa|studio|kitnet|terreno|galpao|galpão|sala)\s*#?\d*/.test(normalized)
+      /(?:imovel|imóvel|imoveis|imóveis|apartamento|apartamentos|apto|aptos|casa|casas|studio|studios|kitnet|kitnets|terreno|terrenos|galpao|galpão|galpoes|galpões|sala|salas)\s*#?\d*/.test(normalized)
   );
   if (normalized.includes("locador") || normalized.includes("locadora")) {
     return explicitPropertySignal;
@@ -346,6 +375,7 @@ function buildPropertyDraft(previous: ImobPropertyDraft | undefined, message: st
     propertyId: propertyIdMatch ? `property-${propertyIdMatch}` : previous?.propertyId ?? null,
     propertyType: slots.propertyType ?? previous?.propertyType ?? null,
     goal: slots.goal ?? previous?.goal ?? null,
+    cep: extractCep(message) ?? previous?.cep ?? null,
     city: slots.city ?? previous?.city ?? null,
     neighborhood: slots.neighborhood ?? previous?.neighborhood ?? null,
     bedrooms: slots.bedrooms ?? previous?.bedrooms ?? null,
@@ -596,6 +626,80 @@ function buildContractPendingFields(draft: ImobContractDraft) {
   return pending;
 }
 
+function extractPropertyFinality(raw: string, slots: ImobSearchSlots): ImobRulesDraft["propertyFinality"] {
+  const normalized = normalizeImobText(raw);
+  if (
+    normalized.includes("aluguel por temporada") ||
+    normalized.includes("locacao por temporada") ||
+    normalized.includes("locação por temporada") ||
+    normalized.includes("temporada") ||
+    normalized.includes("hospedagem") ||
+    normalized.includes("diaria") ||
+    normalized.includes("diária")
+  ) {
+    return "aluguel_por_temporada";
+  }
+  if (normalized.includes("venda") || normalized.includes("compr")) return "venda";
+  if (normalized.includes("locacao") || normalized.includes("locação") || normalized.includes("aluguel") || slots.goal === "locacao") return "locacao";
+  return null;
+}
+
+function extractPropertyId(raw: string) {
+  const propertyIdMatch = raw.match(/(?:imovel|imóvel|apartamento|apto|casa)\s*#?\s*(\d{2,})/i)?.[1] ?? null;
+  return propertyIdMatch ? `property-${propertyIdMatch}` : null;
+}
+
+function extractRuleTime(raw: string, label: "checkin" | "checkout") {
+  const normalized = normalizeImobText(raw).replace(/check\s*in/g, "checkin").replace(/check\s*out/g, "checkout");
+  const match = normalized.match(new RegExp(`${label}\\s*(?:as|às|a partir das|de)?\\s*(\\d{1,2})(?::|h)?(\\d{2})?`));
+  if (!match?.[1]) return null;
+  const hour = match[1].padStart(2, "0");
+  const minute = (match[2] ?? "00").padStart(2, "0");
+  return `${hour}:${minute}`;
+}
+
+function extractGuestCount(raw: string, kind: "min" | "max") {
+  const normalized = normalizeImobText(raw);
+  const labelPattern = kind === "min" ? "(?:minimo|min|mínimo)" : "(?:maximo|max|máximo)";
+  const labeled = normalized.match(new RegExp(`${labelPattern}\\s*(?:de)?\\s*(\\d+)\\s*(?:hospedes|hóspedes|pessoas)?`));
+  if (labeled?.[1]) return Number.parseInt(labeled[1], 10);
+  const range = normalized.match(/(\d+)\s*(?:a|ate|até|-)\s*(\d+)\s*(?:hospedes|hóspedes|pessoas)/);
+  if (range?.[1] && range?.[2]) return Number.parseInt(kind === "min" ? range[1] : range[2], 10);
+  return null;
+}
+
+function extractRulesText(raw: string) {
+  const match = raw.match(/(?:regras?|observacoes|observações)\s*:?[ ]*(.+)$/i);
+  if (!match?.[1]) return null;
+  return match[1].trim() || null;
+}
+
+function buildRulesDraft(previous: ImobRulesDraft | undefined, message: string, slots: ImobSearchSlots): ImobRulesDraft {
+  return {
+    propertyId: extractPropertyId(message) ?? previous?.propertyId ?? null,
+    propertyFinality: extractPropertyFinality(message, slots) ?? previous?.propertyFinality ?? null,
+    checkin: extractRuleTime(message, "checkin") ?? previous?.checkin ?? null,
+    checkout: extractRuleTime(message, "checkout") ?? previous?.checkout ?? null,
+    minHospedes: extractGuestCount(message, "min") ?? previous?.minHospedes ?? null,
+    maxHospedes: extractGuestCount(message, "max") ?? previous?.maxHospedes ?? null,
+    regras: extractRulesText(message) ?? previous?.regras ?? null,
+    outrasRegras: previous?.outrasRegras ?? null,
+  };
+}
+
+function buildRulesPendingFields(draft: ImobRulesDraft) {
+  const pending: string[] = [];
+  if (!draft.propertyId) pending.push("propertyId");
+  if (!draft.propertyFinality) pending.push("propertyFinality");
+  if (draft.propertyFinality !== "aluguel_por_temporada") return pending;
+  if (!draft.checkin) pending.push("checkin");
+  if (!draft.checkout) pending.push("checkout");
+  if (!draft.minHospedes) pending.push("minHospedes");
+  if (!draft.maxHospedes) pending.push("maxHospedes");
+  if (draft.minHospedes && draft.maxHospedes && draft.minHospedes > draft.maxHospedes) pending.push("guestRange");
+  return pending;
+}
+
 function extractReviewStage(raw: string): ImobDealDraft["reviewStage"] {
   const normalized = normalizeImobText(raw);
   if (normalized.includes("fechamento") || normalized.includes("closing")) return "closing";
@@ -719,7 +823,18 @@ export function createNextImobOperationalState(
 ): ImobOperationalState | null {
   if (intent === "capture") {
     if (hasPropertyCaptureSignal(message, slots)) {
-      const draft = buildPropertyDraft(previous?.flow === "property.create" ? previous.propertyDraft : undefined, message, slots);
+      const inheritedSlots: ImobSearchSlots = previous?.flow === "lead.qualify"
+        ? {
+            ...slots,
+            goal: slots.goal ?? previous.leadDraft?.desiredGoal ?? null,
+            city: slots.city ?? previous.leadDraft?.desiredCity ?? null,
+          }
+        : slots;
+      const draft = buildPropertyDraft(
+        previous?.flow === "property.create" ? previous.propertyDraft : undefined,
+        message,
+        inheritedSlots,
+      );
       const pendingFields = buildPropertyPendingFields(draft);
       return {
         flow: "property.create",
@@ -805,6 +920,16 @@ export function createNextImobOperationalState(
       status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
       pendingFields,
       contractDraft: draft,
+    };
+  }
+  if (intent === "rules") {
+    const draft = buildRulesDraft(previous?.flow === "rules.configure" ? previous.rulesDraft : undefined, message, slots);
+    const pendingFields = buildRulesPendingFields(draft);
+    return {
+      flow: "rules.configure",
+      status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
+      pendingFields,
+      rulesDraft: draft,
     };
   }
   if (intent === "proposal") {

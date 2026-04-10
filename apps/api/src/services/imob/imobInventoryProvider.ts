@@ -157,6 +157,21 @@ export function searchImobInventory(request: ImobSearchInventoryRequest): ImobSe
         hasResults: items.length > 0,
       }),
       card: buildCard(items, { segment, city: slots?.city ?? null }),
+      widget:
+        items.length > 0
+          ? {
+              kind: "inventory_showcase" as const,
+              title: "Vitrine IMOB",
+              subtitle:
+                slots?.city ?? region
+                  ? `Imóveis compatíveis para ${segmentLabel(segment)} em ${slots?.city ?? region}.`
+                  : `Imóveis compatíveis para ${segmentLabel(segment)}.`,
+              items: items.map((item) => ({
+                ...item,
+                autoprompt: `mostrar detalhes do imóvel ${item.title} em ${item.city}`,
+              })),
+            }
+          : undefined,
     },
   };
 }

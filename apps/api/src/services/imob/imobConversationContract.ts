@@ -1,4 +1,44 @@
+import type { ImobCrmPropertyType } from "./crm/imobCrmPropertyTypes";
+
 export type ImobConversationMode = "consult" | "search" | "execute" | "search_knowledge" | "blocked";
+
+export type ImobBackingSpecialistKey =
+  | "commercial_intelligence"
+  | "daily_ops"
+  | "legal"
+  | "financial"
+  | "audit";
+
+export type ImobChatWidgetKind =
+  | "commercial_home"
+  | "daily_routine"
+  | "inventory_showcase"
+  | "lead_summary"
+  | "case_summary"
+  | "proposal_summary"
+  | "document_checklist"
+  | "print_bundle";
+
+export type ImobBackingSpecialistContract = {
+  key: ImobBackingSpecialistKey;
+  primaryAgentId: string;
+  responsibility: string;
+  visibleToUserByDefault: false;
+  escalationTriggers: string[];
+};
+
+export type ImobResolvedBackingSpecialist = ImobBackingSpecialistContract & {
+  rationale: string;
+};
+
+export type ImobChatExperienceContract = {
+  sourceOfTruth: "imob_orchestrator_contract";
+  visibleAgentId: "IMOB";
+  dashboardRole: "managerial_console";
+  marketplaceRole: "activation_only";
+  widgets: ImobChatWidgetKind[];
+  backingSpecialists: ImobBackingSpecialistContract[];
+};
 
 export type ImobConversationIntent =
   | "discover_rent"
@@ -7,17 +47,10 @@ export type ImobConversationIntent =
   | "knowledge_search"
   | "operational";
 
-export type ImobPropertyType =
-  | "apartamento"
-  | "casa"
-  | "studio"
-  | "sala"
-  | "terreno"
-  | "galpao"
-  | null;
+export type ImobPropertyType = ImobCrmPropertyType | null;
 
 export type ImobSearchSlots = {
-  goal: "locacao" | "venda" | null;
+  goal: "locacao" | "venda" | "aluguel_por_temporada" | null;
   city: string | null;
   region: string | null;
   neighborhood: string | null;
@@ -43,7 +76,7 @@ export type ImobThreadConversationState = {
   operational?: ImobOperationalState | null;
 };
 
-export type ImobIntent = "capture" | "match" | "lead" | "visit" | "listing" | "documents" | "proposal" | "deal" | "contract" | "commission" | "adjustment";
+export type ImobIntent = "capture" | "match" | "lead" | "visit" | "listing" | "documents" | "proposal" | "deal" | "contract" | "rules" | "commission" | "adjustment";
 
 export type ImobOperationalFlow =
   | "owner.create"
@@ -55,6 +88,7 @@ export type ImobOperationalFlow =
   | "proposal.create"
   | "deal.review"
   | "contract.prepare"
+  | "rules.configure"
   | "commission.settle"
   | "adjustment.apply";
 
@@ -75,7 +109,7 @@ export type ImobLeadDraft = {
   leadName: string | null;
   leadEmail: string | null;
   leadPhone: string | null;
-  desiredGoal: "locacao" | "venda" | null;
+  desiredGoal: "locacao" | "venda" | "aluguel_por_temporada" | null;
   desiredCity: string | null;
   budgetMax: number | null;
 };
@@ -92,7 +126,8 @@ export type ImobProposalDraft = {
 export type ImobPropertyDraft = {
   propertyId: string | null;
   propertyType: ImobPropertyType;
-  goal: "locacao" | "venda" | null;
+  goal: "locacao" | "venda" | "aluguel_por_temporada" | null;
+  cep: string | null;
   city: string | null;
   neighborhood: string | null;
   bedrooms: number | null;
@@ -133,6 +168,17 @@ export type ImobContractDraft = {
   approvalRequired: boolean;
 };
 
+export type ImobRulesDraft = {
+  propertyId: string | null;
+  propertyFinality: "aluguel_por_temporada" | "locacao" | "venda" | null;
+  checkin: string | null;
+  checkout: string | null;
+  minHospedes: number | null;
+  maxHospedes: number | null;
+  regras: string | null;
+  outrasRegras: string | null;
+};
+
 export type ImobDealDraft = {
   dealId: string | null;
   propertyId: string | null;
@@ -152,7 +198,7 @@ export type ImobCommissionDraft = {
 };
 
 export type ImobOperationalState = {
-  flow: "owner.create" | "property.create" | "lead.qualify" | "visit.schedule" | "listing.activate" | "documents.collect" | "proposal.create" | "deal.review" | "contract.prepare" | "commission.settle";
+  flow: "owner.create" | "property.create" | "lead.qualify" | "visit.schedule" | "listing.activate" | "documents.collect" | "proposal.create" | "deal.review" | "contract.prepare" | "rules.configure" | "commission.settle";
   status: "collecting" | "ready_for_review";
   pendingFields: string[];
   ownerDraft?: ImobOwnerDraft;
@@ -164,6 +210,7 @@ export type ImobOperationalState = {
   proposalDraft?: ImobProposalDraft;
   dealDraft?: ImobDealDraft;
   contractDraft?: ImobContractDraft;
+  rulesDraft?: ImobRulesDraft;
   commissionDraft?: ImobCommissionDraft;
 };
 
@@ -236,16 +283,109 @@ export type ImobPresentationCard = {
   actionsLayout?: "inline";
 };
 
+export type ImobPresentationBlockPhase = "pre_execution" | "post_success";
+
+export type ImobPresentationBlock = {
+  kind: "confirmation" | "next_actions" | "summary" | "details";
+  title?: string;
+  text?: string;
+  lines?: string[];
+  ctas?: ImobPresentationCta[];
+  actionsLayout?: "inline";
+  persistent?: boolean;
+  phase?: ImobPresentationBlockPhase;
+};
+
+export type ImobCommercialHomeWidget = {
+  kind: "commercial_home";
+  title: string;
+  subtitle: string;
+  quickActions: Array<{
+    id: string;
+    title: string;
+    summary: string;
+    autoprompt: string;
+  }>;
+  priorities?: Array<{
+    id: string;
+    title: string;
+    detail: string;
+    autoprompt: string;
+  }>;
+};
+
+export type ImobInventoryShowcaseWidget = {
+  kind: "inventory_showcase";
+  title: string;
+  subtitle?: string;
+  items: Array<ImobInventoryOption & { autoprompt?: string | null }>;
+};
+
+export type ImobCaseSummaryWidget = {
+  kind: "case_summary";
+  title: string;
+  journeyLabel: string;
+  stageLabel: string;
+  nextStep?: string | null;
+  blocker?: string | null;
+  recommendedActions: Array<{
+    id: string;
+    label: string;
+    autoprompt?: string | null;
+  }>;
+  specialists: ImobResolvedBackingSpecialist[];
+};
+
+export type ImobDocumentChecklistWidget = {
+  kind: "document_checklist";
+  title: string;
+  checklist: string[];
+  blocker?: string | null;
+  nextStep?: string | null;
+  specialists: ImobResolvedBackingSpecialist[];
+};
+
+export type ImobPrintBundleWidget = {
+  kind: "print_bundle";
+  title: string;
+  items: Array<{
+    label: string;
+    value: string;
+  }>;
+};
+
+export type ImobPresentationWidget =
+  | ImobCommercialHomeWidget
+  | ImobInventoryShowcaseWidget
+  | ImobCaseSummaryWidget
+  | ImobDocumentChecklistWidget
+  | ImobPrintBundleWidget;
+
+export type ImobPresentationFormFieldOption = {
+  value: string;
+  label: string;
+  group?: string;
+};
+
+export type ImobPresentationFormFieldLookup = {
+  kind: "cep";
+  autoFillTargets: Partial<Record<"address" | "city" | "neighborhood", string>>;
+};
+
 export type ImobPresentationFormField = {
   name: string;
   label: string;
-  type: "text" | "tel" | "email";
+  type: "text" | "tel" | "email" | "select";
   required?: boolean;
   placeholder?: string;
   value?: string | null;
   helperText?: string;
   allowAttachment?: boolean;
   attachmentLabel?: string;
+  inputMode?: "text" | "numeric";
+  maxLength?: number;
+  options?: ImobPresentationFormFieldOption[];
+  lookup?: ImobPresentationFormFieldLookup;
 };
 
 export type ImobPresentationFormAction = {
@@ -306,10 +446,65 @@ export type ImobSearchInventoryResponse = {
   presentation: {
     text: string;
     card?: ImobPresentationCard;
+    widget?: ImobPresentationWidget;
   };
 };
 
 export type ImobOperationalOwner = "Corretor" | "Jurídico" | "Financeiro" | "Cliente" | "IMOB Ops";
+
+export type ImobCaseJourneyType =
+  | "property_capture"
+  | "lead_qualification"
+  | "proposal"
+  | "visit_follow_up"
+  | "negotiation"
+  | "documentation"
+  | "contract"
+  | "closing"
+  | "commission"
+  | "temporada_rules"
+  | "operations";
+
+export type ImobCasePartyRole =
+  | "broker"
+  | "manager"
+  | "owner"
+  | "buyer"
+  | "seller"
+  | "tenant"
+  | "landlord"
+  | "operator";
+
+export type ImobCaseCommercialGoal =
+  | "captacao"
+  | "qualificacao"
+  | "proposta"
+  | "visita"
+  | "negociacao"
+  | "documentacao"
+  | "contrato"
+  | "fechamento"
+  | "comissao"
+  | "temporada"
+  | "operacao";
+
+export type ImobCaseRecommendedAction = {
+  id: string;
+  label: string;
+  actionType: "consultive" | "operational" | "governed";
+  inputHint?: string;
+  reasonCode?: string;
+};
+
+export type ImobCanonicalCase = {
+  journeyType?: ImobCaseJourneyType;
+  partyRole?: ImobCasePartyRole;
+  commercialGoal?: ImobCaseCommercialGoal;
+  recommendedActions?: ImobCaseRecommendedAction[];
+  blockedActions?: string[];
+  missingContext?: string[];
+  reasonCodes?: string[];
+};
 
 export type ImobCaseContext = {
   caseId: string;
@@ -322,6 +517,7 @@ export type ImobCaseContext = {
   pendingItems?: string[];
   threadId?: string | null;
   updatedAt?: string;
+  canonical?: ImobCanonicalCase;
 };
 
 export type ImobPresentationConfidence = {
@@ -348,6 +544,8 @@ export type ImobOperationalPresentation = {
   text: string;
   metadata?: ImobPresentationMetadata;
   card?: ImobPresentationCard;
+  blocks?: ImobPresentationBlock[];
+  widget?: ImobPresentationWidget;
   form?: ImobPresentationForm;
   suggestedNextAction?: string;
   owner?: ImobOperationalOwner;

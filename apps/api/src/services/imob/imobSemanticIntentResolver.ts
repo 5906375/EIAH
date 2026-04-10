@@ -12,12 +12,17 @@ type SemanticIntentPayload = {
   action: string | null;
   confidence: number | null;
   needsClarification: boolean;
+  composedIntents: Array<{
+    entity: string | null;
+    action: string | null;
+  }>;
 };
 
 export type ImobSemanticIntentResolution = {
   parsedIntent: ParsedImobIntent;
   source: "openai" | "parser_fallback";
   confidence: number | null;
+  composedIntents: ParsedImobIntent[];
 };
 
 const INTENT_RESOLUTION_TIMEOUT_MS = Number(process.env.IMOB_INTENT_RESOLUTION_TIMEOUT_MS ?? 6000);
@@ -68,6 +73,7 @@ const KNOWN_ACTIONS: ImobActionKey[] = [
   "list",
   "get",
   "update",
+  "configure",
   "status",
   "sendDocuments",
   "history",
@@ -95,6 +101,10 @@ const SemanticIntentResponseSchema = z.object({
   action: z.string().trim().min(1).nullable().optional(),
   confidence: z.number().min(0).max(1).nullable().optional(),
   needsClarification: z.boolean().optional(),
+  composedIntents: z.array(z.object({
+    entity: z.string().trim().min(1).nullable().optional(),
+    action: z.string().trim().min(1).nullable().optional(),
+  })).optional(),
 });
 
 const SemanticIntentJsonSchema = {
@@ -105,8 +115,20 @@ const SemanticIntentJsonSchema = {
     action: { type: ["string", "null"] },
     confidence: { type: ["number", "null"] },
     needsClarification: { type: "boolean" },
+    composedIntents: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          entity: { type: ["string", "null"] },
+          action: { type: ["string", "null"] },
+        },
+        required: ["entity", "action"],
+      },
+    },
   },
-  required: ["entity", "action", "confidence", "needsClarification"],
+  required: ["entity", "action", "confidence", "needsClarification", "composedIntents"],
 } as const;
 
 function extractResponseText(payload: any) {
@@ -206,7 +228,8 @@ async function resolveWithOpenAi(message: string, apiKey: string): Promise<Seman
                 text:
                   "Você classifica intenções do chat IMOB em um catálogo canônico. " +
                   "Não invente entidades ou ações fora do catálogo. " +
-                  "Se a frase estiver ambígua, retorne action=null ou entity=null e needsClarification=true.",
+                  "Se a frase estiver ambígua, retorne action=null ou entity=null e needsClarification=true. " +
+                  "Quando a frase pedir mais de uma ação na mesma sentença, preencha composedIntents na ordem em que as ações aparecem.",
               },
             ],
           },
@@ -247,6 +270,12 @@ async function resolveWithOpenAi(message: string, apiKey: string): Promise<Seman
       action: validated.data.action ?? null,
       confidence: validated.data.confidence ?? null,
       needsClarification: validated.data.needsClarification ?? false,
+      composedIntents: Array.isArray(validated.data.composedIntents)
+        ? validated.data.composedIntents.map((item) => ({
+          entity: item.entity ?? null,
+          action: item.action ?? null,
+        }))
+        : [],
     };
   } catch {
     return null;
@@ -258,39 +287,49 @@ async function resolveWithOpenAi(message: string, apiKey: string): Promise<Seman
 export async function resolveImobSemanticIntent(message: string): Promise<ImobSemanticIntentResolution> {
   const colloquial = resolveKnownColloquialIntent(message);
   if (colloquial) {
-    return { parsedIntent: colloquial, source: "parser_fallback", confidence: null };
+    return { parsedIntent: colloquial, source: "parser_fallback", confidence: null, composedIntents: [] };
   }
 
   const fallback = parseImobIntent(message);
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) {
-    return { parsedIntent: fallback, source: "parser_fallback", confidence: null };
+    return { parsedIntent: fallback, source: "parser_fallback", confidence: null, composedIntents: [] };
   }
 
   const semantic = await resolveWithOpenAi(message, apiKey);
   if (!semantic) {
-    return { parsedIntent: fallback, source: "parser_fallback", confidence: null };
+    return { parsedIntent: fallback, source: "parser_fallback", confidence: null, composedIntents: [] };
   }
 
   const confidence = semantic.confidence ?? null;
   if (semantic.needsClarification || (typeof confidence === "number" && confidence < SEMANTIC_CONFIDENCE_THRESHOLD)) {
-    return { parsedIntent: fallback, source: "parser_fallback", confidence };
+    return { parsedIntent: fallback, source: "parser_fallback", confidence, composedIntents: [] };
   }
 
   const entity = isValidEntity(semantic.entity) ? semantic.entity : null;
   const action = isValidAction(semantic.action) ? semantic.action : null;
+  const composedIntents = semantic.composedIntents
+    .map((item) => {
+      const itemEntity = isValidEntity(item.entity) ? item.entity : null;
+      const itemAction = isValidAction(item.action) ? item.action : null;
+      if (!itemEntity || !itemAction) return null;
+      if (!supportsEntityAction(itemEntity, itemAction)) return null;
+      return toParsedIntent(message, { entity: itemEntity, action: itemAction });
+    })
+    .filter((item): item is ParsedImobIntent => item !== null);
 
   if (entity && action && !supportsEntityAction(entity, action)) {
-    return { parsedIntent: fallback, source: "parser_fallback", confidence };
+    return { parsedIntent: fallback, source: "parser_fallback", confidence, composedIntents };
   }
 
   if (!entity && !action) {
-    return { parsedIntent: fallback, source: "parser_fallback", confidence };
+    return { parsedIntent: fallback, source: "parser_fallback", confidence, composedIntents };
   }
 
   return {
     parsedIntent: toParsedIntent(message, { entity, action }),
     source: "openai",
     confidence,
+    composedIntents,
   };
 }
