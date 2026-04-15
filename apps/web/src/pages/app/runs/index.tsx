@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useSearchParams } from "react-router-dom";
 import introJs from "intro.js";
 import "intro.js/minified/introjs.min.css";
 import AgentSelect from "../../../components/agents/AgentSelect";
@@ -40,6 +40,11 @@ import {
 import { useAgentExecution } from "@/hooks/useAgentExecution";
 import { useSession } from "@/state/sessionStore";
 import { getDomainTerm } from "@/domain/semantics";
+import { formatReconciliationIssue } from "@/lib/reconciliation";
+import {
+  extractImobContextFromRun,
+  getStringValue as readImobString,
+} from "@/lib/imobContext";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "https://api.eiah.local/api";
 const TENANT_PLACEHOLDER = import.meta.env.VITE_TENANT_ID ?? "tenant-demo";
@@ -60,14 +65,6 @@ type RunResource = {
   templates: LowCodeTemplate[];
   tools?: string[];
 };
-
-function formatReconciliationIssue(issue: string) {
-  if (issue === "missing_breakdown") return "Sem breakdown";
-  if (issue === "missing_ledger") return "Sem ledger";
-  if (issue === "run_vs_breakdown_mismatch") return "Run divergente";
-  if (issue === "breakdown_vs_ledger_mismatch") return "Ledger divergente";
-  return issue || "—";
-}
 
 function formatMeterTypeLabel(value: string) {
   if (value === "llm_completion") return "LLM completion";
@@ -426,17 +423,7 @@ function buildImobChatRoute(base: {
   return `/app/imob/chat${query ? `?${query}` : ""}`;
 }
 
-function getRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
-}
-
-function getStringValue(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  const normalized = value.trim();
-  if (!normalized) return null;
-  if (normalized.toLowerCase() === "null" || normalized.toLowerCase() === "undefined") return null;
-  return normalized;
-}
+const getRunStringValue = (value: unknown) => readImobString(value, { treatLiteralNullish: true });
 
 function dedupeHistoryLines(lines: string[]) {
   const result: string[] = [];
@@ -451,44 +438,11 @@ function dedupeHistoryLines(lines: string[]) {
   return result;
 }
 
-function extractImobContextFromRun(run: Run | null) {
-  const explicitCaseId = getStringValue(run?.caseId);
-  const explicitThreadId = getStringValue(run?.threadId);
-  const request = getRecord(run?.request);
-  const requestMetadata = getRecord(request?.metadata);
-  const requestInput = getRecord(request?.input);
-  const meta = getRecord(run?.meta);
-  const nestedMeta = getRecord(meta?.metadata);
-  const caseId =
-    explicitCaseId ??
-    getStringValue(request?.caseId) ??
-    getStringValue(requestInput?.caseId) ??
-    getStringValue(requestMetadata?.caseId) ??
-    getStringValue(meta?.caseId) ??
-    getStringValue(nestedMeta?.caseId) ??
-    null;
-  const threadId =
-    explicitThreadId ??
-    getStringValue(request?.threadId) ??
-    getStringValue(requestInput?.threadId) ??
-    getStringValue(requestMetadata?.threadId) ??
-    getStringValue(meta?.threadId) ??
-    getStringValue(nestedMeta?.threadId) ??
-    null;
-  const conversationId =
-    getStringValue(request?.conversationId) ??
-    getStringValue(requestMetadata?.conversationId) ??
-    getStringValue(meta?.conversationId) ??
-    getStringValue(nestedMeta?.conversationId) ??
-    null;
-  return { caseId, threadId, conversationId };
-}
-
 function buildImobEntityActions(root: any) {
   const caseData = root?.case ?? root ?? null;
   const caseId = typeof caseData?.id === "string" && caseData.id.trim().length > 0 ? caseData.id.trim() : null;
   const threadId = typeof caseData?.threadId === "string" && caseData.threadId.trim().length > 0 ? caseData.threadId.trim() : null;
-  const context = extractImobContextFromRun(root);
+  const context = extractImobContextFromRun(root, { treatLiteralNullish: true });
   const owner = root?.entities?.owner ?? root?.owner ?? null;
   const property = root?.entities?.property ?? root?.property ?? null;
   const lead = root?.entities?.lead ?? root?.lead ?? null;
@@ -497,11 +451,11 @@ function buildImobEntityActions(root: any) {
     threadId: context.threadId ?? threadId,
     caseId: context.caseId ?? caseId,
   });
-  const ownerName = getStringValue(owner?.name);
+  const ownerName = getRunStringValue(owner?.name);
   const ownerLabel = ownerName ? `Editar cadastro do proprietário: ${ownerName}` : "Incluir proprietário no cadastro";
-  const propertyRef = getStringValue(property?.address) ?? getStringValue(property?.id) ?? null;
+  const propertyRef = getRunStringValue(property?.address) ?? getRunStringValue(property?.id) ?? null;
   const propertyLabel = propertyRef ? `Editar cadastro do imóvel: ${propertyRef}` : "Incluir imóvel no cadastro";
-  const leadName = getStringValue(lead?.name);
+  const leadName = getRunStringValue(lead?.name);
   const leadLabel = leadName ? `Editar cadastro do lead: ${leadName}` : "Incluir lead no cadastro";
   return [
     {
@@ -876,6 +830,7 @@ const RunsPage: React.FC = () => {
   const [imobReasonFilter, setImobReasonFilter] = useState("all");
 
   const session = useSession();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const requestedDomain = (searchParams.get("domain") || "").trim().toLowerCase();
   const requestedRunId = (searchParams.get("runId") || "").trim() || null;
@@ -915,6 +870,34 @@ const RunsPage: React.FC = () => {
     { id: "execution", label: "Execução" },
     { id: "investigation", label: "Investigação" },
   ] as const;
+
+  useEffect(() => {
+    const hashId = location.hash.replace(/^#/, "").trim().toLowerCase();
+    if (!hashId) return;
+    if (hashId === "runs-overview") {
+      setRunPageMode("overview");
+      return;
+    }
+    if (hashId === "runs-criar") {
+      setRunPageMode("execution");
+      return;
+    }
+    if (hashId === "runs-status" || hashId === "runs-historico" || hashId === "runs-resultado") {
+      setRunPageMode("investigation");
+    }
+  }, [location.hash]);
+
+  useEffect(() => {
+    const hashId = location.hash.replace(/^#/, "").trim();
+    if (!hashId) return;
+    const raf = window.requestAnimationFrame(() => {
+      const target = document.getElementById(hashId);
+      if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [location.hash, runPageMode]);
 
   const visibleRuns = useMemo(() => {
     const now = Date.now();
@@ -1040,7 +1023,10 @@ const RunsPage: React.FC = () => {
       ],
     };
   }, [selectedRun?.id, selectedRunBreakdownByModel, selectedRunBreakdownItems, selectedRunFinance]);
-  const selectedRunImobContext = useMemo(() => extractImobContextFromRun(selectedRun), [selectedRun]);
+  const selectedRunImobContext = useMemo(
+    () => extractImobContextFromRun(selectedRun, { treatLiteralNullish: true }),
+    [selectedRun]
+  );
   const selectedRunContextMerged = useMemo(
     () => ({
       conversationId: selectedRunImobContext.conversationId ?? requestedConversationId,
@@ -1117,7 +1103,7 @@ const RunsPage: React.FC = () => {
         costCents: selectedRun.costCents ?? null,
         startedAt: selectedRun.startedAt ?? null,
         finishedAt: selectedRun.finishedAt ?? null,
-        traceId: getStringValue(selectedRun.meta?.traceId) ?? null,
+        traceId: getRunStringValue(selectedRun.meta?.traceId) ?? null,
         caseId: selectedRun.caseId ?? null,
         threadId: selectedRun.threadId ?? null,
       },

@@ -66,6 +66,8 @@ import { ContextualCostPanel } from "@/components/billing/ContextualCostPanel";
 import { resolveImobAccessGateCopy } from "@/features/imob/accessGateCatalog";
 import { formatDataInputTemplate, getDataInputTemplate } from "@/domain/inputTemplates";
 import { CONTRACT_SCHEMAS } from "@/features/imob/contractSchemas";
+import { formatPct } from "@/lib/formatters";
+import { formatReconciliationIssue } from "@/lib/reconciliation";
 
 type ChatState = "idle" | "typing" | "executing" | "awaiting_user_action" | "blocked" | "done";
 
@@ -506,14 +508,6 @@ function SequentialBlockLines(props: {
       renderItem={(item, index, visibleLabel, isTyping) => props.renderItem(item.label, index, visibleLabel, isTyping)}
     />
   );
-}
-
-function formatReconciliationIssue(issue: string) {
-  if (issue === "missing_breakdown") return "Sem breakdown";
-  if (issue === "missing_ledger") return "Sem ledger";
-  if (issue === "run_vs_breakdown_mismatch") return "Run divergente";
-  if (issue === "breakdown_vs_ledger_mismatch") return "Ledger divergente";
-  return issue || "—";
 }
 
 function formatCurrencyCents(amountCents: number) {
@@ -1047,11 +1041,6 @@ function getConversationTitleFromMessage(message: string, conversations: ImobCha
 function formatMs(value: number | null | undefined) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "—";
   return `${Math.round(value)} ms`;
-}
-
-function formatPct(value: number | null | undefined) {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
-  return `${value.toFixed(1)}%`;
 }
 
 function formatUploadSize(sizeBytes: number) {

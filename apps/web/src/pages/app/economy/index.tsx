@@ -1,15 +1,9 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { apiGetTenantEconomyOpportunities } from "@/lib/api";
+import { formatBRL } from "@/lib/formatters";
 import { useSession } from "@/state/sessionStore";
 import type { EconomyOpportunitySnapshot } from "@/types";
-
-function formatBRL(cents: number) {
-  return (cents / 100).toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
-}
 
 function formatDate(iso: string) {
   const date = new Date(iso);

@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useSession } from "@/state/sessionStore";
+import { countShadowExecutionsByStage } from "@/lib/economyDerived";
+import { formatBRL } from "@/lib/formatters";
+import { extractImobContextFromRun } from "@/lib/imobContext";
 import {
   apiGetShadowExecution,
   apiGetAgentBillingSummary,
@@ -27,12 +30,6 @@ import {
   type WorkspaceAgentAssignmentItem,
 } from "@/lib/api";
 
-const formatBRL = (cents: number) =>
-  (cents / 100).toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
-
 const formatDateTime = (iso?: string | null) => {
   if (!iso) return "-";
   const date = new Date(iso);
@@ -49,22 +46,6 @@ const formatDateInputValue = (iso?: string | null) => {
 
 const formatPercent = (value: number) => `${Math.round(value * 100)}%`;
 
-function countShadowExecutionsByStage(items: ShadowExecutionContract[]) {
-  return items.reduce<Record<ShadowExecutionContract["currentStage"], number>>(
-    (acc, item) => {
-      acc[item.currentStage] += 1;
-      return acc;
-    },
-    {
-      sandbox: 0,
-      preview: 0,
-      approval: 0,
-      promotion: 0,
-      production: 0,
-    }
-  );
-}
-
 type Mode = "user" | "dev";
 type Theme = "dark" | "light";
 type BillingProfileView = "operacao" | "financeiro" | "executivo";
@@ -77,47 +58,6 @@ const createDefaultPayload = (workspaceId: string) =>
   "type": "billing.soft_threshold.crossed",
   "workspaceId": "${workspaceId}"
 }`;
-
-function getRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
-}
-
-function getStringValue(value: unknown): string | null {
-  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
-}
-
-function extractImobContextFromRun(run: Run | null) {
-  const explicitCaseId = getStringValue(run?.caseId);
-  const explicitThreadId = getStringValue(run?.threadId);
-  const request = getRecord(run?.request);
-  const requestMetadata = getRecord(request?.metadata);
-  const requestInput = getRecord(request?.input);
-  const meta = getRecord(run?.meta);
-  const nestedMeta = getRecord(meta?.metadata);
-  const caseId =
-    explicitCaseId ??
-    getStringValue(request?.caseId) ??
-    getStringValue(requestInput?.caseId) ??
-    getStringValue(requestMetadata?.caseId) ??
-    getStringValue(meta?.caseId) ??
-    getStringValue(nestedMeta?.caseId) ??
-    null;
-  const threadId =
-    explicitThreadId ??
-    getStringValue(request?.threadId) ??
-    getStringValue(requestInput?.threadId) ??
-    getStringValue(requestMetadata?.threadId) ??
-    getStringValue(meta?.threadId) ??
-    getStringValue(nestedMeta?.threadId) ??
-    null;
-  const conversationId =
-    getStringValue(request?.conversationId) ??
-    getStringValue(requestMetadata?.conversationId) ??
-    getStringValue(meta?.conversationId) ??
-    getStringValue(nestedMeta?.conversationId) ??
-    null;
-  return { caseId, threadId, conversationId };
-}
 
 const BillingGuideFooter: React.FC = () => {
   const [theme, setTheme] = useState<Theme>("dark");
@@ -156,7 +96,7 @@ const BillingGuideFooter: React.FC = () => {
   ]);
   const [jsonOut, setJsonOut] = useState("");
 
-  const formatBRL = useMemo(
+  const currencyFormatter = useMemo(
     () => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }),
     []
   );
@@ -170,7 +110,7 @@ const BillingGuideFooter: React.FC = () => {
 
   const computeForecast = () => {
     const media = parseFloat(media7) || 0;
-    setForecastOut(`Previsão 30d: ${formatBRL.format(media * 30)}`);
+    setForecastOut(`Previsão 30d: ${currencyFormatter.format(media * 30)}`);
   };
 
   const computeHysteresis = () => {
@@ -185,9 +125,9 @@ const BillingGuideFooter: React.FC = () => {
     if (estadoAtual === "alerta" && uso < desliga) novoEstado = "normal";
 
     setHysteresisOut(
-      `Estado: ${estadoAtual} → ${novoEstado} · uso=${formatBRL.format(uso)} · on≥${formatBRL.format(
+      `Estado: ${estadoAtual} → ${novoEstado} · uso=${currencyFormatter.format(uso)} · on≥${currencyFormatter.format(
         liga
-      )} · off<${formatBRL.format(desliga)}`
+      )} · off<${currencyFormatter.format(desliga)}`
     );
   };
 
