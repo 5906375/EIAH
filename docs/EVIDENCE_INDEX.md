@@ -151,6 +151,19 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | Evidência gerada do DocOps de agentes | `ops/evidence/latest/agent-registry-docs-2026-03-16.json` | Evidência materializada da geração com contagem de agentes e fontes declaradas por perfil. |
 | Cobertura comportamental de knowledge policy | `apps/api/src/tests/knowledge-policy.behavior.test.ts` | Testes por agente para `source missing`, `source conflict`, `grounded response` e `blocked response` no `KnowledgeGate`. |
 
+## Fechamento arquitetural — Deduplicação Frontend (2026-04-15)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Módulos canônicos de helper/front | `apps/web/src/lib/formatters.ts` + `apps/web/src/lib/imobContext.ts` + `apps/web/src/lib/economyDerived.ts` + `apps/web/src/lib/reconciliation.ts` | Fonte canônica única para formatação, contexto IMOB, derivados econômicos e reconciliação nas páginas-alvo. |
+| Guard rails de duplicação e runtime | `scripts/checkFrontendDuplication.ts` + `scripts/checkSelfServiceRuntimeGraph.ts` + `package.json` (`check:frontend-duplication`, `check:self-service-runtime-graph`) | Proteção ativa contra reintrodução de helpers locais e contra consumo runtime de `.js` no self-service. |
+| Baseline final de convergência self-service | `artifacts/self-service-runtime-baseline.json` | Estado final convergido com `runtimeSelfServiceJsFiles=[]` e `duplicatePairCount=0`. |
+| Resultado final da frente | `apps/web/src/pages/self-service/` | Self-service estruturalmente convergido: `runtime .js = 0` e `duplicate pairs = 0`. |
+| Lotes de remoção A/B/C concluídos | `docs/architecture/self-service-dedup-runbook.md` | Rastro de execução por lote (`components`, `leaf pages`, `config/index/router`) com validação e atualização de baseline. |
+| Ciclo final de validação executado (2026-04-15) | `ops/evidence/latest/self-service-dedup-final-validation-2026-04-15.md` | Execução final registrada dos comandos: `pnpm check:self-service-runtime-graph`, `pnpm check:frontend-duplication`, `pnpm --filter @eiah/web build`, `pnpm baseline:self-service-runtime-graph` (todos concluídos com sucesso; warning ES2024 permanece como passivo separado). |
+| Institucionalização no fluxo de PR | `.github/workflows/ci.yml` + `.github/pull_request_template.md` | Checks `check:self-service-runtime-graph` e `check:frontend-duplication` exigidos no CI e checklist de merge para mudanças em `apps/web/src/pages/self-service/**`. |
+| Nova frente separada para passivos remanescentes | `ops/evidence/latest/es2024-tsc-passivos-front-2026-04-15.md` | Escopo e DoD dedicados para warnings de target ES2024 e erros históricos de `tsc --noEmit`, fora da frente já encerrada. |
+
 ## Implementado extra (além do escopo normativo v8)
 
 | Assunto | Arquivo | O que prova |
