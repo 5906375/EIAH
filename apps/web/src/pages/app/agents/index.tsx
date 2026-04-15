@@ -100,11 +100,11 @@ const GUIDE_STEP_PREVIEW_LINKS: Record<string, string[]> = {
     "/app/imob/dashboard",
     "/app/runs#runs-overview",
   ],
-  agentes: ["/app/agents", "/app/agents?agent=eiah#playbook-panel", "/app/agents#chat-agent-launcher", "/app/agents"],
+  agentes: ["/app/chat", "/app/chat?agent=eiah#playbook-panel", "/app/chat#chat-agent-launcher", "/app/chat"],
   billing: ["/app/billing", "/app/billing", "/app/billing", "/app/billing"],
-  marketplace: ["/app/marketplace", "/app/marketplace", "/app/marketplace", "/app/agents"],
+  marketplace: ["/app/marketplace", "/app/marketplace", "/app/marketplace", "/app/chat"],
   imob: ["/app/imob/dashboard", "/app/imob/chat", "/app/imob/dashboard", "/app/imob/dashboard"],
-  selfservice: ["/app/self-service", "/app/self-service", "/app/self-service", "/app/agents?agent=eiah#chat-agent-launcher"],
+  selfservice: ["/app/self-service", "/app/self-service", "/app/self-service", "/app/chat?agent=eiah#chat-agent-launcher"],
   perfil: ["/profile", "/profile", "/profile", "/profile"],
 };
 
@@ -161,7 +161,7 @@ const PLAYBOOKS: Record<string, PlaybookConfig> = {
     checklist:
       "Checklist rápido: defina qual bloco está faltando, quais evidências já existem, quais riscos ainda não foram fechados e qual decisão depende dessa consolidação.",
     documentationLinks: [
-      { label: "Agentes", to: "/app/agents" },
+      { label: "Agentes", to: "/app/chat" },
       { label: "Billing", to: "/app/billing" },
       { label: "Runs", to: "/app/runs#runs-overview" },
       { label: "Runs: resultado", to: "/app/runs#runs-resultado" },
@@ -171,7 +171,7 @@ const PLAYBOOKS: Record<string, PlaybookConfig> = {
       {
         id: "aadv-overview",
         label: "Visão geral",
-        to: "/app/agents",
+        to: "/app/chat",
         purpose:
           "Entender qual bloco precisa ser consolidado antes de transformar o caso em resumo executivo auditável.",
         howItWorks:
@@ -504,13 +504,13 @@ const PLAYBOOKS: Record<string, PlaybookConfig> = {
     checklist:
       "Checklist rápido: papel do turno (help, triagem, handoff ou proposal), página ou agente correto, vertical ativa quando existir, passo a passo em linguagem simples, especialista elegível quando necessário, fonte utilizada, cálculo validado (quando houver preço) e próximo passo recomendado.",
     documentationLinks: [
-      { label: "Visão geral do playbook", to: "/app/agents?agent=eiah#playbook-panel" },
+      { label: "Visão geral do playbook", to: "/app/chat?agent=eiah#playbook-panel" },
       { label: "Runs (visão geral)", to: "/app/runs#runs-overview" },
       { label: "Runs: criar", to: "/app/runs#runs-criar" },
       { label: "Runs: status", to: "/app/runs#runs-status" },
       { label: "Runs: histórico", to: "/app/runs#runs-historico" },
       { label: "Runs: resultado", to: "/app/runs#runs-resultado" },
-      { label: "Agentes", to: "/app/agents" },
+      { label: "Agentes", to: "/app/chat" },
       { label: "Billing", to: "/app/billing" },
       { label: "Marketplace", to: "/app/marketplace" },
       { label: "IMOB", to: "/app/imob/dashboard" },
@@ -521,7 +521,7 @@ const PLAYBOOKS: Record<string, PlaybookConfig> = {
       {
         id: "front-door",
         label: "Front door",
-        to: "/app/agents#chat-agent-launcher",
+        to: "/app/chat#chat-agent-launcher",
         purpose:
           "Atuar como porta de entrada unica da conversa, organizando ajuda geral, navegacao, triagem e encaminhamento sem obrigar o usuario a entender a arquitetura interna.",
         howItWorks:
@@ -539,7 +539,7 @@ const PLAYBOOKS: Record<string, PlaybookConfig> = {
       {
         id: "agentes-e-handoff",
         label: "Agentes e transferência",
-        to: "/app/agents",
+        to: "/app/chat",
         purpose:
           "Explicar o papel de cada agente e definir quando o EIAH continua sozinho e quando faz transferência para especialista.",
         howItWorks:
@@ -561,7 +561,7 @@ const PLAYBOOKS: Record<string, PlaybookConfig> = {
       {
         id: "chat-launcher",
         label: "Chat Launcher",
-        to: "/app/agents#chat-agent-launcher",
+        to: "/app/chat#chat-agent-launcher",
         purpose:
           "Usar o Chat Agent Launcher como canal principal para pedir orientação, executar fluxos com apoio de agente e seguir para o especialista certo sem sair da conversa.",
         howItWorks:
@@ -581,7 +581,7 @@ const PLAYBOOKS: Record<string, PlaybookConfig> = {
       {
         id: "verticais",
         label: "Verticais",
-        to: "/app/agents?agent=eiah#playbook-panel",
+        to: "/app/chat?agent=eiah#playbook-panel",
         purpose:
           "Usar IMOB e LEGAL como contexto real da conversa, com linguagem, especialistas e affordances adequadas ao dominio.",
         howItWorks:
@@ -622,7 +622,7 @@ const PLAYBOOKS: Record<string, PlaybookConfig> = {
       {
         id: "agentes",
         label: "Agentes",
-        to: "/app/agents",
+        to: "/app/chat",
         purpose: "Gerenciar agentes conectados, revisar playbooks e operar pelo Chat Agent Launcher.",
         howItWorks: "A página reúne seleção de agente, conversa assistida, painel de política e trilha de eventos de execução.",
         steps: [
