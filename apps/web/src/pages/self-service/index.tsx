@@ -1390,7 +1390,7 @@ export default function SelfServiceIndexPage() {
             <p className="mt-1 text-muted-foreground">{selectedProposal.nextStep}</p>
           </div>
           <Link
-            to={`/app/agents?agent=eiah&topic=proposal&plan=${encodeURIComponent(selectedProposal.recommendation)}#chat-agent-launcher`}
+            to={`/app/chat?agent=eiah&topic=proposal&plan=${encodeURIComponent(selectedProposal.recommendation)}#chat-agent-launcher`}
             className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.3em] text-accent"
           >
             Solicitar proposta

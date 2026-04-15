@@ -49,7 +49,7 @@ type ShellNavItem = {
 
 const SHELL_NAV_ITEMS: ShellNavItem[] = [
   { to: "/app/runs", label: "Runs" },
-  { to: "/app/agents", label: "Agentes" },
+  { to: "/app/chat", label: "Chat" },
   { to: "/app/billing", label: "Billing", hiddenForRoles: ["workspace_member"] },
   { to: "/app/economy", label: "Economy", hiddenForRoles: ["workspace_member"] },
   { to: "/app/marketplace", label: "Marketplace" },
@@ -243,6 +243,11 @@ function DefaultLanding() {
   return <Navigate to={session.experience?.landingPath || "/app/runs"} replace />;
 }
 
+function LegacyAgentsRedirect() {
+  const location = useLocation();
+  return <Navigate to={`/app/chat${location.search}${location.hash}`} replace />;
+}
+
 function AppRoutes() {
   return (
     <Routes>
@@ -258,7 +263,7 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/app/agents"
+        path="/app/chat"
         element={
           <Layout>
             <RequireAuth>
@@ -267,6 +272,7 @@ function AppRoutes() {
           </Layout>
         }
       />
+      <Route path="/app/agents" element={<LegacyAgentsRedirect />} />
       <Route
         path="/app/billing"
         element={
