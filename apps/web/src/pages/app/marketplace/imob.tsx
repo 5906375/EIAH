@@ -1,5 +1,6 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { formatBRL } from "@/lib/formatters";
 import {
   ApiError,
   apiActivateMarketplaceInstallation,
@@ -17,13 +18,6 @@ function hasActiveImobInstall(items: Array<{ product: string; status: string }>)
   return items.some(
     (item) => item.product.trim().toUpperCase() === "IMOB" && item.status.trim().toLowerCase() === "active"
   );
-}
-
-function formatBRL(cents: number) {
-  return (cents / 100).toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
 }
 
 function averageCostPerRun(item: { costCents: number; runs: number } | null | undefined) {

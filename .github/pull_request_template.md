@@ -6,6 +6,7 @@
 - [ ] Fase/Epic informado (ex.: F5.3, F5.4, F5.6, Track P)
 - [ ] Evidencia adicionada/atualizada no `docs/EVIDENCE_INDEX.md`
 - [ ] Runbook operacional atualizado quando houver impacto de operacao
+- [ ] Para mudanças em `apps/web/src/pages/self-service/**`: `pnpm check:self-service-runtime-graph` e `pnpm check:frontend-duplication` executados e anexados em evidência
 - [ ] Risco classificado: `low` | `medium` | `high`
 - [ ] Rollback descrito de forma executavel
 

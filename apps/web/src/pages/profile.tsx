@@ -9,6 +9,7 @@ import {
   apiGetProfile,
   apiListShadowExecutions,
   apiListHelpdeskSessions,
+  apiGetHelpdeskContractCoverage,
   apiDeleteSession,
   apiListAgents,
   apiListDelegations,
@@ -18,9 +19,12 @@ import {
   apiUpdateProfile,
   type DelegationRenewalPreview,
   type HelpdeskSessionExport,
+  type HelpdeskContractCoverageResponse,
   type ShadowExecutionContract,
 } from "@/lib/api";
 import { clearSession, updateSession, useSession } from "@/state/sessionStore";
+import { countShadowExecutionsByStage } from "@/lib/economyDerived";
+import { formatBRL } from "@/lib/formatters";
 import type {
   EconomyOpportunitySnapshot,
   ExperienceDiagnosticSnapshot,
@@ -118,27 +122,15 @@ function getTopEntry(record: Record<string, number>) {
   return Object.entries(record).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "—";
 }
 
-function countShadowExecutionsByStage(items: ShadowExecutionContract[]) {
-  return items.reduce<Record<ShadowExecutionContract["currentStage"], number>>(
-    (acc, item) => {
-      acc[item.currentStage] += 1;
-      return acc;
-    },
-    {
-      sandbox: 0,
-      preview: 0,
-      approval: 0,
-      promotion: 0,
-      production: 0,
-    }
-  );
-}
-
-function formatBRL(cents: number) {
-  return (cents / 100).toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
+function resolveDateRangeByWindow(window: "7d" | "30d") {
+  const days = window === "7d" ? 7 : 30;
+  const end = new Date();
+  const start = new Date(end.getTime() - (days - 1) * 24 * 60 * 60 * 1000);
+  const toIsoDate = (value: Date) => value.toISOString().slice(0, 10);
+  return {
+    dateFrom: toIsoDate(start),
+    dateTo: toIsoDate(end),
+  };
 }
 
 const WORKSPACE_PERMISSION_GROUPS = [
@@ -329,6 +321,7 @@ export default function ProfilePage() {
   const [delegationRenewalNotice, setDelegationRenewalNotice] = React.useState<string | null>(null);
   const [delegationBulkRenewalState, setDelegationBulkRenewalState] = React.useState<"idle" | "loading">("idle");
   const [helpdeskExport, setHelpdeskExport] = React.useState<HelpdeskSessionExport | null>(null);
+  const [helpdeskContractCoverage, setHelpdeskContractCoverage] = React.useState<HelpdeskContractCoverageResponse | null>(null);
   const [helpdeskStatus, setHelpdeskStatus] = React.useState<"loading" | "ready" | "error">("loading");
   const [helpdeskError, setHelpdeskError] = React.useState<string | null>(null);
   const [diagnosticsWindow, setDiagnosticsWindow] = React.useState<"7d" | "30d">("7d");
@@ -734,6 +727,7 @@ export default function ProfilePage() {
   React.useEffect(() => {
     if (!session.token || !session.workspaceId) {
       setHelpdeskExport(null);
+      setHelpdeskContractCoverage(null);
       setHelpdeskStatus("ready");
       setHelpdeskError(null);
       return;
@@ -743,10 +737,24 @@ export default function ProfilePage() {
     setHelpdeskStatus("loading");
     setHelpdeskError(null);
 
-    apiListHelpdeskSessions({ workspaceId: session.workspaceId, limit: 200 })
-      .then((response) => {
+    const { dateFrom, dateTo } = resolveDateRangeByWindow(diagnosticsWindow);
+
+    Promise.all([
+      apiListHelpdeskSessions({ workspaceId: session.workspaceId, limit: 200 }),
+      apiGetHelpdeskContractCoverage({
+        workspaceId: session.workspaceId,
+        dateFrom,
+        dateTo,
+        granularity: diagnosticsWindow === "7d" ? "day" : "week",
+        routeIntent: "help",
+        agentId: "EIAH",
+        includeUnknownSource: true,
+      }),
+    ])
+      .then(([sessionsResponse, coverageResponse]) => {
         if (!mounted) return;
-        setHelpdeskExport(response.data);
+        setHelpdeskExport(sessionsResponse.data);
+        setHelpdeskContractCoverage(coverageResponse.data);
         setHelpdeskStatus("ready");
       })
       .catch((error) => {
@@ -756,12 +764,13 @@ export default function ProfilePage() {
           error instanceof Error ? error.message : "Falha ao carregar histórico UX do Chat Launcher."
         );
         setHelpdeskExport(null);
+        setHelpdeskContractCoverage(null);
       });
 
     return () => {
       mounted = false;
     };
-  }, [session.token, session.workspaceId]);
+  }, [session.token, session.workspaceId, diagnosticsWindow]);
 
   const handleInspectShadowExecution = React.useCallback(async (shadowExecutionId: string) => {
     if (expandedShadowExecutionId === shadowExecutionId) {
@@ -970,6 +979,7 @@ export default function ProfilePage() {
     if (!helpdeskExport || typeof window === "undefined") return;
     const payload = {
       ...helpdeskExport,
+      contractCoverage: helpdeskContractCoverage,
       experienceDiagnostics: diagnosticSnapshot
         ? {
             window: diagnosticsWindow,
@@ -989,6 +999,97 @@ export default function ProfilePage() {
     window.URL.revokeObjectURL(url);
   };
 
+  const handleDownloadHelpdeskCsv = () => {
+    if (!helpdeskExport || !helpdeskContractCoverage || typeof window === "undefined") return;
+
+    const escapeCsv = (value: string | number | null | undefined) => {
+      const text = value == null ? "" : String(value);
+      return `"${text.replace(/"/g, '""')}"`;
+    };
+
+    const summary = helpdeskContractCoverage.summary;
+    const lines = [
+      [
+        "scope",
+        "dateFrom",
+        "dateTo",
+        "granularity",
+        "workspaceId",
+        "workspaceName",
+        "totalSessions",
+        "contractSessions",
+        "fallbackSessions",
+        "unknownSourceSessions",
+        "contractCoveragePct",
+        "fallbackRatePct",
+        "netContractCoveragePct",
+      ].join(","),
+      [
+        "summary",
+        helpdeskContractCoverage.window.dateFrom,
+        helpdeskContractCoverage.window.dateTo,
+        helpdeskContractCoverage.window.granularity,
+        helpdeskContractCoverage.filters.workspaceId ?? helpdeskExport.workspaceId,
+        "",
+        summary.totalSessions,
+        summary.contractSessions,
+        summary.fallbackSessions,
+        summary.unknownSourceSessions,
+        summary.contractCoveragePct,
+        summary.fallbackRatePct,
+        summary.netContractCoveragePct,
+      ]
+        .map(escapeCsv)
+        .join(","),
+      ...helpdeskContractCoverage.byWorkspace.map((row) =>
+        [
+          "workspace",
+          helpdeskContractCoverage.window.dateFrom,
+          helpdeskContractCoverage.window.dateTo,
+          helpdeskContractCoverage.window.granularity,
+          row.workspaceId,
+          row.workspaceName ?? "",
+          row.totalSessions,
+          row.contractSessions,
+          row.fallbackSessions,
+          row.unknownSourceSessions,
+          row.contractCoveragePct,
+          row.fallbackRatePct,
+          row.netContractCoveragePct,
+        ]
+          .map(escapeCsv)
+          .join(",")
+      ),
+      ...helpdeskContractCoverage.timeseries.map((row) =>
+        [
+          "timeseries",
+          row.bucketStart,
+          row.bucketStart,
+          helpdeskContractCoverage.window.granularity,
+          helpdeskContractCoverage.filters.workspaceId ?? helpdeskExport.workspaceId,
+          "",
+          row.totalSessions,
+          row.contractSessions,
+          row.fallbackSessions,
+          row.unknownSourceSessions,
+          row.contractCoveragePct,
+          row.fallbackRatePct,
+          row.netContractCoveragePct,
+        ]
+          .map(escapeCsv)
+          .join(",")
+      ),
+    ];
+
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `chat-launcher-ux-${helpdeskExport.workspaceId}.csv`;
+    link.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   const handlePrintHelpdeskReport = () => {
     if (!helpdeskExport || typeof window === "undefined") return;
     const popup = window.open("", "_blank", "width=960,height=720");
@@ -997,6 +1098,15 @@ export default function ProfilePage() {
       ? `
           <h2>Diagnóstico do Experience Resolver</h2>
           <p>${diagnosticSnapshot.alignment.summary.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</p>
+        `
+      : "";
+    const contractCoverageBlock = helpdeskContractCoverage
+      ? `
+          <h2>Cobertura contratual do tutor</h2>
+          <p><strong>Período:</strong> ${helpdeskContractCoverage.window.dateFrom} até ${helpdeskContractCoverage.window.dateTo}</p>
+          <p><strong>Cobertura contratual:</strong> ${helpdeskContractCoverage.summary.contractCoveragePct}%</p>
+          <p><strong>Taxa de fallback:</strong> ${helpdeskContractCoverage.summary.fallbackRatePct}%</p>
+          <p><strong>Cobertura líquida:</strong> ${helpdeskContractCoverage.summary.netContractCoveragePct}%</p>
         `
       : "";
     popup.document.write(`
@@ -1012,6 +1122,7 @@ export default function ProfilePage() {
         <body>
           <h1>Relatório UX do Chat Launcher</h1>
           ${alignmentSummaryBlock}
+          ${contractCoverageBlock}
           <pre>${helpdeskExport.reportText.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre>
         </body>
       </html>
@@ -1816,6 +1927,14 @@ export default function ProfilePage() {
                 </button>
                 <button
                   type="button"
+                  onClick={handleDownloadHelpdeskCsv}
+                  disabled={!helpdeskExport || !helpdeskContractCoverage}
+                  className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] uppercase tracking-[0.25em] text-foreground transition hover:bg-white/10 disabled:opacity-50"
+                >
+                  Exportar CSV
+                </button>
+                <button
+                  type="button"
                   onClick={handlePrintHelpdeskReport}
                   disabled={!helpdeskExport}
                   className="rounded-full border border-accent/40 bg-accent/15 px-3 py-1 text-[11px] uppercase tracking-[0.25em] text-accent transition hover:border-accent/70 hover:bg-accent/25 disabled:opacity-50"
@@ -1850,6 +1969,84 @@ export default function ProfilePage() {
                     <p className="mt-2 text-lg font-semibold text-foreground">{helpdeskExport.summary.generic_fallback ?? 0}</p>
                   </div>
                 </div>
+                {helpdeskContractCoverage ? (
+                  <div className="space-y-3 rounded-xl border border-white/10 bg-[#0a1527] p-4 text-xs text-muted-foreground">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-[10px] uppercase tracking-[0.3em] text-accent/80">
+                        Cobertura contratual do tutor
+                      </p>
+                      <span className="text-[11px] text-muted-foreground">
+                        Período: {helpdeskContractCoverage.window.dateFrom} até {helpdeskContractCoverage.window.dateTo}
+                      </span>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                        <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">source=tutor_contract_v1</p>
+                        <p className="mt-2 text-lg font-semibold text-foreground">
+                          {helpdeskContractCoverage.summary.contractCoveragePct}%
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                        <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">fallback rate</p>
+                        <p className="mt-2 text-lg font-semibold text-foreground">
+                          {helpdeskContractCoverage.summary.fallbackRatePct}%
+                        </p>
+                      </div>
+                      <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                        <p className="text-[10px] uppercase tracking-[0.25em] text-accent/80">cobertura líquida</p>
+                        <p className="mt-2 text-lg font-semibold text-foreground">
+                          {helpdeskContractCoverage.summary.netContractCoveragePct}%
+                        </p>
+                      </div>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-left text-[11px]">
+                        <thead>
+                          <tr className="text-muted-foreground">
+                            <th className="px-2 py-2 font-medium">Período</th>
+                            <th className="px-2 py-2 font-medium">Sessões</th>
+                            <th className="px-2 py-2 font-medium">Contrato %</th>
+                            <th className="px-2 py-2 font-medium">Fallback %</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {helpdeskContractCoverage.timeseries.slice(-8).map((row) => (
+                            <tr key={row.bucketStart} className="border-t border-white/10">
+                              <td className="px-2 py-2">{row.bucketStart}</td>
+                              <td className="px-2 py-2">{row.totalSessions}</td>
+                              <td className="px-2 py-2">{row.contractCoveragePct}%</td>
+                              <td className="px-2 py-2">{row.fallbackRatePct}%</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-left text-[11px]">
+                        <thead>
+                          <tr className="text-muted-foreground">
+                            <th className="px-2 py-2 font-medium">Workspace</th>
+                            <th className="px-2 py-2 font-medium">Sessões</th>
+                            <th className="px-2 py-2 font-medium">Contrato %</th>
+                            <th className="px-2 py-2 font-medium">Fallback %</th>
+                            <th className="px-2 py-2 font-medium">Unknown source</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {helpdeskContractCoverage.byWorkspace.map((row) => (
+                            <tr key={row.workspaceId} className="border-t border-white/10">
+                              <td className="px-2 py-2">{row.workspaceName ?? row.workspaceId}</td>
+                              <td className="px-2 py-2">{row.totalSessions}</td>
+                              <td className="px-2 py-2">{row.contractCoveragePct}%</td>
+                              <td className="px-2 py-2">{row.fallbackRatePct}%</td>
+                              <td className="px-2 py-2">{row.unknownSourceSessions}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : null}
                 <ExpandableList itemCount={helpdeskExport.groups.length} initialCount={3}>
                   {(expanded) => (
                     <div className="grid gap-3">

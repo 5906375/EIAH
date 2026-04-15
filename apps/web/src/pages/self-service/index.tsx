@@ -14,6 +14,7 @@ import {
   type OnboardingContext,
   type TenantRecipe,
 } from "@/lib/api";
+import { formatBRL } from "@/lib/formatters";
 import { useSession } from "@/state/sessionStore";
 import eiahAgentsVideo from "../../assets/eiah-agentes.mp4";
 import eiahMarketingVideo from "../../assets/eiah-marketing.mp4";
@@ -285,9 +286,6 @@ export default function SelfServiceIndexPage() {
     () => PRICING_PLANS.find((plan) => plan.id === selectedPlan) ?? PRICING_PLANS[0],
     [selectedPlan]
   );
-  const formatBRL = React.useCallback((cents: number) => {
-    return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-  }, []);
   const formatInt = React.useCallback((value: number) => value.toLocaleString("pt-BR"), []);
   const calculator = React.useMemo(() => {
     const users = Number(calcUsers) > 0 ? Math.trunc(Number(calcUsers)) : 0;

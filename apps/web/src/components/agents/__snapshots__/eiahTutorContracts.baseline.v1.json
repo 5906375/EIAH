@@ -1,0 +1,340 @@
+{
+  "snapshotVersion": "1",
+  "source": "resolveEiahTutorContractResponse",
+  "cases": [
+    {
+      "caseId": "intent:access_check",
+      "input": "verificar acesso",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "access_check",
+        "content": "**Como verificar acesso**\n\nUse este checklist rápido:\n1. confirme o workspace ativo\n2. valide se seu usuário tem acesso ao workspace\n3. confira se o módulo/vertical está ativo no Marketplace\n4. volte para `Chat` e recarregue a lista de agentes\n\nSe algum item estiver faltando, o agente não aparece até esse acesso ser liberado.",
+        "quickReplies": [
+          "Selecionar workspace",
+          "Ativar módulo no Marketplace",
+          "Quero ver agentes disponíveis"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:agent_enablement_requirements",
+      "input": "habilitar agente no workspace",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "agent_enablement_requirements",
+        "content": "**O que precisa para liberar um agente no workspace**\n\nPara um agente rodar em producao, normalmente voce precisa de duas coisas:\n1. o workspace com plano e limites habilitados;\n2. o agente liberado para uso naquele workspace.\n\nSe faltar a liberacao do agente, aparece o erro de agente nao habilitado. Se faltarem plano ou limites, o bloqueio tende a ser de cobranca.",
+        "quickReplies": [
+          "Verificar acesso",
+          "Selecionar workspace",
+          "Ativar módulo no Marketplace"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:agent_not_enabled",
+      "input": "por que o agente nao esta habilitado no workspace",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "agent_not_enabled",
+        "content": "**Por que o agente nao esta habilitado no workspace**\n\nEsse bloqueio normalmente significa que esse agente ainda nao foi liberado para uso nesse workspace.\n\nIsso e diferente de billing:\n- plano e limites: controlam se o workspace pode executar dentro da politica de cobranca\n- habilitacao do agente: controla se um agente especifico esta liberado naquele workspace\n\nPor isso, voce pode conseguir simular e ainda assim ficar bloqueado para rodar em producao.",
+        "quickReplies": [
+          "Verificar acesso",
+          "Ativar módulo no Marketplace"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:agents_empty_state",
+      "input": "por que não aparece nenhum agente aqui",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "agents_empty_state",
+        "content": "Nenhum agente disponível neste workspace no momento.\n\nOs agentes do EIAH aparecem conforme seu contexto de acesso (tenant/workspace), permissões e módulos habilitados.\nPara liberar a lista, verifique:\n\n1. Você está no workspace correto.\n2. Seu acesso para usar agentes está ativo.\n3. A vertical ou agente desejado está habilitado neste workspace.\n\nQuando isso estiver ok, os agentes serão carregados automaticamente.",
+        "quickReplies": [
+          "Verificar acesso",
+          "Selecionar workspace",
+          "Ativar módulo no Marketplace"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:best_page_for_goal",
+      "input": "qual dessas paginas e a melhor para o seu objetivo",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "best_page_for_goal",
+        "content": "**Qual página é melhor para seu objetivo?**\n\nMe diga o objetivo e eu te aponto o caminho mais rápido:\n- executar tarefa agora -> `Runs`\n- conversar com especialista -> `Chat`\n- entender custo e cobrança -> `Billing`\n- ativar agente/módulo -> `Marketplace`\n- acompanhar oportunidades -> `Economy`\n- usar fluxo guiado -> `Self-service`\n- revisar conta/workspace -> `Perfil`\n\nSe quiser, eu já te direciono para uma dessas opções.",
+        "quickReplies": [
+          "Executar tarefa agora",
+          "Conversar com especialista",
+          "Entender custo e cobrança",
+          "Ativar agente no Marketplace",
+          "Fluxo guiado no Self-service",
+          "Revisar conta e workspace"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:billing_overview",
+      "input": "como funciona o billing",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "billing_overview",
+        "content": "No EIAH, o billing combina plano contratado com uso do workspace para compor o custo mensal.\n\nO que entra nessa visão:\n- resumo do plano ativo\n- uso de runs e usuários do workspace\n- faturas, cobranças e histórico\n\nComo ler isso rapidamente:\n- plano define a base contratada\n- usuários e runs mostram o volume operacional\n- faturas mostram o fechamento financeiro\n\nSe quiser consultar isso agora, o melhor caminho é abrir [Billing](/app/billing).",
+        "quickReplies": [
+          "Abrir Billing",
+          "Quero entender meu plano"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:chat_page_overview",
+      "input": "entender agentes",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "chat_page_overview",
+        "content": "**Como funciona a página Chat**\n\nA página `Chat` é o front door para conversar com o EIAH e selecionar especialistas quando necessário.\n\nUse assim:\n- escolha o agente no seletor (quando houver catálogo disponível)\n- descreva seu objetivo no campo de entrada\n- envie e siga os próximos passos sugeridos no próprio chat\n\nQuando o caso exige profundidade, o engine encaminha para especialista sem ruptura da conversa.",
+        "quickReplies": [
+          "Entender Runs",
+          "Entender Billing",
+          "Entender Marketplace"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:common_risks",
+      "input": "riscos comuns",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "common_risks",
+        "content": "Os riscos mais comuns são estes:\n\n- escolher o agente errado para o objetivo\n- executar sem simular quando o caso ainda é novo\n- pedir algo amplo demais sem dizer o resultado esperado\n- avançar em fluxo sensível sem revisar risco ou aprovação",
+        "quickReplies": [
+          "Me mostre o caminho mais rápido",
+          "Quero simular primeiro"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:next_steps_generic",
+      "input": "proximos passos",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "next_steps_generic",
+        "content": "Os próximos passos dependem do que você quer resolver, mas o caminho mais comum é:\n\n1. definir o objetivo principal\n2. escolher a área certa: Runs, Chat, Billing, IMOB ou proposta\n3. seguir o próximo passo guiado pelo launcher",
+        "quickReplies": [
+          "Quero resolver algo agora",
+          "Me mostre o caminho mais rápido"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:platform_overview",
+      "input": "explique a plataforma",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "platform_overview",
+        "content": "**Como a plataforma EIAH se organiza**\n\nO EIAH combina chat, especialistas, runs, billing e verticais para te ajudar a sair de uma dúvida até uma execução com mais contexto.\n\nNa prática, a plataforma se divide assim:\n- `Runs`: executar, simular e acompanhar tarefas\n- `Chat`: ver especialistas disponíveis no workspace\n- `Billing`: plano, uso, faturas e cobrança\n- `Marketplace`: ativar agentes e módulos\n- `IMOB`: contexto imobiliário, pipeline e acompanhamento\n\nSe você quiser, eu posso te explicar só uma dessas áreas agora.",
+        "quickReplies": [
+          "Explique as páginas",
+          "Me mostre o caminho mais rápido"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:preview_vs_production",
+      "input": "qual a diferenca entre preview e producao",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "preview_vs_production",
+        "content": "**Preview, rodar agora e promover para producao**\n\n- `Simular`: gera uma prévia técnica sem executar o efeito real\n- `Rodar agora`: tenta criar a run real diretamente\n- `Promover para producao`: pega uma prévia aprovada e transforma em execucao real\n\nEm resumo: simular e ensaio. Producao e execucao real do agente.",
+        "quickReplies": [
+          "Quero simular primeiro",
+          "Quero criar um run"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:recipes_overview",
+      "input": "qual a diferenca entre draft e homologado",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "recipes_overview",
+        "content": "**Como funcionam recipes**\n\nRecipe e a camada de governanca que libera um caminho guiado por agente no workspace.\n\nEstados principais:\n- `draft`: salva no catalogo do tenant, mas ainda nao libera para uso visivel no workspace\n- `homologated`: libera a recipe para aparecer no self-service conforme o escopo configurado\n\nImportante: a recipe publica contexto e visibilidade. Ela nao cria sozinha um formulario novo se a rota do agente ja for fixa no codigo.",
+        "quickReplies": [
+          "Quero ver self-service",
+          "Quero homologar uma recipe"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:run_create_help",
+      "input": "como criar um run no eiah",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "run_create_help",
+        "content": "**Como criar um run no EIAH**\n\n1. Abra `Runs` no menu principal.\n2. Escolha o agente que vai executar a tarefa.\n3. Escreva o objetivo em linguagem simples no campo de entrada.\n4. Comece por **Simular primeiro** para validar sem risco.\n5. Se o resultado estiver ok, clique em **Rodar agora**.\n6. Acompanhe status, custo e resultado no histórico da própria página.\n\n**Atalho**\n- [Runs · criar](/app/runs#runs-criar)",
+        "quickReplies": [
+          "Runs · criar",
+          "Quero simular primeiro"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:run_status_help",
+      "input": "acompanho o status",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "run_status_help",
+        "content": "**Como acompanhar status de run em tempo real**\n\n1. Abra `Runs` e selecione a execução que deseja acompanhar.\n2. Observe os indicadores de andamento (em execução, sucesso, falha ou bloqueio).\n3. Use o botão de atualizar para recarregar eventos recentes quando necessário.\n4. Abra o resultado da run para validar saída, evidências e próximo passo.\n\n**Atalhos**\n- [Runs · status](/app/runs#runs-status)\n- [Runs · resultado](/app/runs#runs-resultado)",
+        "quickReplies": [
+          "Runs · status",
+          "Runs · resultado"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:self_service_overview",
+      "input": "como funciona o self-service",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "self_service_overview",
+        "content": "**Como funciona o Self-service**\n\nO `Self-service` e a area de fluxos guiados da plataforma.\n\nNa pratica, ele serve para:\n- abrir formularios prontos por agente\n- coletar contexto de forma guiada\n- simular antes de executar\n- transformar o formulario em uma run real quando o agente estiver liberado no workspace\n\nO catalogo de recipes do tenant controla quais caminhos guiados aparecem para cada workspace.",
+        "quickReplies": [
+          "Quero ver recipes",
+          "Quero criar um run"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:top_menu_overview",
+      "input": "explique o menu acima",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "top_menu_overview",
+        "content": "**Guia rápido do menu principal**\n\n- `Runs`: criar, simular e acompanhar execuções\n- `Chat`: conversar no launcher e escolher especialistas\n- `Billing`: ver plano, uso, limites e cobrança\n- `Economy`: visão consolidada de impacto e oportunidades\n- `Marketplace`: ativar agentes e módulos no workspace\n- `Self-service`: fluxos guiados por formulário/recipe\n- `Perfil`: dados da conta, workspace e governança pessoal\n\nQual página você quer entender agora?\nVocê pode escolher: Runs, Chat, Billing, Economy, Marketplace, Self-service ou Perfil.",
+        "quickReplies": [
+          "Entender Runs",
+          "Entender Chat",
+          "Entender Billing",
+          "Entender Economy",
+          "Entender Marketplace",
+          "Entender Self-service",
+          "Entender Perfil"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:workspace_select_help",
+      "input": "selecionar workspace",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "workspace_select_help",
+        "content": "**Como selecionar o workspace**\n\n1. abra `Perfil`\n2. selecione o workspace correto\n3. confirme a troca no cabeçalho\n4. volte para `Chat` para recarregar os agentes\n\nSem o workspace correto, a lista de agentes pode ficar vazia mesmo com conta ativa.",
+        "quickReplies": [
+          "Verificar acesso",
+          "Quero ver agentes disponíveis",
+          "Ativar módulo no Marketplace"
+        ]
+      }
+    },
+    {
+      "caseId": "special:agents_empty_state:missing_workspace_context",
+      "input": "não aparece agente",
+      "accessContext": null,
+      "resolved": {
+        "intentId": "policy_blocked_missing_workspace_context",
+        "content": "Ainda não consigo validar essa ação porque falta contexto de workspace/tenant.\n\nEntre no workspace correto e tente novamente para eu continuar com precisão.",
+        "quickReplies": [
+          "Selecionar workspace",
+          "Verificar acesso"
+        ]
+      }
+    },
+    {
+      "caseId": "special:pasted_context_overview",
+      "input": "Runs: executar, simular e acompanhar tarefas ?",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "pasted_context_overview",
+        "content": "**Entendi o contexto que você colou. Aqui vai a versão ampliada:**\n\nQuando você fala de `Runs`, o foco é execução prática:\n- simular antes de executar\n- acompanhar status e resultado\n- iterar até chegar no resultado esperado\n\nQuando você fala de `Chat`, o foco é orientação e escolha de especialista:\n- começar com o EIAH para triagem\n- chamar especialista quando precisar profundidade\n- seguir próximos passos guiados no próprio chat\n\nQuando você fala de `Billing`, o foco é custo e uso:\n- plano ativo\n- consumo de runs/usuários\n- faturas e cobrança\n\nSe você quiser, eu já te explico em detalhe apenas uma área agora.\nEscolha: Runs, Chat, Billing, Economy, Marketplace, Self-service ou Perfil.",
+        "quickReplies": [
+          "Entender Runs",
+          "Entender Chat",
+          "Entender Billing",
+          "Entender Marketplace",
+          "Me mostre o caminho mais rápido"
+        ]
+      }
+    },
+    {
+      "caseId": "special:unknown_input_uses_canonical_fallback",
+      "input": "zzzz qqqq nao relacionado",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "platform_overview_fallback",
+        "content": "**Como a plataforma EIAH se organiza**\n\nO EIAH combina chat, especialistas, runs, billing e verticais para te ajudar a sair de uma dúvida até uma execução com mais contexto.\n\nNa prática, a plataforma se divide assim:\n- `Runs`: executar, simular e acompanhar tarefas\n- `Chat`: ver especialistas disponíveis no workspace\n- `Billing`: plano, uso, faturas e cobrança\n- `Marketplace`: ativar agentes e módulos\n- `IMOB`: contexto imobiliário, pipeline e acompanhamento\n\nSe você quiser, eu posso te explicar só uma dessas áreas agora.",
+        "quickReplies": [
+          "Explique as páginas",
+          "Me mostre o caminho mais rápido"
+        ]
+      }
+    }
+  ]
+}

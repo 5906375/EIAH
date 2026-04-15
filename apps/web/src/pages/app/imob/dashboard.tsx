@@ -26,6 +26,7 @@ import { ImobAccessGateCard } from "@/components/imob/ImobAccessGateCard";
 import { resolveImobAccessGateCopy } from "@/features/imob/accessGateCatalog";
 import { IMOB_BUSINESS_QUICK_ACTIONS } from "@/features/imob/businessQuickActions";
 import { ThreadPanel } from "@/features/imob/ThreadPanel";
+import { formatPct } from "@/lib/formatters";
 
 type Section = "imoveis" | "processos" | "parceiros";
 
@@ -73,11 +74,6 @@ function formatLatencyMs(value: number | null | undefined) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "—";
   if (value >= 1000) return `${(value / 1000).toFixed(1)} s`;
   return `${Math.round(value)} ms`;
-}
-
-function formatPct(value: number | null | undefined) {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
-  return `${value.toFixed(1)}%`;
 }
 
 function asStringList(value: unknown): string[] {

@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { ApiError, apiListRuns, type Run } from "@/lib/api";
+import { formatBRL } from "@/lib/formatters";
 import { ImobAccessGateCard } from "@/components/imob/ImobAccessGateCard";
 import { resolveImobAccessGateCopy } from "@/features/imob/accessGateCatalog";
 import { useSession } from "@/state/sessionStore";
@@ -44,13 +45,6 @@ function humanRiskLabel(risk: ProcessRow["risk"]) {
 function humanProofLabel(process: ProcessRow) {
   if (process.txId) return "Comprovante";
   return "Comprovante pendente";
-}
-
-function formatBRL(cents: number) {
-  return (cents / 100).toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL",
-  });
 }
 
 const syntheticProcesses: ProcessRow[] = [
