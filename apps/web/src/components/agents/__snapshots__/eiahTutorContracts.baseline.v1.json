@@ -195,7 +195,7 @@
       },
       "resolved": {
         "intentId": "recipes_overview",
-        "content": "**Como funcionam recipes**\n\nRecipe e a camada de governanca que libera um caminho guiado por agente no workspace.\n\nEstados principais:\n- `draft`: salva no catalogo do tenant, mas ainda nao libera para uso visivel no workspace\n- `homologated`: libera a recipe para aparecer no self-service conforme o escopo configurado\n\nImportante: a recipe publica contexto e visibilidade. Ela nao cria sozinha um formulario novo se a rota do agente ja for fixa no codigo.",
+        "content": "**Como funcionam recipes**\n\nRecipe e a camada de governanca que libera um caminho guiado por agente no workspace.\n\nEstados principais:\n- `draft`: salva no catalogo do tenant, mas ainda nao libera para uso visivel no workspace\n- `homologated`: libera a recipe para aparecer no self-service conforme o escopo configurado\n\nImportante: a recipe publica contexto e visibilidade. Ela nao cria sozinha um formulario novo se a rota do agente ja for fixa no codigo.\n\nSe quiser, eu explico em 3 camadas:\n- explicação simples\n- explicação operacional\n- explicação de governança",
         "quickReplies": [
           "Quero ver self-service",
           "Quero homologar uma recipe"
@@ -247,6 +247,60 @@
         "quickReplies": [
           "Quero ver recipes",
           "Quero criar um run"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:tenant_recipes_governance_explanation",
+      "input": "explicacao de governanca tenant recipes",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "tenant_recipes_simple_explanation_governance",
+        "content": "**Tenant recipes — explicação simples — explicação de governança**\n\nDo ponto de governança, o ponto principal é:\nTenant recipes são recipes aprovadas para uso dentro de um tenant, permitindo liberar caminhos guiados por workspace de forma padronizada.\n\nO que isso ajuda a preservar:\n- consistência no tema `self_service`\n- menos improviso e menos drift entre uso e regra\n- mais previsibilidade, rastreabilidade e clareza de operação",
+        "quickReplies": [
+          "Explicação simples tenant recipes",
+          "Explicação operacional tenant recipes",
+          "Quero explicação operacional",
+          "Quero explicação de governança"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:tenant_recipes_operational_explanation",
+      "input": "como publicar recipe no tenant",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "tenant_recipes_operational_explanation",
+        "content": "**Tenant recipes — operação**\n\nFluxo prático:\n1. publicar a recipe no tenant (entrada no ciclo)\n2. homologar conforme regra interna (validação)\n3. liberar para os workspaces autorizados (disponibilidade real)\n\nRegra de ouro:\n- publicar != homologar\n- homologar != liberar para todos os workspaces\n\nIsso mantém padronização sem quebrar governança.",
+        "quickReplies": [
+          "Como saber se está homologada",
+          "Como liberar para workspace específico",
+          "Como evitar drift das recipes",
+          "Explicação simples tenant recipes"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:tenant_recipes_simple_explanation",
+      "input": "o que sao tenant recipes",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "tenant_recipes_simple_explanation",
+        "content": "**Tenant recipes**\n\n**Catálogo interno homologado**\nRecipes do tenant permitem homologar um agente e liberar um caminho guiado por workspace.\n\nEm linguagem simples:\n- tenant recipe = fluxo aprovado para uso real\n- catálogo interno homologado = vitrine oficial do que está validado\n- benefício no dia a dia = mais consistência, menos improviso e onboarding mais rápido\n\nSe quiser, eu te mostro agora a visão operacional ou de governança.",
+        "quickReplies": [
+          "Quero explicação operacional",
+          "Quero explicação de governança",
+          "Como publicar tenant recipe",
+          "Como liberar recipe para workspace"
         ]
       }
     },

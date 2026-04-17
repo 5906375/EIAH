@@ -9,6 +9,7 @@ import {
   buildDeterministicHelpReply,
   buildDeterministicImobReply,
   buildEiahQuickReplies,
+  buildQuickRepliesForContext,
   resolveEiahDecision,
   detectLauncherRouteIntent,
   resolveLauncherProposalDecision,
@@ -276,6 +277,45 @@ test("IMOB documentary search quick replies are specific to the knowledge handsh
       "Buscar contratos e propostas",
       "Buscar materiais de captação",
       "Buscar por cidade ou região",
+    ]
+  );
+});
+
+test("resolved quick replies take precedence over launcher copy and route replies", () => {
+  assert.deepEqual(
+    buildQuickRepliesForContext({
+      agentProfile: {
+        id: "EIAH",
+        name: "EIAH",
+        chatCopy: { quickReplies: ["copy A", "copy B"] },
+      } as any,
+      routeIntent: "help",
+      isHelpCenterMode: true,
+      proposalMode: false,
+      sourceInput: "quero entender billing",
+      resolvedQuickReplies: ["resolved 1", "resolved 2"],
+    }),
+    ["resolved 1", "resolved 2"]
+  );
+});
+
+test("vertical quick replies take precedence over launcher copy in help center mode", () => {
+  assert.deepEqual(
+    buildQuickRepliesForContext({
+      agentProfile: {
+        id: "EIAH",
+        name: "EIAH",
+        chatCopy: { quickReplies: ["copy A", "copy B"] },
+      } as any,
+      routeIntent: "imob",
+      isHelpCenterMode: true,
+      proposalMode: false,
+      sourceInput: "o que é o imob?",
+    }),
+    [
+      "Como funciona IMOB do início ao fim?",
+      "Onde acompanho pipeline e etapas no IMOB?",
+      "Quero instalar o IMOB no workspace.",
     ]
   );
 });

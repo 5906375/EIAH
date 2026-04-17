@@ -74,6 +74,8 @@ export type CaseInput = {
   eventPayload?: unknown;
   eventRunId?: string | null;
   eventEvidenceRef?: string | null;
+  eventActorType?: string | null;
+  eventActorRef?: string | null;
 };
 
 export type ResolvedPresentation = {

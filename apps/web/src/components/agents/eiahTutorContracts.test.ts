@@ -3,7 +3,13 @@ import assert from "node:assert/strict";
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { intentLibraryV1, resolveEiahTutorContractResponse } from "./eiahTutorContracts.ts";
+import {
+  intentLibraryV1,
+  resolveEiahTutorContractResponse,
+  resolveEiahTutorInputPlaceholder,
+  resolveEiahTutorRouteQuickReplies,
+  resolveEiahTutorQuickReplyHints,
+} from "./eiahTutorContracts.ts";
 
 const SNAPSHOT_PATH = resolve(
   "apps/web/src/components/agents/__snapshots__/eiahTutorContracts.baseline.v1.json"
@@ -218,4 +224,77 @@ test("policy branch: blocked when entitlement is missing", () => {
 
   assert.ok(resolved);
   assert.equal(resolved?.intentId, "policy_blocked_missing_entitlement");
+});
+
+test("depth-aware intents work for non-recipe known topics", () => {
+  const simple = resolveEiahTutorContractResponse({
+    input: "explicacao simples billing",
+    accessContext: {
+      tenantId: "tenant-A",
+      workspaceId: "workspace-A",
+    },
+  });
+  const operational = resolveEiahTutorContractResponse({
+    input: "explicacao operacional runs",
+    accessContext: {
+      tenantId: "tenant-A",
+      workspaceId: "workspace-A",
+    },
+  });
+  const governance = resolveEiahTutorContractResponse({
+    input: "explicacao de governanca self-service",
+    accessContext: {
+      tenantId: "tenant-A",
+      workspaceId: "workspace-A",
+    },
+  });
+
+  assert.equal(simple?.intentId, "billing_overview_simple");
+  assert.match(simple?.content ?? "", /explica..o simples/i);
+
+  assert.equal(operational?.intentId, "run_create_help_operational");
+  assert.match(operational?.content ?? "", /explica..o operacional/i);
+
+  assert.equal(governance?.intentId, "self_service_overview_governance");
+  assert.match(governance?.content ?? "", /governan/i);
+});
+
+test("thematic quick reply hints are owned by the tutor contract", () => {
+  assert.deepEqual(resolveEiahTutorQuickReplyHints("explica billing do workspace"), [
+    "Como funciona o billing?",
+    "Como ler plano, uso e fatura",
+    "Como reduzir custo no workspace",
+  ]);
+
+  assert.deepEqual(resolveEiahTutorQuickReplyHints("quero entender catalogo interno homologado"), [
+    "Explicação simples tenant recipes",
+    "Explicação operacional tenant recipes",
+    "Explicação de governança tenant recipes",
+  ]);
+});
+
+test("route quick replies are owned by the tutor contract", () => {
+  assert.deepEqual(resolveEiahTutorRouteQuickReplies("orchestrator"), [
+    "Qual agente devo usar?",
+    "Analise este fluxo e recomende o próximo passo.",
+    "Quero auditar esse processo.",
+  ]);
+
+  assert.deepEqual(resolveEiahTutorRouteQuickReplies("help"), [
+    "O que o EIAH pode fazer por mim?",
+    "Como criar um run no EIAH?",
+    "Como funciona o billing?",
+  ]);
+});
+
+test("route placeholders are owned by the tutor contract", () => {
+  assert.equal(
+    resolveEiahTutorInputPlaceholder("orchestrator"),
+    "Ex.: analise este fluxo e recomende o próximo passo"
+  );
+
+  assert.equal(
+    resolveEiahTutorInputPlaceholder("help", "quero entender billing"),
+    "Ex.: quero entender plano, uso e cobrança do workspace"
+  );
 });

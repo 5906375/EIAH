@@ -83,6 +83,20 @@ export class ImobCrmRepository {
     });
   }
 
+  listCaseEvents(scope: Scope, params?: { caseIds?: string[]; type?: string | null; take?: number }) {
+    const caseIds = Array.isArray(params?.caseIds) ? params?.caseIds.filter(Boolean) : [];
+    return this.prisma.imobCaseEvent.findMany({
+      where: {
+        tenantId: scope.tenantId,
+        workspaceId: scope.workspaceId,
+        ...(caseIds.length > 0 ? { caseId: { in: caseIds } } : {}),
+        ...(params?.type ? { type: params.type } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      take: typeof params?.take === "number" ? params.take : 500,
+    });
+  }
+
   findLeadByStrongIdentifiers(scope: Scope, identifiers: { phone?: string | null; email?: string | null }) {
     const strongConditions = [
       identifiers.phone ? { phone: identifiers.phone } : null,

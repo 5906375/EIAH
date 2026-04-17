@@ -4,21 +4,34 @@ import { useSession } from "@/state/sessionStore";
 import {
   ApiError,
   apiGetImobChatTelemetrySummary,
+  apiGetImobExecutiveSummary,
   apiGetImobKpiFunnel,
   apiGetImobKpiPerformance,
+  apiListImobApprovalContext,
+  apiListImobBottleneckHeatmap,
   apiListImobCases,
   apiListImobChatThreads,
   apiListImobFollowUps,
   apiListImobOwners,
+  apiPostImobApprovalAction,
+  apiListImobPriorityQueue,
   apiListImobProperties,
+  apiListImobWaitingOnBoard,
   apiListRuns,
   type ImobCase,
   type ImobChatThread,
+  type ImobPriorityQueueItem,
   type ImobCrmFollowUpItem,
   type ImobKpiFunnel,
   type ImobKpiPerformance,
+  type ImobHeatmapCell,
+  type ImobApprovalContextItem,
   type ImobOwner,
   type ImobProperty,
+  type ImobWaitingOnBucket,
+  type ImobRescueMetric,
+  type ImobSpecialistLoadMetric,
+  type ImobReasonCode,
   type Run,
 } from "@/lib/api";
 import { getImobPropertyTypeLabel } from "@/features/imob/propertyTypes";
@@ -26,6 +39,12 @@ import { ImobAccessGateCard } from "@/components/imob/ImobAccessGateCard";
 import { resolveImobAccessGateCopy } from "@/features/imob/accessGateCatalog";
 import { IMOB_BUSINESS_QUICK_ACTIONS } from "@/features/imob/businessQuickActions";
 import { ThreadPanel } from "@/features/imob/ThreadPanel";
+import { ImobPriorityQueue } from "@/features/imob/ImobPriorityQueue";
+import { ImobWaitingOnBoard } from "@/features/imob/ImobWaitingOnBoard";
+import { ImobBottleneckHeatmap } from "@/features/imob/ImobBottleneckHeatmap";
+import { ImobSpecialistLoadBoard } from "@/features/imob/ImobSpecialistLoadBoard";
+import { ImobRescueIndex } from "@/features/imob/ImobRescueIndex";
+import { ImobApprovalContextCard } from "@/features/imob/ImobApprovalContextCard";
 import { formatPct } from "@/lib/formatters";
 
 type Section = "imoveis" | "processos" | "parceiros";
@@ -205,6 +224,55 @@ function buildImobChatHref(base: {
   return `/app/imob/chat${query ? `?${query}` : ""}`;
 }
 
+function buildPriorityQueueChatHref(
+  conversationId: string | null,
+  item: ImobPriorityQueueItem,
+) {
+  return buildImobChatHref({
+    conversationId,
+    caseId: item.caseId,
+    threadId: item.threadId ?? null,
+    autoprompt: item.autoprompt,
+  });
+}
+
+function buildApprovalContextHref(
+  conversationId: string | null,
+  item: ImobApprovalContextItem,
+) {
+  return buildImobChatHref({
+    conversationId,
+    caseId: item.caseId,
+    threadId: item.threadId ?? null,
+    autoprompt: item.autoprompt,
+  });
+}
+
+function buildApprovalDelegateTarget(item: ImobApprovalContextItem) {
+  if (item.waitingOn === "legal") return "juridico";
+  if (item.waitingOn === "finance") return "financeiro";
+  if (item.waitingOn === "broker") return "corretor";
+  if (item.waitingOn === "lead") return "comercial";
+  if (item.waitingOn === "owner") return "captacao";
+  return "imob-ops";
+}
+
+function buildApprovalEscalationTarget(item: ImobApprovalContextItem) {
+  if (item.reasonCode === "AUDIT_BLOCKER") return "governanca";
+  if (item.reasonCode === "FINANCIAL_BLOCKER") return "diretoria-financeira";
+  if (item.reasonCode === "DOCUMENT_BLOCKER") return "coordenacao-juridica";
+  if (item.reasonCode === "COMMERCIAL_PRIORITY") return "lider-comercial";
+  return "lider-operacional";
+}
+
+function reasonCodeLabel(value: ImobReasonCode) {
+  if (value === "COMMERCIAL_PRIORITY") return "prioridade comercial";
+  if (value === "FOLLOW_UP_DISCIPLINE") return "disciplina de follow-up";
+  if (value === "DOCUMENT_BLOCKER") return "bloqueio documental";
+  if (value === "FINANCIAL_BLOCKER") return "bloqueio financeiro";
+  return "bloqueio de auditoria/evidência";
+}
+
 function formatDashboardCaseLabel(item: ImobCase | null) {
   if (!item) return "Sem caso vinculado";
   const flowLabel = formatCaseFlowLabel(item.flow);
@@ -270,6 +338,12 @@ const ImobDashboardPage: React.FC = () => {
   const [properties, setProperties] = React.useState<ImobProperty[]>([]);
   const [cases, setCases] = React.useState<ImobCase[]>([]);
   const [runs, setRuns] = React.useState<Run[]>([]);
+  const [priorityQueue, setPriorityQueue] = React.useState<ImobPriorityQueueItem[]>([]);
+  const [waitingOnBoard, setWaitingOnBoard] = React.useState<ImobWaitingOnBucket[]>([]);
+  const [bottleneckHeatmap, setBottleneckHeatmap] = React.useState<ImobHeatmapCell[]>([]);
+  const [specialistLoad, setSpecialistLoad] = React.useState<ImobSpecialistLoadMetric[]>([]);
+  const [rescueIndex, setRescueIndex] = React.useState<ImobRescueMetric[]>([]);
+  const [approvalContext, setApprovalContext] = React.useState<ImobApprovalContextItem[]>([]);
   const [followUps, setFollowUps] = React.useState<ImobCrmFollowUpItem[]>([]);
   const [followUpLoading, setFollowUpLoading] = React.useState(false);
   const [kpiFunnel, setKpiFunnel] = React.useState<ImobKpiFunnel | null>(null);
@@ -278,6 +352,46 @@ const ImobDashboardPage: React.FC = () => {
   const [dashboardLoading, setDashboardLoading] = React.useState(true);
   const [dashboardError, setDashboardError] = React.useState<string | null>(null);
   const [dashboardSource, setDashboardSource] = React.useState<DashboardSource>("empty");
+
+  const reloadApprovalContext = React.useCallback(async () => {
+    const response = await apiListImobApprovalContext({ limit: 8 });
+    setApprovalContext(response.data.items ?? []);
+  }, []);
+
+  const handleApprovalAction = React.useCallback(async (
+    item: ImobApprovalContextItem,
+    action: "approve" | "delegate" | "escalate",
+  ) => {
+    try {
+      setDashboardError(null);
+      const delegatedTo = action === "delegate" ? buildApprovalDelegateTarget(item) : undefined;
+      const escalationTarget = action === "escalate" ? buildApprovalEscalationTarget(item) : undefined;
+      const note = action === "approve"
+        ? `Aprovado via command center para ${reasonCodeLabel(item.reasonCode)}.`
+        : action === "delegate"
+          ? `Delegado via command center para ${delegatedTo}.`
+          : `Escalado via command center para ${escalationTarget}.`;
+
+      await apiPostImobApprovalAction({
+        caseId: item.caseId,
+        action,
+        reasonCode: item.reasonCode,
+        specialistId: item.specialistId,
+        delegatedTo,
+        escalationTarget,
+        note,
+      });
+
+      await reloadApprovalContext();
+    } catch (error) {
+      if (error instanceof ApiError && error.body && typeof error.body === "object") {
+        const payload = error.body as { error?: { message?: string } };
+        setDashboardError(payload.error?.message ?? "Falha ao registrar ação de approval no caso");
+      } else {
+        setDashboardError(error instanceof Error ? error.message : "Falha ao registrar ação de approval no caso");
+      }
+    }
+  }, [reloadApprovalContext]);
 
   const setSection = (next: Section) => {
     const params = new URLSearchParams(searchParams);
@@ -339,6 +453,12 @@ const ImobDashboardPage: React.FC = () => {
       setProperties([]);
       setCases([]);
       setRuns([]);
+      setPriorityQueue([]);
+      setWaitingOnBoard([]);
+      setBottleneckHeatmap([]);
+      setSpecialistLoad([]);
+      setRescueIndex([]);
+      setApprovalContext([]);
       setDashboardSource("empty");
       setDashboardError(null);
       setDashboardLoading(false);
@@ -349,12 +469,28 @@ const ImobDashboardPage: React.FC = () => {
     setDashboardLoading(true);
     setDashboardError(null);
 
-    Promise.all([apiListImobOwners(), apiListImobProperties(), apiListImobCases(), apiListRuns({ page: 1, size: 100, workspaceId: session.workspaceId })])
-      .then(([ownersResponse, propertiesResponse, casesResponse, runsResponse]) => {
+    Promise.all([
+      apiListImobOwners(),
+      apiListImobProperties(),
+      apiListImobCases(),
+      apiListRuns({ page: 1, size: 100, workspaceId: session.workspaceId }),
+      apiListImobPriorityQueue({ limit: 8 }),
+      apiListImobWaitingOnBoard(),
+      apiListImobBottleneckHeatmap(),
+      apiGetImobExecutiveSummary(),
+      apiListImobApprovalContext({ limit: 8 }),
+    ])
+      .then(([ownersResponse, propertiesResponse, casesResponse, runsResponse, priorityQueueResponse, waitingOnBoardResponse, heatmapResponse, executiveSummaryResponse, approvalContextResponse]) => {
         if (!mounted) return;
         const nextOwners = ownersResponse.data.items ?? [];
         const nextProperties = propertiesResponse.data.items ?? [];
         const nextCases = casesResponse.data.items ?? [];
+        const nextPriorityQueue = priorityQueueResponse.data.items ?? [];
+        const nextWaitingOnBoard = waitingOnBoardResponse.data.items ?? [];
+        const nextHeatmap = heatmapResponse.data.items ?? [];
+        const nextSpecialistLoad = executiveSummaryResponse.data.specialistLoad ?? [];
+        const nextRescueIndex = executiveSummaryResponse.data.rescueIndex ?? [];
+        const nextApprovalContext = approvalContextResponse.data.items ?? [];
         const nextRuns = (runsResponse.items ?? []).filter((run) => {
           const request =
             run.request && typeof run.request === "object" ? (run.request as Record<string, unknown>) : null;
@@ -365,8 +501,25 @@ const ImobDashboardPage: React.FC = () => {
         setProperties(nextProperties);
         setCases(nextCases);
         setRuns(nextRuns);
+        setPriorityQueue(nextPriorityQueue);
+        setWaitingOnBoard(nextWaitingOnBoard);
+        setBottleneckHeatmap(nextHeatmap);
+        setSpecialistLoad(nextSpecialistLoad);
+        setRescueIndex(nextRescueIndex);
+        setApprovalContext(nextApprovalContext);
         setDashboardSource(
-          nextOwners.length > 0 || nextProperties.length > 0 || nextCases.length > 0 || nextRuns.length > 0 ? "real" : "empty"
+          nextOwners.length > 0 ||
+          nextProperties.length > 0 ||
+          nextCases.length > 0 ||
+          nextRuns.length > 0 ||
+          nextPriorityQueue.length > 0 ||
+          nextWaitingOnBoard.length > 0 ||
+          nextHeatmap.length > 0 ||
+          nextSpecialistLoad.length > 0 ||
+          nextRescueIndex.length > 0 ||
+          nextApprovalContext.length > 0
+            ? "real"
+            : "empty"
         );
       })
       .catch((error) => {
@@ -375,6 +528,12 @@ const ImobDashboardPage: React.FC = () => {
         setProperties([]);
         setCases([]);
         setRuns([]);
+        setPriorityQueue([]);
+        setWaitingOnBoard([]);
+        setBottleneckHeatmap([]);
+        setSpecialistLoad([]);
+        setRescueIndex([]);
+        setApprovalContext([]);
         setDashboardSource("empty");
         if (error instanceof ApiError && error.status === 403 && error.body && typeof error.body === "object") {
           const payload = error.body as { error?: { message?: string; reasonCode?: string } };
@@ -1024,6 +1183,30 @@ const ImobDashboardPage: React.FC = () => {
               <p className="mt-2 text-2xl font-semibold text-foreground">{evidencedProcessCount}</p>
             </article>
           </section>
+
+          <div className="grid gap-4 xl:grid-cols-[1.35fr_1fr]">
+            <ImobPriorityQueue
+              items={priorityQueue}
+              buildHref={(item) => buildPriorityQueueChatHref(conversationId, item)}
+            />
+            <ImobWaitingOnBoard
+              items={waitingOnBoard}
+              buildHref={(item) => buildPriorityQueueChatHref(conversationId, item)}
+            />
+          </div>
+
+          <ImobBottleneckHeatmap items={bottleneckHeatmap} />
+
+          <div className="grid gap-4 xl:grid-cols-2">
+            <ImobSpecialistLoadBoard items={specialistLoad} />
+            <ImobRescueIndex items={rescueIndex} />
+          </div>
+
+          <ImobApprovalContextCard
+            items={approvalContext}
+            buildHref={(item) => buildApprovalContextHref(conversationId, item)}
+            onAction={handleApprovalAction}
+          />
 
           <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 sm:p-6">
             <div className="flex items-center justify-between gap-2">

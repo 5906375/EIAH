@@ -42,28 +42,32 @@ import {
   isPlatformSelfExplainQuestion,
 } from "@/components/agents/platformHelpResolver";
 import {
-  buildDeterministicImobReply,
-  buildImobContextEntryReply,
-  buildImobKnowledgeAccessBlockedReply,
-  buildImobKnowledgeSearchEntryReply,
+  buildImobInputPlaceholderForInput,
   buildImobKnowledgeSearchQuickReplies,
   buildImobQuickRepliesForInput,
+  isImobContextEntryQuestion,
   isImobGuideQuestion,
+  resolveImobLauncherSurfaceDecision,
   resolveImobKnowledgeSearchIntent,
   resolveImobFaqSeed,
   resolveImobHelpIntent,
   resolveImobJourneyStage,
+  resolveImobVerticalContext,
   resolveImobShortcutSelection,
+  shouldRouteToImob,
   type ImobFaqSeed,
   type ImobJourneyStage,
 } from "@/components/agents/imobContextResolver";
 import {
+  buildLegalInputPlaceholderForInput,
   buildLegalContextEntryReply,
   buildLegalDataCollectionReply,
   buildLegalHandoffReply,
   buildLegalQuickRepliesForInput,
   isLegalDataCollectionQuestion,
+  isLegalRoutingQuestion,
   resolveLegalJourneyStage,
+  resolveLegalVerticalContext,
   type LegalJourneyStage,
 } from "@/components/agents/legalContextResolver";
 import {
@@ -89,6 +93,11 @@ import {
   buildProposalUsagePromptReply,
 } from "@/components/agents/proposalCopy";
 import { buildProposalQuickReplies } from "@/components/agents/proposalQuickReplies";
+import {
+  resolveEiahTutorContractResponse,
+  resolveEiahTutorInputPlaceholder,
+  resolveEiahTutorRouteQuickReplies,
+} from "@/components/agents/eiahTutorContracts";
 import type {
   ConversationStage,
   ProposalDomain,
@@ -495,30 +504,11 @@ function isAppShortcutInput(input: string) {
 export function resolveConversationVerticalContext(
   input: string
 ): { vertical: "IMOB"; stage?: ImobJourneyStage; faq?: ImobFaqSeed } | { vertical: "LEGAL"; stage?: LegalJourneyStage } | null {
-  if (resolveImobKnowledgeSearchIntent(input)) {
-    return { vertical: "IMOB" };
-  }
-  const faq = resolveImobFaqSeed(input);
-  if (faq) {
-    return { vertical: "IMOB", stage: faq.journeyStage ?? undefined, faq };
-  }
-  const stage = resolveImobJourneyStage(input);
-  if (stage) {
-    return { vertical: "IMOB", stage: stage.stage };
-  }
-  const legalStage = resolveLegalJourneyStage(input);
-  if (legalStage) {
-    return { vertical: "LEGAL", stage: legalStage.stage };
-  }
-  return null;
+  return resolveImobVerticalContext(input) ?? resolveLegalVerticalContext(input);
 }
 
 function resolveVerticalContext(input: string) {
   return resolveConversationVerticalContext(input);
-}
-
-function isImobContextEntryQuestion(input: string) {
-  return resolveVerticalContext(input)?.vertical === "IMOB" || resolveImobKnowledgeSearchIntent(input) !== null;
 }
 
 function hasImobVerticalAccess(accessContext?: LauncherAccessContext | null) {
@@ -784,7 +774,7 @@ export function detectLauncherRouteIntent(input: string, proposalMode: boolean):
   const hasSecondaryProposal = secondaryProposalSignals.some((signal) => normalized.includes(signal));
   const hasOperationalHelp = helpOperationalSignals.some((signal) => normalized.includes(signal));
   if (hasStrongProposal || (hasSecondaryProposal && !hasOperationalHelp)) return "proposal";
-  if (isImobGuideQuestion(input) || isImobContextEntryQuestion(input)) return "imob";
+  if (shouldRouteToImob(input)) return "imob";
   if (isPlaybookQuestion(input)) return "playbook";
   if (isLegalRoutingQuestion(input)) return "orchestrator";
   if (
@@ -819,37 +809,21 @@ export function buildEiahQuickReplies(params: {
   }
 
   if (params.routeIntent === "orchestrator") {
-    return [
-      "Qual agente devo usar?",
-      "Analise este fluxo e recomende o próximo passo.",
-      "Quero auditar esse processo.",
-    ];
+    return resolveEiahTutorRouteQuickReplies("orchestrator", params.sourceInput);
   }
 
   if (params.routeIntent === "legal_handoff") {
-    return [
-      "Quero revisar um contrato.",
-      "Quais dados preciso enviar?",
-      "Quais riscos contratuais comuns?",
-    ];
+    return buildLegalQuickRepliesForInput(params.sourceInput ?? "");
   }
 
   if (params.routeIntent === "imob") {
     if (params.sourceInput && resolveImobKnowledgeSearchIntent(params.sourceInput)) {
       return buildImobKnowledgeSearchQuickReplies();
     }
-    return [
-      "Como funciona IMOB do início ao fim?",
-      "Onde acompanho pipeline e etapas no IMOB?",
-      "Quero instalar o IMOB no workspace.",
-    ];
+    return buildImobQuickRepliesForInput(params.sourceInput ?? "");
   }
 
-  return [
-    "O que o EIAH pode fazer por mim?",
-    "Como criar um run no EIAH?",
-    "Como funciona o billing?",
-  ];
+  return resolveEiahTutorRouteQuickReplies("help", params.sourceInput);
 }
 
 export function buildInputPlaceholderForContext(params: {
@@ -859,59 +833,21 @@ export function buildInputPlaceholderForContext(params: {
   const resolvedVerticalContext = params.input ? resolveConversationVerticalContext(params.input) : null;
 
   if (resolvedVerticalContext?.vertical === "LEGAL") {
-    switch (resolvedVerticalContext.stage) {
-      case "contract_review":
-        return "Ex.: quero revisar contrato de locação com foco em multa e rescisão";
-      case "clause_review":
-        return "Ex.: quero analisar a cláusula de responsabilidade deste contrato";
-      case "legal_risk":
-        return "Ex.: quero entender os principais riscos jurídicos deste documento";
-      case "document_intake":
-        return "Ex.: tenho só uma cláusula e quero saber o que falta para analisar";
-      case "real_estate_legal":
-        return "Ex.: quero revisar matrícula, posse e cláusulas de contrato imobiliário";
-      default:
-        return "Ex.: quero revisar um contrato e entender o ponto de risco principal";
-    }
+    return buildLegalInputPlaceholderForInput(params.input);
   }
 
   if (params.routeIntent === "imob") {
-    const stage = params.input ? resolveImobJourneyStage(params.input) : null;
-    switch (stage?.stage) {
-      case "compra":
-        return "Ex.: estou na etapa de proposta para compra de apartamento";
-      case "venda":
-        return "Ex.: recebi proposta para venda de casa e quero organizar os próximos passos";
-      case "locacao":
-        return "Ex.: quero anunciar locação de apartamento e entender a garantia";
-      case "captacao":
-        return "Ex.: estou em captação para venda de imóvel residencial";
-      case "leilao":
-        return "Ex.: quero analisar edital de imóvel em leilão";
-      default:
-        return "Ex.: estou na etapa de proposta para venda de apartamento";
-    }
+    return buildImobInputPlaceholderForInput(params.input);
   }
 
   if (params.routeIntent === "legal_handoff") {
-    const stage = params.input ? resolveLegalJourneyStage(params.input) : null;
-    switch (stage?.stage) {
-      case "contract_review":
-        return "Ex.: quero revisar contrato de locação com foco em multa e rescisão";
-      case "clause_review":
-        return "Ex.: quero analisar a cláusula de responsabilidade deste contrato";
-      case "legal_risk":
-        return "Ex.: quero entender os principais riscos jurídicos deste documento";
-      case "document_intake":
-        return "Ex.: tenho só uma cláusula e quero saber o que falta para analisar";
-      case "real_estate_legal":
-        return "Ex.: quero revisar matrícula, posse e cláusulas de contrato imobiliário";
-      default:
-        return "Ex.: quero revisar contrato de locação com foco em multa e rescisão";
-    }
+    return buildLegalInputPlaceholderForInput(params.input);
   }
 
-  return "Descreva o objetivo, contexto e restricoes...";
+  return resolveEiahTutorInputPlaceholder(
+    params.routeIntent === "orchestrator" ? "orchestrator" : "help",
+    params.input
+  );
 }
 
 export function buildQuickRepliesForContext(params: {
@@ -924,11 +860,14 @@ export function buildQuickRepliesForContext(params: {
   conversationStage?: MessagePresentationSnapshot["conversationStage"];
   resolvedQuickReplies?: string[] | null;
 }) {
-  if (params.resolvedQuickReplies?.length) {
-    return params.resolvedQuickReplies
+  const normalizeReplies = (values: Array<string | null | undefined>) =>
+    values
       .filter((value): value is string => Boolean(value && value.trim()))
       .filter((value, index, array) => array.indexOf(value) === index)
       .slice(0, 3);
+
+  if (params.resolvedQuickReplies?.length) {
+    return normalizeReplies(params.resolvedQuickReplies);
   }
   const copyReplies =
     params.agentProfile?.chatCopy?.quickReplies?.filter((value): value is string => Boolean(value && value.trim())) ?? [];
@@ -943,6 +882,16 @@ export function buildQuickRepliesForContext(params: {
       ? buildLegalQuickRepliesForInput(params.sourceInput)
       : [];
 
+  const verticalReplies = resolvedVerticalContext?.vertical === "IMOB"
+    ? imobReplies
+    : resolvedVerticalContext?.vertical === "LEGAL"
+      ? legalReplies
+      : [];
+
+  if (verticalReplies.length) {
+    return normalizeReplies(verticalReplies);
+  }
+
   if (params.isHelpCenterMode) {
     const engineReplies = buildEiahQuickReplies({
       routeIntent: params.routeIntent,
@@ -951,17 +900,18 @@ export function buildQuickRepliesForContext(params: {
       proposalDomain: params.proposalDomain,
       conversationStage: params.conversationStage,
     });
-    return [...copyReplies, ...imobReplies, ...legalReplies, ...engineReplies]
-      .filter((value): value is string => Boolean(value && value.trim()))
-      .filter((value, index, array) => array.indexOf(value) === index)
-      .slice(0, 3);
+    if (engineReplies.length) {
+      return normalizeReplies(engineReplies);
+    }
+    return normalizeReplies(copyReplies);
   }
 
   const specialistReplies = isLegalSpecialistAgent(params.agentProfile) ? legalReplies : [];
-  return [...specialistReplies, ...copyReplies]
-    .filter((value): value is string => Boolean(value && value.trim()))
-    .filter((value, index, array) => array.indexOf(value) === index)
-    .slice(0, 3);
+  if (specialistReplies.length) {
+    return normalizeReplies(specialistReplies);
+  }
+
+  return normalizeReplies(copyReplies);
 }
 
 export function buildLauncherContextualFallback(params: {
@@ -1741,38 +1691,6 @@ export async function prepareLauncherRunExecution(params: {
   };
 }
 
-export function isLegalRoutingQuestion(input: string) {
-  const normalized = normalizeIntentText(input);
-  const patterns = [
-    "contrato",
-    "clausula",
-    "parecer",
-    "juridico",
-    "termo aditivo",
-    "minuta",
-    "aluguel",
-    "aluguem",
-    "locacao",
-    "locaçao",
-    "locacacao",
-    "venda",
-    "imovel",
-    "imoveis",
-    "imobiliario",
-    "sala comercial",
-  ];
-  const tokenHits = patterns.filter((pattern) => normalized.includes(pattern)).length;
-  if (tokenHits > 0) return true;
-  const hasContractLike = normalized.includes("contrat");
-  const hasRentOrSaleLike =
-    normalized.includes("alugu") ||
-    normalized.includes("loca") ||
-    normalized.includes("vend") ||
-    normalized.includes("imov") ||
-    normalized.includes("sala comerc");
-  return hasContractLike && hasRentOrSaleLike;
-}
-
 export function buildLauncherClarificationPrompt(params: {
   agentProfile: Agent | null;
   routeIntent: LauncherRouteIntent;
@@ -1908,6 +1826,26 @@ export function resolveEiahDecision(params: {
     };
   }
 
+  if (params.routeIntent === "help") {
+    const tutorReply = resolveEiahTutorContractResponse({
+      input,
+      accessContext: params.accessContext,
+    });
+    if (tutorReply && tutorReply.intentId !== "platform_overview_fallback") {
+      return {
+        kind: "help_reply",
+        shouldCreateRun: false,
+        content: tutorReply.content,
+        resolvedQuickReplies: tutorReply.quickReplies,
+        launcherRouteIntent: "help",
+        presentationRouteIntent: "help",
+        eiahMode: "help",
+        renderVariant: "simple_help",
+        persistIntent: { intent: "product_explain", confidenceFloor: 0.82 },
+      };
+    }
+  }
+
   if (journey && (isJourneyEntryQuestion(input) || isPlatformSelfExplainQuestion(input))) {
     return {
       kind: "initial_journey",
@@ -1992,43 +1930,31 @@ export function resolveEiahDecision(params: {
   }
 
   const imobKnowledgeSearchIntent = resolveImobKnowledgeSearchIntent(input);
-  if (imobKnowledgeSearchIntent) {
-    if (!hasImobVerticalAccess(params.accessContext)) {
-      return {
-        kind: "help_reply",
-        shouldCreateRun: false,
-        content: buildImobKnowledgeAccessBlockedReply(),
-        launcherRouteIntent: "help",
-        presentationRouteIntent: "help",
-        eiahMode: "help",
-        renderVariant: "simple_help",
-        persistIntent: { intent: "product_explain", confidenceFloor: 0.86 },
-      };
-    }
-
-    return {
-      kind: "imob_context_entry",
-      shouldCreateRun: false,
-      content: buildImobKnowledgeSearchEntryReply(input),
-      launcherRouteIntent: "imob",
-      presentationRouteIntent: "imob",
-      eiahMode: "help",
-      renderVariant: "simple_help",
-      persistIntent: { intent: "product_explain", confidenceFloor: 0.84 },
-    };
-  }
-
-  if (isImobContextEntryQuestion(input)) {
-    return {
-      kind: "imob_context_entry",
-      shouldCreateRun: false,
-      content: buildImobContextEntryReply(input),
-      launcherRouteIntent: "imob",
-      presentationRouteIntent: "imob",
-      eiahMode: "help",
-      renderVariant: "simple_help",
-      persistIntent: { intent: "product_explain", confidenceFloor: 0.8 },
-    };
+  const imobSurfaceDecision =
+    params.routeIntent === "imob"
+      ? resolveImobLauncherSurfaceDecision({
+          input,
+          hasAccess: hasImobVerticalAccess(params.accessContext),
+          hasKnowledgeSearchIntent: Boolean(imobKnowledgeSearchIntent),
+          isContextEntryQuestion: isImobContextEntryQuestion(input),
+        })
+      : imobKnowledgeSearchIntent
+        ? resolveImobLauncherSurfaceDecision({
+            input,
+            hasAccess: hasImobVerticalAccess(params.accessContext),
+            hasKnowledgeSearchIntent: true,
+            isContextEntryQuestion: false,
+          })
+        : isImobContextEntryQuestion(input)
+          ? resolveImobLauncherSurfaceDecision({
+              input,
+              hasAccess: hasImobVerticalAccess(params.accessContext),
+              hasKnowledgeSearchIntent: false,
+              isContextEntryQuestion: true,
+            })
+          : null;
+  if (imobSurfaceDecision) {
+    return imobSurfaceDecision;
   }
 
   const specialistExplainTarget = resolveSpecialistExplainTarget(input);
@@ -2119,18 +2045,6 @@ export function resolveEiahDecision(params: {
       eiahMode: "help",
       renderVariant: "self_intro",
       persistIntent: { intent: "product_explain", confidenceFloor: 0.78 },
-    };
-  }
-
-  if (params.routeIntent === "imob") {
-    return {
-      kind: "imob_reply",
-      shouldCreateRun: false,
-      content: buildDeterministicImobReply(input),
-      launcherRouteIntent: "imob",
-      presentationRouteIntent: "imob",
-      eiahMode: "help",
-      renderVariant: "simple_help",
     };
   }
 
