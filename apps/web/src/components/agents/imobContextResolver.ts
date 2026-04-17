@@ -43,6 +43,26 @@ export type ImobShortcutSelection = {
   helpText: string;
 };
 
+export type ImobLauncherSurfaceDecision = {
+  kind: "help_reply" | "imob_context_entry" | "imob_reply";
+  shouldCreateRun: false;
+  content: string;
+  launcherRouteIntent: "help" | "imob";
+  presentationRouteIntent: "help" | "imob";
+  eiahMode: "help";
+  renderVariant: "simple_help";
+  persistIntent?: {
+    intent: string;
+    confidenceFloor?: number;
+  };
+};
+
+export type ImobVerticalContext = {
+  vertical: "IMOB";
+  stage?: ImobJourneyStage;
+  faq?: ImobFaqSeed;
+};
+
 function normalizeIntentText(value: string) {
   return value
     .toLowerCase()
@@ -221,6 +241,33 @@ export function isImobGuideQuestion(input: string) {
     "jornada imobiliaria",
   ];
   return patterns.some((pattern) => normalized.includes(pattern));
+}
+
+export function isImobContextEntryQuestion(input: string) {
+  return (
+    resolveImobKnowledgeSearchIntent(input) !== null ||
+    resolveImobFaqSeed(input) !== null ||
+    resolveImobJourneyStage(input) !== null
+  );
+}
+
+export function resolveImobVerticalContext(input: string): ImobVerticalContext | null {
+  if (resolveImobKnowledgeSearchIntent(input)) {
+    return { vertical: "IMOB" };
+  }
+  const faq = resolveImobFaqSeed(input);
+  if (faq) {
+    return { vertical: "IMOB", stage: faq.journeyStage ?? undefined, faq };
+  }
+  const stage = resolveImobJourneyStage(input);
+  if (stage) {
+    return { vertical: "IMOB", stage: stage.stage };
+  }
+  return null;
+}
+
+export function shouldRouteToImob(input: string) {
+  return isImobGuideQuestion(input) || isImobContextEntryQuestion(input);
 }
 
 export function resolveImobKnowledgeSearchIntent(input: string): ImobKnowledgeSearchIntent | null {
@@ -439,6 +486,24 @@ export function buildImobQuickRepliesForInput(input: string) {
       return ["É proposta de compra", "É proposta de venda", "É proposta de locação"];
     default:
       return ["Como funciona IMOB do início ao fim?", "Onde acompanho pipeline e etapas no IMOB?", "Quero instalar o IMOB no workspace."];
+  }
+}
+
+export function buildImobInputPlaceholderForInput(input?: string | null) {
+  const stage = input ? resolveImobJourneyStage(input) : null;
+  switch (stage?.stage) {
+    case "compra":
+      return "Ex.: estou na etapa de proposta para compra de apartamento";
+    case "venda":
+      return "Ex.: recebi proposta para venda de casa e quero organizar os próximos passos";
+    case "locacao":
+      return "Ex.: quero anunciar locação de apartamento e entender a garantia";
+    case "captacao":
+      return "Ex.: estou em captação para venda de imóvel residencial";
+    case "leilao":
+      return "Ex.: quero analisar edital de imóvel em leilão";
+    default:
+      return "Ex.: estou na etapa de proposta para venda de apartamento";
   }
 }
 
@@ -725,4 +790,60 @@ export function buildImobContextEntryReply(input: string) {
     "",
     "Se quiser seguir, me diga em que etapa você está agora: busca, captação, proposta, negociação, contrato ou fechamento.",
   ].join("\n");
+}
+
+export function resolveImobLauncherSurfaceDecision(params: {
+  input: string;
+  hasAccess: boolean;
+  hasKnowledgeSearchIntent: boolean;
+  isContextEntryQuestion: boolean;
+}): ImobLauncherSurfaceDecision | null {
+  if (params.hasKnowledgeSearchIntent) {
+    if (!params.hasAccess) {
+      return {
+        kind: "help_reply",
+        shouldCreateRun: false,
+        content: buildImobKnowledgeAccessBlockedReply(),
+        launcherRouteIntent: "help",
+        presentationRouteIntent: "help",
+        eiahMode: "help",
+        renderVariant: "simple_help",
+        persistIntent: { intent: "product_explain", confidenceFloor: 0.86 },
+      };
+    }
+
+    return {
+      kind: "imob_context_entry",
+      shouldCreateRun: false,
+      content: buildImobKnowledgeSearchEntryReply(params.input),
+      launcherRouteIntent: "imob",
+      presentationRouteIntent: "imob",
+      eiahMode: "help",
+      renderVariant: "simple_help",
+      persistIntent: { intent: "product_explain", confidenceFloor: 0.84 },
+    };
+  }
+
+  if (params.isContextEntryQuestion) {
+    return {
+      kind: "imob_context_entry",
+      shouldCreateRun: false,
+      content: buildImobContextEntryReply(params.input),
+      launcherRouteIntent: "imob",
+      presentationRouteIntent: "imob",
+      eiahMode: "help",
+      renderVariant: "simple_help",
+      persistIntent: { intent: "product_explain", confidenceFloor: 0.8 },
+    };
+  }
+
+  return {
+    kind: "imob_reply",
+    shouldCreateRun: false,
+    content: buildDeterministicImobReply(params.input),
+    launcherRouteIntent: "imob",
+    presentationRouteIntent: "imob",
+    eiahMode: "help",
+    renderVariant: "simple_help",
+  };
 }

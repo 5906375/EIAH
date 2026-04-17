@@ -14,6 +14,11 @@ export type LegalJourneyDefinition = {
   nextQuestion: string;
 };
 
+export type LegalVerticalContext = {
+  vertical: "LEGAL";
+  stage?: LegalJourneyStage;
+};
+
 const LEGAL_JOURNEY_MAP: LegalJourneyDefinition[] = [
   {
     stage: "contract_review",
@@ -132,6 +137,44 @@ export function resolveLegalJourneyStage(input: string): LegalJourneyDefinition 
   return null;
 }
 
+export function resolveLegalVerticalContext(input: string): LegalVerticalContext | null {
+  const stage = resolveLegalJourneyStage(input);
+  if (!stage) return null;
+  return { vertical: "LEGAL", stage: stage.stage };
+}
+
+export function isLegalRoutingQuestion(input: string) {
+  const normalized = normalizeIntentText(input);
+  const patterns = [
+    "contrato",
+    "clausula",
+    "parecer",
+    "juridico",
+    "termo aditivo",
+    "minuta",
+    "aluguel",
+    "aluguem",
+    "locacao",
+    "locaçao",
+    "locacacao",
+    "venda",
+    "imovel",
+    "imoveis",
+    "imobiliario",
+    "sala comercial",
+  ];
+  const tokenHits = patterns.filter((pattern) => normalized.includes(pattern)).length;
+  if (tokenHits > 0) return true;
+  const hasContractLike = normalized.includes("contrat");
+  const hasRentOrSaleLike =
+    normalized.includes("alugu") ||
+    normalized.includes("loca") ||
+    normalized.includes("vend") ||
+    normalized.includes("imov") ||
+    normalized.includes("sala comerc");
+  return hasContractLike && hasRentOrSaleLike;
+}
+
 export function buildLegalQuickRepliesForInput(input: string) {
   const stage = resolveLegalJourneyStage(input);
   switch (stage?.stage) {
@@ -147,6 +190,24 @@ export function buildLegalQuickRepliesForInput(input: string) {
       return ["Revisar contrato imobiliário", "Entender matrícula e posse", "Analisar edital ou distrato"];
     default:
       return ["Quero revisar um contrato.", "Quais dados preciso enviar?", "Quais riscos contratuais comuns?"];
+  }
+}
+
+export function buildLegalInputPlaceholderForInput(input?: string | null) {
+  const stage = input ? resolveLegalJourneyStage(input) : null;
+  switch (stage?.stage) {
+    case "contract_review":
+      return "Ex.: quero revisar contrato de locação com foco em multa e rescisão";
+    case "clause_review":
+      return "Ex.: quero analisar a cláusula de responsabilidade deste contrato";
+    case "legal_risk":
+      return "Ex.: quero entender os principais riscos jurídicos deste documento";
+    case "document_intake":
+      return "Ex.: tenho só uma cláusula e quero saber o que falta para analisar";
+    case "real_estate_legal":
+      return "Ex.: quero revisar matrícula, posse e cláusulas de contrato imobiliário";
+    default:
+      return "Ex.: quero revisar um contrato e entender o ponto de risco principal";
   }
 }
 

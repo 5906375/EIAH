@@ -117,6 +117,10 @@ export const intentLibraryV1: IntentLibraryEntryV1[] = [
     examples: [
       "explique o menu acima",
       "me explica as páginas acima",
+      "quero saber sobre páginas",
+      "quero saber sobre paginas",
+      "me fale sobre as páginas",
+      "me fale sobre as paginas",
       "menu principal",
       "o que significa cada página",
       "entender páginas",
@@ -218,6 +222,69 @@ export const intentLibraryV1: IntentLibraryEntryV1[] = [
     ],
     aliases: ["recipe", "homologar recipe", "catalogo interno homologado"],
     mapsToKnowledgeId: "self_service.recipes.overview",
+    defaultPatternId: "concept_explanation_short",
+  },
+  {
+    intentId: "tenant_recipes_simple_explanation",
+    examples: [
+      "o que sao tenant recipes",
+      "o que são tenant recipes",
+      "explicacao simples tenant recipes",
+      "explicação simples tenant recipes",
+      "catalogo interno homologado",
+      "catálogo interno homologado",
+    ],
+    aliases: [
+      "tenant recipes",
+      "catálogo interno homologado",
+      "catalogo interno homologado",
+      "resumo simples recipes",
+    ],
+    priority: 5,
+    mapsToKnowledgeId: "self_service.recipes.tenant.simple",
+    defaultPatternId: "concept_explanation_short",
+  },
+  {
+    intentId: "tenant_recipes_operational_explanation",
+    examples: [
+      "como publicar recipe no tenant",
+      "como liberar recipe homologada para workspace",
+      "como saber se recipe esta homologada",
+      "como as tenant recipes padronizam uso dos agentes",
+      "explicacao operacional tenant recipes",
+      "explicação operacional tenant recipes",
+    ],
+    aliases: [
+      "publicar tenant recipe",
+      "liberar recipe por workspace",
+      "onboarding com tenant recipes",
+      "operacao recipes",
+      "operação recipes",
+    ],
+    priority: 8,
+    mapsToKnowledgeId: "self_service.recipes.tenant.operational",
+    defaultPatternId: "guided_steps_with_shortcut",
+  },
+  {
+    intentId: "tenant_recipes_governance_explanation",
+    examples: [
+      "explicacao de governanca tenant recipes",
+      "explicação de governança tenant recipes",
+      "como evitar drift em recipes",
+      "por que so recipes homologadas ficam disponiveis",
+      "como tenant recipes ajudam na auditoria",
+      "como uma recipe entra no catalogo homologado",
+    ],
+    aliases: [
+      "governanca de recipes",
+      "governança de recipes",
+      "auditoria recipes",
+      "controle tenant recipes",
+      "homologacao de recipe",
+      "homologação de recipe",
+    ],
+    priority: 8,
+    mapsToKnowledgeId: "self_service.recipes.tenant.governance",
     defaultPatternId: "concept_explanation_short",
   },
   {
@@ -612,6 +679,118 @@ export const knowledgeUnitsV1: KnowledgeUnitV1[] = [
       "- `homologated`: libera a recipe para aparecer no self-service conforme o escopo configurado",
       "",
       "Importante: a recipe publica contexto e visibilidade. Ela nao cria sozinha um formulario novo se a rota do agente ja for fixa no codigo.",
+      "",
+      "Se quiser, eu explico em 3 camadas:",
+      "- explicação simples",
+      "- explicação operacional",
+      "- explicação de governança",
+    ].join("\n"),
+  },
+  {
+    id: "self_service.recipes.tenant.simple",
+    title: "Tenant recipes — explicação simples",
+    vertical: "core",
+    topic: "self_service",
+    problemItSolves: "Explica conceito e benefício direto de tenant recipes sem burocracia.",
+    canonicalAnswer:
+      "Tenant recipes são recipes aprovadas para uso dentro de um tenant, permitindo liberar caminhos guiados por workspace de forma padronizada.",
+    stepByStep: [
+      "Pense em tenant recipe como caminho aprovado para o time usar agente sem depender de jeito pessoal.",
+      "O catálogo interno homologado é a lista oficial do que foi validado para operação.",
+      "Recipe comum é fluxo; tenant recipe é fluxo com escopo e controle por tenant/workspace.",
+      "Publicar e homologar não são iguais: homologação é o que autoriza uso governado.",
+    ],
+    nextActions: [
+      "Quero explicação operacional",
+      "Quero explicação de governança",
+      "Como publicar tenant recipe",
+      "Como liberar recipe para workspace",
+    ],
+    responseBody: [
+      "**Tenant recipes**",
+      "",
+      "**Catálogo interno homologado**",
+      "Recipes do tenant permitem homologar um agente e liberar um caminho guiado por workspace.",
+      "",
+      "Em linguagem simples:",
+      "- tenant recipe = fluxo aprovado para uso real",
+      "- catálogo interno homologado = vitrine oficial do que está validado",
+      "- benefício no dia a dia = mais consistência, menos improviso e onboarding mais rápido",
+      "",
+      "Se quiser, eu te mostro agora a visão operacional ou de governança.",
+    ].join("\n"),
+  },
+  {
+    id: "self_service.recipes.tenant.operational",
+    title: "Tenant recipes — explicação operacional",
+    vertical: "core",
+    topic: "self_service",
+    problemItSolves: "Explica publicação, homologação e liberação por workspace no fluxo operacional.",
+    canonicalAnswer:
+      "Operacionalmente, publicar coloca a recipe no trilho do tenant; homologar valida o fluxo; liberar define em quais workspaces ela fica disponível.",
+    stepByStep: [
+      "Publicar uma recipe não significa liberação automática.",
+      "Homologação valida aderência ao catálogo interno homologado do tenant.",
+      "Depois de homologada, a recipe é liberada para workspaces autorizados.",
+      "Uso real exige as duas condições: homologada + habilitada no workspace correto.",
+      "Isso reduz erro operacional e padroniza execução entre times.",
+    ],
+    nextActions: [
+      "Como saber se está homologada",
+      "Como liberar para workspace específico",
+      "Como evitar drift das recipes",
+      "Explicação simples tenant recipes",
+    ],
+    responseBody: [
+      "**Tenant recipes — operação**",
+      "",
+      "Fluxo prático:",
+      "1. publicar a recipe no tenant (entrada no ciclo)",
+      "2. homologar conforme regra interna (validação)",
+      "3. liberar para os workspaces autorizados (disponibilidade real)",
+      "",
+      "Regra de ouro:",
+      "- publicar != homologar",
+      "- homologar != liberar para todos os workspaces",
+      "",
+      "Isso mantém padronização sem quebrar governança.",
+    ].join("\n"),
+  },
+  {
+    id: "self_service.recipes.tenant.governance",
+    title: "Tenant recipes — explicação de governança",
+    vertical: "core",
+    topic: "governance",
+    problemItSolves: "Explica controle, auditoria, anti-drift e critérios de homologação no tenant.",
+    canonicalAnswer:
+      "Na governança, tenant recipes garantem que o uso dos agentes aconteça por fluxos aprovados, rastreáveis e controlados por escopo.",
+    stepByStep: [
+      "Só recipes homologadas entram no catálogo interno homologado.",
+      "Disponibilidade é controlada por tenant/workspace e não por publicação isolada.",
+      "Isso melhora auditoria, comparabilidade e rastreabilidade entre workspaces.",
+      "Drift cai quando execução real segue apenas o que foi homologado e liberado oficialmente.",
+      "Homologação separa experimento de uso autorizado.",
+    ],
+    nextActions: [
+      "Como evitar drift",
+      "Como homologar uma recipe",
+      "Explicação operacional tenant recipes",
+      "Explicação simples tenant recipes",
+    ],
+    responseBody: [
+      "**Tenant recipes — governança**",
+      "",
+      "Por que isso existe:",
+      "- evitar fluxo paralelo sem controle",
+      "- garantir uso autorizado por escopo",
+      "- manter auditoria clara por workspace",
+      "",
+      "Invariantes que o EIAH preserva:",
+      "- recipe publicada não é automaticamente homologada",
+      "- recipe homologada não é automaticamente liberada para todo workspace",
+      "- catálogo homologado é a fonte oficial de uso permitido",
+      "",
+      "Resultado: menos drift, mais previsibilidade e melhor controle operacional.",
     ].join("\n"),
   },
   {
@@ -860,12 +1039,141 @@ type RankedIntentMatch = {
 };
 
 type TutorPolicyResolutionType = "answer" | "clarify" | "handoff" | "blocked";
+type TutorExplanationDepth = "simple" | "operational" | "governance";
 
 type TutorContractReply = {
   intentId: string;
   content: string;
   quickReplies: string[];
 };
+
+export function resolveEiahTutorRouteQuickReplies(
+  routeIntent: "help" | "orchestrator",
+  input?: string | null
+): string[] {
+  const thematic = resolveEiahTutorQuickReplyHints(input ?? "");
+  if (thematic?.length) return thematic;
+
+  if (routeIntent === "orchestrator") {
+    return [
+      "Qual agente devo usar?",
+      "Analise este fluxo e recomende o próximo passo.",
+      "Quero auditar esse processo.",
+    ];
+  }
+
+  return [
+    "O que o EIAH pode fazer por mim?",
+    "Como criar um run no EIAH?",
+    "Como funciona o billing?",
+  ];
+}
+
+export function resolveEiahTutorInputPlaceholder(routeIntent: "help" | "orchestrator", input?: string | null) {
+  if (routeIntent === "orchestrator") {
+    return "Ex.: analise este fluxo e recomende o próximo passo";
+  }
+
+  const thematic = resolveEiahTutorQuickReplyHints(input ?? "");
+  if (thematic?.some((reply) => reply.toLowerCase().includes("billing"))) {
+    return "Ex.: quero entender plano, uso e cobrança do workspace";
+  }
+  if (thematic?.some((reply) => reply.toLowerCase().includes("run"))) {
+    return "Ex.: quero criar um run e entender a diferença entre simular e rodar agora";
+  }
+  if (thematic?.some((reply) => reply.toLowerCase().includes("tenant recipes"))) {
+    return "Ex.: quero entender como publicar, homologar e liberar tenant recipes";
+  }
+
+  return "Descreva o objetivo, contexto e restricoes...";
+}
+
+export function resolveEiahTutorQuickReplyHints(input: string): string[] | null {
+  const normalized = normalizeIntentText(input);
+  if (!normalized) return null;
+
+  if (
+    normalized.includes("recipe") ||
+    normalized.includes("homolog") ||
+    normalized.includes("catalogo interno homologado") ||
+    normalized.includes("catálogo interno homologado")
+  ) {
+    return [
+      "Explicação simples tenant recipes",
+      "Explicação operacional tenant recipes",
+      "Explicação de governança tenant recipes",
+    ];
+  }
+  if (normalized.includes("run") || normalized.includes("runs") || normalized.includes("simular") || normalized.includes("rodar")) {
+    return [
+      "Como criar um run no EIAH?",
+      "Como acompanhar status de run?",
+      "Diferença entre simular e rodar agora",
+    ];
+  }
+  if (
+    normalized.includes("billing") ||
+    normalized.includes("cobranca") ||
+    normalized.includes("cobrança") ||
+    normalized.includes("fatura") ||
+    normalized.includes("plano")
+  ) {
+    return [
+      "Como funciona o billing?",
+      "Como ler plano, uso e fatura",
+      "Como reduzir custo no workspace",
+    ];
+  }
+  if (normalized.includes("economy") || normalized.includes("oportunidade") || normalized.includes("impacto")) {
+    return [
+      "Como funciona a página Economy?",
+      "Como priorizar oportunidades",
+      "Como ligar Economy com Runs e Billing",
+    ];
+  }
+  if (normalized.includes("marketplace") || normalized.includes("ativar agente") || normalized.includes("instalar")) {
+    return [
+      "Como funciona o Marketplace?",
+      "Como ativar agente no workspace",
+      "Como saber se o agente foi habilitado",
+    ];
+  }
+  if (
+    normalized.includes("self-service") ||
+    normalized.includes("self service") ||
+    normalized.includes("formulario") ||
+    normalized.includes("formulário")
+  ) {
+    return [
+      "Como funciona o self-service?",
+      "Quais blocos existem no self-service?",
+      "Como transformar fluxo guiado em execução",
+    ];
+  }
+  if (normalized.includes("perfil") || normalized.includes("workspace") || normalized.includes("acesso")) {
+    return [
+      "Como selecionar workspace correto",
+      "Como verificar acesso no workspace",
+      "Como liberar agente para o workspace",
+    ];
+  }
+  if (normalized.includes("chat") || normalized.includes("agente") || normalized.includes("agentes")) {
+    return [
+      "Como funciona a página Chat?",
+      "Qual agente devo usar para meu objetivo?",
+      "Como o EIAH faz handoff para especialista",
+    ];
+  }
+  if (normalized.includes("governanca") || normalized.includes("governança") || normalized.includes("auditoria") || normalized.includes("drift")) {
+    return [
+      "Explicação simples de governança",
+      "Explicação operacional de governança",
+      "Como evitar drift no dia a dia",
+    ];
+  }
+
+  return null;
+}
 
 type TutorPolicyResolution =
   | { resolutionType: "answer" }
@@ -945,6 +1253,105 @@ function getKnowledgeById(id: string) {
 
 function getPatternById(id: string) {
   return responsePatternsV1.find((pattern) => pattern.patternId === id) ?? null;
+}
+
+function detectExplanationDepth(input: string): { depth: TutorExplanationDepth; subject: string } | null {
+  const normalized = normalizeIntentText(input);
+  const patterns: Array<{ prefix: string; depth: TutorExplanationDepth }> = [
+    { prefix: "explicacao simples ", depth: "simple" },
+    { prefix: "explicação simples ", depth: "simple" },
+    { prefix: "explicacao operacional ", depth: "operational" },
+    { prefix: "explicação operacional ", depth: "operational" },
+    { prefix: "explicacao de governanca ", depth: "governance" },
+    { prefix: "explicação de governança ", depth: "governance" },
+    { prefix: "governanca de ", depth: "governance" },
+    { prefix: "governança de ", depth: "governance" },
+  ];
+
+  for (const pattern of patterns) {
+    if (normalized.startsWith(pattern.prefix)) {
+      const subject = normalized.slice(pattern.prefix.length).trim();
+      if (subject) {
+        return {
+          depth: pattern.depth,
+          subject,
+        };
+      }
+    }
+  }
+
+  return null;
+}
+
+function buildDepthAwareQuickReplies(params: {
+  depth: TutorExplanationDepth;
+  knowledge: KnowledgeUnitV1;
+}) {
+  const depthReplies: Record<TutorExplanationDepth, string[]> = {
+    simple: ["Explicação operacional", "Explicação de governança"],
+    operational: ["Explicação simples", "Explicação de governança"],
+    governance: ["Explicação simples", "Explicação operacional"],
+  };
+
+  const depthReplyPrefix =
+    params.knowledge.topic === "self_service" || params.knowledge.id.includes("recipes")
+      ? "tenant recipes"
+      : params.knowledge.title.replace(/^Como funciona /i, "").replace(/^Como /i, "").trim();
+
+  const normalizedPrefix = depthReplyPrefix.length > 0 ? depthReplyPrefix : params.knowledge.topic;
+  const normalizedActions = depthReplies[params.depth].map((label) => `${label} ${normalizedPrefix}`.trim());
+  return [...normalizedActions, ...params.knowledge.nextActions]
+    .filter((value, index, array) => array.indexOf(value) === index)
+    .slice(0, 4);
+}
+
+function buildDepthAwareReply(params: {
+  intent: IntentLibraryEntryV1;
+  knowledge: KnowledgeUnitV1;
+  depth: TutorExplanationDepth;
+}): TutorContractReply {
+  const titleByDepth: Record<TutorExplanationDepth, string> = {
+    simple: `**${params.knowledge.title} — explicação simples**`,
+    operational: `**${params.knowledge.title} — explicação operacional**`,
+    governance: `**${params.knowledge.title} — explicação de governança**`,
+  };
+
+  const contentByDepth: Record<TutorExplanationDepth, string> = {
+    simple: [
+      titleByDepth.simple,
+      "",
+      params.knowledge.canonicalAnswer,
+      "",
+      "Em linguagem simples:",
+      ...params.knowledge.stepByStep.slice(0, 3).map((step) => `- ${step}`),
+    ].join("\n"),
+    operational: [
+      titleByDepth.operational,
+      "",
+      "No dia a dia, o caminho prático é este:",
+      ...params.knowledge.stepByStep.map((step, index) => `${index + 1}. ${step}`),
+    ].join("\n"),
+    governance: [
+      titleByDepth.governance,
+      "",
+      "Do ponto de governança, o ponto principal é:",
+      params.knowledge.canonicalAnswer,
+      "",
+      "O que isso ajuda a preservar:",
+      `- consistência no tema \`${params.knowledge.topic}\``,
+      "- menos improviso e menos drift entre uso e regra",
+      "- mais previsibilidade, rastreabilidade e clareza de operação",
+    ].join("\n"),
+  };
+
+  return {
+    intentId: `${params.intent.intentId}_${params.depth}`,
+    content: contentByDepth[params.depth],
+    quickReplies: buildDepthAwareQuickReplies({
+      depth: params.depth,
+      knowledge: params.knowledge,
+    }),
+  };
 }
 
 function buildCanonicalTutorFallbackReply() {
@@ -1139,6 +1546,22 @@ export function resolveEiahTutorContractResponse(params: {
   const normalizedInput = normalizeIntentText(params.input);
   if (isLikelyPastedInput(params.input) && looksLikePlatformStructuredContext(normalizedInput)) {
     return buildPastedContextExpandedReply();
+  }
+
+  const depthRequest = detectExplanationDepth(params.input);
+  if (depthRequest) {
+    const rankedSubjectIntents = rankIntents(depthRequest.subject);
+    const subjectIntent = pickBestIntent(rankedSubjectIntents, 35);
+    if (subjectIntent) {
+      const subjectKnowledge = getKnowledgeById(subjectIntent.mapsToKnowledgeId);
+      if (subjectKnowledge) {
+        return buildDepthAwareReply({
+          intent: subjectIntent,
+          knowledge: subjectKnowledge,
+          depth: depthRequest.depth,
+        });
+      }
+    }
   }
 
   const ranked = rankIntents(params.input);

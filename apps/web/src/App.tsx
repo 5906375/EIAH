@@ -68,6 +68,7 @@ function Layout({
   showWorkspaceLabel?: boolean;
 }) {
   const session = useSession();
+  const location = useLocation();
   const imobInstalled =
     session.entitlements?.IMOB_INSTALLED === true ||
     session.installedProducts?.some((item) => item.trim().toUpperCase() === "IMOB") === true;
@@ -75,7 +76,10 @@ function Layout({
   const logoUrl = session.branding?.logoUrl?.trim() || "";
   const workspaceLabel = session.branding?.workspaceLabel?.trim() || session.workspaceId;
   const brandPrimary = session.branding?.primaryColor?.trim() || "#22d3ee";
-  const subtitle = session.activeDomain === "imob" ? "Imobiliaria Digital Command Center" : "Agent Operations Console";
+  const isImobSurface =
+    location.pathname.startsWith("/app/imob") ||
+    location.pathname.startsWith("/app/marketplace/imob");
+  const subtitle = isImobSurface ? "Imobiliaria Digital Command Center" : "Agent Operations Console";
   const roleProfile = session.experience?.roleProfile;
   const visibleNavItems = SHELL_NAV_ITEMS.filter((item) => {
     if (item.requiresImob && !imobInstalled) return false;
