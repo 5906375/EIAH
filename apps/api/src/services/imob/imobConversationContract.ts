@@ -1,4 +1,5 @@
 import type { ImobCrmPropertyType } from "./crm/imobCrmPropertyTypes";
+import type { ImobReasonCode } from "./control/imobReasonCodeCatalog";
 
 export type ImobConversationMode = "consult" | "search" | "execute" | "search_knowledge" | "blocked";
 
@@ -27,8 +28,22 @@ export type ImobBackingSpecialistContract = {
   escalationTriggers: string[];
 };
 
+export type ImobBackingSpecialistOutputType =
+  | "advice"
+  | "validation"
+  | "evidence"
+  | "financial_check"
+  | "operational_support";
+
+export type ImobBackingSpecialistReasonCode = ImobReasonCode;
+
 export type ImobResolvedBackingSpecialist = ImobBackingSpecialistContract & {
   rationale: string;
+  reasonCode?: ImobBackingSpecialistReasonCode;
+  suggestedAction?: string | null;
+  urgency?: "low" | "medium" | "high" | null;
+  outputType?: ImobBackingSpecialistOutputType;
+  requiredContext?: string[];
 };
 
 export type ImobChatExperienceContract = {
@@ -493,7 +508,7 @@ export type ImobCaseRecommendedAction = {
   label: string;
   actionType: "consultive" | "operational" | "governed";
   inputHint?: string;
-  reasonCode?: string;
+  reasonCode?: ImobReasonCode;
 };
 
 export type ImobCanonicalCase = {
@@ -503,7 +518,35 @@ export type ImobCanonicalCase = {
   recommendedActions?: ImobCaseRecommendedAction[];
   blockedActions?: string[];
   missingContext?: string[];
-  reasonCodes?: string[];
+  reasonCodes?: ImobReasonCode[];
+};
+
+export type ImobHumanJourneyPhase =
+  | "captacao"
+  | "qualificacao"
+  | "atendimento_ativo"
+  | "visita"
+  | "proposta"
+  | "negociacao"
+  | "documentacao"
+  | "fechamento"
+  | "pos_venda";
+
+export type ImobHumanJourney = {
+  phase: ImobHumanJourneyPhase;
+  phaseObjective: string;
+};
+
+export type ImobHumanWorkflow = {
+  currentObjective?: string | null;
+  waitingOn?: "lead" | "owner" | "broker" | "legal" | "finance" | "internal" | null;
+  urgency?: "low" | "medium" | "high" | "critical" | null;
+  agingHours?: number | null;
+  followUpRisk?: "low" | "medium" | "high" | null;
+  nextActionOwner?: string | null;
+  lastMeaningfulContactAt?: string | null;
+  doneDefinition?: string | null;
+  likelyFailureMode?: string | null;
 };
 
 export type ImobCaseContext = {
@@ -518,6 +561,8 @@ export type ImobCaseContext = {
   threadId?: string | null;
   updatedAt?: string;
   canonical?: ImobCanonicalCase;
+  humanJourney?: ImobHumanJourney | null;
+  humanWorkflow?: ImobHumanWorkflow | null;
 };
 
 export type ImobPresentationConfidence = {

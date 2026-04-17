@@ -1,5 +1,6 @@
 import type { ImobCrmPropertyGoal } from "./imobCrmPropertyGoals";
 import type { ImobCrmPropertyType } from "./imobCrmPropertyTypes";
+import type { ImobReasonCode } from "../control/imobReasonCodeCatalog";
 
 export type ImobCrmEntityType = "lead" | "owner" | "property" | "case";
 
@@ -12,7 +13,7 @@ export type ImobCrmRecommendedAction = {
   label: string;
   actionType: "consultive" | "operational" | "governed";
   inputHint?: string;
-  reasonCode?: string;
+  reasonCode?: ImobReasonCode;
 };
 
 export type ImobCrmCanonicalCase = {
@@ -22,7 +23,35 @@ export type ImobCrmCanonicalCase = {
   recommendedActions?: ImobCrmRecommendedAction[];
   blockedActions?: string[];
   missingContext?: string[];
-  reasonCodes?: string[];
+  reasonCodes?: ImobReasonCode[];
+};
+
+export type ImobCrmHumanJourneyPhase =
+  | "captacao"
+  | "qualificacao"
+  | "atendimento_ativo"
+  | "visita"
+  | "proposta"
+  | "negociacao"
+  | "documentacao"
+  | "fechamento"
+  | "pos_venda";
+
+export type ImobCrmHumanJourney = {
+  phase: ImobCrmHumanJourneyPhase;
+  phaseObjective: string;
+};
+
+export type ImobCrmHumanWorkflow = {
+  currentObjective?: string | null;
+  waitingOn?: "lead" | "owner" | "broker" | "legal" | "finance" | "internal" | null;
+  urgency?: "low" | "medium" | "high" | "critical" | null;
+  agingHours?: number | null;
+  followUpRisk?: "low" | "medium" | "high" | null;
+  nextActionOwner?: string | null;
+  lastMeaningfulContactAt?: string | null;
+  doneDefinition?: string | null;
+  likelyFailureMode?: string | null;
 };
 
 export type ImobCrmLeadSummary = {
@@ -69,6 +98,8 @@ export type ImobCrmCaseContext = {
   property?: ImobCrmPropertySummary | null;
   owner?: ImobCrmOwnerSummary | null;
   canonical?: ImobCrmCanonicalCase;
+  humanJourney?: ImobCrmHumanJourney | null;
+  humanWorkflow?: ImobCrmHumanWorkflow | null;
 } & Record<string, unknown>;
 
 export type ImobCrmPresentationCta = {
@@ -157,7 +188,7 @@ export type ImobCrmAgentResponse = {
   entity?: { type: ImobCrmEntityType; id: string };
   matches?: ImobCrmMatch[];
   patch?: Record<string, unknown>;
-  reasonCode?: string;
+  reasonCode?: ImobReasonCode;
   presentationHints?: {
     title: string;
     lines: string[];

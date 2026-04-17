@@ -239,3 +239,43 @@ test("IMOB_CRM mutation service persists conversational lead case with audit tra
   assert.equal(prisma.memoryEvents.some((event) => event.metadata.subjectType === "lead" && event.metadata.action === "updated"), true);
   assert.equal(prisma.memoryEvents.some((event) => event.metadata.subjectType === "case" && event.metadata.action === "created"), true);
 });
+
+test("IMOB_CRM mutation service keeps approval event actor/evidence when updating case", async () => {
+  const prisma = createMockPrisma();
+  prisma.cases.push({
+    id: "case-approval-1",
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    flow: "contract.prepare",
+    stage: "documentacao",
+    status: "running",
+    metadata: {},
+  });
+
+  const service = new ImobCrmMutationService(prisma as any);
+  const updated = await service.updateCase({
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    userId: "user-1",
+  }, "case-approval-1", {
+    metadata: {
+      approvalContext: {
+        status: "approved",
+        reasonCode: "AUDIT_BLOCKER",
+      },
+    },
+    eventType: "case.approval.approve",
+    eventSummary: "Aprovação registrada no caso",
+    eventEvidenceRef: "ledger://proof-1",
+    eventActorType: "user",
+    eventActorRef: "user-1",
+    eventPayload: { action: "approve", reasonCode: "AUDIT_BLOCKER" },
+  });
+
+  assert.equal(updated.status, "updated");
+  assert.equal(prisma.caseEvents.length, 1);
+  assert.equal(prisma.caseEvents[0].type, "case.approval.approve");
+  assert.equal(prisma.caseEvents[0].actorType, "user");
+  assert.equal(prisma.caseEvents[0].actorRef, "user-1");
+  assert.equal(prisma.caseEvents[0].evidenceRef, "ledger://proof-1");
+});

@@ -2,6 +2,13 @@ import { z } from "zod";
 
 const optionalShortString = (max: number) => z.union([z.string().trim().min(1).max(max), z.null()]).optional();
 const optionalStringArraySchema = z.array(z.string().trim().min(1).max(160)).max(100).optional();
+const imobReasonCodeSchema = z.enum([
+  "COMMERCIAL_PRIORITY",
+  "FOLLOW_UP_DISCIPLINE",
+  "DOCUMENT_BLOCKER",
+  "FINANCIAL_BLOCKER",
+  "AUDIT_BLOCKER",
+]);
 
 export const imobOwnerCreateSchema = z.object({
   name: z.string().trim().min(1).max(160),
@@ -128,4 +135,32 @@ export const imobFollowUpRunSchema = z.object({
   onlyOverdue: z.boolean().optional(),
   limit: z.number().int().min(1).max(200).optional(),
   caseId: optionalShortString(80),
+});
+
+export const imobApprovalActionSchema = z.object({
+  caseId: z.string().trim().min(1).max(80),
+  action: z.enum(["approve", "delegate", "escalate"]),
+  reasonCode: imobReasonCodeSchema,
+  specialistId: optionalShortString(80),
+  delegatedTo: optionalShortString(160),
+  escalationTarget: optionalShortString(160),
+  note: optionalShortString(1000),
+  evidenceRef: optionalShortString(240),
+  evidenceRefs: z.array(z.string().trim().min(1).max(240)).max(20).optional(),
+  runId: optionalShortString(80),
+}).superRefine((value, ctx) => {
+  if (value.action === "delegate" && !value.delegatedTo) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["delegatedTo"],
+      message: "delegatedTo is required when action is delegate",
+    });
+  }
+  if (value.action === "escalate" && !value.escalationTarget) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["escalationTarget"],
+      message: "escalationTarget is required when action is escalate",
+    });
+  }
 });

@@ -56,6 +56,7 @@ import { buildImobCrmBusinessReadHelpers } from "../services/imob/crm/imobCrmBus
 import { resolveImobCrmTurnEngine } from "../services/imob/crm/imobCrmTurnEngine";
 import { registerImobCrmRoutes } from "./imobCrmRouter";
 import {
+  imobApprovalActionSchema,
   imobAttachmentCrmSuggestionApplySchema,
   imobAttachmentResolveSchema,
   imobCaseCreateSchema,
@@ -1592,6 +1593,7 @@ registerImobCrmRoutes({
     imobCaseCreateSchema,
     imobCaseUpdateSchema,
     imobFollowUpRunSchema,
+    imobApprovalActionSchema,
   },
 });
 

@@ -1895,6 +1895,120 @@ export type ImobResolvedBackingSpecialist = {
   visibleToUserByDefault: false;
   escalationTriggers: string[];
   rationale: string;
+  reasonCode?: ImobReasonCode;
+  suggestedAction?: string | null;
+  urgency?: "low" | "medium" | "high" | null;
+  outputType?: "advice" | "validation" | "evidence" | "financial_check" | "operational_support";
+  requiredContext?: string[];
+};
+
+export type ImobReasonCode =
+  | "COMMERCIAL_PRIORITY"
+  | "FOLLOW_UP_DISCIPLINE"
+  | "DOCUMENT_BLOCKER"
+  | "FINANCIAL_BLOCKER"
+  | "AUDIT_BLOCKER";
+
+export type ImobControlSurfaceSpecialist = {
+  specialistId: string;
+  reasonCode: ImobReasonCode;
+  urgency?: "low" | "medium" | "high" | null;
+  suggestedAction?: string | null;
+  outputType?: "advice" | "validation" | "evidence" | "financial_check" | "operational_support";
+};
+
+export type ImobControlSurface = {
+  caseId: string;
+  threadId?: string | null;
+  humanJourneyPhase?: string | null;
+  currentObjective?: string | null;
+  waitingOn?: "lead" | "owner" | "broker" | "legal" | "finance" | "internal" | null;
+  urgency?: "low" | "medium" | "high" | "critical" | null;
+  agingHours?: number | null;
+  followUpRisk?: "low" | "medium" | "high" | null;
+  nextActionOwner?: string | null;
+  doneDefinition?: string | null;
+  likelyFailureMode?: string | null;
+  nextStep?: string | null;
+  blocker?: string | null;
+  specialists: ImobControlSurfaceSpecialist[];
+};
+
+export type ImobPriorityQueueItem = {
+  caseId: string;
+  threadId?: string | null;
+  title: string;
+  priorityScore: number;
+  urgency?: ImobControlSurface["urgency"];
+  followUpRisk?: ImobControlSurface["followUpRisk"];
+  waitingOn?: ImobControlSurface["waitingOn"];
+  agingHours?: number | null;
+  currentObjective?: string | null;
+  nextStep?: string | null;
+  autoprompt: string;
+};
+
+export type ImobWaitingOnBucket = {
+  waitingOn: NonNullable<ImobControlSurface["waitingOn"]>;
+  total: number;
+  items: ImobPriorityQueueItem[];
+};
+
+export type ImobHeatmapCell = {
+  phase: NonNullable<ImobControlSurface["humanJourneyPhase"]>;
+  reasonCode: ImobReasonCode;
+  waitingOn?: NonNullable<ImobControlSurface["waitingOn"]> | null;
+  total: number;
+  weightedScore: number;
+};
+
+export type ImobSpecialistLoadMetric = {
+  specialistId: string;
+  reasonCode: ImobReasonCode;
+  total: number;
+  weightedScore: number;
+};
+
+export type ImobRescueMetric = {
+  scope: "phase";
+  key: string;
+  rescued: number;
+  totalCritical: number;
+  rescueRate: number;
+};
+
+export type ImobApprovalContextItem = {
+  caseId: string;
+  threadId?: string | null;
+  specialistId: string;
+  reasonCode: ImobReasonCode;
+  reasonLabel: string;
+  category: "commercial" | "operations" | "legal" | "financial" | "audit";
+  requiresApproval: boolean;
+  requiresEvidence: boolean;
+  evidenceCount: number;
+  humanJourneyPhase?: ImobControlSurface["humanJourneyPhase"];
+  waitingOn?: ImobControlSurface["waitingOn"];
+  urgency?: ImobControlSurface["urgency"];
+  agingHours?: number | null;
+  currentObjective?: string | null;
+  nextStep?: string | null;
+  suggestedAction?: string | null;
+  priorityScore: number;
+  autoprompt: string;
+};
+
+export type ImobApprovalActionInput = {
+  caseId: string;
+  action: "approve" | "delegate" | "escalate";
+  reasonCode: ImobReasonCode;
+  specialistId?: string | null;
+  delegatedTo?: string | null;
+  escalationTarget?: string | null;
+  note?: string | null;
+  evidenceRef?: string | null;
+  evidenceRefs?: string[];
+  runId?: string | null;
 };
 
 export type ImobCommercialHomeWidget = {
@@ -2139,6 +2253,34 @@ export type ImobCanonicalCase = {
   reasonCodes?: string[];
 };
 
+export type ImobHumanJourneyPhase =
+  | "captacao"
+  | "qualificacao"
+  | "atendimento_ativo"
+  | "visita"
+  | "proposta"
+  | "negociacao"
+  | "documentacao"
+  | "fechamento"
+  | "pos_venda";
+
+export type ImobHumanJourney = {
+  phase: ImobHumanJourneyPhase;
+  phaseObjective: string;
+};
+
+export type ImobHumanWorkflow = {
+  currentObjective?: string | null;
+  waitingOn?: "lead" | "owner" | "broker" | "legal" | "finance" | "internal" | null;
+  urgency?: "low" | "medium" | "high" | "critical" | null;
+  agingHours?: number | null;
+  followUpRisk?: "low" | "medium" | "high" | null;
+  nextActionOwner?: string | null;
+  lastMeaningfulContactAt?: string | null;
+  doneDefinition?: string | null;
+  likelyFailureMode?: string | null;
+};
+
 export type ImobCaseContext = {
   caseId: string;
   flow: string;
@@ -2151,6 +2293,8 @@ export type ImobCaseContext = {
   threadId?: string | null;
   updatedAt?: string;
   canonical?: ImobCanonicalCase;
+  humanJourney?: ImobHumanJourney | null;
+  humanWorkflow?: ImobHumanWorkflow | null;
 };
 
 export type ImobPresentationConfidence = {
@@ -2429,6 +2573,81 @@ export async function apiListImobCases(params?: { flow?: string; status?: string
   const qs = query.toString() ? `?${query.toString()}` : "";
   return http<{ ok: true; data: { items: ImobCase[] } }>(`/imob/cases${qs}`, {
     method: "GET",
+  });
+}
+
+export async function apiListImobPriorityQueue(params?: { limit?: number }) {
+  const query = new URLSearchParams();
+  if (typeof params?.limit === "number" && Number.isFinite(params.limit)) query.set("limit", String(params.limit));
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  return http<{
+    ok: true;
+    data: {
+      generatedAt: string;
+      items: ImobPriorityQueueItem[];
+    };
+  }>(`/imob/control/priority-queue${qs}`, { method: "GET" });
+}
+
+export async function apiListImobWaitingOnBoard() {
+  return http<{
+    ok: true;
+    data: {
+      generatedAt: string;
+      items: ImobWaitingOnBucket[];
+    };
+  }>(`/imob/control/waiting-on-board`, { method: "GET" });
+}
+
+export async function apiListImobBottleneckHeatmap() {
+  return http<{
+    ok: true;
+    data: {
+      generatedAt: string;
+      items: ImobHeatmapCell[];
+    };
+  }>(`/imob/control/bottleneck-heatmap`, { method: "GET" });
+}
+
+export async function apiGetImobExecutiveSummary() {
+  return http<{
+    ok: true;
+    data: {
+      generatedAt: string;
+      specialistLoad: ImobSpecialistLoadMetric[];
+      rescueIndex: ImobRescueMetric[];
+    };
+  }>(`/imob/control/executive-summary`, { method: "GET" });
+}
+
+export async function apiListImobApprovalContext(params?: { limit?: number }) {
+  const query = new URLSearchParams();
+  if (typeof params?.limit === "number" && Number.isFinite(params.limit)) query.set("limit", String(params.limit));
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  return http<{
+    ok: true;
+    data: {
+      generatedAt: string;
+      items: ImobApprovalContextItem[];
+    };
+  }>(`/imob/control/approval-context${qs}`, { method: "GET" });
+}
+
+export async function apiPostImobApprovalAction(body: ImobApprovalActionInput) {
+  return http<{
+    ok: true;
+    data: {
+      action: ImobApprovalActionInput["action"];
+      reasonCode: ImobReasonCode;
+      specialistId: string;
+      requiresApproval: boolean;
+      requiresEvidence: boolean;
+      evidenceRefs: string[];
+      case: ImobCase;
+    };
+  }>(`/imob/control/approval-actions`, {
+    method: "POST",
+    body: JSON.stringify(body),
   });
 }
 
@@ -3329,6 +3548,46 @@ export type HelpdeskSessionExport = {
   reportText: string;
 };
 
+export type HelpdeskContractCoverageResponse = {
+  window: {
+    dateFrom: string;
+    dateTo: string;
+    granularity: "day" | "week" | "month";
+  };
+  filters: {
+    workspaceId: string;
+    routeIntent?: string;
+    agentId?: string;
+    includeUnknownSource?: boolean;
+  };
+  summary: {
+    totalEvents: number;
+    contractEvents: number;
+    fallbackEvents: number;
+    contractCoveragePct: number;
+    fallbackRatePct: number;
+    netContractCoveragePct: number;
+  };
+  byWorkspace: Array<{
+    workspaceId: string;
+    totalEvents: number;
+    contractEvents: number;
+    fallbackEvents: number;
+    contractCoveragePct: number;
+    fallbackRatePct: number;
+    netContractCoveragePct: number;
+  }>;
+  timeseries: Array<{
+    date: string;
+    totalEvents: number;
+    contractEvents: number;
+    fallbackEvents: number;
+    contractCoveragePct: number;
+    fallbackRatePct: number;
+    netContractCoveragePct: number;
+  }>;
+};
+
 export async function apiCreateHelpdeskSession(payload: HelpdeskSessionCreatePayload) {
   return http<{ ok: boolean; data: { id: string } }>(`/helpdesk/session`, {
     method: "POST",
@@ -3344,6 +3603,33 @@ export async function apiListHelpdeskSessions(params?: { workspaceId?: string; l
   return http<{ ok: boolean; data: HelpdeskSessionExport }>(`/helpdesk/sessions${qs}`, {
     method: "GET",
   });
+}
+
+export async function apiGetHelpdeskContractCoverage(params: {
+  workspaceId: string;
+  dateFrom: string;
+  dateTo: string;
+  granularity?: "day" | "week" | "month";
+  routeIntent?: string;
+  agentId?: string;
+  includeUnknownSource?: boolean;
+}) {
+  const query = new URLSearchParams();
+  query.set("workspaceId", params.workspaceId);
+  query.set("dateFrom", params.dateFrom);
+  query.set("dateTo", params.dateTo);
+  if (params.granularity) query.set("granularity", params.granularity);
+  if (params.routeIntent) query.set("routeIntent", params.routeIntent);
+  if (params.agentId) query.set("agentId", params.agentId);
+  if (typeof params.includeUnknownSource === "boolean") {
+    query.set("includeUnknownSource", params.includeUnknownSource ? "1" : "0");
+  }
+  return http<{ ok: boolean; data: HelpdeskContractCoverageResponse }>(
+    `/helpdesk/contract-coverage?${query.toString()}`,
+    {
+      method: "GET",
+    }
+  );
 }
 
 export async function apiGetTenantBillingUsage(params?: { from?: string; to?: string }) {

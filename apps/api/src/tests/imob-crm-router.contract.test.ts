@@ -158,3 +158,64 @@ test("IMOB CRM router creates and updates property linked to owner over HTTP", a
   assert.equal(fetched.body?.ok, true);
   assert.equal(fetched.body?.data?.id, propertyId);
 });
+
+test("IMOB CRM router records approval actions with evidence trail", async () => {
+  const createdCase = await prismaGlobal.imobCase.create({
+    data: {
+      tenantId,
+      workspaceId,
+      flow: "contract.prepare",
+      stage: "documentacao",
+      status: "running",
+      blockers: ["receipt pendente para fechamento"],
+      pendingItems: ["bundle"],
+      metadata: {},
+    },
+  });
+
+  const missingEvidence = await request
+    .post("/api/imob/control/approval-actions")
+    .set("Authorization", `Bearer ${apiToken}`)
+    .send({
+      caseId: createdCase.id,
+      action: "approve",
+      reasonCode: "AUDIT_BLOCKER",
+    });
+
+  assert.equal(missingEvidence.status, 422);
+  assert.equal(missingEvidence.body?.ok, false);
+  assert.equal(missingEvidence.body?.error?.code, "EVIDENCE_REQUIRED");
+
+  const approved = await request
+    .post("/api/imob/control/approval-actions")
+    .set("Authorization", `Bearer ${apiToken}`)
+    .send({
+      caseId: createdCase.id,
+      action: "approve",
+      reasonCode: "AUDIT_BLOCKER",
+      evidenceRef: "ledger://imob-proof-1",
+      note: "Aprovado com evidência auditável.",
+    });
+
+  assert.equal(approved.status, 200);
+  assert.equal(approved.body?.ok, true);
+  assert.equal(approved.body?.data?.action, "approve");
+  assert.equal(approved.body?.data?.reasonCode, "AUDIT_BLOCKER");
+  assert.equal(approved.body?.data?.requiresEvidence, true);
+
+  const persistedCase = await prismaGlobal.imobCase.findFirst({
+    where: { id: createdCase.id, tenantId, workspaceId },
+  });
+  assert.ok(persistedCase);
+  assert.equal((persistedCase?.metadata as any)?.approvalContext?.status, "approved");
+  assert.equal((persistedCase?.metadata as any)?.approvalContext?.reasonCode, "AUDIT_BLOCKER");
+
+  const latestEvent = await prismaGlobal.imobCaseEvent.findFirst({
+    where: { caseId: createdCase.id, tenantId, workspaceId, type: "case.approval.approve" },
+    orderBy: { createdAt: "desc" },
+  });
+  assert.ok(latestEvent);
+  assert.equal(latestEvent?.actorType, "user");
+  assert.equal(latestEvent?.actorRef, userId);
+  assert.equal(latestEvent?.evidenceRef, "ledger://imob-proof-1");
+});

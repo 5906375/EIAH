@@ -2,6 +2,7 @@ import React from "react";
 import type {
   ImobCase,
   ImobCommercialHomeWidget,
+  ImobResolvedBackingSpecialist,
   ImobPresentationWidget,
 } from "@/lib/api";
 import { getImobPropertyTypeLabel } from "./propertyTypes";
@@ -21,6 +22,40 @@ function formatPriorityCaseDetail(item: ImobCase) {
   const context = item.lead?.name || item.owner?.name || item.property?.city || "caso operacional";
   const nextStep = item.nextStep?.trim() || item.stage || "seguir atendimento";
   return `${context} • ${nextStep}`;
+}
+
+function getSpecialistBadgeTone(urgency?: ImobResolvedBackingSpecialist["urgency"]) {
+  if (urgency === "high") return "text-amber-200 border-amber-400/30 bg-amber-500/10";
+  if (urgency === "medium") return "text-sky-200 border-sky-400/30 bg-sky-500/10";
+  return "text-muted-foreground border-white/10 bg-black/10";
+}
+
+function renderSpecialists(specialists: ImobResolvedBackingSpecialist[]) {
+  if (!specialists.length) return null;
+  return (
+    <div className="mt-3 space-y-2">
+      <p className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Apoios contextuais</p>
+      {specialists.map((item) => (
+        <div key={item.key} className="rounded-lg border border-white/10 bg-black/20 p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-xs font-medium text-foreground">{item.primaryAgentId}</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">{item.responsibility}</p>
+            </div>
+            {item.urgency ? (
+              <span className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] ${getSpecialistBadgeTone(item.urgency)}`}>
+                {item.urgency}
+              </span>
+            ) : null}
+          </div>
+          <p className="mt-2 text-xs text-foreground/90">{item.rationale}</p>
+          {item.suggestedAction ? (
+            <p className="mt-2 text-[11px] text-muted-foreground">Ação sugerida: {item.suggestedAction}</p>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function buildImobCommercialHomeWidget(params: {
@@ -144,6 +179,7 @@ export const ImobChatWidgets: React.FC<Props> = ({ widget, onAction }) => {
             ))}
           </div>
         ) : null}
+        {renderSpecialists(widget.specialists)}
       </div>
     );
   }
@@ -174,6 +210,7 @@ export const ImobChatWidgets: React.FC<Props> = ({ widget, onAction }) => {
       </ul>
       {widget.blocker ? <p className="mt-3 text-xs text-rose-200">Bloqueio: {widget.blocker}</p> : null}
       {widget.nextStep ? <p className="mt-2 text-xs text-muted-foreground">Próximo passo: {widget.nextStep}</p> : null}
+      {renderSpecialists(widget.specialists)}
     </div>
   );
 };
