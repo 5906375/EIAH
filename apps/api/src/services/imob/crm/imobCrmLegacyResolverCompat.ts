@@ -634,6 +634,10 @@ type DomainGuidanceIntent =
   | "capture_guidance"
   | "qualification_guidance"
   | "documents_by_phase"
+  | "document_preparation"
+  | "follow_up_preparation"
+  | "case_resume_preparation"
+  | "approval_preparation"
   | "specialist_handoff"
   | "when_involve_legal"
   | "when_involve_finance"
@@ -646,7 +650,16 @@ function resolveDomainGuidanceIntent(message: string): DomainGuidanceIntent | nu
   const asksHow = normalized.includes("como");
   const asksWhat = normalized.includes("quais") || normalized.includes("o que") || /\bqual\b/.test(normalized);
   const asksNeed = normalized.includes("preciso");
-  const asksGuidance = asksHow || asksWhat || asksNeed;
+  const asksPreparation =
+    normalized.includes("preparar")
+    || normalized.includes("prepara ")
+    || normalized.includes("organizar")
+    || normalized.includes("organiza ")
+    || normalized.includes("resumir")
+    || normalized.includes("resumo")
+    || normalized.includes("retomar")
+    || normalized.includes("quero");
+  const asksGuidance = asksHow || asksWhat || asksNeed || asksPreparation;
 
   if (
     asksGuidance
@@ -687,6 +700,70 @@ function resolveDomainGuidanceIntent(message: string): DomainGuidanceIntent | nu
     )
   ) {
     return "documents_by_phase";
+  }
+
+  if (
+    asksGuidance
+    && (
+      normalized.includes("checklist documental")
+      || normalized.includes("preparar documentacao")
+      || normalized.includes("prepara documentacao")
+      || normalized.includes("preparar documentação")
+      || normalized.includes("preparar a documentacao")
+      || normalized.includes("prepara a documentacao")
+      || normalized.includes("organizar documentos")
+      || normalized.includes("triar pendencias documentais")
+      || normalized.includes("triar pendências documentais")
+    )
+  ) {
+    return "document_preparation";
+  }
+
+  if (
+    asksGuidance
+    && (
+      normalized.includes("preparar follow up")
+      || normalized.includes("prepara follow up")
+      || normalized.includes("preparar follow-up")
+      || normalized.includes("prepara follow-up")
+      || normalized.includes("organizar follow up")
+      || normalized.includes("organizar follow-up")
+      || normalized.includes("monta mensagem")
+      || normalized.includes("prepara mensagem")
+      || normalized.includes("o que mando")
+    )
+  ) {
+    return "follow_up_preparation";
+  }
+
+  if (
+    asksGuidance
+    && (
+      normalized.includes("resumir caso")
+      || normalized.includes("resumo do caso")
+      || normalized.includes("retomar caso antigo")
+      || normalized.includes("retomar contexto")
+      || normalized.includes("retomar esse caso")
+      || normalized.includes("retomar este caso")
+    )
+  ) {
+    return "case_resume_preparation";
+  }
+
+  if (
+    asksGuidance
+    && (
+      normalized.includes("preparar approval")
+      || normalized.includes("prepara approval")
+      || normalized.includes("preparar aprovacao")
+      || normalized.includes("prepara aprovacao")
+      || normalized.includes("preparar aprovação")
+      || normalized.includes("o que preciso para approval")
+      || normalized.includes("o que preciso para aprovacao")
+      || normalized.includes("o que preciso para aprovação")
+    )
+  ) {
+    return "approval_preparation";
   }
 
   if (
@@ -800,6 +877,70 @@ function buildDomainGuidanceResponse(intent: DomainGuidanceIntent, threadState: 
           "Captação: dados mínimos do proprietário e do imóvel.",
           "Proposta/negociação: comprovação básica da contraparte e condições da oferta.",
           "Documentação/fechamento: matrícula, documentos pessoais, autorização e pendências financeiras.",
+        ],
+      },
+    },
+    document_preparation: {
+      text: [
+        "Posso organizar o trabalho documental sem abrir fluxo sensível agora.",
+        "Leitura operacional: primeiro separar checklist por fase, depois identificar blocker, waitingOn e owner da cobrança.",
+        "Próximo passo seguro: montar um pacote mínimo com documento crítico, responsável atual e pendência que libera a próxima validação.",
+      ].join("\n"),
+      nextStep: "Se quiser, eu aplico essa preparação ao caso específico e organizo a cobrança documental.",
+      card: {
+        title: "Preparação documental",
+        lines: [
+          "Separar documento crítico do complementar.",
+          "Explicitar waitingOn e owner da cobrança.",
+          "Cobrar primeiro o item que libera a próxima validação.",
+        ],
+      },
+    },
+    follow_up_preparation: {
+      text: [
+        "Posso preparar o follow-up antes de abrir qualquer execução.",
+        "Leitura operacional: follow-up útil resume contexto, explicita blocker ou objetivo e pede um único próximo movimento.",
+        "Próximo passo seguro: dizer o que mudou desde o último contato, a objeção principal e a ação esperada da outra parte.",
+      ].join("\n"),
+      nextStep: "Se quiser, eu monto a mensagem de follow-up e depois aplico ao caso atual.",
+      card: {
+        title: "Preparação de follow-up",
+        lines: [
+          "Resumo curto do contexto atual.",
+          "Objeção ou blocker principal.",
+          "Pedido de uma ação única no próximo contato.",
+        ],
+      },
+    },
+    case_resume_preparation: {
+      text: [
+        "Posso resumir o caso como leitura operacional antes de qualquer execução.",
+        "Leitura mínima útil: fase, blocker, waitingOn, owner da ação e próximo passo seguro.",
+        "Próximo passo seguro: usar esse resumo para retomar contexto rápido, handoff ou priorização da carteira.",
+      ].join("\n"),
+      nextStep: "Se quiser, eu monto esse resumo no caso atual e preparo a retomada.",
+      card: {
+        title: "Resumo estruturado do caso",
+        lines: [
+          "Fase atual e objetivo da etapa.",
+          "Blocker e waitingOn atuais.",
+          "Owner da ação e próximo movimento seguro.",
+        ],
+      },
+    },
+    approval_preparation: {
+      text: [
+        "Posso preparar o approval sem executar a decisão agora.",
+        "Leitura operacional: approval forte precisa de blocker claro, reasonCode, specialist contextual e evidência mínima quando a policy exigir.",
+        "Próximo passo seguro: separar pendência operacional simples de transição sensível antes de pedir aprovação humana.",
+      ].join("\n"),
+      nextStep: "Se quiser, eu verifico se o caso atual já está pronto para approval ou se ainda falta evidência.",
+      card: {
+        title: "Preparação de approval",
+        lines: [
+          "Confirmar reasonCode e risco real da transição.",
+          "Explicitar specialist contextual e ownership do caso.",
+          "Validar se approval e evidence são exigidos pela policy.",
         ],
       },
     },

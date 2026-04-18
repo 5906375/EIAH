@@ -291,6 +291,62 @@ test("IMOB_CRM domain guidance explains specialist handoff without transferring 
   assert.match(resolved?.presentation?.text ?? "", /J_360|fin-nexus|guardian/i);
 });
 
+test("IMOB_CRM domain guidance prepares documentary work without caseId", async () => {
+  const resolved = await resolveImobCrmOperationalConsult({
+    prisma: createMockPrisma() as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "como preparar a documentação desse caso?",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.action, "crm.domain_guidance");
+  assert.match(resolved?.presentation?.text ?? "", /trabalho documental|pacote mínimo|cobrança documental/i);
+  assert.match(resolved?.presentation?.card?.title ?? "", /Preparação documental/i);
+});
+
+test("IMOB_CRM domain guidance prepares follow-up without caseId", async () => {
+  const resolved = await resolveImobCrmOperationalConsult({
+    prisma: createMockPrisma() as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "prepara mensagem de follow-up para esse caso",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.action, "crm.domain_guidance");
+  assert.match(resolved?.presentation?.text ?? "", /follow-up útil|ação única|próximo contato/i);
+  assert.match(resolved?.presentation?.card?.title ?? "", /follow-up/i);
+});
+
+test("IMOB_CRM domain guidance prepares structured case resume without caseId", async () => {
+  const resolved = await resolveImobCrmOperationalConsult({
+    prisma: createMockPrisma() as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "quero retomar um caso antigo rapidamente com resumo do caso",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.action, "crm.domain_guidance");
+  assert.match(resolved?.presentation?.text ?? "", /fase, blocker, waitingOn, owner da ação/i);
+  assert.match(resolved?.presentation?.card?.title ?? "", /Resumo estruturado do caso/i);
+});
+
+test("IMOB_CRM domain guidance prepares approval without executing it", async () => {
+  const resolved = await resolveImobCrmOperationalConsult({
+    prisma: createMockPrisma() as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "o que preciso para approval nesse fechamento?",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.action, "crm.domain_guidance");
+  assert.match(resolved?.presentation?.text ?? "", /approval forte|reasonCode|evidência mínima|policy/i);
+  assert.match(resolved?.presentation?.card?.title ?? "", /approval/i);
+});
+
 test("IMOB_CRM blocked resolution avoids recursive next step and recursive CTA", async () => {
   const resolved = await resolveImobCrmOperationalConsult({
     prisma: createMockPrisma({ caseNextStep: "mostrar bloqueios do caso" }) as any,

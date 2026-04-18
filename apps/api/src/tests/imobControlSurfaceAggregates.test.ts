@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   buildImobApprovalContext,
+  buildImobApprovalContextResponse,
   buildImobBottleneckHeatmap,
   buildImobPriorityQueue,
   buildImobRescueIndex,
@@ -153,4 +154,18 @@ test("IMOB control surface aggregates approval context only for reason codes tha
   assert.equal(items[0]?.requiresEvidence, true);
   assert.equal(items[1]?.caseId, "case-fin");
   assert.equal(items[1]?.evidenceCount, 2);
+});
+
+test("IMOB control surface exposes approval context as canonical response contract", () => {
+  const response = buildImobApprovalContextResponse({
+    items: [
+      buildSurface({
+        caseId: "case-audit",
+        specialists: [{ specialistId: "guardian", reasonCode: "AUDIT_BLOCKER", urgency: "high", outputType: "evidence" }],
+      }),
+    ],
+  });
+
+  assert.equal(response.items.length, 1);
+  assert.equal(response.items[0]?.reasonCode, "AUDIT_BLOCKER");
 });

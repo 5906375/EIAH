@@ -109,6 +109,18 @@ test("IMOB copiloto responde guidance documental sem exigir caso", () => {
   assert.match(result.presentation.text, /Próximo passo seguro/i);
 });
 
+test("IMOB copiloto prepara checklist documental sem abrir execução nova", () => {
+  const result = resolveImobTurn({
+    message: "como preparar a documentação desse caso?",
+    access: createAccess(),
+  });
+
+  assert.equal(result.mode, "consult");
+  assert.equal(result.action, "crm.operational_guidance");
+  assert.match(result.presentation.text, /trabalho documental|pacote mínimo|cobrança documental/i);
+  assert.ok(!result.presentation.form);
+});
+
 test("IMOB copiloto responde guidance de captação sem abrir cadastro por padrão", () => {
   const result = resolveImobTurn({
     message: "como conduzir a captação desse imóvel?",
@@ -171,6 +183,18 @@ test("IMOB copiloto responde retomada pós-visita como leitura operacional", () 
   assert.match(result.presentation.text, /waitingOn=lead|waitingOn/i);
 });
 
+test("IMOB copiloto prepara follow-up sem abrir execução nova", () => {
+  const result = resolveImobTurn({
+    message: "prepara mensagem de follow-up para esse caso",
+    access: createAccess(),
+  });
+
+  assert.equal(result.mode, "consult");
+  assert.equal(result.action, "crm.operational_guidance");
+  assert.match(result.presentation.text, /follow-up útil|mensagem de follow-up|ação única/i);
+  assert.ok(!result.presentation.form);
+});
+
 test("IMOB copiloto responde retomada de negociação sem abrir proposta por default", () => {
   const result = resolveImobTurn({
     message: "como retomar negociação parada?",
@@ -193,6 +217,30 @@ test("IMOB copiloto responde leitura antes de proposta sem exigir caseId", () =>
   assert.equal(result.action, "crm.operational_guidance");
   assert.match(result.presentation.text, /Antes de montar proposta/i);
   assert.match(result.presentation.text, /waitingOn/i);
+});
+
+test("IMOB copiloto prepara resumo estruturado do caso sem abrir formulário", () => {
+  const result = resolveImobTurn({
+    message: "quero retomar um caso antigo rapidamente com resumo do caso",
+    access: createAccess(),
+  });
+
+  assert.equal(result.mode, "consult");
+  assert.equal(result.action, "crm.operational_guidance");
+  assert.match(result.presentation.text, /fase, blocker, waitingOn, owner da ação/i);
+  assert.ok(!result.presentation.form);
+});
+
+test("IMOB copiloto prepara approval sem executar decisão sensível", () => {
+  const result = resolveImobTurn({
+    message: "o que preciso para approval nesse fechamento?",
+    access: createAccess(),
+  });
+
+  assert.equal(result.mode, "consult");
+  assert.equal(result.action, "crm.operational_guidance");
+  assert.match(result.presentation.text, /approval forte|reasonCode|evidência mínima|policy/i);
+  assert.ok(!result.presentation.form);
 });
 
 test("IMOB mantém formulário quando o comando operacional é explícito", () => {

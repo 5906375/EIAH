@@ -1,14 +1,9 @@
 import { z } from "zod";
+import { IMOB_REASON_CODE_VALUES } from "../services/imob/control/imobReasonCodeCatalog";
 
 const optionalShortString = (max: number) => z.union([z.string().trim().min(1).max(max), z.null()]).optional();
 const optionalStringArraySchema = z.array(z.string().trim().min(1).max(160)).max(100).optional();
-const imobReasonCodeSchema = z.enum([
-  "COMMERCIAL_PRIORITY",
-  "FOLLOW_UP_DISCIPLINE",
-  "DOCUMENT_BLOCKER",
-  "FINANCIAL_BLOCKER",
-  "AUDIT_BLOCKER",
-]);
+const imobReasonCodeSchema = z.enum(IMOB_REASON_CODE_VALUES);
 
 export const imobOwnerCreateSchema = z.object({
   name: z.string().trim().min(1).max(160),

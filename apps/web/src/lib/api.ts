@@ -1900,6 +1900,7 @@ export type ImobResolvedBackingSpecialist = {
   urgency?: "low" | "medium" | "high" | null;
   outputType?: "advice" | "validation" | "evidence" | "financial_check" | "operational_support";
   requiredContext?: string[];
+  ownershipBoundary?: string | null;
 };
 
 export type ImobReasonCode =
@@ -1996,6 +1997,27 @@ export type ImobApprovalContextItem = {
   suggestedAction?: string | null;
   priorityScore: number;
   autoprompt: string;
+};
+
+export type ImobApprovalContext = {
+  items: ImobApprovalContextItem[];
+};
+
+export type ImobConsultiveSpecialistSupport = {
+  agentId: string;
+  reasonCode?: ImobReasonCode;
+  why?: string | null;
+  suggestedAction?: string | null;
+  ownershipBoundary?: string | null;
+};
+
+export type ImobConsultiveResponseMinimum = {
+  phase?: string | null;
+  blocker?: string | null;
+  waitingOn?: "lead" | "owner" | "broker" | "legal" | "finance" | "internal" | null;
+  nextActionOwner?: string | null;
+  nextSafeStep?: string | null;
+  specialists?: ImobConsultiveSpecialistSupport[];
 };
 
 export type ImobApprovalActionInput = {
@@ -2628,8 +2650,7 @@ export async function apiListImobApprovalContext(params?: { limit?: number }) {
     ok: true;
     data: {
       generatedAt: string;
-      items: ImobApprovalContextItem[];
-    };
+    } & ImobApprovalContext;
   }>(`/imob/control/approval-context${qs}`, { method: "GET" });
 }
 

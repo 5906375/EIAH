@@ -65,6 +65,10 @@ export type ImobApprovalContextItem = {
   autoprompt: string;
 };
 
+export type ImobApprovalContext = {
+  items: ImobApprovalContextItem[];
+};
+
 function urgencyScore(value: ImobControlSurface["urgency"]) {
   if (value === "critical") return 6;
   if (value === "high") return 4;
@@ -310,4 +314,14 @@ export function buildImobApprovalContext(params: {
       );
     })
     .slice(0, limit);
+}
+
+export function buildImobApprovalContextResponse(params: {
+  items: ImobControlSurface[];
+  evidenceCountByCaseId?: Map<string, number>;
+  limit?: number;
+}): ImobApprovalContext {
+  return {
+    items: buildImobApprovalContext(params),
+  };
 }
