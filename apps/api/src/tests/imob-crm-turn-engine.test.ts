@@ -51,7 +51,7 @@ function createEngineParams(overrides?: Partial<any>) {
   };
 }
 
-test("IMOB_CRM turn engine prioriza continuidade do fluxo ativo com pendências antes de leitura consultiva", async () => {
+test("IMOB_CRM turn engine prioriza leitura consultiva forte antes da continuidade de intake", async () => {
   let consultCalls = 0;
   const params = createEngineParams();
   params.helpers.resolveImobOperationalConsult = async () => {
@@ -66,9 +66,9 @@ test("IMOB_CRM turn engine prioriza continuidade do fluxo ativo com pendências 
   };
 
   const resolved = await resolveImobCrmTurnEngine(params);
-  assert.equal(consultCalls, 0);
-  assert.equal(resolved.action, "crm.from-resolve-turn");
-  assert.match((resolved as any).presentation?.text ?? "", /continuidade do fluxo ativo/i);
+  assert.equal(consultCalls, 1);
+  assert.equal(resolved.action, "crm.case.blocked_run_resolution");
+  assert.match((resolved as any).presentation?.text ?? "", /leitura consultiva/i);
 });
 
 test("IMOB_CRM turn engine usa leitura consultiva quando não há fluxo ativo com pendências", async () => {
@@ -130,4 +130,45 @@ test("IMOB_CRM turn engine prioriza comando operacional explícito antes da leit
   const resolved = await resolveImobCrmTurnEngine(params);
   assert.equal(consultCalls, 0);
   assert.equal(resolved.action, "crm.from-resolve-turn");
+});
+
+test("IMOB_CRM turn engine mantém continuidade de intake para mensagens não consultivas", async () => {
+  let consultCalls = 0;
+  const params = createEngineParams({
+    body: {
+      message: "segue com esse cadastro",
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "owner.create",
+          status: "collecting",
+          pendingFields: ["ownerDocument"],
+          ownerDraft: {
+            ownerName: "Ca",
+            ownerPhone: "4744444444",
+            ownerEmail: "ca@gmail.com",
+            ownerDocument: null,
+          },
+        },
+      },
+    },
+  });
+  params.helpers.resolveImobOperationalConsult = async () => {
+    consultCalls += 1;
+    return {
+      mode: "consult",
+      action: "crm.case.blocked_run_resolution",
+      threadLabel: "Caso",
+      conversationState: params.body.threadState,
+      presentation: { text: "leitura consultiva" },
+    };
+  };
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal(consultCalls, 0);
+  assert.equal(resolved.action, "crm.from-resolve-turn");
+  assert.match((resolved as any).presentation?.text ?? "", /continuidade do fluxo ativo/i);
 });

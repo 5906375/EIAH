@@ -630,6 +630,292 @@ function buildPropertyPendingSuggestion(property: { id?: string; address?: strin
   return `Para seguir com ${property.address ?? property.id ?? "este imóvel"}, ainda preciso de: ${pending.join(", ")}.`;
 }
 
+type DomainGuidanceIntent =
+  | "capture_guidance"
+  | "qualification_guidance"
+  | "documents_by_phase"
+  | "specialist_handoff"
+  | "when_involve_legal"
+  | "when_involve_finance"
+  | "resume_after_visit"
+  | "resume_negotiation"
+  | "sensitive_closing";
+
+function resolveDomainGuidanceIntent(message: string): DomainGuidanceIntent | null {
+  const normalized = normalizeImobCrmText(message);
+  const asksHow = normalized.includes("como");
+  const asksWhat = normalized.includes("quais") || normalized.includes("o que") || /\bqual\b/.test(normalized);
+  const asksNeed = normalized.includes("preciso");
+  const asksGuidance = asksHow || asksWhat || asksNeed;
+
+  if (
+    asksGuidance
+    && (
+      normalized.includes("captacao")
+      || normalized.includes("captação")
+      || normalized.includes("captar imovel")
+      || normalized.includes("captar imóvel")
+      || normalized.includes("lead captado")
+    )
+  ) {
+    return "capture_guidance";
+  }
+
+  if (
+    asksGuidance
+    && (
+      (normalized.includes("qualificar") && normalized.includes("lead"))
+      || normalized.includes("qualificacao")
+      || normalized.includes("qualificação")
+      || normalized.includes("triar lead")
+    )
+    && !normalized.includes("deste caso")
+    && !normalized.includes("desse caso")
+  ) {
+    return "qualification_guidance";
+  }
+
+  if (
+    asksGuidance
+    && (
+    normalized.includes("quais documentos normalmente faltam")
+    || normalized.includes("quais documentos faltam normalmente")
+    || normalized.includes("documentos normalmente faltam")
+    || normalized.includes("quais documentos preciso")
+    || normalized.includes("documentos necessarios")
+    || normalized.includes("documentos necessários")
+    )
+  ) {
+    return "documents_by_phase";
+  }
+
+  if (
+    asksGuidance
+    && (
+      normalized.includes("qual specialist")
+      || normalized.includes("que specialist")
+      || normalized.includes("quem entra nesse caso")
+      || normalized.includes("quem entra neste caso")
+      || normalized.includes("juridico ou financeiro")
+      || normalized.includes("jurídico ou financeiro")
+      || normalized.includes("qual apoio entra")
+    )
+  ) {
+    return "specialist_handoff";
+  }
+
+  if (
+    normalized.includes("quando envolver juridico")
+    || normalized.includes("quando envolver jurídico")
+    || normalized.includes("preciso envolver juridico")
+    || normalized.includes("preciso envolver jurídico")
+  ) {
+    return "when_involve_legal";
+  }
+
+  if (
+    normalized.includes("quando envolver financeiro")
+    || normalized.includes("preciso envolver financeiro")
+    || normalized.includes("quando chamar financeiro")
+  ) {
+    return "when_involve_finance";
+  }
+
+  if (
+    (normalized.includes("pos visita") || normalized.includes("pós visita") || normalized.includes("depois da visita"))
+    && (normalized.includes("retomar") || normalized.includes("sem retorno") || normalized.includes("sumiu") || normalized.includes("cliente sumiu"))
+  ) {
+    return "resume_after_visit";
+  }
+
+  if (
+    asksGuidance
+    && (
+    normalized.includes("retomar negociacao")
+    || normalized.includes("retomar negociação")
+    || normalized.includes("como retomar negociacao")
+    || normalized.includes("como retomar negociação")
+    || normalized.includes("avancar negociacao")
+    || normalized.includes("avançar negociação")
+    )
+  ) {
+    return "resume_negotiation";
+  }
+
+  if (
+    asksGuidance
+    && (normalized.includes("fechamento") || normalized.includes("assinatura") || normalized.includes("caso sensivel") || normalized.includes("caso sensível"))
+    && (normalized.includes("sensivel") || normalized.includes("sensível") || normalized.includes("risco") || normalized.includes("approval") || normalized.includes("evidence"))
+  ) {
+    return "sensitive_closing";
+  }
+
+  return null;
+}
+
+function buildDomainGuidanceResponse(intent: DomainGuidanceIntent, threadState: ImobCrmConversationState | null | undefined) {
+  const responses: Record<DomainGuidanceIntent, any> = {
+    capture_guidance: {
+      text: [
+        "Na captação, o IMOB deve responder primeiro com leitura operacional e só depois puxar cadastro completo.",
+        "Leitura operacional: o objetivo é validar ativo real, proprietário identificável e dados mínimos para seguir.",
+        "Próximo passo seguro: confirmar imóvel, urgência do proprietário e readiness documental básica antes de aprofundar intake.",
+      ].join("\n"),
+      nextStep: "Se quiser, eu organizo a captação em checklist ou abro o cadastro do imóvel.",
+      card: {
+        title: "Captação operacional",
+        lines: [
+          "Validar imóvel, proprietário e urgência real.",
+          "Separar dado mínimo de dado complementar.",
+          "Só aprofundar cadastro depois que a captação fizer sentido.",
+        ],
+      },
+    },
+    qualification_guidance: {
+      text: [
+        "Na qualificação, o foco não é só completar campo: é entender aderência, urgência e chance real de avanço.",
+        "Leitura operacional: o waitingOn mais comum é lead ou broker, dependendo do que ainda falta confirmar.",
+        "Próximo passo seguro: confirmar objetivo, cidade, orçamento e prontidão antes de empurrar visita ou proposta.",
+      ].join("\n"),
+      nextStep: "Se quiser, eu aplico essa leitura ao caso atual ou abro a qualificação do lead.",
+      card: {
+        title: "Qualificação do lead",
+        lines: [
+          "Objetivo do lead.",
+          "Cidade e orçamento.",
+          "Prontidão para visita ou avanço comercial.",
+        ],
+      },
+    },
+    documents_by_phase: {
+      text: [
+        "Na etapa documental, os itens que mais travam são matrícula atualizada, documento pessoal das partes, autorização de venda e comprovações financeiras quando o negócio depende de crédito.",
+        "Leitura operacional: o waitingOn mais comum nessa fase é owner, legal ou finance.",
+        "Próximo passo seguro: confirmar qual fase do caso você está e cobrar primeiro o documento que impede a próxima validação.",
+      ].join("\n"),
+      nextStep: "Se quiser, eu aplico esse checklist ao caso específico e aponto o blocker real.",
+      card: {
+        title: "Checklist operacional por etapa",
+        lines: [
+          "Captação: dados mínimos do proprietário e do imóvel.",
+          "Proposta/negociação: comprovação básica da contraparte e condições da oferta.",
+          "Documentação/fechamento: matrícula, documentos pessoais, autorização e pendências financeiras.",
+        ],
+      },
+    },
+    specialist_handoff: {
+      text: [
+        "O IMOB_CRM continua dono do caso. Specialists entram como apoio contextual e não assumem ownership.",
+        "J_360 entra quando o blocker é documental, contratual ou jurídico. fin-nexus entra quando o bloqueio é financeiro, de repasse, comissão ou pagamento. guardian entra quando a transição exige approval, evidence ou trilha auditável.",
+        "I_BC apoia priorização comercial e negociação. Diarias apoia follow-up, rotina diária e backlog acionável.",
+        "Próximo passo seguro: identificar blocker, waitingOn e risco antes de acionar o specialist.",
+      ].join("\n"),
+      nextStep: "Se quiser, eu aplico essa leitura ao caso atual e digo qual specialist entra por motivo real.",
+      card: {
+        title: "Handoff de specialists",
+        lines: [
+          "IMOB_CRM mantém ownership do caso.",
+          "Specialist entra por blocker, risco ou reasonCode.",
+          "Handoff não substitui a leitura operacional do caso.",
+        ],
+      },
+    },
+    when_involve_legal: {
+      text: [
+        "Envolva jurídico/documentação quando houver matrícula inconsistente, exigência contratual fora do padrão, pendência de titularidade, minuta sensível ou risco de assinatura sem validação.",
+        "Leitura operacional: nesses casos o waitingOn tende a migrar para legal.",
+        "Próximo passo seguro: separar o blocker documental, anexar evidência mínima e só depois seguir para fechamento.",
+      ].join("\n"),
+      nextStep: "Se quiser, eu verifico se o caso atual já pede jurídico ou se ainda é bloqueio comercial/documental simples.",
+      card: {
+        title: "Quando envolver jurídico",
+        lines: [
+          "Matrícula ou titularidade inconsistente.",
+          "Minuta, cláusula ou condição fora do padrão.",
+          "Fechamento sensível com exigência de validação final.",
+        ],
+      },
+    },
+    when_involve_finance: {
+      text: [
+        "Envolva financeiro quando houver sinal, repasse, comissão, crédito/financiamento incerto ou condicionante de pagamento que possa travar o avanço.",
+        "Leitura operacional: nesses cenários o waitingOn tende a ser finance.",
+        "Próximo passo seguro: confirmar a pendência financeira real antes de prometer fechamento ou liberação.",
+      ].join("\n"),
+      nextStep: "Se quiser, eu classifico o caso atual entre blocker comercial e blocker financeiro.",
+      card: {
+        title: "Quando envolver financeiro",
+        lines: [
+          "Sinal ou repasse pendente.",
+          "Comissão e liquidação do negócio.",
+          "Financiamento, crédito ou condição de pagamento sem validação.",
+        ],
+      },
+    },
+    resume_after_visit: {
+      text: [
+        "Num pós-visita sem retorno, a leitura operacional padrão é follow-up risk em alta e waitingOn=lead.",
+        "O corretor deve retomar com mensagem curta, referência objetiva ao que o cliente viu e proposta de próximo movimento, em vez de reabrir o caso pelo cadastro.",
+        "Próximo passo seguro: confirmar feedback da visita, objeção principal e janela para novo contato.",
+      ].join("\n"),
+      nextStep: "Se quiser, eu monto a retomada comercial e depois aplico ao caso específico.",
+      card: {
+        title: "Retomada pós-visita",
+        lines: [
+          "1. Resumir o interesse percebido.",
+          "2. Perguntar a objeção principal.",
+          "3. Propor um próximo passo único: retorno, nova visita ou proposta.",
+        ],
+      },
+    },
+    resume_negotiation: {
+      text: [
+        "Para retomar negociação, o IMOB deve primeiro identificar fase, blocker, waitingOn e owner da ação antes de pedir complemento cadastral.",
+        "Leitura operacional padrão: negociação parada costuma travar em preço, condição de pagamento ou silêncio de uma das partes.",
+        "Próximo passo seguro: confirmar quem está segurando o avanço e conduzir uma única ação comercial objetiva.",
+      ].join("\n"),
+      nextStep: "Se quiser, eu preparo a abordagem de retomada e depois aplico ao caso atual.",
+      card: {
+        title: "Retomada de negociação",
+        lines: [
+          "Checar se o waitingOn está em lead, owner ou broker.",
+          "Explicitar a objeção principal da negociação.",
+          "Definir uma ação única: cobrar retorno, ajustar condição ou formalizar proposta.",
+        ],
+      },
+    },
+    sensitive_closing: {
+      text: [
+        "Em fechamento sensível, o IMOB deve separar pendência de dado, blocker documental e transição governada.",
+        "Leitura operacional: o waitingOn tende a migrar para legal ou finance, e pode haver necessidade de approval ou evidence conforme o risco.",
+        "Próximo passo seguro: confirmar o blocker real antes de liberar assinatura, repasse ou fechamento final.",
+      ].join("\n"),
+      nextStep: "Se quiser, eu verifico se o caso atual já pede approval, evidence ou handoff especializado.",
+      card: {
+        title: "Fechamento sensível",
+        lines: [
+          "Confirmar blocker documental ou financeiro.",
+          "Separar pendência operacional de transição sensível.",
+          "Só avançar assinatura ou repasse com validação suficiente.",
+        ],
+      },
+    },
+  };
+
+  const presentation = responses[intent];
+  return {
+    mode: "consult",
+    action: "crm.domain_guidance",
+    threadLabel: "IMOB Ops",
+    conversationState: threadState ?? createEmptyThreadState(),
+    presentation: {
+      ...presentation,
+      owner: "Corretor",
+      dedupeKey: `crm.domain_guidance:${intent}`,
+    },
+  };
+}
+
 export async function resolveImobCrmOperationalUpdate(params: ResolverParams) {
   const normalized = normalizeImobCrmText(params.message);
   const ownerName = extractOwnerNameFromMessage(params.message);
@@ -828,6 +1114,11 @@ export async function resolveImobCrmOperationalConsult(params: ResolverParams) {
   const asksDelete = normalized.includes("excluir") || normalized.includes("deletar") || normalized.includes("remover") || normalized.includes("apagar") || normalized.includes("arquivar");
   const ownerCrudId = extractOwnerCrudIdFromMessage(params.message);
   const propertyCrudId = extractPropertyCrudIdFromMessage(params.message);
+  const domainGuidanceIntent = resolveDomainGuidanceIntent(params.message);
+
+  if (domainGuidanceIntent && !params.caseId) {
+    return buildDomainGuidanceResponse(domainGuidanceIntent, params.threadState);
+  }
 
   if (businessReadIntent) {
     const item = params.caseId

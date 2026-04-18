@@ -44,6 +44,7 @@ export type ImobResolvedBackingSpecialist = ImobBackingSpecialistContract & {
   urgency?: "low" | "medium" | "high" | null;
   outputType?: ImobBackingSpecialistOutputType;
   requiredContext?: string[];
+  ownershipBoundary?: string | null;
 };
 
 export type ImobChatExperienceContract = {
