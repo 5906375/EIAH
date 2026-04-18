@@ -1,4 +1,5 @@
 import { resolveImobSemanticIntent, type ImobSemanticIntentResolution } from "../imobSemanticIntentResolver";
+import { matchImobConversationalIntents } from "../imobIntentCatalog";
 import { resolveImobTurn } from "../imobTurnResolver";
 import type {
   ImobCrmCaseContext,
@@ -56,6 +57,14 @@ function hasActivePendingOperationalFlow(threadState: ThreadStateLike | null | u
   const status = asString(operational.status);
   const pendingFields = asStringList(operational.pendingFields);
   return status === "collecting" && pendingFields.length > 0;
+}
+
+function hasStrongBusinessReadIntent(message: string) {
+  return matchImobConversationalIntents(message).some((intent) =>
+    intent.intentId === "pipeline_status"
+    || intent.intentId === "blocked_run_resolution"
+    || intent.intentId === "next_best_action"
+  );
 }
 
 function isExplicitOperationalCommand(message: string) {
@@ -325,6 +334,26 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
     }
 
     const shouldPrioritizeActiveFlowContinuity = hasActivePendingOperationalFlow(hydratedThreadState);
+    const shouldPrioritizeBusinessRead = hasStrongBusinessReadIntent(turn.message);
+
+    if (shouldPrioritizeBusinessRead && !isExplicitOperationalCommand(turn.message)) {
+      const consultData = await params.helpers.resolveImobOperationalConsult({
+        prisma: params.prisma,
+        tenantId: params.authContext.tenantId,
+        workspaceId: params.authContext.workspaceId,
+        userId: params.authContext.userId ?? null,
+        message: turn.message,
+        caseId: turn.caseId,
+        threadState: hydratedThreadState,
+      });
+      if (consultData) {
+        const data = applyResponsibleLabelToResolvedTurn(consultData, params.workspaceResponsibleLabel);
+        return {
+          data: params.helpers.applyCanonicalJourneyToResolvedData(data, (data.caseContext as ImobCrmCaseContext | null | undefined) ?? null),
+          caseContext: data.caseContext ?? null,
+        };
+      }
+    }
 
     if (shouldPrioritizeActiveFlowContinuity) {
       const semanticIntent = turn.semanticIntent ?? await resolveImobSemanticIntent(turn.message);

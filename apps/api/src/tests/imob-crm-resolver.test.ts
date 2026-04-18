@@ -234,7 +234,61 @@ test("IMOB_CRM business read returns commercial language from the latest case", 
 
   assert.equal(resolved?.action, "crm.case.pipeline_status");
   assert.match(resolved?.presentation?.text ?? "", /Lead Merlo/);
+  assert.match(resolved?.presentation?.text ?? "", /Fase:/);
+  assert.match(resolved?.presentation?.text ?? "", /Waiting on:/);
+  assert.match(resolved?.presentation?.text ?? "", /Owner da ação:/);
+  assert.match(resolved?.presentation?.text ?? "", /Specialist de apoio:/);
+  assert.match(resolved?.presentation?.text ?? "", /não assume ownership do caso/i);
   assert.match(resolved?.presentation?.text ?? "", /Próximo movimento/);
+  assert.equal(resolved?.presentation?.consultiveRead?.phase, "Qualificação");
+  assert.equal(resolved?.presentation?.consultiveRead?.waitingOn, "internal");
+  assert.equal(resolved?.presentation?.consultiveRead?.nextActionOwner, "Corretor");
+  assert.match(resolved?.presentation?.consultiveRead?.nextSafeStep ?? "", /qualificar o interesse do lead/i);
+  assert.equal(resolved?.presentation?.consultiveRead?.specialists?.[0]?.agentId, "I_BC");
+  assert.match(resolved?.presentation?.consultiveRead?.specialists?.[0]?.ownershipBoundary ?? "", /não assume ownership do caso/i);
+});
+
+test("IMOB_CRM domain guidance answers generic documentary question without caseId", async () => {
+  const resolved = await resolveImobCrmOperationalConsult({
+    prisma: createMockPrisma() as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "quais documentos normalmente faltam nessa fase?",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.action, "crm.domain_guidance");
+  assert.match(resolved?.presentation?.text ?? "", /waitingOn/i);
+  assert.match(resolved?.presentation?.text ?? "", /Próximo passo seguro/i);
+  assert.match(resolved?.presentation?.card?.title ?? "", /Checklist operacional/i);
+});
+
+test("IMOB_CRM domain guidance answers when to involve legal without caseId", async () => {
+  const resolved = await resolveImobCrmOperationalConsult({
+    prisma: createMockPrisma() as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "quando envolver jurídico?",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.action, "crm.domain_guidance");
+  assert.match(resolved?.presentation?.text ?? "", /jurídico\/documentação|juridico/i);
+  assert.match(resolved?.presentation?.text ?? "", /waitingOn/i);
+});
+
+test("IMOB_CRM domain guidance explains specialist handoff without transferring case ownership", async () => {
+  const resolved = await resolveImobCrmOperationalConsult({
+    prisma: createMockPrisma() as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "qual specialist entra nesse caso, jurídico ou financeiro?",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.action, "crm.domain_guidance");
+  assert.match(resolved?.presentation?.text ?? "", /IMOB_CRM continua dono do caso/i);
+  assert.match(resolved?.presentation?.text ?? "", /J_360|fin-nexus|guardian/i);
 });
 
 test("IMOB_CRM blocked resolution avoids recursive next step and recursive CTA", async () => {
@@ -248,6 +302,7 @@ test("IMOB_CRM blocked resolution avoids recursive next step and recursive CTA",
 
   assert.equal(resolved?.action, "crm.case.blocked_run_resolution");
   assert.doesNotMatch(resolved?.presentation?.text ?? "", /para destravar:\s*mostrar bloqueios do caso/i);
+  assert.ok(resolved?.presentation?.consultiveRead);
   const ctas = Array.isArray(resolved?.presentation?.card?.ctas) ? resolved?.presentation?.card?.ctas : [];
   assert.equal(
     ctas.some((item: any) => String(item?.nextMessage ?? "").toLowerCase().includes("mostrar bloqueios do caso")),

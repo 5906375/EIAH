@@ -138,6 +138,7 @@ export function resolveImobBackingSpecialists(caseContext?: ImobCaseContext | nu
       urgency: params.urgency ?? resolveSpecialistUrgency(key, caseContext, baseUrgency),
       outputType: params.outputType,
       requiredContext: params.requiredContext ?? [],
+      ownershipBoundary: "Apoia o IMOB_CRM neste contexto e não assume ownership do caso.",
     });
   };
 

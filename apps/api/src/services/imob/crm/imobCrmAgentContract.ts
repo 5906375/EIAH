@@ -117,6 +117,21 @@ export type ImobCrmPresentationCard = {
   actionsLayout?: "inline";
 };
 
+export type ImobCrmConsultiveRead = {
+  phase?: string | null;
+  blocker?: string | null;
+  waitingOn?: ImobCrmHumanWorkflow["waitingOn"];
+  nextActionOwner?: string | null;
+  nextSafeStep?: string | null;
+  specialists?: Array<{
+    agentId: string;
+    reasonCode?: ImobReasonCode;
+    why?: string | null;
+    suggestedAction?: string | null;
+    ownershipBoundary?: string | null;
+  }>;
+};
+
 export type ImobCrmTurnCopyState =
   | "entry_options"
   | "collecting_fields"
@@ -138,6 +153,10 @@ export type ImobCrmTurnPresentation = {
   owner?: string;
   nextStep?: string;
   blocker?: string;
+  // Minimum consultive contract for operational reads in IMOB_CRM.
+  // When the runtime responds in consult mode about a case, it should try to
+  // expose phase, blocker, waitingOn, nextActionOwner and a safe next step.
+  consultiveRead?: ImobCrmConsultiveRead;
   pendingFieldLabels?: string[];
   copyState?: ImobCrmTurnCopyState;
   suggestedNextAction?: string;

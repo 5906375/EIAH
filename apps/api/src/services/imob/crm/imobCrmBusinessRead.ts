@@ -47,6 +47,29 @@ type BusinessReadHelpers = {
 };
 
 export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
+  function formatWaitingOnLabel(value: ImobCrmCaseContext["humanWorkflow"] extends infer T
+    ? T extends { waitingOn?: infer W }
+      ? W
+      : never
+    : never) {
+    switch (value) {
+      case "lead":
+        return "lead";
+      case "owner":
+        return "proprietário";
+      case "broker":
+        return "corretor";
+      case "legal":
+        return "jurídico/documentação";
+      case "finance":
+        return "financeiro";
+      case "internal":
+        return "operação interna";
+      default:
+        return null;
+    }
+  }
+
   function buildCaseContextFromRecord(item: any): ImobCrmCaseContext {
     return buildImobCrmCaseContextFromRecord(item, helpers.buildImobCanonicalCase);
   }
@@ -169,6 +192,34 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       blocker: helpers.asString(caseContext.blocker) ?? null,
       recommendedActions,
       specialists,
+    };
+  }
+
+  function buildSpecialistSupportLine(specialist: any) {
+    const agentId = helpers.asString(specialist?.primaryAgentId) ?? "specialist";
+    const reasonCode = helpers.asString(specialist?.reasonCode);
+    const rationale = helpers.asString(specialist?.rationale);
+    const suggestedAction = helpers.asString(specialist?.suggestedAction);
+    const ownershipBoundary = helpers.asString(specialist?.ownershipBoundary) ?? "Apoia o IMOB_CRM e não assume ownership do caso.";
+    const why = rationale
+      ? `${agentId} entra aqui porque ${rationale.charAt(0).toLowerCase()}${rationale.slice(1)}`
+      : `${agentId} entra como apoio contextual deste caso`;
+
+    return {
+      text: [
+        `Specialist de apoio: ${agentId}${reasonCode ? ` por ${reasonCode}` : ""}.`,
+        `${why}.`,
+        suggestedAction ? `Apoio sugerido: ${suggestedAction}.` : null,
+        ownershipBoundary,
+      ].filter(Boolean).join(" "),
+      cardLine: `Specialist: ${agentId}${reasonCode ? ` (${reasonCode})` : ""} | ${ownershipBoundary}`,
+      consultive: {
+        agentId,
+        reasonCode: reasonCode ?? undefined,
+        why: rationale ?? null,
+        suggestedAction: suggestedAction ?? null,
+        ownershipBoundary,
+      },
     };
   }
 
@@ -307,25 +358,43 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     const actionLabel = helpers.asString(recommendedAction?.label) ?? "Revisar caso";
     const selectionNote = helpers.asString(params.caseSelectionNote);
     const subject = formatImobBusinessSubject(caseContext);
+    const humanPhase = helpers.asString(caseContext?.humanJourney?.phase);
+    const humanPhaseLabel = humanPhase ? titleCaseJourneyPhase(humanPhase) : journeyLabel;
+    const waitingOn = formatWaitingOnLabel(caseContext?.humanWorkflow?.waitingOn);
+    const nextActionOwner = helpers.asString(caseContext?.humanWorkflow?.nextActionOwner) ?? helpers.asString(caseContext?.ownerResponsible);
+    const specialists = (helpers.resolveImobBackingSpecialists(caseContext) as any[] | null | undefined) ?? [];
+    const primarySpecialist = specialists[0] ? buildSpecialistSupportLine(specialists[0]) : null;
     const statusLine = `${subject}. Momento comercial: ${stageLabel}. Jornada: ${journeyLabel}.`;
     const baseLines = [selectionNote ? "Usei o cadastro mais recente do IMOB para esta leitura." : null, statusLine].filter(Boolean) as string[];
     const textByIntent: Record<BusinessReadIntent, string[]> = {
       pipeline_status: [
         ...baseLines,
+        humanPhaseLabel ? `Fase: ${humanPhaseLabel}.` : null,
         primaryPending ? `Pendência principal: ${primaryPending}.` : "Pendência principal: nada crítico registrado.",
         primaryBlocker ? `Bloqueio atual: ${primaryBlocker}.` : "Bloqueio atual: nenhum bloqueio comercial registrado.",
+        waitingOn ? `Waiting on: ${waitingOn}.` : null,
+        nextActionOwner ? `Owner da ação: ${nextActionOwner}.` : null,
+        primarySpecialist?.text ?? null,
         `Próximo movimento: ${nextStep}.`,
       ],
       blocked_run_resolution: [
         ...baseLines,
+        humanPhaseLabel ? `Fase: ${humanPhaseLabel}.` : null,
         primaryBlocker ? `Bloqueio principal: ${primaryBlocker}.` : "Não há bloqueio comercial registrado agora.",
         primaryPending ? `Pendência que pode travar o avanço: ${primaryPending}.` : "Não há pendência crítica registrada.",
+        waitingOn ? `Waiting on: ${waitingOn}.` : null,
+        nextActionOwner ? `Owner da ação: ${nextActionOwner}.` : null,
+        primarySpecialist?.text ?? null,
         `Para destravar: ${nextStep}.`,
       ],
       next_best_action: [
         ...baseLines,
+        humanPhaseLabel ? `Fase: ${humanPhaseLabel}.` : null,
         `Melhor ação agora: ${actionLabel}.`,
         primaryBlocker ? `Motivo: existe bloqueio ativo (${primaryBlocker}).` : primaryPending ? `Motivo: existe pendência aberta (${primaryPending}).` : "Motivo: é o movimento com maior chance de avançar este atendimento.",
+        waitingOn ? `Waiting on: ${waitingOn}.` : null,
+        nextActionOwner ? `Owner da ação: ${nextActionOwner}.` : null,
+        primarySpecialist?.text ?? null,
         `Como seguir: ${nextStep}.`,
       ],
     };
@@ -352,6 +421,14 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       owner: caseContext?.ownerResponsible ?? "Corretor",
       nextStep,
       blocker: primaryBlocker ?? undefined,
+      consultiveRead: {
+        phase: humanPhaseLabel,
+        blocker: primaryBlocker ?? null,
+        waitingOn: caseContext?.humanWorkflow?.waitingOn ?? null,
+        nextActionOwner: nextActionOwner ?? null,
+        nextSafeStep: nextStep,
+        specialists: specialists.slice(0, 2).map((item) => buildSpecialistSupportLine(item).consultive),
+      },
       pendingFieldLabels: pendingItems,
       suggestedNextAction: nextStep,
       widget: buildImobCaseExperienceWidget(caseContext),
@@ -360,14 +437,43 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
         title: cardTitleByIntent[intent],
         lines: [
           subject,
+          `Fase: ${humanPhaseLabel}`,
           `Momento: ${stageLabel}`,
           `Pendências: ${helpers.formatImobPendingList(pendingItems)}`,
           primaryBlocker ? `Bloqueio: ${primaryBlocker}` : "Bloqueio: nenhum bloqueio comercial",
+          waitingOn ? `Waiting on: ${waitingOn}` : "Waiting on: não identificado",
+          nextActionOwner ? `Owner da ação: ${nextActionOwner}` : "Owner da ação: não identificado",
+          primarySpecialist?.cardLine ?? null,
           `Próximo movimento: ${nextStep}`,
-        ],
+        ].filter(Boolean) as string[],
         ctas,
       },
     };
+  }
+
+  function titleCaseJourneyPhase(value: string) {
+    switch (value) {
+      case "captacao":
+        return "Captação";
+      case "qualificacao":
+        return "Qualificação";
+      case "atendimento_ativo":
+        return "Atendimento";
+      case "visita":
+        return "Visita";
+      case "proposta":
+        return "Proposta";
+      case "negociacao":
+        return "Negociação";
+      case "documentacao":
+        return "Documentação";
+      case "fechamento":
+        return "Fechamento";
+      case "pos_venda":
+        return "Pós-venda";
+      default:
+        return helpers.titleCaseRouteWords(value.replace(/_/g, " "));
+    }
   }
 
   function isImobRecentRegistrationReadRequest(normalized: string) {

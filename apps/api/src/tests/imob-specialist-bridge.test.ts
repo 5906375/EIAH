@@ -54,6 +54,7 @@ test("IMOB backing specialists enrich proposal flow with commercial guidance", (
   assert.equal(specialists[0]?.outputType, "advice");
   assert.match(specialists[0]?.suggestedAction ?? "", /proposta/i);
   assert.deepEqual(specialists[0]?.requiredContext, ["case.nextStep", "case.stage", "lead.context"]);
+  assert.match(specialists[0]?.ownershipBoundary ?? "", /não assume ownership do caso/i);
 });
 
 test("IMOB backing specialists use daily ops as contextual fallback for actionable cases", () => {
@@ -83,6 +84,7 @@ test("IMOB backing specialists use daily ops as contextual fallback for actionab
   assert.equal(specialists[0]?.primaryAgentId, "Diarias");
   assert.equal(specialists[0]?.outputType, "operational_support");
   assert.equal(specialists[0]?.urgency, "high");
+  assert.match(specialists[0]?.ownershipBoundary ?? "", /não assume ownership do caso/i);
 });
 
 test("IMOB backing specialists classify legal, financial and audit support by blocker", () => {
@@ -133,4 +135,5 @@ test("IMOB backing specialists classify legal, financial and audit support by bl
   assert.ok(auditSpecialist);
   assert.equal(auditSpecialist.outputType, "evidence");
   assert.match(auditSpecialist.suggestedAction ?? "", /bundle|receipt|evidências/i);
+  assert.match(auditSpecialist.ownershipBoundary ?? "", /não assume ownership do caso/i);
 });

@@ -1698,6 +1698,333 @@ function isKnowledgeSearchQuery(message: string) {
   );
 }
 
+type GenericOperationalGuidanceIntent =
+  | "capture_guidance"
+  | "qualification_guidance"
+  | "documents_by_phase"
+  | "specialist_handoff"
+  | "when_involve_legal"
+  | "when_involve_finance"
+  | "resume_after_visit"
+  | "resume_negotiation"
+  | "proposal_readiness"
+  | "sensitive_closing";
+
+function resolveGenericOperationalGuidanceIntent(message: string): GenericOperationalGuidanceIntent | null {
+  const text = normalizeImobText(message);
+  const asksHow = text.includes("como");
+  const asksWhen = text.includes("quando");
+  const asksWhat = text.includes("quais") || text.includes("o que") || /\bqual\b/.test(text);
+  const asksNeed = text.includes("preciso");
+  const explicitExecution =
+    text.includes("cadastrar") ||
+    text.includes("validar documento") ||
+    text.includes("coletar documentos") ||
+    text.includes("enviar para assinatura") ||
+    text.includes("gerar proposta");
+
+  if (explicitExecution) return null;
+
+  if (
+    (asksHow || asksWhat || asksNeed)
+    && (text.includes("captacao") || text.includes("captação") || text.includes("captar imovel") || text.includes("captar imóvel") || text.includes("lead captado"))
+  ) {
+    return "capture_guidance";
+  }
+
+  if (
+    (asksHow || asksWhat || asksNeed)
+    && (
+      (text.includes("qualificar") && text.includes("lead"))
+      || text.includes("qualificacao")
+      || text.includes("qualificação")
+      || text.includes("triar lead")
+    )
+    && !text.includes("deste caso")
+    && !text.includes("desse caso")
+  ) {
+    return "qualification_guidance";
+  }
+
+  if (
+    asksWhat
+    && (
+      text.includes("documentos normalmente faltam")
+      || text.includes("quais documentos preciso")
+      || text.includes("documentos necessarios")
+      || text.includes("documentos necessários")
+    )
+  ) {
+    return "documents_by_phase";
+  }
+
+  if (
+    (asksHow || asksWhat || asksNeed)
+    && (
+      text.includes("qual specialist")
+      || text.includes("que specialist")
+      || text.includes("quem entra nesse caso")
+      || text.includes("quem entra neste caso")
+      || text.includes("juridico ou financeiro")
+      || text.includes("jurídico ou financeiro")
+      || text.includes("qual apoio entra")
+    )
+  ) {
+    return "specialist_handoff";
+  }
+
+  if (asksWhen && (text.includes("envolver juridico") || text.includes("envolver jurídico"))) {
+    return "when_involve_legal";
+  }
+
+  if (asksWhen && text.includes("envolver financeiro")) {
+    return "when_involve_finance";
+  }
+
+  if (
+    (asksHow || asksWhat || asksNeed)
+    && (text.includes("pos visita") || text.includes("pós visita") || text.includes("depois da visita") || text.includes("fiz a visita") || text.includes("apos a visita") || text.includes("após a visita"))
+    && (text.includes("retomar") || text.includes("sem retorno") || text.includes("sumiu"))
+  ) {
+    return "resume_after_visit";
+  }
+
+  if (
+    (asksHow || asksWhat || asksNeed)
+    && (text.includes("retomar negociacao") || text.includes("retomar negociação") || text.includes("negociacao") || text.includes("negociação"))
+  ) {
+    return "resume_negotiation";
+  }
+
+  if (
+    (asksHow || asksWhat || asksNeed)
+    && (text.includes("montar proposta") || text.includes("proposta"))
+    && (text.includes("validar") || text.includes("antes") || text.includes("risco"))
+  ) {
+    return "proposal_readiness";
+  }
+
+  if (
+    (asksHow || asksWhat || asksNeed)
+    && (text.includes("fechamento") || text.includes("assinatura") || text.includes("caso sensivel") || text.includes("caso sensível"))
+    && (text.includes("sensivel") || text.includes("sensível") || text.includes("risco") || text.includes("approval") || text.includes("evidence"))
+  ) {
+    return "sensitive_closing";
+  }
+
+  return null;
+}
+
+function buildGenericOperationalGuidanceResponse(intent: GenericOperationalGuidanceIntent, conversationState: ImobResolveTurnResponse["conversationState"]) {
+  const guidanceByIntent: Record<GenericOperationalGuidanceIntent, {
+    title: string;
+    lines: string[];
+    text: string;
+    suggestedNextAction: string;
+    ctas?: Array<{ id: string; label: string; kind: "primary" | "secondary" | "neutral"; action: "send_suggested_message"; nextMessage: string }>;
+  }> = {
+    capture_guidance: {
+      title: "Captação operacional",
+      text: [
+        "Na captação, o IMOB deve responder primeiro com leitura operacional, não com formulário puro.",
+        "Leitura operacional preliminar: o objetivo é validar se existe ativo real, proprietário identificável e contexto mínimo para avançar.",
+        "Próximo passo seguro: confirmar dados mínimos do imóvel, urgência do proprietário e readiness documental básica antes de aprofundar cadastro.",
+      ].join("\n"),
+      suggestedNextAction: "Se quiser, eu organizo a captação em checklist ou abro o cadastro do imóvel.",
+      lines: [
+        "Validar imóvel, proprietário e urgência real.",
+        "Separar dado mínimo de dado complementar.",
+        "Só aprofundar cadastro depois que a captação fizer sentido.",
+      ],
+      ctas: [
+        { id: "guidance-capture-start", label: "Cadastrar imóvel", kind: "primary", action: "send_suggested_message", nextMessage: "cadastrar imóvel" },
+        { id: "guidance-capture-owner", label: "Cadastrar proprietário", kind: "secondary", action: "send_suggested_message", nextMessage: "cadastrar proprietário" },
+      ],
+    },
+    qualification_guidance: {
+      title: "Qualificação do lead",
+      text: [
+        "Na qualificação, o foco não é só completar campo: é entender aderência, urgência e chance real de avanço.",
+        "Leitura operacional preliminar: o waitingOn mais comum é lead ou broker, dependendo do que ainda falta confirmar.",
+        "Próximo passo seguro: confirmar objetivo, cidade, orçamento e prontidão antes de empurrar visita ou proposta.",
+      ].join("\n"),
+      suggestedNextAction: "Se quiser, eu transformo isso em próximo passo do caso ou abro a qualificação do lead.",
+      lines: [
+        "Objetivo do lead.",
+        "Cidade e orçamento.",
+        "Prontidão para visita ou avanço comercial.",
+      ],
+      ctas: [
+        { id: "guidance-qualification-start", label: "Qualificar lead", kind: "primary", action: "send_suggested_message", nextMessage: "qualificar lead deste caso" },
+        { id: "guidance-qualification-case", label: "Consultar caso", kind: "secondary", action: "send_suggested_message", nextMessage: "qual status desse caso?" },
+      ],
+    },
+    documents_by_phase: {
+      title: "Checklist operacional",
+      text: [
+        "Posso responder isso sem abrir cadastro agora.",
+        "Na etapa documental, o que mais trava é matrícula atualizada, documento pessoal das partes, autorização de venda e comprovação financeira quando o negócio depende de crédito.",
+        "Leitura operacional preliminar: o waitingOn mais provável nessa fase é owner, legal ou finance.",
+        "Próximo passo seguro: identificar a fase do caso e cobrar primeiro o documento que libera a próxima validação.",
+      ].join("\n"),
+      suggestedNextAction: "Se quiser, eu aplico esse checklist ao caso específico.",
+      lines: [
+        "Captação: dados mínimos do proprietário e do imóvel.",
+        "Proposta/negociação: identificação básica da contraparte e condições da oferta.",
+        "Documentação/fechamento: matrícula, documentos pessoais, autorização e pendências financeiras.",
+      ],
+      ctas: [
+        { id: "guidance-docs-case", label: "Aplicar ao caso", kind: "primary", action: "send_suggested_message", nextMessage: "consultar caso" },
+        { id: "guidance-docs-collect", label: "Coletar documentos", kind: "secondary", action: "send_suggested_message", nextMessage: "coletar documentos" },
+      ],
+    },
+    specialist_handoff: {
+      title: "Handoff de specialists",
+      text: [
+        "O IMOB_CRM continua dono do caso. Specialists entram como apoio contextual e não assumem ownership.",
+        "J_360 entra quando o blocker é documental, contratual ou jurídico. fin-nexus entra quando o bloqueio é financeiro, de repasse, comissão ou pagamento. guardian entra quando a transição exige approval, evidence ou trilha auditável.",
+        "I_BC apoia priorização comercial e negociação. Diarias apoia follow-up, rotina diária e backlog acionável.",
+        "Próximo passo seguro: identificar primeiro blocker, waitingOn e risco antes de acionar o specialist.",
+      ].join("\n"),
+      suggestedNextAction: "Se quiser, eu aplico essa leitura ao caso atual e digo qual specialist entra por motivo real.",
+      lines: [
+        "IMOB_CRM mantém ownership do caso.",
+        "Specialist entra por blocker, risco ou reasonCode.",
+        "Handoff não substitui a leitura operacional do caso.",
+      ],
+      ctas: [
+        { id: "guidance-specialist-case", label: "Consultar caso", kind: "primary", action: "send_suggested_message", nextMessage: "qual status desse caso?" },
+        { id: "guidance-specialist-blocker", label: "Ver bloqueios", kind: "secondary", action: "send_suggested_message", nextMessage: "mostrar bloqueios do caso" },
+      ],
+    },
+    when_involve_legal: {
+      title: "Quando envolver jurídico",
+      text: [
+        "Se a pergunta é operacional, eu consigo orientar antes de abrir formulário.",
+        "Envolva jurídico/documentação quando houver matrícula inconsistente, titularidade duvidosa, minuta sensível, exigência contratual fora do padrão ou risco de assinatura sem validação final.",
+        "Leitura operacional preliminar: nesses cenários o waitingOn tende a migrar para legal.",
+        "Próximo passo seguro: separar o blocker documental e só depois abrir o fluxo contratual.",
+      ].join("\n"),
+      suggestedNextAction: "Se quiser, eu verifico se o caso atual já pede jurídico.",
+      lines: [
+        "Matrícula ou titularidade inconsistente.",
+        "Minuta, cláusula ou condição fora do padrão.",
+        "Fechamento sensível com validação final pendente.",
+      ],
+      ctas: [
+        { id: "guidance-legal-case", label: "Consultar caso", kind: "primary", action: "send_suggested_message", nextMessage: "qual status desse caso?" },
+        { id: "guidance-legal-contract", label: "Preparar contrato", kind: "secondary", action: "send_suggested_message", nextMessage: "preparar contrato deste caso" },
+      ],
+    },
+    when_involve_finance: {
+      title: "Quando envolver financeiro",
+      text: [
+        "Envolva financeiro quando houver sinal, repasse, comissão, financiamento incerto ou condição de pagamento capaz de travar o avanço.",
+        "Leitura operacional preliminar: nesses cenários o waitingOn mais provável é finance.",
+        "Próximo passo seguro: confirmar se o bloqueio é financeiro real antes de prometer fechamento.",
+      ].join("\n"),
+      suggestedNextAction: "Se quiser, eu classifico o caso atual entre blocker comercial e financeiro.",
+      lines: [
+        "Sinal ou repasse pendente.",
+        "Comissão e liquidação do negócio.",
+        "Financiamento ou condição de pagamento sem validação.",
+      ],
+      ctas: [
+        { id: "guidance-finance-case", label: "Consultar caso", kind: "primary", action: "send_suggested_message", nextMessage: "qual status desse caso?" },
+      ],
+    },
+    resume_after_visit: {
+      title: "Retomada pós-visita",
+      text: [
+        "Num pós-visita sem retorno, a leitura operacional padrão é follow-up risk em alta e waitingOn=lead.",
+        "Antes de pedir complemento da visita, o melhor é retomar com referência objetiva ao que o cliente viu e uma única proposta de próximo movimento.",
+        "Próximo passo seguro: confirmar feedback, objeção principal e janela para novo contato.",
+      ].join("\n"),
+      suggestedNextAction: "Se quiser, eu monto a retomada e depois aplico ao caso.",
+      lines: [
+        "1. Resumir o interesse percebido.",
+        "2. Perguntar a objeção principal.",
+        "3. Propor retorno, nova visita ou proposta.",
+      ],
+      ctas: [
+        { id: "guidance-visit-case", label: "Consultar caso", kind: "primary", action: "send_suggested_message", nextMessage: "qual status desse caso?" },
+        { id: "guidance-visit-next", label: "Próximo passo", kind: "secondary", action: "send_suggested_message", nextMessage: "qual próximo passo desse caso?" },
+      ],
+    },
+    resume_negotiation: {
+      title: "Retomada de negociação",
+      text: [
+        "Para retomar negociação, o correto é ler fase, blocker, waitingOn e owner da ação antes de abrir formulário.",
+        "Leitura operacional preliminar: negociação parada costuma travar em preço, condição de pagamento ou silêncio de uma das partes.",
+        "Próximo passo seguro: identificar quem segura o avanço e conduzir uma única ação comercial objetiva.",
+      ].join("\n"),
+      suggestedNextAction: "Se quiser, eu preparo a retomada e aplico ao caso atual.",
+      lines: [
+        "Checar se o waitingOn está em lead, owner ou broker.",
+        "Explicitar a objeção principal.",
+        "Definir uma ação única de retomada.",
+      ],
+      ctas: [
+        { id: "guidance-negotiation-case", label: "Consultar caso", kind: "primary", action: "send_suggested_message", nextMessage: "qual status desse caso?" },
+        { id: "guidance-negotiation-blocker", label: "Ver bloqueios", kind: "secondary", action: "send_suggested_message", nextMessage: "mostrar bloqueios do caso" },
+      ],
+    },
+    proposal_readiness: {
+      title: "Leitura antes da proposta",
+      text: [
+        "Antes de montar proposta, vale validar contraparte, imóvel de referência, valor, condição de pagamento e risco comercial básico.",
+        "Leitura operacional preliminar: nessa fase o waitingOn costuma estar em lead, owner ou broker, dependendo de quem precisa confirmar condição.",
+        "Próximo passo seguro: confirmar as condições mínimas e só depois abrir a proposta formal.",
+      ].join("\n"),
+      suggestedNextAction: "Se quiser, eu abro a proposta depois de revisar as condições mínimas.",
+      lines: [
+        "Validar imóvel, contraparte e valor.",
+        "Checar condição de pagamento e sinais de objeção.",
+        "Envolver I_BC se a negociação já estiver sensível.",
+      ],
+      ctas: [
+        { id: "guidance-proposal-case", label: "Consultar caso", kind: "primary", action: "send_suggested_message", nextMessage: "qual status desse caso?" },
+        { id: "guidance-proposal-open", label: "Abrir proposta", kind: "secondary", action: "send_suggested_message", nextMessage: "gerar proposta para este caso" },
+      ],
+    },
+    sensitive_closing: {
+      title: "Fechamento sensível",
+      text: [
+        "Em fechamento sensível, o IMOB deve separar claramente pendência de dado, blocker documental e transição governada.",
+        "Leitura operacional preliminar: o waitingOn tende a migrar para legal ou finance, e pode haver necessidade de approval ou evidence conforme o risco.",
+        "Próximo passo seguro: confirmar o blocker real antes de liberar assinatura, repasse ou fechamento final.",
+      ].join("\n"),
+      suggestedNextAction: "Se quiser, eu verifico se o caso atual já pede approval, evidence ou handoff especializado.",
+      lines: [
+        "Confirmar blocker documental ou financeiro.",
+        "Separar pendência operacional de transição sensível.",
+        "Só avançar assinatura ou repasse com validação suficiente.",
+      ],
+      ctas: [
+        { id: "guidance-closing-case", label: "Consultar caso", kind: "primary", action: "send_suggested_message", nextMessage: "qual status desse caso?" },
+        { id: "guidance-closing-blockers", label: "Ver bloqueios", kind: "secondary", action: "send_suggested_message", nextMessage: "mostrar bloqueios do caso" },
+      ],
+    },
+  };
+
+  const guidance = guidanceByIntent[intent];
+  return {
+    mode: "consult",
+    action: "crm.operational_guidance",
+    threadLabel: "IMOB Ops",
+    conversationState,
+    presentation: {
+      text: guidance.text,
+      suggestedNextAction: guidance.suggestedNextAction,
+      card: {
+        title: guidance.title,
+        lines: guidance.lines,
+        ctas: guidance.ctas,
+      },
+    },
+  } satisfies ImobResolveTurnResponse;
+}
+
 function isResearchQuery(message: string) {
   const text = normalizeImobText(message);
   const hasInventoryIntent =
@@ -2110,6 +2437,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
   const wantsSendForSignature =
     (parsedCatalogIntent.action === "sendForSignature" && parsedCatalogIntent.entity === "contrato") ||
     /(?:enviar|mandar)\s+contrato\s+para\s+assinatura|envio\s+para\s+assinatura/.test(normalizedMessage);
+  const genericOperationalGuidanceIntent = resolveGenericOperationalGuidanceIntent(message);
   const semanticIntentSource = request.semanticIntentSource ?? "parser_fallback";
   if (!activeOperationalState && turnDecision.stage === "front_door_generic") {
     return {
@@ -2247,6 +2575,10 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
         suggestedNextAction: "Refinar tipo documental, cidade, operação ou etapa da jornada.",
       },
     };
+  }
+
+  if (genericOperationalGuidanceIntent) {
+    return buildGenericOperationalGuidanceResponse(genericOperationalGuidanceIntent, { ...nextThreadState, mode: "consult" });
   }
 
   const resolvedRegion = nextThreadState.slots.city ?? nextThreadState.slots.region ?? extractRegion(normalizeImobText(message)) ?? "Brasil";
