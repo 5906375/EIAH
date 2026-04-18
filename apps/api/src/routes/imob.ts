@@ -16,6 +16,10 @@ import { buildImobConversationSnapshot } from "../services/imob/imobCaseSnapshot
 import { buildImobBusinessExport } from "../services/imob/imobCaseExportService";
 import { lookupImobCep } from "../services/imob/imobCepLookup";
 import {
+  IMOB_CHAT_TELEMETRY_KEY,
+  recordImobResolveTurnSemanticTelemetry,
+} from "../services/imob/imobTelemetry";
+import {
   resolveImobCrmOperationalConsult as resolveImobCrmOperationalConsultLegacy,
   resolveImobCrmOperationalUpdate as resolveImobCrmOperationalUpdateLegacy,
 } from "../services/imob/crm/imobCrmResolver";
@@ -158,7 +162,7 @@ const IMOB_CHAT_AGENT_ID = "imob-chat";
 const IMOB_CHAT_AUDIT_AGENT_ID = "imob-chat-audit";
 const CHAT_KEY_CONVERSATION_CREATED = "conversation.created";
 const CHAT_KEY_MESSAGE = "conversation.message";
-const CHAT_KEY_TELEMETRY = "conversation.telemetry";
+const CHAT_KEY_TELEMETRY = IMOB_CHAT_TELEMETRY_KEY;
 const CHAT_KEY_CONTRACT_INTERVIEW_STATE = "conversation.contract_interview_state";
 const CHAT_KEY_CONTRACT_PREVIEW = "conversation.contract_preview";
 const RUN_EVENT_CHAT_AUDIT_STARTED = "conversation.audit.started";
@@ -1809,6 +1813,17 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
     },
   });
 
+  await recordImobResolveTurnSemanticTelemetry({
+    prisma,
+    tenantId: authContext.tenantId,
+    workspaceId: authContext.workspaceId,
+    agentId: IMOB_CHAT_AGENT_ID,
+    message,
+    resolved: asObject(data) ?? {},
+    caseId: requestedCaseId,
+    threadId: requestedThreadId,
+  });
+
   return res.json({
     ok: true,
     data,
@@ -3053,6 +3068,8 @@ imobRouter.get("/chat/telemetry/summary", async (req, res) => {
 
   const grouped = new Map<string, number[]>();
   const byJourney = new Map<string, { events: number; stages: Set<string>; actions: Set<string> }>();
+  const byReasonCode = new Map<string, number>();
+  const bySpecialist = new Map<string, number>();
   for (const row of scopedRows) {
     const metadata = asObject(row.metadata);
     const event = asString(metadata?.event) ?? "unknown";
@@ -3073,6 +3090,16 @@ imobRouter.get("/chat/telemetry/summary", async (req, res) => {
     if (stage !== "unknown") currentJourney.stages.add(stage);
     if (action !== "unknown") currentJourney.actions.add(action);
     byJourney.set(journeyType, currentJourney);
+
+    const reasonCode = asString(metadata?.reasonCode);
+    if (reasonCode) {
+      byReasonCode.set(reasonCode, (byReasonCode.get(reasonCode) ?? 0) + 1);
+    }
+
+    const specialistId = asString(metadata?.specialistId);
+    if (specialistId) {
+      bySpecialist.set(specialistId, (bySpecialist.get(specialistId) ?? 0) + 1);
+    }
   }
 
   const aggregates = Array.from(grouped.entries()).map(([event, values]) => {
@@ -3129,6 +3156,14 @@ imobRouter.get("/chat/telemetry/summary", async (req, res) => {
         events: value.events,
         stages: Array.from(value.stages),
         actions: Array.from(value.actions),
+      })),
+      byReasonCode: Array.from(byReasonCode.entries()).map(([reasonCode, events]) => ({
+        reasonCode,
+        events,
+      })),
+      bySpecialist: Array.from(bySpecialist.entries()).map(([specialistId, events]) => ({
+        specialistId,
+        events,
       })),
     },
   });

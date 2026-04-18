@@ -1,9 +1,12 @@
-export type ImobReasonCode =
-  | "COMMERCIAL_PRIORITY"
-  | "FOLLOW_UP_DISCIPLINE"
-  | "DOCUMENT_BLOCKER"
-  | "FINANCIAL_BLOCKER"
-  | "AUDIT_BLOCKER";
+export const IMOB_REASON_CODE_VALUES = [
+  "COMMERCIAL_PRIORITY",
+  "FOLLOW_UP_DISCIPLINE",
+  "DOCUMENT_BLOCKER",
+  "FINANCIAL_BLOCKER",
+  "AUDIT_BLOCKER",
+] as const;
+
+export type ImobReasonCode = (typeof IMOB_REASON_CODE_VALUES)[number];
 
 export type ImobReasonCodeSpec = {
   code: ImobReasonCode;

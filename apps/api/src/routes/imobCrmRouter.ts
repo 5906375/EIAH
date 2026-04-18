@@ -9,7 +9,7 @@ import { ImobCrmKpiService } from "../services/imob/crm/imobCrmKpiService";
 import { buildImobCrmCaseContextFromRecord } from "../services/imob/crm/imobCrmCaseContext";
 import { buildImobControlSurface } from "../services/imob/control/imobControlSurface";
 import {
-  buildImobApprovalContext,
+  buildImobApprovalContextResponse,
   buildImobBottleneckHeatmap,
   buildImobPriorityQueue,
   buildImobRescueIndex,
@@ -18,6 +18,10 @@ import {
 } from "../services/imob/control/imobControlSurfaceAggregates";
 import { IMOB_REASON_CODE_CATALOG } from "../services/imob/control/imobReasonCodeCatalog";
 import { resolveImobBackingSpecialists } from "../services/imob/imobSpecialistBridge";
+import {
+  recordImobApprovalActionCompletedTelemetry,
+  recordImobApprovalContextPresentedTelemetry,
+} from "../services/imob/imobTelemetry";
 import { canWorkspaceOperateImobStage } from "../services/workspaceResponsibility";
 
 type SafeParseSchema<TParsed = any> = {
@@ -101,6 +105,8 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
       specialists,
     });
   }
+
+  const telemetryAgentId = "imob-chat";
 
   router.post("/attachments/resolve", async (req, res) => {
     const { authContext, prisma } = req as TenantAwareRequest;
@@ -670,15 +676,26 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
       evidenceCountByCaseId.set(caseId, (evidenceCountByCaseId.get(caseId) ?? 0) + 1);
     }
 
+    const approvalContext = buildImobApprovalContextResponse({
+      items: surfaces,
+      evidenceCountByCaseId,
+      limit,
+    });
+
+    await recordImobApprovalContextPresentedTelemetry({
+      prisma,
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      agentId: telemetryAgentId,
+      items: approvalContext.items as Array<Record<string, unknown>>,
+      limit,
+    });
+
     return res.json({
       ok: true,
       data: {
         generatedAt: new Date().toISOString(),
-        items: buildImobApprovalContext({
-          items: surfaces,
-          evidenceCountByCaseId,
-          limit,
-        }),
+        ...approvalContext,
       },
     });
   });
@@ -841,6 +858,20 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
     if (updated.status === "owner_not_found") return res.status(404).json({ ok: false, error: { code: "OWNER_NOT_FOUND", message: "Owner not found for case" } });
     if (updated.status === "property_not_found") return res.status(404).json({ ok: false, error: { code: "PROPERTY_NOT_FOUND", message: "Property not found for case" } });
     if (updated.status === "lead_not_found") return res.status(404).json({ ok: false, error: { code: "LEAD_NOT_FOUND", message: "Lead not found for case" } });
+
+    await recordImobApprovalActionCompletedTelemetry({
+      prisma,
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      agentId: telemetryAgentId,
+      action: parsed.data.action,
+      caseId: record.id,
+      stage: record.stage,
+      reasonCode: parsed.data.reasonCode,
+      specialistId: matchingSpecialist.specialistId,
+      requiresApproval: reasonSpec.requiresApproval,
+      requiresEvidence: reasonSpec.requiresEvidence,
+    });
 
     return res.json({
       ok: true,

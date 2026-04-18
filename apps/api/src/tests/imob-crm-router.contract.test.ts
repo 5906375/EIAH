@@ -173,6 +173,23 @@ test("IMOB CRM router records approval actions with evidence trail", async () =>
     },
   });
 
+  const approvalContext = await request
+    .get("/api/imob/control/approval-context")
+    .set("Authorization", `Bearer ${apiToken}`);
+
+  assert.equal(approvalContext.status, 200);
+  assert.equal(approvalContext.body?.ok, true);
+
+  const contextTelemetry = await prismaGlobal.memoryEvent.findFirst({
+    where: {
+      tenantId,
+      workspaceId,
+      key: "conversation.telemetry",
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  assert.equal((contextTelemetry?.metadata as any)?.event, "imob_approval_context_presented");
+
   const missingEvidence = await request
     .post("/api/imob/control/approval-actions")
     .set("Authorization", `Bearer ${apiToken}`)
@@ -218,4 +235,21 @@ test("IMOB CRM router records approval actions with evidence trail", async () =>
   assert.equal(latestEvent?.actorType, "user");
   assert.equal(latestEvent?.actorRef, userId);
   assert.equal(latestEvent?.evidenceRef, "ledger://imob-proof-1");
+
+  const telemetryRows = await prismaGlobal.memoryEvent.findMany({
+    where: {
+      tenantId,
+      workspaceId,
+      key: "conversation.telemetry",
+    },
+    orderBy: { createdAt: "asc" },
+  });
+  assert.ok(
+    telemetryRows.some(
+      (row) =>
+        (row.metadata as any)?.event === "imob_approval_context_completed"
+        && (row.metadata as any)?.caseId === createdCase.id
+        && (row.metadata as any)?.reasonCode === "AUDIT_BLOCKER",
+    ),
+  );
 });

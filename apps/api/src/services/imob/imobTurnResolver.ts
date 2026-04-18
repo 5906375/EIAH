@@ -1702,6 +1702,10 @@ type GenericOperationalGuidanceIntent =
   | "capture_guidance"
   | "qualification_guidance"
   | "documents_by_phase"
+  | "document_preparation"
+  | "follow_up_preparation"
+  | "case_resume_preparation"
+  | "approval_preparation"
   | "specialist_handoff"
   | "when_involve_legal"
   | "when_involve_finance"
@@ -1716,6 +1720,15 @@ function resolveGenericOperationalGuidanceIntent(message: string): GenericOperat
   const asksWhen = text.includes("quando");
   const asksWhat = text.includes("quais") || text.includes("o que") || /\bqual\b/.test(text);
   const asksNeed = text.includes("preciso");
+  const asksPreparation =
+    text.includes("preparar") ||
+    text.includes("prepara ") ||
+    text.includes("organizar") ||
+    text.includes("organiza ") ||
+    text.includes("resumir") ||
+    text.includes("resumo") ||
+    text.includes("retomar") ||
+    text.includes("quero");
   const explicitExecution =
     text.includes("cadastrar") ||
     text.includes("validar documento") ||
@@ -1756,6 +1769,69 @@ function resolveGenericOperationalGuidanceIntent(message: string): GenericOperat
     )
   ) {
     return "documents_by_phase";
+  }
+
+  if (
+    (asksHow || asksWhat || asksNeed || asksPreparation)
+    && (
+      text.includes("checklist documental")
+      || text.includes("preparar documentacao")
+      || text.includes("prepara documentacao")
+      || text.includes("preparar a documentacao")
+      || text.includes("prepara a documentacao")
+      || text.includes("organizar documentos")
+      || text.includes("triar pendencias documentais")
+      || text.includes("triar pendências documentais")
+    )
+  ) {
+    return "document_preparation";
+  }
+
+  if (
+    (asksHow || asksWhat || asksNeed || asksPreparation)
+    && (
+      text.includes("preparar follow up")
+      || text.includes("prepara follow up")
+      || text.includes("preparar follow-up")
+      || text.includes("prepara follow-up")
+      || text.includes("organizar follow up")
+      || text.includes("organizar follow-up")
+      || text.includes("monta mensagem")
+      || text.includes("prepara mensagem")
+      || text.includes("o que mando")
+    )
+  ) {
+    return "follow_up_preparation";
+  }
+
+  if (
+    (asksHow || asksWhat || asksNeed || asksPreparation)
+    && (
+      text.includes("resumir caso")
+      || text.includes("resumo do caso")
+      || text.includes("retomar caso antigo")
+      || text.includes("retomar contexto")
+      || text.includes("retomar esse caso")
+      || text.includes("retomar este caso")
+    )
+  ) {
+    return "case_resume_preparation";
+  }
+
+  if (
+    (asksHow || asksWhat || asksNeed || asksPreparation)
+    && (
+      text.includes("preparar approval")
+      || text.includes("prepara approval")
+      || text.includes("preparar aprovacao")
+      || text.includes("prepara aprovacao")
+      || text.includes("preparar aprovação")
+      || text.includes("o que preciso para approval")
+      || text.includes("o que preciso para aprovacao")
+      || text.includes("o que preciso para aprovação")
+    )
+  ) {
+    return "approval_preparation";
   }
 
   if (
@@ -1876,6 +1952,78 @@ function buildGenericOperationalGuidanceResponse(intent: GenericOperationalGuida
       ctas: [
         { id: "guidance-docs-case", label: "Aplicar ao caso", kind: "primary", action: "send_suggested_message", nextMessage: "consultar caso" },
         { id: "guidance-docs-collect", label: "Coletar documentos", kind: "secondary", action: "send_suggested_message", nextMessage: "coletar documentos" },
+      ],
+    },
+    document_preparation: {
+      title: "Preparação documental",
+      text: [
+        "Posso organizar o trabalho documental sem abrir fluxo sensível agora.",
+        "Leitura operacional preliminar: primeiro separar checklist por fase, depois identificar blocker, waitingOn e owner da cobrança.",
+        "Próximo passo seguro: montar um pacote mínimo com documento crítico, responsável atual e pendência que libera a próxima validação.",
+      ].join("\n"),
+      suggestedNextAction: "Se quiser, eu transformo isso em checklist prático do caso ou preparo a cobrança documental.",
+      lines: [
+        "Separar documento crítico do documento complementar.",
+        "Explicitar waitingOn e owner da cobrança.",
+        "Cobrar primeiro o item que libera a próxima validação.",
+      ],
+      ctas: [
+        { id: "guidance-doc-prep-case", label: "Consultar caso", kind: "primary", action: "send_suggested_message", nextMessage: "qual status desse caso?" },
+        { id: "guidance-doc-prep-blocker", label: "Ver bloqueios", kind: "secondary", action: "send_suggested_message", nextMessage: "mostrar bloqueios do caso" },
+      ],
+    },
+    follow_up_preparation: {
+      title: "Preparação de follow-up",
+      text: [
+        "Posso preparar o follow-up antes de abrir qualquer execução.",
+        "Leitura operacional preliminar: follow-up útil precisa resumir contexto, explicitar blocker ou objetivo e pedir um único próximo movimento.",
+        "Próximo passo seguro: dizer o que mudou desde o último contato, a objeção principal e a ação esperada do lead, owner ou broker.",
+      ].join("\n"),
+      suggestedNextAction: "Se quiser, eu monto a mensagem de follow-up e depois aplico ao caso atual.",
+      lines: [
+        "Resumo curto do contexto atual.",
+        "Objeção ou blocker principal.",
+        "Pedido de uma ação única no próximo contato.",
+      ],
+      ctas: [
+        { id: "guidance-followup-case", label: "Consultar caso", kind: "primary", action: "send_suggested_message", nextMessage: "qual status desse caso?" },
+        { id: "guidance-followup-next", label: "Próximo passo", kind: "secondary", action: "send_suggested_message", nextMessage: "qual próximo passo desse caso?" },
+      ],
+    },
+    case_resume_preparation: {
+      title: "Resumo estruturado do caso",
+      text: [
+        "Posso resumir o caso como leitura operacional antes de qualquer execução.",
+        "Leitura mínima útil: fase, blocker, waitingOn, owner da ação e próximo passo seguro.",
+        "Próximo passo seguro: usar esse resumo para retomar contexto rápido, handoff ou priorização da carteira.",
+      ].join("\n"),
+      suggestedNextAction: "Se quiser, eu monto esse resumo no caso atual e preparo a retomada.",
+      lines: [
+        "Fase atual e objetivo da etapa.",
+        "Blocker e waitingOn atuais.",
+        "Owner da ação e próximo movimento seguro.",
+      ],
+      ctas: [
+        { id: "guidance-resume-case", label: "Consultar caso", kind: "primary", action: "send_suggested_message", nextMessage: "qual status desse caso?" },
+        { id: "guidance-resume-priority", label: "Melhor ação", kind: "secondary", action: "send_suggested_message", nextMessage: "o que faço agora nesse caso?" },
+      ],
+    },
+    approval_preparation: {
+      title: "Preparação de approval",
+      text: [
+        "Posso preparar o approval sem executar a decisão agora.",
+        "Leitura operacional preliminar: approval forte precisa de blocker claro, reasonCode, specialist contextual e evidência mínima quando a policy exigir.",
+        "Próximo passo seguro: separar pendência operacional simples de transição sensível antes de pedir aprovação humana.",
+      ].join("\n"),
+      suggestedNextAction: "Se quiser, eu verifico se o caso atual já está pronto para approval ou ainda falta evidência.",
+      lines: [
+        "Confirmar reasonCode e risco real da transição.",
+        "Explicitar specialist contextual e ownership do caso.",
+        "Validar se approval e evidence são exigidos pela policy.",
+      ],
+      ctas: [
+        { id: "guidance-approval-case", label: "Consultar caso", kind: "primary", action: "send_suggested_message", nextMessage: "qual status desse caso?" },
+        { id: "guidance-approval-blockers", label: "Ver bloqueios", kind: "secondary", action: "send_suggested_message", nextMessage: "mostrar bloqueios do caso" },
       ],
     },
     specialist_handoff: {

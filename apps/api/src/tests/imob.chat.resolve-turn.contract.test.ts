@@ -35,6 +35,11 @@ before(async () => {
 });
 
 after(async () => {
+  await prismaGlobal.$executeRaw`
+    DELETE FROM memory_events
+    WHERE tenant_id = ${tenantId}
+      AND workspace_id = ${workspaceId}
+  `;
   await prismaGlobal.imobCaseEvent.deleteMany({ where: { tenantId } });
   await prismaGlobal.imobCase.deleteMany({ where: { tenantId } });
   await prismaGlobal.imobProperty.deleteMany({ where: { tenantId } });
@@ -58,6 +63,80 @@ test("IMOB resolve-turn returns consult mode over HTTP", async () => {
   assert.equal(response.body?.data?.mode, "consult");
   assert.equal(response.body?.data?.action, "realestate.search_inventory");
   assert.equal(response.body?.data?.threadLabel, "Busca de imóveis");
+});
+
+test("IMOB resolve-turn records semantic telemetry for operational guidance", async () => {
+  const beforeCount = await prismaGlobal.memoryEvent.count({
+    where: { tenantId, workspaceId, key: "conversation.telemetry" },
+  });
+
+  const response = await request
+    .post("/api/imob/chat/resolve-turn")
+    .set("Authorization", `Bearer ${apiToken}`)
+    .send({ message: "quais documentos normalmente faltam nessa fase?" });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body?.ok, true);
+  assert.equal(response.body?.data?.mode, "consult");
+
+  const telemetryRows = await prismaGlobal.memoryEvent.findMany({
+    where: { tenantId, workspaceId, key: "conversation.telemetry" },
+    orderBy: { createdAt: "asc" },
+  });
+  assert.ok(telemetryRows.length > beforeCount);
+  assert.ok(
+    telemetryRows.some(
+      (row) =>
+        (row.metadata as any)?.event === "imob_guidance_resolved"
+        && (row.metadata as any)?.action === response.body?.data?.action,
+    ),
+  );
+});
+
+test("IMOB resolve-turn records consultive read and specialist telemetry for case guidance", async () => {
+  const createdCase = await prismaGlobal.imobCase.create({
+    data: {
+      tenantId,
+      workspaceId,
+      flow: "contract.prepare",
+      stage: "documentacao",
+      status: "running",
+      blockers: ["receipt pendente para fechamento"],
+      pendingItems: ["bundle"],
+      metadata: {},
+    },
+  });
+
+  const response = await request
+    .post("/api/imob/chat/resolve-turn")
+    .set("Authorization", `Bearer ${apiToken}`)
+    .send({
+      caseId: createdCase.id,
+      message: "qual status desse caso?",
+    });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body?.ok, true);
+  assert.equal(response.body?.data?.mode, "consult");
+
+  const telemetryRows = await prismaGlobal.memoryEvent.findMany({
+    where: { tenantId, workspaceId, key: "conversation.telemetry" },
+    orderBy: { createdAt: "asc" },
+  });
+  assert.ok(
+    telemetryRows.some(
+      (row) =>
+        (row.metadata as any)?.event === "imob_consultive_case_read"
+        && (row.metadata as any)?.caseId === createdCase.id,
+    ),
+  );
+  assert.ok(
+    telemetryRows.some(
+      (row) =>
+        (row.metadata as any)?.event === "imob_specialist_suggested"
+        && (row.metadata as any)?.caseId === createdCase.id,
+    ),
+  );
 });
 
 test("IMOB search inventory returns backend presentation over HTTP", async () => {
