@@ -192,6 +192,9 @@ test("IMOB copiloto prepara follow-up sem abrir execução nova", () => {
   assert.equal(result.mode, "consult");
   assert.equal(result.action, "crm.operational_guidance");
   assert.match(result.presentation.text, /follow-up útil|mensagem de follow-up|ação única/i);
+  assert.equal(result.presentation.preparedFollowUp?.recipientRole, "lead");
+  assert.equal(result.presentation.preparedFollowUp?.variants?.length, 2);
+  assert.match(result.presentation.preparedFollowUp?.variants?.[0]?.text ?? "", /retomando este atendimento|próximo passo/i);
   assert.ok(!result.presentation.form);
 });
 
@@ -268,6 +271,9 @@ test("IMOB copiloto responde leitura de lead captado sem cair em intake", async 
   assert.match(resolved?.presentation?.text ?? "", /Lead Merlo/i);
   assert.match(resolved?.presentation?.text ?? "", /Fase:/i);
   assert.match(resolved?.presentation?.text ?? "", /Owner da ação:/i);
+  assert.match(resolved?.presentation?.caseBrief?.summary ?? "", /principal risco agora/i);
+  assert.match(resolved?.presentation?.caseBrief?.phaseObjective ?? "", /qualificar|confirmar/i);
+  assert.equal(resolved?.presentation?.preparedFollowUp?.variants?.length, 2);
 });
 
 test("IMOB copiloto responde blocker real com leitura operacional", async () => {

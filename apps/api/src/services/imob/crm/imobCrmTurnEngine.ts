@@ -60,10 +60,15 @@ function hasActivePendingOperationalFlow(threadState: ThreadStateLike | null | u
 }
 
 function hasStrongBusinessReadIntent(message: string) {
-  return matchImobConversationalIntents(message).some((intent) =>
+  if (matchImobConversationalIntents(message).some((intent) =>
     intent.intentId === "pipeline_status"
     || intent.intentId === "blocked_run_resolution"
     || intent.intentId === "next_best_action"
+  )) return true;
+  const normalized = message.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  return (
+    (normalized.includes("resuma esse caso") || normalized.includes("resumir esse caso") || normalized.includes("resumo do caso"))
+    && (normalized.includes("caso") || normalized.includes("atendimento"))
   );
 }
 

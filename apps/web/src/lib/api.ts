@@ -2011,6 +2011,57 @@ export type ImobConsultiveSpecialistSupport = {
   ownershipBoundary?: string | null;
 };
 
+export type ImobCaseBrief = {
+  summary: string;
+  phaseObjective?: string | null;
+  primaryRisk?: string | null;
+  waitingOn?: "lead" | "owner" | "broker" | "legal" | "finance" | "internal" | null;
+  nextActionOwner?: string | null;
+  nextSafeStep?: string | null;
+  specialistAgentId?: string | null;
+};
+
+export type ImobPreparedMessageVariant = {
+  id: string;
+  label: string;
+  tone: "direct" | "consultive";
+  text: string;
+};
+
+export type ImobPreparedFollowUp = {
+  objective: string;
+  recipientRole: "lead" | "owner" | "broker" | "legal" | "finance" | "internal";
+  trigger: string;
+  expectedReply?: string | null;
+  escalationHint?: string | null;
+  variants: ImobPreparedMessageVariant[];
+};
+
+export type ImobActionableChecklistItem = {
+  id: string;
+  title: string;
+  criticality: "critical" | "supporting";
+  owner: string;
+  unlocks: string;
+  urgency: "low" | "medium" | "high" | "critical";
+};
+
+export type ImobActionableChecklist = {
+  title: string;
+  items: ImobActionableChecklistItem[];
+};
+
+export type ImobHandoffPack = {
+  targetArea: string;
+  reason: string;
+  summary: string;
+  blocker?: string | null;
+  needsValidation: string[];
+  remainsWithBroker: string[];
+  urgency?: "low" | "medium" | "high" | "critical" | null;
+  ownershipBoundary?: string | null;
+};
+
 export type ImobConsultiveResponseMinimum = {
   phase?: string | null;
   blocker?: string | null;
@@ -2350,6 +2401,10 @@ export type ImobOperationalPresentation = {
   owner?: ImobOperationalOwner;
   nextStep?: string;
   blocker?: string | null;
+  caseBrief?: ImobCaseBrief;
+  preparedFollowUp?: ImobPreparedFollowUp;
+  actionableChecklist?: ImobActionableChecklist;
+  handoffPack?: ImobHandoffPack;
   pendingFieldLabels?: string[];
   dedupeKey?: string;
 };

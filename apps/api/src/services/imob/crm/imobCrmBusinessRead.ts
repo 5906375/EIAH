@@ -70,6 +70,19 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     }
   }
 
+  function normalizePreparedRecipientRole(
+    waitingOn: ImobCrmCaseContext["humanWorkflow"] extends infer T
+      ? T extends { waitingOn?: infer W }
+        ? W
+        : never
+      : never,
+  ) {
+    if (waitingOn === "lead" || waitingOn === "owner" || waitingOn === "broker" || waitingOn === "legal" || waitingOn === "finance" || waitingOn === "internal") {
+      return waitingOn;
+    }
+    return "broker";
+  }
+
   function buildCaseContextFromRecord(item: any): ImobCrmCaseContext {
     return buildImobCrmCaseContextFromRecord(item, helpers.buildImobCanonicalCase);
   }
@@ -223,6 +236,133 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     };
   }
 
+  function buildCaseBrief(params: {
+    subject: string;
+    humanPhaseLabel: string | null;
+    phaseObjective: string | null;
+    primaryBlocker: string | null;
+    primaryPending: string | null;
+    waitingOn: ImobCrmCaseContext["humanWorkflow"] extends infer T
+      ? T extends { waitingOn?: infer W }
+        ? W
+        : never
+      : never;
+    nextActionOwner: string | null;
+    nextStep: string;
+    primarySpecialistAgentId: string | null;
+  }) {
+    const primaryRisk = params.primaryBlocker ?? params.primaryPending ?? "nenhum risco crítico registrado";
+    const phasePrefix = params.humanPhaseLabel ? `na fase de ${params.humanPhaseLabel.toLowerCase()}` : "no momento atual";
+    return {
+      summary: `${params.subject} está ${phasePrefix}. O principal risco agora é ${primaryRisk}, e o próximo movimento seguro é ${params.nextStep}.`,
+      phaseObjective: params.phaseObjective,
+      primaryRisk,
+      waitingOn: params.waitingOn ?? null,
+      nextActionOwner: params.nextActionOwner ?? null,
+      nextSafeStep: params.nextStep,
+      specialistAgentId: params.primarySpecialistAgentId,
+    };
+  }
+
+  function buildPreparedFollowUp(params: {
+    subject: string;
+    humanPhaseLabel: string | null;
+    waitingOn: ImobCrmCaseContext["humanWorkflow"] extends infer T
+      ? T extends { waitingOn?: infer W }
+        ? W
+        : never
+      : never;
+    primaryBlocker: string | null;
+    primaryPending: string | null;
+    nextStep: string;
+  }) {
+    const recipientRole = normalizePreparedRecipientRole(params.waitingOn);
+    const subjectLabel = params.subject || "este caso";
+    const phaseLabel = params.humanPhaseLabel ? `na fase de ${params.humanPhaseLabel.toLowerCase()}` : "neste caso";
+    const trigger = params.primaryBlocker ?? params.primaryPending ?? "preciso de uma confirmação para avançar";
+    const directText = `Olá. Estou retomando ${subjectLabel} ${phaseLabel}. O ponto que ainda trava é ${trigger}. Para avançar, preciso ${params.nextStep}. Consegue me responder ainda hoje?`;
+    const consultiveText = `Oi. Voltei a olhar ${subjectLabel} para não deixar o atendimento esfriar. Hoje estamos aguardando ${formatWaitingOnLabel(params.waitingOn) ?? recipientRole}. O ponto principal é ${trigger}. Se você confirmar ${params.nextStep}, eu sigo sem te fazer repetir o processo.`;
+
+    return {
+      objective: "Retomar o caso com uma única ação clara e destravar o próximo movimento.",
+      recipientRole,
+      trigger,
+      expectedReply: params.nextStep,
+      escalationHint: "Se não houver retorno, reclassificar waitingOn e decidir se o caso pede specialist ou nova cadência de follow-up.",
+      variants: [
+        {
+          id: "follow-up-direct",
+          label: "Mensagem curta",
+          tone: "direct" as const,
+          text: directText,
+        },
+        {
+          id: "follow-up-consultive",
+          label: "Mensagem consultiva",
+          tone: "consultive" as const,
+          text: consultiveText,
+        },
+      ],
+    };
+  }
+
+  function buildActionableChecklist(params: {
+    pendingItems: string[];
+    primaryBlocker: string | null;
+    waitingOnLabel: string | null;
+    nextStep: string;
+    urgency: "low" | "medium" | "high" | "critical" | null | undefined;
+  }) {
+    const owner = params.waitingOnLabel ?? "corretor";
+    const urgency = params.urgency ?? "medium";
+    return {
+      title: "Checklist acionável do caso",
+      items: [
+        params.primaryBlocker
+          ? {
+              id: "blocker",
+              title: params.primaryBlocker,
+              criticality: "critical" as const,
+              owner,
+              unlocks: params.nextStep,
+              urgency,
+            }
+          : null,
+        ...params.pendingItems.slice(0, 2).map((item, index) => ({
+          id: `pending-${index}`,
+          title: item,
+          criticality: (index === 0 ? "critical" : "supporting") as const,
+          owner,
+          unlocks: params.nextStep,
+          urgency: index === 0 ? urgency : "medium" as const,
+        })),
+      ].filter(Boolean),
+    };
+  }
+
+  function buildHandoffPack(params: {
+    specialist: ReturnType<typeof buildSpecialistSupportLine> | null;
+    caseBrief: ReturnType<typeof buildCaseBrief>;
+    primaryBlocker: string | null;
+    pendingItems: string[];
+    urgency: "low" | "medium" | "high" | "critical" | null | undefined;
+  }) {
+    if (!params.specialist) return undefined;
+    return {
+      targetArea: params.specialist.consultive.agentId,
+      reason: params.specialist.consultive.why ?? "apoio contextual por blocker ou risco do caso",
+      summary: params.caseBrief.summary,
+      blocker: params.primaryBlocker ?? null,
+      needsValidation: [params.primaryBlocker, ...params.pendingItems.slice(0, 2)].filter(Boolean) as string[],
+      remainsWithBroker: [
+        "Manter o ownership do caso no IMOB_CRM.",
+        "Atualizar a contraparte assim que o specialist devolver a leitura.",
+      ],
+      urgency: params.urgency ?? "medium",
+      ownershipBoundary: params.specialist.consultive.ownershipBoundary ?? null,
+    };
+  }
+
   function getImobBusinessRecommendedAction(caseContext: ImobCrmCaseContext) {
     const actions = Array.isArray(caseContext?.canonical?.recommendedActions)
       ? caseContext.canonical.recommendedActions
@@ -364,6 +504,39 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     const nextActionOwner = helpers.asString(caseContext?.humanWorkflow?.nextActionOwner) ?? helpers.asString(caseContext?.ownerResponsible);
     const specialists = (helpers.resolveImobBackingSpecialists(caseContext) as any[] | null | undefined) ?? [];
     const primarySpecialist = specialists[0] ? buildSpecialistSupportLine(specialists[0]) : null;
+    const caseBrief = buildCaseBrief({
+      subject,
+      humanPhaseLabel,
+      phaseObjective: helpers.asString(caseContext?.humanJourney?.phaseObjective),
+      primaryBlocker,
+      primaryPending,
+      waitingOn: caseContext?.humanWorkflow?.waitingOn,
+      nextActionOwner,
+      nextStep,
+      primarySpecialistAgentId: primarySpecialist?.consultive.agentId ?? null,
+    });
+    const preparedFollowUp = buildPreparedFollowUp({
+      subject,
+      humanPhaseLabel,
+      waitingOn: caseContext?.humanWorkflow?.waitingOn,
+      primaryBlocker,
+      primaryPending,
+      nextStep,
+    });
+    const actionableChecklist = buildActionableChecklist({
+      pendingItems,
+      primaryBlocker,
+      waitingOnLabel: waitingOn,
+      nextStep,
+      urgency: caseContext?.humanWorkflow?.urgency,
+    });
+    const handoffPack = buildHandoffPack({
+      specialist: primarySpecialist,
+      caseBrief,
+      primaryBlocker,
+      pendingItems,
+      urgency: caseContext?.humanWorkflow?.urgency,
+    });
     const statusLine = `${subject}. Momento comercial: ${stageLabel}. Jornada: ${journeyLabel}.`;
     const baseLines = [selectionNote ? "Usei o cadastro mais recente do IMOB para esta leitura." : null, statusLine].filter(Boolean) as string[];
     const textByIntent: Record<BusinessReadIntent, string[]> = {
@@ -429,6 +602,10 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
         nextSafeStep: nextStep,
         specialists: specialists.slice(0, 2).map((item) => buildSpecialistSupportLine(item).consultive),
       },
+      caseBrief,
+      preparedFollowUp,
+      actionableChecklist,
+      handoffPack,
       pendingFieldLabels: pendingItems,
       suggestedNextAction: nextStep,
       widget: buildImobCaseExperienceWidget(caseContext),

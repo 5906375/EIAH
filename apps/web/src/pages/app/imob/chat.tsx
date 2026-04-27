@@ -215,6 +215,92 @@ function mapApiPresentationBlocks(
   }));
 }
 
+function buildStructuredPresentationBlocks(
+  presentation: ImobResolveTurnResponse["presentation"],
+): ImobPresentationBlock[] {
+  const blocks: ImobPresentationBlock[] = [];
+
+  if (presentation.caseBrief) {
+    blocks.push({
+      kind: "summary",
+      title: "Resumo do caso",
+      lines: [
+        presentation.caseBrief.summary,
+        presentation.caseBrief.phaseObjective ? `Objetivo da fase: ${presentation.caseBrief.phaseObjective}` : null,
+        presentation.caseBrief.primaryRisk ? `Risco principal: ${presentation.caseBrief.primaryRisk}` : null,
+        presentation.caseBrief.waitingOn ? `WaitingOn: ${presentation.caseBrief.waitingOn}` : null,
+        presentation.caseBrief.nextActionOwner ? `Owner da ação: ${presentation.caseBrief.nextActionOwner}` : null,
+        presentation.caseBrief.nextSafeStep ? `Próximo passo seguro: ${presentation.caseBrief.nextSafeStep}` : null,
+      ].filter((line): line is string => Boolean(line && line.trim())),
+    });
+  }
+
+  if (presentation.preparedFollowUp) {
+    blocks.push({
+      kind: "details",
+      title: "Follow-up preparado",
+      text: presentation.preparedFollowUp.objective,
+      lines: [
+        `Destinatário: ${presentation.preparedFollowUp.recipientRole}`,
+        `Gatilho: ${presentation.preparedFollowUp.trigger}`,
+        presentation.preparedFollowUp.expectedReply ? `Resposta esperada: ${presentation.preparedFollowUp.expectedReply}` : null,
+        presentation.preparedFollowUp.escalationHint ? `Escalada: ${presentation.preparedFollowUp.escalationHint}` : null,
+      ].filter((line): line is string => Boolean(line && line.trim())),
+      ctas: presentation.preparedFollowUp.variants.map((variant) => ({
+        id: `prepared-follow-up-${variant.id}`,
+        label: variant.label,
+        kind: variant.tone === "direct" ? "primary" : "neutral",
+        action: "send_suggested_message",
+        nextMessage: variant.text,
+      })),
+      actionsLayout: "inline",
+    });
+  }
+
+  if (presentation.actionableChecklist?.items?.length) {
+    blocks.push({
+      kind: "details",
+      title: presentation.actionableChecklist.title,
+      lines: presentation.actionableChecklist.items.map((item) =>
+        `${item.title} · owner ${item.owner} · destrava ${item.unlocks} · urgência ${item.urgency}`,
+      ),
+    });
+  }
+
+  if (presentation.handoffPack) {
+    blocks.push({
+      kind: "details",
+      title: "Pacote de handoff",
+      lines: [
+        `Destino: ${presentation.handoffPack.targetArea}`,
+        `Motivo: ${presentation.handoffPack.reason}`,
+        presentation.handoffPack.summary,
+        presentation.handoffPack.blocker ? `Blocker: ${presentation.handoffPack.blocker}` : null,
+        presentation.handoffPack.urgency ? `Urgência: ${presentation.handoffPack.urgency}` : null,
+        presentation.handoffPack.ownershipBoundary ? `Boundary: ${presentation.handoffPack.ownershipBoundary}` : null,
+        presentation.handoffPack.needsValidation.length
+          ? `Validar: ${presentation.handoffPack.needsValidation.join(", ")}`
+          : null,
+        presentation.handoffPack.remainsWithBroker.length
+          ? `Permanece com corretor: ${presentation.handoffPack.remainsWithBroker.join(" | ")}`
+          : null,
+      ].filter((line): line is string => Boolean(line && line.trim())),
+    });
+  }
+
+  return blocks;
+}
+
+function buildPresentationBlocks(
+  presentation: ImobResolveTurnResponse["presentation"],
+): ImobPresentationBlock[] | undefined {
+  const blocks = [
+    ...(mapApiPresentationBlocks(presentation.blocks) ?? []),
+    ...buildStructuredPresentationBlocks(presentation),
+  ];
+  return blocks.length ? blocks : undefined;
+}
+
 function mapPresentationWidget(
   widget: ImobPresentationWidget | undefined,
 ): ImobPresentationWidget | undefined {
@@ -2926,7 +3012,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         role: "assistant",
         text: turn.presentation.text,
         presentationMetadata: turn.presentation.metadata,
-        blocks: mapApiPresentationBlocks(turn.presentation.blocks),
+        blocks: buildPresentationBlocks(turn.presentation),
         widget: mapPresentationWidget(turn.presentation.widget),
         form: mapApiPresentationForm(turn.presentation.form),
         thread: { ...baseThread, status: "blocked" },
@@ -2954,7 +3040,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         role: "assistant",
         text: turn.presentation.text,
         presentationMetadata: turn.presentation.metadata,
-        blocks: mapApiPresentationBlocks(turn.presentation.blocks),
+        blocks: buildPresentationBlocks(turn.presentation),
         widget: mapPresentationWidget(turn.presentation.widget),
         form: mapApiPresentationForm(turn.presentation.form),
         thread: baseThread,
@@ -3306,7 +3392,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
           id: makeId("assistant"),
           role: "assistant",
           text: attachmentResolution.data.presentation.text,
-          blocks: mapApiPresentationBlocks(attachmentResolution.data.presentation.blocks),
+          blocks: buildPresentationBlocks(attachmentResolution.data.presentation),
           widget: mapPresentationWidget(attachmentResolution.data.presentation.widget),
           thread: { id: uploadThread.id, label: uploadThread.label, status: attachmentResolution.data.resolved ? "done" : "active" },
           card: mapReplyCard(attachmentResolution.data.presentation.card, {
@@ -3439,7 +3525,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
           role: "assistant",
           text: response.data.presentation.text,
           presentationMetadata: response.data.presentation.metadata,
-          blocks: mapApiPresentationBlocks(response.data.presentation.blocks),
+          blocks: buildPresentationBlocks(response.data.presentation),
           widget: mapPresentationWidget(response.data.presentation.widget),
           form: mapApiPresentationForm(response.data.presentation.form),
           thread,
@@ -4323,7 +4409,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                           {message.blocks?.length ? (
                             <div className="mt-3 space-y-2">
                               {message.blocks
-                                .filter((block) => block.kind !== "confirmation" && block.kind !== "summary" && block.kind !== "details")
+                                .filter((block) => block.kind !== "confirmation")
                                 .map((block, blockIndex) => (
                                   <div key={`${message.id}-block-${block.kind}-${blockIndex}`} className="space-y-1.5">
                                     {block.title && block.title.trim().toLowerCase() !== message.text.trim().toLowerCase() ? (
