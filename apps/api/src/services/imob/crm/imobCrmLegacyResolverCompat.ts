@@ -2,6 +2,7 @@ import type { PrismaClient } from "@repo/db";
 import { matchImobConversationalIntents } from "../imobIntentCatalog";
 import { resolveImobBackingSpecialists } from "../imobSpecialistBridge";
 import type {
+  ImobPreparedFollowUp,
   ImobCrmCanonicalCase,
   ImobCrmCaseContext,
   ImobCrmConversationState,
@@ -361,7 +362,15 @@ function resolveBusinessReadIntent(message: string): BusinessReadIntent | null {
     intent.intentId === "blocked_run_resolution" ||
     intent.intentId === "next_best_action"
   );
-  return (match?.intentId as BusinessReadIntent | undefined) ?? null;
+  if (match?.intentId) return match.intentId as BusinessReadIntent;
+  const normalized = normalizeImobCrmText(message);
+  if (
+    (normalized.includes("resuma esse caso") || normalized.includes("resumir esse caso") || normalized.includes("resumo do caso"))
+    && (normalized.includes("caso") || normalized.includes("atendimento"))
+  ) {
+    return "pipeline_status";
+  }
+  return null;
 }
 
 function getBusinessPendingItems(caseContext: ImobCrmCaseContext): string[] {
@@ -831,6 +840,27 @@ function resolveDomainGuidanceIntent(message: string): DomainGuidanceIntent | nu
 }
 
 function buildDomainGuidanceResponse(intent: DomainGuidanceIntent, threadState: ImobCrmConversationState | null | undefined) {
+  function buildGenericPreparedFollowUp(params: {
+    objective: string;
+    trigger: string;
+    recipientRole: "lead" | "owner" | "broker" | "legal" | "finance" | "internal";
+    directText: string;
+    consultiveText: string;
+    expectedReply: string;
+  }): ImobPreparedFollowUp {
+    return {
+      objective: params.objective,
+      recipientRole: params.recipientRole,
+      trigger: params.trigger,
+      expectedReply: params.expectedReply,
+      escalationHint: "Se não houver retorno, reclassifique blocker, waitingOn e decida a próxima cadência de contato.",
+      variants: [
+        { id: "follow-up-direct", label: "Mensagem curta", tone: "direct", text: params.directText },
+        { id: "follow-up-consultive", label: "Mensagem consultiva", tone: "consultive", text: params.consultiveText },
+      ],
+    };
+  }
+
   const responses: Record<DomainGuidanceIntent, any> = {
     capture_guidance: {
       text: [
@@ -887,6 +917,14 @@ function buildDomainGuidanceResponse(intent: DomainGuidanceIntent, threadState: 
         "Próximo passo seguro: montar um pacote mínimo com documento crítico, responsável atual e pendência que libera a próxima validação.",
       ].join("\n"),
       nextStep: "Se quiser, eu aplico essa preparação ao caso específico e organizo a cobrança documental.",
+      actionableChecklist: {
+        title: "Checklist acionável documental",
+        items: [
+          { id: "doc-critical", title: "Cobrar o documento que libera a próxima validação", criticality: "critical", owner: "proprietário", unlocks: "destravar a revisão documental", urgency: "high" },
+          { id: "doc-owner", title: "Explicitar waitingOn e owner da cobrança", criticality: "supporting", owner: "corretor", unlocks: "evitar repasse manual difuso", urgency: "medium" },
+          { id: "doc-review", title: "Separar o que precisa de revisão do J_360", criticality: "supporting", owner: "jurídico/documentação", unlocks: "encaminhar o handoff certo", urgency: "medium" },
+        ],
+      },
       card: {
         title: "Preparação documental",
         lines: [
@@ -903,6 +941,14 @@ function buildDomainGuidanceResponse(intent: DomainGuidanceIntent, threadState: 
         "Próximo passo seguro: dizer o que mudou desde o último contato, a objeção principal e a ação esperada da outra parte.",
       ].join("\n"),
       nextStep: "Se quiser, eu monto a mensagem de follow-up e depois aplico ao caso atual.",
+      preparedFollowUp: buildGenericPreparedFollowUp({
+        objective: "Retomar o caso sem reabrir intake e pedir uma única resposta objetiva.",
+        trigger: "O caso precisa de uma confirmação para avançar.",
+        recipientRole: "lead",
+        directText: "Olá. Estou retomando este atendimento porque preciso confirmar o próximo passo com você. Hoje o ponto principal é alinhar a objeção atual e decidir um único movimento para avançarmos. Consegue me responder ainda hoje?",
+        consultiveText: "Oi. Voltei a olhar este caso para não deixarmos o atendimento esfriar. Quero confirmar a objeção principal e entender qual é o melhor próximo movimento agora. Se você me responder com o que está te travando hoje, eu organizo a próxima ação sem te fazer repetir todo o contexto.",
+        expectedReply: "Confirmar a objeção principal e autorizar um único próximo movimento.",
+      }),
       card: {
         title: "Preparação de follow-up",
         lines: [
@@ -915,7 +961,7 @@ function buildDomainGuidanceResponse(intent: DomainGuidanceIntent, threadState: 
     case_resume_preparation: {
       text: [
         "Posso resumir o caso como leitura operacional antes de qualquer execução.",
-        "Leitura mínima útil: fase, blocker, waitingOn, owner da ação e próximo passo seguro.",
+        "Leitura mínima útil: fase, objetivo da fase, blocker, waitingOn, owner da ação e próximo passo seguro.",
         "Próximo passo seguro: usar esse resumo para retomar contexto rápido, handoff ou priorização da carteira.",
       ].join("\n"),
       nextStep: "Se quiser, eu monto esse resumo no caso atual e preparo a retomada.",
@@ -952,6 +998,23 @@ function buildDomainGuidanceResponse(intent: DomainGuidanceIntent, threadState: 
         "Próximo passo seguro: identificar blocker, waitingOn e risco antes de acionar o specialist.",
       ].join("\n"),
       nextStep: "Se quiser, eu aplico essa leitura ao caso atual e digo qual specialist entra por motivo real.",
+      handoffPack: {
+        targetArea: "Jurídico/Financeiro/Specialist contextual",
+        reason: "O caso já tem blocker ou risco suficiente para justificar apoio contextual.",
+        summary: "O chat deve preparar o handoff com blocker, motivo da escalada e ownership preservado no IMOB_CRM.",
+        blocker: "validar o tipo de blocker antes de passar o caso",
+        needsValidation: [
+          "Motivo real do handoff",
+          "Qual documento ou condição precisa de validação",
+          "O que continua com o corretor",
+        ],
+        remainsWithBroker: [
+          "Manter o ownership do caso no IMOB_CRM.",
+          "Atualizar o cliente e coordenar o próximo passo após o retorno da área.",
+        ],
+        urgency: "medium",
+        ownershipBoundary: "Specialist apoia o caso e não assume ownership.",
+      },
       card: {
         title: "Handoff de specialists",
         lines: [

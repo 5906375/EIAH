@@ -1892,11 +1892,54 @@ function resolveGenericOperationalGuidanceIntent(message: string): GenericOperat
 }
 
 function buildGenericOperationalGuidanceResponse(intent: GenericOperationalGuidanceIntent, conversationState: ImobResolveTurnResponse["conversationState"]) {
+  function buildGenericPreparedFollowUp(params: {
+    objective: string;
+    trigger: string;
+    recipientRole: "lead" | "owner" | "broker" | "legal" | "finance" | "internal";
+    directText: string;
+    consultiveText: string;
+    expectedReply: string;
+  }) {
+    return {
+      objective: params.objective,
+      recipientRole: params.recipientRole,
+      trigger: params.trigger,
+      expectedReply: params.expectedReply,
+      escalationHint: "Se a outra parte não responder, o próximo passo é reclassificar blocker, waitingOn e decidir nova cadência de contato.",
+      variants: [
+        { id: "follow-up-direct", label: "Mensagem curta", tone: "direct" as const, text: params.directText },
+        { id: "follow-up-consultive", label: "Mensagem consultiva", tone: "consultive" as const, text: params.consultiveText },
+      ],
+    };
+  }
+
   const guidanceByIntent: Record<GenericOperationalGuidanceIntent, {
     title: string;
     lines: string[];
     text: string;
     suggestedNextAction: string;
+    preparedFollowUp?: ReturnType<typeof buildGenericPreparedFollowUp>;
+    actionableChecklist?: {
+      title: string;
+      items: Array<{
+        id: string;
+        title: string;
+        criticality: "critical" | "supporting";
+        owner: string;
+        unlocks: string;
+        urgency: "low" | "medium" | "high" | "critical";
+      }>;
+    };
+    handoffPack?: {
+      targetArea: string;
+      reason: string;
+      summary: string;
+      blocker?: string | null;
+      needsValidation: string[];
+      remainsWithBroker: string[];
+      urgency?: "low" | "medium" | "high" | "critical" | null;
+      ownershipBoundary?: string | null;
+    };
     ctas?: Array<{ id: string; label: string; kind: "primary" | "secondary" | "neutral"; action: "send_suggested_message"; nextMessage: string }>;
   }> = {
     capture_guidance: {
@@ -1962,6 +2005,14 @@ function buildGenericOperationalGuidanceResponse(intent: GenericOperationalGuida
         "Próximo passo seguro: montar um pacote mínimo com documento crítico, responsável atual e pendência que libera a próxima validação.",
       ].join("\n"),
       suggestedNextAction: "Se quiser, eu transformo isso em checklist prático do caso ou preparo a cobrança documental.",
+      actionableChecklist: {
+        title: "Checklist acionável documental",
+        items: [
+          { id: "doc-critical", title: "Cobrar o documento que libera a próxima validação", criticality: "critical", owner: "proprietário", unlocks: "destravar a revisão documental", urgency: "high" },
+          { id: "doc-owner", title: "Explicitar waitingOn e owner da cobrança", criticality: "supporting", owner: "corretor", unlocks: "evitar repasse manual difuso", urgency: "medium" },
+          { id: "doc-review", title: "Separar o que precisa de revisão do J_360", criticality: "supporting", owner: "jurídico/documentação", unlocks: "encaminhar o handoff certo", urgency: "medium" },
+        ],
+      },
       lines: [
         "Separar documento crítico do documento complementar.",
         "Explicitar waitingOn e owner da cobrança.",
@@ -1980,6 +2031,14 @@ function buildGenericOperationalGuidanceResponse(intent: GenericOperationalGuida
         "Próximo passo seguro: dizer o que mudou desde o último contato, a objeção principal e a ação esperada do lead, owner ou broker.",
       ].join("\n"),
       suggestedNextAction: "Se quiser, eu monto a mensagem de follow-up e depois aplico ao caso atual.",
+      preparedFollowUp: buildGenericPreparedFollowUp({
+        objective: "Retomar o contato sem reabrir o caso do zero e puxar uma única resposta objetiva.",
+        trigger: "O caso precisa de uma confirmação para voltar a andar.",
+        recipientRole: "lead",
+        directText: "Olá. Estou retomando este atendimento porque preciso confirmar o próximo passo com você. Hoje o ponto principal é alinhar a objeção atual e decidir um único movimento para avançarmos. Consegue me responder ainda hoje?",
+        consultiveText: "Oi. Voltei a olhar este caso para não deixarmos o atendimento esfriar. Quero confirmar a objeção principal e entender qual é o melhor próximo movimento agora. Se você me responder com o que está te travando hoje, eu organizo a próxima ação sem te fazer repetir todo o contexto.",
+        expectedReply: "Confirmar a objeção principal e autorizar um único próximo movimento.",
+      }),
       lines: [
         "Resumo curto do contexto atual.",
         "Objeção ou blocker principal.",
@@ -1994,7 +2053,7 @@ function buildGenericOperationalGuidanceResponse(intent: GenericOperationalGuida
       title: "Resumo estruturado do caso",
       text: [
         "Posso resumir o caso como leitura operacional antes de qualquer execução.",
-        "Leitura mínima útil: fase, blocker, waitingOn, owner da ação e próximo passo seguro.",
+        "Leitura mínima útil: fase, objetivo da fase, blocker, waitingOn, owner da ação e próximo passo seguro.",
         "Próximo passo seguro: usar esse resumo para retomar contexto rápido, handoff ou priorização da carteira.",
       ].join("\n"),
       suggestedNextAction: "Se quiser, eu monto esse resumo no caso atual e preparo a retomada.",
@@ -2035,6 +2094,23 @@ function buildGenericOperationalGuidanceResponse(intent: GenericOperationalGuida
         "Próximo passo seguro: identificar primeiro blocker, waitingOn e risco antes de acionar o specialist.",
       ].join("\n"),
       suggestedNextAction: "Se quiser, eu aplico essa leitura ao caso atual e digo qual specialist entra por motivo real.",
+      handoffPack: {
+        targetArea: "Jurídico/Financeiro/Specialist contextual",
+        reason: "O caso já tem blocker ou risco suficiente para justificar apoio contextual.",
+        summary: "O chat deve preparar o handoff com blocker, motivo da escalada e ownership preservado no IMOB_CRM.",
+        blocker: "validar o tipo de blocker antes de passar o caso",
+        needsValidation: [
+          "Motivo real do handoff",
+          "Qual documento ou condição precisa de validação",
+          "O que continua com o corretor",
+        ],
+        remainsWithBroker: [
+          "Manter o ownership do caso no IMOB_CRM.",
+          "Atualizar o cliente e coordenar o próximo passo após o retorno da área.",
+        ],
+        urgency: "medium",
+        ownershipBoundary: "Specialist apoia o caso e não assume ownership.",
+      },
       lines: [
         "IMOB_CRM mantém ownership do caso.",
         "Specialist entra por blocker, risco ou reasonCode.",
@@ -2164,6 +2240,9 @@ function buildGenericOperationalGuidanceResponse(intent: GenericOperationalGuida
     presentation: {
       text: guidance.text,
       suggestedNextAction: guidance.suggestedNextAction,
+      ...(guidance.preparedFollowUp ? { preparedFollowUp: guidance.preparedFollowUp } : {}),
+      ...(guidance.actionableChecklist ? { actionableChecklist: guidance.actionableChecklist } : {}),
+      ...(guidance.handoffPack ? { handoffPack: guidance.handoffPack } : {}),
       card: {
         title: guidance.title,
         lines: guidance.lines,

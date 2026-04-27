@@ -246,6 +246,10 @@ test("IMOB_CRM business read returns commercial language from the latest case", 
   assert.match(resolved?.presentation?.consultiveRead?.nextSafeStep ?? "", /qualificar o interesse do lead/i);
   assert.equal(resolved?.presentation?.consultiveRead?.specialists?.[0]?.agentId, "I_BC");
   assert.match(resolved?.presentation?.consultiveRead?.specialists?.[0]?.ownershipBoundary ?? "", /não assume ownership do caso/i);
+  assert.match(resolved?.presentation?.caseBrief?.summary ?? "", /principal risco agora/i);
+  assert.equal(resolved?.presentation?.caseBrief?.nextActionOwner, "Corretor");
+  assert.equal(resolved?.presentation?.preparedFollowUp?.recipientRole, "internal");
+  assert.equal(resolved?.presentation?.preparedFollowUp?.variants?.length, 2);
 });
 
 test("IMOB_CRM domain guidance answers generic documentary question without caseId", async () => {
@@ -317,6 +321,9 @@ test("IMOB_CRM domain guidance prepares follow-up without caseId", async () => {
   assert.equal(resolved?.action, "crm.domain_guidance");
   assert.match(resolved?.presentation?.text ?? "", /follow-up útil|ação única|próximo contato/i);
   assert.match(resolved?.presentation?.card?.title ?? "", /follow-up/i);
+  assert.equal(resolved?.presentation?.preparedFollowUp?.recipientRole, "lead");
+  assert.equal(resolved?.presentation?.preparedFollowUp?.variants?.length, 2);
+  assert.match(resolved?.presentation?.preparedFollowUp?.variants?.[1]?.text ?? "", /não deixarmos o atendimento esfriar|objeção principal/i);
 });
 
 test("IMOB_CRM domain guidance prepares structured case resume without caseId", async () => {
