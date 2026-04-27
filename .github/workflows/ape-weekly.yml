@@ -86,8 +86,8 @@ jobs:
         uses: peter-evans/create-pull-request@v7
         with:
           branch: bot/ape-weekly-evidence-${{ github.run_id }}
-          commit-message: docs(ops): renew weekly APE evidence window
-          title: docs(ops): renew weekly APE evidence window
+          commit-message: "docs(ops): renew weekly APE evidence window"
+          title: "docs(ops): renew weekly APE evidence window"
           body: |
             Renovação automática da janela semanal de evidência APE.
 
