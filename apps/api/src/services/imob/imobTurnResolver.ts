@@ -9,6 +9,7 @@ import {
 } from "./imobIntentCatalog";
 import {
   createEmptyImobSlots,
+  type ImobPresentationMetadata,
   type ImobExecutionRequest,
   type ImobIntent,
   type ImobKnowledgeSourceFilter,
@@ -17,6 +18,7 @@ import {
   type ImobResolveTurnRequest,
   type ImobResolveTurnResponse,
 } from "./imobConversationContract";
+import { buildImobAgentRuntimeMetadata } from "./imobAgentContract";
 import {
   createNextImobOperationalState,
   createNextImobThreadState,
@@ -666,6 +668,23 @@ function buildCatalogConfidenceMetadata(
       lowConfidence,
     },
     ...(options?.choiceStyle ? { choiceStyle: options.choiceStyle } : {}),
+  };
+}
+
+function withImobAgentPresentationMetadata(
+  response: ImobResolveTurnResponse,
+): ImobResolveTurnResponse {
+  return {
+    ...response,
+    presentation: response.presentation
+      ? {
+          ...response.presentation,
+          metadata: {
+            ...(response.presentation.metadata ?? {} as ImobPresentationMetadata),
+            agentRuntime: buildImobAgentRuntimeMetadata(),
+          },
+        }
+      : response.presentation,
   };
 }
 
@@ -2634,6 +2653,7 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
 }
 
 export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTurnResponse {
+  const finalize = (response: ImobResolveTurnResponse) => withImobAgentPresentationMetadata(response);
   const message = request.message.trim();
   const normalizedMessage = normalizeImobText(message);
   const parsedCatalogIntent = request.semanticIntent ?? parseImobIntent(message);
@@ -2667,7 +2687,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
   const genericOperationalGuidanceIntent = resolveGenericOperationalGuidanceIntent(message);
   const semanticIntentSource = request.semanticIntentSource ?? "parser_fallback";
   if (!activeOperationalState && turnDecision.stage === "front_door_generic") {
-    return {
+    return finalize({
       mode: "consult",
       action: "crm.capture.flow_guidance",
       threadLabel: getIntentThreadLabel("capture"),
@@ -2690,11 +2710,11 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
           ctas: buildCaptureEntryChoices(),
         },
       },
-    };
+    });
   }
   if (activeOperationalState?.status === "collecting" && turnDecision.stage === "front_door_generic") {
     const guidanceChoices = buildCaptureFlowGuidanceChoices(activeOperationalState.flow);
-    return {
+    return finalize({
       mode: "consult",
       action: "crm.capture.flow_guidance",
       threadLabel: getIntentThreadLabel(mapOperationalFlowToIntent(activeOperationalState.flow)),
@@ -2720,7 +2740,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
           ctas: guidanceChoices,
         },
       },
-    };
+    });
   }
   const shouldPreferActiveAttachmentFlow =
     activeOperationalState?.status === "collecting" &&
@@ -2728,7 +2748,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
 
   if (shouldPreferActiveAttachmentFlow && activeOperationalState) {
     const presentationMeta = buildOperationalPresentationMeta(activeOperationalState);
-    return {
+    return finalize({
       mode: "consult",
       action: "realestate.collect_documents",
       threadLabel: getIntentThreadLabel(mapOperationalFlowToIntent(activeOperationalState.flow)),
@@ -2763,7 +2783,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
           ],
         },
       },
-    };
+    });
   }
 
   if (isKnowledgeSearchQuery(message) && !(intent === "documents" && isDocumentCollectionRequest(message))) {
@@ -2771,7 +2791,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
     const segment = nextThreadState.slots.goal ?? extractSegment(message);
     const sourceTypes = extractKnowledgeSourceTypes(message);
     if (!hasImobKnowledgeAccess(request)) {
-      return {
+      return finalize({
         mode: "blocked",
         action: "realestate.search_knowledge_base",
         threadLabel: "Busca de imóveis",
@@ -2780,10 +2800,10 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
           text: "O IMOB não está habilitado para este tenant/workspace. Ative a vertical antes de usar a busca documental.",
           suggestedNextAction: "Ativar o IMOB no workspace ou falar com comercial.",
         },
-      };
+      });
     }
     const sources = buildImobSearchSources(message, region, segment);
-    return {
+    return finalize({
       mode: "search_knowledge",
       action: "realestate.search_knowledge_base",
       threadLabel: "Busca de imóveis",
@@ -2801,11 +2821,11 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
         },
         suggestedNextAction: "Refinar tipo documental, cidade, operação ou etapa da jornada.",
       },
-    };
+    });
   }
 
   if (genericOperationalGuidanceIntent) {
-    return buildGenericOperationalGuidanceResponse(genericOperationalGuidanceIntent, { ...nextThreadState, mode: "consult" });
+    return finalize(buildGenericOperationalGuidanceResponse(genericOperationalGuidanceIntent, { ...nextThreadState, mode: "consult" }));
   }
 
   const resolvedRegion = nextThreadState.slots.city ?? nextThreadState.slots.region ?? extractRegion(normalizeImobText(message)) ?? "Brasil";
@@ -2836,11 +2856,11 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
       presentation: { text: "", suggestedNextAction: "Coletar cidade, faixa de valor ou quantidade de quartos." },
     };
     response.presentation.text = buildConsultPresentationText(response);
-    return response;
+    return finalize(response);
   }
 
   if (isCaptureEntryOptionsRequest(message)) {
-    return {
+    return finalize({
       mode: "consult",
       action: "crm.capture.entry_options",
       threadLabel: getIntentThreadLabel("capture"),
@@ -2862,13 +2882,13 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
           ctas: buildCaptureEntryChoices(),
         },
       },
-    };
+    });
   }
 
 
   if (isGenericLeadRequest(parsedCatalogIntent, normalizedMessage)) {
     const leadChoices = buildLeadCreationChoices();
-    return {
+    return finalize({
       mode: "consult",
       action: "crm.lead.clarify_target",
       threadLabel: getIntentThreadLabel(intent),
@@ -2889,7 +2909,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
           })),
         },
       },
-    };
+    });
   }
 
   if (
@@ -2901,7 +2921,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
     const actionChoices = parsedCatalogIntent.action === "create" ? buildCadastroCreationChoices() : listImobIntentChoicesForAction(parsedCatalogIntent.action);
     if (actionChoices.length > 0) {
       const actionLabel = parsedCatalogIntent.matchedActionAlias ?? parsedCatalogIntent.action;
-      return {
+      return finalize({
         mode: "consult",
         action: parsedCatalogIntent.action === "create" ? "crm.capture.clarify_target" : "crm.catalog.clarify_entity",
         threadLabel: getIntentThreadLabel(intent),
@@ -2935,12 +2955,12 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
             })),
           },
         },
-      };
+      });
     }
   }
 
   if (wantsContractHistory || (parsedCatalogIntent.action === "history" && parsedCatalogIntent.entity === "contrato")) {
-    return {
+    return finalize({
       mode: "consult",
       action: "crm.catalog.history",
       threadLabel: getIntentThreadLabel(intent),
@@ -2950,12 +2970,12 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
         form: buildContractHistoryForm(),
         metadata: buildCatalogConfidenceMetadata(parsedCatalogIntent, false, { source: semanticIntentSource }),
       },
-    };
+    });
   }
 
   if (wantsDocumentValidation) {
     const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, intent, message, nextThreadState.slots);
-    return {
+    return finalize({
       mode: "execute",
       action: "realestate.collect_documents",
       threadLabel: getIntentThreadLabel(intent),
@@ -2967,12 +2987,12 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
         form: buildDocumentValidationForm(operationalState?.documentDraft),
         metadata: buildCatalogConfidenceMetadata(parsedCatalogIntent, false, { source: semanticIntentSource }),
       },
-    };
+    });
   }
 
   if (intent === "documents" && isDocumentationStageRequest) {
     const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, intent, message, nextThreadState.slots);
-    return {
+    return finalize({
       mode: "consult",
       action: "realestate.collect_documents",
       threadLabel: getIntentThreadLabel(intent),
@@ -2988,24 +3008,24 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
           ctas: buildDocumentEntryChoices(),
         },
       },
-    };
+    });
   }
 
   if (parsedCatalogIntent.action && parsedCatalogIntent.entity && parsedCatalogIntent.action !== "create" && !["listing", "documents", "proposal", "visit", "lead", "contract", "deal", "rules", "commission"].includes(intent)) {
     if (shouldClarifyCatalogIntent(parsedCatalogIntent)) {
       const clarification = buildCatalogActionClarification(parsedCatalogIntent, semanticIntentSource);
       if (clarification) {
-        return {
+        return finalize({
           ...clarification,
           threadLabel: getIntentThreadLabel(intent),
           conversationState: { ...nextThreadState, mode: "consult" },
-        };
+        });
       }
     }
 
     const canonicalLabel = resolveCanonicalLabel(message);
     if (canonicalLabel) {
-      return {
+      return finalize({
         mode: "consult",
         action: `crm.catalog.${parsedCatalogIntent.action}`,
         threadLabel: getIntentThreadLabel(intent),
@@ -3018,13 +3038,13 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
           ),
           metadata: buildCatalogConfidenceMetadata(parsedCatalogIntent, false, { source: semanticIntentSource }),
         },
-      };
+      });
     }
   }
   if (intent === "documents" && isDocumentUploadOnlyRequest(message)) {
     const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, intent, message, nextThreadState.slots);
     const presentationMeta = buildOperationalPresentationMeta(operationalState);
-    return {
+    return finalize({
       mode: "consult",
       action: "realestate.collect_documents",
       threadLabel: getIntentThreadLabel(intent),
@@ -3053,11 +3073,11 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
           ],
         },
       },
-    };
+    });
   }
 
   if (intent === "match" && (isResearchQuery(message) || shouldStayInSearchThread || hasMeaningfulSearchFilters(nextThreadState.slots))) {
-    return {
+    return finalize({
       mode: "search",
       action: "realestate.search_inventory",
       threadLabel: "Busca de imóveis",
@@ -3074,7 +3094,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
         text: `Pesquisar opções de imóveis em ${resolvedRegion} para ${resolvedSegment}.`,
         suggestedNextAction: "Refinar região, faixa de preço e tipologia.",
       },
-    };
+    });
   }
 
   const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, intent, message, nextThreadState.slots);
@@ -3090,7 +3110,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
     operationalState.rulesDraft?.propertyFinality &&
     operationalState.rulesDraft.propertyFinality !== "aluguel_por_temporada"
   ) {
-    return {
+    return finalize({
       mode: "blocked",
       action: "realestate.configure_property_rules",
       threadLabel: getIntentThreadLabel(intent),
@@ -3104,7 +3124,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
           reasonCode: "rules_configure_requires_seasonal_rental",
         } as any,
       },
-    };
+    });
   }
 
   const executionRequest = buildOperationalExecution(intent, message, new Date().toISOString(), operationalState);
@@ -3246,32 +3266,32 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
   };
 
   if (presentation.form && shouldReturnConsultWithForm({ message, operationalState })) {
-    return {
+    return finalize({
       mode: "consult",
       action: executionRequest.action,
       threadLabel: getIntentThreadLabel(intent),
       conversationState: { slots: createEmptyImobSlots(), mode: "consult", pendingSlot: "none", resultOffset: 0, operational: operationalState },
       presentation,
-    };
+    });
   }
 
   if (presentation.form) {
-    return {
+    return finalize({
       mode: "execute",
       action: executionRequest.action,
       threadLabel: getIntentThreadLabel(intent),
       conversationState: { slots: createEmptyImobSlots(), mode: "execute", pendingSlot: "none", resultOffset: 0, operational: operationalState },
       executionRequest,
       presentation,
-    };
+    });
   }
 
-  return {
+  return finalize({
     mode: "execute",
     action: executionRequest.action,
     threadLabel: getIntentThreadLabel(intent),
     conversationState: { slots: createEmptyImobSlots(), mode: "execute", pendingSlot: "none", resultOffset: 0, operational: operationalState },
     executionRequest,
     presentation,
-  };
+  });
 }

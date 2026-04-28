@@ -2385,9 +2385,81 @@ export type ImobPresentationConfidence = {
 
 export type ImobPresentationChoiceStyle = "inline";
 
+export type ImobAgentRuntimeMetadata = {
+  contractId: "imob.case_concierge.v1";
+  contractVersion: 1;
+  visibleAgentId: "IMOB";
+  visibleName: "IMOB";
+  role: "vertical_case_concierge";
+  sourceOfTruth: "imob_orchestrator_contract";
+  surfaces: {
+    primary: "chat";
+    management: "dashboard";
+    activation: "marketplace";
+  };
+  ownershipModel: {
+    visibleAgentKeepsCaseOwnership: true;
+    backingSpecialistsVisibleByDefault: false;
+  };
+  backingSpecialists: string[];
+  initialIntents: string[];
+  capabilities: {
+    total: number;
+    runtimeExtensions: Array<{
+      capabilityId: string;
+      category: "runtime_extension" | "external_integration" | "worker_orchestration";
+      ownerAgent: string;
+      visibleAgentId: "IMOB";
+      status: "proposed" | "mapped" | "partial" | "ready_for_shadow" | "shadow" | "pilot" | "active";
+      executionMode: "manual" | "assisted" | "shadow" | "pilot" | "automated";
+      riskTier: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+      rolloutStage: "backlog" | "design" | "shadow" | "pilot" | "small" | "broad";
+      requiresConsent: boolean;
+      requiresHumanApproval: boolean;
+      requiresEvidence: boolean;
+      policyRequired: boolean;
+      initialImplementation: string;
+      dependsOn: readonly string[];
+    }>;
+    externalIntegrations: Array<{
+      capabilityId: string;
+      category: "runtime_extension" | "external_integration" | "worker_orchestration";
+      ownerAgent: string;
+      visibleAgentId: "IMOB";
+      status: "proposed" | "mapped" | "partial" | "ready_for_shadow" | "shadow" | "pilot" | "active";
+      executionMode: "manual" | "assisted" | "shadow" | "pilot" | "automated";
+      riskTier: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+      rolloutStage: "backlog" | "design" | "shadow" | "pilot" | "small" | "broad";
+      requiresConsent: boolean;
+      requiresHumanApproval: boolean;
+      requiresEvidence: boolean;
+      policyRequired: boolean;
+      initialImplementation: string;
+      dependsOn: readonly string[];
+    }>;
+    workerOrchestration: Array<{
+      capabilityId: string;
+      category: "runtime_extension" | "external_integration" | "worker_orchestration";
+      ownerAgent: string;
+      visibleAgentId: "IMOB";
+      status: "proposed" | "mapped" | "partial" | "ready_for_shadow" | "shadow" | "pilot" | "active";
+      executionMode: "manual" | "assisted" | "shadow" | "pilot" | "automated";
+      riskTier: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+      rolloutStage: "backlog" | "design" | "shadow" | "pilot" | "small" | "broad";
+      requiresConsent: boolean;
+      requiresHumanApproval: boolean;
+      requiresEvidence: boolean;
+      policyRequired: boolean;
+      initialImplementation: string;
+      dependsOn: readonly string[];
+    }>;
+  };
+};
+
 export type ImobPresentationMetadata = {
   confidence?: ImobPresentationConfidence;
   choiceStyle?: ImobPresentationChoiceStyle;
+  agentRuntime?: ImobAgentRuntimeMetadata;
 };
 
 export type ImobOperationalPresentation = {
