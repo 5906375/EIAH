@@ -1750,6 +1750,22 @@ export type ImobLeadDraftState = {
   desiredGoal: ImobPropertyGoal | null;
   desiredCity: string | null;
   budgetMax: number | null;
+  discoverySignals?: {
+    urgency: "low" | "medium" | "high" | null;
+    painPoint: string | null;
+    motivation: string | null;
+    budgetFlexibility: "strict" | "moderate" | "flexible" | null;
+    decisionMaker: "solo" | "shared" | "third_party" | null;
+    timeline: string | null;
+    pendingSignals: Array<
+      "urgency" |
+      "painPoint" |
+      "motivation" |
+      "budgetFlexibility" |
+      "decisionMaker" |
+      "timeline"
+    >;
+  } | null;
 };
 
 export type ImobPropertyDraftState = {

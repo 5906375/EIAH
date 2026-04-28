@@ -589,6 +589,54 @@ test("IMOB turn resolver builds explicit lead.qualify operational state", () => 
   assert.match(result.presentation.text, /Ainda preciso de|cadastro do lead/i);
 });
 
+test("IMOB turn resolver captures conservative discovery signals during lead qualification", () => {
+  const result = resolveImobTurn({
+    message: "quero cadastrar lead Maria para locacao em Itapema ate 3500 telefone 47999998888 preciso mudar este mês porque quero home office posso esticar um pouco o orçamento e vou decidir com minha esposa",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.conversationState.operational?.flow, "lead.qualify");
+  assert.equal(result.conversationState.operational?.leadDraft?.discoverySignals?.urgency, "high");
+  assert.equal(result.conversationState.operational?.leadDraft?.discoverySignals?.painPoint, "precisa de espaço para home office");
+  assert.equal(result.conversationState.operational?.leadDraft?.discoverySignals?.budgetFlexibility, "moderate");
+  assert.equal(result.conversationState.operational?.leadDraft?.discoverySignals?.decisionMaker, "shared");
+  assert.match(result.conversationState.operational?.leadDraft?.discoverySignals?.timeline ?? "", /este mês/i);
+  assert.match(result.presentation.caseBrief?.summary ?? "", /home office|urgência alta/i);
+  assert.equal(result.executionRequest?.input?.discoverySignals?.decisionMaker, "shared");
+});
+
+test("IMOB turn resolver keeps active lead qualification when message only adds discovery context", () => {
+  const result = resolveImobTurn({
+    message: "preciso mudar este mês e vou decidir com minha esposa",
+    threadState: {
+      mode: "execute",
+      pendingSlot: "none",
+      resultOffset: 0,
+      slots: {},
+      operational: {
+        flow: "lead.qualify",
+        status: "collecting",
+        pendingFields: ["leadPhone"],
+        leadDraft: {
+          leadPersona: "lead",
+          leadName: "Maria",
+          leadEmail: null,
+          leadPhone: null,
+          desiredGoal: "locacao",
+          desiredCity: "Itapema",
+          budgetMax: 3500,
+        },
+      },
+    },
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.conversationState.operational?.flow, "lead.qualify");
+  assert.equal(result.conversationState.operational?.leadDraft?.discoverySignals?.urgency, "high");
+  assert.equal(result.conversationState.operational?.leadDraft?.discoverySignals?.decisionMaker, "shared");
+  assert.ok(result.conversationState.operational?.pendingFields.includes("leadPhone"));
+});
+
 
 test("IMOB turn resolver builds explicit proposal.create operational state", () => {
   const result = resolveImobTurn({

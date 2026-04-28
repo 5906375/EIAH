@@ -1,5 +1,9 @@
 import {
   createEmptyImobSlots,
+  type ImobLeadBudgetFlexibility,
+  type ImobLeadDecisionMaker,
+  type ImobLeadDiscoverySignalKey,
+  type ImobLeadDiscoverySignals,
   type ImobIntent,
   type ImobLeadDraft,
   type ImobOwnerPersona,
@@ -434,7 +438,203 @@ function buildLeadDraft(previous: ImobLeadDraft | undefined, message: string, sl
     desiredGoal: slots.goal ?? previous?.desiredGoal ?? null,
     desiredCity: slots.city ?? previous?.desiredCity ?? null,
     budgetMax: slots.budgetMax ?? previous?.budgetMax ?? null,
+    discoverySignals: buildLeadDiscoverySignals(previous?.discoverySignals, message),
   };
+}
+
+function extractLeadDiscoveryUrgency(message: string): ImobLeadDiscoverySignals["urgency"] {
+  const normalized = normalizeImobText(message);
+  if (
+    normalized.includes("urgente")
+    || normalized.includes("quanto antes")
+    || normalized.includes("imediat")
+    || normalized.includes("essa semana")
+    || normalized.includes("esta semana")
+    || normalized.includes("este mes")
+    || normalized.includes("esse mes")
+    || normalized.includes("preciso mudar ja")
+    || normalized.includes("preciso mudar logo")
+  ) {
+    return "high";
+  }
+  if (
+    normalized.includes("nas proximas semanas")
+    || normalized.includes("proximas semanas")
+    || normalized.includes("proximo mes")
+    || normalized.includes("mês que vem")
+    || normalized.includes("mes que vem")
+    || /ate\s+[a-z]+\b/.test(normalized)
+  ) {
+    return "medium";
+  }
+  if (
+    normalized.includes("sem pressa")
+    || normalized.includes("sem urgencia")
+    || normalized.includes("sem urgência")
+    || normalized.includes("quando der")
+    || normalized.includes("sem correr")
+  ) {
+    return "low";
+  }
+  return null;
+}
+
+function extractLeadPainPoint(message: string) {
+  const normalized = normalizeImobText(message);
+  if (normalized.includes("home office") || normalized.includes("trabalhar de casa")) {
+    return "precisa de espaço para home office";
+  }
+  if (normalized.includes("escola")) {
+    return "quer proximidade de escola";
+  }
+  if (normalized.includes("mais espaco") || normalized.includes("mais espaço")) {
+    return "precisa de mais espaço";
+  }
+  if (normalized.includes("seguranca") || normalized.includes("segurança")) {
+    return "busca mais segurança";
+  }
+  if (normalized.includes("perto do trabalho") || normalized.includes("proximo do trabalho") || normalized.includes("próximo do trabalho")) {
+    return "quer ficar perto do trabalho";
+  }
+  if (normalized.includes("sem elevador")) {
+    return "precisa evitar imóvel sem elevador";
+  }
+  return null;
+}
+
+function extractLeadMotivation(message: string) {
+  const normalized = normalizeImobText(message);
+  if (normalized.includes("mudar com a familia") || normalized.includes("mudar com a família") || normalized.includes("familia crescendo") || normalized.includes("família crescendo")) {
+    return "mudança por necessidade familiar";
+  }
+  if (normalized.includes("casando") || normalized.includes("casamento")) {
+    return "mudança por casamento";
+  }
+  if (normalized.includes("transferencia") || normalized.includes("transferência") || normalized.includes("novo trabalho") || normalized.includes("mudanca de trabalho") || normalized.includes("mudança de trabalho")) {
+    return "mudança por trabalho";
+  }
+  if (normalized.includes("invest")) {
+    return "busca imóvel para investimento";
+  }
+  if (normalized.includes("sair do aluguel")) {
+    return "quer sair do aluguel";
+  }
+  return null;
+}
+
+function extractLeadBudgetFlexibility(message: string): ImobLeadBudgetFlexibility | null {
+  const normalized = normalizeImobText(message);
+  if (
+    normalized.includes("nao posso passar")
+    || normalized.includes("não posso passar")
+    || normalized.includes("limite fechado")
+    || normalized.includes("orcamento apertado")
+    || normalized.includes("orçamento apertado")
+    || normalized.includes("teto maximo")
+    || normalized.includes("teto máximo")
+  ) {
+    return "strict";
+  }
+  if (
+    normalized.includes("posso esticar um pouco")
+    || normalized.includes("consigo subir um pouco")
+    || normalized.includes("tenho alguma flexibilidade")
+  ) {
+    return "moderate";
+  }
+  if (
+    normalized.includes("orcamento flexivel")
+    || normalized.includes("orçamento flexível")
+    || normalized.includes("orçamento flexivel")
+    || normalized.includes("posso aumentar")
+    || normalized.includes("tenho flexibilidade")
+  ) {
+    return "flexible";
+  }
+  return null;
+}
+
+function extractLeadDecisionMaker(message: string): ImobLeadDecisionMaker | null {
+  const normalized = normalizeImobText(message);
+  if (
+    normalized.includes("eu decido")
+    || normalized.includes("decido sozinho")
+    || normalized.includes("sou o decisor")
+  ) {
+    return "solo";
+  }
+  if (
+    normalized.includes("minha esposa")
+    || normalized.includes("meu marido")
+    || normalized.includes("com minha esposa")
+    || normalized.includes("com meu marido")
+    || normalized.includes("com a familia")
+    || normalized.includes("com a família")
+    || normalized.includes("juntos")
+  ) {
+    return "shared";
+  }
+  if (
+    normalized.includes("meu socio")
+    || normalized.includes("meu sócio")
+    || normalized.includes("diretoria")
+    || normalized.includes("investidor")
+    || normalized.includes("meu pai")
+    || normalized.includes("minha mae")
+    || normalized.includes("minha mãe")
+  ) {
+    return "third_party";
+  }
+  return null;
+}
+
+function extractLeadTimeline(message: string) {
+  const normalized = normalizeImobText(message);
+  if (normalized.includes("este mes") || normalized.includes("esse mes")) return "resolver ainda este mês";
+  if (normalized.includes("essa semana") || normalized.includes("esta semana")) return "resolver ainda esta semana";
+  if (normalized.includes("nas proximas semanas") || normalized.includes("próximas semanas")) return "resolver nas próximas semanas";
+  if (normalized.includes("sem pressa")) return "sem prazo imediato";
+  const untilMatch = normalized.match(/\bate\s+([a-z]+(?:\s+de\s+\d{4})?)\b/);
+  if (untilMatch?.[1]) return `resolver até ${untilMatch[1]}`;
+  return null;
+}
+
+export function hasLeadDiscoveryContent(message: string) {
+  const signals = buildLeadDiscoverySignals(null, message);
+  return Boolean(
+    signals.urgency
+    || signals.painPoint
+    || signals.motivation
+    || signals.budgetFlexibility
+    || signals.decisionMaker
+    || signals.timeline
+  );
+}
+
+function buildLeadDiscoverySignals(
+  previous: ImobLeadDiscoverySignals | undefined | null,
+  message: string,
+): ImobLeadDiscoverySignals {
+  const next = {
+    urgency: extractLeadDiscoveryUrgency(message) ?? previous?.urgency ?? null,
+    painPoint: extractLeadPainPoint(message) ?? previous?.painPoint ?? null,
+    motivation: extractLeadMotivation(message) ?? previous?.motivation ?? null,
+    budgetFlexibility: extractLeadBudgetFlexibility(message) ?? previous?.budgetFlexibility ?? null,
+    decisionMaker: extractLeadDecisionMaker(message) ?? previous?.decisionMaker ?? null,
+    timeline: extractLeadTimeline(message) ?? previous?.timeline ?? null,
+    pendingSignals: [] as ImobLeadDiscoverySignalKey[],
+  };
+
+  next.pendingSignals = ([
+    !next.urgency ? "urgency" : null,
+    !next.painPoint ? "painPoint" : null,
+    !next.motivation ? "motivation" : null,
+    !next.budgetFlexibility ? "budgetFlexibility" : null,
+    !next.decisionMaker ? "decisionMaker" : null,
+    !next.timeline ? "timeline" : null,
+  ].filter(Boolean) as ImobLeadDiscoverySignalKey[]);
+
+  return next;
 }
 
 function buildOwnerPendingFields(draft: ImobOwnerDraft) {
