@@ -1,5 +1,12 @@
 import type { ImobCrmPropertyType } from "./crm/imobCrmPropertyTypes";
 import type { ImobReasonCode } from "./control/imobReasonCodeCatalog";
+import type {
+  ImobCapabilityCategory,
+  ImobCapabilityExecutionMode,
+  ImobCapabilityRiskTier,
+  ImobCapabilityRolloutStage,
+  ImobCapabilityStatus,
+} from "./imobCapabilityRegistry";
 
 export type ImobConversationMode = "consult" | "search" | "execute" | "search_knowledge" | "blocked";
 
@@ -581,9 +588,53 @@ export type ImobPresentationConfidence = {
 
 export type ImobPresentationChoiceStyle = "inline";
 
+export type ImobAgentRuntimeMetadata = {
+  contractId: "imob.case_concierge.v1";
+  contractVersion: 1;
+  visibleAgentId: "IMOB";
+  visibleName: "IMOB";
+  role: "vertical_case_concierge";
+  sourceOfTruth: ImobChatExperienceContract["sourceOfTruth"];
+  surfaces: {
+    primary: "chat";
+    management: "dashboard";
+    activation: "marketplace";
+  };
+  ownershipModel: {
+    visibleAgentKeepsCaseOwnership: true;
+    backingSpecialistsVisibleByDefault: false;
+  };
+  backingSpecialists: string[];
+  initialIntents: string[];
+  capabilities: {
+    total: number;
+    runtimeExtensions: ImobCapabilityRegistrySnapshot[];
+    externalIntegrations: ImobCapabilityRegistrySnapshot[];
+    workerOrchestration: ImobCapabilityRegistrySnapshot[];
+  };
+};
+
+export type ImobCapabilityRegistrySnapshot = {
+  capabilityId: string;
+  category: ImobCapabilityCategory;
+  ownerAgent: string;
+  visibleAgentId: "IMOB";
+  status: ImobCapabilityStatus;
+  executionMode: ImobCapabilityExecutionMode;
+  riskTier: ImobCapabilityRiskTier;
+  rolloutStage: ImobCapabilityRolloutStage;
+  requiresConsent: boolean;
+  requiresHumanApproval: boolean;
+  requiresEvidence: boolean;
+  policyRequired: boolean;
+  initialImplementation: string;
+  dependsOn: readonly string[];
+};
+
 export type ImobPresentationMetadata = {
   confidence?: ImobPresentationConfidence;
   choiceStyle?: ImobPresentationChoiceStyle;
+  agentRuntime?: ImobAgentRuntimeMetadata;
 };
 
 export type ImobCaseBrief = {
