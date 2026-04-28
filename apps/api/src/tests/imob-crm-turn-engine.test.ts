@@ -172,3 +172,44 @@ test("IMOB_CRM turn engine mantém continuidade de intake para mensagens não co
   assert.equal(resolved.action, "crm.from-resolve-turn");
   assert.match((resolved as any).presentation?.text ?? "", /continuidade do fluxo ativo/i);
 });
+
+test("IMOB_CRM turn engine preserves lead discovery capture during active qualification", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "preciso mudar este mês, quero home office e vou decidir com minha esposa",
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "lead.qualify",
+          status: "collecting",
+          pendingFields: ["leadPhone"],
+          leadDraft: {
+            leadPersona: "lead",
+            leadName: "Maria",
+            leadPhone: null,
+            leadEmail: "maria@example.com",
+            desiredGoal: "locacao",
+            desiredCity: "Itapema",
+            budgetMax: 3500,
+          },
+        },
+      },
+    },
+    helpers: {
+      ...createEngineParams().helpers,
+      applyExistingRegistrationResolution: async ({ resolved }: any) => ({
+        ...resolved,
+        action: "crm.from-resolve-turn",
+      }),
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal((resolved as any).conversationState?.operational?.flow, "lead.qualify");
+  assert.equal((resolved as any).conversationState?.operational?.leadDraft?.discoverySignals?.urgency, "high");
+  assert.equal((resolved as any).conversationState?.operational?.leadDraft?.discoverySignals?.decisionMaker, "shared");
+  assert.match((resolved as any).presentation?.caseBrief?.summary ?? "", /home office|urgência alta/i);
+});

@@ -33,6 +33,15 @@ function createMockPrisma() {
     goal: "locacao",
     targetCity: "Balneário Camboriú",
     budgetMaxCents: 200000,
+    discoverySignals: {
+      urgency: "high",
+      painPoint: "precisa de espaço para home office",
+      motivation: "mudança por trabalho",
+      budgetFlexibility: "moderate",
+      decisionMaker: "shared",
+      timeline: "resolver ainda este mês",
+      pendingSignals: [],
+    },
     stage: "pending_data",
     pendingItems: ["cidade de interesse"],
     updatedAt: new Date("2026-01-01"),
@@ -272,8 +281,11 @@ test("IMOB copiloto responde leitura de lead captado sem cair em intake", async 
   assert.match(resolved?.presentation?.text ?? "", /Fase:/i);
   assert.match(resolved?.presentation?.text ?? "", /Owner da ação:/i);
   assert.match(resolved?.presentation?.caseBrief?.summary ?? "", /principal risco agora/i);
+  assert.match(resolved?.presentation?.caseBrief?.summary ?? "", /home office|mudança por trabalho/i);
   assert.match(resolved?.presentation?.caseBrief?.phaseObjective ?? "", /qualificar|confirmar/i);
   assert.equal(resolved?.presentation?.preparedFollowUp?.variants?.length, 2);
+  assert.match(resolved?.presentation?.preparedFollowUp?.objective ?? "", /motivação registrada|mudança por trabalho/i);
+  assert.match(resolved?.presentation?.actionableChecklist?.items?.[0]?.title ?? "", /home office|proprietário/i);
 });
 
 test("IMOB copiloto responde blocker real com leitura operacional", async () => {

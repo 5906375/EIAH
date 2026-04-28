@@ -127,6 +127,30 @@ export type ImobOwnerDraft = {
 
 export type ImobLeadPersona = "lead" | "comprador" | "locatario";
 
+export type ImobLeadDiscoveryUrgency = "low" | "medium" | "high";
+
+export type ImobLeadBudgetFlexibility = "strict" | "moderate" | "flexible";
+
+export type ImobLeadDecisionMaker = "solo" | "shared" | "third_party";
+
+export type ImobLeadDiscoverySignalKey =
+  | "urgency"
+  | "painPoint"
+  | "motivation"
+  | "budgetFlexibility"
+  | "decisionMaker"
+  | "timeline";
+
+export type ImobLeadDiscoverySignals = {
+  urgency: ImobLeadDiscoveryUrgency | null;
+  painPoint: string | null;
+  motivation: string | null;
+  budgetFlexibility: ImobLeadBudgetFlexibility | null;
+  decisionMaker: ImobLeadDecisionMaker | null;
+  timeline: string | null;
+  pendingSignals: ImobLeadDiscoverySignalKey[];
+};
+
 export type ImobLeadDraft = {
   leadPersona: ImobLeadPersona;
   leadName: string | null;
@@ -135,6 +159,7 @@ export type ImobLeadDraft = {
   desiredGoal: "locacao" | "venda" | "aluguel_por_temporada" | null;
   desiredCity: string | null;
   budgetMax: number | null;
+  discoverySignals?: ImobLeadDiscoverySignals | null;
 };
 
 export type ImobProposalDraft = {

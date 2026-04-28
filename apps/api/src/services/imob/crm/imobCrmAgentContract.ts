@@ -1,6 +1,7 @@
 import type { ImobCrmPropertyGoal } from "./imobCrmPropertyGoals";
 import type { ImobCrmPropertyType } from "./imobCrmPropertyTypes";
 import type { ImobReasonCode } from "../control/imobReasonCodeCatalog";
+import type { ImobLeadDiscoverySignals } from "../imobConversationContract";
 
 export type ImobCrmEntityType = "lead" | "owner" | "property" | "case";
 
@@ -62,6 +63,7 @@ export type ImobCrmLeadSummary = {
   goal?: ImobCrmPropertyGoal | null;
   targetCity?: string | null;
   budgetMaxCents?: number | null;
+  discoverySignals?: ImobLeadDiscoverySignals | null;
 };
 
 export type ImobCrmPropertySummary = {

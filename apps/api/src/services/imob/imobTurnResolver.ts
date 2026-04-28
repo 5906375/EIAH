@@ -24,6 +24,7 @@ import {
   createNextImobThreadState,
   extractRegion,
   extractGoal,
+  hasLeadDiscoveryContent,
   hasMeaningfulSearchFilters,
   normalizeImobText,
 } from "./imobConversationState";
@@ -230,6 +231,7 @@ function hasPendingFieldSignalForActiveFlow(
     if (pending.has("desiredCity") && Boolean(nextSlots.city)) return true;
     if (pending.has("budgetMax") && typeof nextSlots.budgetMax === "number") return true;
     if (pending.has("leadName") && normalized.includes("nome")) return true;
+    if (hasLeadDiscoveryContent(message)) return true;
     return false;
   }
 
@@ -1682,11 +1684,126 @@ function buildOperationalPresentationMeta(
                     ? "Dados do imóvel ainda estão incompletos para seguir."
                     : null
                   : null;
+
+  const leadDiscoverySignals = flow === "lead.qualify" ? (operationalState.leadDraft?.discoverySignals ?? null) : null;
+  const leadName = flow === "lead.qualify" ? (operationalState.leadDraft?.leadName ?? "este lead") : "este lead";
+  const discoveryUrgencyLabel = leadDiscoverySignals?.urgency === "high"
+    ? "urgência alta"
+    : leadDiscoverySignals?.urgency === "medium"
+      ? "urgência moderada"
+      : leadDiscoverySignals?.urgency === "low"
+        ? "urgência baixa"
+        : null;
+  const discoveryDecisionMakerLabel = leadDiscoverySignals?.decisionMaker === "shared"
+    ? "decisão compartilhada"
+    : leadDiscoverySignals?.decisionMaker === "third_party"
+      ? "decisão depende de terceiro"
+      : leadDiscoverySignals?.decisionMaker === "solo"
+        ? "decisão concentrada no próprio lead"
+        : null;
+  const discoverySummaryParts = [
+    leadDiscoverySignals?.painPoint ? `dor principal: ${leadDiscoverySignals.painPoint}` : null,
+    leadDiscoverySignals?.motivation ? `motivação: ${leadDiscoverySignals.motivation}` : null,
+    discoveryUrgencyLabel,
+    leadDiscoverySignals?.timeline ? `janela: ${leadDiscoverySignals.timeline}` : null,
+    discoveryDecisionMakerLabel,
+    leadDiscoverySignals?.budgetFlexibility ? `flexibilidade de orçamento: ${leadDiscoverySignals.budgetFlexibility}` : null,
+  ].filter(Boolean);
+  const discoveryPendingLabels = (leadDiscoverySignals?.pendingSignals ?? []).slice(0, 3).map((signal) => {
+    switch (signal) {
+      case "urgency":
+        return "confirmar urgência real";
+      case "painPoint":
+        return "descobrir a principal dor";
+      case "motivation":
+        return "entender a motivação da mudança";
+      case "budgetFlexibility":
+        return "validar flexibilidade de orçamento";
+      case "decisionMaker":
+        return "mapear quem decide";
+      case "timeline":
+        return "confirmar a janela de decisão";
+      default:
+        return signal;
+    }
+  });
+
   return {
     owner,
     nextStep,
     blocker,
     pendingFieldLabels,
+    ...(flow === "lead.qualify"
+      ? {
+          caseBrief: {
+            summary: discoverySummaryParts.length > 0
+              ? `${leadName} está em qualificação. ${discoverySummaryParts.join(", ")}. O próximo movimento seguro é ${nextStep ?? "confirmar aderência comercial"}.`
+              : `${leadName} está em qualificação. O próximo movimento seguro é ${nextStep ?? "confirmar aderência comercial"}.`,
+            phaseObjective: "Entender aderência, urgência e readiness comercial do lead.",
+            primaryRisk: blocker ?? (discoveryPendingLabels[0] ?? null),
+            waitingOn: "lead" as const,
+            nextActionOwner: owner,
+            nextSafeStep: nextStep ?? null,
+            specialistAgentId: discoveryUrgencyLabel === "urgência alta" ? "I_BC" : null,
+          },
+          preparedFollowUp: {
+            objective: leadDiscoverySignals?.motivation
+              ? `Retomar o caso sem perder a motivação já declarada: ${leadDiscoverySignals.motivation}.`
+              : "Retomar a qualificação e validar um único próximo movimento com o lead.",
+            recipientRole: "lead" as const,
+            trigger: leadDiscoverySignals?.painPoint ?? blocker ?? "preciso confirmar contexto e próxima ação",
+            expectedReply: leadDiscoverySignals?.timeline ?? nextStep ?? null,
+            escalationHint: "Se não houver resposta, revisar urgência, decisor e flexibilidade de orçamento antes de insistir em visita ou proposta.",
+            variants: [
+              {
+                id: "lead-discovery-direct",
+                label: "Mensagem curta",
+                tone: "direct" as const,
+                text: `Olá. Retomei ${leadName} e quero confirmar um único próximo passo. Hoje o ponto principal é ${leadDiscoverySignals?.painPoint ?? "entender o que ainda trava a decisão"}. ${leadDiscoverySignals?.timeline ? `Minha leitura é ${leadDiscoverySignals.timeline}. ` : ""}Consegue me responder ainda hoje?`,
+              },
+              {
+                id: "lead-discovery-consultive",
+                label: "Mensagem consultiva",
+                tone: "consultive" as const,
+                text: `Oi. Voltei a olhar ${leadName} para não deixar a qualificação esfriar. Já registrei ${leadDiscoverySignals?.motivation ?? "o contexto comercial atual"}${leadDiscoverySignals?.budgetFlexibility ? `, com orçamento ${leadDiscoverySignals.budgetFlexibility}` : ""}. Se você me confirmar ${leadDiscoverySignals?.decisionMaker === "shared" ? "quem decide com você e a próxima janela" : "o próximo passo viável agora"}, eu sigo sem te fazer repetir tudo do zero.`,
+              },
+            ],
+          },
+          actionableChecklist: {
+            title: "Checklist acionável da qualificação",
+            items: [
+              {
+                id: "lead-discovery-priority",
+                title: leadDiscoverySignals?.painPoint
+                  ? `Usar a dor principal na abordagem: ${leadDiscoverySignals.painPoint}`
+                  : "Validar a principal dor do lead",
+                criticality: "critical" as const,
+                owner: "Corretor",
+                unlocks: nextStep ?? "próxima abordagem comercial",
+                urgency: leadDiscoverySignals?.urgency === "high" ? "high" : "medium",
+              },
+              {
+                id: "lead-discovery-decision",
+                title: leadDiscoverySignals?.decisionMaker
+                  ? `Registrar ${discoveryDecisionMakerLabel ?? "quem decide"}`
+                  : "Mapear quem participa da decisão",
+                criticality: "supporting" as const,
+                owner: "Corretor",
+                unlocks: "evitar follow-up com decisor errado",
+                urgency: "medium" as const,
+              },
+              {
+                id: "lead-discovery-missing",
+                title: discoveryPendingLabels[0] ?? "Consolidar sinais de discovery antes da visita ou proposta",
+                criticality: "supporting" as const,
+                owner: "Corretor",
+                unlocks: "qualificação mais aderente",
+                urgency: "medium" as const,
+              },
+            ],
+          },
+        }
+      : {}),
     dedupeKey: `${flow}:${operationalState.status}`,
   };
 }
@@ -2591,6 +2708,7 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
           desiredGoal: operationalState?.flow === "lead.qualify" ? (operationalState.leadDraft?.desiredGoal ?? null) : null,
           desiredCity: operationalState?.flow === "lead.qualify" ? (operationalState.leadDraft?.desiredCity ?? null) : null,
           budgetMax: operationalState?.flow === "lead.qualify" ? (operationalState.leadDraft?.budgetMax ?? null) : null,
+          discoverySignals: operationalState?.flow === "lead.qualify" ? (operationalState.leadDraft?.discoverySignals ?? null) : null,
           adjustmentType: "lead_qualification",
           reason: "lead-qualification",
           requestedAt: timestamp,
@@ -2631,6 +2749,7 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
           desiredGoal: operationalState?.flow === "lead.qualify" ? (operationalState.leadDraft?.desiredGoal ?? null) : null,
           desiredCity: operationalState?.flow === "lead.qualify" ? (operationalState.leadDraft?.desiredCity ?? null) : null,
           budgetMax: operationalState?.flow === "lead.qualify" ? (operationalState.leadDraft?.budgetMax ?? null) : null,
+          discoverySignals: operationalState?.flow === "lead.qualify" ? (operationalState.leadDraft?.discoverySignals ?? null) : null,
           adjustmentType: "discount",
           amountCents: 5000,
           reason: "matching-request",

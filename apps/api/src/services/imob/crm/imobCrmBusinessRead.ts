@@ -250,11 +250,22 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     nextActionOwner: string | null;
     nextStep: string;
     primarySpecialistAgentId: string | null;
+    discoverySignals?: ImobCrmCaseContext["lead"] extends infer T
+      ? T extends { discoverySignals?: infer D }
+        ? D
+        : never
+      : never;
   }) {
     const primaryRisk = params.primaryBlocker ?? params.primaryPending ?? "nenhum risco crítico registrado";
     const phasePrefix = params.humanPhaseLabel ? `na fase de ${params.humanPhaseLabel.toLowerCase()}` : "no momento atual";
+    const discoverySignals = params.discoverySignals ?? null;
+    const discoverySummary = [
+      discoverySignals?.painPoint ? `dor principal: ${discoverySignals.painPoint}` : null,
+      discoverySignals?.motivation ? `motivação: ${discoverySignals.motivation}` : null,
+      discoverySignals?.timeline ? `janela: ${discoverySignals.timeline}` : null,
+    ].filter(Boolean).join(", ");
     return {
-      summary: `${params.subject} está ${phasePrefix}. O principal risco agora é ${primaryRisk}, e o próximo movimento seguro é ${params.nextStep}.`,
+      summary: `${params.subject} está ${phasePrefix}. O principal risco agora é ${primaryRisk}, e o próximo movimento seguro é ${params.nextStep}.${discoverySummary ? ` Discovery atual: ${discoverySummary}.` : ""}`,
       phaseObjective: params.phaseObjective,
       primaryRisk,
       waitingOn: params.waitingOn ?? null,
@@ -275,16 +286,24 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     primaryBlocker: string | null;
     primaryPending: string | null;
     nextStep: string;
+    discoverySignals?: ImobCrmCaseContext["lead"] extends infer T
+      ? T extends { discoverySignals?: infer D }
+        ? D
+        : never
+      : never;
   }) {
     const recipientRole = normalizePreparedRecipientRole(params.waitingOn);
     const subjectLabel = params.subject || "este caso";
     const phaseLabel = params.humanPhaseLabel ? `na fase de ${params.humanPhaseLabel.toLowerCase()}` : "neste caso";
     const trigger = params.primaryBlocker ?? params.primaryPending ?? "preciso de uma confirmação para avançar";
-    const directText = `Olá. Estou retomando ${subjectLabel} ${phaseLabel}. O ponto que ainda trava é ${trigger}. Para avançar, preciso ${params.nextStep}. Consegue me responder ainda hoje?`;
-    const consultiveText = `Oi. Voltei a olhar ${subjectLabel} para não deixar o atendimento esfriar. Hoje estamos aguardando ${formatWaitingOnLabel(params.waitingOn) ?? recipientRole}. O ponto principal é ${trigger}. Se você confirmar ${params.nextStep}, eu sigo sem te fazer repetir o processo.`;
+    const discoverySignals = params.discoverySignals ?? null;
+    const directText = `Olá. Estou retomando ${subjectLabel} ${phaseLabel}. O ponto que ainda trava é ${trigger}.${discoverySignals?.timeline ? ` Minha leitura é ${discoverySignals.timeline}.` : ""} Para avançar, preciso ${params.nextStep}. Consegue me responder ainda hoje?`;
+    const consultiveText = `Oi. Voltei a olhar ${subjectLabel} para não deixar o atendimento esfriar. Hoje estamos aguardando ${formatWaitingOnLabel(params.waitingOn) ?? recipientRole}. O ponto principal é ${trigger}.${discoverySignals?.motivation ? ` Já registrei ${discoverySignals.motivation}.` : ""}${discoverySignals?.painPoint ? ` A dor central segue sendo ${discoverySignals.painPoint}.` : ""} Se você confirmar ${params.nextStep}, eu sigo sem te fazer repetir o processo.`;
 
     return {
-      objective: "Retomar o caso com uma única ação clara e destravar o próximo movimento.",
+      objective: discoverySignals?.motivation
+        ? `Retomar o caso com uma única ação clara sem perder a motivação registrada: ${discoverySignals.motivation}.`
+        : "Retomar o caso com uma única ação clara e destravar o próximo movimento.",
       recipientRole,
       trigger,
       expectedReply: params.nextStep,
@@ -312,9 +331,22 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     waitingOnLabel: string | null;
     nextStep: string;
     urgency: "low" | "medium" | "high" | "critical" | null | undefined;
+    discoverySignals?: ImobCrmCaseContext["lead"] extends infer T
+      ? T extends { discoverySignals?: infer D }
+        ? D
+        : never
+      : never;
   }) {
     const owner = params.waitingOnLabel ?? "corretor";
     const urgency = params.urgency ?? "medium";
+    const discoverySignals = params.discoverySignals ?? null;
+    const discoveryAction = discoverySignals?.painPoint
+      ? `Usar a dor principal na abordagem: ${discoverySignals.painPoint}`
+      : discoverySignals?.decisionMaker
+        ? "Registrar o decisor correto antes do próximo contato"
+        : discoverySignals?.timeline
+          ? `Trabalhar o follow-up dentro da janela: ${discoverySignals.timeline}`
+          : null;
     return {
       title: "Checklist acionável do caso",
       items: [
@@ -326,6 +358,16 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
               owner,
               unlocks: params.nextStep,
               urgency,
+            }
+          : null,
+        discoveryAction
+          ? {
+              id: "lead-discovery-action",
+              title: discoveryAction,
+              criticality: "supporting" as const,
+              owner,
+              unlocks: params.nextStep,
+              urgency: "medium" as const,
             }
           : null,
         ...params.pendingItems.slice(0, 2).map((item, index) => ({
@@ -514,6 +556,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       nextActionOwner,
       nextStep,
       primarySpecialistAgentId: primarySpecialist?.consultive.agentId ?? null,
+      discoverySignals: caseContext?.lead?.discoverySignals ?? null,
     });
     const preparedFollowUp = buildPreparedFollowUp({
       subject,
@@ -522,6 +565,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       primaryBlocker,
       primaryPending,
       nextStep,
+      discoverySignals: caseContext?.lead?.discoverySignals ?? null,
     });
     const actionableChecklist = buildActionableChecklist({
       pendingItems,
@@ -529,6 +573,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       waitingOnLabel: waitingOn,
       nextStep,
       urgency: caseContext?.humanWorkflow?.urgency,
+      discoverySignals: caseContext?.lead?.discoverySignals ?? null,
     });
     const handoffPack = buildHandoffPack({
       specialist: primarySpecialist,
