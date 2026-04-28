@@ -2120,6 +2120,52 @@ export type ImobLeadScoringSnapshot = {
   generatedAt: string;
 };
 
+export type ImobCommercialPreference = {
+  key:
+    | "goal"
+    | "target_city"
+    | "budget"
+    | "budget_flexibility"
+    | "pain_point"
+    | "motivation";
+  label: string;
+  value: string;
+  source: "declared" | "conversation" | "crm_case";
+};
+
+export type ImobCommercialObjection = {
+  key:
+    | "budget"
+    | "timing"
+    | "decision_maker"
+    | "documentation"
+    | "follow_up_risk"
+    | "readiness";
+  label: string;
+  summary: string;
+  status: "active" | "mitigated" | "unknown";
+};
+
+export type ImobCommercialTrigger = {
+  kind:
+    | "follow_up"
+    | "decision_window"
+    | "document_pending"
+    | "budget_revalidation"
+    | "readiness_check";
+  summary: string;
+};
+
+export type ImobCommercialMemorySnapshot = {
+  summary: string;
+  preferences: ImobCommercialPreference[];
+  objections: ImobCommercialObjection[];
+  urgencySignals: string[];
+  lastUsefulAction?: string | null;
+  nextTrigger?: ImobCommercialTrigger | null;
+  generatedAt: string;
+};
+
 export type ImobConsultiveResponseMinimum = {
   phase?: string | null;
   blocker?: string | null;
@@ -2537,6 +2583,7 @@ export type ImobOperationalPresentation = {
   handoffPack?: ImobHandoffPack;
   decisionRationale?: ImobDecisionRationale;
   leadScore?: ImobLeadScoringSnapshot;
+  commercialMemory?: ImobCommercialMemorySnapshot;
   pendingFieldLabels?: string[];
   dedupeKey?: string;
 };

@@ -272,6 +272,14 @@ test("IMOB_CRM business read returns commercial language from the latest case", 
   assert.equal(resolved?.presentation?.leadScore?.scoreBand, "HOT");
   assert.equal(resolved?.presentation?.leadScore?.shadowMode, true);
   assert.equal(resolved?.presentation?.leadScore?.scoreVersion, "imob.lead_scoring.v1");
+  assert.ok((resolved?.presentation?.commercialMemory?.preferences?.length ?? 0) >= 4);
+  assert.equal(resolved?.presentation?.commercialMemory?.nextTrigger?.kind, "decision_window");
+  assert.match(resolved?.presentation?.commercialMemory?.lastUsefulAction ?? "", /Qualificar lead/i);
+  const ctas = Array.isArray(resolved?.presentation?.card?.ctas) ? resolved?.presentation?.card?.ctas : [];
+  assert.equal(
+    ctas.some((item: any) => String(item?.nextMessage ?? "").toLowerCase().includes("qualificar lead deste caso")),
+    true,
+  );
 });
 
 test("IMOB_CRM business read returns WARM lead score for mixed signals", async () => {
@@ -365,6 +373,7 @@ test("IMOB_CRM business read returns UNKNOWN lead score when evidence is insuffi
   assert.equal(resolved?.presentation?.leadScore?.scoreValue, 0);
   assert.equal(resolved?.presentation?.leadScore?.shadowMode, true);
   assert.ok((resolved?.presentation?.leadScore?.missingEvidence?.length ?? 0) >= 1);
+  assert.equal(resolved?.presentation?.commercialMemory?.nextTrigger?.kind, "readiness_check");
 });
 
 test("IMOB_CRM business read does not expose lead score for non-lead flow", async () => {
@@ -381,6 +390,9 @@ test("IMOB_CRM business read does not expose lead score for non-lead flow", asyn
   });
 
   assert.equal(resolved?.presentation?.leadScore, undefined);
+  assert.ok((resolved?.presentation?.commercialMemory?.objections?.length ?? 0) <= 2);
+  assert.ok((resolved?.presentation?.commercialMemory?.preferences?.every((item: any) =>
+    ["goal", "target_city", "budget"].includes(String(item?.key))) ?? false));
 });
 
 test("IMOB_CRM domain guidance answers generic documentary question without caseId", async () => {
