@@ -15,7 +15,11 @@ function createThreadState() {
   };
 }
 
-function createMockPrisma(overrides?: { caseNextStep?: string }) {
+function createMockPrisma(overrides?: {
+  caseNextStep?: string;
+  leadOverrides?: Record<string, unknown>;
+  caseOverrides?: Record<string, unknown>;
+}) {
   const leads = [
     {
       id: "lead-1",
@@ -27,10 +31,20 @@ function createMockPrisma(overrides?: { caseNextStep?: string }) {
       goal: "locacao",
       targetCity: "Balneário Camboriú",
       budgetMaxCents: 200000,
+      discoverySignals: {
+        urgency: "high",
+        painPoint: "precisa de espaço para home office",
+        motivation: "mudança por trabalho",
+        budgetFlexibility: "moderate",
+        decisionMaker: "shared",
+        timeline: "resolver ainda este mês",
+        pendingSignals: [],
+      },
       stage: "pending_data",
       temperature: "incomplete",
       pendingItems: ["faixa de orçamento", "cidade de interesse"],
       updatedAt: new Date("2026-01-01"),
+      ...(overrides?.leadOverrides ?? {}),
     },
     {
       id: "lead-2",
@@ -107,6 +121,7 @@ function createMockPrisma(overrides?: { caseNextStep?: string }) {
       owner: owners[0],
       property: properties[0],
       _count: { events: 2 },
+      ...(overrides?.caseOverrides ?? {}),
     },
   ];
 
@@ -250,6 +265,122 @@ test("IMOB_CRM business read returns commercial language from the latest case", 
   assert.equal(resolved?.presentation?.caseBrief?.nextActionOwner, "Corretor");
   assert.equal(resolved?.presentation?.preparedFollowUp?.recipientRole, "internal");
   assert.equal(resolved?.presentation?.preparedFollowUp?.variants?.length, 2);
+  assert.match(resolved?.presentation?.decisionRationale?.summary ?? "", /blocker ativo|próxima ação/i);
+  assert.ok(["medium", "high"].includes(resolved?.presentation?.decisionRationale?.confidence ?? ""));
+  assert.ok((resolved?.presentation?.decisionRationale?.sourceRefs?.length ?? 0) >= 3);
+  assert.ok((resolved?.presentation?.decisionRationale?.reasonCodes?.length ?? 0) >= 1);
+  assert.equal(resolved?.presentation?.leadScore?.scoreBand, "HOT");
+  assert.equal(resolved?.presentation?.leadScore?.shadowMode, true);
+  assert.equal(resolved?.presentation?.leadScore?.scoreVersion, "imob.lead_scoring.v1");
+});
+
+test("IMOB_CRM business read returns WARM lead score for mixed signals", async () => {
+  const resolved = await resolveImobCrmOperationalConsult({
+    prisma: createMockPrisma({
+      leadOverrides: {
+        discoverySignals: {
+          urgency: "medium",
+          painPoint: null,
+          motivation: "quer sair do aluguel",
+          budgetFlexibility: "strict",
+          decisionMaker: "shared",
+          timeline: null,
+          pendingSignals: ["painPoint", "timeline"],
+        },
+      },
+      caseOverrides: {
+        blockers: [],
+        pendingItems: ["cidade de interesse", "telefone do lead"],
+      },
+    }) as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "qual status desse caso?",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.presentation?.leadScore?.scoreBand, "WARM");
+  assert.ok((resolved?.presentation?.leadScore?.scoreValue ?? 0) >= 40);
+  assert.ok((resolved?.presentation?.leadScore?.scoreValue ?? 0) < 70);
+  assert.ok((resolved?.presentation?.leadScore?.factors?.length ?? 0) >= 2);
+});
+
+test("IMOB_CRM business read returns COLD lead score for weak commercial readiness", async () => {
+  const resolved = await resolveImobCrmOperationalConsult({
+    prisma: createMockPrisma({
+      leadOverrides: {
+        discoverySignals: {
+          urgency: "low",
+          painPoint: null,
+          motivation: null,
+          budgetFlexibility: "strict",
+          decisionMaker: "third_party",
+          timeline: null,
+          pendingSignals: ["painPoint", "motivation", "timeline"],
+        },
+      },
+      caseOverrides: {
+        blockers: ["documentação pendente"],
+        pendingItems: ["cidade de interesse", "telefone do lead", "orçamento real"],
+        updatedAt: new Date("2025-12-01"),
+      },
+    }) as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "qual status desse caso?",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.presentation?.leadScore?.scoreBand, "COLD");
+  assert.ok((resolved?.presentation?.leadScore?.scoreValue ?? 100) < 40);
+});
+
+test("IMOB_CRM business read returns UNKNOWN lead score when evidence is insufficient", async () => {
+  const resolved = await resolveImobCrmOperationalConsult({
+    prisma: createMockPrisma({
+      leadOverrides: {
+        discoverySignals: {
+          urgency: null,
+          painPoint: null,
+          motivation: null,
+          budgetFlexibility: null,
+          decisionMaker: null,
+          timeline: null,
+          pendingSignals: ["urgency", "painPoint", "motivation", "budgetFlexibility", "decisionMaker", "timeline"],
+        },
+      },
+      caseOverrides: {
+        nextStep: null,
+        pendingItems: [],
+        blockers: [],
+      },
+    }) as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "qual status desse caso?",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.presentation?.leadScore?.scoreBand, "UNKNOWN");
+  assert.equal(resolved?.presentation?.leadScore?.scoreValue, 0);
+  assert.equal(resolved?.presentation?.leadScore?.shadowMode, true);
+  assert.ok((resolved?.presentation?.leadScore?.missingEvidence?.length ?? 0) >= 1);
+});
+
+test("IMOB_CRM business read does not expose lead score for non-lead flow", async () => {
+  const resolved = await resolveImobCrmOperationalConsult({
+    prisma: createMockPrisma({
+      caseOverrides: {
+        flow: "property.create",
+      },
+    }) as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "qual status desse caso?",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.presentation?.leadScore, undefined);
 });
 
 test("IMOB_CRM domain guidance answers generic documentary question without caseId", async () => {
@@ -371,6 +502,9 @@ test("IMOB_CRM blocked resolution avoids recursive next step and recursive CTA",
     ctas.some((item: any) => String(item?.nextMessage ?? "").toLowerCase().includes("mostrar bloqueios do caso")),
     false
   );
+  assert.match(resolved?.presentation?.decisionRationale?.summary ?? "", /destravar o blocker|pendência dominante/i);
+  assert.ok((resolved?.presentation?.decisionRationale?.sourceRefs?.length ?? 0) >= 2);
+  assert.ok((resolved?.presentation?.decisionRationale?.reasonCodes?.length ?? 0) >= 1);
 });
 
 test("IMOB_CRM case consult asks which case when no explicit reference is provided", async () => {

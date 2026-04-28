@@ -2078,6 +2078,48 @@ export type ImobHandoffPack = {
   ownershipBoundary?: string | null;
 };
 
+export type ImobEvidenceRef = {
+  kind: "case_field" | "workflow_signal" | "recommended_action" | "specialist_hint";
+  ref: string;
+  label: string;
+  value?: string | number | boolean | null;
+};
+
+export type ImobDecisionRationale = {
+  summary: string;
+  confidence: "low" | "medium" | "high";
+  reasonCodes: string[];
+  sourceRefs: ImobEvidenceRef[];
+  missingEvidence?: string[];
+  generatedAt: string;
+};
+
+export type ImobLeadScoreBand = "HOT" | "WARM" | "COLD" | "UNKNOWN";
+
+export type ImobLeadScoreFactor = {
+  key:
+    | "budget_fit"
+    | "urgency"
+    | "engagement_readiness"
+    | "decision_clarity"
+    | "commercial_readiness"
+    | "timeline_pressure";
+  label: string;
+  contribution: number;
+  rationale: string;
+};
+
+export type ImobLeadScoringSnapshot = {
+  scoreBand: ImobLeadScoreBand;
+  scoreValue: number;
+  scoreVersion: "imob.lead_scoring.v1";
+  summary: string;
+  factors: ImobLeadScoreFactor[];
+  missingEvidence?: string[];
+  shadowMode: true;
+  generatedAt: string;
+};
+
 export type ImobConsultiveResponseMinimum = {
   phase?: string | null;
   blocker?: string | null;
@@ -2493,6 +2535,8 @@ export type ImobOperationalPresentation = {
   preparedFollowUp?: ImobPreparedFollowUp;
   actionableChecklist?: ImobActionableChecklist;
   handoffPack?: ImobHandoffPack;
+  decisionRationale?: ImobDecisionRationale;
+  leadScore?: ImobLeadScoringSnapshot;
   pendingFieldLabels?: string[];
   dedupeKey?: string;
 };
