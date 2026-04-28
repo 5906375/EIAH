@@ -405,6 +405,361 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     };
   }
 
+  function buildEvidenceRef(
+    kind: "case_field" | "workflow_signal" | "recommended_action" | "specialist_hint",
+    ref: string,
+    label: string,
+    value?: string | number | boolean | null,
+  ) {
+    return value === undefined
+      ? { kind, ref, label }
+      : { kind, ref, label, value };
+  }
+
+  function buildDecisionReasonCodes(params: {
+    intent: BusinessReadIntent;
+    caseContext: ImobCrmCaseContext;
+    primaryBlocker: string | null;
+    pendingItems: string[];
+    recommendedAction: ReturnType<typeof getImobBusinessRecommendedAction>;
+    specialists: any[];
+  }) {
+    const reasonCodes = new Set<string>();
+
+    for (const code of params.caseContext?.canonical?.reasonCodes ?? []) {
+      if (helpers.asString(code)) reasonCodes.add(String(code));
+    }
+    if (helpers.asString(params.recommendedAction?.reasonCode)) {
+      reasonCodes.add(String(params.recommendedAction?.reasonCode));
+    }
+    for (const specialist of params.specialists.slice(0, 2)) {
+      if (helpers.asString(specialist?.reasonCode)) {
+        reasonCodes.add(String(specialist.reasonCode));
+      }
+    }
+    if (params.intent === "blocked_run_resolution" && params.primaryBlocker && reasonCodes.size === 0) {
+      reasonCodes.add("DOCUMENT_BLOCKER");
+    }
+    if (params.intent === "next_best_action" && params.recommendedAction && reasonCodes.size === 0) {
+      reasonCodes.add("COMMERCIAL_PRIORITY");
+    }
+    if (params.pendingItems.length > 0 && reasonCodes.size === 0) {
+      reasonCodes.add("FOLLOW_UP_DISCIPLINE");
+    }
+
+    return [...reasonCodes];
+  }
+
+  function buildDecisionConfidence(params: {
+    primaryBlocker: string | null;
+    waitingOn: ImobCrmCaseContext["humanWorkflow"] extends infer T
+      ? T extends { waitingOn?: infer W }
+        ? W
+        : never
+      : never;
+    recommendedAction: ReturnType<typeof getImobBusinessRecommendedAction>;
+    reasonCodes: string[];
+    pendingItems: string[];
+  }): "low" | "medium" | "high" {
+    const signalScore = [
+      params.primaryBlocker ? 1 : 0,
+      params.waitingOn ? 1 : 0,
+      params.recommendedAction ? 1 : 0,
+      params.reasonCodes.length > 0 ? 1 : 0,
+      params.pendingItems.length > 0 ? 1 : 0,
+    ].reduce((sum, value) => sum + value, 0);
+
+    if (signalScore >= 4) return "high";
+    if (signalScore >= 2) return "medium";
+    return "low";
+  }
+
+  function buildMissingEvidence(params: {
+    primaryBlocker: string | null;
+    waitingOn: ImobCrmCaseContext["humanWorkflow"] extends infer T
+      ? T extends { waitingOn?: infer W }
+        ? W
+        : never
+      : never;
+    nextActionOwner: string | null;
+    recommendedAction: ReturnType<typeof getImobBusinessRecommendedAction>;
+    pendingItems: string[];
+  }) {
+    return [
+      !params.nextActionOwner ? "owner da próxima ação não está explícito" : null,
+      !params.recommendedAction ? "ação recomendada do caso não está explícita" : null,
+      !params.waitingOn ? "waitingOn ainda não está classificado" : null,
+      !params.primaryBlocker && params.pendingItems.length === 0 ? "não há blocker ou pendência dominante para priorização forte" : null,
+    ].filter(Boolean) as string[];
+  }
+
+  function buildDecisionRationale(params: {
+    intent: BusinessReadIntent;
+    caseContext: ImobCrmCaseContext;
+    subject: string;
+    nextStep: string;
+    primaryBlocker: string | null;
+    pendingItems: string[];
+    waitingOn: string | null;
+    nextActionOwner: string | null;
+    recommendedAction: ReturnType<typeof getImobBusinessRecommendedAction>;
+    specialists: any[];
+  }) {
+    const sourceRefs = [
+      params.primaryBlocker
+        ? buildEvidenceRef("case_field", "case.blocker", "Bloqueio principal", params.primaryBlocker)
+        : null,
+      params.pendingItems[0]
+        ? buildEvidenceRef("case_field", "case.pendingItems[0]", "Pendência principal", params.pendingItems[0])
+        : null,
+      params.waitingOn
+        ? buildEvidenceRef("workflow_signal", "humanWorkflow.waitingOn", "Waiting on", params.waitingOn)
+        : null,
+      params.caseContext?.humanWorkflow?.urgency
+        ? buildEvidenceRef("workflow_signal", "humanWorkflow.urgency", "Urgência", params.caseContext.humanWorkflow.urgency)
+        : null,
+      helpers.asString(params.recommendedAction?.label)
+        ? buildEvidenceRef(
+            "recommended_action",
+            "canonical.recommendedActions[0]",
+            "Ação recomendada",
+            helpers.asString(params.recommendedAction?.label),
+          )
+        : null,
+      params.specialists[0]?.primaryAgentId
+        ? buildEvidenceRef(
+            "specialist_hint",
+            "specialists[0]",
+            "Specialist sugerido",
+            helpers.asString(params.specialists[0]?.primaryAgentId),
+          )
+        : null,
+    ].filter(Boolean) as Array<ReturnType<typeof buildEvidenceRef>>;
+
+    const reasonCodes = buildDecisionReasonCodes({
+      intent: params.intent,
+      caseContext: params.caseContext,
+      primaryBlocker: params.primaryBlocker,
+      pendingItems: params.pendingItems,
+      recommendedAction: params.recommendedAction,
+      specialists: params.specialists,
+    });
+
+    const confidence = buildDecisionConfidence({
+      primaryBlocker: params.primaryBlocker,
+      waitingOn: params.caseContext?.humanWorkflow?.waitingOn,
+      recommendedAction: params.recommendedAction,
+      reasonCodes,
+      pendingItems: params.pendingItems,
+    });
+
+    const missingEvidence = buildMissingEvidence({
+      primaryBlocker: params.primaryBlocker,
+      waitingOn: params.caseContext?.humanWorkflow?.waitingOn,
+      nextActionOwner: params.nextActionOwner,
+      recommendedAction: params.recommendedAction,
+      pendingItems: params.pendingItems,
+    });
+
+    const summaryByIntent: Record<BusinessReadIntent, string> = {
+      pipeline_status: params.primaryBlocker
+        ? `${params.subject} pede atenção porque há blocker ativo e o próximo movimento seguro é ${params.nextStep}.`
+        : `${params.subject} pede acompanhamento porque a próxima ação mais consistente agora é ${params.nextStep}.`,
+      blocked_run_resolution: params.primaryBlocker
+        ? `A recomendação prioriza destravar o blocker "${params.primaryBlocker}" antes de abrir nova frente no caso.`
+        : `A recomendação prioriza eliminar a pendência dominante antes de avançar o caso.`,
+      next_best_action: helpers.asString(params.recommendedAction?.label)
+        ? `A melhor ação agora é ${helpers.asString(params.recommendedAction?.label)?.toLowerCase()} porque ela reduz atrito e aumenta chance de avanço imediato.`
+        : `A melhor ação agora é ${params.nextStep} porque ela concentra o próximo movimento com menor risco operacional.`,
+    };
+
+    return {
+      summary: summaryByIntent[params.intent],
+      confidence,
+      reasonCodes,
+      sourceRefs,
+      ...(missingEvidence.length > 0 ? { missingEvidence } : {}),
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  function isLeadScoringCase(caseContext?: ImobCrmCaseContext | null) {
+    const flow = helpers.asString(caseContext?.flow);
+    const journeyType = helpers.asString(caseContext?.canonical?.journeyType);
+    return flow === "lead.qualify" || journeyType === "lead_qualification";
+  }
+
+  function getLeadScoringEvidence(caseContext?: ImobCrmCaseContext | null) {
+    const discoverySignals = caseContext?.lead?.discoverySignals ?? null;
+    const discoveryCount = [
+      discoverySignals?.urgency,
+      discoverySignals?.painPoint,
+      discoverySignals?.motivation,
+      discoverySignals?.timeline,
+      discoverySignals?.decisionMaker,
+    ].filter(Boolean).length;
+    const substantiveOperationalCount = [
+      caseContext?.humanWorkflow?.waitingOn && caseContext.humanWorkflow.waitingOn !== "internal"
+        ? caseContext.humanWorkflow.waitingOn
+        : null,
+      caseContext?.humanWorkflow?.followUpRisk && caseContext.humanWorkflow.followUpRisk !== "low"
+        ? caseContext.humanWorkflow.followUpRisk
+        : null,
+      Array.isArray(caseContext?.pendingItems) && caseContext.pendingItems.length > 0 ? caseContext.pendingItems[0] : null,
+      helpers.asString(caseContext?.blocker),
+    ].filter(Boolean).length;
+
+    return {
+      discoverySignals,
+      discoveryCount,
+      substantiveOperationalCount,
+      hasMinimumEvidence: discoveryCount >= 1 || substantiveOperationalCount >= 2,
+    };
+  }
+
+  function buildLeadScoreFactors(caseContext: ImobCrmCaseContext) {
+    const discoverySignals = caseContext?.lead?.discoverySignals ?? null;
+    const factors: Array<{
+      key:
+        | "budget_fit"
+        | "urgency"
+        | "engagement_readiness"
+        | "decision_clarity"
+        | "commercial_readiness"
+        | "timeline_pressure";
+      label: string;
+      contribution: number;
+      rationale: string;
+    }> = [];
+
+    if (discoverySignals?.urgency === "high") {
+      factors.push({ key: "urgency", label: "Urgência", contribution: 20, rationale: "Lead declarou urgência alta para avançar." });
+    } else if (discoverySignals?.urgency === "medium") {
+      factors.push({ key: "urgency", label: "Urgência", contribution: 10, rationale: "Lead tem urgência moderada e janela comercial ativa." });
+    } else if (discoverySignals?.urgency === "low") {
+      factors.push({ key: "urgency", label: "Urgência", contribution: -4, rationale: "Lead não demonstrou urgência forte neste momento." });
+    }
+
+    if (discoverySignals?.timeline) {
+      factors.push({ key: "timeline_pressure", label: "Janela de decisão", contribution: 10, rationale: `Existe janela explícita: ${discoverySignals.timeline}.` });
+    }
+
+    if (discoverySignals?.decisionMaker === "solo") {
+      factors.push({ key: "decision_clarity", label: "Clareza de decisão", contribution: 10, rationale: "O próprio lead concentra a decisão." });
+    } else if (discoverySignals?.decisionMaker === "shared") {
+      factors.push({ key: "decision_clarity", label: "Clareza de decisão", contribution: 5, rationale: "A decisão é compartilhada, mas já está mapeada." });
+    } else if (discoverySignals?.decisionMaker === "third_party") {
+      factors.push({ key: "decision_clarity", label: "Clareza de decisão", contribution: -3, rationale: "A decisão depende de terceiro e tende a alongar o ciclo." });
+    }
+
+    if (discoverySignals?.budgetFlexibility === "moderate") {
+      factors.push({ key: "budget_fit", label: "Flexibilidade de orçamento", contribution: 8, rationale: "Há alguma margem para ajustar orçamento sem travar a conversa." });
+    } else if (discoverySignals?.budgetFlexibility === "flexible") {
+      factors.push({ key: "budget_fit", label: "Flexibilidade de orçamento", contribution: 12, rationale: "O orçamento declarado admite ajuste e amplia aderência comercial." });
+    } else if (discoverySignals?.budgetFlexibility === "strict") {
+      factors.push({ key: "budget_fit", label: "Flexibilidade de orçamento", contribution: -4, rationale: "Orçamento está rígido e reduz margem para encaixe." });
+    }
+
+    if (discoverySignals?.painPoint) {
+      factors.push({ key: "commercial_readiness", label: "Dor principal", contribution: 10, rationale: `A dor principal está clara: ${discoverySignals.painPoint}.` });
+    }
+    if (discoverySignals?.motivation) {
+      factors.push({ key: "engagement_readiness", label: "Motivação", contribution: 8, rationale: `A motivação do lead já foi explicitada: ${discoverySignals.motivation}.` });
+    }
+
+    if (helpers.asString(caseContext?.lead?.phone) || helpers.asString(caseContext?.lead?.email)) {
+      factors.push({
+        key: "engagement_readiness",
+        label: "Contato válido",
+        contribution: 6,
+        rationale: "Já existe ao menos um canal claro para retomada do lead.",
+      });
+    }
+
+    if (helpers.asString(caseContext?.lead?.targetCity) && typeof caseContext?.lead?.budgetMaxCents === "number") {
+      factors.push({
+        key: "budget_fit",
+        label: "Recorte comercial mínimo",
+        contribution: 6,
+        rationale: "Cidade alvo e orçamento já estão explícitos no caso.",
+      });
+    }
+
+    if (helpers.asString(caseContext?.canonical?.recommendedActions?.[0]?.label)) {
+      factors.push({
+        key: "commercial_readiness",
+        label: "Próxima ação comercial",
+        contribution: 6,
+        rationale: `O caso já tem ação recomendada explícita: ${helpers.asString(caseContext?.canonical?.recommendedActions?.[0]?.label)}.`,
+      });
+    }
+
+    if (caseContext?.humanWorkflow?.followUpRisk === "high") {
+      factors.push({ key: "engagement_readiness", label: "Risco de follow-up", contribution: -10, rationale: "O caso corre risco alto de esfriar sem retomada." });
+    }
+    if ((caseContext?.humanWorkflow?.agingHours ?? 0) >= 72) {
+      factors.push({ key: "engagement_readiness", label: "Aging do caso", contribution: -10, rationale: "O caso está envelhecido e perdeu calor comercial." });
+    }
+    if (helpers.asString(caseContext?.blocker)) {
+      factors.push({ key: "commercial_readiness", label: "Blocker ativo", contribution: -8, rationale: `Existe blocker ativo: ${helpers.asString(caseContext?.blocker)}.` });
+    }
+    if ((Array.isArray(caseContext?.pendingItems) ? caseContext.pendingItems.length : 0) >= 3) {
+      factors.push({ key: "commercial_readiness", label: "Pendências abertas", contribution: -8, rationale: "Há muitas pendências abertas para uma priorização comercial forte." });
+    }
+    if (caseContext?.humanWorkflow?.waitingOn === "internal") {
+      factors.push({ key: "decision_clarity", label: "Waiting on interno", contribution: -5, rationale: "O caso ainda depende de coordenação interna e isso reduz clareza de avanço imediato." });
+    }
+
+    return factors;
+  }
+
+  function buildLeadScoreSnapshot(caseContext: ImobCrmCaseContext) {
+    const evidence = getLeadScoringEvidence(caseContext);
+    if (!evidence.hasMinimumEvidence) {
+      return {
+        scoreBand: "UNKNOWN" as const,
+        scoreValue: 0,
+        scoreVersion: "imob.lead_scoring.v1" as const,
+        summary: "Ainda não há evidência suficiente para classificar este lead com segurança.",
+        factors: [],
+        missingEvidence: [
+          !evidence.discoverySignals?.urgency ? "urgência real ainda não confirmada" : null,
+          !evidence.discoverySignals?.decisionMaker ? "quem decide ainda não está claro" : null,
+          !evidence.discoverySignals?.timeline ? "janela de decisão ainda não foi explicitada" : null,
+          !helpers.asString(caseContext?.canonical?.recommendedActions?.[0]?.label) ? "ação recomendada do caso não está explícita" : null,
+        ].filter(Boolean) as string[],
+        shadowMode: true as const,
+        generatedAt: new Date().toISOString(),
+      };
+    }
+
+    const factors = buildLeadScoreFactors(caseContext);
+    const scoreValue = Math.max(0, Math.min(100, 30 + factors.reduce((sum, factor) => sum + factor.contribution, 0)));
+    const scoreBand = scoreValue >= 70 ? "HOT" : scoreValue >= 40 ? "WARM" : "COLD";
+    const missingEvidence = [
+      !evidence.discoverySignals?.urgency ? "urgência real ainda não confirmada" : null,
+      !evidence.discoverySignals?.decisionMaker ? "quem decide ainda não está claro" : null,
+      !evidence.discoverySignals?.timeline ? "janela de decisão ainda não foi explicitada" : null,
+    ].filter(Boolean) as string[];
+    const summary =
+      scoreBand === "HOT"
+        ? "Lead com urgência e contexto comercial suficientes para priorização humana imediata."
+        : scoreBand === "WARM"
+          ? "Lead com sinais promissores, mas ainda depende de confirmação adicional para avanço."
+          : "Lead com baixo readiness comercial no momento e pendências relevantes.";
+
+    return {
+      scoreBand,
+      scoreValue,
+      scoreVersion: "imob.lead_scoring.v1" as const,
+      summary,
+      factors,
+      ...(missingEvidence.length > 0 ? { missingEvidence } : {}),
+      shadowMode: true as const,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
   function getImobBusinessRecommendedAction(caseContext: ImobCrmCaseContext) {
     const actions = Array.isArray(caseContext?.canonical?.recommendedActions)
       ? caseContext.canonical.recommendedActions
@@ -575,6 +930,18 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       urgency: caseContext?.humanWorkflow?.urgency,
       discoverySignals: caseContext?.lead?.discoverySignals ?? null,
     });
+    const decisionRationale = buildDecisionRationale({
+      intent,
+      caseContext,
+      subject,
+      nextStep,
+      primaryBlocker,
+      pendingItems,
+      waitingOn,
+      nextActionOwner,
+      recommendedAction,
+      specialists,
+    });
     const handoffPack = buildHandoffPack({
       specialist: primarySpecialist,
       caseBrief,
@@ -582,6 +949,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       pendingItems,
       urgency: caseContext?.humanWorkflow?.urgency,
     });
+    const leadScore = isLeadScoringCase(caseContext) ? buildLeadScoreSnapshot(caseContext) : undefined;
     const statusLine = `${subject}. Momento comercial: ${stageLabel}. Jornada: ${journeyLabel}.`;
     const baseLines = [selectionNote ? "Usei o cadastro mais recente do IMOB para esta leitura." : null, statusLine].filter(Boolean) as string[];
     const textByIntent: Record<BusinessReadIntent, string[]> = {
@@ -650,6 +1018,8 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       caseBrief,
       preparedFollowUp,
       actionableChecklist,
+      decisionRationale,
+      ...(leadScore ? { leadScore } : {}),
       handoffPack,
       pendingFieldLabels: pendingItems,
       suggestedNextAction: nextStep,

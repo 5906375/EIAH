@@ -286,6 +286,12 @@ test("IMOB copiloto responde leitura de lead captado sem cair em intake", async 
   assert.equal(resolved?.presentation?.preparedFollowUp?.variants?.length, 2);
   assert.match(resolved?.presentation?.preparedFollowUp?.objective ?? "", /motivação registrada|mudança por trabalho/i);
   assert.match(resolved?.presentation?.actionableChecklist?.items?.[0]?.title ?? "", /home office|proprietário/i);
+  assert.match(resolved?.presentation?.decisionRationale?.summary ?? "", /blocker ativo|próxima ação|acompanhamento/i);
+  assert.ok((resolved?.presentation?.decisionRationale?.sourceRefs?.length ?? 0) >= 3);
+  assert.ok(["medium", "high"].includes(resolved?.presentation?.decisionRationale?.confidence ?? ""));
+  assert.equal(resolved?.presentation?.leadScore?.scoreBand, "HOT");
+  assert.equal(resolved?.presentation?.leadScore?.shadowMode, true);
+  assert.equal(resolved?.presentation?.leadScore?.scoreVersion, "imob.lead_scoring.v1");
 });
 
 test("IMOB copiloto responde blocker real com leitura operacional", async () => {
@@ -315,6 +321,9 @@ test("IMOB copiloto responde prioridade da fila como próximo movimento do caso"
   assert.equal(resolved?.action, "crm.case.next_best_action");
   assert.match(resolved?.presentation?.text ?? "", /Melhor ação agora:/i);
   assert.match(resolved?.presentation?.text ?? "", /Owner da ação:/i);
+  assert.match(resolved?.presentation?.decisionRationale?.summary ?? "", /melhor ação agora/i);
+  assert.ok((resolved?.presentation?.decisionRationale?.sourceRefs?.length ?? 0) >= 2);
+  assert.ok((resolved?.presentation?.decisionRationale?.reasonCodes?.length ?? 0) >= 1);
 });
 
 test("IMOB copiloto responde quando envolver financeiro sem exigir caso", () => {
