@@ -760,6 +760,215 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     };
   }
 
+  function isLeadCommercialMemoryCase(caseContext?: ImobCrmCaseContext | null) {
+    const flow = helpers.asString(caseContext?.flow);
+    const journeyType = helpers.asString(caseContext?.canonical?.journeyType);
+    return flow === "lead.qualify" || journeyType === "lead_qualification";
+  }
+
+  function buildCommercialPreferences(caseContext: ImobCrmCaseContext) {
+    const lead = caseContext?.lead;
+    const discoverySignals = lead?.discoverySignals ?? null;
+    const preferences = [
+      helpers.asString(lead?.goal)
+        ? { key: "goal", label: "Objetivo", value: helpers.asString(lead?.goal)!, source: "crm_case" as const }
+        : null,
+      helpers.asString(lead?.targetCity)
+        ? { key: "target_city", label: "Cidade-alvo", value: helpers.asString(lead?.targetCity)!, source: "crm_case" as const }
+        : null,
+      typeof lead?.budgetMaxCents === "number" && helpers.formatBudgetCentsForImob(lead.budgetMaxCents)
+        ? { key: "budget", label: "Orçamento", value: helpers.formatBudgetCentsForImob(lead.budgetMaxCents)!, source: "crm_case" as const }
+        : null,
+      discoverySignals?.budgetFlexibility
+        ? {
+            key: "budget_flexibility",
+            label: "Flexibilidade de orçamento",
+            value: discoverySignals.budgetFlexibility,
+            source: "conversation" as const,
+          }
+        : null,
+      discoverySignals?.painPoint
+        ? { key: "pain_point", label: "Dor principal", value: discoverySignals.painPoint, source: "conversation" as const }
+        : null,
+      discoverySignals?.motivation
+        ? { key: "motivation", label: "Motivação", value: discoverySignals.motivation, source: "conversation" as const }
+        : null,
+    ].filter(Boolean);
+
+    return preferences as Array<{
+      key: "goal" | "target_city" | "budget" | "budget_flexibility" | "pain_point" | "motivation";
+      label: string;
+      value: string;
+      source: "declared" | "conversation" | "crm_case";
+    }>;
+  }
+
+  function buildCommercialObjections(caseContext: ImobCrmCaseContext) {
+    const blocker = helpers.asString(caseContext?.blocker);
+    const pendingItems = Array.isArray(caseContext?.pendingItems) ? caseContext.pendingItems.map(String) : [];
+    const discoverySignals = caseContext?.lead?.discoverySignals ?? null;
+    const normalizedPending = pendingItems.map((item) => helpers.normalizeImobRouteText(item));
+    const objections = [
+      (blocker && /document|matricula|contrato|ownerdocument|jurid/i.test(blocker))
+        || normalizedPending.some((item) => /document|matricula|contrato|ownerdocument/.test(item))
+        ? {
+            key: "documentation" as const,
+            label: "Objeção documental",
+            summary: blocker ?? pendingItems[0] ?? "Existe pendência documental travando o avanço.",
+            status: "active" as const,
+          }
+        : null,
+      discoverySignals?.budgetFlexibility === "strict" || normalizedPending.some((item) => item.includes("orcamento") || item.includes("orçamento"))
+        ? {
+            key: "budget" as const,
+            label: "Objeção de orçamento",
+            summary: discoverySignals?.budgetFlexibility === "strict"
+              ? "O orçamento está rígido e pode limitar aderência comercial."
+              : "Ainda há revalidação de orçamento pendente.",
+            status: "active" as const,
+          }
+        : null,
+      discoverySignals?.decisionMaker === "shared" || discoverySignals?.decisionMaker === "third_party"
+        ? {
+            key: "decision_maker" as const,
+            label: "Objeção de decisor",
+            summary: discoverySignals.decisionMaker === "shared"
+              ? "A decisão é compartilhada e exige alinhamento adicional."
+              : "A decisão depende de terceiro e tende a alongar o ciclo.",
+            status: "active" as const,
+          }
+        : null,
+      caseContext?.humanWorkflow?.followUpRisk === "high"
+        ? {
+            key: "follow_up_risk" as const,
+            label: "Risco de follow-up",
+            summary: "O caso pode esfriar sem retomada rápida.",
+            status: "active" as const,
+          }
+        : null,
+      (!blocker && pendingItems.length === 0 && !discoverySignals?.painPoint && !discoverySignals?.motivation)
+        ? {
+            key: "readiness" as const,
+            label: "Readiness comercial",
+            summary: "Ainda falta contexto comercial suficiente para leitura forte.",
+            status: "unknown" as const,
+          }
+        : null,
+      discoverySignals?.timeline && caseContext?.humanWorkflow?.urgency !== "high"
+        ? {
+            key: "timing" as const,
+            label: "Objeção de timing",
+            summary: `Existe janela declarada (${discoverySignals.timeline}) que ainda precisa ser confirmada com mais clareza.`,
+            status: "active" as const,
+          }
+        : null,
+    ].filter(Boolean);
+
+    return objections as Array<{
+      key: "budget" | "timing" | "decision_maker" | "documentation" | "follow_up_risk" | "readiness";
+      label: string;
+      summary: string;
+      status: "active" | "mitigated" | "unknown";
+    }>;
+  }
+
+  function buildCommercialUrgencySignals(caseContext: ImobCrmCaseContext, leadScore?: { scoreBand?: string } | null) {
+    const discoverySignals = caseContext?.lead?.discoverySignals ?? null;
+    const urgencySignals = [
+      discoverySignals?.urgency === "high" ? "urgência declarada alta" : null,
+      discoverySignals?.timeline ? `janela explícita: ${discoverySignals.timeline}` : null,
+      caseContext?.humanWorkflow?.followUpRisk === "high" ? "follow-up risk alto" : null,
+      (caseContext?.humanWorkflow?.agingHours ?? 0) >= 72 ? "caso envelhecido" : null,
+      leadScore?.scoreBand === "HOT" ? "lead score em faixa HOT" : null,
+    ].filter(Boolean);
+    return urgencySignals as string[];
+  }
+
+  function buildCommercialLastUsefulAction(caseContext: ImobCrmCaseContext) {
+    return helpers.asString(caseContext?.canonical?.recommendedActions?.[0]?.label)
+      ?? helpers.asString(caseContext?.nextStep)
+      ?? null;
+  }
+
+  function buildCommercialNextTrigger(caseContext: ImobCrmCaseContext, objections: Array<{ key: string }>) {
+    const discoverySignals = caseContext?.lead?.discoverySignals ?? null;
+    const blocker = helpers.asString(caseContext?.blocker);
+    const pendingItems = Array.isArray(caseContext?.pendingItems) ? caseContext.pendingItems.map(String) : [];
+    const normalizedPending = pendingItems.map((item) => helpers.normalizeImobRouteText(item));
+
+    if (
+      (blocker && /document|matricula|contrato|jurid/i.test(blocker))
+      || normalizedPending.some((item) => /document|matricula|contrato|ownerdocument/.test(item))
+    ) {
+      return {
+        kind: "document_pending" as const,
+        summary: "Cobrar a pendência documental que libera a próxima validação.",
+      };
+    }
+    if (caseContext?.humanWorkflow?.followUpRisk === "high") {
+      return {
+        kind: "follow_up" as const,
+        summary: "Retomar o lead antes que o caso esfrie.",
+      };
+    }
+    if (discoverySignals?.timeline) {
+      return {
+        kind: "decision_window" as const,
+        summary: `Usar a janela declarada (${discoverySignals.timeline}) como gatilho de retomada.`,
+      };
+    }
+    if (objections.some((item) => item.key === "budget")) {
+      return {
+        kind: "budget_revalidation" as const,
+        summary: "Revalidar orçamento e margem de flexibilidade antes do próximo movimento.",
+      };
+    }
+    return {
+      kind: "readiness_check" as const,
+      summary: "Revisar readiness comercial antes de insistir em visita, proposta ou novo handoff.",
+    };
+  }
+
+  function buildCommercialMemorySnapshot(params: {
+    caseContext: ImobCrmCaseContext;
+    decisionRationale?: { summary?: string | null } | null;
+    leadScore?: { scoreBand?: string; summary?: string | null } | null;
+  }) {
+    const { caseContext } = params;
+    const fullLeadMode = isLeadCommercialMemoryCase(caseContext);
+    const preferences = buildCommercialPreferences(caseContext);
+    const objections = buildCommercialObjections(caseContext);
+    const urgencySignals = buildCommercialUrgencySignals(caseContext, params.leadScore ?? null);
+    const lastUsefulAction = buildCommercialLastUsefulAction(caseContext);
+    const nextTrigger = buildCommercialNextTrigger(caseContext, objections);
+    const effectivePreferences = fullLeadMode ? preferences : preferences.filter((item) =>
+      item.key === "goal" || item.key === "target_city" || item.key === "budget",
+    );
+    const effectiveObjections = fullLeadMode ? objections : objections.slice(0, 2);
+
+    const summary = fullLeadMode
+      ? [
+          params.leadScore?.summary ?? null,
+          params.decisionRationale?.summary ?? null,
+          urgencySignals[0] ? `Sinal dominante: ${urgencySignals[0]}.` : null,
+        ].filter(Boolean).join(" ")
+      : [
+          params.decisionRationale?.summary ?? null,
+          urgencySignals[0] ? `Sinal dominante: ${urgencySignals[0]}.` : null,
+          lastUsefulAction ? `Última ação útil: ${lastUsefulAction}.` : null,
+        ].filter(Boolean).join(" ");
+
+    return {
+      summary: summary || "Memória comercial consultiva consolidada a partir do caso atual.",
+      preferences: effectivePreferences,
+      objections: effectiveObjections,
+      urgencySignals,
+      lastUsefulAction,
+      nextTrigger,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
   function getImobBusinessRecommendedAction(caseContext: ImobCrmCaseContext) {
     const actions = Array.isArray(caseContext?.canonical?.recommendedActions)
       ? caseContext.canonical.recommendedActions
@@ -950,6 +1159,11 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       urgency: caseContext?.humanWorkflow?.urgency,
     });
     const leadScore = isLeadScoringCase(caseContext) ? buildLeadScoreSnapshot(caseContext) : undefined;
+    const commercialMemory = buildCommercialMemorySnapshot({
+      caseContext,
+      decisionRationale,
+      leadScore,
+    });
     const statusLine = `${subject}. Momento comercial: ${stageLabel}. Jornada: ${journeyLabel}.`;
     const baseLines = [selectionNote ? "Usei o cadastro mais recente do IMOB para esta leitura." : null, statusLine].filter(Boolean) as string[];
     const textByIntent: Record<BusinessReadIntent, string[]> = {
@@ -1020,6 +1234,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       actionableChecklist,
       decisionRationale,
       ...(leadScore ? { leadScore } : {}),
+      commercialMemory,
       handoffPack,
       pendingFieldLabels: pendingItems,
       suggestedNextAction: nextStep,

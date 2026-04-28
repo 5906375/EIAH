@@ -292,6 +292,12 @@ test("IMOB copiloto responde leitura de lead captado sem cair em intake", async 
   assert.equal(resolved?.presentation?.leadScore?.scoreBand, "HOT");
   assert.equal(resolved?.presentation?.leadScore?.shadowMode, true);
   assert.equal(resolved?.presentation?.leadScore?.scoreVersion, "imob.lead_scoring.v1");
+  assert.ok((resolved?.presentation?.commercialMemory?.preferences?.length ?? 0) >= 4);
+  assert.equal(resolved?.presentation?.commercialMemory?.preferences?.[0]?.key, "goal");
+  assert.ok((resolved?.presentation?.commercialMemory?.objections?.length ?? 0) >= 1);
+  assert.ok((resolved?.presentation?.commercialMemory?.urgencySignals?.length ?? 0) >= 2);
+  assert.match(resolved?.presentation?.commercialMemory?.lastUsefulAction ?? "", /Revisar bloqueios|qualificar lead/i);
+  assert.equal(resolved?.presentation?.commercialMemory?.nextTrigger?.kind, "document_pending");
 });
 
 test("IMOB copiloto responde blocker real com leitura operacional", async () => {
@@ -307,6 +313,8 @@ test("IMOB copiloto responde blocker real com leitura operacional", async () => 
   assert.match(resolved?.presentation?.text ?? "", /Bloqueio principal:/i);
   assert.match(resolved?.presentation?.text ?? "", /Waiting on:/i);
   assert.match(resolved?.presentation?.text ?? "", /Para destravar:/i);
+  assert.equal(resolved?.presentation?.commercialMemory?.objections?.[0]?.key, "documentation");
+  assert.equal(resolved?.presentation?.commercialMemory?.nextTrigger?.kind, "document_pending");
 });
 
 test("IMOB copiloto responde prioridade da fila como próximo movimento do caso", async () => {
