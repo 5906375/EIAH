@@ -969,6 +969,199 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     };
   }
 
+  function shouldBuildReengagementSuggestion(params: {
+    caseContext: ImobCrmCaseContext;
+    commercialMemory?: { nextTrigger?: { kind?: string | null } | null } | null;
+    leadScore?: { scoreBand?: string | null } | null;
+  }) {
+    return Boolean(
+      params.commercialMemory?.nextTrigger?.kind
+      || params.caseContext?.humanWorkflow?.followUpRisk
+      || (
+        helpers.asString(params.leadScore?.scoreBand)
+        && helpers.asString(params.leadScore?.scoreBand) !== "UNKNOWN"
+      ),
+    );
+  }
+
+  function buildReengagementReason(params: {
+    caseContext: ImobCrmCaseContext;
+    commercialMemory?: { nextTrigger?: { kind?: string | null } | null } | null;
+    leadScore?: { scoreBand?: string | null } | null;
+  }) {
+    const triggerKind = helpers.asString(params.commercialMemory?.nextTrigger?.kind);
+    if (triggerKind === "follow_up") return "follow_up_risk" as const;
+    if (triggerKind === "decision_window") return "decision_window" as const;
+    if (triggerKind === "document_pending") return "document_pending" as const;
+    if (triggerKind === "budget_revalidation") return "budget_revalidation" as const;
+    if (triggerKind === "readiness_check") return "readiness_check" as const;
+    if (params.caseContext?.humanWorkflow?.followUpRisk === "high") return "follow_up_risk" as const;
+    if (helpers.asString(params.leadScore?.scoreBand) === "HOT") return "decision_window" as const;
+    return "readiness_check" as const;
+  }
+
+  function buildReengagementTiming(params: {
+    caseContext: ImobCrmCaseContext;
+    reason: "follow_up_risk" | "decision_window" | "document_pending" | "budget_revalidation" | "readiness_check";
+    leadScore?: { scoreBand?: string | null } | null;
+  }) {
+    if (params.reason === "document_pending" || params.reason === "budget_revalidation") return "this_week" as const;
+    if (params.caseContext?.humanWorkflow?.followUpRisk === "high") return "now" as const;
+    if (params.reason === "decision_window") return "today" as const;
+    if (helpers.asString(params.leadScore?.scoreBand) === "HOT") return "now" as const;
+    return "today" as const;
+  }
+
+  function buildReengagementChannel(params: {
+    caseContext: ImobCrmCaseContext;
+    preparedFollowUp?: { recipientRole?: string | null } | null;
+  }) {
+    const recipientRole = helpers.asString(params.preparedFollowUp?.recipientRole);
+    if (recipientRole === "lead") return "whatsapp" as const;
+    if (recipientRole === "owner") return "phone" as const;
+    if (recipientRole === "broker" || recipientRole === "legal" || recipientRole === "finance" || recipientRole === "internal") {
+      return "internal" as const;
+    }
+    if (params.caseContext?.humanWorkflow?.waitingOn === "owner") return "phone" as const;
+    if (params.caseContext?.humanWorkflow?.waitingOn === "lead") return "whatsapp" as const;
+    return "email" as const;
+  }
+
+  function buildReengagementMessageBase(preparedFollowUp?: {
+    variants?: Array<{ text?: string | null }> | null;
+  } | null) {
+    return helpers.asString(preparedFollowUp?.variants?.[0]?.text)
+      ?? helpers.asString(preparedFollowUp?.variants?.[1]?.text)
+      ?? null;
+  }
+
+  function hasStrongReengagementEvidence(params: {
+    caseContext: ImobCrmCaseContext;
+    commercialMemory?: {
+      nextTrigger?: { kind?: string | null } | null;
+    } | null;
+    leadScore?: { scoreBand?: string | null } | null;
+  }) {
+    const triggerKind = helpers.asString(params.commercialMemory?.nextTrigger?.kind);
+    const scoreBand = helpers.asString(params.leadScore?.scoreBand);
+    return Boolean(
+      (triggerKind && triggerKind !== "readiness_check")
+      || params.caseContext?.humanWorkflow?.followUpRisk === "high"
+      || scoreBand === "HOT"
+      || scoreBand === "WARM"
+    );
+  }
+
+  function buildReengagementAnchorSignals(params: {
+    commercialMemory?: {
+      urgencySignals?: string[] | null;
+      objections?: Array<{ key?: string | null; label?: string | null }> | null;
+      nextTrigger?: { kind?: string | null } | null;
+    } | null;
+    leadScore?: { scoreBand?: string | null } | null;
+    decisionRationale?: { reasonCodes?: string[] | null } | null;
+    caseContext: ImobCrmCaseContext;
+  }) {
+    const signals = [
+      helpers.asString(params.leadScore?.scoreBand) && helpers.asString(params.leadScore?.scoreBand) !== "UNKNOWN"
+        ? `lead score ${helpers.asString(params.leadScore?.scoreBand)}`
+        : null,
+      params.caseContext?.humanWorkflow?.followUpRisk === "high" ? "follow-up risk alto" : null,
+      params.caseContext?.humanWorkflow?.urgency === "high" || params.caseContext?.humanWorkflow?.urgency === "critical"
+        ? "urgência comercial alta"
+        : null,
+      params.commercialMemory?.urgencySignals?.some((item) => item.includes("janela explícita"))
+        ? "janela de decisão presente"
+        : null,
+      params.commercialMemory?.nextTrigger?.kind ? `next trigger ${params.commercialMemory.nextTrigger.kind}` : null,
+      params.commercialMemory?.objections?.[0]?.key === "documentation" ? "pendência documental" : null,
+      params.commercialMemory?.objections?.[0]?.key === "budget" ? "objeção de orçamento" : null,
+      helpers.asString(params.decisionRationale?.reasonCodes?.[0]) ? "reason code principal presente" : null,
+    ].filter(Boolean);
+    return Array.from(new Set(signals as string[])).slice(0, 5);
+  }
+
+  function buildReengagementMissingEvidence(params: {
+    caseContext: ImobCrmCaseContext;
+    commercialMemory?: {
+      objections?: Array<{ key?: string | null }> | null;
+      nextTrigger?: { kind?: string | null } | null;
+    } | null;
+    preparedFollowUp?: { recipientRole?: string | null; variants?: Array<{ text?: string | null }> | null } | null;
+  }) {
+    const missing = [
+      buildReengagementMessageBase(params.preparedFollowUp) ? null : "mensagem-base de retomada ainda não está pronta",
+      helpers.asString(params.preparedFollowUp?.recipientRole) ? null : "canal preferencial ainda não está claro",
+      helpers.asString(params.commercialMemory?.nextTrigger?.kind) && params.commercialMemory?.nextTrigger?.kind !== "readiness_check"
+        ? null
+        : "gatilho principal de retomada ainda precisa de confirmação",
+      params.commercialMemory?.objections?.length ? null : "objeção principal ainda não está explícita",
+      helpers.asString(params.caseContext?.humanWorkflow?.nextActionOwner) ?? helpers.asString(params.caseContext?.ownerResponsible)
+        ? null
+        : "owner da retomada ainda não está claro",
+    ].filter(Boolean);
+    return missing.length ? (missing as string[]).slice(0, 5) : undefined;
+  }
+
+  function buildReengagementSuggestion(params: {
+    caseContext: ImobCrmCaseContext;
+    commercialMemory?: {
+      summary?: string | null;
+      nextTrigger?: { kind?: string | null; summary?: string | null } | null;
+      urgencySignals?: string[] | null;
+      objections?: Array<{ key?: string | null; label?: string | null }> | null;
+    } | null;
+    leadScore?: { scoreBand?: string | null } | null;
+    decisionRationale?: { reasonCodes?: string[] | null; summary?: string | null } | null;
+    preparedFollowUp?: {
+      recipientRole?: string | null;
+      variants?: Array<{ text?: string | null }> | null;
+    } | null;
+  }) {
+    if (!shouldBuildReengagementSuggestion(params)) return undefined;
+
+    const reason = buildReengagementReason(params);
+    const recommendedTiming = buildReengagementTiming({
+      caseContext: params.caseContext,
+      reason,
+      leadScore: params.leadScore ?? null,
+    });
+    const suggestedChannel = buildReengagementChannel({
+      caseContext: params.caseContext,
+      preparedFollowUp: params.preparedFollowUp ?? null,
+    });
+    const messageBase = buildReengagementMessageBase(params.preparedFollowUp ?? null);
+    const anchorSignals = buildReengagementAnchorSignals(params);
+    const missingEvidence = buildReengagementMissingEvidence({
+      caseContext: params.caseContext,
+      commercialMemory: params.commercialMemory ?? null,
+      preparedFollowUp: params.preparedFollowUp ?? null,
+    });
+    const strongEvidence = hasStrongReengagementEvidence(params);
+    const triggerSummary = helpers.asString(params.commercialMemory?.nextTrigger?.summary);
+    const summaryByReason = {
+      follow_up_risk: triggerSummary ?? "Retomar rapidamente para evitar que o caso esfrie.",
+      decision_window: triggerSummary ?? "Aproveitar a janela declarada para retomar com contexto comercial.",
+      document_pending: triggerSummary ?? "Usar a pendência documental como eixo de retomada coordenada.",
+      budget_revalidation: triggerSummary ?? "Voltar com foco em revalidar orçamento e aderência.",
+      readiness_check: triggerSummary ?? "Reabrir o caso com uma checagem curta de readiness comercial.",
+    } satisfies Record<string, string>;
+
+    return {
+      reason,
+      summary: strongEvidence
+        ? summaryByReason[reason]
+        : `Retomada sugerida com base parcial: ${summaryByReason[reason]}`,
+      recommendedTiming,
+      suggestedChannel,
+      messageBase,
+      anchorSignals,
+      ...(missingEvidence ? { missingEvidence } : {}),
+      shadowMode: true as const,
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
   function getImobBusinessRecommendedAction(caseContext: ImobCrmCaseContext) {
     const actions = Array.isArray(caseContext?.canonical?.recommendedActions)
       ? caseContext.canonical.recommendedActions
@@ -1164,6 +1357,13 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       decisionRationale,
       leadScore,
     });
+    const reengagementSuggestion = buildReengagementSuggestion({
+      caseContext,
+      commercialMemory,
+      leadScore,
+      decisionRationale,
+      preparedFollowUp,
+    });
     const statusLine = `${subject}. Momento comercial: ${stageLabel}. Jornada: ${journeyLabel}.`;
     const baseLines = [selectionNote ? "Usei o cadastro mais recente do IMOB para esta leitura." : null, statusLine].filter(Boolean) as string[];
     const textByIntent: Record<BusinessReadIntent, string[]> = {
@@ -1235,6 +1435,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       decisionRationale,
       ...(leadScore ? { leadScore } : {}),
       commercialMemory,
+      ...(reengagementSuggestion ? { reengagementSuggestion } : {}),
       handoffPack,
       pendingFieldLabels: pendingItems,
       suggestedNextAction: nextStep,

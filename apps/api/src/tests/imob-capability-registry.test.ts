@@ -68,3 +68,12 @@ test("worker orchestration capabilities do not start automated", () => {
     assert.notEqual(capability.executionMode, "automated");
   }
 });
+
+test("reengagement capability stays in shadow governance after runtime materialization", () => {
+  const capability = listAllImobCapabilities().find((item) => item.capabilityId === "reengagement.continuous");
+
+  assert.ok(capability);
+  assert.equal(capability?.status, "ready_for_shadow");
+  assert.equal(capability?.executionMode, "shadow");
+  assert.equal(capability?.rolloutStage, "shadow");
+});

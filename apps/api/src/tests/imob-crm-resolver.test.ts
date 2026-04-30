@@ -275,6 +275,11 @@ test("IMOB_CRM business read returns commercial language from the latest case", 
   assert.ok((resolved?.presentation?.commercialMemory?.preferences?.length ?? 0) >= 4);
   assert.equal(resolved?.presentation?.commercialMemory?.nextTrigger?.kind, "decision_window");
   assert.match(resolved?.presentation?.commercialMemory?.lastUsefulAction ?? "", /Qualificar lead/i);
+  assert.equal(resolved?.presentation?.reengagementSuggestion?.reason, "decision_window");
+  assert.equal(resolved?.presentation?.reengagementSuggestion?.recommendedTiming, "today");
+  assert.equal(resolved?.presentation?.reengagementSuggestion?.suggestedChannel, "internal");
+  assert.equal(resolved?.presentation?.reengagementSuggestion?.shadowMode, true);
+  assert.ok((resolved?.presentation?.reengagementSuggestion?.anchorSignals?.length ?? 0) >= 2);
   const ctas = Array.isArray(resolved?.presentation?.card?.ctas) ? resolved?.presentation?.card?.ctas : [];
   assert.equal(
     ctas.some((item: any) => String(item?.nextMessage ?? "").toLowerCase().includes("qualificar lead deste caso")),
@@ -374,6 +379,8 @@ test("IMOB_CRM business read returns UNKNOWN lead score when evidence is insuffi
   assert.equal(resolved?.presentation?.leadScore?.shadowMode, true);
   assert.ok((resolved?.presentation?.leadScore?.missingEvidence?.length ?? 0) >= 1);
   assert.equal(resolved?.presentation?.commercialMemory?.nextTrigger?.kind, "readiness_check");
+  assert.equal(resolved?.presentation?.reengagementSuggestion?.reason, "readiness_check");
+  assert.ok((resolved?.presentation?.reengagementSuggestion?.missingEvidence?.length ?? 0) >= 1);
 });
 
 test("IMOB_CRM business read does not expose lead score for non-lead flow", async () => {
@@ -422,6 +429,28 @@ test("IMOB_CRM domain guidance answers when to involve legal without caseId", as
   assert.equal(resolved?.action, "crm.domain_guidance");
   assert.match(resolved?.presentation?.text ?? "", /jurídico\/documentação|juridico/i);
   assert.match(resolved?.presentation?.text ?? "", /waitingOn/i);
+});
+
+test("IMOB_CRM business read suggests document reengagement in shadow without changing next step", async () => {
+  const resolved = await resolveImobCrmOperationalConsult({
+    prisma: createMockPrisma({
+      caseOverrides: {
+        blockers: ["documentação pendente"],
+        pendingItems: ["ownerDocument", "matrícula do imóvel"],
+      },
+    }) as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "mostrar bloqueios do caso",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.action, "crm.case.blocked_run_resolution");
+  assert.equal(resolved?.presentation?.reengagementSuggestion?.reason, "document_pending");
+  assert.equal(resolved?.presentation?.reengagementSuggestion?.recommendedTiming, "this_week");
+  assert.ok((resolved?.presentation?.reengagementSuggestion?.anchorSignals?.length ?? 0) >= 2);
+  assert.ok((resolved?.presentation?.reengagementSuggestion?.messageBase?.length ?? 0) > 0);
+  assert.match(resolved?.presentation?.nextStep ?? "", /cadastrar proprietário|cadastrar imóvel|qualificar lead|consultar caso/i);
 });
 
 test("IMOB_CRM domain guidance explains specialist handoff without transferring case ownership", async () => {
