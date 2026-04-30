@@ -298,6 +298,11 @@ test("IMOB copiloto responde leitura de lead captado sem cair em intake", async 
   assert.ok((resolved?.presentation?.commercialMemory?.urgencySignals?.length ?? 0) >= 2);
   assert.match(resolved?.presentation?.commercialMemory?.lastUsefulAction ?? "", /Revisar bloqueios|qualificar lead/i);
   assert.equal(resolved?.presentation?.commercialMemory?.nextTrigger?.kind, "document_pending");
+  assert.equal(resolved?.presentation?.reengagementSuggestion?.reason, "document_pending");
+  assert.equal(resolved?.presentation?.reengagementSuggestion?.recommendedTiming, "this_week");
+  assert.equal(resolved?.presentation?.reengagementSuggestion?.suggestedChannel, "internal");
+  assert.equal(resolved?.presentation?.reengagementSuggestion?.shadowMode, true);
+  assert.ok((resolved?.presentation?.reengagementSuggestion?.messageBase?.length ?? 0) > 0);
 });
 
 test("IMOB copiloto responde blocker real com leitura operacional", async () => {
@@ -315,6 +320,8 @@ test("IMOB copiloto responde blocker real com leitura operacional", async () => 
   assert.match(resolved?.presentation?.text ?? "", /Para destravar:/i);
   assert.equal(resolved?.presentation?.commercialMemory?.objections?.[0]?.key, "documentation");
   assert.equal(resolved?.presentation?.commercialMemory?.nextTrigger?.kind, "document_pending");
+  assert.equal(resolved?.presentation?.reengagementSuggestion?.reason, "document_pending");
+  assert.equal(resolved?.presentation?.reengagementSuggestion?.recommendedTiming, "this_week");
 });
 
 test("IMOB copiloto responde prioridade da fila como próximo movimento do caso", async () => {
@@ -332,6 +339,7 @@ test("IMOB copiloto responde prioridade da fila como próximo movimento do caso"
   assert.match(resolved?.presentation?.decisionRationale?.summary ?? "", /melhor ação agora/i);
   assert.ok((resolved?.presentation?.decisionRationale?.sourceRefs?.length ?? 0) >= 2);
   assert.ok((resolved?.presentation?.decisionRationale?.reasonCodes?.length ?? 0) >= 1);
+  assert.equal(resolved?.presentation?.reengagementSuggestion?.shadowMode, true);
 });
 
 test("IMOB copiloto responde quando envolver financeiro sem exigir caso", () => {

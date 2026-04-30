@@ -2166,6 +2166,25 @@ export type ImobCommercialMemorySnapshot = {
   generatedAt: string;
 };
 
+export type ImobReengagementReason =
+  | "follow_up_risk"
+  | "decision_window"
+  | "document_pending"
+  | "budget_revalidation"
+  | "readiness_check";
+
+export type ImobReengagementSuggestion = {
+  reason: ImobReengagementReason;
+  summary: string;
+  recommendedTiming: "now" | "today" | "this_week";
+  suggestedChannel: "whatsapp" | "phone" | "email" | "internal";
+  messageBase?: string | null;
+  anchorSignals: string[];
+  missingEvidence?: string[];
+  shadowMode: true;
+  generatedAt: string;
+};
+
 export type ImobConsultiveResponseMinimum = {
   phase?: string | null;
   blocker?: string | null;
@@ -2584,6 +2603,7 @@ export type ImobOperationalPresentation = {
   decisionRationale?: ImobDecisionRationale;
   leadScore?: ImobLeadScoringSnapshot;
   commercialMemory?: ImobCommercialMemorySnapshot;
+  reengagementSuggestion?: ImobReengagementSuggestion;
   pendingFieldLabels?: string[];
   dedupeKey?: string;
 };
