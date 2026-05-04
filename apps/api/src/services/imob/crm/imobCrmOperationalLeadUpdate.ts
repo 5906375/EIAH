@@ -14,7 +14,7 @@ export async function resolveImobLeadUpdate(
   context: ImobOperationalUpdateContext,
 ): Promise<OperationalResolution | null> {
   const wantsLeadUpdate = context.normalized.includes("lead") || context.normalized.includes("cliente") || context.normalized.includes("comprador") || context.normalized.includes("locatario") || context.normalized.includes("locatário");
-  if (!(wantsLeadUpdate && (context.targetCity || context.budgetCents || context.leadPhone || context.leadEmail))) return null;
+  if (!(wantsLeadUpdate && (context.targetCity || context.budgetCents !== null || context.leadPhone || context.leadEmail || context.leadGoal))) return null;
 
   let lead: LeadSummary | null = null;
   if (params.caseId) {
@@ -43,10 +43,13 @@ export async function resolveImobLeadUpdate(
     .filter((item) => !(item === "faixa de orçamento" && context.budgetCents !== null))
     .filter((item) => !(item === "budgetMax" && context.budgetCents !== null))
     .filter((item) => !(item === "telefone do lead" && context.leadPhone))
-    .filter((item) => !(item === "leadPhone" && context.leadPhone));
+    .filter((item) => !(item === "leadPhone" && context.leadPhone))
+    .filter((item) => !(item === "objetivo do lead" && context.leadGoal))
+    .filter((item) => !(item === "desiredGoal" && context.leadGoal));
   const updated = await params.prisma.imobLead.update({
     where: { id: lead.id },
     data: {
+      goal: context.leadGoal ?? lead.goal,
       targetCity: context.targetCity ?? lead.targetCity,
       budgetMaxCents: context.budgetCents ?? lead.budgetMaxCents,
       phone: context.leadPhone ?? lead.phone,

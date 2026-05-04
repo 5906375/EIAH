@@ -458,6 +458,13 @@ function extractLeadPhoneFromMessage(raw: string) {
   return match?.[0]?.replace(/\s+/g, " ").trim() ?? null;
 }
 
+function extractLeadGoalFromMessage(raw: string) {
+  const match = raw.match(
+    /(?:(?:objetivo|finalidade) do (?:lead|cliente|comprador|compradora|locatario|locatário|locataria|locatária))\s*:?\s*([^,.;\n]+)/i,
+  );
+  return normalizeImobCrmPropertyGoal(match?.[1]?.trim() ?? null);
+}
+
 function extractLeadNameFromMessage(message: string) {
   const normalized = normalizeImobCrmText(message);
   const match = normalized.match(/(?:lead|cliente|comprador|locatario)\s+([a-z]+(?:\s+[a-z]+){0,2})/);
@@ -500,7 +507,11 @@ function extractPropertyRefFromMessage(message: string) {
 function extractCaseIdFromMessage(message: string): string | null {
   if (typeof message !== "string" || message.trim().length === 0) return null;
   const byLabelMatch = message.match(/(?:caso|case|processo)\s*(?:id)?\s*[:#-]?\s*([a-z0-9][a-z0-9-]{2,})/i);
-  if (byLabelMatch?.[1]) return byLabelMatch[1];
+  if (byLabelMatch?.[1]) {
+    const candidate = byLabelMatch[1].toLowerCase();
+    if (["mais", "recente", "atual", "aberto", "disponivel", "disponível", "ultimo", "último"].includes(candidate)) return null;
+    return byLabelMatch[1];
+  }
   return null;
 }
 
@@ -1129,6 +1140,7 @@ export async function resolveImobCrmOperationalUpdate(params: ResolverParams) {
   const propertyRef = extractPropertyRefFromMessage(params.message);
   const leadPhone = extractLeadPhoneFromMessage(params.message);
   const leadEmail = extractLeadEmailFromMessage(params.message);
+  const leadGoal = extractLeadGoalFromMessage(params.message);
   const budgetCents = extractAmountAfterKeywords(params.message, ["orcamento", "orçamento", "budget"]);
   const priceCents = extractAmountAfterKeywords(params.message, ["preco", "preço", "valor"]);
   const targetCity = extractFreeformCityAfterKeywords(params.message, ["cidade do lead", "cidade de interesse"]);
@@ -1179,7 +1191,7 @@ export async function resolveImobCrmOperationalUpdate(params: ResolverParams) {
   }
 
   const wantsLeadUpdate = normalized.includes("lead") || normalized.includes("cliente") || normalized.includes("comprador") || normalized.includes("locatario");
-  if (wantsLeadUpdate && (targetCity || budgetCents || leadPhone || leadEmail)) {
+  if (wantsLeadUpdate && (targetCity || budgetCents !== null || leadPhone || leadEmail || leadGoal)) {
     let lead = null as any;
     if (params.caseId) {
       const scopedCase = await params.prisma.imobCase.findFirst({
@@ -1205,10 +1217,13 @@ export async function resolveImobCrmOperationalUpdate(params: ResolverParams) {
         .filter((item) => !(item === "faixa de orçamento" && budgetCents !== null))
         .filter((item) => !(item === "budgetMax" && budgetCents !== null))
         .filter((item) => !(item === "telefone do lead" && leadPhone))
-        .filter((item) => !(item === "leadPhone" && leadPhone));
+        .filter((item) => !(item === "leadPhone" && leadPhone))
+        .filter((item) => !(item === "objetivo do lead" && leadGoal))
+        .filter((item) => !(item === "desiredGoal" && leadGoal));
       const updated = await params.prisma.imobLead.update({
         where: { id: lead.id },
         data: {
+          goal: leadGoal ?? lead.goal,
           targetCity: targetCity ?? lead.targetCity,
           budgetMaxCents: budgetCents ?? lead.budgetMaxCents,
           phone: leadPhone ?? lead.phone,
@@ -1309,11 +1324,12 @@ export async function resolveImobCrmOperationalConsult(params: ResolverParams) {
   const listCityFilter = extractListCityFilter(params.message);
   const businessReadIntent = resolveBusinessReadIntent(params.message);
   const wantsCase = normalized.includes("caso");
+  const asksRecentCase = normalized.includes("caso mais recente") || normalized.includes("caso recente") || normalized.includes("ultimo caso");
   const asksLeadCases = normalized.includes("casos do lead") || normalized.includes("quais casos do lead");
-  const asksCurrentCase = normalized.includes("nesse caso") || normalized.includes("desse caso") || normalized.includes("deste caso");
+  const asksCurrentCase = normalized.includes("nesse caso") || normalized.includes("desse caso") || normalized.includes("deste caso") || asksRecentCase;
   const asksCaseStatus = normalized.includes("status desse caso") || normalized.includes("status deste caso") || normalized.includes("status do caso");
   const asksMissing = normalized.includes("o que falta") || normalized.includes("pendencia");
-  const asksShow = normalized.includes("mostrar") || normalized.includes("ver") || normalized.includes("consultar") || normalized.includes("quais") || normalized.includes("abrir");
+  const asksShow = normalized.includes("mostrar") || normalized.includes("ver") || normalized.includes("consultar") || normalized.includes("quais") || normalized.includes("abrir") || asksRecentCase;
   const asksEdit = normalized.includes("editar") || normalized.includes("atualizar") || normalized.includes("alterar");
   const asksDelete = normalized.includes("excluir") || normalized.includes("deletar") || normalized.includes("remover") || normalized.includes("apagar") || normalized.includes("arquivar");
   const ownerCrudId = extractOwnerCrudIdFromMessage(params.message);

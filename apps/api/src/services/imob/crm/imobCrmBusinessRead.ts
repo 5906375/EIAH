@@ -176,6 +176,12 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
   function formatImobBusinessNextStep(nextStep: string | null | undefined, caseContext?: ImobCrmCaseContext | null) {
     const normalized = helpers.normalizeImobRouteText(nextStep ?? "");
     if (!normalized) return "definir o próximo movimento comercial";
+    if (normalized.includes("mostrar pendencias do caso") || normalized.includes("mostrar pendências do caso")) {
+      return "revisar as pendências atuais do caso";
+    }
+    if (normalized.includes("mostrar bloqueios do caso")) {
+      return "revisar os bloqueios atuais do caso";
+    }
     if (normalized.includes("qualificar lead deste caso")) {
       const leadName = helpers.asString(helpers.asObject(caseContext?.lead)?.name);
       return leadName
@@ -2534,7 +2540,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       handoffPack,
       pendingFieldLabels: pendingItems,
       suggestedNextAction: nextStep,
-      widget: buildImobCaseExperienceWidget(caseContext),
+      widget: undefined,
       dedupeKey: `crm.case.${intent}:${caseContext?.caseId ?? "unknown"}`,
       card: {
         title: cardTitleByIntent[intent],
@@ -2670,6 +2676,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     const owner = latestCase.owner as any;
     const pendingItems = helpers.asStringList(latestCase.pendingItems);
     const caseContext = buildCaseContextFromRecord(latestCase);
+    const safeNextStep = formatImobBusinessNextStep(latestCase.nextStep, caseContext);
     const lines = [
       `Jornada: ${formatImobJourneyLabel(caseContext.canonical?.journeyType)}.`,
       lead?.name ? `Lead: ${lead.name}` : null,
@@ -2682,7 +2689,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       owner?.name ? `Proprietário: ${owner.name}` : null,
       `Status: ${helpers.formatImobStatusLabel(latestCase.status)}.`,
       `Pendências: ${helpers.formatImobPendingList(pendingItems)}.`,
-      latestCase.nextStep ? `Próximo passo: ${latestCase.nextStep}` : null,
+      latestCase.nextStep ? `Próximo passo: ${safeNextStep}` : null,
     ].filter(Boolean) as string[];
     return {
       mode: "consult",
@@ -2694,13 +2701,13 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
         text: [
           lead?.name ? `Cadastro do lead ${lead.name} localizado.` : `Cadastro ${helpers.formatImobCaseFlowLabel(latestCase.flow)} localizado.`,
           `Pendências atuais: ${helpers.formatImobPendingList(pendingItems)}.`,
-          latestCase.nextStep ? `Próximo passo: ${latestCase.nextStep}` : null,
+          latestCase.nextStep ? `Próximo passo: ${safeNextStep}` : null,
         ].filter(Boolean).join("\n"),
         owner: latestCase.ownerResponsible ?? "Corretor",
         nextStep: latestCase.nextStep ?? undefined,
         pendingFieldLabels: pendingItems,
-        suggestedNextAction: latestCase.nextStep ?? "Vincular este cadastro ao próximo passo comercial.",
-        widget: buildImobCaseExperienceWidget(caseContext),
+        suggestedNextAction: safeNextStep ?? "Vincular este cadastro ao próximo passo comercial.",
+        widget: undefined,
         dedupeKey: `crm.case.recent_registration:${latestCase.id}`,
         card: {
           title: lead?.name ? `Cadastro do lead ${lead.name}` : `Cadastro ${helpers.formatImobCaseFlowLabel(latestCase.flow)}`,

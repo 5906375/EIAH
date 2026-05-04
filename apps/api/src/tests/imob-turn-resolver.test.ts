@@ -496,6 +496,35 @@ test("IMOB turn resolver builds guided form for property.create", () => {
   assert.equal(result.presentation.form?.fields.find((field) => field.name === "cep")?.lookup?.kind, "cep");
 });
 
+test("IMOB turn resolver keeps chips and free-text capture prompts behaviorally equivalent", () => {
+  const ownerByChip = resolveImobTurn({
+    message: "cadastrar proprietário",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+  const ownerByText = resolveImobTurn({
+    message: "quero incluir proprietário",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+  const propertyByChip = resolveImobTurn({
+    message: "cadastrar imóvel",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+  const propertyByText = resolveImobTurn({
+    message: "quero incluir imóvel",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(ownerByChip.executionRequest?.operation, ownerByText.executionRequest?.operation);
+  assert.equal(ownerByChip.conversationState.operational?.flow, ownerByText.conversationState.operational?.flow);
+  assert.equal(ownerByChip.presentation.form?.label, ownerByText.presentation.form?.label);
+  assert.deepEqual(ownerByChip.presentation.form?.fields.map((field) => field.name), ownerByText.presentation.form?.fields.map((field) => field.name));
+
+  assert.equal(propertyByChip.executionRequest?.operation, propertyByText.executionRequest?.operation);
+  assert.equal(propertyByChip.conversationState.operational?.flow, propertyByText.conversationState.operational?.flow);
+  assert.equal(propertyByChip.presentation.form?.label, propertyByText.presentation.form?.label);
+  assert.deepEqual(propertyByChip.presentation.form?.fields.map((field) => field.name), propertyByText.presentation.form?.fields.map((field) => field.name));
+});
+
 test("IMOB turn resolver prioritizes explicit property capture over options token", () => {
   const result = resolveImobTurn({
     message: "cadastrar imóvel opções",
@@ -573,6 +602,85 @@ test("IMOB turn resolver builds explicit property.create operational state", () 
   assert.equal(result.conversationState.operational?.propertyDraft?.goal, "venda");
   assert.equal(result.conversationState.operational?.propertyDraft?.address, "Rua 1000");
   assert.match(result.presentation.text, /cadastro do imovel|cadastro do imóvel/i);
+  assert.equal(result.presentation.blocker, null);
+  assert.match(result.presentation.nextStep ?? "", /Vincular o imóvel ao próximo lead/i);
+  assert.deepEqual(result.presentation.pendingFieldLabels, []);
+});
+
+test("IMOB turn resolver keeps property capture blockers internal while exposing the form", () => {
+  const result = resolveImobTurn({
+    message: "Quero captar um imóvel para locação em Balneário Camboriú",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.executionRequest?.operation, "property.create");
+  assert.equal(result.conversationState.operational?.flow, "property.create");
+  assert.ok((result.conversationState.operational?.pendingFields?.includes("propertyType") ?? false), true);
+  assert.ok((result.conversationState.operational?.pendingFields?.includes("address") ?? false), true);
+  assert.equal(result.presentation.blocker, undefined);
+  assert.equal(result.presentation.nextStep, undefined);
+  assert.equal(result.presentation.pendingFieldLabels, undefined);
+  assert.doesNotMatch(result.presentation.text, /ainda preciso de|pend[eê]ncias|bloqueio atual/i);
+  assert.equal(result.presentation.form?.label, "Cadastrar imóvel");
+});
+
+test("IMOB turn resolver translates lead pending fields into user-facing labels", () => {
+  const result = resolveImobTurn({
+    message: "qualificar lead Maria em Itapema",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.conversationState.operational?.flow, "lead.qualify");
+  assert.ok(result.conversationState.operational?.pendingFields.includes("leadPhone"));
+  assert.ok(result.conversationState.operational?.pendingFields.includes("desiredGoal"));
+  assert.match(result.presentation.text, /telefone do lead/i);
+  assert.match(result.presentation.text, /objetivo do lead/i);
+  assert.doesNotMatch(result.presentation.text, /desiredGoal|leadPhone|budgetMax/i);
+});
+
+test("IMOB turn resolver translates visit pending fields into user-facing labels", () => {
+  const result = resolveImobTurn({
+    message: "quero agendar uma visita para Maria",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.conversationState.operational?.flow, "visit.schedule");
+  assert.match(result.presentation.text, /imóvel da visita/i);
+  assert.match(result.presentation.text, /data da visita/i);
+  assert.doesNotMatch(result.presentation.text, /propertyId|preferredDate|visitorPhone/i);
+});
+
+test("IMOB turn resolver keeps generic cadastro inside active owner capture context", () => {
+  const result = resolveImobTurn({
+    message: "cadastro",
+    threadState: {
+      mode: "execute",
+      pendingSlot: "none",
+      resultOffset: 0,
+      slots: {},
+      operational: {
+        flow: "owner.create",
+        status: "collecting",
+        pendingFields: ["ownerDocument"],
+        ownerDraft: {
+          ownerPersona: "proprietario",
+          ownerName: "Proprietario",
+          ownerPhone: "47999999999",
+          ownerEmail: "prop@example.com",
+          ownerDocument: null,
+        },
+      },
+    },
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.mode, "consult");
+  assert.equal(result.action, "crm.capture.flow_guidance");
+  assert.match(result.presentation.text, /cadastro do propriet[aá]rio/i);
+  const ctas = result.presentation.card?.ctas ?? [];
+  assert.equal(ctas[0]?.label, "Continuar proprietário");
+  assert.equal(ctas[0]?.nextMessage, "cadastrar proprietário");
+  assert.equal(ctas.some((item: any) => item.label === "Cadastrar lead"), false);
 });
 
 test("IMOB turn resolver builds explicit lead.qualify operational state", () => {

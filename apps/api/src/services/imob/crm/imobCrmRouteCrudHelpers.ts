@@ -53,6 +53,13 @@ export function extractPropertyGoalFromMessage(raw: string) {
   return normalizeImobCrmPropertyGoal(match?.[1]?.trim() ?? null);
 }
 
+export function extractLeadGoalFromMessage(raw: string) {
+  const match = raw.match(
+    /(?:(?:objetivo|finalidade) do (?:lead|cliente|comprador|compradora|locatario|locatário|locataria|locatária))\s*:?\s*([^,.;\n]+)/i,
+  );
+  return normalizeImobCrmPropertyGoal(match?.[1]?.trim() ?? null);
+}
+
 export function extractPropertyCityFromMessage(raw: string) {
   const match = raw.match(/(?:cidade do imovel|cidade do imóvel)\s*:?\s*([^,.;\n]+)/i);
   return match?.[1]?.trim() ?? null;

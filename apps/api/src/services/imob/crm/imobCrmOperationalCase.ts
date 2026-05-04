@@ -9,7 +9,11 @@ import {
 function extractCaseIdFromMessage(message: string): string | null {
   if (typeof message !== "string" || message.trim().length === 0) return null;
   const byLabelMatch = message.match(/(?:caso|case|processo)\s*(?:id)?\s*[:#-]?\s*([a-z0-9][a-z0-9-]{2,})/i);
-  if (byLabelMatch?.[1]) return byLabelMatch[1];
+  if (byLabelMatch?.[1]) {
+    const candidate = byLabelMatch[1].toLowerCase();
+    if (["mais", "recente", "atual", "aberto", "disponivel", "disponível", "ultimo", "último"].includes(candidate)) return null;
+    return byLabelMatch[1];
+  }
   return null;
 }
 

@@ -27,6 +27,7 @@ function buildUpdateContext(params: ImobOperationalResolverParams, helpers: Reso
     propertyRef: helpers.extractPropertyRefFromMessage(params.message),
     leadPhone: helpers.extractLeadPhoneFromMessage(params.message),
     leadEmail: helpers.extractLeadEmailFromMessage(params.message),
+    leadGoal: helpers.extractLeadGoalFromMessage(params.message),
     budgetCents: helpers.extractAmountAfterKeywords(params.message, ["orcamento", "orçamento", "budget"]),
     priceCents: helpers.extractAmountAfterKeywords(params.message, ["preco", "preço", "valor"]),
     targetCity: helpers.extractFreeformCityAfterKeywords(params.message, ["cidade do lead", "cidade de interesse"]),
@@ -42,6 +43,11 @@ function buildUpdateContext(params: ImobOperationalResolverParams, helpers: Reso
 
 function buildConsultContext(params: ImobOperationalResolverParams, helpers: ResolverHelpers): ImobOperationalConsultContext {
   const normalized = helpers.normalizeImobRouteText(params.message);
+  const asksRecentCase =
+    normalized.includes("caso mais recente")
+    || normalized.includes("caso recente")
+    || normalized.includes("ultimo caso")
+    || normalized.includes("último caso");
   const ownerNameHint = helpers.extractOwnerNameFromMessage(params.message);
   const propertyRefHint = helpers.extractPropertyRefFromMessage(params.message);
   const addressHint = helpers.extractAddressFromMessage(params.message);
@@ -59,10 +65,10 @@ function buildConsultContext(params: ImobOperationalResolverParams, helpers: Res
     wantsOwner,
     wantsProperty,
     asksLeadCases: normalized.includes("casos do lead") || normalized.includes("quais casos do lead"),
-    asksCurrentCase: normalized.includes("nesse caso") || normalized.includes("desse caso") || normalized.includes("deste caso"),
+    asksCurrentCase: normalized.includes("nesse caso") || normalized.includes("desse caso") || normalized.includes("deste caso") || asksRecentCase,
     asksCaseStatus: normalized.includes("status desse caso") || normalized.includes("status deste caso") || normalized.includes("status do caso"),
     asksMissing: normalized.includes("o que falta") || normalized.includes("pendencia") || normalized.includes("pendência"),
-    asksShow: normalized.includes("mostrar") || normalized.includes("ver") || normalized.includes("consultar") || normalized.includes("quais") || normalized.includes("abrir"),
+    asksShow: normalized.includes("mostrar") || normalized.includes("ver") || normalized.includes("consultar") || normalized.includes("quais") || normalized.includes("abrir") || asksRecentCase,
     asksLeadList: wantsLead && (normalized.includes("listar leads") || normalized.includes("quais leads estao cadastrados") || normalized.includes("quais leads estão cadastrados") || normalized.includes("leads cadastrados")),
     asksOwnerList: wantsOwner && (normalized.includes("listar proprietarios") || normalized.includes("listar proprietários") || normalized.includes("quais proprietarios estao cadastrados") || normalized.includes("quais proprietários estão cadastrados") || normalized.includes("proprietarios cadastrados") || normalized.includes("proprietários cadastrados")),
     asksPropertyList: wantsProperty && (normalized.includes("listar imoveis") || normalized.includes("listar imóveis") || normalized.includes("quais imoveis estao cadastrados") || normalized.includes("quais imóveis estão cadastrados") || normalized.includes("imoveis cadastrados") || normalized.includes("imóveis cadastrados")),
