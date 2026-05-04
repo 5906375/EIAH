@@ -17,6 +17,24 @@ function extractCaseIdFromMessage(message: string): string | null {
   return null;
 }
 
+function buildChatSafeCaseLookupText(params: {
+  scopedCaseId: string | null;
+  flow: string | null | undefined;
+  pendingItems: string[];
+  nextStep?: string | null;
+  blocker?: string | null;
+}, helpers: ResolverHelpers) {
+  const summary = params.scopedCaseId
+    ? `Caso ${helpers.formatImobCaseFlowLabel(params.flow)} localizado.`
+    : `Usei o caso IMOB mais recente para esta leitura: ${helpers.formatImobCaseFlowLabel(params.flow)}.`;
+  const hints = [
+    params.pendingItems.length > 0 ? "Há pendências operacionais em aberto." : null,
+    params.blocker ? "Existe um bloqueio ativo neste atendimento." : null,
+    params.nextStep ? "Posso detalhar a próxima ação recomendada para este caso." : null,
+  ].filter(Boolean);
+  return [summary, ...hints].join("\n");
+}
+
 export async function resolveImobCaseOperationalConsult(
   params: ImobOperationalResolverParams,
   helpers: ResolverHelpers,
@@ -151,12 +169,13 @@ export async function resolveImobCaseOperationalConsult(
     conversationState: params.threadState ?? helpers.createEmptyThreadState(),
     caseContext: helpers.buildCaseContextFromRecord(item),
     presentation: {
-      text: [
-        scopedCaseId ? `Caso ${helpers.formatImobCaseFlowLabel(item.flow)} localizado.` : `Usei o caso IMOB mais recente para esta leitura: ${helpers.formatImobCaseFlowLabel(item.flow)}.`,
-        `Pendências atuais: ${helpers.formatImobPendingList(asPendingItems(item.pendingItems))}`,
-        item.nextStep ? `Próximo passo: ${item.nextStep}` : null,
-        blocker ? `Bloqueio atual: ${blocker}` : null,
-      ].filter(Boolean).join("\n"),
+      text: buildChatSafeCaseLookupText({
+        scopedCaseId,
+        flow: item.flow,
+        pendingItems: asPendingItems(item.pendingItems),
+        nextStep: item.nextStep,
+        blocker,
+      }, helpers),
       owner: item.ownerResponsible ?? undefined,
       nextStep: item.nextStep ?? undefined,
       blocker,

@@ -1301,3 +1301,45 @@ test("IMOB turn resolver keeps active case continuity on explicit continuation r
   assert.equal(result.conversationState.operational?.flow, "owner.create");
   assert.notEqual(result.action, "crm.capture.flow_guidance");
 });
+
+test("IMOB turn resolver keeps capture blocker metadata internal during property collecting", () => {
+  const result = resolveImobTurn({
+    message: "quero captar um imóvel para locação em Balneário Camboriú",
+    threadState: {
+      slots: {
+        query: null,
+        city: "Balneário Camboriú",
+        region: null,
+        neighborhood: null,
+        goal: "locacao",
+        propertyType: null,
+        bedrooms: null,
+        bathrooms: null,
+        budgetMax: null,
+        hasPool: null,
+        petsAllowed: null,
+      },
+      mode: "execute",
+      pendingSlot: "none",
+      resultOffset: 0,
+      operational: {
+        flow: "property.create",
+        status: "collecting",
+        pendingFields: ["propertyType", "address"],
+        propertyDraft: {
+          goal: "locacao",
+          city: "Balneário Camboriú",
+          propertyType: null,
+          address: null,
+        },
+      },
+    },
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.conversationState.operational?.flow, "property.create");
+  assert.equal(result.presentation.pendingFieldLabels?.length, 2);
+  assert.match(result.presentation.blocker ?? "", /Dados do imóvel/i);
+  assert.match(result.presentation.nextStep ?? "", /Completar dados do imóvel/i);
+  assert.doesNotMatch(result.presentation.text ?? "", /Bloqueio atual|Pendências atuais|Próximo passo|mostrar bloqueios do caso/i);
+});

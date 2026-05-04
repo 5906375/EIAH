@@ -150,6 +150,7 @@ function buildExistingRegistrationChoiceConsult(params: {
   text: string;
   lines: string[];
   nextMessages: string[];
+  matches?: Array<{ entityType?: string; entityId?: string; label?: string }>;
   helpers: RegistrationHelpers;
 }) {
   const next = params.helpers.cloneImobResolvedTurn(params.resolved);
@@ -158,6 +159,20 @@ function buildExistingRegistrationChoiceConsult(params: {
   next.conversationState = {
     ...(next.conversationState ?? params.helpers.createEmptyThreadState()),
     mode: "consult",
+    operational: {
+      ...(params.helpers.asObject(next.conversationState?.operational) ?? {}),
+      ...(params.matches?.length === 1
+        ? {
+            dedupeSelection: {
+              entity: params.matches[0]?.entityType === "lead" ? "lead" : params.matches[0]?.entityType === "property" ? "property" : "owner",
+              resolution: "pending_choice",
+              selectedId: params.matches[0]?.entityId ?? null,
+              selectedRef: params.nextMessages[0]?.replace(/^atualizar\s+(lead|proprietário|proprietario|imóvel|imovel)\s+/i, "") ?? null,
+              selectedName: params.matches[0]?.label ?? null,
+            },
+          }
+        : {}),
+    },
   };
   next.presentation = {
     ...(next.presentation ?? {}),
@@ -244,10 +259,11 @@ export async function applyExistingRegistrationResolution(params: {
       flow: decision.flow,
       title: decision.title,
       text: decision.text,
-      lines: decision.lines,
-      nextMessages: decision.nextMessages,
-      helpers: params.helpers,
-    });
+        lines: decision.lines,
+        nextMessages: decision.nextMessages,
+        matches: decision.matches,
+        helpers: params.helpers,
+      });
   }
 
   return params.resolved;

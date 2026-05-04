@@ -91,54 +91,114 @@ function isExplicitOperationalCommand(message: string) {
   );
 }
 
+function isExplicitOperationalConsultCommand(message: string) {
+  const normalized = message.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  return (
+    normalized.startsWith("listar proprietarios") ||
+    normalized.startsWith("listar imoveis") ||
+    normalized.startsWith("listar leads") ||
+    normalized.startsWith("consultar proprietario") ||
+    normalized.startsWith("consultar imovel") ||
+    normalized.startsWith("consultar lead")
+  );
+}
+
 function rewriteRegistrationDedupeChoiceMessage(
   message: string,
   threadState: ThreadStateLike | null | undefined,
   normalizeImobRouteText: (value: string) => string,
 ) {
   const normalized = normalizeImobRouteText(message);
-  const dedupeChoice =
-    normalized === "atualizar existente" || normalized === "editar existente"
-      ? "update_existing"
-      : normalized === "criar novo" || normalized === "criar um novo" || normalized === "novo" || normalized === "novo cadastro"
-        ? "create_new"
-        : normalized === "cadastros" || normalized === "ver cadastros" || normalized === "listar cadastros"
-          ? "list_existing"
-          : null;
-  if (!dedupeChoice) {
-    return message;
-  }
-
   const operational = asObject(asObject(threadState)?.operational);
+  const dedupeSelection = asObject(operational?.dedupeSelection);
+  const entity = asString(dedupeSelection?.entity);
+  const selectedRef = asString(dedupeSelection?.selectedRef);
+  const selectedName = asString(dedupeSelection?.selectedName);
   const flow = asString(operational?.flow);
-  if (!flow) return message;
+  if (!entity || !selectedRef || !flow) return message;
 
-  if (flow === "owner.create") {
-    const ownerDraft = asObject(operational?.ownerDraft);
-    const ownerRef = asString(ownerDraft?.ownerDocument)
-      ?? asString(ownerDraft?.ownerPhone)
-      ?? asString(ownerDraft?.ownerEmail)
-      ?? asString(ownerDraft?.ownerName);
-    if (!ownerRef) return message;
-    if (dedupeChoice === "update_existing") return `atualizar proprietário ${ownerRef}`;
-    if (dedupeChoice === "create_new") return `criar novo proprietário ${asString(ownerDraft?.ownerName) ?? ownerRef}`;
-    if (dedupeChoice === "list_existing") return `listar proprietários ${asString(ownerDraft?.ownerName) ?? ownerRef}`;
+  if (
+    normalized === "atualizar existente" ||
+    normalized === "editar existente"
+  ) {
+    if (entity === "owner" && flow === "owner.create") return `atualizar proprietário ${selectedRef}`;
+    if (entity === "lead" && flow === "lead.qualify") return `atualizar lead ${selectedRef}`;
+    if (entity === "property" && flow === "property.create") return `atualizar imóvel ${selectedRef}`;
   }
 
-  if (flow === "lead.qualify") {
-    const leadDraft = asObject(operational?.leadDraft);
-    const leadRef = asString(leadDraft?.leadPhone)
-      ?? asString(leadDraft?.leadEmail)
-      ?? asString(leadDraft?.leadName);
-    if (!leadRef) return message;
-    if (dedupeChoice === "update_existing") return `atualizar lead ${leadRef}`;
-    if (dedupeChoice === "create_new") return `criar novo lead ${asString(leadDraft?.leadName) ?? leadRef}`;
-    if (dedupeChoice === "list_existing") return `listar leads ${asString(leadDraft?.leadName) ?? leadRef}`;
+  if (
+    normalized === "criar novo" ||
+    normalized === "criar um novo" ||
+    normalized === "novo" ||
+    normalized === "novo cadastro"
+  ) {
+    if (entity === "owner" && flow === "owner.create") return `criar novo proprietário ${selectedName ?? selectedRef}`;
+    if (entity === "lead" && flow === "lead.qualify") return `criar novo lead ${selectedName ?? selectedRef}`;
+    if (entity === "property" && flow === "property.create") return `criar novo imóvel ${selectedName ?? selectedRef}`;
+  }
+
+  if (
+    normalized === "cadastros" ||
+    normalized === "ver cadastros" ||
+    normalized === "listar cadastros"
+  ) {
+    if (entity === "owner" && flow === "owner.create") return `listar proprietários ${selectedName ?? selectedRef}`;
+    if (entity === "lead" && flow === "lead.qualify") return `listar leads ${selectedName ?? selectedRef}`;
+    if (entity === "property" && flow === "property.create") return `listar imóveis ${selectedName ?? selectedRef}`;
+  }
+
+  if (
+    entity === "owner" &&
+    flow === "owner.create" &&
+    asString(dedupeSelection?.resolution) === "update_existing" &&
+    !normalized.includes("cancelar") &&
+    !normalized.includes("criar novo") &&
+    !normalized.includes("cadastros") &&
+    !normalized.includes("listar")
+  ) {
+    if (/@/.test(message)) return `atualizar proprietário ${selectedRef} e-mail do proprietário ${message}`;
+    if (/(?:\+?55\s*)?(?:\(?\d{2}\)?\s*)?\d{4,5}[-\s]?\d{4}/.test(message)) return `atualizar proprietário ${selectedRef} telefone do proprietário ${message}`;
+    if (/\b\d{11}\b|\b\d{14}\b/.test(message)) return `atualizar proprietário ${selectedRef} documento do proprietário ${message}`;
+    return `atualizar proprietário ${selectedRef} nome do proprietário ${message}`;
   }
 
   return message;
 }
 
+function applyDedupeSelectionToConversationState(
+  threadState: ThreadStateLike | null | undefined,
+  rewrittenMessage: string,
+  resolved: Record<string, unknown>,
+) {
+  const normalized = rewrittenMessage.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const baseState = asObject(resolved.conversationState) ?? asObject(threadState) ?? null;
+  const operational = asObject(baseState?.operational);
+  if (!operational) return resolved;
+  const currentSelection = asObject(asObject(threadState)?.operational)?.dedupeSelection;
+  if (!currentSelection) return resolved;
+
+  const nextSelection =
+    normalized.startsWith("atualizar proprietario ") || normalized.startsWith("atualizar proprietário ")
+      ? { ...currentSelection, resolution: "update_existing" }
+      : normalized.startsWith("criar novo proprietario ") || normalized.startsWith("criar novo proprietário ")
+        ? { ...currentSelection, resolution: "create_new" }
+        : normalized.startsWith("listar proprietarios ") || normalized.startsWith("listar proprietários ")
+          ? { ...currentSelection, resolution: "list_existing" }
+          : currentSelection;
+
+  const hasForm = Boolean(asObject(asObject(resolved.presentation)?.form));
+  const shouldClearSelection = !hasForm && asString(resolved.action) === "crm.owner.update";
+  return {
+    ...resolved,
+    conversationState: {
+      ...baseState,
+      operational: {
+        ...operational,
+        ...(shouldClearSelection ? { dedupeSelection: undefined } : { dedupeSelection: nextSelection }),
+      },
+    },
+  };
+}
 function buildCaptureSwitchActions() {
   return [
     {
@@ -384,7 +444,10 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
       threadState: hydratedThreadState,
     });
     if (updateData) {
-      const data = applyResponsibleLabelToResolvedTurn(updateData, params.workspaceResponsibleLabel);
+      const data = applyResponsibleLabelToResolvedTurn(
+        applyDedupeSelectionToConversationState(hydratedThreadState, rewrittenMessage, updateData as Record<string, unknown>) as any,
+        params.workspaceResponsibleLabel,
+      );
       return {
         data: params.helpers.applyCanonicalJourneyToResolvedData(data, (data.caseContext as ImobCrmCaseContext | null | undefined) ?? null),
         caseContext: data.caseContext ?? null,
@@ -413,7 +476,7 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
       }
     }
 
-    if (shouldPrioritizeActiveFlowContinuity) {
+    if (shouldPrioritizeActiveFlowContinuity && !isExplicitOperationalConsultCommand(rewrittenMessage)) {
       const semanticIntent = turn.semanticIntent ?? await resolveImobSemanticIntent(rewrittenMessage);
       const resolvedTurn = resolveImobTurn({
         message: rewrittenMessage,
