@@ -91,6 +91,54 @@ function isExplicitOperationalCommand(message: string) {
   );
 }
 
+function rewriteRegistrationDedupeChoiceMessage(
+  message: string,
+  threadState: ThreadStateLike | null | undefined,
+  normalizeImobRouteText: (value: string) => string,
+) {
+  const normalized = normalizeImobRouteText(message);
+  const dedupeChoice =
+    normalized === "atualizar existente" || normalized === "editar existente"
+      ? "update_existing"
+      : normalized === "criar novo" || normalized === "criar um novo" || normalized === "novo" || normalized === "novo cadastro"
+        ? "create_new"
+        : normalized === "cadastros" || normalized === "ver cadastros" || normalized === "listar cadastros"
+          ? "list_existing"
+          : null;
+  if (!dedupeChoice) {
+    return message;
+  }
+
+  const operational = asObject(asObject(threadState)?.operational);
+  const flow = asString(operational?.flow);
+  if (!flow) return message;
+
+  if (flow === "owner.create") {
+    const ownerDraft = asObject(operational?.ownerDraft);
+    const ownerRef = asString(ownerDraft?.ownerDocument)
+      ?? asString(ownerDraft?.ownerPhone)
+      ?? asString(ownerDraft?.ownerEmail)
+      ?? asString(ownerDraft?.ownerName);
+    if (!ownerRef) return message;
+    if (dedupeChoice === "update_existing") return `atualizar proprietário ${ownerRef}`;
+    if (dedupeChoice === "create_new") return `criar novo proprietário ${asString(ownerDraft?.ownerName) ?? ownerRef}`;
+    if (dedupeChoice === "list_existing") return `listar proprietários ${asString(ownerDraft?.ownerName) ?? ownerRef}`;
+  }
+
+  if (flow === "lead.qualify") {
+    const leadDraft = asObject(operational?.leadDraft);
+    const leadRef = asString(leadDraft?.leadPhone)
+      ?? asString(leadDraft?.leadEmail)
+      ?? asString(leadDraft?.leadName);
+    if (!leadRef) return message;
+    if (dedupeChoice === "update_existing") return `atualizar lead ${leadRef}`;
+    if (dedupeChoice === "create_new") return `criar novo lead ${asString(leadDraft?.leadName) ?? leadRef}`;
+    if (dedupeChoice === "list_existing") return `listar leads ${asString(leadDraft?.leadName) ?? leadRef}`;
+  }
+
+  return message;
+}
+
 function buildCaptureSwitchActions() {
   return [
     {
@@ -320,13 +368,18 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
       threadLabel,
       threadState: turn.threadState,
     });
+    const rewrittenMessage = rewriteRegistrationDedupeChoiceMessage(
+      turn.message,
+      hydratedThreadState,
+      params.helpers.normalizeImobRouteText,
+    );
 
     const updateData = await params.helpers.resolveImobOperationalUpdate({
       prisma: params.prisma,
       tenantId: params.authContext.tenantId,
       workspaceId: params.authContext.workspaceId,
       userId: params.authContext.userId ?? null,
-      message: turn.message,
+      message: rewrittenMessage,
       caseId: turn.caseId,
       threadState: hydratedThreadState,
     });
@@ -339,15 +392,15 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
     }
 
     const shouldPrioritizeActiveFlowContinuity = hasActivePendingOperationalFlow(hydratedThreadState);
-    const shouldPrioritizeBusinessRead = hasStrongBusinessReadIntent(turn.message);
+    const shouldPrioritizeBusinessRead = hasStrongBusinessReadIntent(rewrittenMessage);
 
-    if (shouldPrioritizeBusinessRead && !isExplicitOperationalCommand(turn.message)) {
+    if (shouldPrioritizeBusinessRead && !isExplicitOperationalCommand(rewrittenMessage)) {
       const consultData = await params.helpers.resolveImobOperationalConsult({
         prisma: params.prisma,
         tenantId: params.authContext.tenantId,
         workspaceId: params.authContext.workspaceId,
         userId: params.authContext.userId ?? null,
-        message: turn.message,
+        message: rewrittenMessage,
         caseId: turn.caseId,
         threadState: hydratedThreadState,
       });
@@ -361,9 +414,9 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
     }
 
     if (shouldPrioritizeActiveFlowContinuity) {
-      const semanticIntent = turn.semanticIntent ?? await resolveImobSemanticIntent(turn.message);
+      const semanticIntent = turn.semanticIntent ?? await resolveImobSemanticIntent(rewrittenMessage);
       const resolvedTurn = resolveImobTurn({
-        message: turn.message,
+        message: rewrittenMessage,
         semanticIntent: semanticIntent.parsedIntent,
         semanticIntentSource: semanticIntent.source,
         threadLabel,
@@ -400,13 +453,13 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
       };
     }
 
-    if (!isExplicitOperationalCommand(turn.message)) {
+    if (!isExplicitOperationalCommand(rewrittenMessage)) {
       const consultData = await params.helpers.resolveImobOperationalConsult({
         prisma: params.prisma,
         tenantId: params.authContext.tenantId,
         workspaceId: params.authContext.workspaceId,
         userId: params.authContext.userId ?? null,
-        message: turn.message,
+        message: rewrittenMessage,
         caseId: turn.caseId,
         threadState: hydratedThreadState,
       });
@@ -419,9 +472,9 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
       }
     }
 
-    const semanticIntent = turn.semanticIntent ?? await resolveImobSemanticIntent(turn.message);
+    const semanticIntent = turn.semanticIntent ?? await resolveImobSemanticIntent(rewrittenMessage);
     const resolvedTurn = resolveImobTurn({
-      message: turn.message,
+      message: rewrittenMessage,
       semanticIntent: semanticIntent.parsedIntent,
       semanticIntentSource: semanticIntent.source,
       threadLabel,

@@ -29,7 +29,7 @@ type PersistedLeadSummary = {
 
 type ContinuityPrismaLike = {
   imobCase: {
-    findFirst(args: Record<string, unknown>): Promise<{ leadId?: string | null } | null>;
+    findFirst(args: Record<string, unknown>): Promise<{ leadId?: string | null; propertyId?: string | null } | null>;
   };
   imobLead: {
     findFirst(args: Record<string, unknown>): Promise<PersistedLeadSummary | null>;
@@ -56,6 +56,24 @@ function normalizeLeadDesiredGoal(value: string | null | undefined): "locacao" |
   if (!normalized) return null;
   if (normalized === "venda" || normalized === "compra" || normalized.includes("compr")) return "venda";
   if (normalized === "locacao" || normalized === "locação" || normalized.includes("loca") || normalized.includes("alug")) return "locacao";
+  return null;
+}
+
+function inferExplicitTargetFlow(message: string): "proposal.create" | "visit.schedule" | "lead.qualify" | null {
+  const normalized = String(message ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
+  if (!normalized) return null;
+  if (normalized.includes("visita") || normalized.includes("agendar") || normalized.includes("agenda") || normalized.includes("reuniao") || normalized.includes("tour")) {
+    return "visit.schedule";
+  }
+  if (normalized.includes("proposta") || normalized.includes("oferta")) {
+    return "proposal.create";
+  }
+  if (normalized.includes("qualificar lead") || normalized.includes("cadastro de lead") || normalized.includes("cadastrar lead")) {
+    return "lead.qualify";
+  }
   return null;
 }
 
@@ -86,21 +104,33 @@ export async function hydrateThreadStateWithPersistedLead(params: {
   helpers: ContinuityHelpers;
 }) {
   const currentOperational = params.helpers.asObject(params.helpers.asObject(params.threadState)?.operational);
-  const targetFlow = params.helpers.detectOperationalHydrationFlow(
-    params.message,
-    params.threadLabel,
-    params.helpers.asString(currentOperational?.flow)
-  );
+  const currentStatus = params.helpers.asString(currentOperational?.status);
+  const currentPendingFields = params.helpers.asStringList(currentOperational?.pendingFields);
+  const hasBlockingActiveFlow = currentStatus === "collecting" && currentPendingFields.length > 0;
+  const explicitTargetFlow = inferExplicitTargetFlow(params.message);
+  const targetFlow = hasBlockingActiveFlow
+    ? params.helpers.detectOperationalHydrationFlow(
+        params.message,
+        params.threadLabel,
+        params.helpers.asString(currentOperational?.flow),
+      )
+    : explicitTargetFlow ?? params.helpers.detectOperationalHydrationFlow(
+        params.message,
+        params.threadLabel,
+        null,
+      );
   if (targetFlow !== "proposal.create" && targetFlow !== "visit.schedule" && targetFlow !== "lead.qualify") {
     return params.threadState;
   }
 
   let persistedLead: PersistedLeadSummary | null = null;
+  let scopedCasePropertyId: string | null = null;
   if (params.caseId) {
     const scopedCase = await params.prisma.imobCase.findFirst({
       where: { id: params.caseId, tenantId: params.tenantId, workspaceId: params.workspaceId },
-      select: { leadId: true },
+      select: { leadId: true, propertyId: true },
     });
+    scopedCasePropertyId = typeof scopedCase?.propertyId === "string" ? scopedCase.propertyId : null;
     if (scopedCase?.leadId) {
       persistedLead = await params.prisma.imobLead.findFirst({
         where: { id: scopedCase.leadId, tenantId: params.tenantId, workspaceId: params.workspaceId },
@@ -215,25 +245,30 @@ export async function hydrateThreadStateWithPersistedLead(params: {
   }
 
   const visitDraft = (params.helpers.asObject(nextOperational.visitDraft) ?? {}) as VisitDraft;
+  const hydratedVisitDraft = {
+    propertyId: params.helpers.asString(visitDraft.propertyId) ?? scopedCasePropertyId,
+    visitorName: params.helpers.asString(visitDraft.visitorName) ?? persistedLead.name ?? null,
+    visitorPhone: params.helpers.asString(visitDraft.visitorPhone) ?? persistedLead.phone ?? null,
+    preferredDate: params.helpers.asString(visitDraft.preferredDate),
+    preferredWindow:
+      params.helpers.asString(visitDraft.preferredWindow) === "manha" ||
+      params.helpers.asString(visitDraft.preferredWindow) === "tarde" ||
+      params.helpers.asString(visitDraft.preferredWindow) === "noite"
+        ? params.helpers.asString(visitDraft.preferredWindow)
+        : null,
+  } as const;
+  const pendingVisitFields: string[] = [];
+  if (!hydratedVisitDraft.propertyId) pendingVisitFields.push("propertyId");
+  if (!hydratedVisitDraft.visitorName) pendingVisitFields.push("visitorName");
+  if (!hydratedVisitDraft.visitorPhone) pendingVisitFields.push("visitorPhone");
+  if (!hydratedVisitDraft.preferredDate) pendingVisitFields.push("preferredDate");
+
   nextStateObject.operational = {
     ...nextOperational,
     flow: "visit.schedule",
-    status: params.helpers.asString(nextOperational.status) === "ready_for_review" ? "ready_for_review" : "collecting",
-    pendingFields: Array.isArray(nextOperational.pendingFields)
-      ? nextOperational.pendingFields.filter((item: unknown) => typeof item === "string")
-      : [],
-    visitDraft: {
-      propertyId: params.helpers.asString(visitDraft.propertyId),
-      visitorName: params.helpers.asString(visitDraft.visitorName) ?? persistedLead.name ?? null,
-      visitorPhone: params.helpers.asString(visitDraft.visitorPhone) ?? persistedLead.phone ?? null,
-      preferredDate: params.helpers.asString(visitDraft.preferredDate),
-      preferredWindow:
-        params.helpers.asString(visitDraft.preferredWindow) === "manha" ||
-        params.helpers.asString(visitDraft.preferredWindow) === "tarde" ||
-        params.helpers.asString(visitDraft.preferredWindow) === "noite"
-          ? params.helpers.asString(visitDraft.preferredWindow)
-          : null,
-    },
+    status: pendingVisitFields.length === 0 ? "ready_for_review" : "collecting",
+    pendingFields: pendingVisitFields,
+    visitDraft: hydratedVisitDraft,
   };
   return nextStateObject;
 }

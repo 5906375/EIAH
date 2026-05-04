@@ -115,6 +115,7 @@ export type ResolverHelpers = {
   extractPropertyRefFromMessage: (message: string) => string | null;
   extractLeadPhoneFromMessage: (message: string) => string | null;
   extractLeadEmailFromMessage: (message: string) => string | null;
+  extractLeadGoalFromMessage: (message: string) => string | null;
   extractAmountAfterKeywords: (message: string, keywords: string[]) => number | null;
   extractFreeformCityAfterKeywords: (message: string, keywords: string[]) => string | null;
   extractOwnerCrudIdFromMessage: (message: string) => string | null;
@@ -189,6 +190,7 @@ export type ImobOperationalUpdateContext = {
   propertyRef: string | null;
   leadPhone: string | null;
   leadEmail: string | null;
+  leadGoal: string | null;
   budgetCents: number | null;
   priceCents: number | null;
   targetCity: string | null;

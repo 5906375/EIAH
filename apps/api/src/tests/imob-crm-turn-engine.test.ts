@@ -173,6 +173,45 @@ test("IMOB_CRM turn engine mantém continuidade de intake para mensagens não co
   assert.match((resolved as any).presentation?.text ?? "", /continuidade do fluxo ativo/i);
 });
 
+test("IMOB_CRM turn engine treats generic cadastro as active capture guidance instead of lead fallback", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "cadastro",
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "owner.create",
+          status: "collecting",
+          pendingFields: ["ownerDocument"],
+          ownerDraft: {
+            ownerName: "Proprietario",
+            ownerPhone: "4744444444",
+            ownerEmail: "ca@gmail.com",
+            ownerDocument: null,
+          },
+        },
+      },
+    },
+    helpers: {
+      ...createEngineParams().helpers,
+      applyExistingRegistrationResolution: async ({ resolved }: any) => ({
+        ...resolved,
+        action: resolved.action,
+      }),
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal(resolved.action, "crm.capture.flow_guidance");
+  assert.match((resolved as any).presentation?.text ?? "", /cadastro do propriet[aá]rio/i);
+  const ctas = Array.isArray((resolved as any).presentation?.card?.ctas) ? (resolved as any).presentation.card.ctas : [];
+  assert.equal(ctas[0]?.label, "Continuar proprietário");
+  assert.equal(ctas.some((item: any) => item.label === "Cadastrar lead"), false);
+});
+
 test("IMOB_CRM turn engine preserves lead discovery capture during active qualification", async () => {
   const params = createEngineParams({
     body: {
@@ -212,4 +251,151 @@ test("IMOB_CRM turn engine preserves lead discovery capture during active qualif
   assert.equal((resolved as any).conversationState?.operational?.leadDraft?.discoverySignals?.urgency, "high");
   assert.equal((resolved as any).conversationState?.operational?.leadDraft?.discoverySignals?.decisionMaker, "shared");
   assert.match((resolved as any).presentation?.caseBrief?.summary ?? "", /home office|urgência alta/i);
+});
+
+test("IMOB_CRM turn engine rewrites generic duplicate-owner update choice into explicit owner update", async () => {
+  let receivedMessage: string | null = null;
+  const params = createEngineParams({
+    body: {
+      message: "atualizar existente",
+      threadState: {
+        mode: "consult",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "owner.create",
+          status: "collecting",
+          pendingFields: ["ownerDocument"],
+          ownerDraft: {
+            ownerName: "Proprietario",
+            ownerPhone: "4744444444",
+            ownerEmail: "ca@gmail.com",
+            ownerDocument: "41741741785",
+          },
+        },
+      },
+    },
+  });
+  params.helpers.resolveImobOperationalUpdate = async ({ message }: any) => {
+    receivedMessage = message;
+    if (message === "atualizar proprietário 41741741785") {
+      return {
+        mode: "consult",
+        action: "crm.owner.update",
+        threadLabel: "Proprietário",
+        conversationState: params.body.threadState,
+        presentation: { text: "Cadastro atualizado. Como podemos seguir?" },
+      };
+    }
+    return null;
+  };
+  params.helpers.resolveImobOperationalConsult = async () => ({
+    mode: "consult",
+    action: "crm.fallback",
+    threadLabel: "Caso",
+    conversationState: params.body.threadState,
+    presentation: { text: "fallback indevido" },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal(receivedMessage, "atualizar proprietário 41741741785");
+  assert.equal(resolved.action, "crm.owner.update");
+  assert.doesNotMatch((resolved as any).presentation?.text ?? "", /fallback indevido/i);
+});
+
+for (const [rawMessage, expectedMessage] of [
+  ["criar novo", "criar novo proprietário Proprietario"],
+  ["criar um novo", "criar novo proprietário Proprietario"],
+  ["novo", "criar novo proprietário Proprietario"],
+  ["novo cadastro", "criar novo proprietário Proprietario"],
+  ["cadastros", "listar proprietários Proprietario"],
+  ["ver cadastros", "listar proprietários Proprietario"],
+  ["listar cadastros", "listar proprietários Proprietario"],
+] as const) {
+  test(`IMOB_CRM turn engine rewrites duplicate-owner choice '${rawMessage}' into explicit command`, async () => {
+    let receivedMessage: string | null = null;
+    const params = createEngineParams({
+      body: {
+        message: rawMessage,
+        threadState: {
+          mode: "consult",
+          pendingSlot: "none",
+          resultOffset: 0,
+          slots: {},
+          operational: {
+            flow: "owner.create",
+            status: "collecting",
+            pendingFields: ["ownerDocument"],
+            ownerDraft: {
+              ownerName: "Proprietario",
+              ownerPhone: "4744444444",
+              ownerEmail: "ca@gmail.com",
+              ownerDocument: "41741741785",
+            },
+          },
+        },
+      },
+    });
+    params.helpers.resolveImobOperationalUpdate = async ({ message }: any) => {
+      receivedMessage = message;
+      return null;
+    };
+    params.helpers.resolveImobOperationalConsult = async ({ message }: any) => {
+      receivedMessage = message;
+      return {
+        mode: "consult",
+        action: expectedMessage.startsWith("listar ") ? "crm.owner.list" : "crm.fallback",
+        threadLabel: "Proprietário",
+        conversationState: params.body.threadState,
+        presentation: { text: expectedMessage },
+      };
+    };
+
+    await resolveImobCrmTurnEngine(params);
+    assert.equal(receivedMessage, expectedMessage);
+  });
+}
+
+test("IMOB_CRM turn engine keeps lead dedupe rewrite working after owner choice normalization", async () => {
+  let receivedMessage: string | null = null;
+  const params = createEngineParams({
+    body: {
+      message: "novo cadastro",
+      threadState: {
+        mode: "consult",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "lead.qualify",
+          status: "collecting",
+          pendingFields: ["desiredGoal"],
+          leadDraft: {
+            leadName: "Lead Duplicado",
+            leadPhone: "47999999999",
+            leadEmail: "lead@example.com",
+            desiredGoal: null,
+          },
+        },
+      },
+    },
+  });
+  params.helpers.resolveImobOperationalUpdate = async ({ message }: any) => {
+    receivedMessage = message;
+    return null;
+  };
+  params.helpers.resolveImobOperationalConsult = async ({ message }: any) => {
+    receivedMessage = message;
+    return {
+      mode: "consult",
+      action: "crm.lead.list",
+      threadLabel: "Lead",
+      conversationState: params.body.threadState,
+      presentation: { text: message },
+    };
+  };
+
+  await resolveImobCrmTurnEngine(params);
+  assert.equal(receivedMessage, "criar novo lead Lead Duplicado");
 });

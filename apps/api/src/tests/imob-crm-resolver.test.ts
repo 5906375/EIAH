@@ -238,6 +238,29 @@ test("IMOB_CRM update changes lead budget without falling back to IMOB route log
   assert.equal(updated.stage, "pending_data");
 });
 
+test("IMOB_CRM update maps objetivo do lead into desiredGoal and clears the pending field", async () => {
+  const prisma = createMockPrisma({
+    leadOverrides: {
+      goal: null,
+      pendingItems: ["desiredGoal", "faixa de orçamento"],
+    },
+  });
+  const resolved = await resolveImobCrmOperationalUpdate({
+    prisma: prisma as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "objetivo do lead locação",
+    caseId: "case-1",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.action, "crm.lead.update");
+  const updated = await (prisma as any).imobLead.findFirst({ where: { tenantId: "tenant-1", workspaceId: "workspace-1", OR: [{ name: "Merlo" }] } });
+  assert.equal(updated.goal, "locacao");
+  assert.deepEqual(updated.pendingItems, ["faixa de orçamento"]);
+  assert.doesNotMatch(resolved?.presentation?.text ?? "", /desiredGoal/);
+});
+
 test("IMOB_CRM business read returns commercial language from the latest case", async () => {
   const resolved = await resolveImobCrmOperationalConsult({
     prisma: createMockPrisma() as any,
@@ -803,6 +826,19 @@ test("IMOB_CRM blocked resolution avoids recursive next step and recursive CTA",
   assert.ok((resolved?.presentation?.decisionRationale?.reasonCodes?.length ?? 0) >= 1);
 });
 
+test("IMOB_CRM business read keeps the structured payload compact for case status", async () => {
+  const resolved = await resolveImobCrmOperationalConsult({
+    prisma: createMockPrisma() as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "qual status desse caso?",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.action, "crm.case.pipeline_status");
+  assert.equal(resolved?.presentation?.widget, undefined);
+});
+
 test("IMOB_CRM case consult asks which case when no explicit reference is provided", async () => {
   const resolved = await resolveImobCrmOperationalConsult({
     prisma: createMockPrisma() as any,
@@ -829,6 +865,40 @@ test("IMOB_CRM case consult opens when explicit case id is provided in the messa
   assert.equal(resolved?.action, "crm.case.lookup");
   assert.match(resolved?.presentation?.text ?? "", /caso lead localizado/i);
   assert.match(resolved?.presentation?.card?.title ?? "", /Caso Lead/i);
+});
+
+test("IMOB_CRM case consult accepts use-the-most-recent-case fallback without concluding an empty stage", async () => {
+  const resolved = await resolveImobCrmOperationalConsult({
+    prisma: createMockPrisma() as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "Use o caso mais recente",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.action, "crm.case.lookup");
+  assert.match(resolved?.presentation?.text ?? "", /Usei o caso IMOB mais recente/i);
+  assert.doesNotMatch(resolved?.presentation?.text ?? "", /Concluí essa etapa com sucesso/i);
+});
+
+test("IMOB_CRM opening a visit case without asking for action does not start the pilot", async () => {
+  const resolved = await resolveImobCrmOperationalConsult({
+    prisma: createMockPrisma({
+      caseOverrides: {
+        id: "case-visit-1",
+        flow: "visit.schedule",
+        nextStep: "confirmar agenda da visita",
+      },
+    }) as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "consultar caso case-visit-1",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.action, "crm.case.lookup");
+  assert.equal(resolved?.presentation?.pilotOperationalState, undefined);
+  assert.doesNotMatch(resolved?.presentation?.text ?? "", /pilot_active/i);
 });
 
 test("IMOB_CRM detailed owner lookup returns owner card", async () => {

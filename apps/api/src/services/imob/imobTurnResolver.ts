@@ -1808,6 +1808,96 @@ function buildOperationalPresentationMeta(
   };
 }
 
+function buildVisibleOperationalPresentationMeta(
+  operationalState: NonNullable<ImobResolveTurnResponse["conversationState"]["operational"]> | null | undefined
+) {
+  const meta = buildOperationalPresentationMeta(operationalState);
+  if (!operationalState) return meta;
+  if (operationalState.flow === "property.create" && operationalState.pendingFields.length > 0) {
+    const { blocker: _blocker, nextStep: _nextStep, pendingFieldLabels: _pendingFieldLabels, ...visibleMeta } = meta as any;
+    return visibleMeta;
+  }
+  return meta;
+}
+
+function buildOperationalCollectingText(params: {
+  intent: ImobIntent;
+  message: string;
+  operationalState: NonNullable<ImobResolveTurnResponse["conversationState"]["operational"]> | null | undefined;
+  pendingLabels: string[];
+}) {
+  const { intent, message, operationalState, pendingLabels } = params;
+  if (!operationalState) return null;
+  const hasPending = operationalState.pendingFields.length > 0;
+  const pendingSummary = pendingLabels.join(", ");
+  const structuredSubmission = isStructuredOperationalDataSubmission(message);
+
+  if (intent === "capture") {
+    if (operationalState.flow === "property.create") {
+      return "Posso iniciar o cadastro do imóvel agora.";
+    }
+    if (operationalState.flow === "owner.create") {
+      if (!hasPending) return "Cadastro do proprietário pronto para revisão.";
+      return structuredSubmission
+        ? `Cadastro do proprietário salvo parcialmente. Ainda falta informar: ${pendingSummary}.`
+        : "";
+    }
+    return "Posso iniciar a captação agora.";
+  }
+
+  if (intent === "lead") {
+    if (operationalState.flow !== "lead.qualify") {
+      return "Posso iniciar o cadastro do lead agora.";
+    }
+    if (!hasPending) {
+      return `Cadastro ${getLeadPersonaCopy(operationalState.leadDraft).article} pronto para a próxima etapa.`;
+    }
+    return structuredSubmission
+      ? `Cadastro ${getLeadPersonaCopy(operationalState.leadDraft).article} salvo parcialmente. Ainda falta informar: ${pendingSummary}.`
+      : `Posso iniciar o cadastro ${getLeadPersonaCopy(operationalState.leadDraft).article} agora. Ainda preciso de: ${pendingSummary}.`;
+  }
+
+  if (intent === "visit") {
+    return hasPending
+      ? `Posso organizar o agendamento da visita agora. Ainda preciso de: ${pendingSummary}.`
+      : "Posso organizar o agendamento da visita agora.";
+  }
+
+  if (intent === "proposal") {
+    return hasPending
+      ? `Posso preparar a proposta agora para ${getProposalPersonaCopy(operationalState.proposalDraft).singular}. Ainda preciso de: ${pendingSummary}.`
+      : `Posso preparar a proposta para ${getProposalPersonaCopy(operationalState.proposalDraft).singular} agora.`;
+  }
+
+  if (intent === "deal") {
+    return hasPending
+      ? `Posso iniciar a revisão do negócio agora. Ainda preciso de: ${pendingSummary}.`
+      : "Posso iniciar a revisão do negócio agora.";
+  }
+
+  if (intent === "documents") {
+    return hasPending
+      ? `Posso iniciar a coleta documental agora. Ainda preciso de: ${pendingSummary}.`
+      : "Posso iniciar a coleta documental agora.";
+  }
+
+  if (intent === "contract") {
+    return hasPending
+      ? "Posso preparar o handoff jurídico do contrato agora. Ainda preciso de: "
+          + pendingSummary
+          + "."
+      : "Posso preparar o handoff jurídico do contrato agora.";
+  }
+
+  if (intent === "rules") {
+    return hasPending
+      ? `Posso configurar as regras de temporada agora. Ainda preciso de: ${pendingSummary}.`
+      : "Regras de temporada prontas para revisão.";
+  }
+
+  return null;
+}
+
 function isKnowledgeSearchQuery(message: string) {
   const text = normalizeImobText(message);
   return (
@@ -2861,12 +2951,49 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
       },
     });
   }
+  if (
+    activeOperationalState?.status === "collecting"
+    && isGenericCadastroRequest(message)
+    && ["owner.create", "property.create"].includes(activeOperationalState.flow)
+    && !["pending_field_parse", "explicit_continuity"].includes(turnDecision.stage)
+  ) {
+    const guidanceChoices = buildCaptureFlowGuidanceChoices(activeOperationalState.flow);
+    return finalize({
+      mode: "consult",
+      action: "crm.capture.flow_guidance",
+      threadLabel: getIntentThreadLabel(mapOperationalFlowToIntent(activeOperationalState.flow)),
+      conversationState: {
+        ...(request.threadState ?? nextThreadState),
+        mode: "consult",
+      },
+      presentation: {
+        text: activeOperationalState.flow === "owner.create"
+          ? "Você está no cadastro do proprietário. Posso continuar esse cadastro ou mudar para outra ação da captação."
+          : "Você está no cadastro do imóvel. Posso continuar esse cadastro ou mudar para outra ação da captação.",
+        suggestedNextAction: "Escolha se você quer continuar este cadastro ou mudar para outra ação da captação.",
+        metadata: {
+          confidence: {
+            source: semanticIntentSource,
+            action: "create",
+            entity: null,
+          },
+          choiceStyle: "inline",
+          frontDoorAgentId: "EIAH",
+        },
+        card: {
+          title: "Posso seguir com uma destas ações agora.",
+          lines: ["Escolha a ação para continuar a jornada imobiliária."],
+          ctas: guidanceChoices,
+        },
+      },
+    });
+  }
   const shouldPreferActiveAttachmentFlow =
     activeOperationalState?.status === "collecting" &&
     isAttachmentReferenceMessage(message);
 
   if (shouldPreferActiveAttachmentFlow && activeOperationalState) {
-    const presentationMeta = buildOperationalPresentationMeta(activeOperationalState);
+    const presentationMeta = buildVisibleOperationalPresentationMeta(activeOperationalState);
     return finalize({
       mode: "consult",
       action: "realestate.collect_documents",
@@ -3162,7 +3289,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
   }
   if (intent === "documents" && isDocumentUploadOnlyRequest(message)) {
     const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, intent, message, nextThreadState.slots);
-    const presentationMeta = buildOperationalPresentationMeta(operationalState);
+    const presentationMeta = buildVisibleOperationalPresentationMeta(operationalState);
     return finalize({
       mode: "consult",
       action: "realestate.collect_documents",
@@ -3286,7 +3413,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
         }
       : undefined;
   const presentation = {
-    ...buildOperationalPresentationMeta(operationalState),
+    ...buildVisibleOperationalPresentationMeta(operationalState),
     metadata: buildCatalogConfidenceMetadata(parsedCatalogIntent, false, { source: semanticIntentSource }),
     card: propertyReadyMenuCard,
     form:
@@ -3315,73 +3442,36 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
                     : undefined
         : undefined,
     text:
-        intent === "capture"
-          ? operationalState?.flow === "property.create"
-            ? operationalPendingLabels.length > 0
-              ? isStructuredOperationalDataSubmission(message)
-                ? `Dados do imóvel salvos parcialmente. Pendências: ${operationalPendingLabels.join(", ")}.`
-                : `Posso iniciar o cadastro do imóvel agora. Ainda preciso de: ${operationalPendingLabels.join(", ")}.`
-              : "Posso iniciar o cadastro do imóvel agora."
-            : operationalState?.flow === "owner.create"
-              ? operationalPendingLabels.length > 0
-                ? isStructuredOperationalDataSubmission(message)
-                  ? `Cadastro do proprietário salvo parcialmente. Pendências: ${operationalPendingLabels.join(", ")}.`
-                  : ""
-                : "Cadastro do proprietário pronto para revisão."
-              : "Posso iniciar a captação agora."
-          : intent === "match"
-            ? "Posso começar a busca de opções agora."
-            : intent === "lead"
-              ? operationalState?.flow === "lead.qualify" && operationalState.pendingFields.length > 0
-                ? isStructuredOperationalDataSubmission(message)
-                  ? `Cadastro ${getLeadPersonaCopy(operationalState.leadDraft).article} salvo parcialmente. Pendências: ${operationalPendingLabels.join(", ")}.`
-                  : `Posso iniciar o cadastro ${getLeadPersonaCopy(operationalState.leadDraft).article} agora. Ainda preciso de: ${operationalPendingLabels.join(", ")}.`
-                : `Posso iniciar o cadastro ${getLeadPersonaCopy(operationalState?.leadDraft).article} agora.`
-              : intent === "visit"
-                ? operationalState?.flow === "visit.schedule" && operationalState.pendingFields.length > 0
-                  ? `Posso organizar o agendamento da visita agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
-                  : "Posso organizar o agendamento da visita agora."
-                : intent === "listing"
-                  ? operationalState?.flow === "listing.activate"
-                    ? ""
-                    : "Posso preparar a ativação do anúncio agora."
-                    : intent === "proposal"
-                      ? operationalState?.flow === "proposal.create" && operationalState.pendingFields.length > 0
-                      ? `Posso preparar a proposta agora para ${getProposalPersonaCopy(operationalState.proposalDraft).singular}. Ainda preciso de: ${operationalPendingLabels.join(", ")}.`
-                      : `Posso preparar a proposta para ${getProposalPersonaCopy(operationalState?.proposalDraft).singular} agora.`
-                    : intent === "deal"
-                      ? operationalState?.flow === "deal.review" && operationalState.pendingFields.length > 0
-                        ? `Posso iniciar a revisão do negócio agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
-                        : "Posso iniciar a revisão do negócio agora."
-                    : intent === "documents"
-                      ? operationalState?.flow === "documents.collect"
-                        ? wantsDocumentValidation
-                          ? ""
-                          : operationalState.pendingFields.length > 0
-                            ? `Posso iniciar a coleta documental agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
-                            : "Posso iniciar a coleta documental agora."
-                        : "Posso iniciar a coleta documental agora."
-                    : intent === "contract"
-                      ? operationalState?.flow === "contract.prepare"
-                        ? wantsSendForSignature
-                          ? ""
-                          : operationalState.pendingFields.length > 0
-                            ? `Posso preparar o handoff jurídico do contrato agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
-                            : "Posso preparar o handoff jurídico do contrato agora."
-                        : "Posso preparar o handoff jurídico do contrato agora."
-                      : intent === "rules"
-                      ? operationalState?.flow === "rules.configure"
-                        ? operationalState.rulesDraft?.propertyFinality && operationalState.rulesDraft.propertyFinality !== "aluguel_por_temporada"
-                          ? "Esse fluxo de regras só segue para imóvel com finalidade de aluguel por temporada."
-                          : operationalState.pendingFields.length > 0
-                            ? `Posso configurar as regras de temporada agora. Ainda preciso de: ${operationalPendingLabels.join(", ")}.`
-                            : "Regras de temporada prontas para revisão."
-                        : "Posso configurar as regras do imóvel agora."
-                    : intent === "commission"
-                      ? operationalState?.flow === "commission.settle" && operationalState.pendingFields.length > 0
-                          ? `Posso iniciar a liquidação da comissão agora. Ainda preciso de: ${operationalState.pendingFields.join(", ")}.`
-                          : "Posso iniciar a liquidação da comissão agora."
-      : "Posso aplicar esse ajuste agora.",
+      buildOperationalCollectingText({
+        intent,
+        message,
+        operationalState,
+        pendingLabels: operationalPendingLabels,
+      }) ?? (
+        intent === "match"
+          ? "Posso começar a busca de opções agora."
+          : intent === "listing"
+            ? operationalState?.flow === "listing.activate"
+              ? ""
+              : "Posso preparar a ativação do anúncio agora."
+            : intent === "documents"
+              ? operationalState?.flow === "documents.collect" && wantsDocumentValidation
+                ? ""
+                : "Posso iniciar a coleta documental agora."
+              : intent === "contract"
+                ? operationalState?.flow === "contract.prepare" && wantsSendForSignature
+                  ? ""
+                  : "Posso preparar o handoff jurídico do contrato agora."
+                : intent === "rules"
+                  ? operationalState?.flow === "rules.configure"
+                    ? operationalState.rulesDraft?.propertyFinality && operationalState.rulesDraft.propertyFinality !== "aluguel_por_temporada"
+                      ? "Esse fluxo de regras só segue para imóvel com finalidade de aluguel por temporada."
+                      : "Regras de temporada prontas para revisão."
+                    : "Posso configurar as regras do imóvel agora."
+                  : intent === "commission"
+                    ? "Posso iniciar a liquidação da comissão agora."
+                    : "Posso aplicar esse ajuste agora."
+      ),
   };
 
   if (presentation.form && shouldReturnConsultWithForm({ message, operationalState })) {
