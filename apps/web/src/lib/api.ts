@@ -2112,11 +2112,151 @@ export type ImobLeadScoreFactor = {
 export type ImobLeadScoringSnapshot = {
   scoreBand: ImobLeadScoreBand;
   scoreValue: number;
-  scoreVersion: "imob.lead_scoring.v1";
+  scoreVersion: "imob.lead_scoring.v1.1";
   summary: string;
+  confidence: "low" | "medium" | "high";
+  reasonCodes: string[];
   factors: ImobLeadScoreFactor[];
   missingEvidence?: string[];
   shadowMode: true;
+  generatedAt: string;
+};
+
+export type ImobLeadDiscoveryCoverage = "complete" | "partial" | "insufficient";
+
+export type ImobLeadDiscoverySnapshot = {
+  coverage: ImobLeadDiscoveryCoverage;
+  discoveryVersion: "imob.lead_discovery.v1";
+  summary: string;
+  capturedSignals: string[];
+  missingSignals: ImobLeadDiscoverySignalKey[];
+  recommendedNextMove: string;
+  shadowMode: true;
+  generatedAt: string;
+};
+
+export type ImobLeadProfileReportStatus = "ready" | "partial" | "insufficient";
+
+export type ImobLeadProfileReportSnapshot = {
+  profileVersion: "imob.lead_profile_report.v1";
+  profileStatus: ImobLeadProfileReportStatus;
+  commercialReadiness: "high" | "medium" | "low" | "unknown";
+  financialReadiness: "high" | "medium" | "low" | "unknown";
+  consentScope: "internal_only";
+  summary: string;
+  strengths: string[];
+  risks: string[];
+  missingEvidence: string[];
+  recommendedNextMove: string;
+  shadowMode: true;
+  generatedAt: string;
+};
+
+export type ImobViabilityMarketAnalysisSnapshot = {
+  analysisVersion: "imob.viability_market_analysis.v1";
+  marketStatus: "viable" | "watch" | "fragile" | "insufficient_context";
+  viabilityScore: number;
+  liquiditySignal: "high" | "medium" | "low" | "unknown";
+  priceConfidence: "high" | "medium" | "low" | "unknown";
+  summary: string;
+  anchorSignals: string[];
+  missingEvidence: string[];
+  recommendedNextMove: string;
+  shadowMode: true;
+  generatedAt: string;
+};
+
+export type ImobClosingDocumentsSnapshot = {
+  documentStateVersion: "imob.closing_documents_real.v1";
+  readinessStatus: "ready" | "partial" | "blocked" | "insufficient_context";
+  packetReadiness: "ready" | "partial" | "blocked" | "unknown";
+  legalHandoffRecommended: boolean;
+  summary: string;
+  pendingDocuments: string[];
+  blockingIssues: string[];
+  nextValidationOwner: "corretor" | "juridico" | "proprietario" | "lead" | "interno";
+  recommendedNextMove: string;
+  shadowMode: true;
+  generatedAt: string;
+};
+
+export type ImobMissionOrchestrationSnapshot = {
+  missionVersion: "imob.mission_orchestration.v1";
+  missionId: string;
+  missionStatus: "ready" | "watch" | "blocked" | "insufficient_context";
+  ownerAgentId: "IMOB";
+  ownerCapability: string;
+  supportingAgents: string[];
+  missionReasonCodes: string[];
+  summary: string;
+  pendingHandoffs: string[];
+  blockingIssues: string[];
+  recommendedNextMove: string;
+  evidenceRefs: ImobEvidenceRef[];
+  shadowMode: true;
+  createdAt: string;
+  closedAt?: string | null;
+  generatedAt: string;
+};
+
+export type ImobPilotFlowType =
+  | "assisted_reengagement_flow"
+  | "assisted_calendar_flow"
+  | "assisted_listing_flow"
+  | "shadow_capture_enrichment_flow";
+
+export type ImobPilotFlowStatus =
+  | "blocked"
+  | "queued"
+  | "completed"
+  | "shadow_recorded"
+  | "duplicate";
+
+export type ImobPilotFlowSnapshot = {
+  flowRunId: string;
+  flowId: string;
+  flowType: ImobPilotFlowType;
+  missionId: string;
+  visibleAgentId: "IMOB";
+  capabilityId: string;
+  caseId: string | null;
+  leadId: string | null;
+  gateDecision: {
+    allowed: boolean;
+    capability: {
+      capabilityId: string;
+      ownerAgent: string;
+      visibleAgentId: "IMOB";
+      status: string;
+      executionMode: string;
+      riskTier: string;
+      rolloutStage: string;
+      category: string;
+    } | null;
+    reasonCodes: string[];
+  };
+  jobId?: string | null;
+  trackingId?: string | null;
+  evidenceRefs: ImobEvidenceRef[];
+  status: ImobPilotFlowStatus;
+  nextHumanAction: string;
+  generatedAt: string;
+};
+
+export type ImobPilotOperationalStatus = "inactive" | "approval_required" | "blocked" | "pilot_active" | "shadow";
+
+export type ImobPilotOperationalSnapshot = {
+  activePilotFlow: "assisted_calendar_flow" | null;
+  flowRunId?: string | null;
+  rolloutStage: string;
+  approvalRef?: string | null;
+  approvalDecision?: "approved" | "rejected" | null;
+  trackingId?: string | null;
+  evidenceRefs: ImobEvidenceRef[];
+  status: ImobPilotOperationalStatus;
+  nextHumanAction: string;
+  canRegressToShadow: boolean;
+  visibleAgentId: "IMOB";
   generatedAt: string;
 };
 
@@ -2157,12 +2297,16 @@ export type ImobCommercialTrigger = {
 };
 
 export type ImobCommercialMemorySnapshot = {
+  memoryVersion: "imob.commercial_memory.v1.1";
   summary: string;
+  confidence: "low" | "medium" | "high";
+  reasonCodes: string[];
   preferences: ImobCommercialPreference[];
   objections: ImobCommercialObjection[];
   urgencySignals: string[];
   lastUsefulAction?: string | null;
   nextTrigger?: ImobCommercialTrigger | null;
+  missingEvidence?: string[];
   generatedAt: string;
 };
 
@@ -2181,6 +2325,26 @@ export type ImobReengagementSuggestion = {
   messageBase?: string | null;
   anchorSignals: string[];
   missingEvidence?: string[];
+  shadowMode: true;
+  generatedAt: string;
+};
+
+export type ImobInventoryWatchStatus =
+  | "matching"
+  | "weak_match"
+  | "no_match"
+  | "insufficient_context";
+
+export type ImobInventoryWatchMatchStrength = "high" | "medium" | "low" | "unknown";
+
+export type ImobInventoryWatchSnapshot = {
+  watchStatus: ImobInventoryWatchStatus;
+  matchStrength: ImobInventoryWatchMatchStrength;
+  watchVersion: "imob.inventory_watch.v1";
+  summary: string;
+  anchorSignals: string[];
+  missingCriteria: string[];
+  recommendedNextMove: string;
   shadowMode: true;
   generatedAt: string;
 };
@@ -2601,9 +2765,17 @@ export type ImobOperationalPresentation = {
   actionableChecklist?: ImobActionableChecklist;
   handoffPack?: ImobHandoffPack;
   decisionRationale?: ImobDecisionRationale;
+  leadDiscovery?: ImobLeadDiscoverySnapshot;
+  leadProfileReport?: ImobLeadProfileReportSnapshot;
+  viabilityMarketAnalysis?: ImobViabilityMarketAnalysisSnapshot;
+  closingDocuments?: ImobClosingDocumentsSnapshot;
+  missionOrchestration?: ImobMissionOrchestrationSnapshot;
+  pilotFlow?: ImobPilotFlowSnapshot;
+  pilotOperationalState?: ImobPilotOperationalSnapshot;
   leadScore?: ImobLeadScoringSnapshot;
   commercialMemory?: ImobCommercialMemorySnapshot;
   reengagementSuggestion?: ImobReengagementSuggestion;
+  inventoryWatch?: ImobInventoryWatchSnapshot;
   pendingFieldLabels?: string[];
   dedupeKey?: string;
 };

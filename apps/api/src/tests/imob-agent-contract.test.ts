@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   buildImobAgentContractV1,
+  buildImobAgentRuntimeMetadata,
   IMOB_AGENT_INITIAL_INTENT_IDS,
   listImobAgentInitialIntents,
 } from "../services/imob/imobAgentContract";
@@ -45,6 +46,14 @@ test("IMOB agent contract v1 reuses backing specialists and initial intents", ()
   assert.equal(contract.capabilities.workerOrchestration.length, 6);
 });
 
+test("IMOB runtime metadata exposes promotion review surface in backend contract", () => {
+  const runtime = buildImobAgentRuntimeMetadata();
+
+  assert.equal(runtime.promotionReviewSurface?.visibleAgentId, "IMOB");
+  assert.equal(runtime.promotionReviewSurface?.flows.length, 4);
+  assert.equal(runtime.promotionReviewSurface?.flows[0]?.flowType, "assisted_calendar_flow");
+});
+
 test("IMOB runtime attaches canonical agent metadata to presentation payloads", () => {
   const result = resolveImobTurn({
     message: "quero retomar um caso antigo rapidamente com resumo do caso",
@@ -60,4 +69,6 @@ test("IMOB runtime attaches canonical agent metadata to presentation payloads", 
   assert.equal(result.presentation.metadata?.agentRuntime?.capabilities.runtimeExtensions[0]?.capabilityId, "lead.qualify.discovery");
   assert.equal(result.presentation.metadata?.agentRuntime?.capabilities.externalIntegrations[0]?.capabilityId, "active_capture.scouting");
   assert.equal(result.presentation.metadata?.agentRuntime?.capabilities.workerOrchestration[0]?.capabilityId, "lead.scoring");
+  assert.equal(result.presentation.metadata?.agentRuntime?.promotionReviewSurface?.visibleAgentId, "IMOB");
+  assert.equal(result.presentation.metadata?.agentRuntime?.promotionReviewSurface?.flows.length, 4);
 });
