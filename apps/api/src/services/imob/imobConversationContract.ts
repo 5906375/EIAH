@@ -935,6 +935,31 @@ export type ImobPilotOperationalSnapshot = {
   generatedAt: string;
 };
 
+export type ImobPilotControlAction =
+  | "approve"
+  | "start_pilot"
+  | "hold_pilot"
+  | "regress_to_shadow"
+  | "read_status";
+
+export type ImobPilotControlStateSnapshot = {
+  flowType: "assisted_calendar_flow";
+  status: "approval_recorded" | "approval_required" | "pilot_active" | "shadow" | "inactive" | "blocked";
+  rolloutStage: ImobCapabilityRolloutStage;
+  approvalRef: string | null;
+  trackingId: string | null;
+  jobId: string | null;
+  summary: string;
+  nextHumanAction: string;
+  availableActions: Array<{
+    action: ImobPilotControlAction;
+    label: string;
+  }>;
+  evidenceRefs: ImobEvidenceRef[];
+  visibleAgentId: "IMOB";
+  generatedAt: string;
+};
+
 export type ImobCommercialPreference = {
   key:
     | "goal"
@@ -1047,6 +1072,7 @@ export type ImobOperationalPresentation = {
   missionOrchestration?: ImobMissionOrchestrationSnapshot;
   pilotFlow?: ImobPilotFlowSnapshot;
   pilotOperationalState?: ImobPilotOperationalSnapshot;
+  pilotControlState?: ImobPilotControlStateSnapshot;
   leadScore?: ImobLeadScoringSnapshot;
   commercialMemory?: ImobCommercialMemorySnapshot;
   reengagementSuggestion?: ImobReengagementSuggestion;

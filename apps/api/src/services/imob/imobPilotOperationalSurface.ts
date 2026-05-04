@@ -1,8 +1,14 @@
 import type { ImobCrmCaseContext } from "./crm/imobCrmAgentContract";
 import type { ImobEvidenceRef, ImobPilotOperationalSnapshot } from "./imobConversationContract";
 import type { ImobPilotApprovalEntry } from "./imobPilotApprovalRuntime";
-import type { ImobPilotFlowSnapshot } from "./imobConversationContract";
 import type { ImobPilotRolloutStateEntry } from "./imobPilotRolloutState";
+
+export type ImobPilotOperationalLatestFlow = {
+  flowRunId?: string | null;
+  trackingId?: string | null;
+  evidenceRefs?: ImobEvidenceRef[] | null;
+  nextHumanAction?: string | null;
+};
 
 function mergeEvidenceRefs(...buckets: Array<ImobEvidenceRef[] | null | undefined>) {
   const seen = new Set<string>();
@@ -22,7 +28,7 @@ export function buildImobPilotOperationalSurface(params: {
   caseContext: ImobCrmCaseContext;
   approvalEntry?: ImobPilotApprovalEntry | null;
   rolloutEntry?: ImobPilotRolloutStateEntry | null;
-  latestPilotFlow?: ImobPilotFlowSnapshot | null;
+  latestPilotFlow?: ImobPilotOperationalLatestFlow | null;
   generatedAt?: string | null;
 }) {
   const flow = String(params.caseContext?.flow ?? "");

@@ -3,6 +3,7 @@ import type { ImobCrmPropertyType } from "./imobCrmPropertyTypes";
 import type { ImobReasonCode } from "../control/imobReasonCodeCatalog";
 import type {
   ImobLeadDiscoverySignals,
+  ImobPilotControlStateSnapshot,
   ImobPilotOperationalSnapshot,
 } from "../imobConversationContract";
 
@@ -483,6 +484,7 @@ export type ImobCrmTurnPresentation = {
   missionOrchestration?: ImobMissionOrchestrationSnapshot;
   pilotFlow?: ImobPilotFlowSnapshot;
   pilotOperationalState?: ImobPilotOperationalSnapshot;
+  pilotControlState?: ImobPilotControlStateSnapshot;
   leadScore?: ImobLeadScoringSnapshot;
   commercialMemory?: ImobCommercialMemorySnapshot;
   reengagementSuggestion?: ImobReengagementSuggestion;
