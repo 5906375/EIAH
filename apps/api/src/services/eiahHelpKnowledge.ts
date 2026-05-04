@@ -16,6 +16,7 @@ const DEFAULT_TOP_K = 6;
 const PRIMARY_HELP_SOURCE_FILES = [
   "apps/web/src/pages/app/agents/index.tsx",
   "apps/web/src/pages/self-service/config.ts",
+  "docs/architecture/imob-crm-governed-runtime.md",
 ];
 
 type HelpSearchHit = {
@@ -274,6 +275,25 @@ function buildCanonicalEiahDocs(params: {
     track: "P4",
     status: "canonica",
     sourceFiles: [sourcePath],
+    updatedAt: sourceMtime,
+  });
+
+  docs.push({
+    id: "help.eiah.imob.crm-governed-runtime",
+    scope: "eiah",
+    question: "O que foi implementado no IMOB_CRM e como isso funciona no EIAH?",
+    answer: [
+      "O IMOB_CRM passou a operar como um runtime governado de caso, e nao apenas como um copiloto consultivo isolado.",
+      "A arquitetura segue tres camadas: IMOB como agente visivel e dono do caso, registry governado de capabilities e specialists/runtimes operacionais no backend.",
+      "No backend foram materializados capabilities, specialists internos, mission runtime, shadow runtime, gates, async runtime base, assisted integrations em sandbox, enrichment/capture, scale runtime, pilot flows, promotion runtime e surfaces operacionais de piloto.",
+      "O caso pode expor snapshots como leadDiscovery, leadScore, commercialMemory, decisionRationale, reengagementSuggestion, inventoryWatch, leadProfileReport, viabilityMarketAnalysis, closingDocuments, missionOrchestration, pilotFlow, pilotOperationalState e pilotControlState.",
+      "Na pratica, o usuario fala com o IMOB, o backend monta a leitura do caso, consulta governanca e estado operacional, e devolve um payload resolvido. A UI apenas renderiza.",
+      "A trilha de piloto atual ja cobre o assisted_calendar_flow com approval auditavel, rollout state, piloto controlado em sandbox, tracking, evidence e surfaces read-only/operacionais. Approval operacional precisa ser auditavel; ready_for_review nao vale como approval humano.",
+    ].join("\n\n"),
+    tags: ["help", "imob", "crm", "capabilities", "pilot", "governance"],
+    track: "P4",
+    status: "canonica",
+    sourceFiles: [sourcePath, "docs/architecture/imob-crm-governed-runtime.md", "docs/architecture/vertical-context-imob.md"],
     updatedAt: sourceMtime,
   });
 
