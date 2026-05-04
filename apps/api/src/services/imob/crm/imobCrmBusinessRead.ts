@@ -21,6 +21,7 @@ import {
   runImobAssistedReengagementFlow,
   runImobShadowCaptureEnrichmentFlow,
 } from "../imobPilotFlowRuntime";
+import { buildImobPilotControlSurface } from "../imobPilotControlSurface";
 import { buildImobPilotOperationalSurface } from "../imobPilotOperationalSurface";
 import { resolveImobMissionRuntime } from "../imobMissionRuntime";
 
@@ -2445,6 +2446,10 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       caseContext,
       generatedAt: new Date().toISOString(),
     });
+    const pilotControlState = buildImobPilotControlSurface({
+      caseContext,
+      generatedAt: new Date().toISOString(),
+    });
     const statusLine = `${subject}. Momento comercial: ${stageLabel}. Jornada: ${journeyLabel}.`;
     const baseLines = [selectionNote ? "Usei o cadastro mais recente do IMOB para esta leitura." : null, statusLine].filter(Boolean) as string[];
     const textByIntent: Record<BusinessReadIntent, string[]> = {
@@ -2521,6 +2526,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       missionOrchestration,
       ...(pilotFlow ? { pilotFlow } : {}),
       ...(pilotOperationalState ? { pilotOperationalState } : {}),
+      ...(pilotControlState ? { pilotControlState } : {}),
       ...(leadScore ? { leadScore } : {}),
       commercialMemory,
       ...(reengagementSuggestion ? { reengagementSuggestion } : {}),
@@ -2540,6 +2546,8 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
           primaryBlocker ? `Bloqueio: ${primaryBlocker}` : "Bloqueio: nenhum bloqueio comercial",
           waitingOn ? `Waiting on: ${waitingOn}` : "Waiting on: não identificado",
           nextActionOwner ? `Owner da ação: ${nextActionOwner}` : "Owner da ação: não identificado",
+          pilotControlState ? `Piloto operacional: ${pilotControlState.summary}` : null,
+          pilotControlState ? `Próxima ação governada: ${pilotControlState.nextHumanAction}` : null,
           primarySpecialist?.cardLine ?? null,
           `Próximo movimento: ${nextStep}`,
         ].filter(Boolean) as string[],

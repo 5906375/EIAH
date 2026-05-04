@@ -368,6 +368,15 @@ test("IMOB_CRM business read connects assisted calendar pilot flow from case run
   assert.equal(resolved?.presentation?.pilotOperationalState?.trackingId, null);
   assert.equal(resolved?.presentation?.pilotOperationalState?.evidenceRefs?.length ?? 0, 0);
   assert.match(resolved?.presentation?.pilotOperationalState?.nextHumanAction ?? "", /registrar approval operacional/i);
+  assert.equal(resolved?.presentation?.pilotControlState?.flowType, "assisted_calendar_flow");
+  assert.equal(resolved?.presentation?.pilotControlState?.status, "approval_required");
+  assert.equal(resolved?.presentation?.pilotControlState?.rolloutStage, "shadow");
+  assert.equal(resolved?.presentation?.pilotControlState?.trackingId, null);
+  assert.equal(resolved?.presentation?.pilotControlState?.visibleAgentId, "IMOB");
+  assert.ok((resolved?.presentation?.pilotControlState?.availableActions?.length ?? 0) >= 2);
+  assert.match(resolved?.presentation?.pilotControlState?.summary ?? "", /approval operacional auditável/i);
+  assert.match(JSON.stringify(resolved?.presentation?.card?.lines ?? []), /Piloto operacional:/i);
+  assert.match(JSON.stringify(resolved?.presentation?.card?.lines ?? []), /Próxima ação governada:/i);
 });
 
 test("IMOB_CRM business read connects shadow capture enrichment pilot flow from case runtime", async () => {
@@ -390,6 +399,7 @@ test("IMOB_CRM business read connects shadow capture enrichment pilot flow from 
   assert.equal(resolved?.presentation?.pilotFlow?.visibleAgentId, "IMOB");
   assert.ok((resolved?.presentation?.pilotFlow?.evidenceRefs?.some((item: any) => item?.ref === "pilot.source.ref") ?? false), true);
   assert.equal(resolved?.presentation?.pilotOperationalState, undefined);
+  assert.equal(resolved?.presentation?.pilotControlState, undefined);
 });
 
 test("IMOB_CRM business read returns WARM lead score for mixed signals", async () => {
