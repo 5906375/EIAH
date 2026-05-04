@@ -1841,9 +1841,16 @@ export type ImobProposalDraftState = {
 };
 
 export type ImobOperationalState = {
-  flow: "owner.create" | "property.create" | "lead.qualify" | "visit.schedule" | "listing.activate" | "documents.collect" | "proposal.create" | "deal.review" | "contract.prepare" | "commission.settle";
+  flow: "owner.create" | "property.create" | "lead.qualify" | "visit.schedule" | "listing.activate" | "documents.collect" | "proposal.create" | "deal.review" | "contract.prepare" | "rules.configure" | "commission.settle";
   status: "collecting" | "ready_for_review";
   pendingFields: string[];
+  dedupeSelection?: {
+    entity: "owner" | "lead" | "property";
+    resolution: "update_existing" | "create_new" | "list_existing" | "pending_choice";
+    selectedId?: string | null;
+    selectedRef?: string | null;
+    selectedName?: string | null;
+  };
   ownerDraft?: ImobOwnerDraftState;
   propertyDraft?: ImobPropertyDraftState;
   leadDraft?: ImobLeadDraftState;

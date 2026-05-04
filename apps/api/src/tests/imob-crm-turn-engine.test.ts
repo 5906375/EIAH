@@ -253,8 +253,8 @@ test("IMOB_CRM turn engine preserves lead discovery capture during active qualif
   assert.match((resolved as any).presentation?.caseBrief?.summary ?? "", /home office|urgência alta/i);
 });
 
-test("IMOB_CRM turn engine rewrites generic duplicate-owner update choice into explicit owner update", async () => {
-  let receivedMessage: string | null = null;
+test("IMOB_CRM turn engine rewrites 'atualizar existente' into explicit owner update and keeps selected owner", async () => {
+  let receivedMessage = "";
   const params = createEngineParams({
     body: {
       message: "atualizar existente",
@@ -267,41 +267,130 @@ test("IMOB_CRM turn engine rewrites generic duplicate-owner update choice into e
           flow: "owner.create",
           status: "collecting",
           pendingFields: ["ownerDocument"],
-          ownerDraft: {
-            ownerName: "Proprietario",
-            ownerPhone: "4744444444",
-            ownerEmail: "ca@gmail.com",
-            ownerDocument: "41741741785",
+          dedupeSelection: {
+            entity: "owner",
+            resolution: "pending_choice",
+            selectedId: "owner-1",
+            selectedRef: "41741741785",
+            selectedName: "Proprietario",
           },
         },
       },
     },
-  });
-  params.helpers.resolveImobOperationalUpdate = async ({ message }: any) => {
-    receivedMessage = message;
-    if (message === "atualizar proprietário 41741741785") {
-      return {
-        mode: "consult",
-        action: "crm.owner.update",
-        threadLabel: "Proprietário",
-        conversationState: params.body.threadState,
-        presentation: { text: "Cadastro atualizado. Como podemos seguir?" },
-      };
-    }
-    return null;
-  };
-  params.helpers.resolveImobOperationalConsult = async () => ({
-    mode: "consult",
-    action: "crm.fallback",
-    threadLabel: "Caso",
-    conversationState: params.body.threadState,
-    presentation: { text: "fallback indevido" },
+    helpers: {
+      ...createEngineParams().helpers,
+      resolveImobOperationalUpdate: async ({ message }: any) => {
+        receivedMessage = message;
+        return {
+          mode: "consult",
+          action: "crm.owner.update",
+          threadLabel: "Proprietário",
+          conversationState: params.body.threadState,
+          presentation: {
+            text: "",
+            form: { entity: "proprietario", action: "update", title: "Editar proprietário" },
+          },
+        };
+      },
+    },
   });
 
   const resolved = await resolveImobCrmTurnEngine(params);
   assert.equal(receivedMessage, "atualizar proprietário 41741741785");
-  assert.equal(resolved.action, "crm.owner.update");
-  assert.doesNotMatch((resolved as any).presentation?.text ?? "", /fallback indevido/i);
+  assert.equal((resolved as any).conversationState?.operational?.dedupeSelection?.resolution, "update_existing");
+  assert.equal((resolved as any).presentation?.form?.title, "Editar proprietário");
+});
+
+test("IMOB_CRM turn engine rewrites free-text owner adjustment against the selected duplicate", async () => {
+  let receivedMessage = "";
+  const params = createEngineParams({
+    body: {
+      message: "Carlos Merllon",
+      threadState: {
+        mode: "consult",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "owner.create",
+          status: "collecting",
+          pendingFields: ["ownerDocument"],
+          dedupeSelection: {
+            entity: "owner",
+            resolution: "update_existing",
+            selectedId: "owner-1",
+            selectedRef: "41741741785",
+            selectedName: "Proprietario",
+          },
+        },
+      },
+    },
+    helpers: {
+      ...createEngineParams().helpers,
+      resolveImobOperationalUpdate: async ({ message }: any) => {
+        receivedMessage = message;
+        return {
+          mode: "consult",
+          action: "crm.owner.update",
+          threadLabel: "Proprietário",
+          conversationState: params.body.threadState,
+          presentation: { text: "Cadastro do proprietário atualizado com sucesso." },
+        };
+      },
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal(receivedMessage, "atualizar proprietário 41741741785 nome do proprietário Carlos Merllon");
+  assert.equal((resolved as any).conversationState?.operational?.dedupeSelection, undefined);
+  assert.doesNotMatch((resolved as any).presentation?.text ?? "", /identificador/i);
+});
+
+test("IMOB_CRM turn engine rewrites generic dedupe list choice into explicit owner listing", async () => {
+  let receivedMessage = "";
+  const params = createEngineParams({
+    body: {
+      message: "cadastros",
+      threadState: {
+        mode: "consult",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "owner.create",
+          status: "collecting",
+          pendingFields: ["ownerDocument"],
+          dedupeSelection: {
+            entity: "owner",
+            resolution: "pending_choice",
+            selectedId: "owner-1",
+            selectedRef: "41741741785",
+            selectedName: "Proprietario",
+          },
+        },
+      },
+    },
+    helpers: {
+      ...createEngineParams().helpers,
+      resolveImobOperationalConsult: async ({ message }: any) => {
+        receivedMessage = message;
+        return {
+          mode: "consult",
+          action: "crm.owner.list",
+          threadLabel: "Proprietário",
+          conversationState: params.body.threadState,
+          presentation: { text: "Lista de proprietários" },
+        };
+      },
+      applyExistingRegistrationResolution: async () => {
+        throw new Error("should not continue intake for explicit listing");
+      },
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal(receivedMessage, "listar proprietários Proprietario");
+  assert.equal(resolved.action, "crm.owner.list");
 });
 
 for (const [rawMessage, expectedMessage] of [
@@ -327,11 +416,12 @@ for (const [rawMessage, expectedMessage] of [
             flow: "owner.create",
             status: "collecting",
             pendingFields: ["ownerDocument"],
-            ownerDraft: {
-              ownerName: "Proprietario",
-              ownerPhone: "4744444444",
-              ownerEmail: "ca@gmail.com",
-              ownerDocument: "41741741785",
+            dedupeSelection: {
+              entity: "owner",
+              resolution: "pending_choice",
+              selectedId: "owner-1",
+              selectedRef: "41741741785",
+              selectedName: "Proprietario",
             },
           },
         },
@@ -371,11 +461,12 @@ test("IMOB_CRM turn engine keeps lead dedupe rewrite working after owner choice 
           flow: "lead.qualify",
           status: "collecting",
           pendingFields: ["desiredGoal"],
-          leadDraft: {
-            leadName: "Lead Duplicado",
-            leadPhone: "47999999999",
-            leadEmail: "lead@example.com",
-            desiredGoal: null,
+          dedupeSelection: {
+            entity: "lead",
+            resolution: "pending_choice",
+            selectedId: "lead-1",
+            selectedRef: "47999999999",
+            selectedName: "Lead Duplicado",
           },
         },
       },

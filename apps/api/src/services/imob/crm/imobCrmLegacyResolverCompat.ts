@@ -481,10 +481,64 @@ function extractOwnerNameFromMessage(message: string) {
   return normalizedCandidate === "null" || normalizedCandidate === "undefined" || normalizedCandidate === "none" ? null : candidate;
 }
 
+function extractOwnerExplicitNameFromMessage(message: string) {
+  const match = message.match(/(?:nome do (?:proprietario|proprietário|dono|vendedor|locador))\s*:?[\s-]*([^,.;\n]+)/i);
+  return match?.[1] ? titleCaseWords(match[1].trim()) : null;
+}
+
+function extractOwnerExplicitPhoneFromMessage(message: string) {
+  const match = message.match(/(?:telefone do (?:proprietario|proprietário|dono|vendedor|locador))\s*:?[\s-]*([^\n]+)/i);
+  if (!match?.[1]) return null;
+  const phoneMatch = match[1].match(/(?:\+?55\s*)?(?:\(?\d{2}\)?\s*)?\d{4,5}[-\s]?\d{4}/);
+  return phoneMatch?.[0]?.trim() ?? null;
+}
+
+function extractOwnerExplicitEmailFromMessage(message: string) {
+  const match = message.match(/(?:e-mail do|email do)\s+(?:proprietario|proprietário|dono|vendedor|locador)\s*:?[\s-]*([^\s,;]+)/i);
+  return match?.[1]?.trim().toLowerCase() ?? null;
+}
+
+function extractOwnerExplicitDocumentFromMessage(message: string) {
+  const match = message.match(/(?:(?:documento|cpf|cnpj) do (?:proprietario|proprietário|dono|vendedor|locador))\s*:?[\s-]*([^\n]+)/i);
+  if (!match?.[1]) return null;
+  const candidate = match[1].match(/\b\d{3}\.?\d{3}\.?\d{3}\-?\d{2}\b|\b\d{11}\b|\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}\-?\d{2}\b|\b\d{14}\b/);
+  return candidate?.[0] ?? null;
+}
+
 function sanitizeOwnerName(value: string | null | undefined, fallback = "Proprietário") {
   const trimmed = value?.trim() ?? "";
   const normalized = normalizeImobCrmText(trimmed);
   return !trimmed || normalized === "null" || normalized === "undefined" || normalized === "none" ? fallback : trimmed;
+}
+
+function getOwnerDedupeSelection(threadState: ImobCrmConversationState | null | undefined) {
+  const operational = asObject(asObject(threadState)?.operational);
+  const dedupeSelection = asObject(operational?.dedupeSelection);
+  if (!dedupeSelection || asString(dedupeSelection.entity) !== "owner") return null;
+  return {
+    resolution: asString(dedupeSelection.resolution),
+    selectedId: asString(dedupeSelection.selectedId),
+    selectedRef: asString(dedupeSelection.selectedRef),
+    selectedName: asString(dedupeSelection.selectedName),
+  };
+}
+
+function buildChatSafeCaseLookupText(params: {
+  scopedCaseId: string | null;
+  flow: string | null | undefined;
+  pendingItems: unknown;
+  nextStep?: string | null;
+  blocker?: string | null;
+}) {
+  const summary = params.scopedCaseId
+    ? `Caso ${formatCaseFlowLabel(params.flow)} localizado.`
+    : `Usei o caso IMOB mais recente para esta leitura: ${formatCaseFlowLabel(params.flow)}.`;
+  const hints = [
+    asStringList(params.pendingItems).length > 0 ? "Há pendências operacionais em aberto." : null,
+    params.blocker ? "Existe um bloqueio ativo neste atendimento." : null,
+    params.nextStep ? "Posso detalhar a próxima ação recomendada para este caso." : null,
+  ].filter(Boolean);
+  return [summary, ...hints].join("\n");
 }
 
 function extractDocumentFromMessage(raw: string) {
@@ -1134,6 +1188,10 @@ function buildDomainGuidanceResponse(intent: DomainGuidanceIntent, threadState: 
 export async function resolveImobCrmOperationalUpdate(params: ResolverParams) {
   const normalized = normalizeImobCrmText(params.message);
   const ownerName = extractOwnerNameFromMessage(params.message);
+  const ownerExplicitName = extractOwnerExplicitNameFromMessage(params.message);
+  const ownerExplicitPhone = extractOwnerExplicitPhoneFromMessage(params.message);
+  const ownerExplicitEmail = extractOwnerExplicitEmailFromMessage(params.message);
+  const ownerExplicitDocument = extractOwnerExplicitDocumentFromMessage(params.message);
   const leadName = extractLeadNameFromMessage(params.message);
   const document = extractDocumentFromMessage(params.message);
   const address = extractAddressFromMessage(params.message);
@@ -1144,10 +1202,21 @@ export async function resolveImobCrmOperationalUpdate(params: ResolverParams) {
   const budgetCents = extractAmountAfterKeywords(params.message, ["orcamento", "orçamento", "budget"]);
   const priceCents = extractAmountAfterKeywords(params.message, ["preco", "preço", "valor"]);
   const targetCity = extractFreeformCityAfterKeywords(params.message, ["cidade do lead", "cidade de interesse"]);
+  const dedupeSelection = getOwnerDedupeSelection(params.threadState);
+  const selectedOwnerId = dedupeSelection?.selectedId ?? null;
 
-  const wantsOwnerDocument = normalized.includes("documento do proprietario") || normalized.includes("cpf do proprietario");
+  const wantsOwnerDocument =
+    normalized.includes("documento do proprietario") ||
+    normalized.includes("documento do proprietário") ||
+    normalized.includes("cpf do proprietario") ||
+    normalized.includes("cpf do proprietário");
   if (wantsOwnerDocument && document) {
     let owner = null as any;
+    if (selectedOwnerId) {
+      owner = await params.prisma.imobOwner.findFirst({
+        where: { id: selectedOwnerId, tenantId: params.tenantId, workspaceId: params.workspaceId },
+      });
+    }
     if (params.caseId) {
       const scopedCase = await params.prisma.imobCase.findFirst({
         where: { id: params.caseId, tenantId: params.tenantId, workspaceId: params.workspaceId },
@@ -1185,6 +1254,133 @@ export async function resolveImobCrmOperationalUpdate(params: ResolverParams) {
           nextStep: currentPending.length > 0 ? "Completar as pendências restantes do proprietário." : "Vincular o proprietário ao próximo imóvel ou etapa documental.",
           pendingFieldLabels: currentPending.map((item) => item === "ownerDocument" ? "documento do proprietário" : item),
           dedupeKey: `crm.owner.update:${updated.id}:document`,
+        },
+      } as any;
+    }
+  }
+
+  const asksOwnerEdit = normalized.includes("editar") || normalized.includes("atualizar") || normalized.includes("alterar");
+  const ownerCrudId = extractOwnerCrudIdFromMessage(params.message);
+  const wantsOwnerUpdate =
+    normalized.includes("proprietario") ||
+    normalized.includes("proprietário") ||
+    normalized.includes("dono") ||
+    Boolean(ownerName) ||
+    Boolean(ownerExplicitName) ||
+    Boolean(ownerExplicitPhone) ||
+    Boolean(ownerExplicitEmail) ||
+    Boolean(ownerExplicitDocument);
+  if (wantsOwnerUpdate && asksOwnerEdit) {
+    let owner = null as any;
+    if (ownerCrudId) {
+      owner = await params.prisma.imobOwner.findFirst({
+        where: { id: ownerCrudId, tenantId: params.tenantId, workspaceId: params.workspaceId, status: { not: "archived" } },
+      });
+    }
+    if (!owner && selectedOwnerId) {
+      owner = await params.prisma.imobOwner.findFirst({
+        where: { id: selectedOwnerId, tenantId: params.tenantId, workspaceId: params.workspaceId, status: { not: "archived" } },
+      });
+    }
+    if (!owner && params.caseId) {
+      const scopedCase = await params.prisma.imobCase.findFirst({
+        where: { id: params.caseId, tenantId: params.tenantId, workspaceId: params.workspaceId },
+        select: { ownerId: true },
+      });
+      if (scopedCase?.ownerId) {
+        owner = await params.prisma.imobOwner.findFirst({
+          where: { id: scopedCase.ownerId, tenantId: params.tenantId, workspaceId: params.workspaceId, status: { not: "archived" } },
+        });
+      }
+    }
+    if (!owner) {
+      const conditions = [
+        ownerExplicitDocument ? { document: ownerExplicitDocument } : null,
+        ownerExplicitPhone ? { phone: ownerExplicitPhone } : null,
+        ownerExplicitEmail ? { email: ownerExplicitEmail } : null,
+        ownerName ? { name: ownerName } : null,
+        dedupeSelection?.selectedRef ? { document: dedupeSelection.selectedRef } : null,
+        dedupeSelection?.selectedRef ? { phone: dedupeSelection.selectedRef } : null,
+        dedupeSelection?.selectedRef ? { email: dedupeSelection.selectedRef } : null,
+        dedupeSelection?.selectedName ? { name: dedupeSelection.selectedName } : null,
+      ].filter(Boolean) as Array<Record<string, string>>;
+      if (conditions.length > 0) {
+        owner = await params.prisma.imobOwner.findFirst({
+          where: { tenantId: params.tenantId, workspaceId: params.workspaceId, status: { not: "archived" }, OR: conditions },
+          orderBy: { updatedAt: "desc" },
+        });
+      }
+    }
+    if (owner) {
+      const patch: Record<string, unknown> = {};
+      if (ownerExplicitName) patch.name = ownerExplicitName;
+      if (ownerExplicitPhone) patch.phone = ownerExplicitPhone;
+      if (ownerExplicitEmail) patch.email = ownerExplicitEmail;
+      if (ownerExplicitDocument) patch.document = ownerExplicitDocument;
+      if (ownerExplicitDocument) {
+        const nextPending = asStringList(owner.pendingItems).filter((item) => item !== "ownerDocument" && item !== "documento do proprietário");
+        patch.pendingItems = nextPending;
+        patch.status = nextPending.length > 0 ? "pending_data" : "ready_for_review";
+      }
+      if (Object.keys(patch).length === 0) {
+        return {
+          mode: "consult",
+          action: "crm.owner.update",
+          threadLabel: "Proprietário",
+          conversationState: params.threadState ?? createEmptyThreadState(),
+          presentation: {
+            text: "",
+            form: buildOwnerUpdateForm(owner),
+            dedupeKey: `crm.owner.update.form:${owner.id}`,
+            card: {
+              title: sanitizeOwnerName(owner.name),
+              lines: [],
+              ctas: [
+                { id: `owner-edit-${owner.id}`, label: "Editar", kind: "secondary" as const, action: "send_suggested_message" as const, nextMessage: `editar proprietário ${sanitizeOwnerName(owner.name)}` },
+                { id: `owner-delete-${owner.id}`, label: "Excluir", kind: "neutral" as const, action: "send_suggested_message" as const, nextMessage: `excluir proprietário ${sanitizeOwnerName(owner.name)}` },
+                { id: `owner-print-${owner.id}`, label: "Imprimir", kind: "neutral" as const, action: "print_card" as const },
+              ],
+              actionsLayout: "inline",
+            },
+          },
+        } as any;
+      }
+      const updated = await params.prisma.imobOwner.update({ where: { id: owner.id }, data: patch });
+      const ownerForCard = {
+        ...owner,
+        ...updated,
+        _count: owner._count ?? { properties: 0, cases: 0 },
+      };
+      const currentPending = asStringList(ownerForCard.pendingItems).map((item) => item === "ownerDocument" ? "documento do proprietário" : item);
+      return {
+        mode: "consult",
+        action: "crm.owner.update",
+        threadLabel: "Proprietário",
+        conversationState: params.threadState ?? createEmptyThreadState(),
+        presentation: {
+          text: "Cadastro do proprietário atualizado com sucesso.",
+          owner: "Corretor" as any,
+          nextStep: currentPending.length > 0 ? "Completar as pendências restantes do proprietário." : "Vincular o proprietário ao próximo imóvel ou etapa documental.",
+          pendingFieldLabels: currentPending,
+          dedupeKey: `crm.owner.update:${updated.id}:profile`,
+          card: {
+            title: sanitizeOwnerName(ownerForCard.name),
+            lines: [
+              ownerForCard.phone ? `Telefone: ${ownerForCard.phone}` : null,
+              ownerForCard.email ? `E-mail: ${ownerForCard.email}` : null,
+              ownerForCard.document ? `Documento: ${ownerForCard.document}` : null,
+              `Status: ${formatImobStatusLabel(ownerForCard.status)}`,
+              `Pendências: ${formatImobPendingList(currentPending)}`,
+              `Imóveis: ${ownerForCard._count?.properties ?? 0}`,
+              `Casos: ${ownerForCard._count?.cases ?? 0}`,
+            ].filter(Boolean) as string[],
+            ctas: [
+              { id: `owner-edit-${owner.id}`, label: "Editar", kind: "secondary" as const, action: "send_suggested_message" as const, nextMessage: `editar proprietário ${sanitizeOwnerName(ownerForCard.name)}` },
+              { id: `owner-delete-${owner.id}`, label: "Excluir", kind: "neutral" as const, action: "send_suggested_message" as const, nextMessage: `excluir proprietário ${sanitizeOwnerName(ownerForCard.name)}` },
+              { id: `owner-print-${owner.id}`, label: "Imprimir", kind: "neutral" as const, action: "print_card" as const },
+            ],
+            actionsLayout: "inline",
+          },
         },
       } as any;
     }
@@ -1955,12 +2151,13 @@ export async function resolveImobCrmOperationalConsult(params: ResolverParams) {
       conversationState: params.threadState ?? createEmptyThreadState(),
       caseContext: buildCaseContextFromRecord(item),
       presentation: {
-        text: [
-          scopedCaseId ? `Caso ${formatCaseFlowLabel(item.flow)} localizado.` : `Usei o caso IMOB mais recente para esta leitura: ${formatCaseFlowLabel(item.flow)}.`,
-          `Pendências atuais: ${formatImobPendingList(item.pendingItems)}.`,
-          item.nextStep ? `Próximo passo: ${item.nextStep}` : null,
-          blocker ? `Bloqueio atual: ${blocker}` : null,
-        ].filter(Boolean).join("\n"),
+        text: buildChatSafeCaseLookupText({
+          scopedCaseId,
+          flow: item.flow,
+          pendingItems: item.pendingItems,
+          nextStep: item.nextStep,
+          blocker,
+        }),
         owner: item.ownerResponsible ?? undefined,
         nextStep: item.nextStep ?? undefined,
         blocker,

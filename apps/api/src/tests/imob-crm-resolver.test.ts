@@ -15,6 +15,14 @@ function createThreadState() {
   };
 }
 
+function normalizeTestText(value: string | null | undefined) {
+  return (value ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "");
+}
+
 function createMockPrisma(overrides?: {
   caseNextStep?: string;
   leadOverrides?: Record<string, unknown>;
@@ -150,8 +158,18 @@ function createMockPrisma(overrides?: {
         item.tenantId === where.tenantId &&
         item.workspaceId === where.workspaceId &&
         item.status !== "archived" &&
-        (!where.name || where.name === item.name) &&
-        (!where.id || where.id === item.id)
+        (!where.name || normalizeTestText(where.name) === normalizeTestText(item.name)) &&
+        (!where.id || where.id === item.id) &&
+        (!where.document || where.document === item.document) &&
+        (!where.phone || where.phone === item.phone) &&
+        (!where.email || where.email === item.email) &&
+        (!where.OR || where.OR.some((condition: any) => (
+          (condition.id && condition.id === item.id) ||
+          (condition.document && condition.document === item.document) ||
+          (condition.phone && condition.phone === item.phone) ||
+          (condition.email && condition.email === item.email) ||
+          (condition.name && normalizeTestText(condition.name) === normalizeTestText(item.name))
+        )))
       )) ?? null,
       update: async ({ where, data }: any) => {
         const owner = owners.find((item) => item.id === where.id);
@@ -864,6 +882,7 @@ test("IMOB_CRM case consult opens when explicit case id is provided in the messa
 
   assert.equal(resolved?.action, "crm.case.lookup");
   assert.match(resolved?.presentation?.text ?? "", /caso lead localizado/i);
+  assert.doesNotMatch(resolved?.presentation?.text ?? "", /Pendências atuais|Próximo passo|Bloqueio atual/i);
   assert.match(resolved?.presentation?.card?.title ?? "", /Caso Lead/i);
 });
 
@@ -938,6 +957,40 @@ test("IMOB_CRM owner edit returns an edit form", async () => {
 
   assert.equal(resolved?.action, "crm.owner.update");
   assert.equal(resolved?.presentation?.form?.title, "Editar proprietário");
+});
+
+test("IMOB_CRM owner dedupe selection updates the selected owner without asking identifier again", async () => {
+  const prisma = createMockPrisma();
+  const resolved = await resolveImobCrmOperationalUpdate({
+    prisma: prisma as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "atualizar proprietário 41741741785 nome do proprietário Carlos Merllon",
+    threadState: {
+      ...createThreadState(),
+      operational: {
+        flow: "owner.create",
+        status: "collecting",
+        pendingFields: ["ownerDocument"],
+        dedupeSelection: {
+          entity: "owner",
+          resolution: "update_existing",
+          selectedId: "owner-1",
+          selectedRef: "41741741785",
+          selectedName: "João",
+        },
+      },
+    },
+  });
+
+  assert.equal(resolved?.action, "crm.owner.update");
+  assert.match(resolved?.presentation?.text ?? "", /Cadastro do proprietário atualizado com sucesso/i);
+  assert.equal(resolved?.presentation?.form, undefined);
+  assert.notEqual(resolved?.presentation?.dedupeKey, "crm.registration.dedupe_review");
+  const updated = await (prisma as any).imobOwner.findFirst({
+    where: { tenantId: "tenant-1", workspaceId: "workspace-1", id: "owner-1" },
+  });
+  assert.equal(updated?.name, "Carlos Merllon");
 });
 
 test("IMOB_CRM property delete returns confirmation prompt", async () => {
