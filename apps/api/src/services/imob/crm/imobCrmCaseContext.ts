@@ -25,6 +25,7 @@ export function buildImobCrmCaseContextFromRecord(
   item: CaseContextRecord,
   buildCanonicalCase: (item: any) => ImobCrmCanonicalCase,
 ): ImobCrmCaseContext {
+  const lead = normalizeLeadSummary(item.lead);
   const canonical = buildCanonicalCase(item);
   const updatedAtIso = item.updatedAt?.toISOString?.() ?? null;
   const humanJourney = buildImobHumanJourney({
@@ -51,12 +52,62 @@ export function buildImobCrmCaseContextFromRecord(
     pendingItems: Array.isArray(item.pendingItems) ? item.pendingItems : [],
     threadId: item.threadId ?? null,
     updatedAt: updatedAtIso,
-    lead: item.lead ?? null,
+    lead,
     property: item.property ?? null,
     owner: item.owner ?? null,
     canonical,
     humanJourney,
     humanWorkflow,
+  };
+}
+
+function asObject(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+function asString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function normalizeLeadSummary(value: unknown) {
+  const lead = asObject(value);
+  if (!lead) return null;
+
+  const metadata = asObject(lead.metadata);
+  const metadataDiscovery = asObject(metadata?.discoverySignals);
+  const directDiscovery = asObject(lead.discoverySignals);
+  const discoverySource = directDiscovery ?? metadataDiscovery;
+  const urgency = asString(discoverySource?.urgency);
+  const budgetFlexibility = asString(discoverySource?.budgetFlexibility);
+  const decisionMaker = asString(discoverySource?.decisionMaker);
+  const pendingSignals = Array.isArray(discoverySource?.pendingSignals)
+    ? discoverySource.pendingSignals.map((item) => asString(item)).filter(Boolean)
+    : [];
+
+  return {
+    ...lead,
+    discoverySignals: discoverySource ? {
+      urgency: urgency === "low" || urgency === "medium" || urgency === "high" ? urgency : null,
+      painPoint: asString(discoverySource?.painPoint),
+      motivation: asString(discoverySource?.motivation),
+      budgetFlexibility:
+        budgetFlexibility === "strict" || budgetFlexibility === "moderate" || budgetFlexibility === "flexible"
+          ? budgetFlexibility
+          : null,
+      decisionMaker:
+        decisionMaker === "solo" || decisionMaker === "shared" || decisionMaker === "third_party"
+          ? decisionMaker
+          : null,
+      timeline: asString(discoverySource?.timeline),
+      pendingSignals: pendingSignals.filter((item): item is "urgency" | "painPoint" | "motivation" | "budgetFlexibility" | "decisionMaker" | "timeline" =>
+        item === "urgency"
+        || item === "painPoint"
+        || item === "motivation"
+        || item === "budgetFlexibility"
+        || item === "decisionMaker"
+        || item === "timeline",
+      ),
+    } : null,
   };
 }
 

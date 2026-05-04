@@ -115,6 +115,11 @@ function createMockPrisma() {
       },
     },
     memoryEvent: {
+      findMany: async ({ where }: any = {}) => memoryEvents.filter((item) => (
+        (!where?.tenantId || item.tenantId === where.tenantId) &&
+        (!where?.workspaceId || item.workspaceId === where.workspaceId) &&
+        (!where?.key || item.key === where.key)
+      )),
       create: async ({ data }: any) => {
         memoryEvents.push(data);
         return { id: `event-${memoryEvents.length}`, ...data };
@@ -162,11 +167,11 @@ test("IMOB_CRM mutation service creates owners with workspace scope and audit ev
   });
 
   assert.equal(created.workspaceId, "workspace-1");
-  assert.equal(prisma.memoryEvents.length, 1);
-  assert.equal(prisma.memoryEvents[0].key, "crm.audit");
-  assert.equal(prisma.memoryEvents[0].metadata.subjectType, "owner");
-  assert.equal(prisma.memoryEvents[0].metadata.action, "created");
-  assert.equal(prisma.memoryEvents[0].metadata.userId, "user-1");
+  const auditEvents = prisma.memoryEvents.filter((event) => event.key === "crm.audit");
+  assert.equal(auditEvents.length, 1);
+  assert.equal(auditEvents[0].metadata.subjectType, "owner");
+  assert.equal(auditEvents[0].metadata.action, "created");
+  assert.equal(auditEvents[0].metadata.userId, "user-1");
 });
 
 test("IMOB_CRM mutation service updates leads inside workspace and records audit", async () => {
@@ -182,11 +187,16 @@ test("IMOB_CRM mutation service updates leads inside workspace and records audit
   });
 
   assert.equal(updated?.budgetMaxCents, 200000);
-  assert.equal(prisma.memoryEvents.length, 1);
-  assert.equal(prisma.memoryEvents[0].metadata.subjectType, "lead");
-  assert.equal(prisma.memoryEvents[0].metadata.action, "updated");
-  assert.equal((prisma.memoryEvents[0].metadata.before as any).budgetMaxCents, null);
-  assert.equal((prisma.memoryEvents[0].metadata.after as any).budgetMaxCents, 200000);
+  const auditEvents = prisma.memoryEvents.filter((event) => event.key === "crm.audit");
+  const shadowEvents = prisma.memoryEvents.filter((event) => event.key === "imob.shadow.execution");
+  assert.equal(auditEvents.length, 1);
+  assert.equal(auditEvents[0].metadata.subjectType, "lead");
+  assert.equal(auditEvents[0].metadata.action, "updated");
+  assert.equal((auditEvents[0].metadata.before as any).budgetMaxCents, null);
+  assert.equal((auditEvents[0].metadata.after as any).budgetMaxCents, 200000);
+  assert.equal(shadowEvents.length, 2);
+  assert.equal(shadowEvents.some((event) => event.metadata.capabilityId === "lead.scoring"), true);
+  assert.equal(shadowEvents.some((event) => event.metadata.capabilityId === "relationship.commercial_memory"), true);
 });
 
 test("IMOB_CRM mutation service persists conversational lead case with audit trail", async () => {
@@ -223,6 +233,15 @@ test("IMOB_CRM mutation service persists conversational lead case with audit tra
             desiredGoal: "locacao",
             desiredCity: "Balneário Camboriú",
             budgetMax: 2000,
+            discoverySignals: {
+              urgency: "high",
+              painPoint: "precisa de espaço para home office",
+              motivation: "mudança por trabalho",
+              budgetFlexibility: "moderate",
+              decisionMaker: "shared",
+              timeline: "resolver ainda este mês",
+              pendingSignals: [],
+            },
           },
         },
       },
@@ -236,8 +255,40 @@ test("IMOB_CRM mutation service persists conversational lead case with audit tra
   assert.equal(prisma.cases[0].leadId, "lead-1");
   assert.equal(prisma.caseEvents.length, 1);
   assert.equal(prisma.caseEvents[0].type, "case.created_from_turn");
+  assert.equal((prisma.leads[0].metadata?.discoverySignals as any)?.urgency, "high");
+  assert.equal((prisma.leads[0].metadata?.discoverySignals as any)?.decisionMaker, "shared");
   assert.equal(prisma.memoryEvents.some((event) => event.metadata.subjectType === "lead" && event.metadata.action === "updated"), true);
   assert.equal(prisma.memoryEvents.some((event) => event.metadata.subjectType === "case" && event.metadata.action === "created"), true);
+  const shadowEvents = prisma.memoryEvents.filter((event) => event.key === "imob.shadow.execution");
+  assert.equal(shadowEvents.some((event) => event.metadata.capabilityId === "lead.scoring"), true);
+  assert.equal(shadowEvents.some((event) => event.metadata.capabilityId === "reengagement.continuous"), true);
+  assert.equal(shadowEvents.some((event) => event.metadata.capabilityId === "inventory.active_watch"), true);
+});
+
+test("IMOB_CRM mutation service skips duplicate shadow execution for identical lead state", async () => {
+  const prisma = createMockPrisma();
+  const service = new ImobCrmMutationService(prisma as any);
+
+  await service.updateLead({
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    userId: "user-1",
+  }, "lead-1", {
+    budgetMaxCents: 200000,
+  });
+
+  await service.updateLead({
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    userId: "user-1",
+  }, "lead-1", {
+    budgetMaxCents: 200000,
+  });
+
+  const shadowEvents = prisma.memoryEvents.filter((event) => event.key === "imob.shadow.execution");
+  assert.equal(shadowEvents.length, 2);
+  assert.equal(shadowEvents.filter((event) => event.metadata.capabilityId === "lead.scoring").length, 1);
+  assert.equal(shadowEvents.filter((event) => event.metadata.capabilityId === "relationship.commercial_memory").length, 1);
 });
 
 test("IMOB_CRM mutation service keeps approval event actor/evidence when updating case", async () => {

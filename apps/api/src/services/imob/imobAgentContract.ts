@@ -1,6 +1,7 @@
 import type { ImobAgentRuntimeMetadata, ImobChatExperienceContract } from "./imobConversationContract";
 import { imobCapabilityRegistry, listAllImobCapabilities } from "./imobCapabilityRegistry";
 import { IMOB_CONVERSATIONAL_INTENT_CATALOG } from "./imobIntentCatalog";
+import { buildImobPromotionReviewSurface } from "./imobPromotionReviewSurface";
 import { listImobBackingSpecialists } from "./imobSpecialistBridge";
 
 const IMOB_AGENT_CONTRACT_ID = "imob.case_concierge.v1" as const;
@@ -76,6 +77,9 @@ export function buildImobAgentContractV1() {
 
 export function buildImobAgentRuntimeMetadata(): ImobAgentRuntimeMetadata {
   const contract = buildImobAgentContractV1();
+  const promotionReviewSurface = buildImobPromotionReviewSurface({
+    history: [],
+  });
   return {
     contractId: contract.id,
     contractVersion: contract.version,
@@ -93,5 +97,6 @@ export function buildImobAgentRuntimeMetadata(): ImobAgentRuntimeMetadata {
       externalIntegrations: contract.capabilities.externalIntegrations.map((item) => ({ ...item, dependsOn: [...item.dependsOn] })),
       workerOrchestration: contract.capabilities.workerOrchestration.map((item) => ({ ...item, dependsOn: [...item.dependsOn] })),
     },
+    promotionReviewSurface,
   };
 }

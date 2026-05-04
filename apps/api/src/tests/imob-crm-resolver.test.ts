@@ -269,9 +269,46 @@ test("IMOB_CRM business read returns commercial language from the latest case", 
   assert.ok(["medium", "high"].includes(resolved?.presentation?.decisionRationale?.confidence ?? ""));
   assert.ok((resolved?.presentation?.decisionRationale?.sourceRefs?.length ?? 0) >= 3);
   assert.ok((resolved?.presentation?.decisionRationale?.reasonCodes?.length ?? 0) >= 1);
+  assert.equal(resolved?.presentation?.leadDiscovery?.coverage, "complete");
+  assert.equal(resolved?.presentation?.leadDiscovery?.discoveryVersion, "imob.lead_discovery.v1");
+  assert.equal(resolved?.presentation?.leadDiscovery?.shadowMode, true);
+  assert.ok((resolved?.presentation?.leadDiscovery?.capturedSignals?.length ?? 0) >= 5);
+  assert.equal(resolved?.presentation?.leadDiscovery?.recommendedNextMove, "validar aderência comercial e vincular imóvel com base no discovery já coletado");
+  assert.equal(resolved?.presentation?.leadProfileReport?.profileVersion, "imob.lead_profile_report.v1");
+  assert.equal(resolved?.presentation?.leadProfileReport?.profileStatus, "ready");
+  assert.equal(resolved?.presentation?.leadProfileReport?.commercialReadiness, "high");
+  assert.equal(resolved?.presentation?.leadProfileReport?.financialReadiness, "high");
+  assert.equal(resolved?.presentation?.leadProfileReport?.consentScope, "internal_only");
+  assert.ok((resolved?.presentation?.leadProfileReport?.strengths?.length ?? 0) >= 3);
+  assert.equal(resolved?.presentation?.viabilityMarketAnalysis?.analysisVersion, "imob.viability_market_analysis.v1");
+  assert.equal(resolved?.presentation?.viabilityMarketAnalysis?.marketStatus, "viable");
+  assert.ok((resolved?.presentation?.viabilityMarketAnalysis?.viabilityScore ?? 0) >= 70);
+  assert.equal(resolved?.presentation?.viabilityMarketAnalysis?.liquiditySignal, "high");
+  assert.equal(resolved?.presentation?.viabilityMarketAnalysis?.priceConfidence, "high");
+  assert.ok((resolved?.presentation?.viabilityMarketAnalysis?.anchorSignals?.length ?? 0) >= 4);
+  assert.equal(resolved?.presentation?.closingDocuments?.documentStateVersion, "imob.closing_documents_real.v1");
+  assert.equal(resolved?.presentation?.closingDocuments?.readinessStatus, "ready");
+  assert.equal(resolved?.presentation?.closingDocuments?.packetReadiness, "ready");
+  assert.equal(resolved?.presentation?.closingDocuments?.legalHandoffRecommended, false);
+  assert.equal(resolved?.presentation?.missionOrchestration?.missionVersion, "imob.mission_orchestration.v1");
+  assert.match(resolved?.presentation?.missionOrchestration?.missionId ?? "", /^mission-imob-/i);
+  assert.equal(resolved?.presentation?.missionOrchestration?.missionStatus, "ready");
+  assert.equal(resolved?.presentation?.missionOrchestration?.ownerAgentId, "IMOB");
+  assert.equal(resolved?.presentation?.missionOrchestration?.ownerCapability, "inventory.active_watch");
+  assert.ok((resolved?.presentation?.missionOrchestration?.supportingAgents?.includes("I_BC") ?? false), true);
+  assert.ok((resolved?.presentation?.missionOrchestration?.missionReasonCodes?.length ?? 0) >= 2);
+  assert.ok((resolved?.presentation?.missionOrchestration?.pendingHandoffs?.length ?? 0) >= 1);
+  assert.ok((resolved?.presentation?.missionOrchestration?.evidenceRefs?.length ?? 0) >= 3);
+  assert.equal(resolved?.presentation?.missionOrchestration?.createdAt, resolved?.presentation?.missionOrchestration?.closedAt);
+  assert.equal(resolved?.presentation?.missionOrchestration?.shadowMode, true);
   assert.equal(resolved?.presentation?.leadScore?.scoreBand, "HOT");
   assert.equal(resolved?.presentation?.leadScore?.shadowMode, true);
-  assert.equal(resolved?.presentation?.leadScore?.scoreVersion, "imob.lead_scoring.v1");
+  assert.equal(resolved?.presentation?.leadScore?.scoreVersion, "imob.lead_scoring.v1.1");
+  assert.equal(resolved?.presentation?.leadScore?.confidence, "high");
+  assert.ok((resolved?.presentation?.leadScore?.reasonCodes?.length ?? 0) >= 3);
+  assert.equal(resolved?.presentation?.commercialMemory?.memoryVersion, "imob.commercial_memory.v1.1");
+  assert.equal(resolved?.presentation?.commercialMemory?.confidence, "high");
+  assert.ok((resolved?.presentation?.commercialMemory?.reasonCodes?.length ?? 0) >= 4);
   assert.ok((resolved?.presentation?.commercialMemory?.preferences?.length ?? 0) >= 4);
   assert.equal(resolved?.presentation?.commercialMemory?.nextTrigger?.kind, "decision_window");
   assert.match(resolved?.presentation?.commercialMemory?.lastUsefulAction ?? "", /Qualificar lead/i);
@@ -280,11 +317,79 @@ test("IMOB_CRM business read returns commercial language from the latest case", 
   assert.equal(resolved?.presentation?.reengagementSuggestion?.suggestedChannel, "internal");
   assert.equal(resolved?.presentation?.reengagementSuggestion?.shadowMode, true);
   assert.ok((resolved?.presentation?.reengagementSuggestion?.anchorSignals?.length ?? 0) >= 2);
+  assert.equal(resolved?.presentation?.inventoryWatch?.watchStatus, "matching");
+  assert.equal(resolved?.presentation?.inventoryWatch?.matchStrength, "high");
+  assert.equal(resolved?.presentation?.inventoryWatch?.watchVersion, "imob.inventory_watch.v1");
+  assert.equal(resolved?.presentation?.inventoryWatch?.shadowMode, true);
+  assert.ok((resolved?.presentation?.inventoryWatch?.anchorSignals?.length ?? 0) >= 3);
+  assert.equal(resolved?.presentation?.inventoryWatch?.recommendedNextMove, "retomar lead com imóveis aderentes");
+  assert.equal(resolved?.presentation?.pilotFlow?.flowType, "assisted_reengagement_flow");
+  assert.equal(resolved?.presentation?.pilotFlow?.status, "completed");
+  assert.equal(resolved?.presentation?.pilotFlow?.visibleAgentId, "IMOB");
+  assert.equal(resolved?.presentation?.pilotFlow?.capabilityId, "reengagement.continuous");
+  assert.match(resolved?.presentation?.pilotFlow?.flowRunId ?? "", /^flowrun-/);
+  assert.match(resolved?.presentation?.pilotFlow?.missionId ?? "", /^mission-imob-case-1-reengagement-continuous$/);
+  assert.match(resolved?.presentation?.pilotFlow?.jobId ?? "", /^imob-job-/);
+  assert.match(resolved?.presentation?.pilotFlow?.trackingId ?? "", /^tracking-imob-job-/);
+  assert.ok((resolved?.presentation?.pilotFlow?.evidenceRefs?.length ?? 0) >= 5);
   const ctas = Array.isArray(resolved?.presentation?.card?.ctas) ? resolved?.presentation?.card?.ctas : [];
   assert.equal(
     ctas.some((item: any) => String(item?.nextMessage ?? "").toLowerCase().includes("qualificar lead deste caso")),
     true,
   );
+});
+
+test("IMOB_CRM business read connects assisted calendar pilot flow from case runtime", async () => {
+  const resolved = await resolveImobCrmOperationalConsult({
+    prisma: createMockPrisma({
+      caseOverrides: {
+        flow: "visit.schedule",
+        nextStep: "confirmar agenda da visita",
+      },
+    }) as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "qual status desse caso?",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.presentation?.pilotFlow?.flowType, "assisted_calendar_flow");
+  assert.equal(resolved?.presentation?.pilotFlow?.status, "completed");
+  assert.equal(resolved?.presentation?.pilotFlow?.capabilityId, "schedule.real_calendar");
+  assert.equal(resolved?.presentation?.pilotFlow?.visibleAgentId, "IMOB");
+  assert.match(resolved?.presentation?.pilotFlow?.trackingId ?? "", /^tracking-imob-job-/);
+  assert.equal(resolved?.presentation?.pilotOperationalState?.activePilotFlow, "assisted_calendar_flow");
+  assert.equal(resolved?.presentation?.pilotOperationalState?.status, "approval_required");
+  assert.equal(resolved?.presentation?.pilotOperationalState?.rolloutStage, "shadow");
+  assert.equal(resolved?.presentation?.pilotOperationalState?.approvalRef, null);
+  assert.equal(resolved?.presentation?.pilotOperationalState?.approvalDecision, null);
+  assert.equal(resolved?.presentation?.pilotOperationalState?.canRegressToShadow, false);
+  assert.equal(resolved?.presentation?.pilotOperationalState?.visibleAgentId, "IMOB");
+  assert.equal(resolved?.presentation?.pilotOperationalState?.trackingId, null);
+  assert.equal(resolved?.presentation?.pilotOperationalState?.evidenceRefs?.length ?? 0, 0);
+  assert.match(resolved?.presentation?.pilotOperationalState?.nextHumanAction ?? "", /registrar approval operacional/i);
+});
+
+test("IMOB_CRM business read connects shadow capture enrichment pilot flow from case runtime", async () => {
+  const resolved = await resolveImobCrmOperationalConsult({
+    prisma: createMockPrisma({
+      caseOverrides: {
+        flow: "property.create",
+        nextStep: "avançar captação deste caso",
+      },
+    }) as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "qual status desse caso?",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.presentation?.pilotFlow?.flowType, "shadow_capture_enrichment_flow");
+  assert.equal(resolved?.presentation?.pilotFlow?.status, "shadow_recorded");
+  assert.equal(resolved?.presentation?.pilotFlow?.capabilityId, "active_capture.scouting");
+  assert.equal(resolved?.presentation?.pilotFlow?.visibleAgentId, "IMOB");
+  assert.ok((resolved?.presentation?.pilotFlow?.evidenceRefs?.some((item: any) => item?.ref === "pilot.source.ref") ?? false), true);
+  assert.equal(resolved?.presentation?.pilotOperationalState, undefined);
 });
 
 test("IMOB_CRM business read returns WARM lead score for mixed signals", async () => {
@@ -313,9 +418,28 @@ test("IMOB_CRM business read returns WARM lead score for mixed signals", async (
   });
 
   assert.equal(resolved?.presentation?.leadScore?.scoreBand, "WARM");
+  assert.equal(resolved?.presentation?.leadScore?.confidence, "medium");
+  assert.ok((resolved?.presentation?.leadScore?.reasonCodes?.length ?? 0) >= 2);
+  assert.equal(resolved?.presentation?.commercialMemory?.confidence, "medium");
+  assert.ok((resolved?.presentation?.commercialMemory?.missingEvidence?.length ?? 0) >= 1);
+  assert.equal(resolved?.presentation?.leadDiscovery?.coverage, "partial");
+  assert.equal(resolved?.presentation?.leadProfileReport?.profileStatus, "partial");
+  assert.equal(resolved?.presentation?.leadProfileReport?.commercialReadiness, "medium");
+  assert.ok((resolved?.presentation?.leadProfileReport?.missingEvidence?.length ?? 0) >= 2);
+  assert.equal(resolved?.presentation?.viabilityMarketAnalysis?.marketStatus, "watch");
+  assert.ok((resolved?.presentation?.viabilityMarketAnalysis?.viabilityScore ?? 0) >= 45);
+  assert.ok((resolved?.presentation?.viabilityMarketAnalysis?.viabilityScore ?? 100) < 70);
+  assert.ok((resolved?.presentation?.viabilityMarketAnalysis?.missingEvidence?.length ?? 0) >= 1);
+  assert.equal(resolved?.presentation?.closingDocuments?.readinessStatus, "partial");
+  assert.equal(resolved?.presentation?.closingDocuments?.packetReadiness, "partial");
+  assert.ok((resolved?.presentation?.leadDiscovery?.missingSignals?.length ?? 0) >= 1);
   assert.ok((resolved?.presentation?.leadScore?.scoreValue ?? 0) >= 40);
   assert.ok((resolved?.presentation?.leadScore?.scoreValue ?? 0) < 70);
   assert.ok((resolved?.presentation?.leadScore?.factors?.length ?? 0) >= 2);
+  assert.equal(resolved?.presentation?.inventoryWatch?.watchStatus, "weak_match");
+  assert.equal(resolved?.presentation?.inventoryWatch?.matchStrength, "medium");
+  assert.equal(resolved?.presentation?.inventoryWatch?.recommendedNextMove, "refinar cidade ou orçamento antes de retomar");
+  assert.ok((resolved?.presentation?.inventoryWatch?.missingCriteria?.length ?? 0) >= 1);
 });
 
 test("IMOB_CRM business read returns COLD lead score for weak commercial readiness", async () => {
@@ -345,13 +469,20 @@ test("IMOB_CRM business read returns COLD lead score for weak commercial readine
   });
 
   assert.equal(resolved?.presentation?.leadScore?.scoreBand, "COLD");
+  assert.equal(resolved?.presentation?.leadScore?.confidence, "low");
+  assert.ok((resolved?.presentation?.leadScore?.reasonCodes?.includes("lead_low_readiness") ?? false), true);
   assert.ok((resolved?.presentation?.leadScore?.scoreValue ?? 100) < 40);
+  assert.equal(resolved?.presentation?.inventoryWatch?.watchStatus, "weak_match");
+  assert.equal(resolved?.presentation?.inventoryWatch?.matchStrength, "low");
 });
 
 test("IMOB_CRM business read returns UNKNOWN lead score when evidence is insufficient", async () => {
   const resolved = await resolveImobCrmOperationalConsult({
     prisma: createMockPrisma({
       leadOverrides: {
+        goal: null,
+        targetCity: null,
+        budgetMaxCents: null,
         discoverySignals: {
           urgency: null,
           painPoint: null,
@@ -366,6 +497,21 @@ test("IMOB_CRM business read returns UNKNOWN lead score when evidence is insuffi
         nextStep: null,
         pendingItems: [],
         blockers: [],
+        property: {
+          id: "property-1",
+          ownerId: "owner-1",
+          propertyType: null,
+          goal: null,
+          address: "Rua 1000, 123",
+          city: null,
+          neighborhood: null,
+          askingPriceCents: null,
+          status: "pending_data",
+          pendingItems: [],
+          owner: { name: "João" },
+          _count: { cases: 1 },
+          updatedAt: new Date("2026-01-01"),
+        },
       },
     }) as any,
     tenantId: "tenant-1",
@@ -375,12 +521,102 @@ test("IMOB_CRM business read returns UNKNOWN lead score when evidence is insuffi
   });
 
   assert.equal(resolved?.presentation?.leadScore?.scoreBand, "UNKNOWN");
+  assert.equal(resolved?.presentation?.leadDiscovery?.coverage, "insufficient");
+  assert.ok((resolved?.presentation?.leadDiscovery?.missingSignals?.length ?? 0) >= 5);
   assert.equal(resolved?.presentation?.leadScore?.scoreValue, 0);
   assert.equal(resolved?.presentation?.leadScore?.shadowMode, true);
+  assert.equal(resolved?.presentation?.leadScore?.confidence, "low");
+  assert.ok((resolved?.presentation?.leadScore?.reasonCodes?.includes("lead_evidence_insufficient") ?? false), true);
   assert.ok((resolved?.presentation?.leadScore?.missingEvidence?.length ?? 0) >= 1);
+  assert.equal(resolved?.presentation?.commercialMemory?.confidence, "low");
+  assert.ok((resolved?.presentation?.commercialMemory?.reasonCodes?.includes("trigger_readiness_check") ?? false), true);
+  assert.ok((resolved?.presentation?.commercialMemory?.missingEvidence?.length ?? 0) >= 4);
+  assert.equal(resolved?.presentation?.leadProfileReport?.profileStatus, "insufficient");
+  assert.equal(resolved?.presentation?.leadProfileReport?.commercialReadiness, "unknown");
+  assert.equal(resolved?.presentation?.leadProfileReport?.financialReadiness, "unknown");
+  assert.ok((resolved?.presentation?.leadProfileReport?.missingEvidence?.length ?? 0) >= 4);
+  assert.equal(resolved?.presentation?.viabilityMarketAnalysis?.marketStatus, "insufficient_context");
+  assert.equal(resolved?.presentation?.viabilityMarketAnalysis?.liquiditySignal, "unknown");
+  assert.equal(resolved?.presentation?.viabilityMarketAnalysis?.priceConfidence, "unknown");
+  assert.ok((resolved?.presentation?.viabilityMarketAnalysis?.missingEvidence?.length ?? 0) >= 4);
+  assert.equal(resolved?.presentation?.closingDocuments?.readinessStatus, "insufficient_context");
   assert.equal(resolved?.presentation?.commercialMemory?.nextTrigger?.kind, "readiness_check");
   assert.equal(resolved?.presentation?.reengagementSuggestion?.reason, "readiness_check");
   assert.ok((resolved?.presentation?.reengagementSuggestion?.missingEvidence?.length ?? 0) >= 1);
+  assert.equal(resolved?.presentation?.inventoryWatch?.watchStatus, "insufficient_context");
+  assert.equal(resolved?.presentation?.inventoryWatch?.matchStrength, "unknown");
+  assert.equal(resolved?.presentation?.inventoryWatch?.recommendedNextMove, "coletar preferências mínimas antes de sugerir estoque");
+  assert.equal(resolved?.presentation?.missionOrchestration?.missionStatus, "watch");
+  assert.equal(resolved?.presentation?.missionOrchestration?.ownerAgentId, "IMOB");
+  assert.equal(resolved?.presentation?.missionOrchestration?.ownerCapability, "lead.qualify.discovery");
+  assert.ok((resolved?.presentation?.missionOrchestration?.evidenceRefs?.length ?? 0) >= 2);
+});
+
+test("IMOB_CRM business read restores discovery signals from lead metadata", async () => {
+  const resolved = await resolveImobCrmOperationalConsult({
+    prisma: createMockPrisma({
+      leadOverrides: {
+        discoverySignals: undefined,
+        metadata: {
+          discoverySignals: {
+            urgency: "high",
+            painPoint: "precisa vender rápido para reorganizar caixa",
+            motivation: "mudança de cidade",
+            budgetFlexibility: "moderate",
+            decisionMaker: "solo",
+            timeline: "nesta quinzena",
+            pendingSignals: [],
+          },
+        },
+      },
+    }) as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "qual status desse caso?",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.presentation?.leadDiscovery?.coverage, "complete");
+  assert.match(resolved?.presentation?.leadDiscovery?.capturedSignals?.[1] ?? "", /precisa vender rápido/i);
+});
+
+test("IMOB_CRM business read returns no_match inventory watch when case signals conflict", async () => {
+  const resolved = await resolveImobCrmOperationalConsult({
+    prisma: createMockPrisma({
+      leadOverrides: {
+        goal: "locacao",
+        targetCity: "Balneário Camboriú",
+        budgetMaxCents: 250000,
+        discoverySignals: {
+          urgency: "high",
+          painPoint: "precisa mudar ainda este mês",
+          motivation: "transferência de trabalho",
+          budgetFlexibility: "moderate",
+          decisionMaker: "self",
+          timeline: "esta semana",
+          pendingSignals: [],
+        },
+      },
+      caseOverrides: {
+        property: {
+          id: "property-1",
+          goal: "venda",
+          city: "Itajaí",
+          neighborhood: "Centro",
+          propertyType: "apartamento",
+          askingPriceCents: 98000000,
+        },
+      },
+    }) as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "qual status desse caso?",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.presentation?.inventoryWatch?.watchStatus, "no_match");
+  assert.equal(resolved?.presentation?.inventoryWatch?.matchStrength, "low");
+  assert.equal(resolved?.presentation?.inventoryWatch?.recommendedNextMove, "revalidar objetivo e flexibilidade comercial");
 });
 
 test("IMOB_CRM business read does not expose lead score for non-lead flow", async () => {
@@ -450,6 +686,15 @@ test("IMOB_CRM business read suggests document reengagement in shadow without ch
   assert.equal(resolved?.presentation?.reengagementSuggestion?.recommendedTiming, "this_week");
   assert.ok((resolved?.presentation?.reengagementSuggestion?.anchorSignals?.length ?? 0) >= 2);
   assert.ok((resolved?.presentation?.reengagementSuggestion?.messageBase?.length ?? 0) > 0);
+  assert.equal(resolved?.presentation?.closingDocuments?.readinessStatus, "blocked");
+  assert.equal(resolved?.presentation?.closingDocuments?.packetReadiness, "blocked");
+  assert.equal(resolved?.presentation?.closingDocuments?.legalHandoffRecommended, true);
+  assert.ok((resolved?.presentation?.closingDocuments?.blockingIssues?.length ?? 0) >= 1);
+  assert.equal(resolved?.presentation?.missionOrchestration?.missionStatus, "blocked");
+  assert.equal(resolved?.presentation?.missionOrchestration?.ownerCapability, "closing.documents_real");
+  assert.ok((resolved?.presentation?.missionOrchestration?.supportingAgents?.includes("J_360") ?? false), true);
+  assert.ok((resolved?.presentation?.missionOrchestration?.blockingIssues?.length ?? 0) >= 1);
+  assert.ok((resolved?.presentation?.missionOrchestration?.closedAt?.length ?? 0) > 0);
   assert.match(resolved?.presentation?.nextStep ?? "", /cadastrar proprietário|cadastrar imóvel|qualificar lead|consultar caso/i);
 });
 

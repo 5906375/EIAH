@@ -1,5 +1,10 @@
 import type { PrismaClient } from "@repo/db";
 import { recordImobCrmAuditEvent } from "./imobCrmAudit";
+import {
+  planCaseShadowExecutions,
+  planLeadShadowExecutions,
+  recordImobShadowExecutions,
+} from "../imobShadowRuntime";
 import type {
   CaseInput,
   LeadInput,
@@ -50,6 +55,48 @@ function mapOperationalCaseStatus(operationalStatus: string) {
 
 export class ImobCrmMutationService {
   constructor(private readonly prisma: PrismaClient) {}
+
+  private async recordLeadShadow(scope: Scope, params: {
+    leadId: string;
+    before?: unknown;
+    after: unknown;
+    trigger: string;
+  }) {
+    const executions = planLeadShadowExecutions({
+      leadId: params.leadId,
+      before: params.before,
+      after: params.after,
+      trigger: params.trigger,
+    });
+    if (executions.length === 0) return;
+    await recordImobShadowExecutions({
+      prisma: this.prisma,
+      tenantId: scope.tenantId,
+      workspaceId: scope.workspaceId,
+      executions,
+    });
+  }
+
+  private async recordCaseShadow(scope: Scope, params: {
+    caseId: string;
+    before?: unknown;
+    after: unknown;
+    trigger: string;
+  }) {
+    const executions = planCaseShadowExecutions({
+      caseId: params.caseId,
+      before: params.before,
+      after: params.after,
+      trigger: params.trigger,
+    });
+    if (executions.length === 0) return;
+    await recordImobShadowExecutions({
+      prisma: this.prisma,
+      tenantId: scope.tenantId,
+      workspaceId: scope.workspaceId,
+      executions,
+    });
+  }
 
   async createOwner(scope: Scope, input: OwnerInput) {
     const created = await this.prisma.imobOwner.create({
@@ -209,6 +256,12 @@ export class ImobCrmMutationService {
       after: created,
     });
 
+    await this.recordCaseShadow(scope, {
+      caseId: created.id,
+      after: created,
+      trigger: "case.created",
+    });
+
     return { status: "created" as const, data: created };
   }
 
@@ -340,6 +393,12 @@ export class ImobCrmMutationService {
       after: created,
     });
 
+    await this.recordLeadShadow(scope, {
+      leadId: created.id,
+      after: created,
+      trigger: "lead.created",
+    });
+
     return created;
   }
 
@@ -380,6 +439,13 @@ export class ImobCrmMutationService {
       summary: `Lead ${updated.name} updated`,
       before: previous,
       after: updated,
+    });
+
+    await this.recordLeadShadow(scope, {
+      leadId: updated.id,
+      before: previous,
+      after: updated,
+      trigger: "lead.updated",
     });
 
     return updated;
@@ -445,6 +511,12 @@ export class ImobCrmMutationService {
       after: created,
     });
 
+    await this.recordCaseShadow(scope, {
+      caseId: created.id,
+      after: created,
+      trigger: "case.created",
+    });
+
     return { status: "created" as const, data: created };
   }
 
@@ -457,6 +529,15 @@ export class ImobCrmMutationService {
 
     const relation = await this.validateCaseRelations(scope, input);
     if (relation.status !== "ok") return relation;
+
+    const previous = await this.prisma.imobCase.findFirst({
+      where: { id: existing.id },
+      include: {
+        owner: { select: { id: true, name: true } },
+        property: { select: { id: true, propertyType: true, city: true, neighborhood: true } },
+        lead: { select: { id: true, name: true } },
+      },
+    });
 
     const updated = await this.prisma.$transaction(async (tx) => {
       const item = await tx.imobCase.update({
@@ -514,6 +595,13 @@ export class ImobCrmMutationService {
       after: updated,
     });
 
+    await this.recordCaseShadow(scope, {
+      caseId: updated.id,
+      before: previous,
+      after: updated,
+      trigger: "case.updated",
+    });
+
     return { status: "updated" as const, data: updated, previous: existing };
   }
 
@@ -566,6 +654,12 @@ export class ImobCrmMutationService {
       if (mode === "lookup_only") return existingId;
 
       const budgetMax = typeof draft.budgetMax === "number" ? draft.budgetMax : Number(draft.budgetMax);
+      const currentMetadata = existingId
+        ? asObject((await this.prisma.imobLead.findFirst({
+            where: { id: existingId, tenantId: scope.tenantId, workspaceId: scope.workspaceId },
+            select: { metadata: true },
+          }))?.metadata) ?? {}
+        : {};
       const input: LeadInput = {
         name: asString(draft.leadName) ?? "Lead sem nome",
         email: asString(draft.leadEmail),
@@ -579,9 +673,11 @@ export class ImobCrmMutationService {
           ? pendingItems.filter((item) => !(item === "faixa de orçamento" && Number.isFinite(budgetMax)))
           : undefined,
         metadata: {
+          ...currentMetadata,
           source: "imob-chat",
           flow: operational.flow,
           dedupeKey: params.resolved?.presentation?.dedupeKey ?? null,
+          discoverySignals: asObject(draft.discoverySignals) ?? null,
         },
       };
       const persisted = existingId

@@ -291,7 +291,12 @@ test("IMOB copiloto responde leitura de lead captado sem cair em intake", async 
   assert.ok(["medium", "high"].includes(resolved?.presentation?.decisionRationale?.confidence ?? ""));
   assert.equal(resolved?.presentation?.leadScore?.scoreBand, "HOT");
   assert.equal(resolved?.presentation?.leadScore?.shadowMode, true);
-  assert.equal(resolved?.presentation?.leadScore?.scoreVersion, "imob.lead_scoring.v1");
+  assert.equal(resolved?.presentation?.leadScore?.scoreVersion, "imob.lead_scoring.v1.1");
+  assert.equal(resolved?.presentation?.leadScore?.confidence, "high");
+  assert.ok((resolved?.presentation?.leadScore?.reasonCodes?.length ?? 0) >= 3);
+  assert.equal(resolved?.presentation?.commercialMemory?.memoryVersion, "imob.commercial_memory.v1.1");
+  assert.equal(resolved?.presentation?.commercialMemory?.confidence, "high");
+  assert.ok((resolved?.presentation?.commercialMemory?.reasonCodes?.length ?? 0) >= 4);
   assert.ok((resolved?.presentation?.commercialMemory?.preferences?.length ?? 0) >= 4);
   assert.equal(resolved?.presentation?.commercialMemory?.preferences?.[0]?.key, "goal");
   assert.ok((resolved?.presentation?.commercialMemory?.objections?.length ?? 0) >= 1);

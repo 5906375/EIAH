@@ -77,3 +77,98 @@ test("reengagement capability stays in shadow governance after runtime materiali
   assert.equal(capability?.executionMode, "shadow");
   assert.equal(capability?.rolloutStage, "shadow");
 });
+
+test("lead discovery capability stays in shadow governance after runtime materialization", () => {
+  const capability = listAllImobCapabilities().find((item) => item.capabilityId === "lead.qualify.discovery");
+
+  assert.ok(capability);
+  assert.equal(capability?.status, "ready_for_shadow");
+  assert.equal(capability?.executionMode, "shadow");
+  assert.equal(capability?.rolloutStage, "shadow");
+  assert.match(capability?.initialImplementation ?? "", /structured discovery signals/i);
+});
+
+test("lead profile report capability stays in shadow governance after runtime materialization", () => {
+  const capability = listAllImobCapabilities().find((item) => item.capabilityId === "lead.profile_report");
+
+  assert.ok(capability);
+  assert.equal(capability?.status, "ready_for_shadow");
+  assert.equal(capability?.executionMode, "shadow");
+  assert.equal(capability?.rolloutStage, "shadow");
+  assert.match(capability?.initialImplementation ?? "", /consented commercial and financial profile/i);
+});
+
+test("viability market analysis capability stays in shadow governance after runtime materialization", () => {
+  const capability = listAllImobCapabilities().find((item) => item.capabilityId === "viability.market_analysis");
+
+  assert.ok(capability);
+  assert.equal(capability?.status, "ready_for_shadow");
+  assert.equal(capability?.executionMode, "shadow");
+  assert.equal(capability?.rolloutStage, "shadow");
+  assert.match(capability?.initialImplementation ?? "", /internal case, lead and property context only/i);
+});
+
+test("closing documents capability stays in shadow governance after runtime materialization", () => {
+  const capability = listAllImobCapabilities().find((item) => item.capabilityId === "closing.documents_real");
+
+  assert.ok(capability);
+  assert.equal(capability?.status, "ready_for_shadow");
+  assert.equal(capability?.executionMode, "shadow");
+  assert.equal(capability?.rolloutStage, "shadow");
+  assert.match(capability?.initialImplementation ?? "", /document-readiness, packet status and legal handoff guidance/i);
+});
+
+test("inventory watch capability stays in consultive shadow governance", () => {
+  const capability = listAllImobCapabilities().find((item) => item.capabilityId === "inventory.active_watch");
+
+  assert.ok(capability);
+  assert.equal(capability?.status, "ready_for_shadow");
+  assert.equal(capability?.executionMode, "shadow");
+  assert.equal(capability?.rolloutStage, "shadow");
+  assert.match(capability?.initialImplementation ?? "", /consultive shadow snapshot/i);
+  assert.match(capability?.initialImplementation ?? "", /without background monitoring or automated outreach/i);
+});
+
+test("mission orchestration capability stays in consultive shadow governance", () => {
+  const capability = listAllImobCapabilities().find((item) => item.capabilityId === "multiagent.mission_orchestration");
+
+  assert.ok(capability);
+  assert.equal(capability?.status, "ready_for_shadow");
+  assert.equal(capability?.executionMode, "shadow");
+  assert.equal(capability?.rolloutStage, "shadow");
+  assert.match(capability?.initialImplementation ?? "", /consultive shadow mission snapshot/i);
+  assert.match(capability?.initialImplementation ?? "", /without queues or real subagents/i);
+});
+
+test("public enrichment capability stays in governed shadow after runtime materialization", () => {
+  const capability = listAllImobCapabilities().find((item) => item.capabilityId === "lead.enrichment_public");
+
+  assert.ok(capability);
+  assert.equal(capability?.status, "ready_for_shadow");
+  assert.equal(capability?.executionMode, "shadow");
+  assert.equal(capability?.rolloutStage, "shadow");
+  assert.match(capability?.initialImplementation ?? "", /governed shadow/i);
+  assert.match(capability?.initialImplementation ?? "", /consent basis/i);
+});
+
+test("active capture scouting capability stays in shadow with mock ingestion governance", () => {
+  const capability = listAllImobCapabilities().find((item) => item.capabilityId === "active_capture.scouting");
+
+  assert.ok(capability);
+  assert.equal(capability?.status, "ready_for_shadow");
+  assert.equal(capability?.executionMode, "shadow");
+  assert.equal(capability?.rolloutStage, "shadow");
+  assert.match(capability?.initialImplementation ?? "", /shadow capture ingestion/i);
+  assert.match(capability?.initialImplementation ?? "", /dedupe, ranking and evidence pack/i);
+});
+
+test("scale capability stays in shadow with queue governance and operational kpis", () => {
+  const capability = listAllImobCapabilities().find((item) => item.capabilityId === "scale.concurrent_leads_1000");
+
+  assert.ok(capability);
+  assert.equal(capability?.status, "ready_for_shadow");
+  assert.equal(capability?.executionMode, "shadow");
+  assert.equal(capability?.rolloutStage, "shadow");
+  assert.match(capability?.initialImplementation ?? "", /prioritized queue/i);
+  assert.match(capability?.initialImplementation ?? "", /operational KPIs/i);
+});
