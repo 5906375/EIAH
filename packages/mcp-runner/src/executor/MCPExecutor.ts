@@ -2,6 +2,8 @@ import { ToolContract } from "../types/ToolContract.js";
 import { validateInput } from "../validator/SchemaValidator.js";
 import { MCPCircuitBreaker } from "./MCPCircuitBreaker.js";
 
+const loadDbModule = new Function("return import('@repo/db')") as () => Promise<any>;
+
 export class MCPExecutor {
   constructor(private contract: ToolContract) {}
 
@@ -80,7 +82,7 @@ export class MCPExecutor {
   private async execDb(input: any) {
     const { table, where } = input;
 
-    const { prismaGlobal } = await import("@repo/db");
+    const { prismaGlobal } = await loadDbModule();
     const db = prismaGlobal as any;
 
     const model = db?.[table];

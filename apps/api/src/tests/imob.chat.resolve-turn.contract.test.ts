@@ -2,18 +2,19 @@ import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import process from "node:process";
 import supertest from "supertest";
-import { closePrismaResources, prismaGlobal } from "@repo/db";
-import { closeRunEventStream } from "../services/runEventStream";
-import { closeRunEventsTransport } from "../services/runEvents";
-import { closeRunQueueConnections } from "@eiah/core/queue/runQueue";
-import { closeMemoryResources } from "../services/memory";
-import { closeRedisPublisher } from "../../../../packages/core/src/events/redisPublisher";
-import { closeRunEventPublisherResources } from "../../../../packages/core/src/events/runEventPublisher.js";
-import { closeTenantPolicyStoreResources } from "../../../../packages/core/policy/TenantPolicyStore";
-import { closeCriticalMetricsRedis } from "../../../../packages/core/src/metrics/criticalMetrics.js";
-import { closeCriticalKillSwitchRedis } from "../../../../packages/core/src/security/killSwitch.js";
 
 let request: ReturnType<typeof supertest>;
+let prismaGlobal: any;
+let closePrismaResources: () => Promise<unknown>;
+let closeRunEventStream: () => Promise<unknown>;
+let closeRunEventsTransport: () => Promise<unknown>;
+let closeRunQueueConnections: () => Promise<unknown>;
+let closeMemoryResources: () => Promise<unknown>;
+let closeRedisPublisher: () => Promise<unknown>;
+let closeRunEventPublisherResources: () => Promise<unknown>;
+let closeTenantPolicyStoreResources: () => Promise<unknown>;
+let closeCriticalMetricsRedis: () => Promise<unknown>;
+let closeCriticalKillSwitchRedis: () => Promise<unknown>;
 
 function reportActiveHandles(label: string) {
   if (process.env.IMOB_HTTP_TEST_DEBUG_HANDLES !== "1") return;
@@ -70,6 +71,27 @@ const apiToken = `tok-imob-resolve-${suffix}`;
 
 before(async () => {
   process.env.NODE_ENV = "test";
+  if (process.env.VITEST_DATABASE_URL) {
+    process.env.DATABASE_URL = process.env.VITEST_DATABASE_URL;
+  }
+  if (process.env.VITEST_REDIS_URL) {
+    process.env.REDIS_URL = process.env.VITEST_REDIS_URL;
+  }
+
+  const dbModule = await import("@repo/db");
+  prismaGlobal = dbModule.prismaGlobal;
+  closePrismaResources = dbModule.closePrismaResources;
+
+  ({ closeRunEventStream } = await import("../services/runEventStream"));
+  ({ closeRunEventsTransport } = await import("../services/runEvents"));
+  ({ closeRunQueueConnections } = await import("@eiah/core/queue/runQueue"));
+  ({ closeMemoryResources } = await import("../services/memory"));
+  ({ closeRedisPublisher } = await import("../../../../packages/core/src/events/redisPublisher"));
+  ({ closeRunEventPublisherResources } = await import("../../../../packages/core/src/events/runEventPublisher.js"));
+  ({ closeTenantPolicyStoreResources } = await import("../../../../packages/core/policy/TenantPolicyStore"));
+  ({ closeCriticalMetricsRedis } = await import("../../../../packages/core/src/metrics/criticalMetrics.js"));
+  ({ closeCriticalKillSwitchRedis } = await import("../../../../packages/core/src/security/killSwitch.js"));
+
   const { default: app } = await import("../index");
   request = supertest(app);
 
