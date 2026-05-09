@@ -92,7 +92,13 @@ export async function closeRunEventsTransport() {
   if (redisPublisher) {
     const current = redisPublisher;
     redisPublisher = null;
-    await current.quit().catch(() => current.disconnect());
+    try {
+      await current.quit();
+    } catch {
+      current.disconnect();
+      return;
+    }
+    current.disconnect();
   }
 }
 

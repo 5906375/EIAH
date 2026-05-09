@@ -294,6 +294,19 @@ function getRedisClient(): Redis {
   return redisClient;
 }
 
+export async function closeMemoryResources() {
+  if (!redisClient) return;
+  const current = redisClient;
+  redisClient = null;
+  try {
+    await current.quit();
+  } catch {
+    current.disconnect();
+    return;
+  }
+  current.disconnect();
+}
+
 /************************************************************************************************
  * 🧩 Instância de serviço de memória multi-tenant
  ************************************************************************************************/

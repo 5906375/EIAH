@@ -99,6 +99,12 @@ export async function closeRunEventStream() {
   if (redisSubscriber) {
     const current = redisSubscriber;
     redisSubscriber = null;
-    await current.quit().catch(() => current.disconnect());
+    try {
+      await current.quit();
+    } catch {
+      current.disconnect();
+      return;
+    }
+    current.disconnect();
   }
 }

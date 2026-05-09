@@ -1,5 +1,5 @@
 import Ajv from "ajv";
-import { ToolContract } from "../types/ToolContract";
+import { ToolContract } from "../types/ToolContract.js";
 
 const ajv = new Ajv({ allErrors: true, strict: true });
 

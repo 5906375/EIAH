@@ -1,4 +1,4 @@
-import type { ToolContract } from "../types/ToolContract";
+import type { ToolContract } from "../types/ToolContract.js";
 
 export class ToolRegistry {
     static async get(name: string, version: string, tenantId: string): Promise<ToolContract | null> {

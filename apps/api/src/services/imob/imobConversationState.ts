@@ -100,9 +100,10 @@ export function extractCity(text: string) {
       return titleCaseWords(rawCandidate);
     }
   }
-  if (text.includes("balnepario camboriu") || text.includes("balneario camboriu") || text.includes("camboriu") || /\bbc\b/.test(text)) {
+  if (text.includes("balnepario camboriu") || text.includes("balneario camboriu") || /\bbc\b/.test(text)) {
     return "Balneário Camboriú";
   }
+  if (text.includes("camboriu")) return "Camboriú";
   if (text.includes("itapema")) return "Itapema";
   if (text.includes("itajai")) return "Itajaí";
   if (text.includes("sao paulo")) return "São Paulo";

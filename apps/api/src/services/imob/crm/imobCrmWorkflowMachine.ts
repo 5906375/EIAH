@@ -1,0 +1,282 @@
+export type ImobCrmWorkflowState =
+  | "property.create"
+  | "owner.create"
+  | "owner.dedupe_review"
+  | "owner.update"
+  | "lead.qualify"
+  | "case.review"
+  | "visit.schedule"
+  | "pilot.status"
+  | "documents.review";
+
+export type ImobCrmWorkflowTransition =
+  | "submit_fields"
+  | "choose_update_existing"
+  | "choose_create_new"
+  | "show_records"
+  | "continue"
+  | "read_only_query"
+  | "cancel";
+
+export type ImobCrmWorkflowReasonCode =
+  | "owner_dedupe_missing_match"
+  | "owner_dedupe_missing_matches"
+  | "visit_missing_property"
+  | "visit_missing_lead_qualification"
+  | "pilot_read_only"
+  | "lead_already_qualified"
+  | "documents_ownership_must_remain_imob"
+  | "transition_not_allowed";
+
+export type ImobCrmWorkflowContext = {
+  matchedEntityId?: string | null;
+  matchedEntityLabel?: string | null;
+  matches?: Array<{ id: string; label?: string | null }>;
+  pendingFields?: string[];
+  leadQualified?: boolean;
+  propertyLinked?: boolean;
+  readOnly?: boolean;
+  ownershipAgentId?: string | null;
+  specialistAgentId?: string | null;
+};
+
+export type ImobCrmWorkflowDecision = {
+  allowed: boolean;
+  nextState: ImobCrmWorkflowState;
+  reasonCode?: ImobCrmWorkflowReasonCode;
+  preserveContext?: boolean;
+  sideEffect?: "list_records";
+  ownershipAgentId?: string | null;
+  specialistAgentId?: string | null;
+};
+
+export type ImobCrmWorkflowCta = {
+  id: string;
+  label: string;
+  kind: "primary" | "secondary" | "neutral";
+  action: "send_suggested_message";
+  nextMessage: string;
+};
+
+const ALLOWED_TRANSITIONS: Record<ImobCrmWorkflowState, readonly ImobCrmWorkflowTransition[]> = {
+  "property.create": ["submit_fields", "continue", "cancel"],
+  "owner.create": ["submit_fields", "continue", "cancel"],
+  "owner.dedupe_review": ["choose_update_existing", "choose_create_new", "show_records", "cancel"],
+  "owner.update": ["submit_fields", "continue", "cancel"],
+  "lead.qualify": ["submit_fields", "continue", "cancel"],
+  "case.review": ["continue", "read_only_query", "cancel"],
+  "visit.schedule": ["submit_fields", "continue", "cancel", "read_only_query"],
+  "pilot.status": ["read_only_query", "cancel"],
+  "documents.review": ["continue", "read_only_query", "cancel"],
+};
+
+export function getAllowedTransitions(
+  state: ImobCrmWorkflowState,
+  _context: ImobCrmWorkflowContext = {},
+): readonly ImobCrmWorkflowTransition[] {
+  return ALLOWED_TRANSITIONS[state];
+}
+
+function hasPendingFields(context: ImobCrmWorkflowContext) {
+  return Array.isArray(context.pendingFields) && context.pendingFields.length > 0;
+}
+
+function getDefaultBlockedDecision(
+  state: ImobCrmWorkflowState,
+  reasonCode: ImobCrmWorkflowReasonCode,
+): ImobCrmWorkflowDecision {
+  return {
+    allowed: false,
+    nextState: state,
+    reasonCode,
+  };
+}
+
+export function resolveTransition(
+  state: ImobCrmWorkflowState,
+  transition: ImobCrmWorkflowTransition,
+  context: ImobCrmWorkflowContext = {},
+): ImobCrmWorkflowDecision {
+  if (state === "pilot.status" && transition !== "read_only_query" && transition !== "cancel") {
+    return getDefaultBlockedDecision(state, "pilot_read_only");
+  }
+
+  if (!ALLOWED_TRANSITIONS[state].includes(transition)) {
+    return getDefaultBlockedDecision(state, "transition_not_allowed");
+  }
+
+  if (state === "owner.dedupe_review") {
+    if (transition === "choose_update_existing") {
+      if (!context.matchedEntityId) return getDefaultBlockedDecision(state, "owner_dedupe_missing_match");
+      return {
+        allowed: true,
+        nextState: "owner.update",
+        preserveContext: true,
+      };
+    }
+    if (transition === "choose_create_new") {
+      return {
+        allowed: true,
+        nextState: "owner.create",
+        preserveContext: true,
+      };
+    }
+    if (transition === "show_records") {
+      if ((context.matches?.length ?? 0) === 0 && !context.matchedEntityLabel) {
+        return getDefaultBlockedDecision(state, "owner_dedupe_missing_matches");
+      }
+      return {
+        allowed: true,
+        nextState: "owner.dedupe_review",
+        preserveContext: true,
+        sideEffect: "list_records",
+      };
+    }
+  }
+
+  if (state === "visit.schedule" && (transition === "submit_fields" || transition === "continue")) {
+    if (!context.leadQualified) return getDefaultBlockedDecision(state, "visit_missing_lead_qualification");
+    if (!context.propertyLinked) return getDefaultBlockedDecision(state, "visit_missing_property");
+  }
+  if (state === "lead.qualify" && transition === "continue" && !hasPendingFields(context)) {
+    return getDefaultBlockedDecision(state, "lead_already_qualified");
+  }
+
+  if (state === "documents.review") {
+    const ownershipAgentId = context.ownershipAgentId ?? "IMOB";
+    if (ownershipAgentId !== "IMOB") {
+      return getDefaultBlockedDecision(state, "documents_ownership_must_remain_imob");
+    }
+    return {
+      allowed: true,
+      nextState: "documents.review",
+      ownershipAgentId,
+      specialistAgentId: context.specialistAgentId ?? null,
+    };
+  }
+
+  return {
+    allowed: true,
+    nextState: state,
+    ownershipAgentId: context.ownershipAgentId ?? null,
+    specialistAgentId: context.specialistAgentId ?? null,
+  };
+}
+
+export function canTransition(
+  state: ImobCrmWorkflowState,
+  transition: ImobCrmWorkflowTransition,
+  context: ImobCrmWorkflowContext = {},
+) {
+  return resolveTransition(state, transition, context).allowed;
+}
+
+export function getBlockerReason(
+  state: ImobCrmWorkflowState,
+  transition: ImobCrmWorkflowTransition,
+  context: ImobCrmWorkflowContext = {},
+) {
+  return resolveTransition(state, transition, context).reasonCode ?? null;
+}
+
+export function classifyImobCrmWorkflowTransitionFromMessage(
+  message: string,
+  normalize: (value: string) => string,
+): ImobCrmWorkflowTransition | null {
+  const normalized = normalize(message);
+  if (!normalized) return null;
+  if (
+    normalized.includes("consultar")
+    || normalized.includes("status")
+    || normalized.includes("resumo")
+    || normalized.includes("mostrar bloqueios")
+    || normalized.includes("quais sao as pendencias")
+    || normalized.includes("quais são as pendências")
+    || normalized.includes("como destravar")
+    || normalized.includes("ver cadastros")
+    || normalized.includes("listar")
+  ) {
+    return "read_only_query";
+  }
+  if (normalized.includes("cancelar")) return "cancel";
+  if (normalized.includes("criar novo") || normalized.includes("novo cadastro")) return "choose_create_new";
+  if (normalized.includes("atualizar existente") || normalized.includes("editar existente")) return "choose_update_existing";
+  return "continue";
+}
+
+export function isImobCrmWorkflowNextMessageValid(params: {
+  state: ImobCrmWorkflowState;
+  context?: ImobCrmWorkflowContext;
+  message: string;
+  normalize: (value: string) => string;
+}) {
+  const transition = classifyImobCrmWorkflowTransitionFromMessage(params.message, params.normalize);
+  if (!transition) return false;
+  return getAllowedTransitions(params.state, params.context ?? {}).includes(transition);
+}
+
+export function filterImobCrmWorkflowCtas(params: {
+  state: ImobCrmWorkflowState;
+  context?: ImobCrmWorkflowContext;
+  ctas: ImobCrmWorkflowCta[];
+  normalize: (value: string) => string;
+}) {
+  return params.ctas.filter((cta) => isImobCrmWorkflowNextMessageValid({
+    state: params.state,
+    context: params.context,
+    message: cta.nextMessage,
+    normalize: params.normalize,
+  }));
+}
+
+export function buildImobCrmWorkflowReasonCodes(params: {
+  state: ImobCrmWorkflowState;
+  context?: ImobCrmWorkflowContext;
+  includePilotReadOnly?: boolean;
+  includeDocumentsOwnership?: boolean;
+  includeVisitGuard?: boolean;
+}) {
+  const codes = new Set<string>();
+  codes.add(params.state.replace(/\./g, "_"));
+  if (params.includePilotReadOnly) codes.add("pilot_read_only");
+  if (params.includeDocumentsOwnership) codes.add("documents_owned_by_imob");
+
+  const continueReason = getBlockerReason(params.state, "continue", params.context ?? {});
+  if (continueReason) codes.add(continueReason);
+
+  if (params.state === "visit.schedule" || params.includeVisitGuard) {
+    const visitReason = getBlockerReason("visit.schedule", "continue", params.context ?? {});
+    if (visitReason) codes.add(visitReason);
+  }
+  return [...codes];
+}
+
+export function deriveImobCrmWorkflowState(params: {
+  operationalFlow?: string | null;
+  operationalStatus?: string | null;
+  readOnlyPilot?: boolean;
+}) {
+  if (params.readOnlyPilot) return "pilot.status" as const;
+  if (params.operationalFlow === "owner.create" && params.operationalStatus === "awaiting_dedupe_decision") {
+    return "owner.dedupe_review" as const;
+  }
+  if (params.operationalFlow === "documents.collect") return "documents.review" as const;
+  if (
+    params.operationalFlow === "property.create"
+    || params.operationalFlow === "owner.create"
+    || params.operationalFlow === "lead.qualify"
+    || params.operationalFlow === "visit.schedule"
+  ) {
+    return params.operationalFlow;
+  }
+  return null;
+}
+
+export function deriveImobCrmReviewState(params: {
+  flow?: string | null;
+  readOnlyPilot?: boolean;
+}): "case.review" | "pilot.status" | "documents.review" {
+  if (params.readOnlyPilot) return "pilot.status";
+  if (params.flow === "documents.collect" || params.flow === "contract.prepare") return "documents.review";
+  return "case.review";
+}

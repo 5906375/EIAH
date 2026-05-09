@@ -10,6 +10,14 @@ import type { OperationalResolution, ThreadStateLike } from "./imobCrmOperationa
 import { extractImobOperationalBatches, formatImobBatchLineSummary } from "./imobCrmTurnBatch";
 import { applyResponsibleLabelToResolvedTurn } from "./imobCrmTurnPresentation";
 import { createEmptyImobCrmThreadState, parseImobCrmThreadState } from "./imobCrmTurnState";
+import {
+  deriveImobCrmWorkflowState,
+  resolveTransition,
+  type ImobCrmWorkflowContext,
+  type ImobCrmWorkflowReasonCode,
+  type ImobCrmWorkflowState,
+  type ImobCrmWorkflowTransition,
+} from "./imobCrmWorkflowMachine";
 
 export type ImobCrmTurnEngineHelpers = {
   asString: (value: unknown) => string | null;
@@ -57,6 +65,205 @@ function hasActivePendingOperationalFlow(threadState: ThreadStateLike | null | u
   const status = asString(operational.status);
   const pendingFields = asStringList(operational.pendingFields);
   return status === "collecting" && pendingFields.length > 0;
+}
+
+function resolveDedupeContextualMessage(
+  message: string,
+  threadState: ThreadStateLike | null | undefined,
+  normalizeImobRouteText: (value: string) => string,
+) {
+  const operational = asObject(asObject(threadState)?.operational);
+  const dedupeDecision = asObject(operational?.dedupeDecision);
+  if (!operational || !dedupeDecision) return message;
+  if (asString(dedupeDecision.status) !== "pending") return message;
+
+  const flow = asString(dedupeDecision.flow);
+  const entityLabel = asString(dedupeDecision.entityLabel);
+  const entityId = asString(dedupeDecision.entityId);
+  const normalized = normalizeImobRouteText(message);
+
+  const wantsUpdateExisting =
+    normalized.includes("atualizar existente")
+    || normalized.includes("usar existente")
+    || normalized.includes("editar existente");
+  if (wantsUpdateExisting && flow === "owner.create" && entityId) {
+    return `editar proprietário ${entityId}`;
+  }
+
+  const wantsListExisting =
+    normalized === "cadastros"
+    || normalized === "ver cadastros"
+    || normalized.includes("listar cadastros");
+  if (wantsListExisting && entityLabel) {
+    if (flow === "owner.create") return `listar proprietários ${entityLabel}`;
+    if (flow === "lead.qualify") return `listar leads ${entityLabel}`;
+  }
+
+  const wantsCreateNew =
+    normalized.includes("criar novo")
+    || normalized.includes("criar um novo")
+    || normalized.includes("novo cadastro");
+  if (wantsCreateNew && entityLabel) {
+    if (flow === "owner.create") return `criar novo proprietário ${entityLabel}`;
+    if (flow === "lead.qualify") return `criar novo lead ${entityLabel}`;
+  }
+
+  return message;
+}
+
+function resolveWorkflowTransition(
+  message: string,
+  state: ImobCrmWorkflowState,
+  normalizeImobRouteText: (value: string) => string,
+  isReadOnlyPilotQuery: boolean,
+): ImobCrmWorkflowTransition | null {
+  const normalized = normalizeImobRouteText(message);
+
+  if (normalized.includes("cancelar")) return "cancel";
+  if (state === "pilot.status") {
+    if (isReadOnlyPilotQuery) return "read_only_query";
+    return "continue";
+  }
+  if (state === "owner.dedupe_review") {
+    if (
+      normalized.includes("atualizar existente")
+      || normalized.includes("usar existente")
+      || normalized.includes("editar existente")
+    ) {
+      return "choose_update_existing";
+    }
+    if (
+      normalized === "cadastros"
+      || normalized === "ver cadastros"
+      || normalized.includes("listar cadastros")
+    ) {
+      return "show_records";
+    }
+    if (
+      normalized.includes("criar novo")
+      || normalized.includes("criar um novo")
+      || normalized.includes("novo cadastro")
+    ) {
+      return "choose_create_new";
+    }
+    return null;
+  }
+  if (isReadOnlyPilotQuery) return "read_only_query";
+  if (
+    normalized.includes("continuar")
+    || normalized.includes("retomar")
+    || normalized.includes("seguir")
+    || normalized.includes("avancar")
+    || normalized.includes("avançar")
+    || normalized.includes("prosseguir")
+    || normalized.includes("agendar")
+    || normalized.includes("iniciar visita")
+  ) {
+    return "continue";
+  }
+  return "submit_fields";
+}
+
+function resolveWorkflowContext(threadState: ThreadStateLike | null | undefined): ImobCrmWorkflowContext {
+  const operational = asObject(asObject(threadState)?.operational);
+  const dedupeDecision = asObject(operational?.dedupeDecision);
+  const pendingFields = asStringList(operational?.pendingFields);
+  const propertyLinked = Boolean(asString(asObject(operational?.visitDraft)?.propertyId));
+  const leadQualified = asString(operational?.flow) === "visit.schedule"
+    ? true
+    : Boolean(pendingFields.length === 0);
+  return {
+    matchedEntityId: asString(dedupeDecision?.matchedEntityId) ?? asString(dedupeDecision?.entityId),
+    matchedEntityLabel: asString(dedupeDecision?.matchedEntityLabel) ?? asString(dedupeDecision?.entityLabel),
+    matches: (asString(dedupeDecision?.matchedEntityId) ?? asString(dedupeDecision?.entityId))
+      ? [{
+        id: asString(dedupeDecision?.matchedEntityId) ?? asString(dedupeDecision?.entityId) ?? "",
+        label: asString(dedupeDecision?.matchedEntityLabel) ?? asString(dedupeDecision?.entityLabel),
+      }]
+      : [],
+    pendingFields,
+    propertyLinked,
+    leadQualified,
+    ownershipAgentId: "IMOB",
+    specialistAgentId: null,
+  };
+}
+
+function buildWorkflowBlockedResolution(params: {
+  message: string;
+  state: ImobCrmWorkflowState;
+  transition: ImobCrmWorkflowTransition;
+  reasonCode: ImobCrmWorkflowReasonCode;
+  threadState: ThreadStateLike;
+}) {
+  const reasonCopy: Record<ImobCrmWorkflowReasonCode, string> = {
+    owner_dedupe_missing_match: "Encontrei uma decisao de duplicidade pendente, mas o cadastro correspondente nao esta identificado com seguranca.",
+    owner_dedupe_missing_matches: "Nao consegui recuperar os cadastros correspondentes para revisar esta duplicidade com seguranca.",
+    visit_missing_property: "Ainda falta vincular o imovel da visita antes de seguir com o agendamento.",
+    visit_missing_lead_qualification: "Ainda falta qualificar o lead antes de abrir a visita com seguranca.",
+    pilot_read_only: "A consulta de piloto neste contexto e somente leitura e nao pode disparar mutacao operacional.",
+    lead_already_qualified: "O lead ja foi qualificado e nao deve reabrir esse fluxo sem pendencias reais.",
+    documents_ownership_must_remain_imob: "A revisao documental continua sob ownership do IMOB; especialistas entram apenas como apoio.",
+    transition_not_allowed: "Essa acao nao e valida para o estado operacional atual do caso.",
+  };
+
+  return {
+    mode: "blocked",
+    action: "crm.workflow.blocked",
+    threadLabel: "IMOB CRM",
+    conversationState: params.threadState,
+    presentation: {
+      text: reasonCopy[params.reasonCode],
+      nextStep: params.reasonCode === "visit_missing_property"
+        ? "Completar o vinculo do imovel da visita antes de avancar."
+        : params.reasonCode === "owner_dedupe_missing_match"
+          ? "Revisar os cadastros encontrados antes de atualizar existente."
+          : undefined,
+      pendingFieldLabels: params.reasonCode === "visit_missing_property" ? ["propertyId"] : [],
+      metadata: {
+        workflowState: params.state,
+        workflowTransition: params.transition,
+        workflowReasonCode: params.reasonCode,
+        originalMessage: params.message,
+      },
+    },
+  } satisfies OperationalResolution;
+}
+
+function resolveWorkflowGuard(params: {
+  message: string;
+  threadState: ThreadStateLike;
+  normalizeImobRouteText: (value: string) => string;
+  isReadOnlyPilotQuery: boolean;
+}) {
+  const operational = asObject(asObject(params.threadState)?.operational);
+  const state = deriveImobCrmWorkflowState({
+    operationalFlow: asString(operational?.flow),
+    operationalStatus: asString(operational?.status),
+    readOnlyPilot: params.isReadOnlyPilotQuery,
+  });
+  if (!state) return null;
+
+  if (state === "lead.qualify" && asString(operational?.status) !== "ready_for_review") return null;
+
+  const transition = resolveWorkflowTransition(
+    params.message,
+    state,
+    params.normalizeImobRouteText,
+    params.isReadOnlyPilotQuery,
+  );
+  if (!transition) return null;
+
+  const decision = resolveTransition(state, transition, resolveWorkflowContext(params.threadState));
+  if (decision.allowed) return null;
+
+  return buildWorkflowBlockedResolution({
+    message: params.message,
+    state,
+    transition,
+    reasonCode: decision.reasonCode ?? "transition_not_allowed",
+    threadState: params.threadState,
+  });
 }
 
 function hasStrongBusinessReadIntent(message: string) {
@@ -433,13 +640,34 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
       hydratedThreadState,
       params.helpers.normalizeImobRouteText,
     );
+    const effectiveMessage = resolveDedupeContextualMessage(
+      rewrittenMessage,
+      hydratedThreadState,
+      params.helpers.normalizeImobRouteText,
+    );
+    const readOnlyPilotQuery =
+      hasStrongBusinessReadIntent(effectiveMessage)
+      && /(piloto|pilot_active|approval_required|shadow)/i.test(effectiveMessage);
+    const workflowGuard = resolveWorkflowGuard({
+      message: effectiveMessage,
+      threadState: hydratedThreadState,
+      normalizeImobRouteText: params.helpers.normalizeImobRouteText,
+      isReadOnlyPilotQuery: readOnlyPilotQuery,
+    });
+    if (workflowGuard) {
+      const data = applyResponsibleLabelToResolvedTurn(workflowGuard, params.workspaceResponsibleLabel);
+      return {
+        data: params.helpers.applyCanonicalJourneyToResolvedData(data, null),
+        caseContext: null,
+      };
+    }
 
     const updateData = await params.helpers.resolveImobOperationalUpdate({
       prisma: params.prisma,
       tenantId: params.authContext.tenantId,
       workspaceId: params.authContext.workspaceId,
       userId: params.authContext.userId ?? null,
-      message: rewrittenMessage,
+      message: effectiveMessage,
       caseId: turn.caseId,
       threadState: hydratedThreadState,
     });
@@ -455,15 +683,15 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
     }
 
     const shouldPrioritizeActiveFlowContinuity = hasActivePendingOperationalFlow(hydratedThreadState);
-    const shouldPrioritizeBusinessRead = hasStrongBusinessReadIntent(rewrittenMessage);
+    const shouldPrioritizeBusinessRead = hasStrongBusinessReadIntent(effectiveMessage);
 
-    if (shouldPrioritizeBusinessRead && !isExplicitOperationalCommand(rewrittenMessage)) {
+    if (shouldPrioritizeBusinessRead && !isExplicitOperationalCommand(effectiveMessage)) {
       const consultData = await params.helpers.resolveImobOperationalConsult({
         prisma: params.prisma,
         tenantId: params.authContext.tenantId,
         workspaceId: params.authContext.workspaceId,
         userId: params.authContext.userId ?? null,
-        message: rewrittenMessage,
+        message: effectiveMessage,
         caseId: turn.caseId,
         threadState: hydratedThreadState,
       });
@@ -476,10 +704,10 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
       }
     }
 
-    if (shouldPrioritizeActiveFlowContinuity && !isExplicitOperationalConsultCommand(rewrittenMessage)) {
-      const semanticIntent = turn.semanticIntent ?? await resolveImobSemanticIntent(rewrittenMessage);
+    if (shouldPrioritizeActiveFlowContinuity) {
+      const semanticIntent = turn.semanticIntent ?? await resolveImobSemanticIntent(effectiveMessage);
       const resolvedTurn = resolveImobTurn({
-        message: rewrittenMessage,
+        message: effectiveMessage,
         semanticIntent: semanticIntent.parsedIntent,
         semanticIntentSource: semanticIntent.source,
         threadLabel,
@@ -495,6 +723,7 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
         prisma: params.prisma,
         tenantId: params.authContext.tenantId,
         workspaceId: params.authContext.workspaceId,
+        message: effectiveMessage,
         resolved: params.helpers.injectResolvedPendingSuggestion(resolvedTurn),
       });
       const data = applyResponsibleLabelToResolvedTurn(registrationAwareTurn, params.workspaceResponsibleLabel);
@@ -516,13 +745,13 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
       };
     }
 
-    if (!isExplicitOperationalCommand(rewrittenMessage)) {
+    if (!isExplicitOperationalCommand(effectiveMessage)) {
       const consultData = await params.helpers.resolveImobOperationalConsult({
         prisma: params.prisma,
         tenantId: params.authContext.tenantId,
         workspaceId: params.authContext.workspaceId,
         userId: params.authContext.userId ?? null,
-        message: rewrittenMessage,
+        message: effectiveMessage,
         caseId: turn.caseId,
         threadState: hydratedThreadState,
       });
@@ -535,9 +764,9 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
       }
     }
 
-    const semanticIntent = turn.semanticIntent ?? await resolveImobSemanticIntent(rewrittenMessage);
+    const semanticIntent = turn.semanticIntent ?? await resolveImobSemanticIntent(effectiveMessage);
     const resolvedTurn = resolveImobTurn({
-      message: rewrittenMessage,
+      message: effectiveMessage,
       semanticIntent: semanticIntent.parsedIntent,
       semanticIntentSource: semanticIntent.source,
       threadLabel,
@@ -553,6 +782,7 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
       prisma: params.prisma,
       tenantId: params.authContext.tenantId,
       workspaceId: params.authContext.workspaceId,
+      message: effectiveMessage,
       resolved: params.helpers.injectResolvedPendingSuggestion(resolvedTurn),
     });
     const data = applyResponsibleLabelToResolvedTurn(registrationAwareTurn, params.workspaceResponsibleLabel);

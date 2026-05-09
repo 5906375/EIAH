@@ -14,6 +14,7 @@ import type {
 type RegistrationHelpers = {
   asObject: (value: unknown) => Record<string, unknown> | null;
   asString: (value: unknown) => string | null;
+  normalizeImobRouteText: (value: string) => string;
   cloneImobResolvedTurn: <T>(value: T) => T;
   setImobFormFieldValues: (form: any, values: Record<string, unknown>) => any;
   createEmptyThreadState: () => ImobCrmConversationState;
@@ -154,24 +155,31 @@ function buildExistingRegistrationChoiceConsult(params: {
   helpers: RegistrationHelpers;
 }) {
   const next = params.helpers.cloneImobResolvedTurn(params.resolved);
+  const currentConversationState = params.helpers.asObject(next.conversationState) ?? params.helpers.createEmptyThreadState();
+  const currentOperational = params.helpers.asObject(currentConversationState.operational) ?? {};
+  const currentPendingFields = Array.isArray(currentOperational.pendingFields)
+    ? currentOperational.pendingFields.filter((item): item is string => typeof item === "string")
+    : [];
   next.mode = "consult";
   next.action = "crm.registration.dedupe_review";
   next.conversationState = {
-    ...(next.conversationState ?? params.helpers.createEmptyThreadState()),
+    ...currentConversationState,
     mode: "consult",
     operational: {
-      ...(params.helpers.asObject(next.conversationState?.operational) ?? {}),
-      ...(params.matches?.length === 1
-        ? {
-            dedupeSelection: {
-              entity: params.matches[0]?.entityType === "lead" ? "lead" : params.matches[0]?.entityType === "property" ? "property" : "owner",
-              resolution: "pending_choice",
-              selectedId: params.matches[0]?.entityId ?? null,
-              selectedRef: params.nextMessages[0]?.replace(/^atualizar\s+(lead|proprietário|proprietario|imóvel|imovel)\s+/i, "") ?? null,
-              selectedName: params.matches[0]?.label ?? null,
-            },
-          }
-        : {}),
+      ...currentOperational,
+      flow: params.flow,
+      status: "awaiting_dedupe_decision",
+      pendingFields: currentPendingFields,
+      dedupeDecision: {
+        status: "pending",
+        flow: params.flow,
+        entityType: params.matches?.[0]?.entityType ?? null,
+        entityId: params.matches?.[0]?.entityId ?? null,
+        entityLabel: params.matches?.[0]?.label ?? null,
+        matchedEntityType: params.matches?.[0]?.entityType ?? null,
+        matchedEntityId: params.matches?.[0]?.entityId ?? null,
+        matchedEntityLabel: params.matches?.[0]?.label ?? null,
+      },
     },
   };
   next.presentation = {
@@ -217,10 +225,54 @@ function buildExistingRegistrationChoiceConsult(params: {
   return next;
 }
 
+function shouldBypassExistingRegistrationDedupe(params: {
+  message: string | null | undefined;
+  operational: Record<string, unknown> | null;
+  helpers: RegistrationHelpers;
+}) {
+  const normalized = params.helpers.normalizeImobRouteText(params.message ?? "");
+  if (!normalized) return false;
+  const dedupeDecision = params.helpers.asObject(params.operational?.dedupeDecision);
+  if (!dedupeDecision || params.helpers.asString(dedupeDecision.status) !== "pending") return false;
+  return (
+    normalized.includes("criar novo proprietario")
+    || normalized.includes("criar novo proprietário")
+    || normalized.includes("criar um novo proprietario")
+    || normalized.includes("criar um novo proprietário")
+    || normalized.includes("novo cadastro")
+    || normalized.includes("criar novo lead")
+    || normalized.includes("criar um novo lead")
+  );
+}
+
+function clearPendingDedupeDecision(params: {
+  resolved: ImobCrmTurnResolution;
+  helpers: RegistrationHelpers;
+}) {
+  const next = params.helpers.cloneImobResolvedTurn(params.resolved);
+  const conversationState = params.helpers.asObject(next.conversationState) ?? params.helpers.createEmptyThreadState();
+  const operational = params.helpers.asObject(conversationState.operational);
+  if (!operational) return next;
+
+  next.conversationState = {
+    ...conversationState,
+    operational: {
+      ...operational,
+      status: Array.isArray(operational.pendingFields) && operational.pendingFields.length > 0 ? "collecting" : "ready_for_review",
+      dedupeDecision: {
+        ...(params.helpers.asObject(operational.dedupeDecision) ?? {}),
+        status: "resolved",
+      },
+    },
+  };
+  return next;
+}
+
 export async function applyExistingRegistrationResolution(params: {
   prisma: any;
   tenantId: string;
   workspaceId: string;
+  message?: string | null;
   resolved: ImobCrmTurnResolution;
   helpers: RegistrationHelpers;
 }) {
@@ -228,6 +280,17 @@ export async function applyExistingRegistrationResolution(params: {
   const operational = params.helpers.asObject(params.helpers.asObject(resolvedObject?.conversationState)?.operational);
   const flow = params.helpers.asString(operational?.flow);
   if (params.resolved?.mode !== "execute" || !flow) return params.resolved;
+
+  if (shouldBypassExistingRegistrationDedupe({
+    message: params.message,
+    operational,
+    helpers: params.helpers,
+  })) {
+    return clearPendingDedupeDecision({
+      resolved: params.resolved,
+      helpers: params.helpers,
+    });
+  }
 
   const draft =
     flow === "lead.qualify" ? params.helpers.asObject(operational?.leadDraft) ?? {}
@@ -259,11 +322,11 @@ export async function applyExistingRegistrationResolution(params: {
       flow: decision.flow,
       title: decision.title,
       text: decision.text,
-        lines: decision.lines,
-        nextMessages: decision.nextMessages,
-        matches: decision.matches,
-        helpers: params.helpers,
-      });
+      lines: decision.lines,
+      nextMessages: decision.nextMessages,
+      matches: decision.matches,
+      helpers: params.helpers,
+    });
   }
 
   return params.resolved;

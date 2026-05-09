@@ -1812,11 +1812,6 @@ function buildVisibleOperationalPresentationMeta(
   operationalState: NonNullable<ImobResolveTurnResponse["conversationState"]["operational"]> | null | undefined
 ) {
   const meta = buildOperationalPresentationMeta(operationalState);
-  if (!operationalState) return meta;
-  if (operationalState.flow === "property.create" && operationalState.pendingFields.length > 0) {
-    const { blocker: _blocker, nextStep: _nextStep, pendingFieldLabels: _pendingFieldLabels, ...visibleMeta } = meta as any;
-    return visibleMeta;
-  }
   return meta;
 }
 
@@ -1834,7 +1829,10 @@ function buildOperationalCollectingText(params: {
 
   if (intent === "capture") {
     if (operationalState.flow === "property.create") {
-      return "Posso iniciar o cadastro do imóvel agora.";
+      if (!hasPending) return "Posso iniciar o cadastro do imóvel agora.";
+      return structuredSubmission
+        ? "Atualizei o cadastro do imóvel. Continue pelos campos pendentes abaixo."
+        : "Preencha os campos abaixo para continuar o cadastro do imóvel.";
     }
     if (operationalState.flow === "owner.create") {
       if (!hasPending) return "Cadastro do proprietário pronto para revisão.";
@@ -3412,8 +3410,18 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
           ],
         }
       : undefined;
+  const shouldHideInitialPropertyCaptureMeta =
+    operationalState?.status === "collecting"
+    && operationalState.flow === "property.create"
+    && !request.threadState?.operational
+    && typeof operationalState.propertyDraft?.city === "string"
+    && operationalState.propertyDraft.city.trim().length > 3;
   const presentation = {
-    ...buildVisibleOperationalPresentationMeta(operationalState),
+    ...(
+      shouldHideInitialPropertyCaptureMeta
+        ? {}
+        : buildVisibleOperationalPresentationMeta(operationalState)
+    ),
     metadata: buildCatalogConfidenceMetadata(parsedCatalogIntent, false, { source: semanticIntentSource }),
     card: propertyReadyMenuCard,
     form:

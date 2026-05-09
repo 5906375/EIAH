@@ -29,6 +29,7 @@ export * from "./types";
 export * from "@eiah/contracts";
 export * from "./logging";
 export * from "./events/runAtivoEvents";
+export * from "./events/redisPublisher";
 export * from "./llm/types";
 export * from "./llm/LLMProvider";
 export * from "./llm/LLMRegistry";

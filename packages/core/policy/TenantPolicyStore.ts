@@ -93,3 +93,6 @@ export class TenantPolicyStore {
   }
 }
 
+export async function closeTenantPolicyStoreResources() {
+  await redis.quit().catch(() => redis.disconnect());
+}

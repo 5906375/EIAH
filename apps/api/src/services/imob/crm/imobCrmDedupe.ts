@@ -196,7 +196,7 @@ export async function resolveImobCrmRegistrationDedupe(params: {
         title: `Proprietário ${item.name} já existe`,
         text: `Encontrei um proprietário ${item.name} já cadastrado neste workspace. Quer atualizar esse cadastro existente ou criar um novo?`,
         lines: [item.phone ? `Telefone: ${item.phone}` : null, item.email ? `E-mail: ${item.email}` : null, item.document ? `Documento: ${item.document}` : null].filter(Boolean) as string[],
-        nextMessages: [`atualizar proprietário ${item.phone ?? item.email ?? item.document ?? item.name}`, `criar novo proprietário ${ownerName}`, `listar proprietários ${ownerName}`],
+        nextMessages: [`editar proprietário ${item.id}`, `criar novo proprietário ${ownerName}`, `listar proprietários ${ownerName}`],
         matches: [match("owner", item.id, item.name, 0.72)],
       };
     }

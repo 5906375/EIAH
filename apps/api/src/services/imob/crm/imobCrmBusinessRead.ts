@@ -24,6 +24,17 @@ import {
 import { buildImobPilotControlSurface } from "../imobPilotControlSurface";
 import { buildImobPilotOperationalSurface } from "../imobPilotOperationalSurface";
 import { resolveImobMissionRuntime } from "../imobMissionRuntime";
+import {
+  buildImobCrmWorkflowReasonCodes,
+  deriveImobCrmReviewState,
+  filterImobCrmWorkflowCtas,
+  getAllowedTransitions,
+  getBlockerReason,
+  isImobCrmWorkflowNextMessageValid,
+  type ImobCrmWorkflowContext,
+  type ImobCrmWorkflowCta,
+  type ImobCrmWorkflowState,
+} from "./imobCrmWorkflowMachine";
 
 type BusinessReadIntent = "pipeline_status" | "blocked_run_resolution" | "next_best_action";
 type BusinessReadCaseRecord = {
@@ -2193,6 +2204,31 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     return Array.from(new Set(blockers.map((item) => String(item)).filter(Boolean)));
   }
 
+  function buildImobBusinessWorkflowContext(params: {
+    caseContext: ImobCrmCaseContext;
+    pendingItems: string[];
+    primarySpecialistAgentId?: string | null;
+  }): ImobCrmWorkflowContext {
+    const propertyLinked = Boolean(helpers.asString(helpers.asObject(params.caseContext?.property)?.id));
+    const leadQualified = params.caseContext?.flow === "lead.qualify"
+      ? params.pendingItems.length === 0
+      : Boolean(helpers.asString(helpers.asObject(params.caseContext?.lead)?.id) || params.caseContext?.lead);
+    return {
+      pendingFields: params.pendingItems,
+      propertyLinked,
+      leadQualified,
+      ownershipAgentId: "IMOB",
+      specialistAgentId: params.primarySpecialistAgentId ?? null,
+    };
+  }
+
+  function getWorkflowFallbackNextMessage(state: ImobCrmWorkflowState, caseContext: ImobCrmCaseContext) {
+    if (state === "documents.review") return "revisar documentos";
+    if (state === "pilot.status") return "consultar caso";
+    if (caseContext?.flow === "visit.schedule") return "consultar caso";
+    return "consultar caso";
+  }
+
   function buildImobBusinessActionCtas(caseContext: ImobCrmCaseContext) {
     const actions = Array.isArray(caseContext?.canonical?.recommendedActions)
       ? caseContext.canonical.recommendedActions
@@ -2209,11 +2245,26 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       .slice(0, 3);
   }
 
+  function dedupeWorkflowCtas(ctas: ImobCrmWorkflowCta[], state: ImobCrmWorkflowState) {
+    const seen = new Set<string>();
+    return ctas.filter((cta) => {
+      const key = helpers.normalizeImobRouteText(cta.nextMessage);
+      if (!key) return false;
+      if (seen.has(key)) return false;
+      if (state === "case.review" && key.includes("mostrar bloqueios do caso")) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
   function buildBlockedRunResolutionCtas(caseContext: ImobCrmCaseContext, pendingItems: string[]) {
     const normalizedPending = pendingItems.map((item) => helpers.normalizeImobRouteText(String(item)));
     const hasOwnerPending = normalizedPending.some((item) => item.includes("proprietario") || item.includes("proprietária"));
     const hasPropertyPending = normalizedPending.some((item) => item.includes("imovel") || item.includes("imóvel"));
     const hasLeadPending = normalizedPending.some((item) => item.includes("lead") || item.includes("comprador") || item.includes("locatario"));
+    const hasDocumentPending =
+      (caseContext?.flow === "documents.collect" || caseContext?.flow === "contract.prepare")
+      || normalizedPending.some((item) => item.includes("document") || item.includes("matricula") || item.includes("matrícula") || item.includes("contrato"));
 
     const ctas = [] as Array<{
       id: string;
@@ -2223,11 +2274,20 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       nextMessage: string;
     }>;
 
+    if (hasDocumentPending) {
+      ctas.push({
+        id: `case-unblock-documents-${caseContext?.caseId ?? "current"}`,
+        label: "Revisar documentos",
+        kind: "primary",
+        action: "send_suggested_message",
+        nextMessage: "revisar documentos",
+      });
+    }
     if (hasOwnerPending) {
       ctas.push({
         id: `case-unblock-owner-${caseContext?.caseId ?? "current"}`,
         label: "Cadastrar proprietário",
-        kind: "primary",
+        kind: hasDocumentPending ? "secondary" : "primary",
         action: "send_suggested_message",
         nextMessage: "cadastrar proprietário",
       });
@@ -2235,17 +2295,17 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     if (hasPropertyPending) {
       ctas.push({
         id: `case-unblock-property-${caseContext?.caseId ?? "current"}`,
-        label: "Cadastrar imóvel",
-        kind: hasOwnerPending ? "secondary" : "primary",
+        label: hasDocumentPending ? "Consultar caso" : "Cadastrar imóvel",
+        kind: hasDocumentPending || hasOwnerPending ? "secondary" : "primary",
         action: "send_suggested_message",
-        nextMessage: "cadastrar imóvel",
+        nextMessage: hasDocumentPending ? "consultar caso" : "cadastrar imóvel",
       });
     }
     if (hasLeadPending) {
       ctas.push({
         id: `case-unblock-lead-${caseContext?.caseId ?? "current"}`,
         label: "Qualificar lead",
-        kind: hasOwnerPending || hasPropertyPending ? "secondary" : "primary",
+        kind: hasDocumentPending || hasOwnerPending || hasPropertyPending ? "secondary" : "primary",
         action: "send_suggested_message",
         nextMessage: "qualificar lead",
       });
@@ -2275,6 +2335,13 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     }
 
     const normalizedPending = pendingItems.map((item) => helpers.normalizeImobRouteText(String(item)));
+    if (
+      caseContext?.flow === "documents.collect"
+      || caseContext?.flow === "contract.prepare"
+      || normalizedPending.some((item) => item.includes("document") || item.includes("matricula") || item.includes("matrícula") || item.includes("contrato"))
+    ) {
+      return "revisar documentos";
+    }
     if (normalizedPending.some((item) => item.includes("proprietario") || item.includes("proprietária"))) {
       return "cadastrar proprietário";
     }
@@ -2313,6 +2380,11 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     const nextActionOwner = helpers.asString(caseContext?.humanWorkflow?.nextActionOwner) ?? helpers.asString(caseContext?.ownerResponsible);
     const specialists = (helpers.resolveImobBackingSpecialists(caseContext) as any[] | null | undefined) ?? [];
     const primarySpecialist = specialists[0] ? buildSpecialistSupportLine(specialists[0]) : null;
+    const workflowContext = buildImobBusinessWorkflowContext({
+      caseContext,
+      pendingItems,
+      primarySpecialistAgentId: primarySpecialist?.consultive.agentId ?? null,
+    });
     const caseBrief = buildCaseBrief({
       subject,
       humanPhaseLabel,
@@ -2456,6 +2528,20 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       caseContext,
       generatedAt: new Date().toISOString(),
     });
+    const primaryWorkflowState = deriveImobCrmReviewState({
+      flow: caseContext?.flow,
+      readOnlyPilot: false,
+    });
+    const pilotWorkflowState = (pilotOperationalState || pilotControlState)
+      ? deriveImobCrmReviewState({ flow: caseContext?.flow, readOnlyPilot: true })
+      : null;
+    const workflowReasonCodes = buildImobCrmWorkflowReasonCodes({
+      state: primaryWorkflowState,
+      context: workflowContext,
+      includePilotReadOnly: Boolean(pilotWorkflowState),
+      includeDocumentsOwnership: primaryWorkflowState === "documents.review",
+      includeVisitGuard: caseContext?.flow === "visit.schedule",
+    });
     const statusLine = `${subject}. Momento comercial: ${stageLabel}. Jornada: ${journeyLabel}.`;
     const baseLines = [selectionNote ? "Usei o cadastro mais recente do IMOB para esta leitura." : null, statusLine].filter(Boolean) as string[];
     const textByIntent: Record<BusinessReadIntent, string[]> = {
@@ -2502,16 +2588,40 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       action: "send_suggested_message" as const,
       nextMessage: "qual status desse caso?",
     }];
-    const defaultCtas = [...buildImobBusinessActionCtas(caseContext), ...fallbackCtas]
-      .filter((item) => !(intent === "blocked_run_resolution" && helpers.normalizeImobRouteText(item.nextMessage).includes("mostrar bloqueios do caso")))
+    const defaultCtas = dedupeWorkflowCtas(filterImobCrmWorkflowCtas({
+      state: primaryWorkflowState,
+      context: workflowContext,
+      normalize: helpers.normalizeImobRouteText,
+      ctas: [...buildImobBusinessActionCtas(caseContext), ...fallbackCtas]
+        .filter((item) => !(intent === "blocked_run_resolution" && helpers.normalizeImobRouteText(item.nextMessage).includes("mostrar bloqueios do caso"))),
+    }), primaryWorkflowState)
       .slice(0, 3);
     const ctas = intent === "blocked_run_resolution"
-      ? buildBlockedRunResolutionCtas(caseContext, pendingItems)
+      ? dedupeWorkflowCtas(filterImobCrmWorkflowCtas({
+          state: primaryWorkflowState,
+          context: workflowContext,
+          normalize: helpers.normalizeImobRouteText,
+          ctas: buildBlockedRunResolutionCtas(caseContext, pendingItems),
+        }), primaryWorkflowState)
       : defaultCtas;
+    const effectiveNextStep = ctas.find((cta) => isImobCrmWorkflowNextMessageValid({
+      state: primaryWorkflowState,
+      context: workflowContext,
+      message: cta.nextMessage,
+      normalize: helpers.normalizeImobRouteText,
+    }))?.nextMessage
+      ?? (getAllowedTransitions(primaryWorkflowState, workflowContext).includes("continue")
+        ? nextStep
+        : getWorkflowFallbackNextMessage(primaryWorkflowState, caseContext));
+    const renderedText = textByIntent[intent]
+      .filter(Boolean)
+      .join("\n")
+      .replace(`Para destravar: ${nextStep}.`, `Para destravar: ${effectiveNextStep}.`)
+      .replace(`Como seguir: ${nextStep}.`, `Como seguir: ${effectiveNextStep}.`);
     return {
-      text: textByIntent[intent].filter(Boolean).join("\n"),
+      text: renderedText,
       owner: caseContext?.ownerResponsible ?? "Corretor",
-      nextStep,
+      nextStep: effectiveNextStep,
       blocker: primaryBlocker ?? undefined,
       consultiveRead: {
         phase: humanPhaseLabel,
@@ -2520,6 +2630,15 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
         nextActionOwner: nextActionOwner ?? null,
         nextSafeStep: nextStep,
         specialists: specialists.slice(0, 2).map((item) => buildSpecialistSupportLine(item).consultive),
+        workflow: {
+          primaryState: primaryWorkflowState,
+          allowedTransitions: getAllowedTransitions(primaryWorkflowState, workflowContext),
+          reasonCodes: workflowReasonCodes,
+          ownershipAgentId: workflowContext.ownershipAgentId,
+          specialistSupportAgentId: workflowContext.specialistAgentId,
+          pilotState: pilotWorkflowState,
+          pilotReadOnly: Boolean(pilotWorkflowState),
+        },
       },
       caseBrief,
       preparedFollowUp,
@@ -2539,9 +2658,18 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       inventoryWatch,
       handoffPack,
       pendingFieldLabels: pendingItems,
-      suggestedNextAction: nextStep,
-      widget: undefined,
+      suggestedNextAction: effectiveNextStep,
+      widget: buildImobCaseExperienceWidget(caseContext),
       dedupeKey: `crm.case.${intent}:${caseContext?.caseId ?? "unknown"}`,
+      workflow: {
+        primaryState: primaryWorkflowState,
+        allowedTransitions: getAllowedTransitions(primaryWorkflowState, workflowContext),
+        reasonCodes: workflowReasonCodes,
+        ownershipAgentId: workflowContext.ownershipAgentId,
+        specialistSupportAgentId: workflowContext.specialistAgentId,
+        pilotState: pilotWorkflowState,
+        pilotReadOnly: Boolean(pilotWorkflowState),
+      },
       card: {
         title: cardTitleByIntent[intent],
         lines: [
@@ -2552,10 +2680,12 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
           primaryBlocker ? `Bloqueio: ${primaryBlocker}` : "Bloqueio: nenhum bloqueio comercial",
           waitingOn ? `Waiting on: ${waitingOn}` : "Waiting on: não identificado",
           nextActionOwner ? `Owner da ação: ${nextActionOwner}` : "Owner da ação: não identificado",
+          `Workflow: ${primaryWorkflowState}.`,
+          workflowReasonCodes.length > 0 ? `Reason codes: ${workflowReasonCodes.join(", ")}` : null,
           pilotControlState ? `Piloto operacional: ${pilotControlState.summary}` : null,
           pilotControlState ? `Próxima ação governada: ${pilotControlState.nextHumanAction}` : null,
           primarySpecialist?.cardLine ?? null,
-          `Próximo movimento: ${nextStep}`,
+          `Próximo movimento: ${effectiveNextStep}`,
         ].filter(Boolean) as string[],
         ctas,
       },
@@ -2725,8 +2855,18 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     const effectiveCaseContext = caseContext ?? data.caseContext ?? null;
     if (!effectiveCaseContext?.canonical) return { ...data, ...(effectiveCaseContext ? { caseContext: effectiveCaseContext } : {}) };
     const firstRecommended = effectiveCaseContext.canonical.recommendedActions?.[0];
-    const suggestedNextAction = helpers.asString(data.presentation?.suggestedNextAction) ?? helpers.asString(firstRecommended?.inputHint) ?? helpers.asString(firstRecommended?.label);
-    const shouldInjectWidget = !data.presentation?.card || (Array.isArray(effectiveCaseContext.pendingItems) && effectiveCaseContext.pendingItems.length > 0) || Boolean(helpers.asString(effectiveCaseContext.blocker));
+    const operationalFlow = helpers.asString((data as { conversationState?: { operational?: { flow?: unknown } | null } | null })?.conversationState?.operational?.flow);
+    const hasOperationalForm = Boolean(data.presentation?.form) && Boolean(operationalFlow);
+    const suggestedNextAction = helpers.asString(data.presentation?.suggestedNextAction)
+      ?? (hasOperationalForm ? helpers.asString(data.presentation?.nextStep) : null)
+      ?? helpers.asString(firstRecommended?.inputHint)
+      ?? helpers.asString(firstRecommended?.label);
+    const shouldInjectWidget = !hasOperationalForm
+      && (
+        !data.presentation?.card
+        || (Array.isArray(effectiveCaseContext.pendingItems) && effectiveCaseContext.pendingItems.length > 0)
+        || Boolean(helpers.asString(effectiveCaseContext.blocker))
+      );
     return {
       ...data,
       caseContext: effectiveCaseContext,

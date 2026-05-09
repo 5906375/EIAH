@@ -1,6 +1,6 @@
-import { ToolContract } from "../types/ToolContract";
-import { validateInput } from "../validator/SchemaValidator";
-import { MCPCircuitBreaker } from "./MCPCircuitBreaker";
+import { ToolContract } from "../types/ToolContract.js";
+import { validateInput } from "../validator/SchemaValidator.js";
+import { MCPCircuitBreaker } from "./MCPCircuitBreaker.js";
 
 export class MCPExecutor {
   constructor(private contract: ToolContract) {}

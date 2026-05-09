@@ -4,6 +4,7 @@ import {
   resolveImobCrmOperationalConsult,
   resolveImobCrmOperationalUpdate,
 } from "../services/imob/crm/imobCrmResolver";
+import { buildImobCrmBusinessReadHelpers } from "../services/imob/crm/imobCrmBusinessRead";
 
 function createThreadState() {
   return {
@@ -208,6 +209,12 @@ function createMockPrisma(overrides?: {
         (!where.propertyId || item.propertyId === where.propertyId)
       )),
     },
+    __data: {
+      leads,
+      owners,
+      properties,
+      cases,
+    },
   };
 }
 
@@ -300,6 +307,8 @@ test("IMOB_CRM business read returns commercial language from the latest case", 
   assert.equal(resolved?.presentation?.consultiveRead?.waitingOn, "internal");
   assert.equal(resolved?.presentation?.consultiveRead?.nextActionOwner, "Corretor");
   assert.match(resolved?.presentation?.consultiveRead?.nextSafeStep ?? "", /qualificar o interesse do lead/i);
+  assert.equal((resolved as any)?.presentation?.workflow?.primaryState, "case.review");
+  assert.ok(Array.isArray((resolved as any)?.presentation?.workflow?.allowedTransitions));
   assert.equal(resolved?.presentation?.consultiveRead?.specialists?.[0]?.agentId, "I_BC");
   assert.match(resolved?.presentation?.consultiveRead?.specialists?.[0]?.ownershipBoundary ?? "", /não assume ownership do caso/i);
   assert.match(resolved?.presentation?.caseBrief?.summary ?? "", /principal risco agora/i);
@@ -418,6 +427,40 @@ test("IMOB_CRM business read connects assisted calendar pilot flow from case run
   assert.match(resolved?.presentation?.pilotControlState?.summary ?? "", /approval operacional auditável/i);
   assert.match(JSON.stringify(resolved?.presentation?.card?.lines ?? []), /Piloto operacional:/i);
   assert.match(JSON.stringify(resolved?.presentation?.card?.lines ?? []), /Próxima ação governada:/i);
+});
+
+test("IMOB_CRM pilot status consult stays read-only for governed questions", async () => {
+  const prisma = createMockPrisma({
+    caseOverrides: {
+      flow: "visit.schedule",
+      nextStep: "confirmar agenda da visita",
+    },
+  }) as any;
+  const beforeSnapshot = JSON.stringify(prisma.__data);
+
+  const resolved = await resolveImobCrmOperationalConsult({
+    prisma,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    caseId: "case-1",
+    message: "qual status desse caso?",
+    threadState: createThreadState(),
+  });
+
+  const afterSnapshot = JSON.stringify(prisma.__data);
+  assert.equal(resolved?.action, "crm.case.pipeline_status");
+  assert.equal(resolved?.presentation?.pilotOperationalState?.status, "approval_required");
+  assert.equal(resolved?.presentation?.pilotOperationalState?.rolloutStage, "shadow");
+  assert.equal(resolved?.presentation?.pilotControlState?.trackingId, null);
+  assert.equal((resolved as any)?.presentation?.workflow?.pilotState, "pilot.status");
+  assert.equal((resolved as any)?.presentation?.workflow?.pilotReadOnly, true);
+  assert.ok((resolved as any)?.presentation?.workflow?.reasonCodes?.includes("pilot_read_only"));
+  const pilotCtas = Array.isArray((resolved as any)?.presentation?.card?.ctas) ? (resolved as any).presentation.card.ctas : [];
+  assert.equal(
+    pilotCtas.every((item: any) => typeof item?.nextMessage === "string" && String(item.nextMessage).trim().length > 0),
+    true,
+  );
+  assert.equal(beforeSnapshot, afterSnapshot);
 });
 
 test("IMOB_CRM business read connects shadow capture enrichment pilot flow from case runtime", async () => {
@@ -722,6 +765,7 @@ test("IMOB_CRM business read suggests document reengagement in shadow without ch
   const resolved = await resolveImobCrmOperationalConsult({
     prisma: createMockPrisma({
       caseOverrides: {
+        flow: "documents.collect",
         blockers: ["documentação pendente"],
         pendingItems: ["ownerDocument", "matrícula do imóvel"],
       },
@@ -746,7 +790,16 @@ test("IMOB_CRM business read suggests document reengagement in shadow without ch
   assert.ok((resolved?.presentation?.missionOrchestration?.supportingAgents?.includes("J_360") ?? false), true);
   assert.ok((resolved?.presentation?.missionOrchestration?.blockingIssues?.length ?? 0) >= 1);
   assert.ok((resolved?.presentation?.missionOrchestration?.closedAt?.length ?? 0) > 0);
-  assert.match(resolved?.presentation?.nextStep ?? "", /cadastrar proprietário|cadastrar imóvel|qualificar lead|consultar caso/i);
+  assert.equal((resolved as any)?.presentation?.workflow?.primaryState, "documents.review");
+  assert.equal((resolved as any)?.presentation?.workflow?.ownershipAgentId, "IMOB");
+  assert.equal((resolved as any)?.presentation?.workflow?.specialistSupportAgentId, "J_360");
+  assert.match(resolved?.presentation?.nextStep ?? "", /revisar documentos|consultar caso/i);
+  assert.match(JSON.stringify(resolved?.presentation?.card?.ctas ?? []), /Revisar documentos|Consultar caso/i);
+  assert.equal(
+    (Array.isArray(resolved?.presentation?.card?.ctas) ? resolved?.presentation?.card?.ctas : []).every((item: any) =>
+      /revisar documentos|consultar caso/i.test(String(item?.nextMessage ?? ""))),
+    true,
+  );
 });
 
 test("IMOB_CRM domain guidance explains specialist handoff without transferring case ownership", async () => {
@@ -839,22 +892,144 @@ test("IMOB_CRM blocked resolution avoids recursive next step and recursive CTA",
     ctas.some((item: any) => String(item?.nextMessage ?? "").toLowerCase().includes("mostrar bloqueios do caso")),
     false
   );
+  assert.equal(
+    ctas.every((item: any) => typeof item?.nextMessage === "string" && String(item.nextMessage).trim().length > 0),
+    true,
+  );
   assert.match(resolved?.presentation?.decisionRationale?.summary ?? "", /destravar o blocker|pendência dominante/i);
   assert.ok((resolved?.presentation?.decisionRationale?.sourceRefs?.length ?? 0) >= 2);
   assert.ok((resolved?.presentation?.decisionRationale?.reasonCodes?.length ?? 0) >= 1);
 });
 
-test("IMOB_CRM business read keeps the structured payload compact for case status", async () => {
+test("IMOB_CRM blocked consult remains read-only while exposing blocker context", async () => {
+  const prisma = createMockPrisma({
+    caseOverrides: {
+      flow: "property.create",
+      stage: "collecting",
+      status: "blocked",
+      nextStep: "mostrar bloqueios do caso",
+      blockers: ["dados do imóvel ainda estão incompletos para seguir"],
+      pendingItems: ["tipo", "endereço"],
+    },
+  }) as any;
+  const beforeSnapshot = JSON.stringify(prisma.__data);
+
   const resolved = await resolveImobCrmOperationalConsult({
-    prisma: createMockPrisma() as any,
+    prisma,
     tenantId: "tenant-1",
     workspaceId: "workspace-1",
-    message: "qual status desse caso?",
+    caseId: "case-1",
+    message: "mostrar bloqueios do caso",
     threadState: createThreadState(),
   });
 
-  assert.equal(resolved?.action, "crm.case.pipeline_status");
-  assert.equal(resolved?.presentation?.widget, undefined);
+  const afterSnapshot = JSON.stringify(prisma.__data);
+  assert.equal(resolved?.action, "crm.case.blocked_run_resolution");
+  assert.match(resolved?.presentation?.text ?? "", /bloqueio principal|pendência que pode travar o avanço|para destravar/i);
+  assert.equal(beforeSnapshot, afterSnapshot);
+});
+
+test("IMOB_CRM canonical enrichment does not inject consultive widget over active property.create form", () => {
+  const helpers = buildImobCrmBusinessReadHelpers({
+    asObject: (value: unknown) => (value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null),
+    asString: (value: unknown) => (typeof value === "string" && value.trim().length > 0 ? value.trim() : null),
+    asStringList: (value: unknown) => Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : [],
+    normalizeImobRouteText: (value: string) => value.toLowerCase(),
+    formatBudgetCentsForImob: () => null,
+    formatImobStatusLabel: (status: string | null | undefined) => status ?? "desconhecido",
+    formatImobPendingList: (items: string[] | null | undefined) => (items ?? []).join(", "),
+    formatImobCaseFlowLabel: (flow: string) => flow,
+    titleCaseRouteWords: (value: string) => value,
+    createEmptyThreadState: createThreadState as any,
+    resolveImobBackingSpecialists: () => [],
+    buildImobCanonicalCase: () => ({
+      journeyType: "property_capture",
+      partyRole: "owner",
+      commercialGoal: "captacao",
+      recommendedActions: [
+        { id: "review_blockers", label: "Revisar bloqueios", actionType: "consultive", inputHint: "mostrar bloqueios do caso" },
+      ],
+      blockedActions: ["dados do imóvel ainda estão incompletos para seguir"],
+      missingContext: ["tipo", "endereço"],
+      reasonCodes: ["BLOCKERS_PRESENT", "PENDING_ITEMS_PRESENT"],
+    }),
+    resolveBusinessReadIntent: () => "pipeline_status",
+  });
+
+  const resolved = helpers.applyCanonicalJourneyToResolvedData({
+    conversationState: {
+      mode: "execute",
+      pendingSlot: "none",
+      resultOffset: 0,
+      slots: {},
+      operational: {
+        flow: "property.create",
+        status: "collecting",
+        pendingFields: ["propertyType", "address"],
+        propertyDraft: {
+          goal: "locacao",
+          city: "Balneário Camboriú",
+        },
+      },
+    },
+    presentation: {
+      text: "O cadastro do imóvel ainda precisa de complementos para seguir.",
+      nextStep: "Completar dados do imóvel antes de avançar a captação.",
+      pendingFieldLabels: ["tipo", "endereço"],
+      form: {
+        entity: "imovel",
+        label: "Cadastrar imóvel",
+        fields: [],
+      },
+    },
+  }, {
+    caseId: "case-1",
+    flow: "property.create",
+    stage: "collecting",
+    status: "blocked",
+    nextStep: "mostrar bloqueios do caso",
+    blocker: "Dados do imóvel ainda estão incompletos para seguir.",
+    pendingItems: ["tipo", "endereço"],
+    canonical: {
+      journeyType: "property_capture",
+      partyRole: "owner",
+      commercialGoal: "captacao",
+      recommendedActions: [
+        { id: "review_blockers", label: "Revisar bloqueios", actionType: "consultive", inputHint: "mostrar bloqueios do caso" },
+      ],
+      blockedActions: ["dados do imóvel ainda estão incompletos para seguir"],
+      missingContext: ["tipo", "endereço"],
+      reasonCodes: ["BLOCKERS_PRESENT", "PENDING_ITEMS_PRESENT"],
+    },
+  } as any);
+
+  assert.equal((resolved as any).presentation?.widget, undefined);
+  assert.equal((resolved as any).presentation?.suggestedNextAction, "Completar dados do imóvel antes de avançar a captação.");
+});
+
+test("IMOB_CRM blocked consult adds visit workflow blocker when the property is not linked", async () => {
+  const resolved = await resolveImobCrmOperationalConsult({
+    prisma: createMockPrisma({
+      caseOverrides: {
+        flow: "visit.schedule",
+        nextStep: "agendar visita",
+        propertyId: null,
+        property: null,
+        blockers: [],
+        pendingItems: [],
+      },
+    }) as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "mostrar bloqueios do caso",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.action, "crm.case.blocked_run_resolution");
+  assert.equal((resolved as any)?.presentation?.workflow?.primaryState, "case.review");
+  assert.ok((resolved as any)?.presentation?.workflow?.reasonCodes?.includes("visit_missing_property"));
+  assert.match(JSON.stringify(resolved?.presentation?.card?.lines ?? []), /visit_missing_property/i);
+  assert.match(resolved?.presentation?.nextStep ?? "", /consultar caso/i);
 });
 
 test("IMOB_CRM case consult asks which case when no explicit reference is provided", async () => {
