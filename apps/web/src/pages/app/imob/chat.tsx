@@ -1382,6 +1382,17 @@ function nextBusinessStep(
 
   const lines: string[] = [];
   const pending = formatOperationalPendingFields(pendingFields, threadLabel, presentationMeta, flow);
+  const normalizedSuggestedNextAction = (presentationMeta?.suggestedNextAction ?? "").trim().toLowerCase();
+  const normalizedOperationalNextStep = operational.nextStep.trim().toLowerCase();
+  const area = getThreadBusinessArea(threadLabel, flow);
+  const isCaptureFormPendingState =
+    area === "capture"
+    && pending.length > 0
+    && /avançar a captação/i.test(operational.nextStep);
+
+  if (isCaptureFormPendingState) {
+    return [`Próximo passo: ${operational.nextStep}`];
+  }
 
   if (operational.blocker) {
     lines.push(`Bloqueio atual: ${operational.blocker}`);
@@ -1389,7 +1400,7 @@ function nextBusinessStep(
   if (pending.length > 0) {
     lines.push(`Pendências atuais: ${pending.join(", ")}.`);
   }
-  if (pending.length > 0 && presentationMeta?.suggestedNextAction) {
+  if (pending.length > 0 && presentationMeta?.suggestedNextAction && normalizedSuggestedNextAction !== normalizedOperationalNextStep) {
     lines.push(presentationMeta.suggestedNextAction);
   }
 
@@ -1410,11 +1421,11 @@ function buildHumanOperationalUpdate(
   const hasPending = Boolean((presentationMeta?.pendingFieldLabels?.length ?? 0) || pendingFields?.length);
   const summary = (() => {
     if (!hasPending) return humanRunStatusBusiness(status, threadLabel, flow);
+    if (area === "capture" && /avançar a captação/i.test(presentationMeta?.nextStep ?? "")) return "";
     if (area === "proposal") return "A proposta ainda precisa de complementos para seguir.";
     if (area === "visit") return "A visita ainda precisa de confirmações para seguir.";
     if (area === "lead") return "O cadastro do lead ainda precisa de complementos para seguir.";
-    if (flow === "owner.create") return "O cadastro do proprietário ainda precisa de complementos para seguir.";
-    if (flow === "property.create") return "O cadastro do imóvel ainda precisa de complementos para seguir.";
+    if (flow === "owner.create" || flow === "property.create") return "";
     if (area === "contract") return "O fluxo de contrato ainda precisa de complementos para seguir.";
     if (area === "commission") return "A liquidação da comissão ainda precisa de confirmações para seguir.";
     return humanRunStatusBusiness(status, threadLabel, flow);
@@ -1422,7 +1433,7 @@ function buildHumanOperationalUpdate(
   const followUps = options?.suppressNextStep ? [] : nextBusinessStep(status, threadLabel, pendingFields, presentationMeta, flow);
   if (!["commission", "contract", "proposal", "visit", "lead"].includes(area) && flow !== "owner.create" && flow !== "property.create" && !presentationMeta?.suggestedNextAction) return summary;
   if (followUps.length === 0) return summary;
-  return [summary, ...followUps].join("\n");
+  return [summary, ...followUps].filter((line) => Boolean(line?.trim())).join("\n");
 }
 
 function pickPostSuccessBlocks(blocks: ImobPresentationBlock[] | undefined) {

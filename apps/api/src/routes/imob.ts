@@ -626,6 +626,7 @@ async function applyExistingRegistrationResolution(params: {
     helpers: {
       asObject,
       asString,
+      normalizeImobRouteText,
       cloneImobResolvedTurn,
       setImobFormFieldValues,
       createEmptyThreadState,

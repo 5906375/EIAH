@@ -32,3 +32,13 @@ export async function publishEvent(channel: string, payload: unknown) {
     throw err;
   }
 }
+
+export async function closeRedisPublisher() {
+  try {
+    await redisPublisher.quit();
+  } catch {
+    redisPublisher.disconnect();
+    return;
+  }
+  redisPublisher.disconnect();
+}

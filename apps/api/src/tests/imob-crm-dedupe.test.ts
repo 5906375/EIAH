@@ -54,6 +54,19 @@ function createMockPrisma() {
     },
   ];
 
+  const owners = [
+    {
+      id: "owner-1",
+      tenantId: "tenant-1",
+      workspaceId: "workspace-1",
+      name: "Proprietario",
+      phone: "47999990000",
+      email: "prop@example.com",
+      document: "41741741785",
+      updatedAt: new Date("2026-01-05"),
+    },
+  ];
+
   return {
     imobLead: {
       findFirst: async ({ where }: any) => leads.find((lead) => (
@@ -71,8 +84,20 @@ function createMockPrisma() {
       )).slice(0, take),
     },
     imobOwner: {
-      findFirst: async () => null,
-      findMany: async () => [],
+      findFirst: async ({ where }: any) => owners.find((owner) => (
+        owner.tenantId === where.tenantId &&
+        owner.workspaceId === where.workspaceId &&
+        (!where.OR || where.OR.some((condition: any) => (
+          (condition.phone && condition.phone === owner.phone) ||
+          (condition.email && condition.email === owner.email) ||
+          (condition.document && condition.document === owner.document)
+        )))
+      )) ?? null,
+      findMany: async ({ where, take }: any) => owners.filter((owner) => (
+        owner.tenantId === where.tenantId &&
+        owner.workspaceId === where.workspaceId &&
+        owner.name === where.name
+      )).slice(0, take),
     },
     imobProperty: {
       findFirst: async () => null,
@@ -146,4 +171,17 @@ test("IMOB_CRM dedupe allows empty new-conversation forms without identifiers", 
   });
 
   assert.deepEqual(decision, { kind: "none" });
+});
+
+test("IMOB_CRM dedupe owner choice routes update CTA to direct edit by owner id", async () => {
+  const decision = await resolveImobCrmRegistrationDedupe({
+    prisma: createMockPrisma() as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    flow: "owner.create",
+    draft: { ownerName: "Proprietario" },
+  });
+
+  assert.equal(decision.kind, "choice");
+  assert.equal(decision.kind === "choice" ? decision.nextMessages[0] : null, "editar proprietário owner-1");
 });

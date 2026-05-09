@@ -548,6 +548,33 @@ test("IMOB turn resolver treats plural imóveis as property.create capture", () 
   assert.equal(result.presentation.form?.entity, "imovel");
 });
 
+test("IMOB turn resolver keeps active property.create text concise and non-duplicative", () => {
+  const result = resolveImobTurn({
+    message: "quero captar um imóvel para locação em SC",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.conversationState.operational?.flow, "property.create");
+  assert.equal(result.presentation.text, "Preencha os campos abaixo para continuar o cadastro do imóvel.");
+  assert.match(result.presentation.blocker ?? "", /dados do imóvel/i);
+  assert.equal(result.presentation.nextStep, "Completar dados do imóvel antes de avançar a captação.");
+  assert.deepEqual(result.presentation.pendingFieldLabels, ["tipo", "endereço"]);
+  assert.doesNotMatch(result.presentation.text, /pendências:|ainda preciso de:|próximo passo:/i);
+});
+
+test("IMOB turn resolver preserves explicit city in property capture without expanding Camboriú to Balneário Camboriú", () => {
+  const result = resolveImobTurn({
+    message: "quero captar um imóvel para locação em Camboriú",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.conversationState.operational?.flow, "property.create");
+  assert.equal(result.conversationState.operational?.propertyDraft?.goal, "locacao");
+  assert.equal(result.conversationState.operational?.propertyDraft?.city, "Camboriú");
+  assert.equal(result.presentation.form?.fields.find((field) => field.name === "goal")?.value, "locacao");
+  assert.equal(result.presentation.form?.fields.find((field) => field.name === "city")?.value, "Camboriú");
+});
+
 test("IMOB turn resolver builds guided form for comprador on lead.qualify", () => {
   const result = resolveImobTurn({
     message: "quero cadastrar comprador como lead",
