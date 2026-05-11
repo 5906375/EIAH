@@ -1,5 +1,6 @@
 import type { ImobCrmPropertyType } from "./crm/imobCrmPropertyTypes";
 import type { ImobReasonCode } from "./control/imobReasonCodeCatalog";
+import type { ImobAgentActivityEvent } from "./agents/imobAgentActivity";
 import type {
   ImobCapabilityCategory,
   ImobCapabilityExecutionMode,
@@ -104,6 +105,7 @@ export type ImobIntent = "capture" | "match" | "lead" | "visit" | "listing" | "d
 export type ImobOperationalFlow =
   | "owner.create"
   | "property.create"
+  | "property.market_scan"
   | "listing.activate"
   | "lead.qualify"
   | "visit.schedule"
@@ -181,6 +183,88 @@ export type ImobPropertyDraft = {
   bedrooms: number | null;
   bathrooms: number | null;
   address: string | null;
+  origin?: {
+    source: string;
+    sourceId: string;
+    providerId: string;
+    retrievedAt: string;
+    scanId: string;
+  } | null;
+};
+
+export type ImobMarketScanContext = {
+  cities: string[];
+  cityCandidates: string[];
+  uf: string | null;
+  goals: string[];
+  goalCandidates: string[];
+  propertyTypes: ImobCrmPropertyType[];
+  bedrooms: number[];
+  priceRange: {
+    min: number | null;
+    max: number | null;
+    currency: "BRL";
+    period: "monthly" | "daily" | "total" | null;
+    confidence: "high" | "medium" | "low";
+    ambiguityReason?: string | null;
+  } | null;
+  readOnly: true;
+  limitPerGroup: number;
+};
+
+export type ImobMarketScanResultItem = {
+  source: string;
+  sourceId: string;
+  providerId: string;
+  retrievedAt: string;
+  city: string;
+  uf?: string | null;
+  goal: string;
+  propertyType?: ImobCrmPropertyType | null;
+  bedrooms?: number | null;
+  price?: number | null;
+  currency?: "BRL" | null;
+  neighborhood?: string | null;
+  address?: string | null;
+  title?: string | null;
+  url?: string | null;
+};
+
+export type ImobMarketScanResultGroup = {
+  city: string;
+  goal: string;
+  propertyType?: ImobCrmPropertyType | null;
+  bedrooms?: number | null;
+  items: ImobMarketScanResultItem[];
+};
+
+export type ImobMarketScanResultSnapshot = {
+  scanId: string;
+  providerId: string;
+  sourceStatus: "completed" | "empty" | "unavailable";
+  totalItems: number;
+  groups: ImobMarketScanResultGroup[];
+  readOnly: true;
+  generatedAt: string;
+};
+
+export type ImobMarketScanSelection = {
+  status: "pending_confirmation";
+  scanId: string;
+  source: string;
+  sourceId: string;
+  providerId: string;
+  retrievedAt: string;
+  city: string;
+  goal: string;
+  propertyType?: ImobCrmPropertyType | null;
+  bedrooms?: number | null;
+  price?: number | null;
+  currency?: "BRL" | null;
+  neighborhood?: string | null;
+  address?: string | null;
+  title?: string | null;
+  url?: string | null;
 };
 
 export type ImobVisitDraft = {
@@ -246,7 +330,7 @@ export type ImobCommissionDraft = {
 };
 
 export type ImobOperationalState = {
-  flow: "owner.create" | "property.create" | "lead.qualify" | "visit.schedule" | "listing.activate" | "documents.collect" | "proposal.create" | "deal.review" | "contract.prepare" | "rules.configure" | "commission.settle";
+  flow: "owner.create" | "property.create" | "property.market_scan" | "lead.qualify" | "visit.schedule" | "listing.activate" | "documents.collect" | "proposal.create" | "deal.review" | "contract.prepare" | "rules.configure" | "commission.settle";
   status: "collecting" | "ready_for_review";
   pendingFields: string[];
   dedupeSelection?: {
@@ -258,6 +342,9 @@ export type ImobOperationalState = {
   };
   ownerDraft?: ImobOwnerDraft;
   propertyDraft?: ImobPropertyDraft;
+  marketScanContext?: ImobMarketScanContext;
+  marketScanSnapshot?: ImobMarketScanResultSnapshot;
+  marketScanSelection?: ImobMarketScanSelection | null;
   leadDraft?: ImobLeadDraft;
   visitDraft?: ImobVisitDraft;
   listingDraft?: ImobListingDraft;
@@ -291,6 +378,7 @@ export type ImobResolveTurnRequest = {
   caseId?: string | null;
   threadState?: ImobThreadConversationState | null;
   access?: ImobAccessContext;
+  marketScanResult?: ImobMarketScanResultSnapshot | null;
 };
 
 export type ImobAttachmentCrmSuggestionMode = "include" | "edit" | "discard";
@@ -1060,6 +1148,7 @@ export type ImobOperationalPresentation = {
   text: string;
   metadata?: ImobPresentationMetadata;
   card?: ImobPresentationCard;
+  agentActivities?: ImobAgentActivityEvent[];
   blocks?: ImobPresentationBlock[];
   widget?: ImobPresentationWidget;
   form?: ImobPresentationForm;
@@ -1084,6 +1173,7 @@ export type ImobOperationalPresentation = {
   commercialMemory?: ImobCommercialMemorySnapshot;
   reengagementSuggestion?: ImobReengagementSuggestion;
   inventoryWatch?: ImobInventoryWatchSnapshot;
+  marketScanResult?: ImobMarketScanResultSnapshot;
   pendingFieldLabels?: string[];
   dedupeKey?: string;
 };

@@ -129,6 +129,13 @@ export async function enforceTenant(
       tokenRecord.workspaceId
     );
     const requestPrisma = req.prisma;
+    const currentResponseMaxListeners =
+      typeof (res as unknown as { getMaxListeners?: () => number }).getMaxListeners === "function"
+        ? (res as unknown as { getMaxListeners: () => number }).getMaxListeners()
+        : 10;
+    if (Number.isFinite(currentResponseMaxListeners) && currentResponseMaxListeners > 0) {
+      res.setMaxListeners(currentResponseMaxListeners + 2);
+    }
     let prismaClosed = false;
     const closeRequestPrisma = () => {
       if (prismaClosed) return;

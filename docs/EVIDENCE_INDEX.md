@@ -68,6 +68,10 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | APE Weekly Cycle #23 (continuidade recorrente) | `ops/evidence/latest/ape-weekly-cycle-run23-2026-04-27.md` | Mantém o segundo ciclo recente em `GO`, sem gap de auditoria e sem side effects duplicados. |
 | APE Weekly Cycle #24 (janela P1/P3/P4 regularizada) | `ops/evidence/latest/ape-weekly-cycle-run24-2026-04-27.md` | Completa o trio recente exigido pelos checks recorrentes de reconciliação, estabilidade e rollout. |
 | APE Weekly Cycle #22 (janela recorrente automatizada) | `ops/evidence/latest/ape-weekly-cycle-run22-2026-04-27.md` | Ciclo semanal automatizado registrando o estado atual dos gates recorrentes para acompanhamento operacional. |
+| APE Weekly Cycle #25 (janela recorrente automatizada) | `ops/evidence/latest/ape-weekly-cycle-run25-2026-05-11.md` | Ciclo semanal automatizado registrando o estado atual dos gates recorrentes para acompanhamento operacional. |
+| APE Weekly Cycle #26 (janela recorrente automatizada) | `ops/evidence/latest/ape-weekly-cycle-run26-2026-05-11.md` | Ciclo semanal automatizado com hard metrics em GO, reconciliacao estavel e renovacao da janela recorrente. |
+| APE Weekly Cycle #27 (janela recorrente automatizada) | `ops/evidence/latest/ape-weekly-cycle-run27-2026-05-11.md` | Ciclo semanal automatizado com hard metrics em GO, reconciliacao estavel e renovacao da janela recorrente. |
+| APE Weekly Cycle #28 (janela recorrente automatizada) | `ops/evidence/latest/ape-weekly-cycle-run28-2026-05-11.md` | Ciclo semanal automatizado com hard metrics em GO, reconciliacao estavel e renovacao da janela recorrente. |
 
 ## Sprint P1 (Imobiliaria Digital) — Interop Protocol Layer (2026-03-09)
 

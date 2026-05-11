@@ -13,12 +13,16 @@ import {
   type ImobExecutionRequest,
   type ImobIntent,
   type ImobKnowledgeSourceFilter,
+  type ImobMarketScanResultGroup,
+  type ImobMarketScanResultItem,
+  type ImobMarketScanResultSnapshot,
   type ImobOperationalState,
   type ImobOperationalOwner,
   type ImobResolveTurnRequest,
   type ImobResolveTurnResponse,
 } from "./imobConversationContract";
 import { buildImobAgentRuntimeMetadata } from "./imobAgentContract";
+import { buildImobAgentActivities } from "./agents/imobAgentActivityRuntime";
 import {
   createNextImobOperationalState,
   createNextImobThreadState,
@@ -137,7 +141,7 @@ function mapCatalogIntentToImobIntent(parsed: { entity: string | null; action: s
 }
 
 function mapOperationalFlowToIntent(flow: NonNullable<ImobResolveTurnResponse["conversationState"]["operational"]>["flow"]): ImobIntent {
-  if (flow === "owner.create" || flow === "property.create") return "capture";
+  if (flow === "owner.create" || flow === "property.create" || flow === "property.market_scan") return "capture";
   if (flow === "lead.qualify") return "lead";
   if (flow === "visit.schedule") return "visit";
   if (flow === "listing.activate") return "listing";
@@ -222,6 +226,16 @@ function hasPendingFieldSignalForActiveFlow(
       && (normalized.includes("endereco") || normalized.includes("endereço") || /\b(rua|av|avenida|alameda|travessa|rodovia)\b/.test(normalized))
     ) return true;
     return false;
+  }
+
+  if (activeOperationalState.flow === "property.market_scan") {
+    return (
+      normalized.includes("varredura")
+      || normalized.includes("market scan")
+      || normalized.includes("scan de mercado")
+      || normalized.includes("cadastrar imovel especifico")
+      || normalized.includes("cadastrar imóvel específico")
+    );
   }
 
   if (activeOperationalState.flow === "lead.qualify") {
@@ -547,6 +561,8 @@ function buildCaptureFlowGuidanceChoices(activeFlow: ImobOperationalState["flow"
       ? "Continuar proprietário"
       : activeFlow === "property.create"
         ? "Continuar imóvel"
+        : activeFlow === "property.market_scan"
+          ? "Continuar varredura"
         : activeFlow === "lead.qualify"
           ? "Continuar lead"
           : "Continuar fluxo atual";
@@ -555,6 +571,8 @@ function buildCaptureFlowGuidanceChoices(activeFlow: ImobOperationalState["flow"
       ? "cadastrar proprietário"
       : activeFlow === "property.create"
         ? "cadastrar imóvel"
+        : activeFlow === "property.market_scan"
+          ? "fazer varredura de mercado"
         : activeFlow === "lead.qualify"
           ? "qualificar lead deste caso"
           : "consultar caso";
@@ -676,11 +694,13 @@ function buildCatalogConfidenceMetadata(
 function withImobAgentPresentationMetadata(
   response: ImobResolveTurnResponse,
 ): ImobResolveTurnResponse {
+  const agentActivities = buildImobAgentActivities(response);
   return {
     ...response,
     presentation: response.presentation
       ? {
           ...response.presentation,
+          ...(agentActivities.length > 0 ? { agentActivities } : {}),
           metadata: {
             ...(response.presentation.metadata ?? {} as ImobPresentationMetadata),
             agentRuntime: buildImobAgentRuntimeMetadata(),
@@ -1615,7 +1635,9 @@ function buildOperationalPresentationMeta(
   const owner = mapOperationalOwner(flow);
   const proposalCopy = flow === "proposal.create" ? getProposalPersonaCopy(operationalState.proposalDraft) : null;
   const nextStep =
-    flow === "commission.settle"
+    flow === "property.market_scan"
+      ? "Escolher se quer cadastrar um imóvel específico ou fazer uma varredura de mercado read-only."
+      : flow === "commission.settle"
       ? pendingFieldLabels.length > 0
         ? "Confirmar pendências da comissão antes do repasse."
         : "Validar liquidação e acompanhar repasse da comissão."
@@ -1649,7 +1671,9 @@ function buildOperationalPresentationMeta(
                     : "Vincular o imóvel ao próximo lead ou etapa comercial/documental."
                   : undefined;
   const blocker =
-    flow === "commission.settle"
+    flow === "property.market_scan"
+      ? "Múltiplas cidades ou finalidades impedem um único cadastro automático do imóvel."
+      : flow === "commission.settle"
       ? pendingFieldLabels.length > 0
         ? "Validar dados de comissão antes do repasse."
         : null
@@ -1828,6 +1852,28 @@ function buildOperationalCollectingText(params: {
   const structuredSubmission = isStructuredOperationalDataSubmission(message);
 
   if (intent === "capture") {
+    if (operationalState.flow === "property.market_scan") {
+      const cityCandidates = operationalState.marketScanContext?.cityCandidates ?? operationalState.marketScanContext?.cities ?? [];
+      const goalCandidates = operationalState.marketScanContext?.goalCandidates ?? operationalState.marketScanContext?.goals ?? [];
+      const candidatesSummary = [
+        cityCandidates.length > 0 ? `cidades: ${cityCandidates.join(", ")}` : null,
+        goalCandidates.length > 0 ? `finalidades: ${goalCandidates.join(", ")}` : null,
+        (operationalState.marketScanContext?.propertyTypes?.length ?? 0) > 0
+          ? `tipos: ${operationalState.marketScanContext?.propertyTypes.join(", ")}`
+          : null,
+        (operationalState.marketScanContext?.bedrooms?.length ?? 0) > 0
+          ? `quartos: ${operationalState.marketScanContext?.bedrooms.join(", ")}`
+          : null,
+        operationalState.marketScanContext?.priceRange?.max
+          ? `valor máximo: R$ ${operationalState.marketScanContext.priceRange.max}`
+          : null,
+      ].filter(Boolean).join(" | ");
+      return [
+        "Identifiquei múltiplas cidades ou finalidades para um único cadastro de imóvel.",
+        "Para cadastrar um imóvel específico, preciso de uma cidade e uma finalidade únicas.",
+        candidatesSummary ? `Posso seguir com uma varredura de mercado read-only usando ${candidatesSummary}.` : "Posso seguir com uma varredura de mercado read-only.",
+      ].join("\n");
+    }
     if (operationalState.flow === "property.create") {
       if (!hasPending) return "Posso iniciar o cadastro do imóvel agora.";
       return structuredSubmission
@@ -1894,6 +1940,147 @@ function buildOperationalCollectingText(params: {
   }
 
   return null;
+}
+
+function formatMarketScanGroupLabel(group: ImobMarketScanResultGroup) {
+  const qualifiers = [
+    group.city,
+    group.goal,
+    group.propertyType ?? null,
+    typeof group.bedrooms === "number" ? `${group.bedrooms} quarto${group.bedrooms === 1 ? "" : "s"}` : null,
+  ].filter(Boolean);
+  return qualifiers.join(" | ");
+}
+
+function formatMarketScanItemLabel(item: ImobMarketScanResultItem) {
+  const details = [
+    item.title ?? item.address ?? item.sourceId,
+    item.neighborhood ? `bairro ${item.neighborhood}` : null,
+    typeof item.price === "number" ? `R$ ${item.price}` : null,
+    item.sourceId ? `origem ${item.sourceId}` : null,
+  ].filter(Boolean);
+  return details.join(" | ");
+}
+
+function buildMarketScanSelectionCtas(marketScanResult: NonNullable<ImobResolveTurnRequest["marketScanResult"]>) {
+  const items = marketScanResult.groups.flatMap((group) => group.items).slice(0, 6);
+  return items.map((item) => ({
+    id: `market-scan-select-${item.sourceId}`,
+    label: `Selecionar ${item.title ?? item.sourceId}`,
+    kind: "secondary" as const,
+    action: "send_suggested_message" as const,
+    nextMessage: `selecionar imóvel ${item.sourceId} do scan`,
+  }));
+}
+
+function buildMarketScanPresentation(params: {
+  marketScanResult: NonNullable<ImobResolveTurnRequest["marketScanResult"]>;
+  currentCard: ImobResolveTurnResponse["presentation"]["card"];
+  currentText: string;
+}) {
+  const { marketScanResult, currentCard, currentText } = params;
+  const totalGroups = marketScanResult.groups.length;
+  const summaryText =
+    marketScanResult.sourceStatus === "completed"
+      ? [
+          currentText,
+          `Varredura read-only concluída com ${marketScanResult.totalItems} imóvel(is) em ${totalGroups} grupo(s).`,
+        ].filter(Boolean).join("\n")
+      : marketScanResult.sourceStatus === "empty"
+        ? [
+            currentText,
+            "Não encontrei imóveis para os filtros atuais na fonte interna do IMOB. Posso ajustar cidade, finalidade, tipo ou faixa de valor sem inventar resultados.",
+          ].filter(Boolean).join("\n")
+        : [
+            currentText,
+            "A fonte de imóveis para essa varredura está indisponível no momento. Vou manter a consulta read-only e sem inventar resultados.",
+          ].filter(Boolean).join("\n");
+
+  const cardLines = marketScanResult.groups.length > 0
+    ? marketScanResult.groups.flatMap((group) => {
+        const header = `${formatMarketScanGroupLabel(group)} · ${group.items.length} resultado(s)`;
+        const itemLines = group.items.slice(0, 3).map((item) => `- ${formatMarketScanItemLabel(item)}`);
+        return [header, ...itemLines];
+      })
+    : [
+        marketScanResult.sourceStatus === "unavailable"
+          ? "Nenhuma fonte conectada para essa varredura no momento."
+          : "Nenhum imóvel encontrado para os filtros atuais.",
+      ];
+
+  return {
+    text: summaryText,
+    card: {
+      title: "Resultado da varredura de mercado",
+      lines: cardLines,
+      ctas: [
+        ...buildMarketScanSelectionCtas(marketScanResult),
+        ...(currentCard?.ctas ?? []),
+      ],
+      actionsLayout: currentCard?.actionsLayout,
+    },
+    marketScanResult,
+  };
+}
+
+function buildMarketScanSelectionPresentation(params: {
+  selection: NonNullable<ImobOperationalState["marketScanSelection"]>;
+  currentText: string;
+  marketScanResult?: ImobMarketScanResultSnapshot | null;
+}) {
+  const { selection, currentText, marketScanResult } = params;
+  const itemLabel = formatMarketScanItemLabel({
+    source: selection.source,
+    sourceId: selection.sourceId,
+    providerId: selection.providerId,
+    retrievedAt: selection.retrievedAt,
+    city: selection.city,
+    uf: null,
+    goal: selection.goal,
+    propertyType: selection.propertyType ?? null,
+    bedrooms: selection.bedrooms ?? null,
+    price: selection.price ?? null,
+    currency: selection.currency ?? null,
+    neighborhood: selection.neighborhood ?? null,
+    address: selection.address ?? null,
+    title: selection.title ?? null,
+    url: selection.url ?? null,
+  });
+
+  return {
+    text: [
+      currentText,
+      "Imóvel selecionado a partir da varredura. Ao confirmar, vou deduplicar por sourceId/endereço antes de criar ou atualizar o cadastro no CRM.",
+    ].filter(Boolean).join("\n"),
+    card: {
+      title: "Confirmar conversão do scan",
+      lines: [
+        itemLabel,
+        `Scan: ${selection.scanId}`,
+        `Origem: ${selection.source} / ${selection.sourceId}`,
+        `Recuperado em: ${selection.retrievedAt}`,
+      ],
+      ctas: [
+        {
+          id: `market-scan-confirm-${selection.sourceId}`,
+          label: "Confirmar captação do scan",
+          kind: "primary",
+          action: "send_suggested_message",
+          nextMessage: `confirmar seleção do scan ${selection.sourceId}`,
+        },
+        ...(marketScanResult
+          ? [{
+              id: `market-scan-back-${selection.sourceId}`,
+              label: "Escolher outro imóvel",
+              kind: "secondary" as const,
+              action: "send_suggested_message" as const,
+              nextMessage: "fazer varredura de mercado",
+            }]
+          : []),
+      ],
+      actionsLayout: "inline",
+    },
+  };
 }
 
 function isKnowledgeSearchQuery(message: string) {
@@ -2870,6 +3057,23 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
   const baseIntent = catalogDrivenIntent ?? classifiedIntent;
   const nextThreadState = createNextImobThreadState(request.threadState ?? undefined, message);
   const activeOperationalState = request.threadState?.operational ?? null;
+  const isMarketScanSelectionTurn =
+    activeOperationalState?.flow === "property.market_scan"
+    && (
+      normalizedMessage.includes("selecionar imóvel")
+      || normalizedMessage.includes("selecionar imovel")
+      || normalizedMessage.includes("selecionar item")
+      || normalizedMessage.includes("usar imóvel do scan")
+      || normalizedMessage.includes("usar imovel do scan")
+      || normalizedMessage.includes("salvar imóvel do scan")
+      || normalizedMessage.includes("salvar imovel do scan")
+      || normalizedMessage.includes("confirmar seleção do scan")
+      || normalizedMessage.includes("confirmar selecao do scan")
+      || normalizedMessage.includes("confirmar imóvel do scan")
+      || normalizedMessage.includes("confirmar imovel do scan")
+      || normalizedMessage.includes("confirmar captação do scan")
+      || normalizedMessage.includes("confirmar captacao do scan")
+    );
   const turnDecision = resolveImobTurnDecision({
     activeOperationalState,
     message,
@@ -2881,7 +3085,11 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
     normalizedMessage.includes("etapa documental") ||
     normalizedMessage.includes("fase documental") ||
     normalizedMessage.includes("fluxo documental");
-  const intent = isDocumentationStageRequest ? "documents" : turnDecision.intent;
+  const intent = isDocumentationStageRequest
+    ? "documents"
+    : isMarketScanSelectionTurn
+      ? "capture"
+      : turnDecision.intent;
   const wantsDocumentValidation =
     (parsedCatalogIntent.action === "validate" && parsedCatalogIntent.entity === "documento") ||
     /\b(validar|conferir)\s+document/.test(normalizedMessage);
@@ -2952,7 +3160,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
   if (
     activeOperationalState?.status === "collecting"
     && isGenericCadastroRequest(message)
-    && ["owner.create", "property.create"].includes(activeOperationalState.flow)
+    && ["owner.create", "property.create", "property.market_scan"].includes(activeOperationalState.flow)
     && !["pending_field_parse", "explicit_continuity"].includes(turnDecision.stage)
   ) {
     const guidanceChoices = buildCaptureFlowGuidanceChoices(activeOperationalState.flow);
@@ -2967,6 +3175,8 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
       presentation: {
         text: activeOperationalState.flow === "owner.create"
           ? "Você está no cadastro do proprietário. Posso continuar esse cadastro ou mudar para outra ação da captação."
+          : activeOperationalState.flow === "property.market_scan"
+            ? "Você está na bifurcação entre cadastro específico e varredura de mercado. Posso continuar essa análise ou mudar para outra ação da captação."
           : "Você está no cadastro do imóvel. Posso continuar esse cadastro ou mudar para outra ação da captação.",
         suggestedNextAction: "Escolha se você quer continuar este cadastro ou mudar para outra ação da captação.",
         metadata: {
@@ -3030,6 +3240,45 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
     });
   }
 
+  const explicitMarketScanContinuation =
+    activeOperationalState?.flow === "property.market_scan" &&
+    (
+      normalizedMessage.includes("varredura de mercado")
+      || normalizedMessage.includes("fazer varredura")
+      || normalizedMessage.includes("market scan")
+      || normalizedMessage.includes("scan de mercado")
+    );
+
+  if (explicitMarketScanContinuation) {
+    const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, "capture", message, nextThreadState.slots);
+    const availableMarketScanResult =
+      request.marketScanResult
+      ?? request.threadState?.operational?.marketScanSnapshot
+      ?? operationalState?.marketScanSnapshot
+      ?? null;
+    const marketScanPresentation = availableMarketScanResult
+      ? buildMarketScanPresentation({
+          marketScanResult: availableMarketScanResult,
+          currentCard: undefined,
+          currentText: "Vou manter a varredura de mercado em modo read-only.",
+        })
+      : null;
+    return finalize({
+      mode: "consult",
+      action: "realestate.market_scan",
+      threadLabel: getIntentThreadLabel("capture"),
+      conversationState: { slots: createEmptyImobSlots(), mode: "consult", pendingSlot: "none", resultOffset: 0, operational: operationalState },
+      presentation: {
+        ...buildVisibleOperationalPresentationMeta(operationalState),
+        ...(marketScanPresentation ?? {}),
+        text: marketScanPresentation?.text ?? [
+          "Vou manter a varredura de mercado em modo read-only.",
+          "Ainda não há uma fonte de imóveis conectada para executar essa varredura neste patch, então vou manter o fluxo preparado sem inventar resultados.",
+        ].join("\n"),
+      },
+    });
+  }
+
   if (isKnowledgeSearchQuery(message) && !(intent === "documents" && isDocumentCollectionRequest(message))) {
     const region = nextThreadState.slots.city ?? nextThreadState.slots.region ?? extractRegion(normalizeImobText(message)) ?? "Brasil";
     const segment = nextThreadState.slots.goal ?? extractSegment(message);
@@ -3077,6 +3326,38 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
   const previousPendingSlot = request.threadState?.pendingSlot ?? "none";
   const pendingSlotChanged = nextThreadState.pendingSlot !== previousPendingSlot;
   const shouldStayInSearchThread = isSearchThread(request.threadLabel) && isSearchRefinementQuery(message) && !pendingSlotChanged;
+  const explicitMarketScanRequest =
+    normalizedMessage.includes("varredura de mercado")
+    || normalizedMessage.includes("fazer varredura")
+    || normalizedMessage.includes("market scan")
+    || normalizedMessage.includes("scan de mercado");
+
+  if (explicitMarketScanRequest) {
+    const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, "capture", message, nextThreadState.slots);
+    if (operationalState?.flow === "property.market_scan") {
+      const pendingLabels = operationalState.pendingFields.map((field) =>
+        mapOperationalPendingFieldLabel(operationalState.flow, field)
+      );
+      return finalize({
+        mode: "consult",
+        action: "realestate.market_scan",
+        threadLabel: getIntentThreadLabel("capture"),
+        conversationState: { slots: createEmptyImobSlots(), mode: "consult", pendingSlot: "none", resultOffset: 0, operational: operationalState },
+        presentation: {
+          ...buildVisibleOperationalPresentationMeta(operationalState),
+          text: [
+            buildOperationalCollectingText({
+              intent: "capture",
+              message,
+              operationalState,
+              pendingLabels,
+            }) ?? "Vou manter a varredura de mercado em modo read-only.",
+            "Ainda não há uma fonte de imóveis conectada para executar essa varredura neste patch, então vou manter o fluxo preparado sem inventar resultados.",
+          ].filter(Boolean).join("\n"),
+        },
+      });
+    }
+  }
   const shouldUseConsultMode =
     intent === "match" &&
     nextThreadState.slots.goal !== null &&
@@ -3349,6 +3630,47 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
         })
       )
     : [];
+  const marketScanOfferCard =
+    operationalState?.flow === "property.market_scan"
+      ? {
+          title: "Escolha como seguir",
+          lines: [
+            operationalState.marketScanContext?.cityCandidates?.length
+              ? `Cidades detectadas: ${operationalState.marketScanContext.cityCandidates.join(", ")}`
+              : "Cidade única ainda não confirmada.",
+            operationalState.marketScanContext?.goalCandidates?.length
+              ? `Finalidades detectadas: ${operationalState.marketScanContext.goalCandidates.join(", ")}`
+              : "Finalidade única ainda não confirmada.",
+            operationalState.marketScanContext?.propertyTypes?.length
+              ? `Tipos detectados: ${operationalState.marketScanContext.propertyTypes.join(", ")}`
+              : "Tipo de imóvel ainda não informado.",
+            operationalState.marketScanContext?.bedrooms?.length
+              ? `Quartos detectados: ${operationalState.marketScanContext.bedrooms.join(", ")}`
+              : "Quantidade de quartos ainda não informada.",
+            operationalState.marketScanContext?.priceRange?.max
+              ? `Faixa detectada: até R$ ${operationalState.marketScanContext.priceRange.max}${operationalState.marketScanContext.priceRange.period === "monthly" ? "/mês" : ""}`
+              : "Faixa de valor ainda não informada.",
+            "A varredura de mercado continua read-only e não cria imóvel, lead ou proprietário.",
+          ],
+          actionsLayout: "inline" as const,
+          ctas: [
+            {
+              id: "market-scan-start",
+              label: "Fazer varredura de mercado",
+              kind: "primary" as const,
+              action: "send_suggested_message" as const,
+              nextMessage: "fazer varredura de mercado",
+            },
+            {
+              id: "market-scan-specific-property",
+              label: "Cadastrar imóvel específico",
+              kind: "secondary" as const,
+              action: "send_suggested_message" as const,
+              nextMessage: "cadastrar imóvel específico",
+            },
+          ],
+        }
+      : undefined;
   if (
     operationalState?.flow === "rules.configure" &&
     operationalState.rulesDraft?.propertyFinality &&
@@ -3423,13 +3745,15 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
         : buildVisibleOperationalPresentationMeta(operationalState)
     ),
     metadata: buildCatalogConfidenceMetadata(parsedCatalogIntent, false, { source: semanticIntentSource }),
-    card: propertyReadyMenuCard,
+    card: marketScanOfferCard ?? propertyReadyMenuCard,
     form:
       operationalState?.status === "collecting"
         ? operationalState.flow === "owner.create"
           ? buildOwnerCreateForm(operationalState.ownerDraft)
           : operationalState.flow === "property.create"
             ? buildPropertyCreateForm(operationalState.propertyDraft)
+            : operationalState.flow === "property.market_scan"
+              ? undefined
             : operationalState.flow === "lead.qualify"
               ? buildLeadCreateForm(operationalState.leadDraft)
               : operationalState.flow === "proposal.create"
@@ -3500,6 +3824,60 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
       conversationState: { slots: createEmptyImobSlots(), mode: "execute", pendingSlot: "none", resultOffset: 0, operational: operationalState },
       executionRequest,
       presentation,
+    });
+  }
+
+  if (operationalState?.flow === "property.market_scan") {
+    const explicitScanRequest =
+      normalizedMessage.includes("varredura de mercado")
+      || normalizedMessage.includes("fazer varredura")
+      || normalizedMessage.includes("market scan")
+      || normalizedMessage.includes("scan de mercado");
+    const availableMarketScanResult =
+      request.marketScanResult
+      ?? request.threadState?.operational?.marketScanSnapshot
+      ?? operationalState.marketScanSnapshot
+      ?? null;
+    if (operationalState.marketScanSelection) {
+      const selectionPresentation = buildMarketScanSelectionPresentation({
+        selection: operationalState.marketScanSelection,
+        currentText: presentation.text,
+        marketScanResult: availableMarketScanResult,
+      });
+      return finalize({
+        mode: "consult",
+        action: "crm.market_scan.selection",
+        threadLabel: getIntentThreadLabel(intent),
+        conversationState: { slots: createEmptyImobSlots(), mode: "consult", pendingSlot: "none", resultOffset: 0, operational: operationalState },
+        presentation: {
+          ...presentation,
+          ...selectionPresentation,
+          ...(availableMarketScanResult ? { marketScanResult: availableMarketScanResult } : {}),
+        },
+      });
+    }
+    const marketScanPresentation = explicitScanRequest && availableMarketScanResult
+      ? buildMarketScanPresentation({
+          marketScanResult: availableMarketScanResult,
+          currentCard: presentation.card,
+          currentText: presentation.text,
+        })
+      : null;
+    return finalize({
+      mode: "consult",
+      action: explicitScanRequest ? "realestate.market_scan" : "crm.market_scan.offer",
+      threadLabel: getIntentThreadLabel(intent),
+      conversationState: { slots: createEmptyImobSlots(), mode: "consult", pendingSlot: "none", resultOffset: 0, operational: operationalState },
+      presentation: {
+        ...presentation,
+        ...(marketScanPresentation ?? {}),
+        text: marketScanPresentation?.text ?? (explicitScanRequest
+          ? [
+              presentation.text,
+              "Ainda não há uma fonte de imóveis conectada para executar essa varredura neste patch, então vou manter o fluxo preparado sem inventar resultados.",
+            ].filter(Boolean).join("\n")
+          : presentation.text),
+      },
     });
   }
 

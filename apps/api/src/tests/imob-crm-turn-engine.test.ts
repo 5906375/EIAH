@@ -173,6 +173,198 @@ test("IMOB_CRM turn engine mantém continuidade de intake para mensagens não co
   assert.match((resolved as any).presentation?.text ?? "", /continuidade do fluxo ativo/i);
 });
 
+test("IMOB_CRM turn engine injeta market scan read-only com provider interno quando o scan é explicitamente solicitado", async () => {
+  const events: any[] = [];
+  const params = createEngineParams({
+    prisma: {
+      imobProperty: {
+        findMany: async () => [
+          {
+            id: "prop-1",
+            tenantId: "tenant-1",
+            workspaceId: "workspace-1",
+            propertyType: "apartamento",
+            goal: "locacao",
+            city: "Itajaí",
+            neighborhood: "Centro",
+            address: "Rua 1500",
+            bedrooms: 2,
+            askingPriceCents: 320000,
+            status: "ready_for_review",
+            owner: { id: "owner-1", name: "Carlos" },
+          },
+        ],
+      },
+      imobCaseEvent: {
+        create: async (args: any) => {
+          events.push(args.data);
+          return { id: "event-1" };
+        },
+      },
+    },
+    body: {
+      message: "continuar com a varredura de mercado",
+      caseId: "case-1",
+      threadState: {
+        mode: "consult",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "property.market_scan",
+          status: "collecting",
+          pendingFields: ["city", "goal"],
+          propertyDraft: {
+            propertyId: null,
+            propertyType: null,
+            goal: null,
+            cep: null,
+            city: null,
+            neighborhood: null,
+            bedrooms: null,
+            bathrooms: null,
+            address: null,
+          },
+          marketScanContext: {
+            cities: ["Itajaí"],
+            cityCandidates: ["Itajaí"],
+            uf: "SC",
+            goals: ["locacao"],
+            goalCandidates: ["locacao"],
+            propertyTypes: ["apartamento"],
+            bedrooms: [2],
+            priceRange: {
+              min: null,
+              max: 3500,
+              currency: "BRL",
+              period: "monthly",
+              confidence: "high",
+            },
+            readOnly: true,
+            limitPerGroup: 10,
+          },
+        },
+      },
+    },
+    helpers: {
+      ...createEngineParams().helpers,
+      applyExistingRegistrationResolution: async ({ resolved }: any) => resolved,
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal((resolved as any).action, "realestate.market_scan");
+  assert.equal((resolved as any).executionRequest, undefined);
+  assert.equal((resolved as any).presentation?.marketScanResult?.sourceStatus, "completed");
+  assert.equal((resolved as any).presentation?.marketScanResult?.groups?.[0]?.items?.length, 1);
+  assert.equal((resolved as any).conversationState?.operational?.marketScanSnapshot?.readOnly, true);
+  assert.deepEqual(
+    (resolved as any).presentation?.agentActivities?.map((item: any) => item.agentLabel),
+    ["IMOB", "Market Scan", "Guardian"],
+  );
+  assert.equal(events.length, 1);
+  assert.equal(events[0].type, "market_scan.snapshot");
+  assert.match((resolved as any).presentation?.text ?? "", /varredura read-only concluída/i);
+});
+
+test("IMOB_CRM turn engine retoma market scan snapshot persistido por caseId quando o threadState não carrega o snapshot", async () => {
+  const params = createEngineParams({
+    prisma: {
+      imobCaseEvent: {
+        findFirst: async () => ({
+          payload: {
+            scanId: "market-scan-persisted",
+            providerId: "internal_crm",
+            sourceStatus: "completed",
+            totalItems: 1,
+            groups: [
+              {
+                city: "Itajaí",
+                goal: "locacao",
+                propertyType: "apartamento",
+                bedrooms: 2,
+                items: [
+                  {
+                    source: "internal_crm",
+                    sourceId: "prop-9",
+                    providerId: "internal_crm",
+                    retrievedAt: "2026-05-09T12:00:00.000Z",
+                    city: "Itajaí",
+                    uf: "SC",
+                    goal: "locacao",
+                    propertyType: "apartamento",
+                    bedrooms: 2,
+                    price: 3200,
+                    currency: "BRL",
+                    neighborhood: "Centro",
+                    address: "Rua 1500",
+                    title: "Apartamento 2 quartos",
+                    url: null,
+                  },
+                ],
+              },
+            ],
+            readOnly: true,
+            generatedAt: "2026-05-09T12:00:00.000Z",
+          },
+        }),
+      },
+    },
+    body: {
+      message: "me mostre a varredura de mercado",
+      caseId: "case-2",
+      threadState: {
+        mode: "consult",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "property.market_scan",
+          status: "collecting",
+          pendingFields: ["city", "goal"],
+          propertyDraft: {
+            propertyId: null,
+            propertyType: null,
+            goal: null,
+            cep: null,
+            city: null,
+            neighborhood: null,
+            bedrooms: null,
+            bathrooms: null,
+            address: null,
+          },
+          marketScanContext: {
+            cities: ["Itajaí"],
+            cityCandidates: ["Itajaí"],
+            uf: "SC",
+            goals: ["locacao"],
+            goalCandidates: ["locacao"],
+            propertyTypes: ["apartamento"],
+            bedrooms: [2],
+            priceRange: {
+              min: null,
+              max: 3500,
+              currency: "BRL",
+              period: "monthly",
+              confidence: "high",
+              ambiguityReason: null,
+            },
+            readOnly: true,
+            limitPerGroup: 10,
+          },
+        },
+      },
+    },
+    helpers: {
+      ...createEngineParams().helpers,
+      applyExistingRegistrationResolution: async ({ resolved }: any) => resolved,
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal((resolved as any).conversationState?.operational?.marketScanSnapshot?.scanId, "market-scan-persisted");
+});
+
 test("IMOB_CRM turn engine preserves lead discovery capture during active qualification", async () => {
   const params = createEngineParams({
     body: {

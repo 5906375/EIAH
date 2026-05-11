@@ -14,6 +14,7 @@ function createMockPrisma() {
       updatedAt: new Date("2026-01-01"),
     },
   ];
+  const properties: any[] = [];
   const cases: any[] = [];
   const caseEvents: any[] = [];
   const memoryEvents: any[] = [];
@@ -22,6 +23,7 @@ function createMockPrisma() {
   return {
     owners,
     leads,
+    properties,
     cases,
     caseEvents,
     memoryEvents,
@@ -82,8 +84,43 @@ function createMockPrisma() {
       },
     },
     imobProperty: {
-      count: async () => 0,
-      findMany: async () => [],
+      count: async ({ where }: any = {}) => properties.filter((item) => (
+        (!where?.tenantId || item.tenantId === where.tenantId) &&
+        (!where?.workspaceId || item.workspaceId === where.workspaceId) &&
+        (!where?.ownerId || item.ownerId === where.ownerId) &&
+        item.status !== "archived"
+      )).length,
+      findMany: async ({ where }: any = {}) => properties.filter((item) => (
+        (!where?.tenantId || item.tenantId === where.tenantId) &&
+        (!where?.workspaceId || item.workspaceId === where.workspaceId) &&
+        item.status !== "archived"
+      )).map(clone),
+      findFirst: async ({ where }: any) => {
+        const found = properties.find((item) => (
+          (!where.id || item.id === where.id) &&
+          (!where.tenantId || item.tenantId === where.tenantId) &&
+          (!where.workspaceId || item.workspaceId === where.workspaceId) &&
+          (!where.address || item.address === where.address.equals) &&
+          item.status !== "archived"
+        ));
+        return found ? clone(found) : null;
+      },
+      create: async ({ data }: any) => {
+        const created = {
+          id: `property-${properties.length + 1}`,
+          ...data,
+          updatedAt: new Date("2026-01-03"),
+          owner: null,
+        };
+        properties.push(created);
+        return clone(created);
+      },
+      update: async ({ where, data }: any) => {
+        const property = properties.find((item) => item.id === where.id);
+        if (!property) throw new Error("property not found");
+        Object.assign(property, data);
+        return clone(property);
+      },
     },
     imobCase: {
       count: async () => 0,
@@ -289,6 +326,107 @@ test("IMOB_CRM mutation service skips duplicate shadow execution for identical l
   assert.equal(shadowEvents.length, 2);
   assert.equal(shadowEvents.filter((event) => event.metadata.capabilityId === "lead.scoring").length, 1);
   assert.equal(shadowEvents.filter((event) => event.metadata.capabilityId === "relationship.commercial_memory").length, 1);
+});
+
+test("IMOB_CRM mutation service dedupes and preserves market scan origin before property creation", async () => {
+  const prisma = createMockPrisma();
+  prisma.properties.push({
+    id: "property-existing-1",
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    propertyType: "apartamento",
+    goal: "locacao",
+    address: "Rua 1500",
+    city: "Itajaí",
+    neighborhood: "Centro",
+    bedrooms: 2,
+    bathrooms: null,
+    status: "pending_data",
+    metadata: {
+      externalPropertyRef: "prop-1",
+    },
+    updatedAt: new Date("2026-01-02"),
+  });
+
+  const service = new ImobCrmMutationService(prisma as any);
+
+  const persisted = await service.upsertCaseFromResolvedTurn({
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    userId: "user-1",
+  }, {
+    threadId: "thread-market-scan",
+    threadLabel: "Captação",
+    resolved: {
+      mode: "execute",
+      action: "realestate.register_property",
+      threadLabel: "Captação",
+      presentation: {
+        text: "Confirmando a captação do imóvel selecionado no scan.",
+        owner: "Corretor",
+        nextStep: "Validar proprietário e seguir com a captação.",
+        pendingFieldLabels: [],
+      },
+      executionRequest: null,
+      conversationState: {
+        operational: {
+          flow: "property.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          propertyDraft: {
+            propertyId: "prop-1",
+            propertyType: "apartamento",
+            goal: "locacao",
+            cep: null,
+            city: "Itajaí",
+            neighborhood: "Centro",
+            bedrooms: 2,
+            bathrooms: null,
+            address: "Rua 1500",
+            origin: {
+              source: "internal_crm",
+              sourceId: "prop-1",
+              providerId: "internal_crm",
+              retrievedAt: "2026-05-09T12:00:00.000Z",
+              scanId: "market-scan-1",
+            },
+          },
+          marketScanSelection: {
+            status: "pending_confirmation",
+            scanId: "market-scan-1",
+            source: "internal_crm",
+            sourceId: "prop-1",
+            providerId: "internal_crm",
+            retrievedAt: "2026-05-09T12:00:00.000Z",
+            city: "Itajaí",
+            goal: "locacao",
+            propertyType: "apartamento",
+            bedrooms: 2,
+            price: 3200,
+            currency: "BRL",
+            neighborhood: "Centro",
+            address: "Rua 1500",
+            title: "Apartamento 2 quartos",
+            url: null,
+          },
+        },
+      },
+    },
+  });
+
+  assert.equal(persisted?.flow, "property.create");
+  assert.equal(prisma.properties.length, 1);
+  assert.equal(prisma.properties[0].id, "property-existing-1");
+  assert.equal((prisma.properties[0].metadata as any)?.externalPropertyRef, "prop-1");
+  assert.deepEqual((prisma.properties[0].metadata as any)?.marketScanOrigin, {
+    source: "internal_crm",
+    sourceId: "prop-1",
+    providerId: "internal_crm",
+    retrievedAt: "2026-05-09T12:00:00.000Z",
+    scanId: "market-scan-1",
+  });
+  assert.equal(prisma.cases[0].propertyId, "property-existing-1");
+  assert.equal((prisma.caseEvents[0].payload.marketScanSelection as any)?.sourceId, "prop-1");
 });
 
 test("IMOB_CRM mutation service keeps approval event actor/evidence when updating case", async () => {

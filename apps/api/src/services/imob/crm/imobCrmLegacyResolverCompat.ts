@@ -1187,6 +1187,25 @@ function buildDomainGuidanceResponse(intent: DomainGuidanceIntent, threadState: 
 
 export async function resolveImobCrmOperationalUpdate(params: ResolverParams) {
   const normalized = normalizeImobCrmText(params.message);
+  const operational = asObject(params.threadState?.operational);
+  const isMarketScanSelectionMessage =
+    (asString(operational?.flow) === "property.market_scan"
+      || asString(operational?.flow) === "property.create")
+    && (
+      normalized.includes("selecionar imovel")
+      || normalized.includes("selecionar imóvel")
+      || normalized.includes("usar imovel do scan")
+      || normalized.includes("usar imóvel do scan")
+      || normalized.includes("salvar imovel do scan")
+      || normalized.includes("salvar imóvel do scan")
+      || normalized.includes("confirmar selecao do scan")
+      || normalized.includes("confirmar seleção do scan")
+      || normalized.includes("confirmar imovel do scan")
+      || normalized.includes("confirmar imóvel do scan")
+      || normalized.includes("confirmar captacao do scan")
+      || normalized.includes("confirmar captação do scan")
+    );
+  if (isMarketScanSelectionMessage) return null;
   const ownerName = extractOwnerNameFromMessage(params.message);
   const ownerExplicitName = extractOwnerExplicitNameFromMessage(params.message);
   const ownerExplicitPhone = extractOwnerExplicitPhoneFromMessage(params.message);

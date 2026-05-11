@@ -25,6 +25,7 @@ import {
   apiUpsertImobChatInterviewState,
   type ImobCaseContext,
   type ImobCaseRecommendedAction,
+  type ImobAgentActivityEvent,
   type ImobChatConversation,
   type ImobContractInterviewState,
   type ImobChatMessage,
@@ -219,6 +220,30 @@ function buildStructuredPresentationBlocks(
   presentation: ImobResolveTurnResponse["presentation"],
 ): ImobPresentationBlock[] {
   const blocks: ImobPresentationBlock[] = [];
+
+  const normalizedAgentActivities = presentation.agentActivities
+    ?.filter(
+      (activity): activity is ImobAgentActivityEvent =>
+        Boolean(
+          activity &&
+            typeof activity.agentLabel === "string" &&
+            activity.agentLabel.trim() &&
+            typeof activity.visibleMessage === "string" &&
+            activity.visibleMessage.trim(),
+        ),
+    )
+    .map((activity) => ({
+      ...activity,
+      displayPrefix: activity.displayPrefix ?? "Agente",
+    }));
+
+  if (normalizedAgentActivities?.length) {
+    blocks.push({
+      kind: "agent_timeline",
+      title: "Agentic IA em ação",
+      agentActivities: normalizedAgentActivities,
+    });
+  }
 
   if (presentation.caseBrief) {
     blocks.push({
@@ -4428,6 +4453,31 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                     ) : null}
                                     {block.text && block.text.trim().toLowerCase() !== message.text.trim().toLowerCase() ? (
                                       <p className="text-[10px] text-muted-foreground">{block.text}</p>
+                                    ) : null}
+                                    {block.kind === "agent_timeline" && block.agentActivities?.length ? (
+                                      (() => {
+                                        const shouldDelayBlockContent = typewriterMessageIds[message.id] === true;
+                                        if (shouldDelayBlockContent) return null;
+                                        return (
+                                          <div className="rounded-2xl border border-white/10 bg-black/20 p-2.5">
+                                            <div className="space-y-2">
+                                              {block.agentActivities.map((activity, activityIndex) => (
+                                                <div
+                                                  key={`${message.id}-agent-activity-${blockIndex}-${activityIndex}-${activity.agentId}`}
+                                                  className="rounded-xl bg-white/[0.03] px-2.5 py-2"
+                                                >
+                                                  <p className="text-[11px] font-medium text-foreground/95">
+                                                    {(activity.displayPrefix ?? "Agente").trim()} {activity.agentLabel.trim()}
+                                                  </p>
+                                                  <p className="mt-1 text-[10px] text-muted-foreground">
+                                                    {activity.visibleMessage.trim()}
+                                                  </p>
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        );
+                                      })()
                                     ) : null}
                                     {block.lines?.length ? (
                                       (() => {

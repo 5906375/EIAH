@@ -612,7 +612,9 @@ export class ImobCrmMutationService {
     resolved: ResolvedTurnForCaseUpsert;
   }) {
     const operational = params.resolved?.conversationState?.operational;
-    if (!operational || params.resolved?.mode !== "execute") return null;
+    const shouldPersistConsultiveMarketScan = params.resolved?.mode === "consult"
+      && operational?.flow === "property.market_scan";
+    if (!operational || (params.resolved?.mode !== "execute" && !shouldPersistConsultiveMarketScan)) return null;
 
     const nowIso = new Date().toISOString();
     const pendingItems = asStringList(params.resolved?.presentation?.pendingFieldLabels).length > 0
@@ -751,6 +753,12 @@ export class ImobCrmMutationService {
       const externalPropertyRef = draft.propertyId ?? null;
       const existingId = await lookupPropertyDraft(draft);
       if (mode === "lookup_only") return existingId;
+      const currentMetadata = existingId
+        ? asObject((await this.prisma.imobProperty.findFirst({
+            where: { id: existingId, tenantId: scope.tenantId, workspaceId: scope.workspaceId },
+            select: { metadata: true },
+          }))?.metadata) ?? {}
+        : {};
 
       const input: PropertyInput = {
         ownerId: persistedOwnerId ?? null,
@@ -764,9 +772,11 @@ export class ImobCrmMutationService {
         status: operational.status === "ready_for_review" ? "ready_for_review" : "pending_data",
         pendingItems: pendingItems.length > 0 ? pendingItems : undefined,
         metadata: {
+          ...currentMetadata,
           source: "imob-chat",
           flow: operational.flow,
           externalPropertyRef,
+          marketScanOrigin: asObject(draft.origin) ?? null,
           dedupeKey: params.resolved?.presentation?.dedupeKey ?? null,
         },
       };
@@ -841,6 +851,7 @@ export class ImobCrmMutationService {
         pendingFieldLabels: pendingItems,
         ownerDraft: ownerDraft ?? null,
         propertyDraft: propertyDraft ?? null,
+        marketScanSelection: asObject(operational.marketScanSelection) ?? null,
         leadDraft: leadDraft ?? null,
         proposalDraft: proposalDraft ?? null,
         visitDraft: visitDraft ?? null,

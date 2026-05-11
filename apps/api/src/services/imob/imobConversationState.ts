@@ -16,13 +16,21 @@ import {
   type ImobCommissionDraft,
   type ImobOwnerDraft,
   type ImobPropertyDraft,
+  type ImobMarketScanContext,
+  type ImobMarketScanResultItem,
+  type ImobMarketScanSelection,
   type ImobProposalDraft,
   type ImobVisitDraft,
   type ImobPendingSlot,
   type ImobSearchSlots,
   type ImobThreadConversationState,
 } from "./imobConversationContract";
-import { findImobCrmPropertyTypeInText } from "./crm/imobCrmPropertyTypes";
+import {
+  findImobCrmPropertyTypeInText,
+  IMOB_CRM_PROPERTY_TYPE_OPTIONS,
+  normalizeImobCrmPropertyType,
+  type ImobCrmPropertyType,
+} from "./crm/imobCrmPropertyTypes";
 
 export function normalizeImobText(value: string) {
   return value
@@ -77,6 +85,55 @@ export function extractBudgetMax(text: string) {
   return null;
 }
 
+function parsePriceValue(raw: string, magnitude?: string | null) {
+  const normalized = raw.replace(/\./g, "").replace(/,/g, ".");
+  const base = Number.parseFloat(normalized);
+  if (!Number.isFinite(base)) return null;
+  if (!magnitude) return base;
+  if (magnitude.startsWith("milh")) return base * 1_000_000;
+  if (magnitude === "mil") return base * 1_000;
+  return base;
+}
+
+export function extractMarketScanPriceRange(text: string, goals: string[]) {
+  const normalized = normalizeImobText(text).replace(/\./g, "").replace(/,/g, ".");
+  const betweenMatch = normalized.match(
+    /(?:entre|de)\s*r?\$?\s*(\d+(?:\.\d+)?)\s*(mil|milhao|milhoes)?\s*(?:e|a)\s*r?\$?\s*(\d+(?:\.\d+)?)\s*(mil|milhao|milhoes)?/i,
+  );
+  const upToMatch = normalized.match(/(?:ate|maximo|maximo de|no maximo)\s*r?\$?\s*(\d+(?:\.\d+)?)\s*(mil|milhao|milhoes)?/i);
+
+  let min: number | null = null;
+  let max: number | null = null;
+  if (betweenMatch) {
+    min = parsePriceValue(betweenMatch[1], betweenMatch[2]);
+    max = parsePriceValue(betweenMatch[3], betweenMatch[4]);
+  } else if (upToMatch) {
+    max = parsePriceValue(upToMatch[1], upToMatch[2]);
+  } else {
+    max = extractBudgetMax(text);
+  }
+
+  if (min === null && max === null) return null;
+
+  const period =
+    normalized.includes("diaria") || normalized.includes("por dia")
+      ? "daily"
+      : goals.length === 1 && goals[0] === "locacao"
+        ? "monthly"
+        : goals.every((goal) => goal === "compra" || goal === "venda")
+          ? "total"
+          : null;
+
+  return {
+    min,
+    max,
+    currency: "BRL" as const,
+    period,
+    confidence: "high" as const,
+    ambiguityReason: null,
+  };
+}
+
 export function extractGoal(text: string): ImobSearchSlots["goal"] {
   if (text.includes("temporada")) return "aluguel_por_temporada";
   if (text.includes("alug") || text.includes("loca")) return "locacao";
@@ -84,8 +141,52 @@ export function extractGoal(text: string): ImobSearchSlots["goal"] {
   return null;
 }
 
+export function extractGoalCandidates(text: string) {
+  const normalized = normalizeImobText(text);
+  const candidates: string[] = [];
+  if (normalized.includes("compr")) candidates.push("compra");
+  if (normalized.includes("vend")) candidates.push("venda");
+  if (normalized.includes("alug") || normalized.includes("loca")) candidates.push("locacao");
+  if (normalized.includes("temporada")) candidates.push("aluguel_por_temporada");
+  return Array.from(new Set(candidates));
+}
+
+export function normalizeMarketScanGoalCandidates(goals: string[]) {
+  return Array.from(new Set(goals.map((goal) => {
+    if (goal === "locação") return "locacao";
+    return normalizeImobText(goal);
+  }))).sort((left, right) => left.localeCompare(right));
+}
+
 function extractPropertyType(text: string): ImobSearchSlots["propertyType"] {
   return findImobCrmPropertyTypeInText(text);
+}
+
+export function extractMarketScanPropertyTypes(text: string) {
+  const normalized = normalizeImobText(text);
+  const propertyTypes = new Set<ImobCrmPropertyType>();
+  for (const option of IMOB_CRM_PROPERTY_TYPE_OPTIONS) {
+    const synonyms = [option.value, option.label, ...option.synonyms];
+    if (synonyms.some((synonym) => {
+      const normalizedSynonym = normalizeImobText(synonym);
+      return new RegExp(`(^|[^a-z0-9])${normalizedSynonym.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9]|$)`, "i").test(normalized);
+    })) {
+      const canonical = normalizeImobCrmPropertyType(option.value);
+      if (canonical) propertyTypes.add(canonical);
+    }
+  }
+  return Array.from(propertyTypes).sort((left, right) => left.localeCompare(right));
+}
+
+export function extractMarketScanBedrooms(text: string) {
+  const normalized = normalizeImobText(text);
+  const matches = normalized.matchAll(/\b(\d+|um|uma|dois|duas|tres|quatro|cinco|seis)\b\s+quartos?\b/g);
+  const values = new Set<number>();
+  for (const match of matches) {
+    const count = readNumber(match[1] ?? null);
+    if (typeof count === "number") values.add(count);
+  }
+  return Array.from(values).sort((left, right) => left - right);
 }
 
 export function extractCity(text: string) {
@@ -116,6 +217,34 @@ export function extractCity(text: string) {
     }
   }
   return null;
+}
+
+export function extractCityCandidates(text: string) {
+  const normalizedText = normalizeImobText(text);
+  const candidates: string[] = [];
+  const hasBalnearioCamboriu = normalizedText.includes("balnepario camboriu") || normalizedText.includes("balneario camboriu") || /\bbc\b/.test(normalizedText);
+  const explicitCityMatch = normalizedText.match(
+    /(?:cidade(?:\s+de\s+interesse)?(?:\s+do\s+(?:lead|imovel|imóvel))?)\s*:?\s*([a-z]+(?:\s+[a-z]+){0,8})/i,
+  );
+  if (explicitCityMatch?.[1]) {
+    const values = explicitCityMatch[1]
+      .split(/\b(?:faixa|orcamento|orçamento|telefone|email|e-mail|documento|endereco|endereço|tipo|finalidade)\b/i)[0]
+      ?.split(/\s*(?:,| e )\s*/i)
+      .map((item) => item.trim())
+      .filter(Boolean) ?? [];
+    for (const value of values) {
+      candidates.push(titleCaseWords(value));
+    }
+  }
+  if (hasBalnearioCamboriu) {
+    candidates.push("Balneário Camboriú");
+  }
+  if (normalizedText.includes("camboriu") && !hasBalnearioCamboriu) candidates.push("Camboriú");
+  if (normalizedText.includes("itapema")) candidates.push("Itapema");
+  if (normalizedText.includes("itajai")) candidates.push("Itajaí");
+  if (normalizedText.includes("sao paulo")) candidates.push("São Paulo");
+  if (normalizedText.includes("rio de janeiro")) candidates.push("Rio de Janeiro");
+  return Array.from(new Set(candidates)).sort((left, right) => left.localeCompare(right));
 }
 
 export function extractRegion(text: string) {
@@ -386,7 +515,125 @@ function buildPropertyDraft(previous: ImobPropertyDraft | undefined, message: st
     bedrooms: slots.bedrooms ?? previous?.bedrooms ?? null,
     bathrooms: slots.bathrooms ?? previous?.bathrooms ?? null,
     address: extractAddress(message) ?? previous?.address ?? null,
+    origin: previous?.origin ?? null,
   };
+}
+
+function extractMarketScanSelectionSourceId(message: string) {
+  const normalized = normalizeImobText(message);
+  const match = normalized.match(
+    /(?:selecionar|usar|salvar|confirmar)\s+(?:imovel|imóvel|item)?(?:\s+do\s+scan)?\s+([a-z0-9][a-z0-9:_-]+)/i,
+  );
+  return match?.[1]?.trim() ?? null;
+}
+
+function findMarketScanItemBySourceId(
+  snapshot: ImobOperationalState["marketScanSnapshot"] | undefined,
+  sourceId: string | null,
+): ImobMarketScanResultItem | null {
+  if (!snapshot || !sourceId) return null;
+  for (const group of snapshot.groups) {
+    const item = group.items.find((candidate) => candidate.sourceId.toLowerCase() === sourceId.toLowerCase());
+    if (item) return item;
+  }
+  return null;
+}
+
+function buildMarketScanSelection(
+  snapshot: ImobOperationalState["marketScanSnapshot"] | undefined,
+  item: ImobMarketScanResultItem | null,
+): ImobMarketScanSelection | null {
+  if (!snapshot || !item) return null;
+  return {
+    status: "pending_confirmation",
+    scanId: snapshot.scanId,
+    source: item.source,
+    sourceId: item.sourceId,
+    providerId: item.providerId,
+    retrievedAt: item.retrievedAt,
+    city: item.city,
+    goal: item.goal,
+    propertyType: item.propertyType ?? null,
+    bedrooms: item.bedrooms ?? null,
+    price: item.price ?? null,
+    currency: item.currency ?? null,
+    neighborhood: item.neighborhood ?? null,
+    address: item.address ?? null,
+    title: item.title ?? null,
+    url: item.url ?? null,
+  };
+}
+
+function buildPropertyDraftFromMarketScanSelection(
+  previous: ImobPropertyDraft | undefined,
+  selection: ImobMarketScanSelection,
+): ImobPropertyDraft {
+  return {
+    propertyId: selection.sourceId,
+    propertyType: selection.propertyType ?? previous?.propertyType ?? null,
+    goal: (selection.goal as ImobPropertyDraft["goal"]) ?? previous?.goal ?? null,
+    cep: previous?.cep ?? null,
+    city: selection.city ?? previous?.city ?? null,
+    neighborhood: selection.neighborhood ?? previous?.neighborhood ?? null,
+    bedrooms: selection.bedrooms ?? previous?.bedrooms ?? null,
+    bathrooms: previous?.bathrooms ?? null,
+    address: selection.address ?? previous?.address ?? null,
+    origin: {
+      source: selection.source,
+      sourceId: selection.sourceId,
+      providerId: selection.providerId,
+      retrievedAt: selection.retrievedAt,
+      scanId: selection.scanId,
+    },
+  };
+}
+
+function isMarketScanRequest(message: string) {
+  const normalized = normalizeImobText(message);
+  return (
+    normalized.includes("varredura de mercado")
+    || normalized.includes("fazer varredura")
+    || normalized.includes("market scan")
+    || normalized.includes("scan de mercado")
+  );
+}
+
+function buildMarketScanContext(params: {
+  previous?: ImobMarketScanContext | null;
+  message: string;
+  slots: ImobSearchSlots;
+}) {
+  const normalized = normalizeImobText(params.message);
+  const cityCandidates = extractCityCandidates(normalized);
+  const goalCandidates = extractGoalCandidates(normalized);
+  const inheritedCities = params.previous?.cities ?? [];
+  const inheritedGoals = params.previous?.goals ?? [];
+  const cities = cityCandidates.length > 0
+    ? cityCandidates
+    : params.slots.city
+      ? [params.slots.city]
+      : inheritedCities;
+  const goals = goalCandidates.length > 0
+    ? normalizeMarketScanGoalCandidates(goalCandidates)
+    : params.slots.goal
+      ? [params.slots.goal]
+      : inheritedGoals;
+  const propertyTypes = extractMarketScanPropertyTypes(normalized);
+  const bedrooms = extractMarketScanBedrooms(normalized);
+  const priceRange = extractMarketScanPriceRange(normalized, goals);
+
+  return {
+    cities: Array.from(new Set(cities)).sort((left, right) => left.localeCompare(right)),
+    cityCandidates,
+    uf: params.slots.region === "Santa Catarina" ? "SC" : params.slots.region ?? params.previous?.uf ?? null,
+    goals,
+    goalCandidates: normalizeMarketScanGoalCandidates(goalCandidates),
+    propertyTypes,
+    bedrooms,
+    priceRange,
+    readOnly: true,
+    limitPerGroup: 10,
+  } satisfies ImobMarketScanContext;
 }
 
 function buildPropertyPendingFields(draft: ImobPropertyDraft) {
@@ -1023,7 +1270,80 @@ export function createNextImobOperationalState(
   slots: ImobSearchSlots
 ): ImobOperationalState | null {
   if (intent === "capture") {
+    if (previous?.flow === "property.market_scan" && (previous.marketScanSnapshot || previous.marketScanSelection)) {
+      const normalized = normalizeImobText(message);
+      const wantsSelect =
+        normalized.includes("selecionar imóvel")
+        || normalized.includes("selecionar imovel")
+        || normalized.includes("selecionar item")
+        || normalized.includes("usar imóvel do scan")
+        || normalized.includes("usar imovel do scan")
+        || normalized.includes("salvar imóvel do scan")
+        || normalized.includes("salvar imovel do scan");
+      const wantsConfirmSelection =
+        normalized.includes("confirmar seleção do scan")
+        || normalized.includes("confirmar selecao do scan")
+        || normalized.includes("confirmar imóvel do scan")
+        || normalized.includes("confirmar imovel do scan")
+        || normalized.includes("confirmar captação do scan")
+        || normalized.includes("confirmar captacao do scan");
+
+      if (wantsConfirmSelection && previous.marketScanSelection) {
+        const propertyDraft = buildPropertyDraftFromMarketScanSelection(
+          previous.propertyDraft,
+          previous.marketScanSelection,
+        );
+        const pendingFields = buildPropertyPendingFields(propertyDraft);
+        return {
+          flow: "property.create",
+          status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
+          pendingFields,
+          propertyDraft,
+        };
+      }
+      if (wantsConfirmSelection) return previous;
+
+      const selectedSourceId = extractMarketScanSelectionSourceId(message);
+      const selectedItem = findMarketScanItemBySourceId(previous.marketScanSnapshot, selectedSourceId);
+
+      if (wantsSelect && selectedItem) {
+        const selection = buildMarketScanSelection(previous.marketScanSnapshot, selectedItem);
+        return {
+          ...previous,
+          status: "ready_for_review",
+          pendingFields: [],
+          propertyDraft: selection
+            ? buildPropertyDraftFromMarketScanSelection(previous.propertyDraft, selection)
+            : previous.propertyDraft,
+          marketScanSelection: selection,
+        };
+      }
+      if (wantsSelect) return previous;
+    }
+
+    if (previous?.flow === "property.market_scan" && isMarketScanRequest(message)) {
+      return {
+        ...previous,
+        marketScanContext: buildMarketScanContext({
+          previous: previous.marketScanContext ?? null,
+          message,
+          slots,
+        }),
+        marketScanSelection: null,
+      };
+    }
     if (hasPropertyCaptureSignal(message, slots)) {
+      const previousMarketScanContext = previous?.flow === "property.market_scan"
+        ? previous.marketScanContext ?? null
+        : null;
+      const marketScanContext = buildMarketScanContext({
+        previous: previousMarketScanContext,
+        message,
+        slots,
+      });
+      const hasMultipleCandidates =
+        marketScanContext.cityCandidates.length > 1
+        || marketScanContext.goalCandidates.length > 1;
       const inheritedSlots: ImobSearchSlots = previous?.flow === "lead.qualify"
         ? {
             ...slots,
@@ -1036,7 +1356,23 @@ export function createNextImobOperationalState(
         message,
         inheritedSlots,
       );
+      if (marketScanContext.cityCandidates.length > 1) draft.city = null;
+      if (marketScanContext.goalCandidates.length > 1) draft.goal = null;
       const pendingFields = buildPropertyPendingFields(draft);
+      if (isMarketScanRequest(message) || hasMultipleCandidates) {
+        return {
+          flow: "property.market_scan",
+          status: "collecting",
+          pendingFields: Array.from(new Set([
+            ...(marketScanContext.cityCandidates.length > 1 ? ["city"] : []),
+            ...(marketScanContext.goalCandidates.length > 1 ? ["goal"] : []),
+          ])),
+          propertyDraft: draft,
+          marketScanContext,
+          marketScanSnapshot: previous?.flow === "property.market_scan" ? previous.marketScanSnapshot : undefined,
+          marketScanSelection: previous?.flow === "property.market_scan" ? previous.marketScanSelection ?? null : null,
+        };
+      }
       return {
         flow: "property.create",
         status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
