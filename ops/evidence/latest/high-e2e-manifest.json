@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-04-27T10:30:00Z",
+  "generatedAt": "2026-05-11T12:20:00Z",
   "commitSha": "recovery-local",
   "runIds": ["run-stg-001", "run-stg-002"],
   "bundleHash": "sha256:examplebundle",
