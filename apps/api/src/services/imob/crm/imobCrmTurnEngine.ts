@@ -2,12 +2,14 @@ import { resolveImobSemanticIntent, type ImobSemanticIntentResolution } from "..
 import { matchImobConversationalIntents } from "../imobIntentCatalog";
 import { resolveImobTurn } from "../imobTurnResolver";
 import { InternalCrmMarketScanProvider } from "../marketScan/InternalCrmMarketScanProvider";
+import { TenantInventoryImportProvider } from "../marketScan/TenantInventoryImportProvider";
 import {
   attachMarketScanSnapshotToOperationalState,
   loadLatestImobMarketScanSnapshot,
   persistImobMarketScanSnapshot,
 } from "../marketScan/imobMarketScanSnapshot";
 import type { MarketScanQuery, MarketScanResult } from "../marketScan/MarketScanProvider";
+import { ImobMarketScanProviderRouter } from "../marketScan/imobMarketScanProviderRouter";
 import type {
   ImobCrmCaseContext,
   ImobCrmTurnCopyState,
@@ -128,13 +130,17 @@ async function resolveMarketScanResult(params: {
 }): Promise<ImobMarketScanResultSnapshot | null> {
   if (!(params.prisma as any)?.imobProperty?.findMany) return null;
   const repository = new ImobCrmRepository(params.prisma as any);
-  const provider = new InternalCrmMarketScanProvider({
-    listProperties(scope) {
+  const source = {
+    listProperties(scope: { tenantId: string; workspaceId: string }) {
       return repository.listProperties(scope) as any;
     },
+  };
+  const router = new ImobMarketScanProviderRouter({
+    internal_crm: new InternalCrmMarketScanProvider(source),
+    tenant_inventory_import: new TenantInventoryImportProvider(source),
   });
 
-  const result = await provider.search(
+  const result = await router.search(
     buildMarketScanQuery(params.marketScanContext),
     {
       tenantId: params.tenantId,

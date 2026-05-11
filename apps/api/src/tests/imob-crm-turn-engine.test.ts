@@ -365,6 +365,90 @@ test("IMOB_CRM turn engine retoma market scan snapshot persistido por caseId qua
   assert.equal((resolved as any).conversationState?.operational?.marketScanSnapshot?.scanId, "market-scan-persisted");
 });
 
+test("IMOB_CRM turn engine uses tenant inventory provider when imported inventory exists for the workspace", async () => {
+  const params = createEngineParams({
+    prisma: {
+      imobProperty: {
+        findMany: async () => ([
+          {
+            id: "property-import-1",
+            tenantId: "tenant-1",
+            workspaceId: "workspace-1",
+            propertyType: "apartamento",
+            goal: "locacao",
+            city: "Itajaí",
+            neighborhood: "Centro",
+            address: "Rua Importada 10",
+            bedrooms: 2,
+            askingPriceCents: 325000,
+            status: "active",
+            metadata: {
+              importedFrom: "drive-manifest",
+              sourceId: "drive-prop-10",
+              sourceUrl: "https://drive.example/property-10",
+              sourceLabel: "tenant_inventory_import",
+              title: "Apartamento importado 2 quartos",
+              importedAt: "2026-05-11T10:00:00.000Z",
+            },
+          },
+        ]),
+      },
+      imobCaseEvent: {
+        create: async () => null,
+      },
+    },
+    body: {
+      message: "fazer varredura de mercado",
+      caseId: "case-market-scan-imported",
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "property.market_scan",
+          status: "ready_for_review",
+          pendingFields: [],
+          propertyDraft: {
+            propertyId: null,
+            propertyType: null,
+            goal: null,
+            cep: null,
+            city: null,
+            neighborhood: null,
+            bedrooms: null,
+            bathrooms: null,
+            address: null,
+          },
+          marketScanContext: {
+            cities: ["Itajaí"],
+            cityCandidates: ["Itajaí"],
+            uf: "SC",
+            goals: ["locacao"],
+            goalCandidates: ["locacao"],
+            propertyTypes: ["apartamento"],
+            bedrooms: [2],
+            priceRange: null,
+            readOnly: true,
+            limitPerGroup: 10,
+          },
+        },
+      },
+    },
+    helpers: {
+      ...createEngineParams().helpers,
+      applyExistingRegistrationResolution: async ({ resolved }: any) => resolved,
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal((resolved as any).presentation?.marketScanResult?.providerId, "tenant_inventory_import");
+  assert.equal(
+    (resolved as any).presentation?.marketScanResult?.groups?.[0]?.items?.[0]?.sourceId,
+    "drive-prop-10",
+  );
+});
+
 test("IMOB_CRM turn engine preserves lead discovery capture during active qualification", async () => {
   const params = createEngineParams({
     body: {
