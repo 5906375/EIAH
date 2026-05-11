@@ -106,6 +106,15 @@ test("IMOB_CRM workflow machine keeps documents owned by IMOB and specialist as 
 
 test("IMOB_CRM workflow machine derives runtime dedupe and documents states from operational flow", () => {
   assert.equal(deriveImobCrmWorkflowState({
+    operationalFlow: "property.market_scan",
+    operationalStatus: "collecting",
+  }), "property.market_scan");
+  assert.equal(deriveImobCrmWorkflowState({
+    operationalFlow: "property.market_scan",
+    operationalStatus: "ready_for_review",
+    marketScanSelectionStatus: "pending_confirmation",
+  }), "property.market_scan.selection");
+  assert.equal(deriveImobCrmWorkflowState({
     operationalFlow: "owner.create",
     operationalStatus: "awaiting_dedupe_decision",
   }), "owner.dedupe_review");
@@ -122,13 +131,52 @@ test("IMOB_CRM workflow machine exposes allowed transitions per state", () => {
     "show_records",
     "cancel",
   ]);
+  assert.deepEqual(getAllowedTransitions("property.market_scan"), [
+    "start_market_scan",
+    "select_market_scan_item",
+    "read_only_query",
+    "continue",
+    "cancel",
+  ]);
+  assert.deepEqual(getAllowedTransitions("property.market_scan.selection"), [
+    "select_market_scan_item",
+    "confirm_market_scan_selection",
+    "read_only_query",
+    "continue",
+    "cancel",
+  ]);
 });
 
 test("IMOB_CRM workflow machine classifies next messages into workflow transitions", () => {
   const normalize = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   assert.equal(classifyImobCrmWorkflowTransitionFromMessage("consultar caso", normalize), "read_only_query");
+  assert.equal(classifyImobCrmWorkflowTransitionFromMessage("fazer varredura de mercado", normalize), "start_market_scan");
+  assert.equal(classifyImobCrmWorkflowTransitionFromMessage("selecionar imóvel prop-1 do scan", normalize), "select_market_scan_item");
+  assert.equal(classifyImobCrmWorkflowTransitionFromMessage("confirmar seleção do scan prop-1", normalize), "confirm_market_scan_selection");
   assert.equal(classifyImobCrmWorkflowTransitionFromMessage("criar novo proprietário", normalize), "choose_create_new");
   assert.equal(classifyImobCrmWorkflowTransitionFromMessage("atualizar existente", normalize), "choose_update_existing");
+});
+
+test("IMOB_CRM workflow machine offers property.market_scan when requested from property.create", () => {
+  const decision = resolveTransition("property.create", "start_market_scan", {});
+
+  assert.equal(decision.allowed, true);
+  assert.equal(decision.nextState, "property.market_scan");
+  assert.equal(decision.reasonCode, "property_multiple_candidates_offer_market_scan");
+});
+
+test("IMOB_CRM workflow machine keeps market scan selection pending until explicit confirmation", () => {
+  const selectionDecision = resolveTransition("property.market_scan", "select_market_scan_item", {
+    selectedSourceId: "prop-1",
+  });
+  assert.equal(selectionDecision.allowed, true);
+  assert.equal(selectionDecision.nextState, "property.market_scan.selection");
+
+  const confirmDecision = resolveTransition("property.market_scan.selection", "confirm_market_scan_selection", {
+    selectedSourceId: "prop-1",
+  });
+  assert.equal(confirmDecision.allowed, true);
+  assert.equal(confirmDecision.nextState, "property.create");
 });
 
 test("IMOB_CRM workflow machine validates nextMessage against allowed transitions", () => {

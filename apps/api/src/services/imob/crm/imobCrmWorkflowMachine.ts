@@ -1,5 +1,7 @@
 export type ImobCrmWorkflowState =
   | "property.create"
+  | "property.market_scan"
+  | "property.market_scan.selection"
   | "owner.create"
   | "owner.dedupe_review"
   | "owner.update"
@@ -11,6 +13,9 @@ export type ImobCrmWorkflowState =
 
 export type ImobCrmWorkflowTransition =
   | "submit_fields"
+  | "start_market_scan"
+  | "select_market_scan_item"
+  | "confirm_market_scan_selection"
   | "choose_update_existing"
   | "choose_create_new"
   | "show_records"
@@ -19,6 +24,8 @@ export type ImobCrmWorkflowTransition =
   | "cancel";
 
 export type ImobCrmWorkflowReasonCode =
+  | "property_multiple_candidates_offer_market_scan"
+  | "market_scan_selection_missing_item"
   | "owner_dedupe_missing_match"
   | "owner_dedupe_missing_matches"
   | "visit_missing_property"
@@ -29,6 +36,7 @@ export type ImobCrmWorkflowReasonCode =
   | "transition_not_allowed";
 
 export type ImobCrmWorkflowContext = {
+  selectedSourceId?: string | null;
   matchedEntityId?: string | null;
   matchedEntityLabel?: string | null;
   matches?: Array<{ id: string; label?: string | null }>;
@@ -59,7 +67,9 @@ export type ImobCrmWorkflowCta = {
 };
 
 const ALLOWED_TRANSITIONS: Record<ImobCrmWorkflowState, readonly ImobCrmWorkflowTransition[]> = {
-  "property.create": ["submit_fields", "continue", "cancel"],
+  "property.create": ["submit_fields", "start_market_scan", "continue", "cancel"],
+  "property.market_scan": ["start_market_scan", "select_market_scan_item", "read_only_query", "continue", "cancel"],
+  "property.market_scan.selection": ["select_market_scan_item", "confirm_market_scan_selection", "read_only_query", "continue", "cancel"],
   "owner.create": ["submit_fields", "continue", "cancel"],
   "owner.dedupe_review": ["choose_update_existing", "choose_create_new", "show_records", "cancel"],
   "owner.update": ["submit_fields", "continue", "cancel"],
@@ -134,6 +144,55 @@ export function resolveTransition(
     }
   }
 
+  if (state === "property.create" && transition === "start_market_scan") {
+    return {
+      allowed: true,
+      nextState: "property.market_scan",
+      preserveContext: true,
+      reasonCode: "property_multiple_candidates_offer_market_scan",
+    };
+  }
+
+  if (state === "property.market_scan") {
+    if (transition === "select_market_scan_item") {
+      if (!context.selectedSourceId) return getDefaultBlockedDecision(state, "market_scan_selection_missing_item");
+      return {
+        allowed: true,
+        nextState: "property.market_scan.selection",
+        preserveContext: true,
+      };
+    }
+    return {
+      allowed: true,
+      nextState: "property.market_scan",
+      preserveContext: true,
+    };
+  }
+
+  if (state === "property.market_scan.selection") {
+    if (transition === "confirm_market_scan_selection") {
+      if (!context.selectedSourceId) return getDefaultBlockedDecision(state, "market_scan_selection_missing_item");
+      return {
+        allowed: true,
+        nextState: "property.create",
+        preserveContext: true,
+      };
+    }
+    if (transition === "select_market_scan_item") {
+      if (!context.selectedSourceId) return getDefaultBlockedDecision(state, "market_scan_selection_missing_item");
+      return {
+        allowed: true,
+        nextState: "property.market_scan.selection",
+        preserveContext: true,
+      };
+    }
+    return {
+      allowed: true,
+      nextState: "property.market_scan.selection",
+      preserveContext: true,
+    };
+  }
+
   if (state === "visit.schedule" && (transition === "submit_fields" || transition === "continue")) {
     if (!context.leadQualified) return getDefaultBlockedDecision(state, "visit_missing_lead_qualification");
     if (!context.propertyLinked) return getDefaultBlockedDecision(state, "visit_missing_property");
@@ -198,6 +257,35 @@ export function classifyImobCrmWorkflowTransitionFromMessage(
   ) {
     return "read_only_query";
   }
+  if (
+    normalized.includes("confirmar seleção do scan")
+    || normalized.includes("confirmar selecao do scan")
+    || normalized.includes("confirmar imóvel do scan")
+    || normalized.includes("confirmar imovel do scan")
+    || normalized.includes("confirmar captação do scan")
+    || normalized.includes("confirmar captacao do scan")
+  ) {
+    return "confirm_market_scan_selection";
+  }
+  if (
+    normalized.includes("selecionar imóvel")
+    || normalized.includes("selecionar imovel")
+    || normalized.includes("selecionar item")
+    || normalized.includes("usar imóvel do scan")
+    || normalized.includes("usar imovel do scan")
+    || normalized.includes("salvar imóvel do scan")
+    || normalized.includes("salvar imovel do scan")
+  ) {
+    return "select_market_scan_item";
+  }
+  if (
+    normalized.includes("varredura de mercado")
+    || normalized.includes("fazer varredura")
+    || normalized.includes("market scan")
+    || normalized.includes("scan de mercado")
+  ) {
+    return "start_market_scan";
+  }
   if (normalized.includes("cancelar")) return "cancel";
   if (normalized.includes("criar novo") || normalized.includes("novo cadastro")) return "choose_create_new";
   if (normalized.includes("atualizar existente") || normalized.includes("editar existente")) return "choose_update_existing";
@@ -243,6 +331,8 @@ export function buildImobCrmWorkflowReasonCodes(params: {
 
   const continueReason = getBlockerReason(params.state, "continue", params.context ?? {});
   if (continueReason) codes.add(continueReason);
+  if (params.state === "property.market_scan") codes.add("property_multiple_candidates_offer_market_scan");
+  if (params.state === "property.market_scan.selection") codes.add("market_scan_selection_pending_confirmation");
 
   if (params.state === "visit.schedule" || params.includeVisitGuard) {
     const visitReason = getBlockerReason("visit.schedule", "continue", params.context ?? {});
@@ -255,8 +345,13 @@ export function deriveImobCrmWorkflowState(params: {
   operationalFlow?: string | null;
   operationalStatus?: string | null;
   readOnlyPilot?: boolean;
+  marketScanSelectionStatus?: string | null;
 }) {
   if (params.readOnlyPilot) return "pilot.status" as const;
+  if (params.operationalFlow === "property.market_scan" && params.marketScanSelectionStatus === "pending_confirmation") {
+    return "property.market_scan.selection" as const;
+  }
+  if (params.operationalFlow === "property.market_scan") return "property.market_scan" as const;
   if (params.operationalFlow === "owner.create" && params.operationalStatus === "awaiting_dedupe_decision") {
     return "owner.dedupe_review" as const;
   }

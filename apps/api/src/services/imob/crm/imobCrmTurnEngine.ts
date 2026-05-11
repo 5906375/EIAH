@@ -1,11 +1,19 @@
 import { resolveImobSemanticIntent, type ImobSemanticIntentResolution } from "../imobSemanticIntentResolver";
 import { matchImobConversationalIntents } from "../imobIntentCatalog";
 import { resolveImobTurn } from "../imobTurnResolver";
+import { InternalCrmMarketScanProvider } from "../marketScan/InternalCrmMarketScanProvider";
+import {
+  attachMarketScanSnapshotToOperationalState,
+  loadLatestImobMarketScanSnapshot,
+  persistImobMarketScanSnapshot,
+} from "../marketScan/imobMarketScanSnapshot";
+import type { MarketScanQuery, MarketScanResult } from "../marketScan/MarketScanProvider";
 import type {
   ImobCrmCaseContext,
   ImobCrmTurnCopyState,
   ImobCrmTurnEntitlements,
 } from "./imobCrmAgentContract";
+import { ImobCrmRepository } from "./imobCrmRepository";
 import type { OperationalResolution, ThreadStateLike } from "./imobCrmOperationalResolverShared";
 import { extractImobOperationalBatches, formatImobBatchLineSummary } from "./imobCrmTurnBatch";
 import { applyResponsibleLabelToResolvedTurn } from "./imobCrmTurnPresentation";
@@ -18,6 +26,7 @@ import {
   type ImobCrmWorkflowState,
   type ImobCrmWorkflowTransition,
 } from "./imobCrmWorkflowMachine";
+import type { ImobMarketScanContext, ImobMarketScanResultSnapshot } from "../imobConversationContract";
 
 export type ImobCrmTurnEngineHelpers = {
   asString: (value: unknown) => string | null;
@@ -65,6 +74,77 @@ function hasActivePendingOperationalFlow(threadState: ThreadStateLike | null | u
   const status = asString(operational.status);
   const pendingFields = asStringList(operational.pendingFields);
   return status === "collecting" && pendingFields.length > 0;
+}
+
+function buildMarketScanQuery(context: ImobMarketScanContext): MarketScanQuery {
+  return {
+    cities: context.cities,
+    uf: context.uf,
+    goals: context.goals,
+    propertyTypes: context.propertyTypes,
+    bedrooms: context.bedrooms,
+    priceRange: context.priceRange,
+    limitPerGroup: context.limitPerGroup,
+  };
+}
+
+function toMarketScanSnapshot(result: MarketScanResult): ImobMarketScanResultSnapshot {
+  return {
+    scanId: `market-scan-${Date.now()}`,
+    ...result,
+    readOnly: true,
+    generatedAt: new Date().toISOString(),
+  };
+}
+
+function attachSnapshotToResolvedTurn(
+  resolved: OperationalResolution,
+  snapshot: ImobMarketScanResultSnapshot | null | undefined,
+) {
+  if (!snapshot) return resolved;
+  const operational = attachMarketScanSnapshotToOperationalState(
+    (resolved as any).conversationState?.operational ?? null,
+    snapshot,
+  );
+  return {
+    ...resolved,
+    conversationState: {
+      ...(resolved as any).conversationState,
+      operational,
+    },
+    presentation: {
+      ...(resolved as any).presentation,
+      marketScanResult: snapshot,
+    },
+  } as OperationalResolution;
+}
+
+async function resolveMarketScanResult(params: {
+  prisma: unknown;
+  tenantId: string;
+  workspaceId: string;
+  caseId?: string | null;
+  marketScanContext: ImobMarketScanContext;
+}): Promise<ImobMarketScanResultSnapshot | null> {
+  if (!(params.prisma as any)?.imobProperty?.findMany) return null;
+  const repository = new ImobCrmRepository(params.prisma as any);
+  const provider = new InternalCrmMarketScanProvider({
+    listProperties(scope) {
+      return repository.listProperties(scope) as any;
+    },
+  });
+
+  const result = await provider.search(
+    buildMarketScanQuery(params.marketScanContext),
+    {
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      caseId: params.caseId ?? null,
+      marketScanContext: params.marketScanContext,
+    },
+  );
+
+  return toMarketScanSnapshot(result);
 }
 
 function resolveDedupeContextualMessage(
@@ -148,6 +228,37 @@ function resolveWorkflowTransition(
     }
     return null;
   }
+  if (state === "property.market_scan" || state === "property.market_scan.selection") {
+    if (
+      normalized.includes("varredura de mercado")
+      || normalized.includes("fazer varredura")
+      || normalized.includes("market scan")
+      || normalized.includes("scan de mercado")
+    ) {
+      return "start_market_scan";
+    }
+    if (
+      normalized.includes("confirmar seleção do scan")
+      || normalized.includes("confirmar selecao do scan")
+      || normalized.includes("confirmar imóvel do scan")
+      || normalized.includes("confirmar imovel do scan")
+      || normalized.includes("confirmar captação do scan")
+      || normalized.includes("confirmar captacao do scan")
+    ) {
+      return "confirm_market_scan_selection";
+    }
+    if (
+      normalized.includes("selecionar imóvel")
+      || normalized.includes("selecionar imovel")
+      || normalized.includes("selecionar item")
+      || normalized.includes("usar imóvel do scan")
+      || normalized.includes("usar imovel do scan")
+      || normalized.includes("salvar imóvel do scan")
+      || normalized.includes("salvar imovel do scan")
+    ) {
+      return "select_market_scan_item";
+    }
+  }
   if (isReadOnlyPilotQuery) return "read_only_query";
   if (
     normalized.includes("continuar")
@@ -167,12 +278,14 @@ function resolveWorkflowTransition(
 function resolveWorkflowContext(threadState: ThreadStateLike | null | undefined): ImobCrmWorkflowContext {
   const operational = asObject(asObject(threadState)?.operational);
   const dedupeDecision = asObject(operational?.dedupeDecision);
+  const marketScanSelection = asObject(operational?.marketScanSelection);
   const pendingFields = asStringList(operational?.pendingFields);
   const propertyLinked = Boolean(asString(asObject(operational?.visitDraft)?.propertyId));
   const leadQualified = asString(operational?.flow) === "visit.schedule"
     ? true
     : Boolean(pendingFields.length === 0);
   return {
+    selectedSourceId: asString(marketScanSelection?.sourceId),
     matchedEntityId: asString(dedupeDecision?.matchedEntityId) ?? asString(dedupeDecision?.entityId),
     matchedEntityLabel: asString(dedupeDecision?.matchedEntityLabel) ?? asString(dedupeDecision?.entityLabel),
     matches: (asString(dedupeDecision?.matchedEntityId) ?? asString(dedupeDecision?.entityId))
@@ -189,6 +302,17 @@ function resolveWorkflowContext(threadState: ThreadStateLike | null | undefined)
   };
 }
 
+function extractMarketScanSelectionSourceIdFromMessage(
+  message: string,
+  normalizeImobRouteText: (value: string) => string,
+) {
+  const normalized = normalizeImobRouteText(message);
+  const match = normalized.match(
+    /(?:selecionar|usar|salvar|confirmar)\s+(?:imovel|imóvel|item)?(?:\s+do\s+scan)?\s+([a-z0-9][a-z0-9:_-]+)/i,
+  );
+  return match?.[1]?.trim() ?? null;
+}
+
 function buildWorkflowBlockedResolution(params: {
   message: string;
   state: ImobCrmWorkflowState;
@@ -197,6 +321,7 @@ function buildWorkflowBlockedResolution(params: {
   threadState: ThreadStateLike;
 }) {
   const reasonCopy: Record<ImobCrmWorkflowReasonCode, string> = {
+    market_scan_selection_missing_item: "Ainda não há um imóvel do scan selecionado com segurança para confirmar a captação.",
     owner_dedupe_missing_match: "Encontrei uma decisao de duplicidade pendente, mas o cadastro correspondente nao esta identificado com seguranca.",
     owner_dedupe_missing_matches: "Nao consegui recuperar os cadastros correspondentes para revisar esta duplicidade com seguranca.",
     visit_missing_property: "Ainda falta vincular o imovel da visita antes de seguir com o agendamento.",
@@ -241,6 +366,7 @@ function resolveWorkflowGuard(params: {
     operationalFlow: asString(operational?.flow),
     operationalStatus: asString(operational?.status),
     readOnlyPilot: params.isReadOnlyPilotQuery,
+    marketScanSelectionStatus: asString(asObject(operational?.marketScanSelection)?.status),
   });
   if (!state) return null;
 
@@ -254,7 +380,14 @@ function resolveWorkflowGuard(params: {
   );
   if (!transition) return null;
 
-  const decision = resolveTransition(state, transition, resolveWorkflowContext(params.threadState));
+  const workflowContext = resolveWorkflowContext(params.threadState);
+  if (transition === "select_market_scan_item" || transition === "confirm_market_scan_selection") {
+    workflowContext.selectedSourceId ??= extractMarketScanSelectionSourceIdFromMessage(
+      params.message,
+      params.normalizeImobRouteText,
+    );
+  }
+  const decision = resolveTransition(state, transition, workflowContext);
   if (decision.allowed) return null;
 
   return buildWorkflowBlockedResolution({
@@ -626,7 +759,7 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
     threadState: ThreadStateLike;
     semanticIntent?: ImobSemanticIntentResolution | null;
   }) => {
-    const hydratedThreadState = await params.helpers.hydrateThreadStateWithPersistedLead({
+    let hydratedThreadState = await params.helpers.hydrateThreadStateWithPersistedLead({
       prisma: params.prisma,
       tenantId: params.authContext.tenantId,
       workspaceId: params.authContext.workspaceId,
@@ -635,6 +768,28 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
       threadLabel,
       threadState: turn.threadState,
     });
+    const hydratedOperational = asObject(asObject(hydratedThreadState)?.operational);
+    if (
+      turn.caseId &&
+      asString(hydratedOperational?.flow) === "property.market_scan"
+      && !asObject(hydratedOperational?.marketScanSnapshot)
+    ) {
+      const latestSnapshot = await loadLatestImobMarketScanSnapshot({
+        prisma: params.prisma as any,
+        tenantId: params.authContext.tenantId,
+        workspaceId: params.authContext.workspaceId,
+        caseId: turn.caseId,
+      });
+      if (latestSnapshot) {
+        hydratedThreadState = {
+          ...(hydratedThreadState as any),
+          operational: {
+            ...hydratedOperational,
+            marketScanSnapshot: latestSnapshot,
+          },
+        };
+      }
+    }
     const rewrittenMessage = rewriteRegistrationDedupeChoiceMessage(
       turn.message,
       hydratedThreadState,
@@ -645,6 +800,23 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
       hydratedThreadState,
       params.helpers.normalizeImobRouteText,
     );
+    const normalizedEffectiveMessage = params.helpers.normalizeImobRouteText(effectiveMessage);
+    const isMarketScanSelectionFlowMessage =
+      asString(asObject(hydratedThreadState)?.operational?.flow) === "property.market_scan"
+      && (
+        normalizedEffectiveMessage.includes("selecionar imovel")
+        || normalizedEffectiveMessage.includes("selecionar imóvel")
+        || normalizedEffectiveMessage.includes("usar imovel do scan")
+        || normalizedEffectiveMessage.includes("usar imóvel do scan")
+        || normalizedEffectiveMessage.includes("salvar imovel do scan")
+        || normalizedEffectiveMessage.includes("salvar imóvel do scan")
+        || normalizedEffectiveMessage.includes("confirmar selecao do scan")
+        || normalizedEffectiveMessage.includes("confirmar seleção do scan")
+        || normalizedEffectiveMessage.includes("confirmar imovel do scan")
+        || normalizedEffectiveMessage.includes("confirmar imóvel do scan")
+        || normalizedEffectiveMessage.includes("confirmar captacao do scan")
+        || normalizedEffectiveMessage.includes("confirmar captação do scan")
+      );
     const readOnlyPilotQuery =
       hasStrongBusinessReadIntent(effectiveMessage)
       && /(piloto|pilot_active|approval_required|shadow)/i.test(effectiveMessage);
@@ -685,7 +857,7 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
     const shouldPrioritizeActiveFlowContinuity = hasActivePendingOperationalFlow(hydratedThreadState);
     const shouldPrioritizeBusinessRead = hasStrongBusinessReadIntent(effectiveMessage);
 
-    if (shouldPrioritizeBusinessRead && !isExplicitOperationalCommand(effectiveMessage)) {
+    if (shouldPrioritizeBusinessRead && !isExplicitOperationalCommand(effectiveMessage) && !isMarketScanSelectionFlowMessage) {
       const consultData = await params.helpers.resolveImobOperationalConsult({
         prisma: params.prisma,
         tenantId: params.authContext.tenantId,
@@ -706,7 +878,7 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
 
     if (shouldPrioritizeActiveFlowContinuity) {
       const semanticIntent = turn.semanticIntent ?? await resolveImobSemanticIntent(effectiveMessage);
-      const resolvedTurn = resolveImobTurn({
+      const baseResolveRequest = {
         message: effectiveMessage,
         semanticIntent: semanticIntent.parsedIntent,
         semanticIntentSource: semanticIntent.source,
@@ -716,9 +888,42 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
         threadState: hydratedThreadState as any,
         access: {
           tenantId: params.authContext.tenantId,
+          workspaceId: params.authContext.workspaceId,
           entitlements: params.entitlements,
         },
-      });
+      } as const;
+      const preliminaryResolvedTurn = resolveImobTurn(baseResolveRequest);
+      const resumedMarketScanSnapshot = (hydratedThreadState as any)?.operational?.marketScanSnapshot ?? null;
+      const marketScanResult =
+        preliminaryResolvedTurn.action === "realestate.market_scan"
+        && preliminaryResolvedTurn.conversationState.operational?.flow === "property.market_scan"
+        && preliminaryResolvedTurn.conversationState.operational.marketScanContext
+          ? await resolveMarketScanResult({
+              prisma: params.prisma,
+              tenantId: params.authContext.tenantId,
+              workspaceId: params.authContext.workspaceId,
+              caseId: turn.caseId,
+              marketScanContext: preliminaryResolvedTurn.conversationState.operational.marketScanContext,
+            })
+          : null;
+      const resolvedTurn = attachSnapshotToResolvedTurn(
+        marketScanResult
+          ? resolveImobTurn({ ...baseResolveRequest, marketScanResult })
+          : resumedMarketScanSnapshot
+            ? resolveImobTurn({ ...baseResolveRequest, marketScanResult: resumedMarketScanSnapshot })
+            : preliminaryResolvedTurn,
+        marketScanResult ?? resumedMarketScanSnapshot,
+      );
+      if (marketScanResult) {
+        await persistImobMarketScanSnapshot({
+          prisma: params.prisma as any,
+          tenantId: params.authContext.tenantId,
+          workspaceId: params.authContext.workspaceId,
+          caseId: turn.caseId,
+          marketScanContext: preliminaryResolvedTurn.conversationState.operational?.marketScanContext!,
+          snapshot: marketScanResult,
+        });
+      }
       const registrationAwareTurn = await params.helpers.applyExistingRegistrationResolution({
         prisma: params.prisma,
         tenantId: params.authContext.tenantId,
@@ -745,7 +950,7 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
       };
     }
 
-    if (!isExplicitOperationalCommand(effectiveMessage)) {
+    if (!isExplicitOperationalCommand(effectiveMessage) && !isMarketScanSelectionFlowMessage) {
       const consultData = await params.helpers.resolveImobOperationalConsult({
         prisma: params.prisma,
         tenantId: params.authContext.tenantId,
@@ -765,7 +970,7 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
     }
 
     const semanticIntent = turn.semanticIntent ?? await resolveImobSemanticIntent(effectiveMessage);
-    const resolvedTurn = resolveImobTurn({
+    const baseResolveRequest = {
       message: effectiveMessage,
       semanticIntent: semanticIntent.parsedIntent,
       semanticIntentSource: semanticIntent.source,
@@ -775,9 +980,42 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
       threadState: hydratedThreadState as any,
       access: {
         tenantId: params.authContext.tenantId,
+        workspaceId: params.authContext.workspaceId,
         entitlements: params.entitlements,
       },
-    });
+    } as const;
+    const preliminaryResolvedTurn = resolveImobTurn(baseResolveRequest);
+    const resumedMarketScanSnapshot = (hydratedThreadState as any)?.operational?.marketScanSnapshot ?? null;
+    const marketScanResult =
+      preliminaryResolvedTurn.action === "realestate.market_scan"
+      && preliminaryResolvedTurn.conversationState.operational?.flow === "property.market_scan"
+      && preliminaryResolvedTurn.conversationState.operational.marketScanContext
+        ? await resolveMarketScanResult({
+            prisma: params.prisma,
+            tenantId: params.authContext.tenantId,
+            workspaceId: params.authContext.workspaceId,
+            caseId: turn.caseId,
+            marketScanContext: preliminaryResolvedTurn.conversationState.operational.marketScanContext,
+          })
+        : null;
+    const resolvedTurn = attachSnapshotToResolvedTurn(
+      marketScanResult
+        ? resolveImobTurn({ ...baseResolveRequest, marketScanResult })
+        : resumedMarketScanSnapshot
+          ? resolveImobTurn({ ...baseResolveRequest, marketScanResult: resumedMarketScanSnapshot })
+          : preliminaryResolvedTurn,
+      marketScanResult ?? resumedMarketScanSnapshot,
+    );
+    if (marketScanResult) {
+      await persistImobMarketScanSnapshot({
+        prisma: params.prisma as any,
+        tenantId: params.authContext.tenantId,
+        workspaceId: params.authContext.workspaceId,
+        caseId: turn.caseId,
+        marketScanContext: preliminaryResolvedTurn.conversationState.operational?.marketScanContext!,
+        snapshot: marketScanResult,
+      });
+    }
     const registrationAwareTurn = await params.helpers.applyExistingRegistrationResolution({
       prisma: params.prisma,
       tenantId: params.authContext.tenantId,

@@ -1901,10 +1901,11 @@ export type ImobPresentationCard = {
 export type ImobPresentationBlockPhase = "pre_execution" | "post_success";
 
 export type ImobPresentationBlock = {
-  kind: "confirmation" | "next_actions" | "summary" | "details";
+  kind: "confirmation" | "next_actions" | "summary" | "details" | "agent_timeline";
   title?: string;
   text?: string;
   lines?: string[];
+  agentActivities?: ImobAgentActivityEvent[];
   ctas?: ImobPresentationCta[];
   actionsLayout?: "inline";
   persistent?: boolean;
@@ -2704,6 +2705,37 @@ export type ImobPresentationConfidence = {
 
 export type ImobPresentationChoiceStyle = "inline";
 
+export type ImobAgentActivityRole = "owner" | "supporting" | "guardian";
+
+export type ImobAgentActivityMode =
+  | "read_only"
+  | "draft"
+  | "propose_action"
+  | "execute"
+  | "audit";
+
+export type ImobAgentActivityStatus =
+  | "queued"
+  | "analyzing"
+  | "working"
+  | "blocked"
+  | "completed"
+  | "requires_confirmation";
+
+export type ImobAgentActivityEvent = {
+  agentId: string;
+  agentLabel: string;
+  displayPrefix?: "Agente";
+  role: ImobAgentActivityRole;
+  mode: ImobAgentActivityMode;
+  status: ImobAgentActivityStatus;
+  visibleMessage: string;
+  reasonCode?: string;
+  evidenceId?: string;
+  startedAt?: string;
+  completedAt?: string;
+};
+
 export type ImobAgentRuntimeMetadata = {
   contractId: "imob.case_concierge.v1";
   contractVersion: 1;
@@ -2786,6 +2818,7 @@ export type ImobOperationalPresentation = {
   metadata?: ImobPresentationMetadata;
   card?: ImobPresentationCard;
   blocks?: ImobPresentationBlock[];
+  agentActivities?: ImobAgentActivityEvent[];
   widget?: ImobPresentationWidget;
   form?: ImobPresentationForm;
   suggestedNextAction?: string;

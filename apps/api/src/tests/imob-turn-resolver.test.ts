@@ -575,6 +575,407 @@ test("IMOB turn resolver preserves explicit city in property capture without exp
   assert.equal(result.presentation.form?.fields.find((field) => field.name === "city")?.value, "Camboriú");
 });
 
+test("IMOB turn resolver offers market scan instead of auto-filling ambiguous property capture", () => {
+  const result = resolveImobTurn({
+    message: "Quero captar um imóvel para comprar, vender, locação em Itajaí e Camboriú em Santa Catarina",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.mode, "consult");
+  assert.equal(result.action, "crm.market_scan.offer");
+  assert.equal(result.conversationState.operational?.flow, "property.market_scan");
+  assert.deepEqual(result.conversationState.operational?.marketScanContext?.cityCandidates, ["Camboriú", "Itajaí"]);
+  assert.deepEqual(result.conversationState.operational?.marketScanContext?.goalCandidates, ["compra", "locacao", "venda"]);
+  assert.equal(result.conversationState.operational?.marketScanContext?.uf, "SC");
+  assert.equal(result.conversationState.operational?.propertyDraft?.city, null);
+  assert.equal(result.conversationState.operational?.propertyDraft?.goal, null);
+  assert.ok((result.conversationState.operational?.pendingFields?.includes("city") ?? false), true);
+  assert.ok((result.conversationState.operational?.pendingFields?.includes("goal") ?? false), true);
+  assert.equal(result.presentation.card?.ctas?.some((cta) => cta.label === "Cadastrar imóvel específico"), true);
+  assert.equal(result.presentation.card?.ctas?.some((cta) => cta.label === "Fazer varredura de mercado"), true);
+});
+
+test("IMOB turn resolver extracts structured market scan filters for type, bedrooms and value", () => {
+  const result = resolveImobTurn({
+    message: "Quero fazer varredura de mercado para kitnet, apto 1 quarto, apto 2 quartos e casa para locação em Itajaí e Camboriú até R$ 3.500",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.conversationState.operational?.flow, "property.market_scan");
+  assert.deepEqual(result.conversationState.operational?.marketScanContext?.propertyTypes, ["apartamento", "casa", "kitnet"]);
+  assert.deepEqual(result.conversationState.operational?.marketScanContext?.bedrooms, [1, 2]);
+  assert.equal(result.conversationState.operational?.marketScanContext?.priceRange?.max, 3500);
+  assert.equal(result.conversationState.operational?.marketScanContext?.priceRange?.period, "monthly");
+  assert.match(result.presentation.text ?? "", /tipos: apartamento, casa, kitnet/i);
+});
+
+test("IMOB turn resolver extracts structured market scan price range for compra", () => {
+  const result = resolveImobTurn({
+    message: "Quero fazer varredura de mercado para comprar em Itajaí, apartamento 2 quartos até 700 mil",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.conversationState.operational?.flow, "property.market_scan");
+  assert.deepEqual(result.conversationState.operational?.marketScanContext?.goalCandidates, ["compra"]);
+  assert.deepEqual(result.conversationState.operational?.marketScanContext?.propertyTypes, ["apartamento"]);
+  assert.deepEqual(result.conversationState.operational?.marketScanContext?.bedrooms, [2]);
+  assert.equal(result.conversationState.operational?.marketScanContext?.priceRange?.max, 700000);
+  assert.equal(result.conversationState.operational?.marketScanContext?.priceRange?.period, "total");
+});
+
+test("IMOB turn resolver keeps market scan read-only when the user explicitly chooses the scan", () => {
+  const result = resolveImobTurn({
+    message: "fazer varredura de mercado",
+    threadState: {
+      slots: {
+        goal: null,
+        city: null,
+        region: null,
+        neighborhood: null,
+        budgetMax: null,
+        bedrooms: null,
+        bathrooms: null,
+        propertyType: null,
+      },
+      mode: "consult",
+      pendingSlot: "none",
+      resultOffset: 0,
+      operational: {
+        flow: "property.market_scan",
+        status: "collecting",
+        pendingFields: ["city", "goal"],
+        propertyDraft: {
+          propertyId: null,
+          propertyType: null,
+          goal: null,
+          cep: null,
+          city: null,
+          neighborhood: null,
+          bedrooms: null,
+          bathrooms: null,
+          address: null,
+        },
+        marketScanContext: {
+          cities: ["Camboriú", "Itajaí"],
+          cityCandidates: ["Camboriú", "Itajaí"],
+          uf: "SC",
+          goals: ["compra", "venda", "locacao"],
+          goalCandidates: ["compra", "venda", "locacao"],
+          propertyTypes: [],
+          bedrooms: [],
+          priceRange: null,
+          readOnly: true,
+          limitPerGroup: 10,
+        },
+      },
+    },
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+    marketScanResult: {
+      providerId: "internal_crm",
+      sourceStatus: "completed",
+      totalItems: 2,
+      groups: [
+        {
+          city: "Itajaí",
+          goal: "locacao",
+          propertyType: "apartamento",
+          bedrooms: 2,
+          items: [
+            {
+              source: "internal_crm",
+              sourceId: "prop-1",
+              providerId: "internal_crm",
+              retrievedAt: "2026-05-09T12:00:00.000Z",
+              city: "Itajaí",
+              uf: "SC",
+              goal: "locacao",
+              propertyType: "apartamento",
+              bedrooms: 2,
+              price: 3200,
+              currency: "BRL",
+              neighborhood: "Centro",
+              address: "Rua 1500",
+              title: "Apartamento 2 quartos",
+              url: null,
+            },
+            {
+              source: "internal_crm",
+              sourceId: "prop-2",
+              providerId: "internal_crm",
+              retrievedAt: "2026-05-09T12:00:00.000Z",
+              city: "Itajaí",
+              uf: "SC",
+              goal: "locacao",
+              propertyType: "apartamento",
+              bedrooms: 2,
+              price: 3400,
+              currency: "BRL",
+              neighborhood: "Fazenda",
+              address: "Rua 2000",
+              title: "Apartamento mobiliado",
+              url: null,
+            },
+          ],
+        },
+      ],
+      readOnly: true,
+      generatedAt: "2026-05-09T12:00:00.000Z",
+    },
+  });
+
+  assert.equal(result.mode, "consult");
+  assert.equal(result.action, "realestate.market_scan");
+  assert.equal(result.executionRequest, undefined);
+  assert.equal(result.conversationState.operational?.flow, "property.market_scan");
+  assert.match(result.presentation.text ?? "", /read-only/i);
+  assert.match(result.presentation.text ?? "", /varredura read-only concluída/i);
+  assert.equal(result.presentation.marketScanResult?.sourceStatus, "completed");
+  assert.equal(result.presentation.marketScanResult?.groups[0]?.items.length, 2);
+  assert.deepEqual(
+    result.presentation.agentActivities?.map((item) => item.agentLabel),
+    ["IMOB", "Market Scan", "Guardian"],
+  );
+  assert.equal(result.presentation.agentActivities?.every((item) => item.displayPrefix === "Agente"), true);
+  assert.match(result.presentation.card?.title ?? "", /varredura de mercado/i);
+  assert.match(result.presentation.card?.lines?.[0] ?? "", /itajaí|locacao|apartamento/i);
+  assert.equal(
+    result.presentation.card?.ctas?.some((cta) => cta.nextMessage === "selecionar imóvel prop-1 do scan"),
+    true,
+  );
+});
+
+test("IMOB turn resolver keeps selected market scan item pending until explicit confirmation", () => {
+  const result = resolveImobTurn({
+    message: "selecionar imóvel prop-1 do scan",
+    threadState: {
+      slots: {
+        goal: null,
+        city: null,
+        region: null,
+        neighborhood: null,
+        budgetMax: null,
+        bedrooms: null,
+        bathrooms: null,
+        propertyType: null,
+      },
+      mode: "consult",
+      pendingSlot: "none",
+      resultOffset: 0,
+      operational: {
+        flow: "property.market_scan",
+        status: "collecting",
+        pendingFields: ["city", "goal"],
+        propertyDraft: {
+          propertyId: null,
+          propertyType: null,
+          goal: null,
+          cep: null,
+          city: null,
+          neighborhood: null,
+          bedrooms: null,
+          bathrooms: null,
+          address: null,
+          origin: null,
+        },
+        marketScanContext: {
+          cities: ["Itajaí"],
+          cityCandidates: ["Itajaí"],
+          uf: "SC",
+          goals: ["locacao"],
+          goalCandidates: ["locacao"],
+          propertyTypes: ["apartamento"],
+          bedrooms: [2],
+          priceRange: null,
+          readOnly: true,
+          limitPerGroup: 10,
+        },
+        marketScanSnapshot: {
+          scanId: "market-scan-1",
+          providerId: "internal_crm",
+          sourceStatus: "completed",
+          totalItems: 1,
+          groups: [
+            {
+              city: "Itajaí",
+              goal: "locacao",
+              propertyType: "apartamento",
+              bedrooms: 2,
+              items: [
+                {
+                  source: "internal_crm",
+                  sourceId: "prop-1",
+                  providerId: "internal_crm",
+                  retrievedAt: "2026-05-09T12:00:00.000Z",
+                  city: "Itajaí",
+                  uf: "SC",
+                  goal: "locacao",
+                  propertyType: "apartamento",
+                  bedrooms: 2,
+                  price: 3200,
+                  currency: "BRL",
+                  neighborhood: "Centro",
+                  address: "Rua 1500",
+                  title: "Apartamento 2 quartos",
+                  url: null,
+                },
+              ],
+            },
+          ],
+          readOnly: true,
+          generatedAt: "2026-05-09T12:00:00.000Z",
+        },
+      },
+    },
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.mode, "consult");
+  assert.equal(result.action, "crm.market_scan.selection");
+  assert.equal(result.executionRequest, undefined);
+  assert.equal(result.conversationState.operational?.flow, "property.market_scan");
+  assert.equal(result.conversationState.operational?.marketScanSelection?.sourceId, "prop-1");
+  assert.equal(result.presentation.card?.ctas?.some((cta) => cta.nextMessage === "confirmar seleção do scan prop-1"), true);
+  assert.match(result.presentation.text ?? "", /deduplicar por sourceId\/endereço/i);
+});
+
+test("IMOB turn resolver turns a confirmed market scan selection into governed property.create execution", () => {
+  const result = resolveImobTurn({
+    message: "confirmar seleção do scan prop-1",
+    threadState: {
+      slots: {
+        goal: null,
+        city: null,
+        region: null,
+        neighborhood: null,
+        budgetMax: null,
+        bedrooms: null,
+        bathrooms: null,
+        propertyType: null,
+      },
+      mode: "consult",
+      pendingSlot: "none",
+      resultOffset: 0,
+      operational: {
+        flow: "property.market_scan",
+        status: "ready_for_review",
+        pendingFields: [],
+        propertyDraft: {
+          propertyId: "prop-1",
+          propertyType: "apartamento",
+          goal: "locacao",
+          cep: null,
+          city: "Itajaí",
+          neighborhood: "Centro",
+          bedrooms: 2,
+          bathrooms: null,
+          address: "Rua 1500",
+          origin: {
+            source: "internal_crm",
+            sourceId: "prop-1",
+            providerId: "internal_crm",
+            retrievedAt: "2026-05-09T12:00:00.000Z",
+            scanId: "market-scan-1",
+          },
+        },
+        marketScanContext: {
+          cities: ["Itajaí"],
+          cityCandidates: ["Itajaí"],
+          uf: "SC",
+          goals: ["locacao"],
+          goalCandidates: ["locacao"],
+          propertyTypes: ["apartamento"],
+          bedrooms: [2],
+          priceRange: null,
+          readOnly: true,
+          limitPerGroup: 10,
+        },
+        marketScanSelection: {
+          status: "pending_confirmation",
+          scanId: "market-scan-1",
+          source: "internal_crm",
+          sourceId: "prop-1",
+          providerId: "internal_crm",
+          retrievedAt: "2026-05-09T12:00:00.000Z",
+          city: "Itajaí",
+          goal: "locacao",
+          propertyType: "apartamento",
+          bedrooms: 2,
+          price: 3200,
+          currency: "BRL",
+          neighborhood: "Centro",
+          address: "Rua 1500",
+          title: "Apartamento 2 quartos",
+          url: null,
+        },
+      },
+    },
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.mode, "execute");
+  assert.equal(result.executionRequest?.operation, "property.create");
+  assert.equal(result.conversationState.operational?.flow, "property.create");
+  assert.equal(result.conversationState.operational?.propertyDraft?.propertyId, "prop-1");
+  assert.equal(result.conversationState.operational?.propertyDraft?.origin?.scanId, "market-scan-1");
+  assert.equal(result.conversationState.operational?.propertyDraft?.origin?.sourceId, "prop-1");
+});
+
+test("IMOB turn resolver keeps market scan read-only and empty when no provider result is injected", () => {
+  const result = resolveImobTurn({
+    message: "fazer varredura de mercado",
+    threadState: {
+      slots: {
+        goal: null,
+        city: null,
+        region: null,
+        neighborhood: null,
+        budgetMax: null,
+        bedrooms: null,
+        bathrooms: null,
+        propertyType: null,
+      },
+      mode: "consult",
+      pendingSlot: "none",
+      resultOffset: 0,
+      operational: {
+        flow: "property.market_scan",
+        status: "collecting",
+        pendingFields: ["city", "goal"],
+        propertyDraft: {
+          propertyId: null,
+          propertyType: null,
+          goal: null,
+          cep: null,
+          city: null,
+          neighborhood: null,
+          bedrooms: null,
+          bathrooms: null,
+          address: null,
+        },
+        marketScanContext: {
+          cities: ["Camboriú", "Itajaí"],
+          cityCandidates: ["Camboriú", "Itajaí"],
+          uf: "SC",
+          goals: ["compra", "venda", "locacao"],
+          goalCandidates: ["compra", "venda", "locacao"],
+          propertyTypes: [],
+          bedrooms: [],
+          priceRange: null,
+          readOnly: true,
+          limitPerGroup: 10,
+        },
+      },
+    },
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.mode, "consult");
+  assert.equal(result.action, "realestate.market_scan");
+  assert.equal(result.executionRequest, undefined);
+  assert.equal(result.presentation.marketScanResult, undefined);
+  assert.match(result.presentation.text ?? "", /não há uma fonte de imóveis conectada/i);
+});
+
 test("IMOB turn resolver builds guided form for comprador on lead.qualify", () => {
   const result = resolveImobTurn({
     message: "quero cadastrar comprador como lead",

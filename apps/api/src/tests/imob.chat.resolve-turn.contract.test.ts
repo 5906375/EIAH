@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 import process from "node:process";
 import supertest from "supertest";
 
+process.env.DATABASE_URL ??= process.env.VITEST_DATABASE_URL ?? "postgresql://postgres:senha@127.0.0.1:5433/eiah_builder?schema=public";
+process.env.REDIS_URL ??= process.env.VITEST_REDIS_URL ?? "redis://127.0.0.1:6379";
+
 let request: ReturnType<typeof supertest>;
 let prismaGlobal: any;
 let closePrismaResources: () => Promise<unknown>;
@@ -63,6 +66,13 @@ function destroyResidualNetworkSockets(ports: number[]) {
   return destroyed;
 }
 
+function hasOnlyStdIoHandles() {
+  const resources = typeof (process as any).getActiveResourcesInfo === "function"
+    ? (((process as any).getActiveResourcesInfo() as unknown[] | undefined) ?? [])
+    : [];
+  return resources.length > 0 && resources.every((resource) => resource === "PipeWrap");
+}
+
 const suffix = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 const tenantId = `tenant-imob-resolve-${suffix}`;
 const workspaceId = `workspace-imob-resolve-${suffix}`;
@@ -113,6 +123,7 @@ before(async () => {
 });
 
 after(async () => {
+  if (!prismaGlobal) return;
   debugCleanupStep("start");
   await prismaGlobal.$executeRaw`
     DELETE FROM memory_events
@@ -161,6 +172,9 @@ after(async () => {
   destroyResidualNetworkSockets([6379, 5433]);
   debugCleanupStep("after-destroyResidualNetworkSockets");
   reportActiveHandles("after-cleanup");
+  if (hasOnlyStdIoHandles()) {
+    setImmediate(() => process.exit(process.exitCode ?? 0));
+  }
 });
 
 test("IMOB resolve-turn returns inventory guidance contract over HTTP", async () => {
@@ -264,6 +278,183 @@ test("IMOB search inventory returns backend presentation over HTTP", async () =>
   assert.equal(response.body?.ok, true);
   assert.equal(response.body?.data?.total, 0);
   assert.match(response.body?.data?.presentation?.text ?? "", /refinar essa busca/i);
+});
+
+test("IMOB resolve-turn covers market scan offer, read-only scan, snapshot persistence, selection and governed creation over HTTP", async () => {
+  const owner = await prismaGlobal.imobOwner.create({
+    data: {
+      tenantId,
+      workspaceId,
+      name: "Owner Market Scan HTTP",
+      phone: "47988887777",
+      email: "owner.market.scan@example.com",
+      document: "98765432100",
+      status: "ready_for_review",
+      pendingItems: [],
+    },
+  });
+
+  const seededProperty = await prismaGlobal.imobProperty.create({
+    data: {
+      tenantId,
+      workspaceId,
+      ownerId: owner.id,
+      propertyType: "apartamento",
+      goal: "locacao",
+      city: "Itajaí",
+      neighborhood: "Centro",
+      address: "Rua 1500",
+      bedrooms: 2,
+      askingPriceCents: 320000,
+      status: "ready_for_review",
+      pendingItems: [],
+      metadata: {},
+    },
+  });
+
+  await prismaGlobal.imobProperty.create({
+    data: {
+      tenantId,
+      workspaceId,
+      ownerId: owner.id,
+      propertyType: "casa",
+      goal: "locacao",
+      city: "Camboriú",
+      neighborhood: "Centro",
+      address: "Rua 2000",
+      bedrooms: 3,
+      askingPriceCents: 450000,
+      status: "ready_for_review",
+      pendingItems: [],
+      metadata: {},
+    },
+  });
+
+  const offer = await request
+    .post("/api/imob/chat/resolve-turn")
+    .set("Authorization", `Bearer ${apiToken}`)
+    .send({
+      message: "Quero captar um imóvel para comprar, vender, locação em Itajaí e Camboriú em Santa Catarina",
+    });
+
+  assert.equal(offer.status, 200);
+  assert.equal(offer.body?.ok, true);
+  assert.equal(offer.body?.data?.action, "crm.market_scan.offer");
+  assert.equal(offer.body?.data?.conversationState?.operational?.flow, "property.market_scan");
+  assert.equal(
+    offer.body?.data?.presentation?.card?.ctas?.some((cta: any) => cta.label === "Fazer varredura de mercado"),
+    true,
+  );
+
+  const offeredCaseId = offer.body?.data?.caseContext?.caseId as string | undefined;
+  assert.ok(offeredCaseId);
+
+  const scan = await request
+    .post("/api/imob/chat/resolve-turn")
+    .set("Authorization", `Bearer ${apiToken}`)
+    .send({
+      caseId: offeredCaseId,
+      message: "fazer varredura de mercado",
+      threadState: offer.body?.data?.conversationState,
+    });
+
+  assert.equal(scan.status, 200);
+  assert.equal(scan.body?.ok, true);
+  assert.equal(scan.body?.data?.action, "realestate.market_scan");
+  assert.equal(scan.body?.data?.mode, "consult");
+  assert.equal(scan.body?.data?.executionRequest, undefined);
+  assert.equal(scan.body?.data?.presentation?.marketScanResult?.readOnly, true);
+  assert.equal(scan.body?.data?.presentation?.marketScanResult?.sourceStatus, "completed");
+  assert.ok((scan.body?.data?.presentation?.marketScanResult?.groups?.length ?? 0) >= 1);
+
+  const snapshotEvent = await prismaGlobal.imobCaseEvent.findFirst({
+    where: {
+      tenantId,
+      workspaceId,
+      caseId: offeredCaseId,
+      type: "market_scan.snapshot",
+    },
+    orderBy: { createdAt: "desc" },
+  });
+  assert.ok(snapshotEvent);
+  assert.equal((snapshotEvent?.payload as any)?.scanId, scan.body?.data?.presentation?.marketScanResult?.scanId);
+
+  const selectionCta = (scan.body?.data?.presentation?.card?.ctas ?? []).find(
+    (cta: any) =>
+      typeof cta?.nextMessage === "string"
+      && cta.nextMessage.includes("selecionar imóvel")
+      && cta.nextMessage.includes(seededProperty.id),
+  );
+  assert.ok(selectionCta);
+
+  const selection = await request
+    .post("/api/imob/chat/resolve-turn")
+    .set("Authorization", `Bearer ${apiToken}`)
+    .send({
+      caseId: offeredCaseId,
+      message: selectionCta.nextMessage,
+      threadState: scan.body?.data?.conversationState,
+    });
+
+  assert.equal(selection.status, 200);
+  assert.equal(selection.body?.ok, true);
+  assert.equal(selection.body?.data?.action, "crm.market_scan.selection");
+  assert.equal(selection.body?.data?.mode, "consult");
+  assert.equal(selection.body?.data?.executionRequest, undefined);
+  assert.ok(selection.body?.data?.conversationState?.operational?.marketScanSelection?.sourceId);
+  assert.equal(
+    selection.body?.data?.presentation?.card?.ctas?.some(
+      (cta: any) => typeof cta?.nextMessage === "string" && cta.nextMessage.includes("confirmar seleção do scan"),
+    ),
+    true,
+  );
+
+  const confirmationCta = (selection.body?.data?.presentation?.card?.ctas ?? []).find(
+    (cta: any) => typeof cta?.nextMessage === "string" && cta.nextMessage.includes("confirmar seleção do scan"),
+  );
+  assert.ok(confirmationCta);
+
+  const confirm = await request
+    .post("/api/imob/chat/resolve-turn")
+    .set("Authorization", `Bearer ${apiToken}`)
+    .send({
+      caseId: offeredCaseId,
+      message: confirmationCta.nextMessage,
+      threadState: selection.body?.data?.conversationState,
+    });
+
+  assert.equal(confirm.status, 200);
+  assert.equal(confirm.body?.ok, true);
+  assert.equal(confirm.body?.data?.mode, "execute");
+  assert.equal(confirm.body?.data?.action, "realestate.register_property");
+  assert.equal(confirm.body?.data?.executionRequest?.operation, "property.create");
+  assert.equal(confirm.body?.data?.conversationState?.operational?.flow, "property.create");
+  assert.equal(
+    confirm.body?.data?.conversationState?.operational?.propertyDraft?.origin?.scanId,
+    scan.body?.data?.presentation?.marketScanResult?.scanId,
+  );
+
+  const properties = await prismaGlobal.imobProperty.findMany({
+    where: { tenantId, workspaceId, address: "Rua 1500" },
+    orderBy: { createdAt: "asc" },
+  });
+  assert.equal(properties.length, 1);
+  assert.equal(properties[0].id, seededProperty.id);
+  assert.deepEqual((properties[0].metadata as any)?.marketScanOrigin, {
+    source: "internal_crm",
+    sourceId: seededProperty.id,
+    providerId: "internal_crm",
+    retrievedAt: (properties[0].metadata as any)?.marketScanOrigin?.retrievedAt,
+    scanId: scan.body?.data?.presentation?.marketScanResult?.scanId,
+  });
+
+  const updatedCase = await prismaGlobal.imobCase.findFirst({
+    where: { id: offeredCaseId, tenantId, workspaceId },
+    select: { id: true, propertyId: true, flow: true, stage: true, metadata: true },
+  });
+  assert.equal(updatedCase?.propertyId, seededProperty.id);
+  assert.equal(updatedCase?.flow, "property.create");
+  assert.equal((updatedCase?.metadata as any)?.threadLabel, "Captação");
 });
 
 
