@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import { InternalCrmMarketScanProvider } from "../services/imob/marketScan/InternalCrmMarketScanProvider";
 import { TenantInventoryImportProvider } from "../services/imob/marketScan/TenantInventoryImportProvider";
+import { ImobMarketScanProviderRouter } from "../services/imob/marketScan/imobMarketScanProviderRouter";
 
 function createInternalSource() {
   const properties = [
@@ -71,6 +72,27 @@ function createInternalSource() {
       askingPriceCents: 480000,
       status: "archived",
     },
+    {
+      id: "property-6",
+      tenantId: "tenant-1",
+      workspaceId: "workspace-1",
+      propertyType: "apartamento" as const,
+      goal: "locacao",
+      city: "Itajaí",
+      neighborhood: "Centro",
+      address: "Rua Importada 1",
+      bedrooms: 2,
+      askingPriceCents: 330000,
+      status: "active",
+      metadata: {
+        importedFrom: "drive-manifest",
+        sourceId: "drive-prop-1",
+        sourceUrl: "https://drive.example/property-1",
+        sourceLabel: "tenant_inventory_import",
+        title: "Apartamento importado 2 quartos",
+        importedAt: "2026-05-11T10:00:00.000Z",
+      },
+    },
   ];
 
   return {
@@ -101,6 +123,25 @@ test("internal CRM market scan provider filters by tenant, workspace, city and g
   assert.equal(result.groups[0]?.items.every((item) => item.city === "Itajaí"), true);
   assert.equal(result.groups[0]?.items.every((item) => item.goal === "locacao"), true);
   assert.equal(result.groups[0]?.items.every((item) => item.source === "internal_crm"), true);
+});
+
+test("internal CRM market scan provider excludes imported tenant inventory records", async () => {
+  const provider = new InternalCrmMarketScanProvider(createInternalSource());
+  const result = await provider.search({
+    cities: ["Itajaí"],
+    goals: ["locacao"],
+    propertyTypes: ["apartamento"],
+    bedrooms: [2],
+    priceRange: null,
+    limitPerGroup: 10,
+  }, {
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    marketScanContext: null,
+  });
+
+  assert.equal(result.totalItems, 1);
+  assert.equal(result.groups[0]?.items.some((item) => item.sourceId === "drive-prop-1"), false);
 });
 
 test("internal CRM market scan provider applies property type, bedrooms and price range filters", async () => {
@@ -188,13 +229,13 @@ test("internal CRM market scan provider returns empty when there is no eligible 
   assert.deepEqual(result.groups, []);
 });
 
-test("tenant inventory import provider stays unavailable until a real import source is wired", async () => {
-  const provider = new TenantInventoryImportProvider();
+test("tenant inventory import provider returns only imported records with sourceId and sourceUrl", async () => {
+  const provider = new TenantInventoryImportProvider(createInternalSource());
   const result = await provider.search({
     cities: ["Itajaí"],
     goals: ["locacao"],
-    propertyTypes: [],
-    bedrooms: [],
+    propertyTypes: ["apartamento"],
+    bedrooms: [2],
     priceRange: null,
     limitPerGroup: 10,
   }, {
@@ -204,6 +245,133 @@ test("tenant inventory import provider stays unavailable until a real import sou
   });
 
   assert.equal(result.providerId, "tenant_inventory_import");
-  assert.equal(result.sourceStatus, "unavailable");
+  assert.equal(result.sourceStatus, "completed");
+  assert.equal(result.totalItems, 1);
+  assert.equal(result.groups[0]?.items[0]?.sourceId, "drive-prop-1");
+  assert.equal(result.groups[0]?.items[0]?.url, "https://drive.example/property-1");
+  assert.equal(result.groups[0]?.items[0]?.source, "tenant_inventory_import");
+});
+
+test("tenant inventory import provider returns empty when imported metadata is missing a real sourceId", async () => {
+  const provider = new TenantInventoryImportProvider({
+    listProperties() {
+      return [
+        {
+          id: "property-7",
+          tenantId: "tenant-1",
+          workspaceId: "workspace-1",
+          propertyType: "apartamento" as const,
+          goal: "locacao",
+          city: "Itajaí",
+          neighborhood: "Centro",
+          address: "Rua Importada 2",
+          bedrooms: 2,
+          askingPriceCents: 340000,
+          status: "active",
+          metadata: {
+            importedFrom: "drive-manifest",
+            sourceUrl: "https://drive.example/property-2",
+          },
+        },
+      ];
+    },
+  });
+
+  const result = await provider.search({
+    cities: ["Itajaí"],
+    goals: ["locacao"],
+    propertyTypes: ["apartamento"],
+    bedrooms: [2],
+    priceRange: null,
+    limitPerGroup: 10,
+  }, {
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    marketScanContext: null,
+  });
+
+  assert.equal(result.sourceStatus, "empty");
   assert.equal(result.totalItems, 0);
+});
+
+test("market scan router prefers tenant inventory import when the workspace has imported inventory", async () => {
+  const router = new ImobMarketScanProviderRouter({
+    internal_crm: new InternalCrmMarketScanProvider(createInternalSource()),
+    tenant_inventory_import: new TenantInventoryImportProvider(createInternalSource()),
+  });
+
+  const result = await router.search({
+    cities: ["Itajaí"],
+    goals: ["locacao"],
+    propertyTypes: ["apartamento"],
+    bedrooms: [2],
+    priceRange: null,
+    limitPerGroup: 10,
+  }, {
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    marketScanContext: null,
+  });
+
+  assert.equal(result.providerId, "tenant_inventory_import");
+  assert.equal(result.groups[0]?.items[0]?.sourceId, "drive-prop-1");
+});
+
+test("market scan router falls back to internal CRM when imported inventory is unavailable for the workspace", async () => {
+  const router = new ImobMarketScanProviderRouter({
+    internal_crm: new InternalCrmMarketScanProvider(createInternalSource()),
+    tenant_inventory_import: new TenantInventoryImportProvider({
+      listProperties() {
+        return [];
+      },
+    }),
+  });
+
+  const result = await router.search({
+    cities: ["Itajaí"],
+    goals: ["locacao"],
+    propertyTypes: ["apartamento"],
+    bedrooms: [2],
+    priceRange: null,
+    limitPerGroup: 10,
+  }, {
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    marketScanContext: null,
+  });
+
+  assert.equal(result.providerId, "internal_crm");
+  assert.equal(result.groups[0]?.items[0]?.source, "internal_crm");
+});
+
+test("market scan router honors explicit tenant/workspace routing to internal CRM", async () => {
+  const router = new ImobMarketScanProviderRouter(
+    {
+      internal_crm: new InternalCrmMarketScanProvider(createInternalSource()),
+      tenant_inventory_import: new TenantInventoryImportProvider(createInternalSource()),
+    },
+    [
+      {
+        tenantId: "tenant-1",
+        workspaceId: "workspace-1",
+        providerId: "internal_crm",
+      },
+    ],
+  );
+
+  const result = await router.search({
+    cities: ["Itajaí"],
+    goals: ["locacao"],
+    propertyTypes: ["apartamento"],
+    bedrooms: [2],
+    priceRange: null,
+    limitPerGroup: 10,
+  }, {
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    marketScanContext: null,
+  });
+
+  assert.equal(result.providerId, "internal_crm");
+  assert.equal(result.groups[0]?.items[0]?.source, "internal_crm");
 });

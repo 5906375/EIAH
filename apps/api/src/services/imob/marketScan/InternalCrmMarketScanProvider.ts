@@ -1,25 +1,23 @@
 import type { ImobCrmPropertyType } from "../crm/imobCrmPropertyTypes";
 import type {
   MarketScanExecutionContext,
-  MarketScanGroup,
   MarketScanItem,
   MarketScanProvider,
   MarketScanQuery,
   MarketScanResult,
 } from "./MarketScanProvider";
+import {
+  buildGroupedMarketScanResult,
+  compareNullableNumber,
+  compareNullableString,
+  isImportedInventoryRecord,
+  mapRequestedGoalToInventoryGoal,
+  matchesGoal,
+  type MarketScanRecord,
+} from "./marketScanProviderUtils";
 
-export type InternalCrmMarketScanPropertyRecord = {
-  id: string;
-  tenantId: string;
-  workspaceId: string;
+export type InternalCrmMarketScanPropertyRecord = MarketScanRecord & {
   propertyType: ImobCrmPropertyType | null;
-  goal: string | null;
-  city: string | null;
-  neighborhood?: string | null;
-  address?: string | null;
-  bedrooms?: number | null;
-  askingPriceCents?: number | null;
-  status?: string | null;
 };
 
 export type InternalCrmMarketScanSource = {
@@ -28,34 +26,6 @@ export type InternalCrmMarketScanSource = {
     workspaceId: string;
   }): Promise<InternalCrmMarketScanPropertyRecord[]> | InternalCrmMarketScanPropertyRecord[];
 };
-
-function mapRequestedGoalToInventoryGoal(goal: string) {
-  return goal === "locacao" ? "locacao" : "venda";
-}
-
-function matchesGoal(recordGoal: string | null, requestedGoals: string[]) {
-  if (!recordGoal) return false;
-  const normalizedRecordGoal = recordGoal.trim().toLowerCase();
-  const inventoryGoals = requestedGoals.map(mapRequestedGoalToInventoryGoal);
-  return inventoryGoals.includes(normalizedRecordGoal);
-}
-
-function buildGroupKey(item: MarketScanItem) {
-  return [
-    item.city,
-    item.goal,
-    item.propertyType ?? "unknown",
-    item.bedrooms ?? "unknown",
-  ].join("|");
-}
-
-function compareNullableString(left: string | null | undefined, right: string | null | undefined) {
-  return (left ?? "").localeCompare(right ?? "");
-}
-
-function compareNullableNumber(left: number | null | undefined, right: number | null | undefined) {
-  return (left ?? 0) - (right ?? 0);
-}
 
 export class InternalCrmMarketScanProvider implements MarketScanProvider {
   readonly providerId = "internal_crm";
@@ -75,6 +45,7 @@ export class InternalCrmMarketScanProvider implements MarketScanProvider {
       if (record.tenantId !== context.tenantId) return false;
       if (record.workspaceId !== context.workspaceId) return false;
       if ((record.status ?? "").toLowerCase() === "archived") return false;
+      if (isImportedInventoryRecord(record.metadata)) return false;
       if (!record.city || !query.cities.includes(record.city)) return false;
       if (!matchesGoal(record.goal, query.goals)) return false;
       if (query.propertyTypes.length > 0 && (!record.propertyType || !query.propertyTypes.includes(record.propertyType))) {
@@ -124,23 +95,10 @@ export class InternalCrmMarketScanProvider implements MarketScanProvider {
         || compareNullableNumber(left.price, right.price)
       );
 
-    const groups = new Map<string, MarketScanGroup>();
-    for (const item of items) {
-      const key = buildGroupKey(item);
-      const current = groups.get(key) ?? {
-        city: item.city,
-        goal: item.goal,
-        propertyType: item.propertyType ?? null,
-        bedrooms: item.bedrooms ?? null,
-        items: [],
-      };
-      if (current.items.length < query.limitPerGroup) {
-        current.items.push(item);
-      }
-      groups.set(key, current);
-    }
-
-    const groupedResults = Array.from(groups.values());
+    const groupedResults = buildGroupedMarketScanResult({
+      items,
+      limitPerGroup: query.limitPerGroup,
+    });
     return {
       providerId: this.providerId,
       sourceStatus: groupedResults.length > 0 ? "completed" : "empty",
@@ -149,4 +107,3 @@ export class InternalCrmMarketScanProvider implements MarketScanProvider {
     } satisfies MarketScanResult;
   }
 }
-
