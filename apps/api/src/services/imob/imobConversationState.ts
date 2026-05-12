@@ -31,6 +31,10 @@ import {
   normalizeImobCrmPropertyType,
   type ImobCrmPropertyType,
 } from "./crm/imobCrmPropertyTypes";
+import {
+  canonicalizeImobCity,
+  canonicalizeImobCityName,
+} from "./imobGeoCanonicalizer";
 
 export function normalizeImobText(value: string) {
   return value
@@ -198,7 +202,7 @@ export function extractCity(text: string) {
       .split(/\b(?:faixa|orcamento|orçamento|telefone|email|e-mail|documento|endereco|endereço|tipo|finalidade)\b/i)[0]
       ?.trim();
     if (rawCandidate && rawCandidate.length >= 2) {
-      return titleCaseWords(rawCandidate);
+      return canonicalizeImobCityName(rawCandidate);
     }
   }
   if (text.includes("balnepario camboriu") || text.includes("balneario camboriu") || /\bbc\b/.test(text)) {
@@ -233,7 +237,8 @@ export function extractCityCandidates(text: string) {
       .map((item) => item.trim())
       .filter(Boolean) ?? [];
     for (const value of values) {
-      candidates.push(titleCaseWords(value));
+      const canonical = canonicalizeImobCityName(value);
+      if (canonical) candidates.push(canonical);
     }
   }
   if (hasBalnearioCamboriu) {
@@ -401,16 +406,40 @@ function extractDocument(raw: string) {
 }
 
 function trimNamedPartyCandidate(value: string) {
-  return value
+  const trimmed = value
+    .replace(/^(?:chamado|chamada|nomeado|nomeada)\s+/i, "")
     .replace(/\b(no|na)\s+(imovel|imóvel|apartamento|apto|casa)\b.*$/i, "")
     .replace(/\b(com|por)\s+(oferta|proposta|valor)\b.*$/i, "")
     .replace(/\bcom\s+documentos?\b.*$/i, "")
     .replace(/\b(email|telefone|cpf|cnpj|documento|whatsapp)\b.*$/i, "")
     .trim();
+  const normalized = normalizeImobText(trimmed);
+  if (
+    !trimmed
+    || [
+      "existente",
+      "novo",
+      "cadastro",
+      "caso",
+      "do caso",
+      "do lead do",
+      "a um imovel",
+      "um imovel",
+      "imovel",
+    ].includes(normalized)
+    || /^(?:este|esse|deste|desse|nesse)\s+caso$/.test(normalized)
+  ) return "";
+  return trimmed;
 }
 
 function extractNamedParty(message: string, role: "owner" | "lead") {
   const normalized = normalizeImobText(message);
+  if (role === "lead" && /\b(?:este|esse|deste|desse|nesse)\s+caso\b/.test(normalized)) {
+    return null;
+  }
+  if (role === "lead" && normalized.includes("vincular") && normalized.includes("lead") && normalized.includes("imovel")) {
+    return null;
+  }
   const patterns =
     role === "owner"
       ? [
@@ -418,8 +447,10 @@ function extractNamedParty(message: string, role: "owner" | "lead") {
           /(?:captar|cadastrar)\s+(?:proprietario\s+)?([a-z]+(?:\s+[a-z]+){0,2})/,
         ]
       : [
+          /(?:lead|cliente|comprador|locatario)\s+(?:chamado|chamada|nomeado|nomeada)\s+([a-z]+(?:\s+[a-z]+){0,2})/,
           /(?:lead|cliente|comprador|locatario)\s+([a-z]+(?:\s+[a-z]+){0,2})/,
-          /(?:qualificar|atender)\s+(?:lead\s+)?([a-z]+(?:\s+[a-z]+){0,2})/,
+          /(?:qualificar|atender)\s+(?:um\s+)?(?:lead\s+)?(?:chamado|chamada|nomeado|nomeada)\s+([a-z]+(?:\s+[a-z]+){0,2})/,
+          /(?:qualificar|atender)\s+(?:um\s+)?(?:lead\s+)?([a-z]+(?:\s+[a-z]+){0,2})/,
         ];
   for (const pattern of patterns) {
     const match = normalized.match(pattern);
@@ -505,12 +536,26 @@ function hasPropertyCaptureSignal(message: string, slots: ImobSearchSlots) {
 
 function buildPropertyDraft(previous: ImobPropertyDraft | undefined, message: string, slots: ImobSearchSlots): ImobPropertyDraft {
   const propertyIdMatch = message.match(/(?:imovel|imóvel|apartamento|apto|casa)\s*#?\s*(\d{2,})/i)?.[1] ?? null;
+  const lockedCityCanonical = previous?.cityCanonical?.locked
+    ? previous.cityCanonical
+    : previous?.origin?.scanId && previous?.city
+      ? canonicalizeImobCity(previous.city, {
+        source: previous.origin.providerId === "tenant_inventory_import" ? "tenant_inventory" : "scan",
+        locked: true,
+      })
+      : null;
+  const incomingCityCanonical = lockedCityCanonical
+    ?? canonicalizeImobCity(slots.city ?? previous?.city ?? null, {
+      source: previous?.cityCanonical?.source ?? "user",
+      locked: previous?.cityCanonical?.locked ?? false,
+    });
   return {
     propertyId: propertyIdMatch ? `property-${propertyIdMatch}` : previous?.propertyId ?? null,
     propertyType: slots.propertyType ?? previous?.propertyType ?? null,
     goal: slots.goal ?? previous?.goal ?? null,
     cep: extractCep(message) ?? previous?.cep ?? null,
-    city: slots.city ?? previous?.city ?? null,
+    city: lockedCityCanonical?.canonicalName ?? incomingCityCanonical?.canonicalName ?? null,
+    cityCanonical: lockedCityCanonical ?? incomingCityCanonical,
     neighborhood: slots.neighborhood ?? previous?.neighborhood ?? null,
     bedrooms: slots.bedrooms ?? previous?.bedrooms ?? null,
     bathrooms: slots.bathrooms ?? previous?.bathrooms ?? null,
@@ -568,12 +613,17 @@ function buildPropertyDraftFromMarketScanSelection(
   previous: ImobPropertyDraft | undefined,
   selection: ImobMarketScanSelection,
 ): ImobPropertyDraft {
+  const cityCanonical = canonicalizeImobCity(selection.city ?? previous?.city ?? null, {
+    source: selection.providerId === "tenant_inventory_import" ? "tenant_inventory" : "scan",
+    locked: true,
+  });
   return {
     propertyId: selection.sourceId,
     propertyType: selection.propertyType ?? previous?.propertyType ?? null,
     goal: (selection.goal as ImobPropertyDraft["goal"]) ?? previous?.goal ?? null,
     cep: previous?.cep ?? null,
-    city: selection.city ?? previous?.city ?? null,
+    city: cityCanonical?.canonicalName ?? previous?.city ?? null,
+    cityCanonical: cityCanonical ?? previous?.cityCanonical ?? null,
     neighborhood: selection.neighborhood ?? previous?.neighborhood ?? null,
     bedrooms: selection.bedrooms ?? previous?.bedrooms ?? null,
     bathrooms: previous?.bathrooms ?? null,
@@ -678,13 +728,18 @@ function detectLeadPersona(message: string, previous?: ImobLeadDraft): ImobLeadP
 }
 
 function buildLeadDraft(previous: ImobLeadDraft | undefined, message: string, slots: ImobSearchSlots): ImobLeadDraft {
+  const desiredCityCanonical = canonicalizeImobCity(slots.city ?? previous?.desiredCity ?? null, {
+    source: "user",
+    locked: previous?.desiredCityCanonical?.locked ?? false,
+  });
   return {
     leadPersona: detectLeadPersona(message, previous),
     leadName: extractNamedParty(message, "lead") ?? previous?.leadName ?? null,
     leadEmail: extractEmail(message) ?? previous?.leadEmail ?? null,
     leadPhone: extractPhone(message) ?? previous?.leadPhone ?? null,
     desiredGoal: slots.goal ?? previous?.desiredGoal ?? null,
-    desiredCity: slots.city ?? previous?.desiredCity ?? null,
+    desiredCity: desiredCityCanonical?.canonicalName ?? previous?.desiredCity ?? null,
+    desiredCityCanonical,
     budgetMax: slots.budgetMax ?? previous?.budgetMax ?? null,
     discoverySignals: buildLeadDiscoverySignals(previous?.discoverySignals, message),
   };
@@ -1356,10 +1411,16 @@ export function createNextImobOperationalState(
         message,
         inheritedSlots,
       );
-      if (marketScanContext.cityCandidates.length > 1) draft.city = null;
-      if (marketScanContext.goalCandidates.length > 1) draft.goal = null;
+      const preserveResolvedMarketScanSelection = Boolean(
+        previous?.flow === "property.create"
+        && previous.propertyDraft?.origin
+        && previous.propertyDraft?.city
+        && previous.propertyDraft?.goal,
+      );
+      if (marketScanContext.cityCandidates.length > 1 && !preserveResolvedMarketScanSelection) draft.city = null;
+      if (marketScanContext.goalCandidates.length > 1 && !preserveResolvedMarketScanSelection) draft.goal = null;
       const pendingFields = buildPropertyPendingFields(draft);
-      if (isMarketScanRequest(message) || hasMultipleCandidates) {
+      if (isMarketScanRequest(message) || (hasMultipleCandidates && !preserveResolvedMarketScanSelection)) {
         return {
           flow: "property.market_scan",
           status: "collecting",

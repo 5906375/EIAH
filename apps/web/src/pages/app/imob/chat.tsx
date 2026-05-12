@@ -365,6 +365,18 @@ function buildCaseMapFromMessages(items: ChatMessage[]) {
   return map;
 }
 
+function buildCaseContextMapFromMessages(items: ChatMessage[]) {
+  const map: Record<string, ImobCaseContext> = {};
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    const message = items[index];
+    const threadId = message.caseContext?.threadId ?? message.thread?.id ?? message.card?.thread?.id ?? null;
+    const caseContext = message.caseContext ?? null;
+    if (!threadId || !caseContext || map[threadId]) continue;
+    map[threadId] = caseContext;
+  }
+  return map;
+}
+
 function resolveBestCaseIdForThread(
   items: ChatMessage[],
   threadId: string | null | undefined,
@@ -1363,7 +1375,7 @@ function buildOperationalNextStep(
   if (area === "lead") {
     return {
       owner: "Corretor",
-      nextStep: pending.length > 0 ? "Completar dados do lead e revisar o interesse comercial." : "Qualificar interesse e vincular o próximo imóvel ou etapa comercial.",
+      nextStep: pending.length > 0 ? "Completar dados do lead e revisar o interesse comercial." : "Vincular o lead a um imóvel ou avançar para visita.",
       blocker: isBlocked ? "Dados do lead ainda estão incompletos para seguir." : null,
     };
   }
@@ -1660,6 +1672,7 @@ const ImobChatPage: React.FC = () => {
   const attachmentMenuRef = React.useRef<HTMLDivElement | null>(null);
   const sessionRunByThreadRef = React.useRef<Record<string, string>>({});
   const caseIdByThreadRef = React.useRef<Record<string, string>>({});
+  const caseContextByThreadRef = React.useRef<Record<string, ImobCaseContext>>({});
   const conversationStateByThreadRef = React.useRef<Record<string, ImobThreadConversationState>>({});
   const rejectedExecutionKeysRef = React.useRef<Set<string>>(new Set());
   const persistedRunStatusKeysRef = React.useRef<Set<string>>(new Set());
@@ -1687,6 +1700,7 @@ const ImobChatPage: React.FC = () => {
       setSequentialChoiceMessageIds({});
       sessionRunByThreadRef.current = buildSessionRunMapFromMessages(mapped);
       caseIdByThreadRef.current = buildCaseMapFromMessages(mapped);
+      caseContextByThreadRef.current = buildCaseContextMapFromMessages(mapped);
       setHasMoreHistory(history.items.length >= limit);
     },
     []
@@ -1694,6 +1708,10 @@ const ImobChatPage: React.FC = () => {
 
   const appendMessage = React.useCallback((message: ChatMessage) => {
     setMessages((prev) => [...prev, message]);
+    const threadId = message.caseContext?.threadId ?? message.thread?.id ?? message.card?.thread?.id ?? null;
+    if (threadId && message.caseContext) {
+      caseContextByThreadRef.current[threadId] = message.caseContext;
+    }
     if (message.role === "assistant" && message.text.trim().length > 0) {
       setTypewriterMessageIds((prev) => ({ ...prev, [message.id]: true }));
     }
@@ -1713,6 +1731,48 @@ const ImobChatPage: React.FC = () => {
       setSequentialChoiceMessageIds((prev) => ({ ...prev, [message.id]: true }));
     }
   }, []);
+
+  const resolveFormValuesForMessage = React.useCallback(
+    (message: ChatMessage) => {
+      const form = message.form;
+      if (!form) return {} as Record<string, string>;
+
+      const currentThreadId = message.thread?.id ?? message.card?.thread?.id ?? null;
+      const values: Record<string, string> = Object.fromEntries(
+        form.fields.map((field) => [field.name, String(field.value ?? "")]),
+      );
+      const localOverrides = formValuesByMessageId[message.id] ?? null;
+      if (localOverrides) {
+        for (const [fieldName, value] of Object.entries(localOverrides)) {
+          values[fieldName] = value;
+        }
+      }
+
+      for (const field of form.fields) {
+        if (normalizeImobFormValue(values[field.name] ?? "")) continue;
+        for (let index = messages.length - 1; index >= 0; index -= 1) {
+          const candidate = messages[index];
+          if (candidate.id === message.id) continue;
+          const candidateForm = candidate.form;
+          if (!candidateForm) continue;
+          if (candidateForm.entity !== form.entity || candidateForm.action !== form.action) continue;
+          const candidateThreadId = candidate.thread?.id ?? candidate.card?.thread?.id ?? null;
+          if (candidateThreadId !== currentThreadId) continue;
+
+          const candidateLocalValues = formValuesByMessageId[candidate.id] ?? null;
+          const candidateValue = normalizeImobFormValue(
+            candidateLocalValues?.[field.name] ?? String(candidateForm.fields.find((item) => item.name === field.name)?.value ?? ""),
+          );
+          if (!candidateValue) continue;
+          values[field.name] = candidateValue;
+          break;
+        }
+      }
+
+      return values;
+    },
+    [formValuesByMessageId, messages],
+  );
 
   const updateMessageById = React.useCallback((messageId: string, patch: Partial<ChatMessage>) => {
     setMessages((prev) =>
@@ -1968,6 +2028,7 @@ const ImobChatPage: React.FC = () => {
           sessionRunByThreadRef.current = {};
           conversationStateByThreadRef.current = {};
           caseIdByThreadRef.current = {};
+          caseContextByThreadRef.current = {};
         }
       } catch {
         if (!mounted) return;
@@ -1978,6 +2039,7 @@ const ImobChatPage: React.FC = () => {
         sessionRunByThreadRef.current = {};
         conversationStateByThreadRef.current = {};
         caseIdByThreadRef.current = {};
+        caseContextByThreadRef.current = {};
       } finally {
         if (mounted) setHistoryLoading(false);
       }
@@ -2005,6 +2067,7 @@ const ImobChatPage: React.FC = () => {
     sessionRunByThreadRef.current = {};
     conversationStateByThreadRef.current = {};
     caseIdByThreadRef.current = {};
+    caseContextByThreadRef.current = {};
     trackUxEvent("conversation_selected", { nextConversationId });
     setHistoryLimit(HISTORY_PAGE_SIZE);
     setHasMoreHistory(false);
@@ -2023,6 +2086,7 @@ const ImobChatPage: React.FC = () => {
       sessionRunByThreadRef.current = {};
       conversationStateByThreadRef.current = {};
       caseIdByThreadRef.current = {};
+      caseContextByThreadRef.current = {};
     } finally {
       setHistoryLoading(false);
     }
@@ -2050,6 +2114,7 @@ const ImobChatPage: React.FC = () => {
     sessionRunByThreadRef.current = {};
     conversationStateByThreadRef.current = {};
     caseIdByThreadRef.current = {};
+    caseContextByThreadRef.current = {};
     setHistoryLimit(HISTORY_PAGE_SIZE);
     setHasMoreHistory(false);
     trackUxEvent("conversation_new");
@@ -2224,9 +2289,24 @@ const ImobChatPage: React.FC = () => {
               ? pickPostSuccessBlocks(pendingExecution?.presentationBlocks)
               : [];
           const postSuccessPresentation = buildPostSuccessPresentationFromBlocks(postSuccessBlocks);
+          const freshThreadCaseContext =
+            updatedThread?.id
+              ? caseContextByThreadRef.current[updatedThread.id] ?? null
+              : null;
+          const latestCaseContext = freshThreadCaseContext ?? pendingExecution?.caseContext;
+          const canonicalSuccessCtas = buildCanonicalRecommendedActionCtas(latestCaseContext);
+          const stalePresentationFallbackCtas =
+            !freshThreadCaseContext && pendingExecution?.presentationCard?.ctas
+              ? normalizeCardCtas(pendingExecution.presentationCard.ctas)
+              : undefined;
           const successMenuCtas =
             run.status === "success"
-              ? (postSuccessPresentation.ctas ?? normalizeCardCtas(pendingExecution?.presentationCard?.ctas))?.filter((cta) => isSendSuggestedMessageAction(cta.action))
+              ? (
+                  postSuccessPresentation.ctas
+                  ?? (canonicalSuccessCtas.length > 0
+                    ? canonicalSuccessCtas
+                    : stalePresentationFallbackCtas)
+                )?.filter((cta) => isSendSuggestedMessageAction(cta.action))
               : undefined;
           const hasSuccessDirectMenu = Boolean(successMenuCtas && successMenuCtas.length > 0);
           const statusText = buildHumanOperationalUpdate(
@@ -2276,7 +2356,7 @@ const ImobChatPage: React.FC = () => {
                     id: "view-run",
                     label: "Ver execução",
                     kind: "neutral",
-                    href: withRunContext(activeRunId, updatedThread?.id ?? null, pendingExecution?.caseContext?.caseId ?? null),
+                    href: withRunContext(activeRunId, updatedThread?.id ?? null, latestCaseContext?.caseId ?? null),
                   },
                 ],
           };
@@ -2287,7 +2367,7 @@ const ImobChatPage: React.FC = () => {
               blocks: postSuccessBlocks.length > 0 ? postSuccessBlocks : undefined,
               thread: updatedThread,
               card: updatedCard,
-              caseContext: pendingExecution?.caseContext,
+              caseContext: latestCaseContext,
             });
           } else {
             appendMessage({
@@ -2742,21 +2822,19 @@ const ImobChatPage: React.FC = () => {
     const currentThreadId = selectedThread?.threadId ?? activeThread?.id ?? null;
     const currentThreadLabel = selectedThread?.label ?? activeThread?.label ?? null;
     const userMessageId = makeId("user");
-    if (!options?.suppressUserEcho) {
-      appendMessage({
-        id: userMessageId,
-        role: "user",
-        text: displayText,
-        thread:
-          currentThreadId && currentThreadLabel
-            ? {
-                id: currentThreadId,
-                label: currentThreadLabel,
-                status: "active",
-              }
-            : undefined,
-      });
-    }
+    appendMessage({
+      id: userMessageId,
+      role: "user",
+      text: displayText,
+      thread:
+        currentThreadId && currentThreadLabel
+          ? {
+              id: currentThreadId,
+              label: currentThreadLabel,
+              status: "active",
+            }
+          : undefined,
+    });
     setInput("");
     setState("typing");
     const startedAt = Date.now();
@@ -2833,6 +2911,9 @@ const ImobChatPage: React.FC = () => {
     if (turn.caseContext?.caseId) {
       caseIdByThreadRef.current[operationThread.id] = turn.caseContext.caseId;
     }
+    if (turn.caseContext) {
+      caseContextByThreadRef.current[operationThread.id] = turn.caseContext;
+    }
     if (turn.presentation.card?.ctas?.some((cta) => isOpenAttachmentMenuAction(cta.action))) {
       setAttachmentMenuOpen(true);
     }
@@ -2883,15 +2964,13 @@ const ImobChatPage: React.FC = () => {
       }
     }
 
-    if (!options?.suppressUserEcho) {
-      updateMessageById(userMessageId, {
-        thread: {
-          id: operationThread.id,
-          label: operationThread.label,
-          status: "active",
-        },
-      });
-    }
+    updateMessageById(userMessageId, {
+      thread: {
+        id: operationThread.id,
+        label: operationThread.label,
+        status: "active",
+      },
+    });
     const interviewIsActive =
       !!contractInterviewState &&
       (contractInterviewState.status === "collecting" ||
@@ -2905,8 +2984,7 @@ const ImobChatPage: React.FC = () => {
       {
         id: userMessageId,
         role: "user",
-        text: options?.suppressUserEcho ? "" : displayText,
-        hiddenFromTimeline: options?.suppressUserEcho === true,
+        text: displayText,
         thread: {
           id: operationThread.id,
           label: operationThread.label,
@@ -3705,15 +3783,13 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     if (actionId === "cancel") {
       setFormValuesByMessageId((prev) => ({
         ...prev,
-        [message.id]: Object.fromEntries(form.fields.map((field) => [field.name, String(field.value ?? "")])),
+        [message.id]: resolveFormValuesForMessage(message),
       }));
       setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
       return;
     }
 
-    const currentValues = Object.fromEntries(
-      form.fields.map((field) => [field.name, formValuesByMessageId[message.id]?.[field.name] ?? String(field.value ?? "")])
-    );
+    const currentValues = resolveFormValuesForMessage(message);
     const cepField = form.fields.find((field) => field.lookup?.kind === "cep");
     if (cepField) {
       const needsAutofill = [
@@ -4120,11 +4196,10 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
   });
   const visibleMessages = selectedThreadId
     ? messages.filter((message) => {
-        if (message.hiddenFromTimeline) return false;
         const threadId = message.thread?.id ?? message.card?.thread?.id ?? null;
         return threadId === selectedThreadId;
       })
-    : messages.filter((message) => !message.hiddenFromTimeline);
+    : messages;
   const compactVisibleLimit = 34;
   const hiddenMessageCount = compactTimelineMode ? Math.max(0, visibleMessages.length - compactVisibleLimit) : 0;
   const renderedMessages = compactTimelineMode ? visibleMessages.slice(-compactVisibleLimit) : visibleMessages;
@@ -4703,9 +4778,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                           ) : null}
 
                           {!shouldDelayForm && message.form ? (() => {
-                            const formValues = formValuesByMessageId[message.id] ?? Object.fromEntries(
-                              message.form.fields.map((field) => [field.name, String(field.value ?? "")])
-                            );
+                            const formValues = resolveFormValuesForMessage(message);
                             const formErrors = formErrorsByMessageId[message.id] ?? {};
                             const formLookupLoading = formLookupLoadingByMessageId[message.id] ?? {};
                             const formLabel = message.form.label?.trim() ?? "";

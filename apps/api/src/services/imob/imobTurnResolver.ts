@@ -79,8 +79,17 @@ function isRulesConfigurationRequest(message: string) {
   return hasRulesSignal && hasPropertyContext;
 }
 
+function isLeadToPropertyLinkRequest(message: string) {
+  const text = normalizeImobText(message);
+  const hasLeadContext = text.includes("lead") || text.includes("cliente") || text.includes("comprador") || text.includes("locatario");
+  const hasLinkVerb = text.includes("vincular") || text.includes("associar") || text.includes("conectar");
+  const hasPropertyContext = text.includes("imovel") || text.includes("imóvel") || text.includes("apartamento") || text.includes("casa");
+  return hasLeadContext && hasLinkVerb && hasPropertyContext;
+}
+
 function classifyImobIntent(message: string): ImobIntent {
   const text = normalizeImobText(message);
+  if (isLeadToPropertyLinkRequest(message)) return "capture";
   if (isRulesConfigurationRequest(message)) return "rules";
   if (text.includes("comissao") || text.includes("comissão") || text.includes("repasse") || text.includes("sinal")) return "commission";
   if (text.includes("deal") || text.includes("negocio") || text.includes("negócio") || text.includes("review do negocio") || text.includes("review do negócio") || text.includes("revisar negocio") || text.includes("revisar negócio")) return "deal";
@@ -175,6 +184,44 @@ function shouldBreakOwnerCaptureContinuation(
     text.includes("captar imovel") ||
     text.includes("captar imóvel")
   );
+}
+
+function isExplicitStageChangeIntent(params: {
+  activeIntent: ImobIntent | null;
+  baseIntent: ImobIntent;
+  message: string;
+}) {
+  if (!params.activeIntent || params.activeIntent === params.baseIntent) return false;
+  const normalized = normalizeImobText(params.message);
+
+  if (params.baseIntent === "visit") {
+    return (
+      normalized.includes("visita")
+      || normalized.includes("agendar")
+      || normalized.includes("agenda")
+      || normalized.includes("tour")
+    );
+  }
+
+  if (params.baseIntent === "documents") {
+    return (
+      normalized.includes("document")
+      || normalized.includes("revisar documentos")
+      || normalized.includes("coletar documentos")
+      || normalized.includes("documentacao")
+      || normalized.includes("documentação")
+    );
+  }
+
+  if (params.baseIntent === "proposal") {
+    return normalized.includes("proposta") || normalized.includes("oferta");
+  }
+
+  if (params.baseIntent === "capture") {
+    return isLeadToPropertyLinkRequest(params.message);
+  }
+
+  return false;
 }
 
 function isExplicitCaseContinuationRequest(message: string) {
@@ -287,6 +334,14 @@ function resolveImobTurnDecision(params: {
   const active = params.activeOperationalState;
   const activeIntent = active ? mapOperationalFlowToIntent(active.flow) : null;
   const collecting = Boolean(active && active.status === "collecting");
+
+  if (collecting && isExplicitStageChangeIntent({
+    activeIntent,
+    baseIntent: params.baseIntent,
+    message: params.message,
+  })) {
+    return { stage: "explicit_route_change" as const, intent: params.baseIntent };
+  }
 
   if (collecting && active && hasPendingFieldSignalForActiveFlow(active, params.message, params.nextSlots)) {
     return { stage: "pending_field_parse" as const, intent: activeIntent ?? params.baseIntent };
@@ -711,6 +766,11 @@ function withImobAgentPresentationMetadata(
 }
 
 function buildCatalogEntityActionPresentation(entityLabel: string, action: ImobActionKey, canonicalLabel: string) {
+  const normalizedCanonicalLabel = normalizeImobText(canonicalLabel);
+  const isPropertyCreateAction =
+    (entityLabel === "Imóvel" || entityLabel === "imóvel")
+    && action === "create";
+
   if (action === "delete") {
     return {
       text: `Entendi: ${canonicalLabel}. Envie o nome, documento ou identificador do cadastro para eu confirmar a exclusão.`,
@@ -751,6 +811,17 @@ function buildCatalogEntityActionPresentation(entityLabel: string, action: ImobA
       card: {
         title: canonicalLabel,
         lines: [`Posso continuar assim que você indicar qual ${entityLabel.toLowerCase()} deve ser consultado.`],
+      },
+    };
+  }
+
+  if (isPropertyCreateAction || normalizedCanonicalLabel.includes("cadastrar imovel")) {
+    return {
+      text: `Entendi: ${canonicalLabel}. Posso continuar o cadastro do imóvel agora e pedir só os dados que ainda faltarem.`,
+      suggestedNextAction: "Informe os dados do imóvel que faltam para eu continuar a captação.",
+      card: {
+        title: canonicalLabel,
+        lines: ["Posso seguir na captação do imóvel e aproveitar o contexto comercial já informado neste atendimento."],
       },
     };
   }
@@ -1064,11 +1135,18 @@ function buildPropertyCreateForm(propertyDraft?: {
 } | null) {
   const normalizedPropertyType = normalizeImobCrmPropertyType(propertyDraft?.propertyType ?? null) ?? null;
   const normalizedGoal = normalizeImobCrmPropertyGoal(propertyDraft?.goal ?? null) ?? null;
+  const goalLabel = IMOB_CRM_PROPERTY_GOAL_OPTIONS.find((option) => option.value === normalizedGoal)?.label ?? null;
+  const inheritedContext = [
+    goalLabel ? goalLabel.toLowerCase() : null,
+    propertyDraft?.city?.trim() ? propertyDraft.city.trim() : null,
+  ].filter(Boolean).join(" em ");
   return {
     entity: "imovel",
     action: "create",
     label: "Cadastrar imóvel",
-    description: "",
+    description: inheritedContext
+      ? `A captação já foi aberta com contexto de ${inheritedContext}. Confirme ou ajuste os campos abaixo e complete só o que faltar.`
+      : "Confirme ou ajuste os campos abaixo e complete só o que faltar para continuar a captação.",
     fields: [
       {
         name: "propertyType",
@@ -1876,9 +1954,17 @@ function buildOperationalCollectingText(params: {
     }
     if (operationalState.flow === "property.create") {
       if (!hasPending) return "Posso iniciar o cadastro do imóvel agora.";
+      const contextParts = [
+        operationalState.propertyDraft?.goal
+          ? (IMOB_CRM_PROPERTY_GOAL_OPTIONS.find((option) => option.value === operationalState.propertyDraft?.goal)?.label ?? null)
+          : null,
+        operationalState.propertyDraft?.city ?? null,
+      ].filter(Boolean);
       return structuredSubmission
         ? "Atualizei o cadastro do imóvel. Continue pelos campos pendentes abaixo."
-        : "Preencha os campos abaixo para continuar o cadastro do imóvel.";
+        : contextParts.length > 0
+          ? `Preencha os campos abaixo para continuar o cadastro do imóvel. Usei ${contextParts.join(" em ")} como ponto de partida para esta captação.`
+          : "Preencha os campos abaixo para continuar o cadastro do imóvel.";
     }
     if (operationalState.flow === "owner.create") {
       if (!hasPending) return "Cadastro do proprietário pronto para revisão.";

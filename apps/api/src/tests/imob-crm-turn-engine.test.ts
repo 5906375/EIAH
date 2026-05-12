@@ -683,3 +683,244 @@ test("IMOB_CRM turn engine does not reopen lead qualification when there are no 
   assert.equal(resolved.action, "crm.workflow.blocked");
   assert.equal((resolved as any).presentation?.metadata?.workflowReasonCode, "lead_already_qualified");
 });
+
+test("IMOB_CRM turn engine prioritizes explicit visit transition over lead ready guard", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "vamos avançar para visita",
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "lead.qualify",
+          status: "ready_for_review",
+          pendingFields: [],
+          leadDraft: {
+            leadName: "Maria",
+            leadPhone: "47999999999",
+            leadEmail: "maria@example.com",
+            desiredGoal: "locacao",
+            desiredCity: "Itapema",
+            budgetMax: 3500,
+          },
+        },
+      },
+    },
+  });
+  params.helpers.applyExistingRegistrationResolution = async ({ resolved }: any) => resolved;
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.notEqual((resolved as any).presentation?.metadata?.workflowReasonCode, "lead_already_qualified");
+  assert.equal((resolved as any).conversationState?.operational?.flow, "visit.schedule");
+  assert.equal((resolved as any).executionRequest?.operation, "visit.schedule");
+});
+
+test("IMOB_CRM turn engine prioritizes explicit documents transition over active case review fallback", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "quero revisar a documentação necessária deste caso",
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "property.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          propertyDraft: {
+            propertyType: "apartamento",
+            goal: "locacao",
+            city: "Itajaí",
+            address: "Rua 7 de Setembro",
+          },
+        },
+      },
+    },
+  });
+  params.helpers.hydrateThreadStateWithPersistedLead = async ({ threadState }: any) => ({
+    ...threadState,
+    operational: {
+      ...(threadState?.operational ?? {}),
+      flow: "documents.collect",
+      status: "ready_for_review",
+      pendingFields: [],
+      documentDraft: {},
+    },
+  });
+  params.helpers.applyExistingRegistrationResolution = async ({ resolved }: any) => resolved;
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal((resolved as any).conversationState?.operational?.flow, "documents.collect");
+  assert.notEqual(resolved.action, "crm.case.recent_registration");
+});
+
+test("IMOB_CRM turn engine canonicalizes lead-to-property linking into property capture", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "vincular o lead a um imóvel",
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "lead.qualify",
+          status: "ready_for_review",
+          pendingFields: [],
+          leadDraft: {
+            leadName: "Maria",
+            leadPhone: "47999999999",
+            leadEmail: "maria@example.com",
+            desiredGoal: "locacao",
+            desiredCity: "Itapema",
+            budgetMax: 3500,
+          },
+        },
+      },
+    },
+  });
+  params.helpers.applyExistingRegistrationResolution = async ({ resolved }: any) => resolved;
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal((resolved as any).conversationState?.operational?.flow, "property.create");
+  assert.notEqual((resolved as any).conversationState?.operational?.leadDraft?.leadName, "A Um Imovel");
+});
+
+test("IMOB_CRM turn engine does not parse case-reference lead CTA as literal lead entity", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "qualificar lead deste caso",
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "property.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          propertyDraft: {
+            propertyType: "apartamento",
+            goal: "locacao",
+            city: "Itajaí",
+            address: "Rua 7 de Setembro",
+          },
+        },
+      },
+    },
+  });
+  params.helpers.applyExistingRegistrationResolution = async ({ resolved }: any) => resolved;
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal((resolved as any).conversationState?.operational?.flow, "lead.qualify");
+  assert.notEqual((resolved as any).conversationState?.operational?.leadDraft?.leadName, "Deste Caso");
+  assert.notEqual((resolved as any).conversationState?.operational?.leadDraft?.desiredCity, "Do Lead Do");
+});
+
+test("IMOB_CRM turn engine offers visit instead of requalifying lead after property success when case already has lead", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "salvar cadastro",
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "property.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          propertyDraft: {
+            propertyType: "apartamento",
+            goal: "locacao",
+            city: "Camboriú",
+            address: "Areias",
+          },
+        },
+      },
+    },
+  });
+  params.helpers.resolveImobOperationalUpdate = async () => ({
+    mode: "execute",
+    action: "crm.property.update",
+    threadLabel: "Imóvel",
+    conversationState: params.body.threadState,
+    caseContext: {
+      caseId: "case-1",
+      flow: "property.create",
+      lead: {
+        id: "lead-1",
+        name: "João",
+      },
+    },
+    presentation: {
+      text: "Cadastro do imóvel processado com sucesso.",
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  const actions = ((resolved as any).presentation?.blocks ?? [])
+    .flatMap((block: any) => block?.ctas ?? []);
+  assert.ok(actions.some((item: any) => item.label === "Avançar para visita"));
+  assert.ok(!actions.some((item: any) => item.label === "Qualificar lead"));
+});
+
+test("IMOB_CRM turn engine keeps property-success actions fully case-aware when case already has lead and owner", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "salvar cadastro",
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "property.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          propertyDraft: {
+            propertyType: "apartamento",
+            goal: "locacao",
+            city: "Itajaí",
+            address: "Rua 7 de Setembro",
+          },
+        },
+      },
+    },
+  });
+  params.helpers.resolveImobOperationalUpdate = async () => ({
+    mode: "execute",
+    action: "crm.property.update",
+    threadLabel: "Imóvel",
+    conversationState: params.body.threadState,
+    caseContext: {
+      caseId: "case-1",
+      flow: "property.create",
+      lead: {
+        id: "lead-1",
+        name: "João",
+      },
+      owner: {
+        id: "owner-1",
+        name: "Carlos",
+      },
+      property: {
+        id: "property-1",
+        city: "Itajaí",
+      },
+    },
+    presentation: {
+      text: "Cadastro do imóvel processado com sucesso.",
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  const actions = ((resolved as any).presentation?.blocks ?? [])
+    .flatMap((block: any) => block?.ctas ?? []);
+  assert.ok(actions.some((item: any) => item.label === "Avançar para visita"));
+  assert.ok(!actions.some((item: any) => item.label === "Qualificar lead"));
+  assert.ok(!actions.some((item: any) => item.label === "Cadastrar proprietário"));
+});

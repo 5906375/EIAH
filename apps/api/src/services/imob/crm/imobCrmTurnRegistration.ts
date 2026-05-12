@@ -186,6 +186,10 @@ function buildExistingRegistrationChoiceConsult(params: {
     ...(next.presentation ?? {}),
     text: params.text,
     form: undefined,
+    caseBrief: undefined,
+    preparedFollowUp: undefined,
+    actionableChecklist: undefined,
+    handoffPack: undefined,
     suggestedNextAction: params.flow === "property.create"
       ? "Escolha: criar novo, editar, excluir ou arquivar (vendido, alugado ou outro)."
       : "Escolha se quer atualizar o cadastro existente ou criar um novo.",

@@ -82,3 +82,68 @@ for (const message of [
     assert.equal((resolved as any).conversationState?.operational?.dedupeDecision?.status, "resolved");
   });
 }
+
+test("IMOB_CRM registration dedupe review clears inherited follow-up blocks from previous lead state", async () => {
+  const helpers = createHelpers();
+  const resolved = await applyExistingRegistrationResolution({
+    prisma: {
+      imobLead: {
+        findFirst: async () => null,
+        findMany: async () => ([{
+          id: "lead-1",
+          name: "Maria",
+          phone: null,
+          email: null,
+          goal: null,
+          targetCity: null,
+        }]),
+      },
+      imobOwner: {
+        findFirst: async () => null,
+      },
+      imobProperty: {
+        findFirst: async () => null,
+      },
+    },
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "qualificar lead Maria",
+    resolved: {
+      mode: "execute",
+      action: "crm.from-resolve-turn",
+      conversationState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "lead.qualify",
+          status: "ready_for_review",
+          pendingFields: [],
+          leadDraft: {
+            leadName: "Maria",
+            leadPhone: null,
+            desiredGoal: null,
+            desiredCity: null,
+            budgetMax: null,
+          },
+        },
+      },
+      presentation: {
+        text: "lead em dedupe",
+        preparedFollowUp: { objective: "foo", recipientRole: "lead", trigger: "bar", variants: [] },
+        actionableChecklist: { title: "Checklist", items: [] },
+        caseBrief: { summary: "Resumo" },
+      },
+    } as any,
+    helpers: {
+      ...helpers,
+      cloneImobResolvedTurn: <T>(value: T) => structuredClone(value),
+    },
+  });
+
+  assert.equal((resolved as any).action, "crm.registration.dedupe_review");
+  assert.equal((resolved as any).presentation?.preparedFollowUp, undefined);
+  assert.equal((resolved as any).presentation?.actionableChecklist, undefined);
+  assert.equal((resolved as any).presentation?.caseBrief, undefined);
+});

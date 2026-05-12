@@ -125,15 +125,22 @@ function createMockPrisma() {
     imobCase: {
       count: async () => 0,
       findFirst: async ({ where }: any) => cases.find((item) => (
-        item.id === where.id &&
+        (!where.id || item.id === where.id) &&
+        (!where.threadId || item.threadId === where.threadId) &&
         item.tenantId === where.tenantId &&
         item.workspaceId === where.workspaceId
       )) ?? null,
       create: async ({ data }: any) => {
+        const owner = data.ownerId ? owners.find((item) => item.id === data.ownerId) ?? null : null;
+        const property = data.propertyId ? properties.find((item) => item.id === data.propertyId) ?? null : null;
+        const lead = data.leadId ? leads.find((item) => item.id === data.leadId) ?? null : null;
         const created = {
           id: `case-${cases.length + 1}`,
           ...data,
           updatedAt: new Date("2026-01-04"),
+          owner: owner ? { id: owner.id, name: owner.name } : null,
+          property: property ? { id: property.id, propertyType: property.propertyType, city: property.city, neighborhood: property.neighborhood } : null,
+          lead: lead ? { id: lead.id, name: lead.name } : null,
         };
         cases.push(created);
         return clone(created);
@@ -142,6 +149,18 @@ function createMockPrisma() {
         const item = cases.find((caseItem) => caseItem.id === where.id);
         if (!item) throw new Error("case not found");
         Object.assign(item, data);
+        if (data.owner && "connect" in data.owner) {
+          const owner = owners.find((candidate) => candidate.id === data.owner.connect.id) ?? null;
+          item.owner = owner ? { id: owner.id, name: owner.name } : null;
+        }
+        if (data.property && "connect" in data.property) {
+          const property = properties.find((candidate) => candidate.id === data.property.connect.id) ?? null;
+          item.property = property ? { id: property.id, propertyType: property.propertyType, city: property.city, neighborhood: property.neighborhood } : null;
+        }
+        if (data.lead && "connect" in data.lead) {
+          const lead = leads.find((candidate) => candidate.id === data.lead.connect.id) ?? null;
+          item.lead = lead ? { id: lead.id, name: lead.name } : null;
+        }
         return clone(item);
       },
     },
@@ -165,10 +184,16 @@ function createMockPrisma() {
     $transaction: async (callback: any) => callback({
       imobCase: {
         create: async ({ data }: any) => {
+          const owner = data.ownerId ? owners.find((item) => item.id === data.ownerId) ?? null : null;
+          const property = data.propertyId ? properties.find((item) => item.id === data.propertyId) ?? null : null;
+          const lead = data.leadId ? leads.find((item) => item.id === data.leadId) ?? null : null;
           const created = {
             id: `case-${cases.length + 1}`,
             ...data,
             updatedAt: new Date("2026-01-04"),
+            owner: owner ? { id: owner.id, name: owner.name } : null,
+            property: property ? { id: property.id, propertyType: property.propertyType, city: property.city, neighborhood: property.neighborhood } : null,
+            lead: lead ? { id: lead.id, name: lead.name } : null,
           };
           cases.push(created);
           return clone(created);
@@ -177,6 +202,18 @@ function createMockPrisma() {
           const item = cases.find((caseItem) => caseItem.id === where.id);
           if (!item) throw new Error("case not found");
           Object.assign(item, data);
+          if (data.owner && "connect" in data.owner) {
+            const owner = owners.find((candidate) => candidate.id === data.owner.connect.id) ?? null;
+            item.owner = owner ? { id: owner.id, name: owner.name } : null;
+          }
+          if (data.property && "connect" in data.property) {
+            const property = properties.find((candidate) => candidate.id === data.property.connect.id) ?? null;
+            item.property = property ? { id: property.id, propertyType: property.propertyType, city: property.city, neighborhood: property.neighborhood } : null;
+          }
+          if (data.lead && "connect" in data.lead) {
+            const lead = leads.find((candidate) => candidate.id === data.lead.connect.id) ?? null;
+            item.lead = lead ? { id: lead.id, name: lead.name } : null;
+          }
           return clone(item);
         },
       },
@@ -287,6 +324,8 @@ test("IMOB_CRM mutation service persists conversational lead case with audit tra
 
   assert.equal(persisted?.flow, "lead.qualify");
   assert.equal(persisted?.status, "ready_for_review");
+  assert.equal(persisted?.lead?.id, "lead-1");
+  assert.equal(persisted?.lead?.name, "Merlo");
   assert.equal(prisma.cases.length, 1);
   assert.equal(prisma.cases[0].workspaceId, "workspace-1");
   assert.equal(prisma.cases[0].leadId, "lead-1");
@@ -427,6 +466,194 @@ test("IMOB_CRM mutation service dedupes and preserves market scan origin before 
   });
   assert.equal(prisma.cases[0].propertyId, "property-existing-1");
   assert.equal((prisma.caseEvents[0].payload.marketScanSelection as any)?.sourceId, "prop-1");
+});
+
+test("IMOB_CRM mutation service keeps linked lead context after property capture success", async () => {
+  const prisma = createMockPrisma();
+  prisma.cases.push({
+    id: "case-1",
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    flow: "lead.qualify",
+    stage: "ready_for_review",
+    status: "ready_for_review",
+    ownerResponsible: "Corretor",
+    nextStep: "Vincular o lead a um imóvel ou avançar para visita.",
+    blockers: [],
+    pendingItems: [],
+    leadId: "lead-1",
+    lead: { id: "lead-1", name: "Merlo" },
+    metadata: {},
+  });
+
+  const service = new ImobCrmMutationService(prisma as any);
+  const persisted = await service.upsertCaseFromResolvedTurn({
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    userId: "user-1",
+  }, {
+    caseId: "case-1",
+    threadId: "thread-1",
+    threadLabel: "Captação",
+    resolved: {
+      mode: "execute",
+      action: "realestate.register_property",
+      threadLabel: "Captação",
+      presentation: {
+        text: "Cadastro do imóvel processado com sucesso.",
+        owner: "Corretor",
+        nextStep: "Avançar para visita",
+        pendingFieldLabels: [],
+      },
+      executionRequest: null,
+      conversationState: {
+        operational: {
+          flow: "property.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          propertyDraft: {
+            propertyType: "kitnet",
+            goal: "locacao",
+            city: "Itajaí",
+            address: "Rua 7 de Setembro",
+          },
+        },
+      },
+    } as any,
+  });
+
+  assert.equal(persisted?.lead?.id, "lead-1");
+  assert.equal(persisted?.lead?.name, "Merlo");
+  assert.equal(persisted?.property?.city, "Itajaí");
+});
+
+test("IMOB_CRM mutation service inherits lead context from latest thread case during property capture", async () => {
+  const prisma = createMockPrisma();
+  prisma.cases.push({
+    id: "case-thread-1",
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    threadId: "thread-shared-1",
+    flow: "lead.qualify",
+    stage: "ready_for_review",
+    status: "ready_for_review",
+    ownerResponsible: "Corretor",
+    nextStep: "Vincular o lead a um imóvel ou avançar para visita.",
+    blockers: [],
+    pendingItems: [],
+    leadId: "lead-1",
+    lead: { id: "lead-1", name: "Merlo" },
+    metadata: {},
+    updatedAt: new Date("2026-01-05"),
+  });
+
+  const service = new ImobCrmMutationService(prisma as any);
+  const persisted = await service.upsertCaseFromResolvedTurn({
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    userId: "user-1",
+  }, {
+    threadId: "thread-shared-1",
+    threadLabel: "Captação",
+    resolved: {
+      mode: "execute",
+      action: "realestate.register_property",
+      threadLabel: "Captação",
+      presentation: {
+        text: "Cadastro do imóvel processado com sucesso.",
+        owner: "Corretor",
+        nextStep: "Avançar para visita",
+        pendingFieldLabels: [],
+      },
+      executionRequest: null,
+      conversationState: {
+        operational: {
+          flow: "property.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          propertyDraft: {
+            propertyType: "kitnet",
+            goal: "locacao",
+            city: "Itajaí",
+            address: "Rua 7 de Setembro",
+          },
+        },
+      },
+    } as any,
+  });
+
+  assert.equal(persisted?.caseId, "case-thread-1");
+  assert.equal(persisted?.lead?.id, "lead-1");
+  assert.equal(persisted?.property?.city, "Itajaí");
+});
+
+test("IMOB_CRM mutation service preserves owner context in returned caseContext after property save", async () => {
+  const prisma = createMockPrisma();
+  prisma.owners.push({
+    id: "owner-1",
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    name: "Carlos",
+    status: "qualified",
+    updatedAt: new Date("2026-01-06"),
+  });
+  prisma.cases.push({
+    id: "case-owner-1",
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    threadId: "thread-owner-1",
+    flow: "owner.create",
+    stage: "ready_for_review",
+    status: "ready_for_review",
+    ownerResponsible: "Corretor",
+    nextStep: "Cadastrar imóvel",
+    blockers: [],
+    pendingItems: [],
+    ownerId: "owner-1",
+    owner: { id: "owner-1", name: "Carlos" },
+    metadata: {},
+    updatedAt: new Date("2026-01-06"),
+  });
+
+  const service = new ImobCrmMutationService(prisma as any);
+  const persisted = await service.upsertCaseFromResolvedTurn({
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    userId: "user-1",
+  }, {
+    threadId: "thread-owner-1",
+    threadLabel: "Captação",
+    resolved: {
+      mode: "execute",
+      action: "realestate.register_property",
+      threadLabel: "Captação",
+      presentation: {
+        text: "Cadastro do imóvel processado com sucesso.",
+        owner: "Corretor",
+        nextStep: "Cadastrar proprietário ou avançar para visita.",
+        pendingFieldLabels: [],
+      },
+      executionRequest: null,
+      conversationState: {
+        operational: {
+          flow: "property.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          propertyDraft: {
+            propertyType: "apartamento",
+            goal: "locacao",
+            city: "Itajaí",
+            address: "Rua 7 de Setembro",
+          },
+        },
+      },
+    } as any,
+  });
+
+  assert.equal(persisted?.caseId, "case-owner-1");
+  assert.equal(persisted?.owner?.id, "owner-1");
+  assert.equal(persisted?.owner?.name, "Carlos");
+  assert.equal(persisted?.property?.city, "Itajaí");
 });
 
 test("IMOB_CRM mutation service keeps approval event actor/evidence when updating case", async () => {

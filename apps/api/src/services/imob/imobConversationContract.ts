@@ -1,6 +1,7 @@
 import type { ImobCrmPropertyType } from "./crm/imobCrmPropertyTypes";
 import type { ImobReasonCode } from "./control/imobReasonCodeCatalog";
 import type { ImobAgentActivityEvent } from "./agents/imobAgentActivity";
+import type { ImobCanonicalLocation } from "./imobGeoCanonicalizer";
 import type {
   ImobCapabilityCategory,
   ImobCapabilityExecutionMode,
@@ -160,6 +161,7 @@ export type ImobLeadDraft = {
   leadPhone: string | null;
   desiredGoal: "locacao" | "venda" | "aluguel_por_temporada" | null;
   desiredCity: string | null;
+  desiredCityCanonical?: ImobCanonicalLocation | null;
   budgetMax: number | null;
   discoverySignals?: ImobLeadDiscoverySignals | null;
 };
@@ -179,6 +181,7 @@ export type ImobPropertyDraft = {
   goal: "locacao" | "venda" | "aluguel_por_temporada" | null;
   cep: string | null;
   city: string | null;
+  cityCanonical?: ImobCanonicalLocation | null;
   neighborhood: string | null;
   bedrooms: number | null;
   bathrooms: number | null;

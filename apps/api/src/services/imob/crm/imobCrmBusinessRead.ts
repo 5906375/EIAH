@@ -73,6 +73,9 @@ type BusinessReadHelpers = {
     nextStep?: string | null;
     blockers?: unknown;
     pendingItems?: unknown;
+    lead?: ImobCrmCaseContext["lead"];
+    property?: ImobCrmCaseContext["property"];
+    owner?: ImobCrmCaseContext["owner"];
   }) => any;
   resolveBusinessReadIntent: (message: string) => BusinessReadIntent | null;
 };
@@ -2888,6 +2891,9 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
           nextStep: data.caseContext.nextStep,
           blockers: data.caseContext.blocker ? [data.caseContext.blocker] : [],
           pendingItems: data.caseContext.pendingItems,
+          lead: data.caseContext.lead,
+          property: data.caseContext.property,
+          owner: data.caseContext.owner,
         }),
       },
     };
