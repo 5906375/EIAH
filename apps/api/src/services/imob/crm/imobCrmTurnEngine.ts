@@ -418,11 +418,58 @@ function hasStrongBusinessReadIntent(message: string) {
   );
 }
 
+function inferExplicitStageChangeFlow(message: string): "visit.schedule" | "documents.collect" | "proposal.create" | null {
+  const normalized = message.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  if (
+    normalized.includes("revisar documentos")
+    || normalized.includes("coletar documentos")
+    || normalized.includes("validar documento")
+    || normalized.includes("documentacao")
+    || normalized.includes("documentação")
+  ) {
+    return "documents.collect";
+  }
+  if (
+    normalized.includes("visita")
+    || normalized.includes("agendar")
+    || normalized.includes("agenda")
+    || normalized.includes("tour")
+  ) {
+    return "visit.schedule";
+  }
+  if (normalized.includes("proposta") || normalized.includes("oferta")) {
+    return "proposal.create";
+  }
+  return null;
+}
+
+function isExplicitLeadPropertyLinkRequest(message: string) {
+  const normalized = message.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const hasLeadContext =
+    normalized.includes("lead")
+    || normalized.includes("cliente")
+    || normalized.includes("comprador")
+    || normalized.includes("locatario");
+  const hasLinkVerb =
+    normalized.includes("vincular")
+    || normalized.includes("associar")
+    || normalized.includes("conectar");
+  const hasPropertyContext =
+    normalized.includes("imovel")
+    || normalized.includes("imóvel")
+    || normalized.includes("apartamento")
+    || normalized.includes("casa");
+  return hasLeadContext && hasLinkVerb && hasPropertyContext;
+}
+
 function isExplicitOperationalCommand(message: string) {
   const normalized = message.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  if (isExplicitLeadPropertyLinkRequest(message)) return true;
   const hasOperationalVerb =
     normalized.includes("cadastrar") ||
     normalized.includes("qualificar") ||
+    normalized.includes("agendar") ||
+    normalized.includes("visita") ||
     normalized.includes("revisar documentos") ||
     normalized.includes("coletar documentos") ||
     normalized.includes("validar documento");
@@ -545,22 +592,40 @@ function applyDedupeSelectionToConversationState(
     },
   };
 }
-function buildCaptureSwitchActions() {
-  return [
-    {
+function buildCaptureSwitchActions(caseContext?: ImobCrmCaseContext | null) {
+  const hasLead = Boolean(caseContext?.lead && (caseContext.lead.id || caseContext.lead.name));
+  const hasOwner = Boolean(caseContext?.owner && (caseContext.owner.id || caseContext.owner.name));
+
+  const actions = [];
+  if (hasLead) {
+    actions.push({
+      id: "capture-switch-visit",
+      label: "Avançar para visita",
+      kind: "primary",
+      action: "send_suggested_message",
+      nextMessage: "vamos avançar para visita",
+    });
+  } else {
+    actions.push({
       id: "capture-switch-lead",
       label: "Qualificar lead",
       kind: "primary",
       action: "send_suggested_message",
       nextMessage: "qualificar lead deste caso",
-    },
-    {
+    });
+  }
+
+  if (!hasOwner) {
+    actions.push({
       id: "capture-switch-owner",
       label: "Cadastrar proprietário",
       kind: "secondary",
       action: "send_suggested_message",
       nextMessage: "cadastrar proprietário",
-    },
+    });
+  }
+
+  actions.push(
     {
       id: "capture-switch-docs",
       label: "Revisar documentos",
@@ -575,7 +640,9 @@ function buildCaptureSwitchActions() {
       action: "send_suggested_message",
       nextMessage: "consultar caso",
     },
-  ] as const;
+  );
+
+  return actions as const;
 }
 
 function buildLeadPostQualificationActions() {
@@ -663,6 +730,7 @@ function buildImobPresentationBlocks(data: Record<string, unknown>, copyState: I
   const presentation = asObject(data.presentation) ?? {};
   const conversationState = asObject(data.conversationState) ?? {};
   const operational = asObject(conversationState.operational) ?? {};
+  const caseContext = asObject(data.caseContext) as ImobCrmCaseContext | null;
   const flow = asString(operational.flow) ?? "";
   const operationalStatus = asString(operational.status) ?? "";
   const card = asObject(presentation.card);
@@ -678,7 +746,7 @@ function buildImobPresentationBlocks(data: Record<string, unknown>, copyState: I
       {
         kind: "next_actions",
         title: "Posso seguir com uma destas ações agora.",
-        ctas: buildCaptureSwitchActions(),
+        ctas: buildCaptureSwitchActions(caseContext),
         actionsLayout: "inline",
         persistent: true,
         phase: "post_success",
@@ -707,7 +775,7 @@ function buildImobPresentationBlocks(data: Record<string, unknown>, copyState: I
   if (action === "crm.capture.entry_options" || copyState === "entry_options") {
     const menuCtas = cardCtas.length > 0
       ? cardCtas
-      : buildCaptureSwitchActions();
+      : buildCaptureSwitchActions(caseContext);
     return [
       {
         kind: "next_actions",
@@ -725,7 +793,7 @@ function buildImobPresentationBlocks(data: Record<string, unknown>, copyState: I
       {
         kind: "next_actions",
         title: "Posso seguir com uma destas ações agora.",
-        ctas: buildCaptureSwitchActions(),
+        ctas: buildCaptureSwitchActions(caseContext),
         actionsLayout: "inline",
         persistent: true,
         phase: "pre_execution",
@@ -801,11 +869,19 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
       hydratedThreadState,
       params.helpers.normalizeImobRouteText,
     );
-    const effectiveMessage = resolveDedupeContextualMessage(
+    const dedupeAwareMessage = resolveDedupeContextualMessage(
       rewrittenMessage,
       hydratedThreadState,
       params.helpers.normalizeImobRouteText,
     );
+    const effectiveMessage = isExplicitLeadPropertyLinkRequest(dedupeAwareMessage)
+      ? "cadastrar imóvel"
+      : dedupeAwareMessage;
+    const explicitStageChangeFlow = inferExplicitStageChangeFlow(effectiveMessage);
+    const currentOperationalFlow = asString(asObject(hydratedThreadState)?.operational?.flow);
+    const isCrossStageTransitionRequest =
+      explicitStageChangeFlow !== null
+      && explicitStageChangeFlow !== currentOperationalFlow;
     const normalizedEffectiveMessage = params.helpers.normalizeImobRouteText(effectiveMessage);
     const isMarketScanSelectionFlowMessage =
       asString(asObject(hydratedThreadState)?.operational?.flow) === "property.market_scan"
@@ -826,12 +902,14 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
     const readOnlyPilotQuery =
       hasStrongBusinessReadIntent(effectiveMessage)
       && /(piloto|pilot_active|approval_required|shadow)/i.test(effectiveMessage);
-    const workflowGuard = resolveWorkflowGuard({
-      message: effectiveMessage,
-      threadState: hydratedThreadState,
-      normalizeImobRouteText: params.helpers.normalizeImobRouteText,
-      isReadOnlyPilotQuery: readOnlyPilotQuery,
-    });
+    const workflowGuard = isCrossStageTransitionRequest
+      ? null
+      : resolveWorkflowGuard({
+          message: effectiveMessage,
+          threadState: hydratedThreadState,
+          normalizeImobRouteText: params.helpers.normalizeImobRouteText,
+          isReadOnlyPilotQuery: readOnlyPilotQuery,
+        });
     if (workflowGuard) {
       const data = applyResponsibleLabelToResolvedTurn(workflowGuard, params.workspaceResponsibleLabel);
       return {
@@ -860,10 +938,17 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
       };
     }
 
-    const shouldPrioritizeActiveFlowContinuity = hasActivePendingOperationalFlow(hydratedThreadState);
+    const shouldPrioritizeActiveFlowContinuity =
+      hasActivePendingOperationalFlow(hydratedThreadState)
+      && !isCrossStageTransitionRequest;
     const shouldPrioritizeBusinessRead = hasStrongBusinessReadIntent(effectiveMessage);
 
-    if (shouldPrioritizeBusinessRead && !isExplicitOperationalCommand(effectiveMessage) && !isMarketScanSelectionFlowMessage) {
+    if (
+      shouldPrioritizeBusinessRead
+      && !isExplicitOperationalCommand(effectiveMessage)
+      && !isMarketScanSelectionFlowMessage
+      && !isCrossStageTransitionRequest
+    ) {
       const consultData = await params.helpers.resolveImobOperationalConsult({
         prisma: params.prisma,
         tenantId: params.authContext.tenantId,
@@ -956,7 +1041,11 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
       };
     }
 
-    if (!isExplicitOperationalCommand(effectiveMessage) && !isMarketScanSelectionFlowMessage) {
+    if (
+      !isExplicitOperationalCommand(effectiveMessage)
+      && !isMarketScanSelectionFlowMessage
+      && !isCrossStageTransitionRequest
+    ) {
       const consultData = await params.helpers.resolveImobOperationalConsult({
         prisma: params.prisma,
         tenantId: params.authContext.tenantId,

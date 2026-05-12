@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  createNextImobOperationalState,
   extractCityCandidates,
   extractGoalCandidates,
   extractMarketScanBedrooms,
@@ -40,4 +41,91 @@ test("IMOB conversation state normalizes city and goal candidates for market sca
 
   assert.deepEqual(extractCityCandidates(message), ["Camboriú", "Itajaí"]);
   assert.deepEqual(normalizeMarketScanGoalCandidates(extractGoalCandidates(message)), ["compra", "locacao", "venda"]);
+});
+
+test("IMOB conversation state canonicalizes malformed accented city names", () => {
+  const result = createNextImobOperationalState(
+    {
+      flow: "property.create",
+      status: "collecting",
+      pendingFields: ["address"],
+      propertyDraft: {
+        propertyId: "prop-1",
+        propertyType: "apartamento",
+        goal: "locacao",
+        cep: null,
+        city: "Itajái",
+        neighborhood: null,
+        bedrooms: 2,
+        bathrooms: null,
+        address: null,
+        origin: null,
+      },
+    } as any,
+    "capture",
+    "salvar cadastro",
+    {
+      goal: "locacao",
+      city: "Itajái",
+      region: null,
+      neighborhood: null,
+      budgetMax: null,
+      bedrooms: 2,
+      bathrooms: null,
+      propertyType: "apartamento",
+    },
+  );
+
+  assert.equal(result?.flow, "property.create");
+  assert.equal((result as any)?.propertyDraft?.city, "Itajaí");
+  assert.equal((result as any)?.propertyDraft?.cityCanonical?.canonicalName, "Itajaí");
+  assert.equal((result as any)?.propertyDraft?.cityCanonical?.locked, false);
+});
+
+test("IMOB conversation state preserves resolved scan city when completing property data after confirmation", () => {
+  const result = createNextImobOperationalState(
+    {
+      flow: "property.create",
+      status: "collecting",
+      pendingFields: ["cep", "address"],
+      propertyDraft: {
+        propertyId: "prop-1",
+        propertyType: "apartamento",
+        goal: "locacao",
+        cep: null,
+        city: "Itajaí",
+        neighborhood: "Centro",
+        bedrooms: 2,
+        bathrooms: null,
+        address: null,
+        origin: {
+          source: "internal_crm",
+          sourceId: "prop-1",
+          providerId: "internal_crm",
+          retrievedAt: "2026-05-09T12:00:00.000Z",
+          scanId: "market-scan-1",
+        },
+      },
+    } as any,
+    "capture",
+    "salvar cadastro",
+    {
+      goal: "locacao",
+      city: "Itajái",
+      region: null,
+      neighborhood: null,
+      budgetMax: null,
+      bedrooms: 2,
+      bathrooms: null,
+      propertyType: "apartamento",
+    },
+  );
+
+  assert.equal(result?.flow, "property.create");
+  assert.equal((result as any)?.propertyDraft?.city, "Itajaí");
+  assert.equal((result as any)?.propertyDraft?.goal, "locacao");
+  assert.equal((result as any)?.propertyDraft?.origin?.sourceId, "prop-1");
+  assert.equal((result as any)?.propertyDraft?.cityCanonical?.canonicalName, "Itajaí");
+  assert.equal((result as any)?.propertyDraft?.cityCanonical?.locked, true);
+  assert.deepEqual((result as any)?.pendingFields, ["address"]);
 });

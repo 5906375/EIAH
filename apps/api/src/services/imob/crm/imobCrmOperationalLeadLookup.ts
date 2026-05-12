@@ -76,7 +76,7 @@ export async function resolveImobLeadLookup(
           latestCase?.nextStep ? `Próximo passo mais recente: ${latestCase.nextStep}` : null,
         ].filter(Boolean).join("\n"),
         owner: latestCase?.ownerResponsible ?? "Corretor",
-        nextStep: latestCase?.nextStep ?? "Vincular o lead ao próximo imóvel ou etapa comercial.",
+        nextStep: latestCase?.nextStep ?? "Vincular o lead a um imóvel ou avançar para visita.",
         pendingFieldLabels: filterResolvedLeadPendingItems(lead),
         dedupeKey: `crm.lead.lookup:${lead.id}:cases`,
         card: {
@@ -98,10 +98,10 @@ export async function resolveImobLeadLookup(
         `Lead ${lead.name ?? "lead"} localizado no CRM operacional.`,
         `Pendências atuais: ${helpers.formatImobPendingList(filterResolvedLeadPendingItems(lead))}.`,
         helpers.buildLeadPendingSuggestion({ name: lead.name ?? "lead", pendingItems: filterResolvedLeadPendingItems(lead) }),
-        "Próximo passo: vincular o lead ao próximo imóvel ou etapa comercial.",
+        "Próximo passo: vincular o lead a um imóvel ou avançar para visita.",
       ].filter(Boolean).join("\n"),
       owner: "Corretor" as const,
-      nextStep: "Vincular o lead ao próximo imóvel ou etapa comercial.",
+      nextStep: "Vincular o lead a um imóvel ou avançar para visita.",
       pendingFieldLabels: asPendingItems(lead.pendingItems),
       dedupeKey: `crm.lead.lookup:${lead.id}`,
       card: {

@@ -467,8 +467,25 @@ function extractLeadGoalFromMessage(raw: string) {
 
 function extractLeadNameFromMessage(message: string) {
   const normalized = normalizeImobCrmText(message);
+  if (/\b(?:este|esse|deste|desse|nesse)\s+caso\b/.test(normalized)) return null;
+  if (normalized.includes("vincular") && normalized.includes("lead") && normalized.includes("imovel")) return null;
   const match = normalized.match(/(?:lead|cliente|comprador|locatario)\s+([a-z]+(?:\s+[a-z]+){0,2})/);
-  return match?.[1] ? titleCaseWords(match[1]) : null;
+  if (!match?.[1]) return null;
+  const candidate = titleCaseWords(match[1]);
+  const normalizedCandidate = normalizeImobCrmText(candidate);
+  if (
+    normalizedCandidate === "existente"
+    || normalizedCandidate === "novo"
+    || normalizedCandidate === "cadastro"
+    || normalizedCandidate === "caso"
+    || normalizedCandidate === "do caso"
+    || normalizedCandidate === "do lead do"
+    || normalizedCandidate === "a um imovel"
+    || normalizedCandidate === "um imovel"
+    || normalizedCandidate === "imovel"
+    || /^(?:este|esse|deste|desse|nesse)\s+caso$/.test(normalizedCandidate)
+  ) return null;
+  return candidate;
 }
 
 function extractOwnerNameFromMessage(message: string) {
@@ -478,7 +495,18 @@ function extractOwnerNameFromMessage(message: string) {
   if (!match?.[1]) return null;
   const candidate = titleCaseWords(match[1]);
   const normalizedCandidate = normalizeImobCrmText(candidate);
-  return normalizedCandidate === "null" || normalizedCandidate === "undefined" || normalizedCandidate === "none" ? null : candidate;
+  return (
+    normalizedCandidate === "null"
+    || normalizedCandidate === "undefined"
+    || normalizedCandidate === "none"
+    || normalizedCandidate === "existente"
+    || normalizedCandidate === "novo"
+    || normalizedCandidate === "cadastro"
+    || normalizedCandidate === "caso"
+    || normalizedCandidate === "do caso"
+    || normalizedCandidate === "do lead do"
+    || /^(?:este|esse|deste|desse|nesse)\s+caso$/.test(normalizedCandidate)
+  ) ? null : candidate;
 }
 
 function extractOwnerExplicitNameFromMessage(message: string) {
@@ -675,7 +703,15 @@ function extractFreeformCityAfterKeywords(message: string, keywords: string[]) {
   for (const keyword of keywords) {
     const normalizedKeyword = normalizeImobCrmText(keyword);
     const match = normalized.match(new RegExp(`${normalizedKeyword}\\s+([a-z\\s]{3,80})`));
-    if (match?.[1]) return titleCaseWords(match[1].trim());
+    const candidate = match?.[1]?.trim();
+    const normalizedCandidate = normalizeImobCrmText(candidate ?? "");
+    if (
+      candidate
+      && normalizedCandidate !== "do lead do"
+      && normalizedCandidate !== "do caso"
+      && normalizedCandidate !== "caso"
+      && !/^(?:este|esse|deste|desse|nesse)\s+caso$/.test(normalizedCandidate)
+    ) return titleCaseWords(candidate);
   }
   return null;
 }

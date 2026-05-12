@@ -10,10 +10,16 @@ function createHelpers() {
     createEmptyThreadState: () => ({ mode: "consult", pendingSlot: "none", resultOffset: 0, slots: {}, operational: null }),
     cloneImobResolvedTurn: <T>(value: T) => JSON.parse(JSON.stringify(value)) as T,
     detectOperationalHydrationFlow: (_message: string, threadLabel?: string | null, operationalFlow?: string | null) => {
-      if (operationalFlow === "proposal.create" || operationalFlow === "visit.schedule" || operationalFlow === "lead.qualify") return operationalFlow;
+      if (
+        operationalFlow === "proposal.create"
+        || operationalFlow === "visit.schedule"
+        || operationalFlow === "lead.qualify"
+        || operationalFlow === "documents.collect"
+      ) return operationalFlow;
       const normalizedThread = String(threadLabel ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
       if (normalizedThread.includes("proposta")) return "proposal.create";
       if (normalizedThread.includes("visita")) return "visit.schedule";
+      if (normalizedThread.includes("document")) return "documents.collect";
       if (normalizedThread.includes("lead")) return "lead.qualify";
       return null;
     },
@@ -174,4 +180,52 @@ test("IMOB_CRM continuity opens visit.schedule without linked property but keeps
 
   assert.equal((hydrated as any).operational?.flow, "visit.schedule");
   assert.deepEqual((hydrated as any).operational?.pendingFields, ["propertyId", "preferredDate"]);
+});
+
+test("IMOB_CRM continuity promotes ready case into documents.collect on explicit document intent", async () => {
+  const threadState = {
+    mode: "execute",
+    pendingSlot: "none",
+    resultOffset: 0,
+    slots: {},
+    operational: {
+      flow: "property.create",
+      status: "ready_for_review",
+      pendingFields: [],
+      propertyDraft: {
+        propertyType: "apartamento",
+        goal: "locacao",
+        city: "Itajaí",
+        address: "Rua 7 de Setembro",
+      },
+    },
+  };
+
+  const hydrated = await hydrateThreadStateWithPersistedLead({
+    prisma: {
+      imobCase: {
+        findFirst: async () => ({ leadId: "lead-1", propertyId: "property-1" }),
+      },
+      imobLead: {
+        findFirst: async () => ({
+          name: "Lead 01",
+          email: "lead01@gmail.com",
+          phone: "11 99999-9999",
+          goal: "locacao",
+          targetCity: "Itapema",
+          budgetMaxCents: 1000000,
+        }),
+      },
+    },
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    caseId: "case-1",
+    message: "Quero revisar a documentação necessária deste caso",
+    threadLabel: "Imóvel",
+    threadState,
+    helpers: createHelpers(),
+  });
+
+  assert.equal((hydrated as any).operational?.flow, "documents.collect");
+  assert.equal((hydrated as any).operational?.status, "ready_for_review");
 });

@@ -555,7 +555,8 @@ test("IMOB turn resolver keeps active property.create text concise and non-dupli
   });
 
   assert.equal(result.conversationState.operational?.flow, "property.create");
-  assert.equal(result.presentation.text, "Preencha os campos abaixo para continuar o cadastro do imóvel.");
+  assert.match(result.presentation.text ?? "", /^Preencha os campos abaixo para continuar o cadastro do imóvel\./i);
+  assert.match(result.presentation.text ?? "", /Usei .* como ponto de partida/i);
   assert.match(result.presentation.blocker ?? "", /dados do imóvel/i);
   assert.equal(result.presentation.nextStep, "Completar dados do imóvel antes de avançar a captação.");
   assert.deepEqual(result.presentation.pendingFieldLabels, ["tipo", "endereço"]);
@@ -1123,6 +1124,77 @@ test("IMOB turn resolver builds explicit lead.qualify operational state", () => 
   assert.equal(result.conversationState.operational?.leadDraft?.desiredCity, "Itapema");
   assert.equal(result.conversationState.operational?.leadDraft?.budgetMax, 3500);
   assert.match(result.presentation.text, /Ainda preciso de|cadastro do lead/i);
+});
+
+test("IMOB turn resolver strips conversational marker from lead name and preserves informed budget", () => {
+  const result = resolveImobTurn({
+    message: "quero qualificar um lead chamado Maria, procura locação em Itapema, orçamento até 3500, precisa mudar este mês e vai decidir com o marido",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.conversationState.operational?.flow, "lead.qualify");
+  assert.equal(result.conversationState.operational?.leadDraft?.leadName, "Maria");
+  assert.equal(result.conversationState.operational?.leadDraft?.desiredCity, "Itapema");
+  assert.equal(result.conversationState.operational?.leadDraft?.budgetMax, 3500);
+});
+
+test("IMOB turn resolver routes lead-to-property linking into property capture instead of reopening lead qualification", () => {
+  const result = resolveImobTurn({
+    message: "vincular o lead a um imóvel",
+    threadState: {
+      mode: "execute",
+      pendingSlot: "none",
+      resultOffset: 0,
+      slots: {},
+      operational: {
+        flow: "lead.qualify",
+        status: "ready_for_review",
+        pendingFields: [],
+        leadDraft: {
+          leadPersona: "lead",
+          leadName: "Maria",
+          leadEmail: "maria@gmail.com",
+          leadPhone: "47999998888",
+          desiredGoal: "locacao",
+          desiredCity: "Itapema",
+          budgetMax: 3500,
+        },
+      },
+    },
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.conversationState.operational?.flow, "property.create");
+  assert.notEqual(result.conversationState.operational?.leadDraft?.leadName, "A Um Imovel");
+  assert.match(result.presentation.text ?? "", /cadastro do im[oó]vel|preencha os campos/i);
+});
+
+test("IMOB turn resolver does not parse case-reference CTA as literal lead name", () => {
+  const result = resolveImobTurn({
+    message: "qualificar lead deste caso",
+    threadState: {
+      mode: "execute",
+      pendingSlot: "none",
+      resultOffset: 0,
+      slots: {},
+      operational: {
+        flow: "property.create",
+        status: "ready_for_review",
+        pendingFields: [],
+        propertyDraft: {
+          propertyType: "apartamento",
+          goal: "locacao",
+          city: "Itajaí",
+          address: "Rua 7 de Setembro, 101",
+        },
+      },
+    },
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.conversationState.operational?.flow, "lead.qualify");
+  assert.notEqual(result.conversationState.operational?.leadDraft?.leadName, "Deste Caso");
+  assert.notEqual(result.conversationState.operational?.leadDraft?.desiredCity, "Do Lead Do");
 });
 
 test("IMOB turn resolver captures conservative discovery signals during lead qualification", () => {

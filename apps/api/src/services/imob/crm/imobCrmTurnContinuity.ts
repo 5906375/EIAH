@@ -59,7 +59,7 @@ function normalizeLeadDesiredGoal(value: string | null | undefined): "locacao" |
   return null;
 }
 
-function inferExplicitTargetFlow(message: string): "proposal.create" | "visit.schedule" | "lead.qualify" | null {
+function inferExplicitTargetFlow(message: string): "proposal.create" | "visit.schedule" | "lead.qualify" | "documents.collect" | null {
   const normalized = String(message ?? "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
@@ -70,6 +70,14 @@ function inferExplicitTargetFlow(message: string): "proposal.create" | "visit.sc
   }
   if (normalized.includes("proposta") || normalized.includes("oferta")) {
     return "proposal.create";
+  }
+  if (
+    normalized.includes("document")
+    || normalized.includes("revisar documentos")
+    || normalized.includes("coletar documentos")
+    || normalized.includes("documentacao")
+  ) {
+    return "documents.collect";
   }
   if (normalized.includes("qualificar lead") || normalized.includes("cadastro de lead") || normalized.includes("cadastrar lead")) {
     return "lead.qualify";
@@ -119,7 +127,12 @@ export async function hydrateThreadStateWithPersistedLead(params: {
         params.threadLabel,
         null,
       );
-  if (targetFlow !== "proposal.create" && targetFlow !== "visit.schedule" && targetFlow !== "lead.qualify") {
+  if (
+    targetFlow !== "proposal.create"
+    && targetFlow !== "visit.schedule"
+    && targetFlow !== "lead.qualify"
+    && targetFlow !== "documents.collect"
+  ) {
     return params.threadState;
   }
 
@@ -240,6 +253,19 @@ export async function hydrateThreadStateWithPersistedLead(params: {
       status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
       pendingFields,
       leadDraft: hydratedLeadDraft,
+    };
+    return nextStateObject;
+  }
+
+  if (targetFlow === "documents.collect") {
+    nextStateObject.operational = {
+      ...nextOperational,
+      flow: "documents.collect",
+      status: "ready_for_review",
+      pendingFields: Array.isArray(nextOperational.pendingFields)
+        ? nextOperational.pendingFields.filter((item: unknown) => typeof item === "string")
+        : [],
+      documentDraft: params.helpers.asObject(nextOperational.documentDraft) ?? {},
     };
     return nextStateObject;
   }

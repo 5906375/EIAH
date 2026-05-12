@@ -628,7 +628,13 @@ export class ImobCrmMutationService {
           where: { id: params.caseId, tenantId: scope.tenantId, workspaceId: scope.workspaceId },
           select: { id: true, leadId: true, ownerId: true, propertyId: true },
         })
-      : null;
+      : params.threadId
+        ? await this.prisma.imobCase.findFirst({
+            where: { threadId: params.threadId, tenantId: scope.tenantId, workspaceId: scope.workspaceId },
+            orderBy: { updatedAt: "desc" },
+            select: { id: true, leadId: true, ownerId: true, propertyId: true },
+          })
+        : null;
 
     let persistedLeadId: string | null = scopedCase?.leadId ?? null;
     let persistedOwnerId: string | null = scopedCase?.ownerId ?? null;
@@ -892,6 +898,9 @@ export class ImobCrmMutationService {
       threadId: params.threadId ?? null,
       updatedAt: nowIso,
       blockers,
+      lead: result.data.lead ?? null,
+      owner: result.data.owner ?? null,
+      property: result.data.property ?? null,
     };
   }
 

@@ -313,6 +313,8 @@ function buildImobRecommendedActions(params: {
   nextStep?: string | null;
   pendingItems: string[];
   blockers: string[];
+  hasLead?: boolean;
+  hasOwner?: boolean;
 }): ImobCanonicalRecommendedAction[] {
   const actions: ImobCanonicalRecommendedAction[] = [];
   const push = (action: ImobCanonicalRecommendedAction) => {
@@ -346,8 +348,19 @@ function buildImobRecommendedActions(params: {
       push({ id: "continue_property_capture", label: "Avançar captação", actionType: "operational", inputHint: "continuar captação deste caso" });
       break;
     case "property.create":
-      push({ id: "register_property", label: "Cadastrar imóvel", actionType: "operational", inputHint: "cadastrar imóvel" });
-      push({ id: "continue_property_capture", label: "Avançar captação", actionType: "operational", inputHint: "continuar captação deste caso" });
+      if (params.pendingItems.length === 0) {
+        if (params.hasLead) {
+          push({ id: "advance_visit", label: "Avançar para visita", actionType: "operational", inputHint: "vamos avançar para visita" });
+        } else {
+          push({ id: "qualify_lead", label: "Qualificar lead", actionType: "operational", inputHint: "qualificar lead deste caso" });
+        }
+        if (!params.hasOwner) {
+          push({ id: "register_owner", label: "Cadastrar proprietário", actionType: "operational", inputHint: "cadastrar proprietário" });
+        }
+      } else {
+        push({ id: "register_property", label: "Cadastrar imóvel", actionType: "operational", inputHint: "cadastrar imóvel" });
+        push({ id: "continue_property_capture", label: "Avançar captação", actionType: "operational", inputHint: "continuar captação deste caso" });
+      }
       break;
     case "listing.activate":
       push({ id: "publish_listing", label: "Publicar anúncio", actionType: "operational", inputHint: "publicar anúncio deste caso" });
@@ -405,6 +418,9 @@ function buildImobCanonicalCase(params: {
   nextStep?: string | null;
   blockers?: unknown;
   pendingItems?: unknown;
+  lead?: { id?: string | null; name?: string | null } | null;
+  owner?: { id?: string | null; name?: string | null } | null;
+  property?: { id?: string | null } | null;
 }): ImobCanonicalCase {
   const pendingItems = asStringList(params.pendingItems);
   const blockers = asStringList(params.blockers);
@@ -425,6 +441,8 @@ function buildImobCanonicalCase(params: {
       nextStep: params.nextStep,
       pendingItems,
       blockers,
+      hasLead: Boolean(params.lead && (params.lead.id || params.lead.name)),
+      hasOwner: Boolean(params.owner && (params.owner.id || params.owner.name)),
     }),
     blockedActions: blockers,
     missingContext: pendingItems,
@@ -486,6 +504,27 @@ function titleCaseRouteWords(value: string) {
     .join(" ");
 }
 
+function isCaseReferenceRouteText(value: string) {
+  return /\b(?:este|esse|deste|desse|nesse)\s+caso\b/.test(value);
+}
+
+function isInvalidOperationalEntityCandidateRoute(value: string) {
+  return [
+    "null",
+    "undefined",
+    "none",
+    "existente",
+    "novo",
+    "cadastro",
+    "caso",
+    "do caso",
+    "do lead do",
+    "a um imovel",
+    "um imovel",
+    "imovel",
+  ].includes(value) || isCaseReferenceRouteText(value);
+}
+
 function extractLeadEmailFromMessage(raw: string) {
   const match = raw.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
   return match ? match[0].toLowerCase() : null;
@@ -499,20 +538,25 @@ function extractLeadPhoneFromMessage(raw: string) {
 
 function trimLeadNameCandidate(value: string) {
   const trimmed = value
+    .replace(/^(?:chamado|chamada|nomeado|nomeada)\s+/i, "")
     .replace(/\b(no|na)\s+(imovel|imóvel|apartamento|apto|casa)\b.*$/i, "")
     .replace(/\b(com|por)\s+(oferta|proposta|valor)\b.*$/i, "")
     .replace(/\b(email|telefone|cpf|cnpj|documento|whatsapp)\b.*$/i, "")
     .trim();
   const normalized = normalizeImobRouteText(trimmed);
-  if (!trimmed || normalized === "null" || normalized === "undefined" || normalized === "none") return "";
+  if (!trimmed || isInvalidOperationalEntityCandidateRoute(normalized)) return "";
   return trimmed;
 }
 
 function extractLeadNameFromMessage(message: string) {
   const normalized = normalizeImobRouteText(message);
+  if (isCaseReferenceRouteText(normalized)) return null;
+  if (normalized.includes("vincular") && normalized.includes("lead") && normalized.includes("imovel")) return null;
   const patterns = [
+    /(?:lead|cliente|comprador|locatario)\s+(?:chamado|chamada|nomeado|nomeada)\s+([a-z]+(?:\s+[a-z]+){0,2})/,
     /(?:lead|cliente|comprador|locatario)\s+([a-z]+(?:\s+[a-z]+){0,2})/,
-    /(?:qualificar|atender|agendar visita para|gerar proposta para)\s+(?:lead\s+|cliente\s+)?([a-z]+(?:\s+[a-z]+){0,2})/,
+    /(?:qualificar|atender|agendar visita para|gerar proposta para)\s+(?:um\s+)?(?:lead\s+|cliente\s+)?(?:chamado|chamada|nomeado|nomeada)\s+([a-z]+(?:\s+[a-z]+){0,2})/,
+    /(?:qualificar|atender|agendar visita para|gerar proposta para)\s+(?:um\s+)?(?:lead\s+|cliente\s+)?([a-z]+(?:\s+[a-z]+){0,2})/,
   ];
   for (const pattern of patterns) {
     const match = normalized.match(pattern);
@@ -524,7 +568,7 @@ function extractLeadNameFromMessage(message: string) {
 
 function extractOwnerNameFromMessage(message: string) {
   const normalized = normalizeImobRouteText(message);
-  if (/\b(?:este|esse|deste|desse|nesse)\s+caso\b/.test(normalized)) return null;
+  if (isCaseReferenceRouteText(normalized)) return null;
   const patterns = [
     /(?:proprietario|proprietária|proprietaria|dono)\s+([a-z]+(?:\s+[a-z]+){0,2})/,
     /(?:captar|cadastrar|mostrar|consultar|ver|abrir|editar|atualizar|alterar|excluir|deletar|remover)\s+(?:proprietario\s+|proprietária\s+|proprietaria\s+)?([a-z]+(?:\s+[a-z]+){0,2})/,
@@ -577,20 +621,34 @@ function extractFreeformCityAfterKeywords(raw: string, keywords: string[]) {
     if (idx === -1) continue;
     const slice = raw.slice(idx + keyword.length);
     const match = slice.match(/([A-Za-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+){0,2})/);
-    if (match?.[1]) return match[1].trim();
+    const candidate = match?.[1]?.trim();
+    const normalizedCandidate = normalizeImobRouteText(candidate ?? "");
+    if (candidate && !isInvalidOperationalEntityCandidateRoute(normalizedCandidate)) return candidate;
   }
   return null;
 }
 
 function detectOperationalHydrationFlow(message: string, threadLabel?: string | null, operationalFlow?: string | null) {
-  if (operationalFlow === "proposal.create" || operationalFlow === "visit.schedule" || operationalFlow === "lead.qualify") return operationalFlow;
+  if (
+    operationalFlow === "proposal.create"
+    || operationalFlow === "visit.schedule"
+    || operationalFlow === "lead.qualify"
+    || operationalFlow === "documents.collect"
+  ) return operationalFlow;
   const normalizedThread = normalizeImobRouteText(threadLabel ?? "");
   if (normalizedThread.includes("proposta")) return "proposal.create";
   if (normalizedThread.includes("visita")) return "visit.schedule";
+  if (normalizedThread.includes("document")) return "documents.collect";
   if (normalizedThread.includes("lead")) return "lead.qualify";
   const normalizedMessage = normalizeImobRouteText(message);
   if (normalizedMessage.includes("proposta") || normalizedMessage.includes("oferta")) return "proposal.create";
   if (normalizedMessage.includes("visita") || normalizedMessage.includes("agendar") || normalizedMessage.includes("reuniao") || normalizedMessage.includes("reunião")) return "visit.schedule";
+  if (
+    normalizedMessage.includes("revisar documentos")
+    || normalizedMessage.includes("coletar documentos")
+    || normalizedMessage.includes("validar documento")
+    || normalizedMessage.includes("documentacao")
+  ) return "documents.collect";
   if (normalizedMessage.includes("qualificar lead") || normalizedMessage.includes("cadastro de lead") || normalizedMessage.includes("cadastrar lead")) return "lead.qualify";
   return null;
 }
@@ -619,6 +677,7 @@ async function applyExistingRegistrationResolution(params: {
   prisma: NonNullable<TenantAwareRequest["prisma"]>;
   tenantId: string;
   workspaceId: string;
+  message?: string | null;
   resolved: any;
 }) {
   return applyImobCrmExistingRegistrationResolution({
@@ -1450,6 +1509,9 @@ async function upsertImobCaseFromResolvedTurn(params: {
       nextStep: persisted.nextStep,
       blockers: persisted.blockers,
       pendingItems: persisted.pendingItems,
+      lead: persisted.lead ?? null,
+      property: persisted.property ?? null,
+      owner: persisted.owner ?? null,
     }),
   };
 }
