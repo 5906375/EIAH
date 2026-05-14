@@ -1513,6 +1513,16 @@ export type ImobChatMessage = {
   txId?: string | null;
   receiptPath?: string | null;
   bundlePath?: string | null;
+  proof?: {
+    required: boolean;
+    ready: boolean;
+    state: "not_required" | "pending" | "ready" | "failed";
+    runId?: string | null;
+    txId?: string | null;
+    receiptPath?: string | null;
+    bundlePath?: string | null;
+    verifyUrl?: string | null;
+  } | null;
   metadata?: Record<string, unknown> | null;
   createdAt: string;
 };
@@ -2131,6 +2141,13 @@ export type ImobLeadScoringSnapshot = {
 };
 
 export type ImobLeadDiscoveryCoverage = "complete" | "partial" | "insufficient";
+export type ImobLeadDiscoverySignalKey =
+  | "urgency"
+  | "painPoint"
+  | "motivation"
+  | "budgetFlexibility"
+  | "decisionMaker"
+  | "timeline";
 
 export type ImobLeadDiscoverySnapshot = {
   coverage: ImobLeadDiscoveryCoverage;
@@ -2811,14 +2828,45 @@ export type ImobPresentationMetadata = {
   confidence?: ImobPresentationConfidence;
   choiceStyle?: ImobPresentationChoiceStyle;
   agentRuntime?: ImobAgentRuntimeMetadata;
+  governedIntent?: {
+    version: string;
+    candidates: Array<{
+      intent:
+        | "capture"
+        | "match"
+        | "lead"
+        | "visit"
+        | "listing"
+        | "documents"
+        | "proposal"
+        | "deal"
+        | "contract"
+        | "rules"
+        | "commission"
+        | "adjustment";
+      score: number;
+      reason: string;
+    }>;
+  };
 };
 
 export type ImobOperationalPresentation = {
   text: string;
   metadata?: ImobPresentationMetadata;
   card?: ImobPresentationCard;
+  proof?: {
+    required: boolean;
+    ready: boolean;
+    state: "not_required" | "pending" | "ready" | "failed";
+    runId?: string | null;
+    txId?: string | null;
+    receiptPath?: string | null;
+    bundlePath?: string | null;
+    verifyUrl?: string | null;
+  };
   blocks?: ImobPresentationBlock[];
   agentActivities?: ImobAgentActivityEvent[];
+  quickReplies?: string[];
   widget?: ImobPresentationWidget;
   form?: ImobPresentationForm;
   suggestedNextAction?: string;
@@ -3331,6 +3379,16 @@ export async function apiGetImobChatConversationExport(conversationId: string) {
         txId: string | null;
         receiptPath: string | null;
         bundlePath: string | null;
+        proof?: {
+          required: boolean;
+          ready: boolean;
+          state: "not_required" | "pending" | "ready" | "failed";
+          runId?: string | null;
+          txId?: string | null;
+          receiptPath?: string | null;
+          bundlePath?: string | null;
+          verifyUrl?: string | null;
+        } | null;
         createdAt: string;
       }>;
       threads: Array<{

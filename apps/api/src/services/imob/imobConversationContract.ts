@@ -422,11 +422,25 @@ export type ImobPresentationCta = {
   payload?: Record<string, unknown>;
 };
 
+export type ImobProofState = "not_required" | "pending" | "ready" | "failed";
+
+export type ImobProofSurface = {
+  required: boolean;
+  ready: boolean;
+  state: ImobProofState;
+  runId?: string | null;
+  txId?: string | null;
+  receiptPath?: string | null;
+  bundlePath?: string | null;
+  verifyUrl?: string | null;
+};
+
 export type ImobPresentationCard = {
   title: string;
   lines: string[];
   ctas?: ImobPresentationCta[];
   actionsLayout?: "inline";
+  proof?: ImobProofSurface;
 };
 
 export type ImobPresentationBlockPhase = "pre_execution" | "post_success";
@@ -759,6 +773,14 @@ export type ImobPresentationMetadata = {
   confidence?: ImobPresentationConfidence;
   choiceStyle?: ImobPresentationChoiceStyle;
   agentRuntime?: ImobAgentRuntimeMetadata;
+  governedIntent?: {
+    version: string;
+    candidates: Array<{
+      intent: ImobIntent;
+      score: number;
+      reason: string;
+    }>;
+  };
 };
 
 export type ImobCaseBrief = {
@@ -1151,8 +1173,10 @@ export type ImobOperationalPresentation = {
   text: string;
   metadata?: ImobPresentationMetadata;
   card?: ImobPresentationCard;
+  proof?: ImobProofSurface;
   agentActivities?: ImobAgentActivityEvent[];
   blocks?: ImobPresentationBlock[];
+  quickReplies?: string[];
   widget?: ImobPresentationWidget;
   form?: ImobPresentationForm;
   suggestedNextAction?: string;

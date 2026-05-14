@@ -1,3 +1,4 @@
+import "./support/testInfraEnv";
 import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import process from "node:process";
@@ -184,6 +185,10 @@ test("IMOB chat persistence enforces run correlation and derives completion proo
   assert.equal(linkedMessage.body?.message?.txId, "tx-imob-chat-proof-1");
   assert.equal(linkedMessage.body?.message?.bundlePath, `/api/runs/${scopedRun.id}/bundle`);
   assert.equal(linkedMessage.body?.message?.receiptPath, "/api/ledger/tx-imob-chat-proof-1");
+  assert.equal(linkedMessage.body?.message?.proof?.required, true);
+  assert.equal(linkedMessage.body?.message?.proof?.ready, true);
+  assert.equal(linkedMessage.body?.message?.proof?.state, "ready");
+  assert.equal(linkedMessage.body?.message?.proof?.runId, scopedRun.id);
   assert.equal(linkedMessage.body?.message?.metadata?.completionState, "success_full");
   assert.equal(linkedMessage.body?.message?.threadId, "thread_capture_run");
 
@@ -223,4 +228,63 @@ test("IMOB chat persistence enforces run correlation and derives completion proo
   assert.equal(messageWithProof.txId, "tx-imob-chat-proof-1");
   assert.equal(messageWithProof.bundlePath, `/api/runs/${scopedRun.id}/bundle`);
   assert.equal(messageWithProof.receiptPath, "/api/ledger/tx-imob-chat-proof-1");
+  assert.equal(messageWithProof.proof?.required, true);
+  assert.equal(messageWithProof.proof?.ready, true);
+  assert.equal(messageWithProof.proof?.state, "ready");
+});
+
+test("IMOB chat persistence keeps proof-required completions waiting until receipt and bundle exist", async () => {
+  const conversation = await request
+    .post("/api/imob/chat/conversations")
+    .set("Authorization", `Bearer ${apiToken}`)
+    .send({ title: "Captação aguardando prova" });
+
+  assert.equal(conversation.status, 201);
+  const conversationId = conversation.body?.conversation?.conversationId as string;
+  assert.ok(conversationId);
+
+  const scopedRun = await prismaGlobal.run.create({
+    data: {
+      tenantId,
+      workspaceId,
+      userId,
+      agent: "EIAH",
+      status: "success",
+      request: {
+        prompt: "Cadastrar imóvel sem prova final",
+        metadata: {
+          conversationId,
+          threadId: "thread_capture_pending_proof",
+          txIdRequired: true,
+        },
+      } as any,
+      response: { ok: true } as any,
+      txId: null,
+      criticalHash: null,
+    },
+  });
+
+  const linkedMessage = await request
+    .post(`/api/imob/chat/conversations/${conversationId}/messages`)
+    .set("Authorization", `Bearer ${apiToken}`)
+    .send({
+      role: "assistant",
+      content: "Processamento concluído, aguardando prova final.",
+      runId: scopedRun.id,
+      threadStatus: "done",
+      completionState: "success_full",
+    });
+
+  assert.equal(linkedMessage.status, 201);
+  assert.equal(linkedMessage.body?.message?.metadata?.completionState, "success_partial");
+  assert.equal(linkedMessage.body?.message?.metadata?.proofRequired, true);
+  assert.equal(linkedMessage.body?.message?.metadata?.proofReady, false);
+  assert.equal(linkedMessage.body?.message?.metadata?.proofState, "proof_pending");
+  assert.equal(linkedMessage.body?.message?.proof?.required, true);
+  assert.equal(linkedMessage.body?.message?.proof?.ready, false);
+  assert.equal(linkedMessage.body?.message?.proof?.state, "pending");
+  assert.equal(linkedMessage.body?.message?.threadStatus, "waiting");
+  assert.equal(linkedMessage.body?.message?.txId, null);
+  assert.equal(linkedMessage.body?.message?.bundlePath, null);
+  assert.equal(linkedMessage.body?.message?.receiptPath, null);
 });

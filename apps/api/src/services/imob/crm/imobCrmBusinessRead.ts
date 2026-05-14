@@ -276,6 +276,25 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     };
   }
 
+  function buildProofSummaryLine(proof: ImobCrmCaseContext["proof"]) {
+    if (!proof) return null;
+    if (proof.state === "ready") {
+      if (proof.bundlePath && proof.receiptPath) return "Prova auditável pronta: receipt e bundle disponíveis.";
+      if (proof.receiptPath) return "Prova auditável pronta: receipt disponível para verificação.";
+      return "Prova auditável pronta para este movimento.";
+    }
+    if (proof.state === "pending") {
+      return "Prova auditável pendente: execução feita, aguardando receipt e bundle finais.";
+    }
+    if (proof.state === "not_required") {
+      return "Este movimento não exige prova crítica para ser considerado concluído.";
+    }
+    if (proof.state === "failed") {
+      return "A prova auditável deste movimento falhou e precisa de revisão antes do fechamento.";
+    }
+    return null;
+  }
+
   function buildCaseBrief(params: {
     subject: string;
     humanPhaseLabel: string | null;
@@ -2213,9 +2232,22 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     primarySpecialistAgentId?: string | null;
   }): ImobCrmWorkflowContext {
     const propertyLinked = Boolean(helpers.asString(helpers.asObject(params.caseContext?.property)?.id));
-    const leadQualified = params.caseContext?.flow === "lead.qualify"
-      ? params.pendingItems.length === 0
-      : Boolean(helpers.asString(helpers.asObject(params.caseContext?.lead)?.id) || params.caseContext?.lead);
+    const normalizedPending = params.pendingItems.map((item) => helpers.normalizeImobRouteText(String(item)));
+    const hasLeadQualificationPending = normalizedPending.some((item) =>
+      item.includes("lead")
+      || item.includes("comprador")
+      || item.includes("locatario")
+      || item.includes("locatário")
+      || item.includes("cliente")
+    );
+    const leadRecord = helpers.asObject(params.caseContext?.lead);
+    const leadStatus = helpers.asString(leadRecord?.stage) ?? helpers.asString(leadRecord?.status);
+    const leadExists = Boolean(helpers.asString(leadRecord?.id) || params.caseContext?.lead);
+    const leadQualified = params.caseContext?.flow === "visit.schedule"
+      ? (leadExists && !hasLeadQualificationPending) || leadStatus === "qualified"
+      : params.caseContext?.flow === "lead.qualify"
+        ? params.pendingItems.length === 0
+        : leadExists;
     return {
       pendingFields: params.pendingItems,
       propertyLinked,
@@ -2227,9 +2259,13 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
 
   function getWorkflowFallbackNextMessage(state: ImobCrmWorkflowState, caseContext: ImobCrmCaseContext) {
     if (state === "documents.review") return "revisar documentos";
-    if (state === "pilot.status") return "consultar caso";
-    if (caseContext?.flow === "visit.schedule") return "consultar caso";
-    return "consultar caso";
+    return buildCaseAwareStatusNextMessage(caseContext);
+  }
+
+  function buildCaseAwareStatusNextMessage(caseContext: ImobCrmCaseContext) {
+    return helpers.asString(caseContext?.caseId)
+      ? `consultar caso ${String(caseContext.caseId)}`
+      : "consultar caso";
   }
 
   function buildImobBusinessActionCtas(caseContext: ImobCrmCaseContext) {
@@ -2246,6 +2282,123 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       }))
       .filter((item: any) => item.label && item.nextMessage)
       .slice(0, 3);
+  }
+
+  function buildCompactBlockedRunResolutionBlocks(params: {
+    caseBrief: ReturnType<typeof buildCaseBrief>;
+    actionableChecklist: ReturnType<typeof buildActionableChecklist>;
+    primaryNextStep: string;
+    primaryBlocker: string | null;
+    primaryPending: string | null;
+  }) {
+    const compactChecklistItems = params.actionableChecklist.items.slice(0, 3);
+    return [
+      {
+        kind: "summary" as const,
+        title: "Como destravar agora",
+        lines: [
+          params.caseBrief.summary,
+          params.primaryBlocker ? `Bloqueio principal: ${params.primaryBlocker}` : null,
+          params.primaryPending ? `Pendência dominante: ${params.primaryPending}` : null,
+          params.caseBrief.waitingOn ? `WaitingOn: ${params.caseBrief.waitingOn}` : null,
+          params.caseBrief.nextActionOwner ? `Owner da ação: ${params.caseBrief.nextActionOwner}` : null,
+          `Próximo passo principal: ${params.primaryNextStep}`,
+        ].filter(Boolean),
+      },
+      compactChecklistItems.length > 0
+        ? {
+            kind: "details" as const,
+            title: "Checklist crítico",
+            lines: compactChecklistItems.map((item) =>
+              `${item.title} · owner ${item.owner} · destrava ${item.unlocks} · urgência ${item.urgency}`,
+            ),
+          }
+        : null,
+    ].filter(Boolean);
+  }
+
+  function buildImobBusinessPresentationBlocks(params: {
+    intent: BusinessReadIntent;
+    caseBrief: ReturnType<typeof buildCaseBrief>;
+    preparedFollowUp: ReturnType<typeof buildPreparedFollowUp>;
+    actionableChecklist: ReturnType<typeof buildActionableChecklist>;
+    handoffPack: ReturnType<typeof buildHandoffPack>;
+    primaryNextStep: string;
+    primaryBlocker: string | null;
+    primaryPending: string | null;
+  }) {
+    if (params.intent === "blocked_run_resolution") {
+      return buildCompactBlockedRunResolutionBlocks({
+        caseBrief: params.caseBrief,
+        actionableChecklist: params.actionableChecklist,
+        primaryNextStep: params.primaryNextStep,
+        primaryBlocker: params.primaryBlocker,
+        primaryPending: params.primaryPending,
+      });
+    }
+    return [
+      {
+        kind: "summary" as const,
+        title: "Resumo do caso",
+        lines: [
+          params.caseBrief.summary,
+          params.caseBrief.phaseObjective ? `Objetivo da fase: ${params.caseBrief.phaseObjective}` : null,
+          params.caseBrief.primaryRisk ? `Risco principal: ${params.caseBrief.primaryRisk}` : null,
+          params.caseBrief.waitingOn ? `WaitingOn: ${params.caseBrief.waitingOn}` : null,
+          params.caseBrief.nextActionOwner ? `Owner da ação: ${params.caseBrief.nextActionOwner}` : null,
+          params.caseBrief.nextSafeStep ? `Próximo passo seguro: ${params.caseBrief.nextSafeStep}` : null,
+        ].filter(Boolean),
+      },
+      {
+        kind: "details" as const,
+        title: "Follow-up preparado",
+        text: params.preparedFollowUp.objective,
+        lines: [
+          `Destinatário: ${params.preparedFollowUp.recipientRole}`,
+          `Gatilho: ${params.preparedFollowUp.trigger}`,
+          params.preparedFollowUp.expectedReply ? `Resposta esperada: ${params.preparedFollowUp.expectedReply}` : null,
+          params.preparedFollowUp.escalationHint ? `Escalada: ${params.preparedFollowUp.escalationHint}` : null,
+        ].filter(Boolean),
+        ctas: params.preparedFollowUp.variants.map((variant) => ({
+          id: `prepared-follow-up-${variant.id}`,
+          label: variant.label,
+          kind: variant.tone === "direct" ? "primary" : "neutral",
+          action: "send_suggested_message" as const,
+          nextMessage: variant.text,
+        })),
+        actionsLayout: "inline" as const,
+      },
+      {
+        kind: "details" as const,
+        title: params.actionableChecklist.title,
+        lines: params.actionableChecklist.items.map((item) =>
+          `${item.title} · owner ${item.owner} · destrava ${item.unlocks} · urgência ${item.urgency}`,
+        ),
+      },
+      {
+        kind: "details" as const,
+        title: "Pacote de handoff",
+        lines: [
+          `Destino: ${params.handoffPack.targetArea}`,
+          `Motivo: ${params.handoffPack.reason}`,
+          params.handoffPack.summary,
+          params.handoffPack.blocker ? `Blocker: ${params.handoffPack.blocker}` : null,
+          params.handoffPack.urgency ? `Urgência: ${params.handoffPack.urgency}` : null,
+          params.handoffPack.ownershipBoundary ? `Boundary: ${params.handoffPack.ownershipBoundary}` : null,
+          params.handoffPack.needsValidation.length > 0
+            ? `Validar: ${params.handoffPack.needsValidation.join(", ")}`
+            : null,
+          params.handoffPack.remainsWithBroker.length > 0
+            ? `Permanece com corretor: ${params.handoffPack.remainsWithBroker.join(" | ")}`
+            : null,
+        ].filter(Boolean),
+      },
+    ].filter((block) => {
+      if (block.kind === "details" && !block.text && (!Array.isArray(block.lines) || block.lines.length === 0) && (!Array.isArray((block as any).ctas) || (block as any).ctas.length === 0)) {
+        return false;
+      }
+      return Array.isArray(block.lines) ? block.lines.length > 0 || Boolean(block.text) : true;
+    });
   }
 
   function dedupeWorkflowCtas(ctas: ImobCrmWorkflowCta[], state: ImobCrmWorkflowState) {
@@ -2324,6 +2477,39 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     return ctas.slice(0, 3);
   }
 
+  function buildFallbackPrimaryCaseAction(caseContext: ImobCrmCaseContext, nextMessage: string) {
+    const normalized = helpers.normalizeImobRouteText(nextMessage);
+    let label = "Próximo passo";
+    if (normalized.includes("revisar documentos")) label = "Revisar documentos";
+    else if (normalized.includes("cadastrar proprietario")) label = "Cadastrar proprietário";
+    else if (normalized.includes("cadastrar imovel")) label = "Cadastrar imóvel";
+    else if (normalized.includes("qualificar lead")) label = "Qualificar lead";
+    else if (normalized.includes("consultar caso")) label = "Consultar caso";
+    else if (helpers.asString(caseContext?.canonical?.recommendedActions?.[0]?.label)) label = String(caseContext.canonical?.recommendedActions?.[0]?.label);
+    return {
+      id: `case-primary-${caseContext?.caseId ?? "current"}`,
+      label,
+      kind: "primary" as const,
+      action: "send_suggested_message" as const,
+      nextMessage,
+    };
+  }
+
+  function alignPrimaryCaseAction(params: {
+    caseContext: ImobCrmCaseContext;
+    ctas: ImobCrmWorkflowCta[];
+    effectiveNextStep: string;
+    fallbackKind?: "primary" | "secondary";
+  }) {
+    const normalizedEffective = helpers.normalizeImobRouteText(params.effectiveNextStep);
+    const matchingPrimary = params.ctas.find((cta) => helpers.normalizeImobRouteText(cta.nextMessage) === normalizedEffective);
+    const rest = params.ctas.filter((cta) => helpers.normalizeImobRouteText(cta.nextMessage) !== normalizedEffective);
+    const primary = matchingPrimary
+      ? { ...matchingPrimary, kind: "primary" as const }
+      : buildFallbackPrimaryCaseAction(params.caseContext, params.effectiveNextStep);
+    return [primary, ...rest.map((cta, index) => ({ ...cta, kind: index === 0 ? "secondary" as const : cta.kind }))].slice(0, 3);
+  }
+
   function buildBlockedRunResolutionNextStep(
     caseContext: ImobCrmCaseContext,
     pendingItems: string[],
@@ -2383,6 +2569,9 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     const nextActionOwner = helpers.asString(caseContext?.humanWorkflow?.nextActionOwner) ?? helpers.asString(caseContext?.ownerResponsible);
     const specialists = (helpers.resolveImobBackingSpecialists(caseContext) as any[] | null | undefined) ?? [];
     const primarySpecialist = specialists[0] ? buildSpecialistSupportLine(specialists[0]) : null;
+    const shouldExposeSpecialistSupport = intent === "pipeline_status";
+    const proof = caseContext?.proof ?? null;
+    const proofSummaryLine = buildProofSummaryLine(proof);
     const workflowContext = buildImobBusinessWorkflowContext({
       caseContext,
       pendingItems,
@@ -2535,7 +2724,8 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       flow: caseContext?.flow,
       readOnlyPilot: false,
     });
-    const pilotWorkflowState = (pilotOperationalState || pilotControlState)
+    const shouldExposePilotReadOnly = intent === "pipeline_status";
+    const pilotWorkflowState = shouldExposePilotReadOnly && (pilotOperationalState || pilotControlState)
       ? deriveImobCrmReviewState({ flow: caseContext?.flow, readOnlyPilot: true })
       : null;
     const workflowReasonCodes = buildImobCrmWorkflowReasonCodes({
@@ -2555,7 +2745,8 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
         primaryBlocker ? `Bloqueio atual: ${primaryBlocker}.` : "Bloqueio atual: nenhum bloqueio comercial registrado.",
         waitingOn ? `Waiting on: ${waitingOn}.` : null,
         nextActionOwner ? `Owner da ação: ${nextActionOwner}.` : null,
-        primarySpecialist?.text ?? null,
+        proofSummaryLine,
+        shouldExposeSpecialistSupport ? (primarySpecialist?.text ?? null) : null,
         `Próximo movimento: ${nextStep}.`,
       ],
       blocked_run_resolution: [
@@ -2565,7 +2756,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
         primaryPending ? `Pendência que pode travar o avanço: ${primaryPending}.` : "Não há pendência crítica registrada.",
         waitingOn ? `Waiting on: ${waitingOn}.` : null,
         nextActionOwner ? `Owner da ação: ${nextActionOwner}.` : null,
-        primarySpecialist?.text ?? null,
+        proofSummaryLine,
         `Para destravar: ${nextStep}.`,
       ],
       next_best_action: [
@@ -2575,7 +2766,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
         primaryBlocker ? `Motivo: existe bloqueio ativo (${primaryBlocker}).` : primaryPending ? `Motivo: existe pendência aberta (${primaryPending}).` : "Motivo: é o movimento com maior chance de avançar este atendimento.",
         waitingOn ? `Waiting on: ${waitingOn}.` : null,
         nextActionOwner ? `Owner da ação: ${nextActionOwner}.` : null,
-        primarySpecialist?.text ?? null,
+        proofSummaryLine,
         `Como seguir: ${nextStep}.`,
       ],
     };
@@ -2589,7 +2780,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       label: "Ver leitura comercial",
       kind: "secondary" as const,
       action: "send_suggested_message" as const,
-      nextMessage: "qual status desse caso?",
+      nextMessage: buildCaseAwareStatusNextMessage(caseContext),
     }];
     const defaultCtas = dedupeWorkflowCtas(filterImobCrmWorkflowCtas({
       state: primaryWorkflowState,
@@ -2616,15 +2807,21 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       ?? (getAllowedTransitions(primaryWorkflowState, workflowContext).includes("continue")
         ? nextStep
         : getWorkflowFallbackNextMessage(primaryWorkflowState, caseContext));
+    const primaryNextStep = effectiveNextStep;
+    const alignedCtas = alignPrimaryCaseAction({
+      caseContext,
+      ctas,
+      effectiveNextStep: primaryNextStep,
+    });
     const renderedText = textByIntent[intent]
       .filter(Boolean)
       .join("\n")
-      .replace(`Para destravar: ${nextStep}.`, `Para destravar: ${effectiveNextStep}.`)
-      .replace(`Como seguir: ${nextStep}.`, `Como seguir: ${effectiveNextStep}.`);
+      .replace(`Para destravar: ${nextStep}.`, `Para destravar: ${primaryNextStep}.`)
+      .replace(`Como seguir: ${nextStep}.`, `Como seguir: ${primaryNextStep}.`);
     return {
       text: renderedText,
       owner: caseContext?.ownerResponsible ?? "Corretor",
-      nextStep: effectiveNextStep,
+      nextStep: primaryNextStep,
       blocker: primaryBlocker ?? undefined,
       consultiveRead: {
         phase: humanPhaseLabel,
@@ -2632,7 +2829,9 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
         waitingOn: caseContext?.humanWorkflow?.waitingOn ?? null,
         nextActionOwner: nextActionOwner ?? null,
         nextSafeStep: nextStep,
-        specialists: specialists.slice(0, 2).map((item) => buildSpecialistSupportLine(item).consultive),
+        specialists: shouldExposeSpecialistSupport
+          ? specialists.slice(0, 2).map((item) => buildSpecialistSupportLine(item).consultive)
+          : [],
         workflow: {
           primaryState: primaryWorkflowState,
           allowedTransitions: getAllowedTransitions(primaryWorkflowState, workflowContext),
@@ -2660,8 +2859,19 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       ...(reengagementSuggestion ? { reengagementSuggestion } : {}),
       inventoryWatch,
       handoffPack,
+      ...(proof ? { proof } : {}),
+      blocks: buildImobBusinessPresentationBlocks({
+        intent,
+        caseBrief,
+        preparedFollowUp,
+        actionableChecklist,
+        handoffPack,
+        primaryNextStep,
+        primaryBlocker,
+        primaryPending,
+      }),
       pendingFieldLabels: pendingItems,
-      suggestedNextAction: effectiveNextStep,
+      suggestedNextAction: primaryNextStep,
       widget: buildImobCaseExperienceWidget(caseContext),
       dedupeKey: `crm.case.${intent}:${caseContext?.caseId ?? "unknown"}`,
       workflow: {
@@ -2675,22 +2885,34 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       },
       card: {
         title: cardTitleByIntent[intent],
-        lines: [
-          subject,
-          `Fase: ${humanPhaseLabel}`,
-          `Momento: ${stageLabel}`,
-          `Pendências: ${helpers.formatImobPendingList(pendingItems)}`,
-          primaryBlocker ? `Bloqueio: ${primaryBlocker}` : "Bloqueio: nenhum bloqueio comercial",
-          waitingOn ? `Waiting on: ${waitingOn}` : "Waiting on: não identificado",
-          nextActionOwner ? `Owner da ação: ${nextActionOwner}` : "Owner da ação: não identificado",
-          `Workflow: ${primaryWorkflowState}.`,
-          workflowReasonCodes.length > 0 ? `Reason codes: ${workflowReasonCodes.join(", ")}` : null,
-          pilotControlState ? `Piloto operacional: ${pilotControlState.summary}` : null,
-          pilotControlState ? `Próxima ação governada: ${pilotControlState.nextHumanAction}` : null,
-          primarySpecialist?.cardLine ?? null,
-          `Próximo movimento: ${effectiveNextStep}`,
-        ].filter(Boolean) as string[],
-        ctas,
+        lines: (intent === "blocked_run_resolution"
+          ? [
+              subject,
+              `Fase: ${humanPhaseLabel}`,
+              primaryBlocker ? `Bloqueio: ${primaryBlocker}` : "Bloqueio: nenhum bloqueio comercial",
+              primaryPending ? `Pendência dominante: ${primaryPending}` : null,
+              nextActionOwner ? `Owner da ação: ${nextActionOwner}` : null,
+              proofSummaryLine,
+              `Próximo movimento: ${primaryNextStep}`,
+            ]
+          : [
+              subject,
+              `Fase: ${humanPhaseLabel}`,
+              `Momento: ${stageLabel}`,
+              `Pendências: ${helpers.formatImobPendingList(pendingItems)}`,
+              primaryBlocker ? `Bloqueio: ${primaryBlocker}` : "Bloqueio: nenhum bloqueio comercial",
+              waitingOn ? `Waiting on: ${waitingOn}` : "Waiting on: não identificado",
+              nextActionOwner ? `Owner da ação: ${nextActionOwner}` : "Owner da ação: não identificado",
+              `Workflow: ${primaryWorkflowState}.`,
+              workflowReasonCodes.length > 0 ? `Reason codes: ${workflowReasonCodes.join(", ")}` : null,
+              shouldExposePilotReadOnly && pilotControlState ? `Piloto operacional: ${pilotControlState.summary}` : null,
+              shouldExposePilotReadOnly && pilotControlState ? `Próxima ação governada: ${pilotControlState.nextHumanAction}` : null,
+              proofSummaryLine,
+              shouldExposeSpecialistSupport ? (primarySpecialist?.cardLine ?? null) : null,
+              `Próximo movimento: ${primaryNextStep}`,
+            ]).filter(Boolean) as string[],
+        ctas: alignedCtas,
+        ...(proof ? { proof } : {}),
       },
     };
   }

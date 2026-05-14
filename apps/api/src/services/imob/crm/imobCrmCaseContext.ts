@@ -4,6 +4,7 @@ import type {
   ImobCrmHumanJourney,
   ImobCrmHumanWorkflow,
 } from "./imobCrmAgentContract";
+import type { ImobProofSurface } from "../imobConversationContract";
 
 type CaseContextRecord = {
   id: string;
@@ -19,6 +20,12 @@ type CaseContextRecord = {
   lead?: unknown;
   property?: unknown;
   owner?: unknown;
+  runId?: string | null;
+  txId?: string | null;
+  receiptPath?: string | null;
+  bundlePath?: string | null;
+  verifyUrl?: string | null;
+  proof?: ImobProofSurface | null;
 };
 
 export function buildImobCrmCaseContextFromRecord(
@@ -40,6 +47,7 @@ export function buildImobCrmCaseContextFromRecord(
     updatedAtIso,
     canonical,
   });
+  const proof = normalizeProofSurface(item);
 
   return {
     caseId: item.id,
@@ -55,6 +63,7 @@ export function buildImobCrmCaseContextFromRecord(
     lead,
     property: item.property ?? null,
     owner: item.owner ?? null,
+    proof,
     canonical,
     humanJourney,
     humanWorkflow,
@@ -67,6 +76,40 @@ function asObject(value: unknown): Record<string, unknown> | null {
 
 function asString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function asBoolean(value: unknown): boolean | null {
+  return typeof value === "boolean" ? value : null;
+}
+
+function normalizeProofSurface(item: CaseContextRecord): ImobProofSurface | null {
+  const explicitProof = asObject(item.proof);
+  const required = asBoolean(explicitProof?.required);
+  const ready = asBoolean(explicitProof?.ready);
+  const state = asString(explicitProof?.state);
+  const runId = asString(explicitProof?.runId) ?? asString(item.runId);
+  const txId = asString(explicitProof?.txId) ?? asString(item.txId);
+  const receiptPath = asString(explicitProof?.receiptPath) ?? asString(item.receiptPath);
+  const bundlePath = asString(explicitProof?.bundlePath) ?? asString(item.bundlePath);
+  const verifyUrl = asString(explicitProof?.verifyUrl) ?? asString(item.verifyUrl) ?? receiptPath;
+  const hasSignals = Boolean(runId || txId || receiptPath || bundlePath || explicitProof);
+  if (!hasSignals) return null;
+  const inferredReady = Boolean(txId && receiptPath && bundlePath);
+  const resolvedRequired = required ?? Boolean(runId || txId || receiptPath || bundlePath);
+  const resolvedReady = ready ?? inferredReady;
+  return {
+    required: resolvedRequired,
+    ready: resolvedReady,
+    state:
+      state === "not_required" || state === "pending" || state === "ready" || state === "failed"
+        ? state
+        : (resolvedRequired ? (resolvedReady ? "ready" : "pending") : (resolvedReady ? "ready" : "not_required")),
+    runId,
+    txId,
+    receiptPath,
+    bundlePath,
+    verifyUrl,
+  };
 }
 
 function normalizeLeadSummary(value: unknown) {

@@ -21,6 +21,7 @@ import { extractImobOperationalBatches, formatImobBatchLineSummary } from "./imo
 import { applyResponsibleLabelToResolvedTurn } from "./imobCrmTurnPresentation";
 import { createEmptyImobCrmThreadState, parseImobCrmThreadState } from "./imobCrmTurnState";
 import {
+  classifyImobCrmWorkflowTransitionFromMessage,
   deriveImobCrmWorkflowState,
   resolveTransition,
   type ImobCrmWorkflowContext,
@@ -28,7 +29,7 @@ import {
   type ImobCrmWorkflowState,
   type ImobCrmWorkflowTransition,
 } from "./imobCrmWorkflowMachine";
-import type { ImobMarketScanContext, ImobMarketScanResultSnapshot } from "../imobConversationContract";
+import type { ImobMarketScanContext, ImobMarketScanResultSnapshot, ImobProofSurface } from "../imobConversationContract";
 
 export type ImobCrmTurnEngineHelpers = {
   asString: (value: unknown) => string | null;
@@ -204,66 +205,20 @@ function resolveWorkflowTransition(
   isReadOnlyPilotQuery: boolean,
 ): ImobCrmWorkflowTransition | null {
   const normalized = normalizeImobRouteText(message);
-
-  if (normalized.includes("cancelar")) return "cancel";
+  if (state === "owner.dedupe_review") {
+    if (normalized.startsWith("editar proprietario ") || normalized.startsWith("editar proprietário ")) return "choose_update_existing";
+    if (normalized.startsWith("listar proprietarios ") || normalized.startsWith("listar proprietários ")) return "show_records";
+    if (normalized.startsWith("criar novo proprietario ") || normalized.startsWith("criar novo proprietário ")) return "choose_create_new";
+  }
+  if (state === "lead.qualify") {
+    if (normalized.startsWith("listar leads ")) return "read_only_query";
+    if (normalized.startsWith("criar novo lead ")) return "continue";
+  }
+  const classified = classifyImobCrmWorkflowTransitionFromMessage(message, normalizeImobRouteText);
+  if (classified && classified !== "continue") return classified;
   if (state === "pilot.status") {
     if (isReadOnlyPilotQuery) return "read_only_query";
     return "continue";
-  }
-  if (state === "owner.dedupe_review") {
-    if (
-      normalized.includes("atualizar existente")
-      || normalized.includes("usar existente")
-      || normalized.includes("editar existente")
-    ) {
-      return "choose_update_existing";
-    }
-    if (
-      normalized === "cadastros"
-      || normalized === "ver cadastros"
-      || normalized.includes("listar cadastros")
-    ) {
-      return "show_records";
-    }
-    if (
-      normalized.includes("criar novo")
-      || normalized.includes("criar um novo")
-      || normalized.includes("novo cadastro")
-    ) {
-      return "choose_create_new";
-    }
-    return null;
-  }
-  if (state === "property.market_scan" || state === "property.market_scan.selection") {
-    if (
-      normalized.includes("varredura de mercado")
-      || normalized.includes("fazer varredura")
-      || normalized.includes("market scan")
-      || normalized.includes("scan de mercado")
-    ) {
-      return "start_market_scan";
-    }
-    if (
-      normalized.includes("confirmar seleção do scan")
-      || normalized.includes("confirmar selecao do scan")
-      || normalized.includes("confirmar imóvel do scan")
-      || normalized.includes("confirmar imovel do scan")
-      || normalized.includes("confirmar captação do scan")
-      || normalized.includes("confirmar captacao do scan")
-    ) {
-      return "confirm_market_scan_selection";
-    }
-    if (
-      normalized.includes("selecionar imóvel")
-      || normalized.includes("selecionar imovel")
-      || normalized.includes("selecionar item")
-      || normalized.includes("usar imóvel do scan")
-      || normalized.includes("usar imovel do scan")
-      || normalized.includes("salvar imóvel do scan")
-      || normalized.includes("salvar imovel do scan")
-    ) {
-      return "select_market_scan_item";
-    }
   }
   if (isReadOnlyPilotQuery) return "read_only_query";
   if (
@@ -412,6 +367,20 @@ function hasStrongBusinessReadIntent(message: string) {
     || intent.intentId === "next_best_action"
   )) return true;
   const normalized = message.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  if (
+    normalized.includes("piloto")
+    && (
+      normalized.includes("status")
+      || normalized.includes("situacao")
+      || normalized.includes("estado")
+      || normalized.includes("approval")
+      || normalized.includes("aprovacao")
+      || normalized.includes("rollout")
+      || normalized.includes("shadow")
+    )
+  ) {
+    return true;
+  }
   return (
     (normalized.includes("resuma esse caso") || normalized.includes("resumir esse caso") || normalized.includes("resumo do caso"))
     && (normalized.includes("caso") || normalized.includes("atendimento"))
@@ -804,18 +773,112 @@ function buildImobPresentationBlocks(data: Record<string, unknown>, copyState: I
   return [];
 }
 
+function buildImobPresentationQuickReplies(data: Record<string, unknown>) {
+  const presentation = asObject(data.presentation) ?? {};
+  const caseContext = asObject(data.caseContext) as ImobCrmCaseContext | null;
+  const blocks = Array.isArray(presentation.blocks) ? (presentation.blocks as Array<Record<string, unknown>>) : [];
+  const card = asObject(presentation.card);
+  const cardCtas = Array.isArray(card?.ctas) ? (card?.ctas as Array<Record<string, unknown>>) : [];
+  const recommendedActions = Array.isArray(caseContext?.canonical?.recommendedActions)
+    ? caseContext?.canonical?.recommendedActions
+    : [];
+  const suggestedNextAction = asString(presentation.suggestedNextAction);
+
+  const candidates = [
+    ...blocks.flatMap((block) => {
+      const ctas = Array.isArray(block.ctas) ? (block.ctas as Array<Record<string, unknown>>) : [];
+      return ctas.map((cta) => asString(cta.nextMessage) ?? asString(cta.label));
+    }),
+    ...cardCtas.map((cta) => asString(cta.nextMessage) ?? asString(cta.label)),
+    ...recommendedActions.map((action) => asString((action as Record<string, unknown>).inputHint) ?? asString((action as Record<string, unknown>).label)),
+    suggestedNextAction,
+  ];
+
+  return candidates
+    .filter((value): value is string => Boolean(value && value.trim()))
+    .filter((value, index, array) => array.indexOf(value) === index)
+    .slice(0, 3);
+}
+
 function applyImobCrmCopyStateToResolution(data: Record<string, unknown>): Record<string, unknown> {
   const copyState = inferImobCrmCopyStateFromResolution(data);
   const presentation = asObject(data.presentation) ?? {};
+  const proof = resolveImobProofSurfaceFromResolution(data);
   const blocks = buildImobPresentationBlocks(data, copyState);
-  if (!copyState && blocks.length === 0) return data;
+  const quickReplies = buildImobPresentationQuickReplies({
+    ...data,
+    presentation: {
+      ...presentation,
+      ...(proof ? { proof } : {}),
+      ...(blocks.length > 0 ? { blocks } : {}),
+    },
+  });
+  if (!copyState && !proof && blocks.length === 0 && quickReplies.length === 0) return data;
   return {
     ...data,
     presentation: {
       ...presentation,
       ...(copyState ? { copyState } : {}),
+      ...(proof ? {
+        proof,
+        ...(asObject(presentation.card) ? {
+          card: {
+            ...(asObject(presentation.card) ?? {}),
+            proof,
+          },
+        } : {}),
+      } : {}),
       ...(blocks.length > 0 ? { blocks } : {}),
+      ...(quickReplies.length > 0 ? { quickReplies } : {}),
     },
+  };
+}
+
+function resolveImobProofSurfaceFromResolution(data: Record<string, unknown>): ImobProofSurface | null {
+  const presentation = asObject(data.presentation);
+  const card = asObject(presentation?.card);
+  const directProof = asObject(presentation?.proof);
+  const cardProof = asObject(card?.proof);
+  const caseContext = asObject(data.caseContext);
+  const caseProof = asObject(caseContext?.proof);
+  const source = directProof ?? cardProof ?? caseProof;
+  const runId =
+    asString(source?.runId)
+    ?? asString(card?.runId)
+    ?? asString(data.runId);
+  const txId =
+    asString(source?.txId)
+    ?? asString(data.txId);
+  const receiptPath =
+    asString(source?.receiptPath)
+    ?? asString(data.receiptPath)
+    ?? (txId ? `/api/ledger/${encodeURIComponent(txId)}` : null);
+  const bundlePath =
+    asString(source?.bundlePath)
+    ?? asString(data.bundlePath);
+  const verifyUrl =
+    asString(source?.verifyUrl)
+    ?? receiptPath;
+  const requiredRaw = source?.required;
+  const readyRaw = source?.ready;
+  const stateRaw = asString(source?.state);
+  const hasSignals = Boolean(source || runId || txId || receiptPath || bundlePath);
+  if (!hasSignals) return null;
+  const inferredReady = Boolean(txId && receiptPath && bundlePath);
+  const required = typeof requiredRaw === "boolean" ? requiredRaw : Boolean(runId || txId || receiptPath || bundlePath);
+  const ready = typeof readyRaw === "boolean" ? readyRaw : inferredReady;
+  return {
+    required,
+    ready,
+    state:
+      stateRaw === "not_required" || stateRaw === "pending" || stateRaw === "ready" || stateRaw === "failed"
+        ? stateRaw
+        : (required ? (ready ? "ready" : "pending") : (ready ? "ready" : "not_required")),
+    runId,
+    txId,
+    receiptPath,
+    bundlePath,
+    verifyUrl,
   };
 }
 
@@ -900,9 +963,15 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
         || normalizedEffectiveMessage.includes("confirmar captação do scan")
       );
     const readOnlyPilotQuery =
+      /(piloto|pilot_active|approval_required|shadow)/i.test(effectiveMessage)
+      && hasStrongBusinessReadIntent(effectiveMessage);
+    const shouldPrioritizeBusinessRead =
       hasStrongBusinessReadIntent(effectiveMessage)
-      && /(piloto|pilot_active|approval_required|shadow)/i.test(effectiveMessage);
+      && !isExplicitOperationalCommand(effectiveMessage)
+      && !isMarketScanSelectionFlowMessage
+      && !isCrossStageTransitionRequest;
     const workflowGuard = isCrossStageTransitionRequest
+      || shouldPrioritizeBusinessRead
       ? null
       : resolveWorkflowGuard({
           message: effectiveMessage,
@@ -941,14 +1010,7 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
     const shouldPrioritizeActiveFlowContinuity =
       hasActivePendingOperationalFlow(hydratedThreadState)
       && !isCrossStageTransitionRequest;
-    const shouldPrioritizeBusinessRead = hasStrongBusinessReadIntent(effectiveMessage);
-
-    if (
-      shouldPrioritizeBusinessRead
-      && !isExplicitOperationalCommand(effectiveMessage)
-      && !isMarketScanSelectionFlowMessage
-      && !isCrossStageTransitionRequest
-    ) {
+    if (shouldPrioritizeBusinessRead) {
       const consultData = await params.helpers.resolveImobOperationalConsult({
         prisma: params.prisma,
         tenantId: params.authContext.tenantId,
