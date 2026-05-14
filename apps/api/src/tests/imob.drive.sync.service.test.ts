@@ -141,6 +141,10 @@ test("IMOB knowledge search reads synced drive documents before seeded catalog",
 
     assert.ok(result.total >= 1);
     assert.equal(result.items[0]?.sourceType, "drive");
+    assert.equal(result.items[0]?.source.origin, "drive_snapshot");
+    assert.equal(result.items[0]?.source.syncedAt != null, true);
+    assert.equal(result.searchContext.provenance.driveSyncActive, true);
+    assert.equal(result.searchContext.provenance.totalDriveSnapshotDocuments, 1);
     assert.match(result.items[0]?.title ?? "", /Joinville/i);
     assert.match(result.items[0]?.href ?? "", /drive\.google\.com\/file\/d\/1ZyXwVuTsRqPoNmLkJiHgFeDcBa654321\/view/);
   } finally {

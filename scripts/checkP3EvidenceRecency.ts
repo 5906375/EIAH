@@ -38,7 +38,8 @@ const now = Date.now();
 const evaluated: Record<string, { file: string; date: Date; ageDays: number; ok: boolean }> = {};
 
 for (const pattern of REQUIRED_P3_EVIDENCE_PATTERNS) {
-  const found = files.find((file) => pattern.test(file));
+  const matches = files.filter((file) => pattern.test(file)).sort().reverse();
+  const found = matches[0];
   if (!found) {
     fail("missing_required_evidence_file", { pattern: pattern.source, dir: EVIDENCE_DIR });
   }

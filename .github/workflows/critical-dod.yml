@@ -19,6 +19,9 @@ jobs:
       - run: pnpm check:e2e-recency
       - run: pnpm check:manifest-integrity
       - run: pnpm check:billing-webhook-evidence
+      - run: pnpm check:agent-protocol-compat
       - run: pnpm check:interop-contract-matrix
       - run: pnpm check:interop-spec-governance
+      - run: pnpm check:p2-audit-interop
+      - run: pnpm check:p3-settlement-support-by-env
       - run: pnpm check:economy-invariants

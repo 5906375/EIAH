@@ -255,6 +255,21 @@ Os gates mínimos de rollout governado são:
 - `ledger/bundle verification` disponível por `txId` e `runId`.
 - `proof surface` obrigatória em turns sensíveis, sem `done` quando `proof.required = true` e `proof.ready = false`.
 
+## Track P operacional
+
+Para o `IMOB_CRM` sair de rollout ad hoc e virar vertical operacional reutilizável, o Track P precisa permanecer explícito em quatro frentes:
+
+- checklist padrão por vertical;
+- critérios de avanço `shadow -> pilot -> small`;
+- evidência semanal da vertical;
+- command center com export de prova por `run`.
+
+No recorte atual do IMOB, isso significa:
+- `ops/verticals/vertical-onboarding-checklist.md` como fonte canônica do onboarding/rollout;
+- `realestate-pilot-rollout-YYYY-MM-DD.md` como evidência operacional do estágio atual;
+- `w4-non-regression-kpis.json` como gate mínimo de KPI por vertical;
+- command center IMOB expondo superfícies de funnel, blocked runs e links de prova (`bundle`, `ledger/receipt`) por run quando aplicável.
+
 ### Gates de prova já validados
 
 Os seguintes gates já possuem cobertura executada no ambiente local com bootstrap de infra corrigido:

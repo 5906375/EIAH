@@ -18,6 +18,15 @@ function normalizeRef(input: string): string {
   return withoutLineRef.replace(/^[./]+/, (match) => (match === "./" ? "" : match));
 }
 
+function hasRollingDateToken(value: string) {
+  return value.includes("YYYY-MM-DD");
+}
+
+function rollingRefToRegex(value: string) {
+  const escaped = value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`^${escaped.replace("YYYY-MM-DD", "\\d{4}-\\d{2}-\\d{2}")}$`);
+}
+
 function isLikelyRepoPath(token: string): boolean {
   if (!token || /\s/.test(token)) return false;
   if (token.startsWith("http://") || token.startsWith("https://")) return false;
@@ -87,7 +96,16 @@ while ((match = regex.exec(content))) {
   if (isLikelyRepoPath(normalized)) refs.add(normalized);
 }
 
-const missingRefs = [...refs].filter((ref) => !fs.existsSync(path.resolve(ROOT, ref)));
+const missingRefs = [...refs].filter((ref) => {
+  if (!hasRollingDateToken(ref)) {
+    return !fs.existsSync(path.resolve(ROOT, ref));
+  }
+  const dirname = path.resolve(ROOT, path.dirname(ref));
+  if (!fs.existsSync(dirname)) return true;
+  const pattern = rollingRefToRegex(path.basename(ref));
+  const matches = fs.readdirSync(dirname).filter((file) => pattern.test(file));
+  return matches.length === 0;
+});
 if (missingRefs.length > 0) {
   fail("EVIDENCE_INDEX has missing file references", {
     missingCount: missingRefs.length,

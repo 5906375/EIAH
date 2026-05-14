@@ -1903,6 +1903,7 @@ imobRouter.post("/knowledge/search", async (req, res) => {
     : [];
 
   const result = await searchImobKnowledge({
+    prisma,
     tenantId: authContext.tenantId,
     workspaceId,
     query,
@@ -2410,6 +2411,13 @@ imobRouter.get("/command-center/funnel-health", async (req, res) => {
       lastUpdatedAt: item.updatedAt.toISOString(),
       txId: null,
       criticalHash: null,
+      proof: {
+        txId: null,
+        bundleHash: null,
+        receiptPath: null,
+        bundlePath: null,
+        verifyUrl: null,
+      },
     }))
     .sort((a, b) => b.ageHours - a.ageHours)
     .slice(0, 20);
@@ -2490,6 +2498,13 @@ imobRouter.get("/command-center/blocked-runs", async (req, res) => {
         bundleHash: run.criticalHash ?? null,
         txId: run.txId ?? null,
         updatedAt: (run.updatedAt ?? run.createdAt).toISOString(),
+        proof: {
+          txId: run.txId ?? null,
+          bundleHash: run.criticalHash ?? null,
+          receiptPath: run.txId ? `/api/ledger/${encodeURIComponent(run.txId)}` : null,
+          bundlePath: run.criticalHash ? `/api/runs/${encodeURIComponent(run.id)}/bundle` : null,
+          verifyUrl: run.txId ? `/api/ledger/${encodeURIComponent(run.txId)}` : null,
+        },
       };
     })
     .filter((item) => item.ageHours >= (Number.isFinite(minAgeHours) ? minAgeHours : 0))
@@ -2504,6 +2519,10 @@ imobRouter.get("/command-center/blocked-runs", async (req, res) => {
       meta: {
         generatedAt: new Date().toISOString(),
         snapshotVersion: "commandcenter@v1",
+        proofExport: {
+          bundleEndpointTemplate: "/api/runs/:runId/bundle",
+          ledgerEndpointTemplate: "/api/ledger/:txId",
+        },
       },
     },
   });

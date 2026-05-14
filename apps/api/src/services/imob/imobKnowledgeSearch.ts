@@ -1,4 +1,6 @@
+import type { PrismaClient } from "@repo/db";
 import { buildImobDriveSearchUrl, readImobDriveSyncSnapshot } from "./imobDriveSync";
+import { readImobWebSyncSnapshot } from "./imobWebSync";
 
 export type ImobKnowledgeSourceType = "drive" | "upload" | "web" | "internal_doc";
 
@@ -12,6 +14,7 @@ export type ImobKnowledgeSearchFilters = {
 };
 
 export type ImobKnowledgeSearchParams = {
+  prisma?: PrismaClient;
   tenantId: string;
   workspaceId: string;
   query: string;
@@ -39,9 +42,49 @@ export type ImobKnowledgeSearchItem = {
   updatedAt: string;
 };
 
+export type ImobKnowledgeSourceView = {
+  type: ImobKnowledgeSourceType;
+  label: string;
+  system: ImobKnowledgeSourceType;
+  origin: "drive_snapshot" | "web_snapshot" | "workspace_upload" | "seed_catalog";
+  externalId: string;
+  driveFileId?: string | null;
+  folder?: string | null;
+  hrefKind: "drive_search" | "drive_file" | "drive_folder" | "web_url" | "internal_route";
+  syncedFromDrive: boolean;
+  syncedAt?: string | null;
+};
+
+export type ImobKnowledgeSearchContext = {
+  resolvedRegion: string;
+  resolvedSegment: "locacao" | "venda" | "ambos";
+  sourceTypes: ImobKnowledgeSourceType[];
+  sourceLabels: string[];
+  explicitFilterCount: number;
+  scopeLabel: string;
+  documentType?: string | null;
+  operationType?: string | null;
+  tags?: string[] | null;
+  provenance: {
+    driveSyncActive: boolean;
+    driveSnapshotSyncedAt?: string | null;
+    totalDriveSnapshotDocuments: number;
+    webSyncActive: boolean;
+    webSnapshotSyncedAt?: string | null;
+    totalWebSnapshotDocuments: number;
+    totalWorkspaceUploadDocuments: number;
+    totalSeedDocuments: number;
+    origins: Array<{
+      origin: "drive_snapshot" | "web_snapshot" | "workspace_upload" | "seed_catalog";
+      count: number;
+    }>;
+  };
+};
+
 export type ImobKnowledgeSearchResult = {
   query: string;
   appliedFilters: ImobKnowledgeSearchFilters;
+  searchContext: ImobKnowledgeSearchContext;
   total: number;
   items: Array<
     Pick<
@@ -58,6 +101,7 @@ export type ImobKnowledgeSearchResult = {
       | "tags"
       | "updatedAt"
     > & {
+      source: ImobKnowledgeSourceView;
       snippet: string;
     }
   >;
@@ -168,11 +212,196 @@ function tokenize(value: string) {
     .filter(Boolean);
 }
 
+function sourceTypeLabel(type: ImobKnowledgeSourceType) {
+  if (type === "drive") return "Drive IMOB";
+  if (type === "upload") return "Upload operacional";
+  if (type === "web") return "Web";
+  return "Documento interno";
+}
+
+function hrefKindForItem(item: ImobKnowledgeSearchItem): ImobKnowledgeSourceView["hrefKind"] {
+  if (item.sourceType === "web") return "web_url";
+  if (item.sourceType === "internal_doc" || item.sourceType === "upload") return "internal_route";
+  if (/\/drive\/folders\//i.test(item.href)) return "drive_folder";
+  if (/\/file\/d\//i.test(item.href) || /open\?id=/i.test(item.href)) return "drive_file";
+  return "drive_search";
+}
+
+function buildSourceView(
+  item: ImobKnowledgeSearchItem,
+  params: {
+    origin: "drive_snapshot" | "web_snapshot" | "workspace_upload" | "seed_catalog";
+    driveSnapshotSyncedAt: string | null;
+    webSnapshotSyncedAt: string | null;
+  }
+): ImobKnowledgeSourceView {
+  const metadata = item.metadataJson ?? {};
+  const folder = typeof metadata.folder === "string" && metadata.folder.trim().length > 0
+    ? metadata.folder.trim()
+    : typeof metadata.folderPath === "string" && metadata.folderPath.trim().length > 0
+      ? metadata.folderPath.trim()
+    : null;
+  return {
+    type: item.sourceType,
+    label: sourceTypeLabel(item.sourceType),
+    system: item.sourceType,
+    origin: params.origin,
+    externalId: item.externalId,
+    driveFileId: item.driveFileId ?? null,
+    folder,
+    hrefKind: hrefKindForItem(item),
+    syncedFromDrive: item.sourceType === "drive" && item.driveFileId != null,
+    syncedAt:
+      params.origin === "drive_snapshot"
+        ? params.driveSnapshotSyncedAt
+        : params.origin === "web_snapshot"
+          ? params.webSnapshotSyncedAt
+          : null,
+  };
+}
+
+function flattenMetadataJson(value: unknown): string[] {
+  if (typeof value === "string") return [value];
+  if (typeof value === "number" || typeof value === "boolean") return [String(value)];
+  if (Array.isArray(value)) return value.flatMap((item) => flattenMetadataJson(item));
+  if (value && typeof value === "object") {
+    return Object.values(value as Record<string, unknown>).flatMap((item) => flattenMetadataJson(item));
+  }
+  return [];
+}
+
 function buildScopedDocuments(params: { tenantId: string; workspaceId: string }) {
   return SEED_DOCUMENTS.map((item) => ({
     ...item,
     tenantId: params.tenantId,
     workspaceId: params.workspaceId,
+  }));
+}
+
+function countExplicitFilters(filters: ImobKnowledgeSearchFilters) {
+  let total = 0;
+  if (filters.region) total += 1;
+  if (filters.segment) total += 1;
+  if (filters.documentType) total += 1;
+  if (filters.operationType) total += 1;
+  if (filters.tags && filters.tags.length > 0) total += 1;
+  if (filters.sourceTypes && filters.sourceTypes.length > 0) total += 1;
+  return total;
+}
+
+function buildSearchContext(params: {
+  filters: ImobKnowledgeSearchFilters;
+  driveSnapshotSyncedAt: string | null;
+  totalDriveSnapshotDocuments: number;
+  webSnapshotSyncedAt: string | null;
+  totalWebSnapshotDocuments: number;
+  totalWorkspaceUploadDocuments: number;
+  totalSeedDocuments: number;
+  origins: Array<{ origin: "drive_snapshot" | "web_snapshot" | "workspace_upload" | "seed_catalog"; count: number }>;
+}): ImobKnowledgeSearchContext {
+  const resolvedRegion = params.filters.region?.trim() || "Brasil";
+  const resolvedSegment = params.filters.segment ?? "ambos";
+  const sourceTypes = params.filters.sourceTypes ?? [];
+  const sourceLabels = sourceTypes.map((item) => sourceTypeLabel(item));
+  const segmentLabel =
+    resolvedSegment === "locacao" ? "locação" : resolvedSegment === "venda" ? "venda" : "locação e venda";
+  return {
+    resolvedRegion,
+    resolvedSegment,
+    sourceTypes,
+    sourceLabels,
+    explicitFilterCount: countExplicitFilters(params.filters),
+    scopeLabel: resolvedRegion === "Brasil" ? segmentLabel : `${segmentLabel} em ${resolvedRegion}`,
+    documentType: params.filters.documentType ?? null,
+    operationType: params.filters.operationType ?? null,
+    tags: params.filters.tags ?? null,
+    provenance: {
+      driveSyncActive: params.driveSnapshotSyncedAt != null,
+      driveSnapshotSyncedAt: params.driveSnapshotSyncedAt,
+      totalDriveSnapshotDocuments: params.totalDriveSnapshotDocuments,
+      webSyncActive: params.webSnapshotSyncedAt != null,
+      webSnapshotSyncedAt: params.webSnapshotSyncedAt,
+      totalWebSnapshotDocuments: params.totalWebSnapshotDocuments,
+      totalWorkspaceUploadDocuments: params.totalWorkspaceUploadDocuments,
+      totalSeedDocuments: params.totalSeedDocuments,
+      origins: params.origins,
+    },
+  };
+}
+
+function inferUploadSegment(fileName: string): "locacao" | "venda" | "ambos" {
+  const normalized = normalizeText(fileName);
+  if (normalized.includes("locacao") || normalized.includes("alug")) return "locacao";
+  if (normalized.includes("venda") || normalized.includes("compra")) return "venda";
+  return "ambos";
+}
+
+function inferUploadOperationType(fileName: string) {
+  const normalized = normalizeText(fileName);
+  if (normalized.includes("captacao")) return "captacao";
+  if (normalized.includes("proposta")) return "proposta";
+  if (normalized.includes("contrato")) return "locacao";
+  if (normalized.includes("locacao") || normalized.includes("alug")) return "locacao";
+  if (normalized.includes("venda") || normalized.includes("compra")) return "venda";
+  return "knowledge_search";
+}
+
+function inferUploadDocumentType(fileName: string, mimeType: string) {
+  const normalized = normalizeText(fileName);
+  if (normalized.includes("checklist")) return "checklist";
+  if (normalized.includes("proposta")) return "proposta";
+  if (normalized.includes("contrato")) return "contrato";
+  if (normalized.includes("template") || normalized.includes("modelo")) return "template";
+  if (mimeType === "application/pdf") return "pdf";
+  if (mimeType.startsWith("image/")) return "imagem";
+  if (mimeType === "text/plain") return "texto";
+  return "documento";
+}
+
+function inferUploadTags(fileName: string) {
+  return Array.from(new Set(tokenize(fileName))).slice(0, 8);
+}
+
+async function readWorkspaceUploadDocuments(params: {
+  prisma?: PrismaClient;
+  tenantId: string;
+  workspaceId: string;
+}): Promise<ImobKnowledgeSearchItem[]> {
+  if (!params.prisma) return [];
+  const docs = await params.prisma.uploadedDocument.findMany({
+    where: {
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      agentSlug: { startsWith: "imob" },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  });
+  return docs.map((doc) => ({
+    id: `upload-${doc.id}`,
+    tenantId: doc.tenantId,
+    workspaceId: doc.workspaceId,
+    sourceType: "upload" as const,
+    externalId: doc.id,
+    driveFileId: null,
+    title: doc.fileName,
+    href: doc.url,
+    mimeType: doc.mimeType,
+    region: "Brasil",
+    segment: inferUploadSegment(doc.fileName),
+    documentType: inferUploadDocumentType(doc.fileName, doc.mimeType),
+    operationType: inferUploadOperationType(doc.fileName),
+    tags: inferUploadTags(doc.fileName),
+    metadataJson: {
+      source: "upload",
+      uploadedDocumentId: doc.id,
+      agentSlug: doc.agentSlug,
+      fileName: doc.fileName,
+      storageKey: doc.storageKey,
+    },
+    contentText: null,
+    vectorEmbedding: null,
+    updatedAt: doc.createdAt.toISOString(),
   }));
 }
 
@@ -202,6 +431,7 @@ function matchesFilters(item: ImobKnowledgeSearchItem, filters: ImobKnowledgeSea
 
 function scoreItem(item: ImobKnowledgeSearchItem, tokens: string[]) {
   if (tokens.length === 0) return 1;
+  const metadataTerms = flattenMetadataJson(item.metadataJson).join(" ");
   const haystack = [
     item.title,
     item.region,
@@ -209,6 +439,7 @@ function scoreItem(item: ImobKnowledgeSearchItem, tokens: string[]) {
     item.documentType,
     item.operationType,
     item.tags.join(" "),
+    metadataTerms,
     item.contentText ?? "",
   ]
     .map((part) => normalizeText(part))
@@ -231,6 +462,8 @@ export async function searchImobKnowledge(params: ImobKnowledgeSearchParams): Pr
   const tokens = tokenize(query);
   const seededDocuments = buildScopedDocuments({ tenantId: params.tenantId, workspaceId: params.workspaceId });
   const driveSnapshot = await readImobDriveSyncSnapshot();
+  const webSnapshot = await readImobWebSyncSnapshot();
+  const uploadDocuments = await readWorkspaceUploadDocuments(params);
   const driveDocuments: ImobKnowledgeSearchItem[] =
     driveSnapshot?.documents
       .filter((item) => item.tenantId === params.tenantId && item.workspaceId === params.workspaceId)
@@ -254,18 +487,58 @@ export async function searchImobKnowledge(params: ImobKnowledgeSearchParams): Pr
         vectorEmbedding: null,
         updatedAt: item.updatedAt,
       })) ?? [];
-  const documents = [...driveDocuments, ...seededDocuments];
+  const webDocuments: ImobKnowledgeSearchItem[] =
+    webSnapshot?.documents
+      .filter((item) => item.tenantId === params.tenantId && item.workspaceId === params.workspaceId)
+      .map((item) => ({
+        id: item.id,
+        tenantId: item.tenantId,
+        workspaceId: item.workspaceId,
+        sourceType: item.sourceType,
+        externalId: item.externalId,
+        driveFileId: null,
+        title: item.title,
+        href: item.href,
+        mimeType: item.mimeType,
+        region: item.region,
+        segment: item.segment,
+        documentType: item.documentType,
+        operationType: item.operationType,
+        tags: item.tags,
+        metadataJson: item.metadataJson,
+        contentText: null,
+        vectorEmbedding: null,
+        updatedAt: item.updatedAt,
+      })) ?? [];
+  const documents = [
+    ...driveDocuments.map((item) => ({ item, origin: "drive_snapshot" as const })),
+    ...webDocuments.map((item) => ({ item, origin: "web_snapshot" as const })),
+    ...uploadDocuments.map((item) => ({ item, origin: "workspace_upload" as const })),
+    ...seededDocuments.map((item) => ({ item, origin: "seed_catalog" as const })),
+  ];
 
   const filtered = documents
-    .filter((item) => item.tenantId === params.tenantId && item.workspaceId === params.workspaceId)
-    .filter((item) => matchesFilters(item, filters))
-    .map((item) => ({ item, score: scoreItem(item, tokens) }))
+    .filter((entry) => entry.item.tenantId === params.tenantId && entry.item.workspaceId === params.workspaceId)
+    .filter((entry) => matchesFilters(entry.item, filters))
+    .map((entry) => ({ ...entry, score: scoreItem(entry.item, tokens) }))
     .filter((entry) => entry.score > 0)
-    .sort((a, b) => b.score - a.score || b.item.updatedAt.localeCompare(a.item.updatedAt))
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      if (a.origin !== b.origin) {
+        const rank = { drive_snapshot: 0, web_snapshot: 1, workspace_upload: 2, seed_catalog: 3 } as const;
+        return rank[a.origin] - rank[b.origin];
+      }
+      return b.item.updatedAt.localeCompare(a.item.updatedAt);
+    })
     .slice(0, 8)
-    .map(({ item }) => ({
+    .map(({ item, origin }) => ({
       id: item.id,
       sourceType: item.sourceType,
+      source: buildSourceView(item, {
+        origin,
+        driveSnapshotSyncedAt: driveSnapshot?.syncedAt ?? null,
+        webSnapshotSyncedAt: webSnapshot?.syncedAt ?? null,
+      }),
       title: item.title,
       href: item.href,
       mimeType: item.mimeType,
@@ -278,9 +551,29 @@ export async function searchImobKnowledge(params: ImobKnowledgeSearchParams): Pr
       snippet: buildSnippet(item, query),
     }));
 
+  const origins = filtered.reduce(
+    (acc, item) => {
+      const existing = acc.find((entry) => entry.origin === item.source.origin);
+      if (existing) existing.count += 1;
+      else acc.push({ origin: item.source.origin, count: 1 });
+      return acc;
+    },
+    [] as Array<{ origin: "drive_snapshot" | "web_snapshot" | "workspace_upload" | "seed_catalog"; count: number }>
+  );
+
   return {
     query,
     appliedFilters: filters,
+    searchContext: buildSearchContext({
+      filters,
+      driveSnapshotSyncedAt: driveSnapshot?.syncedAt ?? null,
+      totalDriveSnapshotDocuments: driveDocuments.length,
+      webSnapshotSyncedAt: webSnapshot?.syncedAt ?? null,
+      totalWebSnapshotDocuments: webDocuments.length,
+      totalWorkspaceUploadDocuments: uploadDocuments.length,
+      totalSeedDocuments: seededDocuments.length,
+      origins,
+    }),
     total: filtered.length,
     items: filtered,
   };

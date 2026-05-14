@@ -44,16 +44,27 @@ function operationTypeLabel(value: string) {
   return value;
 }
 
+function sourceSummary(item: ImobKnowledgeSearchItem) {
+  const folder = item.source.folder?.trim();
+  if (folder) return `${item.source.label} · ${folder}`;
+  return item.source.label;
+}
+
 export const KnowledgeCard: React.FC<KnowledgeCardProps> = ({
   item,
   sourceActions = [],
 }) => {
   return (
     <article className="rounded-xl border border-white/10 bg-black/15 p-3">
+      <p className="text-[10px] uppercase tracking-[0.2em] text-accent/80">{sourceSummary(item)}</p>
       <h4 className="text-sm font-semibold text-foreground">{item.title}</h4>
       <p className="mt-2 text-xs leading-5 text-muted-foreground">{item.snippet}</p>
 
       <dl className="mt-3 grid gap-2 text-[11px] text-muted-foreground sm:grid-cols-2">
+        <div>
+          <dt className="uppercase tracking-[0.15em] text-[10px]">Fonte</dt>
+          <dd className="mt-1 text-foreground">{item.source.label}</dd>
+        </div>
         <div>
           <dt className="uppercase tracking-[0.15em] text-[10px]">Região</dt>
           <dd className="mt-1 text-foreground">{item.region}</dd>

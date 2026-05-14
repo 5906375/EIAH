@@ -1,0 +1,34 @@
+{
+  "documents": [
+    {
+      "tenantId": "tenant-demo",
+      "workspaceId": "workspace-demo",
+      "externalId": "web-proposta-venda-rj-sample",
+      "title": "Guia de proposta para venda - Rio de Janeiro",
+      "href": "https://conteudo.imob.example/rj/proposta-venda",
+      "mimeType": "text/html",
+      "section": "guias/venda",
+      "tags": ["venda", "proposta", "negociacao", "rio de janeiro"],
+      "region": "Rio de Janeiro",
+      "segment": "venda",
+      "operationType": "negociacao",
+      "documentType": "guia",
+      "updatedAt": "2026-03-21T12:00:00.000Z"
+    },
+    {
+      "tenantId": "tenant-demo",
+      "workspaceId": "workspace-demo",
+      "externalId": "web-locacao-floripa-checklist-sample",
+      "title": "Checklist web de locação - Florianópolis",
+      "href": "https://conteudo.imob.example/sc/checklist-locacao",
+      "mimeType": "text/html",
+      "section": "guias/locacao",
+      "tags": ["locacao", "checklist", "florianopolis"],
+      "region": "Santa Catarina",
+      "segment": "locacao",
+      "operationType": "locacao",
+      "documentType": "checklist",
+      "updatedAt": "2026-03-21T12:00:00.000Z"
+    }
+  ]
+}

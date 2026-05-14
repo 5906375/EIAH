@@ -328,6 +328,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
+      - name: Generate fresh P2 interop/HIGH evidence
+        run: pnpm generate:p2-interop-evidence
+
       - name: Check P2 Audit/Interop gate
         run: pnpm check:p2-audit-interop
 
@@ -489,6 +492,12 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Generate P3 economy evidence
+        run: pnpm generate:p3-economy-evidence
+
+      - name: Check P3 evidence recency
+        run: pnpm check:p3-evidence-recency
 
       - name: Check P3 settlement support matrix by env
         env:

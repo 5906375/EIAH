@@ -1,7 +1,7 @@
 # P3 Economy Hardening — Audit & Closure Checklist
 
 **Branch:** `feat/p3-settlement-provider-hardening`  
-**Date:** 2026-03-19  
+**Reference date:** rolling / latest evidence in `ops/evidence/latest`  
 **Status:** Ready for merge & operationalization
 
 ---
@@ -51,11 +51,11 @@
 
 ## ✅ Verified Behavior
 
-### Local Testing (2026-03-19)
+### Local Testing (reference pattern)
 ```bash
 ✅ pnpm generate:p3-economy-evidence
    → Generates 7 files (settlement, webhook, dispute, reputation, commission, schema, pou-gate)
-   → All with date: 2026-03-19
+   → All with current date `YYYY-MM-DD`
    → Output: JSON with count=7, scope tags
 
 ✅ pnpm check:p3-evidence-recency
@@ -120,10 +120,9 @@
 **Next Step:** Extend `generateP3EconomyEvidence.ts` or create a separate `generateBillingWebhookAttackEvidence.ts`.
 
 ### 3. Provider-Specific Mode Validation per Environment
-**Status:** Configured but not validated at runtime  
-**Description:** Modes are set via `SETTLEMENT_PROVIDER_MODE_<PROVIDER>` env vars.  
-**Gap:** No systematic validation that staging uses the correct mode matrix.  
-**Next Step:** Add `check:p3-settlement-support-by-env` integration (script already exists).
+**Status:** Implemented in CI  
+**Description:** Modes are set via `SETTLEMENT_PROVIDER_MODE_<PROVIDER>` env vars and validated against `ops/contracts/settlement-provider-support-matrix.v1.json`.  
+**Current state:** `check:p3-settlement-support-by-env` now runs with fresh evidence in CI.
 
 ### 4. Automatic Ledger Reconciliation Evidence
 **Status:** Not automated  
@@ -160,7 +159,7 @@
 ## 🚀 Merge & Release Instructions
 
 ### For Reviewers
-1. Verify 7 new evidence files (2026-03-19 dated) are in `ops/evidence/latest/`
+1. Verify 7 new evidence files (`YYYY-MM-DD`) are in `ops/evidence/latest/`
 2. Confirm CI jobs pass: `generate:p3-economy-evidence`, `check:p3-evidence-recency`, `check:p3-economy-hardening`
 3. Review new scripts and docs for clarity
 4. Approve & merge to `main`

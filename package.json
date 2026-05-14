@@ -22,6 +22,7 @@
     "check:interop-contract-matrix": "node --experimental-strip-types scripts/checkInteropContractsMatrix.ts",
     "check:interop-spec-governance": "node --experimental-strip-types scripts/checkInteropSpecGovernance.ts",
     "check:p2-audit-interop": "node --experimental-strip-types scripts/checkP2AuditInterop.ts",
+    "generate:p2-interop-evidence": "node --experimental-strip-types scripts/generateP2InteropEvidence.ts",
     "check:p2-high-global-coverage": "node --experimental-strip-types scripts/checkP2HighGlobalCoverage.ts",
     "check:p1-critical-chain": "node --experimental-strip-types scripts/checkP1CriticalChain.ts",
     "check:p1-reconciliation-recurring": "node --experimental-strip-types scripts/checkP1ReconciliationRecurring.ts",

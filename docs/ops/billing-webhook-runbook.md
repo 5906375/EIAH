@@ -87,6 +87,7 @@ Operate provider webhook ingestion with:
   - `ops/evidence/billing-webhook-valid-YYYY-MM-DD.json`
 - Replay evidence:
   - `ops/evidence/billing-webhook-replay-attack-YYYY-MM-DD.json`
+  - evidencia operacional recorrente do fluxo economico: `ops/evidence/latest/billing-webhook-replay-YYYY-MM-DD.json`
 
 ## Minimum DoD
 
