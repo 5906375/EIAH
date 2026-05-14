@@ -44,7 +44,6 @@ import {
 import {
   buildImobInputPlaceholderForInput,
   buildImobKnowledgeSearchQuickReplies,
-  buildImobQuickRepliesForInput,
   isImobContextEntryQuestion,
   isImobGuideQuestion,
   resolveImobLauncherSurfaceDecision,
@@ -115,7 +114,6 @@ export {
 } from "@/components/agents/platformHelpResolver";
 export {
   buildDeterministicImobReply,
-  buildImobQuickRepliesForInput,
 } from "@/components/agents/imobContextResolver";
 
 export type AgentParticipationSnapshot = NonNullable<Agent["participation"]>;
@@ -798,10 +796,6 @@ export function buildEiahQuickReplies(params: {
   conversationStage?: MessagePresentationSnapshot["conversationStage"];
 }) {
   if (params.proposalMode || params.routeIntent === "proposal") {
-    if (params.proposalDomain === "imob") {
-      return buildImobQuickRepliesForInput(params.sourceInput ?? "");
-    }
-
     return buildProposalQuickReplies({
       proposalDomain: params.proposalDomain ?? "saas",
       conversationStage: params.conversationStage,
@@ -820,7 +814,7 @@ export function buildEiahQuickReplies(params: {
     if (params.sourceInput && resolveImobKnowledgeSearchIntent(params.sourceInput)) {
       return buildImobKnowledgeSearchQuickReplies();
     }
-    return buildImobQuickRepliesForInput(params.sourceInput ?? "");
+    return [];
   }
 
   return resolveEiahTutorRouteQuickReplies("help", params.sourceInput);
@@ -873,18 +867,12 @@ export function buildQuickRepliesForContext(params: {
     params.agentProfile?.chatCopy?.quickReplies?.filter((value): value is string => Boolean(value && value.trim())) ?? [];
   const resolvedVerticalContext =
     params.proposalDomain === "saas" ? null : params.sourceInput ? resolveConversationVerticalContext(params.sourceInput) : null;
-  const imobReplies =
-    resolvedVerticalContext?.vertical === "IMOB" && params.sourceInput
-      ? buildImobQuickRepliesForInput(params.sourceInput)
-      : [];
   const legalReplies =
     resolvedVerticalContext?.vertical === "LEGAL" && params.sourceInput
       ? buildLegalQuickRepliesForInput(params.sourceInput)
       : [];
 
-  const verticalReplies = resolvedVerticalContext?.vertical === "IMOB"
-    ? imobReplies
-    : resolvedVerticalContext?.vertical === "LEGAL"
+  const verticalReplies = resolvedVerticalContext?.vertical === "LEGAL"
       ? legalReplies
       : [];
 
@@ -992,6 +980,12 @@ export function createPresentationSnapshotV1(params: {
     const normalizedReply = normalizeIntentText(reply);
     return !usedReplyKeys.has(normalizedReply) && !excludedReplyKeys.has(normalizedReply);
   });
+  const quickReplySource: MessagePresentationSnapshot["quickReplySource"] =
+    params.resolvedQuickReplies && params.resolvedQuickReplies.length > 0
+      ? "backend_payload"
+      : filteredQuickReplies.length > 0
+        ? (params.agentProfile?.chatCopy?.quickReplies?.length ? "agent_contract" : "frontend_copy")
+        : "none";
   const nextDecision =
     params.routeIntent === "orchestrator"
       ? params.agentProfile?.uxContract?.defaultCTA?.trim()
@@ -1005,6 +999,7 @@ export function createPresentationSnapshotV1(params: {
   return {
     snapshotVersion: PRESENTATION_SNAPSHOT_VERSION,
     compatibilityMode: "snapshot",
+    quickReplySource,
     verticalContext,
     proposalDomain: params.proposalDomain ?? null,
     conversationStage: params.conversationStage ?? null,
@@ -1031,6 +1026,17 @@ export function createPresentationSnapshotV1(params: {
     attachmentPrimaryActionLabel: params.attachmentIntake.primaryActionLabel,
     attachmentSecondaryActionLabel: params.attachmentIntake.secondaryActionLabel,
     attachmentHelpText: params.attachmentIntake.helpText,
+    governedRuntime:
+      normalizedRouteIntent === "imob" && quickReplySource === "backend_payload"
+        ? {
+            domain: "IMOB",
+            contractVersion: "imob.crm.governed.v1",
+            launcherPolicy: "render_only",
+            quickRepliesSource: "backend_payload",
+            recommendedActionsSource: "backend_payload",
+            agentActivitiesSource: "backend_payload",
+          }
+        : null,
     agentSwitchRequest: params.agentSwitchRequest ?? null,
   };
 }

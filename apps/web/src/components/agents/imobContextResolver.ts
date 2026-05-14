@@ -47,6 +47,7 @@ export type ImobLauncherSurfaceDecision = {
   kind: "help_reply" | "imob_context_entry" | "imob_reply";
   shouldCreateRun: false;
   content: string;
+  resolvedQuickReplies?: string[];
   launcherRouteIntent: "help" | "imob";
   presentationRouteIntent: "help" | "imob";
   eiahMode: "help";
@@ -448,7 +449,7 @@ export function resolveImobJourneyStage(input: string): ImobJourneyDefinition | 
   return null;
 }
 
-export function buildImobQuickRepliesForInput(input: string) {
+function buildImobResolvedQuickReplies(input: string) {
   const knowledgeIntent = resolveImobKnowledgeSearchIntent(input);
   if (knowledgeIntent) {
     return buildImobKnowledgeSearchQuickReplies();
@@ -804,6 +805,7 @@ export function resolveImobLauncherSurfaceDecision(params: {
         kind: "help_reply",
         shouldCreateRun: false,
         content: buildImobKnowledgeAccessBlockedReply(),
+        resolvedQuickReplies: ["Ver opções no Marketplace", "Entender planos com IMOB", "Falar com comercial"],
         launcherRouteIntent: "help",
         presentationRouteIntent: "help",
         eiahMode: "help",
@@ -816,6 +818,7 @@ export function resolveImobLauncherSurfaceDecision(params: {
       kind: "imob_context_entry",
       shouldCreateRun: false,
       content: buildImobKnowledgeSearchEntryReply(params.input),
+      resolvedQuickReplies: buildImobResolvedQuickReplies(params.input),
       launcherRouteIntent: "imob",
       presentationRouteIntent: "imob",
       eiahMode: "help",
@@ -829,6 +832,7 @@ export function resolveImobLauncherSurfaceDecision(params: {
       kind: "imob_context_entry",
       shouldCreateRun: false,
       content: buildImobContextEntryReply(params.input),
+      resolvedQuickReplies: buildImobResolvedQuickReplies(params.input),
       launcherRouteIntent: "imob",
       presentationRouteIntent: "imob",
       eiahMode: "help",
@@ -841,6 +845,7 @@ export function resolveImobLauncherSurfaceDecision(params: {
     kind: "imob_reply",
     shouldCreateRun: false,
     content: buildDeterministicImobReply(params.input),
+    resolvedQuickReplies: buildImobResolvedQuickReplies(params.input),
     launcherRouteIntent: "imob",
     presentationRouteIntent: "imob",
     eiahMode: "help",
