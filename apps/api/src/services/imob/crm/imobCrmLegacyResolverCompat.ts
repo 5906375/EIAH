@@ -23,7 +23,13 @@ import {
 
 // Legacy compatibility implementation.
 // The active IMOB_CRM runtime now lives in turn-engine, business-read and operational modules.
-// This module is kept only as a first-pass fallback for older operational behaviors wired from imob.ts.
+// Sunset owner: IMOB governed runtime hardening.
+// Removal criteria:
+// - `crm_legacy_fallback_invoked` remains near zero for covered golden paths
+// - all scenarios in the allowlist are migrated to contract + turn-engine + workflow
+// - no new scenario may be added here without an explicit temporary allowlist entry in imob.ts
+// This module is no longer a general reserve path. It is a temporary compatibility layer for
+// explicitly allowed legacy scenarios while the governed runtime closes remaining gaps.
 
 type ResolverParams = {
   prisma: PrismaClient;
@@ -364,6 +370,22 @@ function resolveBusinessReadIntent(message: string): BusinessReadIntent | null {
   );
   if (match?.intentId) return match.intentId as BusinessReadIntent;
   const normalized = normalizeImobCrmText(message);
+  if (
+    normalized.includes("piloto")
+    && (
+      normalized.includes("status")
+      || normalized.includes("situacao")
+      || normalized.includes("situação")
+      || normalized.includes("estado")
+      || normalized.includes("approval")
+      || normalized.includes("aprovacao")
+      || normalized.includes("aprovação")
+      || normalized.includes("rollout")
+      || normalized.includes("shadow")
+    )
+  ) {
+    return "pipeline_status";
+  }
   if (
     (normalized.includes("resuma esse caso") || normalized.includes("resumir esse caso") || normalized.includes("resumo do caso"))
     && (normalized.includes("caso") || normalized.includes("atendimento"))

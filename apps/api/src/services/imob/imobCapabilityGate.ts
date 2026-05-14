@@ -1,6 +1,7 @@
 import {
   listAllImobCapabilities,
   type ImobCapabilityRegistryEntry,
+  type ImobCapabilityRolloutStage,
 } from "./imobCapabilityRegistry";
 
 export type ImobCapabilityGateInput = {
@@ -9,10 +10,12 @@ export type ImobCapabilityGateInput = {
   humanApprovalGranted?: boolean;
   evidenceRefsCount?: number;
   policyAccepted?: boolean;
+  minimumRolloutStage?: ImobCapabilityRolloutStage;
 };
 
 export type ImobCapabilityGateBlockedReason =
   | "capability_not_found"
+  | "rollout_stage_blocked"
   | "consent_required"
   | "human_approval_required"
   | "evidence_required"
@@ -23,7 +26,7 @@ export type ImobCapabilityGateDecision = {
   capability: ImobCapabilityRegistryEntry | null;
   reasonCodes: ImobCapabilityGateBlockedReason[];
   decisionTrail: Array<{
-    gate: "consent" | "human_approval" | "evidence" | "policy";
+    gate: "rollout" | "consent" | "human_approval" | "evidence" | "policy";
     required: boolean;
     satisfied: boolean;
   }>;
@@ -40,6 +43,7 @@ function buildGateMessage(params: {
 }) {
   const labels: Record<ImobCapabilityGateBlockedReason, string> = {
     capability_not_found: "capability não encontrada",
+    rollout_stage_blocked: "rollout stage insuficiente",
     consent_required: "consentimento obrigatório",
     human_approval_required: "aprovação humana obrigatória",
     evidence_required: "evidência mínima obrigatória",
@@ -47,6 +51,15 @@ function buildGateMessage(params: {
   };
   return `Capability ${params.capabilityId} bloqueada: ${params.reasonCodes.map((item) => labels[item]).join(", ")}.`;
 }
+
+const ROLLOUT_STAGE_ORDER: Record<ImobCapabilityRolloutStage, number> = {
+  backlog: 0,
+  design: 1,
+  shadow: 2,
+  pilot: 3,
+  small: 4,
+  broad: 5,
+};
 
 export function resolveImobCapabilityGate(input: ImobCapabilityGateInput): ImobCapabilityGateDecision {
   const capability = listAllImobCapabilities().find((item) => item.capabilityId === input.capabilityId) ?? null;
@@ -68,6 +81,12 @@ export function resolveImobCapabilityGate(input: ImobCapabilityGateInput): ImobC
   }
 
   const decisionTrail = [
+    {
+      gate: "rollout" as const,
+      required: Boolean(input.minimumRolloutStage),
+      satisfied: !input.minimumRolloutStage
+        || ROLLOUT_STAGE_ORDER[capability.rolloutStage] >= ROLLOUT_STAGE_ORDER[input.minimumRolloutStage],
+    },
     {
       gate: "consent" as const,
       required: capability.requiresConsent,
@@ -91,10 +110,11 @@ export function resolveImobCapabilityGate(input: ImobCapabilityGateInput): ImobC
   ];
 
   const reasonCodes = [
-    !decisionTrail[0].satisfied ? "consent_required" : null,
-    !decisionTrail[1].satisfied ? "human_approval_required" : null,
-    !decisionTrail[2].satisfied ? "evidence_required" : null,
-    !decisionTrail[3].satisfied ? "policy_required" : null,
+    !decisionTrail[0].satisfied ? "rollout_stage_blocked" : null,
+    !decisionTrail[1].satisfied ? "consent_required" : null,
+    !decisionTrail[2].satisfied ? "human_approval_required" : null,
+    !decisionTrail[3].satisfied ? "evidence_required" : null,
+    !decisionTrail[4].satisfied ? "policy_required" : null,
   ].filter(Boolean) as ImobCapabilityGateBlockedReason[];
 
   if (reasonCodes.length === 0) {

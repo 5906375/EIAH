@@ -151,6 +151,21 @@ test("public enrichment capability stays in governed shadow after runtime materi
   assert.match(capability?.initialImplementation ?? "", /consent basis/i);
 });
 
+test("calendar and listing sandbox capabilities are marked as shadow-ready when runtime exists", () => {
+  const calendar = listAllImobCapabilities().find((item) => item.capabilityId === "schedule.real_calendar");
+  const listing = listAllImobCapabilities().find((item) => item.capabilityId === "listing.ads_api_publish");
+
+  assert.ok(calendar);
+  assert.equal(calendar?.status, "ready_for_shadow");
+  assert.equal(calendar?.executionMode, "shadow");
+  assert.equal(calendar?.rolloutStage, "shadow");
+
+  assert.ok(listing);
+  assert.equal(listing?.status, "ready_for_shadow");
+  assert.equal(listing?.executionMode, "shadow");
+  assert.equal(listing?.rolloutStage, "shadow");
+});
+
 test("active capture scouting capability stays in shadow with mock ingestion governance", () => {
   const capability = listAllImobCapabilities().find((item) => item.capabilityId === "active_capture.scouting");
 

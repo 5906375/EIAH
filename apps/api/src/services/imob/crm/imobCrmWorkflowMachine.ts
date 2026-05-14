@@ -245,6 +245,23 @@ export function classifyImobCrmWorkflowTransitionFromMessage(
   const normalized = normalize(message);
   if (!normalized) return null;
   if (
+    normalized.includes("atualizar existente")
+    || normalized.includes("usar existente")
+    || normalized.includes("editar existente")
+  ) {
+    return "choose_update_existing";
+  }
+  if (
+    normalized === "cadastros"
+    || normalized === "ver cadastros"
+    || normalized.includes("listar cadastros")
+  ) {
+    return "show_records";
+  }
+  if (normalized.includes("criar novo") || normalized.includes("criar um novo") || normalized.includes("novo cadastro")) {
+    return "choose_create_new";
+  }
+  if (
     normalized.includes("consultar")
     || normalized.includes("status")
     || normalized.includes("resumo")
@@ -256,6 +273,18 @@ export function classifyImobCrmWorkflowTransitionFromMessage(
     || normalized.includes("listar")
   ) {
     return "read_only_query";
+  }
+  if (
+    normalized.includes("continuar")
+    || normalized.includes("retomar")
+    || normalized.includes("seguir")
+    || normalized.includes("avancar")
+    || normalized.includes("avançar")
+    || normalized.includes("prosseguir")
+    || normalized.includes("agendar")
+    || normalized.includes("iniciar visita")
+  ) {
+    return "continue";
   }
   if (
     normalized.includes("confirmar seleção do scan")
@@ -287,8 +316,6 @@ export function classifyImobCrmWorkflowTransitionFromMessage(
     return "start_market_scan";
   }
   if (normalized.includes("cancelar")) return "cancel";
-  if (normalized.includes("criar novo") || normalized.includes("novo cadastro")) return "choose_create_new";
-  if (normalized.includes("atualizar existente") || normalized.includes("editar existente")) return "choose_update_existing";
   return "continue";
 }
 

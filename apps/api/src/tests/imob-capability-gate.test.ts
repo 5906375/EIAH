@@ -57,6 +57,35 @@ test("listing publish capability blocks without evidence even with approval", ()
   assert.deepEqual(decision.reasonCodes, ["evidence_required"]);
 });
 
+test("backlog capability stays blocked when runtime requires shadow rollout", () => {
+  const decision = resolveImobCapabilityGate({
+    capabilityId: "outbound.owner_contact",
+    consentProvided: true,
+    humanApprovalGranted: true,
+    evidenceRefsCount: 1,
+    policyAccepted: true,
+    minimumRolloutStage: "shadow",
+  });
+
+  assert.equal(decision.allowed, false);
+  assert.deepEqual(decision.reasonCodes, ["rollout_stage_blocked"]);
+});
+
+test("shadow-ready capability can pass when runtime requires shadow rollout", () => {
+  const decision = resolveImobCapabilityGate({
+    capabilityId: "schedule.real_calendar",
+    humanApprovalGranted: true,
+    evidenceRefsCount: 1,
+    policyAccepted: true,
+    minimumRolloutStage: "shadow",
+  });
+
+  assert.equal(decision.allowed, true);
+  assert.equal(decision.reasonCodes.length, 0);
+  assert.equal(decision.decisionTrail[0]?.gate, "rollout");
+  assert.equal(decision.decisionTrail[0]?.satisfied, true);
+});
+
 test("non-sensitive consultive capability does not block when gates are not required beyond evidence", () => {
   const decision = resolveImobCapabilityGate({
     capabilityId: "inventory.active_watch",
