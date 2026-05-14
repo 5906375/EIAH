@@ -15,6 +15,9 @@ test("IMOB knowledge search service returns metadata-scoped results", async () =
   });
 
   assert.equal(result.query, "contratos de locação em São Paulo");
+  assert.equal(result.searchContext.resolvedRegion, "São Paulo");
+  assert.equal(result.searchContext.resolvedSegment, "locacao");
+  assert.match(result.searchContext.scopeLabel, /São Paulo/i);
   assert.ok(result.total >= 1);
   assert.ok(result.items.every((item) => item.region === "São Paulo" || item.region === "Brasil"));
   assert.ok(result.items.every((item) => item.segment === "locacao" || item.segment === "ambos"));
@@ -35,6 +38,9 @@ test("IMOB knowledge search service filters by document type and operation", asy
   assert.ok(result.items.every((item) => item.documentType === "playbook"));
   assert.ok(result.items.every((item) => item.operationType === "captacao"));
   assert.equal(result.items[0]?.sourceType, "internal_doc");
+  assert.equal(result.items[0]?.source.type, "internal_doc");
+  assert.equal(result.items[0]?.source.label, "Documento interno");
+  assert.equal(result.items[0]?.source.origin, "seed_catalog");
 });
 
 test("IMOB knowledge search service filters by source types", async () => {
@@ -49,4 +55,8 @@ test("IMOB knowledge search service filters by source types", async () => {
 
   assert.ok(result.total >= 1);
   assert.ok(result.items.every((item) => item.sourceType === "web"));
+  assert.ok(result.items.every((item) => item.source.type === "web"));
+  assert.ok(result.items.every((item) => item.source.hrefKind === "web_url"));
+  assert.deepEqual(result.searchContext.sourceTypes, ["web"]);
+  assert.deepEqual(result.searchContext.sourceLabels, ["Web"]);
 });

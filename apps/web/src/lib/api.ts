@@ -1723,6 +1723,18 @@ export type ImobContractInterviewState = {
 export type ImobKnowledgeSearchItem = {
   id: string;
   sourceType: "drive" | "upload" | "web" | "internal_doc";
+  source: {
+    type: "drive" | "upload" | "web" | "internal_doc";
+    label: string;
+    system: "drive" | "upload" | "web" | "internal_doc";
+    origin: "drive_snapshot" | "web_snapshot" | "workspace_upload" | "seed_catalog";
+    externalId: string;
+    driveFileId?: string | null;
+    folder?: string | null;
+    hrefKind: "drive_search" | "drive_file" | "drive_folder" | "web_url" | "internal_route";
+    syncedFromDrive: boolean;
+    syncedAt?: string | null;
+  };
   title: string;
   href: string;
   mimeType: string;
@@ -2966,6 +2978,31 @@ export type ImobKnowledgeSearchResponse = {
     operationType?: string | null;
     tags?: string[] | null;
     sourceTypes?: Array<"drive" | "upload" | "web" | "internal_doc"> | null;
+  };
+  searchContext: {
+    resolvedRegion: string;
+    resolvedSegment: "locacao" | "venda" | "ambos";
+    sourceTypes: Array<"drive" | "upload" | "web" | "internal_doc">;
+    sourceLabels: string[];
+    explicitFilterCount: number;
+    scopeLabel: string;
+    documentType?: string | null;
+    operationType?: string | null;
+    tags?: string[] | null;
+    provenance: {
+      driveSyncActive: boolean;
+      driveSnapshotSyncedAt?: string | null;
+      totalDriveSnapshotDocuments: number;
+      webSyncActive: boolean;
+      webSnapshotSyncedAt?: string | null;
+      totalWebSnapshotDocuments: number;
+      totalWorkspaceUploadDocuments: number;
+      totalSeedDocuments: number;
+      origins: Array<{
+        origin: "drive_snapshot" | "web_snapshot" | "workspace_upload" | "seed_catalog";
+        count: number;
+      }>;
+    };
   };
   total: number;
   items: ImobKnowledgeSearchItem[];

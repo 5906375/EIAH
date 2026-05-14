@@ -2172,19 +2172,22 @@ const ImobChatPage: React.FC = () => {
   const buildKnowledgeSearchResponse = React.useCallback(
     (result: ImobKnowledgeSearchResponse, turn: ImobResolveTurnResponse) => {
       const sourceTypes = result.appliedFilters.sourceTypes ?? turn.knowledgeRequest?.filters.sourceTypes ?? [];
+      const sourceLabels = result.searchContext?.sourceLabels ?? [];
       const sourceLabel =
-        sourceTypes.length > 0
-          ? ` em ${sourceTypes
-              .map((item) =>
-                item === "drive"
-                  ? "Drive"
-                  : item === "upload"
-                    ? "Uploads"
-                    : item === "web"
-                      ? "Web"
-                      : "Docs internos"
-              )
-              .join(", ")}`
+        sourceLabels.length > 0
+          ? ` em ${sourceLabels.join(", ")}`
+          : sourceTypes.length > 0
+            ? ` em ${sourceTypes
+                .map((item) =>
+                  item === "drive"
+                    ? "Drive"
+                    : item === "upload"
+                      ? "Uploads"
+                      : item === "web"
+                        ? "Web"
+                        : "Docs internos"
+                )
+                .join(", ")}`
           : "";
       if (result.total === 0) {
         return [
@@ -2194,8 +2197,10 @@ const ImobChatPage: React.FC = () => {
         ].join("\n");
       }
 
+      const firstSourceLabel = result.items[0]?.source?.label;
+      const scopeLabel = result.searchContext?.scopeLabel;
       return [
-        `Abri ${result.total > 1 ? "o primeiro material útil" : "um material útil"} para esta busca.`,
+        `Abri ${result.total > 1 ? "o primeiro material útil" : "um material útil"}${firstSourceLabel ? ` em ${firstSourceLabel}` : ""} para esta busca${scopeLabel ? ` de ${scopeLabel}` : ""}.`,
       ].join("\n\n");
     },
     []
@@ -2215,7 +2220,12 @@ const ImobChatPage: React.FC = () => {
         thread,
         lines:
           items.length > 0
-            ? ["Resultados exibidos abaixo com fonte, recorte e CTA do documento."]
+            ? [
+                `Recorte: ${result.searchContext?.scopeLabel ?? "acervo IMOB"}.`,
+                result.searchContext?.provenance?.driveSyncActive
+                  ? "Drive sincronizado disponível para este workspace."
+                  : "Resultados combinam acervo seed e fontes internas disponíveis.",
+              ]
             : ["Nenhum documento encontrado com esse recorte."],
         knowledgeResults: items,
         ctas: sourceCtas.slice(0, 2),

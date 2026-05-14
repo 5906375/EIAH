@@ -1,8 +1,10 @@
+import "./support/testInfraEnv";
 import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import process from "node:process";
 import supertest from "supertest";
 import { prismaGlobal } from "@repo/db";
+import { createUploadedDocument } from "../services/uploads";
 
 let request: ReturnType<typeof supertest>;
 
@@ -45,6 +47,17 @@ before(async () => {
       allowed: true,
     },
   });
+  await createUploadedDocument({
+    prisma: prismaGlobal,
+    tenantId: entitledTenantId,
+    workspaceId: entitledWorkspaceId,
+    agentSlug: "imob",
+    fileName: "checklist-captacao-locacao-joinville.pdf",
+    mimeType: "application/pdf",
+    sizeBytes: 1024,
+    storageKey: `tests/${suffix}/checklist-captacao-locacao-joinville.pdf`,
+    url: `/api/uploads/upload-knowledge-${suffix}`,
+  });
 
   await prismaGlobal.tenant.create({ data: { id: blockedTenantId, name: blockedTenantId } });
   await prismaGlobal.workspace.create({ data: { id: blockedWorkspaceId, tenantId: blockedTenantId, name: blockedWorkspaceId } });
@@ -64,6 +77,9 @@ before(async () => {
 });
 
 after(async () => {
+  await prismaGlobal.uploadedDocument.deleteMany({
+    where: { tenantId: { in: [entitledTenantId, blockedTenantId] } },
+  });
   await prismaGlobal.tenantActionPolicy.deleteMany({
     where: { tenantId: { in: [entitledTenantId, blockedTenantId] } },
   });
@@ -74,6 +90,9 @@ after(async () => {
     where: { tenantId: { in: [entitledTenantId, blockedTenantId] } },
   });
   await prismaGlobal.workspace.deleteMany({
+    where: { tenantId: { in: [entitledTenantId, blockedTenantId] } },
+  });
+  await prismaGlobal.guardrailAuditLedger.deleteMany({
     where: { tenantId: { in: [entitledTenantId, blockedTenantId] } },
   });
   await prismaGlobal.tenant.deleteMany({
@@ -103,6 +122,12 @@ test("IMOB knowledge search returns metadata results for entitled tenant/workspa
   assert.ok((response.body?.data?.items ?? []).length >= 1);
   const firstItem = response.body?.data?.items?.[0];
   assert.equal(typeof firstItem?.sourceType, "string");
+  assert.equal(typeof firstItem?.source?.type, "string");
+  assert.equal(typeof firstItem?.source?.label, "string");
+  assert.equal(typeof firstItem?.source?.origin, "string");
+  assert.equal(typeof response.body?.data?.searchContext?.scopeLabel, "string");
+  assert.equal(typeof response.body?.data?.searchContext?.provenance?.driveSyncActive, "boolean");
+  assert.equal(typeof response.body?.data?.searchContext?.provenance?.webSyncActive, "boolean");
   assert.equal(typeof firstItem?.title, "string");
   assert.equal(typeof firstItem?.snippet, "string");
 });
@@ -118,4 +143,25 @@ test("IMOB knowledge search fails closed without entitlement", async () => {
   assert.equal(response.status, 403);
   assert.equal(response.body?.ok, false);
   assert.equal(response.body?.error?.code, "ENTITLEMENT_MISSING");
+});
+
+test("IMOB knowledge search returns workspace upload results with auditable source origin", async () => {
+  const response = await request
+    .post("/api/imob/knowledge/search")
+    .set("Authorization", `Bearer ${entitledApiToken}`)
+    .send({
+      query: "checklist captação locação joinville",
+      filters: {
+        sourceTypes: ["upload"],
+      },
+    });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.body?.ok, true);
+  assert.ok((response.body?.data?.items ?? []).length >= 1);
+  const firstItem = response.body?.data?.items?.[0];
+  assert.equal(firstItem?.sourceType, "upload");
+  assert.equal(firstItem?.source?.origin, "workspace_upload");
+  assert.equal(firstItem?.source?.label, "Upload operacional");
+  assert.equal(response.body?.data?.searchContext?.provenance?.totalWorkspaceUploadDocuments >= 1, true);
 });

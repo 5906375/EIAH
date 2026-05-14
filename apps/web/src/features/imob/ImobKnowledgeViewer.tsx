@@ -46,6 +46,14 @@ function operationTypeLabel(value: string) {
   return value;
 }
 
+function sourceKindLabel(item: ImobKnowledgeSearchItem) {
+  if (item.source.hrefKind === "drive_file") return "Arquivo do Drive";
+  if (item.source.hrefKind === "drive_folder") return "Pasta do Drive";
+  if (item.source.hrefKind === "drive_search") return "Busca do Drive";
+  if (item.source.hrefKind === "web_url") return "Conteúdo web";
+  return "Rota interna";
+}
+
 function externalActionLabel(item: ImobKnowledgeSearchItem, href: string) {
   if (item.sourceType !== "drive") return "Abrir documento";
   if (/\/file\/d\//i.test(href) || /open\?id=/i.test(href)) return "Abrir no Drive";
@@ -117,6 +125,10 @@ export const ImobKnowledgeViewer: React.FC<ImobKnowledgeViewerProps> = ({
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Contexto</p>
               <dl className="mt-3 space-y-3 text-sm">
                 <div>
+                  <dt className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Fonte</dt>
+                  <dd className="mt-1 text-foreground">{item.source.label}</dd>
+                </div>
+                <div>
                   <dt className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Região</dt>
                   <dd className="mt-1 text-foreground">{item.region}</dd>
                 </div>
@@ -124,6 +136,34 @@ export const ImobKnowledgeViewer: React.FC<ImobKnowledgeViewerProps> = ({
                   <dt className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Operação</dt>
                   <dd className="mt-1 text-foreground">{operationTypeLabel(item.operationType)}</dd>
                 </div>
+                <div>
+                  <dt className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Origem</dt>
+                  <dd className="mt-1 text-foreground">{sourceKindLabel(item)}</dd>
+                </div>
+                <div>
+                  <dt className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Proveniência</dt>
+                  <dd className="mt-1 text-foreground">
+                    {item.source.origin === "drive_snapshot"
+                      ? "Drive sincronizado"
+                      : item.source.origin === "web_snapshot"
+                        ? "Web sincronizada"
+                      : item.source.origin === "workspace_upload"
+                        ? "Upload do workspace"
+                        : "Catálogo seed"}
+                  </dd>
+                </div>
+                {item.source.folder ? (
+                  <div>
+                    <dt className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Pasta / recorte</dt>
+                    <dd className="mt-1 text-foreground">{item.source.folder}</dd>
+                  </div>
+                ) : null}
+                {item.source.syncedAt ? (
+                  <div>
+                    <dt className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Sync</dt>
+                    <dd className="mt-1 text-foreground">{new Date(item.source.syncedAt).toLocaleString("pt-BR")}</dd>
+                  </div>
+                ) : null}
               </dl>
             </div>
           </aside>
