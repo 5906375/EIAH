@@ -15,6 +15,14 @@
 - [ ] Fluxo principal e2e validado (intenção -> execução -> evidência).
 - [ ] Download de bundle/receipt disponível no Command Center.
 - [ ] Fail-closed cross-tenant validado (`403` quando escopo inválido).
+- [ ] Command Center da vertical expõe prova por run (`txId`, `bundle`, `receipt/verify`) quando aplicável.
+
+## Rollout
+- [ ] Critério `shadow` explícito e documentado.
+- [ ] Critério `pilot` explícito e documentado.
+- [ ] Critério `small` explícito e documentado.
+- [ ] Evidência semanal da vertical publicada em `ops/evidence/latest`.
+- [ ] Critério de avanço `shadow -> pilot -> small` ligado a gates de não-regressão.
 
 ## Economia
 - [ ] PaymentIntent funcional no domínio.
@@ -25,3 +33,4 @@
 - [ ] Evidência de ativação da vertical.
 - [ ] Evidência de primeira execução operacional.
 - [ ] KPI report com gates D6 atualizado.
+- [ ] Evidência de rollout/piloto da vertical atualizada.

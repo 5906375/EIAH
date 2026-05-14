@@ -1,3 +1,4 @@
+import "./support/testInfraEnv";
 import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import supertest from "supertest";
@@ -11,6 +12,7 @@ const workspaceId = `workspace-imob-cc-${suffix}`;
 const userId = `user-imob-cc-${suffix}`;
 const apiToken = `tok-imob-cc-${suffix}`;
 const blockedRunId = `run-imob-blocked-${suffix}`;
+const blockedCaseThreadId = `thread-imob-cc-${suffix}`;
 
 before(async () => {
   process.env.NODE_ENV = "test";
@@ -41,6 +43,8 @@ before(async () => {
       userId,
       agent: "fin-nexus",
       status: "blocked",
+      txId: `tx-imob-cc-${suffix}`,
+      criticalHash: `critical-imob-cc-${suffix}`,
       request: { metadata: { domain: "imob", action: "realestate.apply_adjustment" } },
       response: { ok: false },
     },
@@ -53,6 +57,21 @@ before(async () => {
       userId,
       type: "run.blocked.guardrails",
       payload: { reasonCodes: ["RISK_THRESHOLD_EXCEEDED"] },
+    },
+  });
+
+  await prismaGlobal.imobCase.create({
+    data: {
+      tenantId,
+      workspaceId,
+      threadId: blockedCaseThreadId,
+      flow: "commission.settlement",
+      stage: "guardrails_review",
+      status: "blocked",
+      nextStep: "Revisar risco antes de seguir com o ajuste",
+      blockers: ["RISK_THRESHOLD_EXCEEDED"],
+      pendingItems: ["manualApproval"],
+      metadata: { commandCenter: { seededBy: "imob.command-center.smoke.test" } },
     },
   });
 });
@@ -81,5 +100,9 @@ test("IMOB Command Center returns workspace-scoped funnel and blocked list", asy
   assert.equal(blocked.body?.ok, true);
   const runIds = (blocked.body?.data?.items ?? []).map((item: any) => item.runId);
   assert.ok(runIds.includes(blockedRunId));
+  const blockedItem = (blocked.body?.data?.items ?? []).find((item: any) => item.runId === blockedRunId);
+  assert.equal(blocked.body?.data?.meta?.proofExport?.bundleEndpointTemplate, "/api/runs/:runId/bundle");
+  assert.equal(blocked.body?.data?.meta?.proofExport?.ledgerEndpointTemplate, "/api/ledger/:txId");
+  assert.equal(blockedItem?.proof?.receiptPath, `/api/ledger/${encodeURIComponent(`tx-imob-cc-${suffix}`)}`);
+  assert.equal(blockedItem?.proof?.bundlePath, `/api/runs/${encodeURIComponent(blockedRunId)}/bundle`);
 });
-

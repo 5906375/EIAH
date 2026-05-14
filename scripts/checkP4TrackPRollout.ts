@@ -2,9 +2,10 @@ import fs from "node:fs";
 import path from "node:path";
 
 const CHECK = "check:p4-trackp-rollout";
-const PILOT_FILE = "ops/evidence/latest/realestate-pilot-rollout-2026-03-09.md";
+const CHECKLIST_FILE = "ops/verticals/vertical-onboarding-checklist.md";
 const KPI_FILE = "ops/evidence/latest/w4-non-regression-kpis.json";
 const EVIDENCE_DIR = path.resolve("ops/evidence/latest");
+const IMOB_ROUTE_FILE = "apps/api/src/routes/imob.ts";
 const MIN_APE_CYCLES = Number(process.env.P4_MIN_APE_CYCLES ?? 2);
 const MAX_AGE_DAYS = Number(process.env.P4_MAX_AGE_DAYS ?? 14);
 
@@ -58,10 +59,55 @@ function parseBoolean(content: string, key: string): boolean | null {
   return null;
 }
 
+function findLatestEvidenceFile(pattern: RegExp): string {
+  const files = fs.readdirSync(EVIDENCE_DIR).filter((name) => pattern.test(name)).sort().reverse();
+  if (files.length === 0) {
+    fail("missing_rollout_evidence_file", { pattern: pattern.source, dir: EVIDENCE_DIR });
+  }
+  return path.join(EVIDENCE_DIR, files[0]);
+}
+
+const PILOT_FILE = findLatestEvidenceFile(/^realestate-pilot-rollout-\d{4}-\d{2}-\d{2}\.md$/);
+
 const pilot = readText(PILOT_FILE).toLowerCase();
 for (const step of ["shadow", "pilot", "small"]) {
   if (!pilot.includes(step)) {
     fail("missing_rollout_phase", { step, file: PILOT_FILE });
+  }
+}
+for (const criterion of ["critérios", "tenants", "command center"]) {
+  if (!pilot.includes(criterion)) {
+    fail("pilot_rollout_evidence_missing_criterion", { criterion, file: PILOT_FILE });
+  }
+}
+
+const checklist = readText(CHECKLIST_FILE).toLowerCase();
+for (const item of [
+  "critério `shadow` explícito e documentado",
+  "critério `pilot` explícito e documentado",
+  "critério `small` explícito e documentado",
+  "evidência semanal da vertical publicada",
+  "command center da vertical expõe prova por run",
+]) {
+  if (!checklist.includes(item.toLowerCase())) {
+    fail("vertical_checklist_missing_rollout_item", { item, file: CHECKLIST_FILE });
+  }
+}
+
+const imobRoutes = readText(IMOB_ROUTE_FILE);
+for (const routeNeedle of [
+  'get("/command-center/funnel-health"',
+  'get("/command-center/blocked-runs"',
+  'get("/chat/conversations/:conversationId/export"',
+  'get("/cases/:caseId/receipt"',
+]) {
+  if (!imobRoutes.includes(routeNeedle)) {
+    fail("imob_route_missing_trackp_surface", { routeNeedle, file: IMOB_ROUTE_FILE });
+  }
+}
+for (const proofNeedle of ["receiptPath", "bundlePath", "verifyUrl"]) {
+  if (!imobRoutes.includes(proofNeedle)) {
+    fail("imob_route_missing_proof_export_signal", { proofNeedle, file: IMOB_ROUTE_FILE });
   }
 }
 
@@ -126,7 +172,9 @@ console.log(
       check: CHECK,
       rolloutPhases: ["shadow", "pilot", "small"],
       kpiFile: KPI_FILE,
-      pilotFile: PILOT_FILE,
+      pilotFile: path.relative(process.cwd(), PILOT_FILE),
+      checklistFile: CHECKLIST_FILE,
+      routeFile: IMOB_ROUTE_FILE,
       cycles,
     },
     null,
