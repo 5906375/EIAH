@@ -177,6 +177,8 @@ export function hasStringId(value: { id?: string } | null | undefined): value is
 }
 
 export type ImobOperationalUpdateContext = {
+  intentVersion?: string;
+  intentSignals?: string[];
   normalized: string;
   ownerName: string | null;
   ownerExplicitName: string | null;
@@ -204,6 +206,8 @@ export type ImobOperationalUpdateContext = {
 };
 
 export type ImobOperationalConsultContext = {
+  intentVersion?: string;
+  intentSignals?: string[];
   normalized: string;
   ownerNameHint: string | null;
   propertyRefHint: string | null;
@@ -231,4 +235,6 @@ export type ImobOperationalConsultContext = {
   asksGoalSale: boolean;
   listCityFilter: string | null;
   businessReadIntent: string | null;
+  hasOperationalTarget?: boolean;
+  hasOperationalAction?: boolean;
 };

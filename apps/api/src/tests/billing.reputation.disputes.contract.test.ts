@@ -1,3 +1,4 @@
+import "./support/testInfraEnv";
 import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import supertest from "supertest";
@@ -156,4 +157,3 @@ test("Reputação e disputa: receipt.finalized atualiza snapshot e dispute.close
   assert.equal(invalidReplay.status, 409);
   assert.equal(invalidReplay.body?.error?.code, "INVALID_DISPUTE_TRANSITION");
 });
-

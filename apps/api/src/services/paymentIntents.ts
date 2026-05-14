@@ -338,6 +338,21 @@ export async function releasePaymentIntentByPoU(
   });
   if (!intent) return { intent: null, gate: null };
 
+  if (intent.status === "settled") {
+    return {
+      intent,
+      gate: {
+        allowed: true,
+        reason: "already_settled",
+        proof: {
+          runId: intent.runId,
+          paymentIntentId: intent.id,
+          status: intent.status,
+        },
+      },
+    };
+  }
+
   const gate = await evaluatePoUGateForRun(prisma, {
     tenantId: params.tenantId,
     workspaceId: params.workspaceId,

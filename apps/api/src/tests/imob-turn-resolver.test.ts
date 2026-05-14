@@ -36,6 +36,24 @@ test("IMOB turn resolver returns knowledge search mode with backend-owned filter
   assert.ok((result.presentation.card?.ctas ?? []).length >= 1);
 });
 
+test("IMOB turn resolver clarifies ambiguous governed journeys before inferring a route", () => {
+  const result = resolveImobTurn({
+    message: "quero agendar visita e preparar contrato",
+    access: {
+      tenantId: "tenant-A",
+      workspaceId: "workspace-A",
+      entitlements: { REAL_ESTATE_CORE: true },
+    },
+  });
+
+  assert.equal(result.mode, "consult");
+  assert.equal(result.action, "crm.intent.clarify_journey");
+  assert.match(result.presentation.text, /mais de uma jornada/i);
+  assert.equal(result.presentation.metadata?.governedIntent?.version, "imob.intent.v1");
+  assert.ok((result.presentation.card?.ctas ?? []).some((cta) => cta.nextMessage === "agendar visita"));
+  assert.ok((result.presentation.card?.ctas ?? []).some((cta) => cta.nextMessage === "preparar contrato"));
+});
+
 
 test("IMOB turn resolver builds generic action choices from the registry for delete", () => {
   const result = resolveImobTurn({

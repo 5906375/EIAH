@@ -74,6 +74,7 @@ export function queueImobAssistedCapability(params: {
     humanApprovalGranted: params.request.humanApprovalGranted,
     evidenceRefsCount: params.request.evidenceRefsCount,
     policyAccepted: params.request.policyAccepted,
+    minimumRolloutStage: "shadow",
   });
 
   if (!gate.allowed || !gate.capability) {

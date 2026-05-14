@@ -306,6 +306,10 @@ export function resolveAgentId(input: string) {
   return CANONICAL_AGENT_BY_KEY.get(key) ?? input.trim();
 }
 
+export function hasCoreAgentProfile(agent: string) {
+  return coreProfileForAgent(agent) !== null;
+}
+
 function coreProfileForAgent(agent: string) {
   const canonical = resolveAgentId(agent);
   return (

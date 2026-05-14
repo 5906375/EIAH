@@ -58,6 +58,11 @@ import {
   moveInterviewToEditableField,
   type ContractInterviewState,
 } from "@/features/imob/contractInterviewEngine";
+import {
+  buildRuntimeExecutionProof,
+  resolveTurnPresentationProof,
+  resolveVisibleMessageProof,
+} from "./chatProof";
 import { ThreadPanel } from "@/features/imob/ThreadPanel";
 import { ImobChatWidgets } from "@/features/imob/ImobChatWidgets";
 import { KnowledgeCard, type KnowledgeAction } from "@/features/imob/KnowledgeCard";
@@ -116,9 +121,14 @@ type MessageCard = {
     step?: string;
   };
   proof?: {
+    required?: boolean;
+    ready?: boolean;
+    state?: "not_required" | "pending" | "ready" | "failed";
+    runId?: string | null;
     txId?: string | null;
     receiptPath?: string | null;
     bundlePath?: string | null;
+    verifyUrl?: string | null;
   };
   contract?: {
     title?: string;
@@ -143,6 +153,7 @@ type ChatMessage = {
   blocks?: ImobPresentationBlock[];
   widget?: ImobPresentationWidget;
   form?: ImobPresentationForm;
+  proof?: ImobResolveTurnResponse["presentation"]["proof"];
   thread?: {
     id: string;
     label: string;
@@ -165,6 +176,7 @@ type PendingExecution = {
   caseContext?: ImobCaseContext;
   presentationMeta?: Pick<ImobResolveTurnResponse["presentation"], "owner" | "nextStep" | "blocker" | "pendingFieldLabels" | "dedupeKey" | "suggestedNextAction">;
   presentationText: string;
+  presentationProof?: ImobResolveTurnResponse["presentation"]["proof"];
   presentationForm?: ImobResolveTurnResponse["presentation"]["form"];
   presentationCard?: ImobResolveTurnResponse["presentation"]["card"];
   presentationBlocks?: ImobResolveTurnResponse["presentation"]["blocks"];
@@ -192,6 +204,7 @@ function mapApiPresentationCard(
     lines: card.lines,
     ctas: normalizeCardCtas(card.ctas),
     actionsLayout: card.actionsLayout,
+    proof: card.proof,
   };
 }
 
@@ -216,11 +229,9 @@ function mapApiPresentationBlocks(
   }));
 }
 
-function buildStructuredPresentationBlocks(
+function buildAgentTimelineBlock(
   presentation: ImobResolveTurnResponse["presentation"],
 ): ImobPresentationBlock[] {
-  const blocks: ImobPresentationBlock[] = [];
-
   const normalizedAgentActivities = presentation.agentActivities
     ?.filter(
       (activity): activity is ImobAgentActivityEvent =>
@@ -237,14 +248,18 @@ function buildStructuredPresentationBlocks(
       displayPrefix: activity.displayPrefix ?? "Agente",
     }));
 
-  if (normalizedAgentActivities?.length) {
-    blocks.push({
-      kind: "agent_timeline",
-      title: "Agentic IA em ação",
-      agentActivities: normalizedAgentActivities,
-    });
-  }
+  if (!normalizedAgentActivities?.length) return [];
+  return [{
+    kind: "agent_timeline",
+    title: "Agentic IA em ação",
+    agentActivities: normalizedAgentActivities,
+  }];
+}
 
+function buildStructuredPresentationBlocks(
+  presentation: ImobResolveTurnResponse["presentation"],
+): ImobPresentationBlock[] {
+  const blocks: ImobPresentationBlock[] = [...buildAgentTimelineBlock(presentation)];
   if (presentation.caseBrief) {
     blocks.push({
       kind: "summary",
@@ -319,10 +334,10 @@ function buildStructuredPresentationBlocks(
 function buildPresentationBlocks(
   presentation: ImobResolveTurnResponse["presentation"],
 ): ImobPresentationBlock[] | undefined {
-  const blocks = [
-    ...(mapApiPresentationBlocks(presentation.blocks) ?? []),
-    ...buildStructuredPresentationBlocks(presentation),
-  ];
+  const apiBlocks = mapApiPresentationBlocks(presentation.blocks) ?? [];
+  const blocks = apiBlocks.length > 0
+    ? [...apiBlocks, ...buildAgentTimelineBlock(presentation)]
+    : buildStructuredPresentationBlocks(presentation);
   return blocks.length ? blocks : undefined;
 }
 
@@ -1570,7 +1585,18 @@ function mapStoredMessageToChat(message: ImobChatMessage): ChatMessage {
     Array.isArray(blocksCandidate)
       ? (blocksCandidate as ImobPresentationBlock[]).map((block) => ({ ...block, ctas: normalizeCardCtas(block.ctas) }))
       : undefined;
+  const proofCandidate = metadata?.proof;
+  const proof =
+    proofCandidate && typeof proofCandidate === "object" && !Array.isArray(proofCandidate)
+      ? (proofCandidate as ImobResolveTurnResponse["presentation"]["proof"])
+      : undefined;
   const hiddenFromTimeline = metadata?.hiddenFromTimeline === true;
+  const cardWithProof = normalizedCard
+    ? {
+        ...normalizedCard,
+        proof: proof ?? normalizedCard.proof,
+      }
+    : normalizedCard;
 
   return {
     id: message.id,
@@ -1581,6 +1607,7 @@ function mapStoredMessageToChat(message: ImobChatMessage): ChatMessage {
     blocks,
     widget,
     form,
+    proof,
     thread: message.threadId
       ? {
           id: message.threadId,
@@ -1588,7 +1615,7 @@ function mapStoredMessageToChat(message: ImobChatMessage): ChatMessage {
           status: message.threadStatus ?? "active",
         }
       : undefined,
-    card: normalizedCard,
+    card: cardWithProof,
     caseContext,
   };
 }
@@ -1917,12 +1944,13 @@ const ImobChatPage: React.FC = () => {
           threadId: message.thread?.id ?? message.card?.thread?.id,
           threadLabel: message.thread?.label ?? message.card?.thread?.label,
           threadStatus: message.thread?.status ?? message.card?.thread?.status,
-          runId: message.card?.runId,
-          txId: message.card?.proof?.txId ?? undefined,
-          receiptPath: message.card?.proof?.receiptPath ?? undefined,
-          bundlePath: message.card?.proof?.bundlePath ?? undefined,
+          runId: message.card?.runId ?? message.proof?.runId ?? undefined,
+          txId: message.proof?.txId ?? message.card?.proof?.txId ?? undefined,
+          receiptPath: message.proof?.receiptPath ?? message.card?.proof?.receiptPath ?? undefined,
+          bundlePath: message.proof?.bundlePath ?? message.card?.proof?.bundlePath ?? undefined,
           metadata: {
             card: message.card ?? null,
+            proof: message.proof ?? message.card?.proof ?? null,
             caseContext: message.caseContext ?? null,
             presentationMetadata: message.presentationMetadata ?? null,
             blocks: message.blocks ?? null,
@@ -2320,6 +2348,12 @@ const ImobChatPage: React.FC = () => {
           const finalStatusText = run.status === "success" && postSuccessPresentation.text
             ? postSuccessPresentation.text
             : statusText;
+          const runtimeProof = buildRuntimeExecutionProof({
+            runId: activeRunId,
+            txId: run.txId ?? null,
+            receiptPath: run.txId ? `/api/ledger/${encodeURIComponent(run.txId)}` : null,
+            bundlePath: run.criticalHash ? `/api/runs/${encodeURIComponent(activeRunId)}/bundle` : null,
+          });
           const updatedCard: MessageCard = {
             type: run.status === "blocked" || run.status === "error" ? "risk" : "queue",
             title:
@@ -2343,11 +2377,7 @@ const ImobChatPage: React.FC = () => {
               status: run.status,
               step: run.status === "running" ? "processing" : run.status,
             },
-            proof: {
-              txId: run.txId ?? null,
-              receiptPath: run.txId ? `/api/ledger/${encodeURIComponent(run.txId)}` : null,
-              bundlePath: run.criticalHash ? `/api/runs/${encodeURIComponent(activeRunId)}/bundle` : null,
-            },
+            proof: runtimeProof,
             actionsLayout: hasSuccessDirectMenu ? (postSuccessPresentation.actionsLayout ?? "inline") : undefined,
             ctas: hasSuccessDirectMenu
               ? successMenuCtas
@@ -2365,6 +2395,7 @@ const ImobChatPage: React.FC = () => {
             updateMessageById(activeAssistantMessageId, {
               text: finalStatusText,
               blocks: postSuccessBlocks.length > 0 ? postSuccessBlocks : undefined,
+              proof: runtimeProof,
               thread: updatedThread,
               card: updatedCard,
               caseContext: latestCaseContext,
@@ -2375,6 +2406,7 @@ const ImobChatPage: React.FC = () => {
               role: "assistant",
               text: finalStatusText,
               blocks: postSuccessBlocks.length > 0 ? postSuccessBlocks : undefined,
+              proof: runtimeProof,
               thread: updatedThread,
               card: updatedCard,
               caseContext: pendingExecution?.caseContext,
@@ -2397,6 +2429,7 @@ const ImobChatPage: React.FC = () => {
                 role: "assistant",
                 text: finalStatusText,
                 blocks: postSuccessBlocks.length > 0 ? postSuccessBlocks : undefined,
+                proof: runtimeProof,
                 thread: updatedThread,
                 card: updatedCard,
                 caseContext: pendingExecution?.caseContext,
@@ -2440,6 +2473,7 @@ const ImobChatPage: React.FC = () => {
     pendingFields?: string[],
     caseContext?: ImobCaseContext,
     presentationMeta?: PendingExecution["presentationMeta"],
+    presentationProof?: ImobResolveTurnResponse["presentation"]["proof"],
     presentationForm?: ImobResolveTurnResponse["presentation"]["form"],
     presentationCard?: ImobResolveTurnResponse["presentation"]["card"],
     presentationBlocks?: ImobResolveTurnResponse["presentation"]["blocks"]
@@ -2472,6 +2506,7 @@ const ImobChatPage: React.FC = () => {
           caseContext,
           presentationMeta,
           presentationText: presentationText?.trim() || "Preparando...",
+          presentationProof,
           presentationForm,
           presentationCard,
           presentationBlocks,
@@ -2495,6 +2530,7 @@ const ImobChatPage: React.FC = () => {
             status: "active",
           },
           caseContext: executionPending.caseContext,
+          proof: executionPending.presentationProof,
           form: mapApiPresentationForm(executionPending.presentationForm),
           card: {
             type: "queue",
@@ -3121,6 +3157,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     };
 
     if (turn.mode === "blocked") {
+      const proof = resolveTurnPresentationProof(turn.presentation);
       const blockedReply: ChatMessage = {
         id: makeId("assistant"),
         role: "assistant",
@@ -3129,6 +3166,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         blocks: buildPresentationBlocks(turn.presentation),
         widget: mapPresentationWidget(turn.presentation.widget),
         form: mapApiPresentationForm(turn.presentation.form),
+        proof,
         thread: { ...baseThread, status: "blocked" },
         card: mapReplyCard(turn.presentation.card, { ...baseThread, status: "blocked" }, turn.caseContext),
         caseContext: turn.caseContext ?? undefined,
@@ -3149,6 +3187,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     }
 
     if (turn.mode === "consult") {
+      const proof = resolveTurnPresentationProof(turn.presentation);
       const consultReply: ChatMessage = {
         id: makeId("assistant"),
         role: "assistant",
@@ -3157,6 +3196,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         blocks: buildPresentationBlocks(turn.presentation),
         widget: mapPresentationWidget(turn.presentation.widget),
         form: mapApiPresentationForm(turn.presentation.form),
+        proof,
         thread: baseThread,
         card: mapReplyCard(turn.presentation.card, baseThread, turn.caseContext),
         caseContext: turn.caseContext ?? undefined,
@@ -3245,11 +3285,13 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
 
     if (turn.mode === "search") {
       const inventory = await searchImobInventory(turn.searchRequest ?? { query: text });
+      const proof = resolveTurnPresentationProof(inventory.presentation);
       const searchReply: ChatMessage = {
         id: makeId("assistant"),
         role: "assistant",
         text: inventory.presentation.text,
         widget: mapPresentationWidget(inventory.presentation.widget),
+        proof,
         thread: baseThread,
         card: mapReplyCard(inventory.presentation.card, baseThread, turn.caseContext),
         caseContext: turn.caseContext ?? undefined,
@@ -3302,6 +3344,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         dedupeKey: turn.presentation.dedupeKey,
         suggestedNextAction: turn.presentation.suggestedNextAction,
       },
+      turn.presentation.proof,
       turn.presentation.form,
       turn.presentation.card,
       turn.presentation.blocks,
@@ -3508,6 +3551,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
           text: attachmentResolution.data.presentation.text,
           blocks: buildPresentationBlocks(attachmentResolution.data.presentation),
           widget: mapPresentationWidget(attachmentResolution.data.presentation.widget),
+          proof: resolveTurnPresentationProof(attachmentResolution.data.presentation),
           thread: { id: uploadThread.id, label: uploadThread.label, status: attachmentResolution.data.resolved ? "done" : "active" },
           card: mapReplyCard(attachmentResolution.data.presentation.card, {
             id: uploadThread.id,
@@ -3642,6 +3686,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
           blocks: buildPresentationBlocks(response.data.presentation),
           widget: mapPresentationWidget(response.data.presentation.widget),
           form: mapApiPresentationForm(response.data.presentation.form),
+          proof: resolveTurnPresentationProof(response.data.presentation),
           thread,
           card: mapReplyCard(response.data.presentation.card, thread, response.data.caseContext ?? message.caseContext),
           caseContext: response.data.caseContext ?? message.caseContext,
@@ -3921,9 +3966,16 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         persistedRunStatusKeysRef.current.delete(`${runId}:error`);
         setPendingExecution(executionPending);
         setState("executing");
+        const startedProof = buildRuntimeExecutionProof({
+          runId,
+          txId: execution.data.verify.txId,
+          bundlePath: execution.data.verify.runBundlePath,
+          receiptPath: resolveRunTemplatePath(executionPending.receiptEndpointTemplate, runId),
+        });
 
         updateMessageById(executionPending.messageId, {
           text: executionPending.presentationText,
+          proof: startedProof,
           thread: {
             id: executionPending.thread.id,
             label: executionPending.thread.label,
@@ -3943,11 +3995,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
               status: execution.data.status,
               step: "execute",
             },
-            proof: {
-              txId: execution.data.verify.txId,
-              bundlePath: execution.data.verify.runBundlePath,
-              receiptPath: resolveRunTemplatePath(executionPending.receiptEndpointTemplate, runId),
-            },
+            proof: startedProof,
             ctas: [
               {
                 id: "view-run",
@@ -3968,6 +4016,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
             id: makeId("assistant"),
             role: "assistant",
             text: executionPending.presentationText,
+            proof: startedProof,
             thread: {
               id: executionPending.thread.id,
               label: executionPending.thread.label,
@@ -3987,11 +4036,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                 status: execution.data.status,
                 step: "execute",
               },
-              proof: {
-                txId: execution.data.verify.txId,
-                bundlePath: execution.data.verify.runBundlePath,
-                receiptPath: resolveRunTemplatePath(executionPending.receiptEndpointTemplate, runId),
-              },
+              proof: startedProof,
               ctas: [
                 {
                   id: "view-run",
@@ -4485,7 +4530,15 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                   message.card?.title !== "Imóvel já cadastrado" &&
                   !inlineChoicePresentation;
                 const messageCard = showMessageCard ? message.card ?? null : null;
-                const showBubble = isUser || Boolean(message.text.trim()) || Boolean(message.blocks?.length) || Boolean(message.widget) || showMessageCard || Boolean(message.form);
+                const visibleProof = resolveVisibleMessageProof({ proof: message.proof, card: messageCard ?? message.card ?? null }) ?? null;
+                const showBubble =
+                  isUser
+                  || Boolean(message.text.trim())
+                  || Boolean(message.blocks?.length)
+                  || Boolean(message.widget)
+                  || showMessageCard
+                  || Boolean(message.form)
+                  || Boolean(SHOW_TECHNICAL_CHAT && visibleProof);
                 return (
                   <div key={message.id} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
                     <div className={`max-w-[94%] space-y-1.5 sm:max-w-[82%] ${isUser ? "items-end" : "items-start"}`}>
@@ -4737,15 +4790,21 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                               </div>
                             ) : null}
 
-                            {SHOW_TECHNICAL_CHAT && messageCard.proof ? (
+                            {SHOW_TECHNICAL_CHAT && visibleProof ? (
                               <div className="mt-3 rounded-lg border border-white/10 bg-surface/40 p-2">
                                 <p className="text-[10px] tracking-[0.18em] text-muted-foreground">Bloco de prova</p>
-                                <p className="mt-1 text-[10px] text-foreground">txId: {messageCard.proof.txId ?? "pendente"}</p>
                                 <p className="mt-1 text-[10px] text-foreground">
-                                  receipt: {messageCard.proof.receiptPath ?? "não disponível"}
+                                  estado: {visibleProof.state ?? (visibleProof.ready ? "ready" : "pending")}
+                                  {typeof visibleProof.required === "boolean"
+                                    ? ` • ${visibleProof.required ? "obrigatória" : "não obrigatória"}`
+                                    : ""}
+                                </p>
+                                <p className="mt-1 text-[10px] text-foreground">txId: {visibleProof.txId ?? "pendente"}</p>
+                                <p className="mt-1 text-[10px] text-foreground">
+                                  receipt: {visibleProof.receiptPath ?? "não disponível"}
                                 </p>
                                 <p className="mt-1 text-[10px] text-foreground">
-                                  bundle: {messageCard.proof.bundlePath ?? "não disponível"}
+                                  bundle: {visibleProof.bundlePath ?? "não disponível"}
                                 </p>
                               </div>
                             ) : null}
@@ -4775,6 +4834,25 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                               </p>
                             ) : null}
                           </div>
+                          ) : null}
+
+                          {SHOW_TECHNICAL_CHAT && visibleProof && !messageCard ? (
+                            <div className="mt-3 rounded-xl border border-white/10 bg-surface/50 p-3">
+                              <p className="text-[10px] tracking-[0.18em] text-muted-foreground">Bloco de prova</p>
+                              <p className="mt-1 text-[10px] text-foreground">
+                                estado: {visibleProof.state ?? (visibleProof.ready ? "ready" : "pending")}
+                                {typeof visibleProof.required === "boolean"
+                                  ? ` • ${visibleProof.required ? "obrigatória" : "não obrigatória"}`
+                                  : ""}
+                              </p>
+                              <p className="mt-1 text-[10px] text-foreground">txId: {visibleProof.txId ?? "pendente"}</p>
+                              <p className="mt-1 text-[10px] text-foreground">
+                                receipt: {visibleProof.receiptPath ?? "não disponível"}
+                              </p>
+                              <p className="mt-1 text-[10px] text-foreground">
+                                bundle: {visibleProof.bundlePath ?? "não disponível"}
+                              </p>
+                            </div>
                           ) : null}
 
                           {!shouldDelayForm && message.form ? (() => {

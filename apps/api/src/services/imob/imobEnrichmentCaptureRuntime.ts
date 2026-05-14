@@ -155,6 +155,7 @@ export function queueImobLeadEnrichment(params: {
     humanApprovalGranted: params.request.humanApprovalGranted,
     evidenceRefsCount: params.request.evidenceRefsCount,
     policyAccepted: params.request.policyAccepted,
+    minimumRolloutStage: "shadow",
   });
 
   if (!gate.allowed || !gate.capability) {
@@ -272,6 +273,7 @@ export function ingestImobScoutingOpportunity(params: {
     capabilityId: params.request.capabilityId,
     evidenceRefsCount: params.request.evidenceRefsCount,
     policyAccepted: params.request.policyAccepted,
+    minimumRolloutStage: "shadow",
   });
 
   if (!gate.allowed || !gate.capability) {

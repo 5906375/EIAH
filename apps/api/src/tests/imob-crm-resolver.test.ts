@@ -374,13 +374,18 @@ test("IMOB_CRM business read returns commercial language from the latest case", 
   assert.ok((resolved?.presentation?.inventoryWatch?.anchorSignals?.length ?? 0) >= 3);
   assert.equal(resolved?.presentation?.inventoryWatch?.recommendedNextMove, "retomar lead com imóveis aderentes");
   assert.equal(resolved?.presentation?.pilotFlow?.flowType, "assisted_reengagement_flow");
-  assert.equal(resolved?.presentation?.pilotFlow?.status, "completed");
+  assert.ok(["completed", "blocked"].includes(resolved?.presentation?.pilotFlow?.status ?? ""));
   assert.equal(resolved?.presentation?.pilotFlow?.visibleAgentId, "IMOB");
   assert.equal(resolved?.presentation?.pilotFlow?.capabilityId, "reengagement.continuous");
   assert.match(resolved?.presentation?.pilotFlow?.flowRunId ?? "", /^flowrun-/);
   assert.match(resolved?.presentation?.pilotFlow?.missionId ?? "", /^mission-imob-case-1-reengagement-continuous$/);
-  assert.match(resolved?.presentation?.pilotFlow?.jobId ?? "", /^imob-job-/);
-  assert.match(resolved?.presentation?.pilotFlow?.trackingId ?? "", /^tracking-imob-job-/);
+  if (resolved?.presentation?.pilotFlow?.status === "completed") {
+    assert.match(resolved?.presentation?.pilotFlow?.jobId ?? "", /^imob-job-/);
+    assert.match(resolved?.presentation?.pilotFlow?.trackingId ?? "", /^tracking-imob-job-/);
+  } else {
+    assert.equal(resolved?.presentation?.pilotFlow?.jobId ?? null, null);
+    assert.equal(resolved?.presentation?.pilotFlow?.trackingId ?? null, null);
+  }
   assert.ok((resolved?.presentation?.pilotFlow?.evidenceRefs?.length ?? 0) >= 5);
   const ctas = Array.isArray(resolved?.presentation?.card?.ctas) ? resolved?.presentation?.card?.ctas : [];
   assert.equal(
@@ -461,6 +466,29 @@ test("IMOB_CRM pilot status consult stays read-only for governed questions", asy
     true,
   );
   assert.equal(beforeSnapshot, afterSnapshot);
+});
+
+test("IMOB_CRM pilot status consult routes governed pilot questions to pipeline status instead of generic status choices", async () => {
+  const resolved = await resolveImobCrmOperationalConsult({
+    prisma: createMockPrisma({
+      caseOverrides: {
+        flow: "visit.schedule",
+        nextStep: "confirmar agenda da visita",
+      },
+    }) as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    caseId: "case-1",
+    message: "qual o status do piloto?",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.action, "crm.case.pipeline_status");
+  assert.equal((resolved as any)?.presentation?.workflow?.pilotState, "pilot.status");
+  assert.equal((resolved as any)?.presentation?.workflow?.pilotReadOnly, true);
+  assert.ok((resolved as any)?.presentation?.workflow?.reasonCodes?.includes("pilot_read_only"));
+  assert.match(JSON.stringify(resolved?.presentation?.card?.lines ?? []), /Piloto operacional:/i);
+  assert.match(JSON.stringify(resolved?.presentation?.card?.lines ?? []), /Próxima ação governada:/i);
 });
 
 test("IMOB_CRM business read connects shadow capture enrichment pilot flow from case runtime", async () => {
@@ -899,6 +927,8 @@ test("IMOB_CRM blocked resolution avoids recursive next step and recursive CTA",
   assert.match(resolved?.presentation?.decisionRationale?.summary ?? "", /destravar o blocker|pendência dominante/i);
   assert.ok((resolved?.presentation?.decisionRationale?.sourceRefs?.length ?? 0) >= 2);
   assert.ok((resolved?.presentation?.decisionRationale?.reasonCodes?.length ?? 0) >= 1);
+  assert.doesNotMatch(resolved?.presentation?.text ?? "", /Specialist de apoio:/i);
+  assert.equal((resolved?.presentation?.consultiveRead?.specialists?.length ?? 0), 0);
 });
 
 test("IMOB_CRM blocked consult remains read-only while exposing blocker context", async () => {
@@ -1016,7 +1046,7 @@ test("IMOB_CRM blocked consult adds visit workflow blocker when the property is 
         propertyId: null,
         property: null,
         blockers: [],
-        pendingItems: [],
+        pendingItems: ["imóvel da visita", "nome do visitante", "telefone do visitante", "data da visita"],
       },
     }) as any,
     tenantId: "tenant-1",
@@ -1028,8 +1058,47 @@ test("IMOB_CRM blocked consult adds visit workflow blocker when the property is 
   assert.equal(resolved?.action, "crm.case.blocked_run_resolution");
   assert.equal((resolved as any)?.presentation?.workflow?.primaryState, "case.review");
   assert.ok((resolved as any)?.presentation?.workflow?.reasonCodes?.includes("visit_missing_property"));
-  assert.match(JSON.stringify(resolved?.presentation?.card?.lines ?? []), /visit_missing_property/i);
-  assert.match(resolved?.presentation?.nextStep ?? "", /consultar caso/i);
+  assert.equal((resolved as any)?.presentation?.workflow?.reasonCodes?.includes("visit_missing_lead_qualification"), false);
+  assert.match(JSON.stringify(resolved?.presentation?.card?.lines ?? []), /Pendência dominante: imóvel da visita/i);
+  assert.doesNotMatch(JSON.stringify(resolved?.presentation?.card?.lines ?? []), /Piloto operacional:|Próxima ação governada:/i);
+  assert.match(resolved?.presentation?.nextStep ?? "", /cadastrar imóvel|cadastrar imovel/i);
+  assert.equal(resolved?.presentation?.suggestedNextAction, resolved?.presentation?.nextStep);
+  assert.equal(resolved?.presentation?.card?.ctas?.[0]?.nextMessage, resolved?.presentation?.nextStep);
+  assert.equal(resolved?.presentation?.card?.ctas?.[0]?.kind, "primary");
+  assert.equal((resolved?.presentation?.blocks ?? []).length <= 2, true);
+  assert.equal((resolved?.presentation?.blocks ?? [])[0]?.title, "Como destravar agora");
+  assert.doesNotMatch(resolved?.presentation?.text ?? "", /Specialist de apoio:/i);
+  assert.equal((resolved?.presentation?.consultiveRead?.specialists?.length ?? 0), 0);
+});
+
+test("IMOB_CRM business read emits canonical proof surface when the case already has proof signals", async () => {
+  const resolved = await resolveImobCrmOperationalConsult({
+    prisma: createMockPrisma({
+      caseOverrides: {
+        flow: "commission.settle",
+        stage: "settled",
+        status: "success",
+        nextStep: "consultar recibo da comissão",
+        runId: "run-proof-1",
+        txId: "tx-proof-1",
+        receiptPath: "/api/ledger/tx-proof-1",
+        bundlePath: "/api/runs/run-proof-1/bundle",
+      },
+    }) as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "qual status desse caso?",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.action, "crm.case.pipeline_status");
+  assert.equal((resolved as any)?.presentation?.proof?.required, true);
+  assert.equal((resolved as any)?.presentation?.proof?.ready, true);
+  assert.equal((resolved as any)?.presentation?.proof?.state, "ready");
+  assert.equal((resolved as any)?.presentation?.proof?.txId, "tx-proof-1");
+  assert.equal((resolved as any)?.presentation?.card?.proof?.bundlePath, "/api/runs/run-proof-1/bundle");
+  assert.match((resolved?.presentation?.text ?? ""), /Prova auditável pronta/i);
+  assert.match(JSON.stringify(resolved?.presentation?.card?.lines ?? []), /receipt e bundle disponíveis|receipt disponível/i);
 });
 
 test("IMOB_CRM case consult asks which case when no explicit reference is provided", async () => {

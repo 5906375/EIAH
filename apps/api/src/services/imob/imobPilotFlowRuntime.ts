@@ -379,6 +379,7 @@ function processAssistedFlow(params: {
     humanApprovalGranted: params.humanApprovalGranted,
     evidenceRefsCount: params.evidenceRefsCount,
     policyAccepted: params.policyAccepted,
+    minimumRolloutStage: "shadow",
   });
 
   if (!primaryGate.allowed) {
@@ -433,6 +434,7 @@ function processAssistedFlow(params: {
     humanApprovalGranted: params.humanApprovalGranted,
     evidenceRefsCount: params.evidenceRefsCount,
     policyAccepted: params.policyAccepted,
+    minimumRolloutStage: "shadow",
   });
 
   return buildFlowResult({
@@ -501,6 +503,7 @@ export function runImobShadowCaptureEnrichmentFlow(input: Omit<ImobShadowCapture
     capabilityId: "active_capture.scouting",
     evidenceRefsCount: input.evidenceRefsCount,
     policyAccepted: input.policyAccepted,
+    minimumRolloutStage: "shadow",
   });
   if (!captureGate.allowed) {
     return buildBlockedFlow({
@@ -576,6 +579,7 @@ export function runImobShadowCaptureEnrichmentFlow(input: Omit<ImobShadowCapture
     humanApprovalGranted: input.humanApprovalGranted,
     evidenceRefsCount: input.evidenceRefsCount,
     policyAccepted: input.policyAccepted,
+    minimumRolloutStage: "shadow",
   });
   if (!enrichmentGate.allowed) {
     return buildBlockedFlow({

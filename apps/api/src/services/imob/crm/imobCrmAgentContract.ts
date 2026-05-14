@@ -3,6 +3,7 @@ import type { ImobCrmPropertyType } from "./imobCrmPropertyTypes";
 import type { ImobReasonCode } from "../control/imobReasonCodeCatalog";
 import type {
   ImobLeadDiscoverySignals,
+  ImobProofSurface,
   ImobPilotControlStateSnapshot,
   ImobPilotOperationalSnapshot,
 } from "../imobConversationContract";
@@ -103,6 +104,7 @@ export type ImobCrmCaseContext = {
   lead?: ImobCrmLeadSummary | null;
   property?: ImobCrmPropertySummary | null;
   owner?: ImobCrmOwnerSummary | null;
+  proof?: ImobProofSurface | null;
   canonical?: ImobCrmCanonicalCase;
   humanJourney?: ImobCrmHumanJourney | null;
   humanWorkflow?: ImobCrmHumanWorkflow | null;
@@ -121,6 +123,7 @@ export type ImobCrmPresentationCard = {
   lines: string[];
   ctas?: ImobCrmPresentationCta[];
   actionsLayout?: "inline";
+  proof?: ImobProofSurface;
 };
 
 export type ImobConsultiveSpecialistSupport = {
@@ -494,6 +497,7 @@ export type ImobCrmTurnPresentation = {
   suggestedNextAction?: string;
   dedupeKey?: string;
   widget?: Record<string, unknown>;
+  proof?: ImobProofSurface;
   card?: ImobCrmPresentationCard;
   form?: Record<string, unknown>;
 };

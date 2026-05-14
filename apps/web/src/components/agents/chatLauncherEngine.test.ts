@@ -3,6 +3,9 @@ import assert from "node:assert/strict";
 
 import {
   PRESENTATION_SNAPSHOT_VERSION,
+  hasGovernedImobSnapshotContract,
+  isBackendGovernedImobSnapshot,
+  resolveSnapshotQuickReplies,
   type MessagePresentationSnapshot,
 } from "./chatPresentationSnapshot.ts";
 import {
@@ -10,6 +13,7 @@ import {
   buildDeterministicImobReply,
   buildEiahQuickReplies,
   buildQuickRepliesForContext,
+  createPresentationSnapshotV1,
   resolveEiahDecision,
   detectLauncherRouteIntent,
   resolveLauncherProposalDecision,
@@ -281,6 +285,17 @@ test("IMOB documentary search quick replies are specific to the knowledge handsh
   );
 });
 
+test("IMOB generic help quick replies are not inferred by the launcher engine", () => {
+  assert.deepEqual(
+    buildEiahQuickReplies({
+      routeIntent: "imob",
+      proposalMode: false,
+      sourceInput: "o que é o imob?",
+    }),
+    []
+  );
+});
+
 test("resolved quick replies take precedence over launcher copy and route replies", () => {
   assert.deepEqual(
     buildQuickRepliesForContext({
@@ -299,7 +314,7 @@ test("resolved quick replies take precedence over launcher copy and route replie
   );
 });
 
-test("vertical quick replies take precedence over launcher copy in help center mode", () => {
+test("IMOB vertical replies are not inferred from frontend heuristics without resolved payload", () => {
   assert.deepEqual(
     buildQuickRepliesForContext({
       agentProfile: {
@@ -312,12 +327,129 @@ test("vertical quick replies take precedence over launcher copy in help center m
       proposalMode: false,
       sourceInput: "o que é o imob?",
     }),
-    [
-      "Como funciona IMOB do início ao fim?",
-      "Onde acompanho pipeline e etapas no IMOB?",
-      "Quero instalar o IMOB no workspace.",
-    ]
+    ["copy A", "copy B"]
   );
+});
+
+test("IMOB snapshot marks backend-governed render-only runtime when quick replies come from resolved payload", () => {
+  const snapshot = createPresentationSnapshotV1({
+    agentProfile: {
+      id: "EIAH",
+      name: "EIAH",
+      chatCopy: { quickReplies: ["copy A", "copy B"] },
+      uxContract: { trustSignals: [], defaultCTA: "", responseShape: "brief_answer", maxCognitiveLoad: "low" },
+      knowledgePolicy: { provenancePolicy: "none" },
+    } as any,
+    routeIntent: "imob",
+    eiahMode: "help",
+    confidence: 0.8,
+    renderVariant: "guided_flow",
+    sourceInput: "mostrar bloqueios do caso",
+    isHelpCenterMode: true,
+    proposalMode: false,
+    attachmentIntake: {
+      enabled: false,
+      acceptedKinds: [],
+      intakeModes: [],
+      analysisModes: [],
+      primaryActionLabel: undefined,
+      secondaryActionLabel: undefined,
+      helpText: undefined,
+    },
+    resolvedQuickReplies: ["consultar caso case-1", "revisar documentos"],
+  });
+
+  assert.equal(snapshot.quickReplySource, "backend_payload");
+  assert.equal(snapshot.governedRuntime?.domain, "IMOB");
+  assert.equal(snapshot.governedRuntime?.launcherPolicy, "render_only");
+  assert.ok(hasGovernedImobSnapshotContract(snapshot));
+  assert.ok(isBackendGovernedImobSnapshot(snapshot));
+});
+
+test("legacy conservative snapshot still suppresses quick replies even if payload exists", () => {
+  const snapshot: MessagePresentationSnapshot = {
+    snapshotVersion: PRESENTATION_SNAPSHOT_VERSION,
+    compatibilityMode: "legacy_conservative",
+    quickReplySource: "backend_payload",
+    verticalContext: "IMOB",
+    routeIntent: "imob",
+    eiahMode: "help",
+    showConfidence: false,
+    provenanceMode: "none",
+    signals: [],
+    nextDecision: undefined,
+    quickReplies: ["consultar caso case-1"],
+    renderVariant: "guided_flow",
+    governedRuntime: {
+      domain: "IMOB",
+      contractVersion: "imob.crm.governed.v1",
+      launcherPolicy: "render_only",
+      quickRepliesSource: "backend_payload",
+      recommendedActionsSource: "backend_payload",
+      agentActivitiesSource: "backend_payload",
+    },
+  };
+
+  assert.deepEqual(snapshot.quickReplies, ["consultar caso case-1"]);
+  assert.deepEqual(resolveSnapshotQuickReplies(snapshot), []);
+});
+
+test("inconsistent governed IMOB snapshot fails closed and does not expose quick replies", () => {
+  const snapshot: MessagePresentationSnapshot = {
+    snapshotVersion: PRESENTATION_SNAPSHOT_VERSION,
+    compatibilityMode: "snapshot",
+    quickReplySource: "frontend_copy",
+    verticalContext: "IMOB",
+    routeIntent: "imob",
+    eiahMode: "help",
+    showConfidence: false,
+    provenanceMode: "none",
+    signals: [],
+    nextDecision: undefined,
+    quickReplies: ["consultar caso case-1"],
+    renderVariant: "guided_flow",
+    governedRuntime: {
+      domain: "IMOB",
+      contractVersion: "imob.crm.governed.v1",
+      launcherPolicy: "render_only",
+      quickRepliesSource: "backend_payload",
+      recommendedActionsSource: "backend_payload",
+      agentActivitiesSource: "backend_payload",
+    },
+  };
+
+  assert.equal(hasGovernedImobSnapshotContract(snapshot), false);
+  assert.equal(isBackendGovernedImobSnapshot(snapshot), false);
+  assert.deepEqual(resolveSnapshotQuickReplies(snapshot), []);
+});
+
+test("governed IMOB snapshot requires imob route intent to be considered render-only", () => {
+  const snapshot: MessagePresentationSnapshot = {
+    snapshotVersion: PRESENTATION_SNAPSHOT_VERSION,
+    compatibilityMode: "snapshot",
+    quickReplySource: "backend_payload",
+    verticalContext: "IMOB",
+    routeIntent: "help",
+    eiahMode: "help",
+    showConfidence: false,
+    provenanceMode: "none",
+    signals: [],
+    nextDecision: undefined,
+    quickReplies: ["consultar caso case-1"],
+    renderVariant: "guided_flow",
+    governedRuntime: {
+      domain: "IMOB",
+      contractVersion: "imob.crm.governed.v1",
+      launcherPolicy: "render_only",
+      quickRepliesSource: "backend_payload",
+      recommendedActionsSource: "backend_payload",
+      agentActivitiesSource: "backend_payload",
+    },
+  };
+
+  assert.equal(hasGovernedImobSnapshotContract(snapshot), false);
+  assert.equal(isBackendGovernedImobSnapshot(snapshot), false);
+  assert.deepEqual(resolveSnapshotQuickReplies(snapshot), []);
 });
 
 test("proposal quote keeps saas context and recommends a plan", async () => {

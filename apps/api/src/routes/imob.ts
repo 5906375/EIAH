@@ -58,6 +58,11 @@ import {
   resolveImobOperationalUpdateImpl,
 } from "../services/imob/crm/imobCrmOperationalResolvers";
 import { buildImobCrmBusinessReadHelpers } from "../services/imob/crm/imobCrmBusinessRead";
+import {
+  getLegacyCrmFallbackConfigFromEnv,
+  resolveLegacyCrmFallbackDecision,
+  type LegacyCrmFallbackDecision,
+} from "../services/imob/crm/imobCrmLegacyFallbackPolicy";
 import { resolveImobCrmTurnEngine } from "../services/imob/crm/imobCrmTurnEngine";
 import { registerImobCrmRoutes } from "./imobCrmRouter";
 import {
@@ -469,7 +474,27 @@ const imobCrmBusinessRead = buildImobCrmBusinessReadHelpers({
       intent.intentId === "blocked_run_resolution" ||
       intent.intentId === "next_best_action",
     );
-    return (match?.intentId as "pipeline_status" | "blocked_run_resolution" | "next_best_action" | undefined) ?? null;
+    if (match?.intentId) {
+      return match.intentId as "pipeline_status" | "blocked_run_resolution" | "next_best_action";
+    }
+    const normalized = normalizeImobRouteText(message);
+    if (
+      normalized.includes("piloto")
+      && (
+        normalized.includes("status")
+        || normalized.includes("situacao")
+        || normalized.includes("situação")
+        || normalized.includes("estado")
+        || normalized.includes("approval")
+        || normalized.includes("aprovacao")
+        || normalized.includes("aprovação")
+        || normalized.includes("rollout")
+        || normalized.includes("shadow")
+      )
+    ) {
+      return "pipeline_status";
+    }
+    return null;
   },
 });
 
@@ -868,7 +893,22 @@ async function resolveImobOperationalUpdate(params: ImobOperationalResolverParam
   });
 
   if (resolved) return resolved;
-  if (!shouldInvokeLegacyCrmFallback(params)) return null;
+  const fallbackDecision = resolveLegacyCrmFallbackDecision(params, "update", IMOB_CRM_LEGACY_FALLBACK_CONFIG);
+  if (!fallbackDecision.allowed) {
+    if (fallbackDecision.eligible) {
+      await recordLegacyCrmFallbackTelemetry({
+        prisma: params.prisma as NonNullable<TenantAwareRequest["prisma"]>,
+        tenantId: params.tenantId,
+        workspaceId: params.workspaceId,
+        caseId: params.caseId,
+        kind: "update",
+        message: params.message,
+        decision: fallbackDecision,
+        event: "crm_legacy_fallback_suppressed",
+      });
+    }
+    return null;
+  }
   await recordLegacyCrmFallbackTelemetry({
     prisma: params.prisma as NonNullable<TenantAwareRequest["prisma"]>,
     tenantId: params.tenantId,
@@ -876,6 +916,8 @@ async function resolveImobOperationalUpdate(params: ImobOperationalResolverParam
     caseId: params.caseId,
     kind: "update",
     message: params.message,
+    decision: fallbackDecision,
+    event: "crm_legacy_fallback_invoked",
   });
   return resolveImobCrmOperationalUpdateLegacy(params as any);
 }
@@ -938,7 +980,22 @@ async function resolveImobOperationalConsult(params: ImobOperationalResolverPara
   });
 
   if (resolved) return resolved;
-  if (!shouldInvokeLegacyCrmFallback(params)) return null;
+  const fallbackDecision = resolveLegacyCrmFallbackDecision(params, "consult", IMOB_CRM_LEGACY_FALLBACK_CONFIG);
+  if (!fallbackDecision.allowed) {
+    if (fallbackDecision.eligible) {
+      await recordLegacyCrmFallbackTelemetry({
+        prisma: params.prisma as NonNullable<TenantAwareRequest["prisma"]>,
+        tenantId: params.tenantId,
+        workspaceId: params.workspaceId,
+        caseId: params.caseId,
+        kind: "consult",
+        message: params.message,
+        decision: fallbackDecision,
+        event: "crm_legacy_fallback_suppressed",
+      });
+    }
+    return null;
+  }
   await recordLegacyCrmFallbackTelemetry({
     prisma: params.prisma as NonNullable<TenantAwareRequest["prisma"]>,
     tenantId: params.tenantId,
@@ -946,20 +1003,13 @@ async function resolveImobOperationalConsult(params: ImobOperationalResolverPara
     caseId: params.caseId,
     kind: "consult",
     message: params.message,
+    decision: fallbackDecision,
+    event: "crm_legacy_fallback_invoked",
   });
   return resolveImobCrmOperationalConsultLegacy(params as any);
 }
 
-function shouldInvokeLegacyCrmFallback(params: ImobOperationalResolverParams) {
-  const hasCaseScope = Boolean(asString(params.caseId));
-  const threadStateObject = asObject(params.threadState);
-  const operational = asObject(threadStateObject?.operational);
-  const hasOperationalFlow = Boolean(asString(operational?.flow));
-  const hasActiveCase = Boolean(asString(threadStateObject?.activeCaseId));
-  const hasActiveThread = Boolean(asString(threadStateObject?.activeThreadId));
-
-  return hasCaseScope || hasOperationalFlow || hasActiveCase || hasActiveThread;
-}
+const IMOB_CRM_LEGACY_FALLBACK_CONFIG = getLegacyCrmFallbackConfigFromEnv();
 
 function getConversationIdFromMetadata(metadata: unknown): string | null {
   const obj = asObject(metadata);
@@ -1046,6 +1096,8 @@ async function recordLegacyCrmFallbackTelemetry(params: {
   caseId?: string | null;
   kind: "update" | "consult";
   message: string;
+  event: "crm_legacy_fallback_invoked" | "crm_legacy_fallback_suppressed";
+  decision: LegacyCrmFallbackDecision;
 }) {
   await params.prisma.memoryEvent.create({
     data: {
@@ -1054,13 +1106,19 @@ async function recordLegacyCrmFallbackTelemetry(params: {
       agentId: IMOB_CHAT_AGENT_ID,
       runId: null,
       key: CHAT_KEY_TELEMETRY,
-      content: "crm_legacy_fallback_invoked:1",
+      content: `${params.event}:1`,
       metadata: {
-        event: "crm_legacy_fallback_invoked",
+        event: params.event,
         value: 1,
         fallbackKind: params.kind,
         caseId: params.caseId ?? null,
         messagePreview: params.message.slice(0, 160),
+        fallbackReason: params.decision.reason,
+        operationalFlow: params.decision.operationalFlow,
+        conversationalIntentId: params.decision.conversationalIntentId,
+        threadStateShape: params.decision.threadStateShape,
+        scenarioKey: params.decision.scenarioKey,
+        fallbackMode: IMOB_CRM_LEGACY_FALLBACK_CONFIG.mode,
       },
     },
   });
@@ -1175,6 +1233,70 @@ function resolveCompletionStateFromMessage(params: {
   if (inferredFull) return "success_full";
   if (requiresProof) return "success_partial";
   return null;
+}
+
+function resolveProofStateFromMessage(params: {
+  linkedRun: ImobScopedRunMetadata | null;
+  txId: string | null;
+  receiptPath: string | null;
+  bundlePath: string | null;
+}) {
+  const proofRequired = params.linkedRun?.txIdRequired === true;
+  const proofReady = Boolean(params.txId && params.receiptPath && params.bundlePath);
+  if (!params.linkedRun) {
+    return {
+      proofRequired: false,
+      proofReady: false,
+      proofState: null as "proof_pending" | "proof_ready" | "proof_not_required" | null,
+    };
+  }
+  if (!proofRequired) {
+    return {
+      proofRequired: false,
+      proofReady,
+      proofState: proofReady ? "proof_ready" as const : "proof_not_required" as const,
+    };
+  }
+  return {
+    proofRequired: true,
+    proofReady,
+    proofState: proofReady ? "proof_ready" as const : "proof_pending" as const,
+  };
+}
+
+function buildImobProofSurfaceFromMessage(params: {
+  linkedRun: ImobScopedRunMetadata | null;
+  runId: string | null;
+  txId: string | null;
+  receiptPath: string | null;
+  bundlePath: string | null;
+}) {
+  const resolved = resolveProofStateFromMessage({
+    linkedRun: params.linkedRun,
+    txId: params.txId,
+    receiptPath: params.receiptPath,
+    bundlePath: params.bundlePath,
+  });
+  const hasSurfaceSignals = Boolean(
+    params.runId
+      || params.txId
+      || params.receiptPath
+      || params.bundlePath
+      || params.linkedRun
+  );
+  if (!hasSurfaceSignals) return null;
+  return {
+    required: resolved.proofRequired,
+    ready: resolved.proofReady,
+    state: resolved.proofRequired
+      ? (resolved.proofReady ? "ready" : "pending")
+      : (resolved.proofReady ? "ready" : "not_required"),
+    runId: params.runId,
+    txId: params.txId,
+    receiptPath: params.receiptPath,
+    bundlePath: params.bundlePath,
+    verifyUrl: params.receiptPath,
+  } as const;
 }
 
 async function findConversationCreatedEvent(params: {
@@ -2666,6 +2788,15 @@ imobRouter.get("/chat/conversations/:conversationId/messages", async (req, res) 
     .slice(-limit)
     .map((row) => {
       const metadata = asObject(row.metadata);
+      const proof =
+        (asObject(metadata?.proof) as Record<string, unknown> | null)
+        ?? buildImobProofSurfaceFromMessage({
+          linkedRun: null,
+          runId: row.runId ?? asString(metadata?.runId),
+          txId: asString(metadata?.txId),
+          receiptPath: asString(metadata?.receiptPath),
+          bundlePath: asString(metadata?.bundlePath),
+        });
       return {
         id: row.id,
         conversationId,
@@ -2680,6 +2811,7 @@ imobRouter.get("/chat/conversations/:conversationId/messages", async (req, res) 
         txId: asString(metadata?.txId),
         receiptPath: asString(metadata?.receiptPath),
         bundlePath: asString(metadata?.bundlePath),
+        proof,
         auditRunId: asString(metadata?.auditRunId),
         transcriptProof: asObject(metadata?.transcriptProof),
         metadata,
@@ -2824,7 +2956,7 @@ imobRouter.post("/chat/conversations/:conversationId/messages", async (req, res)
   const threadId = requestedThreadId ?? linkedRun?.requestThreadId ?? linkedRun?.threadId ?? null;
   const threadLabel = asString(body.threadLabel) ?? asString(metadata.threadLabel);
   const threadStatusRaw = asString(body.threadStatus) ?? asString(metadata.threadStatus);
-  const threadStatus =
+  const requestedThreadStatus =
     threadStatusRaw === "active" || threadStatusRaw === "waiting" || threadStatusRaw === "done" || threadStatusRaw === "blocked"
       ? threadStatusRaw
       : null;
@@ -2842,6 +2974,23 @@ imobRouter.post("/chat/conversations/:conversationId/messages", async (req, res)
     receiptPath,
     bundlePath,
   });
+  const proofState = resolveProofStateFromMessage({
+    linkedRun,
+    txId,
+    receiptPath,
+    bundlePath,
+  });
+  const proof = buildImobProofSurfaceFromMessage({
+    linkedRun,
+    runId,
+    txId,
+    receiptPath,
+    bundlePath,
+  });
+  const threadStatus =
+    requestedThreadStatus === "done" && proofState.proofRequired && !proofState.proofReady
+      ? "waiting"
+      : requestedThreadStatus;
 
   const message = await prisma.memoryEvent.create({
     data: {
@@ -2864,7 +3013,11 @@ imobRouter.post("/chat/conversations/:conversationId/messages", async (req, res)
         txId,
         receiptPath,
         bundlePath,
+        proof,
         completionState,
+        proofRequired: proofState.proofRequired,
+        proofReady: proofState.proofReady,
+        proofState: proofState.proofState,
         completionContractVersion: "imob.chat.completion.v1",
         runCorrelation: {
           runId,
@@ -2892,7 +3045,7 @@ imobRouter.post("/chat/conversations/:conversationId/messages", async (req, res)
     });
   }
 
-  const proof = await recordConversationMessageProof({
+  const transcriptProof = await recordConversationMessageProof({
     prisma,
     tenantId: authContext.tenantId,
     workspaceId: authContext.workspaceId,
@@ -2914,10 +3067,10 @@ imobRouter.post("/chat/conversations/:conversationId/messages", async (req, res)
     ...(asObject(message.metadata) ?? {}),
     auditRunId,
     transcriptProof: {
-      sequence: proof.sequence,
-      entryHash: proof.entryHash,
-      prevHash: proof.prevHash,
-      contentHash: proof.contentHash,
+      sequence: transcriptProof.sequence,
+      entryHash: transcriptProof.entryHash,
+      prevHash: transcriptProof.prevHash,
+      contentHash: transcriptProof.contentHash,
     },
   };
 
@@ -2944,6 +3097,14 @@ imobRouter.post("/chat/conversations/:conversationId/messages", async (req, res)
       txId: asString(messageMetadata?.txId),
       receiptPath: asString(messageMetadata?.receiptPath),
       bundlePath: asString(messageMetadata?.bundlePath),
+      proof: (asObject(messageMetadata?.proof) as Record<string, unknown> | null)
+        ?? buildImobProofSurfaceFromMessage({
+          linkedRun: null,
+          runId: message.runId ?? asString(messageMetadata?.runId),
+          txId: asString(messageMetadata?.txId),
+          receiptPath: asString(messageMetadata?.receiptPath),
+          bundlePath: asString(messageMetadata?.bundlePath),
+        }),
       auditRunId: asString(messageMetadata?.auditRunId),
       transcriptProof: asObject(messageMetadata?.transcriptProof),
       metadata: messageMetadata,
@@ -3293,6 +3454,14 @@ imobRouter.get("/chat/conversations/:conversationId/snapshot", async (req, res) 
         txId: asString(metadata?.txId),
         receiptPath: asString(metadata?.receiptPath),
         bundlePath: asString(metadata?.bundlePath),
+        proof: (asObject(metadata?.proof) as Record<string, unknown> | null)
+          ?? buildImobProofSurfaceFromMessage({
+            linkedRun: null,
+            runId: row.runId ?? asString(metadata?.runId),
+            txId: asString(metadata?.txId),
+            receiptPath: asString(metadata?.receiptPath),
+            bundlePath: asString(metadata?.bundlePath),
+          }),
         createdAt: toIso(row.createdAt),
         metadata,
       };
@@ -3376,6 +3545,14 @@ imobRouter.get("/chat/conversations/:conversationId/export", async (req, res) =>
         txId,
         receiptPath,
         bundlePath,
+        proof: (asObject(metadata?.proof) as Record<string, unknown> | null)
+          ?? buildImobProofSurfaceFromMessage({
+            linkedRun: null,
+            runId,
+            txId,
+            receiptPath,
+            bundlePath,
+          }),
         auditRunId: asString(metadata?.auditRunId),
         transcriptProof: asObject(metadata?.transcriptProof),
         metadata,

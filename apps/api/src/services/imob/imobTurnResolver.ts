@@ -24,6 +24,12 @@ import {
 import { buildImobAgentRuntimeMetadata } from "./imobAgentContract";
 import { buildImobAgentActivities } from "./agents/imobAgentActivityRuntime";
 import {
+  buildImobGovernedIntentClarificationChoices,
+  classifyImobGovernedIntent,
+  isImobGovernedDocumentCollectionRequest,
+  isImobGovernedLeadToPropertyLinkRequest,
+} from "./imobGovernedIntent";
+import {
   createNextImobOperationalState,
   createNextImobThreadState,
   extractRegion,
@@ -53,62 +59,6 @@ function detectContractType(message: string): "rent" | "sale" | "management" {
   if (text.includes("loca") || text.includes("alug")) return "rent";
   if (text.includes("gest") || text.includes("administra")) return "management";
   return "sale";
-}
-
-function isRulesConfigurationRequest(message: string) {
-  const text = normalizeImobText(message);
-  const hasRulesSignal =
-    text.includes("regras") ||
-    text.includes("regra") ||
-    text.includes("checkin") ||
-    text.includes("check in") ||
-    text.includes("checkout") ||
-    text.includes("check out") ||
-    text.includes("hospedes") ||
-    text.includes("hóspedes") ||
-    text.includes("hospedagem");
-  const hasPropertyContext =
-    text.includes("imovel") ||
-    text.includes("imóvel") ||
-    text.includes("temporada") ||
-    text.includes("diaria") ||
-    text.includes("diária") ||
-    text.includes("locacao") ||
-    text.includes("locação") ||
-    text.includes("aluguel");
-  return hasRulesSignal && hasPropertyContext;
-}
-
-function isLeadToPropertyLinkRequest(message: string) {
-  const text = normalizeImobText(message);
-  const hasLeadContext = text.includes("lead") || text.includes("cliente") || text.includes("comprador") || text.includes("locatario");
-  const hasLinkVerb = text.includes("vincular") || text.includes("associar") || text.includes("conectar");
-  const hasPropertyContext = text.includes("imovel") || text.includes("imóvel") || text.includes("apartamento") || text.includes("casa");
-  return hasLeadContext && hasLinkVerb && hasPropertyContext;
-}
-
-function classifyImobIntent(message: string): ImobIntent {
-  const text = normalizeImobText(message);
-  if (isLeadToPropertyLinkRequest(message)) return "capture";
-  if (isRulesConfigurationRequest(message)) return "rules";
-  if (text.includes("comissao") || text.includes("comissão") || text.includes("repasse") || text.includes("sinal")) return "commission";
-  if (text.includes("deal") || text.includes("negocio") || text.includes("negócio") || text.includes("review do negocio") || text.includes("review do negócio") || text.includes("revisar negocio") || text.includes("revisar negócio")) return "deal";
-  if (text.includes("contrato") || text.includes("assinatura") || text.includes("minuta")) return "contract";
-  if (isDocumentCollectionRequest(message)) return "documents";
-  if (text.includes("proposta") || text.includes("oferta") || text.includes("negocia")) return "proposal";
-  if (text.includes("visita") || text.includes("agendar") || text.includes("agenda") || text.includes("tour")) return "visit";
-  if (text.includes("lead") || text.includes("triagem") || text.includes("qualificar cliente") || text.includes("qualificar lead")) return "lead";
-  if (text.includes("publicar") || text.includes("anuncio") || text.includes("anúncio") || text.includes("listing") || text.includes("portal")) return "listing";
-  if (
-    text.includes("cadastrar") ||
-    text.includes("capta") ||
-    text.includes("propriet") ||
-    text.includes("imovel") ||
-    text.includes("imóvel") ||
-    text.includes("vender")
-  ) return "capture";
-  if (text.includes("alugar") || text.includes("loca") || text.includes("procur") || text.includes("quartos")) return "match";
-  return "adjustment";
 }
 
 function mapCatalogIntentToImobIntent(parsed: { entity: string | null; action: string | null }): ImobIntent | null {
@@ -218,7 +168,7 @@ function isExplicitStageChangeIntent(params: {
   }
 
   if (params.baseIntent === "capture") {
-    return isLeadToPropertyLinkRequest(params.message);
+    return isImobGovernedLeadToPropertyLinkRequest(params.message);
   }
 
   return false;
@@ -417,27 +367,6 @@ function hasImobKnowledgeAccess(request?: ImobResolveTurnRequest) {
   return access.entitlements?.REAL_ESTATE_CORE === true;
 }
 
-function isDocumentCollectionRequest(message: string) {
-  const text = normalizeImobText(message);
-  const hasCollectionVerb =
-    text.includes("coletar") ||
-    text.includes("coleta") ||
-    text.includes("receber") ||
-    text.includes("enviar") ||
-    text.includes("subir") ||
-    text.includes("anexar");
-  const hasDocumentSubject =
-    text.includes("document") ||
-    text.includes("anexo") ||
-    text.includes("arquivo") ||
-    text.includes("upload") ||
-    text.includes("matricula") ||
-    text.includes("matrícula") ||
-    text.includes("cpf") ||
-    text.includes("rg") ||
-    text.includes("cnpj");
-  return hasCollectionVerb && hasDocumentSubject;
-}
 
 function isDocumentUploadOnlyRequest(message: string) {
   const text = normalizeImobText(message);
@@ -3139,8 +3068,13 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
   const parsedCatalogIntent = request.semanticIntent ?? parseImobIntent(message);
   const hasExplicitCatalogTarget = Boolean(parsedCatalogIntent.action && parsedCatalogIntent.entity);
   const catalogDrivenIntent = mapCatalogIntentToImobIntent(parsedCatalogIntent);
-  const classifiedIntent = classifyImobIntent(message);
-  const baseIntent = catalogDrivenIntent ?? classifiedIntent;
+  const governedIntent = classifyImobGovernedIntent(message);
+  const classifiedIntent = governedIntent.primaryIntent;
+  const shouldPreferGovernedDealIntent =
+    classifiedIntent === "deal"
+    && catalogDrivenIntent === "contract"
+    && governedIntent.candidates.some((candidate) => candidate.intent === "deal" && candidate.score >= 4);
+  const baseIntent = shouldPreferGovernedDealIntent ? classifiedIntent : (catalogDrivenIntent ?? classifiedIntent);
   const nextThreadState = createNextImobThreadState(request.threadState ?? undefined, message);
   const activeOperationalState = request.threadState?.operational ?? null;
   const isMarketScanSelectionTurn =
@@ -3187,6 +3121,59 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
     /(?:enviar|mandar)\s+contrato\s+para\s+assinatura|envio\s+para\s+assinatura/.test(normalizedMessage);
   const genericOperationalGuidanceIntent = resolveGenericOperationalGuidanceIntent(message);
   const semanticIntentSource = request.semanticIntentSource ?? "parser_fallback";
+  const hasMultiJourneyConnector =
+    /\s+e\s+/i.test(message)
+    || /\s+ou\s+/i.test(message)
+    || message.includes("/");
+  const hasJourneyExecutionVerb =
+    /\b(agendar|preparar|abrir|revisar|fechar|enviar|coletar|registrar|publicar|qualificar|cadastrar|vincular|associar|continuar)\b/i.test(normalizedMessage);
+  const shouldClarifyGovernedJourney =
+    !activeOperationalState
+    && governedIntent.ambiguous
+    && hasMultiJourneyConnector
+    && hasJourneyExecutionVerb
+    && classifiedIntent !== "deal"
+    && governedIntent.candidates.filter((candidate) => candidate.score >= 4).length >= 2;
+  if (shouldClarifyGovernedJourney) {
+    const choices = buildImobGovernedIntentClarificationChoices(governedIntent.candidates.map((candidate) => candidate.intent));
+    return finalize({
+      mode: "consult",
+      action: "crm.intent.clarify_journey",
+      threadLabel: getIntentThreadLabel(baseIntent),
+      conversationState: { ...nextThreadState, mode: "consult" },
+      presentation: {
+        text: "Encontrei mais de uma jornada IMOB plausível nesta mensagem.",
+        suggestedNextAction: "Escolha qual trilha você quer abrir agora para eu continuar no contexto certo.",
+        metadata: {
+          confidence: {
+            source: semanticIntentSource,
+            action: parsedCatalogIntent.action,
+            entity: parsedCatalogIntent.entity,
+          },
+          choiceStyle: "inline",
+          governedIntent: {
+            version: governedIntent.version,
+            candidates: governedIntent.candidates.map((candidate) => ({
+              intent: candidate.intent,
+              score: candidate.score,
+              reason: candidate.reason,
+            })),
+          },
+        },
+        card: {
+          title: "Escolha a jornada IMOB",
+          lines: ["Posso seguir com segurança por uma destas trilhas agora."],
+          ctas: choices.map((choice, index) => ({
+            id: `clarify-journey-${choice.intent}`,
+            label: choice.label,
+            kind: index === 0 ? "primary" : index === 1 ? "secondary" : "neutral",
+            action: "send_suggested_message",
+            nextMessage: choice.nextMessage,
+          })),
+        },
+      },
+    });
+  }
   if (!activeOperationalState && turnDecision.stage === "front_door_generic") {
     return finalize({
       mode: "consult",
@@ -3365,7 +3352,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
     });
   }
 
-  if (isKnowledgeSearchQuery(message) && !(intent === "documents" && isDocumentCollectionRequest(message))) {
+  if (isKnowledgeSearchQuery(message) && !(intent === "documents" && isImobGovernedDocumentCollectionRequest(message))) {
     const region = nextThreadState.slots.city ?? nextThreadState.slots.region ?? extractRegion(normalizeImobText(message)) ?? "Brasil";
     const segment = nextThreadState.slots.goal ?? extractSegment(message);
     const sourceTypes = extractKnowledgeSourceTypes(message);

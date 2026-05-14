@@ -40,6 +40,26 @@ test("pilot reengagement flow blocks on missing gates and preserves IMOB ownersh
   assert.equal(state.caseMemory.byCaseId["case-1"]?.lastBlockedFlowType, "assisted_reengagement_flow");
 });
 
+test("pilot reengagement flow fails closed when supporting outbound capability is below shadow rollout", () => {
+  const state = createImobPilotFlowState();
+  const result = runImobAssistedReengagementFlow({
+    state,
+    caseId: "case-rollout",
+    leadId: "lead-rollout",
+    generatedAt: "2026-05-03T10:02:00.000Z",
+    consentProvided: true,
+    humanApprovalGranted: true,
+    evidenceRefsCount: 1,
+    policyAccepted: true,
+    payload: { channel: "whatsapp" },
+  });
+
+  assert.equal(result.status, "blocked");
+  assert.equal(result.capabilityId, "reengagement.continuous");
+  assert.ok(result.gateDecision.reasonCodes.includes("rollout_stage_blocked"));
+  assert.equal(state.history.entries[0]?.status, "blocked");
+});
+
 test("pilot calendar flow completes in sandbox with mission and evidence refs", () => {
   const state = createImobPilotFlowState();
   const result = runImobAssistedCalendarFlow({

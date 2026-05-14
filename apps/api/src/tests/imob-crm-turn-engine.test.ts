@@ -92,6 +92,43 @@ test("IMOB_CRM turn engine usa leitura consultiva quando não há fluxo ativo co
   assert.equal(resolved.action, "crm.case.blocked_run_resolution");
 });
 
+test("IMOB_CRM turn engine propagates canonical proof surface from consultive case context", async () => {
+  const params = createEngineParams({
+    body: { message: "qual status desse caso?", threadState: { mode: "consult", pendingSlot: "none", resultOffset: 0, slots: {}, operational: null } },
+  });
+  params.helpers.resolveImobOperationalConsult = async () => ({
+    mode: "consult",
+    action: "crm.case.pipeline_status",
+    threadLabel: "Caso",
+    conversationState: params.body.threadState,
+    caseContext: {
+      caseId: "case-proof-1",
+      flow: "commission.settle",
+      stage: "settled",
+      status: "success",
+      canonical: { recommendedActions: [] },
+      proof: {
+        required: true,
+        ready: true,
+        state: "ready",
+        runId: "run-proof-1",
+        txId: "tx-proof-1",
+        receiptPath: "/api/ledger/tx-proof-1",
+        bundlePath: "/api/runs/run-proof-1/bundle",
+        verifyUrl: "/api/ledger/tx-proof-1",
+      },
+    },
+    presentation: { text: "leitura consultiva com prova" },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal(resolved.action, "crm.case.pipeline_status");
+  assert.equal((resolved as any).presentation?.proof?.required, true);
+  assert.equal((resolved as any).presentation?.proof?.ready, true);
+  assert.equal((resolved as any).presentation?.proof?.state, "ready");
+  assert.equal((resolved as any).presentation?.proof?.txId, "tx-proof-1");
+});
+
 test("IMOB_CRM turn engine prioriza comando operacional explícito antes da leitura consultiva", async () => {
   let consultCalls = 0;
   const params = createEngineParams({
@@ -923,4 +960,55 @@ test("IMOB_CRM turn engine keeps property-success actions fully case-aware when 
   assert.ok(actions.some((item: any) => item.label === "Avançar para visita"));
   assert.ok(!actions.some((item: any) => item.label === "Qualificar lead"));
   assert.ok(!actions.some((item: any) => item.label === "Cadastrar proprietário"));
+});
+
+test("IMOB_CRM turn engine derives quick replies from the final presentation payload", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "qual status desse caso",
+      threadState: {
+        mode: "consult",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: null,
+      },
+    },
+  });
+  params.helpers.resolveImobOperationalConsult = async () => ({
+    mode: "consult",
+    action: "crm.case.lookup",
+    threadLabel: "Caso",
+    conversationState: params.body.threadState,
+    caseContext: {
+      caseId: "case-1",
+      flow: "proposal.create",
+      stage: "negociacao",
+      status: "active",
+      canonical: {
+        recommendedActions: [
+          { id: "review_pending_items", label: "Ver pendências", actionType: "consultive", inputHint: "mostrar pendências do caso" },
+          { id: "follow_next_step", label: "Executar próximo passo", actionType: "consultive", inputHint: "executar próximo passo do caso" },
+        ],
+      },
+    },
+    presentation: {
+      text: "Caso em andamento.",
+      suggestedNextAction: "executar próximo passo do caso",
+      card: {
+        title: "Caso Lead",
+        lines: ["Negociação ativa"],
+        ctas: [
+          { id: "case-pending", label: "Ver pendências", nextMessage: "mostrar pendências do caso" },
+          { id: "case-next-step", label: "Executar próximo passo", nextMessage: "executar próximo passo do caso" },
+        ],
+      },
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.deepEqual((resolved as any).presentation?.quickReplies, [
+    "mostrar pendências do caso",
+    "executar próximo passo do caso",
+  ]);
 });
