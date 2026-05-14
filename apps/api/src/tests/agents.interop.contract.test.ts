@@ -1,3 +1,4 @@
+import "./support/testInfraEnv";
 import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import supertest from "supertest";

@@ -1,4 +1,5 @@
 import { PrismaClient, prismaGlobal } from "@repo/db";
+import { hasCoreAgentProfile, resolveAgentId } from "./agents";
 import { readWorkspaceManagementSummary } from "./workspaceResponsibility";
 
 type WorkspaceAgentScope = {
@@ -91,7 +92,7 @@ async function provisionGlobalFounderAssignment(
     select: { updatedAt: true },
   });
 
-  if (!metadata && !profile) {
+  if (!metadata && !profile && !hasCoreAgentProfile(canonicalAgentKey)) {
     return null;
   }
 
@@ -142,7 +143,7 @@ async function resolveCanonicalAgentKey(client: PrismaClient, agentKey: string) 
 
   const candidates = [...metadataAgents, ...profileAgents].map(item => item.agent);
   const matched = candidates.find(candidate => normalizeAgentKey(candidate) === normalizedInput);
-  return matched ?? trimmed;
+  return matched ?? resolveAgentId(trimmed);
 }
 
 function toRecord(
@@ -197,7 +198,7 @@ async function bootstrapAssignment(
     select: { updatedAt: true },
   });
 
-  if (!metadata && !profile) {
+  if (!metadata && !profile && !hasCoreAgentProfile(canonicalAgentKey)) {
     return null;
   }
 
@@ -209,9 +210,9 @@ async function bootstrapAssignment(
       agentVersion: metadata?.version ?? "1.0.0",
       enabled: true,
       signedAt: profile?.updatedAt ?? new Date(),
-      signatureRef: "bootstrap-legacy-compat",
+      signatureRef: metadata || profile ? "bootstrap-legacy-compat" : "bootstrap-core-agent-catalog",
       metadata: {
-        source: "bootstrap-legacy-compat",
+        source: metadata || profile ? "bootstrap-legacy-compat" : "bootstrap-core-agent-catalog",
       },
     },
   });

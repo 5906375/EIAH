@@ -1,0 +1,63 @@
+{
+  "vertical": "IMOB",
+  "version": "1.0.0",
+  "frontDoorAgent": "EIAH",
+  "visibleAgentId": "IMOB",
+  "agents": ["EIAH", "IMOB", "Guardian", "J_360", "FinNexus"],
+  "agentProtocolRef": "contracts/agent-protocol.v1.schema.json",
+  "receiptCanonRef": "contracts/receipt-canon.v1.baseline.json",
+  "riskPolicyRef": "docs/ops/risk-tiering-by-action.md",
+  "launcherPolicy": "render_only",
+  "threadIdRequired": true,
+  "bundleExportRequired": true,
+  "receiptRequired": true,
+  "txIdRequiredWhenPolicyRequires": true,
+  "governanceChain": [
+    "intent",
+    "scope",
+    "policy",
+    "approval",
+    "run",
+    "receipt",
+    "bundle",
+    "ledger"
+  ],
+  "criticalActions": [
+    {
+      "action": "realestate.register_property",
+      "governanceOwnerAgent": "IMOB",
+      "chatSurface": "property_capture",
+      "tier": "HIGH",
+      "txIdRequired": true,
+      "receiptSchema": "receipt.canon.v1",
+      "bundleExportRequired": true
+    },
+    {
+      "action": "realestate.create_contract",
+      "governanceOwnerAgent": "J_360",
+      "chatSurface": "contract_prepare",
+      "tier": "HIGH",
+      "txIdRequired": true,
+      "receiptSchema": "receipt.canon.v1",
+      "bundleExportRequired": true
+    },
+    {
+      "action": "realestate.apply_adjustment",
+      "governanceOwnerAgent": "IMOB",
+      "chatSurface": "deal_review",
+      "tier": "HIGH",
+      "txIdRequired": true,
+      "receiptSchema": "receipt.canon.v1",
+      "bundleExportRequired": true
+    },
+    {
+      "action": "realestate.release_commission",
+      "governanceOwnerAgent": "FinNexus",
+      "chatSurface": "commission_settlement",
+      "tier": "HIGH",
+      "txIdRequired": true,
+      "receiptSchema": "receipt.canon.v1",
+      "bundleExportRequired": true
+    }
+  ]
+}
