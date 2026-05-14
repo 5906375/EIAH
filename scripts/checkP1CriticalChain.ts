@@ -18,6 +18,16 @@ function assertContains(content: string, needle: string, key: string) {
   if (!content.includes(needle)) fail("missing_required_pattern", { key, needle });
 }
 
+function findLatestEvidenceFile(pattern: RegExp): string {
+  const dir = path.resolve("ops/evidence/latest");
+  if (!fs.existsSync(dir)) fail("missing_evidence_directory", { dir });
+  const files = fs.readdirSync(dir).filter((file) => pattern.test(file)).sort().reverse();
+  if (files.length === 0) {
+    fail("missing_evidence_file", { pattern: pattern.source, dir });
+  }
+  return path.join(dir, files[0]);
+}
+
 function normalizeAction(action: string): string {
   return action.trim().replace(/^action\./, "");
 }
@@ -48,9 +58,10 @@ const receiptCanonService = readFile("apps/api/src/services/receiptCanonService.
 const riskPolicy = readFile("docs/ops/risk-tiering-by-action.md");
 const apeRun9 = readFile("ops/evidence/latest/ape-weekly-cycle-run9-2026-03-09.md");
 const highActions = JSON.parse(
-  readFile("ops/evidence/latest/realestate-high-actions-e2e-2026-03-09.json")
+  fs.readFileSync(findLatestEvidenceFile(/^realestate-high-actions-e2e-\d{4}-\d{2}-\d{2}\.json$/), "utf8")
 ) as {
   ok?: boolean;
+  actions?: string[];
   assertions?: {
     receiptCanonSpec?: string;
     txIdRequired?: boolean;

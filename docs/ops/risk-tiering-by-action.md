@@ -28,24 +28,28 @@ Origem de policy em runtime:
   "highActions": [
     {
       "action": "realestate.register_property",
-      "evidencePattern": "s1-01-high-e2e-realestate.register_property-*.json"
+      "evidencePattern": "realestate-high-actions-e2e-*.json"
     },
     {
       "action": "realestate.create_contract",
-      "evidencePattern": "s1-01-high-e2e-realestate.create_contract-*.json"
+      "evidencePattern": "realestate-high-actions-e2e-*.json"
     },
     {
       "action": "realestate.apply_adjustment",
-      "evidencePattern": "s1-01-high-e2e-realestate.apply_adjustment-*.json"
+      "evidencePattern": "realestate-high-actions-e2e-*.json"
     },
     {
       "action": "realestate.release_commission",
-      "evidencePattern": "s1-01-high-e2e-realestate.release_commission-*.json"
+      "evidencePattern": "realestate-high-actions-e2e-*.json"
     }
   ]
 }
 ```
 <!-- HIGH_POLICY:END -->
+
+Observacao operacional:
+- nesta fase, a evidencia `HIGH` do dominio imobiliario esta agregada no artefato `realestate-high-actions-e2e-YYYY-MM-DD.json`;
+- o gate de CI precisa provar que cada acao `HIGH` declarada na policy continua presente dentro desse artefato agregado.
 
 ## Acceptance for F5.3
 

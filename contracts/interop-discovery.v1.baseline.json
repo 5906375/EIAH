@@ -1,5 +1,7 @@
 {
   "specVersion": "v1",
   "compatibility": "N,N-1",
-  "scenarios": ["discovery", "negotiate"]
+  "scenarios": ["discovery", "negotiate", "execute"],
+  "publicContract": "agent-protocol.v1",
+  "versioningPolicyRef": "ops/contracts/agent-protocol-versioning-policy.md"
 }

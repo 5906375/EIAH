@@ -119,8 +119,8 @@ for (const reference of [
   "contracts/examples/agent-protocol.v1.example.json",
   "ops/contracts/agent-protocol-versioning-policy.md",
   "scripts/checkAgentProtocolVersioning.ts",
-  "ops/evidence/latest/interop-routes-smoke-2026-03-09.json",
-  "ops/evidence/latest/interop-e2e-agent-call-2026-03-09.json",
+  "ops/evidence/latest/interop-routes-smoke-",
+  "ops/evidence/latest/interop-e2e-agent-call-",
 ]) {
   if (!evidenceIndex.includes(reference)) {
     fail("evidence_index_missing_agent_protocol_reference", {

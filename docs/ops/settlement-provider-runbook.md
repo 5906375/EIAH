@@ -47,4 +47,6 @@ Operar `PaymentIntent` com liberação PoU-gated, settlement por provider e webh
 ## Check de drift
 
 - `pnpm check:settlement-contract-drift`
+- `pnpm check:p3-settlement-support-by-env`
 - Contrato fonte: `ops/contracts/settlement-provider-contract.v1.json`
+- Matriz de suporte por ambiente: `ops/contracts/settlement-provider-support-matrix.v1.json`
