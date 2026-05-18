@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eiah.local/contracts/imob/market-scan-query-builder-output.v1.schema.json",
+  "title": "IMOB Market Scan Query Builder Output v1",
+  "type": "object",
+  "required": ["version", "query", "confidence", "missingRequiredFilters"],
+  "properties": {
+    "version": { "const": "1.0" },
+    "query": {
+      "type": "object",
+      "required": ["cities", "goals", "propertyTypes", "bedrooms", "limitPerGroup"],
+      "properties": {
+        "cities": { "type": "array", "items": { "type": "string" } },
+        "uf": { "type": ["string", "null"] },
+        "region": { "type": ["string", "null"] },
+        "neighborhood": { "type": ["string", "null"] },
+        "operation": { "type": ["string", "null"], "enum": ["sale", "rent", "seasonal", "unknown", null] },
+        "goals": { "type": "array", "items": { "type": "string" } },
+        "propertyTypes": { "type": "array", "items": { "type": "string" } },
+        "bedrooms": { "type": "array", "items": { "type": "integer" } },
+        "priceRange": { "type": ["object", "null"], "additionalProperties": true },
+        "limitPerGroup": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "missingRequiredFilters": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}

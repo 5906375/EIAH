@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eiah.local/contracts/imob/market-scan-model-policy.v1.schema.json",
+  "title": "IMOB Market Scan Model Policy v1",
+  "type": "object",
+  "required": ["version", "tasks"],
+  "properties": {
+    "version": { "const": "1.0" },
+    "tasks": {
+      "type": "object",
+      "required": ["intent_router", "query_builder", "market_analysis", "final_response", "policy_judge"],
+      "properties": {
+        "intent_router": { "$ref": "#/$defs/taskPolicy" },
+        "query_builder": { "$ref": "#/$defs/taskPolicy" },
+        "market_analysis": { "$ref": "#/$defs/taskPolicy" },
+        "final_response": { "$ref": "#/$defs/taskPolicy" },
+        "policy_judge": { "$ref": "#/$defs/taskPolicy" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "taskPolicy": {
+      "type": "object",
+      "required": ["task", "providerEnv", "modelEnv", "temperature", "requiresStructuredOutput"],
+      "properties": {
+        "task": { "type": "string", "minLength": 1 },
+        "providerEnv": { "type": "string", "minLength": 1 },
+        "modelEnv": { "type": "string", "minLength": 1 },
+        "reasoningEffort": { "type": ["string", "null"], "enum": ["low", "medium", "high", "xhigh", null] },
+        "temperature": { "type": "number", "minimum": 0, "maximum": 1 },
+        "requiresStructuredOutput": { "type": "boolean" },
+        "requiresEvidence": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

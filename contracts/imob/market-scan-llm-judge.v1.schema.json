@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eiah.local/contracts/imob/market-scan-llm-judge.v1.schema.json",
+  "title": "IMOB Market Scan LLM Judge v1",
+  "type": "object",
+  "required": ["version", "allowed", "reasonCodes", "requiresFallback"],
+  "properties": {
+    "version": { "const": "1.0" },
+    "allowed": { "type": "boolean" },
+    "reasonCodes": { "type": "array", "items": { "type": "string" } },
+    "requiresFallback": { "type": "boolean" },
+    "safeResponseHint": { "type": ["string", "null"] }
+  },
+  "additionalProperties": false
+}
