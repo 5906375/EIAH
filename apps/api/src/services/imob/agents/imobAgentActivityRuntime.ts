@@ -27,6 +27,7 @@ function buildMarketScanActivities(
   operational: NonNullable<ImobResolveTurnResponse["conversationState"]["operational"]>,
 ): ImobAgentActivityEvent[] {
   const result = response.presentation.marketScanResult ?? operational.marketScanSnapshot ?? null;
+  const run = operational.marketScanRun ?? null;
   const cities = operational.marketScanContext?.cities ?? operational.marketScanContext?.cityCandidates ?? [];
   const citySummary = formatCityList(cities);
   const activities: ImobAgentActivityEvent[] = [
@@ -57,7 +58,7 @@ function buildMarketScanActivities(
         mode: "audit",
         status: "completed",
         visibleMessage: "Registrando snapshot da análise.",
-        evidenceId: result.scanId,
+        evidenceId: run?.evidenceBundleId ?? result.scanId,
         reasonCode: "evidence.decision_rationale",
       }),
     );

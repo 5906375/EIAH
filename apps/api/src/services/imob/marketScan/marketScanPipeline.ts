@@ -18,6 +18,7 @@ import {
   type ImobMarketScanRunStorePrisma,
 } from "./imobMarketScanRunStore";
 import { matchComparables } from "./comparableMatcher";
+import { createMarketScanGuardianEvidence } from "./guardianEvidenceHook";
 import { toMarketScanResultSnapshot } from "./listingIngestionAdapter";
 import { computeLiquidityCompetitionScore } from "./liquidityCompetitionScorer";
 import { recommendOperationalOpportunity } from "./opportunityRecommender";
@@ -30,6 +31,7 @@ export type MarketScanPipelineResult = {
   sourceAccessDecision: ImobSourceAccessDecisionSnapshot;
   resultSnapshot: ImobMarketScanResultSnapshot | null;
   opportunity: import("../imobConversationContract").ImobOperationalOpportunity | null;
+  evidenceBundle: import("./guardianEvidenceHook").MarketScanGuardianEvidenceBundle | null;
 };
 
 function sourceIdToAccessMode(sourceId: MarketScanConnectorId): ImobMarketSourceAccessMode {
@@ -175,10 +177,30 @@ export async function executeMarketScanPipeline(params: {
       confidenceScore: scoring.confidenceScore,
     });
   }
+  const evidenceBundle = createMarketScanGuardianEvidence({
+    runId: run.runId,
+    queryHash: run.queryHash,
+    sourceSnapshot: {
+      sourceIds,
+      sourceAccessDecision,
+      totalItems: enrichedSnapshot?.totalItems ?? 0,
+      providerId: enrichedSnapshot?.providerId ?? null,
+    },
+    normalizedListings: enrichedSnapshot,
+    recommendation: opportunity,
+  });
+  if (opportunity) {
+    opportunity = {
+      ...opportunity,
+      evidenceBundleId: evidenceBundle.evidenceBundleId,
+    };
+  }
   const completed = await completeMarketScanRun({
     prisma: params.prisma,
     runId: run.runId,
     resultSnapshot: enrichedSnapshot,
+    evidenceBundleId: evidenceBundle.evidenceBundleId,
+    recommendationId: evidenceBundle.recommendationHash,
     opportunityId: opportunity?.opportunityId ?? null,
   });
 
@@ -190,5 +212,6 @@ export async function executeMarketScanPipeline(params: {
     sourceAccessDecision,
     resultSnapshot: enrichedSnapshot,
     opportunity,
+    evidenceBundle,
   } satisfies MarketScanPipelineResult;
 }
