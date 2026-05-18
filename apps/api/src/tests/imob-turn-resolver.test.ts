@@ -779,8 +779,8 @@ test("IMOB turn resolver keeps market scan read-only when the user explicitly ch
   assert.equal(result.action, "realestate.market_scan");
   assert.equal(result.executionRequest, undefined);
   assert.equal(result.conversationState.operational?.flow, "property.market_scan");
-  assert.match(result.presentation.text ?? "", /read-only/i);
-  assert.match(result.presentation.text ?? "", /varredura read-only concluída/i);
+  assert.match(result.presentation.text ?? "", /Inteligência de mercado|read-only/i);
+  assert.match(result.presentation.text ?? "", /Inteligência de mercado concluída/i);
   assert.equal(result.presentation.marketScanResult?.sourceStatus, "completed");
   assert.equal(result.presentation.marketScanResult?.groups[0]?.items.length, 2);
   assert.deepEqual(
@@ -788,7 +788,7 @@ test("IMOB turn resolver keeps market scan read-only when the user explicitly ch
     ["IMOB", "Market Scan", "Guardian"],
   );
   assert.equal(result.presentation.agentActivities?.every((item) => item.displayPrefix === "Agente"), true);
-  assert.match(result.presentation.card?.title ?? "", /varredura de mercado/i);
+  assert.match(result.presentation.card?.title ?? "", /Inteligência de mercado/i);
   assert.match(result.presentation.card?.lines?.[0] ?? "", /itajaí|locacao|apartamento/i);
   assert.equal(
     result.presentation.card?.ctas?.some((cta) => cta.nextMessage === "selecionar imóvel prop-1 do scan"),

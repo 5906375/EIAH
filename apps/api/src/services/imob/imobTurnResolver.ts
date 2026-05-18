@@ -16,6 +16,7 @@ import {
   type ImobMarketScanResultGroup,
   type ImobMarketScanResultItem,
   type ImobMarketScanResultSnapshot,
+  type ImobOperationalOpportunity,
   type ImobOperationalState,
   type ImobOperationalOwner,
   type ImobResolveTurnRequest,
@@ -2012,16 +2013,30 @@ function buildMarketScanSelectionCtas(marketScanResult: NonNullable<ImobResolveT
 
 function buildMarketScanPresentation(params: {
   marketScanResult: NonNullable<ImobResolveTurnRequest["marketScanResult"]>;
+  marketScanOpportunity?: ImobOperationalOpportunity | null;
   currentCard: ImobResolveTurnResponse["presentation"]["card"];
   currentText: string;
 }) {
-  const { marketScanResult, currentCard, currentText } = params;
+  const { marketScanResult, marketScanOpportunity, currentCard, currentText } = params;
   const totalGroups = marketScanResult.groups.length;
+  const intelligence = marketScanResult.intelligence ?? null;
+  const priceRange = marketScanOpportunity?.priceRange ?? intelligence?.priceRange ?? null;
+  const priceLine = priceRange ? `Faixa observada: R$ ${priceRange.min} a R$ ${priceRange.max}` : null;
+  const liquidityLine = intelligence ? `Liquidez: ${intelligence.liquidityScore}` : null;
+  const riskLine = intelligence ? `Risco de preço: ${intelligence.pricingRisk}` : null;
+  const confidenceLine = intelligence ? `Confiança: ${intelligence.confidenceScore}` : null;
+  const actionLine = marketScanOpportunity ? `Ação recomendada: ${marketScanOpportunity.recommendedAction}` : null;
   const summaryText =
     marketScanResult.sourceStatus === "completed"
       ? [
           currentText,
-          `Varredura read-only concluída com ${marketScanResult.totalItems} imóvel(is) em ${totalGroups} grupo(s).`,
+          `Inteligência de mercado concluída com ${marketScanResult.totalItems} imóvel(is) em ${totalGroups} grupo(s).`,
+          priceLine,
+          liquidityLine,
+          riskLine,
+          confidenceLine,
+          actionLine,
+          marketScanOpportunity?.nextStep ? `Próximo passo: ${marketScanOpportunity.nextStep}` : null,
         ].filter(Boolean).join("\n")
       : marketScanResult.sourceStatus === "empty"
         ? [
@@ -2033,6 +2048,13 @@ function buildMarketScanPresentation(params: {
             "A fonte de imóveis para essa varredura está indisponível no momento. Vou manter a consulta read-only e sem inventar resultados.",
           ].filter(Boolean).join("\n");
 
+  const intelligenceLines = [
+    priceLine,
+    liquidityLine,
+    riskLine,
+    confidenceLine,
+    actionLine,
+  ].filter((line): line is string => Boolean(line));
   const cardLines = marketScanResult.groups.length > 0
     ? marketScanResult.groups.flatMap((group) => {
         const header = `${formatMarketScanGroupLabel(group)} · ${group.items.length} resultado(s)`;
@@ -2045,18 +2067,40 @@ function buildMarketScanPresentation(params: {
           : "Nenhum imóvel encontrado para os filtros atuais.",
       ];
 
+  const opportunityCtas = marketScanOpportunity
+    ? [
+        {
+          id: `market-scan-opportunity-${marketScanOpportunity.recommendedAction}`,
+          label: marketScanOpportunity.recommendedAction === "captar"
+            ? "Gerar draft de captação"
+            : marketScanOpportunity.recommendedAction === "ajustar_preco"
+              ? "Ajustar preço sugerido"
+              : marketScanOpportunity.recommendedAction === "campanha"
+                ? "Preparar campanha"
+                : marketScanOpportunity.recommendedAction === "pedir_autorizacao"
+                  ? "Pedir autorização"
+                  : "Não seguir agora",
+          kind: "primary" as const,
+          action: "send_suggested_message" as const,
+          nextMessage: marketScanOpportunity.nextStep,
+        },
+      ]
+    : [];
+
   return {
     text: summaryText,
     card: {
-      title: "Resultado da varredura de mercado",
-      lines: cardLines,
+      title: "Inteligência de mercado",
+      lines: [...intelligenceLines, ...cardLines],
       ctas: [
+        ...opportunityCtas,
         ...buildMarketScanSelectionCtas(marketScanResult),
         ...(currentCard?.ctas ?? []),
       ],
       actionsLayout: currentCard?.actionsLayout,
     },
     marketScanResult,
+    ...(marketScanOpportunity ? { marketScanOpportunity } : {}),
   };
 }
 
@@ -3355,9 +3399,15 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
       ?? request.threadState?.operational?.marketScanSnapshot
       ?? operationalState?.marketScanSnapshot
       ?? null;
+    const availableMarketScanOpportunity =
+      request.marketScanOpportunity
+      ?? request.threadState?.operational?.marketScanOpportunity
+      ?? operationalState?.marketScanOpportunity
+      ?? null;
     const marketScanPresentation = availableMarketScanResult
       ? buildMarketScanPresentation({
           marketScanResult: availableMarketScanResult,
+          marketScanOpportunity: availableMarketScanOpportunity,
           currentCard: undefined,
           currentText: "Vou manter a varredura de mercado em modo read-only.",
         })
@@ -3900,6 +3950,11 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
       ?? request.threadState?.operational?.marketScanSnapshot
       ?? operationalState.marketScanSnapshot
       ?? null;
+    const availableMarketScanOpportunity =
+      request.marketScanOpportunity
+      ?? request.threadState?.operational?.marketScanOpportunity
+      ?? operationalState.marketScanOpportunity
+      ?? null;
     if (operationalState.marketScanSelection) {
       const selectionPresentation = buildMarketScanSelectionPresentation({
         selection: operationalState.marketScanSelection,
@@ -3921,6 +3976,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
     const marketScanPresentation = explicitScanRequest && availableMarketScanResult
       ? buildMarketScanPresentation({
           marketScanResult: availableMarketScanResult,
+          marketScanOpportunity: availableMarketScanOpportunity,
           currentCard: presentation.card,
           currentText: presentation.text,
         })

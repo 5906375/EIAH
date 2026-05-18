@@ -1416,7 +1416,7 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
       const marketScanResult = marketScanResolution?.snapshot ?? null;
       const resolvedTurn = attachSnapshotToResolvedTurn(
         marketScanResult
-          ? resolveImobTurn({ ...baseResolveRequest, marketScanResult })
+          ? resolveImobTurn({ ...baseResolveRequest, marketScanResult, marketScanOpportunity: marketScanResolution?.opportunity ?? null })
           : resumedMarketScanSnapshot
             ? resolveImobTurn({ ...baseResolveRequest, marketScanResult: resumedMarketScanSnapshot })
             : preliminaryResolvedTurn,
@@ -1518,7 +1518,7 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
     const marketScanResult = marketScanResolution?.snapshot ?? null;
     const resolvedTurn = attachSnapshotToResolvedTurn(
       marketScanResult
-        ? resolveImobTurn({ ...baseResolveRequest, marketScanResult })
+        ? resolveImobTurn({ ...baseResolveRequest, marketScanResult, marketScanOpportunity: marketScanResolution?.opportunity ?? null })
         : resumedMarketScanSnapshot
           ? resolveImobTurn({ ...baseResolveRequest, marketScanResult: resumedMarketScanSnapshot })
           : preliminaryResolvedTurn,

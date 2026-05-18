@@ -511,6 +511,7 @@ export type ImobResolveTurnRequest = {
   threadState?: ImobThreadConversationState | null;
   access?: ImobAccessContext;
   marketScanResult?: ImobMarketScanResultSnapshot | null;
+  marketScanOpportunity?: ImobOperationalOpportunity | null;
 };
 
 export type ImobAttachmentCrmSuggestionMode = "include" | "edit" | "discard";
