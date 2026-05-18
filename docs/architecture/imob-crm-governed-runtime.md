@@ -15,7 +15,10 @@ Estado atual:
 - `ChatAgentLauncher` não decide regra de domínio IMOB;
 - quick replies governadas podem ser marcadas no snapshot como `backend_payload`;
 - a página dedicada do IMOB já prioriza `presentation.blocks` vindos do backend e reduz síntese local.
-- turns sensíveis do chat já expõem `proof` canônica em `presentation.proof` e `message.proof`, inclusive em tempo real e na persistência/export.
+- o caminho normal de `owner.create`, `property.create` e `lead.qualify` já fecha em `estado canônico + snapshot canônico`;
+- o compat/legado deixou de competir no caminho normal por `texto`, `form`, `CTA`, `quickReplies` e `post-success`;
+- turns sensíveis dos fluxos governados migrados já expõem `proof` canônica em `presentation.proof`, com `message.proof` como espelho persistido da mesma resolução final.
+- recipes IMOB homologadas podem parametrizar a missão do planner por `recipeId`, desde que estejam liberadas para o tenant/workspace atual.
 - o harness local de teste já normaliza `DB/Redis` para `127.0.0.1` quando o ambiente vier com hostnames internos do compose;
 - a trilha de prova da plataforma já foi validada localmente para `discovery -> negotiate -> execute`, `HIGH + txIdRequired`, `ledger/bundle`, `settlement` idempotente e `reputation/disputes`.
 
@@ -107,6 +110,53 @@ Fluxo resumido:
 4. o `IMOB` devolve um payload resolvido com `recommendedActions`, `agentActivities`, `quickReplies` e `blocks`;
 5. a UI apenas renderiza.
 
+## Estado Final do PR1
+
+O `PR1` fecha a base do runtime conversacional do `IMOB_CRM` no caminho normal.
+
+Isso significa:
+- `resolveImobTurn` continua como parser e construtor de fluxo governado, mas deixa de montar cards legados concorrentes para `owner.create` e `property.create` no caminho normal;
+- `imobCrmTurnEngine` passa a carimbar `conversationState.operational.outcome` e `presentation.metadata.canonicalSnapshot`;
+- o snapshot canônico passa a ser autoritativo para:
+  - `headline/text`
+  - `summary/blocks`
+  - `form`
+  - `ctas`
+  - `quickReplies`
+  - `post-success`
+- a camada de compatibilidade de registro/dedupe só pode:
+  - enriquecer draft;
+  - abrir dedupe review;
+  - bloquear fechado quando necessário;
+  - nunca apagar uma superfície governada já resolvida sem trazer enriquecimento real.
+
+Forma canônica materializada:
+- `conversationState.operational.flow`
+- `conversationState.operational.status`
+- `conversationState.operational.pendingFields`
+- `conversationState.operational.outcome`
+- `presentation.metadata.canonicalSnapshot.authoritative = true`
+- `presentation.metadata.canonicalSnapshot.source = imob_crm_turn_engine`
+- `presentation.metadata.canonicalSnapshot.variant`
+
+Outcomes operacionais canônicos:
+- `created`
+- `updated`
+- `deduped_update`
+- `blocked`
+- `waiting_input`
+
+Variants de snapshot canônico hoje usados pelo `IMOB`:
+- `collecting_fields`
+- `form_draft`
+- `success_created`
+- `success_updated`
+- `success_deduped_update`
+- `blocked_missing_data`
+- `blocked_scope`
+- `consult`
+- `fallback`
+
 ## Requisitos de Governança
 
 Para considerar o runtime realmente governado, estes requisitos devem permanecer verdadeiros:
@@ -126,8 +176,42 @@ Invariantes que não podem regredir:
 - canonicalização geográfica com lock;
 - `market_scan` read-only;
 - `presentation freshness`;
+- formulário governado ativo não pode ser substituído por card/menu genérico quando o fluxo ativo continua válido;
+- `property.create` em pós-sucesso não pode emitir card legado concorrente;
+- `owner.create` e `property.create` só exibem guidance genérico quando a navegação do usuário é realmente genérica;
+- compat layer não pode apagar `form` canônico quando não houver enriquecimento visual real;
+- `quickReplies` de captura devem ser suprimidas quando o formulário governado ativo ou os blocos pós-sucesso já resolveram o turno;
 - `proof surface` canônica para turns sensíveis;
 - golden paths E2E.
+
+## Estado PR8 — Recipes e perguntas humanas reais
+
+O `PR8` não adiciona uma feature paralela ao chat. Ele consolida recipe como parametrização do planner dentro do caminho canônico já existente.
+
+Fluxo materializado:
+
+1. o catálogo/self-service abre o Chat IMOB com `recipeId`;
+2. a página do Chat IMOB apenas encaminha `recipeId` no body de `/imob/chat/resolve-turn`;
+3. a rota valida se a recipe está homologada, pertence ao tenant e está liberada para o workspace;
+4. recipe inválida falha fechado antes do engine;
+5. recipe válida vira `recipeMissionContext`;
+6. o engine injeta esse contexto no `conversationState.operational.missionContext`;
+7. `ImobCaseContext v1` expõe `missionContext.recipeId`;
+8. `ImobCasePlanner` decide estágio, próxima ação e ações suprimidas.
+
+Invariantes provadas por teste:
+- `recipeId` sai do cliente web e chega ao contrato de `/imob/chat/resolve-turn`;
+- recipe IMOB homologada de temporada configura `capture_seasonal_property`;
+- recipe draft ou de outro agente não configura missão IMOB;
+- proprietário resolvido suprime `owner.create`;
+- imóvel resolvido suprime `property.create`;
+- proprietário + imóvel sem vínculo gera `property.link_owner`;
+- vínculo concluído avança para documentos;
+- `case.review` permanece ação válida de recuperação.
+
+Limite explícito:
+- a suíte atual prova planner/engine/cliente web de forma focada;
+- não substitui ainda um teste HTTP completo com banco real para clicar no catálogo, abrir o chat e executar toda a jornada via navegador.
 
 ## Invariante de proof surface
 
@@ -135,8 +219,8 @@ Para turns IMOB sensíveis, a prova auditável já faz parte do contrato canôni
 
 Regra:
 - o backend resolve `presentation.proof`;
-- a mensagem do chat persiste `message.proof` como fonte primária;
-- a UI do IMOB apenas renderiza esse bloco e não sintetiza prova local;
+- a mensagem do chat persiste `message.proof` como espelho persistido da mesma resolução final;
+- para fluxos governados migrados, a UI do IMOB usa `presentation.proof` como única fonte visual e não sintetiza prova local;
 - `done` não é estado válido quando a policy exigir prova e `proof.ready = false`.
 
 Forma canônica:
@@ -154,6 +238,10 @@ Isso vale para:
 - mensagens persistidas;
 - snapshot/export do histórico;
 - leituras consultivas que já possuam sinais reais de prova no `caseContext`.
+
+Fallback ainda aceito:
+- `card.proof` só permanece como compatibilidade conservadora para snapshots não migrados;
+- `caseContext.proof` continua consultivo, não visual primário.
 
 ## Trilha de piloto operacional
 
@@ -224,6 +312,12 @@ Enquanto isso não estiver provado, remover a facade seria prematuro.
 ### Comprovado agora
 
 - runtime do chat IMOB agent-driven com launcher `render-only`
+- caminho normal de `owner.create` e `property.create` fechado em `estado canônico + snapshot canônico`
+- `conversationState.operational.outcome` materializado no turn engine
+- `presentation.metadata.canonicalSnapshot` autoritativo no turn engine
+- supressão de card legado no pós-sucesso normal de `property.create`
+- continuidade do formulário governado mesmo após camada de dedupe/registro quando não houver enriquecimento real
+- guidance genérico restrito a navegação realmente genérica durante fluxo ativo
 - fallback legado em allowlist auditável
 - governança por capability com `minimumRolloutStage`
 - bootstrap local de teste para `DB/Redis`
@@ -232,12 +326,13 @@ Enquanto isso não estiver provado, remover a facade seria prematuro.
 - `ledger/bundle` verificáveis
 - `settlement` de comissão mantendo vínculo `run + receipt + ledger` e idempotência em replay
 - `reputation/disputes` com trilha auditável por `tenant/workspace`
-- `proof surface` canônica propagada por `presentation.proof`, `message.proof` e export do chat IMOB
-- página IMOB usando `presentation.proof` também em turns resolvidos em tempo real
+- `proof surface` canônica propagada por `presentation.proof`, com `message.proof` como espelho persistido e exportável
+- página IMOB usando `presentation.proof` como única fonte visual nos fluxos governados migrados
 
 ### Ainda não fechado nesta etapa
 
 - `Receipt Canon / ledger / txId` como semântica final de conclusão em toda a superfície do chat IMOB
+- ampliação da fonte visual única de `proof` para fluxos ainda não migrados
 - fechamento da superfície do chat IMOB para expor prova econômica de forma consistente em todos os turns sensíveis
 
 ## Gates Operacionais

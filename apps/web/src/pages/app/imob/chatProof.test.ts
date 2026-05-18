@@ -8,6 +8,13 @@ import {
 
 test("IMOB chat proof helper prioritizes presentation.proof for real-time turns", () => {
   const proof = resolveTurnPresentationProof({
+    metadata: {
+      canonicalSnapshot: {
+        authoritative: true,
+        source: "imob_crm_turn_engine",
+        variant: "consult",
+      },
+    },
     proof: {
       required: true,
       ready: false,
@@ -32,9 +39,38 @@ test("IMOB chat proof helper prioritizes presentation.proof for real-time turns"
   assert.equal(proof?.txId, "tx-turn-1");
 });
 
-test("IMOB chat proof helper falls back to card.proof when presentation.proof is absent", () => {
+test("IMOB chat proof helper ignores card.proof on authoritative canonical snapshots", () => {
   const proof = resolveTurnPresentationProof({
     proof: undefined,
+    metadata: {
+      canonicalSnapshot: {
+        authoritative: true,
+        source: "imob_crm_turn_engine",
+        variant: "consult",
+      },
+    },
+    card: {
+      title: "Leitura",
+      lines: [],
+      runId: "run-card-1",
+      proof: {
+        required: true,
+        ready: true,
+        state: "ready",
+        txId: "tx-card-1",
+        receiptPath: "/api/ledger/tx-card-1",
+        bundlePath: "/api/runs/run-card-1/bundle",
+      },
+    },
+  });
+
+  assert.equal(proof, undefined);
+});
+
+test("IMOB chat proof helper falls back to card.proof only on non-migrated snapshots", () => {
+  const proof = resolveTurnPresentationProof({
+    proof: undefined,
+    metadata: undefined,
     card: {
       title: "Leitura",
       lines: [],
@@ -59,6 +95,13 @@ test("IMOB chat proof helper falls back to card.proof when presentation.proof is
 
 test("IMOB chat proof helper resolves visible proof from message-level source first", () => {
   const visible = resolveVisibleMessageProof({
+    presentationMetadata: {
+      canonicalSnapshot: {
+        authoritative: true,
+        source: "imob_crm_turn_engine",
+        variant: "consult",
+      },
+    },
     proof: {
       required: true,
       ready: false,
@@ -85,6 +128,33 @@ test("IMOB chat proof helper resolves visible proof from message-level source fi
 
   assert.equal(visible?.runId, "run-msg-1");
   assert.equal(visible?.state, "pending");
+});
+
+test("IMOB chat proof helper does not revive card.proof on authoritative canonical messages", () => {
+  const visible = resolveVisibleMessageProof({
+    presentationMetadata: {
+      canonicalSnapshot: {
+        authoritative: true,
+        source: "imob_crm_turn_engine",
+        variant: "success_updated",
+      },
+    },
+    proof: undefined,
+    card: {
+      proof: {
+        required: true,
+        ready: true,
+        state: "ready",
+        runId: "run-card-only",
+        txId: "tx-card-only",
+        receiptPath: "/api/ledger/tx-card-only",
+        bundlePath: "/api/runs/run-card-only/bundle",
+        verifyUrl: "/api/ledger/tx-card-only",
+      },
+    },
+  });
+
+  assert.equal(visible, undefined);
 });
 
 test("IMOB chat proof helper builds canonical runtime execution proof", () => {

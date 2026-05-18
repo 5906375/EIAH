@@ -332,10 +332,29 @@ export type ImobCommissionDraft = {
   approvalRequired: boolean;
 };
 
+export type ImobMissionContext = {
+  mission:
+    | "capture_seasonal_property"
+    | "capture_rental_property"
+    | "capture_sale_property"
+    | "qualify_lead"
+    | "schedule_visit"
+    | "collect_documents"
+    | "prepare_contract"
+    | "settle_commission"
+    | "case_review";
+  defaultGoal?: "aluguel_por_temporada" | "locacao" | "venda" | null;
+  startedFromMessage?: string | null;
+  recipeId?: string | null;
+  lockedUntilExplicitChange: boolean;
+};
+
 export type ImobOperationalState = {
   flow: "owner.create" | "property.create" | "property.market_scan" | "lead.qualify" | "visit.schedule" | "listing.activate" | "documents.collect" | "proposal.create" | "deal.review" | "contract.prepare" | "rules.configure" | "commission.settle";
   status: "collecting" | "ready_for_review";
+  outcome?: "created" | "updated" | "deduped_update" | "blocked" | "waiting_input" | null;
   pendingFields: string[];
+  missionContext?: ImobMissionContext;
   dedupeSelection?: {
     entity: "owner" | "lead" | "property";
     resolution: "update_existing" | "create_new" | "list_existing" | "pending_choice";
@@ -772,6 +791,20 @@ export type ImobCapabilityRegistrySnapshot = {
 export type ImobPresentationMetadata = {
   confidence?: ImobPresentationConfidence;
   choiceStyle?: ImobPresentationChoiceStyle;
+  canonicalSnapshot?: {
+    authoritative: true;
+    source: "imob_crm_turn_engine";
+    variant:
+      | "collecting_fields"
+      | "form_draft"
+      | "success_created"
+      | "success_updated"
+      | "success_deduped_update"
+      | "blocked_missing_data"
+      | "blocked_scope"
+      | "consult"
+      | "fallback";
+  };
   agentRuntime?: ImobAgentRuntimeMetadata;
   governedIntent?: {
     version: string;

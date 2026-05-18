@@ -420,6 +420,28 @@ function isGenericCadastroRequest(message: string) {
   return !hasSpecificTarget;
 }
 
+function isExplicitCaptureRequestForActiveFlow(activeOperationalState: ImobOperationalState, message: string) {
+  const text = normalizeImobText(message);
+  if (activeOperationalState.flow === "owner.create") {
+    return text.includes("propriet");
+  }
+  if (activeOperationalState.flow === "property.create") {
+    return text.includes("imovel") || text.includes("imóvel");
+  }
+  if (activeOperationalState.flow === "lead.qualify") {
+    return (
+      text.includes("lead")
+      || text.includes("cliente")
+      || text.includes("comprador")
+      || text.includes("vendedor")
+      || text.includes("locador")
+      || text.includes("locatario")
+      || text.includes("locatário")
+    );
+  }
+  return false;
+}
+
 function buildCatalogActionLines(actionLabel: string, entityLabels: string[]) {
   return [`Posso seguir com ${actionLabel.toLowerCase()} para ${entityLabels.join(", ")}.`];
 }
@@ -3200,7 +3222,11 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
       },
     });
   }
-  if (activeOperationalState?.status === "collecting" && turnDecision.stage === "front_door_generic") {
+  if (
+    activeOperationalState?.status === "collecting"
+    && turnDecision.stage === "front_door_generic"
+    && !isExplicitCaptureRequestForActiveFlow(activeOperationalState, message)
+  ) {
     const guidanceChoices = buildCaptureFlowGuidanceChoices(activeOperationalState.flow);
     return finalize({
       mode: "consult",
@@ -3515,6 +3541,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
     && !parsedCatalogIntent.entity
     && (parsedCatalogIntent.action === "create" || intent === "adjustment")
     && !["pending_field_parse", "same_journey_context", "explicit_continuity"].includes(turnDecision.stage)
+    && !activeOperationalState?.flow
   ) {
     const actionChoices = parsedCatalogIntent.action === "create" ? buildCadastroCreationChoices() : listImobIntentChoicesForAction(parsedCatalogIntent.action);
     if (actionChoices.length > 0) {
@@ -3767,44 +3794,6 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
   }
 
   const executionRequest = buildOperationalExecution(intent, message, new Date().toISOString(), operationalState);
-  const propertyReadyMenuCard =
-    operationalState?.flow === "property.create" && operationalPendingLabels.length === 0
-      ? {
-          title: "Próximos passos",
-          lines: [],
-          actionsLayout: "inline" as const,
-          ctas: [
-            {
-              id: "property-next-qualify-lead",
-              label: "Qualificar lead",
-              kind: "primary" as const,
-              action: "send_suggested_message" as const,
-              nextMessage: "qualificar lead deste caso",
-            },
-            {
-              id: "property-next-consult-case",
-              label: "Consultar caso",
-              kind: "secondary" as const,
-              action: "send_suggested_message" as const,
-              nextMessage: "consultar caso deste imóvel",
-            },
-            {
-              id: "property-next-documents",
-              label: "Revisar documentos",
-              kind: "neutral" as const,
-              action: "send_suggested_message" as const,
-              nextMessage: "coletar documentos deste imóvel",
-            },
-            {
-              id: "property-next-owner",
-              label: "Cadastrar proprietário",
-              kind: "neutral" as const,
-              action: "send_suggested_message" as const,
-              nextMessage: "cadastrar proprietário",
-            },
-          ],
-        }
-      : undefined;
   const shouldHideInitialPropertyCaptureMeta =
     operationalState?.status === "collecting"
     && operationalState.flow === "property.create"
@@ -3818,7 +3807,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
         : buildVisibleOperationalPresentationMeta(operationalState)
     ),
     metadata: buildCatalogConfidenceMetadata(parsedCatalogIntent, false, { source: semanticIntentSource }),
-    card: marketScanOfferCard ?? propertyReadyMenuCard,
+    card: marketScanOfferCard,
     form:
       operationalState?.status === "collecting"
         ? operationalState.flow === "owner.create"

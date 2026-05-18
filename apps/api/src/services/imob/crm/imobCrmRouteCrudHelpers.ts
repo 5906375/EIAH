@@ -67,7 +67,12 @@ export function extractPropertyCityFromMessage(raw: string) {
 
 export function extractOwnerExplicitNameFromMessage(raw: string) {
   const match = raw.match(new RegExp("(?:nome do (?:proprietario|proprietário|proprietária|proprietaria|vendedor|locador))\\s*:?\\s*([^,.;\\n]+)", "i"));
-  return match?.[1] ? sanitizeOwnerDisplayName(titleCaseWords(match[1].trim()), "") || null : null;
+  const candidate = match?.[1]
+    ? match[1]
+      .split(/\b(?:telefone|e-mail|email|documento|cpf|cnpj)\b/i)[0]
+      .trim()
+    : null;
+  return candidate ? sanitizeOwnerDisplayName(titleCaseWords(candidate), "") || null : null;
 }
 
 export function extractOwnerExplicitPhoneFromMessage(raw: string) {

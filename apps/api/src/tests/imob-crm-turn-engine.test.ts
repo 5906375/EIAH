@@ -92,6 +92,48 @@ test("IMOB_CRM turn engine usa leitura consultiva quando não há fluxo ativo co
   assert.equal(resolved.action, "crm.case.blocked_run_resolution");
 });
 
+test("IMOB_CRM turn engine keeps consultar caso read-only and valid during active workflow", async () => {
+  let consultCalls = 0;
+  const params = createEngineParams({
+    body: {
+      message: "consultar caso",
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "property.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          propertyDraft: {
+            propertyType: "kitnet",
+            goal: "aluguel_por_temporada",
+            city: "Balneário Camboriú",
+            address: "Rua Alvin Bauer, 783 apto 101",
+          },
+        },
+      },
+    },
+  });
+  params.helpers.resolveImobOperationalConsult = async () => {
+    consultCalls += 1;
+    return {
+      mode: "consult",
+      action: "case.status",
+      threadLabel: "Caso",
+      conversationState: params.body.threadState,
+      presentation: { text: "Resumo canônico do caso." },
+    };
+  };
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+
+  assert.equal(consultCalls, 1);
+  assert.equal(resolved.action, "case.status");
+  assert.doesNotMatch((resolved as any).presentation?.text ?? "", /acao nao e valida/i);
+});
+
 test("IMOB_CRM turn engine propagates canonical proof surface from consultive case context", async () => {
   const params = createEngineParams({
     body: { message: "qual status desse caso?", threadState: { mode: "consult", pendingSlot: "none", resultOffset: 0, slots: {}, operational: null } },
@@ -127,6 +169,7 @@ test("IMOB_CRM turn engine propagates canonical proof surface from consultive ca
   assert.equal((resolved as any).presentation?.proof?.ready, true);
   assert.equal((resolved as any).presentation?.proof?.state, "ready");
   assert.equal((resolved as any).presentation?.proof?.txId, "tx-proof-1");
+  assert.equal((resolved as any).presentation?.card?.proof, undefined);
 });
 
 test("IMOB_CRM turn engine prioriza comando operacional explícito antes da leitura consultiva", async () => {
@@ -903,6 +946,8 @@ test("IMOB_CRM turn engine offers visit instead of requalifying lead after prope
     .flatMap((block: any) => block?.ctas ?? []);
   assert.ok(actions.some((item: any) => item.label === "Avançar para visita"));
   assert.ok(!actions.some((item: any) => item.label === "Qualificar lead"));
+  assert.ok(actions.some((item: any) => item.label === "Vincular proprietário"));
+  assert.ok(!actions.some((item: any) => item.label === "Cadastrar proprietário"));
 });
 
 test("IMOB_CRM turn engine keeps property-success actions fully case-aware when case already has lead and owner", async () => {
@@ -962,6 +1007,245 @@ test("IMOB_CRM turn engine keeps property-success actions fully case-aware when 
   assert.ok(!actions.some((item: any) => item.label === "Cadastrar proprietário"));
 });
 
+test("IMOB_CRM turn engine hides owner CTA after property success when linked owner comes from property context", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "salvar cadastro",
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "property.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          propertyDraft: {
+            propertyType: "apartamento",
+            goal: "locacao",
+            city: "Itapema",
+            address: "Rua 260",
+          },
+        },
+      },
+    },
+  });
+  params.helpers.resolveImobOperationalUpdate = async () => ({
+    mode: "execute",
+    action: "crm.property.update",
+    threadLabel: "Imóvel",
+    conversationState: params.body.threadState,
+    caseContext: {
+      caseId: "case-1",
+      flow: "property.create",
+      lead: {
+        id: "lead-1",
+        name: "João",
+      },
+      property: {
+        id: "property-1",
+        city: "Itapema",
+        owner: {
+          id: "owner-1",
+          name: "Nilsen Majolo",
+        },
+      },
+    },
+    presentation: {
+      text: "Cadastro do imóvel processado com sucesso.",
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  const actions = ((resolved as any).presentation?.blocks ?? [])
+    .flatMap((block: any) => block?.ctas ?? []);
+  assert.ok(actions.some((item: any) => item.label === "Avançar para visita"));
+  assert.ok(!actions.some((item: any) => item.label === "Cadastrar proprietário"));
+});
+
+test("IMOB_CRM turn engine adds post-success property summary after property capture", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "salvar cadastro",
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "property.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          propertyDraft: {
+            propertyType: "apartamento",
+            goal: "locacao",
+            city: "Itajaí",
+            address: "Rua 7 de Setembro",
+          },
+        },
+      },
+    },
+  });
+  params.helpers.resolveImobOperationalUpdate = async () => ({
+    mode: "execute",
+    action: "crm.property.update",
+    threadLabel: "Imóvel",
+    conversationState: params.body.threadState,
+    caseContext: {
+      caseId: "case-1",
+      flow: "property.create",
+      property: {
+        id: "property-1",
+        propertyType: "apartamento",
+        goal: "locacao",
+        city: "Itajaí",
+        address: "Rua 7 de Setembro",
+        owner: {
+          id: "owner-1",
+          name: "Nilsen Majolo",
+        },
+      },
+    },
+    presentation: {
+      text: "Cadastro do imóvel processado com sucesso.",
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  const blocks = (resolved as any).presentation?.blocks ?? [];
+  const summaryBlock = blocks.find((block: any) => block?.title === "Resumo do imóvel cadastrado");
+  assert.ok(summaryBlock);
+  assert.deepEqual(summaryBlock.lines, [
+    "Tipo: Apartamento",
+    "Finalidade: Locação",
+    "Cidade: Itajaí",
+    "Endereço: Rua 7 de Setembro",
+    "Proprietário vinculado: Nilsen Majolo",
+  ]);
+});
+
+test("IMOB_CRM turn engine uses seasonal case planner action after property success", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "salvar cadastro",
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "property.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          propertyDraft: {
+            propertyType: "kitnet",
+            goal: "aluguel_por_temporada",
+            city: "Balneário Camboriú",
+            address: "Rua Alvin Bauer, 783 apto 101",
+          },
+        },
+      },
+    },
+  });
+  params.helpers.resolveImobOperationalUpdate = async () => ({
+    mode: "execute",
+    action: "crm.property.update",
+    threadLabel: "Imóvel",
+    conversationState: params.body.threadState,
+    caseContext: {
+      caseId: "case-seasonal-1",
+      flow: "property.create",
+      owner: {
+        id: "owner-1",
+        name: "Carlos Alberto",
+        document: "12345678900",
+      },
+      property: {
+        id: "property-1",
+        propertyType: "kitnet",
+        goal: "aluguel_por_temporada",
+        city: "Balneário Camboriú",
+        address: "Rua Alvin Bauer, 783 apto 101",
+      },
+    },
+    presentation: {
+      text: "Cadastro do imóvel processado com sucesso.",
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  const actions = ((resolved as any).presentation?.blocks ?? [])
+    .flatMap((block: any) => block?.ctas ?? []);
+
+  assert.equal((resolved as any).imobCasePlan?.mission, "capture_seasonal_property");
+  assert.equal((resolved as any).imobCasePlan?.primaryAction?.operation, "property.link_owner");
+  assert.ok(actions.some((item: any) => item.label === "Concluir vínculo"));
+  assert.ok(!actions.some((item: any) => item.label === "Cadastrar proprietário"));
+});
+
+test("IMOB_CRM turn engine accepts validated recipe mission context as planner input", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "começar recipe",
+      recipeMissionContext: {
+        mission: "capture_seasonal_property",
+        defaultGoal: "aluguel_por_temporada",
+        recipeId: "recipe-temporada-1",
+        startedFromMessage: null,
+        lockedUntilExplicitChange: true,
+      },
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "property.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          propertyDraft: {
+            propertyType: "kitnet",
+            goal: "aluguel_por_temporada",
+            city: "Balneário Camboriú",
+            address: "Rua Alvin Bauer, 783 apto 101",
+          },
+        },
+      },
+    },
+  });
+  params.helpers.resolveImobOperationalUpdate = async () => ({
+    mode: "execute",
+    action: "crm.property.update",
+    threadLabel: "Imóvel",
+    conversationState: params.body.threadState,
+    caseContext: {
+      caseId: "case-recipe-1",
+      flow: "property.create",
+      owner: {
+        id: "owner-1",
+        name: "Carlos Alberto",
+        document: "12345678900",
+      },
+      property: {
+        id: "property-1",
+        propertyType: "kitnet",
+        goal: "aluguel_por_temporada",
+        city: "Balneário Camboriú",
+        address: "Rua Alvin Bauer, 783 apto 101",
+      },
+    },
+    presentation: {
+      text: "Cadastro do imóvel processado com sucesso.",
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+
+  assert.equal((resolved as any).conversationState?.operational?.missionContext?.recipeId, "recipe-temporada-1");
+  assert.equal((resolved as any).imobCaseContext?.missionContext?.recipeId, "recipe-temporada-1");
+  assert.equal((resolved as any).imobCasePlan?.primaryAction?.operation, "property.link_owner");
+});
+
 test("IMOB_CRM turn engine derives quick replies from the final presentation payload", async () => {
   const params = createEngineParams({
     body: {
@@ -1011,4 +1295,96 @@ test("IMOB_CRM turn engine derives quick replies from the final presentation pay
     "mostrar pendências do caso",
     "executar próximo passo do caso",
   ]);
+});
+
+test("IMOB_CRM turn engine stamps canonical outcome and clears legacy property success card", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "salvar cadastro",
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "property.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          propertyDraft: {
+            propertyType: "apartamento",
+            goal: "locacao",
+            city: "Itajaí",
+            address: "Rua 7 de Setembro",
+          },
+        },
+      },
+    },
+  });
+  params.helpers.resolveImobOperationalUpdate = async () => ({
+    mode: "execute",
+    action: "crm.property.update",
+    threadLabel: "Imóvel",
+    conversationState: params.body.threadState,
+    caseContext: {
+      caseId: "case-1",
+      flow: "property.create",
+      property: {
+        id: "property-1",
+        propertyType: "apartamento",
+        goal: "locacao",
+        city: "Itajaí",
+        address: "Rua 7 de Setembro",
+      },
+    },
+    presentation: {
+      text: "Cadastro do imóvel processado com sucesso.",
+      card: {
+        title: "Resumo legado",
+        lines: ["não deveria sobreviver ao snapshot canônico"],
+      },
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal((resolved as any).conversationState?.operational?.outcome, "updated");
+  assert.equal((resolved as any).presentation?.metadata?.canonicalSnapshot?.authoritative, true);
+  assert.equal((resolved as any).presentation?.metadata?.canonicalSnapshot?.variant, "success_updated");
+  assert.equal((resolved as any).presentation?.card, undefined);
+  assert.equal((resolved as any).presentation?.form, undefined);
+  assert.equal((resolved as any).presentation?.quickReplies, undefined);
+  assert.ok(Array.isArray((resolved as any).presentation?.blocks));
+});
+
+test("IMOB_CRM turn engine suppresses quick replies while canonical owner form is active", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "quero cadastrar um proprietário",
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "owner.create",
+          status: "collecting",
+          pendingFields: ["ownerDocument"],
+          ownerDraft: {
+            ownerPersona: "proprietario",
+            ownerName: "Nilsen Majolo",
+            ownerPhone: "47999886868",
+            ownerEmail: "nilsen@gmail.com",
+            ownerDocument: null,
+          },
+        },
+      },
+    },
+  });
+  params.helpers.resolveImobOperationalUpdate = async () => null;
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal((resolved as any).conversationState?.operational?.outcome, "waiting_input");
+  assert.equal((resolved as any).presentation?.metadata?.canonicalSnapshot?.variant, "collecting_fields");
+  assert.deepEqual((resolved as any).presentation?.quickReplies ?? [], []);
+  assert.equal(Boolean((resolved as any).presentation?.form), true);
+  assert.equal((resolved as any).presentation?.card, undefined);
 });

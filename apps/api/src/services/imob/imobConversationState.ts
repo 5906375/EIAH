@@ -148,10 +148,20 @@ export function extractGoal(text: string): ImobSearchSlots["goal"] {
 export function extractGoalCandidates(text: string) {
   const normalized = normalizeImobText(text);
   const candidates: string[] = [];
+  const hasSeasonalGoal = normalized.includes("temporada");
+  const hasExplicitLongTermRent =
+    normalized.includes("locacao anual") ||
+    normalized.includes("locação anual") ||
+    normalized.includes("aluguel anual") ||
+    normalized.includes("locacao mensal") ||
+    normalized.includes("locação mensal") ||
+    normalized.includes("aluguel mensal");
   if (normalized.includes("compr")) candidates.push("compra");
   if (normalized.includes("vend")) candidates.push("venda");
-  if (normalized.includes("alug") || normalized.includes("loca")) candidates.push("locacao");
-  if (normalized.includes("temporada")) candidates.push("aluguel_por_temporada");
+  if ((normalized.includes("alug") || normalized.includes("loca")) && (!hasSeasonalGoal || hasExplicitLongTermRent)) {
+    candidates.push("locacao");
+  }
+  if (hasSeasonalGoal) candidates.push("aluguel_por_temporada");
   return Array.from(new Set(candidates));
 }
 
@@ -417,8 +427,22 @@ function trimNamedPartyCandidate(value: string) {
   if (
     !trimmed
     || [
+      "proprietario",
+      "proprietaria",
+      "dono",
+      "lead",
+      "cliente",
+      "comprador",
+      "locatario",
       "existente",
       "novo",
+      "um proprietario",
+      "uma proprietaria",
+      "um dono",
+      "um lead",
+      "um cliente",
+      "um comprador",
+      "um locatario",
       "cadastro",
       "caso",
       "do caso",
@@ -444,13 +468,13 @@ function extractNamedParty(message: string, role: "owner" | "lead") {
     role === "owner"
       ? [
           /(?:proprietario|proprietaria|dono)\s+([a-z]+(?:\s+[a-z]+){0,2})/,
-          /(?:captar|cadastrar)\s+(?:proprietario\s+)?([a-z]+(?:\s+[a-z]+){0,2})/,
+          /(?:captar|cadastrar)\s+(?:um\s+|uma\s+)?(?:proprietario\s+|proprietaria\s+|dono\s+)?([a-z]+(?:\s+[a-z]+){0,2})/,
         ]
       : [
           /(?:lead|cliente|comprador|locatario)\s+(?:chamado|chamada|nomeado|nomeada)\s+([a-z]+(?:\s+[a-z]+){0,2})/,
           /(?:lead|cliente|comprador|locatario)\s+([a-z]+(?:\s+[a-z]+){0,2})/,
-          /(?:qualificar|atender)\s+(?:um\s+)?(?:lead\s+)?(?:chamado|chamada|nomeado|nomeada)\s+([a-z]+(?:\s+[a-z]+){0,2})/,
-          /(?:qualificar|atender)\s+(?:um\s+)?(?:lead\s+)?([a-z]+(?:\s+[a-z]+){0,2})/,
+          /(?:qualificar|atender)\s+(?:um\s+|uma\s+)?(?:lead\s+|cliente\s+|comprador\s+|locatario\s+)?(?:chamado|chamada|nomeado|nomeada)\s+([a-z]+(?:\s+[a-z]+){0,2})/,
+          /(?:qualificar|atender)\s+(?:um\s+|uma\s+)?(?:lead\s+|cliente\s+|comprador\s+|locatario\s+)?([a-z]+(?:\s+[a-z]+){0,2})/,
         ];
   for (const pattern of patterns) {
     const match = normalized.match(pattern);
@@ -532,6 +556,20 @@ function hasPropertyCaptureSignal(message: string, slots: ImobSearchSlots) {
     return explicitPropertySignal;
   }
   return Boolean(explicitPropertySignal || slots.goal);
+}
+
+function hasExplicitOwnerCreateRequest(message: string) {
+  const normalized = normalizeImobText(message);
+  const wantsCreate = normalized.includes("cadastrar")
+    || normalized.includes("cadastro")
+    || normalized.includes("incluir")
+    || normalized.includes("registrar");
+  const hasOwner = normalized.includes("proprietario")
+    || normalized.includes("proprietaria")
+    || normalized.includes("locador")
+    || normalized.includes("vendedor")
+    || normalized.includes("dono");
+  return wantsCreate && hasOwner;
 }
 
 function buildPropertyDraft(previous: ImobPropertyDraft | undefined, message: string, slots: ImobSearchSlots): ImobPropertyDraft {
@@ -1318,12 +1356,78 @@ function buildCommissionPendingFields(draft: ImobCommissionDraft) {
   return pending;
 }
 
+function buildMissionContext(
+  previous: ImobOperationalState | undefined | null,
+  message: string,
+  slots: ImobSearchSlots,
+): ImobOperationalState["missionContext"] | undefined {
+  const normalized = normalizeImobText(message);
+  const previousMission = previous?.missionContext;
+  const explicitSale = slots.goal === "venda" || normalized.includes("venda") || normalized.includes("vender");
+  const explicitLongTermRent =
+    slots.goal === "locacao"
+    || normalized.includes("locacao anual")
+    || normalized.includes("locação anual")
+    || normalized.includes("aluguel anual")
+    || normalized.includes("locacao mensal")
+    || normalized.includes("locação mensal")
+    || normalized.includes("aluguel mensal");
+  const explicitSeasonal =
+    slots.goal === "aluguel_por_temporada"
+    || normalized.includes("temporada")
+    || normalized.includes("aluguel por temporada")
+    || normalized.includes("locacao por temporada")
+    || normalized.includes("locação por temporada");
+
+  if (explicitSeasonal) {
+    return {
+      mission: "capture_seasonal_property",
+      defaultGoal: "aluguel_por_temporada",
+      startedFromMessage: previousMission?.startedFromMessage ?? message,
+      recipeId: previousMission?.recipeId ?? null,
+      lockedUntilExplicitChange: true,
+    };
+  }
+  if (explicitSale) {
+    return {
+      mission: "capture_sale_property",
+      defaultGoal: "venda",
+      startedFromMessage: previousMission?.startedFromMessage ?? message,
+      recipeId: previousMission?.recipeId ?? null,
+      lockedUntilExplicitChange: false,
+    };
+  }
+  if (explicitLongTermRent) {
+    return {
+      mission: "capture_rental_property",
+      defaultGoal: "locacao",
+      startedFromMessage: previousMission?.startedFromMessage ?? message,
+      recipeId: previousMission?.recipeId ?? null,
+      lockedUntilExplicitChange: false,
+    };
+  }
+  return previousMission;
+}
+
+function applyMissionDefaultGoal(
+  slots: ImobSearchSlots,
+  missionContext: ImobOperationalState["missionContext"] | undefined,
+): ImobSearchSlots {
+  if (slots.goal || missionContext?.defaultGoal !== "aluguel_por_temporada") return slots;
+  if (!missionContext.lockedUntilExplicitChange) return slots;
+  return {
+    ...slots,
+    goal: "aluguel_por_temporada",
+  };
+}
+
 export function createNextImobOperationalState(
   previous: ImobOperationalState | undefined | null,
   intent: ImobIntent,
   message: string,
   slots: ImobSearchSlots
 ): ImobOperationalState | null {
+  const missionContext = buildMissionContext(previous, message, slots);
   if (intent === "capture") {
     if (previous?.flow === "property.market_scan" && (previous.marketScanSnapshot || previous.marketScanSelection)) {
       const normalized = normalizeImobText(message);
@@ -1353,6 +1457,7 @@ export function createNextImobOperationalState(
           flow: "property.create",
           status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
           pendingFields,
+          missionContext,
           propertyDraft,
         };
       }
@@ -1365,6 +1470,7 @@ export function createNextImobOperationalState(
         const selection = buildMarketScanSelection(previous.marketScanSnapshot, selectedItem);
         return {
           ...previous,
+          missionContext,
           status: "ready_for_review",
           pendingFields: [],
           propertyDraft: selection
@@ -1379,6 +1485,7 @@ export function createNextImobOperationalState(
     if (previous?.flow === "property.market_scan" && isMarketScanRequest(message)) {
       return {
         ...previous,
+        missionContext,
         marketScanContext: buildMarketScanContext({
           previous: previous.marketScanContext ?? null,
           message,
@@ -1387,7 +1494,7 @@ export function createNextImobOperationalState(
         marketScanSelection: null,
       };
     }
-    if (hasPropertyCaptureSignal(message, slots)) {
+    if (hasPropertyCaptureSignal(message, slots) && !hasExplicitOwnerCreateRequest(message)) {
       const previousMarketScanContext = previous?.flow === "property.market_scan"
         ? previous.marketScanContext ?? null
         : null;
@@ -1405,7 +1512,7 @@ export function createNextImobOperationalState(
             goal: slots.goal ?? previous.leadDraft?.desiredGoal ?? null,
             city: slots.city ?? previous.leadDraft?.desiredCity ?? null,
           }
-        : slots;
+        : applyMissionDefaultGoal(slots, missionContext);
       const draft = buildPropertyDraft(
         previous?.flow === "property.create" ? previous.propertyDraft : undefined,
         message,
@@ -1428,6 +1535,7 @@ export function createNextImobOperationalState(
             ...(marketScanContext.cityCandidates.length > 1 ? ["city"] : []),
             ...(marketScanContext.goalCandidates.length > 1 ? ["goal"] : []),
           ])),
+          missionContext,
           propertyDraft: draft,
           marketScanContext,
           marketScanSnapshot: previous?.flow === "property.market_scan" ? previous.marketScanSnapshot : undefined,
@@ -1438,6 +1546,7 @@ export function createNextImobOperationalState(
         flow: "property.create",
         status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
         pendingFields,
+        missionContext,
         propertyDraft: draft,
       };
     }
@@ -1447,6 +1556,7 @@ export function createNextImobOperationalState(
       flow: "owner.create",
       status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
       pendingFields,
+      missionContext,
       ownerDraft: draft,
     };
   }

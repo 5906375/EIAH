@@ -709,6 +709,14 @@ function normalizeCardCtas(ctas?: CardCta[]) {
 
 function buildCanonicalRecommendedActionCtas(caseContext?: ImobCaseContext | null): CardCta[] {
   const recommended = (caseContext?.canonical?.recommendedActions ?? []) as ImobCaseRecommendedAction[];
+  if (
+    caseContext?.flow === "owner.create"
+    && (caseContext.pendingItems?.length ?? 0) === 0
+    && typeof caseContext.nextStep === "string"
+    && caseContext.nextStep.toLowerCase().includes("vincular o proprietário".toLowerCase())
+  ) {
+    return [];
+  }
   return recommended.slice(0, 3).map((action, index) => ({
     id: `canonical-${action.id}`,
     label: action.label,
@@ -781,6 +789,30 @@ function mapReplyCard(
     };
   }
   return buildCanonicalJourneyCard(caseContext);
+}
+
+function shouldSuppressLegacyCardFromPresentation(
+  presentation: ImobResolveTurnResponse["presentation"] | undefined,
+): boolean {
+  const variant = presentation?.metadata?.canonicalSnapshot?.variant;
+  const authoritative = presentation?.metadata?.canonicalSnapshot?.authoritative === true;
+  if (!authoritative || !variant) return false;
+  return (
+    variant === "collecting_fields"
+    || variant === "form_draft"
+    || variant === "success_created"
+    || variant === "success_updated"
+    || variant === "success_deduped_update"
+  );
+}
+
+function mapReplyCardFromPresentation(
+  presentation: ImobResolveTurnResponse["presentation"] | undefined,
+  thread: { id: string; label: string; status?: "active" | "waiting" | "done" | "blocked" },
+  caseContext?: ImobCaseContext | null,
+): MessageCard | undefined {
+  if (!presentation || shouldSuppressLegacyCardFromPresentation(presentation)) return undefined;
+  return mapReplyCard(presentation.card, thread, caseContext);
 }
 
 function buildJourneyTelemetryMetadata(caseContext?: ImobCaseContext | null, extra?: Record<string, unknown>) {
@@ -1261,7 +1293,7 @@ function humanRunStatusBusiness(status: string, threadLabel?: string | null, flo
     if (area === "proposal") return "Proposta registrada com sucesso.";
     if (area === "visit") return "Visita agendada com sucesso.";
     if (area === "lead") return "Lead cadastrado e qualificado com sucesso.";
-    if (flow === "owner.create") return "Cadastro do proprietário processado.";
+    if (flow === "owner.create") return "Cadastro do proprietário criado com sucesso.";
     if (flow === "property.create") return "Cadastro do imóvel processado.";
     if (area === "capture") return "Cadastro operacional da captação processado.";
     if (area === "match") return "Busca operacional concluída com sucesso.";
@@ -1591,12 +1623,6 @@ function mapStoredMessageToChat(message: ImobChatMessage): ChatMessage {
       ? (proofCandidate as ImobResolveTurnResponse["presentation"]["proof"])
       : undefined;
   const hiddenFromTimeline = metadata?.hiddenFromTimeline === true;
-  const cardWithProof = normalizedCard
-    ? {
-        ...normalizedCard,
-        proof: proof ?? normalizedCard.proof,
-      }
-    : normalizedCard;
 
   return {
     id: message.id,
@@ -1615,7 +1641,7 @@ function mapStoredMessageToChat(message: ImobChatMessage): ChatMessage {
           status: message.threadStatus ?? "active",
         }
       : undefined,
-    card: cardWithProof,
+    card: normalizedCard,
     caseContext,
   };
 }
@@ -1638,6 +1664,14 @@ const ImobChatPage: React.FC = () => {
   const requestedCaseId = React.useMemo(() => {
     const raw = searchParams.get("caseId");
     return raw && raw.trim().length > 0 ? raw.trim() : null;
+  }, [searchParams]);
+  const requestedRecipeId = React.useMemo(() => {
+    const raw = searchParams.get("recipeId");
+    return raw && raw.trim().length > 0 ? raw.trim() : null;
+  }, [searchParams]);
+  const requestedStartNew = React.useMemo(() => {
+    const raw = searchParams.get("startNew");
+    return raw === "1" || raw === "true";
   }, [searchParams]);
   const requestedAutoprompt = React.useMemo(() => {
     const raw = searchParams.get("autoprompt");
@@ -1945,12 +1979,12 @@ const ImobChatPage: React.FC = () => {
           threadLabel: message.thread?.label ?? message.card?.thread?.label,
           threadStatus: message.thread?.status ?? message.card?.thread?.status,
           runId: message.card?.runId ?? message.proof?.runId ?? undefined,
-          txId: message.proof?.txId ?? message.card?.proof?.txId ?? undefined,
-          receiptPath: message.proof?.receiptPath ?? message.card?.proof?.receiptPath ?? undefined,
-          bundlePath: message.proof?.bundlePath ?? message.card?.proof?.bundlePath ?? undefined,
+          txId: message.proof?.txId ?? undefined,
+          receiptPath: message.proof?.receiptPath ?? undefined,
+          bundlePath: message.proof?.bundlePath ?? undefined,
           metadata: {
             card: message.card ?? null,
-            proof: message.proof ?? message.card?.proof ?? null,
+            proof: message.proof ?? null,
             caseContext: message.caseContext ?? null,
             presentationMetadata: message.presentationMetadata ?? null,
             blocks: message.blocks ?? null,
@@ -2015,6 +2049,9 @@ const ImobChatPage: React.FC = () => {
   React.useEffect(() => {
     let mounted = true;
     setHistoryLoading(true);
+    if (requestedStartNew) {
+      startNewBootstrapReadyRef.current = false;
+    }
 
     const bootstrap = async () => {
       try {
@@ -2023,7 +2060,9 @@ const ImobChatPage: React.FC = () => {
         const withHistory = list.items.filter((item) => item.lastMessageAt || item.lastMessagePreview);
         setConversations(withHistory);
         const selectedConversationId =
-          (requestedConversationId && withHistory.some((item) => item.conversationId === requestedConversationId)
+          requestedStartNew
+            ? null
+            : (requestedConversationId && withHistory.some((item) => item.conversationId === requestedConversationId)
             ? requestedConversationId
             : withHistory[0]?.conversationId) ?? null;
         if (!mounted) return;
@@ -2051,6 +2090,15 @@ const ImobChatPage: React.FC = () => {
         } else {
           setMessages([]);
           setThreads([]);
+          setSelectedThreadId(null);
+          setActiveThread(null);
+          setActiveAssistantMessageId(null);
+          setPendingExecution(null);
+          setOpenOptionsMessageId(null);
+          setRejectLockedMessageId(null);
+          setSelectedKnowledgeContext(null);
+          setActiveRunId(null);
+          setRunStatus(null);
           setContractInterviewState(null);
           setSingleEditFieldId(null);
           sessionRunByThreadRef.current = {};
@@ -2062,6 +2110,15 @@ const ImobChatPage: React.FC = () => {
         if (!mounted) return;
         setMessages([]);
         setThreads([]);
+        setSelectedThreadId(null);
+        setActiveThread(null);
+        setActiveAssistantMessageId(null);
+        setPendingExecution(null);
+        setOpenOptionsMessageId(null);
+        setRejectLockedMessageId(null);
+        setSelectedKnowledgeContext(null);
+        setActiveRunId(null);
+        setRunStatus(null);
         setContractInterviewState(null);
         setSingleEditFieldId(null);
         sessionRunByThreadRef.current = {};
@@ -2069,6 +2126,9 @@ const ImobChatPage: React.FC = () => {
         caseIdByThreadRef.current = {};
         caseContextByThreadRef.current = {};
       } finally {
+        if (requestedStartNew) {
+          startNewBootstrapReadyRef.current = true;
+        }
         if (mounted) setHistoryLoading(false);
       }
     };
@@ -2077,7 +2137,7 @@ const ImobChatPage: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, [requestedConversationId, requestedThreadId]);
+  }, [requestedConversationId, requestedStartNew, requestedThreadId]);
 
   const loadConversation = React.useCallback(async (nextConversationId: string) => {
     setHistoryLoading(true);
@@ -2609,14 +2669,16 @@ const ImobChatPage: React.FC = () => {
   };
 
   const autopromptConsumedRef = React.useRef<string | null>(null);
+  const startNewBootstrapReadyRef = React.useRef(false);
 
   React.useEffect(() => {
     if (!requestedAutoprompt) return;
+    if (requestedStartNew && !startNewBootstrapReadyRef.current) return;
     if (historyLoading || historyLoadingMore || pendingExecution) return;
     if (autopromptConsumedRef.current === requestedAutoprompt) return;
     autopromptConsumedRef.current = requestedAutoprompt;
     void sendMessageText(requestedAutoprompt);
-  }, [historyLoading, historyLoadingMore, pendingExecution, requestedAutoprompt]);
+  }, [historyLoading, historyLoadingMore, pendingExecution, requestedAutoprompt, requestedStartNew]);
 
   const resolveInterviewOperationThread = React.useCallback(() => {
     const selectedThread = selectedThreadId ? threads.find((item) => item.threadId === selectedThreadId) : null;
@@ -2895,6 +2957,7 @@ const ImobChatPage: React.FC = () => {
         threadLabel: currentThreadLabel,
         threadId: currentThreadId,
         caseId: resolvedCaseId,
+        recipeId: requestedRecipeId,
         threadState: currentThreadId ? conversationStateByThreadRef.current[currentThreadId] ?? null : null,
       });
     } catch (error) {
@@ -3178,7 +3241,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         form: mapApiPresentationForm(turn.presentation.form),
         proof,
         thread: { ...baseThread, status: "blocked" },
-        card: mapReplyCard(turn.presentation.card, { ...baseThread, status: "blocked" }, turn.caseContext),
+        card: mapReplyCardFromPresentation(turn.presentation, { ...baseThread, status: "blocked" }, turn.caseContext),
         caseContext: turn.caseContext ?? undefined,
       };
       appendMessage(blockedReply);
@@ -3208,7 +3271,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         form: mapApiPresentationForm(turn.presentation.form),
         proof,
         thread: baseThread,
-        card: mapReplyCard(turn.presentation.card, baseThread, turn.caseContext),
+        card: mapReplyCardFromPresentation(turn.presentation, baseThread, turn.caseContext),
         caseContext: turn.caseContext ?? undefined,
       };
       appendMessage(consultReply);
@@ -3303,7 +3366,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         widget: mapPresentationWidget(inventory.presentation.widget),
         proof,
         thread: baseThread,
-        card: mapReplyCard(inventory.presentation.card, baseThread, turn.caseContext),
+        card: mapReplyCardFromPresentation(inventory.presentation, baseThread, turn.caseContext),
         caseContext: turn.caseContext ?? undefined,
       };
       appendMessage(searchReply);
@@ -3563,7 +3626,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
           widget: mapPresentationWidget(attachmentResolution.data.presentation.widget),
           proof: resolveTurnPresentationProof(attachmentResolution.data.presentation),
           thread: { id: uploadThread.id, label: uploadThread.label, status: attachmentResolution.data.resolved ? "done" : "active" },
-          card: mapReplyCard(attachmentResolution.data.presentation.card, {
+          card: mapReplyCardFromPresentation(attachmentResolution.data.presentation, {
             id: uploadThread.id,
             label: uploadThread.label,
             status: attachmentResolution.data.resolved ? "done" : "active",
@@ -3698,7 +3761,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
           form: mapApiPresentationForm(response.data.presentation.form),
           proof: resolveTurnPresentationProof(response.data.presentation),
           thread,
-          card: mapReplyCard(response.data.presentation.card, thread, response.data.caseContext ?? message.caseContext),
+          card: mapReplyCardFromPresentation(response.data.presentation, thread, response.data.caseContext ?? message.caseContext),
           caseContext: response.data.caseContext ?? message.caseContext,
         };
         appendMessage(followUp);
@@ -3895,6 +3958,10 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     await sendMessageText(payload, {
       displayText: buildPresentationFormDisplayText(form, actionId),
       suppressUserEcho: true,
+    });
+    updateMessageById(message.id, {
+      form: undefined,
+      card: null as any,
     });
   }
 
@@ -4540,7 +4607,11 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                   message.card?.title !== "Imóvel já cadastrado" &&
                   !inlineChoicePresentation;
                 const messageCard = showMessageCard ? message.card ?? null : null;
-                const visibleProof = resolveVisibleMessageProof({ proof: message.proof, card: messageCard ?? message.card ?? null }) ?? null;
+                const visibleProof = resolveVisibleMessageProof({
+                  proof: message.proof,
+                  presentationMetadata: message.presentationMetadata,
+                  card: messageCard ?? message.card ?? null,
+                }) ?? null;
                 const showBubble =
                   isUser
                   || Boolean(message.text.trim())
