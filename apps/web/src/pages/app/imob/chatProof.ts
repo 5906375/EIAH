@@ -3,12 +3,22 @@ import type { ImobResolveTurnResponse } from "@/features/imob/imobApiClient";
 
 export type ChatProofSurface = NonNullable<ImobChatMessage["proof"]>;
 
+function isAuthoritativeCanonicalSnapshot(
+  metadata:
+    | Pick<NonNullable<ImobResolveTurnResponse["presentation"]["metadata"]>, "canonicalSnapshot">
+    | Pick<NonNullable<ImobChatMessage["presentationMetadata"]>, "canonicalSnapshot">
+    | null
+    | undefined,
+) {
+  return metadata?.canonicalSnapshot?.authoritative === true;
+}
+
 export function resolveTurnPresentationProof(
-  presentation: Pick<ImobResolveTurnResponse["presentation"], "proof" | "card"> | null | undefined,
+  presentation: Pick<ImobResolveTurnResponse["presentation"], "proof" | "card" | "metadata"> | null | undefined,
 ): ChatProofSurface | undefined {
   if (!presentation) return undefined;
   const direct = presentation.proof;
-  const cardProof = presentation.card?.proof;
+  const cardProof = isAuthoritativeCanonicalSnapshot(presentation.metadata) ? undefined : presentation.card?.proof;
   const source = direct ?? cardProof;
   if (!source) return undefined;
   const runId = source.runId ?? presentation.card?.runId ?? null;
@@ -30,7 +40,12 @@ export function resolveTurnPresentationProof(
   };
 }
 
-export function resolveVisibleMessageProof(message: Pick<ImobChatMessage, "proof"> & { card?: { proof?: ChatProofSurface } | null }): ChatProofSurface | undefined {
+export function resolveVisibleMessageProof(
+  message: Pick<ImobChatMessage, "proof" | "presentationMetadata"> & { card?: { proof?: ChatProofSurface } | null },
+): ChatProofSurface | undefined {
+  if (isAuthoritativeCanonicalSnapshot(message.presentationMetadata)) {
+    return message.proof ?? undefined;
+  }
   return message.proof ?? message.card?.proof ?? undefined;
 }
 

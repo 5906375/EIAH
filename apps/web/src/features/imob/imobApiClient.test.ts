@@ -44,11 +44,12 @@ test("IMOB API client posts resolve-turn to backend contract", async () => {
     );
   }) as typeof fetch;
 
-  const response = await resolveImobTurn({ message: "quero alugar apto" });
+  const response = await resolveImobTurn({ message: "quero alugar apto", recipeId: "recipe-imob-1" });
 
   assert.equal(response.mode, "consult");
   assert.match(calledUrl, /\/imob\/chat\/resolve-turn$/);
   assert.match(calledBody, /quero alugar apto/);
+  assert.match(calledBody, /recipe-imob-1/);
 });
 
 test("IMOB API client posts inventory search to backend contract", async () => {

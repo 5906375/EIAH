@@ -1228,13 +1228,50 @@ test("IMOB_CRM owner dedupe selection updates the selected owner without asking 
   });
 
   assert.equal(resolved?.action, "crm.owner.update");
-  assert.match(resolved?.presentation?.text ?? "", /Cadastro do proprietário atualizado com sucesso/i);
+  assert.match(resolved?.presentation?.text ?? "", /Cadastro existente do proprietário Carlos Merllon atualizado com sucesso/i);
   assert.equal(resolved?.presentation?.form, undefined);
   assert.notEqual(resolved?.presentation?.dedupeKey, "crm.registration.dedupe_review");
   const updated = await (prisma as any).imobOwner.findFirst({
     where: { tenantId: "tenant-1", workspaceId: "workspace-1", id: "owner-1" },
   });
   assert.equal(updated?.name, "Carlos Merllon");
+});
+
+test("IMOB_CRM owner form update persists phone and email and clears resolved pending items", async () => {
+  const prisma = createMockPrisma();
+  (prisma as any).__data.owners[0].phone = null;
+  (prisma as any).__data.owners[0].email = null;
+  (prisma as any).__data.owners[0].document = "45455566655";
+  (prisma as any).__data.owners[0].pendingItems = ["telefone do proprietário", "e-mail do proprietário"];
+
+  const resolved = await resolveImobCrmOperationalUpdate({
+    prisma: prisma as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    caseId: "case-1",
+    message: "nome do proprietário João telefone do proprietário 47 996635092 e-mail do proprietário nilsen@gmail.com documento do proprietário 45455566655",
+    threadState: {
+      ...createThreadState(),
+      operational: {
+        flow: "owner.create",
+        status: "collecting",
+        pendingFields: ["ownerPhone", "ownerEmail"],
+      },
+    },
+  });
+
+  assert.equal(resolved?.action, "crm.owner.update");
+  assert.match(resolved?.presentation?.text ?? "", /Cadastro existente do proprietário João atualizado com sucesso/i);
+  assert.doesNotMatch(resolved?.presentation?.text ?? "", /telefone do proprietário/i);
+  assert.doesNotMatch(resolved?.presentation?.text ?? "", /e-mail do proprietário/i);
+  assert.deepEqual(resolved?.presentation?.pendingFieldLabels ?? [], []);
+
+  const updated = await (prisma as any).imobOwner.findFirst({
+    where: { tenantId: "tenant-1", workspaceId: "workspace-1", id: "owner-1" },
+  });
+  assert.equal(updated?.phone, "47 996635092");
+  assert.equal(updated?.email, "nilsen@gmail.com");
+  assert.deepEqual(updated?.pendingItems ?? [], []);
 });
 
 test("IMOB_CRM property delete returns confirmation prompt", async () => {

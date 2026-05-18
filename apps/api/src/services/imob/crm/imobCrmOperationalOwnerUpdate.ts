@@ -5,6 +5,7 @@ import {
   mapOwnerPendingLabels,
   OperationalResolution,
   OWNER_DOCUMENT_PENDING_KEYS,
+  removeResolvedOwnerPendingItems,
   OwnerSummary,
   ResolverHelpers,
 } from "./imobCrmOperationalResolverShared";
@@ -43,14 +44,27 @@ export async function resolveImobOwnerUpdate(
     });
     if (owner) {
       const patch: Record<string, unknown> = {};
+      const resolvedPendingFlags = {
+        ownerName: Boolean(context.ownerExplicitName),
+        ownerPhone: Boolean(context.ownerExplicitPhone),
+        ownerEmail: Boolean(context.ownerExplicitEmail),
+        ownerDocument: Boolean(context.ownerExplicitDocument),
+      };
       if (context.ownerExplicitName) patch.name = context.ownerExplicitName;
       if (context.ownerExplicitPhone) patch.phone = context.ownerExplicitPhone;
       if (context.ownerExplicitEmail) patch.email = context.ownerExplicitEmail;
-      if (context.ownerExplicitDocument) {
-        patch.document = context.ownerExplicitDocument;
-        const nextPending = asPendingItems(owner.pendingItems).filter((item) => !OWNER_DOCUMENT_PENDING_KEYS.has(item));
+      const nextPending = removeResolvedOwnerPendingItems(owner.pendingItems, resolvedPendingFlags);
+      if (
+        resolvedPendingFlags.ownerName
+        || resolvedPendingFlags.ownerPhone
+        || resolvedPendingFlags.ownerEmail
+        || resolvedPendingFlags.ownerDocument
+      ) {
         patch.pendingItems = nextPending;
         patch.status = nextPending.length > 0 ? "pending_data" : "ready_for_review";
+      }
+      if (context.ownerExplicitDocument) {
+        patch.document = context.ownerExplicitDocument;
       }
       if (Object.keys(patch).length === 0) {
         const displayName = await helpers.resolveOwnerDisplayName({
@@ -138,7 +152,10 @@ export async function resolveImobOwnerUpdate(
   }
 
   const wantsOwnerDocument = context.normalized.includes("documento do proprietario") || context.normalized.includes("documento do proprietário") || context.normalized.includes("cpf do proprietario") || context.normalized.includes("cpf do proprietário");
-  if (wantsOwnerDocument && context.document) {
+  const hasExplicitOwnerUpdateFields = Boolean(
+    context.ownerExplicitName || context.ownerExplicitPhone || context.ownerExplicitEmail || context.document,
+  );
+  if (hasExplicitOwnerUpdateFields && (wantsOwnerDocument || context.ownerName || params.caseId)) {
     let owner: OwnerSummary | null = null;
     if (params.caseId) {
       const scopedCase = await params.prisma.imobCase.findFirst({
@@ -156,11 +173,25 @@ export async function resolveImobOwnerUpdate(
       });
     }
     if (owner) {
-      const currentPending = asPendingItems(owner.pendingItems).filter((item) => !OWNER_DOCUMENT_PENDING_KEYS.has(item));
+      const resolvedPendingFlags = {
+        ownerName: Boolean(context.ownerExplicitName),
+        ownerPhone: Boolean(context.ownerExplicitPhone),
+        ownerEmail: Boolean(context.ownerExplicitEmail),
+        ownerDocument: Boolean(context.document),
+      };
+      const currentPending = removeResolvedOwnerPendingItems(owner.pendingItems, resolvedPendingFlags);
       const status = currentPending.length > 0 ? "pending_data" : "ready_for_review";
+      const changedFieldsCount = Object.values(resolvedPendingFlags).filter(Boolean).length;
       const updated = await params.prisma.imobOwner.update({
         where: { id: owner.id },
-        data: { document: context.document, pendingItems: currentPending, status },
+        data: {
+          ...(context.ownerExplicitName ? { name: context.ownerExplicitName } : {}),
+          ...(context.ownerExplicitPhone ? { phone: context.ownerExplicitPhone } : {}),
+          ...(context.ownerExplicitEmail ? { email: context.ownerExplicitEmail } : {}),
+          ...(context.document ? { document: context.document } : {}),
+          pendingItems: currentPending,
+          status,
+        },
       });
       return {
         mode: "consult",
@@ -173,7 +204,9 @@ export async function resolveImobOwnerUpdate(
         ),
         presentation: {
           text: [
-            `Documento do proprietário ${updated.name} atualizado com sucesso.`,
+            changedFieldsCount === 1 && resolvedPendingFlags.ownerDocument
+              ? `Documento do proprietário ${updated.name} atualizado com sucesso.`
+              : `Cadastro existente do proprietário ${updated.name} atualizado com sucesso.`,
             `Pendências atuais: ${helpers.formatImobPendingList(mapOwnerPendingLabels(currentPending))}.`,
             currentPending.length > 0 ? helpers.buildOwnerPendingSuggestion({ name: updated.name, pendingItems: currentPending }) : null,
             currentPending.length > 0 ? "Próximo passo: completar as pendências restantes do proprietário." : "Próximo passo: vincular o proprietário ao próximo imóvel ou etapa documental.",

@@ -58,6 +58,8 @@ import {
   resolveImobOperationalUpdateImpl,
 } from "../services/imob/crm/imobCrmOperationalResolvers";
 import { buildImobCrmBusinessReadHelpers } from "../services/imob/crm/imobCrmBusinessRead";
+import { resolveImobRecipeMissionContext } from "../services/imob/crm/imobRecipeMissionConfig";
+import { resolveImobTenantRecipeForWorkspace } from "../services/imob/crm/imobTenantRecipeContext";
 import {
   getLegacyCrmFallbackConfigFromEnv,
   resolveLegacyCrmFallbackDecision,
@@ -1941,6 +1943,7 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
   const message = asString(body.message);
   const requestedCaseId = asString(body.caseId);
   const requestedThreadId = asString(body.threadId);
+  const requestedRecipeId = asString(body.recipeId);
   if (!message) {
     return res.status(400).json({
       ok: false,
@@ -1982,10 +1985,43 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
     tenantId: authContext.tenantId,
     workspaceId: authContext.workspaceId,
   });
+  const tenantRecipe = await resolveImobTenantRecipeForWorkspace({
+    prisma,
+    tenantId: authContext.tenantId,
+    workspaceId: authContext.workspaceId,
+    recipeId: requestedRecipeId,
+  });
+  if (requestedRecipeId && !tenantRecipe) {
+    return res.status(403).json({
+      ok: false,
+      error: {
+        code: "IMOB_RECIPE_NOT_AVAILABLE",
+        message: "Recipe não homologada ou não liberada para este workspace.",
+      },
+    });
+  }
+  const recipeMissionContext = resolveImobRecipeMissionContext(tenantRecipe ? {
+    recipeId: tenantRecipe.id,
+    agentId: tenantRecipe.agentId,
+    status: tenantRecipe.status,
+    tags: tenantRecipe.tags,
+  } : null);
+  if (requestedRecipeId && !recipeMissionContext) {
+    return res.status(422).json({
+      ok: false,
+      error: {
+        code: "IMOB_RECIPE_WITHOUT_SUPPORTED_MISSION",
+        message: "Recipe homologada não define uma missão IMOB suportada para este chat.",
+      },
+    });
+  }
+  const engineBody = recipeMissionContext
+    ? { ...body, recipeId: requestedRecipeId, recipeMissionContext }
+    : body;
   const data = await resolveImobCrmTurnEngine({
     prisma,
     authContext,
-    body,
+    body: engineBody,
     workspaceResponsibleLabel: workspaceAccess.responsibleLabel,
     entitlements,
     helpers: {

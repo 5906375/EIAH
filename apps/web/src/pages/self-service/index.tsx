@@ -59,6 +59,56 @@ function normalizeCatalogText(value: string | null | undefined) {
     .replace(/[^a-z0-9]+/g, "");
 }
 
+function isImobTenantRecipe(recipe: TenantRecipe) {
+  const normalizedAgent = normalizeCatalogText(recipe.agentId);
+  const normalizedTags = recipe.tags.map((tag) => normalizeCatalogText(tag));
+  const normalizedTitle = normalizeCatalogText(recipe.title);
+  const normalizedSummary = normalizeCatalogText(recipe.summary);
+  return (
+    normalizedAgent === "imob"
+    || normalizedTags.includes("imob")
+    || normalizedTitle === "imob"
+    || normalizedTitle.includes("imob")
+    || normalizedSummary.includes("imob")
+    || normalizedSummary.includes("crmimob")
+  );
+}
+
+function hasSupportedImobMission(recipe: TenantRecipe) {
+  const normalizedAgent = normalizeCatalogText(recipe.agentId);
+  const normalizedTags = recipe.tags.map((tag) => normalizeCatalogText(tag));
+  const hasImobScope = normalizedAgent === "imob" || normalizedTags.includes("imob");
+  const hasMissionTag = normalizedTags.some((tag) => (
+    tag === "captureseasonalproperty"
+    || tag === "temporada"
+    || tag === "aluguelportemporada"
+    || tag === "locacaotemporada"
+    || tag === "capturesaleproperty"
+    || tag === "venda"
+    || tag === "capturerentalproperty"
+    || tag === "locacao"
+    || tag === "locacaoanual"
+  ));
+  return hasImobScope && hasMissionTag;
+}
+
+function hasFounderAccess(session: ReturnType<typeof useSession>) {
+  const roles = session.roles?.map((role) => normalizeCatalogText(role)) ?? [];
+  const roleProfile = normalizeCatalogText(session.experience?.roleProfile);
+  return roleProfile === "founder_global" || roles.includes("founder") || roles.includes("global_admin");
+}
+
+function buildImobRecipeChatPath(recipe: TenantRecipe, options?: { includeRecipeId?: boolean }) {
+  const params = new URLSearchParams({
+    autoprompt: `abrir recipe ${recipe.title}`,
+    startNew: "1",
+  });
+  if (options?.includeRecipeId) {
+    params.set("recipeId", recipe.id);
+  }
+  return `/app/imob/chat?${params.toString()}`;
+}
+
 type PricingPlanId = "solo" | "starter" | "growth" | "scale";
 
 const PRICING_PLANS: Array<{
@@ -179,6 +229,7 @@ const PROPOSAL_OPTIONS = [
 export default function SelfServiceIndexPage() {
   const session = useSession();
   const navigate = useNavigate();
+  const founderAccess = hasFounderAccess(session);
   const [marketplaceItems, setMarketplaceItems] = React.useState<MarketplaceItem[]>([]);
   const [marketplaceFilter, setMarketplaceFilter] = React.useState<"all" | "agent" | "action">(
     "all"
@@ -789,6 +840,11 @@ export default function SelfServiceIndexPage() {
         {session.token && tenantRecipesStatus === "error" ? (
           <p className="mt-6 text-sm text-red-300">{tenantRecipesError ?? "Falha ao carregar recipes do tenant"}</p>
         ) : null}
+        {session.token && tenantRecipesStatus !== "error" && tenantRecipesError ? (
+          <p className="mt-6 rounded-2xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-200">
+            {tenantRecipesError}
+          </p>
+        ) : null}
 
         {session.token ? (
           <div className="mt-6 grid gap-6 lg:grid-cols-[1.2fr,0.8fr]">
@@ -808,6 +864,9 @@ export default function SelfServiceIndexPage() {
                   workspaceRecipes.map((recipe) => {
                     const config = selfServiceConfigByAgentId.get(normalizeCatalogText(recipe.agentId));
                     const recipePath = config ? `/self-service/${config.slug}` : null;
+                    const isImobRecipe = isImobTenantRecipe(recipe);
+                    const hasPlannerMission = hasSupportedImobMission(recipe);
+                    const canOpenImobChat = isImobRecipe || founderAccess;
                     return (
                       <div key={recipe.id} className="rounded-2xl border border-white/10 bg-[#0a1527] p-5">
                         <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-accent">
@@ -838,16 +897,36 @@ export default function SelfServiceIndexPage() {
                           </div>
                         ) : null}
                         {recipePath ? (
-                          <Link
-                            to={recipePath}
-                            className="mt-4 inline-flex items-center gap-2 rounded-full border border-accent/60 bg-accent/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent transition hover:border-accent hover:bg-accent/30"
-                          >
-                            Abrir no self-service
-                          </Link>
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            <Link
+                              to={recipePath}
+                              className="inline-flex items-center gap-2 rounded-full border border-accent/60 bg-accent/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent transition hover:border-accent hover:bg-accent/30"
+                            >
+                              Abrir no self-service
+                            </Link>
+                            {canOpenImobChat ? (
+                              <Link
+                                to={buildImobRecipeChatPath(recipe, { includeRecipeId: hasPlannerMission })}
+                                className="inline-flex items-center gap-2 rounded-full border border-sky-400/60 bg-sky-400/15 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-sky-200 transition hover:border-sky-300 hover:bg-sky-400/25"
+                              >
+                                Abrir no Chat IMOB
+                              </Link>
+                            ) : null}
+                          </div>
                         ) : (
-                          <span className="mt-4 inline-flex items-center rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.25em] text-muted-foreground">
-                            Agente sem rota guiada
-                          </span>
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.25em] text-muted-foreground">
+                              Agente sem rota guiada
+                            </span>
+                            {canOpenImobChat ? (
+                              <Link
+                                to={buildImobRecipeChatPath(recipe, { includeRecipeId: hasPlannerMission })}
+                                className="inline-flex items-center gap-2 rounded-full border border-sky-400/60 bg-sky-400/15 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-sky-200 transition hover:border-sky-300 hover:bg-sky-400/25"
+                              >
+                                Abrir no Chat IMOB
+                              </Link>
+                            ) : null}
+                          </div>
                         )}
                       </div>
                     );

@@ -470,6 +470,25 @@ test("IMOB turn resolver builds explicit owner.create operational state", () => 
   assert.equal(ownerDocumentField?.attachmentLabel, "Anexar documento");
 });
 
+test("IMOB turn resolver keeps generic new-conversation owner phrasing from becoming a real owner name", () => {
+  const result = resolveImobTurn({
+    message: "quero cadastrar um proprietário",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.mode, "execute");
+  assert.equal(result.executionRequest?.operation, "owner.create");
+  assert.equal(result.conversationState.operational?.flow, "owner.create");
+  assert.equal(result.conversationState.operational?.ownerDraft?.ownerName ?? null, null);
+  assert.deepEqual(result.conversationState.operational?.pendingFields, [
+    "ownerName",
+    "ownerPhone",
+    "ownerEmail",
+    "ownerDocument",
+  ]);
+  assert.equal(result.presentation.form?.fields.find((field) => field.name === "ownerName")?.value ?? "", "");
+});
+
 test("IMOB turn resolver builds guided form for vendedor on owner.create", () => {
   const result = resolveImobTurn({
     message: "quero incluir vendedor como proprietário",
@@ -592,6 +611,20 @@ test("IMOB turn resolver preserves explicit city in property capture without exp
   assert.equal(result.conversationState.operational?.propertyDraft?.city, "Camboriú");
   assert.equal(result.presentation.form?.fields.find((field) => field.name === "goal")?.value, "locacao");
   assert.equal(result.presentation.form?.fields.find((field) => field.name === "city")?.value, "Camboriú");
+});
+
+test("IMOB turn resolver treats temporada as a single property goal instead of ambiguous locacao", () => {
+  const result = resolveImobTurn({
+    message: "quero cadastrar um imóvel de temporada em Balneário Camboriú",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.action, "realestate.register_property");
+  assert.equal(result.conversationState.operational?.flow, "property.create");
+  assert.equal(result.conversationState.operational?.propertyDraft?.goal, "aluguel_por_temporada");
+  assert.equal(result.conversationState.operational?.propertyDraft?.city, "Balneário Camboriú");
+  assert.equal(result.conversationState.operational?.marketScanContext?.goalCandidates?.length ?? 0, 0);
+  assert.equal(result.presentation.form?.fields.find((field) => field.name === "goal")?.value, "aluguel_por_temporada");
 });
 
 test("IMOB turn resolver offers market scan instead of auto-filling ambiguous property capture", () => {
@@ -1860,4 +1893,44 @@ test("IMOB turn resolver keeps capture blocker metadata internal during property
   assert.match(result.presentation.blocker ?? "", /Dados do imóvel/i);
   assert.match(result.presentation.nextStep ?? "", /Completar dados do imóvel/i);
   assert.doesNotMatch(result.presentation.text ?? "", /Bloqueio atual|Pendências atuais|Próximo passo|mostrar bloqueios do caso/i);
+});
+
+test("IMOB turn resolver does not emit legacy property-ready card on the normal property.create path", () => {
+  const result = resolveImobTurn({
+    message: "salvar cadastro",
+    threadState: {
+      slots: {
+        query: null,
+        city: "Balneário Camboriú",
+        region: null,
+        neighborhood: null,
+        goal: "locacao",
+        propertyType: "studio",
+        bedrooms: null,
+        bathrooms: null,
+        budgetMax: null,
+        hasPool: null,
+        petsAllowed: null,
+      },
+      mode: "execute",
+      pendingSlot: "none",
+      resultOffset: 0,
+      operational: {
+        flow: "property.create",
+        status: "ready_for_review",
+        pendingFields: [],
+        propertyDraft: {
+          propertyType: "studio",
+          goal: "locacao",
+          cep: "88330-643",
+          city: "Balneário Camboriú",
+          address: "Rua Alvin Bauer, 783 apto 201",
+        },
+      },
+    },
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.conversationState.operational?.flow, "property.create");
+  assert.equal(result.presentation.card, undefined);
 });

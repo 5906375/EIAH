@@ -155,13 +155,40 @@ export type ResolverHelpers = {
 };
 
 export const OWNER_DOCUMENT_PENDING_KEYS = new Set(["ownerDocument", "documento do proprietário"]);
+export const OWNER_NAME_PENDING_KEYS = new Set(["ownerName", "nome do proprietário"]);
+export const OWNER_PHONE_PENDING_KEYS = new Set(["ownerPhone", "telefone do proprietário"]);
+export const OWNER_EMAIL_PENDING_KEYS = new Set(["ownerEmail", "e-mail do proprietário", "email do proprietário"]);
 
 export function asPendingItems(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
 }
 
 export function mapOwnerPendingLabels(items: unknown): string[] {
-  return asPendingItems(items).map((item) => OWNER_DOCUMENT_PENDING_KEYS.has(item) ? "documento do proprietário" : item);
+  return asPendingItems(items).map((item) => {
+    if (OWNER_NAME_PENDING_KEYS.has(item)) return "nome do proprietário";
+    if (OWNER_PHONE_PENDING_KEYS.has(item)) return "telefone do proprietário";
+    if (OWNER_EMAIL_PENDING_KEYS.has(item)) return "e-mail do proprietário";
+    if (OWNER_DOCUMENT_PENDING_KEYS.has(item)) return "documento do proprietário";
+    return item;
+  });
+}
+
+export function removeResolvedOwnerPendingItems(
+  items: unknown,
+  resolved: {
+    ownerName?: boolean;
+    ownerPhone?: boolean;
+    ownerEmail?: boolean;
+    ownerDocument?: boolean;
+  },
+) {
+  return asPendingItems(items).filter((item) => {
+    if (resolved.ownerName && OWNER_NAME_PENDING_KEYS.has(item)) return false;
+    if (resolved.ownerPhone && OWNER_PHONE_PENDING_KEYS.has(item)) return false;
+    if (resolved.ownerEmail && OWNER_EMAIL_PENDING_KEYS.has(item)) return false;
+    if (resolved.ownerDocument && OWNER_DOCUMENT_PENDING_KEYS.has(item)) return false;
+    return true;
+  });
 }
 
 export function filterResolvedLeadPendingItems(lead: Pick<LeadSummary, "pendingItems" | "budgetMaxCents">) {

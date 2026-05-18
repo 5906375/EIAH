@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eiah.local/contracts/imob-case-context.v1.schema.json",
+  "title": "IMOB Case Context v1",
+  "type": "object",
+  "required": ["version", "tenantId", "workspaceId", "caseId", "entities", "links", "readiness", "blockers"],
+  "properties": {
+    "version": { "const": "1.0" },
+    "tenantId": { "type": "string", "minLength": 1 },
+    "workspaceId": { "type": "string", "minLength": 1 },
+    "caseId": { "type": "string", "minLength": 1 },
+    "missionContext": {
+      "type": "object",
+      "required": ["mission", "lockedUntilExplicitChange"],
+      "properties": {
+        "mission": { "type": "string" },
+        "defaultGoal": { "type": ["string", "null"], "enum": ["aluguel_por_temporada", "locacao", "venda", null] },
+        "startedFromMessage": { "type": ["string", "null"] },
+        "recipeId": { "type": ["string", "null"] },
+        "lockedUntilExplicitChange": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "entities": { "type": "object", "additionalProperties": true },
+    "links": {
+      "type": "object",
+      "properties": {
+        "ownerProperty": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "ownerId": { "type": ["string", "null"] },
+            "propertyId": { "type": ["string", "null"] },
+            "status": { "type": "string", "enum": ["missing", "pending_confirmation", "linked", "ambiguous"] }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "readiness": {
+      "type": "object",
+      "required": ["ownerReady", "propertyReady", "documentsReady", "seasonalRulesReady", "operationalReady"],
+      "properties": {
+        "ownerReady": { "type": "boolean" },
+        "propertyReady": { "type": "boolean" },
+        "documentsReady": { "type": "boolean" },
+        "seasonalRulesReady": { "type": "boolean" },
+        "operationalReady": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["code", "severity", "message"],
+        "properties": {
+          "code": { "type": "string", "minLength": 1 },
+          "severity": { "type": "string", "enum": ["info", "warning", "blocking"] },
+          "message": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

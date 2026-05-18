@@ -16,6 +16,13 @@ import type {
   TenantRecipeWorkspaceScope,
 } from "@/types";
 
+export type {
+  OnboardingContext,
+  TenantRecipe,
+  TenantRecipeStatus,
+  TenantRecipeWorkspaceScope,
+} from "@/types";
+
 const VITE_ENV = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env ?? {};
 
 export const BASE_URL = VITE_ENV.VITE_API_URL || "https://dev.api.eiah.ai/api";
@@ -2839,6 +2846,20 @@ export type ImobAgentRuntimeMetadata = {
 export type ImobPresentationMetadata = {
   confidence?: ImobPresentationConfidence;
   choiceStyle?: ImobPresentationChoiceStyle;
+  canonicalSnapshot?: {
+    authoritative: true;
+    source: "imob_crm_turn_engine";
+    variant:
+      | "collecting_fields"
+      | "form_draft"
+      | "success_created"
+      | "success_updated"
+      | "success_deduped_update"
+      | "blocked_missing_data"
+      | "blocked_scope"
+      | "consult"
+      | "fallback";
+  };
   agentRuntime?: ImobAgentRuntimeMetadata;
   governedIntent?: {
     version: string;
@@ -3130,6 +3151,7 @@ export async function apiResolveImobTurn(body: {
   threadLabel?: string | null;
   threadId?: string | null;
   caseId?: string | null;
+  recipeId?: string | null;
   threadState?: ImobThreadConversationState | null;
 }) {
   return http<{ ok: true; data: ImobResolveTurnResponse }>(`/imob/chat/resolve-turn`, {

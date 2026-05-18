@@ -20,6 +20,10 @@ import type { OperationalResolution, ThreadStateLike } from "./imobCrmOperationa
 import { extractImobOperationalBatches, formatImobBatchLineSummary } from "./imobCrmTurnBatch";
 import { applyResponsibleLabelToResolvedTurn } from "./imobCrmTurnPresentation";
 import { createEmptyImobCrmThreadState, parseImobCrmThreadState } from "./imobCrmTurnState";
+import { buildImobCaseContextV1 } from "./imobCaseContextBuilder";
+import { planImobCase } from "./imobCrmCasePlanner";
+import type { ImobCasePlanActionV1, ImobCasePlanV1 } from "./imobCaseContextContract";
+import type { ImobMissionContext } from "../imobConversationContract";
 import {
   classifyImobCrmWorkflowTransitionFromMessage,
   deriveImobCrmWorkflowState,
@@ -382,8 +386,12 @@ function hasStrongBusinessReadIntent(message: string) {
     return true;
   }
   return (
-    (normalized.includes("resuma esse caso") || normalized.includes("resumir esse caso") || normalized.includes("resumo do caso"))
+    normalized.includes("consultar caso")
+    || normalized.includes("qual status desse caso")
+    || normalized.includes("status desse caso")
+    || ((normalized.includes("resuma esse caso") || normalized.includes("resumir esse caso") || normalized.includes("resumo do caso"))
     && (normalized.includes("caso") || normalized.includes("atendimento"))
+    )
   );
 }
 
@@ -563,7 +571,11 @@ function applyDedupeSelectionToConversationState(
 }
 function buildCaptureSwitchActions(caseContext?: ImobCrmCaseContext | null) {
   const hasLead = Boolean(caseContext?.lead && (caseContext.lead.id || caseContext.lead.name));
-  const hasOwner = Boolean(caseContext?.owner && (caseContext.owner.id || caseContext.owner.name));
+  const linkedPropertyOwner = asObject(caseContext?.property?.owner as Record<string, unknown> | null);
+  const hasOwner = Boolean(
+    (caseContext?.owner && (caseContext.owner.id || caseContext.owner.name))
+    || (linkedPropertyOwner && (asString(linkedPropertyOwner.id) || asString(linkedPropertyOwner.name))),
+  );
 
   const actions = [];
   if (hasLead) {
@@ -587,10 +599,10 @@ function buildCaptureSwitchActions(caseContext?: ImobCrmCaseContext | null) {
   if (!hasOwner) {
     actions.push({
       id: "capture-switch-owner",
-      label: "Cadastrar proprietário",
+      label: "Vincular proprietário",
       kind: "secondary",
       action: "send_suggested_message",
-      nextMessage: "cadastrar proprietário",
+      nextMessage: "vincular proprietário ao imóvel",
     });
   }
 
@@ -612,6 +624,86 @@ function buildCaptureSwitchActions(caseContext?: ImobCrmCaseContext | null) {
   );
 
   return actions as const;
+}
+
+function mapCasePlanActionToCta(action: ImobCasePlanActionV1) {
+  return {
+    id: `case-plan-${action.id}`,
+    label: action.label,
+    kind: action.kind,
+    action: "send_suggested_message",
+    nextMessage: action.nextMessage,
+    reasonCode: action.reasonCode,
+  };
+}
+
+function buildCasePlanActions(casePlan?: ImobCasePlanV1 | null) {
+  if (!casePlan) return [];
+  if (casePlan.mission !== "capture_seasonal_property") return [];
+  const actions = [
+    ...(casePlan.primaryAction ? [casePlan.primaryAction] : []),
+    ...casePlan.secondaryActions,
+  ];
+  const seen = new Set<string>();
+  return actions
+    .filter((item) => {
+      if (seen.has(item.operation)) return false;
+      seen.add(item.operation);
+      return !casePlan.suppressedActions.includes(item.operation);
+    })
+    .map(mapCasePlanActionToCta);
+}
+
+function formatPropertyGoalLabel(goal: unknown) {
+  const normalized = asString(goal)?.trim().toLowerCase();
+  if (normalized === "locacao") return "Locação";
+  if (normalized === "venda") return "Venda";
+  if (normalized === "aluguel_por_temporada") return "Aluguel por temporada";
+  return asString(goal);
+}
+
+function formatPropertyTypeLabel(propertyType: unknown) {
+  const value = asString(propertyType);
+  if (!value) return null;
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function buildPropertyPostSuccessSummary(params: {
+  caseContext?: ImobCrmCaseContext | null;
+  operational?: Record<string, unknown> | null;
+}) {
+  const property = asObject(params.caseContext?.property) ?? {};
+  const propertyDraft = asObject(params.operational?.propertyDraft) ?? {};
+  const propertyOwner = asObject(property.owner as Record<string, unknown> | null);
+  const caseOwner = asObject(params.caseContext?.owner as Record<string, unknown> | null);
+  const ownerName = asString(propertyOwner?.name) ?? asString(caseOwner?.name);
+
+  const lines = [
+    formatPropertyTypeLabel(property.propertyType ?? propertyDraft.propertyType)
+      ? `Tipo: ${formatPropertyTypeLabel(property.propertyType ?? propertyDraft.propertyType)}`
+      : null,
+    formatPropertyGoalLabel(property.goal ?? propertyDraft.goal)
+      ? `Finalidade: ${formatPropertyGoalLabel(property.goal ?? propertyDraft.goal)}`
+      : null,
+    asString(property.city) ?? asString(propertyDraft.city)
+      ? `Cidade: ${asString(property.city) ?? asString(propertyDraft.city)}`
+      : null,
+    asString(property.neighborhood) ?? asString(propertyDraft.neighborhood)
+      ? `Bairro: ${asString(property.neighborhood) ?? asString(propertyDraft.neighborhood)}`
+      : null,
+    asString(property.address) ?? asString(propertyDraft.address)
+      ? `Endereço: ${asString(property.address) ?? asString(propertyDraft.address)}`
+      : null,
+    ownerName ? `Proprietário vinculado: ${ownerName}` : null,
+  ].filter((line): line is string => Boolean(line && line.trim()));
+
+  if (lines.length === 0) return null;
+  return {
+    kind: "details",
+    title: "Resumo do imóvel cadastrado",
+    lines,
+    phase: "post_success",
+  };
 }
 
 function buildLeadPostQualificationActions() {
@@ -645,6 +737,51 @@ function buildLeadPostQualificationActions() {
       nextMessage: "consultar caso",
     },
   ] as const;
+}
+
+function inferCanonicalSnapshotVariant(params: {
+  mode: string;
+  copyState: ImobCrmTurnCopyState | null;
+  hasForm: boolean;
+  hasBlocks: boolean;
+  outcome: "created" | "updated" | "deduped_update" | "blocked" | "waiting_input" | null;
+}) {
+  if (params.mode === "blocked") {
+    return params.copyState === "blocked_scope" ? "blocked_scope" as const : "blocked_missing_data" as const;
+  }
+  if (params.outcome === "deduped_update") return "success_deduped_update" as const;
+  if (params.outcome === "updated") return "success_updated" as const;
+  if (params.outcome === "created") return "success_created" as const;
+  if (params.outcome === "waiting_input" && params.hasForm) return "collecting_fields" as const;
+  if (params.copyState === "collecting_fields") return "collecting_fields" as const;
+  if (params.copyState === "form_draft" || params.hasForm) return "form_draft" as const;
+  if (params.hasBlocks) return "consult" as const;
+  return "fallback" as const;
+}
+
+function inferOperationalOutcomeFromResolution(data: Record<string, unknown>, copyState: ImobCrmTurnCopyState | null) {
+  const mode = asString(data.mode) ?? "";
+  const action = asString(data.action) ?? "";
+  const presentation = asObject(data.presentation) ?? {};
+  const conversationState = asObject(data.conversationState) ?? {};
+  const operational = asObject(conversationState.operational) ?? {};
+  const flow = asString(operational.flow) ?? "";
+  const operationalStatus = asString(operational.status) ?? "";
+  const text = asString(presentation.text)?.toLowerCase() ?? "";
+  const pendingFieldLabels = asStringList(presentation.pendingFieldLabels);
+  const hasForm = Boolean(asObject(presentation.form));
+
+  if (mode === "blocked") return "blocked" as const;
+  if (pendingFieldLabels.length > 0 || hasForm || copyState === "collecting_fields" || operationalStatus === "collecting") return "waiting_input" as const;
+  if (text.includes("cadastro existente")) return "deduped_update" as const;
+  if (action.endsWith(".update") || copyState === "updated") return "updated" as const;
+  if (
+    (flow === "owner.create" || flow === "property.create" || flow === "lead.qualify")
+    && operationalStatus === "ready_for_review"
+  ) {
+    return "created" as const;
+  }
+  return null;
 }
 
 function inferImobCrmCopyStateFromResolution(data: Record<string, unknown>): ImobCrmTurnCopyState | null {
@@ -700,22 +837,28 @@ function buildImobPresentationBlocks(data: Record<string, unknown>, copyState: I
   const conversationState = asObject(data.conversationState) ?? {};
   const operational = asObject(conversationState.operational) ?? {};
   const caseContext = asObject(data.caseContext) as ImobCrmCaseContext | null;
+  const casePlan = asObject(data.imobCasePlan) as ImobCasePlanV1 | null;
   const flow = asString(operational.flow) ?? "";
   const operationalStatus = asString(operational.status) ?? "";
   const card = asObject(presentation.card);
   const cardCtas = Array.isArray(card?.ctas) ? (card?.ctas as Array<Record<string, unknown>>) : [];
 
   if (flow === "property.create" && operationalStatus === "ready_for_review") {
+    const propertySummaryBlock = buildPropertyPostSuccessSummary({
+      caseContext,
+      operational,
+    });
     return [
       {
         kind: "confirmation",
         text: "Cadastro do imóvel processado com sucesso.",
         phase: "post_success",
       },
+      ...(propertySummaryBlock ? [propertySummaryBlock] : []),
       {
         kind: "next_actions",
         title: "Posso seguir com uma destas ações agora.",
-        ctas: buildCaptureSwitchActions(caseContext),
+        ctas: buildCasePlanActions(casePlan).length > 0 ? buildCasePlanActions(casePlan) : buildCaptureSwitchActions(caseContext),
         actionsLayout: "inline",
         persistent: true,
         phase: "post_success",
@@ -776,6 +919,24 @@ function buildImobPresentationBlocks(data: Record<string, unknown>, copyState: I
 function buildImobPresentationQuickReplies(data: Record<string, unknown>) {
   const presentation = asObject(data.presentation) ?? {};
   const caseContext = asObject(data.caseContext) as ImobCrmCaseContext | null;
+  const conversationState = asObject(data.conversationState) ?? {};
+  const operational = asObject(conversationState.operational) ?? {};
+  const operationalFlow = asString(operational.flow) ?? "";
+  const hasForm = Boolean(asObject(presentation.form));
+  if (hasForm && ["owner.create", "property.create", "lead.qualify"].includes(operationalFlow)) {
+    return [];
+  }
+  if (Array.isArray(presentation.blocks) && presentation.blocks.length > 0) {
+    return [];
+  }
+  if (
+    caseContext?.flow === "owner.create"
+    && (caseContext.pendingItems?.length ?? 0) === 0
+    && typeof caseContext.nextStep === "string"
+    && caseContext.nextStep.toLowerCase().includes("vincular o proprietário".toLowerCase())
+  ) {
+    return [];
+  }
   const blocks = Array.isArray(presentation.blocks) ? (presentation.blocks as Array<Record<string, unknown>>) : [];
   const card = asObject(presentation.card);
   const cardCtas = Array.isArray(card?.ctas) ? (card?.ctas as Array<Record<string, unknown>>) : [];
@@ -800,11 +961,60 @@ function buildImobPresentationQuickReplies(data: Record<string, unknown>) {
     .slice(0, 3);
 }
 
+function preserveCanonicalOperationalSurface(
+  resolvedTurn: Record<string, unknown>,
+  registrationAwareTurn: Record<string, unknown>,
+) {
+  const basePresentation = asObject(resolvedTurn.presentation) ?? {};
+  const nextPresentation = asObject(registrationAwareTurn.presentation) ?? {};
+  const baseOperational = asObject(asObject(resolvedTurn.conversationState)?.operational) ?? {};
+  const nextOperational = asObject(asObject(registrationAwareTurn.conversationState)?.operational) ?? {};
+  const hasBaseForm = Boolean(asObject(basePresentation.form));
+  const hasNextForm = Boolean(asObject(nextPresentation.form));
+  const hasNextCard = Boolean(asObject(nextPresentation.card));
+  const hasNextBlocks = Array.isArray(nextPresentation.blocks) && nextPresentation.blocks.length > 0;
+  const sameFlow = (asString(baseOperational.flow) ?? "") === (asString(nextOperational.flow) ?? "");
+  const sameStatus = (asString(baseOperational.status) ?? "") === (asString(nextOperational.status) ?? "");
+
+  if (!hasBaseForm || hasNextForm || hasNextCard || hasNextBlocks || !sameFlow || !sameStatus) {
+    return registrationAwareTurn;
+  }
+
+  return {
+    ...registrationAwareTurn,
+    presentation: {
+      ...nextPresentation,
+      form: basePresentation.form,
+      pendingFieldLabels: nextPresentation.pendingFieldLabels ?? basePresentation.pendingFieldLabels,
+      metadata: {
+        ...(asObject(basePresentation.metadata) ?? {}),
+        ...(asObject(nextPresentation.metadata) ?? {}),
+      },
+    },
+  };
+}
+
+function stripLegacyCardProof(card: Record<string, unknown> | null) {
+  if (!card) return card;
+  const { proof: _legacyProof, ...cardWithoutProof } = card;
+  return cardWithoutProof;
+}
+
 function applyImobCrmCopyStateToResolution(data: Record<string, unknown>): Record<string, unknown> {
   const copyState = inferImobCrmCopyStateFromResolution(data);
   const presentation = asObject(data.presentation) ?? {};
   const proof = resolveImobProofSurfaceFromResolution(data);
   const blocks = buildImobPresentationBlocks(data, copyState);
+  const outcome = inferOperationalOutcomeFromResolution(data, copyState);
+  const hasForm = Boolean(asObject(presentation.form));
+  const snapshotVariant = inferCanonicalSnapshotVariant({
+    mode: asString(data.mode) ?? "",
+    copyState,
+    hasForm,
+    hasBlocks: blocks.length > 0,
+    outcome,
+  });
+  const metadata = asObject(presentation.metadata) ?? {};
   const quickReplies = buildImobPresentationQuickReplies({
     ...data,
     presentation: {
@@ -813,23 +1023,95 @@ function applyImobCrmCopyStateToResolution(data: Record<string, unknown>): Recor
       ...(blocks.length > 0 ? { blocks } : {}),
     },
   });
-  if (!copyState && !proof && blocks.length === 0 && quickReplies.length === 0) return data;
+  const shouldClearLegacyCard =
+    snapshotVariant === "collecting_fields"
+    || snapshotVariant === "form_draft"
+    || snapshotVariant === "success_created"
+    || snapshotVariant === "success_updated"
+    || snapshotVariant === "success_deduped_update";
+  const nextOperational = asObject(asObject(data.conversationState)?.operational);
+  const sanitizedCard = stripLegacyCardProof(asObject(presentation.card));
+  if (!copyState && !proof && blocks.length === 0 && quickReplies.length === 0 && !outcome) return data;
   return {
     ...data,
+    conversationState: {
+      ...(asObject(data.conversationState) ?? {}),
+      ...(nextOperational ? {
+        operational: {
+          ...nextOperational,
+          outcome,
+        },
+      } : {}),
+    },
     presentation: {
       ...presentation,
+      metadata: {
+        ...metadata,
+        canonicalSnapshot: {
+          authoritative: true as const,
+          source: "imob_crm_turn_engine" as const,
+          variant: snapshotVariant,
+        },
+      },
       ...(copyState ? { copyState } : {}),
-      ...(proof ? {
-        proof,
-        ...(asObject(presentation.card) ? {
-          card: {
-            ...(asObject(presentation.card) ?? {}),
-            proof,
-          },
-        } : {}),
-      } : {}),
+      ...(proof ? { proof } : {}),
+      ...(!shouldClearLegacyCard && sanitizedCard ? { card: sanitizedCard } : {}),
+      ...(shouldClearLegacyCard ? { card: undefined, form: snapshotVariant.startsWith("success_") ? undefined : presentation.form } : {}),
       ...(blocks.length > 0 ? { blocks } : {}),
       ...(quickReplies.length > 0 ? { quickReplies } : {}),
+    },
+  };
+}
+
+function attachImobCasePlanToResolution(params: {
+  data: Record<string, unknown>;
+  tenantId: string;
+  workspaceId: string;
+  caseId?: string | null;
+  message?: string | null;
+  recipeMissionContext?: ImobMissionContext | null;
+}) {
+  const conversationState = asObject(params.data.conversationState);
+  const operationalRaw = asObject(conversationState?.operational);
+  const existingMissionContext = asObject(operationalRaw?.missionContext);
+  const operational = operationalRaw && params.recipeMissionContext
+    ? {
+      ...operationalRaw,
+      missionContext: {
+        ...existingMissionContext,
+        ...params.recipeMissionContext,
+        startedFromMessage: asString(existingMissionContext?.startedFromMessage)
+          ?? params.recipeMissionContext.startedFromMessage
+          ?? null,
+        recipeId: params.recipeMissionContext.recipeId ?? asString(existingMissionContext?.recipeId) ?? null,
+      },
+    }
+    : operationalRaw;
+  const caseContext = asObject(params.data.caseContext) as ImobCrmCaseContext | null;
+  const imobCaseContext = buildImobCaseContextV1({
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    caseId: params.caseId ?? caseContext?.caseId ?? null,
+    message: params.message,
+    caseContext,
+    operational,
+  });
+  const imobCasePlan = planImobCase(imobCaseContext);
+  return {
+    ...params.data,
+    conversationState: {
+      ...(conversationState ?? {}),
+      ...(operational ? { operational } : {}),
+    },
+    imobCaseContext,
+    imobCasePlan,
+    presentation: {
+      ...(asObject(params.data.presentation) ?? {}),
+      metadata: {
+        ...(asObject(asObject(params.data.presentation)?.metadata) ?? {}),
+        imobCaseContextVersion: imobCaseContext.version,
+        imobCasePlanVersion: imobCasePlan.version,
+      },
     },
   };
 }
@@ -887,6 +1169,7 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
   const message = asString(params.body.message);
   const requestedCaseId = asString(params.body.caseId);
   const requestedThreadId = asString(params.body.threadId);
+  const recipeMissionContext = asObject(params.body.recipeMissionContext) as ImobMissionContext | null;
   const threadLabel = asString(params.body.threadLabel);
   const parsedThreadState = parseImobCrmThreadState(params.body);
 
@@ -1077,13 +1360,16 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
           snapshot: marketScanResult,
         });
       }
-      const registrationAwareTurn = await params.helpers.applyExistingRegistrationResolution({
-        prisma: params.prisma,
-        tenantId: params.authContext.tenantId,
-        workspaceId: params.authContext.workspaceId,
-        message: effectiveMessage,
-        resolved: params.helpers.injectResolvedPendingSuggestion(resolvedTurn),
-      });
+      const registrationAwareTurn = preserveCanonicalOperationalSurface(
+        resolvedTurn,
+        await params.helpers.applyExistingRegistrationResolution({
+          prisma: params.prisma,
+          tenantId: params.authContext.tenantId,
+          workspaceId: params.authContext.workspaceId,
+          message: effectiveMessage,
+          resolved: params.helpers.injectResolvedPendingSuggestion(resolvedTurn),
+        }) as Record<string, unknown>,
+      );
       const data = applyResponsibleLabelToResolvedTurn(registrationAwareTurn, params.workspaceResponsibleLabel);
 
       const caseContext = await params.helpers.upsertImobCaseFromResolvedTurn({
@@ -1173,13 +1459,16 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
         snapshot: marketScanResult,
       });
     }
-    const registrationAwareTurn = await params.helpers.applyExistingRegistrationResolution({
-      prisma: params.prisma,
-      tenantId: params.authContext.tenantId,
-      workspaceId: params.authContext.workspaceId,
-      message: effectiveMessage,
-      resolved: params.helpers.injectResolvedPendingSuggestion(resolvedTurn),
-    });
+    const registrationAwareTurn = preserveCanonicalOperationalSurface(
+      resolvedTurn,
+      await params.helpers.applyExistingRegistrationResolution({
+        prisma: params.prisma,
+        tenantId: params.authContext.tenantId,
+        workspaceId: params.authContext.workspaceId,
+        message: effectiveMessage,
+        resolved: params.helpers.injectResolvedPendingSuggestion(resolvedTurn),
+      }) as Record<string, unknown>,
+    );
     const data = applyResponsibleLabelToResolvedTurn(registrationAwareTurn, params.workspaceResponsibleLabel);
 
     const caseContext = await params.helpers.upsertImobCaseFromResolvedTurn({
@@ -1259,9 +1548,18 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
     semanticIntent: rootSemanticIntent,
   });
 
-  return applyImobCrmCopyStateToResolution({
+  const canonicalSingleData = {
     ...params.helpers.applyCanonicalJourneyToResolvedData(singleResult.data, (singleResult.caseContext ?? singleResult.data.caseContext) as ImobCrmCaseContext | null | undefined),
     caseContext: singleResult.caseContext ?? singleResult.data.caseContext,
     entitlements: params.entitlements,
-  });
+  };
+
+  return applyImobCrmCopyStateToResolution(attachImobCasePlanToResolution({
+    data: canonicalSingleData,
+    tenantId: params.authContext.tenantId,
+    workspaceId: params.authContext.workspaceId,
+    caseId: requestedCaseId,
+    message: message ?? "",
+    recipeMissionContext,
+  }));
 }

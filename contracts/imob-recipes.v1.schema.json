@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eiah.local/contracts/imob-recipes.v1.schema.json",
+  "title": "IMOB Recipes v1",
+  "type": "object",
+  "required": ["recipeId", "agentId", "status", "tags"],
+  "properties": {
+    "recipeId": { "type": "string", "minLength": 1 },
+    "agentId": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "enum": ["draft", "homologated", "deprecated"] },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "maxItems": 24
+    },
+    "mission": {
+      "type": ["string", "null"],
+      "enum": [
+        "capture_seasonal_property",
+        "capture_rental_property",
+        "capture_sale_property",
+        "qualify_lead",
+        "schedule_visit",
+        "collect_documents",
+        "prepare_contract",
+        "settle_commission",
+        "case_review",
+        null
+      ]
+    },
+    "defaultGoal": {
+      "type": ["string", "null"],
+      "enum": ["aluguel_por_temporada", "locacao", "venda", null]
+    },
+    "lockedUntilExplicitChange": { "type": "boolean" }
+  },
+  "additionalProperties": true
+}

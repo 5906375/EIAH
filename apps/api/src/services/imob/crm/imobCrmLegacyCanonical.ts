@@ -77,6 +77,17 @@ function buildRecommendedActions(params: {
   pendingItems: string[];
   blockers: string[];
 }): ImobCrmRecommendedAction[] {
+  const normalizedFlow = (params.flow ?? "").trim();
+  const normalizedNextStep = normalizeImobLegacyText(params.nextStep ?? "");
+  if (
+    normalizedFlow === "owner.create"
+    && params.pendingItems.length === 0
+    && params.blockers.length === 0
+    && normalizedNextStep.includes("vincular o proprietario")
+  ) {
+    return [];
+  }
+
   const actions: ImobCrmRecommendedAction[] = [];
   const push = (action: ImobCrmRecommendedAction) => {
     if (!actions.some((item) => item.id === action.id)) actions.push(action);
@@ -89,7 +100,7 @@ function buildRecommendedActions(params: {
     push({ id: "review_pending_items", label: "Ver pendências", actionType: "consultive", inputHint: "mostrar pendências do caso", reasonCode: "PENDING_ITEMS_PRESENT" });
   }
 
-  switch ((params.flow ?? "").trim()) {
+  switch (normalizedFlow) {
     case "owner.create":
       push({ id: "register_owner", label: "Cadastrar proprietário", actionType: "operational", inputHint: "cadastrar proprietário" });
       break;
@@ -125,7 +136,6 @@ function buildRecommendedActions(params: {
   }
 
   if (params.nextStep) {
-    const normalizedNextStep = normalizeImobLegacyText(params.nextStep);
     if (!normalizedNextStep.includes("mostrar bloqueios do caso")) {
       push({ id: "follow_next_step", label: "Executar próximo passo", actionType: "consultive", inputHint: params.nextStep, reasonCode: "NEXT_STEP_AVAILABLE" });
     }
