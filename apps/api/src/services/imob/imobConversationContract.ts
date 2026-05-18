@@ -249,6 +249,18 @@ export type ImobMarketScanResultSnapshot = {
   groups: ImobMarketScanResultGroup[];
   readOnly: true;
   generatedAt: string;
+  intelligence?: {
+    comparableCount: number;
+    priceRange?: {
+      min: number;
+      max: number;
+      currency: "BRL";
+    } | null;
+    liquidityScore: number;
+    pricingRisk: "low" | "medium" | "high" | "unknown";
+    sourceCoverageScore: number;
+    confidenceScore: number;
+  } | null;
 };
 
 export type ImobMarketSourceAccessMode =

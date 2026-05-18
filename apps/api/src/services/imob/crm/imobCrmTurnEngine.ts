@@ -39,6 +39,7 @@ import type {
   ImobMarketScanContext,
   ImobMarketScanResultSnapshot,
   ImobMarketScanRunSnapshot,
+  ImobOperationalOpportunity,
   ImobProofSurface,
 } from "../imobConversationContract";
 
@@ -115,8 +116,9 @@ function attachSnapshotToResolvedTurn(
   resolved: OperationalResolution,
   snapshot: ImobMarketScanResultSnapshot | null | undefined,
   run?: ImobMarketScanRunSnapshot | null,
+  opportunity?: ImobOperationalOpportunity | null,
 ) {
-  if (!snapshot && !run) return resolved;
+  if (!snapshot && !run && !opportunity) return resolved;
   const operational = attachMarketScanSnapshotToOperationalState(
     (resolved as any).conversationState?.operational ?? null,
     snapshot ?? null,
@@ -130,6 +132,7 @@ function attachSnapshotToResolvedTurn(
             ...operational,
             ...(snapshot ? { marketScanResult: snapshot } : {}),
             ...(run ? { marketScanRun: run } : {}),
+            ...(opportunity ? { marketScanOpportunity: opportunity } : {}),
           }
         : operational,
     },
@@ -143,6 +146,7 @@ function attachSnapshotToResolvedTurn(
 type ResolvedMarketScan = {
   snapshot: ImobMarketScanResultSnapshot;
   run?: ImobMarketScanRunSnapshot | null;
+  opportunity?: ImobOperationalOpportunity | null;
 };
 
 async function resolveLegacyMarketScanResult(params: {
@@ -213,6 +217,7 @@ async function resolveMarketScanResult(params: {
         return {
           snapshot: pipeline.resultSnapshot,
           run: pipeline.run,
+          opportunity: pipeline.opportunity,
         };
       }
     } catch {
@@ -1417,6 +1422,7 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
             : preliminaryResolvedTurn,
         marketScanResult ?? resumedMarketScanSnapshot,
         marketScanResolution?.run ?? null,
+        marketScanResolution?.opportunity ?? null,
       );
       if (marketScanResult) {
         await persistImobMarketScanSnapshot({
@@ -1518,6 +1524,7 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
           : preliminaryResolvedTurn,
       marketScanResult ?? resumedMarketScanSnapshot,
       marketScanResolution?.run ?? null,
+      marketScanResolution?.opportunity ?? null,
     );
     if (marketScanResult) {
       await persistImobMarketScanSnapshot({

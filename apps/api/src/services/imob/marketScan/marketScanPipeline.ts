@@ -11,10 +11,17 @@ import {
   createMarketScanRun,
   markMarketScanAuthorizationStarted,
   markMarketScanFetchStarted,
+  markMarketScanMatchingStarted,
   markMarketScanNormalizationStarted,
+  markMarketScanRecommendationStarted,
+  markMarketScanScoringStarted,
   type ImobMarketScanRunStorePrisma,
 } from "./imobMarketScanRunStore";
+import { matchComparables } from "./comparableMatcher";
 import { toMarketScanResultSnapshot } from "./listingIngestionAdapter";
+import { computeLiquidityCompetitionScore } from "./liquidityCompetitionScorer";
+import { recommendOperationalOpportunity } from "./opportunityRecommender";
+import { computePriceIntelligence } from "./priceIntelligenceEngine";
 import { decideSourceAccess } from "./sourceAccessPolicyGate";
 import type { MarketScanConnectorId, MarketScanConnectorRegistry } from "./sourceConnectorRegistry";
 
@@ -22,6 +29,7 @@ export type MarketScanPipelineResult = {
   run: ImobMarketScanRunSnapshot;
   sourceAccessDecision: ImobSourceAccessDecisionSnapshot;
   resultSnapshot: ImobMarketScanResultSnapshot | null;
+  opportunity: import("../imobConversationContract").ImobOperationalOpportunity | null;
 };
 
 function sourceIdToAccessMode(sourceId: MarketScanConnectorId): ImobMarketSourceAccessMode {
@@ -132,10 +140,46 @@ export async function executeMarketScanPipeline(params: {
     workspaceId: params.workspaceId,
   });
   const resultSnapshot = lastSnapshot;
+  let enrichedSnapshot = resultSnapshot;
+  let opportunity: MarketScanPipelineResult["opportunity"] = null;
+  if (resultSnapshot && sourceAccessDecision.allowed) {
+    await markMarketScanMatchingStarted({ prisma: params.prisma, runId: run.runId });
+    const comparables = matchComparables({
+      snapshot: resultSnapshot,
+      query: params.query,
+    });
+    await markMarketScanScoringStarted({ prisma: params.prisma, runId: run.runId });
+    const priceIntelligence = computePriceIntelligence(comparables);
+    const scoring = computeLiquidityCompetitionScore({
+      comparables,
+      priceIntelligence,
+      sourceAccessDecision,
+    });
+    enrichedSnapshot = {
+      ...resultSnapshot,
+      intelligence: {
+        comparableCount: priceIntelligence.comparableCount,
+        priceRange: priceIntelligence.priceRange,
+        liquidityScore: scoring.liquidityScore,
+        pricingRisk: priceIntelligence.pricingRisk,
+        sourceCoverageScore: scoring.sourceCoverageScore,
+        confidenceScore: scoring.confidenceScore,
+      },
+    };
+    await markMarketScanRecommendationStarted({ prisma: params.prisma, runId: run.runId });
+    opportunity = recommendOperationalOpportunity({
+      runId: run.runId,
+      priceIntelligence,
+      liquidityScore: scoring.liquidityScore,
+      sourceCoverageScore: scoring.sourceCoverageScore,
+      confidenceScore: scoring.confidenceScore,
+    });
+  }
   const completed = await completeMarketScanRun({
     prisma: params.prisma,
     runId: run.runId,
-    resultSnapshot,
+    resultSnapshot: enrichedSnapshot,
+    opportunityId: opportunity?.opportunityId ?? null,
   });
 
   return {
@@ -144,6 +188,7 @@ export async function executeMarketScanPipeline(params: {
       sourceAccessDecision,
     },
     sourceAccessDecision,
-    resultSnapshot,
+    resultSnapshot: enrichedSnapshot,
+    opportunity,
   } satisfies MarketScanPipelineResult;
 }

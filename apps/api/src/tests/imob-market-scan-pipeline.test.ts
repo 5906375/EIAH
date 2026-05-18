@@ -86,13 +86,16 @@ test("market scan pipeline creates run, gates source, then fetches internal CRM 
   assert.equal(fake.calls[0]?.op, "create");
   assert.deepEqual(
     fake.calls.filter((call) => call.op === "update").map((call) => call.data.status),
-    ["authorization", "fetch", "normalization", "completed"],
+    ["authorization", "fetch", "normalization", "matching", "scoring", "recommendation", "completed"],
   );
   assert.deepEqual(providerCalls, ["tenant-1:Itajaí"]);
   assert.equal(result.sourceAccessDecision.allowed, true);
   assert.equal(result.run.status, "completed");
   assert.equal(result.resultSnapshot?.totalItems, 1);
   assert.equal(result.resultSnapshot?.groups[0]?.items[0]?.sourceId, "prop-1");
+  assert.equal(result.resultSnapshot?.intelligence?.pricingRisk, "high");
+  assert.equal(result.opportunity?.requiresHumanApproval, true);
+  assert.equal(fake.calls.at(-1)?.data.opportunityId, result.opportunity?.opportunityId);
 });
 
 test("market scan pipeline blocks fail-closed before connector fetch", async () => {
