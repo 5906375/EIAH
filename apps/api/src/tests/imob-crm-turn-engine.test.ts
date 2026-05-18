@@ -255,25 +255,44 @@ test("IMOB_CRM turn engine mantém continuidade de intake para mensagens não co
 
 test("IMOB_CRM turn engine injeta market scan read-only com provider interno quando o scan é explicitamente solicitado", async () => {
   const events: any[] = [];
+  const runRows = new Map<string, any>();
+  const runCalls: string[] = [];
   const params = createEngineParams({
     prisma: {
       imobProperty: {
-        findMany: async () => [
-          {
-            id: "prop-1",
-            tenantId: "tenant-1",
-            workspaceId: "workspace-1",
-            propertyType: "apartamento",
-            goal: "locacao",
-            city: "Itajaí",
-            neighborhood: "Centro",
-            address: "Rua 1500",
-            bedrooms: 2,
-            askingPriceCents: 320000,
-            status: "ready_for_review",
-            owner: { id: "owner-1", name: "Carlos" },
-          },
-        ],
+        findMany: async () => {
+          runCalls.push("property.findMany");
+          return [
+            {
+              id: "prop-1",
+              tenantId: "tenant-1",
+              workspaceId: "workspace-1",
+              propertyType: "apartamento",
+              goal: "locacao",
+              city: "Itajaí",
+              neighborhood: "Centro",
+              address: "Rua 1500",
+              bedrooms: 2,
+              askingPriceCents: 320000,
+              status: "ready_for_review",
+              owner: { id: "owner-1", name: "Carlos" },
+            },
+          ];
+        },
+      },
+      imobMarketScanRun: {
+        create: async (args: any) => {
+          runCalls.push("run.create");
+          const row = { ...args.data };
+          runRows.set(row.id, row);
+          return row;
+        },
+        update: async (args: any) => {
+          runCalls.push(`run.update:${args.data.status}`);
+          const row = { ...runRows.get(args.where.id), ...args.data };
+          runRows.set(args.where.id, row);
+          return row;
+        },
       },
       imobCaseEvent: {
         create: async (args: any) => {
@@ -338,6 +357,10 @@ test("IMOB_CRM turn engine injeta market scan read-only com provider interno qua
   assert.equal((resolved as any).presentation?.marketScanResult?.sourceStatus, "completed");
   assert.equal((resolved as any).presentation?.marketScanResult?.groups?.[0]?.items?.length, 1);
   assert.equal((resolved as any).conversationState?.operational?.marketScanSnapshot?.readOnly, true);
+  assert.equal((resolved as any).conversationState?.operational?.marketScanRun?.status, "completed");
+  assert.deepEqual((resolved as any).conversationState?.operational?.marketScanRun?.sourceIds, ["tenant_inventory_import", "internal_crm"]);
+  assert.equal(runCalls[0], "run.create");
+  assert.ok(runCalls.indexOf("run.update:fetch") < runCalls.indexOf("property.findMany"));
   assert.deepEqual(
     (resolved as any).presentation?.agentActivities?.map((item: any) => item.agentLabel),
     ["IMOB", "Market Scan", "Guardian"],

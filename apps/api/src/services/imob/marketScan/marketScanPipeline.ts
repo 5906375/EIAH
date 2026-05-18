@@ -38,7 +38,8 @@ export async function executeMarketScanPipeline(params: {
   workspaceId: string;
   caseId?: string | null;
   query: MarketScanQuery;
-  sourceId: MarketScanConnectorId;
+  sourceId?: MarketScanConnectorId;
+  sourceIds?: MarketScanConnectorId[];
   context?: Partial<MarketScanExecutionContext>;
   region?: string | null;
   operation?: string | null;
@@ -54,6 +55,12 @@ export async function executeMarketScanPipeline(params: {
     requestedResultsPerSource?: number;
   };
 }) {
+  const sourceIds = params.sourceIds?.length
+    ? params.sourceIds
+    : params.sourceId
+      ? [params.sourceId]
+      : ["internal_crm"];
+
   let run = await createMarketScanRun({
     prisma: params.prisma,
     tenantId: params.tenantId,
@@ -63,50 +70,68 @@ export async function executeMarketScanPipeline(params: {
     region: params.region ?? params.query.cities[0] ?? null,
     operation: params.operation ?? params.query.goals[0] ?? null,
     propertyType: params.propertyType ?? params.query.propertyTypes[0] ?? null,
-    sourceIds: [params.sourceId],
-    accessMode: sourceIdToAccessMode(params.sourceId),
+    sourceIds,
+    accessMode: sourceIdToAccessMode(sourceIds[0] ?? "internal_crm"),
   });
 
   run = await markMarketScanAuthorizationStarted({ prisma: params.prisma, runId: run.runId });
-  const sourceAccessDecision = decideSourceAccess({
-    sourceId: params.sourceId,
-    requestedMode: sourceIdToAccessMode(params.sourceId),
-    operation: params.sourceId === "public_web_assisted" ? "public_web_assisted_scan" : "market_scan_region",
-    tenantId: params.tenantId,
-    workspaceId: params.workspaceId,
-    hasTenantCredential: params.hasTenantCredential,
-    ...params.sourceAccess,
-  });
 
-  if (!sourceAccessDecision.allowed) {
-    const blocked = await blockMarketScanRun({
-      prisma: params.prisma,
-      runId: run.runId,
-      reason: sourceAccessDecision.reasonCode,
-      sourceAccessDecision,
-    });
-    return {
-      run: blocked,
-      sourceAccessDecision,
-      resultSnapshot: null,
-    } satisfies MarketScanPipelineResult;
-  }
-
-  run = await markMarketScanFetchStarted({ prisma: params.prisma, runId: run.runId });
-  const result = await params.connectorRegistry.search({
-    sourceId: params.sourceId,
-    query: params.query,
-    context: {
+  let lastSnapshot: ImobMarketScanResultSnapshot | null = null;
+  let lastDecision: ImobSourceAccessDecisionSnapshot | null = null;
+  for (const sourceId of sourceIds) {
+    const sourceAccessDecision = decideSourceAccess({
+      sourceId,
+      requestedMode: sourceIdToAccessMode(sourceId),
+      operation: sourceId === "public_web_assisted" ? "public_web_assisted_scan" : "market_scan_region",
       tenantId: params.tenantId,
       workspaceId: params.workspaceId,
-      caseId: params.caseId ?? null,
-      ...params.context,
-    },
-    sourceAccessDecision,
-  });
+      hasTenantCredential: params.hasTenantCredential,
+      ...params.sourceAccess,
+    });
 
-  await markMarketScanNormalizationStarted({ prisma: params.prisma, runId: run.runId });
-  const resultSnapshot = toMarketScanResultSnapshot(result);
+    lastDecision = sourceAccessDecision;
+    if (!sourceAccessDecision.allowed) {
+      const blocked = await blockMarketScanRun({
+        prisma: params.prisma,
+        runId: run.runId,
+        reason: sourceAccessDecision.reasonCode,
+        sourceAccessDecision,
+      });
+      return {
+        run: blocked,
+        sourceAccessDecision,
+        resultSnapshot: null,
+      } satisfies MarketScanPipelineResult;
+    }
+
+    run = await markMarketScanFetchStarted({ prisma: params.prisma, runId: run.runId });
+    const result = await params.connectorRegistry.search({
+      sourceId,
+      query: params.query,
+      context: {
+        tenantId: params.tenantId,
+        workspaceId: params.workspaceId,
+        caseId: params.caseId ?? null,
+        ...params.context,
+      },
+      sourceAccessDecision,
+    });
+
+    await markMarketScanNormalizationStarted({ prisma: params.prisma, runId: run.runId });
+    lastSnapshot = toMarketScanResultSnapshot(result);
+    if (result.sourceStatus === "completed") {
+      break;
+    }
+  }
+
+  const sourceAccessDecision = lastDecision ?? decideSourceAccess({
+    sourceId: "internal_crm",
+    requestedMode: "internal_crm",
+    operation: "market_scan_region",
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+  });
+  const resultSnapshot = lastSnapshot;
   const completed = await completeMarketScanRun({
     prisma: params.prisma,
     runId: run.runId,
