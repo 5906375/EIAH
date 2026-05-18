@@ -1,0 +1,10 @@
+{
+  "artifact": "imob-market-query-builder-e2e",
+  "status": "passed",
+  "structuredOutputsValid": true,
+  "fallbackParserAvailable": true,
+  "collectionPerformed": false,
+  "tests": [
+    "apps/api/src/tests/imob-market-scan-query-builder.test.ts"
+  ]
+}

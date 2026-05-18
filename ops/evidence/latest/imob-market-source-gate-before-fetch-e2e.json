@@ -1,0 +1,11 @@
+{
+  "artifact": "imob-market-source-gate-before-fetch-e2e",
+  "status": "passed",
+  "sourceGateRunsBeforeFetch": true,
+  "noFetchBeforeGate": true,
+  "failClosed": true,
+  "tests": [
+    "apps/api/src/tests/imob-market-source-access-policy.test.ts",
+    "apps/api/src/tests/imob-market-scan-pipeline.test.ts"
+  ]
+}

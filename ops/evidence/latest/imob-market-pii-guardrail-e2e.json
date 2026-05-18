@@ -1,0 +1,11 @@
+{
+  "artifact": "imob-market-pii-guardrail-e2e",
+  "status": "passed",
+  "piiMasked": true,
+  "publicWebPiiExcluded": true,
+  "piiPolicyJudgeEnabled": true,
+  "tests": [
+    "apps/api/src/tests/imob-public-web-scan-policy.test.ts",
+    "apps/api/src/tests/imob-market-scan-llm-judge.test.ts"
+  ]
+}
