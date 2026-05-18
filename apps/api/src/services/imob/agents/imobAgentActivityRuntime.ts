@@ -42,9 +42,9 @@ function buildMarketScanActivities(
       agentId: "IMOB_MarketScanAgent",
       agentLabel: "Market Scan",
       role: "supporting",
-      mode: "read_only",
+      mode: "intelligence",
       status: result ? "completed" : "analyzing",
-      visibleMessage: `Preparando varredura em ${citySummary}.`,
+      visibleMessage: `Preparando inteligência de mercado em ${citySummary}.`,
     }),
   ];
 

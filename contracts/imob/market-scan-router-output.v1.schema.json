@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eiah.local/contracts/imob/market-scan-router-output.v1.schema.json",
+  "title": "IMOB Market Scan Router Output v1",
+  "type": "object",
+  "required": ["version", "missionType", "confidence", "requiresMarketScanRun", "requiresSourceAccessGate", "blocked"],
+  "properties": {
+    "version": { "const": "1.0" },
+    "missionType": { "type": "string", "enum": ["market_scan_region", "compare_properties", "public_web_assisted_scan", "full_capture", "unknown"] },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "requiresMarketScanRun": { "type": "boolean" },
+    "requiresSourceAccessGate": { "type": "boolean" },
+    "extractedFilters": { "type": "object", "additionalProperties": true },
+    "blocked": { "type": "boolean" },
+    "reasonCode": { "type": ["string", "null"] }
+  },
+  "additionalProperties": false
+}

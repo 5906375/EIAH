@@ -251,6 +251,101 @@ export type ImobMarketScanResultSnapshot = {
   generatedAt: string;
 };
 
+export type ImobMarketSourceAccessMode =
+  | "official_api"
+  | "partner_feed"
+  | "licensed_provider"
+  | "internal_crm"
+  | "tenant_inventory_import"
+  | "manual_input"
+  | "public_web_assisted";
+
+export type ImobSourceAccessDecisionReasonCode =
+  | "SOURCE_NOT_AUTHORIZED"
+  | "SOURCE_TERMS_NOT_ACCEPTED"
+  | "LOGIN_REQUIRED_SOURCE"
+  | "CAPTCHA_BYPASS_BLOCKED"
+  | "PAYWALL_BYPASS_BLOCKED"
+  | "PII_EXPOSURE_RISK"
+  | "BULK_SCRAPING_BLOCKED"
+  | "OPERATION_NOT_ALLOWED"
+  | "TENANT_CREDENTIAL_REQUIRED"
+  | "TENANT_SCOPE_REQUIRED"
+  | "WORKSPACE_SCOPE_REQUIRED";
+
+export type ImobSourceAccessDecisionSnapshot =
+  | {
+      allowed: true;
+      decision: "allowed_authorized" | "allowed_public_assisted" | "allowed_manual";
+      sourceId: string;
+      accessMode: ImobMarketSourceAccessMode;
+      confidenceCap: number;
+      piiPolicy: "mask" | "exclude";
+      rateLimitProfile: "strict" | "standard";
+      termsMode: "accepted" | "not_required";
+    }
+  | {
+      allowed: false;
+      decision: "blocked_fail_closed";
+      sourceId: string;
+      requestedMode: ImobMarketSourceAccessMode;
+      reasonCode: ImobSourceAccessDecisionReasonCode;
+      message: string;
+    };
+
+export type ImobMarketScanDisclosure = {
+  coverage: "authorized_source" | "limited_public_web_sample" | "manual_input" | "unavailable";
+  confidenceCap: number;
+  limitations: string[];
+};
+
+export type ImobMarketScanRunSnapshot = {
+  runId: string;
+  tenantId: string;
+  workspaceId: string;
+  caseId?: string | null;
+  status:
+    | "requested"
+    | "authorization"
+    | "fetch"
+    | "normalization"
+    | "matching"
+    | "scoring"
+    | "recommendation"
+    | "completed"
+    | "blocked"
+    | "failed";
+  accessMode?: ImobMarketSourceAccessMode | null;
+  sourceIds: string[];
+  queryHash: string;
+  evidenceBundleId?: string | null;
+  sourceAccessDecision?: ImobSourceAccessDecisionSnapshot | null;
+  disclosure?: ImobMarketScanDisclosure | null;
+};
+
+export type ImobOperationalOpportunity = {
+  opportunityId: string;
+  recommendedAction:
+    | "captar"
+    | "ajustar_preco"
+    | "campanha"
+    | "nao_seguir"
+    | "pedir_documento"
+    | "pedir_autorizacao";
+  confidenceScore: number;
+  sourceCoverageScore?: number | null;
+  priceRange?: {
+    min: number;
+    max: number;
+    currency: "BRL";
+  } | null;
+  liquidityScore?: number | null;
+  pricingRisk?: "low" | "medium" | "high" | "unknown";
+  nextStep: string;
+  requiresHumanApproval: true;
+  evidenceBundleId?: string | null;
+};
+
 export type ImobMarketScanSelection = {
   status: "pending_confirmation";
   scanId: string;
@@ -365,6 +460,9 @@ export type ImobOperationalState = {
   ownerDraft?: ImobOwnerDraft;
   propertyDraft?: ImobPropertyDraft;
   marketScanContext?: ImobMarketScanContext;
+  marketScanRun?: ImobMarketScanRunSnapshot;
+  marketScanResult?: ImobMarketScanResultSnapshot;
+  marketScanOpportunity?: ImobOperationalOpportunity | null;
   marketScanSnapshot?: ImobMarketScanResultSnapshot;
   marketScanSelection?: ImobMarketScanSelection | null;
   leadDraft?: ImobLeadDraft;

@@ -9,7 +9,7 @@ test("agent activity event defaults the visual prefix to Agente and normalizes l
     agentId: "IMOB_MarketScanAgent",
     agentLabel: " Market Scan ",
     role: "supporting",
-    mode: "read_only",
+    mode: "intelligence",
     status: "working",
     visibleMessage: " Preparando varredura em Itajaí e Camboriú. ",
   });
@@ -103,6 +103,7 @@ test("buildImobAgentActivities emits IMOB, Market Scan and Guardian for resolved
     activities.map((item) => item.agentLabel),
     ["IMOB", "Market Scan", "Guardian"],
   );
+  assert.equal(activities[1]?.mode, "intelligence");
   assert.equal(activities[0]?.displayPrefix, "Agente");
   assert.equal(activities[2]?.evidenceId, "scan-1");
 });
