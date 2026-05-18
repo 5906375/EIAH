@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eiah.local/contracts/imob/market-scan-result.v1.schema.json",
+  "title": "IMOB Market Scan Result v1",
+  "type": "object",
+  "required": ["version", "runId", "sourceStatus", "totalItems", "groups", "confidenceScore", "sourceCoverageScore"],
+  "properties": {
+    "version": { "const": "1.0" },
+    "runId": { "type": "string", "minLength": 1 },
+    "sourceStatus": { "type": "string", "enum": ["completed", "empty", "unavailable", "blocked"] },
+    "totalItems": { "type": "integer", "minimum": 0 },
+    "groups": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+    "confidenceScore": { "type": "number", "minimum": 0, "maximum": 1 },
+    "sourceCoverageScore": { "type": "number", "minimum": 0, "maximum": 1 },
+    "priceRange": {
+      "type": ["object", "null"],
+      "properties": {
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "currency": { "const": "BRL" }
+      },
+      "required": ["min", "max", "currency"],
+      "additionalProperties": false
+    },
+    "disclosure": { "type": ["object", "null"], "additionalProperties": true }
+  },
+  "additionalProperties": false
+}

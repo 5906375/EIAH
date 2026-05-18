@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eiah.local/contracts/imob/source-access-decision.v1.schema.json",
+  "title": "IMOB Source Access Decision v1",
+  "oneOf": [
+    {
+      "type": "object",
+      "required": ["version", "allowed", "decision", "sourceId", "accessMode", "confidenceCap", "piiPolicy", "rateLimitProfile", "termsMode"],
+      "properties": {
+        "version": { "const": "1.0" },
+        "allowed": { "const": true },
+        "decision": { "type": "string", "enum": ["allowed_authorized", "allowed_public_assisted", "allowed_manual"] },
+        "sourceId": { "type": "string", "minLength": 1 },
+        "accessMode": { "type": "string", "enum": ["official_api", "partner_feed", "licensed_provider", "internal_crm", "tenant_inventory_import", "manual_input", "public_web_assisted"] },
+        "confidenceCap": { "type": "number", "minimum": 0, "maximum": 1 },
+        "piiPolicy": { "type": "string", "enum": ["mask", "exclude"] },
+        "rateLimitProfile": { "type": "string", "enum": ["strict", "standard"] },
+        "termsMode": { "type": "string", "enum": ["accepted", "not_required"] }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": ["version", "allowed", "decision", "sourceId", "requestedMode", "reasonCode", "message"],
+      "properties": {
+        "version": { "const": "1.0" },
+        "allowed": { "const": false },
+        "decision": { "const": "blocked_fail_closed" },
+        "sourceId": { "type": "string", "minLength": 1 },
+        "requestedMode": { "type": "string", "enum": ["official_api", "partner_feed", "licensed_provider", "internal_crm", "tenant_inventory_import", "manual_input", "public_web_assisted"] },
+        "reasonCode": {
+          "type": "string",
+          "enum": ["SOURCE_NOT_AUTHORIZED", "SOURCE_TERMS_NOT_ACCEPTED", "LOGIN_REQUIRED_SOURCE", "CAPTCHA_BYPASS_BLOCKED", "PAYWALL_BYPASS_BLOCKED", "PII_EXPOSURE_RISK", "BULK_SCRAPING_BLOCKED", "OPERATION_NOT_ALLOWED", "TENANT_CREDENTIAL_REQUIRED", "TENANT_SCOPE_REQUIRED", "WORKSPACE_SCOPE_REQUIRED"]
+        },
+        "message": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    }
+  ]
+}

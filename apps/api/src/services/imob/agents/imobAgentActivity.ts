@@ -3,6 +3,8 @@ export type ImobAgentRole = "owner" | "supporting" | "guardian";
 export type ImobAgentMode =
   | "read_only"
   | "draft"
+  | "intelligence"
+  | "restricted_scan"
   | "propose_action"
   | "execute"
   | "audit";

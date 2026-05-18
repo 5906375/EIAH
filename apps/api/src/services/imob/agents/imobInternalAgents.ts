@@ -9,6 +9,7 @@ export type ImobInternalAgentId =
   | "IMOB_DedupeAgent"
   | "IMOB_LeadAgent"
   | "IMOB_MarketScanAgent"
+  | "IMOB_PublicWebScanAgent"
   | "IMOB_VisitAgent"
   | "IMOB_DocumentAgent"
   | "IMOB_ContinuityAgent"
@@ -131,15 +132,32 @@ const IMOB_INTERNAL_AGENTS = [
     id: "IMOB_MarketScanAgent",
     label: "Market Scan",
     role: "supporting",
-    mode: "read_only",
+    mode: "intelligence",
     ownershipPreserved: true,
     visibleAgentId: "IMOB",
     backingAgentId: "IMOB",
     capabilityOwnerAgent: "imob.inventory_watch_agent",
     workflowStates: ["property.create", "property.market_scan", "property.market_scan.selection", "case.review"],
     responsibilities: [
-      "preparar leitura exploratória de oportunidades",
-      "apoiar comparações sem criar entidades definitivas",
+      "gerar inteligência de preço, liquidez e risco a partir de fontes governadas",
+      "preparar oportunidade operacional em draft sem criar entidades definitivas",
+      "exigir MarketScanRun e evidência antes de recomendação comercial forte",
+    ],
+  },
+  {
+    id: "IMOB_PublicWebScanAgent",
+    label: "Pesquisa Pública",
+    role: "supporting",
+    mode: "restricted_scan",
+    ownershipPreserved: true,
+    visibleAgentId: "IMOB",
+    backingAgentId: "IMOB",
+    capabilityOwnerAgent: "imob.inventory_watch_agent",
+    workflowStates: ["property.market_scan", "case.review"],
+    responsibilities: [
+      "executar leitura pública assistida apenas quando o Source Access Policy Gate permitir",
+      "extrair somente dados mínimos de anúncios públicos, sem PII, login, captcha ou paywall",
+      "devolver amostra exploratória com disclosure, confidence cap e evidência",
     ],
   },
   {
@@ -238,7 +256,7 @@ const IMOB_WORKFLOW_AGENT_BINDINGS = [
   {
     state: "property.market_scan",
     primaryAgentId: "IMOB_MarketScanAgent",
-    supportingAgentIds: ["Guardian_EvidenceAgent"],
+    supportingAgentIds: ["IMOB_PublicWebScanAgent", "Guardian_EvidenceAgent"],
   },
   {
     state: "property.market_scan.selection",
@@ -268,7 +286,7 @@ const IMOB_WORKFLOW_AGENT_BINDINGS = [
   {
     state: "case.review",
     primaryAgentId: "IMOB_ContinuityAgent",
-    supportingAgentIds: ["IMOB_MarketScanAgent", "IMOB_FollowUpAgent", "Guardian_EvidenceAgent"],
+    supportingAgentIds: ["IMOB_MarketScanAgent", "IMOB_PublicWebScanAgent", "IMOB_FollowUpAgent", "Guardian_EvidenceAgent"],
   },
   {
     state: "visit.schedule",

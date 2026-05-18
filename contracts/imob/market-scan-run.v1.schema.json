@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eiah.local/contracts/imob/market-scan-run.v1.schema.json",
+  "title": "IMOB Market Scan Run v1",
+  "type": "object",
+  "required": ["version", "runId", "tenantId", "workspaceId", "query", "requestedAt", "status", "sourceIds", "queryHash"],
+  "properties": {
+    "version": { "const": "1.0" },
+    "runId": { "type": "string", "minLength": 1 },
+    "tenantId": { "type": "string", "minLength": 1 },
+    "workspaceId": { "type": "string", "minLength": 1 },
+    "caseId": { "type": ["string", "null"] },
+    "query": { "type": "object", "additionalProperties": true },
+    "region": { "type": ["string", "null"] },
+    "operation": { "type": ["string", "null"] },
+    "propertyType": { "type": ["string", "null"] },
+    "requestedAt": { "type": "string", "format": "date-time" },
+    "startedAt": { "type": ["string", "null"], "format": "date-time" },
+    "completedAt": { "type": ["string", "null"], "format": "date-time" },
+    "status": { "type": "string", "enum": ["requested", "authorization", "fetch", "normalization", "matching", "scoring", "recommendation", "completed", "blocked", "failed"] },
+    "accessMode": { "type": ["string", "null"], "enum": ["official_api", "partner_feed", "licensed_provider", "internal_crm", "tenant_inventory_import", "manual_input", "public_web_assisted", null] },
+    "sourceIds": { "type": "array", "items": { "type": "string" } },
+    "termsMode": { "type": ["string", "null"], "enum": ["accepted", "not_required", "missing", null] },
+    "queryHash": { "type": "string", "minLength": 1 },
+    "evidenceBundleId": { "type": ["string", "null"] },
+    "resultSnapshot": { "type": ["object", "null"], "additionalProperties": true },
+    "recommendationId": { "type": ["string", "null"] },
+    "opportunityId": { "type": ["string", "null"] },
+    "failureReason": { "type": ["string", "null"] }
+  },
+  "additionalProperties": false
+}

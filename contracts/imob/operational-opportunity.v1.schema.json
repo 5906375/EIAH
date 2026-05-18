@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eiah.local/contracts/imob/operational-opportunity.v1.schema.json",
+  "title": "IMOB Operational Opportunity v1",
+  "type": "object",
+  "required": ["version", "opportunityId", "runId", "recommendedAction", "confidenceScore", "nextStep", "requiresHumanApproval"],
+  "properties": {
+    "version": { "const": "1.0" },
+    "opportunityId": { "type": "string", "minLength": 1 },
+    "runId": { "type": "string", "minLength": 1 },
+    "recommendedAction": { "type": "string", "enum": ["captar", "ajustar_preco", "campanha", "nao_seguir", "pedir_documento", "pedir_autorizacao"] },
+    "confidenceScore": { "type": "number", "minimum": 0, "maximum": 1 },
+    "sourceCoverageScore": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+    "pricingRisk": { "type": ["string", "null"], "enum": ["low", "medium", "high", "unknown", null] },
+    "liquidityScore": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+    "nextStep": { "type": "string", "minLength": 1 },
+    "requiresHumanApproval": { "const": true },
+    "evidenceBundleId": { "type": ["string", "null"] }
+  },
+  "additionalProperties": false
+}

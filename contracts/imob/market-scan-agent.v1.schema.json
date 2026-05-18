@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eiah.local/contracts/imob/market-scan-agent.v1.schema.json",
+  "title": "IMOB Market Scan Agent v1",
+  "type": "object",
+  "required": ["version", "agentId", "mode", "visibleAgentId", "ownershipPreserved", "allowedAccessModes", "blockedAccessModes", "modelPolicy"],
+  "properties": {
+    "version": { "const": "1.0" },
+    "agentId": { "const": "IMOB_MarketScanAgent" },
+    "mode": { "const": "intelligence" },
+    "visibleAgentId": { "const": "IMOB" },
+    "ownershipPreserved": { "const": true },
+    "allowedAccessModes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["official_api", "partner_feed", "licensed_provider", "internal_crm", "tenant_inventory_import", "manual_input", "public_web_assisted"]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "blockedAccessModes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": ["unauthorized_bulk_scraping", "login_required_scraping", "captcha_bypass", "paywall_bypass", "pii_harvesting"]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "modelPolicy": { "$ref": "market-scan-model-policy.v1.schema.json" }
+  },
+  "additionalProperties": false
+}
