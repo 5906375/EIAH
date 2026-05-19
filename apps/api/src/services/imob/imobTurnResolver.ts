@@ -1666,7 +1666,7 @@ function buildOperationalPresentationMeta(
   const proposalCopy = flow === "proposal.create" ? getProposalPersonaCopy(operationalState.proposalDraft) : null;
   const nextStep =
     flow === "property.market_scan"
-      ? "Escolher se quer cadastrar um imóvel específico ou fazer uma varredura de mercado read-only."
+      ? "Escolher se quer cadastrar um imóvel específico ou fazer uma varredura de mercado governada."
       : flow === "commission.settle"
       ? pendingFieldLabels.length > 0
         ? "Confirmar pendências da comissão antes do repasse."
@@ -3800,7 +3800,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
             operationalState.marketScanContext?.priceRange?.max
               ? `Faixa detectada: até R$ ${operationalState.marketScanContext.priceRange.max}${operationalState.marketScanContext.priceRange.period === "monthly" ? "/mês" : ""}`
               : "Faixa de valor ainda não informada.",
-            "A varredura de mercado continua read-only e não cria imóvel, lead ou proprietário.",
+            "A varredura de mercado continua governada e não cria imóvel, lead ou proprietário.",
           ],
           actionsLayout: "inline" as const,
           ctas: [
