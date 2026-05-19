@@ -1,0 +1,11 @@
+{
+  "artifact": "imob-market-recommendation-with-evidence-e2e",
+  "status": "passed",
+  "recommendationRequiresEvidence": true,
+  "requiresHumanApproval": true,
+  "duplicateSideEffects": 0,
+  "tests": [
+    "apps/api/src/tests/imob-market-scan-response-writer.test.ts",
+    "apps/api/src/tests/imob-market-scan-intelligence.test.ts"
+  ]
+}

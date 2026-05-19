@@ -1,0 +1,13 @@
+{
+  "artifact": "imob-market-guardian-evidence-e2e",
+  "status": "passed",
+  "guardianEvidenceBundleCreated": true,
+  "sourceSnapshotHashCreated": true,
+  "normalizedListingsHashCreated": true,
+  "recommendationHashCreated": true,
+  "auditGap": 0,
+  "tests": [
+    "apps/api/src/tests/imob-market-guardian-evidence.test.ts",
+    "apps/api/src/tests/imob-market-scan-pipeline.test.ts"
+  ]
+}

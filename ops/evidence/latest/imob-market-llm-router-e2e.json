@@ -1,0 +1,10 @@
+{
+  "artifact": "imob-market-llm-router-e2e",
+  "status": "passed",
+  "llmRouterWorks": true,
+  "structuredOutputsValid": true,
+  "collectionPerformed": false,
+  "tests": [
+    "apps/api/src/tests/imob-market-scan-router.test.ts"
+  ]
+}

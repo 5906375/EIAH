@@ -10,6 +10,8 @@ import {
 } from "../marketScan/imobMarketScanSnapshot";
 import type { MarketScanQuery, MarketScanResult } from "../marketScan/MarketScanProvider";
 import { ImobMarketScanProviderRouter } from "../marketScan/imobMarketScanProviderRouter";
+import { executeMarketScanPipeline } from "../marketScan/marketScanPipeline";
+import { SourceConnectorRegistry } from "../marketScan/sourceConnectorRegistry";
 import type {
   ImobCrmCaseContext,
   ImobCrmTurnCopyState,
@@ -33,7 +35,13 @@ import {
   type ImobCrmWorkflowState,
   type ImobCrmWorkflowTransition,
 } from "./imobCrmWorkflowMachine";
-import type { ImobMarketScanContext, ImobMarketScanResultSnapshot, ImobProofSurface } from "../imobConversationContract";
+import type {
+  ImobMarketScanContext,
+  ImobMarketScanResultSnapshot,
+  ImobMarketScanRunSnapshot,
+  ImobOperationalOpportunity,
+  ImobProofSurface,
+} from "../imobConversationContract";
 
 export type ImobCrmTurnEngineHelpers = {
   asString: (value: unknown) => string | null;
@@ -107,26 +115,41 @@ function toMarketScanSnapshot(result: MarketScanResult): ImobMarketScanResultSna
 function attachSnapshotToResolvedTurn(
   resolved: OperationalResolution,
   snapshot: ImobMarketScanResultSnapshot | null | undefined,
+  run?: ImobMarketScanRunSnapshot | null,
+  opportunity?: ImobOperationalOpportunity | null,
 ) {
-  if (!snapshot) return resolved;
+  if (!snapshot && !run && !opportunity) return resolved;
   const operational = attachMarketScanSnapshotToOperationalState(
     (resolved as any).conversationState?.operational ?? null,
-    snapshot,
+    snapshot ?? null,
   );
   return {
     ...resolved,
     conversationState: {
       ...(resolved as any).conversationState,
-      operational,
+      operational: operational
+        ? {
+            ...operational,
+            ...(snapshot ? { marketScanResult: snapshot } : {}),
+            ...(run ? { marketScanRun: run } : {}),
+            ...(opportunity ? { marketScanOpportunity: opportunity } : {}),
+          }
+        : operational,
     },
     presentation: {
       ...(resolved as any).presentation,
-      marketScanResult: snapshot,
+      ...(snapshot ? { marketScanResult: snapshot } : {}),
     },
   } as OperationalResolution;
 }
 
-async function resolveMarketScanResult(params: {
+type ResolvedMarketScan = {
+  snapshot: ImobMarketScanResultSnapshot;
+  run?: ImobMarketScanRunSnapshot | null;
+  opportunity?: ImobOperationalOpportunity | null;
+};
+
+async function resolveLegacyMarketScanResult(params: {
   prisma: unknown;
   tenantId: string;
   workspaceId: string;
@@ -156,6 +179,54 @@ async function resolveMarketScanResult(params: {
   );
 
   return toMarketScanSnapshot(result);
+}
+
+async function resolveMarketScanResult(params: {
+  prisma: unknown;
+  tenantId: string;
+  workspaceId: string;
+  caseId?: string | null;
+  marketScanContext: ImobMarketScanContext;
+}): Promise<ResolvedMarketScan | null> {
+  if (!(params.prisma as any)?.imobProperty?.findMany) return null;
+  const repository = new ImobCrmRepository(params.prisma as any);
+  const source = {
+    listProperties(scope: { tenantId: string; workspaceId: string }) {
+      return repository.listProperties(scope) as any;
+    },
+  };
+
+  if ((params.prisma as any)?.imobMarketScanRun?.create && (params.prisma as any)?.imobMarketScanRun?.update) {
+    try {
+      const pipeline = await executeMarketScanPipeline({
+        prisma: params.prisma as any,
+        connectorRegistry: new SourceConnectorRegistry({
+          internal_crm: new InternalCrmMarketScanProvider(source),
+          tenant_inventory_import: new TenantInventoryImportProvider(source),
+        }),
+        tenantId: params.tenantId,
+        workspaceId: params.workspaceId,
+        caseId: params.caseId ?? null,
+        query: buildMarketScanQuery(params.marketScanContext),
+        sourceIds: ["tenant_inventory_import", "internal_crm"],
+        context: {
+          marketScanContext: params.marketScanContext,
+        },
+      });
+      if (pipeline.resultSnapshot) {
+        return {
+          snapshot: pipeline.resultSnapshot,
+          run: pipeline.run,
+          opportunity: pipeline.opportunity,
+        };
+      }
+    } catch {
+      // Compatibility path: if the new run store is not ready, preserve the legacy read-only scan.
+    }
+  }
+
+  const legacy = await resolveLegacyMarketScanResult(params);
+  return legacy ? { snapshot: legacy, run: null } : null;
 }
 
 function resolveDedupeContextualMessage(
@@ -1330,7 +1401,7 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
       } as const;
       const preliminaryResolvedTurn = resolveImobTurn(baseResolveRequest);
       const resumedMarketScanSnapshot = (hydratedThreadState as any)?.operational?.marketScanSnapshot ?? null;
-      const marketScanResult =
+      const marketScanResolution =
         preliminaryResolvedTurn.action === "realestate.market_scan"
         && preliminaryResolvedTurn.conversationState.operational?.flow === "property.market_scan"
         && preliminaryResolvedTurn.conversationState.operational.marketScanContext
@@ -1342,13 +1413,16 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
               marketScanContext: preliminaryResolvedTurn.conversationState.operational.marketScanContext,
             })
           : null;
+      const marketScanResult = marketScanResolution?.snapshot ?? null;
       const resolvedTurn = attachSnapshotToResolvedTurn(
         marketScanResult
-          ? resolveImobTurn({ ...baseResolveRequest, marketScanResult })
+          ? resolveImobTurn({ ...baseResolveRequest, marketScanResult, marketScanOpportunity: marketScanResolution?.opportunity ?? null })
           : resumedMarketScanSnapshot
             ? resolveImobTurn({ ...baseResolveRequest, marketScanResult: resumedMarketScanSnapshot })
             : preliminaryResolvedTurn,
         marketScanResult ?? resumedMarketScanSnapshot,
+        marketScanResolution?.run ?? null,
+        marketScanResolution?.opportunity ?? null,
       );
       if (marketScanResult) {
         await persistImobMarketScanSnapshot({
@@ -1429,7 +1503,7 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
     } as const;
     const preliminaryResolvedTurn = resolveImobTurn(baseResolveRequest);
     const resumedMarketScanSnapshot = (hydratedThreadState as any)?.operational?.marketScanSnapshot ?? null;
-    const marketScanResult =
+    const marketScanResolution =
       preliminaryResolvedTurn.action === "realestate.market_scan"
       && preliminaryResolvedTurn.conversationState.operational?.flow === "property.market_scan"
       && preliminaryResolvedTurn.conversationState.operational.marketScanContext
@@ -1441,13 +1515,16 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
             marketScanContext: preliminaryResolvedTurn.conversationState.operational.marketScanContext,
           })
         : null;
+    const marketScanResult = marketScanResolution?.snapshot ?? null;
     const resolvedTurn = attachSnapshotToResolvedTurn(
       marketScanResult
-        ? resolveImobTurn({ ...baseResolveRequest, marketScanResult })
+        ? resolveImobTurn({ ...baseResolveRequest, marketScanResult, marketScanOpportunity: marketScanResolution?.opportunity ?? null })
         : resumedMarketScanSnapshot
           ? resolveImobTurn({ ...baseResolveRequest, marketScanResult: resumedMarketScanSnapshot })
           : preliminaryResolvedTurn,
       marketScanResult ?? resumedMarketScanSnapshot,
+      marketScanResolution?.run ?? null,
+      marketScanResolution?.opportunity ?? null,
     );
     if (marketScanResult) {
       await persistImobMarketScanSnapshot({

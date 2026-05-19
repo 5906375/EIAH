@@ -1,0 +1,10 @@
+{
+  "artifact": "imob-market-no-hallucinated-listings-e2e",
+  "status": "passed",
+  "noHallucinatedListings": true,
+  "listingsMustComeFromRun": true,
+  "tests": [
+    "apps/api/src/tests/imob-market-scan-response-writer.test.ts",
+    "apps/api/src/tests/imob-market-scan-llm-judge.test.ts"
+  ]
+}
