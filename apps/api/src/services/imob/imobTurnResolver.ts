@@ -3487,6 +3487,30 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
       const pendingLabels = operationalState.pendingFields.map((field) =>
         mapOperationalPendingFieldLabel(operationalState.flow, field)
       );
+      const baseText = buildOperationalCollectingText({
+        intent: "capture",
+        message,
+        operationalState,
+        pendingLabels,
+      }) ?? "Vou manter a varredura de mercado em modo governado.";
+      const availableMarketScanResult =
+        request.marketScanResult
+        ?? request.threadState?.operational?.marketScanSnapshot
+        ?? operationalState.marketScanSnapshot
+        ?? null;
+      const availableMarketScanOpportunity =
+        request.marketScanOpportunity
+        ?? request.threadState?.operational?.marketScanOpportunity
+        ?? operationalState.marketScanOpportunity
+        ?? null;
+      const marketScanPresentation = availableMarketScanResult
+        ? buildMarketScanPresentation({
+            marketScanResult: availableMarketScanResult,
+            marketScanOpportunity: availableMarketScanOpportunity,
+            currentCard: undefined,
+            currentText: baseText,
+          })
+        : null;
       return finalize({
         mode: "consult",
         action: "realestate.market_scan",
@@ -3494,14 +3518,10 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
         conversationState: { slots: createEmptyImobSlots(), mode: "consult", pendingSlot: "none", resultOffset: 0, operational: operationalState },
         presentation: {
           ...buildVisibleOperationalPresentationMeta(operationalState),
+          ...(marketScanPresentation ?? {}),
           text: [
-            buildOperationalCollectingText({
-              intent: "capture",
-              message,
-              operationalState,
-              pendingLabels,
-            }) ?? "Vou manter a varredura de mercado em modo governado.",
-            "Ainda não encontrei inventário compatível para executar essa varredura, então vou manter o fluxo preparado sem inventar resultados.",
+            marketScanPresentation?.text ?? baseText,
+            marketScanPresentation ? null : "Ainda não encontrei inventário compatível para executar essa varredura, então vou manter o fluxo preparado sem inventar resultados.",
           ].filter(Boolean).join("\n"),
         },
       });
