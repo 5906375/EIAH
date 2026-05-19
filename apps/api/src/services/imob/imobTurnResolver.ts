@@ -1901,7 +1901,7 @@ function buildOperationalCollectingText(params: {
       return [
         "Identifiquei múltiplas cidades ou finalidades para um único cadastro de imóvel.",
         "Para cadastrar um imóvel específico, preciso de uma cidade e uma finalidade únicas.",
-        candidatesSummary ? `Posso seguir com uma varredura de mercado read-only usando ${candidatesSummary}.` : "Posso seguir com uma varredura de mercado read-only.",
+        candidatesSummary ? `Posso seguir com uma varredura de mercado governada usando ${candidatesSummary}.` : "Posso seguir com uma varredura de mercado governada.",
       ].join("\n");
     }
     if (operationalState.flow === "property.create") {
@@ -3500,8 +3500,8 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
               message,
               operationalState,
               pendingLabels,
-            }) ?? "Vou manter a varredura de mercado em modo read-only.",
-            "Ainda não há uma fonte de imóveis conectada para executar essa varredura neste patch, então vou manter o fluxo preparado sem inventar resultados.",
+            }) ?? "Vou manter a varredura de mercado em modo governado.",
+            "Ainda não encontrei inventário compatível para executar essa varredura, então vou manter o fluxo preparado sem inventar resultados.",
           ].filter(Boolean).join("\n"),
         },
       });
