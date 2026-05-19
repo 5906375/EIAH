@@ -1,5 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {
+  parsePublicWebAssistedListings,
+  PublicWebAssistedMarketScanProvider,
+} from "../services/imob/publicWebScan/PublicWebAssistedMarketScanProvider";
 import { createPublicWebScanEvidence } from "../services/imob/publicWebScan/publicWebScanEvidence";
 import { runPublicWebScanMockManual } from "../services/imob/publicWebScan/publicWebScanRuntime";
 
@@ -54,4 +58,35 @@ test("public web scan evidence summarizes sanitized sample", () => {
   assert.equal(evidence.piiExcluded, true);
   assert.equal(evidence.listingCount, 1);
   assert.match(evidence.resultHash, /^[a-f0-9]{64}$/);
+});
+
+test("public web assisted provider maps sanitized public listings to market scan result", async () => {
+  const provider = new PublicWebAssistedMarketScanProvider({
+    listPublicListings: () => parsePublicWebAssistedListings(JSON.stringify([
+      {
+        sourceId: "public-1",
+        city: "Itajaí",
+        goal: "venda",
+        propertyType: "apartamento",
+        bedrooms: 2,
+        price: 620000,
+        phone: "47999999999",
+        email: "owner@example.com",
+      },
+    ])),
+  });
+
+  const result = await provider.search({
+    cities: ["Itajaí"],
+    goals: ["venda"],
+    propertyTypes: ["apartamento"],
+    bedrooms: [2],
+    priceRange: null,
+    limitPerGroup: 10,
+  }, { tenantId: "tenant-1", workspaceId: "workspace-1" });
+
+  assert.equal(result.providerId, "public_web_assisted");
+  assert.equal(result.sourceStatus, "completed");
+  assert.equal(result.groups[0]?.items[0]?.sourceId, "public-1");
+  assert.equal((result.groups[0]?.items[0] as any)?.phone, undefined);
 });

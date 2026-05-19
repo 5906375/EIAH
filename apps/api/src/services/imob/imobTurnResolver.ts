@@ -2041,11 +2041,11 @@ function buildMarketScanPresentation(params: {
       : marketScanResult.sourceStatus === "empty"
         ? [
             currentText,
-            "Não encontrei imóveis para os filtros atuais na fonte interna do IMOB. Posso ajustar cidade, finalidade, tipo ou faixa de valor sem inventar resultados.",
+            "Não encontrei inventário compatível nem amostra pública assistida para os filtros atuais. Posso ajustar cidade, finalidade, tipo ou faixa de valor sem inventar resultados.",
           ].filter(Boolean).join("\n")
         : [
             currentText,
-            "A fonte de imóveis para essa varredura está indisponível no momento. Vou manter a consulta read-only e sem inventar resultados.",
+            "As fontes permitidas para essa varredura estão indisponíveis no momento. Vou manter a consulta governada e sem inventar resultados.",
           ].filter(Boolean).join("\n");
 
   const intelligenceLines = [
@@ -3409,7 +3409,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
           marketScanResult: availableMarketScanResult,
           marketScanOpportunity: availableMarketScanOpportunity,
           currentCard: undefined,
-          currentText: "Vou manter a varredura de mercado em modo read-only.",
+          currentText: "Vou manter a varredura de mercado em modo governado.",
         })
       : null;
     return finalize({
@@ -3421,8 +3421,8 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
         ...buildVisibleOperationalPresentationMeta(operationalState),
         ...(marketScanPresentation ?? {}),
         text: marketScanPresentation?.text ?? [
-          "Vou manter a varredura de mercado em modo read-only.",
-          "Ainda não há uma fonte de imóveis conectada para executar essa varredura neste patch, então vou manter o fluxo preparado sem inventar resultados.",
+          "Vou manter a varredura de mercado em modo governado.",
+          "Ainda não encontrei inventário compatível para executar essa varredura, então vou manter o fluxo preparado sem inventar resultados.",
         ].join("\n"),
       },
     });
@@ -3991,9 +3991,9 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
         ...(marketScanPresentation ?? {}),
         text: marketScanPresentation?.text ?? (explicitScanRequest
           ? [
-              presentation.text,
-              "Ainda não há uma fonte de imóveis conectada para executar essa varredura neste patch, então vou manter o fluxo preparado sem inventar resultados.",
-            ].filter(Boolean).join("\n")
+            presentation.text,
+            "Ainda não encontrei inventário compatível para executar essa varredura, então vou manter o fluxo preparado sem inventar resultados.",
+          ].filter(Boolean).join("\n")
           : presentation.text),
       },
     });

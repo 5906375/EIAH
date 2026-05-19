@@ -19,7 +19,7 @@ export type MarketScanConnectorRegistry = {
 };
 
 export class SourceConnectorRegistry implements MarketScanConnectorRegistry {
-  constructor(private readonly providers: Partial<Record<MarketScanProviderId, MarketScanProvider>>) {}
+  constructor(private readonly providers: Partial<Record<MarketScanConnectorId, MarketScanProvider>>) {}
 
   async search(params: {
     sourceId: MarketScanConnectorId;
@@ -38,7 +38,7 @@ export class SourceConnectorRegistry implements MarketScanConnectorRegistry {
     if (params.sourceAccessDecision.sourceId !== params.sourceId) {
       throw new Error("Source connector blocked: access decision does not match requested source.");
     }
-    if (params.sourceId === "manual_input" || params.sourceId === "public_web_assisted") {
+    if (params.sourceId === "manual_input") {
       return {
         providerId: params.sourceId,
         sourceStatus: "empty",

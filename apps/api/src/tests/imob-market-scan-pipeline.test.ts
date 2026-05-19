@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import type { MarketScanProvider } from "../services/imob/marketScan/MarketScanProvider";
 import { executeMarketScanPipeline } from "../services/imob/marketScan/marketScanPipeline";
 import { SourceConnectorRegistry } from "../services/imob/marketScan/sourceConnectorRegistry";
+import { PublicWebAssistedMarketScanProvider } from "../services/imob/publicWebScan/PublicWebAssistedMarketScanProvider";
 
 function createFakePrisma() {
   const rows = new Map<string, any>();
@@ -130,4 +131,62 @@ test("market scan pipeline blocks fail-closed before connector fetch", async () 
   assert.equal(result.sourceAccessDecision.allowed, false);
   assert.equal(result.run.status, "blocked");
   assert.equal(fake.calls.at(-1)?.data.failureReason, "PII_EXPOSURE_RISK");
+});
+
+test("market scan pipeline falls back to public web assisted after empty authorized sources", async () => {
+  const fake = createFakePrisma();
+  const calls: string[] = [];
+  const emptyProvider = (providerId: "tenant_inventory_import" | "internal_crm"): MarketScanProvider => ({
+    providerId,
+    async search() {
+      calls.push(providerId);
+      return { providerId, sourceStatus: "empty", totalItems: 0, groups: [] };
+    },
+  });
+  const publicProvider = new PublicWebAssistedMarketScanProvider({
+    listPublicListings() {
+      calls.push("public_web_assisted");
+      return [
+        {
+          sourceId: "public-1",
+          city: "Itajaí",
+          goal: "venda",
+          propertyType: "apartamento",
+          bedrooms: 2,
+          price: 620000,
+          title: "Apartamento público",
+          phone: "47999999999",
+          email: "owner@example.com",
+          ownerName: "Anunciante",
+        },
+      ];
+    },
+  });
+
+  const result = await executeMarketScanPipeline({
+    prisma: fake.prisma,
+    connectorRegistry: new SourceConnectorRegistry({
+      tenant_inventory_import: emptyProvider("tenant_inventory_import"),
+      internal_crm: emptyProvider("internal_crm"),
+      public_web_assisted: publicProvider,
+    }),
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    query: {
+      cities: ["Itajaí"],
+      goals: ["venda"],
+      propertyTypes: ["apartamento"],
+      bedrooms: [2],
+      priceRange: null,
+      limitPerGroup: 10,
+    },
+  });
+
+  assert.deepEqual(calls, ["tenant_inventory_import", "internal_crm", "public_web_assisted"]);
+  assert.equal(result.sourceAccessDecision.allowed, true);
+  assert.equal(result.sourceAccessDecision.allowed ? result.sourceAccessDecision.accessMode : null, "public_web_assisted");
+  assert.equal(result.run.disclosure?.coverage, "limited_public_web_sample");
+  assert.equal(result.resultSnapshot?.providerId, "public_web_assisted");
+  assert.equal(result.resultSnapshot?.groups[0]?.items[0]?.sourceId, "public-1");
+  assert.equal((result.resultSnapshot?.groups[0]?.items[0] as any)?.phone, undefined);
 });

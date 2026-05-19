@@ -1025,7 +1025,7 @@ test("IMOB turn resolver keeps market scan read-only and empty when no provider 
   assert.equal(result.action, "realestate.market_scan");
   assert.equal(result.executionRequest, undefined);
   assert.equal(result.presentation.marketScanResult, undefined);
-  assert.match(result.presentation.text ?? "", /não há uma fonte de imóveis conectada/i);
+  assert.match(result.presentation.text ?? "", /não encontrei inventário compatível/i);
 });
 
 test("IMOB turn resolver builds guided form for comprador on lead.qualify", () => {

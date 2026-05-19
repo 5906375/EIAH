@@ -12,6 +12,10 @@ import type { MarketScanQuery, MarketScanResult } from "../marketScan/MarketScan
 import { ImobMarketScanProviderRouter } from "../marketScan/imobMarketScanProviderRouter";
 import { executeMarketScanPipeline } from "../marketScan/marketScanPipeline";
 import { SourceConnectorRegistry } from "../marketScan/sourceConnectorRegistry";
+import {
+  parsePublicWebAssistedListings,
+  PublicWebAssistedMarketScanProvider,
+} from "../publicWebScan/PublicWebAssistedMarketScanProvider";
 import type {
   ImobCrmCaseContext,
   ImobCrmTurnCopyState,
@@ -203,12 +207,18 @@ async function resolveMarketScanResult(params: {
         connectorRegistry: new SourceConnectorRegistry({
           internal_crm: new InternalCrmMarketScanProvider(source),
           tenant_inventory_import: new TenantInventoryImportProvider(source),
+          public_web_assisted: new PublicWebAssistedMarketScanProvider({
+            listPublicListings(scope) {
+              return parsePublicWebAssistedListings(process.env.IMOB_PUBLIC_WEB_ASSISTED_LISTINGS)
+                .filter((listing) => listing.city === scope.city || !scope.city);
+            },
+          }),
         }),
         tenantId: params.tenantId,
         workspaceId: params.workspaceId,
         caseId: params.caseId ?? null,
         query: buildMarketScanQuery(params.marketScanContext),
-        sourceIds: ["tenant_inventory_import", "internal_crm"],
+        sourceIds: ["tenant_inventory_import", "internal_crm", "public_web_assisted"],
         context: {
           marketScanContext: params.marketScanContext,
         },
