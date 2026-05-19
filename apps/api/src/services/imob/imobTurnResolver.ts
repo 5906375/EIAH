@@ -1666,7 +1666,7 @@ function buildOperationalPresentationMeta(
   const proposalCopy = flow === "proposal.create" ? getProposalPersonaCopy(operationalState.proposalDraft) : null;
   const nextStep =
     flow === "property.market_scan"
-      ? "Escolher se quer cadastrar um imóvel específico ou fazer uma varredura de mercado read-only."
+      ? "Escolher se quer cadastrar um imóvel específico ou fazer uma varredura de mercado governada."
       : flow === "commission.settle"
       ? pendingFieldLabels.length > 0
         ? "Confirmar pendências da comissão antes do repasse."
@@ -1901,7 +1901,7 @@ function buildOperationalCollectingText(params: {
       return [
         "Identifiquei múltiplas cidades ou finalidades para um único cadastro de imóvel.",
         "Para cadastrar um imóvel específico, preciso de uma cidade e uma finalidade únicas.",
-        candidatesSummary ? `Posso seguir com uma varredura de mercado read-only usando ${candidatesSummary}.` : "Posso seguir com uma varredura de mercado read-only.",
+        candidatesSummary ? `Posso seguir com uma varredura de mercado governada usando ${candidatesSummary}.` : "Posso seguir com uma varredura de mercado governada.",
       ].join("\n");
     }
     if (operationalState.flow === "property.create") {
@@ -3487,6 +3487,30 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
       const pendingLabels = operationalState.pendingFields.map((field) =>
         mapOperationalPendingFieldLabel(operationalState.flow, field)
       );
+      const baseText = buildOperationalCollectingText({
+        intent: "capture",
+        message,
+        operationalState,
+        pendingLabels,
+      }) ?? "Vou manter a varredura de mercado em modo governado.";
+      const availableMarketScanResult =
+        request.marketScanResult
+        ?? request.threadState?.operational?.marketScanSnapshot
+        ?? operationalState.marketScanSnapshot
+        ?? null;
+      const availableMarketScanOpportunity =
+        request.marketScanOpportunity
+        ?? request.threadState?.operational?.marketScanOpportunity
+        ?? operationalState.marketScanOpportunity
+        ?? null;
+      const marketScanPresentation = availableMarketScanResult
+        ? buildMarketScanPresentation({
+            marketScanResult: availableMarketScanResult,
+            marketScanOpportunity: availableMarketScanOpportunity,
+            currentCard: undefined,
+            currentText: baseText,
+          })
+        : null;
       return finalize({
         mode: "consult",
         action: "realestate.market_scan",
@@ -3494,14 +3518,10 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
         conversationState: { slots: createEmptyImobSlots(), mode: "consult", pendingSlot: "none", resultOffset: 0, operational: operationalState },
         presentation: {
           ...buildVisibleOperationalPresentationMeta(operationalState),
+          ...(marketScanPresentation ?? {}),
           text: [
-            buildOperationalCollectingText({
-              intent: "capture",
-              message,
-              operationalState,
-              pendingLabels,
-            }) ?? "Vou manter a varredura de mercado em modo read-only.",
-            "Ainda não há uma fonte de imóveis conectada para executar essa varredura neste patch, então vou manter o fluxo preparado sem inventar resultados.",
+            marketScanPresentation?.text ?? baseText,
+            marketScanPresentation ? null : "Ainda não encontrei inventário compatível para executar essa varredura, então vou manter o fluxo preparado sem inventar resultados.",
           ].filter(Boolean).join("\n"),
         },
       });
@@ -3800,7 +3820,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
             operationalState.marketScanContext?.priceRange?.max
               ? `Faixa detectada: até R$ ${operationalState.marketScanContext.priceRange.max}${operationalState.marketScanContext.priceRange.period === "monthly" ? "/mês" : ""}`
               : "Faixa de valor ainda não informada.",
-            "A varredura de mercado continua read-only e não cria imóvel, lead ou proprietário.",
+            "A varredura de mercado continua governada e não cria imóvel, lead ou proprietário.",
           ],
           actionsLayout: "inline" as const,
           ctas: [
