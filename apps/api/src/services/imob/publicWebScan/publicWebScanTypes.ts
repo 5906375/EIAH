@@ -29,3 +29,13 @@ export type PublicWebScanResult = {
   listings: PublicWebManualListingInput[];
   piiExcluded: true;
 };
+
+export type PublicWebScanSource = {
+  listPublicListings(scope: {
+    tenantId: string;
+    workspaceId: string;
+    city?: string | null;
+    goal?: string | null;
+    propertyType?: string | null;
+  }): Promise<PublicWebManualListingInput[]> | PublicWebManualListingInput[];
+};

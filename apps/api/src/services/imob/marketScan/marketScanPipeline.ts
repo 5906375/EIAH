@@ -69,7 +69,7 @@ export async function executeMarketScanPipeline(params: {
     ? params.sourceIds
     : params.sourceId
       ? [params.sourceId]
-      : ["internal_crm"];
+      : ["tenant_inventory_import", "internal_crm", "public_web_assisted"];
 
   let run = await createMarketScanRun({
     prisma: params.prisma,
@@ -96,6 +96,10 @@ export async function executeMarketScanPipeline(params: {
       tenantId: params.tenantId,
       workspaceId: params.workspaceId,
       hasTenantCredential: params.hasTenantCredential,
+      requestedPages: sourceId === "public_web_assisted" ? 1 : params.sourceAccess?.requestedPages,
+      requestedResultsPerSource: sourceId === "public_web_assisted"
+        ? Math.min(params.query.limitPerGroup, 20)
+        : params.sourceAccess?.requestedResultsPerSource,
       ...params.sourceAccess,
     });
 
@@ -203,11 +207,23 @@ export async function executeMarketScanPipeline(params: {
     recommendationId: evidenceBundle.recommendationHash,
     opportunityId: opportunity?.opportunityId ?? null,
   });
+  const disclosure = sourceAccessDecision.allowed && sourceAccessDecision.accessMode === "public_web_assisted"
+    ? {
+        coverage: "limited_public_web_sample" as const,
+        confidenceCap: sourceAccessDecision.confidenceCap,
+        limitations: [
+          "Amostra pública assistida e limitada.",
+          "Sem login, captcha, paywall, bulk scraping ou coleta de PII.",
+          "Não substitui inventário autorizado, feed parceiro ou base licenciada.",
+        ],
+      }
+    : null;
 
   return {
     run: {
       ...completed,
       sourceAccessDecision,
+      ...(disclosure ? { disclosure } : {}),
     },
     sourceAccessDecision,
     resultSnapshot: enrichedSnapshot,

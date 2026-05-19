@@ -358,7 +358,7 @@ test("IMOB_CRM turn engine injeta market scan read-only com provider interno qua
   assert.equal((resolved as any).presentation?.marketScanResult?.groups?.[0]?.items?.length, 1);
   assert.equal((resolved as any).conversationState?.operational?.marketScanSnapshot?.readOnly, true);
   assert.equal((resolved as any).conversationState?.operational?.marketScanRun?.status, "completed");
-  assert.deepEqual((resolved as any).conversationState?.operational?.marketScanRun?.sourceIds, ["tenant_inventory_import", "internal_crm"]);
+  assert.deepEqual((resolved as any).conversationState?.operational?.marketScanRun?.sourceIds, ["tenant_inventory_import", "internal_crm", "public_web_assisted"]);
   assert.equal((resolved as any).conversationState?.operational?.marketScanResult?.intelligence?.pricingRisk, "high");
   assert.equal((resolved as any).conversationState?.operational?.marketScanOpportunity?.requiresHumanApproval, true);
   assert.equal(runCalls[0], "run.create");
