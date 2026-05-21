@@ -659,6 +659,9 @@ test("IMOB turn resolver extracts structured market scan filters for type, bedro
   assert.equal(result.conversationState.operational?.marketScanContext?.priceRange?.max, 3500);
   assert.equal(result.conversationState.operational?.marketScanContext?.priceRange?.period, "monthly");
   assert.match(result.presentation.text ?? "", /tipos: apartamento, casa, kitnet/i);
+  assert.doesNotMatch(result.presentation.text ?? "", /múltiplas cidades|cadastro automático/i);
+  assert.equal(result.presentation.blocker ?? null, null);
+  assert.equal(result.presentation.nextStep ?? null, null);
 });
 
 test("IMOB turn resolver extracts structured market scan price range for compra", () => {
@@ -779,7 +782,10 @@ test("IMOB turn resolver keeps market scan read-only when the user explicitly ch
   assert.equal(result.action, "realestate.market_scan");
   assert.equal(result.executionRequest, undefined);
   assert.equal(result.conversationState.operational?.flow, "property.market_scan");
-  assert.match(result.presentation.text ?? "", /Inteligência de mercado|read-only/i);
+  assert.match(result.presentation.text ?? "", /Inteligência de mercado|governada/i);
+  assert.doesNotMatch(result.presentation.text ?? "", /read-only|múltiplas cidades|cadastro automático/i);
+  assert.equal(result.presentation.blocker ?? null, null);
+  assert.equal(result.presentation.nextStep ?? null, null);
   assert.match(result.presentation.text ?? "", /Inteligência de mercado concluída/i);
   assert.equal(result.presentation.marketScanResult?.sourceStatus, "completed");
   assert.equal(result.presentation.marketScanResult?.groups[0]?.items.length, 2);
@@ -1026,6 +1032,9 @@ test("IMOB turn resolver keeps market scan read-only and empty when no provider 
   assert.equal(result.executionRequest, undefined);
   assert.equal(result.presentation.marketScanResult, undefined);
   assert.match(result.presentation.text ?? "", /não encontrei inventário compatível/i);
+  assert.doesNotMatch(result.presentation.text ?? "", /múltiplas cidades|cadastro automático/i);
+  assert.equal(result.presentation.blocker ?? null, null);
+  assert.equal(result.presentation.nextStep ?? null, null);
 });
 
 test("IMOB turn resolver builds guided form for comprador on lead.qualify", () => {

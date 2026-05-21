@@ -1869,6 +1869,44 @@ function buildVisibleOperationalPresentationMeta(
   return meta;
 }
 
+function buildVisibleMarketScanPresentationMeta(
+  operationalState: NonNullable<ImobResolveTurnResponse["conversationState"]["operational"]> | null | undefined
+) {
+  const meta = buildVisibleOperationalPresentationMeta(operationalState);
+  if (operationalState?.flow !== "property.market_scan") return meta;
+  const { blocker: _blocker, nextStep: _nextStep, ...rest } = meta;
+  return rest;
+}
+
+function formatMarketScanContextSummary(
+  operationalState: NonNullable<ImobResolveTurnResponse["conversationState"]["operational"]>
+) {
+  const cityCandidates = operationalState.marketScanContext?.cityCandidates ?? operationalState.marketScanContext?.cities ?? [];
+  const goalCandidates = operationalState.marketScanContext?.goalCandidates ?? operationalState.marketScanContext?.goals ?? [];
+  return [
+    cityCandidates.length > 0 ? `cidades: ${cityCandidates.join(", ")}` : null,
+    goalCandidates.length > 0 ? `finalidades: ${goalCandidates.join(", ")}` : null,
+    (operationalState.marketScanContext?.propertyTypes?.length ?? 0) > 0
+      ? `tipos: ${operationalState.marketScanContext?.propertyTypes.join(", ")}`
+      : null,
+    (operationalState.marketScanContext?.bedrooms?.length ?? 0) > 0
+      ? `quartos: ${operationalState.marketScanContext?.bedrooms.join(", ")}`
+      : null,
+    operationalState.marketScanContext?.priceRange?.max
+      ? `valor máximo: R$ ${operationalState.marketScanContext.priceRange.max}`
+      : null,
+  ].filter(Boolean).join(" | ");
+}
+
+function buildExplicitMarketScanBaseText(
+  operationalState: NonNullable<ImobResolveTurnResponse["conversationState"]["operational"]>
+) {
+  const contextSummary = formatMarketScanContextSummary(operationalState);
+  return contextSummary
+    ? `Vou seguir com uma varredura de mercado governada usando ${contextSummary}.`
+    : "Vou seguir com uma varredura de mercado governada.";
+}
+
 function buildOperationalCollectingText(params: {
   intent: ImobIntent;
   message: string;
@@ -1883,21 +1921,7 @@ function buildOperationalCollectingText(params: {
 
   if (intent === "capture") {
     if (operationalState.flow === "property.market_scan") {
-      const cityCandidates = operationalState.marketScanContext?.cityCandidates ?? operationalState.marketScanContext?.cities ?? [];
-      const goalCandidates = operationalState.marketScanContext?.goalCandidates ?? operationalState.marketScanContext?.goals ?? [];
-      const candidatesSummary = [
-        cityCandidates.length > 0 ? `cidades: ${cityCandidates.join(", ")}` : null,
-        goalCandidates.length > 0 ? `finalidades: ${goalCandidates.join(", ")}` : null,
-        (operationalState.marketScanContext?.propertyTypes?.length ?? 0) > 0
-          ? `tipos: ${operationalState.marketScanContext?.propertyTypes.join(", ")}`
-          : null,
-        (operationalState.marketScanContext?.bedrooms?.length ?? 0) > 0
-          ? `quartos: ${operationalState.marketScanContext?.bedrooms.join(", ")}`
-          : null,
-        operationalState.marketScanContext?.priceRange?.max
-          ? `valor máximo: R$ ${operationalState.marketScanContext.priceRange.max}`
-          : null,
-      ].filter(Boolean).join(" | ");
+      const candidatesSummary = formatMarketScanContextSummary(operationalState);
       return [
         "Identifiquei múltiplas cidades ou finalidades para um único cadastro de imóvel.",
         "Para cadastrar um imóvel específico, preciso de uma cidade e uma finalidade únicas.",
@@ -3418,7 +3442,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
       threadLabel: getIntentThreadLabel("capture"),
       conversationState: { slots: createEmptyImobSlots(), mode: "consult", pendingSlot: "none", resultOffset: 0, operational: operationalState },
       presentation: {
-        ...buildVisibleOperationalPresentationMeta(operationalState),
+        ...buildVisibleMarketScanPresentationMeta(operationalState),
         ...(marketScanPresentation ?? {}),
         text: marketScanPresentation?.text ?? [
           "Vou manter a varredura de mercado em modo governado.",
@@ -3484,15 +3508,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
   if (explicitMarketScanRequest) {
     const operationalState = createNextImobOperationalState(request.threadState?.operational ?? null, "capture", message, nextThreadState.slots);
     if (operationalState?.flow === "property.market_scan") {
-      const pendingLabels = operationalState.pendingFields.map((field) =>
-        mapOperationalPendingFieldLabel(operationalState.flow, field)
-      );
-      const baseText = buildOperationalCollectingText({
-        intent: "capture",
-        message,
-        operationalState,
-        pendingLabels,
-      }) ?? "Vou manter a varredura de mercado em modo governado.";
+      const baseText = buildExplicitMarketScanBaseText(operationalState);
       const availableMarketScanResult =
         request.marketScanResult
         ?? request.threadState?.operational?.marketScanSnapshot
@@ -3517,7 +3533,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
         threadLabel: getIntentThreadLabel("capture"),
         conversationState: { slots: createEmptyImobSlots(), mode: "consult", pendingSlot: "none", resultOffset: 0, operational: operationalState },
         presentation: {
-          ...buildVisibleOperationalPresentationMeta(operationalState),
+          ...buildVisibleMarketScanPresentationMeta(operationalState),
           ...(marketScanPresentation ?? {}),
           text: [
             marketScanPresentation?.text ?? baseText,
