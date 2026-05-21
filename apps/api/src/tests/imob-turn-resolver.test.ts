@@ -775,6 +775,26 @@ test("IMOB turn resolver keeps market scan read-only when the user explicitly ch
       ],
       readOnly: true,
       generatedAt: "2026-05-09T12:00:00.000Z",
+      intelligence: {
+        comparableCount: 2,
+        priceRange: { min: 3200, max: 3400, currency: "BRL" },
+        liquidityScore: 0.72,
+        pricingRisk: "high",
+        sourceCoverageScore: 0.5,
+        confidenceScore: 0.66,
+      },
+    },
+    marketScanOpportunity: {
+      opportunityId: "opp-1",
+      recommendedAction: "pedir_autorizacao",
+      confidenceScore: 0.66,
+      sourceCoverageScore: 0.5,
+      priceRange: { min: 3200, max: 3400, currency: "BRL" },
+      liquidityScore: 0.72,
+      pricingRisk: "high",
+      nextStep: "Pedir autorização ou fonte adicional antes de executar ação comercial.",
+      requiresHumanApproval: true,
+      evidenceBundleId: "evidence-1",
     },
   });
 
@@ -795,7 +815,13 @@ test("IMOB turn resolver keeps market scan read-only when the user explicitly ch
   );
   assert.equal(result.presentation.agentActivities?.every((item) => item.displayPrefix === "Agente"), true);
   assert.match(result.presentation.card?.title ?? "", /Inteligência de mercado/i);
-  assert.match(result.presentation.card?.lines?.[0] ?? "", /itajaí|locacao|apartamento/i);
+  assert.match(result.presentation.text ?? "", /Faixa observada: R\$\s?3\.200 a R\$\s?3\.400/i);
+  assert.match(result.presentation.text ?? "", /Liquidez: 72%/i);
+  assert.match(result.presentation.text ?? "", /Risco de preço: alto/i);
+  assert.match(result.presentation.text ?? "", /Confiança: 66%/i);
+  assert.match(result.presentation.text ?? "", /Ação recomendada: Pedir autorização/i);
+  assert.match(result.presentation.card?.lines?.join("\n") ?? "", /Faixa observada: R\$\s?3\.200 a R\$\s?3\.400/i);
+  assert.match(result.presentation.card?.lines?.join("\n") ?? "", /R\$\s?3\.200/i);
   assert.equal(
     result.presentation.card?.ctas?.some((cta) => cta.nextMessage === "selecionar imóvel prop-1 do scan"),
     true,

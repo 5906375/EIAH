@@ -2021,14 +2021,58 @@ function formatMarketScanGroupLabel(group: ImobMarketScanResultGroup) {
   return qualifiers.join(" | ");
 }
 
+function formatMarketScanMoney(value: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
 function formatMarketScanItemLabel(item: ImobMarketScanResultItem) {
   const details = [
     item.title ?? item.address ?? item.sourceId,
     item.neighborhood ? `bairro ${item.neighborhood}` : null,
-    typeof item.price === "number" ? `R$ ${item.price}` : null,
+    typeof item.price === "number" ? formatMarketScanMoney(item.price) : null,
     item.sourceId ? `origem ${item.sourceId}` : null,
   ].filter(Boolean);
   return details.join(" | ");
+}
+
+function formatMarketScanScore(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "sem dado";
+  const clamped = Math.max(0, Math.min(1, value));
+  return `${Math.round(clamped * 100)}%`;
+}
+
+function formatMarketScanRisk(value: "low" | "medium" | "high" | "unknown" | null | undefined) {
+  switch (value) {
+    case "low":
+      return "baixo";
+    case "medium":
+      return "médio";
+    case "high":
+      return "alto";
+    default:
+      return "desconhecido";
+  }
+}
+
+function formatMarketScanAction(value: ImobOperationalOpportunity["recommendedAction"]) {
+  switch (value) {
+    case "captar":
+      return "Captar imóvel";
+    case "ajustar_preco":
+      return "Ajustar preço";
+    case "campanha":
+      return "Preparar campanha";
+    case "nao_seguir":
+      return "Não seguir agora";
+    case "pedir_documento":
+      return "Pedir documento";
+    case "pedir_autorizacao":
+      return "Pedir autorização";
+  }
 }
 
 function buildMarketScanSelectionCtas(marketScanResult: NonNullable<ImobResolveTurnRequest["marketScanResult"]>) {
@@ -2052,11 +2096,11 @@ function buildMarketScanPresentation(params: {
   const totalGroups = marketScanResult.groups.length;
   const intelligence = marketScanResult.intelligence ?? null;
   const priceRange = marketScanOpportunity?.priceRange ?? intelligence?.priceRange ?? null;
-  const priceLine = priceRange ? `Faixa observada: R$ ${priceRange.min} a R$ ${priceRange.max}` : null;
-  const liquidityLine = intelligence ? `Liquidez: ${intelligence.liquidityScore}` : null;
-  const riskLine = intelligence ? `Risco de preço: ${intelligence.pricingRisk}` : null;
-  const confidenceLine = intelligence ? `Confiança: ${intelligence.confidenceScore}` : null;
-  const actionLine = marketScanOpportunity ? `Ação recomendada: ${marketScanOpportunity.recommendedAction}` : null;
+  const priceLine = priceRange ? `Faixa observada: ${formatMarketScanMoney(priceRange.min)} a ${formatMarketScanMoney(priceRange.max)}` : null;
+  const liquidityLine = intelligence ? `Liquidez: ${formatMarketScanScore(intelligence.liquidityScore)}` : null;
+  const riskLine = intelligence ? `Risco de preço: ${formatMarketScanRisk(intelligence.pricingRisk)}` : null;
+  const confidenceLine = intelligence ? `Confiança: ${formatMarketScanScore(intelligence.confidenceScore)}` : null;
+  const actionLine = marketScanOpportunity ? `Ação recomendada: ${formatMarketScanAction(marketScanOpportunity.recommendedAction)}` : null;
   const summaryText =
     marketScanResult.sourceStatus === "completed"
       ? [
