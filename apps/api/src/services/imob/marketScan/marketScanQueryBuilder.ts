@@ -43,6 +43,12 @@ function inferOperation(goals: string[]) {
   return "unknown" as const;
 }
 
+function toMarketScanPricePeriod(value: string | null | undefined): "monthly" | "daily" | "total" | null {
+  if (!value) return null;
+  if (value === "monthly" || value === "daily" || value === "total") return value;
+  return null;
+}
+
 function inferPropertyTypes(message: string, normalized: string): ImobCrmPropertyType[] {
   const extracted = extractMarketScanPropertyTypes(message);
   if (extracted.length > 0) return extracted;
@@ -59,6 +65,12 @@ export function buildMarketScanStructuredQuery(message: string): MarketScanQuery
   const propertyTypes = inferPropertyTypes(message, normalized);
   const bedrooms = extractMarketScanBedrooms(message);
   const priceRange = extractMarketScanPriceRange(message, goals);
+  const normalizedPriceRange = priceRange
+    ? {
+        ...priceRange,
+        period: toMarketScanPricePeriod(priceRange.period as string | null),
+      }
+    : null;
   const missingRequiredFilters = [
     cityCandidates.length === 0 && !region ? "city_or_region" : null,
     goals.length === 0 ? "operation" : null,
@@ -75,7 +87,7 @@ export function buildMarketScanStructuredQuery(message: string): MarketScanQuery
       operation: inferOperation(goals),
       propertyTypes,
       bedrooms,
-      priceRange,
+      priceRange: normalizedPriceRange,
       limitPerGroup: 10,
     },
     confidence: missingRequiredFilters.length === 0 ? 0.88 : 0.62,

@@ -60,6 +60,27 @@ test("public web scan evidence summarizes sanitized sample", () => {
   assert.match(evidence.resultHash, /^[a-f0-9]{64}$/);
 });
 
+test("public web assisted parser generates deterministic sourceId when omitted", () => {
+  const payload = JSON.stringify([
+    {
+      city: "Itajaí",
+      goal: "venda",
+      propertyType: "apto",
+      bedrooms: 2,
+      price: 620000,
+      title: "Apartamento público 2 quartos",
+    },
+  ]);
+
+  const first = parsePublicWebAssistedListings(payload);
+  const second = parsePublicWebAssistedListings(payload);
+
+  assert.equal(first.length, 1);
+  assert.equal(first[0]?.sourceId, second[0]?.sourceId);
+  assert.match(first[0]?.sourceId ?? "", /^public_[a-f0-9]{16}$/);
+  assert.equal(first[0]?.propertyType, "apartamento");
+});
+
 test("public web assisted provider maps sanitized public listings to market scan result", async () => {
   const provider = new PublicWebAssistedMarketScanProvider({
     listPublicListings: () => parsePublicWebAssistedListings(JSON.stringify([

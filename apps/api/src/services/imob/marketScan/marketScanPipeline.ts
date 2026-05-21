@@ -33,12 +33,18 @@ export type MarketScanPipelineResult = {
   opportunity: import("../imobConversationContract").ImobOperationalOpportunity | null;
   evidenceBundle: import("./guardianEvidenceHook").MarketScanGuardianEvidenceBundle | null;
 };
-
 function sourceIdToAccessMode(sourceId: MarketScanConnectorId): ImobMarketSourceAccessMode {
   if (sourceId === "public_web_assisted") return "public_web_assisted";
   if (sourceId === "manual_input") return "manual_input";
   if (sourceId === "tenant_inventory_import") return "tenant_inventory_import";
   return "internal_crm";
+}
+
+function isMarketScanConnectorId(value: unknown): value is MarketScanConnectorId {
+  return (
+    typeof value === "string"
+    && ["internal_crm", "tenant_inventory_import", "manual_input", "public_web_assisted"].includes(value)
+  );
 }
 
 export async function executeMarketScanPipeline(params: {
@@ -65,11 +71,12 @@ export async function executeMarketScanPipeline(params: {
     requestedResultsPerSource?: number;
   };
 }) {
-  const sourceIds = params.sourceIds?.length
+  const defaultSourceIds: MarketScanConnectorId[] = ["tenant_inventory_import", "internal_crm", "public_web_assisted"];
+  const sourceIds: MarketScanConnectorId[] = params.sourceIds?.length
     ? params.sourceIds
     : params.sourceId
       ? [params.sourceId]
-      : ["tenant_inventory_import", "internal_crm", "public_web_assisted"];
+      : defaultSourceIds;
 
   let run = await createMarketScanRun({
     prisma: params.prisma,
@@ -115,6 +122,8 @@ export async function executeMarketScanPipeline(params: {
         run: blocked,
         sourceAccessDecision,
         resultSnapshot: null,
+        opportunity: null,
+        evidenceBundle: null,
       } satisfies MarketScanPipelineResult;
     }
 

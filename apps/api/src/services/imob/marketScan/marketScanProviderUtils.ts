@@ -63,7 +63,12 @@ export function matchesGoal(recordGoal: string | null, requestedGoals: string[])
   if (!recordGoal) return false;
   const normalizedRecordGoal = recordGoal.trim().toLowerCase();
   const inventoryGoals = requestedGoals.map(mapRequestedGoalToInventoryGoal);
+  if (!isInventoryGoal(normalizedRecordGoal)) return false;
   return inventoryGoals.includes(normalizedRecordGoal);
+}
+
+export function isInventoryGoal(value: unknown): value is "locacao" | "venda" {
+  return typeof value === "string" && (value === "locacao" || value === "venda");
 }
 
 export function buildGroupKey(item: MarketScanItem) {
