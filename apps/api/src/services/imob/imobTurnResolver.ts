@@ -2075,6 +2075,49 @@ function formatMarketScanAction(value: ImobOperationalOpportunity["recommendedAc
   }
 }
 
+function buildMarketScanOpportunityNextMessage(opportunity: ImobOperationalOpportunity) {
+  switch (opportunity.recommendedAction) {
+    case "captar":
+      return "mostrar opções para gerar draft de captação com base no market scan";
+    case "ajustar_preco":
+      return "mostrar sugestão de ajuste de preço com base no market scan";
+    case "campanha":
+      return "mostrar opções para preparar campanha com base no market scan";
+    case "nao_seguir":
+      return "mostrar justificativa para não seguir agora com base no market scan";
+    case "pedir_documento":
+      return "mostrar documentos necessários antes de executar ação comercial";
+    case "pedir_autorizacao":
+      return "mostrar próximos passos governados do market scan";
+  }
+}
+
+function buildMarketScanOpportunityCta(params: {
+  opportunity: ImobOperationalOpportunity;
+  firstItem?: ImobMarketScanResultItem | null;
+}) {
+  const { opportunity, firstItem } = params;
+  const label = opportunity.recommendedAction === "captar"
+    ? "Gerar draft de captação"
+    : opportunity.recommendedAction === "ajustar_preco"
+      ? "Ajustar preço sugerido"
+      : opportunity.recommendedAction === "campanha"
+        ? "Preparar campanha"
+        : opportunity.recommendedAction === "pedir_autorizacao"
+          ? "Pedir autorização"
+          : "Não seguir agora";
+  const nextMessage = opportunity.recommendedAction === "pedir_autorizacao" && firstItem
+    ? `selecionar imóvel ${firstItem.sourceId} do scan`
+    : buildMarketScanOpportunityNextMessage(opportunity);
+  return {
+    id: `market-scan-opportunity-${opportunity.recommendedAction}`,
+    label,
+    kind: "primary" as const,
+    action: "send_suggested_message" as const,
+    nextMessage,
+  };
+}
+
 function buildMarketScanSelectionCtas(marketScanResult: NonNullable<ImobResolveTurnRequest["marketScanResult"]>) {
   const items = marketScanResult.groups.flatMap((group) => group.items).slice(0, 6);
   return items.map((item) => ({
@@ -2142,24 +2185,9 @@ function buildMarketScanPresentation(params: {
           : "Nenhum imóvel encontrado para os filtros atuais.",
       ];
 
+  const firstItem = marketScanResult.groups.flatMap((group) => group.items)[0] ?? null;
   const opportunityCtas = marketScanOpportunity
-    ? [
-        {
-          id: `market-scan-opportunity-${marketScanOpportunity.recommendedAction}`,
-          label: marketScanOpportunity.recommendedAction === "captar"
-            ? "Gerar draft de captação"
-            : marketScanOpportunity.recommendedAction === "ajustar_preco"
-              ? "Ajustar preço sugerido"
-              : marketScanOpportunity.recommendedAction === "campanha"
-                ? "Preparar campanha"
-                : marketScanOpportunity.recommendedAction === "pedir_autorizacao"
-                  ? "Pedir autorização"
-                  : "Não seguir agora",
-          kind: "primary" as const,
-          action: "send_suggested_message" as const,
-          nextMessage: marketScanOpportunity.nextStep,
-        },
-      ]
+    ? [buildMarketScanOpportunityCta({ opportunity: marketScanOpportunity, firstItem })]
     : [];
 
   return {
@@ -2184,7 +2212,7 @@ function buildMarketScanSelectionPresentation(params: {
   currentText: string;
   marketScanResult?: ImobMarketScanResultSnapshot | null;
 }) {
-  const { selection, currentText, marketScanResult } = params;
+  const { selection, marketScanResult } = params;
   const itemLabel = formatMarketScanItemLabel({
     source: selection.source,
     sourceId: selection.sourceId,
@@ -2205,7 +2233,6 @@ function buildMarketScanSelectionPresentation(params: {
 
   return {
     text: [
-      currentText,
       "Imóvel selecionado a partir da varredura. Ao confirmar, vou deduplicar por sourceId/endereço antes de criar ou atualizar o cadastro no CRM.",
     ].filter(Boolean).join("\n"),
     card: {

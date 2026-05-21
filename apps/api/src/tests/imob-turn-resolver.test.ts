@@ -823,6 +823,13 @@ test("IMOB turn resolver keeps market scan read-only when the user explicitly ch
   assert.match(result.presentation.card?.lines?.join("\n") ?? "", /Faixa observada: R\$\s?3\.200 a R\$\s?3\.400/i);
   assert.match(result.presentation.card?.lines?.join("\n") ?? "", /R\$\s?3\.200/i);
   assert.equal(
+    result.presentation.card?.ctas?.some((cta) =>
+      cta.label === "Pedir autorização"
+      && cta.nextMessage === "selecionar imóvel prop-1 do scan"
+    ),
+    true,
+  );
+  assert.equal(
     result.presentation.card?.ctas?.some((cta) => cta.nextMessage === "selecionar imóvel prop-1 do scan"),
     true,
   );
@@ -920,6 +927,7 @@ test("IMOB turn resolver keeps selected market scan item pending until explicit 
   assert.equal(result.conversationState.operational?.marketScanSelection?.sourceId, "prop-1");
   assert.equal(result.presentation.card?.ctas?.some((cta) => cta.nextMessage === "confirmar seleção do scan prop-1"), true);
   assert.match(result.presentation.text ?? "", /deduplicar por sourceId\/endereço/i);
+  assert.doesNotMatch(result.presentation.text ?? "", /múltiplas cidades|cadastro automático/i);
 });
 
 test("IMOB turn resolver turns a confirmed market scan selection into governed property.create execution", () => {
