@@ -323,6 +323,13 @@ function extractSegment(text: string): "locacao" | "venda" | "ambos" {
   return goal ?? "ambos";
 }
 
+function segmentFromGoal(goal: "locacao" | "venda" | "aluguel_por_temporada" | "ambos" | null | undefined): "locacao" | "venda" | "ambos" {
+  if (!goal) return "ambos";
+  if (goal === "aluguel_por_temporada") return "locacao";
+  if (goal === "locacao" || goal === "venda") return goal;
+  return "ambos";
+}
+
 function buildSearchSourceDescription(region: string, segment: "locacao" | "venda" | "ambos") {
   const segmentLabel = segment === "locacao" ? "locação" : segment === "venda" ? "venda" : "locação e venda";
   return region === "Brasil" ? segmentLabel : `${segmentLabel} em ${region}`;
@@ -3385,7 +3392,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
         text: [
           "Posso receber esse documento por anexo nesta conversa.",
           "Use o botão de anexo para enviar o arquivo agora.",
-          presentationMeta.nextStep ? `Próximo passo: ${presentationMeta.nextStep}` : null,
+          (presentationMeta as any).nextStep ? `Próximo passo: ${(presentationMeta as any).nextStep}` : null,
         ].filter(Boolean).join("\n"),
         suggestedNextAction: "Anexe o documento nesta conversa para validar e continuar o cadastro.",
         card: {
@@ -3454,7 +3461,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
 
   if (isKnowledgeSearchQuery(message) && !(intent === "documents" && isImobGovernedDocumentCollectionRequest(message))) {
     const region = nextThreadState.slots.city ?? nextThreadState.slots.region ?? extractRegion(normalizeImobText(message)) ?? "Brasil";
-    const segment = nextThreadState.slots.goal ?? extractSegment(message);
+    const segment = segmentFromGoal(nextThreadState.slots.goal ?? extractSegment(message));
     const sourceTypes = extractKnowledgeSourceTypes(message);
     if (!hasImobKnowledgeAccess(request)) {
       return finalize({
@@ -3495,7 +3502,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
   }
 
   const resolvedRegion = nextThreadState.slots.city ?? nextThreadState.slots.region ?? extractRegion(normalizeImobText(message)) ?? "Brasil";
-  const resolvedSegment = nextThreadState.slots.goal ?? extractSegment(message);
+  const resolvedSegment = segmentFromGoal(nextThreadState.slots.goal ?? extractSegment(message));
   const previousPendingSlot = request.threadState?.pendingSlot ?? "none";
   const pendingSlotChanged = nextThreadState.pendingSlot !== previousPendingSlot;
   const shouldStayInSearchThread = isSearchThread(request.threadLabel) && isSearchRefinementQuery(message) && !pendingSlotChanged;
@@ -3765,7 +3772,7 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
         text: [
           "Posso receber esse documento por anexo nesta conversa.",
           "Use o botão de anexo para enviar o arquivo agora.",
-          presentationMeta.nextStep ? `Próximo passo: ${presentationMeta.nextStep}` : null,
+          (presentationMeta as any).nextStep ? `Próximo passo: ${(presentationMeta as any).nextStep}` : null,
         ].filter(Boolean).join("\n"),
         suggestedNextAction: "Anexe o documento nesta conversa para validar e continuar o cadastro.",
         card: {

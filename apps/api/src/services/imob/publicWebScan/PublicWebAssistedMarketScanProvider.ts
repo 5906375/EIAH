@@ -1,7 +1,9 @@
+import { createHash } from "node:crypto";
 import type { MarketScanItem, MarketScanProvider, MarketScanQuery, MarketScanResult } from "../marketScan/MarketScanProvider";
 import { publicWebAssistedPolicy } from "../marketScan/publicWebAssistedPolicy";
 import { extractManualPublicListings } from "./publicListingExtractor";
 import type { PublicWebManualListingInput, PublicWebScanSource } from "./publicWebScanTypes";
+import { normalizeImobCrmPropertyType } from "../crm/imobCrmPropertyTypes";
 
 function matchesText(candidate: string | null | undefined, allowed: string[]) {
   if (allowed.length === 0) return true;
@@ -9,15 +11,8 @@ function matchesText(candidate: string | null | undefined, allowed: string[]) {
   return Boolean(normalized && allowed.some((item) => item.trim().toLocaleLowerCase("pt-BR") === normalized));
 }
 
-function isSupportedPropertyType(value: string | null | undefined): MarketScanItem["propertyType"] {
-  if (
-    value === "apartamento"
-    || value === "casa"
-    || value === "kitnet"
-    || value === "terreno"
-    || value === "sala_comercial"
-  ) return value;
-  return null;
+function toSupportedPropertyType(value: string | null | undefined): import("../crm/imobCrmPropertyTypes").ImobCrmPropertyType | null {
+  return normalizeImobCrmPropertyType(value);
 }
 
 function toMarketScanItem(listing: PublicWebManualListingInput, retrievedAt: string): MarketScanItem {
@@ -28,7 +23,7 @@ function toMarketScanItem(listing: PublicWebManualListingInput, retrievedAt: str
     retrievedAt,
     city: listing.city,
     goal: listing.goal,
-    propertyType: isSupportedPropertyType(listing.propertyType),
+    propertyType: toSupportedPropertyType(listing.propertyType),
     bedrooms: typeof listing.bedrooms === "number" ? listing.bedrooms : null,
     price: typeof listing.price === "number" ? listing.price : null,
     currency: "BRL",
@@ -98,41 +93,84 @@ function asNumber(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+function buildDeterministicSourceId(params: {
+  sourceUrlHash: string | null;
+  city: string;
+  goal: string;
+  propertyType: string;
+  neighborhood: string | null;
+  bedrooms: number | null;
+  price: number | null;
+  title: string | null;
+}) {
+  if (params.sourceUrlHash) return `public_${params.sourceUrlHash}`;
+  const basis = [
+    params.city,
+    params.goal,
+    params.propertyType,
+    params.neighborhood ?? "",
+    params.bedrooms ?? "",
+    params.price ?? "",
+    params.title ?? "",
+  ].join("|");
+  const digest = createHash("sha256").update(basis).digest("hex").slice(0, 16);
+  return `public_${digest}`;
+}
+
 export function parsePublicWebAssistedListings(raw: string | undefined | null): PublicWebManualListingInput[] {
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return [];
-    return parsed
-      .map((entry) => {
-        const obj = asObject(entry);
-        if (!obj) return null;
-        const sourceId = asString(obj.sourceId);
-        const city = asString(obj.city);
-        const goal = asString(obj.goal);
-        if (!sourceId || !city || !goal) return null;
-        return {
-          sourceId,
-          sourceUrlHash: asString(obj.sourceUrlHash),
+
+    const rawEntries = parsed;
+    const items = rawEntries.map((entry): PublicWebManualListingInput | null => {
+      const obj = asObject(entry);
+      if (!obj) return null;
+
+      const sourceId = asString(obj.sourceId);
+      const sourceUrlHash = asString(obj.sourceUrlHash);
+      const city = asString(obj.city);
+      const goal = asString(obj.goal);
+      if (!city || !goal) return null;
+
+      const propertyType = toSupportedPropertyType(asString(obj.propertyType));
+      if (!propertyType) return null;
+
+      const item: PublicWebManualListingInput = {
+        sourceId: sourceId ?? buildDeterministicSourceId({
+          sourceUrlHash,
           city,
-          neighborhood: asString(obj.neighborhood),
           goal,
-          propertyType: asString(obj.propertyType),
+          propertyType,
+          neighborhood: asString(obj.neighborhood),
           bedrooms: asNumber(obj.bedrooms),
-          bathrooms: asNumber(obj.bathrooms),
-          garageSpots: asNumber(obj.garageSpots),
-          areaM2: asNumber(obj.areaM2),
           price: asNumber(obj.price),
-          condominium: asNumber(obj.condominium),
-          iptu: asNumber(obj.iptu),
           title: asString(obj.title),
-          ownerName: asString(obj.ownerName),
-          phone: asString(obj.phone),
-          email: asString(obj.email),
-          whatsapp: asString(obj.whatsapp),
-        } satisfies PublicWebManualListingInput;
-      })
-      .filter((entry): entry is PublicWebManualListingInput => entry !== null);
+        }),
+        sourceUrlHash: sourceUrlHash ?? null,
+        city,
+        neighborhood: asString(obj.neighborhood) ?? null,
+        goal,
+        propertyType: propertyType ?? null,
+        bedrooms: asNumber(obj.bedrooms),
+        bathrooms: asNumber(obj.bathrooms),
+        garageSpots: asNumber(obj.garageSpots),
+        areaM2: asNumber(obj.areaM2),
+        price: asNumber(obj.price),
+        condominium: asNumber(obj.condominium),
+        iptu: asNumber(obj.iptu),
+        title: asString(obj.title) ?? null,
+        ownerName: asString(obj.ownerName) ?? null,
+        phone: asString(obj.phone) ?? null,
+        email: asString(obj.email) ?? null,
+        whatsapp: asString(obj.whatsapp) ?? null,
+      };
+
+      return item;
+    });
+
+    return items.filter((entry): entry is PublicWebManualListingInput => entry !== null);
   } catch {
     return [];
   }
