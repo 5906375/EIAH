@@ -3,6 +3,7 @@ import type {
   ImobCrmCaseContext,
   ImobCrmHumanJourney,
   ImobCrmHumanWorkflow,
+  ImobCrmLeadSummary,
 } from "./imobCrmAgentContract";
 import type { ImobProofSurface } from "../imobConversationContract";
 
@@ -112,7 +113,7 @@ function normalizeProofSurface(item: CaseContextRecord): ImobProofSurface | null
   };
 }
 
-function normalizeLeadSummary(value: unknown) {
+function normalizeLeadSummary(value: unknown): ImobCrmLeadSummary | null {
   const lead = asObject(value);
   if (!lead) return null;
 

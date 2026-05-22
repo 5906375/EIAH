@@ -1422,16 +1422,17 @@ export async function resolveImobCrmOperationalUpdate(params: ResolverParams) {
       }
     }
     if (!owner) {
-      const conditions = [
-        ownerExplicitDocument ? { document: ownerExplicitDocument } : null,
-        ownerExplicitPhone ? { phone: ownerExplicitPhone } : null,
-        ownerExplicitEmail ? { email: ownerExplicitEmail } : null,
-        ownerName ? { name: ownerName } : null,
-        dedupeSelection?.selectedRef ? { document: dedupeSelection.selectedRef } : null,
-        dedupeSelection?.selectedRef ? { phone: dedupeSelection.selectedRef } : null,
-        dedupeSelection?.selectedRef ? { email: dedupeSelection.selectedRef } : null,
-        dedupeSelection?.selectedName ? { name: dedupeSelection.selectedName } : null,
-      ].filter(Boolean) as Array<Record<string, string>>;
+      const conditions: Array<Record<string, string>> = [];
+      if (ownerExplicitDocument) conditions.push({ document: ownerExplicitDocument });
+      if (ownerExplicitPhone) conditions.push({ phone: ownerExplicitPhone });
+      if (ownerExplicitEmail) conditions.push({ email: ownerExplicitEmail });
+      if (ownerName) conditions.push({ name: ownerName });
+      if (dedupeSelection?.selectedRef) {
+        conditions.push({ document: dedupeSelection.selectedRef });
+        conditions.push({ phone: dedupeSelection.selectedRef });
+        conditions.push({ email: dedupeSelection.selectedRef });
+      }
+      if (dedupeSelection?.selectedName) conditions.push({ name: dedupeSelection.selectedName });
       if (conditions.length > 0) {
         owner = await params.prisma.imobOwner.findFirst({
           where: { tenantId: params.tenantId, workspaceId: params.workspaceId, status: { not: "archived" }, OR: conditions },
@@ -1709,7 +1710,7 @@ export async function resolveImobCrmOperationalConsult(params: ResolverParams) {
       } as any;
     }
 
-    const caseContext = buildCaseContextFromRecord(item);
+    const caseContext = buildCaseContextFromRecord(item as unknown as ResolverCaseRecord);
     const presentation = legacyBusinessRead.buildImobBusinessReadPresentation({
       intent: businessReadIntent,
       caseContext,
@@ -2277,7 +2278,7 @@ export async function resolveImobCrmOperationalConsult(params: ResolverParams) {
       } as any;
     }
 
-    const blocker = Array.isArray(item.blockers) && item.blockers.length > 0 ? item.blockers[0] : null;
+    const blocker = Array.isArray(item.blockers) && item.blockers.length > 0 ? asString(item.blockers[0]) : null;
     return {
       mode: "consult",
       action: "crm.case.lookup",
@@ -2289,11 +2290,11 @@ export async function resolveImobCrmOperationalConsult(params: ResolverParams) {
           scopedCaseId,
           flow: item.flow,
           pendingItems: item.pendingItems,
-          nextStep: item.nextStep,
+          nextStep: asString(item.nextStep),
           blocker,
         }),
         owner: item.ownerResponsible ?? undefined,
-        nextStep: item.nextStep ?? undefined,
+        nextStep: asString(item.nextStep) ?? undefined,
         blocker,
         pendingFieldLabels: Array.isArray(item.pendingItems) ? item.pendingItems : [],
         dedupeKey: `crm.case.lookup:${item.id}`,

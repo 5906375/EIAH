@@ -6,6 +6,7 @@ import {
   type ImobLeadDiscoverySignals,
   type ImobIntent,
   type ImobLeadDraft,
+  type ImobLeadPersona,
   type ImobOwnerPersona,
   type ImobOperationalState,
   type ImobListingDraft,
@@ -119,7 +120,7 @@ export function extractMarketScanPriceRange(text: string, goals: string[]) {
 
   if (min === null && max === null) return null;
 
-  const period =
+  const period: NonNullable<ImobMarketScanContext["priceRange"]>["period"] =
     normalized.includes("diaria") || normalized.includes("por dia")
       ? "daily"
       : goals.length === 1 && goals[0] === "locacao"
@@ -765,6 +766,10 @@ function detectLeadPersona(message: string, previous?: ImobLeadDraft): ImobLeadP
   return previous?.leadPersona ?? "lead";
 }
 
+function normalizeLeadGoal(goal: "locacao" | "venda" | "aluguel_por_temporada" | null | undefined): "locacao" | "venda" | "aluguel_por_temporada" | null {
+  return goal ?? null;
+}
+
 function buildLeadDraft(previous: ImobLeadDraft | undefined, message: string, slots: ImobSearchSlots): ImobLeadDraft {
   const desiredCityCanonical = canonicalizeImobCity(slots.city ?? previous?.desiredCity ?? null, {
     source: "user",
@@ -775,7 +780,7 @@ function buildLeadDraft(previous: ImobLeadDraft | undefined, message: string, sl
     leadName: extractNamedParty(message, "lead") ?? previous?.leadName ?? null,
     leadEmail: extractEmail(message) ?? previous?.leadEmail ?? null,
     leadPhone: extractPhone(message) ?? previous?.leadPhone ?? null,
-    desiredGoal: slots.goal ?? previous?.desiredGoal ?? null,
+    desiredGoal: normalizeLeadGoal(slots.goal ?? previous?.desiredGoal ?? null),
     desiredCity: desiredCityCanonical?.canonicalName ?? previous?.desiredCity ?? null,
     desiredCityCanonical,
     budgetMax: slots.budgetMax ?? previous?.budgetMax ?? null,
@@ -1070,7 +1075,7 @@ function buildListingDraft(previous: ImobListingDraft | undefined, message: stri
       return next.length > 0 ? next : previous?.publicationChannels ?? [];
     })(),
     askingPrice: extractPriceAmount(message) ?? previous?.askingPrice ?? null,
-    publicationGoal: slots.goal ?? previous?.publicationGoal ?? null,
+    publicationGoal: slots.goal === "aluguel_por_temporada" ? "locacao" : slots.goal ?? previous?.publicationGoal ?? null,
   };
 }
 

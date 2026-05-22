@@ -2,6 +2,7 @@ import type { ImobCrmPropertyType } from "./crm/imobCrmPropertyTypes";
 import type { ImobReasonCode } from "./control/imobReasonCodeCatalog";
 import type { ImobAgentActivityEvent } from "./agents/imobAgentActivity";
 import type { ImobCanonicalLocation } from "./imobGeoCanonicalizer";
+import type { ImobActionKey, ImobEntityKey } from "./imobActionCatalog";
 import type {
   ImobCapabilityCategory,
   ImobCapabilityExecutionMode,
@@ -104,6 +105,7 @@ export type ImobThreadConversationState = {
 export type ImobIntent = "capture" | "match" | "lead" | "visit" | "listing" | "documents" | "proposal" | "deal" | "contract" | "rules" | "commission" | "adjustment";
 
 export type ImobOperationalFlow =
+  | "owner.dedupe_review"
   | "owner.create"
   | "property.create"
   | "property.market_scan"
@@ -457,7 +459,7 @@ export type ImobMissionContext = {
 };
 
 export type ImobOperationalState = {
-  flow: "owner.create" | "property.create" | "property.market_scan" | "lead.qualify" | "visit.schedule" | "listing.activate" | "documents.collect" | "proposal.create" | "deal.review" | "contract.prepare" | "rules.configure" | "commission.settle";
+  flow: ImobOperationalFlow;
   status: "collecting" | "ready_for_review";
   outcome?: "created" | "updated" | "deduped_update" | "blocked" | "waiting_input" | null;
   pendingFields: string[];
@@ -902,6 +904,8 @@ export type ImobCapabilityRegistrySnapshot = {
 export type ImobPresentationMetadata = {
   confidence?: ImobPresentationConfidence;
   choiceStyle?: ImobPresentationChoiceStyle;
+  frontDoorAgentId?: "EIAH" | string;
+  reasonCode?: string;
   canonicalSnapshot?: {
     authoritative: true;
     source: "imob_crm_turn_engine";

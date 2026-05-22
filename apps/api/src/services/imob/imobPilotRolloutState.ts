@@ -16,7 +16,7 @@ export type ImobPilotRolloutState = {
   entries: ImobPilotRolloutStateEntry[];
 };
 
-export function createImobPilotRolloutState() {
+export function createImobPilotRolloutState(): ImobPilotRolloutState {
   return {
     entries: [],
   } satisfies ImobPilotRolloutState;

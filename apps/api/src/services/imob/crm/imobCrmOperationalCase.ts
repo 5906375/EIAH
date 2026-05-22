@@ -25,8 +25,8 @@ function buildChatSafeCaseLookupText(params: {
   blocker?: string | null;
 }, helpers: ResolverHelpers) {
   const summary = params.scopedCaseId
-    ? `Caso ${helpers.formatImobCaseFlowLabel(params.flow)} localizado.`
-    : `Usei o caso IMOB mais recente para esta leitura: ${helpers.formatImobCaseFlowLabel(params.flow)}.`;
+    ? `Caso ${helpers.formatImobCaseFlowLabel(params.flow ?? "case.review")} localizado.`
+    : `Usei o caso IMOB mais recente para esta leitura: ${helpers.formatImobCaseFlowLabel(params.flow ?? "case.review")}.`;
   const hints = [
     params.pendingItems.length > 0 ? "Há pendências operacionais em aberto." : null,
     params.blocker ? "Existe um bloqueio ativo neste atendimento." : null,

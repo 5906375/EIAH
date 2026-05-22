@@ -392,8 +392,9 @@ function buildWorkflowBlockedResolution(params: {
   reasonCode: ImobCrmWorkflowReasonCode;
   threadState: ThreadStateLike;
 }) {
-  const reasonCopy: Record<ImobCrmWorkflowReasonCode, string> = {
-    market_scan_selection_missing_item: "Ainda não há um imóvel do scan selecionado com segurança para confirmar a captação.",
+	  const reasonCopy: Record<ImobCrmWorkflowReasonCode, string> = {
+	    property_multiple_candidates_offer_market_scan: "Encontrei múltiplas cidades ou finalidades; posso seguir com uma varredura de mercado governada antes de cadastrar um imóvel específico.",
+	    market_scan_selection_missing_item: "Ainda não há um imóvel do scan selecionado com segurança para confirmar a captação.",
     owner_dedupe_missing_match: "Encontrei uma decisao de duplicidade pendente, mas o cadastro correspondente nao esta identificado com seguranca.",
     owner_dedupe_missing_matches: "Nao consegui recuperar os cadastros correspondentes para revisar esta duplicidade com seguranca.",
     visit_missing_property: "Ainda falta vincular o imovel da visita antes de seguir com o agendamento.",
@@ -730,7 +731,7 @@ function buildCaptureSwitchActions(caseContext?: ImobCrmCaseContext | null) {
     },
   );
 
-  return actions as const;
+	  return actions;
 }
 
 function mapCasePlanActionToCta(action: ImobCasePlanActionV1) {
@@ -1348,13 +1349,14 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
       ? "cadastrar imóvel"
       : dedupeAwareMessage;
     const explicitStageChangeFlow = inferExplicitStageChangeFlow(effectiveMessage);
-    const currentOperationalFlow = asString(asObject(hydratedThreadState)?.operational?.flow);
+	    const hydratedOperationalForFlow = asObject(asObject(hydratedThreadState)?.operational);
+	    const currentOperationalFlow = asString(hydratedOperationalForFlow?.flow);
     const isCrossStageTransitionRequest =
       explicitStageChangeFlow !== null
       && explicitStageChangeFlow !== currentOperationalFlow;
     const normalizedEffectiveMessage = params.helpers.normalizeImobRouteText(effectiveMessage);
     const isMarketScanSelectionFlowMessage =
-      asString(asObject(hydratedThreadState)?.operational?.flow) === "property.market_scan"
+	      asString(hydratedOperationalForFlow?.flow) === "property.market_scan"
       && (
         normalizedEffectiveMessage.includes("selecionar imovel")
         || normalizedEffectiveMessage.includes("selecionar imóvel")

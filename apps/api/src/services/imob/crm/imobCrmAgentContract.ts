@@ -2,6 +2,7 @@ import type { ImobCrmPropertyGoal } from "./imobCrmPropertyGoals";
 import type { ImobCrmPropertyType } from "./imobCrmPropertyTypes";
 import type { ImobReasonCode } from "../control/imobReasonCodeCatalog";
 import type {
+  ImobLeadDiscoverySignalKey,
   ImobLeadDiscoverySignals,
   ImobProofSurface,
   ImobPilotControlStateSnapshot,

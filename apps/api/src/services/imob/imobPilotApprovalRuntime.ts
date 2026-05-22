@@ -22,7 +22,7 @@ export type ImobPilotApprovalState = {
   entries: ImobPilotApprovalEntry[];
 };
 
-export function createImobPilotApprovalState() {
+export function createImobPilotApprovalState(): ImobPilotApprovalState {
   return {
     entries: [],
   } satisfies ImobPilotApprovalState;

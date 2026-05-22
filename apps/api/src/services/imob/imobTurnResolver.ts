@@ -1,5 +1,5 @@
 import { buildImobDriveSearchUrl } from "./imobDriveSync";
-import { type ImobActionKey } from "./imobActionCatalog";
+import { type ImobActionKey, type ImobEntityKey } from "./imobActionCatalog";
 import {
   buildImobCanonicalMessage,
   getSupportedActions,
@@ -115,7 +115,7 @@ function mapOperationalFlowToIntent(flow: NonNullable<ImobResolveTurnResponse["c
 }
 
 function shouldBreakOwnerCaptureContinuation(
-  previous: ImobResolveTurnRequest["threadState"]["operational"] | null | undefined,
+  previous: NonNullable<ImobResolveTurnRequest["threadState"]>["operational"] | null | undefined,
   baseIntent: ImobIntent,
   message: string,
 ) {
@@ -320,7 +320,7 @@ function resolveImobTurnDecision(params: {
 function extractSegment(text: string): "locacao" | "venda" | "ambos" {
   const normalized = normalizeImobText(text);
   const goal = extractGoal(normalized);
-  return goal ?? "ambos";
+  return segmentFromGoal(goal);
 }
 
 function segmentFromGoal(goal: "locacao" | "venda" | "aluguel_por_temporada" | "ambos" | null | undefined): "locacao" | "venda" | "ambos" {
@@ -649,18 +649,19 @@ function buildCatalogActionClarification(
   if (!parsed.entity) {
     return null;
   }
-  const entityLabel = humanizeCatalogEntity(parsed.entity);
-  const supportedActions = getSupportedActions(parsed.entity);
+  const entity = parsed.entity;
+  const entityLabel = humanizeCatalogEntity(entity);
+  const supportedActions = getSupportedActions(entity);
   const preferredOrder: ImobActionKey[] = ["get", "list", "history", "update", "status"];
   const choices = preferredOrder
     .filter((action) => supportedActions.includes(action))
     .slice(0, 3)
     .map((action, index) => ({
-      id: `clarify-${action}-${parsed.entity}`,
-      label: resolveCanonicalLabel(buildImobCanonicalMessage(parsed.entity!, action)) ?? buildImobCanonicalMessage(parsed.entity!, action),
-      kind: index === 0 ? "primary" : index === 1 ? "secondary" : "neutral",
+      id: `clarify-${action}-${entity}`,
+      label: resolveCanonicalLabel(buildImobCanonicalMessage(entity, action)) ?? buildImobCanonicalMessage(entity, action),
+      kind: (index === 0 ? "primary" : index === 1 ? "secondary" : "neutral") as "primary" | "secondary" | "neutral",
       action: "send_suggested_message" as const,
-      nextMessage: buildImobCanonicalMessage(parsed.entity, action),
+      nextMessage: buildImobCanonicalMessage(entity, action),
     }));
 
   if (choices.length === 0) {
@@ -669,7 +670,7 @@ function buildCatalogActionClarification(
 
   return {
     mode: "consult" as const,
-    action: "crm.catalog.clarify_action",
+    action: "crm.catalog.clarify_action" as const,
     presentation: {
       text: [`Quero confirmar sua intenção sobre ${entityLabel.toLowerCase()}.`, "Escolha a ação mais próxima do que você quer fazer agora."].join("\n"),
       suggestedNextAction: `Escolha se você quer consultar, listar ou ajustar ${entityLabel.toLowerCase()}.`,
@@ -702,6 +703,24 @@ function buildCatalogConfidenceMetadata(
       lowConfidence,
     },
     ...(options?.choiceStyle ? { choiceStyle: options.choiceStyle } : {}),
+  };
+}
+
+function buildImobPresentationConfidence(params: {
+  source: "openai" | "parser_fallback";
+  action: ImobActionKey | null;
+  entity: ImobEntityKey | null;
+}): ImobPresentationMetadata["confidence"] {
+  return {
+    entity: params.entity,
+    source: params.source,
+    action: params.action,
+    matchedEntityAlias: null,
+    matchedActionAlias: null,
+    entityScore: params.entity ? 100 : 0,
+    actionScore: params.action ? 100 : 0,
+    pluralityHint: null,
+    canonicalLabel: null,
   };
 }
 
@@ -1197,7 +1216,7 @@ function buildLeadCreateForm(leadDraft?: {
   leadName?: string | null;
   leadPhone?: string | null;
   leadEmail?: string | null;
-  desiredGoal?: "locacao" | "venda" | null;
+  desiredGoal?: "locacao" | "venda" | "aluguel_por_temporada" | null;
   desiredCity?: string | null;
   budgetMax?: number | null;
 } | null) {
@@ -1879,7 +1898,10 @@ function buildVisibleOperationalPresentationMeta(
 function buildVisibleMarketScanPresentationMeta(
   operationalState: NonNullable<ImobResolveTurnResponse["conversationState"]["operational"]> | null | undefined
 ) {
-  const meta = buildVisibleOperationalPresentationMeta(operationalState);
+  const meta = buildVisibleOperationalPresentationMeta(operationalState) as {
+    blocker?: string | null;
+    nextStep?: string | null;
+  } & Record<string, unknown>;
   if (operationalState?.flow !== "property.market_scan") return meta;
   const { blocker: _blocker, nextStep: _nextStep, ...rest } = meta;
   return rest;
@@ -2267,13 +2289,13 @@ function buildMarketScanSelectionPresentation(params: {
         `Recuperado em: ${selection.retrievedAt}`,
       ],
       ctas: [
-        {
-          id: `market-scan-confirm-${selection.sourceId}`,
-          label: "Confirmar captação do scan",
-          kind: "primary",
-          action: "send_suggested_message",
-          nextMessage: `confirmar seleção do scan ${selection.sourceId}`,
-        },
+	        {
+	          id: `market-scan-confirm-${selection.sourceId}`,
+	          label: "Confirmar captação do scan",
+	          kind: "primary" as const,
+	          action: "send_suggested_message" as const,
+	          nextMessage: `confirmar seleção do scan ${selection.sourceId}`,
+	        },
         ...(marketScanResult
           ? [{
               id: `market-scan-back-${selection.sourceId}`,
@@ -2284,8 +2306,8 @@ function buildMarketScanSelectionPresentation(params: {
             }]
           : []),
       ],
-      actionsLayout: "inline",
-    },
+	      actionsLayout: "inline" as const,
+	    },
   };
 }
 
@@ -3336,11 +3358,11 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
         text: "Encontrei mais de uma jornada IMOB plausível nesta mensagem.",
         suggestedNextAction: "Escolha qual trilha você quer abrir agora para eu continuar no contexto certo.",
         metadata: {
-          confidence: {
+          confidence: buildImobPresentationConfidence({
             source: semanticIntentSource,
             action: parsedCatalogIntent.action,
             entity: parsedCatalogIntent.entity,
-          },
+          }),
           choiceStyle: "inline",
           governedIntent: {
             version: governedIntent.version,
@@ -3354,13 +3376,13 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
         card: {
           title: "Escolha a jornada IMOB",
           lines: ["Posso seguir com segurança por uma destas trilhas agora."],
-          ctas: choices.map((choice, index) => ({
-            id: `clarify-journey-${choice.intent}`,
-            label: choice.label,
-            kind: index === 0 ? "primary" : index === 1 ? "secondary" : "neutral",
-            action: "send_suggested_message",
-            nextMessage: choice.nextMessage,
-          })),
+	          ctas: choices.map((choice, index) => ({
+	            id: `clarify-journey-${choice.intent}`,
+	            label: choice.label,
+	            kind: (index === 0 ? "primary" : index === 1 ? "secondary" : "neutral") as "primary" | "secondary" | "neutral",
+	            action: "send_suggested_message" as const,
+	            nextMessage: choice.nextMessage,
+	          })),
         },
       },
     });
@@ -3375,11 +3397,11 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
         text: "Posso te direcionar agora na jornada imobiliária.",
         suggestedNextAction: "Escolha por onde você quer continuar na captação.",
         metadata: {
-          confidence: {
+          confidence: buildImobPresentationConfidence({
             source: semanticIntentSource,
             action: "create",
             entity: null,
-          },
+          }),
           choiceStyle: "inline",
           frontDoorAgentId: "EIAH",
         },
@@ -3409,11 +3431,11 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
         text: "Posso te direcionar agora no fluxo imobiliário.",
         suggestedNextAction: "Escolha se você quer continuar este cadastro ou mudar para outra ação da captação.",
         metadata: {
-          confidence: {
+          confidence: buildImobPresentationConfidence({
             source: semanticIntentSource,
             action: "create",
             entity: null,
-          },
+          }),
           choiceStyle: "inline",
           frontDoorAgentId: "EIAH",
         },
@@ -3448,11 +3470,11 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
           : "Você está no cadastro do imóvel. Posso continuar esse cadastro ou mudar para outra ação da captação.",
         suggestedNextAction: "Escolha se você quer continuar este cadastro ou mudar para outra ação da captação.",
         metadata: {
-          confidence: {
+          confidence: buildImobPresentationConfidence({
             source: semanticIntentSource,
             action: "create",
             entity: null,
-          },
+          }),
           choiceStyle: "inline",
           frontDoorAgentId: "EIAH",
         },
@@ -3680,11 +3702,11 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
         text: "Posso seguir por uma destas opções agora.",
         suggestedNextAction: "Escolha se você quer cadastrar imóvel, cadastrar proprietário, qualificar lead ou consultar caso.",
         metadata: {
-          confidence: {
+          confidence: buildImobPresentationConfidence({
             source: semanticIntentSource,
             action: "create",
             entity: null,
-          },
+          }),
           choiceStyle: "inline",
         },
         card: {
