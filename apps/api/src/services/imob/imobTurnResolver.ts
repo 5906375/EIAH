@@ -2021,14 +2021,111 @@ function formatMarketScanGroupLabel(group: ImobMarketScanResultGroup) {
   return qualifiers.join(" | ");
 }
 
+function formatMarketScanMoney(value: number) {
+  return new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
 function formatMarketScanItemLabel(item: ImobMarketScanResultItem) {
   const details = [
     item.title ?? item.address ?? item.sourceId,
     item.neighborhood ? `bairro ${item.neighborhood}` : null,
-    typeof item.price === "number" ? `R$ ${item.price}` : null,
+    typeof item.price === "number" ? formatMarketScanMoney(item.price) : null,
     item.sourceId ? `origem ${item.sourceId}` : null,
   ].filter(Boolean);
   return details.join(" | ");
+}
+
+function formatMarketScanScore(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "sem dado";
+  const clamped = Math.max(0, Math.min(1, value));
+  return `${Math.round(clamped * 100)}%`;
+}
+
+function formatMarketScanRisk(value: "low" | "medium" | "high" | "unknown" | null | undefined) {
+  switch (value) {
+    case "low":
+      return "baixo";
+    case "medium":
+      return "médio";
+    case "high":
+      return "alto";
+    default:
+      return "desconhecido";
+  }
+}
+
+function formatMarketScanAction(value: ImobOperationalOpportunity["recommendedAction"]) {
+  switch (value) {
+    case "captar":
+      return "Captar imóvel";
+    case "ajustar_preco":
+      return "Ajustar preço";
+    case "campanha":
+      return "Preparar campanha";
+    case "nao_seguir":
+      return "Não seguir agora";
+    case "pedir_documento":
+      return "Pedir documento";
+    case "pedir_autorizacao":
+      return "Pedir autorização";
+  }
+}
+
+function buildMarketScanOpportunityNextMessage(opportunity: ImobOperationalOpportunity) {
+  switch (opportunity.recommendedAction) {
+    case "captar":
+      return "mostrar opções para gerar draft de captação com base no market scan";
+    case "ajustar_preco":
+      return "mostrar sugestão de ajuste de preço com base no market scan";
+    case "campanha":
+      return "mostrar opções para preparar campanha com base no market scan";
+    case "nao_seguir":
+      return "mostrar justificativa para não seguir agora com base no market scan";
+    case "pedir_documento":
+      return "mostrar documentos necessários antes de executar ação comercial";
+    case "pedir_autorizacao":
+      return "mostrar próximos passos governados do market scan";
+  }
+}
+
+function buildMarketScanOpportunityCta(params: {
+  opportunity: ImobOperationalOpportunity;
+  firstItem?: ImobMarketScanResultItem | null;
+}) {
+  const { opportunity, firstItem } = params;
+  const label = opportunity.recommendedAction === "captar"
+    ? "Gerar draft de captação"
+    : opportunity.recommendedAction === "ajustar_preco"
+      ? "Ajustar preço sugerido"
+      : opportunity.recommendedAction === "campanha"
+        ? "Preparar campanha"
+        : opportunity.recommendedAction === "pedir_autorizacao"
+          ? "Pedir autorização"
+          : "Não seguir agora";
+  const nextMessage = opportunity.recommendedAction === "pedir_autorizacao" && firstItem
+    ? `selecionar imóvel ${firstItem.sourceId} do scan`
+    : buildMarketScanOpportunityNextMessage(opportunity);
+	  return {
+	    id: `market-scan-opportunity-${opportunity.recommendedAction}`,
+	    label,
+	    kind: "primary" as const,
+	    action: "send_suggested_message" as const,
+	    nextMessage,
+	  };
+}
+
+function buildMarketScanViewListingsCta() {
+  return {
+    id: "market-scan-view-listings",
+    label: "Ver imóveis encontrados",
+    kind: "primary" as const,
+    action: "send_suggested_message" as const,
+    nextMessage: "mostrar imóveis encontrados no market scan",
+  };
 }
 
 function buildMarketScanSelectionCtas(marketScanResult: NonNullable<ImobResolveTurnRequest["marketScanResult"]>) {
@@ -2051,18 +2148,24 @@ function buildMarketScanPresentation(params: {
   const { marketScanResult, marketScanOpportunity, currentCard, currentText } = params;
   const totalGroups = marketScanResult.groups.length;
   const intelligence = marketScanResult.intelligence ?? null;
+  const allItems = marketScanResult.groups.flatMap((group) => group.items);
+  const pricedItems = allItems.filter((item) => typeof item.price === "number" && Number.isFinite(item.price));
   const priceRange = marketScanOpportunity?.priceRange ?? intelligence?.priceRange ?? null;
-  const priceLine = priceRange ? `Faixa observada: R$ ${priceRange.min} a R$ ${priceRange.max}` : null;
-  const liquidityLine = intelligence ? `Liquidez: ${intelligence.liquidityScore}` : null;
-  const riskLine = intelligence ? `Risco de preço: ${intelligence.pricingRisk}` : null;
-  const confidenceLine = intelligence ? `Confiança: ${intelligence.confidenceScore}` : null;
-  const actionLine = marketScanOpportunity ? `Ação recomendada: ${marketScanOpportunity.recommendedAction}` : null;
+  const priceLine = priceRange ? `Faixa observada: ${formatMarketScanMoney(priceRange.min)} a ${formatMarketScanMoney(priceRange.max)}` : null;
+  const missingPriceLine = marketScanResult.sourceStatus === "completed" && allItems.length > 0 && !priceRange
+    ? `${allItems.length} imóvel(is) encontrado(s), mas sem preço suficiente para calcular faixa.`
+    : null;
+  const liquidityLine = intelligence ? `Liquidez: ${formatMarketScanScore(intelligence.liquidityScore)}` : null;
+  const riskLine = intelligence ? `Risco de preço: ${formatMarketScanRisk(intelligence.pricingRisk)}` : null;
+  const confidenceLine = intelligence ? `Confiança: ${formatMarketScanScore(intelligence.confidenceScore)}` : null;
+  const actionLine = marketScanOpportunity ? `Ação recomendada: ${formatMarketScanAction(marketScanOpportunity.recommendedAction)}` : null;
   const summaryText =
     marketScanResult.sourceStatus === "completed"
       ? [
           currentText,
           `Inteligência de mercado concluída com ${marketScanResult.totalItems} imóvel(is) em ${totalGroups} grupo(s).`,
           priceLine,
+          missingPriceLine,
           liquidityLine,
           riskLine,
           confidenceLine,
@@ -2081,6 +2184,7 @@ function buildMarketScanPresentation(params: {
 
   const intelligenceLines = [
     priceLine,
+    missingPriceLine,
     liquidityLine,
     riskLine,
     confidenceLine,
@@ -2098,25 +2202,16 @@ function buildMarketScanPresentation(params: {
           : "Nenhum imóvel encontrado para os filtros atuais.",
       ];
 
-  const opportunityCtas = marketScanOpportunity
-    ? [
-        {
-          id: `market-scan-opportunity-${marketScanOpportunity.recommendedAction}`,
-          label: marketScanOpportunity.recommendedAction === "captar"
-            ? "Gerar draft de captação"
-            : marketScanOpportunity.recommendedAction === "ajustar_preco"
-              ? "Ajustar preço sugerido"
-              : marketScanOpportunity.recommendedAction === "campanha"
-                ? "Preparar campanha"
-                : marketScanOpportunity.recommendedAction === "pedir_autorizacao"
-                  ? "Pedir autorização"
-                  : "Não seguir agora",
-          kind: "primary" as const,
-          action: "send_suggested_message" as const,
-          nextMessage: marketScanOpportunity.nextStep,
-        },
-      ]
-    : [];
+  const firstItem = allItems[0] ?? null;
+  const shouldPrioritizeListingSelection =
+    allItems.length > 0
+    && marketScanOpportunity?.recommendedAction === "nao_seguir"
+    && (!priceRange || pricedItems.length < 3);
+  const opportunityCtas = shouldPrioritizeListingSelection
+    ? [buildMarketScanViewListingsCta()]
+    : marketScanOpportunity
+      ? [buildMarketScanOpportunityCta({ opportunity: marketScanOpportunity, firstItem })]
+      : [];
 
   return {
     text: summaryText,
@@ -2140,7 +2235,7 @@ function buildMarketScanSelectionPresentation(params: {
   currentText: string;
   marketScanResult?: ImobMarketScanResultSnapshot | null;
 }) {
-  const { selection, currentText, marketScanResult } = params;
+  const { selection, marketScanResult } = params;
   const itemLabel = formatMarketScanItemLabel({
     source: selection.source,
     sourceId: selection.sourceId,
@@ -2161,7 +2256,6 @@ function buildMarketScanSelectionPresentation(params: {
 
   return {
     text: [
-      currentText,
       "Imóvel selecionado a partir da varredura. Ao confirmar, vou deduplicar por sourceId/endereço antes de criar ou atualizar o cadastro no CRM.",
     ].filter(Boolean).join("\n"),
     card: {

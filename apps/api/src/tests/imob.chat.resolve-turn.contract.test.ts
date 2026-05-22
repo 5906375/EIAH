@@ -408,6 +408,12 @@ test("IMOB resolve-turn covers market scan offer, read-only scan, snapshot persi
     ),
     true,
   );
+  assert.equal(selection.body?.data?.presentation?.widget, undefined);
+  assert.equal(selection.body?.data?.presentation?.blocker, undefined);
+  assert.equal(selection.body?.data?.presentation?.nextStep, undefined);
+  assert.equal(selection.body?.data?.presentation?.suggestedNextAction, undefined);
+  assert.equal(selection.body?.data?.presentation?.quickReplies, undefined);
+  assert.doesNotMatch(selection.body?.data?.presentation?.text ?? "", /múltiplas cidades|cadastro automático/i);
 
   const confirmationCta = (selection.body?.data?.presentation?.card?.ctas ?? []).find(
     (cta: any) => typeof cta?.nextMessage === "string" && cta.nextMessage.includes("confirmar seleção do scan"),
