@@ -1,6 +1,7 @@
 import type { PrismaClient } from "@repo/db";
 import { validateImobIdentityAttachmentAgainstCase } from "../imobAttachmentValidation";
 import type { ImobCrmCanonicalCase, ImobCrmCaseContext, ImobCrmOwnerSummary } from "./imobCrmAgentContract";
+import type { ImobReasonCode } from "../control/imobReasonCodeCatalog";
 import { IMOB_CHAT_AUDIT_AGENT_ID } from "./imobCrmAudit";
 import { buildImobCrmCaseContextFromRecord } from "./imobCrmCaseContext";
 
@@ -199,11 +200,11 @@ function buildCanonicalCase(item: {
     recommendedActions: [],
     blockedActions: blockers,
     missingContext: pendingItems,
-    reasonCodes: [
-      ...(blockers.length > 0 ? ["BLOCKERS_PRESENT"] : []),
-      ...(pendingItems.length > 0 ? ["PENDING_ITEMS_PRESENT"] : []),
-      ...(asString(item?.status) === "blocked" ? ["CASE_STATUS_BLOCKED"] : []),
-    ],
+	    reasonCodes: [
+	      ...(blockers.length > 0 ? ["BLOCKERS_PRESENT"] : []),
+	      ...(pendingItems.length > 0 ? ["PENDING_ITEMS_PRESENT"] : []),
+	      ...(asString(item?.status) === "blocked" ? ["CASE_STATUS_BLOCKED"] : []),
+	    ] as ImobReasonCode[],
   };
 }
 

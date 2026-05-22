@@ -98,10 +98,9 @@ export class ImobCrmRepository {
   }
 
   findLeadByStrongIdentifiers(scope: Scope, identifiers: { phone?: string | null; email?: string | null }) {
-    const strongConditions = [
-      identifiers.phone ? { phone: identifiers.phone } : null,
-      identifiers.email ? { email: identifiers.email } : null,
-    ].filter(Boolean) as Array<Record<string, string>>;
+    const strongConditions: Array<Record<string, string>> = [];
+    if (identifiers.phone) strongConditions.push({ phone: identifiers.phone });
+    if (identifiers.email) strongConditions.push({ email: identifiers.email });
 
     if (strongConditions.length === 0) return null;
     return this.prisma.imobLead.findFirst({
@@ -119,11 +118,10 @@ export class ImobCrmRepository {
   }
 
   findOwnerByStrongIdentifiers(scope: Scope, identifiers: { document?: string | null; phone?: string | null; email?: string | null }) {
-    const strongConditions = [
-      identifiers.document ? { document: identifiers.document } : null,
-      identifiers.phone ? { phone: identifiers.phone } : null,
-      identifiers.email ? { email: identifiers.email } : null,
-    ].filter(Boolean) as Array<Record<string, string>>;
+    const strongConditions: Array<Record<string, string>> = [];
+    if (identifiers.document) strongConditions.push({ document: identifiers.document });
+    if (identifiers.phone) strongConditions.push({ phone: identifiers.phone });
+    if (identifiers.email) strongConditions.push({ email: identifiers.email });
 
     if (strongConditions.length === 0) return null;
     return this.prisma.imobOwner.findFirst({

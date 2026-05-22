@@ -177,7 +177,7 @@ function listAllowedPairs() {
 }
 
 function isValidEntity(entity: string | null | undefined): entity is ImobEntityKey {
-  return Boolean(entity) && Object.prototype.hasOwnProperty.call(IMOB_ACTION_CATALOG, entity);
+  return typeof entity === "string" && Object.prototype.hasOwnProperty.call(IMOB_ACTION_CATALOG, entity);
 }
 
 function isValidAction(action: string | null | undefined): action is ImobActionKey {

@@ -7,6 +7,8 @@ export type ImobGovernedIntentSignal = {
   reason: string;
 };
 
+type ImobIntentSignal = ImobGovernedIntentSignal;
+
 export type ImobGovernedIntentClassification = {
   version: "imob.intent.v1";
   normalized: string;

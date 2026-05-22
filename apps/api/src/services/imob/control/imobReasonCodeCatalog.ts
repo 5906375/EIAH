@@ -4,6 +4,10 @@ export const IMOB_REASON_CODE_VALUES = [
   "DOCUMENT_BLOCKER",
   "FINANCIAL_BLOCKER",
   "AUDIT_BLOCKER",
+  "BLOCKERS_PRESENT",
+  "PENDING_ITEMS_PRESENT",
+  "NEXT_STEP_AVAILABLE",
+  "CASE_STATUS_BLOCKED",
 ] as const;
 
 export type ImobReasonCode = (typeof IMOB_REASON_CODE_VALUES)[number];
@@ -63,6 +67,42 @@ export const IMOB_REASON_CODE_CATALOG: Record<ImobReasonCode, ImobReasonCodeSpec
     defaultSpecialist: "guardian",
     requiresApproval: true,
     requiresEvidence: true,
+  },
+  BLOCKERS_PRESENT: {
+    code: "BLOCKERS_PRESENT",
+    label: "Bloqueios presentes",
+    category: "operations",
+    defaultUrgency: "high",
+    defaultSpecialist: "Diarias",
+    requiresApproval: false,
+    requiresEvidence: false,
+  },
+  PENDING_ITEMS_PRESENT: {
+    code: "PENDING_ITEMS_PRESENT",
+    label: "Pendências presentes",
+    category: "operations",
+    defaultUrgency: "medium",
+    defaultSpecialist: "Diarias",
+    requiresApproval: false,
+    requiresEvidence: false,
+  },
+  NEXT_STEP_AVAILABLE: {
+    code: "NEXT_STEP_AVAILABLE",
+    label: "Próximo passo disponível",
+    category: "operations",
+    defaultUrgency: "low",
+    defaultSpecialist: "Diarias",
+    requiresApproval: false,
+    requiresEvidence: false,
+  },
+  CASE_STATUS_BLOCKED: {
+    code: "CASE_STATUS_BLOCKED",
+    label: "Caso bloqueado",
+    category: "operations",
+    defaultUrgency: "high",
+    defaultSpecialist: "Diarias",
+    requiresApproval: false,
+    requiresEvidence: false,
   },
 };
 

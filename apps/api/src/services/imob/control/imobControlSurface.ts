@@ -44,19 +44,19 @@ function mapSpecialists(
   specialists: ImobResolvedBackingSpecialist[] | null | undefined
 ): ImobControlSurfaceSpecialist[] {
   if (!Array.isArray(specialists)) return [];
-  return specialists
-    .map((item) => {
-      const reasonCode = normalizeReasonCode(item);
-      if (!reasonCode) return null;
-      return {
-        specialistId: item.primaryAgentId,
-        reasonCode,
-        urgency: item.urgency ?? IMOB_REASON_CODE_CATALOG[reasonCode].defaultUrgency,
-        suggestedAction: item.suggestedAction ?? null,
-        outputType: item.outputType,
-      };
-    })
-    .filter((item): item is ImobControlSurfaceSpecialist => Boolean(item));
+  const mapped: ImobControlSurfaceSpecialist[] = [];
+  for (const item of specialists) {
+    const reasonCode = normalizeReasonCode(item);
+    if (!reasonCode) continue;
+    mapped.push({
+      specialistId: item.primaryAgentId,
+      reasonCode,
+      urgency: item.urgency ?? IMOB_REASON_CODE_CATALOG[reasonCode].defaultUrgency,
+      suggestedAction: item.suggestedAction ?? null,
+      outputType: item.outputType,
+    });
+  }
+  return mapped;
 }
 
 export function buildImobControlSurface(params: {

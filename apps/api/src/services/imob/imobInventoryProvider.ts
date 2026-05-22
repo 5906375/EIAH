@@ -84,14 +84,14 @@ function buildCard(items: ImobInventoryOption[], request: Required<Pick<ImobSear
   return {
     title: "Opções para começar",
     lines: items.map(formatInventoryLine),
-    ctas: [
-      {
-        id: "continue-inventory-search",
-        label: "Ver mais opções",
-        kind: "primary" as const,
-        action: "continue_inventory_search",
-        nextMessage,
-      },
+	    ctas: [
+	      {
+	        id: "continue-inventory-search",
+	        label: "Ver mais opções",
+	        kind: "primary" as const,
+	        action: "continue_inventory_search" as const,
+	        nextMessage,
+	      },
     ].slice(0, IMOB_MAX_USER_OPTIONS),
   };
 }

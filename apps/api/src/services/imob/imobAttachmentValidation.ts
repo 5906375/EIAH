@@ -1,5 +1,4 @@
 import { readFile } from "node:fs/promises";
-import type { UploadedDocument } from "@repo/db";
 import { z } from "zod";
 import { loadFileAbsolutePath } from "../storage";
 import {
@@ -30,7 +29,13 @@ type ImobCaseLike = {
   pendingItems?: unknown;
 };
 
-type UploadedDocumentLike = Pick<UploadedDocument, "id" | "fileName" | "mimeType" | "sizeBytes" | "storageKey">;
+type UploadedDocumentLike = {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  storageKey: string;
+};
 
 type ExtractedIdentity = {
   name: string | null;

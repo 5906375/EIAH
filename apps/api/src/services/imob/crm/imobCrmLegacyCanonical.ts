@@ -1,4 +1,5 @@
 import type { ImobCrmCanonicalCase, ImobCrmRecommendedAction } from "./imobCrmAgentContract";
+import type { ImobReasonCode } from "../control/imobReasonCodeCatalog";
 
 function asString(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
@@ -166,10 +167,10 @@ export function buildImobCrmLegacyCanonicalCase(item: {
     }),
     blockedActions: blockers,
     missingContext: pendingItems,
-    reasonCodes: [
-      ...(blockers.length > 0 ? ["BLOCKERS_PRESENT"] : []),
-      ...(pendingItems.length > 0 ? ["PENDING_ITEMS_PRESENT"] : []),
-      ...(asString(item?.status) === "blocked" ? ["CASE_STATUS_BLOCKED"] : []),
-    ],
+	    reasonCodes: [
+	      ...(blockers.length > 0 ? ["BLOCKERS_PRESENT"] : []),
+	      ...(pendingItems.length > 0 ? ["PENDING_ITEMS_PRESENT"] : []),
+	      ...(asString(item?.status) === "blocked" ? ["CASE_STATUS_BLOCKED"] : []),
+	    ] as ImobReasonCode[],
   };
 }

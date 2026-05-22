@@ -2,6 +2,10 @@ import type {
   ImobCrmCanonicalCase,
   ImobCrmCaseContext,
   ImobCrmConversationState,
+  ImobClosingDocumentsSnapshot,
+  ImobLeadProfileReportSnapshot,
+  ImobLeadScoringSnapshot,
+  ImobViabilityMarketAnalysisSnapshot,
 } from "./imobCrmAgentContract";
 import { buildImobCrmCaseContextFromRecord } from "./imobCrmCaseContext";
 import {
@@ -432,7 +436,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
         ...params.pendingItems.slice(0, 2).map((item, index) => ({
           id: `pending-${index}`,
           title: item,
-          criticality: (index === 0 ? "critical" : "supporting") as const,
+	          criticality: index === 0 ? "critical" as const : "supporting" as const,
           owner,
           unlocks: params.nextStep,
           urgency: index === 0 ? urgency : "medium" as const,
@@ -606,7 +610,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
 
     const confidence = buildDecisionConfidence({
       primaryBlocker: params.primaryBlocker,
-      waitingOn: params.caseContext?.humanWorkflow?.waitingOn,
+      waitingOn: params.caseContext?.humanWorkflow?.waitingOn ?? null,
       recommendedAction: params.recommendedAction,
       reasonCodes,
       pendingItems: params.pendingItems,
@@ -614,7 +618,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
 
     const missingEvidence = buildMissingEvidence({
       primaryBlocker: params.primaryBlocker,
-      waitingOn: params.caseContext?.humanWorkflow?.waitingOn,
+      waitingOn: params.caseContext?.humanWorkflow?.waitingOn ?? null,
       nextActionOwner: params.nextActionOwner,
       recommendedAction: params.recommendedAction,
       pendingItems: params.pendingItems,
@@ -871,7 +875,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     return "low" as const;
   }
 
-  function buildLeadScoreSnapshot(caseContext: ImobCrmCaseContext) {
+	  function buildLeadScoreSnapshot(caseContext: ImobCrmCaseContext): ImobLeadScoringSnapshot {
     const evidence = getLeadScoringEvidence(caseContext);
     const missingEvidence = buildLeadScoreMissingEvidence(caseContext, evidence);
     if (!evidence.hasMinimumEvidence) {
@@ -1201,7 +1205,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     };
   }
 
-  function buildLeadProfileReportSnapshot(params: {
+	  function buildLeadProfileReportSnapshot(params: {
     caseContext: ImobCrmCaseContext;
     leadDiscovery?: { coverage?: string | null; missingSignals?: string[] | null } | null;
     leadScore?: { scoreBand?: string | null; scoreValue?: number | null; missingEvidence?: string[] | null } | null;
@@ -1210,7 +1214,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       objections?: Array<{ key?: string | null; summary?: string | null }> | null;
       missingEvidence?: string[] | null;
     } | null;
-  }) {
+	  }): ImobLeadProfileReportSnapshot {
     const lead = params.caseContext?.lead;
     const discoveryCoverage = helpers.asString(params.leadDiscovery?.coverage);
     const scoreBand = helpers.asString(params.leadScore?.scoreBand);
@@ -1222,13 +1226,13 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     const budgetFlexibility = helpers.asString(lead?.discoverySignals?.budgetFlexibility);
     const objections = params.commercialMemory?.objections ?? [];
 
-    const commercialReadiness =
+	    const commercialReadiness: ImobLeadProfileReportSnapshot["commercialReadiness"] =
       scoreBand === "HOT" ? "high"
       : scoreBand === "WARM" ? "medium"
       : scoreBand === "COLD" ? "low"
       : "unknown";
 
-    const financialReadiness =
+	    const financialReadiness: ImobLeadProfileReportSnapshot["financialReadiness"] =
       budgetDefined && (budgetFlexibility === "moderate" || budgetFlexibility === "flexible") ? "high"
       : budgetDefined ? "medium"
       : budgetFlexibility === "strict" ? "low"
@@ -1259,7 +1263,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       ...(params.commercialMemory?.missingEvidence ?? []),
     ])).slice(0, 8);
 
-    const profileStatus =
+	    const profileStatus: ImobLeadProfileReportSnapshot["profileStatus"] =
       discoveryCoverage === "complete" && scoreBand && scoreBand !== "UNKNOWN" && budgetDefined && targetCityDefined
         ? "ready"
         : discoveryCoverage === "insufficient" && !budgetDefined && !targetCityDefined
@@ -1294,7 +1298,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     };
   }
 
-  function buildViabilityMarketAnalysisSnapshot(params: {
+	  function buildViabilityMarketAnalysisSnapshot(params: {
     caseContext: ImobCrmCaseContext;
     leadProfileReport?: {
       profileStatus?: string | null;
@@ -1311,7 +1315,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       scoreBand?: string | null;
       scoreValue?: number | null;
     } | null;
-  }) {
+	  }): ImobViabilityMarketAnalysisSnapshot {
     const lead = params.caseContext?.lead;
     const property = params.caseContext?.property;
     const profileStatus = helpers.asString(params.leadProfileReport?.profileStatus);
@@ -1343,7 +1347,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       + (budgetObjection ? -8 : 0);
     const viabilityScore = Math.max(0, Math.min(100, viabilityBase));
 
-    const liquiditySignal =
+	    const liquiditySignal: ImobViabilityMarketAnalysisSnapshot["liquiditySignal"] =
       hasGoal && hasCity && hasBudget && hasPropertyContext && (scoreBand === "HOT" || scoreBand === "WARM")
         ? "high"
         : hasGoal && hasCity && (hasBudget || hasPropertyContext)
@@ -1352,7 +1356,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
             ? "low"
             : "unknown";
 
-    const priceConfidence =
+	    const priceConfidence: ImobViabilityMarketAnalysisSnapshot["priceConfidence"] =
       hasBudget && budgetFlexibility === "moderate"
         ? "high"
         : hasBudget
@@ -1382,7 +1386,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       triggerKind ? `gatilho comercial ${triggerKind}` : null,
     ].filter(Boolean) as string[];
 
-    const marketStatus =
+	    const marketStatus: ImobViabilityMarketAnalysisSnapshot["marketStatus"] =
       profileStatus === "insufficient" && (!hasBudget || !hasPropertyContext || !hasCity)
         ? "insufficient_context"
         : viabilityScore >= 70
@@ -1420,10 +1424,10 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     };
   }
 
-  function buildClosingDocumentsSnapshot(params: {
+	  function buildClosingDocumentsSnapshot(params: {
     caseContext: ImobCrmCaseContext;
     leadProfileReport?: { profileStatus?: string | null } | null;
-  }) {
+	  }): ImobClosingDocumentsSnapshot {
     const caseContext = params.caseContext;
     const profileStatus = helpers.asString(params.leadProfileReport?.profileStatus);
     const pendingItems = Array.isArray(caseContext?.pendingItems) ? caseContext.pendingItems.map(String) : [];
@@ -1450,7 +1454,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
 
     const hasDocumentationSignal = documentationPending || contractPending || registryPending || ownerDocumentMissing || Boolean(blocker);
 
-    const packetReadiness =
+	    const packetReadiness: ImobClosingDocumentsSnapshot["packetReadiness"] =
       blockingIssues.length > 0 ? "blocked"
       : pendingDocuments.length > 0 ? "partial"
       : (caseContext?.flow === "contract.prepare" || caseContext?.flow === "documents.collect") ? "ready"
@@ -1458,7 +1462,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       : profileStatus === "partial" ? "partial"
       : "unknown";
 
-    const readinessStatus =
+	    const readinessStatus: ImobClosingDocumentsSnapshot["readinessStatus"] =
       blockingIssues.length > 0
         ? "blocked"
         : pendingDocuments.length > 0
@@ -1471,7 +1475,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
                 ? "partial"
                 : "insufficient_context";
 
-    const nextValidationOwner =
+	    const nextValidationOwner: ImobClosingDocumentsSnapshot["nextValidationOwner"] =
       legalHandoffRecommended ? "juridico"
       : ownerDocumentMissing ? "proprietario"
       : caseContext?.humanWorkflow?.waitingOn === "lead" ? "lead"
@@ -2291,7 +2295,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     primaryBlocker: string | null;
     primaryPending: string | null;
   }) {
-    const compactChecklistItems = params.actionableChecklist.items.slice(0, 3);
+    const compactChecklistItems = params.actionableChecklist.items.slice(0, 3).filter((item) => item !== null);
     return [
       {
         kind: "summary" as const,
@@ -2371,28 +2375,35 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       {
         kind: "details" as const,
         title: params.actionableChecklist.title,
-        lines: params.actionableChecklist.items.map((item) =>
-          `${item.title} · owner ${item.owner} · destrava ${item.unlocks} · urgência ${item.urgency}`,
-        ),
+        lines: params.actionableChecklist.items
+          .map((item) => {
+            if (!item) return null;
+            return `${item.title} · owner ${item.owner} · destrava ${item.unlocks} · urgência ${item.urgency}`;
+          })
+          .filter((line) => line !== null) as string[],
       },
-      {
-        kind: "details" as const,
-        title: "Pacote de handoff",
-        lines: [
-          `Destino: ${params.handoffPack.targetArea}`,
-          `Motivo: ${params.handoffPack.reason}`,
-          params.handoffPack.summary,
-          params.handoffPack.blocker ? `Blocker: ${params.handoffPack.blocker}` : null,
-          params.handoffPack.urgency ? `Urgência: ${params.handoffPack.urgency}` : null,
-          params.handoffPack.ownershipBoundary ? `Boundary: ${params.handoffPack.ownershipBoundary}` : null,
-          params.handoffPack.needsValidation.length > 0
-            ? `Validar: ${params.handoffPack.needsValidation.join(", ")}`
-            : null,
-          params.handoffPack.remainsWithBroker.length > 0
-            ? `Permanece com corretor: ${params.handoffPack.remainsWithBroker.join(" | ")}`
-            : null,
-        ].filter(Boolean),
-      },
+      ...(params.handoffPack
+        ? [
+            {
+              kind: "details" as const,
+              title: "Pacote de handoff",
+              lines: [
+                `Destino: ${params.handoffPack.targetArea}`,
+                `Motivo: ${params.handoffPack.reason}`,
+                params.handoffPack.summary,
+                params.handoffPack.blocker ? `Blocker: ${params.handoffPack.blocker}` : null,
+                params.handoffPack.urgency ? `Urgência: ${params.handoffPack.urgency}` : null,
+                params.handoffPack.ownershipBoundary ? `Boundary: ${params.handoffPack.ownershipBoundary}` : null,
+                params.handoffPack.needsValidation.length > 0
+                  ? `Validar: ${params.handoffPack.needsValidation.join(", ")}`
+                  : null,
+                params.handoffPack.remainsWithBroker.length > 0
+                  ? `Permanece com corretor: ${params.handoffPack.remainsWithBroker.join(" | ")}`
+                  : null,
+              ].filter(Boolean),
+            },
+          ]
+        : []),
     ].filter((block) => {
       if (block.kind === "details" && !block.text && (!Array.isArray(block.lines) || block.lines.length === 0) && (!Array.isArray((block as any).ctas) || (block as any).ctas.length === 0)) {
         return false;
@@ -2565,7 +2576,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     const subject = formatImobBusinessSubject(caseContext);
     const humanPhase = helpers.asString(caseContext?.humanJourney?.phase);
     const humanPhaseLabel = humanPhase ? titleCaseJourneyPhase(humanPhase) : journeyLabel;
-    const waitingOn = formatWaitingOnLabel(caseContext?.humanWorkflow?.waitingOn);
+	    const waitingOn = formatWaitingOnLabel(caseContext?.humanWorkflow?.waitingOn ?? null);
     const nextActionOwner = helpers.asString(caseContext?.humanWorkflow?.nextActionOwner) ?? helpers.asString(caseContext?.ownerResponsible);
     const specialists = (helpers.resolveImobBackingSpecialists(caseContext) as any[] | null | undefined) ?? [];
     const primarySpecialist = specialists[0] ? buildSpecialistSupportLine(specialists[0]) : null;
@@ -2583,7 +2594,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       phaseObjective: helpers.asString(caseContext?.humanJourney?.phaseObjective),
       primaryBlocker,
       primaryPending,
-      waitingOn: caseContext?.humanWorkflow?.waitingOn,
+      waitingOn: (caseContext?.humanWorkflow?.waitingOn ?? null) as any,
       nextActionOwner,
       nextStep,
       primarySpecialistAgentId: primarySpecialist?.consultive.agentId ?? null,
@@ -2592,7 +2603,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     const preparedFollowUp = buildPreparedFollowUp({
       subject,
       humanPhaseLabel,
-      waitingOn: caseContext?.humanWorkflow?.waitingOn,
+      waitingOn: (caseContext?.humanWorkflow?.waitingOn ?? null) as any,
       primaryBlocker,
       primaryPending,
       nextStep,
@@ -2737,7 +2748,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     });
     const statusLine = `${subject}. Momento comercial: ${stageLabel}. Jornada: ${journeyLabel}.`;
     const baseLines = [selectionNote ? "Usei o cadastro mais recente do IMOB para esta leitura." : null, statusLine].filter(Boolean) as string[];
-    const textByIntent: Record<BusinessReadIntent, string[]> = {
+	    const textByIntent: Record<BusinessReadIntent, Array<string | null>> = {
       pipeline_status: [
         ...baseLines,
         humanPhaseLabel ? `Fase: ${humanPhaseLabel}.` : null,
