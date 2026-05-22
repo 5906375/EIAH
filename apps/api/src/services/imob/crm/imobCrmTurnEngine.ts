@@ -87,6 +87,32 @@ function asStringList(value: unknown): string[] {
     : [];
 }
 
+function isMarketScanSelectionResolution(data: Record<string, unknown>) {
+  const action = asString(data.action);
+  const operational = asObject(asObject(data.conversationState)?.operational);
+  return (
+    action === "crm.market_scan.selection"
+    || (
+      asString(operational?.flow) === "property.market_scan"
+      && Boolean(asObject(operational?.marketScanSelection))
+    )
+  );
+}
+
+function stripMarketScanSelectionLegacyPresentation(presentation: Record<string, unknown>) {
+  const {
+    blocker: _blocker,
+    nextStep: _nextStep,
+    pendingFieldLabels: _pendingFieldLabels,
+    suggestedNextAction: _suggestedNextAction,
+    widget: _widget,
+    quickReplies: _quickReplies,
+    copyState: _copyState,
+    ...rest
+  } = presentation;
+  return rest;
+}
+
 function hasActivePendingOperationalFlow(threadState: ThreadStateLike | null | undefined) {
   const operational = asObject(asObject(threadState)?.operational);
   if (!operational) return false;
@@ -998,6 +1024,8 @@ function buildImobPresentationBlocks(data: Record<string, unknown>, copyState: I
 }
 
 function buildImobPresentationQuickReplies(data: Record<string, unknown>) {
+  if (isMarketScanSelectionResolution(data)) return [];
+
   const presentation = asObject(data.presentation) ?? {};
   const caseContext = asObject(data.caseContext) as ImobCrmCaseContext | null;
   const conversationState = asObject(data.conversationState) ?? {};
@@ -1082,14 +1110,22 @@ function stripLegacyCardProof(card: Record<string, unknown> | null) {
 }
 
 function applyImobCrmCopyStateToResolution(data: Record<string, unknown>): Record<string, unknown> {
-  const copyState = inferImobCrmCopyStateFromResolution(data);
-  const presentation = asObject(data.presentation) ?? {};
-  const proof = resolveImobProofSurfaceFromResolution(data);
-  const blocks = buildImobPresentationBlocks(data, copyState);
-  const outcome = inferOperationalOutcomeFromResolution(data, copyState);
+  const isMarketScanSelection = isMarketScanSelectionResolution(data);
+  const originalPresentation = asObject(data.presentation) ?? {};
+  const presentation = isMarketScanSelection
+    ? stripMarketScanSelectionLegacyPresentation(originalPresentation)
+    : originalPresentation;
+  const normalizedData = presentation === originalPresentation
+    ? data
+    : { ...data, presentation };
+  const inferredCopyState = inferImobCrmCopyStateFromResolution(normalizedData);
+  const copyState = isMarketScanSelection ? null : inferredCopyState;
+  const proof = isMarketScanSelection ? null : resolveImobProofSurfaceFromResolution(normalizedData);
+  const blocks = isMarketScanSelection ? [] : buildImobPresentationBlocks(normalizedData, copyState);
+  const outcome = inferOperationalOutcomeFromResolution(normalizedData, copyState);
   const hasForm = Boolean(asObject(presentation.form));
   const snapshotVariant = inferCanonicalSnapshotVariant({
-    mode: asString(data.mode) ?? "",
+    mode: asString(normalizedData.mode) ?? "",
     copyState,
     hasForm,
     hasBlocks: blocks.length > 0,
@@ -1112,9 +1148,16 @@ function applyImobCrmCopyStateToResolution(data: Record<string, unknown>): Recor
     || snapshotVariant === "success_deduped_update";
   const nextOperational = asObject(asObject(data.conversationState)?.operational);
   const sanitizedCard = stripLegacyCardProof(asObject(presentation.card));
-  if (!copyState && !proof && blocks.length === 0 && quickReplies.length === 0 && !outcome) return data;
+  if (
+    presentation === originalPresentation
+    && !copyState
+    && !proof
+    && blocks.length === 0
+    && quickReplies.length === 0
+    && !outcome
+  ) return data;
   return {
-    ...data,
+    ...normalizedData,
     conversationState: {
       ...(asObject(data.conversationState) ?? {}),
       ...(nextOperational ? {

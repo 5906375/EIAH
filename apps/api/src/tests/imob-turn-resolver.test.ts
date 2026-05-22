@@ -835,6 +835,135 @@ test("IMOB turn resolver keeps market scan read-only when the user explicitly ch
   );
 });
 
+test("IMOB turn resolver explains missing prices and prioritizes listing selection for low-confidence scan", () => {
+  const result = resolveImobTurn({
+    message: "fazer varredura de mercado em Itajaí para apartamentos de 2 quartos para venda",
+    threadState: {
+      slots: {
+        goal: null,
+        city: null,
+        region: null,
+        neighborhood: null,
+        budgetMax: null,
+        bedrooms: null,
+        bathrooms: null,
+        propertyType: null,
+      },
+      mode: "consult",
+      pendingSlot: "none",
+      resultOffset: 0,
+      operational: {
+        flow: "property.market_scan",
+        status: "collecting",
+        pendingFields: ["city", "goal"],
+        propertyDraft: {
+          propertyId: null,
+          propertyType: null,
+          goal: null,
+          cep: null,
+          city: null,
+          neighborhood: null,
+          bedrooms: null,
+          bathrooms: null,
+          address: null,
+        },
+        marketScanContext: {
+          cities: ["Itajaí"],
+          cityCandidates: ["Itajaí"],
+          uf: "SC",
+          goals: ["venda"],
+          goalCandidates: ["venda"],
+          propertyTypes: ["apartamento"],
+          bedrooms: [2],
+          priceRange: null,
+          readOnly: true,
+          limitPerGroup: 10,
+        },
+      },
+    },
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+    marketScanResult: {
+      providerId: "internal_crm",
+      sourceStatus: "completed",
+      totalItems: 2,
+      groups: [
+        {
+          city: "Itajaí",
+          goal: "venda",
+          propertyType: "apartamento",
+          bedrooms: 2,
+          items: [
+            {
+              source: "internal_crm",
+              sourceId: "prop-1",
+              providerId: "internal_crm",
+              retrievedAt: "2026-05-09T12:00:00.000Z",
+              city: "Itajaí",
+              uf: "SC",
+              goal: "venda",
+              propertyType: "apartamento",
+              bedrooms: 2,
+              price: null,
+              currency: "BRL",
+              neighborhood: "Centro",
+              address: null,
+              title: "Apartamento sem preço",
+              url: null,
+            },
+            {
+              source: "internal_crm",
+              sourceId: "prop-2",
+              providerId: "internal_crm",
+              retrievedAt: "2026-05-09T12:00:00.000Z",
+              city: "Itajaí",
+              uf: "SC",
+              goal: "venda",
+              propertyType: "apartamento",
+              bedrooms: 2,
+              price: null,
+              currency: "BRL",
+              neighborhood: "Centro",
+              address: null,
+              title: "Apartamento sem faixa",
+              url: null,
+            },
+          ],
+        },
+      ],
+      readOnly: true,
+      generatedAt: "2026-05-09T12:00:00.000Z",
+      intelligence: {
+        comparableCount: 2,
+        priceRange: null,
+        liquidityScore: 0.1,
+        pricingRisk: "unknown",
+        sourceCoverageScore: 0.08,
+        confidenceScore: 0.02,
+      },
+    },
+    marketScanOpportunity: {
+      opportunityId: "opp-low-confidence",
+      recommendedAction: "nao_seguir",
+      confidenceScore: 0.02,
+      sourceCoverageScore: 0.08,
+      priceRange: null,
+      liquidityScore: 0.1,
+      pricingRisk: "unknown",
+      nextStep: "Não seguir agora; faltam comparáveis suficientes para recomendação comercial forte.",
+      requiresHumanApproval: true,
+      evidenceBundleId: "evidence-low-confidence",
+    },
+  });
+
+  const ctas = result.presentation.card?.ctas ?? [];
+  assert.match(result.presentation.text ?? "", /2 imóvel\(is\) encontrado\(s\), mas sem preço suficiente para calcular faixa/i);
+  assert.match(result.presentation.card?.lines?.join("\n") ?? "", /sem preço suficiente para calcular faixa/i);
+  assert.equal(ctas[0]?.label, "Ver imóveis encontrados");
+  assert.equal(ctas.some((cta) => cta.label === "Não seguir agora"), false);
+  assert.equal(ctas.some((cta) => cta.nextMessage === "selecionar imóvel prop-1 do scan"), true);
+  assert.equal(ctas.some((cta) => cta.nextMessage === "selecionar imóvel prop-2 do scan"), true);
+});
+
 test("IMOB turn resolver keeps selected market scan item pending until explicit confirmation", () => {
   const result = resolveImobTurn({
     message: "selecionar imóvel prop-1 do scan",

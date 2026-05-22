@@ -2109,12 +2109,22 @@ function buildMarketScanOpportunityCta(params: {
   const nextMessage = opportunity.recommendedAction === "pedir_autorizacao" && firstItem
     ? `selecionar imóvel ${firstItem.sourceId} do scan`
     : buildMarketScanOpportunityNextMessage(opportunity);
+	  return {
+	    id: `market-scan-opportunity-${opportunity.recommendedAction}`,
+	    label,
+	    kind: "primary" as const,
+	    action: "send_suggested_message" as const,
+	    nextMessage,
+	  };
+}
+
+function buildMarketScanViewListingsCta() {
   return {
-    id: `market-scan-opportunity-${opportunity.recommendedAction}`,
-    label,
+    id: "market-scan-view-listings",
+    label: "Ver imóveis encontrados",
     kind: "primary" as const,
     action: "send_suggested_message" as const,
-    nextMessage,
+    nextMessage: "mostrar imóveis encontrados no market scan",
   };
 }
 
@@ -2138,8 +2148,13 @@ function buildMarketScanPresentation(params: {
   const { marketScanResult, marketScanOpportunity, currentCard, currentText } = params;
   const totalGroups = marketScanResult.groups.length;
   const intelligence = marketScanResult.intelligence ?? null;
+  const allItems = marketScanResult.groups.flatMap((group) => group.items);
+  const pricedItems = allItems.filter((item) => typeof item.price === "number" && Number.isFinite(item.price));
   const priceRange = marketScanOpportunity?.priceRange ?? intelligence?.priceRange ?? null;
   const priceLine = priceRange ? `Faixa observada: ${formatMarketScanMoney(priceRange.min)} a ${formatMarketScanMoney(priceRange.max)}` : null;
+  const missingPriceLine = marketScanResult.sourceStatus === "completed" && allItems.length > 0 && !priceRange
+    ? `${allItems.length} imóvel(is) encontrado(s), mas sem preço suficiente para calcular faixa.`
+    : null;
   const liquidityLine = intelligence ? `Liquidez: ${formatMarketScanScore(intelligence.liquidityScore)}` : null;
   const riskLine = intelligence ? `Risco de preço: ${formatMarketScanRisk(intelligence.pricingRisk)}` : null;
   const confidenceLine = intelligence ? `Confiança: ${formatMarketScanScore(intelligence.confidenceScore)}` : null;
@@ -2150,6 +2165,7 @@ function buildMarketScanPresentation(params: {
           currentText,
           `Inteligência de mercado concluída com ${marketScanResult.totalItems} imóvel(is) em ${totalGroups} grupo(s).`,
           priceLine,
+          missingPriceLine,
           liquidityLine,
           riskLine,
           confidenceLine,
@@ -2168,6 +2184,7 @@ function buildMarketScanPresentation(params: {
 
   const intelligenceLines = [
     priceLine,
+    missingPriceLine,
     liquidityLine,
     riskLine,
     confidenceLine,
@@ -2185,10 +2202,16 @@ function buildMarketScanPresentation(params: {
           : "Nenhum imóvel encontrado para os filtros atuais.",
       ];
 
-  const firstItem = marketScanResult.groups.flatMap((group) => group.items)[0] ?? null;
-  const opportunityCtas = marketScanOpportunity
-    ? [buildMarketScanOpportunityCta({ opportunity: marketScanOpportunity, firstItem })]
-    : [];
+  const firstItem = allItems[0] ?? null;
+  const shouldPrioritizeListingSelection =
+    allItems.length > 0
+    && marketScanOpportunity?.recommendedAction === "nao_seguir"
+    && (!priceRange || pricedItems.length < 3);
+  const opportunityCtas = shouldPrioritizeListingSelection
+    ? [buildMarketScanViewListingsCta()]
+    : marketScanOpportunity
+      ? [buildMarketScanOpportunityCta({ opportunity: marketScanOpportunity, firstItem })]
+      : [];
 
   return {
     text: summaryText,
