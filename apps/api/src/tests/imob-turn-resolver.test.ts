@@ -710,20 +710,31 @@ test("IMOB turn resolver keeps market scan read-only when the user explicitly ch
           bathrooms: null,
           address: null,
         },
-        marketScanContext: {
-          cities: ["Camboriú", "Itajaí"],
-          cityCandidates: ["Camboriú", "Itajaí"],
-          uf: "SC",
+	        marketScanContext: {
+	          cities: ["Camboriú", "Itajaí"],
+	          cityCandidates: ["Camboriú", "Itajaí"],
+	          uf: "SC",
           goals: ["compra", "venda", "locacao"],
           goalCandidates: ["compra", "venda", "locacao"],
           propertyTypes: [],
           bedrooms: [],
           priceRange: null,
-          readOnly: true,
-          limitPerGroup: 10,
-        },
-      },
-    },
+	          readOnly: true,
+	          limitPerGroup: 10,
+	        },
+	        marketScanRun: {
+	          runId: "run-1",
+	          tenantId: "tenant-A",
+	          workspaceId: "workspace-A",
+	          caseId: null,
+	          status: "completed",
+	          accessMode: "internal_crm",
+	          sourceIds: ["internal_crm"],
+	          queryHash: "query-hash-1",
+	          evidenceBundleId: "evidence-1",
+	        },
+	      },
+	    },
     access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
     marketScanResult: {
       providerId: "internal_crm",
@@ -802,11 +813,11 @@ test("IMOB turn resolver keeps market scan read-only when the user explicitly ch
   assert.equal(result.action, "realestate.market_scan");
   assert.equal(result.executionRequest, undefined);
   assert.equal(result.conversationState.operational?.flow, "property.market_scan");
-  assert.match(result.presentation.text ?? "", /Inteligência de mercado|governada/i);
+  assert.match(result.presentation.text ?? "", /Varredura de mercado concluída|governad[ao]/i);
   assert.doesNotMatch(result.presentation.text ?? "", /read-only|múltiplas cidades|cadastro automático/i);
   assert.equal(result.presentation.blocker ?? null, null);
   assert.equal(result.presentation.nextStep ?? null, null);
-  assert.match(result.presentation.text ?? "", /Inteligência de mercado concluída/i);
+  assert.match(result.presentation.text ?? "", /Varredura de mercado concluída/i);
   assert.equal(result.presentation.marketScanResult?.sourceStatus, "completed");
   assert.equal(result.presentation.marketScanResult?.groups[0]?.items.length, 2);
   assert.deepEqual(
@@ -815,22 +826,25 @@ test("IMOB turn resolver keeps market scan read-only when the user explicitly ch
   );
   assert.equal(result.presentation.agentActivities?.every((item) => item.displayPrefix === "Agente"), true);
   assert.match(result.presentation.card?.title ?? "", /Inteligência de mercado/i);
-  assert.match(result.presentation.text ?? "", /Faixa observada: R\$\s?3\.200 a R\$\s?3\.400/i);
-  assert.match(result.presentation.text ?? "", /Liquidez: 72%/i);
-  assert.match(result.presentation.text ?? "", /Risco de preço: alto/i);
-  assert.match(result.presentation.text ?? "", /Confiança: 66%/i);
-  assert.match(result.presentation.text ?? "", /Ação recomendada: Pedir autorização/i);
+  assert.doesNotMatch(result.presentation.text ?? "", /Faixa observada|Liquidez|Risco de preço|Confiança|Ação recomendada/i);
   assert.match(result.presentation.card?.lines?.join("\n") ?? "", /Faixa observada: R\$\s?3\.200 a R\$\s?3\.400/i);
+  assert.match(result.presentation.card?.lines?.join("\n") ?? "", /Liquidez: 72%/i);
+  assert.match(result.presentation.card?.lines?.join("\n") ?? "", /Risco de preço: alto/i);
+  assert.match(result.presentation.card?.lines?.join("\n") ?? "", /Confiança: 66%/i);
+  assert.match(result.presentation.card?.lines?.join("\n") ?? "", /Ação recomendada: Pedir autorização/i);
+  assert.match(result.presentation.card?.lines?.join("\n") ?? "", /Próximo passo: Pedir autorização ou fonte adicional/i);
   assert.match(result.presentation.card?.lines?.join("\n") ?? "", /R\$\s?3\.200/i);
+  assert.doesNotMatch(result.presentation.card?.lines?.join("\n") ?? "", /prop-[12]/i);
   assert.equal(
     result.presentation.card?.ctas?.some((cta) =>
       cta.label === "Pedir autorização"
-      && cta.nextMessage === "selecionar imóvel prop-1 do scan"
+      && cta.nextMessage === "selecionar imóvel 1 do scan"
+      && (cta.payload?.marketScan as { sourceId?: string } | undefined)?.sourceId === "prop-1"
     ),
     true,
   );
   assert.equal(
-    result.presentation.card?.ctas?.some((cta) => cta.nextMessage === "selecionar imóvel prop-1 do scan"),
+    result.presentation.card?.ctas?.some((cta) => cta.nextMessage === "selecionar imóvel 1 do scan"),
     true,
   );
 });
@@ -867,20 +881,31 @@ test("IMOB turn resolver explains missing prices and prioritizes listing selecti
           bathrooms: null,
           address: null,
         },
-        marketScanContext: {
-          cities: ["Itajaí"],
-          cityCandidates: ["Itajaí"],
-          uf: "SC",
+	        marketScanContext: {
+	          cities: ["Itajaí"],
+	          cityCandidates: ["Itajaí"],
+	          uf: "SC",
           goals: ["venda"],
           goalCandidates: ["venda"],
           propertyTypes: ["apartamento"],
           bedrooms: [2],
           priceRange: null,
-          readOnly: true,
-          limitPerGroup: 10,
-        },
-      },
-    },
+	          readOnly: true,
+	          limitPerGroup: 10,
+	        },
+	        marketScanRun: {
+	          runId: "run-low-confidence",
+	          tenantId: "tenant-A",
+	          workspaceId: "workspace-A",
+	          caseId: null,
+	          status: "completed",
+	          accessMode: "internal_crm",
+	          sourceIds: ["internal_crm"],
+	          queryHash: "query-hash-low-confidence",
+	          evidenceBundleId: "evidence-low-confidence",
+	        },
+	      },
+	    },
     access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
     marketScanResult: {
       providerId: "internal_crm",
@@ -956,17 +981,24 @@ test("IMOB turn resolver explains missing prices and prioritizes listing selecti
   });
 
   const ctas = result.presentation.card?.ctas ?? [];
-  assert.match(result.presentation.text ?? "", /2 imóvel\(is\) encontrado\(s\), mas sem preço suficiente para calcular faixa/i);
+  assert.doesNotMatch(result.presentation.text ?? "", /sem preço suficiente para calcular faixa/i);
   assert.match(result.presentation.card?.lines?.join("\n") ?? "", /sem preço suficiente para calcular faixa/i);
-  assert.equal(ctas[0]?.label, "Ver imóveis encontrados");
+  assert.match(result.presentation.card?.lines?.join("\n") ?? "", /Imóvel 1 · Centro · apartamento · 2 quartos/i);
+  assert.match(result.presentation.card?.lines?.join("\n") ?? "", /Imóvel 2 · Centro · apartamento · 2 quartos/i);
+  assert.doesNotMatch(result.presentation.card?.lines?.join("\n") ?? "", /prop-[12]/i);
+  assert.equal(ctas[0]?.label, "Selecionar Imóvel 1");
+  assert.equal(ctas[0]?.kind, "primary");
+  assert.equal(ctas[0]?.nextMessage, "selecionar imóvel 1 do scan");
+  assert.equal((ctas[0]?.payload?.marketScan as { sourceId?: string } | undefined)?.sourceId, "prop-1");
   assert.equal(ctas.some((cta) => cta.label === "Não seguir agora"), false);
-  assert.equal(ctas.some((cta) => cta.nextMessage === "selecionar imóvel prop-1 do scan"), true);
-  assert.equal(ctas.some((cta) => cta.nextMessage === "selecionar imóvel prop-2 do scan"), true);
+  assert.equal(ctas.some((cta) => cta.label === "Ver imóveis encontrados"), false);
+  assert.equal(ctas.some((cta) => cta.nextMessage === "selecionar imóvel 1 do scan"), true);
+  assert.equal(ctas.some((cta) => cta.nextMessage === "selecionar imóvel 2 do scan"), true);
 });
 
 test("IMOB turn resolver keeps selected market scan item pending until explicit confirmation", () => {
   const result = resolveImobTurn({
-    message: "selecionar imóvel prop-1 do scan",
+    message: "selecionar imóvel 1 do scan",
     threadState: {
       slots: {
         goal: null,
@@ -1054,8 +1086,12 @@ test("IMOB turn resolver keeps selected market scan item pending until explicit 
   assert.equal(result.executionRequest, undefined);
   assert.equal(result.conversationState.operational?.flow, "property.market_scan");
   assert.equal(result.conversationState.operational?.marketScanSelection?.sourceId, "prop-1");
-  assert.equal(result.presentation.card?.ctas?.some((cta) => cta.nextMessage === "confirmar seleção do scan prop-1"), true);
-  assert.match(result.presentation.text ?? "", /deduplicar por sourceId\/endereço/i);
+  assert.equal(result.presentation.card?.ctas?.some((cta) =>
+    cta.nextMessage === "confirmar seleção do scan"
+    && (cta.payload?.marketScan as { sourceId?: string } | undefined)?.sourceId === "prop-1"
+  ), true);
+  assert.doesNotMatch(result.presentation.card?.lines?.join("\n") ?? "", /prop-1|market-scan-1/i);
+  assert.match(result.presentation.text ?? "", /deduplicar por origem\/endereço/i);
   assert.doesNotMatch(result.presentation.text ?? "", /múltiplas cidades|cadastro automático/i);
 });
 

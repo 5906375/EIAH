@@ -74,7 +74,7 @@ test("market scan response writer only uses listings from resultSnapshot when ev
   });
 
   assert.equal(written.blocked, false);
-  assert.match(written.text, /Apartamento 2 quartos/);
-  assert.match(written.text, /origem prop-1/);
+  assert.match(written.text, /Imóvel 1 · Itajaí · apartamento · 2 quartos/i);
+  assert.doesNotMatch(written.text, /prop-1|sourceId|evidenceBundleId/i);
   assert.doesNotMatch(written.text, /prop-inventado/);
 });

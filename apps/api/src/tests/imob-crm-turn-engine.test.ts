@@ -369,8 +369,9 @@ test("IMOB_CRM turn engine injeta market scan read-only com provider interno qua
   );
   assert.equal(events.length, 1);
   assert.equal(events[0].type, "market_scan.snapshot");
-  assert.match((resolved as any).presentation?.text ?? "", /Inteligência de mercado concluída/i);
-  assert.match((resolved as any).presentation?.text ?? "", /Ação recomendada/i);
+  assert.match((resolved as any).presentation?.text ?? "", /Varredura de mercado concluída/i);
+  assert.doesNotMatch((resolved as any).presentation?.text ?? "", /Ação recomendada/i);
+  assert.equal((resolved as any).conversationState?.operational?.marketScanOpportunity?.recommendedAction, "pedir_autorizacao");
 });
 
 test("IMOB_CRM turn engine retoma market scan snapshot persistido por caseId quando o threadState não carrega o snapshot", async () => {

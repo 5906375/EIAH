@@ -611,6 +611,15 @@ function extractMarketScanSelectionSourceId(message: string) {
   return match?.[1]?.trim() ?? null;
 }
 
+function extractMarketScanSelectionOrdinal(message: string) {
+  const normalized = normalizeImobText(message);
+  const match = normalized.match(
+    /(?:selecionar|usar|salvar)\s+(?:imovel|imóvel|item)\s+(\d+)(?:\s+do\s+scan)?/i,
+  );
+  const ordinal = Number(match?.[1]);
+  return Number.isInteger(ordinal) && ordinal > 0 ? ordinal : null;
+}
+
 function findMarketScanItemBySourceId(
   snapshot: ImobOperationalState["marketScanSnapshot"] | undefined,
   sourceId: string | null,
@@ -621,6 +630,15 @@ function findMarketScanItemBySourceId(
     if (item) return item;
   }
   return null;
+}
+
+function findMarketScanItemByOrdinal(
+  snapshot: ImobOperationalState["marketScanSnapshot"] | undefined,
+  ordinal: number | null,
+): ImobMarketScanResultItem | null {
+  if (!snapshot || !ordinal) return null;
+  const items = snapshot.groups.flatMap((group) => group.items);
+  return items[ordinal - 1] ?? null;
 }
 
 function buildMarketScanSelection(
@@ -1468,8 +1486,11 @@ export function createNextImobOperationalState(
       }
       if (wantsConfirmSelection) return previous;
 
+      const selectedOrdinal = extractMarketScanSelectionOrdinal(message);
       const selectedSourceId = extractMarketScanSelectionSourceId(message);
-      const selectedItem = findMarketScanItemBySourceId(previous.marketScanSnapshot, selectedSourceId);
+      const selectedItem =
+        findMarketScanItemByOrdinal(previous.marketScanSnapshot, selectedOrdinal)
+        ?? findMarketScanItemBySourceId(previous.marketScanSnapshot, selectedSourceId);
 
       if (wantsSelect && selectedItem) {
         const selection = buildMarketScanSelection(previous.marketScanSnapshot, selectedItem);
