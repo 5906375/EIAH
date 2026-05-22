@@ -24,6 +24,7 @@ import { computeLiquidityCompetitionScore } from "./liquidityCompetitionScorer";
 import { recommendOperationalOpportunity } from "./opportunityRecommender";
 import { computePriceIntelligence } from "./priceIntelligenceEngine";
 import { decideSourceAccess } from "./sourceAccessPolicyGate";
+import { evaluateMarketScanSourceDataQuality } from "./sourceDataQualityGate";
 import type { MarketScanConnectorId, MarketScanConnectorRegistry } from "./sourceConnectorRegistry";
 
 export type MarketScanPipelineResult = {
@@ -158,9 +159,47 @@ export async function executeMarketScanPipeline(params: {
   let enrichedSnapshot = resultSnapshot;
   let opportunity: MarketScanPipelineResult["opportunity"] = null;
   if (resultSnapshot && sourceAccessDecision.allowed) {
+    const sourceDataQuality = evaluateMarketScanSourceDataQuality(resultSnapshot);
+    enrichedSnapshot = {
+      ...resultSnapshot,
+      sourceDataQuality,
+    };
+    if (sourceDataQuality.status === "blocked") {
+      const evidenceBundle = createMarketScanGuardianEvidence({
+        runId: run.runId,
+        queryHash: run.queryHash,
+        sourceSnapshot: {
+          sourceIds,
+          sourceAccessDecision,
+          sourceDataQuality,
+          totalItems: enrichedSnapshot.totalItems,
+          providerId: enrichedSnapshot.providerId,
+        },
+        normalizedListings: enrichedSnapshot,
+        recommendation: null,
+      });
+      const completed = await completeMarketScanRun({
+        prisma: params.prisma,
+        runId: run.runId,
+        resultSnapshot: enrichedSnapshot,
+        evidenceBundleId: evidenceBundle.evidenceBundleId,
+        recommendationId: evidenceBundle.recommendationHash,
+        opportunityId: null,
+      });
+      return {
+        run: {
+          ...completed,
+          sourceAccessDecision,
+        },
+        sourceAccessDecision,
+        resultSnapshot: enrichedSnapshot,
+        opportunity: null,
+        evidenceBundle,
+      } satisfies MarketScanPipelineResult;
+    }
     await markMarketScanMatchingStarted({ prisma: params.prisma, runId: run.runId });
     const comparables = matchComparables({
-      snapshot: resultSnapshot,
+      snapshot: enrichedSnapshot,
       query: params.query,
     });
     await markMarketScanScoringStarted({ prisma: params.prisma, runId: run.runId });
@@ -170,15 +209,16 @@ export async function executeMarketScanPipeline(params: {
       priceIntelligence,
       sourceAccessDecision,
     });
+    const confidenceScore = Math.max(0, Number((scoring.confidenceScore - sourceDataQuality.confidencePenalty).toFixed(2)));
     enrichedSnapshot = {
-      ...resultSnapshot,
+      ...enrichedSnapshot,
       intelligence: {
         comparableCount: priceIntelligence.comparableCount,
         priceRange: priceIntelligence.priceRange,
         liquidityScore: scoring.liquidityScore,
         pricingRisk: priceIntelligence.pricingRisk,
         sourceCoverageScore: scoring.sourceCoverageScore,
-        confidenceScore: scoring.confidenceScore,
+        confidenceScore,
       },
     };
     await markMarketScanRecommendationStarted({ prisma: params.prisma, runId: run.runId });
@@ -187,7 +227,7 @@ export async function executeMarketScanPipeline(params: {
       priceIntelligence,
       liquidityScore: scoring.liquidityScore,
       sourceCoverageScore: scoring.sourceCoverageScore,
-      confidenceScore: scoring.confidenceScore,
+      confidenceScore,
     });
   }
   const evidenceBundle = createMarketScanGuardianEvidence({
@@ -196,6 +236,7 @@ export async function executeMarketScanPipeline(params: {
     sourceSnapshot: {
       sourceIds,
       sourceAccessDecision,
+      sourceDataQuality: enrichedSnapshot?.sourceDataQuality ?? null,
       totalItems: enrichedSnapshot?.totalItems ?? 0,
       providerId: enrichedSnapshot?.providerId ?? null,
     },

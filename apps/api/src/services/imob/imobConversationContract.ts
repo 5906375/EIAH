@@ -228,6 +228,8 @@ export type ImobMarketScanResultItem = {
   propertyType?: ImobCrmPropertyType | null;
   bedrooms?: number | null;
   price?: number | null;
+  areaM2?: number | null;
+  priceAreaM2?: number | null;
   currency?: "BRL" | null;
   neighborhood?: string | null;
   address?: string | null;
@@ -251,6 +253,17 @@ export type ImobMarketScanResultSnapshot = {
   groups: ImobMarketScanResultGroup[];
   readOnly: true;
   generatedAt: string;
+  sourceDataQuality?: {
+    status: "pass" | "degraded" | "blocked";
+    fillRate: {
+      price: number;
+      areaM2: number;
+      priceAreaM2: number;
+    };
+    confidencePenalty: number;
+    reasonCodes: string[];
+    message: string;
+  } | null;
   intelligence?: {
     comparableCount: number;
     priceRange?: {

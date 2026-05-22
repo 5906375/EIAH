@@ -6,6 +6,13 @@ function normalizeText(value: string | null | undefined) {
 }
 
 function normalizeItem(item: MarketScanItem): MarketScanItem {
+  const price = typeof item.price === "number" && Number.isFinite(item.price) ? item.price : null;
+  const areaM2 = typeof item.areaM2 === "number" && Number.isFinite(item.areaM2) && item.areaM2 > 0 ? item.areaM2 : null;
+  const priceAreaM2 = typeof item.priceAreaM2 === "number" && Number.isFinite(item.priceAreaM2) && item.priceAreaM2 > 0
+    ? item.priceAreaM2
+    : price && areaM2
+      ? Number((price / areaM2).toFixed(2))
+      : null;
   return {
     ...item,
     source: normalizeText(item.source) ?? "unknown",
@@ -18,7 +25,9 @@ function normalizeItem(item: MarketScanItem): MarketScanItem {
     address: normalizeText(item.address),
     title: normalizeText(item.title),
     url: normalizeText(item.url),
-    price: typeof item.price === "number" && Number.isFinite(item.price) ? item.price : null,
+    price,
+    areaM2,
+    priceAreaM2,
     bedrooms: typeof item.bedrooms === "number" && Number.isFinite(item.bedrooms) ? item.bedrooms : null,
     currency: item.currency === "BRL" ? "BRL" : null,
   };

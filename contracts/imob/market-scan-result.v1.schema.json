@@ -12,6 +12,27 @@
     "groups": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
     "confidenceScore": { "type": "number", "minimum": 0, "maximum": 1 },
     "sourceCoverageScore": { "type": "number", "minimum": 0, "maximum": 1 },
+    "sourceDataQuality": {
+      "type": ["object", "null"],
+      "required": ["status", "fillRate", "confidencePenalty", "reasonCodes", "message"],
+      "properties": {
+        "status": { "type": "string", "enum": ["pass", "degraded", "blocked"] },
+        "fillRate": {
+          "type": "object",
+          "required": ["price", "areaM2", "priceAreaM2"],
+          "properties": {
+            "price": { "type": "number", "minimum": 0, "maximum": 1 },
+            "areaM2": { "type": "number", "minimum": 0, "maximum": 1 },
+            "priceAreaM2": { "type": "number", "minimum": 0, "maximum": 1 }
+          },
+          "additionalProperties": false
+        },
+        "confidencePenalty": { "type": "number", "minimum": 0, "maximum": 1 },
+        "reasonCodes": { "type": "array", "items": { "type": "string" } },
+        "message": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
     "priceRange": {
       "type": ["object", "null"],
       "properties": {
