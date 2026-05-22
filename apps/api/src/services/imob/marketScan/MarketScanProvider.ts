@@ -36,6 +36,8 @@ export type MarketScanItem = {
   propertyType?: ImobCrmPropertyType | null;
   bedrooms?: number | null;
   price?: number | null;
+  areaM2?: number | null;
+  priceAreaM2?: number | null;
   currency?: "BRL" | null;
   neighborhood?: string | null;
   address?: string | null;
@@ -65,4 +67,3 @@ export interface MarketScanProvider {
     context: MarketScanExecutionContext,
   ): Promise<MarketScanResult>;
 }
-

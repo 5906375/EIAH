@@ -2070,6 +2070,13 @@ function formatMarketScanScore(value: number | null | undefined) {
   return `${Math.round(clamped * 100)}%`;
 }
 
+function formatMarketScanQualityStatus(value: "pass" | "degraded" | "blocked" | null | undefined) {
+  if (value === "pass") return "boa";
+  if (value === "degraded") return "reduzida";
+  if (value === "blocked") return "bloqueada";
+  return "não avaliada";
+}
+
 function formatMarketScanRisk(value: "low" | "medium" | "high" | "unknown" | null | undefined) {
   switch (value) {
     case "low":
@@ -2202,6 +2209,7 @@ function buildMarketScanPresentation(params: {
   const canShowStrongRecommendation = !policyDecision || policyDecision.allowed;
   const totalGroups = marketScanResult.groups.length;
   const intelligence = marketScanResult.intelligence ?? null;
+  const sourceDataQuality = marketScanResult.sourceDataQuality ?? null;
   const allItems = marketScanResult.groups.flatMap((group) => group.items);
   const pricedItems = allItems.filter((item) => typeof item.price === "number" && Number.isFinite(item.price));
   const priceRange = marketScanOpportunity?.priceRange ?? intelligence?.priceRange ?? null;
@@ -2216,6 +2224,12 @@ function buildMarketScanPresentation(params: {
   const nextStepLine = marketScanOpportunity?.nextStep && canShowStrongRecommendation ? `Próximo passo: ${marketScanOpportunity.nextStep}` : null;
   const degradedRecommendationLine = marketScanOpportunity && !canShowStrongRecommendation
     ? "Dados insuficientes para recomendação forte."
+    : null;
+  const qualityLine = sourceDataQuality
+    ? `Qualidade dos dados: ${formatMarketScanQualityStatus(sourceDataQuality.status)}`
+    : null;
+  const blockedQualityLine = sourceDataQuality?.status === "blocked"
+    ? "Scoring bloqueado: faltam dados mínimos de preço/área."
     : null;
   const summaryText =
     marketScanResult.sourceStatus === "completed"
@@ -2234,6 +2248,8 @@ function buildMarketScanPresentation(params: {
           ].filter(Boolean).join("\n");
 
   const intelligenceLines = [
+    qualityLine,
+    blockedQualityLine,
     priceLine,
     missingPriceLine,
     liquidityLine,
