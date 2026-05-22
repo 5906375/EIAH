@@ -11,11 +11,13 @@ export type MarketScanPolicyJudgeDecision =
         | "MARKET_SCAN_EVIDENCE_REQUIRED"
         | "MARKET_SCAN_PII_BLOCKED"
         | "MARKET_SCAN_LISTING_NOT_IN_RUN"
+        | "MARKET_SCAN_INTERNAL_ID_LEAK"
         | "MARKET_SCAN_HUMAN_APPROVAL_REQUIRED";
       message: string;
     };
 
 const PII_KEYS = new Set(["phone", "email", "whatsapp", "ownerName", "document"]);
+const INTERNAL_ID_PATTERN = /\b(?:cmp[a-z0-9]{8,}|prop-[a-z0-9:_-]+|public_[a-f0-9]{8,}|scanId|sourceId|sourceUrlHash|dedupeKey|clusterHash|evidenceBundleId)\b/i;
 
 function hasPii(value: unknown): boolean {
   if (!value || typeof value !== "object") return false;
@@ -28,6 +30,8 @@ export function judgeMarketScanPolicy(params: {
   resultSnapshot?: ImobMarketScanResultSnapshot | null;
   opportunity?: ImobOperationalOpportunity | null;
   referencedSourceIds?: string[];
+  visibleText?: string | null;
+  visibleLines?: string[];
 }): MarketScanPolicyJudgeDecision {
   if (!params.run.evidenceBundleId) {
     return {
@@ -42,6 +46,15 @@ export function judgeMarketScanPolicy(params: {
       allowed: false,
       reasonCode: "MARKET_SCAN_PII_BLOCKED",
       message: "Market scan response contains PII fields.",
+    };
+  }
+
+  const visibleOutput = [params.visibleText ?? "", ...(params.visibleLines ?? [])].join("\n");
+  if (INTERNAL_ID_PATTERN.test(visibleOutput)) {
+    return {
+      allowed: false,
+      reasonCode: "MARKET_SCAN_INTERNAL_ID_LEAK",
+      message: "Market scan visible response contains internal identifiers.",
     };
   }
 

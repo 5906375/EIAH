@@ -15,6 +15,7 @@ import {
   type ImobKnowledgeSourceFilter,
   type ImobMarketScanResultGroup,
   type ImobMarketScanResultItem,
+  type ImobMarketScanRunSnapshot,
   type ImobMarketScanResultSnapshot,
   type ImobOperationalOpportunity,
   type ImobOperationalState,
@@ -41,6 +42,7 @@ import {
 } from "./imobConversationState";
 import { IMOB_CRM_PROPERTY_GOAL_OPTIONS, normalizeImobCrmPropertyGoal } from "./crm/imobCrmPropertyGoals";
 import { IMOB_CRM_PROPERTY_TYPE_OPTIONS, normalizeImobCrmPropertyType } from "./crm/imobCrmPropertyTypes";
+import { judgeMarketScanPolicy } from "./marketScan/marketScanPolicyJudge";
 
 const IMOB_DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1rwqbWQmL2eiXYBY5UaPReubZ2sbQsBu3";
 
@@ -2051,14 +2053,15 @@ function formatMarketScanMoney(value: number) {
   }).format(value);
 }
 
-function formatMarketScanItemLabel(item: ImobMarketScanResultItem) {
+function formatMarketScanItemLabel(item: ImobMarketScanResultItem, index = 0) {
   const details = [
-    item.title ?? item.address ?? item.sourceId,
-    item.neighborhood ? `bairro ${item.neighborhood}` : null,
+    `Imóvel ${index + 1}`,
+    item.neighborhood ?? item.city,
+    item.propertyType ?? null,
+    typeof item.bedrooms === "number" ? `${item.bedrooms} quarto${item.bedrooms === 1 ? "" : "s"}` : null,
     typeof item.price === "number" ? formatMarketScanMoney(item.price) : null,
-    item.sourceId ? `origem ${item.sourceId}` : null,
   ].filter(Boolean);
-  return details.join(" | ");
+  return details.join(" · ");
 }
 
 function formatMarketScanScore(value: number | null | undefined) {
@@ -2129,45 +2132,74 @@ function buildMarketScanOpportunityCta(params: {
           ? "Pedir autorização"
           : "Não seguir agora";
   const nextMessage = opportunity.recommendedAction === "pedir_autorizacao" && firstItem
-    ? `selecionar imóvel ${firstItem.sourceId} do scan`
+    ? "selecionar imóvel 1 do scan"
     : buildMarketScanOpportunityNextMessage(opportunity);
-	  return {
-	    id: `market-scan-opportunity-${opportunity.recommendedAction}`,
-	    label,
-	    kind: "primary" as const,
-	    action: "send_suggested_message" as const,
-	    nextMessage,
-	  };
+		  return {
+		    id: `market-scan-opportunity-${opportunity.recommendedAction}`,
+		    label,
+		    kind: "primary" as const,
+		    action: "send_suggested_message" as const,
+		    nextMessage,
+		    ...(firstItem
+		      ? {
+		          payload: {
+		            marketScan: {
+		              scanItemIndex: 1,
+		              source: firstItem.source,
+		              sourceId: firstItem.sourceId,
+		              providerId: firstItem.providerId,
+		            },
+		          },
+		        }
+		      : {}),
+		  };
 }
 
-function buildMarketScanViewListingsCta() {
-  return {
-    id: "market-scan-view-listings",
-    label: "Ver imóveis encontrados",
-    kind: "primary" as const,
-    action: "send_suggested_message" as const,
-    nextMessage: "mostrar imóveis encontrados no market scan",
-  };
-}
-
-function buildMarketScanSelectionCtas(marketScanResult: NonNullable<ImobResolveTurnRequest["marketScanResult"]>) {
+function buildMarketScanSelectionCtas(
+  marketScanResult: NonNullable<ImobResolveTurnRequest["marketScanResult"]>,
+  options?: { promoteFirst?: boolean },
+) {
   const items = marketScanResult.groups.flatMap((group) => group.items).slice(0, 6);
-  return items.map((item) => ({
+  return items.map((item, index) => ({
     id: `market-scan-select-${item.sourceId}`,
-    label: `Selecionar ${item.title ?? item.sourceId}`,
-    kind: "secondary" as const,
+    label: `Selecionar Imóvel ${index + 1}`,
+    kind: options?.promoteFirst && index === 0 ? "primary" as const : "secondary" as const,
     action: "send_suggested_message" as const,
-    nextMessage: `selecionar imóvel ${item.sourceId} do scan`,
+    nextMessage: `selecionar imóvel ${index + 1} do scan`,
+    payload: {
+      marketScan: {
+        scanItemIndex: index + 1,
+        source: item.source,
+        sourceId: item.sourceId,
+        providerId: item.providerId,
+      },
+    },
   }));
 }
 
 function buildMarketScanPresentation(params: {
   marketScanResult: NonNullable<ImobResolveTurnRequest["marketScanResult"]>;
+  marketScanRun?: ImobMarketScanRunSnapshot | null;
   marketScanOpportunity?: ImobOperationalOpportunity | null;
   currentCard: ImobResolveTurnResponse["presentation"]["card"];
   currentText: string;
 }) {
-  const { marketScanResult, marketScanOpportunity, currentCard, currentText } = params;
+  const { marketScanResult, marketScanRun, currentCard, currentText } = params;
+  const marketScanOpportunity = params.marketScanOpportunity ?? null;
+  const policyDecision = marketScanOpportunity
+    ? marketScanRun
+      ? judgeMarketScanPolicy({
+          run: marketScanRun,
+          resultSnapshot: marketScanResult,
+          opportunity: marketScanOpportunity,
+        })
+      : {
+          allowed: false as const,
+          reasonCode: "MARKET_SCAN_EVIDENCE_REQUIRED" as const,
+          message: "Market scan recommendation requires MarketScanRun evidence.",
+        }
+    : null;
+  const canShowStrongRecommendation = !policyDecision || policyDecision.allowed;
   const totalGroups = marketScanResult.groups.length;
   const intelligence = marketScanResult.intelligence ?? null;
   const allItems = marketScanResult.groups.flatMap((group) => group.items);
@@ -2180,19 +2212,16 @@ function buildMarketScanPresentation(params: {
   const liquidityLine = intelligence ? `Liquidez: ${formatMarketScanScore(intelligence.liquidityScore)}` : null;
   const riskLine = intelligence ? `Risco de preço: ${formatMarketScanRisk(intelligence.pricingRisk)}` : null;
   const confidenceLine = intelligence ? `Confiança: ${formatMarketScanScore(intelligence.confidenceScore)}` : null;
-  const actionLine = marketScanOpportunity ? `Ação recomendada: ${formatMarketScanAction(marketScanOpportunity.recommendedAction)}` : null;
+  const actionLine = marketScanOpportunity && canShowStrongRecommendation ? `Ação recomendada: ${formatMarketScanAction(marketScanOpportunity.recommendedAction)}` : null;
+  const nextStepLine = marketScanOpportunity?.nextStep && canShowStrongRecommendation ? `Próximo passo: ${marketScanOpportunity.nextStep}` : null;
+  const degradedRecommendationLine = marketScanOpportunity && !canShowStrongRecommendation
+    ? "Dados insuficientes para recomendação forte."
+    : null;
   const summaryText =
     marketScanResult.sourceStatus === "completed"
       ? [
           currentText,
-          `Inteligência de mercado concluída com ${marketScanResult.totalItems} imóvel(is) em ${totalGroups} grupo(s).`,
-          priceLine,
-          missingPriceLine,
-          liquidityLine,
-          riskLine,
-          confidenceLine,
-          actionLine,
-          marketScanOpportunity?.nextStep ? `Próximo passo: ${marketScanOpportunity.nextStep}` : null,
+          "Varredura de mercado concluída. Veja o resultado do Market Scan no card abaixo.",
         ].filter(Boolean).join("\n")
       : marketScanResult.sourceStatus === "empty"
         ? [
@@ -2211,11 +2240,18 @@ function buildMarketScanPresentation(params: {
     riskLine,
     confidenceLine,
     actionLine,
+    nextStepLine,
+    degradedRecommendationLine,
   ].filter((line): line is string => Boolean(line));
+  let itemDisplayIndex = 0;
   const cardLines = marketScanResult.groups.length > 0
     ? marketScanResult.groups.flatMap((group) => {
         const header = `${formatMarketScanGroupLabel(group)} · ${group.items.length} resultado(s)`;
-        const itemLines = group.items.slice(0, 3).map((item) => `- ${formatMarketScanItemLabel(item)}`);
+        const itemLines = group.items.slice(0, 3).map((item) => {
+          const label = `- ${formatMarketScanItemLabel(item, itemDisplayIndex)}`;
+          itemDisplayIndex += 1;
+          return label;
+        });
         return [header, ...itemLines];
       })
     : [
@@ -2228,27 +2264,31 @@ function buildMarketScanPresentation(params: {
   const shouldPrioritizeListingSelection =
     allItems.length > 0
     && marketScanOpportunity?.recommendedAction === "nao_seguir"
+    && canShowStrongRecommendation
     && (!priceRange || pricedItems.length < 3);
   const opportunityCtas = shouldPrioritizeListingSelection
-    ? [buildMarketScanViewListingsCta()]
-    : marketScanOpportunity
+    ? []
+    : marketScanOpportunity && canShowStrongRecommendation
       ? [buildMarketScanOpportunityCta({ opportunity: marketScanOpportunity, firstItem })]
       : [];
+  const selectionCtas = buildMarketScanSelectionCtas(marketScanResult, {
+    promoteFirst: shouldPrioritizeListingSelection,
+  });
 
   return {
     text: summaryText,
     card: {
       title: "Inteligência de mercado",
       lines: [...intelligenceLines, ...cardLines],
-      ctas: [
-        ...opportunityCtas,
-        ...buildMarketScanSelectionCtas(marketScanResult),
-        ...(currentCard?.ctas ?? []),
-      ],
+	      ctas: [
+	        ...opportunityCtas,
+	        ...selectionCtas,
+	        ...(currentCard?.ctas ?? []),
+	      ],
       actionsLayout: currentCard?.actionsLayout,
     },
     marketScanResult,
-    ...(marketScanOpportunity ? { marketScanOpportunity } : {}),
+    ...(marketScanOpportunity && canShowStrongRecommendation ? { marketScanOpportunity } : {}),
   };
 }
 
@@ -2278,24 +2318,31 @@ function buildMarketScanSelectionPresentation(params: {
 
   return {
     text: [
-      "Imóvel selecionado a partir da varredura. Ao confirmar, vou deduplicar por sourceId/endereço antes de criar ou atualizar o cadastro no CRM.",
+      "Imóvel selecionado a partir da varredura. Ao confirmar, vou deduplicar por origem/endereço antes de criar ou atualizar o cadastro no CRM.",
     ].filter(Boolean).join("\n"),
     card: {
       title: "Confirmar conversão do scan",
       lines: [
         itemLabel,
-        `Scan: ${selection.scanId}`,
-        `Origem: ${selection.source} / ${selection.sourceId}`,
+        `Fonte: ${selection.source}`,
         `Recuperado em: ${selection.retrievedAt}`,
       ],
       ctas: [
-	        {
-	          id: `market-scan-confirm-${selection.sourceId}`,
-	          label: "Confirmar captação do scan",
-	          kind: "primary" as const,
-	          action: "send_suggested_message" as const,
-	          nextMessage: `confirmar seleção do scan ${selection.sourceId}`,
-	        },
+		        {
+		          id: `market-scan-confirm-${selection.sourceId}`,
+		          label: "Confirmar captação do scan",
+		          kind: "primary" as const,
+		          action: "send_suggested_message" as const,
+		          nextMessage: "confirmar seleção do scan",
+		          payload: {
+		            marketScan: {
+		              scanId: selection.scanId,
+		              source: selection.source,
+		              sourceId: selection.sourceId,
+		              providerId: selection.providerId,
+		            },
+		          },
+		        },
         ...(marketScanResult
           ? [{
               id: `market-scan-back-${selection.sourceId}`,
@@ -3546,17 +3593,22 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
       ?? request.threadState?.operational?.marketScanSnapshot
       ?? operationalState?.marketScanSnapshot
       ?? null;
-    const availableMarketScanOpportunity =
-      request.marketScanOpportunity
-      ?? request.threadState?.operational?.marketScanOpportunity
-      ?? operationalState?.marketScanOpportunity
-      ?? null;
-    const marketScanPresentation = availableMarketScanResult
-      ? buildMarketScanPresentation({
-          marketScanResult: availableMarketScanResult,
-          marketScanOpportunity: availableMarketScanOpportunity,
-          currentCard: undefined,
-          currentText: "Vou manter a varredura de mercado em modo governado.",
+	    const availableMarketScanOpportunity =
+	      request.marketScanOpportunity
+	      ?? request.threadState?.operational?.marketScanOpportunity
+	      ?? operationalState?.marketScanOpportunity
+	      ?? null;
+	    const availableMarketScanRun =
+	      request.threadState?.operational?.marketScanRun
+	      ?? operationalState?.marketScanRun
+	      ?? null;
+	    const marketScanPresentation = availableMarketScanResult
+	      ? buildMarketScanPresentation({
+	          marketScanResult: availableMarketScanResult,
+	          marketScanRun: availableMarketScanRun,
+	          marketScanOpportunity: availableMarketScanOpportunity,
+	          currentCard: undefined,
+	          currentText: "Vou manter a varredura de mercado em modo governado.",
         })
       : null;
     return finalize({
@@ -3637,17 +3689,22 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
         ?? request.threadState?.operational?.marketScanSnapshot
         ?? operationalState.marketScanSnapshot
         ?? null;
-      const availableMarketScanOpportunity =
-        request.marketScanOpportunity
-        ?? request.threadState?.operational?.marketScanOpportunity
-        ?? operationalState.marketScanOpportunity
-        ?? null;
-      const marketScanPresentation = availableMarketScanResult
-        ? buildMarketScanPresentation({
-            marketScanResult: availableMarketScanResult,
-            marketScanOpportunity: availableMarketScanOpportunity,
-            currentCard: undefined,
-            currentText: baseText,
+	      const availableMarketScanOpportunity =
+	        request.marketScanOpportunity
+	        ?? request.threadState?.operational?.marketScanOpportunity
+	        ?? operationalState.marketScanOpportunity
+	        ?? null;
+	      const availableMarketScanRun =
+	        request.threadState?.operational?.marketScanRun
+	        ?? operationalState.marketScanRun
+	        ?? null;
+	      const marketScanPresentation = availableMarketScanResult
+	        ? buildMarketScanPresentation({
+	            marketScanResult: availableMarketScanResult,
+	            marketScanRun: availableMarketScanRun,
+	            marketScanOpportunity: availableMarketScanOpportunity,
+	            currentCard: undefined,
+	            currentText: baseText,
           })
         : null;
       return finalize({
@@ -4109,11 +4166,15 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
       ?? request.threadState?.operational?.marketScanSnapshot
       ?? operationalState.marketScanSnapshot
       ?? null;
-    const availableMarketScanOpportunity =
-      request.marketScanOpportunity
-      ?? request.threadState?.operational?.marketScanOpportunity
-      ?? operationalState.marketScanOpportunity
-      ?? null;
+	    const availableMarketScanOpportunity =
+	      request.marketScanOpportunity
+	      ?? request.threadState?.operational?.marketScanOpportunity
+	      ?? operationalState.marketScanOpportunity
+	      ?? null;
+	    const availableMarketScanRun =
+	      request.threadState?.operational?.marketScanRun
+	      ?? operationalState.marketScanRun
+	      ?? null;
     if (operationalState.marketScanSelection) {
       const selectionPresentation = buildMarketScanSelectionPresentation({
         selection: operationalState.marketScanSelection,
@@ -4132,11 +4193,12 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
         },
       });
     }
-    const marketScanPresentation = explicitScanRequest && availableMarketScanResult
-      ? buildMarketScanPresentation({
-          marketScanResult: availableMarketScanResult,
-          marketScanOpportunity: availableMarketScanOpportunity,
-          currentCard: presentation.card,
+	    const marketScanPresentation = explicitScanRequest && availableMarketScanResult
+	      ? buildMarketScanPresentation({
+	          marketScanResult: availableMarketScanResult,
+	          marketScanRun: availableMarketScanRun,
+	          marketScanOpportunity: availableMarketScanOpportunity,
+	          currentCard: presentation.card,
           currentText: presentation.text,
         })
       : null;

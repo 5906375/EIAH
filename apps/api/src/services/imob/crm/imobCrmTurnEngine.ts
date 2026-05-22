@@ -385,6 +385,31 @@ function extractMarketScanSelectionSourceIdFromMessage(
   return match?.[1]?.trim() ?? null;
 }
 
+function extractMarketScanSelectionOrdinalFromMessage(
+  message: string,
+  normalizeImobRouteText: (value: string) => string,
+) {
+  const normalized = normalizeImobRouteText(message);
+  const match = normalized.match(
+    /(?:selecionar|usar|salvar)\s+(?:imovel|imóvel|item)\s+(\d+)(?:\s+do\s+scan)?/i,
+  );
+  const ordinal = Number(match?.[1]);
+  return Number.isInteger(ordinal) && ordinal > 0 ? ordinal : null;
+}
+
+function resolveMarketScanSourceIdByOrdinal(threadState: ThreadStateLike, ordinal: number | null) {
+  if (!ordinal) return null;
+  const operational = asObject(asObject(threadState)?.operational);
+  const snapshot = asObject(operational?.marketScanSnapshot) ?? asObject(operational?.marketScanResult);
+  const groups = Array.isArray(snapshot?.groups) ? snapshot.groups : [];
+  const items = groups.flatMap((group) => {
+    const objectGroup = asObject(group);
+    return Array.isArray(objectGroup?.items) ? objectGroup.items : [];
+  });
+  const item = asObject(items[ordinal - 1]);
+  return asString(item?.sourceId);
+}
+
 function buildWorkflowBlockedResolution(params: {
   message: string;
   state: ImobCrmWorkflowState;
@@ -455,6 +480,11 @@ function resolveWorkflowGuard(params: {
 
   const workflowContext = resolveWorkflowContext(params.threadState);
   if (transition === "select_market_scan_item" || transition === "confirm_market_scan_selection") {
+    const selectedOrdinal = extractMarketScanSelectionOrdinalFromMessage(
+      params.message,
+      params.normalizeImobRouteText,
+    );
+    workflowContext.selectedSourceId ??= resolveMarketScanSourceIdByOrdinal(params.threadState, selectedOrdinal);
     workflowContext.selectedSourceId ??= extractMarketScanSelectionSourceIdFromMessage(
       params.message,
       params.normalizeImobRouteText,
