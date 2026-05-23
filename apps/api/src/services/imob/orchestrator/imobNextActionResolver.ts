@@ -141,6 +141,14 @@ export function resolveImobNextAction(params: ResolveNextActionParams): ImobNext
       });
 
     case "prepare_contract":
+      if (!params.context.readiness.documentsReady) {
+        return mapOperationAction("documents", params.flow, {
+          id: "collect-documents",
+          label: "Coletar documentos",
+          reasonCode: "DOCUMENTS_REQUIRED",
+        });
+      }
+
       return mapOperationAction("contract", params.flow, {
         id: "prepare-contract",
         label: "Preparar contrato",
