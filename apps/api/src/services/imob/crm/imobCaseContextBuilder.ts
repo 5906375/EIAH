@@ -8,6 +8,7 @@ import type {
   ImobPropertySnapshotV1,
 } from "./imobCaseContextContract";
 import { resolveCanonicalCaseStateFromLegacy } from "../orchestrator/imobLegacyCompatibilityResolver";
+import { resolveImobRecoverySnapshot } from "../orchestrator/imobRecoveryResolver";
 
 type BuildImobCaseContextV1Params = {
   tenantId: string;
@@ -224,15 +225,20 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
     },
   });
 
-  if (!compatibility.ok) return baseContext;
+  const enrichedContext = compatibility.ok
+    ? {
+        ...baseContext,
+        canonicalCaseState: compatibility.state,
+        legacyCompatibility: {
+          migratedFromLegacy: compatibility.migrated,
+          sourceFlow: compatibility.sourceFlow ?? null,
+          sourceMission: compatibility.sourceMission ?? null,
+        },
+      }
+    : baseContext;
 
   return {
-    ...baseContext,
-    canonicalCaseState: compatibility.state,
-    legacyCompatibility: {
-      migratedFromLegacy: compatibility.migrated,
-      sourceFlow: compatibility.sourceFlow ?? null,
-      sourceMission: compatibility.sourceMission ?? null,
-    },
+    ...enrichedContext,
+    recoverySnapshot: resolveImobRecoverySnapshot(enrichedContext),
   };
 }

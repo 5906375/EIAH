@@ -6,6 +6,7 @@ import type {
   ImobCasePlanV1,
   ImobCaseStage,
 } from "./imobCaseContextContract";
+import { resolveImobRecoverySnapshot } from "../orchestrator/imobRecoveryResolver";
 
 function action(params: {
   operation: ImobCaseActionId;
@@ -151,16 +152,11 @@ export function planImobCase(context: ImobCaseContextV1): ImobCasePlanV1 {
   return {
     version: "1.0",
     mission,
-    stage: context.blockers.some((blocker) => blocker.severity === "blocking") ? "blocked" : "intake",
+    stage: (context.recoverySnapshot ?? resolveImobRecoverySnapshot(context)).stage,
     resolved,
     blockers: context.blockers,
-    primaryAction: action({
-      operation: "case.review",
-      label: "Consultar caso",
-      nextMessage: "consultar caso",
-      reasonCode: "case_review_available",
-    }),
-    secondaryActions: [],
+    primaryAction: (context.recoverySnapshot ?? resolveImobRecoverySnapshot(context)).primaryAction,
+    secondaryActions: (context.recoverySnapshot ?? resolveImobRecoverySnapshot(context)).secondaryActions,
     suppressedActions,
   };
 }

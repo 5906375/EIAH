@@ -45,6 +45,7 @@ test("IMOB case context v1 builds canonical seasonal capture context from legacy
   assert.equal(context.links.ownerProperty?.status, "missing");
   assert.equal(context.legacyCompatibility?.migratedFromLegacy, true);
   assert.equal(context.canonicalCaseState?.currentStep, "owner_property_linking");
+  assert.equal(context.recoverySnapshot?.primaryAction?.operation, "property.link_owner");
   assert.ok(context.blockers.some((blocker) => blocker.code === "owner_property_not_linked"));
 });
 
@@ -77,5 +78,6 @@ test("IMOB case context v1 marks owner-property link as linked when property alr
   assert.equal(context.readiness.ownerReady, true);
   assert.equal(context.readiness.propertyReady, true);
   assert.equal(context.canonicalCaseState?.currentStep, "verifying_docs");
+  assert.equal(context.recoverySnapshot?.primaryAction?.operation, "documents.collect");
   assert.equal(context.blockers.some((blocker) => blocker.code === "owner_property_not_linked"), false);
 });
