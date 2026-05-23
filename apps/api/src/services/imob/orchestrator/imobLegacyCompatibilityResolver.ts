@@ -3,11 +3,10 @@ import type {
   ImobCaseState,
   ImobMissionId,
   ImobMissionPolicy,
-  ImobNextAction,
   ImobOperation,
-  MissionStatus,
 } from "./imobMissionTypes";
-import { resolveImobOperationRoute } from "./imobOperationRouter";
+import { resolveImobMissionStatus } from "./imobCompletionEvaluator";
+import { resolveImobNextAction } from "./imobNextActionResolver";
 
 type LegacyOperationalInput = {
   flow?: string | null;
@@ -63,86 +62,6 @@ function mapLegacyFlowToOperation(flow?: string | null): ImobOperation {
   }
 }
 
-function buildDefaultNextAction(params: {
-  mission: ImobMissionId;
-  context: ImobCaseContextV1;
-  operation: ImobOperation;
-  flow?: string | null;
-  legacyNextAction?: string | null;
-}): ImobNextAction {
-  if (params.legacyNextAction === "ask_missing_lead_field") {
-    const route = resolveImobOperationRoute("lead", params.flow);
-    return {
-      id: "ask-missing-lead-field",
-      label: "Completar dados do lead",
-      operation: "lead",
-      targetAgent: route.dispatchedAgentId,
-      reasonCode: "LEAD_MISSING_REQUIRED_FIELD",
-    };
-  }
-
-  if (params.legacyNextAction === "link_lead_to_property") {
-    const route = resolveImobOperationRoute("lead", params.flow);
-    return {
-      id: "link-lead-to-property",
-      label: "Vincular lead ao imóvel",
-      operation: "lead",
-      targetAgent: route.dispatchedAgentId,
-      reasonCode: "LEAD_READY_TO_LINK",
-    };
-  }
-
-  if (!params.context.readiness.ownerReady) {
-    const route = resolveImobOperationRoute("owner", params.flow);
-    return {
-      id: "create-owner",
-      label: "Cadastrar proprietário",
-      operation: "owner",
-      targetAgent: route.dispatchedAgentId,
-      reasonCode: "OWNER_REQUIRED",
-    };
-  }
-  if (!params.context.readiness.propertyReady) {
-    const route = resolveImobOperationRoute("property", params.flow);
-    return {
-      id: "create-property",
-      label: "Cadastrar imóvel",
-      operation: "property",
-      targetAgent: route.dispatchedAgentId,
-      reasonCode: "PROPERTY_REQUIRED",
-    };
-  }
-  if (params.context.links.ownerProperty?.status === "missing") {
-    const route = resolveImobOperationRoute("property", params.flow);
-    return {
-      id: "link-owner-property",
-      label: "Concluir vínculo",
-      operation: "property",
-      targetAgent: route.dispatchedAgentId,
-      reasonCode: "OWNER_PROPERTY_LINK_REQUIRED",
-    };
-  }
-  if (params.mission === "collect_documents" || !params.context.readiness.documentsReady) {
-    const route = resolveImobOperationRoute("documents", params.flow);
-    return {
-      id: "collect-documents",
-      label: "Coletar documentos",
-      operation: "documents",
-      targetAgent: route.dispatchedAgentId,
-      reasonCode: "DOCUMENTS_REQUIRED",
-    };
-  }
-
-  const route = resolveImobOperationRoute(params.operation, params.flow);
-  return {
-    id: "consult-case",
-    label: "Consultar caso",
-    operation: params.operation,
-    targetAgent: route.dispatchedAgentId,
-    reasonCode: "CASE_REVIEW_SNAPSHOT_READY",
-  };
-}
-
 function resolveCurrentStep(params: {
   mission: ImobMissionId;
   context: ImobCaseContextV1;
@@ -183,13 +102,6 @@ function resolveCurrentStep(params: {
     case "commercial_activation":
       return "drafting_campaign";
   }
-}
-
-function resolveMissionStatus(context: ImobCaseContextV1): MissionStatus {
-  if (context.blockers.some((item) => item.severity === "blocking")) return "blocked";
-  if (context.readiness.operationalReady) return "done";
-  if (context.blockers.length > 0 || !context.readiness.operationalReady) return "in_progress";
-  return "draft";
 }
 
 export function buildMissionPolicySeed(mission: ImobMissionId): ImobMissionPolicy {
@@ -255,12 +167,20 @@ export function resolveCanonicalCaseStateFromLegacy(params: {
     pendingFields,
   });
 
-  const nextAction = buildDefaultNextAction({
+  const nextAction = resolveImobNextAction({
     mission,
     context: params.context,
     operation,
     flow: sourceFlow,
     legacyNextAction: params.operational?.nextAction ?? null,
+    pendingFields,
+  });
+  const missionStatus = resolveImobMissionStatus({
+    mission,
+    context: params.context,
+    currentStep,
+    pendingFields,
+    hasNextAction: true,
   });
 
   const state: ImobCaseState = {
@@ -269,7 +189,7 @@ export function resolveCanonicalCaseStateFromLegacy(params: {
     workspaceId: params.context.workspaceId,
     caseId: params.context.caseId,
     mission,
-    missionStatus: resolveMissionStatus(params.context),
+    missionStatus,
     currentStep,
     currentOperation: operation,
     entities: {

@@ -1,0 +1,83 @@
+import type { ImobCaseContextV1, ImobCaseMission } from "../crm/imobCaseContextContract";
+import type { ImobCaseState, ImobMissionId, MissionStatus } from "./imobMissionTypes";
+
+type ResolveMissionStatusParams = {
+  mission: ImobMissionId;
+  context: ImobCaseContextV1;
+  currentStep: ImobCaseState["currentStep"];
+  pendingFields: string[];
+  hasNextAction: boolean;
+};
+
+function normalizeLegacyMission(mission?: ImobCaseMission | ImobMissionId | null): ImobMissionId {
+  switch (mission) {
+    case "qualify_lead":
+      return "qualify_and_match_lead";
+    case "schedule_visit":
+      return "schedule_and_follow_visit";
+    default:
+      return (mission as ImobMissionId | null) ?? "case_review";
+  }
+}
+
+function hasBlockingBlocker(context: ImobCaseContextV1) {
+  return context.blockers.some((item) => item.severity === "blocking");
+}
+
+function hasUsefulEntityContext(context: ImobCaseContextV1) {
+  return Boolean(
+    context.entities.owner?.id
+    || context.entities.property?.id
+    || context.entities.lead?.id
+    || context.entities.documents?.id,
+  );
+}
+
+export function resolveImobMissionStatus(params: ResolveMissionStatusParams): MissionStatus {
+  if (hasBlockingBlocker(params.context)) return "blocked";
+
+  if (params.context.readiness.operationalReady) return "done";
+
+  switch (params.mission) {
+    case "case_review":
+      if (params.currentStep === "snapshot_ready") return "ready_for_transition";
+      return params.hasNextAction || hasUsefulEntityContext(params.context) ? "in_progress" : "draft";
+    case "qualify_and_match_lead":
+      if (params.pendingFields.length === 0 && Boolean(params.context.entities.lead?.id || params.context.entities.lead?.name)) {
+        return "ready_for_transition";
+      }
+      return params.hasNextAction || params.pendingFields.length > 0 ? "in_progress" : "draft";
+    case "schedule_and_follow_visit":
+      if (params.pendingFields.length === 0 && params.currentStep === "scheduled") return "ready_for_transition";
+      return params.hasNextAction || params.pendingFields.length > 0 ? "in_progress" : "draft";
+    case "collect_documents":
+      if (params.pendingFields.length === 0 && params.currentStep === "package_ready") return "ready_for_transition";
+      return params.hasNextAction || params.pendingFields.length > 0 ? "in_progress" : "draft";
+    case "capture_seasonal_property":
+    case "capture_rental_property":
+    case "capture_sale_property":
+      if (params.context.readiness.ownerReady && params.context.readiness.propertyReady) {
+        const linked = params.context.links.ownerProperty?.status === "linked";
+        if (linked && params.context.readiness.documentsReady) return "ready_for_transition";
+        return "in_progress";
+      }
+      return params.hasNextAction || hasUsefulEntityContext(params.context) ? "in_progress" : "draft";
+    default:
+      return params.hasNextAction || hasUsefulEntityContext(params.context) ? "in_progress" : "draft";
+  }
+}
+
+export function resolveImobMissionStatusFromContext(params: {
+  context: ImobCaseContextV1;
+  currentStep: ImobCaseState["currentStep"];
+  pendingFields: string[];
+  hasNextAction: boolean;
+}) {
+  return resolveImobMissionStatus({
+    mission: normalizeLegacyMission(params.context.missionContext?.mission),
+    context: params.context,
+    currentStep: params.currentStep,
+    pendingFields: params.pendingFields,
+    hasNextAction: params.hasNextAction,
+  });
+}
