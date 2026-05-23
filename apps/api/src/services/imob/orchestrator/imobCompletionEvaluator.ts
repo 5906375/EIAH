@@ -7,6 +7,8 @@ type ResolveMissionStatusParams = {
   currentStep: ImobCaseState["currentStep"];
   pendingFields: string[];
   hasNextAction: boolean;
+  proofRequired?: boolean;
+  proofSatisfied?: boolean;
 };
 
 function normalizeLegacyMission(mission?: ImobCaseMission | ImobMissionId | null): ImobMissionId {
@@ -36,7 +38,10 @@ function hasUsefulEntityContext(context: ImobCaseContextV1) {
 export function resolveImobMissionStatus(params: ResolveMissionStatusParams): MissionStatus {
   if (hasBlockingBlocker(params.context)) return "blocked";
 
-  if (params.context.readiness.operationalReady) return "done";
+  if (params.context.readiness.operationalReady) {
+    if (params.proofRequired && !params.proofSatisfied) return "blocked";
+    return "done";
+  }
 
   switch (params.mission) {
     case "case_review":
@@ -72,6 +77,8 @@ export function resolveImobMissionStatusFromContext(params: {
   currentStep: ImobCaseState["currentStep"];
   pendingFields: string[];
   hasNextAction: boolean;
+  proofRequired?: boolean;
+  proofSatisfied?: boolean;
 }) {
   return resolveImobMissionStatus({
     mission: normalizeLegacyMission(params.context.missionContext?.mission),
@@ -79,5 +86,7 @@ export function resolveImobMissionStatusFromContext(params: {
     currentStep: params.currentStep,
     pendingFields: params.pendingFields,
     hasNextAction: params.hasNextAction,
+    proofRequired: params.proofRequired,
+    proofSatisfied: params.proofSatisfied,
   });
 }

@@ -2,10 +2,10 @@ import type { ImobCaseContextV1, ImobCaseMission } from "../crm/imobCaseContextC
 import type {
   ImobCaseState,
   ImobMissionId,
-  ImobMissionPolicy,
   ImobOperation,
 } from "./imobMissionTypes";
 import { resolveImobMissionStatus } from "./imobCompletionEvaluator";
+import { buildImobMissionPolicy, resolveImobMissionProofState } from "./imobMissionPolicy";
 import { resolveImobNextAction } from "./imobNextActionResolver";
 
 type LegacyOperationalInput = {
@@ -104,46 +104,7 @@ function resolveCurrentStep(params: {
   }
 }
 
-export function buildMissionPolicySeed(mission: ImobMissionId): ImobMissionPolicy {
-  switch (mission) {
-    case "case_review":
-      return {
-        mission,
-        requiredEntities: [],
-        requiredProof: ["snapshot_authoritative"],
-        allowedOperations: ["case", "proof"],
-        criticalActions: [],
-        missionTier: "p0",
-      };
-    case "qualify_and_match_lead":
-      return {
-        mission,
-        requiredEntities: ["leadId"],
-        requiredProof: ["evidence_bundle"],
-        allowedOperations: ["lead", "visit", "proof"],
-        criticalActions: [],
-        missionTier: "p0",
-      };
-    case "collect_documents":
-      return {
-        mission,
-        requiredEntities: [],
-        requiredProof: ["document_package"],
-        allowedOperations: ["documents", "proof"],
-        criticalActions: [],
-        missionTier: "p0",
-      };
-    default:
-      return {
-        mission,
-        requiredEntities: [],
-        requiredProof: [],
-        allowedOperations: ["owner", "property", "case", "proof"],
-        criticalActions: [],
-        missionTier: mission === "prepare_contract" ? "p1" : mission === "settle_commission" || mission === "commercial_activation" ? "p2" : "p0",
-      };
-  }
-}
+export const buildMissionPolicySeed = buildImobMissionPolicy;
 
 export function resolveCanonicalCaseStateFromLegacy(params: {
   context: ImobCaseContextV1;
@@ -175,21 +136,13 @@ export function resolveCanonicalCaseStateFromLegacy(params: {
     legacyNextAction: params.operational?.nextAction ?? null,
     pendingFields,
   });
-  const missionStatus = resolveImobMissionStatus({
-    mission,
-    context: params.context,
-    currentStep,
-    pendingFields,
-    hasNextAction: true,
-  });
-
-  const state: ImobCaseState = {
+  const baseState: ImobCaseState = {
     schemaVersion: 1,
     tenantId: params.context.tenantId,
     workspaceId: params.context.workspaceId,
     caseId: params.context.caseId,
     mission,
-    missionStatus,
+    missionStatus: "draft",
     currentStep,
     currentOperation: operation,
     entities: {
@@ -201,7 +154,7 @@ export function resolveCanonicalCaseStateFromLegacy(params: {
       owner: params.context.readiness.ownerReady ? "ready" : "incomplete",
       property: params.context.readiness.propertyReady ? "ready" : "incomplete",
       documents: params.context.readiness.documentsReady ? "ready" : "incomplete",
-      proof: mission === "case_review" ? "ready" : "not_applicable",
+      proof: "not_applicable",
     },
     blockers: params.context.blockers.map((item) => ({
       code: item.code,
@@ -210,14 +163,40 @@ export function resolveCanonicalCaseStateFromLegacy(params: {
     pendingFields: pendingFields.map((field) => ({ field })),
     nextAction,
     proof: {
-      required: mission === "case_review",
-      minimumProofSatisfied: mission !== "case_review",
-      missingProof: mission === "case_review" ? ["snapshot_authoritative"] : [],
+      required: false,
+      minimumProofSatisfied: true,
+      missingProof: [],
     },
     audit: {
       version: 1,
       lastUpdatedAt: new Date().toISOString(),
       updatedByAgent: "IMOB",
+    },
+  };
+
+  const proofState = resolveImobMissionProofState(mission, baseState);
+  const missionStatus = resolveImobMissionStatus({
+    mission,
+    context: params.context,
+    currentStep,
+    pendingFields,
+    hasNextAction: true,
+    proofRequired: proofState.required,
+    proofSatisfied: proofState.minimumProofSatisfied,
+  });
+
+  const state: ImobCaseState = {
+    ...baseState,
+    missionStatus,
+    readiness: {
+      ...baseState.readiness,
+      proof: proofState.readiness,
+    },
+    proof: {
+      ...baseState.proof,
+      required: proofState.required,
+      minimumProofSatisfied: proofState.minimumProofSatisfied,
+      missingProof: proofState.missingProof,
     },
   };
 
