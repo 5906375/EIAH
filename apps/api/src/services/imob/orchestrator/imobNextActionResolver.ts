@@ -56,6 +56,42 @@ function mapOperationAction(
   };
 }
 
+function resolveCaptureJourneyAction(flow: string | null | undefined, params: ResolveNextActionParams): ImobNextAction | null {
+  if (!params.context.readiness.ownerReady) {
+    return mapOperationAction("owner", flow, {
+      id: "create-owner",
+      label: "Cadastrar proprietário",
+      reasonCode: "OWNER_REQUIRED",
+    });
+  }
+
+  if (!params.context.readiness.propertyReady) {
+    return mapOperationAction("property", flow, {
+      id: "create-property",
+      label: "Cadastrar imóvel",
+      reasonCode: "PROPERTY_REQUIRED",
+    });
+  }
+
+  if (params.context.links.ownerProperty?.status === "missing") {
+    return mapOperationAction("property", flow, {
+      id: "link-owner-property",
+      label: "Concluir vínculo",
+      reasonCode: "OWNER_PROPERTY_LINK_REQUIRED",
+    });
+  }
+
+  if (!params.context.readiness.documentsReady) {
+    return mapOperationAction("documents", flow, {
+      id: "collect-documents",
+      label: "Coletar documentos",
+      reasonCode: "DOCUMENTS_REQUIRED",
+    });
+  }
+
+  return null;
+}
+
 export function resolveImobNextAction(params: ResolveNextActionParams): ImobNextAction {
   if (params.legacyNextAction === "ask_missing_lead_field") {
     return mapLeadAction(params.flow, {
@@ -73,43 +109,72 @@ export function resolveImobNextAction(params: ResolveNextActionParams): ImobNext
     });
   }
 
-  if (!params.context.readiness.ownerReady) {
-    return mapOperationAction("owner", params.flow, {
-      id: "create-owner",
-      label: "Cadastrar proprietário",
-      reasonCode: "OWNER_REQUIRED",
-    });
-  }
+  switch (params.mission) {
+    case "capture_seasonal_property":
+    case "capture_rental_property":
+    case "capture_sale_property":
+      return resolveCaptureJourneyAction(params.flow, params) ?? mapOperationAction("case", params.flow, {
+        id: "consult-case",
+        label: "Consultar caso",
+        reasonCode: "CASE_REVIEW_SNAPSHOT_READY",
+      });
 
-  if (!params.context.readiness.propertyReady) {
-    return mapOperationAction("property", params.flow, {
-      id: "create-property",
-      label: "Cadastrar imóvel",
-      reasonCode: "PROPERTY_REQUIRED",
-    });
-  }
+    case "qualify_and_match_lead":
+      return mapLeadAction(params.flow, {
+        id: params.pendingFields?.length ? "ask-missing-lead-field" : "resume-lead-qualification",
+        label: params.pendingFields?.length ? "Completar dados do lead" : "Retomar qualificação do lead",
+        reasonCode: params.pendingFields?.length ? "LEAD_MISSING_REQUIRED_FIELD" : "LEAD_READY_TO_PROGRESS",
+      });
 
-  if (params.context.links.ownerProperty?.status === "missing") {
-    return mapOperationAction("property", params.flow, {
-      id: "link-owner-property",
-      label: "Concluir vínculo",
-      reasonCode: "OWNER_PROPERTY_LINK_REQUIRED",
-    });
-  }
+    case "schedule_and_follow_visit":
+      return mapOperationAction("visit", params.flow, {
+        id: "schedule-visit",
+        label: "Agendar visita",
+        reasonCode: "VISIT_REQUIRED",
+      });
 
-  if (params.mission === "collect_documents" || !params.context.readiness.documentsReady) {
-    return mapOperationAction("documents", params.flow, {
-      id: "collect-documents",
-      label: "Coletar documentos",
-      reasonCode: "DOCUMENTS_REQUIRED",
-    });
-  }
+    case "collect_documents":
+      return mapOperationAction("documents", params.flow, {
+        id: "collect-documents",
+        label: "Coletar documentos",
+        reasonCode: "DOCUMENTS_REQUIRED",
+      });
 
-  return mapOperationAction(params.operation, params.flow, {
-    id: "consult-case",
-    label: "Consultar caso",
-    reasonCode: "CASE_REVIEW_SNAPSHOT_READY",
-  });
+    case "prepare_contract":
+      return mapOperationAction("contract", params.flow, {
+        id: "prepare-contract",
+        label: "Preparar contrato",
+        reasonCode: "CONTRACT_PREPARATION_REQUIRED",
+      });
+
+    case "settle_commission":
+      return mapOperationAction("commission", params.flow, {
+        id: "settle-commission",
+        label: "Revisar comissão",
+        reasonCode: "COMMISSION_REVIEW_REQUIRED",
+      });
+
+    case "commercial_activation":
+      return mapOperationAction("campaign", params.flow, {
+        id: "activate-campaign",
+        label: "Preparar ativação comercial",
+        reasonCode: "COMMERCIAL_ACTIVATION_REQUIRED",
+      });
+
+    case "case_review":
+      return resolveCaptureJourneyAction(params.flow, params) ?? mapOperationAction("case", params.flow, {
+        id: "consult-case",
+        label: "Consultar caso",
+        reasonCode: "CASE_REVIEW_SNAPSHOT_READY",
+      });
+
+    default:
+      return mapOperationAction("case", params.flow, {
+        id: "consult-case",
+        label: "Consultar caso",
+        reasonCode: "CASE_REVIEW_SNAPSHOT_READY",
+      });
+  }
 }
 
 export function resolveImobNextActionFromContext(params: {
