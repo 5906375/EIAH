@@ -586,6 +586,17 @@ function hasStrongBusinessReadIntent(message: string) {
   )) return true;
   const normalized = message.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   if (
+    normalized.includes("o que falta")
+    || normalized.includes("pendencia")
+    || normalized.includes("pendencias")
+    || normalized.includes("proximo passo")
+    || normalized.includes("qual proximo passo")
+    || normalized.includes("retomar esse caso")
+    || normalized.includes("retomar o caso")
+  ) {
+    return true;
+  }
+  if (
     normalized.includes("piloto")
     && (
       normalized.includes("status")
@@ -783,6 +794,31 @@ function applyDedupeSelectionToConversationState(
     },
   };
 }
+
+function rewritePropertyOwnerActionMessage(
+  message: string,
+  threadState: ThreadStateLike | null | undefined,
+  normalizeImobRouteText: (value: string) => string,
+) {
+  const normalized = normalizeImobRouteText(message);
+  const operational = asObject(asObject(threadState)?.operational);
+  const flow = asString(operational?.flow);
+  const status = asString(operational?.status);
+
+  if (flow !== "property.create" || status !== "ready_for_review") return message;
+
+  if (
+    normalized === "vincular proprietario"
+    || normalized === "vincular proprietário"
+    || normalized === "vincular proprietario ao imovel"
+    || normalized === "vincular proprietário ao imóvel"
+  ) {
+    return "cadastrar proprietário";
+  }
+
+  return message;
+}
+
 function buildCaptureSwitchActions(caseContext?: ImobCrmCaseContext | null) {
   const hasLead = Boolean(caseContext?.lead && (caseContext.lead.id || caseContext.lead.name));
   const linkedPropertyOwner = asObject(caseContext?.property?.owner as Record<string, unknown> | null);
@@ -790,6 +826,8 @@ function buildCaptureSwitchActions(caseContext?: ImobCrmCaseContext | null) {
     (caseContext?.owner && (caseContext.owner.id || caseContext.owner.name))
     || (linkedPropertyOwner && (asString(linkedPropertyOwner.id) || asString(linkedPropertyOwner.name))),
   );
+  const ownerPropertyLinkStatus = caseContext?.links?.ownerProperty?.status ?? null;
+  const ownerLinkPending = hasOwner && ownerPropertyLinkStatus !== "linked";
 
   const actions = [];
   if (hasLead) {
@@ -813,10 +851,18 @@ function buildCaptureSwitchActions(caseContext?: ImobCrmCaseContext | null) {
   if (!hasOwner) {
     actions.push({
       id: "capture-switch-owner",
-      label: "Vincular proprietário",
+      label: "Cadastrar proprietário",
       kind: "secondary",
       action: "send_suggested_message",
-      nextMessage: "vincular proprietário ao imóvel",
+      nextMessage: "cadastrar proprietário",
+    });
+  } else if (ownerLinkPending) {
+    actions.push({
+      id: "capture-switch-owner-link",
+      label: "Concluir vínculo",
+      kind: "secondary",
+      action: "send_suggested_message",
+      nextMessage: "concluir vínculo proprietário-imóvel",
     });
   }
 
@@ -853,7 +899,11 @@ function mapCasePlanActionToCta(action: ImobCasePlanActionV1) {
 
 function buildCasePlanActions(casePlan?: ImobCasePlanV1 | null) {
   if (!casePlan) return [];
-  if (casePlan.mission !== "capture_seasonal_property") return [];
+  if (
+    casePlan.mission !== "capture_seasonal_property"
+    && casePlan.mission !== "capture_rental_property"
+    && casePlan.mission !== "capture_sale_property"
+  ) return [];
   const actions = [
     ...(casePlan.primaryAction ? [casePlan.primaryAction] : []),
     ...casePlan.secondaryActions,
@@ -1448,8 +1498,13 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
       hydratedThreadState,
       params.helpers.normalizeImobRouteText,
     );
-    const dedupeAwareMessage = resolveDedupeContextualMessage(
+    const ownerActionAwareMessage = rewritePropertyOwnerActionMessage(
       rewrittenMessage,
+      hydratedThreadState,
+      params.helpers.normalizeImobRouteText,
+    );
+    const dedupeAwareMessage = resolveDedupeContextualMessage(
+      ownerActionAwareMessage,
       hydratedThreadState,
       params.helpers.normalizeImobRouteText,
     );

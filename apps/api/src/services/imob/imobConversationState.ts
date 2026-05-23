@@ -666,6 +666,16 @@ function buildMarketScanSelection(
   };
 }
 
+function sanitizeMarketScanAddress(address: string | null | undefined) {
+  const normalized = typeof address === "string" ? address.trim() : "";
+  if (!normalized) return null;
+
+  return normalized
+    .replace(/\s+(?:proprietari[oa]|owner)\b.*$/i, "")
+    .replace(/\s+(?:valor|preco|preço)\b.*$/i, "")
+    .trim() || null;
+}
+
 function buildPropertyDraftFromMarketScanSelection(
   previous: ImobPropertyDraft | undefined,
   selection: ImobMarketScanSelection,
@@ -684,7 +694,7 @@ function buildPropertyDraftFromMarketScanSelection(
     neighborhood: selection.neighborhood ?? previous?.neighborhood ?? null,
     bedrooms: selection.bedrooms ?? previous?.bedrooms ?? null,
     bathrooms: previous?.bathrooms ?? null,
-    address: selection.address ?? previous?.address ?? null,
+    address: sanitizeMarketScanAddress(selection.address) ?? previous?.address ?? null,
     origin: {
       source: selection.source,
       sourceId: selection.sourceId,

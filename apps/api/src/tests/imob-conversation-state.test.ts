@@ -129,3 +129,58 @@ test("IMOB conversation state preserves resolved scan city when completing prope
   assert.equal((result as any)?.propertyDraft?.cityCanonical?.locked, true);
   assert.deepEqual((result as any)?.pendingFields, ["address"]);
 });
+
+test("IMOB conversation state sanitizes market scan address before turning selection into property draft", () => {
+  const result = createNextImobOperationalState(
+    {
+      flow: "property.market_scan",
+      status: "ready_for_review",
+      pendingFields: [],
+      propertyDraft: {
+        propertyId: "prop-1",
+        propertyType: "apartamento",
+        goal: "venda",
+        cep: null,
+        city: "Itapema",
+        neighborhood: "Centro",
+        bedrooms: 2,
+        bathrooms: null,
+        address: null,
+        origin: null,
+      },
+      marketScanSelection: {
+        status: "pending_confirmation",
+        scanId: "market-scan-1",
+        source: "internal_crm",
+        sourceId: "prop-1",
+        providerId: "internal_crm",
+        retrievedAt: "2026-05-23T17:53:12.200Z",
+        city: "Itapema",
+        goal: "venda",
+        propertyType: "apartamento",
+        bedrooms: 2,
+        price: 700000,
+        currency: "BRL",
+        neighborhood: "Centro",
+        address: "Rua Batch 101 proprietario Joana Batch valor 700000",
+        title: "Apartamento 2 quartos",
+        url: null,
+      },
+    } as any,
+    "capture",
+    "confirmar seleção do scan prop-1",
+    {
+      goal: null,
+      city: null,
+      region: null,
+      neighborhood: null,
+      budgetMax: null,
+      bedrooms: null,
+      bathrooms: null,
+      propertyType: null,
+    },
+  );
+
+  assert.equal(result?.flow, "property.create");
+  assert.equal((result as any)?.propertyDraft?.address, "Rua Batch 101");
+});

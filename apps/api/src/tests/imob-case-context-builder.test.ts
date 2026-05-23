@@ -84,3 +84,39 @@ test("IMOB case context v1 marks owner-property link as linked when property alr
   assert.equal(context.crmProjection?.caseCard.currentOperation, "property");
   assert.equal(context.blockers.some((blocker) => blocker.code === "owner_property_not_linked"), false);
 });
+
+test("IMOB case context v1 drops stale market-scan blocker after property conversion and keeps owner follow-up as the real blocker", () => {
+  const context = buildImobCaseContextV1({
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    caseId: "case-1",
+    caseContext: {
+      caseId: "case-1",
+      flow: "property.create",
+      blocker: "Múltiplas cidades ou finalidades impedem um único cadastro automático do imóvel.",
+      property: {
+        id: "property-1",
+        propertyType: "apartamento",
+        goal: "venda",
+        city: "Itapema",
+        address: "Rua Batch 101",
+      },
+    },
+    operational: {
+      flow: "property.create",
+      propertyDraft: {
+        propertyType: "apartamento",
+        goal: "venda",
+        city: "Itapema",
+        address: "Rua Batch 101",
+      },
+    },
+  });
+
+  assert.equal(
+    context.blockers.some((blocker) => /múltiplas cidades|multiplas cidades/i.test(blocker.message)),
+    false,
+  );
+  assert.ok(context.blockers.some((blocker) => blocker.code === "owner_missing_or_incomplete"));
+  assert.equal(context.recoverySnapshot?.primaryAction?.operation, "owner.create");
+});
