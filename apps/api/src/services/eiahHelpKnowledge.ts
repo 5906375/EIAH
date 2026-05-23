@@ -255,7 +255,7 @@ function buildCanonicalEiahDocs(params: {
     tags: ["help", "documentation", "eiah", "governance"],
     track: "P0",
     status: "canonica",
-    sourceFiles: [sourcePath, "ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-03-21.md", "docs/EVIDENCE_INDEX.md"],
+    sourceFiles: [sourcePath, "ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md", "docs/EVIDENCE_INDEX.md"],
     updatedAt: sourceMtime,
   });
 
@@ -322,7 +322,7 @@ function buildCanonicalEiahDocs(params: {
     tags: ["governance", "receipt", "ledger", "high-risk"],
     track: "P1",
     status: "canonica",
-    sourceFiles: [sourcePath, "ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-03-21.md", "docs/EVIDENCE_INDEX.md"],
+    sourceFiles: [sourcePath, "ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md", "docs/EVIDENCE_INDEX.md"],
     updatedAt: sourceMtime,
   });
 

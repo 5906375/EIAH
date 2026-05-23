@@ -1,6 +1,6 @@
 # EVIDENCE INDEX — EIAH
 
-> Roadmap atual (fonte da verdade): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-03-21.md` 
+> Roadmap atual (fonte da verdade): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md` 
 
 ## Sprint 1 (F5.3) — Evidencias operacionais
 
@@ -16,7 +16,7 @@
 
 | Assunto | Arquivo | O que prova |
 | --- | --- | --- |
-| Endpoint de origem | `apps/api/src/routes/governance.ts:414` | Endpoint público `/api/ledger/:txId` com `receiptCanon` aditivo. |
+| Endpoint de origem | `apps/api/src/routes/governance.ts:222` | Endpoint público `/api/ledger/:txId` com `receiptCanon` aditivo. |
 | Catálogo oficial de reason codes | `docs/ops/reason-codes-catalog.md` | Fonte única para reason codes de receipts/erros/eventos. |
 | Política de versionamento de contrato | `docs/ops/receipt-canon-versioning-policy.md` | Regra explícita de major para breaking e minor/patch apenas aditivo. |
 | Gate de CI de compatibilidade | `scripts/checkReceiptCanonVersioning.ts` | Falha CI para breaking changes sem bump major e drift de spec/changelog/example. |
@@ -67,7 +67,6 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | APE Weekly Cycle #22 (janela recorrente renovada) | `ops/evidence/latest/ape-weekly-cycle-run22-2026-04-27.md` | Reabre a janela válida dos gates recorrentes com `hardMetricsGo=true`, `auditGap=0`, `duplicateSideEffects=0` e `breakGlass=0`. |
 | APE Weekly Cycle #23 (continuidade recorrente) | `ops/evidence/latest/ape-weekly-cycle-run23-2026-04-27.md` | Mantém o segundo ciclo recente em `GO`, sem gap de auditoria e sem side effects duplicados. |
 | APE Weekly Cycle #24 (janela P1/P3/P4 regularizada) | `ops/evidence/latest/ape-weekly-cycle-run24-2026-04-27.md` | Completa o trio recente exigido pelos checks recorrentes de reconciliação, estabilidade e rollout. |
-| APE Weekly Cycle #22 (janela recorrente automatizada) | `ops/evidence/latest/ape-weekly-cycle-run22-2026-04-27.md` | Ciclo semanal automatizado registrando o estado atual dos gates recorrentes para acompanhamento operacional. |
 | APE Weekly Cycle #25 (janela recorrente automatizada) | `ops/evidence/latest/ape-weekly-cycle-run25-2026-05-11.md` | Ciclo semanal automatizado registrando o estado atual dos gates recorrentes para acompanhamento operacional. |
 | APE Weekly Cycle #26 (janela recorrente automatizada) | `ops/evidence/latest/ape-weekly-cycle-run26-2026-05-11.md` | Ciclo semanal automatizado com hard metrics em GO, reconciliacao estavel e renovacao da janela recorrente. |
 | APE Weekly Cycle #27 (janela recorrente automatizada) | `ops/evidence/latest/ape-weekly-cycle-run27-2026-05-11.md` | Ciclo semanal automatizado com hard metrics em GO, reconciliacao estavel e renovacao da janela recorrente. |
@@ -192,7 +191,7 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | IMOB chat ampliado (entrevista + telemetria + export) | `apps/api/src/routes/imob.ts` + `apps/web/src/pages/app/imob/chat.tsx` | Jornada assistida por thread com estado de entrevista, telemetria operacional e export auditável. |
 | IMOB rules.configure + jornada de temporada | `apps/api/src/routes/imob.ts` + `apps/api/src/services/imob/imobConversationContract.ts` + `apps/api/src/services/imob/imobConversationState.ts` + `apps/api/src/services/imob/imobTurnResolver.ts` + `apps/api/src/tests/imob-turn-resolver.test.ts` | Fluxo stateful governado de regras de hospedagem com gate por `aluguel_por_temporada`, ação `realestate.configure_property_rules`, jornada canonical `temporada_rules` e retomada de draft. |
 | IMOB leitura comercial de pipeline, bloqueios e próxima ação | `apps/api/src/routes/imob.ts` + `apps/api/src/services/imob/imobIntentCatalog.ts` + `apps/api/src/tests/imob-intent-catalog.test.ts` | Intents e builders `pipeline_status`, `blocked_run_resolution` e `next_best_action` para leitura de jornada, pendências, bloqueios e próximo passo usando canonical case sem criar regra no launcher. |
-| Track P — IMOB Knowledge Search (normativo) | `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-03-21.md` + `ops/verticals/vertical-onboarding-checklist.md` + `apps/api/src/routes/imob.ts` + `apps/api/src/services/imob/imobTurnResolver.ts` | Frente explícita de busca documental in-chat para a vertical IMOB, com roteamento agent-driven, gating por tenant/assinatura e evolução por `sourceType` sem regressão no core. |
+| Track P — IMOB Knowledge Search (implementado parcial / fase 1) | `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md` + `ops/verticals/vertical-onboarding-checklist.md` + `apps/api/src/routes/imob.ts` + `apps/api/src/services/imob/imobTurnResolver.ts` + `apps/api/src/services/imob/imobConversationContract.ts` | Busca documental IMOB já tem handshake agent-driven e modo `search_knowledge` no contrato/runtime, com gating por tenant/assinatura e evolução futura por `sourceType` sem regressão no core. |
 | Hardening estrutural do chat agent-driven | `apps/web/src/components/agents/chatLauncherEngine.ts` + `apps/web/src/components/agents/proposalDomainResolver.ts` + `apps/web/src/components/agents/imobContextResolver.ts` + `apps/web/src/components/agents/legalContextResolver.ts` + `apps/web/src/components/agents/specialistExplainCatalog.ts` + `apps/web/src/components/agents/specialistGuidanceResolver.ts` + `apps/web/src/components/agents/specialistDecisionResolver.ts` + `apps/web/src/components/agents/platformHelpResolver.ts` + `apps/web/src/components/agents/agentPresentationResolver.ts` | Modularização do runtime do chat por domínio/papel, mantendo o `ChatAgentLauncher` em modo `render-first`. |
 | Cobertura e gate de regressão do chat | `apps/web/src/components/agents/chatLauncherEngine.test.ts` + `.github/workflows/ci.yml` | Cobertura determinística de proposal/help/IMOB/atalhos com gate obrigatório `ChatEngineRegression` no `CI Monorepo`. |
 
@@ -207,7 +206,7 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 - **Playbook expandido por página** (`apps/web/src/pages/app/agents/index.tsx`, `apps/web/src/assets/playbook/`): guia operacional em linguagem humana.
 - **Central de Ajuda EIAH** (`apps/api/src/routes/help.ts`, `apps/api/src/services/eiahHelpKnowledge.ts`, `packages/db/prisma/schema.prisma`): query/reindex + sessões analíticas.
 - **IMOB ampliado** (`apps/api/src/routes/imob.ts`, `apps/web/src/pages/app/imob/chat.tsx`, `apps/web/src/features/imob/`): entrevista de contrato, telemetria e export auditável.
-- **Track P — IMOB Knowledge Search (normativo)** (`ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-03-21.md`, `ops/verticals/vertical-onboarding-checklist.md`, `apps/api/src/routes/imob.ts`, `apps/api/src/services/imob/imobTurnResolver.ts`): busca documental in-chat planejada para a vertical IMOB, com gating por `tenant/workspace` + assinatura ativa e evolução por `sourceType`.
+- **Track P — IMOB Knowledge Search (implementado parcial / fase 1)** (`ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`, `ops/verticals/vertical-onboarding-checklist.md`, `apps/api/src/routes/imob.ts`, `apps/api/src/services/imob/imobTurnResolver.ts`, `apps/api/src/services/imob/imobConversationContract.ts`): busca documental in-chat já possui handshake agent-driven e modo `search_knowledge`, com gating por `tenant/workspace` + assinatura ativa e evolução futura por `sourceType`.
 - **P2 global HIGH coverage** (`scripts/checkP2HighGlobalCoverage.ts`, `ops/evidence/latest/p2-high-global-coverage.json`, `packages/core/src/actions/__tests__/highGlobalCoverage.e2e.test.ts`): transição de “inventariado” para “covered” com gate bloqueante.
 - **Chat agent-driven hardening** (`apps/web/src/components/agents/chatLauncherEngine.ts`, `apps/web/src/components/agents/proposalDomainResolver.ts`, `apps/web/src/components/agents/imobContextResolver.ts`, `apps/web/src/components/agents/legalContextResolver.ts`, `apps/web/src/components/agents/specialistGuidanceResolver.ts`, `apps/web/src/components/agents/specialistDecisionResolver.ts`, `apps/web/src/components/agents/platformHelpResolver.ts`, `apps/web/src/components/agents/agentPresentationResolver.ts`, `apps/web/src/components/agents/chatLauncherEngine.test.ts`, `.github/workflows/ci.yml`): engine modularizado por domínio/papel com cobertura de regressão e gate de CI.
 
@@ -321,8 +320,8 @@ EVIDÊNCIA: `apps/api/src/index.ts:97-103` + `apps/workers/run-worker/src/index.
 | Assunto | Comando | Resultado |
 | --- | --- | --- |
 | Endpoint de aprovação humana (`/runs/:id/approve`) | `rg -n "runs/:id/approve|approve" apps packages` | ENCONTRADO: `apps/api/src/routes/runs.ts:722-775` |
-| Campos Run.approval_status/approvedBy | `rg -n "approval_status|approvedBy" packages/db` | NÃO ENCONTRADO |
-| Endpoint público `/ledger/:txId` | `rg -n "/ledger/:txId|ledger/:txId" apps packages` | ENCONTRADO: `apps/api/src/routes/governance.ts:414` |
+| Campos Run.approval_status/approvedBy | `rg -n "approval_status|approvedBy" packages/db` | ENCONTRADO: `packages/db/prisma/schema.prisma:197-198` |
+| Endpoint público `/ledger/:txId` | `rg -n "/ledger/:txId|ledger/:txId" apps packages` | ENCONTRADO: `apps/api/src/routes/governance.ts:222` |
 | TrustScoreToken / tokenização de reputação | `rg -n "TrustScoreToken|reputação|tokenização" apps packages` | ENCONTRADO apenas em `apps/api/backup-20251031-103132.sql` (texto de backup, não implementação) |
 
 ## Status do Roadmap (consolidado por evidência)
@@ -332,10 +331,10 @@ EVIDÊNCIA: `apps/api/src/index.ts:97-103` + `apps/workers/run-worker/src/index.
 | Fase 4 — Gate pré‑execução (SCL obrigatório) | `apps/workers/action-runner/src/index.ts:841-919` | Implementado | Compatível (Roadmap v8: ✅ concluída) |
 | Fase 4 — Resiliência do Signer | `packages/core/src/security/signerManager.ts:225-269` | Implementado | Compatível (Roadmap v8: ✅ concluída) |
 | Fase 4 — Reconciliação Guardrail ↔ SCL | `apps/workers/maintenance-worker/src/index.ts:286-383` + `packages/core/src/services/reconcileLedgerService.ts:15-233` | Implementado | Compatível (Roadmap v8: ✅ concluída) |
-| Fase 5.0 — Marketplace (catálogo + delegações) | `packages/db/prisma/schema.prisma:564-604` + `apps/api/src/routes/marketplace.ts:7-212` + `apps/web/src/pages/self-service/index.tsx:51-227` | Implementado (core) | Compatível (Roadmap v8: ⚙️ parcial) |
-| Fase 5.0 — “UX de delegação avançada” | **NÃO ENCONTRADO** (`rg -n "delegation advanced|delegacao avancada|delegação avançada|advanced delegation"`) | Não evidenciado | Compatível (Roadmap v8: falta) |
-| Fase 5.1 — PoU (modelo + serviço + pipeline + eventos) | `packages/db/prisma/schema.prisma:520-547` + `apps/api/src/services/pouService.ts:1-220` + `apps/workers/action-runner/src/index.ts:841-1314` + `packages/contracts/src/runEvent.schema.json:16-46` | Implementado | Compatível (Roadmap v8: ⚙️ parcial/hardening) |
-| Fase 5.1 — Trust Gate (score + gate) | `apps/api/src/services/trustScore.ts:21-129` + `apps/workers/action-runner/src/index.ts:189-233` | Implementado | Compatível (Roadmap v8: ⚙️ parcial/hardening) |
+| Fase 5.0 — Marketplace (catálogo + delegações) | `packages/db/prisma/schema.prisma:564-604` + `apps/api/src/routes/marketplace.ts:7-212` + `apps/web/src/pages/self-service/index.tsx:51-227` | Implementado (core) | Compatível (Roadmap v8: ✅ core concluído; UX avançada ainda pendente) |
+| Fase 5.0 — “UX de delegação avançada” | **NÃO ENCONTRADO** (`rg -n "delegation advanced|delegacao avancada|delegação avançada|advanced delegation"`) | Não evidenciado | Compatível (Roadmap v8: fechamento de UX/auditoria avançada ainda pendente) |
+| Fase 5.1 — PoU (modelo + serviço + pipeline + eventos) | `packages/db/prisma/schema.prisma:520-547` + `apps/api/src/services/pouService.ts:1-220` + `apps/workers/action-runner/src/index.ts:841-1314` + `packages/contracts/src/runEvent.schema.json:16-46` | Implementado | Compatível (Roadmap v8: ✅ operacional; manter hardening recorrente) |
+| Fase 5.1 — Trust Gate (score + gate) | `apps/api/src/services/trustScore.ts:21-129` + `apps/workers/action-runner/src/index.ts:189-233` | Implementado | Compatível (Roadmap v8: ✅ operacional; manter hardening recorrente) |
 
 ## Checklist de completude
 
