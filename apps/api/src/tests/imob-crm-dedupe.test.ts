@@ -72,10 +72,10 @@ function createMockPrisma() {
       findFirst: async ({ where }: any) => leads.find((lead) => (
         lead.tenantId === where.tenantId &&
         lead.workspaceId === where.workspaceId &&
-        (!where.OR || where.OR.some((condition: any) => (
+        ((where.id && where.id === lead.id) || (!where.OR || where.OR.some((condition: any) => (
           (condition.phone && condition.phone === lead.phone) ||
           (condition.email && condition.email === lead.email)
-        )))
+        ))))
       )) ?? null,
       findMany: async ({ where, take }: any) => leads.filter((lead) => (
         lead.tenantId === where.tenantId &&
@@ -132,6 +132,22 @@ test("IMOB_CRM dedupe keeps workspace isolation for identical lead names", async
   assert.equal(decision.kind, "choice");
   assert.equal(decision.kind === "choice" ? decision.matches.length : 0, 1);
   assert.equal(decision.kind === "choice" ? decision.matches[0]?.id : null, "lead-2");
+});
+
+test("IMOB_CRM dedupe prioritizes case.leadId over heuristic matching", async () => {
+  const decision = await resolveImobCrmRegistrationDedupe({
+    prisma: createMockPrisma() as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    flow: "lead.qualify",
+    caseEntityId: "lead-1",
+    draft: { leadName: "Outro nome", leadPhone: "47000000000", leadEmail: "outro@example.com" },
+  });
+
+  assert.equal(decision.kind, "hydrate");
+  assert.equal(decision.kind === "hydrate" ? decision.entity.id : null, "lead-1");
+  assert.equal(decision.kind === "hydrate" ? decision.draft.leadName : null, "Outro nome");
+  assert.equal(decision.kind === "hydrate" ? decision.draft.leadEmail : null, "outro@example.com");
 });
 
 test("IMOB_CRM dedupe asks for a choice on unique name-only match", async () => {

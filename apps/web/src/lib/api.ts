@@ -1873,6 +1873,8 @@ export type ImobOperationalState = {
   flow: "owner.create" | "property.create" | "lead.qualify" | "visit.schedule" | "listing.activate" | "documents.collect" | "proposal.create" | "deal.review" | "contract.prepare" | "rules.configure" | "commission.settle";
   status: "collecting" | "ready_for_review";
   pendingFields: string[];
+  leadStatus?: "draft" | "incomplete" | "qualified" | "blocked" | null;
+  nextAction?: "ask_missing_lead_field" | "link_lead_to_property" | "advance_commercial_step" | "consult_case" | null;
   dedupeSelection?: {
     entity: "owner" | "lead" | "property";
     resolution: "update_existing" | "create_new" | "list_existing" | "pending_choice";

@@ -1,5 +1,6 @@
 import { resolveImobCrmRegistrationDedupe } from "./imobCrmDedupe";
 import type { ImobCrmConversationState, ImobCrmTurnResolution } from "./imobCrmAgentContract";
+import { normalizeLeadQualifyOperationalState } from "./imobLeadQualifyRuntime";
 import type {
   DraftLike,
   FormLike,
@@ -103,9 +104,12 @@ function withHydratedOperationalDraft(params: {
   if (params.flow === "property.create") operational.propertyDraft = params.draft;
   operational.pendingFields = params.pendingFields;
   operational.status = params.pendingFields.length === 0 ? "ready_for_review" : "collecting";
+  const normalizedOperational = params.flow === "lead.qualify"
+    ? normalizeLeadQualifyOperationalState(operational)
+    : operational;
   next.conversationState = {
     ...conversationState,
-    operational,
+    operational: normalizedOperational,
   };
   next.presentation = {
     ...(next.presentation ?? {}),
@@ -307,6 +311,9 @@ export async function applyExistingRegistrationResolution(params: {
     workspaceId: params.workspaceId,
     flow,
     draft,
+    caseEntityId: flow === "lead.qualify"
+      ? params.helpers.asString(params.helpers.asObject(params.helpers.asObject(resolvedObject?.caseContext)?.lead)?.id)
+      : null,
   });
 
   if (decision.kind === "hydrate") {

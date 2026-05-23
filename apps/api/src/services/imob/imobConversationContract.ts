@@ -476,6 +476,13 @@ export type ImobOperationalState = {
   status: "collecting" | "ready_for_review";
   outcome?: "created" | "updated" | "deduped_update" | "blocked" | "waiting_input" | null;
   pendingFields: string[];
+  leadStatus?: "draft" | "incomplete" | "qualified" | "blocked" | null;
+  nextAction?:
+    | "ask_missing_lead_field"
+    | "link_lead_to_property"
+    | "advance_commercial_step"
+    | "consult_case"
+    | null;
   missionContext?: ImobMissionContext;
   dedupeSelection?: {
     entity: "owner" | "lead" | "property";

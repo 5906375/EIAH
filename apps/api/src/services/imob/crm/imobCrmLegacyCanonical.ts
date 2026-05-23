@@ -138,7 +138,12 @@ function buildRecommendedActions(params: {
 
   if (params.nextStep) {
     if (!normalizedNextStep.includes("mostrar bloqueios do caso")) {
-      push({ id: "follow_next_step", label: "Executar próximo passo", actionType: "consultive", inputHint: params.nextStep, reasonCode: "NEXT_STEP_AVAILABLE" });
+      const followNextStep = { id: "follow_next_step", label: "Executar próximo passo", actionType: "consultive", inputHint: params.nextStep, reasonCode: "NEXT_STEP_AVAILABLE" } satisfies ImobCrmRecommendedAction;
+      if (normalizedFlow === "lead.qualify" && params.pendingItems.length === 0 && params.blockers.length === 0) {
+        actions.unshift(followNextStep);
+      } else {
+        push(followNextStep);
+      }
     }
   }
 

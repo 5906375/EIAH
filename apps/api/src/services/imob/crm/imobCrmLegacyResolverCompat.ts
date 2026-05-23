@@ -1570,7 +1570,9 @@ export async function resolveImobCrmOperationalUpdate(params: ResolverParams) {
         conversationState: params.threadState ?? createEmptyThreadState(),
         presentation: {
           text: [
-            `Cadastro do lead ${updated.name} atualizado com sucesso.`,
+            nextPending.length > 0
+              ? `Cadastro do lead ${updated.name} atualizado, mas ainda com pendências obrigatórias.`
+              : `Cadastro do lead ${updated.name} atualizado com sucesso.`,
             `Pendências atuais: ${formatImobPendingList(nextPending)}.`,
             nextPending.length > 0 ? buildLeadPendingSuggestion({ name: updated.name, pendingItems: nextPending }) : null,
             nextPending.length > 0 ? "Próximo passo: completar as pendências restantes do lead." : "Próximo passo: vincular o lead ao próximo imóvel ou etapa comercial.",

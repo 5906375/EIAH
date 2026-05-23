@@ -423,6 +423,37 @@ test("inconsistent governed IMOB snapshot fails closed and does not expose quick
   assert.deepEqual(resolveSnapshotQuickReplies(snapshot), []);
 });
 
+test("IMOB governed snapshot does not promote defaultNextStep into an extra quick reply", () => {
+  const snapshot = createPresentationSnapshotV1({
+    agentProfile: {
+      id: "EIAH",
+      name: "EIAH",
+      chatCopy: { quickReplies: ["copy A"], defaultNextStep: "chip inventado pelo launcher" },
+      uxContract: { trustSignals: [], defaultCTA: "", responseShape: "brief_answer", maxCognitiveLoad: "low" },
+      knowledgePolicy: { provenancePolicy: "none" },
+    } as any,
+    routeIntent: "imob",
+    eiahMode: "help",
+    renderVariant: "guided_flow",
+    sourceInput: "consultar caso",
+    isHelpCenterMode: true,
+    proposalMode: false,
+    attachmentIntake: {
+      enabled: false,
+      acceptedKinds: [],
+      intakeModes: [],
+      analysisModes: [],
+      primaryActionLabel: undefined,
+      secondaryActionLabel: undefined,
+      helpText: undefined,
+    },
+    resolvedQuickReplies: ["consultar caso", "mostrar pendências do caso"],
+  });
+
+  assert.deepEqual(resolveSnapshotQuickReplies(snapshot), ["consultar caso", "mostrar pendências do caso"]);
+  assert.ok(!resolveSnapshotQuickReplies(snapshot).includes("chip inventado pelo launcher"));
+});
+
 test("governed IMOB snapshot requires imob route intent to be considered render-only", () => {
   const snapshot: MessagePresentationSnapshot = {
     snapshotVersion: PRESENTATION_SNAPSHOT_VERSION,

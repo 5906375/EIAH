@@ -1,5 +1,9 @@
 import type { ImobResolveTurnResponse } from "../imobConversationContract";
 import { createImobAgentActivityEvent, type ImobAgentActivityEvent } from "./imobAgentActivity";
+import {
+  buildLeadReasonCode,
+  mapLeadNextActionToLabel,
+} from "../crm/imobLeadQualifyRuntime";
 
 function formatCityList(cities: string[]) {
   if (cities.length === 0) return "as cidades selecionadas";
@@ -98,6 +102,14 @@ function buildLeadActivities(
   response: ImobResolveTurnResponse,
   operational: NonNullable<ImobResolveTurnResponse["conversationState"]["operational"]>,
 ): ImobAgentActivityEvent[] {
+  const pendingFields = operational.pendingFields ?? [];
+  const leadStatus = operational.leadStatus ?? (pendingFields.length === 0 ? "qualified" : "incomplete");
+  const nextAction = operational.nextAction ?? (pendingFields.length === 0 ? "advance_commercial_step" : "ask_missing_lead_field");
+  const reasonCode = buildLeadReasonCode({
+    leadStatus,
+    nextAction,
+    pendingFields,
+  });
   const activities: ImobAgentActivityEvent[] = [
     createImobAgentActivityEvent({
       agentId: "IMOB_Orchestrator",
@@ -108,6 +120,31 @@ function buildLeadActivities(
       visibleMessage: buildOwnerMessage(operational.flow),
     }),
   ];
+
+  activities.push(
+    createImobAgentActivityEvent({
+      agentId: leadStatus === "qualified" ? "IMOB_LeadQualified" : operational.outcome === "created" ? "IMOB_LeadDraftCreated" : "IMOB_LeadUpdated",
+      agentLabel: "Lead",
+      role: "supporting",
+      mode: leadStatus === "qualified" ? "execute" : "draft",
+      status: leadStatus === "blocked" ? "blocked" : "completed",
+      visibleMessage: leadStatus === "qualified"
+        ? "Lead qualificado com pendências zeradas."
+        : pendingFields.length > 0
+          ? `Lead atualizado com ${pendingFields.length} pendência(s) obrigatória(s).`
+          : "Lead preparado para continuidade do caso.",
+      reasonCode,
+    }),
+    createImobAgentActivityEvent({
+      agentId: "IMOB_LeadNextAction",
+      agentLabel: "Lead",
+      role: "supporting",
+      mode: "propose_action",
+      status: "completed",
+      visibleMessage: `Próxima ação principal definida: ${mapLeadNextActionToLabel(nextAction) ?? "Continuar o caso"}.`,
+      reasonCode,
+    }),
+  );
 
   if (response.presentation.preparedFollowUp) {
     activities.push(
