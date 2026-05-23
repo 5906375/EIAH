@@ -918,6 +918,37 @@ function buildCasePlanActions(casePlan?: ImobCasePlanV1 | null) {
     .map(mapCasePlanActionToCta);
 }
 
+function buildPropertyPostSuccessActions(params: {
+  casePlan?: ImobCasePlanV1 | null;
+  caseContext?: ImobCrmCaseContext | null;
+}) {
+  const linkedPropertyOwner = asObject(params.caseContext?.property?.owner as Record<string, unknown> | null);
+  const hasOwnerEntity = Boolean(
+    (params.caseContext?.owner && ((params.caseContext.owner as any).id || (params.caseContext.owner as any).name))
+    || (linkedPropertyOwner && (asString(linkedPropertyOwner.id) || asString(linkedPropertyOwner.name))),
+  );
+  const planActions = buildCasePlanActions(params.casePlan).filter((action) => {
+    if (!hasOwnerEntity) return true;
+    return String((action as any).nextMessage ?? "") !== "cadastrar proprietário";
+  });
+  const fallbackActions = buildCaptureSwitchActions(params.caseContext);
+  if (planActions.length === 0) return fallbackActions;
+
+  const merged = [...planActions];
+  const seen = new Set(
+    merged.map((item) => `${String((item as any).label ?? "")}::${String((item as any).nextMessage ?? "")}`),
+  );
+
+  for (const action of fallbackActions) {
+    const key = `${String((action as any).label ?? "")}::${String((action as any).nextMessage ?? "")}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(action);
+  }
+
+  return merged;
+}
+
 function formatPropertyGoalLabel(goal: unknown) {
   const normalized = asString(goal)?.trim().toLowerCase();
   if (normalized === "locacao") return "Locação";
@@ -1112,6 +1143,10 @@ function buildImobPresentationBlocks(data: Record<string, unknown>, copyState: I
       caseContext,
       operational,
     });
+    const postSuccessActions = buildPropertyPostSuccessActions({
+      casePlan,
+      caseContext,
+    });
     return [
       {
         kind: "confirmation",
@@ -1122,7 +1157,7 @@ function buildImobPresentationBlocks(data: Record<string, unknown>, copyState: I
       {
         kind: "next_actions",
         title: "Posso seguir com uma destas ações agora.",
-        ctas: buildCasePlanActions(casePlan).length > 0 ? buildCasePlanActions(casePlan) : buildCaptureSwitchActions(caseContext),
+        ctas: postSuccessActions,
         actionsLayout: "inline",
         persistent: true,
         phase: "post_success",
