@@ -129,3 +129,56 @@ test("IMOB case planner advances seasonal capture to documents and rules after l
   assert.equal(rulesPlan.stage, "seasonal_rules");
   assert.equal(rulesPlan.primaryAction?.operation, "rules.configure");
 });
+
+test("IMOB case planner uses recovery snapshot fallback for case review mission", () => {
+  const plan = planImobCase(seasonalContext({
+    missionContext: {
+      mission: "case_review",
+      lockedUntilExplicitChange: false,
+    },
+    blockers: [
+      { code: "owner_property_not_linked", severity: "blocking", message: "O imóvel ainda não está vinculado ao proprietário." },
+    ],
+    recoverySnapshot: {
+      version: "1.0",
+      mission: "case_review",
+      stage: "blocked",
+      blockers: [
+        { code: "owner_property_not_linked", severity: "blocking", message: "O imóvel ainda não está vinculado ao proprietário." },
+      ],
+      missingItems: ["O imóvel ainda não está vinculado ao proprietário."],
+      primaryAction: {
+        id: "property-link-owner",
+        operation: "property.link_owner",
+        label: "Concluir vínculo",
+        nextMessage: "concluir vínculo proprietário-imóvel",
+        kind: "primary",
+        reasonCode: "OWNER_PROPERTY_LINK_REQUIRED",
+      },
+      secondaryActions: [
+        {
+          id: "case-review",
+          operation: "case.review",
+          label: "Consultar caso",
+          nextMessage: "consultar caso case-1",
+          kind: "neutral",
+          reasonCode: "case_review_available",
+        },
+      ],
+      supportedIntents: ["consult_case", "resume_case", "what_is_missing", "next_step"],
+      safeFallbackAction: {
+        id: "case-review",
+        operation: "case.review",
+        label: "Consultar caso",
+        nextMessage: "consultar caso case-1",
+        kind: "neutral",
+        reasonCode: "case_review_available",
+      },
+      reasonCode: "RECOVERY_BLOCKED",
+    },
+  }));
+
+  assert.equal(plan.stage, "blocked");
+  assert.equal(plan.primaryAction?.operation, "property.link_owner");
+  assert.equal(plan.secondaryActions[0]?.operation, "case.review");
+});

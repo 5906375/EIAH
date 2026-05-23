@@ -117,6 +117,7 @@ export type ImobCaseContextV1 = {
     sourceFlow?: string | null;
     sourceMission?: ImobCaseMission | null;
   };
+  recoverySnapshot?: ImobCaseRecoverySnapshotV1 | null;
 };
 
 export type ImobCasePlanActionV1 = {
@@ -148,4 +149,44 @@ export type ImobCasePlanV1 = {
   primaryAction: ImobCasePlanActionV1 | null;
   secondaryActions: ImobCasePlanActionV1[];
   suppressedActions: ImobCaseActionId[];
+};
+
+export type ImobRecoveryIntentV1 =
+  | "consult_case"
+  | "resume_case"
+  | "what_is_missing"
+  | "next_step";
+
+export type ImobCaseRecoverySnapshotV1 = {
+  version: "1.0";
+  mission: ImobCaseMission;
+  stage: ImobCaseStage;
+  blockers: ImobCaseBlockerV1[];
+  missingItems: string[];
+  primaryAction: ImobCasePlanActionV1 | null;
+  secondaryActions: ImobCasePlanActionV1[];
+  supportedIntents: ImobRecoveryIntentV1[];
+  safeFallbackAction: ImobCasePlanActionV1;
+  reasonCode:
+    | "RECOVERY_READY"
+    | "RECOVERY_BLOCKED"
+    | "RECOVERY_MISSING_ITEMS"
+    | "RECOVERY_NEXT_STEP_UNRESOLVED";
+};
+
+export type ImobRecoveryResponseV1 = {
+  version: "1.0";
+  intent: ImobRecoveryIntentV1;
+  title: string;
+  summary: string;
+  blockers: ImobCaseBlockerV1[];
+  missingItems: string[];
+  primaryAction: ImobCasePlanActionV1 | null;
+  secondaryActions: ImobCasePlanActionV1[];
+  safeFallbackAction: ImobCasePlanActionV1;
+  reasonCode:
+    | "RECOVERY_CASE_SUMMARY_READY"
+    | "RECOVERY_RESUME_READY"
+    | "RECOVERY_MISSING_ITEMS_READY"
+    | "RECOVERY_NEXT_STEP_READY";
 };
