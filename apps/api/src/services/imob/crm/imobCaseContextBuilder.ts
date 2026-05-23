@@ -111,6 +111,55 @@ function buildPropertySnapshot(params: {
   };
 }
 
+function buildDocumentsSnapshot(params: {
+  documentDraft?: Record<string, unknown> | null;
+  contractDraft?: Record<string, unknown> | null;
+}): ImobOwnerSnapshotV1 | null {
+  const documentDraft = params.documentDraft ?? {};
+  const contractDraft = params.contractDraft ?? {};
+  const referenceId = asString(documentDraft.referenceId) ?? asString(contractDraft.propertyId);
+  const explicitStatus = asString(documentDraft.status);
+  const packetStatus = asString(contractDraft.documentPacketStatus);
+  const status = explicitStatus ?? (packetStatus === "ready" ? "ready" : packetStatus === "pending" ? "pending" : null);
+
+  if (!referenceId && !status) return null;
+
+  return {
+    id: referenceId ? `document-package:${referenceId}` : "document-package:pending",
+    name: "Pacote documental",
+    status,
+  };
+}
+
+function buildContractSnapshot(params: {
+  contractDraft?: Record<string, unknown> | null;
+}): ImobOwnerSnapshotV1 | null {
+  const draft = params.contractDraft ?? {};
+  const propertyId = asString(draft.propertyId);
+  const counterpartyName = asString(draft.counterpartyName);
+  const contractType = asString(draft.contractType);
+  const documentPacketStatus = asString(draft.documentPacketStatus);
+  const handoffTarget = asString(draft.handoffTarget);
+  const approvalRequired = typeof draft.approvalRequired === "boolean" ? draft.approvalRequired : true;
+
+  if (!propertyId && !counterpartyName && !contractType && !documentPacketStatus && !handoffTarget) return null;
+
+  let status: string | null = "drafting";
+  if (documentPacketStatus !== "ready") {
+    status = "document_packet_pending";
+  } else if (handoffTarget === "LEGAL" && approvalRequired) {
+    status = "legal_handoff_pending";
+  } else {
+    status = "ready_for_signature";
+  }
+
+  return {
+    id: propertyId && contractType ? `contract:${propertyId}:${contractType}` : null,
+    name: counterpartyName ?? propertyId ?? "Contrato em preparação",
+    status,
+  };
+}
+
 function buildBlockers(params: {
   mission: ImobCaseMission;
   caseContext?: ImobCrmCaseContext | null;
@@ -118,6 +167,7 @@ function buildBlockers(params: {
   ownerReady: boolean;
   propertyReady: boolean;
   ownerLinkedToProperty: boolean;
+  documentsReady: boolean;
 }): ImobCaseBlockerV1[] {
   const blockers: ImobCaseBlockerV1[] = [];
   const existingBlockers = asStringList(params.caseContext?.blocker ? [params.caseContext.blocker] : params.caseContext?.["blockers"]);
@@ -147,6 +197,9 @@ function buildBlockers(params: {
   if (structuralCaptureMission && params.ownerReady && params.propertyReady && !params.ownerLinkedToProperty) {
     blockers.push({ code: "owner_property_not_linked", severity: "blocking", message: "O imóvel ainda não está vinculado ao proprietário." });
   }
+  if (params.mission === "prepare_contract" && !params.documentsReady) {
+    blockers.push({ code: "document_packet_not_ready", severity: "blocking", message: "O pacote documental ainda não está pronto para seguir com o contrato." });
+  }
   for (const item of params.pendingItems) {
     blockers.push({ code: `pending_${item.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`, severity: "warning", message: `Pendência: ${item}.` });
   }
@@ -159,9 +212,13 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
   const ownerDraft = asObject(operational.ownerDraft);
   const propertyDraft = asObject(operational.propertyDraft);
   const leadDraft = asObject(operational.leadDraft);
+  const documentDraft = asObject(operational.documentDraft);
+  const contractDraft = asObject(operational.contractDraft);
   const operationalMissionContext = asObject(operational.missionContext);
   const owner = buildOwnerSnapshot({ owner: params.caseContext?.owner, ownerDraft });
   const property = buildPropertySnapshot({ property: params.caseContext?.property, propertyDraft });
+  const documents = buildDocumentsSnapshot({ documentDraft, contractDraft });
+  const contract = buildContractSnapshot({ contractDraft });
   const lead = asObject(params.caseContext?.lead) ?? leadDraft;
   const leadGoal = normalizeGoal(lead?.desiredGoal);
   const propertyGoal = property?.goal ?? null;
@@ -174,7 +231,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
   const ownerReady = Boolean(owner && (owner.id || owner.name) && (owner.document || owner.phone || owner.email));
   const propertyReady = Boolean(property && (property.id || (property.propertyType && property.goal && property.city && property.address)));
   const ownerLinkedToProperty = Boolean(owner?.id && property?.ownerId && owner.id === property.ownerId) || Boolean(property?.ownerId && property?.id);
-  const documentsReady = false;
+  const documentsReady = documents?.status === "ready";
   const seasonalRulesReady = false;
   const mission = asString(operationalMissionContext?.mission) as ImobCaseMission | null
     ?? inferMission({ message: params.message, flow, propertyGoal, leadGoal })
@@ -208,6 +265,8 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
         desiredCity: asString(lead.desiredCity),
         status: asString(lead.status),
       } : null,
+      documents,
+      contract,
     },
     links: {
       ownerProperty: {
@@ -230,6 +289,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
       ownerReady,
       propertyReady,
       ownerLinkedToProperty,
+      documentsReady,
     }),
   };
 

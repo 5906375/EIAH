@@ -96,7 +96,11 @@ function resolveCurrentStep(params: {
     case "case_review":
       return "generating_snapshot";
     case "prepare_contract":
-      return "checking_document_sufficiency";
+      if (!params.context.readiness.documentsReady) return "checking_document_sufficiency";
+      if (params.context.entities.contract?.status === "ready_for_signature") return "ready_for_signature";
+      if (params.context.entities.contract?.status === "legal_handoff_pending") return "legal_handoff";
+      if (params.context.entities.contract?.status === "needs_document_rework") return "needs_document_rework";
+      return "drafting";
     case "settle_commission":
       return "calculating_basis";
     case "commercial_activation":
@@ -145,11 +149,13 @@ export function resolveCanonicalCaseStateFromLegacy(params: {
     missionStatus: "draft",
     currentStep,
     currentOperation: operation,
-    entities: {
-      ownerId: params.context.entities.owner?.id ?? undefined,
-      propertyId: params.context.entities.property?.id ?? undefined,
-      leadId: params.context.entities.lead?.id ?? undefined,
-    },
+      entities: {
+        ownerId: params.context.entities.owner?.id ?? undefined,
+        propertyId: params.context.entities.property?.id ?? undefined,
+        leadId: params.context.entities.lead?.id ?? undefined,
+        documentPackageId: params.context.readiness.documentsReady ? (params.context.entities.documents?.id ?? undefined) : undefined,
+        contractId: params.context.entities.contract?.id ?? undefined,
+      },
     readiness: {
       owner: params.context.readiness.ownerReady ? "ready" : "incomplete",
       property: params.context.readiness.propertyReady ? "ready" : "incomplete",

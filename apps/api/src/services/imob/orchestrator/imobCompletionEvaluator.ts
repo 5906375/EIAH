@@ -58,6 +58,9 @@ export function resolveImobMissionStatus(params: ResolveMissionStatusParams): Mi
     case "collect_documents":
       if (params.pendingFields.length === 0 && params.currentStep === "package_ready") return "ready_for_transition";
       return params.hasNextAction || params.pendingFields.length > 0 ? "in_progress" : "draft";
+    case "prepare_contract":
+      if (params.pendingFields.length === 0 && params.currentStep === "ready_for_signature") return "ready_for_transition";
+      return params.hasNextAction || params.pendingFields.length > 0 ? "in_progress" : "draft";
     case "capture_seasonal_property":
     case "capture_rental_property":
     case "capture_sale_property":
