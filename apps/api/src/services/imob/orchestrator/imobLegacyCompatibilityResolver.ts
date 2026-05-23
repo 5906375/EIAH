@@ -57,6 +57,8 @@ function mapLegacyFlowToOperation(flow?: string | null): ImobOperation {
       return "contract";
     case "commission.settle":
       return "commission";
+    case "listing.activate":
+      return "campaign";
     default:
       return "case";
   }
@@ -107,6 +109,10 @@ function resolveCurrentStep(params: {
       if (params.context.entities.commission?.status === "ready") return "settlement_ready";
       return "awaiting_approval";
     case "commercial_activation":
+      if (params.context.entities.campaign?.status === "published_or_sent") return "published_or_sent";
+      if (params.context.entities.campaign?.status === "ready_to_publish") return "ready_to_publish";
+      if (params.context.entities.campaign?.status === "awaiting_human_approval") return "awaiting_human_approval";
+      if (params.context.entities.campaign?.status === "blocked_by_policy") return "blocked_by_policy";
       return "drafting_campaign";
   }
 }
@@ -157,6 +163,9 @@ export function resolveCanonicalCaseStateFromLegacy(params: {
         propertyId: params.context.entities.property?.id ?? undefined,
         leadId: params.context.entities.lead?.id ?? undefined,
         documentPackageId: params.context.readiness.documentsReady ? (params.context.entities.documents?.id ?? undefined) : undefined,
+        campaignId: (params.context.entities.campaign?.status === "ready_to_publish" || params.context.entities.campaign?.status === "published_or_sent")
+          ? (params.context.entities.campaign?.id ?? undefined)
+          : undefined,
         contractId: params.context.entities.contract?.id ?? undefined,
         commissionId: (params.context.entities.commission?.status === "ready" || params.context.entities.commission?.status === "paid")
           ? (params.context.entities.commission?.id ?? undefined)
@@ -166,6 +175,11 @@ export function resolveCanonicalCaseStateFromLegacy(params: {
       owner: params.context.readiness.ownerReady ? "ready" : "incomplete",
       property: params.context.readiness.propertyReady ? "ready" : "incomplete",
       documents: params.context.readiness.documentsReady ? "ready" : "incomplete",
+      campaign: params.context.entities.campaign?.status === "ready_to_publish" || params.context.entities.campaign?.status === "published_or_sent"
+        ? "ready"
+        : params.context.entities.campaign
+          ? "blocked"
+          : undefined,
       commission: params.context.entities.commission?.status === "ready" || params.context.entities.commission?.status === "paid"
         ? "ready"
         : params.context.entities.commission

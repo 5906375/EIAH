@@ -18,6 +18,7 @@ export type ImobCaseMission =
   | "collect_documents"
   | "prepare_contract"
   | "settle_commission"
+  | "commercial_activation"
   | "case_review";
 
 export type ImobCaseStage =
@@ -32,6 +33,7 @@ export type ImobCaseStage =
   | "proposal_preparing"
   | "contract_preparing"
   | "commission_review"
+  | "campaign_preparing"
   | "done"
   | "blocked";
 
@@ -44,6 +46,7 @@ export type ImobCaseActionId =
   | "lead.qualify"
   | "visit.schedule"
   | "proposal.create"
+  | "listing.activate"
   | "contract.prepare"
   | "commission.settle"
   | "case.review";
@@ -102,6 +105,7 @@ export type ImobCaseContextV1 = {
     property?: ImobPropertySnapshotV1 | null;
     lead?: ImobLeadSnapshotV1 | null;
     documents?: ImobEntitySnapshotV1 | null;
+    campaign?: ImobEntitySnapshotV1 | null;
     contract?: ImobEntitySnapshotV1 | null;
     commission?: ImobEntitySnapshotV1 | null;
   };

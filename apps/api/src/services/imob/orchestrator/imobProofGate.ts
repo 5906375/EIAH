@@ -23,6 +23,8 @@ export function isProofSatisfied(proofId: string, state: ImobCaseState): boolean
       );
     case "commission_record":
       return typeof state.entities.commissionId === "string" && state.entities.commissionId.length > 0;
+    case "campaign_record":
+      return typeof state.entities.campaignId === "string" && state.entities.campaignId.length > 0;
     default:
       return false;
   }

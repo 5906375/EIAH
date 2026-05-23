@@ -454,6 +454,19 @@ export type ImobCommissionDraft = {
   approvalRequired: boolean;
 };
 
+export type ImobCampaignDraft = {
+  propertyId: string | null;
+  campaignRef: string | null;
+  objective: "capture_owner" | "promote_listing" | "reengage_lead" | "promote_imob_crm" | null;
+  publicationChannels: string[];
+  approvalRequired: boolean;
+  approvalStatus: "pending" | "approved" | null;
+  policyStatus: "pending" | "ready" | null;
+  consentStatus: "pending" | "ready" | null;
+  evidenceStatus: "pending" | "ready" | null;
+  activationStatus: "draft" | "ready" | "published" | "sent" | null;
+};
+
 export type ImobMissionContext = {
   mission:
     | "capture_seasonal_property"
@@ -464,6 +477,7 @@ export type ImobMissionContext = {
     | "collect_documents"
     | "prepare_contract"
     | "settle_commission"
+    | "commercial_activation"
     | "case_review";
   defaultGoal?: "aluguel_por_temporada" | "locacao" | "venda" | null;
   startedFromMessage?: string | null;
@@ -502,6 +516,7 @@ export type ImobOperationalState = {
   leadDraft?: ImobLeadDraft;
   visitDraft?: ImobVisitDraft;
   listingDraft?: ImobListingDraft;
+  campaignDraft?: ImobCampaignDraft;
   documentDraft?: ImobDocumentDraft;
   proposalDraft?: ImobProposalDraft;
   dealDraft?: ImobDealDraft;

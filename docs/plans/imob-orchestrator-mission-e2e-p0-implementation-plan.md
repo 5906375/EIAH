@@ -1,9 +1,9 @@
 # imob-orchestrator-mission-e2e-p0-implementation-plan
 
-Status: proposta  
+Status: rebaseline operacional  
 Prioridade: P0/P1 para Track P IMOB  
 Data de referência: 2026-05-23  
-Versão do plano: v4.2 — pragmática para execução com rebaseline operacional  
+Versão do plano: v4.4 — pragmática para execução com rebaseline pós-PR6 e PR7 concluído  
 Escopo: fechamento E2E do `IMOB_Orchestrator` como dono real das missões imobiliárias, preservando arquitetura agent-driven, estado canônico, recuperação confiável, próxima ação única, controle de concorrência seguro para side effects, compatibilidade com casos legados e proof mínimo determinístico por missão.
 
 ---
@@ -21,7 +21,7 @@ O objetivo desta versão do plano é sair do desenho conceitual e organizar a ex
 - ordem de merge segura;
 - baseline real já refletido no documento.
 
-Esta versão substitui a `v4` como plano de execução corrente. `Patch 0`, `PR1` e `PR2` já compõem o baseline operacional entregue. `PR3` está em validação/merge pendente. O próximo passo obrigatório de implementação é `PR4`. Em paralelo leve, entra `PR2.5 — IMOB-CRM Agentic Operating Model`, para garantir que o CRM seja uma projeção dos agentes IMOB existentes, não uma nova fonte de verdade.
+Esta versão substitui a `v4.3` como plano de execução corrente. O backbone P0 do `IMOB_Orchestrator` já foi entregue até `PR6`. A expansão `PR7` foi concluída com os slices `prepare_contract`, `settle_commission` e `commercial_activation`, mantendo `fail-closed`, proof mínima e launcher `render-only`.
 
 ---
 
@@ -32,7 +32,14 @@ Status real nesta revisão (`2026-05-23`):
 - `Patch 0` mergeado.
 - `PR1` mínimo mergeado.
 - `PR2` operation router mergeado.
-- `PR3` recovery resolver implementado em branch de trabalho e validado por suíte scoped.
+- `PR3` recovery resolver mergeado.
+- `PR2.5` IMOB-CRM Agentic Operating Model mergeado.
+- `PR4` next action + completion mergeado.
+- `PR5` proof mínimo por missão mergeado.
+- `PR6` suíte E2E do orquestrador mergeada.
+- `PR7` iniciado com `prepare_contract` mergeado.
+- `PR7` ampliado com `settle_commission` mergeado.
+- `PR7` concluído com `commercial_activation` implementado e validado por suíte scoped.
 - Backbone canônico já materializado em:
   - `imobMissionTypes.ts`
   - `imobMissionGraph.ts`
@@ -42,17 +49,21 @@ Status real nesta revisão (`2026-05-23`):
   - `imobLegacyCompatibilityResolver.ts`
   - `imobOperationRouter.ts`
   - `imobRecoveryResolver.ts`
+  - `imobCrmCaseProjection.ts`
+  - `imobNextActionResolver.ts`
+  - `imobCompletionEvaluator.ts`
+  - `imobMissionPolicy.ts`
 - `CaseContextBuilder` já materializa:
   - `canonicalCaseState`
   - `legacyCompatibility`
   - `recoverySnapshot`
+  - `crmProjection`
 
 Decisão:
 
-- `Patch 0`, `PR1` e `PR2` passam a compor o baseline operacional entregue.
-- `PR3` passa a compor o baseline assim que for mergeado.
-- `PR2.5` entra como trilha paralela leve para projeção CRM agentic.
-- `PR4` passa a ser o próximo passo obrigatório de implementação.
+- `Patch 0`, `PR1`, `PR2`, `PR3`, `PR2.5`, `PR4`, `PR5` e `PR6` compõem o baseline operacional entregue.
+- `PR7` compõe o baseline entregue com `prepare_contract`, `settle_commission` e `commercial_activation`.
+- o próximo passo deixa de ser completar a expansão P1/P2 mínima do orquestrador e passa a ser decidir se novas trilhas P2 entram como frentes separadas ou se esta fase deve ser encerrada documentalmente.
 
 ---
 
@@ -128,7 +139,7 @@ PR2.5
 PR4
 PR5
 PR6
-PR7 (só depois do P0 estabilizado)
+PR7 (expansão P1/P2)
 ```
 
 Regra:
@@ -450,6 +461,12 @@ chatLauncherEngine.test.ts
 
 Só depois do P0 estabilizado, expandir para trilhas mais pesadas.
 
+### Status nesta revisão
+
+- `prepare_contract`: entregue
+- `settle_commission`: entregue
+- `commercial_activation`: entregue
+
 ### Escopo
 
 - `prepare_contract`
@@ -468,8 +485,8 @@ Só depois do P0 estabilizado, expandir para trilhas mais pesadas.
 
 ```text
 prepare-contract-e2e.test.ts
-commercial-activation-e2e.test.ts
 commission-settlement-e2e.test.ts
+commercial-activation-e2e.test.ts
 ```
 
 ### Riscos de rollout
@@ -605,8 +622,10 @@ O P0 só pode ser considerado fechado quando:
 
 Executar nesta ordem:
 
-1. mergear `PR3` depois da validação final;
-2. atualizar o `EVIDENCE_INDEX` quando o merge ocorrer;
-3. abrir `PR2.5` com foco exclusivo em projeção CRM agentic;
-4. abrir `PR4` como próximo passo obrigatório de runtime;
-5. só depois avançar para `PR5` e `PR6`.
+1. manter o `EVIDENCE_INDEX` alinhado aos merges de `prepare_contract`, `settle_commission` e `commercial_activation`;
+2. consolidar a expansão `PR7` como concluída no baseline documental;
+3. manter qualquer expansão futura de ativação comercial em escopo `fail-closed`:
+   - sem outbound real
+   - sem publish real
+   - com approval humana explícita
+4. decidir se novas trilhas P2 entram como frente separada ou se esta fase deve ser encerrada com hardening e evidência recorrente.
