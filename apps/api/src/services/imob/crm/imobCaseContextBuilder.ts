@@ -33,6 +33,10 @@ function asStringList(value: unknown): string[] {
   return value.map((item) => asString(item)).filter((item): item is string => Boolean(item));
 }
 
+function normalizeText(value: string) {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
 function normalizeGoal(value: unknown): ImobPropertyGoalV1 | null {
   const normalized = asString(value)?.toLowerCase();
   if (normalized === "aluguel_por_temporada" || normalized === "locacao" || normalized === "venda") return normalized;
@@ -248,10 +252,9 @@ function buildBlockers(params: {
   campaignStatus?: string | null;
 }): ImobCaseBlockerV1[] {
   const blockers: ImobCaseBlockerV1[] = [];
-  const existingBlockers = asStringList(params.caseContext?.blocker ? [params.caseContext.blocker] : params.caseContext?.["blockers"]);
-  for (const [index, message] of existingBlockers.entries()) {
-    blockers.push({ code: `legacy_blocker_${index + 1}`, severity: "blocking", message });
-  }
+  const rawExistingBlockers = asStringList(
+    params.caseContext?.blocker ? [params.caseContext.blocker] : params.caseContext?.["blockers"],
+  );
   const structuralCaptureMission = params.mission === "capture_seasonal_property"
     || params.mission === "capture_rental_property"
     || params.mission === "capture_sale_property"
@@ -265,6 +268,25 @@ function buildBlockers(params: {
         || Boolean(params.caseContext?.property)
       )
     );
+
+  const existingBlockers = rawExistingBlockers.filter((message) => {
+    const normalized = normalizeText(message);
+    const looksLikeResolvedMarketScanDisambiguation =
+      (normalized.includes("multiplas cidades") || normalized.includes("multiplas finalidades"))
+      && (
+        normalized.includes("cadastro automatico")
+        || normalized.includes("varredura de mercado")
+        || normalized.includes("imovel")
+      )
+      && structuralCaptureMission
+      && params.propertyReady;
+
+    return !looksLikeResolvedMarketScanDisambiguation;
+  });
+
+  for (const [index, message] of existingBlockers.entries()) {
+    blockers.push({ code: `legacy_blocker_${index + 1}`, severity: "blocking", message });
+  }
 
   if (structuralCaptureMission && !params.ownerReady) {
     blockers.push({ code: "owner_missing_or_incomplete", severity: "blocking", message: "Proprietário ainda não está completo." });

@@ -586,6 +586,17 @@ function hasStrongBusinessReadIntent(message: string) {
   )) return true;
   const normalized = message.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   if (
+    normalized.includes("o que falta")
+    || normalized.includes("pendencia")
+    || normalized.includes("pendencias")
+    || normalized.includes("proximo passo")
+    || normalized.includes("qual proximo passo")
+    || normalized.includes("retomar esse caso")
+    || normalized.includes("retomar o caso")
+  ) {
+    return true;
+  }
+  if (
     normalized.includes("piloto")
     && (
       normalized.includes("status")
@@ -783,6 +794,31 @@ function applyDedupeSelectionToConversationState(
     },
   };
 }
+
+function rewritePropertyOwnerActionMessage(
+  message: string,
+  threadState: ThreadStateLike | null | undefined,
+  normalizeImobRouteText: (value: string) => string,
+) {
+  const normalized = normalizeImobRouteText(message);
+  const operational = asObject(asObject(threadState)?.operational);
+  const flow = asString(operational?.flow);
+  const status = asString(operational?.status);
+
+  if (flow !== "property.create" || status !== "ready_for_review") return message;
+
+  if (
+    normalized === "vincular proprietario"
+    || normalized === "vincular proprietário"
+    || normalized === "vincular proprietario ao imovel"
+    || normalized === "vincular proprietário ao imóvel"
+  ) {
+    return "cadastrar proprietário";
+  }
+
+  return message;
+}
+
 function buildCaptureSwitchActions(caseContext?: ImobCrmCaseContext | null) {
   const hasLead = Boolean(caseContext?.lead && (caseContext.lead.id || caseContext.lead.name));
   const linkedPropertyOwner = asObject(caseContext?.property?.owner as Record<string, unknown> | null);
@@ -790,6 +826,8 @@ function buildCaptureSwitchActions(caseContext?: ImobCrmCaseContext | null) {
     (caseContext?.owner && (caseContext.owner.id || caseContext.owner.name))
     || (linkedPropertyOwner && (asString(linkedPropertyOwner.id) || asString(linkedPropertyOwner.name))),
   );
+  const ownerPropertyLinkStatus = caseContext?.links?.ownerProperty?.status ?? null;
+  const ownerLinkPending = hasOwner && ownerPropertyLinkStatus !== "linked";
 
   const actions = [];
   if (hasLead) {
@@ -813,10 +851,18 @@ function buildCaptureSwitchActions(caseContext?: ImobCrmCaseContext | null) {
   if (!hasOwner) {
     actions.push({
       id: "capture-switch-owner",
-      label: "Vincular proprietário",
+      label: "Cadastrar proprietário",
       kind: "secondary",
       action: "send_suggested_message",
-      nextMessage: "vincular proprietário ao imóvel",
+      nextMessage: "cadastrar proprietário",
+    });
+  } else if (ownerLinkPending) {
+    actions.push({
+      id: "capture-switch-owner-link",
+      label: "Concluir vínculo",
+      kind: "secondary",
+      action: "send_suggested_message",
+      nextMessage: "concluir vínculo proprietário-imóvel",
     });
   }
 
@@ -853,7 +899,11 @@ function mapCasePlanActionToCta(action: ImobCasePlanActionV1) {
 
 function buildCasePlanActions(casePlan?: ImobCasePlanV1 | null) {
   if (!casePlan) return [];
-  if (casePlan.mission !== "capture_seasonal_property") return [];
+  if (
+    casePlan.mission !== "capture_seasonal_property"
+    && casePlan.mission !== "capture_rental_property"
+    && casePlan.mission !== "capture_sale_property"
+  ) return [];
   const actions = [
     ...(casePlan.primaryAction ? [casePlan.primaryAction] : []),
     ...casePlan.secondaryActions,
@@ -866,6 +916,37 @@ function buildCasePlanActions(casePlan?: ImobCasePlanV1 | null) {
       return !casePlan.suppressedActions.includes(item.operation);
     })
     .map(mapCasePlanActionToCta);
+}
+
+function buildPropertyPostSuccessActions(params: {
+  casePlan?: ImobCasePlanV1 | null;
+  caseContext?: ImobCrmCaseContext | null;
+}) {
+  const linkedPropertyOwner = asObject(params.caseContext?.property?.owner as Record<string, unknown> | null);
+  const hasOwnerEntity = Boolean(
+    (params.caseContext?.owner && ((params.caseContext.owner as any).id || (params.caseContext.owner as any).name))
+    || (linkedPropertyOwner && (asString(linkedPropertyOwner.id) || asString(linkedPropertyOwner.name))),
+  );
+  const planActions = buildCasePlanActions(params.casePlan).filter((action) => {
+    if (!hasOwnerEntity) return true;
+    return String((action as any).nextMessage ?? "") !== "cadastrar proprietário";
+  });
+  const fallbackActions = buildCaptureSwitchActions(params.caseContext);
+  if (planActions.length === 0) return fallbackActions;
+
+  const merged = [...planActions];
+  const seen = new Set(
+    merged.map((item) => `${String((item as any).label ?? "")}::${String((item as any).nextMessage ?? "")}`),
+  );
+
+  for (const action of fallbackActions) {
+    const key = `${String((action as any).label ?? "")}::${String((action as any).nextMessage ?? "")}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    merged.push(action);
+  }
+
+  return merged;
 }
 
 function formatPropertyGoalLabel(goal: unknown) {
@@ -1062,6 +1143,10 @@ function buildImobPresentationBlocks(data: Record<string, unknown>, copyState: I
       caseContext,
       operational,
     });
+    const postSuccessActions = buildPropertyPostSuccessActions({
+      casePlan,
+      caseContext,
+    });
     return [
       {
         kind: "confirmation",
@@ -1072,7 +1157,7 @@ function buildImobPresentationBlocks(data: Record<string, unknown>, copyState: I
       {
         kind: "next_actions",
         title: "Posso seguir com uma destas ações agora.",
-        ctas: buildCasePlanActions(casePlan).length > 0 ? buildCasePlanActions(casePlan) : buildCaptureSwitchActions(caseContext),
+        ctas: postSuccessActions,
         actionsLayout: "inline",
         persistent: true,
         phase: "post_success",
@@ -1448,8 +1533,13 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
       hydratedThreadState,
       params.helpers.normalizeImobRouteText,
     );
-    const dedupeAwareMessage = resolveDedupeContextualMessage(
+    const ownerActionAwareMessage = rewritePropertyOwnerActionMessage(
       rewrittenMessage,
+      hydratedThreadState,
+      params.helpers.normalizeImobRouteText,
+    );
+    const dedupeAwareMessage = resolveDedupeContextualMessage(
+      ownerActionAwareMessage,
       hydratedThreadState,
       params.helpers.normalizeImobRouteText,
     );

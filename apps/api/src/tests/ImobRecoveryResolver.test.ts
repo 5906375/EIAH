@@ -104,3 +104,79 @@ test("recovery response for missing items never returns invalid path", () => {
   assert.equal(response.primaryAction?.operation, "case.review");
   assert.match(response.summary, /faltam|pendências/i);
 });
+
+test("recovery response prioritizes owner follow-up after market-scan conversion instead of stale scan blocker", () => {
+  const context = buildContext({
+    missionContext: {
+      mission: "capture_sale_property",
+      lockedUntilExplicitChange: true,
+    },
+    entities: {
+      property: {
+        id: "property-1",
+        propertyType: "apartamento",
+        goal: "venda",
+        city: "Itapema",
+        address: "Rua Batch 101",
+      },
+    },
+    readiness: {
+      ownerReady: false,
+      propertyReady: true,
+      documentsReady: false,
+      seasonalRulesReady: false,
+      operationalReady: false,
+    },
+    blockers: [
+      { code: "owner_missing_or_incomplete", severity: "blocking", message: "Proprietário ainda não está completo." },
+    ],
+    canonicalCaseState: {
+      schemaVersion: 1,
+      tenantId: "tenant-A",
+      workspaceId: "workspace-A",
+      caseId: "case-1",
+      mission: "capture_sale_property",
+      missionStatus: "blocked",
+      currentStep: "collecting_owner",
+      currentOperation: "owner",
+      entities: {
+        propertyId: "property-1",
+      },
+      readiness: {
+        owner: "incomplete",
+        property: "ready",
+        proof: "not_applicable",
+      },
+      blockers: [
+        { code: "owner_missing_or_incomplete", message: "Proprietário ainda não está completo." },
+      ],
+      pendingFields: [],
+      nextAction: {
+        id: "create-owner",
+        label: "Cadastrar proprietário",
+        operation: "owner",
+        targetAgent: "IMOB_OwnerAgent",
+        reasonCode: "OWNER_REQUIRED_FOR_CAPTURE",
+      },
+      proof: {
+        required: false,
+        minimumProofSatisfied: true,
+        missingProof: [],
+      },
+      audit: {
+        version: 1,
+        lastUpdatedAt: "2026-05-23T10:00:00.000Z",
+        updatedByAgent: "IMOB",
+      },
+    },
+  });
+
+  const response = resolveImobRecoveryResponse({
+    context,
+    intent: "what_is_missing",
+  });
+
+  assert.equal(response.primaryAction?.operation, "owner.create");
+  assert.match(response.summary, /proprietário/i);
+  assert.equal(response.missingItems.some((item) => /multiplas cidades|múltiplas cidades/i.test(item)), false);
+});

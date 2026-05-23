@@ -1177,6 +1177,53 @@ test("IMOB turn resolver turns a confirmed market scan selection into governed p
   assert.equal(result.conversationState.operational?.propertyDraft?.origin?.sourceId, "prop-1");
 });
 
+test("IMOB turn resolver sanitizes address text carried from market scan confirmation", () => {
+  const result = resolveImobTurn({
+    message: "confirmar seleção do scan prop-1",
+    threadState: {
+      slots: {
+        goal: null,
+        city: null,
+        region: null,
+        neighborhood: null,
+        budgetMax: null,
+        bedrooms: null,
+        bathrooms: null,
+        propertyType: null,
+      },
+      mode: "consult",
+      pendingSlot: "none",
+      resultOffset: 0,
+      operational: {
+        flow: "property.market_scan",
+        status: "ready_for_review",
+        pendingFields: [],
+        marketScanSelection: {
+          status: "pending_confirmation",
+          scanId: "market-scan-1",
+          source: "internal_crm",
+          sourceId: "prop-1",
+          providerId: "internal_crm",
+          retrievedAt: "2026-05-23T17:53:12.200Z",
+          city: "Itapema",
+          goal: "venda",
+          propertyType: "apartamento",
+          bedrooms: 2,
+          price: 700000,
+          currency: "BRL",
+          neighborhood: "Centro",
+          address: "Rua Batch 101 proprietario Joana Batch valor 700000",
+          title: "Apartamento 2 quartos",
+          url: null,
+        },
+      },
+    },
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.conversationState.operational?.propertyDraft?.address, "Rua Batch 101");
+});
+
 test("IMOB turn resolver keeps market scan read-only and empty when no provider result is injected", () => {
   const result = resolveImobTurn({
     message: "fazer varredura de mercado",

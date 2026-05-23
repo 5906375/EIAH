@@ -134,6 +134,48 @@ test("IMOB_CRM turn engine keeps consultar caso read-only and valid during activ
   assert.doesNotMatch((resolved as any).presentation?.text ?? "", /acao nao e valida/i);
 });
 
+test("IMOB_CRM turn engine prioriza recovery consultivo para 'o que falta' mesmo com property.create ativo", async () => {
+  let consultCalls = 0;
+  const params = createEngineParams({
+    body: {
+      message: "o que falta aqui?",
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "property.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          propertyDraft: {
+            propertyType: "apartamento",
+            goal: "venda",
+            city: "Itapema",
+            address: "Rua Batch 101",
+          },
+        },
+      },
+    },
+  });
+  params.helpers.resolveImobOperationalConsult = async () => {
+    consultCalls += 1;
+    return {
+      mode: "consult",
+      action: "case.status",
+      threadLabel: "Caso",
+      conversationState: params.body.threadState,
+      presentation: { text: "pendências canônicas do caso" },
+    };
+  };
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+
+  assert.equal(consultCalls, 1);
+  assert.equal(resolved.action, "case.status");
+  assert.match((resolved as any).presentation?.text ?? "", /pendências canônicas/i);
+});
+
 test("IMOB_CRM turn engine propagates canonical proof surface from consultive case context", async () => {
   const params = createEngineParams({
     body: { message: "qual status desse caso?", threadState: { mode: "consult", pendingSlot: "none", resultOffset: 0, slots: {}, operational: null } },
@@ -927,7 +969,7 @@ test("IMOB_CRM turn engine does not parse case-reference lead CTA as literal lea
   assert.notEqual((resolved as any).conversationState?.operational?.leadDraft?.desiredCity, "Do Lead Do");
 });
 
-test("IMOB_CRM turn engine offers visit instead of requalifying lead after property success when case already has lead", async () => {
+test("IMOB_CRM turn engine offers owner registration instead of stale owner linking after property success when owner is missing", async () => {
   const params = createEngineParams({
     body: {
       message: "salvar cadastro",
@@ -973,8 +1015,8 @@ test("IMOB_CRM turn engine offers visit instead of requalifying lead after prope
     .flatMap((block: any) => block?.ctas ?? []);
   assert.ok(actions.some((item: any) => item.label === "Avançar para visita"));
   assert.ok(!actions.some((item: any) => item.label === "Qualificar lead"));
-  assert.ok(actions.some((item: any) => item.label === "Vincular proprietário"));
-  assert.ok(!actions.some((item: any) => item.label === "Cadastrar proprietário"));
+  assert.ok(actions.some((item: any) => item.label === "Cadastrar proprietário"));
+  assert.ok(!actions.some((item: any) => item.label === "Vincular proprietário"));
 });
 
 test("IMOB_CRM turn engine keeps property-success actions fully case-aware when case already has lead and owner", async () => {
@@ -1208,6 +1250,38 @@ test("IMOB_CRM turn engine uses seasonal case planner action after property succ
   assert.equal((resolved as any).imobCasePlan?.primaryAction?.operation, "property.link_owner");
   assert.ok(actions.some((item: any) => item.label === "Concluir vínculo"));
   assert.ok(!actions.some((item: any) => item.label === "Cadastrar proprietário"));
+});
+
+test("IMOB_CRM turn engine rewrites stale owner-link quick reply into canonical owner flow after property success", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "vincular proprietário ao imóvel",
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "property.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          propertyDraft: {
+            propertyType: "apartamento",
+            goal: "venda",
+            city: "Itapema",
+            address: "Rua 260",
+          },
+        },
+      },
+    },
+  });
+
+  params.helpers.applyExistingRegistrationResolution = async ({ resolved }: any) => resolved;
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+
+  assert.equal((resolved as any).conversationState?.operational?.flow, "owner.create");
+  assert.equal((resolved as any).executionRequest?.operation, "owner.create");
 });
 
 test("IMOB_CRM turn engine accepts validated recipe mission context as planner input", async () => {
