@@ -21,6 +21,8 @@ export function isProofSatisfied(proofId: string, state: ImobCaseState): boolean
         && state.proof.snapshotId.length > 0
         && state.proof.snapshotVersion === state.audit.version
       );
+    case "commission_record":
+      return typeof state.entities.commissionId === "string" && state.entities.commissionId.length > 0;
     default:
       return false;
   }

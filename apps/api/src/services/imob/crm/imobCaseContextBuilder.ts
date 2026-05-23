@@ -160,6 +160,27 @@ function buildContractSnapshot(params: {
   };
 }
 
+function buildCommissionSnapshot(params: {
+  commissionDraft?: Record<string, unknown> | null;
+}): ImobOwnerSnapshotV1 | null {
+  const draft = params.commissionDraft ?? {};
+  const dealId = asString(draft.dealId);
+  const brokerRef = asString(draft.brokerRef);
+  const payoutChannel = asString(draft.payoutChannel);
+  const settlementStatus = asString(draft.settlementStatus);
+  const amountCents = typeof draft.amountCents === "number" ? draft.amountCents : null;
+
+  if (!dealId && !brokerRef && !payoutChannel && !settlementStatus && amountCents == null) return null;
+
+  return {
+    id: settlementStatus === "ready" || settlementStatus === "paid"
+      ? `commission:${dealId ?? "pending"}:${brokerRef ?? "pending"}`
+      : null,
+    name: brokerRef ?? dealId ?? "Comissão em liquidação",
+    status: settlementStatus,
+  };
+}
+
 function buildBlockers(params: {
   mission: ImobCaseMission;
   caseContext?: ImobCrmCaseContext | null;
@@ -168,6 +189,7 @@ function buildBlockers(params: {
   propertyReady: boolean;
   ownerLinkedToProperty: boolean;
   documentsReady: boolean;
+  commissionReady: boolean;
 }): ImobCaseBlockerV1[] {
   const blockers: ImobCaseBlockerV1[] = [];
   const existingBlockers = asStringList(params.caseContext?.blocker ? [params.caseContext.blocker] : params.caseContext?.["blockers"]);
@@ -200,6 +222,9 @@ function buildBlockers(params: {
   if (params.mission === "prepare_contract" && !params.documentsReady) {
     blockers.push({ code: "document_packet_not_ready", severity: "blocking", message: "O pacote documental ainda não está pronto para seguir com o contrato." });
   }
+  if (params.mission === "settle_commission" && !params.commissionReady) {
+    blockers.push({ code: "commission_settlement_not_ready", severity: "blocking", message: "A comissão ainda não está pronta para liquidação governada." });
+  }
   for (const item of params.pendingItems) {
     blockers.push({ code: `pending_${item.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`, severity: "warning", message: `Pendência: ${item}.` });
   }
@@ -214,11 +239,13 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
   const leadDraft = asObject(operational.leadDraft);
   const documentDraft = asObject(operational.documentDraft);
   const contractDraft = asObject(operational.contractDraft);
+  const commissionDraft = asObject(operational.commissionDraft);
   const operationalMissionContext = asObject(operational.missionContext);
   const owner = buildOwnerSnapshot({ owner: params.caseContext?.owner, ownerDraft });
   const property = buildPropertySnapshot({ property: params.caseContext?.property, propertyDraft });
   const documents = buildDocumentsSnapshot({ documentDraft, contractDraft });
   const contract = buildContractSnapshot({ contractDraft });
+  const commission = buildCommissionSnapshot({ commissionDraft });
   const lead = asObject(params.caseContext?.lead) ?? leadDraft;
   const leadGoal = normalizeGoal(lead?.desiredGoal);
   const propertyGoal = property?.goal ?? null;
@@ -232,6 +259,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
   const propertyReady = Boolean(property && (property.id || (property.propertyType && property.goal && property.city && property.address)));
   const ownerLinkedToProperty = Boolean(owner?.id && property?.ownerId && owner.id === property.ownerId) || Boolean(property?.ownerId && property?.id);
   const documentsReady = documents?.status === "ready";
+  const commissionReady = commission?.status === "ready" || commission?.status === "paid";
   const seasonalRulesReady = false;
   const mission = asString(operationalMissionContext?.mission) as ImobCaseMission | null
     ?? inferMission({ message: params.message, flow, propertyGoal, leadGoal })
@@ -267,6 +295,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
       } : null,
       documents,
       contract,
+      commission,
     },
     links: {
       ownerProperty: {
@@ -290,11 +319,30 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
       propertyReady,
       ownerLinkedToProperty,
       documentsReady,
+      commissionReady,
     }),
   };
 
+  const operationalReady = (
+    mission === "capture_seasonal_property"
+    || mission === "capture_rental_property"
+    || mission === "capture_sale_property"
+  )
+    ? ownerReady && propertyReady && ownerLinkedToProperty && documentsReady && (mission !== "capture_seasonal_property" || seasonalRulesReady)
+    : mission === "prepare_contract"
+      ? contract?.status === "ready_for_signature"
+      : mission === "settle_commission"
+        ? commission?.status === "paid"
+        : false;
+
   const compatibility = resolveCanonicalCaseStateFromLegacy({
-    context: baseContext,
+    context: {
+      ...baseContext,
+      readiness: {
+        ...baseContext.readiness,
+        operationalReady,
+      },
+    },
     operational: {
       flow,
       pendingFields,
@@ -305,6 +353,10 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
   const enrichedContext = compatibility.ok
     ? {
         ...baseContext,
+        readiness: {
+          ...baseContext.readiness,
+          operationalReady,
+        },
         canonicalCaseState: compatibility.state,
         legacyCompatibility: {
           migratedFromLegacy: compatibility.migrated,

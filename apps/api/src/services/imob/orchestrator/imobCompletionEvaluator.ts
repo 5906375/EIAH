@@ -31,7 +31,9 @@ function hasUsefulEntityContext(context: ImobCaseContextV1) {
     context.entities.owner?.id
     || context.entities.property?.id
     || context.entities.lead?.id
-    || context.entities.documents?.id,
+    || context.entities.documents?.id
+    || context.entities.contract?.id
+    || context.entities.commission?.id
   );
 }
 
@@ -60,6 +62,11 @@ export function resolveImobMissionStatus(params: ResolveMissionStatusParams): Mi
       return params.hasNextAction || params.pendingFields.length > 0 ? "in_progress" : "draft";
     case "prepare_contract":
       if (params.pendingFields.length === 0 && params.currentStep === "ready_for_signature") return "ready_for_transition";
+      return params.hasNextAction || params.pendingFields.length > 0 ? "in_progress" : "draft";
+    case "settle_commission":
+      if (params.pendingFields.length === 0 && (params.currentStep === "settlement_ready" || params.currentStep === "reconciled")) {
+        return "ready_for_transition";
+      }
       return params.hasNextAction || params.pendingFields.length > 0 ? "in_progress" : "draft";
     case "capture_seasonal_property":
     case "capture_rental_property":

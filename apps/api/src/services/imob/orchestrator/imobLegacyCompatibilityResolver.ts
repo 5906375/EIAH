@@ -102,7 +102,10 @@ function resolveCurrentStep(params: {
       if (params.context.entities.contract?.status === "needs_document_rework") return "needs_document_rework";
       return "drafting";
     case "settle_commission":
-      return "calculating_basis";
+      if (params.pendingFields.length > 0) return "calculating_basis";
+      if (params.context.entities.commission?.status === "paid") return "reconciled";
+      if (params.context.entities.commission?.status === "ready") return "settlement_ready";
+      return "awaiting_approval";
     case "commercial_activation":
       return "drafting_campaign";
   }
@@ -155,11 +158,19 @@ export function resolveCanonicalCaseStateFromLegacy(params: {
         leadId: params.context.entities.lead?.id ?? undefined,
         documentPackageId: params.context.readiness.documentsReady ? (params.context.entities.documents?.id ?? undefined) : undefined,
         contractId: params.context.entities.contract?.id ?? undefined,
+        commissionId: (params.context.entities.commission?.status === "ready" || params.context.entities.commission?.status === "paid")
+          ? (params.context.entities.commission?.id ?? undefined)
+          : undefined,
       },
     readiness: {
       owner: params.context.readiness.ownerReady ? "ready" : "incomplete",
       property: params.context.readiness.propertyReady ? "ready" : "incomplete",
       documents: params.context.readiness.documentsReady ? "ready" : "incomplete",
+      commission: params.context.entities.commission?.status === "ready" || params.context.entities.commission?.status === "paid"
+        ? "ready"
+        : params.context.entities.commission
+          ? "blocked"
+          : undefined,
       proof: "not_applicable",
     },
     blockers: params.context.blockers.map((item) => ({
