@@ -1,5 +1,9 @@
 import type { ImobCrmTurnResolution } from "./imobCrmAgentContract";
 import type { ThreadStateLike } from "./imobCrmOperationalResolverShared";
+import {
+  buildCanonicalLeadPendingFields,
+  normalizeLeadQualifyOperationalState,
+} from "./imobLeadQualifyRuntime";
 
 type ProposalDraft = {
   buyerName?: unknown;
@@ -83,22 +87,6 @@ function inferExplicitTargetFlow(message: string): "proposal.create" | "visit.sc
     return "lead.qualify";
   }
   return null;
-}
-
-function buildLeadPendingFields(draft: {
-  leadName?: string | null;
-  leadPhone?: string | null;
-  desiredGoal?: "locacao" | "venda" | null;
-  desiredCity?: string | null;
-  budgetMax?: number | null;
-}) {
-  const pending: string[] = [];
-  if (!draft.leadName) pending.push("leadName");
-  if (!draft.leadPhone) pending.push("leadPhone");
-  if (!draft.desiredGoal) pending.push("desiredGoal");
-  if (!draft.desiredCity) pending.push("desiredCity");
-  if (!draft.budgetMax || !Number.isFinite(draft.budgetMax)) pending.push("budgetMax");
-  return pending;
 }
 
 export async function hydrateThreadStateWithPersistedLead(params: {
@@ -245,15 +233,14 @@ export async function hydrateThreadStateWithPersistedLead(params: {
       desiredCity: params.helpers.asString(leadDraft.desiredCity) ?? params.helpers.asString(persistedLead.targetCity),
       budgetMax: budgetFromLeadDraft ?? budgetFromPersistedLead,
     } as const;
-    const pendingFields = buildLeadPendingFields(hydratedLeadDraft);
-
     nextStateObject.operational = {
       ...nextOperational,
       flow: "lead.qualify",
-      status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
-      pendingFields,
       leadDraft: hydratedLeadDraft,
     };
+    nextStateObject.operational = normalizeLeadQualifyOperationalState(nextStateObject.operational as Record<string, unknown>, {
+      propertyId: scopedCasePropertyId,
+    });
     return nextStateObject;
   }
 
@@ -328,7 +315,7 @@ function buildResolvedPendingSuggestion(resolved: ImobCrmTurnResolution, helpers
     const leadDraft = helpers.asObject(operational?.leadDraft);
     return helpers.buildLeadPendingSuggestion({
       name: helpers.asString(leadDraft?.leadName) ?? "lead",
-      pendingItems: pendingFieldLabels,
+      pendingItems: pendingFieldLabels.length > 0 ? pendingFieldLabels : buildCanonicalLeadPendingFields(leadDraft ?? {}),
     });
   }
 

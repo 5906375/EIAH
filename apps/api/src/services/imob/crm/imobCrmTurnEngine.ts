@@ -39,6 +39,14 @@ import {
   type ImobCrmWorkflowState,
   type ImobCrmWorkflowTransition,
 } from "./imobCrmWorkflowMachine";
+import {
+  buildLeadReasonCode,
+  extractLeadPropertyId,
+  mapLeadNextActionToInputHint,
+  mapLeadNextActionToLabel,
+  mapLeadNextActionToNextStep,
+  normalizeLeadQualifyOperationalState,
+} from "./imobLeadQualifyRuntime";
 import type {
   ImobMarketScanContext,
   ImobMarketScanResultSnapshot,
@@ -85,6 +93,74 @@ function asStringList(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
     : [];
+}
+
+function normalizeLeadQualifyResolution(data: Record<string, unknown>) {
+  const conversationState = asObject(data.conversationState) ?? {};
+  const operational = asObject(conversationState.operational);
+  if (!operational || asString(operational.flow) !== "lead.qualify") return data;
+
+  const presentation = asObject(data.presentation) ?? {};
+  const caseContext = asObject(data.caseContext) ?? {};
+  const propertyId = asString(asObject(caseContext.property)?.id) ?? extractLeadPropertyId(operational);
+  const normalizedOperational = normalizeLeadQualifyOperationalState(operational, {
+    propertyId,
+    blocked: data.mode === "blocked",
+  }) as Record<string, unknown>;
+  const nextAction = asString(normalizedOperational.nextAction);
+  const leadStatus = asString(normalizedOperational.leadStatus);
+  const nextStep = nextAction ? mapLeadNextActionToNextStep(nextAction as any) : null;
+  const reasonCode = nextAction
+    ? buildLeadReasonCode({
+        leadStatus: (leadStatus as any) ?? "draft",
+        nextAction: nextAction as any,
+        pendingFields: asStringList(normalizedOperational.pendingFields),
+      })
+    : null;
+  const inputHint = nextAction ? mapLeadNextActionToInputHint(nextAction as any) : null;
+  const label = nextAction ? mapLeadNextActionToLabel(nextAction as any) : null;
+  const canonical = asObject(caseContext.canonical);
+  const recommendedActions = Array.isArray(canonical?.recommendedActions)
+    ? canonical.recommendedActions.filter((item) => asString(asObject(item)?.id) !== "qualify_lead")
+    : [];
+  if (inputHint && label) {
+    recommendedActions.unshift({
+      id: `lead_next_action_${nextAction}`,
+      label,
+      actionType: nextAction === "advance_commercial_step" ? "operational" : "consultive",
+      inputHint,
+      ...(reasonCode ? { reasonCode } : {}),
+    });
+  }
+
+  return {
+    ...data,
+    conversationState: {
+      ...conversationState,
+      operational: normalizedOperational,
+    },
+    caseContext: Object.keys(caseContext).length === 0 ? data.caseContext : {
+      ...caseContext,
+      nextStep: nextStep ?? asString(caseContext.nextStep),
+      canonical: {
+        ...canonical,
+        recommendedActions: recommendedActions.slice(0, 3),
+        reasonCodes: Array.from(new Set([
+          ...asStringList(canonical?.reasonCodes),
+          ...(reasonCode ? [reasonCode] : []),
+        ])),
+      },
+    },
+    presentation: {
+      ...presentation,
+      nextStep: nextStep ?? asString(presentation.nextStep) ?? undefined,
+      suggestedNextAction: inputHint ?? asString(presentation.suggestedNextAction) ?? undefined,
+      metadata: {
+        ...(asObject(presentation.metadata) ?? {}),
+        ...(reasonCode ? { reasonCode } : {}),
+      },
+    },
+  };
 }
 
 function isMarketScanSelectionResolution(data: Record<string, unknown>) {
@@ -1066,6 +1142,10 @@ function buildImobPresentationQuickReplies(data: Record<string, unknown>) {
   if (hasForm && ["owner.create", "property.create", "lead.qualify"].includes(operationalFlow)) {
     return [];
   }
+  const suggestedNextAction = asString(presentation.suggestedNextAction);
+  if (operationalFlow === "lead.qualify" && suggestedNextAction) {
+    return [suggestedNextAction];
+  }
   if (Array.isArray(presentation.blocks) && presentation.blocks.length > 0) {
     return [];
   }
@@ -1083,8 +1163,6 @@ function buildImobPresentationQuickReplies(data: Record<string, unknown>) {
   const recommendedActions = Array.isArray(caseContext?.canonical?.recommendedActions)
     ? caseContext?.canonical?.recommendedActions
     : [];
-  const suggestedNextAction = asString(presentation.suggestedNextAction);
-
   const candidates = [
     ...blocks.flatMap((block) => {
       const ctas = Array.isArray(block.ctas) ? (block.ctas as Array<Record<string, unknown>>) : [];
@@ -1419,7 +1497,9 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
           isReadOnlyPilotQuery: readOnlyPilotQuery,
         });
     if (workflowGuard) {
-      const data = applyResponsibleLabelToResolvedTurn(workflowGuard, params.workspaceResponsibleLabel);
+      const data = normalizeLeadQualifyResolution(
+        applyResponsibleLabelToResolvedTurn(workflowGuard, params.workspaceResponsibleLabel) as Record<string, unknown>,
+      );
       return {
         data: params.helpers.applyCanonicalJourneyToResolvedData(data, null),
         caseContext: null,
@@ -1436,9 +1516,11 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
       threadState: hydratedThreadState,
     });
     if (updateData) {
-      const data = applyResponsibleLabelToResolvedTurn(
-        applyDedupeSelectionToConversationState(hydratedThreadState, rewrittenMessage, updateData as Record<string, unknown>) as any,
-        params.workspaceResponsibleLabel,
+      const data = normalizeLeadQualifyResolution(
+        applyResponsibleLabelToResolvedTurn(
+          applyDedupeSelectionToConversationState(hydratedThreadState, rewrittenMessage, updateData as Record<string, unknown>) as any,
+          params.workspaceResponsibleLabel,
+        ) as Record<string, unknown>,
       );
       return {
         data: params.helpers.applyCanonicalJourneyToResolvedData(data, (data.caseContext as ImobCrmCaseContext | null | undefined) ?? null),
@@ -1460,7 +1542,9 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
         threadState: hydratedThreadState,
       });
       if (consultData) {
-        const data = applyResponsibleLabelToResolvedTurn(consultData, params.workspaceResponsibleLabel);
+        const data = normalizeLeadQualifyResolution(
+          applyResponsibleLabelToResolvedTurn(consultData, params.workspaceResponsibleLabel) as Record<string, unknown>,
+        );
         return {
           data: params.helpers.applyCanonicalJourneyToResolvedData(data, (data.caseContext as ImobCrmCaseContext | null | undefined) ?? null),
           caseContext: data.caseContext ?? null,
@@ -1529,7 +1613,9 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
           resolved: params.helpers.injectResolvedPendingSuggestion(resolvedTurn),
         }) as Record<string, unknown>,
       );
-      const data = applyResponsibleLabelToResolvedTurn(registrationAwareTurn, params.workspaceResponsibleLabel);
+      const data = normalizeLeadQualifyResolution(
+        applyResponsibleLabelToResolvedTurn(registrationAwareTurn, params.workspaceResponsibleLabel) as Record<string, unknown>,
+      );
 
       const caseContext = await params.helpers.upsertImobCaseFromResolvedTurn({
         prisma: params.prisma,
@@ -1563,7 +1649,9 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
         threadState: hydratedThreadState,
       });
       if (consultData) {
-        const data = applyResponsibleLabelToResolvedTurn(consultData, params.workspaceResponsibleLabel);
+        const data = normalizeLeadQualifyResolution(
+          applyResponsibleLabelToResolvedTurn(consultData, params.workspaceResponsibleLabel) as Record<string, unknown>,
+        );
         return {
           data: params.helpers.applyCanonicalJourneyToResolvedData(data, (data.caseContext as ImobCrmCaseContext | null | undefined) ?? null),
           caseContext: data.caseContext ?? null,
@@ -1631,7 +1719,9 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
         resolved: params.helpers.injectResolvedPendingSuggestion(resolvedTurn),
       }) as Record<string, unknown>,
     );
-    const data = applyResponsibleLabelToResolvedTurn(registrationAwareTurn, params.workspaceResponsibleLabel);
+    const data = normalizeLeadQualifyResolution(
+      applyResponsibleLabelToResolvedTurn(registrationAwareTurn, params.workspaceResponsibleLabel) as Record<string, unknown>,
+    );
 
     const caseContext = await params.helpers.upsertImobCaseFromResolvedTurn({
       prisma: params.prisma,

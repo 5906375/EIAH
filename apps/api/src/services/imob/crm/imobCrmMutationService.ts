@@ -48,6 +48,23 @@ function asStringList(value: unknown): string[] {
   return value.map((item) => (typeof item === "string" ? item.trim() : "")).filter(Boolean);
 }
 
+function resolveLeadEventType(params: {
+  flow: string | null;
+  outcome: string | null;
+  leadStatus: string | null;
+  nextAction: string | null;
+  pendingFields: string[];
+}) {
+  if (params.flow !== "lead.qualify") return null;
+  if (params.leadStatus === "qualified") return "lead_qualified";
+  if (params.nextAction) return "lead_next_action_selected";
+  if (params.pendingFields.length > 0) {
+    return params.outcome === "created" ? "lead_draft_created" : "lead_missing_fields_detected";
+  }
+  if (params.outcome === "updated") return "lead_updated";
+  return "lead_updated";
+}
+
 function mapOperationalCaseStatus(operationalStatus: string) {
   if (operationalStatus === "ready_for_review") return "ready_for_review";
   return "pending_data";
@@ -826,6 +843,14 @@ export class ImobCrmMutationService {
       }, "lookup_only") ?? persistedLeadId;
     }
 
+    const leadEventType = resolveLeadEventType({
+      flow: operational.flow,
+      outcome: asString(operational.outcome),
+      leadStatus: asString(operational.leadStatus),
+      nextAction: asString(operational.nextAction),
+      pendingFields: operational.pendingFields,
+    });
+
     const caseInput = {
       threadId: params.threadId ?? null,
       flow: operational.flow,
@@ -845,16 +870,22 @@ export class ImobCrmMutationService {
         mode: params.resolved?.mode,
         suggestedNextAction: asString(params.resolved?.presentation?.suggestedNextAction),
         dedupeKey: asString(params.resolved?.presentation?.dedupeKey),
+        leadStatus: asString(operational.leadStatus),
+        nextAction: asString(operational.nextAction),
+        reasonCode: asString(params.resolved?.presentation?.metadata?.reasonCode),
       },
-      eventType: scopedCase ? "case.turn_resolved" : "case.created_from_turn",
+      eventType: leadEventType ?? (scopedCase ? "case.turn_resolved" : "case.created_from_turn"),
       eventEvidenceRef: asString(params.resolved?.presentation?.dedupeKey),
       eventSummary: asString(params.resolved?.presentation?.text),
       eventPayload: {
         resolvedAt: nowIso,
         flow: operational.flow,
         operationalStatus: operational.status,
+        leadStatus: asString(operational.leadStatus),
+        nextAction: asString(operational.nextAction),
         pendingFields: operational.pendingFields,
         pendingFieldLabels: pendingItems,
+        reasonCode: asString(params.resolved?.presentation?.metadata?.reasonCode),
         ownerDraft: ownerDraft ?? null,
         propertyDraft: propertyDraft ?? null,
         marketScanSelection: asObject(operational.marketScanSelection) ?? null,

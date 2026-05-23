@@ -1324,6 +1324,62 @@ test("IMOB_CRM turn engine derives quick replies from the final presentation pay
   ]);
 });
 
+test("IMOB_CRM turn engine resolves a single lead nextAction and keeps payload coherent", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "consultar caso",
+      caseId: "case-1",
+      threadState: {
+        mode: "consult",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "lead.qualify",
+          status: "ready_for_review",
+          pendingFields: [],
+          leadDraft: {
+            leadName: "Lead 01",
+            leadPhone: "11 99999-9999",
+            desiredGoal: "locacao",
+            desiredCity: "Itapema",
+            budgetMax: 10000,
+          },
+        },
+      },
+    },
+  });
+  params.helpers.resolveImobOperationalConsult = async () => ({
+    mode: "consult",
+    action: "crm.case.lookup",
+    threadLabel: "Caso",
+    conversationState: params.body.threadState,
+    caseContext: {
+      caseId: "case-1",
+      flow: "lead.qualify",
+      stage: "ready_for_review",
+      status: "active",
+      property: null,
+      canonical: {
+        recommendedActions: [
+          { id: "qualify_lead", label: "Qualificar lead", actionType: "operational", inputHint: "qualificar lead deste caso" },
+        ],
+      },
+    },
+    presentation: {
+      text: "Caso pronto para continuidade.",
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal((resolved as any).conversationState?.operational?.leadStatus, "qualified");
+  assert.equal((resolved as any).conversationState?.operational?.nextAction, "link_lead_to_property");
+  assert.equal((resolved as any).presentation?.nextStep, "Vincular o lead a um imóvel antes de avançar a etapa comercial.");
+  assert.equal((resolved as any).presentation?.suggestedNextAction, "vincular o lead a um imóvel");
+  assert.equal((resolved as any).caseContext?.canonical?.recommendedActions?.[0]?.inputHint, "vincular o lead a um imóvel");
+  assert.deepEqual((resolved as any).presentation?.quickReplies, ["vincular o lead a um imóvel"]);
+});
+
 test("IMOB_CRM turn engine stamps canonical outcome and clears legacy property success card", async () => {
   const params = createEngineParams({
     body: {

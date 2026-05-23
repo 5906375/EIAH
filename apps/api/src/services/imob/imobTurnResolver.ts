@@ -42,6 +42,7 @@ import {
 } from "./imobConversationState";
 import { IMOB_CRM_PROPERTY_GOAL_OPTIONS, normalizeImobCrmPropertyGoal } from "./crm/imobCrmPropertyGoals";
 import { IMOB_CRM_PROPERTY_TYPE_OPTIONS, normalizeImobCrmPropertyType } from "./crm/imobCrmPropertyTypes";
+import { mapLeadNextActionToNextStep } from "./crm/imobLeadQualifyRuntime";
 import { judgeMarketScanPolicy } from "./marketScan/marketScanPolicyJudge";
 
 const IMOB_DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1rwqbWQmL2eiXYBY5UaPReubZ2sbQsBu3";
@@ -1715,10 +1716,14 @@ function buildOperationalPresentationMeta(
             ? pendingFieldLabels.length > 0
               ? "Completar dados da visita antes da confirmação."
               : "Confirmar agenda com cliente e imóvel."
-            : flow === "lead.qualify"
+          : flow === "lead.qualify"
               ? pendingFieldLabels.length > 0
-                ? getLeadPersonaCopy(operationalState.leadDraft).nextStep
-                : "Escolher a próxima ação: cadastrar imóvel, cadastrar proprietário, revisar documentos ou consultar caso."
+                ? (operationalState.nextAction
+                    ? mapLeadNextActionToNextStep(operationalState.nextAction)
+                    : getLeadPersonaCopy(operationalState.leadDraft).nextStep)
+                : (operationalState.nextAction
+                    ? mapLeadNextActionToNextStep(operationalState.nextAction)
+                    : "Escolher a próxima ação: cadastrar imóvel, cadastrar proprietário, revisar documentos ou consultar caso.")
               : flow === "owner.create"
                 ? pendingFieldLabels.length > 0
                   ? getOwnerPersonaCopy(operationalState.ownerDraft).nextStep

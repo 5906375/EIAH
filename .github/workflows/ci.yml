@@ -253,6 +253,38 @@ jobs:
       - name: Run chat engine regression suite
         run: pnpm test:chat-engine
 
+  imob_lead_continuity_scoped:
+    name: ImobLeadContinuityScoped
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Run scoped IMOB lead continuity suite
+        run: pnpm test:imob-lead-continuity
+
+      - name: Run scoped web chat launcher suite
+        run: pnpm test:web-chat-launcher
+
+      - name: Check evidence index after scoped suite
+        run: pnpm check:evidence-index
+
   receipt_canon_compat:
     name: ReceiptCanonCompat
     runs-on: ubuntu-latest

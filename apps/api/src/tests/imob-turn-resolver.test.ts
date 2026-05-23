@@ -2061,6 +2061,49 @@ test("IMOB turn resolver keeps active case continuity on explicit continuation r
   assert.notEqual(result.action, "crm.capture.flow_guidance");
 });
 
+test("IMOB turn resolver exposes lead continuity activities and canonical nextAction", () => {
+  const result = resolveImobTurn({
+    message: "consultar caso",
+    threadState: {
+      slots: {
+        query: null,
+        city: null,
+        region: null,
+        neighborhood: null,
+        goal: null,
+        propertyType: null,
+        bedrooms: null,
+        bathrooms: null,
+        budgetMax: null,
+        hasPool: null,
+        petsAllowed: null,
+      },
+      mode: "consult",
+      pendingSlot: "none",
+      resultOffset: 0,
+      operational: {
+        flow: "lead.qualify",
+        status: "ready_for_review",
+        pendingFields: [],
+        leadStatus: "qualified",
+        nextAction: "link_lead_to_property",
+        leadDraft: {
+          leadName: "Lead 01",
+          leadPhone: "11999999999",
+          desiredGoal: "locacao",
+          desiredCity: "Itapema",
+          budgetMax: 10000,
+        },
+      },
+    },
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.presentation.nextStep, "Vincular o lead a um imóvel antes de avançar a etapa comercial.");
+  assert.match(result.presentation.agentActivities?.[1]?.visibleMessage ?? "", /pendências zeradas|preparado/i);
+  assert.match(result.presentation.agentActivities?.[2]?.visibleMessage ?? "", /Próxima ação principal definida/i);
+});
+
 test("IMOB turn resolver keeps capture blocker metadata internal during property collecting", () => {
   const result = resolveImobTurn({
     message: "quero captar um imóvel para locação em Balneário Camboriú",

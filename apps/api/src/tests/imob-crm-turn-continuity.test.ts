@@ -131,6 +131,8 @@ test("IMOB_CRM continuity keeps lead.qualify when there are real pending lead fi
 
   assert.equal((hydrated as any).operational?.flow, "lead.qualify");
   assert.ok(Array.isArray((hydrated as any).operational?.pendingFields));
+  assert.equal((hydrated as any).operational?.leadStatus, "incomplete");
+  assert.equal((hydrated as any).operational?.nextAction, "ask_missing_lead_field");
 });
 
 test("IMOB_CRM continuity opens visit.schedule without linked property but keeps clear visit pending fields", async () => {
@@ -180,6 +182,56 @@ test("IMOB_CRM continuity opens visit.schedule without linked property but keeps
 
   assert.equal((hydrated as any).operational?.flow, "visit.schedule");
   assert.deepEqual((hydrated as any).operational?.pendingFields, ["propertyId", "preferredDate"]);
+});
+
+test("IMOB_CRM continuity marks persisted complete lead as qualified without reopening leadName", async () => {
+  const threadState = {
+    mode: "execute",
+    pendingSlot: "none",
+    resultOffset: 0,
+    slots: {},
+    operational: {
+      flow: "lead.qualify",
+      status: "collecting",
+      pendingFields: ["leadName"],
+      leadDraft: {
+        leadName: null,
+        leadPhone: "11 99999-9999",
+        desiredGoal: "locacao",
+        desiredCity: "Itapema",
+        budgetMax: 10000,
+      },
+    },
+  };
+
+  const hydrated = await hydrateThreadStateWithPersistedLead({
+    prisma: {
+      imobCase: {
+        findFirst: async () => ({ leadId: "lead-1", propertyId: null }),
+      },
+      imobLead: {
+        findFirst: async () => ({
+          name: "Lead 01",
+          email: "lead01@gmail.com",
+          phone: "11 99999-9999",
+          goal: "locacao",
+          targetCity: "Itapema",
+          budgetMaxCents: 1000000,
+        }),
+      },
+    },
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    caseId: "case-1",
+    message: "consultar caso",
+    threadLabel: "Lead",
+    threadState,
+    helpers: createHelpers(),
+  });
+
+  assert.deepEqual((hydrated as any).operational?.pendingFields, []);
+  assert.equal((hydrated as any).operational?.leadStatus, "qualified");
+  assert.equal((hydrated as any).operational?.nextAction, "link_lead_to_property");
 });
 
 test("IMOB_CRM continuity promotes ready case into documents.collect on explicit document intent", async () => {

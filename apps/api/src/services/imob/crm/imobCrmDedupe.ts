@@ -116,11 +116,27 @@ export async function resolveImobCrmRegistrationDedupe(params: {
   workspaceId: string;
   flow: string | null;
   draft: Record<string, unknown>;
+  caseEntityId?: string | null;
 }): Promise<ImobCrmDedupeDecision> {
   const repo = new ImobCrmRepository(params.prisma);
   const scope = { tenantId: params.tenantId, workspaceId: params.workspaceId };
 
   if (params.flow === "lead.qualify") {
+    const caseLeadId = asString(params.caseEntityId);
+    if (caseLeadId) {
+      const existingLead = await repo.getLead(scope, caseLeadId);
+      if (existingLead) {
+        const draft = hydrateLeadDraftFromExisting(params.draft, existingLead);
+        return hydrateDecision({
+          flow: "lead.qualify",
+          entity: match("lead", existingLead.id, existingLead.name, 1),
+          existingLabel: `o lead ${existingLead.name}`,
+          draft,
+          pendingFields: buildLeadPendingFieldsFromDraft(draft),
+        });
+      }
+    }
+
     const existingLead = await repo.findLeadByStrongIdentifiers(scope, {
       phone: asString(params.draft.leadPhone),
       email: asString(params.draft.leadEmail),
