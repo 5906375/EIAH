@@ -107,8 +107,10 @@ export async function resolveImobCaseOperationalConsult(
     return null;
   }
 
+  const activeOperational = helpers.asObject(params.threadState)?.operational;
+  const hasActiveOperationalCase = Boolean(helpers.asString(helpers.asObject(activeOperational)?.flow));
   const scopedCaseId = params.caseId ?? extractCaseIdFromMessage(params.message);
-  if (!scopedCaseId && !context.asksCurrentCase && !context.asksCaseStatus && !context.asksMissing) {
+  if (!scopedCaseId && !context.asksCurrentCase && !context.asksCaseStatus && !context.asksMissing && !hasActiveOperationalCase) {
     return {
       mode: "consult",
       action: "crm.case.lookup",

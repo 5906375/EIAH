@@ -1115,6 +1115,27 @@ test("IMOB_CRM case consult asks which case when no explicit reference is provid
   assert.match(resolved?.presentation?.suggestedNextAction ?? "", /consultar caso <código do caso>/i);
 });
 
+test("IMOB_CRM case consult reuses the active operational case when owner flow is in progress", async () => {
+  const resolved = await resolveImobCrmOperationalConsult({
+    prisma: createMockPrisma() as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "consultar caso",
+    threadState: {
+      ...createThreadState(),
+      operational: {
+        flow: "owner.create",
+        status: "ready_for_review",
+        pendingFields: [],
+      },
+    },
+  });
+
+  assert.equal(resolved?.action, "crm.case.lookup");
+  assert.doesNotMatch(resolved?.presentation?.text ?? "", /qual caso você quer consultar/i);
+  assert.match(resolved?.presentation?.text ?? "", /caso|usei o caso imob mais recente/i);
+});
+
 test("IMOB_CRM case consult opens when explicit case id is provided in the message", async () => {
   const resolved = await resolveImobCrmOperationalConsult({
     prisma: createMockPrisma() as any,
@@ -1262,6 +1283,7 @@ test("IMOB_CRM owner form update persists phone and email and clears resolved pe
 
   assert.equal(resolved?.action, "crm.owner.update");
   assert.match(resolved?.presentation?.text ?? "", /Cadastro existente do proprietário João atualizado com sucesso/i);
+  assert.match(resolved?.presentation?.text ?? "", /este imóvel|etapa documental do caso/i);
   assert.doesNotMatch(resolved?.presentation?.text ?? "", /telefone do proprietário/i);
   assert.doesNotMatch(resolved?.presentation?.text ?? "", /e-mail do proprietário/i);
   assert.deepEqual(resolved?.presentation?.pendingFieldLabels ?? [], []);

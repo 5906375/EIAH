@@ -38,6 +38,9 @@ export async function resolveImobOwnerUpdate(
   helpers: ResolverHelpers,
   context: ImobOperationalUpdateContext,
 ): Promise<OperationalResolution | null> {
+  const currentCaseNextStep = params.caseId
+    ? "Concluir vínculo do proprietário com este imóvel ou seguir para a etapa documental do caso."
+    : "Vincular o proprietário ao próximo imóvel ou etapa documental.";
   if (context.asksEdit && context.ownerCrudId) {
     const owner = await params.prisma.imobOwner.findFirst({
       where: { id: context.ownerCrudId, tenantId: params.tenantId, workspaceId: params.workspaceId, status: { not: "archived" } },
@@ -209,10 +212,10 @@ export async function resolveImobOwnerUpdate(
               : `Cadastro existente do proprietário ${updated.name} atualizado com sucesso.`,
             `Pendências atuais: ${helpers.formatImobPendingList(mapOwnerPendingLabels(currentPending))}.`,
             currentPending.length > 0 ? helpers.buildOwnerPendingSuggestion({ name: updated.name, pendingItems: currentPending }) : null,
-            currentPending.length > 0 ? "Próximo passo: completar as pendências restantes do proprietário." : "Próximo passo: vincular o proprietário ao próximo imóvel ou etapa documental.",
+            currentPending.length > 0 ? "Próximo passo: completar as pendências restantes do proprietário." : `Próximo passo: ${currentCaseNextStep}`,
           ].join("\n"),
           owner: "Corretor" as const,
-          nextStep: currentPending.length > 0 ? "Completar as pendências restantes do proprietário." : "Vincular o proprietário ao próximo imóvel ou etapa documental.",
+          nextStep: currentPending.length > 0 ? "Completar as pendências restantes do proprietário." : currentCaseNextStep,
           pendingFieldLabels: mapOwnerPendingLabels(currentPending),
           dedupeKey: `crm.owner.update:${updated.id}:document`,
         },

@@ -173,7 +173,7 @@ test("IMOB attachment resolve validates owner document against case data", async
   assert.equal(response.body?.data?.resolved, true);
   assert.match(response.body?.data?.presentation?.text ?? "", /aprovado automaticamente com os dados do caso/i);
   assert.equal(response.body?.data?.presentation?.card?.title, "Validação documental aprovada");
-  assert.match(response.body?.data?.presentation?.text ?? "", /Próximo passo: Vincular o proprietário ao próximo imóvel ou etapa documental\./i);
+  assert.match(response.body?.data?.presentation?.text ?? "", /Próximo passo: Concluir vínculo do proprietário com este imóvel ou seguir para a etapa documental do caso\./i);
   assert.equal(response.body?.data?.presentation?.card?.lines?.[0], "Decisão: aprovado automaticamente.");
   assert.equal(response.body?.data?.presentation?.card?.lines?.[1]?.includes("Nome: Confere"), true);
   assert.equal(response.body?.data?.presentation?.card?.lines?.[2]?.includes("CPF: Confere"), true);
