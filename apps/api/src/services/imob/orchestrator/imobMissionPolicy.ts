@@ -44,6 +44,15 @@ export function buildImobMissionPolicy(mission: ImobMissionId): ImobMissionPolic
         criticalActions: [],
         missionTier: "p1",
       };
+    case "settle_commission":
+      return {
+        mission,
+        requiredEntities: ["commissionId"],
+        requiredProof: ["commission_record"],
+        allowedOperations: ["commission", "proof"],
+        criticalActions: [],
+        missionTier: "p2",
+      };
     case "schedule_and_follow_visit":
       return {
         mission,
@@ -71,7 +80,7 @@ export function buildImobMissionPolicy(mission: ImobMissionId): ImobMissionPolic
         requiredProof: [],
         allowedOperations: ["owner", "property", "case", "proof"],
         criticalActions: [],
-        missionTier: mission === "settle_commission" || mission === "commercial_activation" ? "p2" : "p0",
+        missionTier: mission === "commercial_activation" ? "p2" : "p0",
       };
   }
 }

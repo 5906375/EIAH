@@ -156,6 +156,14 @@ export function resolveImobNextAction(params: ResolveNextActionParams): ImobNext
       });
 
     case "settle_commission":
+      if (params.pendingFields?.length) {
+        return mapOperationAction("commission", params.flow, {
+          id: "complete-commission-data",
+          label: "Completar dados da comissão",
+          reasonCode: "COMMISSION_DATA_REQUIRED",
+        });
+      }
+
       return mapOperationAction("commission", params.flow, {
         id: "settle-commission",
         label: "Revisar comissão",
