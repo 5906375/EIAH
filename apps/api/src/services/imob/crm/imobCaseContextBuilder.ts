@@ -112,6 +112,7 @@ function buildPropertySnapshot(params: {
 }
 
 function buildBlockers(params: {
+  mission: ImobCaseMission;
   caseContext?: ImobCrmCaseContext | null;
   pendingItems: string[];
   ownerReady: boolean;
@@ -123,13 +124,27 @@ function buildBlockers(params: {
   for (const [index, message] of existingBlockers.entries()) {
     blockers.push({ code: `legacy_blocker_${index + 1}`, severity: "blocking", message });
   }
-  if (!params.ownerReady) {
+  const structuralCaptureMission = params.mission === "capture_seasonal_property"
+    || params.mission === "capture_rental_property"
+    || params.mission === "capture_sale_property"
+    || (
+      params.mission === "case_review"
+      && (
+        params.caseContext?.flow === "owner.create"
+        || params.caseContext?.flow === "property.create"
+        || params.caseContext?.flow === "listing.activate"
+        || Boolean(params.caseContext?.owner)
+        || Boolean(params.caseContext?.property)
+      )
+    );
+
+  if (structuralCaptureMission && !params.ownerReady) {
     blockers.push({ code: "owner_missing_or_incomplete", severity: "blocking", message: "Proprietário ainda não está completo." });
   }
-  if (!params.propertyReady) {
+  if (structuralCaptureMission && !params.propertyReady) {
     blockers.push({ code: "property_missing_or_incomplete", severity: "blocking", message: "Imóvel ainda não está completo." });
   }
-  if (params.ownerReady && params.propertyReady && !params.ownerLinkedToProperty) {
+  if (structuralCaptureMission && params.ownerReady && params.propertyReady && !params.ownerLinkedToProperty) {
     blockers.push({ code: "owner_property_not_linked", severity: "blocking", message: "O imóvel ainda não está vinculado ao proprietário." });
   }
   for (const item of params.pendingItems) {
@@ -209,6 +224,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
       operationalReady: ownerReady && propertyReady && ownerLinkedToProperty && documentsReady && (mission !== "capture_seasonal_property" || seasonalRulesReady),
     },
     blockers: buildBlockers({
+      mission,
       caseContext: params.caseContext,
       pendingItems,
       ownerReady,
