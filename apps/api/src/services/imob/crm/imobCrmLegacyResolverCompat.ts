@@ -1364,6 +1364,9 @@ export async function resolveImobCrmOperationalUpdate(params: ResolverParams) {
           status: currentPending.length > 0 ? "pending_data" : "ready_for_review",
         },
       });
+      const currentCaseNextStep = params.caseId
+        ? "Concluir vínculo do proprietário com este imóvel ou seguir para a etapa documental do caso."
+        : "Vincular o proprietário ao próximo imóvel ou etapa documental.";
       return {
         mode: "consult",
         action: "crm.owner.update",
@@ -1376,10 +1379,10 @@ export async function resolveImobCrmOperationalUpdate(params: ResolverParams) {
               : `Cadastro existente do proprietário ${updated.name} atualizado com sucesso.`,
             `Pendências atuais: ${formatImobPendingList(currentPending.map(mapOwnerPendingLabel))}.`,
             currentPending.length > 0 ? buildOwnerPendingSuggestion({ name: updated.name, pendingItems: currentPending }) : null,
-            currentPending.length > 0 ? "Próximo passo: completar as pendências restantes do proprietário." : "Próximo passo: vincular o proprietário ao próximo imóvel ou etapa documental.",
+            currentPending.length > 0 ? "Próximo passo: completar as pendências restantes do proprietário." : `Próximo passo: ${currentCaseNextStep}`,
           ].filter(Boolean).join("\n"),
           owner: "Corretor" as any,
-          nextStep: currentPending.length > 0 ? "Completar as pendências restantes do proprietário." : "Vincular o proprietário ao próximo imóvel ou etapa documental.",
+          nextStep: currentPending.length > 0 ? "Completar as pendências restantes do proprietário." : currentCaseNextStep,
           pendingFieldLabels: currentPending.map(mapOwnerPendingLabel),
           dedupeKey: `crm.owner.update:${updated.id}:document`,
         },
@@ -2225,7 +2228,9 @@ export async function resolveImobCrmOperationalConsult(params: ResolverParams) {
 
   const scopedCaseId = params.caseId ?? extractCaseIdFromMessage(params.message);
   if (!asksLeadCases && (scopedCaseId || (wantsCase && (asksCurrentCase || asksCaseStatus || asksMissing || asksShow)))) {
-    if (!scopedCaseId && !asksCurrentCase && !asksCaseStatus && !asksMissing) {
+    const activeOperational = asObject(params.threadState)?.operational;
+    const hasActiveOperationalCase = Boolean(asString(asObject(activeOperational)?.flow));
+    if (!scopedCaseId && !asksCurrentCase && !asksCaseStatus && !asksMissing && !hasActiveOperationalCase) {
       return {
         mode: "consult",
         action: "crm.case.lookup",

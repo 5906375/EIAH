@@ -879,7 +879,7 @@ function buildCaptureSwitchActions(caseContext?: ImobCrmCaseContext | null) {
       label: "Consultar caso",
       kind: "neutral",
       action: "send_suggested_message",
-      nextMessage: "consultar caso",
+      nextMessage: caseContext?.caseId ? `consultar caso ${caseContext.caseId}` : "consultar caso",
     },
   );
 
@@ -940,6 +940,12 @@ function buildPropertyPostSuccessActions(params: {
   );
 
   for (const action of fallbackActions) {
+    if (
+      String((action as any).label ?? "") === "Consultar caso"
+      && merged.some((item) => String((item as any).label ?? "") === "Consultar caso")
+    ) {
+      continue;
+    }
     const key = `${String((action as any).label ?? "")}::${String((action as any).nextMessage ?? "")}`;
     if (seen.has(key)) continue;
     seen.add(key);

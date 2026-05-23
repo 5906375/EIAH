@@ -1017,6 +1017,7 @@ test("IMOB_CRM turn engine offers owner registration instead of stale owner link
   assert.ok(!actions.some((item: any) => item.label === "Qualificar lead"));
   assert.ok(actions.some((item: any) => item.label === "Cadastrar proprietário"));
   assert.ok(!actions.some((item: any) => item.label === "Vincular proprietário"));
+  assert.equal(actions.filter((item: any) => item.label === "Consultar caso").length, 1);
 });
 
 test("IMOB_CRM turn engine keeps property-success actions fully case-aware when case already has lead and owner", async () => {
