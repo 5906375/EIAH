@@ -4,6 +4,8 @@ import {
   buildLeadReasonCode,
   mapLeadNextActionToLabel,
 } from "../crm/imobLeadQualifyRuntime";
+import { getImobInternalAgent, type ImobInternalAgentId } from "./imobInternalAgents";
+import { resolveImobOperationRoute } from "../orchestrator/imobOperationRouter";
 
 function formatCityList(cities: string[]) {
   if (cities.length === 0) return "as cidades selecionadas";
@@ -26,28 +28,54 @@ function buildOwnerMessage(flow: NonNullable<ImobResolveTurnResponse["conversati
   }
 }
 
+function createInternalAgentActivity(params: {
+  agentId: ImobInternalAgentId;
+  status: ImobAgentActivityEvent["status"];
+  visibleMessage: string;
+  reasonCode?: string;
+  evidenceId?: string;
+}) {
+  const definition = getImobInternalAgent(params.agentId);
+  if (!definition) {
+    throw new Error(`Unknown IMOB internal agent: ${params.agentId}`);
+  }
+
+  return createImobAgentActivityEvent({
+    agentId: definition.id,
+    agentLabel: definition.label,
+    role: definition.role,
+    mode: definition.mode,
+    status: params.status,
+    visibleMessage: params.visibleMessage,
+    reasonCode: params.reasonCode,
+    evidenceId: params.evidenceId,
+  });
+}
+
+function createOwnerActivity(
+  flow: NonNullable<ImobResolveTurnResponse["conversationState"]["operational"]>["flow"],
+  status: ImobAgentActivityEvent["status"] = "completed",
+) {
+  return createInternalAgentActivity({
+    agentId: "IMOB_Orchestrator",
+    status,
+    visibleMessage: buildOwnerMessage(flow),
+  });
+}
+
 function buildMarketScanActivities(
   response: ImobResolveTurnResponse,
   operational: NonNullable<ImobResolveTurnResponse["conversationState"]["operational"]>,
 ): ImobAgentActivityEvent[] {
+  const route = resolveImobOperationRoute("market", operational.flow);
   const result = response.presentation.marketScanResult ?? operational.marketScanSnapshot ?? null;
   const run = operational.marketScanRun ?? null;
   const cities = operational.marketScanContext?.cities ?? operational.marketScanContext?.cityCandidates ?? [];
   const citySummary = formatCityList(cities);
   const activities: ImobAgentActivityEvent[] = [
-    createImobAgentActivityEvent({
-      agentId: "IMOB_Orchestrator",
-      agentLabel: "IMOB",
-      role: "owner",
-      mode: "propose_action",
-      status: "completed",
-      visibleMessage: buildOwnerMessage(operational.flow),
-    }),
-    createImobAgentActivityEvent({
-      agentId: "IMOB_MarketScanAgent",
-      agentLabel: "Market Scan",
-      role: "supporting",
-      mode: "intelligence",
+    createOwnerActivity(operational.flow),
+    createInternalAgentActivity({
+      agentId: route.dispatchedAgentId,
       status: result ? "completed" : "analyzing",
       visibleMessage: `Preparando inteligência de mercado em ${citySummary}.`,
     }),
@@ -55,11 +83,8 @@ function buildMarketScanActivities(
 
   if (result) {
     activities.push(
-      createImobAgentActivityEvent({
+      createInternalAgentActivity({
         agentId: "Guardian_EvidenceAgent",
-        agentLabel: "Guardian",
-        role: "guardian",
-        mode: "audit",
         status: "completed",
         visibleMessage: "Registrando snapshot da análise.",
         evidenceId: run?.evidenceBundleId ?? result.scanId,
@@ -75,21 +100,12 @@ function buildDedupeActivities(
   response: ImobResolveTurnResponse,
   operational: NonNullable<ImobResolveTurnResponse["conversationState"]["operational"]>,
 ): ImobAgentActivityEvent[] {
+  const route = resolveImobOperationRoute("owner", operational.flow);
   const blocked = response.mode === "blocked";
   return [
-    createImobAgentActivityEvent({
-      agentId: "IMOB_Orchestrator",
-      agentLabel: "IMOB",
-      role: "owner",
-      mode: "propose_action",
-      status: blocked ? "blocked" : "completed",
-      visibleMessage: buildOwnerMessage(operational.flow),
-    }),
-    createImobAgentActivityEvent({
-      agentId: "IMOB_DedupeAgent",
-      agentLabel: "Dedupe",
-      role: "supporting",
-      mode: "execute",
+    createOwnerActivity(operational.flow, blocked ? "blocked" : "completed"),
+    createInternalAgentActivity({
+      agentId: route.dispatchedAgentId,
       status: blocked ? "blocked" : "completed",
       visibleMessage: blocked
         ? "Bloqueando a atualização até confirmar o cadastro correto."
@@ -102,6 +118,7 @@ function buildLeadActivities(
   response: ImobResolveTurnResponse,
   operational: NonNullable<ImobResolveTurnResponse["conversationState"]["operational"]>,
 ): ImobAgentActivityEvent[] {
+  const route = resolveImobOperationRoute("lead", operational.flow);
   const pendingFields = operational.pendingFields ?? [];
   const leadStatus = operational.leadStatus ?? (pendingFields.length === 0 ? "qualified" : "incomplete");
   const nextAction = operational.nextAction ?? (pendingFields.length === 0 ? "advance_commercial_step" : "ask_missing_lead_field");
@@ -111,22 +128,12 @@ function buildLeadActivities(
     pendingFields,
   });
   const activities: ImobAgentActivityEvent[] = [
-    createImobAgentActivityEvent({
-      agentId: "IMOB_Orchestrator",
-      agentLabel: "IMOB",
-      role: "owner",
-      mode: "propose_action",
-      status: "completed",
-      visibleMessage: buildOwnerMessage(operational.flow),
-    }),
+    createOwnerActivity(operational.flow),
   ];
 
   activities.push(
-    createImobAgentActivityEvent({
-      agentId: leadStatus === "qualified" ? "IMOB_LeadQualified" : operational.outcome === "created" ? "IMOB_LeadDraftCreated" : "IMOB_LeadUpdated",
-      agentLabel: "Lead",
-      role: "supporting",
-      mode: leadStatus === "qualified" ? "execute" : "draft",
+    createInternalAgentActivity({
+      agentId: route.dispatchedAgentId,
       status: leadStatus === "blocked" ? "blocked" : "completed",
       visibleMessage: leadStatus === "qualified"
         ? "Lead qualificado com pendências zeradas."
@@ -148,11 +155,8 @@ function buildLeadActivities(
 
   if (response.presentation.preparedFollowUp) {
     activities.push(
-      createImobAgentActivityEvent({
+      createInternalAgentActivity({
         agentId: "IMOB_FollowUpAgent",
-        agentLabel: "Marketing",
-        role: "supporting",
-        mode: "draft",
         status: "completed",
         visibleMessage: "Preparando sugestão de abordagem comercial.",
       }),
@@ -176,26 +180,20 @@ export function buildImobAgentActivities(
     case "lead.qualify":
       return buildLeadActivities(response, operational);
     case "property.create":
-      return [
-        createImobAgentActivityEvent({
-          agentId: "IMOB_PropertyAgent",
-          agentLabel: "IMOB",
-          role: "owner",
-          mode: "propose_action",
-          status: "completed",
-          visibleMessage: buildOwnerMessage(operational.flow),
-        }),
-      ];
+      return (() => {
+        const route = resolveImobOperationRoute("property", operational.flow);
+        return [
+          createOwnerActivity(operational.flow),
+          createInternalAgentActivity({
+            agentId: route.dispatchedAgentId,
+            status: "completed",
+            visibleMessage: "Preparando o cadastro e as pendências do imóvel.",
+          }),
+        ];
+      })();
     default:
       return [
-        createImobAgentActivityEvent({
-          agentId: "IMOB_Orchestrator",
-          agentLabel: "IMOB",
-          role: "owner",
-          mode: "propose_action",
-          status: "completed",
-          visibleMessage: buildOwnerMessage(operational.flow),
-        }),
+        createOwnerActivity(operational.flow),
       ];
   }
 }

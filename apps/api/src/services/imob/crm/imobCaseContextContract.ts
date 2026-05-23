@@ -1,3 +1,5 @@
+import type { ImobCaseState } from "../orchestrator/imobMissionTypes";
+
 export type ImobCaseMission =
   | "capture_seasonal_property"
   | "capture_rental_property"
@@ -109,6 +111,12 @@ export type ImobCaseContextV1 = {
     operationalReady: boolean;
   };
   blockers: ImobCaseBlockerV1[];
+  canonicalCaseState?: ImobCaseState | null;
+  legacyCompatibility?: {
+    migratedFromLegacy: boolean;
+    sourceFlow?: string | null;
+    sourceMission?: ImobCaseMission | null;
+  };
 };
 
 export type ImobCasePlanActionV1 = {

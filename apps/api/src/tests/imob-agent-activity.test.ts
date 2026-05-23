@@ -107,3 +107,53 @@ test("buildImobAgentActivities emits IMOB, Market Scan and Guardian for resolved
   assert.equal(activities[0]?.displayPrefix, "Agente");
   assert.equal(activities[2]?.evidenceId, "scan-1");
 });
+
+test("buildImobAgentActivities preserves IMOB ownership and dispatches PropertyAgent for property.create", () => {
+  const activities = buildImobAgentActivities({
+    mode: "execute",
+    action: "realestate.property_create",
+    threadLabel: "Captação",
+    conversationState: {
+      slots: {
+        goal: null,
+        city: null,
+        region: null,
+        neighborhood: null,
+        budgetMax: null,
+        bedrooms: null,
+        bathrooms: null,
+        propertyType: null,
+      },
+      mode: "execute",
+      pendingSlot: "none",
+      resultOffset: 0,
+      operational: {
+        flow: "property.create",
+        status: "collecting",
+        pendingFields: ["city"],
+        propertyDraft: {
+          propertyId: null,
+          propertyType: null,
+          goal: null,
+          cep: null,
+          city: null,
+          neighborhood: null,
+          bedrooms: null,
+          bathrooms: null,
+          address: null,
+        },
+      },
+    },
+    presentation: {
+      text: "Vamos cadastrar o imóvel.",
+    },
+  } as any);
+
+  assert.deepEqual(
+    activities.map((item) => item.agentId),
+    ["IMOB_Orchestrator", "IMOB_PropertyAgent"],
+  );
+  assert.equal(activities[0]?.role, "owner");
+  assert.equal(activities[1]?.role, "owner");
+  assert.match(activities[1]?.visibleMessage ?? "", /cadastro|imóvel/i);
+});
