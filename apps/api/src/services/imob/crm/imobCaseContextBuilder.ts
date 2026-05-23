@@ -8,6 +8,7 @@ import type {
   ImobPropertySnapshotV1,
 } from "./imobCaseContextContract";
 import { resolveCanonicalCaseStateFromLegacy } from "../orchestrator/imobLegacyCompatibilityResolver";
+import { buildImobCrmCaseProjection } from "../orchestrator/imobCrmCaseProjection";
 import { resolveImobRecoverySnapshot } from "../orchestrator/imobRecoveryResolver";
 
 type BuildImobCaseContextV1Params = {
@@ -237,8 +238,14 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
       }
     : baseContext;
 
-  return {
+  const recoverySnapshot = resolveImobRecoverySnapshot(enrichedContext);
+  const projectionContext = {
     ...enrichedContext,
-    recoverySnapshot: resolveImobRecoverySnapshot(enrichedContext),
+    recoverySnapshot,
+  };
+
+  return {
+    ...projectionContext,
+    crmProjection: buildImobCrmCaseProjection(projectionContext),
   };
 }

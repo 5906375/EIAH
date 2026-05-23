@@ -1,4 +1,13 @@
-import type { ImobCaseState } from "../orchestrator/imobMissionTypes";
+import type { ImobInternalAgentId } from "../agents/imobInternalAgents";
+import type {
+  ImobBlocker,
+  ImobCaseState,
+  ImobMissionId,
+  ImobNextAction,
+  ImobOperation,
+  MissionStatus,
+  ReadinessStatus,
+} from "../orchestrator/imobMissionTypes";
 
 export type ImobCaseMission =
   | "capture_seasonal_property"
@@ -118,6 +127,7 @@ export type ImobCaseContextV1 = {
     sourceMission?: ImobCaseMission | null;
   };
   recoverySnapshot?: ImobCaseRecoverySnapshotV1 | null;
+  crmProjection?: ImobCrmCaseProjectionV1 | null;
 };
 
 export type ImobCasePlanActionV1 = {
@@ -172,6 +182,49 @@ export type ImobCaseRecoverySnapshotV1 = {
     | "RECOVERY_BLOCKED"
     | "RECOVERY_MISSING_ITEMS"
     | "RECOVERY_NEXT_STEP_UNRESOLVED";
+};
+
+export type ImobCrmQueueIdV1 =
+  | "dedupe_queue"
+  | "proof_queue"
+  | "next_action_queue"
+  | "blocker_queue";
+
+export type ImobCrmQueueItemV1 = {
+  queueId: ImobCrmQueueIdV1;
+  caseId: string;
+  reasonCode: string;
+  summary: string;
+};
+
+export type ImobCrmCaseCardV1 = {
+  tenantId: string;
+  workspaceId: string;
+  caseId: string;
+  mission: ImobMissionId;
+  missionStatus: MissionStatus;
+  currentOperation: ImobOperation;
+  ownerAgent: "IMOB_Orchestrator";
+  targetAgent?: ImobInternalAgentId;
+  readiness: {
+    owner?: ReadinessStatus;
+    property?: ReadinessStatus;
+    lead?: ReadinessStatus;
+    visit?: ReadinessStatus;
+    documents?: ReadinessStatus;
+    proof?: ReadinessStatus;
+  };
+  blockers: ImobBlocker[];
+  nextAction: ImobNextAction | null;
+  proofStatus: "not_required" | "missing" | "satisfied";
+  lastActivityAt: string;
+};
+
+export type ImobCrmCaseProjectionV1 = {
+  version: "1.0";
+  caseCard: ImobCrmCaseCardV1;
+  queues: ImobCrmQueueItemV1[];
+  derivedFrom: "canonical_case_state";
 };
 
 export type ImobRecoveryResponseV1 = {
