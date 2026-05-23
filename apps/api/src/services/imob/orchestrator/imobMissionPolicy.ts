@@ -53,6 +53,16 @@ export function buildImobMissionPolicy(mission: ImobMissionId): ImobMissionPolic
         criticalActions: [],
         missionTier: "p2",
       };
+    case "commercial_activation":
+      return {
+        mission,
+        requiredEntities: ["campaignId"],
+        requiredProof: ["campaign_record"],
+        allowedOperations: ["campaign", "proof"],
+        criticalActions: [],
+        humanApprovalRequired: true,
+        missionTier: "p2",
+      };
     case "schedule_and_follow_visit":
       return {
         mission,
@@ -80,7 +90,7 @@ export function buildImobMissionPolicy(mission: ImobMissionId): ImobMissionPolic
         requiredProof: [],
         allowedOperations: ["owner", "property", "case", "proof"],
         criticalActions: [],
-        missionTier: mission === "commercial_activation" ? "p2" : "p0",
+        missionTier: "p0",
       };
   }
 }

@@ -82,3 +82,25 @@ test("next action resolver returns owner-property linking when entities are read
   assert.equal(nextAction.reasonCode, "OWNER_PROPERTY_LINK_REQUIRED");
   assert.equal(nextAction.targetAgent, "IMOB_PropertyAgent");
 });
+
+test("next action resolver routes commercial activation through campaign approval when campaign is waiting for approval", () => {
+  const nextAction = resolveImobNextAction({
+    mission: "commercial_activation",
+    context: buildContext({
+      missionContext: {
+        mission: "commercial_activation",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        campaign: { status: "awaiting_human_approval" },
+      },
+    }),
+    operation: "campaign",
+    flow: "listing.activate",
+    pendingFields: [],
+  });
+
+  assert.equal(nextAction.operation, "campaign");
+  assert.equal(nextAction.reasonCode, "CAMPAIGN_APPROVAL_REQUIRED");
+  assert.equal(nextAction.targetAgent, "IMOB_FollowUpAgent");
+});

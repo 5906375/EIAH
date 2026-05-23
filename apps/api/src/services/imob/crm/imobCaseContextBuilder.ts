@@ -53,9 +53,10 @@ function inferMission(params: {
   if (params.flow === "documents.collect") return "collect_documents";
   if (params.flow === "contract.prepare") return "prepare_contract";
   if (params.flow === "commission.settle") return "settle_commission";
+  if (params.flow === "listing.activate") return "commercial_activation";
   if (goal === "venda") return "capture_sale_property";
   if (goal === "locacao") return "capture_rental_property";
-  if (params.flow === "owner.create" || params.flow === "property.create" || params.flow === "listing.activate") return "capture_rental_property";
+  if (params.flow === "owner.create" || params.flow === "property.create") return "capture_rental_property";
   return null;
 }
 
@@ -181,6 +182,60 @@ function buildCommissionSnapshot(params: {
   };
 }
 
+function buildCampaignSnapshot(params: {
+  campaignDraft?: Record<string, unknown> | null;
+  listingDraft?: Record<string, unknown> | null;
+}): ImobOwnerSnapshotV1 | null {
+  const campaignDraft = params.campaignDraft ?? {};
+  const listingDraft = params.listingDraft ?? {};
+
+  const propertyId = asString(campaignDraft.propertyId) ?? asString(listingDraft.propertyId);
+  const campaignRef = asString(campaignDraft.campaignRef);
+  const objective = asString(campaignDraft.objective);
+  const approvalRequired = typeof campaignDraft.approvalRequired === "boolean" ? campaignDraft.approvalRequired : true;
+  const approvalStatus = asString(campaignDraft.approvalStatus);
+  const policyStatus = asString(campaignDraft.policyStatus);
+  const consentStatus = asString(campaignDraft.consentStatus);
+  const evidenceStatus = asString(campaignDraft.evidenceStatus);
+  const activationStatus = asString(campaignDraft.activationStatus);
+  const publicationChannels = asStringList(campaignDraft.publicationChannels).length > 0
+    ? asStringList(campaignDraft.publicationChannels)
+    : asStringList(listingDraft.publicationChannels);
+
+  if (
+    !propertyId
+    && !campaignRef
+    && !objective
+    && publicationChannels.length === 0
+    && !approvalStatus
+    && !policyStatus
+    && !consentStatus
+    && !evidenceStatus
+    && !activationStatus
+  ) {
+    return null;
+  }
+
+  let status: string = "drafting_campaign";
+  if (activationStatus === "published" || activationStatus === "sent") {
+    status = "published_or_sent";
+  } else if (policyStatus === "pending" || consentStatus === "pending" || evidenceStatus === "pending") {
+    status = "blocked_by_policy";
+  } else if (approvalRequired && approvalStatus !== "approved") {
+    status = "awaiting_human_approval";
+  } else if ((activationStatus === "ready" || publicationChannels.length > 0) && (propertyId || campaignRef || objective)) {
+    status = "ready_to_publish";
+  }
+
+  return {
+    id: status === "ready_to_publish" || status === "published_or_sent"
+      ? (campaignRef ?? `campaign:${propertyId ?? objective ?? "pending"}`)
+      : null,
+    name: objective ?? campaignRef ?? propertyId ?? "Ativação comercial",
+    status,
+  };
+}
+
 function buildBlockers(params: {
   mission: ImobCaseMission;
   caseContext?: ImobCrmCaseContext | null;
@@ -190,6 +245,7 @@ function buildBlockers(params: {
   ownerLinkedToProperty: boolean;
   documentsReady: boolean;
   commissionReady: boolean;
+  campaignStatus?: string | null;
 }): ImobCaseBlockerV1[] {
   const blockers: ImobCaseBlockerV1[] = [];
   const existingBlockers = asStringList(params.caseContext?.blocker ? [params.caseContext.blocker] : params.caseContext?.["blockers"]);
@@ -225,6 +281,15 @@ function buildBlockers(params: {
   if (params.mission === "settle_commission" && !params.commissionReady) {
     blockers.push({ code: "commission_settlement_not_ready", severity: "blocking", message: "A comissão ainda não está pronta para liquidação governada." });
   }
+  if (params.mission === "commercial_activation") {
+    if (!params.campaignStatus || params.campaignStatus === "drafting_campaign") {
+      blockers.push({ code: "campaign_draft_missing_or_incomplete", severity: "blocking", message: "A ativação comercial ainda precisa de objetivo, canal ou contexto mínimo." });
+    } else if (params.campaignStatus === "blocked_by_policy") {
+      blockers.push({ code: "campaign_policy_or_consent_pending", severity: "blocking", message: "A ativação comercial ainda depende de policy, consentimento ou evidência mínima." });
+    } else if (params.campaignStatus === "awaiting_human_approval") {
+      blockers.push({ code: "campaign_approval_pending", severity: "blocking", message: "A ativação comercial ainda depende de aprovação humana." });
+    }
+  }
   for (const item of params.pendingItems) {
     blockers.push({ code: `pending_${item.toLowerCase().replace(/[^a-z0-9]+/g, "_")}`, severity: "warning", message: `Pendência: ${item}.` });
   }
@@ -240,12 +305,15 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
   const documentDraft = asObject(operational.documentDraft);
   const contractDraft = asObject(operational.contractDraft);
   const commissionDraft = asObject(operational.commissionDraft);
+  const listingDraft = asObject(operational.listingDraft);
+  const campaignDraft = asObject(operational.campaignDraft);
   const operationalMissionContext = asObject(operational.missionContext);
   const owner = buildOwnerSnapshot({ owner: params.caseContext?.owner, ownerDraft });
   const property = buildPropertySnapshot({ property: params.caseContext?.property, propertyDraft });
   const documents = buildDocumentsSnapshot({ documentDraft, contractDraft });
   const contract = buildContractSnapshot({ contractDraft });
   const commission = buildCommissionSnapshot({ commissionDraft });
+  const campaign = buildCampaignSnapshot({ campaignDraft, listingDraft });
   const lead = asObject(params.caseContext?.lead) ?? leadDraft;
   const leadGoal = normalizeGoal(lead?.desiredGoal);
   const propertyGoal = property?.goal ?? null;
@@ -260,6 +328,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
   const ownerLinkedToProperty = Boolean(owner?.id && property?.ownerId && owner.id === property.ownerId) || Boolean(property?.ownerId && property?.id);
   const documentsReady = documents?.status === "ready";
   const commissionReady = commission?.status === "ready" || commission?.status === "paid";
+  const campaignReady = campaign?.status === "ready_to_publish" || campaign?.status === "published_or_sent";
   const seasonalRulesReady = false;
   const mission = asString(operationalMissionContext?.mission) as ImobCaseMission | null
     ?? inferMission({ message: params.message, flow, propertyGoal, leadGoal })
@@ -294,6 +363,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
         status: asString(lead.status),
       } : null,
       documents,
+      campaign,
       contract,
       commission,
     },
@@ -320,6 +390,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
       ownerLinkedToProperty,
       documentsReady,
       commissionReady,
+      campaignStatus: campaign?.status ?? null,
     }),
   };
 
@@ -333,6 +404,8 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
       ? contract?.status === "ready_for_signature"
       : mission === "settle_commission"
         ? commission?.status === "paid"
+        : mission === "commercial_activation"
+          ? campaign?.status === "published_or_sent"
         : false;
 
   const compatibility = resolveCanonicalCaseStateFromLegacy({

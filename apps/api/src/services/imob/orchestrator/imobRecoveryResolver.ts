@@ -42,6 +42,8 @@ function inferStageFromMission(mission: ImobCaseMission, context: ImobCaseContex
       return "contract_preparing";
     case "settle_commission":
       return "commission_review";
+    case "commercial_activation":
+      return "campaign_preparing";
     case "capture_seasonal_property":
     case "capture_rental_property":
     case "capture_sale_property":
@@ -128,6 +130,15 @@ function mapCanonicalNextActionToPlanAction(context: ImobCaseContextV1): ImobCas
       operation: "commission.settle",
       label: "Revisar comissão",
       nextMessage: "revisar comissão deste caso",
+      reasonCode: nextAction.reasonCode,
+    });
+  }
+
+  if (nextAction.operation === "campaign") {
+    return action({
+      operation: "listing.activate",
+      label: "Preparar ativação comercial",
+      nextMessage: "preparar ativação comercial deste caso",
       reasonCode: nextAction.reasonCode,
     });
   }

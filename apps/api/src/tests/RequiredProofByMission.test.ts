@@ -11,4 +11,5 @@ test("mission policy assigns required proof to critical p0 missions", () => {
   assert.deepEqual(buildImobMissionPolicy("capture_seasonal_property").requiredProof, ["owner_link"]);
   assert.deepEqual(buildImobMissionPolicy("prepare_contract").requiredProof, ["document_package"]);
   assert.deepEqual(buildImobMissionPolicy("settle_commission").requiredProof, ["commission_record"]);
+  assert.deepEqual(buildImobMissionPolicy("commercial_activation").requiredProof, ["campaign_record"]);
 });

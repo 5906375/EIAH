@@ -171,6 +171,38 @@ export function resolveImobNextAction(params: ResolveNextActionParams): ImobNext
       });
 
     case "commercial_activation":
+      if (!params.context.entities.campaign || params.context.entities.campaign.status === "drafting_campaign") {
+        return mapOperationAction("campaign", params.flow, {
+          id: "prepare-campaign",
+          label: "Preparar ativação comercial",
+          reasonCode: "CAMPAIGN_DRAFT_REQUIRED",
+        });
+      }
+
+      if (params.context.entities.campaign.status === "blocked_by_policy") {
+        return mapOperationAction("campaign", params.flow, {
+          id: "resolve-campaign-policy",
+          label: "Liberar policy da ativação",
+          reasonCode: "CAMPAIGN_POLICY_REQUIRED",
+        });
+      }
+
+      if (params.context.entities.campaign.status === "awaiting_human_approval") {
+        return mapOperationAction("campaign", params.flow, {
+          id: "approve-campaign",
+          label: "Aprovar ativação comercial",
+          reasonCode: "CAMPAIGN_APPROVAL_REQUIRED",
+        });
+      }
+
+      if (params.context.entities.campaign.status === "ready_to_publish") {
+        return mapOperationAction("campaign", params.flow, {
+          id: "publish-campaign",
+          label: "Publicar ativação comercial",
+          reasonCode: "CAMPAIGN_READY_TO_PUBLISH",
+        });
+      }
+
       return mapOperationAction("campaign", params.flow, {
         id: "activate-campaign",
         label: "Preparar ativação comercial",

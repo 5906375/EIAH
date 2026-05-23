@@ -152,6 +152,7 @@ export type ImobCaseState<M extends ImobMissionId = ImobMissionId> = {
     lead?: ReadinessStatus;
     visit?: ReadinessStatus;
     documents?: ReadinessStatus;
+    campaign?: ReadinessStatus;
     contract?: ReadinessStatus;
     commission?: ReadinessStatus;
     proof?: ReadinessStatus;

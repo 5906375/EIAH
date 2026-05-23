@@ -77,3 +77,23 @@ test("completion evaluator promotes qualified lead mission to ready_for_transiti
 
   assert.equal(status, "ready_for_transition");
 });
+
+test("completion evaluator marks commercial activation as ready_for_transition when publish gates are cleared", () => {
+  const status = resolveImobMissionStatus({
+    mission: "commercial_activation",
+    context: buildContext({
+      missionContext: {
+        mission: "commercial_activation",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        campaign: { id: "campaign-1", status: "ready_to_publish" },
+      },
+    }),
+    currentStep: "ready_to_publish",
+    pendingFields: [],
+    hasNextAction: true,
+  });
+
+  assert.equal(status, "ready_for_transition");
+});
