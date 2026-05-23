@@ -340,3 +340,15 @@ export function resolveImobWorkflowAgentBinding(state: ImobCrmWorkflowState) {
       }
     : null;
 }
+
+export function resolveImobWorkflowAgentBindingLoose(state?: string | null) {
+  if (!state) return null;
+
+  const binding = IMOB_WORKFLOW_AGENT_BINDINGS.find((item) => item.state === state);
+  return binding
+    ? {
+        ...binding,
+        supportingAgentIds: [...binding.supportingAgentIds],
+      }
+    : null;
+}

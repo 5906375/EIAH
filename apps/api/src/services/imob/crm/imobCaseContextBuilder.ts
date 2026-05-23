@@ -7,6 +7,7 @@ import type {
   ImobPropertyGoalV1,
   ImobPropertySnapshotV1,
 } from "./imobCaseContextContract";
+import { resolveCanonicalCaseStateFromLegacy } from "../orchestrator/imobLegacyCompatibilityResolver";
 
 type BuildImobCaseContextV1Params = {
   tenantId: string;
@@ -151,6 +152,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
     ...asStringList(params.caseContext?.pendingItems),
     ...asStringList(operational.pendingFields),
   ];
+  const pendingFields = asStringList(operational.pendingFields);
 
   const ownerReady = Boolean(owner && (owner.id || owner.name) && (owner.document || owner.phone || owner.email));
   const propertyReady = Boolean(property && (property.id || (property.propertyType && property.goal && property.city && property.address)));
@@ -163,7 +165,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
   const defaultGoal = normalizeGoal(operationalMissionContext?.defaultGoal)
     ?? (mission === "capture_seasonal_property" ? "aluguel_por_temporada" : propertyGoal);
 
-  return {
+  const baseContext: ImobCaseContextV1 = {
     version: "1.0",
     tenantId: params.tenantId,
     workspaceId: params.workspaceId,
@@ -211,5 +213,26 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
       propertyReady,
       ownerLinkedToProperty,
     }),
+  };
+
+  const compatibility = resolveCanonicalCaseStateFromLegacy({
+    context: baseContext,
+    operational: {
+      flow,
+      pendingFields,
+      nextAction: asString(operational.nextAction),
+    },
+  });
+
+  if (!compatibility.ok) return baseContext;
+
+  return {
+    ...baseContext,
+    canonicalCaseState: compatibility.state,
+    legacyCompatibility: {
+      migratedFromLegacy: compatibility.migrated,
+      sourceFlow: compatibility.sourceFlow ?? null,
+      sourceMission: compatibility.sourceMission ?? null,
+    },
   };
 }
