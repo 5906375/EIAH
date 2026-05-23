@@ -3,7 +3,7 @@ import path from "node:path";
 
 const CHECK = "check:help-playbook-drift";
 const PLAYBOOK_FILE = path.resolve("apps/web/src/pages/app/agents/index.tsx");
-const ROADMAP_FILE = path.resolve("ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-03-21.md");
+const ROADMAP_FILE = path.resolve("ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md");
 const EVIDENCE_FILE = path.resolve("docs/EVIDENCE_INDEX.md");
 
 function fail(message: string, details?: Record<string, unknown>): never {
@@ -66,12 +66,12 @@ const missingRoadmapAnchors = ["## P0", "## P1", "## P2", "## P3", "## P4"].filt
 if (missingRoadmapAnchors.length > 0) {
   fail("roadmap v8 missing P0-P4 anchors", {
     missingRoadmapAnchors,
-    file: "ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-03-21.md",
+    file: "ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md",
   });
 }
 
 const missingEvidenceAnchors = [
-  "Roadmap atual (fonte da verdade): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-03-21.md`",
+  "Roadmap atual (fonte da verdade): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`",
   "apps/web/src/pages/app/agents/index.tsx",
   "apps/api/src/services/eiahHelpKnowledge.ts",
   "apps/api/src/routes/help.ts",
@@ -89,7 +89,7 @@ console.log(
       ok: true,
       check: CHECK,
       playbookFile: "apps/web/src/pages/app/agents/index.tsx",
-      roadmapFile: "ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-03-21.md",
+      roadmapFile: "ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md",
       evidenceFile: "docs/EVIDENCE_INDEX.md",
       playbookAnchorsChecked: 9,
       roadmapAnchorsChecked: 5,

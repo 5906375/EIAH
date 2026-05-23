@@ -35,7 +35,7 @@ O core da plataforma está operacional e auditável (F0-F3 concluídas), com F4/
 ## 4) Backlog priorizado v8 (execução)
 
 ## P0 — Integridade documental e fonte da verdade
-- Definir e publicar arquivo único de roadmap canônico (`ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-03-21.md`).
+- Definir e publicar arquivo único de roadmap canônico (`ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`).
 - Atualizar `docs/EVIDENCE_INDEX.md` para apontar apenas fontes existentes.
 - Adicionar check de CI para falhar quando “source of truth” não existir.
 

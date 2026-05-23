@@ -1,7 +1,9 @@
 # ROADMAP ATUALIZADO v8
 
-Data de referência: **2026-03-10**
+Data de referência desta revisão: **2026-05-23**
 Escopo: plataforma agentic governada (core + governança + interop + economy + Track P)
+
+> Arquivo canônico vigente desta revisão: `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`.
 
 ## 1) Resumo executivo
 
@@ -17,8 +19,8 @@ O core da plataforma está operacional e auditável (F0-F3 concluídas), com F4/
 | 3 — Governança cognitiva | ✅ Concluída | Evolução incremental |
 | 4 — Execução crítica imutável | ⚙️ Parcial avançada | Hardening operacional e validação externa contínua |
 | 5.0 — Marketplace/governança avançada | ✅ Concluída (core) | Fechar UX/auditoria avançada de delegação |
-| 5.1 — PoU + Trust Gate | ✅ Concluída (operacional) | Receipt Canon v1 obrigatório nos fluxos críticos com gate ativo em CI |
-| 5.2 — Policies autoaplicáveis + human approvals | ✅ Concluída (operacional) | Aprovação humana consistente (API/schema/evidência) validada por cadeia crítica fail-closed |
+| 5.1 — PoU + Trust Gate | ✅ Concluída (operacional) | Receipt Canon v1 obrigatório nos fluxos críticos com gate ativo em CI; manter hardening recorrente |
+| 5.2 — Policies autoaplicáveis + human approvals | ⚙️ Parcial avançada | Aprovação humana já existe em schema/API/evidência, mas ainda requer fechamento semântico e hardening fail-closed consistente |
 | 5.3 — Auditoria pública DLT | ⚙️ Parcial avançada | Cobertura E2E HIGH global fortalecida (core + interop); manter reconciliação contínua recorrente (`auditGap=0`) |
 | 5.4 — Interoperabilidade | ⚙️ Parcial avançada | Matriz de compatibilidade CI e freeze de contrato |
 | 5.5 — Outcome/experimentos | ⚙️ Parcial avançada | Recomendação AXO e automações de promoção |
@@ -35,7 +37,7 @@ O core da plataforma está operacional e auditável (F0-F3 concluídas), com F4/
 ## 4) Backlog priorizado v8 (execução)
 
 ## P0 — Integridade documental e fonte da verdade
-- Definir e publicar arquivo único de roadmap canônico (`ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-03-21.md`).
+- Definir e publicar arquivo único de roadmap canônico (`ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`).
 - Atualizar `docs/EVIDENCE_INDEX.md` para apontar apenas fontes existentes.
 - Adicionar check de CI para falhar quando “source of truth” não existir.
 
@@ -90,9 +92,9 @@ O core da plataforma está operacional e auditável (F0-F3 concluídas), com F4/
 - Escalar verticais com checklist padrão e gates de não-regressão.
 - Fortalecer command centers por vertical (funil, bloqueios, export de prova).
 - Operar piloto comercial com critérios de avanço `shadow -> pilot -> small`.
-- Adicionar `IMOB Knowledge Search` como capacidade documental in-chat da vertical, com `EIAH` atuando como front door e `IMOB` como dono do fluxo de busca.
+- Consolidar `IMOB Knowledge Search` como capacidade documental in-chat da vertical, com `EIAH` atuando como front door e `IMOB` como dono do fluxo de busca.
 - Garantir gate fail-closed por `tenantId`/`workspaceId` e assinatura ativa da vertical antes de expor busca, chat ou ações do `IMOB`.
-- Evoluir a busca por fases: handshake no chat -> busca por metadados -> sync de Drive -> expansão para uploads/web, preservando `sourceType` e isolamento multi-tenant/workspace.
+- Evoluir a busca por fases: handshake no chat já implementado -> busca por metadados -> sync de Drive -> expansão para uploads/web, preservando `sourceType` e isolamento multi-tenant/workspace.
 
 **Fluxo operacional das verticais no EIAH SaaS**
 
@@ -200,7 +202,7 @@ Objetivo: concluir ponta a ponta os itens ainda parciais (governança/economy/au
 - Aplicar checklist padrão por vertical com gates de não-regressão.
 - Operar rollout controlado `shadow -> pilot -> small` com critérios explícitos de avanço.
 - Fortalecer command centers por vertical com export de provas por run.
-- Implementar `IMOB Knowledge Search` em fases, começando por handshake agent-driven no `EIAH`/`IMOB`, busca por metadados e sync pragmático do Drive antes de webhook/watch.
+- Evoluir `IMOB Knowledge Search` em fases, partindo do handshake agent-driven já implementado no `EIAH`/`IMOB`, seguido de busca por metadados e sync pragmático do Drive antes de webhook/watch.
 - Exigir gating fail-closed por `tenantId` cadastrado e assinatura ativa da vertical para qualquer busca/chat/ação do `IMOB`.
 - Operar as verticais dentro do fluxo SaaS padrão: `Cadastro -> Tenant -> Assinatura/Plano -> Billing -> Entitlements -> Roles/Scope -> Workspace -> Chat Agent Launcher EIAH -> Vertical`.
 
@@ -235,7 +237,7 @@ Objetivo: concluir ponta a ponta os itens ainda parciais (governança/economy/au
 - Busca documental `IMOB` disponível in-chat sem reabrir lógica no launcher e com fonte do resultado explicitada no payload/renderização.
 
 ### 9.6) P0 transversal (obrigatório durante todas as frentes)
-- Manter `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-03-21.md` e `docs/EVIDENCE_INDEX.md` sincronizados.
+- Manter `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md` e `docs/EVIDENCE_INDEX.md` sincronizados.
 - Bloquear em CI referências inválidas e drift documental.
 - Tratar qualquer divergência doc/contrato/runtime como incidente P0.
 
