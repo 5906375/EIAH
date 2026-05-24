@@ -43,6 +43,51 @@ function asString(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+function normalizeText(value: unknown) {
+  const text = asString(value);
+  return text ? text.trim().toLowerCase() : null;
+}
+
+function readMarketScanOrigin(value: unknown) {
+  const origin = asObject(value);
+  if (!origin) return null;
+  return {
+    providerId: asString(origin.providerId),
+    sourceId: asString(origin.sourceId),
+    scanId: asString(origin.scanId),
+  };
+}
+
+function propertyMatchesDraft(item: PropertyLookupRecord, draft: Record<string, unknown> | null | undefined) {
+  if (!draft) return false;
+
+  const metadata = asObject(item.metadata);
+  const metadataRef = asString(metadata?.externalPropertyRef);
+  const draftExternalRef = asString(draft.propertyId);
+  if (draftExternalRef && metadataRef === draftExternalRef) return true;
+
+  const itemOrigin = readMarketScanOrigin(metadata?.marketScanOrigin);
+  const draftOrigin = readMarketScanOrigin(draft.origin);
+  if (
+    draftOrigin?.providerId
+    && draftOrigin?.sourceId
+    && itemOrigin?.providerId === draftOrigin.providerId
+    && itemOrigin?.sourceId === draftOrigin.sourceId
+  ) {
+    return true;
+  }
+
+  const draftAddress = normalizeText(draft.address);
+  const itemAddress = normalizeText(item.address);
+  const draftCity = normalizeText(draft.city);
+  const itemCity = normalizeText(item.city);
+  if (draftAddress && itemAddress && draftAddress === itemAddress) {
+    if (!draftCity || !itemCity || draftCity === itemCity) return true;
+  }
+
+  return false;
+}
+
 function asStringList(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.map((item) => (typeof item === "string" ? item.trim() : "")).filter(Boolean);
@@ -759,16 +804,9 @@ export class ImobCrmMutationService {
         where: { tenantId: scope.tenantId, workspaceId: scope.workspaceId, status: { not: "archived" } },
         orderBy: { updatedAt: "desc" },
         take: 200,
-        select: { id: true, address: true, metadata: true },
+        select: { id: true, address: true, city: true, goal: true, propertyType: true, metadata: true },
       });
-      return recentProperties.find((item: PropertyLookupRecord) => {
-        const metadata = asObject(item.metadata);
-        const metadataRef = asString(metadata?.externalPropertyRef);
-        if (typeof externalPropertyRef === "string" && metadataRef === externalPropertyRef) return true;
-        const draftAddress = asString(draft.address);
-        if (draftAddress && item.address && item.address.trim().toLowerCase() === draftAddress.trim().toLowerCase()) return true;
-        return false;
-      })?.id ?? null;
+      return recentProperties.find((item: PropertyLookupRecord) => propertyMatchesDraft(item, draft))?.id ?? null;
     };
 
     const upsertPropertyDraft = async (draft: Record<string, unknown> | null | undefined, mode: "upsert" | "lookup_only") => {
