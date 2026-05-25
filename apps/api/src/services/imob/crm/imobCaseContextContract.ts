@@ -124,6 +124,16 @@ export type ImobMarketScanRecommendationSnapshotV1 = {
   reasonCodes: string[];
   recommendedNextMove: string;
 };
+
+export type ImobDocumentChecklistSnapshotV1 = {
+  operation: "venda" | "locacao" | "temporada";
+  requiredDocuments: string[];
+  collectedDocuments: string[];
+  pendingDocuments: string[];
+  blockingIssues: string[];
+  summary: string;
+  recommendedNextMove: string;
+};
 export type ImobCaseBlockerV1 = {
   code: string;
   severity: "info" | "warning" | "blocking";
@@ -156,6 +166,7 @@ export type ImobCaseContextV1 = {
   leadMatching?: ImobLeadMatchingSnapshotV1 | null;
   leadLifecycle?: ImobLeadLifecycleSnapshotV1 | null;
   marketScanRecommendation?: ImobMarketScanRecommendationSnapshotV1 | null;
+  documentChecklist?: ImobDocumentChecklistSnapshotV1 | null;
   links: {
     ownerProperty?: {
       ownerId?: string | null;

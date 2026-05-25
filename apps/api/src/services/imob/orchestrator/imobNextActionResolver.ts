@@ -142,6 +142,19 @@ function resolveCaptureJourneyAction(flow: string | null | undefined, params: Re
   return null;
 }
 
+function buildDocumentChecklistLabel(context: ImobCaseContextV1) {
+  switch (context.documentChecklist?.operation) {
+    case "venda":
+      return "Completar checklist documental de venda";
+    case "locacao":
+      return "Completar checklist documental de locação";
+    case "temporada":
+      return "Completar checklist documental de temporada";
+    default:
+      return "Coletar documentos";
+  }
+}
+
 export function resolveImobNextAction(params: ResolveNextActionParams): ImobNextAction {
   if (params.legacyNextAction === "ask_missing_lead_field") {
     return mapLeadAction(params.flow, {
@@ -256,6 +269,13 @@ export function resolveImobNextAction(params: ResolveNextActionParams): ImobNext
       });
 
     case "collect_documents":
+      if (params.context.documentChecklist?.pendingDocuments.length) {
+        return mapOperationAction("documents", params.flow, {
+          id: "complete-document-checklist",
+          label: buildDocumentChecklistLabel(params.context),
+          reasonCode: "DOCUMENT_CHECKLIST_REQUIRED",
+        });
+      }
       return mapOperationAction("documents", params.flow, {
         id: "collect-documents",
         label: "Coletar documentos",
@@ -266,8 +286,12 @@ export function resolveImobNextAction(params: ResolveNextActionParams): ImobNext
       if (!params.context.readiness.documentsReady) {
         return mapOperationAction("documents", params.flow, {
           id: "collect-documents",
-          label: "Coletar documentos",
-          reasonCode: "DOCUMENTS_REQUIRED",
+          label: params.context.documentChecklist?.pendingDocuments.length
+            ? buildDocumentChecklistLabel(params.context)
+            : "Coletar documentos",
+          reasonCode: params.context.documentChecklist?.pendingDocuments.length
+            ? "DOCUMENT_CHECKLIST_REQUIRED"
+            : "DOCUMENTS_REQUIRED",
         });
       }
 

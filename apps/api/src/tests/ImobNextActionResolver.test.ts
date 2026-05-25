@@ -107,6 +107,43 @@ test("next action resolver routes commercial activation through campaign approva
   assert.equal(nextAction.targetAgent, "IMOB_FollowUpAgent");
 });
 
+test("next action resolver uses operation-specific document checklist label", () => {
+  const nextAction = resolveImobNextAction({
+    mission: "collect_documents",
+    context: buildContext({
+      missionContext: {
+        mission: "collect_documents",
+        lockedUntilExplicitChange: false,
+      },
+      documentChecklist: {
+        operation: "venda",
+        requiredDocuments: ["cpf do proprietário", "matrícula ou escritura do imóvel"],
+        collectedDocuments: ["cpf do proprietário"],
+        pendingDocuments: ["matrícula ou escritura do imóvel"],
+        blockingIssues: ["Falta matrícula ou escritura do imóvel."],
+        summary: "Checklist documental de venda ainda está incompleto.",
+        recommendedNextMove: "Completar matrícula ou escritura do imóvel antes de avançar.",
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: false,
+        leadReady: false,
+        leadReadinessScore: null,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+    operation: "documents",
+    flow: "documents.collect",
+    pendingFields: [],
+  });
+
+  assert.equal(nextAction.operation, "documents");
+  assert.equal(nextAction.reasonCode, "DOCUMENT_CHECKLIST_REQUIRED");
+  assert.equal(nextAction.label, "Completar checklist documental de venda");
+});
+
 test("next action resolver keeps lead in qualification when minimum fields are still missing", () => {
   const nextAction = resolveImobNextAction({
     mission: "qualify_and_match_lead",

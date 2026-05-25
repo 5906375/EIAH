@@ -85,6 +85,46 @@ test("IMOB case context v1 marks owner-property link as linked when property alr
   assert.equal(context.blockers.some((blocker) => blocker.code === "owner_property_not_linked"), false);
 });
 
+test("IMOB case context v1 builds a sale document checklist with explicit pending documents", () => {
+  const context = buildImobCaseContextV1({
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    caseId: "case-doc-1",
+    caseContext: {
+      caseId: "case-doc-1",
+      flow: "documents.collect",
+      property: {
+        id: "property-1",
+        propertyType: "apartamento",
+        goal: "venda",
+        city: "Itapema",
+        address: "Rua 10, 100",
+        ownerId: "owner-1",
+      },
+      owner: {
+        id: "owner-1",
+        name: "Carlos Alberto",
+        document: "12345678900",
+      },
+    },
+    operational: {
+      flow: "documents.collect",
+      documentDraft: {
+        referenceId: "property-1",
+        subjectType: "owner",
+        documentTypes: ["cpf"],
+        deliveryChannel: "upload",
+      },
+    },
+  });
+
+  assert.equal(context.documentChecklist?.operation, "venda");
+  assert.deepEqual(context.documentChecklist?.collectedDocuments, ["cpf do proprietário"]);
+  assert.ok(context.documentChecklist?.pendingDocuments.includes("matrícula ou escritura do imóvel"));
+  assert.ok(context.documentChecklist?.pendingDocuments.includes("comprovante de endereço do proprietário"));
+  assert.equal(context.readiness.documentsReady, false);
+});
+
 test("IMOB case context v1 drops stale market-scan blocker after property conversion and keeps owner follow-up as the real blocker", () => {
   const context = buildImobCaseContextV1({
     tenantId: "tenant-A",
