@@ -59,7 +59,7 @@ Critério:
 
 Status:
 
-- `pendente`
+- `em andamento`
 
 Objetivo:
 
