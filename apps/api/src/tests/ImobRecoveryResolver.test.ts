@@ -480,6 +480,242 @@ test("recovery response preserves disqualification reason without reopening reso
   assert.doesNotMatch(response.summary, /leadPhone|budgetMax|desiredCity/i);
 });
 
+test("recovery response explains market scan recommendation for capture flow", () => {
+  const response = resolveImobRecoveryResponse({
+    intent: "next_step",
+    context: buildContext({
+      missionContext: {
+        mission: "capture_sale_property",
+        lockedUntilExplicitChange: false,
+      },
+      marketScanRecommendation: {
+        sourceStatus: "completed",
+        recommendedAction: "captar",
+        comparableCount: 3,
+        confidenceScore: 0.78,
+        liquiditySignal: "high",
+        pricingRisk: "low",
+        priceRange: { min: 640000, max: 690000, currency: "BRL" },
+        summary: "O scan encontrou base suficiente para seguir com captação, com 3 comparável(is) útil(is).",
+        reasonCodes: ["MARKET_SCAN_ACTION_CAPTAR"],
+        recommendedNextMove: "Preparar draft de captação e submeter para aprovação humana.",
+      },
+      canonicalCaseState: {
+        schemaVersion: 1,
+        tenantId: "tenant-A",
+        workspaceId: "workspace-A",
+        caseId: "case-1",
+        mission: "capture_sale_property",
+        missionStatus: "in_progress",
+        currentStep: "registering_property",
+        currentOperation: "market",
+        entities: {},
+        readiness: {
+          owner: "incomplete",
+          property: "incomplete",
+          proof: "not_applicable",
+        },
+        blockers: [],
+        pendingFields: [],
+        nextAction: {
+          id: "capture-from-market-scan",
+          label: "Seguir com captação",
+          operation: "property",
+          targetAgent: "IMOB_PropertyAgent",
+          reasonCode: "MARKET_SCAN_CAPTURE_RECOMMENDED",
+        },
+        proof: {
+          required: false,
+          minimumProofSatisfied: true,
+          missingProof: [],
+        },
+        audit: {
+          version: 1,
+          lastUpdatedAt: "2026-05-25T10:00:00.000Z",
+          updatedByAgent: "IMOB",
+        },
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: false,
+        leadReady: false,
+        leadReadinessScore: null,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+  });
+
+  assert.equal(response.primaryAction?.reasonCode, "MARKET_SCAN_CAPTURE_RECOMMENDED");
+  assert.equal(response.primaryAction?.operation, "property.create");
+  assert.equal(response.primaryAction?.label, "Seguir com captação");
+  assert.equal(response.primaryAction?.nextMessage, "confirmar captação do scan");
+  assert.match(response.summary, /seguir com captação/i);
+  assert.match(response.summary, /base suficiente/i);
+});
+
+test("recovery response for market scan capture does not treat recommendation as fake missing item", () => {
+  const response = resolveImobRecoveryResponse({
+    intent: "what_is_missing",
+    context: buildContext({
+      missionContext: {
+        mission: "capture_sale_property",
+        lockedUntilExplicitChange: false,
+      },
+      marketScanRecommendation: {
+        sourceStatus: "completed",
+        recommendedAction: "captar",
+        comparableCount: 3,
+        confidenceScore: 0.78,
+        confidenceBand: "high",
+        comparableSources: [{ providerId: "internal_crm", source: "internal_crm", count: 3 }],
+        liquiditySignal: "high",
+        pricingRisk: "low",
+        priceRange: { min: 640000, max: 690000, currency: "BRL" },
+        summary: "O scan encontrou base suficiente para seguir com captação, com 3 comparável(is) útil(is).",
+        reasonCodes: ["MARKET_SCAN_ACTION_CAPTAR"],
+        recommendedNextMove: "Preparar draft de captação e submeter para aprovação humana.",
+      },
+      blockers: [
+        {
+          code: "market_scan_captar",
+          severity: "warning",
+          message: "Scan recomenda seguir com captação: Preparar draft de captação e submeter para aprovação humana.",
+        },
+      ],
+      canonicalCaseState: {
+        schemaVersion: 1,
+        tenantId: "tenant-A",
+        workspaceId: "workspace-A",
+        caseId: "case-1",
+        mission: "capture_sale_property",
+        missionStatus: "in_progress",
+        currentStep: "market_scan_review",
+        currentOperation: "market",
+        entities: {},
+        readiness: {
+          owner: "incomplete",
+          property: "incomplete",
+          proof: "not_applicable",
+        },
+        blockers: [],
+        pendingFields: [],
+        nextAction: {
+          id: "capture-from-market-scan",
+          label: "Seguir com captação",
+          operation: "property",
+          targetAgent: "IMOB_PropertyAgent",
+          reasonCode: "MARKET_SCAN_CAPTURE_RECOMMENDED",
+        },
+        proof: {
+          required: false,
+          minimumProofSatisfied: true,
+          missingProof: [],
+        },
+        audit: {
+          version: 1,
+          lastUpdatedAt: "2026-05-25T10:00:00.000Z",
+          updatedByAgent: "IMOB",
+        },
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: false,
+        leadReady: false,
+        leadReadinessScore: null,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+  });
+
+  assert.equal(response.missingItems.length, 0);
+  assert.equal(response.primaryAction?.label, "Seguir com captação");
+  assert.match(response.summary, /não há pendências explícitas/i);
+});
+
+test("recovery response turns market scan document recommendation into real missing item", () => {
+  const response = resolveImobRecoveryResponse({
+    intent: "what_is_missing",
+    context: buildContext({
+      missionContext: {
+        mission: "capture_sale_property",
+        lockedUntilExplicitChange: false,
+      },
+      marketScanRecommendation: {
+        sourceStatus: "completed",
+        recommendedAction: "pedir_documento",
+        comparableCount: 0,
+        confidenceScore: 0.34,
+        confidenceBand: "low",
+        comparableSources: [],
+        liquiditySignal: "unknown",
+        pricingRisk: "unknown",
+        priceRange: null,
+        summary: "O scan recomenda pedir documentação ou evidência adicional antes de avançar.",
+        reasonCodes: ["MARKET_SCAN_ACTION_PEDIR_DOCUMENTO"],
+        recommendedNextMove: "Pedir documentação pendente antes de avançar.",
+      },
+      blockers: [
+        {
+          code: "market_scan_pedir_documento",
+          severity: "warning",
+          message: "Scan recomenda pedir documento: Pedir documentação pendente antes de avançar.",
+        },
+      ],
+      canonicalCaseState: {
+        schemaVersion: 1,
+        tenantId: "tenant-A",
+        workspaceId: "workspace-A",
+        caseId: "case-1",
+        mission: "capture_sale_property",
+        missionStatus: "in_progress",
+        currentStep: "market_scan_review",
+        currentOperation: "market",
+        entities: {},
+        readiness: {
+          owner: "incomplete",
+          property: "incomplete",
+          proof: "not_applicable",
+        },
+        blockers: [],
+        pendingFields: [],
+        nextAction: {
+          id: "request-market-scan-document",
+          label: "Pedir documentação",
+          operation: "documents",
+          targetAgent: "IMOB_DocumentAgent",
+          reasonCode: "MARKET_SCAN_DOCUMENT_REQUIRED",
+        },
+        proof: {
+          required: false,
+          minimumProofSatisfied: true,
+          missingProof: [],
+        },
+        audit: {
+          version: 1,
+          lastUpdatedAt: "2026-05-25T10:00:00.000Z",
+          updatedByAgent: "IMOB",
+        },
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: false,
+        leadReady: false,
+        leadReadinessScore: null,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+  });
+
+  assert.equal(response.primaryAction?.operation, "documents.collect");
+  assert.ok(response.missingItems.some((item) => /documentação|evidência adicional/i.test(item)));
+  assert.match(response.summary, /documentação|evidência adicional/i);
+});
 test("recovery response suggests reengagement when a disqualified lead already has a return trigger", () => {
   const response = resolveImobRecoveryResponse({
     intent: "next_step",

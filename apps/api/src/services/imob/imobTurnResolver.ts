@@ -2222,9 +2222,13 @@ function buildMarketScanPresentation(params: {
   const missingPriceLine = marketScanResult.sourceStatus === "completed" && allItems.length > 0 && !priceRange
     ? `${allItems.length} imóvel(is) encontrado(s), mas sem preço suficiente para calcular faixa.`
     : null;
+  const comparableSourcesLine = Array.isArray(intelligence?.comparableSources) && intelligence.comparableSources.length > 0
+    ? `Comparáveis por fonte: ${intelligence.comparableSources.map((item) => `${item.source} (${item.count})`).join(", ")}`
+    : null;
   const liquidityLine = intelligence ? `Liquidez: ${formatMarketScanScore(intelligence.liquidityScore)}` : null;
   const riskLine = intelligence ? `Risco de preço: ${formatMarketScanRisk(intelligence.pricingRisk)}` : null;
   const confidenceLine = intelligence ? `Confiança: ${formatMarketScanScore(intelligence.confidenceScore)}` : null;
+  const confidenceBandLine = intelligence?.confidenceBand ? `Banda de confiança: ${formatMarketScanRisk(intelligence.confidenceBand)}` : null;
   const actionLine = marketScanOpportunity && canShowStrongRecommendation ? `Ação recomendada: ${formatMarketScanAction(marketScanOpportunity.recommendedAction)}` : null;
   const nextStepLine = marketScanOpportunity?.nextStep && canShowStrongRecommendation ? `Próximo passo: ${marketScanOpportunity.nextStep}` : null;
   const degradedRecommendationLine = marketScanOpportunity && !canShowStrongRecommendation
@@ -2257,9 +2261,11 @@ function buildMarketScanPresentation(params: {
     blockedQualityLine,
     priceLine,
     missingPriceLine,
+    comparableSourcesLine,
     liquidityLine,
     riskLine,
     confidenceLine,
+    confidenceBandLine,
     actionLine,
     nextStepLine,
     degradedRecommendationLine,

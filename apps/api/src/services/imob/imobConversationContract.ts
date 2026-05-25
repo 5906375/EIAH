@@ -266,6 +266,11 @@ export type ImobMarketScanResultSnapshot = {
   } | null;
   intelligence?: {
     comparableCount: number;
+    comparableSources?: Array<{
+      providerId: string;
+      source: string;
+      count: number;
+    }> | null;
     priceRange?: {
       min: number;
       max: number;
@@ -275,6 +280,7 @@ export type ImobMarketScanResultSnapshot = {
     pricingRisk: "low" | "medium" | "high" | "unknown";
     sourceCoverageScore: number;
     confidenceScore: number;
+    confidenceBand?: "high" | "medium" | "low" | "unknown";
   } | null;
 };
 

@@ -6,6 +6,13 @@ function clamp01(value: number) {
   return Math.max(0, Math.min(1, value));
 }
 
+export function classifyMarketConfidenceBand(score: number | null | undefined) {
+  if (typeof score !== "number" || !Number.isFinite(score)) return "unknown" as const;
+  if (score >= 0.7) return "high" as const;
+  if (score >= 0.45) return "medium" as const;
+  return "low" as const;
+}
+
 export function computeLiquidityCompetitionScore(params: {
   comparables: MarketComparable[];
   priceIntelligence: MarketPriceIntelligence;

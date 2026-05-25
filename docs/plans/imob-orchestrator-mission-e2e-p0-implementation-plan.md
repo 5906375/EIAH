@@ -121,15 +121,48 @@ Frentes já assumidas como próximas continuações oficiais do canônico:
    - plano derivado:
      - `docs/plans/imob-lead-agent-e2e-implementation-plan.md`
 
+Próximas frentes oficiais a partir deste ponto:
+
+3. `MarketScanAgent E2E`
+   - Status: `execução iniciada`
+   - `PR-M1` concluído: actionable recommendation base
+   - `PR-M2` concluído: comparables + confidence band
+   - slice corrente: `PR-M3 — operational handoff hardening`
+   - evolução do scan para recomendação acionável real;
+   - faixa de preço/diária;
+   - liquidez e risco;
+   - recomendação: captar, ajustar preço, pedir documento ou não seguir;
+   - transformar scan em captação operacional ou ativação comercial quando aplicável.
+   - plano derivado:
+     - `docs/plans/imob-market-scan-agent-e2e-implementation-plan.md`
+
+4. `DocumentAgent E2E`
+   - checklist por operação;
+   - suficiência documental;
+   - bloqueios claros;
+   - preparação de pacote e handoff jurídico com proof.
+   - plano derivado:
+     - `docs/plans/imob-document-agent-e2e-implementation-plan.md`
 Ordem recomendada:
 
-- primeiro `imobValidationEngine`;
-- depois `LeadAgent E2E`.
+- `imobValidationEngine` e `LeadAgent E2E` já entregues;
+- próximo bloco oficial: `MarketScanAgent E2E`;
+- depois: `DocumentAgent E2E`.
 
 Justificativa:
+- `imobValidationEngine` endureceu a base comum de `Property`, `Owner`, `Lead` e `Documents`;
+- `LeadAgent E2E` fechou a jornada comercial canônica no runtime;
+- o próximo multiplicador de valor é tornar `MarketScanAgent` acionável e coerente com captação/continuidade;
+- em seguida, `DocumentAgent E2E` fecha o pacote operacional e jurídico com blockers claros.
 
-- `imobValidationEngine` endurece a base comum de `Property`, `Owner`, `Lead` e `Documents`;
-- `LeadAgent E2E` deve entrar depois, sobre dados mais consistentes e com menos ruído de parsing.
+Execução corrente:
+
+- a continuidade imediata deste plano canônico passa a ser guiada por:
+  - `docs/plans/imob-market-scan-agent-e2e-implementation-plan.md`
+  - slice em andamento:
+    - `PR-M3 — operational handoff hardening`
+- a frente documental subsequente passa a ser guiada por:
+  - `docs/plans/imob-document-agent-e2e-implementation-plan.md`
 
 ---
 

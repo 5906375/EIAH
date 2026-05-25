@@ -1,4 +1,5 @@
 import type { ImobInternalAgentId } from "../agents/imobInternalAgents";
+import type { ImobOperationalOpportunity } from "../imobConversationContract";
 import type {
   ImobBlocker,
   ImobCaseState,
@@ -101,6 +102,28 @@ export type ImobLeadLifecycleSnapshotV1 = {
   summary: string;
 };
 
+export type ImobMarketScanRecommendationSnapshotV1 = {
+  sourceStatus: "completed" | "empty" | "unavailable";
+  recommendedAction: ImobOperationalOpportunity["recommendedAction"];
+  comparableCount: number;
+  comparableSources?: Array<{
+    providerId: string;
+    source: string;
+    count: number;
+  }> | null;
+  confidenceScore?: number | null;
+  confidenceBand?: "high" | "medium" | "low" | "unknown" | null;
+  liquiditySignal?: "high" | "medium" | "low" | "unknown" | null;
+  pricingRisk?: "low" | "medium" | "high" | "unknown" | null;
+  priceRange?: {
+    min: number;
+    max: number;
+    currency: "BRL";
+  } | null;
+  summary: string;
+  reasonCodes: string[];
+  recommendedNextMove: string;
+};
 export type ImobCaseBlockerV1 = {
   code: string;
   severity: "info" | "warning" | "blocking";
@@ -132,6 +155,7 @@ export type ImobCaseContextV1 = {
   };
   leadMatching?: ImobLeadMatchingSnapshotV1 | null;
   leadLifecycle?: ImobLeadLifecycleSnapshotV1 | null;
+  marketScanRecommendation?: ImobMarketScanRecommendationSnapshotV1 | null;
   links: {
     ownerProperty?: {
       ownerId?: string | null;

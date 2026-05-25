@@ -56,7 +56,57 @@ function mapOperationAction(
   };
 }
 
+function resolveMarketScanRecommendedAction(flow: string | null | undefined, params: ResolveNextActionParams): ImobNextAction | null {
+  if (flow !== "property.market_scan" && flow !== "property.market_scan.selection") return null;
+  const recommendation = params.context.marketScanRecommendation;
+  if (!recommendation) return null;
+
+  switch (recommendation.recommendedAction) {
+    case "captar":
+      return mapOperationAction("property", flow, {
+        id: "capture-from-market-scan",
+        label: "Seguir com captação",
+        reasonCode: "MARKET_SCAN_CAPTURE_RECOMMENDED",
+      });
+    case "pedir_documento":
+      return mapOperationAction("documents", flow, {
+        id: "request-market-scan-document",
+        label: "Pedir documentação",
+        reasonCode: "MARKET_SCAN_DOCUMENT_REQUIRED",
+      });
+    case "campanha":
+      return mapOperationAction("campaign", flow, {
+        id: "prepare-campaign-from-market-scan",
+        label: "Preparar ativação comercial",
+        reasonCode: "MARKET_SCAN_COMMERCIAL_ACTIVATION_RECOMMENDED",
+      });
+    case "ajustar_preco":
+      return mapOperationAction("case", flow, {
+        id: "review-market-scan-price",
+        label: "Revisar estratégia de preço",
+        reasonCode: "MARKET_SCAN_PRICE_REVIEW_REQUIRED",
+      });
+    case "pedir_autorizacao":
+      return mapOperationAction("case", flow, {
+        id: "request-market-scan-authorization",
+        label: "Pedir autorização",
+        reasonCode: "MARKET_SCAN_HUMAN_AUTHORIZATION_REQUIRED",
+      });
+    case "nao_seguir":
+      return mapOperationAction("case", flow, {
+        id: "review-market-scan-stop",
+        label: "Revisar decisão do scan",
+        reasonCode: "MARKET_SCAN_DO_NOT_PROCEED",
+      });
+    default:
+      return null;
+  }
+}
+
 function resolveCaptureJourneyAction(flow: string | null | undefined, params: ResolveNextActionParams): ImobNextAction | null {
+  const marketScanAction = resolveMarketScanRecommendedAction(flow, params);
+  if (marketScanAction) return marketScanAction;
+
   if (!params.context.readiness.ownerReady) {
     return mapOperationAction("owner", flow, {
       id: "create-owner",

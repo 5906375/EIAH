@@ -220,6 +220,67 @@ test("IMOB case context v1 promotes a ready lead with compatible property into v
   assert.equal(context.recoverySnapshot?.primaryAction?.operation, "visit.schedule");
 });
 
+test("IMOB case context v1 preserves market scan recommendation and suppresses premature owner/property blockers during scan", () => {
+  const context = buildImobCaseContextV1({
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    caseId: "case-scan-1",
+    message: "fazer varredura de mercado em Itajai para apartamentos de 2 quartos para venda",
+    operational: {
+      flow: "property.market_scan",
+      missionContext: {
+        mission: "capture_sale_property",
+        lockedUntilExplicitChange: false,
+      },
+      marketScanSnapshot: {
+        scanId: "scan-1",
+        providerId: "internal_crm",
+        sourceStatus: "completed",
+        totalItems: 4,
+        readOnly: true,
+        generatedAt: "2026-05-25T12:00:00.000Z",
+        intelligence: {
+          comparableCount: 3,
+          comparableSources: [
+            { providerId: "internal_crm", source: "internal_crm", count: 3 },
+          ],
+          priceRange: { min: 640000, max: 690000, currency: "BRL" },
+          liquidityScore: 0.72,
+          pricingRisk: "low",
+          sourceCoverageScore: 0.88,
+          confidenceScore: 0.78,
+          confidenceBand: "high",
+        },
+        groups: [],
+      },
+      marketScanOpportunity: {
+        opportunityId: "opp-1",
+        recommendedAction: "captar",
+        confidenceScore: 0.78,
+        sourceCoverageScore: 0.88,
+        liquidityScore: 0.72,
+        pricingRisk: "low",
+        priceRange: { min: 640000, max: 690000, currency: "BRL" },
+        nextStep: "Preparar draft de captação e submeter para aprovação humana.",
+        requiresHumanApproval: true,
+        evidenceBundleId: "ev-1",
+      },
+    },
+  });
+
+  assert.equal(context.marketScanRecommendation?.recommendedAction, "captar");
+  assert.equal(context.marketScanRecommendation?.comparableCount, 3);
+  assert.deepEqual(context.marketScanRecommendation?.comparableSources, [
+    { providerId: "internal_crm", source: "internal_crm", count: 3 },
+  ]);
+  assert.equal(context.marketScanRecommendation?.confidenceBand, "high");
+  assert.equal(context.marketScanRecommendation?.liquiditySignal, "high");
+  assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "MARKET_SCAN_CAPTURE_RECOMMENDED");
+  assert.equal(context.recoverySnapshot?.primaryAction?.operation, "property.create");
+  assert.equal(context.blockers.some((blocker) => blocker.code === "owner_missing_or_incomplete"), false);
+  assert.equal(context.blockers.some((blocker) => blocker.code === "property_missing_or_incomplete"), false);
+  assert.ok(context.blockers.some((blocker) => blocker.code === "market_scan_captar"));
+});
 test("IMOB case context v1 promotes a scheduled visit into proposal preparation", () => {
   const context = buildImobCaseContextV1({
     tenantId: "tenant-A",
