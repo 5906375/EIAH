@@ -182,6 +182,8 @@ Execução corrente:
   - `DedupeAgent E2E`
   - com detalhamento em:
     - `docs/plans/imob-dedupe-agent-e2e-implementation-plan.md`
+  - slice em andamento:
+    - `PR-DEDUPE1 — canonical dedupe snapshot`
 
 ---
 

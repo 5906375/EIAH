@@ -4,6 +4,7 @@ import type {
   ImobCaseContextV1,
   ImobDocumentChecklistSnapshotV1,
   ImobDocumentSufficiencySnapshotV1,
+  ImobDedupeSnapshotV1,
   ImobLeadLifecycleSnapshotV1,
   ImobLeadMatchingSnapshotV1,
   ImobCaseMission,
@@ -516,6 +517,60 @@ function buildDocumentSufficiency(params: {
   };
 }
 
+function buildDedupeSnapshot(params: {
+  flow?: string | null;
+  operational?: Record<string, unknown> | null;
+}): ImobDedupeSnapshotV1 | null {
+  const operational = params.operational ?? {};
+  const dedupeDecision = asObject(operational.dedupeDecision);
+  const dedupeSelection = asObject(operational.dedupeSelection);
+  const flow = params.flow ?? null;
+
+  const entity = (
+    asString(dedupeDecision?.entityType)
+    ?? asString(dedupeSelection?.entity)
+    ?? (flow === "owner.dedupe_review" ? "owner" : null)
+  ) as ImobDedupeSnapshotV1["entity"] | null;
+
+  if (!entity) return null;
+
+  const pendingStatus = asString(dedupeDecision?.status) === "pending" || flow === "owner.dedupe_review";
+  const resolvedStatus = asString(dedupeSelection?.resolution) === "update_existing" || asString(dedupeSelection?.resolution) === "create_new";
+  const matchedEntityId = asString(dedupeDecision?.matchedEntityId) ?? asString(dedupeDecision?.entityId) ?? asString(dedupeSelection?.selectedId);
+  const matchedEntityLabel = asString(dedupeDecision?.matchedEntityLabel) ?? asString(dedupeDecision?.entityLabel) ?? asString(dedupeSelection?.selectedName);
+  const candidateCount = matchedEntityId ? 1 : 0;
+
+  if (!pendingStatus && !resolvedStatus && !matchedEntityId) return null;
+
+  const status: ImobDedupeSnapshotV1["status"] = pendingStatus
+    ? "pending_review"
+    : resolvedStatus
+      ? "resolved"
+      : matchedEntityId
+        ? "matched"
+        : "not_applicable";
+
+  return {
+    entity,
+    status,
+    workflowState: flow,
+    matchedEntityId,
+    matchedEntityLabel,
+    candidateCount,
+    reasonCodes: status === "pending_review" ? ["DEDUPE_REVIEW_PENDING"] : status === "resolved" ? ["DEDUPE_RESOLVED"] : ["DEDUPE_MATCHED"],
+    summary: status === "pending_review"
+      ? `Há uma revisão de dedupe pendente para ${entity}.`
+      : status === "resolved"
+        ? `A decisão de dedupe de ${entity} já foi resolvida.`
+        : `Existe um match de dedupe para ${entity} já identificado no caso.`,
+    recommendedNextMove: status === "pending_review"
+      ? `Revisar o dedupe de ${entity} antes de seguir.`
+      : status === "resolved"
+        ? `Seguir com o cadastro governado de ${entity}.`
+        : `Confirmar o match de ${entity} antes do side effect.`,
+  };
+}
+
 function buildVisitSnapshot(params: {
   visitDraft?: Record<string, unknown> | null;
 }) {
@@ -675,6 +730,7 @@ function buildBlockers(params: {
   campaignStatus?: string | null;
   marketScanRecommendation?: ImobMarketScanRecommendationSnapshotV1 | null;
   documentChecklist?: ImobDocumentChecklistSnapshotV1 | null;
+  dedupe?: ImobDedupeSnapshotV1 | null;
 }): ImobCaseBlockerV1[] {
   const blockers: ImobCaseBlockerV1[] = [];
   const rawExistingBlockers = asStringList(
@@ -739,6 +795,13 @@ function buildBlockers(params: {
       message: warningMessageByAction[recommendation.recommendedAction],
     });
   }
+  if (params.dedupe?.status === "pending_review") {
+    blockers.push({
+      code: "dedupe_pending",
+      severity: "blocking",
+      message: `Revisão de dedupe de ${params.dedupe.entity} pendente.`,
+    });
+  }
   if (params.mission === "qualify_lead" && !params.leadReady) {
     blockers.push({ code: "lead_missing_or_incomplete", severity: "blocking", message: "O lead ainda não tem os dados mínimos para avançar com segurança." });
   }
@@ -791,6 +854,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
   const campaignDraft = asObject(operational.campaignDraft);
   const operationalMissionContext = asObject(operational.missionContext);
   const marketScanRecommendation = buildMarketScanRecommendation({ operational });
+  const dedupe = buildDedupeSnapshot({ flow, operational });
   const owner = buildOwnerSnapshot({ owner: params.caseContext?.owner, ownerDraft });
   const property = buildPropertySnapshot({ property: params.caseContext?.property, propertyDraft });
   const visit = buildVisitSnapshot({ visitDraft });
@@ -889,6 +953,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
     marketScanRecommendation,
     documentChecklist,
     documentSufficiency,
+    dedupe,
     links: {
       ownerProperty: {
         ownerId: owner?.id ?? null,
@@ -920,6 +985,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
       campaignStatus: campaign?.status ?? null,
       marketScanRecommendation,
       documentChecklist,
+      dedupe,
     }),
   };
 

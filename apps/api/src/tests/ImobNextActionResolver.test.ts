@@ -180,6 +180,33 @@ test("next action resolver promotes prepare_contract into legal handoff when pac
   assert.equal(nextAction.label, "Encaminhar para jurídico");
 });
 
+test("next action resolver prioritizes dedupe review when canonical dedupe is pending", () => {
+  const nextAction = resolveImobNextAction({
+    mission: "case_review",
+    context: buildContext({
+      dedupe: {
+        entity: "owner",
+        status: "pending_review",
+        workflowState: "owner.dedupe_review",
+        matchedEntityId: "owner-1",
+        matchedEntityLabel: "Carlos Alberto",
+        candidateCount: 1,
+        reasonCodes: ["DEDUPE_REVIEW_PENDING"],
+        summary: "Há uma revisão de dedupe pendente para owner.",
+        recommendedNextMove: "Revisar o dedupe de owner antes de seguir.",
+      },
+    }),
+    operation: "owner",
+    flow: "owner.dedupe_review",
+    pendingFields: [],
+  });
+
+  assert.equal(nextAction.operation, "owner");
+  assert.equal(nextAction.reasonCode, "DEDUPE_REVIEW_PENDING");
+  assert.equal(nextAction.label, "Revisar dedupe");
+  assert.equal(nextAction.targetAgent, "IMOB_DedupeAgent");
+});
+
 test("next action resolver keeps lead in qualification when minimum fields are still missing", () => {
   const nextAction = resolveImobNextAction({
     mission: "qualify_and_match_lead",

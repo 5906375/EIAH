@@ -32,7 +32,7 @@ O que ainda falta para E2E:
 
 Status:
 
-- `pendente`
+- `em andamento`
 
 Objetivo:
 
