@@ -27,6 +27,8 @@ function normalizeTestText(value: string | null | undefined) {
 function createMockPrisma(overrides?: {
   caseNextStep?: string;
   leadOverrides?: Record<string, unknown>;
+  ownerOverrides?: Record<string, unknown>;
+  propertyOverrides?: Record<string, unknown>;
   caseOverrides?: Record<string, unknown>;
 }) {
   const leads = [
@@ -86,6 +88,7 @@ function createMockPrisma(overrides?: {
       metadata: null,
       _count: { properties: 1, cases: 1 },
       updatedAt: new Date("2026-01-01"),
+      ...(overrides?.ownerOverrides ?? {}),
     },
   ];
 
@@ -107,6 +110,7 @@ function createMockPrisma(overrides?: {
       owner: { name: "João" },
       _count: { cases: 1 },
       updatedAt: new Date("2026-01-01"),
+      ...(overrides?.propertyOverrides ?? {}),
     },
   ];
   const cases = [
@@ -192,6 +196,9 @@ function createMockPrisma(overrides?: {
         const property = properties.find((item) => item.id === where.id);
         if (!property) throw new Error("property not found");
         Object.assign(property, data);
+        if ("ownerId" in data) {
+          property.owner = data.ownerId ? owners.find((item) => item.id === data.ownerId) ? { id: data.ownerId, name: owners.find((item) => item.id === data.ownerId)?.name ?? null } : null : null;
+        }
         return property;
       },
     },
@@ -1294,6 +1301,54 @@ test("IMOB_CRM owner form update persists phone and email and clears resolved pe
   assert.equal(updated?.phone, "47 996635092");
   assert.equal(updated?.email, "nilsen@gmail.com");
   assert.deepEqual(updated?.pendingItems ?? [], []);
+});
+
+test("IMOB_CRM property link owner completes the active case link and advances the next step", async () => {
+  const prisma = createMockPrisma({
+    caseOverrides: {
+      flow: "owner.create",
+      nextStep: "concluir vínculo proprietário-imóvel",
+    },
+    propertyOverrides: {
+      ownerId: null,
+      owner: null,
+    },
+  });
+
+  const resolved = await resolveImobCrmOperationalUpdate({
+    prisma: prisma as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    caseId: "case-1",
+    message: "concluir vínculo proprietário-imóvel",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.action, "crm.property.link_owner");
+  assert.match(resolved?.presentation?.text ?? "", /Vínculo entre proprietário e imóvel concluído com sucesso/i);
+  assert.match(resolved?.presentation?.text ?? "", /Próximo passo: /i);
+  const updatedProperty = await (prisma as any).imobProperty.findFirst({
+    where: { tenantId: "tenant-1", workspaceId: "workspace-1", id: "property-1" },
+  });
+  assert.equal(updatedProperty?.ownerId, "owner-1");
+});
+
+test("IMOB_CRM property link owner fails closed without active case scope", async () => {
+  const resolved = await resolveImobCrmOperationalUpdate({
+    prisma: createMockPrisma({
+      propertyOverrides: {
+        ownerId: null,
+        owner: null,
+      },
+    }) as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "concluir vínculo proprietário-imóvel",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.action, "crm.property.link_owner");
+  assert.match(resolved?.presentation?.text ?? "", /não está preso a um caso ativo/i);
 });
 
 test("IMOB_CRM property delete returns confirmation prompt", async () => {

@@ -468,6 +468,175 @@ test("IMOB_CRM mutation service dedupes and preserves market scan origin before 
   assert.equal((prisma.caseEvents[0].payload.marketScanSelection as any)?.sourceId, "prop-1");
 });
 
+test("IMOB_CRM mutation service dedupes property by market scan origin even without externalPropertyRef", async () => {
+  const prisma = createMockPrisma();
+  prisma.properties.push({
+    id: "property-existing-origin-1",
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    propertyType: "apartamento",
+    goal: "locacao",
+    address: "Rua das Flores, 10",
+    city: "Itajaí",
+    neighborhood: "Centro",
+    bedrooms: 2,
+    bathrooms: null,
+    status: "pending_data",
+    metadata: {
+      marketScanOrigin: {
+        providerId: "internal_crm",
+        sourceId: "origin-1",
+        scanId: "scan-42",
+      },
+    },
+    updatedAt: new Date("2026-01-03"),
+  });
+
+  const service = new ImobCrmMutationService(prisma as any);
+
+  const persisted = await service.upsertCaseFromResolvedTurn({
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    userId: "user-1",
+  }, {
+    threadId: "thread-market-scan-origin",
+    threadLabel: "Captação",
+    resolved: {
+      mode: "execute",
+      action: "realestate.register_property",
+      threadLabel: "Captação",
+      presentation: {
+        text: "Confirmando a captação do imóvel selecionado no scan.",
+        owner: "Corretor",
+        nextStep: "Validar proprietário e seguir com a captação.",
+        pendingFieldLabels: [],
+      },
+      executionRequest: null,
+      conversationState: {
+        operational: {
+          flow: "property.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          propertyDraft: {
+            propertyType: "apartamento",
+            goal: "locacao",
+            city: "Itajaí",
+            neighborhood: "Centro",
+            bedrooms: 2,
+            bathrooms: null,
+            address: "Rua das Flores, 10",
+            origin: {
+              source: "internal_crm",
+              sourceId: "origin-1",
+              providerId: "internal_crm",
+              retrievedAt: "2026-05-24T12:00:00.000Z",
+              scanId: "scan-42",
+            },
+          },
+          marketScanSelection: {
+            status: "pending_confirmation",
+            scanId: "scan-42",
+            source: "internal_crm",
+            sourceId: "origin-1",
+            providerId: "internal_crm",
+            retrievedAt: "2026-05-24T12:00:00.000Z",
+            city: "Itajaí",
+            goal: "locacao",
+            propertyType: "apartamento",
+            bedrooms: 2,
+            neighborhood: "Centro",
+            address: "Rua das Flores, 10",
+            title: "Apartamento 2 quartos",
+            url: null,
+          },
+        },
+      },
+    },
+  });
+
+  assert.equal(persisted?.property?.id, "property-existing-origin-1");
+  assert.equal(prisma.properties.length, 1);
+});
+
+test("IMOB_CRM mutation service keeps property conversion idempotent on scan reconfirmation in the same thread", async () => {
+  const prisma = createMockPrisma();
+  const service = new ImobCrmMutationService(prisma as any);
+
+  const params = {
+    threadId: "thread-scan-rerun",
+    threadLabel: "Captação",
+    resolved: {
+      mode: "execute",
+      action: "realestate.register_property",
+      threadLabel: "Captação",
+      presentation: {
+        text: "Confirmando a captação do imóvel selecionado no scan.",
+        owner: "Corretor",
+        nextStep: "Validar proprietário e seguir com a captação.",
+        pendingFieldLabels: [],
+      },
+      executionRequest: null,
+      conversationState: {
+        operational: {
+          flow: "property.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          propertyDraft: {
+            propertyId: "prop-rerun-1",
+            propertyType: "apartamento",
+            goal: "locacao",
+            city: "Itajaí",
+            neighborhood: "Centro",
+            bedrooms: 2,
+            bathrooms: null,
+            address: "Rua Rerun, 101",
+            origin: {
+              source: "internal_crm",
+              sourceId: "prop-rerun-1",
+              providerId: "internal_crm",
+              retrievedAt: "2026-05-24T12:10:00.000Z",
+              scanId: "scan-rerun-1",
+            },
+          },
+          marketScanSelection: {
+            status: "pending_confirmation",
+            scanId: "scan-rerun-1",
+            source: "internal_crm",
+            sourceId: "prop-rerun-1",
+            providerId: "internal_crm",
+            retrievedAt: "2026-05-24T12:10:00.000Z",
+            city: "Itajaí",
+            goal: "locacao",
+            propertyType: "apartamento",
+            bedrooms: 2,
+            neighborhood: "Centro",
+            address: "Rua Rerun, 101",
+            title: "Apartamento 2 quartos",
+            url: null,
+          },
+        },
+      },
+    },
+  } as any;
+
+  const first = await service.upsertCaseFromResolvedTurn({
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    userId: "user-1",
+  }, params);
+
+  const second = await service.upsertCaseFromResolvedTurn({
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    userId: "user-1",
+  }, params);
+
+  assert.equal(prisma.properties.length, 1);
+  assert.equal(prisma.cases.length, 1);
+  assert.equal(first?.property?.id, second?.property?.id);
+  assert.equal(first?.caseId, second?.caseId);
+});
+
 test("IMOB_CRM mutation service keeps linked lead context after property capture success", async () => {
   const prisma = createMockPrisma();
   prisma.cases.push({

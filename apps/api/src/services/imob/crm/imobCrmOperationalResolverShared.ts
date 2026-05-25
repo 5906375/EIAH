@@ -230,6 +230,7 @@ export type ImobOperationalUpdateContext = {
   propertyType: string | null;
   propertyGoal: string | null;
   propertyCity: string | null;
+  asksLinkOwner: boolean;
 };
 
 export type ImobOperationalConsultContext = {

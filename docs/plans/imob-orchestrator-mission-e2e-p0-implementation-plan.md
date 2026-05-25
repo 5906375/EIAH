@@ -65,6 +65,28 @@ Decisão:
 - `PR7` compõe o baseline entregue com `prepare_contract`, `settle_commission` e `commercial_activation`.
 - o próximo passo deixa de ser completar a expansão P1/P2 mínima do orquestrador e passa a ser decidir se novas trilhas P2 entram como frentes separadas ou se esta fase deve ser encerrada documentalmente.
 
+## 1.2 Continuidade operacional derivada
+
+A continuidade corrente do canônico não está abrindo uma nova frente estrutural do `IMOB_Orchestrator`.
+
+Ela está sendo executada por um plano derivado de hardening E2E do loop:
+
+- `MarketScanAgent`
+- `PropertyAgent`
+- `OwnerAgent`
+- `property.link_owner`
+- `ContinuityAgent`
+
+Plano derivado em execução:
+
+- `docs/plans/imob-property-owner-continuity-e2e-hardening-plan.md`
+
+Objetivo desta continuidade:
+
+- fechar o handoff `market scan -> property.create -> owner.create/update -> property.link_owner -> recovery`;
+- remover drift entre `nextAction`, `consultar caso`, `o que falta?` e `qual o próximo passo?`;
+- endurecer dedupe e idempotência de imóvel antes de abrir novas frentes de agente.
+
 ---
 
 ## 2. Escopo operacional P0

@@ -40,6 +40,14 @@ export function buildGovernedImobOperationalUpdateContext(
   helpers: ResolverHelpers,
 ): ImobOperationalUpdateContext {
   const normalized = helpers.normalizeImobRouteText(params.message);
+  const asksLinkOwner =
+    normalized.includes("concluir vinculo")
+    || normalized.includes("vincular proprietario ao imovel")
+    || normalized.includes("vincular proprietário ao imóvel")
+    || normalized.includes("vincular imovel ao proprietario")
+    || normalized.includes("vincular imóvel ao proprietário")
+    || normalized.includes("concluir ligacao proprietario imovel")
+    || normalized.includes("concluir ligacao proprietário imóvel");
   return {
     intentVersion: "imob.crm.operational.v1",
     intentSignals: [
@@ -70,6 +78,7 @@ export function buildGovernedImobOperationalUpdateContext(
     propertyType: helpers.extractPropertyTypeFromMessage(params.message),
     propertyGoal: helpers.extractPropertyGoalFromMessage(params.message),
     propertyCity: helpers.extractPropertyCityFromMessage(params.message),
+    asksLinkOwner,
   };
 }
 

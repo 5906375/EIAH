@@ -93,6 +93,9 @@ export type ResolvedTurnForCaseUpsert = any;
 export type PropertyLookupRecord = {
   id: string;
   address?: string | null;
+  city?: string | null;
+  goal?: string | null;
+  propertyType?: string | null;
   metadata?: unknown;
 };
 

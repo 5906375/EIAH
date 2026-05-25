@@ -60,6 +60,7 @@ import {
 import { buildImobCrmBusinessReadHelpers } from "../services/imob/crm/imobCrmBusinessRead";
 import { resolveImobRecipeMissionContext } from "../services/imob/crm/imobRecipeMissionConfig";
 import { resolveImobTenantRecipeForWorkspace } from "../services/imob/crm/imobTenantRecipeContext";
+import { buildOwnerPendingSuggestion } from "../services/imob/crm/imobOwnerPendingSuggestion";
 import {
   getLegacyCrmFallbackConfigFromEnv,
   resolveLegacyCrmFallbackDecision,
@@ -775,15 +776,6 @@ function formatImobPendingList(items: string[] | null | undefined) {
   return items.join(", ");
 }
 
-
-function buildOwnerPendingSuggestion(owner: { name: string; pendingItems?: unknown }) {
-  const pendingItems = asStringList(owner.pendingItems);
-  if (pendingItems.includes("ownerDocument") || pendingItems.includes("documento do proprietário")) {
-    return `Envie assim: documento do proprietário ${owner.name} 12345678901
-Ou envie o documento como anexo nesta conversa.`;
-  }
-  return null;
-}
 
 function buildLeadPendingSuggestion(lead: { name: string; pendingItems?: unknown }) {
   const pendingItems = asStringList(lead.pendingItems);
