@@ -5,6 +5,12 @@ export type MarketComparable = ImobMarketScanResultItem & {
   comparableScore: number;
 };
 
+export type MarketComparableSourceSummary = {
+  providerId: string;
+  source: string;
+  count: number;
+};
+
 export function flattenMarketScanItems(snapshot: ImobMarketScanResultSnapshot | null | undefined) {
   return snapshot?.groups.flatMap((group) => group.items) ?? [];
 }
@@ -32,4 +38,21 @@ export function matchComparables(params: {
     .filter((item) => item.comparableScore >= 0.6)
     .sort((left, right) => right.comparableScore - left.comparableScore || (left.price ?? 0) - (right.price ?? 0))
     .slice(0, params.maxComparables ?? 30);
+}
+
+export function summarizeComparableSources(comparables: MarketComparable[]): MarketComparableSourceSummary[] {
+  const counts = new Map<string, MarketComparableSourceSummary>();
+  for (const item of comparables) {
+    const key = `${item.providerId}::${item.source}`;
+    const current = counts.get(key);
+    if (current) current.count += 1;
+    else {
+      counts.set(key, {
+        providerId: item.providerId,
+        source: item.source,
+        count: 1,
+      });
+    }
+  }
+  return [...counts.values()].sort((left, right) => right.count - left.count || left.providerId.localeCompare(right.providerId));
 }

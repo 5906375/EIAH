@@ -17,10 +17,10 @@ import {
   markMarketScanScoringStarted,
   type ImobMarketScanRunStorePrisma,
 } from "./imobMarketScanRunStore";
-import { matchComparables } from "./comparableMatcher";
+import { matchComparables, summarizeComparableSources } from "./comparableMatcher";
 import { createMarketScanGuardianEvidence } from "./guardianEvidenceHook";
 import { toMarketScanResultSnapshot } from "./listingIngestionAdapter";
-import { computeLiquidityCompetitionScore } from "./liquidityCompetitionScorer";
+import { classifyMarketConfidenceBand, computeLiquidityCompetitionScore } from "./liquidityCompetitionScorer";
 import { recommendOperationalOpportunity } from "./opportunityRecommender";
 import { computePriceIntelligence } from "./priceIntelligenceEngine";
 import { decideSourceAccess } from "./sourceAccessPolicyGate";
@@ -202,6 +202,7 @@ export async function executeMarketScanPipeline(params: {
       snapshot: enrichedSnapshot,
       query: params.query,
     });
+    const comparableSources = summarizeComparableSources(comparables);
     await markMarketScanScoringStarted({ prisma: params.prisma, runId: run.runId });
     const priceIntelligence = computePriceIntelligence(comparables);
     const scoring = computeLiquidityCompetitionScore({
@@ -214,11 +215,13 @@ export async function executeMarketScanPipeline(params: {
       ...enrichedSnapshot,
       intelligence: {
         comparableCount: priceIntelligence.comparableCount,
+        comparableSources,
         priceRange: priceIntelligence.priceRange,
         liquidityScore: scoring.liquidityScore,
         pricingRisk: priceIntelligence.pricingRisk,
         sourceCoverageScore: scoring.sourceCoverageScore,
         confidenceScore,
+        confidenceBand: classifyMarketConfidenceBand(confidenceScore),
       },
     };
     await markMarketScanRecommendationStarted({ prisma: params.prisma, runId: run.runId });

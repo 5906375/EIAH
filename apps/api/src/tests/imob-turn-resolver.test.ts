@@ -788,11 +788,15 @@ test("IMOB turn resolver keeps market scan read-only when the user explicitly ch
       generatedAt: "2026-05-09T12:00:00.000Z",
       intelligence: {
         comparableCount: 2,
+        comparableSources: [
+          { providerId: "internal_crm", source: "internal_crm", count: 2 },
+        ],
         priceRange: { min: 3200, max: 3400, currency: "BRL" },
         liquidityScore: 0.72,
         pricingRisk: "high",
         sourceCoverageScore: 0.5,
         confidenceScore: 0.66,
+        confidenceBand: "medium",
       },
     },
     marketScanOpportunity: {
@@ -831,6 +835,8 @@ test("IMOB turn resolver keeps market scan read-only when the user explicitly ch
   assert.match(result.presentation.card?.lines?.join("\n") ?? "", /Liquidez: 72%/i);
   assert.match(result.presentation.card?.lines?.join("\n") ?? "", /Risco de preço: alto/i);
   assert.match(result.presentation.card?.lines?.join("\n") ?? "", /Confiança: 66%/i);
+  assert.match(result.presentation.card?.lines?.join("\n") ?? "", /Banda de confiança: médio/i);
+  assert.match(result.presentation.card?.lines?.join("\n") ?? "", /Comparáveis por fonte: internal_crm \(2\)/i);
   assert.match(result.presentation.card?.lines?.join("\n") ?? "", /Ação recomendada: Pedir autorização/i);
   assert.match(result.presentation.card?.lines?.join("\n") ?? "", /Próximo passo: Pedir autorização ou fonte adicional/i);
   assert.match(result.presentation.card?.lines?.join("\n") ?? "", /R\$\s?3\.200/i);

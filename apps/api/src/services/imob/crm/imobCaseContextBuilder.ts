@@ -5,6 +5,7 @@ import type {
   ImobLeadLifecycleSnapshotV1,
   ImobLeadMatchingSnapshotV1,
   ImobCaseMission,
+  ImobMarketScanRecommendationSnapshotV1,
   ImobOwnerSnapshotV1,
   ImobPropertyGoalV1,
   ImobPropertySnapshotV1,
@@ -275,6 +276,108 @@ function buildLeadLifecycle(params: {
   };
 }
 
+function normalizeMarketAction(value: unknown) {
+  const normalized = asString(value)?.toLowerCase();
+  if (
+    normalized === "captar"
+    || normalized === "ajustar_preco"
+    || normalized === "campanha"
+    || normalized === "nao_seguir"
+    || normalized === "pedir_documento"
+    || normalized === "pedir_autorizacao"
+  ) {
+    return normalized;
+  }
+  return null;
+}
+
+function mapLiquiditySignal(score: number | null | undefined) {
+  if (typeof score !== "number" || !Number.isFinite(score)) return "unknown";
+  if (score >= 0.65) return "high";
+  if (score >= 0.4) return "medium";
+  return "low";
+}
+
+function buildMarketScanRecommendation(params: {
+  operational?: Record<string, unknown> | null;
+}): ImobMarketScanRecommendationSnapshotV1 | null {
+  const operational = params.operational ?? {};
+  const marketScanSnapshot = asObject(operational.marketScanSnapshot) ?? asObject(operational.marketScanResult);
+  const marketScanOpportunity = asObject(operational.marketScanOpportunity);
+  const sourceStatus = asString(marketScanSnapshot?.sourceStatus);
+  const recommendedAction = normalizeMarketAction(marketScanOpportunity?.recommendedAction);
+  const nextStep = asString(marketScanOpportunity?.nextStep);
+
+  if (!sourceStatus || !recommendedAction || !nextStep) return null;
+
+  const intelligence = asObject(marketScanSnapshot?.intelligence);
+  const priceRange = asObject(marketScanOpportunity?.priceRange) ?? asObject(intelligence?.priceRange);
+  const comparableCount = typeof intelligence?.comparableCount === "number" && Number.isFinite(intelligence.comparableCount)
+    ? intelligence.comparableCount
+    : 0;
+  const comparableSources = Array.isArray(intelligence?.comparableSources)
+    ? intelligence.comparableSources
+        .map((item) => {
+          const sourceObj = asObject(item);
+          const providerId = asString(sourceObj?.providerId);
+          const source = asString(sourceObj?.source);
+          const count = typeof sourceObj?.count === "number" && Number.isFinite(sourceObj.count) ? sourceObj.count : null;
+          if (!providerId || !source || count == null) return null;
+          return { providerId, source, count };
+        })
+        .filter((item): item is NonNullable<ImobMarketScanRecommendationSnapshotV1["comparableSources"]>[number] => Boolean(item))
+    : null;
+  const confidenceScore = typeof marketScanOpportunity?.confidenceScore === "number" && Number.isFinite(marketScanOpportunity.confidenceScore)
+    ? marketScanOpportunity.confidenceScore
+    : typeof intelligence?.confidenceScore === "number" && Number.isFinite(intelligence.confidenceScore)
+      ? intelligence.confidenceScore
+      : null;
+  const confidenceBandRaw = asString(intelligence?.confidenceBand);
+  const liquidityScore = typeof marketScanOpportunity?.liquidityScore === "number" && Number.isFinite(marketScanOpportunity.liquidityScore)
+    ? marketScanOpportunity.liquidityScore
+    : typeof intelligence?.liquidityScore === "number" && Number.isFinite(intelligence.liquidityScore)
+      ? intelligence.liquidityScore
+      : null;
+  const pricingRisk = asString(marketScanOpportunity?.pricingRisk) ?? asString(intelligence?.pricingRisk);
+
+  const summaryByAction: Record<NonNullable<ReturnType<typeof normalizeMarketAction>>, string> = {
+    captar: comparableCount > 0
+      ? `O scan encontrou base suficiente para seguir com captação, com ${comparableCount} comparável(is) útil(is).`
+      : "O scan recomenda seguir com captação usando apenas os sinais já evidenciados.",
+    ajustar_preco: "O scan recomenda revisar a estratégia de preço antes de seguir com a captação.",
+    campanha: "O scan recomenda ativação comercial governada antes de avançar com nova captação.",
+    nao_seguir: "O scan recomenda não seguir agora porque a base de mercado ainda não sustenta uma ação forte.",
+    pedir_documento: "O scan recomenda pedir documentação ou evidência adicional antes de avançar.",
+    pedir_autorizacao: "O scan recomenda pedir autorização ou fonte adicional antes de executar ação comercial.",
+  };
+
+  const reasonCodes = [
+    `MARKET_SCAN_ACTION_${recommendedAction.toUpperCase()}`,
+    comparableCount === 0 ? "MARKET_SCAN_NO_COMPARABLES" : null,
+    priceRange ? "MARKET_SCAN_PRICE_RANGE_AVAILABLE" : "MARKET_SCAN_PRICE_RANGE_MISSING",
+  ].filter((item): item is string => Boolean(item));
+
+  return {
+    sourceStatus: sourceStatus as ImobMarketScanRecommendationSnapshotV1["sourceStatus"],
+    recommendedAction,
+    comparableCount,
+    comparableSources,
+    confidenceScore,
+    confidenceBand: (confidenceBandRaw as ImobMarketScanRecommendationSnapshotV1["confidenceBand"]) ?? "unknown",
+    liquiditySignal: mapLiquiditySignal(liquidityScore),
+    pricingRisk: (pricingRisk as ImobMarketScanRecommendationSnapshotV1["pricingRisk"]) ?? "unknown",
+    priceRange: priceRange
+      ? {
+          min: typeof priceRange.min === "number" ? priceRange.min : 0,
+          max: typeof priceRange.max === "number" ? priceRange.max : 0,
+          currency: (asString(priceRange.currency) as "BRL" | null) ?? "BRL",
+        }
+      : null,
+    summary: summaryByAction[recommendedAction],
+    reasonCodes,
+    recommendedNextMove: nextStep,
+  };
+}
 function buildDocumentsSnapshot(params: {
   documentDraft?: Record<string, unknown> | null;
   contractDraft?: Record<string, unknown> | null;
@@ -442,6 +545,7 @@ function buildCampaignSnapshot(params: {
 function buildBlockers(params: {
   mission: ImobCaseMission;
   caseContext?: ImobCrmCaseContext | null;
+  flow?: string | null;
   pendingItems: string[];
   ownerReady: boolean;
   propertyReady: boolean;
@@ -451,6 +555,7 @@ function buildBlockers(params: {
   documentsReady: boolean;
   commissionReady: boolean;
   campaignStatus?: string | null;
+  marketScanRecommendation?: ImobMarketScanRecommendationSnapshotV1 | null;
 }): ImobCaseBlockerV1[] {
   const blockers: ImobCaseBlockerV1[] = [];
   const rawExistingBlockers = asStringList(
@@ -469,6 +574,7 @@ function buildBlockers(params: {
         || Boolean(params.caseContext?.property)
       )
     );
+  const marketScanFlow = params.flow === "property.market_scan" || params.flow === "property.market_scan.selection";
 
   const existingBlockers = rawExistingBlockers.filter((message) => {
     const normalized = normalizeText(message);
@@ -489,14 +595,30 @@ function buildBlockers(params: {
     blockers.push({ code: `legacy_blocker_${index + 1}`, severity: "blocking", message });
   }
 
-  if (structuralCaptureMission && !params.ownerReady) {
+  if (!marketScanFlow && structuralCaptureMission && !params.ownerReady) {
     blockers.push({ code: "owner_missing_or_incomplete", severity: "blocking", message: "Proprietário ainda não está completo." });
   }
-  if (structuralCaptureMission && !params.propertyReady) {
+  if (!marketScanFlow && structuralCaptureMission && !params.propertyReady) {
     blockers.push({ code: "property_missing_or_incomplete", severity: "blocking", message: "Imóvel ainda não está completo." });
   }
-  if (structuralCaptureMission && params.ownerReady && params.propertyReady && !params.ownerLinkedToProperty) {
+  if (!marketScanFlow && structuralCaptureMission && params.ownerReady && params.propertyReady && !params.ownerLinkedToProperty) {
     blockers.push({ code: "owner_property_not_linked", severity: "blocking", message: "O imóvel ainda não está vinculado ao proprietário." });
+  }
+  if (marketScanFlow && params.marketScanRecommendation) {
+    const recommendation = params.marketScanRecommendation;
+    const warningMessageByAction: Record<typeof recommendation.recommendedAction, string> = {
+      captar: `Scan recomenda seguir com captação: ${recommendation.recommendedNextMove}`,
+      ajustar_preco: `Scan recomenda ajuste de preço: ${recommendation.recommendedNextMove}`,
+      campanha: `Scan recomenda ativação comercial: ${recommendation.recommendedNextMove}`,
+      nao_seguir: `Scan recomenda não seguir agora: ${recommendation.recommendedNextMove}`,
+      pedir_documento: `Scan recomenda pedir documento: ${recommendation.recommendedNextMove}`,
+      pedir_autorizacao: `Scan recomenda pedir autorização: ${recommendation.recommendedNextMove}`,
+    };
+    blockers.push({
+      code: `market_scan_${recommendation.recommendedAction}`,
+      severity: "warning",
+      message: warningMessageByAction[recommendation.recommendedAction],
+    });
   }
   if (params.mission === "qualify_lead" && !params.leadReady) {
     blockers.push({ code: "lead_missing_or_incomplete", severity: "blocking", message: "O lead ainda não tem os dados mínimos para avançar com segurança." });
@@ -539,6 +661,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
   const listingDraft = asObject(operational.listingDraft);
   const campaignDraft = asObject(operational.campaignDraft);
   const operationalMissionContext = asObject(operational.missionContext);
+  const marketScanRecommendation = buildMarketScanRecommendation({ operational });
   const owner = buildOwnerSnapshot({ owner: params.caseContext?.owner, ownerDraft });
   const property = buildPropertySnapshot({ property: params.caseContext?.property, propertyDraft });
   const visit = buildVisitSnapshot({ visitDraft });
@@ -617,6 +740,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
     },
     leadMatching,
     leadLifecycle,
+    marketScanRecommendation,
     links: {
       ownerProperty: {
         ownerId: owner?.id ?? null,
@@ -636,6 +760,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
     blockers: buildBlockers({
       mission,
       caseContext: params.caseContext,
+      flow,
       pendingItems,
       ownerReady,
       propertyReady,
@@ -645,6 +770,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
       documentsReady,
       commissionReady,
       campaignStatus: campaign?.status ?? null,
+      marketScanRecommendation,
     }),
   };
 
