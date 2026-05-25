@@ -253,3 +253,50 @@ test("IMOB conversation state structures complete property address from free tex
   assert.equal((result as any)?.propertyDraft?.city, "Itajaí");
   assert.ok(!(result as any)?.pendingFields.includes("address"));
 });
+
+test("IMOB conversation state normalizes lead phone and preserves explicit lead identity", () => {
+  const result = createNextImobOperationalState(
+    null,
+    "lead",
+    "qualificar lead maria telefone 47999998888 email maria@imob.com para alugar em Itapema até 3500",
+    {
+      goal: "locacao",
+      city: "Itapema",
+      region: null,
+      neighborhood: null,
+      budgetMax: 3500,
+      bedrooms: null,
+      bathrooms: null,
+      propertyType: null,
+    },
+  );
+
+  assert.equal(result?.flow, "lead.qualify");
+  assert.equal((result as any)?.leadDraft?.leadName, "Maria");
+  assert.equal((result as any)?.leadDraft?.leadPhone, "(47) 99999-8888");
+  assert.equal((result as any)?.leadDraft?.leadEmail, "maria@imob.com");
+});
+
+test("IMOB conversation state infers cpf document type during document collection", () => {
+  const result = createNextImobOperationalState(
+    null,
+    "documents",
+    "coletar documento do proprietário do imóvel 4455 via upload documento 529.982.247-25",
+    {
+      goal: null,
+      city: null,
+      region: null,
+      neighborhood: null,
+      budgetMax: null,
+      bedrooms: null,
+      bathrooms: null,
+      propertyType: null,
+    },
+  );
+
+  assert.equal(result?.flow, "documents.collect");
+  assert.equal((result as any)?.documentDraft?.referenceId, "property-4455");
+  assert.equal((result as any)?.documentDraft?.subjectType, "owner");
+  assert.deepEqual((result as any)?.documentDraft?.documentTypes, ["cpf"]);
+  assert.equal((result as any)?.documentDraft?.deliveryChannel, "upload");
+});

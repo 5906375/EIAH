@@ -421,6 +421,7 @@ function trimNamedPartyCandidate(value: string) {
   const trimmed = value
     .replace(/^(?:chamado|chamada|nomeado|nomeada)\s+/i, "")
     .replace(/\b(no|na)\s+(imovel|imóvel|apartamento|apto|casa)\b.*$/i, "")
+    .replace(/\bpara\s+(alugar|comprar|loca(?:cao|ção)|vender)\b.*$/i, "")
     .replace(/\b(com|por)\s+(oferta|proposta|valor)\b.*$/i, "")
     .replace(/\bcom\s+documentos?\b.*$/i, "")
     .replace(/\b(email|telefone|cpf|cnpj|documento|whatsapp)\b.*$/i, "")
@@ -811,15 +812,16 @@ function normalizeLeadGoal(goal: "locacao" | "venda" | "aluguel_por_temporada" |
 }
 
 function buildLeadDraft(previous: ImobLeadDraft | undefined, message: string, slots: ImobSearchSlots): ImobLeadDraft {
+  const validation = validateImobInput({ rawInput: message, scope: "lead.qualify" });
   const desiredCityCanonical = canonicalizeImobCity(slots.city ?? previous?.desiredCity ?? null, {
     source: "user",
     locked: previous?.desiredCityCanonical?.locked ?? false,
   });
   return {
     leadPersona: detectLeadPersona(message, previous),
-    leadName: extractNamedParty(message, "lead") ?? previous?.leadName ?? null,
-    leadEmail: extractEmail(message) ?? previous?.leadEmail ?? null,
-    leadPhone: extractPhone(message) ?? previous?.leadPhone ?? null,
+    leadName: extractNamedParty(message, "lead") ?? validation.normalized.name ?? previous?.leadName ?? null,
+    leadEmail: extractEmail(message) ?? validation.normalized.email ?? previous?.leadEmail ?? null,
+    leadPhone: validation.normalized.phone ?? extractPhone(message) ?? previous?.leadPhone ?? null,
     desiredGoal: normalizeLeadGoal(slots.goal ?? previous?.desiredGoal ?? null),
     desiredCity: desiredCityCanonical?.canonicalName ?? previous?.desiredCity ?? null,
     desiredCityCanonical,
@@ -1162,13 +1164,18 @@ function extractDocumentDeliveryChannel(raw: string): ImobDocumentDraft["deliver
 }
 
 function buildDocumentDraft(previous: ImobDocumentDraft | undefined, message: string): ImobDocumentDraft {
+  const validation = validateImobInput({ rawInput: message, scope: "documents.review" });
   const propertyIdMatch = message.match(/(?:imovel|imóvel|apartamento|apto|casa)\s*#?\s*(\d{2,})/i)?.[1] ?? null;
   const referenceId = propertyIdMatch ? `property-${propertyIdMatch}` : previous?.referenceId ?? null;
+  const inferredDocumentType = validation.normalized.document?.type;
   return {
     referenceId,
     subjectType: extractDocumentSubjectType(message) ?? previous?.subjectType ?? null,
     documentTypes: (() => {
       const next = extractDocumentTypes(message);
+      if (inferredDocumentType === "cpf" || inferredDocumentType === "cnpj" || inferredDocumentType === "rg") {
+        next.push(inferredDocumentType);
+      }
       return next.length > 0 ? next : previous?.documentTypes ?? [];
     })(),
     deliveryChannel: extractDocumentDeliveryChannel(message) ?? previous?.deliveryChannel ?? null,
