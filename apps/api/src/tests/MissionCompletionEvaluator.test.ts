@@ -21,6 +21,8 @@ function buildContext(overrides: Partial<ImobCaseContextV1> = {}): ImobCaseConte
     readiness: {
       ownerReady: false,
       propertyReady: false,
+      leadReady: false,
+      leadReadinessScore: null,
       documentsReady: false,
       seasonalRulesReady: false,
       operationalReady: false,
@@ -69,6 +71,15 @@ test("completion evaluator promotes qualified lead mission to ready_for_transiti
       entities: {
         lead: { id: "lead-1", name: "Maria" },
       },
+      readiness: {
+        ownerReady: false,
+        propertyReady: false,
+        leadReady: true,
+        leadReadinessScore: 76,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
     }),
     currentStep: "matching_inventory",
     pendingFields: [],
@@ -96,4 +107,62 @@ test("completion evaluator marks commercial activation as ready_for_transition w
   });
 
   assert.equal(status, "ready_for_transition");
+});
+
+test("completion evaluator keeps incomplete lead mission in progress", () => {
+  const status = resolveImobMissionStatus({
+    mission: "qualify_and_match_lead",
+    context: buildContext({
+      missionContext: {
+        mission: "qualify_lead",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        lead: { name: "Maria" },
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: false,
+        leadReady: false,
+        leadReadinessScore: 32,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+    currentStep: "gathering_signals",
+    pendingFields: ["leadPhone", "budgetMax"],
+    hasNextAction: true,
+  });
+
+  assert.equal(status, "in_progress");
+});
+
+test("completion evaluator keeps complete but low-readiness lead below transition threshold", () => {
+  const status = resolveImobMissionStatus({
+    mission: "qualify_and_match_lead",
+    context: buildContext({
+      missionContext: {
+        mission: "qualify_lead",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        lead: { id: "lead-1", name: "Maria" },
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: false,
+        leadReady: true,
+        leadReadinessScore: 60,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+    currentStep: "matching_inventory",
+    pendingFields: [],
+    hasNextAction: true,
+  });
+
+  assert.equal(status, "in_progress");
 });

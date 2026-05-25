@@ -174,6 +174,11 @@ export function resolveCanonicalCaseStateFromLegacy(params: {
     readiness: {
       owner: params.context.readiness.ownerReady ? "ready" : "incomplete",
       property: params.context.readiness.propertyReady ? "ready" : "incomplete",
+      lead: params.context.readiness.leadReady
+        ? ((params.context.readiness.leadReadinessScore ?? 0) >= 70 ? "ready" : "blocked")
+        : params.context.entities.lead
+          ? "incomplete"
+          : undefined,
       documents: params.context.readiness.documentsReady ? "ready" : "incomplete",
       campaign: params.context.entities.campaign?.status === "ready_to_publish" || params.context.entities.campaign?.status === "published_or_sent"
         ? "ready"

@@ -25,6 +25,8 @@ function buildContext(overrides: Partial<ImobCaseContextV1> = {}): ImobCaseConte
     readiness: {
       ownerReady: false,
       propertyReady: false,
+      leadReady: false,
+      leadReadinessScore: null,
       documentsReady: false,
       seasonalRulesReady: false,
       operationalReady: false,
@@ -179,4 +181,84 @@ test("recovery response prioritizes owner follow-up after market-scan conversion
   assert.equal(response.primaryAction?.operation, "owner.create");
   assert.match(response.summary, /proprietário/i);
   assert.equal(response.missingItems.some((item) => /multiplas cidades|múltiplas cidades/i.test(item)), false);
+});
+
+test("recovery snapshot exposes lead readiness blockers before matching handoff", () => {
+  const snapshot = resolveImobRecoverySnapshot(buildContext({
+    missionContext: {
+      mission: "qualify_lead",
+      lockedUntilExplicitChange: false,
+    },
+    entities: {
+      lead: {
+        id: "lead-1",
+        name: "Maria",
+        desiredGoal: "locacao",
+        desiredCity: "Itapema",
+        readinessScore: 60,
+        readinessBand: "WARM",
+      },
+    },
+    readiness: {
+      ownerReady: false,
+      propertyReady: false,
+      leadReady: true,
+      leadReadinessScore: 60,
+      documentsReady: false,
+      seasonalRulesReady: false,
+      operationalReady: false,
+    },
+    blockers: [
+      {
+        code: "lead_readiness_below_threshold",
+        severity: "warning",
+        message: "O lead já está completo, mas ainda precisa consolidar readiness comercial antes do próximo handoff.",
+      },
+    ],
+    canonicalCaseState: {
+      schemaVersion: 1,
+      tenantId: "tenant-A",
+      workspaceId: "workspace-A",
+      caseId: "case-1",
+      mission: "qualify_and_match_lead",
+      missionStatus: "in_progress",
+      currentStep: "matching_inventory",
+      currentOperation: "lead",
+      entities: {
+        leadId: "lead-1",
+      },
+      readiness: {
+        lead: "blocked",
+        proof: "not_applicable",
+      },
+      blockers: [
+        {
+          code: "lead_readiness_below_threshold",
+          message: "O lead já está completo, mas ainda precisa consolidar readiness comercial antes do próximo handoff.",
+        },
+      ],
+      pendingFields: [],
+      nextAction: {
+        id: "review-lead-readiness",
+        label: "Consolidar readiness do lead",
+        operation: "lead",
+        targetAgent: "IMOB_LeadAgent",
+        reasonCode: "LEAD_READINESS_REVIEW_REQUIRED",
+      },
+      proof: {
+        required: false,
+        minimumProofSatisfied: true,
+        missingProof: [],
+      },
+      audit: {
+        version: 1,
+        lastUpdatedAt: "2026-05-25T10:00:00.000Z",
+        updatedByAgent: "IMOB",
+      },
+    },
+  }));
+
+  assert.equal(snapshot.primaryAction?.operation, "lead.qualify");
+  assert.equal(snapshot.primaryAction?.reasonCode, "LEAD_READINESS_REVIEW_REQUIRED");
+  assert.ok(snapshot.missingItems.some((item) => /readiness comercial/i.test(item)));
 });

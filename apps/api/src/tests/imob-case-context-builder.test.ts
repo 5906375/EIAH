@@ -120,3 +120,48 @@ test("IMOB case context v1 drops stale market-scan blocker after property conver
   assert.ok(context.blockers.some((blocker) => blocker.code === "owner_missing_or_incomplete"));
   assert.equal(context.recoverySnapshot?.primaryAction?.operation, "owner.create");
 });
+
+test("IMOB case context v1 derives lead readiness base and blocks weak handoff", () => {
+  const context = buildImobCaseContextV1({
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    caseId: "case-1",
+    message: "qualificar lead Maria para locação em Itapema",
+    caseContext: {
+      caseId: "case-1",
+      flow: "lead.qualify",
+      lead: {
+        id: "lead-1",
+        name: "Maria",
+        goal: "locacao",
+        targetCity: "Itapema",
+        budgetMaxCents: 350000,
+        discoverySignals: {
+          urgency: "medium",
+          painPoint: null,
+          motivation: null,
+          budgetFlexibility: null,
+          decisionMaker: null,
+          timeline: null,
+          pendingSignals: ["painPoint", "motivation", "budgetFlexibility", "decisionMaker", "timeline"],
+        },
+      },
+    },
+    operational: {
+      flow: "lead.qualify",
+      leadDraft: {
+        leadName: "Maria",
+        desiredGoal: "locacao",
+        desiredCity: "Itapema",
+        budgetMax: 3500,
+        leadPhone: "47999998888",
+      },
+    },
+  });
+
+  assert.equal(context.readiness.leadReady, true);
+  assert.equal(context.readiness.leadReadinessScore, 65);
+  assert.equal(context.entities.lead?.readinessBand, "WARM");
+  assert.ok(context.blockers.some((blocker) => blocker.code === "lead_readiness_below_threshold"));
+  assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "LEAD_READINESS_REVIEW_REQUIRED");
+});

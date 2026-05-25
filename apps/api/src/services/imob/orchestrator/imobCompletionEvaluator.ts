@@ -50,7 +50,11 @@ export function resolveImobMissionStatus(params: ResolveMissionStatusParams): Mi
       if (params.currentStep === "snapshot_ready") return "ready_for_transition";
       return params.hasNextAction || hasUsefulEntityContext(params.context) ? "in_progress" : "draft";
     case "qualify_and_match_lead":
-      if (params.pendingFields.length === 0 && Boolean(params.context.entities.lead?.id || params.context.entities.lead?.name)) {
+      if (
+        params.context.readiness.leadReady
+        && (params.context.readiness.leadReadinessScore ?? 0) >= 70
+        && Boolean(params.context.entities.lead?.id || params.context.entities.lead?.name)
+      ) {
         return "ready_for_transition";
       }
       return params.hasNextAction || params.pendingFields.length > 0 ? "in_progress" : "draft";

@@ -80,6 +80,8 @@ export type ImobLeadSnapshotV1 = ImobEntitySnapshotV1 & {
   phone?: string | null;
   desiredGoal?: ImobPropertyGoalV1 | null;
   desiredCity?: string | null;
+  readinessScore?: number | null;
+  readinessBand?: "HOT" | "WARM" | "COLD" | "UNKNOWN" | null;
 };
 
 export type ImobCaseBlockerV1 = {
@@ -119,6 +121,8 @@ export type ImobCaseContextV1 = {
   readiness: {
     ownerReady: boolean;
     propertyReady: boolean;
+    leadReady: boolean;
+    leadReadinessScore: number | null;
     documentsReady: boolean;
     seasonalRulesReady: boolean;
     operationalReady: boolean;

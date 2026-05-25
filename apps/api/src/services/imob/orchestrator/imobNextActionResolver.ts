@@ -120,10 +120,26 @@ export function resolveImobNextAction(params: ResolveNextActionParams): ImobNext
       });
 
     case "qualify_and_match_lead":
+      if (!params.context.readiness.leadReady) {
+        return mapLeadAction(params.flow, {
+          id: "ask-missing-lead-field",
+          label: "Completar dados do lead",
+          reasonCode: "LEAD_MISSING_REQUIRED_FIELD",
+        });
+      }
+
+      if ((params.context.readiness.leadReadinessScore ?? 0) < 70) {
+        return mapLeadAction(params.flow, {
+          id: "review-lead-readiness",
+          label: "Consolidar readiness do lead",
+          reasonCode: "LEAD_READINESS_REVIEW_REQUIRED",
+        });
+      }
+
       return mapLeadAction(params.flow, {
-        id: params.pendingFields?.length ? "ask-missing-lead-field" : "resume-lead-qualification",
-        label: params.pendingFields?.length ? "Completar dados do lead" : "Retomar qualificação do lead",
-        reasonCode: params.pendingFields?.length ? "LEAD_MISSING_REQUIRED_FIELD" : "LEAD_READY_TO_PROGRESS",
+        id: "link-lead-to-property",
+        label: "Vincular lead ao imóvel",
+        reasonCode: "LEAD_READY_TO_LINK",
       });
 
     case "schedule_and_follow_visit":

@@ -21,6 +21,8 @@ function buildContext(overrides: Partial<ImobCaseContextV1> = {}): ImobCaseConte
     readiness: {
       ownerReady: false,
       propertyReady: false,
+      leadReady: false,
+      leadReadinessScore: null,
       documentsReady: false,
       seasonalRulesReady: false,
       operationalReady: false,
@@ -103,4 +105,94 @@ test("next action resolver routes commercial activation through campaign approva
   assert.equal(nextAction.operation, "campaign");
   assert.equal(nextAction.reasonCode, "CAMPAIGN_APPROVAL_REQUIRED");
   assert.equal(nextAction.targetAgent, "IMOB_FollowUpAgent");
+});
+
+test("next action resolver keeps lead in qualification when minimum fields are still missing", () => {
+  const nextAction = resolveImobNextAction({
+    mission: "qualify_and_match_lead",
+    context: buildContext({
+      missionContext: {
+        mission: "qualify_lead",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        lead: { name: "Maria", desiredGoal: "locacao", desiredCity: "Itapema" },
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: false,
+        leadReady: false,
+        leadReadinessScore: 48,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+    operation: "lead",
+    flow: "lead.qualify",
+    pendingFields: ["leadPhone", "budgetMax"],
+  });
+
+  assert.equal(nextAction.operation, "lead");
+  assert.equal(nextAction.reasonCode, "LEAD_MISSING_REQUIRED_FIELD");
+});
+
+test("next action resolver asks for readiness review when lead is complete but still below threshold", () => {
+  const nextAction = resolveImobNextAction({
+    mission: "qualify_and_match_lead",
+    context: buildContext({
+      missionContext: {
+        mission: "qualify_lead",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        lead: { id: "lead-1", name: "Maria", desiredGoal: "locacao", desiredCity: "Itapema" },
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: false,
+        leadReady: true,
+        leadReadinessScore: 60,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+    operation: "lead",
+    flow: "lead.qualify",
+    pendingFields: [],
+  });
+
+  assert.equal(nextAction.operation, "lead");
+  assert.equal(nextAction.reasonCode, "LEAD_READINESS_REVIEW_REQUIRED");
+});
+
+test("next action resolver promotes ready lead to property linking handoff", () => {
+  const nextAction = resolveImobNextAction({
+    mission: "qualify_and_match_lead",
+    context: buildContext({
+      missionContext: {
+        mission: "qualify_lead",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        lead: { id: "lead-1", name: "Maria", desiredGoal: "locacao", desiredCity: "Itapema" },
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: false,
+        leadReady: true,
+        leadReadinessScore: 76,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+    operation: "lead",
+    flow: "lead.qualify",
+    pendingFields: [],
+  });
+
+  assert.equal(nextAction.operation, "lead");
+  assert.equal(nextAction.reasonCode, "LEAD_READY_TO_LINK");
 });

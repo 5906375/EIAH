@@ -116,6 +116,55 @@ function buildPropertySnapshot(params: {
   };
 }
 
+function countPresent(values: Array<unknown>) {
+  return values.filter((value) => {
+    if (typeof value === "number") return Number.isFinite(value);
+    return Boolean(asString(value));
+  }).length;
+}
+
+function buildLeadReadiness(params: {
+  lead?: Record<string, unknown> | null;
+}) {
+  const lead = params.lead ?? {};
+  const coreSignals = [
+    asString(lead.id) ?? asString(lead.name) ?? asString(lead.leadName),
+    asString(lead.phone) ?? asString(lead.leadPhone),
+    normalizeGoal(lead.goal) ?? normalizeGoal(lead.desiredGoal),
+    asString(lead.targetCity) ?? asString(lead.desiredCity),
+    typeof lead.budgetMaxCents === "number"
+      ? lead.budgetMaxCents
+      : typeof lead.budgetMax === "number"
+        ? lead.budgetMax
+        : null,
+  ];
+  const corePresent = countPresent(coreSignals);
+  const discoverySignals = asObject(lead.discoverySignals);
+  const discoveryPresent = countPresent([
+    discoverySignals?.urgency,
+    discoverySignals?.painPoint,
+    discoverySignals?.motivation,
+    discoverySignals?.budgetFlexibility,
+    discoverySignals?.decisionMaker,
+    discoverySignals?.timeline,
+  ]);
+  const readinessScore = Math.max(0, Math.min(100, corePresent * 12 + Math.min(discoveryPresent, 6) * 5));
+  const leadReady = corePresent === 5;
+  const readinessBand = !corePresent
+    ? "UNKNOWN"
+    : readinessScore >= 70
+      ? "HOT"
+      : readinessScore >= 40
+        ? "WARM"
+        : "COLD";
+
+  return {
+    leadReady,
+    readinessScore,
+    readinessBand,
+  };
+}
+
 function buildDocumentsSnapshot(params: {
   documentDraft?: Record<string, unknown> | null;
   contractDraft?: Record<string, unknown> | null;
@@ -246,6 +295,8 @@ function buildBlockers(params: {
   pendingItems: string[];
   ownerReady: boolean;
   propertyReady: boolean;
+  leadReady: boolean;
+  leadReadinessScore: number | null;
   ownerLinkedToProperty: boolean;
   documentsReady: boolean;
   commissionReady: boolean;
@@ -297,6 +348,12 @@ function buildBlockers(params: {
   if (structuralCaptureMission && params.ownerReady && params.propertyReady && !params.ownerLinkedToProperty) {
     blockers.push({ code: "owner_property_not_linked", severity: "blocking", message: "O imóvel ainda não está vinculado ao proprietário." });
   }
+  if (params.mission === "qualify_lead" && !params.leadReady) {
+    blockers.push({ code: "lead_missing_or_incomplete", severity: "blocking", message: "O lead ainda não tem os dados mínimos para avançar com segurança." });
+  }
+  if (params.mission === "qualify_lead" && params.leadReady && (params.leadReadinessScore ?? 0) < 70) {
+    blockers.push({ code: "lead_readiness_below_threshold", severity: "warning", message: "O lead já está completo, mas ainda precisa consolidar readiness comercial antes do próximo handoff." });
+  }
   if (params.mission === "prepare_contract" && !params.documentsReady) {
     blockers.push({ code: "document_packet_not_ready", severity: "blocking", message: "O pacote documental ainda não está pronto para seguir com o contrato." });
   }
@@ -336,7 +393,11 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
   const contract = buildContractSnapshot({ contractDraft });
   const commission = buildCommissionSnapshot({ commissionDraft });
   const campaign = buildCampaignSnapshot({ campaignDraft, listingDraft });
-  const lead = asObject(params.caseContext?.lead) ?? leadDraft;
+  const lead = {
+    ...(asObject(params.caseContext?.lead) ?? {}),
+    ...(leadDraft ?? {}),
+  };
+  const leadReadiness = buildLeadReadiness({ lead });
   const leadGoal = normalizeGoal(lead?.desiredGoal);
   const propertyGoal = property?.goal ?? null;
   const pendingItems = [
@@ -382,6 +443,8 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
         phone: asString(lead.phone) ?? asString(lead.leadPhone),
         desiredGoal: leadGoal,
         desiredCity: asString(lead.desiredCity),
+        readinessScore: leadReadiness.readinessScore,
+        readinessBand: leadReadiness.readinessBand,
         status: asString(lead.status),
       } : null,
       documents,
@@ -399,6 +462,8 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
     readiness: {
       ownerReady,
       propertyReady,
+      leadReady: leadReadiness.leadReady,
+      leadReadinessScore: leadReadiness.readinessScore,
       documentsReady,
       seasonalRulesReady,
       operationalReady: ownerReady && propertyReady && ownerLinkedToProperty && documentsReady && (mission !== "capture_seasonal_property" || seasonalRulesReady),
@@ -409,6 +474,8 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
       pendingItems,
       ownerReady,
       propertyReady,
+      leadReady: leadReadiness.leadReady,
+      leadReadinessScore: leadReadiness.readinessScore,
       ownerLinkedToProperty,
       documentsReady,
       commissionReady,
