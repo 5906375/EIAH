@@ -120,6 +120,22 @@ export function resolveImobNextAction(params: ResolveNextActionParams): ImobNext
       });
 
     case "qualify_and_match_lead":
+      if (params.context.leadLifecycle?.status === "reengagement_ready") {
+        return mapLeadAction(params.flow, {
+          id: "reengage-disqualified-lead",
+          label: "Retomar lead",
+          reasonCode: "LEAD_REENGAGEMENT_REQUIRED",
+        });
+      }
+
+      if (params.context.leadLifecycle?.status === "disqualified") {
+        return mapLeadAction(params.flow, {
+          id: "review-disqualified-lead",
+          label: "Revisar desqualificação do lead",
+          reasonCode: "LEAD_DISQUALIFIED",
+        });
+      }
+
       if (!params.context.readiness.leadReady) {
         return mapLeadAction(params.flow, {
           id: "ask-missing-lead-field",

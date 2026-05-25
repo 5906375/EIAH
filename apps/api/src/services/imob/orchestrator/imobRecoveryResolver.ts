@@ -90,6 +90,24 @@ function mapCanonicalNextActionToPlanAction(context: ImobCaseContextV1): ImobCas
   }
 
   if (nextAction.operation === "lead") {
+    if (nextAction.reasonCode === "LEAD_REENGAGEMENT_REQUIRED") {
+      return action({
+        operation: "lead.qualify",
+        label: "Retomar lead",
+        nextMessage: "retomar lead deste caso",
+        reasonCode: nextAction.reasonCode,
+      });
+    }
+
+    if (nextAction.reasonCode === "LEAD_DISQUALIFIED") {
+      return action({
+        operation: "lead.qualify",
+        label: "Revisar desqualificação do lead",
+        nextMessage: "revisar desqualificação deste lead",
+        reasonCode: nextAction.reasonCode,
+      });
+    }
+
     if (nextAction.reasonCode === "LEAD_PROPERTY_MATCH_PENDING") {
       return action({
         operation: "lead.qualify",
@@ -243,7 +261,11 @@ export function resolveImobRecoveryResponse(params: {
   const leadMatchingSummary = params.context.missionContext?.mission === "qualify_lead"
     ? params.context.leadMatching?.summary
     : null;
-  const leadMatchingSuffix = leadMatchingSummary ? ` ${leadMatchingSummary}` : "";
+  const leadLifecycleSummary = params.context.missionContext?.mission === "qualify_lead"
+    ? params.context.leadLifecycle?.summary
+    : null;
+  const leadContextSuffix = [leadMatchingSummary, leadLifecycleSummary].filter(Boolean).join(" ");
+  const leadContextSentence = leadContextSuffix ? ` ${leadContextSuffix}` : "";
 
   if (params.intent === "what_is_missing") {
     return {
@@ -251,8 +273,8 @@ export function resolveImobRecoveryResponse(params: {
       intent: params.intent,
       title: "Pendências do caso",
       summary: snapshot.missingItems.length > 0
-        ? `Ainda faltam ${snapshot.missingItems.join(" • ")}.${leadMatchingSuffix}`
-        : `Não há pendências explícitas; posso seguir pelo próximo passo principal.${leadMatchingSuffix}`,
+        ? `Ainda faltam ${snapshot.missingItems.join(" • ")}.${leadContextSentence}`
+        : `Não há pendências explícitas; posso seguir pelo próximo passo principal.${leadContextSentence}`,
       blockers: snapshot.blockers,
       missingItems: snapshot.missingItems,
       primaryAction: snapshot.primaryAction,
@@ -268,8 +290,8 @@ export function resolveImobRecoveryResponse(params: {
       intent: params.intent,
       title: "Próximo passo",
       summary: snapshot.primaryAction
-        ? `O próximo passo seguro é ${snapshot.primaryAction.label.toLowerCase()}.${leadMatchingSuffix}`
-        : `O próximo passo não está explícito; posso abrir o caso para recompor o estado.${leadMatchingSuffix}`,
+        ? `O próximo passo seguro é ${snapshot.primaryAction.label.toLowerCase()}.${leadContextSentence}`
+        : `O próximo passo não está explícito; posso abrir o caso para recompor o estado.${leadContextSentence}`,
       blockers: snapshot.blockers,
       missingItems: snapshot.missingItems,
       primaryAction: snapshot.primaryAction,
@@ -285,8 +307,8 @@ export function resolveImobRecoveryResponse(params: {
       intent: params.intent,
       title: "Retomada do caso",
       summary: snapshot.primaryAction
-        ? `Vamos retomar a partir de ${snapshot.primaryAction.label.toLowerCase()}.${leadMatchingSuffix}`
-        : `Posso retomar o caso abrindo o resumo operacional mais recente.${leadMatchingSuffix}`,
+        ? `Vamos retomar a partir de ${snapshot.primaryAction.label.toLowerCase()}.${leadContextSentence}`
+        : `Posso retomar o caso abrindo o resumo operacional mais recente.${leadContextSentence}`,
       blockers: snapshot.blockers,
       missingItems: snapshot.missingItems,
       primaryAction: snapshot.primaryAction,
@@ -301,8 +323,8 @@ export function resolveImobRecoveryResponse(params: {
     intent: params.intent,
     title: "Resumo do caso",
     summary: snapshot.blockers.length > 0
-      ? `Caso em ${snapshot.stage} com bloqueios ativos e próxima ação já resolvida.${leadMatchingSuffix}`
-      : `Caso em ${snapshot.stage} com próxima ação já resolvida.${leadMatchingSuffix}`,
+      ? `Caso em ${snapshot.stage} com bloqueios ativos e próxima ação já resolvida.${leadContextSentence}`
+      : `Caso em ${snapshot.stage} com próxima ação já resolvida.${leadContextSentence}`,
     blockers: snapshot.blockers,
     missingItems: snapshot.missingItems,
     primaryAction: snapshot.primaryAction,

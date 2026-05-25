@@ -94,6 +94,13 @@ export type ImobLeadMatchingSnapshotV1 = {
   recommendedNextMove: string;
 };
 
+export type ImobLeadLifecycleSnapshotV1 = {
+  status: "active" | "disqualified" | "reengagement_ready";
+  reason?: string | null;
+  nextTrigger?: string | null;
+  summary: string;
+};
+
 export type ImobCaseBlockerV1 = {
   code: string;
   severity: "info" | "warning" | "blocking";
@@ -124,6 +131,7 @@ export type ImobCaseContextV1 = {
     commission?: ImobEntitySnapshotV1 | null;
   };
   leadMatching?: ImobLeadMatchingSnapshotV1 | null;
+  leadLifecycle?: ImobLeadLifecycleSnapshotV1 | null;
   links: {
     ownerProperty?: {
       ownerId?: string | null;

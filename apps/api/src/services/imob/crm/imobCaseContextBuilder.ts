@@ -2,6 +2,7 @@ import type { ImobCrmCaseContext } from "./imobCrmAgentContract";
 import type {
   ImobCaseBlockerV1,
   ImobCaseContextV1,
+  ImobLeadLifecycleSnapshotV1,
   ImobLeadMatchingSnapshotV1,
   ImobCaseMission,
   ImobOwnerSnapshotV1,
@@ -233,6 +234,44 @@ function buildLeadMatching(params: {
       ? `O imóvel ${propertyLabel} já está alinhado com cidade e objetivo do lead.`
       : "O imóvel atual já está alinhado com cidade e objetivo do lead.",
     recommendedNextMove: "vincular lead ao imóvel compatível",
+  };
+}
+
+function buildLeadLifecycle(params: {
+  lead?: Record<string, unknown> | null;
+}): ImobLeadLifecycleSnapshotV1 {
+  const lead = params.lead ?? {};
+  const rawStatus = normalizeText(asString(lead.status) ?? "active");
+  const reason = asString(lead.disqualificationReason) ?? asString(lead.blockReason) ?? null;
+  const nextTrigger = asString(lead.reengagementTrigger) ?? asString(lead.nextTrigger);
+
+  if (rawStatus === "disqualified" || rawStatus === "blocked") {
+    if (nextTrigger) {
+      return {
+        status: "reengagement_ready",
+        reason,
+        nextTrigger,
+        summary: reason
+          ? `Lead desqualificado por ${reason} e já com gatilho de retomada ${nextTrigger}.`
+          : `Lead desqualificado e já com gatilho de retomada ${nextTrigger}.`,
+      };
+    }
+
+    return {
+      status: "disqualified",
+      reason,
+      nextTrigger: null,
+      summary: reason
+        ? `Lead desqualificado por ${reason}.`
+        : "Lead desqualificado e aguardando revisão comercial.",
+    };
+  }
+
+  return {
+    status: "active",
+    reason: null,
+    nextTrigger: nextTrigger ?? null,
+    summary: "Lead ativo na jornada comercial.",
   };
 }
 
@@ -513,6 +552,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
     ...(leadDraft ?? {}),
   };
   const leadReadiness = buildLeadReadiness({ lead });
+  const leadLifecycle = buildLeadLifecycle({ lead });
   const leadGoal = normalizeGoal(lead?.desiredGoal);
   const propertyGoal = property?.goal ?? null;
   const leadMatching = buildLeadMatching({
@@ -576,6 +616,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
       commission,
     },
     leadMatching,
+    leadLifecycle,
     links: {
       ownerProperty: {
         ownerId: owner?.id ?? null,

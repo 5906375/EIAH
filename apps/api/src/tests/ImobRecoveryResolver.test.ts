@@ -409,3 +409,143 @@ test("recovery response points to proposal preparation after a scheduled visit",
   assert.equal(response.primaryAction?.operation, "proposal.create");
   assert.match(response.summary, /preparar proposta/i);
 });
+
+test("recovery response preserves disqualification reason without reopening resolved lead fields", () => {
+  const response = resolveImobRecoveryResponse({
+    intent: "consult_case",
+    context: buildContext({
+      missionContext: {
+        mission: "qualify_lead",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        lead: { id: "lead-1", name: "Maria", desiredGoal: "locacao", desiredCity: "Itapema" },
+      },
+      leadLifecycle: {
+        status: "disqualified",
+        reason: "orcamento fora da faixa",
+        nextTrigger: null,
+        summary: "Lead desqualificado por orcamento fora da faixa.",
+      },
+      canonicalCaseState: {
+        schemaVersion: 1,
+        tenantId: "tenant-A",
+        workspaceId: "workspace-A",
+        caseId: "case-1",
+        mission: "qualify_and_match_lead",
+        missionStatus: "in_progress",
+        currentStep: "disqualified",
+        currentOperation: "lead",
+        entities: {
+          leadId: "lead-1",
+        },
+        readiness: {
+          lead: "blocked",
+          proof: "not_applicable",
+        },
+        blockers: [],
+        pendingFields: [],
+        nextAction: {
+          id: "review-disqualified-lead",
+          label: "Revisar desqualificação do lead",
+          operation: "lead",
+          targetAgent: "IMOB_LeadAgent",
+          reasonCode: "LEAD_DISQUALIFIED",
+        },
+        proof: {
+          required: false,
+          minimumProofSatisfied: true,
+          missingProof: [],
+        },
+        audit: {
+          version: 1,
+          lastUpdatedAt: "2026-05-25T10:00:00.000Z",
+          updatedByAgent: "IMOB",
+        },
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: false,
+        leadReady: true,
+        leadReadinessScore: 82,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+  });
+
+  assert.equal(response.primaryAction?.reasonCode, "LEAD_DISQUALIFIED");
+  assert.match(response.summary, /orcamento fora da faixa/i);
+  assert.doesNotMatch(response.summary, /leadPhone|budgetMax|desiredCity/i);
+});
+
+test("recovery response suggests reengagement when a disqualified lead already has a return trigger", () => {
+  const response = resolveImobRecoveryResponse({
+    intent: "next_step",
+    context: buildContext({
+      missionContext: {
+        mission: "qualify_lead",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        lead: { id: "lead-1", name: "Maria", desiredGoal: "locacao", desiredCity: "Itapema" },
+      },
+      leadLifecycle: {
+        status: "reengagement_ready",
+        reason: "janela de decisão futura",
+        nextTrigger: "decision_window",
+        summary: "Lead desqualificado por janela de decisão futura e já com gatilho de retomada decision_window.",
+      },
+      canonicalCaseState: {
+        schemaVersion: 1,
+        tenantId: "tenant-A",
+        workspaceId: "workspace-A",
+        caseId: "case-1",
+        mission: "qualify_and_match_lead",
+        missionStatus: "in_progress",
+        currentStep: "disqualified",
+        currentOperation: "lead",
+        entities: {
+          leadId: "lead-1",
+        },
+        readiness: {
+          lead: "blocked",
+          proof: "not_applicable",
+        },
+        blockers: [],
+        pendingFields: [],
+        nextAction: {
+          id: "reengage-disqualified-lead",
+          label: "Retomar lead",
+          operation: "lead",
+          targetAgent: "IMOB_LeadAgent",
+          reasonCode: "LEAD_REENGAGEMENT_REQUIRED",
+        },
+        proof: {
+          required: false,
+          minimumProofSatisfied: true,
+          missingProof: [],
+        },
+        audit: {
+          version: 1,
+          lastUpdatedAt: "2026-05-25T10:00:00.000Z",
+          updatedByAgent: "IMOB",
+        },
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: false,
+        leadReady: true,
+        leadReadinessScore: 82,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+  });
+
+  assert.equal(response.primaryAction?.reasonCode, "LEAD_REENGAGEMENT_REQUIRED");
+  assert.match(response.summary, /decision_window/i);
+  assert.match(response.summary, /retomar lead/i);
+});

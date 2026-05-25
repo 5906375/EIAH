@@ -225,3 +225,38 @@ test("completion evaluator promotes scheduled visit flow toward proposal transit
 
   assert.equal(status, "ready_for_transition");
 });
+
+test("completion evaluator keeps disqualified lead mission in progress while preserving reengagement path", () => {
+  const status = resolveImobMissionStatus({
+    mission: "qualify_and_match_lead",
+    context: buildContext({
+      missionContext: {
+        mission: "qualify_lead",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        lead: { id: "lead-1", name: "Maria" },
+      },
+      leadLifecycle: {
+        status: "reengagement_ready",
+        reason: "janela de decisão futura",
+        nextTrigger: "decision_window",
+        summary: "Lead desqualificado por janela de decisão futura e já com gatilho de retomada decision_window.",
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: false,
+        leadReady: true,
+        leadReadinessScore: 82,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+    currentStep: "disqualified",
+    pendingFields: [],
+    hasNextAction: true,
+  });
+
+  assert.equal(status, "in_progress");
+});

@@ -307,3 +307,75 @@ test("next action resolver promotes scheduled visit into proposal preparation", 
   assert.equal(nextAction.operation, "lead");
   assert.equal(nextAction.reasonCode, "PROPOSAL_REQUIRED");
 });
+
+test("next action resolver preserves disqualified lead review before reopening the funnel", () => {
+  const nextAction = resolveImobNextAction({
+    mission: "qualify_and_match_lead",
+    context: buildContext({
+      missionContext: {
+        mission: "qualify_lead",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        lead: { id: "lead-1", name: "Maria" },
+      },
+      leadLifecycle: {
+        status: "disqualified",
+        reason: "orcamento fora da faixa",
+        nextTrigger: null,
+        summary: "Lead desqualificado por orcamento fora da faixa.",
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: false,
+        leadReady: true,
+        leadReadinessScore: 82,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+    operation: "lead",
+    flow: "lead.qualify",
+    pendingFields: [],
+  });
+
+  assert.equal(nextAction.operation, "lead");
+  assert.equal(nextAction.reasonCode, "LEAD_DISQUALIFIED");
+});
+
+test("next action resolver promotes reengagement when a disqualified lead already has a return trigger", () => {
+  const nextAction = resolveImobNextAction({
+    mission: "qualify_and_match_lead",
+    context: buildContext({
+      missionContext: {
+        mission: "qualify_lead",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        lead: { id: "lead-1", name: "Maria" },
+      },
+      leadLifecycle: {
+        status: "reengagement_ready",
+        reason: "janela de decisão futura",
+        nextTrigger: "decision_window",
+        summary: "Lead desqualificado por janela de decisão futura e já com gatilho de retomada decision_window.",
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: false,
+        leadReady: true,
+        leadReadinessScore: 82,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+    operation: "lead",
+    flow: "lead.qualify",
+    pendingFields: [],
+  });
+
+  assert.equal(nextAction.operation, "lead");
+  assert.equal(nextAction.reasonCode, "LEAD_REENGAGEMENT_REQUIRED");
+});

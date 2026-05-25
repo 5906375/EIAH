@@ -90,6 +90,9 @@ function resolveCurrentStep(params: {
       if (!params.context.readiness.documentsReady) return "sale_checklist";
       return "final_review";
     case "qualify_and_match_lead":
+      if (params.context.leadLifecycle?.status === "disqualified" || params.context.leadLifecycle?.status === "reengagement_ready") {
+        return "disqualified";
+      }
       if (params.context.leadMatching?.status === "suggested") return "ready_for_visit";
       if (params.context.leadMatching?.status === "no_match") return "no_match_found";
       return params.pendingFields.length > 0 ? "gathering_signals" : "matching_inventory";
