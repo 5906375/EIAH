@@ -2,8 +2,8 @@
 
 Status: rebaseline operacional  
 Prioridade: P0/P1 para Track P IMOB  
-Data de referência: 2026-05-23  
-Versão do plano: v4.4 — pragmática para execução com rebaseline pós-PR6 e PR7 concluído  
+Data de referência: 2026-05-25  
+Versão do plano: v4.5 — pragmática para execução com continuidade derivada do canônico e próximas frentes E2E já anexadas  
 Escopo: fechamento E2E do `IMOB_Orchestrator` como dono real das missões imobiliárias, preservando arquitetura agent-driven, estado canônico, recuperação confiável, próxima ação única, controle de concorrência seguro para side effects, compatibilidade com casos legados e proof mínimo determinístico por missão.
 
 ---
@@ -86,6 +86,50 @@ Objetivo desta continuidade:
 - fechar o handoff `market scan -> property.create -> owner.create/update -> property.link_owner -> recovery`;
 - remover drift entre `nextAction`, `consultar caso`, `o que falta?` e `qual o próximo passo?`;
 - endurecer dedupe e idempotência de imóvel antes de abrir novas frentes de agente.
+
+## 1.3 Regra de continuidade do plano canônico
+
+Este documento continua sendo o plano canônico macro do IMOB.
+
+Regra operacional a partir desta versão:
+
+- toda nova frente derivada do canônico deve ser registrada aqui;
+- o plano derivado pode detalhar execução tática, mas não substitui este documento;
+- quando uma frente nova surgir, este plano deve indicar:
+  - motivo da abertura;
+  - ordem relativa no roadmap;
+  - artefato derivado que executa a frente;
+  - critério de saída para voltar ao canônico.
+
+Frentes já assumidas como próximas continuações oficiais do canônico:
+
+1. `imobValidationEngine`
+   - camada transversal pura de validação/normalização de entrada;
+   - sem side effect;
+   - sem escrita direta no CRM;
+   - acionada pelo `IMOB_Orchestrator` e pelos entrypoints de:
+     - `property.create`
+     - `owner.create`
+     - `lead.qualify`
+     - `documents.review`
+   - plano derivado:
+     - `docs/plans/imob-validation-engine-implementation-plan.md`
+
+2. `LeadAgent E2E`
+   - expansão da jornada comercial de lead como etapa dona de funil;
+   - inclui qualificação, score, matching, próxima melhor ação, visita, proposta e reengajamento.
+   - plano derivado:
+     - `docs/plans/imob-lead-agent-e2e-implementation-plan.md`
+
+Ordem recomendada:
+
+- primeiro `imobValidationEngine`;
+- depois `LeadAgent E2E`.
+
+Justificativa:
+
+- `imobValidationEngine` endurece a base comum de `Property`, `Owner`, `Lead` e `Documents`;
+- `LeadAgent E2E` deve entrar depois, sobre dados mais consistentes e com menos ruído de parsing.
 
 ---
 
