@@ -263,7 +263,7 @@ test("recovery snapshot exposes lead readiness blockers before matching handoff"
   assert.ok(snapshot.missingItems.some((item) => /readiness comercial/i.test(item)));
 });
 
-test("recovery response explains why a property match is suggested for a ready lead", () => {
+test("recovery response explains why a visit is the next step for a ready lead with compatible property", () => {
   const response = resolveImobRecoveryResponse({
     intent: "next_step",
     context: buildContext({
@@ -305,11 +305,11 @@ test("recovery response explains why a property match is suggested for a ready l
         blockers: [],
         pendingFields: [],
         nextAction: {
-          id: "link-lead-to-suggested-property",
-          label: "Vincular lead ao imóvel compatível",
-          operation: "lead",
-          targetAgent: "IMOB_LeadAgent",
-          reasonCode: "LEAD_PROPERTY_MATCH_SUGGESTED",
+          id: "schedule-visit-for-matched-lead",
+          label: "Avançar para visita",
+          operation: "visit",
+          targetAgent: "IMOB_VisitAgent",
+          reasonCode: "VISIT_REQUIRED",
         },
         proof: {
           required: false,
@@ -334,7 +334,78 @@ test("recovery response explains why a property match is suggested for a ready l
     }),
   });
 
-  assert.equal(response.primaryAction?.reasonCode, "LEAD_PROPERTY_MATCH_SUGGESTED");
+  assert.equal(response.primaryAction?.reasonCode, "VISIT_REQUIRED");
+  assert.equal(response.primaryAction?.operation, "visit.schedule");
   assert.match(response.summary, /Rua 700, 10/i);
   assert.match(response.summary, /cidade e objetivo/i);
+});
+
+test("recovery response points to proposal preparation after a scheduled visit", () => {
+  const response = resolveImobRecoveryResponse({
+    intent: "next_step",
+    context: buildContext({
+      missionContext: {
+        mission: "schedule_visit",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        lead: { id: "lead-1", name: "Maria", desiredGoal: "locacao", desiredCity: "Itapema" },
+        property: { id: "property-1", goal: "locacao", city: "Itapema", address: "Rua 700, 10" },
+        visit: { id: "visit-1", status: "scheduled" },
+      },
+      canonicalCaseState: {
+        schemaVersion: 1,
+        tenantId: "tenant-A",
+        workspaceId: "workspace-A",
+        caseId: "case-1",
+        mission: "schedule_and_follow_visit",
+        missionStatus: "ready_for_transition",
+        currentStep: "scheduled",
+        currentOperation: "visit",
+        entities: {
+          leadId: "lead-1",
+          propertyId: "property-1",
+          visitId: "visit-1",
+        },
+        readiness: {
+          lead: "ready",
+          property: "ready",
+          visit: "ready",
+          proof: "not_applicable",
+        },
+        blockers: [],
+        pendingFields: [],
+        nextAction: {
+          id: "prepare-proposal",
+          label: "Preparar proposta",
+          operation: "lead",
+          targetAgent: "IMOB_LeadAgent",
+          reasonCode: "PROPOSAL_REQUIRED",
+        },
+        proof: {
+          required: false,
+          minimumProofSatisfied: true,
+          missingProof: [],
+        },
+        audit: {
+          version: 1,
+          lastUpdatedAt: "2026-05-25T10:00:00.000Z",
+          updatedByAgent: "IMOB",
+        },
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: true,
+        leadReady: true,
+        leadReadinessScore: 82,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+  });
+
+  assert.equal(response.primaryAction?.reasonCode, "PROPOSAL_REQUIRED");
+  assert.equal(response.primaryAction?.operation, "proposal.create");
+  assert.match(response.summary, /preparar proposta/i);
 });

@@ -90,15 +90,6 @@ function mapCanonicalNextActionToPlanAction(context: ImobCaseContextV1): ImobCas
   }
 
   if (nextAction.operation === "lead") {
-    if (nextAction.reasonCode === "LEAD_PROPERTY_MATCH_SUGGESTED") {
-      return action({
-        operation: "lead.qualify",
-        label: "Vincular lead ao imóvel",
-        nextMessage: "vincular lead ao imóvel compatível",
-        reasonCode: nextAction.reasonCode,
-      });
-    }
-
     if (nextAction.reasonCode === "LEAD_PROPERTY_MATCH_PENDING") {
       return action({
         operation: "lead.qualify",
@@ -113,6 +104,15 @@ function mapCanonicalNextActionToPlanAction(context: ImobCaseContextV1): ImobCas
         operation: "lead.qualify",
         label: "Refinar critérios do lead",
         nextMessage: "refinar critérios deste lead",
+        reasonCode: nextAction.reasonCode,
+      });
+    }
+
+    if (nextAction.reasonCode === "PROPOSAL_REQUIRED" || nextAction.reasonCode === "PROPOSAL_REVIEW_REQUIRED") {
+      return action({
+        operation: "proposal.create",
+        label: nextAction.reasonCode === "PROPOSAL_REVIEW_REQUIRED" ? "Revisar proposta" : "Preparar proposta",
+        nextMessage: nextAction.reasonCode === "PROPOSAL_REVIEW_REQUIRED" ? "revisar proposta deste caso" : "preparar proposta deste caso",
         reasonCode: nextAction.reasonCode,
       });
     }
@@ -137,8 +137,8 @@ function mapCanonicalNextActionToPlanAction(context: ImobCaseContextV1): ImobCas
   if (nextAction.operation === "visit") {
     return action({
       operation: "visit.schedule",
-      label: "Agendar visita",
-      nextMessage: "agendar visita deste caso",
+      label: nextAction.reasonCode === "VISIT_REQUIRED" ? "Avançar para visita" : "Agendar visita",
+      nextMessage: nextAction.reasonCode === "VISIT_REQUIRED" ? "vamos avançar para visita" : "agendar visita deste caso",
       reasonCode: nextAction.reasonCode,
     });
   }

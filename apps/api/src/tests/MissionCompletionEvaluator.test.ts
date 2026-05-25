@@ -166,3 +166,62 @@ test("completion evaluator keeps complete but low-readiness lead below transitio
 
   assert.equal(status, "in_progress");
 });
+
+test("completion evaluator promotes matched lead to ready_for_transition before visit scheduling", () => {
+  const status = resolveImobMissionStatus({
+    mission: "qualify_and_match_lead",
+    context: buildContext({
+      missionContext: {
+        mission: "qualify_lead",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        lead: { id: "lead-1", name: "Maria" },
+        property: { id: "property-1", city: "Itapema", goal: "locacao" as any },
+      },
+      leadMatching: {
+        status: "suggested",
+        matchStrength: "high",
+        propertyId: "property-1",
+        propertyLabel: "Rua 700, 10",
+        reasonCodes: ["MATCHING_GOAL_ALIGNED", "MATCHING_CITY_ALIGNED"],
+        summary: "O imóvel Rua 700, 10 já está alinhado com cidade e objetivo do lead.",
+        recommendedNextMove: "vincular lead ao imóvel compatível",
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: true,
+        leadReady: true,
+        leadReadinessScore: 82,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+    currentStep: "ready_for_visit",
+    pendingFields: [],
+    hasNextAction: true,
+  });
+
+  assert.equal(status, "ready_for_transition");
+});
+
+test("completion evaluator promotes scheduled visit flow toward proposal transition", () => {
+  const status = resolveImobMissionStatus({
+    mission: "schedule_and_follow_visit",
+    context: buildContext({
+      missionContext: {
+        mission: "schedule_visit",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        visit: { id: "visit-1", status: "scheduled" },
+      },
+    }),
+    currentStep: "scheduled",
+    pendingFields: [],
+    hasNextAction: true,
+  });
+
+  assert.equal(status, "ready_for_transition");
+});

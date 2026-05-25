@@ -116,6 +116,8 @@ export type ImobCaseContextV1 = {
     owner?: ImobOwnerSnapshotV1 | null;
     property?: ImobPropertySnapshotV1 | null;
     lead?: ImobLeadSnapshotV1 | null;
+    visit?: ImobEntitySnapshotV1 | null;
+    proposal?: ImobEntitySnapshotV1 | null;
     documents?: ImobEntitySnapshotV1 | null;
     campaign?: ImobEntitySnapshotV1 | null;
     contract?: ImobEntitySnapshotV1 | null;

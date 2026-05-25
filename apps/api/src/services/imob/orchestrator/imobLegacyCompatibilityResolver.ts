@@ -90,8 +90,11 @@ function resolveCurrentStep(params: {
       if (!params.context.readiness.documentsReady) return "sale_checklist";
       return "final_review";
     case "qualify_and_match_lead":
+      if (params.context.leadMatching?.status === "suggested") return "ready_for_visit";
+      if (params.context.leadMatching?.status === "no_match") return "no_match_found";
       return params.pendingFields.length > 0 ? "gathering_signals" : "matching_inventory";
     case "schedule_and_follow_visit":
+      if (params.context.entities.proposal?.status === "ready_for_review") return "post_visit";
       return params.pendingFields.length > 0 ? "selecting_slot" : "scheduled";
     case "collect_documents":
       return params.pendingFields.length > 0 ? "collecting" : "package_ready";
@@ -162,6 +165,7 @@ export function resolveCanonicalCaseStateFromLegacy(params: {
         ownerId: params.context.entities.owner?.id ?? undefined,
         propertyId: params.context.entities.property?.id ?? undefined,
         leadId: params.context.entities.lead?.id ?? undefined,
+        visitId: params.context.entities.visit?.id ?? undefined,
         documentPackageId: params.context.readiness.documentsReady ? (params.context.entities.documents?.id ?? undefined) : undefined,
         campaignId: (params.context.entities.campaign?.status === "ready_to_publish" || params.context.entities.campaign?.status === "published_or_sent")
           ? (params.context.entities.campaign?.id ?? undefined)

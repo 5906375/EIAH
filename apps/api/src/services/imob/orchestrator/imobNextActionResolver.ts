@@ -137,10 +137,10 @@ export function resolveImobNextAction(params: ResolveNextActionParams): ImobNext
       }
 
       if (params.context.leadMatching?.status === "suggested") {
-        return mapLeadAction(params.flow, {
-          id: "link-lead-to-suggested-property",
-          label: "Vincular lead ao imóvel compatível",
-          reasonCode: "LEAD_PROPERTY_MATCH_SUGGESTED",
+        return mapOperationAction("visit", params.flow, {
+          id: "schedule-visit-for-matched-lead",
+          label: "Avançar para visita",
+          reasonCode: "VISIT_REQUIRED",
         });
       }
 
@@ -167,6 +167,22 @@ export function resolveImobNextAction(params: ResolveNextActionParams): ImobNext
       });
 
     case "schedule_and_follow_visit":
+      if (params.context.entities.proposal?.status === "ready_for_review") {
+        return mapLeadAction(params.flow, {
+          id: "review-proposal",
+          label: "Revisar proposta",
+          reasonCode: "PROPOSAL_REVIEW_REQUIRED",
+        });
+      }
+
+      if (params.context.entities.visit?.status === "scheduled") {
+        return mapLeadAction(params.flow, {
+          id: "prepare-proposal",
+          label: "Preparar proposta",
+          reasonCode: "PROPOSAL_REQUIRED",
+        });
+      }
+
       return mapOperationAction("visit", params.flow, {
         id: "schedule-visit",
         label: "Agendar visita",

@@ -166,7 +166,7 @@ test("IMOB case context v1 derives lead readiness base and blocks weak handoff",
   assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "LEAD_READINESS_REVIEW_REQUIRED");
 });
 
-test("IMOB case context v1 suggests a compatible property match for a ready lead without inventing inventory", () => {
+test("IMOB case context v1 promotes a ready lead with compatible property into visit scheduling without inventing inventory", () => {
   const context = buildImobCaseContextV1({
     tenantId: "tenant-A",
     workspaceId: "workspace-A",
@@ -215,5 +215,47 @@ test("IMOB case context v1 suggests a compatible property match for a ready lead
   assert.equal(context.leadMatching?.status, "suggested");
   assert.equal(context.leadMatching?.propertyId, "property-1");
   assert.match(context.leadMatching?.summary ?? "", /cidade e objetivo/i);
-  assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "LEAD_PROPERTY_MATCH_SUGGESTED");
+  assert.equal(context.canonicalCaseState?.currentStep, "ready_for_visit");
+  assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "VISIT_REQUIRED");
+  assert.equal(context.recoverySnapshot?.primaryAction?.operation, "visit.schedule");
+});
+
+test("IMOB case context v1 promotes a scheduled visit into proposal preparation", () => {
+  const context = buildImobCaseContextV1({
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    caseId: "case-1",
+    caseContext: {
+      caseId: "case-1",
+      flow: "visit.schedule",
+      lead: {
+        id: "lead-1",
+        name: "Maria",
+        goal: "locacao",
+        targetCity: "Itapema",
+        budgetMaxCents: 350000,
+      },
+      property: {
+        id: "property-1",
+        propertyType: "apartamento",
+        goal: "locacao",
+        city: "Itapema",
+        address: "Rua 700, 10",
+      },
+    },
+    operational: {
+      flow: "visit.schedule",
+      visitDraft: {
+        propertyId: "property-1",
+        visitorName: "Maria",
+        visitorPhone: "47999998888",
+        preferredDate: "2026-05-30",
+        preferredWindow: "tarde",
+      },
+    },
+  });
+
+  assert.equal(context.missionContext?.mission, "schedule_visit");
+  assert.equal(context.entities.visit?.status, "scheduled");
+  assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "PROPOSAL_REQUIRED");
 });

@@ -55,6 +55,7 @@ function inferMission(params: {
   if (goal === "aluguel_por_temporada" || normalizedMessage.includes("temporada")) return "capture_seasonal_property";
   if (params.flow === "lead.qualify") return "qualify_lead";
   if (params.flow === "visit.schedule") return "schedule_visit";
+  if (params.flow === "proposal.create") return "schedule_visit";
   if (params.flow === "documents.collect") return "collect_documents";
   if (params.flow === "contract.prepare") return "prepare_contract";
   if (params.flow === "commission.settle") return "settle_commission";
@@ -255,6 +256,46 @@ function buildDocumentsSnapshot(params: {
   };
 }
 
+function buildVisitSnapshot(params: {
+  visitDraft?: Record<string, unknown> | null;
+}) {
+  const draft = params.visitDraft ?? {};
+  const propertyId = asString(draft.propertyId);
+  const visitorName = asString(draft.visitorName);
+  const visitorPhone = asString(draft.visitorPhone);
+  const preferredDate = asString(draft.preferredDate);
+  const preferredWindow = asString(draft.preferredWindow);
+
+  if (!propertyId && !visitorName && !visitorPhone && !preferredDate && !preferredWindow) return null;
+
+  const scheduled = Boolean(propertyId && visitorName && visitorPhone && preferredDate);
+  return {
+    id: scheduled ? `visit:${propertyId}:${preferredDate}` : null,
+    name: visitorName ?? propertyId ?? "Visita em preparação",
+    status: scheduled ? "scheduled" : "collecting",
+  };
+}
+
+function buildProposalSnapshot(params: {
+  proposalDraft?: Record<string, unknown> | null;
+}) {
+  const draft = params.proposalDraft ?? {};
+  const propertyId = asString(draft.propertyId);
+  const buyerName = asString(draft.buyerName);
+  const buyerPhone = asString(draft.buyerPhone);
+  const offerAmount = Number.isFinite(Number(draft.offerAmount)) ? Number(draft.offerAmount) : null;
+  const contractType = asString(draft.contractType);
+
+  if (!propertyId && !buyerName && !buyerPhone && offerAmount == null && !contractType) return null;
+
+  const readyForReview = Boolean(propertyId && buyerName && buyerPhone && offerAmount != null && contractType);
+  return {
+    id: readyForReview ? `proposal:${propertyId}:${contractType}` : null,
+    name: buyerName ?? propertyId ?? "Proposta em preparação",
+    status: readyForReview ? "ready_for_review" : "collecting",
+  };
+}
+
 function buildContractSnapshot(params: {
   contractDraft?: Record<string, unknown> | null;
 }): ImobOwnerSnapshotV1 | null {
@@ -451,6 +492,8 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
   const ownerDraft = asObject(operational.ownerDraft);
   const propertyDraft = asObject(operational.propertyDraft);
   const leadDraft = asObject(operational.leadDraft);
+  const visitDraft = asObject(operational.visitDraft);
+  const proposalDraft = asObject(operational.proposalDraft);
   const documentDraft = asObject(operational.documentDraft);
   const contractDraft = asObject(operational.contractDraft);
   const commissionDraft = asObject(operational.commissionDraft);
@@ -459,6 +502,8 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
   const operationalMissionContext = asObject(operational.missionContext);
   const owner = buildOwnerSnapshot({ owner: params.caseContext?.owner, ownerDraft });
   const property = buildPropertySnapshot({ property: params.caseContext?.property, propertyDraft });
+  const visit = buildVisitSnapshot({ visitDraft });
+  const proposal = buildProposalSnapshot({ proposalDraft });
   const documents = buildDocumentsSnapshot({ documentDraft, contractDraft });
   const contract = buildContractSnapshot({ contractDraft });
   const commission = buildCommissionSnapshot({ commissionDraft });
@@ -523,6 +568,8 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
         readinessBand: leadReadiness.readinessBand,
         status: asString(lead.status),
       } : null,
+      visit,
+      proposal,
       documents,
       campaign,
       contract,

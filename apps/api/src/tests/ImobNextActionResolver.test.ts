@@ -197,7 +197,7 @@ test("next action resolver promotes ready lead to property linking handoff", () 
   assert.equal(nextAction.reasonCode, "LEAD_READY_TO_LINK");
 });
 
-test("next action resolver promotes ready lead to suggested property match when case already has compatible property", () => {
+test("next action resolver promotes ready lead with compatible property into visit scheduling", () => {
   const nextAction = resolveImobNextAction({
     mission: "qualify_and_match_lead",
     context: buildContext({
@@ -233,8 +233,8 @@ test("next action resolver promotes ready lead to suggested property match when 
     pendingFields: [],
   });
 
-  assert.equal(nextAction.operation, "lead");
-  assert.equal(nextAction.reasonCode, "LEAD_PROPERTY_MATCH_SUGGESTED");
+  assert.equal(nextAction.operation, "visit");
+  assert.equal(nextAction.reasonCode, "VISIT_REQUIRED");
 });
 
 test("next action resolver asks to find compatible property when lead is ready but case has no candidate property", () => {
@@ -274,4 +274,36 @@ test("next action resolver asks to find compatible property when lead is ready b
 
   assert.equal(nextAction.operation, "lead");
   assert.equal(nextAction.reasonCode, "LEAD_PROPERTY_MATCH_PENDING");
+});
+
+test("next action resolver promotes scheduled visit into proposal preparation", () => {
+  const nextAction = resolveImobNextAction({
+    mission: "schedule_and_follow_visit",
+    context: buildContext({
+      missionContext: {
+        mission: "schedule_visit",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        lead: { id: "lead-1", name: "Maria", desiredGoal: "locacao", desiredCity: "Itapema" },
+        property: { id: "property-1", goal: "locacao", city: "Itapema", address: "Rua 700, 10" },
+        visit: { id: "visit-1", status: "scheduled" },
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: true,
+        leadReady: true,
+        leadReadinessScore: 82,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+    operation: "visit",
+    flow: "visit.schedule",
+    pendingFields: [],
+  });
+
+  assert.equal(nextAction.operation, "lead");
+  assert.equal(nextAction.reasonCode, "PROPOSAL_REQUIRED");
 });
