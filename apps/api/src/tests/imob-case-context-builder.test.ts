@@ -165,3 +165,55 @@ test("IMOB case context v1 derives lead readiness base and blocks weak handoff",
   assert.ok(context.blockers.some((blocker) => blocker.code === "lead_readiness_below_threshold"));
   assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "LEAD_READINESS_REVIEW_REQUIRED");
 });
+
+test("IMOB case context v1 suggests a compatible property match for a ready lead without inventing inventory", () => {
+  const context = buildImobCaseContextV1({
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    caseId: "case-1",
+    message: "qualificar lead Maria para locação em Itapema",
+    caseContext: {
+      caseId: "case-1",
+      flow: "lead.qualify",
+      property: {
+        id: "property-1",
+        propertyType: "apartamento",
+        goal: "locacao",
+        city: "Itapema",
+        address: "Rua 700, 10",
+      },
+      lead: {
+        id: "lead-1",
+        name: "Maria",
+        goal: "locacao",
+        targetCity: "Itapema",
+        budgetMaxCents: 350000,
+        discoverySignals: {
+          urgency: "high",
+          painPoint: "mudança urgente",
+          motivation: "trabalho",
+          budgetFlexibility: "medium",
+          decisionMaker: "self",
+          timeline: "30d",
+        },
+      },
+    },
+    operational: {
+      flow: "lead.qualify",
+      leadDraft: {
+        leadName: "Maria",
+        desiredGoal: "locacao",
+        desiredCity: "Itapema",
+        budgetMax: 3500,
+        leadPhone: "47999998888",
+      },
+    },
+  });
+
+  assert.equal(context.readiness.leadReady, true);
+  assert.equal(context.readiness.leadReadinessScore, 90);
+  assert.equal(context.leadMatching?.status, "suggested");
+  assert.equal(context.leadMatching?.propertyId, "property-1");
+  assert.match(context.leadMatching?.summary ?? "", /cidade e objetivo/i);
+  assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "LEAD_PROPERTY_MATCH_SUGGESTED");
+});

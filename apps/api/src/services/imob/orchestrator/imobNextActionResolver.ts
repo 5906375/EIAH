@@ -136,6 +136,30 @@ export function resolveImobNextAction(params: ResolveNextActionParams): ImobNext
         });
       }
 
+      if (params.context.leadMatching?.status === "suggested") {
+        return mapLeadAction(params.flow, {
+          id: "link-lead-to-suggested-property",
+          label: "Vincular lead ao imóvel compatível",
+          reasonCode: "LEAD_PROPERTY_MATCH_SUGGESTED",
+        });
+      }
+
+      if (params.context.leadMatching?.status === "no_match") {
+        return mapLeadAction(params.flow, {
+          id: "review-lead-match-criteria",
+          label: "Refinar critérios do lead",
+          reasonCode: "LEAD_PROPERTY_MATCH_REVIEW_REQUIRED",
+        });
+      }
+
+      if (params.context.leadMatching?.status === "awaiting_candidate") {
+        return mapLeadAction(params.flow, {
+          id: "find-matching-property",
+          label: "Buscar imóvel compatível",
+          reasonCode: "LEAD_PROPERTY_MATCH_PENDING",
+        });
+      }
+
       return mapLeadAction(params.flow, {
         id: "link-lead-to-property",
         label: "Vincular lead ao imóvel",

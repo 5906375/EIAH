@@ -84,6 +84,16 @@ export type ImobLeadSnapshotV1 = ImobEntitySnapshotV1 & {
   readinessBand?: "HOT" | "WARM" | "COLD" | "UNKNOWN" | null;
 };
 
+export type ImobLeadMatchingSnapshotV1 = {
+  status: "suggested" | "awaiting_candidate" | "no_match" | "insufficient_context";
+  matchStrength: "high" | "medium" | "low" | "unknown";
+  propertyId?: string | null;
+  propertyLabel?: string | null;
+  reasonCodes: string[];
+  summary: string;
+  recommendedNextMove: string;
+};
+
 export type ImobCaseBlockerV1 = {
   code: string;
   severity: "info" | "warning" | "blocking";
@@ -111,6 +121,7 @@ export type ImobCaseContextV1 = {
     contract?: ImobEntitySnapshotV1 | null;
     commission?: ImobEntitySnapshotV1 | null;
   };
+  leadMatching?: ImobLeadMatchingSnapshotV1 | null;
   links: {
     ownerProperty?: {
       ownerId?: string | null;

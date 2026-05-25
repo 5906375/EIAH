@@ -196,3 +196,82 @@ test("next action resolver promotes ready lead to property linking handoff", () 
   assert.equal(nextAction.operation, "lead");
   assert.equal(nextAction.reasonCode, "LEAD_READY_TO_LINK");
 });
+
+test("next action resolver promotes ready lead to suggested property match when case already has compatible property", () => {
+  const nextAction = resolveImobNextAction({
+    mission: "qualify_and_match_lead",
+    context: buildContext({
+      missionContext: {
+        mission: "qualify_lead",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        lead: { id: "lead-1", name: "Maria", desiredGoal: "locacao", desiredCity: "Itapema" },
+        property: { id: "property-1", goal: "locacao", city: "Itapema", address: "Rua 700, 10" },
+      },
+      leadMatching: {
+        status: "suggested",
+        matchStrength: "high",
+        propertyId: "property-1",
+        propertyLabel: "Rua 700, 10",
+        reasonCodes: ["MATCHING_GOAL_ALIGNED", "MATCHING_CITY_ALIGNED"],
+        summary: "O imóvel Rua 700, 10 já está alinhado com cidade e objetivo do lead.",
+        recommendedNextMove: "vincular lead ao imóvel compatível",
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: false,
+        leadReady: true,
+        leadReadinessScore: 82,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+    operation: "lead",
+    flow: "lead.qualify",
+    pendingFields: [],
+  });
+
+  assert.equal(nextAction.operation, "lead");
+  assert.equal(nextAction.reasonCode, "LEAD_PROPERTY_MATCH_SUGGESTED");
+});
+
+test("next action resolver asks to find compatible property when lead is ready but case has no candidate property", () => {
+  const nextAction = resolveImobNextAction({
+    mission: "qualify_and_match_lead",
+    context: buildContext({
+      missionContext: {
+        mission: "qualify_lead",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        lead: { id: "lead-1", name: "Maria", desiredGoal: "locacao", desiredCity: "Itapema" },
+      },
+      leadMatching: {
+        status: "awaiting_candidate",
+        matchStrength: "unknown",
+        propertyId: null,
+        propertyLabel: null,
+        reasonCodes: ["MATCHING_PROPERTY_CANDIDATE_MISSING"],
+        summary: "O lead já está pronto, mas o caso ainda não tem um imóvel candidato explícito para comparação.",
+        recommendedNextMove: "buscar imóvel compatível para este lead",
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: false,
+        leadReady: true,
+        leadReadinessScore: 82,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+    operation: "lead",
+    flow: "lead.qualify",
+    pendingFields: [],
+  });
+
+  assert.equal(nextAction.operation, "lead");
+  assert.equal(nextAction.reasonCode, "LEAD_PROPERTY_MATCH_PENDING");
+});

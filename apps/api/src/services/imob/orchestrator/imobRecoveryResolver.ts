@@ -90,6 +90,33 @@ function mapCanonicalNextActionToPlanAction(context: ImobCaseContextV1): ImobCas
   }
 
   if (nextAction.operation === "lead") {
+    if (nextAction.reasonCode === "LEAD_PROPERTY_MATCH_SUGGESTED") {
+      return action({
+        operation: "lead.qualify",
+        label: "Vincular lead ao imóvel",
+        nextMessage: "vincular lead ao imóvel compatível",
+        reasonCode: nextAction.reasonCode,
+      });
+    }
+
+    if (nextAction.reasonCode === "LEAD_PROPERTY_MATCH_PENDING") {
+      return action({
+        operation: "lead.qualify",
+        label: "Buscar imóvel compatível",
+        nextMessage: "buscar imóvel compatível para este lead",
+        reasonCode: nextAction.reasonCode,
+      });
+    }
+
+    if (nextAction.reasonCode === "LEAD_PROPERTY_MATCH_REVIEW_REQUIRED") {
+      return action({
+        operation: "lead.qualify",
+        label: "Refinar critérios do lead",
+        nextMessage: "refinar critérios deste lead",
+        reasonCode: nextAction.reasonCode,
+      });
+    }
+
     return action({
       operation: "lead.qualify",
       label: "Retomar lead",
@@ -213,6 +240,10 @@ export function resolveImobRecoveryResponse(params: {
   intent: ImobRecoveryIntentV1;
 }): ImobRecoveryResponseV1 {
   const snapshot = params.context.recoverySnapshot ?? resolveImobRecoverySnapshot(params.context);
+  const leadMatchingSummary = params.context.missionContext?.mission === "qualify_lead"
+    ? params.context.leadMatching?.summary
+    : null;
+  const leadMatchingSuffix = leadMatchingSummary ? ` ${leadMatchingSummary}` : "";
 
   if (params.intent === "what_is_missing") {
     return {
@@ -220,8 +251,8 @@ export function resolveImobRecoveryResponse(params: {
       intent: params.intent,
       title: "Pendências do caso",
       summary: snapshot.missingItems.length > 0
-        ? `Ainda faltam ${snapshot.missingItems.join(" • ")}.`
-        : "Não há pendências explícitas; posso seguir pelo próximo passo principal.",
+        ? `Ainda faltam ${snapshot.missingItems.join(" • ")}.${leadMatchingSuffix}`
+        : `Não há pendências explícitas; posso seguir pelo próximo passo principal.${leadMatchingSuffix}`,
       blockers: snapshot.blockers,
       missingItems: snapshot.missingItems,
       primaryAction: snapshot.primaryAction,
@@ -237,8 +268,8 @@ export function resolveImobRecoveryResponse(params: {
       intent: params.intent,
       title: "Próximo passo",
       summary: snapshot.primaryAction
-        ? `O próximo passo seguro é ${snapshot.primaryAction.label.toLowerCase()}.`
-        : "O próximo passo não está explícito; posso abrir o caso para recompor o estado.",
+        ? `O próximo passo seguro é ${snapshot.primaryAction.label.toLowerCase()}.${leadMatchingSuffix}`
+        : `O próximo passo não está explícito; posso abrir o caso para recompor o estado.${leadMatchingSuffix}`,
       blockers: snapshot.blockers,
       missingItems: snapshot.missingItems,
       primaryAction: snapshot.primaryAction,
@@ -254,8 +285,8 @@ export function resolveImobRecoveryResponse(params: {
       intent: params.intent,
       title: "Retomada do caso",
       summary: snapshot.primaryAction
-        ? `Vamos retomar a partir de ${snapshot.primaryAction.label.toLowerCase()}.`
-        : "Posso retomar o caso abrindo o resumo operacional mais recente.",
+        ? `Vamos retomar a partir de ${snapshot.primaryAction.label.toLowerCase()}.${leadMatchingSuffix}`
+        : `Posso retomar o caso abrindo o resumo operacional mais recente.${leadMatchingSuffix}`,
       blockers: snapshot.blockers,
       missingItems: snapshot.missingItems,
       primaryAction: snapshot.primaryAction,
@@ -270,8 +301,8 @@ export function resolveImobRecoveryResponse(params: {
     intent: params.intent,
     title: "Resumo do caso",
     summary: snapshot.blockers.length > 0
-      ? `Caso em ${snapshot.stage} com bloqueios ativos e próxima ação já resolvida.`
-      : `Caso em ${snapshot.stage} com próxima ação já resolvida.`,
+      ? `Caso em ${snapshot.stage} com bloqueios ativos e próxima ação já resolvida.${leadMatchingSuffix}`
+      : `Caso em ${snapshot.stage} com próxima ação já resolvida.${leadMatchingSuffix}`,
     blockers: snapshot.blockers,
     missingItems: snapshot.missingItems,
     primaryAction: snapshot.primaryAction,

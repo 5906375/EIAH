@@ -262,3 +262,79 @@ test("recovery snapshot exposes lead readiness blockers before matching handoff"
   assert.equal(snapshot.primaryAction?.reasonCode, "LEAD_READINESS_REVIEW_REQUIRED");
   assert.ok(snapshot.missingItems.some((item) => /readiness comercial/i.test(item)));
 });
+
+test("recovery response explains why a property match is suggested for a ready lead", () => {
+  const response = resolveImobRecoveryResponse({
+    intent: "next_step",
+    context: buildContext({
+      missionContext: {
+        mission: "qualify_lead",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        lead: { id: "lead-1", name: "Maria", desiredGoal: "locacao", desiredCity: "Itapema" },
+        property: { id: "property-1", goal: "locacao", city: "Itapema", address: "Rua 700, 10" },
+      },
+      leadMatching: {
+        status: "suggested",
+        matchStrength: "high",
+        propertyId: "property-1",
+        propertyLabel: "Rua 700, 10",
+        reasonCodes: ["MATCHING_GOAL_ALIGNED", "MATCHING_CITY_ALIGNED"],
+        summary: "O imóvel Rua 700, 10 já está alinhado com cidade e objetivo do lead.",
+        recommendedNextMove: "vincular lead ao imóvel compatível",
+      },
+      canonicalCaseState: {
+        schemaVersion: 1,
+        tenantId: "tenant-A",
+        workspaceId: "workspace-A",
+        caseId: "case-1",
+        mission: "qualify_and_match_lead",
+        missionStatus: "ready_for_transition",
+        currentStep: "matching_inventory",
+        currentOperation: "lead",
+        entities: {
+          leadId: "lead-1",
+          propertyId: "property-1",
+        },
+        readiness: {
+          lead: "ready",
+          property: "ready",
+          proof: "not_applicable",
+        },
+        blockers: [],
+        pendingFields: [],
+        nextAction: {
+          id: "link-lead-to-suggested-property",
+          label: "Vincular lead ao imóvel compatível",
+          operation: "lead",
+          targetAgent: "IMOB_LeadAgent",
+          reasonCode: "LEAD_PROPERTY_MATCH_SUGGESTED",
+        },
+        proof: {
+          required: false,
+          minimumProofSatisfied: true,
+          missingProof: [],
+        },
+        audit: {
+          version: 1,
+          lastUpdatedAt: "2026-05-25T10:00:00.000Z",
+          updatedByAgent: "IMOB",
+        },
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: true,
+        leadReady: true,
+        leadReadinessScore: 82,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+  });
+
+  assert.equal(response.primaryAction?.reasonCode, "LEAD_PROPERTY_MATCH_SUGGESTED");
+  assert.match(response.summary, /Rua 700, 10/i);
+  assert.match(response.summary, /cidade e objetivo/i);
+});
