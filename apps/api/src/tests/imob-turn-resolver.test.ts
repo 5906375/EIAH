@@ -1429,6 +1429,8 @@ test("IMOB turn resolver builds explicit lead.qualify operational state", () => 
   assert.equal(result.conversationState.operational?.flow, "lead.qualify");
   assert.equal(result.conversationState.operational?.leadDraft?.desiredCity, "Itapema");
   assert.equal(result.conversationState.operational?.leadDraft?.budgetMax, 3500);
+  assert.equal(result.conversationState.operational?.leadDraft?.leadName, "Maria");
+  assert.equal(result.conversationState.operational?.leadDraft?.leadPhone, "(47) 99999-8888");
   assert.match(result.presentation.text, /Ainda preciso de|cadastro do lead/i);
 });
 
@@ -1585,6 +1587,20 @@ test("IMOB turn resolver builds explicit documents.collect operational state", (
   assert.deepEqual(result.conversationState.operational?.documentDraft?.documentTypes, ["matricula", "cpf"]);
   assert.equal(result.conversationState.operational?.documentDraft?.deliveryChannel, "upload");
   assert.match(result.presentation.text, /coleta documental/i);
+});
+
+test("IMOB turn resolver infers cpf document type from generic owner document wording", () => {
+  const result = resolveImobTurn({
+    message: "Coletar documento do proprietário do imóvel 4455 via upload documento 529.982.247-25",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.mode, "execute");
+  assert.equal(result.executionRequest?.operation, "documents.collect");
+  assert.equal(result.conversationState.operational?.flow, "documents.collect");
+  assert.deepEqual(result.conversationState.operational?.documentDraft?.documentTypes, ["cpf"]);
+  assert.equal(result.conversationState.operational?.documentDraft?.subjectType, "owner");
+  assert.equal(result.conversationState.operational?.documentDraft?.deliveryChannel, "upload");
 });
 
 
