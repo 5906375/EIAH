@@ -184,3 +184,72 @@ test("IMOB conversation state sanitizes market scan address before turning selec
   assert.equal(result?.flow, "property.create");
   assert.equal((result as any)?.propertyDraft?.address, "Rua Batch 101");
 });
+
+test("IMOB conversation state normalizes owner phone and preserves informed owner document", () => {
+  const result = createNextImobOperationalState(
+    null,
+    "capture",
+    "cadastrar proprietário joao da silva telefone do proprietário 47996635092 documento do proprietário 12345678901",
+    {
+      goal: null,
+      city: null,
+      region: null,
+      neighborhood: null,
+      budgetMax: null,
+      bedrooms: null,
+      bathrooms: null,
+      propertyType: null,
+    },
+  );
+
+  assert.equal(result?.flow, "owner.create");
+  assert.equal((result as any)?.ownerDraft?.ownerName, "Joao da Silva");
+  assert.equal((result as any)?.ownerDraft?.ownerPhone, "(47) 99663-5092");
+  assert.equal((result as any)?.ownerDraft?.ownerDocument, "12345678901");
+});
+
+test("IMOB conversation state structures property address and keeps address pending when number is missing", () => {
+  const result = createNextImobOperationalState(
+    null,
+    "capture",
+    "cadastrar imóvel apartamento para locação em Itajaí endereço Rua Barao do Rio Branco, Centro",
+    {
+      goal: "locacao",
+      city: "Itajaí",
+      region: null,
+      neighborhood: null,
+      budgetMax: null,
+      bedrooms: null,
+      bathrooms: null,
+      propertyType: "apartamento",
+    },
+  );
+
+  assert.equal(result?.flow, "property.create");
+  assert.equal((result as any)?.propertyDraft?.address, "Rua Barao do Rio Branco");
+  assert.equal((result as any)?.propertyDraft?.city, "Itajaí");
+  assert.ok((result as any)?.pendingFields.includes("address"));
+});
+
+test("IMOB conversation state structures complete property address from free text", () => {
+  const result = createNextImobOperationalState(
+    null,
+    "capture",
+    "cadastrar imóvel apartamento para venda em Itajaí endereço Rua Barao do Rio Branco, 100, Centro, Itajai",
+    {
+      goal: "venda",
+      city: "Itajaí",
+      region: null,
+      neighborhood: null,
+      budgetMax: null,
+      bedrooms: null,
+      bathrooms: null,
+      propertyType: "apartamento",
+    },
+  );
+
+  assert.equal(result?.flow, "property.create");
+  assert.equal((result as any)?.propertyDraft?.address, "Rua Barao do Rio Branco, 100");
+  assert.equal((result as any)?.propertyDraft?.city, "Itajaí");
+  assert.ok(!(result as any)?.pendingFields.includes("address"));
+});

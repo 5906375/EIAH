@@ -36,6 +36,7 @@ import {
   canonicalizeImobCity,
   canonicalizeImobCityName,
 } from "./imobGeoCanonicalizer";
+import { validateImobInput } from "./validation/imobValidationEngine";
 
 export function normalizeImobText(value: string) {
   return value
@@ -574,6 +575,13 @@ function hasExplicitOwnerCreateRequest(message: string) {
 }
 
 function buildPropertyDraft(previous: ImobPropertyDraft | undefined, message: string, slots: ImobSearchSlots): ImobPropertyDraft {
+  const validation = validateImobInput({ rawInput: message, scope: "property.create" });
+  const normalizedAddress = validation.normalized.address
+    ? [
+        validation.normalized.address.street ?? null,
+        validation.normalized.address.number ?? null,
+      ].filter(Boolean).join(", ") || validation.normalized.address.street || null
+    : null;
   const propertyIdMatch = message.match(/(?:imovel|imóvel|apartamento|apto|casa)\s*#?\s*(\d{2,})/i)?.[1] ?? null;
   const lockedCityCanonical = previous?.cityCanonical?.locked
     ? previous.cityCanonical
@@ -593,12 +601,12 @@ function buildPropertyDraft(previous: ImobPropertyDraft | undefined, message: st
     propertyType: slots.propertyType ?? previous?.propertyType ?? null,
     goal: slots.goal ?? previous?.goal ?? null,
     cep: extractCep(message) ?? previous?.cep ?? null,
-    city: lockedCityCanonical?.canonicalName ?? incomingCityCanonical?.canonicalName ?? null,
+    city: lockedCityCanonical?.canonicalName ?? incomingCityCanonical?.canonicalName ?? validation.normalized.address?.city ?? null,
     cityCanonical: lockedCityCanonical ?? incomingCityCanonical,
-    neighborhood: slots.neighborhood ?? previous?.neighborhood ?? null,
+    neighborhood: slots.neighborhood ?? previous?.neighborhood ?? validation.normalized.address?.neighborhood ?? null,
     bedrooms: slots.bedrooms ?? previous?.bedrooms ?? null,
     bathrooms: slots.bathrooms ?? previous?.bathrooms ?? null,
-    address: extractAddress(message) ?? previous?.address ?? null,
+    address: normalizedAddress ?? extractAddress(message) ?? previous?.address ?? null,
     origin: previous?.origin ?? null,
   };
 }
@@ -758,7 +766,7 @@ function buildPropertyPendingFields(draft: ImobPropertyDraft) {
   if (!draft.propertyType) pending.push("propertyType");
   if (!draft.goal) pending.push("goal");
   if (!draft.city) pending.push("city");
-  if (!draft.address) pending.push("address");
+  if (!draft.address || !/\d/.test(draft.address)) pending.push("address");
   return pending;
 }
 
@@ -774,12 +782,16 @@ function detectOwnerPersona(message: string, previous?: ImobOwnerDraft): ImobOwn
 }
 
 function buildOwnerDraft(previous: ImobOwnerDraft | undefined, message: string): ImobOwnerDraft {
+  const validation = validateImobInput({ rawInput: message, scope: "owner.create" });
+  const validatedDocument = validation.normalized.document;
   return {
     ownerPersona: detectOwnerPersona(message, previous),
-    ownerName: extractNamedParty(message, "owner") ?? previous?.ownerName ?? null,
-    ownerEmail: extractEmail(message) ?? previous?.ownerEmail ?? null,
-    ownerPhone: extractPhone(message) ?? previous?.ownerPhone ?? null,
-    ownerDocument: extractDocument(message) ?? previous?.ownerDocument ?? null,
+    ownerName: validation.normalized.name ?? extractNamedParty(message, "owner") ?? previous?.ownerName ?? null,
+    ownerEmail: extractEmail(message) ?? validation.normalized.email ?? previous?.ownerEmail ?? null,
+    ownerPhone: validation.normalized.phone ?? extractPhone(message) ?? previous?.ownerPhone ?? null,
+    ownerDocument: validatedDocument
+      ? validatedDocument.rawValue
+      : extractDocument(message) ?? previous?.ownerDocument ?? null,
   };
 }
 
