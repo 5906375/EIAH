@@ -2,6 +2,8 @@ import type { ImobCrmCaseContext } from "./imobCrmAgentContract";
 import type {
   ImobCaseBlockerV1,
   ImobCaseContextV1,
+  ImobLeadLifecycleSnapshotV1,
+  ImobLeadMatchingSnapshotV1,
   ImobCaseMission,
   ImobOwnerSnapshotV1,
   ImobPropertyGoalV1,
@@ -54,6 +56,7 @@ function inferMission(params: {
   if (goal === "aluguel_por_temporada" || normalizedMessage.includes("temporada")) return "capture_seasonal_property";
   if (params.flow === "lead.qualify") return "qualify_lead";
   if (params.flow === "visit.schedule") return "schedule_visit";
+  if (params.flow === "proposal.create") return "schedule_visit";
   if (params.flow === "documents.collect") return "collect_documents";
   if (params.flow === "contract.prepare") return "prepare_contract";
   if (params.flow === "commission.settle") return "settle_commission";
@@ -116,6 +119,162 @@ function buildPropertySnapshot(params: {
   };
 }
 
+function countPresent(values: Array<unknown>) {
+  return values.filter((value) => {
+    if (typeof value === "number") return Number.isFinite(value);
+    return Boolean(asString(value));
+  }).length;
+}
+
+function buildLeadReadiness(params: {
+  lead?: Record<string, unknown> | null;
+}) {
+  const lead = params.lead ?? {};
+  const coreSignals = [
+    asString(lead.id) ?? asString(lead.name) ?? asString(lead.leadName),
+    asString(lead.phone) ?? asString(lead.leadPhone),
+    normalizeGoal(lead.goal) ?? normalizeGoal(lead.desiredGoal),
+    asString(lead.targetCity) ?? asString(lead.desiredCity),
+    typeof lead.budgetMaxCents === "number"
+      ? lead.budgetMaxCents
+      : typeof lead.budgetMax === "number"
+        ? lead.budgetMax
+        : null,
+  ];
+  const corePresent = countPresent(coreSignals);
+  const discoverySignals = asObject(lead.discoverySignals);
+  const discoveryPresent = countPresent([
+    discoverySignals?.urgency,
+    discoverySignals?.painPoint,
+    discoverySignals?.motivation,
+    discoverySignals?.budgetFlexibility,
+    discoverySignals?.decisionMaker,
+    discoverySignals?.timeline,
+  ]);
+  const readinessScore = Math.max(0, Math.min(100, corePresent * 12 + Math.min(discoveryPresent, 6) * 5));
+  const leadReady = corePresent === 5;
+  const readinessBand = !corePresent
+    ? "UNKNOWN"
+    : readinessScore >= 70
+      ? "HOT"
+      : readinessScore >= 40
+        ? "WARM"
+        : "COLD";
+
+  return {
+    leadReady,
+    readinessScore,
+    readinessBand,
+  };
+}
+
+function buildLeadMatching(params: {
+  lead?: Record<string, unknown> | null;
+  property?: ImobPropertySnapshotV1 | null;
+  leadReady: boolean;
+  leadReadinessScore: number | null;
+}): ImobLeadMatchingSnapshotV1 {
+  const lead = params.lead ?? {};
+  const property = params.property ?? null;
+  const desiredGoal = normalizeGoal(lead.desiredGoal) ?? normalizeGoal(lead.goal);
+  const desiredCity = asString(lead.desiredCity) ?? asString(lead.targetCity);
+  const propertyGoal = property?.goal ?? null;
+  const propertyCity = property?.city ?? null;
+  const propertyLabel = property?.address ?? property?.name ?? property?.id ?? null;
+
+  if (!params.leadReady || (params.leadReadinessScore ?? 0) < 70) {
+    return {
+      status: "insufficient_context",
+      matchStrength: "unknown",
+      propertyId: property?.id ?? null,
+      propertyLabel,
+      reasonCodes: ["LEAD_READINESS_NOT_READY_FOR_MATCH"],
+      summary: "O lead ainda não está pronto para uma sugestão segura de imóvel.",
+      recommendedNextMove: "consolidar readiness comercial antes de sugerir estoque",
+    };
+  }
+
+  if (!property) {
+    return {
+      status: "awaiting_candidate",
+      matchStrength: "unknown",
+      propertyId: null,
+      propertyLabel: null,
+      reasonCodes: ["MATCHING_PROPERTY_CANDIDATE_MISSING"],
+      summary: "O lead já está pronto, mas o caso ainda não tem um imóvel candidato explícito para comparação.",
+      recommendedNextMove: "buscar imóvel compatível para este lead",
+    };
+  }
+
+  const conflictingGoal = Boolean(desiredGoal && propertyGoal && desiredGoal !== propertyGoal);
+  const conflictingCity = Boolean(desiredCity && propertyCity && desiredCity !== propertyCity);
+  if (conflictingGoal || conflictingCity) {
+    return {
+      status: "no_match",
+      matchStrength: "low",
+      propertyId: property.id ?? null,
+      propertyLabel,
+      reasonCodes: [
+        conflictingGoal ? "MATCHING_GOAL_CONFLICT" : null,
+        conflictingCity ? "MATCHING_CITY_CONFLICT" : null,
+      ].filter((item): item is string => Boolean(item)),
+      summary: "O imóvel atual entra em conflito com objetivo ou cidade desejada do lead.",
+      recommendedNextMove: "revalidar objetivo ou cidade antes de sugerir este imóvel",
+    };
+  }
+
+  const matchStrength = property.propertyType && property.address ? "high" : "medium";
+  return {
+    status: "suggested",
+    matchStrength,
+    propertyId: property.id ?? null,
+    propertyLabel,
+    reasonCodes: ["MATCHING_GOAL_ALIGNED", "MATCHING_CITY_ALIGNED", "MATCHING_PROPERTY_CONTEXT_AVAILABLE"],
+    summary: propertyLabel
+      ? `O imóvel ${propertyLabel} já está alinhado com cidade e objetivo do lead.`
+      : "O imóvel atual já está alinhado com cidade e objetivo do lead.",
+    recommendedNextMove: "vincular lead ao imóvel compatível",
+  };
+}
+
+function buildLeadLifecycle(params: {
+  lead?: Record<string, unknown> | null;
+}): ImobLeadLifecycleSnapshotV1 {
+  const lead = params.lead ?? {};
+  const rawStatus = normalizeText(asString(lead.status) ?? "active");
+  const reason = asString(lead.disqualificationReason) ?? asString(lead.blockReason) ?? null;
+  const nextTrigger = asString(lead.reengagementTrigger) ?? asString(lead.nextTrigger);
+
+  if (rawStatus === "disqualified" || rawStatus === "blocked") {
+    if (nextTrigger) {
+      return {
+        status: "reengagement_ready",
+        reason,
+        nextTrigger,
+        summary: reason
+          ? `Lead desqualificado por ${reason} e já com gatilho de retomada ${nextTrigger}.`
+          : `Lead desqualificado e já com gatilho de retomada ${nextTrigger}.`,
+      };
+    }
+
+    return {
+      status: "disqualified",
+      reason,
+      nextTrigger: null,
+      summary: reason
+        ? `Lead desqualificado por ${reason}.`
+        : "Lead desqualificado e aguardando revisão comercial.",
+    };
+  }
+
+  return {
+    status: "active",
+    reason: null,
+    nextTrigger: nextTrigger ?? null,
+    summary: "Lead ativo na jornada comercial.",
+  };
+}
+
 function buildDocumentsSnapshot(params: {
   documentDraft?: Record<string, unknown> | null;
   contractDraft?: Record<string, unknown> | null;
@@ -133,6 +292,46 @@ function buildDocumentsSnapshot(params: {
     id: referenceId ? `document-package:${referenceId}` : "document-package:pending",
     name: "Pacote documental",
     status,
+  };
+}
+
+function buildVisitSnapshot(params: {
+  visitDraft?: Record<string, unknown> | null;
+}) {
+  const draft = params.visitDraft ?? {};
+  const propertyId = asString(draft.propertyId);
+  const visitorName = asString(draft.visitorName);
+  const visitorPhone = asString(draft.visitorPhone);
+  const preferredDate = asString(draft.preferredDate);
+  const preferredWindow = asString(draft.preferredWindow);
+
+  if (!propertyId && !visitorName && !visitorPhone && !preferredDate && !preferredWindow) return null;
+
+  const scheduled = Boolean(propertyId && visitorName && visitorPhone && preferredDate);
+  return {
+    id: scheduled ? `visit:${propertyId}:${preferredDate}` : null,
+    name: visitorName ?? propertyId ?? "Visita em preparação",
+    status: scheduled ? "scheduled" : "collecting",
+  };
+}
+
+function buildProposalSnapshot(params: {
+  proposalDraft?: Record<string, unknown> | null;
+}) {
+  const draft = params.proposalDraft ?? {};
+  const propertyId = asString(draft.propertyId);
+  const buyerName = asString(draft.buyerName);
+  const buyerPhone = asString(draft.buyerPhone);
+  const offerAmount = Number.isFinite(Number(draft.offerAmount)) ? Number(draft.offerAmount) : null;
+  const contractType = asString(draft.contractType);
+
+  if (!propertyId && !buyerName && !buyerPhone && offerAmount == null && !contractType) return null;
+
+  const readyForReview = Boolean(propertyId && buyerName && buyerPhone && offerAmount != null && contractType);
+  return {
+    id: readyForReview ? `proposal:${propertyId}:${contractType}` : null,
+    name: buyerName ?? propertyId ?? "Proposta em preparação",
+    status: readyForReview ? "ready_for_review" : "collecting",
   };
 }
 
@@ -246,6 +445,8 @@ function buildBlockers(params: {
   pendingItems: string[];
   ownerReady: boolean;
   propertyReady: boolean;
+  leadReady: boolean;
+  leadReadinessScore: number | null;
   ownerLinkedToProperty: boolean;
   documentsReady: boolean;
   commissionReady: boolean;
@@ -297,6 +498,12 @@ function buildBlockers(params: {
   if (structuralCaptureMission && params.ownerReady && params.propertyReady && !params.ownerLinkedToProperty) {
     blockers.push({ code: "owner_property_not_linked", severity: "blocking", message: "O imóvel ainda não está vinculado ao proprietário." });
   }
+  if (params.mission === "qualify_lead" && !params.leadReady) {
+    blockers.push({ code: "lead_missing_or_incomplete", severity: "blocking", message: "O lead ainda não tem os dados mínimos para avançar com segurança." });
+  }
+  if (params.mission === "qualify_lead" && params.leadReady && (params.leadReadinessScore ?? 0) < 70) {
+    blockers.push({ code: "lead_readiness_below_threshold", severity: "warning", message: "O lead já está completo, mas ainda precisa consolidar readiness comercial antes do próximo handoff." });
+  }
   if (params.mission === "prepare_contract" && !params.documentsReady) {
     blockers.push({ code: "document_packet_not_ready", severity: "blocking", message: "O pacote documental ainda não está pronto para seguir com o contrato." });
   }
@@ -324,6 +531,8 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
   const ownerDraft = asObject(operational.ownerDraft);
   const propertyDraft = asObject(operational.propertyDraft);
   const leadDraft = asObject(operational.leadDraft);
+  const visitDraft = asObject(operational.visitDraft);
+  const proposalDraft = asObject(operational.proposalDraft);
   const documentDraft = asObject(operational.documentDraft);
   const contractDraft = asObject(operational.contractDraft);
   const commissionDraft = asObject(operational.commissionDraft);
@@ -332,13 +541,26 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
   const operationalMissionContext = asObject(operational.missionContext);
   const owner = buildOwnerSnapshot({ owner: params.caseContext?.owner, ownerDraft });
   const property = buildPropertySnapshot({ property: params.caseContext?.property, propertyDraft });
+  const visit = buildVisitSnapshot({ visitDraft });
+  const proposal = buildProposalSnapshot({ proposalDraft });
   const documents = buildDocumentsSnapshot({ documentDraft, contractDraft });
   const contract = buildContractSnapshot({ contractDraft });
   const commission = buildCommissionSnapshot({ commissionDraft });
   const campaign = buildCampaignSnapshot({ campaignDraft, listingDraft });
-  const lead = asObject(params.caseContext?.lead) ?? leadDraft;
+  const lead = {
+    ...(asObject(params.caseContext?.lead) ?? {}),
+    ...(leadDraft ?? {}),
+  };
+  const leadReadiness = buildLeadReadiness({ lead });
+  const leadLifecycle = buildLeadLifecycle({ lead });
   const leadGoal = normalizeGoal(lead?.desiredGoal);
   const propertyGoal = property?.goal ?? null;
+  const leadMatching = buildLeadMatching({
+    lead,
+    property,
+    leadReady: leadReadiness.leadReady,
+    leadReadinessScore: leadReadiness.readinessScore,
+  });
   const pendingItems = [
     ...asStringList(params.caseContext?.pendingItems),
     ...asStringList(operational.pendingFields),
@@ -382,13 +604,19 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
         phone: asString(lead.phone) ?? asString(lead.leadPhone),
         desiredGoal: leadGoal,
         desiredCity: asString(lead.desiredCity),
+        readinessScore: leadReadiness.readinessScore,
+        readinessBand: leadReadiness.readinessBand,
         status: asString(lead.status),
       } : null,
+      visit,
+      proposal,
       documents,
       campaign,
       contract,
       commission,
     },
+    leadMatching,
+    leadLifecycle,
     links: {
       ownerProperty: {
         ownerId: owner?.id ?? null,
@@ -399,6 +627,8 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
     readiness: {
       ownerReady,
       propertyReady,
+      leadReady: leadReadiness.leadReady,
+      leadReadinessScore: leadReadiness.readinessScore,
       documentsReady,
       seasonalRulesReady,
       operationalReady: ownerReady && propertyReady && ownerLinkedToProperty && documentsReady && (mission !== "capture_seasonal_property" || seasonalRulesReady),
@@ -409,6 +639,8 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
       pendingItems,
       ownerReady,
       propertyReady,
+      leadReady: leadReadiness.leadReady,
+      leadReadinessScore: leadReadiness.readinessScore,
       ownerLinkedToProperty,
       documentsReady,
       commissionReady,

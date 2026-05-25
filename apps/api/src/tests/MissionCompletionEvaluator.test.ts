@@ -21,6 +21,8 @@ function buildContext(overrides: Partial<ImobCaseContextV1> = {}): ImobCaseConte
     readiness: {
       ownerReady: false,
       propertyReady: false,
+      leadReady: false,
+      leadReadinessScore: null,
       documentsReady: false,
       seasonalRulesReady: false,
       operationalReady: false,
@@ -69,6 +71,15 @@ test("completion evaluator promotes qualified lead mission to ready_for_transiti
       entities: {
         lead: { id: "lead-1", name: "Maria" },
       },
+      readiness: {
+        ownerReady: false,
+        propertyReady: false,
+        leadReady: true,
+        leadReadinessScore: 76,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
     }),
     currentStep: "matching_inventory",
     pendingFields: [],
@@ -96,4 +107,156 @@ test("completion evaluator marks commercial activation as ready_for_transition w
   });
 
   assert.equal(status, "ready_for_transition");
+});
+
+test("completion evaluator keeps incomplete lead mission in progress", () => {
+  const status = resolveImobMissionStatus({
+    mission: "qualify_and_match_lead",
+    context: buildContext({
+      missionContext: {
+        mission: "qualify_lead",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        lead: { name: "Maria" },
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: false,
+        leadReady: false,
+        leadReadinessScore: 32,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+    currentStep: "gathering_signals",
+    pendingFields: ["leadPhone", "budgetMax"],
+    hasNextAction: true,
+  });
+
+  assert.equal(status, "in_progress");
+});
+
+test("completion evaluator keeps complete but low-readiness lead below transition threshold", () => {
+  const status = resolveImobMissionStatus({
+    mission: "qualify_and_match_lead",
+    context: buildContext({
+      missionContext: {
+        mission: "qualify_lead",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        lead: { id: "lead-1", name: "Maria" },
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: false,
+        leadReady: true,
+        leadReadinessScore: 60,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+    currentStep: "matching_inventory",
+    pendingFields: [],
+    hasNextAction: true,
+  });
+
+  assert.equal(status, "in_progress");
+});
+
+test("completion evaluator promotes matched lead to ready_for_transition before visit scheduling", () => {
+  const status = resolveImobMissionStatus({
+    mission: "qualify_and_match_lead",
+    context: buildContext({
+      missionContext: {
+        mission: "qualify_lead",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        lead: { id: "lead-1", name: "Maria" },
+        property: { id: "property-1", city: "Itapema", goal: "locacao" as any },
+      },
+      leadMatching: {
+        status: "suggested",
+        matchStrength: "high",
+        propertyId: "property-1",
+        propertyLabel: "Rua 700, 10",
+        reasonCodes: ["MATCHING_GOAL_ALIGNED", "MATCHING_CITY_ALIGNED"],
+        summary: "O imóvel Rua 700, 10 já está alinhado com cidade e objetivo do lead.",
+        recommendedNextMove: "vincular lead ao imóvel compatível",
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: true,
+        leadReady: true,
+        leadReadinessScore: 82,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+    currentStep: "ready_for_visit",
+    pendingFields: [],
+    hasNextAction: true,
+  });
+
+  assert.equal(status, "ready_for_transition");
+});
+
+test("completion evaluator promotes scheduled visit flow toward proposal transition", () => {
+  const status = resolveImobMissionStatus({
+    mission: "schedule_and_follow_visit",
+    context: buildContext({
+      missionContext: {
+        mission: "schedule_visit",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        visit: { id: "visit-1", status: "scheduled" },
+      },
+    }),
+    currentStep: "scheduled",
+    pendingFields: [],
+    hasNextAction: true,
+  });
+
+  assert.equal(status, "ready_for_transition");
+});
+
+test("completion evaluator keeps disqualified lead mission in progress while preserving reengagement path", () => {
+  const status = resolveImobMissionStatus({
+    mission: "qualify_and_match_lead",
+    context: buildContext({
+      missionContext: {
+        mission: "qualify_lead",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        lead: { id: "lead-1", name: "Maria" },
+      },
+      leadLifecycle: {
+        status: "reengagement_ready",
+        reason: "janela de decisão futura",
+        nextTrigger: "decision_window",
+        summary: "Lead desqualificado por janela de decisão futura e já com gatilho de retomada decision_window.",
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: false,
+        leadReady: true,
+        leadReadinessScore: 82,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+    currentStep: "disqualified",
+    pendingFields: [],
+    hasNextAction: true,
+  });
+
+  assert.equal(status, "in_progress");
 });

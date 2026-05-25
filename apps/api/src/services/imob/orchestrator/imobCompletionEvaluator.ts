@@ -31,6 +31,8 @@ function hasUsefulEntityContext(context: ImobCaseContextV1) {
     context.entities.owner?.id
     || context.entities.property?.id
     || context.entities.lead?.id
+    || context.entities.visit?.id
+    || context.entities.proposal?.id
     || context.entities.documents?.id
     || context.entities.contract?.id
     || context.entities.commission?.id
@@ -50,11 +52,24 @@ export function resolveImobMissionStatus(params: ResolveMissionStatusParams): Mi
       if (params.currentStep === "snapshot_ready") return "ready_for_transition";
       return params.hasNextAction || hasUsefulEntityContext(params.context) ? "in_progress" : "draft";
     case "qualify_and_match_lead":
-      if (params.pendingFields.length === 0 && Boolean(params.context.entities.lead?.id || params.context.entities.lead?.name)) {
+      if (params.context.leadLifecycle?.status === "disqualified" || params.context.leadLifecycle?.status === "reengagement_ready") {
+        return params.hasNextAction ? "in_progress" : "draft";
+      }
+      if (
+        params.context.leadMatching?.status === "suggested"
+      ) {
+        return "ready_for_transition";
+      }
+      if (
+        params.context.readiness.leadReady
+        && (params.context.readiness.leadReadinessScore ?? 0) >= 70
+        && Boolean(params.context.entities.lead?.id || params.context.entities.lead?.name)
+      ) {
         return "ready_for_transition";
       }
       return params.hasNextAction || params.pendingFields.length > 0 ? "in_progress" : "draft";
     case "schedule_and_follow_visit":
+      if (params.context.entities.proposal?.status === "ready_for_review") return "ready_for_transition";
       if (params.pendingFields.length === 0 && params.currentStep === "scheduled") return "ready_for_transition";
       return params.hasNextAction || params.pendingFields.length > 0 ? "in_progress" : "draft";
     case "collect_documents":

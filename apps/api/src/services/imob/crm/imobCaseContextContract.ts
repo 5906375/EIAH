@@ -80,6 +80,25 @@ export type ImobLeadSnapshotV1 = ImobEntitySnapshotV1 & {
   phone?: string | null;
   desiredGoal?: ImobPropertyGoalV1 | null;
   desiredCity?: string | null;
+  readinessScore?: number | null;
+  readinessBand?: "HOT" | "WARM" | "COLD" | "UNKNOWN" | null;
+};
+
+export type ImobLeadMatchingSnapshotV1 = {
+  status: "suggested" | "awaiting_candidate" | "no_match" | "insufficient_context";
+  matchStrength: "high" | "medium" | "low" | "unknown";
+  propertyId?: string | null;
+  propertyLabel?: string | null;
+  reasonCodes: string[];
+  summary: string;
+  recommendedNextMove: string;
+};
+
+export type ImobLeadLifecycleSnapshotV1 = {
+  status: "active" | "disqualified" | "reengagement_ready";
+  reason?: string | null;
+  nextTrigger?: string | null;
+  summary: string;
 };
 
 export type ImobCaseBlockerV1 = {
@@ -104,11 +123,15 @@ export type ImobCaseContextV1 = {
     owner?: ImobOwnerSnapshotV1 | null;
     property?: ImobPropertySnapshotV1 | null;
     lead?: ImobLeadSnapshotV1 | null;
+    visit?: ImobEntitySnapshotV1 | null;
+    proposal?: ImobEntitySnapshotV1 | null;
     documents?: ImobEntitySnapshotV1 | null;
     campaign?: ImobEntitySnapshotV1 | null;
     contract?: ImobEntitySnapshotV1 | null;
     commission?: ImobEntitySnapshotV1 | null;
   };
+  leadMatching?: ImobLeadMatchingSnapshotV1 | null;
+  leadLifecycle?: ImobLeadLifecycleSnapshotV1 | null;
   links: {
     ownerProperty?: {
       ownerId?: string | null;
@@ -119,6 +142,8 @@ export type ImobCaseContextV1 = {
   readiness: {
     ownerReady: boolean;
     propertyReady: boolean;
+    leadReady: boolean;
+    leadReadinessScore: number | null;
     documentsReady: boolean;
     seasonalRulesReady: boolean;
     operationalReady: boolean;

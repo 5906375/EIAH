@@ -120,13 +120,85 @@ export function resolveImobNextAction(params: ResolveNextActionParams): ImobNext
       });
 
     case "qualify_and_match_lead":
+      if (params.context.leadLifecycle?.status === "reengagement_ready") {
+        return mapLeadAction(params.flow, {
+          id: "reengage-disqualified-lead",
+          label: "Retomar lead",
+          reasonCode: "LEAD_REENGAGEMENT_REQUIRED",
+        });
+      }
+
+      if (params.context.leadLifecycle?.status === "disqualified") {
+        return mapLeadAction(params.flow, {
+          id: "review-disqualified-lead",
+          label: "Revisar desqualificação do lead",
+          reasonCode: "LEAD_DISQUALIFIED",
+        });
+      }
+
+      if (!params.context.readiness.leadReady) {
+        return mapLeadAction(params.flow, {
+          id: "ask-missing-lead-field",
+          label: "Completar dados do lead",
+          reasonCode: "LEAD_MISSING_REQUIRED_FIELD",
+        });
+      }
+
+      if ((params.context.readiness.leadReadinessScore ?? 0) < 70) {
+        return mapLeadAction(params.flow, {
+          id: "review-lead-readiness",
+          label: "Consolidar readiness do lead",
+          reasonCode: "LEAD_READINESS_REVIEW_REQUIRED",
+        });
+      }
+
+      if (params.context.leadMatching?.status === "suggested") {
+        return mapOperationAction("visit", params.flow, {
+          id: "schedule-visit-for-matched-lead",
+          label: "Avançar para visita",
+          reasonCode: "VISIT_REQUIRED",
+        });
+      }
+
+      if (params.context.leadMatching?.status === "no_match") {
+        return mapLeadAction(params.flow, {
+          id: "review-lead-match-criteria",
+          label: "Refinar critérios do lead",
+          reasonCode: "LEAD_PROPERTY_MATCH_REVIEW_REQUIRED",
+        });
+      }
+
+      if (params.context.leadMatching?.status === "awaiting_candidate") {
+        return mapLeadAction(params.flow, {
+          id: "find-matching-property",
+          label: "Buscar imóvel compatível",
+          reasonCode: "LEAD_PROPERTY_MATCH_PENDING",
+        });
+      }
+
       return mapLeadAction(params.flow, {
-        id: params.pendingFields?.length ? "ask-missing-lead-field" : "resume-lead-qualification",
-        label: params.pendingFields?.length ? "Completar dados do lead" : "Retomar qualificação do lead",
-        reasonCode: params.pendingFields?.length ? "LEAD_MISSING_REQUIRED_FIELD" : "LEAD_READY_TO_PROGRESS",
+        id: "link-lead-to-property",
+        label: "Vincular lead ao imóvel",
+        reasonCode: "LEAD_READY_TO_LINK",
       });
 
     case "schedule_and_follow_visit":
+      if (params.context.entities.proposal?.status === "ready_for_review") {
+        return mapLeadAction(params.flow, {
+          id: "review-proposal",
+          label: "Revisar proposta",
+          reasonCode: "PROPOSAL_REVIEW_REQUIRED",
+        });
+      }
+
+      if (params.context.entities.visit?.status === "scheduled") {
+        return mapLeadAction(params.flow, {
+          id: "prepare-proposal",
+          label: "Preparar proposta",
+          reasonCode: "PROPOSAL_REQUIRED",
+        });
+      }
+
       return mapOperationAction("visit", params.flow, {
         id: "schedule-visit",
         label: "Agendar visita",

@@ -120,3 +120,214 @@ test("IMOB case context v1 drops stale market-scan blocker after property conver
   assert.ok(context.blockers.some((blocker) => blocker.code === "owner_missing_or_incomplete"));
   assert.equal(context.recoverySnapshot?.primaryAction?.operation, "owner.create");
 });
+
+test("IMOB case context v1 derives lead readiness base and blocks weak handoff", () => {
+  const context = buildImobCaseContextV1({
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    caseId: "case-1",
+    message: "qualificar lead Maria para locação em Itapema",
+    caseContext: {
+      caseId: "case-1",
+      flow: "lead.qualify",
+      lead: {
+        id: "lead-1",
+        name: "Maria",
+        goal: "locacao",
+        targetCity: "Itapema",
+        budgetMaxCents: 350000,
+        discoverySignals: {
+          urgency: "medium",
+          painPoint: null,
+          motivation: null,
+          budgetFlexibility: null,
+          decisionMaker: null,
+          timeline: null,
+          pendingSignals: ["painPoint", "motivation", "budgetFlexibility", "decisionMaker", "timeline"],
+        },
+      },
+    },
+    operational: {
+      flow: "lead.qualify",
+      leadDraft: {
+        leadName: "Maria",
+        desiredGoal: "locacao",
+        desiredCity: "Itapema",
+        budgetMax: 3500,
+        leadPhone: "47999998888",
+      },
+    },
+  });
+
+  assert.equal(context.readiness.leadReady, true);
+  assert.equal(context.readiness.leadReadinessScore, 65);
+  assert.equal(context.entities.lead?.readinessBand, "WARM");
+  assert.ok(context.blockers.some((blocker) => blocker.code === "lead_readiness_below_threshold"));
+  assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "LEAD_READINESS_REVIEW_REQUIRED");
+});
+
+test("IMOB case context v1 promotes a ready lead with compatible property into visit scheduling without inventing inventory", () => {
+  const context = buildImobCaseContextV1({
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    caseId: "case-1",
+    message: "qualificar lead Maria para locação em Itapema",
+    caseContext: {
+      caseId: "case-1",
+      flow: "lead.qualify",
+      property: {
+        id: "property-1",
+        propertyType: "apartamento",
+        goal: "locacao",
+        city: "Itapema",
+        address: "Rua 700, 10",
+      },
+      lead: {
+        id: "lead-1",
+        name: "Maria",
+        goal: "locacao",
+        targetCity: "Itapema",
+        budgetMaxCents: 350000,
+        discoverySignals: {
+          urgency: "high",
+          painPoint: "mudança urgente",
+          motivation: "trabalho",
+          budgetFlexibility: "medium",
+          decisionMaker: "self",
+          timeline: "30d",
+        },
+      },
+    },
+    operational: {
+      flow: "lead.qualify",
+      leadDraft: {
+        leadName: "Maria",
+        desiredGoal: "locacao",
+        desiredCity: "Itapema",
+        budgetMax: 3500,
+        leadPhone: "47999998888",
+      },
+    },
+  });
+
+  assert.equal(context.readiness.leadReady, true);
+  assert.equal(context.readiness.leadReadinessScore, 90);
+  assert.equal(context.leadMatching?.status, "suggested");
+  assert.equal(context.leadMatching?.propertyId, "property-1");
+  assert.match(context.leadMatching?.summary ?? "", /cidade e objetivo/i);
+  assert.equal(context.canonicalCaseState?.currentStep, "ready_for_visit");
+  assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "VISIT_REQUIRED");
+  assert.equal(context.recoverySnapshot?.primaryAction?.operation, "visit.schedule");
+});
+
+test("IMOB case context v1 promotes a scheduled visit into proposal preparation", () => {
+  const context = buildImobCaseContextV1({
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    caseId: "case-1",
+    caseContext: {
+      caseId: "case-1",
+      flow: "visit.schedule",
+      lead: {
+        id: "lead-1",
+        name: "Maria",
+        goal: "locacao",
+        targetCity: "Itapema",
+        budgetMaxCents: 350000,
+      },
+      property: {
+        id: "property-1",
+        propertyType: "apartamento",
+        goal: "locacao",
+        city: "Itapema",
+        address: "Rua 700, 10",
+      },
+    },
+    operational: {
+      flow: "visit.schedule",
+      visitDraft: {
+        propertyId: "property-1",
+        visitorName: "Maria",
+        visitorPhone: "47999998888",
+        preferredDate: "2026-05-30",
+        preferredWindow: "tarde",
+      },
+    },
+  });
+
+  assert.equal(context.missionContext?.mission, "schedule_visit");
+  assert.equal(context.entities.visit?.status, "scheduled");
+  assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "PROPOSAL_REQUIRED");
+});
+
+test("IMOB case context v1 preserves lead disqualification reason in canonical recovery", () => {
+  const context = buildImobCaseContextV1({
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    caseId: "case-1",
+    caseContext: {
+      caseId: "case-1",
+      flow: "lead.qualify",
+      lead: {
+        id: "lead-1",
+        name: "Maria",
+        status: "disqualified",
+        disqualificationReason: "orcamento fora da faixa",
+        goal: "locacao",
+        targetCity: "Itapema",
+        budgetMaxCents: 350000,
+      },
+    },
+    operational: {
+      flow: "lead.qualify",
+      leadDraft: {
+        leadName: "Maria",
+        leadPhone: "47999998888",
+        desiredGoal: "locacao",
+        desiredCity: "Itapema",
+        budgetMax: 3500,
+      },
+    },
+  });
+
+  assert.equal(context.leadLifecycle?.status, "disqualified");
+  assert.match(context.leadLifecycle?.summary ?? "", /orcamento fora da faixa/i);
+  assert.equal(context.canonicalCaseState?.currentStep, "disqualified");
+  assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "LEAD_DISQUALIFIED");
+});
+
+test("IMOB case context v1 promotes reengagement without reopening resolved lead fields", () => {
+  const context = buildImobCaseContextV1({
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    caseId: "case-1",
+    caseContext: {
+      caseId: "case-1",
+      flow: "lead.qualify",
+      lead: {
+        id: "lead-1",
+        name: "Maria",
+        status: "disqualified",
+        disqualificationReason: "janela de decisão futura",
+        reengagementTrigger: "decision_window",
+        goal: "locacao",
+        targetCity: "Itapema",
+        budgetMaxCents: 350000,
+      },
+    },
+    operational: {
+      flow: "lead.qualify",
+      leadDraft: {
+        leadName: "Maria",
+        leadPhone: "47999998888",
+        desiredGoal: "locacao",
+        desiredCity: "Itapema",
+        budgetMax: 3500,
+      },
+    },
+  });
+
+  assert.equal(context.leadLifecycle?.status, "reengagement_ready");
+  assert.equal(context.readiness.leadReady, true);
+  assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "LEAD_REENGAGEMENT_REQUIRED");
+});
