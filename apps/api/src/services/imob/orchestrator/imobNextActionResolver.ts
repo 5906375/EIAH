@@ -295,6 +295,14 @@ export function resolveImobNextAction(params: ResolveNextActionParams): ImobNext
         });
       }
 
+      if (params.context.documentSufficiency?.handoffTarget === "LEGAL" && params.context.documentSufficiency.legalHandoffStatus === "pending") {
+        return mapOperationAction("contract", params.flow, {
+          id: "legal-handoff",
+          label: "Encaminhar para jurídico",
+          reasonCode: "LEGAL_HANDOFF_REQUIRED",
+        });
+      }
+
       return mapOperationAction("contract", params.flow, {
         id: "prepare-contract",
         label: "Preparar contrato",

@@ -134,6 +134,15 @@ export type ImobDocumentChecklistSnapshotV1 = {
   summary: string;
   recommendedNextMove: string;
 };
+
+export type ImobDocumentSufficiencySnapshotV1 = {
+  packageStatus: "pending" | "ready";
+  proofStatus: "missing" | "ready";
+  handoffTarget: "LEGAL" | "FINANCE" | "IMOB_OPS" | "unknown";
+  legalHandoffStatus: "pending" | "ready_for_signature" | "not_required";
+  summary: string;
+  recommendedNextMove: string;
+};
 export type ImobCaseBlockerV1 = {
   code: string;
   severity: "info" | "warning" | "blocking";
@@ -167,6 +176,7 @@ export type ImobCaseContextV1 = {
   leadLifecycle?: ImobLeadLifecycleSnapshotV1 | null;
   marketScanRecommendation?: ImobMarketScanRecommendationSnapshotV1 | null;
   documentChecklist?: ImobDocumentChecklistSnapshotV1 | null;
+  documentSufficiency?: ImobDocumentSufficiencySnapshotV1 | null;
   links: {
     ownerProperty?: {
       ownerId?: string | null;

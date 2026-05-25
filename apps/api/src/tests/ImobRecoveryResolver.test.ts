@@ -267,6 +267,75 @@ test("recovery response exposes operation-specific document checklist pending it
   assert.match(response.summary, /checklist documental de locacao/i);
 });
 
+test("recovery response explains legal handoff once document sufficiency is satisfied", () => {
+  const response = resolveImobRecoveryResponse({
+    context: buildContext({
+      missionContext: {
+        mission: "prepare_contract",
+        lockedUntilExplicitChange: false,
+      },
+      documentSufficiency: {
+        packageStatus: "ready",
+        proofStatus: "ready",
+        handoffTarget: "LEGAL",
+        legalHandoffStatus: "pending",
+        summary: "Pacote documental suficiente; caso pronto para handoff jurídico.",
+        recommendedNextMove: "Encaminhar o caso para validação jurídica.",
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: false,
+        leadReady: false,
+        leadReadinessScore: null,
+        documentsReady: true,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+      canonicalCaseState: {
+        schemaVersion: 1,
+        tenantId: "tenant-A",
+        workspaceId: "workspace-A",
+        caseId: "case-1",
+        mission: "prepare_contract",
+        missionStatus: "in_progress",
+        currentStep: "legal_handoff",
+        currentOperation: "contract",
+        entities: {
+          documentPackageId: "document-package:property-1",
+        },
+        readiness: {
+          documents: "ready",
+          proof: "ready",
+        },
+        blockers: [],
+        pendingFields: [],
+        nextAction: {
+          id: "legal-handoff",
+          label: "Encaminhar para jurídico",
+          operation: "contract",
+          targetAgent: "IMOB_DocumentAgent",
+          reasonCode: "LEGAL_HANDOFF_REQUIRED",
+        },
+        proof: {
+          required: true,
+          minimumProofSatisfied: true,
+          missingProof: [],
+        },
+        audit: {
+          version: 1,
+          lastUpdatedAt: "2026-05-25T10:00:00.000Z",
+          updatedByAgent: "IMOB",
+        },
+      },
+    }),
+    intent: "next_step",
+  });
+
+  assert.equal(response.primaryAction?.reasonCode, "LEGAL_HANDOFF_REQUIRED");
+  assert.match(response.summary, /jurídico/i);
+  assert.match(response.summary, /pacote documental suficiente/i);
+});
+
 test("recovery snapshot exposes lead readiness blockers before matching handoff", () => {
   const snapshot = resolveImobRecoverySnapshot(buildContext({
     missionContext: {

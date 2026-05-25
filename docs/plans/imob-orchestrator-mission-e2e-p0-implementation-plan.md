@@ -138,7 +138,8 @@ Próximas frentes oficiais a partir deste ponto:
 
 4. `DocumentAgent E2E`
    - Status: `execução iniciada`
-   - slice corrente: `PR-DOC1 — checklist by operation`
+   - `PR-DOC1` concluído: checklist by operation
+   - slice corrente: `PR-DOC2 — sufficiency + proof + legal handoff`
    - checklist por operação;
    - suficiência documental;
    - bloqueios claros;
@@ -162,7 +163,7 @@ Execução corrente:
 - a frente corrente deste plano canônico passa a ser guiada por:
   - `docs/plans/imob-document-agent-e2e-implementation-plan.md`
   - slice em andamento:
-    - `PR-DOC1 — checklist by operation`
+    - `PR-DOC2 — sufficiency + proof + legal handoff`
 
 ---
 

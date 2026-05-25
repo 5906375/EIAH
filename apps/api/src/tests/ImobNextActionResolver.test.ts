@@ -144,6 +144,42 @@ test("next action resolver uses operation-specific document checklist label", ()
   assert.equal(nextAction.label, "Completar checklist documental de venda");
 });
 
+test("next action resolver promotes prepare_contract into legal handoff when package proof is already satisfied", () => {
+  const nextAction = resolveImobNextAction({
+    mission: "prepare_contract",
+    context: buildContext({
+      missionContext: {
+        mission: "prepare_contract",
+        lockedUntilExplicitChange: false,
+      },
+      documentSufficiency: {
+        packageStatus: "ready",
+        proofStatus: "ready",
+        handoffTarget: "LEGAL",
+        legalHandoffStatus: "pending",
+        summary: "Pacote documental suficiente; caso pronto para handoff jurídico.",
+        recommendedNextMove: "Encaminhar o caso para validação jurídica.",
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: false,
+        leadReady: false,
+        leadReadinessScore: null,
+        documentsReady: true,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+    operation: "contract",
+    flow: "contract.prepare",
+    pendingFields: [],
+  });
+
+  assert.equal(nextAction.operation, "contract");
+  assert.equal(nextAction.reasonCode, "LEGAL_HANDOFF_REQUIRED");
+  assert.equal(nextAction.label, "Encaminhar para jurídico");
+});
+
 test("next action resolver keeps lead in qualification when minimum fields are still missing", () => {
   const nextAction = resolveImobNextAction({
     mission: "qualify_and_match_lead",

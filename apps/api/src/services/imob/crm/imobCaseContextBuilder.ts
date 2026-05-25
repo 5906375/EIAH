@@ -3,6 +3,7 @@ import type {
   ImobCaseBlockerV1,
   ImobCaseContextV1,
   ImobDocumentChecklistSnapshotV1,
+  ImobDocumentSufficiencySnapshotV1,
   ImobLeadLifecycleSnapshotV1,
   ImobLeadMatchingSnapshotV1,
   ImobCaseMission,
@@ -464,6 +465,57 @@ function buildDocumentChecklist(params: {
   };
 }
 
+function buildDocumentSufficiency(params: {
+  mission: ImobCaseMission;
+  documents?: ImobOwnerSnapshotV1 | null;
+  contractDraft?: Record<string, unknown> | null;
+  documentChecklist?: ImobDocumentChecklistSnapshotV1 | null;
+}): ImobDocumentSufficiencySnapshotV1 | null {
+  if (params.mission !== "prepare_contract" && !params.contractDraft && !params.documents && !params.documentChecklist) {
+    return null;
+  }
+
+  const packageReady = params.documents?.status === "ready";
+  const draft = params.contractDraft ?? {};
+  const rawHandoffTarget = asString(draft.handoffTarget);
+  const handoffTarget = (
+    rawHandoffTarget === "LEGAL" || rawHandoffTarget === "FINANCE" || rawHandoffTarget === "IMOB_OPS"
+      ? rawHandoffTarget
+      : "unknown"
+  ) as ImobDocumentSufficiencySnapshotV1["handoffTarget"];
+  const approvalRequired = typeof draft.approvalRequired === "boolean" ? draft.approvalRequired : true;
+  const legalHandoffStatus = !packageReady
+    ? "not_required"
+    : handoffTarget === "LEGAL" && approvalRequired
+      ? "pending"
+      : "ready_for_signature";
+
+  if (!packageReady && !params.documentChecklist && handoffTarget === "unknown") {
+    return null;
+  }
+
+  const summary = !packageReady
+    ? "Suficiência documental ainda não foi alcançada para o contrato."
+    : legalHandoffStatus === "pending"
+      ? "Pacote documental suficiente; caso pronto para handoff jurídico."
+      : "Pacote documental suficiente; contrato pode seguir para assinatura.";
+
+  const recommendedNextMove = !packageReady
+    ? params.documentChecklist?.recommendedNextMove ?? "Completar o pacote documental antes de seguir."
+    : legalHandoffStatus === "pending"
+      ? "Encaminhar o caso para validação jurídica."
+      : "Seguir para preparação final e assinatura.";
+
+  return {
+    packageStatus: packageReady ? "ready" : "pending",
+    proofStatus: packageReady ? "ready" : "missing",
+    handoffTarget,
+    legalHandoffStatus,
+    summary,
+    recommendedNextMove,
+  };
+}
+
 function buildVisitSnapshot(params: {
   visitDraft?: Record<string, unknown> | null;
 }) {
@@ -790,6 +842,12 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
         status: documentChecklist.pendingDocuments.length === 0 ? "ready" : "pending",
       }
     : null);
+  const documentSufficiency = buildDocumentSufficiency({
+    mission,
+    documents,
+    contractDraft,
+    documentChecklist,
+  });
 
   const baseContext: ImobCaseContextV1 = {
     version: "1.0",
@@ -830,6 +888,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
     leadLifecycle,
     marketScanRecommendation,
     documentChecklist,
+    documentSufficiency,
     links: {
       ownerProperty: {
         ownerId: owner?.id ?? null,

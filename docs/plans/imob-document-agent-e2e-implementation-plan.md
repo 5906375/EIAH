@@ -32,7 +32,7 @@ O que ainda falta para E2E:
 
 Status:
 
-- `em andamento`
+- `concluído`
 
 Objetivo:
 
@@ -62,6 +62,10 @@ Critério:
 - `consultar caso`, `o que falta?` e `qual o próximo passo?` refletem a pendência documental real.
 
 ### PR-DOC2 — sufficiency + proof + legal handoff
+
+Status:
+
+- `em andamento`
 
 Objetivo:
 
