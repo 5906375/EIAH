@@ -3,7 +3,7 @@
 Status: rebaseline operacional  
 Prioridade: P0/P1 para Track P IMOB  
 Data de referência: 2026-05-25  
-Versão do plano: v4.5 — pragmática para execução com continuidade derivada do canônico e próximas frentes E2E já anexadas  
+Versão do plano: v4.8 — pragmática para execução com continuidade derivada do canônico, `MarketScanAgent E2E` concluído e `DocumentAgent E2E` aberto como frente corrente  
 Escopo: fechamento E2E do `IMOB_Orchestrator` como dono real das missões imobiliárias, preservando arquitetura agent-driven, estado canônico, recuperação confiável, próxima ação única, controle de concorrência seguro para side effects, compatibilidade com casos legados e proof mínimo determinístico por missão.
 
 ---
@@ -124,10 +124,10 @@ Frentes já assumidas como próximas continuações oficiais do canônico:
 Próximas frentes oficiais a partir deste ponto:
 
 3. `MarketScanAgent E2E`
-   - Status: `execução iniciada`
+   - Status: `concluído`
    - `PR-M1` concluído: actionable recommendation base
    - `PR-M2` concluído: comparables + confidence band
-   - slice corrente: `PR-M3 — operational handoff hardening`
+   - `PR-M3` concluído: operational handoff hardening
    - evolução do scan para recomendação acionável real;
    - faixa de preço/diária;
    - liquidez e risco;
@@ -137,6 +137,9 @@ Próximas frentes oficiais a partir deste ponto:
      - `docs/plans/imob-market-scan-agent-e2e-implementation-plan.md`
 
 4. `DocumentAgent E2E`
+   - Status: `execução iniciada`
+   - `PR-DOC1` concluído: checklist by operation
+   - slice corrente: `PR-DOC2 — sufficiency + proof + legal handoff`
    - checklist por operação;
    - suficiência documental;
    - bloqueios claros;
@@ -146,23 +149,21 @@ Próximas frentes oficiais a partir deste ponto:
 Ordem recomendada:
 
 - `imobValidationEngine` e `LeadAgent E2E` já entregues;
-- próximo bloco oficial: `MarketScanAgent E2E`;
-- depois: `DocumentAgent E2E`.
+- `MarketScanAgent E2E` já entregue;
+- próximo bloco oficial: `DocumentAgent E2E`.
 
 Justificativa:
 - `imobValidationEngine` endureceu a base comum de `Property`, `Owner`, `Lead` e `Documents`;
 - `LeadAgent E2E` fechou a jornada comercial canônica no runtime;
-- o próximo multiplicador de valor é tornar `MarketScanAgent` acionável e coerente com captação/continuidade;
-- em seguida, `DocumentAgent E2E` fecha o pacote operacional e jurídico com blockers claros.
+- `MarketScanAgent E2E` fechou a recomendação acionável, comparables e continuidade de captação;
+- o próximo multiplicador de valor é `DocumentAgent E2E`, fechando checklist, suficiência e handoff jurídico/documental com blockers claros.
 
 Execução corrente:
 
-- a continuidade imediata deste plano canônico passa a ser guiada por:
-  - `docs/plans/imob-market-scan-agent-e2e-implementation-plan.md`
-  - slice em andamento:
-    - `PR-M3 — operational handoff hardening`
-- a frente documental subsequente passa a ser guiada por:
+- a frente corrente deste plano canônico passa a ser guiada por:
   - `docs/plans/imob-document-agent-e2e-implementation-plan.md`
+  - slice em andamento:
+    - `PR-DOC2 — sufficiency + proof + legal handoff`
 
 ---
 

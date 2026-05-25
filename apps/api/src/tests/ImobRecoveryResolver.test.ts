@@ -183,6 +183,159 @@ test("recovery response prioritizes owner follow-up after market-scan conversion
   assert.equal(response.missingItems.some((item) => /multiplas cidades|múltiplas cidades/i.test(item)), false);
 });
 
+test("recovery response exposes operation-specific document checklist pending items", () => {
+  const response = resolveImobRecoveryResponse({
+    context: buildContext({
+      missionContext: {
+        mission: "collect_documents",
+        lockedUntilExplicitChange: false,
+      },
+      documentChecklist: {
+        operation: "locacao",
+        requiredDocuments: [
+          "cpf do proprietário",
+          "matrícula ou escritura do imóvel",
+          "comprovante de endereço do proprietário",
+          "dados bancários do proprietário",
+        ],
+        collectedDocuments: ["cpf do proprietário"],
+        pendingDocuments: [
+          "matrícula ou escritura do imóvel",
+          "comprovante de endereço do proprietário",
+          "dados bancários do proprietário",
+        ],
+        blockingIssues: [
+          "Falta matrícula ou escritura do imóvel.",
+          "Falta comprovante de endereço do proprietário.",
+          "Falta dados bancários do proprietário.",
+        ],
+        summary: "Checklist documental de locacao ainda está incompleto.",
+        recommendedNextMove: "Completar matrícula ou escritura, comprovante de endereço e dados bancários antes de avançar.",
+      },
+      canonicalCaseState: {
+        schemaVersion: 1,
+        tenantId: "tenant-A",
+        workspaceId: "workspace-A",
+        caseId: "case-1",
+        mission: "collect_documents",
+        missionStatus: "in_progress",
+        currentStep: "checking_document_sufficiency",
+        currentOperation: "documents",
+        entities: {},
+        readiness: {
+          documents: "incomplete",
+          proof: "not_applicable",
+        },
+        blockers: [],
+        pendingFields: [],
+        nextAction: {
+          id: "complete-document-checklist",
+          label: "Completar checklist documental de locação",
+          operation: "documents",
+          targetAgent: "IMOB_DocumentAgent",
+          reasonCode: "DOCUMENT_CHECKLIST_REQUIRED",
+        },
+        proof: {
+          required: false,
+          minimumProofSatisfied: true,
+          missingProof: [],
+        },
+        audit: {
+          version: 1,
+          lastUpdatedAt: "2026-05-25T10:00:00.000Z",
+          updatedByAgent: "IMOB",
+        },
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: false,
+        leadReady: false,
+        leadReadinessScore: null,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+      blockers: [
+        { code: "document_checklist_matricula_ou_escritura_do_imovel", severity: "warning", message: "Checklist documental de locacao ainda pede matrícula ou escritura do imóvel." },
+      ],
+    }),
+    intent: "what_is_missing",
+  });
+
+  assert.equal(response.primaryAction?.reasonCode, "DOCUMENT_CHECKLIST_REQUIRED");
+  assert.ok(response.missingItems.some((item) => /matrícula|escritura/i.test(item)));
+  assert.match(response.summary, /checklist documental de locacao/i);
+});
+
+test("recovery response explains legal handoff once document sufficiency is satisfied", () => {
+  const response = resolveImobRecoveryResponse({
+    context: buildContext({
+      missionContext: {
+        mission: "prepare_contract",
+        lockedUntilExplicitChange: false,
+      },
+      documentSufficiency: {
+        packageStatus: "ready",
+        proofStatus: "ready",
+        handoffTarget: "LEGAL",
+        legalHandoffStatus: "pending",
+        summary: "Pacote documental suficiente; caso pronto para handoff jurídico.",
+        recommendedNextMove: "Encaminhar o caso para validação jurídica.",
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: false,
+        leadReady: false,
+        leadReadinessScore: null,
+        documentsReady: true,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+      canonicalCaseState: {
+        schemaVersion: 1,
+        tenantId: "tenant-A",
+        workspaceId: "workspace-A",
+        caseId: "case-1",
+        mission: "prepare_contract",
+        missionStatus: "in_progress",
+        currentStep: "legal_handoff",
+        currentOperation: "contract",
+        entities: {
+          documentPackageId: "document-package:property-1",
+        },
+        readiness: {
+          documents: "ready",
+          proof: "ready",
+        },
+        blockers: [],
+        pendingFields: [],
+        nextAction: {
+          id: "legal-handoff",
+          label: "Encaminhar para jurídico",
+          operation: "contract",
+          targetAgent: "IMOB_DocumentAgent",
+          reasonCode: "LEGAL_HANDOFF_REQUIRED",
+        },
+        proof: {
+          required: true,
+          minimumProofSatisfied: true,
+          missingProof: [],
+        },
+        audit: {
+          version: 1,
+          lastUpdatedAt: "2026-05-25T10:00:00.000Z",
+          updatedByAgent: "IMOB",
+        },
+      },
+    }),
+    intent: "next_step",
+  });
+
+  assert.equal(response.primaryAction?.reasonCode, "LEGAL_HANDOFF_REQUIRED");
+  assert.match(response.summary, /jurídico/i);
+  assert.match(response.summary, /pacote documental suficiente/i);
+});
+
 test("recovery snapshot exposes lead readiness blockers before matching handoff", () => {
   const snapshot = resolveImobRecoverySnapshot(buildContext({
     missionContext: {

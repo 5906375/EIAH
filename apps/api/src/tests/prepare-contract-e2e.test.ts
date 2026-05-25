@@ -72,9 +72,12 @@ test("prepare contract E2E advances to legal handoff when documents are ready", 
   assert.equal(context.canonicalCaseState?.currentStep, "legal_handoff");
   assert.equal(context.canonicalCaseState?.missionStatus, "in_progress");
   assert.equal(context.canonicalCaseState?.nextAction.operation, "contract");
-  assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "CONTRACT_PREPARATION_REQUIRED");
+  assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "LEGAL_HANDOFF_REQUIRED");
   assert.equal(context.canonicalCaseState?.proof.required, true);
   assert.equal(context.canonicalCaseState?.proof.minimumProofSatisfied, true);
+  assert.equal(context.documentSufficiency?.packageStatus, "ready");
+  assert.equal(context.documentSufficiency?.proofStatus, "ready");
+  assert.equal(context.documentSufficiency?.legalHandoffStatus, "pending");
   assert.equal(context.crmProjection?.caseCard.proofStatus, "satisfied");
   assert.equal(context.recoverySnapshot?.primaryAction?.operation, "contract.prepare");
 });

@@ -2,6 +2,8 @@ import type { ImobCrmCaseContext } from "./imobCrmAgentContract";
 import type {
   ImobCaseBlockerV1,
   ImobCaseContextV1,
+  ImobDocumentChecklistSnapshotV1,
+  ImobDocumentSufficiencySnapshotV1,
   ImobLeadLifecycleSnapshotV1,
   ImobLeadMatchingSnapshotV1,
   ImobCaseMission,
@@ -398,6 +400,122 @@ function buildDocumentsSnapshot(params: {
   };
 }
 
+function buildDocumentChecklist(params: {
+  mission: ImobCaseMission;
+  defaultGoal?: ImobPropertyGoalV1 | null;
+  propertyGoal?: ImobPropertyGoalV1 | null;
+  documentDraft?: Record<string, unknown> | null;
+}): ImobDocumentChecklistSnapshotV1 | null {
+  const resolvedGoal = params.propertyGoal ?? params.defaultGoal ?? null;
+  const operation = (
+    params.mission === "capture_sale_property" || resolvedGoal === "venda"
+      ? "venda"
+      : params.mission === "capture_seasonal_property" || resolvedGoal === "aluguel_por_temporada"
+        ? "temporada"
+        : params.mission === "capture_rental_property" || resolvedGoal === "locacao"
+          ? "locacao"
+          : null
+  );
+
+  if (!operation) return null;
+
+  const documentTypes = asStringList(params.documentDraft?.documentTypes).map((item) => normalizeText(item));
+  const requirementsByOperation: Record<ImobDocumentChecklistSnapshotV1["operation"], Array<{ label: string; aliases: string[] }>> = {
+    venda: [
+      { label: "cpf do proprietário", aliases: ["cpf", "cnpj", "documento"] },
+      { label: "matrícula ou escritura do imóvel", aliases: ["matricula", "escritura"] },
+      { label: "comprovante de endereço do proprietário", aliases: ["comprovante_endereco", "comprovante endereco", "endereco"] },
+    ],
+    locacao: [
+      { label: "cpf do proprietário", aliases: ["cpf", "cnpj", "documento"] },
+      { label: "matrícula ou escritura do imóvel", aliases: ["matricula", "escritura"] },
+      { label: "comprovante de endereço do proprietário", aliases: ["comprovante_endereco", "comprovante endereco", "endereco"] },
+      { label: "dados bancários do proprietário", aliases: ["dados_bancarios", "dados bancarios", "bancario", "bancários"] },
+    ],
+    temporada: [
+      { label: "cpf do proprietário", aliases: ["cpf", "cnpj", "documento"] },
+      { label: "matrícula ou escritura do imóvel", aliases: ["matricula", "escritura"] },
+      { label: "comprovante de endereço do proprietário", aliases: ["comprovante_endereco", "comprovante endereco", "endereco"] },
+      { label: "regras e condições da temporada", aliases: ["regras", "temporada", "condicoes", "condições"] },
+    ],
+  };
+
+  const requiredDocuments = requirementsByOperation[operation];
+  const collectedDocuments = requiredDocuments
+    .filter((requirement) => requirement.aliases.some((alias) => documentTypes.some((item) => item.includes(alias))))
+    .map((requirement) => requirement.label);
+  const pendingDocuments = requiredDocuments
+    .filter((requirement) => !collectedDocuments.includes(requirement.label))
+    .map((requirement) => requirement.label);
+  const blockingIssues = pendingDocuments.map((item) => `Falta ${item}.`);
+  const summary = pendingDocuments.length > 0
+    ? `Checklist documental de ${operation} ainda está incompleto.`
+    : `Checklist documental de ${operation} está completo para esta etapa.`;
+
+  return {
+    operation,
+    requiredDocuments: requiredDocuments.map((item) => item.label),
+    collectedDocuments,
+    pendingDocuments,
+    blockingIssues,
+    summary,
+    recommendedNextMove: pendingDocuments.length > 0
+      ? `Completar ${pendingDocuments.join(", ")} antes de avançar.`
+      : "Seguir para a próxima validação documental do caso.",
+  };
+}
+
+function buildDocumentSufficiency(params: {
+  mission: ImobCaseMission;
+  documents?: ImobOwnerSnapshotV1 | null;
+  contractDraft?: Record<string, unknown> | null;
+  documentChecklist?: ImobDocumentChecklistSnapshotV1 | null;
+}): ImobDocumentSufficiencySnapshotV1 | null {
+  if (params.mission !== "prepare_contract" && !params.contractDraft && !params.documents && !params.documentChecklist) {
+    return null;
+  }
+
+  const packageReady = params.documents?.status === "ready";
+  const draft = params.contractDraft ?? {};
+  const rawHandoffTarget = asString(draft.handoffTarget);
+  const handoffTarget = (
+    rawHandoffTarget === "LEGAL" || rawHandoffTarget === "FINANCE" || rawHandoffTarget === "IMOB_OPS"
+      ? rawHandoffTarget
+      : "unknown"
+  ) as ImobDocumentSufficiencySnapshotV1["handoffTarget"];
+  const approvalRequired = typeof draft.approvalRequired === "boolean" ? draft.approvalRequired : true;
+  const legalHandoffStatus = !packageReady
+    ? "not_required"
+    : handoffTarget === "LEGAL" && approvalRequired
+      ? "pending"
+      : "ready_for_signature";
+
+  if (!packageReady && !params.documentChecklist && handoffTarget === "unknown") {
+    return null;
+  }
+
+  const summary = !packageReady
+    ? "Suficiência documental ainda não foi alcançada para o contrato."
+    : legalHandoffStatus === "pending"
+      ? "Pacote documental suficiente; caso pronto para handoff jurídico."
+      : "Pacote documental suficiente; contrato pode seguir para assinatura.";
+
+  const recommendedNextMove = !packageReady
+    ? params.documentChecklist?.recommendedNextMove ?? "Completar o pacote documental antes de seguir."
+    : legalHandoffStatus === "pending"
+      ? "Encaminhar o caso para validação jurídica."
+      : "Seguir para preparação final e assinatura.";
+
+  return {
+    packageStatus: packageReady ? "ready" : "pending",
+    proofStatus: packageReady ? "ready" : "missing",
+    handoffTarget,
+    legalHandoffStatus,
+    summary,
+    recommendedNextMove,
+  };
+}
+
 function buildVisitSnapshot(params: {
   visitDraft?: Record<string, unknown> | null;
 }) {
@@ -556,6 +674,7 @@ function buildBlockers(params: {
   commissionReady: boolean;
   campaignStatus?: string | null;
   marketScanRecommendation?: ImobMarketScanRecommendationSnapshotV1 | null;
+  documentChecklist?: ImobDocumentChecklistSnapshotV1 | null;
 }): ImobCaseBlockerV1[] {
   const blockers: ImobCaseBlockerV1[] = [];
   const rawExistingBlockers = asStringList(
@@ -629,6 +748,16 @@ function buildBlockers(params: {
   if (params.mission === "prepare_contract" && !params.documentsReady) {
     blockers.push({ code: "document_packet_not_ready", severity: "blocking", message: "O pacote documental ainda não está pronto para seguir com o contrato." });
   }
+  if (params.documentChecklist && params.documentChecklist.pendingDocuments.length > 0) {
+    const severity = params.mission === "prepare_contract" ? "blocking" : "warning";
+    for (const item of params.documentChecklist.pendingDocuments) {
+      blockers.push({
+        code: `document_checklist_${normalizeText(item).replace(/[^a-z0-9]+/g, "_")}`,
+        severity,
+        message: `Checklist documental de ${params.documentChecklist.operation} ainda pede ${item}.`,
+      });
+    }
+  }
   if (params.mission === "settle_commission" && !params.commissionReady) {
     blockers.push({ code: "commission_settlement_not_ready", severity: "blocking", message: "A comissão ainda não está pronta para liquidação governada." });
   }
@@ -666,7 +795,6 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
   const property = buildPropertySnapshot({ property: params.caseContext?.property, propertyDraft });
   const visit = buildVisitSnapshot({ visitDraft });
   const proposal = buildProposalSnapshot({ proposalDraft });
-  const documents = buildDocumentsSnapshot({ documentDraft, contractDraft });
   const contract = buildContractSnapshot({ contractDraft });
   const commission = buildCommissionSnapshot({ commissionDraft });
   const campaign = buildCampaignSnapshot({ campaignDraft, listingDraft });
@@ -693,7 +821,6 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
   const ownerReady = Boolean(owner && (owner.id || owner.name) && (owner.document || owner.phone || owner.email));
   const propertyReady = Boolean(property && (property.id || (property.propertyType && property.goal && property.city && property.address)));
   const ownerLinkedToProperty = Boolean(owner?.id && property?.ownerId && owner.id === property.ownerId) || Boolean(property?.ownerId && property?.id);
-  const documentsReady = documents?.status === "ready";
   const commissionReady = commission?.status === "ready" || commission?.status === "paid";
   const campaignReady = campaign?.status === "ready_to_publish" || campaign?.status === "published_or_sent";
   const seasonalRulesReady = false;
@@ -702,6 +829,25 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
     ?? "case_review";
   const defaultGoal = normalizeGoal(operationalMissionContext?.defaultGoal)
     ?? (mission === "capture_seasonal_property" ? "aluguel_por_temporada" : propertyGoal);
+  const documentChecklist = buildDocumentChecklist({
+    mission,
+    defaultGoal,
+    propertyGoal,
+    documentDraft,
+  });
+  const documents = buildDocumentsSnapshot({ documentDraft, contractDraft }) ?? (documentChecklist
+    ? {
+        id: "document-package:checklist",
+        name: "Pacote documental",
+        status: documentChecklist.pendingDocuments.length === 0 ? "ready" : "pending",
+      }
+    : null);
+  const documentSufficiency = buildDocumentSufficiency({
+    mission,
+    documents,
+    contractDraft,
+    documentChecklist,
+  });
 
   const baseContext: ImobCaseContextV1 = {
     version: "1.0",
@@ -741,6 +887,8 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
     leadMatching,
     leadLifecycle,
     marketScanRecommendation,
+    documentChecklist,
+    documentSufficiency,
     links: {
       ownerProperty: {
         ownerId: owner?.id ?? null,
@@ -753,9 +901,9 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
       propertyReady,
       leadReady: leadReadiness.leadReady,
       leadReadinessScore: leadReadiness.readinessScore,
-      documentsReady,
+      documentsReady: (documents?.status === "ready") || Boolean(documentChecklist && documentChecklist.pendingDocuments.length === 0),
       seasonalRulesReady,
-      operationalReady: ownerReady && propertyReady && ownerLinkedToProperty && documentsReady && (mission !== "capture_seasonal_property" || seasonalRulesReady),
+      operationalReady: ownerReady && propertyReady && ownerLinkedToProperty && ((documents?.status === "ready") || Boolean(documentChecklist && documentChecklist.pendingDocuments.length === 0)) && (mission !== "capture_seasonal_property" || seasonalRulesReady),
     },
     blockers: buildBlockers({
       mission,
@@ -767,10 +915,11 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
       leadReady: leadReadiness.leadReady,
       leadReadinessScore: leadReadiness.readinessScore,
       ownerLinkedToProperty,
-      documentsReady,
+      documentsReady: (documents?.status === "ready") || Boolean(documentChecklist && documentChecklist.pendingDocuments.length === 0),
       commissionReady,
       campaignStatus: campaign?.status ?? null,
       marketScanRecommendation,
+      documentChecklist,
     }),
   };
 
@@ -779,7 +928,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
     || mission === "capture_rental_property"
     || mission === "capture_sale_property"
   )
-    ? ownerReady && propertyReady && ownerLinkedToProperty && documentsReady && (mission !== "capture_seasonal_property" || seasonalRulesReady)
+    ? ownerReady && propertyReady && ownerLinkedToProperty && (((documents?.status === "ready") || Boolean(documentChecklist && documentChecklist.pendingDocuments.length === 0))) && (mission !== "capture_seasonal_property" || seasonalRulesReady)
     : mission === "prepare_contract"
       ? contract?.status === "ready_for_signature"
       : mission === "settle_commission"
