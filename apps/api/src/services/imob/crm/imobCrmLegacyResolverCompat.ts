@@ -13,7 +13,10 @@ import type {
 } from "./imobCrmAgentContract";
 import { buildImobCrmBusinessReadHelpers } from "./imobCrmBusinessRead";
 import { buildImobCrmCaseContextFromRecord } from "./imobCrmCaseContext";
+import { buildImobCaseContextV1 } from "./imobCaseContextBuilder";
+import { planImobCase } from "./imobCrmCasePlanner";
 import { buildImobCrmLegacyCanonicalCase } from "./imobCrmLegacyCanonical";
+import { linkImobPropertyOwner } from "./operations/propertyLinkOwner";
 import { IMOB_CRM_PROPERTY_GOAL_OPTIONS, normalizeImobCrmPropertyGoal } from "./imobCrmPropertyGoals";
 import {
   getImobCrmPropertyTypeLabel,
@@ -1298,6 +1301,164 @@ export async function resolveImobCrmOperationalUpdate(params: ResolverParams) {
       || normalized.includes("confirmar captação do scan")
     );
   if (isMarketScanSelectionMessage) return null;
+  const asksLinkOwner =
+    normalized.includes("concluir vinculo") ||
+    normalized.includes("vincular proprietario ao imovel") ||
+    normalized.includes("vincular imovel ao proprietario");
+  if (asksLinkOwner) {
+    if (!params.caseId) {
+      return {
+        mode: "consult",
+        action: "crm.property.link_owner",
+        threadLabel: "Vínculo",
+        conversationState: params.threadState ?? createEmptyThreadState(),
+        presentation: {
+          text: "Não consegui concluir o vínculo porque este fluxo não está preso a um caso ativo.",
+          owner: "Corretor" as any,
+          nextStep: "Consultar caso",
+          dedupeKey: "crm.property.link_owner:case_scope_missing",
+          card: {
+            title: "Vínculo indisponível",
+            lines: ["Use `consultar caso` ou retome o caso ativo antes de concluir o vínculo proprietário-imóvel."],
+          },
+        },
+      } as any;
+    }
+
+    const scopedCase = await params.prisma.imobCase.findFirst({
+      where: { id: params.caseId, tenantId: params.tenantId, workspaceId: params.workspaceId },
+      include: {
+        owner: { select: { id: true, name: true, phone: true, email: true, document: true, status: true } },
+        property: {
+          select: {
+            id: true,
+            ownerId: true,
+            propertyType: true,
+            goal: true,
+            city: true,
+            neighborhood: true,
+            address: true,
+            status: true,
+            pendingItems: true,
+            owner: { select: { id: true, name: true } },
+          },
+        },
+        lead: { select: { id: true, name: true, phone: true, email: true } },
+        _count: { select: { events: true } },
+      },
+    });
+
+    const linkResult = await linkImobPropertyOwner({
+      input: {
+        tenantId: params.tenantId,
+        workspaceId: params.workspaceId,
+        caseId: params.caseId,
+        ownerId: scopedCase?.ownerId ?? null,
+        propertyId: scopedCase?.propertyId ?? null,
+      },
+      repository: {
+        getOwner: ({ tenantId, workspaceId, ownerId }) =>
+          params.prisma.imobOwner.findFirst({ where: { id: ownerId, tenantId, workspaceId } }),
+        getProperty: ({ tenantId, workspaceId, propertyId }) =>
+          params.prisma.imobProperty.findFirst({
+            where: { id: propertyId, tenantId, workspaceId },
+            select: { id: true, ownerId: true },
+          }),
+        linkOwnerToProperty: async ({ propertyId, ownerId }) => {
+          await params.prisma.imobProperty.update({
+            where: { id: propertyId },
+            data: { ownerId },
+          });
+        },
+      },
+    });
+
+    if (!linkResult.ok) {
+      return {
+        mode: "consult",
+        action: "crm.property.link_owner",
+        threadLabel: "Vínculo",
+        conversationState: params.threadState ?? createEmptyThreadState(),
+        presentation: {
+          text: linkResult.message,
+          owner: "Corretor" as any,
+          nextStep: "Consultar caso",
+          dedupeKey: `crm.property.link_owner:${linkResult.reasonCode}`,
+          card: {
+            title: "Vínculo bloqueado",
+            lines: [linkResult.message],
+          },
+        },
+      } as any;
+    }
+
+    const refreshedCase = await params.prisma.imobCase.findFirst({
+      where: { id: params.caseId, tenantId: params.tenantId, workspaceId: params.workspaceId },
+      include: {
+        owner: { select: { id: true, name: true, phone: true, email: true, document: true, status: true } },
+        property: {
+          select: {
+            id: true,
+            ownerId: true,
+            propertyType: true,
+            goal: true,
+            city: true,
+            neighborhood: true,
+            address: true,
+            status: true,
+            pendingItems: true,
+            owner: { select: { id: true, name: true } },
+          },
+        },
+        lead: { select: { id: true, name: true, phone: true, email: true } },
+        _count: { select: { events: true } },
+      },
+    });
+    const caseContext = refreshedCase ? buildCaseContextFromRecord(refreshedCase as any) : null;
+    const casePlan = caseContext
+      ? planImobCase(buildImobCaseContextV1({
+          tenantId: params.tenantId,
+          workspaceId: params.workspaceId,
+          caseId: params.caseId,
+          message: params.message,
+          caseContext,
+          operational: null,
+        }))
+      : null;
+    const nextStep = !casePlan?.primaryAction || casePlan.primaryAction.operation === "case.review"
+      ? "Consultar caso"
+      : casePlan.primaryAction.label;
+    const propertyLabel = refreshedCase?.property ? formatPropertyLookupLabel(refreshedCase.property as any) : linkResult.propertyId;
+    const ownerName = asString(refreshedCase?.owner?.name) ?? linkResult.ownerId;
+
+    return {
+      mode: "consult",
+      action: "crm.property.link_owner",
+      threadLabel: "Vínculo",
+      conversationState: params.threadState ?? createEmptyThreadState(),
+      caseContext,
+      presentation: {
+        text: [
+          linkResult.status === "already_linked"
+            ? "Este imóvel já estava vinculado ao proprietário do caso."
+            : "Vínculo entre proprietário e imóvel concluído com sucesso.",
+          `Próximo passo: ${nextStep}.`,
+        ].join("\n"),
+        owner: "Corretor" as any,
+        nextStep,
+        dedupeKey: `crm.property.link_owner:${params.caseId}:${linkResult.status}`,
+        card: {
+          title: "Vínculo proprietário-imóvel",
+          lines: [
+            `Imóvel: ${propertyLabel}`,
+            `Proprietário: ${ownerName}`,
+            `Status: ${linkResult.status === "already_linked" ? "vínculo já existente" : "vínculo concluído"}`,
+            `Próximo passo: ${nextStep}`,
+          ],
+        },
+      },
+    } as any;
+  }
   const ownerName = extractOwnerNameFromMessage(params.message);
   const ownerExplicitName = extractOwnerExplicitNameFromMessage(params.message);
   const ownerExplicitPhone = extractOwnerExplicitPhoneFromMessage(params.message);

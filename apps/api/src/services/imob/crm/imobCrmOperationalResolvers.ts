@@ -1,6 +1,7 @@
 import { resolveImobCaseOperationalConsult } from "./imobCrmOperationalCase";
 import { resolveImobLeadOperationalConsult, resolveImobLeadOperationalUpdate } from "./imobCrmOperationalLead";
 import { resolveImobOwnerOperationalConsult, resolveImobOwnerOperationalUpdate } from "./imobCrmOperationalOwner";
+import { resolveImobPropertyLinkOwnerUpdate } from "./imobCrmOperationalPropertyLinkOwner";
 import { resolveImobPropertyOperationalConsult, resolveImobPropertyOperationalUpdate } from "./imobCrmOperationalProperty";
 import {
   ImobOperationalConsultContext,
@@ -25,6 +26,7 @@ export async function resolveImobOperationalUpdateImpl(
   return (
     await resolveImobOwnerOperationalUpdate(params, helpers, context)
     ?? await resolveImobLeadOperationalUpdate(params, helpers, context)
+    ?? await resolveImobPropertyLinkOwnerUpdate(params, helpers, context)
     ?? await resolveImobPropertyOperationalUpdate(params, helpers, context)
     ?? null
   );
