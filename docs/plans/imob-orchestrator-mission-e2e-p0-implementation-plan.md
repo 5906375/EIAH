@@ -3,7 +3,7 @@
 Status: rebaseline operacional  
 Prioridade: P0/P1 para Track P IMOB  
 Data de referência: 2026-05-26  
-Versão do plano: v5.5 — pragmática para execução com continuidade derivada do canônico, `DocumentAgent E2E`, `DedupeAgent E2E`, `VisitAgent E2E` e `Guardian_EvidenceAgent` concluídos no runtime e `FollowUpAgent / Commercial follow-up E2E` aberto como próxima frente oficial  
+Versão do plano: v5.6 — pragmática para execução com continuidade derivada do canônico, `DocumentAgent E2E`, `DedupeAgent E2E`, `VisitAgent E2E`, `Guardian_EvidenceAgent` e `FollowUpAgent / Commercial follow-up E2E` concluídos no runtime e `ProposalAgent / Negotiation E2E` aberto como próxima frente oficial  
 Escopo: fechamento E2E do `IMOB_Orchestrator` como dono real das missões imobiliárias, preservando arquitetura agent-driven, estado canônico, recuperação confiável, próxima ação única, controle de concorrência seguro para side effects, compatibilidade com casos legados e proof mínimo determinístico por missão.
 
 ---
@@ -221,7 +221,7 @@ Ordem recomendada:
 - `DedupeAgent E2E` já entregue;
 - `VisitAgent E2E` já entregue.
 - próximo multiplicador transversal: `Guardian_EvidenceAgent`.
-- depois do fechamento transversal de evidence, a próxima expansão funcional recomendada é `FollowUpAgent / Commercial follow-up E2E`.
+- depois do fechamento transversal de evidence, a próxima expansão funcional recomendada foi `FollowUpAgent / Commercial follow-up E2E`.
 
 Justificativa:
 - `imobValidationEngine` endureceu a base comum de `Property`, `Owner`, `Lead` e `Documents`;
@@ -231,7 +231,8 @@ Justificativa:
 - `DedupeAgent E2E` fechou merge auditável, replay formal e prevenção de drift entre múltiplas conversões, reruns e merges operacionais.
 - `VisitAgent E2E` fechou agenda, remarcação, cancelamento, resultado e pós-visita como frente própria do funil.
 - `Guardian_EvidenceAgent` fechou a camada transversal de proof, bundle, receipt e export auditável por missão.
-- o próximo multiplicador natural é `FollowUpAgent / Commercial follow-up E2E`, para transformar follow-up, retomada e cadência comercial em jornada governada de ponta a ponta.
+- `FollowUpAgent / Commercial follow-up E2E` fechou a cadência comercial, prepared outreach e business read governado para retomada do caso.
+- o próximo multiplicador natural é `ProposalAgent / Negotiation E2E`, para transformar proposta, contraproposta, aceite e retorno ao funil em jornada governada de ponta a ponta.
 
 Execução corrente:
 
@@ -241,7 +242,11 @@ Execução corrente:
 - `Guardian_EvidenceAgent` fica encerrado como frente concluída;
 - `FollowUpAgent / Commercial follow-up E2E` fica encerrado como frente concluída;
 - próxima frente oficial:
-  - `a definir em novo rebaseline do canônico`
+  - `ProposalAgent / Negotiation E2E`
+  - com detalhamento em:
+    - `docs/plans/imob-proposal-agent-e2e-implementation-plan.md`
+  - slice atual:
+    - `PR-PROP1 — canonical proposal negotiation snapshot`
 
 ---
 
