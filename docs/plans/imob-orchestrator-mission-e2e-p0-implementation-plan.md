@@ -3,7 +3,7 @@
 Status: rebaseline operacional  
 Prioridade: P0/P1 para Track P IMOB  
 Data de referência: 2026-05-26  
-Versão do plano: v5.6 — pragmática para execução com continuidade derivada do canônico, `DocumentAgent E2E`, `DedupeAgent E2E`, `VisitAgent E2E`, `Guardian_EvidenceAgent` e `FollowUpAgent / Commercial follow-up E2E` concluídos no runtime e `ProposalAgent / Negotiation E2E` aberto como próxima frente oficial  
+Versão do plano: v5.7 — pragmática para execução com continuidade derivada do canônico, `DocumentAgent E2E`, `DedupeAgent E2E`, `VisitAgent E2E`, `Guardian_EvidenceAgent` e `FollowUpAgent / Commercial follow-up E2E` concluídos no runtime, `ProposalAgent / Negotiation E2E` aberto até `PR-PROP2` no runtime e fase curta de hardening residual de superfície aberta como prioridade imediata  
 Escopo: fechamento E2E do `IMOB_Orchestrator` como dono real das missões imobiliárias, preservando arquitetura agent-driven, estado canônico, recuperação confiável, próxima ação única, controle de concorrência seguro para side effects, compatibilidade com casos legados e proof mínimo determinístico por missão.
 
 ---
@@ -218,7 +218,7 @@ Próximas frentes oficiais a partir deste ponto:
      - `docs/plans/imob-follow-up-agent-e2e-implementation-plan.md`
 
 9. `ProposalAgent / Negotiation E2E`
-   - Status: `próxima frente oficial`
+   - Status: `aberta no runtime / pausada antes do PR-PROP3`
    - `PR-PROP1` concluído no runtime: canonical proposal negotiation snapshot
    - `PR-PROP2` concluído no runtime: counteroffer and approval flow
    - foco:
@@ -233,6 +233,27 @@ Próximas frentes oficiais a partir deste ponto:
      - base pronta para contraproposta e contract handoff.
    - plano derivado:
      - `docs/plans/imob-proposal-agent-e2e-implementation-plan.md`
+
+10. `IMOB CRM Continuity Hardening`
+   - Status: `prioridade imediata`
+   - foco:
+     - consolidar `E2E funcional com hardening residual de superfície`;
+     - reduzir drift entre `nextAction`, `recommendedActions`, `CTAs`, `quickReplies`, `business read` e `workflow guard`;
+     - eliminar ações stale, `waitingOn` incorreto e apoio contextual inadequado para blocker dominante de owner/property/documento básico;
+     - travar regressões de continuidade nas jornadas reais mais usadas do IMOB.
+   - slices oficiais:
+     - `PR-FIX-IMOB-CONTINUITY-2 — stale action invalidation after state transition`
+     - `PR-FIX-IMOB-CONTINUITY-3 — blocker/waitingOn/nextStep normalization`
+     - `PR-FIX-IMOB-CONTINUITY-4 — real journey regression suite`
+     - `PR-FIX-IMOB-CONTINUITY-5 — coherence metrics and acceptance gates`
+   - saída esperada:
+     - nenhuma ação exibida pode cair em `Essa acao nao e valida para o estado operacional atual do caso.`
+     - blocker dominante, `waitingOn` e `nextStep` ficam coerentes entre texto, card, `consultiveRead` e CTA;
+     - owner blocker básico não abre `J_360` nem checklist jurídico por engano;
+     - baseline de coerência percebida do IMOB acima de `70/100`.
+   - plano derivado:
+     - `docs/plans/imob-crm-continuity-hardening-phase-1-plan.md`
+
 Ordem recomendada:
 
 - `imobValidationEngine` e `LeadAgent E2E` já entregues;
@@ -242,7 +263,8 @@ Ordem recomendada:
 - `VisitAgent E2E` já entregue.
 - próximo multiplicador transversal: `Guardian_EvidenceAgent`.
 - depois do fechamento transversal de evidence, a próxima expansão funcional recomendada foi `FollowUpAgent / Commercial follow-up E2E`.
-- com `FollowUpAgent` fechado, a próxima frente funcional oficial passa a ser `ProposalAgent / Negotiation E2E`.
+- com `FollowUpAgent` fechado, a próxima frente funcional oficial passou a ser `ProposalAgent / Negotiation E2E`.
+- com `PR-PROP1` e `PR-PROP2` já fechados no runtime, a prioridade imediata passa a ser `IMOB CRM Continuity Hardening` antes do `PR-PROP3`.
 
 Justificativa:
 - `imobValidationEngine` endureceu a base comum de `Property`, `Owner`, `Lead` e `Documents`;
@@ -253,7 +275,8 @@ Justificativa:
 - `VisitAgent E2E` fechou agenda, remarcação, cancelamento, resultado e pós-visita como frente própria do funil.
 - `Guardian_EvidenceAgent` fechou a camada transversal de proof, bundle, receipt e export auditável por missão.
 - `FollowUpAgent / Commercial follow-up E2E` fechou a cadência comercial, prepared outreach e business read governado para retomada do caso.
-- `ProposalAgent / Negotiation E2E` foi aberto como próxima frente oficial e já fechou `PR-PROP1` no runtime com snapshot canônico de negociação e next action explícito para proposta incompleta.
+- `ProposalAgent / Negotiation E2E` foi aberto como próxima frente oficial e já fechou `PR-PROP1` e `PR-PROP2` no runtime.
+- o próximo gargalo real deixou de ser expansão funcional e passou a ser coerência residual de superfície em jornadas já entregues.
 
 Execução corrente:
 
@@ -262,12 +285,13 @@ Execução corrente:
 - `VisitAgent E2E` fica encerrado como frente concluída;
 - `Guardian_EvidenceAgent` fica encerrado como frente concluída;
 - `FollowUpAgent / Commercial follow-up E2E` fica encerrado como frente concluída;
-- próxima frente oficial:
-  - `ProposalAgent / Negotiation E2E`
+- `ProposalAgent / Negotiation E2E` permanece aberto, mas pausado antes do `PR-PROP3`;
+- prioridade corrente:
+  - `IMOB CRM Continuity Hardening`
   - com detalhamento em:
-    - `docs/plans/imob-proposal-agent-e2e-implementation-plan.md`
+    - `docs/plans/imob-crm-continuity-hardening-phase-1-plan.md`
   - slice atual:
-    - `PR-PROP1 — canonical proposal negotiation snapshot`
+    - `PR-FIX-IMOB-CONTINUITY-2 — stale action invalidation after state transition`
 
 ---
 
