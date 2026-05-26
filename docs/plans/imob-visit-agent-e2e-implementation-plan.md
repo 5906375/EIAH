@@ -1,6 +1,6 @@
 # imob-visit-agent-e2e-implementation-plan
 
-Status: execução iniciada  
+Status: concluído no runtime  
 Prioridade: P1 após `DedupeAgent E2E`  
 Data de referência: 2026-05-26  
 Escopo: fechar o `IMOB_VisitAgent` como camada E2E de agenda, remarcação, cancelamento, resultado de visita e pós-visita, preservando arquitetura agent-driven e launcher `render-only`.
