@@ -155,6 +155,54 @@ function buildDocumentChecklistLabel(context: ImobCaseContextV1) {
   }
 }
 
+function resolveCommercialFollowUpNextAction(
+  flow: ResolveNextActionParams["flow"],
+  commercialFollowUp: ImobCaseContextV1["commercialFollowUp"] | null | undefined,
+) {
+  if (!commercialFollowUp) return null;
+
+  if (commercialFollowUp.status === "awaiting_response") {
+    return mapLeadAction(flow, {
+      id: "await-follow-up-response",
+      label: "Acompanhar resposta do lead",
+      reasonCode: "FOLLOW_UP_RESPONSE_PENDING",
+    });
+  }
+
+  if (commercialFollowUp.status === "follow_up_required") {
+    return mapLeadAction(flow, {
+      id: commercialFollowUp.source === "visit_outcome" ? "follow-up-post-visit" : "execute-commercial-follow-up",
+      label: commercialFollowUp.source === "visit_outcome" ? "Retomar pós-visita" : "Executar follow-up comercial",
+      reasonCode: commercialFollowUp.source === "visit_outcome" ? "VISIT_FOLLOW_UP_REQUIRED" : "FOLLOW_UP_PENDING",
+    });
+  }
+
+  if (commercialFollowUp.status === "reengagement_required") {
+    return mapLeadAction(flow, {
+      id:
+        commercialFollowUp.source === "visit_outcome"
+          ? "reengage-post-visit"
+          : commercialFollowUp.source === "lead_lifecycle"
+            ? "reengage-disqualified-lead"
+            : "reengage-commercial-follow-up",
+      label:
+        commercialFollowUp.source === "visit_outcome"
+          ? "Reengajar lead após visita"
+          : commercialFollowUp.source === "lead_lifecycle"
+            ? "Retomar lead"
+            : "Reengajar lead",
+      reasonCode:
+        commercialFollowUp.source === "visit_outcome"
+          ? "VISIT_REENGAGEMENT_REQUIRED"
+          : commercialFollowUp.source === "lead_lifecycle"
+            ? "LEAD_REENGAGEMENT_REQUIRED"
+            : "FOLLOW_UP_REENGAGEMENT_REQUIRED",
+    });
+  }
+
+  return null;
+}
+
 export function resolveImobNextAction(params: ResolveNextActionParams): ImobNextAction {
   if (params.context.dedupe?.status === "pending_review") {
     return mapOperationAction(params.context.dedupe.entity === "lead" ? "lead" : "owner", params.flow, {
@@ -191,6 +239,11 @@ export function resolveImobNextAction(params: ResolveNextActionParams): ImobNext
       });
 
     case "qualify_and_match_lead":
+      {
+        const followUpAction = resolveCommercialFollowUpNextAction(params.flow, params.context.commercialFollowUp);
+        if (followUpAction) return followUpAction;
+      }
+
       if (params.context.leadLifecycle?.status === "reengagement_ready") {
         return mapLeadAction(params.flow, {
           id: "reengage-disqualified-lead",
@@ -254,6 +307,11 @@ export function resolveImobNextAction(params: ResolveNextActionParams): ImobNext
       });
 
     case "schedule_and_follow_visit":
+      {
+        const followUpAction = resolveCommercialFollowUpNextAction(params.flow, params.context.commercialFollowUp);
+        if (followUpAction) return followUpAction;
+      }
+
       if (params.context.visitScheduling?.status === "awaiting_reschedule") {
         return mapOperationAction("visit", params.flow, {
           id: "reschedule-visit",

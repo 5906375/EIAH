@@ -24,6 +24,12 @@ type VisitDraft = {
   outcome?: unknown;
 };
 
+type FollowUpDraft = {
+  status?: unknown;
+  trigger?: unknown;
+  suggestedChannel?: unknown;
+};
+
 type PersistedLeadSummary = {
   name?: string | null;
   email?: string | null;
@@ -71,6 +77,18 @@ function inferExplicitTargetFlow(message: string): "proposal.create" | "visit.sc
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase();
   if (!normalized) return null;
+  if (
+    normalized.includes("follow up")
+    || normalized.includes("follow-up")
+    || normalized.includes("aguardando resposta")
+    || normalized.includes("sem resposta")
+    || normalized.includes("sem retorno")
+    || normalized.includes("reengajar")
+    || normalized.includes("reengajamento")
+    || normalized.includes("cobrar retorno")
+  ) {
+    return "lead.qualify";
+  }
   if (normalized.includes("visita") || normalized.includes("agendar") || normalized.includes("agenda") || normalized.includes("reuniao") || normalized.includes("tour")) {
     return "visit.schedule";
   }
@@ -89,6 +107,36 @@ function inferExplicitTargetFlow(message: string): "proposal.create" | "visit.sc
     return "lead.qualify";
   }
   return null;
+}
+
+function sanitizeFollowUpDraft(raw: FollowUpDraft, helpers: ContinuityHelpers) {
+  const status = helpers.asString(raw.status);
+  const trigger = helpers.asString(raw.trigger);
+  const suggestedChannel = helpers.asString(raw.suggestedChannel);
+
+  return {
+    status:
+      status === "pending"
+      || status === "awaiting_response"
+      || status === "reengagement_required"
+        ? status
+        : null,
+    trigger:
+      trigger === "post_visit"
+      || trigger === "no_response"
+      || trigger === "post_visit_objection"
+      || trigger === "decision_window"
+      || trigger === "generic"
+        ? trigger
+        : null,
+    suggestedChannel:
+      suggestedChannel === "internal"
+      || suggestedChannel === "whatsapp"
+      || suggestedChannel === "phone"
+      || suggestedChannel === "email"
+        ? suggestedChannel
+        : null,
+  } as const;
 }
 
 export async function hydrateThreadStateWithPersistedLead(params: {
@@ -219,6 +267,10 @@ export async function hydrateThreadStateWithPersistedLead(params: {
 
   if (targetFlow === "lead.qualify") {
     const leadDraft = params.helpers.asObject(nextOperational.leadDraft) ?? {};
+    const followUpDraft = sanitizeFollowUpDraft(
+      (params.helpers.asObject(nextOperational.followUpDraft) ?? {}) as FollowUpDraft,
+      params.helpers,
+    );
     const resolvedGoal = normalizeLeadDesiredGoal(
       params.helpers.asString(leadDraft.desiredGoal) ?? params.helpers.asString(persistedLead.goal),
     );
@@ -239,6 +291,7 @@ export async function hydrateThreadStateWithPersistedLead(params: {
       ...nextOperational,
       flow: "lead.qualify",
       leadDraft: hydratedLeadDraft,
+      followUpDraft,
     };
     nextStateObject.operational = normalizeLeadQualifyOperationalState(nextStateObject.operational as Record<string, unknown>, {
       propertyId: scopedCasePropertyId,
@@ -260,6 +313,10 @@ export async function hydrateThreadStateWithPersistedLead(params: {
   }
 
   const visitDraft = (params.helpers.asObject(nextOperational.visitDraft) ?? {}) as VisitDraft;
+  const followUpDraft = sanitizeFollowUpDraft(
+    (params.helpers.asObject(nextOperational.followUpDraft) ?? {}) as FollowUpDraft,
+    params.helpers,
+  );
   const hydratedVisitDraft = {
     propertyId: params.helpers.asString(visitDraft.propertyId) ?? scopedCasePropertyId,
     visitorName: params.helpers.asString(visitDraft.visitorName) ?? persistedLead.name ?? null,
@@ -297,6 +354,7 @@ export async function hydrateThreadStateWithPersistedLead(params: {
     status: pendingVisitFields.length === 0 ? "ready_for_review" : "collecting",
     pendingFields: pendingVisitFields,
     visitDraft: hydratedVisitDraft,
+    followUpDraft,
   };
   return nextStateObject;
 }

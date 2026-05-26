@@ -144,6 +144,9 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     const flow = helpers.asString(caseContext?.flow);
     const status = helpers.asString(caseContext?.status);
     const stage = helpers.asString(caseContext?.stage);
+    if (caseContext?.commercialFollowUp?.status === "awaiting_response") return "Aguardando resposta do lead";
+    if (caseContext?.commercialFollowUp?.status === "follow_up_required") return "Follow-up comercial pendente";
+    if (caseContext?.commercialFollowUp?.status === "reengagement_required") return "Reengajamento comercial pendente";
     if (flow === "lead.qualify") {
       if (status === "ready_for_review" || stage === "ready_for_review") return "Lead pronto para avançar";
       if (status === "pending_data" || stage === "pending_data") return "Lead com dados pendentes";
@@ -192,6 +195,8 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
   }
 
   function formatImobBusinessNextStep(nextStep: string | null | undefined, caseContext?: ImobCrmCaseContext | null) {
+    const commercialFollowUpMove = helpers.asString(caseContext?.commercialFollowUp?.recommendedNextMove);
+    if (commercialFollowUpMove) return commercialFollowUpMove;
     const normalized = helpers.normalizeImobRouteText(nextStep ?? "");
     if (!normalized) return "definir o próximo movimento comercial";
     if (normalized.includes("mostrar pendencias do caso") || normalized.includes("mostrar pendências do caso")) {
@@ -362,27 +367,38 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     primaryBlocker: string | null;
     primaryPending: string | null;
     nextStep: string;
+    commercialFollowUp?: ImobCrmCaseContext["commercialFollowUp"] | null;
     discoverySignals?: ImobCrmCaseContext["lead"] extends infer T
       ? T extends { discoverySignals?: infer D }
         ? D
         : never
       : never;
   }) {
-    const recipientRole = normalizePreparedRecipientRole(params.waitingOn);
+    const recipientRole = params.commercialFollowUp?.suggestedChannel === "internal"
+      ? "internal"
+      : params.commercialFollowUp?.suggestedChannel === "phone"
+        ? "owner"
+        : params.commercialFollowUp?.suggestedChannel === "whatsapp" || params.commercialFollowUp?.suggestedChannel === "email"
+          ? "lead"
+          : normalizePreparedRecipientRole(params.waitingOn);
     const subjectLabel = params.subject || "este caso";
     const phaseLabel = params.humanPhaseLabel ? `na fase de ${params.humanPhaseLabel.toLowerCase()}` : "neste caso";
-    const trigger = params.primaryBlocker ?? params.primaryPending ?? "preciso de uma confirmação para avançar";
+    const trigger = params.commercialFollowUp?.trigger ?? params.primaryBlocker ?? params.primaryPending ?? "preciso de uma confirmação para avançar";
     const discoverySignals = params.discoverySignals ?? null;
-    const directText = `Olá. Estou retomando ${subjectLabel} ${phaseLabel}. O ponto que ainda trava é ${trigger}.${discoverySignals?.timeline ? ` Minha leitura é ${discoverySignals.timeline}.` : ""} Para avançar, preciso ${params.nextStep}. Consegue me responder ainda hoje?`;
-    const consultiveText = `Oi. Voltei a olhar ${subjectLabel} para não deixar o atendimento esfriar. Hoje estamos aguardando ${formatWaitingOnLabel(params.waitingOn) ?? recipientRole}. O ponto principal é ${trigger}.${discoverySignals?.motivation ? ` Já registrei ${discoverySignals.motivation}.` : ""}${discoverySignals?.painPoint ? ` A dor central segue sendo ${discoverySignals.painPoint}.` : ""} Se você confirmar ${params.nextStep}, eu sigo sem te fazer repetir o processo.`;
+    const objectiveMove = params.commercialFollowUp?.recommendedNextMove ?? params.nextStep;
+    const cadenceSummary = params.commercialFollowUp?.summary ?? null;
+    const directText = `Olá. Estou retomando ${subjectLabel} ${phaseLabel}. O ponto que ainda trava é ${trigger}.${cadenceSummary ? ` ${cadenceSummary}` : ""}${discoverySignals?.timeline ? ` Minha leitura é ${discoverySignals.timeline}.` : ""} Para avançar, preciso ${objectiveMove}. Consegue me responder ainda hoje?`;
+    const consultiveText = `Oi. Voltei a olhar ${subjectLabel} para não deixar o atendimento esfriar. Hoje estamos aguardando ${formatWaitingOnLabel(params.waitingOn) ?? recipientRole}.${cadenceSummary ? ` ${cadenceSummary}` : ` O ponto principal é ${trigger}.`}${discoverySignals?.motivation ? ` Já registrei ${discoverySignals.motivation}.` : ""}${discoverySignals?.painPoint ? ` A dor central segue sendo ${discoverySignals.painPoint}.` : ""} Se você confirmar ${objectiveMove}, eu sigo sem te fazer repetir o processo.`;
 
     return {
-      objective: discoverySignals?.motivation
+      objective: cadenceSummary
+        ? cadenceSummary
+        : discoverySignals?.motivation
         ? `Retomar o caso com uma única ação clara sem perder a motivação registrada: ${discoverySignals.motivation}.`
         : "Retomar o caso com uma única ação clara e destravar o próximo movimento.",
       recipientRole,
       trigger,
-      expectedReply: params.nextStep,
+      expectedReply: objectiveMove,
       escalationHint: "Se não houver retorno, reclassificar waitingOn e decidir se o caso pede specialist ou nova cadência de follow-up.",
       variants: [
         {
@@ -1544,6 +1560,11 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     commercialMemory?: { nextTrigger?: { kind?: string | null } | null } | null;
     leadScore?: { scoreBand?: string | null } | null;
   }) {
+    if (params.caseContext?.commercialFollowUp?.status === "reengagement_required") {
+      const followUpTrigger = helpers.asString(params.caseContext.commercialFollowUp.trigger);
+      if (followUpTrigger === "post_visit_objection" || followUpTrigger === "decision_window") return "decision_window" as const;
+      if (followUpTrigger === "no_response") return "follow_up_risk" as const;
+    }
     const triggerKind = helpers.asString(params.commercialMemory?.nextTrigger?.kind);
     if (triggerKind === "follow_up") return "follow_up_risk" as const;
     if (triggerKind === "decision_window") return "decision_window" as const;
@@ -1571,6 +1592,10 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     caseContext: ImobCrmCaseContext;
     preparedFollowUp?: { recipientRole?: string | null } | null;
   }) {
+    if (params.caseContext?.commercialFollowUp?.suggestedChannel === "internal") return "internal" as const;
+    if (params.caseContext?.commercialFollowUp?.suggestedChannel === "phone") return "phone" as const;
+    if (params.caseContext?.commercialFollowUp?.suggestedChannel === "whatsapp") return "whatsapp" as const;
+    if (params.caseContext?.commercialFollowUp?.suggestedChannel === "email") return "email" as const;
     const recipientRole = helpers.asString(params.preparedFollowUp?.recipientRole);
     if (recipientRole === "lead") return "whatsapp" as const;
     if (recipientRole === "owner") return "phone" as const;
@@ -1673,6 +1698,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       variants?: Array<{ text?: string | null }> | null;
     } | null;
   }) {
+    if (params.caseContext?.commercialFollowUp?.status === "awaiting_response") return undefined;
     if (!shouldBuildReengagementSuggestion(params)) return undefined;
 
     const reason = buildReengagementReason(params);
@@ -2239,7 +2265,16 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
             : "proof mínima pendente",
         ]
       : [];
-    return Array.from(new Set([...pendingItems, ...missingContext, ...missingProof].map((item) => String(item)).filter(Boolean)));
+    const missingFollowUp = caseContext?.commercialFollowUp
+      ? [
+          caseContext.commercialFollowUp.status === "awaiting_response"
+            ? "resposta comercial pendente"
+            : caseContext.commercialFollowUp.status === "reengagement_required"
+              ? "reengajamento comercial pendente"
+              : "follow-up comercial pendente",
+        ]
+      : [];
+    return Array.from(new Set([...pendingItems, ...missingContext, ...missingProof, ...missingFollowUp].map((item) => String(item)).filter(Boolean)));
   }
 
   function getImobBusinessBlockers(caseContext: ImobCrmCaseContext): string[] {
@@ -2629,6 +2664,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       primaryBlocker,
       primaryPending,
       nextStep,
+      commercialFollowUp: caseContext?.commercialFollowUp ?? null,
       discoverySignals: caseContext?.lead?.discoverySignals ?? null,
     });
     const actionableChecklist = buildActionableChecklist({

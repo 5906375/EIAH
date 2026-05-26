@@ -331,11 +331,20 @@ function buildMissingItems(context: ImobCaseContextV1) {
         return [];
       })()
     : [];
+  const commercialFollowUpItems = context.commercialFollowUp
+    ? [
+        context.commercialFollowUp.status === "follow_up_required"
+          ? "follow-up comercial pendente"
+          : context.commercialFollowUp.status === "reengagement_required"
+            ? "reengajamento comercial pendente"
+            : "resposta comercial pendente",
+      ]
+    : [];
   const blockerItems = context.blockers
     .filter((item) => item.severity === "blocking" || item.severity === "warning")
     .filter((item) => !item.code.startsWith("market_scan_"))
     .map((item) => item.message);
-  return [...new Set([...canonicalItems, ...evidenceItems, ...dedupeItems, ...marketScanMissingItems, ...visitMissingItems, ...blockerItems])];
+  return [...new Set([...canonicalItems, ...evidenceItems, ...dedupeItems, ...marketScanMissingItems, ...visitMissingItems, ...commercialFollowUpItems, ...blockerItems])];
 }
 
 function buildSecondaryActions(params: {
@@ -400,7 +409,8 @@ export function resolveImobRecoveryResponse(params: {
   const leadMatchingSummary = params.context.missionContext?.mission === "qualify_lead"
     ? params.context.leadMatching?.summary
     : null;
-  const leadLifecycleSummary = params.context.missionContext?.mission === "qualify_lead"
+  const commercialFollowUpSummary = params.context.commercialFollowUp?.summary ?? null;
+  const leadLifecycleSummary = params.context.missionContext?.mission === "qualify_lead" && !commercialFollowUpSummary
     ? params.context.leadLifecycle?.summary
     : null;
   const marketScanSummary = isCaptureMission(params.context.missionContext?.mission ?? "case_review")
@@ -415,7 +425,7 @@ export function resolveImobRecoveryResponse(params: {
   const visitSchedulingSummary = params.context.missionContext?.mission === "schedule_visit"
     ? params.context.visitScheduling?.summary
     : null;
-  const visitOutcomeSummary = params.context.missionContext?.mission === "schedule_visit"
+  const visitOutcomeSummary = params.context.missionContext?.mission === "schedule_visit" && !commercialFollowUpSummary
     ? params.context.visitOutcome?.summary
     : null;
   const documentSufficiencySummary = params.context.missionContext?.mission === "prepare_contract"
@@ -425,7 +435,7 @@ export function resolveImobRecoveryResponse(params: {
   const dedupeSummary = params.context.dedupe?.status === "pending_review"
     ? params.context.dedupe.summary
     : null;
-  const leadContextSuffix = [leadMatchingSummary, leadLifecycleSummary].filter(Boolean).join(" ");
+  const leadContextSuffix = [leadMatchingSummary, leadLifecycleSummary, commercialFollowUpSummary].filter(Boolean).join(" ");
   const leadContextSentence = leadContextSuffix ? ` ${leadContextSuffix}` : "";
   const evidenceSentence = evidenceSummary ? ` ${evidenceSummary}` : "";
   const dedupeSentence = dedupeSummary ? ` ${dedupeSummary}` : "";

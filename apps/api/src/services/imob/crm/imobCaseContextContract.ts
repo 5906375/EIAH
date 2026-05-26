@@ -102,6 +102,16 @@ export type ImobLeadLifecycleSnapshotV1 = {
   summary: string;
 };
 
+export type ImobCommercialFollowUpSnapshotV1 = {
+  source: "visit_outcome" | "lead_lifecycle" | "follow_up_runtime";
+  status: "follow_up_required" | "reengagement_required" | "awaiting_response";
+  trigger: string;
+  suggestedChannel: "internal" | "whatsapp" | "phone" | "email" | "unknown";
+  reasonCodes: string[];
+  summary: string;
+  recommendedNextMove: string;
+};
+
 export type ImobVisitSchedulingSnapshotV1 = {
   status: "pending_confirmation" | "scheduled" | "awaiting_reschedule" | "cancel_requested";
   propertyId?: string | null;
@@ -219,6 +229,7 @@ export type ImobCaseContextV1 = {
   };
   leadMatching?: ImobLeadMatchingSnapshotV1 | null;
   leadLifecycle?: ImobLeadLifecycleSnapshotV1 | null;
+  commercialFollowUp?: ImobCommercialFollowUpSnapshotV1 | null;
   visitScheduling?: ImobVisitSchedulingSnapshotV1 | null;
   visitOutcome?: ImobVisitOutcomeSnapshotV1 | null;
   marketScanRecommendation?: ImobMarketScanRecommendationSnapshotV1 | null;

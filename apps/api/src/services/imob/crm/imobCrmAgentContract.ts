@@ -1,7 +1,7 @@
 import type { ImobCrmPropertyGoal } from "./imobCrmPropertyGoals";
 import type { ImobCrmPropertyType } from "./imobCrmPropertyTypes";
 import type { ImobReasonCode } from "../control/imobReasonCodeCatalog";
-import type { ImobEvidenceSnapshotV1 } from "./imobCaseContextContract";
+import type { ImobCommercialFollowUpSnapshotV1, ImobEvidenceSnapshotV1 } from "./imobCaseContextContract";
 import type {
   ImobLeadDiscoverySignalKey,
   ImobLeadDiscoverySignals,
@@ -108,6 +108,7 @@ export type ImobCrmCaseContext = {
   owner?: ImobCrmOwnerSummary | null;
   proof?: ImobProofSurface | null;
   evidence?: ImobEvidenceSnapshotV1 | null;
+  commercialFollowUp?: ImobCommercialFollowUpSnapshotV1 | null;
   canonical?: ImobCrmCanonicalCase;
   humanJourney?: ImobCrmHumanJourney | null;
   humanWorkflow?: ImobCrmHumanWorkflow | null;

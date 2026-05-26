@@ -349,6 +349,38 @@ test("IMOB turn resolver maps explicit proposal interest after the visit into pr
   assert.equal(result.conversationState.operational?.proposalDraft?.propertyId, "property-82912");
 });
 
+test("IMOB turn resolver keeps post-visit follow-up cadence explicit in the operational state", () => {
+  const result = resolveImobTurn({
+    message: "Fazer follow-up da visita por whatsapp no imóvel 82912",
+    access: {
+      tenantId: "tenant-A",
+      workspaceId: "workspace-A",
+      entitlements: { REAL_ESTATE_CORE: true },
+    },
+  });
+
+  assert.equal(result.conversationState.operational?.flow, "visit.schedule");
+  assert.equal(result.conversationState.operational?.followUpDraft?.status, "pending");
+  assert.equal(result.conversationState.operational?.followUpDraft?.trigger, "post_visit");
+  assert.equal(result.conversationState.operational?.followUpDraft?.suggestedChannel, "whatsapp");
+});
+
+test("IMOB turn resolver marks awaiting-response cadence on explicit silence from the lead", () => {
+  const result = resolveImobTurn({
+    message: "Lead sem resposta no whatsapp",
+    access: {
+      tenantId: "tenant-A",
+      workspaceId: "workspace-A",
+      entitlements: { REAL_ESTATE_CORE: true },
+    },
+  });
+
+  assert.equal(result.conversationState.operational?.flow, "lead.qualify");
+  assert.equal(result.conversationState.operational?.followUpDraft?.status, "awaiting_response");
+  assert.equal(result.conversationState.operational?.followUpDraft?.trigger, "no_response");
+  assert.equal(result.conversationState.operational?.followUpDraft?.suggestedChannel, "whatsapp");
+});
+
 test("IMOB turn resolver builds guided form for document validation", () => {
   const result = resolveImobTurn({
     message: "validar documento",

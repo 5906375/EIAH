@@ -683,6 +683,74 @@ test("IMOB case context v1 promotes reengagement without reopening resolved lead
   });
 
   assert.equal(context.leadLifecycle?.status, "reengagement_ready");
+  assert.equal(context.commercialFollowUp?.source, "lead_lifecycle");
+  assert.equal(context.commercialFollowUp?.status, "reengagement_required");
+  assert.equal(context.commercialFollowUp?.trigger, "decision_window");
   assert.equal(context.readiness.leadReady, true);
   assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "LEAD_REENGAGEMENT_REQUIRED");
+});
+
+test("IMOB case context v1 materializes canonical commercial follow-up from post-visit outcome", () => {
+  const context = buildImobCaseContextV1({
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    caseId: "case-1",
+    caseContext: {
+      caseId: "case-1",
+      flow: "visit.schedule",
+    },
+    operational: {
+      flow: "visit.schedule",
+      visitDraft: {
+        status: "scheduled",
+        propertyId: "property-1",
+        visitorName: "Maria",
+        visitorPhone: "47999998888",
+        preferredDate: "2026-06-05",
+        preferredWindow: "tarde",
+        outcome: "follow_up_required",
+      },
+    },
+  });
+
+  assert.equal(context.commercialFollowUp?.source, "visit_outcome");
+  assert.equal(context.commercialFollowUp?.status, "follow_up_required");
+  assert.equal(context.commercialFollowUp?.trigger, "post_visit");
+  assert.equal(context.commercialFollowUp?.suggestedChannel, "internal");
+  assert.match(context.commercialFollowUp?.summary ?? "", /follow-up comercial/i);
+});
+
+test("IMOB case context v1 prioritizes explicit runtime follow-up cadence over implicit visit outcome", () => {
+  const context = buildImobCaseContextV1({
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    caseId: "case-1",
+    stage: "schedule_visit",
+    flow: "visit.schedule",
+    operational: {
+      flow: "visit.schedule",
+      status: "ready_for_review",
+      pendingFields: [],
+      visitDraft: {
+        propertyId: "property-1",
+        visitorName: "Maria",
+        visitorPhone: "47999998888",
+        preferredDate: "2026-06-05",
+        preferredWindow: "tarde",
+        status: "scheduled",
+        outcome: "follow_up_required",
+      },
+      followUpDraft: {
+        status: "awaiting_response",
+        trigger: "no_response",
+        suggestedChannel: "whatsapp",
+      },
+    },
+    canonicalCaseState: null,
+  });
+
+  assert.equal(context.commercialFollowUp?.source, "follow_up_runtime");
+  assert.equal(context.commercialFollowUp?.status, "awaiting_response");
+  assert.equal(context.commercialFollowUp?.trigger, "no_response");
+  assert.equal(context.commercialFollowUp?.suggestedChannel, "whatsapp");
 });

@@ -276,6 +276,7 @@ function buildCaseContextFromRecord(item: ResolverCaseRecord): ImobCrmCaseContex
   return {
     ...rawContext,
     evidence: canonicalContext.evidence ?? null,
+    commercialFollowUp: rawContext.commercialFollowUp ?? canonicalContext.commercialFollowUp ?? null,
   };
 }
 

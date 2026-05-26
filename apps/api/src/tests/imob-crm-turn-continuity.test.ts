@@ -190,6 +190,67 @@ test("IMOB_CRM continuity preserves post-visit outcome while hydrating the activ
   assert.equal((hydrated as any).operational?.visitDraft?.outcome, "proposal_ready");
 });
 
+test("IMOB_CRM continuity opens lead follow-up from a visit thread and preserves cadence state", async () => {
+  const threadState = {
+    mode: "execute",
+    pendingSlot: "none",
+    resultOffset: 0,
+    slots: {},
+    operational: {
+      flow: "visit.schedule",
+      status: "ready_for_review",
+      pendingFields: [],
+      visitDraft: {
+        propertyId: "property-1",
+        visitorName: "Lead 01",
+        visitorPhone: "11 99999-9999",
+        preferredDate: "2026-06-05",
+        status: "scheduled",
+        outcome: "follow_up_required",
+      },
+      followUpDraft: {
+        status: "awaiting_response",
+        trigger: "no_response",
+        suggestedChannel: "whatsapp",
+      },
+    },
+  };
+
+  const hydrated = await hydrateThreadStateWithPersistedLead({
+    prisma: {
+      imobCase: {
+        findFirst: async () => ({
+          leadId: "lead-1",
+          propertyId: "property-1",
+        }),
+      },
+      imobLead: {
+        findFirst: async () => ({
+          name: "Lead 01",
+          email: "lead01@gmail.com",
+          phone: "11 99999-9999",
+          goal: "locacao",
+          targetCity: "Itapema",
+          budgetMaxCents: 1000000,
+        }),
+      },
+    },
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    caseId: "case-1",
+    message: "Lead sem resposta no whatsapp, preciso acompanhar follow-up",
+    threadLabel: "Visita",
+    threadState,
+    helpers: createHelpers(),
+  });
+
+  assert.equal((hydrated as any).operational?.flow, "lead.qualify");
+  assert.equal((hydrated as any).operational?.leadDraft?.leadName, "Lead 01");
+  assert.equal((hydrated as any).operational?.followUpDraft?.status, "awaiting_response");
+  assert.equal((hydrated as any).operational?.followUpDraft?.trigger, "no_response");
+  assert.equal((hydrated as any).operational?.followUpDraft?.suggestedChannel, "whatsapp");
+});
+
 test("IMOB_CRM continuity keeps lead.qualify when there are real pending lead fields", async () => {
   const threadState = {
     mode: "execute",

@@ -6,6 +6,7 @@ import type {
   ImobDocumentSufficiencySnapshotV1,
   ImobDedupeSnapshotV1,
   ImobEvidenceSnapshotV1,
+  ImobCommercialFollowUpSnapshotV1,
   ImobLeadLifecycleSnapshotV1,
   ImobLeadMatchingSnapshotV1,
   ImobCaseMission,
@@ -301,6 +302,96 @@ function buildLeadLifecycle(params: {
     nextTrigger: nextTrigger ?? null,
     summary: "Lead ativo na jornada comercial.",
   };
+}
+
+function buildCommercialFollowUpSnapshot(params: {
+  visitOutcome?: ImobVisitOutcomeSnapshotV1 | null;
+  leadLifecycle?: ImobLeadLifecycleSnapshotV1 | null;
+  followUpDraft?: Record<string, unknown> | null;
+}): ImobCommercialFollowUpSnapshotV1 | null {
+  const visitOutcome = params.visitOutcome ?? null;
+  const leadLifecycle = params.leadLifecycle ?? null;
+  const followUpDraft = params.followUpDraft ?? null;
+
+  const draftStatus = asString(followUpDraft?.status);
+  const draftTrigger = asString(followUpDraft?.trigger);
+  const draftChannel = asString(followUpDraft?.suggestedChannel);
+
+  if (
+    draftStatus === "pending"
+    || draftStatus === "awaiting_response"
+    || draftStatus === "reengagement_required"
+  ) {
+    return {
+      source: "follow_up_runtime",
+      status: draftStatus === "pending" ? "follow_up_required" : draftStatus,
+      trigger: draftTrigger ?? "generic",
+      suggestedChannel:
+        draftChannel === "whatsapp"
+        || draftChannel === "phone"
+        || draftChannel === "email"
+        || draftChannel === "internal"
+          ? draftChannel
+          : "internal",
+      reasonCodes: [
+        draftStatus === "awaiting_response"
+          ? "FOLLOW_UP_RESPONSE_PENDING"
+          : draftStatus === "reengagement_required"
+            ? "FOLLOW_UP_REENGAGEMENT_REQUIRED"
+            : "FOLLOW_UP_PENDING",
+      ],
+      summary:
+        draftStatus === "awaiting_response"
+          ? "O caso está em follow-up ativo e agora aguarda resposta antes de reabrir a próxima etapa."
+          : draftStatus === "reengagement_required"
+            ? "O caso já pede reengajamento comercial explícito antes do próximo handoff."
+            : "O caso está em follow-up comercial ativo antes de avançar para a próxima etapa.",
+      recommendedNextMove:
+        draftStatus === "awaiting_response"
+          ? "acompanhar a resposta do lead antes de propor novo movimento"
+          : draftStatus === "reengagement_required"
+            ? "retomar o caso com novo gatilho comercial ou objeção tratada"
+            : "executar um único follow-up comercial governado",
+    };
+  }
+
+  if (visitOutcome?.status === "follow_up_required") {
+    return {
+      source: "visit_outcome",
+      status: "follow_up_required",
+      trigger: "post_visit",
+      suggestedChannel: "internal",
+      reasonCodes: ["VISIT_FOLLOW_UP_REQUIRED"],
+      summary: "O caso pede um único follow-up comercial antes de voltar para proposta ou novo handoff.",
+      recommendedNextMove: visitOutcome.recommendedNextMove,
+    };
+  }
+
+  if (visitOutcome?.status === "reengagement_required") {
+    return {
+      source: "visit_outcome",
+      status: "reengagement_required",
+      trigger: "post_visit_objection",
+      suggestedChannel: "internal",
+      reasonCodes: ["VISIT_REENGAGEMENT_REQUIRED"],
+      summary: "O caso pede reengajamento comercial pós-visita antes de retomar proposta ou agenda nova.",
+      recommendedNextMove: visitOutcome.recommendedNextMove,
+    };
+  }
+
+  if (leadLifecycle?.status === "reengagement_ready") {
+    return {
+      source: "lead_lifecycle",
+      status: "reengagement_required",
+      trigger: leadLifecycle.nextTrigger ?? "lead_return_trigger",
+      suggestedChannel: "internal",
+      reasonCodes: ["LEAD_REENGAGEMENT_REQUIRED"],
+      summary: leadLifecycle.summary,
+      recommendedNextMove: "retomar o lead com base no gatilho comercial já identificado",
+    };
+  }
+
+  return null;
 }
 
 function normalizeMarketAction(value: unknown) {
@@ -1033,6 +1124,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
   const commissionDraft = asObject(operational.commissionDraft);
   const listingDraft = asObject(operational.listingDraft);
   const campaignDraft = asObject(operational.campaignDraft);
+  const followUpDraft = asObject(operational.followUpDraft);
   const operationalMissionContext = asObject(operational.missionContext);
   const marketScanRecommendation = buildMarketScanRecommendation({ operational });
   const dedupe = buildDedupeSnapshot({ flow, operational });
@@ -1095,6 +1187,11 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
     contractDraft,
     documentChecklist,
   });
+  const commercialFollowUp = buildCommercialFollowUpSnapshot({
+    visitOutcome,
+    leadLifecycle,
+    followUpDraft,
+  });
 
   const baseContext: ImobCaseContextV1 = {
     version: "1.0",
@@ -1133,6 +1230,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
     },
     leadMatching,
     leadLifecycle,
+    commercialFollowUp,
     visitScheduling,
     visitOutcome,
     marketScanRecommendation,
