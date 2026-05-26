@@ -239,12 +239,9 @@ Execução corrente:
 - `DedupeAgent E2E` fica encerrado como frente concluída;
 - `VisitAgent E2E` fica encerrado como frente concluída;
 - `Guardian_EvidenceAgent` fica encerrado como frente concluída;
+- `FollowUpAgent / Commercial follow-up E2E` fica encerrado como frente concluída;
 - próxima frente oficial:
-  - `FollowUpAgent / Commercial follow-up E2E`
-  - com detalhamento em:
-    - `docs/plans/imob-follow-up-agent-e2e-implementation-plan.md`
-  - slice atual:
-    - `PR-FOLLOW3 — prepared outreach and business read hardening`
+  - `a definir em novo rebaseline do canônico`
 
 ---
 

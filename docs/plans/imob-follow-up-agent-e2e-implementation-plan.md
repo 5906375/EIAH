@@ -1,6 +1,6 @@
 # imob-follow-up-agent-e2e-implementation-plan
 
-Status: execução iniciada  
+Status: concluído no runtime  
 Prioridade: P1 após `Guardian_EvidenceAgent`  
 Data de referência: 2026-05-26  
 Escopo: fechar o `FollowUpAgent / Commercial follow-up` como jornada governada de continuidade comercial no IMOB, preservando arquitetura agent-driven, launcher `render-only` e sem outbound automático fora do runtime.
@@ -86,7 +86,7 @@ Critério:
 
 Status:
 
-- `próximo slice`
+- `concluído no runtime`
 
 Objetivo:
 

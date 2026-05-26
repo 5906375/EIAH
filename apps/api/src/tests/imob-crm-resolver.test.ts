@@ -441,6 +441,42 @@ test("IMOB_CRM business read connects assisted calendar pilot flow from case run
   assert.match(JSON.stringify(resolved?.presentation?.card?.lines ?? []), /Próxima ação governada:/i);
 });
 
+test("IMOB_CRM business read hardens prepared follow-up from canonical commercial cadence", async () => {
+  const resolved = await resolveImobCrmOperationalConsult({
+    prisma: createMockPrisma({
+      caseOverrides: {
+        flow: "visit.schedule",
+        stage: "post_visit",
+        status: "in_progress",
+        nextStep: "consultar caso",
+        pendingItems: [],
+        commercialFollowUp: {
+          source: "follow_up_runtime",
+          status: "awaiting_response",
+          trigger: "no_response",
+          suggestedChannel: "whatsapp",
+          reasonCodes: ["FOLLOW_UP_RESPONSE_PENDING"],
+          summary: "O caso já está em cadência comercial e aguarda resposta antes de qualquer novo handoff.",
+          recommendedNextMove: "acompanhar a resposta do lead antes de retomar proposta ou visita",
+        },
+      },
+    }) as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "qual status desse caso?",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.action, "crm.case.pipeline_status");
+  assert.match(resolved?.presentation?.text ?? "", /aguarda resposta|cadência comercial/i);
+  assert.equal(resolved?.presentation?.preparedFollowUp?.recipientRole, "lead");
+  assert.equal(resolved?.presentation?.preparedFollowUp?.trigger, "no_response");
+  assert.match(resolved?.presentation?.preparedFollowUp?.objective ?? "", /aguarda resposta/i);
+  assert.match(resolved?.presentation?.suggestedNextAction ?? "", /proof mínima|evid[aê]ncia/i);
+  assert.ok((resolved?.presentation?.pendingFieldLabels ?? []).some((item) => /resposta comercial pendente/i.test(String(item))));
+  assert.equal(resolved?.presentation?.reengagementSuggestion, undefined);
+});
+
 test("IMOB_CRM pilot status consult stays read-only for governed questions", async () => {
   const prisma = createMockPrisma({
     caseOverrides: {

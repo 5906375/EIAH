@@ -5,6 +5,7 @@ import type {
   ImobCrmHumanWorkflow,
   ImobCrmLeadSummary,
 } from "./imobCrmAgentContract";
+import type { ImobCommercialFollowUpSnapshotV1 } from "./imobCaseContextContract";
 import type { ImobProofSurface } from "../imobConversationContract";
 
 type CaseContextRecord = {
@@ -27,6 +28,7 @@ type CaseContextRecord = {
   bundlePath?: string | null;
   verifyUrl?: string | null;
   proof?: ImobProofSurface | null;
+  commercialFollowUp?: unknown;
 };
 
 export function buildImobCrmCaseContextFromRecord(
@@ -65,6 +67,7 @@ export function buildImobCrmCaseContextFromRecord(
     property: item.property ?? null,
     owner: item.owner ?? null,
     proof,
+    commercialFollowUp: normalizeCommercialFollowUp(item.commercialFollowUp),
     canonical,
     humanJourney,
     humanWorkflow,
@@ -158,6 +161,46 @@ function normalizeLeadSummary(value: unknown): ImobCrmLeadSummary | null {
 function asStringList(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.map((item) => (typeof item === "string" ? item.trim() : "")).filter(Boolean);
+}
+
+function normalizeCommercialFollowUp(value: unknown): ImobCommercialFollowUpSnapshotV1 | null {
+  const followUp = asObject(value);
+  if (!followUp) return null;
+
+  const source = asString(followUp.source);
+  const status = asString(followUp.status);
+  const trigger = asString(followUp.trigger);
+  const suggestedChannel = asString(followUp.suggestedChannel);
+  const reasonCodes = asStringList(followUp.reasonCodes);
+  const summary = asString(followUp.summary);
+  const recommendedNextMove = asString(followUp.recommendedNextMove);
+
+  if (
+    (source !== "visit_outcome" && source !== "lead_lifecycle" && source !== "follow_up_runtime")
+    || (status !== "follow_up_required" && status !== "reengagement_required" && status !== "awaiting_response")
+    || !trigger
+    || (
+      suggestedChannel !== "internal"
+      && suggestedChannel !== "whatsapp"
+      && suggestedChannel !== "phone"
+      && suggestedChannel !== "email"
+      && suggestedChannel !== "unknown"
+    )
+    || !summary
+    || !recommendedNextMove
+  ) {
+    return null;
+  }
+
+  return {
+    source,
+    status,
+    trigger,
+    suggestedChannel,
+    reasonCodes,
+    summary,
+    recommendedNextMove,
+  };
 }
 
 function diffHoursFromIso(iso: string | null): number | null {
