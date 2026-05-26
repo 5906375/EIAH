@@ -173,6 +173,21 @@ export type ImobDedupeSnapshotV1 = {
   summary: string;
   recommendedNextMove: string;
 };
+
+export type ImobEvidenceSnapshotV1 = {
+  mission: ImobCaseMission;
+  required: boolean;
+  status: "not_required" | "missing" | "satisfied";
+  minimumProofSatisfied: boolean;
+  missingProof: string[];
+  evidenceBundleId?: string | null;
+  snapshotId?: string | null;
+  snapshotVersion?: number | null;
+  receiptId?: string | null;
+  ledgerTxId?: string | null;
+  summary: string;
+  recommendedNextMove: string;
+};
 export type ImobCaseBlockerV1 = {
   code: string;
   severity: "info" | "warning" | "blocking";
@@ -210,6 +225,7 @@ export type ImobCaseContextV1 = {
   documentChecklist?: ImobDocumentChecklistSnapshotV1 | null;
   documentSufficiency?: ImobDocumentSufficiencySnapshotV1 | null;
   dedupe?: ImobDedupeSnapshotV1 | null;
+  evidence?: ImobEvidenceSnapshotV1 | null;
   links: {
     ownerProperty?: {
       ownerId?: string | null;

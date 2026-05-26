@@ -10,6 +10,9 @@ import { buildRunEvidenceBundle } from "../services/evidenceBundle";
 import { resolvePoUForLedger } from "../services/pouService";
 import { resolveTrustSnapshotForLedger } from "../services/trustSnapshotService";
 import { buildLedgerReceiptCanonV1, validateReceiptCanonCriticalChain } from "../services/receiptCanonService";
+import { buildImobCaseContextV1 } from "../services/imob/crm/imobCaseContextBuilder";
+import { buildImobCrmCaseContextFromRecord } from "../services/imob/crm/imobCrmCaseContext";
+import { buildImobCrmLegacyCanonicalCase } from "../services/imob/crm/imobCrmLegacyCanonical";
 
 export const governanceRouter = Router();
 governanceRouter.use(enforceTenant);
@@ -85,6 +88,86 @@ function downsamplePoints<T>(points: T[], maxPoints = 200) {
   if (points.length <= maxPoints) return points;
   const step = Math.ceil(points.length / maxPoints);
   return points.filter((_, index) => index % step === 0);
+}
+
+function buildImobGovernanceCaseContext(item: {
+  id: string;
+  tenantId: string;
+  workspaceId: string;
+  flow: string;
+  stage: string;
+  status: string;
+  ownerResponsible?: string | null;
+  nextStep?: string | null;
+  blockers?: unknown;
+  pendingItems?: unknown;
+  threadId?: string | null;
+  updatedAt?: Date | null;
+  lead?: unknown;
+  property?: unknown;
+  owner?: unknown;
+  metadata?: unknown;
+}) {
+  const metadata = asObject(item.metadata) ?? {};
+  const proof = asObject(metadata.proof);
+  return buildImobCrmCaseContextFromRecord({
+    id: item.id,
+    flow: item.flow,
+    stage: item.stage,
+    status: item.status,
+    ownerResponsible: item.ownerResponsible ?? null,
+    nextStep: item.nextStep ?? null,
+    blockers: item.blockers,
+    pendingItems: item.pendingItems,
+    threadId: item.threadId ?? null,
+    updatedAt: item.updatedAt ?? null,
+    lead: item.lead ?? null,
+    property: item.property ?? null,
+    owner: item.owner ?? null,
+    runId: asString(proof?.runId) ?? asString(metadata.runId),
+    txId: asString(proof?.txId) ?? asString(metadata.txId),
+    receiptPath: asString(proof?.receiptPath) ?? asString(metadata.receiptPath),
+    bundlePath: asString(proof?.bundlePath) ?? asString(metadata.bundlePath),
+    verifyUrl: asString(proof?.verifyUrl) ?? asString(metadata.verifyUrl),
+    proof: proof,
+  }, buildImobCrmLegacyCanonicalCase);
+}
+
+function buildImobGovernanceOperationalSeed(item: {
+  id: string;
+  flow: string;
+  stage: string;
+  status: string;
+  ownerResponsible?: string | null;
+  property?: unknown;
+}) {
+  const operational: Record<string, unknown> = {
+    flow: item.flow,
+  };
+
+  if (item.flow === "commission.settle") {
+    operational.commissionDraft = {
+      dealId: item.id,
+      brokerRef: item.ownerResponsible ?? "broker-pending",
+      settlementStatus: item.status === "success" || item.stage === "settled" ? "paid" : "ready",
+    };
+  }
+
+  if (item.flow === "listing.activate") {
+    operational.campaignDraft = {
+      propertyId: asString(asObject(item.property)?.id) ?? item.id,
+      campaignRef: `campaign:${item.id}`,
+      objective: "promote_listing",
+      approvalRequired: true,
+      approvalStatus: item.status === "success" ? "approved" : "pending",
+      policyStatus: item.status === "success" ? "ready" : "pending",
+      consentStatus: item.status === "success" ? "ready" : "pending",
+      evidenceStatus: item.status === "success" ? "ready" : "pending",
+      activationStatus: item.status === "success" ? "published" : "draft",
+    };
+  }
+
+  return operational;
 }
 
 const TX_ID_PATTERN = /^[A-Za-z0-9-]{16,}$/;
@@ -216,6 +299,133 @@ governanceRouter.get("/runs/:id/governance", async (req, res) => {
       auditEventIds: auditEvents.map((event) => event.id),
     },
     canCalibrate: Boolean(canCalibrate),
+  });
+});
+
+governanceRouter.get("/governance/imob/cases/:caseId/evidence", requireScope("ledger.view"), async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({
+      ok: false,
+      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+    });
+  }
+
+  const item = await prisma.imobCase.findFirst({
+    where: {
+      id: req.params.caseId,
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+    },
+    include: {
+      owner: { select: { id: true, name: true, phone: true, email: true, document: true, status: true } },
+      property: {
+        select: {
+          id: true,
+          propertyType: true,
+          city: true,
+          neighborhood: true,
+          address: true,
+          goal: true,
+          status: true,
+          ownerId: true,
+        },
+      },
+      lead: {
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          email: true,
+          goal: true,
+          targetCity: true,
+          budgetMaxCents: true,
+          targetNeighborhood: true,
+          stage: true,
+          temperature: true,
+          pendingItems: true,
+        },
+      },
+    },
+  });
+
+  if (!item) {
+    return res.status(404).json({
+      ok: false,
+      error: { code: "NOT_FOUND", message: "imob_case" },
+    });
+  }
+
+  const caseContext = buildImobGovernanceCaseContext(item);
+  const operational = buildImobGovernanceOperationalSeed(item);
+  const canonicalContext = buildImobCaseContextV1({
+    tenantId: authContext.tenantId,
+    workspaceId: authContext.workspaceId,
+    caseId: item.id,
+    caseContext,
+    operational,
+  });
+
+  const events = await prisma.imobCaseEvent.findMany({
+    where: {
+      caseId: item.id,
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      evidenceRef: { not: null },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    select: {
+      id: true,
+      type: true,
+      summary: true,
+      evidenceRef: true,
+      runId: true,
+      createdAt: true,
+    },
+  });
+
+  const proof = caseContext.proof ?? null;
+  const evidence = canonicalContext.evidence ?? null;
+  const bundlePath = proof?.bundlePath
+    ?? (typeof evidence?.evidenceBundleId === "string" && evidence.evidenceBundleId.startsWith("/") ? evidence.evidenceBundleId : null);
+  const receiptPath = proof?.receiptPath
+    ?? (typeof evidence?.receiptId === "string" && evidence.receiptId.startsWith("/") ? evidence.receiptId : null);
+  const ledgerPath = proof?.txId ? `/api/ledger/${encodeURIComponent(proof.txId)}` : receiptPath;
+
+  return res.json({
+    ok: true,
+    data: {
+      caseId: item.id,
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      flow: item.flow,
+      mission: canonicalContext.missionContext?.mission ?? "case_review",
+      stage: item.stage,
+      status: item.status,
+      evidence,
+      export: {
+        runId: proof?.runId ?? null,
+        txId: proof?.txId ?? evidence?.ledgerTxId ?? null,
+        receiptPath,
+        bundlePath,
+        verifyUrl: proof?.verifyUrl ?? ledgerPath ?? null,
+        bundleEndpointTemplate: "/api/runs/:runId/bundle",
+        ledgerEndpointTemplate: "/api/ledger/:txId",
+      },
+      audit: {
+        sourceFlow: canonicalContext.legacyCompatibility?.sourceFlow ?? item.flow,
+        sourceMission: canonicalContext.legacyCompatibility?.sourceMission ?? canonicalContext.missionContext?.mission ?? null,
+        eventRefs: events.map((event) => ({
+          id: event.id,
+          type: event.type,
+          summary: event.summary,
+          evidenceRef: event.evidenceRef,
+          runId: event.runId,
+          createdAt: event.createdAt,
+        })),
+      },
+    },
   });
 });
 

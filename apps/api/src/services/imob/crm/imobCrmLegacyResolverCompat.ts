@@ -47,6 +47,8 @@ type ResolverParams = {
 type BusinessReadIntent = "pipeline_status" | "blocked_run_resolution" | "next_best_action";
 type ResolverCaseRecord = {
   id: string;
+  tenantId?: string;
+  workspaceId?: string;
   flow?: string | null;
   stage?: string | null;
   status?: string | null;
@@ -236,7 +238,45 @@ function buildRecommendedActions(params: {
 }
 
 function buildCaseContextFromRecord(item: ResolverCaseRecord): ImobCrmCaseContext {
-  return buildImobCrmCaseContextFromRecord(item, buildImobCrmLegacyCanonicalCase);
+  const rawContext = buildImobCrmCaseContextFromRecord(item, buildImobCrmLegacyCanonicalCase);
+  if (!item.tenantId || !item.workspaceId) return rawContext;
+
+  const operational: Record<string, unknown> = {
+    flow: rawContext.flow,
+  };
+  if (rawContext.flow === "commission.settle") {
+    operational.commissionDraft = {
+      dealId: item.id,
+      brokerRef: rawContext.ownerResponsible ?? "broker-pending",
+      settlementStatus: item.status === "success" || item.stage === "settled" ? "paid" : "ready",
+    };
+  }
+  if (rawContext.flow === "listing.activate") {
+    operational.campaignDraft = {
+      propertyId: asString(asObject(rawContext.property)?.id) ?? item.id,
+      campaignRef: `campaign:${item.id}`,
+      objective: "promote_listing",
+      approvalRequired: true,
+      approvalStatus: item.status === "success" ? "approved" : "pending",
+      policyStatus: item.status === "success" ? "ready" : "pending",
+      consentStatus: item.status === "success" ? "ready" : "pending",
+      evidenceStatus: item.status === "success" ? "ready" : "pending",
+      activationStatus: item.status === "success" ? "published" : "draft",
+    };
+  }
+
+  const canonicalContext = buildImobCaseContextV1({
+    tenantId: item.tenantId,
+    workspaceId: item.workspaceId,
+    caseId: item.id,
+    caseContext: rawContext,
+    operational,
+  });
+
+  return {
+    ...rawContext,
+    evidence: canonicalContext.evidence ?? null,
+  };
 }
 
 function formatCaseFlowLabel(flow: string | null | undefined) {
@@ -401,7 +441,14 @@ function resolveBusinessReadIntent(message: string): BusinessReadIntent | null {
 function getBusinessPendingItems(caseContext: ImobCrmCaseContext): string[] {
   const pendingItems = Array.isArray(caseContext?.pendingItems) ? caseContext.pendingItems : [];
   const missingContext = Array.isArray(caseContext?.canonical?.missingContext) ? caseContext.canonical.missingContext : [];
-  return Array.from(new Set([...pendingItems, ...missingContext].map((item) => String(item)).filter(Boolean)));
+  const missingProof = caseContext?.evidence?.status === "missing"
+    ? [
+        caseContext.evidence.missingProof.length > 0
+          ? `proof mínima pendente (${caseContext.evidence.missingProof.join(", ")})`
+          : "proof mínima pendente",
+      ]
+    : [];
+  return Array.from(new Set([...pendingItems, ...missingContext, ...missingProof].map((item) => String(item)).filter(Boolean)));
 }
 
 function getBusinessBlockers(caseContext: ImobCrmCaseContext): string[] {

@@ -27,7 +27,7 @@ O que falta para E2E transversal:
 
 Status:
 
-- `próximo slice`
+- `em andamento`
 
 Objetivo:
 
@@ -54,7 +54,7 @@ Critério:
 
 Status:
 
-- `pendente`
+- `em andamento`
 
 Objetivo:
 
@@ -78,7 +78,7 @@ Critério:
 
 Status:
 
-- `pendente`
+- `em andamento`
 
 Objetivo:
 
