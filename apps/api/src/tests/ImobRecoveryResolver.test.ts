@@ -267,6 +267,64 @@ test("recovery response exposes operation-specific document checklist pending it
   assert.match(response.summary, /checklist documental de locacao/i);
 });
 
+test("recovery response makes missing proof explicit when canonical evidence is still pending", () => {
+  const response = resolveImobRecoveryResponse({
+    context: buildContext({
+      missionContext: {
+        mission: "prepare_contract",
+        lockedUntilExplicitChange: false,
+      },
+      evidence: {
+        mission: "prepare_contract",
+        required: true,
+        status: "missing",
+        minimumProofSatisfied: false,
+        missingProof: ["pacote documental mínimo"],
+        summary: "Proof mínima ainda pendente: falta pacote documental mínimo.",
+        recommendedNextMove: "completar a proof mínima exigida antes de fechar esta etapa",
+      },
+      canonicalCaseState: {
+        schemaVersion: 1,
+        tenantId: "tenant-A",
+        workspaceId: "workspace-A",
+        caseId: "case-1",
+        mission: "prepare_contract",
+        missionStatus: "blocked",
+        currentStep: "checking_document_sufficiency",
+        currentOperation: "documents",
+        entities: {},
+        readiness: {
+          documents: "incomplete",
+          proof: "blocked",
+        },
+        blockers: [],
+        pendingFields: [],
+        nextAction: {
+          id: "collect-documents",
+          label: "Completar pacote documental",
+          operation: "documents",
+          targetAgent: "IMOB_DocumentAgent",
+          reasonCode: "DOCUMENTS_REQUIRED",
+        },
+        proof: {
+          required: true,
+          minimumProofSatisfied: false,
+          missingProof: ["document_package"],
+        },
+        audit: {
+          version: 1,
+          lastUpdatedAt: "2026-05-26T09:00:00.000Z",
+          updatedByAgent: "IMOB",
+        },
+      },
+    }),
+    intent: "what_is_missing",
+  });
+
+  assert.ok(response.missingItems.some((item) => /proof mínima pendente/i.test(item)));
+  assert.match(response.summary, /proof mínima ainda pendente/i);
+});
+
 test("recovery response explains legal handoff once document sufficiency is satisfied", () => {
   const response = resolveImobRecoveryResponse({
     context: buildContext({

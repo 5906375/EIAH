@@ -153,6 +153,43 @@ test("IMOB case context v1 derives document sufficiency for legal handoff when t
   assert.equal(context.documentSufficiency?.legalHandoffStatus, "pending");
 });
 
+test("IMOB case context v1 exposes canonical evidence snapshot when mission proof is still pending", () => {
+  const context = buildImobCaseContextV1({
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    caseId: "case-proof-1",
+    caseContext: {
+      caseId: "case-proof-1",
+      flow: "contract.prepare",
+      proof: {
+        required: true,
+        ready: false,
+        state: "pending",
+        receiptPath: "/receipts/contract-case-1.json",
+      },
+    },
+    operational: {
+      flow: "contract.prepare",
+      contractDraft: {
+        propertyId: "property-1",
+        counterpartyName: "Maria",
+        contractType: "sale",
+        documentPacketStatus: "pending",
+        handoffTarget: "LEGAL",
+        approvalRequired: true,
+      },
+    },
+  });
+
+  assert.equal(context.evidence?.mission, "prepare_contract");
+  assert.equal(context.evidence?.required, true);
+  assert.equal(context.evidence?.status, "missing");
+  assert.equal(context.evidence?.minimumProofSatisfied, false);
+  assert.deepEqual(context.evidence?.missingProof, ["pacote documental mínimo"]);
+  assert.equal(context.evidence?.receiptId, "/receipts/contract-case-1.json");
+  assert.match(context.evidence?.summary ?? "", /proof mínima ainda pendente/i);
+});
+
 test("IMOB case context v1 exposes canonical dedupe snapshot for pending owner review", () => {
   const context = buildImobCaseContextV1({
     tenantId: "tenant-A",

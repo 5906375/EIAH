@@ -5,6 +5,7 @@ import type {
   ImobDocumentChecklistSnapshotV1,
   ImobDocumentSufficiencySnapshotV1,
   ImobDedupeSnapshotV1,
+  ImobEvidenceSnapshotV1,
   ImobLeadLifecycleSnapshotV1,
   ImobLeadMatchingSnapshotV1,
   ImobCaseMission,
@@ -49,6 +50,27 @@ function normalizeGoal(value: unknown): ImobPropertyGoalV1 | null {
   const normalized = asString(value)?.toLowerCase();
   if (normalized === "aluguel_por_temporada" || normalized === "locacao" || normalized === "venda") return normalized;
   return null;
+}
+
+function describeProofRequirement(proofId: string) {
+  switch (proofId) {
+    case "evidence_bundle":
+      return "bundle de evidência da missão";
+    case "owner_link":
+      return "vínculo auditável entre proprietário e imóvel";
+    case "visit_record":
+      return "registro auditável da visita";
+    case "document_package":
+      return "pacote documental mínimo";
+    case "snapshot_authoritative":
+      return "snapshot autoritativo do caso";
+    case "commission_record":
+      return "registro de comissão";
+    case "campaign_record":
+      return "registro de campanha";
+    default:
+      return proofId.replace(/_/g, " ");
+  }
 }
 
 function inferMission(params: {
@@ -570,6 +592,68 @@ function buildDedupeSnapshot(params: {
       : status === "resolved"
         ? `Seguir com o cadastro governado de ${entity}.`
         : `Confirmar o match de ${entity} antes do side effect.`,
+  };
+}
+
+function buildEvidenceSnapshot(params: {
+  mission: ImobCaseMission;
+  canonicalCaseState?: ImobCaseContextV1["canonicalCaseState"];
+  legacyProof?: Record<string, unknown> | null;
+}): ImobEvidenceSnapshotV1 | null {
+  const canonicalProof = params.canonicalCaseState?.proof ?? null;
+  const legacyProof = params.legacyProof ?? {};
+
+  const required = canonicalProof?.required
+    ?? (typeof legacyProof.required === "boolean" ? legacyProof.required : false);
+  const minimumProofSatisfied = canonicalProof?.minimumProofSatisfied
+    ?? (typeof legacyProof.ready === "boolean" ? legacyProof.ready : false);
+  const missingProof = (canonicalProof?.missingProof ?? [])
+    .map((item) => describeProofRequirement(item))
+    .filter((item) => item.length > 0);
+  const evidenceBundleId = asString(canonicalProof?.evidenceBundleId) ?? asString(legacyProof.bundlePath);
+  const snapshotId = asString(canonicalProof?.snapshotId);
+  const snapshotVersion = typeof canonicalProof?.snapshotVersion === "number" ? canonicalProof.snapshotVersion : null;
+  const receiptId = asString(canonicalProof?.receiptId) ?? asString(legacyProof.receiptPath);
+  const ledgerTxId = asString(canonicalProof?.ledgerTxId) ?? asString(legacyProof.txId);
+
+  const hasSignals = required
+    || missingProof.length > 0
+    || Boolean(evidenceBundleId || receiptId || ledgerTxId || snapshotId || snapshotVersion != null);
+  if (!hasSignals) return null;
+
+  const status: ImobEvidenceSnapshotV1["status"] = !required
+    ? "not_required"
+    : minimumProofSatisfied
+      ? "satisfied"
+      : "missing";
+
+  return {
+    mission: params.mission,
+    required,
+    status,
+    minimumProofSatisfied,
+    missingProof,
+    evidenceBundleId,
+    snapshotId,
+    snapshotVersion,
+    receiptId,
+    ledgerTxId,
+    summary: status === "not_required"
+      ? "Esta missão não exige proof crítica para ser considerada pronta."
+      : status === "satisfied"
+        ? evidenceBundleId && receiptId
+          ? "Proof mínima satisfeita com bundle e receipt já disponíveis."
+          : receiptId
+            ? "Proof mínima satisfeita com receipt já disponível."
+            : ledgerTxId
+              ? "Proof mínima satisfeita com trilha auditável registrada."
+              : "Proof mínima satisfeita para esta missão."
+        : missingProof.length > 0
+          ? `Proof mínima ainda pendente: falta ${missingProof.join(", ")}.`
+          : "Proof mínima ainda pendente para esta missão.",
+    recommendedNextMove: status === "missing"
+      ? "completar a proof mínima exigida antes de fechar esta etapa"
+      : "seguir com a próxima etapa governada do caso",
   };
 }
 
@@ -1119,6 +1203,12 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
     },
   });
 
+  const evidence = buildEvidenceSnapshot({
+    mission,
+    canonicalCaseState: compatibility.ok ? compatibility.state : null,
+    legacyProof: asObject(params.caseContext?.proof),
+  });
+
   const enrichedContext = compatibility.ok
     ? {
         ...baseContext,
@@ -1132,8 +1222,12 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
           sourceFlow: compatibility.sourceFlow ?? null,
           sourceMission: compatibility.sourceMission ?? null,
         },
+        evidence,
       }
-    : baseContext;
+    : {
+        ...baseContext,
+        evidence,
+      };
 
   const recoverySnapshot = resolveImobRecoverySnapshot(enrichedContext);
   const projectionContext = {

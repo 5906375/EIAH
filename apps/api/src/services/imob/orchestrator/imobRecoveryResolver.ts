@@ -291,6 +291,13 @@ function mapCanonicalNextActionToPlanAction(context: ImobCaseContextV1): ImobCas
 
 function buildMissingItems(context: ImobCaseContextV1) {
   const canonicalItems = context.canonicalCaseState?.pendingFields?.map((item) => item.label ?? item.field) ?? [];
+  const evidenceItems = context.evidence?.status === "missing"
+    ? [
+        context.evidence.missingProof.length > 0
+          ? `proof mínima pendente (${context.evidence.missingProof.join(", ")})`
+          : "proof mínima pendente",
+      ]
+    : [];
   const dedupeItems = context.dedupe?.status === "pending_review"
     ? [`revisão de dedupe de ${context.dedupe.entity}`]
     : [];
@@ -328,7 +335,7 @@ function buildMissingItems(context: ImobCaseContextV1) {
     .filter((item) => item.severity === "blocking" || item.severity === "warning")
     .filter((item) => !item.code.startsWith("market_scan_"))
     .map((item) => item.message);
-  return [...new Set([...canonicalItems, ...dedupeItems, ...marketScanMissingItems, ...visitMissingItems, ...blockerItems])];
+  return [...new Set([...canonicalItems, ...evidenceItems, ...dedupeItems, ...marketScanMissingItems, ...visitMissingItems, ...blockerItems])];
 }
 
 function buildSecondaryActions(params: {
@@ -414,11 +421,13 @@ export function resolveImobRecoveryResponse(params: {
   const documentSufficiencySummary = params.context.missionContext?.mission === "prepare_contract"
     ? params.context.documentSufficiency?.summary
     : null;
+  const evidenceSummary = params.context.evidence?.summary ?? null;
   const dedupeSummary = params.context.dedupe?.status === "pending_review"
     ? params.context.dedupe.summary
     : null;
   const leadContextSuffix = [leadMatchingSummary, leadLifecycleSummary].filter(Boolean).join(" ");
   const leadContextSentence = leadContextSuffix ? ` ${leadContextSuffix}` : "";
+  const evidenceSentence = evidenceSummary ? ` ${evidenceSummary}` : "";
   const dedupeSentence = dedupeSummary ? ` ${dedupeSummary}` : "";
   const marketScanSentence = marketScanSummary ? ` ${marketScanSummary}` : "";
   const visitSchedulingSentence = visitSchedulingSummary ? ` ${visitSchedulingSummary}` : "";
@@ -432,8 +441,8 @@ export function resolveImobRecoveryResponse(params: {
       intent: params.intent,
       title: "Pendências do caso",
       summary: snapshot.missingItems.length > 0
-        ? `Ainda faltam ${snapshot.missingItems.join(" • ")}.${leadContextSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${visitOutcomeSentence}${documentChecklistSentence}${documentSufficiencySentence}`
-        : `Não há pendências explícitas; posso seguir pelo próximo passo principal.${leadContextSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${visitOutcomeSentence}${documentChecklistSentence}${documentSufficiencySentence}`,
+        ? `Ainda faltam ${snapshot.missingItems.join(" • ")}.${leadContextSentence}${evidenceSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${visitOutcomeSentence}${documentChecklistSentence}${documentSufficiencySentence}`
+        : `Não há pendências explícitas; posso seguir pelo próximo passo principal.${leadContextSentence}${evidenceSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${visitOutcomeSentence}${documentChecklistSentence}${documentSufficiencySentence}`,
       blockers: snapshot.blockers,
       missingItems: snapshot.missingItems,
       primaryAction: snapshot.primaryAction,
@@ -449,8 +458,8 @@ export function resolveImobRecoveryResponse(params: {
       intent: params.intent,
       title: "Próximo passo",
       summary: snapshot.primaryAction
-        ? `O próximo passo seguro é ${snapshot.primaryAction.label.toLowerCase()}.${leadContextSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${visitOutcomeSentence}${documentChecklistSentence}${documentSufficiencySentence}`
-        : `O próximo passo não está explícito; posso abrir o caso para recompor o estado.${leadContextSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${visitOutcomeSentence}${documentChecklistSentence}${documentSufficiencySentence}`,
+        ? `O próximo passo seguro é ${snapshot.primaryAction.label.toLowerCase()}.${leadContextSentence}${evidenceSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${visitOutcomeSentence}${documentChecklistSentence}${documentSufficiencySentence}`
+        : `O próximo passo não está explícito; posso abrir o caso para recompor o estado.${leadContextSentence}${evidenceSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${visitOutcomeSentence}${documentChecklistSentence}${documentSufficiencySentence}`,
       blockers: snapshot.blockers,
       missingItems: snapshot.missingItems,
       primaryAction: snapshot.primaryAction,
@@ -466,8 +475,8 @@ export function resolveImobRecoveryResponse(params: {
       intent: params.intent,
       title: "Retomada do caso",
       summary: snapshot.primaryAction
-        ? `Vamos retomar a partir de ${snapshot.primaryAction.label.toLowerCase()}.${leadContextSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${visitOutcomeSentence}${documentChecklistSentence}${documentSufficiencySentence}`
-        : `Posso retomar o caso abrindo o resumo operacional mais recente.${leadContextSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${visitOutcomeSentence}${documentChecklistSentence}${documentSufficiencySentence}`,
+        ? `Vamos retomar a partir de ${snapshot.primaryAction.label.toLowerCase()}.${leadContextSentence}${evidenceSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${visitOutcomeSentence}${documentChecklistSentence}${documentSufficiencySentence}`
+        : `Posso retomar o caso abrindo o resumo operacional mais recente.${leadContextSentence}${evidenceSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${visitOutcomeSentence}${documentChecklistSentence}${documentSufficiencySentence}`,
       blockers: snapshot.blockers,
       missingItems: snapshot.missingItems,
       primaryAction: snapshot.primaryAction,
@@ -482,8 +491,8 @@ export function resolveImobRecoveryResponse(params: {
     intent: params.intent,
     title: "Resumo do caso",
     summary: snapshot.blockers.length > 0
-      ? `Caso em ${snapshot.stage} com bloqueios ativos e próxima ação já resolvida.${leadContextSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${visitOutcomeSentence}${documentChecklistSentence}${documentSufficiencySentence}`
-      : `Caso em ${snapshot.stage} com próxima ação já resolvida.${leadContextSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${visitOutcomeSentence}${documentChecklistSentence}${documentSufficiencySentence}`,
+      ? `Caso em ${snapshot.stage} com bloqueios ativos e próxima ação já resolvida.${leadContextSentence}${evidenceSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${visitOutcomeSentence}${documentChecklistSentence}${documentSufficiencySentence}`
+      : `Caso em ${snapshot.stage} com próxima ação já resolvida.${leadContextSentence}${evidenceSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${visitOutcomeSentence}${documentChecklistSentence}${documentSufficiencySentence}`,
     blockers: snapshot.blockers,
     missingItems: snapshot.missingItems,
     primaryAction: snapshot.primaryAction,

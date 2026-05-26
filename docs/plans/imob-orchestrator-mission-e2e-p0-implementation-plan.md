@@ -222,7 +222,7 @@ Execução corrente:
   - `Guardian_EvidenceAgent`
   - com detalhamento em:
     - `docs/plans/imob-guardian-evidence-agent-e2e-implementation-plan.md`
-  - slice inicial recomendado:
+  - slice atual:
     - `PR-GUARD1 — canonical evidence snapshot`
 
 ---
