@@ -408,6 +408,12 @@ export type ImobVisitDraft = {
   outcome?: "proposal_ready" | "follow_up_required" | "reengagement_required" | null;
 };
 
+export type ImobFollowUpDraft = {
+  status: "pending" | "awaiting_response" | "reengagement_required" | null;
+  trigger: "post_visit" | "no_response" | "post_visit_objection" | "decision_window" | "generic" | null;
+  suggestedChannel: "internal" | "whatsapp" | "phone" | "email" | null;
+};
+
 export type ImobListingDraft = {
   propertyId: string | null;
   listingTitle: string | null;
@@ -523,6 +529,7 @@ export type ImobOperationalState = {
   marketScanSelection?: ImobMarketScanSelection | null;
   leadDraft?: ImobLeadDraft;
   visitDraft?: ImobVisitDraft;
+  followUpDraft?: ImobFollowUpDraft;
   listingDraft?: ImobListingDraft;
   campaignDraft?: ImobCampaignDraft;
   documentDraft?: ImobDocumentDraft;

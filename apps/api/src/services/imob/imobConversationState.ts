@@ -7,6 +7,7 @@ import {
   type ImobIntent,
   type ImobLeadDraft,
   type ImobLeadPersona,
+  type ImobFollowUpDraft,
   type ImobOwnerPersona,
   type ImobOperationalState,
   type ImobListingDraft,
@@ -1098,6 +1099,53 @@ function buildVisitDraft(previous: ImobVisitDraft | undefined, message: string):
   };
 }
 
+function buildFollowUpDraft(
+  previous: ImobFollowUpDraft | undefined,
+  message: string,
+) {
+  const normalized = normalizeImobText(message);
+  const status = normalized.includes("aguardando resposta")
+    || normalized.includes("sem resposta")
+    || normalized.includes("sem retorno")
+    ? "awaiting_response"
+    : normalized.includes("reengajar")
+      || normalized.includes("reengajamento")
+      || normalized.includes("retomar depois")
+      || normalized.includes("retomar na semana")
+      ? "reengagement_required"
+      : normalized.includes("fazer follow up")
+        || normalized.includes("fazer follow-up")
+        || normalized.includes("retomar follow up")
+        || normalized.includes("retomar follow-up")
+        || normalized.includes("cobrar retorno")
+        ? "pending"
+        : previous?.status ?? null;
+  const trigger = normalized.includes("sem resposta") || normalized.includes("sem retorno")
+    ? "no_response"
+    : normalized.includes("obje")
+      ? "post_visit_objection"
+      : normalized.includes("decision_window") || normalized.includes("janela de decisao")
+        ? "decision_window"
+        : normalized.includes("visita")
+          ? "post_visit"
+          : previous?.trigger ?? "generic";
+  const suggestedChannel = normalized.includes("whatsapp")
+    ? "whatsapp"
+    : normalized.includes("email")
+      ? "email"
+      : normalized.includes("ligar") || normalized.includes("telefone")
+        ? "phone"
+        : previous?.suggestedChannel ?? "internal";
+
+  if (!status) return previous ?? { status: null, trigger: null, suggestedChannel: null };
+
+  return {
+    status,
+    trigger,
+    suggestedChannel,
+  };
+}
+
 function buildVisitPendingFields(draft: ImobVisitDraft) {
   const pending: string[] = [];
   if (!draft.propertyId) pending.push("propertyId");
@@ -1642,21 +1690,25 @@ export function createNextImobOperationalState(
   if (intent === "lead" || intent === "match") {
     const draft = buildLeadDraft(previous?.flow === "lead.qualify" ? previous.leadDraft : undefined, message, slots);
     const pendingFields = buildLeadPendingFields(draft);
+    const followUpDraft = buildFollowUpDraft(previous?.followUpDraft, message);
     return {
       flow: "lead.qualify",
       status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
       pendingFields,
       leadDraft: draft,
+      followUpDraft,
     };
   }
   if (intent === "visit") {
     const draft = buildVisitDraft(previous?.flow === "visit.schedule" ? previous.visitDraft : undefined, message);
     const pendingFields = buildVisitPendingFields(draft);
+    const followUpDraft = buildFollowUpDraft(previous?.followUpDraft, message);
     return {
       flow: "visit.schedule",
       status: pendingFields.length === 0 ? "ready_for_review" : "collecting",
       pendingFields,
       visitDraft: draft,
+      followUpDraft,
     };
   }
   if (intent === "listing") {

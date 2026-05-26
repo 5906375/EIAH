@@ -244,7 +244,7 @@ Execução corrente:
   - com detalhamento em:
     - `docs/plans/imob-follow-up-agent-e2e-implementation-plan.md`
   - slice atual:
-    - `PR-FOLLOW1 — canonical commercial follow-up snapshot`
+    - `PR-FOLLOW3 — prepared outreach and business read hardening`
 
 ---
 

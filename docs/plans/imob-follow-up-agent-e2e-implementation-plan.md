@@ -26,7 +26,7 @@ O objetivo desta frente é fechar:
 
 Status:
 
-- `em andamento`
+- `concluído no runtime`
 
 Objetivo:
 
@@ -56,7 +56,7 @@ Critério:
 
 Status:
 
-- `planejado`
+- `concluído no runtime`
 
 Objetivo:
 
@@ -86,7 +86,7 @@ Critério:
 
 Status:
 
-- `planejado`
+- `próximo slice`
 
 Objetivo:
 

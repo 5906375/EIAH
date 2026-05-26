@@ -646,6 +646,42 @@ test("next action resolver uses canonical commercial follow-up snapshot even wit
   assert.equal(nextAction.reasonCode, "VISIT_REENGAGEMENT_REQUIRED");
 });
 
+test("next action resolver blocks on awaiting follow-up response before reopening the funnel", () => {
+  const nextAction = resolveImobNextAction({
+    mission: "schedule_and_follow_visit",
+    context: buildContext({
+      missionContext: {
+        mission: "schedule_visit",
+        lockedUntilExplicitChange: false,
+      },
+      commercialFollowUp: {
+        source: "follow_up_runtime",
+        status: "awaiting_response",
+        trigger: "no_response",
+        suggestedChannel: "whatsapp",
+        reasonCodes: ["FOLLOW_UP_RESPONSE_PENDING"],
+        summary: "O lead já recebeu o follow-up e o caso agora aguarda resposta antes de avançar.",
+        recommendedNextMove: "acompanhar a resposta do lead antes de reabrir visita ou proposta",
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: true,
+        leadReady: true,
+        leadReadinessScore: 82,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+    operation: "visit",
+    flow: "visit.schedule",
+    pendingFields: [],
+  });
+
+  assert.equal(nextAction.operation, "lead");
+  assert.equal(nextAction.reasonCode, "FOLLOW_UP_RESPONSE_PENDING");
+});
+
 test("next action resolver preserves disqualified lead review before reopening the funnel", () => {
   const nextAction = resolveImobNextAction({
     mission: "qualify_and_match_lead",

@@ -307,9 +307,53 @@ function buildLeadLifecycle(params: {
 function buildCommercialFollowUpSnapshot(params: {
   visitOutcome?: ImobVisitOutcomeSnapshotV1 | null;
   leadLifecycle?: ImobLeadLifecycleSnapshotV1 | null;
+  followUpDraft?: Record<string, unknown> | null;
 }): ImobCommercialFollowUpSnapshotV1 | null {
   const visitOutcome = params.visitOutcome ?? null;
   const leadLifecycle = params.leadLifecycle ?? null;
+  const followUpDraft = params.followUpDraft ?? null;
+
+  const draftStatus = asString(followUpDraft?.status);
+  const draftTrigger = asString(followUpDraft?.trigger);
+  const draftChannel = asString(followUpDraft?.suggestedChannel);
+
+  if (
+    draftStatus === "pending"
+    || draftStatus === "awaiting_response"
+    || draftStatus === "reengagement_required"
+  ) {
+    return {
+      source: "follow_up_runtime",
+      status: draftStatus === "pending" ? "follow_up_required" : draftStatus,
+      trigger: draftTrigger ?? "generic",
+      suggestedChannel:
+        draftChannel === "whatsapp"
+        || draftChannel === "phone"
+        || draftChannel === "email"
+        || draftChannel === "internal"
+          ? draftChannel
+          : "internal",
+      reasonCodes: [
+        draftStatus === "awaiting_response"
+          ? "FOLLOW_UP_RESPONSE_PENDING"
+          : draftStatus === "reengagement_required"
+            ? "FOLLOW_UP_REENGAGEMENT_REQUIRED"
+            : "FOLLOW_UP_PENDING",
+      ],
+      summary:
+        draftStatus === "awaiting_response"
+          ? "O caso está em follow-up ativo e agora aguarda resposta antes de reabrir a próxima etapa."
+          : draftStatus === "reengagement_required"
+            ? "O caso já pede reengajamento comercial explícito antes do próximo handoff."
+            : "O caso está em follow-up comercial ativo antes de avançar para a próxima etapa.",
+      recommendedNextMove:
+        draftStatus === "awaiting_response"
+          ? "acompanhar a resposta do lead antes de propor novo movimento"
+          : draftStatus === "reengagement_required"
+            ? "retomar o caso com novo gatilho comercial ou objeção tratada"
+            : "executar um único follow-up comercial governado",
+    };
+  }
 
   if (visitOutcome?.status === "follow_up_required") {
     return {
@@ -1080,6 +1124,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
   const commissionDraft = asObject(operational.commissionDraft);
   const listingDraft = asObject(operational.listingDraft);
   const campaignDraft = asObject(operational.campaignDraft);
+  const followUpDraft = asObject(operational.followUpDraft);
   const operationalMissionContext = asObject(operational.missionContext);
   const marketScanRecommendation = buildMarketScanRecommendation({ operational });
   const dedupe = buildDedupeSnapshot({ flow, operational });
@@ -1145,6 +1190,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
   const commercialFollowUp = buildCommercialFollowUpSnapshot({
     visitOutcome,
     leadLifecycle,
+    followUpDraft,
   });
 
   const baseContext: ImobCaseContextV1 = {
