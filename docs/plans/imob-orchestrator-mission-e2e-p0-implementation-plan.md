@@ -291,7 +291,7 @@ Execução corrente:
   - com detalhamento em:
     - `docs/plans/imob-crm-continuity-hardening-phase-1-plan.md`
   - slice atual:
-    - `PR-FIX-IMOB-CONTINUITY-2 — stale action invalidation after state transition`
+    - `PR-FIX-IMOB-CONTINUITY-4 — real journey regression suite`
 
 ---
 

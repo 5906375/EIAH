@@ -109,6 +109,10 @@ Título:
 
 - `real journey regression suite`
 
+Status:
+
+- `em andamento`
+
 Objetivo:
 
 - parar de depender de teste manual para descobrir regressão de continuidade.
