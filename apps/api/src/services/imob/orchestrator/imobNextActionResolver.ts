@@ -254,6 +254,30 @@ export function resolveImobNextAction(params: ResolveNextActionParams): ImobNext
       });
 
     case "schedule_and_follow_visit":
+      if (params.context.visitScheduling?.status === "awaiting_reschedule") {
+        return mapOperationAction("visit", params.flow, {
+          id: "reschedule-visit",
+          label: "Remarcar visita",
+          reasonCode: "VISIT_RESCHEDULE_REQUIRED",
+        });
+      }
+
+      if (params.context.visitScheduling?.status === "cancel_requested") {
+        return mapOperationAction("visit", params.flow, {
+          id: "review-visit-cancellation",
+          label: "Confirmar cancelamento da visita",
+          reasonCode: "VISIT_CANCELLATION_REVIEW_REQUIRED",
+        });
+      }
+
+      if (params.context.visitScheduling?.status === "pending_confirmation") {
+        return mapOperationAction("visit", params.flow, {
+          id: "confirm-visit-scheduling",
+          label: "Confirmar agenda da visita",
+          reasonCode: "VISIT_SCHEDULING_PENDING",
+        });
+      }
+
       if (params.context.entities.proposal?.status === "ready_for_review") {
         return mapLeadAction(params.flow, {
           id: "review-proposal",
@@ -267,22 +291,6 @@ export function resolveImobNextAction(params: ResolveNextActionParams): ImobNext
           id: "prepare-proposal",
           label: "Preparar proposta",
           reasonCode: "PROPOSAL_REQUIRED",
-        });
-      }
-
-      if (params.context.visitScheduling?.status === "awaiting_reschedule") {
-        return mapOperationAction("visit", params.flow, {
-          id: "reschedule-visit",
-          label: "Remarcar visita",
-          reasonCode: "VISIT_RESCHEDULE_REQUIRED",
-        });
-      }
-
-      if (params.context.visitScheduling?.status === "pending_confirmation") {
-        return mapOperationAction("visit", params.flow, {
-          id: "confirm-visit-scheduling",
-          label: "Confirmar agenda da visita",
-          reasonCode: "VISIT_SCHEDULING_PENDING",
         });
       }
 

@@ -3,7 +3,7 @@
 Status: rebaseline operacional  
 Prioridade: P0/P1 para Track P IMOB  
 Data de referência: 2026-05-26  
-Versão do plano: v5.1 — pragmática para execução com continuidade derivada do canônico, `DocumentAgent E2E` e `DedupeAgent E2E` concluídos no runtime e `VisitAgent E2E` aberto como próxima frente oficial  
+Versão do plano: v5.2 — pragmática para execução com continuidade derivada do canônico, `DocumentAgent E2E` e `DedupeAgent E2E` concluídos no runtime e `VisitAgent E2E` aberto como próxima frente oficial com `PR-VISIT1` e `PR-VISIT2` concluídos  
 Escopo: fechamento E2E do `IMOB_Orchestrator` como dono real das missões imobiliárias, preservando arquitetura agent-driven, estado canônico, recuperação confiável, próxima ação única, controle de concorrência seguro para side effects, compatibilidade com casos legados e proof mínimo determinístico por missão.
 
 ---
@@ -168,6 +168,7 @@ Próximas frentes oficiais a partir deste ponto:
 6. `VisitAgent E2E`
    - Status: `próxima frente oficial`
    - `PR-VISIT1` concluído: canonical visit scheduling snapshot
+   - `PR-VISIT2` concluído: reschedule/cancel flow
    - foco:
      - agenda governada de visita;
      - remarcação e cancelamento sem drift;
@@ -204,7 +205,7 @@ Execução corrente:
   - com detalhamento em:
     - `docs/plans/imob-visit-agent-e2e-implementation-plan.md`
   - slice em andamento:
-    - `PR-VISIT2 — reschedule/cancel flow`
+    - `PR-VISIT3 — post-visit outcome and proposal handoff`
 
 ---
 

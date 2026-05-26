@@ -1065,12 +1065,19 @@ function extractPreferredWindow(raw: string): ImobVisitDraft["preferredWindow"] 
 
 function buildVisitDraft(previous: ImobVisitDraft | undefined, message: string): ImobVisitDraft {
   const propertyIdMatch = message.match(/(?:imovel|imóvel|apartamento|apto|casa)\s*#?\s*(\d{2,})/i)?.[1] ?? null;
+  const normalized = normalizeImobText(message);
+  const status = normalized.includes("cancelar visita")
+    ? "cancel_requested"
+    : normalized.includes("reagendar visita") || normalized.includes("remarcar visita")
+      ? "awaiting_reschedule"
+      : previous?.status ?? null;
   return {
     propertyId: propertyIdMatch ? `property-${propertyIdMatch}` : previous?.propertyId ?? null,
     visitorName: extractNamedParty(message, "lead") ?? previous?.visitorName ?? null,
     visitorPhone: extractPhone(message) ?? previous?.visitorPhone ?? null,
     preferredDate: extractPreferredDate(message) ?? previous?.preferredDate ?? null,
     preferredWindow: extractPreferredWindow(message) ?? previous?.preferredWindow ?? null,
+    status,
   };
 }
 

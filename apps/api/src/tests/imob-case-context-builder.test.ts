@@ -456,6 +456,47 @@ test("IMOB case context v1 exposes a pending visit scheduling snapshot before th
   assert.equal(context.recoverySnapshot?.primaryAction?.operation, "visit.schedule");
 });
 
+test("IMOB case context v1 keeps visit cancellation review explicit before reopening the funnel", () => {
+  const context = buildImobCaseContextV1({
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    caseId: "case-visit-2",
+    caseContext: {
+      caseId: "case-visit-2",
+      flow: "visit.schedule",
+      lead: {
+        id: "lead-1",
+        name: "Maria",
+        goal: "locacao",
+        targetCity: "Itapema",
+        budgetMaxCents: 350000,
+      },
+      property: {
+        id: "property-1",
+        propertyType: "apartamento",
+        goal: "locacao",
+        city: "Itapema",
+        address: "Rua 700, 10",
+      },
+    },
+    operational: {
+      flow: "visit.schedule",
+      pendingFields: [],
+      visitDraft: {
+        propertyId: "property-1",
+        visitorName: "Maria",
+        visitorPhone: "47999998888",
+        preferredDate: "2026-06-05",
+        status: "cancel_requested",
+      },
+    },
+  });
+
+  assert.equal(context.visitScheduling?.status, "cancel_requested");
+  assert.match(context.visitScheduling?.summary ?? "", /cancelamento/i);
+  assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "VISIT_CANCELLATION_REVIEW_REQUIRED");
+});
+
 test("IMOB case context v1 preserves lead disqualification reason in canonical recovery", () => {
   const context = buildImobCaseContextV1({
     tenantId: "tenant-A",

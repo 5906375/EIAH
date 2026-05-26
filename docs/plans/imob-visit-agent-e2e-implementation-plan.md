@@ -54,7 +54,7 @@ Critério:
 
 Status:
 
-- `próximo slice`
+- `concluído`
 
 Objetivo:
 
@@ -79,7 +79,7 @@ Critério:
 
 Status:
 
-- `pendente`
+- `próximo slice`
 
 Objetivo:
 

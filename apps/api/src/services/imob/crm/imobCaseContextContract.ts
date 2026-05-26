@@ -103,7 +103,7 @@ export type ImobLeadLifecycleSnapshotV1 = {
 };
 
 export type ImobVisitSchedulingSnapshotV1 = {
-  status: "pending_confirmation" | "scheduled" | "awaiting_reschedule";
+  status: "pending_confirmation" | "scheduled" | "awaiting_reschedule" | "cancel_requested";
   propertyId?: string | null;
   visitorName?: string | null;
   visitorPhone?: string | null;

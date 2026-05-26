@@ -608,6 +608,12 @@ function buildVisitSchedulingSnapshot(params: {
   }
 
   const status: ImobVisitSchedulingSnapshotV1["status"] = (
+    requestedStatus === "cancel_requested"
+    || requestedStatus === "cancelamento_pendente"
+    || requestedStatus === "cancellation_requested"
+  )
+    ? "cancel_requested"
+    : (
     requestedStatus === "awaiting_reschedule"
     || requestedStatus === "reschedule_requested"
     || requestedStatus === "remarcacao_pendente"
@@ -626,11 +632,15 @@ function buildVisitSchedulingSnapshot(params: {
     preferredWindow,
     summary: status === "scheduled"
       ? `A visita já está agendada${preferredDate ? ` para ${preferredDate}` : ""}${preferredWindow ? ` no período da ${preferredWindow}` : ""}.`
+      : status === "cancel_requested"
+        ? "A visita está com pedido de cancelamento pendente de confirmação antes de encerrar este passo."
       : status === "awaiting_reschedule"
         ? "A visita precisa ser remarcada antes de seguir para o pós-visita."
         : "A agenda da visita ainda precisa de confirmação antes de seguir.",
     recommendedNextMove: status === "scheduled"
       ? "confirmar resultado da visita e preparar o próximo movimento comercial"
+      : status === "cancel_requested"
+        ? "confirmar o cancelamento da visita ou definir um novo encaminhamento"
       : status === "awaiting_reschedule"
         ? "remarcar a visita com novo slot válido"
         : "confirmar os dados pendentes da agenda da visita",

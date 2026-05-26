@@ -184,8 +184,20 @@ function mapCanonicalNextActionToPlanAction(context: ImobCaseContextV1): ImobCas
   if (nextAction.operation === "visit") {
     return action({
       operation: "visit.schedule",
-      label: nextAction.reasonCode === "VISIT_REQUIRED" ? "Avançar para visita" : "Agendar visita",
-      nextMessage: nextAction.reasonCode === "VISIT_REQUIRED" ? "vamos avançar para visita" : "agendar visita deste caso",
+      label: nextAction.reasonCode === "VISIT_REQUIRED"
+        ? "Avançar para visita"
+        : nextAction.reasonCode === "VISIT_RESCHEDULE_REQUIRED"
+          ? "Remarcar visita"
+          : nextAction.reasonCode === "VISIT_CANCELLATION_REVIEW_REQUIRED"
+            ? "Confirmar cancelamento da visita"
+            : "Confirmar agenda da visita",
+      nextMessage: nextAction.reasonCode === "VISIT_REQUIRED"
+        ? "vamos avançar para visita"
+        : nextAction.reasonCode === "VISIT_RESCHEDULE_REQUIRED"
+          ? "remarcar visita deste caso"
+          : nextAction.reasonCode === "VISIT_CANCELLATION_REVIEW_REQUIRED"
+            ? "confirmar cancelamento da visita deste caso"
+            : "confirmar agenda da visita deste caso",
       reasonCode: nextAction.reasonCode,
     });
   }
@@ -281,11 +293,15 @@ function buildMissingItems(context: ImobCaseContextV1) {
     : [];
   const visitMissingItems = context.missionContext?.mission === "schedule_visit" && context.visitScheduling
     ? (
+      context.visitScheduling.status === "cancel_requested"
+        ? ["confirmação do cancelamento da visita"]
+        : (
       context.visitScheduling.status === "awaiting_reschedule"
         ? ["remarcação da visita"]
         : context.visitScheduling.status === "pending_confirmation"
           ? ["confirmação da agenda da visita"]
           : []
+        )
     )
     : [];
   const blockerItems = context.blockers

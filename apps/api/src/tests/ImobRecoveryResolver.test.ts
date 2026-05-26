@@ -701,6 +701,85 @@ test("recovery response keeps visit scheduling pending explicit before the slot 
   assert.match(response.summary, /confirmação da agenda da visita/i);
 });
 
+test("recovery response keeps visit cancellation review explicit in the active case", () => {
+  const response = resolveImobRecoveryResponse({
+    intent: "what_is_missing",
+    context: buildContext({
+      missionContext: {
+        mission: "schedule_visit",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        lead: { id: "lead-1", name: "Maria", desiredGoal: "locacao", desiredCity: "Itapema" },
+        property: { id: "property-1", goal: "locacao", city: "Itapema", address: "Rua 700, 10" },
+        visit: { id: "visit-1", status: "scheduled" },
+      },
+      visitScheduling: {
+        status: "cancel_requested",
+        propertyId: "property-1",
+        visitorName: "Maria",
+        visitorPhone: "47999998888",
+        preferredDate: "2026-06-05",
+        preferredWindow: "tarde",
+        summary: "A visita está com pedido de cancelamento pendente de confirmação antes de encerrar este passo.",
+        recommendedNextMove: "confirmar o cancelamento da visita ou definir um novo encaminhamento",
+      },
+      canonicalCaseState: {
+        schemaVersion: 1,
+        tenantId: "tenant-A",
+        workspaceId: "workspace-A",
+        caseId: "case-1",
+        mission: "schedule_and_follow_visit",
+        missionStatus: "in_progress",
+        currentStep: "visit_cancellation_review",
+        currentOperation: "visit",
+        entities: {
+          leadId: "lead-1",
+          propertyId: "property-1",
+          visitId: "visit-1",
+        },
+        readiness: {
+          lead: "ready",
+          property: "ready",
+          proof: "not_applicable",
+        },
+        blockers: [],
+        pendingFields: [],
+        nextAction: {
+          id: "review-visit-cancellation",
+          label: "Confirmar cancelamento da visita",
+          operation: "visit",
+          targetAgent: "IMOB_VisitAgent",
+          reasonCode: "VISIT_CANCELLATION_REVIEW_REQUIRED",
+        },
+        proof: {
+          required: false,
+          minimumProofSatisfied: true,
+          missingProof: [],
+        },
+        audit: {
+          version: 1,
+          lastUpdatedAt: "2026-05-26T10:00:00.000Z",
+          updatedByAgent: "IMOB",
+        },
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: true,
+        leadReady: true,
+        leadReadinessScore: 82,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+  });
+
+  assert.equal(response.primaryAction?.operation, "visit.schedule");
+  assert.equal(response.primaryAction?.reasonCode, "VISIT_CANCELLATION_REVIEW_REQUIRED");
+  assert.match(response.summary, /cancelamento da visita/i);
+});
+
 test("recovery response preserves disqualification reason without reopening resolved lead fields", () => {
   const response = resolveImobRecoveryResponse({
     intent: "consult_case",

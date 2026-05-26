@@ -20,6 +20,7 @@ type VisitDraft = {
   visitorPhone?: unknown;
   preferredDate?: unknown;
   preferredWindow?: unknown;
+  status?: unknown;
 };
 
 type PersistedLeadSummary = {
@@ -268,6 +269,13 @@ export async function hydrateThreadStateWithPersistedLead(params: {
       params.helpers.asString(visitDraft.preferredWindow) === "tarde" ||
       params.helpers.asString(visitDraft.preferredWindow) === "noite"
         ? params.helpers.asString(visitDraft.preferredWindow)
+        : null,
+    status:
+      params.helpers.asString(visitDraft.status) === "pending_confirmation"
+      || params.helpers.asString(visitDraft.status) === "scheduled"
+      || params.helpers.asString(visitDraft.status) === "awaiting_reschedule"
+      || params.helpers.asString(visitDraft.status) === "cancel_requested"
+        ? params.helpers.asString(visitDraft.status)
         : null,
   } as const;
   const pendingVisitFields: string[] = [];

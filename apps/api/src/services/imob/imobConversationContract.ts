@@ -404,6 +404,7 @@ export type ImobVisitDraft = {
   visitorPhone: string | null;
   preferredDate: string | null;
   preferredWindow: "manha" | "tarde" | "noite" | null;
+  status?: "pending_confirmation" | "scheduled" | "awaiting_reschedule" | "cancel_requested" | null;
 };
 
 export type ImobListingDraft = {
