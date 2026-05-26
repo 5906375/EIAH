@@ -2317,6 +2317,97 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     return Array.from(new Set(blockers.map((item) => String(item)).filter(Boolean)));
   }
 
+  function inferNarrativeWaitingOn(params: {
+    caseContext: ImobCrmCaseContext;
+    primaryBlocker: string | null;
+    primaryPending: string | null;
+    pendingItems: string[];
+  }) {
+    const signals = [
+      params.primaryBlocker,
+      params.primaryPending,
+      ...params.pendingItems,
+      helpers.asString(params.caseContext?.nextStep),
+    ]
+      .map((item) => helpers.normalizeImobRouteText(String(item ?? "")))
+      .filter(Boolean);
+
+    const hasOwnerSignal = signals.some((item) =>
+      item.includes("proprietario")
+      || item.includes("ownerdocument")
+      || item.includes("nome do proprietario")
+      || item.includes("telefone do proprietario")
+      || item.includes("e-mail do proprietario"),
+    );
+    if (hasOwnerSignal) return "owner" as const;
+
+    const hasFinanceSignal = signals.some((item) =>
+      item.includes("finance")
+      || item.includes("comissao")
+      || item.includes("repasse")
+      || item.includes("sinal"),
+    );
+    if (hasFinanceSignal) return "finance" as const;
+
+    const hasLegalSignal = signals.some((item) =>
+      item.includes("contrato")
+      || item.includes("matricula")
+      || item.includes("escritura")
+      || item.includes("jurid"),
+    );
+    if (hasLegalSignal) return "legal" as const;
+
+    const hasProposalSignal = signals.some((item) =>
+      item.includes("proposta")
+      || item.includes("contraproposta")
+      || item.includes("aprovacao")
+      || item.includes("negoci"),
+    );
+    if (hasProposalSignal) return "broker" as const;
+
+    const hasLeadSignal = signals.some((item) =>
+      item.includes("lead")
+      || item.includes("comprador")
+      || item.includes("locatario")
+      || item.includes("cliente")
+      || item.includes("visita"),
+    );
+    if (hasLeadSignal) return "lead" as const;
+
+    const hasPropertySignal = signals.some((item) =>
+      item.includes("imovel")
+      || item.includes("endereco")
+      || item.includes("preco do imovel")
+      || item.includes("valor do imovel"),
+    );
+    if (hasPropertySignal) return "broker" as const;
+
+    return params.caseContext?.humanWorkflow?.waitingOn ?? null;
+  }
+
+  function inferNarrativeNextActionOwner(params: {
+    caseContext: ImobCrmCaseContext;
+    waitingOn: ReturnType<typeof inferNarrativeWaitingOn>;
+  }) {
+    const explicitOwner = helpers.asString(params.caseContext?.humanWorkflow?.nextActionOwner)
+      ?? helpers.asString(params.caseContext?.ownerResponsible);
+    if (explicitOwner) return explicitOwner;
+    switch (params.waitingOn) {
+      case "legal":
+        return "Jurídico";
+      case "finance":
+        return "Financeiro";
+      case "owner":
+      case "lead":
+      case "broker":
+        return "Corretor";
+      case "internal":
+        return "Operação";
+      default:
+        return null;
+    }
+  }
+
   function buildImobBusinessWorkflowContext(params: {
     caseContext: ImobCrmCaseContext;
     pendingItems: string[];
@@ -2665,8 +2756,17 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     const subject = formatImobBusinessSubject(caseContext);
     const humanPhase = helpers.asString(caseContext?.humanJourney?.phase);
     const humanPhaseLabel = humanPhase ? titleCaseJourneyPhase(humanPhase) : journeyLabel;
-	    const waitingOn = formatWaitingOnLabel(caseContext?.humanWorkflow?.waitingOn ?? null);
-    const nextActionOwner = helpers.asString(caseContext?.humanWorkflow?.nextActionOwner) ?? helpers.asString(caseContext?.ownerResponsible);
+    const normalizedWaitingOn = inferNarrativeWaitingOn({
+      caseContext,
+      primaryBlocker,
+      primaryPending,
+      pendingItems,
+    });
+    const waitingOn = formatWaitingOnLabel(normalizedWaitingOn);
+    const nextActionOwner = inferNarrativeNextActionOwner({
+      caseContext,
+      waitingOn: normalizedWaitingOn,
+    });
     const specialists = (helpers.resolveImobBackingSpecialists(caseContext) as any[] | null | undefined) ?? [];
     const primarySpecialist = specialists[0] ? buildSpecialistSupportLine(specialists[0]) : null;
     const shouldExposeSpecialistSupport = intent === "pipeline_status";
@@ -2683,7 +2783,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       phaseObjective: helpers.asString(caseContext?.humanJourney?.phaseObjective),
       primaryBlocker,
       primaryPending,
-      waitingOn: (caseContext?.humanWorkflow?.waitingOn ?? null) as any,
+      waitingOn: normalizedWaitingOn as any,
       nextActionOwner,
       nextStep,
       primarySpecialistAgentId: primarySpecialist?.consultive.agentId ?? null,
@@ -2692,7 +2792,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     const preparedFollowUp = buildPreparedFollowUp({
       subject,
       humanPhaseLabel,
-      waitingOn: (caseContext?.humanWorkflow?.waitingOn ?? null) as any,
+      waitingOn: normalizedWaitingOn as any,
       primaryBlocker,
       primaryPending,
       nextStep,
@@ -2929,7 +3029,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       consultiveRead: {
         phase: humanPhaseLabel,
         blocker: primaryBlocker ?? null,
-        waitingOn: caseContext?.humanWorkflow?.waitingOn ?? null,
+        waitingOn: normalizedWaitingOn ?? null,
         nextActionOwner: nextActionOwner ?? null,
         nextSafeStep: nextStep,
         specialists: shouldExposeSpecialistSupport
