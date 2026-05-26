@@ -148,6 +148,24 @@ function mapCanonicalNextActionToPlanAction(context: ImobCaseContextV1): ImobCas
       });
     }
 
+    if (nextAction.reasonCode === "VISIT_FOLLOW_UP_REQUIRED") {
+      return action({
+        operation: "lead.qualify",
+        label: "Retomar pós-visita",
+        nextMessage: "retomar follow-up pós-visita deste caso",
+        reasonCode: nextAction.reasonCode,
+      });
+    }
+
+    if (nextAction.reasonCode === "VISIT_REENGAGEMENT_REQUIRED") {
+      return action({
+        operation: "lead.qualify",
+        label: "Reengajar lead após visita",
+        nextMessage: "reengajar lead após a visita deste caso",
+        reasonCode: nextAction.reasonCode,
+      });
+    }
+
     return action({
       operation: "lead.qualify",
       label: "Retomar lead",
@@ -188,8 +206,10 @@ function mapCanonicalNextActionToPlanAction(context: ImobCaseContextV1): ImobCas
         ? "Avançar para visita"
         : nextAction.reasonCode === "VISIT_RESCHEDULE_REQUIRED"
           ? "Remarcar visita"
-          : nextAction.reasonCode === "VISIT_CANCELLATION_REVIEW_REQUIRED"
+        : nextAction.reasonCode === "VISIT_CANCELLATION_REVIEW_REQUIRED"
             ? "Confirmar cancelamento da visita"
+            : nextAction.reasonCode === "VISIT_OUTCOME_REQUIRED"
+              ? "Registrar resultado da visita"
             : "Confirmar agenda da visita",
       nextMessage: nextAction.reasonCode === "VISIT_REQUIRED"
         ? "vamos avançar para visita"
@@ -197,6 +217,8 @@ function mapCanonicalNextActionToPlanAction(context: ImobCaseContextV1): ImobCas
           ? "remarcar visita deste caso"
           : nextAction.reasonCode === "VISIT_CANCELLATION_REVIEW_REQUIRED"
             ? "confirmar cancelamento da visita deste caso"
+            : nextAction.reasonCode === "VISIT_OUTCOME_REQUIRED"
+              ? "registrar resultado da visita deste caso"
             : "confirmar agenda da visita deste caso",
       reasonCode: nextAction.reasonCode,
     });
@@ -292,17 +314,15 @@ function buildMissingItems(context: ImobCaseContextV1) {
       })()
     : [];
   const visitMissingItems = context.missionContext?.mission === "schedule_visit" && context.visitScheduling
-    ? (
-      context.visitScheduling.status === "cancel_requested"
-        ? ["confirmação do cancelamento da visita"]
-        : (
-      context.visitScheduling.status === "awaiting_reschedule"
-        ? ["remarcação da visita"]
-        : context.visitScheduling.status === "pending_confirmation"
-          ? ["confirmação da agenda da visita"]
-          : []
-        )
-    )
+    ? (() => {
+        if (context.visitScheduling.status === "cancel_requested") return ["confirmação do cancelamento da visita"];
+        if (context.visitScheduling.status === "awaiting_reschedule") return ["remarcação da visita"];
+        if (context.visitScheduling.status === "pending_confirmation") return ["confirmação da agenda da visita"];
+        if (context.visitOutcome?.status === "pending_result") return ["resultado da visita"];
+        if (context.visitOutcome?.status === "follow_up_required") return ["follow-up pós-visita"];
+        if (context.visitOutcome?.status === "reengagement_required") return ["reengajamento comercial pós-visita"];
+        return [];
+      })()
     : [];
   const blockerItems = context.blockers
     .filter((item) => item.severity === "blocking" || item.severity === "warning")
@@ -388,6 +408,9 @@ export function resolveImobRecoveryResponse(params: {
   const visitSchedulingSummary = params.context.missionContext?.mission === "schedule_visit"
     ? params.context.visitScheduling?.summary
     : null;
+  const visitOutcomeSummary = params.context.missionContext?.mission === "schedule_visit"
+    ? params.context.visitOutcome?.summary
+    : null;
   const documentSufficiencySummary = params.context.missionContext?.mission === "prepare_contract"
     ? params.context.documentSufficiency?.summary
     : null;
@@ -399,6 +422,7 @@ export function resolveImobRecoveryResponse(params: {
   const dedupeSentence = dedupeSummary ? ` ${dedupeSummary}` : "";
   const marketScanSentence = marketScanSummary ? ` ${marketScanSummary}` : "";
   const visitSchedulingSentence = visitSchedulingSummary ? ` ${visitSchedulingSummary}` : "";
+  const visitOutcomeSentence = visitOutcomeSummary ? ` ${visitOutcomeSummary}` : "";
   const documentChecklistSentence = documentChecklistSummary ? ` ${documentChecklistSummary}` : "";
   const documentSufficiencySentence = documentSufficiencySummary ? ` ${documentSufficiencySummary}` : "";
 
@@ -408,8 +432,8 @@ export function resolveImobRecoveryResponse(params: {
       intent: params.intent,
       title: "Pendências do caso",
       summary: snapshot.missingItems.length > 0
-        ? `Ainda faltam ${snapshot.missingItems.join(" • ")}.${leadContextSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${documentChecklistSentence}${documentSufficiencySentence}`
-        : `Não há pendências explícitas; posso seguir pelo próximo passo principal.${leadContextSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${documentChecklistSentence}${documentSufficiencySentence}`,
+        ? `Ainda faltam ${snapshot.missingItems.join(" • ")}.${leadContextSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${visitOutcomeSentence}${documentChecklistSentence}${documentSufficiencySentence}`
+        : `Não há pendências explícitas; posso seguir pelo próximo passo principal.${leadContextSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${visitOutcomeSentence}${documentChecklistSentence}${documentSufficiencySentence}`,
       blockers: snapshot.blockers,
       missingItems: snapshot.missingItems,
       primaryAction: snapshot.primaryAction,
@@ -425,8 +449,8 @@ export function resolveImobRecoveryResponse(params: {
       intent: params.intent,
       title: "Próximo passo",
       summary: snapshot.primaryAction
-        ? `O próximo passo seguro é ${snapshot.primaryAction.label.toLowerCase()}.${leadContextSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${documentChecklistSentence}${documentSufficiencySentence}`
-        : `O próximo passo não está explícito; posso abrir o caso para recompor o estado.${leadContextSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${documentChecklistSentence}${documentSufficiencySentence}`,
+        ? `O próximo passo seguro é ${snapshot.primaryAction.label.toLowerCase()}.${leadContextSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${visitOutcomeSentence}${documentChecklistSentence}${documentSufficiencySentence}`
+        : `O próximo passo não está explícito; posso abrir o caso para recompor o estado.${leadContextSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${visitOutcomeSentence}${documentChecklistSentence}${documentSufficiencySentence}`,
       blockers: snapshot.blockers,
       missingItems: snapshot.missingItems,
       primaryAction: snapshot.primaryAction,
@@ -442,8 +466,8 @@ export function resolveImobRecoveryResponse(params: {
       intent: params.intent,
       title: "Retomada do caso",
       summary: snapshot.primaryAction
-        ? `Vamos retomar a partir de ${snapshot.primaryAction.label.toLowerCase()}.${leadContextSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${documentChecklistSentence}${documentSufficiencySentence}`
-        : `Posso retomar o caso abrindo o resumo operacional mais recente.${leadContextSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${documentChecklistSentence}${documentSufficiencySentence}`,
+        ? `Vamos retomar a partir de ${snapshot.primaryAction.label.toLowerCase()}.${leadContextSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${visitOutcomeSentence}${documentChecklistSentence}${documentSufficiencySentence}`
+        : `Posso retomar o caso abrindo o resumo operacional mais recente.${leadContextSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${visitOutcomeSentence}${documentChecklistSentence}${documentSufficiencySentence}`,
       blockers: snapshot.blockers,
       missingItems: snapshot.missingItems,
       primaryAction: snapshot.primaryAction,
@@ -458,8 +482,8 @@ export function resolveImobRecoveryResponse(params: {
     intent: params.intent,
     title: "Resumo do caso",
     summary: snapshot.blockers.length > 0
-      ? `Caso em ${snapshot.stage} com bloqueios ativos e próxima ação já resolvida.${leadContextSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${documentChecklistSentence}${documentSufficiencySentence}`
-      : `Caso em ${snapshot.stage} com próxima ação já resolvida.${leadContextSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${documentChecklistSentence}${documentSufficiencySentence}`,
+      ? `Caso em ${snapshot.stage} com bloqueios ativos e próxima ação já resolvida.${leadContextSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${visitOutcomeSentence}${documentChecklistSentence}${documentSufficiencySentence}`
+      : `Caso em ${snapshot.stage} com próxima ação já resolvida.${leadContextSentence}${dedupeSentence}${marketScanSentence}${visitSchedulingSentence}${visitOutcomeSentence}${documentChecklistSentence}${documentSufficiencySentence}`,
     blockers: snapshot.blockers,
     missingItems: snapshot.missingItems,
     primaryAction: snapshot.primaryAction,

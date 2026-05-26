@@ -12,6 +12,7 @@ import type {
   ImobOwnerSnapshotV1,
   ImobPropertyGoalV1,
   ImobPropertySnapshotV1,
+  ImobVisitOutcomeSnapshotV1,
   ImobVisitSchedulingSnapshotV1,
 } from "./imobCaseContextContract";
 import { resolveCanonicalCaseStateFromLegacy } from "../orchestrator/imobLegacyCompatibilityResolver";
@@ -647,6 +648,46 @@ function buildVisitSchedulingSnapshot(params: {
   };
 }
 
+function buildVisitOutcomeSnapshot(params: {
+  visitScheduling?: ImobVisitSchedulingSnapshotV1 | null;
+  visitDraft?: Record<string, unknown> | null;
+}): ImobVisitOutcomeSnapshotV1 | null {
+  const visitScheduling = params.visitScheduling ?? null;
+  const draft = params.visitDraft ?? {};
+  const requestedOutcome = normalizeText(asString(draft.outcome) ?? "");
+
+  if (!visitScheduling || visitScheduling.status !== "scheduled") {
+    return null;
+  }
+
+  const status: ImobVisitOutcomeSnapshotV1["status"] = requestedOutcome === "proposal_ready"
+    ? "proposal_ready"
+    : requestedOutcome === "follow_up_required"
+      ? "follow_up_required"
+      : requestedOutcome === "reengagement_required"
+        ? "reengagement_required"
+        : "pending_result";
+
+  return {
+    status,
+    summary: status === "proposal_ready"
+      ? "A visita confirmou avanço comercial e o caso já pode seguir para proposta."
+      : status === "follow_up_required"
+        ? "A visita ocorreu, mas o caso pede follow-up antes de preparar proposta."
+        : status === "reengagement_required"
+          ? "A visita gerou objeção ou perda de timing e o caso pede reengajamento antes de voltar à proposta."
+          : "A visita está agendada, mas o resultado ainda não foi registrado no caso.",
+    recommendedNextMove: status === "proposal_ready"
+      ? "preparar proposta com base no interesse confirmado na visita"
+      : status === "follow_up_required"
+        ? "retomar o lead com um único follow-up pós-visita"
+        : status === "reengagement_required"
+          ? "registrar a objeção principal e definir gatilho de retomada"
+          : "registrar o resultado da visita antes de decidir proposta ou follow-up",
+    objectionLabel: status === "reengagement_required" ? "objeção pós-visita" : null,
+  };
+}
+
 function buildProposalSnapshot(params: {
   proposalDraft?: Record<string, unknown> | null;
 }) {
@@ -915,6 +956,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
   const property = buildPropertySnapshot({ property: params.caseContext?.property, propertyDraft });
   const visit = buildVisitSnapshot({ visitDraft });
   const visitScheduling = buildVisitSchedulingSnapshot({ visitDraft });
+  const visitOutcome = buildVisitOutcomeSnapshot({ visitScheduling, visitDraft });
   const proposal = buildProposalSnapshot({ proposalDraft });
   const contract = buildContractSnapshot({ contractDraft });
   const commission = buildCommissionSnapshot({ commissionDraft });
@@ -1008,6 +1050,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
     leadMatching,
     leadLifecycle,
     visitScheduling,
+    visitOutcome,
     marketScanRecommendation,
     documentChecklist,
     documentSufficiency,

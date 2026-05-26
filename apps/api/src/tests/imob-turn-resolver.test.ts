@@ -335,6 +335,20 @@ test("IMOB turn resolver keeps visit reschedule request explicit in the visit dr
   assert.equal(result.conversationState.operational?.visitDraft?.status, "awaiting_reschedule");
 });
 
+test("IMOB turn resolver maps explicit proposal interest after the visit into proposal flow", () => {
+  const result = resolveImobTurn({
+    message: "Visita realizada no imóvel 82912 e cliente quer proposta",
+    access: {
+      tenantId: "tenant-A",
+      workspaceId: "workspace-A",
+      entitlements: { REAL_ESTATE_CORE: true },
+    },
+  });
+
+  assert.equal(result.conversationState.operational?.flow, "proposal.create");
+  assert.equal(result.conversationState.operational?.proposalDraft?.propertyId, "property-82912");
+});
+
 test("IMOB turn resolver builds guided form for document validation", () => {
   const result = resolveImobTurn({
     message: "validar documento",

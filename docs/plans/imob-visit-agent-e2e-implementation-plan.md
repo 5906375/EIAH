@@ -79,7 +79,7 @@ Critério:
 
 Status:
 
-- `próximo slice`
+- `concluído`
 
 Objetivo:
 
@@ -111,6 +111,10 @@ O `VisitAgent E2E` só pode ser considerado fechado quando:
 - resultado de visita gera próximo passo único;
 - recovery permanece coerente no pós-visita;
 - o launcher continua apenas renderizando o contrato resolvido.
+
+Status atual:
+
+- `VisitAgent E2E` concluído no runtime.
 
 ---
 

@@ -21,6 +21,7 @@ type VisitDraft = {
   preferredDate?: unknown;
   preferredWindow?: unknown;
   status?: unknown;
+  outcome?: unknown;
 };
 
 type PersistedLeadSummary = {
@@ -276,6 +277,12 @@ export async function hydrateThreadStateWithPersistedLead(params: {
       || params.helpers.asString(visitDraft.status) === "awaiting_reschedule"
       || params.helpers.asString(visitDraft.status) === "cancel_requested"
         ? params.helpers.asString(visitDraft.status)
+        : null,
+    outcome:
+      params.helpers.asString(visitDraft.outcome) === "proposal_ready"
+      || params.helpers.asString(visitDraft.outcome) === "follow_up_required"
+      || params.helpers.asString(visitDraft.outcome) === "reengagement_required"
+        ? params.helpers.asString(visitDraft.outcome)
         : null,
   } as const;
   const pendingVisitFields: string[] = [];

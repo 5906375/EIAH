@@ -376,7 +376,7 @@ test("next action resolver asks to find compatible property when lead is ready b
   assert.equal(nextAction.reasonCode, "LEAD_PROPERTY_MATCH_PENDING");
 });
 
-test("next action resolver promotes scheduled visit into proposal preparation", () => {
+test("next action resolver promotes positive post-visit outcome into proposal preparation", () => {
   const nextAction = resolveImobNextAction({
     mission: "schedule_and_follow_visit",
     context: buildContext({
@@ -388,6 +388,21 @@ test("next action resolver promotes scheduled visit into proposal preparation", 
         lead: { id: "lead-1", name: "Maria", desiredGoal: "locacao", desiredCity: "Itapema" },
         property: { id: "property-1", goal: "locacao", city: "Itapema", address: "Rua 700, 10" },
         visit: { id: "visit-1", status: "scheduled" },
+      },
+      visitScheduling: {
+        status: "scheduled",
+        propertyId: "property-1",
+        visitorName: "Maria",
+        visitorPhone: "47999998888",
+        preferredDate: "2026-06-05",
+        preferredWindow: "tarde",
+        summary: "A visita já está agendada para 2026-06-05 no período da tarde.",
+        recommendedNextMove: "confirmar resultado da visita e preparar o próximo movimento comercial",
+      },
+      visitOutcome: {
+        status: "proposal_ready",
+        summary: "A visita confirmou avanço comercial e o caso já pode seguir para proposta.",
+        recommendedNextMove: "preparar proposta com base no interesse confirmado na visita",
       },
       readiness: {
         ownerReady: false,
@@ -490,6 +505,100 @@ test("next action resolver prioritizes visit cancellation review before proposal
 
   assert.equal(nextAction.operation, "visit");
   assert.equal(nextAction.reasonCode, "VISIT_CANCELLATION_REVIEW_REQUIRED");
+});
+
+test("next action resolver requires post-visit outcome before promoting proposal", () => {
+  const nextAction = resolveImobNextAction({
+    mission: "schedule_and_follow_visit",
+    context: buildContext({
+      missionContext: {
+        mission: "schedule_visit",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        lead: { id: "lead-1", name: "Maria", desiredGoal: "locacao", desiredCity: "Itapema" },
+        property: { id: "property-1", goal: "locacao", city: "Itapema", address: "Rua 700, 10" },
+        visit: { id: "visit-1", status: "scheduled" },
+      },
+      visitScheduling: {
+        status: "scheduled",
+        propertyId: "property-1",
+        visitorName: "Maria",
+        visitorPhone: "47999998888",
+        preferredDate: "2026-06-05",
+        preferredWindow: "tarde",
+        summary: "A visita já está agendada para 2026-06-05 no período da tarde.",
+        recommendedNextMove: "confirmar resultado da visita e preparar o próximo movimento comercial",
+      },
+      visitOutcome: {
+        status: "pending_result",
+        summary: "A visita está agendada, mas o resultado ainda não foi registrado no caso.",
+        recommendedNextMove: "registrar o resultado da visita antes de decidir proposta ou follow-up",
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: true,
+        leadReady: true,
+        leadReadinessScore: 82,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+    operation: "visit",
+    flow: "visit.schedule",
+    pendingFields: [],
+  });
+
+  assert.equal(nextAction.operation, "visit");
+  assert.equal(nextAction.reasonCode, "VISIT_OUTCOME_REQUIRED");
+});
+
+test("next action resolver routes post-visit follow-up before reopening proposal", () => {
+  const nextAction = resolveImobNextAction({
+    mission: "schedule_and_follow_visit",
+    context: buildContext({
+      missionContext: {
+        mission: "schedule_visit",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        lead: { id: "lead-1", name: "Maria", desiredGoal: "locacao", desiredCity: "Itapema" },
+        property: { id: "property-1", goal: "locacao", city: "Itapema", address: "Rua 700, 10" },
+        visit: { id: "visit-1", status: "scheduled" },
+      },
+      visitScheduling: {
+        status: "scheduled",
+        propertyId: "property-1",
+        visitorName: "Maria",
+        visitorPhone: "47999998888",
+        preferredDate: "2026-06-05",
+        preferredWindow: "tarde",
+        summary: "A visita já está agendada para 2026-06-05 no período da tarde.",
+        recommendedNextMove: "confirmar resultado da visita e preparar o próximo movimento comercial",
+      },
+      visitOutcome: {
+        status: "follow_up_required",
+        summary: "A visita ocorreu, mas o caso pede follow-up antes de preparar proposta.",
+        recommendedNextMove: "retomar o lead com um único follow-up pós-visita",
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: true,
+        leadReady: true,
+        leadReadinessScore: 82,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+    operation: "visit",
+    flow: "visit.schedule",
+    pendingFields: [],
+  });
+
+  assert.equal(nextAction.operation, "lead");
+  assert.equal(nextAction.reasonCode, "VISIT_FOLLOW_UP_REQUIRED");
 });
 
 test("next action resolver preserves disqualified lead review before reopening the funnel", () => {

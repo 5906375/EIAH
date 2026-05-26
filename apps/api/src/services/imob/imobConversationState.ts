@@ -1071,6 +1071,22 @@ function buildVisitDraft(previous: ImobVisitDraft | undefined, message: string):
     : normalized.includes("reagendar visita") || normalized.includes("remarcar visita")
       ? "awaiting_reschedule"
       : previous?.status ?? null;
+  const outcome = normalized.includes("visita realizada")
+    || normalized.includes("visita concluida")
+    || normalized.includes("visita concluída")
+    || normalized.includes("seguir com proposta")
+    || normalized.includes("cliente quer proposta")
+    ? "proposal_ready"
+    : normalized.includes("nao compareceu")
+      || normalized.includes("não compareceu")
+      || normalized.includes("fazer follow up")
+      || normalized.includes("fazer follow-up")
+      ? "follow_up_required"
+      : normalized.includes("obje")
+        || normalized.includes("pensar mais")
+        || normalized.includes("retomar depois")
+        ? "reengagement_required"
+        : previous?.outcome ?? null;
   return {
     propertyId: propertyIdMatch ? `property-${propertyIdMatch}` : previous?.propertyId ?? null,
     visitorName: extractNamedParty(message, "lead") ?? previous?.visitorName ?? null,
@@ -1078,6 +1094,7 @@ function buildVisitDraft(previous: ImobVisitDraft | undefined, message: string):
     preferredDate: extractPreferredDate(message) ?? previous?.preferredDate ?? null,
     preferredWindow: extractPreferredWindow(message) ?? previous?.preferredWindow ?? null,
     status,
+    outcome,
   };
 }
 

@@ -405,6 +405,7 @@ export type ImobVisitDraft = {
   preferredDate: string | null;
   preferredWindow: "manha" | "tarde" | "noite" | null;
   status?: "pending_confirmation" | "scheduled" | "awaiting_reschedule" | "cancel_requested" | null;
+  outcome?: "proposal_ready" | "follow_up_required" | "reengagement_required" | null;
 };
 
 export type ImobListingDraft = {

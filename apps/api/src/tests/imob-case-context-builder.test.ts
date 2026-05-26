@@ -376,7 +376,7 @@ test("IMOB case context v1 preserves market scan recommendation and suppresses p
   assert.equal(context.blockers.some((blocker) => blocker.code === "property_missing_or_incomplete"), false);
   assert.ok(context.blockers.some((blocker) => blocker.code === "market_scan_captar"));
 });
-test("IMOB case context v1 promotes a scheduled visit into proposal preparation", () => {
+test("IMOB case context v1 keeps scheduled visit in post-visit review until the outcome is explicit", () => {
   const context = buildImobCaseContextV1({
     tenantId: "tenant-A",
     workspaceId: "workspace-A",
@@ -413,7 +413,8 @@ test("IMOB case context v1 promotes a scheduled visit into proposal preparation"
 
   assert.equal(context.missionContext?.mission, "schedule_visit");
   assert.equal(context.entities.visit?.status, "scheduled");
-  assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "PROPOSAL_REQUIRED");
+  assert.equal(context.visitOutcome?.status, "pending_result");
+  assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "VISIT_OUTCOME_REQUIRED");
 });
 
 test("IMOB case context v1 exposes a pending visit scheduling snapshot before the slot is confirmed", () => {
@@ -495,6 +496,86 @@ test("IMOB case context v1 keeps visit cancellation review explicit before reope
   assert.equal(context.visitScheduling?.status, "cancel_requested");
   assert.match(context.visitScheduling?.summary ?? "", /cancelamento/i);
   assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "VISIT_CANCELLATION_REVIEW_REQUIRED");
+});
+
+test("IMOB case context v1 requires explicit post-visit outcome before preparing proposal", () => {
+  const context = buildImobCaseContextV1({
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    caseId: "case-visit-3",
+    caseContext: {
+      caseId: "case-visit-3",
+      flow: "visit.schedule",
+      lead: {
+        id: "lead-1",
+        name: "Maria",
+        goal: "locacao",
+        targetCity: "Itapema",
+        budgetMaxCents: 350000,
+      },
+      property: {
+        id: "property-1",
+        propertyType: "apartamento",
+        goal: "locacao",
+        city: "Itapema",
+        address: "Rua 700, 10",
+      },
+    },
+    operational: {
+      flow: "visit.schedule",
+      visitDraft: {
+        propertyId: "property-1",
+        visitorName: "Maria",
+        visitorPhone: "47999998888",
+        preferredDate: "2026-06-05",
+        preferredWindow: "tarde",
+      },
+    },
+  });
+
+  assert.equal(context.visitScheduling?.status, "scheduled");
+  assert.equal(context.visitOutcome?.status, "pending_result");
+  assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "VISIT_OUTCOME_REQUIRED");
+});
+
+test("IMOB case context v1 promotes post-visit proposal handoff only after explicit positive outcome", () => {
+  const context = buildImobCaseContextV1({
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    caseId: "case-visit-4",
+    caseContext: {
+      caseId: "case-visit-4",
+      flow: "visit.schedule",
+      lead: {
+        id: "lead-1",
+        name: "Maria",
+        goal: "locacao",
+        targetCity: "Itapema",
+        budgetMaxCents: 350000,
+      },
+      property: {
+        id: "property-1",
+        propertyType: "apartamento",
+        goal: "locacao",
+        city: "Itapema",
+        address: "Rua 700, 10",
+      },
+    },
+    operational: {
+      flow: "visit.schedule",
+      visitDraft: {
+        propertyId: "property-1",
+        visitorName: "Maria",
+        visitorPhone: "47999998888",
+        preferredDate: "2026-06-05",
+        preferredWindow: "tarde",
+        outcome: "proposal_ready",
+      },
+    },
+  });
+
+  assert.equal(context.visitOutcome?.status, "proposal_ready");
+  assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "PROPOSAL_REQUIRED");
 });
 
 test("IMOB case context v1 preserves lead disqualification reason in canonical recovery", () => {

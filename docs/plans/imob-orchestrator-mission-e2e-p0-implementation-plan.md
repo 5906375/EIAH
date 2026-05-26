@@ -3,7 +3,7 @@
 Status: rebaseline operacional  
 Prioridade: P0/P1 para Track P IMOB  
 Data de referência: 2026-05-26  
-Versão do plano: v5.2 — pragmática para execução com continuidade derivada do canônico, `DocumentAgent E2E` e `DedupeAgent E2E` concluídos no runtime e `VisitAgent E2E` aberto como próxima frente oficial com `PR-VISIT1` e `PR-VISIT2` concluídos  
+Versão do plano: v5.3 — pragmática para execução com continuidade derivada do canônico, `DocumentAgent E2E`, `DedupeAgent E2E` e `VisitAgent E2E` concluídos no runtime  
 Escopo: fechamento E2E do `IMOB_Orchestrator` como dono real das missões imobiliárias, preservando arquitetura agent-driven, estado canônico, recuperação confiável, próxima ação única, controle de concorrência seguro para side effects, compatibilidade com casos legados e proof mínimo determinístico por missão.
 
 ---
@@ -166,9 +166,10 @@ Próximas frentes oficiais a partir deste ponto:
      - `docs/plans/imob-dedupe-agent-e2e-implementation-plan.md`
 
 6. `VisitAgent E2E`
-   - Status: `próxima frente oficial`
+   - Status: `concluído`
    - `PR-VISIT1` concluído: canonical visit scheduling snapshot
    - `PR-VISIT2` concluído: reschedule/cancel flow
+   - `PR-VISIT3` concluído: post-visit outcome and proposal handoff
    - foco:
      - agenda governada de visita;
      - remarcação e cancelamento sem drift;
@@ -186,7 +187,7 @@ Ordem recomendada:
 - `MarketScanAgent E2E` já entregue;
 - `DocumentAgent E2E` já entregue;
 - `DedupeAgent E2E` já entregue;
-- próximo bloco oficial: `VisitAgent E2E`.
+- `VisitAgent E2E` já entregue.
 
 Justificativa:
 - `imobValidationEngine` endureceu a base comum de `Property`, `Owner`, `Lead` e `Documents`;
@@ -200,12 +201,9 @@ Execução corrente:
 
 - `DocumentAgent E2E` fica encerrado como frente concluída;
 - `DedupeAgent E2E` fica encerrado como frente concluída;
+- `VisitAgent E2E` fica encerrado como frente concluída;
 - próxima frente oficial:
-  - `VisitAgent E2E`
-  - com detalhamento em:
-    - `docs/plans/imob-visit-agent-e2e-implementation-plan.md`
-  - slice em andamento:
-    - `PR-VISIT3 — post-visit outcome and proposal handoff`
+  - `a definir em novo rebaseline do canônico`
 
 ---
 
