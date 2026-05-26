@@ -758,6 +758,86 @@ test("recovery response keeps proposal completion explicit when proposal data is
   assert.equal(response.primaryAction?.label, "Completar proposta");
 });
 
+test("recovery response maps proposal approval pending into proposal review flow", () => {
+  const response = resolveImobRecoveryResponse({
+    intent: "next_step",
+    context: buildContext({
+      missionContext: {
+        mission: "schedule_visit",
+        lockedUntilExplicitChange: false,
+      },
+      proposalNegotiation: {
+        status: "approval_pending",
+        propertyId: "property-1",
+        buyerName: "Maria",
+        buyerPhone: "47999998888",
+        buyerEmail: null,
+        offerAmount: 420000,
+        counterofferAmount: null,
+        contractType: "sale",
+        approvalRequired: true,
+        approvalStatus: "pending",
+        pendingFields: [],
+        reasonCodes: ["PROPOSAL_APPROVAL_REQUIRED"],
+        summary: "A proposta já está montada, mas ainda depende de aprovação humana antes de seguir.",
+        recommendedNextMove: "registrar ou obter a aprovação humana exigida para a proposta",
+      },
+      canonicalCaseState: {
+        schemaVersion: 1,
+        tenantId: "tenant-A",
+        workspaceId: "workspace-A",
+        caseId: "case-1",
+        mission: "schedule_and_follow_visit",
+        missionStatus: "blocked",
+        currentStep: "post_visit",
+        currentOperation: "lead",
+        entities: {
+          leadId: "lead-1",
+          propertyId: "property-1",
+        },
+        readiness: {
+          lead: "ready",
+          property: "ready",
+          visit: "ready",
+          proof: "not_applicable",
+        },
+        blockers: [],
+        pendingFields: [],
+        nextAction: {
+          id: "request-proposal-approval",
+          label: "Solicitar aprovação da proposta",
+          operation: "lead",
+          targetAgent: "IMOB_LeadAgent",
+          reasonCode: "PROPOSAL_APPROVAL_REQUIRED",
+        },
+        proof: {
+          required: false,
+          minimumProofSatisfied: true,
+          missingProof: [],
+        },
+        audit: {
+          version: 1,
+          lastUpdatedAt: "2026-05-26T10:10:00.000Z",
+          updatedByAgent: "IMOB",
+        },
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: true,
+        leadReady: true,
+        leadReadinessScore: 82,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+  });
+
+  assert.equal(response.primaryAction?.reasonCode, "PROPOSAL_APPROVAL_REQUIRED");
+  assert.equal(response.primaryAction?.operation, "proposal.create");
+  assert.equal(response.primaryAction?.label, "Solicitar aprovação da proposta");
+});
+
 test("recovery response keeps visit scheduling pending explicit before the slot is confirmed", () => {
   const response = resolveImobRecoveryResponse({
     intent: "what_is_missing",

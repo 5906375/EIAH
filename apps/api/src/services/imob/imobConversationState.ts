@@ -503,13 +503,64 @@ function inferContractType(raw: string): ImobProposalDraft["contractType"] {
 
 function buildProposalDraft(previous: ImobProposalDraft | undefined, message: string): ImobProposalDraft {
   const propertyIdMatch = message.match(/(?:imovel|imóvel|apartamento|apto|casa)\s*#?\s*(\d{2,})/i)?.[1] ?? null;
+  const normalized = normalizeImobText(message);
+  const extractedAmount = extractOfferAmount(message);
+  const negotiationStatus = normalized.includes("contraproposta") || normalized.includes("contra proposta")
+    ? "counteroffer_required"
+    : normalized.includes("aguardando resposta")
+      || normalized.includes("aguardando aceite")
+      || normalized.includes("sem resposta")
+      || normalized.includes("sem retorno")
+        ? "awaiting_response"
+        : normalized.includes("proposta aceita")
+          || normalized.includes("aceitou proposta")
+          || normalized.includes("aceite confirmado")
+            ? "accepted"
+            : normalized.includes("proposta recusada")
+              || normalized.includes("recusou proposta")
+              || normalized.includes("proposta rejeitada")
+                ? "rejected"
+                : previous?.negotiationStatus ?? null;
+  const approvalStatus = normalized.includes("aprovacao pendente")
+    || normalized.includes("aprovação pendente")
+    || normalized.includes("approval pendente")
+    || normalized.includes("aguardando aprovacao")
+    || normalized.includes("aguardando aprovação")
+    || normalized.includes("aprovacao humana")
+    || normalized.includes("aprovação humana")
+    ? "pending"
+    : normalized.includes("proposta aprovada")
+      || normalized.includes("approval aprovado")
+      || normalized.includes("approval approved")
+      || normalized.includes("aprovacao aprovada")
+      || normalized.includes("aprovação aprovada")
+        ? "approved"
+        : normalized.includes("proposta reprovada")
+          || normalized.includes("approval rejeitado")
+          || normalized.includes("approval rejected")
+          || normalized.includes("aprovacao rejeitada")
+          || normalized.includes("aprovação rejeitada")
+            ? "rejected"
+            : previous?.approvalStatus ?? null;
+  const approvalRequired = normalized.includes("aprovacao")
+    || normalized.includes("aprovação")
+    || normalized.includes("approval")
+    ? true
+    : previous?.approvalRequired ?? false;
+
   return {
     buyerName: extractNamedParty(message, "lead") ?? previous?.buyerName ?? null,
     buyerEmail: extractEmail(message) ?? previous?.buyerEmail ?? null,
     buyerPhone: extractPhone(message) ?? previous?.buyerPhone ?? null,
     propertyId: propertyIdMatch ? `property-${propertyIdMatch}` : previous?.propertyId ?? null,
-    offerAmount: extractOfferAmount(message) ?? previous?.offerAmount ?? null,
+    offerAmount: extractedAmount ?? previous?.offerAmount ?? null,
+    counterofferAmount: negotiationStatus === "counteroffer_required"
+      ? extractedAmount ?? previous?.counterofferAmount ?? null
+      : previous?.counterofferAmount ?? null,
     contractType: /loca|alug/i.test(message) ? "rent" : /gest|administra/i.test(message) ? "management" : /venda|compr|proposta|oferta/i.test(message) ? "sale" : previous?.contractType ?? null,
+    negotiationStatus,
+    approvalRequired,
+    approvalStatus,
   };
 }
 

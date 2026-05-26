@@ -376,6 +376,46 @@ export function resolveImobNextAction(params: ResolveNextActionParams): ImobNext
         });
       }
 
+      if (params.context.proposalNegotiation?.status === "counteroffer_required") {
+        return mapLeadAction(params.flow, {
+          id: "review-counteroffer",
+          label: "Responder contraproposta",
+          reasonCode: "PROPOSAL_COUNTEROFFER_REQUIRED",
+        });
+      }
+
+      if (params.context.proposalNegotiation?.status === "awaiting_response") {
+        return mapLeadAction(params.flow, {
+          id: "follow-proposal-response",
+          label: "Acompanhar resposta da proposta",
+          reasonCode: "PROPOSAL_RESPONSE_PENDING",
+        });
+      }
+
+      if (params.context.proposalNegotiation?.status === "approval_pending") {
+        return mapLeadAction(params.flow, {
+          id: "request-proposal-approval",
+          label: "Solicitar aprovação da proposta",
+          reasonCode: "PROPOSAL_APPROVAL_REQUIRED",
+        });
+      }
+
+      if (params.context.proposalNegotiation?.status === "accepted") {
+        return mapLeadAction(params.flow, {
+          id: "review-proposal-acceptance",
+          label: "Revisar aceite da proposta",
+          reasonCode: "PROPOSAL_ACCEPTED_REVIEW_REQUIRED",
+        });
+      }
+
+      if (params.context.proposalNegotiation?.status === "rejected") {
+        return mapLeadAction(params.flow, {
+          id: "review-proposal-rejection",
+          label: "Revisar recusa da proposta",
+          reasonCode: "PROPOSAL_REJECTION_REVIEW_REQUIRED",
+        });
+      }
+
       if (params.context.entities.proposal?.status === "ready_for_review") {
         return mapLeadAction(params.flow, {
           id: "review-proposal",

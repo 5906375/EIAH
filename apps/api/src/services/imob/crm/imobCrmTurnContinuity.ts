@@ -11,7 +11,11 @@ type ProposalDraft = {
   buyerPhone?: unknown;
   propertyId?: unknown;
   offerAmount?: unknown;
+  counterofferAmount?: unknown;
   contractType?: unknown;
+  negotiationStatus?: unknown;
+  approvalRequired?: unknown;
+  approvalStatus?: unknown;
 };
 
 type VisitDraft = {
@@ -254,11 +258,28 @@ export async function hydrateThreadStateWithPersistedLead(params: {
         buyerPhone: params.helpers.asString(proposalDraft.buyerPhone) ?? persistedLead.phone ?? null,
         propertyId: params.helpers.asString(proposalDraft.propertyId),
         offerAmount: Number.isFinite(Number(proposalDraft.offerAmount)) ? Number(proposalDraft.offerAmount) : null,
+        counterofferAmount: Number.isFinite(Number(proposalDraft.counterofferAmount))
+          ? Number(proposalDraft.counterofferAmount)
+          : null,
         contractType:
           params.helpers.asString(proposalDraft.contractType) === "rent" ||
           params.helpers.asString(proposalDraft.contractType) === "sale" ||
           params.helpers.asString(proposalDraft.contractType) === "management"
             ? params.helpers.asString(proposalDraft.contractType)
+            : null,
+        negotiationStatus:
+          params.helpers.asString(proposalDraft.negotiationStatus) === "counteroffer_required"
+          || params.helpers.asString(proposalDraft.negotiationStatus) === "awaiting_response"
+          || params.helpers.asString(proposalDraft.negotiationStatus) === "accepted"
+          || params.helpers.asString(proposalDraft.negotiationStatus) === "rejected"
+            ? params.helpers.asString(proposalDraft.negotiationStatus)
+            : null,
+        approvalRequired: Boolean(proposalDraft.approvalRequired),
+        approvalStatus:
+          params.helpers.asString(proposalDraft.approvalStatus) === "pending"
+          || params.helpers.asString(proposalDraft.approvalStatus) === "approved"
+          || params.helpers.asString(proposalDraft.approvalStatus) === "rejected"
+            ? params.helpers.asString(proposalDraft.approvalStatus)
             : null,
       },
     };

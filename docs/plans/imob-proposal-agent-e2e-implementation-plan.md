@@ -57,7 +57,7 @@ Critério:
 
 Status:
 
-- `planejado`
+- `concluído no runtime`
 
 Objetivo:
 

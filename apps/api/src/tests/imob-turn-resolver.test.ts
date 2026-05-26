@@ -1638,6 +1638,22 @@ test("IMOB turn resolver builds explicit proposal.create operational state", () 
   assert.match(result.presentation.text, /proposta agora/i);
 });
 
+test("IMOB turn resolver captures counteroffer and approval status inside proposal.create flow", () => {
+  const result = resolveImobTurn({
+    message: "Tem contraproposta no imóvel 4455 valor 780000 e aprovação humana pendente",
+    access: { tenantId: "tenant-A", workspaceId: "workspace-A", entitlements: { REAL_ESTATE_CORE: true } },
+  });
+
+  assert.equal(result.mode, "execute");
+  assert.equal(result.executionRequest?.operation, "proposal.create");
+  assert.equal(result.conversationState.operational?.flow, "proposal.create");
+  assert.equal(result.conversationState.operational?.proposalDraft?.propertyId, "property-4455");
+  assert.equal(result.conversationState.operational?.proposalDraft?.counterofferAmount, 780000);
+  assert.equal(result.conversationState.operational?.proposalDraft?.negotiationStatus, "counteroffer_required");
+  assert.equal(result.conversationState.operational?.proposalDraft?.approvalRequired, true);
+  assert.equal(result.conversationState.operational?.proposalDraft?.approvalStatus, "pending");
+});
+
 
 test("IMOB turn resolver builds explicit documents.collect operational state", () => {
   const result = resolveImobTurn({

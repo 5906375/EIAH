@@ -469,6 +469,55 @@ test("next action resolver keeps proposal completion explicit when proposal data
   assert.equal(nextAction.label, "Completar proposta");
 });
 
+test("next action resolver blocks on proposal approval before any contract handoff", () => {
+  const nextAction = resolveImobNextAction({
+    mission: "schedule_and_follow_visit",
+    context: buildContext({
+      missionContext: {
+        mission: "schedule_visit",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        lead: { id: "lead-1", name: "Maria", desiredGoal: "locacao", desiredCity: "Itapema" },
+        property: { id: "property-1", goal: "locacao", city: "Itapema", address: "Rua 700, 10" },
+        proposal: { status: "ready_for_review", name: "Maria" },
+      },
+      proposalNegotiation: {
+        status: "approval_pending",
+        propertyId: "property-1",
+        buyerName: "Maria",
+        buyerPhone: "47999998888",
+        buyerEmail: null,
+        offerAmount: 420000,
+        counterofferAmount: null,
+        contractType: "sale",
+        approvalRequired: true,
+        approvalStatus: "pending",
+        pendingFields: [],
+        reasonCodes: ["PROPOSAL_APPROVAL_REQUIRED"],
+        summary: "A proposta já está montada, mas ainda depende de aprovação humana antes de seguir.",
+        recommendedNextMove: "registrar ou obter a aprovação humana exigida para a proposta",
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: true,
+        leadReady: true,
+        leadReadinessScore: 82,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+    operation: "visit",
+    flow: "proposal.create",
+    pendingFields: [],
+  });
+
+  assert.equal(nextAction.operation, "lead");
+  assert.equal(nextAction.reasonCode, "PROPOSAL_APPROVAL_REQUIRED");
+  assert.equal(nextAction.label, "Solicitar aprovação da proposta");
+});
+
 test("next action resolver keeps visit scheduling explicit while agenda is still pending confirmation", () => {
   const nextAction = resolveImobNextAction({
     mission: "schedule_and_follow_visit",

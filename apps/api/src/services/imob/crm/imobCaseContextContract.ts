@@ -131,13 +131,16 @@ export type ImobVisitOutcomeSnapshotV1 = {
 };
 
 export type ImobProposalNegotiationSnapshotV1 = {
-  status: "collecting" | "ready_for_review";
+  status: "collecting" | "ready_for_review" | "counteroffer_required" | "awaiting_response" | "accepted" | "rejected" | "approval_pending";
   propertyId?: string | null;
   buyerName?: string | null;
   buyerPhone?: string | null;
   buyerEmail?: string | null;
   offerAmount?: number | null;
+  counterofferAmount?: number | null;
   contractType?: "rent" | "sale" | "management" | null;
+  approvalRequired?: boolean;
+  approvalStatus?: "pending" | "approved" | "rejected" | null;
   pendingFields: string[];
   reasonCodes: string[];
   summary: string;

@@ -220,6 +220,7 @@ Próximas frentes oficiais a partir deste ponto:
 9. `ProposalAgent / Negotiation E2E`
    - Status: `próxima frente oficial`
    - `PR-PROP1` concluído no runtime: canonical proposal negotiation snapshot
+   - `PR-PROP2` concluído no runtime: counteroffer and approval flow
    - foco:
      - transformar proposta e negociação em jornada canônica explícita;
      - consolidar proposta ativa, pendências e próximo movimento único;
