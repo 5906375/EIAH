@@ -102,6 +102,17 @@ export type ImobLeadLifecycleSnapshotV1 = {
   summary: string;
 };
 
+export type ImobVisitSchedulingSnapshotV1 = {
+  status: "pending_confirmation" | "scheduled" | "awaiting_reschedule";
+  propertyId?: string | null;
+  visitorName?: string | null;
+  visitorPhone?: string | null;
+  preferredDate?: string | null;
+  preferredWindow?: string | null;
+  summary: string;
+  recommendedNextMove: string;
+};
+
 export type ImobMarketScanRecommendationSnapshotV1 = {
   sourceStatus: "completed" | "empty" | "unavailable";
   recommendedAction: ImobOperationalOpportunity["recommendedAction"];
@@ -186,6 +197,7 @@ export type ImobCaseContextV1 = {
   };
   leadMatching?: ImobLeadMatchingSnapshotV1 | null;
   leadLifecycle?: ImobLeadLifecycleSnapshotV1 | null;
+  visitScheduling?: ImobVisitSchedulingSnapshotV1 | null;
   marketScanRecommendation?: ImobMarketScanRecommendationSnapshotV1 | null;
   documentChecklist?: ImobDocumentChecklistSnapshotV1 | null;
   documentSufficiency?: ImobDocumentSufficiencySnapshotV1 | null;

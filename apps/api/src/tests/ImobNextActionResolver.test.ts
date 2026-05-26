@@ -408,6 +408,48 @@ test("next action resolver promotes scheduled visit into proposal preparation", 
   assert.equal(nextAction.reasonCode, "PROPOSAL_REQUIRED");
 });
 
+test("next action resolver keeps visit scheduling explicit while agenda is still pending confirmation", () => {
+  const nextAction = resolveImobNextAction({
+    mission: "schedule_and_follow_visit",
+    context: buildContext({
+      missionContext: {
+        mission: "schedule_visit",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        lead: { id: "lead-1", name: "Maria", desiredGoal: "locacao", desiredCity: "Itapema" },
+        property: { id: "property-1", goal: "locacao", city: "Itapema", address: "Rua 700, 10" },
+        visit: { id: null, status: "collecting" },
+      },
+      visitScheduling: {
+        status: "pending_confirmation",
+        propertyId: "property-1",
+        visitorName: "Maria",
+        visitorPhone: "47999998888",
+        preferredDate: null,
+        preferredWindow: null,
+        summary: "A agenda da visita ainda precisa de confirmação antes de seguir.",
+        recommendedNextMove: "confirmar os dados pendentes da agenda da visita",
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: true,
+        leadReady: true,
+        leadReadinessScore: 82,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+    operation: "visit",
+    flow: "visit.schedule",
+    pendingFields: ["preferredDate"],
+  });
+
+  assert.equal(nextAction.operation, "visit");
+  assert.equal(nextAction.reasonCode, "VISIT_SCHEDULING_PENDING");
+});
+
 test("next action resolver preserves disqualified lead review before reopening the funnel", () => {
   const nextAction = resolveImobNextAction({
     mission: "qualify_and_match_lead",

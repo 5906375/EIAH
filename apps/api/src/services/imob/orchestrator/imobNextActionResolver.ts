@@ -270,6 +270,22 @@ export function resolveImobNextAction(params: ResolveNextActionParams): ImobNext
         });
       }
 
+      if (params.context.visitScheduling?.status === "awaiting_reschedule") {
+        return mapOperationAction("visit", params.flow, {
+          id: "reschedule-visit",
+          label: "Remarcar visita",
+          reasonCode: "VISIT_RESCHEDULE_REQUIRED",
+        });
+      }
+
+      if (params.context.visitScheduling?.status === "pending_confirmation") {
+        return mapOperationAction("visit", params.flow, {
+          id: "confirm-visit-scheduling",
+          label: "Confirmar agenda da visita",
+          reasonCode: "VISIT_SCHEDULING_PENDING",
+        });
+      }
+
       return mapOperationAction("visit", params.flow, {
         id: "schedule-visit",
         label: "Agendar visita",

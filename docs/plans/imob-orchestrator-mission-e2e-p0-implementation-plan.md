@@ -167,6 +167,7 @@ Próximas frentes oficiais a partir deste ponto:
 
 6. `VisitAgent E2E`
    - Status: `próxima frente oficial`
+   - `PR-VISIT1` concluído: canonical visit scheduling snapshot
    - foco:
      - agenda governada de visita;
      - remarcação e cancelamento sem drift;
@@ -202,6 +203,8 @@ Execução corrente:
   - `VisitAgent E2E`
   - com detalhamento em:
     - `docs/plans/imob-visit-agent-e2e-implementation-plan.md`
+  - slice em andamento:
+    - `PR-VISIT2 — reschedule/cancel flow`
 
 ---
 

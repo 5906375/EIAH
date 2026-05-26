@@ -12,6 +12,7 @@ import type {
   ImobOwnerSnapshotV1,
   ImobPropertyGoalV1,
   ImobPropertySnapshotV1,
+  ImobVisitSchedulingSnapshotV1,
 } from "./imobCaseContextContract";
 import { resolveCanonicalCaseStateFromLegacy } from "../orchestrator/imobLegacyCompatibilityResolver";
 import { buildImobCrmCaseProjection } from "../orchestrator/imobCrmCaseProjection";
@@ -591,6 +592,51 @@ function buildVisitSnapshot(params: {
   };
 }
 
+function buildVisitSchedulingSnapshot(params: {
+  visitDraft?: Record<string, unknown> | null;
+}): ImobVisitSchedulingSnapshotV1 | null {
+  const draft = params.visitDraft ?? {};
+  const propertyId = asString(draft.propertyId);
+  const visitorName = asString(draft.visitorName);
+  const visitorPhone = asString(draft.visitorPhone);
+  const preferredDate = asString(draft.preferredDate);
+  const preferredWindow = asString(draft.preferredWindow);
+  const requestedStatus = normalizeText(asString(draft.status) ?? "");
+
+  if (!propertyId && !visitorName && !visitorPhone && !preferredDate && !preferredWindow && !requestedStatus) {
+    return null;
+  }
+
+  const status: ImobVisitSchedulingSnapshotV1["status"] = (
+    requestedStatus === "awaiting_reschedule"
+    || requestedStatus === "reschedule_requested"
+    || requestedStatus === "remarcacao_pendente"
+  )
+    ? "awaiting_reschedule"
+    : propertyId && visitorName && visitorPhone && preferredDate
+      ? "scheduled"
+      : "pending_confirmation";
+
+  return {
+    status,
+    propertyId,
+    visitorName,
+    visitorPhone,
+    preferredDate,
+    preferredWindow,
+    summary: status === "scheduled"
+      ? `A visita já está agendada${preferredDate ? ` para ${preferredDate}` : ""}${preferredWindow ? ` no período da ${preferredWindow}` : ""}.`
+      : status === "awaiting_reschedule"
+        ? "A visita precisa ser remarcada antes de seguir para o pós-visita."
+        : "A agenda da visita ainda precisa de confirmação antes de seguir.",
+    recommendedNextMove: status === "scheduled"
+      ? "confirmar resultado da visita e preparar o próximo movimento comercial"
+      : status === "awaiting_reschedule"
+        ? "remarcar a visita com novo slot válido"
+        : "confirmar os dados pendentes da agenda da visita",
+  };
+}
+
 function buildProposalSnapshot(params: {
   proposalDraft?: Record<string, unknown> | null;
 }) {
@@ -858,6 +904,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
   const owner = buildOwnerSnapshot({ owner: params.caseContext?.owner, ownerDraft });
   const property = buildPropertySnapshot({ property: params.caseContext?.property, propertyDraft });
   const visit = buildVisitSnapshot({ visitDraft });
+  const visitScheduling = buildVisitSchedulingSnapshot({ visitDraft });
   const proposal = buildProposalSnapshot({ proposalDraft });
   const contract = buildContractSnapshot({ contractDraft });
   const commission = buildCommissionSnapshot({ commissionDraft });
@@ -950,6 +997,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
     },
     leadMatching,
     leadLifecycle,
+    visitScheduling,
     marketScanRecommendation,
     documentChecklist,
     documentSufficiency,

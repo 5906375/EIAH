@@ -416,6 +416,46 @@ test("IMOB case context v1 promotes a scheduled visit into proposal preparation"
   assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "PROPOSAL_REQUIRED");
 });
 
+test("IMOB case context v1 exposes a pending visit scheduling snapshot before the slot is confirmed", () => {
+  const context = buildImobCaseContextV1({
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    caseId: "case-visit-1",
+    caseContext: {
+      caseId: "case-visit-1",
+      flow: "visit.schedule",
+      lead: {
+        id: "lead-1",
+        name: "Maria",
+        goal: "locacao",
+        targetCity: "Itapema",
+        budgetMaxCents: 350000,
+      },
+      property: {
+        id: "property-1",
+        propertyType: "apartamento",
+        goal: "locacao",
+        city: "Itapema",
+        address: "Rua 700, 10",
+      },
+    },
+    operational: {
+      flow: "visit.schedule",
+      pendingFields: ["preferredDate"],
+      visitDraft: {
+        propertyId: "property-1",
+        visitorName: "Maria",
+        visitorPhone: "47999998888",
+      },
+    },
+  });
+
+  assert.equal(context.visitScheduling?.status, "pending_confirmation");
+  assert.match(context.visitScheduling?.summary ?? "", /agenda da visita/i);
+  assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "VISIT_SCHEDULING_PENDING");
+  assert.equal(context.recoverySnapshot?.primaryAction?.operation, "visit.schedule");
+});
+
 test("IMOB case context v1 preserves lead disqualification reason in canonical recovery", () => {
   const context = buildImobCaseContextV1({
     tenantId: "tenant-A",

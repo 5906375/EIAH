@@ -1,6 +1,6 @@
 # imob-visit-agent-e2e-implementation-plan
 
-Status: próxima frente oficial  
+Status: execução iniciada  
 Prioridade: P1 após `DedupeAgent E2E`  
 Data de referência: 2026-05-26  
 Escopo: fechar o `IMOB_VisitAgent` como camada E2E de agenda, remarcação, cancelamento, resultado de visita e pós-visita, preservando arquitetura agent-driven e launcher `render-only`.
@@ -27,7 +27,7 @@ O que falta para E2E:
 
 Status:
 
-- `pendente`
+- `concluído`
 
 Objetivo:
 
@@ -54,7 +54,7 @@ Critério:
 
 Status:
 
-- `pendente`
+- `próximo slice`
 
 Objetivo:
 
