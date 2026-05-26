@@ -3,7 +3,7 @@
 Status: rebaseline operacional  
 Prioridade: P0/P1 para Track P IMOB  
 Data de referência: 2026-05-26  
-Versão do plano: v5.3 — pragmática para execução com continuidade derivada do canônico, `DocumentAgent E2E`, `DedupeAgent E2E` e `VisitAgent E2E` concluídos no runtime  
+Versão do plano: v5.4 — pragmática para execução com continuidade derivada do canônico, `DocumentAgent E2E`, `DedupeAgent E2E` e `VisitAgent E2E` concluídos no runtime e `Guardian_EvidenceAgent` aberto como próxima frente oficial transversal  
 Escopo: fechamento E2E do `IMOB_Orchestrator` como dono real das missões imobiliárias, preservando arquitetura agent-driven, estado canônico, recuperação confiável, próxima ação única, controle de concorrência seguro para side effects, compatibilidade com casos legados e proof mínimo determinístico por missão.
 
 ---
@@ -181,6 +181,20 @@ Próximas frentes oficiais a partir deste ponto:
      - zero drift entre visita, lead e proposta.
    - plano derivado:
      - `docs/plans/imob-visit-agent-e2e-implementation-plan.md`
+
+7. `Guardian_EvidenceAgent`
+   - Status: `próxima frente oficial`
+   - foco:
+     - uniformizar proof mínimo, evidence bundle e audit snapshot entre missões;
+     - expor evidência canônica no case state e no recovery;
+     - reduzir drift entre mission policy, proof gate, receipts e leitura operacional;
+     - preparar export auditável e leitura gerencial por missão.
+   - saída esperada:
+     - snapshot de evidência transversal no contexto canônico;
+     - recovery e business read conscientes da situação de proof/evidence;
+     - zero drift entre proof requerido, proof satisfeito e bundle/receipt disponível.
+   - plano derivado:
+     - `docs/plans/imob-guardian-evidence-agent-e2e-implementation-plan.md`
 Ordem recomendada:
 
 - `imobValidationEngine` e `LeadAgent E2E` já entregues;
@@ -188,6 +202,7 @@ Ordem recomendada:
 - `DocumentAgent E2E` já entregue;
 - `DedupeAgent E2E` já entregue;
 - `VisitAgent E2E` já entregue.
+- próximo multiplicador transversal: `Guardian_EvidenceAgent`.
 
 Justificativa:
 - `imobValidationEngine` endureceu a base comum de `Property`, `Owner`, `Lead` e `Documents`;
@@ -195,7 +210,8 @@ Justificativa:
 - `MarketScanAgent E2E` fechou a recomendação acionável, comparables e continuidade de captação;
 - `DocumentAgent E2E` fechou checklist, suficiência e handoff jurídico/documental com blockers claros;
 - `DedupeAgent E2E` fechou merge auditável, replay formal e prevenção de drift entre múltiplas conversões, reruns e merges operacionais.
-- o próximo multiplicador natural é `VisitAgent E2E`, para fechar agenda, remarcação, cancelamento, resultado e pós-visita como frente própria do funil.
+- `VisitAgent E2E` fechou agenda, remarcação, cancelamento, resultado e pós-visita como frente própria do funil.
+- o próximo multiplicador natural é `Guardian_EvidenceAgent`, para uniformizar proof, evidence bundle, audit snapshot e leitura gerencial transversal às missões já entregues.
 
 Execução corrente:
 
@@ -203,7 +219,11 @@ Execução corrente:
 - `DedupeAgent E2E` fica encerrado como frente concluída;
 - `VisitAgent E2E` fica encerrado como frente concluída;
 - próxima frente oficial:
-  - `a definir em novo rebaseline do canônico`
+  - `Guardian_EvidenceAgent`
+  - com detalhamento em:
+    - `docs/plans/imob-guardian-evidence-agent-e2e-implementation-plan.md`
+  - slice inicial recomendado:
+    - `PR-GUARD1 — canonical evidence snapshot`
 
 ---
 
