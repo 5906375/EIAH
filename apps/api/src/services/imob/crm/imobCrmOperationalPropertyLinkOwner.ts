@@ -142,7 +142,7 @@ export async function resolveImobPropertyLinkOwnerUpdate(
     },
   });
 
-  if (scopedCase?.propertyId) {
+  if (scopedCase?.propertyId && linkResult.status === "linked") {
     await helpers.recordImobCrmAuditEvent({
       prisma: params.prisma,
       tenantId: params.tenantId,
@@ -151,10 +151,8 @@ export async function resolveImobPropertyLinkOwnerUpdate(
       agentId: helpers.auditAgentId,
       subjectType: "property",
       subjectId: scopedCase.propertyId,
-      action: linkResult.status === "already_linked" ? "owner_link_confirmed" : "owner_linked",
-      summary: linkResult.status === "already_linked"
-        ? "Owner/property link confirmed from chat"
-        : "Owner/property link completed from chat",
+      action: "owner_linked",
+      summary: "Owner/property link completed from chat",
       before: {
         propertyId: scopedCase.propertyId,
         ownerId: scopedCase.property?.ownerId ?? null,

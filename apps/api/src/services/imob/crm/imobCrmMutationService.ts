@@ -56,6 +56,52 @@ function normalizeText(value: unknown) {
   return text ? text.trim().toLowerCase() : null;
 }
 
+function normalizeComparableToken(value: unknown) {
+  return normalizeText(value)?.replace(/\s+/g, " ") ?? null;
+}
+
+function buildResolvedTurnReplayKey(params: {
+  flow: string | null;
+  caseId?: string | null;
+  threadId?: string | null;
+  presentationDedupeKey?: unknown;
+  ownerDraft?: Record<string, unknown> | null;
+  propertyDraft?: Record<string, unknown> | null;
+}) {
+  const explicitKey = asString(params.presentationDedupeKey);
+  if (explicitKey) return explicitKey;
+
+  const scopeRef = asString(params.threadId) ?? asString(params.caseId);
+  if (!params.flow || !scopeRef) return null;
+
+  if (params.flow === "owner.create" || params.flow === "owner.update") {
+    const ownerDraft = params.ownerDraft;
+    if (!ownerDraft) return null;
+    const ownerRef = [
+      normalizeComparableToken(ownerDraft.ownerDocument),
+      normalizeComparableToken(ownerDraft.ownerPhone),
+      normalizeComparableToken(ownerDraft.ownerEmail),
+      normalizeComparableToken(ownerDraft.ownerName),
+    ].find(Boolean);
+    return ownerRef ? `crm.${params.flow}:${scopeRef}:${ownerRef}` : null;
+  }
+
+  if (params.flow === "property.create") {
+    const propertyDraft = params.propertyDraft;
+    if (!propertyDraft) return null;
+    const origin = readMarketScanOrigin(propertyDraft.origin);
+    const addressKey = [normalizeComparableToken(propertyDraft.address), normalizeComparableToken(propertyDraft.city)]
+      .filter(Boolean)
+      .join(":");
+    const propertyRef = asString(propertyDraft.propertyId)
+      ?? (origin?.providerId && origin?.sourceId ? `${origin.providerId}:${origin.sourceId}` : null)
+      ?? (addressKey || null);
+    return propertyRef ? `crm.property.create:${scopeRef}:${propertyRef}` : null;
+  }
+
+  return null;
+}
+
 function readMarketScanOrigin(value: unknown) {
   const origin = asObject(value);
   if (!origin) return null;
@@ -125,6 +171,34 @@ function mapOperationalCaseStatus(operationalStatus: string) {
 
 export class ImobCrmMutationService {
   constructor(private readonly prisma: PrismaClient) {}
+
+  private async findCaseReplayEvent(scope: Scope, params: { caseId: string; replayKey: string }) {
+    if (!this.prisma.imobCaseEvent?.findFirst) return null;
+    return this.prisma.imobCaseEvent.findFirst({
+      where: {
+        caseId: params.caseId,
+        tenantId: scope.tenantId,
+        workspaceId: scope.workspaceId,
+        evidenceRef: params.replayKey,
+      } as any,
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        payload: true,
+      } as any,
+    });
+  }
+
+  private async loadScopedCase(scope: Scope, caseId: string) {
+    return this.prisma.imobCase.findFirst({
+      where: { id: caseId, tenantId: scope.tenantId, workspaceId: scope.workspaceId },
+      include: {
+        owner: { select: { id: true, name: true } },
+        property: { select: { id: true, propertyType: true, city: true, neighborhood: true } },
+        lead: { select: { id: true, name: true } },
+      },
+    });
+  }
 
   private async recordDedupeMergeAudit(scope: Scope, params: DedupeMergeAudit) {
     await recordImobCrmAuditEvent({
@@ -729,6 +803,52 @@ export class ImobCrmMutationService {
     let persistedOwnerId: string | null = scopedCase?.ownerId ?? null;
     let persistedPropertyId: string | null = scopedCase?.propertyId ?? null;
     const dedupeMerges: DedupeMergeAudit[] = [];
+    const ownerDraft = asObject(operational.ownerDraft);
+    const propertyDraft = asObject(operational.propertyDraft);
+    const leadDraft = asObject(operational.leadDraft);
+    const proposalDraft = asObject(operational.proposalDraft);
+    const visitDraft = asObject(operational.visitDraft);
+    const contractDraft = operational.contractDraft;
+    const rulesDraft = operational.rulesDraft;
+    const commissionDraft = operational.commissionDraft;
+    const replayKey = buildResolvedTurnReplayKey({
+      flow: operational.flow,
+      caseId: scopedCase?.id ?? params.caseId ?? null,
+      threadId: params.threadId ?? null,
+      presentationDedupeKey: params.resolved?.presentation?.dedupeKey,
+      ownerDraft,
+      propertyDraft,
+    });
+
+    if (scopedCase?.id && replayKey) {
+      const existingReplay = await this.findCaseReplayEvent(scope, {
+        caseId: scopedCase.id,
+        replayKey,
+      });
+      if (existingReplay) {
+        const replayedCase = await this.loadScopedCase(scope, scopedCase.id);
+        if (replayedCase) {
+          return {
+            caseId: replayedCase.id,
+            flow: replayedCase.flow,
+            stage: replayedCase.stage,
+            status: replayedCase.status,
+            ownerResponsible: replayedCase.ownerResponsible ?? null,
+            nextStep: replayedCase.nextStep ?? null,
+            blocker: Array.isArray(replayedCase.blockers) && replayedCase.blockers.length > 0
+              ? asString(replayedCase.blockers[0])
+              : null,
+            pendingItems: Array.isArray(replayedCase.pendingItems) ? replayedCase.pendingItems : [],
+            threadId: replayedCase.threadId ?? params.threadId ?? null,
+            updatedAt: replayedCase.updatedAt instanceof Date ? replayedCase.updatedAt.toISOString() : nowIso,
+            blockers: Array.isArray(replayedCase.blockers) ? replayedCase.blockers : [],
+            lead: replayedCase.lead ?? null,
+            owner: replayedCase.owner ?? null,
+            property: replayedCase.property ?? null,
+          };
+        }
+      }
+    }
 
     const lookupLeadDraft = async (draft: Record<string, unknown> | null | undefined) => {
       if (!draft) return null;
@@ -905,15 +1025,6 @@ export class ImobCrmMutationService {
       return persisted.status === "updated" || persisted.status === "created" ? persisted.data.id : null;
     };
 
-    const ownerDraft = asObject(operational.ownerDraft);
-    const propertyDraft = asObject(operational.propertyDraft);
-    const leadDraft = asObject(operational.leadDraft);
-    const proposalDraft = asObject(operational.proposalDraft);
-    const visitDraft = asObject(operational.visitDraft);
-    const contractDraft = operational.contractDraft;
-    const rulesDraft = operational.rulesDraft;
-    const commissionDraft = operational.commissionDraft;
-
     if (operational.flow === "owner.create" && ownerDraft) {
       persistedOwnerId = await upsertOwnerDraft(ownerDraft, "upsert");
     } else if (operational.flow === "property.create" && propertyDraft) {
@@ -969,17 +1080,18 @@ export class ImobCrmMutationService {
         action: params.resolved?.action,
         mode: params.resolved?.mode,
         suggestedNextAction: asString(params.resolved?.presentation?.suggestedNextAction),
-        dedupeKey: asString(params.resolved?.presentation?.dedupeKey),
+        dedupeKey: replayKey,
         leadStatus: asString(operational.leadStatus),
         nextAction: asString(operational.nextAction),
         reasonCode: asString(params.resolved?.presentation?.metadata?.reasonCode),
       },
       eventType: leadEventType ?? (scopedCase ? "case.turn_resolved" : "case.created_from_turn"),
-      eventEvidenceRef: asString(params.resolved?.presentation?.dedupeKey),
+      eventEvidenceRef: replayKey,
       eventSummary: asString(params.resolved?.presentation?.text),
       eventPayload: {
         resolvedAt: nowIso,
         flow: operational.flow,
+        replayKey,
         operationalStatus: operational.status,
         leadStatus: asString(operational.leadStatus),
         nextAction: asString(operational.nextAction),
@@ -1011,7 +1123,7 @@ export class ImobCrmMutationService {
             type: caseInput.eventType,
             actorType: "system",
             summary: caseInput.eventSummary,
-            evidenceRef: asString(params.resolved?.presentation?.dedupeKey),
+            evidenceRef: replayKey,
             payload: caseInput.eventPayload,
           },
         });

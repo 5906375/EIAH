@@ -2,8 +2,8 @@
 
 Status: rebaseline operacional  
 Prioridade: P0/P1 para Track P IMOB  
-Data de referência: 2026-05-25  
-Versão do plano: v4.9 — pragmática para execução com continuidade derivada do canônico, `DocumentAgent E2E` concluído e `DedupeAgent E2E` aberto como próxima frente oficial  
+Data de referência: 2026-05-26  
+Versão do plano: v5.0 — pragmática para execução com continuidade derivada do canônico, `DocumentAgent E2E` e `DedupeAgent E2E` concluídos no runtime  
 Escopo: fechamento E2E do `IMOB_Orchestrator` como dono real das missões imobiliárias, preservando arquitetura agent-driven, estado canônico, recuperação confiável, próxima ação única, controle de concorrência seguro para side effects, compatibilidade com casos legados e proof mínimo determinístico por missão.
 
 ---
@@ -148,7 +148,10 @@ Próximas frentes oficiais a partir deste ponto:
      - `docs/plans/imob-document-agent-e2e-implementation-plan.md`
 
 5. `DedupeAgent E2E`
-   - Status: `próxima frente oficial`
+   - Status: `concluído`
+   - `PR-DEDUPE1` concluído: canonical dedupe snapshot
+   - `PR-DEDUPE2` concluído: property/owner merge auditável
+   - `PR-DEDUPE3` concluído: idempotência formal transversal
    - foco:
      - dedupe explícito de imóvel e owner com merge auditável;
      - idempotência formal transversal;
@@ -173,17 +176,13 @@ Justificativa:
 - `LeadAgent E2E` fechou a jornada comercial canônica no runtime;
 - `MarketScanAgent E2E` fechou a recomendação acionável, comparables e continuidade de captação;
 - `DocumentAgent E2E` fechou checklist, suficiência e handoff jurídico/documental com blockers claros;
-- o próximo multiplicador de robustez é `DedupeAgent E2E`, para impedir drift entre múltiplas conversões, reruns e merges operacionais.
+- `DedupeAgent E2E` fechou merge auditável, replay formal e prevenção de drift entre múltiplas conversões, reruns e merges operacionais.
 
 Execução corrente:
 
 - `DocumentAgent E2E` fica encerrado como frente concluída;
-- a próxima frente oficial deste plano canônico passa a ser:
-  - `DedupeAgent E2E`
-  - com detalhamento em:
-    - `docs/plans/imob-dedupe-agent-e2e-implementation-plan.md`
-  - slice em andamento:
-    - `PR-DEDUPE2 — property/owner merge auditável`
+- `DedupeAgent E2E` fica encerrado como frente concluída;
+- próxima frente oficial: `a definir` em novo rebaseline do canônico.
 
 ---
 

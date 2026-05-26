@@ -1,8 +1,8 @@
 # imob-dedupe-agent-e2e-implementation-plan
 
-Status: próxima frente oficial  
+Status: concluído no runtime  
 Prioridade: P1 após `DocumentAgent E2E`  
-Data de referência: 2026-05-25  
+Data de referência: 2026-05-26  
 Escopo: fechar o `IMOB_DedupeAgent` como camada E2E de merge auditável e idempotência formal para imóvel, proprietário e handoffs relacionados.
 
 ---
@@ -23,6 +23,7 @@ O que ainda falta para E2E:
 - reason codes de dedupe no contexto canônico;
 - idempotência transversal em reruns de flows governados;
 - queue/projeção explícita para revisão humana quando o match for ambíguo.
+- replay formal sem drift em flows governados do mesmo caso/thread.
 
 ---
 
@@ -32,7 +33,7 @@ O que ainda falta para E2E:
 
 Status:
 
-- `em andamento`
+- `concluído`
 
 Objetivo:
 
@@ -59,7 +60,7 @@ Critério:
 
 Status:
 
-- `em andamento`
+- `concluído`
 
 Objetivo:
 
@@ -84,7 +85,7 @@ Critério:
 
 Status:
 
-- `pendente`
+- `concluído`
 
 Objetivo:
 
