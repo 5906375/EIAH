@@ -223,7 +223,7 @@ Execução corrente:
   - com detalhamento em:
     - `docs/plans/imob-guardian-evidence-agent-e2e-implementation-plan.md`
   - slice atual:
-    - `PR-GUARD2 — proof-aware recovery and business read`
+    - `PR-GUARD3 — auditable evidence export surface`
 
 ---
 
