@@ -6,6 +6,7 @@ import type {
   ImobDocumentSufficiencySnapshotV1,
   ImobDedupeSnapshotV1,
   ImobEvidenceSnapshotV1,
+  ImobCommercialFollowUpSnapshotV1,
   ImobLeadLifecycleSnapshotV1,
   ImobLeadMatchingSnapshotV1,
   ImobCaseMission,
@@ -301,6 +302,52 @@ function buildLeadLifecycle(params: {
     nextTrigger: nextTrigger ?? null,
     summary: "Lead ativo na jornada comercial.",
   };
+}
+
+function buildCommercialFollowUpSnapshot(params: {
+  visitOutcome?: ImobVisitOutcomeSnapshotV1 | null;
+  leadLifecycle?: ImobLeadLifecycleSnapshotV1 | null;
+}): ImobCommercialFollowUpSnapshotV1 | null {
+  const visitOutcome = params.visitOutcome ?? null;
+  const leadLifecycle = params.leadLifecycle ?? null;
+
+  if (visitOutcome?.status === "follow_up_required") {
+    return {
+      source: "visit_outcome",
+      status: "follow_up_required",
+      trigger: "post_visit",
+      suggestedChannel: "internal",
+      reasonCodes: ["VISIT_FOLLOW_UP_REQUIRED"],
+      summary: "O caso pede um único follow-up comercial antes de voltar para proposta ou novo handoff.",
+      recommendedNextMove: visitOutcome.recommendedNextMove,
+    };
+  }
+
+  if (visitOutcome?.status === "reengagement_required") {
+    return {
+      source: "visit_outcome",
+      status: "reengagement_required",
+      trigger: "post_visit_objection",
+      suggestedChannel: "internal",
+      reasonCodes: ["VISIT_REENGAGEMENT_REQUIRED"],
+      summary: "O caso pede reengajamento comercial pós-visita antes de retomar proposta ou agenda nova.",
+      recommendedNextMove: visitOutcome.recommendedNextMove,
+    };
+  }
+
+  if (leadLifecycle?.status === "reengagement_ready") {
+    return {
+      source: "lead_lifecycle",
+      status: "reengagement_required",
+      trigger: leadLifecycle.nextTrigger ?? "lead_return_trigger",
+      suggestedChannel: "internal",
+      reasonCodes: ["LEAD_REENGAGEMENT_REQUIRED"],
+      summary: leadLifecycle.summary,
+      recommendedNextMove: "retomar o lead com base no gatilho comercial já identificado",
+    };
+  }
+
+  return null;
 }
 
 function normalizeMarketAction(value: unknown) {
@@ -1095,6 +1142,10 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
     contractDraft,
     documentChecklist,
   });
+  const commercialFollowUp = buildCommercialFollowUpSnapshot({
+    visitOutcome,
+    leadLifecycle,
+  });
 
   const baseContext: ImobCaseContextV1 = {
     version: "1.0",
@@ -1133,6 +1184,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
     },
     leadMatching,
     leadLifecycle,
+    commercialFollowUp,
     visitScheduling,
     visitOutcome,
     marketScanRecommendation,

@@ -26,7 +26,7 @@ O objetivo desta frente é fechar:
 
 Status:
 
-- `próximo slice`
+- `em andamento`
 
 Objetivo:
 

@@ -582,6 +582,15 @@ test("next action resolver routes post-visit follow-up before reopening proposal
         summary: "A visita ocorreu, mas o caso pede follow-up antes de preparar proposta.",
         recommendedNextMove: "retomar o lead com um único follow-up pós-visita",
       },
+      commercialFollowUp: {
+        source: "visit_outcome",
+        status: "follow_up_required",
+        trigger: "post_visit",
+        suggestedChannel: "internal",
+        reasonCodes: ["VISIT_FOLLOW_UP_REQUIRED"],
+        summary: "O caso pede um único follow-up comercial antes de voltar para proposta ou novo handoff.",
+        recommendedNextMove: "retomar o lead com um único follow-up pós-visita",
+      },
       readiness: {
         ownerReady: false,
         propertyReady: true,
@@ -599,6 +608,42 @@ test("next action resolver routes post-visit follow-up before reopening proposal
 
   assert.equal(nextAction.operation, "lead");
   assert.equal(nextAction.reasonCode, "VISIT_FOLLOW_UP_REQUIRED");
+});
+
+test("next action resolver uses canonical commercial follow-up snapshot even without direct visit outcome", () => {
+  const nextAction = resolveImobNextAction({
+    mission: "schedule_and_follow_visit",
+    context: buildContext({
+      missionContext: {
+        mission: "schedule_visit",
+        lockedUntilExplicitChange: false,
+      },
+      commercialFollowUp: {
+        source: "visit_outcome",
+        status: "reengagement_required",
+        trigger: "post_visit_objection",
+        suggestedChannel: "internal",
+        reasonCodes: ["VISIT_REENGAGEMENT_REQUIRED"],
+        summary: "O caso pede reengajamento comercial pós-visita antes de retomar proposta ou agenda nova.",
+        recommendedNextMove: "registrar a objeção principal e definir gatilho de retomada",
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: true,
+        leadReady: true,
+        leadReadinessScore: 82,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+    operation: "visit",
+    flow: "visit.schedule",
+    pendingFields: [],
+  });
+
+  assert.equal(nextAction.operation, "lead");
+  assert.equal(nextAction.reasonCode, "VISIT_REENGAGEMENT_REQUIRED");
 });
 
 test("next action resolver preserves disqualified lead review before reopening the funnel", () => {

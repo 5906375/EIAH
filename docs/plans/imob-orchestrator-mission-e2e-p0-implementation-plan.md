@@ -243,7 +243,7 @@ Execução corrente:
   - `FollowUpAgent / Commercial follow-up E2E`
   - com detalhamento em:
     - `docs/plans/imob-follow-up-agent-e2e-implementation-plan.md`
-  - slice inicial recomendado:
+  - slice atual:
     - `PR-FOLLOW1 — canonical commercial follow-up snapshot`
 
 ---

@@ -683,6 +683,39 @@ test("IMOB case context v1 promotes reengagement without reopening resolved lead
   });
 
   assert.equal(context.leadLifecycle?.status, "reengagement_ready");
+  assert.equal(context.commercialFollowUp?.source, "lead_lifecycle");
+  assert.equal(context.commercialFollowUp?.status, "reengagement_required");
+  assert.equal(context.commercialFollowUp?.trigger, "decision_window");
   assert.equal(context.readiness.leadReady, true);
   assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "LEAD_REENGAGEMENT_REQUIRED");
+});
+
+test("IMOB case context v1 materializes canonical commercial follow-up from post-visit outcome", () => {
+  const context = buildImobCaseContextV1({
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    caseId: "case-1",
+    caseContext: {
+      caseId: "case-1",
+      flow: "visit.schedule",
+    },
+    operational: {
+      flow: "visit.schedule",
+      visitDraft: {
+        status: "scheduled",
+        propertyId: "property-1",
+        visitorName: "Maria",
+        visitorPhone: "47999998888",
+        preferredDate: "2026-06-05",
+        preferredWindow: "tarde",
+        outcome: "follow_up_required",
+      },
+    },
+  });
+
+  assert.equal(context.commercialFollowUp?.source, "visit_outcome");
+  assert.equal(context.commercialFollowUp?.status, "follow_up_required");
+  assert.equal(context.commercialFollowUp?.trigger, "post_visit");
+  assert.equal(context.commercialFollowUp?.suggestedChannel, "internal");
+  assert.match(context.commercialFollowUp?.summary ?? "", /follow-up comercial/i);
 });

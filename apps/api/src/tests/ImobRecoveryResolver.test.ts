@@ -1297,3 +1297,64 @@ test("recovery response suggests reengagement when a disqualified lead already h
   assert.match(response.summary, /decision_window/i);
   assert.match(response.summary, /retomar lead/i);
 });
+
+test("recovery response exposes canonical commercial follow-up as explicit pending item", () => {
+  const response = resolveImobRecoveryResponse({
+    intent: "what_is_missing",
+    context: buildContext({
+      missionContext: {
+        mission: "case_review",
+        lockedUntilExplicitChange: false,
+      },
+      commercialFollowUp: {
+        source: "visit_outcome",
+        status: "follow_up_required",
+        trigger: "post_visit",
+        suggestedChannel: "internal",
+        reasonCodes: ["VISIT_FOLLOW_UP_REQUIRED"],
+        summary: "O caso pede um único follow-up comercial antes de voltar para proposta ou novo handoff.",
+        recommendedNextMove: "retomar o lead com um único follow-up pós-visita",
+      },
+      canonicalCaseState: {
+        schemaVersion: 1,
+        tenantId: "tenant-A",
+        workspaceId: "workspace-A",
+        caseId: "case-1",
+        mission: "schedule_and_follow_visit",
+        missionStatus: "in_progress",
+        currentStep: "post_visit",
+        currentOperation: "lead",
+        entities: {
+          leadId: "lead-1",
+        },
+        readiness: {
+          lead: "ready",
+          proof: "not_applicable",
+        },
+        blockers: [],
+        pendingFields: [],
+        nextAction: {
+          id: "follow-up-post-visit",
+          label: "Retomar pós-visita",
+          operation: "lead",
+          targetAgent: "IMOB_LeadAgent",
+          reasonCode: "VISIT_FOLLOW_UP_REQUIRED",
+        },
+        proof: {
+          required: false,
+          minimumProofSatisfied: true,
+          missingProof: [],
+        },
+        audit: {
+          version: 1,
+          lastUpdatedAt: "2026-05-26T10:00:00.000Z",
+          updatedByAgent: "IMOB",
+        },
+      },
+    }),
+  });
+
+  assert.ok(response.missingItems.some((item) => /follow-up comercial pendente/i.test(item)));
+  assert.match(response.summary, /follow-up comercial/i);
+  assert.equal(response.primaryAction?.reasonCode, "VISIT_FOLLOW_UP_REQUIRED");
+});
