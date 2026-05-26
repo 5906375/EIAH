@@ -182,6 +182,12 @@ function buildRecommendedActions(params: {
   blockers: string[];
 }): ImobCrmRecommendedAction[] {
   const actions: ImobCrmRecommendedAction[] = [];
+  const normalizedNextStep = normalizeImobCrmText(params.nextStep ?? "");
+  const isMarketScanConfirmationNextStep =
+    normalizedNextStep.includes("confirmar selecao do scan")
+    || normalizedNextStep.includes("confirmar seleção do scan")
+    || normalizedNextStep.includes("confirmar captacao do scan")
+    || normalizedNextStep.includes("confirmar captação do scan");
   const push = (action: typeof actions[number]) => {
     if (!actions.some((item) => item.id === action.id)) actions.push(action);
   };
@@ -198,7 +204,9 @@ function buildRecommendedActions(params: {
       push({ id: "register_owner", label: "Cadastrar proprietário", actionType: "operational", inputHint: "cadastrar proprietário" });
       break;
     case "property.create":
-      push({ id: "register_property", label: "Cadastrar imóvel", actionType: "operational", inputHint: "cadastrar imóvel" });
+      if (!isMarketScanConfirmationNextStep) {
+        push({ id: "register_property", label: "Cadastrar imóvel", actionType: "operational", inputHint: "cadastrar imóvel" });
+      }
       break;
     case "lead.qualify":
       push({ id: "qualify_lead", label: "Qualificar lead", actionType: "operational", inputHint: "qualificar lead deste caso" });
@@ -229,12 +237,8 @@ function buildRecommendedActions(params: {
   }
 
   if (params.nextStep) {
-    const normalizedNextStep = normalizeImobCrmText(params.nextStep);
     if (!normalizedNextStep.includes("mostrar bloqueios do caso")) {
-      const followNextStep = normalizedNextStep.includes("confirmar selecao do scan")
-        || normalizedNextStep.includes("confirmar seleção do scan")
-        || normalizedNextStep.includes("confirmar captacao do scan")
-        || normalizedNextStep.includes("confirmar captação do scan")
+      const followNextStep = isMarketScanConfirmationNextStep
         ? {
             id: "confirm_market_scan_capture",
             label: "Confirmar captação do scan",

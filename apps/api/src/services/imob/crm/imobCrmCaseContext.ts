@@ -38,6 +38,7 @@ export function buildImobCrmCaseContextFromRecord(
   const lead = normalizeLeadSummary(item.lead);
   const canonical = buildCanonicalCase(item);
   const updatedAtIso = item.updatedAt?.toISOString?.() ?? null;
+  const normalizedPendingItems = normalizeCasePendingItemsAgainstOwner(item.pendingItems, item.owner);
   const humanJourney = buildImobHumanJourney({
     flow: item.flow,
     canonical,
@@ -46,7 +47,7 @@ export function buildImobCrmCaseContextFromRecord(
     ownerResponsible: item.ownerResponsible ?? null,
     nextStep: item.nextStep ?? null,
     blockers: item.blockers,
-    pendingItems: item.pendingItems,
+    pendingItems: normalizedPendingItems,
     updatedAtIso,
     canonical,
   });
@@ -60,7 +61,7 @@ export function buildImobCrmCaseContextFromRecord(
     ownerResponsible: item.ownerResponsible ?? null,
     nextStep: item.nextStep ?? null,
     blocker: Array.isArray(item.blockers) && item.blockers.length > 0 ? item.blockers[0] : null,
-    pendingItems: Array.isArray(item.pendingItems) ? item.pendingItems : [],
+    pendingItems: normalizedPendingItems,
     threadId: item.threadId ?? null,
     updatedAt: updatedAtIso,
     lead,
@@ -84,6 +85,39 @@ function asString(value: unknown): string | null {
 
 function asBoolean(value: unknown): boolean | null {
   return typeof value === "boolean" ? value : null;
+}
+
+function isOwnerNamePending(item: string) {
+  return /nome do propriet[aá]rio/.test(item);
+}
+
+function isOwnerPhonePending(item: string) {
+  return /telefone do propriet[aá]rio/.test(item);
+}
+
+function isOwnerEmailPending(item: string) {
+  return /e-?mail do propriet[aá]rio/.test(item);
+}
+
+function isOwnerDocumentPending(item: string) {
+  return /(?:documento|cpf|cnpj) do propriet[aá]rio/.test(item) || item.includes("ownerdocument");
+}
+
+function normalizeCasePendingItemsAgainstOwner(pendingItems: unknown, owner: unknown) {
+  const normalizedOwner = asObject(owner);
+  const ownerName = asString(normalizedOwner?.name);
+  const ownerPhone = asString(normalizedOwner?.phone);
+  const ownerEmail = asString(normalizedOwner?.email);
+  const ownerDocument = asString(normalizedOwner?.document);
+
+  return asStringList(pendingItems).filter((item) => {
+    const normalized = item.trim().toLowerCase();
+    if (ownerName && isOwnerNamePending(normalized)) return false;
+    if (ownerPhone && isOwnerPhonePending(normalized)) return false;
+    if (ownerEmail && isOwnerEmailPending(normalized)) return false;
+    if (ownerDocument && isOwnerDocumentPending(normalized)) return false;
+    return true;
+  });
 }
 
 function normalizeProofSurface(item: CaseContextRecord): ImobProofSurface | null {
@@ -274,17 +308,30 @@ function inferWaitingOn(params: {
 }): ImobCrmHumanWorkflow["waitingOn"] {
   const normalized = [...params.blockers, ...params.pendingItems, ...(params.canonical.reasonCodes ?? [])]
     .map((item) => String(item).toLowerCase());
+  const hasOwnerSignal = normalized.some((item) =>
+    item.includes("owner")
+    || item.includes("propriet")
+    || isOwnerNamePending(item)
+    || isOwnerPhonePending(item)
+    || isOwnerEmailPending(item)
+    || isOwnerDocumentPending(item),
+  );
+  const hasLegalSignal = normalized.some((item) =>
+    (item.includes("contract") || item.includes("document") || item.includes("matricula") || item.includes("jurid"))
+    && !isOwnerDocumentPending(item)
+    && !item.includes("dados do propriet"),
+  );
   if (normalized.some((item) => item.includes("finance") || item.includes("comissao") || item.includes("repasse") || item.includes("sinal"))) {
     return "finance";
   }
-  if (normalized.some((item) => item.includes("contract") || item.includes("document") || item.includes("matricula") || item.includes("jurid"))) {
+  if (hasOwnerSignal) {
+    return "owner";
+  }
+  if (hasLegalSignal) {
     return "legal";
   }
   if (normalized.some((item) => item.includes("lead") || item.includes("comprador") || item.includes("locatario"))) {
     return "lead";
-  }
-  if (normalized.some((item) => item.includes("owner") || item.includes("propriet"))) {
-    return "owner";
   }
   if (normalized.some((item) => item.includes("review") || item.includes("approval") || item.includes("pending_data"))) {
     return "broker";

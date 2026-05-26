@@ -1002,9 +1002,11 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     const pendingItems = Array.isArray(caseContext?.pendingItems) ? caseContext.pendingItems.map(String) : [];
     const discoverySignals = caseContext?.lead?.discoverySignals ?? null;
     const normalizedPending = pendingItems.map((item) => helpers.normalizeImobRouteText(item));
+    const ownerDocumentPending = normalizedPending.some((item) => item.includes("documento do proprietario") || item.includes("ownerdocument"));
+    const legalDocumentationPending = normalizedPending.some((item) => /document|matricula|contrato/.test(item) && !item.includes("documento do proprietario") && !item.includes("ownerdocument"));
     const objections = [
-      (blocker && /document|matricula|contrato|ownerdocument|jurid/i.test(blocker))
-        || normalizedPending.some((item) => /document|matricula|contrato|ownerdocument/.test(item))
+      (blocker && /document|matricula|contrato|jurid/i.test(blocker) && !/dados do propriet[aá]rio/i.test(blocker))
+        || legalDocumentationPending
         ? {
             key: "documentation" as const,
             label: "Objeção documental",
@@ -1046,6 +1048,14 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
             label: "Readiness comercial",
             summary: "Ainda falta contexto comercial suficiente para leitura forte.",
             status: "unknown" as const,
+          }
+        : null,
+      ownerDocumentPending
+        ? {
+            key: "readiness" as const,
+            label: "Cadastro do proprietário incompleto",
+            summary: "Ainda falta concluir o documento do proprietário antes de avançar a captação.",
+            status: "active" as const,
           }
         : null,
       discoverySignals?.timeline && caseContext?.humanWorkflow?.urgency !== "high"
@@ -1453,7 +1463,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     };
   }
 
-	  function buildClosingDocumentsSnapshot(params: {
+  function buildClosingDocumentsSnapshot(params: {
     caseContext: ImobCrmCaseContext;
     leadProfileReport?: { profileStatus?: string | null } | null;
 	  }): ImobClosingDocumentsSnapshot {
@@ -1465,10 +1475,12 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     const ownerDocumentMissing = normalizedPending.some((item) => item.includes("documento do proprietario") || item.includes("ownerdocument"));
     const contractPending = normalizedPending.some((item) => item.includes("contrato"));
     const registryPending = normalizedPending.some((item) => item.includes("matricula") || item.includes("escritura"));
-    const documentationPending = normalizedPending.some((item) => item.includes("document"));
+    const documentationPending = normalizedPending.some((item) => item.includes("document") && !item.includes("documento do proprietario") && !item.includes("ownerdocument"));
+    const legalBlocker = Boolean(blocker && /jurid|contrato|matricula|escritura/i.test(blocker));
+    const ownerOnlyDocumentGap = ownerDocumentMissing && !documentationPending && !contractPending && !registryPending && !legalBlocker;
     const blockingIssues = [
       blocker ? blocker : null,
-      ownerDocumentMissing ? "documento do proprietário ainda pendente" : null,
+      ownerOnlyDocumentGap ? null : (ownerDocumentMissing ? "documento do proprietário ainda pendente" : null),
       registryPending ? "matrícula ou escritura ainda pendente" : null,
       contractPending ? "contrato ainda pede preparação ou revisão" : null,
     ].filter(Boolean) as string[];
@@ -1478,14 +1490,14 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     const legalHandoffRecommended = Boolean(
       contractPending
       || registryPending
-      || (blocker && /jurid|contrato|matricula|escritura/i.test(blocker)),
+      || legalBlocker,
       );
 
-    const hasDocumentationSignal = documentationPending || contractPending || registryPending || ownerDocumentMissing || Boolean(blocker);
+    const hasDocumentationSignal = documentationPending || contractPending || registryPending || Boolean(legalBlocker);
 
 	    const packetReadiness: ImobClosingDocumentsSnapshot["packetReadiness"] =
       blockingIssues.length > 0 ? "blocked"
-      : pendingDocuments.length > 0 ? "partial"
+      : pendingDocuments.length > 0 || ownerOnlyDocumentGap ? "partial"
       : (caseContext?.flow === "contract.prepare" || caseContext?.flow === "documents.collect") ? "ready"
       : profileStatus === "ready" ? "ready"
       : profileStatus === "partial" ? "partial"
@@ -1494,7 +1506,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
 	    const readinessStatus: ImobClosingDocumentsSnapshot["readinessStatus"] =
       blockingIssues.length > 0
         ? "blocked"
-        : pendingDocuments.length > 0
+        : pendingDocuments.length > 0 || ownerOnlyDocumentGap
           ? "partial"
           : hasDocumentationSignal
             ? "ready"
@@ -2255,6 +2267,23 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     return actions[0] ?? null;
   }
 
+  function normalizeBusinessPendingItems(caseContext: ImobCrmCaseContext, items: string[]) {
+    const owner = helpers.asObject(caseContext?.owner);
+    const ownerName = helpers.asString(owner?.name);
+    const ownerPhone = helpers.asString(owner?.phone);
+    const ownerEmail = helpers.asString(owner?.email);
+    const ownerDocument = helpers.asString(owner?.document);
+
+    return items.filter((item) => {
+      const normalized = helpers.normalizeImobRouteText(String(item));
+      if (ownerName && normalized.includes("nome do proprietario")) return false;
+      if (ownerPhone && normalized.includes("telefone do proprietario")) return false;
+      if (ownerEmail && normalized.includes("e-mail do proprietario")) return false;
+      if (ownerDocument && (normalized.includes("documento do proprietario") || normalized.includes("ownerdocument"))) return false;
+      return true;
+    });
+  }
+
   function getImobBusinessPendingItems(caseContext: ImobCrmCaseContext): string[] {
     const pendingItems = Array.isArray(caseContext?.pendingItems) ? caseContext.pendingItems : [];
     const missingContext = Array.isArray(caseContext?.canonical?.missingContext) ? caseContext.canonical.missingContext : [];
@@ -2274,7 +2303,10 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
               : "follow-up comercial pendente",
         ]
       : [];
-    return Array.from(new Set([...pendingItems, ...missingContext, ...missingProof, ...missingFollowUp].map((item) => String(item)).filter(Boolean)));
+    const combined = [...pendingItems, ...missingContext, ...missingProof, ...missingFollowUp]
+      .map((item) => String(item))
+      .filter(Boolean);
+    return Array.from(new Set(normalizeBusinessPendingItems(caseContext, combined)));
   }
 
   function getImobBusinessBlockers(caseContext: ImobCrmCaseContext): string[] {

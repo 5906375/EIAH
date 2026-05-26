@@ -69,7 +69,7 @@ export type ImobCrmWorkflowCta = {
 const ALLOWED_TRANSITIONS: Record<ImobCrmWorkflowState, readonly ImobCrmWorkflowTransition[]> = {
   "property.create": ["submit_fields", "start_market_scan", "continue", "cancel"],
   "property.market_scan": ["start_market_scan", "select_market_scan_item", "read_only_query", "continue", "cancel"],
-  "property.market_scan.selection": ["select_market_scan_item", "confirm_market_scan_selection", "read_only_query", "continue", "cancel"],
+  "property.market_scan.selection": ["start_market_scan", "select_market_scan_item", "confirm_market_scan_selection", "read_only_query", "continue", "cancel"],
   "owner.create": ["submit_fields", "continue", "cancel"],
   "owner.dedupe_review": ["choose_update_existing", "choose_create_new", "show_records", "cancel"],
   "owner.update": ["submit_fields", "continue", "cancel"],
