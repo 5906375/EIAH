@@ -39,7 +39,7 @@ export async function resolveImobOwnerUpdate(
   context: ImobOperationalUpdateContext,
 ): Promise<OperationalResolution | null> {
   const currentCaseNextStep = params.caseId
-    ? "Concluir vínculo do proprietário com este imóvel ou seguir para a etapa documental do caso."
+    ? "Concluir vínculo do proprietário com este imóvel."
     : "Vincular o proprietário ao próximo imóvel ou etapa documental.";
   if (context.asksEdit && context.ownerCrudId) {
     const owner = await params.prisma.imobOwner.findFirst({

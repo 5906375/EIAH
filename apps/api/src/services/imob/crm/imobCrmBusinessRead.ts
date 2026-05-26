@@ -2496,22 +2496,22 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       nextMessage: string;
     }>;
 
-    if (hasDocumentPending) {
-      ctas.push({
-        id: `case-unblock-documents-${caseContext?.caseId ?? "current"}`,
-        label: "Revisar documentos",
-        kind: "primary",
-        action: "send_suggested_message",
-        nextMessage: "revisar documentos",
-      });
-    }
     if (hasOwnerPending) {
       ctas.push({
         id: `case-unblock-owner-${caseContext?.caseId ?? "current"}`,
         label: "Cadastrar proprietário",
-        kind: hasDocumentPending ? "secondary" : "primary",
+        kind: "primary",
         action: "send_suggested_message",
         nextMessage: "cadastrar proprietário",
+      });
+    }
+    if (hasDocumentPending) {
+      ctas.push({
+        id: `case-unblock-documents-${caseContext?.caseId ?? "current"}`,
+        label: "Revisar documentos",
+        kind: hasOwnerPending ? "secondary" : "primary",
+        action: "send_suggested_message",
+        nextMessage: "revisar documentos",
       });
     }
     if (hasPropertyPending) {
@@ -2590,13 +2590,6 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     }
 
     const normalizedPending = pendingItems.map((item) => helpers.normalizeImobRouteText(String(item)));
-    if (
-      caseContext?.flow === "documents.collect"
-      || caseContext?.flow === "contract.prepare"
-      || normalizedPending.some((item) => item.includes("document") || item.includes("matricula") || item.includes("matrícula") || item.includes("contrato"))
-    ) {
-      return "revisar documentos";
-    }
     if (normalizedPending.some((item) => item.includes("proprietario") || item.includes("proprietária"))) {
       return "cadastrar proprietário";
     }
@@ -2605,6 +2598,13 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     }
     if (normalizedPending.some((item) => item.includes("lead") || item.includes("comprador") || item.includes("locatario"))) {
       return "qualificar lead";
+    }
+    if (
+      caseContext?.flow === "documents.collect"
+      || caseContext?.flow === "contract.prepare"
+      || normalizedPending.some((item) => item.includes("document") || item.includes("matricula") || item.includes("matrícula") || item.includes("contrato"))
+    ) {
+      return "revisar documentos";
     }
     return "consultar caso";
   }

@@ -138,7 +138,26 @@ function buildRecommendedActions(params: {
 
   if (params.nextStep) {
     if (!normalizedNextStep.includes("mostrar bloqueios do caso")) {
-      const followNextStep = { id: "follow_next_step", label: "Executar próximo passo", actionType: "consultive", inputHint: params.nextStep, reasonCode: "NEXT_STEP_AVAILABLE" } satisfies ImobCrmRecommendedAction;
+      const followNextStep = (
+        normalizedNextStep.includes("confirmar selecao do scan")
+        || normalizedNextStep.includes("confirmar seleção do scan")
+        || normalizedNextStep.includes("confirmar captacao do scan")
+        || normalizedNextStep.includes("confirmar captação do scan")
+      )
+        ? {
+            id: "confirm_market_scan_capture",
+            label: "Confirmar captação do scan",
+            actionType: "consultive",
+            inputHint: "confirmar captação do scan",
+            reasonCode: "NEXT_STEP_AVAILABLE",
+          }
+        : {
+            id: "follow_next_step",
+            label: "Executar próximo passo",
+            actionType: "consultive",
+            inputHint: params.nextStep,
+            reasonCode: "NEXT_STEP_AVAILABLE",
+          } satisfies ImobCrmRecommendedAction;
       if (normalizedFlow === "lead.qualify" && params.pendingItems.length === 0 && params.blockers.length === 0) {
         actions.unshift(followNextStep);
       } else {
