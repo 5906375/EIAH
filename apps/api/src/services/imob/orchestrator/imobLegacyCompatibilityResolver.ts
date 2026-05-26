@@ -98,6 +98,14 @@ function resolveCurrentStep(params: {
       return params.pendingFields.length > 0 ? "gathering_signals" : "matching_inventory";
     case "schedule_and_follow_visit":
       if (params.context.entities.proposal?.status === "ready_for_review") return "post_visit";
+      if (
+        params.context.visitOutcome?.status === "pending_result"
+        || params.context.visitOutcome?.status === "follow_up_required"
+        || params.context.visitOutcome?.status === "reengagement_required"
+        || params.context.visitOutcome?.status === "proposal_ready"
+      ) {
+        return "post_visit";
+      }
       return params.pendingFields.length > 0 ? "selecting_slot" : "scheduled";
     case "collect_documents":
       return params.pendingFields.length > 0 ? "collecting" : "package_ready";

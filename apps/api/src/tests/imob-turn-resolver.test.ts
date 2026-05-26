@@ -318,6 +318,37 @@ test("IMOB turn resolver maps visit scheduling to backend-owned operation metada
   assert.equal(result.conversationState.operational?.visitDraft?.preferredWindow, "tarde");
 });
 
+test("IMOB turn resolver keeps visit reschedule request explicit in the visit draft", () => {
+  const result = resolveImobTurn({
+    message: "Quero remarcar visita do imóvel 82912 para 2026-04-02 de manhã",
+    access: {
+      tenantId: "tenant-A",
+      workspaceId: "workspace-A",
+      entitlements: { REAL_ESTATE_CORE: true },
+    },
+  });
+
+  assert.equal(result.conversationState.operational?.flow, "visit.schedule");
+  assert.equal(result.conversationState.operational?.visitDraft?.propertyId, "property-82912");
+  assert.equal(result.conversationState.operational?.visitDraft?.preferredDate, "2026-04-02");
+  assert.equal(result.conversationState.operational?.visitDraft?.preferredWindow, "manha");
+  assert.equal(result.conversationState.operational?.visitDraft?.status, "awaiting_reschedule");
+});
+
+test("IMOB turn resolver maps explicit proposal interest after the visit into proposal flow", () => {
+  const result = resolveImobTurn({
+    message: "Visita realizada no imóvel 82912 e cliente quer proposta",
+    access: {
+      tenantId: "tenant-A",
+      workspaceId: "workspace-A",
+      entitlements: { REAL_ESTATE_CORE: true },
+    },
+  });
+
+  assert.equal(result.conversationState.operational?.flow, "proposal.create");
+  assert.equal(result.conversationState.operational?.proposalDraft?.propertyId, "property-82912");
+});
+
 test("IMOB turn resolver builds guided form for document validation", () => {
   const result = resolveImobTurn({
     message: "validar documento",

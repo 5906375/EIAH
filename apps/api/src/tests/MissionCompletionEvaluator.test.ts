@@ -206,7 +206,7 @@ test("completion evaluator promotes matched lead to ready_for_transition before 
   assert.equal(status, "ready_for_transition");
 });
 
-test("completion evaluator promotes scheduled visit flow toward proposal transition", () => {
+test("completion evaluator keeps scheduled visit in progress until the post-visit outcome is explicit", () => {
   const status = resolveImobMissionStatus({
     mission: "schedule_and_follow_visit",
     context: buildContext({
@@ -217,8 +217,48 @@ test("completion evaluator promotes scheduled visit flow toward proposal transit
       entities: {
         visit: { id: "visit-1", status: "scheduled" },
       },
+      visitScheduling: {
+        status: "scheduled",
+        summary: "A visita já está agendada.",
+        recommendedNextMove: "confirmar resultado da visita e preparar o próximo movimento comercial",
+      },
+      visitOutcome: {
+        status: "pending_result",
+        summary: "A visita está agendada, mas o resultado ainda não foi registrado no caso.",
+        recommendedNextMove: "registrar o resultado da visita antes de decidir proposta ou follow-up",
+      },
     }),
-    currentStep: "scheduled",
+    currentStep: "post_visit",
+    pendingFields: [],
+    hasNextAction: true,
+  });
+
+  assert.equal(status, "in_progress");
+});
+
+test("completion evaluator promotes visit mission when the post-visit outcome is proposal_ready", () => {
+  const status = resolveImobMissionStatus({
+    mission: "schedule_and_follow_visit",
+    context: buildContext({
+      missionContext: {
+        mission: "schedule_visit",
+        lockedUntilExplicitChange: false,
+      },
+      entities: {
+        visit: { id: "visit-1", status: "scheduled" },
+      },
+      visitScheduling: {
+        status: "scheduled",
+        summary: "A visita já está agendada.",
+        recommendedNextMove: "confirmar resultado da visita e preparar o próximo movimento comercial",
+      },
+      visitOutcome: {
+        status: "proposal_ready",
+        summary: "A visita confirmou avanço comercial e o caso já pode seguir para proposta.",
+        recommendedNextMove: "preparar proposta com base no interesse confirmado na visita",
+      },
+    }),
+    currentStep: "post_visit",
     pendingFields: [],
     hasNextAction: true,
   });

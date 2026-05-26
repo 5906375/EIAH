@@ -3,7 +3,7 @@
 Status: rebaseline operacional  
 Prioridade: P0/P1 para Track P IMOB  
 Data de referência: 2026-05-26  
-Versão do plano: v5.0 — pragmática para execução com continuidade derivada do canônico, `DocumentAgent E2E` e `DedupeAgent E2E` concluídos no runtime  
+Versão do plano: v5.3 — pragmática para execução com continuidade derivada do canônico, `DocumentAgent E2E`, `DedupeAgent E2E` e `VisitAgent E2E` concluídos no runtime  
 Escopo: fechamento E2E do `IMOB_Orchestrator` como dono real das missões imobiliárias, preservando arquitetura agent-driven, estado canônico, recuperação confiável, próxima ação única, controle de concorrência seguro para side effects, compatibilidade com casos legados e proof mínimo determinístico por missão.
 
 ---
@@ -164,12 +164,30 @@ Próximas frentes oficiais a partir deste ponto:
      - zero drift entre dedupe, case state e continuity.
    - plano derivado:
      - `docs/plans/imob-dedupe-agent-e2e-implementation-plan.md`
+
+6. `VisitAgent E2E`
+   - Status: `concluído`
+   - `PR-VISIT1` concluído: canonical visit scheduling snapshot
+   - `PR-VISIT2` concluído: reschedule/cancel flow
+   - `PR-VISIT3` concluído: post-visit outcome and proposal handoff
+   - foco:
+     - agenda governada de visita;
+     - remarcação e cancelamento sem drift;
+     - resultado de visita e pós-visita;
+     - handoff coerente para proposta ou retomada comercial.
+   - saída esperada:
+     - `nextAction` claro para visita ativa, remarcação e pós-visita;
+     - recovery sem reabrir cadastro indevidamente;
+     - zero drift entre visita, lead e proposta.
+   - plano derivado:
+     - `docs/plans/imob-visit-agent-e2e-implementation-plan.md`
 Ordem recomendada:
 
 - `imobValidationEngine` e `LeadAgent E2E` já entregues;
 - `MarketScanAgent E2E` já entregue;
 - `DocumentAgent E2E` já entregue;
-- próximo bloco oficial: `DedupeAgent E2E`.
+- `DedupeAgent E2E` já entregue;
+- `VisitAgent E2E` já entregue.
 
 Justificativa:
 - `imobValidationEngine` endureceu a base comum de `Property`, `Owner`, `Lead` e `Documents`;
@@ -177,12 +195,15 @@ Justificativa:
 - `MarketScanAgent E2E` fechou a recomendação acionável, comparables e continuidade de captação;
 - `DocumentAgent E2E` fechou checklist, suficiência e handoff jurídico/documental com blockers claros;
 - `DedupeAgent E2E` fechou merge auditável, replay formal e prevenção de drift entre múltiplas conversões, reruns e merges operacionais.
+- o próximo multiplicador natural é `VisitAgent E2E`, para fechar agenda, remarcação, cancelamento, resultado e pós-visita como frente própria do funil.
 
 Execução corrente:
 
 - `DocumentAgent E2E` fica encerrado como frente concluída;
 - `DedupeAgent E2E` fica encerrado como frente concluída;
-- próxima frente oficial: `a definir` em novo rebaseline do canônico.
+- `VisitAgent E2E` fica encerrado como frente concluída;
+- próxima frente oficial:
+  - `a definir em novo rebaseline do canônico`
 
 ---
 

@@ -70,7 +70,7 @@ export function resolveImobMissionStatus(params: ResolveMissionStatusParams): Mi
       return params.hasNextAction || params.pendingFields.length > 0 ? "in_progress" : "draft";
     case "schedule_and_follow_visit":
       if (params.context.entities.proposal?.status === "ready_for_review") return "ready_for_transition";
-      if (params.pendingFields.length === 0 && params.currentStep === "scheduled") return "ready_for_transition";
+      if (params.context.visitOutcome?.status === "proposal_ready") return "ready_for_transition";
       return params.hasNextAction || params.pendingFields.length > 0 ? "in_progress" : "draft";
     case "collect_documents":
       if (params.pendingFields.length === 0 && params.currentStep === "package_ready") return "ready_for_transition";

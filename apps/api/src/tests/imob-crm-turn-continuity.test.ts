@@ -84,6 +84,112 @@ test("IMOB_CRM continuity promotes qualified lead case into visit.schedule on ex
   assert.deepEqual((hydrated as any).operational?.pendingFields, ["preferredDate"]);
 });
 
+test("IMOB_CRM continuity preserves visit cancellation request while hydrating the active case", async () => {
+  const threadState = {
+    mode: "execute",
+    pendingSlot: "none",
+    resultOffset: 0,
+    slots: {},
+    operational: {
+      flow: "visit.schedule",
+      status: "collecting",
+      pendingFields: [],
+      visitDraft: {
+        propertyId: "property-1",
+        visitorName: "Lead 01",
+        visitorPhone: "11 99999-9999",
+        preferredDate: "2026-06-05",
+        status: "cancel_requested",
+      },
+    },
+  };
+
+  const hydrated = await hydrateThreadStateWithPersistedLead({
+    prisma: {
+      imobCase: {
+        findFirst: async () => ({
+          leadId: "lead-1",
+          propertyId: "property-1",
+        }),
+      },
+      imobLead: {
+        findFirst: async () => ({
+          name: "Lead 01",
+          email: "lead01@gmail.com",
+          phone: "11 99999-9999",
+          goal: "locacao",
+          targetCity: "Itapema",
+          budgetMaxCents: 1000000,
+        }),
+      },
+    },
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    caseId: "case-1",
+    message: "Cancelar visita deste caso",
+    threadLabel: "Visita",
+    threadState,
+    helpers: createHelpers(),
+  });
+
+  assert.equal((hydrated as any).operational?.flow, "visit.schedule");
+  assert.equal((hydrated as any).operational?.visitDraft?.status, "cancel_requested");
+  assert.equal((hydrated as any).operational?.visitDraft?.propertyId, "property-1");
+});
+
+test("IMOB_CRM continuity preserves post-visit outcome while hydrating the active case", async () => {
+  const threadState = {
+    mode: "execute",
+    pendingSlot: "none",
+    resultOffset: 0,
+    slots: {},
+    operational: {
+      flow: "visit.schedule",
+      status: "ready_for_review",
+      pendingFields: [],
+      visitDraft: {
+        propertyId: "property-1",
+        visitorName: "Lead 01",
+        visitorPhone: "11 99999-9999",
+        preferredDate: "2026-06-05",
+        status: "scheduled",
+        outcome: "proposal_ready",
+      },
+    },
+  };
+
+  const hydrated = await hydrateThreadStateWithPersistedLead({
+    prisma: {
+      imobCase: {
+        findFirst: async () => ({
+          leadId: "lead-1",
+          propertyId: "property-1",
+        }),
+      },
+      imobLead: {
+        findFirst: async () => ({
+          name: "Lead 01",
+          email: "lead01@gmail.com",
+          phone: "11 99999-9999",
+          goal: "locacao",
+          targetCity: "Itapema",
+          budgetMaxCents: 1000000,
+        }),
+      },
+    },
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    caseId: "case-1",
+    message: "Visita realizada e cliente quer proposta",
+    threadLabel: "Visita",
+    threadState,
+    helpers: createHelpers(),
+  });
+
+  assert.equal((hydrated as any).operational?.flow, "visit.schedule");
+  assert.equal((hydrated as any).operational?.visitDraft?.outcome, "proposal_ready");
+});
+
 test("IMOB_CRM continuity keeps lead.qualify when there are real pending lead fields", async () => {
   const threadState = {
     mode: "execute",
