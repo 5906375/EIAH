@@ -3,7 +3,7 @@
 Status: rebaseline operacional  
 Prioridade: P0/P1 para Track P IMOB  
 Data de referência: 2026-05-26  
-Versão do plano: v5.4 — pragmática para execução com continuidade derivada do canônico, `DocumentAgent E2E`, `DedupeAgent E2E` e `VisitAgent E2E` concluídos no runtime e `Guardian_EvidenceAgent` aberto como próxima frente oficial transversal  
+Versão do plano: v5.5 — pragmática para execução com continuidade derivada do canônico, `DocumentAgent E2E`, `DedupeAgent E2E`, `VisitAgent E2E` e `Guardian_EvidenceAgent` concluídos no runtime e `FollowUpAgent / Commercial follow-up E2E` aberto como próxima frente oficial  
 Escopo: fechamento E2E do `IMOB_Orchestrator` como dono real das missões imobiliárias, preservando arquitetura agent-driven, estado canônico, recuperação confiável, próxima ação única, controle de concorrência seguro para side effects, compatibilidade com casos legados e proof mínimo determinístico por missão.
 
 ---
@@ -183,7 +183,10 @@ Próximas frentes oficiais a partir deste ponto:
      - `docs/plans/imob-visit-agent-e2e-implementation-plan.md`
 
 7. `Guardian_EvidenceAgent`
-   - Status: `próxima frente oficial`
+   - Status: `concluído`
+   - `PR-GUARD1` concluído: canonical evidence snapshot
+   - `PR-GUARD2` concluído: proof-aware recovery and business read
+   - `PR-GUARD3` concluído: auditable evidence export surface
    - foco:
      - uniformizar proof mínimo, evidence bundle e audit snapshot entre missões;
      - expor evidência canônica no case state e no recovery;
@@ -195,6 +198,21 @@ Próximas frentes oficiais a partir deste ponto:
      - zero drift entre proof requerido, proof satisfeito e bundle/receipt disponível.
    - plano derivado:
      - `docs/plans/imob-guardian-evidence-agent-e2e-implementation-plan.md`
+
+8. `FollowUpAgent / Commercial follow-up E2E`
+   - Status: `próxima frente oficial`
+   - foco:
+     - fechar cadência comercial pós-visita e pós-proposta;
+     - transformar `follow_up_required` e `reengagement_required` em jornada governada;
+     - consolidar memória comercial, gatilhos e próxima mensagem preparada sem outbound automático;
+     - alinhar recovery, business read e continuidade comercial do caso.
+   - saída esperada:
+     - snapshot canônico de follow-up/reengagement por caso;
+     - `nextAction` único para follow-up comercial ativo;
+     - prepared follow-up coerente com objeção, urgência e gatilho;
+     - zero drift entre visit outcome, lead lifecycle e retomada comercial.
+   - plano derivado:
+     - `docs/plans/imob-follow-up-agent-e2e-implementation-plan.md`
 Ordem recomendada:
 
 - `imobValidationEngine` e `LeadAgent E2E` já entregues;
@@ -203,6 +221,7 @@ Ordem recomendada:
 - `DedupeAgent E2E` já entregue;
 - `VisitAgent E2E` já entregue.
 - próximo multiplicador transversal: `Guardian_EvidenceAgent`.
+- depois do fechamento transversal de evidence, a próxima expansão funcional recomendada é `FollowUpAgent / Commercial follow-up E2E`.
 
 Justificativa:
 - `imobValidationEngine` endureceu a base comum de `Property`, `Owner`, `Lead` e `Documents`;
@@ -211,19 +230,21 @@ Justificativa:
 - `DocumentAgent E2E` fechou checklist, suficiência e handoff jurídico/documental com blockers claros;
 - `DedupeAgent E2E` fechou merge auditável, replay formal e prevenção de drift entre múltiplas conversões, reruns e merges operacionais.
 - `VisitAgent E2E` fechou agenda, remarcação, cancelamento, resultado e pós-visita como frente própria do funil.
-- o próximo multiplicador natural é `Guardian_EvidenceAgent`, para uniformizar proof, evidence bundle, audit snapshot e leitura gerencial transversal às missões já entregues.
+- `Guardian_EvidenceAgent` fechou a camada transversal de proof, bundle, receipt e export auditável por missão.
+- o próximo multiplicador natural é `FollowUpAgent / Commercial follow-up E2E`, para transformar follow-up, retomada e cadência comercial em jornada governada de ponta a ponta.
 
 Execução corrente:
 
 - `DocumentAgent E2E` fica encerrado como frente concluída;
 - `DedupeAgent E2E` fica encerrado como frente concluída;
 - `VisitAgent E2E` fica encerrado como frente concluída;
+- `Guardian_EvidenceAgent` fica encerrado como frente concluída;
 - próxima frente oficial:
-  - `Guardian_EvidenceAgent`
+  - `FollowUpAgent / Commercial follow-up E2E`
   - com detalhamento em:
-    - `docs/plans/imob-guardian-evidence-agent-e2e-implementation-plan.md`
-  - slice atual:
-    - `PR-GUARD3 — auditable evidence export surface`
+    - `docs/plans/imob-follow-up-agent-e2e-implementation-plan.md`
+  - slice inicial recomendado:
+    - `PR-FOLLOW1 — canonical commercial follow-up snapshot`
 
 ---
 
