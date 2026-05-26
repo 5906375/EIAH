@@ -21,6 +21,14 @@ type Scope = {
   userId?: string | null;
 };
 
+type DedupeMergeAudit = {
+  entity: "owner" | "property";
+  subjectId: string;
+  matchedBy: string[];
+  sourceFlow: string | null;
+  dedupeKey: string | null;
+};
+
 function asObject(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   return value as Record<string, unknown>;
@@ -46,6 +54,52 @@ function asString(value: unknown): string | null {
 function normalizeText(value: unknown) {
   const text = asString(value);
   return text ? text.trim().toLowerCase() : null;
+}
+
+function normalizeComparableToken(value: unknown) {
+  return normalizeText(value)?.replace(/\s+/g, " ") ?? null;
+}
+
+function buildResolvedTurnReplayKey(params: {
+  flow: string | null;
+  caseId?: string | null;
+  threadId?: string | null;
+  presentationDedupeKey?: unknown;
+  ownerDraft?: Record<string, unknown> | null;
+  propertyDraft?: Record<string, unknown> | null;
+}) {
+  const explicitKey = asString(params.presentationDedupeKey);
+  if (explicitKey) return explicitKey;
+
+  const scopeRef = asString(params.threadId) ?? asString(params.caseId);
+  if (!params.flow || !scopeRef) return null;
+
+  if (params.flow === "owner.create" || params.flow === "owner.update") {
+    const ownerDraft = params.ownerDraft;
+    if (!ownerDraft) return null;
+    const ownerRef = [
+      normalizeComparableToken(ownerDraft.ownerDocument),
+      normalizeComparableToken(ownerDraft.ownerPhone),
+      normalizeComparableToken(ownerDraft.ownerEmail),
+      normalizeComparableToken(ownerDraft.ownerName),
+    ].find(Boolean);
+    return ownerRef ? `crm.${params.flow}:${scopeRef}:${ownerRef}` : null;
+  }
+
+  if (params.flow === "property.create") {
+    const propertyDraft = params.propertyDraft;
+    if (!propertyDraft) return null;
+    const origin = readMarketScanOrigin(propertyDraft.origin);
+    const addressKey = [normalizeComparableToken(propertyDraft.address), normalizeComparableToken(propertyDraft.city)]
+      .filter(Boolean)
+      .join(":");
+    const propertyRef = asString(propertyDraft.propertyId)
+      ?? (origin?.providerId && origin?.sourceId ? `${origin.providerId}:${origin.sourceId}` : null)
+      ?? (addressKey || null);
+    return propertyRef ? `crm.property.create:${scopeRef}:${propertyRef}` : null;
+  }
+
+  return null;
 }
 
 function readMarketScanOrigin(value: unknown) {
@@ -117,6 +171,53 @@ function mapOperationalCaseStatus(operationalStatus: string) {
 
 export class ImobCrmMutationService {
   constructor(private readonly prisma: PrismaClient) {}
+
+  private async findCaseReplayEvent(scope: Scope, params: { caseId: string; replayKey: string }) {
+    if (!this.prisma.imobCaseEvent?.findFirst) return null;
+    return this.prisma.imobCaseEvent.findFirst({
+      where: {
+        caseId: params.caseId,
+        tenantId: scope.tenantId,
+        workspaceId: scope.workspaceId,
+        evidenceRef: params.replayKey,
+      } as any,
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        payload: true,
+      } as any,
+    });
+  }
+
+  private async loadScopedCase(scope: Scope, caseId: string) {
+    return this.prisma.imobCase.findFirst({
+      where: { id: caseId, tenantId: scope.tenantId, workspaceId: scope.workspaceId },
+      include: {
+        owner: { select: { id: true, name: true } },
+        property: { select: { id: true, propertyType: true, city: true, neighborhood: true } },
+        lead: { select: { id: true, name: true } },
+      },
+    });
+  }
+
+  private async recordDedupeMergeAudit(scope: Scope, params: DedupeMergeAudit) {
+    await recordImobCrmAuditEvent({
+      prisma: this.prisma,
+      tenantId: scope.tenantId,
+      workspaceId: scope.workspaceId,
+      userId: scope.userId ?? null,
+      subjectType: params.entity,
+      subjectId: params.subjectId,
+      action: "updated",
+      summary: `${params.entity === "owner" ? "Owner" : "Property"} ${params.subjectId} merged by dedupe review`,
+      metadata: {
+        mergeKind: "dedupe_merge",
+        matchedBy: params.matchedBy,
+        sourceFlow: params.sourceFlow,
+        dedupeKey: params.dedupeKey,
+      },
+    });
+  }
 
   private async recordLeadShadow(scope: Scope, params: {
     leadId: string;
@@ -701,6 +802,53 @@ export class ImobCrmMutationService {
     let persistedLeadId: string | null = scopedCase?.leadId ?? null;
     let persistedOwnerId: string | null = scopedCase?.ownerId ?? null;
     let persistedPropertyId: string | null = scopedCase?.propertyId ?? null;
+    const dedupeMerges: DedupeMergeAudit[] = [];
+    const ownerDraft = asObject(operational.ownerDraft);
+    const propertyDraft = asObject(operational.propertyDraft);
+    const leadDraft = asObject(operational.leadDraft);
+    const proposalDraft = asObject(operational.proposalDraft);
+    const visitDraft = asObject(operational.visitDraft);
+    const contractDraft = operational.contractDraft;
+    const rulesDraft = operational.rulesDraft;
+    const commissionDraft = operational.commissionDraft;
+    const replayKey = buildResolvedTurnReplayKey({
+      flow: operational.flow,
+      caseId: scopedCase?.id ?? params.caseId ?? null,
+      threadId: params.threadId ?? null,
+      presentationDedupeKey: params.resolved?.presentation?.dedupeKey,
+      ownerDraft,
+      propertyDraft,
+    });
+
+    if (scopedCase?.id && replayKey) {
+      const existingReplay = await this.findCaseReplayEvent(scope, {
+        caseId: scopedCase.id,
+        replayKey,
+      });
+      if (existingReplay) {
+        const replayedCase = await this.loadScopedCase(scope, scopedCase.id);
+        if (replayedCase) {
+          return {
+            caseId: replayedCase.id,
+            flow: replayedCase.flow,
+            stage: replayedCase.stage,
+            status: replayedCase.status,
+            ownerResponsible: replayedCase.ownerResponsible ?? null,
+            nextStep: replayedCase.nextStep ?? null,
+            blocker: Array.isArray(replayedCase.blockers) && replayedCase.blockers.length > 0
+              ? asString(replayedCase.blockers[0])
+              : null,
+            pendingItems: Array.isArray(replayedCase.pendingItems) ? replayedCase.pendingItems : [],
+            threadId: replayedCase.threadId ?? params.threadId ?? null,
+            updatedAt: replayedCase.updatedAt instanceof Date ? replayedCase.updatedAt.toISOString() : nowIso,
+            blockers: Array.isArray(replayedCase.blockers) ? replayedCase.blockers : [],
+            lead: replayedCase.lead ?? null,
+            owner: replayedCase.owner ?? null,
+            property: replayedCase.property ?? null,
+          };
+        }
+      }
+    }
 
     const lookupLeadDraft = async (draft: Record<string, unknown> | null | undefined) => {
       if (!draft) return null;
@@ -775,6 +923,12 @@ export class ImobCrmMutationService {
 
     const upsertOwnerDraft = async (draft: Record<string, unknown> | null | undefined, mode: "upsert" | "lookup_only") => {
       if (!draft) return null;
+      const matchedBy = [
+        draft.ownerDocument ? "document" : null,
+        draft.ownerPhone ? "phone" : null,
+        draft.ownerEmail ? "email" : null,
+        draft.ownerName ? "name" : null,
+      ].filter((item): item is string => Boolean(item));
       const existingId = await lookupOwnerDraft(draft);
       if (mode === "lookup_only") return existingId;
 
@@ -794,6 +948,15 @@ export class ImobCrmMutationService {
       const persisted = existingId
         ? await this.updateOwner(scope, existingId, input)
         : await this.createOwner(scope, input);
+      if (existingId && persisted?.id) {
+        dedupeMerges.push({
+          entity: "owner",
+          subjectId: persisted.id,
+          matchedBy,
+          sourceFlow: operational.flow ?? null,
+          dedupeKey: asString(params.resolved?.presentation?.dedupeKey),
+        });
+      }
       return persisted?.id ?? null;
     };
 
@@ -812,6 +975,12 @@ export class ImobCrmMutationService {
     const upsertPropertyDraft = async (draft: Record<string, unknown> | null | undefined, mode: "upsert" | "lookup_only") => {
       if (!draft) return null;
       const externalPropertyRef = draft.propertyId ?? null;
+      const matchedBy = [
+        asString(draft.propertyId) ? "externalPropertyRef" : null,
+        asObject(draft.origin) ? "marketScanOrigin" : null,
+        asString(draft.address) ? "address" : null,
+        asString(draft.city) ? "city" : null,
+      ].filter((item): item is string => Boolean(item));
       const existingId = await lookupPropertyDraft(draft);
       if (mode === "lookup_only") return existingId;
       const currentMetadata = existingId
@@ -844,17 +1013,17 @@ export class ImobCrmMutationService {
       const persisted = existingId
         ? await this.updateProperty(scope, existingId, input)
         : await this.createProperty(scope, input);
+      if (existingId && persisted.status === "updated") {
+        dedupeMerges.push({
+          entity: "property",
+          subjectId: persisted.data.id,
+          matchedBy,
+          sourceFlow: operational.flow ?? null,
+          dedupeKey: asString(params.resolved?.presentation?.dedupeKey),
+        });
+      }
       return persisted.status === "updated" || persisted.status === "created" ? persisted.data.id : null;
     };
-
-    const ownerDraft = asObject(operational.ownerDraft);
-    const propertyDraft = asObject(operational.propertyDraft);
-    const leadDraft = asObject(operational.leadDraft);
-    const proposalDraft = asObject(operational.proposalDraft);
-    const visitDraft = asObject(operational.visitDraft);
-    const contractDraft = operational.contractDraft;
-    const rulesDraft = operational.rulesDraft;
-    const commissionDraft = operational.commissionDraft;
 
     if (operational.flow === "owner.create" && ownerDraft) {
       persistedOwnerId = await upsertOwnerDraft(ownerDraft, "upsert");
@@ -879,6 +1048,10 @@ export class ImobCrmMutationService {
         desiredCity: null,
         budgetMax: null,
       }, "lookup_only") ?? persistedLeadId;
+    }
+
+    for (const merge of dedupeMerges) {
+      await this.recordDedupeMergeAudit(scope, merge);
     }
 
     const leadEventType = resolveLeadEventType({
@@ -907,17 +1080,18 @@ export class ImobCrmMutationService {
         action: params.resolved?.action,
         mode: params.resolved?.mode,
         suggestedNextAction: asString(params.resolved?.presentation?.suggestedNextAction),
-        dedupeKey: asString(params.resolved?.presentation?.dedupeKey),
+        dedupeKey: replayKey,
         leadStatus: asString(operational.leadStatus),
         nextAction: asString(operational.nextAction),
         reasonCode: asString(params.resolved?.presentation?.metadata?.reasonCode),
       },
       eventType: leadEventType ?? (scopedCase ? "case.turn_resolved" : "case.created_from_turn"),
-      eventEvidenceRef: asString(params.resolved?.presentation?.dedupeKey),
+      eventEvidenceRef: replayKey,
       eventSummary: asString(params.resolved?.presentation?.text),
       eventPayload: {
         resolvedAt: nowIso,
         flow: operational.flow,
+        replayKey,
         operationalStatus: operational.status,
         leadStatus: asString(operational.leadStatus),
         nextAction: asString(operational.nextAction),
@@ -933,6 +1107,7 @@ export class ImobCrmMutationService {
         contractDraft: contractDraft ?? null,
         rulesDraft: rulesDraft ?? null,
         commissionDraft: commissionDraft ?? null,
+        dedupeMerges,
         persistedLeadId,
         persistedOwnerId,
         persistedPropertyId,
@@ -948,7 +1123,7 @@ export class ImobCrmMutationService {
             type: caseInput.eventType,
             actorType: "system",
             summary: caseInput.eventSummary,
-            evidenceRef: asString(params.resolved?.presentation?.dedupeKey),
+            evidenceRef: replayKey,
             payload: caseInput.eventPayload,
           },
         });

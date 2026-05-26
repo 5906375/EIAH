@@ -2,8 +2,8 @@
 
 Status: rebaseline operacional  
 Prioridade: P0/P1 para Track P IMOB  
-Data de referência: 2026-05-25  
-Versão do plano: v4.8 — pragmática para execução com continuidade derivada do canônico, `MarketScanAgent E2E` concluído e `DocumentAgent E2E` aberto como frente corrente  
+Data de referência: 2026-05-26  
+Versão do plano: v5.0 — pragmática para execução com continuidade derivada do canônico, `DocumentAgent E2E` e `DedupeAgent E2E` concluídos no runtime  
 Escopo: fechamento E2E do `IMOB_Orchestrator` como dono real das missões imobiliárias, preservando arquitetura agent-driven, estado canônico, recuperação confiável, próxima ação única, controle de concorrência seguro para side effects, compatibilidade com casos legados e proof mínimo determinístico por missão.
 
 ---
@@ -137,33 +137,52 @@ Próximas frentes oficiais a partir deste ponto:
      - `docs/plans/imob-market-scan-agent-e2e-implementation-plan.md`
 
 4. `DocumentAgent E2E`
-   - Status: `execução iniciada`
+   - Status: `concluído`
    - `PR-DOC1` concluído: checklist by operation
-   - slice corrente: `PR-DOC2 — sufficiency + proof + legal handoff`
+   - `PR-DOC2` concluído: sufficiency + proof + legal handoff
    - checklist por operação;
    - suficiência documental;
    - bloqueios claros;
    - preparação de pacote e handoff jurídico com proof.
    - plano derivado:
      - `docs/plans/imob-document-agent-e2e-implementation-plan.md`
+
+5. `DedupeAgent E2E`
+   - Status: `concluído`
+   - `PR-DEDUPE1` concluído: canonical dedupe snapshot
+   - `PR-DEDUPE2` concluído: property/owner merge auditável
+   - `PR-DEDUPE3` concluído: idempotência formal transversal
+   - foco:
+     - dedupe explícito de imóvel e owner com merge auditável;
+     - idempotência formal transversal;
+     - reexecução segura de captação, owner update e vínculos;
+     - prevenção de side effect duplicado em múltiplos handoffs.
+   - saída esperada:
+     - merge/review auditável;
+     - reason codes claros;
+     - queues/projeção coerentes para revisão de dedupe;
+     - zero drift entre dedupe, case state e continuity.
+   - plano derivado:
+     - `docs/plans/imob-dedupe-agent-e2e-implementation-plan.md`
 Ordem recomendada:
 
 - `imobValidationEngine` e `LeadAgent E2E` já entregues;
 - `MarketScanAgent E2E` já entregue;
-- próximo bloco oficial: `DocumentAgent E2E`.
+- `DocumentAgent E2E` já entregue;
+- próximo bloco oficial: `DedupeAgent E2E`.
 
 Justificativa:
 - `imobValidationEngine` endureceu a base comum de `Property`, `Owner`, `Lead` e `Documents`;
 - `LeadAgent E2E` fechou a jornada comercial canônica no runtime;
 - `MarketScanAgent E2E` fechou a recomendação acionável, comparables e continuidade de captação;
-- o próximo multiplicador de valor é `DocumentAgent E2E`, fechando checklist, suficiência e handoff jurídico/documental com blockers claros.
+- `DocumentAgent E2E` fechou checklist, suficiência e handoff jurídico/documental com blockers claros;
+- `DedupeAgent E2E` fechou merge auditável, replay formal e prevenção de drift entre múltiplas conversões, reruns e merges operacionais.
 
 Execução corrente:
 
-- a frente corrente deste plano canônico passa a ser guiada por:
-  - `docs/plans/imob-document-agent-e2e-implementation-plan.md`
-  - slice em andamento:
-    - `PR-DOC2 — sufficiency + proof + legal handoff`
+- `DocumentAgent E2E` fica encerrado como frente concluída;
+- `DedupeAgent E2E` fica encerrado como frente concluída;
+- próxima frente oficial: `a definir` em novo rebaseline do canônico.
 
 ---
 

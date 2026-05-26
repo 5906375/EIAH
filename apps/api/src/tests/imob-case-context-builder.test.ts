@@ -153,6 +153,33 @@ test("IMOB case context v1 derives document sufficiency for legal handoff when t
   assert.equal(context.documentSufficiency?.legalHandoffStatus, "pending");
 });
 
+test("IMOB case context v1 exposes canonical dedupe snapshot for pending owner review", () => {
+  const context = buildImobCaseContextV1({
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    caseId: "case-dedupe-1",
+    caseContext: {
+      caseId: "case-dedupe-1",
+      flow: "owner.dedupe_review",
+    },
+    operational: {
+      flow: "owner.dedupe_review",
+      dedupeDecision: {
+        status: "pending",
+        flow: "owner.create",
+        entityType: "owner",
+        entityId: "owner-1",
+        entityLabel: "Carlos Alberto",
+      },
+    },
+  });
+
+  assert.equal(context.dedupe?.entity, "owner");
+  assert.equal(context.dedupe?.status, "pending_review");
+  assert.equal(context.dedupe?.matchedEntityId, "owner-1");
+  assert.ok(context.blockers.some((blocker) => blocker.code === "dedupe_pending"));
+});
+
 test("IMOB case context v1 drops stale market-scan blocker after property conversion and keeps owner follow-up as the real blocker", () => {
   const context = buildImobCaseContextV1({
     tenantId: "tenant-A",

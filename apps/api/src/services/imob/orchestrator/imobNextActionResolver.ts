@@ -156,6 +156,14 @@ function buildDocumentChecklistLabel(context: ImobCaseContextV1) {
 }
 
 export function resolveImobNextAction(params: ResolveNextActionParams): ImobNextAction {
+  if (params.context.dedupe?.status === "pending_review") {
+    return mapOperationAction(params.context.dedupe.entity === "lead" ? "lead" : "owner", params.flow, {
+      id: "review-dedupe",
+      label: "Revisar dedupe",
+      reasonCode: "DEDUPE_REVIEW_PENDING",
+    });
+  }
+
   if (params.legacyNextAction === "ask_missing_lead_field") {
     return mapLeadAction(params.flow, {
       id: "ask-missing-lead-field",

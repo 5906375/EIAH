@@ -143,6 +143,18 @@ export type ImobDocumentSufficiencySnapshotV1 = {
   summary: string;
   recommendedNextMove: string;
 };
+
+export type ImobDedupeSnapshotV1 = {
+  entity: "owner" | "property" | "lead";
+  status: "pending_review" | "matched" | "resolved" | "not_applicable";
+  workflowState?: string | null;
+  matchedEntityId?: string | null;
+  matchedEntityLabel?: string | null;
+  candidateCount: number;
+  reasonCodes: string[];
+  summary: string;
+  recommendedNextMove: string;
+};
 export type ImobCaseBlockerV1 = {
   code: string;
   severity: "info" | "warning" | "blocking";
@@ -177,6 +189,7 @@ export type ImobCaseContextV1 = {
   marketScanRecommendation?: ImobMarketScanRecommendationSnapshotV1 | null;
   documentChecklist?: ImobDocumentChecklistSnapshotV1 | null;
   documentSufficiency?: ImobDocumentSufficiencySnapshotV1 | null;
+  dedupe?: ImobDedupeSnapshotV1 | null;
   links: {
     ownerProperty?: {
       ownerId?: string | null;

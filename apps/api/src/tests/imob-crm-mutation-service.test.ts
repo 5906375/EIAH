@@ -19,6 +19,17 @@ function createMockPrisma() {
   const caseEvents: any[] = [];
   const memoryEvents: any[] = [];
   const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
+  const pushCaseEvent = (data: any) => {
+    const event = {
+      ...data,
+      caseId: data.caseId ?? data.imobCase?.connect?.id ?? null,
+      tenantId: data.tenantId ?? data.tenant?.connect?.id ?? null,
+      workspaceId: data.workspaceId ?? data.workspace?.connect?.id ?? null,
+      createdAt: data.createdAt ?? new Date("2026-01-04"),
+    };
+    caseEvents.push(event);
+    return { id: `case-event-${caseEvents.length}`, ...event };
+  };
 
   return {
     owners,
@@ -39,9 +50,15 @@ function createMockPrisma() {
       },
       findFirst: async ({ where }: any) => {
         const found = owners.find((item) => (
-          item.id === where.id &&
+          (!where.id || item.id === where.id) &&
           (!where.tenantId || item.tenantId === where.tenantId) &&
           (!where.workspaceId || item.workspaceId === where.workspaceId) &&
+          (!where.OR || where.OR.some((condition: any) => (
+            (condition.document && condition.document === item.document) ||
+            (condition.phone && condition.phone === item.phone) ||
+            (condition.email && condition.email === item.email) ||
+            (condition.name && condition.name === item.name)
+          ))) &&
           item.status !== "archived"
         ));
         return found ? clone(found) : null;
@@ -165,9 +182,19 @@ function createMockPrisma() {
       },
     },
     imobCaseEvent: {
+      findFirst: async ({ where }: any) => {
+        const found = [...caseEvents].reverse().find((item) => (
+          (!where?.caseId || item.caseId === where.caseId) &&
+          (!where?.tenantId || item.tenantId === where.tenantId) &&
+          (!where?.workspaceId || item.workspaceId === where.workspaceId) &&
+          (!where?.type || item.type === where.type) &&
+          (!where?.summary || item.summary === where.summary) &&
+          (!where?.evidenceRef || item.evidenceRef === where.evidenceRef)
+        ));
+        return found ? clone(found) : null;
+      },
       create: async ({ data }: any) => {
-        caseEvents.push(data);
-        return { id: `case-event-${caseEvents.length}`, ...data };
+        return pushCaseEvent(data);
       },
     },
     memoryEvent: {
@@ -219,8 +246,7 @@ function createMockPrisma() {
       },
       imobCaseEvent: {
         create: async ({ data }: any) => {
-          caseEvents.push(data);
-          return { id: `case-event-${caseEvents.length}`, ...data };
+          return pushCaseEvent(data);
         },
       },
     }),
@@ -556,6 +582,85 @@ test("IMOB_CRM mutation service dedupes property by market scan origin even with
 
   assert.equal(persisted?.property?.id, "property-existing-origin-1");
   assert.equal(prisma.properties.length, 1);
+  assert.equal(prisma.memoryEvents.some((event) => (
+    event.key === "crm.audit"
+    && event.metadata.subjectType === "property"
+    && event.metadata.mergeKind === "dedupe_merge"
+    && event.metadata.subjectId === "property-existing-origin-1"
+  )), true);
+  assert.deepEqual((prisma.caseEvents[0].payload.dedupeMerges as any[])[0], {
+    entity: "property",
+    subjectId: "property-existing-origin-1",
+    matchedBy: ["marketScanOrigin", "address", "city"],
+    sourceFlow: "property.create",
+    dedupeKey: null,
+  });
+});
+
+test("IMOB_CRM mutation service records auditable owner merge when reusing existing owner by dedupe", async () => {
+  const prisma = createMockPrisma();
+  prisma.owners.push({
+    id: "owner-existing-1",
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    name: "Carlos Alberto",
+    document: "12345678900",
+    email: "carlos@example.com",
+    phone: "47999990000",
+    status: "pending_data",
+    updatedAt: new Date("2026-01-03"),
+  });
+  const service = new ImobCrmMutationService(prisma as any);
+
+  const persisted = await service.upsertCaseFromResolvedTurn({
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    userId: "user-1",
+  }, {
+    threadId: "thread-owner-dedupe",
+    threadLabel: "Proprietário",
+    resolved: {
+      mode: "execute",
+      action: "realestate.register_owner",
+      threadLabel: "Proprietário",
+      presentation: {
+        text: "Cadastro existente do proprietário Carlos Alberto atualizado com sucesso.",
+        owner: "Corretor",
+        nextStep: "Seguir com a revisão do caso.",
+        pendingFieldLabels: [],
+      },
+      executionRequest: null,
+      conversationState: {
+        operational: {
+          flow: "owner.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          ownerDraft: {
+            ownerName: "Carlos Alberto",
+            ownerDocument: "12345678900",
+            ownerEmail: "carlos@example.com",
+            ownerPhone: "47999990000",
+          },
+        },
+      },
+    },
+  });
+
+  assert.equal(persisted?.owner?.id, "owner-existing-1");
+  assert.equal(prisma.owners.length, 1);
+  assert.equal(prisma.memoryEvents.some((event) => (
+    event.key === "crm.audit"
+    && event.metadata.subjectType === "owner"
+    && event.metadata.mergeKind === "dedupe_merge"
+    && event.metadata.subjectId === "owner-existing-1"
+  )), true);
+  assert.deepEqual((prisma.caseEvents[0].payload.dedupeMerges as any[])[0], {
+    entity: "owner",
+    subjectId: "owner-existing-1",
+    matchedBy: ["document", "phone", "email", "name"],
+    sourceFlow: "owner.create",
+    dedupeKey: null,
+  });
 });
 
 test("IMOB_CRM mutation service keeps property conversion idempotent on scan reconfirmation in the same thread", async () => {
@@ -633,8 +738,138 @@ test("IMOB_CRM mutation service keeps property conversion idempotent on scan rec
 
   assert.equal(prisma.properties.length, 1);
   assert.equal(prisma.cases.length, 1);
+  assert.equal(prisma.caseEvents.length, 1);
   assert.equal(first?.property?.id, second?.property?.id);
   assert.equal(first?.caseId, second?.caseId);
+  assert.equal(
+    prisma.memoryEvents.filter((event) => event.key === "crm.audit" && event.metadata.subjectType === "property").length,
+    1,
+  );
+});
+
+test("IMOB_CRM mutation service keeps owner capture replay formally idempotent in the same thread", async () => {
+  const prisma = createMockPrisma();
+  const service = new ImobCrmMutationService(prisma as any);
+
+  const params = {
+    threadId: "thread-owner-rerun",
+    threadLabel: "Proprietário",
+    resolved: {
+      mode: "execute",
+      action: "realestate.register_owner",
+      threadLabel: "Proprietário",
+      presentation: {
+        text: "Cadastro do proprietário João Silva processado com sucesso.",
+        owner: "Corretor",
+        nextStep: "Seguir com a revisão do caso.",
+        pendingFieldLabels: [],
+      },
+      executionRequest: null,
+      conversationState: {
+        operational: {
+          flow: "owner.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          ownerDraft: {
+            ownerName: "João Silva",
+            ownerDocument: "12345678901",
+            ownerEmail: "joao.silva@example.com",
+            ownerPhone: "47999990001",
+          },
+        },
+      },
+    },
+  } as any;
+
+  const first = await service.upsertCaseFromResolvedTurn({
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    userId: "user-1",
+  }, params);
+
+  const second = await service.upsertCaseFromResolvedTurn({
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    userId: "user-1",
+  }, params);
+
+  assert.equal(prisma.owners.length, 1);
+  assert.equal(prisma.cases.length, 1);
+  assert.equal(prisma.caseEvents.length, 1);
+  assert.equal(first?.owner?.id, second?.owner?.id);
+  assert.equal(first?.caseId, second?.caseId);
+  assert.equal(
+    prisma.memoryEvents.filter((event) => event.key === "crm.audit" && event.metadata.subjectType === "owner").length,
+    1,
+  );
+});
+
+test("IMOB_CRM mutation service records dedupe merge only once on owner replay in the same thread", async () => {
+  const prisma = createMockPrisma();
+  prisma.owners.push({
+    id: "owner-existing-replay-1",
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    name: "Carlos Alberto",
+    document: "12345678900",
+    email: "carlos@example.com",
+    phone: "47999990000",
+    status: "pending_data",
+    updatedAt: new Date("2026-01-03"),
+  });
+  const service = new ImobCrmMutationService(prisma as any);
+
+  const params = {
+    threadId: "thread-owner-dedupe-replay",
+    threadLabel: "Proprietário",
+    resolved: {
+      mode: "execute",
+      action: "realestate.register_owner",
+      threadLabel: "Proprietário",
+      presentation: {
+        text: "Cadastro existente do proprietário Carlos Alberto atualizado com sucesso.",
+        owner: "Corretor",
+        nextStep: "Seguir com a revisão do caso.",
+        pendingFieldLabels: [],
+      },
+      executionRequest: null,
+      conversationState: {
+        operational: {
+          flow: "owner.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          ownerDraft: {
+            ownerName: "Carlos Alberto",
+            ownerDocument: "12345678900",
+            ownerEmail: "carlos@example.com",
+            ownerPhone: "47999990000",
+          },
+        },
+      },
+    },
+  } as any;
+
+  await service.upsertCaseFromResolvedTurn({
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    userId: "user-1",
+  }, params);
+
+  await service.upsertCaseFromResolvedTurn({
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    userId: "user-1",
+  }, params);
+
+  assert.equal(prisma.caseEvents.length, 1);
+  assert.equal(
+    prisma.memoryEvents.filter((event) => (
+      event.key === "crm.audit"
+      && event.metadata.subjectType === "owner"
+      && event.metadata.mergeKind === "dedupe_merge"
+    )).length,
+    1,
+  );
 });
 
 test("IMOB_CRM mutation service keeps linked lead context after property capture success", async () => {

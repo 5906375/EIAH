@@ -1,6 +1,6 @@
 # imob-document-agent-e2e-implementation-plan
 
-Status: execução iniciada  
+Status: concluído  
 Prioridade: P1 após `MarketScanAgent E2E`  
 Data de referência: 2026-05-25  
 Escopo: fechar o `IMOB_DocumentAgent` como etapa especializada E2E, com checklist por operação, suficiência documental explícita, blockers claros e handoff jurídico/documental coerente com proof.
@@ -65,7 +65,7 @@ Critério:
 
 Status:
 
-- `em andamento`
+- `concluído`
 
 Objetivo:
 
@@ -107,6 +107,12 @@ O `DocumentAgent E2E` só pode ser considerado fechado quando:
 - proof documental participa da decisão de avanço;
 - o handoff jurídico/documental é refletido no recovery;
 - o launcher continua apenas renderizando o contrato resolvido.
+
+Estado atual:
+
+- `PR-DOC1` concluído
+- `PR-DOC2` concluído
+- frente encerrada no runtime canônico
 
 ---
 

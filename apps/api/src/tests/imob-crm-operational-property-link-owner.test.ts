@@ -108,7 +108,7 @@ function createMockPrisma(params?: { linked?: boolean }) {
   };
 }
 
-function createHelpers(): ResolverHelpers {
+function createHelpers(auditCalls?: Array<Record<string, unknown>>): ResolverHelpers {
   const asObject = (value: unknown) => value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : null;
   const asString = (value: unknown) => typeof value === "string" && value.trim() ? value.trim() : null;
   const asStringList = (value: unknown) => Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
@@ -139,7 +139,9 @@ function createHelpers(): ResolverHelpers {
     extractPropertyGoalFromMessage: () => null,
     extractPropertyCityFromMessage: () => null,
     resolveOwnerDisplayName: async ({ owner }: any) => owner?.name ?? "João",
-    recordImobCrmAuditEvent: async () => undefined,
+    recordImobCrmAuditEvent: async (params: Record<string, unknown>) => {
+      auditCalls?.push(params);
+    },
     resolveOwnerDocumentForDisplay: (owner: any) => owner?.document ?? null,
     formatImobStatusLabel: (status: string | null | undefined) => status ?? "n/a",
     formatImobPendingList: (items: string[] | null | undefined) => (items?.length ? items.join(", ") : "sem pendências"),
@@ -204,6 +206,7 @@ test("IMOB governed operational update completes property.link_owner on the acti
 });
 
 test("IMOB governed operational update keeps property.link_owner idempotent when the owner is already linked", async () => {
+  const auditCalls: Array<Record<string, unknown>> = [];
   const resolved = await resolveImobOperationalUpdateImpl(
     {
       prisma: createMockPrisma({ linked: true }) as any,
@@ -213,11 +216,12 @@ test("IMOB governed operational update keeps property.link_owner idempotent when
       message: "concluir vínculo proprietário-imóvel",
       threadState: createThreadState(),
     },
-    createHelpers(),
+    createHelpers(auditCalls),
   );
 
   assert.equal(resolved?.action, "crm.property.link_owner");
   assert.match(resolved?.presentation?.text ?? "", /já estava vinculado/i);
+  assert.equal(auditCalls.length, 0);
 });
 
 test("IMOB governed operational update fail-closes property.link_owner without active case scope", async () => {

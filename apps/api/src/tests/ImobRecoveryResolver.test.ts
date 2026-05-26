@@ -336,6 +336,66 @@ test("recovery response explains legal handoff once document sufficiency is sati
   assert.match(response.summary, /pacote documental suficiente/i);
 });
 
+test("recovery response exposes canonical dedupe review as the next safe step", () => {
+  const response = resolveImobRecoveryResponse({
+    context: buildContext({
+      dedupe: {
+        entity: "owner",
+        status: "pending_review",
+        workflowState: "owner.dedupe_review",
+        matchedEntityId: "owner-1",
+        matchedEntityLabel: "Carlos Alberto",
+        candidateCount: 1,
+        reasonCodes: ["DEDUPE_REVIEW_PENDING"],
+        summary: "Há uma revisão de dedupe pendente para owner.",
+        recommendedNextMove: "Revisar o dedupe de owner antes de seguir.",
+      },
+      blockers: [
+        { code: "dedupe_pending", severity: "blocking", message: "Revisão de dedupe de owner pendente." },
+      ],
+      canonicalCaseState: {
+        schemaVersion: 1,
+        tenantId: "tenant-A",
+        workspaceId: "workspace-A",
+        caseId: "case-1",
+        mission: "case_review",
+        missionStatus: "blocked",
+        currentStep: "generating_snapshot",
+        currentOperation: "owner",
+        entities: {},
+        readiness: {
+          owner: "blocked",
+          proof: "not_applicable",
+        },
+        blockers: [{ code: "dedupe_pending", message: "Revisão de dedupe de owner pendente." }],
+        pendingFields: [],
+        nextAction: {
+          id: "review-dedupe",
+          label: "Revisar dedupe",
+          operation: "owner",
+          targetAgent: "IMOB_DedupeAgent",
+          reasonCode: "DEDUPE_REVIEW_PENDING",
+        },
+        proof: {
+          required: false,
+          minimumProofSatisfied: true,
+          missingProof: [],
+        },
+        audit: {
+          version: 1,
+          lastUpdatedAt: "2026-05-25T10:00:00.000Z",
+          updatedByAgent: "IMOB",
+        },
+      },
+    }),
+    intent: "next_step",
+  });
+
+  assert.equal(response.primaryAction?.reasonCode, "DEDUPE_REVIEW_PENDING");
+  assert.match(response.summary, /dedupe/i);
+  assert.match(response.summary, /owner/i);
+});
+
 test("recovery snapshot exposes lead readiness blockers before matching handoff", () => {
   const snapshot = resolveImobRecoverySnapshot(buildContext({
     missionContext: {
