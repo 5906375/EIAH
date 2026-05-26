@@ -1108,6 +1108,36 @@ test("IMOB_CRM business read emits canonical proof surface when the case already
   assert.match(JSON.stringify(resolved?.presentation?.card?.lines ?? []), /receipt e bundle disponíveis|receipt disponível/i);
 });
 
+test("IMOB_CRM business read does not look green when mission proof is still pending", async () => {
+  const resolved = await resolveImobCrmOperationalConsult({
+    prisma: createMockPrisma({
+      caseOverrides: {
+        flow: "contract.prepare",
+        stage: "drafting",
+        status: "pending",
+        nextStep: "encaminhar contrato para assinatura",
+        proof: {
+          required: true,
+          ready: false,
+          state: "pending",
+          receiptPath: "/api/ledger/tx-proof-pending",
+        },
+      },
+    }) as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    message: "qual status desse caso?",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.action, "crm.case.pipeline_status");
+  assert.equal((resolved as any)?.caseContext?.evidence?.status, "missing");
+  assert.ok(((resolved as any)?.presentation?.pendingFieldLabels ?? []).some((item: string) => /proof mínima pendente/i.test(item)));
+  assert.match((resolved?.presentation?.nextStep ?? ""), /completar a proof mínima/i);
+  assert.match((resolved?.presentation?.text ?? ""), /proof mínima ainda pendente/i);
+  assert.doesNotMatch((resolved?.presentation?.text ?? ""), /pronta: receipt e bundle disponíveis/i);
+});
+
 test("IMOB_CRM case consult asks which case when no explicit reference is provided", async () => {
   const resolved = await resolveImobCrmOperationalConsult({
     prisma: createMockPrisma() as any,

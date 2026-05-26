@@ -223,7 +223,7 @@ Execução corrente:
   - com detalhamento em:
     - `docs/plans/imob-guardian-evidence-agent-e2e-implementation-plan.md`
   - slice atual:
-    - `PR-GUARD1 — canonical evidence snapshot`
+    - `PR-GUARD2 — proof-aware recovery and business read`
 
 ---
 

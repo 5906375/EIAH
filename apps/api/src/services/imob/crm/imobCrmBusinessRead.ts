@@ -280,7 +280,20 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     };
   }
 
-  function buildProofSummaryLine(proof: ImobCrmCaseContext["proof"]) {
+  function buildProofSummaryLine(
+    proof: ImobCrmCaseContext["proof"],
+    evidence?: ImobCrmCaseContext["evidence"] | null,
+  ) {
+    if (evidence) {
+      if (evidence.status === "satisfied") {
+        if (evidence.evidenceBundleId && evidence.receiptId) {
+          return "Proof mínima satisfeita: receipt e bundle já estão disponíveis.";
+        }
+        if (evidence.receiptId) return "Proof mínima satisfeita: receipt já disponível para verificação.";
+        return evidence.summary;
+      }
+      return evidence.summary;
+    }
     if (!proof) return null;
     if (proof.state === "ready") {
       if (proof.bundlePath && proof.receiptPath) return "Prova auditável pronta: receipt e bundle disponíveis.";
@@ -2219,7 +2232,14 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
   function getImobBusinessPendingItems(caseContext: ImobCrmCaseContext): string[] {
     const pendingItems = Array.isArray(caseContext?.pendingItems) ? caseContext.pendingItems : [];
     const missingContext = Array.isArray(caseContext?.canonical?.missingContext) ? caseContext.canonical.missingContext : [];
-    return Array.from(new Set([...pendingItems, ...missingContext].map((item) => String(item)).filter(Boolean)));
+    const missingProof = caseContext?.evidence?.status === "missing"
+      ? [
+          caseContext.evidence.missingProof.length > 0
+            ? `proof mínima pendente (${caseContext.evidence.missingProof.join(", ")})`
+            : "proof mínima pendente",
+        ]
+      : [];
+    return Array.from(new Set([...pendingItems, ...missingContext, ...missingProof].map((item) => String(item)).filter(Boolean)));
   }
 
   function getImobBusinessBlockers(caseContext: ImobCrmCaseContext): string[] {
@@ -2565,7 +2585,9 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     const pendingItems = getImobBusinessPendingItems(caseContext);
     const blockers = getImobBusinessBlockers(caseContext);
     const recommendedAction = getImobBusinessRecommendedAction(caseContext);
-    const rawNextStep = helpers.asString(recommendedAction?.inputHint) ?? helpers.asString(caseContext?.nextStep);
+    const rawNextStep = (caseContext?.evidence?.status === "missing" ? helpers.asString(caseContext.evidence.recommendedNextMove) : null)
+      ?? helpers.asString(recommendedAction?.inputHint)
+      ?? helpers.asString(caseContext?.nextStep);
     const nextStep = intent === "blocked_run_resolution"
       ? buildBlockedRunResolutionNextStep(caseContext, pendingItems, rawNextStep)
       : formatImobBusinessNextStep(rawNextStep, caseContext);
@@ -2582,7 +2604,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     const primarySpecialist = specialists[0] ? buildSpecialistSupportLine(specialists[0]) : null;
     const shouldExposeSpecialistSupport = intent === "pipeline_status";
     const proof = caseContext?.proof ?? null;
-    const proofSummaryLine = buildProofSummaryLine(proof);
+    const proofSummaryLine = buildProofSummaryLine(proof, caseContext?.evidence ?? null);
     const workflowContext = buildImobBusinessWorkflowContext({
       caseContext,
       pendingItems,
@@ -2818,7 +2840,9 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       ?? (getAllowedTransitions(primaryWorkflowState, workflowContext).includes("continue")
         ? nextStep
         : getWorkflowFallbackNextMessage(primaryWorkflowState, caseContext));
-    const primaryNextStep = effectiveNextStep;
+    const primaryNextStep = caseContext?.evidence?.status === "missing"
+      ? helpers.asString(caseContext.evidence.recommendedNextMove) ?? effectiveNextStep
+      : effectiveNextStep;
     const alignedCtas = alignPrimaryCaseAction({
       caseContext,
       ctas,
