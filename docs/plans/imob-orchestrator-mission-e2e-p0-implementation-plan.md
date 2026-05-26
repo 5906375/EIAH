@@ -200,7 +200,10 @@ Próximas frentes oficiais a partir deste ponto:
      - `docs/plans/imob-guardian-evidence-agent-e2e-implementation-plan.md`
 
 8. `FollowUpAgent / Commercial follow-up E2E`
-   - Status: `próxima frente oficial`
+   - Status: `concluído`
+   - `PR-FOLLOW1` concluído: canonical commercial follow-up snapshot
+   - `PR-FOLLOW2` concluído: cadence and reengagement flow
+   - `PR-FOLLOW3` concluído: prepared outreach and business read hardening
    - foco:
      - fechar cadência comercial pós-visita e pós-proposta;
      - transformar `follow_up_required` e `reengagement_required` em jornada governada;
@@ -213,6 +216,22 @@ Próximas frentes oficiais a partir deste ponto:
      - zero drift entre visit outcome, lead lifecycle e retomada comercial.
    - plano derivado:
      - `docs/plans/imob-follow-up-agent-e2e-implementation-plan.md`
+
+9. `ProposalAgent / Negotiation E2E`
+   - Status: `próxima frente oficial`
+   - `PR-PROP1` concluído no runtime: canonical proposal negotiation snapshot
+   - foco:
+     - transformar proposta e negociação em jornada canônica explícita;
+     - consolidar proposta ativa, pendências e próximo movimento único;
+     - impedir retorno implícito para visita quando a proposta já está aberta;
+     - preparar contraproposta, aprovação e handoff como próximos slices.
+   - saída esperada:
+     - snapshot canônico de proposta/negociação por caso;
+     - `nextAction` único para preparar, completar ou revisar proposta;
+     - recovery coerente para proposta ativa sem drift com visita;
+     - base pronta para contraproposta e contract handoff.
+   - plano derivado:
+     - `docs/plans/imob-proposal-agent-e2e-implementation-plan.md`
 Ordem recomendada:
 
 - `imobValidationEngine` e `LeadAgent E2E` já entregues;
@@ -222,6 +241,7 @@ Ordem recomendada:
 - `VisitAgent E2E` já entregue.
 - próximo multiplicador transversal: `Guardian_EvidenceAgent`.
 - depois do fechamento transversal de evidence, a próxima expansão funcional recomendada foi `FollowUpAgent / Commercial follow-up E2E`.
+- com `FollowUpAgent` fechado, a próxima frente funcional oficial passa a ser `ProposalAgent / Negotiation E2E`.
 
 Justificativa:
 - `imobValidationEngine` endureceu a base comum de `Property`, `Owner`, `Lead` e `Documents`;
@@ -232,7 +252,7 @@ Justificativa:
 - `VisitAgent E2E` fechou agenda, remarcação, cancelamento, resultado e pós-visita como frente própria do funil.
 - `Guardian_EvidenceAgent` fechou a camada transversal de proof, bundle, receipt e export auditável por missão.
 - `FollowUpAgent / Commercial follow-up E2E` fechou a cadência comercial, prepared outreach e business read governado para retomada do caso.
-- o próximo multiplicador natural é `ProposalAgent / Negotiation E2E`, para transformar proposta, contraproposta, aceite e retorno ao funil em jornada governada de ponta a ponta.
+- `ProposalAgent / Negotiation E2E` foi aberto como próxima frente oficial e já fechou `PR-PROP1` no runtime com snapshot canônico de negociação e next action explícito para proposta incompleta.
 
 Execução corrente:
 

@@ -368,6 +368,14 @@ export function resolveImobNextAction(params: ResolveNextActionParams): ImobNext
         });
       }
 
+      if (params.context.proposalNegotiation?.status === "collecting") {
+        return mapLeadAction(params.flow, {
+          id: "complete-proposal-data",
+          label: "Completar proposta",
+          reasonCode: "PROPOSAL_DATA_REQUIRED",
+        });
+      }
+
       if (params.context.entities.proposal?.status === "ready_for_review") {
         return mapLeadAction(params.flow, {
           id: "review-proposal",

@@ -14,6 +14,7 @@ import type {
   ImobOwnerSnapshotV1,
   ImobPropertyGoalV1,
   ImobPropertySnapshotV1,
+  ImobProposalNegotiationSnapshotV1,
   ImobVisitOutcomeSnapshotV1,
   ImobVisitSchedulingSnapshotV1,
 } from "./imobCaseContextContract";
@@ -883,6 +884,57 @@ function buildProposalSnapshot(params: {
   };
 }
 
+function buildProposalNegotiationSnapshot(params: {
+  proposalDraft?: Record<string, unknown> | null;
+}): ImobProposalNegotiationSnapshotV1 | null {
+  const draft = params.proposalDraft ?? {};
+  const propertyId = asString(draft.propertyId);
+  const buyerName = asString(draft.buyerName);
+  const buyerPhone = asString(draft.buyerPhone);
+  const buyerEmail = asString(draft.buyerEmail);
+  const offerAmount = Number.isFinite(Number(draft.offerAmount)) ? Number(draft.offerAmount) : null;
+  const rawContractType = asString(draft.contractType);
+  const contractType = rawContractType === "rent" || rawContractType === "sale" || rawContractType === "management"
+    ? rawContractType
+    : null;
+
+  if (!propertyId && !buyerName && !buyerPhone && !buyerEmail && offerAmount == null && !contractType) {
+    return null;
+  }
+
+  const pendingFields = [
+    propertyId ? null : "imóvel da proposta",
+    buyerName ? null : "nome do comprador",
+    buyerPhone ? null : "telefone do comprador",
+    offerAmount != null ? null : "valor da proposta",
+    contractType ? null : "tipo de contrato",
+  ].filter((item): item is string => Boolean(item));
+
+  const status: ImobProposalNegotiationSnapshotV1["status"] = pendingFields.length === 0
+    ? "ready_for_review"
+    : "collecting";
+
+  return {
+    status,
+    propertyId,
+    buyerName,
+    buyerPhone,
+    buyerEmail,
+    offerAmount,
+    contractType,
+    pendingFields,
+    reasonCodes: status === "ready_for_review"
+      ? ["PROPOSAL_READY_FOR_REVIEW"]
+      : ["PROPOSAL_DATA_REQUIRED"],
+    summary: status === "ready_for_review"
+      ? "A proposta já tem dados suficientes para revisão comercial."
+      : `A proposta já foi iniciada, mas ainda faltam ${pendingFields.join(", ")} antes da revisão comercial.`,
+    recommendedNextMove: status === "ready_for_review"
+      ? "revisar a proposta e decidir se já segue para negociação formal"
+      : "completar os dados pendentes da proposta antes da revisão",
+  };
+}
+
 function buildContractSnapshot(params: {
   contractDraft?: Record<string, unknown> | null;
 }): ImobOwnerSnapshotV1 | null {
@@ -1134,6 +1186,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
   const visitScheduling = buildVisitSchedulingSnapshot({ visitDraft });
   const visitOutcome = buildVisitOutcomeSnapshot({ visitScheduling, visitDraft });
   const proposal = buildProposalSnapshot({ proposalDraft });
+  const proposalNegotiation = buildProposalNegotiationSnapshot({ proposalDraft });
   const contract = buildContractSnapshot({ contractDraft });
   const commission = buildCommissionSnapshot({ commissionDraft });
   const campaign = buildCampaignSnapshot({ campaignDraft, listingDraft });
@@ -1233,6 +1286,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
     commercialFollowUp,
     visitScheduling,
     visitOutcome,
+    proposalNegotiation,
     marketScanRecommendation,
     documentChecklist,
     documentSufficiency,

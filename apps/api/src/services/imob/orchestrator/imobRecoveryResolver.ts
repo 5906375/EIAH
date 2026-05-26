@@ -139,11 +139,25 @@ function mapCanonicalNextActionToPlanAction(context: ImobCaseContextV1): ImobCas
       });
     }
 
-    if (nextAction.reasonCode === "PROPOSAL_REQUIRED" || nextAction.reasonCode === "PROPOSAL_REVIEW_REQUIRED") {
+    if (
+      nextAction.reasonCode === "PROPOSAL_REQUIRED"
+      || nextAction.reasonCode === "PROPOSAL_DATA_REQUIRED"
+      || nextAction.reasonCode === "PROPOSAL_REVIEW_REQUIRED"
+    ) {
       return action({
         operation: "proposal.create",
-        label: nextAction.reasonCode === "PROPOSAL_REVIEW_REQUIRED" ? "Revisar proposta" : "Preparar proposta",
-        nextMessage: nextAction.reasonCode === "PROPOSAL_REVIEW_REQUIRED" ? "revisar proposta deste caso" : "preparar proposta deste caso",
+        label:
+          nextAction.reasonCode === "PROPOSAL_REVIEW_REQUIRED"
+            ? "Revisar proposta"
+            : nextAction.reasonCode === "PROPOSAL_DATA_REQUIRED"
+              ? "Completar proposta"
+              : "Preparar proposta",
+        nextMessage:
+          nextAction.reasonCode === "PROPOSAL_REVIEW_REQUIRED"
+            ? "revisar proposta deste caso"
+            : nextAction.reasonCode === "PROPOSAL_DATA_REQUIRED"
+              ? "completar proposta deste caso"
+              : "preparar proposta deste caso",
         reasonCode: nextAction.reasonCode,
       });
     }

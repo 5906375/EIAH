@@ -615,6 +615,45 @@ test("IMOB case context v1 promotes post-visit proposal handoff only after expli
   assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "PROPOSAL_REQUIRED");
 });
 
+test("IMOB case context v1 keeps proposal negotiation explicit while proposal data is still incomplete", () => {
+  const context = buildImobCaseContextV1({
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    caseId: "case-proposal-1",
+    caseContext: {
+      caseId: "case-proposal-1",
+      flow: "proposal.create",
+      lead: {
+        id: "lead-1",
+        name: "Maria",
+        goal: "locacao",
+        targetCity: "Itapema",
+        budgetMaxCents: 350000,
+      },
+      property: {
+        id: "property-1",
+        propertyType: "apartamento",
+        goal: "locacao",
+        city: "Itapema",
+        address: "Rua 700, 10",
+      },
+    },
+    operational: {
+      flow: "proposal.create",
+      proposalDraft: {
+        propertyId: "property-1",
+        buyerName: "Maria",
+        offerAmount: 420000,
+        contractType: "sale",
+      },
+    },
+  });
+
+  assert.equal(context.proposalNegotiation?.status, "collecting");
+  assert.ok(context.proposalNegotiation?.pendingFields.includes("telefone do comprador"));
+  assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "PROPOSAL_DATA_REQUIRED");
+});
+
 test("IMOB case context v1 preserves lead disqualification reason in canonical recovery", () => {
   const context = buildImobCaseContextV1({
     tenantId: "tenant-A",

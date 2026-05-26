@@ -681,6 +681,83 @@ test("recovery response points to proposal preparation after a scheduled visit",
   assert.match(response.summary, /preparar proposta/i);
 });
 
+test("recovery response keeps proposal completion explicit when proposal data is still missing", () => {
+  const response = resolveImobRecoveryResponse({
+    intent: "what_is_missing",
+    context: buildContext({
+      missionContext: {
+        mission: "schedule_visit",
+        lockedUntilExplicitChange: false,
+      },
+      proposalNegotiation: {
+        status: "collecting",
+        propertyId: "property-1",
+        buyerName: "Maria",
+        buyerPhone: null,
+        buyerEmail: null,
+        offerAmount: 420000,
+        contractType: "sale",
+        pendingFields: ["telefone do comprador"],
+        reasonCodes: ["PROPOSAL_DATA_REQUIRED"],
+        summary: "A proposta já foi iniciada, mas ainda faltam telefone do comprador antes da revisão comercial.",
+        recommendedNextMove: "completar os dados pendentes da proposta antes da revisão",
+      },
+      canonicalCaseState: {
+        schemaVersion: 1,
+        tenantId: "tenant-A",
+        workspaceId: "workspace-A",
+        caseId: "case-1",
+        mission: "schedule_and_follow_visit",
+        missionStatus: "in_progress",
+        currentStep: "post_visit",
+        currentOperation: "lead",
+        entities: {
+          leadId: "lead-1",
+          propertyId: "property-1",
+        },
+        readiness: {
+          lead: "ready",
+          property: "ready",
+          visit: "ready",
+          proof: "not_applicable",
+        },
+        blockers: [],
+        pendingFields: [{ field: "buyerPhone", label: "telefone do comprador" }],
+        nextAction: {
+          id: "complete-proposal-data",
+          label: "Completar proposta",
+          operation: "lead",
+          targetAgent: "IMOB_LeadAgent",
+          reasonCode: "PROPOSAL_DATA_REQUIRED",
+        },
+        proof: {
+          required: false,
+          minimumProofSatisfied: true,
+          missingProof: [],
+        },
+        audit: {
+          version: 1,
+          lastUpdatedAt: "2026-05-26T10:00:00.000Z",
+          updatedByAgent: "IMOB",
+        },
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: true,
+        leadReady: true,
+        leadReadinessScore: 82,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+  });
+
+  assert.equal(response.primaryAction?.reasonCode, "PROPOSAL_DATA_REQUIRED");
+  assert.equal(response.primaryAction?.operation, "proposal.create");
+  assert.equal(response.primaryAction?.label, "Completar proposta");
+});
+
 test("recovery response keeps visit scheduling pending explicit before the slot is confirmed", () => {
   const response = resolveImobRecoveryResponse({
     intent: "what_is_missing",

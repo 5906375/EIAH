@@ -130,6 +130,20 @@ export type ImobVisitOutcomeSnapshotV1 = {
   objectionLabel?: string | null;
 };
 
+export type ImobProposalNegotiationSnapshotV1 = {
+  status: "collecting" | "ready_for_review";
+  propertyId?: string | null;
+  buyerName?: string | null;
+  buyerPhone?: string | null;
+  buyerEmail?: string | null;
+  offerAmount?: number | null;
+  contractType?: "rent" | "sale" | "management" | null;
+  pendingFields: string[];
+  reasonCodes: string[];
+  summary: string;
+  recommendedNextMove: string;
+};
+
 export type ImobMarketScanRecommendationSnapshotV1 = {
   sourceStatus: "completed" | "empty" | "unavailable";
   recommendedAction: ImobOperationalOpportunity["recommendedAction"];
@@ -232,6 +246,7 @@ export type ImobCaseContextV1 = {
   commercialFollowUp?: ImobCommercialFollowUpSnapshotV1 | null;
   visitScheduling?: ImobVisitSchedulingSnapshotV1 | null;
   visitOutcome?: ImobVisitOutcomeSnapshotV1 | null;
+  proposalNegotiation?: ImobProposalNegotiationSnapshotV1 | null;
   marketScanRecommendation?: ImobMarketScanRecommendationSnapshotV1 | null;
   documentChecklist?: ImobDocumentChecklistSnapshotV1 | null;
   documentSufficiency?: ImobDocumentSufficiencySnapshotV1 | null;
