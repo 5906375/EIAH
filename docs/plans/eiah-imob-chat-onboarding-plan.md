@@ -1,178 +1,377 @@
-# eiah-imob-chat-onboarding-plan
+# eiah-imob-chat-onboarding-plan (v8-Hardened)
 
-Status: proposto  
-Prioridade: P1 de UX operacional / onboarding  
+Status: proposta operacional  
+Prioridade: P1 de UX operacional / alinhamento de contexto  
 Data de referência: 2026-05-27  
-Escopo: fazer o `EIAH` explicar de forma canônica e operacional como usar o chat IMOB, preservando arquitetura `agent-driven`, `launcher render-only` e sem criar heurística nova na UI.
+Escopo: formalizar no `EIAH` a capacidade nativa de onboarding operacional e descoberta de uso do Chat IMOB, preservando arquitetura `agent-driven`, `launcher render-only`, governança `fail-closed` e acoplamento ao runtime real de capabilities, contracts e policies.
 
 ---
 
 ## 1. Objetivo
 
-Permitir que o usuário pergunte ao `EIAH` como usar o chat IMOB e receba uma resposta curta, prática e acionável.
+Permitir que o usuário pergunte ao `EIAH` como usar o chat IMOB e receba uma resposta:
 
-A resposta ideal deve:
+- curta;
+- operacional;
+- auditável;
+- coerente com as capacidades reais do runtime;
+- sem sugerir ações que o sistema não possa executar.
 
-- explicar o que o chat IMOB faz;
-- dizer como começar;
-- mostrar exemplos reais de mensagens válidas;
-- orientar o próximo passo sem exigir que o usuário descubra a navegação sozinho.
+O onboarding deve deixar de ser “página de ajuda” e passar a ser capacidade reflexiva dos próprios agentes, com o `EIAH` como front door e o IMOB como domínio operacional resolvido em backend.
 
 ---
 
-## 2. Perguntas canônicas
+## 2. Invariantes
 
-O runtime do `EIAH` deve reconhecer pelo menos estas perguntas:
+### 2.1 Zero Hardcoded Copy no frontend
+
+O frontend não pode conter texto solto, prompt inventado ou decisão local sobre como usar o IMOB.
+
+Regra:
+
+- conteúdo canônico fica no backend;
+- prompts sugeridos vêm do resolver;
+- prompts só aparecem se a capability correspondente estiver ativa e permitida.
+
+### 2.2 Launcher Render-Only
+
+O `ChatAgentLauncher` não decide se um prompt é válido.
+
+Regra:
+
+- launcher apenas renderiza:
+  - `summary`
+  - `startingInstruction`
+  - `suggestedPrompts`
+  - `systemBehaviorNote`
+  - `handoffShortcut`
+
+### 2.3 Escopo de skills blindado
+
+Os prompts exibidos ao usuário devem espelhar estritamente as capacidades reais do runtime.
+
+Regra:
+
+- nenhum prompt pode apontar para capability inexistente;
+- nenhum prompt pode sobreviver a kill-switch ativo;
+- nenhuma ação sensível pode aparecer sem gate de policy/HITL.
+
+---
+
+## 3. Princípio arquitetural
+
+Fluxo recomendado:
+
+`Usuário -> EIAH -> intentRouter -> imobOnboardingResolver -> capabilityRegistry + contracts + entitlement/policy gates -> onboarding response contract -> launcher`
+
+Regra:
+
+- quem reconhece a pergunta inicial é o `EIAH`;
+- quem resolve o conteúdo IMOB é o `imobOnboardingResolver`;
+- quem renderiza é o launcher.
+
+O `IMOB_Orchestrator` não deve virar front door do onboarding. Ele continua sendo owner da execução operacional do caso.
+
+---
+
+## 4. Intenções canônicas
+
+```ts
+export enum ImobOnboardingIntent {
+  GENERAL_HELP = "imob.intent.help.general",
+  CAPTURE_HELP = "imob.intent.help.capture",
+  DOCUMENT_HELP = "imob.intent.help.document",
+  TRANSACTION_HELP = "imob.intent.help.transaction",
+  NEXT_ACTION_QUERY = "imob.intent.help.next_action",
+}
+```
+
+Perguntas-alvo:
 
 - `Como usar o chat IMOB?`
 - `Como começo no IMOB?`
-- `O que eu posso fazer no chat IMOB?`
+- `O que posso fazer no chat IMOB?`
 - `Como captar um imóvel no chat IMOB?`
 - `Como continuar um caso imobiliário no chat IMOB?`
 - `Como gerar proposta, contrato ou follow-up no IMOB?`
 - `Quando o IMOB mostra o próximo passo sozinho?`
 
-Perguntas derivadas aceitáveis:
+---
 
-- `Como funciona o IMOB no EIAH?`
-- `Como usar o IMOB para captação?`
-- `Como usar o IMOB para proposta?`
-- `Como consultar um caso no IMOB?`
+## 5. Contrato de resposta
+
+Arquivo sugerido:
+
+- `apps/api/src/services/eiah/contracts/imobOnboardingResponse.v1.ts`
+
+```ts
+export type ImobOnboardingResponse = {
+  intent: ImobOnboardingIntent;
+  summary: string;
+  startingInstruction: string;
+  suggestedPrompts: {
+    label: string;
+    prompt: string;
+    targetAgent: string;
+    capabilityId: string;
+    requiredAutonomyLevel: number;
+    riskTier: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+    requiresHumanApproval: boolean;
+    executable: boolean;
+  }[];
+  systemBehaviorNote: string;
+  handoffShortcut?: {
+    actionLabel: string;
+    preloadedMessage: string;
+    route: "/app/imob/chat" | string;
+    allowed: boolean;
+    reasonCode?: string;
+  };
+  governance: {
+    registryVersion: string;
+    agentContractVersion: string;
+    entitlementChecked: boolean;
+    killSwitchAware: boolean;
+  };
+};
+```
 
 ---
 
-## 3. Formato da resposta do EIAH
+## 6. Requisitos funcionais
 
-O `EIAH` deve responder em formato operacional curto:
+O onboarding deve:
 
-1. `o que o chat IMOB faz`
-2. `como começar`
-3. `exemplos de mensagens`
-4. `qual é o comportamento esperado do chat`
-5. `atalho opcional para abrir o IMOB`
+- responder a perguntas de uso do IMOB;
+- explicar o que o chat IMOB faz;
+- mostrar como começar;
+- sugerir prompts reais e executáveis;
+- esconder prompts indisponíveis por capability/policy/kill-switch;
+- oferecer handoff opcional apenas quando permitido;
+- manter resposta curta e diretiva.
+
+---
+
+## 7. Requisitos não funcionais
+
+Obrigatórios para prompts acionáveis:
+
+- `tenantId`;
+- `workspaceId`;
+- entitlement IMOB válido para handoff;
+- contract version conhecida;
+- capability registry version conhecida;
+- kill-switch state conhecido.
+
+Regra:
+
+- onboarding pode explicar mesmo sem entitlement;
+- handoff acionável só aparece quando permitido.
+
+---
+
+## 8. Ordem de execução
+
+### PR-IMOB-ONB-0 — Onboarding Resolver Core
+
+Objetivo:
+
+- criar resolver centralizado de onboarding IMOB.
+
+Arquivo:
+
+- `apps/api/src/services/imob/orchestrator/imobOnboardingResolver.ts`
+
+Responsabilidades:
+
+- receber `ImobOnboardingIntent`;
+- consultar `imobCapabilityRegistry`;
+- consultar contracts/profile cards;
+- aplicar gates de entitlement/policy/kill-switch;
+- montar `ImobOnboardingResponse`.
+
+### PR-IMOB-ONB-1 — Prompt Matrix Alignment
+
+Objetivo:
+
+- homologar a matriz de prompts sugeridos.
+
+Cada prompt deve carregar:
+
+- `capabilityId`;
+- `targetAgent`;
+- `riskTier`;
+- `requiresHumanApproval`;
+- `executable`.
+
+Matriz inicial homologada:
+
+- Captação  
+  Prompt: `Quero captar um apartamento de 2 quartos em Itajaí para locação`  
+  Agente: `IMOB_PropertyAgent`
+
+- Proprietário  
+  Prompt: `Cadastrar proprietário do imóvel da Rua 700`  
+  Agente: `IMOB_OwnerAgent`
+
+- Deduplicidade  
+  Prompt: `Checar duplicidade do lead Maria`  
+  Agente: `IMOB_DedupeAgent`
+
+- Documentos  
+  Prompt: `O que falta para liberar o contrato deste caso?`  
+  Agente: `IMOB_DocumentAgent`
+
+- Visitas  
+  Prompt: `Agendar visita para sexta-feira à tarde`  
+  Agente: `IMOB_VisitAgent`
+
+- Transação  
+  Prompt: `Preparar proposta comercial para este caso`  
+  Agente: `IMOB_Orchestrator`
+
+### PR-IMOB-ONB-2 — Renderização segura
+
+Objetivo:
+
+- adaptar o consumo do payload estruturado sem nova heurística na UI.
+
+Regra:
+
+- o frontend só renderiza os campos do contrato;
+- clique em prompt sugerido apenas preenche/envia a mensagem.
+
+---
+
+## 9. Formato da resposta do EIAH
 
 Estrutura esperada:
 
-- bloco 1:
-  - o IMOB conduz captação, proprietário, documentos, visitas, follow-up, proposta e contrato
-- bloco 2:
-  - dizer ao usuário para começar com objetivo em linguagem natural
-- bloco 3:
-  - mostrar 4 a 6 prompts reais
-- bloco 4:
-  - explicar que o chat tenta devolver o próximo passo dominante
-- bloco 5:
-  - se apropriado, oferecer:
-    - abrir o Chat IMOB
-    - ou começar já com uma mensagem pronta
+1. o que o chat IMOB faz
+2. como começar
+3. prompts recomendados
+4. comportamento esperado do runtime
+5. handoff opcional
 
-Tom esperado:
+Exemplo recomendado:
 
-- direto
-- pouco burocrático
-- orientado a negócio
-- sem explicação longa de arquitetura
+`O Chat IMOB conduz a esteira imobiliária: captação, proprietário, documentos, visitas, proposta e contrato.`
 
----
+`Para começar, escreva o objetivo do negócio em linguagem natural.`
 
-## 4. Exemplos de prompts para o usuário
-
-Exemplos canônicos que o `EIAH` pode sugerir:
+`Prompts recomendados:`
 
 - `quero captar um apartamento de 2 quartos em Itajaí para locação`
-- `cadastrar proprietário do imóvel da Rua 700`
-- `mostrar bloqueios do caso`
-- `qual o próximo passo desse caso?`
-- `preparar proposta deste caso`
-- `acompanhar resposta da proposta`
-- `preparar contrato deste caso`
-- `consultar caso do lead Maria`
+- `cadastrar documento do proprietário João Silva`
+- `verificar o que falta para seguir com o contrato`
+- `agendar visita com o lead Maria para sexta-feira à tarde`
+- `preparar proposta comercial deste caso`
 
-Exemplos por etapa:
+`Comportamento esperado: o IMOB devolve o resultado, mostra o que falta e indica o próximo passo dominante.`
 
-### Captação
-
-- `fazer varredura de mercado em Itajaí para apartamentos de 2 quartos para locação`
-- `cadastrar um imóvel para locação em Balneário Camboriú`
-
-### Proprietário
-
-- `cadastrar proprietário deste imóvel`
-- `documento do proprietário João Silva 12345678900`
-
-### Documentos
-
-- `revisar documentos deste caso`
-- `o que falta para seguir com o contrato?`
-
-### Visita e follow-up
-
-- `agendar visita para sexta à tarde`
-- `registrar resultado da visita`
-- `retomar follow-up deste caso`
-
-### Proposta e contrato
-
-- `preparar proposta deste caso`
-- `responder contraproposta deste caso`
-- `encaminhar proposta aceita para contrato`
+`Próximo passo: abrir Chat IMOB com uma mensagem inicial.`
 
 ---
 
-## 5. Estratégia de implementação
+## 10. Regras de governança
 
-### Camada 1 — base canônica
+### 10.1 Anti-drift
 
-Adicionar entradas novas em:
+- `onboardingDrift = 0`
+- nenhum prompt pode apontar para capability inexistente
+- nenhum prompt pode vazar capability desativada
 
-- `apps/api/src/services/eiahHelpKnowledge.ts`
+### 10.2 Entitlement
 
-Conteúdo mínimo:
+- nenhum `handoffShortcut` aparece sem entitlement válido;
+- onboarding explicativo pode existir sem entitlement;
+- onboarding acionável não.
 
-- `Como usar o chat IMOB?`
-- `Como começar uma captação no IMOB?`
-- `Como continuar um caso imobiliário no chat IMOB?`
-- `Quais mensagens eu posso usar no IMOB?`
+### 10.3 HITL
 
-### Camada 2 — contrato do EIAH
+Ações `HIGH` e `CRITICAL`:
 
-Fazer o `EIAH` reconhecer a intenção de onboarding IMOB como uma intenção própria de ajuda operacional.
+- ou aparecem com aviso explícito de aprovação humana;
+- ou são omitidas do onboarding público.
 
-Resultado esperado:
+### 10.4 Render-only
 
-- o `EIAH` responde sem depender de copy estática do frontend;
-- a resposta pode oferecer handoff ou link para abrir o IMOB;
-- a resposta continua auditável e coerente com o help canônico.
-
-### Camada 3 — handoff opcional
-
-Quando houver contexto suficiente, o `EIAH` pode concluir com um atalho:
-
-- `Abrir Chat IMOB`
-- ou uma sugestão de mensagem inicial pronta
-
-Exemplo:
-
-- `Se quiser, já comece com: "quero captar um imóvel para locação em Itajaí".`
+- nenhuma tag HTML;
+- nenhuma lógica visual embutida no payload;
+- nenhum fallback heurístico no launcher.
 
 ---
 
-## 6. Critério de saída
+## 11. Gates de CI
 
-Considerar a implementação pronta quando:
+Obrigatórios:
 
-- o `EIAH` responder corretamente a perguntas de onboarding IMOB;
-- a resposta explicar uso prático, não só descrição do produto;
-- o usuário receber exemplos reais de prompts;
-- o fluxo não depender de nova lógica no `ChatAgentLauncher`;
-- o `EIAH` conseguir orientar o usuário para continuar um negócio imobiliário com próximo passo claro.
+- `pnpm test:imob-onboarding`
+- `check:imob-onboarding-drift`
+- `check:imob-onboarding-render-only`
+- `check:imob-onboarding-entitlement`
+- `check:imob-onboarding-autonomy-mapping`
+
+Métricas:
+
+- `onboardingDrift = 0`
+- `invalidAutonomyMapping = 0`
+- `renderLogicLeaked = 0`
+- `invalidHandoffShortcut = 0`
+- `disabledCapabilityPromptLeak = 0`
+- `missingEntitlementGuard = 0`
+- `nonExecutableSuggestedPrompt = 0`
 
 ---
 
-## 7. Fora de escopo
+## 12. Evidências requeridas
 
-- redesenho visual do launcher
-- tutorial em múltiplas telas
-- automação visual nova na UI
-- mudança de responsividade
-- alterar o ownership do `IMOB_Orchestrator`
+- `docs/plans/eiah-imob-chat-onboarding-plan-v8-hardened.md`
+- `apps/api/src/services/eiah/contracts/imobOnboardingResponse.v1.ts`
+- `ops/evidence/latest/imob-onboarding-capability-registry-smoke.md`
+- `ops/evidence/latest/imob-onboarding-drift-gate-report.json`
+- `ops/evidence/latest/imob-onboarding-render-only-report.md`
+- `ops/evidence/latest/imob-onboarding-entitlement-gate-report.md`
+
+---
+
+## 13. Critério de saída
+
+Considerar pronto quando:
+
+- o `EIAH` responde onboarding IMOB a partir de capabilities reais;
+- nenhum prompt sugerido aponta para agent/capability inexistente;
+- nenhum prompt aparece sob kill-switch;
+- nenhum handoff aparece sem entitlement;
+- ações sensíveis respeitam HITL;
+- launcher permanece render-only;
+- resposta é curta, operacional e diretiva;
+- evidência está indexada.
+
+---
+
+## 14. Integração com hardening atual
+
+Conectar explicitamente ao `PR-FIX-IMOB-CONTINUITY-5`.
+
+Regra:
+
+- todo prompt sugerido no onboarding deve ser validado pela mesma verdade operacional que governa o próximo passo dominante do fluxo real.
+
+Objetivo:
+
+- onboarding e execução não podem contar histórias diferentes.
+
+---
+
+## 15. Próximos passos imediatos
+
+1. rebaseline do nome para `v8-Hardened`
+2. criar `ImobOnboardingIntent`
+3. criar `ImobOnboardingResponse v1`
+4. implementar `imobOnboardingResolver`
+5. ligar resolver ao `EIAH`
+6. adicionar gating de entitlement/policy/kill-switch
+7. criar testes e gates de drift
+8. indexar evidência
+9. liberar em modo shadow antes de rollout amplo
