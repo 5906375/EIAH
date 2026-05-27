@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import type { PrismaClient } from "@repo/db";
 import type { MemoryRecord, MemoryScope } from "@eiah/core";
 import { getMemoryService } from "./memory";
+import { buildImobOnboardingHelpDocs } from "./eiahImobOnboardingHelpDocs";
 
 const HELP_AGENT_ID = "EIAH_HELP_CENTER";
 const HELP_SOURCE_TAG = "eiah_help_doc";
@@ -327,6 +328,10 @@ function buildCanonicalEiahDocs(params: {
   });
 
   docs.push(...extractGuideTabDocsFromEiahBlock(playbook.block, sourcePath, sourceMtime));
+  docs.push(...buildImobOnboardingHelpDocs({
+    sourcePath,
+    sourceMtime,
+  }));
   return docs;
 }
 
