@@ -242,6 +242,12 @@ Baseline mínimo já implantado:
 - suíte determinística cobrindo:
   - baseline limpo que passa no gate;
   - baseline degradado que falha no gate;
+- baseline real das jornadas críticas cobrindo:
+  - `market scan -> confirmação`
+  - `owner blocker`
+  - `legal handoff`
+  - `proposal approval`
+  - `follow-up awaiting_response`
 - sem alteração de layout, launcher ou responsividade.
 
 ---
