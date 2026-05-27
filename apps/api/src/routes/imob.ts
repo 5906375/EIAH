@@ -88,6 +88,7 @@ import {
   sendImobAccessDenied,
 } from "../services/imob/imobAccessGate";
 import { canWorkspaceOperateImobStage, hasWorkspacePermission, readWorkspaceResponsibleProfile } from "../services/workspaceResponsibility";
+import { buildImobCrmContinuityCoherenceReadModel } from "../services/imob/orchestrator/imobCrmContinuityCoherenceReadModel";
 
 export const imobRouter = Router();
 imobRouter.use(enforceTenant);
@@ -2553,6 +2554,27 @@ imobRouter.get("/command-center/blocked-runs", async (req, res) => {
         },
       },
     },
+  });
+});
+
+imobRouter.get("/command-center/continuity-coherence", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({
+      ok: false,
+      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+    });
+  }
+
+  const workspaceId = String(req.query.workspaceId ?? authContext.workspaceId);
+  const data = buildImobCrmContinuityCoherenceReadModel({
+    workspaceId,
+    generatedAt: new Date().toISOString(),
+  });
+
+  return res.json({
+    ok: true,
+    data,
   });
 });
 

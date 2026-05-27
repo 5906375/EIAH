@@ -174,7 +174,11 @@ export type ImobProposalDraft = {
   buyerPhone: string | null;
   propertyId: string | null;
   offerAmount: number | null;
+  counterofferAmount: number | null;
   contractType: "rent" | "sale" | "management" | null;
+  negotiationStatus: "counteroffer_required" | "awaiting_response" | "accepted" | "rejected" | null;
+  approvalRequired: boolean;
+  approvalStatus: "pending" | "approved" | "rejected" | null;
 };
 
 export type ImobPropertyDraft = {

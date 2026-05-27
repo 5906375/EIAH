@@ -53,6 +53,20 @@ function normalizeItems(items: unknown[] | null | undefined) {
     : [];
 }
 
+function isOwnerBasicPending(item: string) {
+  return item.includes("nome do proprietário")
+    || item.includes("nome do proprietario")
+    || item.includes("telefone do proprietário")
+    || item.includes("telefone do proprietario")
+    || item.includes("e-mail do proprietário")
+    || item.includes("e-mail do proprietario")
+    || item.includes("email do proprietário")
+    || item.includes("email do proprietario")
+    || item.includes("documento do proprietário")
+    || item.includes("documento do proprietario")
+    || item.includes("ownerdocument");
+}
+
 function resolveBaseUrgency(caseContext?: ImobCaseContext | null): "low" | "medium" | "high" {
   const workflowUrgency = caseContext?.humanWorkflow?.urgency;
   if (workflowUrgency === "critical" || workflowUrgency === "high") return "high";
@@ -114,6 +128,10 @@ export function resolveImobBackingSpecialists(caseContext?: ImobCaseContext | nu
   const pending = normalizeItems(caseContext.pendingItems);
   const blocker = (caseContext.blocker ?? "").trim().toLowerCase();
   const baseUrgency = resolveBaseUrgency(caseContext);
+  const ownerBasicPending = pending.filter((item) => isOwnerBasicPending(item));
+  const hasOwnerBasicOnlyGap = ownerBasicPending.length > 0
+    && ownerBasicPending.length === pending.length
+    && !includesAny(blocker, ["jurid", "contrato", "matricula", "escritura", "finance", "pag", "repasse"]);
 
   const resolved: ImobResolvedBackingSpecialist[] = [];
   const push = (
@@ -199,7 +217,10 @@ export function resolveImobBackingSpecialists(caseContext?: ImobCaseContext | nu
     });
   }
 
-  if (pending.some((item) => item.includes("document")) || pending.some((item) => item.includes("matricula")) || pending.some((item) => item.includes("contrato"))) {
+  if (
+    !hasOwnerBasicOnlyGap
+    && (pending.some((item) => item.includes("document")) || pending.some((item) => item.includes("matricula")) || pending.some((item) => item.includes("contrato")))
+  ) {
     push("legal", {
       rationale: "Existem pendências documentais que podem pedir leitura especializada.",
       reasonCode: "DOCUMENT_BLOCKER",

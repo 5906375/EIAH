@@ -80,6 +80,11 @@ function buildRecommendedActions(params: {
 }): ImobCrmRecommendedAction[] {
   const normalizedFlow = (params.flow ?? "").trim();
   const normalizedNextStep = normalizeImobLegacyText(params.nextStep ?? "");
+  const isMarketScanConfirmationNextStep =
+    normalizedNextStep.includes("confirmar selecao do scan")
+    || normalizedNextStep.includes("confirmar seleção do scan")
+    || normalizedNextStep.includes("confirmar captacao do scan")
+    || normalizedNextStep.includes("confirmar captação do scan");
   if (
     normalizedFlow === "owner.create"
     && params.pendingItems.length === 0
@@ -106,7 +111,9 @@ function buildRecommendedActions(params: {
       push({ id: "register_owner", label: "Cadastrar proprietário", actionType: "operational", inputHint: "cadastrar proprietário" });
       break;
     case "property.create":
-      push({ id: "register_property", label: "Cadastrar imóvel", actionType: "operational", inputHint: "cadastrar imóvel" });
+      if (!isMarketScanConfirmationNextStep) {
+        push({ id: "register_property", label: "Cadastrar imóvel", actionType: "operational", inputHint: "cadastrar imóvel" });
+      }
       break;
     case "lead.qualify":
       push({ id: "qualify_lead", label: "Qualificar lead", actionType: "operational", inputHint: "qualificar lead deste caso" });
@@ -138,7 +145,21 @@ function buildRecommendedActions(params: {
 
   if (params.nextStep) {
     if (!normalizedNextStep.includes("mostrar bloqueios do caso")) {
-      const followNextStep = { id: "follow_next_step", label: "Executar próximo passo", actionType: "consultive", inputHint: params.nextStep, reasonCode: "NEXT_STEP_AVAILABLE" } satisfies ImobCrmRecommendedAction;
+      const followNextStep = isMarketScanConfirmationNextStep
+        ? {
+            id: "confirm_market_scan_capture",
+            label: "Confirmar captação do scan",
+            actionType: "consultive",
+            inputHint: "confirmar captação do scan",
+            reasonCode: "NEXT_STEP_AVAILABLE",
+          }
+        : {
+            id: "follow_next_step",
+            label: "Executar próximo passo",
+            actionType: "consultive",
+            inputHint: params.nextStep,
+            reasonCode: "NEXT_STEP_AVAILABLE",
+          } satisfies ImobCrmRecommendedAction;
       if (normalizedFlow === "lead.qualify" && params.pendingItems.length === 0 && params.blockers.length === 0) {
         actions.unshift(followNextStep);
       } else {

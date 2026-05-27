@@ -182,6 +182,12 @@ function buildRecommendedActions(params: {
   blockers: string[];
 }): ImobCrmRecommendedAction[] {
   const actions: ImobCrmRecommendedAction[] = [];
+  const normalizedNextStep = normalizeImobCrmText(params.nextStep ?? "");
+  const isMarketScanConfirmationNextStep =
+    normalizedNextStep.includes("confirmar selecao do scan")
+    || normalizedNextStep.includes("confirmar seleção do scan")
+    || normalizedNextStep.includes("confirmar captacao do scan")
+    || normalizedNextStep.includes("confirmar captação do scan");
   const push = (action: typeof actions[number]) => {
     if (!actions.some((item) => item.id === action.id)) actions.push(action);
   };
@@ -198,7 +204,9 @@ function buildRecommendedActions(params: {
       push({ id: "register_owner", label: "Cadastrar proprietário", actionType: "operational", inputHint: "cadastrar proprietário" });
       break;
     case "property.create":
-      push({ id: "register_property", label: "Cadastrar imóvel", actionType: "operational", inputHint: "cadastrar imóvel" });
+      if (!isMarketScanConfirmationNextStep) {
+        push({ id: "register_property", label: "Cadastrar imóvel", actionType: "operational", inputHint: "cadastrar imóvel" });
+      }
       break;
     case "lead.qualify":
       push({ id: "qualify_lead", label: "Qualificar lead", actionType: "operational", inputHint: "qualificar lead deste caso" });
@@ -229,9 +237,23 @@ function buildRecommendedActions(params: {
   }
 
   if (params.nextStep) {
-    const normalizedNextStep = normalizeImobCrmText(params.nextStep);
     if (!normalizedNextStep.includes("mostrar bloqueios do caso")) {
-      push({ id: "follow_next_step", label: "Executar próximo passo", actionType: "consultive", inputHint: params.nextStep, reasonCode: "NEXT_STEP_AVAILABLE" });
+      const followNextStep = isMarketScanConfirmationNextStep
+        ? {
+            id: "confirm_market_scan_capture",
+            label: "Confirmar captação do scan",
+            actionType: "consultive" as const,
+            inputHint: "confirmar captação do scan",
+            reasonCode: "NEXT_STEP_AVAILABLE",
+          }
+        : {
+            id: "follow_next_step",
+            label: "Executar próximo passo",
+            actionType: "consultive" as const,
+            inputHint: params.nextStep,
+            reasonCode: "NEXT_STEP_AVAILABLE",
+          };
+      push(followNextStep);
     }
   }
   return actions.slice(0, 3);
@@ -1574,7 +1596,7 @@ export async function resolveImobCrmOperationalUpdate(params: ResolverParams) {
         },
       });
       const currentCaseNextStep = params.caseId
-        ? "Concluir vínculo do proprietário com este imóvel ou seguir para a etapa documental do caso."
+        ? "Concluir vínculo do proprietário com este imóvel."
         : "Vincular o proprietário ao próximo imóvel ou etapa documental.";
       return {
         mode: "consult",

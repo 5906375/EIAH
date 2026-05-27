@@ -139,11 +139,50 @@ function mapCanonicalNextActionToPlanAction(context: ImobCaseContextV1): ImobCas
       });
     }
 
-    if (nextAction.reasonCode === "PROPOSAL_REQUIRED" || nextAction.reasonCode === "PROPOSAL_REVIEW_REQUIRED") {
+    if (
+      nextAction.reasonCode === "PROPOSAL_REQUIRED"
+      || nextAction.reasonCode === "PROPOSAL_DATA_REQUIRED"
+      || nextAction.reasonCode === "PROPOSAL_COUNTEROFFER_REQUIRED"
+      || nextAction.reasonCode === "PROPOSAL_RESPONSE_PENDING"
+      || nextAction.reasonCode === "PROPOSAL_APPROVAL_REQUIRED"
+      || nextAction.reasonCode === "PROPOSAL_ACCEPTED_REVIEW_REQUIRED"
+      || nextAction.reasonCode === "PROPOSAL_REJECTION_REVIEW_REQUIRED"
+      || nextAction.reasonCode === "PROPOSAL_REVIEW_REQUIRED"
+    ) {
       return action({
         operation: "proposal.create",
-        label: nextAction.reasonCode === "PROPOSAL_REVIEW_REQUIRED" ? "Revisar proposta" : "Preparar proposta",
-        nextMessage: nextAction.reasonCode === "PROPOSAL_REVIEW_REQUIRED" ? "revisar proposta deste caso" : "preparar proposta deste caso",
+        label:
+          nextAction.reasonCode === "PROPOSAL_REVIEW_REQUIRED"
+            ? "Revisar proposta"
+            : nextAction.reasonCode === "PROPOSAL_DATA_REQUIRED"
+              ? "Completar proposta"
+              : nextAction.reasonCode === "PROPOSAL_COUNTEROFFER_REQUIRED"
+                ? "Responder contraproposta"
+                : nextAction.reasonCode === "PROPOSAL_RESPONSE_PENDING"
+                  ? "Acompanhar resposta da proposta"
+                  : nextAction.reasonCode === "PROPOSAL_APPROVAL_REQUIRED"
+                    ? "Solicitar aprovação da proposta"
+                    : nextAction.reasonCode === "PROPOSAL_ACCEPTED_REVIEW_REQUIRED"
+                      ? "Revisar aceite da proposta"
+                      : nextAction.reasonCode === "PROPOSAL_REJECTION_REVIEW_REQUIRED"
+                        ? "Revisar recusa da proposta"
+              : "Preparar proposta",
+        nextMessage:
+          nextAction.reasonCode === "PROPOSAL_REVIEW_REQUIRED"
+            ? "revisar proposta deste caso"
+            : nextAction.reasonCode === "PROPOSAL_DATA_REQUIRED"
+              ? "completar proposta deste caso"
+              : nextAction.reasonCode === "PROPOSAL_COUNTEROFFER_REQUIRED"
+                ? "responder contraproposta deste caso"
+                : nextAction.reasonCode === "PROPOSAL_RESPONSE_PENDING"
+                  ? "acompanhar resposta da proposta deste caso"
+                  : nextAction.reasonCode === "PROPOSAL_APPROVAL_REQUIRED"
+                    ? "solicitar aprovação da proposta deste caso"
+                    : nextAction.reasonCode === "PROPOSAL_ACCEPTED_REVIEW_REQUIRED"
+                      ? "revisar aceite da proposta deste caso"
+                      : nextAction.reasonCode === "PROPOSAL_REJECTION_REVIEW_REQUIRED"
+                        ? "revisar recusa da proposta deste caso"
+              : "preparar proposta deste caso",
         reasonCode: nextAction.reasonCode,
       });
     }

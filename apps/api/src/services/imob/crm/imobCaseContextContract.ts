@@ -130,6 +130,23 @@ export type ImobVisitOutcomeSnapshotV1 = {
   objectionLabel?: string | null;
 };
 
+export type ImobProposalNegotiationSnapshotV1 = {
+  status: "collecting" | "ready_for_review" | "counteroffer_required" | "awaiting_response" | "accepted" | "rejected" | "approval_pending";
+  propertyId?: string | null;
+  buyerName?: string | null;
+  buyerPhone?: string | null;
+  buyerEmail?: string | null;
+  offerAmount?: number | null;
+  counterofferAmount?: number | null;
+  contractType?: "rent" | "sale" | "management" | null;
+  approvalRequired?: boolean;
+  approvalStatus?: "pending" | "approved" | "rejected" | null;
+  pendingFields: string[];
+  reasonCodes: string[];
+  summary: string;
+  recommendedNextMove: string;
+};
+
 export type ImobMarketScanRecommendationSnapshotV1 = {
   sourceStatus: "completed" | "empty" | "unavailable";
   recommendedAction: ImobOperationalOpportunity["recommendedAction"];
@@ -232,6 +249,7 @@ export type ImobCaseContextV1 = {
   commercialFollowUp?: ImobCommercialFollowUpSnapshotV1 | null;
   visitScheduling?: ImobVisitSchedulingSnapshotV1 | null;
   visitOutcome?: ImobVisitOutcomeSnapshotV1 | null;
+  proposalNegotiation?: ImobProposalNegotiationSnapshotV1 | null;
   marketScanRecommendation?: ImobMarketScanRecommendationSnapshotV1 | null;
   documentChecklist?: ImobDocumentChecklistSnapshotV1 | null;
   documentSufficiency?: ImobDocumentSufficiencySnapshotV1 | null;

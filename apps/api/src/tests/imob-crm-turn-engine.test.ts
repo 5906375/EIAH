@@ -1546,3 +1546,65 @@ test("IMOB_CRM turn engine suppresses quick replies while canonical owner form i
   assert.equal(Boolean((resolved as any).presentation?.form), true);
   assert.equal((resolved as any).presentation?.card, undefined);
 });
+
+test("IMOB_CRM turn engine aceita voltar ao scan durante confirmação de seleção sem invalidar o caso", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "fazer varredura de mercado",
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "property.market_scan",
+          status: "ready_for_review",
+          pendingFields: [],
+          marketScanSelection: {
+            scanId: "scan-1",
+            source: "internal_crm",
+            sourceId: "property-1",
+            providerId: null,
+            retrievedAt: "2026-05-26T20:45:07.997Z",
+          },
+          marketScanSnapshot: {
+            scanId: "scan-1",
+            generatedAt: "2026-05-26T20:45:07.997Z",
+            readOnly: true,
+            provider: "internal_crm",
+            groups: [],
+          },
+          marketScanContext: {
+            cities: ["Itajaí"],
+            cityCandidates: ["Itajaí"],
+            uf: "SC",
+            goals: ["locacao"],
+            goalCandidates: ["locacao"],
+            propertyTypes: ["apartamento"],
+            bedrooms: [2],
+            priceRange: null,
+            readOnly: true,
+            limitPerGroup: 10,
+          },
+          propertyDraft: {
+            propertyId: null,
+            propertyType: null,
+            goal: null,
+            cep: null,
+            city: null,
+            neighborhood: null,
+            bedrooms: null,
+            bathrooms: null,
+            address: null,
+          },
+        },
+      },
+    },
+  });
+  params.helpers.resolveImobOperationalConsult = async () => null;
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+
+  assert.notEqual(resolved.action, "crm.case.transition_not_allowed");
+  assert.doesNotMatch((resolved as any).presentation?.text ?? "", /acao nao e valida/i);
+});

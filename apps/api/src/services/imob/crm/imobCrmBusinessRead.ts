@@ -1002,9 +1002,11 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     const pendingItems = Array.isArray(caseContext?.pendingItems) ? caseContext.pendingItems.map(String) : [];
     const discoverySignals = caseContext?.lead?.discoverySignals ?? null;
     const normalizedPending = pendingItems.map((item) => helpers.normalizeImobRouteText(item));
+    const ownerDocumentPending = normalizedPending.some((item) => item.includes("documento do proprietario") || item.includes("ownerdocument"));
+    const legalDocumentationPending = normalizedPending.some((item) => /document|matricula|contrato/.test(item) && !item.includes("documento do proprietario") && !item.includes("ownerdocument"));
     const objections = [
-      (blocker && /document|matricula|contrato|ownerdocument|jurid/i.test(blocker))
-        || normalizedPending.some((item) => /document|matricula|contrato|ownerdocument/.test(item))
+      (blocker && /document|matricula|contrato|jurid/i.test(blocker) && !/dados do propriet[aá]rio/i.test(blocker))
+        || legalDocumentationPending
         ? {
             key: "documentation" as const,
             label: "Objeção documental",
@@ -1046,6 +1048,14 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
             label: "Readiness comercial",
             summary: "Ainda falta contexto comercial suficiente para leitura forte.",
             status: "unknown" as const,
+          }
+        : null,
+      ownerDocumentPending
+        ? {
+            key: "readiness" as const,
+            label: "Cadastro do proprietário incompleto",
+            summary: "Ainda falta concluir o documento do proprietário antes de avançar a captação.",
+            status: "active" as const,
           }
         : null,
       discoverySignals?.timeline && caseContext?.humanWorkflow?.urgency !== "high"
@@ -1453,7 +1463,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     };
   }
 
-	  function buildClosingDocumentsSnapshot(params: {
+  function buildClosingDocumentsSnapshot(params: {
     caseContext: ImobCrmCaseContext;
     leadProfileReport?: { profileStatus?: string | null } | null;
 	  }): ImobClosingDocumentsSnapshot {
@@ -1465,10 +1475,12 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     const ownerDocumentMissing = normalizedPending.some((item) => item.includes("documento do proprietario") || item.includes("ownerdocument"));
     const contractPending = normalizedPending.some((item) => item.includes("contrato"));
     const registryPending = normalizedPending.some((item) => item.includes("matricula") || item.includes("escritura"));
-    const documentationPending = normalizedPending.some((item) => item.includes("document"));
+    const documentationPending = normalizedPending.some((item) => item.includes("document") && !item.includes("documento do proprietario") && !item.includes("ownerdocument"));
+    const legalBlocker = Boolean(blocker && /jurid|contrato|matricula|escritura/i.test(blocker));
+    const ownerOnlyDocumentGap = ownerDocumentMissing && !documentationPending && !contractPending && !registryPending && !legalBlocker;
     const blockingIssues = [
       blocker ? blocker : null,
-      ownerDocumentMissing ? "documento do proprietário ainda pendente" : null,
+      ownerOnlyDocumentGap ? null : (ownerDocumentMissing ? "documento do proprietário ainda pendente" : null),
       registryPending ? "matrícula ou escritura ainda pendente" : null,
       contractPending ? "contrato ainda pede preparação ou revisão" : null,
     ].filter(Boolean) as string[];
@@ -1478,14 +1490,14 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     const legalHandoffRecommended = Boolean(
       contractPending
       || registryPending
-      || (blocker && /jurid|contrato|matricula|escritura/i.test(blocker)),
+      || legalBlocker,
       );
 
-    const hasDocumentationSignal = documentationPending || contractPending || registryPending || ownerDocumentMissing || Boolean(blocker);
+    const hasDocumentationSignal = documentationPending || contractPending || registryPending || Boolean(legalBlocker);
 
 	    const packetReadiness: ImobClosingDocumentsSnapshot["packetReadiness"] =
       blockingIssues.length > 0 ? "blocked"
-      : pendingDocuments.length > 0 ? "partial"
+      : pendingDocuments.length > 0 || ownerOnlyDocumentGap ? "partial"
       : (caseContext?.flow === "contract.prepare" || caseContext?.flow === "documents.collect") ? "ready"
       : profileStatus === "ready" ? "ready"
       : profileStatus === "partial" ? "partial"
@@ -1494,7 +1506,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
 	    const readinessStatus: ImobClosingDocumentsSnapshot["readinessStatus"] =
       blockingIssues.length > 0
         ? "blocked"
-        : pendingDocuments.length > 0
+        : pendingDocuments.length > 0 || ownerOnlyDocumentGap
           ? "partial"
           : hasDocumentationSignal
             ? "ready"
@@ -2255,6 +2267,23 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     return actions[0] ?? null;
   }
 
+  function normalizeBusinessPendingItems(caseContext: ImobCrmCaseContext, items: string[]) {
+    const owner = helpers.asObject(caseContext?.owner);
+    const ownerName = helpers.asString(owner?.name);
+    const ownerPhone = helpers.asString(owner?.phone);
+    const ownerEmail = helpers.asString(owner?.email);
+    const ownerDocument = helpers.asString(owner?.document);
+
+    return items.filter((item) => {
+      const normalized = helpers.normalizeImobRouteText(String(item));
+      if (ownerName && normalized.includes("nome do proprietario")) return false;
+      if (ownerPhone && normalized.includes("telefone do proprietario")) return false;
+      if (ownerEmail && normalized.includes("e-mail do proprietario")) return false;
+      if (ownerDocument && (normalized.includes("documento do proprietario") || normalized.includes("ownerdocument"))) return false;
+      return true;
+    });
+  }
+
   function getImobBusinessPendingItems(caseContext: ImobCrmCaseContext): string[] {
     const pendingItems = Array.isArray(caseContext?.pendingItems) ? caseContext.pendingItems : [];
     const missingContext = Array.isArray(caseContext?.canonical?.missingContext) ? caseContext.canonical.missingContext : [];
@@ -2274,7 +2303,10 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
               : "follow-up comercial pendente",
         ]
       : [];
-    return Array.from(new Set([...pendingItems, ...missingContext, ...missingProof, ...missingFollowUp].map((item) => String(item)).filter(Boolean)));
+    const combined = [...pendingItems, ...missingContext, ...missingProof, ...missingFollowUp]
+      .map((item) => String(item))
+      .filter(Boolean);
+    return Array.from(new Set(normalizeBusinessPendingItems(caseContext, combined)));
   }
 
   function getImobBusinessBlockers(caseContext: ImobCrmCaseContext): string[] {
@@ -2283,6 +2315,97 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       ...(Array.isArray(caseContext?.canonical?.blockedActions) ? caseContext.canonical.blockedActions : []),
     ];
     return Array.from(new Set(blockers.map((item) => String(item)).filter(Boolean)));
+  }
+
+  function inferNarrativeWaitingOn(params: {
+    caseContext: ImobCrmCaseContext;
+    primaryBlocker: string | null;
+    primaryPending: string | null;
+    pendingItems: string[];
+  }) {
+    const signals = [
+      params.primaryBlocker,
+      params.primaryPending,
+      ...params.pendingItems,
+      helpers.asString(params.caseContext?.nextStep),
+    ]
+      .map((item) => helpers.normalizeImobRouteText(String(item ?? "")))
+      .filter(Boolean);
+
+    const hasOwnerSignal = signals.some((item) =>
+      item.includes("proprietario")
+      || item.includes("ownerdocument")
+      || item.includes("nome do proprietario")
+      || item.includes("telefone do proprietario")
+      || item.includes("e-mail do proprietario"),
+    );
+    if (hasOwnerSignal) return "owner" as const;
+
+    const hasFinanceSignal = signals.some((item) =>
+      item.includes("finance")
+      || item.includes("comissao")
+      || item.includes("repasse")
+      || item.includes("sinal"),
+    );
+    if (hasFinanceSignal) return "finance" as const;
+
+    const hasLegalSignal = signals.some((item) =>
+      item.includes("contrato")
+      || item.includes("matricula")
+      || item.includes("escritura")
+      || item.includes("jurid"),
+    );
+    if (hasLegalSignal) return "legal" as const;
+
+    const hasProposalSignal = signals.some((item) =>
+      item.includes("proposta")
+      || item.includes("contraproposta")
+      || item.includes("aprovacao")
+      || item.includes("negoci"),
+    );
+    if (hasProposalSignal) return "broker" as const;
+
+    const hasLeadSignal = signals.some((item) =>
+      item.includes("lead")
+      || item.includes("comprador")
+      || item.includes("locatario")
+      || item.includes("cliente")
+      || item.includes("visita"),
+    );
+    if (hasLeadSignal) return "lead" as const;
+
+    const hasPropertySignal = signals.some((item) =>
+      item.includes("imovel")
+      || item.includes("endereco")
+      || item.includes("preco do imovel")
+      || item.includes("valor do imovel"),
+    );
+    if (hasPropertySignal) return "broker" as const;
+
+    return params.caseContext?.humanWorkflow?.waitingOn ?? null;
+  }
+
+  function inferNarrativeNextActionOwner(params: {
+    caseContext: ImobCrmCaseContext;
+    waitingOn: ReturnType<typeof inferNarrativeWaitingOn>;
+  }) {
+    const explicitOwner = helpers.asString(params.caseContext?.humanWorkflow?.nextActionOwner)
+      ?? helpers.asString(params.caseContext?.ownerResponsible);
+    if (explicitOwner) return explicitOwner;
+    switch (params.waitingOn) {
+      case "legal":
+        return "Jurídico";
+      case "finance":
+        return "Financeiro";
+      case "owner":
+      case "lead":
+      case "broker":
+        return "Corretor";
+      case "internal":
+        return "Operação";
+      default:
+        return null;
+    }
   }
 
   function buildImobBusinessWorkflowContext(params: {
@@ -2496,22 +2619,22 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       nextMessage: string;
     }>;
 
-    if (hasDocumentPending) {
-      ctas.push({
-        id: `case-unblock-documents-${caseContext?.caseId ?? "current"}`,
-        label: "Revisar documentos",
-        kind: "primary",
-        action: "send_suggested_message",
-        nextMessage: "revisar documentos",
-      });
-    }
     if (hasOwnerPending) {
       ctas.push({
         id: `case-unblock-owner-${caseContext?.caseId ?? "current"}`,
         label: "Cadastrar proprietário",
-        kind: hasDocumentPending ? "secondary" : "primary",
+        kind: "primary",
         action: "send_suggested_message",
         nextMessage: "cadastrar proprietário",
+      });
+    }
+    if (hasDocumentPending) {
+      ctas.push({
+        id: `case-unblock-documents-${caseContext?.caseId ?? "current"}`,
+        label: "Revisar documentos",
+        kind: hasOwnerPending ? "secondary" : "primary",
+        action: "send_suggested_message",
+        nextMessage: "revisar documentos",
       });
     }
     if (hasPropertyPending) {
@@ -2590,13 +2713,6 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     }
 
     const normalizedPending = pendingItems.map((item) => helpers.normalizeImobRouteText(String(item)));
-    if (
-      caseContext?.flow === "documents.collect"
-      || caseContext?.flow === "contract.prepare"
-      || normalizedPending.some((item) => item.includes("document") || item.includes("matricula") || item.includes("matrícula") || item.includes("contrato"))
-    ) {
-      return "revisar documentos";
-    }
     if (normalizedPending.some((item) => item.includes("proprietario") || item.includes("proprietária"))) {
       return "cadastrar proprietário";
     }
@@ -2605,6 +2721,13 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     }
     if (normalizedPending.some((item) => item.includes("lead") || item.includes("comprador") || item.includes("locatario"))) {
       return "qualificar lead";
+    }
+    if (
+      caseContext?.flow === "documents.collect"
+      || caseContext?.flow === "contract.prepare"
+      || normalizedPending.some((item) => item.includes("document") || item.includes("matricula") || item.includes("matrícula") || item.includes("contrato"))
+    ) {
+      return "revisar documentos";
     }
     return "consultar caso";
   }
@@ -2633,8 +2756,17 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     const subject = formatImobBusinessSubject(caseContext);
     const humanPhase = helpers.asString(caseContext?.humanJourney?.phase);
     const humanPhaseLabel = humanPhase ? titleCaseJourneyPhase(humanPhase) : journeyLabel;
-	    const waitingOn = formatWaitingOnLabel(caseContext?.humanWorkflow?.waitingOn ?? null);
-    const nextActionOwner = helpers.asString(caseContext?.humanWorkflow?.nextActionOwner) ?? helpers.asString(caseContext?.ownerResponsible);
+    const normalizedWaitingOn = inferNarrativeWaitingOn({
+      caseContext,
+      primaryBlocker,
+      primaryPending,
+      pendingItems,
+    });
+    const waitingOn = formatWaitingOnLabel(normalizedWaitingOn);
+    const nextActionOwner = inferNarrativeNextActionOwner({
+      caseContext,
+      waitingOn: normalizedWaitingOn,
+    });
     const specialists = (helpers.resolveImobBackingSpecialists(caseContext) as any[] | null | undefined) ?? [];
     const primarySpecialist = specialists[0] ? buildSpecialistSupportLine(specialists[0]) : null;
     const shouldExposeSpecialistSupport = intent === "pipeline_status";
@@ -2651,7 +2783,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       phaseObjective: helpers.asString(caseContext?.humanJourney?.phaseObjective),
       primaryBlocker,
       primaryPending,
-      waitingOn: (caseContext?.humanWorkflow?.waitingOn ?? null) as any,
+      waitingOn: normalizedWaitingOn as any,
       nextActionOwner,
       nextStep,
       primarySpecialistAgentId: primarySpecialist?.consultive.agentId ?? null,
@@ -2660,7 +2792,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     const preparedFollowUp = buildPreparedFollowUp({
       subject,
       humanPhaseLabel,
-      waitingOn: (caseContext?.humanWorkflow?.waitingOn ?? null) as any,
+      waitingOn: normalizedWaitingOn as any,
       primaryBlocker,
       primaryPending,
       nextStep,
@@ -2897,7 +3029,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       consultiveRead: {
         phase: humanPhaseLabel,
         blocker: primaryBlocker ?? null,
-        waitingOn: caseContext?.humanWorkflow?.waitingOn ?? null,
+        waitingOn: normalizedWaitingOn ?? null,
         nextActionOwner: nextActionOwner ?? null,
         nextSafeStep: nextStep,
         specialists: shouldExposeSpecialistSupport

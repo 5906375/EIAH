@@ -190,6 +190,63 @@ test("IMOB_CRM continuity preserves post-visit outcome while hydrating the activ
   assert.equal((hydrated as any).operational?.visitDraft?.outcome, "proposal_ready");
 });
 
+test("IMOB_CRM continuity preserves proposal approval state while hydrating the active case", async () => {
+  const threadState = {
+    mode: "execute",
+    pendingSlot: "none",
+    resultOffset: 0,
+    slots: {},
+    operational: {
+      flow: "proposal.create",
+      status: "ready_for_review",
+      pendingFields: [],
+      proposalDraft: {
+        propertyId: "property-1",
+        buyerName: "Lead 01",
+        buyerPhone: "11 99999-9999",
+        offerAmount: 820000,
+        contractType: "sale",
+        approvalRequired: true,
+        approvalStatus: "pending",
+        negotiationStatus: "accepted",
+      },
+    },
+  };
+
+  const hydrated = await hydrateThreadStateWithPersistedLead({
+    prisma: {
+      imobCase: {
+        findFirst: async () => ({
+          leadId: "lead-1",
+          propertyId: "property-1",
+        }),
+      },
+      imobLead: {
+        findFirst: async () => ({
+          name: "Lead 01",
+          email: "lead01@gmail.com",
+          phone: "11 99999-9999",
+          goal: "locacao",
+          targetCity: "Itapema",
+          budgetMaxCents: 1000000,
+        }),
+      },
+    },
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    caseId: "case-1",
+    message: "A proposta segue com aprovação pendente",
+    threadLabel: "Proposta",
+    threadState,
+    helpers: createHelpers(),
+  });
+
+  assert.equal((hydrated as any).operational?.flow, "proposal.create");
+  assert.equal((hydrated as any).operational?.proposalDraft?.approvalRequired, true);
+  assert.equal((hydrated as any).operational?.proposalDraft?.approvalStatus, "pending");
+  assert.equal((hydrated as any).operational?.proposalDraft?.negotiationStatus, "accepted");
+});
+
 test("IMOB_CRM continuity opens lead follow-up from a visit thread and preserves cadence state", async () => {
   const threadState = {
     mode: "execute",
