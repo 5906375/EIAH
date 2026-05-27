@@ -251,6 +251,24 @@ Próximas frentes oficiais a partir deste ponto:
      - blocker dominante, `waitingOn` e `nextStep` ficam coerentes entre texto, card, `consultiveRead` e CTA;
      - owner blocker básico não abre `J_360` nem checklist jurídico por engano;
      - baseline de coerência percebida do IMOB acima de `70/100`.
+   - restrição de implantação:
+     - preservar funcionalidades existentes;
+     - preservar layout visual;
+     - preservar responsividade;
+     - concentrar mudanças em contrato, engine, workflow, business read e acceptance gate.
+   - regra operacional:
+     - grau de diretividade do próximo passo = função da confiabilidade da fonte + proof disponível + blocker dominante
+   - implicação:
+     - quando a fonte é governada, a proof está satisfeita e o blocker dominante é claro, o sistema deve devolver um próximo passo único e acionável;
+     - quando a fonte é aberta/degradada ou a proof ainda está incompleta, o sistema deve ser mais contido e evitar ação forte sem base suficiente;
+     - o blocker dominante deve prevalecer sobre quick replies herdadas, chooser genérico e apoios contextuais laterais.
+   - acceptance gate alvo:
+     - `invalid_suggested_action_rate < 5%`
+     - `stale_surface_rate < 10%`
+     - `blocker_alignment_rate >= 85%`
+     - `consultive_consistency_rate >= 80%`
+     - `next_step_dominance_rate >= 80%`
+     - `business_continuation_success_rate >= 70%`
    - plano derivado:
      - `docs/plans/imob-crm-continuity-hardening-phase-1-plan.md`
 

@@ -22,6 +22,19 @@ Meta operacional:
 - colocar a coerência percebida do IMOB acima de `70/100`;
 - reduzir ao mínimo os casos em que a UI oferece uma ação que o workflow recusa;
 - garantir que `mostrar bloqueios do caso`, `consultar caso`, `o que falta?` e `qual o próximo passo?` contem a mesma história do caso.
+- garantir que o chat devolva um próximo passo dominante e acionável sem exigir interpretação do usuário.
+
+Regra operacional desta fase:
+
+- grau de diretividade do próximo passo = função da confiabilidade da fonte + proof disponível + blocker dominante
+
+Implicação prática:
+
+- fonte governada + proof satisfeita + blocker claro:
+  - o sistema deve ser mais diretivo e devolver um próximo passo único;
+- fonte pública aberta ou degradada + proof incompleta:
+  - o sistema deve ser mais conservador, explicitar a limitação e evitar empurrar ação forte sem base;
+- blocker dominante sempre vence atalhos genéricos, quick replies herdadas e apoios laterais.
 
 ---
 
@@ -34,6 +47,7 @@ Considerar esta fase pronta quando:
 - `waitingOn` e `nextStep` estiverem coerentes com o blocker dominante;
 - owner blocker básico não abrir `J_360` nem checklist jurídico como destrave principal;
 - as jornadas críticas tiverem testes de regressão cobrindo superfície e continuidade.
+- o próximo passo ficar mais diretivo quando a fonte for governada e a proof estiver satisfeita, e mais contido quando a base ainda estiver incerta.
 
 ---
 
@@ -153,7 +167,19 @@ Título:
 
 Objetivo:
 
-- medir a coerência operacional do IMOB com base em regras observáveis.
+- medir a coerência operacional do IMOB com base em regras observáveis, sem alterar funcionalidades existentes, layout visual ou responsividade.
+
+Restrição obrigatória:
+
+- preservar os fluxos já existentes no runtime;
+- não criar regra nova no `ChatAgentLauncher`;
+- não alterar componentes visuais, estrutura de cards, grid, breakpoints ou responsividade;
+- tratar mudanças apenas como:
+  - contrato
+  - engine
+  - business read
+  - acceptance gate
+  - cobertura de regressão
 
 Escopo:
 
@@ -162,17 +188,49 @@ Escopo:
   - `% de blocked reads com blocker dominante correto`
   - `% de consult reads sem pendência stale`
   - `% de casos com waitingOn coerente`
-- expor baseline simples para acompanhar evolução.
+  - `% de respostas com próximo passo dominante claro`
+  - `% de casos em que fonte degradada não gera CTA forte indevida`
+- expor baseline simples para acompanhar evolução;
+- transformar a diretividade operacional em critério de aceite.
+
+Acceptance gate mínimo:
+
+- `invalid_suggested_action_rate < 5%`
+- `stale_surface_rate < 10%`
+- `blocker_alignment_rate >= 85%`
+- `consultive_consistency_rate >= 80%`
+- `next_step_dominance_rate >= 80%`
+- `business_continuation_success_rate >= 70%`
+
+Definição operacional das métricas:
+
+- `invalid_suggested_action_rate`
+  - percentual de ações sugeridas pela superfície que o workflow recusa
+- `stale_surface_rate`
+  - percentual de respostas que exibem CTA/quick reply herdada de estado anterior
+- `blocker_alignment_rate`
+  - percentual de casos em que blocker dominante, `waitingOn`, owner da ação e `nextStep` contam a mesma história
+- `consultive_consistency_rate`
+  - percentual de leituras em que texto, card, `consultiveRead` e CTA estão semanticamente alinhados
+- `next_step_dominance_rate`
+  - percentual de respostas que devolvem um próximo passo principal claro, sem chooser genérico indevido
+- `business_continuation_success_rate`
+  - percentual de jornadas em que o usuário consegue avançar o negócio sem cair em ação inválida, blocker contraditório ou retorno stale
 
 Critério de saída:
 
-- baseline documentado e utilizável para dizer se o IMOB já passou de `70/100`.
+- baseline documentado e utilizável para dizer se o IMOB já passou de `70/100`;
+- evidência de que o chat está mais diretivo sem mudar o layout nem quebrar os fluxos entregues.
 
 Arquivos prováveis:
 
 - `docs/EVIDENCE_INDEX.md`
 - `docs/plans/imob-orchestrator-mission-e2e-p0-implementation-plan.md`
-- suite/testes de regressão e eventual snapshot de métricas
+- suites/testes de regressão e eventual snapshot de métricas
+- arquivos do runtime apenas se necessários para expor sinais canônicos de:
+  - confiabilidade da fonte
+  - proof disponível
+  - blocker dominante
 
 ---
 
@@ -194,3 +252,7 @@ Durante esta fase:
 - toda correção vai para contrato, engine, workflow ou business read canônico;
 - fixes de superfície devem reduzir acoplamento, não criar atalhos novos;
 - qualquer novo drift descoberto em teste manual deve virar cenário formal de regressão.
+- toda sugestão de próximo passo deve respeitar a regra de diretividade baseada em:
+  - confiabilidade da fonte
+  - proof disponível
+  - blocker dominante
