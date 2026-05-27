@@ -103,7 +103,7 @@ export type ImobLeadLifecycleSnapshotV1 = {
 };
 
 export type ImobCommercialFollowUpSnapshotV1 = {
-  source: "visit_outcome" | "lead_lifecycle" | "follow_up_runtime";
+  source: "visit_outcome" | "lead_lifecycle" | "follow_up_runtime" | "proposal_negotiation";
   status: "follow_up_required" | "reengagement_required" | "awaiting_response";
   trigger: string;
   suggestedChannel: "internal" | "whatsapp" | "phone" | "email" | "unknown";

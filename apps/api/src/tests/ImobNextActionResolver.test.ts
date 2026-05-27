@@ -518,6 +518,155 @@ test("next action resolver blocks on proposal approval before any contract hando
   assert.equal(nextAction.label, "Solicitar aprovação da proposta");
 });
 
+test("next action resolver sends accepted proposal to documents when contract proof is still pending", () => {
+  const nextAction = resolveImobNextAction({
+    mission: "schedule_and_follow_visit",
+    context: buildContext({
+      missionContext: {
+        mission: "schedule_visit",
+        lockedUntilExplicitChange: false,
+      },
+      proposalNegotiation: {
+        status: "accepted",
+        propertyId: "property-1",
+        buyerName: "Maria",
+        buyerPhone: "47999998888",
+        buyerEmail: null,
+        offerAmount: 420000,
+        counterofferAmount: null,
+        contractType: "sale",
+        approvalRequired: false,
+        approvalStatus: null,
+        pendingFields: [],
+        reasonCodes: ["PROPOSAL_ACCEPTED_REVIEW_REQUIRED"],
+        summary: "A proposta foi aceita e o caso agora precisa seguir para contrato ou explicitar o bloqueio dominante.",
+        recommendedNextMove: "seguir para contrato ou explicitar o bloqueio dominante antes do handoff",
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: true,
+        leadReady: true,
+        leadReadinessScore: 82,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+    operation: "lead",
+    flow: "proposal.create",
+    pendingFields: [],
+  });
+
+  assert.equal(nextAction.operation, "documents");
+  assert.equal(nextAction.reasonCode, "DOCUMENTS_REQUIRED");
+  assert.equal(nextAction.label, "Coletar documentos para contrato");
+});
+
+test("next action resolver sends accepted proposal to contract legal handoff when proof is ready", () => {
+  const nextAction = resolveImobNextAction({
+    mission: "schedule_and_follow_visit",
+    context: buildContext({
+      missionContext: {
+        mission: "schedule_visit",
+        lockedUntilExplicitChange: false,
+      },
+      proposalNegotiation: {
+        status: "accepted",
+        propertyId: "property-1",
+        buyerName: "Maria",
+        buyerPhone: "47999998888",
+        buyerEmail: null,
+        offerAmount: 420000,
+        counterofferAmount: null,
+        contractType: "sale",
+        approvalRequired: false,
+        approvalStatus: null,
+        pendingFields: [],
+        reasonCodes: ["PROPOSAL_ACCEPTED_REVIEW_REQUIRED"],
+        summary: "A proposta foi aceita e o caso agora precisa seguir para contrato ou explicitar o bloqueio dominante.",
+        recommendedNextMove: "seguir para contrato ou explicitar o bloqueio dominante antes do handoff",
+      },
+      documentSufficiency: {
+        packageStatus: "ready",
+        proofStatus: "ready",
+        handoffTarget: "LEGAL",
+        legalHandoffStatus: "pending",
+        summary: "Pacote documental suficiente; caso pronto para handoff jurídico.",
+        recommendedNextMove: "Encaminhar o caso para validação jurídica.",
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: true,
+        leadReady: true,
+        leadReadinessScore: 82,
+        documentsReady: true,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+    operation: "lead",
+    flow: "proposal.create",
+    pendingFields: [],
+  });
+
+  assert.equal(nextAction.operation, "contract");
+  assert.equal(nextAction.reasonCode, "LEGAL_HANDOFF_REQUIRED");
+  assert.equal(nextAction.label, "Encaminhar proposta aceita para contrato");
+});
+
+test("next action resolver turns rejected proposal into explicit commercial reengagement", () => {
+  const nextAction = resolveImobNextAction({
+    mission: "schedule_and_follow_visit",
+    context: buildContext({
+      missionContext: {
+        mission: "schedule_visit",
+        lockedUntilExplicitChange: false,
+      },
+      commercialFollowUp: {
+        source: "proposal_negotiation",
+        status: "reengagement_required",
+        trigger: "proposal_rejected",
+        suggestedChannel: "phone",
+        reasonCodes: ["FOLLOW_UP_REENGAGEMENT_REQUIRED"],
+        summary: "A proposta foi recusada e o caso deve voltar para reengajamento comercial antes de nova negociação.",
+        recommendedNextMove: "retomar o lead com nova abordagem comercial antes de enviar outra proposta",
+      },
+      proposalNegotiation: {
+        status: "rejected",
+        propertyId: "property-1",
+        buyerName: "Maria",
+        buyerPhone: "47999998888",
+        buyerEmail: null,
+        offerAmount: 420000,
+        counterofferAmount: null,
+        contractType: "sale",
+        approvalRequired: false,
+        approvalStatus: null,
+        pendingFields: [],
+        reasonCodes: ["PROPOSAL_REJECTION_REVIEW_REQUIRED"],
+        summary: "A proposta foi recusada e o caso agora precisa voltar para reengajamento comercial governado.",
+        recommendedNextMove: "retomar o follow-up comercial antes de montar uma nova proposta",
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: true,
+        leadReady: true,
+        leadReadinessScore: 82,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+    operation: "lead",
+    flow: "proposal.create",
+    pendingFields: [],
+  });
+
+  assert.equal(nextAction.operation, "lead");
+  assert.equal(nextAction.reasonCode, "FOLLOW_UP_REENGAGEMENT_REQUIRED");
+  assert.equal(nextAction.label, "Retomar proposta com o lead");
+});
+
 test("next action resolver keeps visit scheduling explicit while agenda is still pending confirmation", () => {
   const nextAction = resolveImobNextAction({
     mission: "schedule_and_follow_visit",

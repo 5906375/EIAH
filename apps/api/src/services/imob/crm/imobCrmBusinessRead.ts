@@ -144,9 +144,17 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     const flow = helpers.asString(caseContext?.flow);
     const status = helpers.asString(caseContext?.status);
     const stage = helpers.asString(caseContext?.stage);
-    if (caseContext?.commercialFollowUp?.status === "awaiting_response") return "Aguardando resposta do lead";
+    if (caseContext?.commercialFollowUp?.status === "awaiting_response") {
+      return caseContext.commercialFollowUp.source === "proposal_negotiation"
+        ? "Aguardando resposta da proposta"
+        : "Aguardando resposta do lead";
+    }
     if (caseContext?.commercialFollowUp?.status === "follow_up_required") return "Follow-up comercial pendente";
-    if (caseContext?.commercialFollowUp?.status === "reengagement_required") return "Reengajamento comercial pendente";
+    if (caseContext?.commercialFollowUp?.status === "reengagement_required") {
+      return caseContext.commercialFollowUp.source === "proposal_negotiation"
+        ? "Retomada comercial da proposta pendente"
+        : "Reengajamento comercial pendente";
+    }
     if (flow === "lead.qualify") {
       if (status === "ready_for_review" || stage === "ready_for_review") return "Lead pronto para avançar";
       if (status === "pending_data" || stage === "pending_data") return "Lead com dados pendentes";
@@ -2297,9 +2305,13 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     const missingFollowUp = caseContext?.commercialFollowUp
       ? [
           caseContext.commercialFollowUp.status === "awaiting_response"
-            ? "resposta comercial pendente"
+            ? caseContext.commercialFollowUp.source === "proposal_negotiation"
+              ? "resposta da proposta pendente"
+              : "resposta comercial pendente"
             : caseContext.commercialFollowUp.status === "reengagement_required"
-              ? "reengajamento comercial pendente"
+              ? caseContext.commercialFollowUp.source === "proposal_negotiation"
+                ? "retomada comercial da proposta pendente"
+                : "reengajamento comercial pendente"
               : "follow-up comercial pendente",
         ]
       : [];

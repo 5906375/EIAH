@@ -164,15 +164,27 @@ function resolveCommercialFollowUpNextAction(
   if (commercialFollowUp.status === "awaiting_response") {
     return mapLeadAction(flow, {
       id: "await-follow-up-response",
-      label: "Acompanhar resposta do lead",
+      label: commercialFollowUp.source === "proposal_negotiation"
+        ? "Acompanhar resposta da proposta"
+        : "Acompanhar resposta do lead",
       reasonCode: "FOLLOW_UP_RESPONSE_PENDING",
     });
   }
 
   if (commercialFollowUp.status === "follow_up_required") {
     return mapLeadAction(flow, {
-      id: commercialFollowUp.source === "visit_outcome" ? "follow-up-post-visit" : "execute-commercial-follow-up",
-      label: commercialFollowUp.source === "visit_outcome" ? "Retomar pós-visita" : "Executar follow-up comercial",
+      id:
+        commercialFollowUp.source === "visit_outcome"
+          ? "follow-up-post-visit"
+          : commercialFollowUp.source === "proposal_negotiation"
+            ? "follow-up-proposal"
+            : "execute-commercial-follow-up",
+      label:
+        commercialFollowUp.source === "visit_outcome"
+          ? "Retomar pós-visita"
+          : commercialFollowUp.source === "proposal_negotiation"
+            ? "Executar follow-up da proposta"
+            : "Executar follow-up comercial",
       reasonCode: commercialFollowUp.source === "visit_outcome" ? "VISIT_FOLLOW_UP_REQUIRED" : "FOLLOW_UP_PENDING",
     });
   }
@@ -184,13 +196,17 @@ function resolveCommercialFollowUpNextAction(
           ? "reengage-post-visit"
           : commercialFollowUp.source === "lead_lifecycle"
             ? "reengage-disqualified-lead"
-            : "reengage-commercial-follow-up",
+            : commercialFollowUp.source === "proposal_negotiation"
+              ? "reengage-proposal-follow-up"
+              : "reengage-commercial-follow-up",
       label:
         commercialFollowUp.source === "visit_outcome"
           ? "Reengajar lead após visita"
           : commercialFollowUp.source === "lead_lifecycle"
             ? "Retomar lead"
-            : "Reengajar lead",
+            : commercialFollowUp.source === "proposal_negotiation"
+              ? "Retomar proposta com o lead"
+              : "Reengajar lead",
       reasonCode:
         commercialFollowUp.source === "visit_outcome"
           ? "VISIT_REENGAGEMENT_REQUIRED"
@@ -401,18 +417,33 @@ export function resolveImobNextAction(params: ResolveNextActionParams): ImobNext
       }
 
       if (params.context.proposalNegotiation?.status === "accepted") {
-        return mapLeadAction(params.flow, {
-          id: "review-proposal-acceptance",
-          label: "Revisar aceite da proposta",
-          reasonCode: "PROPOSAL_ACCEPTED_REVIEW_REQUIRED",
-        });
-      }
+        if (!params.context.readiness.documentsReady) {
+          return mapOperationAction("documents", params.flow, {
+            id: "prepare-proposal-contract-documents",
+            label: params.context.documentChecklist?.pendingDocuments.length
+              ? buildDocumentChecklistLabel(params.context)
+              : "Coletar documentos para contrato",
+            reasonCode: params.context.documentChecklist?.pendingDocuments.length
+              ? "DOCUMENT_CHECKLIST_REQUIRED"
+              : "DOCUMENTS_REQUIRED",
+          });
+        }
 
-      if (params.context.proposalNegotiation?.status === "rejected") {
-        return mapLeadAction(params.flow, {
-          id: "review-proposal-rejection",
-          label: "Revisar recusa da proposta",
-          reasonCode: "PROPOSAL_REJECTION_REVIEW_REQUIRED",
+        if (
+          params.context.documentSufficiency?.handoffTarget === "LEGAL"
+          && params.context.documentSufficiency.legalHandoffStatus === "pending"
+        ) {
+          return mapOperationAction("contract", params.flow, {
+            id: "handoff-accepted-proposal-to-legal",
+            label: "Encaminhar proposta aceita para contrato",
+            reasonCode: "LEGAL_HANDOFF_REQUIRED",
+          });
+        }
+
+        return mapOperationAction("contract", params.flow, {
+          id: "prepare-contract-from-accepted-proposal",
+          label: "Seguir para contrato",
+          reasonCode: "CONTRACT_PREPARATION_REQUIRED",
         });
       }
 

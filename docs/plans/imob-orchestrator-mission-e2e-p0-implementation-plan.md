@@ -3,7 +3,7 @@
 Status: rebaseline operacional  
 Prioridade: P0/P1 para Track P IMOB  
 Data de referência: 2026-05-27  
-Versão do plano: v5.8 — pragmática para execução com continuidade derivada do canônico, `DocumentAgent E2E`, `DedupeAgent E2E`, `VisitAgent E2E`, `Guardian_EvidenceAgent` e `FollowUpAgent / Commercial follow-up E2E` concluídos no runtime, `ProposalAgent / Negotiation E2E` aberto até `PR-PROP2` no runtime, `IMOB CRM Continuity Hardening — Phase 1` concluída e retomada funcional reaberta no `PR-PROP3`  
+Versão do plano: v5.9 — pragmática para execução com continuidade derivada do canônico, `DocumentAgent E2E`, `DedupeAgent E2E`, `VisitAgent E2E`, `Guardian_EvidenceAgent`, `FollowUpAgent / Commercial follow-up E2E`, `ProposalAgent / Negotiation E2E` e `IMOB CRM Continuity Hardening — Phase 1` concluídos no runtime  
 Escopo: fechamento E2E do `IMOB_Orchestrator` como dono real das missões imobiliárias, preservando arquitetura agent-driven, estado canônico, recuperação confiável, próxima ação única, controle de concorrência seguro para side effects, compatibilidade com casos legados e proof mínimo determinístico por missão.
 
 ---
@@ -218,10 +218,10 @@ Próximas frentes oficiais a partir deste ponto:
      - `docs/plans/imob-follow-up-agent-e2e-implementation-plan.md`
 
 9. `ProposalAgent / Negotiation E2E`
-   - Status: `aberta no runtime / retomada no PR-PROP3`
+   - Status: `concluído`
    - `PR-PROP1` concluído no runtime: canonical proposal negotiation snapshot
    - `PR-PROP2` concluído no runtime: counteroffer and approval flow
-   - `PR-PROP3` reaberto: proposal to contract / re-follow-up handoff
+   - `PR-PROP3` concluído no runtime: proposal to contract / re-follow-up handoff
    - foco:
      - transformar proposta e negociação em jornada canônica explícita;
      - consolidar proposta ativa, pendências e próximo movimento único;
@@ -239,7 +239,7 @@ Próximas frentes oficiais a partir deste ponto:
      - `docs/plans/imob-proposal-agent-e2e-implementation-plan.md`
 
 10. `IMOB CRM Continuity Hardening`
-   - Status: `prioridade imediata`
+   - Status: `concluído`
    - foco:
      - consolidar `E2E funcional com hardening residual de superfície`;
      - reduzir drift entre `nextAction`, `recommendedActions`, `CTAs`, `quickReplies`, `business read` e `workflow guard`;

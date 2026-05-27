@@ -1,6 +1,6 @@
 # imob-proposal-agent-e2e-implementation-plan
 
-Status: retomada planejada após hardening de continuidade  
+Status: concluído no runtime  
 Prioridade: P1 após `FollowUpAgent / Commercial follow-up E2E`  
 Data de referência: 2026-05-27  
 Escopo: fechar o `ProposalAgent / Negotiation E2E` como jornada governada de proposta no IMOB, preservando arquitetura agent-driven, launcher `render-only` e sem side effects externos automáticos fora do runtime.
@@ -92,7 +92,7 @@ Critério:
 
 Status:
 
-- `próximo slice funcional oficial`
+- `concluído no runtime`
 
 Objetivo:
 

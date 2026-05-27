@@ -1,6 +1,6 @@
 # imob-crm-continuity-hardening-phase-1-plan
 
-Status: prioridade imediata  
+Status: concluído no runtime  
 Prioridade: P0 de superfície / coerência operacional  
 Data de referência: 2026-05-26  
 Escopo: elevar o IMOB de `E2E funcional com drift residual` para `E2E funcional com hardening residual de superfície`, reduzindo incoerência entre `nextAction`, `recommendedActions`, `CTAs`, `quickReplies`, `business read` e `workflow guard`.

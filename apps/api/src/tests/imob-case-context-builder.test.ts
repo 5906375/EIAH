@@ -695,6 +695,80 @@ test("IMOB case context v1 exposes approval-pending proposal negotiation before 
   assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "PROPOSAL_APPROVAL_REQUIRED");
 });
 
+test("IMOB case context v1 hands accepted proposal off to contract when documents are ready", () => {
+  const context = buildImobCaseContextV1({
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    caseId: "case-proposal-accepted-1",
+    caseContext: {
+      caseId: "case-proposal-accepted-1",
+      flow: "proposal.create",
+    },
+    operational: {
+      flow: "proposal.create",
+      pendingFields: [],
+      proposalDraft: {
+        propertyId: "property-1",
+        buyerName: "Maria",
+        buyerPhone: "47999998888",
+        offerAmount: 420000,
+        contractType: "sale",
+        negotiationStatus: "accepted",
+      },
+      contractDraft: {
+        propertyId: "property-1",
+        counterpartyName: "Maria",
+        contractType: "sale",
+        documentPacketStatus: "ready",
+        handoffTarget: "LEGAL",
+        approvalRequired: true,
+      },
+    },
+  });
+
+  assert.equal(context.proposalNegotiation?.status, "accepted");
+  assert.equal(context.documentSufficiency?.packageStatus, "ready");
+  assert.equal(context.canonicalCaseState?.nextAction.operation, "contract");
+  assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "LEGAL_HANDOFF_REQUIRED");
+});
+
+test("IMOB case context v1 keeps accepted proposal blocked on documents before contract handoff", () => {
+  const context = buildImobCaseContextV1({
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    caseId: "case-proposal-accepted-2",
+    caseContext: {
+      caseId: "case-proposal-accepted-2",
+      flow: "proposal.create",
+    },
+    operational: {
+      flow: "proposal.create",
+      pendingFields: [],
+      proposalDraft: {
+        propertyId: "property-1",
+        buyerName: "Maria",
+        buyerPhone: "47999998888",
+        offerAmount: 420000,
+        contractType: "sale",
+        negotiationStatus: "accepted",
+      },
+      contractDraft: {
+        propertyId: "property-1",
+        counterpartyName: "Maria",
+        contractType: "sale",
+        documentPacketStatus: "pending",
+        handoffTarget: "LEGAL",
+        approvalRequired: true,
+      },
+    },
+  });
+
+  assert.equal(context.proposalNegotiation?.status, "accepted");
+  assert.equal(context.documentSufficiency?.packageStatus, "pending");
+  assert.equal(context.canonicalCaseState?.nextAction.operation, "documents");
+  assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "DOCUMENTS_REQUIRED");
+});
+
 test("IMOB case context v1 preserves lead disqualification reason in canonical recovery", () => {
   const context = buildImobCaseContextV1({
     tenantId: "tenant-A",
@@ -833,4 +907,33 @@ test("IMOB case context v1 prioritizes explicit runtime follow-up cadence over i
   assert.equal(context.commercialFollowUp?.status, "awaiting_response");
   assert.equal(context.commercialFollowUp?.trigger, "no_response");
   assert.equal(context.commercialFollowUp?.suggestedChannel, "whatsapp");
+});
+
+test("IMOB case context v1 turns rejected proposal into canonical commercial reengagement", () => {
+  const context = buildImobCaseContextV1({
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    caseId: "case-proposal-rejected-1",
+    caseContext: {
+      caseId: "case-proposal-rejected-1",
+      flow: "proposal.create",
+    },
+    operational: {
+      flow: "proposal.create",
+      proposalDraft: {
+        propertyId: "property-1",
+        buyerName: "Maria",
+        buyerPhone: "47999998888",
+        offerAmount: 420000,
+        contractType: "sale",
+        negotiationStatus: "rejected",
+      },
+    },
+  });
+
+  assert.equal(context.proposalNegotiation?.status, "rejected");
+  assert.equal(context.commercialFollowUp?.source, "proposal_negotiation");
+  assert.equal(context.commercialFollowUp?.status, "reengagement_required");
+  assert.equal(context.commercialFollowUp?.trigger, "proposal_rejected");
+  assert.equal(context.canonicalCaseState?.nextAction.reasonCode, "FOLLOW_UP_REENGAGEMENT_REQUIRED");
 });

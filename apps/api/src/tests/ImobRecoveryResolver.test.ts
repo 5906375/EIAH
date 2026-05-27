@@ -838,6 +838,177 @@ test("recovery response maps proposal approval pending into proposal review flow
   assert.equal(response.primaryAction?.label, "Solicitar aprovação da proposta");
 });
 
+test("recovery response turns accepted proposal into contract handoff when proof is ready", () => {
+  const response = resolveImobRecoveryResponse({
+    intent: "next_step",
+    context: buildContext({
+      missionContext: {
+        mission: "schedule_visit",
+        lockedUntilExplicitChange: false,
+      },
+      proposalNegotiation: {
+        status: "accepted",
+        propertyId: "property-1",
+        buyerName: "Maria",
+        buyerPhone: "47999998888",
+        buyerEmail: null,
+        offerAmount: 420000,
+        contractType: "sale",
+        pendingFields: [],
+        reasonCodes: ["PROPOSAL_ACCEPTED_REVIEW_REQUIRED"],
+        summary: "A proposta foi aceita e o caso agora precisa seguir para contrato ou explicitar o bloqueio dominante.",
+        recommendedNextMove: "seguir para contrato ou explicitar o bloqueio dominante antes do handoff",
+      },
+      documentSufficiency: {
+        packageStatus: "ready",
+        proofStatus: "ready",
+        handoffTarget: "LEGAL",
+        legalHandoffStatus: "pending",
+        summary: "Pacote documental suficiente; caso pronto para handoff jurídico.",
+        recommendedNextMove: "Encaminhar o caso para validação jurídica.",
+      },
+      canonicalCaseState: {
+        schemaVersion: 1,
+        tenantId: "tenant-A",
+        workspaceId: "workspace-A",
+        caseId: "case-1",
+        mission: "schedule_and_follow_visit",
+        missionStatus: "in_progress",
+        currentStep: "proposal_accepted",
+        currentOperation: "contract",
+        entities: {
+          leadId: "lead-1",
+          propertyId: "property-1",
+        },
+        readiness: {
+          lead: "ready",
+          property: "ready",
+          visit: "ready",
+          proof: "satisfied",
+        },
+        blockers: [],
+        pendingFields: [],
+        nextAction: {
+          id: "handoff-accepted-proposal-to-legal",
+          label: "Encaminhar proposta aceita para contrato",
+          operation: "contract",
+          targetAgent: "IMOB_DocumentAgent",
+          reasonCode: "LEGAL_HANDOFF_REQUIRED",
+        },
+        proof: {
+          required: false,
+          minimumProofSatisfied: true,
+          missingProof: [],
+        },
+        audit: {
+          version: 1,
+          lastUpdatedAt: "2026-05-27T10:10:00.000Z",
+          updatedByAgent: "IMOB",
+        },
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: true,
+        leadReady: true,
+        leadReadinessScore: 82,
+        documentsReady: true,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+  });
+
+  assert.equal(response.primaryAction?.reasonCode, "LEGAL_HANDOFF_REQUIRED");
+  assert.equal(response.primaryAction?.operation, "contract.prepare");
+  assert.equal(response.primaryAction?.label, "Encaminhar para jurídico");
+});
+
+test("recovery response turns rejected proposal into commercial reengagement", () => {
+  const response = resolveImobRecoveryResponse({
+    intent: "next_step",
+    context: buildContext({
+      missionContext: {
+        mission: "schedule_visit",
+        lockedUntilExplicitChange: false,
+      },
+      commercialFollowUp: {
+        source: "proposal_negotiation",
+        status: "reengagement_required",
+        trigger: "proposal_rejected",
+        suggestedChannel: "phone",
+        reasonCodes: ["FOLLOW_UP_REENGAGEMENT_REQUIRED"],
+        summary: "A proposta foi recusada e o caso deve voltar para reengajamento comercial antes de nova negociação.",
+        recommendedNextMove: "retomar o lead com nova abordagem comercial antes de enviar outra proposta",
+      },
+      proposalNegotiation: {
+        status: "rejected",
+        propertyId: "property-1",
+        buyerName: "Maria",
+        buyerPhone: "47999998888",
+        buyerEmail: null,
+        offerAmount: 420000,
+        contractType: "sale",
+        pendingFields: [],
+        reasonCodes: ["PROPOSAL_REJECTION_REVIEW_REQUIRED"],
+        summary: "A proposta foi recusada e o caso agora precisa voltar para reengajamento comercial governado.",
+        recommendedNextMove: "retomar o follow-up comercial antes de montar uma nova proposta",
+      },
+      canonicalCaseState: {
+        schemaVersion: 1,
+        tenantId: "tenant-A",
+        workspaceId: "workspace-A",
+        caseId: "case-1",
+        mission: "schedule_and_follow_visit",
+        missionStatus: "blocked",
+        currentStep: "proposal_rejected",
+        currentOperation: "lead",
+        entities: {
+          leadId: "lead-1",
+          propertyId: "property-1",
+        },
+        readiness: {
+          lead: "ready",
+          property: "ready",
+          visit: "ready",
+          proof: "not_applicable",
+        },
+        blockers: [],
+        pendingFields: [],
+        nextAction: {
+          id: "reengage-proposal-follow-up",
+          label: "Retomar proposta com o lead",
+          operation: "lead",
+          targetAgent: "IMOB_LeadAgent",
+          reasonCode: "FOLLOW_UP_REENGAGEMENT_REQUIRED",
+        },
+        proof: {
+          required: false,
+          minimumProofSatisfied: true,
+          missingProof: [],
+        },
+        audit: {
+          version: 1,
+          lastUpdatedAt: "2026-05-27T10:20:00.000Z",
+          updatedByAgent: "IMOB",
+        },
+      },
+      readiness: {
+        ownerReady: false,
+        propertyReady: true,
+        leadReady: true,
+        leadReadinessScore: 82,
+        documentsReady: false,
+        seasonalRulesReady: false,
+        operationalReady: false,
+      },
+    }),
+  });
+
+  assert.equal(response.primaryAction?.reasonCode, "FOLLOW_UP_REENGAGEMENT_REQUIRED");
+  assert.equal(response.primaryAction?.operation, "lead.qualify");
+  assert.equal(response.primaryAction?.label, "Retomar proposta com o lead");
+});
+
 test("recovery response keeps visit scheduling pending explicit before the slot is confirmed", () => {
   const response = resolveImobRecoveryResponse({
     intent: "what_is_missing",
