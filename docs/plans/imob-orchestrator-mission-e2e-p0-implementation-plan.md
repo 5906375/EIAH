@@ -309,7 +309,7 @@ Execução corrente:
   - com detalhamento em:
     - `docs/plans/imob-crm-continuity-hardening-phase-1-plan.md`
   - slice atual:
-    - `PR-FIX-IMOB-CONTINUITY-4 — real journey regression suite`
+    - `PR-FIX-IMOB-CONTINUITY-5 — coherence metrics and acceptance gates`
 
 ---
 

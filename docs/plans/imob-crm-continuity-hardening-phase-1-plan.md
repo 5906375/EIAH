@@ -165,6 +165,10 @@ Título:
 
 - `coherence metrics and acceptance gates`
 
+Status:
+
+- `em andamento`
+
 Objetivo:
 
 - medir a coerência operacional do IMOB com base em regras observáveis, sem alterar funcionalidades existentes, layout visual ou responsividade.
@@ -231,6 +235,14 @@ Arquivos prováveis:
   - confiabilidade da fonte
   - proof disponível
   - blocker dominante
+
+Baseline mínimo já implantado:
+
+- builder de métricas de coerência IMOB no runtime;
+- suíte determinística cobrindo:
+  - baseline limpo que passa no gate;
+  - baseline degradado que falha no gate;
+- sem alteração de layout, launcher ou responsividade.
 
 ---
 
