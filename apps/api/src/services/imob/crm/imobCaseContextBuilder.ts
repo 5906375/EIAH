@@ -308,10 +308,12 @@ function buildLeadLifecycle(params: {
 function buildCommercialFollowUpSnapshot(params: {
   visitOutcome?: ImobVisitOutcomeSnapshotV1 | null;
   leadLifecycle?: ImobLeadLifecycleSnapshotV1 | null;
+  proposalNegotiation?: ImobProposalNegotiationSnapshotV1 | null;
   followUpDraft?: Record<string, unknown> | null;
 }): ImobCommercialFollowUpSnapshotV1 | null {
   const visitOutcome = params.visitOutcome ?? null;
   const leadLifecycle = params.leadLifecycle ?? null;
+  const proposalNegotiation = params.proposalNegotiation ?? null;
   const followUpDraft = params.followUpDraft ?? null;
 
   const draftStatus = asString(followUpDraft?.status);
@@ -389,6 +391,38 @@ function buildCommercialFollowUpSnapshot(params: {
       reasonCodes: ["LEAD_REENGAGEMENT_REQUIRED"],
       summary: leadLifecycle.summary,
       recommendedNextMove: "retomar o lead com base no gatilho comercial já identificado",
+    };
+  }
+
+  if (proposalNegotiation?.status === "awaiting_response") {
+    return {
+      source: "proposal_negotiation",
+      status: "awaiting_response",
+      trigger: "proposal_response",
+      suggestedChannel: proposalNegotiation.buyerPhone
+        ? "whatsapp"
+        : proposalNegotiation.buyerEmail
+          ? "email"
+          : "internal",
+      reasonCodes: ["FOLLOW_UP_RESPONSE_PENDING"],
+      summary: "A proposta já foi enviada e agora o caso precisa apenas acompanhar a resposta antes de decidir o próximo handoff.",
+      recommendedNextMove: "acompanhar a resposta da proposta antes de reabrir negociação ou contrato",
+    };
+  }
+
+  if (proposalNegotiation?.status === "rejected") {
+    return {
+      source: "proposal_negotiation",
+      status: "reengagement_required",
+      trigger: "proposal_rejected",
+      suggestedChannel: proposalNegotiation.buyerPhone
+        ? "phone"
+        : proposalNegotiation.buyerEmail
+          ? "email"
+          : "internal",
+      reasonCodes: ["FOLLOW_UP_REENGAGEMENT_REQUIRED"],
+      summary: "A proposta foi recusada e o caso deve voltar para reengajamento comercial antes de nova negociação.",
+      recommendedNextMove: "retomar o lead com nova abordagem comercial antes de enviar outra proposta",
     };
   }
 
@@ -982,9 +1016,9 @@ function buildProposalNegotiationSnapshot(params: {
           : status === "awaiting_response"
             ? "A proposta já foi enviada e o caso aguarda resposta antes do próximo handoff."
             : status === "accepted"
-              ? "A proposta foi aceita e agora precisa de revisão comercial antes do próximo handoff."
+              ? "A proposta foi aceita e o caso agora precisa seguir para contrato ou explicitar o bloqueio dominante."
               : status === "rejected"
-                ? "A proposta foi recusada e o caso precisa de revisão comercial antes de voltar ao funil."
+                ? "A proposta foi recusada e o caso agora precisa voltar para reengajamento comercial governado."
                 : status === "ready_for_review"
                   ? "A proposta já tem dados suficientes para revisão comercial."
                   : `A proposta já foi iniciada, mas ainda faltam ${pendingFields.join(", ")} antes da revisão comercial.`,
@@ -994,11 +1028,11 @@ function buildProposalNegotiationSnapshot(params: {
         : status === "counteroffer_required"
           ? "responder à contraproposta antes de seguir para contrato ou novo handoff"
           : status === "awaiting_response"
-            ? "acompanhar a resposta da proposta antes de reabrir negociação"
+            ? "acompanhar a resposta da proposta antes de decidir contrato ou retomada comercial"
             : status === "accepted"
-              ? "revisar o aceite e decidir o handoff seguro para contrato"
+              ? "seguir para contrato ou explicitar o bloqueio dominante antes do handoff"
               : status === "rejected"
-                ? "revisar a recusa e decidir se o caso volta para follow-up ou nova proposta"
+                ? "retomar o follow-up comercial antes de montar uma nova proposta"
                 : status === "ready_for_review"
                   ? "revisar a proposta e decidir se já segue para negociação formal"
                   : "completar os dados pendentes da proposta antes da revisão",
@@ -1313,6 +1347,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
   const commercialFollowUp = buildCommercialFollowUpSnapshot({
     visitOutcome,
     leadLifecycle,
+    proposalNegotiation,
     followUpDraft,
   });
 

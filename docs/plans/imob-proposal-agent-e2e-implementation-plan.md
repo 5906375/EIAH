@@ -1,8 +1,8 @@
 # imob-proposal-agent-e2e-implementation-plan
 
-Status: execução iniciada  
+Status: concluído no runtime  
 Prioridade: P1 após `FollowUpAgent / Commercial follow-up E2E`  
-Data de referência: 2026-05-26  
+Data de referência: 2026-05-27  
 Escopo: fechar o `ProposalAgent / Negotiation E2E` como jornada governada de proposta no IMOB, preservando arquitetura agent-driven, launcher `render-only` e sem side effects externos automáticos fora do runtime.
 
 ---
@@ -15,8 +15,13 @@ O objetivo desta frente é fechar:
 
 - proposta ativa com estado e pendências explícitas;
 - contraproposta e aceite/recusa governados;
-- transição coerente para contrato ou retorno para follow-up;
+- transição coerente para contrato, retorno para follow-up ou bloqueio explícito;
 - `nextAction`, recovery e business read sem drift entre proposta, negociação e handoff.
+- resposta operacional diretiva no formato:
+  - o que aconteceu
+  - o que bloqueia, se houver
+  - qual é o próximo passo
+  - quem deve agir
 
 ---
 
@@ -87,7 +92,7 @@ Critério:
 
 Status:
 
-- `planejado`
+- `concluído no runtime`
 
 Objetivo:
 
@@ -95,19 +100,59 @@ Objetivo:
   - contrato
   - follow-up
   - retomada comercial
+- bloqueio explícito quando contrato ainda não pode ocorrer
 - endurecer business read para não parecer “verde” quando ainda há negociação ativa.
+- garantir que o chat não peça decisão cognitiva ao usuário quando a proposta já estiver em um desfecho operacional claro.
 
 Arquivos prováveis:
 
+- `apps/api/src/services/imob/crm/imobCaseContextContract.ts`
+- `apps/api/src/services/imob/crm/imobCaseContextBuilder.ts`
+- `apps/api/src/services/imob/orchestrator/imobNextActionResolver.ts`
+- `apps/api/src/services/imob/orchestrator/imobRecoveryResolver.ts`
 - `apps/api/src/services/imob/crm/imobCrmBusinessRead.ts`
 - `apps/api/src/services/imob/crm/imobCrmLegacyResolverCompat.ts`
+- `apps/api/src/tests/imob-case-context-builder.test.ts`
+- `apps/api/src/tests/ImobNextActionResolver.test.ts`
+- `apps/api/src/tests/ImobRecoveryResolver.test.ts`
 - `apps/api/src/tests/imob-crm-resolver.test.ts`
 - `apps/api/src/tests/*proposal*.test.ts`
 
 Critério:
 
-- o consultivo CRM mostra proposta/negociação com contexto, status e próximo movimento preparado;
+- proposta aceita/aprovada aponta para `contract.prepare`;
+- proposta sem resposta ou em impasse volta para `commercialFollowUp`;
+- proposta rejeitada ou travada deixa blocker e retomada explícitos;
+- texto, card, `consultiveRead` e CTA contam a mesma história;
+- o chat responde com um próximo passo dominante, não com chooser genérico;
 - nenhuma nova regra nasce no launcher.
+
+Desfechos que o slice deve cobrir:
+
+1. `proposal -> contract`
+- proposta aceita
+- proposta aprovada
+- handoff explícito para contrato
+
+2. `proposal -> follow-up`
+- proposta sem resposta
+- negociação em impasse
+- retomada comercial necessária
+
+3. `proposal -> blocked`
+- blocker documental
+- blocker de approval
+- blocker de handoff para contrato
+
+Regra operacional:
+
+- depois de proposta ativa, o sistema deve responder:
+  - o que aconteceu
+  - o que bloqueia, se houver
+  - qual é o próximo passo
+  - quem deve agir
+- menos `o que você quer fazer agora?`
+- mais `o negócio agora deve seguir para isto`
 
 ---
 
@@ -119,6 +164,10 @@ O `ProposalAgent / Negotiation E2E` só pode ser considerado fechado quando:
 - `nextAction` do caso fica único para a etapa de proposta;
 - recovery e business read refletem o estado real da negociação;
 - contraproposta, aceite e recusa são governados pelo runtime;
+- a saída da proposta fica governada para:
+  - contrato
+  - follow-up
+  - blocker explícito
 - o launcher continua apenas renderizando o contrato resolvido.
 
 ---

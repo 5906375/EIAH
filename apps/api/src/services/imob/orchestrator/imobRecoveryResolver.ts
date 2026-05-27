@@ -205,6 +205,30 @@ function mapCanonicalNextActionToPlanAction(context: ImobCaseContextV1): ImobCas
       });
     }
 
+    if (nextAction.reasonCode === "FOLLOW_UP_RESPONSE_PENDING") {
+      const proposalSource = context.commercialFollowUp?.source === "proposal_negotiation";
+      return action({
+        operation: "lead.qualify",
+        label: proposalSource ? "Acompanhar resposta da proposta" : "Acompanhar resposta do lead",
+        nextMessage: proposalSource
+          ? "acompanhar resposta da proposta deste caso"
+          : "acompanhar resposta do lead deste caso",
+        reasonCode: nextAction.reasonCode,
+      });
+    }
+
+    if (nextAction.reasonCode === "FOLLOW_UP_REENGAGEMENT_REQUIRED") {
+      const proposalSource = context.commercialFollowUp?.source === "proposal_negotiation";
+      return action({
+        operation: "lead.qualify",
+        label: proposalSource ? "Retomar proposta com o lead" : "Reengajar lead",
+        nextMessage: proposalSource
+          ? "retomar follow-up da proposta deste caso"
+          : "reengajar lead deste caso",
+        reasonCode: nextAction.reasonCode,
+      });
+    }
+
     return action({
       operation: "lead.qualify",
       label: "Retomar lead",

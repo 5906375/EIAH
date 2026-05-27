@@ -210,7 +210,12 @@ function normalizeCommercialFollowUp(value: unknown): ImobCommercialFollowUpSnap
   const recommendedNextMove = asString(followUp.recommendedNextMove);
 
   if (
-    (source !== "visit_outcome" && source !== "lead_lifecycle" && source !== "follow_up_runtime")
+    (
+      source !== "visit_outcome"
+      && source !== "lead_lifecycle"
+      && source !== "follow_up_runtime"
+      && source !== "proposal_negotiation"
+    )
     || (status !== "follow_up_required" && status !== "reengagement_required" && status !== "awaiting_response")
     || !trigger
     || (
