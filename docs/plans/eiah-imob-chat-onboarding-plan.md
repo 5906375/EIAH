@@ -1,6 +1,6 @@
 # eiah-imob-chat-onboarding-plan (v8-Hardened)
 
-Status: proposta operacional  
+Status: execução iniciada  
 Prioridade: P1 de UX operacional / alinhamento de contexto  
 Data de referência: 2026-05-27  
 Escopo: formalizar no `EIAH` a capacidade nativa de onboarding operacional e descoberta de uso do Chat IMOB, preservando arquitetura `agent-driven`, `launcher render-only`, governança `fail-closed` e acoplamento ao runtime real de capabilities, contracts e policies.
@@ -173,6 +173,10 @@ Regra:
 ## 8. Ordem de execução
 
 ### PR-IMOB-ONB-0 — Onboarding Resolver Core
+
+Status:
+
+- `concluído no backend`
 
 Objetivo:
 
