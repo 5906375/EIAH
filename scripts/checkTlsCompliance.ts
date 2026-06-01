@@ -1,7 +1,7 @@
 import { fail, hasAll, mustFile, pass } from "./checkBaseEvidenceUtils.ts";
 
 const CHECK = "check:tls-compliance";
-const file = "ops/evidence/2026-W09/domain-dns/tls-compliance-evidence.md";
+const file = "ops/evidence/latest/domain-go-live/tls-full-strict-check.md";
 
 try {
   const content = mustFile(file);

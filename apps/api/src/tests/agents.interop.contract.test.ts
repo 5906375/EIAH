@@ -12,6 +12,10 @@ const tenantId = `tenant-interop-${suffix}`;
 const workspaceId = `workspace-interop-${suffix}`;
 const userId = `user-interop-${suffix}`;
 const apiToken = `tok-interop-${suffix}`;
+const tenantNoPolicyId = `tenant-interop-nopolicy-${suffix}`;
+const workspaceNoPolicyId = `workspace-interop-nopolicy-${suffix}`;
+const userNoPolicyId = `user-interop-nopolicy-${suffix}`;
+const apiTokenNoPolicy = `tok-interop-nopolicy-${suffix}`;
 const actionName = "realestate.apply_adjustment";
 
 before(async () => {
@@ -43,6 +47,30 @@ before(async () => {
       revoked: false,
     },
   });
+  await prismaGlobal.tenant.create({
+    data: { id: tenantNoPolicyId, name: tenantNoPolicyId },
+  });
+  await prismaGlobal.workspace.create({
+    data: { id: workspaceNoPolicyId, tenantId: tenantNoPolicyId, name: workspaceNoPolicyId },
+  });
+  await prismaGlobal.user.create({
+    data: {
+      id: userNoPolicyId,
+      tenantId: tenantNoPolicyId,
+      email: `${userNoPolicyId}@example.com`,
+      displayName: "Interop No Policy Tester",
+    },
+  });
+  await prismaGlobal.apiToken.create({
+    data: {
+      token: apiTokenNoPolicy,
+      tenantId: tenantNoPolicyId,
+      workspaceId: workspaceNoPolicyId,
+      userId: userNoPolicyId,
+      description: "interop-contract-test-no-policy",
+      revoked: false,
+    },
+  });
   await prismaGlobal.tenantActionPolicy.create({
     data: {
       tenantId,
@@ -60,7 +88,14 @@ after(async () => {
   await prismaGlobal.runEvent.deleteMany({ where: { tenantId } });
   await prismaGlobal.run.deleteMany({ where: { tenantId } });
   await prismaGlobal.tenantActionPolicy.deleteMany({ where: { tenantId } });
+  await prismaGlobal.apiToken.deleteMany({ where: { tenantId: tenantNoPolicyId } });
+  await prismaGlobal.user.deleteMany({ where: { tenantId: tenantNoPolicyId } });
+  await prismaGlobal.workspace.deleteMany({ where: { tenantId: tenantNoPolicyId } });
+  await prismaGlobal.tenant.deleteMany({ where: { id: tenantNoPolicyId } });
   await prismaGlobal.apiToken.deleteMany({ where: { tenantId } });
+  await prismaGlobal.user.deleteMany({ where: { tenantId } });
+  await prismaGlobal.workspace.deleteMany({ where: { tenantId } });
+  await prismaGlobal.tenant.deleteMany({ where: { id: tenantId } });
   await closeRunQueueConnections();
   await prismaGlobal.$disconnect();
 });
@@ -76,6 +111,18 @@ test("POST /api/agents/discovery retorna ações disponíveis por tenant", async
   assert.equal(res.body?.data?.protocolVersion, "agent-protocol.v1");
   assert.ok(Array.isArray(res.body?.data?.actions));
   assert.equal(res.body?.data?.actions?.[0]?.action, actionName);
+});
+
+test("POST /api/agents/discovery falha fechado sem policy explícita", async () => {
+  const res = await request
+    .post("/api/agents/discovery")
+    .set("Authorization", `Bearer ${apiTokenNoPolicy}`)
+    .send({ domain: "imob", actions: [actionName] });
+
+  assert.equal(res.status, 403);
+  assert.equal(res.body?.ok, false);
+  assert.equal(res.body?.error?.code, "POLICY_NOT_FOUND");
+  assert.equal(res.body?.error?.reasonCode, "POLICY_NOT_FOUND");
 });
 
 test("POST /api/agents/negotiate negocia versão e contrato", async () => {

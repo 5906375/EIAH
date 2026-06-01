@@ -1,7 +1,7 @@
 import { fail, hasAll, mustFile, pass } from "./checkBaseEvidenceUtils.ts";
 
 const CHECK = "check:waf-rate-limit";
-const file = "ops/evidence/2026-W09/base/waf-rate-limit-evidence.md";
+const file = "ops/evidence/latest/domain-go-live/production-dns-tls-smoke.md";
 
 try {
   const content = mustFile(file);
