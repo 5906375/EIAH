@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import crypto from "node:crypto";
 import { z } from "zod";
 import { publishRun } from "@eiah/core";
@@ -9,6 +9,11 @@ import { createRunRecord } from "../services/runs";
 import { emitRunEvent } from "../services/runEventEmitter";
 import { WorkspaceAgentAssignmentError } from "../services/workspaceAgentAssignments";
 import { evaluateTrustScore, trustScoreAllowsExecution } from "../services/trustScore";
+import {
+  buildPolicyNotFoundResponseBody,
+  PolicyNotFoundError,
+  resolveAllowedActionNames,
+} from "./agentsPolicy";
 
 export const agentsRouter = Router();
 agentsRouter.use(enforceTenant);
@@ -171,61 +176,78 @@ async function resolveAllowedActions(req: TenantAwareRequest) {
     select: { actionName: true },
   });
 
-  const catalogActions = new Set(Object.keys(ACTION_CONTRACTS));
-  const allowedByPolicy = dbPolicies
-    .map((item) => normalizeActionName(item.actionName))
-    .filter((action) => catalogActions.has(action));
-
-  if (allowedByPolicy.length > 0) {
-    return new Set(allowedByPolicy);
-  }
-
-  // Tenant com policies explícitas, mas nenhuma mapeada ao catálogo atual => fail-closed.
-  if (dbPolicies.length > 0) {
-    return new Set<string>();
-  }
-
-  // Fallback de bootstrap para tenants sem policy explícita.
-  return new Set(catalogActions);
+  return resolveAllowedActionNames({
+    tenantId,
+    workspaceId,
+    dbPolicies,
+    catalogActions: Object.keys(ACTION_CONTRACTS),
+  });
 }
 
-agentsRouter.post("/agents/discovery", async (req, res) => {
-  const request = req as TenantAwareRequest;
-  if (!request.authContext || !request.prisma) {
-    return res.status(500).json({
-      ok: false,
-      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
-    });
-  }
-
-  const parsed = DiscoverySchema.safeParse(req.body ?? {});
-  if (!parsed.success) {
-    return res.status(400).json({
-      ok: false,
-      error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() },
-    });
-  }
-
-  const allowed = await resolveAllowedActions(request);
-  const requested = new Set((parsed.data.actions ?? []).map(normalizeActionName));
-  const actions = availableCatalog().filter((item) => {
-    if (!allowed.has(item.action)) return false;
-    if (requested.size > 0 && !requested.has(item.action)) return false;
-    return true;
-  });
-
-  return res.json({
-    ok: true,
-    data: {
-      protocolVersion: AGENT_PROTOCOL_VERSION,
-      domain: parsed.data.domain ?? DEFAULT_DOMAIN,
-      tenantId: request.authContext.tenantId,
-      workspaceId: request.authContext.workspaceId,
-      actions,
-      discoveredAt: new Date().toISOString(),
+export function respondPolicyNotFound(req: TenantAwareRequest, res: Response) {
+  req.logger?.warn(
+    {
+      event: "policy.not_found",
+      tenantId: req.authContext?.tenantId ?? null,
+      workspaceId: req.authContext?.workspaceId ?? null,
+      reasonCode: "POLICY_NOT_FOUND",
     },
-  });
-});
+    "request.forbidden"
+  );
+  return res.status(403).json(buildPolicyNotFoundResponseBody());
+}
+
+export function createAgentsDiscoveryHandler(params?: {
+  resolveAllowedActions?: typeof resolveAllowedActions;
+}) {
+  return async (req: Request, res: Response) => {
+    const request = req as TenantAwareRequest;
+    if (!request.authContext || !request.prisma) {
+      return res.status(500).json({
+        ok: false,
+        error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+      });
+    }
+
+    const parsed = DiscoverySchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({
+        ok: false,
+        error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() },
+      });
+    }
+
+    let allowed: Set<string>;
+    try {
+      allowed = await (params?.resolveAllowedActions ?? resolveAllowedActions)(request);
+    } catch (error) {
+      if (error instanceof PolicyNotFoundError) {
+        return respondPolicyNotFound(request, res);
+      }
+      throw error;
+    }
+    const requested = new Set((parsed.data.actions ?? []).map(normalizeActionName));
+    const actions = availableCatalog().filter((item) => {
+      if (!allowed.has(item.action)) return false;
+      if (requested.size > 0 && !requested.has(item.action)) return false;
+      return true;
+    });
+
+    return res.json({
+      ok: true,
+      data: {
+        protocolVersion: AGENT_PROTOCOL_VERSION,
+        domain: parsed.data.domain ?? DEFAULT_DOMAIN,
+        tenantId: request.authContext.tenantId,
+        workspaceId: request.authContext.workspaceId,
+        actions,
+        discoveredAt: new Date().toISOString(),
+      },
+    });
+  };
+}
+
+agentsRouter.post("/agents/discovery", createAgentsDiscoveryHandler());
 
 agentsRouter.post("/agents/negotiate", async (req, res) => {
   const request = req as TenantAwareRequest;
@@ -253,7 +275,15 @@ agentsRouter.post("/agents/negotiate", async (req, res) => {
     });
   }
 
-  const allowed = await resolveAllowedActions(request);
+  let allowed: Set<string>;
+  try {
+    allowed = await resolveAllowedActions(request);
+  } catch (error) {
+    if (error instanceof PolicyNotFoundError) {
+      return respondPolicyNotFound(request, res);
+    }
+    throw error;
+  }
   if (!allowed.has(actionName)) {
     return res.status(403).json({
       ok: false,
@@ -316,7 +346,15 @@ agentsRouter.post("/agents/execute", async (req, res) => {
     });
   }
 
-  const allowed = await resolveAllowedActions(request);
+  let allowed: Set<string>;
+  try {
+    allowed = await resolveAllowedActions(request);
+  } catch (error) {
+    if (error instanceof PolicyNotFoundError) {
+      return respondPolicyNotFound(request, res);
+    }
+    throw error;
+  }
   if (!allowed.has(actionName)) {
     return res.status(403).json({
       ok: false,

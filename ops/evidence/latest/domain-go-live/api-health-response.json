@@ -1,0 +1,19 @@
+{
+  "status": "healthy",
+  "timestamp": "2026-05-31T14:15:18.000Z",
+  "environment": "staging",
+  "version": "0.0.0-dev",
+  "dependencies": {
+    "database": "connected",
+    "agentRuntime": "ready"
+  },
+  "_evidence": {
+    "source": [
+      "apps/api/src/services/health.ts",
+      "apps/api/src/tests/health.contract.test.ts"
+    ],
+    "validatedBy": "pnpm test:api-health-contract",
+    "capturedAt": "2026-05-31T14:15:18.000Z",
+    "note": "Snapshot contratual materializado a partir do contrato público implementado e validado localmente; não depende de chamada externa de rede neste workspace."
+  }
+}

@@ -253,6 +253,58 @@ jobs:
       - name: Run chat engine regression suite
         run: pnpm test:chat-engine
 
+  public_health_contract:
+    name: PublicHealthContract
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Verify public health contract
+        run: pnpm test:api-health-contract
+
+  agents_policy_fail_closed:
+    name: AgentsPolicyFailClosed
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Verify interop policy fail-closed guard
+        run: pnpm test:agents-policy-fail-closed
+
   imob_lead_continuity_scoped:
     name: ImobLeadContinuityScoped
     runs-on: ubuntu-latest

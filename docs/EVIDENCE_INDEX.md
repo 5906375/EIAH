@@ -1,6 +1,22 @@
 # EVIDENCE INDEX — EIAH
 
 > Roadmap atual (fonte da verdade): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md` 
+> ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
+
+## Domain & DNS / Go-Live Controlado
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Decisão canônica de stack | `docs/adr/ADR-001-domain-runtime-stack.md` | Declara a stack oficial desta revisão como `Cloudflare + Vercel + Render`, elimina ambiguidade com alternativas e define gatilhos de revisão. |
+| Plano de produção IMOB | `docs/Domínio e DNS/PLANO_PRODUCAO_IMOB_EIAH.md` | Define a topologia operacional inicial, papéis por camada, rollout controlado e exigências de fail-closed. |
+| Guia prático de domínio e DNS | `docs/Domínio e DNS/Domínio e DNS.md` | Mostra a configuração prática de domínio, DNS, web e API, além das alternativas documentadas para a borda pública. |
+| Snapshot DNS/Cloudflare | `ops/evidence/latest/domain-go-live/dns-cloudflare-snapshot.md` | Consolida a decisão de borda/DNS e o hardening já evidenciado para a camada pública. |
+| Check TLS Full Strict | `ops/evidence/latest/domain-go-live/tls-full-strict-check.md` | Promove a evidência atual de TLS edge para o pacote canônico de domain/go-live. |
+| Resposta pública de health | `ops/evidence/latest/domain-go-live/api-health-response.json` | Materializa o contrato público de `/health` já validado pela suíte automatizada. |
+| Smoke DNS/TLS de staging | `ops/evidence/latest/domain-go-live/staging-dns-tls-smoke.md` | Registra o escopo faltante de staging e separa explicitamente o que ainda depende de captura live. |
+| Smoke DNS/TLS de produção | `ops/evidence/latest/domain-go-live/production-dns-tls-smoke.md` | Consolida a prontidão de produção com base nas evidências existentes de TLS, origem protegida e WAF. |
+| Fail-closed de policy ausente | `ops/evidence/latest/domain-go-live/tenant-policy-fail-closed-403.md` | Prova o bloqueio `403 POLICY_NOT_FOUND` por teste automatizado local. |
+| Plano de rollback | `ops/evidence/latest/domain-go-live/rollback-plan.md` | Define os gatilhos e passos mínimos de reversão para borda pública, app e API. |
 
 ## Sprint 1 (F5.3) — Evidencias operacionais
 

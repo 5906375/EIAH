@@ -22,11 +22,35 @@ test("IMOB onboarding resolver returns structured general help with runtime-back
 
   assert.equal(response.intent, ImobOnboardingIntent.GENERAL_HELP);
   assert.match(response.summary, /chat imob conduz/i);
-  assert.ok(response.suggestedPrompts.length >= 4);
+  assert.ok(response.suggestedPrompts.length >= 9);
   assert.ok(response.suggestedPrompts.every((item) => item.capabilityId.length > 0));
   assert.ok(response.suggestedPrompts.every((item) => item.targetAgent.length > 0));
+  assert.ok(response.suggestedPrompts.some((item) => item.capabilityId === "viability.market_analysis"));
+  assert.ok(response.suggestedPrompts.some((item) => item.capabilityId === "lead.scoring"));
+  assert.ok(response.suggestedPrompts.some((item) => item.capabilityId === "inventory.active_watch"));
+  assert.ok(response.suggestedPrompts.some((item) => item.capabilityId === "relationship.commercial_memory"));
   assert.equal(response.governance.registryVersion, "imobCapabilityRegistry.v1");
   assert.equal(response.governance.killSwitchAware, true);
+});
+
+test("IMOB onboarding resolver expands capture help with property, viability and lead prompts", () => {
+  const response = buildResponse(ImobOnboardingIntent.CAPTURE_HELP);
+
+  assert.ok(response.suggestedPrompts.some((item) => item.label === "Captação"));
+  assert.ok(response.suggestedPrompts.some((item) => item.label === "Viabilidade"));
+  assert.ok(response.suggestedPrompts.some((item) => item.label === "Proprietário"));
+  assert.ok(response.suggestedPrompts.some((item) => item.label === "Qualificação do lead"));
+  assert.ok(response.suggestedPrompts.some((item) => item.label === "Priorização do lead"));
+});
+
+test("IMOB onboarding resolver expands transaction help with proposal, documents and continuity prompts", () => {
+  const response = buildResponse(ImobOnboardingIntent.TRANSACTION_HELP);
+
+  assert.ok(response.suggestedPrompts.some((item) => item.label === "Proposta"));
+  assert.ok(response.suggestedPrompts.some((item) => item.label === "Documentos"));
+  assert.ok(response.suggestedPrompts.some((item) => item.label === "Follow-up"));
+  assert.ok(response.suggestedPrompts.some((item) => item.label === "Relacionamento"));
+  assert.ok(response.suggestedPrompts.some((item) => item.label === "Próximo passo"));
 });
 
 test("IMOB onboarding resolver removes prompts from disabled capabilities", () => {

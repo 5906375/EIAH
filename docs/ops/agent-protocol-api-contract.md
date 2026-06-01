@@ -102,6 +102,7 @@ Response `202` (resumo):
 
 ## Erros principais
 - `400 INVALID_PAYLOAD`
+- `403 POLICY_NOT_FOUND`
 - `403 ACTION_NOT_ALLOWED`
 - `403 TRUST_BLOCKED`
 - `404 ACTION_NOT_FOUND`

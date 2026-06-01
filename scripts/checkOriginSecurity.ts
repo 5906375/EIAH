@@ -1,7 +1,7 @@
 import { fail, hasAll, mustFile, pass } from "./checkBaseEvidenceUtils.ts";
 
 const CHECK = "check:origin-security";
-const file = "ops/evidence/2026-W09/domain-dns/origin-security-evidence.md";
+const file = "ops/evidence/latest/domain-go-live/dns-cloudflare-snapshot.md";
 
 try {
   const content = mustFile(file);

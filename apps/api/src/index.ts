@@ -13,7 +13,8 @@ import { governanceRouter } from "./routes/governance";
 import { startRunQueueBullMqWorker } from "./workers/runWorker";
 import { createLogger } from "@eiah/core";
 import { requestLogger } from "./middlewares/requestLogger";
-import { collectHealth, collectQueueHealth } from "./services/health";
+import { collectQueueHealth } from "./services/health";
+import { createPublicHealthHandler } from "./routes/health";
 import "./actions/tenantActionRegistry";
 import { actionsRouter } from "./routes/actions";
 import { metricsRouter } from "./routes/metrics";
@@ -59,15 +60,9 @@ app.use(
 );
 app.use(express.json({ limit: "10mb" }));
 
-app.get("/api/health", async (_req, res) => {
-  const report = await collectHealth();
-  res.status(report.status === "ok" ? 200 : 503).json(report);
-});
+app.get("/api/health", createPublicHealthHandler());
 
-app.get("/health", async (_req, res) => {
-  const report = await collectHealth();
-  res.status(report.status === "ok" ? 200 : 503).json(report);
-});
+app.get("/health", createPublicHealthHandler());
 
 app.get("/health/queues", async (_req, res) => {
   const report = await collectQueueHealth();
