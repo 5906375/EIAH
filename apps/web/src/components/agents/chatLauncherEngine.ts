@@ -93,6 +93,7 @@ import {
   buildProposalUsagePromptReply,
 } from "@/components/agents/proposalCopy";
 import { buildProposalQuickReplies } from "@/components/agents/proposalQuickReplies";
+import { resolveHelpDictionarySnapshot } from "@/components/agents/helpDictionaryResolver";
 import {
   hasExactEiahTutorIntentMatch,
   resolveEiahTutorContractResponse,
@@ -586,6 +587,16 @@ function canResolveEiahQuickReplyLabel(label: string, accessContext?: LauncherAc
   const normalized = label.trim();
   if (!normalized) return false;
 
+  const registrySnapshot = resolveHelpDictionarySnapshot({
+    input: normalized,
+    accessContext,
+    routeIntent: "help",
+    includeFallback: false,
+  });
+  if (registrySnapshot && registrySnapshot.responseType !== "not_found") {
+    return true;
+  }
+
   const tutorReply = resolveEiahTutorContractResponse({
     input: normalized,
     accessContext,
@@ -632,21 +643,8 @@ function resolveEiahPriorityHelpDecision(params: {
   routeIntent: LauncherRouteIntent;
   accessContext?: LauncherAccessContext | null;
 }): EiahDecision | null {
-  const directHelp = params.routeIntent === "help" ? buildDeterministicHelpReply(params.input) : null;
-  if (directHelp) {
-    return buildResolvedHelpDecision({
-      snapshot: buildResolvedHelpSnapshot({
-        tutorReply: {
-          intentId: "deterministic_help",
-          content: directHelp,
-          quickReplies: [],
-        },
-        hasExactIntentPriority: false,
-        accessContext: params.accessContext,
-        scopeHint: "page",
-      }),
-      confidenceFloor: 0.78,
-    });
+  if (isPlatformSelfExplainQuestion(params.input)) {
+    return null;
   }
 
   const tutorReply = resolveEiahTutorContractResponse({
@@ -667,6 +665,39 @@ function resolveEiahPriorityHelpDecision(params: {
         accessContext: params.accessContext,
         scopeHint: "global",
       }),
+    });
+  }
+
+  const registrySnapshot = resolveHelpDictionarySnapshot({
+    input: params.input,
+    routeIntent: params.routeIntent,
+    accessContext: params.accessContext,
+    includeFallback: false,
+  });
+  if (registrySnapshot && !(params.routeIntent === "imob" && registrySnapshot.intent.scopeHint === "vertical")) {
+    return buildResolvedHelpDecision({
+      snapshot: {
+        ...registrySnapshot,
+        quickReplies: filterResolvedEiahQuickReplies(registrySnapshot.quickReplies, params.accessContext),
+      },
+      confidenceFloor: registrySnapshot.intent.confidence,
+    });
+  }
+
+  const directHelp = params.routeIntent === "help" ? buildDeterministicHelpReply(params.input) : null;
+  if (directHelp) {
+    return buildResolvedHelpDecision({
+      snapshot: buildResolvedHelpSnapshot({
+        tutorReply: {
+          intentId: "deterministic_help",
+          content: directHelp,
+          quickReplies: [],
+        },
+        hasExactIntentPriority: false,
+        accessContext: params.accessContext,
+        scopeHint: "page",
+      }),
+      confidenceFloor: 0.78,
     });
   }
 
@@ -712,6 +743,22 @@ function resolveEiahPriorityHelpDecision(params: {
         accessContext: params.accessContext,
         scopeHint: "global",
       }),
+    });
+  }
+
+  const fallbackRegistrySnapshot = resolveHelpDictionarySnapshot({
+    input: params.input,
+    routeIntent: params.routeIntent,
+    accessContext: params.accessContext,
+    includeFallback: params.routeIntent === "help",
+  });
+  if (fallbackRegistrySnapshot && fallbackRegistrySnapshot.responseType !== "not_found") {
+    return buildResolvedHelpDecision({
+      snapshot: {
+        ...fallbackRegistrySnapshot,
+        quickReplies: filterResolvedEiahQuickReplies(fallbackRegistrySnapshot.quickReplies, params.accessContext),
+      },
+      confidenceFloor: fallbackRegistrySnapshot.intent.confidence,
     });
   }
 
