@@ -246,9 +246,9 @@ export function isImobGuideQuestion(input: string) {
 
 export function isImobContextEntryQuestion(input: string) {
   return (
-    resolveImobKnowledgeSearchIntent(input) !== null ||
-    resolveImobFaqSeed(input) !== null ||
-    resolveImobJourneyStage(input) !== null
+    resolveImobKnowledgeSearchIntent(input) != null ||
+    resolveImobFaqSeed(input) != null ||
+    resolveImobJourneyStage(input) != null
   );
 }
 
@@ -269,6 +269,22 @@ export function resolveImobVerticalContext(input: string): ImobVerticalContext |
 
 export function shouldRouteToImob(input: string) {
   return isImobGuideQuestion(input) || isImobContextEntryQuestion(input);
+}
+
+export function shouldDeferGenericPlatformQuestionFromImob(input: string) {
+  const normalized = normalizeIntentText(input);
+  const genericPlatformQuestions = new Set([
+    "como funciona",
+    "explique como funciona",
+    "me explica como funciona",
+    "me explique como funciona",
+    "quero entender como funciona",
+    "explica como funciona",
+  ]);
+
+  if (!genericPlatformQuestions.has(normalized)) return false;
+
+  return !shouldRouteToImob(input);
 }
 
 export function resolveImobKnowledgeSearchIntent(input: string): ImobKnowledgeSearchIntent | null {
@@ -449,6 +465,38 @@ export function resolveImobJourneyStage(input: string): ImobJourneyDefinition | 
   return null;
 }
 
+function isImobWorkspaceOnboardingQuestion(input: string) {
+  const normalized = normalizeIntentText(input);
+  const mentionsNewWorkspace =
+    normalized.includes("workspace novo") ||
+    normalized.includes("novo workspace") ||
+    normalized.includes("cliente novo") ||
+    normalized.includes("novo cliente") ||
+    normalized.includes("cadastrei cliente novo") ||
+    normalized.includes("cadastrei um cliente novo") ||
+    normalized.includes("cadastrei cliente") ||
+    normalized.includes("acabei de cadastrar cliente") ||
+    normalized.includes("cliente recem cadastrado") ||
+    normalized.includes("cliente recém cadastrado") ||
+    normalized.includes("fiz cadastro do cliente") ||
+    normalized.includes("fiz o cadastro do cliente") ||
+    normalized.includes("me cadastrei") ||
+    normalized.includes("acabei de me cadastrar") ||
+    normalized.includes("fiz cadastro") ||
+    normalized.includes("fiz o cadastro");
+  const mentionsSurfaceOrNextStep =
+    normalized.includes("marketplace") ||
+    normalized.includes("entrei no marketplace") ||
+    normalized.includes("chat") ||
+    normalized.includes("entrei no chat") ||
+    normalized.includes("como seguir agora") ||
+    normalized.includes("como seguir") ||
+    normalized.includes("proximo passo") ||
+    normalized.includes("próximo passo");
+
+  return mentionsNewWorkspace && mentionsSurfaceOrNextStep;
+}
+
 function buildImobResolvedQuickReplies(input: string) {
   const knowledgeIntent = resolveImobKnowledgeSearchIntent(input);
   if (knowledgeIntent) {
@@ -624,6 +672,31 @@ function buildImobInstallReply() {
   ].join("\n");
 }
 
+function buildImobWorkspaceOnboardingReply() {
+  return [
+    "**Como seguir em um workspace novo com IMOB**",
+    "",
+    "Se você acabou de cadastrar um cliente ou abriu um workspace novo, a sequência prática é esta:",
+    "",
+    "1. Abra [Marketplace IMOB](/app/marketplace/imob).",
+    "2. Verifique se o status está `não instalado` ou `inativo`.",
+    "3. Clique em `Ativar módulo` para habilitar o IMOB neste workspace.",
+    "4. Depois da ativação, siga por [Chat IMOB](/app/imob/chat) para começar a operação.",
+    "5. Use [Dashboard IMOB](/app/imob/dashboard) quando quiser acompanhar pipeline, etapas e gargalos.",
+    "",
+    "**Quando usar cada superfície**",
+    "- `Marketplace IMOB`: ativar a vertical no workspace",
+    "- `Chat IMOB`: começar captação, lead, proposta, contrato ou próximo passo",
+    "- `Dashboard IMOB`: acompanhar jornada, prioridades e bloqueios",
+    "",
+    "**Primeiros pedidos que fazem sentido no chat**",
+    "- `qualificar lead comprador`",
+    "- `captar imóvel`",
+    "- `gerar proposta`",
+    "- `mostrar pendências documentais`",
+  ].join("\n");
+}
+
 export function buildImobKnowledgeSearchEntryReply(input?: string) {
   const intent = input ? resolveImobKnowledgeSearchIntent(input) : null;
   const title =
@@ -703,6 +776,10 @@ export function buildDeterministicImobReply(input?: string) {
   const shortcut = input ? resolveImobShortcutSelection(input) : null;
   if (shortcut) {
     return buildImobShortcutReply(shortcut);
+  }
+
+  if (input && isImobWorkspaceOnboardingQuestion(input)) {
+    return buildImobWorkspaceOnboardingReply();
   }
 
   if (
@@ -799,6 +876,14 @@ export function resolveImobLauncherSurfaceDecision(params: {
   hasKnowledgeSearchIntent: boolean;
   isContextEntryQuestion: boolean;
 }): ImobLauncherSurfaceDecision | null {
+  if (
+    !params.hasKnowledgeSearchIntent &&
+    !params.isContextEntryQuestion &&
+    shouldDeferGenericPlatformQuestionFromImob(params.input)
+  ) {
+    return null;
+  }
+
   if (params.hasKnowledgeSearchIntent) {
     if (!params.hasAccess) {
       return {

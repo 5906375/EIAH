@@ -11,11 +11,11 @@
       },
       "resolved": {
         "intentId": "access_check",
-        "content": "**Como verificar acesso**\n\nUse este checklist rápido:\n1. confirme o workspace ativo\n2. valide se seu usuário tem acesso ao workspace\n3. confira se o módulo/vertical está ativo no Marketplace\n4. volte para `Chat` e recarregue a lista de agentes\n\nSe algum item estiver faltando, o agente não aparece até esse acesso ser liberado.",
+        "content": "**Como verificar acesso**\n\nUse este checklist rápido:\n1. Valide se seu usuário continua com acesso para usar agentes neste workspace.\n2. Confira no Marketplace se o módulo ou vertical desejado está ativo.\n3. Volte para `Chat` e recarregue a lista de agentes.\n\nSe algum item estiver faltando, o agente não aparece até esse acesso ser liberado.",
         "quickReplies": [
-          "Selecionar workspace",
           "Ativar módulo no Marketplace",
-          "Quero ver agentes disponíveis"
+          "Quero ver agentes disponíveis",
+          "Selecionar workspace"
         ]
       }
     },
@@ -53,31 +53,81 @@
       }
     },
     {
+      "caseId": "intent:agents_card_reading",
+      "input": "como ler os cards dos agentes",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "agents_card_reading",
+        "content": "**Como ler os cards dos agentes**\n\nAo olhar um agente, observe principalmente:\n- especialidade\n- disponibilidade no workspace\n- risco e necessidade de aprovação\n- integrações declaradas\n- comprovantes ou contexto exigidos\n\nNo inventário governado, esses campos ajudam a decidir se o agente está adequado ao caso e ao nível de governança exigido.",
+        "quickReplies": [
+          "Como funciona a área de Agentes",
+          "Quando usar o EIAH e quando usar especialista"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:agents_choose_for_goal",
+      "input": "qual agente devo usar para meu objetivo",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "agents_choose_for_goal_quick",
+        "content": "**Qual agente devo usar para meu objetivo?**\n\nUse esta regra prática:\n- `EIAH`: quando você ainda está entendendo o problema, a página certa ou o próximo passo\n- `Especialista`: quando o caso já exige profundidade de domínio ou contexto operacional específico\n\nExemplos:\n- plataforma, navegação e comparação de caminhos -> `EIAH`\n- jurídico, billing avançado ou vertical específica -> especialista\n\nSe o workspace não mostrar agentes disponíveis, valide acesso, módulo ativo e contexto do workspace antes de seguir.",
+        "quickReplies": [
+          "Como funciona a área de Agentes",
+          "Quando usar o EIAH e quando usar especialista",
+          "Quero ver agentes disponíveis"
+        ]
+      }
+    },
+    {
       "caseId": "intent:agents_empty_state",
-      "input": "por que não aparece nenhum agente aqui",
+      "input": "quero ver agentes disponiveis",
       "accessContext": {
         "tenantId": "tenant-A",
         "workspaceId": "workspace-A"
       },
       "resolved": {
         "intentId": "agents_empty_state",
-        "content": "Nenhum agente disponível neste workspace no momento.\n\nOs agentes do EIAH aparecem conforme seu contexto de acesso (tenant/workspace), permissões e módulos habilitados.\nPara liberar a lista, verifique:\n\n1. Você está no workspace correto.\n2. Seu acesso para usar agentes está ativo.\n3. A vertical ou agente desejado está habilitado neste workspace.\n\nQuando isso estiver ok, os agentes serão carregados automaticamente.",
+        "content": "Nenhum agente disponível neste workspace no momento.\n\nOs agentes do EIAH aparecem conforme seu contexto de acesso (tenant/workspace), permissões e módulos habilitados.\nPara liberar a lista, verifique:\n\n1. Seu acesso para usar agentes está ativo.\n2. A vertical ou agente desejado está habilitado neste workspace.\n3. Volte para `Chat` e recarregue a lista de agentes.\n\nQuando isso estiver ok, os agentes serão carregados automaticamente.",
         "quickReplies": [
           "Verificar acesso",
-          "Selecionar workspace",
-          "Ativar módulo no Marketplace"
+          "Ativar módulo no Marketplace",
+          "Quero ver agentes disponíveis"
         ]
       }
     },
     {
-      "caseId": "intent:best_page_for_goal",
-      "input": "qual dessas paginas e a melhor para o seu objetivo",
+      "caseId": "intent:agents_page_overview",
+      "input": "explicar agentes",
       "accessContext": {
         "tenantId": "tenant-A",
         "workspaceId": "workspace-A"
       },
       "resolved": {
-        "intentId": "best_page_for_goal",
+        "intentId": "agents_page_overview_quick",
+        "content": "**Como funciona a área de Agentes**\n\nA área de `Agentes` mostra quais especialistas estão disponíveis no workspace e qual o foco de cada um.\n\nUse essa página para:\n- entender qual agente faz mais sentido para o caso\n- ver disponibilidade por workspace\n- decidir quando seguir com o `EIAH` ou quando aprofundar em um especialista\n\nResumo rápido:\n- `EIAH`: triagem e orientação de plataforma\n- `Especialista`: profundidade de domínio e contexto específico",
+        "quickReplies": [
+          "Como ler os cards dos agentes",
+          "Quando usar o EIAH e quando usar especialista",
+          "Verificar acesso"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:best_page_for_goal",
+      "input": "me mostre o caminho mais rapido",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "platform_page_recommendation_quick",
         "content": "**Qual página é melhor para seu objetivo?**\n\nMe diga o objetivo e eu te aponto o caminho mais rápido:\n- executar tarefa agora -> `Runs`\n- conversar com especialista -> `Chat`\n- entender custo e cobrança -> `Billing`\n- ativar agente/módulo -> `Marketplace`\n- acompanhar oportunidades -> `Economy`\n- usar fluxo guiado -> `Self-service`\n- revisar conta/workspace -> `Perfil`\n\nSe quiser, eu já te direciono para uma dessas opções.",
         "quickReplies": [
           "Executar tarefa agora",
@@ -91,17 +141,68 @@
     },
     {
       "caseId": "intent:billing_overview",
-      "input": "como funciona o billing",
+      "input": "explicar billing",
       "accessContext": {
         "tenantId": "tenant-A",
         "workspaceId": "workspace-A"
       },
       "resolved": {
-        "intentId": "billing_overview",
-        "content": "No EIAH, o billing combina plano contratado com uso do workspace para compor o custo mensal.\n\nO que entra nessa visão:\n- resumo do plano ativo\n- uso de runs e usuários do workspace\n- faturas, cobranças e histórico\n\nComo ler isso rapidamente:\n- plano define a base contratada\n- usuários e runs mostram o volume operacional\n- faturas mostram o fechamento financeiro\n\nSe quiser consultar isso agora, o melhor caminho é abrir [Billing](/app/billing).",
+        "intentId": "billing_overview_quick",
+        "content": "No EIAH, o billing combina pricing, consumo do workspace, reconciliação e quotas para compor a leitura financeira.\n\nO que você encontra nessa área:\n- `Pricing oficial`: plano, base mensal, runs incluídos, excedente e usuário extra\n- `Guia Interativo · Billing & Quotas`: explicação prática de consumo, soft limit, hard limit, previsão e alertas\n- `Controle financeiro`: consumo, reconciliação, ledger e trilha auditável do tenant/workspace\n\nComo usar rapidamente:\n- se a dúvida for `preço`, abra `Pricing oficial`\n- se a dúvida for `limite`, quota ou bloqueio, abra o guia interativo\n- se a dúvida for `consumo real`, gaps ou reconciliação, use `Controle financeiro`\n\nDiferença semântica rápida:\n- `Pricing`: quanto custa o plano\n- `Billing`: guarda-chuva da leitura financeira\n- `Controle financeiro`: uso real e trilha operacional\n- `Reconciliação`: consistência entre ledger, evidência e cobrança\n\nAtalhos:\n- [Billing](/app/billing)\n- [Guia Interativo de Billing & Quotas](/app/billing#billing-guide-footer)\n- [Pricing oficial](/app/self-service#pricing-oficial)",
+        "quickReplies": [
+          "Onde vejo o preço",
+          "Qual a diferença entre pricing e billing",
+          "Abrir guia interativo"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:billing_price_vs_consumption",
+      "input": "qual a diferenca entre pricing e billing",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "billing_price_vs_consumption",
+        "content": "**Pricing, Billing e reconciliação: qual é a diferença?**\n\n- `Pricing`: quanto custa o plano\n- `Billing`: consumo, quotas, previsão e custo consolidado\n- `Reconciliação`: verifica se ledger, evidências e cobrança estão coerentes\n\nRegra prática:\n- dúvida comercial -> `Pricing`\n- dúvida de uso -> `Billing`\n- dúvida de consistência financeira -> `Reconciliação`",
+        "quickReplies": [
+          "Onde vejo o preço",
+          "Como funciona o billing",
+          "Abrir guia interativo"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:billing_where_see_price",
+      "input": "onde vejo o preco",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "billing_where_see_price",
+        "content": "**Onde ver preço no EIAH**\n\nSe a dúvida for `preço`, abra `Pricing oficial`.\nSe a dúvida for `consumo real`, quotas ou reconciliação, abra `Billing`.\n\nResumo rápido:\n- `Pricing oficial`: quanto custa o plano\n- `Billing`: quanto foi usado e como isso se reconcilia\n\nAtalhos:\n- [Pricing oficial](/app/self-service#pricing-oficial)\n- [Billing](/app/billing)",
         "quickReplies": [
           "Abrir Billing",
-          "Quero entender meu plano"
+          "Abrir guia interativo",
+          "Qual a diferença entre pricing e billing"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:chat_handoff_overview",
+      "input": "como o eiah faz handoff para especialista",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "chat_handoff_overview",
+        "content": "**Como o EIAH faz handoff para especialista**\n\nO handoff acontece quando a conversa sai da orientação geral e entra em profundidade de domínio.\n\nSinais típicos:\n- necessidade jurídica, financeira ou vertical específica\n- decisão crítica\n- contexto que exige especialista com mais profundidade\n\nO objetivo é manter continuidade, não parecer troca brusca de bot.",
+        "quickReplies": [
+          "Quando usar o EIAH e quando usar especialista",
+          "Como funciona a triagem do EIAH"
         ]
       }
     },
@@ -123,6 +224,57 @@
       }
     },
     {
+      "caseId": "intent:chat_triage_overview",
+      "input": "como funciona a triagem do eiah",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "chat_triage_overview",
+        "content": "**Como funciona a triagem do EIAH**\n\nO `EIAH` atua como front door da conversa.\n\nNa prática, ele faz três coisas:\n- entende sua intenção\n- escolhe a área mais adequada da plataforma\n- encaminha para especialista quando a profundidade do caso exigir",
+        "quickReplies": [
+          "Como funciona a página Chat",
+          "Como o EIAH faz handoff para especialista",
+          "Quando usar Chat versus Runs"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:chat_vs_chat_imob",
+      "input": "qual a diferenca entre chat e chat imob",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "platform_chat_vs_imob_quick",
+        "content": "**Chat principal e Chat IMOB: quando usar cada um**\n\n- `Chat principal`: triagem, páginas da plataforma, comparação de caminhos e próximo passo\n- `Chat IMOB`: orientação contextual de casos e jornadas da operação imobiliária\n\nRegra prática:\n- comece no `Chat` quando a dúvida ainda estiver aberta\n- use `Chat IMOB` quando o caso já for claramente imobiliário",
+        "quickReplies": [
+          "Como funciona a triagem do EIAH",
+          "Quando usar Chat versus Runs",
+          "Como funciona o handoff para especialista"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:chat_vs_runs",
+      "input": "quando usar chat versus runs",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "chat_vs_runs",
+        "content": "**Quando usar Chat e quando usar Runs**\n\n- `Chat`: entender o caminho, escolher especialista, esclarecer contexto\n- `Runs`: executar a ação prática\n\nRegra simples:\n- se você ainda está decidindo, fique no `Chat`\n- se você já sabe o que quer executar, vá para `Runs`",
+        "quickReplies": [
+          "Como criar um run no EIAH",
+          "Como funciona a triagem do EIAH",
+          "Como funciona a página Chat"
+        ]
+      }
+    },
+    {
       "caseId": "intent:common_risks",
       "input": "riscos comuns",
       "accessContext": {
@@ -135,6 +287,123 @@
         "quickReplies": [
           "Me mostre o caminho mais rápido",
           "Quero simular primeiro"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:economy_overview",
+      "input": "como funciona a pagina economy",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "economy_overview",
+        "content": "**Como funciona a página Economy**\n\nA `Economy` mostra impacto consolidado, oportunidades e priorização econômica da operação.\n\nUse essa área para:\n- identificar onde existe ganho ou desperdício\n- priorizar ações com maior retorno operacional\n- entender quais oportunidades merecem execução primeiro\n\nBlocos que valem atenção:\n- `oportunidades priorizadas`: o que merece atenção primeiro\n- `impacto estimado`: qual ganho ou redução de custo está em jogo\n- `origem do ganho`: de onde vem a oportunidade\n- `ligação com execução`: o que precisa virar ação prática em `Runs`",
+        "quickReplies": [
+          "Como priorizar oportunidades",
+          "Como ligar Economy com Runs e Billing",
+          "Abrir Billing"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:economy_prioritization",
+      "input": "como priorizar oportunidades",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "economy_prioritization",
+        "content": "**Como priorizar oportunidades na Economy**\n\nUse esta ordem de leitura:\n1. impacto estimado\n2. prioridade operacional\n3. bloqueios ou dependências\n4. facilidade de execução\n\nEm geral, vale começar pelo que combina alto impacto com baixa fricção.",
+        "quickReplies": [
+          "Como funciona a página Economy",
+          "Como ligar Economy com Runs e Billing"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:economy_vs_billing_runs",
+      "input": "qual a diferenca entre economy billing e runs",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "economy_vs_billing_runs",
+        "content": "**Economy, Billing e Runs: quando usar cada um**\n\n- `Economy`: priorizar oportunidades e impacto\n- `Billing`: ver consumo real, plano, quotas e reconciliação\n- `Runs`: executar a ação prática\n\nResumo rápido:\n- primeiro você decide na `Economy`\n- depois valida custo e consistência em `Billing`\n- por fim executa em `Runs`",
+        "quickReplies": [
+          "Como funciona a página Economy",
+          "Como funciona o billing",
+          "Como criar um run no EIAH"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:eiah_vs_specialist",
+      "input": "quando usar o eiah e quando usar especialista",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "eiah_vs_specialist",
+        "content": "**Quando usar o EIAH e quando usar especialista**\n\n- `EIAH`: triagem, navegação, comparação de páginas e próximo passo\n- `Especialista`: profundidade de domínio e contexto operacional específico\n\nRegra prática:\n- comece pelo `EIAH` quando a dúvida ainda estiver aberta\n- use um especialista quando o caso já estiver claramente dentro de um domínio",
+        "quickReplies": [
+          "Como funciona a área de Agentes",
+          "Como funciona a página Chat",
+          "Quero ver agentes disponíveis"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:marketplace_billing_relation",
+      "input": "ativar no marketplace gera cobranca",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "marketplace_billing_relation",
+        "content": "**Marketplace e cobrança: como se relacionam**\n\nAtivar no `Marketplace` libera capacidade operacional.\n\nO impacto financeiro depende de três fatores:\n- plano ativo\n- tipo de módulo ou vertical ativado\n- consumo posterior da operação\n\nResumo rápido:\n- `Marketplace`: libera o recurso\n- `Billing`: mostra preço, consumo e reconciliação",
+        "quickReplies": [
+          "Entender Billing",
+          "Como funciona o Marketplace",
+          "Como saber se o agente foi habilitado"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:marketplace_installation_status",
+      "input": "o que significa nao instalado",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "marketplace_installation_status",
+        "content": "**Como ler o status no Marketplace**\n\n- `não instalado`: o agente, módulo ou vertical ainda não está liberado para uso operacional\n- `ativado` ou equivalente: a capacidade já pode ser usada no workspace\n\nSe algo estiver indisponível em `Chat`, `Agentes` ou numa vertical, vale confirmar primeiro esse status no `Marketplace`.",
+        "quickReplies": [
+          "Como funciona o Marketplace",
+          "Ativar no Marketplace gera cobrança?"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:marketplace_overview",
+      "input": "como funciona o marketplace",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "marketplace_overview",
+        "content": "**Como funciona o Marketplace**\n\nO `Marketplace` é a área onde você ativa agentes, módulos e verticais no workspace.\n\nUse essa página para:\n- ver o que já está disponível\n- identificar o que ainda não foi instalado\n- ativar uma capacidade antes de tentar operar em outra área\n\nResumo prático:\n- `Marketplace` libera capacidade\n- `Chat` orienta uso\n- `Runs` executa\n- verticais como `IMOB` aparecem para operar depois da ativação",
+        "quickReplies": [
+          "Como saber se o agente foi habilitado",
+          "Ativar no Marketplace gera cobrança?",
+          "Entender Billing"
         ]
       }
     },
@@ -156,13 +425,13 @@
     },
     {
       "caseId": "intent:platform_overview",
-      "input": "explique a plataforma",
+      "input": "explicar plataforma",
       "accessContext": {
         "tenantId": "tenant-A",
         "workspaceId": "workspace-A"
       },
       "resolved": {
-        "intentId": "platform_overview",
+        "intentId": "platform_overview_quick",
         "content": "**Como a plataforma EIAH se organiza**\n\nO EIAH combina chat, especialistas, runs, billing e verticais para te ajudar a sair de uma dúvida até uma execução com mais contexto.\n\nNa prática, a plataforma se divide assim:\n- `Runs`: executar, simular e acompanhar tarefas\n- `Chat`: ver especialistas disponíveis no workspace\n- `Billing`: plano, uso, faturas e cobrança\n- `Marketplace`: ativar agentes e módulos\n- `IMOB`: contexto imobiliário, pipeline e acompanhamento\n\nSe você quiser, eu posso te explicar só uma dessas áreas agora.",
         "quickReplies": [
           "Explique as páginas",
@@ -183,6 +452,23 @@
         "quickReplies": [
           "Quero simular primeiro",
           "Quero criar um run"
+        ]
+      }
+    },
+    {
+      "caseId": "intent:profile_overview",
+      "input": "como funciona a pagina perfil",
+      "accessContext": {
+        "tenantId": "tenant-A",
+        "workspaceId": "workspace-A"
+      },
+      "resolved": {
+        "intentId": "profile_overview",
+        "content": "**Como funciona a página Perfil**\n\nA página `Perfil` concentra dados da conta, contexto do workspace e verificações de acesso.\n\nUse essa área para:\n- confirmar em qual workspace você está\n- revisar se o acesso está coerente com a operação\n- validar o contexto antes de voltar para `Chat`, `Agentes` ou `Marketplace`\n\nResumo rápido:\n- `Perfil` confirma identidade e contexto\n- `Marketplace` confirma ativação\n- `Chat` e `Agentes` usam esse contexto para responder e operar",
+        "quickReplies": [
+          "Como selecionar workspace correto",
+          "Como verificar acesso no workspace",
+          "Como funciona o Marketplace"
         ]
       }
     },

@@ -103,6 +103,8 @@ export const intentLibraryV1: IntentLibraryEntryV1[] = [
   {
     intentId: "agents_empty_state",
     examples: [
+      "quero ver agentes disponiveis",
+      "quero ver agentes disponíveis",
       "por que não aparece nenhum agente aqui",
       "não aparece agente",
       "seletor vazio",
@@ -135,6 +137,8 @@ export const intentLibraryV1: IntentLibraryEntryV1[] = [
   {
     intentId: "best_page_for_goal",
     examples: [
+      "me mostre o caminho mais rapido",
+      "me mostre o caminho mais rápido",
       "qual dessas paginas e a melhor para o seu objetivo",
       "qual dessas páginas é a melhor para o seu objetivo",
       "qual pagina e melhor para meu objetivo",
@@ -149,6 +153,8 @@ export const intentLibraryV1: IntentLibraryEntryV1[] = [
   {
     intentId: "platform_overview",
     examples: [
+      "explicar plataforma",
+      "plataforma como um todo",
       "explique a plataforma",
       "como a plataforma funciona",
       "quero entender como funciona",
@@ -176,6 +182,105 @@ export const intentLibraryV1: IntentLibraryEntryV1[] = [
     defaultPatternId: "concept_explanation_short",
   },
   {
+    intentId: "chat_vs_chat_imob",
+    examples: [
+      "qual a diferenca entre chat e chat imob",
+      "qual a diferença entre chat e chat imob",
+      "quando usar chat imob",
+      "chat versus chat imob",
+    ],
+    aliases: ["chat vs chat imob", "diferença entre chat e chat imob"],
+    mapsToKnowledgeId: "platform.chat.vs_imob.quick",
+    defaultPatternId: "concept_explanation_short",
+  },
+  {
+    intentId: "chat_triage_overview",
+    examples: [
+      "como funciona a triagem do eiah",
+      "como o eiah faz triagem",
+      "triagem do eiah",
+    ],
+    aliases: ["triagem eiah", "triagem do chat"],
+    mapsToKnowledgeId: "platform.chat.triage.quick",
+    defaultPatternId: "concept_explanation_short",
+  },
+  {
+    intentId: "chat_handoff_overview",
+    examples: [
+      "como o eiah faz handoff para especialista",
+      "como funciona o handoff para especialista",
+      "handoff para especialista",
+    ],
+    aliases: ["handoff especialista", "encaminhamento para especialista"],
+    mapsToKnowledgeId: "platform.chat.handoff.quick",
+    defaultPatternId: "concept_explanation_short",
+  },
+  {
+    intentId: "chat_vs_runs",
+    examples: [
+      "quando usar chat versus runs",
+      "qual a diferenca entre chat e runs",
+      "qual a diferença entre chat e runs",
+      "chat vs runs",
+    ],
+    aliases: ["chat versus runs", "diferença entre chat e runs"],
+    mapsToKnowledgeId: "platform.chat.vs_runs.quick",
+    defaultPatternId: "concept_explanation_short",
+  },
+  {
+    intentId: "agents_page_overview",
+    priority: 5,
+    examples: [
+      "explicar agentes",
+      "agentes",
+      "como funciona a area de agentes",
+      "como funciona a área de agentes",
+      "como funciona a pagina de agentes",
+      "como funciona a página de agentes",
+      "entender area de agentes",
+      "entender área de agentes",
+    ],
+    aliases: ["area de agentes", "área de agentes", "pagina de agentes", "página de agentes"],
+    mapsToKnowledgeId: "agents.page.overview.quick",
+    defaultPatternId: "concept_explanation_short",
+  },
+  {
+    intentId: "agents_card_reading",
+    examples: [
+      "como ler os cards dos agentes",
+      "como ler os cards de agentes",
+      "como ler inventario governado de agentes",
+      "como ler inventário governado de agentes",
+    ],
+    aliases: ["cards dos agentes", "inventario de agentes", "inventário de agentes"],
+    mapsToKnowledgeId: "agents.inventory.reading.quick",
+    defaultPatternId: "concept_explanation_short",
+  },
+  {
+    intentId: "eiah_vs_specialist",
+    examples: [
+      "quando usar o eiah e quando usar especialista",
+      "qual a diferenca entre eiah e especialista",
+      "qual a diferença entre eiah e especialista",
+      "quando usar especialista",
+    ],
+    aliases: ["eiah vs especialista", "diferença entre eiah e especialista"],
+    mapsToKnowledgeId: "agents.eiah_vs_specialist.quick",
+    defaultPatternId: "concept_explanation_short",
+  },
+  {
+    intentId: "agents_choose_for_goal",
+    examples: [
+      "qual agente devo usar para meu objetivo",
+      "qual agente devo usar",
+      "que agente devo usar",
+      "qual especialista devo usar",
+    ],
+    aliases: ["escolher agente para meu objetivo", "agente certo para meu objetivo"],
+    mapsToKnowledgeId: "agents.choose_for_goal.quick",
+    defaultPatternId: "concept_explanation_short",
+  },
+  {
     intentId: "run_create_help",
     examples: [
       "como criar um run no eiah",
@@ -191,6 +296,7 @@ export const intentLibraryV1: IntentLibraryEntryV1[] = [
   {
     intentId: "billing_overview",
     examples: [
+      "explicar billing",
       "como funciona o billing",
       "billing",
       "invoice",
@@ -198,6 +304,119 @@ export const intentLibraryV1: IntentLibraryEntryV1[] = [
     ],
     aliases: ["cobrança", "fatura", "plano e cobrança"],
     mapsToKnowledgeId: "billing.overview.quick",
+    defaultPatternId: "concept_explanation_short",
+  },
+  {
+    intentId: "billing_where_see_price",
+    examples: [
+      "onde vejo o preco",
+      "onde vejo o preço",
+      "onde vejo tabela de preços",
+      "onde vejo tabela de precos",
+      "onde vejo pricing",
+    ],
+    aliases: ["ver preço", "ver preco", "pricing oficial"],
+    mapsToKnowledgeId: "billing.where_see_price.quick",
+    defaultPatternId: "concept_explanation_short",
+  },
+  {
+    intentId: "billing_price_vs_consumption",
+    examples: [
+      "qual a diferenca entre pricing e billing",
+      "qual a diferença entre pricing e billing",
+      "qual a diferenca entre preco e billing",
+      "qual a diferença entre preço e billing",
+      "qual a diferenca entre pricing consumo e reconciliacao",
+      "qual a diferença entre pricing consumo e reconciliação",
+    ],
+    aliases: ["pricing vs billing", "preço vs billing", "consumo vs pricing"],
+    mapsToKnowledgeId: "billing.price_vs_consumption.quick",
+    defaultPatternId: "concept_explanation_short",
+  },
+  {
+    intentId: "economy_overview",
+    examples: [
+      "como funciona a pagina economy",
+      "como funciona a página economy",
+      "economy",
+      "entender economy",
+      "explica economy",
+    ],
+    aliases: ["impacto e oportunidades", "pagina economy", "página economy"],
+    mapsToKnowledgeId: "economy.overview.quick",
+    defaultPatternId: "concept_explanation_short",
+  },
+  {
+    intentId: "economy_prioritization",
+    examples: [
+      "como priorizar oportunidades",
+      "como priorizar oportunidades na economy",
+      "como priorizar impacto",
+    ],
+    aliases: ["priorizar oportunidades", "priorizar impacto"],
+    mapsToKnowledgeId: "economy.prioritization.quick",
+    defaultPatternId: "concept_explanation_short",
+  },
+  {
+    intentId: "economy_vs_billing_runs",
+    examples: [
+      "qual a diferenca entre economy billing e runs",
+      "qual a diferença entre economy billing e runs",
+      "como ligar economy com runs e billing",
+      "economy vs billing vs runs",
+    ],
+    aliases: ["economy billing runs", "diferenca economy e billing"],
+    mapsToKnowledgeId: "economy.vs.billing_runs.quick",
+    defaultPatternId: "concept_explanation_short",
+  },
+  {
+    intentId: "marketplace_overview",
+    examples: [
+      "como funciona o marketplace",
+      "marketplace",
+      "entender marketplace",
+      "explica marketplace",
+    ],
+    aliases: ["pagina marketplace", "página marketplace"],
+    mapsToKnowledgeId: "marketplace.overview.quick",
+    defaultPatternId: "concept_explanation_short",
+  },
+  {
+    intentId: "marketplace_installation_status",
+    examples: [
+      "o que significa nao instalado",
+      "o que significa não instalado",
+      "como saber se o agente foi habilitado",
+      "como saber se o modulo foi habilitado",
+      "como saber se o módulo foi habilitado",
+    ],
+    aliases: ["nao instalado", "não instalado", "status de instalação", "status de instalacao"],
+    mapsToKnowledgeId: "marketplace.installation_status.quick",
+    defaultPatternId: "concept_explanation_short",
+  },
+  {
+    intentId: "marketplace_billing_relation",
+    examples: [
+      "ativar no marketplace gera cobranca",
+      "ativar no marketplace gera cobrança",
+      "qual a relacao entre marketplace e cobranca",
+      "qual a relação entre marketplace e cobrança",
+    ],
+    aliases: ["marketplace e billing", "marketplace e cobrança", "marketplace e cobranca"],
+    mapsToKnowledgeId: "marketplace.billing_relation.quick",
+    defaultPatternId: "concept_explanation_short",
+  },
+  {
+    intentId: "profile_overview",
+    examples: [
+      "como funciona a pagina perfil",
+      "como funciona a página perfil",
+      "entender perfil",
+      "explica perfil",
+      "perfil",
+    ],
+    aliases: ["pagina perfil", "página perfil", "conta e workspace"],
+    mapsToKnowledgeId: "profile.overview.quick",
     defaultPatternId: "concept_explanation_short",
   },
   {
@@ -529,6 +748,218 @@ export const knowledgeUnitsV1: KnowledgeUnitV1[] = [
     ].join("\n"),
   },
   {
+    id: "platform.chat.vs_imob.quick",
+    title: "Diferença entre Chat principal e Chat IMOB",
+    vertical: "core",
+    topic: "navigation",
+    problemItSolves: "Explica quando usar o Chat principal versus o Chat IMOB.",
+    canonicalAnswer:
+      "Use o Chat principal quando a dúvida ainda estiver ampla. Use o Chat IMOB quando o caso já estiver claramente dentro da operação imobiliária.",
+    stepByStep: [
+      "Comece no Chat principal quando precisar triagem, navegação e definição de caminho.",
+      "Use o Chat IMOB quando o objetivo já for contextual ao fluxo imobiliário.",
+      "Volte ao Chat principal quando quiser reorientar a conversa para a plataforma como um todo.",
+    ],
+    nextActions: ["Como funciona a triagem do EIAH", "Quando usar Chat versus Runs", "Como funciona o handoff para especialista"],
+    responseBody: [
+      "**Chat principal e Chat IMOB: quando usar cada um**",
+      "",
+      "- `Chat principal`: triagem, páginas da plataforma, comparação de caminhos e próximo passo",
+      "- `Chat IMOB`: orientação contextual de casos e jornadas da operação imobiliária",
+      "",
+      "Regra prática:",
+      "- comece no `Chat` quando a dúvida ainda estiver aberta",
+      "- use `Chat IMOB` quando o caso já for claramente imobiliário",
+    ].join("\n"),
+  },
+  {
+    id: "platform.chat.triage.quick",
+    title: "Como funciona a triagem do EIAH",
+    vertical: "core",
+    topic: "navigation",
+    problemItSolves: "Explica como o EIAH classifica a dúvida e indica o melhor caminho.",
+    canonicalAnswer:
+      "O EIAH funciona como front door: entende a intenção, escolhe a área certa e só encaminha para especialista quando a pergunta já exige profundidade de domínio.",
+    stepByStep: [
+      "Você descreve o objetivo em linguagem simples.",
+      "O EIAH identifica se a dúvida é de plataforma, execução, billing, vertical ou especialista.",
+      "Se necessário, ele orienta a página certa ou faz handoff sem quebrar a conversa.",
+    ],
+    nextActions: ["Como funciona a página Chat", "Como o EIAH faz handoff para especialista", "Quando usar Chat versus Runs"],
+    responseBody: [
+      "**Como funciona a triagem do EIAH**",
+      "",
+      "O `EIAH` atua como front door da conversa.",
+      "",
+      "Na prática, ele faz três coisas:",
+      "- entende sua intenção",
+      "- escolhe a área mais adequada da plataforma",
+      "- encaminha para especialista quando a profundidade do caso exigir",
+    ].join("\n"),
+  },
+  {
+    id: "platform.chat.handoff.quick",
+    title: "Como o EIAH faz handoff para especialista",
+    vertical: "core",
+    topic: "navigation",
+    problemItSolves: "Explica quando e por que o EIAH encaminha para especialista.",
+    canonicalAnswer:
+      "O handoff acontece quando a dúvida deixa de ser só navegação ou triagem e passa a exigir profundidade de domínio, risco ou contexto vertical específico.",
+    stepByStep: [
+      "O EIAH começa pela triagem.",
+      "Quando detecta necessidade de profundidade, ele sugere ou executa o handoff.",
+      "A conversa continua sem ruptura brusca de contexto.",
+    ],
+    nextActions: ["Quando usar o EIAH e quando usar especialista", "Como funciona a triagem do EIAH"],
+    responseBody: [
+      "**Como o EIAH faz handoff para especialista**",
+      "",
+      "O handoff acontece quando a conversa sai da orientação geral e entra em profundidade de domínio.",
+      "",
+      "Sinais típicos:",
+      "- necessidade jurídica, financeira ou vertical específica",
+      "- decisão crítica",
+      "- contexto que exige especialista com mais profundidade",
+      "",
+      "O objetivo é manter continuidade, não parecer troca brusca de bot.",
+    ].join("\n"),
+  },
+  {
+    id: "platform.chat.vs_runs.quick",
+    title: "Quando usar Chat versus Runs",
+    vertical: "core",
+    topic: "navigation",
+    problemItSolves: "Explica quando a interação deve ficar no chat e quando deve virar execução.",
+    canonicalAnswer:
+      "Use Chat quando ainda estiver entendendo o caminho ou escolhendo o especialista. Use Runs quando já souber a ação que precisa ser executada.",
+    stepByStep: [
+      "Comece em Chat quando a dúvida ainda estiver aberta ou exploratória.",
+      "Vá para Runs quando o objetivo já puder virar execução concreta.",
+      "Volte ao Chat se precisar reavaliar o caminho antes de rodar.",
+    ],
+    nextActions: ["Como criar um run no EIAH", "Como funciona a triagem do EIAH", "Como funciona a página Chat"],
+    responseBody: [
+      "**Quando usar Chat e quando usar Runs**",
+      "",
+      "- `Chat`: entender o caminho, escolher especialista, esclarecer contexto",
+      "- `Runs`: executar a ação prática",
+      "",
+      "Regra simples:",
+      "- se você ainda está decidindo, fique no `Chat`",
+      "- se você já sabe o que quer executar, vá para `Runs`",
+    ].join("\n"),
+  },
+  {
+    id: "agents.page.overview.quick",
+    title: "Como funciona a área de Agentes",
+    vertical: "core",
+    topic: "agents",
+    problemItSolves: "Explica o papel da área de Agentes no workspace.",
+    canonicalAnswer:
+      "A área de Agentes mostra quais especialistas estão disponíveis no workspace e ajuda a decidir quando seguir com o EIAH ou aprofundar em um especialista.",
+    stepByStep: [
+      "Abra Agentes para ver quais especialistas estão disponíveis no workspace.",
+      "Leia o foco de cada agente antes de escolher.",
+      "Use o EIAH para triagem e o especialista para profundidade de domínio.",
+    ],
+    nextActions: ["Como ler os cards dos agentes", "Quando usar o EIAH e quando usar especialista", "Verificar acesso"],
+    responseBody: [
+      "**Como funciona a área de Agentes**",
+      "",
+      "A área de `Agentes` mostra quais especialistas estão disponíveis no workspace e qual o foco de cada um.",
+      "",
+      "Use essa página para:",
+      "- entender qual agente faz mais sentido para o caso",
+      "- ver disponibilidade por workspace",
+      "- decidir quando seguir com o `EIAH` ou quando aprofundar em um especialista",
+      "",
+      "Resumo rápido:",
+      "- `EIAH`: triagem e orientação de plataforma",
+      "- `Especialista`: profundidade de domínio e contexto específico",
+    ].join("\n"),
+  },
+  {
+    id: "agents.inventory.reading.quick",
+    title: "Como ler os cards e o inventário de agentes",
+    vertical: "core",
+    topic: "agents",
+    problemItSolves: "Explica como interpretar os elementos dos cards e do inventário governado.",
+    canonicalAnswer:
+      "Ao ler um agente, observe especialidade, disponibilidade, risco, integrações e exigências de uso antes de decidir se ele é o melhor para o caso.",
+    stepByStep: [
+      "Veja primeiro a especialidade do agente.",
+      "Confirme se ele está disponível no workspace atual.",
+      "Observe risco, integrações e necessidade de aprovação.",
+      "Confira comprovantes ou contexto exigido antes de usar.",
+    ],
+    nextActions: ["Como funciona a área de Agentes", "Quando usar o EIAH e quando usar especialista"],
+    responseBody: [
+      "**Como ler os cards dos agentes**",
+      "",
+      "Ao olhar um agente, observe principalmente:",
+      "- especialidade",
+      "- disponibilidade no workspace",
+      "- risco e necessidade de aprovação",
+      "- integrações declaradas",
+      "- comprovantes ou contexto exigidos",
+      "",
+      "No inventário governado, esses campos ajudam a decidir se o agente está adequado ao caso e ao nível de governança exigido.",
+    ].join("\n"),
+  },
+  {
+    id: "agents.eiah_vs_specialist.quick",
+    title: "Quando usar o EIAH e quando usar especialista",
+    vertical: "core",
+    topic: "agents",
+    problemItSolves: "Explica a diferença de papel entre o EIAH e um especialista.",
+    canonicalAnswer:
+      "Use o EIAH para triagem, orientação de plataforma e próximo passo. Use um especialista quando o caso exigir profundidade de domínio ou contexto específico.",
+    stepByStep: [
+      "Comece pelo EIAH quando a dúvida ainda estiver aberta ou ampla.",
+      "Mude para especialista quando precisar profundidade técnica, jurídica, financeira ou vertical.",
+      "Volte ao EIAH quando quiser reorientar o caminho dentro da plataforma.",
+    ],
+    nextActions: ["Como funciona a área de Agentes", "Como funciona a página Chat", "Quero ver agentes disponíveis"],
+    responseBody: [
+      "**Quando usar o EIAH e quando usar especialista**",
+      "",
+      "- `EIAH`: triagem, navegação, comparação de páginas e próximo passo",
+      "- `Especialista`: profundidade de domínio e contexto operacional específico",
+      "",
+      "Regra prática:",
+      "- comece pelo `EIAH` quando a dúvida ainda estiver aberta",
+      "- use um especialista quando o caso já estiver claramente dentro de um domínio",
+    ].join("\n"),
+  },
+  {
+    id: "agents.choose_for_goal.quick",
+    title: "Qual agente usar para seu objetivo",
+    vertical: "core",
+    topic: "agents",
+    problemItSolves: "Ajuda a escolher entre EIAH, especialistas e o próximo caminho mais útil.",
+    canonicalAnswer:
+      "A escolha do agente depende do tipo de problema. Comece no EIAH quando a dúvida ainda estiver aberta e siga para especialista quando o caso já exigir profundidade de domínio.",
+    stepByStep: [
+      "Use o EIAH quando ainda estiver entendendo o problema, a página certa ou o próximo passo.",
+      "Use um especialista quando o caso já estiver claramente jurídico, financeiro ou vertical.",
+      "Se não houver agente disponível, valide acesso, workspace e módulo ativo antes de tentar novamente.",
+    ],
+    nextActions: ["Como funciona a área de Agentes", "Quando usar o EIAH e quando usar especialista", "Quero ver agentes disponíveis"],
+    responseBody: [
+      "**Qual agente devo usar para meu objetivo?**",
+      "",
+      "Use esta regra prática:",
+      "- `EIAH`: quando você ainda está entendendo o problema, a página certa ou o próximo passo",
+      "- `Especialista`: quando o caso já exige profundidade de domínio ou contexto operacional específico",
+      "",
+      "Exemplos:",
+      "- plataforma, navegação e comparação de caminhos -> `EIAH`",
+      "- jurídico, billing avançado ou vertical específica -> especialista",
+      "",
+      "Se o workspace não mostrar agentes disponíveis, valide acesso, módulo ativo e contexto do workspace antes de seguir.",
+    ].join("\n"),
+  },
+  {
     id: "platform.page_recommendation.quick",
     title: "Qual página usar primeiro",
     vertical: "core",
@@ -603,29 +1034,294 @@ export const knowledgeUnitsV1: KnowledgeUnitV1[] = [
     title: "Como funciona o billing",
     vertical: "core",
     topic: "billing",
-    problemItSolves: "Explica leitura rápida de plano, uso e faturas.",
+    problemItSolves: "Explica leitura rápida de preços, consumo, reconciliação e quotas.",
     canonicalAnswer:
-      "No EIAH, o billing combina plano contratado com uso do workspace para compor o custo mensal.",
+      "No EIAH, o billing combina pricing, consumo do workspace, reconciliação e quotas para compor a leitura financeira.",
     stepByStep: [
-      "Veja resumo do plano ativo.",
-      "Confira uso de runs e usuários do workspace.",
-      "Valide faturas, cobranças e histórico.",
+      "Veja o Pricing oficial quando quiser comparar plano, base mensal e excedentes.",
+      "Use o Guia Interativo de Billing & Quotas para entender limites, alertas e previsão.",
+      "Confira Controle financeiro quando quiser consumo real, gaps e reconciliação.",
     ],
-    nextActions: ["Abrir Billing", "Quero entender meu plano"],
+    nextActions: ["Onde vejo o preço", "Qual a diferença entre pricing e billing", "Abrir guia interativo"],
     responseBody: [
-      "No EIAH, o billing combina plano contratado com uso do workspace para compor o custo mensal.",
+      "No EIAH, o billing combina pricing, consumo do workspace, reconciliação e quotas para compor a leitura financeira.",
       "",
-      "O que entra nessa visão:",
-      "- resumo do plano ativo",
-      "- uso de runs e usuários do workspace",
-      "- faturas, cobranças e histórico",
+      "O que você encontra nessa área:",
+      "- `Pricing oficial`: plano, base mensal, runs incluídos, excedente e usuário extra",
+      "- `Guia Interativo · Billing & Quotas`: explicação prática de consumo, soft limit, hard limit, previsão e alertas",
+      "- `Controle financeiro`: consumo, reconciliação, ledger e trilha auditável do tenant/workspace",
       "",
-      "Como ler isso rapidamente:",
-      "- plano define a base contratada",
-      "- usuários e runs mostram o volume operacional",
-      "- faturas mostram o fechamento financeiro",
+      "Como usar rapidamente:",
+      "- se a dúvida for `preço`, abra `Pricing oficial`",
+      "- se a dúvida for `limite`, quota ou bloqueio, abra o guia interativo",
+      "- se a dúvida for `consumo real`, gaps ou reconciliação, use `Controle financeiro`",
       "",
-      "Se quiser consultar isso agora, o melhor caminho é abrir [Billing](/app/billing).",
+      "Diferença semântica rápida:",
+      "- `Pricing`: quanto custa o plano",
+      "- `Billing`: guarda-chuva da leitura financeira",
+      "- `Controle financeiro`: uso real e trilha operacional",
+      "- `Reconciliação`: consistência entre ledger, evidência e cobrança",
+      "",
+      "Atalhos:",
+      "- [Billing](/app/billing)",
+      "- [Guia Interativo de Billing & Quotas](/app/billing#billing-guide-footer)",
+      "- [Pricing oficial](/app/self-service#pricing-oficial)",
+    ].join("\n"),
+  },
+  {
+    id: "billing.where_see_price.quick",
+    title: "Onde ver preço no EIAH",
+    vertical: "core",
+    topic: "billing",
+    problemItSolves: "Explica onde o usuário vê preço versus consumo real.",
+    canonicalAnswer:
+      "Se a dúvida for preço do plano, o lugar certo é o Pricing oficial. Se a dúvida for uso real e impacto financeiro, use Billing.",
+    stepByStep: [
+      "Abra Pricing oficial para ver plano, base mensal e excedentes.",
+      "Abra Billing para ver consumo, quotas, gaps e reconciliação.",
+      "Não trate a tela de controle financeiro como sinônimo de tabela comercial de preços.",
+    ],
+    nextActions: ["Abrir Billing", "Abrir guia interativo", "Qual a diferença entre pricing e billing"],
+    responseBody: [
+      "**Onde ver preço no EIAH**",
+      "",
+      "Se a dúvida for `preço`, abra `Pricing oficial`.",
+      "Se a dúvida for `consumo real`, quotas ou reconciliação, abra `Billing`.",
+      "",
+      "Resumo rápido:",
+      "- `Pricing oficial`: quanto custa o plano",
+      "- `Billing`: quanto foi usado e como isso se reconcilia",
+      "",
+      "Atalhos:",
+      "- [Pricing oficial](/app/self-service#pricing-oficial)",
+      "- [Billing](/app/billing)",
+    ].join("\n"),
+  },
+  {
+    id: "billing.price_vs_consumption.quick",
+    title: "Diferença entre pricing, billing e reconciliação",
+    vertical: "core",
+    topic: "billing",
+    problemItSolves: "Separa preço, consumo e consistência financeira para reduzir ambiguidade.",
+    canonicalAnswer:
+      "Pricing mostra quanto custa o plano; Billing mostra consumo e previsão; reconciliação mostra se a trilha financeira está consistente.",
+    stepByStep: [
+      "Use Pricing para entender plano, base e excedentes.",
+      "Use Billing para ver consumo real, quotas, projeção e custo consolidado.",
+      "Use reconciliação para validar gaps, ledger e consistência da trilha auditável.",
+    ],
+    nextActions: ["Onde vejo o preço", "Como funciona o billing", "Abrir guia interativo"],
+    responseBody: [
+      "**Pricing, Billing e reconciliação: qual é a diferença?**",
+      "",
+      "- `Pricing`: quanto custa o plano",
+      "- `Billing`: consumo, quotas, previsão e custo consolidado",
+      "- `Reconciliação`: verifica se ledger, evidências e cobrança estão coerentes",
+      "",
+      "Regra prática:",
+      "- dúvida comercial -> `Pricing`",
+      "- dúvida de uso -> `Billing`",
+      "- dúvida de consistência financeira -> `Reconciliação`",
+    ].join("\n"),
+  },
+  {
+    id: "economy.overview.quick",
+    title: "Como funciona a página Economy",
+    vertical: "core",
+    topic: "economy",
+    problemItSolves: "Explica o papel da página Economy e seus blocos principais.",
+    canonicalAnswer:
+      "A página Economy consolida impacto, oportunidades e leitura econômica da operação para ajudar a priorizar onde agir primeiro.",
+    stepByStep: [
+      "Use Economy para ver oportunidades priorizadas e impacto estimado.",
+      "Olhe primeiro a prioridade, depois a origem do ganho e por fim a ação sugerida.",
+      "Cruze essa leitura com Runs para executar e com Billing para validar consumo real.",
+    ],
+    nextActions: ["Como priorizar oportunidades", "Como ligar Economy com Runs e Billing", "Abrir Billing"],
+    responseBody: [
+      "**Como funciona a página Economy**",
+      "",
+      "A `Economy` mostra impacto consolidado, oportunidades e priorização econômica da operação.",
+      "",
+      "Use essa área para:",
+      "- identificar onde existe ganho ou desperdício",
+      "- priorizar ações com maior retorno operacional",
+      "- entender quais oportunidades merecem execução primeiro",
+      "",
+      "Blocos que valem atenção:",
+      "- `oportunidades priorizadas`: o que merece atenção primeiro",
+      "- `impacto estimado`: qual ganho ou redução de custo está em jogo",
+      "- `origem do ganho`: de onde vem a oportunidade",
+      "- `ligação com execução`: o que precisa virar ação prática em `Runs`",
+    ].join("\n"),
+  },
+  {
+    id: "economy.prioritization.quick",
+    title: "Como priorizar oportunidades na Economy",
+    vertical: "core",
+    topic: "economy",
+    problemItSolves: "Ajuda a escolher quais oportunidades tratar primeiro.",
+    canonicalAnswer:
+      "Na Economy, priorize primeiro o maior impacto com menor bloqueio operacional, depois valide se a ação pode ser executada com segurança.",
+    stepByStep: [
+      "Leia primeiro o impacto estimado.",
+      "Confirme a urgência e a prioridade da oportunidade.",
+      "Veja se a ação depende de execução em Runs ou revisão financeira em Billing.",
+      "Ataque primeiro o que combina alto impacto e baixa fricção operacional.",
+    ],
+    nextActions: ["Como funciona a página Economy", "Como ligar Economy com Runs e Billing"],
+    responseBody: [
+      "**Como priorizar oportunidades na Economy**",
+      "",
+      "Use esta ordem de leitura:",
+      "1. impacto estimado",
+      "2. prioridade operacional",
+      "3. bloqueios ou dependências",
+      "4. facilidade de execução",
+      "",
+      "Em geral, vale começar pelo que combina alto impacto com baixa fricção.",
+    ].join("\n"),
+  },
+  {
+    id: "economy.vs.billing_runs.quick",
+    title: "Diferença entre Economy, Billing e Runs",
+    vertical: "core",
+    topic: "economy",
+    problemItSolves: "Evita confusão entre impacto, consumo e execução.",
+    canonicalAnswer:
+      "Economy prioriza oportunidades, Billing mostra consumo e reconciliação, e Runs é a área de execução prática.",
+    stepByStep: [
+      "Use Economy para decidir onde agir.",
+      "Use Billing para confirmar custo, uso real e consistência financeira.",
+      "Use Runs para transformar a decisão em execução.",
+    ],
+    nextActions: ["Como funciona a página Economy", "Como funciona o billing", "Como criar um run no EIAH"],
+    responseBody: [
+      "**Economy, Billing e Runs: quando usar cada um**",
+      "",
+      "- `Economy`: priorizar oportunidades e impacto",
+      "- `Billing`: ver consumo real, plano, quotas e reconciliação",
+      "- `Runs`: executar a ação prática",
+      "",
+      "Resumo rápido:",
+      "- primeiro você decide na `Economy`",
+      "- depois valida custo e consistência em `Billing`",
+      "- por fim executa em `Runs`",
+    ].join("\n"),
+  },
+  {
+    id: "marketplace.overview.quick",
+    title: "Como funciona o Marketplace",
+    vertical: "core",
+    topic: "marketplace",
+    problemItSolves: "Explica o papel da página Marketplace e quando usá-la.",
+    canonicalAnswer:
+      "O Marketplace é a área onde você ativa agentes, módulos e verticais no workspace, controlando o que fica disponível para uso operacional.",
+    stepByStep: [
+      "Abra o Marketplace para ver o que está disponível no workspace.",
+      "Leia o status de cada item antes de tentar usar a área correspondente.",
+      "Ative o módulo ou agente quando quiser liberar a capacidade operacional.",
+      "Depois volte para Chat, Runs ou a vertical correspondente para usar o recurso ativado.",
+    ],
+    nextActions: ["Como saber se o agente foi habilitado", "Ativar no Marketplace gera cobrança?", "Entender Billing"],
+    responseBody: [
+      "**Como funciona o Marketplace**",
+      "",
+      "O `Marketplace` é a área onde você ativa agentes, módulos e verticais no workspace.",
+      "",
+      "Use essa página para:",
+      "- ver o que já está disponível",
+      "- identificar o que ainda não foi instalado",
+      "- ativar uma capacidade antes de tentar operar em outra área",
+      "",
+      "Resumo prático:",
+      "- `Marketplace` libera capacidade",
+      "- `Chat` orienta uso",
+      "- `Runs` executa",
+      "- verticais como `IMOB` aparecem para operar depois da ativação",
+    ].join("\n"),
+  },
+  {
+    id: "marketplace.installation_status.quick",
+    title: "Como ler status de instalação no Marketplace",
+    vertical: "core",
+    topic: "marketplace",
+    problemItSolves: "Explica o que significa item não instalado, habilitado ou ativo.",
+    canonicalAnswer:
+      "Quando um item aparece como não instalado, ele ainda não está liberado para uso operacional no workspace.",
+    stepByStep: [
+      "`não instalado`: ainda não disponível para operação no workspace.",
+      "`ativado` ou equivalente: capacidade liberada para uso.",
+      "Depois da ativação, volte para a área correspondente e recarregue o contexto.",
+    ],
+    nextActions: ["Como funciona o Marketplace", "Ativar no Marketplace gera cobrança?"],
+    responseBody: [
+      "**Como ler o status no Marketplace**",
+      "",
+      "- `não instalado`: o agente, módulo ou vertical ainda não está liberado para uso operacional",
+      "- `ativado` ou equivalente: a capacidade já pode ser usada no workspace",
+      "",
+      "Se algo estiver indisponível em `Chat`, `Agentes` ou numa vertical, vale confirmar primeiro esse status no `Marketplace`.",
+    ].join("\n"),
+  },
+  {
+    id: "marketplace.billing_relation.quick",
+    title: "Relação entre Marketplace e cobrança",
+    vertical: "core",
+    topic: "marketplace",
+    problemItSolves: "Explica a diferença entre ativação e consumo financeiro.",
+    canonicalAnswer:
+      "Ativar no Marketplace libera capacidade operacional. O impacto financeiro depende do plano, do módulo ativado e do consumo posterior.",
+    stepByStep: [
+      "A ativação libera o recurso no workspace.",
+      "O custo não depende só do clique de ativação, mas do plano e do uso posterior.",
+      "Use Billing para validar preço, consumo e impacto financeiro real.",
+    ],
+    nextActions: ["Entender Billing", "Como funciona o Marketplace", "Como saber se o agente foi habilitado"],
+    responseBody: [
+      "**Marketplace e cobrança: como se relacionam**",
+      "",
+      "Ativar no `Marketplace` libera capacidade operacional.",
+      "",
+      "O impacto financeiro depende de três fatores:",
+      "- plano ativo",
+      "- tipo de módulo ou vertical ativado",
+      "- consumo posterior da operação",
+      "",
+      "Resumo rápido:",
+      "- `Marketplace`: libera o recurso",
+      "- `Billing`: mostra preço, consumo e reconciliação",
+    ].join("\n"),
+  },
+  {
+    id: "profile.overview.quick",
+    title: "Como funciona a página Perfil",
+    vertical: "core",
+    topic: "profile",
+    problemItSolves: "Explica o papel da página Perfil para conta, workspace e acesso.",
+    canonicalAnswer:
+      "A página Perfil concentra dados da conta, contexto do workspace e verificações de acesso antes de voltar para Chat, Marketplace ou Agentes.",
+    stepByStep: [
+      "Abra Perfil para confirmar conta e workspace ativos.",
+      "Valide se o workspace atual é o correto para a operação.",
+      "Confirme permissões antes de concluir que um agente, módulo ou vertical está indisponível.",
+      "Depois volte para Chat, Marketplace ou Agentes com o contexto correto.",
+    ],
+    nextActions: ["Como selecionar workspace correto", "Como verificar acesso no workspace", "Como funciona o Marketplace"],
+    responseBody: [
+      "**Como funciona a página Perfil**",
+      "",
+      "A página `Perfil` concentra dados da conta, contexto do workspace e verificações de acesso.",
+      "",
+      "Use essa área para:",
+      "- confirmar em qual workspace você está",
+      "- revisar se o acesso está coerente com a operação",
+      "- validar o contexto antes de voltar para `Chat`, `Agentes` ou `Marketplace`",
+      "",
+      "Resumo rápido:",
+      "- `Perfil` confirma identidade e contexto",
+      "- `Marketplace` confirma ativação",
+      "- `Chat` e `Agentes` usam esse contexto para responder e operar",
     ].join("\n"),
   },
   {
@@ -1429,15 +2125,115 @@ function shouldAskClarification(params: {
   return first.score - second.score <= 5;
 }
 
+function isGenericExplanationQuestion(normalizedInput: string) {
+  const exactQuestions = new Set([
+    "como funciona",
+    "explique",
+    "explica",
+    "me explique",
+    "me explica",
+    "quero entender",
+    "entender como funciona",
+    "explique como funciona",
+    "explica como funciona",
+    "me explique como funciona",
+    "me explica como funciona",
+  ]);
+
+  return exactQuestions.has(normalizedInput);
+}
+
+function resolveDirectCoreTutorReply(normalizedInput: string): TutorContractReply | null {
+  const directIntentMap: Array<{ patterns: string[]; knowledgeId: string }> = [
+    {
+      patterns: ["explicar plataforma", "plataforma como um todo"],
+      knowledgeId: "platform.overview.quick",
+    },
+    {
+      patterns: ["explicar agentes"],
+      knowledgeId: "agents.page.overview.quick",
+    },
+    {
+      patterns: ["explicar billing"],
+      knowledgeId: "billing.overview.quick",
+    },
+    {
+      patterns: ["explicar chat imob"],
+      knowledgeId: "platform.chat.vs_imob.quick",
+    },
+    {
+      patterns: ["me mostre o caminho mais rapido", "me mostre o caminho mais rápido"],
+      knowledgeId: "platform.page_recommendation.quick",
+    },
+    {
+      patterns: [
+        "qual agente devo usar para meu objetivo",
+        "qual agente devo usar",
+        "que agente devo usar",
+        "qual especialista devo usar",
+      ],
+      knowledgeId: "agents.choose_for_goal.quick",
+    },
+    {
+      patterns: [
+        "qual a diferenca entre chat e chat imob",
+        "qual a diferença entre chat e chat imob",
+        "quando usar chat imob",
+        "chat versus chat imob",
+        "chat vs chat imob",
+      ],
+      knowledgeId: "platform.chat.vs_imob.quick",
+    },
+  ];
+
+  const match = directIntentMap.find((entry) => entry.patterns.some((pattern) => normalizedInput.includes(normalizeIntentText(pattern))));
+  if (!match) return null;
+
+  const knowledge = getKnowledgeById(match.knowledgeId);
+  if (!knowledge) return null;
+
+  return {
+    intentId: match.knowledgeId.replace(/\./g, "_"),
+    content:
+      knowledge.responseBody ??
+      [
+        `**${knowledge.title}**`,
+        "",
+        knowledge.canonicalAnswer,
+        "",
+        ...knowledge.stepByStep,
+      ].join("\n"),
+    quickReplies: knowledge.nextActions,
+  };
+}
+
+export function hasExactEiahTutorIntentMatch(input: string) {
+  const normalizedInput = normalizeIntentText(input);
+  if (resolveDirectCoreTutorReply(normalizedInput)) return true;
+
+  const ranked = rankIntents(input);
+  const intent = pickBestIntent(ranked, 35);
+  if (!intent) return false;
+
+  return isExactTermMatch(intent, normalizedInput);
+}
+
 function buildClarificationReply(): TutorContractReply {
   return {
     intentId: "policy_clarify",
     content: [
-      "Posso te orientar melhor se você escolher o foco agora.",
+      "Posso explicar melhor se você me disser qual área quer entender agora.",
       "",
-      "Você quer ajuda com páginas da plataforma, runs, billing ou acesso de agentes?",
+      "Exemplos de foco:",
+      "- plataforma como um todo",
+      "- agentes",
+      "- chat",
+      "- Chat IMOB",
+      "- billing e quotas",
+      "- marketplace",
+      "- self-service",
     ].join("\n"),
-    quickReplies: ["Explique as páginas", "Como criar um run", "Como funciona o billing", "Verificar acesso"],
+    quickReplies: ["Explicar plataforma", "Explicar agentes", "Explicar Chat IMOB", "Explicar Billing"],
   };
 }
 
@@ -1473,6 +2269,70 @@ function buildBlockedReply(reason: "missing_workspace_context" | "missing_entitl
       "Entre no workspace correto e tente novamente para eu continuar com precisão.",
     ].join("\n"),
     quickReplies: ["Selecionar workspace", "Verificar acesso"],
+  };
+}
+
+function hasResolvedWorkspaceContext(accessContext?: LauncherAccessContext | null) {
+  return Boolean(accessContext?.tenantId && accessContext?.workspaceId);
+}
+
+function buildAgentsEmptyStateContextualReply(params: {
+  intentId: string;
+  knowledge: KnowledgeUnitV1;
+  accessContext?: LauncherAccessContext | null;
+}): TutorContractReply {
+  const workspaceKnown = hasResolvedWorkspaceContext(params.accessContext);
+  const checklist = workspaceKnown
+    ? [
+        "Seu acesso para usar agentes está ativo.",
+        "A vertical ou agente desejado está habilitado neste workspace.",
+        "Volte para `Chat` e recarregue a lista de agentes.",
+      ]
+    : params.knowledge.stepByStep;
+  const quickReplies = workspaceKnown
+    ? ["Verificar acesso", "Ativar módulo no Marketplace", "Quero ver agentes disponíveis"]
+    : params.knowledge.nextActions;
+
+  return {
+    intentId: params.intentId,
+    content: [
+      "Nenhum agente disponível neste workspace no momento.",
+      "",
+      params.knowledge.canonicalAnswer,
+      "Para liberar a lista, verifique:",
+      "",
+      ...checklist.map((step, index) => `${index + 1}. ${step}`),
+      "",
+      "Quando isso estiver ok, os agentes serão carregados automaticamente.",
+    ].join("\n"),
+    quickReplies,
+  };
+}
+
+function buildAccessCheckContextualReply(params: { knowledge: KnowledgeUnitV1; accessContext?: LauncherAccessContext | null }) {
+  const workspaceKnown = hasResolvedWorkspaceContext(params.accessContext);
+  const steps = workspaceKnown
+    ? [
+        "Valide se seu usuário continua com acesso para usar agentes neste workspace.",
+        "Confira no Marketplace se o módulo ou vertical desejado está ativo.",
+        "Volte para `Chat` e recarregue a lista de agentes.",
+      ]
+    : params.knowledge.stepByStep;
+  const quickReplies = workspaceKnown
+    ? ["Ativar módulo no Marketplace", "Quero ver agentes disponíveis", "Selecionar workspace"]
+    : params.knowledge.nextActions;
+
+  return {
+    intentId: "access_check",
+    content: [
+      "**Como verificar acesso**",
+      "",
+      "Use este checklist rápido:",
+      ...steps.map((step, index) => `${index + 1}. ${step}`),
+      "",
+      "Se algum item estiver faltando, o agente não aparece até esse acesso ser liberado.",
+    ].join("\n"),
+    quickReplies,
   };
 }
 
@@ -1523,6 +2383,7 @@ function applyTutorPolicy(params: {
   if (
     tutorPolicyV1.rules.handoffWhen.includes("deep_vertical_need") &&
     looksLikeDeepVerticalNeed(params.normalizedInput) &&
+    (!params.intent || params.intent.vertical !== "core") &&
     !isMissingImobEntitlement(params.accessContext)
   ) {
     return {
@@ -1546,6 +2407,13 @@ export function resolveEiahTutorContractResponse(params: {
   const normalizedInput = normalizeIntentText(params.input);
   if (isLikelyPastedInput(params.input) && looksLikePlatformStructuredContext(normalizedInput)) {
     return buildPastedContextExpandedReply();
+  }
+
+  const directCoreReply = resolveDirectCoreTutorReply(normalizedInput);
+  if (directCoreReply) return directCoreReply;
+
+  if (isGenericExplanationQuestion(normalizedInput)) {
+    return buildClarificationReply();
   }
 
   const depthRequest = detectExplanationDepth(params.input);
@@ -1598,21 +2466,19 @@ export function resolveEiahTutorContractResponse(params: {
     };
   }
 
+  if (intent.intentId === "access_check") {
+    return buildAccessCheckContextualReply({
+      knowledge,
+      accessContext: params.accessContext,
+    });
+  }
+
   if (pattern.patternId === "one_line_plus_3_checks") {
-    return {
+    return buildAgentsEmptyStateContextualReply({
       intentId: intent.intentId,
-      content: [
-        "Nenhum agente disponível neste workspace no momento.",
-        "",
-        knowledge.canonicalAnswer,
-        "Para liberar a lista, verifique:",
-        "",
-        ...knowledge.stepByStep.map((step, index) => `${index + 1}. ${step}`),
-        "",
-        "Quando isso estiver ok, os agentes serão carregados automaticamente.",
-      ].join("\n"),
-      quickReplies: knowledge.nextActions,
-    };
+      knowledge,
+      accessContext: params.accessContext,
+    });
   }
 
   return {
