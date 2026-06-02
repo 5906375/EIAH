@@ -45,6 +45,7 @@ import {
   extractImobContextFromRun,
   getStringValue as readImobString,
 } from "@/lib/imobContext";
+import { buildImobCaseList, type ImobCommandCenterCaseRow } from "./imobCommandCenter";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "https://api.eiah.local/api";
 const TENANT_PLACEHOLDER = import.meta.env.VITE_TENANT_ID ?? "tenant-demo";
@@ -73,50 +74,12 @@ function formatMeterTypeLabel(value: string) {
   return value || "—";
 }
 
-function imobCaseAgeHours(updatedAt: string) {
-  const parsed = Date.parse(updatedAt);
-  if (!Number.isFinite(parsed)) return 0;
-  return Math.max(0, (Date.now() - parsed) / 36e5);
-}
-
 function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
 }
 
 function asStringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : [];
-}
-
-function buildImobCaseRiskLabel(item: ImobCase) {
-  const blockers = asStringArray(item.blockers);
-  if (blockers.length > 0) return blockers.slice(0, 2).join(", ");
-  const pending = asStringArray(item.pendingItems);
-  if (pending.length > 0) return pending.slice(0, 2).join(", ");
-  return item.stage || "—";
-}
-
-function formatImobJourneyTypeLabel(value: string | null | undefined) {
-  const normalized = (value ?? "").trim().toLowerCase();
-  if (normalized === "property_capture") return "Captação";
-  if (normalized === "lead_qualification") return "Qualificação";
-  if (normalized === "proposal") return "Proposta";
-  if (normalized === "visit_follow_up") return "Visita";
-  if (normalized === "negotiation") return "Negociação";
-  if (normalized === "documentation") return "Documentação";
-  if (normalized === "contract") return "Contrato";
-  if (normalized === "commission") return "Comissão";
-  if (normalized === "temporada_rules") return "Regras de temporada";
-  return "Operação";
-}
-
-function buildImobCasePriority(item: ImobCase) {
-  const blocked = asStringArray(item.canonical?.blockedActions).length;
-  const missing = asStringArray(item.canonical?.missingContext).length;
-  const recommended = item.canonical?.recommendedActions?.length ?? 0;
-  const ageHours = imobCaseAgeHours(item.updatedAt);
-  const score = blocked * 5 + missing * 3 + Math.min(4, Math.floor(ageHours / 12)) + (recommended === 0 ? 2 : 0);
-  const label = blocked > 0 ? "alta" : missing > 0 || ageHours >= 24 ? "média" : "normal";
-  return { score, label };
 }
 
 function mapImobStatusFilterToCaseStatus(filter: string): string | undefined {
@@ -648,35 +611,6 @@ async function saveImobArtifactPdf(type: "bundle" | "receipt", payload: any, cas
   doc.save(type === "bundle" ? `imob-case-${caseId}-dossier.pdf` : `imob-case-${caseId}-receipt.pdf`);
 }
 
-function buildImobCaseList(items: ImobCase[], reasonFilter: string, statusFilter: string) {
-  const targetStatus = mapImobStatusFilterToCaseStatus(statusFilter);
-  if (targetStatus === "__none__") return [];
-
-  return items
-    .map((item) => {
-      const riskLabel = buildImobCaseRiskLabel(item);
-      const priority = buildImobCasePriority(item);
-      const primaryAction = item.canonical?.recommendedActions?.[0] ?? null;
-      return {
-        processId: item.id,
-        caseId: item.id,
-        threadId: item.threadId,
-        status: item.status,
-        riskLabel,
-        ageHours: Number(imobCaseAgeHours(item.updatedAt).toFixed(1)),
-        updatedAt: item.updatedAt,
-        priorityLabel: priority.label,
-        priorityScore: priority.score,
-        nextAction: primaryAction?.label ?? item.nextStep ?? "Revisar caso",
-        journeyLabel: formatImobJourneyTypeLabel(item.canonical?.journeyType),
-      };
-    })
-    .filter((item) => !targetStatus || item.status === targetStatus)
-    .filter((item) => reasonFilter === "all" || item.riskLabel.includes(reasonFilter))
-    .sort((a, b) => b.priorityScore - a.priorityScore || b.ageHours - a.ageHours)
-    .slice(0, 12);
-}
-
 const RUN_RESOURCES: Record<string, RunResource> = {
   __default: {
     prompt: "Simular fluxo de mint para cliente Alpha.",
@@ -816,15 +750,7 @@ const RunsPage: React.FC = () => {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const [tenantQuotaPct, setTenantQuotaPct] = useState<number | null>(null);
   const [imobHealth, setImobHealth] = useState<ImobFunnelHealth | null>(null);
-  const [imobCasesList, setImobCasesList] = useState<Array<{
-    processId: string;
-    caseId: string;
-    threadId: string | null;
-    status: string;
-    riskLabel: string;
-    ageHours: number;
-    updatedAt: string;
-  }>>([]);
+  const [imobCasesList, setImobCasesList] = useState<ImobCommandCenterCaseRow[]>([]);
   const [imobLoading, setImobLoading] = useState(false);
   const [imobStatusFilter, setImobStatusFilter] = useState("pending_data");
   const [imobReasonFilter, setImobReasonFilter] = useState("all");
@@ -1496,7 +1422,7 @@ const RunsPage: React.FC = () => {
                 <p className="text-xs font-semibold uppercase tracking-[0.35em] text-accent">IMOB Command Center</p>
                 <h2 className="text-2xl font-display font-semibold text-foreground">{commandCenterLabel}</h2>
                 <p className="text-sm text-muted-foreground">
-                  Visao executiva de funil e bloqueios para operacao imobiliaria.
+                  Visão executiva de funil e bloqueios para operação imobiliária.
                 </p>
               </div>
               <div className="flex flex-wrap items-center gap-2">
@@ -1561,7 +1487,7 @@ const RunsPage: React.FC = () => {
               <table className="w-full min-w-[760px] text-left text-xs">
                 <thead className="bg-white/5 text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
                   <tr>
-                    <th className="px-4 py-3">{runLabelSingular}</th>
+                    <th className="px-4 py-3">Processo</th>
                     <th className="px-4 py-3">Estado</th>
                     <th className="px-4 py-3">Jornada</th>
                     <th className="px-4 py-3">{riskLabel}</th>
@@ -1580,7 +1506,7 @@ const RunsPage: React.FC = () => {
                   ) : (
                     imobCasesList.map((item) => (
                       <tr key={item.processId} className="border-t border-white/10">
-                        <td className="px-4 py-3 font-mono text-foreground/90">{formatRunId(item.processId)}</td>
+                        <td className="px-4 py-3 text-foreground/90">{item.processLabel}</td>
                         <td className="px-4 py-3 text-foreground/90">
                           <div className="space-y-1">
                             <p>{formatImobCaseStatusLabel(item.status)}</p>
@@ -1597,9 +1523,12 @@ const RunsPage: React.FC = () => {
                         <td className="px-4 py-3 text-muted-foreground">{item.ageHours.toFixed(1)}h</td>
                         <td className="px-4 py-3 text-xs">
                           <div className="space-y-1">
-                            <p className="font-mono text-foreground/90">{formatRunId(item.caseId)}</p>
+                            <p className="font-mono text-foreground/90">case {formatRunId(item.caseId)}</p>
                             <p className="font-mono text-muted-foreground">
-                              {item.threadId ? formatRunId(item.threadId) : "thread não vinculado"}
+                              {item.threadId ? `thread ${formatRunId(item.threadId)}` : "thread não vinculado"}
+                            </p>
+                            <p className="font-mono text-[10px] text-muted-foreground/80">
+                              processo {formatRunId(item.processId)}
                             </p>
                             <Link
                               to={buildImobChatRoute({

@@ -1300,7 +1300,7 @@ export default function SelfServiceIndexPage() {
         ) : null}
       </section>
 
-      <section className="rounded-3xl border border-white/10 bg-surface/60 p-6">
+      <section id="pricing-oficial" className="rounded-3xl border border-white/10 bg-surface/60 p-6">
         <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
             <h3 className="text-lg font-semibold text-foreground">Pricing oficial</h3>
