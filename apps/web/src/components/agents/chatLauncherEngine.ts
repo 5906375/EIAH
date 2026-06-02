@@ -53,6 +53,7 @@ import {
   resolveImobJourneyStage,
   resolveImobVerticalContext,
   resolveImobShortcutSelection,
+  shouldDeferGenericPlatformQuestionFromImob,
   shouldRouteToImob,
   type ImobFaqSeed,
   type ImobJourneyStage,
@@ -93,6 +94,7 @@ import {
 } from "@/components/agents/proposalCopy";
 import { buildProposalQuickReplies } from "@/components/agents/proposalQuickReplies";
 import {
+  hasExactEiahTutorIntentMatch,
   resolveEiahTutorContractResponse,
   resolveEiahTutorInputPlaceholder,
   resolveEiahTutorRouteQuickReplies,
@@ -132,6 +134,30 @@ export type SpecialistAvailability = {
 
 export type LauncherRouteIntent = "proposal" | "imob" | "playbook" | "help" | "orchestrator";
 export type EiahMode = "help" | "orchestrator" | "proposal";
+export type HelpFallbackType = "clarify" | "blocked" | "not_found";
+export type HelpResolutionType = "resolved" | HelpFallbackType;
+
+export type ResolvedIntent = {
+  intentId: string | null;
+  confidence: number;
+  scopeHint?: "page" | "vertical" | "global";
+  needsClarification?: boolean;
+};
+
+export type ConversationState = {
+  lastIntentId?: string;
+  lastQuickReplies?: string[];
+  lastRoute?: LauncherRouteIntent | "self_intro" | "capabilities_summary" | "legal_handoff";
+  lastFallbackType?: HelpFallbackType;
+};
+
+export type ResolvedHelpSnapshot = {
+  intent: ResolvedIntent;
+  responseType: HelpResolutionType;
+  content: string;
+  quickReplies: string[];
+};
+
 export type EiahDecisionKind =
   | "initial_journey"
   | "self_intro"
@@ -158,6 +184,7 @@ export type EiahDecision = {
   shouldCreateRun: boolean;
   content?: string;
   resolvedQuickReplies?: string[];
+  conversationState?: ConversationState | null;
   journeyContext?: {
     frontDoorLabel: string;
     firstStepLabel: string;
@@ -211,6 +238,7 @@ export type LauncherLocalDecision = {
     confidenceFloor?: number;
   };
   agentSwitchRequest?: MessagePresentationSnapshot["agentSwitchRequest"];
+  conversationState?: ConversationState | null;
 };
 
 export type LauncherAccessContext = {
@@ -512,6 +540,182 @@ function resolveVerticalContext(input: string) {
 function hasImobVerticalAccess(accessContext?: LauncherAccessContext | null) {
   if (!accessContext?.tenantId || !accessContext?.workspaceId) return false;
   return accessContext.entitlements?.REAL_ESTATE_CORE === true;
+}
+
+function classifyTutorHelpResponseType(intentId: string): HelpResolutionType {
+  if (intentId === "platform_overview_fallback") return "not_found";
+  if (intentId === "policy_clarify") return "clarify";
+  if (intentId.startsWith("policy_blocked_")) return "blocked";
+  return "resolved";
+}
+
+function buildResolvedHelpSnapshot(params: {
+  tutorReply: {
+    intentId: string;
+    content: string;
+    quickReplies: string[];
+  };
+  hasExactIntentPriority: boolean;
+  accessContext?: LauncherAccessContext | null;
+  scopeHint?: "page" | "vertical" | "global";
+}): ResolvedHelpSnapshot {
+  const responseType = classifyTutorHelpResponseType(params.tutorReply.intentId);
+  return {
+    intent: {
+      intentId: params.tutorReply.intentId === "platform_overview_fallback" ? null : params.tutorReply.intentId,
+      confidence: params.hasExactIntentPriority ? 1 : responseType === "resolved" ? 0.82 : 0.7,
+      scopeHint: params.scopeHint ?? "global",
+      needsClarification: responseType === "clarify",
+    },
+    responseType,
+    content: params.tutorReply.content,
+    quickReplies: filterResolvedEiahQuickReplies(params.tutorReply.quickReplies, params.accessContext),
+  };
+}
+
+function buildHelpConversationState(snapshot: ResolvedHelpSnapshot): ConversationState {
+  return {
+    lastIntentId: snapshot.intent.intentId ?? undefined,
+    lastQuickReplies: snapshot.quickReplies,
+    lastRoute: "help",
+    lastFallbackType: snapshot.responseType === "resolved" ? undefined : snapshot.responseType,
+  };
+}
+
+function canResolveEiahQuickReplyLabel(label: string, accessContext?: LauncherAccessContext | null) {
+  const normalized = label.trim();
+  if (!normalized) return false;
+
+  const tutorReply = resolveEiahTutorContractResponse({
+    input: normalized,
+    accessContext,
+  });
+  if (tutorReply && tutorReply.intentId !== "platform_overview_fallback") {
+    return true;
+  }
+
+  return buildDeterministicHelpReply(normalized) != null;
+}
+
+function filterResolvedEiahQuickReplies(quickReplies: string[], accessContext?: LauncherAccessContext | null) {
+  return quickReplies
+    .map((label) => label.trim())
+    .filter(Boolean)
+    .filter((label, index, array) => array.indexOf(label) === index)
+    .filter((label) => canResolveEiahQuickReplyLabel(label, accessContext))
+    .slice(0, 4);
+}
+
+function buildResolvedHelpDecision(params: {
+  snapshot: ResolvedHelpSnapshot;
+  confidenceFloor?: number;
+}): EiahDecision {
+  return {
+    kind: "help_reply",
+    shouldCreateRun: false,
+    content: params.snapshot.content,
+    resolvedQuickReplies: params.snapshot.quickReplies,
+    conversationState: buildHelpConversationState(params.snapshot),
+    launcherRouteIntent: "help",
+    presentationRouteIntent: "help",
+    eiahMode: "help",
+    renderVariant: "simple_help",
+    persistIntent: {
+      intent: params.snapshot.intent.intentId ?? "product_explain",
+      confidenceFloor: params.confidenceFloor ?? params.snapshot.intent.confidence,
+    },
+  };
+}
+
+function resolveEiahPriorityHelpDecision(params: {
+  input: string;
+  routeIntent: LauncherRouteIntent;
+  accessContext?: LauncherAccessContext | null;
+}): EiahDecision | null {
+  const directHelp = params.routeIntent === "help" ? buildDeterministicHelpReply(params.input) : null;
+  if (directHelp) {
+    return buildResolvedHelpDecision({
+      snapshot: buildResolvedHelpSnapshot({
+        tutorReply: {
+          intentId: "deterministic_help",
+          content: directHelp,
+          quickReplies: [],
+        },
+        hasExactIntentPriority: false,
+        accessContext: params.accessContext,
+        scopeHint: "page",
+      }),
+      confidenceFloor: 0.78,
+    });
+  }
+
+  const tutorReply = resolveEiahTutorContractResponse({
+    input: params.input,
+    accessContext: params.accessContext,
+  });
+  const hasExplicitTutorIntentPriority = Boolean(
+    tutorReply &&
+      tutorReply.intentId !== "platform_overview_fallback" &&
+      !tutorReply.intentId.startsWith("policy_") &&
+      hasExactEiahTutorIntentMatch(params.input)
+  );
+  if (hasExplicitTutorIntentPriority && tutorReply) {
+    return buildResolvedHelpDecision({
+      snapshot: buildResolvedHelpSnapshot({
+        tutorReply,
+        hasExactIntentPriority: true,
+        accessContext: params.accessContext,
+        scopeHint: "global",
+      }),
+    });
+  }
+
+  const imobKnowledgeSearchIntent = resolveImobKnowledgeSearchIntent(params.input);
+  const imobSurfaceDecision =
+    params.routeIntent === "imob"
+      ? resolveImobLauncherSurfaceDecision({
+          input: params.input,
+          hasAccess: hasImobVerticalAccess(params.accessContext),
+          hasKnowledgeSearchIntent: Boolean(imobKnowledgeSearchIntent),
+          isContextEntryQuestion: isImobContextEntryQuestion(params.input),
+        })
+      : imobKnowledgeSearchIntent
+        ? resolveImobLauncherSurfaceDecision({
+            input: params.input,
+            hasAccess: hasImobVerticalAccess(params.accessContext),
+            hasKnowledgeSearchIntent: true,
+            isContextEntryQuestion: false,
+          })
+        : isImobContextEntryQuestion(params.input)
+          ? resolveImobLauncherSurfaceDecision({
+              input: params.input,
+              hasAccess: hasImobVerticalAccess(params.accessContext),
+              hasKnowledgeSearchIntent: false,
+              isContextEntryQuestion: true,
+            })
+          : null;
+
+  if (imobSurfaceDecision) {
+    return imobSurfaceDecision;
+  }
+
+  const shouldUseGlobalTutor =
+    params.routeIntent === "help" ||
+    (params.routeIntent === "imob" && shouldDeferGenericPlatformQuestionFromImob(params.input)) ||
+    hasExplicitTutorIntentPriority;
+
+  if (shouldUseGlobalTutor && tutorReply && tutorReply.intentId !== "platform_overview_fallback") {
+    return buildResolvedHelpDecision({
+      snapshot: buildResolvedHelpSnapshot({
+        tutorReply,
+        hasExactIntentPriority: hasExplicitTutorIntentPriority,
+        accessContext: params.accessContext,
+        scopeHint: "global",
+      }),
+    });
+  }
+
+  return null;
 }
 
 function normalizeAgentKey(value: string) {
@@ -1815,6 +2019,7 @@ export function resolveEiahDecision(params: {
   catalogAgents: Agent[];
   intentUnknown: boolean;
   accessContext?: LauncherAccessContext | null;
+  conversationState?: ConversationState | null;
 }): EiahDecision {
   const input = params.input.trim();
   const journey = resolveEiahJourneyContract({
@@ -1832,24 +2037,13 @@ export function resolveEiahDecision(params: {
     };
   }
 
-  if (params.routeIntent === "help") {
-    const tutorReply = resolveEiahTutorContractResponse({
-      input,
-      accessContext: params.accessContext,
-    });
-    if (tutorReply && tutorReply.intentId !== "platform_overview_fallback") {
-      return {
-        kind: "help_reply",
-        shouldCreateRun: false,
-        content: tutorReply.content,
-        resolvedQuickReplies: tutorReply.quickReplies,
-        launcherRouteIntent: "help",
-        presentationRouteIntent: "help",
-        eiahMode: "help",
-        renderVariant: "simple_help",
-        persistIntent: { intent: "product_explain", confidenceFloor: 0.82 },
-      };
-    }
+  const priorityHelpDecision = resolveEiahPriorityHelpDecision({
+    input,
+    routeIntent: params.routeIntent,
+    accessContext: params.accessContext,
+  });
+  if (priorityHelpDecision) {
+    return priorityHelpDecision;
   }
 
   if (journey && (isJourneyEntryQuestion(input) || isPlatformSelfExplainQuestion(input))) {
@@ -1857,7 +2051,7 @@ export function resolveEiahDecision(params: {
       kind: "initial_journey",
       shouldCreateRun: false,
       content: buildEiahJourneyReply(journey),
-      resolvedQuickReplies: journey.initialQuickReplies,
+      resolvedQuickReplies: filterResolvedEiahQuickReplies(journey.initialQuickReplies, params.accessContext),
       journeyContext: {
         frontDoorLabel: journey.frontDoorLabel,
         firstStepLabel: journey.firstStepLabel,
@@ -1933,34 +2127,6 @@ export function resolveEiahDecision(params: {
       renderVariant: "simple_help",
       persistIntent: { intent: "unknown", confidenceFloor: 0.78 },
     };
-  }
-
-  const imobKnowledgeSearchIntent = resolveImobKnowledgeSearchIntent(input);
-  const imobSurfaceDecision =
-    params.routeIntent === "imob"
-      ? resolveImobLauncherSurfaceDecision({
-          input,
-          hasAccess: hasImobVerticalAccess(params.accessContext),
-          hasKnowledgeSearchIntent: Boolean(imobKnowledgeSearchIntent),
-          isContextEntryQuestion: isImobContextEntryQuestion(input),
-        })
-      : imobKnowledgeSearchIntent
-        ? resolveImobLauncherSurfaceDecision({
-            input,
-            hasAccess: hasImobVerticalAccess(params.accessContext),
-            hasKnowledgeSearchIntent: true,
-            isContextEntryQuestion: false,
-          })
-        : isImobContextEntryQuestion(input)
-          ? resolveImobLauncherSurfaceDecision({
-              input,
-              hasAccess: hasImobVerticalAccess(params.accessContext),
-              hasKnowledgeSearchIntent: false,
-              isContextEntryQuestion: true,
-            })
-          : null;
-  if (imobSurfaceDecision) {
-    return imobSurfaceDecision;
   }
 
   const specialistExplainTarget = resolveSpecialistExplainTarget(input);
@@ -2073,6 +2239,16 @@ export function resolveEiahDecision(params: {
         kind: "help_reply",
         shouldCreateRun: false,
         content: directHelp,
+        conversationState: buildHelpConversationState({
+          intent: {
+            intentId: "deterministic_help",
+            confidence: 0.78,
+            scopeHint: "global",
+          },
+          responseType: "resolved",
+          content: directHelp,
+          quickReplies: [],
+        }),
         launcherRouteIntent: "help",
         presentationRouteIntent: "help",
         eiahMode: "help",
@@ -2085,6 +2261,16 @@ export function resolveEiahDecision(params: {
         kind: "contextual_fallback",
         shouldCreateRun: false,
         content: buildContextualFallback(),
+        conversationState: buildHelpConversationState({
+          intent: {
+            intentId: null,
+            confidence: 0.6,
+            scopeHint: "global",
+          },
+          responseType: "not_found",
+          content: buildContextualFallback(),
+          quickReplies: [],
+        }),
         launcherRouteIntent: "help",
         presentationRouteIntent: "help",
         eiahMode: "help",
@@ -2099,6 +2285,16 @@ export function resolveEiahDecision(params: {
       kind: "contextual_fallback",
       shouldCreateRun: false,
       content: buildContextualFallback(),
+      conversationState: buildHelpConversationState({
+        intent: {
+          intentId: null,
+          confidence: 0.6,
+          scopeHint: "global",
+        },
+        responseType: "not_found",
+        content: buildContextualFallback(),
+        quickReplies: [],
+      }),
       launcherRouteIntent: "help",
       presentationRouteIntent: "help",
       eiahMode: "help",

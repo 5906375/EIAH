@@ -222,6 +222,86 @@ function buildAgentsOverviewReply() {
   ].join("\n");
 }
 
+function buildAgentsCardReadingReply() {
+  return [
+    "**Como ler os cards dos agentes**",
+    "",
+    "Ao olhar um agente, observe principalmente:",
+    "- especialidade",
+    "- disponibilidade no workspace",
+    "- risco e necessidade de aprovação",
+    "- integrações declaradas",
+    "- comprovantes ou contexto exigidos",
+    "",
+    "Esses sinais ajudam a decidir se o agente é adequado ao caso e ao nível de governança exigido.",
+  ].join("\n");
+}
+
+function buildEiahVsSpecialistReply() {
+  return [
+    "**Quando usar o EIAH e quando usar especialista**",
+    "",
+    "- `EIAH`: triagem, navegação, comparação de páginas e próximo passo",
+    "- `Especialista`: profundidade de domínio e contexto específico",
+    "",
+    "Regra prática:",
+    "- comece pelo `EIAH` quando a dúvida ainda estiver aberta",
+    "- use um especialista quando o caso já estiver claramente dentro de um domínio",
+  ].join("\n");
+}
+
+function buildChatVsImobReply() {
+  return [
+    "**Chat principal e Chat IMOB: quando usar cada um**",
+    "",
+    "- `Chat principal`: triagem, páginas da plataforma, comparação de caminhos e próximo passo",
+    "- `Chat IMOB`: orientação contextual de casos e jornadas da operação imobiliária",
+    "",
+    "Regra prática:",
+    "- comece no `Chat` quando a dúvida ainda estiver aberta",
+    "- use `Chat IMOB` quando o caso já for claramente imobiliário",
+  ].join("\n");
+}
+
+function buildChatTriageReply() {
+  return [
+    "**Como funciona a triagem do EIAH**",
+    "",
+    "O `EIAH` atua como front door da conversa.",
+    "",
+    "Na prática, ele faz três coisas:",
+    "- entende sua intenção",
+    "- escolhe a área mais adequada da plataforma",
+    "- encaminha para especialista quando a profundidade do caso exigir",
+  ].join("\n");
+}
+
+function buildChatHandoffReply() {
+  return [
+    "**Como o EIAH faz handoff para especialista**",
+    "",
+    "O handoff acontece quando a conversa sai da orientação geral e entra em profundidade de domínio.",
+    "",
+    "Sinais típicos:",
+    "- necessidade jurídica, financeira ou vertical específica",
+    "- decisão crítica",
+    "- contexto que exige especialista com mais profundidade",
+  ].join("\n");
+}
+
+function buildChatVsRunsReply() {
+  return [
+    "**Quando usar Chat e quando usar Runs**",
+    "",
+    "- `Chat`: entender o caminho, escolher especialista, esclarecer contexto",
+    "- `Runs`: executar a ação prática",
+    "",
+    "Regra simples:",
+    "- se você ainda está decidindo, fique no `Chat`",
+    "- se você já sabe o que quer executar, vá para `Runs`",
+  ].join("\n");
+}
+
 function buildAgentsGovernanceInventoryReply() {
   return [
     "**Como ler o inventário governado de agentes**",
@@ -473,6 +553,58 @@ export function buildDeterministicHelpReply(input: string): string | null {
   }
 
   if (
+    normalized.includes("qual a diferenca entre chat e chat imob") ||
+    normalized.includes("qual a diferença entre chat e chat imob") ||
+    normalized.includes("quando usar chat imob") ||
+    normalized.includes("chat versus chat imob") ||
+    normalized.includes("chat vs chat imob")
+  ) {
+    return buildChatVsImobReply();
+  }
+
+  if (
+    normalized.includes("como funciona a triagem do eiah") ||
+    normalized.includes("como o eiah faz triagem") ||
+    normalized.includes("triagem do eiah")
+  ) {
+    return buildChatTriageReply();
+  }
+
+  if (
+    normalized.includes("como o eiah faz handoff para especialista") ||
+    normalized.includes("como funciona o handoff para especialista") ||
+    normalized.includes("handoff para especialista")
+  ) {
+    return buildChatHandoffReply();
+  }
+
+  if (
+    normalized.includes("quando usar chat versus runs") ||
+    normalized.includes("qual a diferenca entre chat e runs") ||
+    normalized.includes("qual a diferença entre chat e runs") ||
+    normalized.includes("chat vs runs")
+  ) {
+    return buildChatVsRunsReply();
+  }
+
+  if (
+    normalized.includes("como ler os cards dos agentes") ||
+    normalized.includes("como ler os cards de agentes") ||
+    normalized.includes("cards dos agentes")
+  ) {
+    return buildAgentsCardReadingReply();
+  }
+
+  if (
+    normalized.includes("quando usar o eiah e quando usar especialista") ||
+    normalized.includes("qual a diferenca entre eiah e especialista") ||
+    normalized.includes("qual a diferença entre eiah e especialista") ||
+    normalized.includes("quando usar especialista")
+  ) {
+    return buildEiahVsSpecialistReply();
+  }
+
+  if (
     normalized.includes("selecione um agente") ||
     normalized.includes("escolher um agente") ||
     normalized.includes("escolher agente") ||
@@ -609,21 +741,129 @@ export function buildDeterministicHelpReply(input: string): string | null {
     ].join("\n");
   }
 
-  if (normalized.includes("billing") || normalized.includes("invoice") || normalized.includes("cobranca")) {
+  if (normalized.includes("economy") || normalized.includes("oportunidade") || normalized.includes("impacto")) {
     return [
-      "No EIAH, o billing combina plano contratado com uso do workspace para compor o custo mensal.",
+      "**Como funciona a página Economy**",
       "",
-      "O que entra nessa visão:",
-      "- resumo do plano ativo",
-      "- uso de runs e usuários do workspace",
-      "- faturas, cobranças e histórico",
+      "A `Economy` mostra impacto consolidado, oportunidades e priorização econômica da operação.",
       "",
-      "Como ler isso rapidamente:",
-      "- plano define a base contratada",
-      "- usuários e runs mostram o volume operacional",
-      "- faturas mostram o fechamento financeiro",
+      "**Como usar na prática**",
+      "1. Veja primeiro as oportunidades priorizadas.",
+      "2. Compare o impacto estimado de cada uma.",
+      "3. Use `Billing` para validar consumo e custo real.",
+      "4. Use `Runs` quando a oportunidade precisar virar ação prática.",
       "",
-      "Se quiser consultar isso agora, o melhor caminho é abrir [Billing](/app/billing).",
+      "**Como interpretar**",
+      "- `Economy`: decide onde agir",
+      "- `Billing`: confirma custo, uso e consistência financeira",
+      "- `Runs`: executa a ação",
+      "",
+      "**Perguntas úteis**",
+      "- como priorizar oportunidades?",
+      "- qual a diferença entre Economy, Billing e Runs?",
+    ].join("\n");
+  }
+
+  if (
+    normalized.includes("marketplace") ||
+    normalized.includes("nao instalado") ||
+    normalized.includes("não instalado") ||
+    normalized.includes("ativar modulo") ||
+    normalized.includes("ativar módulo") ||
+    normalized.includes("habilitado")
+  ) {
+    return [
+      "**Como funciona o Marketplace**",
+      "",
+      "O `Marketplace` é a área onde você ativa agentes, módulos e verticais no workspace.",
+      "",
+      "**Como usar na prática**",
+      "1. Abra o item que você quer liberar.",
+      "2. Veja se o status está como `não instalado` ou já ativado.",
+      "3. Ative o módulo quando quiser liberar a capacidade operacional.",
+      "4. Depois volte para `Chat`, `Runs` ou a vertical correspondente.",
+      "",
+      "**Como interpretar**",
+      "- `não instalado`: ainda não disponível para uso",
+      "- `ativado`: capacidade liberada no workspace",
+      "- ativação não substitui `Billing`: preço e consumo real são vistos lá",
+    ].join("\n");
+  }
+
+  if (normalized.includes("perfil")) {
+    return [
+      "**Como funciona a página Perfil**",
+      "",
+      "A `Perfil` é a área para confirmar conta, workspace ativo e contexto de acesso antes de concluir que algo está indisponível.",
+      "",
+      "**Como usar na prática**",
+      "1. Abra `Perfil`.",
+      "2. Confirme se o workspace ativo é o correto.",
+      "3. Verifique se o seu acesso está coerente com a operação esperada.",
+      "4. Depois volte para `Chat`, `Agentes` ou `Marketplace` com o contexto validado.",
+      "",
+      "**Como interpretar**",
+      "- `Perfil`: valida identidade e contexto",
+      "- `Marketplace`: valida ativação de módulo ou vertical",
+      "- `Chat` e `Agentes`: dependem desse contexto para responder corretamente",
+    ].join("\n");
+  }
+
+  if (
+    normalized.includes("billing") ||
+    normalized.includes("invoice") ||
+    normalized.includes("cobranca") ||
+    normalized.includes("cobrança") ||
+    normalized.includes("pricing") ||
+    normalized.includes("preco") ||
+    normalized.includes("preços") ||
+    normalized.includes("precos") ||
+    normalized.includes("tabela de preços") ||
+    normalized.includes("tabela de precos") ||
+    normalized.includes("controle financeiro") ||
+    normalized.includes("billing quotas") ||
+    normalized.includes("billing & quotas") ||
+    normalized.includes("ledger gaps") ||
+    normalized.includes("audit gaps") ||
+    normalized.includes("custo auditavel") ||
+    normalized.includes("custo auditável") ||
+    normalized.includes("reconciliacao") ||
+    normalized.includes("reconciliação")
+  ) {
+    return [
+      "**Como usar Billing & Quotas / Controle financeiro**",
+      "",
+      "No EIAH, essa tela combina plano, uso, reconciliação e trilha financeira do tenant/workspace.",
+      "",
+      "**Como usar na prática**",
+      "1. Escolha o `perfil` no topo para ler a tela pela ótica de operação, financeiro ou executivo.",
+      "2. Use o `filtro por período` para aplicar o mesmo recorte em resumo, ledger e reconciliação.",
+      "3. Veja o `resumo operacional` para entender runs, custo consolidado e se existem gaps abertos.",
+      "4. Confira `consumo do tenant` e `consumo do workspace` para saber onde o custo está concentrado.",
+      "5. Use `ledger gaps` e `audit gaps` para identificar pendências de reconciliação ou rastreabilidade.",
+      "6. Leia `custo auditável` como o total que já está consistente com a trilha financeira do ciclo.",
+      "",
+      "**Como interpretar os blocos**",
+      "- `Consumo do tenant`: total consolidado do ciclo.",
+      "- `Consumo do workspace ativo`: recorte operacional do workspace em foco.",
+      "- `Ledger gaps`: diferenças entre o que deveria estar no ledger e o que foi registrado.",
+      "- `Audit gaps`: falhas de rastreabilidade entre execução, evidência e trilha auditável.",
+      "- `Custo auditável`: custo já reconciliado com segurança para leitura financeira.",
+      "",
+      "**Leitura rápida**",
+      "- tudo em `R$ 0,00` e `0 runs` normalmente significa que o workspace ainda não começou a operar",
+      "- `gaps > 0` significa que vale abrir reconciliação antes de confiar no fechamento financeiro",
+      "",
+      "**Diferença semântica rápida**",
+      "- `Pricing oficial`: preço do plano",
+      "- `Billing`: visão financeira ampla",
+      "- `Controle financeiro`: consumo real, gaps e reconciliação",
+      "- `Guia Interativo`: limites, alerts e quotas",
+      "",
+      "**Atalhos úteis**",
+      "- [Billing](/app/billing)",
+      "- [Guia Interativo de Billing & Quotas](/app/billing#billing-guide-footer)",
+      "- [Pricing oficial](/app/self-service#pricing-oficial)",
     ].join("\n");
   }
 
