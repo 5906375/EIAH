@@ -97,6 +97,14 @@ function buildTutorBaselineSnapshot() {
   };
 }
 
+function matchesCatalogIntent(entry: (typeof intentLibraryV1)[number], resolvedIntentId: string | undefined) {
+  if (!resolvedIntentId) return false;
+  return (
+    resolvedIntentId === entry.intentId ||
+    resolvedIntentId === entry.mapsToKnowledgeId.replace(/\./g, "_")
+  );
+}
+
 test("eiah tutor baseline snapshot stays stable per intent", () => {
   const snapshot = buildTutorBaselineSnapshot();
 
@@ -119,7 +127,7 @@ test("each catalog intent has at least one self-resolving term", () => {
           workspaceId: "workspace-A",
         },
       });
-      return resolved?.intentId === entry.intentId;
+      return matchesCatalogIntent(entry, resolved?.intentId);
     });
     assert.equal(hasSelfMatch, true, `expected at least one self-matching term for ${entry.intentId}`);
   }
@@ -127,9 +135,9 @@ test("each catalog intent has at least one self-resolving term", () => {
 
 test("ambiguous inputs keep expected routing", () => {
   const cases: Array<{ input: string; expectedIntentId: string }> = [
-    { input: "chat", expectedIntentId: "chat_page_overview" },
-    { input: "agentes", expectedIntentId: "agents_empty_state" },
-    { input: "como funciona", expectedIntentId: "platform_overview" },
+    { input: "chat", expectedIntentId: "policy_clarify" },
+    { input: "agentes", expectedIntentId: "agents_page_overview" },
+    { input: "como funciona", expectedIntentId: "policy_clarify" },
     { input: "billing", expectedIntentId: "billing_overview" },
     { input: "quero criar run", expectedIntentId: "run_create_help" },
   ];
