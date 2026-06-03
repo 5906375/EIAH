@@ -2,11 +2,16 @@ import crypto from "node:crypto";
 import { Router } from "express";
 import { z } from "zod";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
+import { prismaGlobal } from "@repo/db";
 import {
   buildTenantRecipeContract,
   tenantRecipeStatusSchema,
   tenantRecipeWorkspaceScopeSchema,
 } from "../types/tenantRecipeContract";
+import {
+  readRequestedWorkspaceId,
+  resolveEffectiveTenantRecipeWorkspaceId,
+} from "./tenantRecipeWorkspaceSelection";
 
 export const tenantRecipesRouter = Router();
 tenantRecipesRouter.use(enforceTenant);
@@ -186,6 +191,23 @@ tenantRecipesRouter.get("/tenant-recipes", async (req, res) => {
   await ensureTenantRecipesTable(request);
 
   const view = req.query.view === "tenant" ? "tenant" : "workspace";
+  const requestedWorkspaceId = readRequestedWorkspaceId(req);
+  const requestedWorkspace =
+    requestedWorkspaceId && requestedWorkspaceId !== request.authContext.workspaceId
+      ? await prismaGlobal.workspace.findUnique({
+          where: { id: requestedWorkspaceId },
+          select: { tenantId: true },
+        })
+      : null;
+  const effectiveWorkspaceId = resolveEffectiveTenantRecipeWorkspaceId({
+    authTenantId: request.authContext.tenantId,
+    authWorkspaceId: request.authContext.workspaceId,
+    requestedWorkspaceId,
+    requestedWorkspaceTenantId:
+      requestedWorkspaceId && requestedWorkspaceId !== request.authContext.workspaceId
+        ? requestedWorkspace?.tenantId ?? null
+        : request.authContext.tenantId,
+  });
 
   const rows =
     view === "tenant"
@@ -234,7 +256,7 @@ tenantRecipesRouter.get("/tenant-recipes", async (req, res) => {
             AND status = 'homologated'
             AND (
               workspace_scope_mode = 'all_workspaces'
-              OR workspace_scope_ids ? ${request.authContext.workspaceId}
+              OR workspace_scope_ids ? ${effectiveWorkspaceId}
             )
           ORDER BY updated_at DESC;
         `;

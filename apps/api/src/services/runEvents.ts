@@ -1,9 +1,11 @@
 import { Prisma, PrismaClient, prismaGlobal } from "@repo/db";
 import Redis from "ioredis";
 import { publishRunEventToStream } from "./runEventStream";
+import { waitForRedisReady } from "./runEventsRedisTransport";
 
 const redisUrl = process.env.RUN_EVENTS_REDIS_URL || process.env.REDIS_URL;
 let redisPublisher: Redis | null = null;
+let redisPublisherReadyPromise: Promise<Redis> | null = null;
 const outboxStreamKey = process.env.RUN_EVENTS_OUTBOX_STREAM ?? "run-events-outbox";
 const useOutbox = (() => {
   const raw = (process.env.RUN_EVENTS_USE_OUTBOX ?? "false").trim().toLowerCase();
@@ -15,10 +17,31 @@ function getRedisPublisher() {
   if (!redisPublisher) {
     redisPublisher = new Redis(redisUrl, {
       enableOfflineQueue: false,
+      lazyConnect: true,
       maxRetriesPerRequest: 2,
     });
   }
   return redisPublisher;
+}
+
+async function getRedisPublisherReady() {
+  const publisher = getRedisPublisher();
+  if (!publisher) return null;
+  if (publisher.status === "ready") return publisher;
+
+  if (!redisPublisherReadyPromise) {
+    redisPublisherReadyPromise = waitForRedisReady(publisher)
+      .then(() => {
+        redisPublisherReadyPromise = null;
+        return publisher;
+      })
+      .catch((err) => {
+        redisPublisherReadyPromise = null;
+        throw err;
+      });
+  }
+
+  return redisPublisherReadyPromise;
 }
 
 export async function recordRunEvent(params: {
@@ -53,7 +76,19 @@ export async function recordRunEvent(params: {
     },
   });
 
-  const publisher = getRedisPublisher();
+  let publisher: Redis | null = null;
+  try {
+    publisher = await getRedisPublisherReady();
+  } catch (err) {
+    if (useOutbox) {
+      // eslint-disable-next-line no-console
+      console.error("runEvents.redis_outbox_error", err);
+    } else {
+      // eslint-disable-next-line no-console
+      console.error("runEvents.redis_publish_error", err);
+    }
+  }
+
   if (useOutbox && publisher) {
     try {
       await publisher.xadd(

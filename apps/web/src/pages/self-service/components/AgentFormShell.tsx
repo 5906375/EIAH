@@ -356,15 +356,24 @@ export default function AgentFormShell<FormValues>({
       setError(null);
       setIsSubmitting(true);
       try {
+        const formInput =
+          currentRequest.metadata && isPlainObject(currentRequest.metadata.form)
+            ? (currentRequest.metadata.form as Record<string, unknown>)
+            : null;
+        const executionInput = formInput ?? currentRequest.rawPayload ?? combined;
+        const metadata: Record<string, unknown> = {
+          mode,
+          ...currentRequest.metadata,
+          executionInput,
+        };
+        if (currentRequest.rawPayload && currentRequest.rawPayload !== executionInput) {
+          metadata.rawPayload = currentRequest.rawPayload;
+        }
         const payload = {
           agent: agentId,
           prompt: currentRequest.prompt,
           workspaceId,
-          metadata: {
-            mode,
-            ...currentRequest.metadata,
-            rawPayload: currentRequest.rawPayload ?? combined,
-          },
+          metadata,
         };
 
         if (mode === "simulate") {

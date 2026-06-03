@@ -20,6 +20,7 @@ import {
   withCostContext,
   enqueueRunAtivoUniversal,
   PlanStepStore,
+  executeRegisteredAction,
   getRegisteredActionDefinitions,
   type AgentRecommendationState,
   type RecommendationCandidate,
@@ -81,6 +82,13 @@ import { getMemoryService } from "../services/memory";
 import { createGuardrailLedgerStore } from "../services/guardrailLedgerStore";
 import { appendSclRecord } from "../services/sclLedger";
 import { resolveObserveAgentId } from "./runWorkerObserve";
+import { detectRunWorkerOutputFailure } from "./runWorkerOutputValidation";
+import { GuardianPlanManager } from "./guardianPlanManager";
+import {
+  mergeActionsForExecution,
+  resolveLocallyExecutableAction,
+  resolveDeclaredActionNames,
+} from "./runWorkerActionResolution";
 
 /* ──────────────────────────────────────────────
    Action Registry / Tenant Actions
@@ -112,11 +120,23 @@ type ScopedRunAtivoJobPayload = RunAtivoUniversalJobPayload & {
   workspaceId: string;
 };
 
-function normalizeActionName(value: string) {
-  return value.trim().toLowerCase();
+function extractResolvedSourceIdsFromOutputs(
+  outputs: Array<{ stepId: string; data: unknown }>
+) {
+  return outputs
+    .map((entry) => {
+      if (!entry.data || typeof entry.data !== "object" || Array.isArray(entry.data)) return null;
+      const data = entry.data as Record<string, unknown>;
+      return typeof data.step === "string" ? data.step : null;
+    })
+    .filter((value): value is string => Boolean(value));
 }
 
-async function resolveActionsForExecution(tenantId: string, workspaceId: string) {
+async function resolveActionsForExecution(
+  tenantId: string,
+  workspaceId: string,
+  declaredActionNames?: string[]
+) {
   const configured = tenantActionResolver(tenantId) ?? {};
   const configuredCount = Object.keys(configured).length;
   const definitions = getRegisteredActionDefinitions();
@@ -124,7 +144,7 @@ async function resolveActionsForExecution(tenantId: string, workspaceId: string)
   const registered = Object.keys(definitions).filter((name) => Boolean(name && name.trim()));
   const canonicalByNormalized = new Map<string, string>();
   for (const actionName of registered) {
-    const normalized = normalizeActionName(actionName);
+    const normalized = actionName.trim().toLowerCase();
     if (!canonicalByNormalized.has(normalized)) {
       canonicalByNormalized.set(normalized, actionName);
     }
@@ -140,41 +160,36 @@ async function resolveActionsForExecution(tenantId: string, workspaceId: string)
   });
 
   const dbAllowedCanonical = dbPolicies
-    .map((row) => canonicalByNormalized.get(normalizeActionName(row.actionName)))
+    .map((row) => canonicalByNormalized.get(row.actionName.trim().toLowerCase()))
     .filter((name): name is string => Boolean(name));
   const dbAllowedRaw = dbPolicies
     .map((row) => row.actionName.trim())
     .filter((name): name is string => Boolean(name));
+  const declaredAgentActions = resolveDeclaredActionNames(
+    declaredActionNames,
+    canonicalByNormalized,
+    definitions
+  );
 
   // Fallback seguro: sem policies resolvidas e sem resolver custom => libera catálogo registrado.
   if (dbAllowedCanonical.length === 0 && dbAllowedRaw.length === 0 && configuredCount === 0) {
     return definitions;
   }
 
-  const merged: Record<string, RegisteredAction> = { ...(configured as Record<string, RegisteredAction>) };
-  for (const actionName of dbAllowedCanonical) {
-    const def = definitions[actionName];
-    if (def) {
-      merged[actionName] = def;
-    }
-  }
-  // Quando a policy permite ações IMOB que não estão no catálogo core,
-  // ainda marcamos como permitidas para não bloquear execução no guard local.
-  for (const rawName of dbAllowedRaw) {
-    if (merged[rawName]) continue;
-    const canonical = canonicalByNormalized.get(normalizeActionName(rawName));
-    if (canonical && definitions[canonical]) {
-      merged[canonical] = definitions[canonical];
-      continue;
-    }
-    merged[rawName] = {
-      name: rawName,
-      version: "1.0.0",
-      description: "Tenant policy allowed action",
-      handler: async () => ({ status: "error", error: `Action ${rawName} not registered in core catalog` }),
-    };
-  }
-  return merged;
+  const dbAllowedCanonicalResolved = dbAllowedCanonical.map(
+    (name) => canonicalByNormalized.get(name.trim().toLowerCase()) ?? name
+  );
+  const dbAllowedRawResolved = dbAllowedRaw.map(
+    (name) => canonicalByNormalized.get(name.trim().toLowerCase()) ?? name
+  );
+
+  return mergeActionsForExecution({
+    configured: configured as Record<string, RegisteredAction>,
+    definitions,
+    dbAllowedCanonical: dbAllowedCanonicalResolved,
+    dbAllowedRaw: dbAllowedRawResolved,
+    declaredAgentActions,
+  });
 }
 
 function normalizeStoredAgentState(
@@ -866,7 +881,10 @@ export async function processRunPayload(payload: RunQueuePayload) {
     let executionResult: ExecutionSnapshot | null = null;
 
     try {
-      const planManager = new DefaultPlanManager({ agentId: agent });
+      const planManager =
+        agent === "guardian"
+          ? new GuardianPlanManager()
+          : new DefaultPlanManager({ agentId: agent });
       const eventStore = createRunEventStoreAdapter({
         runId,
         tenantId,
@@ -909,6 +927,65 @@ export async function processRunPayload(payload: RunQueuePayload) {
               metadata: runtimeMetadataResolved,
             };
           const version = resolveMcpToolVersion(payload.metadata, mcpConfig.defaultVersion);
+          const localAction = resolveLocallyExecutableAction(actionName, allowedActions);
+          if (localAction) {
+            const localResult = await executeRegisteredAction(actionName, {
+              action: actionName,
+              input: effectivePayload,
+              runId,
+              stepId: context?.currentStep?.id,
+              tenantId,
+              workspaceId,
+              metadata:
+                actionMetadata && typeof actionMetadata === "object" && !Array.isArray(actionMetadata)
+                  ? (actionMetadata as Record<string, unknown>)
+                  : runtimeMetadataResolved,
+              version: localAction.version ?? version,
+              logger: (event, payload) => {
+                workerLogger.debug({
+                  event,
+                  action: actionName,
+                  stepId: context?.currentStep?.id,
+                  runId,
+                  ...payload,
+                });
+              },
+            });
+
+            if (localResult.status === "error") {
+              throw new Error(localResult.error ?? `Action "${actionName}" failed`);
+            }
+
+            try {
+              await recordGuardrailAudit({
+                prisma: prismaGlobal,
+                tenantId,
+                workspaceId,
+                runId,
+                eventType: "mcp.tool.executed",
+                severity: "info",
+                message: `Executed local core action ${actionName}@${localAction.version ?? version}`,
+                metadata: {
+                  tool: actionName,
+                  version: localAction.version ?? version,
+                  executionMode: "core_local",
+                  stepId: context?.currentStep?.id,
+                },
+              });
+            } catch {
+              // best-effort
+            }
+
+            return {
+              ok: true,
+              action: actionName,
+              version: localAction.version ?? version,
+              status: "success",
+              output: localResult.output ?? null,
+              executionMode: "core_local",
+            };
+          }
+
           const tool = await ToolRegistry.get(actionName, version, tenantId);
           if (!tool) {
             if (actionName.startsWith("realestate.")) {
@@ -1134,7 +1211,28 @@ export async function processRunPayload(payload: RunQueuePayload) {
             },
             profile,
             userPrompt: promptForExecution,
-            metadata: runtimeMetadataResolved,
+            metadata: {
+              ...runtimeMetadataResolved,
+              orchestratorOutputs: orchestratorContext.outputs,
+              groundedContext:
+                orchestratorContext.outputs.length > 0
+                  ? {
+                      outputs: orchestratorContext.outputs,
+                      plan: orchestratorContext.plan.map((plannedStep) => ({
+                        id: plannedStep.id,
+                        description: plannedStep.description,
+                        action: plannedStep.action ?? null,
+                        status: plannedStep.status,
+                      })),
+                    }
+                  : (runtimeMetadataResolved as Record<string, unknown>).groundedContext,
+              resolvedSources: Array.from(
+                new Set([
+                  ...(((runtimeMetadataResolved as Record<string, unknown>).resolvedSources as string[] | undefined) ?? []),
+                  ...extractResolvedSourceIdsFromOutputs(orchestratorContext.outputs),
+                ])
+              ),
+            },
           });
 
           executionResult = {
@@ -1211,7 +1309,27 @@ export async function processRunPayload(payload: RunQueuePayload) {
           ? { ...(metadata as Record<string, unknown>), userId }
           : { userId };
 
-      const actionsForTenant = await resolveActionsForExecution(tenantId, workspaceId);
+      const declaredProfileActions = Array.isArray(profile.tools)
+        ? (profile.tools as Array<unknown>)
+            .map((entry) => {
+              if (typeof entry === "string") return entry;
+              if (
+                entry &&
+                typeof entry === "object" &&
+                "name" in entry &&
+                typeof (entry as { name?: unknown }).name === "string"
+              ) {
+                return (entry as { name: string }).name;
+              }
+              return undefined;
+            })
+            .filter((value): value is string => Boolean(value))
+        : undefined;
+      const actionsForTenant = await resolveActionsForExecution(
+        tenantId,
+        workspaceId,
+        declaredProfileActions
+      );
 
       const context = await orchestrator.run({
         objective: prompt,
@@ -1235,24 +1353,10 @@ export async function processRunPayload(payload: RunQueuePayload) {
       });
 
       const inputBytes = Buffer.byteLength(prompt, "utf8");
-      const toolIdentifiers = Array.isArray(profile.tools)
-        ? (profile.tools as Array<unknown>)
-            .map((entry) => {
-              if (typeof entry === "string") {
-                return entry;
-              }
-              if (
-                entry &&
-                typeof entry === "object" &&
-                "name" in entry &&
-                typeof (entry as { name?: unknown }).name === "string"
-              ) {
-                return (entry as { name: string }).name;
-              }
-              return undefined;
-            })
-            .filter((value): value is string => Boolean(value))
-        : undefined;
+      const toolIdentifiers = declaredProfileActions;
+      const executedActionNames = context.plan
+        .map((step) => step.action)
+        .filter((value): value is string => typeof value === "string" && value.trim().length > 0);
 
       const estimate = await estimateCostCents({
         agent,
@@ -1485,6 +1589,11 @@ export async function processRunPayload(payload: RunQueuePayload) {
         });
       }
 
+      const outputFailure = detectRunWorkerOutputFailure(snapshot?.rawResponse);
+      if (outputFailure) {
+        throw new Error(outputFailure);
+      }
+
       const succeededResponse = {
         optimized: finalRecommendations,
         originalOutput: snapshot?.rawResponse ?? snapshot?.outputText ?? null,
@@ -1539,7 +1648,8 @@ export async function processRunPayload(payload: RunQueuePayload) {
         payload: {
           status: "success",
           costCents: estimate,
-          tools: toolIdentifiers,
+          tools: executedActionNames,
+          toolCatalog: toolIdentifiers,
           tookMs: snapshot?.tookMs ?? Date.now() - startedAt,
           traceId: snapshot?.traceId,
           planSteps: context.plan.length,
@@ -1554,7 +1664,7 @@ export async function processRunPayload(payload: RunQueuePayload) {
         {
           tookMs: snapshot?.tookMs ?? Date.now() - startedAt,
           recommendationsGenerated: finalRecommendations?.recomendacoes.length ?? 0,
-          toolsUsed: toolIdentifiers?.length ?? 0,
+          toolsUsed: executedActionNames.length,
         },
         "run.worker.completed"
       );
@@ -1568,7 +1678,8 @@ export async function processRunPayload(payload: RunQueuePayload) {
         payload: {
           status: "success",
           costCents: estimate,
-          tools: toolIdentifiers,
+          tools: executedActionNames,
+          toolCatalog: toolIdentifiers,
           tookMs: snapshot?.tookMs ?? Date.now() - startedAt,
           traceId: snapshot?.traceId,
           planSteps: context.plan.length,
@@ -1580,7 +1691,7 @@ export async function processRunPayload(payload: RunQueuePayload) {
         {
           tookMs: snapshot?.tookMs ?? Date.now() - startedAt,
           recommendationsGenerated: finalRecommendations?.recomendacoes.length ?? 0,
-          toolsUsed: toolIdentifiers?.length ?? 0,
+          toolsUsed: executedActionNames.length,
         },
         "run.worker.completed"
       );

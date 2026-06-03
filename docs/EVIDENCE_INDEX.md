@@ -213,6 +213,13 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | Hardening estrutural do chat agent-driven | `apps/web/src/components/agents/chatLauncherEngine.ts` + `apps/web/src/components/agents/proposalDomainResolver.ts` + `apps/web/src/components/agents/imobContextResolver.ts` + `apps/web/src/components/agents/legalContextResolver.ts` + `apps/web/src/components/agents/specialistExplainCatalog.ts` + `apps/web/src/components/agents/specialistGuidanceResolver.ts` + `apps/web/src/components/agents/specialistDecisionResolver.ts` + `apps/web/src/components/agents/platformHelpResolver.ts` + `apps/web/src/components/agents/agentPresentationResolver.ts` | Modularização do runtime do chat por domínio/papel, mantendo o `ChatAgentLauncher` em modo `render-first`. |
 | Hardening do help EIAH no Chat Launcher (2026-06-01) | `ops/evidence/latest/chat-launcher-help-priority-2026-06-01.md` | Evidência da frente de fechamento de quick replies, precedência explícita de intents, fallback tipado, filtro de chips inválidos e uso mínimo de `conversationState` no runtime do EIAH. |
 | Registry unificado de help do EIAH (2026-06-02) | `apps/web/src/components/agents/helpDictionary.ts` + `apps/web/src/components/agents/helpDictionary.global.ts` + `apps/web/src/components/agents/helpDictionary.pages.ts` + `apps/web/src/components/agents/helpDictionary.verticals.ts` + `apps/web/src/components/agents/helpDictionaryResolver.ts` + `apps/web/src/components/agents/helpDictionaryResolver.test.ts` + `ops/evidence/latest/help-dictionary-unified-registry-2026-06-02.md` | Fundação tipada do registry declarativo, resolvedor único com precedência `page > vertical > global`, integração conservadora no `engine` e cobertura inicial sem mudança de layout/UI. |
+| Self-service workspace recipe visibility (2026-06-02) | `apps/api/src/routes/tenant-recipes.ts` + `apps/api/src/routes/tenantRecipeWorkspaceSelection.ts` + `apps/api/src/tests/tenant-recipe-workspace-selection.test.ts` + `ops/evidence/latest/self-service-workspace-recipe-visibility-2026-06-02.md` | Correção localizada da listagem `view=workspace` para usar o workspace explicitamente pedido pela sessão do frontend, com validação por tenant e fallback seguro para o workspace do token. |
+| Self-service recipe instructions collapse (2026-06-02) | `apps/web/src/pages/self-service/index.tsx` + `ops/evidence/latest/self-service-recipe-instructions-collapse-2026-06-02.md` | Colapso visual de instruções longas nos cards de recipes do workspace, com toggle explícito de expansão/retração e sem regressão de runtime/duplicação. |
+| Self-service recipe prefill (2026-06-02) | `apps/web/src/pages/self-service/router.tsx` + `apps/web/src/pages/self-service/generic.tsx` + `apps/web/src/pages/self-service/recipePrefill.ts` + `apps/web/src/pages/self-service/recipePrefill.test.ts` + `ops/evidence/latest/self-service-recipe-prefill-2026-06-02.md` | Recipes homologadas passam a abrir o formulário do agente com `recipeId`, bloco de recipe vinculada e prefill heurístico dos campos para continuidade operacional real. |
+| Self-service guardian knowledge gate (2026-06-02) | `apps/web/src/pages/self-service/components/AgentFormShell.tsx` + `apps/web/src/pages/self-service/components/RunStatusCard.tsx` + `apps/web/src/pages/self-service/components/runErrorSummary.ts` + `ops/evidence/latest/self-service-guardian-knowledge-gate-2026-06-02.md` | O self-service passa a enviar `executionInput` canônico para a knowledge gate do backend e exibe mensagem operacional explícita quando o Guardian bloqueia a execução por falta de fontes obrigatórias. |
+| Trust score engine Prisma key fix (2026-06-02) | `apps/api/src/services/trustScoreEngine.ts` + `apps/api/src/tests/trust-score-engine.test.ts` + `ops/evidence/latest/trust-score-engine-prisma-key-fix-2026-06-02.md` | Alinha o `trustScoreEngine` à chave única composta `unique_trustscore_agent` do schema Prisma, removendo o erro de `Unknown argument tenantId_workspaceId_agentId` observado após runs do Guardian. |
+| Run events Redis outbox readiness (2026-06-02) | `apps/api/src/services/runEvents.ts` + `apps/api/src/services/runEventOutbox.ts` + `apps/api/src/services/runEventsRedisTransport.ts` + `apps/api/src/tests/run-events-redis-transport.test.ts` + `ops/evidence/latest/run-events-redis-outbox-readiness-2026-06-02.md` | Garante readiness do client Redis antes de `xadd/publish` no transporte de eventos de run, reduzindo o erro `Stream isn't writeable` após boot/reconnect sem quebrar o fluxo local de eventos. |
+| Guardian tools + checklist por etapa (2026-06-02) | `packages/core/src/actions/guardian.ts` + `packages/core/src/actions/guardianChecklistTools.ts` + `apps/api/src/workers/guardianPlanManager.ts` + `apps/api/src/workers/runWorker.ts` + `apps/web/src/components/runs/RunViewer.tsx` + `apps/web/src/pages/self-service/config.ts` + `ops/evidence/latest/guardian-tools-and-checklist-steps-2026-06-02.md` | O Guardian passa a executar checks reais de runtime/artefatos/policy para a rota de go-live controlado, usa plano específico por etapa, expõe os resultados no viewer e aproxima a execução das instruções da recipe. |
 | Cobertura e gate de regressão do chat | `apps/web/src/components/agents/chatLauncherEngine.test.ts` + `.github/workflows/ci.yml` | Cobertura determinística de proposal/help/IMOB/atalhos com gate obrigatório `ChatEngineRegression` no `CI Monorepo`. |
 
 ### Implemented Extra (pronto para PR/changelog)
@@ -368,3 +375,27 @@ EVIDÊNCIA: `apps/api/src/index.ts:97-103` + `apps/workers/run-worker/src/index.
 - Riscos + mitigação: OK
 - Próximos passos priorizados: OK
 - Lista completa usados/não usados: OK
+
+## Atualizações 2026-06-02
+
+- `ops/evidence/latest/guardian-run-hardening-and-export-alignment-2026-06-02.md`
+  - hardening do worker para bloquear `success` em saída truncada (`finish_reason === "length"`)
+  - deduplicação do prefill de recipes do `guardian` no self-service
+  - alinhamento do export/preview para ignorar artefatos genéricos de `runAtivoUniversal` incompatíveis com runs do `guardian`
+- `ops/evidence/latest/guardian-run-viewer-and-payload-cleanup-2026-06-02.md`
+  - remoção do resumo genérico de campanha no viewer do `guardian`
+  - cleanup de redundância entre `metadata.form`, `executionInput` e `rawPayload`
+  - correção da exibição de `exploracao_pct`
+  - apresentação do contexto/evidências do `guardian` como checklist probatório
+- `ops/evidence/latest/guardian-export-and-score-alignment-2026-06-02.md`
+  - export HTML/PDF do `guardian` alinhado a contexto probatório, sem fallback de pitch/campaign
+  - unificação da origem de `diagnóstico`
+  - remoção de badge redundante de delta/score nulo
+- `ops/evidence/latest/guardian-prompt-compaction-2026-06-02.md`
+  - compactação de `notes` no prefill do `guardian`
+  - prompt do `guardian` reduzido e com pedido de output mais curto
+  - orientação operacional sobre bytes estimados versus tokens reais
+- `ops/evidence/latest/guardian-core-action-proxy-fallback-2026-06-02.md`
+  - fallback local para actions core do `guardian` quando `MCP_PROXY_ALL_ACTIONS` está ativo
+  - preservação do proxy MCP para tools externas com `ToolContract`
+  - correção do erro `ToolContract missing: guardian.checkRuntimeHealth@1.0.0`

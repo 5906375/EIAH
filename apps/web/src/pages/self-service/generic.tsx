@@ -1,19 +1,62 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import AgentFormShell from "./components/AgentFormShell";
 import SelfServiceNav from "./components/SelfServiceNav";
 import type { GenericAgentConfig } from "./config";
+import { apiListTenantRecipes, type TenantRecipe } from "@/lib/api";
+import { buildRecipePrefillValues } from "./recipePrefill";
 
 type FormValues = Record<string, string>;
 
 export default function GenericAgentFormPage({ config }: { config: GenericAgentConfig }) {
-  const initialValues = useMemo<FormValues>(() => {
-    const entries = config.fields.map((field) => [field.key, ""]);
-    return Object.fromEntries(entries);
-  }, [config.fields]);
+  const [searchParams] = useSearchParams();
+  const [linkedRecipe, setLinkedRecipe] = useState<TenantRecipe | null>(null);
+  const recipeId = searchParams.get("recipeId");
+
+  useEffect(() => {
+    let active = true;
+    if (!recipeId) {
+      setLinkedRecipe(null);
+      return () => {
+        active = false;
+      };
+    }
+
+    apiListTenantRecipes({ view: "tenant" })
+      .then((response) => {
+        if (!active) return;
+        setLinkedRecipe(response.items.find((item) => item.id === recipeId) ?? null);
+      })
+      .catch(() => {
+        if (!active) return;
+        setLinkedRecipe(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [recipeId]);
+
+  const initialValues = useMemo<FormValues>(
+    () => buildRecipePrefillValues(config, linkedRecipe),
+    [config, linkedRecipe]
+  );
 
   return (
     <div className="space-y-6">
       <SelfServiceNav currentSlug={config.slug} />
+      {linkedRecipe ? (
+        <div className="rounded-2xl border border-accent/20 bg-accent/5 p-4">
+          <p className="text-[10px] uppercase tracking-[0.24em] text-accent">Recipe vinculada</p>
+          <h2 className="mt-2 text-lg font-semibold text-foreground">{linkedRecipe.title}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{linkedRecipe.summary}</p>
+          {linkedRecipe.instructions ? (
+            <p className="mt-3 whitespace-pre-line text-xs text-muted-foreground">
+              {linkedRecipe.instructions}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       <AgentFormShell<FormValues>
         agentId={config.agentId}
         title={config.title}
