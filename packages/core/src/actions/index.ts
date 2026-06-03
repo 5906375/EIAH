@@ -6,6 +6,7 @@ export * from "./notifications";
 export * from "./knowledge";
 export * from "./billing";
 export * from "./finance";
+export * from "./guardian";
 export * from "./reporting";
 export * from "./agents";
 export * from "./registry/VersionedActionRegistry";
@@ -17,6 +18,7 @@ import { registerNotificationActions } from "./notifications";
 import { registerKnowledgeActions } from "./knowledge";
 import { registerBillingActions } from "./billing";
 import { registerFinanceActions } from "./finance";
+import { registerGuardianActions } from "./guardian";
 import { registerReportingActions } from "./reporting";
 import { registerAgentProfileActions } from "./agents";
 import {
@@ -49,6 +51,7 @@ export function registerAllActions(
   registerKnowledgeActions({ idempotencyStore, rateLimiter });
   registerBillingActions();
   registerFinanceActions({ idempotencyStore, rateLimiter });
+  registerGuardianActions();
   registerReportingActions({ idempotencyStore });
   registerAgentProfileActions();
 

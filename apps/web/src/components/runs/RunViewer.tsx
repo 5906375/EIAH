@@ -110,6 +110,13 @@ function getAgentTheme(agent: string): AgentTheme {
 
 const PITCH_FIGMA_URL = "https://www.figma.com/community";
 const PITCH_CANVA_URL = "https://www.canva.com/templates/search/startup-pitch/";
+const GENERIC_RUN_ATIVO_MARKERS = [
+  "deck no figma",
+  "deck no canva",
+  "produto, dor e cta informados",
+  "briefing original",
+];
+const GUARDIAN_RUN_ATIVO_MARKERS = ["guardian", "evid", "dns", "waf", "rollback", "health"];
 const PITCH_COPY_BLOCKS: Array<{ title: string; description: string; content: string }> = [
   {
     title: "Landing Page — Hero + CTA",
@@ -145,9 +152,20 @@ type DiagnosticSummary = {
   filtradosRejeitados: number;
 };
 
+function extractDiagnosticPayload(payload?: Record<string, unknown> | null): Record<string, unknown> | null {
+  if (!payload) return null;
+  if (isPlainObject(payload.optimized) && isPlainObject((payload.optimized as Record<string, unknown>).diagnostico)) {
+    return (payload.optimized as Record<string, unknown>).diagnostico as Record<string, unknown>;
+  }
+  if (isPlainObject(payload.diagnostico)) {
+    return payload.diagnostico as Record<string, unknown>;
+  }
+  return null;
+}
+
 function extractDiagnosticSummary(payload?: Record<string, unknown> | null): DiagnosticSummary | null {
-  if (!payload || !isPlainObject(payload.diagnostico)) return null;
-  const diagnostico = payload.diagnostico as Record<string, unknown>;
+  const diagnostico = extractDiagnosticPayload(payload);
+  if (!diagnostico) return null;
   const toNumber = (value: unknown) => {
     if (typeof value === "number") return value;
     const parsed = Number(value);
@@ -159,6 +177,91 @@ function extractDiagnosticSummary(payload?: Record<string, unknown> | null): Dia
     filtradosAdotados: toNumber(diagnostico.filtrados_adotados),
     filtradosRejeitados: toNumber(diagnostico.filtrados_rejeitados),
   };
+}
+
+function hasTextValue(value: unknown) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function splitGuardianEvidenceChecklist(value: string | undefined) {
+  if (!value) return [];
+  return value
+    .replace(/^Você é o Guardian[\s\S]*?Pontos de verificação:\s*/i, "")
+    .replace(/^Pontos de verificação:\s*/i, "")
+    .split(/\n|;|,/)
+    .map((item) => item.trim().replace(/\.$/, ""))
+    .filter((item) => Boolean(item) && !/^você é o guardian/i.test(item));
+}
+
+type GuardianChecklistStepResult = {
+  step: string;
+  status: string;
+  reasonCode?: string;
+  summary?: string;
+  evidenceRefs: string[];
+  findings: string[];
+  nextAction?: string | null;
+};
+
+function extractGuardianChecklistResults(node: unknown): GuardianChecklistStepResult[] {
+  if (!node || typeof node !== "object") return [];
+  const record = node as Record<string, unknown>;
+  const nestedResponse = isPlainObject(record.response)
+    ? (record.response as Record<string, unknown>)
+    : null;
+  const outputs = Array.isArray(record.outputs)
+    ? record.outputs
+    : nestedResponse && Array.isArray(nestedResponse.outputs)
+    ? nestedResponse.outputs
+    : [];
+
+  return outputs
+    .map((entry) => {
+      const data =
+        isPlainObject(entry) && isPlainObject((entry as Record<string, unknown>).data)
+          ? ((entry as Record<string, unknown>).data as Record<string, unknown>)
+          : isPlainObject(entry)
+          ? (entry as Record<string, unknown>)
+          : null;
+      if (!data || typeof data.step !== "string" || typeof data.status !== "string") return null;
+      return {
+        step: data.step,
+        status: data.status,
+        reasonCode: typeof data.reasonCode === "string" ? data.reasonCode : undefined,
+        summary: typeof data.summary === "string" ? data.summary : undefined,
+        evidenceRefs: Array.isArray(data.evidenceRefs)
+          ? data.evidenceRefs.filter((item): item is string => typeof item === "string")
+          : [],
+        findings: Array.isArray(data.findings)
+          ? data.findings.filter((item): item is string => typeof item === "string")
+          : [],
+        nextAction: typeof data.nextAction === "string" ? data.nextAction : null,
+      } satisfies GuardianChecklistStepResult;
+    })
+    .filter((item): item is GuardianChecklistStepResult => Boolean(item));
+}
+
+function truncateReportText(value: string | undefined, maxLength = 220) {
+  if (!value) return "";
+  const normalized = value.replace(/\s+/g, " ").trim();
+  if (normalized.length <= maxLength) return normalized;
+  return `${normalized.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
+}
+
+function looksLikeGuardianForm(obj: Record<string, unknown>) {
+  const guardianSignals =
+    hasTextValue(obj.requestType) ||
+    hasTextValue(obj.evidence) ||
+    hasTextValue(obj.piiSignals) ||
+    hasTextValue(obj.finops);
+  const campaignSignals =
+    hasTextValue(obj.goal) ||
+    hasTextValue(obj.audience) ||
+    hasTextValue(obj.budget) ||
+    hasTextValue(obj.kpis) ||
+    hasTextValue(obj.toneProfile) ||
+    Array.isArray(obj.channels);
+  return guardianSignals && !campaignSignals;
 }
 
 export default function RunViewer({ run }: { run: RunData }) {
@@ -212,7 +315,7 @@ export default function RunViewer({ run }: { run: RunData }) {
     return normalizeRunResponse(run.response);
   }, [run.response]);
   const maskedOutputText = useMemo(() => (outputText ? maskPII(outputText) : outputText), [outputText]);
-  const runAtivoArtifacts = useMemo(() => extractRunAtivoArtifacts(run.response), [run.response]);
+  const runAtivoArtifacts = useMemo(() => extractRunAtivoArtifacts(run.agent, run.response), [run.agent, run.response]);
 
   const diagnosticSummary = useMemo(() => extractDiagnosticSummary(structuredOutput), [structuredOutput]);
   const primaryRecommendation = useMemo(() => {
@@ -816,7 +919,7 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
   const recommendations = Array.isArray(data.recomendacoes)
     ? (data.recomendacoes as Record<string, unknown>[])
     : [];
-  const diagnostico = isPlainObject(data.diagnostico) ? (data.diagnostico as Record<string, unknown>) : null;
+  const diagnostico = extractDiagnosticPayload(data);
   const agentState = isPlainObject(data.agentState) ? (data.agentState as Record<string, unknown>) : null;
   const maskedAgentState = useMemo(
     () => (agentState ? maskPII(JSON.stringify(agentState, null, 2)) : ""),
@@ -859,7 +962,22 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
       : null;
   const isPitchAgent = run.agent.toLowerCase() === "pitch";
   const isJ360Agent = run.agent.toLowerCase() === "j_360";
-  const exploitationPct = typeof diagnostico?.exploracao_pct === "number" ? 100 - diagnostico.exploracao_pct : null;
+  const isGuardianAgent = run.agent.toLowerCase() === "guardian";
+  const guardianForm = useMemo(() => {
+    if (!isGuardianAgent) return null;
+    const structured = extractGuardianForm(data);
+    if (structured) return structured;
+    if (!isPlainObject(run.request)) return null;
+    return extractGuardianForm(run.request as Record<string, unknown>);
+  }, [data, isGuardianAgent, run.request]);
+  const guardianEvidenceChecklist = useMemo(
+    () => splitGuardianEvidenceChecklist(guardianForm?.evidence),
+    [guardianForm?.evidence]
+  );
+  const guardianChecklistResults = useMemo(
+    () => (isGuardianAgent ? extractGuardianChecklistResults(data) : []),
+    [data, isGuardianAgent]
+  );
   const diagnosticStats = {
     totalPrevRuns:
       typeof diagnostico?.total_prev_runs === "number"
@@ -877,6 +995,10 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
   };
 
   const summaryItems = useMemo<SummaryItem[]>(() => {
+    if (isGuardianAgent) {
+      return [];
+    }
+
     if (isPitchAgent && pitchForm) {
       return [
         { key: "product", label: "Produto / solução", icon: "🎁", value: pitchForm.product },
@@ -919,9 +1041,12 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
     }
 
     return [];
-  }, [form, isPitchAgent, pitchForm, isJ360Agent, j360Form]);
+  }, [form, isGuardianAgent, isPitchAgent, pitchForm, isJ360Agent, j360Form]);
 
   const summarySubtitle = useMemo(() => {
+    if (isGuardianAgent) {
+      return "Objetivo operacional, evidências e trilha de validação informados na execução.";
+    }
     if (isPitchAgent) {
       return "Produto, dor e CTA informados no briefing original.";
     }
@@ -929,7 +1054,7 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
       return "Conta, jornada e riscos informados no briefing original.";
     }
     return "Objetivo, público e canais informados no briefing original.";
-  }, [isPitchAgent, isJ360Agent]);
+  }, [isGuardianAgent, isPitchAgent, isJ360Agent]);
 
   const hasSummaryData = summaryItems.length > 0;
 
@@ -1075,11 +1200,99 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
         </section>
       )}
 
+      {isGuardianAgent && guardianForm && (
+        <section className="space-y-3">
+          <header className="space-y-1">
+            <h4 className="text-base font-semibold text-foreground">Contexto probatório</h4>
+            <p className="text-xs text-muted-foreground">{summarySubtitle}</p>
+          </header>
+          <div className="space-y-2 text-sm text-foreground/90">
+            {hasTextValue(guardianForm.requestType) && (
+              <p>
+                <span className="font-semibold text-foreground">Rota alvo:</span> {guardianForm.requestType}
+              </p>
+            )}
+            {hasTextValue(guardianForm.objective) && (
+              <p>
+                <span className="font-semibold text-foreground">Objetivo:</span> {guardianForm.objective}
+              </p>
+            )}
+            {guardianEvidenceChecklist.length > 0 && (
+              <div className="space-y-2">
+                <p className="font-semibold text-foreground">Checklist probatório</p>
+                <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+                  {guardianEvidenceChecklist.map((item) => (
+                    <span key={item} className="pill bg-white/10 text-foreground">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            {guardianChecklistResults.length > 0 && (
+              <div className="space-y-2">
+                <p className="font-semibold text-foreground">Checks executados</p>
+                <div className="space-y-2">
+                  {guardianChecklistResults.map((item) => (
+                    <div key={`${item.step}:${item.reasonCode ?? item.status}`} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold text-foreground">{item.step}</span>
+                        <span
+                          className={mergeClassName(
+                            "pill text-[10px]",
+                            item.status === "verified"
+                              ? "bg-emerald-500/15 text-emerald-200"
+                              : item.status === "degraded" || item.status === "warning"
+                              ? "bg-amber-500/15 text-amber-200"
+                              : "bg-red-500/15 text-red-200"
+                          )}
+                        >
+                          {item.status}
+                        </span>
+                        {item.reasonCode ? (
+                          <span className="text-[10px] text-muted-foreground">{item.reasonCode}</span>
+                        ) : null}
+                      </div>
+                      {item.summary ? <p className="mt-2 text-xs text-muted-foreground">{item.summary}</p> : null}
+                      {item.evidenceRefs.length > 0 ? (
+                        <p className="mt-2 text-[11px] text-muted-foreground">
+                          <span className="font-semibold text-foreground">Evidências:</span> {item.evidenceRefs.join(", ")}
+                        </p>
+                      ) : null}
+                      {item.nextAction ? (
+                        <p className="mt-2 text-[11px] text-muted-foreground">
+                          <span className="font-semibold text-foreground">Próxima ação:</span> {item.nextAction}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {hasTextValue(guardianForm.finops) && (
+              <p>
+                <span className="font-semibold text-foreground">FinOps:</span> {guardianForm.finops}
+              </p>
+            )}
+            {hasTextValue(guardianForm.piiSignals) && (
+              <p>
+                <span className="font-semibold text-foreground">PII / termos sensíveis:</span> {guardianForm.piiSignals}
+              </p>
+            )}
+            {hasTextValue(guardianForm.notes) && (
+              <p className="text-xs text-muted-foreground">
+                <span className="font-semibold text-foreground">Observações adicionais:</span> {guardianForm.notes}
+              </p>
+            )}
+          </div>
+        </section>
+      )}
+
       {diagnostico && (
         <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
           <span className="pill bg-white/10 text-foreground">Runs analisados: {diagnosticStats.totalPrevRuns}</span>
           <span className="pill bg-white/10 text-foreground">
-            Exploração: {diagnosticStats.exploracaoPct}% • Exploração: {exploitationPct ?? 0}%
+            Exploração: {diagnosticStats.exploracaoPct}%
           </span>
           <span className="pill bg-emerald-500/10 text-emerald-200">
             Filtrados adotados: {diagnosticStats.filtradosAdotados}
@@ -1109,6 +1322,7 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
                   : null;
               const previousScore = typeof previousEntry?.score === "number" ? previousEntry.score : null;
               const scoreDelta = previousScore !== null ? score - previousScore : null;
+              const showScoreDelta = scoreDelta !== null && Math.abs(scoreDelta) >= 0.01;
               const critical = score >= 0.8;
               const scoreDeltaLabel =
                 scoreDelta !== null ? (scoreDelta > 0 ? `+${scoreDelta.toFixed(2)}` : scoreDelta.toFixed(2)) : null;
@@ -1161,17 +1375,17 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
                       <span className="pill">
                         Score {score.toFixed(2)}
                       </span>
-                      {scoreDelta !== null ? (
+                      {showScoreDelta ? (
                         <span
                           className={`pill ${
-                            scoreDelta > 0
+                            (scoreDelta ?? 0) > 0
                               ? "bg-emerald-500/15 text-emerald-200"
-                              : scoreDelta < 0
+                              : (scoreDelta ?? 0) < 0
                               ? "bg-rose-500/15 text-rose-200"
                               : "bg-white/10 text-foreground"
                           }`}
                         >
-                          {scoreDelta !== null ? `Score ${scoreDeltaLabel}` : null}
+                          {scoreDeltaLabel ? `Delta ${scoreDeltaLabel}` : null}
                         </span>
                       ) : null}
                       {critical && <span className="pill bg-amber-500/15 text-amber-200">Pontuação crítica</span>}
@@ -1350,15 +1564,28 @@ function RunAtivoArtifactsView({ artifacts, runId }: { artifacts: RunAtivoArtifa
   );
 }
 
-function extractRunAtivoArtifacts(response: unknown): RunAtivoArtifacts | null {
+function shouldUseRunAtivoHtml(agent: string, html: string | undefined) {
+  if (!html) return false;
+  const normalizedAgent = agent.toLowerCase();
+  if (normalizedAgent !== "guardian") return true;
+
+  const haystack = html.toLowerCase();
+  const hasGuardianMarkers = GUARDIAN_RUN_ATIVO_MARKERS.some((marker) => haystack.includes(marker));
+  const hasGenericPitchMarkers = GENERIC_RUN_ATIVO_MARKERS.some((marker) => haystack.includes(marker));
+  return hasGuardianMarkers || !hasGenericPitchMarkers;
+}
+
+function extractRunAtivoArtifacts(agent: string, response: unknown): RunAtivoArtifacts | null {
   if (!isPlainObject(response)) return null;
   const reporting = response.reporting;
   if (!isPlainObject(reporting)) return null;
   const runAtivo = reporting.runAtivoUniversal;
   if (!isPlainObject(runAtivo)) return null;
 
-  const landingHtml = typeof runAtivo.landingHtml === "string" ? runAtivo.landingHtml : undefined;
-  const pdfHtml = typeof runAtivo.pdfHtml === "string" ? runAtivo.pdfHtml : undefined;
+  const rawLandingHtml = typeof runAtivo.landingHtml === "string" ? runAtivo.landingHtml : undefined;
+  const rawPdfHtml = typeof runAtivo.pdfHtml === "string" ? runAtivo.pdfHtml : undefined;
+  const landingHtml = shouldUseRunAtivoHtml(agent, rawLandingHtml) ? rawLandingHtml : undefined;
+  const pdfHtml = shouldUseRunAtivoHtml(agent, rawPdfHtml) ? rawPdfHtml : undefined;
 
   let alert: RunAtivoArtifacts["alert"];
   const rawAlert = runAtivo.alert;
@@ -1500,6 +1727,7 @@ type ReportForms = {
   campaign?: CampaignForm | null;
   pitch?: PitchForm | null;
   j360?: J360Form | null;
+  guardian?: GuardianForm | null;
 };
 
 function deriveFormsForReport(data: Record<string, unknown>): ReportForms {
@@ -1507,6 +1735,7 @@ function deriveFormsForReport(data: Record<string, unknown>): ReportForms {
     campaign: extractCampaignForm(data),
     pitch: extractPitchForm(data),
     j360: extractJ360Form(data),
+    guardian: extractGuardianForm(data),
   };
 }
 
@@ -1558,6 +1787,13 @@ function deriveSummaryForReport(forms: ReportForms, agent: string): { items: Sum
         { key: "toneProfile", label: "Tom / Perfil", icon: "🗣️", value: forms.campaign.toneProfile },
       ],
       subtitle: "Objetivo, público e canais informados no briefing original.",
+    };
+  }
+
+  if (agent.toLowerCase() === "guardian") {
+    return {
+      items: [],
+      subtitle: "Objetivo operacional, evidências e trilha de validação informados na execução.",
     };
   }
 
@@ -1678,11 +1914,15 @@ function buildRunReportHtml(
     </section>`;
 
   const healthUrl = getHealthUrl();
-  const linkEntries = [
-    { label: "Deck no Figma", url: PITCH_FIGMA_URL, description: "Base visual para storytelling." },
-    { label: "Deck no Canva", url: PITCH_CANVA_URL, description: "Modelos editáveis para adaptação rápida." },
-    { label: "API healthcheck", url: healthUrl, description: "Status do cluster de execução /health." },
-  ];
+  const normalizedAgent = run.agent.toLowerCase();
+  const linkEntries =
+    normalizedAgent === "guardian"
+      ? [{ label: "API healthcheck", url: healthUrl, description: "Status do cluster de execução /health." }]
+      : [
+          { label: "Deck no Figma", url: PITCH_FIGMA_URL, description: "Base visual para storytelling." },
+          { label: "Deck no Canva", url: PITCH_CANVA_URL, description: "Modelos editáveis para adaptação rápida." },
+          { label: "API healthcheck", url: healthUrl, description: "Status do cluster de execução /health." },
+        ];
   const linksBlock = `<section class="section">
     <header>
       <h2>Links úteis</h2>
@@ -2175,7 +2415,7 @@ function buildRunReportHtml(
         <div>
           <p class="muted">Operação #${sanitizeTextContent(run.id.slice(0, 8))}</p>
           <h1>Run ${sanitizeTextContent(getDisplayAgent(run.agent))}</h1>
-          <small>${sanitizeTextContent(formatDiagnostic(data.diagnostico))}</small>
+          <small>${sanitizeTextContent(formatDiagnostic(extractDiagnosticPayload(data)))}</small>
           <div class="chip-group">
             ${(summaryItems.slice(0, 3) as SummaryItem[])
               .map((item) => `<span class="chip">${sanitizeTextContent(item.label)}</span>`)
@@ -2268,7 +2508,9 @@ function renderSummaryBlock({
 }) {
   const normalizedItems = summaryItems.filter((item) => item.value && item.value.trim().length > 0);
   let content = "";
-  if (summarySection.paragraphs.length || summarySection.bullets.length) {
+  if (fallbackForms.guardian) {
+    content = buildGuardianSummaryMarkup(fallbackForms.guardian);
+  } else if (summarySection.paragraphs.length || summarySection.bullets.length) {
     content = `${renderParagraphMarkup(summarySection.paragraphs)}${createListMarkup(summarySection.bullets)}`;
   } else if (normalizedItems.length) {
     content = `<ul class="summary-list">
@@ -2293,7 +2535,7 @@ function renderSummaryBlock({
 
   return `<section class="section">
     <header>
-      <h2>Resumo estratégico</h2>
+      <h2>${fallbackForms.guardian ? "Resumo probatório" : "Resumo estratégico"}</h2>
       <p class="muted">${sanitizeTextContent(summarySubtitle)}</p>
     </header>
     ${content}
@@ -2302,6 +2544,36 @@ function renderSummaryBlock({
 
 function renderAgentSignature(agent: string, forms: ReportForms) {
   const key = agent.toLowerCase();
+  if (key === "guardian" && forms.guardian) {
+    const guardian = forms.guardian;
+    const checklist = splitGuardianEvidenceChecklist(guardian.evidence);
+    const entries = [
+      { title: "Rota alvo", value: guardian.requestType },
+      { title: "Objetivo", value: truncateReportText(guardian.objective, 220) },
+      { title: "Checklist probatório", value: checklist.join(", ") || truncateReportText(guardian.evidence, 180) },
+      { title: "PII / termos sensíveis", value: guardian.piiSignals },
+      { title: "FinOps", value: guardian.finops },
+    ].filter((entry) => entry.value && entry.value.trim().length > 0);
+    if (!entries.length) return "";
+    return `<section class="section" data-editable contenteditable="false">
+      <header>
+        <h2>Contexto do Guardian</h2>
+        <p class="muted">Resumo operacional para trilha probatória e decisão GO / NO-GO.</p>
+      </header>
+      <div class="signature-grid">
+        ${entries
+          .map(
+            (entry) => `
+          <article class="signature-card guardian">
+            <h3>${sanitizeTextContent(entry.title)}</h3>
+            <p>${sanitizeTextContent(entry.value ?? "—")}</p>
+          </article>`
+          )
+          .join("")}
+      </div>
+    </section>`;
+  }
+
   if (key === "pitch" && forms.pitch) {
     const entries = [
       { title: "Produto / solução", value: forms.pitch.product },
@@ -2359,7 +2631,6 @@ function renderAgentSignature(agent: string, forms: ReportForms) {
     </section>`;
   }
 
-  const guardianLike = key.includes("guardian");
   const source = forms.campaign;
   if (source) {
     const entries = [
@@ -2373,18 +2644,14 @@ function renderAgentSignature(agent: string, forms: ReportForms) {
     if (!entries.length) return "";
     return `<section class="section" data-editable contenteditable="false">
       <header>
-        <h2>${guardianLike ? "Checklist de confiabilidade" : "Contexto de campanha"}</h2>
-        <p class="muted">${
-          guardianLike
-            ? "Campos necessários para o agente Guardian validar e ancorar evidências."
-            : "Briefing base usado para gerar as recomendações."
-        }</p>
+        <h2>Contexto de campanha</h2>
+        <p class="muted">Briefing base usado para gerar as recomendações.</p>
       </header>
       <div class="signature-grid">
         ${entries
           .map(
             (entry) => `
-          <article class="signature-card ${guardianLike ? "guardian" : ""}">
+          <article class="signature-card">
             <h3>${sanitizeTextContent(entry.title)}</h3>
             <p>${sanitizeTextContent(entry.value ?? "—")}</p>
           </article>`
@@ -2398,6 +2665,17 @@ function renderAgentSignature(agent: string, forms: ReportForms) {
 }
 
 function buildFallbackSummary(forms: ReportForms) {
+  const guardian = forms.guardian;
+  if (guardian) {
+    const checklist = splitGuardianEvidenceChecklist(guardian.evidence);
+    return buildGuardianSummaryMarkup({
+      ...guardian,
+      evidence: checklist.join(", ") || truncateReportText(guardian.evidence, 180),
+      notes: truncateReportText(guardian.notes, 320),
+      objective: truncateReportText(guardian.objective, 240),
+    });
+  }
+
   const pitch = forms.pitch;
   if (pitch) {
     const entries = [
@@ -2444,6 +2722,41 @@ function buildFallbackSummary(forms: ReportForms) {
   return "";
 }
 
+function buildGuardianSummaryMarkup(guardian: GuardianForm) {
+  const checklist = splitGuardianEvidenceChecklist(guardian.evidence);
+  const chips = checklist
+    .slice(0, 6)
+    .map((item) => `<span class="chip">${sanitizeTextContent(item)}</span>`)
+    .join("");
+
+  const details = [
+    { label: "Rota alvo", value: guardian.requestType },
+    { label: "Objetivo", value: truncateReportText(guardian.objective, 240) },
+    { label: "PII / termos sensíveis", value: guardian.piiSignals },
+    { label: "FinOps", value: guardian.finops },
+    { label: "Observações", value: truncateReportText(guardian.notes, 320) },
+  ].filter((entry) => entry.value && entry.value.trim().length > 0);
+
+  const detailsHtml = details
+    .map(
+      (entry) => `
+      <div>
+        <dt>${sanitizeTextContent(entry.label)}</dt>
+        <dd>${sanitizeTextContent(entry.value ?? "—")}</dd>
+      </div>`
+    )
+    .join("");
+
+  return `
+    <div class="space-y-4">
+      ${chips ? `<div class="chip-group">${chips}</div>` : ""}
+      <dl class="audit-grid">
+        ${detailsHtml}
+      </dl>
+    </div>
+  `;
+}
+
 function renderDefinitionGrid(entries: Array<{ label: string; value?: string }>) {
   return `<dl class="audit-grid">
     ${entries
@@ -2464,8 +2777,11 @@ function createFallbackStructuredData(run: RunData, fallbackText: string): Recor
   const metadata = isPlainObject(request?.metadata as Record<string, unknown>) ? (request!.metadata as Record<string, unknown>) : {};
   const form = isPlainObject(metadata.form) ? (metadata.form as Record<string, unknown>) : undefined;
   const rawPayload = isPlainObject(metadata.rawPayload) ? (metadata.rawPayload as Record<string, unknown>) : undefined;
+  const normalizedAgent = run.agent.toLowerCase();
   const campaignForm =
-    form ??
+    normalizedAgent === "guardian"
+      ? undefined
+      : form ??
     (isPlainObject(rawPayload?.form) ? (rawPayload!.form as Record<string, unknown>) : undefined);
 
   const summaryLines: string[] = [];
@@ -2818,10 +3134,11 @@ type CampaignForm = {
 function extractCampaignForm(data: Record<string, unknown>): CampaignForm | null {
   const tryFromObject = (obj: Record<string, unknown> | undefined | null): CampaignForm | null => {
     if (!obj) return null;
+    if (looksLikeGuardianForm(obj)) return null;
     const channels = Array.isArray(obj.channels)
       ? obj.channels.filter((item): item is string => typeof item === "string")
       : [];
-    return {
+    const form = {
       goal: typeof obj.goal === "string" ? obj.goal : undefined,
       audience: typeof obj.audience === "string" ? obj.audience : undefined,
       budget: typeof obj.budget === "string" ? obj.budget : undefined,
@@ -2833,6 +3150,18 @@ function extractCampaignForm(data: Record<string, unknown>): CampaignForm | null
       launchDate: typeof obj.launchDate === "string" ? obj.launchDate : undefined,
       deadline: typeof obj.deadline === "string" ? obj.deadline : undefined,
     };
+    const hasMeaningfulField =
+      hasTextValue(form.goal) ||
+      hasTextValue(form.audience) ||
+      hasTextValue(form.budget) ||
+      hasTextValue(form.kpis) ||
+      hasTextValue(form.notes) ||
+      hasTextValue(form.toneProfile) ||
+      hasTextValue(form.toneNotes) ||
+      hasTextValue(form.launchDate) ||
+      hasTextValue(form.deadline) ||
+      form.channels.length > 0;
+    return hasMeaningfulField ? form : null;
   };
 
   if (isPlainObject(data.form)) {
@@ -2858,6 +3187,67 @@ function extractCampaignForm(data: Record<string, unknown>): CampaignForm | null
 
   if (isPlainObject(data.rawPayload)) {
     return tryFromObject(data.rawPayload as Record<string, unknown>);
+  }
+
+  return null;
+}
+
+type GuardianForm = {
+  requestType?: string;
+  objective?: string;
+  evidence?: string;
+  piiSignals?: string;
+  finops?: string;
+  notes?: string;
+};
+
+function extractGuardianForm(data: Record<string, unknown>): GuardianForm | null {
+  const tryFromObject = (obj: Record<string, unknown> | undefined | null): GuardianForm | null => {
+    if (!obj) return null;
+    const form = {
+      requestType: typeof obj.requestType === "string" ? obj.requestType : undefined,
+      objective: typeof obj.objective === "string" ? obj.objective : undefined,
+      evidence: typeof obj.evidence === "string" ? obj.evidence : undefined,
+      piiSignals: typeof obj.piiSignals === "string" ? obj.piiSignals : undefined,
+      finops: typeof obj.finops === "string" ? obj.finops : undefined,
+      notes: typeof obj.notes === "string" ? obj.notes : undefined,
+    };
+    const hasMeaningfulField =
+      hasTextValue(form.requestType) ||
+      hasTextValue(form.objective) ||
+      hasTextValue(form.evidence) ||
+      hasTextValue(form.piiSignals) ||
+      hasTextValue(form.finops) ||
+      hasTextValue(form.notes);
+    return hasMeaningfulField ? form : null;
+  };
+
+  if (isPlainObject(data.form)) {
+    return tryFromObject(data.form as Record<string, unknown>);
+  }
+
+  if (isPlainObject(data.metadata) && isPlainObject((data.metadata as Record<string, unknown>).form)) {
+    return tryFromObject((data.metadata as Record<string, unknown>).form as Record<string, unknown>);
+  }
+
+  if (isPlainObject(data.rawPayload)) {
+    return tryFromObject(data.rawPayload as Record<string, unknown>);
+  }
+
+  if (isPlainObject(data.params) && isPlainObject((data.params as Record<string, unknown>).form)) {
+    return tryFromObject((data.params as Record<string, unknown>).form as Record<string, unknown>);
+  }
+
+  if (Array.isArray(data.plan)) {
+    for (const entry of data.plan as unknown[]) {
+      if (isPlainObject(entry) && isPlainObject((entry as Record<string, unknown>).params)) {
+        const params = (entry as Record<string, unknown>).params as Record<string, unknown>;
+        if (isPlainObject(params.form)) {
+          const result = tryFromObject(params.form as Record<string, unknown>);
+          if (result) return result;
+        }
+      }
+    }
   }
 
   return null;

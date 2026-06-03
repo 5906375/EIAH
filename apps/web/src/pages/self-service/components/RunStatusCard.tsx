@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import type { Run } from "@/lib/api";
 import RunViewer from "@/components/runs/RunViewer";
+import { formatRunErrorSummary } from "./runErrorSummary";
 
 type Props = {
   run?: Run | null;
@@ -26,6 +27,8 @@ export default function RunStatusCard({ run, error }: Props) {
 
   if (!run) return null;
 
+  const runErrorSummary = formatRunErrorSummary(run);
+
   const runData = useMemo(() => {
     const traceId = run.meta?.traceId ?? (run as unknown as { traceId?: string })?.traceId;
     return {
@@ -42,5 +45,14 @@ export default function RunStatusCard({ run, error }: Props) {
     };
   }, [run]);
 
-  return <RunViewer run={runData} />;
+  return (
+    <div className="space-y-3">
+      {runErrorSummary ? (
+        <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200">
+          {runErrorSummary}
+        </div>
+      ) : null}
+      <RunViewer run={runData} />
+    </div>
+  );
 }

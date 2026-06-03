@@ -234,16 +234,35 @@ export const selfServiceConfigs: SelfServiceAgentConfig[] = [
       },
     ],
     buildPrompt: (values) => {
+      const compact = (value: string | undefined, maxLength = 220) => {
+        const normalized = (value ?? "").replace(/\s+/g, " ").trim();
+        if (!normalized) return "não informado";
+        if (normalized.length <= maxLength) return normalized;
+        return `${normalized.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
+      };
+      const compactList = (value: string | undefined, maxItems = 6) => {
+        const items = (value ?? "")
+          .replace(/^Você é o Guardian[\s\S]*?Pontos de verificação:\s*/i, "")
+          .replace(/^Pontos de verificação:\s*/i, "")
+          .split(/\n|,|;/)
+          .map((item) => item.trim())
+          .filter(Boolean)
+          .filter((item, index, array) => array.findIndex((entry) => entry.toLowerCase() === item.toLowerCase()) === index)
+          .slice(0, maxItems);
+        return items.length > 0 ? items.join(", ") : "não informado";
+      };
       const lines = [
         "Aja como operador do Agente Guardian (schema 1.2) seguindo LGPD-first.",
-        `Rota alvo: ${values.requestType || "não informado"}.`,
-        `Objetivo da requisição: ${values.objective || "não informado"}.`,
-        `Itens e hashes disponíveis: ${values.evidence || "não informado"}.`,
-        `PII ou termos sensíveis mapeados: ${values.piiSignals || "não informado"}.`,
-        `Preferências FinOps: ${values.finops || "não informado"}.`,
-        `Notas adicionais / SLA: ${values.notes || "não informado"}.`,
-        "Retorne um plano estruturado com: pré-validações LGPD, rota recomendada (com fallback se necessário), requisitos de verify_url imediato, artefatos baixáveis esperados e telemetria de auditoria (chain_id, confirmações, ancoragem).",
-        "Se identificar risco de PII, destaque bloqueios e ações corretivas antes de acionar o agente.",
+        `Rota alvo: ${compact(values.requestType, 120)}.`,
+        `Objetivo: ${compact(values.objective, 220)}.`,
+        `Checklist probatório: ${compactList(values.evidence)}.`,
+        `PII sensível: ${compact(values.piiSignals, 120)}.`,
+        `FinOps: ${compact(values.finops, 120)}.`,
+        `Observações operacionais: ${compact(values.notes, 220)}.`,
+        "Se o runtime já executar checks por etapa, use esses resultados como fonte primária do parecer.",
+        "Retorne JSON curto com no máximo 1 recomendação priorizada.",
+        "Cada recomendação deve conter apenas: tatica, rationale curto, proximos_passos (máx 7 itens), execucao, score e metadata.checklist_etapas.",
+        "Se houver risco de PII ou falta de evidência obrigatória, bloquear e resumir correções objetivas.",
       ].filter(Boolean);
 
       return {
@@ -764,4 +783,8 @@ export const selfServiceConfigs: SelfServiceAgentConfig[] = [
 export function getAgentConfigBySlug(slug: string | undefined) {
   if (!slug) return undefined;
   return selfServiceConfigs.find((item) => item.slug.toLowerCase() === slug.toLowerCase());
+}
+
+export function isGenericAgentConfig(config: SelfServiceAgentConfig): config is GenericAgentConfig {
+  return "fields" in config && typeof config.buildPrompt === "function";
 }

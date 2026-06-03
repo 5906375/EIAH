@@ -6,6 +6,7 @@
 
 import { prismaGlobal } from "@repo/db";
 import { emitRunEvent } from "./runEventEmitter";
+import { buildTrustScoreWhereUnique } from "./trustScoreEngineKeys";
 
 export const DEFAULT_TRUST_SCORE = 100;
 export const MIN_TRUST_SCORE = 0;
@@ -28,7 +29,7 @@ export async function get(
   }
 
   const score = await prismaGlobal.agentTrustScore.findUnique({
-    where: { tenantId_workspaceId_agentId: { tenantId, workspaceId, agentId } },
+    where: buildTrustScoreWhereUnique(tenantId, workspaceId, agentId),
   });
 
   return score?.currentScore ?? DEFAULT_TRUST_SCORE;
@@ -49,7 +50,7 @@ export async function update(
   }
 
   const existing = await prismaGlobal.agentTrustScore.findUnique({
-    where: { tenantId_workspaceId_agentId: { tenantId, workspaceId, agentId } },
+    where: buildTrustScoreWhereUnique(tenantId, workspaceId, agentId),
   });
 
   const prev = existing?.currentScore ?? DEFAULT_TRUST_SCORE;
@@ -57,7 +58,7 @@ export async function update(
   const trend = next > prev ? "rising" : next < prev ? "falling" : "stable";
 
   await prismaGlobal.agentTrustScore.upsert({
-    where: { tenantId_workspaceId_agentId: { tenantId, workspaceId, agentId } },
+    where: buildTrustScoreWhereUnique(tenantId, workspaceId, agentId),
     update: { currentScore: next, lastDelta: delta, trend },
     create: {
       tenantId,

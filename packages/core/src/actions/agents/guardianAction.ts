@@ -204,7 +204,24 @@ export const guardianProfile: AgentProfileSeed = {
     "Registros probatórios com compliance LGPD e verificabilidade pública.",
   model: process.env.GUARDIAN_MODEL ?? "gpt-4.1",
   systemPrompt: guardianPrompt,
-  tools: [],
+  tools: [
+    {
+      name: "guardian.checkRuntimeHealth",
+      description: "Verifica o contrato público de health e dependências básicas do runtime.",
+    },
+    {
+      name: "guardian.checkGoLiveArtifacts",
+      description: "Confere artefatos canônicos de domain/go-live exigidos pela recipe.",
+    },
+    {
+      name: "guardian.checkRollbackReadiness",
+      description: "Valida a presença do plano de rollback antes do avanço para produção.",
+    },
+    {
+      name: "guardian.checkGoLivePolicy",
+      description: "Checa ADR de stack oficial e evidência fail-closed do fluxo.",
+    },
+  ],
   knowledgePolicy: {
     deterministicSources: [
       { sourceId: "audit.receipt-bundles", kind: "ledger", authorityLevel: "primary", required: true, version: "v1" },

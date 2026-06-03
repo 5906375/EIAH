@@ -1,4 +1,8 @@
 import Redis from "ioredis";
+import {
+  getRunEventsRedisRetryConfig,
+  waitForRedisReady,
+} from "./runEventsRedisTransport";
 
 const redisUrl = process.env.RUN_EVENTS_REDIS_URL || process.env.REDIS_URL;
 const outboxStreamKey = process.env.RUN_EVENTS_OUTBOX_STREAM ?? "run-events-outbox";
@@ -13,40 +17,11 @@ function shouldUseOutbox() {
 
 function createRedisClient() {
   if (!redisUrl) return null;
-  return new Redis(redisUrl, { enableOfflineQueue: false, maxRetriesPerRequest: 2 });
-}
-
-function getRetryConfig() {
-  const attemptsRaw = process.env.RUN_EVENTS_OUTBOX_RETRY_ATTEMPTS;
-  const delayRaw = process.env.RUN_EVENTS_OUTBOX_RETRY_DELAY_MS;
-  const attempts = attemptsRaw ? Number(attemptsRaw) : 10;
-  const delayMs = delayRaw ? Number(delayRaw) : 500;
-  return {
-    attempts: Number.isFinite(attempts) && attempts > 0 ? Math.floor(attempts) : 10,
-    delayMs: Number.isFinite(delayMs) && delayMs > 0 ? Math.floor(delayMs) : 500,
-  };
-}
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function waitForRedisReady(redis: Redis) {
-  const { attempts, delayMs } = getRetryConfig();
-  let lastError: unknown;
-
-  for (let i = 0; i < attempts; i += 1) {
-    try {
-      if (redis.status === "ready") return;
-      await redis.ping();
-      return;
-    } catch (err) {
-      lastError = err;
-      await sleep(delayMs);
-    }
-  }
-
-  throw lastError ?? new Error("Redis not ready");
+  return new Redis(redisUrl, {
+    enableOfflineQueue: false,
+    lazyConnect: true,
+    maxRetriesPerRequest: 2,
+  });
 }
 
 async function ensureGroup(redis: Redis) {
@@ -61,7 +36,7 @@ async function ensureGroup(redis: Redis) {
 }
 
 async function ensureGroupWithRetry(redis: Redis) {
-  const { attempts, delayMs } = getRetryConfig();
+  const { attempts, delayMs } = getRunEventsRedisRetryConfig();
   let lastError: unknown;
 
   for (let i = 0; i < attempts; i += 1) {
@@ -72,7 +47,7 @@ async function ensureGroupWithRetry(redis: Redis) {
       const message = err instanceof Error ? err.message : String(err);
       if (message.includes("BUSYGROUP")) return;
       lastError = err;
-      await sleep(delayMs);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }
 

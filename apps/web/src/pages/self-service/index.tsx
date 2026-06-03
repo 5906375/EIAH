@@ -109,6 +109,54 @@ function buildImobRecipeChatPath(recipe: TenantRecipe, options?: { includeRecipe
   return `/app/imob/chat?${params.toString()}`;
 }
 
+const COLLAPSIBLE_RECIPE_INSTRUCTIONS_MAX_LENGTH = 280;
+const COLLAPSIBLE_RECIPE_INSTRUCTIONS_MAX_LINES = 5;
+
+function shouldCollapseRecipeInstructions(text: string) {
+  const normalized = text.trim();
+  if (normalized.length > COLLAPSIBLE_RECIPE_INSTRUCTIONS_MAX_LENGTH) return true;
+  return normalized.split(/\r?\n/).filter(Boolean).length > COLLAPSIBLE_RECIPE_INSTRUCTIONS_MAX_LINES;
+}
+
+function CollapsibleRecipeInstructions(props: {
+  recipeId: string;
+  text: string;
+  expanded: boolean;
+  onToggle: (recipeId: string) => void;
+}) {
+  const { recipeId, text, expanded, onToggle } = props;
+  const collapse = shouldCollapseRecipeInstructions(text);
+
+  return (
+    <div className="mt-3">
+      <p
+        className="text-xs text-muted-foreground whitespace-pre-line"
+        style={
+          collapse && !expanded
+            ? {
+                display: "-webkit-box",
+                WebkitBoxOrient: "vertical",
+                WebkitLineClamp: COLLAPSIBLE_RECIPE_INSTRUCTIONS_MAX_LINES,
+                overflow: "hidden",
+              }
+            : undefined
+        }
+      >
+        {text}
+      </p>
+      {collapse ? (
+        <button
+          type="button"
+          onClick={() => onToggle(recipeId)}
+          className="mt-2 text-[8px] font-semibold tracking-[0.22em] text-accent transition hover:text-accent/80"
+        >
+          {expanded ? "mostrar menos >>" : "mostrar mais >>>"}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 type PricingPlanId = "solo" | "starter" | "growth" | "scale";
 
 const PRICING_PLANS: Array<{
@@ -263,6 +311,7 @@ export default function SelfServiceIndexPage() {
     instructions: "",
     scopeMode: "current_workspace" as "current_workspace" | "all_workspaces",
   });
+  const [expandedRecipeInstructionIds, setExpandedRecipeInstructionIds] = React.useState<string[]>([]);
   const [formValues, setFormValues] = React.useState<
     Record<string, { scope: "read" | "execute" | "admin"; trustMin: string; validUntil: string }>
   >({});
@@ -307,6 +356,13 @@ export default function SelfServiceIndexPage() {
       map.set(normalizeCatalogText(config.agentId), config);
     });
     return map;
+  }, []);
+  const toggleRecipeInstructions = React.useCallback((recipeId: string) => {
+    setExpandedRecipeInstructionIds((current) =>
+      current.includes(recipeId)
+        ? current.filter((item) => item !== recipeId)
+        : [...current, recipeId]
+    );
   }, []);
 
   const formatDate = (value?: string | null) => {
@@ -863,7 +919,7 @@ export default function SelfServiceIndexPage() {
                 ) : (
                   workspaceRecipes.map((recipe) => {
                     const config = selfServiceConfigByAgentId.get(normalizeCatalogText(recipe.agentId));
-                    const recipePath = config ? `/self-service/${config.slug}` : null;
+                    const recipePath = config ? `/self-service/${config.slug}?recipeId=${encodeURIComponent(recipe.id)}` : null;
                     const isImobRecipe = isImobTenantRecipe(recipe);
                     const hasPlannerMission = hasSupportedImobMission(recipe);
                     const canOpenImobChat = isImobRecipe || founderAccess;
@@ -876,7 +932,12 @@ export default function SelfServiceIndexPage() {
                         <h4 className="mt-3 text-lg font-semibold text-foreground">{recipe.title}</h4>
                         <p className="mt-2 text-sm text-muted-foreground">{recipe.summary}</p>
                         {recipe.instructions ? (
-                          <p className="mt-3 text-xs text-muted-foreground">{recipe.instructions}</p>
+                          <CollapsibleRecipeInstructions
+                            recipeId={recipe.id}
+                            text={recipe.instructions}
+                            expanded={expandedRecipeInstructionIds.includes(recipe.id)}
+                            onToggle={toggleRecipeInstructions}
+                          />
                         ) : null}
                         <p className="mt-3 text-xs text-muted-foreground">
                           Escopo:{" "}

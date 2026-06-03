@@ -1,6 +1,6 @@
 import React from "react";
 import { Navigate, useParams } from "react-router-dom";
-import { getAgentConfigBySlug } from "./config";
+import { getAgentConfigBySlug, isGenericAgentConfig } from "./config";
 import GenericAgentFormPage from "./generic";
 import SelfServiceMktPage from "./mkt";
 import SelfServiceJ360Page from "./j360";
@@ -29,7 +29,7 @@ export default function SelfServiceRouter() {
     return <>{override}</>;
   }
 
-  if (config.kind === "custom") {
+  if (!isGenericAgentConfig(config)) {
     return <Navigate to="/self-service" replace />;
   }
 
