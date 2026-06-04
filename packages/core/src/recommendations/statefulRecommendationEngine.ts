@@ -54,6 +54,17 @@ export type RecommendationCandidate = {
     exploration?: boolean;
     preferredModel?: string;
     preferredTaskType?: string;
+    recipeId?: string;
+    recipeTitle?: string;
+    alignmentReason?: string;
+    checklistSteps?: Array<{
+      step: string;
+      status: string;
+      reasonCode?: string;
+      summary?: string;
+      nextAction?: string | null;
+      evidenceRefs?: string[];
+    }>;
   };
 };
 
@@ -102,6 +113,7 @@ export type GeneratedRecommendation = {
     score: number;
   };
   execucao: RecommendationExecution;
+  metadata?: RecommendationCandidate["metadata"];
 };
 
 export type GenerateRecommendationsResult = {
@@ -449,6 +461,7 @@ export function generateStatefulRecommendations(
         score: Number(score.toFixed(4)),
       },
       execucao: inferExecution(item.candidate.tatica, item.candidate),
+      metadata: item.candidate.metadata,
     };
   });
 

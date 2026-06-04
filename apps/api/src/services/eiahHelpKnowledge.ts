@@ -327,6 +327,50 @@ function buildCanonicalEiahDocs(params: {
     updatedAt: sourceMtime,
   });
 
+  docs.push({
+    id: "help.eiah.recipes.authoring",
+    scope: "eiah",
+    question: "Como criar recipes no EIAH, quais sao os limites e o que esperar do resultado?",
+    answer: [
+      "Limites atuais de criacao de recipe no codigo:",
+      "- title: ate 140 caracteres.",
+      "- summary: ate 500 caracteres.",
+      "- instructions: ate 4000 caracteres.",
+      "- tags: ate 12 tags, com ate 40 caracteres por tag.",
+      "",
+      "Como orientar a criacao:",
+      "- Uma recipe nao deve tentar fechar o programa inteiro de go-live.",
+      "- O melhor padrao e: 1 recipe = 1 objetivo operacional + 1 decisao clara + 1 conjunto pequeno de evidencias.",
+      "- Use summary para descrever o resultado esperado.",
+      "- Use instructions para registrar objetivo, checks obrigatorios, evidencias esperadas, condicao de GO e condicao de bloqueio.",
+      "- Nao inclua contexto historico longo, links demais, justificativa extensa ou arquitetura completa no corpo.",
+      "- Se a implementacao tiver 4 frentes, crie 4 recipes encadeadas.",
+      "",
+      "O que esperar do resultado:",
+      "- decisao atual: GO, DEGRADED ou NO-GO.",
+      "- o que foi validado.",
+      "- o que falta.",
+      "- evidencia esperada.",
+      "- proximos passos praticos.",
+      "- quando esta pronto para rerun.",
+      "",
+      "O que a recipe nao deve ser usada para fazer:",
+      "- descrever um projeto inteiro de implantacao em um unico run.",
+      "- substituir playbook operacional completo.",
+      "- inventar prova de infraestrutura que o runtime nao coletou.",
+    ].join("\n"),
+    tags: ["help", "recipes", "self-service", "guardian", "authoring", "tenant-recipes"],
+    track: "P4",
+    status: "canonica",
+    sourceFiles: [
+      sourcePath,
+      "apps/api/src/routes/tenant-recipes.ts",
+      "apps/api/src/types/tenantRecipeContract.ts",
+      "apps/web/src/pages/self-service/generic.tsx",
+    ],
+    updatedAt: sourceMtime,
+  });
+
   docs.push(...extractGuideTabDocsFromEiahBlock(playbook.block, sourcePath, sourceMtime));
   docs.push(...buildImobOnboardingHelpDocs({
     sourcePath,
