@@ -9,8 +9,11 @@ import {
   RunAtivoReportingInputSchema,
   type RunAtivoReportingInput,
 } from "./runAtivoSchema";
+import { shouldUseGuardianRenderer } from "./guardianReportRenderer";
 import { buildLandingPageHtml } from "./renderRunAtivoLandingPage/v1/template";
 import { buildPdfHtml } from "./renderRunAtivoPdf/v1/template";
+import { buildGuardianLandingPageHtml } from "./renderGuardianLandingPage/v1/template";
+import { buildGuardianPdfHtml } from "./renderGuardianPdf/v1/template";
 import { buildAlertPayload } from "./buildRunAtivoAlert/v1/alertFactory";
 
 const landingPageOutputSchema = z.object({
@@ -70,7 +73,9 @@ export function registerReportingActions(options: RegisterReportingActionsOption
     guardrails: [guardrail],
     handler: async ({ input }) => {
       const payload = input as RunAtivoReportingInput;
-      const html = buildLandingPageHtml(payload);
+      const html = shouldUseGuardianRenderer(payload)
+        ? buildGuardianLandingPageHtml(payload)
+        : buildLandingPageHtml(payload);
       return {
         status: "success",
         output: landingPageOutputSchema.parse({ html, version: "v1" }),
@@ -90,7 +95,9 @@ export function registerReportingActions(options: RegisterReportingActionsOption
     guardrails: [guardrail],
     handler: async ({ input }) => {
       const payload = input as RunAtivoReportingInput;
-      const html = buildPdfHtml(payload);
+      const html = shouldUseGuardianRenderer(payload)
+        ? buildGuardianPdfHtml(payload)
+        : buildPdfHtml(payload);
       return {
         status: "success",
         output: pdfOutputSchema.parse({
@@ -129,3 +136,8 @@ export {
   type RunAtivoRecommendation,
   type RunAtivoTimelineItem,
 } from "./runAtivoSchema";
+export {
+  RecipeOrchestrationSchema,
+  type RecipeOrchestration,
+  type RecipeOrchestrationAgentKey,
+} from "./recipeOrchestrationSchema";

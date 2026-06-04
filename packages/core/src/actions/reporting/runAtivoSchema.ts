@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { GuardianReportSchema } from "./guardianReportSchema";
+import { RecipeOrchestrationSchema } from "./recipeOrchestrationSchema";
 
 export const RunAtivoRecommendationSchema = z.object({
   id: z.string().optional(),
@@ -33,6 +35,8 @@ export const RunAtivoReportingInputSchema = z.object({
     custoCents: z.number().optional(),
     score: z.number().optional(),
     downloadPdfUrl: z.string().optional(),
+    guardianReport: GuardianReportSchema.optional(),
+    recipeOrchestration: RecipeOrchestrationSchema.optional(),
   }),
   usuario: z
     .object({

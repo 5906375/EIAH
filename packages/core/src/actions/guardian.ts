@@ -2,6 +2,8 @@ import path from "node:path";
 import { z } from "zod";
 import { registerAction } from "./actionRegistry";
 import {
+  getGuardianEdgeProtectionArtifactPaths,
+  getGuardianEnvironmentSegregationArtifactPaths,
   getGuardianGoLiveArtifactPaths,
   guardianPathExists,
   readGuardianFileIfExists,
@@ -120,6 +122,53 @@ async function checkGoLiveArtifacts() {
   });
 }
 
+async function checkEnvironmentSegregation() {
+  const root = resolveGuardianRepoRoot();
+  const verifiedAt = new Date().toISOString();
+  const artifacts = getGuardianEnvironmentSegregationArtifactPaths(root);
+  const checks = await Promise.all(
+    artifacts.map(async (artifact) => ({
+      ...artifact,
+      exists: await guardianPathExists(artifact.absolutePath),
+      content: await readGuardianFileIfExists(artifact.absolutePath),
+    }))
+  );
+
+  const dnsSnapshot = checks.find((item) => item.relativePath.endsWith("dns-cloudflare-snapshot.md"));
+  const stagingSmoke = checks.find((item) => item.relativePath.endsWith("staging-dns-tls-smoke.md"));
+  const productionSmoke = checks.find((item) => item.relativePath.endsWith("production-dns-tls-smoke.md"));
+
+  const hasDnsSnapshot = Boolean(dnsSnapshot?.exists);
+  const hasStaging = Boolean(stagingSmoke?.exists);
+  const hasProduction = Boolean(productionSmoke?.exists);
+  const productionMentionsStaging =
+    typeof productionSmoke?.content === "string" && /app\.staging|api\.staging|staging/i.test(productionSmoke.content);
+  const stagingMentionsProduction =
+    typeof stagingSmoke?.content === "string" && /app\.eiah|api\.eiah|produção|producao/i.test(stagingSmoke.content);
+  const verified = hasDnsSnapshot && hasStaging && hasProduction && !productionMentionsStaging;
+
+  return buildStepOutput({
+    step: "environment_segregation",
+    status: verified ? "verified" : hasDnsSnapshot || hasStaging || hasProduction ? "warning" : "missing",
+    reasonCode: verified ? "environment_segregation_verified" : "environment_segregation_incomplete",
+    summary: verified
+      ? "Evidências de staging e produção indicam segregação operacional entre app e API."
+      : "As evidências de segregação entre staging e produção ainda estão incompletas ou inconclusivas.",
+    evidenceRefs: checks.filter((item) => item.exists).map((item) => item.relativePath),
+    findings: [
+      `dns_snapshot=${hasDnsSnapshot}`,
+      `staging_smoke=${hasStaging}`,
+      `production_smoke=${hasProduction}`,
+      `production_mentions_staging=${productionMentionsStaging}`,
+      `staging_mentions_production=${stagingMentionsProduction}`,
+    ],
+    nextAction: verified
+      ? null
+      : "Capturar ou revisar as evidências de DNS/TLS por ambiente antes de aprovar a segregação operacional.",
+    verifiedAt,
+  });
+}
+
 async function checkRollbackReadiness() {
   const root = resolveGuardianRepoRoot();
   const verifiedAt = new Date().toISOString();
@@ -180,7 +229,65 @@ async function checkGoLivePolicy() {
   });
 }
 
+async function checkEdgeProtection() {
+  const root = resolveGuardianRepoRoot();
+  const verifiedAt = new Date().toISOString();
+  const artifacts = getGuardianEdgeProtectionArtifactPaths(root);
+  const checks = await Promise.all(
+    artifacts.map(async (artifact) => ({
+      ...artifact,
+      exists: await guardianPathExists(artifact.absolutePath),
+      content: await readGuardianFileIfExists(artifact.absolutePath),
+    }))
+  );
+
+  const productionSmoke = checks.find((item) => item.relativePath.endsWith("production-dns-tls-smoke.md"));
+  const wafEvidence = checks.find((item) => item.relativePath.endsWith("waf-rate-limit-evidence.md"));
+  const failClosed = checks.find((item) => item.relativePath.endsWith("tenant-policy-fail-closed-403.md"));
+
+  const productionContent = productionSmoke?.content ?? "";
+  const wafContent = wafEvidence?.content ?? "";
+  const hasWaf = Boolean(wafEvidence?.exists) || /waf/i.test(String(productionContent));
+  const hasRateLimit = /rate limit|rate-limit/i.test(`${productionContent}\n${wafContent}`);
+  const hasFailClosedEvidence = Boolean(failClosed?.exists);
+  const verified = hasWaf && hasRateLimit && hasFailClosedEvidence;
+
+  return buildStepOutput({
+    step: "edge_protection",
+    status: verified ? "verified" : hasWaf || hasRateLimit || hasFailClosedEvidence ? "warning" : "missing",
+    reasonCode: verified ? "edge_protection_verified" : "edge_protection_incomplete",
+    summary: verified
+      ? "WAF, rate limit e evidência fail-closed estão consistentes para a borda pública."
+      : "A proteção de borda ainda não comprovou WAF, rate limit e fail-closed suficientes.",
+    evidenceRefs: checks.filter((item) => item.exists).map((item) => item.relativePath),
+    findings: [
+      `waf_configured=${hasWaf}`,
+      `rate_limit_configured=${hasRateLimit}`,
+      `fail_closed_evidence=${hasFailClosedEvidence}`,
+    ],
+    nextAction: verified
+      ? null
+      : "Completar a evidência de WAF/rate limit e fail-closed antes do parecer final de exposição pública.",
+    verifiedAt,
+  });
+}
+
 export function registerGuardianActions() {
+  registerAction({
+    name: "guardian.checkEnvironmentSegregation",
+    description: "Verifica evidências de segregação entre staging e produção no go-live controlado.",
+    version: "1.0.0",
+    criticality: "medium",
+    contract: {
+      input: guardianChecklistInputSchema,
+      output: guardianChecklistStepOutputSchema,
+    },
+    handler: async () => ({
+      status: "success",
+      output: await checkEnvironmentSegregation(),
+    }),
+  });
+
   registerAction({
     name: "guardian.checkRuntimeHealth",
     description: "Verifica o contrato público de health usado no go-live controlado.",
@@ -238,6 +345,21 @@ export function registerGuardianActions() {
     handler: async () => ({
       status: "success",
       output: await checkGoLivePolicy(),
+    }),
+  });
+
+  registerAction({
+    name: "guardian.checkEdgeProtection",
+    description: "Valida evidências de WAF, rate limiting e fail-closed na borda pública.",
+    version: "1.0.0",
+    criticality: "medium",
+    contract: {
+      input: guardianChecklistInputSchema,
+      output: guardianChecklistStepOutputSchema,
+    },
+    handler: async () => ({
+      status: "success",
+      output: await checkEdgeProtection(),
     }),
   });
 }

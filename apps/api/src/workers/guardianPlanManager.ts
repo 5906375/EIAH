@@ -48,6 +48,70 @@ export function buildGuardianPlan(input: OrchestratorInput): OrchestratorPlanSte
 
   if (!requestType) return null;
 
+  if (requestType === "go_live_controlado.plano_principal_web") {
+    const params = {
+      requestType,
+      objective: typeof form.objective === "string" ? form.objective : undefined,
+      evidence: typeof form.evidence === "string" ? form.evidence : undefined,
+      notes: typeof form.notes === "string" ? form.notes : undefined,
+      piiSignals: typeof form.piiSignals === "string" ? form.piiSignals : undefined,
+      finops: typeof form.finops === "string" ? form.finops : undefined,
+    };
+
+    const steps = [
+      buildGuardianActionStep(
+        input.runId,
+        "guardian-environment-segregation",
+        "Validar segregação operacional entre staging e produção para app e API.",
+        "guardian.checkEnvironmentSegregation",
+        params
+      ),
+      buildGuardianActionStep(
+        input.runId,
+        "guardian-runtime-health",
+        "Verificar contrato público de health da stack atual.",
+        "guardian.checkRuntimeHealth",
+        params
+      ),
+      buildGuardianActionStep(
+        input.runId,
+        "guardian-policy-guardrails",
+        "Checar tenant/workspace fail-closed e guardrails mínimos da API.",
+        "guardian.checkGoLivePolicy",
+        params
+      ),
+      buildGuardianActionStep(
+        input.runId,
+        "guardian-edge-protection",
+        "Validar WAF, rate limit e exposição pública controlada.",
+        "guardian.checkEdgeProtection",
+        params
+      ),
+      buildGuardianActionStep(
+        input.runId,
+        "guardian-rollback-readiness",
+        "Validar documentação de rollback antes de permitir avanço.",
+        "guardian.checkRollbackReadiness",
+        params
+      ),
+      buildGuardianActionStep(
+        input.runId,
+        "guardian-go-live-artifacts",
+        "Conferir artefatos canônicos e bundle probatório final do plano principal.",
+        "guardian.checkGoLiveArtifacts",
+        params
+      ),
+    ];
+
+    return [
+      ...steps,
+      buildGuardianSummaryStep(
+        input.runId,
+        steps.map((step) => step.id)
+      ),
+    ];
+  }
+
   if (requestType === "go_live_controlado.domain_dns_api_evidencias") {
     const params = {
       requestType,
