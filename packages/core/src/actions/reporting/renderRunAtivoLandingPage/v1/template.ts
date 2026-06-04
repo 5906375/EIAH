@@ -1,4 +1,5 @@
 import type { RunAtivoReportingInput, RunAtivoRecommendation } from "../../runAtivoSchema";
+import { renderRecipeOrchestrationHtmlSection } from "../../recipeOrchestrationRenderer";
 
 const escapeHtml = (value: unknown) =>
   String(value ?? "")
@@ -122,6 +123,11 @@ export function buildLandingPageHtml(payload: RunAtivoReportingInput) {
     : "";
 
   const pdfLink = payload.metadata.downloadPdfUrl ?? "#";
+  const recipeOrchestrationSection = renderRecipeOrchestrationHtmlSection({
+    payload,
+    escapeHtml,
+    tone: "dark",
+  });
 
   const usuario = payload.usuario;
 
@@ -380,6 +386,8 @@ export function buildLandingPageHtml(payload: RunAtivoReportingInput) {
             ${recommendationCards}
           </div>
         </section>
+
+        ${recipeOrchestrationSection}
 
         <section class="grid">
           <div class="card">

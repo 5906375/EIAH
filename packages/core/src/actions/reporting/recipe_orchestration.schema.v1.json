@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eiah.dev/schemas/recipe_orchestration.schema.v1.json",
+  "title": "Recipe Orchestration v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "source",
+    "recipeId",
+    "recipeTitle",
+    "intent",
+    "domain",
+    "riskLevel",
+    "primaryAgent",
+    "requiresGuardianReview",
+    "guardianReviewReason",
+    "supportMode",
+    "allowedSelfServiceAgents",
+    "suggestedSelfServiceAgents",
+    "limitations",
+    "practicalSteps",
+    "readyForRerunWhen",
+    "governance",
+    "audit"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "recipe_orchestration.v1" },
+    "source": { "const": "recipe_run" },
+    "recipeId": { "type": ["string", "null"] },
+    "recipeTitle": { "type": ["string", "null"] },
+    "intent": {
+      "enum": [
+        "go_live_validation",
+        "evidence_collection",
+        "imob_task",
+        "legal_review",
+        "report_generation",
+        "pitch_creation",
+        "financial_analysis",
+        "urban_service",
+        "general_task",
+        "unknown"
+      ]
+    },
+    "domain": {
+      "enum": ["guardian", "imob", "legal", "finance", "urban", "pitch", "general", "unknown"]
+    },
+    "riskLevel": { "enum": ["low", "medium", "high", "critical"] },
+    "primaryAgent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "displayName", "selectionReason", "confidence"],
+      "properties": {
+        "key": {
+          "enum": ["guardian", "eiah", "j_360", "pitch", "imob", "legal", "finance", "urban", "other"]
+        },
+        "displayName": { "type": "string" },
+        "selectionReason": { "type": "string" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "requiresGuardianReview": { "type": "boolean" },
+    "guardianReviewReason": { "type": "array", "items": { "type": "string" } },
+    "supportMode": { "enum": ["none", "suggest_only", "delegate_assisted", "external_handoff"] },
+    "allowedSelfServiceAgents": {
+      "type": "array",
+      "items": {
+        "enum": ["guardian", "eiah", "j_360", "pitch", "imob", "legal", "finance", "urban", "other"]
+      }
+    },
+    "suggestedSelfServiceAgents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key",
+          "displayName",
+          "purpose",
+          "canExecute",
+          "canAdvise",
+          "requiresApproval",
+          "requiredScope",
+          "estimatedCostStatus"
+        ],
+        "properties": {
+          "key": {
+            "enum": ["guardian", "eiah", "j_360", "pitch", "imob", "legal", "finance", "urban", "other"]
+          },
+          "displayName": { "type": "string" },
+          "purpose": { "type": "string" },
+          "canExecute": { "type": "boolean" },
+          "canAdvise": { "type": "boolean" },
+          "requiresApproval": { "type": "boolean" },
+          "requiredScope": { "type": ["string", "null"] },
+          "estimatedCostStatus": { "enum": ["calculated", "not_calculated", "not_reported"] }
+        }
+      }
+    },
+    "limitations": { "type": "array", "items": { "type": "string" } },
+    "practicalSteps": { "type": "array", "items": { "type": "string" } },
+    "readyForRerunWhen": { "type": "array", "items": { "type": "string" } },
+    "governance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "tenantIdPresent",
+        "workspaceIdPresent",
+        "rbacEvaluated",
+        "entitlementEvaluated",
+        "trustScoreEvaluated",
+        "costGuardEvaluated",
+        "policyDecision",
+        "reasonCode"
+      ],
+      "properties": {
+        "tenantIdPresent": { "type": "boolean" },
+        "workspaceIdPresent": { "type": "boolean" },
+        "rbacEvaluated": { "type": "boolean" },
+        "entitlementEvaluated": { "type": "boolean" },
+        "trustScoreEvaluated": { "type": "boolean" },
+        "costGuardEvaluated": { "type": "boolean" },
+        "policyDecision": { "enum": ["allowed", "denied", "approval_required", "not_evaluated"] },
+        "reasonCode": { "type": ["string", "null"] }
+      }
+    },
+    "audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["orchestrationDecisionId", "selectedAt", "basedOnPattern"],
+      "properties": {
+        "orchestrationDecisionId": { "type": ["string", "null"] },
+        "selectedAt": { "type": ["string", "null"], "format": "date-time" },
+        "basedOnPattern": { "const": "chat_imob_orchestrator" }
+      }
+    }
+  }
+}

@@ -18,15 +18,19 @@ function createAction(name: string): RegisteredAction {
 test("run worker action resolution keeps tenant policy and also allows agent-declared core actions", () => {
   const definitions: Record<string, RegisteredAction> = {
     "realestate.apply_adjustment": createAction("realestate.apply_adjustment"),
+    "guardian.checkEnvironmentSegregation": createAction("guardian.checkEnvironmentSegregation"),
     "guardian.checkRuntimeHealth": createAction("guardian.checkRuntimeHealth"),
+    "guardian.checkEdgeProtection": createAction("guardian.checkEdgeProtection"),
   };
   const canonical = new Map<string, string>([
     ["realestate.apply_adjustment", "realestate.apply_adjustment"],
+    ["guardian.checkenvironmentsegregation", "guardian.checkEnvironmentSegregation"],
     ["guardian.checkruntimehealth", "guardian.checkRuntimeHealth"],
+    ["guardian.checkedgeprotection", "guardian.checkEdgeProtection"],
   ]);
 
   const declared = resolveDeclaredActionNames(
-    ["guardian.checkRuntimeHealth"],
+    ["guardian.checkEnvironmentSegregation", "guardian.checkRuntimeHealth", "guardian.checkEdgeProtection"],
     canonical,
     definitions
   );
@@ -39,7 +43,9 @@ test("run worker action resolution keeps tenant policy and also allows agent-dec
   });
 
   assert.ok(merged["realestate.apply_adjustment"]);
+  assert.ok(merged["guardian.checkEnvironmentSegregation"]);
   assert.ok(merged["guardian.checkRuntimeHealth"]);
+  assert.ok(merged["guardian.checkEdgeProtection"]);
 });
 
 test("run worker action resolution ignores agent-declared actions that are not in core catalog", () => {

@@ -31,6 +31,14 @@ import eiahPitchVideo from "../../assets/eiah-pitch.mp4";
 import eiahCoreVideo from "../../assets/eiah-core.mp4";
 import eiahGeralVideo from "../../assets/eiah-geral.mp4";
 import SelfServiceNav from "./components/SelfServiceNav";
+import TenantRecipeComposer from "./components/TenantRecipeComposer";
+import {
+  buildTenantRecipeContent,
+  buildTenantRecipeInstructions,
+  clampRecipeTags,
+  createInitialTenantRecipeComposerState,
+  type TenantRecipeComposerState,
+} from "./tenantRecipeComposer";
 
 const primaryAgent = selfServiceConfigs[0];
 const agentArtwork: Record<string, string> = {};
@@ -304,13 +312,9 @@ export default function SelfServiceIndexPage() {
   const [onboardingContext, setOnboardingContext] = React.useState<OnboardingContext | null>(null);
   const [onboardingContextStatus, setOnboardingContextStatus] = React.useState<"idle" | "loading" | "ready" | "error">("idle");
   const [onboardingContextError, setOnboardingContextError] = React.useState<string | null>(null);
-  const [tenantRecipeForm, setTenantRecipeForm] = React.useState({
-    agentId: selfServiceConfigs[0]?.agentId ?? "EIAH",
-    title: "",
-    summary: "",
-    instructions: "",
-    scopeMode: "current_workspace" as "current_workspace" | "all_workspaces",
-  });
+  const [tenantRecipeForm, setTenantRecipeForm] = React.useState<TenantRecipeComposerState>(
+    createInitialTenantRecipeComposerState(selfServiceConfigs[0]?.agentId ?? "EIAH")
+  );
   const [expandedRecipeInstructionIds, setExpandedRecipeInstructionIds] = React.useState<string[]>([]);
   const [formValues, setFormValues] = React.useState<
     Record<string, { scope: "read" | "execute" | "admin"; trustMin: string; validUntil: string }>
@@ -319,6 +323,9 @@ export default function SelfServiceIndexPage() {
   const [calcUsers, setCalcUsers] = React.useState("3");
   const [calcRuns, setCalcRuns] = React.useState("1500");
   const [selectedProposalOption, setSelectedProposalOption] = React.useState(PROPOSAL_OPTIONS[0].id);
+  const updateTenantRecipeForm = React.useCallback((patch: Partial<TenantRecipeComposerState>) => {
+    setTenantRecipeForm((prev) => ({ ...prev, ...patch }));
+  }, []);
 
   const delegationByMarketplaceId = React.useMemo(() => {
     const map = new Map<string, DelegationPolicy>();
@@ -596,19 +603,20 @@ export default function SelfServiceIndexPage() {
         agentId: tenantRecipeForm.agentId,
         title: tenantRecipeForm.title.trim(),
         summary: tenantRecipeForm.summary.trim(),
-        instructions: tenantRecipeForm.instructions.trim() || undefined,
+        instructions:
+          (tenantRecipeForm.instructionsManuallyEdited
+            ? tenantRecipeForm.instructions
+            : buildTenantRecipeInstructions(tenantRecipeForm)
+          ).trim() || undefined,
         status,
+        tags: clampRecipeTags(tenantRecipeForm.tags),
+        content: buildTenantRecipeContent(tenantRecipeForm),
         workspaceScope:
           tenantRecipeForm.scopeMode === "all_workspaces"
             ? { mode: "all_workspaces", workspaceIds: [] }
             : { mode: "selected_workspaces", workspaceIds: [session.workspaceId] },
       });
-      setTenantRecipeForm((prev) => ({
-        ...prev,
-        title: "",
-        summary: "",
-        instructions: "",
-      }));
+      setTenantRecipeForm(createInitialTenantRecipeComposerState(tenantRecipeForm.agentId));
       await refreshTenantRecipes();
       setTenantRecipeNotice(
         status === "homologated"
@@ -905,6 +913,14 @@ export default function SelfServiceIndexPage() {
         {session.token ? (
           <div className="mt-6 grid gap-6 lg:grid-cols-[1.2fr,0.8fr]">
             <div className="space-y-4">
+              <TenantRecipeComposer
+                form={tenantRecipeForm}
+                configs={selfServiceConfigs}
+                isSubmitting={tenantRecipeSubmitting}
+                onChange={updateTenantRecipeForm}
+                onSubmit={(status) => void handleCreateTenantRecipe(status)}
+              />
+
               <div>
                 <p className="text-xs uppercase tracking-[0.25em] text-accent">Receitas visíveis neste workspace</p>
                 <p className="mt-2 text-sm text-muted-foreground">
@@ -997,103 +1013,6 @@ export default function SelfServiceIndexPage() {
             </div>
 
             <div className="space-y-4">
-              <div className="rounded-2xl border border-white/10 bg-[#0a1527] p-5">
-                <p className="text-xs uppercase tracking-[0.25em] text-accent">Publicar nova recipe</p>
-                <div className="mt-4 grid gap-3 text-xs text-muted-foreground">
-                  <label className="flex flex-col gap-2">
-                    <span className="uppercase tracking-[0.2em] text-[10px]">Agente</span>
-                    <select
-                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-foreground"
-                      value={tenantRecipeForm.agentId}
-                      onChange={(event) =>
-                        setTenantRecipeForm((prev) => ({ ...prev, agentId: event.target.value }))
-                      }
-                    >
-                      {selfServiceConfigs.map((config) => (
-                        <option key={config.slug} value={config.agentId}>
-                          {config.title}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="flex flex-col gap-2">
-                    <span className="uppercase tracking-[0.2em] text-[10px]">Título</span>
-                    <input
-                      type="text"
-                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-foreground"
-                      value={tenantRecipeForm.title}
-                      onChange={(event) =>
-                        setTenantRecipeForm((prev) => ({ ...prev, title: event.target.value }))
-                      }
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2">
-                    <span className="uppercase tracking-[0.2em] text-[10px]">Resumo</span>
-                    <textarea
-                      rows={3}
-                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-foreground"
-                      value={tenantRecipeForm.summary}
-                      onChange={(event) =>
-                        setTenantRecipeForm((prev) => ({ ...prev, summary: event.target.value }))
-                      }
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2">
-                    <span className="uppercase tracking-[0.2em] text-[10px]">Instruções</span>
-                    <textarea
-                      rows={4}
-                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-foreground"
-                      value={tenantRecipeForm.instructions}
-                      onChange={(event) =>
-                        setTenantRecipeForm((prev) => ({ ...prev, instructions: event.target.value }))
-                      }
-                    />
-                  </label>
-                  <label className="flex flex-col gap-2">
-                    <span className="uppercase tracking-[0.2em] text-[10px]">Escopo</span>
-                    <select
-                      className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-foreground"
-                      value={tenantRecipeForm.scopeMode}
-                      onChange={(event) =>
-                        setTenantRecipeForm((prev) => ({
-                          ...prev,
-                          scopeMode: event.target.value as "current_workspace" | "all_workspaces",
-                        }))
-                      }
-                    >
-                      <option value="current_workspace">Workspace atual</option>
-                      <option value="all_workspaces">Todos os workspaces</option>
-                    </select>
-                  </label>
-                </div>
-                <div className="mt-4 flex flex-wrap gap-3">
-                  <button
-                    type="button"
-                    disabled={
-                      tenantRecipeSubmitting ||
-                      !tenantRecipeForm.title.trim() ||
-                      !tenantRecipeForm.summary.trim()
-                    }
-                    onClick={() => void handleCreateTenantRecipe("draft")}
-                    className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-foreground transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    Salvar draft
-                  </button>
-                  <button
-                    type="button"
-                    disabled={
-                      tenantRecipeSubmitting ||
-                      !tenantRecipeForm.title.trim() ||
-                      !tenantRecipeForm.summary.trim()
-                    }
-                    onClick={() => void handleCreateTenantRecipe("homologated")}
-                    className="rounded-full border border-accent/60 bg-accent/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] text-accent transition hover:border-accent hover:bg-accent/30 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    Homologar e publicar
-                  </button>
-                </div>
-              </div>
-
               <div className="rounded-2xl border border-white/10 bg-[#0a1527] p-5">
                 <p className="text-xs uppercase tracking-[0.25em] text-accent">Gerenciar catálogo do tenant</p>
                 <div className="mt-4 space-y-3">

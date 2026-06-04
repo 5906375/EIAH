@@ -1,4 +1,5 @@
 import type { RunAtivoReportingInput } from "../../runAtivoSchema";
+import { renderRecipeOrchestrationHtmlSection } from "../../recipeOrchestrationRenderer";
 
 const escapeHtml = (value: unknown) =>
   String(value ?? "")
@@ -26,6 +27,11 @@ export function buildPdfHtml(payload: RunAtivoReportingInput) {
   const insights = payload.insights.length
     ? payload.insights.map((insight) => `<li>${escapeHtml(insight)}</li>`).join("")
     : `<li>Nenhum insight informado.</li>`;
+  const recipeOrchestrationSection = renderRecipeOrchestrationHtmlSection({
+    payload,
+    escapeHtml,
+    tone: "light",
+  });
 
   return `<!DOCTYPE html>
   <html lang="pt-BR">
@@ -143,6 +149,8 @@ export function buildPdfHtml(payload: RunAtivoReportingInput) {
         <h2>Insights automatizados</h2>
         <ul>${insights}</ul>
       </section>
+
+      ${recipeOrchestrationSection}
 
       ${
         payload.cta

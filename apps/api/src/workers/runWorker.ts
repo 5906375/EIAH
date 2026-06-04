@@ -61,8 +61,10 @@ import { estimateCostCents, chargeRun } from "../services/billing";
 import { getAgentProfile, resolveAgentId } from "../services/agents";
 import {
   finalizeRunRecord,
+  getRun,
   updateRunStatus,
   listRecentRunsForAgent,
+  deriveRunCostFromBreakdown,
 } from "../services/runs";
 import { emitRunEvent } from "../services/runEventEmitter";
 import { judgeResult } from "../services/judge";
@@ -89,6 +91,9 @@ import {
   resolveLocallyExecutableAction,
   resolveDeclaredActionNames,
 } from "./runWorkerActionResolution";
+import { alignCandidatesToRecipe } from "./runWorkerRecipeAlignment";
+import { buildGuardianStructuredOutput } from "./runWorkerGuardianOutput";
+import { buildRecipeOrchestration } from "./runWorkerRecipeOrchestration";
 
 /* ──────────────────────────────────────────────
    Action Registry / Tenant Actions
@@ -130,6 +135,366 @@ function extractResolvedSourceIdsFromOutputs(
       return typeof data.step === "string" ? data.step : null;
     })
     .filter((value): value is string => Boolean(value));
+}
+
+function buildGuardianResponsePayload(params: {
+  agentId: string;
+  tenantId: string;
+  workspaceId: string;
+  runId: string;
+  runStatus: "success" | "error";
+  costCents?: number | null;
+  txId?: string | null;
+  criticalHash?: string | null;
+  metadata: Record<string, unknown>;
+  outputs: Array<{ stepId: string; data: unknown }>;
+  snapshot?: {
+    usage?: {
+      promptTokens?: number;
+      completionTokens?: number;
+      cachedTokens?: number;
+      totalTokens?: number;
+    } | null;
+    model?: string;
+    traceId?: string;
+  } | null;
+}) {
+  return buildGuardianStructuredOutput({
+    agent: params.agentId,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    runId: params.runId,
+    runStatus: params.runStatus,
+    costCents: params.costCents,
+    txId: params.txId,
+    criticalHash: params.criticalHash,
+    metadata: params.metadata,
+    outputs: params.outputs,
+    snapshot: params.snapshot ?? null,
+  });
+}
+
+function normalizeGuardianSummaryOutputs(params: {
+  agentId: string;
+  runId: string;
+  outputs: Array<{ stepId: string; data: unknown }>;
+  guardianReport: ReturnType<typeof buildGuardianResponsePayload>;
+}) {
+  if (params.agentId.trim().toLowerCase() !== "guardian" || !params.guardianReport) {
+    return params.outputs;
+  }
+
+  return params.outputs.map((entry) => {
+    if (!entry.stepId.endsWith("guardian-summary")) return entry;
+    return {
+      ...entry,
+      data: {
+        agent: "guardian",
+        run_id: params.runId,
+        guardianDecision: params.guardianReport.guardianDecision,
+        globalDecision: params.guardianReport.globalDecision,
+        stageDecision: params.guardianReport.stageDecision,
+        reasonCode: params.guardianReport.reasonCode,
+        evaluationScope: params.guardianReport.evaluationScope,
+        summary: params.guardianReport.summary,
+        nextSteps: params.guardianReport.nextSteps,
+        checklist: params.guardianReport.checklist,
+      },
+    };
+  });
+}
+
+function buildGuardianOriginalOutput(params: {
+  agentId: string;
+  guardianReport: ReturnType<typeof buildGuardianResponsePayload>;
+  recommendations: GenerateRecommendationsResult | null;
+  fallback: unknown;
+}) {
+  if (params.agentId.trim().toLowerCase() !== "guardian" || !params.guardianReport) {
+    return params.fallback;
+  }
+
+  return {
+    guardianDecision: params.guardianReport.guardianDecision,
+    globalDecision: params.guardianReport.globalDecision,
+    stageDecision: params.guardianReport.stageDecision,
+    reasonCode: params.guardianReport.reasonCode,
+    evaluationScope: params.guardianReport.evaluationScope,
+    summary: params.guardianReport.summary,
+    checklist: params.guardianReport.checklist,
+    nextSteps: params.guardianReport.nextSteps,
+    recommendations: params.recommendations?.recomendacoes ?? null,
+  };
+}
+
+function hasUsageSignal(
+  usage:
+    | {
+        promptTokens?: number;
+        completionTokens?: number;
+        cachedTokens?: number;
+        totalTokens?: number;
+      }
+    | null
+    | undefined
+) {
+  return [usage?.promptTokens, usage?.completionTokens, usage?.cachedTokens, usage?.totalTokens].some(
+    (value) => typeof value === "number" && Number.isFinite(value) && value > 0
+  );
+}
+
+function buildPartialProgress(params: {
+  context:
+    | {
+        plan: OrchestratorPlanStep[];
+        outputs: Array<{ stepId: string; data: unknown }>;
+      }
+    | null
+    | undefined;
+  snapshot:
+    | {
+        traceId?: string;
+        requestId?: string;
+        usage?:
+          | {
+              promptTokens?: number;
+              completionTokens?: number;
+              cachedTokens?: number;
+              totalTokens?: number;
+            }
+          | null;
+      }
+    | null
+    | undefined;
+  estimatedCostCents?: number | null;
+}) {
+  const plan = params.context?.plan ?? [];
+  const outputs = params.context?.outputs ?? [];
+  const completedSteps = plan.filter((step) => step.status === "completed").length;
+  const failedSteps = plan.filter((step) => step.status === "failed").length;
+  const currentStep =
+    plan.find((step) => step.status === "running" || step.status === "in_progress") ??
+    plan.find((step) => step.status !== "completed" && step.status !== "failed") ??
+    null;
+
+  return {
+    partial: true,
+    planStepsTotal: plan.length,
+    completedSteps,
+    failedSteps,
+    pendingSteps: Math.max(plan.length - completedSteps - failedSteps, 0),
+    outputsCount: outputs.length,
+    completedStepIds: plan.filter((step) => step.status === "completed").map((step) => step.id),
+    currentStepId: currentStep?.id ?? null,
+    currentStepAction: currentStep?.action ?? null,
+    currentStepDescription: currentStep?.description ?? null,
+    traceId: params.snapshot?.traceId ?? null,
+    requestId: params.snapshot?.requestId ?? null,
+    usage: hasUsageSignal(params.snapshot?.usage ?? null) ? params.snapshot?.usage ?? null : null,
+    estimatedCostCents:
+      typeof params.estimatedCostCents === "number" && Number.isFinite(params.estimatedCostCents)
+        ? params.estimatedCostCents
+        : null,
+  };
+}
+
+async function finalizeCancelledRunPartial(params: {
+  agentId: string;
+  runId: string;
+  tenantId: string;
+  workspaceId: string;
+  userId?: string | null;
+  metadata: Record<string, unknown>;
+  context:
+    | {
+        plan: OrchestratorPlanStep[];
+        outputs: Array<{ stepId: string; data: unknown }>;
+      }
+    | null
+    | undefined;
+  snapshot:
+    | {
+        traceId?: string;
+        usage?:
+          | {
+              promptTokens?: number;
+              completionTokens?: number;
+              cachedTokens?: number;
+              totalTokens?: number;
+            }
+          | null;
+      }
+    | null
+    | undefined;
+  estimate?: number | null;
+}) {
+  const existing = await getRun({
+    prisma: prismaGlobal,
+    id: params.runId,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+  });
+  const existingResponse = isPlainObject(existing?.response) ? { ...existing.response } : {};
+  const outputs = params.context?.outputs ?? [];
+  const recipeOrchestration = buildRecipeOrchestration({
+    agentId: params.agentId,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    metadata: params.metadata,
+    costCents: params.estimate,
+  });
+  const partialProgress = buildPartialProgress({
+    context: params.context,
+    snapshot: params.snapshot,
+    estimatedCostCents: params.estimate,
+  });
+
+  const mergedResponse = {
+    ...existingResponse,
+    error:
+      typeof existingResponse.error === "string" && existingResponse.error.trim().length > 0
+        ? existingResponse.error
+        : "Execution cancelled by user",
+    cancelledAt:
+      typeof existingResponse.cancelRequestedAt === "string"
+        ? existingResponse.cancelRequestedAt
+        : new Date().toISOString(),
+    cancelledBy:
+      typeof existingResponse.cancelRequestedBy === "string"
+        ? existingResponse.cancelRequestedBy
+        : params.userId ?? null,
+    ...(outputs.length > 0 ? { outputs } : {}),
+    ...(Object.keys(recipeOrchestration).length > 0 ? { recipeOrchestration } : {}),
+    ...(params.snapshot?.usage ? { usage: params.snapshot.usage } : {}),
+    partialProgress,
+    partial: true,
+  };
+
+  await finalizeRunRecord({
+    runId: params.runId,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    status: "blocked",
+    response: mergedResponse,
+    traceId: params.snapshot?.traceId ?? null,
+    errorCode: "USER_CANCELLED",
+  });
+
+  await emitRunEvent({
+    runId: params.runId,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    userId: params.userId ?? null,
+    type: "run.cancelled",
+    payload: {
+      status: "blocked",
+      reasonCode: "USER_CANCELLED",
+      cancelledAt: mergedResponse.cancelledAt,
+      partialProgress,
+    },
+  });
+
+  const derivedCostCents = await deriveRunCostFromBreakdown({
+    prisma: prismaGlobal,
+    runId: params.runId,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+  });
+
+  if (typeof derivedCostCents === "number" && Number.isFinite(derivedCostCents) && derivedCostCents > 0) {
+    await chargeRun({
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      runId: params.runId,
+      costCents: derivedCostCents,
+    });
+  }
+
+  return mergedResponse;
+}
+
+async function isRunUserCancelled(params: {
+  runId: string;
+  tenantId: string;
+  workspaceId: string;
+}) {
+  const run = await getRun({
+    prisma: prismaGlobal,
+    id: params.runId,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+  });
+  if (!run) return false;
+  if (run.status === "blocked" && run.errorCode === "USER_CANCELLED") return true;
+  if (isPlainObject(run.response) && typeof run.response.cancelRequestedAt === "string") return true;
+  return false;
+}
+
+async function persistRunProgressSnapshot(params: {
+  agentId: string;
+  runId: string;
+  tenantId: string;
+  workspaceId: string;
+  metadata: Record<string, unknown>;
+  context:
+    | {
+        plan: OrchestratorPlanStep[];
+        outputs: Array<{ stepId: string; data: unknown }>;
+      }
+    | null
+    | undefined;
+  snapshot:
+    | {
+        traceId?: string;
+        usage?:
+          | {
+              promptTokens?: number;
+              completionTokens?: number;
+              cachedTokens?: number;
+              totalTokens?: number;
+            }
+          | null;
+      }
+    | null
+    | undefined;
+  estimate?: number | null;
+}) {
+  const existing = await getRun({
+    prisma: prismaGlobal,
+    id: params.runId,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+  });
+  if (!existing) return;
+
+  const existingResponse = isPlainObject(existing.response) ? { ...existing.response } : {};
+  const recipeOrchestration = buildRecipeOrchestration({
+    agentId: params.agentId,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    metadata: params.metadata,
+    costCents: params.estimate,
+  });
+  const partialProgress = buildPartialProgress({
+    context: params.context,
+    snapshot: params.snapshot,
+    estimatedCostCents: params.estimate,
+  });
+
+  await (prismaGlobal as any).run.update({
+    where: { id: existing.id },
+    data: {
+      response: {
+        ...existingResponse,
+        ...(params.context?.outputs?.length ? { outputs: params.context.outputs } : {}),
+        ...(Object.keys(recipeOrchestration).length > 0 ? { recipeOrchestration } : {}),
+        ...(params.snapshot?.usage ? { usage: params.snapshot.usage } : {}),
+        partialProgress,
+        partial: true,
+      },
+      ...(params.snapshot?.traceId ? { traceId: params.snapshot.traceId } : {}),
+    },
+  });
 }
 
 async function resolveActionsForExecution(
@@ -647,6 +1012,25 @@ export async function processRunPayload(payload: RunQueuePayload) {
     logger.info("run.worker.received");
     logGovernanceStatus(workerLogger);
 
+    if (await isRunUserCancelled({ runId, tenantId, workspaceId })) {
+      logger.info("run.worker.cancelled_before_start");
+      await finalizeCancelledRunPartial({
+        agentId: agent,
+        runId,
+        tenantId,
+        workspaceId,
+        userId,
+        metadata:
+          metadata && typeof metadata === "object" && !Array.isArray(metadata)
+            ? { ...(metadata as Record<string, unknown>) }
+            : {},
+        context: null,
+        snapshot: null,
+        estimate: null,
+      });
+      return;
+    }
+
     const profile = await getAgentProfile(tenantId, workspaceId, agent);
     if (!profile) {
       logger.warn(
@@ -686,6 +1070,25 @@ export async function processRunPayload(payload: RunQueuePayload) {
       startedAt: new Date(),
     });
     logger.info("run.worker.execution_started");
+
+    if (await isRunUserCancelled({ runId, tenantId, workspaceId })) {
+      logger.info("run.worker.cancelled_after_start");
+      await finalizeCancelledRunPartial({
+        agentId: agent,
+        runId,
+        tenantId,
+        workspaceId,
+        userId,
+        metadata:
+          metadata && typeof metadata === "object" && !Array.isArray(metadata)
+            ? { ...(metadata as Record<string, unknown>) }
+            : {},
+        context: null,
+        snapshot: null,
+        estimate: null,
+      });
+      return;
+    }
 
     const memoryService = getMemoryService(tenantId, workspaceId, prismaGlobal);
     const retryConfig = {
@@ -879,6 +1282,12 @@ export async function processRunPayload(payload: RunQueuePayload) {
       } | null;
     };
     let executionResult: ExecutionSnapshot | null = null;
+    let context: {
+      plan: OrchestratorPlanStep[];
+      outputs: Array<{ stepId: string; data: unknown }>;
+    } | null = null;
+    let estimate: number | null = null;
+    let snapshot: ExecutionSnapshot | null = null;
 
     try {
       const planManager =
@@ -1331,7 +1740,7 @@ export async function processRunPayload(payload: RunQueuePayload) {
         declaredProfileActions
       );
 
-      const context = await orchestrator.run({
+      context = await orchestrator.run({
         objective: prompt,
         tenantId,
         workspaceId,
@@ -1358,7 +1767,7 @@ export async function processRunPayload(payload: RunQueuePayload) {
         .map((step) => step.action)
         .filter((value): value is string => typeof value === "string" && value.trim().length > 0);
 
-      const estimate = await estimateCostCents({
+      estimate = await estimateCostCents({
         agent,
         inputBytes,
         tools: toolIdentifiers,
@@ -1370,17 +1779,18 @@ export async function processRunPayload(payload: RunQueuePayload) {
       }
       const costAwareLogger = withCostContext(logger, estimate);
 
-      let snapshot = executionResult as ExecutionSnapshot | null;
+      snapshot = executionResult as ExecutionSnapshot | null;
 
       let finalRecommendations: GenerateRecommendationsResult | null = null;
       let candidatePayload: RecommendationCandidate[] = [];
 
-      if (snapshot?.outputText) {
-        const parsedCandidates = parseOutputCandidates(snapshot.outputText);
-        if (parsedCandidates.length > 0) {
-          candidatePayload = parsedCandidates;
-        }
-      }
+      const parsedCandidates = snapshot?.outputText ? parseOutputCandidates(snapshot.outputText) : [];
+      candidatePayload = alignCandidatesToRecipe({
+        agentId: agent,
+        metadata: runtimeMetadataResolved,
+        outputs: context.outputs,
+        candidates: parsedCandidates,
+      });
 
       if (candidatePayload.length > 0) {
         finalRecommendations = generateStatefulRecommendations({
@@ -1414,6 +1824,10 @@ export async function processRunPayload(payload: RunQueuePayload) {
             rawResponse: previousExecution.rawResponse,
             traceId: previousExecution.traceId,
             tookMs: previousExecution.tookMs,
+            provider: previousExecution.provider,
+            model: previousExecution.model,
+            requestId: previousExecution.requestId,
+            usage: previousExecution.usage,
           };
           executionResult = enrichedExecution;
           snapshot = enrichedExecution;
@@ -1541,6 +1955,27 @@ export async function processRunPayload(payload: RunQueuePayload) {
         );
 
         if (shouldBlock) {
+          const blockedGuardianReport = buildGuardianResponsePayload({
+            agentId: agent,
+            tenantId,
+            workspaceId,
+            runId,
+            runStatus: "error",
+            costCents: estimate,
+            txId: scl.txId,
+            criticalHash: scl.criticalHash,
+            metadata: runtimeMetadataResolved,
+            outputs: context?.outputs ?? [],
+            snapshot,
+          });
+          const recipeOrchestration = buildRecipeOrchestration({
+            agentId: agent,
+            tenantId,
+            workspaceId,
+            metadata: runtimeMetadataResolved,
+            costCents: estimate,
+          });
+
           await recordReplayCompletedIfNeeded({
             runId,
             tenantId,
@@ -1556,7 +1991,13 @@ export async function processRunPayload(payload: RunQueuePayload) {
             tenantId,
             workspaceId,
             status: "blocked",
-            response: { error: reason, guardrails: guardrailReport },
+            response: {
+              error: reason,
+              guardrails: guardrailReport,
+              guardianReport: blockedGuardianReport,
+              recipeOrchestration,
+              usage: snapshot?.usage ?? null,
+            },
             traceId: snapshot?.traceId ?? null,
             errorCode: "GUARDRAILS_BLOCKED",
             txId: scl.txId,
@@ -1589,16 +2030,86 @@ export async function processRunPayload(payload: RunQueuePayload) {
         });
       }
 
+      await persistRunProgressSnapshot({
+        agentId: agent,
+        runId,
+        tenantId,
+        workspaceId,
+        metadata: runtimeMetadataResolved,
+        context,
+        snapshot,
+        estimate,
+      });
+
       const outputFailure = detectRunWorkerOutputFailure(snapshot?.rawResponse);
       if (outputFailure) {
         throw new Error(outputFailure);
       }
 
-      const succeededResponse = {
-        optimized: finalRecommendations,
-        originalOutput: snapshot?.rawResponse ?? snapshot?.outputText ?? null,
-        plan: context.plan,
+      if (await isRunUserCancelled({ runId, tenantId, workspaceId })) {
+        logger.info("run.worker.cancelled_before_finalize");
+        await finalizeCancelledRunPartial({
+          agentId: agent,
+          runId,
+          tenantId,
+          workspaceId,
+          userId,
+          metadata: runtimeMetadataResolved,
+          context,
+          snapshot,
+          estimate,
+        });
+        await recordReplayCompletedIfNeeded({
+          runId,
+          tenantId,
+          workspaceId,
+          userId,
+          replayInfo,
+          status: "blocked",
+          reason: "USER_CANCELLED",
+        });
+        return;
+      }
+
+      const preliminaryGuardianReport = buildGuardianResponsePayload({
+        agentId: agent,
+        tenantId,
+        workspaceId,
+        runId,
+        runStatus: "success",
+        costCents: estimate,
+        metadata: runtimeMetadataResolved,
+        outputs: context?.outputs ?? [],
+        snapshot,
+      });
+      const recipeOrchestration = buildRecipeOrchestration({
+        agentId: agent,
+        tenantId,
+        workspaceId,
+        metadata: runtimeMetadataResolved,
+        costCents: estimate,
+      });
+
+      const preliminaryOutputs = normalizeGuardianSummaryOutputs({
+        agentId: agent,
+        runId,
         outputs: context.outputs,
+        guardianReport: preliminaryGuardianReport,
+      });
+
+      const preliminaryResponse = {
+        optimized: finalRecommendations,
+        originalOutput: buildGuardianOriginalOutput({
+          agentId: agent,
+          guardianReport: preliminaryGuardianReport,
+          recommendations: finalRecommendations,
+          fallback: snapshot?.rawResponse ?? snapshot?.outputText ?? null,
+        }),
+        plan: context.plan,
+        outputs: preliminaryOutputs,
+        guardianReport: preliminaryGuardianReport,
+        recipeOrchestration,
+        usage: snapshot?.usage ?? null,
         memory: {
           previousRuns: trimmedPreviousRunsForPrompt,
           agentStateBefore: existingStateRecord?.state ?? null,
@@ -1610,9 +2121,48 @@ export async function processRunPayload(payload: RunQueuePayload) {
         tenantId,
         workspaceId,
         runId,
-        payload: succeededResponse,
+        payload: preliminaryResponse,
         riskLevel: "medium",
       });
+
+      const guardianReport = buildGuardianResponsePayload({
+        agentId: agent,
+        tenantId,
+        workspaceId,
+        runId,
+        runStatus: "success",
+        costCents: estimate,
+        txId: scl.txId,
+        criticalHash: scl.criticalHash,
+        metadata: runtimeMetadataResolved,
+        outputs: context?.outputs ?? [],
+        snapshot,
+      });
+      const normalizedOutputs = normalizeGuardianSummaryOutputs({
+        agentId: agent,
+        runId,
+        outputs: context.outputs,
+        guardianReport,
+      });
+
+      const succeededResponse = {
+        optimized: finalRecommendations,
+        originalOutput: buildGuardianOriginalOutput({
+          agentId: agent,
+          guardianReport,
+          recommendations: finalRecommendations,
+          fallback: snapshot?.rawResponse ?? snapshot?.outputText ?? null,
+        }),
+        plan: context.plan,
+        outputs: normalizedOutputs,
+        guardianReport,
+        recipeOrchestration,
+        usage: snapshot?.usage ?? null,
+        memory: {
+          previousRuns: trimmedPreviousRunsForPrompt,
+          agentStateBefore: existingStateRecord?.state ?? null,
+        },
+      };
 
       await finalizeRunRecord({
         runId,
@@ -1710,6 +2260,31 @@ export async function processRunPayload(payload: RunQueuePayload) {
       await enqueueRunAtivoUniversal(runAtivoJob);
 
     } catch (error) {
+      if (await isRunUserCancelled({ runId, tenantId, workspaceId })) {
+        logger.info("run.worker.cancelled_during_error_handling");
+        await finalizeCancelledRunPartial({
+          agentId: agent,
+          runId,
+          tenantId,
+          workspaceId,
+          userId,
+          metadata: runtimeMetadataResolved,
+          context,
+          snapshot,
+          estimate,
+        });
+        await recordReplayCompletedIfNeeded({
+          runId,
+          tenantId,
+          workspaceId,
+          userId,
+          replayInfo,
+          status: "blocked",
+          reason: "USER_CANCELLED",
+        });
+        return;
+      }
+
       const message = error instanceof Error ? error.message : "Execution failed";
       logger.error(
         {
@@ -1717,6 +2292,27 @@ export async function processRunPayload(payload: RunQueuePayload) {
         },
         "run.worker.failed"
       );
+
+      const errorGuardianReport = buildGuardianResponsePayload({
+        agentId: agent,
+        tenantId,
+        workspaceId,
+        runId,
+        runStatus: "error",
+        costCents: estimate,
+        txId: scl.txId,
+        criticalHash: scl.criticalHash,
+        metadata: runtimeMetadataResolved,
+        outputs: context?.outputs ?? [],
+        snapshot,
+      });
+      const recipeOrchestration = buildRecipeOrchestration({
+        agentId: agent,
+        tenantId,
+        workspaceId,
+        metadata: runtimeMetadataResolved,
+        costCents: estimate,
+      });
 
       const scl = await appendSclRecord({
         prisma: prismaGlobal,
@@ -1732,7 +2328,12 @@ export async function processRunPayload(payload: RunQueuePayload) {
         tenantId,
         workspaceId,
         status: "error",
-        response: { error: message },
+        response: {
+          error: message,
+          guardianReport: errorGuardianReport,
+          recipeOrchestration,
+          usage: snapshot?.usage ?? null,
+        },
         errorCode: "EXECUTION_FAILED",
         txId: scl.txId,
         criticalHash: scl.criticalHash,

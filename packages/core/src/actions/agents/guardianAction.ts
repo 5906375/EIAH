@@ -206,6 +206,10 @@ export const guardianProfile: AgentProfileSeed = {
   systemPrompt: guardianPrompt,
   tools: [
     {
+      name: "guardian.checkEnvironmentSegregation",
+      description: "Verifica evidências de segregação entre staging e produção para app e API.",
+    },
+    {
       name: "guardian.checkRuntimeHealth",
       description: "Verifica o contrato público de health e dependências básicas do runtime.",
     },
@@ -220,6 +224,10 @@ export const guardianProfile: AgentProfileSeed = {
     {
       name: "guardian.checkGoLivePolicy",
       description: "Checa ADR de stack oficial e evidência fail-closed do fluxo.",
+    },
+    {
+      name: "guardian.checkEdgeProtection",
+      description: "Valida evidências de WAF, rate limiting e fail-closed na borda pública.",
     },
   ],
   knowledgePolicy: {

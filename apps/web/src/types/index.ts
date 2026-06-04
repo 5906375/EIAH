@@ -15,4 +15,10 @@ export type {
 } from "./optimizationRecommendationSnapshot";
 export type { OperationalInsightSnapshot } from "./operationalInsightSnapshot";
 export type { OnboardingContext } from "./onboardingContext";
-export type { TenantRecipe, TenantRecipeStatus, TenantRecipeWorkspaceScope } from "./tenantRecipe";
+export type {
+  TenantRecipe,
+  TenantRecipeContent,
+  TenantRecipeContentStep,
+  TenantRecipeStatus,
+  TenantRecipeWorkspaceScope,
+} from "./tenantRecipe";

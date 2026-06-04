@@ -1,3 +1,5 @@
+import type { TenantRecipe } from "@/lib/api";
+
 export type FieldConfig = {
   key: string;
   label: string;
@@ -29,6 +31,148 @@ export type CustomAgentConfig = BaseConfig & {
 };
 
 export type SelfServiceAgentConfig = GenericAgentConfig | CustomAgentConfig;
+
+function normalizeRecipeText(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ");
+}
+
+type GuardianRecipeIntent =
+  | "segregation"
+  | "health_policy"
+  | "edge_protection"
+  | "rollback_evidence"
+  | "generic";
+
+function inferGuardianRecipeIntent(recipe: TenantRecipe): GuardianRecipeIntent {
+  const tags = recipe.tags.map((tag) => normalizeRecipeText(tag));
+  const haystack = normalizeRecipeText(
+    [recipe.title, recipe.summary, recipe.instructions ?? "", recipe.tags.join(" ")].join(" ")
+  );
+
+  const hasAny = (terms: string[]) => terms.some((term) => haystack.includes(normalizeRecipeText(term)));
+  const hasTag = (terms: string[]) => terms.some((term) => tags.includes(normalizeRecipeText(term)));
+
+  if (
+    (hasAny(["staging", "produção", "producao", "segregação", "segregacao"]) &&
+      hasAny(["app", "frontend"]) &&
+      hasAny(["api", "backend"])) ||
+    hasTag(["staging", "production", "frontend", "api"])
+  ) {
+    return "segregation";
+  }
+
+  if (
+    hasAny(["healthcheck", "/api/health", "fail-closed", "403", "tenantid", "workspaceid", "policy"]) ||
+    hasTag(["healthcheck", "policy", "security"])
+  ) {
+    return "health_policy";
+  }
+
+  if (
+    hasAny(["waf", "rate limit", "rate limiting", "exposição pública", "exposicao publica", "borda"]) ||
+    hasTag(["waf", "rate-limit", "edge"])
+  ) {
+    return "edge_protection";
+  }
+
+  if (
+    hasAny(["rollback", "evidências finais", "evidencias finais", "audit", "trilha probatória"]) ||
+    hasTag(["rollback", "evidence", "audit", "operations"])
+  ) {
+    return "rollback_evidence";
+  }
+
+  return "generic";
+}
+
+function withFieldOverrides(field: FieldConfig, overrides: Partial<FieldConfig>): FieldConfig {
+  return {
+    ...field,
+    ...overrides,
+  };
+}
+
+export function resolveRecipeAwareFields(
+  config: GenericAgentConfig,
+  recipe: TenantRecipe | null
+): FieldConfig[] {
+  if (!recipe || config.agentId !== "guardian") {
+    return config.fields;
+  }
+
+  const intent = inferGuardianRecipeIntent(recipe);
+  const tags = recipe.tags.join(", ");
+
+  return config.fields.map((field) => {
+    if (field.key === "requestType") {
+      switch (intent) {
+        case "segregation":
+          return withFieldOverrides(field, {
+            label: "Checkpoint de segregação / rota alvo",
+            placeholder: "Ex.: segregacao.app_api.staging_producao",
+            helper:
+              "Use este campo para nomear o checkpoint principal da recipe. O foco aqui é provar que staging e produção não estão misturados.",
+          });
+        case "health_policy":
+          return withFieldOverrides(field, {
+            label: "Endpoint protegido / checkpoint da policy",
+            placeholder: "Ex.: GET /api/health, POST /api/chat/*",
+            helper:
+              "Informe o endpoint ou checkpoint que precisa comprovar healthcheck, tenant/workspace e fail-closed com 403.",
+          });
+        case "edge_protection":
+          return withFieldOverrides(field, {
+            label: "Domínio público / rota crítica",
+            placeholder: "Ex.: api.eiah.<tld> /api/chat/*",
+            helper:
+              "Descreva a superfície pública que precisa de WAF, rate limit e contenção de exposição.",
+          });
+        case "rollback_evidence":
+          return withFieldOverrides(field, {
+            label: "Escopo de rollback / trilha final",
+            placeholder: "Ex.: rollback.app_api.go_live_controlado",
+            helper:
+              "Indique o escopo do rollback e do bundle final de evidências que a recipe precisa fechar.",
+          });
+        default:
+          return withFieldOverrides(field, {
+            helper: tags ? `Tags da recipe: ${tags}` : field.helper,
+          });
+      }
+    }
+
+    if (field.key === "objective") {
+      return withFieldOverrides(field, {
+        label: "Objetivo principal da recipe",
+        helper:
+          "Explique o resultado prático que precisa ficar resolvido para este run ser considerado útil.",
+      });
+    }
+
+    if (field.key === "evidence") {
+      return withFieldOverrides(field, {
+        label: "Evidências esperadas pela recipe",
+        placeholder:
+          "Liste os sinais, artefatos e provas já disponíveis ou ainda pendentes para esta etapa.",
+      });
+    }
+
+    if (field.key === "notes") {
+      return withFieldOverrides(field, {
+        label: "Pendências, SLA e próximos passos",
+        placeholder:
+          "Informe restrições operacionais, ordem sugerida de correção, SLA e o que precisa ficar pronto para rerun.",
+      });
+    }
+
+    return field;
+  });
+}
 
 export const selfServiceConfigs: SelfServiceAgentConfig[] = [
   {

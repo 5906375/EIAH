@@ -29,6 +29,35 @@ test("guardian plan manager creates real verification steps for go-live controll
   );
 });
 
+test("guardian plan manager creates structured verification steps for main staged go-live plan", () => {
+  const plan = buildGuardianPlan({
+    objective: "Validar plano principal de go-live",
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    runId: "run-main",
+    metadata: {
+      form: {
+        requestType: "go_live_controlado.plano_principal_web",
+        objective: "Validar segregação, health, borda, rollback e evidências finais",
+      },
+    },
+  });
+
+  assert.ok(plan);
+  assert.deepEqual(
+    plan?.map((step) => step.action ?? null),
+    [
+      "guardian.checkEnvironmentSegregation",
+      "guardian.checkRuntimeHealth",
+      "guardian.checkGoLivePolicy",
+      "guardian.checkEdgeProtection",
+      "guardian.checkRollbackReadiness",
+      "guardian.checkGoLiveArtifacts",
+      null,
+    ]
+  );
+});
+
 test("guardian plan manager falls back when the route is not recognized", () => {
   const plan = buildGuardianPlan({
     objective: "Outro tipo de revisão",

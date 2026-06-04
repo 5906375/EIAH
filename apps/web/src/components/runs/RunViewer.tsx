@@ -1,8 +1,16 @@
 import { useCallback, useEffect, useMemo, useState, type ComponentPropsWithoutRef } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
-import { apiAdoptRecommendation, apiCreateSession, apiListRunEvents, BASE_URL, RunEvent, RunStatus } from "@/lib/api";
-import { centsToBRL, extractDuration, formatAgentLabel, formatClockTime, formatDuration } from "./utils";
+import {
+  apiAdoptRecommendation,
+  apiCancelRun,
+  apiCreateSession,
+  apiListRunEvents,
+  BASE_URL,
+  RunEvent,
+  RunStatus,
+} from "@/lib/api";
+import { centsToBRL, formatAgentLabel, formatClockTime, formatDuration } from "./utils";
 import RunTimeline from "./RunTimeline";
 import GovernancePanel from "./GovernancePanel";
 import { maskPII } from "@repo/utils";
@@ -203,6 +211,15 @@ type GuardianChecklistStepResult = {
   nextAction?: string | null;
 };
 
+type RecommendationChecklistStep = {
+  step: string;
+  status: string;
+  reasonCode?: string;
+  summary?: string;
+  nextAction?: string | null;
+  evidenceRefs?: string[];
+};
+
 function extractGuardianChecklistResults(node: unknown): GuardianChecklistStepResult[] {
   if (!node || typeof node !== "object") return [];
   const record = node as Record<string, unknown>;
@@ -216,7 +233,7 @@ function extractGuardianChecklistResults(node: unknown): GuardianChecklistStepRe
     : [];
 
   return outputs
-    .map((entry) => {
+    .map<GuardianChecklistStepResult | null>((entry) => {
       const data =
         isPlainObject(entry) && isPlainObject((entry as Record<string, unknown>).data)
           ? ((entry as Record<string, unknown>).data as Record<string, unknown>)
@@ -238,7 +255,28 @@ function extractGuardianChecklistResults(node: unknown): GuardianChecklistStepRe
         nextAction: typeof data.nextAction === "string" ? data.nextAction : null,
       } satisfies GuardianChecklistStepResult;
     })
-    .filter((item): item is GuardianChecklistStepResult => Boolean(item));
+    .filter((item): item is GuardianChecklistStepResult => item !== null);
+}
+
+function extractRecommendationChecklistSteps(node: unknown): RecommendationChecklistStep[] {
+  if (!isPlainObject(node) || !Array.isArray((node as Record<string, unknown>).checklistSteps)) return [];
+  return ((node as Record<string, unknown>).checklistSteps as unknown[])
+    .map<RecommendationChecklistStep | null>((entry) => {
+      if (!isPlainObject(entry)) return null;
+      const record = entry as Record<string, unknown>;
+      if (typeof record.step !== "string" || typeof record.status !== "string") return null;
+      return {
+        step: record.step,
+        status: record.status,
+        reasonCode: typeof record.reasonCode === "string" ? record.reasonCode : undefined,
+        summary: typeof record.summary === "string" ? record.summary : undefined,
+        nextAction: typeof record.nextAction === "string" ? record.nextAction : null,
+        evidenceRefs: Array.isArray(record.evidenceRefs)
+          ? record.evidenceRefs.filter((item): item is string => typeof item === "string")
+          : undefined,
+      } satisfies RecommendationChecklistStep;
+    })
+    .filter((item): item is RecommendationChecklistStep => item !== null);
 }
 
 function truncateReportText(value: string | undefined, maxLength = 220) {
@@ -270,6 +308,8 @@ export default function RunViewer({ run }: { run: RunData }) {
   const [eventsError, setEventsError] = useState<string | null>(null);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   const [alertFeedback, setAlertFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [cancelFeedback, setCancelFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [isCancellingRun, setIsCancellingRun] = useState(false);
   const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
   const [includeDetailsInExport, setIncludeDetailsInExport] = useState(false);
   const delegationInfo = useMemo(() => extractDelegationInfo(run.request), [run.request]);
@@ -331,10 +371,15 @@ export default function RunViewer({ run }: { run: RunData }) {
   }, [structuredOutput]);
   const technicalJson = useMemo(() => safeStringify(run), [run]);
   const startedAtLabel = useMemo(() => formatClockTime(run.startedAt), [run.startedAt]);
-  const durationLabel = useMemo(
-    () => formatDuration(extractDuration(run)),
-    [run.startedAt, run.finishedAt, run.meta?.tookMs]
-  );
+  const durationLabel = useMemo(() => {
+    const tookMs =
+      typeof run.meta?.tookMs === "number"
+        ? run.meta.tookMs
+        : run.startedAt && run.finishedAt
+        ? Math.max(0, new Date(run.finishedAt).getTime() - new Date(run.startedAt).getTime())
+        : undefined;
+    return formatDuration(Number.isFinite(tookMs ?? Number.NaN) ? tookMs : undefined);
+  }, [run.startedAt, run.finishedAt, run.meta?.tookMs]);
   const costLabel = useMemo(() => centsToBRL(run.costCents), [run.costCents]);
   const startedAtMs = useMemo(() => {
     if (!run.startedAt) return null;
@@ -481,6 +526,37 @@ export default function RunViewer({ run }: { run: RunData }) {
     return statusStyles[run.status] ?? statusStyles.success;
   }, [pendingWithoutEventsExpired, run.status]);
   const isInProgress = run.status === "pending" || run.status === "running";
+
+  const handleCancelRun = useCallback(async () => {
+    if (!isInProgress || isCancellingRun) return;
+    const confirmed =
+      typeof window === "undefined"
+        ? true
+        : window.confirm("Cancelar este run agora? A execução será marcada como interrompida pelo usuário.");
+    if (!confirmed) return;
+
+    setIsCancellingRun(true);
+    setCancelFeedback(null);
+    try {
+      const response = await apiCancelRun(run.id);
+      const cancelEvent = response.event;
+      if (cancelEvent) {
+        setEvents((prev) => {
+          if (prev.some((event) => event.id === cancelEvent.id)) return prev;
+          return [...prev, cancelEvent];
+        });
+      }
+      setCancelFeedback({
+        type: "success",
+        message: "Cancelamento solicitado. Atualize o run para confirmar o estado final.",
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Falha ao cancelar o run.";
+      setCancelFeedback({ type: "error", message });
+    } finally {
+      setIsCancellingRun(false);
+    }
+  }, [isCancellingRun, isInProgress, run.id]);
 
   const markdownComponents = useMemo<Components>(
     () => ({
@@ -823,6 +899,14 @@ export default function RunViewer({ run }: { run: RunData }) {
             <p className="text-center text-xs leading-relaxed text-rose-100/90">
               Este run está em fila há mais de 2 minutos sem eventos do worker. Atualize, reexecute ou verifique o worker.
             </p>
+            <button
+              type="button"
+              className="rounded-full border border-rose-300/30 bg-rose-400/15 px-4 py-2 text-[11px] font-semibold uppercase tracking-wide text-rose-100 transition hover:border-rose-200/60 hover:bg-rose-400/25 disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={handleCancelRun}
+              disabled={isCancellingRun || !isInProgress}
+            >
+              {isCancellingRun ? "Cancelando..." : "Cancelar execução"}
+            </button>
           </div>
         ) : runAtivoArtifacts ? (
           <div className="space-y-6">
@@ -856,6 +940,16 @@ export default function RunViewer({ run }: { run: RunData }) {
 
       <footer className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
         <span>traceId: {run.meta?.traceId ?? "-"}</span>
+        {isInProgress ? (
+          <button
+            type="button"
+            className="rounded-full border border-rose-300/20 bg-rose-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-rose-200 transition hover:border-rose-200/50 hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+            onClick={handleCancelRun}
+            disabled={isCancellingRun}
+          >
+            {isCancellingRun ? "Cancelando..." : "Cancelar run"}
+          </button>
+        ) : null}
         <label className="flex items-center gap-2 text-[11px] text-muted-foreground">
           <input
             type="checkbox"
@@ -900,6 +994,15 @@ export default function RunViewer({ run }: { run: RunData }) {
             }`}
           >
             {alertFeedback.message}
+          </span>
+        )}
+        {cancelFeedback && (
+          <span
+            className={`text-xs ${
+              cancelFeedback.type === "success" ? "text-emerald-300" : "text-rose-300"
+            }`}
+          >
+            {cancelFeedback.message}
           </span>
         )}
       </footer>
@@ -978,6 +1081,11 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
     () => (isGuardianAgent ? extractGuardianChecklistResults(data) : []),
     [data, isGuardianAgent]
   );
+  const guardianReport = useMemo(
+    () => (isGuardianAgent ? extractGuardianReportData(data) : null),
+    [data, isGuardianAgent]
+  );
+  const recipeOrchestration = useMemo(() => extractRecipeOrchestrationData(data), [data]);
   const diagnosticStats = {
     totalPrevRuns:
       typeof diagnostico?.total_prev_runs === "number"
@@ -1288,6 +1396,374 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
         </section>
       )}
 
+      {isGuardianAgent && (
+        <section className="space-y-3">
+          <header className="space-y-1">
+            <h4 className="text-base font-semibold text-foreground">Parecer estruturado do Guardian</h4>
+            <p className="text-xs text-muted-foreground">
+              Separação explícita entre status técnico do run e decisão probatória final.
+            </p>
+          </header>
+          {guardianReport ? (
+            <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+              <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+                <span className="pill bg-white/10 text-foreground">runStatus: {guardianReport.runStatus}</span>
+                {guardianReport.evaluationScope ? (
+                  <span className="pill bg-white/10 text-foreground">scope: {guardianReport.evaluationScope}</span>
+                ) : null}
+                {guardianReport.riskLevel ? <span className="pill bg-white/10 text-foreground">risk: {guardianReport.riskLevel}</span> : null}
+                <span
+                  className={mergeClassName(
+                    "pill",
+                    guardianReport.guardianDecision === "GO"
+                      ? "bg-emerald-500/15 text-emerald-200"
+                      : guardianReport.guardianDecision === "DEGRADED"
+                      ? "bg-amber-500/15 text-amber-200"
+                      : "bg-red-500/15 text-red-200"
+                  )}
+                >
+                  guardianDecision: {guardianReport.guardianDecision}
+                </span>
+                <span className="pill bg-white/10 text-foreground">reasonCode: {guardianReport.reasonCode}</span>
+                <span className="pill bg-white/10 text-foreground">evidenceStatus: {guardianReport.evidenceStatus}</span>
+                <span className="pill bg-white/10 text-foreground">exportStatus: {guardianReport.exportStatus}</span>
+                {guardianReport.stageDecision ? (
+                  <span className="pill bg-white/10 text-foreground">stageDecision: {guardianReport.stageDecision}</span>
+                ) : null}
+                {guardianReport.globalDecision ? (
+                  <span className="pill bg-white/10 text-foreground">globalDecision: {guardianReport.globalDecision}</span>
+                ) : null}
+              </div>
+              <p className="text-sm text-muted-foreground">{guardianReport.summary}</p>
+              {guardianReport.activeStepTitle ? (
+                <p className="text-xs text-muted-foreground">
+                  <span className="font-semibold text-foreground">Etapa ativa:</span> {guardianReport.activeStepTitle}
+                </p>
+              ) : null}
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">Bloqueios</p>
+                  <ul className="mt-2 space-y-2 text-xs text-muted-foreground">
+                    {guardianReport.blockingIssues.length > 0 ? (
+                      guardianReport.blockingIssues.map((issue) => (
+                        <li key={`${issue.severity}:${issue.code}`}>
+                          <span className="font-semibold text-foreground">{issue.severity}</span> {issue.code}: {issue.message}
+                        </li>
+                      ))
+                    ) : (
+                      <li>Nenhum bloqueio crítico reportado.</li>
+                    )}
+                  </ul>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">FinOps</p>
+                  <ul className="mt-2 space-y-2 text-xs text-muted-foreground">
+                    <li>status: {formatGuardianFinopsStatusLabel(guardianReport)}</li>
+                    <li>modelo: {guardianReport.finops.model ?? "não reportado"}</li>
+                    <li>tokens: {formatGuardianTokenValue(guardianReport.finops.totalTokens)}</li>
+                    <li>custo: {formatGuardianCurrencyValue(guardianReport.finops.estimatedCost, guardianReport.finops.currency ?? "BRL")}</li>
+                  </ul>
+                </div>
+                {guardianReport.governance ? (
+                  <div className="rounded-xl border border-white/10 bg-black/20 p-3 md:col-span-2">
+                    <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">Governança aplicada</p>
+                    <div className="mt-2 grid gap-3 md:grid-cols-2">
+                      <ul className="space-y-1 text-xs text-muted-foreground">
+                        <li>tenant/workspace: {guardianReport.governance.tenantIdPresent && guardianReport.governance.workspaceIdPresent ? "ok" : "ausente"}</li>
+                        <li>policyDecision: {guardianReport.governance.policyDecision}</li>
+                        <li>RBAC: {guardianReport.governance.rbacEvaluated ? "avaliado" : "não avaliado"}</li>
+                        <li>Entitlement: {guardianReport.governance.entitlementEvaluated ? "avaliado" : "não avaliado"}</li>
+                      </ul>
+                      <ul className="space-y-1 text-xs text-muted-foreground">
+                        <li>TrustScore: {guardianReport.governance.trustScoreEvaluated ? "avaliado" : "não avaliado"}</li>
+                        <li>CostGuard: {guardianReport.governance.costGuardEvaluated ? "avaliado" : "não avaliado"}</li>
+                        <li>trustLevel: {guardianReport.governance.trustLevel ?? "não informado"}</li>
+                        <li>trustScore: {guardianReport.governance.trustScore != null ? guardianReport.governance.trustScore.toFixed(2) : "não informado"}</li>
+                      </ul>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+              <div className="overflow-x-auto rounded-xl border border-white/10">
+                <table className="min-w-full text-left text-xs text-muted-foreground">
+                  <thead className="bg-white/5 text-foreground">
+                    <tr>
+                      <th className="px-3 py-2">Item</th>
+                      <th className="px-3 py-2">Status</th>
+                      <th className="px-3 py-2">Evidência esperada</th>
+                      <th className="px-3 py-2">Evidência coletada</th>
+                      <th className="px-3 py-2">SHA-256</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {guardianReport.checklist.length > 0 ? (
+                      guardianReport.checklist.map((item) => (
+                        <tr key={`${item.item}:${item.expectedEvidence}`} className="border-t border-white/10 align-top">
+                          <td className="px-3 py-2 text-foreground">{item.item}</td>
+                          <td className="px-3 py-2">{item.status}</td>
+                          <td className="px-3 py-2">{item.expectedEvidence}</td>
+                          <td className="px-3 py-2">{item.collectedEvidence ?? "não coletada"}</td>
+                          <td className="px-3 py-2">{item.sha256 ?? "não coletado"}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr className="border-t border-white/10">
+                        <td className="px-3 py-3" colSpan={5}>
+                          Nenhuma evidência estruturada foi reportada.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <div className="space-y-2 rounded-xl border border-white/10 bg-black/20 p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">Matriz de cobertura do parecer</p>
+                <p className="text-xs text-muted-foreground">
+                  Explicação da plataforma sobre o que o parecer técnico pediu, o que este run realmente validou e o que ainda depende de revisão manual ou arquitetural.
+                </p>
+                <div className="overflow-x-auto rounded-xl border border-white/10">
+                  <table className="min-w-full text-left text-xs text-muted-foreground">
+                    <thead className="bg-white/5 text-foreground">
+                      <tr>
+                        <th className="px-3 py-2">O que o parecer pede</th>
+                        <th className="px-3 py-2">O que o run respondeu</th>
+                        <th className="px-3 py-2">O que ainda depende de revisão manual/arquitetural</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {guardianReport.coverageMatrix.length > 0 ? (
+                        guardianReport.coverageMatrix.map((item, index) => (
+                          <tr key={`${item.whatParecerAsks}:${index}`} className="border-t border-white/10 align-top">
+                            <td className="px-3 py-2 text-foreground">{item.whatParecerAsks}</td>
+                            <td className="px-3 py-2">{item.whatRunAnswered}</td>
+                            <td className="px-3 py-2">{item.whatStillNeedsManualReview ?? "Nenhuma pendência adicional reportada."}</td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr className="border-t border-white/10">
+                          <td className="px-3 py-3" colSpan={3}>
+                            Nenhuma matriz de cobertura estruturada foi reportada.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
+              Payload probatório Guardian ausente ou incompatível. O export HTML/PDF opera em fail-closed para evitar template genérico.
+            </div>
+          )}
+        </section>
+      )}
+
+      {recipeOrchestration && (
+        <section className="space-y-3">
+          <header className="space-y-1">
+            <h4 className="text-base font-semibold text-foreground">Recipe_Orchestrator — Como concluir esta receita</h4>
+            <p className="text-xs text-muted-foreground">
+              Plano consultivo inspirado no roteamento do Chat IMOB: agente líder, apoios válidos, limitações e critérios para rerun.
+            </p>
+          </header>
+          <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+              <span className="pill bg-white/10 text-foreground">intent: {recipeOrchestration.intent}</span>
+              <span className="pill bg-white/10 text-foreground">domain: {recipeOrchestration.domain}</span>
+              <span className="pill bg-white/10 text-foreground">risk: {recipeOrchestration.riskLevel}</span>
+              <span className="pill bg-white/10 text-foreground">supportMode: {recipeOrchestration.supportMode}</span>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">Agente líder recomendado</p>
+              <p className="mt-2 text-sm font-semibold text-foreground">
+                {recipeOrchestration.primaryAgent.displayName} ({recipeOrchestration.primaryAgent.key})
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">{recipeOrchestration.primaryAgent.selectionReason}</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Confiança: {recipeOrchestration.primaryAgent.confidence.toFixed(2)}
+              </p>
+              {recipeOrchestration.recipeGoal ? (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  <span className="font-semibold text-foreground">Objetivo:</span> {recipeOrchestration.recipeGoal}
+                </p>
+              ) : null}
+              {recipeOrchestration.recipeExpectedOutcome ? (
+                <p className="mt-1 text-xs text-muted-foreground">
+                  <span className="font-semibold text-foreground">Resultado esperado:</span> {recipeOrchestration.recipeExpectedOutcome}
+                </p>
+              ) : null}
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-xl border border-white/10 bg-black/20 p-3 md:col-span-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">Etapas estruturadas da recipe</p>
+                {recipeOrchestration.recipeSteps.length > 0 ? (
+                  <div className="mt-2 grid gap-3 md:grid-cols-2">
+                    {recipeOrchestration.recipeSteps.map((step, index) => (
+                      <div key={step.id} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                        <p className="text-sm font-semibold text-foreground">
+                          {index + 1}. {step.title}
+                        </p>
+                        {step.objective ? <p className="mt-1 text-xs text-muted-foreground">{step.objective}</p> : null}
+                        {step.checks.length > 0 ? (
+                          <p className="mt-2 text-[11px] text-muted-foreground">
+                            <span className="font-semibold text-foreground">Checks:</span> {step.checks.join(" · ")}
+                          </p>
+                        ) : null}
+                        {step.evidence.length > 0 ? (
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            <span className="font-semibold text-foreground">Evidências:</span> {step.evidence.join(" · ")}
+                          </p>
+                        ) : null}
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          Bloqueia avanço: {step.blocking ? "sim" : "não"}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    A recipe não reportou etapas estruturadas; o runtime caiu no fallback textual.
+                  </p>
+                )}
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">Guardian será acionado?</p>
+                <p className="mt-2 text-sm text-foreground">
+                  {recipeOrchestration.requiresGuardianReview ? "Sim" : "Não"}
+                </p>
+                <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                  {recipeOrchestration.guardianReviewReason.length > 0 ? (
+                    recipeOrchestration.guardianReviewReason.map((item) => <li key={item}>{item}</li>)
+                  ) : (
+                    <li>Nenhum gatilho adicional de governança informado.</li>
+                  )}
+                </ul>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">Governança aplicada</p>
+                <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                  <li>tenant/workspace: {recipeOrchestration.governance.tenantIdPresent && recipeOrchestration.governance.workspaceIdPresent ? "ok" : "ausente"}</li>
+                  <li>policyDecision: {recipeOrchestration.governance.policyDecision}</li>
+                  <li>RBAC: {recipeOrchestration.governance.rbacEvaluated ? "avaliado" : "não avaliado"}</li>
+                  <li>Entitlement: {recipeOrchestration.governance.entitlementEvaluated ? "avaliado" : "não avaliado"}</li>
+                  <li>TrustScore: {recipeOrchestration.governance.trustScoreEvaluated ? "avaliado" : "não avaliado"}</li>
+                  <li>CostGuard: {recipeOrchestration.governance.costGuardEvaluated ? "avaliado" : "não avaliado"}</li>
+                </ul>
+              </div>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">Agentes self-service que podem ajudar</p>
+                {recipeOrchestration.suggestedSelfServiceAgents.length > 0 ? (
+                  <div className="mt-2 space-y-2">
+                    <div className="flex flex-wrap gap-2">
+                      {recipeOrchestration.suggestedSelfServiceAgents.map((agent) => (
+                        <span key={`${agent.key}:${agent.displayName}:pill`} className="pill bg-emerald-500/10 text-emerald-200">
+                          {agent.displayName}
+                        </span>
+                      ))}
+                    </div>
+                    <ul className="space-y-2 text-xs text-muted-foreground">
+                      {recipeOrchestration.suggestedSelfServiceAgents.map((agent) => (
+                        <li key={`${agent.key}:${agent.displayName}`}>
+                          <span className="font-semibold text-foreground">{agent.displayName}</span>: {agent.purpose}
+                          <div className="mt-1 text-[11px] text-muted-foreground">
+                            Pode orientar: {agent.canAdvise ? "sim" : "não"} · Pode executar: {agent.canExecute ? "sim" : "não"} · Custo: {agent.estimatedCostStatus}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : (
+                  <ul className="mt-2 space-y-2 text-xs text-muted-foreground">
+                    <li>Nenhum agente auxiliar sugerido para esta receita.</li>
+                  </ul>
+                )}
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">Limitações</p>
+                <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                  {recipeOrchestration.limitations.length > 0 ? (
+                    recipeOrchestration.limitations.map((item) => <li key={item}>{item}</li>)
+                  ) : (
+                    <li>Nenhuma limitação adicional reportada.</li>
+                  )}
+                </ul>
+              </div>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">Passos práticos</p>
+                <ol className="mt-2 space-y-1 pl-4 text-xs text-muted-foreground">
+                  {recipeOrchestration.practicalSteps.length > 0 ? (
+                    recipeOrchestration.practicalSteps.map((item) => <li key={item}>{item}</li>)
+                  ) : (
+                    <li>Nenhum passo prático estruturado.</li>
+                  )}
+                </ol>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">Pronto para rerun quando</p>
+                <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                  {recipeOrchestration.readyForRerunWhen.length > 0 ? (
+                    recipeOrchestration.readyForRerunWhen.map((item) => <li key={item}>{item}</li>)
+                  ) : (
+                    <li>Sem critérios objetivos de rerun.</li>
+                  )}
+                </ul>
+              </div>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">Como seguir agora</p>
+                <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                  {recipeOrchestration.howToProceedNow.length > 0 ? (
+                    recipeOrchestration.howToProceedNow.map((item) => <li key={item}>{item}</li>)
+                  ) : (
+                    <li>Nenhuma orientação adicional de implementação.</li>
+                  )}
+                </ul>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">Próxima melhor ação para implementação</p>
+                <p className="mt-2 text-sm text-foreground">
+                  {recipeOrchestration.nextBestImplementationAction ?? "Nenhuma ação adicional estruturada."}
+                </p>
+                {recipeOrchestration.externalPlatformsInvolved.length > 0 ? (
+                  <div className="mt-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-foreground/70">Plataformas externas envolvidas</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {recipeOrchestration.externalPlatformsInvolved.map((platform) => (
+                        <span key={platform} className="pill bg-white/10 text-foreground">
+                          {platform}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">Recipes recomendadas em ordem</p>
+              <ol className="mt-2 space-y-2 pl-4 text-xs text-muted-foreground">
+                {recipeOrchestration.recommendedRecipes.length > 0 ? (
+                  recipeOrchestration.recommendedRecipes.map((item) => (
+                    <li key={`${item.order}:${item.title}`}>
+                      <span className="font-semibold text-foreground">{item.order}. {item.title}</span>
+                      <div className="mt-1 text-[11px] text-muted-foreground">{item.objective}</div>
+                      {item.externalPlatform ? <div className="mt-1 text-[11px] text-muted-foreground">Plataforma: {item.externalPlatform}</div> : null}
+                    </li>
+                  ))
+                ) : (
+                  <li>Nenhuma recipe adicional recomendada.</li>
+                )}
+              </ol>
+            </div>
+          </div>
+        </section>
+      )}
+
       {diagnostico && (
         <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
           <span className="pill bg-white/10 text-foreground">Runs analisados: {diagnosticStats.totalPrevRuns}</span>
@@ -1341,6 +1817,14 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
               const rationale = typeof rec.rationale === "string" ? rec.rationale : undefined;
               const nextSteps = typeof rec.proximos_passos === "string" ? rec.proximos_passos : undefined;
               const execucao = isPlainObject(rec.execucao) ? (rec.execucao as Record<string, unknown>) : null;
+              const recommendationMetadata = isPlainObject(rec.metadata)
+                ? (rec.metadata as Record<string, unknown>)
+                : null;
+              const recommendationChecklistSteps = extractRecommendationChecklistSteps(recommendationMetadata);
+              const linkedRecipeTitle =
+                recommendationMetadata && typeof recommendationMetadata.recipeTitle === "string"
+                  ? recommendationMetadata.recipeTitle
+                  : null;
               const execApi = execucao ? String(execucao.api_sugerida ?? execucao.api ?? "LLM") : null;
               const execTask = execucao ? String(execucao.tipo_tarefa ?? execucao.tipo ?? "Tarefa") : null;
               const execTokens =
@@ -1405,6 +1889,34 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
                       {execTokens && <li className="pill">{execTokens}</li>}
                     </ul>
                   )}
+                  {linkedRecipeTitle || recommendationChecklistSteps.length > 0 ? (
+                    <div className="mt-3 space-y-2 text-[11px] text-muted-foreground">
+                      {linkedRecipeTitle ? (
+                        <p>
+                          <span className="font-semibold text-foreground">Recipe:</span> {linkedRecipeTitle}
+                        </p>
+                      ) : null}
+                      {recommendationChecklistSteps.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {recommendationChecklistSteps.map((item) => (
+                            <span
+                              key={`${item.step}:${item.status}`}
+                              className={mergeClassName(
+                                "pill",
+                                item.status === "verified"
+                                  ? "bg-emerald-500/15 text-emerald-200"
+                                  : item.status === "warning" || item.status === "degraded"
+                                  ? "bg-amber-500/15 text-amber-200"
+                                  : "bg-red-500/15 text-red-200"
+                              )}
+                            >
+                              {item.step}: {item.status}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
                   <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px]">
                     <button
                       type="button"
@@ -1803,6 +2315,383 @@ function deriveSummaryForReport(forms: ReportForms, agent: string): { items: Sum
   };
 }
 
+function formatGuardianCurrencyValue(value: number | null | undefined, currency = "BRL") {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "não calculado";
+  return value.toLocaleString("pt-BR", { style: "currency", currency });
+}
+
+function formatGuardianTokenValue(value: number | null | undefined) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "não reportados";
+  return new Intl.NumberFormat("pt-BR").format(value);
+}
+
+function formatGuardianFinopsStatusLabel(report: GuardianReportView) {
+  if (report.finopsStatus === "not_calculated" && typeof report.finops.totalTokens === "number" && report.finops.totalTokens > 0) {
+    return "uso reportado, custo monetário não consolidado";
+  }
+  if (report.finopsStatus === "calculated") return "calculado";
+  if (report.finopsStatus === "not_calculated") return "parcial";
+  return "não reportado";
+}
+
+function buildRecipeOrchestrationHtmlBlock(orchestration: RecipeOrchestrationView | null) {
+  if (!orchestration) return "";
+  const suggestedAgentPills =
+    orchestration.suggestedSelfServiceAgents.length > 0
+      ? orchestration.suggestedSelfServiceAgents
+          .map(
+            (agent) =>
+              `<span class="pill" style="background:rgba(16,185,129,.12);color:#86efac;border-color:rgba(16,185,129,.18);">${sanitizeTextContent(
+                agent.displayName
+              )}</span>`
+          )
+          .join(" ")
+      : "";
+  const suggestedAgents =
+    orchestration.suggestedSelfServiceAgents.length > 0
+      ? orchestration.suggestedSelfServiceAgents
+          .map(
+            (agent) => `<li><strong>${sanitizeTextContent(agent.displayName)}</strong>: ${sanitizeTextContent(
+              agent.purpose
+            )}<br /><small class="muted">Pode orientar: ${agent.canAdvise ? "sim" : "não"} · Pode executar: ${agent.canExecute ? "sim" : "não"} · Custo: ${sanitizeTextContent(
+              agent.estimatedCostStatus
+            )}</small></li>`
+          )
+          .join("")
+      : "<li>Nenhum agente auxiliar sugerido para esta receita.</li>";
+  const limitations =
+    orchestration.limitations.length > 0
+      ? orchestration.limitations.map((item) => `<li>${sanitizeTextContent(item)}</li>`).join("")
+      : "<li>Nenhuma limitação adicional reportada.</li>";
+  const practicalSteps =
+    orchestration.practicalSteps.length > 0
+      ? orchestration.practicalSteps.map((item) => `<li>${sanitizeTextContent(item)}</li>`).join("")
+      : "<li>Nenhum passo prático estruturado.</li>";
+  const rerunWhen =
+    orchestration.readyForRerunWhen.length > 0
+      ? orchestration.readyForRerunWhen.map((item) => `<li>${sanitizeTextContent(item)}</li>`).join("")
+      : "<li>Sem critérios objetivos de rerun.</li>";
+  const howToProceedNow =
+    orchestration.howToProceedNow.length > 0
+      ? orchestration.howToProceedNow.map((item) => `<li>${sanitizeTextContent(item)}</li>`).join("")
+      : "<li>Nenhuma orientação adicional de implementação.</li>";
+  const recommendedRecipes =
+    orchestration.recommendedRecipes.length > 0
+      ? orchestration.recommendedRecipes
+          .map(
+            (item) => `<li><strong>${sanitizeTextContent(`${item.order}. ${item.title}`)}</strong><br /><small class="muted">${sanitizeTextContent(
+              item.objective
+            )}</small>${item.externalPlatform ? `<br /><small class="muted">Plataforma: ${sanitizeTextContent(item.externalPlatform)}</small>` : ""}</li>`
+          )
+          .join("")
+      : "<li>Nenhuma recipe adicional recomendada.</li>";
+  const externalPlatforms =
+    orchestration.externalPlatformsInvolved.length > 0
+      ? orchestration.externalPlatformsInvolved
+          .map((platform) => `<span class="pill">${sanitizeTextContent(platform)}</span>`)
+          .join(" ")
+      : "";
+  const guardianReasons =
+    orchestration.guardianReviewReason.length > 0
+      ? orchestration.guardianReviewReason.map((item) => `<li>${sanitizeTextContent(item)}</li>`).join("")
+      : "<li>Nenhum gatilho adicional de governança informado.</li>";
+
+  return `<section class="card">
+      <h2>Recipe_Orchestrator — Como concluir esta receita</h2>
+      <div class="summary-grid">
+        <div><small class="muted">Intenção detectada</small><p>${sanitizeTextContent(orchestration.intent)}</p></div>
+        <div><small class="muted">Domínio detectado</small><p>${sanitizeTextContent(orchestration.domain)}</p></div>
+        <div><small class="muted">Risco</small><p>${sanitizeTextContent(orchestration.riskLevel)}</p></div>
+        <div><small class="muted">Support mode</small><p>${sanitizeTextContent(orchestration.supportMode)}</p></div>
+      </div>
+      <div class="card" style="margin-top:12px;">
+        <small class="muted">Agente líder recomendado</small>
+        <p><strong>${sanitizeTextContent(orchestration.primaryAgent.displayName)}</strong> (${sanitizeTextContent(orchestration.primaryAgent.key)})</p>
+        <p>${sanitizeTextContent(orchestration.primaryAgent.selectionReason)}</p>
+      </div>
+      <div class="summary-grid" style="margin-top:12px;">
+        <div>
+          <h3>Guardian será acionado?</h3>
+          <p>${orchestration.requiresGuardianReview ? "Sim" : "Não"}</p>
+          <ul>${guardianReasons}</ul>
+        </div>
+        <div>
+          <h3>Governança aplicada</h3>
+          <ul>
+            <li>tenant/workspace: ${orchestration.governance.tenantIdPresent && orchestration.governance.workspaceIdPresent ? "ok" : "ausente"}</li>
+            <li>policyDecision: ${sanitizeTextContent(orchestration.governance.policyDecision)}</li>
+            <li>RBAC: ${orchestration.governance.rbacEvaluated ? "avaliado" : "não avaliado"}</li>
+            <li>Entitlement: ${orchestration.governance.entitlementEvaluated ? "avaliado" : "não avaliado"}</li>
+            <li>TrustScore: ${orchestration.governance.trustScoreEvaluated ? "avaliado" : "não avaliado"}</li>
+            <li>CostGuard: ${orchestration.governance.costGuardEvaluated ? "avaliado" : "não avaliado"}</li>
+          </ul>
+        </div>
+      </div>
+      <div class="summary-grid" style="margin-top:12px;">
+        <div>
+          ${suggestedAgentPills ? `<p style="margin:0 0 10px;"><small class="muted">Apoio sugerido agora</small><br />${suggestedAgentPills}</p>` : ""}
+          <h3>Agentes self-service que podem ajudar</h3>
+          <ul>${suggestedAgents}</ul>
+        </div>
+        <div>
+          <h3>Limitações</h3>
+          <ul>${limitations}</ul>
+        </div>
+      </div>
+      <div class="summary-grid" style="margin-top:12px;">
+        <div>
+          <h3>Passos práticos</h3>
+          <ol>${practicalSteps}</ol>
+        </div>
+        <div>
+          <h3>Pronto para rerun quando</h3>
+          <ul>${rerunWhen}</ul>
+        </div>
+      </div>
+      <div class="summary-grid" style="margin-top:12px;">
+        <div>
+          <h3>Como seguir agora</h3>
+          <ul>${howToProceedNow}</ul>
+        </div>
+        <div>
+          <h3>Próxima melhor ação para implementação</h3>
+          <p>${sanitizeTextContent(orchestration.nextBestImplementationAction ?? "Nenhuma ação adicional estruturada.")}</p>
+          ${externalPlatforms ? `<p><small class="muted">Plataformas externas envolvidas</small><br />${externalPlatforms}</p>` : ""}
+        </div>
+      </div>
+      <div style="margin-top:12px;">
+        <h3>Recipes recomendadas em ordem</h3>
+        <ol>${recommendedRecipes}</ol>
+      </div>
+    </section>`;
+}
+
+function buildGuardianReportHtml(options: {
+  run: RunData;
+  report: GuardianReportView;
+  recipeOrchestration?: RecipeOrchestrationView | null;
+  promptText?: string;
+  rawDetail?: string;
+  includeRaw?: boolean;
+  autoPrint?: boolean;
+}) {
+  const { run, report, recipeOrchestration, promptText, rawDetail, includeRaw, autoPrint } = options;
+  const theme = getAgentTheme(run.agent);
+  const border = "rgba(148,163,184,0.18)";
+  const accent =
+    report.guardianDecision === "GO" ? "#10b981" : report.guardianDecision === "DEGRADED" ? "#f59e0b" : "#ef4444";
+  const promptBlock = promptText
+    ? `<section class="card">
+        <h2>Pergunta original</h2>
+        <p>${sanitizeTextContent(promptText)}</p>
+      </section>`
+    : "";
+  const checklistRows =
+    report.checklist.length > 0
+      ? report.checklist
+          .map(
+            (item) => `<tr>
+              <td>${sanitizeTextContent(item.item)}</td>
+              <td>${sanitizeTextContent(item.status)}</td>
+              <td>${sanitizeTextContent(item.expectedEvidence)}</td>
+              <td>${sanitizeTextContent(item.collectedEvidence ?? "não coletada")}</td>
+              <td>${sanitizeTextContent(item.sha256 ?? "não coletado")}</td>
+              <td>${item.blocking ? "sim" : "não"}</td>
+            </tr>`
+          )
+          .join("")
+      : `<tr><td colspan="6">Nenhuma evidência estruturada foi reportada.</td></tr>`;
+  const blockingIssues =
+    report.blockingIssues.length > 0
+      ? report.blockingIssues
+          .map(
+            (issue) =>
+              `<li><strong>${sanitizeTextContent(issue.severity)}</strong> · ${sanitizeTextContent(
+                issue.code
+              )} — ${sanitizeTextContent(issue.message)}</li>`
+          )
+          .join("")
+      : "<li>Nenhum bloqueio crítico reportado.</li>";
+  const nextSteps =
+    report.nextSteps.length > 0
+      ? report.nextSteps.map((step) => `<li>${sanitizeTextContent(step)}</li>`).join("")
+      : "<li>Nenhuma próxima ação estruturada.</li>";
+  const coverageMatrixRows =
+    report.coverageMatrix.length > 0
+      ? report.coverageMatrix
+          .map(
+            (item) => `<tr>
+              <td>${sanitizeTextContent(item.whatParecerAsks)}</td>
+              <td>${sanitizeTextContent(item.whatRunAnswered)}</td>
+              <td>${sanitizeTextContent(item.whatStillNeedsManualReview ?? "Nenhuma pendência adicional reportada.")}</td>
+            </tr>`
+          )
+          .join("")
+      : `<tr><td colspan="3">Nenhuma matriz de cobertura estruturada foi reportada.</td></tr>`;
+  const rawBlock =
+    includeRaw && rawDetail
+      ? `<section class="card">
+          <h2>Anexo técnico</h2>
+          <pre>${sanitizeTextContent(rawDetail)}</pre>
+        </section>`
+      : "";
+  const recipeOrchestrationBlock = buildRecipeOrchestrationHtmlBlock(recipeOrchestration ?? null);
+
+  return `<!DOCTYPE html>
+  <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>EIAH Guardian — Parecer Probatório</title>
+      <style>
+        :root { color-scheme: dark; font-family: "Inter", system-ui, sans-serif; }
+        body { margin: 0; background: #020617; color: #e2e8f0; }
+        header.hero { padding: 28px 16px; background: linear-gradient(135deg, ${accent}22, #0f172a); border-bottom: 1px solid ${border}; }
+        main { max-width: 1120px; margin: 0 auto; padding: 28px 16px 48px; display: grid; gap: 20px; }
+        .hero-shell { max-width: 1120px; margin: 0 auto; display: grid; gap: 16px; }
+        .hero-grid, .summary-grid, .finops-grid, .audit-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+        .card { background: #0f172a; border: 1px solid ${border}; border-radius: 18px; padding: 18px; box-shadow: 0 24px 80px rgba(0,0,0,.34); }
+        .pill { display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 999px; border: 1px solid ${border}; font-size: 0.8rem; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+        th, td { border: 1px solid ${border}; padding: 10px; text-align: left; vertical-align: top; }
+        th { background: #111827; }
+        pre { margin: 0; white-space: pre-wrap; overflow-wrap: break-word; font-size: 0.78rem; background: #020617; padding: 14px; border-radius: 12px; border: 1px solid ${border}; }
+        .muted { color: #94a3b8; }
+        h1 { margin: 0; font-size: clamp(1.6rem, 3vw, 2.1rem); }
+        h2 { margin: 0 0 12px; font-size: 1.05rem; }
+        p, li, td, th, small { line-height: 1.5; }
+        @media (max-width: 720px) {
+          main { padding: 20px 12px 36px; }
+          header.hero { padding: 20px 12px; }
+          th, td { font-size: 0.84rem; }
+        }
+        @media print {
+          body { background: #fff; color: #000; }
+          .card { box-shadow: none; break-inside: avoid; }
+          header.hero { background: transparent; }
+        }
+      </style>
+      ${autoPrint ? `<script>window.addEventListener("load", () => window.print());</script>` : ""}
+    </head>
+    <body>
+      <header class="hero">
+        <div class="hero-shell">
+          <div>
+            <p class="muted" style="margin:0 0 10px;text-transform:uppercase;letter-spacing:.22em;font-size:.72rem;">EIAH Guardian — Parecer Probatório</p>
+            <h1>Rota: ${sanitizeTextContent(report.route)}</h1>
+            <small class="muted">Run ID: ${sanitizeTextContent(report.auditTrail.runId)} · Ambiente: ${sanitizeTextContent(
+              report.environment ?? "não informado"
+            )}</small>
+          </div>
+          <div class="hero-grid">
+            <span class="pill">Status técnico do run: ${sanitizeTextContent(report.runStatus.toUpperCase())}</span>
+            <span class="pill">Decisão Guardian: ${sanitizeTextContent(report.guardianDecision)}</span>
+            ${report.riskLevel ? `<span class="pill">Risco: ${sanitizeTextContent(report.riskLevel)}</span>` : ""}
+            <span class="pill">Status das evidências: ${sanitizeTextContent(report.evidenceStatus)}</span>
+            <span class="pill">Export: ${sanitizeTextContent(report.exportStatus)}</span>
+          </div>
+        </div>
+      </header>
+      <main>
+        <section class="card">
+          <h2>Decisão executiva</h2>
+          <div class="summary-grid">
+            <div><small class="muted">ReasonCode</small><p>${sanitizeTextContent(report.reasonCode)}</p></div>
+            <div><small class="muted">Próxima ação recomendada</small><p>${sanitizeTextContent(report.nextAction ?? "não informada")}</p></div>
+            <div><small class="muted">PII / dados sensíveis</small><p>${sanitizeTextContent(report.piiStatus)}</p></div>
+            <div><small class="muted">FinOps</small><p>${sanitizeTextContent(formatGuardianFinopsStatusLabel(report))}</p></div>
+            ${report.governance ? `<div><small class="muted">Governança</small><p>${sanitizeTextContent(report.governance.policyDecision)}</p></div>` : ""}
+          </div>
+          <p>${sanitizeTextContent(report.summary)}</p>
+        </section>
+        ${recipeOrchestrationBlock}
+        ${promptBlock}
+        <section class="card">
+          <h2>Bloqueios críticos</h2>
+          <ul>${blockingIssues}</ul>
+        </section>
+        <section class="card">
+          <h2>Tabela de evidências esperadas vs coletadas</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Item verificado</th>
+                <th>Status</th>
+                <th>Evidência esperada</th>
+                <th>Evidência coletada</th>
+                <th>Hash SHA-256</th>
+                <th>Bloqueia avanço?</th>
+              </tr>
+            </thead>
+            <tbody>${checklistRows}</tbody>
+          </table>
+        </section>
+        <section class="card">
+          <h2>Matriz de cobertura do parecer</h2>
+          <p class="muted">Explicação da plataforma sobre o que o parecer técnico pediu, o que este run realmente validou e o que ainda depende de revisão manual ou arquitetural.</p>
+          <table>
+            <thead>
+              <tr>
+                <th>O que o parecer pede</th>
+                <th>O que o run respondeu</th>
+                <th>O que ainda depende de revisão manual/arquitetural</th>
+              </tr>
+            </thead>
+            <tbody>${coverageMatrixRows}</tbody>
+          </table>
+        </section>
+        <section class="card">
+          <h2>FinOps</h2>
+          <div class="finops-grid">
+            <div><small class="muted">Modelo</small><p>${sanitizeTextContent(report.finops.model ?? "não reportado")}</p></div>
+            <div><small class="muted">Prompt tokens</small><p>${sanitizeTextContent(formatGuardianTokenValue(report.finops.promptTokens))}</p></div>
+            <div><small class="muted">Completion tokens</small><p>${sanitizeTextContent(formatGuardianTokenValue(report.finops.completionTokens))}</p></div>
+            <div><small class="muted">Total tokens</small><p>${sanitizeTextContent(formatGuardianTokenValue(report.finops.totalTokens))}</p></div>
+            <div><small class="muted">Custo</small><p>${sanitizeTextContent(formatGuardianCurrencyValue(report.finops.estimatedCost, report.finops.currency ?? "BRL"))}</p></div>
+            <div><small class="muted">Moeda</small><p>${sanitizeTextContent(report.finops.currency ?? "não reportada")}</p></div>
+          </div>
+        </section>
+        ${
+          report.governance
+            ? `<section class="card">
+          <h2>Governança aplicada</h2>
+          <div class="summary-grid">
+            <div><small class="muted">tenant/workspace</small><p>${report.governance.tenantIdPresent && report.governance.workspaceIdPresent ? "ok" : "ausente"}</p></div>
+            <div><small class="muted">RBAC</small><p>${report.governance.rbacEvaluated ? "avaliado" : "não avaliado"}</p></div>
+            <div><small class="muted">Entitlement</small><p>${report.governance.entitlementEvaluated ? "avaliado" : "não avaliado"}</p></div>
+            <div><small class="muted">TrustScore</small><p>${report.governance.trustScoreEvaluated ? "avaliado" : "não avaliado"}</p></div>
+            <div><small class="muted">CostGuard</small><p>${report.governance.costGuardEvaluated ? "avaliado" : "não avaliado"}</p></div>
+            <div><small class="muted">Policy decision</small><p>${sanitizeTextContent(report.governance.policyDecision)}</p></div>
+            ${
+              typeof report.governance.trustScore === "number"
+                ? `<div><small class="muted">Trust score</small><p>${sanitizeTextContent(report.governance.trustScore.toFixed(2))}</p></div>`
+                : ""
+            }
+            ${report.governance.trustLevel ? `<div><small class="muted">Trust level</small><p>${sanitizeTextContent(report.governance.trustLevel)}</p></div>` : ""}
+          </div>
+        </section>`
+            : ""
+        }
+        <section class="card">
+          <h2>Próximos passos</h2>
+          <ul>${nextSteps}</ul>
+        </section>
+        <section class="card">
+          <h2>Audit trail</h2>
+          <div class="audit-grid">
+            <div><small class="muted">Run ID</small><p>${sanitizeTextContent(report.auditTrail.runId)}</p></div>
+            <div><small class="muted">Trace ID</small><p>${sanitizeTextContent(report.auditTrail.traceId ?? "não informado")}</p></div>
+            <div><small class="muted">Receipt ID</small><p>${sanitizeTextContent(report.auditTrail.receiptId ?? "não informado")}</p></div>
+            <div><small class="muted">Verify URL</small><p>${sanitizeTextContent(report.auditTrail.verifyUrl ?? "não informado")}</p></div>
+            <div><small class="muted">Evidence bundle</small><p>${sanitizeTextContent(report.auditTrail.evidenceBundleId ?? "não informado")}</p></div>
+          </div>
+        </section>
+        ${rawBlock}
+      </main>
+    </body>
+  </html>`;
+}
+
 function buildRunReportHtml(
   options: BuildRunReportHtmlOptions,
   opts: { editable?: boolean; autoPrint?: boolean; includeRaw?: boolean } = {}
@@ -1811,6 +2700,19 @@ function buildRunReportHtml(
   const editable = Boolean(opts.editable);
   const autoPrint = Boolean(opts.autoPrint);
   const includeRaw = Boolean(opts.includeRaw);
+  const recipeOrchestration = extractRecipeOrchestrationData(data);
+  if (run.agent.toLowerCase() === "guardian") {
+    const guardianReport = extractGuardianReportData(data) ?? buildGuardianTemplateMismatchView(run);
+    return buildGuardianReportHtml({
+      run,
+      report: guardianReport,
+      recipeOrchestration,
+      promptText,
+      rawDetail,
+      includeRaw,
+      autoPrint,
+    });
+  }
   const theme = getAgentTheme(run.agent);
   const usage = computeUsageStats(isPlainObject(data.usage) ? (data.usage as Record<string, unknown>) : data.usage);
   const memoryStats = computeMemoryStats(isPlainObject(data.memory) ? (data.memory as Record<string, unknown>) : data.memory);
@@ -1832,8 +2734,9 @@ function buildRunReportHtml(
       ? observationSection.bullets
       : [
           "Ativar DLQs e health-checks reduz riscos de instabilidade em execuções concorrentes.",
-          "Memória persistente desbloqueia recomendações melhores — priorize rollout Redis/Postgres.",
+          "Memória persistente desbloqueia recomendações melhores - priorize rollout Redis/Postgres.",
         ];
+  const recipeOrchestrationBlock = buildRecipeOrchestrationHtmlBlock(recipeOrchestration);
 
   const metricCards = [
     { label: "Status", value: run.status.toUpperCase(), icon: "⦿" },
@@ -2436,6 +3339,7 @@ function buildRunReportHtml(
       </section>
 
       ${wrapEditable(summaryBlock)}
+      ${wrapEditable(recipeOrchestrationBlock)}
       ${wrapEditable(promptBlock)}
       ${wrapEditable(agentSignature)}
       ${wrapEditable(recommendationsHtml)}
@@ -3201,6 +4105,145 @@ type GuardianForm = {
   notes?: string;
 };
 
+type GuardianReportView = {
+  route: string;
+  runStatus: "success" | "error";
+  guardianDecision: "GO" | "NO-GO" | "DEGRADED";
+  riskLevel?: "low" | "medium" | "high" | "critical";
+  evaluationScope?: "single_route" | "single_step" | "plan_overview";
+  activeStepId?: string | null;
+  activeStepTitle?: string | null;
+  stageDecision?: "GO" | "NO-GO" | "DEGRADED" | null;
+  globalDecision?: "GO" | "NO-GO" | "DEGRADED" | "PENDING_OTHER_STEPS" | null;
+  reasonCode: string;
+  evidenceStatus: "missing" | "partial" | "complete";
+  exportStatus: "valid" | "invalid" | "template_mismatch";
+  piiStatus: "safe" | "masking_required" | "sensitive_business_data" | "unknown";
+  finopsStatus: "calculated" | "not_calculated" | "not_reported";
+  summary: string;
+  blockingIssues: Array<{ code: string; message: string; severity: "P0" | "P1" | "P2" | "P3" | "P4" }>;
+  checklist: Array<{
+    item: string;
+    status: "missing" | "partial" | "complete" | "degraded";
+    expectedEvidence: string;
+    collectedEvidence: string | null;
+    sha256: string | null;
+    blocking: boolean;
+  }>;
+  coverageMatrix: Array<{
+    whatParecerAsks: string;
+    whatRunAnswered: string;
+    whatStillNeedsManualReview: string | null;
+  }>;
+  nextSteps: string[];
+  finops: {
+    model: string | null;
+    promptTokens: number | null;
+    completionTokens: number | null;
+    totalTokens: number | null;
+    estimatedCost: number | null;
+    currency: string | null;
+  };
+  auditTrail: {
+    runId: string;
+    traceId: string | null;
+    receiptId: string | null;
+    verifyUrl: string | null;
+    evidenceBundleId: string | null;
+  };
+  governance?: {
+    tenantIdPresent: boolean;
+    workspaceIdPresent: boolean;
+    rbacEvaluated: boolean;
+    entitlementEvaluated: boolean;
+    trustScoreEvaluated: boolean;
+    costGuardEvaluated: boolean;
+    policyDecision: "allowed" | "denied" | "needs_review";
+    reasonCode?: string | null;
+    trustScore?: number | null;
+    trustLevel?: "high" | "medium" | "low";
+  };
+  environment?: string | null;
+  nextAction?: string | null;
+};
+
+type RecipeOrchestrationView = {
+  schemaVersion: "recipe_orchestration.v1";
+  source: "recipe_run";
+  recipeId: string | null;
+  recipeTitle: string | null;
+  recipeGoal: string | null;
+  recipeExpectedOutcome: string | null;
+  recipeSteps: Array<{
+    id: string;
+    title: string;
+    objective: string;
+    checks: string[];
+    evidence: string[];
+    blocking: boolean;
+  }>;
+  intent:
+    | "go_live_validation"
+    | "evidence_collection"
+    | "imob_task"
+    | "legal_review"
+    | "report_generation"
+    | "pitch_creation"
+    | "financial_analysis"
+    | "urban_service"
+    | "general_task"
+    | "unknown";
+  domain: "guardian" | "imob" | "legal" | "finance" | "urban" | "pitch" | "general" | "unknown";
+  riskLevel: "low" | "medium" | "high" | "critical";
+  primaryAgent: {
+    key: "guardian" | "eiah" | "j_360" | "pitch" | "imob" | "legal" | "finance" | "urban" | "other";
+    displayName: string;
+    selectionReason: string;
+    confidence: number;
+  };
+  requiresGuardianReview: boolean;
+  guardianReviewReason: string[];
+  supportMode: "none" | "suggest_only" | "delegate_assisted" | "external_handoff";
+  allowedSelfServiceAgents: string[];
+  suggestedSelfServiceAgents: Array<{
+    key: string;
+    displayName: string;
+    purpose: string;
+    canExecute: boolean;
+    canAdvise: boolean;
+    requiresApproval: boolean;
+    requiredScope: string | null;
+    estimatedCostStatus: "calculated" | "not_calculated" | "not_reported";
+  }>;
+  limitations: string[];
+  howToProceedNow: string[];
+  recommendedRecipes: Array<{
+    order: number;
+    title: string;
+    objective: string;
+    externalPlatform: string | null;
+  }>;
+  externalPlatformsInvolved: string[];
+  nextBestImplementationAction: string | null;
+  practicalSteps: string[];
+  readyForRerunWhen: string[];
+  governance: {
+    tenantIdPresent: boolean;
+    workspaceIdPresent: boolean;
+    rbacEvaluated: boolean;
+    entitlementEvaluated: boolean;
+    trustScoreEvaluated: boolean;
+    costGuardEvaluated: boolean;
+    policyDecision: "allowed" | "denied" | "approval_required" | "not_evaluated";
+    reasonCode: string | null;
+  };
+  audit: {
+    orchestrationDecisionId: string | null;
+    selectedAt: string | null;
+    basedOnPattern: "chat_imob_orchestrator";
+  };
+};
+
 function extractGuardianForm(data: Record<string, unknown>): GuardianForm | null {
   const tryFromObject = (obj: Record<string, unknown> | undefined | null): GuardianForm | null => {
     if (!obj) return null;
@@ -3251,6 +4294,92 @@ function extractGuardianForm(data: Record<string, unknown>): GuardianForm | null
   }
 
   return null;
+}
+
+function extractGuardianReportData(data: Record<string, unknown>): GuardianReportView | null {
+  const source = isPlainObject(data.guardianReport)
+    ? (data.guardianReport as Record<string, unknown>)
+    : isPlainObject(data.metadata) && isPlainObject((data.metadata as Record<string, unknown>).guardianReport)
+    ? (((data.metadata as Record<string, unknown>).guardianReport as Record<string, unknown>))
+    : null;
+
+  if (!source) return null;
+  if (
+    typeof source.route !== "string" ||
+    typeof source.guardianDecision !== "string" ||
+    typeof source.reasonCode !== "string" ||
+    typeof source.evidenceStatus !== "string"
+  ) {
+    return null;
+  }
+
+  return source as unknown as GuardianReportView;
+}
+
+function extractRecipeOrchestrationData(data: Record<string, unknown>): RecipeOrchestrationView | null {
+  const source = isPlainObject(data.recipeOrchestration)
+    ? (data.recipeOrchestration as Record<string, unknown>)
+    : isPlainObject(data.metadata) && isPlainObject((data.metadata as Record<string, unknown>).recipeOrchestration)
+    ? ((data.metadata as Record<string, unknown>).recipeOrchestration as Record<string, unknown>)
+    : null;
+
+  if (!source) return null;
+  if (
+    source.schemaVersion !== "recipe_orchestration.v1" ||
+    typeof source.intent !== "string" ||
+    typeof source.domain !== "string" ||
+    !isPlainObject(source.primaryAgent) ||
+    typeof (source.primaryAgent as Record<string, unknown>).displayName !== "string"
+  ) {
+    return null;
+  }
+
+  return source as unknown as RecipeOrchestrationView;
+}
+
+function buildGuardianTemplateMismatchView(run: RunData): GuardianReportView {
+  return {
+    route: "go_live_controlado.domain_dns_api_evidencias",
+    runStatus: run.status === "error" ? "error" : "success",
+    guardianDecision: "NO-GO",
+    reasonCode: "EXPORT_TEMPLATE_MISMATCH",
+    evidenceStatus: "missing",
+    exportStatus: "template_mismatch",
+    piiStatus: "unknown",
+    finopsStatus: "not_reported",
+    summary:
+      "O relatório Guardian não recebeu um payload probatório válido. A exportação local foi bloqueada em modo fail-closed para evitar um parecer incompatível.",
+    blockingIssues: [
+      {
+        code: "EXPORT_TEMPLATE_MISMATCH",
+        message: "Payload Guardian ausente ou incompatível com o template probatório.",
+        severity: "P0",
+      },
+    ],
+    checklist: [],
+    coverageMatrix: [],
+    nextSteps: [
+      "Reexecutar o run Guardian com payload probatório estruturado.",
+      "Validar a rota e os checks executados antes de gerar novo export.",
+    ],
+    finops: {
+      model: null,
+      promptTokens: null,
+      completionTokens: null,
+      totalTokens: null,
+      estimatedCost: null,
+      currency: null,
+    },
+    auditTrail: {
+      runId: run.id,
+      traceId: run.meta?.traceId ?? null,
+      receiptId: null,
+      verifyUrl: null,
+      evidenceBundleId: null,
+    },
+    environment: null,
+    nextAction: "Corrigir o payload probatório antes de exportar.",
+  };
 }
 
 type PitchForm = {

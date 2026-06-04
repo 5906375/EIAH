@@ -3,12 +3,14 @@ import type { RunAtivoUniversalInput } from "../validator/runAtivoUniversalInput
 import { interpretMkt } from "./mktInterpreter";
 import { interpretJ360 } from "./j360Interpreter";
 import { interpretRiskAnalyzer } from "./riskAnalyzerInterpreter";
+import { interpretGuardian } from "./guardianInterpreter";
 import { interpretGeneric } from "./genericInterpreter";
 
 const interpreters: Record<string, RunAtivoInterpreter> = {
   mkt: interpretMkt,
   "j_360": interpretJ360,
   j360: interpretJ360,
+  guardian: interpretGuardian,
   "risk-analyzer": interpretRiskAnalyzer,
   risk_analyzer: interpretRiskAnalyzer,
 };

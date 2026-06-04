@@ -27,6 +27,25 @@ export const tenantRecipeWorkspaceScopeSchema = z
     }
   });
 
+export const tenantRecipeContentStepSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1).max(140),
+  objective: z.string().max(1000).default(""),
+  checks: z.array(z.string().min(1).max(280)).max(20).default([]),
+  evidence: z.array(z.string().min(1).max(280)).max(20).default([]),
+  blocking: z.boolean().default(true),
+});
+
+export const tenantRecipeContentSchema = z.object({
+  schemaVersion: z.literal("v2").default("v2"),
+  mode: z.enum(["simple", "staged"]),
+  goal: z.string().max(2000).default(""),
+  expectedOutcome: z.string().max(2000).default(""),
+  goCondition: z.string().max(2000).default(""),
+  blockCondition: z.string().max(2000).default(""),
+  steps: z.array(tenantRecipeContentStepSchema).max(12).default([]),
+});
+
 export const tenantRecipeContractSchema = z.object({
   id: z.string().min(1),
   tenantId: z.string().min(1),
@@ -37,6 +56,7 @@ export const tenantRecipeContractSchema = z.object({
   status: tenantRecipeStatusSchema,
   workspaceScope: tenantRecipeWorkspaceScopeSchema,
   tags: z.array(z.string().min(1).max(40)).max(12).default([]),
+  content: tenantRecipeContentSchema.nullable().default(null),
   createdByUserId: z.string().min(1).nullable().default(null),
   updatedByUserId: z.string().min(1).nullable().default(null),
   homologatedAt: z.string().datetime().nullable().default(null),
@@ -47,6 +67,8 @@ export const tenantRecipeContractSchema = z.object({
 
 export type TenantRecipeStatus = z.infer<typeof tenantRecipeStatusSchema>;
 export type TenantRecipeWorkspaceScope = z.infer<typeof tenantRecipeWorkspaceScopeSchema>;
+export type TenantRecipeContentStep = z.infer<typeof tenantRecipeContentStepSchema>;
+export type TenantRecipeContent = z.infer<typeof tenantRecipeContentSchema>;
 export type TenantRecipeContract = z.infer<typeof tenantRecipeContractSchema>;
 
 export function buildTenantRecipeContract(input: unknown): TenantRecipeContract {

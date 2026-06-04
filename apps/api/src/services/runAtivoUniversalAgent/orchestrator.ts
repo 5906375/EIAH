@@ -204,6 +204,24 @@ function extractRecommendations(response: unknown) {
   return mapRecommendations((optimized as Record<string, unknown>).recomendacoes);
 }
 
+function extractGuardianReport(response: unknown) {
+  if (!isPlainObject(response)) return undefined;
+  const report = (response as Record<string, unknown>).guardianReport;
+  return isPlainObject(report) ? report : undefined;
+}
+
+function extractRecipeOrchestration(response: unknown) {
+  if (!isPlainObject(response)) return undefined;
+  const orchestration = (response as Record<string, unknown>).recipeOrchestration;
+  return isPlainObject(orchestration) ? orchestration : undefined;
+}
+
+function extractUsage(response: unknown) {
+  if (!isPlainObject(response)) return undefined;
+  const usage = (response as Record<string, unknown>).usage;
+  return isPlainObject(usage) ? usage : undefined;
+}
+
 type RecommendationRow = {
   titulo: string;
   descricao?: string;
@@ -266,6 +284,9 @@ function buildInputFromRun(run: PrismaRun): RunAtivoUniversalInput {
     responsePayload ?? undefined
   ) as RunAtivoUniversalInput["recommendations"];
   const insights = extractInsights(responsePayload ?? undefined);
+  const guardianReport = extractGuardianReport(responsePayload ?? undefined);
+  const recipeOrchestration = extractRecipeOrchestration(responsePayload ?? undefined);
+  const usage = extractUsage(responsePayload ?? undefined);
 
   const userMetadata = metadata["user"];
   const summaryValue = metadata["summary"];
@@ -284,7 +305,12 @@ function buildInputFromRun(run: PrismaRun): RunAtivoUniversalInput {
     contexto: typeof contextValue === "string" ? contextValue : undefined,
     recommendations,
     insights,
-    metadata,
+    metadata: {
+      ...metadata,
+      ...(guardianReport ? { guardianReport } : {}),
+      ...(recipeOrchestration ? { recipeOrchestration } : {}),
+      ...(usage ? { usage } : {}),
+    },
   };
 }
 

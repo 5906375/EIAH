@@ -75,8 +75,48 @@ function truncateSentence(value: string, maxLength = 220) {
 }
 
 function inferGuardianRequestType(recipe: TenantRecipe, instructions: string) {
+  if (recipe.content?.mode === "staged" && (recipe.content.steps?.length ?? 0) > 1) {
+    return "go_live_controlado.plano_principal_web";
+  }
   const haystack = `${recipe.title} ${recipe.summary} ${instructions}`.toLowerCase();
-  if (haystack.includes("domain") || haystack.includes("dns") || haystack.includes("waf")) {
+  if (
+    (haystack.includes("staging") || haystack.includes("produção") || haystack.includes("producao")) &&
+    (haystack.includes("segregação") || haystack.includes("segregacao")) &&
+    (haystack.includes("app") || haystack.includes("frontend")) &&
+    (haystack.includes("api") || haystack.includes("backend"))
+  ) {
+    return "go_live_controlado.segregacao_app_api_staging_producao";
+  }
+  if (
+    haystack.includes("/api/health") ||
+    haystack.includes("healthcheck") ||
+    haystack.includes("fail-closed") ||
+    haystack.includes("tenantid") ||
+    haystack.includes("workspaceid") ||
+    haystack.includes("403")
+  ) {
+    return "go_live_controlado.health_fail_closed_policy_minima";
+  }
+  if (haystack.includes("domain") || haystack.includes("dns")) {
+    return "go_live_controlado.domain_dns_api_evidencias";
+  }
+  if (
+    haystack.includes("waf") ||
+    haystack.includes("rate limit") ||
+    haystack.includes("rate limiting") ||
+    haystack.includes("exposição pública") ||
+    haystack.includes("exposicao publica")
+  ) {
+    return "go_live_controlado.waf_rate_limit_exposicao_publica";
+  }
+  if (
+    haystack.includes("rollback") ||
+    haystack.includes("evidências finais") ||
+    haystack.includes("evidencias finais")
+  ) {
+    return "go_live_controlado.rollback_evidencias_finais";
+  }
+  if (haystack.includes("waf")) {
     return "go_live_controlado.domain_dns_api_evidencias";
   }
   if (haystack.includes("lgpd") || haystack.includes("privacy")) {
@@ -125,17 +165,30 @@ function buildGuardianOperationalNotes(recipe: TenantRecipe, common: ReturnType<
 }
 
 function deriveCommonRecipeContext(recipe: TenantRecipe) {
+  const structuredContent = recipe.content ?? null;
+  const structuredSteps = structuredContent?.steps ?? [];
   const instructions = recipe.instructions?.trim() ?? "";
   const sections = extractSections(instructions);
   const paragraphs = splitParagraphs(instructions);
-  const objective = findSection(sections, ["objetivo", "objective"]) || recipe.summary.trim() || recipe.title.trim();
+  const objective =
+    structuredContent?.goal?.trim() ||
+    findSection(sections, ["objetivo", "objective"]) ||
+    recipe.summary.trim() ||
+    recipe.title.trim();
   const scope = findSection(sections, ["escopo", "scope"]);
-  const evidence = findSection(sections, ["evidencias", "evidência", "evidence", "proof"]);
+  const evidence =
+    structuredSteps.length > 0
+      ? structuredSteps
+          .flatMap((step) => step.evidence)
+          .filter(Boolean)
+          .join("\n")
+      : findSection(sections, ["evidencias", "evidência", "evidence", "proof"]);
   const operationalNotes = instructions || recipe.summary.trim();
   const context = joinParts([
     recipe.title,
     recipe.summary,
     objective && objective !== recipe.summary.trim() ? `Objetivo: ${objective}` : null,
+    structuredContent?.expectedOutcome ? `Resultado esperado: ${structuredContent.expectedOutcome}` : null,
     scope ? `Escopo: ${scope}` : null,
   ]);
   const firstParagraph = paragraphs[0] ?? recipe.summary.trim();
@@ -149,6 +202,8 @@ function deriveCommonRecipeContext(recipe: TenantRecipe) {
     operationalNotes,
     context,
     firstParagraph,
+    structuredContent,
+    structuredSteps,
   };
 }
 
@@ -171,7 +226,11 @@ function buildFieldValue(params: {
       return common.context;
     case "notes":
       return config.agentId === "guardian"
-        ? buildGuardianOperationalNotes(recipe, common)
+        ? common.structuredSteps.length > 0
+          ? common.structuredSteps
+              .map((step, index) => `${index + 1}. ${step.title}${step.objective ? ` — ${truncateSentence(step.objective, 110)}` : ""}`)
+              .join("\n")
+          : buildGuardianOperationalNotes(recipe, common)
         : common.operationalNotes;
     case "evidence":
     case "proof":
@@ -179,7 +238,7 @@ function buildFieldValue(params: {
         ? buildGuardianEvidenceSummary(recipe, common)
         : common.evidence || common.instructions || recipe.summary.trim();
     case "desiredOutcome":
-      return common.objective || recipe.summary.trim();
+      return common.structuredContent?.expectedOutcome || common.objective || recipe.summary.trim();
     case "question":
       return `Como executar a recipe "${recipe.title}" neste workspace?`;
     case "product":

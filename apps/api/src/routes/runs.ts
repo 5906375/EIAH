@@ -32,6 +32,9 @@ const serializeRun = (run: any) => ({
   projectId: run?.workspaceId,
 });
 
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
 const serializeRunEvent = (event: any) => ({
   id: event.id,
   runId: event.runId,
@@ -597,6 +600,22 @@ runsRouter.post("/runs", async (req, res) => {
     });
   }
 
+  resolvedMetadata = {
+    ...(resolvedMetadata ?? {}),
+    governanceContext: {
+      tenantIdPresent: true,
+      workspaceIdPresent: true,
+      rbacEvaluated: true,
+      entitlementEvaluated: true,
+      trustScoreEvaluated: true,
+      trustScore: trust.score,
+      trustLevel: trust.level,
+      costGuardEvaluated: true,
+      policyDecision: "allowed",
+      reasonCode: null,
+    },
+  };
+
   let run;
   try {
     run = await createRunRecord({
@@ -890,6 +909,84 @@ runsRouter.post("/runs/:id/approve", async (req, res) => {
   });
 
   return res.status(200).json({ ok: true, event: serializeRunEvent(event) });
+});
+
+runsRouter.post("/runs/:id/cancel", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING" } });
+  }
+
+  const existing = await getRun({
+    prisma,
+    id: req.params.id,
+    tenantId: authContext.tenantId,
+    workspaceId: authContext.workspaceId,
+  });
+
+  if (!existing) {
+    return res.status(404).json({ ok: false, error: { code: "NOT_FOUND", message: "run" } });
+  }
+
+  const existingResponse = isPlainObject(existing.response) ? existing.response : {};
+  const cancellationRequested =
+    (existing.status === "blocked" && existing.errorCode === "USER_CANCELLED") ||
+    typeof existingResponse.cancelRequestedAt === "string";
+  const alreadyCancelled = existing.status === "blocked" && existing.errorCode === "USER_CANCELLED";
+  if (alreadyCancelled) {
+    return res.status(200).json({ ok: true, data: serializeRun(existing) });
+  }
+  if (cancellationRequested) {
+    return res.status(202).json({ ok: true, data: serializeRun(existing) });
+  }
+
+  if (existing.status === "success" || existing.status === "error") {
+    return res.status(409).json({
+      ok: false,
+      error: {
+        code: "RUN_ALREADY_FINISHED",
+        message: "Run já finalizado; cancelamento não aplicado.",
+      },
+    });
+  }
+
+  const cancelledAt = new Date();
+  const cancelledResponse = {
+    ...existingResponse,
+    cancelRequestedAt: cancelledAt.toISOString(),
+    cancelRequestedBy: authContext.userId ?? null,
+  };
+
+  const updated = await (prisma as any).run.update({
+    where: {
+      id: existing.id,
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+    },
+    data: {
+      response: cancelledResponse,
+    },
+  });
+
+  const event = await emitRunEvent({
+    prisma,
+    runId: existing.id,
+    tenantId: authContext.tenantId,
+    workspaceId: authContext.workspaceId,
+    userId: authContext.userId,
+    type: "run.cancel_requested",
+    payload: {
+      status: updated.status,
+      reasonCode: "USER_CANCELLED",
+      cancelRequestedAt: cancelledAt.toISOString(),
+    },
+  });
+
+  return res.status(200).json({
+    ok: true,
+    data: serializeRun(updated),
+    event: serializeRunEvent(event),
+  });
 });
 
 runsRouter.post("/runs/:id/recommendations/adopt", async (req, res) => {
