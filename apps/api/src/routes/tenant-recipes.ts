@@ -5,6 +5,7 @@ import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTe
 import { prismaGlobal } from "@repo/db";
 import {
   buildTenantRecipeContract,
+  tenantRecipeContentSchema,
   tenantRecipeStatusSchema,
   tenantRecipeWorkspaceScopeSchema,
 } from "../types/tenantRecipeContract";
@@ -24,6 +25,7 @@ const TenantRecipeCreateSchema = z.object({
   status: tenantRecipeStatusSchema.optional(),
   workspaceScope: tenantRecipeWorkspaceScopeSchema.optional(),
   tags: z.array(z.string().min(1).max(40)).max(12).optional(),
+  content: tenantRecipeContentSchema.nullable().optional(),
 });
 
 const TenantRecipeUpdateSchema = z.object({
@@ -34,6 +36,7 @@ const TenantRecipeUpdateSchema = z.object({
   status: tenantRecipeStatusSchema.optional(),
   workspaceScope: tenantRecipeWorkspaceScopeSchema.optional(),
   tags: z.array(z.string().min(1).max(40)).max(12).optional(),
+  content: tenantRecipeContentSchema.nullable().optional(),
 });
 
 let tenantRecipesTableReady = false;
@@ -50,6 +53,7 @@ type TenantRecipeRow = {
   workspaceScopeMode: string;
   workspaceScopeIds: unknown;
   tags: unknown;
+  content: unknown;
   createdByUserId: string | null;
   updatedByUserId: string | null;
   homologatedAt: Date | null;
@@ -78,6 +82,7 @@ function serializeTenantRecipe(row: TenantRecipeRow) {
       workspaceIds: asStringArray(row.workspaceScopeIds),
     },
     tags: asStringArray(row.tags),
+    content: row.content ?? null,
     createdByUserId: row.createdByUserId,
     updatedByUserId: row.updatedByUserId,
     homologatedAt: row.homologatedAt?.toISOString() ?? null,
@@ -107,6 +112,7 @@ async function ensureTenantRecipesTable(request: TenantAwareRequest) {
         "workspace_scope_mode" TEXT NOT NULL DEFAULT 'all_workspaces',
         "workspace_scope_ids" JSONB NOT NULL DEFAULT '[]'::jsonb,
         "tags" JSONB NOT NULL DEFAULT '[]'::jsonb,
+        "content" JSONB,
         "created_by_user_id" TEXT,
         "updated_by_user_id" TEXT,
         "homologated_at" TIMESTAMP(3),
@@ -115,6 +121,11 @@ async function ensureTenantRecipesTable(request: TenantAwareRequest) {
         "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
         CONSTRAINT "tenant_recipes_pkey" PRIMARY KEY ("id")
       );
+    `);
+
+    await request.prisma!.$executeRawUnsafe(`
+      ALTER TABLE "tenant_recipes"
+      ADD COLUMN IF NOT EXISTS "content" JSONB;
     `);
 
     await request.prisma!.$executeRawUnsafe(`
@@ -223,6 +234,7 @@ tenantRecipesRouter.get("/tenant-recipes", async (req, res) => {
             workspace_scope_mode AS "workspaceScopeMode",
             workspace_scope_ids AS "workspaceScopeIds",
             tags,
+            content,
             created_by_user_id AS "createdByUserId",
             updated_by_user_id AS "updatedByUserId",
             homologated_at AS "homologatedAt",
@@ -245,6 +257,7 @@ tenantRecipesRouter.get("/tenant-recipes", async (req, res) => {
             workspace_scope_mode AS "workspaceScopeMode",
             workspace_scope_ids AS "workspaceScopeIds",
             tags,
+            content,
             created_by_user_id AS "createdByUserId",
             updated_by_user_id AS "updatedByUserId",
             homologated_at AS "homologatedAt",
@@ -284,6 +297,7 @@ tenantRecipesRouter.post("/tenant-recipes", async (req, res) => {
   const status = parsed.data.status ?? "draft";
   const workspaceScope = parsed.data.workspaceScope ?? { mode: "all_workspaces" as const, workspaceIds: [] };
   const tags = parsed.data.tags ?? [];
+  const content = parsed.data.content ?? null;
 
   const rows = await request.prisma.$queryRaw<TenantRecipeRow[]>`
     INSERT INTO tenant_recipes (
@@ -297,6 +311,7 @@ tenantRecipesRouter.post("/tenant-recipes", async (req, res) => {
       workspace_scope_mode,
       workspace_scope_ids,
       tags,
+      content,
       created_by_user_id,
       updated_by_user_id,
       homologated_at,
@@ -315,6 +330,7 @@ tenantRecipesRouter.post("/tenant-recipes", async (req, res) => {
       ${workspaceScope.mode},
       CAST(${JSON.stringify(workspaceScope.workspaceIds)} AS JSONB),
       CAST(${JSON.stringify(tags)} AS JSONB),
+      ${content ? JSON.stringify(content) : null}::jsonb,
       ${request.authContext.userId ?? null},
       ${request.authContext.userId ?? null},
       ${status === "homologated" ? now : null},
@@ -333,6 +349,7 @@ tenantRecipesRouter.post("/tenant-recipes", async (req, res) => {
       workspace_scope_mode AS "workspaceScopeMode",
       workspace_scope_ids AS "workspaceScopeIds",
       tags,
+      content,
       created_by_user_id AS "createdByUserId",
       updated_by_user_id AS "updatedByUserId",
       homologated_at AS "homologatedAt",
@@ -372,6 +389,7 @@ tenantRecipesRouter.patch("/tenant-recipes/:id", async (req, res) => {
       workspace_scope_mode AS "workspaceScopeMode",
       workspace_scope_ids AS "workspaceScopeIds",
       tags,
+      content,
       created_by_user_id AS "createdByUserId",
       updated_by_user_id AS "updatedByUserId",
       homologated_at AS "homologatedAt",
@@ -396,6 +414,7 @@ tenantRecipesRouter.patch("/tenant-recipes/:id", async (req, res) => {
     workspaceIds: asStringArray(existing.workspaceScopeIds),
   };
   const tags = parsed.data.tags ?? asStringArray(existing.tags);
+  const content = parsed.data.content !== undefined ? parsed.data.content : existing.content ?? null;
   const now = new Date();
   const homologatedAt =
     nextStatus === "homologated"
@@ -423,6 +442,7 @@ tenantRecipesRouter.patch("/tenant-recipes/:id", async (req, res) => {
       workspace_scope_mode = ${workspaceScope.mode},
       workspace_scope_ids = CAST(${JSON.stringify(workspaceScope.workspaceIds)} AS JSONB),
       tags = CAST(${JSON.stringify(tags)} AS JSONB),
+      content = ${content ? JSON.stringify(content) : null}::jsonb,
       updated_by_user_id = ${request.authContext.userId ?? null},
       homologated_at = ${homologatedAt},
       deprecated_at = ${deprecatedAt},
@@ -440,6 +460,7 @@ tenantRecipesRouter.patch("/tenant-recipes/:id", async (req, res) => {
       workspace_scope_mode AS "workspaceScopeMode",
       workspace_scope_ids AS "workspaceScopeIds",
       tags,
+      content,
       created_by_user_id AS "createdByUserId",
       updated_by_user_id AS "updatedByUserId",
       homologated_at AS "homologatedAt",

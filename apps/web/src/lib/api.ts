@@ -11,6 +11,7 @@ import type {
   OnboardingContext,
   OperationalInsightSnapshot,
   OptimizationRecommendationSnapshot,
+  TenantRecipeContent,
   TenantRecipe,
   TenantRecipeStatus,
   TenantRecipeWorkspaceScope,
@@ -18,6 +19,7 @@ import type {
 
 export type {
   OnboardingContext,
+  TenantRecipeContent,
   TenantRecipe,
   TenantRecipeStatus,
   TenantRecipeWorkspaceScope,
@@ -405,6 +407,7 @@ export type TenantRecipeCreateInput = {
   status?: TenantRecipeStatus;
   workspaceScope?: TenantRecipeWorkspaceScope;
   tags?: string[];
+  content?: TenantRecipeContent | null;
 };
 
 export type TenantRecipeUpdateInput = {
@@ -415,6 +418,7 @@ export type TenantRecipeUpdateInput = {
   status?: TenantRecipeStatus;
   workspaceScope?: TenantRecipeWorkspaceScope;
   tags?: string[];
+  content?: TenantRecipeContent | null;
 };
 
 export type UploadedDocumentInfo = {
@@ -3530,6 +3534,13 @@ export async function apiApproveRun(id: string, body?: { parentRunId?: string | 
   return http<{ ok: boolean; event: RunEvent }>(`/runs/${id}/approve`, {
     method: "POST",
     body: JSON.stringify(body ?? {}),
+  });
+}
+
+export async function apiCancelRun(id: string) {
+  return http<{ ok: boolean; data: Run; event?: RunEvent }>(`/runs/${id}/cancel`, {
+    method: "POST",
+    body: JSON.stringify({}),
   });
 }
 
