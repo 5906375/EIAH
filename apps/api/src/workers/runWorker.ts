@@ -93,6 +93,8 @@ import {
 } from "./runWorkerActionResolution";
 import { alignCandidatesToRecipe } from "./runWorkerRecipeAlignment";
 import { buildGuardianStructuredOutput } from "./runWorkerGuardianOutput";
+import { buildJ360StructuredOutput, collectJ360DocumentEvidence } from "./runWorkerJ360Output";
+import { buildMktStructuredOutput } from "./runWorkerMktOutput";
 import { buildRecipeOrchestration } from "./runWorkerRecipeOrchestration";
 
 /* ──────────────────────────────────────────────
@@ -225,6 +227,51 @@ function buildGuardianOriginalOutput(params: {
     nextSteps: params.guardianReport.nextSteps,
     recommendations: params.recommendations?.recomendacoes ?? null,
   };
+}
+
+function buildStructuredOriginalOutput(params: {
+  agentId: string;
+  guardianReport: ReturnType<typeof buildGuardianResponsePayload>;
+  j360LegalReport: ReturnType<typeof buildJ360StructuredOutput>;
+  mktCampaignReport: ReturnType<typeof buildMktStructuredOutput>;
+  recommendations: GenerateRecommendationsResult | null;
+  fallback: unknown;
+}) {
+  if (params.guardianReport) {
+    return buildGuardianOriginalOutput({
+      agentId: params.agentId,
+      guardianReport: params.guardianReport,
+      recommendations: params.recommendations,
+      fallback: params.fallback,
+    });
+  }
+
+  if (params.j360LegalReport) {
+    return {
+      legalDecision: params.j360LegalReport.legalDecision,
+      riskLevel: params.j360LegalReport.riskLevel,
+      summary: params.j360LegalReport.summary,
+      strengths: params.j360LegalReport.strengths,
+      attentionPoints: params.j360LegalReport.attentionPoints,
+      recommendedAdjustments: params.j360LegalReport.recommendedAdjustments,
+      nextBestImplementationAction: params.j360LegalReport.nextBestImplementationAction,
+      recommendations: params.recommendations?.recomendacoes ?? null,
+    };
+  }
+
+  if (params.mktCampaignReport) {
+    return {
+      campaignTitle: params.mktCampaignReport.campaignTitle,
+      objective: params.mktCampaignReport.objective,
+      campaignSummary: params.mktCampaignReport.campaignSummary,
+      positioning: params.mktCampaignReport.positioning,
+      priorityChannels: params.mktCampaignReport.priorityChannels,
+      nextActions: params.mktCampaignReport.nextActions,
+      recommendations: params.recommendations?.recomendacoes ?? null,
+    };
+  }
+
+  return params.fallback;
 }
 
 function hasUsageSignal(
@@ -2041,7 +2088,11 @@ export async function processRunPayload(payload: RunQueuePayload) {
         estimate,
       });
 
-      const outputFailure = detectRunWorkerOutputFailure(snapshot?.rawResponse);
+      const outputFailure = detectRunWorkerOutputFailure({
+        rawResponse: snapshot?.rawResponse,
+        agentId: agent,
+        outputText: snapshot?.outputText ?? null,
+      });
       if (outputFailure) {
         throw new Error(outputFailure);
       }
@@ -2089,6 +2140,24 @@ export async function processRunPayload(payload: RunQueuePayload) {
         metadata: runtimeMetadataResolved,
         costCents: estimate,
       });
+      const j360DocumentEvidence = await collectJ360DocumentEvidence({
+        metadata: runtimeMetadataResolved,
+      });
+      const preliminaryJ360LegalReport = buildJ360StructuredOutput({
+        agentId: agent,
+        metadata: runtimeMetadataResolved,
+        outputText: snapshot?.outputText,
+        outputs: context?.outputs ?? [],
+        recipeOrchestration,
+        documentEvidence: j360DocumentEvidence,
+      });
+      const preliminaryMktCampaignReport = buildMktStructuredOutput({
+        agentId: agent,
+        metadata: runtimeMetadataResolved,
+        outputText: snapshot?.outputText,
+        outputs: context?.outputs ?? [],
+        recipeOrchestration,
+      });
 
       const preliminaryOutputs = normalizeGuardianSummaryOutputs({
         agentId: agent,
@@ -2099,15 +2168,19 @@ export async function processRunPayload(payload: RunQueuePayload) {
 
       const preliminaryResponse = {
         optimized: finalRecommendations,
-        originalOutput: buildGuardianOriginalOutput({
+        originalOutput: buildStructuredOriginalOutput({
           agentId: agent,
           guardianReport: preliminaryGuardianReport,
+          j360LegalReport: preliminaryJ360LegalReport,
+          mktCampaignReport: preliminaryMktCampaignReport,
           recommendations: finalRecommendations,
           fallback: snapshot?.rawResponse ?? snapshot?.outputText ?? null,
         }),
         plan: context.plan,
         outputs: preliminaryOutputs,
         guardianReport: preliminaryGuardianReport,
+        ...(preliminaryJ360LegalReport ? { j360LegalReport: preliminaryJ360LegalReport } : {}),
+        ...(preliminaryMktCampaignReport ? { mktCampaignReport: preliminaryMktCampaignReport } : {}),
         recipeOrchestration,
         usage: snapshot?.usage ?? null,
         memory: {
@@ -2144,18 +2217,37 @@ export async function processRunPayload(payload: RunQueuePayload) {
         outputs: context.outputs,
         guardianReport,
       });
+      const j360LegalReport = buildJ360StructuredOutput({
+        agentId: agent,
+        metadata: runtimeMetadataResolved,
+        outputText: snapshot?.outputText,
+        outputs: context?.outputs ?? [],
+        recipeOrchestration,
+        documentEvidence: j360DocumentEvidence,
+      });
+      const mktCampaignReport = buildMktStructuredOutput({
+        agentId: agent,
+        metadata: runtimeMetadataResolved,
+        outputText: snapshot?.outputText,
+        outputs: context?.outputs ?? [],
+        recipeOrchestration,
+      });
 
       const succeededResponse = {
         optimized: finalRecommendations,
-        originalOutput: buildGuardianOriginalOutput({
+        originalOutput: buildStructuredOriginalOutput({
           agentId: agent,
           guardianReport,
+          j360LegalReport,
+          mktCampaignReport,
           recommendations: finalRecommendations,
           fallback: snapshot?.rawResponse ?? snapshot?.outputText ?? null,
         }),
         plan: context.plan,
         outputs: normalizedOutputs,
         guardianReport,
+        ...(j360LegalReport ? { j360LegalReport } : {}),
+        ...(mktCampaignReport ? { mktCampaignReport } : {}),
         recipeOrchestration,
         usage: snapshot?.usage ?? null,
         memory: {
@@ -2293,6 +2385,15 @@ export async function processRunPayload(payload: RunQueuePayload) {
         "run.worker.failed"
       );
 
+      const scl = await appendSclRecord({
+        prisma: prismaGlobal,
+        tenantId,
+        workspaceId,
+        runId,
+        payload: { status: "error", message },
+        riskLevel: "high",
+      });
+
       const errorGuardianReport = buildGuardianResponsePayload({
         agentId: agent,
         tenantId,
@@ -2312,15 +2413,6 @@ export async function processRunPayload(payload: RunQueuePayload) {
         workspaceId,
         metadata: runtimeMetadataResolved,
         costCents: estimate,
-      });
-
-      const scl = await appendSclRecord({
-        prisma: prismaGlobal,
-        tenantId,
-        workspaceId,
-        runId,
-        payload: { status: "error", message },
-        riskLevel: "high",
       });
 
       await finalizeRunRecord({

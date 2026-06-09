@@ -211,6 +211,7 @@ export type AgentProfileSeed = {
   name: string;
   description: string;
   model: string;
+  maxTokens?: number;
   models?: Record<string, unknown>;
   systemPrompt: string;
   tools: Array<Record<string, unknown>>;

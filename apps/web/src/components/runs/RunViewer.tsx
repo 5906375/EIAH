@@ -14,6 +14,15 @@ import { centsToBRL, formatAgentLabel, formatClockTime, formatDuration } from ".
 import RunTimeline from "./RunTimeline";
 import GovernancePanel from "./GovernancePanel";
 import { maskPII } from "@repo/utils";
+import {
+  buildJ360LandingPageHtml as buildCoreJ360LandingPageHtml,
+  buildJ360PdfHtml as buildCoreJ360PdfHtml,
+} from "@eiah/core/actions/reporting/j360LegalReportRenderer";
+import {
+  buildMktLandingPageHtml as buildCoreMktLandingPageHtml,
+  buildMktPdfHtml as buildCoreMktPdfHtml,
+} from "@eiah/core/actions/reporting/mktCampaignReportRenderer";
+import type { RunAtivoReportingInput } from "@eiah/core/actions/reporting/runAtivoSchema";
 
 type RunData = {
   id: string;
@@ -40,6 +49,86 @@ type MarkdownElementProps<T extends keyof JSX.IntrinsicElements> = ComponentProp
 
 function mergeClassName(...classes: Array<string | undefined>) {
   return classes.filter(Boolean).join(" ");
+}
+
+function buildJ360ReportingPayload(params: {
+  run: RunData;
+  data: Record<string, unknown>;
+  j360LegalReport: J360LegalReportView;
+  recipeOrchestration?: RecipeOrchestrationView | null;
+}): RunAtivoReportingInput {
+  const { run, data, j360LegalReport, recipeOrchestration } = params;
+  return {
+    metadata: {
+      agente: run.agent,
+      tenantId:
+        typeof data.tenantId === "string"
+          ? (data.tenantId as string)
+          : typeof data.tenant_id === "string"
+          ? (data.tenant_id as string)
+          : "tenant-local",
+      workspaceId:
+        typeof data.workspaceId === "string"
+          ? (data.workspaceId as string)
+          : typeof data.workspace_id === "string"
+          ? (data.workspace_id as string)
+          : "workspace-local",
+      runId: run.id,
+      traceId: run.meta?.traceId,
+      status: run.status,
+      custoCents: typeof run.costCents === "number" ? run.costCents : undefined,
+      j360LegalReport,
+      recipeOrchestration: recipeOrchestration ?? undefined,
+    },
+    usuario: {},
+    resumo: typeof data.resumo === "string" ? (data.resumo as string) : "Nenhum resumo informado.",
+    contexto: typeof data.contexto === "string" ? (data.contexto as string) : "Nenhum contexto informado.",
+    recomendacoes: [],
+    insights: [],
+    linksUteis: [],
+    auditTrail: [],
+    timeline: [],
+  } as unknown as RunAtivoReportingInput;
+}
+
+function buildMktReportingPayload(params: {
+  run: RunData;
+  data: Record<string, unknown>;
+  mktCampaignReport: MktCampaignReportView;
+  recipeOrchestration?: RecipeOrchestrationView | null;
+}): RunAtivoReportingInput {
+  const { run, data, mktCampaignReport, recipeOrchestration } = params;
+  return {
+    metadata: {
+      agente: run.agent,
+      tenantId:
+        typeof data.tenantId === "string"
+          ? (data.tenantId as string)
+          : typeof data.tenant_id === "string"
+          ? (data.tenant_id as string)
+          : "tenant-local",
+      workspaceId:
+        typeof data.workspaceId === "string"
+          ? (data.workspaceId as string)
+          : typeof data.workspace_id === "string"
+          ? (data.workspace_id as string)
+          : "workspace-local",
+      runId: run.id,
+      traceId: run.meta?.traceId,
+      status: run.status,
+      custoCents: typeof run.costCents === "number" ? run.costCents : undefined,
+      mktCampaignReport,
+      recipeOrchestration: recipeOrchestration ?? undefined,
+    },
+    usuario: {},
+    resumo: typeof data.resumo === "string" ? (data.resumo as string) : mktCampaignReport.campaignSummary,
+    contexto: typeof data.contexto === "string" ? (data.contexto as string) : mktCampaignReport.objective,
+    recomendacoes: [],
+    insights: [],
+    linksUteis: [],
+    auditTrail: [],
+    timeline: [],
+  } as unknown as RunAtivoReportingInput;
 }
 
 function getDisplayAgent(agent: string) {
@@ -355,7 +444,23 @@ export default function RunViewer({ run }: { run: RunData }) {
     return normalizeRunResponse(run.response);
   }, [run.response]);
   const maskedOutputText = useMemo(() => (outputText ? maskPII(outputText) : outputText), [outputText]);
-  const runAtivoArtifacts = useMemo(() => extractRunAtivoArtifacts(run.agent, run.response), [run.agent, run.response]);
+  const recipeOrchestration = useMemo(
+    () => (structuredOutput ? extractRecipeOrchestrationData(structuredOutput) : null),
+    [structuredOutput]
+  );
+  const topLevelMktCampaignReport = useMemo(
+    () => (structuredOutput && run.agent.toLowerCase() === "mkt" ? extractMktCampaignReportData(structuredOutput) : null),
+    [structuredOutput, run.agent]
+  );
+  const isTopLevelMktCampaignRun = Boolean(
+    run.agent.toLowerCase() === "mkt" &&
+      topLevelMktCampaignReport &&
+      (recipeOrchestration?.intent === "marketing_campaign" || recipeOrchestration?.domain === "marketing")
+  );
+  const runAtivoArtifacts = useMemo(() => {
+    if (isTopLevelMktCampaignRun) return null;
+    return extractRunAtivoArtifacts(run.agent, run.response);
+  }, [isTopLevelMktCampaignRun, run.agent, run.response]);
 
   const diagnosticSummary = useMemo(() => extractDiagnosticSummary(structuredOutput), [structuredOutput]);
   const primaryRecommendation = useMemo(() => {
@@ -729,7 +834,7 @@ export default function RunViewer({ run }: { run: RunData }) {
   }, [run]);
 
   const handleDownloadPdf = useCallback(() => {
-    if (runAtivoArtifacts?.pdfHtml) {
+    if (!isTopLevelMktCampaignRun && runAtivoArtifacts?.pdfHtml) {
       downloadString(runAtivoArtifacts.pdfHtml, `run-${run.id}-report.html`, "text/html;charset=utf-8");
       return;
     }
@@ -747,10 +852,10 @@ export default function RunViewer({ run }: { run: RunData }) {
       document.body.removeChild(link);
     }
     setTimeout(() => URL.revokeObjectURL(url), 10000);
-  }, [createReportHtml, run.id, runAtivoArtifacts, includeDetailsInExport]);
+  }, [createReportHtml, run.id, runAtivoArtifacts, includeDetailsInExport, isTopLevelMktCampaignRun]);
 
   const handleDownloadHtml = useCallback(() => {
-    if (runAtivoArtifacts?.landingHtml) {
+    if (!isTopLevelMktCampaignRun && runAtivoArtifacts?.landingHtml) {
       downloadString(runAtivoArtifacts.landingHtml, `run-${run.id}-landing.html`, "text/html;charset=utf-8");
       return;
     }
@@ -765,7 +870,7 @@ export default function RunViewer({ run }: { run: RunData }) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  }, [createReportHtml, run.id, runAtivoArtifacts, includeDetailsInExport]);
+  }, [createReportHtml, run.id, runAtivoArtifacts, includeDetailsInExport, isTopLevelMktCampaignRun]);
 
     const handleSendAlert = useCallback(() => {
     const summary = `Run ${run.id.slice(0, 8)} (${getDisplayAgent(run.agent)})`;
@@ -911,15 +1016,15 @@ export default function RunViewer({ run }: { run: RunData }) {
         ) : runAtivoArtifacts ? (
           <div className="space-y-6">
             <RunAtivoArtifactsView artifacts={runAtivoArtifacts} runId={run.id} />
-            {summaryPanel}
+            {!isTopLevelMktCampaignRun ? summaryPanel : null}
             {legacyPanel}
-            {technicalDetailsPanel}
+            {!isTopLevelMktCampaignRun ? technicalDetailsPanel : null}
           </div>
         ) : (
           <div className="space-y-6">
-            {summaryPanel}
+            {!isTopLevelMktCampaignRun ? summaryPanel : null}
             {legacyPanel}
-            {technicalDetailsPanel}
+            {!isTopLevelMktCampaignRun ? technicalDetailsPanel : null}
           </div>
         )}
       </div>
@@ -1019,6 +1124,7 @@ type StructuredRecommendationViewProps = {
 function StructuredRecommendationView({ run, data, markdownComponents }: StructuredRecommendationViewProps) {
   const [copiedCopyKey, setCopiedCopyKey] = useState<string | null>(null);
   const [adoptedOverrides, setAdoptedOverrides] = useState<Record<string, boolean>>({});
+  const [showMktTechnicalView, setShowMktTechnicalView] = useState(false);
   const recommendations = Array.isArray(data.recomendacoes)
     ? (data.recomendacoes as Record<string, unknown>[])
     : [];
@@ -1065,6 +1171,7 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
       : null;
   const isPitchAgent = run.agent.toLowerCase() === "pitch";
   const isJ360Agent = run.agent.toLowerCase() === "j_360";
+  const isMktAgent = run.agent.toLowerCase() === "mkt";
   const isGuardianAgent = run.agent.toLowerCase() === "guardian";
   const guardianForm = useMemo(() => {
     if (!isGuardianAgent) return null;
@@ -1085,7 +1192,57 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
     () => (isGuardianAgent ? extractGuardianReportData(data) : null),
     [data, isGuardianAgent]
   );
+  const j360LegalReport = useMemo(
+    () => (isJ360Agent ? extractJ360LegalReportData(data) : null),
+    [data, isJ360Agent]
+  );
+  const mktCampaignReport = useMemo(
+    () => (isMktAgent ? extractMktCampaignReportData(data) : null),
+    [data, isMktAgent]
+  );
   const recipeOrchestration = useMemo(() => extractRecipeOrchestrationData(data), [data]);
+  const isMktCampaignRun = Boolean(
+    isMktAgent &&
+      mktCampaignReport &&
+      (recipeOrchestration?.intent === "marketing_campaign" || recipeOrchestration?.domain === "marketing")
+  );
+  const isJ360LegalReviewRun = Boolean(
+    isJ360Agent &&
+      j360LegalReport &&
+      (recipeOrchestration?.intent === "legal_review" || recipeOrchestration?.domain === "legal")
+  );
+  const mktReportingPayload = useMemo(
+    () =>
+      isMktCampaignRun && mktCampaignReport
+        ? buildMktReportingPayload({
+            run,
+            data,
+            mktCampaignReport,
+            recipeOrchestration,
+          })
+        : null,
+    [data, isMktCampaignRun, mktCampaignReport, recipeOrchestration, run]
+  );
+  const j360ReportingPayload = useMemo(
+    () =>
+      isJ360LegalReviewRun && j360LegalReport
+        ? buildJ360ReportingPayload({
+            run,
+            data,
+            j360LegalReport,
+            recipeOrchestration,
+          })
+        : null,
+    [data, isJ360LegalReviewRun, j360LegalReport, recipeOrchestration, run]
+  );
+  const mktViewerHtml = useMemo(
+    () => (mktReportingPayload ? buildCoreMktLandingPageHtml(mktReportingPayload) : null),
+    [mktReportingPayload]
+  );
+  const j360ViewerHtml = useMemo(
+    () => (j360ReportingPayload ? buildCoreJ360LandingPageHtml(j360ReportingPayload) : null),
+    [j360ReportingPayload]
+  );
   const diagnosticStats = {
     totalPrevRuns:
       typeof diagnostico?.total_prev_runs === "number"
@@ -1199,6 +1356,12 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
     setAdoptedOverrides({});
   }, [run.id]);
 
+  useEffect(() => {
+    if (!isMktCampaignRun) {
+      setShowMktTechnicalView(false);
+    }
+  }, [isMktCampaignRun]);
+
   const handleCopyBlock = async (title: string, content: string) => {
     try {
       await navigator.clipboard.writeText(content);
@@ -1211,7 +1374,46 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
 
   return (
     <div className="space-y-6 text-sm">
-      {!briefingMarkdown && hasSummaryData && (
+      {isMktCampaignRun && mktViewerHtml ? (
+        <section className="space-y-3">
+          <header className="space-y-1">
+            <p className="text-xs uppercase tracking-[0.35em] text-accent">Visão do usuário</p>
+            <h4 className="text-base font-semibold text-foreground">Campanha estruturada do MKT</h4>
+            <p className="text-xs text-muted-foreground">
+              Prévia unificada do mesmo renderer usado em `Salvar HTML` e `Exportar PDF`.
+            </p>
+          </header>
+          <div className="overflow-hidden rounded-2xl border border-white/10 bg-white">
+            <iframe
+              title={`Campanha MKT ${run.id}`}
+              srcDoc={mktViewerHtml}
+              className="h-[1400px] w-full border-0 bg-white"
+            />
+          </div>
+          <section className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-muted-foreground">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.35em] text-foreground/80">
+                  Visão técnica interna
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Auditoria, governança e artefatos operacionais permanecem disponíveis apenas para consulta interna.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="pill bg-white/10 text-foreground transition hover:border-accent/40 hover:text-accent"
+                onClick={() => setShowMktTechnicalView((value) => !value)}
+              >
+                {showMktTechnicalView ? "Ocultar técnico" : "Abrir técnico"}
+              </button>
+            </div>
+          </section>
+        </section>
+      ) : null}
+
+      <div className={isMktCampaignRun && !showMktTechnicalView ? "hidden" : "space-y-6"}>
+      {!briefingMarkdown && hasSummaryData && !isMktCampaignRun && (
         <section className="space-y-2">
           <header className="space-y-1">
             <h4 className="text-base font-semibold text-foreground">Resumo estratégico</h4>
@@ -1559,7 +1761,229 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
         </section>
       )}
 
-      {recipeOrchestration && (
+      {isJ360LegalReviewRun && j360ViewerHtml ? (
+        <section className="space-y-3">
+          <header className="space-y-1">
+            <h4 className="text-base font-semibold text-foreground">Parecer jurídico do J_360</h4>
+            <p className="text-xs text-muted-foreground">
+              Prévia unificada do mesmo renderer usado em `Salvar HTML` e `Exportar PDF`.
+            </p>
+          </header>
+          <div className="overflow-hidden rounded-2xl border border-white/10 bg-white">
+            <iframe
+              title={`Parecer jurídico ${run.id}`}
+              srcDoc={j360ViewerHtml}
+              className="h-[1400px] w-full border-0 bg-white"
+            />
+          </div>
+        </section>
+      ) : null}
+
+      {!isJ360LegalReviewRun && isJ360Agent && j360LegalReport ? (
+        <section className="space-y-3">
+          <header className="space-y-1">
+            <h4 className="text-base font-semibold text-foreground">Parecer jurídico estruturado do J_360</h4>
+            <p className="text-xs text-muted-foreground">
+              Consolidação jurídica preliminar separando decisão, riscos, ajustes e o que ainda depende de revisão humana.
+            </p>
+          </header>
+          <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+              <span
+                className={mergeClassName(
+                  "pill",
+                  j360LegalReport.legalDecision === "APROVADO_BAIXO_RISCO"
+                    ? "bg-emerald-500/15 text-emerald-200"
+                    : j360LegalReport.legalDecision === "APROVADO_COM_RESSALVAS"
+                    ? "bg-amber-500/15 text-amber-200"
+                    : "bg-red-500/15 text-red-200"
+                )}
+              >
+                decisão: {formatJ360LegalDecisionLabel(j360LegalReport.legalDecision)}
+              </span>
+              <span className="pill bg-white/10 text-foreground">risk: {j360LegalReport.riskLevel}</span>
+              {j360LegalReport.documentType ? (
+                <span className="pill bg-white/10 text-foreground">documentType: {j360LegalReport.documentType}</span>
+              ) : null}
+              <span className="pill bg-white/10 text-foreground">
+                revisão humana: {j360LegalReport.manualReviewRequired ? "recomendada" : "não obrigatória"}
+              </span>
+            </div>
+            <p className="text-sm text-muted-foreground">{j360LegalReport.summary}</p>
+            <p className="text-xs text-muted-foreground">
+              <span className="font-semibold text-foreground">Escopo:</span> {j360LegalReport.analysisScope}
+            </p>
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">O que ajustar agora</p>
+                <ul className="mt-2 space-y-2 text-xs text-muted-foreground">
+                  {j360LegalReport.executiveGuidance.adjustNow.length > 0 ? (
+                    j360LegalReport.executiveGuidance.adjustNow.map((item) => <li key={item}>{item}</li>)
+                  ) : (
+                    <li>Nenhum ajuste executivo adicional foi estruturado.</li>
+                  )}
+                </ul>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">O que ainda depende de advogado humano</p>
+                <ul className="mt-2 space-y-2 text-xs text-muted-foreground">
+                  {j360LegalReport.executiveGuidance.dependsOnHumanReview.length > 0 ? (
+                    j360LegalReport.executiveGuidance.dependsOnHumanReview.map((item) => <li key={item}>{item}</li>)
+                  ) : (
+                    <li>
+                      {j360LegalReport.manualReviewRequired
+                        ? "A revisão jurídica humana final continua recomendada."
+                        : "Nenhuma dependência humana adicional foi estruturada."}
+                    </li>
+                  )}
+                </ul>
+              </div>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">Quando voltar para rerun</p>
+                <ul className="mt-2 space-y-2 text-xs text-muted-foreground">
+                  {j360LegalReport.executiveGuidance.rerunWhen.length > 0 ? (
+                    j360LegalReport.executiveGuidance.rerunWhen.map((item) => <li key={item}>{item}</li>)
+                  ) : (
+                    <li>Após incorporar os ajustes sensíveis e consolidar a nova versão da minuta.</li>
+                  )}
+                </ul>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">Quando pode seguir para uso interno</p>
+                <ul className="mt-2 space-y-2 text-xs text-muted-foreground">
+                  {j360LegalReport.executiveGuidance.readyForInternalUseWhen.length > 0 ? (
+                    j360LegalReport.executiveGuidance.readyForInternalUseWhen.map((item) => <li key={item}>{item}</li>)
+                  ) : (
+                    <li>Quando a redação final estiver validada e coerente com a prática operacional.</li>
+                  )}
+                </ul>
+              </div>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">Pontos fortes</p>
+                <ul className="mt-2 space-y-2 text-xs text-muted-foreground">
+                  {j360LegalReport.strengths.length > 0 ? (
+                    j360LegalReport.strengths.map((item) => <li key={item}>{item}</li>)
+                  ) : (
+                    <li>Nenhum ponto forte estruturado foi reportado.</li>
+                  )}
+                </ul>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">Pontos de atenção</p>
+                <ul className="mt-2 space-y-2 text-xs text-muted-foreground">
+                  {j360LegalReport.attentionPoints.length > 0 ? (
+                    j360LegalReport.attentionPoints.map((item) => <li key={item}>{item}</li>)
+                  ) : (
+                    <li>Nenhum ponto de atenção estruturado foi reportado.</li>
+                  )}
+                </ul>
+              </div>
+            </div>
+            <div className="overflow-x-auto rounded-xl border border-white/10">
+              <table className="min-w-full text-left text-xs text-muted-foreground">
+                <thead className="bg-white/5 text-foreground">
+                  <tr>
+                    <th className="px-3 py-2">Risco identificado</th>
+                    <th className="px-3 py-2">Severidade</th>
+                    <th className="px-3 py-2">Impacto possível</th>
+                    <th className="px-3 py-2">Mitigação recomendada</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {j360LegalReport.riskMatrix.length > 0 ? (
+                    j360LegalReport.riskMatrix.map((item, index) => (
+                      <tr key={`${item.risk}:${index}`} className="border-t border-white/10 align-top">
+                        <td className="px-3 py-2 text-foreground">{item.risk}</td>
+                        <td className="px-3 py-2">{item.severity}</td>
+                        <td className="px-3 py-2">{item.impact}</td>
+                        <td className="px-3 py-2">{item.mitigation}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr className="border-t border-white/10">
+                      <td className="px-3 py-3" colSpan={4}>
+                        Nenhuma matriz de risco estruturada foi reportada.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">Ajustes recomendados</p>
+                <ul className="mt-2 space-y-2 text-xs text-muted-foreground">
+                  {j360LegalReport.recommendedAdjustments.length > 0 ? (
+                    j360LegalReport.recommendedAdjustments.map((item) => <li key={item}>{item}</li>)
+                  ) : (
+                    <li>Nenhum ajuste estruturado foi reportado.</li>
+                  )}
+                </ul>
+              </div>
+              <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">Validação humana</p>
+                <ul className="mt-2 space-y-2 text-xs text-muted-foreground">
+                  {j360LegalReport.humanValidationQuestions.length > 0 ? (
+                    j360LegalReport.humanValidationQuestions.map((item) => <li key={item}>{item}</li>)
+                  ) : (
+                    <li>Nenhuma pergunta adicional foi estruturada.</li>
+                  )}
+                </ul>
+              </div>
+            </div>
+            {(j360LegalReport.howToProceedNow.length > 0 || j360LegalReport.nextBestImplementationAction) && (
+              <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">Como seguir agora</p>
+                {j360LegalReport.nextBestImplementationAction ? (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    <span className="font-semibold text-foreground">Próxima melhor ação:</span> {j360LegalReport.nextBestImplementationAction}
+                  </p>
+                ) : null}
+                <ul className="mt-2 space-y-2 text-xs text-muted-foreground">
+                  {j360LegalReport.howToProceedNow.map((item) => <li key={item}>{item}</li>)}
+                </ul>
+              </div>
+            )}
+            <div className="space-y-2 rounded-xl border border-white/10 bg-black/20 p-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">Matriz de cobertura do parecer</p>
+              <div className="overflow-x-auto rounded-xl border border-white/10">
+                <table className="min-w-full text-left text-xs text-muted-foreground">
+                  <thead className="bg-white/5 text-foreground">
+                    <tr>
+                      <th className="px-3 py-2">O que o parecer pede</th>
+                      <th className="px-3 py-2">O que o run respondeu</th>
+                      <th className="px-3 py-2">O que ainda depende de revisão manual/jurídica</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {j360LegalReport.coverageMatrix.length > 0 ? (
+                      j360LegalReport.coverageMatrix.map((item, index) => (
+                        <tr key={`${item.whatParecerAsks}:${index}`} className="border-t border-white/10 align-top">
+                          <td className="px-3 py-2 text-foreground">{item.whatParecerAsks}</td>
+                          <td className="px-3 py-2">{item.whatRunAnswered}</td>
+                          <td className="px-3 py-2">{item.whatStillNeedsManualReview ?? "Nenhuma pendência adicional reportada."}</td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr className="border-t border-white/10">
+                        <td className="px-3 py-3" colSpan={3}>
+                          Nenhuma matriz de cobertura estruturada foi reportada.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {recipeOrchestration && !isJ360LegalReviewRun && !isMktCampaignRun && (
         <section className="space-y-3">
           <header className="space-y-1">
             <h4 className="text-base font-semibold text-foreground">Recipe_Orchestrator — Como concluir esta receita</h4>
@@ -1764,7 +2188,7 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
         </section>
       )}
 
-      {diagnostico && (
+      {diagnostico && !isMktCampaignRun && (
         <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
           <span className="pill bg-white/10 text-foreground">Runs analisados: {diagnosticStats.totalPrevRuns}</span>
           <span className="pill bg-white/10 text-foreground">
@@ -1779,7 +2203,7 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
         </div>
       )}
 
-      {recommendations.length > 0 && (
+      {recommendations.length > 0 && !isMktCampaignRun && (
         <section className="space-y-3">
           <header>
             <h4 className="text-base font-semibold text-foreground">Recomendações priorizadas</h4>
@@ -1990,7 +2414,7 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
         </section>
       )}
 
-      {agentState && (
+      {agentState && !isMktCampaignRun && (
         <section className="space-y-2">
           <h4 className="text-base font-semibold text-foreground">Estado persistido</h4>
           <pre className="max-h-48 overflow-auto rounded-2xl bg-black/60 p-4 text-xs text-foreground/80">
@@ -1999,7 +2423,7 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
         </section>
       )}
 
-      {briefingMarkdown && (
+      {briefingMarkdown && !isMktCampaignRun && (
         <section className="space-y-2">
           <h4 className="text-base font-semibold text-foreground">Briefing estruturado</h4>
           <div className="prose prose-invert max-w-none text-sm">
@@ -2008,9 +2432,10 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
         </section>
       )}
 
-      {!recommendations.length && !briefingMarkdown && !form && (
+      {!recommendations.length && !briefingMarkdown && !form && !isMktCampaignRun && (
         <ReactMarkdown components={markdownComponents}>{maskedFallbackJson}</ReactMarkdown>
       )}
+      </div>
     </div>
   );
 }
@@ -2334,6 +2759,12 @@ function formatGuardianFinopsStatusLabel(report: GuardianReportView) {
   return "não reportado";
 }
 
+function formatJ360LegalDecisionLabel(value: J360LegalReportView["legalDecision"]) {
+  if (value === "APROVADO_BAIXO_RISCO") return "aprovado para uso interno com baixo risco";
+  if (value === "APROVADO_COM_RESSALVAS") return "aprovado com ressalvas e ajustes recomendados";
+  return "não recomendado sem revisão jurídica";
+}
+
 function buildRecipeOrchestrationHtmlBlock(orchestration: RecipeOrchestrationView | null) {
   if (!orchestration) return "";
   const suggestedAgentPills =
@@ -2464,6 +2895,251 @@ function buildRecipeOrchestrationHtmlBlock(orchestration: RecipeOrchestrationVie
         <ol>${recommendedRecipes}</ol>
       </div>
     </section>`;
+}
+
+function buildJ360LegalReportHtmlBlock(report: J360LegalReportView | null) {
+  if (!report) return "";
+
+  const strengths = report.strengths.length
+    ? report.strengths.map((item) => `<li>${sanitizeTextContent(item)}</li>`).join("")
+    : "<li>Nenhum ponto forte estruturado foi reportado.</li>";
+  const attentionPoints = report.attentionPoints.length
+    ? report.attentionPoints.map((item) => `<li>${sanitizeTextContent(item)}</li>`).join("")
+    : "<li>Nenhum ponto de atenção estruturado foi reportado.</li>";
+  const adjustments = report.recommendedAdjustments.length
+    ? report.recommendedAdjustments.map((item) => `<li>${sanitizeTextContent(item)}</li>`).join("")
+    : "<li>Nenhum ajuste estruturado foi reportado.</li>";
+  const humanQuestions = report.humanValidationQuestions.length
+    ? report.humanValidationQuestions.map((item) => `<li>${sanitizeTextContent(item)}</li>`).join("")
+    : "<li>Nenhuma pergunta adicional foi estruturada.</li>";
+  const howToProceed = report.howToProceedNow.length
+    ? report.howToProceedNow.map((item) => `<li>${sanitizeTextContent(item)}</li>`).join("")
+    : "<li>Nenhuma orientação adicional foi estruturada.</li>";
+  const executiveAdjustNow = report.executiveGuidance.adjustNow.length
+    ? report.executiveGuidance.adjustNow.map((item) => `<li>${sanitizeTextContent(item)}</li>`).join("")
+    : "<li>Nenhum ajuste executivo adicional foi estruturado.</li>";
+  const executiveHumanReview = report.executiveGuidance.dependsOnHumanReview.length
+    ? report.executiveGuidance.dependsOnHumanReview.map((item) => `<li>${sanitizeTextContent(item)}</li>`).join("")
+    : `<li>${
+        report.manualReviewRequired
+          ? "A revisão jurídica humana final continua recomendada."
+          : "Nenhuma dependência humana adicional foi estruturada."
+      }</li>`;
+  const executiveRerunWhen = report.executiveGuidance.rerunWhen.length
+    ? report.executiveGuidance.rerunWhen.map((item) => `<li>${sanitizeTextContent(item)}</li>`).join("")
+    : "<li>Após incorporar os ajustes sensíveis e consolidar a nova versão da minuta.</li>";
+  const executiveReadyForUse = report.executiveGuidance.readyForInternalUseWhen.length
+    ? report.executiveGuidance.readyForInternalUseWhen.map((item) => `<li>${sanitizeTextContent(item)}</li>`).join("")
+    : "<li>Quando a redação final estiver validada e coerente com a prática operacional.</li>";
+  const riskMatrixRows = report.riskMatrix.length
+    ? report.riskMatrix
+        .map(
+          (item) => `<tr>
+            <td>${sanitizeTextContent(item.risk)}</td>
+            <td>${sanitizeTextContent(item.severity)}</td>
+            <td>${sanitizeTextContent(item.impact)}</td>
+            <td>${sanitizeTextContent(item.mitigation)}</td>
+            <td>${(item.evidenceRefs ?? [])
+              .map(
+                (ref) =>
+                  `${sanitizeTextContent(ref.document)}${ref.page ? ` · p. ${sanitizeTextContent(ref.page)}` : ""}${
+                    ref.section ? ` · ${sanitizeTextContent(ref.section)}` : ""
+                  }${ref.excerpt ? `<br /><small>${sanitizeTextContent(ref.excerpt)}</small>` : ""}`
+              )
+              .join("<br />") || "Documento jurídico anexado"}</td>
+          </tr>`
+        )
+        .join("")
+    : `<tr><td colspan="5">Nenhuma matriz de risco estruturada foi reportada.</td></tr>`;
+  const coverageRows = report.coverageMatrix.length
+    ? report.coverageMatrix
+        .map(
+          (item) => `<tr>
+            <td>${sanitizeTextContent(item.whatParecerAsks)}</td>
+            <td>${sanitizeTextContent(item.whatRunAnswered)}</td>
+            <td>${sanitizeTextContent(item.whatStillNeedsManualReview ?? "Nenhuma pendência adicional reportada.")}</td>
+          </tr>`
+        )
+        .join("")
+    : `<tr><td colspan="3">Nenhuma matriz de cobertura estruturada foi reportada.</td></tr>`;
+
+  return `<section class="section">
+    <header>
+      <h2>Parecer jurídico estruturado do J_360</h2>
+      <p class="muted">Consolidação jurídica preliminar separando decisão, riscos, ajustes e revisão humana.</p>
+    </header>
+    <div class="chip-group">
+      <span class="chip">${sanitizeTextContent(formatJ360LegalDecisionLabel(report.legalDecision))}</span>
+      <span class="chip">Risco: ${sanitizeTextContent(report.riskLevel)}</span>
+      <span class="chip">Revisão humana: ${report.manualReviewRequired ? "recomendada" : "não obrigatória"}</span>
+    </div>
+    <p>${sanitizeTextContent(report.summary)}</p>
+    <p class="muted"><strong>Escopo:</strong> ${sanitizeTextContent(report.analysisScope)}</p>
+    <div class="signature-grid">
+      <article class="signature-card j360">
+        <h3>O que ajustar agora</h3>
+        <ul>${executiveAdjustNow}</ul>
+      </article>
+      <article class="signature-card j360">
+        <h3>O que ainda depende de advogado humano</h3>
+        <ul>${executiveHumanReview}</ul>
+      </article>
+    </div>
+    <div class="signature-grid">
+      <article class="signature-card j360">
+        <h3>Quando voltar para rerun</h3>
+        <ul>${executiveRerunWhen}</ul>
+      </article>
+      <article class="signature-card j360">
+        <h3>Quando pode seguir para uso interno</h3>
+        <ul>${executiveReadyForUse}</ul>
+      </article>
+    </div>
+    <div class="signature-grid">
+      <article class="signature-card j360">
+        <h3>Pontos fortes</h3>
+        <ul>${strengths}</ul>
+      </article>
+      <article class="signature-card j360">
+        <h3>Pontos de atenção</h3>
+        <ul>${attentionPoints}</ul>
+      </article>
+    </div>
+    <div class="section-table">
+      <h3>Matriz de riscos</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Risco identificado</th>
+            <th>Severidade</th>
+            <th>Impacto possível</th>
+            <th>Mitigação recomendada</th>
+            <th>Evidência referenciada</th>
+          </tr>
+        </thead>
+        <tbody>${riskMatrixRows}</tbody>
+      </table>
+    </div>
+    <div class="signature-grid">
+      <article class="signature-card j360">
+        <h3>Ajustes recomendados</h3>
+        <ul>${adjustments}</ul>
+      </article>
+      <article class="signature-card j360">
+        <h3>Validação humana</h3>
+        <ul>${humanQuestions}</ul>
+      </article>
+    </div>
+    <div class="section-table">
+      <h3>Como seguir agora</h3>
+      ${report.nextBestImplementationAction ? `<p><strong>Próxima melhor ação:</strong> ${sanitizeTextContent(report.nextBestImplementationAction)}</p>` : ""}
+      <ul>${howToProceed}</ul>
+    </div>
+    <div class="section-table">
+      <h3>Matriz de cobertura do parecer</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>O que o parecer pede</th>
+            <th>O que o run respondeu</th>
+            <th>O que ainda depende de revisão manual/jurídica</th>
+          </tr>
+        </thead>
+        <tbody>${coverageRows}</tbody>
+      </table>
+    </div>
+  </section>`;
+}
+
+function buildJ360RunReportHtml(options: {
+  run: RunData;
+  report: J360LegalReportView;
+  recipeOrchestration?: RecipeOrchestrationView | null;
+  promptText?: string;
+  rawDetail?: string;
+  includeRaw?: boolean;
+  autoPrint?: boolean;
+}) {
+  const { run, report, recipeOrchestration, promptText, rawDetail, includeRaw, autoPrint } = options;
+  const promptBlock = promptText
+    ? `<section class="section">
+        <header>
+          <h2>Pergunta original</h2>
+          <p class="muted">Texto enviado pelo solicitante.</p>
+        </header>
+        <p>${sanitizeTextContent(promptText)}</p>
+      </section>`
+    : "";
+  const recipeOrchestrationBlock = buildRecipeOrchestrationHtmlBlock(recipeOrchestration ?? null);
+  const legalBlock = buildJ360LegalReportHtmlBlock(report);
+  const rawBlock =
+    includeRaw && rawDetail
+      ? `<section class="section">
+          <header>
+            <h2>Detalhes técnicos completos</h2>
+            <p class="muted">Registro integral do run para auditoria.</p>
+          </header>
+          <pre style="white-space: pre-wrap; font-size: 10px; background: #0f172a; color: #e2e8f0; padding: 16px; border-radius: 16px; overflow-wrap: break-word;">${sanitizeTextContent(
+            rawDetail
+          )}</pre>
+        </section>`
+      : "";
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Parecer jurídico ${escapeHtml(run.id)}</title>
+    <style>
+      @page { size: A4; margin: 18mm; }
+      :root { color-scheme: light; font-family: "Noto Sans", "Inter", sans-serif; }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: #f8fafc; color: #0f172a; font-size: 12px; line-height: 1.6; }
+      .hero { padding: 28px 20px; background: linear-gradient(135deg, #eff6ff, #ffffff); border-bottom: 1px solid #dbe3ee; }
+      .hero-shell, main { width: min(1120px, calc(100vw - 32px)); margin: 0 auto; }
+      main { padding: 24px 0 40px; display: grid; gap: 18px; }
+      .eyebrow { margin: 0 0 8px; color: #64748b; text-transform: uppercase; letter-spacing: .22em; font-size: .72rem; }
+      .hero h1 { margin: 0 0 8px; font-size: clamp(1.7rem, 3vw, 2.3rem); }
+      .muted { color: #475569; }
+      .section { background: #fff; border: 1px solid #dbe3ee; border-radius: 18px; padding: 18px; box-shadow: 0 18px 50px rgba(15,23,42,.08); }
+      .section h2 { margin: 0 0 12px; font-size: 1.08rem; }
+      .section h3 { margin: 0 0 10px; font-size: .98rem; }
+      .chip-group { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 14px; }
+      .chip { display: inline-flex; padding: 6px 12px; border-radius: 999px; border: 1px solid #dbe3ee; background: #f8fafc; font-size: .82rem; }
+      .signature-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+      .signature-card { background: #fff; border: 1px solid #dbe3ee; border-radius: 16px; padding: 16px; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { border: 1px solid #dbe3ee; padding: 10px; text-align: left; vertical-align: top; }
+      th { background: #eff6ff; }
+      ul { margin: 0; padding-left: 18px; }
+      a { color: #2563eb; text-decoration: none; }
+      pre { margin: 0; }
+      @media print {
+        body { background: #fff; }
+        .section, .signature-card { box-shadow: none; break-inside: avoid; }
+        .hero { background: transparent; }
+      }
+    </style>
+    ${autoPrint ? `<script>window.addEventListener("load", () => window.print());</script>` : ""}
+  </head>
+  <body>
+    <header class="hero">
+      <div class="hero-shell">
+        <p class="eyebrow">EIAH J_360 — legal_review</p>
+        <h1>${escapeHtml(report.analysisScope)}</h1>
+        <p class="muted">Run ID: ${escapeHtml(run.id)} · Agente: ${escapeHtml(run.agent)} · Status: ${escapeHtml(
+          run.status
+        )}</p>
+      </div>
+    </header>
+    <main>
+      ${promptBlock}
+      ${legalBlock}
+      ${recipeOrchestrationBlock}
+      ${rawBlock}
+    </main>
+  </body>
+</html>`;
 }
 
 function buildGuardianReportHtml(options: {
@@ -2713,6 +3389,46 @@ function buildRunReportHtml(
       autoPrint,
     });
   }
+  const j360LegalReport = extractJ360LegalReportData(data);
+  const mktCampaignReport = extractMktCampaignReportData(data);
+  const isMarketingCampaignRun =
+    run.agent.toLowerCase() === "mkt" &&
+    mktCampaignReport &&
+    (recipeOrchestration?.intent === "marketing_campaign" || recipeOrchestration?.domain === "marketing");
+  if (isMarketingCampaignRun) {
+    const payload = buildMktReportingPayload({
+      run,
+      data,
+      mktCampaignReport,
+      recipeOrchestration,
+    });
+    const html = autoPrint ? buildCoreMktPdfHtml(payload) : buildCoreMktLandingPageHtml(payload);
+    return autoPrint
+      ? html.replace(
+          "</body>",
+          `<script>window.addEventListener("load", () => window.print());</script></body>`
+        )
+      : html;
+  }
+  const isLegalReviewRun =
+    run.agent.toLowerCase() === "j_360" &&
+    j360LegalReport &&
+    (recipeOrchestration?.intent === "legal_review" || recipeOrchestration?.domain === "legal");
+  if (isLegalReviewRun) {
+    const payload = buildJ360ReportingPayload({
+      run,
+      data,
+      j360LegalReport,
+      recipeOrchestration,
+    });
+    const html = autoPrint ? buildCoreJ360PdfHtml(payload) : buildCoreJ360LandingPageHtml(payload);
+    return autoPrint
+      ? html.replace(
+          "</body>",
+          `<script>window.addEventListener("load", () => window.print());</script></body>`
+        )
+      : html;
+  }
   const theme = getAgentTheme(run.agent);
   const usage = computeUsageStats(isPlainObject(data.usage) ? (data.usage as Record<string, unknown>) : data.usage);
   const memoryStats = computeMemoryStats(isPlainObject(data.memory) ? (data.memory as Record<string, unknown>) : data.memory);
@@ -2737,6 +3453,7 @@ function buildRunReportHtml(
           "Memória persistente desbloqueia recomendações melhores - priorize rollout Redis/Postgres.",
         ];
   const recipeOrchestrationBlock = buildRecipeOrchestrationHtmlBlock(recipeOrchestration);
+  const j360LegalReportBlock = buildJ360LegalReportHtmlBlock(j360LegalReport);
 
   const metricCards = [
     { label: "Status", value: run.status.toUpperCase(), icon: "⦿" },
@@ -3342,6 +4059,7 @@ function buildRunReportHtml(
       ${wrapEditable(recipeOrchestrationBlock)}
       ${wrapEditable(promptBlock)}
       ${wrapEditable(agentSignature)}
+      ${wrapEditable(j360LegalReportBlock)}
       ${wrapEditable(recommendationsHtml)}
       ${wrapEditable(timelineBlock)}
       ${wrapEditable(insightsBlock)}
@@ -4167,6 +4885,115 @@ type GuardianReportView = {
   nextAction?: string | null;
 };
 
+type J360LegalReportView = {
+  schemaVersion: "j360_legal_report.v1";
+  documentType: string | null;
+  analysisScope: string;
+  legalDecision:
+    | "APROVADO_BAIXO_RISCO"
+    | "APROVADO_COM_RESSALVAS"
+    | "NAO_RECOMENDADO_SEM_REVISAO";
+  riskLevel: "low" | "medium" | "high" | "critical";
+  summary: string;
+  strengths: string[];
+  attentionPoints: string[];
+  riskMatrix: Array<{
+    risk: string;
+    severity: "low" | "medium" | "high" | "critical";
+    relatedClause: string | null;
+    impact: string;
+    mitigation: string;
+    evidenceRefs: Array<{
+      document: string;
+      page: string | null;
+      section: string | null;
+      excerpt?: string | null;
+    }>;
+  }>;
+  ambiguities: string[];
+  recommendedAdjustments: string[];
+  recommendedEvidence: string[];
+  humanValidationQuestions: string[];
+  manualReviewRequired: boolean;
+  executiveGuidance: {
+    adjustNow: string[];
+    dependsOnHumanReview: string[];
+    rerunWhen: string[];
+    readyForInternalUseWhen: string[];
+  };
+  howToProceedNow: string[];
+  nextBestImplementationAction: string | null;
+  coverageMatrix: Array<{
+    whatParecerAsks: string;
+    whatRunAnswered: string;
+    whatStillNeedsManualReview: string | null;
+  }>;
+};
+
+type MktCampaignReportView = {
+  schemaVersion: "mkt_campaign_report.v1";
+  campaignTitle: string | null;
+  objective: string;
+  campaignSummary: string;
+  positioning: string | null;
+  audience: {
+    primary: string;
+    segments: string[];
+    geography: string[];
+    notes: string | null;
+  };
+  icp: Array<{
+    label: string;
+    description: string;
+    priority: number;
+  }>;
+  coreMessage: string | null;
+  cta: string | null;
+  priorityChannels: Array<
+    "email" | "linkedin" | "whatsapp" | "partnerships" | "events" | "communities" | "blog_seo" | "paid_media" | "social" | "other"
+  >;
+  channelPlans: Array<{
+    channel: string;
+    label: string;
+    objective: string;
+    approach: string;
+    contentFocus: string[];
+    targetMetric: string | null;
+    cadence: string | null;
+  }>;
+  timeline: Array<{
+    period: string;
+    activity: string;
+    description: string;
+    owner: string | null;
+  }>;
+  requiredAssets: Array<{
+    name: string;
+    objective: string;
+    format: string | null;
+    owner: string | null;
+  }>;
+  kpis: Array<{
+    name: string;
+    target: string;
+    channel: string | null;
+    notes: string | null;
+  }>;
+  qualificationCriteria: Array<{
+    category: "lead" | "partner" | "pilot";
+    criteria: string[];
+  }>;
+  risks: string[];
+  riskLevel: "low" | "medium" | "high";
+  nextActions: string[];
+  executiveGuidance: {
+    adjustNow: string[];
+    dependsOnInternalReview: string[];
+    rerunWhen: string[];
+    readyToLaunchWhen: string[];
+  };
+};
+
 type RecipeOrchestrationView = {
   schemaVersion: "recipe_orchestration.v1";
   source: "recipe_run";
@@ -4184,6 +5011,7 @@ type RecipeOrchestrationView = {
   }>;
   intent:
     | "go_live_validation"
+    | "marketing_campaign"
     | "evidence_collection"
     | "imob_task"
     | "legal_review"
@@ -4193,10 +5021,10 @@ type RecipeOrchestrationView = {
     | "urban_service"
     | "general_task"
     | "unknown";
-  domain: "guardian" | "imob" | "legal" | "finance" | "urban" | "pitch" | "general" | "unknown";
+  domain: "guardian" | "marketing" | "imob" | "legal" | "finance" | "urban" | "pitch" | "general" | "unknown";
   riskLevel: "low" | "medium" | "high" | "critical";
   primaryAgent: {
-    key: "guardian" | "eiah" | "j_360" | "pitch" | "imob" | "legal" | "finance" | "urban" | "other";
+    key: "guardian" | "eiah" | "mkt" | "j_360" | "pitch" | "imob" | "legal" | "finance" | "urban" | "other";
     displayName: string;
     selectionReason: string;
     confidence: number;
@@ -4314,6 +5142,45 @@ function extractGuardianReportData(data: Record<string, unknown>): GuardianRepor
   }
 
   return source as unknown as GuardianReportView;
+}
+
+function extractJ360LegalReportData(data: Record<string, unknown>): J360LegalReportView | null {
+  const source = isPlainObject(data.j360LegalReport)
+    ? (data.j360LegalReport as Record<string, unknown>)
+    : isPlainObject(data.metadata) && isPlainObject((data.metadata as Record<string, unknown>).j360LegalReport)
+    ? ((data.metadata as Record<string, unknown>).j360LegalReport as Record<string, unknown>)
+    : null;
+
+  if (!source) return null;
+  if (
+    source.schemaVersion !== "j360_legal_report.v1" ||
+    typeof source.analysisScope !== "string" ||
+    typeof source.legalDecision !== "string" ||
+    typeof source.summary !== "string"
+  ) {
+    return null;
+  }
+
+  return source as unknown as J360LegalReportView;
+}
+
+function extractMktCampaignReportData(data: Record<string, unknown>): MktCampaignReportView | null {
+  const source = isPlainObject(data.mktCampaignReport)
+    ? (data.mktCampaignReport as Record<string, unknown>)
+    : isPlainObject(data.metadata) && isPlainObject((data.metadata as Record<string, unknown>).mktCampaignReport)
+    ? ((data.metadata as Record<string, unknown>).mktCampaignReport as Record<string, unknown>)
+    : null;
+
+  if (!source) return null;
+  if (
+    source.schemaVersion !== "mkt_campaign_report.v1" ||
+    typeof source.objective !== "string" ||
+    typeof source.campaignSummary !== "string"
+  ) {
+    return null;
+  }
+
+  return source as unknown as MktCampaignReportView;
 }
 
 function extractRecipeOrchestrationData(data: Record<string, unknown>): RecipeOrchestrationView | null {

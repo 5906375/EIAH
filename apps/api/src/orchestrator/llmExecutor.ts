@@ -7,6 +7,7 @@ import { fullMask, maskText } from "../services/masker";
 export type LlmExecutorParams = {
   profile: {
     model: string;
+    maxTokens?: number;
     systemPrompt: string;
     knowledgePolicy?: {
       llmUsageMode?:
@@ -245,6 +246,7 @@ export async function executeLlmStep({
   const response = await runCompletion({
     model: profile.model,
     messages,
+    maxTokens: profile.maxTokens,
     temperature: undefined,
     metadata: sanitizedMetadata,
   });

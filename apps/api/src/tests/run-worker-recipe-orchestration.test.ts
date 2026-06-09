@@ -144,6 +144,35 @@ test("recipe orchestration selects pitch and legal leaders by recipe domain", ()
 
   assert.equal(pitch?.primaryAgent.key, "pitch");
   assert.equal(legal?.primaryAgent.key, "j_360");
+  assert.equal(legal?.intent, "legal_review");
+  assert.equal(legal?.howToProceedNow.length >= 1, true);
+  assert.equal(legal?.recommendedRecipes.length, 5);
+  assert.equal(legal?.nextBestImplementationAction, "Validar natureza não salarial da política de premiação");
+});
+
+test("recipe orchestration preserves the selected MKT agent for campaign recipes", () => {
+  const orchestration = buildRecipeOrchestration({
+    agentId: "MKT",
+    tenantId: "tenant-A",
+    workspaceId: "workspace-A",
+    metadata: {
+      linkedRecipe: {
+        id: "recipe-mkt",
+        agentId: "MKT",
+        title: "Campanha de Divulgação e Prospecção — Vertical Legal EIAH",
+        instructions: "Planejar campanha multicanal, ICP, outreach no LinkedIn e parcerias para escritórios de advocacia.",
+        tags: ["mkt", "campanha", "linkedin", "parcerias", "vertical-legal"],
+      },
+    },
+  });
+
+  assert.equal(orchestration?.primaryAgent.key, "mkt");
+  assert.equal(orchestration?.intent, "marketing_campaign");
+  assert.equal(orchestration?.domain, "marketing");
+  assert.equal(orchestration?.riskLevel, "low");
+  assert.equal(orchestration?.howToProceedNow.length >= 1, true);
+  assert.equal(orchestration?.recommendedRecipes.length, 5);
+  assert.equal(orchestration?.nextBestImplementationAction, "Definir ICP e segmentação da Vertical Legal");
 });
 
 test("recipe orchestration flags guardian review for PII or high risk", () => {

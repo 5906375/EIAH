@@ -19,6 +19,21 @@ const upload = multer({
   },
 });
 
+function normalizeUploadedFileName(fileName: string) {
+  const trimmed = fileName.trim();
+  if (!trimmed) return fileName;
+
+  const looksMojibake = /Ã.|Â.|�/.test(trimmed);
+  if (!looksMojibake) return trimmed;
+
+  try {
+    const decoded = Buffer.from(trimmed, "latin1").toString("utf8").trim();
+    return decoded || trimmed;
+  } catch {
+    return trimmed;
+  }
+}
+
 export const uploadsRouter = Router();
 
 uploadsRouter.use(enforceTenant);
@@ -61,13 +76,14 @@ uploadsRouter.post(
         });
       }
 
-      const persisted = await persistBuffer(file.buffer, file.originalname);
+      const normalizedFileName = normalizeUploadedFileName(file.originalname);
+      const persisted = await persistBuffer(file.buffer, normalizedFileName);
       let record = await createUploadedDocument({
         prisma: client,
         tenantId: auth.tenantId,
         workspaceId: auth.workspaceId,
         agentSlug,
-        fileName: file.originalname,
+        fileName: normalizedFileName,
         mimeType: file.mimetype,
         sizeBytes: file.size,
         storageKey: persisted.storageKey,

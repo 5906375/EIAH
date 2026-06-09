@@ -40,6 +40,7 @@ type SelfServiceAgent = {
 
 const SELF_SERVICE_AGENTS: SelfServiceAgent[] = [
   { key: "guardian", agentId: "guardian", displayName: "Guardian" },
+  { key: "mkt", agentId: "MKT", displayName: "MKT" },
   { key: "j_360", agentId: "J_360", displayName: "J_360" },
   { key: "pitch", agentId: "Pitch", displayName: "Pitch" },
   { key: "eiah", agentId: "EIAH", displayName: "EIAH" },
@@ -151,6 +152,7 @@ function mapAgentIdToKey(agentId: string | null | undefined): RecipeOrchestratio
   const normalized = normalizeText(agentId);
   if (normalized === "guardian") return "guardian";
   if (normalized === "eiah") return "eiah";
+  if (normalized === "mkt") return "mkt";
   if (normalized === "j_360" || normalized === "j360") return "j_360";
   if (normalized === "pitch") return "pitch";
   if (normalized === "fin-nexus" || normalized === "finance") return "finance";
@@ -172,6 +174,7 @@ function classifyRecipe(params: {
   linkedRecipe: LinkedRecipeContext;
   currentAgentKey: RecipeOrchestrationAgentKey;
 }) {
+  const requestedAgentKey = mapAgentIdToKey(params.linkedRecipe.agentId);
   const corpus = [
     params.linkedRecipe.title,
     params.linkedRecipe.summary,
@@ -232,6 +235,20 @@ function classifyRecipe(params: {
     "narrativa",
     "copy",
   ]);
+  const isMarketing = requestedAgentKey === "mkt" || includesAny(text, [
+    "marketing",
+    "campanha",
+    "outbound",
+    "audiencia",
+    "audiência",
+    "linkedin",
+    "parcerias",
+    "cpl",
+    "cac",
+    "go-to-market",
+    "go to market",
+    "briefing de campanha",
+  ]);
   const isImob = includesAny(text, [
     "imob",
     "imovel",
@@ -263,28 +280,38 @@ function classifyRecipe(params: {
 
   const isStructuredGoLivePlan =
     isGoLive && params.linkedRecipe.content?.mode === "staged" && (params.linkedRecipe.content?.steps.length ?? 0) > 1;
-  const intent = isGoLive
+  const intent = requestedAgentKey === "mkt"
+    ? "marketing_campaign"
+    : isGoLive
     ? "go_live_validation"
-    : hasSensitiveData
-    ? "evidence_collection"
-    : isImob
-    ? "imob_task"
+    : isMarketing
+    ? "marketing_campaign"
     : isLegal
     ? "legal_review"
+    : isImob
+    ? "imob_task"
     : isPitch
     ? "pitch_creation"
     : isFinance
     ? "financial_analysis"
     : isUrban
     ? "urban_service"
+    : hasSensitiveData
+    ? "evidence_collection"
+    : params.currentAgentKey === "mkt"
+    ? "marketing_campaign"
     : params.currentAgentKey === "pitch"
     ? "pitch_creation"
     : params.currentAgentKey === "j_360"
     ? "legal_review"
     : "general_task";
 
-  const domain = isGoLive
+  const domain = requestedAgentKey === "mkt"
+    ? "marketing"
+    : isGoLive
     ? "guardian"
+    : isMarketing
+    ? "marketing"
     : isImob
     ? "imob"
     : isLegal
@@ -295,11 +322,17 @@ function classifyRecipe(params: {
     ? "finance"
     : isUrban
     ? "urban"
+    : params.currentAgentKey === "mkt"
+    ? "marketing"
     : params.currentAgentKey === "guardian"
     ? "guardian"
     : "general";
 
-  const riskLevel = isGoLive
+  const riskLevel = requestedAgentKey === "mkt"
+    ? hasSensitiveData
+      ? "medium"
+      : "low"
+    : isGoLive
     ? isStructuredGoLivePlan || hasSensitiveData
       ? "critical"
       : "high"
@@ -311,7 +344,7 @@ function classifyRecipe(params: {
     ? "low"
     : "medium";
 
-  return { intent, domain, riskLevel, hasSensitiveData, isGoLive, isLegal, isPitch, isImob, isFinance, isUrban };
+  return { intent, domain, riskLevel, hasSensitiveData, isGoLive, isLegal, isPitch, isMarketing, isImob, isFinance, isUrban };
 }
 
 function selectPrimaryAgent(params: {
@@ -337,6 +370,20 @@ function selectPrimaryAgent(params: {
     };
   };
 
+  if (requestedAgentKey !== "other" && hasAgent(availableAgents, requestedAgentKey)) {
+    const requestedDisplayName = getAgentDisplayName(availableAgents, requestedAgentKey);
+    const explicitSelectionReason =
+      linkedRecipe.agentId
+        ? `A recipe foi publicada com o agente ${requestedDisplayName}; o orchestrator preserva esse líder como rota primária e usa a classificação apenas para apoio, risco e governança.`
+        : "A recipe já está vinculada a um agente compatível com o domínio identificado, então ele permanece como líder recomendado.";
+    return {
+      key: requestedAgentKey,
+      displayName: requestedDisplayName,
+      selectionReason: explicitSelectionReason,
+      confidence: 0.98,
+    };
+  }
+
   if (classified.isGoLive) {
     return choose("guardian", "eiah", "A receita descreve validação crítica, evidência auditável ou dado sensível, então o Guardian deve liderar a análise.", 0.95);
   }
@@ -345,6 +392,9 @@ function selectPrimaryAgent(params: {
   }
   if (classified.isPitch) {
     return choose("pitch", "eiah", "A receita é de comunicação, anúncio ou apresentação, então o agente de pitch é o líder mais aderente.", 0.9);
+  }
+  if (classified.isMarketing) {
+    return choose("mkt", "eiah", "A receita é de campanha, aquisição ou posicionamento, então o agente MKT deve liderar a estratégia.", 0.92);
   }
   if (classified.isImob) {
     return choose("imob", "eiah", "A receita é imobiliária; se houver agente IMOB no catálogo ele lidera, caso contrário o EIAH assume a coordenação.", hasAgent(availableAgents, "imob") ? 0.85 : 0.7);
@@ -357,14 +407,6 @@ function selectPrimaryAgent(params: {
   }
   if (classified.hasSensitiveData) {
     return choose("guardian", "eiah", "A receita é geral, mas envolve PII, evidência ou material sensível, então o Guardian deve liderar a análise.", 0.9);
-  }
-  if (requestedAgentKey !== "other" && hasAgent(availableAgents, requestedAgentKey)) {
-    return {
-      key: requestedAgentKey,
-      displayName: getAgentDisplayName(availableAgents, requestedAgentKey),
-      selectionReason: "A receita já está vinculada a um agente compatível com o domínio identificado, então ele permanece como líder recomendado.",
-      confidence: 0.74,
-    };
   }
   if (currentAgentKey !== "other" && hasAgent(availableAgents, currentAgentKey)) {
     return {
@@ -411,6 +453,9 @@ function buildSuggestedAgents(params: {
   if (classified.isGoLive || classified.hasSensitiveData) {
     push("eiah", "Traduzir a pendência em checklist prático e orientar a coleta dos insumos faltantes.");
     push("j_360", "Estruturar critério documental, evidência mínima e narrativa de risco antes do novo parecer.");
+  } else if (classified.isMarketing) {
+    push("pitch", "Ajudar a transformar a campanha em narrativa, assets e CTA mais fortes.");
+    push("eiah", "Organizar execução, cadência e próximos passos operacionais da campanha.");
   } else if (classified.isLegal) {
     push("eiah", "Organizar os próximos passos operacionais para transformar o parecer em ação prática.");
   } else if (classified.isPitch) {
@@ -492,6 +537,19 @@ function buildPracticalPlan(params: {
         requiresGuardianReview ? "Encaminhe ao Guardian só se surgirem dados sensíveis, evidência crítica ou aprovação de governança." : "Gere a saída final e revise a consistência do briefing.",
       ],
       readyForRerunWhen: ["Briefing, narrativa e materiais estiverem consistentes com a receita."],
+    };
+  }
+  if (classified.isMarketing) {
+    return {
+      practicalSteps: [
+        `Use ${primaryDisplayName} para fechar ICP, oferta e canais da campanha antes de escalar execução.`,
+        "Defina a mensagem principal, CTA, cadência outbound e métricas mínimas por canal.",
+        "Valide materiais, lista de contas e cronograma antes de ativar outreach ou parceiros.",
+      ],
+      readyForRerunWhen: [
+        "ICP, oferta e canais prioritários estiverem definidos.",
+        "Mensagens, metas e cronograma estiverem prontos para execução.",
+      ],
     };
   }
   return {
@@ -601,6 +659,101 @@ function buildImplementationFollowUp(params: {
       }>,
       externalPlatformsInvolved,
       nextBestImplementationAction: "Criar a próxima recipe operacional específica da plataforma externa mais crítica.",
+    };
+  }
+
+  if (params.classified.isMarketing) {
+    const recommendedRecipes = [
+      {
+        order: 1,
+        title: "Definir ICP e segmentação da Vertical Legal",
+        objective: "Priorizar escritórios, decisores e especialidades com maior aderência para parceria, piloto ou adoção inicial.",
+        externalPlatform: null,
+      },
+      {
+        order: 2,
+        title: "Definir narrativa comercial e proposta de valor da campanha",
+        objective: "Fechar tese, diferenciais, mensagem principal e CTA sem prometer capabilities não homologadas.",
+        externalPlatform: null,
+      },
+      {
+        order: 3,
+        title: "Executar outreach em LinkedIn e email outbound",
+        objective: "Rodar cadência inicial com scripts, follow-up e critérios claros de qualificação.",
+        externalPlatform: "LinkedIn",
+      },
+      {
+        order: 4,
+        title: "Estruturar parcerias e comunidades jurídicas prioritárias",
+        objective: "Mapear associações, eventos e parceiros setoriais para ampliar distribuição e credibilidade.",
+        externalPlatform: null,
+      },
+      {
+        order: 5,
+        title: "Medir pipeline, respostas e pilotos abertos",
+        objective: "Consolidar KPIs, revisar canal por canal e rerodar a recipe com base em conversão real.",
+        externalPlatform: null,
+      },
+    ];
+
+    return {
+      howToProceedNow: [
+        "Use esta saída para ativar uma campanha executável, não apenas como brainstorming de marketing.",
+        "Comece por ICP, narrativa e lista de contas antes de ampliar canais ou orçamento.",
+        "Rerode a recipe depois da primeira onda de outreach para recalibrar canais, mensagens e qualificação.",
+      ],
+      recommendedRecipes,
+      externalPlatformsInvolved: dedupe([
+        text.includes("linkedin") ? "LinkedIn" : null,
+        text.includes("email") || text.includes("outbound") ? "Email" : null,
+      ].filter((item): item is string => Boolean(item))),
+      nextBestImplementationAction: recommendedRecipes[0]?.title ?? null,
+    };
+  }
+
+  if (params.classified.isLegal) {
+    const recommendedRecipes = [
+      {
+        order: 1,
+        title: "Validar natureza não salarial da política de premiação",
+        objective: "Revisar se a redação sustenta liberalidade, desempenho extraordinário e ausência de integração salarial.",
+        externalPlatform: null,
+      },
+      {
+        order: 2,
+        title: "Validar critérios objetivos e risco de habitualidade",
+        objective: "Confirmar que os critérios são verificáveis, não automáticos e não descrevem apenas o trabalho ordinário.",
+        externalPlatform: null,
+      },
+      {
+        order: 3,
+        title: "Validar base de cálculo, reduções e proporcionalidade",
+        objective: "Eliminar ambiguidades de cálculo e reduzir risco de leitura como penalidade disciplinar indireta.",
+        externalPlatform: null,
+      },
+      {
+        order: 4,
+        title: "Validar transparência, demonstrativo e evidências do ciclo",
+        objective: "Definir relatório mensal, documentação mínima e critérios auditáveis para o empregado e para a empresa.",
+        externalPlatform: null,
+      },
+      {
+        order: 5,
+        title: "Validar versão final para uso interno com revisão jurídica humana",
+        objective: "Submeter a redação consolidada à revisão humana final antes de aplicar a política.",
+        externalPlatform: null,
+      },
+    ];
+
+    return {
+      howToProceedNow: [
+        "Use esta saída como análise preliminar para priorizar ajustes documentais, não como validação jurídica definitiva.",
+        "Ataque primeiro natureza jurídica, critérios objetivos e base de cálculo; esses pontos concentram o maior risco trabalhista.",
+        "Depois de revisar a minuta e reunir evidências do processo real de apuração, rerode a recipe antes da revisão humana final.",
+      ],
+      recommendedRecipes,
+      externalPlatformsInvolved: [] as string[],
+      nextBestImplementationAction: recommendedRecipes[0]?.title ?? null,
     };
   }
 

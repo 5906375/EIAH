@@ -1,7 +1,9 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import AgentFormShell from "./components/AgentFormShell";
 import SelfServiceNav from "./components/SelfServiceNav";
-import { apiUploadDocuments, UploadedDocumentInfo, BASE_URL } from "@/lib/api";
+import { apiListTenantRecipes, apiUploadDocuments, UploadedDocumentInfo, BASE_URL, type TenantRecipe } from "@/lib/api";
+import { buildJ360RecipePrefillValues } from "./recipePrefill";
 
 type SupportingDocument = UploadedDocumentInfo;
 
@@ -46,7 +48,7 @@ const stageOptions: JourneyStageOption[] = [
   },
 ];
 
-const initialValues: J360FormValues = {
+const initialValuesBase: J360FormValues = {
   customerName: "",
   segment: "",
   painPoints: "",
@@ -59,16 +61,146 @@ const initialValues: J360FormValues = {
   nextSteps: "",
 };
 
+function getJ360UploadStorageKey(recipeId: string | null) {
+  return recipeId ? `j360-supporting-docs:${recipeId}` : "j360-supporting-docs:default";
+}
+
+function normalizeUploadedFileName(fileName: string) {
+  const trimmed = fileName.trim();
+  if (!trimmed) return fileName;
+
+  const looksMojibake = /Ã.|Â.|�/.test(trimmed);
+  if (!looksMojibake) return trimmed;
+
+  try {
+    return new TextDecoder("utf-8", { fatal: false }).decode(
+      Uint8Array.from(trimmed, (char) => char.charCodeAt(0))
+    ).trim();
+  } catch {
+    return trimmed;
+  }
+}
+
 function resolveDocumentUrl(doc: SupportingDocument) {
   if (doc.url.startsWith("http")) return doc.url;
-  return new URL(doc.url, BASE_URL).toString();
+
+  const browserOrigin = typeof window !== "undefined" ? window.location.origin : "http://localhost:5173";
+  const baseCandidates = [BASE_URL, browserOrigin]
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value));
+
+  for (const base of baseCandidates) {
+    try {
+      return new URL(doc.url, base).toString();
+    } catch {
+      continue;
+    }
+  }
+
+  return doc.url;
+}
+
+function normalizeUploadedDocument(doc: SupportingDocument): SupportingDocument {
+  try {
+    return { ...doc, name: normalizeUploadedFileName(doc.name), url: resolveDocumentUrl(doc) };
+  } catch {
+    return { ...doc, name: normalizeUploadedFileName(doc.name) };
+  }
 }
 
 export default function SelfServiceJ360Page() {
+  const [searchParams] = useSearchParams();
+  const [linkedRecipe, setLinkedRecipe] = useState<TenantRecipe | null>(null);
+  const [uploadedDocs, setUploadedDocs] = useState<SupportingDocument[]>([]);
+  const recipeId = searchParams.get("recipeId");
+  const uploadStorageKey = useMemo(() => getJ360UploadStorageKey(recipeId), [recipeId]);
+
+  useEffect(() => {
+    let active = true;
+    if (!recipeId) {
+      setLinkedRecipe(null);
+      return () => {
+        active = false;
+      };
+    }
+
+    apiListTenantRecipes({ view: "tenant" })
+      .then((response) => {
+        if (!active) return;
+        setLinkedRecipe(response.items.find((item) => item.id === recipeId) ?? null);
+      })
+      .catch(() => {
+        if (!active) return;
+        setLinkedRecipe(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [recipeId]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.sessionStorage.getItem(uploadStorageKey);
+      if (!raw) {
+        setUploadedDocs([]);
+        return;
+      }
+      const parsed = JSON.parse(raw) as SupportingDocument[];
+      setUploadedDocs(Array.isArray(parsed) ? parsed : []);
+    } catch {
+      setUploadedDocs([]);
+    }
+  }, [uploadStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.sessionStorage.setItem(uploadStorageKey, JSON.stringify(uploadedDocs));
+  }, [uploadStorageKey, uploadedDocs]);
+
+  const initialValues = useMemo<J360FormValues>(
+    () => ({
+      ...initialValuesBase,
+      ...buildJ360RecipePrefillValues(linkedRecipe),
+      supportingDocs: [],
+    }),
+    [linkedRecipe]
+  );
+
+  const linkedRecipeMetadata = useMemo(
+    () =>
+      linkedRecipe
+        ? {
+            id: linkedRecipe.id,
+            agentId: linkedRecipe.agentId,
+            title: linkedRecipe.title,
+            summary: linkedRecipe.summary,
+            instructions: linkedRecipe.instructions ?? null,
+            tags: linkedRecipe.tags,
+            content: linkedRecipe.content ?? null,
+            stageExecution:
+              linkedRecipe.content?.mode === "staged" && (linkedRecipe.content.steps?.length ?? 0) > 1
+                ? {
+                    mode: "plan",
+                    activeStepId: null,
+                    activeStepTitle: null,
+                  }
+                : {
+                    mode: "single",
+                    activeStepId: null,
+                    activeStepTitle: null,
+                  },
+          }
+        : undefined,
+    [linkedRecipe]
+  );
+
   const buildRequest = useCallback((values: J360FormValues) => {
-    const absoluteDocs = values.supportingDocs.map((doc) => ({
+    const docs = values.supportingDocs.length > 0 ? values.supportingDocs : uploadedDocs;
+    const absoluteDocs = docs.map((doc) => ({
       ...doc,
-      url: resolveDocumentUrl(doc),
+      url: normalizeUploadedDocument(doc).url,
     }));
 
     const lines = [
@@ -95,7 +227,7 @@ export default function SelfServiceJ360Page() {
       supportingDocs: absoluteDocs,
     };
 
-    return {
+    const request = {
       prompt: lines.join("\n"),
       metadata: {
         form: payload,
@@ -104,16 +236,25 @@ export default function SelfServiceJ360Page() {
       },
       rawPayload: payload,
     };
-  }, []);
+    return linkedRecipeMetadata
+      ? {
+          ...request,
+          metadata: {
+            ...request.metadata,
+            linkedRecipe: linkedRecipeMetadata,
+          },
+        }
+      : request;
+  }, [linkedRecipeMetadata, uploadedDocs]);
 
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  const uploadDocuments = useCallback(async (fileList: FileList | null) => {
-    if (!fileList || fileList.length === 0) return null;
+  const uploadDocuments = useCallback(async (files: File[]) => {
+    if (!files || files.length === 0) return null;
 
     const formData = new FormData();
-    Array.from(fileList).forEach((file) => formData.append("files", file));
+    files.forEach((file) => formData.append("files", file));
 
     setIsUploading(true);
     setUploadError(null);
@@ -131,11 +272,36 @@ export default function SelfServiceJ360Page() {
   return (
     <div className="space-y-6">
       <SelfServiceNav currentSlug="j360" />
+      {linkedRecipe ? (
+        <div className="rounded-2xl border border-accent/20 bg-accent/5 p-4">
+          <p className="text-[10px] uppercase tracking-[0.24em] text-accent">Recipe vinculada</p>
+          <h2 className="mt-2 text-lg font-semibold text-foreground">{linkedRecipe.title}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{linkedRecipe.summary}</p>
+          {linkedRecipe.tags.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {linkedRecipe.tags.map((tag) => (
+                <span
+                  key={`${linkedRecipe.id}-${tag}`}
+                  className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          ) : null}
+          {linkedRecipe.instructions ? (
+            <p className="mt-3 whitespace-pre-line text-xs text-muted-foreground">
+              {linkedRecipe.instructions}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
       <AgentFormShell<J360FormValues>
         agentId="J_360"
         title="Visao 360 do Cliente"
         description="Reuna informacoes sobre a conta e obtenha um diagnostico com recomendacoes priorizadas pelo agente J_360."
         initialValues={initialValues}
+        preserveValueKeysOnInitialChange={["supportingDocs"]}
         buildRequest={buildRequest}
       >
         {({ values, setValue }) => {
@@ -147,24 +313,39 @@ export default function SelfServiceJ360Page() {
             setValue("journeyStages", next);
           };
 
-          const handleDocsUpload = async (fileList: FileList | null) => {
-            const uploaded = await uploadDocuments(fileList);
+          const handleDocsUpload = async (files: File[]) => {
+            const uploaded = await uploadDocuments(files);
             if (!uploaded || uploaded.length === 0) return;
 
-            const merged = [...values.supportingDocs];
-            uploaded.forEach((doc) => {
-              const exists = merged.some((item) => item.id === doc.id);
-              if (!exists) {
-                merged.push({ ...doc, url: resolveDocumentUrl(doc) });
-              }
-            });
-            setValue("supportingDocs", merged);
+            try {
+              const merged = [...uploadedDocs];
+              const normalizedUploaded = Array.isArray(uploaded)
+                ? uploaded.map((doc) => normalizeUploadedDocument(doc))
+                : [];
+              normalizedUploaded.forEach((doc) => {
+                const exists = merged.some((item) => item.id === doc.id);
+                if (!exists) {
+                  merged.push(doc);
+                }
+              });
+              setUploadedDocs(merged);
+              setValue("supportingDocs", merged);
+              setUploadError(null);
+            } catch (error) {
+              setUploadError(
+                error instanceof Error
+                  ? `Falha ao processar documentos enviados: ${error.message}`
+                  : "Falha ao processar documentos enviados."
+              );
+            }
           };
 
           const handleRemoveDoc = (id: string) => {
+            const nextDocs = uploadedDocs.filter((doc) => doc.id !== id);
+            setUploadedDocs(nextDocs);
             setValue(
               "supportingDocs",
-              values.supportingDocs.filter((doc) => doc.id !== id)
+              nextDocs
             );
           };
 
@@ -218,7 +399,10 @@ export default function SelfServiceJ360Page() {
                     accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
                     className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                     onChange={(event) => {
-                      void handleDocsUpload(event.target.files);
+                      const files = event.target.files ? Array.from(event.target.files) : [];
+                      if (files.length > 0) {
+                        void handleDocsUpload(files);
+                      }
                       event.target.value = "";
                     }}
                   />
@@ -227,9 +411,9 @@ export default function SelfServiceJ360Page() {
                   <p className="text-xs text-muted-foreground">Enviando documentos...</p>
                 ) : null}
                 {uploadError ? <p className="text-xs text-red-400">{uploadError}</p> : null}
-                {values.supportingDocs.length > 0 ? (
+                {uploadedDocs.length > 0 ? (
                   <ul className="space-y-1 text-xs text-muted-foreground">
-                    {values.supportingDocs.map((doc) => (
+                    {uploadedDocs.map((doc) => (
                       <li key={doc.id} className="flex items-center justify-between gap-2 truncate">
                         <a
                           href={resolveDocumentUrl(doc)}
@@ -344,4 +528,3 @@ export default function SelfServiceJ360Page() {
     </div>
   );
 }
-

@@ -32,6 +32,7 @@
     "intent": {
       "enum": [
         "go_live_validation",
+        "marketing_campaign",
         "evidence_collection",
         "imob_task",
         "legal_review",
@@ -44,7 +45,7 @@
       ]
     },
     "domain": {
-      "enum": ["guardian", "imob", "legal", "finance", "urban", "pitch", "general", "unknown"]
+      "enum": ["guardian", "marketing", "imob", "legal", "finance", "urban", "pitch", "general", "unknown"]
     },
     "riskLevel": { "enum": ["low", "medium", "high", "critical"] },
     "primaryAgent": {
@@ -53,7 +54,7 @@
       "required": ["key", "displayName", "selectionReason", "confidence"],
       "properties": {
         "key": {
-          "enum": ["guardian", "eiah", "j_360", "pitch", "imob", "legal", "finance", "urban", "other"]
+          "enum": ["guardian", "eiah", "mkt", "j_360", "pitch", "imob", "legal", "finance", "urban", "other"]
         },
         "displayName": { "type": "string" },
         "selectionReason": { "type": "string" },
@@ -66,7 +67,7 @@
     "allowedSelfServiceAgents": {
       "type": "array",
       "items": {
-        "enum": ["guardian", "eiah", "j_360", "pitch", "imob", "legal", "finance", "urban", "other"]
+        "enum": ["guardian", "eiah", "mkt", "j_360", "pitch", "imob", "legal", "finance", "urban", "other"]
       }
     },
     "suggestedSelfServiceAgents": {
@@ -86,7 +87,7 @@
         ],
         "properties": {
           "key": {
-            "enum": ["guardian", "eiah", "j_360", "pitch", "imob", "legal", "finance", "urban", "other"]
+            "enum": ["guardian", "eiah", "mkt", "j_360", "pitch", "imob", "legal", "finance", "urban", "other"]
           },
           "displayName": { "type": "string" },
           "purpose": { "type": "string" },

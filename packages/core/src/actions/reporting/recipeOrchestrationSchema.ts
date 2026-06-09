@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const RecipeOrchestrationIntentSchema = z.enum([
   "go_live_validation",
+  "marketing_campaign",
   "evidence_collection",
   "imob_task",
   "legal_review",
@@ -15,6 +16,7 @@ export const RecipeOrchestrationIntentSchema = z.enum([
 
 export const RecipeOrchestrationDomainSchema = z.enum([
   "guardian",
+  "marketing",
   "imob",
   "legal",
   "finance",
@@ -28,6 +30,7 @@ export const RecipeOrchestrationRiskLevelSchema = z.enum(["low", "medium", "high
 export const RecipeOrchestrationAgentKeySchema = z.enum([
   "guardian",
   "eiah",
+  "mkt",
   "j_360",
   "pitch",
   "imob",

@@ -1,6 +1,9 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import AgentFormShell from "./components/AgentFormShell";
 import SelfServiceNav from "./components/SelfServiceNav";
+import { apiListTenantRecipes, type TenantRecipe } from "@/lib/api";
+import { buildMktRecipePrefillValues } from "./recipePrefill";
 
 type MktFormValues = {
   goal: string;
@@ -48,7 +51,72 @@ const initialValues: MktFormValues = {
 };
 
 export default function SelfServiceMktPage() {
+  const [searchParams] = useSearchParams();
+  const [linkedRecipe, setLinkedRecipe] = useState<TenantRecipe | null>(null);
+  const recipeId = searchParams.get("recipeId");
+
+  useEffect(() => {
+    let active = true;
+    if (!recipeId) {
+      setLinkedRecipe(null);
+      return () => {
+        active = false;
+      };
+    }
+
+    apiListTenantRecipes({ view: "tenant" })
+      .then((response) => {
+        if (!active) return;
+        setLinkedRecipe(response.items.find((item) => item.id === recipeId) ?? null);
+      })
+      .catch(() => {
+        if (!active) return;
+        setLinkedRecipe(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [recipeId]);
+
+  const recipeInitialValues = useMemo<MktFormValues>(
+    () => ({
+      ...initialValues,
+      ...buildMktRecipePrefillValues(linkedRecipe),
+    }),
+    [linkedRecipe]
+  );
+
+  const linkedRecipeMetadata = useMemo(
+    () =>
+      linkedRecipe
+        ? {
+            id: linkedRecipe.id,
+            agentId: linkedRecipe.agentId,
+            title: linkedRecipe.title,
+            summary: linkedRecipe.summary,
+            instructions: linkedRecipe.instructions ?? null,
+            tags: linkedRecipe.tags,
+            content: linkedRecipe.content ?? null,
+            stageExecution:
+              linkedRecipe.content?.mode === "staged" && (linkedRecipe.content.steps?.length ?? 0) > 1
+                ? {
+                    mode: "plan",
+                    activeStepId: null,
+                    activeStepTitle: null,
+                  }
+                : {
+                    mode: "single",
+                    activeStepId: null,
+                    activeStepTitle: null,
+                  },
+          }
+        : undefined,
+    [linkedRecipe]
+  );
+
   const buildRequest = useCallback((values: MktFormValues) => {
+    const normalizedChannels = Array.isArray(values.channels) ? values.channels : [];
     const now = new Date();
     const todayIso = now.toISOString().split("T")[0];
     const todayDisplay = now.toLocaleDateString("pt-BR");
@@ -74,32 +142,31 @@ export default function SelfServiceMktPage() {
       }
     }
 
-    const channelList = values.channels.length > 0 ? values.channels.join(", ") : "não informado";
+    const channelList = normalizedChannels.length > 0 ? normalizedChannels.join(", ") : "não informado";
 
     const instructions = [
-      "Você é o agente MKT. Aplique o modelo padronizado abaixo para entregar um briefing coeso.",
+      "Você é o agente MKT. Entregue um plano de campanha executivo, compacto e acionável.",
       `Data-base (hoje): ${todayDisplay} (ISO ${todayIso}).`,
       `Data de lançamento informada: ${launchDateDisplay}${launchTimingSuffix}.`,
       sprintMode
-        ? "Ative MODO SPRINT: detalhe checkpoints semanais, priorize tarefas críticas e indicativos de risco para execução em até 30 dias."
+        ? "Ative MODO SPRINT: priorize checkpoints semanais e tarefas críticas para execução em até 30 dias."
         : typeof daysToLaunch === "number" && daysToLaunch < 0
-        ? "Lançamento já ocorreu: foque em retroativo, quick wins de pós-lançamento e planos de reengajamento imediato."
-        : "Modo padrão: organize a jornada com marcos quinzenais/mensais e monitoramento contínuo.",
-      "Estrutura obrigatória da resposta (use Markdown):",
-      "## 1. Resumo e KPIs — objetivo, público, orçamento e KPIs com metas quantitativas por canal (ex.: CTR ≥ 2,5%, CPL ≤ R$ 40).",
-      "## 2. Timeline — tabela Markdown com cabeçalho '| Período | Atividade | Descrição |'. Utilize datas relativas ao dia de hoje e/ou ao lançamento (ex.: 'Semana 0-1', 'T-15 dias', '+30 dias').",
-      "   - Concentre-se em 4 a 6 linhas que cubram fases de pré, lançamento e pós-campanha.",
-      "## 3. Canais e estratégias — para cada canal selecionado, descreva abordagem, conteúdo-chave e meta numérica. Inclua recomendação de revisão semanal.",
-      "   - Utilize um bloco <details><summary>Detalhar canais</summary> ... </details> quando possível para listar táticas por canal sem perder legibilidade.",
-      "## 4. Integração e mensuração — detalhe fontes de dados (GA4, HubSpot, RD Station, etc.), frequência de atualização e formato de relatório (dashboard, PDF).",
-      "## 5. Próximos passos com datas-chave — lista numerada com responsável sugerido e prazo (relativo ou data).",
-      "## 6. Aprendizados e cross-run — se houver histórico em metadata.previousRuns, compare resultados e extraia 3 recomendações. Caso contrário, registre que nenhum histórico foi informado.",
-      "## 7. Insights automatizados — destaque top 3 recomendações priorizadas para a próxima semana, como se fossem um mini dashboard de aprendizado.",
+        ? "Lançamento já ocorreu: foque em quick wins de pós-lançamento e reengajamento."
+        : "Modo padrão: organize a jornada com marcos quinzenais ou mensais.",
+      "Responda em Markdown, com bullets curtos. Evite tabelas longas, parágrafos extensos e blocos redundantes.",
+      "O engine já expande templates, checklist, cadência e estrutura final do relatório. Foque em síntese estratégica.",
+      "Estrutura obrigatória da resposta:",
+      "## Resumo executivo e KPIs — até 6 bullets com objetivo, público, budget, metas e principal CTA.",
+      "## ICP e posicionamento — até 5 bullets com segmentos prioritários, proposta de valor e oferta.",
+      "## Canais prioritários — até 4 canais, com abordagem curta e meta numérica por canal.",
+      "## Cronograma — 3 a 5 bullets com fases e datas relativas.",
+      "## Próximos passos — até 5 bullets com prioridades imediatas.",
+      "## Compliance e riscos — até 4 bullets com alertas comerciais/jurídicos relevantes.",
       `Perfil de tom selecionado: ${values.toneProfile}. Ajuste linguagem, CTA e exemplos para refletir esse tom.`,
       values.toneNotes
         ? `Notas adicionais sobre tom/voz: ${values.toneNotes}.`
         : "Sem notas adicionais sobre tom além do preset.",
-      "Sempre indique quando algum dado não foi fornecido e evite anos absolutos inconsistentes; prefira datas relativas com referência à data-base.",
+      "Sempre indique quando algum dado não foi fornecido e prefira datas relativas com referência à data-base.",
       "",
       "Dados fornecidos pelo usuário:",
       `Objetivo principal: ${values.goal || "não informado"}.`,
@@ -112,10 +179,13 @@ export default function SelfServiceMktPage() {
       `Observações adicionais: ${values.notes || "não informado"}.`,
     ];
 
-    return {
+    const request = {
       prompt: instructions.join("\n"),
       metadata: {
-        form: values,
+        form: {
+          ...values,
+          channels: normalizedChannels,
+        },
         domain: "marketing",
         baseDate: todayIso,
         launchDate: isValidLaunchDate ? values.launchDate : null,
@@ -125,26 +195,91 @@ export default function SelfServiceMktPage() {
         toneNotes: values.toneNotes || null,
         compareRuns: true,
       },
-      rawPayload: values,
+      rawPayload: {
+        ...values,
+        channels: normalizedChannels,
+      },
     };
-  }, []);
+    return linkedRecipeMetadata
+      ? {
+          ...request,
+          metadata: {
+            ...request.metadata,
+            linkedRecipe: linkedRecipeMetadata,
+          },
+        }
+      : request;
+  }, [linkedRecipeMetadata]);
 
   return (
     <div className="space-y-6">
       <SelfServiceNav currentSlug="mkt" />
+      {linkedRecipe ? (
+        <div className="rounded-2xl border border-accent/20 bg-accent/5 p-4">
+          <p className="text-[10px] uppercase tracking-[0.24em] text-accent">Recipe vinculada</p>
+          <h2 className="mt-2 text-lg font-semibold text-foreground">{linkedRecipe.title}</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{linkedRecipe.summary}</p>
+          {linkedRecipe.tags.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {linkedRecipe.tags.map((tag) => (
+                <span
+                  key={`${linkedRecipe.id}-${tag}`}
+                  className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          ) : null}
+          {linkedRecipe.instructions ? (
+            <p className="mt-3 whitespace-pre-line text-xs text-muted-foreground">
+              {linkedRecipe.instructions}
+            </p>
+          ) : null}
+          {linkedRecipe.content?.steps && linkedRecipe.content.steps.length > 0 ? (
+            <div className="mt-4 space-y-2">
+              <p className="text-[10px] uppercase tracking-[0.22em] text-accent">Etapas da recipe</p>
+              <div className="grid gap-2 md:grid-cols-2">
+                {linkedRecipe.content.steps.map((step, index) => (
+                  <div key={step.id} className="rounded-xl border border-white/10 bg-white/5 p-3">
+                    <p className="text-xs font-semibold text-foreground">
+                      {index + 1}. {step.title}
+                    </p>
+                    {step.objective ? (
+                      <p className="mt-1 text-[11px] text-muted-foreground">{step.objective}</p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       <AgentFormShell<MktFormValues>
         agentId="MKT"
         title="Briefing de Campanha"
         description="Reúna os dados principais e receba um plano de campanha multicanal personalizado pelo agente MKT."
-        initialValues={initialValues}
+        initialValues={recipeInitialValues}
+        preserveValueKeysOnInitialChange={[
+          "goal",
+          "kpis",
+          "audience",
+          "channels",
+          "budget",
+          "toneNotes",
+          "launchDate",
+          "deadline",
+          "notes",
+        ]}
         buildRequest={buildRequest}
       >
         {({ values, setValue }) => {
+        const selectedChannels = Array.isArray(values.channels) ? values.channels : [];
         const toggleChannel = (channel: string) => {
-          const exists = values.channels.includes(channel);
+          const exists = selectedChannels.includes(channel);
           const next = exists
-            ? values.channels.filter((c) => c !== channel)
-            : [...values.channels, channel];
+            ? selectedChannels.filter((c) => c !== channel)
+            : [...selectedChannels, channel];
           setValue("channels", next);
         };
 
@@ -188,7 +323,7 @@ export default function SelfServiceMktPage() {
               <p className="text-sm font-semibold text-foreground">Canais prioritários</p>
               <div className="flex flex-wrap gap-2">
                 {channelOptions.map((channel) => {
-                  const active = values.channels.includes(channel);
+                  const active = selectedChannels.includes(channel);
                   return (
                     <button
                       key={channel}
