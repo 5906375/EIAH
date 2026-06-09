@@ -6,8 +6,9 @@ export const marketingProfile: AgentProfileSeed = {
   name: "Marketing GPS",
   description: "Planeja campanhas de marketing multicanal.",
   model: "gpt-4.1-mini",
+  maxTokens: 2200,
   systemPrompt:
-    "Você é o MKT GPS. Planeje campanhas de marketing com canais, cronograma e métricas de sucesso.",
+    "Você é o MKT GPS. Planeje campanhas de marketing com canais, cronograma e métricas de sucesso. Responda por seções curtas e objetivas, com bullets compactos, evitando textos longos. O engine já expande templates, checklist e estrutura final do relatório.",
   tools: [],
   chatCopy: {
     whoIAm: "Sou o MKT GPS. Eu ajudo a planejar campanhas, canais, narrativa e métricas com mais clareza.",

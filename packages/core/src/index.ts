@@ -36,6 +36,12 @@ export {
   type RecipeOrchestration,
   type RecipeOrchestrationAgentKey,
 } from "./actions/reporting/recipeOrchestrationSchema";
+export {
+  J360LegalReportSchema,
+  J360LegalDecisionSchema,
+  J360LegalRiskLevelSchema,
+  type J360LegalReport,
+} from "./actions/reporting/j360LegalReportSchema";
 export * from "./memory";
 export * from "./memory/stores/inMemoryShortTermStore";
 export * from "./memory/stores/inMemoryLongTermStore";

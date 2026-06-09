@@ -30,6 +30,7 @@ export type AgentFormShellProps<FormValues> = {
   title: string;
   description: string;
   initialValues: FormValues;
+  preserveValueKeysOnInitialChange?: Array<keyof FormValues>;
   buildRequest: (values: FormValues) => {
     prompt: string;
     metadata?: Record<string, unknown>;
@@ -225,6 +226,7 @@ export default function AgentFormShell<FormValues>({
   title,
   description,
   initialValues,
+  preserveValueKeysOnInitialChange = [],
   buildRequest,
   children,
 }: AgentFormShellProps<FormValues>) {
@@ -246,8 +248,27 @@ export default function AgentFormShell<FormValues>({
 
   const initialValuesKey = useMemo(() => JSON.stringify(initialValues), [initialValues]);
 
+  const isEmptyValue = useCallback((value: unknown) => {
+    if (value == null) return true;
+    if (typeof value === "string") return value.trim().length === 0;
+    if (Array.isArray(value)) return value.length === 0;
+    if (typeof value === "object") return Object.keys(value as Record<string, unknown>).length === 0;
+    return false;
+  }, []);
+
   useEffect(() => {
-    setValues(initialValues);
+    setValues((prev) => {
+      if (preserveValueKeysOnInitialChange.length === 0) return initialValues;
+      const next = { ...(initialValues as ScalarRecord) };
+      for (const key of preserveValueKeysOnInitialChange) {
+        const currentValue = (prev as ScalarRecord)[key as string];
+        const incomingValue = (initialValues as ScalarRecord)[key as string];
+        if (!isEmptyValue(currentValue) && isEmptyValue(incomingValue)) {
+          next[key as string] = currentValue;
+        }
+      }
+      return next as FormValues;
+    });
     setExtraValues({});
     setLastRun(null);
     setError(null);
@@ -255,7 +276,7 @@ export default function AgentFormShell<FormValues>({
     setFollowUpDialog(null);
     setIsFollowUpOpen(false);
     setDismissedFollowUpRunId(null);
-  }, [initialValuesKey, initialValues]);
+  }, [initialValuesKey, initialValues, isEmptyValue, preserveValueKeysOnInitialChange]);
 
   useEffect(() => {
     apiListAgents()

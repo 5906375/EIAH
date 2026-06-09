@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildRecipePrefillValues } from "./recipePrefill";
+import { buildJ360RecipePrefillValues, buildMktRecipePrefillValues, buildRecipePrefillValues } from "./recipePrefill";
 import { getAgentConfigBySlug, isGenericAgentConfig, resolveRecipeAwareFields } from "./config";
 
 test("guardian recipe prefill distributes summary and instructions into operational fields", () => {
@@ -152,4 +152,124 @@ test("structured recipe content is preferred over legacy instructions in guardia
   assert.match(values.objective, /produção controlada do eiah/i);
   assert.match(values.notes, /1\. Segregação/i);
   assert.match(values.evidence, /Snapshot de env vars/i);
+});
+
+test("j360 recipe prefill hydrates legal review context from linked recipe", () => {
+  const values = buildJ360RecipePrefillValues({
+    id: "recipe-j360-1",
+    tenantId: "tenant-A",
+    agentId: "J_360",
+    title: "Análise Jurídica Trabalhista — Política de Premiação Treviso",
+    summary:
+      "Analisa juridicamente a Política de Premiação da Treviso Transportes com foco em risco trabalhista e aderência ao art. 457 da CLT.",
+    instructions:
+      "Objetivo: avaliar política de premiação com foco em natureza não salarial, critérios de concessão, reduções e transparência.\n\nContexto: documento da Treviso Transportes para motoristas.\n\nRiscos: verba salarial, habitualidade, penalidade indireta.",
+    status: "homologated",
+    workspaceScope: { mode: "selected_workspaces", workspaceIds: ["workspace-A"] },
+    tags: ["legal", "j_360", "trabalhista", "contrato premiacao"],
+    content: {
+      schemaVersion: "v2",
+      mode: "staged",
+      goal: "Avaliar juridicamente a política de premiação para uso interno.",
+      expectedOutcome: "Apontar riscos, ajustes e conclusão preliminar de uso interno.",
+      goCondition: "Documento apto para uso com risco controlado.",
+      blockCondition: "Risco relevante de verba salarial ou ambiguidade material.",
+      steps: [
+        {
+          id: "step-1",
+          title: "Natureza jurídica da premiação",
+          objective: "Verificar natureza não salarial.",
+          checks: ["natureza de prêmio", "liberalidade"],
+          evidence: ["trechos sobre não incorporação ao salário"],
+          blocking: true,
+        },
+        {
+          id: "step-2",
+          title: "Critérios de concessão",
+          objective: "Avaliar objetividade e habitualidade.",
+          checks: ["critérios objetivos"],
+          evidence: ["trechos sobre critérios e desempenho"],
+          blocking: true,
+        },
+      ],
+    },
+    createdByUserId: null,
+    updatedByUserId: null,
+    homologatedAt: null,
+    deprecatedAt: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  assert.equal(values.customerName, "Treviso Transportes");
+  assert.match(values.segment, /transporte|logística/i);
+  assert.match(values.painPoints, /política de premiação|uso interno/i);
+  assert.equal(values.journeyStages.includes("Assinatura / Formalizacao"), true);
+  assert.equal(values.journeyStages.includes("Execucao contratual"), true);
+  assert.match(values.opportunities, /riscos|ajustes|uso interno/i);
+  assert.match(values.risks, /verba salarial|ambiguidade/i);
+  assert.match(values.nextSteps, /1\. Natureza jurídica da premiação/i);
+});
+
+test("j360 prefill sanitizes policy labels from customer name", () => {
+  const values = buildJ360RecipePrefillValues({
+    id: "recipe-j360-2",
+    tenantId: "tenant-A",
+    agentId: "J_360",
+    title: "Premiação da Treviso Transportes",
+    summary: "Revisão jurídica da política interna.",
+    instructions: "Cliente: Premiação da Treviso Transportes\nContexto: documento da Treviso Transportes para motoristas.",
+    status: "homologated",
+    workspaceScope: { mode: "selected_workspaces", workspaceIds: ["workspace-A"] },
+    tags: ["legal", "j_360"],
+    createdByUserId: null,
+    updatedByUserId: null,
+    homologatedAt: null,
+    deprecatedAt: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  assert.equal(values.customerName, "Treviso Transportes");
+});
+
+test("mkt recipe prefill hydrates campaign context from linked recipe", () => {
+  const values = buildMktRecipePrefillValues({
+    id: "recipe-mkt-1",
+    tenantId: "tenant-A",
+    agentId: "MKT",
+    title: "Campanha de Divulgação e Prospecção — Vertical Legal EIAH",
+    summary:
+      "Planeja uma campanha multicanal para divulgar a Vertical Legal da EIAH e atrair escritórios de advocacia especializados.",
+    instructions:
+      "Público prioritário: sócios e heads de inovação de escritórios de advocacia.\n\nCanais prioritários: LinkedIn, Email, Parcerias, Comunidades.\n\nTom desejado: linguagem executiva e consultiva.\n\nMarcos: T-45 narrativa, T-30 landing, T-15 outreach.",
+    status: "homologated",
+    workspaceScope: { mode: "selected_workspaces", workspaceIds: ["workspace-A"] },
+    tags: ["vertical-legal", "mkt", "campanha", "outbound-b2b", "parcerias", "linkedin", "email"],
+    content: {
+      schemaVersion: "v2",
+      mode: "simple",
+      goal: "Divulgar a Vertical Legal e gerar leads qualificados de escritórios para parceria e piloto.",
+      expectedOutcome: "Plano multicanal com ICP, canais, outreach, KPIs e critérios de qualificação.",
+      goCondition: "ICP, canais, mensagem, cronograma e KPIs definidos.",
+      blockCondition: "Campanha depende de capabilities ainda não homologadas.",
+      steps: [],
+    },
+    createdByUserId: null,
+    updatedByUserId: null,
+    homologatedAt: null,
+    deprecatedAt: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
+
+  assert.match(values.goal, /Vertical Legal|leads qualificados/i);
+  assert.match(values.kpis, /ICP|leads|piloto|CPL/i);
+  assert.match(values.audience, /escritórios de advocacia|sócios/i);
+  assert.equal(values.channels.includes("LinkedIn"), true);
+  assert.equal(values.channels.includes("Email"), true);
+  assert.equal(values.channels.includes("Parcerias"), true);
+  assert.match(values.toneNotes, /executiva|consultiva/i);
+  assert.match(values.deadline, /T-45|T-30|T-15|ICP/i);
+  assert.match(values.notes, /Resultado esperado|Condição de GO|Condição de bloqueio/i);
 });

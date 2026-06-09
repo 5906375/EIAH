@@ -10,11 +10,29 @@ import {
   type RunAtivoReportingInput,
 } from "./runAtivoSchema";
 import { shouldUseGuardianRenderer } from "./guardianReportRenderer";
+import { shouldUseJ360LegalRenderer } from "./j360LegalReportRenderer";
+import { shouldUseMktCampaignRenderer } from "./mktCampaignReportRenderer";
 import { buildLandingPageHtml } from "./renderRunAtivoLandingPage/v1/template";
 import { buildPdfHtml } from "./renderRunAtivoPdf/v1/template";
 import { buildGuardianLandingPageHtml } from "./renderGuardianLandingPage/v1/template";
 import { buildGuardianPdfHtml } from "./renderGuardianPdf/v1/template";
+import { buildJ360LandingTemplateHtml } from "./renderJ360LandingPage/v1/template";
+import { buildJ360PdfTemplateHtml } from "./renderJ360Pdf/v1/template";
+import { buildMktLandingPageHtml as buildMktLandingTemplateHtml } from "./mktCampaignReportRenderer";
+import { buildMktPdfHtml as buildMktPdfTemplateHtml } from "./mktCampaignReportRenderer";
 import { buildAlertPayload } from "./buildRunAtivoAlert/v1/alertFactory";
+export {
+  buildJ360LandingPageHtml,
+  buildJ360PdfHtml,
+  shouldUseJ360LegalRenderer,
+  extractJ360LegalReport,
+} from "./j360LegalReportRenderer";
+export {
+  buildMktLandingPageHtml,
+  buildMktPdfHtml,
+  shouldUseMktCampaignRenderer,
+  extractMktCampaignReport,
+} from "./mktCampaignReportRenderer";
 
 const landingPageOutputSchema = z.object({
   html: z.string(),
@@ -75,6 +93,10 @@ export function registerReportingActions(options: RegisterReportingActionsOption
       const payload = input as RunAtivoReportingInput;
       const html = shouldUseGuardianRenderer(payload)
         ? buildGuardianLandingPageHtml(payload)
+        : shouldUseMktCampaignRenderer(payload)
+        ? buildMktLandingTemplateHtml(payload)
+        : shouldUseJ360LegalRenderer(payload)
+        ? buildJ360LandingTemplateHtml(payload)
         : buildLandingPageHtml(payload);
       return {
         status: "success",
@@ -97,6 +119,10 @@ export function registerReportingActions(options: RegisterReportingActionsOption
       const payload = input as RunAtivoReportingInput;
       const html = shouldUseGuardianRenderer(payload)
         ? buildGuardianPdfHtml(payload)
+        : shouldUseMktCampaignRenderer(payload)
+        ? buildMktPdfTemplateHtml(payload)
+        : shouldUseJ360LegalRenderer(payload)
+        ? buildJ360PdfTemplateHtml(payload)
         : buildPdfHtml(payload);
       return {
         status: "success",
@@ -141,3 +167,15 @@ export {
   type RecipeOrchestration,
   type RecipeOrchestrationAgentKey,
 } from "./recipeOrchestrationSchema";
+export {
+  J360LegalReportSchema,
+  J360LegalDecisionSchema,
+  J360LegalRiskLevelSchema,
+  type J360LegalReport,
+} from "./j360LegalReportSchema";
+export {
+  MktCampaignReportSchema,
+  MktCampaignChannelSchema,
+  MktCampaignReportRiskLevelSchema,
+  type MktCampaignReport,
+} from "./mktCampaignReportSchema";

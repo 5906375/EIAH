@@ -210,6 +210,12 @@ function extractGuardianReport(response: unknown) {
   return isPlainObject(report) ? report : undefined;
 }
 
+function extractJ360LegalReport(response: unknown) {
+  if (!isPlainObject(response)) return undefined;
+  const report = (response as Record<string, unknown>).j360LegalReport;
+  return isPlainObject(report) ? report : undefined;
+}
+
 function extractRecipeOrchestration(response: unknown) {
   if (!isPlainObject(response)) return undefined;
   const orchestration = (response as Record<string, unknown>).recipeOrchestration;
@@ -285,6 +291,7 @@ function buildInputFromRun(run: PrismaRun): RunAtivoUniversalInput {
   ) as RunAtivoUniversalInput["recommendations"];
   const insights = extractInsights(responsePayload ?? undefined);
   const guardianReport = extractGuardianReport(responsePayload ?? undefined);
+  const j360LegalReport = extractJ360LegalReport(responsePayload ?? undefined);
   const recipeOrchestration = extractRecipeOrchestration(responsePayload ?? undefined);
   const usage = extractUsage(responsePayload ?? undefined);
 
@@ -308,6 +315,7 @@ function buildInputFromRun(run: PrismaRun): RunAtivoUniversalInput {
     metadata: {
       ...metadata,
       ...(guardianReport ? { guardianReport } : {}),
+      ...(j360LegalReport ? { j360LegalReport } : {}),
       ...(recipeOrchestration ? { recipeOrchestration } : {}),
       ...(usage ? { usage } : {}),
     },

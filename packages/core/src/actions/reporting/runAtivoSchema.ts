@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { GuardianReportSchema } from "./guardianReportSchema";
+import { J360LegalReportSchema } from "./j360LegalReportSchema";
+import { MktCampaignReportSchema } from "./mktCampaignReportSchema";
 import { RecipeOrchestrationSchema } from "./recipeOrchestrationSchema";
 
 export const RunAtivoRecommendationSchema = z.object({
@@ -36,6 +38,8 @@ export const RunAtivoReportingInputSchema = z.object({
     score: z.number().optional(),
     downloadPdfUrl: z.string().optional(),
     guardianReport: GuardianReportSchema.optional(),
+    j360LegalReport: J360LegalReportSchema.optional(),
+    mktCampaignReport: MktCampaignReportSchema.optional(),
     recipeOrchestration: RecipeOrchestrationSchema.optional(),
   }),
   usuario: z

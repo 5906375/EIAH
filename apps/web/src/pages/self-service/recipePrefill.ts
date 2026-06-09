@@ -74,6 +74,16 @@ function truncateSentence(value: string, maxLength = 220) {
   return `${normalized.slice(0, Math.max(0, maxLength - 1)).trimEnd()}…`;
 }
 
+function sanitizeJ360CustomerName(value: string) {
+  return value
+    .replace(/^\s*(?:analise juridica trabalhista|análise jurídica trabalhista)\s*[—-]\s*/iu, "")
+    .replace(/^\s*(?:politica|política)\s+de\s+(?:premiacao|premiação)\s+/iu, "")
+    .replace(/^\s*(?:premiacao|premiação)\s+da\s+/iu, "")
+    .replace(/^\s*(?:da|de|do)\s+/iu, "")
+    .replace(/\s*\([^)]*\)\s*$/u, "")
+    .trim();
+}
+
 function inferGuardianRequestType(recipe: TenantRecipe, instructions: string) {
   if (recipe.content?.mode === "staged" && (recipe.content.steps?.length ?? 0) > 1) {
     return "go_live_controlado.plano_principal_web";
@@ -204,6 +214,251 @@ function deriveCommonRecipeContext(recipe: TenantRecipe) {
     firstParagraph,
     structuredContent,
     structuredSteps,
+  };
+}
+
+function inferJ360CustomerName(recipe: TenantRecipe, common: ReturnType<typeof deriveCommonRecipeContext>) {
+  const haystack = [recipe.title, recipe.summary, common.instructions].join(" ");
+  const contextualCompanyMatch = haystack.match(
+    /\b(?:Contexto|Cliente|Conta|Pol[íi]tica(?:\s+de[\p{L}\s]+)?)[:\s][^.\n]*?\b(?:da|de|do)\s+([A-ZÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ][\p{L}0-9&.\-]+(?:\s+[A-ZÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ][\p{L}0-9&.\-]+){0,3}\s+(?:Transportes|Logística|Logistica|Ltda|LTDA|S\.A\.|SA))\b/iu
+  );
+  if (contextualCompanyMatch?.[1]) {
+    return sanitizeJ360CustomerName(contextualCompanyMatch[1]);
+  }
+  const corporateNameMatch = haystack.match(
+    /\b([A-ZÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ][\p{L}0-9&.\-]+(?:\s+[A-ZÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ][\p{L}0-9&.\-]+){0,3}\s+(?:Transportes|Logística|Logistica|Ltda|LTDA|S\.A\.|SA))\b/iu
+  );
+  if (corporateNameMatch?.[1]) {
+    return sanitizeJ360CustomerName(corporateNameMatch[1]);
+  }
+  const explicitPatterns = [
+    /\b(?:da|de|do)\s+([A-ZÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ][\p{L}0-9&.\-]+(?:\s+[A-ZÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ][\p{L}0-9&.\-]+){0,4})\b/gu,
+    /\b([A-ZÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ][\p{L}0-9&.\-]+(?:\s+[A-ZÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ][\p{L}0-9&.\-]+){0,4})\s+(?:Transportes|Logística|Logistica|Ltda|LTDA|S\.A\.|SA)\b/gu,
+  ];
+  for (const pattern of explicitPatterns) {
+    const matches = haystack.matchAll(pattern);
+    for (const match of matches) {
+      const candidate = (match[1] ?? match[0] ?? "").trim();
+      if (candidate && !/Analise|Análise|Objetivo|Contexto|Riscos/i.test(candidate)) {
+        return sanitizeJ360CustomerName(candidate);
+      }
+    }
+  }
+  const explicitCompanyMatch = haystack.match(/\b([A-ZÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ][\p{L}0-9&.\-]+(?:\s+[A-ZÁÀÂÃÉÈÊÍÌÎÓÒÔÕÚÙÛÇ][\p{L}0-9&.\-]+){0,3})\b/gu);
+  const preferred =
+    explicitCompanyMatch?.find((item) => /transport|treviso|logistic|logistica|ltda|s\.a|sa\b|empresa/i.test(item)) ?? null;
+  if (preferred) return sanitizeJ360CustomerName(preferred);
+  return "";
+}
+
+function inferJ360Segment(recipe: TenantRecipe, common: ReturnType<typeof deriveCommonRecipeContext>) {
+  const haystack = normalizeKey([recipe.title, recipe.summary, common.instructions, recipe.tags.join(" ")].join(" "));
+  if (haystack.includes("transporte") || haystack.includes("logistica")) {
+    return "Transporte rodoviário / logística";
+  }
+  if (haystack.includes("trabalhista") || haystack.includes("clt")) {
+    return "Relações trabalhistas / política interna";
+  }
+  if (haystack.includes("contrato")) {
+    return "Contratual / documental";
+  }
+  return "";
+}
+
+function inferJ360JourneyStages(recipe: TenantRecipe, common: ReturnType<typeof deriveCommonRecipeContext>) {
+  const haystack = normalizeKey([recipe.title, recipe.summary, common.instructions, recipe.tags.join(" ")].join(" "));
+  const stages: string[] = [];
+  if (haystack.includes("contrato") || haystack.includes("politica") || haystack.includes("formalizacao")) {
+    stages.push("Assinatura / Formalizacao");
+  }
+  if (haystack.includes("trabalhista") || haystack.includes("premiacao") || haystack.includes("execucao")) {
+    stages.push("Execucao contratual");
+  }
+  if (haystack.includes("compliance") || haystack.includes("lgpd") || haystack.includes("risco")) {
+    stages.push("Gestao de incidentes / Compliance");
+  }
+  if (haystack.includes("revisao") || haystack.includes("ajuste") || haystack.includes("aditivo")) {
+    stages.push("Renegociacao / Aditivos");
+  }
+  return uniqueParts(stages);
+}
+
+export type J360RecipePrefillValues = {
+  customerName: string;
+  segment: string;
+  painPoints: string;
+  currentTools: string;
+  journeyStages: string[];
+  recentEvents: string;
+  opportunities: string;
+  risks: string;
+  nextSteps: string;
+};
+
+export type MktRecipePrefillValues = {
+  goal: string;
+  kpis: string;
+  audience: string;
+  channels: string[];
+  budget: string;
+  toneNotes: string;
+  deadline: string;
+  notes: string;
+};
+
+export function buildJ360RecipePrefillValues(recipe: TenantRecipe | null): J360RecipePrefillValues {
+  if (!recipe) {
+    return {
+      customerName: "",
+      segment: "",
+      painPoints: "",
+      currentTools: "",
+      journeyStages: [],
+      recentEvents: "",
+      opportunities: "",
+      risks: "",
+      nextSteps: "",
+    };
+  }
+
+  const common = deriveCommonRecipeContext(recipe);
+  const journeyStages = inferJ360JourneyStages(recipe, common);
+  const nextSteps =
+    common.structuredSteps.length > 0
+      ? common.structuredSteps.map((step, index) => `${index + 1}. ${step.title}`).join("\n")
+      : "";
+
+  return {
+    customerName: inferJ360CustomerName(recipe, common),
+    segment: inferJ360Segment(recipe, common),
+    painPoints: truncateSentence(common.objective || recipe.summary.trim(), 320),
+    currentTools: truncateSentence(
+      common.firstParagraph ||
+        recipe.summary.trim() ||
+        `Documento/política em análise: ${recipe.title}.`,
+      280
+    ),
+    journeyStages,
+    recentEvents: "",
+    opportunities: truncateSentence(
+      common.structuredContent?.expectedOutcome ||
+        "Ajustar o documento para uso interno com menor risco trabalhista e maior clareza operacional.",
+      280
+    ),
+    risks: truncateSentence(
+      common.structuredContent?.blockCondition ||
+        "Risco de caracterização como verba salarial, critérios subjetivos, ambiguidades de cálculo ou necessidade de revisão humana.",
+      320
+    ),
+    nextSteps,
+  };
+}
+
+function inferMktChannels(recipe: TenantRecipe, common: ReturnType<typeof deriveCommonRecipeContext>) {
+  const haystack = normalizeKey([recipe.title, recipe.summary, common.instructions, recipe.tags.join(" ")].join(" "));
+  const channels: string[] = [];
+  if (haystack.includes("email")) channels.push("Email");
+  if (haystack.includes("linkedin")) channels.push("LinkedIn");
+  if (haystack.includes("evento")) channels.push("Eventos");
+  if (haystack.includes("comunidade")) channels.push("Comunidades");
+  if (haystack.includes("parceria")) channels.push("Parcerias");
+  if (haystack.includes("blog") || haystack.includes("seo")) channels.push("Blog / SEO");
+  if (haystack.includes("whatsapp")) channels.push("WhatsApp");
+  if (haystack.includes("instagram")) channels.push("Instagram");
+  if (haystack.includes("youtube")) channels.push("YouTube");
+  if (haystack.includes("podcast")) channels.push("Podcasts");
+  return uniqueParts(channels);
+}
+
+function inferMktAudience(recipe: TenantRecipe, common: ReturnType<typeof deriveCommonRecipeContext>) {
+  const sections = common.sections;
+  const explicitAudience = findSection(sections, [
+    "publico prioritario",
+    "publico alvo",
+    "público prioritário",
+    "público alvo",
+    "audiencia alvo",
+    "audiência alvo",
+  ]);
+  if (explicitAudience) return truncateSentence(explicitAudience, 320);
+
+  const haystack = `${recipe.title} ${recipe.summary} ${common.instructions}`.toLowerCase();
+  if (haystack.includes("escritórios") || haystack.includes("escritorios") || haystack.includes("advocacia")) {
+    return "Sócios, heads de inovação e escritórios de advocacia com foco em trabalhista, contratual e LGPD.";
+  }
+
+  return truncateSentence(common.firstParagraph || recipe.summary.trim(), 280);
+}
+
+function inferMktKpis(recipe: TenantRecipe, common: ReturnType<typeof deriveCommonRecipeContext>) {
+  const sections = common.sections;
+  const explicitKpis = findSection(sections, [
+    "kpis",
+    "kpis metricas",
+    "kpis / metricas",
+    "kpis / métricas",
+    "metricas",
+    "métricas",
+  ]);
+  if (explicitKpis) return truncateSentence(explicitKpis, 320);
+
+  const haystack = `${recipe.title} ${recipe.summary} ${common.instructions}`.toLowerCase();
+  if (haystack.includes("escritorios") || haystack.includes("advocacia") || haystack.includes("campanha")) {
+    return "Leads qualificados, reuniões agendadas, taxa de resposta outbound, CPL qualificado e conversão para piloto.";
+  }
+
+  return truncateSentence(common.structuredContent?.expectedOutcome || recipe.summary.trim(), 280);
+}
+
+function inferBudget(common: ReturnType<typeof deriveCommonRecipeContext>) {
+  const budgetMatch = common.instructions.match(/R\$\s?\d[\d.\,]*/i);
+  return budgetMatch?.[0] ?? "";
+}
+
+export function buildMktRecipePrefillValues(recipe: TenantRecipe | null): MktRecipePrefillValues {
+  if (!recipe) {
+    return {
+      goal: "",
+      kpis: "",
+      audience: "",
+      channels: [],
+      budget: "",
+      toneNotes: "",
+      deadline: "",
+      notes: "",
+    };
+  }
+
+  const common = deriveCommonRecipeContext(recipe);
+  const sections = common.sections;
+  const notes = joinParts([
+    common.structuredContent?.expectedOutcome ? `Resultado esperado: ${common.structuredContent.expectedOutcome}` : null,
+    common.structuredContent?.goCondition ? `Condição de GO: ${common.structuredContent.goCondition}` : null,
+    common.structuredContent?.blockCondition ? `Condição de bloqueio: ${common.structuredContent.blockCondition}` : null,
+    common.structuredSteps.length > 0
+      ? `Etapas:\n${common.structuredSteps.map((step, index) => `${index + 1}. ${step.title}`).join("\n")}`
+      : null,
+    recipe.summary.trim(),
+  ]);
+
+  return {
+    goal: truncateSentence(common.objective || recipe.summary.trim(), 320),
+    kpis: inferMktKpis(recipe, common),
+    audience: inferMktAudience(recipe, common),
+    channels: inferMktChannels(recipe, common),
+    budget: inferBudget(common),
+    toneNotes: truncateSentence(
+      findSection(sections, ["tom desejado", "tom", "linguagem"]) ||
+        "Usar linguagem executiva e consultiva, sem prometer capabilities ainda não homologadas.",
+      260
+    ),
+    deadline: truncateSentence(
+      findSection(sections, ["marcos", "cronograma", "notas de marcos", "timeline"]) ||
+        common.structuredContent?.goCondition ||
+        "",
+      260
+    ),
+    notes: truncateSentence(notes || common.instructions || recipe.summary.trim(), 600),
   };
 }
 

@@ -15,9 +15,53 @@ function readOpenAiFinishReason(rawResponse: unknown): string | null {
   return firstChoice.finish_reason;
 }
 
-export function detectRunWorkerOutputFailure(rawResponse: unknown): string | null {
-  const finishReason = readOpenAiFinishReason(rawResponse);
+function normalizeText(value: string | null | undefined) {
+  return value
+    ?.toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "") ?? "";
+}
+
+function countUsefulMktSections(outputText: string) {
+  const normalized = normalizeText(outputText);
+  const markers = [
+    "resumo",
+    "kpis",
+    "icp",
+    "posicionamento",
+    "oferta",
+    "canais",
+    "cronograma",
+    "timeline",
+    "proximos passos",
+    "compliance",
+  ];
+  return markers.filter((marker) => normalized.includes(marker)).length;
+}
+
+function shouldAllowPartialMktOutput(params: {
+  agentId?: string | null;
+  outputText?: string | null;
+}) {
+  const normalizedAgent = params.agentId?.trim().toLowerCase() ?? "";
+  if (normalizedAgent !== "mkt") return false;
+  const outputText = params.outputText?.trim() ?? "";
+  if (outputText.length < 400) return false;
+  return countUsefulMktSections(outputText) >= 4;
+}
+
+type DetectRunWorkerOutputFailureParams = {
+  rawResponse: unknown;
+  agentId?: string | null;
+  outputText?: string | null;
+};
+
+export function detectRunWorkerOutputFailure(params: DetectRunWorkerOutputFailureParams): string | null {
+  const finishReason = readOpenAiFinishReason(params.rawResponse);
   if (finishReason === "length") {
+    if (shouldAllowPartialMktOutput(params)) {
+      return null;
+    }
     return "llm_output_truncated: model output reached the response limit before completion";
   }
   return null;
