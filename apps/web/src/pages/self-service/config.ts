@@ -9,12 +9,35 @@ export type FieldConfig = {
   rows?: number;
 };
 
+export type AgentDomain =
+  | "auditoria"
+  | "marketing"
+  | "comercial"
+  | "financeiro"
+  | "defi"
+  | "nft"
+  | "operacional"
+  | "suporte";
+
+export const AGENT_DOMAIN_LABELS: Record<AgentDomain, string> = {
+  auditoria: "Auditoria",
+  marketing: "Marketing",
+  comercial: "Comercial",
+  financeiro: "Financeiro",
+  defi: "DeFi / Web3",
+  nft: "NFT",
+  operacional: "Operacional",
+  suporte: "Suporte",
+};
+
 type BaseConfig = {
   slug: string;
   agentId: string;
   label: string;
   title: string;
   description: string;
+  domain: AgentDomain;
+  exampleOutput: string;
 };
 
 export type GenericAgentConfig = BaseConfig & {
@@ -183,6 +206,8 @@ export const selfServiceConfigs: SelfServiceAgentConfig[] = [
     title: "AADV Self-Service",
     description:
       "Colete sinais operacionais, financeiros e de auditoria para gerar o dossiê AADV (JSONL + resumo executivo).",
+    domain: "auditoria",
+    exampleOutput: "Dossiê AADV em JSONL com resumo executivo e trilha de auditoria",
   },
   {
     kind: "custom",
@@ -192,6 +217,8 @@ export const selfServiceConfigs: SelfServiceAgentConfig[] = [
     title: "Briefing de Campanha",
     description:
       "Reúna os dados principais e receba um plano de campanha multicanal personalizado pelo agente MKT.",
+    domain: "marketing",
+    exampleOutput: "Plano de campanha multicanal com calendário, canais e KPIs sugeridos",
   },
   {
     kind: "custom",
@@ -201,6 +228,8 @@ export const selfServiceConfigs: SelfServiceAgentConfig[] = [
     title: "Visão 360º do Cliente",
     description:
       "Reúna informações sobre a conta e obtenha um diagnóstico com recomendações priorizadas pelo agente J_360.",
+    domain: "comercial",
+    exampleOutput: "Diagnóstico 360° da conta com recomendações priorizadas e próximos passos",
   },
   {
     kind: "custom",
@@ -210,6 +239,8 @@ export const selfServiceConfigs: SelfServiceAgentConfig[] = [
     title: "Plano de Orquestração DeFi",
     description:
       "Defina o objetivo, redes e guardrails para o agente orquestrar execuções DeFi multi-chain com segurança.",
+    domain: "defi",
+    exampleOutput: "Plano de execução DeFi passo a passo com pré-checagens, riscos e próximas ações",
     fields: [
       {
         key: "objective",
@@ -278,6 +309,8 @@ export const selfServiceConfigs: SelfServiceAgentConfig[] = [
     title: "Checklist de Risco & Compliance",
     description:
       "Envie o contexto da operação para receber um checklist de riscos, recomendações de mitigação e status de compliance.",
+    domain: "operacional",
+    exampleOutput: "Checklist de riscos com severidade, mitigações sugeridas e itens de conformidade",
     fields: [
       {
         key: "context",
@@ -339,6 +372,8 @@ export const selfServiceConfigs: SelfServiceAgentConfig[] = [
     title: "Guardian – Registro Probatorio & LGPD",
     description:
       "Capture o cenário jurídico-operacional e receba o plano sugerido para registrar evidências com verificabilidade pública e LGPD-first.",
+    domain: "auditoria",
+    exampleOutput: "Plano probatório com recomendação priorizada, próximos passos e checklist LGPD",
     fields: [
       {
         key: "requestType",
@@ -427,6 +462,8 @@ export const selfServiceConfigs: SelfServiceAgentConfig[] = [
     title: "FinNexus Insight Financeiro",
     description:
       "O FinNexus é a inteligência artificial do EIAH que cuida de toda a sua área de pagamentos e recebimentos.",
+    domain: "financeiro",
+    exampleOutput: "Análise financeira com insights de pagamentos, recebimentos e recomendações de otimização",
   },
   {
     kind: "custom",
@@ -436,6 +473,8 @@ export const selfServiceConfigs: SelfServiceAgentConfig[] = [
     title: "Setup de Monitoramento On-chain",
     description:
       "Configure eventos, limiares e canais de alerta para que o agente monitore atividades on-chain em tempo real.",
+    domain: "defi",
+    exampleOutput: "Configuração de monitoramento com alertas, testes sugeridos e playbook de resposta",
     fields: [
       {
         key: "network",
@@ -497,6 +536,8 @@ export const selfServiceConfigs: SelfServiceAgentConfig[] = [
     title: "Inteligência Comercial",
     description:
       "Colete informações da conta para gerar um plano de expansão e próximos passos para o time comercial.",
+    domain: "comercial",
+    exampleOutput: "Briefing comercial com posicionamento, objeções prováveis e plano de follow-up",
     fields: [
       { key: "account", label: "Conta / Cliente", placeholder: "Nome da empresa ou squad", rows: 2 },
       {
@@ -560,6 +601,8 @@ export const selfServiceConfigs: SelfServiceAgentConfig[] = [
     title: "Rotina Operacional Diária",
     description:
       "Capture prioridades, bloqueios e métricas para gerar um relatório diário automatizado para o time.",
+    domain: "operacional",
+    exampleOutput: "Relatório diário com métricas, bloqueios, destaques e próximos passos do time",
     fields: [
       { key: "team", label: "Time / Squad", placeholder: "Responsável pelo relatório diário", rows: 2 },
       {
@@ -623,6 +666,8 @@ export const selfServiceConfigs: SelfServiceAgentConfig[] = [
     title: "Planejamento de Coleção NFT",
     description:
       "Defina o conceito, utilidades e público para receber um plano de lançamento de coleção NFT.",
+    domain: "nft",
+    exampleOutput: "Plano de lançamento com roadmap, estratégia de mint, canais de hype e pós-lançamento",
     fields: [
       {
         key: "theme",
@@ -691,6 +736,8 @@ export const selfServiceConfigs: SelfServiceAgentConfig[] = [
     title: "Prompts Visuais Diários",
     description:
       "Informe o tema do dia para gerar prompts criativos focados em artes NFT com estilos e variações.",
+    domain: "nft",
+    exampleOutput: "3+ variações de prompts visuais com parâmetros de aspect ratio, seed e guidance",
     fields: [
       {
         key: "theme",
@@ -752,6 +799,8 @@ export const selfServiceConfigs: SelfServiceAgentConfig[] = [
     title: "Simulação DeFi",
     description:
       "Descreva a operação que deseja simular para obter passos, riscos e parâmetros sugeridos antes da execução real.",
+    domain: "defi",
+    exampleOutput: "Simulação com parâmetros recomendados, riscos identificados e checklist de pré-condições",
     fields: [
       {
         key: "operation",
@@ -820,6 +869,8 @@ export const selfServiceConfigs: SelfServiceAgentConfig[] = [
     title: "Montar Pitch",
     description:
       "Forneça dados do produto e público para gerar um pitch estruturado com storytelling e CTA claro.",
+    domain: "comercial",
+    exampleOutput: "Pitch estruturado com abertura, problema, solução, diferenciais, provas sociais e CTA",
     fields: [
       { key: "product", label: "Produto / solução", placeholder: "O que estamos apresentando?", rows: 3 },
       {
@@ -883,6 +934,8 @@ export const selfServiceConfigs: SelfServiceAgentConfig[] = [
     title: "EIAH",
     description:
       "Envie sua dúvida sobre a plataforma Mission Control e receba instruções passo a passo do EIAH.",
+    domain: "suporte",
+    exampleOutput: "Guia prático passo a passo com ferramentas necessárias e próximos passos",
     fields: [
       {
         key: "question",

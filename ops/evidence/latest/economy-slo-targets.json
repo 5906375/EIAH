@@ -1,0 +1,27 @@
+{
+  "specVersion": "economy-slo-targets.v1",
+  "ratified": false,
+  "ratificationNote": "Aguardando 3 ciclos APE consecutivos com p95Ms real em staging. Após coletar dados reais via generate:slo-baseline, calcular targetP95Ms com a fórmula abaixo e atualizar este arquivo com ratified: true.",
+  "formula": "targetP95Ms = max(500, ceil(min(maxP95 × 2.5, maxP99 × 1.5) / 100) × 100)",
+  "formulaExplained": {
+    "maxP95": "maior p95Ms observado entre os ciclos APE com dados reais",
+    "maxP99": "maior p99Ms observado entre os ciclos APE com dados reais",
+    "floor": "500ms — nunca definir target menor que 500ms",
+    "roundUp": "arredondamento para cima a cada 100ms — evita target artificialmente apertado por outlier"
+  },
+  "minCyclesRequired": 3,
+  "ratifiedAt": null,
+  "ratifiedBy": null,
+  "computedFromBaseline": null,
+  "pouFinalize": {
+    "targetP95Ms": null,
+    "targetP99Ms": null,
+    "minSamplesRequired": 3,
+    "note": "Preencher após ratificação com valor derivado da fórmula e confirmar com owner API/Produto"
+  },
+  "onChainConfirmation": {
+    "targetP95Ms": null,
+    "status": "awaiting-full-provider",
+    "reason": "providers crypto e bank estão em modo simulado — target indefinido até provider mode = full"
+  }
+}

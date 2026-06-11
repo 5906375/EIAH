@@ -1,5 +1,42 @@
 import React, { useEffect, useMemo, useState } from "react";
 
+const DIALOG_TTL_MS = 30 * 60 * 1000;
+
+function storageKey(runId: string) {
+  return `need_more_info:${runId}`;
+}
+
+function saveDialogValues(runId: string, values: Record<string, string>) {
+  try {
+    sessionStorage.setItem(storageKey(runId), JSON.stringify({ values, savedAt: Date.now() }));
+  } catch {
+    // sessionStorage indisponível
+  }
+}
+
+function loadDialogValues(runId: string): Record<string, string> | null {
+  try {
+    const raw = sessionStorage.getItem(storageKey(runId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { values: Record<string, string>; savedAt: number };
+    if (Date.now() - parsed.savedAt > DIALOG_TTL_MS) {
+      sessionStorage.removeItem(storageKey(runId));
+      return null;
+    }
+    return parsed.values;
+  } catch {
+    return null;
+  }
+}
+
+function clearDialogValues(runId: string) {
+  try {
+    sessionStorage.removeItem(storageKey(runId));
+  } catch {
+    // sessionStorage indisponível
+  }
+}
+
 export type NeedMoreInfoOption = { value: string; label: string };
 
 export type NeedMoreInfoField = {
@@ -24,6 +61,7 @@ type NeedMoreInfoDialogProps = {
   request: NeedMoreInfoRequest | null;
   currentValues: Record<string, string | undefined>;
   isSubmitting?: boolean;
+  runId?: string;
   onCancel: () => void;
   onSubmit: (values: Record<string, string>) => void;
 };
@@ -57,26 +95,40 @@ export default function NeedMoreInfoDialog({
   request,
   currentValues,
   isSubmitting,
+  runId,
   onCancel,
   onSubmit,
 }: NeedMoreInfoDialogProps) {
   const [localValues, setLocalValues] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<ErrorMap>({});
+  const [restoredFromStorage, setRestoredFromStorage] = useState(false);
 
   useEffect(() => {
     if (!open || !request) {
       setLocalValues({});
       setErrors({});
+      setRestoredFromStorage(false);
       return;
     }
 
+    const saved = runId ? loadDialogValues(runId) : null;
     const initialEntries = (request.fields ?? []).map((field) => {
+      const fromSaved = saved?.[field.key];
+      if (typeof fromSaved === "string" && fromSaved.length > 0) {
+        return [field.key, fromSaved] as const;
+      }
       const initial = normalizeInitialValue(field.key, request, currentValues);
       return [field.key, initial] as const;
     });
     setLocalValues(Object.fromEntries(initialEntries));
     setErrors({});
-  }, [open, request, currentValues]);
+    setRestoredFromStorage(saved !== null && Object.keys(saved).some((k) => (saved[k] ?? "").length > 0));
+  }, [open, request, currentValues, runId]);
+
+  useEffect(() => {
+    if (!open || !runId || Object.keys(localValues).length === 0) return;
+    saveDialogValues(runId, localValues);
+  }, [localValues, open, runId]);
 
   const fields = request?.fields ?? [];
   const hasFields = fields.length > 0;
@@ -123,6 +175,7 @@ export default function NeedMoreInfoDialog({
       return;
     }
 
+    if (runId) clearDialogValues(runId);
     onSubmit(localValues);
   };
 
@@ -136,6 +189,12 @@ export default function NeedMoreInfoDialog({
           <h2 className="text-xl font-semibold text-foreground">{dialogTitle}</h2>
           <p className="text-sm text-muted-foreground">{dialogMessage}</p>
         </header>
+
+        {restoredFromStorage ? (
+          <div className="mt-3 rounded-xl border border-accent/20 bg-accent/10 px-3 py-2 text-[11px] text-accent">
+            Campos restaurados da sessão anterior. Revise e reenvie.
+          </div>
+        ) : null}
 
         {hasFields ? (
           <div className="mt-5 space-y-4">

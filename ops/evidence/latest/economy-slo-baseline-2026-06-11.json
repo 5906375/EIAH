@@ -1,0 +1,22 @@
+{
+  "generatedAt": "2026-06-11T08:23:29.684Z",
+  "scope": "economy-slo-baseline",
+  "source": {
+    "type": "e2e-manifest-latency",
+    "environment": "ci",
+    "queryWindow": "last-e2e-high-manifest",
+    "note": "Phase 1: samples derived from scenarioResults.latencyMs. Phase 2 will query GuardrailLedger pou.finalized events directly."
+  },
+  "samplesCount": 0,
+  "pouFinalize": {
+    "p50Ms": null,
+    "p95Ms": null,
+    "p99Ms": null,
+    "note": "no samples collected yet — run after E2E HIGH manifest has real staging data"
+  },
+  "onChainConfirmation": {
+    "p95Ms": null,
+    "status": "awaiting-full-provider",
+    "reason": "crypto and bank providers are simulated-only — target undefined until provider mode = full"
+  }
+}

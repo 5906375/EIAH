@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { selfServiceConfigs } from "./config";
+import { selfServiceConfigs, type AgentDomain, AGENT_DOMAIN_LABELS } from "./config";
 import {
   apiCreateTenantRecipe,
   apiGetOnboardingContext,
@@ -15,6 +15,9 @@ import {
   type TenantRecipe,
 } from "@/lib/api";
 import { formatBRL } from "@/lib/formatters";
+import { isFounderAccess } from "@/lib/roles";
+import { PRICING_PLANS, type PricingPlanId } from "@/config/pricing";
+import { PROPOSAL_OPTIONS, type ProposalOptionId } from "@/config/proposals";
 import { useSession } from "@/state/sessionStore";
 import eiahAgentsVideo from "../../assets/eiah-agentes.mp4";
 import eiahMarketingVideo from "../../assets/eiah-marketing.mp4";
@@ -100,12 +103,6 @@ function hasSupportedImobMission(recipe: TenantRecipe) {
   return hasImobScope && hasMissionTag;
 }
 
-function hasFounderAccess(session: ReturnType<typeof useSession>) {
-  const roles = session.roles?.map((role) => normalizeCatalogText(role)) ?? [];
-  const roleProfile = normalizeCatalogText(session.experience?.roleProfile);
-  return roleProfile === "founder_global" || roles.includes("founder") || roles.includes("global_admin");
-}
-
 function buildImobRecipeChatPath(recipe: TenantRecipe, options?: { includeRecipeId?: boolean }) {
   const params = new URLSearchParams({
     autoprompt: `abrir recipe ${recipe.title}`,
@@ -165,127 +162,10 @@ function CollapsibleRecipeInstructions(props: {
   );
 }
 
-type PricingPlanId = "solo" | "starter" | "growth" | "scale";
-
-const PRICING_PLANS: Array<{
-  id: PricingPlanId;
-  label: string;
-  basePriceCents: number;
-  includedUsers: number;
-  includedRuns: number;
-  overageRunCents: number;
-  extraUserCents: number;
-  includes: string[];
-}> = [
-  {
-    id: "solo",
-    label: "Solo",
-    basePriceCents: 49_000,
-    includedUsers: 3,
-    includedRuns: 1_500,
-    overageRunCents: 35,
-    extraUserCents: 3_900,
-    includes: [
-      "3 usuários inclusos para operação enxuta",
-      "1.500 runs/mês para atendimento e follow-up",
-      "Trilha auditável por run com evidência exportável",
-      "Governança base: intent + trust + guardrails",
-      "Ideal para corretor autônomo ou micro-time",
-      "Suporte padrão em horário comercial",
-    ],
-  },
-  {
-    id: "starter",
-    label: "Starter",
-    basePriceCents: 149_000,
-    includedUsers: 10,
-    includedRuns: 5_000,
-    overageRunCents: 30,
-    extraUserCents: 3_900,
-    includes: [
-      "10 usuários inclusos no tenant/workspace",
-      "5.000 runs/mês com trilha auditável por run",
-      "Governança base: intent + trust score + guardrails",
-      "Evidência exportável (JSON/PDF/HTML) por execução",
-      "Chat operacional + dashboard de processos",
-      "Suporte padrão em horário comercial",
-    ],
-  },
-  {
-    id: "growth",
-    label: "Growth",
-    basePriceCents: 399_000,
-    includedUsers: 25,
-    includedRuns: 25_000,
-    overageRunCents: 22,
-    extraUserCents: 2_900,
-    includes: [
-      "25 usuários inclusos no tenant/workspace",
-      "25.000 runs/mês com PoU + Trust Gate",
-      "Aprovação humana e policies autoaplicáveis",
-      "Auditoria pública por txId com vínculo canônico",
-      "Interop A2A (discovery/negotiate/execute) pronta para operação",
-      "Suporte prioritário para operação B2B",
-    ],
-  },
-  {
-    id: "scale",
-    label: "Scale",
-    basePriceCents: 990_000,
-    includedUsers: 100,
-    includedRuns: 100_000,
-    overageRunCents: 15,
-    extraUserCents: 1_900,
-    includes: [
-      "100 usuários inclusos no tenant/workspace",
-      "100.000 runs/mês para operação crítica em escala",
-      "Economy avançada: PoU-gated payment + disputas auditáveis",
-      "Settlement provider com reconciliação e idempotência",
-      "Command center por vertical e rollout controlado",
-      "Suporte enterprise com acompanhamento dedicado",
-    ],
-  },
-];
-
-const PROPOSAL_OPTIONS = [
-  {
-    id: "micro-imob",
-    title: "Micro Imobiliaria",
-    profile: "Corretor + assistente + gestor",
-    recommendation: "Solo",
-    objective: "Entrada rapida com operacao enxuta e upgrade progressivo.",
-    nextStep: "Comece com Solo e revise em 30 dias.",
-  },
-  {
-    id: "operacao-starter",
-    title: "Operacao Estruturada",
-    profile: "Time comercial com multiplos atendentes",
-    recommendation: "Starter",
-    objective: "Escalar atendimento com governanca e trilha auditavel.",
-    nextStep: "Ative Starter e configure limites por workspace.",
-  },
-  {
-    id: "expansao-growth",
-    title: "Expansao Regional",
-    profile: "Multiplas frentes e alta demanda mensal",
-    recommendation: "Growth",
-    objective: "Ganhar escala sem perder controle de custo e qualidade.",
-    nextStep: "Ative Growth e acompanhe previsao de invoice no billing.",
-  },
-  {
-    id: "enterprise-custom",
-    title: "Enterprise Custom",
-    profile: "Operacao critica com requisitos proprios",
-    recommendation: "Enterprise",
-    objective: "Compor proposta tecnica e comercial sob consulta.",
-    nextStep: "Abrir proposta assistida com agente EIAH.",
-  },
-] as const;
-
 export default function SelfServiceIndexPage() {
   const session = useSession();
   const navigate = useNavigate();
-  const founderAccess = hasFounderAccess(session);
+  const founderAccess = isFounderAccess(session.experience?.roleProfile, session.roles);
   const [marketplaceItems, setMarketplaceItems] = React.useState<MarketplaceItem[]>([]);
   const [marketplaceFilter, setMarketplaceFilter] = React.useState<"all" | "agent" | "action">(
     "all"
@@ -322,7 +202,9 @@ export default function SelfServiceIndexPage() {
   const [selectedPlan, setSelectedPlan] = React.useState<PricingPlanId>("solo");
   const [calcUsers, setCalcUsers] = React.useState("3");
   const [calcRuns, setCalcRuns] = React.useState("1500");
-  const [selectedProposalOption, setSelectedProposalOption] = React.useState(PROPOSAL_OPTIONS[0].id);
+  const [selectedProposalOption, setSelectedProposalOption] = React.useState<ProposalOptionId>(PROPOSAL_OPTIONS[0].id);
+  const [catalogSearch, setCatalogSearch] = React.useState("");
+  const [catalogDomain, setCatalogDomain] = React.useState<AgentDomain | "all">("all");
   const updateTenantRecipeForm = React.useCallback((patch: Partial<TenantRecipeComposerState>) => {
     setTenantRecipeForm((prev) => ({ ...prev, ...patch }));
   }, []);
@@ -391,6 +273,19 @@ export default function SelfServiceIndexPage() {
     const expiry = new Date(delegation.validUntil).getTime();
     return Number.isFinite(expiry) && expiry > Date.now();
   };
+
+  const filteredCatalog = React.useMemo(() => {
+    const query = normalizeCatalogText(catalogSearch);
+    return selfServiceConfigs.filter((config) => {
+      if (catalogDomain !== "all" && config.domain !== catalogDomain) return false;
+      if (!query) return true;
+      return (
+        normalizeCatalogText(config.title).includes(query) ||
+        normalizeCatalogText(config.description).includes(query) ||
+        normalizeCatalogText(config.exampleOutput).includes(query)
+      );
+    });
+  }, [catalogSearch, catalogDomain]);
 
   const filteredMarketplaceItems = React.useMemo(() => {
     if (marketplaceFilter === "all") return marketplaceItems;
@@ -717,8 +612,44 @@ export default function SelfServiceIndexPage() {
         </div>
       </header>
 
+      <div className="space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <input
+            type="search"
+            value={catalogSearch}
+            onChange={(e) => setCatalogSearch(e.target.value)}
+            placeholder="Buscar agente..."
+            className="flex-1 rounded-xl border border-white/10 bg-black/40 px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-accent focus:outline-none"
+          />
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setCatalogDomain("all")}
+              className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] transition ${catalogDomain === "all" ? "border-accent bg-accent/20 text-accent" : "border-white/10 bg-white/5 text-muted-foreground hover:border-accent/40 hover:text-accent"}`}
+            >
+              Todos
+            </button>
+            {(Object.keys(AGENT_DOMAIN_LABELS) as AgentDomain[]).map((domain) => (
+              <button
+                key={domain}
+                type="button"
+                onClick={() => setCatalogDomain(catalogDomain === domain ? "all" : domain)}
+                className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] transition ${catalogDomain === domain ? "border-accent bg-accent/20 text-accent" : "border-white/10 bg-white/5 text-muted-foreground hover:border-accent/40 hover:text-accent"}`}
+              >
+                {AGENT_DOMAIN_LABELS[domain]}
+              </button>
+            ))}
+          </div>
+        </div>
+        {filteredCatalog.length === 0 ? (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            Nenhum agente encontrado para "{catalogSearch}".
+          </p>
+        ) : null}
+      </div>
+
       <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {selfServiceConfigs.map((config) => {
+        {filteredCatalog.map((config) => {
           const artworkSrc = agentArtwork[config.slug];
           const cardVideoSrc = agentVideoMap[config.slug];
           const isJ360 = config.slug === "j360" && artworkSrc;

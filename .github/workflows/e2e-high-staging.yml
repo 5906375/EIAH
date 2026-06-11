@@ -1,0 +1,63 @@
+name: E2E HIGH Staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      agent_id:
+        description: "agentId para os cenários HIGH (padrão: imob)"
+        required: false
+        type: string
+        default: "imob"
+  schedule:
+    # Toda segunda-feira às 09:00 UTC (antes do APE Weekly às 11:00 UTC)
+    - cron: "0 9 * * 1"
+
+permissions:
+  contents: write
+
+jobs:
+  e2e-high-manifest:
+    name: Generate E2E HIGH manifest
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      STAGING_API_BASE_URL: ${{ secrets.STAGING_API_BASE_URL }}
+      STAGING_API_TOKEN: ${{ secrets.STAGING_API_TOKEN }}
+      E2E_TENANT_ID: ${{ secrets.E2E_TENANT_ID }}
+      E2E_WORKSPACE_ID: ${{ secrets.E2E_WORKSPACE_ID }}
+      E2E_AGENT_ID: ${{ inputs.agent_id || 'imob' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate E2E HIGH manifest
+        id: generate
+        run: pnpm generate:e2e-high-manifest
+
+      - name: Check E2E recency + anti-synthetic
+        run: pnpm check:e2e-recency
+
+      - name: Commit manifest to evidence
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add ops/evidence/latest/high-e2e-manifest.json
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "evidence(e2e-high): update staging manifest [skip ci]"
+            git push
+          fi

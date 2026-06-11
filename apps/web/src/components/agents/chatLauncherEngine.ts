@@ -4,6 +4,8 @@ import {
   type Agent,
   type EiahHelpQueryHit,
 } from "@/lib/api";
+import type { RoleProfile } from "@/lib/roles";
+import { PRICING_PLANS, quotePlan } from "@/config/pricing";
 import {
   PRESENTATION_SNAPSHOT_VERSION,
   type MessagePresentationSnapshot,
@@ -245,7 +247,7 @@ export type LauncherLocalDecision = {
 export type LauncherAccessContext = {
   tenantId?: string | null;
   workspaceId?: string | null;
-  roleProfile?: "workspace_member" | "workspace_admin" | "tenant_admin" | "founder_global" | "service_operator" | null;
+  roleProfile?: RoleProfile | null;
   activeDomain?: "core" | "imob" | null;
   installedProducts?: string[] | null;
   entitlements?: {
@@ -817,29 +819,6 @@ function centsToBrl(cents: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
 }
 
-type LocalPlan = {
-  code: "solo" | "starter" | "growth" | "scale";
-  label: string;
-  basePriceCents: number;
-  includedUsers: number;
-  includedRuns: number;
-  overageRunCents: number;
-  extraUserCents: number;
-};
-
-const LOCAL_PLANS: LocalPlan[] = [
-  { code: "solo", label: "Solo", basePriceCents: 49000, includedUsers: 3, includedRuns: 1500, overageRunCents: 35, extraUserCents: 3900 },
-  { code: "starter", label: "Starter", basePriceCents: 149000, includedUsers: 10, includedRuns: 5000, overageRunCents: 30, extraUserCents: 3900 },
-  { code: "growth", label: "Growth", basePriceCents: 399000, includedUsers: 25, includedRuns: 25000, overageRunCents: 22, extraUserCents: 2900 },
-  { code: "scale", label: "Scale", basePriceCents: 990000, includedUsers: 100, includedRuns: 100000, overageRunCents: 15, extraUserCents: 1900 },
-];
-
-function quoteLocalPlan(plan: LocalPlan, users: number, runs: number) {
-  const runOverage = Math.max(0, runs - plan.includedRuns);
-  const userOverage = Math.max(0, users - plan.includedUsers);
-  const totalCents = plan.basePriceCents + runOverage * plan.overageRunCents + userOverage * plan.extraUserCents;
-  return { ...plan, totalCents };
-}
 
 function getAgentDisplayName(agent: Agent | null | undefined) {
   if (!agent) return "Agente";
@@ -1694,12 +1673,12 @@ export async function resolveLauncherProposalDecision(params: {
   } catch {
     const users = parsed.users as number;
     const runs = parsed.runs as number;
-    const localQuotes = LOCAL_PLANS.map((plan) => quoteLocalPlan(plan, users, runs)).sort(
+    const localQuotes = PRICING_PLANS.map((plan) => quotePlan(plan, users, runs)).sort(
       (a, b) => a.totalCents - b.totalCents
     );
-    const eco = localQuotes.find((item) => item.code === "solo" || item.code === "starter") ?? localQuotes[0];
-    const eq = localQuotes.find((item) => item.code === "starter" || item.code === "growth") ?? localQuotes[1] ?? localQuotes[0];
-    const scale = localQuotes.find((item) => item.code === "growth" || item.code === "scale") ?? localQuotes[2] ?? localQuotes[0];
+    const eco = localQuotes.find((item) => item.id === "solo" || item.id === "starter") ?? localQuotes[0];
+    const eq = localQuotes.find((item) => item.id === "starter" || item.id === "growth") ?? localQuotes[1] ?? localQuotes[0];
+    const scale = localQuotes.find((item) => item.id === "growth" || item.id === "scale") ?? localQuotes[2] ?? localQuotes[0];
     const best = eq ?? eco ?? scale;
 
     return {
@@ -1709,7 +1688,7 @@ export async function resolveLauncherProposalDecision(params: {
         users: parsed.users,
         runs: parsed.runs,
         recommendedLabel: best.label,
-        recommendedCode: best.code,
+        recommendedCode: best.id,
         estimateTitle: "Estimativa de custo mensal (fallback local)",
         estimateLabel: `${centsToBrl(best.totalCents)}`,
         economicOption: eco ? `${eco.label} — ${centsToBrl(eco.totalCents)}` : "sob consulta",

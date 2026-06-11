@@ -1,0 +1,103 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "economy-receipt.v1.schema.json",
+  "title": "EconomyReceiptEnvelope",
+  "description": "Envelope econômico versionado para run + settlement + dispute + trust + policy.",
+  "type": "object",
+  "required": [
+    "specVersion",
+    "generatedAt",
+    "tenantId",
+    "workspaceId",
+    "verticalScope",
+    "agentId",
+    "runId",
+    "bundleHash",
+    "txId",
+    "settlementId",
+    "disputeId",
+    "executionReceiptHash",
+    "trustSnapshot",
+    "policyDecision",
+    "receiptHash"
+  ],
+  "properties": {
+    "specVersion": {
+      "type": "string",
+      "const": "economy.receipt.v1"
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "tenantId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workspaceId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "verticalScope": {
+      "type": "string",
+      "minLength": 1
+    },
+    "agentId": {
+      "type": ["string", "null"]
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "bundleHash": {
+      "type": ["string", "null"]
+    },
+    "txId": {
+      "type": ["string", "null"]
+    },
+    "settlementId": {
+      "type": ["string", "null"]
+    },
+    "disputeId": {
+      "type": ["string", "null"]
+    },
+    "executionReceiptHash": {
+      "type": ["string", "null"]
+    },
+    "trustSnapshot": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["scoreDelta", "policy"],
+          "properties": {
+            "scoreBefore": { "type": ["number", "null"] },
+            "scoreAfter": { "type": ["number", "null"] },
+            "scoreDelta": { "type": "number" },
+            "policy": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "policyDecision": {
+      "type": "object",
+      "required": ["code", "outcome"],
+      "properties": {
+        "code": { "type": "string", "minLength": 1 },
+        "outcome": {
+          "type": "string",
+          "enum": ["approved", "rejected", "pending"]
+        },
+        "decidedAt": { "type": ["string", "null"], "format": "date-time" },
+        "decidedBy": { "type": ["string", "null"] }
+      },
+      "additionalProperties": false
+    },
+    "receiptHash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "additionalProperties": false
+}

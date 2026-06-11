@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import {
   Select,
   SelectContent,
@@ -6,15 +6,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { apiListAgents } from "@/lib/api";
-import { useSession } from "@/state/sessionStore";
-
-type Agent = {
-  id: string;
-  name: string;
-  description?: string;
-  pricing?: { perRunCents?: number };
-};
+import type { Agent } from "@/lib/api";
+import { useAgents } from "@/hooks/useAgents";
 
 function getDisplayAgentName(agent: Agent) {
   const normalizedId = (agent.id ?? "").trim().toLowerCase();
@@ -38,33 +31,15 @@ export default function AgentSelect({
   onPlaybookClick?: () => void;
   inline?: boolean;
 }) {
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const { workspaceId, token } = useSession();
+  const { items, status, error } = useAgents();
+  const agents = [...items].sort((a, b) => (a.name ?? a.id).localeCompare(b.name ?? b.id));
+  const isLoading = status === "idle" || status === "loading";
 
   useEffect(() => {
-    setIsLoading(true);
-    setLoadError(null);
-    apiListAgents()
-      .then((agentsResponse) => {
-        const nextAgents = Array.isArray((agentsResponse as any)?.items)
-          ? ((agentsResponse as any).items as Agent[]).sort((a, b) =>
-              (a.name ?? a.id).localeCompare(b.name ?? b.id)
-            )
-          : [];
-        setAgents(nextAgents);
-        if (value && !nextAgents.some((agent) => agent.id === value)) {
-          onChange("");
-        }
-      })
-      .catch((err) => {
-        console.error("Failed to load agents", err);
-        setLoadError("Nao foi possivel carregar agentes assinados.");
-        setAgents([]);
-      })
-      .finally(() => setIsLoading(false));
-  }, [workspaceId, token]);
+    if (value && status === "ready" && !items.some((agent) => agent.id === value)) {
+      onChange("");
+    }
+  }, [status, items, value, onChange]);
 
   return (
     <div
@@ -95,7 +70,7 @@ export default function AgentSelect({
               <SelectItem disabled value="__empty">
                 {isLoading
                   ? "Carregando..."
-                  : loadError ?? "Nenhum agente assinado no marketplace"}
+                  : error ?? "Nenhum agente assinado no marketplace"}
               </SelectItem>
             )}
             {agents.map((agent) => {

@@ -1,0 +1,36 @@
+{
+  "specVersion": "economy.receipt.v1",
+  "schemaVersion": "1.0.0",
+  "description": "Envelope econômico unificado: run + settlement + dispute + trust + policyDecision. Auditável multi-tenant.",
+  "hashRule": "sha256(canonicalJson(envelopeWithoutReceiptHash)) — canonicalJson = stableSort(keys recursivamente) + JSON.stringify",
+  "requiredFields": [
+    "specVersion",
+    "generatedAt",
+    "tenantId",
+    "workspaceId",
+    "verticalScope",
+    "agentId",
+    "runId",
+    "receiptHash",
+    "policyDecision"
+  ],
+  "nullableFields": [
+    "bundleHash",
+    "txId",
+    "settlementId",
+    "disputeId",
+    "executionReceiptHash",
+    "trustSnapshot"
+  ],
+  "eventKeyPattern": "economy.receipt.v1:{tenantId}:{workspaceId}:{runId}:{settlementId}",
+  "knownLimitations": {
+    "v1.0": [
+      "bundleHash may be null — will be required when runId is present in v1.1",
+      "executionReceiptHash may be null — linkage to receipt.canon.v1 pending v1.1",
+      "agentId may be null when trustSnapshot is absent"
+    ]
+  },
+  "compatPolicy": "N,N-1 — breaking changes require major version bump in schemaVersion",
+  "persistedIn": "guardrailLedger",
+  "enabledBy": "ECONOMY_RECEIPT_V1_ENABLED=true"
+}

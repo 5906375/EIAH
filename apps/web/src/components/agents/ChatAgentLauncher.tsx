@@ -12,7 +12,6 @@ import {
   apiGetQuota,
   apiGetRunCostBreakdown,
   apiGetTenantBillingSummary,
-  apiListAgents,
   apiUploadDocuments,
   apiCreateHelpdeskSession,
   apiGetRun,
@@ -51,6 +50,7 @@ import {
 import { extractDocAndRecs, type ExtractedRec } from "@/utils";
 import { useSession } from "@/state/sessionStore";
 import { useAgentExecution } from "@/hooks/useAgentExecution";
+import { useAgents } from "@/hooks/useAgents";
 import {
   useConversation,
   type ConversationStatus,
@@ -560,9 +560,15 @@ export default function ChatAgentLauncher({
   const [governanceError, setGovernanceError] = useState<string | null>(null);
   const [conversationFinalizing, setConversationFinalizing] = useState(false);
   const [lastRouteIntent, setLastRouteIntent] = useState<"proposal" | "imob" | "playbook" | "help" | "orchestrator" | null>(null);
-  const [catalogAgents, setCatalogAgents] = useState<Agent[]>([]);
-  const [selectedAgentLabel, setSelectedAgentLabel] = useState<string | null>(null);
-  const [selectedCatalogAgent, setSelectedCatalogAgent] = useState<Agent | null>(null);
+  const { items: catalogAgents } = useAgents();
+  const selectedCatalogAgent = useMemo(
+    () => (activeAgentId ? (catalogAgents.find((item) => String(item?.id ?? "") === activeAgentId) ?? null) : null),
+    [catalogAgents, activeAgentId]
+  );
+  const selectedAgentLabel = useMemo(
+    () => (selectedCatalogAgent ? getCatalogAgentDisplayName(selectedCatalogAgent) : null),
+    [selectedCatalogAgent]
+  );
   const [runFinanceByRunId, setRunFinanceByRunId] = useState<Record<string, RunFinanceSummary>>({});
   const [workspaceBillingContext, setWorkspaceBillingContext] = useState<WorkspaceBillingContext | null>(null);
   const [attachmentMode, setAttachmentMode] = useState<"upload_file" | "paste_text">("upload_file");
@@ -773,33 +779,6 @@ export default function ChatAgentLauncher({
     };
   }, [effectiveWorkspaceId]);
 
-  useEffect(() => {
-    if (!activeAgentId) {
-      setSelectedAgentLabel(null);
-      setSelectedCatalogAgent(null);
-      return;
-    }
-    let cancelled = false;
-    apiListAgents()
-      .then((response: { items?: Agent[] }) => {
-        if (cancelled) return;
-        const items = Array.isArray(response?.items) ? response.items : [];
-        setCatalogAgents(items);
-        const found = items.find((item) => String(item?.id ?? "") === activeAgentId) ?? null;
-        setSelectedAgentLabel(found ? getCatalogAgentDisplayName(found) : null);
-        setSelectedCatalogAgent(found);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setCatalogAgents([]);
-          setSelectedAgentLabel(null);
-          setSelectedCatalogAgent(null);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [activeAgentId]);
 
   const updateSseStatus = (next: "idle" | "connecting" | "live" | "polling" | "error") => {
     setSseStatus(next);
