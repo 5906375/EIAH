@@ -52,6 +52,12 @@ jobs:
       - name: Generate P3 economy evidence
         run: pnpm generate:p3-economy-evidence
 
+      - name: Generate SLO baseline
+        run: pnpm generate:slo-baseline
+
+      - name: Check SLO targets
+        run: pnpm check:slo-target
+
       - name: Run APE cycle
         env:
           APE_ROLLOUT_MODE: ${{ github.event.inputs.rollout_mode || 'shadow' }}

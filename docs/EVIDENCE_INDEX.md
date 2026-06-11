@@ -376,6 +376,12 @@ EVIDÊNCIA: `apps/api/src/index.ts:97-103` + `apps/workers/run-worker/src/index.
 - Próximos passos priorizados: OK
 - Lista completa usados/não usados: OK
 
+## Atualizações 2026-06-09
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Self-service UX — 3 ondas (catálogo filtrável, spinner incremental, persistência NeedMoreInfo) | `ops/evidence/latest/self-service-ux-improvements-2026-06-09.md` | Onda 1: `domain`/`exampleOutput` nos 14 agentes + filtro por domínio/texto no catálogo. Onda 2: spinner com label de evento real, sentinel de conclusão 3 s, botão Reexecutar com valores do run anterior. Onda 3: sessionStorage TTL-30 min no `NeedMoreInfoDialog`, banner de restauração, aviso de contexto stale no reexecutar, diff visual shadow vs real. |
+
 ## Atualizações 2026-06-02
 
 - `ops/evidence/latest/guardian-run-hardening-and-export-alignment-2026-06-02.md`
