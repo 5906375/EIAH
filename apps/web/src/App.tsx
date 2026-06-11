@@ -2,7 +2,6 @@ import React from "react";
 import { BrowserRouter, Link, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import AgentsPage from "./pages/app/agents";
 import BillingPage from "./pages/app/billing";
-import EconomyPage from "./pages/app/economy";
 import RunsPage from "./pages/app/runs";
 import MarketplacePage from "./pages/app/marketplace";
 import ImobMarketplacePage from "./pages/app/marketplace/imob";
@@ -16,10 +15,17 @@ import AccessPage from "./pages/access";
 import eiahLogo from "./assets/Eiah_logo.png";
 import { updateSession, useSession, type ImobAccessGateState } from "./state/sessionStore";
 import { ApiError, apiGetSessionContext, apiPostExperienceAudit } from "./lib/api";
+import { isImobInstalled } from "./lib/entitlements";
 
 function NavigationLink({ to, label }: { to: string; label: string }) {
   const location = useLocation();
-  const active = location.pathname === to || location.pathname.startsWith(`${to}/`);
+  let active: boolean;
+  if (to.includes("?")) {
+    const [toPath, toSearch] = to.split("?", 2);
+    active = location.pathname === toPath && location.search.includes(toSearch);
+  } else {
+    active = location.pathname === to || location.pathname.startsWith(`${to}/`);
+  }
 
   return (
     <Link
@@ -51,7 +57,6 @@ const SHELL_NAV_ITEMS: ShellNavItem[] = [
   { to: "/app/runs", label: "Runs" },
   { to: "/app/chat", label: "Chat" },
   { to: "/app/billing", label: "Billing", hiddenForRoles: ["workspace_member"] },
-  { to: "/app/economy", label: "Economy", hiddenForRoles: ["workspace_member"] },
   { to: "/app/marketplace", label: "Marketplace" },
   { to: "/app/imob/chat", label: "IMOB", requiresImob: true },
   { to: "/self-service", label: "Self-service" },
@@ -69,9 +74,7 @@ function Layout({
 }) {
   const session = useSession();
   const location = useLocation();
-  const imobInstalled =
-    session.entitlements?.IMOB_INSTALLED === true ||
-    session.installedProducts?.some((item) => item.trim().toUpperCase() === "IMOB") === true;
+  const imobInstalled = isImobInstalled(session);
   const brandName = session.branding?.brandName?.trim() || "EIAH";
   const logoUrl = session.branding?.logoUrl?.trim() || "";
   const workspaceLabel = session.branding?.workspaceLabel?.trim() || session.workspaceId;
@@ -198,9 +201,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 
 function RequireImobInstall({ children }: { children: React.ReactNode }) {
   const session = useSession();
-  const installed =
-    session.entitlements?.IMOB_INSTALLED === true ||
-    session.installedProducts?.some((item) => item.trim().toUpperCase() === "IMOB") === true;
+  const installed = isImobInstalled(session);
 
   if (!installed) {
     return <Navigate to="/app/marketplace/imob" replace />;
@@ -289,13 +290,7 @@ function AppRoutes() {
       />
       <Route
         path="/app/economy"
-        element={
-          <Layout>
-            <RequireAuth>
-              <EconomyPage />
-            </RequireAuth>
-          </Layout>
-        }
+        element={<Navigate to="/app/billing?tab=economy" replace />}
       />
       <Route
         path="/app/marketplace"

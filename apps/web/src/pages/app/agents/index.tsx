@@ -7,8 +7,9 @@ import runsHistoryPrint from "../../../assets/playbook/runs/runs-historico.svg";
 import runsResultPrint from "../../../assets/playbook/runs/runs-resultado.svg";
 import AgentSelect from "../../../components/agents/AgentSelect";
 import ChatAgentLauncher from "../../../components/agents/ChatAgentLauncher";
-import { apiGetAgentBillingSummary, apiListAgents, type Agent, type AgentBillingSummaryItem } from "@/lib/api";
+import { apiGetAgentBillingSummary, type Agent, type AgentBillingSummaryItem } from "@/lib/api";
 import { useSession } from "@/state/sessionStore";
+import { useAgents } from "@/hooks/useAgents";
 
 type PlaybookConfig = {
   title: string;
@@ -835,14 +836,19 @@ function CompactAttributeList({
 
 const AgentsPage: React.FC = () => {
   const location = useLocation();
-  const { workspaceId, token } = useSession();
+  const { workspaceId } = useSession();
   const [agentId, setAgentId] = useState<string>();
   const [playbookAgent, setPlaybookAgent] = useState<string | null>(null);
   const [activeGuideTabId, setActiveGuideTabId] = useState<string | null>(null);
-  const [catalogAgents, setCatalogAgents] = useState<Agent[]>([]);
+  const { items: agentItems, status: agentsStatus, error: agentsError } = useAgents();
   const [agentBillingSummary, setAgentBillingSummary] = useState<AgentBillingSummaryItem[]>([]);
-  const [catalogLoading, setCatalogLoading] = useState(true);
-  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [billingLoading, setBillingLoading] = useState(true);
+  const catalogAgents = useMemo(
+    () => [...agentItems].sort((a, b) => (a.name ?? a.id).localeCompare(b.name ?? b.id)),
+    [agentItems]
+  );
+  const catalogLoading = agentsStatus === "idle" || agentsStatus === "loading" || billingLoading;
+  const catalogError = agentsError;
 
   const playbookTargetId = agentId ? "playbook-panel" : null;
   const launcherTopic = useMemo(() => {
@@ -897,25 +903,18 @@ const AgentsPage: React.FC = () => {
   }, [playbookData]);
 
   useEffect(() => {
-    setCatalogLoading(true);
-    setCatalogError(null);
-    Promise.all([
-      apiListAgents(),
-      apiGetAgentBillingSummary({ workspaceId }).catch(() => null),
-    ])
-      .then(([response, billingResponse]) => {
-        const items = Array.isArray(response?.items) ? response.items : [];
-        setCatalogAgents(items.sort((a, b) => (a.name ?? a.id).localeCompare(b.name ?? b.id)));
-        setAgentBillingSummary(Array.isArray(billingResponse?.data?.items) ? billingResponse.data.items : []);
+    setBillingLoading(true);
+    apiGetAgentBillingSummary({ workspaceId })
+      .then((billingResponse) => {
+        setAgentBillingSummary(
+          Array.isArray(billingResponse?.data?.items) ? billingResponse.data.items : []
+        );
       })
-      .catch((error) => {
-        console.error("Failed to load governance catalog", error);
-        setCatalogAgents([]);
+      .catch(() => {
         setAgentBillingSummary([]);
-        setCatalogError("Nao foi possivel carregar o artefato de governanca dos agentes.");
       })
-      .finally(() => setCatalogLoading(false));
-  }, [workspaceId, token]);
+      .finally(() => setBillingLoading(false));
+  }, [workspaceId]);
 
   const billingSummaryByAgent = useMemo(() => {
     const map = new Map<string, AgentBillingSummaryItem>();

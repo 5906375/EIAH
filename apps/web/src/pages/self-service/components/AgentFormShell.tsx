@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { ApiError, type Agent, type Run, type ShadowExecutionContract } from "@/lib/api";
+import { ApiError, type Run, type ShadowExecutionContract } from "@/lib/api";
 import {
   apiCreateShadowExecutionPreview,
   apiEstimateCost,
   apiGetRun,
-  apiListAgents,
   apiPromoteShadowExecution,
 } from "@/lib/api";
+import { useAgents } from "@/hooks/useAgents";
 import EstimateBadge from "./EstimateBadge";
 import RunStatusCard from "./RunStatusCard";
 import { useSession } from "@/state/sessionStore";
@@ -230,7 +230,11 @@ export default function AgentFormShell<FormValues>({
   buildRequest,
   children,
 }: AgentFormShellProps<FormValues>) {
-  const [agent, setAgent] = useState<Agent | null>(null);
+  const { items: agentItems } = useAgents();
+  const agent = useMemo(
+    () => agentItems.find((item) => item.id === agentId) ?? null,
+    [agentItems, agentId]
+  );
   const [values, setValues] = useState<FormValues>(initialValues);
   const [extraValues, setExtraValues] = useState<Record<string, string>>({});
   const [estimateStatus, setEstimateStatus] = useState<EstimateStatus>("idle");
@@ -243,6 +247,8 @@ export default function AgentFormShell<FormValues>({
   const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
   const [shadowPreview, setShadowPreview] = useState<ShadowExecutionContract | null>(null);
   const [dismissedFollowUpRunId, setDismissedFollowUpRunId] = useState<string | null>(null);
+  const [staleContextWarning, setStaleContextWarning] = useState(false);
+  const [expiredWithPendingDialog, setExpiredWithPendingDialog] = useState(false);
   const { workspaceId = DEFAULT_WORKSPACE_ID } = useSession();
   const { executeAgent } = useAgentExecution();
 
@@ -277,15 +283,6 @@ export default function AgentFormShell<FormValues>({
     setIsFollowUpOpen(false);
     setDismissedFollowUpRunId(null);
   }, [initialValuesKey, initialValues, isEmptyValue, preserveValueKeysOnInitialChange]);
-
-  useEffect(() => {
-    apiListAgents()
-      .then((res) => {
-        const found = res.items.find((item) => item.id === agentId);
-        setAgent(found ?? null);
-      })
-      .catch(() => setAgent(null));
-  }, [agentId]);
 
   const combineValues = useCallback(
     (base: FormValues, extra: Record<string, string>) =>
@@ -375,6 +372,7 @@ export default function AgentFormShell<FormValues>({
       }
 
       setError(null);
+      setStaleContextWarning(false);
       setIsSubmitting(true);
       try {
         const formInput =
@@ -477,6 +475,18 @@ export default function AgentFormShell<FormValues>({
   }, [trackedRunId]);
 
   useEffect(() => {
+    if (!lastRun || !followUpDialog) return;
+    if (followUpDialog.runId !== lastRun.id) return;
+    if (
+      (lastRun.status === "error" || lastRun.status === "blocked") &&
+      dismissedFollowUpRunId === lastRun.id
+    ) {
+      setExpiredWithPendingDialog(true);
+      setIsFollowUpOpen(false);
+    }
+  }, [lastRun, followUpDialog, dismissedFollowUpRunId]);
+
+  useEffect(() => {
     if (!lastRun) return;
 
     const followUp = extractNeedMoreInfo(lastRun.response ?? lastRun.meta);
@@ -513,6 +523,19 @@ export default function AgentFormShell<FormValues>({
     }
     setIsFollowUpOpen(false);
   }, [followUpDialog]);
+
+  const handleRerun = useCallback(
+    (formValues: Record<string, string>) => {
+      updateValues(formValues as Partial<FormValues>);
+      setStaleContextWarning(true);
+      setLastRun(null);
+      setTrackedRunId(null);
+      setShadowPreview(null);
+      setError(null);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    },
+    [updateValues],
+  );
 
   const promoteShadowToProduction = useCallback(async () => {
     if (!shadowPreview) return;
@@ -569,6 +592,50 @@ export default function AgentFormShell<FormValues>({
       </header>
 
       <section className="space-y-6">
+        {staleContextWarning ? (
+          <div className="flex items-start justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-200">
+            <p>
+              Parâmetros recuperados da execução anterior. Revise os campos antes de reexecutar — dados como datas ou contextos podem estar desatualizados.
+            </p>
+            <button
+              type="button"
+              onClick={() => setStaleContextWarning(false)}
+              className="shrink-0 text-amber-200/60 hover:text-amber-200"
+              aria-label="Fechar aviso"
+            >
+              ✕
+            </button>
+          </div>
+        ) : null}
+        {expiredWithPendingDialog && followUpDialog ? (
+          <div className="flex items-start justify-between gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-xs text-rose-200">
+            <div className="space-y-2">
+              <p className="font-semibold">Run expirou com campos pendentes</p>
+              <p className="text-rose-200/80">
+                O agente havia solicitado informações adicionais, mas o run encerrou antes de recebê-las. Os campos preenchidos foram salvos na sessão.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setExpiredWithPendingDialog(false);
+                  setDismissedFollowUpRunId(null);
+                  setIsFollowUpOpen(true);
+                }}
+                className="rounded-full border border-rose-300/40 bg-rose-500/15 px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-rose-200 transition hover:border-rose-200/60 hover:bg-rose-500/25"
+              >
+                Retomar campos preenchidos
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setExpiredWithPendingDialog(false)}
+              className="shrink-0 text-rose-200/60 hover:text-rose-200"
+              aria-label="Fechar aviso"
+            >
+              ✕
+            </button>
+          </div>
+        ) : null}
         <div className="rounded-3xl border border-white/10 bg-surface/80 p-6">
           <form className="space-y-4">
             {children({ values, setValue, updateValues, isSubmitting })}
@@ -643,6 +710,83 @@ export default function AgentFormShell<FormValues>({
                   </ul>
                 </div>
               ) : null}
+              {lastRun &&
+              (lastRun.status === "success" ||
+                lastRun.status === "error" ||
+                lastRun.status === "blocked") ? (
+                <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-4 space-y-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.3em] text-accent/80">
+                    Comparação preview → execução real
+                  </p>
+                  <div className="grid gap-3 sm:grid-cols-3 text-xs">
+                    <div>
+                      <p className="text-muted-foreground">Custo estimado</p>
+                      <p className="mt-1 text-foreground">
+                        {(shadowPreview.preview.estimatedCostCents / 100).toLocaleString("pt-BR", {
+                          style: "currency",
+                          currency: shadowPreview.preview.currency || "BRL",
+                        })}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Custo real</p>
+                      <p
+                        className={`mt-1 ${
+                          typeof lastRun.costCents === "number" &&
+                          lastRun.costCents > shadowPreview.preview.estimatedCostCents
+                            ? "text-rose-300"
+                            : "text-emerald-300"
+                        }`}
+                      >
+                        {typeof lastRun.costCents === "number"
+                          ? (lastRun.costCents / 100).toLocaleString("pt-BR", {
+                              style: "currency",
+                              currency: "BRL",
+                            })
+                          : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Delta</p>
+                      {typeof lastRun.costCents === "number" ? (
+                        <p
+                          className={`mt-1 ${
+                            lastRun.costCents - shadowPreview.preview.estimatedCostCents > 0
+                              ? "text-rose-300"
+                              : "text-emerald-300"
+                          }`}
+                        >
+                          {((lastRun.costCents - shadowPreview.preview.estimatedCostCents) / 100).toLocaleString(
+                            "pt-BR",
+                            { style: "currency", currency: "BRL", signDisplay: "always" },
+                          )}
+                        </p>
+                      ) : (
+                        <p className="mt-1 text-muted-foreground">—</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="pill bg-white/10 text-foreground text-[10px]">
+                      Previsto: {shadowPreview.approvalStatus}
+                    </span>
+                    <span
+                      className={`pill text-[10px] ${
+                        lastRun.status === "success"
+                          ? "bg-emerald-500/15 text-emerald-200"
+                          : "bg-rose-500/15 text-rose-200"
+                      }`}
+                    >
+                      Real: {lastRun.status}
+                    </span>
+                  </div>
+                  {shadowPreview.preview.warnings.length > 0 && lastRun.status !== "success" ? (
+                    <p className="text-[11px] text-amber-200/80">
+                      Preview alertou: &ldquo;{shadowPreview.preview.warnings[0]}&rdquo;
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <button
                   type="button"
@@ -661,7 +805,7 @@ export default function AgentFormShell<FormValues>({
             </div>
           ) : null}
         </div>
-        <RunStatusCard run={lastRun} error={error} />
+        <RunStatusCard run={lastRun} error={error} onRerun={handleRerun} />
       </section>
 
       <NeedMoreInfoDialog
@@ -669,6 +813,7 @@ export default function AgentFormShell<FormValues>({
         request={followUpDialog}
         currentValues={mergedValuesAsStringMap}
         isSubmitting={isSubmitting}
+        runId={followUpDialog?.runId}
         onCancel={handleFollowUpCancel}
         onSubmit={handleFollowUpSubmit}
       />

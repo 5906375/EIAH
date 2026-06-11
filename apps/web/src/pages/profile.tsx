@@ -11,7 +11,6 @@ import {
   apiListHelpdeskSessions,
   apiGetHelpdeskContractCoverage,
   apiDeleteSession,
-  apiListAgents,
   apiListDelegations,
   apiPreviewDelegationRenewal,
   apiRenewDelegation,
@@ -23,6 +22,7 @@ import {
   type ShadowExecutionContract,
 } from "@/lib/api";
 import { clearSession, updateSession, useSession } from "@/state/sessionStore";
+import { useAgents } from "@/hooks/useAgents";
 import { countShadowExecutionsByStage } from "@/lib/economyDerived";
 import { formatBRL } from "@/lib/formatters";
 import type {
@@ -280,9 +280,17 @@ export default function ProfilePage() {
   const [linkedWorkspaces, setLinkedWorkspaces] = React.useState<
     Array<{ id: string; name: string; createdAt?: string; isCurrent: boolean }>
   >([]);
-  const [signedAgents, setSignedAgents] = React.useState<string[]>([]);
-  const [signedAgentsLoading, setSignedAgentsLoading] = React.useState(false);
-  const [signedAgentsError, setSignedAgentsError] = React.useState<string | null>(null);
+  const { items: agentItems, status: agentsStatus, error: agentsError } = useAgents();
+  const signedAgents = React.useMemo(() => {
+    const unique = new Set<string>();
+    agentItems.forEach((agent) => {
+      const label = (agent.name ?? agent.id ?? "").trim();
+      if (label) unique.add(label);
+    });
+    return [...unique];
+  }, [agentItems]);
+  const signedAgentsLoading = agentsStatus === "idle" || agentsStatus === "loading";
+  const signedAgentsError = agentsError;
   const [newWorkspaceName, setNewWorkspaceName] = React.useState("");
   const [workspaceCreateState, setWorkspaceCreateState] = React.useState<
     "idle" | "creating" | "success" | "error"
@@ -625,41 +633,6 @@ export default function ProfilePage() {
     };
   }, [diagnosticsWindow, loadProfileBundle, session.token]);
 
-  React.useEffect(() => {
-    if (!session.token) {
-      setSignedAgents([]);
-      return;
-    }
-    let active = true;
-    setSignedAgentsLoading(true);
-    setSignedAgentsError(null);
-    apiListAgents()
-      .then((response) => {
-        if (!active) return;
-        const unique = new Set<string>();
-        (response.items ?? []).forEach((agent) => {
-          const label = (agent.name ?? agent.id ?? "").trim();
-          if (label) unique.add(label);
-        });
-        setSignedAgents([...unique]);
-      })
-      .catch((error) => {
-        if (!active) return;
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Falha ao carregar agentes do workspace ativo.";
-        setSignedAgentsError(message);
-        setSignedAgents([]);
-      })
-      .finally(() => {
-        if (active) setSignedAgentsLoading(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [session.token, session.tenantId, session.workspaceId]);
 
   React.useEffect(() => {
     if (!session.token) {

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import AgentFormShell from "./components/AgentFormShell";
 import SelfServiceNav from "./components/SelfServiceNav";
 import { resolveRecipeAwareFields, type GenericAgentConfig } from "./config";
@@ -10,22 +10,26 @@ type FormValues = Record<string, string>;
 
 export default function GenericAgentFormPage({ config }: { config: GenericAgentConfig }) {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [linkedRecipe, setLinkedRecipe] = useState<TenantRecipe | null>(null);
+  const [agentRecipes, setAgentRecipes] = useState<TenantRecipe[]>([]);
   const recipeId = searchParams.get("recipeId");
 
   useEffect(() => {
     let active = true;
-    if (!recipeId) {
-      setLinkedRecipe(null);
-      return () => {
-        active = false;
-      };
-    }
-
     apiListTenantRecipes({ view: "tenant" })
       .then((response) => {
         if (!active) return;
-        setLinkedRecipe(response.items.find((item) => item.id === recipeId) ?? null);
+        const all = response.items ?? [];
+        setLinkedRecipe(recipeId ? (all.find((item) => item.id === recipeId) ?? null) : null);
+        setAgentRecipes(
+          all.filter(
+            (item) =>
+              item.status === "homologated" &&
+              item.agentId.toLowerCase() === config.agentId.toLowerCase() &&
+              item.id !== recipeId,
+          ),
+        );
       })
       .catch(() => {
         if (!active) return;
@@ -35,7 +39,7 @@ export default function GenericAgentFormPage({ config }: { config: GenericAgentC
     return () => {
       active = false;
     };
-  }, [recipeId]);
+  }, [recipeId, config.agentId]);
 
   const initialValues = useMemo<FormValues>(
     () => buildRecipePrefillValues(config, linkedRecipe),
@@ -76,6 +80,44 @@ export default function GenericAgentFormPage({ config }: { config: GenericAgentC
   return (
     <div className="space-y-6">
       <SelfServiceNav currentSlug={config.slug} />
+      {agentRecipes.length > 0 ? (
+        <div className="space-y-3">
+          <p className="text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
+            Recipes homologadas — clique para preencher automaticamente
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {agentRecipes.map((recipe) => (
+              <button
+                key={recipe.id}
+                type="button"
+                onClick={() => navigate(`?recipeId=${recipe.id}`)}
+                className="group flex flex-col gap-1 rounded-2xl border border-white/10 bg-white/5 p-4 text-left transition hover:border-accent/50 hover:bg-accent/10"
+              >
+                <span className="text-xs font-semibold text-foreground group-hover:text-accent">
+                  {recipe.title}
+                </span>
+                {recipe.summary ? (
+                  <span className="line-clamp-2 text-[11px] text-muted-foreground">
+                    {recipe.summary}
+                  </span>
+                ) : null}
+                {recipe.tags.length > 0 ? (
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {recipe.tags.slice(0, 3).map((tag) => (
+                      <span
+                        key={tag}
+                        className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] uppercase tracking-[0.18em] text-muted-foreground"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
       {linkedRecipe ? (
         <div className="rounded-2xl border border-accent/20 bg-accent/5 p-4">
           <p className="text-[10px] uppercase tracking-[0.24em] text-accent">Recipe vinculada</p>

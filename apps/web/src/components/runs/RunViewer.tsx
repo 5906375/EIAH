@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ComponentPropsWithoutRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentPropsWithoutRef } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Components } from "react-markdown";
 import {
@@ -391,7 +391,28 @@ function looksLikeGuardianForm(obj: Record<string, unknown>) {
   return guardianSignals && !campaignSignals;
 }
 
-export default function RunViewer({ run }: { run: RunData }) {
+function humanizeEventType(type: string): string {
+  const map: Record<string, string> = {
+    "run.started": "Iniciando execução...",
+    "run.thinking": "Agente processando...",
+    "run.tool.called": "Ferramenta acionada",
+    "run.tool.result": "Resultado recebido",
+    "run.guardrails.evaluated": "Verificando guardrails...",
+    "run.blocked.guardrails": "Bloqueado por guardrails",
+    "run.completed": "Execução concluída",
+    "run.cancelled": "Execução cancelada",
+    "run.error": "Erro na execução",
+  };
+  return map[type] ?? type.replace(/^run\./, "").replace(/\./g, " ");
+}
+
+export default function RunViewer({
+  run,
+  onRerun,
+}: {
+  run: RunData;
+  onRerun?: (formValues: Record<string, string>) => void;
+}) {
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [events, setEvents] = useState<RunEvent[]>([]);
   const [eventsError, setEventsError] = useState<string | null>(null);
@@ -401,6 +422,8 @@ export default function RunViewer({ run }: { run: RunData }) {
   const [isCancellingRun, setIsCancellingRun] = useState(false);
   const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
   const [includeDetailsInExport, setIncludeDetailsInExport] = useState(false);
+  const [justCompleted, setJustCompleted] = useState(false);
+  const prevStatusRef = useRef(run.status);
   const delegationInfo = useMemo(() => extractDelegationInfo(run.request), [run.request]);
   const guardrailBlockMessage =
     "Sua solicitação foi interceptada pela nossa camada de Governança Cognitiva. O agente tentou responder que realizaria uma tarefa, mas não acionou a ferramenta técnica necessária para isso. Por segurança, bloqueamos essa resposta para evitar informações imprecisas sobre execuções que não foram registradas no nosso sistema de auditoria imutável (SCL/Ledger).";
@@ -605,6 +628,31 @@ export default function RunViewer({ run }: { run: RunData }) {
       if (pollTimer) clearInterval(pollTimer);
     };
   }, [run?.id]);
+
+  const rerunValues = useMemo(() => {
+    if (!isPlainObject(run.request)) return null;
+    const req = run.request as Record<string, unknown>;
+    const meta = isPlainObject(req.metadata) ? (req.metadata as Record<string, unknown>) : null;
+    const input = meta?.executionInput ?? meta?.form ?? null;
+    if (!isPlainObject(input)) return null;
+    const result: Record<string, string> = {};
+    for (const [key, value] of Object.entries(input as Record<string, unknown>)) {
+      if (typeof value === "string") result[key] = value;
+    }
+    return Object.keys(result).length > 0 ? result : null;
+  }, [run.request]);
+
+  useEffect(() => {
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = run.status;
+    const wasInProgress = prev === "pending" || prev === "running";
+    const isTerminal = run.status === "success" || run.status === "error" || run.status === "blocked";
+    if (wasInProgress && isTerminal) {
+      setJustCompleted(true);
+      const timer = setTimeout(() => setJustCompleted(false), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [run.status]);
 
   const isPendingWithoutEvents = run.status === "pending" && events.length === 0;
   const pendingWithoutEventsMs =
@@ -995,6 +1043,11 @@ export default function RunViewer({ run }: { run: RunData }) {
             <p className="text-center text-xs leading-relaxed text-amber-100/90">
               Execucao em andamento. A timeline abaixo sera atualizada automaticamente.
             </p>
+            {events.length > 0 ? (
+              <p className="max-w-xs truncate text-center text-[10px] text-amber-100/60">
+                {humanizeEventType(events[events.length - 1].type)}
+              </p>
+            ) : null}
           </div>
         ) : pendingWithoutEventsExpired ? (
           <div className="flex h-full min-h-[160px] flex-col items-center justify-center gap-3 rounded-3xl border border-dashed border-rose-400/40 bg-rose-400/10 p-6 text-xs text-rose-100">
@@ -1028,6 +1081,12 @@ export default function RunViewer({ run }: { run: RunData }) {
           </div>
         )}
       </div>
+
+      {justCompleted ? (
+        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2 text-center text-xs font-semibold text-emerald-200">
+          Execução concluída
+        </div>
+      ) : null}
 
       <RunTimeline
         events={events}
@@ -1092,6 +1151,15 @@ export default function RunViewer({ run }: { run: RunData }) {
         >
           Enviar alertas
         </button>
+        {rerunValues && onRerun ? (
+          <button
+            type="button"
+            className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-foreground transition hover:border-accent/50 hover:text-accent"
+            onClick={() => onRerun(rerunValues)}
+          >
+            Reexecutar com estes parâmetros
+          </button>
+        ) : null}
         {alertFeedback && (
           <span
             className={`text-xs ${

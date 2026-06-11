@@ -1,14 +1,18 @@
 import React, { useMemo } from "react";
+import { Link } from "react-router-dom";
 import type { Run } from "@/lib/api";
 import RunViewer from "@/components/runs/RunViewer";
 import { formatRunErrorSummary } from "./runErrorSummary";
 
+const TERMINAL_STATUSES = new Set(["success", "error", "blocked"] as const);
+
 type Props = {
   run?: Run | null;
   error?: string | null;
+  onRerun?: (formValues: Record<string, string>) => void;
 };
 
-export default function RunStatusCard({ run, error }: Props) {
+export default function RunStatusCard({ run, error, onRerun }: Props) {
   if (!run && !error) {
     return (
       <div className="rounded-2xl border border-white/10 bg-surface/60 p-4 text-xs text-muted-foreground">
@@ -45,6 +49,8 @@ export default function RunStatusCard({ run, error }: Props) {
     };
   }, [run]);
 
+  const isTerminal = TERMINAL_STATUSES.has(run.status as "success" | "error" | "blocked");
+
   return (
     <div className="space-y-3">
       {runErrorSummary ? (
@@ -52,7 +58,18 @@ export default function RunStatusCard({ run, error }: Props) {
           {runErrorSummary}
         </div>
       ) : null}
-      <RunViewer run={runData} />
+      <RunViewer run={runData} onRerun={onRerun} />
+      {isTerminal ? (
+        <div className="flex justify-end">
+          <Link
+            to={`/app/runs?runId=${encodeURIComponent(run.id)}`}
+            className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-[0.18em] text-accent/70 transition hover:text-accent"
+          >
+            Ver no histórico de runs
+            <span aria-hidden>→</span>
+          </Link>
+        </div>
+      ) : null}
     </div>
   );
 }

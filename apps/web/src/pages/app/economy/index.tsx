@@ -1,7 +1,7 @@
 import React from "react";
-import { Link } from "react-router-dom";
 import { apiGetTenantEconomyOpportunities } from "@/lib/api";
 import { formatBRL } from "@/lib/formatters";
+import { isAdminProfile } from "@/lib/roles";
 import { useSession } from "@/state/sessionStore";
 import type { EconomyOpportunitySnapshot } from "@/types";
 
@@ -13,12 +13,7 @@ function formatDate(iso: string) {
 
 export default function EconomyPage() {
   const session = useSession();
-  const roleProfile = session.experience?.roleProfile ?? "workspace_member";
-  const isAdminView =
-    roleProfile === "workspace_admin" ||
-    roleProfile === "tenant_admin" ||
-    roleProfile === "founder_global" ||
-    roleProfile === "service_operator";
+  const isAdminView = isAdminProfile(session.experience?.roleProfile);
 
   const [snapshot, setSnapshot] = React.useState<EconomyOpportunitySnapshot | null>(null);
   const [scope, setScope] = React.useState<"tenant" | "workspace">("workspace");
@@ -113,14 +108,6 @@ export default function EconomyPage() {
                 Ciclo anterior
               </button>
             </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Link to="/app/billing" className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground">
-              Voltar para Billing
-            </Link>
-            <Link to="/profile" className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground">
-              Ver Profile
-            </Link>
           </div>
         </div>
       </div>
