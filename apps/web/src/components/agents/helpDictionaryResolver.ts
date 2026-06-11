@@ -1,4 +1,7 @@
+import { AGENT_HELP_DICTIONARY } from "@/components/agents/helpDictionary.agents";
+import { BILLING_HELP_DICTIONARY } from "@/components/agents/helpDictionary.billing";
 import { GLOBAL_HELP_DICTIONARY } from "@/components/agents/helpDictionary.global";
+import { GOVERNANCE_HELP_DICTIONARY } from "@/components/agents/helpDictionary.governance";
 import {
   buildResolvedHelpSnapshotFromResponse,
   entryMatchesInput,
@@ -10,11 +13,22 @@ import {
   type ResolvedHelpSnapshot,
 } from "@/components/agents/helpDictionary";
 import { PAGE_HELP_DICTIONARY } from "@/components/agents/helpDictionary.pages";
+import { PRODUCT_STRATEGY_HELP_DICTIONARY } from "@/components/agents/helpDictionary.productStrategy";
 import { VERTICAL_HELP_DICTIONARY } from "@/components/agents/helpDictionary.verticals";
+import { WORKFLOW_HELP_DICTIONARY } from "@/components/agents/helpDictionary.workflows";
 
 type HelpRouteIntent = "proposal" | "imob" | "playbook" | "help" | "orchestrator";
 
-const ALL_HELP_DICTIONARY = [...GLOBAL_HELP_DICTIONARY, ...PAGE_HELP_DICTIONARY, ...VERTICAL_HELP_DICTIONARY];
+const ALL_HELP_DICTIONARY = [
+  ...GLOBAL_HELP_DICTIONARY,
+  ...PAGE_HELP_DICTIONARY,
+  ...VERTICAL_HELP_DICTIONARY,
+  ...AGENT_HELP_DICTIONARY,
+  ...WORKFLOW_HELP_DICTIONARY,
+  ...GOVERNANCE_HELP_DICTIONARY,
+  ...BILLING_HELP_DICTIONARY,
+  ...PRODUCT_STRATEGY_HELP_DICTIONARY,
+];
 for (const entry of ALL_HELP_DICTIONARY) validateHelpDictionaryEntry(entry);
 
 function hasWorkspaceContext(accessContext?: HelpDictionaryAccessContext | null) {
@@ -59,11 +73,16 @@ function buildClarifySnapshot() {
         "- marketplace",
         "- self-service",
       ].join("\n"),
-      quickReplies: ["Explicar plataforma", "Explicar agentes", "Explicar Chat IMOB", "Explicar Billing"],
+      quickReplies: ["Explicar plataforma", "Explicar agentes", "Explicar Chat IMOB"],
     },
     scopeHint: "global",
     confidence: 0.7,
   });
+}
+
+function resolveScopeHint(entry: HelpDictionaryEntry) {
+  if (entry.scope === "fallback") return "fallback";
+  return entry.scope;
 }
 
 function buildNotFoundSnapshot() {
@@ -105,7 +124,7 @@ function buildBlockedSnapshot(entry: HelpDictionaryEntry, accessContext?: HelpDi
         ].join("\n"),
         quickReplies: ["Ativar módulo no Marketplace", "Verificar acesso"],
       },
-      scopeHint: entry.scope === "vertical" ? "vertical" : entry.scope === "page" ? "page" : "global",
+      scopeHint: resolveScopeHint(entry),
     });
   }
 
@@ -120,7 +139,7 @@ function buildBlockedSnapshot(entry: HelpDictionaryEntry, accessContext?: HelpDi
       ].join("\n"),
       quickReplies: ["Selecionar workspace", "Verificar acesso"],
     },
-    scopeHint: entry.scope === "vertical" ? "vertical" : entry.scope === "page" ? "page" : "global",
+    scopeHint: resolveScopeHint(entry),
   });
 }
 
@@ -159,7 +178,7 @@ function resolveEntrySnapshot(
         ...response,
         quickReplies: sanitizeHelpQuickReplies(response.quickReplies),
       },
-      scopeHint: entry.scope === "vertical" ? "vertical" : entry.scope === "page" ? "page" : "global",
+      scopeHint: resolveScopeHint(entry),
       confidence: 0.84,
     }),
   };
@@ -186,8 +205,8 @@ export function resolveHelpDictionarySnapshot(params: {
   });
   if (pageEntry) return pageEntry;
 
-  const shouldCheckVertical = params.routeIntent === "imob" || normalizedInput.includes("imob") || normalizedInput.includes("imobili");
-  if (shouldCheckVertical) {
+  const hasVerticalHint = normalizedInput.includes("imob") || normalizedInput.includes("imobili");
+  if (params.routeIntent === "imob") {
     const verticalEntry = resolveEntrySnapshot(findBestEntry(VERTICAL_HELP_DICTIONARY, normalizedInput), {
       input: params.input,
       normalizedInput,
@@ -196,6 +215,56 @@ export function resolveHelpDictionarySnapshot(params: {
     });
     if (verticalEntry) return verticalEntry;
   }
+
+  const agentEntry = resolveEntrySnapshot(findBestEntry(AGENT_HELP_DICTIONARY, normalizedInput), {
+    input: params.input,
+    normalizedInput,
+    accessContext: params.accessContext,
+    routeIntent: params.routeIntent,
+  });
+  if (agentEntry) return agentEntry;
+
+  const workflowEntry = resolveEntrySnapshot(findBestEntry(WORKFLOW_HELP_DICTIONARY, normalizedInput), {
+    input: params.input,
+    normalizedInput,
+    accessContext: params.accessContext,
+    routeIntent: params.routeIntent,
+  });
+  if (workflowEntry) return workflowEntry;
+
+  if (hasVerticalHint) {
+    const verticalEntry = resolveEntrySnapshot(findBestEntry(VERTICAL_HELP_DICTIONARY, normalizedInput), {
+      input: params.input,
+      normalizedInput,
+      accessContext: params.accessContext,
+      routeIntent: params.routeIntent,
+    });
+    if (verticalEntry) return verticalEntry;
+  }
+
+  const governanceEntry = resolveEntrySnapshot(findBestEntry(GOVERNANCE_HELP_DICTIONARY, normalizedInput), {
+    input: params.input,
+    normalizedInput,
+    accessContext: params.accessContext,
+    routeIntent: params.routeIntent,
+  });
+  if (governanceEntry) return governanceEntry;
+
+  const billingEntry = resolveEntrySnapshot(findBestEntry(BILLING_HELP_DICTIONARY, normalizedInput), {
+    input: params.input,
+    normalizedInput,
+    accessContext: params.accessContext,
+    routeIntent: params.routeIntent,
+  });
+  if (billingEntry) return billingEntry;
+
+  const productStrategyEntry = resolveEntrySnapshot(findBestEntry(PRODUCT_STRATEGY_HELP_DICTIONARY, normalizedInput), {
+    input: params.input,
+    normalizedInput,
+    accessContext: params.accessContext,
+    routeIntent: params.routeIntent,
+  });
+  if (productStrategyEntry) return productStrategyEntry;
 
   const globalEntry = resolveEntrySnapshot(findBestEntry(GLOBAL_HELP_DICTIONARY, normalizedInput), {
     input: params.input,

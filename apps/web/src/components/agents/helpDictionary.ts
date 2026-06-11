@@ -1,4 +1,15 @@
-export type HelpDictionaryScope = "global" | "page" | "vertical" | "fallback";
+export type HelpDictionaryScope =
+  | "global"
+  | "page"
+  | "vertical"
+  | "agent"
+  | "workflow"
+  | "governance"
+  | "billing"
+  | "productStrategy"
+  | "fallback";
+
+export type HelpDictionaryScopeHint = Exclude<HelpDictionaryScope, "fallback"> | "fallback";
 
 export type HelpFallbackType = "clarify" | "blocked" | "not_found";
 export type HelpResolutionType = "resolved" | HelpFallbackType;
@@ -26,7 +37,7 @@ export type ResolvedHelpSnapshot = {
   intent: {
     intentId: string | null;
     confidence: number;
-    scopeHint?: "page" | "vertical" | "global";
+    scopeHint?: HelpDictionaryScopeHint;
     needsClarification?: boolean;
   };
   responseType: HelpResolutionType;
@@ -95,12 +106,12 @@ export function sanitizeHelpQuickReplies(quickReplies: string[]) {
     .map((label) => label.trim())
     .filter(Boolean)
     .filter((label, index, array) => array.indexOf(label) === index)
-    .slice(0, 4);
+    .slice(0, 3);
 }
 
 export function buildResolvedHelpSnapshotFromResponse(params: {
   response: HelpDictionaryResponse;
-  scopeHint: "page" | "vertical" | "global";
+  scopeHint: HelpDictionaryScopeHint;
   confidence?: number;
 }): ResolvedHelpSnapshot {
   const responseType = params.response.responseType ?? "resolved";

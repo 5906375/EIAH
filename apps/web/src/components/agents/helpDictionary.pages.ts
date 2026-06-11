@@ -5,7 +5,7 @@ export const PAGE_HELP_DICTIONARY: HelpDictionaryEntry[] = [
     id: "page.billing.overview",
     scope: "page",
     pageId: "billing",
-    matcherTerms: ["como funciona o billing", "billing", "invoice", "cobranca", "controle financeiro"],
+    matcherTerms: ["como funciona o billing", "como funciona a página billing", "billing overview", "invoice overview"],
     resolve: () => ({
       intentId: "billing_overview",
       content: [
@@ -95,7 +95,7 @@ export const PAGE_HELP_DICTIONARY: HelpDictionaryEntry[] = [
     id: "page.agents.overview",
     scope: "page",
     pageId: "agents",
-    matcherTerms: ["explicar agentes", "agentes", "como funciona a area de agentes", "como funciona a página de agentes"],
+    matcherTerms: ["como funciona a página de agentes", "como funciona a area de agentes por pagina", "pagina de agentes"],
     resolve: () => ({
       intentId: "agents_page_overview_quick",
       content: [
@@ -109,28 +109,6 @@ export const PAGE_HELP_DICTIONARY: HelpDictionaryEntry[] = [
         "- decidir quando seguir com o `EIAH` ou quando aprofundar em um especialista",
       ].join("\n"),
       quickReplies: ["Como ler os cards dos agentes", "Quando usar o EIAH e quando usar especialista", "Verificar acesso"],
-    }),
-  },
-  {
-    id: "page.agents.cards",
-    scope: "page",
-    pageId: "agents",
-    matcherTerms: ["como ler os cards dos agentes", "como ler os cards de agentes", "cards dos agentes"],
-    resolve: () => ({
-      intentId: "agents_card_reading",
-      content: [
-        "**Como ler os cards dos agentes**",
-        "",
-        "Ao olhar um agente, observe principalmente:",
-        "- especialidade",
-        "- disponibilidade no workspace",
-        "- risco e necessidade de aprovação",
-        "- integrações declaradas",
-        "- comprovantes ou contexto exigidos",
-        "",
-        "No inventário governado, esses campos ajudam a decidir se o agente está adequado ao caso e ao nível de governança exigido.",
-      ].join("\n"),
-      quickReplies: ["Como funciona a área de Agentes", "Quando usar o EIAH e quando usar especialista"],
     }),
   },
   {
@@ -154,30 +132,10 @@ export const PAGE_HELP_DICTIONARY: HelpDictionaryEntry[] = [
     }),
   },
   {
-    id: "page.chat.vs_imob",
-    scope: "page",
-    pageId: "chat",
-    matcherTerms: ["qual a diferenca entre chat e chat imob", "qual a diferença entre chat e chat imob", "quando usar chat imob", "chat vs chat imob"],
-    resolve: () => ({
-      intentId: "platform_chat_vs_imob_quick",
-      content: [
-        "**Chat principal e Chat IMOB: quando usar cada um**",
-        "",
-        "- `Chat principal`: triagem, páginas da plataforma, comparação de caminhos e próximo passo",
-        "- `Chat IMOB`: orientação contextual de casos e jornadas da operação imobiliária",
-        "",
-        "Regra prática:",
-        "- comece no `Chat` quando a dúvida ainda estiver aberta",
-        "- use `Chat IMOB` quando o caso já for claramente imobiliário",
-      ].join("\n"),
-      quickReplies: ["Como funciona a triagem do EIAH", "Quando usar Chat versus Runs", "Como funciona o handoff para especialista"],
-    }),
-  },
-  {
     id: "page.self_service.overview",
     scope: "page",
     pageId: "self_service",
-    matcherTerms: ["como funciona o self-service", "self-service", "self service", "formulario guiado"],
+    matcherTerms: ["como funciona a página self-service", "pagina self-service", "página self-service"],
     resolve: () => ({
       intentId: "self_service_overview",
       content: [

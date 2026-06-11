@@ -10,7 +10,7 @@ function normalizeIntentText(value: string) {
 }
 
 function getAgentDisplayName(agent: Agent | null | undefined) {
-  return agent?.chatCopy?.displayName || agent?.name || agent?.agent || "EIAH";
+  return agent?.name || "EIAH";
 }
 
 export function isAgentPresentationQuestion(input: string) {

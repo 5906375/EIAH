@@ -18,6 +18,7 @@ import {
   detectLauncherRouteIntent,
   resolveLauncherProposalDecision,
 } from "./chatLauncherEngine.ts";
+import { resolveHelpDictionarySnapshot } from "./helpDictionaryResolver.ts";
 
 function createProposalSnapshot(
   overrides: Partial<MessagePresentationSnapshot> = {}
@@ -335,59 +336,94 @@ test("engine resolves help by explicit priority: page then vertical then global"
 });
 
 test("self-service help reply explains guided flows and recipes", () => {
-  const reply = buildDeterministicHelpReply("como funciona o self-service?");
+  const snapshot = resolveHelpDictionarySnapshot({
+    input: "como funciona o self-service?",
+    routeIntent: "help",
+    accessContext: { tenantId: "tenant-A", workspaceId: "workspace-A" },
+  });
 
-  assert.ok(reply);
-  assert.match(reply, /Como funciona o Self-service/i);
-  assert.match(reply, /fluxos guiados|recipes|workspace/i);
+  assert.ok(snapshot);
+  assert.match(snapshot?.content ?? "", /Como funciona o Self-service/i);
+  assert.match(snapshot?.content ?? "", /fluxos guiados|recipes|workspace/i);
+  assert.equal(snapshot?.intent.scopeHint, "workflow");
 });
 
 test("recipes help reply explains draft and homologated states", () => {
-  const reply = buildDeterministicHelpReply("qual a diferenca entre draft e homologado?");
+  const snapshot = resolveHelpDictionarySnapshot({
+    input: "qual a diferenca entre draft e homologado?",
+    routeIntent: "help",
+    accessContext: { tenantId: "tenant-A", workspaceId: "workspace-A" },
+  });
 
-  assert.ok(reply);
-  assert.match(reply, /Como funcionam recipes/i);
-  assert.match(reply, /draft|homologated/i);
+  assert.ok(snapshot);
+  assert.match(snapshot?.content ?? "", /Como funcionam recipes/i);
+  assert.match(snapshot?.content ?? "", /draft|homologated/i);
+  assert.equal(snapshot?.intent.scopeHint, "workflow");
 });
 
 test("preview and production help reply differentiates simulation from execution", () => {
-  const reply = buildDeterministicHelpReply("qual a diferenca entre preview e producao?");
+  const snapshot = resolveHelpDictionarySnapshot({
+    input: "qual a diferenca entre preview e producao?",
+    routeIntent: "help",
+    accessContext: { tenantId: "tenant-A", workspaceId: "workspace-A" },
+  });
 
-  assert.ok(reply);
-  assert.match(reply, /Preview, rodar agora e promover para producao/i);
-  assert.match(reply, /Simular|Promover para producao|execucao real/i);
+  assert.ok(snapshot);
+  assert.match(snapshot?.content ?? "", /Preview, rodar agora e promover para producao/i);
+  assert.match(snapshot?.content ?? "", /Simular|Promover para producao|execucao real/i);
+  assert.equal(snapshot?.intent.scopeHint, "workflow");
 });
 
 test("run creation help reply exposes clickable shortcut markdown", () => {
-  const reply = buildDeterministicHelpReply("como criar um run no eiah?");
+  const snapshot = resolveHelpDictionarySnapshot({
+    input: "como criar um run no eiah?",
+    routeIntent: "help",
+    accessContext: { tenantId: "tenant-A", workspaceId: "workspace-A" },
+  });
 
-  assert.ok(reply);
-  assert.match(reply, /\[Runs · criar\]\(\/app\/runs#runs-criar\)/);
+  assert.ok(snapshot);
+  assert.match(snapshot?.content ?? "", /\[Runs · criar\]\(\/app\/runs#runs-criar\)/);
+  assert.equal(snapshot?.intent.scopeHint, "workflow");
 });
 
 test("billing help reply exposes clickable billing link", () => {
-  const reply = buildDeterministicHelpReply("como funciona o billing?");
+  const snapshot = resolveHelpDictionarySnapshot({
+    input: "como funciona o billing?",
+    routeIntent: "help",
+    accessContext: { tenantId: "tenant-A", workspaceId: "workspace-A" },
+  });
 
-  assert.ok(reply);
-  assert.match(reply, /Controle financeiro|Billing & Quotas/i);
-  assert.match(reply, /filtro por período|ledger gaps|audit gaps|custo auditável/i);
-  assert.match(reply, /Pricing oficial|Controle financeiro|Guia Interativo/i);
-  assert.match(reply, /\[Billing\]\(\/app\/billing\)/);
-  assert.match(reply, /\[Guia Interativo de Billing & Quotas\]\(\/app\/billing#billing-guide-footer\)/);
-  assert.match(reply, /\[Pricing oficial\]\(\/app\/self-service#pricing-oficial\)/);
+  assert.ok(snapshot);
+  assert.match(snapshot?.content ?? "", /Controle financeiro|Billing & Quotas/i);
+  assert.match(snapshot?.content ?? "", /filtro por período|ledger gaps|audit gaps|custo auditável/i);
+  assert.match(snapshot?.content ?? "", /Pricing oficial|Controle financeiro|Guia Interativo/i);
+  assert.match(snapshot?.content ?? "", /\[Billing\]\(\/app\/billing\)/);
+  assert.match(snapshot?.content ?? "", /\[Guia Interativo de Billing & Quotas\]\(\/app\/billing#billing-guide-footer\)/);
+  assert.match(snapshot?.content ?? "", /\[Pricing oficial\]\(\/app\/self-service#pricing-oficial\)/);
+  assert.equal(snapshot?.intent.scopeHint, "page");
 });
 
 test("billing semantic help clarifies where to see price and difference from billing", () => {
-  const wherePriceReply = buildDeterministicHelpReply("onde vejo o preço?");
-  const compareReply = buildDeterministicHelpReply("qual a diferença entre pricing e billing?");
+  const wherePriceReply = resolveHelpDictionarySnapshot({
+    input: "onde vejo o preço?",
+    routeIntent: "help",
+    accessContext: { tenantId: "tenant-A", workspaceId: "workspace-A" },
+  });
+  const compareReply = resolveHelpDictionarySnapshot({
+    input: "qual a diferença entre pricing e billing?",
+    routeIntent: "help",
+    accessContext: { tenantId: "tenant-A", workspaceId: "workspace-A" },
+  });
 
   assert.ok(wherePriceReply);
-  assert.match(wherePriceReply, /Onde ver preço no EIAH|Pricing oficial/i);
-  assert.match(wherePriceReply, /Billing/i);
+  assert.match(wherePriceReply?.content ?? "", /Onde ver preço no EIAH|Pricing oficial/i);
+  assert.match(wherePriceReply?.content ?? "", /Billing/i);
+  assert.equal(wherePriceReply?.intent.scopeHint, "billing");
 
   assert.ok(compareReply);
-  assert.match(compareReply, /Pricing oficial|Controle financeiro|Guia Interativo/i);
-  assert.match(compareReply, /preço do plano|visão financeira ampla|consumo real/i);
+  assert.match(compareReply?.content ?? "", /Pricing oficial|Controle financeiro|Guia Interativo/i);
+  assert.match(compareReply?.content ?? "", /preço do plano|visão financeira ampla|consumo real/i);
+  assert.equal(compareReply?.intent.scopeHint, "billing");
 });
 
 test("economy help reply explains page purpose and relation with billing and runs", () => {
@@ -418,11 +454,16 @@ test("profile help reply explains workspace validation and access context", () =
 });
 
 test("agent not enabled help reply explains assignment versus billing", () => {
-  const reply = buildDeterministicHelpReply("por que o agente nao esta habilitado no workspace?");
+  const snapshot = resolveHelpDictionarySnapshot({
+    input: "por que o agente nao esta habilitado no workspace?",
+    routeIntent: "help",
+    accessContext: { tenantId: "tenant-A", workspaceId: "workspace-A" },
+  });
 
-  assert.ok(reply);
-  assert.match(reply, /agente nao esta habilitado no workspace/i);
-  assert.match(reply, /workspaceAgentAssignment|billing|assignment/i);
+  assert.ok(snapshot);
+  assert.match(snapshot?.content ?? "", /agente nao esta habilitado no workspace/i);
+  assert.match(snapshot?.content ?? "", /billing|workspace/i);
+  assert.equal(snapshot?.intent.scopeHint, "governance");
 });
 
 test("site capabilities follow-up maps to platform overview instead of generic fallback", () => {
@@ -434,55 +475,95 @@ test("site capabilities follow-up maps to platform overview instead of generic f
 });
 
 test("fast-path follow-up does not fall into API help", () => {
-  const reply = buildDeterministicHelpReply("passo a passo rápido sem cair em burocracia");
+  const snapshot = resolveHelpDictionarySnapshot({
+    input: "passo a passo rápido sem cair em burocracia",
+    routeIntent: "help",
+    accessContext: { tenantId: "tenant-A", workspaceId: "workspace-A" },
+  });
 
-  assert.ok(reply);
-  assert.match(reply, /Caminho rápido sem burocracia/i);
-  assert.doesNotMatch(reply ?? "", /API no EIAH/i);
+  assert.ok(snapshot);
+  assert.match(snapshot?.content ?? "", /Caminho rápido sem burocracia/i);
+  assert.doesNotMatch(snapshot?.content ?? "", /API no EIAH/i);
+  assert.equal(snapshot?.intent.scopeHint, "workflow");
 });
 
 test("agents follow-up returns agents overview", () => {
-  const reply = buildDeterministicHelpReply("Agentes.");
+  const snapshot = resolveHelpDictionarySnapshot({
+    input: "Agentes.",
+    routeIntent: "help",
+    accessContext: { tenantId: "tenant-A", workspaceId: "workspace-A" },
+  });
 
-  assert.ok(reply);
-  assert.match(reply, /Como pensar a área de Agentes/i);
-  assert.match(reply, /especialista|workspace/i);
+  assert.ok(snapshot);
+  assert.match(snapshot?.content ?? "", /Como pensar a área de Agentes/i);
+  assert.match(snapshot?.content ?? "", /especialista|workspace/i);
+  assert.equal(snapshot?.intent.scopeHint, "agent");
 });
 
 test("agents help replies explain cards and when to use EIAH versus specialist", () => {
-  const cardsReply = buildDeterministicHelpReply("como ler os cards dos agentes?");
-  const comparisonReply = buildDeterministicHelpReply("quando usar o EIAH e quando usar especialista?");
+  const cardsReply = resolveHelpDictionarySnapshot({
+    input: "como ler os cards dos agentes?",
+    routeIntent: "help",
+    accessContext: { tenantId: "tenant-A", workspaceId: "workspace-A" },
+  });
+  const comparisonReply = resolveHelpDictionarySnapshot({
+    input: "quando usar o EIAH e quando usar especialista?",
+    routeIntent: "help",
+    accessContext: { tenantId: "tenant-A", workspaceId: "workspace-A" },
+  });
 
   assert.ok(cardsReply);
-  assert.match(cardsReply, /Como ler os cards dos agentes/i);
-  assert.match(cardsReply, /especialidade|disponibilidade|risco|integrações|comprovantes/i);
+  assert.match(cardsReply?.content ?? "", /Como ler os cards dos agentes/i);
+  assert.match(cardsReply?.content ?? "", /especialidade|disponibilidade|risco|integrações|comprovantes/i);
+  assert.equal(cardsReply?.intent.scopeHint, "agent");
 
   assert.ok(comparisonReply);
-  assert.match(comparisonReply, /Quando usar o EIAH e quando usar especialista/i);
-  assert.match(comparisonReply, /triagem|profundidade/i);
+  assert.match(comparisonReply?.content ?? "", /Quando usar o EIAH e quando usar especialista/i);
+  assert.match(comparisonReply?.content ?? "", /triagem|profundidade/i);
+  assert.equal(comparisonReply?.intent.scopeHint, "agent");
 });
 
 test("chat help replies explain chat versus chat IMOB, triage, handoff and chat versus runs", () => {
-  const chatVsImobReply = buildDeterministicHelpReply("qual a diferença entre chat e chat imob?");
-  const triageReply = buildDeterministicHelpReply("como funciona a triagem do eiah?");
-  const handoffReply = buildDeterministicHelpReply("como o eiah faz handoff para especialista?");
-  const chatVsRunsReply = buildDeterministicHelpReply("quando usar chat versus runs?");
+  const chatVsImobReply = resolveHelpDictionarySnapshot({
+    input: "qual a diferença entre chat e chat imob?",
+    routeIntent: "help",
+    accessContext: { tenantId: "tenant-A", workspaceId: "workspace-A" },
+  });
+  const triageReply = resolveHelpDictionarySnapshot({
+    input: "como funciona a triagem do eiah?",
+    routeIntent: "help",
+    accessContext: { tenantId: "tenant-A", workspaceId: "workspace-A" },
+  });
+  const handoffReply = resolveHelpDictionarySnapshot({
+    input: "como o eiah faz handoff para especialista?",
+    routeIntent: "help",
+    accessContext: { tenantId: "tenant-A", workspaceId: "workspace-A" },
+  });
+  const chatVsRunsReply = resolveHelpDictionarySnapshot({
+    input: "quando usar chat versus runs?",
+    routeIntent: "help",
+    accessContext: { tenantId: "tenant-A", workspaceId: "workspace-A" },
+  });
 
   assert.ok(chatVsImobReply);
-  assert.match(chatVsImobReply, /Chat principal e Chat IMOB/i);
-  assert.match(chatVsImobReply, /triagem|imobiliária|imobiliario|imobiliário/i);
+  assert.match(chatVsImobReply?.content ?? "", /Chat principal e Chat IMOB/i);
+  assert.match(chatVsImobReply?.content ?? "", /triagem|imobiliária|imobiliario|imobiliário/i);
+  assert.equal(chatVsImobReply?.intent.scopeHint, "workflow");
 
   assert.ok(triageReply);
-  assert.match(triageReply, /triagem do EIAH/i);
-  assert.match(triageReply, /intenção|plataforma|especialista/i);
+  assert.match(triageReply?.content ?? "", /triagem do EIAH/i);
+  assert.match(triageReply?.content ?? "", /intenção|plataforma|especialista/i);
+  assert.equal(triageReply?.intent.scopeHint, "workflow");
 
   assert.ok(handoffReply);
-  assert.match(handoffReply, /handoff para especialista/i);
-  assert.match(handoffReply, /profundidade|domínio|contexto/i);
+  assert.match(handoffReply?.content ?? "", /handoff para especialista/i);
+  assert.match(handoffReply?.content ?? "", /profundidade|domínio|contexto/i);
+  assert.equal(handoffReply?.intent.scopeHint, "workflow");
 
   assert.ok(chatVsRunsReply);
-  assert.match(chatVsRunsReply, /Quando usar Chat e quando usar Runs/i);
-  assert.match(chatVsRunsReply, /executar|caminho|especialista/i);
+  assert.match(chatVsRunsReply?.content ?? "", /Quando usar Chat e quando usar Runs/i);
+  assert.match(chatVsRunsReply?.content ?? "", /executar|caminho|especialista/i);
+  assert.equal(chatVsRunsReply?.intent.scopeHint, "workflow");
 });
 
 test("documentary IMOB search entry routes to IMOB instead of generic help", () => {
