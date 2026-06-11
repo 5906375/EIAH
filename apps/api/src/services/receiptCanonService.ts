@@ -243,3 +243,66 @@ export function buildLedgerReceiptCanonV1(params: BuildReceiptCanonParams): Rece
     ],
   };
 }
+
+// --- Economy Receipt v1 ---
+// Envelope econômico unificado: run + settlement + dispute + trust + policy.
+// Versiona evidência contábil multi-tenant de forma auditável.
+// v1.0: bundleHash e executionReceiptHash são nullable (tornados obrigatórios em v1.1).
+
+export type EconomyReceiptEnvelope = {
+  specVersion: "economy.receipt.v1";
+  generatedAt: string;
+  tenantId: string;
+  workspaceId: string;
+  verticalScope: string;
+  agentId: string | null;
+  runId: string;
+  bundleHash: string | null;
+  txId: string | null;
+  settlementId: string | null;
+  disputeId: string | null;
+  executionReceiptHash: string | null;
+  trustSnapshot: {
+    scoreBefore: number | null;
+    scoreAfter: number | null;
+    scoreDelta: number;
+    policy: string;
+  } | null;
+  policyDecision: {
+    code: string;
+    outcome: "approved" | "rejected" | "pending";
+    decidedAt: string | null;
+    decidedBy: string | null;
+  };
+  receiptHash: string;
+};
+
+export type BuildEconomyReceiptParams = Omit<
+  EconomyReceiptEnvelope,
+  "specVersion" | "generatedAt" | "receiptHash"
+>;
+
+export function buildEconomyReceiptV1(
+  params: BuildEconomyReceiptParams
+): EconomyReceiptEnvelope {
+  const body: Omit<EconomyReceiptEnvelope, "receiptHash"> = {
+    specVersion: "economy.receipt.v1",
+    generatedAt: new Date().toISOString(),
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    verticalScope: params.verticalScope,
+    agentId: params.agentId,
+    runId: params.runId,
+    bundleHash: params.bundleHash,
+    txId: params.txId,
+    settlementId: params.settlementId,
+    disputeId: params.disputeId,
+    executionReceiptHash: params.executionReceiptHash,
+    trustSnapshot: params.trustSnapshot,
+    policyDecision: params.policyDecision,
+  };
+  return {
+    ...body,
+    receiptHash: receiptHash(body as Record<string, unknown>),
+  };
+}

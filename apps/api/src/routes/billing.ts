@@ -49,6 +49,7 @@ import {
   listBillingDisputes,
   transitionBillingDispute,
 } from "../services/reputationDisputes";
+import { buildEconomyReceiptV1 } from "../services/receiptCanonService";
 import { getBillingReconciliationSummary } from "../services/billingReconciliation";
 import { buildTenantEfficiencyIntelligence } from "../services/optimizationRecommendationAggregator";
 import { readTenantEconomyOpportunitySnapshot } from "../services/economyOpportunityAggregator";
@@ -308,6 +309,49 @@ billingRouter.post("/webhooks/billing/:provider?", async (req, res) => {
         source: "webhook",
       },
     });
+
+    if (process.env.ECONOMY_RECEIPT_V1_ENABLED === "true") {
+      const economyReceipt = buildEconomyReceiptV1({
+        tenantId: settled.intent.tenantId,
+        workspaceId: settled.intent.workspaceId,
+        verticalScope:
+          parseNonEmptyString(
+            (settled.intent.metadata as Record<string, unknown> | null)
+              ?.verticalScope as string | undefined
+          ) ?? "default",
+        agentId,
+        runId: settled.intent.runId ?? "no-run",
+        bundleHash: null,
+        txId: settled.intent.externalId ?? null,
+        settlementId: settled.intent.id,
+        disputeId: null,
+        executionReceiptHash: null,
+        trustSnapshot: {
+          scoreBefore: null,
+          scoreAfter: null,
+          scoreDelta: 1,
+          policy: "webhook.settlement.v1",
+        },
+        policyDecision: {
+          code: "SETTLEMENT_WEBHOOK_ACCEPTED",
+          outcome: "approved",
+          decidedAt: new Date().toISOString(),
+          decidedBy: "system",
+        },
+      });
+      await (prismaGlobal as any).guardrailLedger.upsert({
+        where: {
+          eventKey: `economy.receipt.v1:${settled.intent.tenantId}:${settled.intent.workspaceId}:${settled.intent.runId ?? "no-run"}:${settled.intent.id}`,
+        },
+        create: {
+          eventKey: `economy.receipt.v1:${settled.intent.tenantId}:${settled.intent.workspaceId}:${settled.intent.runId ?? "no-run"}:${settled.intent.id}`,
+          tenantId: settled.intent.tenantId,
+          workspaceId: settled.intent.workspaceId,
+          payload: economyReceipt as unknown as Record<string, unknown>,
+        },
+        update: {},
+      });
+    }
   }
 
   return res.status(200).json({
