@@ -143,7 +143,16 @@ export type HelpResolutionType = "resolved" | HelpFallbackType;
 export type ResolvedIntent = {
   intentId: string | null;
   confidence: number;
-  scopeHint?: "page" | "vertical" | "global";
+  scopeHint?:
+    | "page"
+    | "vertical"
+    | "global"
+    | "agent"
+    | "workflow"
+    | "governance"
+    | "billing"
+    | "productStrategy"
+    | "fallback";
   needsClarification?: boolean;
 };
 
@@ -560,7 +569,16 @@ function buildResolvedHelpSnapshot(params: {
   };
   hasExactIntentPriority: boolean;
   accessContext?: LauncherAccessContext | null;
-  scopeHint?: "page" | "vertical" | "global";
+  scopeHint?:
+    | "page"
+    | "vertical"
+    | "global"
+    | "agent"
+    | "workflow"
+    | "governance"
+    | "billing"
+    | "productStrategy"
+    | "fallback";
 }): ResolvedHelpSnapshot {
   const responseType = classifyTutorHelpResponseType(params.tutorReply.intentId);
   return {
@@ -616,7 +634,7 @@ function filterResolvedEiahQuickReplies(quickReplies: string[], accessContext?: 
     .filter(Boolean)
     .filter((label, index, array) => array.indexOf(label) === index)
     .filter((label) => canResolveEiahQuickReplyLabel(label, accessContext))
-    .slice(0, 4);
+    .slice(0, 3);
 }
 
 function buildResolvedHelpDecision(params: {

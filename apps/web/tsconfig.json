@@ -17,5 +17,6 @@
       "@eiah/core/*": ["../../packages/core/src/*"]
     }
   },
-  "include": ["src", "../../docs/RunViewer.js", "../../docs/AgentBuilder/RunTimeline.js"]
+  "include": ["src", "../../docs/RunViewer.js", "../../docs/AgentBuilder/RunTimeline.js"],
+  "exclude": ["**/*.test.ts", "**/*.test.tsx"]
 }
