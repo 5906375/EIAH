@@ -1,0 +1,38 @@
+{
+  "date": "2026-06-11",
+  "scope": "F3 metrics panel in IMOB chat",
+  "supersedes": "imob-chat-f3-metrics-panel-smoke-2026-03-09.json",
+  "status": "stable",
+  "backend": {
+    "endpoints": [
+      "GET /api/imob/chat/telemetry/summary (windowHours, conversationId)",
+      "POST /api/imob/chat/telemetry (already active)"
+    ],
+    "aggregates": ["avg", "p95", "min", "max per event"],
+    "totals": [
+      "messageToPlanAvgMs",
+      "planToExecuteAvgMs",
+      "chatToRunCoveragePct",
+      "persistSuccessRatePct"
+    ],
+    "commercial": ["businessExports", "recommendedActionSelections", "caseRecoveries"]
+  },
+  "frontend": {
+    "page": "/app/imob/chat",
+    "features": [
+      "metrics panel with 4 KPIs",
+      "periodic telemetry refresh every 15s",
+      "telemetry emission on plan/execute/persist flows"
+    ]
+  },
+  "ape_gate": {
+    "pr": "IMOB-03",
+    "script": "scripts/checkImobChatTelemetry.ts",
+    "snapshotWindow": "168h (7 days)",
+    "phase": "warn-only"
+  },
+  "validation": {
+    "web_build": "pass",
+    "command": "pnpm -C apps/web build"
+  }
+}

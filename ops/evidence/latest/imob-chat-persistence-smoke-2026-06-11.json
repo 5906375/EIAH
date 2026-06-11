@@ -1,0 +1,48 @@
+{
+  "date": "2026-06-11",
+  "scope": "IMOB Chat F1 persistence",
+  "supersedes": "imob-chat-persistence-smoke-2026-03-09.json",
+  "environment": {
+    "runner": "docker exec eiah-api",
+    "database": "postgres (eiah-postgres)",
+    "redis": "redis (eiah-redis)"
+  },
+  "test": {
+    "file": "apps/api/src/tests/imob.chat.persistence.contract.test.ts",
+    "command": "node --import tsx --test apps/api/src/tests/imob.chat.persistence.contract.test.ts",
+    "result": "pass",
+    "assertions": [
+      "create conversation returns 201 + conversationId",
+      "append user message returns 201",
+      "append assistant message returns 201",
+      "list conversations returns created conversation",
+      "list messages returns persisted history in order",
+      "run correlation derives txId / receiptPath / bundlePath / proof from linked run",
+      "proof.required / proof.ready / proof.state asserted",
+      "mismatch run+thread returns 409 RUN_THREAD_MISMATCH",
+      "snapshot linkedReceipts >= 1 after proof link",
+      "export returns receiptPath / bundlePath / proof fields for linked message"
+    ]
+  },
+  "hardening": {
+    "pr": "IMOB-01",
+    "change": "after hook now closes all Redis handles opened by import('../index')",
+    "closesFunctions": [
+      "closeMemoryResources",
+      "closeRedisPublisher",
+      "closeRunEventPublisherResources",
+      "closeTenantPolicyStoreResources",
+      "closeCriticalMetricsRedis",
+      "closeCriticalKillSwitchRedis",
+      "closeRunEventStream",
+      "closeRunEventsTransport",
+      "closeRunQueueConnections"
+    ],
+    "patternRef": "imob.chat.resolve-turn.contract.test.ts",
+    "expectedExit": "EXIT:0 without 45s timeout"
+  },
+  "notes": {
+    "previous_exit": "EXIT:124 (open handles) resolved by IMOB-01",
+    "functional_status": "all assertions pass"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "date": "2026-06-11",
+  "scope": "IMOB Chat F2+F3 UX and telemetry",
+  "supersedes": "imob-chat-f2-f3-ux-telemetry-smoke-2026-03-09.json",
+  "changes": {
+    "f2_sidebar": {
+      "status": "stable",
+      "items": [
+        "sidebar com lista de conversas",
+        "busca local por titulo/preview",
+        "preview com tempo relativo",
+        "status visual por conversa (normal|attention|success)",
+        "acao nova conversa"
+      ]
+    },
+    "f3_binding": {
+      "status": "stable",
+      "items": [
+        "binding mensagem->runId/txId/receipt/bundle persistido",
+        "fallback de runId invalido sem quebra de persistencia",
+        "proof block atualizado no polling de run"
+      ]
+    },
+    "f3_telemetry": {
+      "status": "active",
+      "endpoint": "POST /api/imob/chat/telemetry",
+      "events": [
+        "message_to_plan_ms",
+        "plan_to_execute_ms",
+        "chat_to_run_link_coverage",
+        "message_persist_success_rate"
+      ]
+    }
+  },
+  "telemetry_gate": {
+    "pr": "IMOB-03",
+    "generator": "scripts/generateImobChatTelemetrySnapshot.ts",
+    "check": "scripts/checkImobChatTelemetry.ts",
+    "snapshotFormat": "ops/evidence/latest/imob-chat-telemetry-snapshot-{date}.json",
+    "thresholds": {
+      "chatToRunCoveragePct": { "warn": 90, "noGo": 80 },
+      "persistSuccessRatePct": { "warn": 95, "noGo": 85 }
+    },
+    "phase": "warn-only (warnOnly: true until 2 clean APE cycles)"
+  },
+  "validation": {
+    "web_build": "pass",
+    "ape_gate": "plugged in ape_cycle_weekly.cjs",
+    "command": "pnpm check:imob-chat-telemetry"
+  }
+}
