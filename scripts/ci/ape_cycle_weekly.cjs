@@ -22,6 +22,9 @@ const checks = [
   ['check:origin-security', ['pnpm', 'check:origin-security']],
   ['check:tls-compliance', ['pnpm', 'check:tls-compliance']],
   ['check:runbook-drill-recency', ['pnpm', 'check:runbook-drill-recency']],
+  ['check:imob-chat-telemetry', ['pnpm', 'check:imob-chat-telemetry']],
+  ['check:imob-chat-persistence', ['pnpm', 'check:imob-chat-persistence']],
+  ['check:imob-chat-export', ['pnpm', 'check:imob-chat-export']],
 ];
 
 function runOne(id, cmd) {
