@@ -6,6 +6,15 @@ import supertest from "supertest";
 import { prismaGlobal } from "@repo/db";
 
 let request: ReturnType<typeof supertest>;
+let closeRunEventStream: () => Promise<unknown>;
+let closeRunEventsTransport: () => Promise<unknown>;
+let closeRunQueueConnections: () => Promise<unknown>;
+let closeMemoryResources: () => Promise<unknown>;
+let closeRedisPublisher: () => Promise<unknown>;
+let closeRunEventPublisherResources: () => Promise<unknown>;
+let closeTenantPolicyStoreResources: () => Promise<unknown>;
+let closeCriticalMetricsRedis: () => Promise<unknown>;
+let closeCriticalKillSwitchRedis: () => Promise<unknown>;
 
 const suffix = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 const tenantId = `tenant-imob-chat-${suffix}`;
@@ -15,6 +24,15 @@ const apiToken = `tok-imob-chat-${suffix}`;
 
 before(async () => {
   process.env.NODE_ENV = "test";
+  ({ closeRunEventStream } = await import("../services/runEventStream"));
+  ({ closeRunEventsTransport } = await import("../services/runEvents"));
+  ({ closeRunQueueConnections } = await import("@eiah/core/queue/runQueue"));
+  ({ closeMemoryResources } = await import("../services/memory"));
+  ({ closeRedisPublisher } = await import("../../../../packages/core/src/events/redisPublisher"));
+  ({ closeRunEventPublisherResources } = await import("../../../../packages/core/src/events/runEventPublisher.js"));
+  ({ closeTenantPolicyStoreResources } = await import("../../../../packages/core/policy/TenantPolicyStore"));
+  ({ closeCriticalMetricsRedis } = await import("../../../../packages/core/src/metrics/criticalMetrics.js"));
+  ({ closeCriticalKillSwitchRedis } = await import("../../../../packages/core/src/security/killSwitch.js"));
   const { default: app } = await import("../index");
   request = supertest(app);
 
@@ -45,6 +63,15 @@ after(async () => {
       AND agent_id = 'imob-chat'
   `;
   await prismaGlobal.$disconnect();
+  await closeMemoryResources();
+  await closeRedisPublisher();
+  await closeRunEventPublisherResources();
+  await closeTenantPolicyStoreResources();
+  await closeCriticalMetricsRedis();
+  await closeCriticalKillSwitchRedis();
+  await closeRunEventStream();
+  await closeRunEventsTransport();
+  await closeRunQueueConnections();
 });
 
 test("IMOB chat persistence: create conversation, append messages and list history", async () => {

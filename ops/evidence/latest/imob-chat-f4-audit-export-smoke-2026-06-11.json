@@ -1,0 +1,46 @@
+{
+  "date": "2026-06-11",
+  "scope": "IMOB Chat F4 audit export",
+  "supersedes": "imob-chat-f4-audit-export-smoke-2026-03-09.json",
+  "backend": {
+    "endpoint": "GET /api/imob/chat/conversations/:conversationId/export",
+    "payload": [
+      "conversation metadata",
+      "messages with runId / txId / receiptPath / bundlePath",
+      "proof.verifyUrl = /api/ledger/{txId} when txId present, null otherwise",
+      "proof.state / proof.ready / proof.required",
+      "telemetry totals and metrics",
+      "audit.hash sha256 (64-char hex)",
+      "audit.hashAlgo: sha256",
+      "both 'export' and 'exported' keys present (backwards compat)"
+    ]
+  },
+  "contract_test": {
+    "pr": "IMOB-02",
+    "file": "apps/api/src/tests/imob.chat.export.contract.test.ts",
+    "assertions": [
+      "verifyUrl equals receiptPath equals /api/ledger/{encodeURIComponent(txId)}",
+      "verifyUrl is null when txId absent",
+      "audit.hash is 64-char lowercase sha256 hex",
+      "audit.hashAlgo is 'sha256'",
+      "both 'export' and 'exported' keys present in response",
+      "message count identical across two consecutive calls",
+      "txId / receiptPath / bundlePath / proof.verifyUrl / proof.state / proof.ready stable across calls"
+    ],
+    "handlesClosed": true,
+    "patternRef": "imob.chat.resolve-turn.contract.test.ts"
+  },
+  "frontend": {
+    "page": "/app/imob/chat",
+    "actions": ["Export JSON button", "Export PDF button"],
+    "files": [
+      "apps/web/src/pages/app/imob/chat.tsx",
+      "apps/web/src/lib/api.ts"
+    ]
+  },
+  "validation": {
+    "web_build": "pass",
+    "contract_test": "pass",
+    "command": "node --import tsx --test apps/api/src/tests/imob.chat.export.contract.test.ts"
+  }
+}

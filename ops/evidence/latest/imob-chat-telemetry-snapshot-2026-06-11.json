@@ -1,0 +1,29 @@
+{
+  "specVersion": "imob-chat-telemetry.v1",
+  "generatedAt": "2026-06-11T14:24:00.150Z",
+  "windowHours": 168,
+  "source": "no-api-access",
+  "previousSnapshot": null,
+  "sampleCount": 0,
+  "warnOnly": true,
+  "totals": {
+    "chatToRunCoveragePct": null,
+    "persistSuccessRatePct": null,
+    "messageToPlanAvgMs": null,
+    "planToExecuteAvgMs": null
+  },
+  "commercial": {
+    "businessExports": null
+  },
+  "thresholds": {
+    "chatToRunCoveragePct": {
+      "warn": 90,
+      "noGo": 80
+    },
+    "persistSuccessRatePct": {
+      "warn": 95,
+      "noGo": 85
+    },
+    "note": "warnOnly:true — thresholds registrados mas não bloqueantes até ratificação (IMOB-04)"
+  }
+}
