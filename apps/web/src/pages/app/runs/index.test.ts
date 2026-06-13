@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import type { ImobCase } from "@/lib/api";
-import { buildImobCaseList, formatImobProcessLabel } from "./imobCommandCenter";
+import { buildImobCaseList, formatImobProcessLabel } from "@/features/imob/imobCommandCenterHelper";
 
 function createImobCase(overrides: Partial<ImobCase>): ImobCase {
   return {

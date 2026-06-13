@@ -1,12 +1,12 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { ApiError, apiListRuns, type Run } from "@/lib/api";
+import { ApiError, apiListImobCaseCosts, apiListRuns, type ImobCaseCostSnapshot, type Run } from "@/lib/api";
 import { formatBRL } from "@/lib/formatters";
 import { ImobAccessGateCard } from "@/components/imob/ImobAccessGateCard";
 import { resolveImobAccessGateCopy } from "@/features/imob/accessGateCatalog";
 import { useSession } from "@/state/sessionStore";
 
-type ProcessRow = {
+export type ProcessRow = {
   runId: string;
   client: string;
   partner: string;
@@ -83,7 +83,7 @@ const syntheticProcesses: ProcessRow[] = [
   },
 ];
 
-function mapRunToProcess(run: Run): ProcessRow {
+export function mapRunToProcess(run: Run): ProcessRow {
   const request = (run.request && typeof run.request === "object" ? run.request : null) as Record<string, unknown> | null;
   const metadata = (run.meta && typeof run.meta === "object" ? run.meta : null) as Record<string, unknown> | null;
   const action = typeof request?.action === "string" ? request.action : run.agent;
@@ -100,8 +100,40 @@ function mapRunToProcess(run: Run): ProcessRow {
     status: run.status,
     risk,
     txId: run.txId ?? (typeof metadata?.txId === "string" ? metadata.txId : null),
-    costCents: typeof run.costCents === "number" ? run.costCents : 0,
+    costCents: 0,
   };
+}
+
+export function mergeProcessesWithCostSnapshot(
+  runs: Run[],
+  costItems: ImobCaseCostSnapshot["items"],
+): ProcessRow[] {
+  const relevantRuns = runs.filter((item) => {
+    const request = (item.request && typeof item.request === "object" ? item.request : null) as Record<string, unknown> | null;
+    const action = typeof request?.action === "string" ? request.action : item.agent;
+    return action.includes("realestate.") || action.toLowerCase().includes("imob");
+  });
+  const mapped = relevantRuns.map(mapRunToProcess);
+  const costByCaseId = new Map(
+    costItems.map((item) => [item.caseId, Number(item.costCents ?? 0)]),
+  );
+  const costByThreadId = new Map(
+    costItems
+      .filter((item) => typeof item.threadId === "string" && item.threadId.trim().length > 0)
+      .map((item) => [String(item.threadId), Number(item.costCents ?? 0)]),
+  );
+
+  return mapped.map((item, index) => {
+    const run = relevantRuns[index];
+    const caseCost =
+      (typeof run?.caseId === "string" ? costByCaseId.get(run.caseId) : undefined)
+      ?? (typeof run?.threadId === "string" ? costByThreadId.get(run.threadId) : undefined)
+      ?? 0;
+    return {
+      ...item,
+      costCents: caseCost,
+    };
+  });
 }
 
 function statusTone(status: string) {
@@ -152,14 +184,17 @@ const ImobProcessesPage: React.FC = () => {
     setFetchError(null);
 
     void apiListRuns({ page: 1, size: 20, workspaceId: session.workspaceId })
-      .then((response) => {
+      .then(async (response) => {
         if (!mounted) return;
-        const mapped = (response.items ?? []).map(mapRunToProcess).filter((item) => {
-          return item.action.includes("realestate.") || item.action.toLowerCase().includes("imob");
-        });
+        const costsResponse = await apiListImobCaseCosts({ windowDays: 30 });
+        if (!mounted) return;
+        const itemsWithCost = mergeProcessesWithCostSnapshot(
+          response.items ?? [],
+          costsResponse.data.items ?? [],
+        );
 
-        if (mapped.length > 0) {
-          setProcesses(mapped);
+        if (itemsWithCost.length > 0) {
+          setProcesses(itemsWithCost);
           setSource("real");
         } else {
           setProcesses(syntheticProcesses);

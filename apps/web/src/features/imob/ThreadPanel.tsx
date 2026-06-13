@@ -39,9 +39,9 @@ function getThreadStageSummary(thread: ImobChatThread) {
 
 function getThreadPrimaryCta(thread: ImobChatThread): { label: string; href: string } {
   const label = thread.label.toLowerCase();
-  if (label.includes("captação")) return { label: "Abrir dashboard", href: "/app/imob/dashboard?section=imoveis#dashboard-hub" };
-  if (label.includes("busca")) return { label: "Abrir dashboard", href: "/app/imob/dashboard?section=parceiros#dashboard-hub" };
-  return { label: "Abrir dashboard", href: "/app/imob/dashboard?section=processos#dashboard-hub" };
+  if (label.includes("captação")) return { label: "Abrir dashboard", href: "/app/imob/dashboard?section=imoveis&cc=open#command-center" };
+  if (label.includes("busca")) return { label: "Abrir dashboard", href: "/app/imob/dashboard?section=parceiros&cc=open#command-center" };
+  return { label: "Abrir dashboard", href: "/app/imob/dashboard?section=processos&cc=open#command-center" };
 }
 
 function getThreadtimeline(thread: ImobChatThread): HumantimelineStep[] {

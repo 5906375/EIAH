@@ -7,10 +7,34 @@ type Props = {
   buildHref: (item: ImobPriorityQueueItem) => string;
 };
 
+function urgencyLabel(value: ImobPriorityQueueItem["urgency"]) {
+  if (value === "critical") return "Crítico";
+  if (value === "high") return "Alto";
+  if (value === "medium") return "Médio";
+  return "Baixo";
+}
+
 function urgencyTone(value: ImobPriorityQueueItem["urgency"]) {
   if (value === "critical" || value === "high") return "text-rose-300 border-rose-400/40";
   if (value === "medium") return "text-amber-200 border-amber-300/30";
   return "text-emerald-300 border-emerald-400/40";
+}
+
+function followUpRiskLabel(value: string | null | undefined) {
+  if (value === "high") return "Follow-up crítico";
+  if (value === "medium") return "Follow-up médio";
+  if (value === "low") return "Follow-up baixo";
+  return `Follow-up ${value}`;
+}
+
+function waitingOnLabel(value: string | null | undefined) {
+  if (value === "internal") return "Aguard. Interno";
+  if (value === "legal") return "Aguard. Jurídico";
+  if (value === "finance") return "Aguard. Financeiro";
+  if (value === "broker") return "Aguard. Corretor";
+  if (value === "lead") return "Aguard. Lead";
+  if (value === "owner") return "Aguard. Proprietário";
+  return `Aguard. ${value}`;
 }
 
 export const ImobPriorityQueue: React.FC<Props> = ({ items, buildHref }) => {
@@ -36,15 +60,19 @@ export const ImobPriorityQueue: React.FC<Props> = ({ items, buildHref }) => {
                 </p>
               </div>
               <span className={`rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.15em] ${urgencyTone(item.urgency)}`}>
-                {item.urgency || "low"}
+                {urgencyLabel(item.urgency)}
               </span>
             </div>
             <div className="mt-3 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
               {item.followUpRisk ? (
-                <span className="rounded-full border border-white/15 bg-white/5 px-2 py-1">follow-up {item.followUpRisk}</span>
+                <span className="rounded-full border border-white/15 bg-white/5 px-2 py-1">
+                  {followUpRiskLabel(item.followUpRisk)}
+                </span>
               ) : null}
               {item.waitingOn ? (
-                <span className="rounded-full border border-white/15 bg-white/5 px-2 py-1">waiting on {item.waitingOn}</span>
+                <span className="rounded-full border border-white/15 bg-white/5 px-2 py-1">
+                  {waitingOnLabel(item.waitingOn)}
+                </span>
               ) : null}
               {typeof item.agingHours === "number" ? (
                 <span className="rounded-full border border-white/15 bg-white/5 px-2 py-1">{item.agingHours.toFixed(1)}h</span>

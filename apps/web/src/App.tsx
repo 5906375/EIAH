@@ -253,20 +253,38 @@ function LegacyAgentsRedirect() {
   return <Navigate to={`/app/chat${location.search}${location.hash}`} replace />;
 }
 
+function RunsRoute() {
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const isLegacyImobEntry = searchParams.get("domain") === "imob" && !searchParams.get("runId");
+
+  if (isLegacyImobEntry) {
+    const nextParams = new URLSearchParams();
+    const section = (searchParams.get("section") || "").trim();
+    nextParams.set("section", section || "processos");
+    nextParams.set("cc", "open");
+    for (const key of ["conversationId", "threadId", "caseId"]) {
+      const value = (searchParams.get(key) || "").trim();
+      if (value) nextParams.set(key, value);
+    }
+    const nextQuery = nextParams.toString();
+    return <Navigate to={`/app/imob/dashboard${nextQuery ? `?${nextQuery}` : ""}#command-center`} replace />;
+  }
+
+  return (
+    <Layout>
+      <RequireAuth>
+        <RunsPage />
+      </RequireAuth>
+    </Layout>
+  );
+}
+
 function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<DefaultLanding />} />
-      <Route
-        path="/app/runs"
-        element={
-          <Layout>
-            <RequireAuth>
-              <RunsPage />
-            </RequireAuth>
-          </Layout>
-        }
-      />
+      <Route path="/app/runs" element={<RunsRoute />} />
       <Route
         path="/app/chat"
         element={
@@ -339,19 +357,19 @@ function AppRoutes() {
       <Route
         path="/app/imob/properties"
         element={
-          <Navigate to="/app/imob/dashboard?section=imoveis#dashboard-hub" replace />
+          <Navigate to="/app/imob/dashboard?section=imoveis&cc=open#command-center" replace />
         }
       />
       <Route
         path="/app/imob/processes"
         element={
-          <Navigate to="/app/imob/dashboard?section=processos#dashboard-hub" replace />
+          <Navigate to="/app/imob/dashboard?section=processos&cc=open#command-center" replace />
         }
       />
       <Route
         path="/app/imob/partners"
         element={
-          <Navigate to="/app/imob/dashboard?section=parceiros#dashboard-hub" replace />
+          <Navigate to="/app/imob/dashboard?section=parceiros&cc=open#command-center" replace />
         }
       />
       <Route

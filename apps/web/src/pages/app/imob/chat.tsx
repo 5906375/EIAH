@@ -698,7 +698,7 @@ function normalizeCardCta(cta: CardCta): CardCta {
   return {
     ...cta,
     label: "Abrir Dashboard",
-    href: `/app/imob/dashboard?section=${section}#dashboard-hub`,
+    href: `/app/imob/dashboard?section=${section}&cc=open#command-center`,
   };
 }
 
@@ -1102,17 +1102,17 @@ function getIntentActionCtas(intent: ImobExecutionRequest["intent"]): CardCta[] 
   switch (intent) {
     case "capture":
     case "listing":
-      return [{ id: "go-dashboard", label: "Abrir Dashboard", kind: "neutral", href: "/app/imob/dashboard?section=imoveis#dashboard-hub" }];
+      return [{ id: "go-dashboard", label: "Abrir Dashboard", kind: "neutral", href: "/app/imob/dashboard?section=imoveis&cc=open#command-center" }];
     case "match":
     case "lead":
     case "visit":
-      return [{ id: "go-dashboard", label: "Abrir Dashboard", kind: "neutral", href: "/app/imob/dashboard?section=parceiros#dashboard-hub" }];
+      return [{ id: "go-dashboard", label: "Abrir Dashboard", kind: "neutral", href: "/app/imob/dashboard?section=parceiros&cc=open#command-center" }];
     case "proposal":
     case "contract":
     case "commission":
     case "adjustment":
     default:
-      return [{ id: "go-dashboard", label: "Abrir Dashboard", kind: "neutral", href: "/app/imob/dashboard?section=processos#dashboard-hub" }];
+      return [{ id: "go-dashboard", label: "Abrir Dashboard", kind: "neutral", href: "/app/imob/dashboard?section=processos&cc=open#command-center" }];
   }
 }
 

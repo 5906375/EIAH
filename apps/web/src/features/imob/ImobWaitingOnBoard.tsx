@@ -8,12 +8,12 @@ type Props = {
 };
 
 function waitingOnLabel(value: ImobWaitingOnBucket["waitingOn"]) {
-  if (value === "broker") return "Broker";
+  if (value === "broker") return "Corretor";
   if (value === "lead") return "Lead";
-  if (value === "owner") return "Owner";
-  if (value === "legal") return "Legal";
-  if (value === "finance") return "Finance";
-  return "Internal";
+  if (value === "owner") return "Proprietário";
+  if (value === "legal") return "Jurídico";
+  if (value === "finance") return "Financeiro";
+  return "Interno";
 }
 
 export const ImobWaitingOnBoard: React.FC<Props> = ({ items, buildHref }) => {
@@ -21,7 +21,7 @@ export const ImobWaitingOnBoard: React.FC<Props> = ({ items, buildHref }) => {
     <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 sm:p-6">
       <div className="flex items-center justify-between gap-2">
         <div>
-          <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">Waiting On</h2>
+          <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">Aguardando por área</h2>
           <p className="mt-1 text-sm text-muted-foreground">Leia rapidamente onde o funil está parado por área.</p>
         </div>
         <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
@@ -38,31 +38,35 @@ export const ImobWaitingOnBoard: React.FC<Props> = ({ items, buildHref }) => {
               </span>
             </div>
             <div className="mt-3 space-y-2">
-              {bucket.items.slice(0, 3).map((item) => (
-                <div key={`${bucket.waitingOn}-${item.caseId}`} className="rounded-xl border border-white/10 bg-surface/30 p-3">
-                  <p className="text-xs font-medium text-foreground">{item.title}</p>
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    {item.nextStep || item.currentObjective || "Sem próximo passo"}
-                  </p>
-                  <div className="mt-2 flex items-center justify-between gap-2">
-                    <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                      {typeof item.agingHours === "number" ? `${item.agingHours.toFixed(1)}h` : "—"}
-                    </span>
-                    <Link
-                      to={buildHref(item)}
-                      className="text-[10px] uppercase tracking-[0.16em] text-accent hover:text-accent/80"
-                    >
-                      Agir Agora
-                    </Link>
+              {bucket.items.slice(0, 3).map((item) => {
+                const subtitle = item.nextStep || item.currentObjective || null;
+                const showSubtitle = subtitle && subtitle.trim() !== item.title.trim();
+                return (
+                  <div key={`${bucket.waitingOn}-${item.caseId}`} className="rounded-xl border border-white/10 bg-surface/30 p-3">
+                    <p className="text-xs font-medium text-foreground">{item.title}</p>
+                    {showSubtitle ? (
+                      <p className="mt-1 text-[11px] text-muted-foreground">{subtitle}</p>
+                    ) : null}
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                        {typeof item.agingHours === "number" ? `${item.agingHours.toFixed(1)}h` : "—"}
+                      </span>
+                      <Link
+                        to={buildHref(item)}
+                        className="text-[10px] uppercase tracking-[0.16em] text-accent hover:text-accent/80"
+                      >
+                        Agir Agora
+                      </Link>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </article>
         ))}
         {items.length === 0 ? (
           <p className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-muted-foreground">
-            Nenhum agrupamento de waiting on no recorte atual.
+            Nenhum agrupamento no recorte atual.
           </p>
         ) : null}
       </div>
