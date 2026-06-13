@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@repo/db";
+import { IMOB_REASON_CODE_CATALOG } from "../control/imobReasonCodeCatalog";
 import { recordImobCrmAuditEvent } from "./imobCrmAudit";
 import {
   planCaseShadowExecutions,
@@ -167,6 +168,43 @@ function resolveLeadEventType(params: {
 function mapOperationalCaseStatus(operationalStatus: string) {
   if (operationalStatus === "ready_for_review") return "ready_for_review";
   return "pending_data";
+}
+
+function isTerminalCaseState(params: { stage?: string | null; status?: string | null }) {
+  const stage = normalizeText(params.stage);
+  const status = normalizeText(params.status);
+  return (
+    stage === "closing"
+    || stage === "settled"
+    || status === "done"
+    || status === "completed"
+    || status === "success"
+  );
+}
+
+function buildTerminalCaseEventRef(params: {
+  caseId: string;
+  flow: string;
+  stage: string;
+  status: string;
+}) {
+  return `case-terminal:${params.caseId}:${params.flow}:${params.stage}:${params.status}`;
+}
+
+function buildTerminalCaseEventSummary(params: {
+  flow: string;
+  stage: string;
+  status: string;
+}) {
+  return `Case ${params.flow} reached terminal state (${params.stage}/${params.status})`;
+}
+
+function buildOwnerAssignmentEventRef(params: {
+  caseId: string;
+  ownerResponsible: string;
+}) {
+  const normalizedOwner = normalizeComparableToken(params.ownerResponsible)?.replace(/[^a-z0-9]+/g, "-") ?? "owner";
+  return `case-owner-assigned:${params.caseId}:${normalizedOwner}`;
 }
 
 export class ImobCrmMutationService {
@@ -686,7 +724,7 @@ export class ImobCrmMutationService {
   async updateCase(scope: Scope, caseId: string, input: Partial<CaseInput>) {
     const existing = await this.prisma.imobCase.findFirst({
       where: { id: caseId, tenantId: scope.tenantId, workspaceId: scope.workspaceId },
-      select: { id: true, flow: true, stage: true, status: true },
+      select: { id: true, flow: true, stage: true, status: true, ownerResponsible: true },
     });
     if (!existing) return { status: "not_found" as const };
 
@@ -702,6 +740,46 @@ export class ImobCrmMutationService {
       },
     });
 
+    const nextFlow = input.flow ?? existing.flow;
+    const nextStage = input.stage ?? existing.stage;
+    const nextStatus = input.status ?? existing.status;
+    const resolvedOwnerResponsible = input.ownerResponsible ?? existing.ownerResponsible ?? null;
+    const shouldCreateTerminalEvent =
+      !isTerminalCaseState({ stage: existing.stage, status: existing.status })
+      && isTerminalCaseState({ stage: nextStage, status: nextStatus });
+    if (shouldCreateTerminalEvent && !asString(resolvedOwnerResponsible)) {
+      return {
+        status: "responsible_required" as const,
+        reasonCode: "CASE_RESPONSIBLE_REQUIRED" as const,
+        nextAction: IMOB_REASON_CODE_CATALOG.CASE_RESPONSIBLE_REQUIRED.nextAction ?? "ASSIGN_RESPONSIBLE_MANUALLY",
+        context: {
+          caseId: existing.id,
+          flow: nextFlow,
+          stage: nextStage,
+          status: nextStatus,
+        },
+      };
+    }
+    const terminalEventRef = shouldCreateTerminalEvent
+      ? buildTerminalCaseEventRef({
+          caseId: existing.id,
+          flow: nextFlow,
+          stage: nextStage,
+          status: nextStatus,
+        })
+      : null;
+    const existingTerminalEvent = terminalEventRef
+      ? await this.prisma.imobCaseEvent.findFirst({
+          where: {
+            caseId: existing.id,
+            tenantId: scope.tenantId,
+            workspaceId: scope.workspaceId,
+            evidenceRef: terminalEventRef,
+          } as any,
+          select: { id: true } as any,
+        })
+      : null;
+
     const updated = await this.prisma.$transaction(async (tx) => {
       const item = await tx.imobCase.update({
         where: { id: existing.id },
@@ -710,7 +788,7 @@ export class ImobCrmMutationService {
           ...(input.flow !== undefined && input.flow !== null ? { flow: input.flow } : {}),
           ...(input.stage !== undefined && input.stage !== null ? { stage: input.stage } : {}),
           ...(input.status !== undefined && input.status !== null ? { status: input.status } : {}),
-          ...(input.ownerResponsible !== undefined ? { ownerResponsible: input.ownerResponsible } : {}),
+          ...(resolvedOwnerResponsible ? { ownerResponsible: resolvedOwnerResponsible } : {}),
           ...(input.nextStep !== undefined ? { nextStep: input.nextStep } : {}),
           ...(input.blockers !== undefined ? { blockers: input.blockers } : {}),
           ...(input.pendingItems !== undefined ? { pendingItems: input.pendingItems } : {}),
@@ -742,6 +820,32 @@ export class ImobCrmMutationService {
         },
       });
 
+      if (shouldCreateTerminalEvent && terminalEventRef && !existingTerminalEvent) {
+        await tx.imobCaseEvent.create({
+          data: {
+            imobCase: { connect: { id: item.id } },
+            tenant: { connect: { id: scope.tenantId } },
+            workspace: { connect: { id: scope.workspaceId } },
+            ...(input.eventRunId ? { run: { connect: { id: input.eventRunId } } } : {}),
+            type: "case.completed",
+            actorType: input.eventActorType ?? "system",
+            actorRef: input.eventActorRef ?? null,
+            summary: buildTerminalCaseEventSummary({
+              flow: item.flow,
+              stage: item.stage,
+              status: item.status,
+            }),
+            evidenceRef: terminalEventRef,
+            payload: {
+              flow: item.flow,
+              stage: item.stage,
+              status: item.status,
+              terminalSource: "mutation.update_case",
+            } as any,
+          },
+        });
+      }
+
       return item;
     });
 
@@ -766,6 +870,142 @@ export class ImobCrmMutationService {
     });
 
     return { status: "updated" as const, data: updated, previous: existing };
+  }
+
+  async assignOwnerToCase(scope: Scope, caseId: string, input: {
+    ownerResponsible: string;
+    eventRunId?: string | null;
+    eventEvidenceRef?: string | null;
+    eventActorType?: string | null;
+    eventActorRef?: string | null;
+    eventPayload?: unknown;
+  }) {
+    const existing = await this.prisma.imobCase.findFirst({
+      where: { id: caseId, tenantId: scope.tenantId, workspaceId: scope.workspaceId },
+      select: { id: true, flow: true, stage: true, status: true, ownerResponsible: true },
+    });
+    if (!existing) return { status: "not_found" as const };
+
+    const nextOwnerResponsible = asString(input.ownerResponsible);
+    if (!nextOwnerResponsible) {
+      return {
+        status: "assignment_forbidden" as const,
+        reasonCode: "MEMBER_NOT_ELIGIBLE_AS_RESPONSIBLE" as const,
+        nextAction: IMOB_REASON_CODE_CATALOG.MEMBER_NOT_ELIGIBLE_AS_RESPONSIBLE.nextAction ?? null,
+        context: { caseId: existing.id, ownerResponsible: input.ownerResponsible ?? null },
+      };
+    }
+
+    if (asString(existing.ownerResponsible) && existing.ownerResponsible !== nextOwnerResponsible) {
+      return {
+        status: "assignment_forbidden" as const,
+        reasonCode: "CASE_OWNER_ASSIGNMENT_FORBIDDEN" as const,
+        nextAction: IMOB_REASON_CODE_CATALOG.CASE_OWNER_ASSIGNMENT_FORBIDDEN.nextAction ?? null,
+        context: {
+          caseId: existing.id,
+          currentOwnerResponsible: existing.ownerResponsible,
+          attemptedOwnerResponsible: nextOwnerResponsible,
+          flow: existing.flow,
+          stage: existing.stage,
+          status: existing.status,
+        },
+      };
+    }
+
+    const previous = await this.prisma.imobCase.findFirst({
+      where: { id: existing.id },
+      include: {
+        owner: { select: { id: true, name: true } },
+        property: { select: { id: true, propertyType: true, city: true, neighborhood: true } },
+        lead: { select: { id: true, name: true } },
+      },
+    });
+
+    const assignmentEventRef = input.eventEvidenceRef ?? buildOwnerAssignmentEventRef({
+      caseId: existing.id,
+      ownerResponsible: nextOwnerResponsible,
+    });
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const existingAssignmentEvent = await tx.imobCaseEvent.findFirst({
+        where: {
+          caseId: existing.id,
+          tenantId: scope.tenantId,
+          workspaceId: scope.workspaceId,
+          evidenceRef: assignmentEventRef,
+        } as any,
+        select: { id: true } as any,
+      });
+
+      const item = await tx.imobCase.update({
+        where: { id: existing.id },
+        data: {
+          ownerResponsible: nextOwnerResponsible,
+        },
+        include: {
+          owner: { select: { id: true, name: true } },
+          property: { select: { id: true, propertyType: true, city: true, neighborhood: true } },
+          lead: { select: { id: true, name: true } },
+        },
+      });
+
+      if (!existingAssignmentEvent) {
+        await tx.imobCaseEvent.create({
+          data: {
+            imobCase: { connect: { id: item.id } },
+            tenant: { connect: { id: scope.tenantId } },
+            workspace: { connect: { id: scope.workspaceId } },
+            ...(input.eventRunId ? { run: { connect: { id: input.eventRunId } } } : {}),
+            type: "owner_assigned",
+            actorType: input.eventActorType ?? "user",
+            actorRef: input.eventActorRef ?? scope.userId ?? null,
+            summary: `Responsible owner assigned manually: ${nextOwnerResponsible}`,
+            evidenceRef: assignmentEventRef,
+            payload: {
+              previousOwnerResponsible: existing.ownerResponsible ?? null,
+              ownerResponsible: nextOwnerResponsible,
+              assignmentSource: "manual",
+              ...(asObject(input.eventPayload) ?? {}),
+            } as any,
+          },
+        });
+      }
+
+      return item;
+    });
+
+    await recordImobCrmAuditEvent({
+      prisma: this.prisma,
+      tenantId: scope.tenantId,
+      workspaceId: scope.workspaceId,
+      userId: scope.userId ?? null,
+      subjectType: "case",
+      subjectId: updated.id,
+      action: "updated",
+      summary: `Case ${updated.flow} assigned to ${nextOwnerResponsible}`,
+      before: previous,
+      after: updated,
+    });
+
+    await this.recordCaseShadow(scope, {
+      caseId: updated.id,
+      before: previous,
+      after: updated,
+      trigger: "case.owner_assigned",
+    });
+
+    return { status: "assigned" as const, data: updated };
+  }
+
+  async assignResponsibleActor(scope: Scope, caseId: string, input: {
+    ownerResponsible: string;
+    eventRunId?: string | null;
+    eventEvidenceRef?: string | null;
+    eventActorType?: string | null;
+    eventActorRef?: string | null;
+    eventPayload?: unknown;
+  }) {
+    return this.assignOwnerToCase(scope, caseId, input);
   }
 
   async upsertCaseFromResolvedTurn(scope: Scope, params: {
@@ -1067,7 +1307,9 @@ export class ImobCrmMutationService {
       flow: operational.flow,
       stage: operational.status,
       status: mapOperationalCaseStatus(operational.status),
-      ownerResponsible: asString(params.resolved?.presentation?.owner),
+      ...(asString(params.resolved?.presentation?.owner)
+        ? { ownerResponsible: asString(params.resolved?.presentation?.owner) }
+        : {}),
       nextStep: asString(params.resolved?.presentation?.nextStep),
       blockers: blockers.length > 0 ? blockers : undefined,
       pendingItems: pendingItems.length > 0 ? pendingItems : undefined,

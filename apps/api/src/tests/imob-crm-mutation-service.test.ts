@@ -18,6 +18,9 @@ function createMockPrisma() {
   const cases: any[] = [];
   const caseEvents: any[] = [];
   const memoryEvents: any[] = [];
+  const controls = {
+    failNextCaseEventCreate: false,
+  };
   const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
   const pushCaseEvent = (data: any) => {
     const event = {
@@ -194,6 +197,10 @@ function createMockPrisma() {
         return found ? clone(found) : null;
       },
       create: async ({ data }: any) => {
+        if (controls.failNextCaseEventCreate) {
+          controls.failNextCaseEventCreate = false;
+          throw new Error("case event create failed");
+        }
         return pushCaseEvent(data);
       },
     },
@@ -208,7 +215,15 @@ function createMockPrisma() {
         return { id: `event-${memoryEvents.length}`, ...data };
       },
     },
-    $transaction: async (callback: any) => callback({
+    __controls: controls,
+    $transaction: async (callback: any) => {
+      const ownersSnapshot = clone(owners);
+      const leadsSnapshot = clone(leads);
+      const propertiesSnapshot = clone(properties);
+      const casesSnapshot = clone(cases);
+      const caseEventsSnapshot = clone(caseEvents);
+      try {
+        return await callback({
       imobCase: {
         create: async ({ data }: any) => {
           const owner = data.ownerId ? owners.find((item) => item.id === data.ownerId) ?? null : null;
@@ -245,11 +260,35 @@ function createMockPrisma() {
         },
       },
       imobCaseEvent: {
+        findFirst: async ({ where }: any) => {
+          const found = [...caseEvents].reverse().find((item) => (
+            (!where?.caseId || item.caseId === where.caseId) &&
+            (!where?.tenantId || item.tenantId === where.tenantId) &&
+            (!where?.workspaceId || item.workspaceId === where.workspaceId) &&
+            (!where?.type || item.type === where.type) &&
+            (!where?.summary || item.summary === where.summary) &&
+            (!where?.evidenceRef || item.evidenceRef === where.evidenceRef)
+          ));
+          return found ? clone(found) : null;
+        },
         create: async ({ data }: any) => {
+          if (controls.failNextCaseEventCreate) {
+            controls.failNextCaseEventCreate = false;
+            throw new Error("case event create failed");
+          }
           return pushCaseEvent(data);
         },
       },
-    }),
+    });
+      } catch (error) {
+        owners.splice(0, owners.length, ...ownersSnapshot);
+        leads.splice(0, leads.length, ...leadsSnapshot);
+        properties.splice(0, properties.length, ...propertiesSnapshot);
+        cases.splice(0, cases.length, ...casesSnapshot);
+        caseEvents.splice(0, caseEvents.length, ...caseEventsSnapshot);
+        throw error;
+      }
+    },
   };
 }
 
@@ -356,7 +395,7 @@ test("IMOB_CRM mutation service persists conversational lead case with audit tra
   assert.equal(prisma.cases[0].workspaceId, "workspace-1");
   assert.equal(prisma.cases[0].leadId, "lead-1");
   assert.equal(prisma.caseEvents.length, 1);
-  assert.equal(prisma.caseEvents[0].type, "case.created_from_turn");
+  assert.equal(prisma.caseEvents[0].type, "lead_updated");
   assert.equal((prisma.leads[0].metadata?.discoverySignals as any)?.urgency, "high");
   assert.equal((prisma.leads[0].metadata?.discoverySignals as any)?.decisionMaker, "shared");
   assert.equal(prisma.memoryEvents.some((event) => event.metadata.subjectType === "lead" && event.metadata.action === "updated"), true);
@@ -1060,6 +1099,65 @@ test("IMOB_CRM mutation service preserves owner context in returned caseContext 
   assert.equal(persisted?.property?.city, "Itajaí");
 });
 
+test("IMOB_CRM mutation service propagates ownerResponsible from resolved turn when available", async () => {
+  const prisma = createMockPrisma();
+  prisma.cases.push({
+    id: "case-shadow-owner-1",
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    threadId: "thread-shadow-owner-1",
+    flow: "lead.qualify",
+    stage: "ready_for_review",
+    status: "ready_for_review",
+    ownerResponsible: null,
+    nextStep: "Qualificar lead",
+    blockers: [],
+    pendingItems: [],
+    leadId: "lead-1",
+    lead: { id: "lead-1", name: "Merlo" },
+    metadata: {},
+    updatedAt: new Date("2026-01-06"),
+  });
+
+  const service = new ImobCrmMutationService(prisma as any);
+  const persisted = await service.upsertCaseFromResolvedTurn({
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    userId: "user-1",
+  }, {
+    caseId: "case-shadow-owner-1",
+    threadId: "thread-shadow-owner-1",
+    threadLabel: "Lead",
+    resolved: {
+      mode: "execute",
+      action: "realestate.apply_adjustment",
+      threadLabel: "Lead",
+      presentation: {
+        text: "Lead atualizado com responsável definido.",
+        owner: "Mariana Souza",
+        nextStep: "Avançar para visita",
+        pendingFieldLabels: [],
+      },
+      executionRequest: null,
+      conversationState: {
+        operational: {
+          flow: "lead.qualify",
+          status: "ready_for_review",
+          pendingFields: [],
+          leadDraft: {
+            leadName: "Merlo",
+            leadEmail: "mmerlon.adv@gmail.com",
+            leadPhone: "47 999674434",
+          },
+        },
+      },
+    } as any,
+  });
+
+  assert.equal(persisted?.ownerResponsible, "Mariana Souza");
+  assert.equal(prisma.cases[0].ownerResponsible, "Mariana Souza");
+});
+
 test("IMOB_CRM mutation service keeps approval event actor/evidence when updating case", async () => {
   const prisma = createMockPrisma();
   prisma.cases.push({
@@ -1098,4 +1196,212 @@ test("IMOB_CRM mutation service keeps approval event actor/evidence when updatin
   assert.equal(prisma.caseEvents[0].actorType, "user");
   assert.equal(prisma.caseEvents[0].actorRef, "user-1");
   assert.equal(prisma.caseEvents[0].evidenceRef, "ledger://proof-1");
+});
+
+test("IMOB_CRM mutation service creates explicit terminal event once when case enters terminal state", async () => {
+  const prisma = createMockPrisma();
+  prisma.cases.push({
+    id: "case-terminal-1",
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    flow: "commission.settle",
+    stage: "documentacao",
+    status: "running",
+    ownerResponsible: "Mariana Souza",
+    metadata: {},
+  });
+
+  const service = new ImobCrmMutationService(prisma as any);
+
+  const first = await service.updateCase({
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    userId: "user-1",
+  }, "case-terminal-1", {
+    stage: "settled",
+    status: "success",
+    eventType: "case.updated",
+    eventSummary: "Liquidação concluída",
+  });
+
+  const second = await service.updateCase({
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    userId: "user-1",
+  }, "case-terminal-1", {
+    stage: "settled",
+    status: "success",
+    eventType: "case.updated",
+    eventSummary: "Liquidação concluída",
+  });
+
+  assert.equal(first.status, "updated");
+  assert.equal(second.status, "updated");
+
+  const terminalEvents = prisma.caseEvents.filter((item) => item.type === "case.completed");
+  assert.equal(terminalEvents.length, 1);
+  assert.equal(terminalEvents[0].evidenceRef, "case-terminal:case-terminal-1:commission.settle:settled:success");
+  assert.equal(terminalEvents[0].payload?.terminalSource, "mutation.update_case");
+});
+
+test("IMOB_CRM mutation service blocks terminal transition without ownerResponsible", async () => {
+  const prisma = createMockPrisma();
+  prisma.cases.push({
+    id: "case-terminal-no-owner",
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    flow: "commission.settle",
+    stage: "documentacao",
+    status: "running",
+    ownerResponsible: null,
+    metadata: {},
+  });
+
+  const service = new ImobCrmMutationService(prisma as any);
+  const result = await service.updateCase({
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    userId: "user-1",
+  }, "case-terminal-no-owner", {
+    stage: "settled",
+    status: "success",
+    eventType: "case.updated",
+    eventSummary: "Liquidação concluída",
+  });
+
+  assert.equal(result.status, "responsible_required");
+  assert.equal(result.reasonCode, "CASE_RESPONSIBLE_REQUIRED");
+  assert.equal(result.nextAction, "ASSIGN_RESPONSIBLE_MANUALLY");
+  assert.equal(prisma.caseEvents.length, 0);
+  assert.equal(prisma.cases[0].stage, "documentacao");
+  assert.equal(prisma.cases[0].status, "running");
+});
+
+test("IMOB_CRM mutation service assigns owner manually and records a single owner_assigned event", async () => {
+  const prisma = createMockPrisma();
+  prisma.cases.push({
+    id: "case-assign-owner-1",
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    flow: "lead.qualify",
+    stage: "triagem",
+    status: "running",
+    ownerResponsible: null,
+    metadata: {},
+  });
+
+  const service = new ImobCrmMutationService(prisma as any);
+  const result = await service.assignOwnerToCase({
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    userId: "user-1",
+  }, "case-assign-owner-1", {
+    ownerResponsible: "Mariana Souza",
+    eventActorRef: "user-1",
+  });
+
+  assert.equal(result.status, "assigned");
+  assert.equal(prisma.cases[0].ownerResponsible, "Mariana Souza");
+  assert.equal(prisma.caseEvents.length, 1);
+  assert.equal(prisma.caseEvents[0].type, "owner_assigned");
+  assert.equal(prisma.caseEvents[0].actorType, "user");
+  assert.equal(prisma.caseEvents[0].actorRef, "user-1");
+  assert.equal(prisma.caseEvents[0].payload?.assignmentSource, "manual");
+});
+
+test("IMOB_CRM mutation service keeps owner assignment idempotent on retry", async () => {
+  const prisma = createMockPrisma();
+  prisma.cases.push({
+    id: "case-assign-owner-2",
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    flow: "lead.qualify",
+    stage: "triagem",
+    status: "running",
+    ownerResponsible: null,
+    metadata: {},
+  });
+
+  const service = new ImobCrmMutationService(prisma as any);
+  await service.assignResponsibleActor({
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    userId: "user-1",
+  }, "case-assign-owner-2", {
+    ownerResponsible: "Mariana Souza",
+    eventActorRef: "user-1",
+  });
+
+  const retry = await service.assignResponsibleActor({
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    userId: "user-1",
+  }, "case-assign-owner-2", {
+    ownerResponsible: "Mariana Souza",
+    eventActorRef: "user-1",
+  });
+
+  assert.equal(retry.status, "assigned");
+  assert.equal(prisma.caseEvents.filter((item) => item.type === "owner_assigned").length, 1);
+});
+
+test("IMOB_CRM mutation service rolls back owner assignment when owner_assigned event creation fails", async () => {
+  const prisma = createMockPrisma();
+  prisma.cases.push({
+    id: "case-assign-owner-rollback",
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    flow: "lead.qualify",
+    stage: "triagem",
+    status: "running",
+    ownerResponsible: null,
+    metadata: {},
+  });
+  prisma.__controls.failNextCaseEventCreate = true;
+
+  const service = new ImobCrmMutationService(prisma as any);
+
+  await assert.rejects(
+    service.assignOwnerToCase({
+      tenantId: "tenant-1",
+      workspaceId: "workspace-1",
+      userId: "user-1",
+    }, "case-assign-owner-rollback", {
+      ownerResponsible: "Mariana Souza",
+      eventActorRef: "user-1",
+    }),
+    /case event create failed/,
+  );
+
+  assert.equal(prisma.cases[0].ownerResponsible, null);
+  assert.equal(prisma.caseEvents.length, 0);
+});
+
+test("IMOB_CRM mutation service blocks manual overwrite of an existing ownerResponsible", async () => {
+  const prisma = createMockPrisma();
+  prisma.cases.push({
+    id: "case-assign-owner-3",
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    flow: "lead.qualify",
+    stage: "triagem",
+    status: "running",
+    ownerResponsible: "Mariana Souza",
+    metadata: {},
+  });
+
+  const service = new ImobCrmMutationService(prisma as any);
+  const result = await service.assignOwnerToCase({
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    userId: "user-1",
+  }, "case-assign-owner-3", {
+    ownerResponsible: "Carlos Merlo",
+    eventActorRef: "user-1",
+  });
+
+  assert.equal(result.status, "assignment_forbidden");
+  assert.equal(result.reasonCode, "CASE_OWNER_ASSIGNMENT_FORBIDDEN");
+  assert.equal(prisma.cases[0].ownerResponsible, "Mariana Souza");
+  assert.equal(prisma.caseEvents.length, 0);
 });

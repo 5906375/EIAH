@@ -125,6 +125,15 @@ export const imobCaseUpdateSchema = z.object({
   message: "At least one field is required",
 });
 
+export const imobCaseAssignOwnerSchema = z.object({
+  ownerResponsible: z.string().trim().min(1).max(80),
+  eventRunId: optionalShortString(80),
+  eventEvidenceRef: optionalShortString(160),
+  eventActorType: optionalShortString(80),
+  eventActorRef: optionalShortString(120),
+  eventPayload: z.unknown().optional(),
+});
+
 export const imobFollowUpRunSchema = z.object({
   dryRun: z.boolean().optional(),
   onlyOverdue: z.boolean().optional(),

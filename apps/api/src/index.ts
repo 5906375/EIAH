@@ -36,6 +36,7 @@ import { tenantRecipesRouter } from "./routes/tenant-recipes";
 import { startTenantBillingReconciler } from "./services/tenantBillingReconciler";
 import { imobRouter } from "./routes/imob";
 import { helpRouter } from "./routes/help";
+import { startRunArchiveWorker } from "./workers/runArchiveWorker";
 
 
 const app = express();
@@ -109,6 +110,7 @@ if (process.env.NODE_ENV !== "test") {
   assertGovernanceEnv();
   startRunEventOutboxProcessor();
   startTenantBillingReconciler();
+  startRunArchiveWorker();
   if (shouldStartWorker) {
     try {
       startRunQueueBullMqWorker();

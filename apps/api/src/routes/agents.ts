@@ -5,6 +5,7 @@ import { publishRun } from "@eiah/core";
 import { enforceTenant } from "../middlewares/enforceTenant";
 import type { TenantAwareRequest } from "../middlewares/enforceTenant";
 import { getAgentProfile, listAgents, resolveAgentId } from "../services/agents";
+import { prepareRunRequestAction, RunActionValidationError } from "../services/imob/control/imobRunActionCatalog";
 import { createRunRecord } from "../services/runs";
 import { emitRunEvent } from "../services/runEventEmitter";
 import { WorkspaceAgentAssignmentError } from "../services/workspaceAgentAssignments";
@@ -431,10 +432,22 @@ agentsRouter.post("/agents/execute", async (req, res) => {
       request: requestPayloadBase,
       traceId: null,
       finishedAt: null,
+      requireCanonicalImobAction: metadataBase.domain === "imob",
     });
   } catch (error) {
     if (error instanceof WorkspaceAgentAssignmentError) {
       return res.status(403).json({
+        ok: false,
+        error: {
+          code: error.reasonCode,
+          reasonCode: error.reasonCode,
+          message: error.message,
+          context: error.context,
+        },
+      });
+    }
+    if (error instanceof RunActionValidationError) {
+      return res.status(400).json({
         ok: false,
         error: {
           code: error.reasonCode,
@@ -456,6 +469,10 @@ agentsRouter.post("/agents/execute", async (req, res) => {
     ? { ...metadataBase, intentSignature }
     : metadataBase;
   if (intentSignature) {
+    const preparedRequest = prepareRunRequestAction({
+      request: { prompt, metadata },
+      requireCanonicalImobAction: metadataBase.domain === "imob",
+    });
     await request.prisma.run.update({
       where: {
         id: run.id,
@@ -463,7 +480,7 @@ agentsRouter.post("/agents/execute", async (req, res) => {
         workspaceId: request.authContext.workspaceId,
       },
       data: {
-        request: { prompt, metadata },
+        request: preparedRequest.request as Record<string, unknown>,
       },
     });
   }

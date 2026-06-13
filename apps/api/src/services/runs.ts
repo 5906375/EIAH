@@ -1,6 +1,8 @@
 import { Prisma, PrismaClient, RunStatus, prismaGlobal } from "@repo/db";
 import { randomUUID } from "node:crypto";
+import { prepareRunRequestAction } from "./imob/control/imobRunActionCatalog";
 import { assertWorkspaceAgentEnabled } from "./workspaceAgentAssignments";
+import { getRunArchiveMetadataMap, listArchivedRunIds } from "./runArchiveService";
 
 function resolveClient(tenantId: string, workspaceId: string, client?: PrismaClient) {
   return client ?? prismaGlobal;
@@ -89,13 +91,26 @@ export async function listRuns(opts: {
   status?: RunStatus;
   from?: Date;
   to?: Date;
+  archived?: "exclude" | "include" | "only";
   page: number;
   size: number;
 }) {
   const client = resolveClient(opts.tenantId, opts.workspaceId, opts.prisma);
+  const archivedIds = opts.archived === "include" ? [] : await listArchivedRunIds({
+    prisma: client,
+    tenantId: opts.tenantId,
+    workspaceId: opts.workspaceId,
+  });
   const where: Prisma.RunWhereInput = {
     tenantId: opts.tenantId,
     workspaceId: opts.workspaceId,
+    ...(opts.archived === "only"
+      ? { id: { in: archivedIds.length > 0 ? archivedIds : ["__none__"] } }
+      : opts.archived === "exclude"
+        ? archivedIds.length > 0
+          ? { id: { notIn: archivedIds } }
+          : {}
+        : {}),
   };
 
   if (opts.agent) where.agent = opts.agent;
@@ -136,6 +151,32 @@ export async function getRun(params: {
   });
 }
 
+export async function listRunsWithArchiveMetadata(opts: {
+  prisma?: PrismaClient;
+  tenantId: string;
+  workspaceId: string;
+  agent?: string;
+  status?: RunStatus;
+  from?: Date;
+  to?: Date;
+  archived?: "exclude" | "include" | "only";
+  page: number;
+  size: number;
+}) {
+  const output = await listRuns(opts);
+  const client = resolveClient(opts.tenantId, opts.workspaceId, opts.prisma);
+  const archiveMetadata = await getRunArchiveMetadataMap({
+    prisma: client,
+    tenantId: opts.tenantId,
+    workspaceId: opts.workspaceId,
+    runIds: output.items.map((item) => item.id),
+  });
+  return {
+    ...output,
+    archiveMetadata,
+  };
+}
+
 export async function createRunRecord(params: {
   prisma?: PrismaClient;
   tenantId: string;
@@ -153,6 +194,7 @@ export async function createRunRecord(params: {
   approvalStatus?: "not_required" | "pending" | "approved" | "rejected";
   approvedBy?: string | null;
   approvedAt?: Date | null;
+  requireCanonicalImobAction?: boolean;
 }) {
   const client = resolveClient(params.tenantId, params.workspaceId, params.prisma);
   const now = new Date();
@@ -172,9 +214,13 @@ export async function createRunRecord(params: {
         : null
       : params.finishedAt;
 
-  const requestData = params.request as Prisma.InputJsonValue;
+  const preparedRequest = prepareRunRequestAction({
+    request: params.request,
+    requireCanonicalImobAction: params.requireCanonicalImobAction ?? false,
+  });
+  const requestData = preparedRequest.request as Prisma.InputJsonValue;
   const responseData = toJsonData(params.response);
-  const runContext = extractRunContextFromRequest(params.request);
+  const runContext = extractRunContextFromRequest(preparedRequest.request);
 
   return (client.run as any).create({
     data: {

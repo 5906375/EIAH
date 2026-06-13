@@ -182,6 +182,13 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | Evidência gerada do DocOps de agentes | `ops/evidence/latest/agent-registry-docs-2026-03-16.json` | Evidência materializada da geração com contagem de agentes e fontes declaradas por perfil. |
 | Cobertura comportamental de knowledge policy | `apps/api/src/tests/knowledge-policy.behavior.test.ts` | Testes por agente para `source missing`, `source conflict`, `grounded response` e `blocked response` no `KnowledgeGate`. |
 
+## IMOB Data Hardening (2026-06-12)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Hardening de open handles nos contract tests HTTP IMOB/Interop | `ops/evidence/latest/imob-data-route-contract-hardening-2026-06-12.md` | Execução real com `EXIT:0` dos contract tests `shadow-executions`, `runs.imob-action` e `agents.interop`, além do hardening aplicado em Redis/BullMQ/Prisma e teardown de testes HTTP. |
+| Mutation manual de ownerResponsible no CRM IMOB | `ops/evidence/latest/imob-owner-assignment-mutation-2026-06-13.md` | Execução real do teste focado da Trilha A, cobrindo `CASE_RESPONSIBLE_REQUIRED`, `assignOwnerToCase()` / `assignResponsibleActor()`, evento `owner_assigned` atômico e idempotência por `evidenceRef`. |
+
 ## Fechamento arquitetural — Deduplicação Frontend (2026-04-15)
 
 | Assunto | Arquivo | O que prova |

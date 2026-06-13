@@ -1,9 +1,18 @@
 import "./support/testInfraEnv";
 import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
+import process from "node:process";
 import supertest from "supertest";
-import { prismaGlobal } from "@repo/db";
-import { closeRunQueueConnections } from "@eiah/core";
+import { closePrismaResources, prismaGlobal } from "@repo/db";
+import { closeRunQueueConnections } from "@eiah/core/queue/runQueue";
+import { closeRunEventsTransport } from "../services/runEvents";
+import { closeRunEventStream } from "../services/runEventStream";
+import { finalizeHttpContractCleanup } from "./support/httpContractCleanup";
+import { closeRedisPublisher } from "../../../../packages/core/src/events/redisPublisher";
+import { closeRunEventPublisherResources } from "../../../../packages/core/src/events/runEventPublisher.js";
+import { closeTenantPolicyStoreResources } from "../../../../packages/core/policy/TenantPolicyStore";
+import { closeCriticalMetricsRedis } from "../../../../packages/core/src/metrics/criticalMetrics.js";
+import { closeCriticalKillSwitchRedis } from "../../../../packages/core/src/security/killSwitch.js";
 
 let request: ReturnType<typeof supertest>;
 
@@ -83,21 +92,17 @@ before(async () => {
 });
 
 after(async () => {
-  // guardrail_ledger is append-only by design; keep tenant-scoped records for audit trail.
-  await prismaGlobal.sclLedger.deleteMany({ where: { tenantId } });
-  await prismaGlobal.runEvent.deleteMany({ where: { tenantId } });
-  await prismaGlobal.run.deleteMany({ where: { tenantId } });
-  await prismaGlobal.tenantActionPolicy.deleteMany({ where: { tenantId } });
-  await prismaGlobal.apiToken.deleteMany({ where: { tenantId: tenantNoPolicyId } });
-  await prismaGlobal.user.deleteMany({ where: { tenantId: tenantNoPolicyId } });
-  await prismaGlobal.workspace.deleteMany({ where: { tenantId: tenantNoPolicyId } });
-  await prismaGlobal.tenant.deleteMany({ where: { id: tenantNoPolicyId } });
-  await prismaGlobal.apiToken.deleteMany({ where: { tenantId } });
-  await prismaGlobal.user.deleteMany({ where: { tenantId } });
-  await prismaGlobal.workspace.deleteMany({ where: { tenantId } });
-  await prismaGlobal.tenant.deleteMany({ where: { id: tenantId } });
+  await closeRedisPublisher();
+  await closeRunEventPublisherResources();
+  await closeTenantPolicyStoreResources();
+  await closeCriticalMetricsRedis();
+  await closeCriticalKillSwitchRedis();
+  await closeRunEventStream();
+  await closeRunEventsTransport();
   await closeRunQueueConnections();
-  await prismaGlobal.$disconnect();
+  await closePrismaResources();
+  finalizeHttpContractCleanup();
+  setImmediate(() => process.exit(process.exitCode ?? 0));
 });
 
 test("POST /api/agents/discovery retorna ações disponíveis por tenant", async () => {
@@ -196,4 +201,38 @@ test("POST /api/agents/execute enfileira run e permite verificação via ledger 
   assert.equal(ledgerRes.body?.run?.id, runId);
   assert.equal(ledgerRes.body?.invariant?.status, "ok");
   assert.equal(ledgerRes.body?.receiptCanon?.specVersion, "receipt.canon.v1");
+});
+
+test("POST /api/agents/execute preserva request.action canônico após anexar intentSignature", async () => {
+  const executeRes = await request
+    .post("/api/agents/execute")
+    .set("Authorization", `Bearer ${apiToken}`)
+    .send({
+      domain: "imob",
+      action: actionName,
+      version: "1.2.0",
+      input: {
+        propertyId: "prop-002",
+        adjustmentType: "discount",
+        amountCents: 1500,
+        reason: "retention incentive",
+      },
+    });
+
+  assert.equal(executeRes.status, 202);
+  assert.equal(executeRes.body?.ok, true);
+
+  const runId = executeRes.body?.data?.runId as string;
+  assert.ok(runId);
+
+  const run = await prismaGlobal.run.findUniqueOrThrow({
+    where: { id: runId },
+    select: { request: true },
+  });
+
+  assert.equal((run.request as { action?: string | null })?.action, "adjustment.apply");
+  assert.equal(
+    ((run.request as { metadata?: { action?: string | null } | null })?.metadata?.action ?? null),
+    actionName,
+  );
 });
