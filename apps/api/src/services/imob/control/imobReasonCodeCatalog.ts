@@ -8,6 +8,14 @@ export const IMOB_REASON_CODE_VALUES = [
   "PENDING_ITEMS_PRESENT",
   "NEXT_STEP_AVAILABLE",
   "CASE_STATUS_BLOCKED",
+  // governance / fail-closed (DATA-03 / Etapa 8 Trilha A)
+  "CASE_RESPONSIBLE_REQUIRED",
+  "CASE_OWNER_ASSIGNMENT_FORBIDDEN",
+  "MEMBER_NOT_ELIGIBLE_AS_RESPONSIBLE",
+  // run integrity (DATA-01 Frente B)
+  "INVALID_ACTION_TYPE",
+  // transition integrity (DATA-02 Opção B)
+  "CASE_TRANSITION_EVENT_REQUIRED",
 ] as const;
 
 export type ImobReasonCode = (typeof IMOB_REASON_CODE_VALUES)[number];
@@ -15,11 +23,12 @@ export type ImobReasonCode = (typeof IMOB_REASON_CODE_VALUES)[number];
 export type ImobReasonCodeSpec = {
   code: ImobReasonCode;
   label: string;
-  category: "commercial" | "operations" | "legal" | "financial" | "audit";
+  category: "commercial" | "operations" | "legal" | "financial" | "audit" | "governance";
   defaultUrgency: "low" | "medium" | "high";
   defaultSpecialist: "I_BC" | "Diarias" | "J_360" | "fin-nexus" | "guardian";
   requiresApproval: boolean;
   requiresEvidence: boolean;
+  nextAction?: string;
 };
 
 export const IMOB_REASON_CODE_CATALOG: Record<ImobReasonCode, ImobReasonCodeSpec> = {
@@ -103,6 +112,55 @@ export const IMOB_REASON_CODE_CATALOG: Record<ImobReasonCode, ImobReasonCodeSpec
     defaultSpecialist: "Diarias",
     requiresApproval: false,
     requiresEvidence: false,
+  },
+  // governance / fail-closed
+  CASE_RESPONSIBLE_REQUIRED: {
+    code: "CASE_RESPONSIBLE_REQUIRED",
+    label: "Responsável pelo caso não atribuído",
+    category: "governance",
+    defaultUrgency: "high",
+    defaultSpecialist: "Diarias",
+    requiresApproval: false,
+    requiresEvidence: false,
+    nextAction: "ASSIGN_RESPONSIBLE_MANUALLY",
+  },
+  CASE_OWNER_ASSIGNMENT_FORBIDDEN: {
+    code: "CASE_OWNER_ASSIGNMENT_FORBIDDEN",
+    label: "Atribuição de responsável bloqueada pela policy",
+    category: "governance",
+    defaultUrgency: "high",
+    defaultSpecialist: "guardian",
+    requiresApproval: true,
+    requiresEvidence: true,
+  },
+  MEMBER_NOT_ELIGIBLE_AS_RESPONSIBLE: {
+    code: "MEMBER_NOT_ELIGIBLE_AS_RESPONSIBLE",
+    label: "Membro sem elegibilidade para responsável",
+    category: "governance",
+    defaultUrgency: "medium",
+    defaultSpecialist: "guardian",
+    requiresApproval: true,
+    requiresEvidence: false,
+  },
+  // run integrity
+  INVALID_ACTION_TYPE: {
+    code: "INVALID_ACTION_TYPE",
+    label: "Tipo de ação inválido no run",
+    category: "governance",
+    defaultUrgency: "medium",
+    defaultSpecialist: "guardian",
+    requiresApproval: false,
+    requiresEvidence: false,
+  },
+  // transition integrity
+  CASE_TRANSITION_EVENT_REQUIRED: {
+    code: "CASE_TRANSITION_EVENT_REQUIRED",
+    label: "Transição de estado requer evento explícito",
+    category: "governance",
+    defaultUrgency: "high",
+    defaultSpecialist: "guardian",
+    requiresApproval: false,
+    requiresEvidence: true,
   },
 };
 

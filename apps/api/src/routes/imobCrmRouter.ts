@@ -71,6 +71,7 @@ export type RegisterImobCrmRoutesParams = {
     imobLeadUpdateSchema: SafeParseSchema;
     imobCaseCreateSchema: SafeParseSchema;
     imobCaseUpdateSchema: SafeParseSchema;
+    imobCaseAssignOwnerSchema: SafeParseSchema;
     imobFollowUpRunSchema: SafeParseSchema;
     imobApprovalActionSchema: SafeParseSchema;
   };
@@ -505,6 +506,34 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
     return res.json({ ok: true, data: { items: filteredItems.map((item) => withImobCanonicalCase(item)) } });
   });
 
+  router.get("/cases/costs", async (req, res) => {
+    const { authContext, prisma } = req as TenantAwareRequest;
+    if (!authContext || !prisma) {
+      return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+    }
+
+    const workspaceAccess = await readImobWorkspaceAccessProfile({ prisma, authContext });
+    if (!ensureImobWorkspacePermission(res, workspaceAccess.permissions, "imob.chat.use", "Sua função atual não pode usar o IMOB neste workspace.")) {
+      return;
+    }
+
+    const caseIds = typeof req.query.caseIds === "string"
+      ? req.query.caseIds.split(",").map((item) => item.trim()).filter(Boolean)
+      : [];
+    const windowDaysRaw = Number(req.query.windowDays ?? 30);
+    const windowDays = Number.isFinite(windowDaysRaw) ? Math.max(1, Math.min(365, windowDaysRaw)) : 30;
+
+    const data = await new ImobCrmKpiService(prisma).buildCaseCostSnapshot({
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+    }, {
+      caseIds,
+      windowDays,
+    });
+
+    return res.json({ ok: true, data });
+  });
+
   router.get("/control/priority-queue", async (req, res) => {
     const { authContext, prisma } = req as TenantAwareRequest;
     if (!authContext || !prisma) {
@@ -858,6 +887,18 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
     if (updated.status === "owner_not_found") return res.status(404).json({ ok: false, error: { code: "OWNER_NOT_FOUND", message: "Owner not found for case" } });
     if (updated.status === "property_not_found") return res.status(404).json({ ok: false, error: { code: "PROPERTY_NOT_FOUND", message: "Property not found for case" } });
     if (updated.status === "lead_not_found") return res.status(404).json({ ok: false, error: { code: "LEAD_NOT_FOUND", message: "Lead not found for case" } });
+    if (updated.status === "responsible_required") {
+      return res.status(409).json({
+        ok: false,
+        error: {
+          code: updated.reasonCode,
+          reasonCode: updated.reasonCode,
+          message: "Responsible owner is required before terminal case transition.",
+          nextAction: updated.nextAction,
+          context: updated.context,
+        },
+      });
+    }
 
     await recordImobApprovalActionCompletedTelemetry({
       prisma,
@@ -983,8 +1024,72 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
     if (updated.status === "owner_not_found") return res.status(404).json({ ok: false, error: { code: "OWNER_NOT_FOUND", message: "Owner not found for case" } });
     if (updated.status === "property_not_found") return res.status(404).json({ ok: false, error: { code: "PROPERTY_NOT_FOUND", message: "Property not found for case" } });
     if (updated.status === "lead_not_found") return res.status(404).json({ ok: false, error: { code: "LEAD_NOT_FOUND", message: "Lead not found for case" } });
+    if (updated.status === "responsible_required") {
+      return res.status(409).json({
+        ok: false,
+        error: {
+          code: updated.reasonCode,
+          reasonCode: updated.reasonCode,
+          message: "Responsible owner is required before terminal case transition.",
+          nextAction: updated.nextAction,
+          context: updated.context,
+        },
+      });
+    }
 
     return res.json({ ok: true, data: withImobCanonicalCase(updated.data) });
+  });
+
+  router.post("/cases/:caseId/assign-owner", async (req, res) => {
+    const { authContext, prisma } = req as TenantAwareRequest;
+    if (!authContext || !prisma) {
+      return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+    }
+
+    const workspaceAccess = await readImobWorkspaceAccessProfile({ prisma, authContext });
+    if (!ensureImobWorkspacePermission(res, workspaceAccess.permissions, "imob.chat.use", "Sua função atual não pode usar o IMOB neste workspace.")) {
+      return;
+    }
+
+    const existing = await prisma.imobCase.findFirst({
+      where: { id: req.params.caseId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
+      select: { id: true, stage: true },
+    });
+    if (!existing) {
+      return res.status(404).json({ ok: false, error: { code: "CASE_NOT_FOUND", message: "Case not found" } });
+    }
+
+    const parsed = schemas.imobCaseAssignOwnerSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() } });
+    }
+    if (!ensureImobStagePermission(res, workspaceAccess.permissions, existing.stage, `Sua função atual não pode operar a etapa ${existing.stage} neste workspace.`)) {
+      return;
+    }
+
+    const assigned = await new ImobCrmMutationService(prisma).assignResponsibleActor({
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      userId: authContext.userId ?? null,
+    }, req.params.caseId, parsed.data);
+
+    if (assigned.status === "not_found") {
+      return res.status(404).json({ ok: false, error: { code: "CASE_NOT_FOUND", message: "Case not found" } });
+    }
+    if (assigned.status === "assignment_forbidden") {
+      return res.status(409).json({
+        ok: false,
+        error: {
+          code: assigned.reasonCode,
+          reasonCode: assigned.reasonCode,
+          message: "Responsible owner cannot be overwritten by this manual assignment.",
+          nextAction: assigned.nextAction,
+          context: assigned.context,
+        },
+      });
+    }
+
+    return res.json({ ok: true, data: withImobCanonicalCase(assigned.data) });
   });
 
   router.get("/followups/pending", async (req, res) => {

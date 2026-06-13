@@ -9,7 +9,9 @@ import { evaluateTrustScore, trustScoreAllowsExecution } from "../services/trust
 import { evaluateIntent } from "../services/intentValidator";
 import { createGuardrailLedgerStore } from "../services/guardrailLedgerStore";
 import { estimateCostCents } from "../services/billing";
-import { createRunRecord, getRun, listRuns } from "../services/runs";
+import { prepareRunRequestAction, RunActionValidationError } from "../services/imob/control/imobRunActionCatalog";
+import { createRunRecord, getRun, listRunsWithArchiveMetadata } from "../services/runs";
+import { getRunArchiveMetadataMap } from "../services/runArchiveService";
 import { getAgentRecommendationState, saveAgentRecommendationState } from "../services/recommendations";
 import { listRunEvents } from "../services/runEvents";
 import { emitRunEvent } from "../services/runEventEmitter";
@@ -27,13 +29,23 @@ import {
 export const runsRouter = Router();
 runsRouter.use(enforceTenant);
 
-const serializeRun = (run: any) => ({
+const serializeRun = (run: any, archive?: { archiveRef: string; archivedAt: Date } | null) => ({
   ...run,
   projectId: run?.workspaceId,
+  archived: Boolean(archive),
+  archivedAt: archive?.archivedAt ?? null,
+  archiveRef: archive?.archiveRef ?? null,
 });
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
+
+function requiresCanonicalImobActionValidation(metadata: Record<string, unknown> | undefined) {
+  if (!metadata) return false;
+  const domain = typeof metadata.domain === "string" ? metadata.domain.trim().toLowerCase() : "";
+  const action = typeof metadata.action === "string" ? metadata.action.trim() : "";
+  return domain === "imob" && action.length > 0;
+}
 
 const serializeRunEvent = (event: any) => ({
   id: event.id,
@@ -61,8 +73,11 @@ runsRouter.get("/runs", async (req, res) => {
   const to = req.query.to ? new Date(String(req.query.to)) : undefined;
   const page = Number(req.query.page ?? 1);
   const size = Number(req.query.size ?? 50);
+  const archivedParam = typeof req.query.archived === "string" ? req.query.archived.trim().toLowerCase() : "";
+  const archived =
+    archivedParam === "true" ? "only" : archivedParam === "all" ? "include" : "exclude";
 
-  const output = await listRuns({
+  const output = await listRunsWithArchiveMetadata({
     prisma,
     tenantId: authContext.tenantId,
     workspaceId: authContext.workspaceId,
@@ -70,12 +85,13 @@ runsRouter.get("/runs", async (req, res) => {
     status: status as any,
     from,
     to,
+    archived,
     page,
     size,
   });
 
   return res.json({
-    items: output.items.map(serializeRun),
+    items: output.items.map((item) => serializeRun(item, output.archiveMetadata.get(item.id) ?? null)),
     total: output.total,
   });
 });
@@ -102,7 +118,13 @@ runsRouter.get("/runs/:id", async (req, res) => {
     });
   }
 
-  return res.json(serializeRun(run));
+  const archiveMetadata = await getRunArchiveMetadataMap({
+    prisma,
+    tenantId: authContext.tenantId,
+    workspaceId: authContext.workspaceId,
+    runIds: [run.id],
+  });
+  return res.json(serializeRun(run, archiveMetadata.get(run.id) ?? null));
 });
 
 runsRouter.get("/runs/:id/events", async (req, res) => {
@@ -464,6 +486,31 @@ runsRouter.post("/runs", async (req, res) => {
   }
 
   const requestPayload = { prompt, metadata: resolvedMetadata };
+  const shouldRequireCanonicalImobAction = requiresCanonicalImobActionValidation(
+    resolvedMetadata && typeof resolvedMetadata === "object" && !Array.isArray(resolvedMetadata)
+      ? (resolvedMetadata as Record<string, unknown>)
+      : undefined
+  );
+
+  try {
+    prepareRunRequestAction({
+      request: requestPayload,
+      requireCanonicalImobAction: shouldRequireCanonicalImobAction,
+    });
+  } catch (error) {
+    if (error instanceof RunActionValidationError) {
+      return res.status(400).json({
+        ok: false,
+        error: {
+          code: error.reasonCode,
+          reasonCode: error.reasonCode,
+          message: error.message,
+          context: error.context,
+        },
+      });
+    }
+    throw error;
+  }
 
   const inputBytes = Buffer.byteLength(prompt, "utf8");
   const toolIdentifiers = Array.isArray(profile.tools)
@@ -520,6 +567,7 @@ runsRouter.post("/runs", async (req, res) => {
       traceId: null,
       finishedAt: new Date(),
       errorCode: "BILLING_GUARD_BLOCKED",
+      requireCanonicalImobAction: shouldRequireCanonicalImobAction,
     });
 
     await emitRunEvent({
@@ -570,6 +618,7 @@ runsRouter.post("/runs", async (req, res) => {
       request: requestPayload,
       traceId: null,
       finishedAt: new Date(),
+      requireCanonicalImobAction: shouldRequireCanonicalImobAction,
     });
 
     await emitRunEvent({
@@ -629,10 +678,22 @@ runsRouter.post("/runs", async (req, res) => {
       traceId: null,
       finishedAt: null,
       approvalStatus: inferApprovalStatusFromMetadata(resolvedMetadata),
+      requireCanonicalImobAction: shouldRequireCanonicalImobAction,
     });
   } catch (error) {
     if (error instanceof WorkspaceAgentAssignmentError) {
       return res.status(403).json({
+        ok: false,
+        error: {
+          code: error.reasonCode,
+          reasonCode: error.reasonCode,
+          message: error.message,
+          context: error.context,
+        },
+      });
+    }
+    if (error instanceof RunActionValidationError) {
+      return res.status(400).json({
         ok: false,
         error: {
           code: error.reasonCode,

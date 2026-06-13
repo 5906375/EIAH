@@ -15,6 +15,7 @@ import {
 } from "../services/shadowExecutionStore";
 import { evaluateTrustScore, trustScoreAllowsExecution } from "../services/trustScore";
 import { evaluateTenantBillingExecutionGuard } from "../services/tenantBilling";
+import { prepareRunRequestAction, RunActionValidationError } from "../services/imob/control/imobRunActionCatalog";
 import { createRunRecord } from "../services/runs";
 import { emitRunEvent } from "../services/runEventEmitter";
 import { WorkspaceAgentAssignmentError } from "../services/workspaceAgentAssignments";
@@ -123,6 +124,28 @@ shadowExecutionsRouter.post("/shadow-executions/preview", async (req, res) => {
 
   const workspaceId = parsed.data.workspaceId ?? authContext.workspaceId;
   const metadata = parsed.data.metadata ?? {};
+  try {
+    prepareRunRequestAction({
+      request: {
+        prompt: parsed.data.prompt,
+        metadata,
+      },
+      requireCanonicalImobAction: String(metadata.domain ?? "").trim().toLowerCase() === "imob",
+    });
+  } catch (error) {
+    if (error instanceof RunActionValidationError) {
+      return res.status(400).json({
+        ok: false,
+        error: {
+          code: error.reasonCode,
+          reasonCode: error.reasonCode,
+          message: error.message,
+          context: error.context,
+        },
+      });
+    }
+    throw error;
+  }
   const tools = extractTools(metadata, parsed.data.tools);
   const inputBytes = Buffer.byteLength(
     JSON.stringify({
@@ -403,10 +426,23 @@ shadowExecutionsRouter.post("/shadow-executions/:id/promote-to-production", asyn
       approvalStatus: "approved",
       approvedBy: authContext.userId ?? null,
       approvedAt: new Date(),
+      requireCanonicalImobAction:
+        String(requestPayload.metadata?.domain ?? "").trim().toLowerCase() === "imob",
     });
   } catch (error) {
     if (error instanceof WorkspaceAgentAssignmentError) {
       return res.status(403).json({
+        ok: false,
+        error: {
+          code: error.reasonCode,
+          reasonCode: error.reasonCode,
+          message: error.message,
+          context: error.context,
+        },
+      });
+    }
+    if (error instanceof RunActionValidationError) {
+      return res.status(400).json({
         ok: false,
         error: {
           code: error.reasonCode,
