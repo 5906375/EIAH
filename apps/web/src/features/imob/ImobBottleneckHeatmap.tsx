@@ -23,6 +23,16 @@ function phaseLabel(value: ImobHeatmapCell["phase"]) {
   return "Pós-venda";
 }
 
+function waitingOnLabel(value: string) {
+  if (value === "broker") return "Corretor";
+  if (value === "lead") return "Lead";
+  if (value === "owner") return "Proprietário";
+  if (value === "legal") return "Jurídico";
+  if (value === "finance") return "Financeiro";
+  if (value === "internal") return "Interno";
+  return value;
+}
+
 function reasonLabel(value: ImobHeatmapCell["reasonCode"]) {
   if (value === "COMMERCIAL_PRIORITY") return "Comercial";
   if (value === "FOLLOW_UP_DISCIPLINE") return "Follow-up";
@@ -56,7 +66,7 @@ export const ImobBottleneckHeatmap: React.FC<Props> = ({ items }) => {
               </span>
             </div>
             <p className="mt-3 text-[11px] uppercase tracking-[0.14em]">
-              {item.waitingOn ? `Waiting On ${item.waitingOn}` : "Sem waiting on explícito"}
+              {item.waitingOn ? `Aguardando: ${waitingOnLabel(item.waitingOn)}` : "Sem pendência de área"}
             </p>
             <p className="mt-2 text-xs">Score agregado {item.weightedScore}</p>
           </article>

@@ -5,11 +5,13 @@ import {
   ApiError,
   apiGetImobChatTelemetrySummary,
   apiGetImobExecutiveSummary,
+  apiGetImobFunnelHealth,
   apiGetImobKpiFunnel,
   apiGetImobKpiPerformance,
   apiListImobApprovalContext,
   apiListImobBottleneckHeatmap,
   apiListImobCases,
+  apiListImobCaseCosts,
   apiListImobChatThreads,
   apiListImobFollowUps,
   apiListImobOwners,
@@ -20,6 +22,7 @@ import {
   apiListRuns,
   type ImobCase,
   type ImobChatThread,
+  type ImobFunnelHealth,
   type ImobPriorityQueueItem,
   type ImobCrmFollowUpItem,
   type ImobKpiFunnel,
@@ -39,17 +42,33 @@ import { ImobAccessGateCard } from "@/components/imob/ImobAccessGateCard";
 import { resolveImobAccessGateCopy } from "@/features/imob/accessGateCatalog";
 import { IMOB_BUSINESS_QUICK_ACTIONS } from "@/features/imob/businessQuickActions";
 import { ThreadPanel } from "@/features/imob/ThreadPanel";
-import { ImobPriorityQueue } from "@/features/imob/ImobPriorityQueue";
-import { ImobWaitingOnBoard } from "@/features/imob/ImobWaitingOnBoard";
-import { ImobBottleneckHeatmap } from "@/features/imob/ImobBottleneckHeatmap";
 import { ImobSpecialistLoadBoard } from "@/features/imob/ImobSpecialistLoadBoard";
 import { ImobRescueIndex } from "@/features/imob/ImobRescueIndex";
 import { ImobApprovalContextCard } from "@/features/imob/ImobApprovalContextCard";
+import { ImobCommandCenter } from "@/features/imob/ImobCommandCenter";
+import { ImobDashboardHero, type DashTab, type PriorityChip } from "@/features/imob/ImobDashboardHero";
+import {
+  resolveKpiRefreshState,
+  shouldShowKpiPlaceholder,
+  shouldShowKpiRefreshingHint,
+} from "@/features/imob/kpiRefreshState";
+import { ImobFunnelStepsChart } from "@/features/imob/charts/ImobFunnelStepsChart";
+import { ImobJourneyCostChart } from "@/features/imob/charts/ImobJourneyCostChart";
+import { ImobBrokerChart } from "@/features/imob/charts/ImobBrokerChart";
+import { ImobCycleTimePanel } from "@/features/imob/charts/ImobCycleTimePanel";
+import {
+  buildImobCaseList,
+  type ImobCommandCenterCaseRow,
+  mapImobStatusFilterToCaseStatus,
+} from "@/features/imob/imobCommandCenterHelper";
+import { saveImobArtifactHtml, saveImobArtifactPdf } from "@/features/imob/imobArtifactExport";
 import { formatPct } from "@/lib/formatters";
 
-type Section = "imoveis" | "processos" | "parceiros";
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? "https://api.eiah.local/api";
 
 type DashboardSource = "real" | "empty";
+
+const IMOB_COMMAND_CENTER_STATUS_FILTERS = new Set(["all", "pending_data", "ready_for_review", "blocked", "done"]);
 
 const syntheticThreads: ImobChatThread[] = [
   {
@@ -81,12 +100,6 @@ const syntheticThreads: ImobChatThread[] = [
 function currencyFromCents(value: number | null | undefined) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "Preço não informado";
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(value / 100);
-}
-
-function sectionLabel(section: Section) {
-  if (section === "imoveis") return "Imóveis";
-  if (section === "processos") return "Processos";
-  return "Parceiros";
 }
 
 function formatLatencyMs(value: number | null | undefined) {
@@ -127,6 +140,16 @@ function buildCasePriority(item: ImobCase) {
   const score = blocked * 5 + missing * 3 + Math.min(4, Math.floor(ageHours / 12)) + (recommended === 0 ? 2 : 0);
   const label = blocked > 0 ? "alta" : missing > 0 || ageHours >= 24 ? "média" : "normal";
   return { score, label };
+}
+
+function buildPriorityChipKey(item: ImobCase) {
+  const journeyType = (item.canonical?.journeyType ?? "").trim().toLowerCase() || "operacao";
+  const primaryAction = item.canonical?.recommendedActions?.[0];
+  const actionKey =
+    primaryAction?.inputHint?.trim().toLowerCase()
+    || primaryAction?.label?.trim().toLowerCase()
+    || "revisar caso";
+  return `${journeyType}:${actionKey}`;
 }
 
 function priorityTone(label: string) {
@@ -310,6 +333,16 @@ function buildCaseFallbackActions(item: ImobCase): Array<{ id: string; label: st
   return actions.slice(0, 4);
 }
 
+function normalizeCommandCenterStatusFilter(value: string | null | undefined) {
+  const normalized = (value ?? "").trim().toLowerCase();
+  return IMOB_COMMAND_CENTER_STATUS_FILTERS.has(normalized) ? normalized : "pending_data";
+}
+
+function normalizeCommandCenterReasonFilter(value: string | null | undefined) {
+  const normalized = (value ?? "").trim();
+  return normalized.length > 0 ? normalized : "all";
+}
+
 const ImobDashboardPage: React.FC = () => {
   const session = useSession();
   const imobAccessGate = session.accessGate?.product === "IMOB" ? session.accessGate : null;
@@ -319,8 +352,22 @@ const ImobDashboardPage: React.FC = () => {
   const conversationId = (searchParams.get("conversationId") || "").trim() || null;
   const requestedThreadId = (searchParams.get("threadId") || "").trim() || null;
   const requestedCaseId = (searchParams.get("caseId") || "").trim() || null;
-  const rawSection = (searchParams.get("section") || "imoveis").toLowerCase();
-  const section: Section = rawSection === "processos" || rawSection === "parceiros" ? rawSection : "imoveis";
+  const requestedCommandCenterStatus = normalizeCommandCenterStatusFilter(searchParams.get("cc_status"));
+  const requestedCommandCenterReason = normalizeCommandCenterReasonFilter(searchParams.get("cc_reason"));
+  const rawTab = (searchParams.get("tab") || "").toLowerCase();
+  const legacySection = (searchParams.get("section") || "").toLowerCase();
+  const legacyCcOpen = searchParams.get("cc") === "open";
+  const ALL_TABS = ["funil", "equipe", "casos", "solucoes", "imoveis", "parceiros"] as const;
+  const activeTab: DashTab = (() => {
+    if ((ALL_TABS as readonly string[]).includes(rawTab)) return rawTab as DashTab;
+    // legacy: "processos" and "operacional" tabs redirect to Command Center
+    if (rawTab === "processos" || legacySection === "processos") return "casos";
+    if (rawTab === "operacional") return "casos";
+    if (legacyCcOpen) return "casos";
+    if (legacySection === "parceiros") return "parceiros";
+    if (legacySection === "imoveis") return "imoveis";
+    return "funil";
+  })();
   const [selectedThreadId, setSelectedThreadId] = React.useState<string | null>(requestedThreadId);
   const [threads, setThreads] = React.useState<ImobChatThread[]>(syntheticThreads);
   const [telemetrySummary, setTelemetrySummary] = React.useState<{
@@ -338,6 +385,7 @@ const ImobDashboardPage: React.FC = () => {
   const [properties, setProperties] = React.useState<ImobProperty[]>([]);
   const [cases, setCases] = React.useState<ImobCase[]>([]);
   const [runs, setRuns] = React.useState<Run[]>([]);
+  const [caseCostMap, setCaseCostMap] = React.useState<Map<string, number>>(new Map());
   const [priorityQueue, setPriorityQueue] = React.useState<ImobPriorityQueueItem[]>([]);
   const [waitingOnBoard, setWaitingOnBoard] = React.useState<ImobWaitingOnBucket[]>([]);
   const [bottleneckHeatmap, setBottleneckHeatmap] = React.useState<ImobHeatmapCell[]>([]);
@@ -346,6 +394,13 @@ const ImobDashboardPage: React.FC = () => {
   const [approvalContext, setApprovalContext] = React.useState<ImobApprovalContextItem[]>([]);
   const [followUps, setFollowUps] = React.useState<ImobCrmFollowUpItem[]>([]);
   const [followUpLoading, setFollowUpLoading] = React.useState(false);
+  const [imobHealth, setImobHealth] = React.useState<ImobFunnelHealth | null>(null);
+  const [imobCasesList, setImobCasesList] = React.useState<ImobCommandCenterCaseRow[]>([]);
+  const [imobLoading, setImobLoading] = React.useState(false);
+  const [imobCommandCenterError, setImobCommandCenterError] = React.useState<string | null>(null);
+  const [imobStatusFilter, setImobStatusFilter] = React.useState(requestedCommandCenterStatus);
+  const [imobReasonFilter, setImobReasonFilter] = React.useState(requestedCommandCenterReason);
+  const [kpiWindowDays, setKpiWindowDays] = React.useState<7 | 15 | 30>(30);
   const [kpiFunnel, setKpiFunnel] = React.useState<ImobKpiFunnel | null>(null);
   const [kpiPerformance, setKpiPerformance] = React.useState<ImobKpiPerformance | null>(null);
   const [kpiLoading, setKpiLoading] = React.useState(false);
@@ -393,15 +448,74 @@ const ImobDashboardPage: React.FC = () => {
     }
   }, [reloadApprovalContext]);
 
-  const setSection = (next: Section) => {
+  const setActiveTab = React.useCallback((tab: DashTab) => {
     const params = new URLSearchParams(searchParams);
-    params.set("section", next);
+    params.set("tab", tab);
+    params.delete("cc");
+    params.delete("section");
     setSearchParams(params, { replace: true });
-  };
+  }, [searchParams, setSearchParams]);
+
+  const fetchImobCommandCenter = React.useCallback(async () => {
+    if (imobAccessGate || !session.workspaceId) return;
+    setImobLoading(true);
+    setImobCommandCenterError(null);
+    try {
+      const [healthResponse, casesResponse] = await Promise.all([
+        apiGetImobFunnelHealth({ workspaceId: session.workspaceId }),
+        apiListImobCases({ status: mapImobStatusFilterToCaseStatus(imobStatusFilter) }),
+      ]);
+      setImobHealth(healthResponse.data);
+      setImobCasesList(buildImobCaseList(casesResponse.data.items ?? [], imobReasonFilter, imobStatusFilter));
+    } catch (error) {
+      setImobHealth(null);
+      setImobCasesList([]);
+      setImobCommandCenterError(
+        error instanceof Error ? error.message : "Falha ao carregar a Central Operacional do IMOB"
+      );
+    } finally {
+      setImobLoading(false);
+    }
+  }, [imobAccessGate, imobReasonFilter, imobStatusFilter, session.workspaceId]);
+
+  const downloadImobArtifact = React.useCallback(
+    async (type: "bundle" | "receipt", format: "pdf" | "html", caseId: string) => {
+      if (!session.token) {
+        setImobCommandCenterError("Sessão sem token para download de artefato.");
+        return;
+      }
+      const path = type === "bundle" ? `/imob/cases/${caseId}/dossier` : `/imob/cases/${caseId}/receipt`;
+      const response = await fetch(`${API_BASE_URL}${path}`, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${session.token}`,
+        },
+      });
+      if (!response.ok) {
+        setImobCommandCenterError(`Falha ao baixar ${type} (${response.status}).`);
+        return;
+      }
+      const payload = await response.json();
+      if (format === "html") {
+        saveImobArtifactHtml(type, payload, caseId);
+        return;
+      }
+      await saveImobArtifactPdf(type, payload, caseId);
+    },
+    [session.token]
+  );
 
   React.useEffect(() => {
     setSelectedThreadId(requestedThreadId);
   }, [requestedThreadId]);
+
+  React.useEffect(() => {
+    setImobStatusFilter((current) => (current === requestedCommandCenterStatus ? current : requestedCommandCenterStatus));
+  }, [requestedCommandCenterStatus]);
+
+  React.useEffect(() => {
+    setImobReasonFilter((current) => (current === requestedCommandCenterReason ? current : requestedCommandCenterReason));
+  }, [requestedCommandCenterReason]);
 
   React.useEffect(() => {
     const params = new URLSearchParams(searchParams);
@@ -416,6 +530,25 @@ const ImobDashboardPage: React.FC = () => {
       setSearchParams(params, { replace: true });
     }
   }, [searchParams, selectedThreadId, setSearchParams]);
+
+  React.useEffect(() => {
+    const params = new URLSearchParams(searchParams);
+    if (imobStatusFilter === "pending_data") {
+      params.delete("cc_status");
+    } else {
+      params.set("cc_status", imobStatusFilter);
+    }
+    if (imobReasonFilter === "all") {
+      params.delete("cc_reason");
+    } else {
+      params.set("cc_reason", imobReasonFilter);
+    }
+    const current = searchParams.toString();
+    const next = params.toString();
+    if (current !== next) {
+      setSearchParams(params, { replace: true });
+    }
+  }, [imobReasonFilter, imobStatusFilter, searchParams, setSearchParams]);
 
   React.useEffect(() => {
     let mounted = true;
@@ -453,6 +586,10 @@ const ImobDashboardPage: React.FC = () => {
       setProperties([]);
       setCases([]);
       setRuns([]);
+      setCaseCostMap(new Map());
+      setImobHealth(null);
+      setImobCasesList([]);
+      setImobCommandCenterError(null);
       setPriorityQueue([]);
       setWaitingOnBoard([]);
       setBottleneckHeatmap([]);
@@ -473,6 +610,7 @@ const ImobDashboardPage: React.FC = () => {
       apiListImobOwners(),
       apiListImobProperties(),
       apiListImobCases(),
+      apiListImobCaseCosts({ windowDays: 30 }),
       apiListRuns({ page: 1, size: 100, workspaceId: session.workspaceId }),
       apiListImobPriorityQueue({ limit: 8 }),
       apiListImobWaitingOnBoard(),
@@ -480,11 +618,28 @@ const ImobDashboardPage: React.FC = () => {
       apiGetImobExecutiveSummary(),
       apiListImobApprovalContext({ limit: 8 }),
     ])
-      .then(([ownersResponse, propertiesResponse, casesResponse, runsResponse, priorityQueueResponse, waitingOnBoardResponse, heatmapResponse, executiveSummaryResponse, approvalContextResponse]) => {
+      .then(([
+        ownersResponse,
+        propertiesResponse,
+        casesResponse,
+        caseCostsResponse,
+        runsResponse,
+        priorityQueueResponse,
+        waitingOnBoardResponse,
+        heatmapResponse,
+        executiveSummaryResponse,
+        approvalContextResponse,
+      ]) => {
         if (!mounted) return;
         const nextOwners = ownersResponse.data.items ?? [];
         const nextProperties = propertiesResponse.data.items ?? [];
         const nextCases = casesResponse.data.items ?? [];
+        const nextCaseCostMap = new Map<string, number>();
+        for (const item of caseCostsResponse.data.items ?? []) {
+          if (typeof item.caseId === "string" && item.caseId.trim().length > 0) {
+            nextCaseCostMap.set(item.caseId, item.costCents);
+          }
+        }
         const nextPriorityQueue = priorityQueueResponse.data.items ?? [];
         const nextWaitingOnBoard = waitingOnBoardResponse.data.items ?? [];
         const nextHeatmap = heatmapResponse.data.items ?? [];
@@ -501,6 +656,7 @@ const ImobDashboardPage: React.FC = () => {
         setProperties(nextProperties);
         setCases(nextCases);
         setRuns(nextRuns);
+        setCaseCostMap(nextCaseCostMap);
         setPriorityQueue(nextPriorityQueue);
         setWaitingOnBoard(nextWaitingOnBoard);
         setBottleneckHeatmap(nextHeatmap);
@@ -528,6 +684,7 @@ const ImobDashboardPage: React.FC = () => {
         setProperties([]);
         setCases([]);
         setRuns([]);
+        setCaseCostMap(new Map());
         setPriorityQueue([]);
         setWaitingOnBoard([]);
         setBottleneckHeatmap([]);
@@ -553,6 +710,10 @@ const ImobDashboardPage: React.FC = () => {
   }, [imobAccessGate, session.workspaceId]);
 
   React.useEffect(() => {
+    void fetchImobCommandCenter();
+  }, [fetchImobCommandCenter]);
+
+  React.useEffect(() => {
     let mounted = true;
     if (imobAccessGate) {
       setFollowUps([]);
@@ -562,7 +723,7 @@ const ImobDashboardPage: React.FC = () => {
       };
     }
     setFollowUpLoading(true);
-    void apiListImobFollowUps({ onlyOverdue: false, limit: 120, caseId: requestedCaseId ?? undefined })
+    void apiListImobFollowUps({ onlyOverdue: true, limit: 200, caseId: requestedCaseId ?? undefined })
       .then((response) => {
         if (!mounted) return;
         setFollowUps(response.data.items ?? []);
@@ -592,8 +753,8 @@ const ImobDashboardPage: React.FC = () => {
     }
     setKpiLoading(true);
     Promise.all([
-      apiGetImobKpiFunnel({ windowDays: 30 }),
-      apiGetImobKpiPerformance({ windowDays: 30 }),
+      apiGetImobKpiFunnel({ windowDays: kpiWindowDays }),
+      apiGetImobKpiPerformance({ windowDays: kpiWindowDays }),
     ])
       .then(([funnelResponse, performanceResponse]) => {
         if (!mounted) return;
@@ -602,8 +763,6 @@ const ImobDashboardPage: React.FC = () => {
       })
       .catch(() => {
         if (!mounted) return;
-        setKpiFunnel(null);
-        setKpiPerformance(null);
       })
       .finally(() => {
         if (!mounted) return;
@@ -612,7 +771,7 @@ const ImobDashboardPage: React.FC = () => {
     return () => {
       mounted = false;
     };
-  }, [imobAccessGate]);
+  }, [imobAccessGate, kpiWindowDays]);
 
   React.useEffect(() => {
     let mounted = true;
@@ -654,13 +813,6 @@ const ImobDashboardPage: React.FC = () => {
     };
   }, [conversationId]);
 
-  const backToChatHref = React.useMemo(() => {
-    const params = new URLSearchParams();
-    if (conversationId) params.set("conversationId", conversationId);
-    if (selectedThreadId) params.set("threadId", selectedThreadId);
-    const query = params.toString();
-    return `/app/imob/chat${query ? `?${query}` : ""}`;
-  }, [conversationId, selectedThreadId]);
   const buildImobRunHref = React.useCallback(
     (runId: string, options?: { threadId?: string | null; caseId?: string | null }) => {
       const params = new URLSearchParams();
@@ -707,56 +859,26 @@ const ImobDashboardPage: React.FC = () => {
   const evidencedProcessCount = cases.filter((item) => (item._count?.events ?? 0) > 0).length;
   const readyForReviewCount = properties.filter((item) => item.status === "ready_for_review").length;
   const ownerPendingCount = owners.filter((item) => asStringList(item.pendingItems).length > 0).length;
-  const caseRunMap = React.useMemo(() => {
-    const map = new Map<string, Run[]>();
-    for (const run of runs) {
-      const keys = [run.caseId ?? null, run.threadId ?? null].filter(
-        (value): value is string => typeof value === "string" && value.trim().length > 0
-      );
-      for (const key of keys) {
-        const current = map.get(key) ?? [];
-        current.push(run);
-        map.set(key, current);
-      }
-    }
-    return map;
-  }, [runs]);
-  const totalImobRunCostCents = React.useMemo(
-    () => runs.reduce((sum, run) => sum + (typeof run.costCents === "number" ? run.costCents : 0), 0),
-    [runs]
-  );
-  const casesWithRunCount = React.useMemo(
-    () =>
-      cases.filter((item) => {
-        const byCase = caseRunMap.get(item.id)?.length ?? 0;
-        const byThread = item.threadId ? caseRunMap.get(item.threadId)?.length ?? 0 : 0;
-        return byCase + byThread > 0;
-      }).length,
-    [caseRunMap, cases]
-  );
+
+  const totalImobRunCostCents = kpiFunnel?.totalRunCostCents ?? 0;
+  const casesWithRunCount = kpiFunnel?.casesWithRunCount ?? 0;
   const averageCaseCostCents = casesWithRunCount > 0 ? Math.round(totalImobRunCostCents / casesWithRunCount) : 0;
-  const stageCostSummary = React.useMemo(() => {
-    const grouped = new Map<string, { cases: number; costCents: number }>();
-    for (const item of cases) {
-      const relatedRuns = [
-        ...(caseRunMap.get(item.id) ?? []),
-        ...(item.threadId ? caseRunMap.get(item.threadId) ?? [] : []),
-      ];
-      const costCents = relatedRuns.reduce(
-        (sum, run) => sum + (typeof run.costCents === "number" ? run.costCents : 0),
-        0
-      );
-      const key = formatCaseFlowLabel(item.flow);
-      const current = grouped.get(key) ?? { cases: 0, costCents: 0 };
-      current.cases += 1;
-      current.costCents += costCents;
-      grouped.set(key, current);
-    }
-    return Array.from(grouped.entries())
-      .map(([label, value]) => ({ label, ...value }))
-      .sort((a, b) => b.costCents - a.costCents);
-  }, [caseRunMap, cases]);
+  const stageCostSummary = kpiFunnel?.costByJourney ?? [];
   const topCostStage = stageCostSummary[0] ?? null;
+  const durationSampleSize = kpiFunnel?.coverage.durationSampleSize ?? 0;
+  const resolutionSampleSize = kpiFunnel?.coverage.resolutionSampleSize ?? 0;
+  const hasKpiSnapshot = kpiFunnel != null;
+  const hasPerformanceSnapshot = kpiPerformance != null;
+  const hasDurationCoverage = durationSampleSize > 0 && kpiFunnel?.averageDurationHours != null;
+  const hasResolutionCoverage = resolutionSampleSize > 0;
+  const globalClosingPct = React.useMemo(() => {
+    const opened = kpiFunnel?.totals.cases ?? 0;
+    const closings = kpiFunnel?.totals.closings ?? 0;
+    if (opened <= 0) return null;
+    return (closings / opened) * 100;
+  }, [kpiFunnel]);
+  const kpiRefreshState = resolveKpiRefreshState({ loading: kpiLoading, hasSnapshot: hasKpiSnapshot });
+  const performanceRefreshState = resolveKpiRefreshState({ loading: kpiLoading, hasSnapshot: hasPerformanceSnapshot });
 
   const latestCaseByOwnerId = React.useMemo(() => {
     const map = new Map<string, ImobCase>();
@@ -778,10 +900,21 @@ const ImobDashboardPage: React.FC = () => {
     () =>
       [...cases]
         .map((item) => ({ item, priority: buildCasePriority(item) }))
-        .sort((a, b) => b.priority.score - a.priority.score)
-        .slice(0, 5),
+        .sort((a, b) => b.priority.score - a.priority.score),
     [cases]
   );
+  const prioritizedCaseChips = React.useMemo(() => {
+    const seen = new Set<string>();
+    const next: Array<{ item: ImobCase; priority: ReturnType<typeof buildCasePriority> }> = [];
+    for (const entry of prioritizedCases) {
+      const key = buildPriorityChipKey(entry.item);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      next.push(entry);
+      if (next.length >= 3) break;
+    }
+    return next;
+  }, [prioritizedCases]);
   const selectedThread = React.useMemo(
     () => threads.find((item) => item.threadId === selectedThreadId) ?? null,
     [threads, selectedThreadId]
@@ -831,6 +964,7 @@ const ImobDashboardPage: React.FC = () => {
   const contextConversationLabel = conversationId ? "Conversa ativa no chat" : "Visão geral";
   const contextThreadLabel = selectedThread?.label?.trim() || "Sem thread selecionada";
   const contextCaseLabel = formatDashboardCaseLabel(contextCase);
+  const contextCaseId = contextCase?.id ?? requestedCaseId ?? null;
   const contextPendingItems = contextCase ? asStringList(contextCase.pendingItems) : [];
   const followUpsByCaseId = React.useMemo(() => {
     const map = new Map<string, ImobCrmFollowUpItem[]>();
@@ -860,116 +994,53 @@ const ImobDashboardPage: React.FC = () => {
     }
     return buildCaseFallbackActions(contextCase);
   }, [contextCase]);
+  const backToChatHref = React.useMemo(() => {
+    const params = new URLSearchParams();
+    if (conversationId) params.set("conversationId", conversationId);
+    if (selectedThreadId) params.set("threadId", selectedThreadId);
+    if (contextCaseId) params.set("caseId", contextCaseId);
+    const query = params.toString();
+    return `/app/imob/chat${query ? `?${query}` : ""}`;
+  }, [contextCaseId, conversationId, selectedThreadId]);
+
+  const heroChips = React.useMemo<PriorityChip[]>(() => {
+    return prioritizedCaseChips.map(({ item, priority }) => {
+      const primaryAction = item.canonical?.recommendedActions?.[0];
+      const href = buildRecommendedCaseHref({
+        conversationId,
+        caseId: item.id,
+        threadId: item.threadId ?? null,
+        actionLabel: primaryAction?.label,
+        actionHint: primaryAction?.inputHint,
+      });
+      return {
+        key: `priority-chip-${item.id}`,
+        label: `${formatJourneyTypeLabel(item.canonical?.journeyType)}: ${primaryAction?.label ?? "revisar caso"}`,
+        href,
+        tone: priorityTone(priority.label),
+      };
+    });
+  }, [prioritizedCaseChips, conversationId]);
 
   return (
     <div className="space-y-6">
-      <header className="rounded-3xl border border-white/10 bg-gradient-to-r from-accent/10 via-surface/80 to-transparent p-8">
-        <p className="text-xs uppercase tracking-[0.35em] text-accent">IMOB</p>
-        <h1 className="mt-2 text-2xl font-semibold text-foreground">Dashboard</h1>
-        <p className="mt-2 text-sm text-muted-foreground">Visão unificada de imóveis, processos e parceiros.</p>
-        <p className="mt-3 text-xs uppercase tracking-[0.22em] text-muted-foreground/80">
-          {brandName} • {workspaceLabel}
-        </p>
-        <div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Custo operacional IMOB</p>
-            <p className="mt-2 text-2xl font-semibold text-foreground">{currencyFromCents(totalImobRunCostCents)}</p>
-          </article>
-          <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Casos com run</p>
-            <p className="mt-2 text-2xl font-semibold text-foreground">{casesWithRunCount}</p>
-          </article>
-          <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Custo médio por caso</p>
-            <p className="mt-2 text-2xl font-semibold text-foreground">{currencyFromCents(averageCaseCostCents)}</p>
-          </article>
-          <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Etapa mais custosa</p>
-            <p className="mt-2 text-sm font-semibold text-foreground">{topCostStage?.label ?? "-"}</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {topCostStage ? currencyFromCents(topCostStage.costCents) : "Sem custo ainda"}
-            </p>
-          </article>
-        </div>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Conversão proposta → fechamento</p>
-            <p className="mt-2 text-2xl font-semibold text-foreground">
-              {kpiLoading ? "..." : formatPct(kpiFunnel?.conversions.proposalToClosingPct)}
-            </p>
-          </article>
-          <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Tempo médio até fechamento</p>
-            <p className="mt-2 text-2xl font-semibold text-foreground">
-              {kpiLoading
-                ? "..."
-                : kpiFunnel?.averageDurationHours != null
-                  ? `${kpiFunnel.averageDurationHours.toFixed(1)}h`
-                  : "—"}
-            </p>
-          </article>
-          <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Pendências resolvidas em 48h</p>
-            <p className="mt-2 text-2xl font-semibold text-foreground">
-              {kpiLoading ? "..." : formatPct(kpiFunnel?.docsResolved48hPct)}
-            </p>
-          </article>
-          <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
-            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Receita por corretor (30d)</p>
-            <p className="mt-2 text-sm font-semibold text-foreground">
-              {kpiLoading
-                ? "..."
-                : kpiPerformance?.ranking?.[0]
-                  ? `${kpiPerformance.ranking[0].broker}: ${currencyFromCents(kpiPerformance.ranking[0].revenueCents)}`
-                  : "Sem dados"}
-            </p>
-          </article>
-        </div>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {prioritizedCases.slice(0, 3).map(({ item, priority }) => {
-            const primaryAction = item.canonical?.recommendedActions?.[0];
-            const href = buildRecommendedCaseHref({
-              conversationId,
-              caseId: item.id,
-              threadId: item.threadId ?? null,
-              actionLabel: primaryAction?.label,
-              actionHint: primaryAction?.inputHint,
-            });
-            return (
-              <Link
-                key={`priority-chip-${item.id}`}
-                to={href}
-                className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.18em] ${priorityTone(priority.label)}`}
-              >
-                {formatJourneyTypeLabel(item.canonical?.journeyType)}: {primaryAction?.label ?? "revisar caso"}
-              </Link>
-            );
-          })}
-          <Link
-            to={backToChatHref}
-            className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-foreground hover:border-accent/40"
-          >
-            Voltar ao chat
-          </Link>
-          {(["imoveis", "processos", "parceiros"] as Section[]).map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() => setSection(item)}
-              className={`rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.18em] transition ${
-                section === item
-                  ? "border-accent/50 bg-accent/20 text-accent"
-                  : "border-white/20 bg-white/10 text-foreground hover:border-accent/40"
-              }`}
-            >
-              {sectionLabel(item)}
-            </button>
-          ))}
-          <span className="rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-amber-100">
-            SLA em atraso: {followUpLoading ? "..." : overdueFollowUpCount}
-          </span>
-        </div>
-      </header>
+      <ImobDashboardHero
+        brandName={brandName}
+        workspaceLabel={workspaceLabel}
+        blockedTotal={blockedProcessCount}
+        overdueFollowUpCount={overdueFollowUpCount}
+        followUpLoading={followUpLoading}
+        conversionPct={globalClosingPct}
+        totalRunCostCents={totalImobRunCostCents}
+        hasKpiSnapshot={hasKpiSnapshot}
+        kpiLoading={kpiLoading}
+        activeProcessCount={activeProcessCount}
+        evidencedProcessCount={evidencedProcessCount}
+        priorityChips={heroChips}
+        backToChatHref={backToChatHref}
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+      />
 
       {imobAccessGate ? (
         <ImobAccessGateCard gate={imobAccessGate} />
@@ -981,6 +1052,155 @@ const ImobDashboardPage: React.FC = () => {
         </section>
       ) : null}
 
+      {activeTab === "funil" ? (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-surface/40 px-4 py-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Janela analítica</p>
+              <p className="mt-1 text-sm text-foreground">O recorte abaixo vale para funil, custo por jornada e ciclo operacional.</p>
+            </div>
+            <div className="flex gap-1">
+              {([7, 15, 30] as const).map((days) => (
+                <button
+                  key={days}
+                  type="button"
+                  onClick={() => setKpiWindowDays(days)}
+                  className={`rounded-full border px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] transition ${
+                    kpiWindowDays === days
+                      ? "border-accent/60 bg-accent/20 text-accent"
+                      : "border-white/15 bg-white/5 text-muted-foreground hover:border-white/30"
+                  }`}
+                >
+                  {days}d
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Conversão global do funil</p>
+              <p className="mt-2 text-2xl font-semibold text-foreground">
+                {globalClosingPct != null ? formatPct(globalClosingPct) : shouldShowKpiPlaceholder(kpiRefreshState) ? "..." : "—"}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {shouldShowKpiRefreshingHint(kpiRefreshState) ? "Atualizando recorte..." : `${kpiFunnel?.totals.closings ?? 0} fechamento(s) de ${kpiFunnel?.totals.cases ?? 0} caso(s)`}
+              </p>
+            </article>
+            <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Conversão proposta → fechamento</p>
+              <p className="mt-2 text-2xl font-semibold text-foreground">
+                {kpiFunnel?.conversions.proposalToClosingPct != null ? formatPct(kpiFunnel?.conversions.proposalToClosingPct) : shouldShowKpiPlaceholder(kpiRefreshState) ? "..." : "—"}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {shouldShowKpiRefreshingHint(kpiRefreshState) ? "Atualizando recorte..." : `${kpiFunnel?.totals.closings ?? 0} fechamento(s) de ${kpiFunnel?.totals.proposals ?? 0} proposta(s)`}
+              </p>
+            </article>
+            <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Tempo médio até fechamento</p>
+              {shouldShowKpiPlaceholder(kpiRefreshState) ? (
+                <p className="mt-2 text-2xl font-semibold text-foreground">...</p>
+              ) : hasDurationCoverage ? (
+                <p className="mt-2 text-2xl font-semibold text-foreground">
+                  {`${kpiFunnel.averageDurationHours.toFixed(1)}h`}
+                </p>
+              ) : (
+                <p className="mt-2 text-sm font-semibold text-muted-foreground">Sem dados suficientes</p>
+              )}
+              <p className="mt-1 text-xs text-muted-foreground">
+                {shouldShowKpiRefreshingHint(kpiRefreshState) ? "Atualizando recorte..." : hasDurationCoverage ? `${durationSampleSize} fechamento(s) medidos` : "Nenhum fechamento medido no recorte"}
+              </p>
+            </article>
+            <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Pendências resolvidas em 48h</p>
+              {shouldShowKpiPlaceholder(kpiRefreshState) ? (
+                <p className="mt-2 text-2xl font-semibold text-foreground">...</p>
+              ) : hasResolutionCoverage ? (
+                <p className="mt-2 text-2xl font-semibold text-foreground">
+                  {formatPct(kpiFunnel?.docsResolved48hPct)}
+                </p>
+              ) : (
+                <p className="mt-2 text-sm font-semibold text-muted-foreground">Sem dados suficientes</p>
+              )}
+              <p className="mt-1 text-xs text-muted-foreground">
+                {shouldShowKpiRefreshingHint(kpiRefreshState) ? "Atualizando recorte..." : hasResolutionCoverage ? `${resolutionSampleSize} fechamento(s) medidos` : "Nenhum fechamento elegível no recorte"}
+              </p>
+            </article>
+            <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Receita por corretor ({kpiWindowDays}d)</p>
+              <p className="mt-2 text-sm font-semibold text-foreground">
+                {shouldShowKpiPlaceholder(performanceRefreshState)
+                  ? "..."
+                  : kpiPerformance?.ranking?.[0]
+                    ? `${kpiPerformance.ranking[0].broker}: ${currencyFromCents(kpiPerformance.ranking[0].revenueCents)}`
+                    : "Sem dados"}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {shouldShowKpiRefreshingHint(performanceRefreshState) ? "Atualizando recorte..." : `${kpiWindowDays}d`}
+              </p>
+            </article>
+          </div>
+          <div className="grid gap-4 xl:grid-cols-2">
+            <ImobFunnelStepsChart steps={kpiFunnel?.steps ?? []} loading={kpiLoading} windowDays={kpiWindowDays} />
+            <ImobJourneyCostChart
+              items={kpiFunnel?.costByJourney ?? []}
+              totalCostCents={totalImobRunCostCents}
+              costCoverage={kpiFunnel?.costCoverage ?? null}
+              loading={kpiLoading}
+            />
+          </div>
+          <ImobCycleTimePanel
+            docsResolved48hPct={kpiFunnel?.docsResolved48hPct ?? 0}
+            averageDurationHours={kpiFunnel?.averageDurationHours ?? null}
+            durationSampleSize={durationSampleSize}
+            resolutionSampleSize={resolutionSampleSize}
+            loading={kpiLoading}
+            windowDays={kpiWindowDays}
+          />
+        </div>
+      ) : null}
+
+
+      {activeTab === "equipe" ? (
+        <div className="space-y-4">
+          <div className="grid gap-4 xl:grid-cols-2">
+            <ImobSpecialistLoadBoard items={specialistLoad} />
+            <ImobRescueIndex items={rescueIndex} />
+          </div>
+          <ImobApprovalContextCard
+            items={approvalContext}
+            buildHref={(item) => buildApprovalContextHref(conversationId, item)}
+            onAction={handleApprovalAction}
+          />
+          <ImobBrokerChart ranking={kpiPerformance?.ranking ?? []} loading={kpiLoading} />
+        </div>
+      ) : null}
+
+      {activeTab === "casos" && !imobAccessGate ? (
+        <ImobCommandCenter
+          health={imobHealth}
+          cases={imobCasesList}
+          loading={imobLoading}
+          error={imobCommandCenterError}
+          statusFilter={imobStatusFilter}
+          reasonFilter={imobReasonFilter}
+          totalCostLabel={kpiLoading ? "..." : currencyFromCents(totalImobRunCostCents)}
+          caseCostMap={caseCostMap}
+          priorityQueue={priorityQueue}
+          waitingOnBoard={waitingOnBoard}
+          bottleneckHeatmap={bottleneckHeatmap}
+          onStatusFilterChange={setImobStatusFilter}
+          onReasonFilterChange={setImobReasonFilter}
+          onRefresh={() => {
+            void fetchImobCommandCenter();
+          }}
+          onDownloadArtifact={(type, format, caseId) => downloadImobArtifact(type, format, caseId)}
+          conversationId={conversationId}
+          buildPriorityQueueHref={(item) => buildPriorityQueueChatHref(conversationId, item)}
+        />
+      ) : null}
+
+      {activeTab === "solucoes" ? (
+      <>
       <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -1094,7 +1314,75 @@ const ImobDashboardPage: React.FC = () => {
         </div>
       </section>
 
-      {section === "imoveis" ? (
+      <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 text-xs text-muted-foreground sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Métricas Operacionais</h3>
+          <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground/80">
+            {conversationId
+              ? telemetryLoading
+                ? "Atualizando..."
+                : `Conversa ativa${telemetrySummary?.generatedAt ? ` • ${new Date(telemetrySummary.generatedAt).toLocaleTimeString("pt-BR")}` : ""}`
+              : "Sem conversa ativa"}
+          </p>
+        </div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-lg border border-white/10 bg-surface/40 p-2">
+            <p className="text-[10px] uppercase tracking-[0.12em]">msg→plan</p>
+            <p className="mt-1 text-sm text-foreground">{formatLatencyMs(metricSource.messageToPlanAvgMs)}</p>
+          </div>
+          <div className="rounded-lg border border-white/10 bg-surface/40 p-2">
+            <p className="text-[10px] uppercase tracking-[0.12em]">plan→execute</p>
+            <p className="mt-1 text-sm text-foreground">{formatLatencyMs(metricSource.planToExecuteAvgMs)}</p>
+          </div>
+          <div className="rounded-lg border border-white/10 bg-surface/40 p-2">
+            <p className="text-[10px] uppercase tracking-[0.12em]">cobertura chat→run</p>
+            <p className="mt-1 text-sm text-foreground">{formatPct(metricSource.chatToRunCoveragePct)}</p>
+          </div>
+          <div className="rounded-lg border border-white/10 bg-surface/40 p-2">
+            <p className="text-[10px] uppercase tracking-[0.12em]">persistência</p>
+            <p className="mt-1 text-sm text-foreground">{formatPct(metricSource.persistSuccessRatePct)}</p>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 text-xs text-muted-foreground sm:p-6">
+        <ThreadPanel
+          threads={threads}
+          selectedThreadId={selectedThreadId}
+          groupByJourneyActiveOnly
+          onSelectThread={(thread) => setSelectedThreadId(thread.threadId)}
+          onClearSelection={() => setSelectedThreadId(null)}
+          maxItems={3}
+          showNavigationCtas={false}
+          showTimelineLegend={false}
+        />
+      </section>
+
+      <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 text-xs text-muted-foreground sm:p-6">
+        <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Significado da timeline</p>
+        <ul className="mt-2 space-y-2 text-[11px] text-muted-foreground">
+          <li>
+            <span className="font-medium text-foreground">Entendimento</span>: o chat interpretou sua intenção corretamente.
+            Exemplo: identificou que você quer uma operação de captação.
+          </li>
+          <li>
+            <span className="font-medium text-foreground">Preparação</span>: o plano operacional está sendo montado.
+            Valida contexto, regras e próximos passos antes de executar.
+          </li>
+          <li>
+            <span className="font-medium text-foreground">Execução</span>: a ação está rodando no motor EIAH.
+            Cria/atualiza processo (run) e acompanha status.
+          </li>
+          <li>
+            <span className="font-medium text-foreground">Concluído</span>: operação finalizada com sucesso.
+            Quando aplicável, gera comprovante (receipt/tx) e fecha a etapa.
+          </li>
+        </ul>
+      </section>
+      </>
+      ) : null}
+
+      {activeTab === "imoveis" ? (
         <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 sm:p-6">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">Imóveis</h2>
@@ -1167,178 +1455,7 @@ const ImobDashboardPage: React.FC = () => {
         </section>
       ) : null}
 
-      {section === "processos" ? (
-        <section className="space-y-4">
-          <section className="grid gap-4 sm:grid-cols-3">
-            <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Processos ativos</p>
-              <p className="mt-2 text-2xl font-semibold text-foreground">{activeProcessCount}</p>
-            </article>
-            <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Bloqueados</p>
-              <p className="mt-2 text-2xl font-semibold text-foreground">{blockedProcessCount}</p>
-            </article>
-            <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Com evidências</p>
-              <p className="mt-2 text-2xl font-semibold text-foreground">{evidencedProcessCount}</p>
-            </article>
-          </section>
-
-          <div className="grid gap-4 xl:grid-cols-[1.35fr_1fr]">
-            <ImobPriorityQueue
-              items={priorityQueue}
-              buildHref={(item) => buildPriorityQueueChatHref(conversationId, item)}
-            />
-            <ImobWaitingOnBoard
-              items={waitingOnBoard}
-              buildHref={(item) => buildPriorityQueueChatHref(conversationId, item)}
-            />
-          </div>
-
-          <ImobBottleneckHeatmap items={bottleneckHeatmap} />
-
-          <div className="grid gap-4 xl:grid-cols-2">
-            <ImobSpecialistLoadBoard items={specialistLoad} />
-            <ImobRescueIndex items={rescueIndex} />
-          </div>
-
-          <ImobApprovalContextCard
-            items={approvalContext}
-            buildHref={(item) => buildApprovalContextHref(conversationId, item)}
-            onAction={handleApprovalAction}
-          />
-
-          <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 sm:p-6">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">Custo resumido do funil</h2>
-              <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                {stageCostSummary.length} etapa(s)
-              </span>
-            </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-3">
-              {stageCostSummary.slice(0, 6).map((item) => (
-                <article key={item.label} className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                  <p className="text-sm font-semibold text-foreground">{item.label}</p>
-                  <p className="mt-2 text-lg font-semibold text-foreground">{currencyFromCents(item.costCents)}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{item.cases} caso(s)</p>
-                </article>
-              ))}
-              {stageCostSummary.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nenhum custo operacional associado ao funil IMOB neste recorte.</p>
-              ) : null}
-            </div>
-          </section>
-
-          <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 sm:p-6">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">Processos</h2>
-              <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                {dashboardLoading ? "atualizando" : dashboardSource === "real" ? "dados ao vivo" : "sem processos cadastrados"}
-              </span>
-            </div>
-            <div className="mt-4 overflow-x-auto">
-              <table className="min-w-full text-left text-sm">
-                <thead>
-                  <tr className="border-b border-white/10 text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                    <th className="px-3 py-2">Processo</th>
-                    <th className="px-3 py-2">Contexto</th>
-                    <th className="px-3 py-2">Etapa</th>
-                    <th className="px-3 py-2">Status</th>
-                    <th className="px-3 py-2">Responsável</th>
-                    <th className="px-3 py-2">Evidências</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cases.map((item) => {
-                    const href = buildImobChatHref({
-                      conversationId,
-                      caseId: item.id,
-                      threadId: item.threadId ?? null,
-                      autoprompt: "o que falta nesse caso",
-                    });
-                    const priority = buildCasePriority(item);
-                    const primaryAction = item.canonical?.recommendedActions?.[0];
-                    const actionHref = buildRecommendedCaseHref({
-                      conversationId,
-                      caseId: item.id,
-                      threadId: item.threadId ?? null,
-                      actionLabel: primaryAction?.label,
-                      actionHint: primaryAction?.inputHint,
-                    });
-                    const relatedRuns = [
-                      ...(caseRunMap.get(item.id) ?? []),
-                      ...(item.threadId ? caseRunMap.get(item.threadId) ?? [] : []),
-                    ];
-                    const latestRun = relatedRuns[0] ?? null;
-                    const relatedCostCents = relatedRuns.reduce(
-                      (sum, run) => sum + (typeof run.costCents === "number" ? run.costCents : 0),
-                      0
-                    );
-                    return (
-                    <tr key={item.id} className="border-b border-white/5 text-muted-foreground">
-                      <td className="px-3 py-3 text-foreground"><Link to={href} className="hover:text-accent">{formatCaseFlowLabel(item.flow)}</Link></td>
-                      <td className="px-3 py-3">{item.lead?.name || item.owner?.name || item.property?.city || "Sem contexto vinculado"}</td>
-                      <td className="px-3 py-3">
-                        <div className="space-y-1">
-                          <p>{item.nextStep?.trim() || item.stage}</p>
-                          <p className="text-[10px] text-foreground/80">{primaryAction?.label ?? "Revisar caso"}</p>
-                        </div>
-                      </td>
-                      <td className="px-3 py-3">
-                        <div className="flex flex-wrap gap-2">
-                          <span className={`rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.15em] ${processStatusTone(item.status)}`}>
-                            {formatImobStatusLabel(item.status)}
-                          </span>
-                          <span className={`rounded-full border px-2 py-1 text-[10px] uppercase tracking-[0.15em] ${priorityTone(priority.label)}`}>
-                            prioridade {priority.label}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-3 py-3">{item.ownerResponsible || "Responsável não definido"}</td>
-                      <td className="px-3 py-3 text-xs">
-                        <div className="space-y-1">
-                          <p>{item._count?.events ?? 0} evento(s)</p>
-                          <p className="text-foreground">{currencyFromCents(relatedCostCents)}</p>
-                          <Link
-                            to={actionHref}
-                            className="text-[10px] text-accent underline-offset-2 hover:text-accent/80 hover:underline"
-                          >
-                            agir: {primaryAction?.label ?? "revisar caso"}
-                          </Link>
-                          {latestRun ? (
-                            <div className="flex flex-wrap gap-2">
-                              <Link
-                                to={buildImobRunHref(latestRun.id, { threadId: item.threadId ?? null, caseId: item.id })}
-                                className="text-[10px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-                              >
-                                execução
-                              </Link>
-                              <Link
-                                to={`/app/billing?runId=${encodeURIComponent(latestRun.id)}`}
-                                className="text-[10px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-                              >
-                                reconciliação
-                              </Link>
-                            </div>
-                          ) : null}
-                        </div>
-                      </td>
-                    </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            {!dashboardLoading && cases.length === 0 ? (
-              <p className="mt-4 rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-muted-foreground">
-                Nenhum processo cadastrado no CRM operacional do IMOB.
-              </p>
-            ) : null}
-          </section>
-        </section>
-      ) : null}
-
-      {section === "parceiros" ? (
+      {activeTab === "parceiros" ? (
         <section className="space-y-4">
           <section className="grid gap-4 sm:grid-cols-3">
             <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
@@ -1435,74 +1552,6 @@ const ImobDashboardPage: React.FC = () => {
           </section>
         </section>
       ) : null}
-
-      <footer id="dashboard-hub" className="space-y-4">
-        <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 text-xs text-muted-foreground sm:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Métricas Operacionais</h3>
-            <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground/80">
-              {conversationId
-                ? telemetryLoading
-                  ? "Atualizando..."
-                  : `Conversa ativa${telemetrySummary?.generatedAt ? ` • ${new Date(telemetrySummary.generatedAt).toLocaleTimeString("pt-BR")}` : ""}`
-                : "Sem conversa ativa"}
-            </p>
-          </div>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-lg border border-white/10 bg-surface/40 p-2">
-              <p className="text-[10px] uppercase tracking-[0.12em]">msg→plan</p>
-              <p className="mt-1 text-sm text-foreground">{formatLatencyMs(metricSource.messageToPlanAvgMs)}</p>
-            </div>
-            <div className="rounded-lg border border-white/10 bg-surface/40 p-2">
-              <p className="text-[10px] uppercase tracking-[0.12em]">plan→execute</p>
-              <p className="mt-1 text-sm text-foreground">{formatLatencyMs(metricSource.planToExecuteAvgMs)}</p>
-            </div>
-            <div className="rounded-lg border border-white/10 bg-surface/40 p-2">
-              <p className="text-[10px] uppercase tracking-[0.12em]">cobertura chat→run</p>
-              <p className="mt-1 text-sm text-foreground">{formatPct(metricSource.chatToRunCoveragePct)}</p>
-            </div>
-            <div className="rounded-lg border border-white/10 bg-surface/40 p-2">
-              <p className="text-[10px] uppercase tracking-[0.12em]">persistência</p>
-              <p className="mt-1 text-sm text-foreground">{formatPct(metricSource.persistSuccessRatePct)}</p>
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 text-xs text-muted-foreground sm:p-6">
-          <ThreadPanel
-            threads={threads}
-            selectedThreadId={selectedThreadId}
-            groupByJourneyActiveOnly
-            onSelectThread={(thread) => setSelectedThreadId(thread.threadId)}
-            onClearSelection={() => setSelectedThreadId(null)}
-            maxItems={3}
-            showNavigationCtas={false}
-            showTimelineLegend={false}
-          />
-        </section>
-
-        <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 text-xs text-muted-foreground sm:p-6">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Significado da timeline</p>
-          <ul className="mt-2 space-y-2 text-[11px] text-muted-foreground">
-            <li>
-              <span className="font-medium text-foreground">Entendimento</span>: o chat interpretou sua intenção corretamente.
-              Exemplo: identificou que você quer uma operação de captação.
-            </li>
-            <li>
-              <span className="font-medium text-foreground">Preparação</span>: o plano operacional está sendo montado.
-              Valida contexto, regras e próximos passos antes de executar.
-            </li>
-            <li>
-              <span className="font-medium text-foreground">Execução</span>: a ação está rodando no motor EIAH.
-              Cria/atualiza processo (run) e acompanha status.
-            </li>
-            <li>
-              <span className="font-medium text-foreground">Concluído</span>: operação finalizada com sucesso.
-              Quando aplicável, gera comprovante (receipt/tx) e fecha a etapa.
-            </li>
-          </ul>
-        </section>
-      </footer>
     </div>
   );
 };

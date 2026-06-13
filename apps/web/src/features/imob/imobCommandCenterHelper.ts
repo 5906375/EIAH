@@ -7,7 +7,9 @@ function imobCaseAgeHours(updatedAt: string) {
 }
 
 function asStringArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : [];
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
+    : [];
 }
 
 function buildImobCaseRiskLabel(item: ImobCase) {
@@ -37,12 +39,13 @@ function buildImobCasePriority(item: ImobCase) {
   const missing = asStringArray(item.canonical?.missingContext).length;
   const recommended = item.canonical?.recommendedActions?.length ?? 0;
   const ageHours = imobCaseAgeHours(item.updatedAt);
-  const score = blocked * 5 + missing * 3 + Math.min(4, Math.floor(ageHours / 12)) + (recommended === 0 ? 2 : 0);
+  const score =
+    blocked * 5 + missing * 3 + Math.min(4, Math.floor(ageHours / 12)) + (recommended === 0 ? 2 : 0);
   const label = blocked > 0 ? "alta" : missing > 0 || ageHours >= 24 ? "média" : "normal";
   return { score, label };
 }
 
-function mapImobStatusFilterToCaseStatus(filter: string): string | undefined {
+export function mapImobStatusFilterToCaseStatus(filter: string): string | undefined {
   if (filter === "all") return undefined;
   if (filter === "pending_data") return "pending_data";
   if (filter === "ready_for_review") return "ready_for_review";
@@ -66,9 +69,35 @@ export function formatImobProcessLabel(flow: string | null | undefined) {
   return "Caso";
 }
 
+export function formatImobCaseStatusLabel(status: string) {
+  if (status === "pending_data") return "pendente de dados";
+  if (status === "ready_for_review") return "pronto para revisão";
+  if (status === "blocked") return "bloqueado";
+  if (status === "done") return "concluído";
+  return status || "—";
+}
+
+export function buildImobChatRoute(base: {
+  conversationId?: string | null;
+  caseId?: string | null;
+  threadId?: string | null;
+  autoprompt?: string | null;
+  returnTo?: string | null;
+}) {
+  const params = new URLSearchParams();
+  if (base.conversationId) params.set("conversationId", base.conversationId);
+  if (base.caseId) params.set("caseId", base.caseId);
+  if (base.threadId) params.set("threadId", base.threadId);
+  if (base.autoprompt) params.set("autoprompt", base.autoprompt);
+  if (base.returnTo) params.set("returnTo", base.returnTo);
+  const query = params.toString();
+  return `/app/imob/chat${query ? `?${query}` : ""}`;
+}
+
 export type ImobCommandCenterCaseRow = {
   processId: string;
   processLabel: string;
+  context: string;
   caseId: string;
   threadId: string | null;
   status: string;
@@ -79,9 +108,20 @@ export type ImobCommandCenterCaseRow = {
   priorityScore: number;
   nextAction: string;
   journeyLabel: string;
+  ownerResponsible: string | null;
+  eventCount: number;
+  // TODO(backend): add waitingOn when apiListImobCases exposes ?waitingOn= filter param
+  // Context: WaitingOnBoard uses a dedicated grouping endpoint with all cases; CC uses
+  // apiListImobCases (max 12, status-filtered) — the two datasets don't overlap, making
+  // client-side waitingOn filtering return 0 results. Fix requires backend to accept
+  // waitingOn as a query param on GET /imob/cases.
 };
 
-export function buildImobCaseList(items: ImobCase[], reasonFilter: string, statusFilter: string): ImobCommandCenterCaseRow[] {
+export function buildImobCaseList(
+  items: ImobCase[],
+  reasonFilter: string,
+  statusFilter: string
+): ImobCommandCenterCaseRow[] {
   const targetStatus = mapImobStatusFilterToCaseStatus(statusFilter);
   if (targetStatus === "__none__") return [];
 
@@ -90,9 +130,11 @@ export function buildImobCaseList(items: ImobCase[], reasonFilter: string, statu
       const riskLabel = buildImobCaseRiskLabel(item);
       const priority = buildImobCasePriority(item);
       const primaryAction = item.canonical?.recommendedActions?.[0] ?? null;
+      const context = item.lead?.name || item.owner?.name || item.property?.city || "";
       return {
         processId: item.id,
         processLabel: formatImobProcessLabel(item.flow),
+        context,
         caseId: item.id,
         threadId: item.threadId,
         status: item.status,
@@ -103,6 +145,8 @@ export function buildImobCaseList(items: ImobCase[], reasonFilter: string, statu
         priorityScore: priority.score,
         nextAction: primaryAction?.label ?? item.nextStep ?? "Revisar caso",
         journeyLabel: formatImobJourneyTypeLabel(item.canonical?.journeyType),
+        ownerResponsible: item.ownerResponsible ?? null,
+        eventCount: item._count?.events ?? 0,
       };
     })
     .filter((item) => !targetStatus || item.status === targetStatus)

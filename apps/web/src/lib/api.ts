@@ -1675,6 +1675,21 @@ export type ImobCrmFollowUpItem = {
   isOverdue: boolean;
 };
 
+export type ImobCaseCostSnapshot = {
+  period: { from: string; to: string };
+  items: Array<{
+    caseId: string;
+    threadId: string | null;
+    costCents: number;
+    runs: number;
+  }>;
+  coverage: {
+    runsCount: number;
+    linkedRunsCount: number;
+    unlinkedRunsCount: number;
+  };
+};
+
 export type ImobKpiFunnel = {
   period: { from: string; to: string };
   totals: {
@@ -1690,8 +1705,25 @@ export type ImobKpiFunnel = {
     visitToProposalPct: number;
     proposalToClosingPct: number;
   };
+  totalRunCostCents: number;
+  casesWithRunCount: number;
+  costByJourney: Array<{
+    label: string;
+    cases: number;
+    costCents: number;
+    runs: number;
+  }>;
+  costCoverage: {
+    runsCount: number;
+    linkedRunsCount: number;
+    unlinkedRunsCount: number;
+  };
   averageDurationHours: number | null;
   docsResolved48hPct: number;
+  coverage: {
+    durationSampleSize: number;
+    resolutionSampleSize: number;
+  };
   steps: Array<{
     id: "opened" | "qualified" | "visit" | "proposal" | "closing";
     label: string;
@@ -3316,6 +3348,14 @@ export async function apiGetImobKpiFunnel(params?: { windowDays?: number; from?:
   if (params?.to) query.set("to", params.to);
   const qs = query.toString() ? `?${query.toString()}` : "";
   return http<{ ok: true; data: ImobKpiFunnel }>(`/imob/kpis/funnel${qs}`, { method: "GET" });
+}
+
+export async function apiListImobCaseCosts(params?: { windowDays?: number; caseIds?: string[] }) {
+  const query = new URLSearchParams();
+  if (typeof params?.windowDays === "number" && Number.isFinite(params.windowDays)) query.set("windowDays", String(params.windowDays));
+  if (params?.caseIds?.length) query.set("caseIds", params.caseIds.join(","));
+  const qs = query.toString() ? `?${query.toString()}` : "";
+  return http<{ ok: true; data: ImobCaseCostSnapshot }>(`/imob/cases/costs${qs}`, { method: "GET" });
 }
 
 export async function apiGetImobKpiPerformance(params?: { windowDays?: number; from?: string; to?: string }) {

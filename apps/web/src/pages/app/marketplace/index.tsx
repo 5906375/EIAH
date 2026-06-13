@@ -427,7 +427,7 @@ const MarketplaceIndexPage: React.FC = () => {
                     </button>
                     <button
                       type="button"
-                      onClick={() => navigate("/app/imob/dashboard?section=threads#dashboard-hub")}
+                      onClick={() => navigate("/app/imob/dashboard?section=processos&cc=open#command-center")}
                       className="rounded-full border border-white/20 bg-white/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-foreground transition hover:border-accent/40 hover:text-accent"
                     >
                       Abrir dashboard
