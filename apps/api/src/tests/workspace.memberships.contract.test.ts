@@ -2,7 +2,7 @@ import { after, before, test } from "node:test";
 import assert from "node:assert/strict";
 import supertest from "supertest";
 import { prismaGlobal } from "@repo/db";
-import { ensureWorkspaceMembershipForUser } from "../services/workspaceResponsibility";
+import { ensureWorkspaceMembershipForUser, readWorkspaceResponsibleProfile } from "../services/workspaceResponsibility";
 
 let request: ReturnType<typeof supertest>;
 
@@ -242,6 +242,22 @@ test("assistant can only operate allowed IMOB stages", async () => {
   assert.equal(moveStageResponse.status, 403);
   assert.equal(moveStageResponse.body?.ok, false);
   assert.equal(moveStageResponse.body?.error?.code, "IMOB_STAGE_FORBIDDEN");
+});
+
+test("workspace membership compat layer resolves responsible profile without requiring Prisma WorkspaceMember model", async () => {
+  const profile = await readWorkspaceResponsibleProfile({
+    prisma: prismaGlobal,
+    tenantId,
+    workspaceId,
+    userId: assistenteUserId,
+  });
+
+  assert.equal(profile.selectedRoleKey, "assistente");
+  assert.equal(profile.selectedRoleLabel, "Assistente");
+  assert.match(profile.responsibleLabel, /Assistente Base \(Assistente\)/i);
+  assert.equal(profile.permissions.includes("imob.chat.use"), true);
+  assert.equal(profile.permissions.includes("imob.stage.pending_data"), true);
+  assert.equal(profile.permissions.includes("workspace.manage_members"), false);
 });
 
 
