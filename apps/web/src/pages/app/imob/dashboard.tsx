@@ -42,11 +42,9 @@ import { ImobAccessGateCard } from "@/components/imob/ImobAccessGateCard";
 import { resolveImobAccessGateCopy } from "@/features/imob/accessGateCatalog";
 import { IMOB_BUSINESS_QUICK_ACTIONS } from "@/features/imob/businessQuickActions";
 import { ThreadPanel } from "@/features/imob/ThreadPanel";
-import { ImobSpecialistLoadBoard } from "@/features/imob/ImobSpecialistLoadBoard";
-import { ImobRescueIndex } from "@/features/imob/ImobRescueIndex";
-import { ImobApprovalContextCard } from "@/features/imob/ImobApprovalContextCard";
 import { ImobCommandCenter } from "@/features/imob/ImobCommandCenter";
 import { ImobDashboardHero, type DashTab, type PriorityChip } from "@/features/imob/ImobDashboardHero";
+import { resolveImobDashboardTab } from "@/features/imob/imobDashboardTabs";
 import {
   resolveKpiRefreshState,
   shouldShowKpiPlaceholder,
@@ -54,7 +52,7 @@ import {
 } from "@/features/imob/kpiRefreshState";
 import { ImobFunnelStepsChart } from "@/features/imob/charts/ImobFunnelStepsChart";
 import { ImobJourneyCostChart } from "@/features/imob/charts/ImobJourneyCostChart";
-import { ImobBrokerChart } from "@/features/imob/charts/ImobBrokerChart";
+import { ImobFunnelTeamSection } from "@/features/imob/funnel/ImobFunnelTeamSection";
 import { ImobCycleTimePanel } from "@/features/imob/charts/ImobCycleTimePanel";
 import {
   buildImobCaseList,
@@ -357,19 +355,10 @@ const ImobDashboardPage: React.FC = () => {
   const rawTab = (searchParams.get("tab") || "").toLowerCase();
   const legacySection = (searchParams.get("section") || "").toLowerCase();
   const legacyCcOpen = searchParams.get("cc") === "open";
-  const ALL_TABS = ["funil", "equipe", "casos", "solucoes", "imoveis", "parceiros"] as const;
-  const activeTab: DashTab = (() => {
-    if ((ALL_TABS as readonly string[]).includes(rawTab)) return rawTab as DashTab;
-    // legacy: "processos" and "operacional" tabs redirect to Command Center
-    if (rawTab === "processos" || legacySection === "processos") return "casos";
-    if (rawTab === "operacional") return "casos";
-    if (legacyCcOpen) return "casos";
-    if (legacySection === "parceiros") return "parceiros";
-    if (legacySection === "imoveis") return "imoveis";
-    return "funil";
-  })();
+  const activeTab = resolveImobDashboardTab(rawTab, legacySection, legacyCcOpen);
   const [selectedThreadId, setSelectedThreadId] = React.useState<string | null>(requestedThreadId);
   const [threads, setThreads] = React.useState<ImobChatThread[]>(syntheticThreads);
+  const [threadSource, setThreadSource] = React.useState<"real" | "synthetic">("synthetic");
   const [telemetrySummary, setTelemetrySummary] = React.useState<{
     generatedAt: string;
     totals: {
@@ -518,6 +507,17 @@ const ImobDashboardPage: React.FC = () => {
   }, [requestedCommandCenterReason]);
 
   React.useEffect(() => {
+    if (rawTab !== "equipe") return;
+    const params = new URLSearchParams(searchParams);
+    params.set("tab", "funil");
+    const current = searchParams.toString();
+    const next = params.toString();
+    if (current !== next) {
+      setSearchParams(params, { replace: true });
+    }
+  }, [rawTab, searchParams, setSearchParams]);
+
+  React.useEffect(() => {
     const params = new URLSearchParams(searchParams);
     if (selectedThreadId) {
       params.set("threadId", selectedThreadId);
@@ -554,6 +554,7 @@ const ImobDashboardPage: React.FC = () => {
     let mounted = true;
     if (!conversationId) {
       setThreads(syntheticThreads);
+      setThreadSource("synthetic");
       return () => {
         mounted = false;
       };
@@ -563,16 +564,19 @@ const ImobDashboardPage: React.FC = () => {
         if (!mounted) return;
         if (result.items.length > 0) {
           setThreads(result.items);
+          setThreadSource("real");
           if (requestedThreadId && !result.items.some((item) => item.threadId === requestedThreadId)) {
             setSelectedThreadId(null);
           }
           return;
         }
         setThreads(syntheticThreads);
+        setThreadSource("synthetic");
       })
       .catch(() => {
         if (!mounted) return;
         setThreads(syntheticThreads);
+        setThreadSource("synthetic");
       });
     return () => {
       mounted = false;
@@ -828,13 +832,7 @@ const ImobDashboardPage: React.FC = () => {
     [conversationId, selectedThreadId]
   );
 
-  const metricSource = telemetrySummary?.totals ?? {
-    events: 0,
-    messageToPlanAvgMs: 138,
-    planToExecuteAvgMs: 2100,
-    chatToRunCoveragePct: 100,
-    persistSuccessRatePct: 100,
-  };
+  const telemetryMetrics = telemetrySummary?.totals ?? null;
 
   const ownerPropertyCount = React.useMemo(() => {
     const counts = new Map<string, number>();
@@ -1126,16 +1124,14 @@ const ImobDashboardPage: React.FC = () => {
               </p>
             </article>
             <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Receita por corretor ({kpiWindowDays}d)</p>
-              <p className="mt-2 text-sm font-semibold text-foreground">
-                {shouldShowKpiPlaceholder(performanceRefreshState)
-                  ? "..."
-                  : kpiPerformance?.ranking?.[0]
-                    ? `${kpiPerformance.ranking[0].broker}: ${currencyFromCents(kpiPerformance.ranking[0].revenueCents)}`
-                    : "Sem dados"}
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Casos sem broker canônico</p>
+              <p className="mt-2 text-2xl font-semibold text-foreground">
+                {shouldShowKpiPlaceholder(performanceRefreshState) ? "..." : kpiPerformance?.unassigned?.cases ?? 0}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                {shouldShowKpiRefreshingHint(performanceRefreshState) ? "Atualizando recorte..." : `${kpiWindowDays}d`}
+                {shouldShowKpiRefreshingHint(performanceRefreshState)
+                  ? "Atualizando recorte..."
+                  : `${kpiPerformance?.unassigned?.label ?? "Pendência operacional"} • ${kpiWindowDays}d`}
               </p>
             </article>
           </div>
@@ -1156,22 +1152,17 @@ const ImobDashboardPage: React.FC = () => {
             loading={kpiLoading}
             windowDays={kpiWindowDays}
           />
-        </div>
-      ) : null}
-
-
-      {activeTab === "equipe" ? (
-        <div className="space-y-4">
-          <div className="grid gap-4 xl:grid-cols-2">
-            <ImobSpecialistLoadBoard items={specialistLoad} />
-            <ImobRescueIndex items={rescueIndex} />
-          </div>
-          <ImobApprovalContextCard
-            items={approvalContext}
-            buildHref={(item) => buildApprovalContextHref(conversationId, item)}
-            onAction={handleApprovalAction}
+          <ImobFunnelTeamSection
+            specialistLoad={specialistLoad}
+            rescueIndex={rescueIndex}
+            approvalContext={approvalContext}
+            kpiPerformance={kpiPerformance}
+            kpiLoading={kpiLoading}
+            kpiWindowDays={kpiWindowDays}
+            telemetryMetrics={telemetryMetrics}
+            buildApprovalHref={(item) => buildApprovalContextHref(conversationId, item)}
+            onApprovalAction={handleApprovalAction}
           />
-          <ImobBrokerChart ranking={kpiPerformance?.ranking ?? []} loading={kpiLoading} />
         </div>
       ) : null}
 
@@ -1315,37 +1306,11 @@ const ImobDashboardPage: React.FC = () => {
       </section>
 
       <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 text-xs text-muted-foreground sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Métricas Operacionais</h3>
-          <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground/80">
-            {conversationId
-              ? telemetryLoading
-                ? "Atualizando..."
-                : `Conversa ativa${telemetrySummary?.generatedAt ? ` • ${new Date(telemetrySummary.generatedAt).toLocaleTimeString("pt-BR")}` : ""}`
-              : "Sem conversa ativa"}
+        {threadSource === "synthetic" ? (
+          <p className="mb-3 text-[11px] text-muted-foreground">
+            Timeline em modo simulado por ausência de thread real vinculada no contexto atual.
           </p>
-        </div>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-lg border border-white/10 bg-surface/40 p-2">
-            <p className="text-[10px] uppercase tracking-[0.12em]">msg→plan</p>
-            <p className="mt-1 text-sm text-foreground">{formatLatencyMs(metricSource.messageToPlanAvgMs)}</p>
-          </div>
-          <div className="rounded-lg border border-white/10 bg-surface/40 p-2">
-            <p className="text-[10px] uppercase tracking-[0.12em]">plan→execute</p>
-            <p className="mt-1 text-sm text-foreground">{formatLatencyMs(metricSource.planToExecuteAvgMs)}</p>
-          </div>
-          <div className="rounded-lg border border-white/10 bg-surface/40 p-2">
-            <p className="text-[10px] uppercase tracking-[0.12em]">cobertura chat→run</p>
-            <p className="mt-1 text-sm text-foreground">{formatPct(metricSource.chatToRunCoveragePct)}</p>
-          </div>
-          <div className="rounded-lg border border-white/10 bg-surface/40 p-2">
-            <p className="text-[10px] uppercase tracking-[0.12em]">persistência</p>
-            <p className="mt-1 text-sm text-foreground">{formatPct(metricSource.persistSuccessRatePct)}</p>
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 text-xs text-muted-foreground sm:p-6">
+        ) : null}
         <ThreadPanel
           threads={threads}
           selectedThreadId={selectedThreadId}

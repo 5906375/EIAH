@@ -33,3 +33,31 @@ test("IMOB dashboard hero keeps last KPI snapshot visible during refresh and use
   assert.match(html, /12\.5%/);
   assert.match(html, /R\$\s*1\.234/);
 });
+
+test("IMOB dashboard hero does not expose the Equipe tab in primary navigation", () => {
+  const html = renderToStaticMarkup(
+    <MemoryRouter>
+      <ImobDashboardHero
+        brandName="Jusall"
+        workspaceLabel="Default"
+        blockedTotal={0}
+        overdueFollowUpCount={0}
+        followUpLoading={false}
+        conversionPct={null}
+        totalRunCostCents={0}
+        hasKpiSnapshot={false}
+        kpiLoading={false}
+        activeProcessCount={0}
+        evidencedProcessCount={0}
+        priorityChips={[]}
+        backToChatHref="/app/imob/chat"
+        activeTab="funil"
+        onTabChange={() => undefined}
+      />
+    </MemoryRouter>,
+  );
+
+  assert.doesNotMatch(html, />Equipe</);
+  assert.match(html, />Funil</);
+  assert.match(html, />Command Center</);
+});

@@ -46,7 +46,7 @@ function buildPrismaMock(params: {
   } as any;
 }
 
-test("IMOB KPI service normalizes internal owner labels in broker ranking", async () => {
+test("IMOB KPI service moves internal owner labels into unassigned bucket and keeps broker ranking clean", async () => {
   const service = new ImobCrmKpiService(buildPrismaMock({
     cases: [
       {
@@ -81,9 +81,16 @@ test("IMOB KPI service normalizes internal owner labels in broker ranking", asyn
     workspaceId: "workspace-A",
   }, { windowDays: 30 });
 
+  assert.equal(result.metricSource, "derived");
+  assert.equal(result.windowDays, 30);
   assert.equal(result.ranking.some((item) => item.broker === "Financeiro"), false);
-  assert.equal(result.ranking.some((item) => item.broker === "Corretor não atribuído"), true);
+  assert.equal(result.ranking.some((item) => item.broker === "Corretor não atribuído"), false);
   assert.equal(result.ranking.some((item) => item.broker === "Mariana Souza"), true);
+  assert.equal(result.unassigned.label, "Corretor não atribuído");
+  assert.equal(result.unassigned.cases, 1);
+  assert.equal(result.unassigned.closings, 1);
+  assert.equal(result.unassigned.estimatedListingValueCents, 500_000_00);
+  assert.equal(result.ranking[0]?.assignmentSource, "owner_responsible_fallback");
 });
 
 test("IMOB KPI service aggregates run cost and journey cost beyond page-sized frontend samples", async () => {
