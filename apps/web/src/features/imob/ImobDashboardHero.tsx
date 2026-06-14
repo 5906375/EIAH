@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { formatPct } from "@/lib/formatters";
+import type { ImobDashboardTab } from "@/features/imob/imobDashboardTabs";
 import {
   resolveKpiRefreshState,
   shouldShowKpiPlaceholder,
@@ -13,14 +14,7 @@ function heroCurrencyFromCents(value: number | null | undefined) {
   );
 }
 
-export type DashTab =
-  | "funil"
-  | "equipe"
-  | "casos"
-  | "solucoes"
-  | "imoveis"
-  | "processos"
-  | "parceiros";
+export type DashTab = ImobDashboardTab | "processos";
 
 export type PriorityChip = { key: string; label: string; href: string; tone: string };
 
@@ -46,7 +40,6 @@ type Props = {
 
 const ANALYTICS_TABS: { id: DashTab; label: string }[] = [
   { id: "funil", label: "Funil" },
-  { id: "equipe", label: "Equipe" },
   { id: "casos", label: "Command Center" },
   { id: "solucoes", label: "Soluções" },
 ];
