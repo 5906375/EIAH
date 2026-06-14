@@ -982,5 +982,5 @@ O `docs/EVIDENCE_INDEX.md` so pode ser atualizado depois que os arquivos de evid
 | PR-IMOB-DATA-03 Camada 3 (fallback visual de KPI) | adiado por opcao — nao necessario no escopo minimo implementavel |
 | PR-IMOB-DATA-03 Camadas 1 e 3 | encerrado no escopo minimo — integridade garantida sem fallback visual historico |
 | Etapa 8 Trilha A | concluido no escopo minimo — atribuicao manual implementada, evento `owner_assigned` atomico/idempotente e evidencia real criada |
-| Etapa 8 Trilha B | Fase 4 concluida no escopo minimo — auditoria, policies base, delta minimo e testes stub multi-vertical consolidados; resta apenas futura rodada de implementacao/migration se a plataforma decidir evoluir o schema |
+| Etapa 8 Trilha B | Fase 4 concluida no escopo minimo — auditoria, policies base, delta minimo e testes stub multi-vertical consolidados; runtime minimo segue como proxima rodada, sem migration |
 | Hardening de open handles para contract tests HTTP | evidenciado — `shadow-executions`, `runs.imob-action` e `agents.interop` com `EXIT:0` |

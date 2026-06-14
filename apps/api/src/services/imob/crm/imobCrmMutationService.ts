@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@repo/db";
 import { IMOB_REASON_CODE_CATALOG } from "../control/imobReasonCodeCatalog";
+import { buildResponsibleActorAssignmentContract } from "../../../types/verticalResponsibleActorContract";
 import { recordImobCrmAuditEvent } from "./imobCrmAudit";
 import {
   planCaseShadowExecutions,
@@ -999,12 +1000,45 @@ export class ImobCrmMutationService {
 
   async assignResponsibleActor(scope: Scope, caseId: string, input: {
     ownerResponsible: string;
+    responsibleUserId?: string | null;
+    responsibleMemberId?: string | null;
     eventRunId?: string | null;
     eventEvidenceRef?: string | null;
     eventActorType?: string | null;
     eventActorRef?: string | null;
     eventPayload?: unknown;
   }) {
+    try {
+      buildResponsibleActorAssignmentContract({
+        tenantId: scope.tenantId,
+        workspaceId: scope.workspaceId,
+        verticalKey: "IMOB",
+        entityType: "imob.case",
+        entityId: caseId,
+        entitlementStatus: "active",
+        ...(asString(input.responsibleUserId) ? { responsibleUserId: asString(input.responsibleUserId) } : {}),
+        ...(asString(input.responsibleMemberId) ? { responsibleMemberId: asString(input.responsibleMemberId) } : {}),
+        ...(!asString(input.responsibleUserId) && !asString(input.responsibleMemberId) && scope.userId
+          ? { responsibleUserId: scope.userId }
+          : {}),
+      });
+    } catch (error) {
+      const details = error instanceof Error ? error.message : "Responsible actor contract validation failed";
+      return {
+        status: "contract_invalid" as const,
+        reasonCode: "RESPONSIBLE_ACTOR_CONTRACT_INVALID" as const,
+        nextAction: IMOB_REASON_CODE_CATALOG.RESPONSIBLE_ACTOR_CONTRACT_INVALID.nextAction ?? null,
+        context: {
+          caseId,
+          tenantId: scope.tenantId,
+          workspaceId: scope.workspaceId,
+          responsibleUserId: asString(input.responsibleUserId) ?? scope.userId ?? null,
+          responsibleMemberId: asString(input.responsibleMemberId) ?? null,
+          details,
+        },
+      };
+    }
+
     return this.assignOwnerToCase(scope, caseId, input);
   }
 

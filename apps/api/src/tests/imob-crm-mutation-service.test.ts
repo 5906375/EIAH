@@ -1405,3 +1405,34 @@ test("IMOB_CRM mutation service blocks manual overwrite of an existing ownerResp
   assert.equal(prisma.cases[0].ownerResponsible, "Mariana Souza");
   assert.equal(prisma.caseEvents.length, 0);
 });
+
+test("IMOB_CRM mutation service rejects assignResponsibleActor when canonical responsible actor contract is invalid", async () => {
+  const prisma = createMockPrisma();
+  prisma.cases.push({
+    id: "case-assign-owner-contract-invalid",
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    flow: "lead.qualify",
+    stage: "triagem",
+    status: "running",
+    ownerResponsible: null,
+    metadata: {},
+  });
+
+  const service = new ImobCrmMutationService(prisma as any);
+  const result = await service.assignResponsibleActor({
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    userId: null,
+  }, "case-assign-owner-contract-invalid", {
+    ownerResponsible: "Mariana Souza",
+    eventActorRef: "user-1",
+  });
+
+  assert.equal(result.status, "contract_invalid");
+  assert.equal(result.reasonCode, "RESPONSIBLE_ACTOR_CONTRACT_INVALID");
+  assert.equal(result.context.tenantId, "tenant-1");
+  assert.equal(result.context.workspaceId, "workspace-1");
+  assert.equal(prisma.cases[0].ownerResponsible, null);
+  assert.equal(prisma.caseEvents.length, 0);
+});

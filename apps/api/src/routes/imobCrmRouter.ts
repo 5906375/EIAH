@@ -1088,6 +1088,18 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
         },
       });
     }
+    if (assigned.status === "contract_invalid") {
+      return res.status(400).json({
+        ok: false,
+        error: {
+          code: assigned.reasonCode,
+          reasonCode: assigned.reasonCode,
+          message: "Responsible actor contract is invalid for this assignment.",
+          nextAction: assigned.nextAction,
+          context: assigned.context,
+        },
+      });
+    }
 
     return res.json({ ok: true, data: withImobCanonicalCase(assigned.data) });
   });
