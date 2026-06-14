@@ -12,6 +12,7 @@ export const IMOB_REASON_CODE_VALUES = [
   "CASE_RESPONSIBLE_REQUIRED",
   "CASE_OWNER_ASSIGNMENT_FORBIDDEN",
   "MEMBER_NOT_ELIGIBLE_AS_RESPONSIBLE",
+  "RESPONSIBLE_ACTOR_CONTRACT_INVALID",
   // run integrity (DATA-01 Frente B)
   "INVALID_ACTION_TYPE",
   // transition integrity (DATA-02 Opção B)
@@ -141,6 +142,15 @@ export const IMOB_REASON_CODE_CATALOG: Record<ImobReasonCode, ImobReasonCodeSpec
     defaultSpecialist: "guardian",
     requiresApproval: true,
     requiresEvidence: false,
+  },
+  RESPONSIBLE_ACTOR_CONTRACT_INVALID: {
+    code: "RESPONSIBLE_ACTOR_CONTRACT_INVALID",
+    label: "Contrato canônico de responsável inválido",
+    category: "governance",
+    defaultUrgency: "medium",
+    defaultSpecialist: "guardian",
+    requiresApproval: false,
+    requiresEvidence: true,
   },
   // run integrity
   INVALID_ACTION_TYPE: {

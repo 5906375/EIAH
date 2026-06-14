@@ -50,6 +50,9 @@ Catálogo: `IMOB_REASON_CODE_CATALOG`
   - **Nota:** o code `OWNER_REQUIRED` em `imobNextActionResolver.ts` é semânticamente diferente — refere-se ao proprietário do imóvel não cadastrado na jornada de captação, não ao responsável do caso.
 - `CASE_OWNER_ASSIGNMENT_FORBIDDEN` — Atribuição de responsável bloqueada pela policy (requiresApproval, requiresEvidence)
 - `MEMBER_NOT_ELIGIBLE_AS_RESPONSIBLE` — Membro sem elegibilidade para responsável pelo caso (requiresApproval)
+- `RESPONSIBLE_ACTOR_CONTRACT_INVALID` — Contrato canônico de responsible actor inválido antes de persistir atribuição (requiresEvidence)
+  - Retornado por `assignResponsibleActor()` quando o payload mínimo multi-vertical falha na validação
+  - `tenantId/workspaceId` devem vir do `scope` backend, não do body externo
 
 ### Integridade de run (DATA-01 Frente B)
 

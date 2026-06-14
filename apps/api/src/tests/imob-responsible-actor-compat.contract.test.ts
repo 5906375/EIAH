@@ -188,3 +188,38 @@ test("IMOB responsible actor compat keeps ownerResponsible as operational alias 
   assert.equal(prisma.caseEvents.some((event) => event.type === "case.completed"), true);
 });
 
+test("IMOB responsible actor compat can use explicit responsibleMemberId while keeping backend scope as source of tenant and workspace", async () => {
+  const prisma = createCompatPrisma();
+  prisma.cases.push({
+    id: "case-imob-compat-2",
+    tenantId: "tenant-scope",
+    workspaceId: "workspace-scope",
+    threadId: "thread-imob-compat-2",
+    flow: "contract.prepare",
+    stage: "documentacao",
+    status: "running",
+    ownerResponsible: null,
+    metadata: {},
+    updatedAt: new Date("2026-01-05"),
+  });
+
+  const service = new ImobCrmMutationService(prisma as any);
+  const assigned = await service.assignResponsibleActor(
+    {
+      tenantId: "tenant-scope",
+      workspaceId: "workspace-scope",
+      userId: null,
+    },
+    "case-imob-compat-2",
+    {
+      ownerResponsible: "Carlos Alberto Merlo",
+      responsibleMemberId: "member-42",
+      eventActorRef: "member-42",
+    },
+  );
+
+  assert.equal(assigned.status, "assigned");
+  assert.equal(assigned.data.ownerResponsible, "Carlos Alberto Merlo");
+  assert.equal(prisma.cases[0].tenantId, "tenant-scope");
+  assert.equal(prisma.cases[0].workspaceId, "workspace-scope");
+});
