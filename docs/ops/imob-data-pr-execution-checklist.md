@@ -65,6 +65,16 @@ Sequencia segura agora:
 - [x] Etapa 8 Trilha B: documentar policyVersion lifecycle
 - [x] Etapa 8 Trilha B: propor delta minimo de schema/contrato
 
+### Status atual da frente
+
+- frente fechada no escopo minimo implementavel
+- `DATA-01`, `DATA-02`, `DATA-03` minimo e `Trilha A` estao concluidos
+- `Trilha B` Fase 4 foi consolidada no corte documental + contrato + testes stub
+- `Camada 3` permanece em backlog opcional, sem prioridade nesta rodada
+- esta frente so deve ser reaberta se houver decisao explicita de:
+  - evoluir KPI historico/broker via `Camada 3`
+  - abrir migration/runtime da `Trilha B`
+
 Proximo passo explicito:
 
 1. seguir na `Trilha B` como frente unica de governanca multi-vertical

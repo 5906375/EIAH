@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@repo/db";
+import { resolveImobBrokerAssignment, type ImobBrokerAssignmentSource } from "./imobBrokerAssignmentResolver";
 
 type Scope = {
   tenantId: string;
@@ -173,29 +174,6 @@ function resolveClosingTimestamp(params: {
   }
 
   return null;
-}
-
-const INTERNAL_BROKER_LABELS = new Set([
-  "corretor",
-  "corretor não atribuído",
-  "corretor nao atribuido",
-  "jurídico",
-  "juridico",
-  "financeiro",
-  "cliente",
-  "imob ops",
-  "imob-ops",
-  "diretoria",
-  "comercial",
-  "captacao",
-  "captação",
-]);
-
-function resolveBrokerLabel(value: string | null | undefined) {
-  const raw = asString(value);
-  if (!raw) return "Corretor não atribuído";
-  if (INTERNAL_BROKER_LABELS.has(normalize(raw))) return "Corretor não atribuído";
-  return raw;
 }
 
 function resolveJourneyLabelFromKey(keyRaw: string | null | undefined) {
@@ -634,35 +612,58 @@ export class ImobCrmKpiService {
 
   async buildPerformanceKpis(scope: Scope, input?: WindowInput) {
     const { from, to, cases } = await this.readData(scope, input);
+    const resolvedWindowDays = input?.from
+      ? Math.max(1, Math.ceil((to.getTime() - from.getTime()) / 36e5 / 24))
+      : Number.isFinite(Number(input?.windowDays))
+        ? Math.max(1, Math.min(365, Number(input?.windowDays)))
+        : 30;
     const byBroker = new Map<string, {
       cases: number;
       closings: number;
       pendingItems: number;
       cycleHoursTotal: number;
-      revenueCents: number;
+      estimatedListingValueCents: number;
       updatedAt: Date;
+      assignmentSource: ImobBrokerAssignmentSource;
     }>();
+    const unassigned = {
+      cases: 0,
+      closings: 0,
+      estimatedListingValueCents: 0,
+      assignmentSource: "unassigned_internal" as const,
+    };
 
     for (const item of cases) {
-      const broker = resolveBrokerLabel(item.ownerResponsible);
-      const current = byBroker.get(broker) ?? {
+      const brokerAssignment = resolveImobBrokerAssignment(item.ownerResponsible);
+      const isClosing = classifyFunnelByFlow(item.flow) === "closing" || classifyFunnelByStatus(item.status) === "closing";
+
+      if (!brokerAssignment.broker) {
+        unassigned.cases += 1;
+        if (isClosing) {
+          unassigned.closings += 1;
+          unassigned.estimatedListingValueCents += item.property?.askingPriceCents ?? 0;
+        }
+        continue;
+      }
+
+      const current = byBroker.get(brokerAssignment.broker) ?? {
         cases: 0,
         closings: 0,
         pendingItems: 0,
         cycleHoursTotal: 0,
-        revenueCents: 0,
+        estimatedListingValueCents: 0,
         updatedAt: item.updatedAt,
+        assignmentSource: brokerAssignment.assignmentSource,
       };
       current.cases += 1;
-      const isClosing = classifyFunnelByFlow(item.flow) === "closing" || classifyFunnelByStatus(item.status) === "closing";
       if (isClosing) {
         current.closings += 1;
-        current.revenueCents += item.property?.askingPriceCents ?? 0;
+        current.estimatedListingValueCents += item.property?.askingPriceCents ?? 0;
       }
       current.pendingItems += asStringList(item.pendingItems).length;
       current.cycleHoursTotal += hoursBetween(item.updatedAt, item.createdAt);
       if (item.updatedAt.getTime() > current.updatedAt.getTime()) current.updatedAt = item.updatedAt;
-      byBroker.set(broker, current);
+      byBroker.set(brokerAssignment.broker, current);
     }
 
     const items = Array.from(byBroker.entries())
@@ -673,18 +674,31 @@ export class ImobCrmKpiService {
         closingRatePct: pct(value.closings, value.cases || 1),
         avgPendingItems: Number((value.pendingItems / Math.max(1, value.cases)).toFixed(2)),
         avgCycleHours: Number((value.cycleHoursTotal / Math.max(1, value.cases)).toFixed(2)),
-        revenueCents: value.revenueCents,
+        estimatedListingValueCents: value.estimatedListingValueCents,
+        assignmentSource: value.assignmentSource,
         updatedAt: value.updatedAt.toISOString(),
       }))
-      .sort((a, b) => b.closings - a.closings || b.revenueCents - a.revenueCents || a.broker.localeCompare(b.broker));
+      .sort(
+        (a, b) =>
+          b.closings - a.closings
+          || b.estimatedListingValueCents - a.estimatedListingValueCents
+          || a.broker.localeCompare(b.broker),
+      );
 
     return {
       period: { from: from.toISOString(), to: to.toISOString() },
+      windowDays: resolvedWindowDays,
+      metricSource: "derived" as const,
       totals: {
         brokers: items.length,
-        cases: items.reduce((acc, item) => acc + item.cases, 0),
-        closings: items.reduce((acc, item) => acc + item.closings, 0),
-        revenueCents: items.reduce((acc, item) => acc + item.revenueCents, 0),
+        cases: items.reduce((acc, item) => acc + item.cases, 0) + unassigned.cases,
+        closings: items.reduce((acc, item) => acc + item.closings, 0) + unassigned.closings,
+        estimatedListingValueCents:
+          items.reduce((acc, item) => acc + item.estimatedListingValueCents, 0) + unassigned.estimatedListingValueCents,
+      },
+      unassigned: {
+        ...unassigned,
+        label: "Corretor não atribuído",
       },
       ranking: items,
       generatedAt: new Date().toISOString(),

@@ -1735,11 +1735,20 @@ export type ImobKpiFunnel = {
 
 export type ImobKpiPerformance = {
   period: { from: string; to: string };
+  windowDays: number;
+  metricSource: "derived" | "primary" | "synthetic" | "unavailable";
   totals: {
     brokers: number;
     cases: number;
     closings: number;
-    revenueCents: number;
+    estimatedListingValueCents: number;
+  };
+  unassigned: {
+    label: string;
+    cases: number;
+    closings: number;
+    estimatedListingValueCents: number;
+    assignmentSource: "unassigned_internal";
   };
   ranking: Array<{
     broker: string;
@@ -1748,7 +1757,8 @@ export type ImobKpiPerformance = {
     closingRatePct: number;
     avgPendingItems: number;
     avgCycleHours: number;
-    revenueCents: number;
+    estimatedListingValueCents: number;
+    assignmentSource: "broker_canonical" | "owner_responsible_fallback" | "unassigned_internal";
     updatedAt: string;
   }>;
   generatedAt: string;
