@@ -1,6 +1,7 @@
 # EVIDENCE INDEX — EIAH
 
-> Roadmap atual (fonte da verdade): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md` 
+> Roadmap atual (fonte da verdade): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md`
+> Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
 ## Domain & DNS / Go-Live Controlado
@@ -188,6 +189,16 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | --- | --- | --- |
 | Hardening de open handles nos contract tests HTTP IMOB/Interop | `ops/evidence/latest/imob-data-route-contract-hardening-2026-06-12.md` | Execução real com `EXIT:0` dos contract tests `shadow-executions`, `runs.imob-action` e `agents.interop`, além do hardening aplicado em Redis/BullMQ/Prisma e teardown de testes HTTP. |
 | Mutation manual de ownerResponsible no CRM IMOB | `ops/evidence/latest/imob-owner-assignment-mutation-2026-06-13.md` | Execução real do teste focado da Trilha A, cobrindo `CASE_RESPONSIBLE_REQUIRED`, `assignOwnerToCase()` / `assignResponsibleActor()`, evento `owner_assigned` atômico e idempotência por `evidenceRef`. |
+
+## Roadmap v8 — Verificacao contra codigo atual (2026-06-15)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Fonte canonica do roadmap v8 | `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md` | Define o escopo normativo de comparacao entre backlog v8, entregas previstas e frentes extras ja incorporadas no repositorio. |
+| Checklist de execucao IMOB Data | `docs/ops/imob-data-pr-execution-checklist.md` | Consolida a trilha real de fechamento de `request.action`, duracao operacional, `ownerResponsible` e diagnosticos tenant-scoped apos o marco v8. |
+| Trilha B runtime minimo multi-vertical | `docs/ops/imob-data-trilha-b-runtime-minimo-execution-checklist.md` | Registra o delta minimo executado para validacao de `responsible actor contract`, `reasonCode` de falha contratual e evidencias operacionais sem abrir migracao nova. |
+| Arquivamento de runs IMOB | `docs/ops/imob-run-archive-pr-execution-checklist.md` + `apps/api/src/services/runArchiveService.ts` + `apps/api/src/workers/runArchiveWorker.ts` + `packages/db/prisma/schema.prisma` | Prova que a plataforma avancou alem do backlog normativo do v8 com persistencia/worker de `RunArchive` e modelo Prisma dedicado. |
+| Funil/Team consolidado no dashboard IMOB | `docs/ops/imob-funnel-pr-execution-checklist.md` + `apps/web/src/features/imob/funnel/ImobFunnelTeamSection.tsx` + `apps/web/src/pages/app/imob/dashboard.tsx` | Prova consolidacao operacional da experiencia IMOB no frontend, removendo duplicacao de aba Equipe e aproximando a superficie real do comando/funil. |
 
 ## Fechamento arquitetural — Deduplicação Frontend (2026-04-15)
 
