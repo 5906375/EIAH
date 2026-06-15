@@ -183,6 +183,14 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | Evidência gerada do DocOps de agentes | `ops/evidence/latest/agent-registry-docs-2026-03-16.json` | Evidência materializada da geração com contagem de agentes e fontes declaradas por perfil. |
 | Cobertura comportamental de knowledge policy | `apps/api/src/tests/knowledge-policy.behavior.test.ts` | Testes por agente para `source missing`, `source conflict`, `grounded response` e `blocked response` no `KnowledgeGate`. |
 
+## Assistentes de coding / Governança operacional
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Instruções comuns para assistentes de coding | `IA_EIAH.md` | Define a fonte operacional comum para Claude Code, Codex e assistentes equivalentes, incluindo leitura obrigatória do roadmap v8.1, regra agent-driven, fail-closed, formato final com agentes envolvidos, resumo de alterações e atualização do Evidence Index para evidências reais. |
+| Ponte Claude Code | `CLAUDE.md` | Redireciona Claude Code para `IA_EIAH.md`, evita duplicação de regras e preserva a precedência das fontes normativas do projeto. |
+| Ponte Codex IDE | `CODEX.md` | Redireciona Codex no VS Code/IDE para `IA_EIAH.md`, evita duplicação de regras e preserva a precedência das fontes normativas do projeto. |
+
 ## IMOB Data Hardening (2026-06-12)
 
 | Assunto | Arquivo | O que prova |
