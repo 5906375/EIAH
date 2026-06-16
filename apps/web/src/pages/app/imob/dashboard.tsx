@@ -55,6 +55,8 @@ import { ImobJourneyCostChart } from "@/features/imob/charts/ImobJourneyCostChar
 import { ImobFunnelTeamSection } from "@/features/imob/funnel/ImobFunnelTeamSection";
 import { ImobCycleTimePanel } from "@/features/imob/charts/ImobCycleTimePanel";
 import {
+  buildImobCaseFallbackActions,
+  buildImobCasePriority,
   buildImobCaseList,
   type ImobCommandCenterCaseRow,
   mapImobStatusFilterToCaseStatus,
@@ -68,32 +70,6 @@ type DashboardSource = "real" | "empty";
 
 const IMOB_COMMAND_CENTER_STATUS_FILTERS = new Set(["all", "pending_data", "ready_for_review", "blocked", "done"]);
 
-const syntheticThreads: ImobChatThread[] = [
-  {
-    threadId: "th-captacao",
-    label: "Captação",
-    status: "active",
-    firstMessageAt: new Date(Date.now() - 40 * 60 * 1000).toISOString(),
-    lastMessageAt: new Date(Date.now() - 19 * 60 * 1000).toISOString(),
-    messageCount: 2,
-  },
-  {
-    threadId: "th-contrato",
-    label: "Contrato",
-    status: "active",
-    firstMessageAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
-    lastMessageAt: new Date(Date.now() - 3 * 60 * 1000).toISOString(),
-    messageCount: 6,
-  },
-  {
-    threadId: "th-comissao",
-    label: "Comissão",
-    status: "blocked",
-    firstMessageAt: new Date(Date.now() - 120 * 60 * 1000).toISOString(),
-    lastMessageAt: new Date(Date.now() - 8 * 60 * 1000).toISOString(),
-    messageCount: 4,
-  },
-];
 
 function currencyFromCents(value: number | null | undefined) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "Preço não informado";
@@ -126,19 +102,6 @@ function formatJourneyTypeLabel(value: string | null | undefined) {
   return "Operação";
 }
 
-function buildCasePriority(item: ImobCase) {
-  const blocked = asStringList(item.canonical?.blockedActions).length;
-  const missing = asStringList(item.canonical?.missingContext).length;
-  const recommended = item.canonical?.recommendedActions?.length ?? 0;
-  const ageHours = (() => {
-    const parsed = Date.parse(item.updatedAt);
-    if (!Number.isFinite(parsed)) return 0;
-    return Math.max(0, (Date.now() - parsed) / 36e5);
-  })();
-  const score = blocked * 5 + missing * 3 + Math.min(4, Math.floor(ageHours / 12)) + (recommended === 0 ? 2 : 0);
-  const label = blocked > 0 ? "alta" : missing > 0 || ageHours >= 24 ? "média" : "normal";
-  return { score, label };
-}
 
 function buildPriorityChipKey(item: ImobCase) {
   const journeyType = (item.canonical?.journeyType ?? "").trim().toLowerCase() || "operacao";
@@ -304,32 +267,6 @@ function formatDashboardCaseLabel(item: ImobCase | null) {
   return flowLabel;
 }
 
-function buildCaseFallbackActions(item: ImobCase): Array<{ id: string; label: string; inputHint: string }> {
-  const pending = asStringList(item.pendingItems).map((entry) => entry.toLowerCase());
-  const flow = (item.flow ?? "").trim().toLowerCase();
-  const joined = pending.join(" ");
-  const actions: Array<{ id: string; label: string; inputHint: string }> = [];
-  const addAction = (id: string, label: string, inputHint: string) => {
-    if (actions.some((current) => current.id === id)) return;
-    actions.push({ id, label, inputHint });
-  };
-
-  if (flow.includes("owner.create") || joined.includes("propriet")) {
-    addAction("owner.register", "Cadastrar proprietário", "cadastrar proprietário deste caso");
-  }
-  if (flow.includes("property.create") || joined.includes("imóvel") || joined.includes("imovel")) {
-    addAction("property.create", "Cadastrar imóvel", "cadastrar imóvel deste caso");
-  }
-  if (joined.includes("document") || flow.includes("documents.collect")) {
-    addAction("documents.review", "Revisar documentos", "revisar documentos deste caso");
-  }
-  if (flow.includes("lead.qualify") || joined.includes("lead")) {
-    addAction("lead.qualify", "Qualificar lead", "qualificar lead deste caso");
-  }
-  addAction("case.consult", "Consultar caso", "consultar caso deste atendimento");
-
-  return actions.slice(0, 4);
-}
 
 function normalizeCommandCenterStatusFilter(value: string | null | undefined) {
   const normalized = (value ?? "").trim().toLowerCase();
@@ -356,9 +293,9 @@ const ImobDashboardPage: React.FC = () => {
   const legacySection = (searchParams.get("section") || "").toLowerCase();
   const legacyCcOpen = searchParams.get("cc") === "open";
   const activeTab = resolveImobDashboardTab(rawTab, legacySection, legacyCcOpen);
-  const [selectedThreadId, setSelectedThreadId] = React.useState<string | null>(requestedThreadId);
-  const [threads, setThreads] = React.useState<ImobChatThread[]>(syntheticThreads);
-  const [threadSource, setThreadSource] = React.useState<"real" | "synthetic">("synthetic");
+  const [selectedThreadId, setSelectedThreadId] = React.useState<string | null>(null);
+  const [threads, setThreads] = React.useState<ImobChatThread[]>([]);
+  const [threadSource, setThreadSource] = React.useState<"real" | "no_conversation" | "empty" | "error">("no_conversation");
   const [telemetrySummary, setTelemetrySummary] = React.useState<{
     generatedAt: string;
     totals: {
@@ -451,8 +388,8 @@ const ImobDashboardPage: React.FC = () => {
     setImobCommandCenterError(null);
     try {
       const [healthResponse, casesResponse] = await Promise.all([
-        apiGetImobFunnelHealth({ workspaceId: session.workspaceId }),
-        apiListImobCases({ status: mapImobStatusFilterToCaseStatus(imobStatusFilter) }),
+        apiGetImobFunnelHealth({ workspaceId: session.workspaceId, window: "7d" }),
+        apiListImobCases({ status: mapImobStatusFilterToCaseStatus(imobStatusFilter), workspaceId: session.workspaceId }),
       ]);
       setImobHealth(healthResponse.data);
       setImobCasesList(buildImobCaseList(casesResponse.data.items ?? [], imobReasonFilter, imobStatusFilter));
@@ -493,10 +430,6 @@ const ImobDashboardPage: React.FC = () => {
     },
     [session.token]
   );
-
-  React.useEffect(() => {
-    setSelectedThreadId(requestedThreadId);
-  }, [requestedThreadId]);
 
   React.useEffect(() => {
     setImobStatusFilter((current) => (current === requestedCommandCenterStatus ? current : requestedCommandCenterStatus));
@@ -553,8 +486,9 @@ const ImobDashboardPage: React.FC = () => {
   React.useEffect(() => {
     let mounted = true;
     if (!conversationId) {
-      setThreads(syntheticThreads);
-      setThreadSource("synthetic");
+      setThreads([]);
+      setThreadSource("no_conversation");
+      setSelectedThreadId(null);
       return () => {
         mounted = false;
       };
@@ -565,18 +499,22 @@ const ImobDashboardPage: React.FC = () => {
         if (result.items.length > 0) {
           setThreads(result.items);
           setThreadSource("real");
-          if (requestedThreadId && !result.items.some((item) => item.threadId === requestedThreadId)) {
-            setSelectedThreadId(null);
+          // Honor requestedThreadId only when confirmed present in real threads
+          if (requestedThreadId) {
+            const confirmed = result.items.some((item) => item.threadId === requestedThreadId);
+            setSelectedThreadId(confirmed ? requestedThreadId : null);
           }
           return;
         }
-        setThreads(syntheticThreads);
-        setThreadSource("synthetic");
+        setThreads([]);
+        setThreadSource("empty");
+        setSelectedThreadId(null);
       })
       .catch(() => {
         if (!mounted) return;
-        setThreads(syntheticThreads);
-        setThreadSource("synthetic");
+        setThreads([]);
+        setThreadSource("error");
+        setSelectedThreadId(null);
       });
     return () => {
       mounted = false;
@@ -613,8 +551,8 @@ const ImobDashboardPage: React.FC = () => {
     Promise.all([
       apiListImobOwners(),
       apiListImobProperties(),
-      apiListImobCases(),
-      apiListImobCaseCosts({ windowDays: 30 }),
+      apiListImobCases({ workspaceId: session.workspaceId }),
+      apiListImobCaseCosts({ windowDays: 30, workspaceId: session.workspaceId }),
       apiListRuns({ page: 1, size: 100, workspaceId: session.workspaceId }),
       apiListImobPriorityQueue({ limit: 8 }),
       apiListImobWaitingOnBoard(),
@@ -897,13 +835,13 @@ const ImobDashboardPage: React.FC = () => {
   const prioritizedCases = React.useMemo(
     () =>
       [...cases]
-        .map((item) => ({ item, priority: buildCasePriority(item) }))
+        .map((item) => ({ item, priority: buildImobCasePriority(item) }))
         .sort((a, b) => b.priority.score - a.priority.score),
     [cases]
   );
   const prioritizedCaseChips = React.useMemo(() => {
     const seen = new Set<string>();
-    const next: Array<{ item: ImobCase; priority: ReturnType<typeof buildCasePriority> }> = [];
+    const next: Array<{ item: ImobCase; priority: ReturnType<typeof buildImobCasePriority> }> = [];
     for (const entry of prioritizedCases) {
       const key = buildPriorityChipKey(entry.item);
       if (seen.has(key)) continue;
@@ -917,20 +855,26 @@ const ImobDashboardPage: React.FC = () => {
     () => threads.find((item) => item.threadId === selectedThreadId) ?? null,
     [threads, selectedThreadId]
   );
-  const contextCase = React.useMemo(() => {
-    if (requestedCaseId) return cases.find((item) => item.id === requestedCaseId) ?? null;
+  const { contextCase, contextCaseSource } = React.useMemo((): {
+    contextCase: (typeof cases)[number] | null;
+    contextCaseSource: "requested" | "thread" | "run" | "heuristic" | null;
+  } => {
+    if (requestedCaseId) {
+      const c = cases.find((item) => item.id === requestedCaseId) ?? null;
+      return { contextCase: c, contextCaseSource: c ? "requested" : null };
+    }
     if (selectedThreadId) {
       const byThread = cases
         .filter((item) => item.threadId === selectedThreadId)
         .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
-      if (byThread[0]) return byThread[0];
+      if (byThread[0]) return { contextCase: byThread[0], contextCaseSource: "thread" };
 
       const byRun = [...runs]
         .filter((run) => run.threadId === selectedThreadId && typeof run.caseId === "string" && run.caseId.trim().length > 0)
         .sort((a, b) => Date.parse(b.createdAt ?? b.updatedAt ?? "") - Date.parse(a.createdAt ?? a.updatedAt ?? ""));
       for (const run of byRun) {
         const fromRun = cases.find((item) => item.id === run.caseId);
-        if (fromRun) return fromRun;
+        if (fromRun) return { contextCase: fromRun, contextCaseSource: "run" };
       }
     }
 
@@ -942,22 +886,22 @@ const ImobDashboardPage: React.FC = () => {
           return flow.includes("property.create") || flow.includes("owner.create");
         })
         .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
-      if (byFlow[0]) return byFlow[0];
+      if (byFlow[0]) return { contextCase: byFlow[0], contextCaseSource: "heuristic" };
     }
     if (threadLabel.includes("lead")) {
       const byFlow = [...cases]
         .filter((item) => (item.flow ?? "").toLowerCase().includes("lead.qualify"))
         .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
-      if (byFlow[0]) return byFlow[0];
+      if (byFlow[0]) return { contextCase: byFlow[0], contextCaseSource: "heuristic" };
     }
     if (threadLabel.includes("document")) {
       const byFlow = [...cases]
         .filter((item) => (item.flow ?? "").toLowerCase().includes("documents.collect"))
         .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
-      if (byFlow[0]) return byFlow[0];
+      if (byFlow[0]) return { contextCase: byFlow[0], contextCaseSource: "heuristic" };
     }
 
-    return null;
+    return { contextCase: null, contextCaseSource: null };
   }, [cases, requestedCaseId, runs, selectedThread, selectedThreadId]);
   const contextConversationLabel = conversationId ? "Conversa ativa no chat" : "Visão geral";
   const contextThreadLabel = selectedThread?.label?.trim() || "Sem thread selecionada";
@@ -990,7 +934,7 @@ const ImobDashboardPage: React.FC = () => {
         inputHint: item.inputHint?.trim() || item.label,
       }));
     }
-    return buildCaseFallbackActions(contextCase);
+    return buildImobCaseFallbackActions(contextCase);
   }, [contextCase]);
   const backToChatHref = React.useMemo(() => {
     const params = new URLSearchParams();
@@ -1174,7 +1118,8 @@ const ImobDashboardPage: React.FC = () => {
           error={imobCommandCenterError}
           statusFilter={imobStatusFilter}
           reasonFilter={imobReasonFilter}
-          totalCostLabel={kpiLoading ? "..." : currencyFromCents(totalImobRunCostCents)}
+          totalCostLabel={kpiLoading ? "..." : `${currencyFromCents(totalImobRunCostCents)} (${kpiWindowDays}d)`}
+          caseCostWindowDays={30}
           caseCostMap={caseCostMap}
           priorityQueue={priorityQueue}
           waitingOnBoard={waitingOnBoard}
@@ -1221,6 +1166,9 @@ const ImobDashboardPage: React.FC = () => {
           <article className="rounded-2xl border border-white/10 bg-black/20 p-3">
             <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Caso</p>
             <p className="mt-1 text-sm font-medium text-foreground">{contextCaseLabel}</p>
+            {contextCaseSource === "heuristic" ? (
+              <p className="mt-1 text-[10px] text-amber-100/70">estimado por contexto da thread</p>
+            ) : null}
           </article>
         </div>
         {contextCase ? (
@@ -1306,9 +1254,13 @@ const ImobDashboardPage: React.FC = () => {
       </section>
 
       <section className="rounded-3xl border border-white/10 bg-surface/60 p-4 text-xs text-muted-foreground sm:p-6">
-        {threadSource === "synthetic" ? (
+        {threadSource === "no_conversation" ? (
           <p className="mb-3 text-[11px] text-muted-foreground">
-            Timeline em modo simulado por ausência de thread real vinculada no contexto atual.
+            Abra uma conversa no chat para ver os threads desta jornada.
+          </p>
+        ) : threadSource === "error" ? (
+          <p className="mb-3 text-[11px] text-rose-300/80">
+            Erro ao carregar threads. Recarregue ou abra o chat.
           </p>
         ) : null}
         <ThreadPanel
@@ -1320,6 +1272,13 @@ const ImobDashboardPage: React.FC = () => {
           maxItems={3}
           showNavigationCtas={false}
           showTimelineLegend={false}
+          emptyText={
+            threadSource === "no_conversation"
+              ? "Nenhuma conversa ativa."
+              : threadSource === "error"
+                ? "Threads indisponíveis."
+                : "Nenhum thread nesta conversa."
+          }
         />
       </section>
 

@@ -108,7 +108,7 @@ export function ImobDashboardHero({
         <KpiDot label="ativos" value={activeProcessCount} />
         <Sep />
         <KpiDot
-          label="bloqueados"
+          label="bloqueados atuais"
           value={loading ? "…" : blockedTotal}
           tone={blockedTotal > 0 ? "text-rose-300" : "text-foreground"}
         />

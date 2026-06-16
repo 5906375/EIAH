@@ -34,7 +34,7 @@ function formatImobJourneyTypeLabel(value: string | null | undefined) {
   return "Operação";
 }
 
-function buildImobCasePriority(item: ImobCase) {
+export function buildImobCasePriority(item: ImobCase) {
   const blocked = asStringArray(item.canonical?.blockedActions).length;
   const missing = asStringArray(item.canonical?.missingContext).length;
   const recommended = item.canonical?.recommendedActions?.length ?? 0;
@@ -43,6 +43,35 @@ function buildImobCasePriority(item: ImobCase) {
     blocked * 5 + missing * 3 + Math.min(4, Math.floor(ageHours / 12)) + (recommended === 0 ? 2 : 0);
   const label = blocked > 0 ? "alta" : missing > 0 || ageHours >= 24 ? "média" : "normal";
   return { score, label };
+}
+
+export function buildImobCaseFallbackActions(
+  item: ImobCase,
+): Array<{ id: string; label: string; inputHint: string }> {
+  const pending = asStringArray(item.pendingItems).map((entry) => entry.toLowerCase());
+  const flow = (item.flow ?? "").trim().toLowerCase();
+  const joined = pending.join(" ");
+  const actions: Array<{ id: string; label: string; inputHint: string }> = [];
+  const addAction = (id: string, label: string, inputHint: string) => {
+    if (actions.some((current) => current.id === id)) return;
+    actions.push({ id, label, inputHint });
+  };
+
+  if (flow.includes("owner.create") || joined.includes("propriet")) {
+    addAction("owner.register", "Cadastrar proprietário", "cadastrar proprietário deste caso");
+  }
+  if (flow.includes("property.create") || joined.includes("imóvel") || joined.includes("imovel")) {
+    addAction("property.create", "Cadastrar imóvel", "cadastrar imóvel deste caso");
+  }
+  if (joined.includes("document") || flow.includes("documents.collect")) {
+    addAction("documents.review", "Revisar documentos", "revisar documentos deste caso");
+  }
+  if (flow.includes("lead.qualify") || joined.includes("lead")) {
+    addAction("lead.qualify", "Qualificar lead", "qualificar lead deste caso");
+  }
+  addAction("case.consult", "Consultar caso", "consultar caso deste atendimento");
+
+  return actions.slice(0, 4);
 }
 
 export function mapImobStatusFilterToCaseStatus(filter: string): string | undefined {

@@ -3235,10 +3235,11 @@ export async function apiListImobProperties() {
   });
 }
 
-export async function apiListImobCases(params?: { flow?: string; status?: string }) {
+export async function apiListImobCases(params?: { flow?: string; status?: string; workspaceId?: string }) {
   const query = new URLSearchParams();
   if (params?.flow) query.append("flow", params.flow);
   if (params?.status) query.append("status", params.status);
+  if (params?.workspaceId) query.append("workspaceId", params.workspaceId);
   const qs = query.toString() ? `?${query.toString()}` : "";
   return http<{ ok: true; data: { items: ImobCase[] } }>(`/imob/cases${qs}`, {
     method: "GET",
@@ -3360,10 +3361,11 @@ export async function apiGetImobKpiFunnel(params?: { windowDays?: number; from?:
   return http<{ ok: true; data: ImobKpiFunnel }>(`/imob/kpis/funnel${qs}`, { method: "GET" });
 }
 
-export async function apiListImobCaseCosts(params?: { windowDays?: number; caseIds?: string[] }) {
+export async function apiListImobCaseCosts(params?: { windowDays?: number; caseIds?: string[]; workspaceId?: string }) {
   const query = new URLSearchParams();
   if (typeof params?.windowDays === "number" && Number.isFinite(params.windowDays)) query.set("windowDays", String(params.windowDays));
   if (params?.caseIds?.length) query.set("caseIds", params.caseIds.join(","));
+  if (params?.workspaceId) query.append("workspaceId", params.workspaceId);
   const qs = query.toString() ? `?${query.toString()}` : "";
   return http<{ ok: true; data: ImobCaseCostSnapshot }>(`/imob/cases/costs${qs}`, { method: "GET" });
 }

@@ -7,47 +7,17 @@ type PartnerRow = {
   name: string;
   city: string;
   trustScore: number;
-  activeCases: number;
+  delegationPoliciesCount: number;
   splitDefault: string;
   status: string;
 };
-
-const syntheticPartners: PartnerRow[] = [
-  {
-    id: "partner-prime",
-    name: "Prime Imóveis",
-    city: "Itapema",
-    trustScore: 92,
-    activeCases: 4,
-    splitDefault: "50/50",
-    status: "ativo",
-  },
-  {
-    id: "partner-litoral",
-    name: "Litoral Brokers",
-    city: "Balneário Camboriú",
-    trustScore: 87,
-    activeCases: 2,
-    splitDefault: "60/40",
-    status: "ativo",
-  },
-  {
-    id: "partner-atlantica",
-    name: "Atlântica Realty",
-    city: "Porto Belo",
-    trustScore: 78,
-    activeCases: 1,
-    splitDefault: "50/50",
-    status: "em revisão",
-  },
-];
 
 function mapDelegationsToPartners(items: DelegationPolicy[]): PartnerRow[] {
   const byPartner = new Map<string, PartnerRow>();
 
   for (const item of items) {
     const partnerKey = item.delegateeId || item.delegatorId || item.id;
-    const partnerName = item.publisherName || item.marketplaceName || item.delegateeId || "Parceiro da rede";
+    const partnerName = item.publisherName || item.marketplaceName || "Parceiro sem nome cadastrado";
     const existing = byPartner.get(partnerKey);
     const status = new Date(item.validUntil).getTime() > Date.now() ? "ativo" : "expirado";
     const derivedTrust = Number.isFinite(item.trustMin) ? Math.max(0, Math.min(100, item.trustMin)) : 70;
@@ -58,14 +28,14 @@ function mapDelegationsToPartners(items: DelegationPolicy[]): PartnerRow[] {
         name: partnerName,
         city: "Rede EIAH",
         trustScore: derivedTrust,
-        activeCases: 1,
+        delegationPoliciesCount: 1,
         splitDefault: item.scope === "admin" ? "50/50" : item.scope === "execute" ? "60/40" : "70/30",
         status,
       });
       continue;
     }
 
-    existing.activeCases += 1;
+    existing.delegationPoliciesCount += 1;
     existing.trustScore = Math.round((existing.trustScore + derivedTrust) / 2);
     if (status === "ativo") {
       existing.status = "ativo";
@@ -79,8 +49,8 @@ const ImobPartnersPage: React.FC = () => {
   const session = useSession();
   const brandName = session.branding?.brandName?.trim() || "Tenant";
   const workspaceLabel = session.branding?.workspaceLabel?.trim() || session.workspaceId;
-  const [partners, setPartners] = React.useState<PartnerRow[]>(syntheticPartners);
-  const [source, setSource] = React.useState<"real" | "fallback">("fallback");
+  const [partners, setPartners] = React.useState<PartnerRow[]>([]);
+  const [source, setSource] = React.useState<"real" | "empty" | "error">("empty");
   const [loading, setLoading] = React.useState(true);
   const [fetchError, setFetchError] = React.useState<string | null>(null);
 
@@ -97,14 +67,14 @@ const ImobPartnersPage: React.FC = () => {
           setPartners(mapped);
           setSource("real");
         } else {
-          setPartners(syntheticPartners);
-          setSource("fallback");
+          setPartners([]);
+          setSource("empty");
         }
       })
       .catch((error) => {
         if (!mounted) return;
-        setPartners(syntheticPartners);
-        setSource("fallback");
+        setPartners([]);
+        setSource("error");
         setFetchError(error instanceof Error ? error.message : "Falha ao buscar parceiros");
       })
       .finally(() => {
@@ -136,9 +106,9 @@ const ImobPartnersPage: React.FC = () => {
           <p className="mt-2 text-2xl font-semibold text-foreground">{activePartners}</p>
         </article>
         <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Casos em parceria</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Políticas delegadas</p>
           <p className="mt-2 text-2xl font-semibold text-foreground">
-            {partners.reduce((sum, item) => sum + item.activeCases, 0)}
+            {partners.reduce((sum, item) => sum + item.delegationPoliciesCount, 0)}
           </p>
         </article>
         <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
@@ -153,7 +123,7 @@ const ImobPartnersPage: React.FC = () => {
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">Rede de parceiros</h2>
           <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            {loading ? "loading" : source === "real" ? "backend" : "fallback"}
+            {loading ? "carregando" : source === "real" ? "delegações marketplace" : source === "error" ? "indisponível" : "sem delegações"}
           </span>
         </div>
         {fetchError ? <p className="mt-2 text-xs text-rose-200">API indisponível: {fetchError}</p> : null}
@@ -174,7 +144,7 @@ const ImobPartnersPage: React.FC = () => {
               </div>
               <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
                 <span className="rounded-full border border-white/10 bg-surface/50 px-2 py-1">Trust {partner.trustScore}</span>
-                <span className="rounded-full border border-white/10 bg-surface/50 px-2 py-1">{partner.activeCases} processos ativos</span>
+                <span className="rounded-full border border-white/10 bg-surface/50 px-2 py-1">{partner.delegationPoliciesCount} políticas ativas</span>
                 <span className="rounded-full border border-white/10 bg-surface/50 px-2 py-1">scope: execute</span>
               </div>
             </article>

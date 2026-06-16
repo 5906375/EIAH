@@ -26,6 +26,7 @@ type ImobCommandCenterProps = {
   reasonFilter: string;
   totalCostLabel: string;
   caseCostMap?: Map<string, number>;
+  caseCostWindowDays?: number;
   priorityQueue?: ImobPriorityQueueItem[];
   waitingOnBoard?: ImobWaitingOnBucket[];
   bottleneckHeatmap?: ImobHeatmapCell[];
@@ -48,6 +49,7 @@ export function ImobCommandCenter({
   reasonFilter,
   totalCostLabel,
   caseCostMap,
+  caseCostWindowDays = 30,
   priorityQueue = [],
   waitingOnBoard = [],
   bottleneckHeatmap = [],
@@ -71,14 +73,14 @@ export function ImobCommandCenter({
           <p className="text-[11px] text-muted-foreground">Visão executiva de funil e bloqueios para operação imobiliária.</p>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[9px] uppercase tracking-[0.16em] text-muted-foreground">Bloqueios: {health?.summary.blockedTotal ?? 0}</span>
+          <span className="rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[9px] uppercase tracking-[0.16em] text-muted-foreground">Bloqueios recentes: {health?.summary.blockedTotal ?? 0} · 7d</span>
           <span className="rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[9px] uppercase tracking-[0.16em] text-muted-foreground">Aprovações: {health?.summary.pendingApprovals ?? 0}</span>
           <span className="rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[9px] uppercase tracking-[0.16em] text-muted-foreground">Custo: {totalCostLabel}</span>
         </div>
       </div>
       <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-xl border border-white/10 bg-surface/60 px-3 py-2">
-          <p className="text-[8px] uppercase tracking-[0.22em] text-muted-foreground">Bloqueios</p>
+          <p className="text-[8px] uppercase tracking-[0.22em] text-muted-foreground">Bloqueios <span className="opacity-50">(7d)</span></p>
           <p className="mt-1 text-lg font-semibold text-foreground">{health?.summary.blockedTotal ?? 0}</p>
         </div>
         <div className="rounded-xl border border-white/10 bg-surface/60 px-3 py-2">
@@ -171,7 +173,7 @@ export function ImobCommandCenter({
             ) : cases.map((item) => {
                 const hasConsolidatedCost = caseCostMap?.has(item.caseId) ?? false;
                 const costCents = caseCostMap?.get(item.caseId) ?? 0;
-                const costLabel = hasConsolidatedCost ? formatCents(costCents) : null;
+                const costLabel = hasConsolidatedCost ? `${formatCents(costCents)} (${caseCostWindowDays}d)` : null;
                 return (
                   <tr key={item.processId} className="border-t border-white/10">
                     {/* Processo + contexto */}

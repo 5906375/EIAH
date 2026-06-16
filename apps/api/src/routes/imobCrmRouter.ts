@@ -488,6 +488,14 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
       return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
     }
 
+    const requestedWorkspaceId = typeof req.query.workspaceId === "string" ? req.query.workspaceId.trim() : null;
+    if (requestedWorkspaceId && requestedWorkspaceId !== authContext.workspaceId) {
+      return res.status(403).json({
+        ok: false,
+        error: { code: "WORKSPACE_SCOPE_MISMATCH", message: "workspaceId in query does not match authenticated workspace" },
+      });
+    }
+
     const workspaceAccess = await readImobWorkspaceAccessProfile({ prisma, authContext });
     if (!ensureImobWorkspacePermission(res, workspaceAccess.permissions, "imob.chat.use", "Sua função atual não pode usar o IMOB neste workspace.")) {
       return;
@@ -510,6 +518,14 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
     const { authContext, prisma } = req as TenantAwareRequest;
     if (!authContext || !prisma) {
       return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+    }
+
+    const requestedWorkspaceId = typeof req.query.workspaceId === "string" ? req.query.workspaceId.trim() : null;
+    if (requestedWorkspaceId && requestedWorkspaceId !== authContext.workspaceId) {
+      return res.status(403).json({
+        ok: false,
+        error: { code: "WORKSPACE_SCOPE_MISMATCH", message: "workspaceId in query does not match authenticated workspace" },
+      });
     }
 
     const workspaceAccess = await readImobWorkspaceAccessProfile({ prisma, authContext });
