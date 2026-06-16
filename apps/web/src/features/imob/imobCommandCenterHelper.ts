@@ -1,4 +1,4 @@
-import type { ImobCase } from "@/lib/api";
+import type { ImobCase, ImobCaseRecommendedAction } from "@/lib/api";
 
 function imobCaseAgeHours(updatedAt: string) {
   const parsed = Date.parse(updatedAt);
@@ -112,6 +112,9 @@ export function buildImobChatRoute(base: {
   threadId?: string | null;
   autoprompt?: string | null;
   returnTo?: string | null;
+  actionId?: string | null;
+  reasonCode?: string | null;
+  status?: string | null;
 }) {
   const params = new URLSearchParams();
   if (base.conversationId) params.set("conversationId", base.conversationId);
@@ -119,6 +122,9 @@ export function buildImobChatRoute(base: {
   if (base.threadId) params.set("threadId", base.threadId);
   if (base.autoprompt) params.set("autoprompt", base.autoprompt);
   if (base.returnTo) params.set("returnTo", base.returnTo);
+  if (base.actionId) params.set("actionId", base.actionId);
+  if (base.reasonCode) params.set("reasonCode", base.reasonCode);
+  if (base.status) params.set("status", base.status);
   const query = params.toString();
   return `/app/imob/chat${query ? `?${query}` : ""}`;
 }
@@ -139,6 +145,10 @@ export type ImobCommandCenterCaseRow = {
   journeyLabel: string;
   ownerResponsible: string | null;
   eventCount: number;
+  recommendedActions: ImobCaseRecommendedAction[];
+  reasonCodes: string[];
+  pendingItemsList: string[];
+  blockersList: string[];
   // TODO(backend): add waitingOn when apiListImobCases exposes ?waitingOn= filter param
   // Context: WaitingOnBoard uses a dedicated grouping endpoint with all cases; CC uses
   // apiListImobCases (max 12, status-filtered) — the two datasets don't overlap, making
@@ -176,6 +186,10 @@ export function buildImobCaseList(
         journeyLabel: formatImobJourneyTypeLabel(item.canonical?.journeyType),
         ownerResponsible: item.ownerResponsible ?? null,
         eventCount: item._count?.events ?? 0,
+        recommendedActions: item.canonical?.recommendedActions ?? [],
+        reasonCodes: item.canonical?.reasonCodes ?? [],
+        pendingItemsList: asStringArray(item.pendingItems),
+        blockersList: asStringArray(item.blockers),
       };
     })
     .filter((item) => !targetStatus || item.status === targetStatus)

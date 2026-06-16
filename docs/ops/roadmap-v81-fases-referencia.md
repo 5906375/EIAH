@@ -39,15 +39,26 @@ Uso: referência rápida de sessão — não substitui o roadmap canônico.
 - DoD: aprovação auditável ponta a ponta (modelo + contrato + trilha de evidência); Receipt Canon v1 completo; suite fail-closed sem gaps críticos.
 
 ### F5.3 — Auditoria pública DLT
+
+**Estado registrado em 2026-06-16:**
+> F5.3 — frente aberta; fix estrutural Caminho B aplicado; guards de ratificação ativas; 6/6 testes passando; ratificação bloqueada contra dados simulados/agregados/incompletos; pendente de 3 ciclos reais com staging vars.
+
+> F5.3 Cycle 1 preflight bloqueado por ausência de staging vars; ciclos reais permanecem 0/3; ratificação F5.3 pendente.
+
 - E2E HIGH recorrente e manifest/recency gates avançados.
 - **Pendente explícito v8.1**: ratificação operacional dos SLO targets por ciclos recorrentes.
-- Ações para fechar:
-  1. Rodar `generate:e2e-high-manifest`
-  2. Rodar `generate:slo-baseline`
-  3. Repetir por 3 ciclos
-  4. Calcular target
-  5. Marcar `ratified: true`
-  6. Gate bloquear de fato
+- Fix aplicado (2026-06-16): `sloBaselineCollect.ts` — Caminho B (fallback `manifest.latency` agregado); `checkSloTarget.ts` — 4 guards bloqueiam ratificação com dados simulados/agregados.
+- Próximo passo: **F5.3 Cycle 1 — staging real** (validar secrets/vars antes de rodar).
+- Follow-up não-bloqueante: Caminho A — `generate_e2e_high_manifest.ts` gravar `latencyMs` por `scenarioResults[]`.
+- Checklist operacional: `docs/ops/f53-slo-ratification-checklist.md`
+- Ações restantes para fechar:
+  1. Validar staging vars (`STAGING_API_BASE_URL`, `STAGING_API_TOKEN`, `E2E_TENANT_ID`, `E2E_WORKSPACE_ID`)
+  2. Rodar `generate:e2e-high-manifest` (commit SHA real, não `recovery-local`)
+  3. Rodar `generate:slo-baseline` → verificar `sampleSource: "scenario-latency"`
+  4. Repetir por 3 ciclos distintos
+  5. Calcular `targetP95Ms` com fórmula canônica
+  6. Marcar `ratified: true` em `economy-slo-targets.json`
+  7. Gate `check:slo-target` passa a bloquear de fato
 
 ### F5.4 — Interoperabilidade
 - Interop spec v1 e contrato mínimo multi-vertical avançaram.

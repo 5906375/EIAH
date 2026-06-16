@@ -20,6 +20,7 @@ const IMOB_RUN_ACTION_ALIASES = new Map<string, string>([
   ["realestate.market_scan", "property.market_scan"],
   ["crm.market_scan.offer", "property.market_scan"],
   ["listing.activate", "listing.activate"],
+  ["realestate.activate_listing", "listing.activate"],
   ["lead.qualify", "lead.qualify"],
   ["realestate.lead.qualify", "lead.qualify"],
   ["lead.qualify.discovery", "lead.qualify"],

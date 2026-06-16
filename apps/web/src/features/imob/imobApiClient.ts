@@ -16,6 +16,7 @@ export async function resolveImobTurn(body: {
   caseId?: string | null;
   recipeId?: string | null;
   threadState?: ImobThreadConversationState | null;
+  actionId?: string | null;
 }): Promise<ImobResolveTurnResponse> {
   const response = await apiResolveImobTurn(body);
   return response.data;

@@ -37,6 +37,7 @@ import { startTenantBillingReconciler } from "./services/tenantBillingReconciler
 import { imobRouter } from "./routes/imob";
 import { helpRouter } from "./routes/help";
 import { startRunArchiveWorker } from "./workers/runArchiveWorker";
+import { startImobPostRunMutationWorker } from "./workers/imobPostRunMutationWorker";
 
 
 const app = express();
@@ -111,6 +112,7 @@ if (process.env.NODE_ENV !== "test") {
   startRunEventOutboxProcessor();
   startTenantBillingReconciler();
   startRunArchiveWorker();
+  startImobPostRunMutationWorker();
   if (shouldStartWorker) {
     try {
       startRunQueueBullMqWorker();

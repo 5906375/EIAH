@@ -3201,6 +3201,7 @@ export async function apiResolveImobTurn(body: {
   caseId?: string | null;
   recipeId?: string | null;
   threadState?: ImobThreadConversationState | null;
+  actionId?: string | null;
 }) {
   return http<{ ok: true; data: ImobResolveTurnResponse }>(`/imob/chat/resolve-turn`, {
     method: "POST",

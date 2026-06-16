@@ -74,6 +74,12 @@ import { formatDataInputTemplate, getDataInputTemplate } from "@/domain/inputTem
 import { CONTRACT_SCHEMAS } from "@/features/imob/contractSchemas";
 import { formatPct } from "@/lib/formatters";
 import { formatReconciliationIssue } from "@/lib/reconciliation";
+import {
+  DIRECTED_ACTION_BADGE,
+  shouldUseDirectedActionFlow,
+  buildDirectedActionCard,
+  buildAgentsExecuteMetadata,
+} from "@/features/imob/imobChatDirectedAction";
 
 type ChatState = "idle" | "typing" | "executing" | "awaiting_user_action" | "blocked" | "done";
 
@@ -161,6 +167,8 @@ type ChatMessage = {
   };
   card?: MessageCard;
   caseContext?: ImobCaseContext;
+  consultBadge?: string | null;
+  dispatchBadge?: string | null;
 };
 
 type PendingExecution = {
@@ -182,6 +190,7 @@ type PendingExecution = {
   presentationBlocks?: ImobResolveTurnResponse["presentation"]["blocks"];
   receiptEndpointTemplate?: string;
   preparedAt: number;
+  source?: string | null;
 };
 
 type RunFinanceSummary = {
@@ -1681,6 +1690,18 @@ const ImobChatPage: React.FC = () => {
     const raw = searchParams.get("returnTo");
     return raw && raw.trim().startsWith("/app/") ? raw.trim() : null;
   }, [searchParams]);
+  const requestedActionId = React.useMemo(() => {
+    const raw = searchParams.get("actionId");
+    return raw && raw.trim().length > 0 ? raw.trim() : null;
+  }, [searchParams]);
+  const requestedReasonCode = React.useMemo(() => {
+    const raw = searchParams.get("reasonCode");
+    return raw && raw.trim().length > 0 ? raw.trim() : null;
+  }, [searchParams]);
+  const requestedCaseStatus = React.useMemo(() => {
+    const raw = searchParams.get("status");
+    return raw && raw.trim().length > 0 ? raw.trim() : null;
+  }, [searchParams]);
 
   const [state, setState] = React.useState<ChatState>("idle");
   const [input, setInput] = React.useState("");
@@ -1737,6 +1758,7 @@ const ImobChatPage: React.FC = () => {
   const conversationStateByThreadRef = React.useRef<Record<string, ImobThreadConversationState>>({});
   const rejectedExecutionKeysRef = React.useRef<Set<string>>(new Set());
   const persistedRunStatusKeysRef = React.useRef<Set<string>>(new Set());
+  const directedConfirmingRef = React.useRef(false);
   const persistedContractTemplateKeysRef = React.useRef<Set<string>>(new Set());
   const loadingRunFinanceIdsRef = React.useRef<Set<string>>(new Set());
 
@@ -1871,6 +1893,7 @@ const ImobChatPage: React.FC = () => {
         action: pendingExecution.plan.action,
         ...metadata,
       });
+      directedConfirmingRef.current = false;
       setPendingExecution(null);
       setOpenOptionsMessageId(null);
       setRejectLockedMessageId(null);
@@ -2668,6 +2691,100 @@ const ImobChatPage: React.FC = () => {
       }
   };
 
+  const prepareDirectedActionExecution = async (
+    plan: ImobExecutionRequest,
+    operationThread: { id: string; label: string },
+    activeConversationId: string,
+    startedAt: number,
+    caseContext?: ImobCaseContext,
+    presentationText?: string,
+  ) => {
+    try {
+      directedConfirmingRef.current = false;
+      const discovery = await apiAgentsDiscovery({ domain: "imob", actions: [plan.action] });
+      const discovered = discovery.data.actions.find((entry) => entry.action === plan.action);
+      if (!discovered) {
+        throw new Error(`Ação ${plan.action} não disponível para este tenant/workspace.`);
+      }
+      const negotiation = await apiAgentsNegotiate({ domain: "imob", action: plan.action });
+      const contract = negotiation.data.contract;
+      const thread = operationThread;
+      const liveMessageId = makeId("assistant");
+      const executionPending: PendingExecution = {
+        plan,
+        contract,
+        messageId: liveMessageId,
+        thread,
+        caseContext,
+        presentationText: presentationText?.trim() || plan.prompt || thread.label,
+        receiptEndpointTemplate: negotiation.data.verification.endpointTemplate,
+        preparedAt: Date.now(),
+        source: "command-center",
+      };
+      setOpenOptionsMessageId(null);
+      setRejectLockedMessageId(null);
+      setActiveAssistantMessageId(liveMessageId);
+      setPendingExecution(executionPending);
+      setState("awaiting_user_action");
+      const directedCard = buildDirectedActionCard(thread);
+      const directedMessage: ChatMessage = {
+        id: liveMessageId,
+        role: "assistant",
+        text: executionPending.presentationText,
+        thread: { id: thread.id, label: thread.label, status: "waiting" },
+        caseContext: executionPending.caseContext,
+        dispatchBadge: DIRECTED_ACTION_BADGE,
+        card: directedCard,
+      };
+      appendMessage(directedMessage);
+      void persistMessage(directedMessage, {
+        intent: plan.intent,
+        action: plan.action,
+        conversationId: activeConversationId,
+      });
+      void apiCreateImobChatTelemetry({
+        conversationId: activeConversationId,
+        event: "message_to_plan_ms",
+        value: Date.now() - startedAt,
+        metadata: { intent: plan.intent, action: plan.action, source: "command-center" },
+      });
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? `${error.message} (${error.status})`
+          : error instanceof Error
+            ? error.message
+            : "Falha ao preparar ação direcionada";
+      setState("blocked");
+      const blockedMessage: ChatMessage = {
+        id: makeId("assistant"),
+        role: "assistant",
+        text: "Não consegui preparar esta ação agora.",
+        thread: {
+          id: operationThread.id,
+          label: operationThread.label,
+          status: "blocked",
+        },
+        card: {
+          type: "risk",
+          title: "Ação pausada",
+          thread: {
+            id: operationThread.id,
+            label: operationThread.label,
+            status: "blocked",
+          },
+          lines: ["Identifiquei uma restrição de segurança para este passo."],
+          risk: {
+            level: "high",
+            reason: message,
+          },
+        },
+      };
+      appendMessage(blockedMessage);
+      void persistMessage(blockedMessage, { conversationId: activeConversationId });
+    }
+  };
+
   const autopromptConsumedRef = React.useRef<string | null>(null);
   const startNewBootstrapReadyRef = React.useRef(false);
 
@@ -2959,6 +3076,7 @@ const ImobChatPage: React.FC = () => {
         caseId: resolvedCaseId,
         recipeId: requestedRecipeId,
         threadState: currentThreadId ? conversationStateByThreadRef.current[currentThreadId] ?? null : null,
+        actionId: requestedActionId,
       });
     } catch (error) {
       const message =
@@ -3273,6 +3391,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         thread: baseThread,
         card: mapReplyCardFromPresentation(turn.presentation, baseThread, turn.caseContext),
         caseContext: turn.caseContext ?? undefined,
+        consultBadge: requestedActionId ? "consulta — não altera estado" : undefined,
       };
       appendMessage(consultReply);
       void persistMessage(consultReply, {
@@ -3397,6 +3516,18 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       };
       appendMessage(failedReply);
       setState("blocked");
+      return;
+    }
+
+    if (shouldUseDirectedActionFlow(requestedActionId, turn.mode)) {
+      await prepareDirectedActionExecution(
+        turn.executionRequest,
+        operationThread,
+        activeConversationId,
+        startedAt,
+        turn.caseContext ?? undefined,
+        turn.presentation.text,
+      );
       return;
     }
 
@@ -4009,14 +4140,15 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
           input: executionPending.plan.input,
           prompt: executionPending.plan.prompt,
           parentRunId: parentRunId ?? undefined,
-          metadata: {
+          metadata: buildAgentsExecuteMetadata({
             chatFlow: "imob-operational-chat",
             intent: executionPending.plan.intent,
             conversationId: conversationId ?? undefined,
             threadId: executionPending.thread.id,
             threadLabel: executionPending.thread.label,
             sessionRunId: sessionRunId ?? undefined,
-          },
+            source: executionPending.source ?? null,
+          }),
         });
 
         const runId = execution.data.runId;
@@ -4197,9 +4329,13 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
 
   const handleConfirmExecution = async (message: ChatMessage) => {
     if (!pendingExecution) return;
+    if (pendingExecution.source === "command-center" && directedConfirmingRef.current) return;
     const messageThreadId = message.thread?.id ?? message.card?.thread?.id ?? null;
     if (!messageThreadId) return;
     if (pendingExecution.messageId !== message.id || pendingExecution.thread.id !== messageThreadId) return;
+    if (pendingExecution.source === "command-center") {
+      directedConfirmingRef.current = true;
+    }
     await runExecutionFlow(pendingExecution, { trackConfirm: true });
   };
 
@@ -4649,6 +4785,18 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                 })
                               }
                             />
+                          ) : null}
+
+                          {message.consultBadge ? (
+                            <span className="mt-1.5 inline-block rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent/80">
+                              {message.consultBadge}
+                            </span>
+                          ) : null}
+
+                          {message.dispatchBadge ? (
+                            <span className="mt-1.5 inline-block rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-medium text-amber-300/80">
+                              {message.dispatchBadge}
+                            </span>
                           ) : null}
 
                           {message.blocks?.length ? (

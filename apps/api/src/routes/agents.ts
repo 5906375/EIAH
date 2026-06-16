@@ -127,7 +127,128 @@ const ACTION_CONTRACTS: Record<string, ProtocolActionContract> = {
     },
     defaultAgent: "fin-nexus",
   },
+  "realestate.activate_listing": {
+    action: "realestate.activate_listing",
+    version: "1.0.0",
+    tier: "MEDIUM",
+    txIdRequired: false,
+    inputSchema: {
+      type: "object",
+      required: ["caseId", "propertyId"],
+      properties: {
+        caseId: { type: "string", minLength: 1 },
+        propertyId: { type: "string", minLength: 1 },
+        listingChannel: { type: "string" },
+        activateAt: { type: "string", format: "date-time" },
+      },
+      additionalProperties: true,
+    },
+    receiptSchema: { specVersion: "receipt.canon.v1" },
+    trustRequirements: {
+      minTrustScore: 40,
+      requiresPoU: true,
+    },
+    defaultAgent: "EIAH",
+  },
+  "realestate.qualify_lead": {
+    action: "realestate.qualify_lead",
+    version: "1.0.0",
+    tier: "MEDIUM",
+    txIdRequired: false,
+    inputSchema: {
+      type: "object",
+      required: ["caseId", "leadId"],
+      properties: {
+        caseId: { type: "string", minLength: 1 },
+        leadId: { type: "string", minLength: 1 },
+        qualificationNote: { type: "string" },
+        budgetCents: { type: "integer", minimum: 0 },
+        timeline: { type: "string" },
+      },
+      additionalProperties: true,
+    },
+    receiptSchema: { specVersion: "receipt.canon.v1" },
+    trustRequirements: {
+      minTrustScore: 40,
+      requiresPoU: false,
+    },
+    defaultAgent: "EIAH",
+  },
+  "realestate.schedule_visit": {
+    action: "realestate.schedule_visit",
+    version: "1.0.0",
+    tier: "LOW",
+    txIdRequired: false,
+    inputSchema: {
+      type: "object",
+      required: ["caseId", "propertyId", "scheduledAt"],
+      properties: {
+        caseId: { type: "string", minLength: 1 },
+        propertyId: { type: "string", minLength: 1 },
+        leadId: { type: "string" },
+        scheduledAt: { type: "string", format: "date-time" },
+        visitNote: { type: "string" },
+      },
+      additionalProperties: true,
+    },
+    receiptSchema: { specVersion: "receipt.canon.v1" },
+    trustRequirements: {
+      minTrustScore: 30,
+      requiresPoU: false,
+    },
+    defaultAgent: "EIAH",
+  },
+  "realestate.collect_documents": {
+    action: "realestate.collect_documents",
+    version: "1.0.0",
+    tier: "MEDIUM",
+    txIdRequired: false,
+    inputSchema: {
+      type: "object",
+      required: ["caseId"],
+      properties: {
+        caseId: { type: "string", minLength: 1 },
+        documentTypes: { type: "array", items: { type: "string" } },
+        partyId: { type: "string" },
+        deadline: { type: "string", format: "date-time" },
+      },
+      additionalProperties: true,
+    },
+    receiptSchema: { specVersion: "receipt.canon.v1" },
+    trustRequirements: {
+      minTrustScore: 40,
+      requiresPoU: false,
+    },
+    defaultAgent: "EIAH",
+  },
+  "realestate.review_deal": {
+    action: "realestate.review_deal",
+    version: "1.0.0",
+    tier: "HIGH",
+    txIdRequired: true,
+    inputSchema: {
+      type: "object",
+      required: ["caseId", "dealId"],
+      properties: {
+        caseId: { type: "string", minLength: 1 },
+        dealId: { type: "string", minLength: 1 },
+        proposalId: { type: "string" },
+        reviewNote: { type: "string" },
+      },
+      additionalProperties: true,
+    },
+    receiptSchema: { specVersion: "receipt.canon.v1" },
+    trustRequirements: {
+      minTrustScore: 60,
+      requiresPoU: true,
+    },
+    defaultAgent: "J_360",
+  },
 };
+
+export function getRegisteredActionContractNames(): string[] {
+  return Object.keys(ACTION_CONTRACTS);
+}
 
 const DiscoverySchema = z.object({
   domain: z.string().min(1).optional(),

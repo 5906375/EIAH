@@ -232,15 +232,27 @@ export function ImobCommandCenter({
                           processo {formatRunId(item.processId)}
                         </p>
                         <Link
-                          to={buildImobChatRoute({
-                            conversationId,
-                            caseId: item.caseId,
-                            threadId: item.threadId,
-                            autoprompt: "consultar caso",
-                          })}
+                          to={buildImobChatRoute(
+                            item.recommendedActions[0]
+                              ? {
+                                  conversationId,
+                                  caseId: item.caseId,
+                                  threadId: item.threadId,
+                                  status: item.status,
+                                  actionId: item.recommendedActions[0].id,
+                                  reasonCode: item.recommendedActions[0].reasonCode ?? null,
+                                  autoprompt: item.recommendedActions[0].inputHint ?? item.recommendedActions[0].label,
+                                }
+                              : {
+                                  conversationId,
+                                  caseId: item.caseId,
+                                  threadId: item.threadId,
+                                  autoprompt: "consultar caso",
+                                }
+                          )}
                           className="text-[10px] text-accent underline-offset-2 hover:text-accent/80 hover:underline"
                         >
-                          abrir no chat
+                          consultar no chat
                         </Link>
                       </div>
                     </td>

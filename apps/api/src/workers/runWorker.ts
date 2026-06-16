@@ -103,6 +103,12 @@ import { buildRecipeOrchestration } from "./runWorkerRecipeOrchestration";
 import { tenantActionResolver } from "../actions/tenantActionRegistry";
 
 /* ──────────────────────────────────────────────
+   IMOB Post-Run Mutation Queue (P5)
+   ────────────────────────────────────────────── */
+import { enqueueImobRunCompleted } from "../queues/imobRunCompletedQueue";
+import { IMOB_DISPATCHER_ACTION_IDS } from "../services/imob/crm/imobCrmActionDispatcher";
+
+/* ──────────────────────────────────────────────
    BullMQ Worker para consumir a RUNS queue
    ────────────────────────────────────────────── */
 import { Worker } from "bullmq";
@@ -2350,6 +2356,36 @@ export async function processRunPayload(payload: RunQueuePayload) {
       // ✔ DISPARA SEMPRE O RUN ATIVO UNIVERSAL (SEM IF)
       const runAtivoJob: ScopedRunAtivoJobPayload = { runId, tenantId, workspaceId };
       await enqueueRunAtivoUniversal(runAtivoJob);
+
+      // IMOB post-run mutation enqueue — P5
+      // Only for runs originating from the IMOB dispatcher with a valid caseId.
+      // Failure to enqueue must never fail the run — isolated with .catch().
+      const imobExecInput = baseMetadata?.executionInput as Record<string, unknown> | null | undefined;
+      const imobCaseId = typeof imobExecInput?.caseId === "string" && (imobExecInput.caseId as string).trim()
+        ? (imobExecInput.caseId as string).trim()
+        : null;
+      const imobActionId = typeof imobExecInput?.actionId === "string" && (imobExecInput.actionId as string).trim()
+        ? (imobExecInput.actionId as string).trim()
+        : null;
+      if (
+        imobCaseId &&
+        imobActionId &&
+        (IMOB_DISPATCHER_ACTION_IDS as readonly string[]).includes(imobActionId)
+      ) {
+        enqueueImobRunCompleted({
+          runId,
+          tenantId,
+          workspaceId,
+          caseId: imobCaseId,
+          actionId: imobActionId,
+          eventRunId: runId,
+        }).catch((err) => {
+          logger.error(
+            { runId, caseId: imobCaseId, actionId: imobActionId, err },
+            "imob.run_completed_enqueue_failed"
+          );
+        });
+      }
 
     } catch (error) {
       if (await isRunUserCancelled({ runId, tenantId, workspaceId })) {
