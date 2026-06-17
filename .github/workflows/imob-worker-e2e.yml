@@ -59,6 +59,7 @@ jobs:
       - name: Build workspace artifacts
         run: |
           pnpm --filter @eiah/contracts build
+          pnpm --filter @eiah/core build
           pnpm --filter @repo/db build
 
       - name: Run database migrations
