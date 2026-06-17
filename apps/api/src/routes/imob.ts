@@ -110,6 +110,13 @@ import {
 import { persistBuffer } from "../services/storage";
 import { createUploadedDocument } from "../services/uploads";
 import { IMOB_DISPATCHER_ACTION_IDS } from "../services/imob/crm/imobCrmActionDispatcher";
+import {
+  buildExportHash,
+  scanIntakeDataForPii,
+  renderIntakeHtml,
+  renderIntakeDocx,
+  type IntakeExportData,
+} from "../services/imob/intake/imobContractIntakeRenderer";
 
 export const imobRouter = Router();
 imobRouter.use(enforceTenant);
@@ -3819,4 +3826,167 @@ imobRouter.post("/chat/intake/confirm/:draftId", async (req: TenantAwareRequest,
     source: "chat-imob",
     message: "Run criado. Mutação do caso será processada pelo worker.",
   });
+});
+
+// GET /api/imob/runs/:runId/intake/export?format=html|docx|pdf
+// Builds and streams the intake export from persisted run/case/event — never from draft.
+// Guards: tenantId+workspaceId scope, piiMasked=true, anti-PII scan.
+// PDF is delegated to the frontend (jspdf/browser print) — returns guidance JSON.
+imobRouter.get("/runs/:runId/intake/export", async (req: TenantAwareRequest, res: Response) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(403).json({ ok: false, reasonCode: "UNAUTHORIZED", message: "Auth context ausente" });
+  }
+
+  const { tenantId, workspaceId } = authContext;
+  const { runId } = req.params;
+  const format = String(req.query.format ?? "");
+
+  const ALLOWED_FORMATS = ["html", "docx", "pdf"] as const;
+  if (!ALLOWED_FORMATS.includes(format as (typeof ALLOWED_FORMATS)[number])) {
+    return res.status(400).json({
+      ok: false,
+      reasonCode: "INVALID_FORMAT",
+      message: `Parâmetro format inválido: "${format}". Use html, docx ou pdf.`,
+    });
+  }
+
+  // PDF is a client-side pattern in this project (jspdf in apps/web).
+  // Return guidance so the caller knows how to proceed.
+  if (format === "pdf") {
+    return res.status(200).json({
+      ok: false,
+      reasonCode: "PDF_DELEGATED_TO_FRONTEND",
+      strategy: "client-side-jspdf-or-browser-print",
+      htmlExportUrl: `/api/imob/runs/${encodeURIComponent(runId)}/intake/export?format=html`,
+      message:
+        "PDF não é gerado server-side neste projeto. Use o HTML exportado com jspdf ou a impressão do navegador.",
+    });
+  }
+
+  // Load run — validate scope
+  const run = await (prisma as any).run.findFirst({
+    where: { id: runId, tenantId, workspaceId },
+    select: { id: true, request: true, status: true },
+  });
+  if (!run) {
+    return res.status(404).json({ ok: false, reasonCode: "RUN_NOT_FOUND", message: "Run não encontrado" });
+  }
+
+  const request = (run.request as Record<string, unknown>) ?? {};
+  if (request.actionId !== "imob.contract.intake") {
+    return res.status(400).json({
+      ok: false,
+      reasonCode: "NOT_INTAKE_RUN",
+      message: "Este run não é um run de intake de contrato",
+    });
+  }
+
+  // Load the intake evidence event — idempotency anchor by documentHash
+  const evidenceEvent = await (prisma as any).imobCaseEvent.findFirst({
+    where: { runId, tenantId, workspaceId, type: "case.document.intake" },
+    select: { id: true, caseId: true, payload: true, evidenceRef: true },
+  });
+  if (!evidenceEvent) {
+    return res.status(404).json({
+      ok: false,
+      reasonCode: "EVIDENCE_NOT_FOUND",
+      message: "Evento de evidência de intake não encontrado. O worker pode ainda não ter processado o run.",
+    });
+  }
+
+  // Guard: piiMasked must be true in the persisted event payload
+  const eventPayload = (evidenceEvent.payload as Record<string, unknown>) ?? {};
+  if (eventPayload.piiMasked !== true) {
+    return res.status(403).json({
+      ok: false,
+      reasonCode: "EXPORT_PII_NOT_MASKED",
+      message: "Export bloqueado: payload do evento não contém piiMasked=true",
+    });
+  }
+
+  // Load case — validate scope again through case ownership
+  const imobCase = await (prisma as any).imobCase.findFirst({
+    where: { id: evidenceEvent.caseId, tenantId, workspaceId },
+    select: { id: true, stage: true, status: true, nextStep: true, pendingItems: true, metadata: true },
+  });
+  if (!imobCase) {
+    return res.status(404).json({
+      ok: false,
+      reasonCode: "CASE_NOT_FOUND",
+      message: "Caso IMOB não encontrado ou não pertence a este tenant/workspace",
+    });
+  }
+
+  const caseMeta = (imobCase.metadata as Record<string, unknown>) ?? {};
+  const riskFlags = Array.isArray(caseMeta.riskFlags) ? (caseMeta.riskFlags as string[]) : [];
+  const pendingItems = Array.isArray(imobCase.pendingItems) ? (imobCase.pendingItems as string[]) : [];
+  const documentHash = String(evidenceEvent.evidenceRef ?? eventPayload.documentHash ?? "");
+  const documentKind =
+    String(eventPayload.documentKind ?? "lease_contract") === "lease_contract" ? "lease_contract" : ("other" as const);
+
+  const generatedAt = new Date().toISOString();
+
+  const exportDataWithoutHash: Omit<IntakeExportData, "exportHash"> = {
+    caseId: imobCase.id,
+    runId,
+    documentHash,
+    documentKind,
+    stage: imobCase.stage,
+    status: imobCase.status,
+    nextStep: typeof imobCase.nextStep === "string" ? imobCase.nextStep : null,
+    pendingItems,
+    riskFlags,
+    generatedAt,
+    piiMasked: true,
+  };
+
+  const exportHash = buildExportHash(exportDataWithoutHash);
+  const exportData: IntakeExportData = { ...exportDataWithoutHash, exportHash };
+
+  // Anti-PII scan on human-readable fields before generating the file
+  const piiScan = scanIntakeDataForPii(exportData);
+  if (piiScan.hasPii) {
+    return res.status(200).json({
+      ok: false,
+      partial: true,
+      reasonCode: "EXPORT_GENERATION_FAILED",
+      detail: "PII residue detected in assembled export data",
+      fields: piiScan.fields,
+    });
+  }
+
+  try {
+    if (format === "html") {
+      const html = renderIntakeHtml(exportData);
+      return res
+        .status(200)
+        .set("Content-Type", "text/html; charset=utf-8")
+        .set("Content-Disposition", `attachment; filename="intake-${runId}.html"`)
+        .set("X-Export-Hash", exportHash)
+        .set("X-Generated-At", generatedAt)
+        .send(html);
+    }
+
+    if (format === "docx") {
+      const docxBuffer = await renderIntakeDocx(exportData);
+      return res
+        .status(200)
+        .set(
+          "Content-Type",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
+        .set("Content-Disposition", `attachment; filename="intake-${runId}.docx"`)
+        .set("X-Export-Hash", exportHash)
+        .set("X-Generated-At", generatedAt)
+        .send(docxBuffer);
+    }
+  } catch {
+    return res.status(200).json({
+      ok: false,
+      partial: true,
+      reasonCode: "EXPORT_GENERATION_FAILED",
+      message: "Falha na geração do arquivo de exportação",
+    });
+  }
 });
