@@ -3,6 +3,7 @@ import test from "node:test";
 import { GuardianReportSchema } from "../guardianReportSchema";
 import { buildGuardianLandingPageHtml } from "../renderGuardianLandingPage/v1/template";
 import { buildGuardianPdfHtml } from "../renderGuardianPdf/v1/template";
+import type { RunAtivoReportingInput } from "../runAtivoSchema";
 
 const basePayload = {
   metadata: {
@@ -89,7 +90,7 @@ const basePayload = {
   linksUteis: [],
   auditTrail: [],
   timeline: [],
-};
+} satisfies RunAtivoReportingInput;
 
 test("guardian landing page renderer avoids prohibited commercial terms", () => {
   const html = buildGuardianLandingPageHtml(basePayload);
