@@ -54,10 +54,21 @@ function normalizeAction(action: string): string {
 
 function extractHighActionsFromAgentContracts(tsSource: string): string[] {
   const actions: string[] = [];
-  const entryRegex = /"([^"]+)"\s*:\s*\{[\s\S]*?tier:\s*"HIGH"[\s\S]*?txIdRequired:\s*true[\s\S]*?\}/g;
-  let match: RegExpExecArray | null;
-  while ((match = entryRegex.exec(tsSource)) !== null) {
-    actions.push(match[1]);
+  // Locate every action key position first, then check each block independently
+  // to avoid the cross-span bug where a MEDIUM action key precedes a HIGH block.
+  const keyRegex = /"(realestate\.[^"]+)"\s*:\s*\{/g;
+  const keys: Array<{ key: string; pos: number }> = [];
+  let km: RegExpExecArray | null;
+  while ((km = keyRegex.exec(tsSource)) !== null) {
+    keys.push({ key: km[1], pos: km.index });
+  }
+  for (let i = 0; i < keys.length; i++) {
+    const start = keys[i].pos;
+    const end = i + 1 < keys.length ? keys[i + 1].pos : tsSource.length;
+    const block = tsSource.slice(start, end);
+    if (/tier:\s*"HIGH"/.test(block) && /txIdRequired:\s*true/.test(block)) {
+      actions.push(keys[i].key);
+    }
   }
   return actions;
 }

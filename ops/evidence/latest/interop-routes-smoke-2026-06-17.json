@@ -1,0 +1,32 @@
+{
+  "ok": true,
+  "check": "interop-routes-smoke",
+  "date": "2026-06-17",
+  "protocolVersion": "agent-protocol.v1",
+  "status": "implemented_code_level",
+  "routes": [
+    {
+      "method": "POST",
+      "path": "/api/agents/discovery",
+      "implemented": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/agents/negotiate",
+      "implemented": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/agents/execute",
+      "implemented": true
+    }
+  ],
+  "contracts": [
+    "contracts/agent-protocol.v1.schema.json",
+    "docs/ops/agent-protocol-api-contract.md"
+  ],
+  "notes": [
+    "Smoke renovado a partir do contrato publico e da implementacao atual do router.",
+    "Validacao runtime HTTP continua coberta por apps/api/src/tests/agents.interop.contract.test.ts."
+  ]
+}
