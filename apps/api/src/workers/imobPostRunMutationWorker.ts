@@ -144,6 +144,18 @@ export const IMOB_RUN_OUTCOME_MAP: Record<string, ImobRunOutcome> = {
     requiresTxId: true,
     isTerminal: true,
   },
+  // Phase 2: document intake via Chat IMOB
+  // Case is CREATED (not updated) by the intake handler — no pre-existing caseId.
+  // requiresTxId=false: no ledger receipt needed for document intake.
+  "imob.contract.intake": {
+    stage: "documents_collecting",
+    status: "ready_for_review",
+    nextStep: "Analisar documentação recebida e verificar itens pendentes com as partes",
+    pendingItemsAdd: [],
+    pendingItemsRemove: [],
+    requiresTxId: false,
+    isTerminal: false,
+  },
 };
 
 // ─── Pure helpers ─────────────────────────────────────────────────────────────
@@ -221,6 +233,12 @@ export async function processImobRunCompletedJob(
   if (!outcome) {
     logger.warn({ actionId }, "imob-worker.no_outcome_for_action");
     incrementCounter(IMOB_WORKER_COUNTER.SKIPS, { actionId, reason: "no_outcome_for_action" });
+    return;
+  }
+
+  // Intake branch: imob.contract.intake creates a new ImobCase — handled separately
+  if (actionId === "imob.contract.intake") {
+    await processIntakeRun(job, logger, { getRunFn: _getRunFn, prisma: _prisma });
     return;
   }
 
@@ -394,6 +412,164 @@ export async function processImobRunCompletedJob(
       bundlePath,
     },
     "imob-worker.mutation_applied",
+  );
+}
+
+// ─── Intake handler (imob.contract.intake) ───────────────────────────────────
+//
+// Creates a new ImobCase from a confirmed run.
+// Idempotency:
+//   1. By documentHash: if a case.document.intake event with the same evidenceRef
+//      already exists in tenant/workspace → skip with EXISTING_CASE_FOUND.
+//   2. By runId: if a case.action.completed event for this runId already exists
+//      in tenant/workspace → skip (duplicate BullMQ delivery).
+
+async function processIntakeRun(
+  job: ImobRunCompletedJobPayload,
+  logger: ReturnType<typeof bindLogger>,
+  deps: Pick<ImobWorkerDeps, "getRunFn" | "prisma">,
+): Promise<void> {
+  const { runId, tenantId, workspaceId } = job;
+  const _getRunFn = deps.getRunFn;
+  const _prisma = deps.prisma;
+
+  const run = await _getRunFn({ id: runId, tenantId, workspaceId });
+  if (!run) {
+    logger.warn("imob-intake.run_not_found");
+    incrementCounter(IMOB_WORKER_COUNTER.SKIPS, { actionId: "imob.contract.intake", reason: "run_not_found" });
+    return;
+  }
+
+  if (run.status !== "success") {
+    logger.info({ runStatus: run.status }, "imob-intake.run_not_success_skip");
+    incrementCounter(IMOB_WORKER_COUNTER.SKIPS, { actionId: "imob.contract.intake", reason: "run_not_success" });
+    return;
+  }
+
+  if (shouldSkipImobPostRunMutationForSimulatedOutput(run)) {
+    logger.warn("imob-intake.skipped_simulated_run");
+    incrementCounter(IMOB_WORKER_COUNTER.SKIPS, { actionId: "imob.contract.intake", reason: "simulated" });
+    return;
+  }
+
+  // Read intake context from run.request (embedded by confirm endpoint)
+  const request = (run.request as Record<string, unknown>) ?? {};
+  const documentHash = typeof request.documentHash === "string" && request.documentHash ? request.documentHash : null;
+  const documentKind = "lease_contract" as const;
+  const pendingItems = Array.isArray(request.pendingItems) ? (request.pendingItems as string[]) : [];
+  const riskFlags = Array.isArray(request.riskFlags) ? (request.riskFlags as string[]) : [];
+
+  if (!documentHash) {
+    logger.warn("imob-intake.missing_document_hash");
+    incrementCounter(IMOB_WORKER_COUNTER.SKIPS, { actionId: "imob.contract.intake", reason: "missing_document_hash" });
+    return;
+  }
+
+  // Idempotency #1: document already ingested in this tenant/workspace
+  const existingEvidence = await (_prisma as any).imobCaseEvent.findFirst({
+    where: { tenantId, workspaceId, evidenceRef: documentHash, type: "case.document.intake" },
+    select: { id: true, caseId: true },
+  });
+  if (existingEvidence) {
+    logger.info({ documentHash }, "imob-intake.idempotent_skip_existing_case");
+    incrementCounter(IMOB_WORKER_COUNTER.SKIPS, {
+      actionId: "imob.contract.intake",
+      reason: "EXISTING_CASE_FOUND",
+    });
+    return;
+  }
+
+  // Idempotency #2: runId already processed (duplicate BullMQ delivery)
+  const alreadyProcessedByRun = await (_prisma as any).imobCaseEvent.findFirst({
+    where: { tenantId, workspaceId, runId, type: "case.action.completed" },
+    select: { id: true },
+  });
+  if (alreadyProcessedByRun) {
+    logger.info("imob-intake.already_processed_skip");
+    incrementCounter(IMOB_WORKER_COUNTER.SKIPS, { actionId: "imob.contract.intake", reason: "already_processed" });
+    return;
+  }
+
+  // Create ImobCase — flow "documents.collect" maps to journeyType "documentation"
+  const outcome = IMOB_RUN_OUTCOME_MAP["imob.contract.intake"];
+  const newCase = await (_prisma as any).imobCase.create({
+    data: {
+      tenant: { connect: { id: tenantId } },
+      workspace: { connect: { id: workspaceId } },
+      flow: "documents.collect",
+      stage: outcome.stage,
+      status: outcome.status,
+      nextStep: outcome.nextStep,
+      pendingItems,
+      blockers: [],
+      metadata: {
+        intakeDocumentHash: documentHash,
+        intakeDocumentKind: documentKind,
+        piiMasked: true,
+        riskFlags,
+        intakeRunId: runId,
+      },
+    },
+  });
+
+  const bundlePath = `/api/runs/${encodeURIComponent(runId)}/bundle`;
+
+  // Event 1: case.action.completed — links run to case
+  await (_prisma as any).imobCaseEvent.create({
+    data: {
+      imobCase: { connect: { id: newCase.id } },
+      tenant: { connect: { id: tenantId } },
+      workspace: { connect: { id: workspaceId } },
+      run: { connect: { id: runId } },
+      type: "case.action.completed",
+      actorType: "system",
+      actorRef: null,
+      summary: "Contrato de locação recebido via Chat IMOB — caso de documentação iniciado",
+      evidenceRef: documentHash,
+      payload: {
+        actionId: "imob.contract.intake",
+        documentHash,
+        documentKind,
+        piiMasked: true,
+        runId,
+        outcomeStage: outcome.stage,
+        outcomeStatus: outcome.status,
+        bundlePath,
+      },
+    },
+  });
+
+  // Event 2: case.document.intake — idempotency anchor by documentHash
+  await (_prisma as any).imobCaseEvent.create({
+    data: {
+      imobCase: { connect: { id: newCase.id } },
+      tenant: { connect: { id: tenantId } },
+      workspace: { connect: { id: workspaceId } },
+      run: { connect: { id: runId } },
+      type: "case.document.intake",
+      actorType: "system",
+      actorRef: null,
+      summary: "Documento de contrato de locação indexado com evidência mascarada",
+      evidenceRef: documentHash,
+      payload: { documentHash, documentKind, piiMasked: true },
+    },
+  });
+
+  incrementCounter(IMOB_WORKER_COUNTER.MUTATIONS_APPLIED, {
+    actionId: "imob.contract.intake",
+    terminal: "false",
+    requiresTxId: "false",
+  });
+
+  logger.info(
+    {
+      actionId: "imob.contract.intake",
+      newCaseId: newCase.id,
+      stage: outcome.stage,
+      status: outcome.status,
+      documentHash,
+    },
+    "imob-intake.case_created",
   );
 }
 
