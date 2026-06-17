@@ -69,6 +69,7 @@
     "test:imob-intake:renderer": "node --import tsx --test apps/api/src/tests/imob-contract-intake-renderer.test.ts",
     "test:imob-intake:export": "node --import tsx --test --test-force-exit apps/api/src/tests/imob-intake-export.test.ts",
     "test:imob-intake:phase3": "pnpm test:imob-intake:renderer && node --import tsx --test --test-force-exit apps/api/src/tests/imob-intake-export.test.ts",
+    "test:imob-intake:ui": "TSX_TSCONFIG_PATH=apps/web/tsconfig.json node --import tsx --test apps/web/src/features/imob/imobContractIntakeDraftCard.test.tsx apps/web/src/features/imob/imobContractIntakeResultCard.test.tsx apps/web/src/features/imob/imobContractIntakeApiClient.test.ts",
     "test:api-health-contract": "node --import tsx --test apps/api/src/tests/health.contract.test.ts",
     "test:agents-policy-fail-closed": "node --import tsx --test apps/api/src/tests/agents.policy.fail-closed.test.ts",
     "test:web-chat-launcher": "TSX_TSCONFIG_PATH=apps/web/tsconfig.json node --import tsx --test apps/web/src/components/agents/chatLauncherEngine.test.ts",
