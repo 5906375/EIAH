@@ -96,6 +96,20 @@ import {
   buildImobCanonicalCase,
   type ImobCanonicalCase,
 } from "../services/imob/imobCanonical";
+import multer from "multer";
+import { extractTextFromDocxBuffer } from "../services/imob/intake/imobDocxAdapter";
+import { maskContractPii } from "../services/imob/intake/imobContractPiiMasker";
+import { extractLeaseContractFromText } from "../services/imob/intake/imobLeaseExtractor";
+import { classifyImobContract } from "../services/imob/intake/imobContractClassifier";
+import {
+  createDraft,
+  getDraft,
+  deleteDraft,
+  DRAFT_TTL_MS,
+} from "../services/imob/intake/imobContractDraftService";
+import { persistBuffer } from "../services/storage";
+import { createUploadedDocument } from "../services/uploads";
+import { IMOB_DISPATCHER_ACTION_IDS } from "../services/imob/crm/imobCrmActionDispatcher";
 
 export const imobRouter = Router();
 imobRouter.use(enforceTenant);
@@ -3588,5 +3602,218 @@ imobRouter.get("/chat/conversations/:conversationId/export", async (req, res) =>
     ok: true,
     export: exportPayload,
     exported: exportPayload,
+  });
+});
+
+// ─── IMOB Chat Document Intake — Phase 1B ─────────────────────────────────────
+
+const INTAKE_FILE_MAX_BYTES = Number(process.env.IMOB_INTAKE_FILE_MAX_BYTES ?? 10 * 1024 * 1024); // 10 MB
+const INTAKE_ALLOWED_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+const intakeUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: INTAKE_FILE_MAX_BYTES, files: 1 },
+});
+
+function computeDocumentHash(buffer: Buffer): string {
+  return crypto.createHash("sha256").update(buffer).digest("hex");
+}
+
+// POST /api/imob/chat/intake/upload
+// Accepts a single .docx file, extracts + masks + classifies, returns draft.
+// Does NOT mutate ImobCase. No PII in response.
+imobRouter.post("/chat/intake/upload", intakeUpload.single("file"), async (req: TenantAwareRequest, res: Response) => {
+  const auth = req.authContext;
+  if (!auth) {
+    return res.status(403).json({ ok: false, reasonCode: "UNAUTHORIZED", message: "Auth context ausente" });
+  }
+
+  const { tenantId, workspaceId } = auth;
+
+  const file = (req as any).file as Express.Multer.File | undefined;
+  if (!file) {
+    return res.status(400).json({ ok: false, reasonCode: "FILE_MISSING", message: "Arquivo .docx obrigatório" });
+  }
+
+  if (file.mimetype !== INTAKE_ALLOWED_MIME) {
+    return res.status(415).json({
+      ok: false,
+      reasonCode: "UNSUPPORTED_DOCUMENT_TYPE",
+      message: `Tipo de arquivo não suportado: ${file.mimetype}. Envie um arquivo .docx`,
+    });
+  }
+
+  if (file.size > INTAKE_FILE_MAX_BYTES) {
+    return res.status(413).json({
+      ok: false,
+      reasonCode: "FILE_TOO_LARGE",
+      message: `Arquivo excede o limite de ${INTAKE_FILE_MAX_BYTES / 1024 / 1024}MB`,
+    });
+  }
+
+  const documentHash = computeDocumentHash(file.buffer);
+
+  // Persist file to storage (storageKey for audit)
+  let storageRef: string | undefined;
+  try {
+    const client = req.prisma;
+    if (client) {
+      const persisted = await persistBuffer(file.buffer, file.originalname);
+      const record = await createUploadedDocument({
+        prisma: client,
+        tenantId,
+        workspaceId,
+        agentSlug: "imob-intake",
+        fileName: file.originalname,
+        mimeType: file.mimetype,
+        sizeBytes: file.size,
+        storageKey: persisted.storageKey,
+      });
+      storageRef = record.id;
+    }
+  } catch {
+    // Non-fatal: storage failure doesn't block draft creation
+  }
+
+  // Extract text from .docx
+  const docxResult = await extractTextFromDocxBuffer(file.buffer);
+  if (!docxResult.ok) {
+    return res.status(422).json({
+      ok: false,
+      reasonCode: "DOCX_EXTRACTION_FAILED",
+      message: "Não foi possível extrair texto do arquivo .docx",
+      details: docxResult.messages,
+    });
+  }
+
+  // PII masking — must happen before any response or log
+  const { maskedText } = maskContractPii(docxResult.text);
+
+  // Extract lease fields
+  const extraction = extractLeaseContractFromText(maskedText);
+  const classification = classifyImobContract(extraction.lease, maskedText);
+
+  // Build draft
+  const draft = createDraft({
+    tenantId,
+    workspaceId,
+    extractedLease: extraction.lease,
+    classification,
+    evidenceDrafts: [
+      {
+        documentHash,
+        documentKind: classification.documentType === "lease_contract" ? "lease_contract" : "other",
+        ...(storageRef ? { storageRef } : {}),
+        piiMasked: true,
+      },
+    ],
+    pendingItems: extraction.pendingItems,
+    riskFlags: extraction.riskFlags,
+  });
+
+  return res.status(201).json({
+    ok: true,
+    draft,
+    extractionOk: extraction.ok,
+    parserVersion: extraction.parserVersion,
+  });
+});
+
+// POST /api/imob/chat/intake/confirm/:draftId
+// Validates draft, creates run, returns runId.
+// Governed block if actionId not in registry or agent not assigned.
+imobRouter.post("/chat/intake/confirm/:draftId", async (req: TenantAwareRequest, res: Response) => {
+  const auth = req.authContext;
+  if (!auth) {
+    return res.status(403).json({ ok: false, reasonCode: "UNAUTHORIZED", message: "Auth context ausente" });
+  }
+
+  const { tenantId, workspaceId } = auth;
+  const { draftId } = req.params;
+
+  if (!draftId) {
+    return res.status(400).json({ ok: false, reasonCode: "DRAFT_ID_MISSING", message: "draftId obrigatório" });
+  }
+
+  const draft = getDraft(draftId);
+  if (!draft) {
+    return res.status(409).json({ ok: false, reasonCode: "DRAFT_EXPIRED", message: "Draft expirado ou não encontrado" });
+  }
+
+  // Validate scope — draft must belong to same tenant/workspace
+  if (draft.tenantId !== tenantId || draft.workspaceId !== workspaceId) {
+    return res.status(403).json({
+      ok: false,
+      reasonCode: "DRAFT_SCOPE_MISMATCH",
+      message: "Draft não pertence a este tenant/workspace",
+    });
+  }
+
+  // Validate actionId is in dispatcher registry
+  const actionId = draft.actionId;
+  const isInRegistry = (IMOB_DISPATCHER_ACTION_IDS as readonly string[]).includes(actionId);
+  if (!isInRegistry) {
+    return res.status(200).json({
+      ok: false,
+      reasonCode: "ACTION_NOT_IN_REGISTRY",
+      blocked: true,
+      message: `Ação '${actionId}' ainda não está disponível no registry`,
+    });
+  }
+
+  // Create run record
+  let run: { id: string; status: string } | null = null;
+  try {
+    const runRecord = await createRunRecord({
+      prisma: req.prisma,
+      tenantId,
+      workspaceId,
+      agent: "EIAH",
+      status: "queued" as any,
+      request: {
+        actionId,
+        source: "chat-imob",
+        draftId,
+        documentHash: draft.evidenceDrafts[0]?.documentHash ?? null,
+        metadata: {
+          domain: "imob",
+          action: actionId,
+          executionInput: { actionId },
+        },
+      },
+    });
+    run = { id: runRecord.id, status: runRecord.status };
+  } catch (err) {
+    const isAssignmentError =
+      err instanceof Error &&
+      (err.constructor.name === "WorkspaceAgentAssignmentError" ||
+        err.message.includes("not enabled") ||
+        err.message.includes("not assigned"));
+
+    if (isAssignmentError) {
+      return res.status(200).json({
+        ok: false,
+        reasonCode: "AGENT_NOT_ASSIGNED",
+        blocked: true,
+        message: "Agente IMOB não está habilitado para este workspace",
+      });
+    }
+    return res.status(500).json({
+      ok: false,
+      reasonCode: "RUN_CREATION_FAILED",
+      message: "Falha ao criar run",
+    });
+  }
+
+  // Draft consumed — delete after successful run creation
+  deleteDraft(draftId);
+
+  return res.status(201).json({
+    ok: true,
+    runId: run.id,
+    runStatus: run.status,
+    actionId,
+    source: "chat-imob",
+    message: "Run criado. Mutação do caso será processada pelo worker.",
   });
 });

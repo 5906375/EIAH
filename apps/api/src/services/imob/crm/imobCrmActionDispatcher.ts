@@ -8,8 +8,9 @@ type ActionExecutionSpec = {
   threadLabel: string;
 };
 
-// Canonical list of 11 IMOB operational actionIds.
+// Canonical list of IMOB operational actionIds.
 // Used by runWorker to detect IMOB runs eligible for post-run mutation.
+// imob.contract.intake: document intake via Chat IMOB (Phase 1B)
 export const IMOB_DISPATCHER_ACTION_IDS = [
   "owner.register",
   "property.create",
@@ -22,6 +23,7 @@ export const IMOB_DISPATCHER_ACTION_IDS = [
   "deal.review",
   "contract.prepare",
   "commission.settle",
+  "imob.contract.intake",
 ] as const;
 
 export type ImobDispatcherActionId = (typeof IMOB_DISPATCHER_ACTION_IDS)[number];

@@ -63,6 +63,8 @@
     "test:imob-worker:h4": "node --import tsx --test apps/api/src/tests/imob-worker-h4-runbook.test.ts",
     "test:imob-worker:observability": "pnpm test:imob-worker:metrics && pnpm test:imob-worker:alerts && pnpm test:imob-worker:h4",
     "test:imob-intake:unit": "node --import tsx --test apps/api/src/tests/imob-contract-pii-masker.test.ts apps/api/src/tests/imob-lease-extractor.test.ts",
+    "test:imob-intake:1b": "node --import tsx --test apps/api/src/tests/imob-docx-adapter.test.ts apps/api/src/tests/imob-contract-classifier.test.ts apps/api/src/tests/imob-contract-draft-service.test.ts apps/api/src/tests/imob-intake-pipeline.test.ts",
+    "test:imob-intake:all": "node --import tsx --test apps/api/src/tests/imob-contract-pii-masker.test.ts apps/api/src/tests/imob-lease-extractor.test.ts apps/api/src/tests/imob-docx-adapter.test.ts apps/api/src/tests/imob-contract-classifier.test.ts apps/api/src/tests/imob-contract-draft-service.test.ts apps/api/src/tests/imob-intake-pipeline.test.ts",
     "test:api-health-contract": "node --import tsx --test apps/api/src/tests/health.contract.test.ts",
     "test:agents-policy-fail-closed": "node --import tsx --test apps/api/src/tests/agents.policy.fail-closed.test.ts",
     "test:web-chat-launcher": "TSX_TSCONFIG_PATH=apps/web/tsconfig.json node --import tsx --test apps/web/src/components/agents/chatLauncherEngine.test.ts",
