@@ -61,6 +61,7 @@ jobs:
           pnpm --filter @eiah/contracts build
           pnpm --filter @repo/db build
           pnpm --filter @eiah/core build
+          pnpm --filter @eiah/providers build
 
       - name: Run database migrations
         env:
