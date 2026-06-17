@@ -17,6 +17,7 @@ Origem de policy em runtime:
 | `realestate.create_contract` | `execute` | `high` | `true` |
 | `realestate.apply_adjustment` | `execute` | `high` | `true` |
 | `realestate.release_commission` | `execute` | `high` | `true` |
+| `realestate.review_deal` | `execute` | `high` | `true` |
 
 ## CI Gate Policy Payload
 
@@ -40,6 +41,10 @@ Origem de policy em runtime:
     },
     {
       "action": "realestate.release_commission",
+      "evidencePattern": "realestate-high-actions-e2e-*.json"
+    },
+    {
+      "action": "realestate.review_deal",
       "evidencePattern": "realestate-high-actions-e2e-*.json"
     }
   ]

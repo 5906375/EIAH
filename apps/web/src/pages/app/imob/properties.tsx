@@ -1,6 +1,9 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { apiListImobProperties, type ImobProperty } from "@/lib/api";
 import { useSession } from "@/state/sessionStore";
+
+type PropertyStatus = "available" | "reserved" | "contract";
 
 type PropertyRow = {
   id: string;
@@ -10,56 +13,35 @@ type PropertyRow = {
   bedrooms: number;
   bathrooms: number;
   price: number;
-  status: "available" | "reserved" | "contract";
-  partner: string | null;
+  status: PropertyStatus;
+  ownerName: string | null;
 };
 
-const syntheticProperties: PropertyRow[] = [
-  {
-    id: "imob-82912",
-    title: "Apto Vista Mar",
-    city: "Itapema",
-    neighborhood: "Meia Praia",
-    bedrooms: 3,
-    bathrooms: 2,
-    price: 1450000,
-    status: "available",
-    partner: null,
-  },
-  {
-    id: "imob-82913",
-    title: "Apto Centro 2Q",
-    city: "Balneário Camboriú",
-    neighborhood: "Centro",
-    bedrooms: 2,
-    bathrooms: 2,
-    price: 920000,
-    status: "reserved",
-    partner: "Prime Imóveis",
-  },
-  {
-    id: "imob-82914",
-    title: "Cobertura Brava",
-    city: "Itajaí",
-    neighborhood: "Praia Brava",
-    bedrooms: 3,
-    bathrooms: 3,
-    price: 2350000,
-    status: "contract",
-    partner: "Atlântica Realty",
-  },
-  {
-    id: "imob-82915",
-    title: "Apartamento Jardim",
-    city: "Itapema",
-    neighborhood: "Morretes",
-    bedrooms: 2,
-    bathrooms: 1,
-    price: 690000,
-    status: "available",
-    partner: null,
-  },
-];
+function mapImobPropertyStatus(raw: string | null | undefined): PropertyStatus {
+  const s = (raw ?? "").toLowerCase();
+  if (s === "reserved") return "reserved";
+  if (s === "contract" || s === "sold" || s === "completed") return "contract";
+  return "available";
+}
+
+function mapImobProperty(item: ImobProperty): PropertyRow {
+  const address = item.address?.trim();
+  const title =
+    address ||
+    [item.propertyType, item.neighborhood].filter(Boolean).join(" – ") ||
+    "Imóvel em cadastro";
+  return {
+    id: item.id,
+    title,
+    city: item.city ?? "",
+    neighborhood: item.neighborhood ?? "",
+    bedrooms: item.bedrooms ?? 0,
+    bathrooms: item.bathrooms ?? 0,
+    price: Math.round((item.askingPriceCents ?? 0) / 100),
+    status: mapImobPropertyStatus(item.status),
+    ownerName: item.owner?.name?.trim() ?? null,
+  };
+}
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -69,13 +51,13 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
-function statusLabel(status: PropertyRow["status"]) {
+function statusLabel(status: PropertyStatus) {
   if (status === "available") return "Disponível";
   if (status === "reserved") return "Reservado";
   return "Em contrato";
 }
 
-function statusTone(status: PropertyRow["status"]) {
+function statusTone(status: PropertyStatus) {
   if (status === "contract") return "text-emerald-300 border-emerald-400/40";
   if (status === "reserved") return "text-amber-200 border-amber-300/30";
   return "text-accent border-accent/40";
@@ -86,9 +68,41 @@ const ImobPropertiesPage: React.FC = () => {
   const brandName = session.branding?.brandName?.trim() || "Tenant";
   const workspaceLabel = session.branding?.workspaceLabel?.trim() || session.workspaceId;
   const [query, setQuery] = React.useState("");
-  const [status, setStatus] = React.useState<"all" | PropertyRow["status"]>("all");
+  const [status, setStatus] = React.useState<"all" | PropertyStatus>("all");
+  const [properties, setProperties] = React.useState<PropertyRow[]>([]);
+  const [source, setSource] = React.useState<"real" | "empty">("empty");
+  const [loading, setLoading] = React.useState(true);
+  const [fetchError, setFetchError] = React.useState<string | null>(null);
 
-  const filtered = syntheticProperties.filter((item) => {
+  React.useEffect(() => {
+    let mounted = true;
+    setLoading(true);
+    setFetchError(null);
+
+    void apiListImobProperties()
+      .then((response) => {
+        if (!mounted) return;
+        const items = response.data.items ?? [];
+        setProperties(items.map(mapImobProperty));
+        setSource(items.length > 0 ? "real" : "empty");
+      })
+      .catch((error) => {
+        if (!mounted) return;
+        setProperties([]);
+        setSource("empty");
+        setFetchError(error instanceof Error ? error.message : "Falha ao buscar imóveis");
+      })
+      .finally(() => {
+        if (!mounted) return;
+        setLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const filtered = properties.filter((item) => {
     const search = query.trim().toLowerCase();
     const matchesSearch =
       !search ||
@@ -121,19 +135,24 @@ const ImobPropertiesPage: React.FC = () => {
 
       <section className="grid gap-4 sm:grid-cols-3">
         <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Imóveis ativos</p>
-          <p className="mt-2 text-2xl font-semibold text-foreground">{syntheticProperties.length}</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Imóveis ativos</p>
+            <span className="rounded-full border border-white/15 bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+              {loading ? "loading" : source === "real" ? "backend" : "sem dados"}
+            </span>
+          </div>
+          <p className="mt-2 text-2xl font-semibold text-foreground">{properties.length}</p>
         </article>
         <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Disponíveis</p>
           <p className="mt-2 text-2xl font-semibold text-foreground">
-            {syntheticProperties.filter((item) => item.status === "available").length}
+            {properties.filter((item) => item.status === "available").length}
           </p>
         </article>
         <article className="rounded-2xl border border-white/10 bg-surface/60 p-4">
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Com parceiro</p>
+          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Com proprietário</p>
           <p className="mt-2 text-2xl font-semibold text-foreground">
-            {syntheticProperties.filter((item) => Boolean(item.partner)).length}
+            {properties.filter((item) => Boolean(item.ownerName)).length}
           </p>
         </article>
       </section>
@@ -142,9 +161,10 @@ const ImobPropertiesPage: React.FC = () => {
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">Carteira de imóveis</h2>
           <span className="inline-flex rounded-full border border-white/15 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-            modo demonstração
+            {loading ? "loading" : source === "real" ? "backend" : "sem dados"}
           </span>
         </div>
+        {fetchError ? <p className="mt-2 text-xs text-rose-200">API indisponível: {fetchError}</p> : null}
 
         <div className="mt-3 grid gap-2 sm:grid-cols-[1fr,200px]">
           <input
@@ -155,7 +175,7 @@ const ImobPropertiesPage: React.FC = () => {
           />
           <select
             value={status}
-            onChange={(event) => setStatus(event.target.value as "all" | PropertyRow["status"])}
+            onChange={(event) => setStatus(event.target.value as "all" | PropertyStatus)}
             className="w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-sm text-foreground focus:border-accent/40 focus:outline-none"
           >
             <option value="all">Todos os status</option>
@@ -184,15 +204,19 @@ const ImobPropertiesPage: React.FC = () => {
                 {item.bedrooms} quartos • {item.bathrooms} banheiros • código {item.id}
               </p>
               <p className="mt-2 text-xs text-muted-foreground">
-                {item.partner ? `Parceiro: ${item.partner}` : "Operação própria"}
+                {item.ownerName ? `Proprietário: ${item.ownerName}` : "Sem proprietário vinculado"}
               </p>
             </article>
           ))}
         </div>
 
-        {filtered.length === 0 ? (
+        {!loading && filtered.length === 0 ? (
           <p className="mt-4 rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-muted-foreground">
-            Nenhum imóvel encontrado com esse filtro.
+            {fetchError
+              ? "Não foi possível carregar os imóveis."
+              : properties.length === 0
+                ? "Nenhum imóvel cadastrado no workspace."
+                : "Nenhum imóvel encontrado com esse filtro."}
           </p>
         ) : null}
       </section>

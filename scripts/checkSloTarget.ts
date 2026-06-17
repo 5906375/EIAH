@@ -83,6 +83,42 @@ const baseline = JSON.parse(fs.readFileSync(latestBaseline, "utf8")) as Record<s
 const pouBaseline = baseline.pouFinalize as Record<string, unknown> | undefined;
 const actualP95Ms = pouBaseline?.p95Ms as number | null | undefined;
 const samplesCount = (baseline.samplesCount as number | undefined) ?? 0;
+const sampleSource = baseline.sampleSource as string | undefined;
+const manifestCommitSha = baseline.manifestCommitSha as string | null | undefined;
+
+// --- Guards de ratificação: bloquear dados simulados ou agregados ---
+
+if (sampleSource !== "scenario-latency") {
+  fail(
+    `Cannot ratify: baseline sampleSource must be 'scenario-latency', got '${sampleSource ?? "unknown"}' — real staging E2E HIGH runs required`,
+    {
+      file: latestBaseline,
+      sampleSource,
+      hint: "Run generate:e2e-high-manifest with STAGING_API_BASE_URL/TOKEN/TENANT_ID/WORKSPACE_ID set, then generate:slo-baseline",
+    }
+  );
+}
+
+if (manifestCommitSha === "recovery-local" || manifestCommitSha === null || manifestCommitSha === undefined) {
+  fail(
+    manifestCommitSha === "recovery-local"
+      ? "Cannot ratify: manifest commitSha is 'recovery-local' — real staging run required"
+      : "Cannot ratify: baseline does not record manifestCommitSha — regenerate after real staging E2E HIGH run",
+    {
+      file: latestBaseline,
+      manifestCommitSha: manifestCommitSha ?? null,
+      hint: "Set STAGING_API_BASE_URL, STAGING_API_TOKEN, E2E_TENANT_ID, E2E_WORKSPACE_ID and rerun generate:e2e-high-manifest",
+    }
+  );
+}
+
+if (samplesCount === 0) {
+  fail("Cannot ratify: samplesCount is 0 — baseline has no real latency samples", {
+    file: latestBaseline,
+    samplesCount,
+    sampleSource,
+  });
+}
 
 if (actualP95Ms === null || actualP95Ms === undefined) {
   fail("SLO baseline does not contain real p95Ms — staging E2E HIGH runs required", {

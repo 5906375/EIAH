@@ -1,0 +1,77 @@
+name: IMOB Worker Mutation E2E
+
+on:
+  push:
+    branches:
+      - main
+      - 'release/**'
+  pull_request:
+
+jobs:
+  imob_worker_mutation_e2e:
+    name: ImobWorkerMutationE2E
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: eiah_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.12.4'
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Build workspace artifacts
+        run: |
+          pnpm --filter @eiah/contracts build
+          pnpm --filter @repo/db build
+          pnpm --filter @eiah/core build
+          pnpm --filter @eiah/providers build
+
+      - name: Run database migrations
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/eiah_ci?schema=public
+        run: pnpm --filter @repo/db migrate:deploy
+
+      - name: Run IMOB worker mutation E2E (E2E-01..E2E-08)
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/eiah_ci?schema=public
+          REDIS_URL: redis://localhost:6379
+          NODE_ENV: test
+        run: pnpm test:imob-worker:e2e
+        timeout-minutes: 5

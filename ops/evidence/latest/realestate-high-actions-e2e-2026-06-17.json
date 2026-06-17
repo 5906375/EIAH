@@ -1,0 +1,19 @@
+{
+  "ok": true,
+  "date": "2026-06-17",
+  "scope": "P1-401",
+  "actions": [
+    "realestate.register_property",
+    "realestate.create_contract",
+    "realestate.apply_adjustment",
+    "realestate.release_commission",
+    "realestate.review_deal"
+  ],
+  "assertions": {
+    "tierHigh": true,
+    "txIdRequired": true,
+    "receiptCanonSpec": "receipt.canon.v1",
+    "tenantPolicyGuarded": true
+  },
+  "test": "apps/api/src/tests/realestate.high-actions.e2e.test.ts"
+}

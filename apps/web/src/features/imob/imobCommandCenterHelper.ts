@@ -1,4 +1,4 @@
-import type { ImobCase } from "@/lib/api";
+import type { ImobCase, ImobCaseRecommendedAction } from "@/lib/api";
 
 function imobCaseAgeHours(updatedAt: string) {
   const parsed = Date.parse(updatedAt);
@@ -34,7 +34,7 @@ function formatImobJourneyTypeLabel(value: string | null | undefined) {
   return "Operação";
 }
 
-function buildImobCasePriority(item: ImobCase) {
+export function buildImobCasePriority(item: ImobCase) {
   const blocked = asStringArray(item.canonical?.blockedActions).length;
   const missing = asStringArray(item.canonical?.missingContext).length;
   const recommended = item.canonical?.recommendedActions?.length ?? 0;
@@ -43,6 +43,35 @@ function buildImobCasePriority(item: ImobCase) {
     blocked * 5 + missing * 3 + Math.min(4, Math.floor(ageHours / 12)) + (recommended === 0 ? 2 : 0);
   const label = blocked > 0 ? "alta" : missing > 0 || ageHours >= 24 ? "média" : "normal";
   return { score, label };
+}
+
+export function buildImobCaseFallbackActions(
+  item: ImobCase,
+): Array<{ id: string; label: string; inputHint: string }> {
+  const pending = asStringArray(item.pendingItems).map((entry) => entry.toLowerCase());
+  const flow = (item.flow ?? "").trim().toLowerCase();
+  const joined = pending.join(" ");
+  const actions: Array<{ id: string; label: string; inputHint: string }> = [];
+  const addAction = (id: string, label: string, inputHint: string) => {
+    if (actions.some((current) => current.id === id)) return;
+    actions.push({ id, label, inputHint });
+  };
+
+  if (flow.includes("owner.create") || joined.includes("propriet")) {
+    addAction("owner.register", "Cadastrar proprietário", "cadastrar proprietário deste caso");
+  }
+  if (flow.includes("property.create") || joined.includes("imóvel") || joined.includes("imovel")) {
+    addAction("property.create", "Cadastrar imóvel", "cadastrar imóvel deste caso");
+  }
+  if (joined.includes("document") || flow.includes("documents.collect")) {
+    addAction("documents.review", "Revisar documentos", "revisar documentos deste caso");
+  }
+  if (flow.includes("lead.qualify") || joined.includes("lead")) {
+    addAction("lead.qualify", "Qualificar lead", "qualificar lead deste caso");
+  }
+  addAction("case.consult", "Consultar caso", "consultar caso deste atendimento");
+
+  return actions.slice(0, 4);
 }
 
 export function mapImobStatusFilterToCaseStatus(filter: string): string | undefined {
@@ -83,6 +112,9 @@ export function buildImobChatRoute(base: {
   threadId?: string | null;
   autoprompt?: string | null;
   returnTo?: string | null;
+  actionId?: string | null;
+  reasonCode?: string | null;
+  status?: string | null;
 }) {
   const params = new URLSearchParams();
   if (base.conversationId) params.set("conversationId", base.conversationId);
@@ -90,6 +122,9 @@ export function buildImobChatRoute(base: {
   if (base.threadId) params.set("threadId", base.threadId);
   if (base.autoprompt) params.set("autoprompt", base.autoprompt);
   if (base.returnTo) params.set("returnTo", base.returnTo);
+  if (base.actionId) params.set("actionId", base.actionId);
+  if (base.reasonCode) params.set("reasonCode", base.reasonCode);
+  if (base.status) params.set("status", base.status);
   const query = params.toString();
   return `/app/imob/chat${query ? `?${query}` : ""}`;
 }
@@ -110,6 +145,10 @@ export type ImobCommandCenterCaseRow = {
   journeyLabel: string;
   ownerResponsible: string | null;
   eventCount: number;
+  recommendedActions: ImobCaseRecommendedAction[];
+  reasonCodes: string[];
+  pendingItemsList: string[];
+  blockersList: string[];
   // TODO(backend): add waitingOn when apiListImobCases exposes ?waitingOn= filter param
   // Context: WaitingOnBoard uses a dedicated grouping endpoint with all cases; CC uses
   // apiListImobCases (max 12, status-filtered) — the two datasets don't overlap, making
@@ -147,6 +186,10 @@ export function buildImobCaseList(
         journeyLabel: formatImobJourneyTypeLabel(item.canonical?.journeyType),
         ownerResponsible: item.ownerResponsible ?? null,
         eventCount: item._count?.events ?? 0,
+        recommendedActions: item.canonical?.recommendedActions ?? [],
+        reasonCodes: item.canonical?.reasonCodes ?? [],
+        pendingItemsList: asStringArray(item.pendingItems),
+        blockersList: asStringArray(item.blockers),
       };
     })
     .filter((item) => !targetStatus || item.status === targetStatus)

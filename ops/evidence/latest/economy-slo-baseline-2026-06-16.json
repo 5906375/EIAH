@@ -1,0 +1,23 @@
+{
+  "generatedAt": "2026-06-16T07:34:07.424Z",
+  "scope": "economy-slo-baseline",
+  "sampleSource": "aggregate-latency",
+  "source": {
+    "type": "e2e-manifest-latency",
+    "environment": "ci",
+    "queryWindow": "last-e2e-high-manifest",
+    "note": "Phase 1: samples derived from scenarioResults.latencyMs (or manifest.latency aggregate via Caminho B). Phase 2 will query GuardrailLedger pou.finalized events directly."
+  },
+  "samplesCount": 0,
+  "pouFinalize": {
+    "p50Ms": null,
+    "p95Ms": 410,
+    "p99Ms": 850,
+    "note": "Caminho B fallback: derived from manifest.latency aggregate — no per-scenario latencyMs present; p50Ms unavailable; samplesCount=0 (does not satisfy minSamplesRequired for ratification)"
+  },
+  "onChainConfirmation": {
+    "p95Ms": null,
+    "status": "awaiting-full-provider",
+    "reason": "crypto and bank providers are simulated-only — target undefined until provider mode = full"
+  }
+}
