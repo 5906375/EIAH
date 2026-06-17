@@ -232,7 +232,7 @@ function buildJ360BaseHtml(params: {
   const recipeOrchestrationSection = renderRecipeOrchestrationHtmlSection({
     payload,
     escapeHtml,
-    tone: pdfMode ? "minimal" : "light",
+    tone: "light",
   });
   const technicalAppendix = recipeOrchestrationSection
     ? `<section id="apendice-tecnico" class="card technical-appendix">

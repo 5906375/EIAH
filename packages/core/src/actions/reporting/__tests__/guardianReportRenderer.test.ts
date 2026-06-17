@@ -89,7 +89,7 @@ const basePayload = {
   linksUteis: [],
   auditTrail: [],
   timeline: [],
-} as const;
+};
 
 test("guardian landing page renderer avoids prohibited commercial terms", () => {
   const html = buildGuardianLandingPageHtml(basePayload);
