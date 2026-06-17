@@ -213,6 +213,12 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | Evidencia de fechamento do alerta A9 | `docs/ops/evidence/latest/imob-surface-data-reliability/a9-ci-evidence.md` | `syntheticProperties` removido de `properties.tsx`; página chama `apiListImobProperties()` real na montagem; badge de fonte no KPI strip (`"backend"` / `"sem dados"`); empty state semântico; IDs sintéticos `prop-001..prop-005` ausentes; 5/5 testes pass. |
 | Evidencia de fechamento do alerta A10 | `docs/ops/evidence/latest/imob-surface-data-reliability/a10-ci-evidence.md` | KPI `"Casos em parceria"` → `"Políticas delegadas"` em `partners.tsx`; campo `activeCases` → `delegationPoliciesCount`; card `"processos ativos"` → `"políticas ativas"`; semântica alinhada a delegações marketplace, não a casos CRM; 14/14 testes pass (4 de A10 + 10 de A5). |
 
+## IMOB PRs #144–#147 — Consolidação Operacional (2026-06-17)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Histórico operacional consolidado IMOB — PRs #144 a #147 | `ops/evidence/latest/imob-pr-144-147-operational-history.md` | Consolidação documental das quatro frentes IMOB mergeadas entre 2026-06-15 e 2026-06-17: (1) PR #144 — Command Center com superfícies reais + 10 alertas Surface Data Reliability fechados (81/81 testes); (2) PR #145 — Funil/Team consolidado com KPIs de broker sem duplicação; (3) PR #146 — gate de runtime `ownerResponsible` em `commission.settle`; (4) PR #147 — cadeia CC→Chat→run→worker→mutação→canonical→CC refresh provada em banco real (Fases 1–4.2, 9/9 E2E) + observability H1–H5 (69/69 testes, CI gate ativo). Invariante central: `ImobCase.status` decidido exclusivamente no backend; React sem regra de status. |
+
 ## Roadmap v8 — Verificacao contra codigo atual (2026-06-15)
 
 | Assunto | Arquivo | O que prova |
