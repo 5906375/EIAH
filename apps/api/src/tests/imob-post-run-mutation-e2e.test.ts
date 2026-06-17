@@ -27,6 +27,7 @@ import { finalizeHttpContractCleanup } from "./support/httpContractCleanup.js";
 import { processImobRunCompletedJob } from "../workers/imobPostRunMutationWorker.js";
 import { buildImobCanonicalCase } from "../services/imob/imobCanonical.js";
 import { imobRunCompletedQueue } from "../queues/imobRunCompletedQueue.js";
+import { runAtivoUniversalQueue, runAtivoUniversalDLQ } from "@eiah/core";
 
 // ─── Test scope identifiers ───────────────────────────────────────────────────
 
@@ -64,8 +65,12 @@ after(async () => {
   await prismaGlobal.tenant.deleteMany({ where: { id: tenantId } });
   await closePrismaResources();
   finalizeHttpContractCleanup();
-  // Close BullMQ Queue connection opened at module import to prevent event loop hang
+  // Close all BullMQ Queue connections opened at module import (prevent event loop hang).
+  // runAtivoUniversalQueue and runAtivoUniversalDLQ are created at module level inside
+  // @eiah/core and pulled in transitively when imobPostRunMutationWorker imports "@eiah/core".
   await imobRunCompletedQueue.close();
+  await runAtivoUniversalQueue.close();
+  await runAtivoUniversalDLQ.close();
 });
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
