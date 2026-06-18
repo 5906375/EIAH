@@ -136,7 +136,7 @@ describe("IMOB Intake Lifecycle — Draft Consume & Scope (Phase 5)", () => {
       .post(`/api/imob/chat/intake/confirm/${draftId}`)
       .set("Authorization", `Bearer ${apiToken}`);
     assert.equal(first.status, 201, `First confirm: ${JSON.stringify(first.body)}`);
-    assert.equal(first.body.runStatus, "pending");
+    assert.equal(first.body.runStatus, "success", "intake confirm self-completes the run (Phase 5.5)");
 
     // Draft was deleted — re-confirm must fail
     const second = await request

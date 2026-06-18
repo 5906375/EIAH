@@ -117,6 +117,7 @@ import {
   renderIntakeDocx,
   type IntakeExportData,
 } from "../services/imob/intake/imobContractIntakeRenderer";
+import { enqueueImobRunCompleted } from "../queues/imobRunCompletedQueue";
 
 export const imobRouter = Router();
 imobRouter.use(enforceTenant);
@@ -3768,7 +3769,7 @@ imobRouter.post("/chat/intake/confirm/:draftId", async (req: TenantAwareRequest,
     });
   }
 
-  // Create run record
+  // Create run record and self-complete — intake is synchronous (processing done at upload)
   let run: { id: string; status: string } | null = null;
   try {
     const runRecord = await createRunRecord({
@@ -3776,7 +3777,7 @@ imobRouter.post("/chat/intake/confirm/:draftId", async (req: TenantAwareRequest,
       tenantId,
       workspaceId,
       agent: "EIAH",
-      status: "pending",
+      status: "success",
       request: {
         actionId,
         source: "chat-imob",
@@ -3818,13 +3819,24 @@ imobRouter.post("/chat/intake/confirm/:draftId", async (req: TenantAwareRequest,
   // Draft consumed — delete after successful run creation
   deleteDraft(draftId);
 
+  // Enqueue mutation job — worker creates ImobCase asynchronously
+  await enqueueImobRunCompleted({
+    runId: run.id,
+    tenantId,
+    workspaceId,
+    caseId: "INTAKE",
+    actionId,
+    eventRunId: run.id,
+  });
+
   return res.status(201).json({
     ok: true,
     runId: run.id,
     runStatus: run.status,
     actionId,
     source: "chat-imob",
-    message: "Run criado. Mutação do caso será processada pelo worker.",
+    mutationQueued: true,
+    message: "Run concluído. Mutação do caso enfileirada para o worker.",
   });
 });
 

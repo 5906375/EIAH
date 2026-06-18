@@ -36,8 +36,8 @@ export async function enqueueImobRunCompleted(
     );
   }
 
-  // jobId for idempotency: one mutation job per run
-  const jobId = `imob-run-completed:${job.tenantId}:${job.workspaceId}:${job.runId}`;
+  // jobId for idempotency: one mutation job per run (BullMQ 5.x forbids ':' in custom ids)
+  const jobId = `imob-run-completed-${job.tenantId}-${job.workspaceId}-${job.runId}`;
 
   return imobRunCompletedQueue.add("process", job, {
     jobId,

@@ -1,18 +1,18 @@
-// Phase 4.6 — Confirm endpoint integration test
+// Phase 4.6 + 5.5 — Confirm endpoint integration test
 // Proves that POST /api/imob/chat/intake/confirm/:draftId creates a run
-// with status="pending" (the canonical RunStatus for newly queued runs),
-// and that the worker can subsequently process that run into an ImobCase.
+// with status="success" and enqueues the mutation job automatically.
+// Intake is synchronous (document extracted at upload) — no action runner needed.
 //
-// Bug fixed: status was "queued" (not in RunStatus enum), causing Prisma
-// to throw at runtime. Now uses "pending" — the canonical initial status.
+// Bug fixed (4.6): status was "queued" (not in RunStatus enum) → now "success".
+// Enhancement (5.5): confirm self-completes + enqueues imobRunCompletedQueue.
 //
 // Tests:
-//   CONF-01: upload + confirm returns runId, runStatus=pending, ok=true
-//   CONF-02: run exists in DB with status=pending and actionId=imob.contract.intake
+//   CONF-01: upload + confirm returns runId, runStatus=success, mutationQueued=true
+//   CONF-02: run exists in DB with status=success and actionId=imob.contract.intake
 //   CONF-03: no run exists with status="queued" (regression guard)
 //   CONF-04: confirm with expired/missing draft → 409 DRAFT_EXPIRED
 //   CONF-05: confirm without auth → 403 UNAUTHORIZED
-//   CONF-06: worker processes pending run → ImobCase created
+//   CONF-06: worker processes confirmed run → ImobCase created
 
 import "./support/testInfraEnv.js";
 import { after, before, describe, it } from "node:test";
@@ -97,7 +97,7 @@ after(async () => {
 // ─── Tests ────────────────────────────────────────────────────────────────────
 
 describe("IMOB Intake Confirm Endpoint — Phase 4.6", () => {
-  it("CONF-01: upload + confirm → ok=true, runId, runStatus=pending", async () => {
+  it("CONF-01: upload + confirm → ok=true, runId, runStatus=success, mutationQueued=true", async () => {
     const { draftId } = await uploadDocx();
 
     const res = await request
@@ -107,12 +107,13 @@ describe("IMOB Intake Confirm Endpoint — Phase 4.6", () => {
     assert.equal(res.status, 201, `Confirm returned ${res.status}: ${JSON.stringify(res.body)}`);
     assert.equal(res.body.ok, true);
     assert.ok(res.body.runId, "runId must be present");
-    assert.equal(res.body.runStatus, "pending", "runStatus must be pending (not queued)");
+    assert.equal(res.body.runStatus, "success", "intake is synchronous — confirm self-completes the run");
+    assert.equal(res.body.mutationQueued, true, "mutation job must be enqueued");
     assert.equal(res.body.actionId, "imob.contract.intake");
     assert.equal(res.body.source, "chat-imob");
   });
 
-  it("CONF-02: run exists in DB with status=pending and actionId=imob.contract.intake", async () => {
+  it("CONF-02: run exists in DB with status=success and actionId=imob.contract.intake", async () => {
     const { draftId } = await uploadDocx();
 
     const confirmRes = await request
@@ -123,14 +124,14 @@ describe("IMOB Intake Confirm Endpoint — Phase 4.6", () => {
     const runId = confirmRes.body.runId;
     const run = await prismaGlobal.run.findUnique({ where: { id: runId } });
     assert.ok(run, "run must exist in DB");
-    assert.equal(run!.status, "pending", "run status must be 'pending' in DB");
+    assert.equal(run!.status, "success", "run status must be 'success' — confirm self-completes the run");
     assert.equal((run!.request as any).actionId, "imob.contract.intake");
     assert.equal((run!.request as any).source, "chat-imob");
   });
 
-  it("CONF-03: no run with status=queued created (regression guard)", async () => {
+  it("CONF-03: no run with status=queued created; confirm creates status=success (regression guard)", async () => {
     const before = await prismaGlobal.run.count({
-      where: { tenantId, workspaceId, status: "pending" },
+      where: { tenantId, workspaceId, status: "success" },
     });
 
     const { draftId } = await uploadDocx();
@@ -139,9 +140,9 @@ describe("IMOB Intake Confirm Endpoint — Phase 4.6", () => {
       .set("Authorization", `Bearer ${apiToken}`);
 
     const after = await prismaGlobal.run.count({
-      where: { tenantId, workspaceId, status: "pending" },
+      where: { tenantId, workspaceId, status: "success" },
     });
-    assert.ok(after > before, "a run with status=pending must have been created");
+    assert.ok(after > before, "a run with status=success must have been created by confirm");
 
     // Confirm no run with the old invalid status "queued" was created
     // (DB rejects "queued" at the enum level — this is a regression guard)
@@ -172,13 +173,12 @@ describe("IMOB Intake Confirm Endpoint — Phase 4.6", () => {
       .post(`/api/imob/chat/intake/confirm/${draftId}`)
       .set("Authorization", `Bearer ${apiToken}`);
     assert.equal(confirmRes.status, 201);
+    assert.equal(confirmRes.body.runStatus, "success", "confirm must self-complete the run");
 
     const runId = confirmRes.body.runId;
 
-    // The action runner (outside test scope) would process the run and mark it success.
-    // Simulate that transition directly — same pattern as Phase 2 E2E tests.
-    await prismaGlobal.run.update({ where: { id: runId }, data: { status: "success" } });
-
+    // Run is already status=success — no manual update needed (Phase 5.5 fix).
+    // Call worker directly to verify mutation without relying on BullMQ timing.
     await processImobRunCompletedJob({
       runId,
       tenantId,
