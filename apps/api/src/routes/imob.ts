@@ -3776,7 +3776,7 @@ imobRouter.post("/chat/intake/confirm/:draftId", async (req: TenantAwareRequest,
       tenantId,
       workspaceId,
       agent: "EIAH",
-      status: "queued" as any,
+      status: "pending",
       request: {
         actionId,
         source: "chat-imob",
