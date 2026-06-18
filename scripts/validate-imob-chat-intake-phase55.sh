@@ -130,7 +130,7 @@ echo "[OK] ImobCase stage=documents_collecting, status=ready_for_review"
 
 # Verify ImobCaseEvent case.document.intake exists
 EVENT_TYPE=$(PGPASSWORD=senha psql -h localhost -p 5433 -U postgres -d eiah_builder -tAq \
-  -c "SELECT event_type FROM imob_case_events WHERE case_id='${CASE_ID}' AND event_type='case.document.intake' LIMIT 1" 2>/dev/null || echo "")
+  -c "SELECT type FROM imob_case_events WHERE case_id='${CASE_ID}' AND type='case.document.intake' LIMIT 1" 2>/dev/null || echo "")
 [ "${EVENT_TYPE}" = "case.document.intake" ] || { echo "FAIL: case.document.intake event not found" >&2; exit 1; }
 echo "[OK] ImobCaseEvent case.document.intake exists"
 
@@ -165,9 +165,10 @@ echo "--- Step 8: Export PDF (frontend delegation) ---"
 PDF_RESPONSE=$(curl -sf \
   -H "Authorization: Bearer ${TOKEN}" \
   "${API}/imob/runs/${RUN_ID}/intake/export?format=pdf")
+PDF_REASON=$(echo "${PDF_RESPONSE}" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('reasonCode',''))")
 PDF_STRATEGY=$(echo "${PDF_RESPONSE}" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('strategy',''))")
-[ "${PDF_STRATEGY}" = "PDF_DELEGATED_TO_FRONTEND" ] || { echo "FAIL: PDF strategy=${PDF_STRATEGY}" >&2; exit 1; }
-echo "[OK] PDF guidance — PDF_DELEGATED_TO_FRONTEND"
+[ "${PDF_REASON}" = "PDF_DELEGATED_TO_FRONTEND" ] || { echo "FAIL: PDF reasonCode=${PDF_REASON}" >&2; exit 1; }
+echo "[OK] PDF guidance — reasonCode=PDF_DELEGATED_TO_FRONTEND, strategy=${PDF_STRATEGY}"
 
 # ── 9. Summary ────────────────────────────────────────────────────────────────
 
