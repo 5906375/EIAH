@@ -2559,12 +2559,40 @@ export type ImobPrintBundleWidget = {
   }>;
 };
 
+// ─── Contract Intake widgets ───────────────────────────────────────────────────
+
+export type ImobContractIntakeDraftWidget = {
+  kind: "contract_intake_draft";
+  draftId: string;
+  draftExpiresAt: string;
+  documentKind: "lease_contract" | "other";
+  contractType: "residential_lease" | "commercial_lease" | "seasonal_lease" | "unknown";
+  documentHash: string;
+  pendingItems: string[];
+  riskFlags: string[];
+  actionId: string;
+  requiresConfirmation: true;
+};
+
+export type ImobContractIntakeResultWidget = {
+  kind: "contract_intake_result";
+  runId: string;
+  stage: string;
+  status: string;
+  nextStep: string | null;
+  pendingItems: string[];
+  riskFlags: string[];
+  documentHash: string;
+};
+
 export type ImobPresentationWidget =
   | ImobCommercialHomeWidget
   | ImobInventoryShowcaseWidget
   | ImobCaseSummaryWidget
   | ImobDocumentChecklistWidget
-  | ImobPrintBundleWidget;
+  | ImobPrintBundleWidget
+  | ImobContractIntakeDraftWidget
+  | ImobContractIntakeResultWidget;
 
 export type ImobConversationSnapshot = {
   conversationId: string;
@@ -4883,4 +4911,75 @@ export async function apiReplayRun(id: string) {
     throw new Error(`Replay failed: ${res.status}`);
   }
   return res.json();
+}
+
+// ─── IMOB Contract Intake API ──────────────────────────────────────────────────
+
+export type ImobContractIntakeUploadResponse = {
+  ok: boolean;
+  draft: Omit<ImobContractIntakeDraftWidget, "kind">;
+  extractionOk: boolean;
+  parserVersion: string;
+};
+
+export type ImobContractIntakeConfirmResponse = {
+  ok: boolean;
+  runId: string;
+  runStatus: string;
+  actionId: string;
+  message: string;
+};
+
+export type ImobContractIntakePdfGuidanceResponse = {
+  ok: false;
+  reasonCode: "PDF_DELEGATED_TO_FRONTEND";
+  strategy: string;
+  htmlExportUrl: string;
+  message: string;
+};
+
+export async function apiImobIntakeUpload(file: File): Promise<ImobContractIntakeUploadResponse> {
+  const formData = new FormData();
+  formData.append("file", file);
+  return http<ImobContractIntakeUploadResponse>("/imob/chat/intake/upload", {
+    method: "POST",
+    body: formData,
+  });
+}
+
+export async function apiImobIntakeConfirm(draftId: string): Promise<ImobContractIntakeConfirmResponse> {
+  return http<ImobContractIntakeConfirmResponse>(
+    `/imob/chat/intake/confirm/${encodeURIComponent(draftId)}`,
+    { method: "POST" },
+  );
+}
+
+// Fetches a binary export file and triggers browser download.
+// Handles auth token from cachedSession (same as http()).
+export async function apiImobIntakeExportDownload(runId: string, format: "html" | "docx"): Promise<void> {
+  const token = cachedSession.token;
+  const headers = new Headers();
+  if (token) headers.set("authorization", `Bearer ${token}`);
+  const res = await fetch(
+    `${BASE_URL}/imob/runs/${encodeURIComponent(runId)}/intake/export?format=${format}`,
+    { headers },
+  );
+  if (!res.ok) {
+    throw new Error(`Export download failed: ${res.status}`);
+  }
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = objectUrl;
+  a.download = `intake-${runId}.${format}`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(objectUrl);
+}
+
+export async function apiImobIntakePdfGuidance(runId: string): Promise<ImobContractIntakePdfGuidanceResponse> {
+  return http<ImobContractIntakePdfGuidanceResponse>(
+    `/imob/runs/${encodeURIComponent(runId)}/intake/export?format=pdf`,
+  );
 }

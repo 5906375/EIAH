@@ -1,0 +1,123 @@
+{
+  "timestamp": "2026-06-19T10:20:24.636Z",
+  "checks": [
+    {
+      "name": "marketplace carregada",
+      "ok": true,
+      "details": "/app/marketplace/imob"
+    },
+    {
+      "name": "URL /app/imob/chat",
+      "ok": false,
+      "details": "/app/marketplace/imob"
+    },
+    {
+      "name": "screenshot desktop salvo",
+      "ok": true,
+      "details": "screenshot-desktop-1440x900-v4.png"
+    },
+    {
+      "name": "\"Document Intake\" visível",
+      "ok": false,
+      "details": "ausente"
+    },
+    {
+      "name": "\"IMOB v2.1\" visível",
+      "ok": false,
+      "details": "ausente"
+    },
+    {
+      "name": "\"Piloto controlado\" visível",
+      "ok": false,
+      "details": "ausente"
+    },
+    {
+      "name": "sem \"Quick actions\" verboso",
+      "ok": true,
+      "details": "ok (chip row)"
+    },
+    {
+      "name": "\"Painel contextual\" presente",
+      "ok": false,
+      "details": "ausente"
+    },
+    {
+      "name": "textarea compositor",
+      "ok": false,
+      "details": "ausente"
+    },
+    {
+      "name": "aside(s) presente(s)",
+      "ok": true,
+      "details": "1 found"
+    },
+    {
+      "name": "sidebar gradient escuro",
+      "ok": false,
+      "details": "bgImage: none"
+    },
+    {
+      "name": "grid xl 3 colunas no DOM",
+      "ok": false,
+      "details": "ausente"
+    },
+    {
+      "name": "compositor rounded-[20px]",
+      "ok": false,
+      "details": "ausente"
+    },
+    {
+      "name": "workbench shadow refinado",
+      "ok": false,
+      "details": "ausente"
+    },
+    {
+      "name": "fullpage screenshot",
+      "ok": true,
+      "details": "screenshot-desktop-fullpage.png"
+    },
+    {
+      "name": "mobile URL chat",
+      "ok": false,
+      "details": "/app/marketplace/imob"
+    },
+    {
+      "name": "screenshot mobile",
+      "ok": true,
+      "details": "screenshot-mobile-390x844.png"
+    },
+    {
+      "name": "mobile \"Painel contextual\"",
+      "ok": false,
+      "details": "ausente"
+    },
+    {
+      "name": "mobile \"Mostrar\"",
+      "ok": false,
+      "details": "ausente"
+    },
+    {
+      "name": "screenshot tablet",
+      "ok": true,
+      "details": "screenshot-tablet-1024x768.png"
+    }
+  ],
+  "screenshots": [
+    {
+      "label": "desktop-1440x900",
+      "path": "/home/jusall/projects/EIAH_BUILDER/docs/ops/evidence/latest/phase-9-1-1-visual-smoke/screenshot-desktop-1440x900-v4.png"
+    },
+    {
+      "label": "desktop-fullpage",
+      "path": "/home/jusall/projects/EIAH_BUILDER/docs/ops/evidence/latest/phase-9-1-1-visual-smoke/screenshot-desktop-fullpage.png"
+    },
+    {
+      "label": "mobile-390x844",
+      "path": "/home/jusall/projects/EIAH_BUILDER/docs/ops/evidence/latest/phase-9-1-1-visual-smoke/screenshot-mobile-390x844.png"
+    },
+    {
+      "label": "tablet-1024x768",
+      "path": "/home/jusall/projects/EIAH_BUILDER/docs/ops/evidence/latest/phase-9-1-1-visual-smoke/screenshot-tablet-1024x768.png"
+    }
+  ]
+}

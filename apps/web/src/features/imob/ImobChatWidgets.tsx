@@ -6,6 +6,8 @@ import type {
   ImobPresentationWidget,
 } from "@/lib/api";
 import { getImobPropertyTypeLabel } from "./propertyTypes";
+import { ImobContractIntakeDraftCard } from "./ImobContractIntakeDraftCard";
+import { ImobContractIntakeResultCard } from "./ImobContractIntakeResultCard";
 
 type WidgetAction = {
   id: string;
@@ -182,6 +184,14 @@ export const ImobChatWidgets: React.FC<Props> = ({ widget, onAction }) => {
         {renderSpecialists(widget.specialists)}
       </div>
     );
+  }
+
+  if (widget.kind === "contract_intake_draft") {
+    return <ImobContractIntakeDraftCard widget={widget} />;
+  }
+
+  if (widget.kind === "contract_intake_result") {
+    return <ImobContractIntakeResultCard widget={widget} commandCenterHref="/app/imob/cases" />;
   }
 
   if (widget.kind === "print_bundle") {

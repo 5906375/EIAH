@@ -1,0 +1,125 @@
+{
+  "timestamp": "2026-06-19T11:31:43.169Z",
+  "viewports": {
+    "1440x900": {
+      "url": "/app/imob/chat",
+      "onChat": true,
+      "mainClass": "flex w-full flex-1 flex-col p-0",
+      "mainBox": {
+        "w": 1440,
+        "h": 826.21875
+      },
+      "gridBox": {
+        "w": 1438,
+        "h": 600
+      },
+      "sidebarBox": {
+        "w": 280,
+        "h": 600,
+        "visible": true
+      },
+      "centerWidth": 798,
+      "textareaVisible": true,
+      "textareaInViewport": true,
+      "textareaY": 363,
+      "contextPanelToggleVisible": false,
+      "sidebarStacked": false
+    },
+    "1280x800": {
+      "url": "/app/imob/chat",
+      "onChat": true,
+      "mainClass": "flex w-full flex-1 flex-col p-0",
+      "mainBox": {
+        "w": 1280,
+        "h": 726.21875
+      },
+      "gridBox": {
+        "w": 1278,
+        "h": 600
+      },
+      "sidebarBox": {
+        "w": 280,
+        "h": 600,
+        "visible": true
+      },
+      "centerWidth": 638,
+      "textareaVisible": true,
+      "textareaInViewport": true,
+      "textareaY": 363,
+      "contextPanelToggleVisible": false,
+      "sidebarStacked": false
+    },
+    "1024x768": {
+      "url": "/app/imob/chat",
+      "onChat": true,
+      "mainClass": "flex w-full flex-1 flex-col p-0",
+      "mainBox": {
+        "w": 1024,
+        "h": 694.21875
+      },
+      "gridBox": {
+        "w": 1022,
+        "h": 600
+      },
+      "sidebarBox": {
+        "w": 280,
+        "h": 600,
+        "visible": true
+      },
+      "centerWidth": 742,
+      "textareaVisible": true,
+      "textareaInViewport": true,
+      "textareaY": 363,
+      "contextPanelToggleVisible": true,
+      "sidebarStacked": false
+    },
+    "768x1024": {
+      "url": "/app/imob/chat",
+      "onChat": true,
+      "mainClass": "flex w-full flex-1 flex-col p-0",
+      "mainBox": {
+        "w": 768,
+        "h": 1525.046875
+      },
+      "gridBox": {
+        "w": 766,
+        "h": 1435
+      },
+      "sidebarBox": {
+        "w": 766,
+        "h": 718,
+        "visible": true
+      },
+      "centerWidth": 766,
+      "textareaVisible": true,
+      "textareaInViewport": false,
+      "textareaY": 1520,
+      "contextPanelToggleVisible": false,
+      "sidebarStacked": true
+    },
+    "390x844": {
+      "url": "/app/imob/chat",
+      "onChat": true,
+      "mainClass": "flex w-full flex-1 flex-col p-0",
+      "mainBox": {
+        "w": 390,
+        "h": 1273.046875
+      },
+      "gridBox": {
+        "w": 388,
+        "h": 1183
+      },
+      "sidebarBox": {
+        "w": 388,
+        "h": 592,
+        "visible": true
+      },
+      "centerWidth": 388,
+      "textareaVisible": true,
+      "textareaInViewport": false,
+      "textareaY": 1346,
+      "contextPanelToggleVisible": false,
+      "sidebarStacked": true
+    }
+  }
+}

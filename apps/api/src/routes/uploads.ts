@@ -2,7 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import type { TenantAwareRequest } from "../middlewares/enforceTenant";
 import { enforceTenant } from "../middlewares/enforceTenant";
-import { persistBuffer, loadFileAbsolutePath } from "../services/storage";
+import { loadStoredObject, persistBuffer } from "../services/storage";
 import { createUploadedDocument, findDocumentById, updateDocumentUrl } from "../services/uploads";
 
 const MAX_FILE_SIZE_BYTES = Number(process.env.MAX_UPLOAD_BYTES ?? 5 * 1024 * 1024); // 5 MB default
@@ -77,7 +77,11 @@ uploadsRouter.post(
       }
 
       const normalizedFileName = normalizeUploadedFileName(file.originalname);
-      const persisted = await persistBuffer(file.buffer, normalizedFileName);
+      const persisted = await persistBuffer(file.buffer, normalizedFileName, {
+        tenantId: auth.tenantId,
+        workspaceId: auth.workspaceId,
+        agentSlug,
+      });
       let record = await createUploadedDocument({
         prisma: client,
         tenantId: auth.tenantId,
@@ -138,11 +142,11 @@ uploadsRouter.get("/uploads/:id", async (req: TenantAwareRequest, res) => {
     return res.status(404).json({ ok: false, error: { code: "NOT_FOUND", message: "Document not found" } });
   }
 
-  const absolutePath = await loadFileAbsolutePath(doc.storageKey);
-  if (!absolutePath) {
+  const buffer = await loadStoredObject(doc.storageKey);
+  if (!buffer) {
     return res.status(404).json({ ok: false, error: { code: "NOT_FOUND", message: "File not available" } });
   }
 
   res.type(doc.mimeType);
-  return res.sendFile(absolutePath);
+  return res.send(buffer);
 });

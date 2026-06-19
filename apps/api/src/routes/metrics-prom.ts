@@ -1,6 +1,7 @@
 import { Router } from "express";
-import { queueSnapshot } from "@eiah/core";
+import { queueSnapshot } from "@eiah/core/queue/snapshot";
 import { renderCountersAsPrometheusText } from "../workers/imobWorkerMetrics";
+import { renderImobIntakeCountersAsPrometheusText } from "../services/imob/intake/imobIntakeObservability";
 
 export const metricsPromRouter = Router();
 
@@ -26,6 +27,11 @@ metricsPromRouter.get("/", async (_req, res) => {
   const imobCounters = renderCountersAsPrometheusText();
   if (imobCounters) {
     output += `\n# IMOB Worker Mutation counters\n${imobCounters}\n`;
+  }
+
+  const imobIntakeCounters = renderImobIntakeCountersAsPrometheusText();
+  if (imobIntakeCounters) {
+    output += `\n# IMOB Intake Pilot counters\n${imobIntakeCounters}\n`;
   }
 
   res.set("Content-Type", "text/plain");

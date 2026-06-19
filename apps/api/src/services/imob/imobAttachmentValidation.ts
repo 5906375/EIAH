@@ -1,6 +1,5 @@
-import { readFile } from "node:fs/promises";
 import { z } from "zod";
-import { loadFileAbsolutePath } from "../storage";
+import { loadStoredObject } from "../storage";
 import {
   IMOB_IDENTITY_ATTACHMENT_VALIDATION_CONTRACT,
   type ImobAttachmentCrmSuggestion,
@@ -485,11 +484,11 @@ async function loadProviderDocuments(documents: UploadedDocumentLike[]) {
   const supported = documents.filter((item) => item.mimeType === "application/pdf" || item.mimeType === "image/png" || item.mimeType === "image/jpeg");
   const loaded: ProviderDocumentInput[] = [];
   for (const item of supported) {
-    const absolutePath = await loadFileAbsolutePath(item.storageKey);
-    if (!absolutePath) continue;
+    const buffer = await loadStoredObject(item.storageKey);
+    if (!buffer) continue;
     loaded.push({
       document: item,
-      buffer: await readFile(absolutePath),
+      buffer,
     });
   }
   return loaded;
@@ -505,13 +504,12 @@ async function extractDocumentIdentity(documents: UploadedDocumentLike[]): Promi
   const notes: string[] = [];
 
   for (const document of documents) {
-    const absolutePath = await loadFileAbsolutePath(document.storageKey);
-    if (!absolutePath) {
+    const buffer = await loadStoredObject(document.storageKey);
+    if (!buffer) {
       notes.push(`O arquivo ${document.fileName} não está mais disponível no storage.`);
       continue;
     }
 
-    const buffer = await readFile(absolutePath);
     if (document.mimeType === "text/plain") {
       const extracted = extractIdentityFromPlainText(buffer.toString("utf8"), "text_plain");
       combinedTextIdentity = combinedTextIdentity ? mergeExtractedIdentities(combinedTextIdentity, extracted) : extracted;

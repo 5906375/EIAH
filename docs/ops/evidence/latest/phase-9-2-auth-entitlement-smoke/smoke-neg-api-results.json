@@ -1,0 +1,86 @@
+{
+  "timestamp": "2026-06-19T11:04:29.920Z",
+  "checks": [
+    {
+      "name": "[NEG BROWSER] não chega em /app/imob/chat",
+      "ok": true,
+      "details": "redirecionado para: /app/runs"
+    },
+    {
+      "name": "[NEG BROWSER] SMOKE NOIMOB tenant na sessão",
+      "ok": false,
+      "details": "body não contém NoIMOB (SMOKE TENANT FASE 9.2\n\nAgent Operations Console\n\nSMOKE WORKSPACE FASE 9.2\n\nRuns\n)"
+    },
+    {
+      "name": "[NEG BROWSER] aterrissou em surface não-IMOB",
+      "ok": true,
+      "details": "/app/runs"
+    },
+    {
+      "name": "[NEG BROWSER] screenshot contexto isolado",
+      "ok": true,
+      "details": "neg-browser-isolated.png"
+    },
+    {
+      "name": "[API POS] /session/context HTTP 200",
+      "ok": true,
+      "details": "status=200"
+    },
+    {
+      "name": "[API POS] IMOB_INSTALLED=true",
+      "ok": true,
+      "details": "IMOB_INSTALLED=true"
+    },
+    {
+      "name": "[API POS] tenantId=tenant-smoke-9-2",
+      "ok": true,
+      "details": "tenant-smoke-9-2"
+    },
+    {
+      "name": "[API POS] landingPath=/app/imob/chat",
+      "ok": true,
+      "details": "/app/imob/chat"
+    },
+    {
+      "name": "[API NEG] /session/context HTTP 200",
+      "ok": true,
+      "details": "status=200"
+    },
+    {
+      "name": "[API NEG] IMOB_INSTALLED=false",
+      "ok": true,
+      "details": "IMOB_INSTALLED=false"
+    },
+    {
+      "name": "[API NEG] tenantId=tenant-smoke-noimob-9-2",
+      "ok": true,
+      "details": "tenant-smoke-noimob-9-2"
+    },
+    {
+      "name": "[API NEG] /imob/knowledge/sync-status = 403",
+      "ok": true,
+      "details": "status=403"
+    },
+    {
+      "name": "[API NEG] reasonCode=IMOB_ENTITLEMENT_MISSING",
+      "ok": true,
+      "details": "reasonCode=IMOB_ENTITLEMENT_MISSING"
+    },
+    {
+      "name": "[API NEG] installationStatus=missing",
+      "ok": true,
+      "details": "installationStatus=missing"
+    },
+    {
+      "name": "[API POS] /imob/knowledge/sync-status = 200",
+      "ok": true,
+      "details": "status=200"
+    }
+  ],
+  "screenshots": [
+    {
+      "label": "neg-browser-isolated",
+      "path": "/home/jusall/projects/EIAH_BUILDER/docs/ops/evidence/latest/phase-9-2-auth-entitlement-smoke/neg-browser-isolated.png"
+    }
+  ]
+}

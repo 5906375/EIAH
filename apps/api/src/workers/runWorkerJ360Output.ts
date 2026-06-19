@@ -1,7 +1,7 @@
 import type { J360LegalReport, RecipeOrchestration } from "@eiah/core";
 import { buildJ360LegalReport } from "../services/runAtivoUniversalAgent/interpreters/j360LegalInterpreter";
-import { loadFileAbsolutePath } from "../services/storage";
-import { extractPdfDocumentEvidenceFromFile, type ExtractedPdfDocument } from "../services/documents/pdfTextExtractor";
+import { loadStoredObject } from "../services/storage";
+import { extractPdfDocumentEvidenceFromBuffer, type ExtractedPdfDocument } from "../services/documents/pdfTextExtractor";
 
 type BuildJ360StructuredOutputParams = {
   agentId: string;
@@ -100,10 +100,10 @@ export async function collectJ360DocumentEvidence(
       },
     });
     if (!record || record.mimeType !== "application/pdf") continue;
-    const absolutePath = await loadFileAbsolutePath(record.storageKey);
-    if (!absolutePath) continue;
+    const buffer = await loadStoredObject(record.storageKey);
+    if (!buffer) continue;
     try {
-      return await extractPdfDocumentEvidenceFromFile(absolutePath, record.fileName);
+      return extractPdfDocumentEvidenceFromBuffer(buffer, record.fileName);
     } catch {
       continue;
     }

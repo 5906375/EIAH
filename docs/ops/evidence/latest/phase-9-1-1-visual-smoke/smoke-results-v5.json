@@ -1,0 +1,118 @@
+{
+  "timestamp": "2026-06-19T10:24:53.539Z",
+  "checks": [
+    {
+      "name": "URL = /app/imob/chat",
+      "ok": true,
+      "details": "/app/imob/chat?domain=imob"
+    },
+    {
+      "name": "screenshot desktop salvo",
+      "ok": true,
+      "details": "screenshot-desktop-1440x900-final.png"
+    },
+    {
+      "name": "\"Document Intake\" visível",
+      "ok": true,
+      "details": "ok"
+    },
+    {
+      "name": "\"IMOB v2.1\" visível",
+      "ok": true,
+      "details": "ok"
+    },
+    {
+      "name": "\"Piloto controlado\" visível",
+      "ok": false,
+      "details": "ausente"
+    },
+    {
+      "name": "sem \"Quick actions\" card",
+      "ok": true,
+      "details": "ok"
+    },
+    {
+      "name": "\"Painel contextual\"",
+      "ok": false,
+      "details": "ausente"
+    },
+    {
+      "name": "textarea",
+      "ok": true,
+      "details": "ok"
+    },
+    {
+      "name": "textarea bg=transparent",
+      "ok": true,
+      "details": "rgba(0, 0, 0, 0)"
+    },
+    {
+      "name": "textarea rounded (14px)",
+      "ok": true,
+      "details": "14px"
+    },
+    {
+      "name": "asides",
+      "ok": true,
+      "details": "2"
+    },
+    {
+      "name": "sidebar gradient escuro",
+      "ok": true,
+      "details": "linear-gradient(rgb(9, 17, 29) 0%, rgb(16, 28, 43) 100%)"
+    },
+    {
+      "name": "grid xl 3 cols",
+      "ok": true,
+      "details": "ok"
+    },
+    {
+      "name": "compositor rounded-[20px]",
+      "ok": true,
+      "details": "ok"
+    },
+    {
+      "name": "screenshot compositor",
+      "ok": true,
+      "details": "screenshot-compositor.png"
+    },
+    {
+      "name": "fullpage",
+      "ok": true,
+      "details": "screenshot-desktop-fullpage.png"
+    },
+    {
+      "name": "mobile URL chat",
+      "ok": true,
+      "details": "/app/imob/chat?domain=imob"
+    },
+    {
+      "name": "screenshot mobile",
+      "ok": true,
+      "details": "screenshot-mobile-390x844.png"
+    },
+    {
+      "name": "mobile \"Painel contextual\"",
+      "ok": false,
+      "details": "ausente"
+    }
+  ],
+  "screenshots": [
+    {
+      "label": "desktop-1440x900",
+      "path": "/home/jusall/projects/EIAH_BUILDER/docs/ops/evidence/latest/phase-9-1-1-visual-smoke/screenshot-desktop-1440x900-final.png"
+    },
+    {
+      "label": "compositor",
+      "path": "/home/jusall/projects/EIAH_BUILDER/docs/ops/evidence/latest/phase-9-1-1-visual-smoke/screenshot-compositor.png"
+    },
+    {
+      "label": "desktop-fullpage",
+      "path": "/home/jusall/projects/EIAH_BUILDER/docs/ops/evidence/latest/phase-9-1-1-visual-smoke/screenshot-desktop-fullpage.png"
+    },
+    {
+      "label": "mobile-390x844",
+      "path": "/home/jusall/projects/EIAH_BUILDER/docs/ops/evidence/latest/phase-9-1-1-visual-smoke/screenshot-mobile-390x844.png"
+    }
+  ]
+}

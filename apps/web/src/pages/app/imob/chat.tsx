@@ -65,6 +65,9 @@ import {
 } from "./chatProof";
 import { ThreadPanel } from "@/features/imob/ThreadPanel";
 import { ImobChatWidgets } from "@/features/imob/ImobChatWidgets";
+import { ImobWorkbenchContextPanel } from "@/features/imob/ImobWorkbenchContextPanel";
+import { ImobWorkbenchShell } from "@/features/imob/ImobWorkbenchShell";
+import { extractImobWorkbenchIntakeContext } from "@/features/imob/imobWorkbenchContext";
 import { KnowledgeCard, type KnowledgeAction } from "@/features/imob/KnowledgeCard";
 import { ImobKnowledgeViewer } from "@/features/imob/ImobKnowledgeViewer";
 import { ImobAccessGateCard } from "@/components/imob/ImobAccessGateCard";
@@ -200,6 +203,29 @@ type RunFinanceSummary = {
   issueLabel: string;
   hasGap: boolean;
 };
+
+function normalizeMessageCardProof(
+  proof: MessageCard["proof"] | undefined,
+): NonNullable<ChatMessage["proof"]> | undefined {
+  if (!proof) return undefined;
+  const runId = proof.runId ?? null;
+  const txId = proof.txId ?? null;
+  const receiptPath = proof.receiptPath ?? null;
+  const bundlePath = proof.bundlePath ?? null;
+  const verifyUrl = proof.verifyUrl ?? receiptPath ?? null;
+  const ready = proof.ready ?? Boolean(txId && receiptPath && bundlePath);
+  const required = proof.required ?? Boolean(runId || txId || receiptPath || bundlePath);
+  return {
+    required,
+    ready,
+    state: proof.state ?? (required ? (ready ? "ready" : "pending") : (ready ? "ready" : "not_required")),
+    runId,
+    txId,
+    receiptPath,
+    bundlePath,
+    verifyUrl,
+  };
+}
 
 function mapApiPresentationCard(
   card: ImobResolveTurnResponse["presentation"]["card"] | undefined,
@@ -1718,6 +1744,7 @@ const ImobChatPage: React.FC = () => {
   const [threads, setThreads] = React.useState<ImobChatThread[]>([]);
   const [selectedThreadId, setSelectedThreadId] = React.useState<string | null>(null);
   const [showThreadPanel, setShowThreadPanel] = React.useState(false);
+  const [showWorkbenchContextPanel, setShowWorkbenchContextPanel] = React.useState(false);
   const [conversationSearch, setConversationSearch] = React.useState("");
   const [historyLoading, setHistoryLoading] = React.useState(true);
   const [historyLimit, setHistoryLimit] = React.useState(HISTORY_PAGE_SIZE);
@@ -4464,18 +4491,54 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
   const lastVisibleMessage = visibleMessages.length > 0 ? visibleMessages[visibleMessages.length - 1] : null;
   const activeThreadCount = threads.filter((item) => item.status === "active").length;
   const shouldShowThreadPanel = showThreadPanel || activeThreadCount > 1 || Boolean(selectedThreadId);
-  const activeThreadContext = React.useMemo(() => {
-    const selectedThread = selectedThreadId ? threads.find((item) => item.threadId === selectedThreadId) : null;
-    const currentThreadId = selectedThread?.threadId ?? activeThread?.id ?? null;
-    const currentThreadLabel = selectedThread?.label ?? activeThread?.label ?? null;
-    return {
-      threadId: currentThreadId,
-      threadLabel: currentThreadLabel,
-      runId: currentThreadId ? sessionRunByThreadRef.current[currentThreadId] ?? null : null,
-      caseId: currentThreadId ? caseIdByThreadRef.current[currentThreadId] ?? null : null,
-    };
-  }, [activeThread?.id, activeThread?.label, selectedThreadId, threads]);
-  const activeThreadRunFinance = activeThreadContext.runId ? runFinanceByRunId[activeThreadContext.runId] ?? null : null;
+  const workbenchIntakeContext = React.useMemo(
+    () =>
+      extractImobWorkbenchIntakeContext({
+        messages,
+        preferredThreadId: selectedThreadId ?? activeThread?.id ?? null,
+      }),
+    [activeThread?.id, messages, selectedThreadId],
+  );
+  const workbenchContextState: "loading" | "empty" | "error" | "ready" =
+    historyLoading && messages.length === 0
+      ? "loading"
+      : workbenchIntakeContext
+        ? "ready"
+        : "empty";
+  const workbenchCommandCenterHref = React.useMemo(() => {
+    if (!workbenchIntakeContext) return null;
+    if (!workbenchIntakeContext.caseId && !workbenchIntakeContext.threadId && !workbenchIntakeContext.runId) return null;
+    const params = new URLSearchParams();
+    if (conversationId) params.set("conversationId", conversationId);
+    if (workbenchIntakeContext.threadId) params.set("threadId", workbenchIntakeContext.threadId);
+    if (workbenchIntakeContext.caseId) params.set("caseId", workbenchIntakeContext.caseId);
+    const query = params.toString();
+    return query ? `/app/imob/dashboard?${query}` : "/app/imob/dashboard";
+  }, [conversationId, workbenchIntakeContext]);
+  const workbenchFunnelHref = React.useMemo(() => {
+    if (!workbenchIntakeContext?.caseId) return null;
+    if (!workbenchIntakeContext.status && !workbenchIntakeContext.stage) return null;
+    const params = new URLSearchParams();
+    params.set("tab", "funil");
+    if (conversationId) params.set("conversationId", conversationId);
+    if (workbenchIntakeContext.threadId) params.set("threadId", workbenchIntakeContext.threadId);
+    params.set("caseId", workbenchIntakeContext.caseId);
+    return `/app/imob/dashboard?${params.toString()}`;
+  }, [conversationId, workbenchIntakeContext]);
+  const workbenchRunArchiveHref = React.useMemo(() => {
+    if (!workbenchIntakeContext?.runId) return null;
+    const params = new URLSearchParams();
+    params.set("domain", "imob");
+    params.set("runId", workbenchIntakeContext.runId);
+    if (conversationId) params.set("conversationId", conversationId);
+    if (workbenchIntakeContext.threadId) params.set("threadId", workbenchIntakeContext.threadId);
+    if (workbenchIntakeContext.caseId) params.set("caseId", workbenchIntakeContext.caseId);
+    return `/app/runs?${params.toString()}`;
+  }, [conversationId, workbenchIntakeContext]);
+  React.useEffect(() => {
+    if (!workbenchIntakeContext) return;
+    setShowWorkbenchContextPanel(true);
+  }, [workbenchIntakeContext?.draftId, workbenchIntakeContext?.kind, workbenchIntakeContext?.runId]);
   const contractDraftLines = React.useMemo(() => {
     if (!contractInterviewState?.contractType) return [];
     const schema = CONTRACT_SCHEMAS[contractInterviewState.contractType];
@@ -4485,16 +4548,38 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     return lines;
   }, [contractInterviewState]);
   return (
-    <div className="space-y-6">
-      <section className="overflow-hidden rounded-3xl border border-white/10 bg-black/30">
-        <div className="grid min-h-[70vh] lg:h-[78vh] lg:max-h-[78vh] lg:grid-cols-[260px,1fr]">
-          <aside className="flex h-full min-h-[70vh] flex-col border-b border-white/10 bg-black/30 p-3 lg:min-h-0 lg:border-b-0 lg:border-r">
-            <div className="space-y-3 border-b border-white/10 pb-3">
+    <>
+      <ImobWorkbenchShell
+      sidebar={
+        <div className="flex h-full min-h-[70vh] flex-col bg-[linear-gradient(180deg,#09111d_0%,#101c2b_100%)] p-4 lg:min-h-0">
+            <div className="rounded-[24px] border border-cyan-400/15 bg-[linear-gradient(180deg,rgba(16,28,43,0.98)_0%,rgba(10,18,28,0.92)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_8px_24px_rgba(0,0,0,0.28)]">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] uppercase tracking-[0.24em] text-cyan-200/85">IMOB Workspace</p>
+                  <p className="mt-1 text-sm font-medium text-white">Conversas e operações</p>
+                </div>
+                <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-cyan-100">
+                  IMOB
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
+                <div className="rounded-[14px] border border-white/10 bg-white/6 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+                  <p className="text-[10px] text-slate-400">Conversas</p>
+                  <p className="mt-1 text-[13px] font-semibold text-white">{filteredConversations.length}</p>
+                </div>
+                <div className="rounded-[14px] border border-white/10 bg-white/6 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
+                  <p className="text-[10px] text-slate-400">Threads ativas</p>
+                  <p className="mt-1 text-[13px] font-semibold text-white">{activeThreadCount}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-3 space-y-3 border-b border-white/10 pb-3">
               <div className="flex items-center justify-between gap-2">
                 <button
                   type="button"
                   onClick={() => void handleNewConversation()}
-                  className="rounded-lg bg-black/25 px-3 py-2 text-[10px] font-medium text-foreground transition hover:border-accent/40"
+                  className="rounded-[14px] border border-white/12 bg-white/8 px-3 py-2 text-[10px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition hover:border-cyan-400/30 hover:bg-white/12"
                 >
                   + Nova conversa
                 </button>
@@ -4505,7 +4590,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                     setShowThreadPanel(next);
                     trackUxEvent(next ? "thread_panel_opened" : "thread_panel_hidden", { activeThreads: activeThreadCount });
                   }}
-                  className="rounded-full bg-black/25 px-2 py-1 text-[10px] tracking-[0.12em] text-muted-foreground hover:border-white/30"
+                  className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[10px] tracking-[0.12em] text-slate-300 transition hover:border-white/25 hover:text-white"
                 >
                   {shouldShowThreadPanel ? "Ocultar operações" : "Ver operações"}
                 </button>
@@ -4515,7 +4600,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                 value={conversationSearch}
                 onChange={(event) => setConversationSearch(event.target.value)}
                 placeholder="Buscar conversa..."
-                className="w-full rounded-xl bg-black/25 px-3 py-2 text-[10px] text-foreground placeholder:text-muted-foreground focus:border-accent/40 focus:outline-none"
+                className="w-full rounded-[14px] border border-white/10 bg-white/5 px-3 py-2 text-[10px] text-white placeholder:text-slate-500 focus:border-cyan-400/30 focus:bg-white/8 focus:outline-none"
               />
 
               {conversationId && shouldShowThreadPanel ? (
@@ -4554,9 +4639,12 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
               ) : null}
             </div>
 
-            <div className="mt-3 flex-1 space-y-1 overflow-y-auto pr-1">
+            <div className="mt-3 flex-1 space-y-2 overflow-y-auto pr-1">
               {filteredConversations.length === 0 ? (
-                <p className="px-1 text-[10px] text-muted-foreground">Nenhuma conversa registrada.</p>
+                <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-3 py-4">
+                  <p className="text-[10px] font-medium text-white">Nenhuma conversa registrada.</p>
+                  <p className="mt-1 text-[10px] text-slate-400">Use “Nova conversa” para iniciar um fluxo IMOB neste workspace.</p>
+                </div>
               ) : (
                 filteredConversations.map((conversation) => {
                   const selected = conversation.conversationId === conversationId;
@@ -4565,8 +4653,10 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                       key={conversation.conversationId}
                       type="button"
                       onClick={() => void loadConversation(conversation.conversationId)}
-                      className={`w-full rounded-lg px-3 py-2 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
-                        selected ? "bg-accent/10 text-foreground" : "text-muted-foreground hover:bg-black/25 hover:text-foreground"
+                      className={`w-full rounded-xl border px-3 py-2.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
+                        selected
+                          ? "border-cyan-300/20 bg-cyan-400/10 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
+                          : "border-white/6 text-slate-300 hover:bg-black/25 hover:text-white"
                       }`}
                     >
                       <p className="truncate text-[10px] font-medium">{conversation.title}</p>
@@ -4578,20 +4668,30 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                 })
               )}
             </div>
-
-          </aside>
-
-          <article className="relative flex min-h-[70vh] flex-col bg-black/30 lg:min-h-0">
-            <header className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-muted-foreground">
-                  Chat - {workspaceLabel}
-                </p>
+        </div>
+      }
+      main={
+        <article className="relative flex min-h-[70vh] flex-col bg-[linear-gradient(180deg,#f8fafc_0%,#eef4fb_100%)] lg:min-h-0">
+            <header className="border-b border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f6fafe_100%)] px-4 py-4 sm:px-6">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">
+                      Document Intake
+                    </p>
+                    <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.16em] text-cyan-900 shadow-sm">
+                      IMOB v2.1
+                    </span>
+                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.16em] text-amber-900 shadow-sm">
+                      Piloto controlado
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-[12px] text-slate-500">{workspaceLabel}</p>
+                </div>
               </div>
-              <div className="flex items-center gap-2" />
             </header>
             {imobAccessGate ? (
-              <div className="border-b border-white/10 px-4 py-4 sm:px-6">
+              <div className="border-b border-slate-200 bg-white/80 px-4 py-4 sm:px-6">
                 <ImobAccessGateCard gate={imobAccessGate} />
               </div>
             ) : null}
@@ -4600,22 +4700,22 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
             (contractInterviewState.status === "review" ||
               contractInterviewState.status === "generating" ||
               contractInterviewState.status === "generated") ? (
-              <div className="border-b border-white/10 bg-black/20 px-4 py-2 sm:px-6">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-foreground">
+              <div className="border-b border-slate-200 bg-white/80 px-4 py-3 sm:px-6">
+                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-700">
                   Rascunho de contrato • {getContractTypeLabel(contractInterviewState.contractType)}
                 </p>
-                <div className="mt-1 max-h-16 space-y-0.5 overflow-y-auto pr-1 text-[11px] text-muted-foreground">
+                <div className="mt-1 max-h-16 space-y-0.5 overflow-y-auto pr-1 text-[11px] text-slate-500">
                   {contractDraftLines.slice(-8).map((line, idx) => (
                     <p key={`draft-${idx}`} className="truncate">{line}</p>
                   ))}
                 </div>
                 {contractInterviewState.status === "review" ? (
-                  <div className="mt-2 flex flex-col gap-2 border-t border-white/10 pt-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="mt-2 flex flex-col gap-2 border-t border-slate-200 pt-2 sm:flex-row sm:items-center sm:justify-between">
                     <div className="flex min-w-0 flex-1 items-center gap-2">
                       <select
                         value={draftEditFieldId}
                         onChange={(event) => setDraftEditFieldId(event.target.value)}
-                        className="min-w-0 flex-1 rounded-lg border border-white/15 bg-black/30 px-2 py-1 text-[10px] text-foreground focus:border-accent/40 focus:outline-none"
+                        className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] text-slate-900 focus:border-accent/40 focus:outline-none"
                       >
                         {contractEditableFields.map((field) => (
                           <option key={`draft-field-${field.id}`} value={field.id}>
@@ -4627,7 +4727,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                         type="button"
                         onClick={() => void handleDraftEditFromPanel()}
                         disabled={reviewActionLoading !== null || !draftEditFieldId}
-                        className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-foreground transition hover:border-accent/40 disabled:opacity-50"
+                        className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-slate-800 transition hover:border-accent/40 disabled:opacity-50"
                       >
                         Editar
                       </button>
@@ -4637,7 +4737,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                         type="button"
                         onClick={() => void handleDraftDeclineFromPanel()}
                         disabled={reviewActionLoading !== null}
-                        className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-foreground transition hover:border-rose-300/40 disabled:opacity-50"
+                        className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-slate-800 transition hover:border-rose-300/40 disabled:opacity-50"
                       >
                         Nao gerar
                       </button>
@@ -4645,7 +4745,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                         type="button"
                         onClick={() => void handleDraftConfirmFromPanel()}
                         disabled={reviewActionLoading !== null}
-                        className="rounded-full border border-accent/40 bg-accent/15 px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-foreground transition hover:bg-accent/25 disabled:opacity-50"
+                        className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-cyan-900 transition hover:bg-cyan-100 disabled:opacity-50"
                       >
                         Confirmar e gerar
                       </button>
@@ -4664,17 +4764,17 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                 setIsNearBottom(nearBottom);
                 if (nearBottom) setShowJumpToLatest(false);
               }}
-              className="flex-1 space-y-3 overflow-y-auto px-4 py-3 sm:px-6 sm:py-4"
+              className="flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5"
             >
               {hiddenMessageCount > 0 ? (
-                <div className="flex items-center justify-between rounded-xl border border-white/10 bg-black/20 px-3 py-2">
-                  <p className="text-[11px] text-muted-foreground">
+                <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-[0_10px_28px_rgba(15,23,42,0.05)]">
+                  <p className="text-[11px] text-slate-600">
                     Mostrando {compactVisibleLimit} de {visibleMessages.length} mensagens.
                   </p>
                   <button
                     type="button"
                     onClick={() => setCompactTimelineMode(false)}
-                    className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.15em] text-foreground hover:border-accent/40"
+                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] uppercase tracking-[0.15em] text-slate-800 hover:border-accent/40"
                   >
                     Ver histórico completo
                   </button>
@@ -4685,25 +4785,25 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                   <button
                     type="button"
                     onClick={() => setCompactTimelineMode(true)}
-                    className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.15em] text-foreground hover:border-accent/40"
+                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] uppercase tracking-[0.15em] text-slate-800 hover:border-accent/40"
                   >
                     Voltar ao modo compacto
                   </button>
                 </div>
               ) : null}
               {historyLoading ? (
-                <p className="text-sm text-muted-foreground">Carregando histórico da conversa...</p>
+                <p className="text-sm text-slate-600">Carregando histórico da conversa...</p>
               ) : visibleMessages.length === 0 ? (
                 selectedThreadId ? (
-                  <div className="rounded-xl border border-white/10 bg-black/15 p-4">
-                    <p className="text-sm text-foreground">Sem mensagens nesta thread.</p>
-                    <p className="mt-1 text-[10px] text-muted-foreground">
+                  <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-[0_10px_28px_rgba(15,23,42,0.05)]">
+                    <p className="text-sm text-slate-900">Sem mensagens nesta thread.</p>
+                    <p className="mt-1 text-[10px] text-slate-600">
                       Selecione outra thread ou remova o filtro para ver toda a conversa.
                     </p>
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-white/10 bg-black/15 p-4">
-                    <p className="text-sm text-muted-foreground">Nova conversa pronta.</p>
+                  <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-[0_10px_28px_rgba(15,23,42,0.05)]">
+                    <p className="text-sm text-slate-600">Nova conversa pronta.</p>
                   </div>
                 )
               ) : null}
@@ -4713,7 +4813,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                     type="button"
                     onClick={() => void handleLoadOlder()}
                     disabled={historyLoadingMore}
-                    className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-foreground transition hover:border-accent/40 disabled:opacity-50"
+                    className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-slate-800 transition hover:border-accent/40 disabled:opacity-50"
                   >
                     {historyLoadingMore ? "Carregando..." : "Carregar anteriores"}
                   </button>
@@ -4746,7 +4846,10 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                 const visibleProof = resolveVisibleMessageProof({
                   proof: message.proof,
                   presentationMetadata: message.presentationMetadata,
-                  card: messageCard ?? message.card ?? null,
+                  card:
+                    messageCard || message.card
+                      ? { proof: normalizeMessageCardProof((messageCard ?? message.card ?? null)?.proof) }
+                      : null,
                 }) ?? null;
                 const showBubble =
                   isUser
@@ -4768,8 +4871,8 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                         <div
                           className={`rounded-2xl px-4 py-3 text-sm ${
                             isUser
-                              ? "bg-accent/15 text-foreground"
-                              : "bg-black/20 text-foreground"
+                              ? "border border-cyan-200 bg-cyan-50 text-slate-950 shadow-[0_10px_24px_rgba(34,211,238,0.10)]"
+                              : "border border-slate-200 bg-white text-slate-900 shadow-[0_14px_30px_rgba(15,23,42,0.06)]"
                           } transition`}
                         >
                           {message.text.trim().length > 0 ? (
@@ -5449,22 +5552,20 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
               ) : null}
             </div>
 
-            <div className="sticky bottom-0 z-20 border-t border-white/10 bg-black/40 px-4 py-3 backdrop-blur sm:px-6">
-              {messages.length === 0 ? (
-                <div className="mb-3 flex flex-wrap gap-2">
-                  {QUICK_PROMPTS.map((prompt) => (
-                    <button
-                      key={prompt.label}
-                      type="button"
-                      onClick={() => void sendMessageText(prompt.prompt, { displayText: prompt.label })}
-                      className="rounded-full border border-white/10 bg-black/25 px-3 py-1 text-[10px] tracking-[0.04em] text-muted-foreground transition hover:border-accent/40 hover:text-foreground"
-                    >
-                      {prompt.label}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-              <div className="flex items-center gap-2 rounded-xl bg-black/25 p-2 backdrop-blur">
+            <div className="sticky bottom-0 z-20 border-t border-slate-200 bg-white/96 px-4 py-3 backdrop-blur sm:px-6">
+              <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
+                {QUICK_PROMPTS.slice(0, 4).map((prompt) => (
+                  <button
+                    key={prompt.label}
+                    type="button"
+                    onClick={() => void sendMessageText(prompt.prompt, { displayText: prompt.label })}
+                    className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] tracking-[0.04em] text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+                  >
+                    {prompt.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2 rounded-[20px] border border-slate-200 bg-white p-2 shadow-[0_12px_30px_rgba(15,23,42,0.07)]">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -5480,19 +5581,19 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                     disabled={isGateBlocked || uploadingDocuments || state === "typing" || state === "executing"}
                     aria-label="Abrir menu de anexos"
                     title="Adicionar fotos e arquivos"
-                    className="flex h-[24px] w-[24px] items-center justify-center rounded-full border-y border-white/12 bg-black/25 text-[10px] leading-none text-foreground transition hover:border-accent/40 hover:bg-black/30 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-[28px] w-[28px] items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-[11px] leading-none text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {uploadingDocuments ? "…" : "+"}
                   </button>
                   {attachmentMenuOpen && !(isGateBlocked || uploadingDocuments || state === "typing" || state === "executing") ? (
-                    <div className="absolute bottom-full left-0 z-30 mb-1 w-[180px] overflow-hidden rounded-xl border border-white/10 bg-[#2f2f2f]/95 p-1.5 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur">
+                    <div className="absolute bottom-full left-0 z-30 mb-1 w-[180px] overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-[0_20px_60px_rgba(15,23,42,0.18)] backdrop-blur">
                       <button
                         type="button"
                         onClick={() => {
                           setAttachmentMenuOpen(false);
                           fileInputRef.current?.click();
                         }}
-                        className="flex w-full items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-left text-[10px] text-white transition hover:bg-white/8"
+                        className="flex w-full items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-left text-[10px] text-slate-800 transition hover:bg-slate-100"
                       >
                         <span className="text-[10px] leading-none">📎</span>
                         <span>Adicionar fotos e arquivos</span>
@@ -5512,21 +5613,32 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                   placeholder={isGateBlocked ? "Acesso bloqueado para este workspace." : "Descreva uma operação imobiliária..."}
                   rows={1}
                   disabled={isGateBlocked}
-                  className="max-h-40 min-h-[46px] w-full resize-y rounded-xl bg-black/25 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+                  className="max-h-40 min-h-[46px] w-full resize-y rounded-[14px] bg-transparent px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => void handleSend()}
                   disabled={isGateBlocked || uploadingDocuments || state === "typing" || state === "executing"}
-                  className="h-[46px] shrink-0 rounded-xl bg-black/25 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-foreground transition hover:bg-black/30 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="h-[46px] shrink-0 rounded-[14px] bg-slate-900 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {uploadingDocuments || state === "typing" || state === "executing" ? "Enviando..." : "Enviar"}
                 </button>
               </div>
             </div>
-          </article>
-        </div>
-      </section>
+        </article>
+      }
+      contextPanel={
+        <ImobWorkbenchContextPanel
+          state={workbenchContextState}
+          intakeContext={workbenchIntakeContext}
+          commandCenterHref={workbenchCommandCenterHref}
+          funnelHref={workbenchFunnelHref}
+          runArchiveHref={workbenchRunArchiveHref}
+        />
+      }
+      isContextPanelOpen={showWorkbenchContextPanel}
+      onToggleContextPanel={() => setShowWorkbenchContextPanel((prev) => !prev)}
+    />
 
       <ImobKnowledgeViewer
         open={!!selectedKnowledgeContext}
@@ -5536,7 +5648,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         resolveHref={(href) => withDashboardContext(href, selectedKnowledgeContext?.threadId ?? null)}
       />
 
-    </div>
+    </>
   );
 };
 

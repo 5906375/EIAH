@@ -14,7 +14,7 @@
   "dependencies": {
     "zod": "^3.23.8",
     "ajv": "^8.17.1",
-    "@prisma/client": "latest",
+    "@prisma/client": "7.2.0",
     "@repo/db": "workspace:*",
     "@eiah/core": "workspace:*"
   },
