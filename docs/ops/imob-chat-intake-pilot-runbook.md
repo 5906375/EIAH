@@ -17,9 +17,9 @@
 
 ### O que NÃO está habilitado no piloto
 
-- Multi-instância / escalonamento horizontal (bloqueado por P1 object storage)
-- Auto-delete de uploads (política de retenção não definida)
-- Draft persistente (re-upload obrigatório após restart)
+- Multi-instância / escalonamento horizontal (bloqueado por ativação real de object storage + draft durável)
+- Auto-delete efetivo sem opt-in operacional (`UPLOAD_CLEANUP_ENABLED=true` + `UPLOAD_CLEANUP_DRY_RUN=false`)
+- Failover completo de draft fora do Redis configurado
 - Outros `actionId` fora de `imob.contract.intake`
 
 ---
@@ -50,7 +50,7 @@ WHERE workspace_id = '<workspace_id>' AND agent_key = 'EIAH';
 | Tamanho máximo do DOCX | 10 MB (enforced pelo multer) | Proteção de memória no extrator |
 | Uploads por workspace/dia | Sem limite técnico — monitorar | Baseline a ser definido no piloto |
 | Uploads simultâneos | Sem rate limit específico — usar rate limit global da API | Observar durante piloto |
-| Drafts em memória simultâneos | Sem limite técnico — TTL 30min limita organicamente | Cada upload = 1 draft |
+| Drafts ativos no store | Sem limite técnico — TTL 30min limita organicamente | Cada upload = 1 draft |
 | Jobs em `imobRunCompletedQueue` | 3 tentativas com backoff exponencial (2s base) | Configurado em `imobRunCompletedQueue.ts` |
 | Export HTML/DOCX por run | Sem limite — geração síncrona | Observar latência em contratos grandes |
 
@@ -60,11 +60,20 @@ WHERE workspace_id = '<workspace_id>' AND agent_key = 'EIAH';
 
 ## 4. Limitações documentadas
 
-### 4.1 Filesystem local
+### 4.1 Storage provider configurável (local por padrão)
 
-- Arquivos `.docx` são salvos em `uploads/{uuid}.docx` no **filesystem local do processo API**.
+- O backend agora usa um `StorageProvider` para `UploadedDocument` e arquivos `.docx`.
+- Em `dev/test`, o padrão continua `STORAGE_PROVIDER=local`, com persistência em `UPLOADS_DIR`.
+- O `storageKey` permanece compatível e agora é scoped por `tenantId/workspaceId` quando o upload entra pelos fluxos autenticados do intake/uploads.
+- O modo `object` exige gate explícito por `env`: `OBJECT_STORAGE_ADAPTER`, `OBJECT_STORAGE_BUCKET`, `OBJECT_STORAGE_PREFIX`, `OBJECT_STORAGE_ENDPOINT`, `OBJECT_STORAGE_REGION`, `OBJECT_STORAGE_ACCESS_KEY_ID`, `OBJECT_STORAGE_SECRET_ACCESS_KEY`.
+- Nesta build, `OBJECT_STORAGE_ADAPTER=s3-compatible` está **validado/configurado em fail-closed**, mas ainda **não possui adapter real instalado** no backend para executar put/get contra bucket real.
+- Na decisão documental da Fase 8.5, o adapter técnico permanece `s3-compatible`, com `Cloudflare R2` como alvo preferencial do primeiro smoke e `AWS S3` como alternativa compatível.
+- Na verificação operacional da Fase 8.5, o host atual não apresentou `bucket`, `endpoint`, credenciais nem seleção explícita de provider; portanto o object storage real e o smoke de bucket permaneceram `NO-GO`.
+- No modo local, os arquivos ficam em `uploads/{tenantId}/{workspaceId}/{uuid}.docx` no **filesystem local do processo API**.
 - Em reinício do container `eiah-api`, os arquivos **são preservados** se o volume Docker estiver mapeado.
 - Em **recriação do container** (`docker compose up --force-recreate`), arquivos são perdidos se não houver volume persistente.
+- Path traversal em `storageKey` é bloqueado pelo provider antes de qualquer leitura/escrita.
+- Se `STORAGE_PROVIDER=object` estiver ativo sem configuração completa, a API deve falhar de forma explícita. Não existe fallback silencioso para local nesse modo.
 
 **Ação preventiva:**
 ```yaml
@@ -73,23 +82,41 @@ volumes:
   - ./uploads:/app/uploads   # deve existir para preservar arquivos
 ```
 
-Se o volume não estiver mapeado: uploads existentes ficam inacessíveis após recriação do container. Runs com `ImobCase` criado terão export falhando (`EVIDENCE_NOT_FOUND`).
+Se o volume não estiver mapeado: uploads existentes ficam inacessíveis após recriação do container. Leitura posterior de anexos e downloads por `UploadedDocument` podem falhar.
 
-### 4.2 Draft em memória
+### 4.2 Draft store configurável (Redis preferencial)
 
-- Drafts vivem exclusivamente no `Map<draftId, StoredDraft>` do processo API (TTL = 30 min).
-- **Restart do processo** (`tsx` watcher reload, `docker restart eiah-api`) apaga todos os drafts.
-- Usuários com upload pendente de confirmação devem re-fazer o upload após restart.
+- O intake agora suporta `DRAFT_STORE=redis|memory`.
+- Em runtime normal do piloto, o default é `redis`.
+- Em `node --test` e fallback explícito de desenvolvimento, `memory` continua disponível para compatibilidade local.
+- O TTL padrão continua `30 min` (`DRAFT_TTL_MS=1800000`), com `draftId` opaco e sem PII.
+- Com `DRAFT_STORE=redis`, restart do processo API **não** perde drafts ainda válidos.
+- Com `DRAFT_STORE=memory`, restart do processo ainda apaga todos os drafts.
+- Cross-workspace continua fail-closed no `consumeDraft`.
 
 **Comunicação ao usuário:**
 
-> "Se o sistema for reiniciado enquanto você está revisando o documento, você precisa fazer o upload novamente. Isso é esperado na versão atual."
+> "Se o sistema for reiniciado enquanto você está revisando o documento, o draft deve continuar disponível quando o piloto estiver operando com Redis. Se o ambiente estiver em fallback local (`memory`), pode ser necessário reenviar o arquivo."
 
-### 4.3 Sem auto-delete de uploads
+### 4.3 Retenção e cleanup de uploads do intake
 
-- Registros em `uploaded_documents` e arquivos em `uploads/` **não são deletados automaticamente**.
-- Crescimento de storage é linear com o número de uploads.
-- **Ação no piloto:** Monitorar tamanho de `uploads/` semanalmente. Limiar de atenção: > 1 GB.
+- O piloto agora possui política de retenção por idade para uploads `agentSlug=imob-intake`, baseada em `createdAt`.
+- Configuração operacional:
+  - `UPLOAD_RETENTION_DAYS=30` por padrão;
+  - `UPLOAD_CLEANUP_ENABLED=false` por padrão;
+  - `UPLOAD_CLEANUP_DRY_RUN=true` por padrão;
+  - `UPLOAD_CLEANUP_INTERVAL_MS=21600000` (6h) por padrão quando o worker estiver habilitado.
+- O cleanup usa o `StorageProvider` da Fase 8.0 e só remove o registro de `uploaded_documents` após confirmar que o objeto foi apagado do storage.
+- Se o objeto já não existir ou se o delete falhar, o registro **não** é removido do banco; o ciclo registra falha operacional sem PII.
+- Chaves legadas sem escopo (`uuid.docx`) continuam tratadas com validação segura de `storageKey`.
+- Nesta fase, o cleanup é restrito aos uploads do intake IMOB; uploads genéricos de outras superfícies não entram no sweep.
+
+**Leitura operacional:**
+- `UPLOAD_CLEANUP_ENABLED=false`: worker não inicia e nenhum sweep roda automaticamente.
+- `UPLOAD_CLEANUP_ENABLED=true` + `UPLOAD_CLEANUP_DRY_RUN=true`: varredura automática apenas reporta candidatos.
+- `UPLOAD_CLEANUP_ENABLED=true` + `UPLOAD_CLEANUP_DRY_RUN=false`: worker apaga objeto + registro apenas para itens vencidos e confirmados.
+
+**Ação no piloto:** manter `dry-run` até pelo menos um ciclo operacional revisado pelo time. Limiar de atenção de storage continua `> 1 GB`, com ação imediata em `> 5 GB`.
 
 ### 4.4 Sem multi-instância
 
@@ -119,7 +146,7 @@ docker logs eiah-api --since 30m | grep "SIGTERM\|restart\|started"
 # Se o usuário confirma que fez upload há menos de 30min e não confirmou: restart é a causa
 ```
 
-**Nota:** Não há forma de recuperar um draft perdido por restart — o arquivo `.docx` pode ainda existir em disco (se o volume persistir), mas o `draftId` e metadados in-memory foram perdidos. O re-upload é a única ação.
+**Nota:** Em `DRAFT_STORE=redis`, restart do processo API não deve invalidar drafts ainda dentro do TTL. Em `DRAFT_STORE=memory`, não há forma de recuperar um draft perdido por restart — o arquivo `.docx` pode ainda existir em disco (se o volume persistir), mas o `draftId` e metadados em memória foram perdidos. O re-upload é a única ação.
 
 ---
 
@@ -127,12 +154,26 @@ docker logs eiah-api --since 30m | grep "SIGTERM\|restart\|started"
 
 | Métrica | Onde observar | Alerta |
 |---|---|---|
+| `imob_intake_uploads_received_total` | Logs JSON do `eiah-api` (`event=upload_received`) ou `/metrics/prom` | Queda abrupta vs uso esperado = investigar upload/auth |
+| `imob_intake_drafts_created_total` | Logs JSON (`event=draft_created`) ou `/metrics/prom` | Divergência grande vs uploads recebidos = investigar parser/store |
+| `imob_intake_drafts_consumed_total` | Logs JSON (`event=draft_consumed`) ou `/metrics/prom` | Muito abaixo dos drafts criados = usuários não confirmando ou falha no fluxo |
+| `imob_intake_drafts_expired_total` | Logs JSON (`event=draft_expired`) ou `/metrics/prom` | Tendência de alta = revisar TTL, UX e estabilidade |
+| `imob_intake_cleanup_candidates_total` | Logs JSON (`event=upload_retention_candidates`) ou `/metrics/prom` | Crescimento contínuo em dry-run = planejar janela de delete efetivo |
+| `imob_intake_cleanup_failures_total` | Logs JSON (`event=upload_retention_failed`) ou `/metrics/prom` | > 0 = investigar storage/delete |
+| `imob_intake_storage_provider_mode_total` | Logs JSON (`event=storage_provider_mode`) ou `/metrics/prom` | `mode=object` nesta build deve ser tratado como NO-GO |
+| `imob_intake_object_storage_gate_failures_total` | Logs JSON (`event=object_storage_gate_failed`) ou `/metrics/prom` | > 0 em ambiente não planejado = revisar config |
 | `imob-intake.case_created` | Logs do `eiah-api` (JSON structured) | 0 por hora durante horário de uso = investigar |
 | `imob-intake.run_not_success_skip` | Logs do `eiah-api` | > 5 por hora = verificar se confirm não está rodando |
 | `imob-intake.idempotent_skip_existing_case` | Logs do `eiah-api` | Normal (re-envio do mesmo doc); > 10/h = verificar loop |
 | Tamanho de `uploads/` | `du -sh /app/uploads` no container | > 1 GB = atenção; > 5 GB = cleanup manual |
 | Jobs em `imobRunCompletedQueue` (failed) | Redis / BullMQ dashboard | > 0 = investigar (3 retries já foram esgotados) |
 | Runs com `status=pending` em `imob.contract.intake` | SQL abaixo | > 0 = bug (confirm deve criar com success) |
+
+**Leitura operacional adicional:**
+- `imob_intake_uploads_received_total` é o proxy mínimo de uploads/dia do piloto.
+- `imob_intake_draft_store_mode_total` evidencia o modo ativo (`memory|redis`) sem expor payload.
+- `imob_intake_storage_provider_mode_total` evidencia `local|object`.
+- `imob_intake_object_storage_gate_failures_total` materializa o status NO-GO do object storage quando `STORAGE_PROVIDER=object` falha fechado.
 
 ```sql
 -- Runs de intake em status inesperado (deve retornar 0)
@@ -157,10 +198,10 @@ Condições para promover de **piloto controlado** para **produção geral**:
 
 | Critério | Status | Condição |
 |---|---|---|
-| Object storage integrado (S3/GCS) | ❌ Pendente P1 | Obrigatório antes de multi-instância |
-| Draft durável em Redis | ❌ Pendente P2 | Recomendado antes de escala |
-| Auto-delete de uploads | ❌ Pendente P2 | Recomendado antes de escala |
-| Política de retenção definida | ❌ Pendente P2 | Decisão jurídica/produto |
+| Object storage ativado com adapter real + smoke de bucket | ❌ NO-GO operacional nesta build | Fase 8.5 confirmou ausência de env/secrets seguros neste host; continua obrigatório antes de multi-instância |
+| Draft durável em Redis | ✅ Implementado para piloto | Requer Redis operacional e monitoração antes de escala |
+| Auto-delete de uploads | ✅ Implementado em modo seguro | Exige `UPLOAD_CLEANUP_ENABLED=true`; `dry-run` continua recomendado no piloto |
+| Política de retenção definida | ✅ Definida tecnicamente para o piloto | Janela padrão `30 dias`, sujeita a revisão jurídico/produto |
 | SLO de 7 dias de piloto sem incidente P1 | ⏳ A validar | 7 dias de piloto estável |
 | Volume validado (> 50 uploads/semana) | ⏳ A validar | Baseline de carga real |
 

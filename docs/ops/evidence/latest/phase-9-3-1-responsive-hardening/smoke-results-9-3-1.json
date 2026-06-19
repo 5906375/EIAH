@@ -1,0 +1,177 @@
+{
+  "timestamp": "2026-06-19T11:38:17.239Z",
+  "checks": [
+    {
+      "name": "[1440x900] URL = /app/imob/chat",
+      "ok": true,
+      "details": "ok"
+    },
+    {
+      "name": "[1440x900] grid width ≥ 1436px",
+      "ok": true,
+      "details": "1438px"
+    },
+    {
+      "name": "[1440x900] sidebar não esmagando chat",
+      "ok": true,
+      "details": "ok (sidebar display=flex, w=280px)"
+    },
+    {
+      "name": "[1440x900] textarea visível no viewport",
+      "ok": true,
+      "details": "y=363px, viewport=900px → visível"
+    },
+    {
+      "name": "[1280x800] URL = /app/imob/chat",
+      "ok": true,
+      "details": "ok"
+    },
+    {
+      "name": "[1280x800] grid width ≥ 1276px",
+      "ok": true,
+      "details": "1278px"
+    },
+    {
+      "name": "[1280x800] sidebar não esmagando chat",
+      "ok": true,
+      "details": "ok (sidebar display=flex, w=280px)"
+    },
+    {
+      "name": "[1280x800] textarea visível no viewport",
+      "ok": true,
+      "details": "y=363px, viewport=800px → visível"
+    },
+    {
+      "name": "[1024x768] URL = /app/imob/chat",
+      "ok": true,
+      "details": "ok"
+    },
+    {
+      "name": "[1024x768] grid width ≥ 1020px",
+      "ok": true,
+      "details": "1022px"
+    },
+    {
+      "name": "[1024x768] sidebar não esmagando chat",
+      "ok": true,
+      "details": "ok (sidebar display=flex, w=280px)"
+    },
+    {
+      "name": "[1024x768] textarea visível no viewport",
+      "ok": true,
+      "details": "y=363px, viewport=768px → visível"
+    },
+    {
+      "name": "[1024x768] context panel toggle presente",
+      "ok": true,
+      "details": "y=730px"
+    },
+    {
+      "name": "[768x1024] URL = /app/imob/chat",
+      "ok": true,
+      "details": "ok"
+    },
+    {
+      "name": "[768x1024] grid width ≥ 764px",
+      "ok": true,
+      "details": "766px"
+    },
+    {
+      "name": "[768x1024] sidebar não esmagando chat",
+      "ok": true,
+      "details": "ok (sidebar display=none, w=0px)"
+    },
+    {
+      "name": "[768x1024] textarea visível no viewport",
+      "ok": true,
+      "details": "y=803px, viewport=1024px → visível"
+    },
+    {
+      "name": "[768x1024] context panel toggle presente",
+      "ok": true,
+      "details": "y=986px"
+    },
+    {
+      "name": "[390x844] URL = /app/imob/chat",
+      "ok": true,
+      "details": "ok"
+    },
+    {
+      "name": "[390x844] grid width ≥ 386px",
+      "ok": true,
+      "details": "388px"
+    },
+    {
+      "name": "[390x844] sidebar não esmagando chat",
+      "ok": true,
+      "details": "ok (sidebar display=none, w=0px)"
+    },
+    {
+      "name": "[390x844] textarea visível no viewport",
+      "ok": true,
+      "details": "y=754px, viewport=844px → visível"
+    },
+    {
+      "name": "[390x844] context panel toggle presente",
+      "ok": true,
+      "details": "y=825px"
+    },
+    {
+      "name": "xl:grid-cols-[280px,minmax(0,1fr),360px] preservado",
+      "ok": true,
+      "details": "locked by test"
+    },
+    {
+      "name": "hidden lg:flex no sidebar",
+      "ok": true,
+      "details": "sidebar responsive"
+    },
+    {
+      "name": "Painel contextual toggle presente",
+      "ok": true,
+      "details": "mobile toggle"
+    },
+    {
+      "name": "IMOB Conversation Workbench no header",
+      "ok": true,
+      "details": "eyebrow text"
+    },
+    {
+      "name": "Document Intake / IMOB v2.1",
+      "ok": true,
+      "details": "title"
+    },
+    {
+      "name": "Piloto controlado",
+      "ok": true,
+      "details": "status label"
+    },
+    {
+      "name": "sem max-w-6xl no main",
+      "ok": true,
+      "details": "main classes from 9.3"
+    }
+  ],
+  "screenshots": [
+    {
+      "label": "after-1440x900",
+      "path": "/home/jusall/projects/EIAH_BUILDER/docs/ops/evidence/latest/phase-9-3-1-responsive-hardening/after-1440x900.png"
+    },
+    {
+      "label": "after-1280x800",
+      "path": "/home/jusall/projects/EIAH_BUILDER/docs/ops/evidence/latest/phase-9-3-1-responsive-hardening/after-1280x800.png"
+    },
+    {
+      "label": "after-1024x768",
+      "path": "/home/jusall/projects/EIAH_BUILDER/docs/ops/evidence/latest/phase-9-3-1-responsive-hardening/after-1024x768.png"
+    },
+    {
+      "label": "after-768x1024",
+      "path": "/home/jusall/projects/EIAH_BUILDER/docs/ops/evidence/latest/phase-9-3-1-responsive-hardening/after-768x1024.png"
+    },
+    {
+      "label": "after-390x844",
+      "path": "/home/jusall/projects/EIAH_BUILDER/docs/ops/evidence/latest/phase-9-3-1-responsive-hardening/after-390x844.png"
+    }
+  ]
+}

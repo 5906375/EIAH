@@ -1,0 +1,150 @@
+{
+  "timestamp": "2026-06-19T12:10:50.824Z",
+  "checks": [
+    {
+      "name": "grid cols xl:grid-cols-[280px,minmax(0,1fr),360px] preservada",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "sidebar hidden + lg:flex preservados",
+      "ok": true,
+      "details": "found (both classes)"
+    },
+    {
+      "name": "Painel contextual toggle preservado",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Piloto controlado preservado",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Document Intake / IMOB v2.1 preservado",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "IMOB Conversation Workbench preservado",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Descrição técnica da sidebar REMOVIDA",
+      "ok": true,
+      "details": "absent (correct)"
+    },
+    {
+      "name": "Descrição técnica do main REMOVIDA",
+      "ok": true,
+      "details": "absent (correct)"
+    },
+    {
+      "name": "Chip 'Chat central preservado' REMOVIDO",
+      "ok": true,
+      "details": "absent (correct)"
+    },
+    {
+      "name": "Descrição técnica do painel contextual REMOVIDA",
+      "ok": true,
+      "details": "absent (correct)"
+    },
+    {
+      "name": "Empty state simplificado: 'Sem intake ativo'",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Context panel title: 'Resumo do intake'",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Header compacto: py-2 aplicado (sem py-4 no imob chat route)",
+      "ok": true,
+      "details": "py-2 class found"
+    },
+    {
+      "name": "Sem dados hardcoded (João, Maria, valores, matrícula)",
+      "ok": true,
+      "details": "clean"
+    },
+    {
+      "name": "[1440x900] URL = /app/imob/chat",
+      "ok": true,
+      "details": "http://localhost:5173/app/imob/chat"
+    },
+    {
+      "name": "[1440x900] Header compacto (py≤10px)",
+      "ok": true,
+      "details": "pt=6.8px pb=6.8px"
+    },
+    {
+      "name": "[1440x900] textarea visível no viewport",
+      "ok": true,
+      "details": "y=299px, viewport=900px → visível"
+    },
+    {
+      "name": "[1280x800] URL = /app/imob/chat",
+      "ok": true,
+      "details": "http://localhost:5173/app/imob/chat"
+    },
+    {
+      "name": "[1280x800] Header compacto (py≤10px)",
+      "ok": true,
+      "details": "pt=6.8px pb=6.8px"
+    },
+    {
+      "name": "[1280x800] textarea visível no viewport",
+      "ok": true,
+      "details": "y=299px, viewport=800px → visível"
+    },
+    {
+      "name": "[1024x768] URL = /app/imob/chat",
+      "ok": true,
+      "details": "http://localhost:5173/app/imob/chat"
+    },
+    {
+      "name": "[1024x768] Header compacto (py≤10px)",
+      "ok": true,
+      "details": "pt=6.8px pb=6.8px"
+    },
+    {
+      "name": "[1024x768] textarea visível no viewport",
+      "ok": true,
+      "details": "y=299px, viewport=768px → visível"
+    },
+    {
+      "name": "[768x1024] URL = /app/imob/chat",
+      "ok": true,
+      "details": "http://localhost:5173/app/imob/chat"
+    },
+    {
+      "name": "[768x1024] Header compacto (py≤10px)",
+      "ok": true,
+      "details": "pt=6.8px pb=6.8px"
+    },
+    {
+      "name": "[768x1024] textarea visível no viewport",
+      "ok": true,
+      "details": "y=769px, viewport=1024px → visível"
+    },
+    {
+      "name": "[390x844] URL = /app/imob/chat",
+      "ok": true,
+      "details": "http://localhost:5173/app/imob/chat"
+    },
+    {
+      "name": "[390x844] Header compacto (py≤10px)",
+      "ok": true,
+      "details": "pt=6.8px pb=6.8px"
+    },
+    {
+      "name": "[390x844] textarea visível no viewport",
+      "ok": true,
+      "details": "y=643px, viewport=844px → visível"
+    }
+  ]
+}

@@ -1,0 +1,114 @@
+{
+  "timestamp": "2026-06-19T11:02:30.650Z",
+  "checks": [
+    {
+      "name": "[POS] page.route() NÃO usado",
+      "ok": true,
+      "details": "zero interceptações de /session/context"
+    },
+    {
+      "name": "[POS] URL final = /app/imob/chat",
+      "ok": true,
+      "details": "/app/imob/chat"
+    },
+    {
+      "name": "[POS] screenshot salvo",
+      "ok": true,
+      "details": "pos-desktop-1440x900-v2.png"
+    },
+    {
+      "name": "[POS] \"Document Intake\" visível",
+      "ok": true,
+      "details": "ok"
+    },
+    {
+      "name": "[POS] \"IMOB v2.1\" visível",
+      "ok": true,
+      "details": "ok"
+    },
+    {
+      "name": "[POS] \"Piloto controlado\" no DOM",
+      "ok": true,
+      "details": "ok"
+    },
+    {
+      "name": "[POS] sem \"Quick actions\" card",
+      "ok": true,
+      "details": "chip row ok"
+    },
+    {
+      "name": "[POS] textarea compositor",
+      "ok": true,
+      "details": "ok"
+    },
+    {
+      "name": "[POS] textarea bg-transparent",
+      "ok": true,
+      "details": "rgba(0, 0, 0, 0)"
+    },
+    {
+      "name": "[POS] asides presentes",
+      "ok": true,
+      "details": "2"
+    },
+    {
+      "name": "[POS] sidebar gradient escuro",
+      "ok": true,
+      "details": "linear-gradient(rgb(9, 17, 29) 0%, rgb(16, 28, 43) 100%)"
+    },
+    {
+      "name": "[POS] grid xl 3 colunas",
+      "ok": true,
+      "details": "ok"
+    },
+    {
+      "name": "[POS] compositor rounded-[20px]",
+      "ok": true,
+      "details": "ok"
+    },
+    {
+      "name": "[POS] fullpage screenshot",
+      "ok": true,
+      "details": "pos-desktop-fullpage-v2.png"
+    },
+    {
+      "name": "[POS] sem 401/403 no console",
+      "ok": true,
+      "details": "ok"
+    },
+    {
+      "name": "[NEG BROWSER] sem IMOB → marketplace",
+      "ok": true,
+      "details": "/app/runs"
+    },
+    {
+      "name": "[NEG BROWSER] redireciona (marketplace ou runs)",
+      "ok": true,
+      "details": "/app/runs"
+    },
+    {
+      "name": "[NEG BROWSER] SMOKE NOIMOB tenant carregado",
+      "ok": false,
+      "details": "SMOKE TENANT FASE 9.2\n\nAgent Operations Console\n\nSMOKE WORKSPACE FASE 9.2\n\nRuns\nChat\nBilling\nMarketp"
+    },
+    {
+      "name": "[NEG BROWSER] screenshot",
+      "ok": true,
+      "details": "neg-browser-v2.png"
+    }
+  ],
+  "screenshots": [
+    {
+      "label": "pos-desktop-1440x900",
+      "path": "/home/jusall/projects/EIAH_BUILDER/docs/ops/evidence/latest/phase-9-2-auth-entitlement-smoke/pos-desktop-1440x900-v2.png"
+    },
+    {
+      "label": "pos-desktop-fullpage",
+      "path": "/home/jusall/projects/EIAH_BUILDER/docs/ops/evidence/latest/phase-9-2-auth-entitlement-smoke/pos-desktop-fullpage-v2.png"
+    },
+    {
+      "label": "neg-browser",
+      "path": "/home/jusall/projects/EIAH_BUILDER/docs/ops/evidence/latest/phase-9-2-auth-entitlement-smoke/neg-browser-v2.png"
+    }
+  ]
+}

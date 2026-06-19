@@ -1,0 +1,113 @@
+{
+  "timestamp": "2026-06-19T11:24:02.493Z",
+  "checks": [
+    {
+      "name": "URL = /app/imob/chat",
+      "ok": true,
+      "details": "/app/imob/chat"
+    },
+    {
+      "name": "Document Intake visível",
+      "ok": true,
+      "details": "yes"
+    },
+    {
+      "name": "IMOB v2.1 visível",
+      "ok": true,
+      "details": "yes"
+    },
+    {
+      "name": "Piloto controlado visível",
+      "ok": true,
+      "details": "yes"
+    },
+    {
+      "name": "IMOB Conversation Workbench no DOM (header compacto)",
+      "ok": true,
+      "details": "yes"
+    },
+    {
+      "name": "main sem max-w-6xl na rota chat",
+      "ok": true,
+      "details": "ok — classes: flex w-full flex-1 flex-col p-0"
+    },
+    {
+      "name": "main sem py-10 na rota chat",
+      "ok": true,
+      "details": "ok"
+    },
+    {
+      "name": "grid xl 3 colunas presente",
+      "ok": true,
+      "details": "yes"
+    },
+    {
+      "name": "sidebar gradient escuro",
+      "ok": true,
+      "details": "bg: linear-gradient(rgb(9, 17, 29) 0%, rgb(16, 28, 43) 100%)"
+    },
+    {
+      "name": "grid width > 1152px (quebrou max-w-6xl)",
+      "ok": true,
+      "details": "grid width: 1438px (max-w-6xl seria ~1120px)"
+    },
+    {
+      "name": "sem texto longo \"Base visual clara\" no header",
+      "ok": true,
+      "details": "ok — header compacto"
+    },
+    {
+      "name": "sem helperText \"Fundação visual\"",
+      "ok": true,
+      "details": "ok"
+    },
+    {
+      "name": "compositor rounded-[20px] presente",
+      "ok": true,
+      "details": "yes"
+    },
+    {
+      "name": "textarea bg transparente",
+      "ok": true,
+      "details": "bg: rgba(0, 0, 0, 0)"
+    },
+    {
+      "name": "sem 401/403 no console",
+      "ok": true,
+      "details": "Framing 'https://www.youtube.com/' violates the following Content Security Policy directive: \"defaul"
+    },
+    {
+      "name": "[1280] grid width > 1000px",
+      "ok": true,
+      "details": "grid width: 1278px"
+    },
+    {
+      "name": "[1280] main sem max-w-6xl",
+      "ok": true,
+      "details": "ok"
+    },
+    {
+      "name": "[mobile] Painel contextual toggle visível",
+      "ok": true,
+      "details": "yes"
+    }
+  ],
+  "screenshots": [
+    {
+      "label": "after-desktop-1440x900",
+      "path": "/home/jusall/projects/EIAH_BUILDER/docs/ops/evidence/latest/phase-9-3-saas-visual-parity-final/after-desktop-1440x900.png"
+    },
+    {
+      "label": "after-desktop-fullpage",
+      "path": "/home/jusall/projects/EIAH_BUILDER/docs/ops/evidence/latest/phase-9-3-saas-visual-parity-final/after-desktop-fullpage.png"
+    },
+    {
+      "label": "after-desktop-1280x800",
+      "path": "/home/jusall/projects/EIAH_BUILDER/docs/ops/evidence/latest/phase-9-3-saas-visual-parity-final/after-desktop-1280x800.png"
+    },
+    {
+      "label": "after-mobile-390x844",
+      "path": "/home/jusall/projects/EIAH_BUILDER/docs/ops/evidence/latest/phase-9-3-saas-visual-parity-final/after-mobile-390x844.png"
+    }
+  ]
+}

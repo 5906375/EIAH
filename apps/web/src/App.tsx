@@ -82,6 +82,7 @@ function Layout({
   const isImobSurface =
     location.pathname.startsWith("/app/imob") ||
     location.pathname.startsWith("/app/marketplace/imob");
+  const isImobChatRoute = location.pathname === "/app/imob/chat";
   const subtitle = isImobSurface ? "Imobiliaria Digital Command Center" : "Agent Operations Console";
   const roleProfile = session.experience?.roleProfile;
   const visibleNavItems = SHELL_NAV_ITEMS.filter((item) => {
@@ -98,16 +99,20 @@ function Layout({
 
       <div className="relative z-10 flex min-h-screen flex-col">
         <header className="sticky top-0 z-20 border-b border-white/10 bg-gradient-to-r from-surface-strong/80 via-surface/70 to-surface-strong/80 backdrop-blur-2xl">
-          <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
+          <div className={`mx-auto flex w-full max-w-6xl items-center justify-between px-6 ${isImobChatRoute ? "py-2" : "py-4"}`}>
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl bg-white/10 shadow-[0_6px_18px_rgba(15,23,42,0.45)]">
+              <div className={`flex items-center justify-center overflow-hidden bg-white/10 shadow-[0_6px_18px_rgba(15,23,42,0.45)] ${isImobChatRoute ? "h-8 w-8 rounded-xl" : "h-10 w-10 rounded-2xl"}`}>
                 <img src={logoUrl || eiahLogo} alt={`${brandName} logo`} className="h-full w-full object-cover" />
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.35em] text-accent">{brandName}</p>
-                <p className="text-sm font-medium text-muted-foreground">{subtitle}</p>
-                {showWorkspaceLabel ? (
-                  <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground/80">{workspaceLabel}</p>
+                {!isImobChatRoute ? (
+                  <>
+                    <p className="text-sm font-medium text-muted-foreground">{subtitle}</p>
+                    {showWorkspaceLabel ? (
+                      <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground/80">{workspaceLabel}</p>
+                    ) : null}
+                  </>
                 ) : null}
               </div>
             </div>
@@ -125,7 +130,7 @@ function Layout({
           </div>
         </header>
 
-        <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-10 sm:px-6">
+        <main className={isImobChatRoute ? "flex w-full flex-1 flex-col p-0" : "mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-10 sm:px-6"}>
           {children}
         </main>
       </div>

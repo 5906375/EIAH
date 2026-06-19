@@ -38,6 +38,7 @@ import { imobRouter } from "./routes/imob";
 import { helpRouter } from "./routes/help";
 import { startRunArchiveWorker } from "./workers/runArchiveWorker";
 import { startImobPostRunMutationWorker } from "./workers/imobPostRunMutationWorker";
+import { startUploadRetentionWorker } from "./workers/uploadRetentionWorker";
 
 
 const app = express();
@@ -112,6 +113,7 @@ if (process.env.NODE_ENV !== "test") {
   startRunEventOutboxProcessor();
   startTenantBillingReconciler();
   startRunArchiveWorker();
+  startUploadRetentionWorker();
   startImobPostRunMutationWorker();
   if (shouldStartWorker) {
     try {

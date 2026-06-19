@@ -26,6 +26,7 @@ import { finalizeHttpContractCleanup } from "./support/httpContractCleanup.js";
 import { processImobRunCompletedJob } from "../workers/imobPostRunMutationWorker.js";
 import { imobRunCompletedQueue } from "../queues/imobRunCompletedQueue.js";
 import { runAtivoUniversalQueue, runAtivoUniversalDLQ } from "@eiah/core";
+import { closeDraftStoreResources } from "../services/imob/intake/imobContractDraftService.js";
 
 // ─── Identifiers ──────────────────────────────────────────────────────────────
 
@@ -119,6 +120,7 @@ after(async () => {
   await prismaGlobal.workspace.deleteMany({ where: { tenantId } });
   await prismaGlobal.tenant.deleteMany({ where: { id: tenantId } });
   await closePrismaResources();
+  await closeDraftStoreResources();
   finalizeHttpContractCleanup();
   await imobRunCompletedQueue.close();
   await runAtivoUniversalQueue.close();
@@ -188,6 +190,7 @@ describe("IMOB Intake Lifecycle — UploadedDocument Persistence (Phase 5)", () 
     assert.equal(doc.agentSlug, "imob-intake");
     assert.equal(doc.mimeType, DOCX_MIME);
     assert.ok(doc.storageKey, "storageKey must be set");
+    assert.match(doc.storageKey, new RegExp(`^${tenantId}/${workspaceId}/`));
     assert.ok(doc.sizeBytes > 0, "sizeBytes must be positive");
   });
 

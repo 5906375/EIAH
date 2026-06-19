@@ -1,0 +1,119 @@
+{
+  "timestamp": "2026-06-19T11:00:09.948Z",
+  "checks": [
+    {
+      "name": "[POS] HTTP 200",
+      "ok": true,
+      "details": "status=200"
+    },
+    {
+      "name": "[POS] URL = /app/imob/chat",
+      "ok": false,
+      "details": "/app/marketplace/imob"
+    },
+    {
+      "name": "[POS] page.route() NÃO usado",
+      "ok": true,
+      "details": "sem interceptação de /session/context"
+    },
+    {
+      "name": "[POS] NÃO redirecionado para access/marketplace",
+      "ok": false,
+      "details": "redirecionado para: /app/marketplace/imob"
+    },
+    {
+      "name": "[POS] screenshot desktop salvo",
+      "ok": true,
+      "details": "pos-desktop-1440x900.png"
+    },
+    {
+      "name": "[POS] \"Document Intake\" visível",
+      "ok": false,
+      "details": "ausente"
+    },
+    {
+      "name": "[POS] \"IMOB v2.1\" visível",
+      "ok": false,
+      "details": "ausente"
+    },
+    {
+      "name": "[POS] \"Piloto controlado\" no DOM",
+      "ok": false,
+      "details": "ausente"
+    },
+    {
+      "name": "[POS] workbench carregado",
+      "ok": true,
+      "details": "ausente"
+    },
+    {
+      "name": "[POS] sem \"Quick actions\" card verboso",
+      "ok": true,
+      "details": "chip row ok"
+    },
+    {
+      "name": "[POS] textarea compositor",
+      "ok": false,
+      "details": "ausente"
+    },
+    {
+      "name": "[POS] 2 asides (sidebar + panel)",
+      "ok": true,
+      "details": "1 aside(s)"
+    },
+    {
+      "name": "[POS] sidebar gradient escuro",
+      "ok": false,
+      "details": "none"
+    },
+    {
+      "name": "[POS] grid xl 3 colunas",
+      "ok": false,
+      "details": "ausente"
+    },
+    {
+      "name": "[POS] sem 401/403 no console",
+      "ok": true,
+      "details": "ok"
+    },
+    {
+      "name": "[POS] fullpage screenshot",
+      "ok": true,
+      "details": "pos-desktop-fullpage.png"
+    },
+    {
+      "name": "[NEG BROWSER] redireciona para marketplace",
+      "ok": true,
+      "details": "/app/marketplace/imob"
+    },
+    {
+      "name": "[NEG BROWSER] NÃO chega em /app/imob/chat",
+      "ok": true,
+      "details": "guard funcionou"
+    },
+    {
+      "name": "[NEG BROWSER] marketplace carregada",
+      "ok": true,
+      "details": "marketplace ok"
+    },
+    {
+      "name": "[NEG BROWSER] screenshot redirect",
+      "ok": true,
+      "details": "neg-browser-redirect-marketplace.png"
+    }
+  ],
+  "screenshots": [
+    {
+      "label": "pos-desktop-1440x900",
+      "path": "/home/jusall/projects/EIAH_BUILDER/docs/ops/evidence/latest/phase-9-2-auth-entitlement-smoke/pos-desktop-1440x900.png"
+    },
+    {
+      "label": "pos-desktop-fullpage",
+      "path": "/home/jusall/projects/EIAH_BUILDER/docs/ops/evidence/latest/phase-9-2-auth-entitlement-smoke/pos-desktop-fullpage.png"
+    },
+    {
+      "label": "neg-browser-redirect",
+      "path": "/home/jusall/projects/EIAH_BUILDER/docs/ops/evidence/latest/phase-9-2-auth-entitlement-smoke/neg-browser-redirect-marketplace.png"
+    }
+  ]
+}

@@ -25,6 +25,7 @@ import { finalizeHttpContractCleanup } from "./support/httpContractCleanup.js";
 import { processImobRunCompletedJob } from "../workers/imobPostRunMutationWorker.js";
 import { imobRunCompletedQueue } from "../queues/imobRunCompletedQueue.js";
 import { runAtivoUniversalQueue, runAtivoUniversalDLQ } from "@eiah/core";
+import { closeDraftStoreResources } from "../services/imob/intake/imobContractDraftService.js";
 
 // ─── Identifiers ──────────────────────────────────────────────────────────────
 
@@ -88,6 +89,7 @@ after(async () => {
   await prismaGlobal.workspace.deleteMany({ where: { tenantId } });
   await prismaGlobal.tenant.deleteMany({ where: { id: tenantId } });
   await closePrismaResources();
+  await closeDraftStoreResources();
   finalizeHttpContractCleanup();
   await imobRunCompletedQueue.close();
   await runAtivoUniversalQueue.close();
@@ -167,6 +169,9 @@ describe("IMOB Intake Confirm Endpoint — Phase 4.6", () => {
   });
 
   it("CONF-06: worker processes confirmed run → ImobCase created", async () => {
+    await (prismaGlobal as any).imobCaseEvent.deleteMany({ where: { tenantId } });
+    await (prismaGlobal as any).imobCase.deleteMany({ where: { tenantId } });
+
     const { draftId } = await uploadDocx();
 
     const confirmRes = await request

@@ -103,12 +103,15 @@ import { extractLeaseContractFromText } from "../services/imob/intake/imobLeaseE
 import { classifyImobContract } from "../services/imob/intake/imobContractClassifier";
 import {
   createDraft,
-  getDraft,
-  deleteDraft,
-  DRAFT_TTL_MS,
+  consumeDraft,
+  restoreDraft,
 } from "../services/imob/intake/imobContractDraftService";
 import { persistBuffer } from "../services/storage";
 import { createUploadedDocument } from "../services/uploads";
+import {
+  IMOB_INTAKE_OBSERVABILITY_COUNTER,
+  recordImobIntakeObservabilityEvent,
+} from "../services/imob/intake/imobIntakeObservability";
 import { IMOB_DISPATCHER_ACTION_IDS } from "../services/imob/crm/imobCrmActionDispatcher";
 import {
   buildExportHash,
@@ -3666,7 +3669,11 @@ imobRouter.post("/chat/intake/upload", intakeUpload.single("file"), async (req: 
   try {
     const client = req.prisma;
     if (client) {
-      const persisted = await persistBuffer(file.buffer, file.originalname);
+      const persisted = await persistBuffer(file.buffer, file.originalname, {
+        tenantId,
+        workspaceId,
+        agentSlug: "imob-intake",
+      });
       const record = await createUploadedDocument({
         prisma: client,
         tenantId,
@@ -3702,7 +3709,7 @@ imobRouter.post("/chat/intake/upload", intakeUpload.single("file"), async (req: 
   const classification = classifyImobContract(extraction.lease, maskedText);
 
   // Build draft
-  const draft = createDraft({
+  const draft = await createDraft({
     tenantId,
     workspaceId,
     extractedLease: extraction.lease,
@@ -3717,6 +3724,12 @@ imobRouter.post("/chat/intake/upload", intakeUpload.single("file"), async (req: 
     ],
     pendingItems: extraction.pendingItems,
     riskFlags: extraction.riskFlags,
+  });
+
+  recordImobIntakeObservabilityEvent({
+    event: "upload_received",
+    payload: { source: "chat-imob" },
+    counterName: IMOB_INTAKE_OBSERVABILITY_COUNTER.UPLOADS_RECEIVED,
   });
 
   return res.status(201).json({
@@ -3743,24 +3756,32 @@ imobRouter.post("/chat/intake/confirm/:draftId", async (req: TenantAwareRequest,
     return res.status(400).json({ ok: false, reasonCode: "DRAFT_ID_MISSING", message: "draftId obrigatório" });
   }
 
-  const draft = getDraft(draftId);
-  if (!draft) {
+  const consumedDraft = await consumeDraft(draftId, { tenantId, workspaceId });
+  if (consumedDraft.status === "missing") {
+    recordImobIntakeObservabilityEvent({
+      event: "draft_expired",
+      payload: { source: "confirm" },
+      level: "warn",
+      counterName: IMOB_INTAKE_OBSERVABILITY_COUNTER.DRAFTS_EXPIRED,
+      counterLabels: { source: "confirm" },
+    });
     return res.status(409).json({ ok: false, reasonCode: "DRAFT_EXPIRED", message: "Draft expirado ou não encontrado" });
   }
 
-  // Validate scope — draft must belong to same tenant/workspace
-  if (draft.tenantId !== tenantId || draft.workspaceId !== workspaceId) {
+  if (consumedDraft.status === "scope_mismatch") {
     return res.status(403).json({
       ok: false,
       reasonCode: "DRAFT_SCOPE_MISMATCH",
       message: "Draft não pertence a este tenant/workspace",
     });
   }
+  const draft = consumedDraft.draft;
 
   // Validate actionId is in dispatcher registry
   const actionId = draft.actionId;
   const isInRegistry = (IMOB_DISPATCHER_ACTION_IDS as readonly string[]).includes(actionId);
   if (!isInRegistry) {
+    await restoreDraft(draft);
     return res.status(200).json({
       ok: false,
       reasonCode: "ACTION_NOT_IN_REGISTRY",
@@ -3802,6 +3823,7 @@ imobRouter.post("/chat/intake/confirm/:draftId", async (req: TenantAwareRequest,
         err.message.includes("not assigned"));
 
     if (isAssignmentError) {
+      await restoreDraft(draft);
       return res.status(200).json({
         ok: false,
         reasonCode: "AGENT_NOT_ASSIGNED",
@@ -3809,6 +3831,7 @@ imobRouter.post("/chat/intake/confirm/:draftId", async (req: TenantAwareRequest,
         message: "Agente IMOB não está habilitado para este workspace",
       });
     }
+    await restoreDraft(draft);
     return res.status(500).json({
       ok: false,
       reasonCode: "RUN_CREATION_FAILED",
@@ -3816,18 +3839,35 @@ imobRouter.post("/chat/intake/confirm/:draftId", async (req: TenantAwareRequest,
     });
   }
 
-  // Draft consumed — delete after successful run creation
-  deleteDraft(draftId);
-
-  // Enqueue mutation job — worker creates ImobCase asynchronously
-  await enqueueImobRunCompleted({
-    runId: run.id,
-    tenantId,
-    workspaceId,
-    caseId: "INTAKE",
-    actionId,
-    eventRunId: run.id,
-  });
+  // Enqueue mutation job — worker creates ImobCase asynchronously.
+  // If enqueue fails after the run has been created, roll back the new run
+  // and restore the draft to avoid leaving the intake partially confirmed.
+  try {
+    await enqueueImobRunCompleted({
+      runId: run.id,
+      tenantId,
+      workspaceId,
+      caseId: "INTAKE",
+      actionId,
+      eventRunId: run.id,
+    });
+  } catch {
+    if (req.prisma) {
+      await req.prisma.run.deleteMany({
+        where: {
+          id: run.id,
+          tenantId,
+          workspaceId,
+        },
+      });
+    }
+    await restoreDraft(draft);
+    return res.status(500).json({
+      ok: false,
+      reasonCode: "RUN_QUEUE_FAILED",
+      message: "Falha ao enfileirar a mutação do caso",
+    });
+  }
 
   return res.status(201).json({
     ok: true,
