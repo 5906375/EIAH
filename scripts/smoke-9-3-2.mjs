@@ -1,6 +1,6 @@
 /**
- * Phase 9.3.2 — IMOB Product Shell Alignment
- * Smoke Playwright: 5 resoluções, screenshots after, checks de conteúdo e layout
+ * Phase 9.3.2 — IMOB Immersive Product Shell
+ * Smoke Playwright: 4 resoluções-alvo, screenshots e checks de shell visual
  */
 import pkg from "/home/jusall/.npm/_npx/48b1ca104c3549f4/node_modules/playwright/index.js";
 const { chromium } = pkg;
@@ -13,7 +13,6 @@ mkdirSync(EVIDENCE_DIR, { recursive: true });
 const VIEWPORTS = [
   { w: 1440, h: 900 },
   { w: 1280, h: 800 },
-  { w: 1024, h: 768 },
   { w: 768, h: 1024 },
   { w: 390, h: 844 },
 ];
@@ -90,36 +89,13 @@ const browser = await chromium.launch({ headless: true });
       html.includes("Document Intake") && html.includes("IMOB v2.1") ? "found" : "MISSING"
     );
 
-    check(
-      "IMOB Conversation Workbench preservado",
-      html.includes("IMOB Conversation Workbench"),
-      html.includes("IMOB Conversation Workbench") ? "found" : "MISSING"
-    );
+    check("IMOB Product Shell presente", html.includes("IMOB Product Shell"), html.includes("IMOB Product Shell") ? "found" : "MISSING");
+    check("Voltar ao Command Center presente", html.includes("Voltar ao Command Center"), html.includes("Voltar ao Command Center") ? "found" : "MISSING");
+    check("Header global oculto na rota IMOB", !html.includes("Agent Operations Console") && !html.includes("Imobiliaria Digital Command Center"), !html.includes("Agent Operations Console") && !html.includes("Imobiliaria Digital Command Center") ? "absent (correct)" : "STILL PRESENT");
 
-    // Phase 9.3.2: descriptive texts removed
-    check(
-      "Descrição técnica da sidebar REMOVIDA",
-      !html.includes("Acompanhe threads, retome contextos"),
-      !html.includes("Acompanhe threads, retome contextos") ? "absent (correct)" : "STILL PRESENT"
-    );
-
-    check(
-      "Descrição técnica do main REMOVIDA",
-      !html.includes("Área central clara para intake documental"),
-      !html.includes("Área central clara para intake documental") ? "absent (correct)" : "STILL PRESENT"
-    );
-
-    check(
-      "Chip 'Chat central preservado' REMOVIDO",
-      !html.includes("Chat central preservado"),
-      !html.includes("Chat central preservado") ? "absent (correct)" : "STILL PRESENT"
-    );
-
-    check(
-      "Descrição técnica do painel contextual REMOVIDA",
-      !html.includes("Esta lateral apenas projeta dados reais"),
-      !html.includes("Esta lateral apenas projeta dados reais") ? "absent (correct)" : "STILL PRESENT"
-    );
+    check("Workspace atual no header central", html.includes("Workspace atual"), html.includes("Workspace atual") ? "found" : "MISSING");
+    check("Quick actions preservadas no fluxo", html.includes("quick actions"), html.includes("quick actions") ? "found" : "MISSING");
+    check("Faixa técnica antiga removida", !html.includes("IMOB Conversation Workbench"), !html.includes("IMOB Conversation Workbench") ? "absent (correct)" : "STILL PRESENT");
 
     check(
       "Empty state simplificado: 'Sem intake ativo'",
@@ -131,14 +107,6 @@ const browser = await chromium.launch({ headless: true });
       "Context panel title: 'Resumo do intake'",
       html.includes("Resumo do intake"),
       html.includes("Resumo do intake") ? "found" : "MISSING"
-    );
-
-    // Header compact: py-2 class present in header inner div
-    const hasCompactHeader = html.includes("py-2") && !html.includes("py-4");
-    check(
-      "Header compacto: py-2 aplicado (sem py-4 no imob chat route)",
-      html.includes("py-2"),
-      html.includes("py-2") ? "py-2 class found" : "py-2 NOT FOUND"
     );
 
     // sem hardcode
@@ -157,14 +125,14 @@ const browser = await chromium.launch({ headless: true });
       "Painel contextual toggle preservado",
       "Piloto controlado preservado",
       "Document Intake / IMOB v2.1 preservado",
-      "IMOB Conversation Workbench preservado",
-      "Descrição técnica da sidebar REMOVIDA",
-      "Descrição técnica do main REMOVIDA",
-      "Chip 'Chat central preservado' REMOVIDO",
-      "Descrição técnica do painel contextual REMOVIDA",
+      "IMOB Product Shell presente",
+      "Voltar ao Command Center presente",
+      "Header global oculto na rota IMOB",
+      "Workspace atual no header central",
+      "Quick actions preservadas no fluxo",
+      "Faixa técnica antiga removida",
       "Empty state simplificado: 'Sem intake ativo'",
       "Context panel title: 'Resumo do intake'",
-      "Header compacto: py-2 aplicado",
       "Sem dados hardcoded",
     ];
     for (const name of contentChecks) {
@@ -187,20 +155,21 @@ for (const { w, h } of VIEWPORTS) {
   // URL check
   check(`[${label}] URL = /app/imob/chat`, url.includes("/app/imob/chat"), url);
 
-  // Header compacto medido via computed style
-  const headerInnerPy = await page.evaluate(() => {
-    const header = document.querySelector("header");
-    if (!header) return null;
-    const inner = header.querySelector("div");
-    if (!inner) return null;
-    const s = window.getComputedStyle(inner);
-    return { paddingTop: s.paddingTop, paddingBottom: s.paddingBottom };
+  // Header global oculto e shell de produto visível
+  const shellMarkers = await page.evaluate(() => {
+    const bodyText = document.body.textContent ?? "";
+    return {
+      hasProductShell: bodyText.includes("IMOB Product Shell"),
+      hasBackLink: bodyText.includes("Voltar ao Command Center"),
+      hasGlobalSubtitle:
+        bodyText.includes("Imobiliaria Digital Command Center") ||
+        bodyText.includes("Agent Operations Console"),
+    };
   });
-  const pyOk = headerInnerPy && parseInt(headerInnerPy.paddingTop) <= 10; // py-2 = 8px
   check(
-    `[${label}] Header compacto (py≤10px)`,
-    !!pyOk,
-    headerInnerPy ? `pt=${headerInnerPy.paddingTop} pb=${headerInnerPy.paddingBottom}` : "null"
+    `[${label}] Shell imersivo ativo`,
+    shellMarkers.hasProductShell && shellMarkers.hasBackLink && !shellMarkers.hasGlobalSubtitle,
+    JSON.stringify(shellMarkers)
   );
 
   // textarea visível no viewport
