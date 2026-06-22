@@ -4547,6 +4547,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       .map((step) => `${step.question.replace(/\?$/, "")}: ${String(contractInterviewState.answers[step.id])}`);
     return lines;
   }, [contractInterviewState]);
+  const chatLaneClassName = "mx-auto w-full xl:max-w-[82%]";
   return (
     <>
       <ImobWorkbenchShell
@@ -4690,31 +4691,34 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                 })
               )}
             </div>
+            </div>
         </div>
       }
       main={
         <article className="relative flex min-h-[70vh] flex-col bg-[linear-gradient(180deg,#f8fafc_0%,#eef4fb_100%)] lg:min-h-0">
-            <header className="border-b border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f6fafe_100%)] px-4 py-4 sm:px-6">
-              <div className="flex items-center justify-between gap-3">
+            <header className="border-b border-slate-200/80 bg-white/70 px-4 py-3 backdrop-blur sm:px-6">
+              <div className={`${chatLaneClassName} flex items-center justify-between gap-3`}>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">
-                      Document Intake
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                      Workspace atual
                     </p>
-                    <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.16em] text-cyan-900 shadow-sm">
-                      IMOB v2.1
-                    </span>
-                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.16em] text-amber-900 shadow-sm">
-                      Piloto controlado
+                    <span className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[10px] uppercase tracking-[0.16em] text-slate-700 shadow-sm">
+                      Chat ativo
                     </span>
                   </div>
-                  <p className="mt-0.5 text-[12px] text-slate-500">{workspaceLabel}</p>
+                  <p className="mt-1 text-[13px] font-medium text-slate-900">{workspaceLabel}</p>
+                  <p className="mt-0.5 text-[11px] text-slate-500">
+                    Conversa, intake e quick actions preservados no fluxo atual.
+                  </p>
                 </div>
               </div>
             </header>
             {imobAccessGate ? (
               <div className="border-b border-slate-200 bg-white/80 px-4 py-4 sm:px-6">
-                <ImobAccessGateCard gate={imobAccessGate} />
+                <div className={chatLaneClassName}>
+                  <ImobAccessGateCard gate={imobAccessGate} />
+                </div>
               </div>
             ) : null}
             {contractInterviewState?.contractType &&
@@ -4723,57 +4727,59 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
               contractInterviewState.status === "generating" ||
               contractInterviewState.status === "generated") ? (
               <div className="border-b border-slate-200 bg-white/80 px-4 py-3 sm:px-6">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-700">
-                  Rascunho de contrato • {getContractTypeLabel(contractInterviewState.contractType)}
-                </p>
-                <div className="mt-1 max-h-16 space-y-0.5 overflow-y-auto pr-1 text-[11px] text-slate-500">
-                  {contractDraftLines.slice(-8).map((line, idx) => (
-                    <p key={`draft-${idx}`} className="truncate">{line}</p>
-                  ))}
-                </div>
-                {contractInterviewState.status === "review" ? (
-                  <div className="mt-2 flex flex-col gap-2 border-t border-slate-200 pt-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex min-w-0 flex-1 items-center gap-2">
-                      <select
-                        value={draftEditFieldId}
-                        onChange={(event) => setDraftEditFieldId(event.target.value)}
-                        className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] text-slate-900 focus:border-accent/40 focus:outline-none"
-                      >
-                        {contractEditableFields.map((field) => (
-                          <option key={`draft-field-${field.id}`} value={field.id}>
-                            {field.label}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        onClick={() => void handleDraftEditFromPanel()}
-                        disabled={reviewActionLoading !== null || !draftEditFieldId}
-                        className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-slate-800 transition hover:border-accent/40 disabled:opacity-50"
-                      >
-                        Editar
-                      </button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => void handleDraftDeclineFromPanel()}
-                        disabled={reviewActionLoading !== null}
-                        className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-slate-800 transition hover:border-rose-300/40 disabled:opacity-50"
-                      >
-                        Nao gerar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleDraftConfirmFromPanel()}
-                        disabled={reviewActionLoading !== null}
-                        className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-cyan-900 transition hover:bg-cyan-100 disabled:opacity-50"
-                      >
-                        Confirmar e gerar
-                      </button>
-                    </div>
+                <div className={chatLaneClassName}>
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-700">
+                    Rascunho de contrato • {getContractTypeLabel(contractInterviewState.contractType)}
+                  </p>
+                  <div className="mt-1 max-h-16 space-y-0.5 overflow-y-auto pr-1 text-[11px] text-slate-500">
+                    {contractDraftLines.slice(-8).map((line, idx) => (
+                      <p key={`draft-${idx}`} className="truncate">{line}</p>
+                    ))}
                   </div>
-                ) : null}
+                  {contractInterviewState.status === "review" ? (
+                    <div className="mt-2 flex flex-col gap-2 border-t border-slate-200 pt-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        <select
+                          value={draftEditFieldId}
+                          onChange={(event) => setDraftEditFieldId(event.target.value)}
+                          className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] text-slate-900 focus:border-accent/40 focus:outline-none"
+                        >
+                          {contractEditableFields.map((field) => (
+                            <option key={`draft-field-${field.id}`} value={field.id}>
+                              {field.label}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => void handleDraftEditFromPanel()}
+                          disabled={reviewActionLoading !== null || !draftEditFieldId}
+                          className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-slate-800 transition hover:border-accent/40 disabled:opacity-50"
+                        >
+                          Editar
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void handleDraftDeclineFromPanel()}
+                          disabled={reviewActionLoading !== null}
+                          className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-slate-800 transition hover:border-rose-300/40 disabled:opacity-50"
+                        >
+                          Nao gerar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleDraftConfirmFromPanel()}
+                          disabled={reviewActionLoading !== null}
+                          className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-cyan-900 transition hover:bg-cyan-100 disabled:opacity-50"
+                        >
+                          Confirmar e gerar
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
               </div>
             ) : null}
 
@@ -4788,6 +4794,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
               }}
               className="flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5"
             >
+              <div className={chatLaneClassName}>
               {hiddenMessageCount > 0 ? (
                 <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-[0_10px_28px_rgba(15,23,42,0.05)]">
                   <p className="text-[11px] text-slate-600">
@@ -5572,79 +5579,82 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                   </div>
                 </div>
               ) : null}
+              </div>
             </div>
 
             <div className="sticky bottom-0 z-20 border-t border-slate-200 bg-white/96 px-4 py-3 backdrop-blur sm:px-6">
-              <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
-                {QUICK_PROMPTS.slice(0, 4).map((prompt) => (
-                  <button
-                    key={prompt.label}
-                    type="button"
-                    onClick={() => void sendMessageText(prompt.prompt, { displayText: prompt.label })}
-                    className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] tracking-[0.04em] text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
-                  >
-                    {prompt.label}
-                  </button>
-                ))}
-              </div>
-              <div className="flex items-center gap-2 rounded-[20px] border border-slate-200 bg-white p-2 shadow-[0_12px_30px_rgba(15,23,42,0.07)]">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
-                  multiple
-                  className="hidden"
-                  onChange={(event) => void handleDocumentUpload(event.target.files)}
-                />
-                <div ref={attachmentMenuRef} className="relative shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setAttachmentMenuOpen((prev) => !prev)}
-                    disabled={isGateBlocked || uploadingDocuments || state === "typing" || state === "executing"}
-                    aria-label="Abrir menu de anexos"
-                    title="Adicionar fotos e arquivos"
-                    className="flex h-[28px] w-[28px] items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-[11px] leading-none text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {uploadingDocuments ? "…" : "+"}
-                  </button>
-                  {attachmentMenuOpen && !(isGateBlocked || uploadingDocuments || state === "typing" || state === "executing") ? (
-                    <div className="absolute bottom-full left-0 z-30 mb-1 w-[180px] overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-[0_20px_60px_rgba(15,23,42,0.18)] backdrop-blur">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAttachmentMenuOpen(false);
-                          fileInputRef.current?.click();
-                        }}
-                        className="flex w-full items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-left text-[10px] text-slate-800 transition hover:bg-slate-100"
-                      >
-                        <span className="text-[10px] leading-none">📎</span>
-                        <span>Adicionar fotos e arquivos</span>
-                      </button>
-                    </div>
-                  ) : null}
+              <div className={chatLaneClassName}>
+                <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
+                  {QUICK_PROMPTS.slice(0, 4).map((prompt) => (
+                    <button
+                      key={prompt.label}
+                      type="button"
+                      onClick={() => void sendMessageText(prompt.prompt, { displayText: prompt.label })}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] tracking-[0.04em] text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+                    >
+                      {prompt.label}
+                    </button>
+                  ))}
                 </div>
-                <textarea
-                  value={input}
-                  onChange={(event) => setInput(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" && !event.shiftKey) {
-                      event.preventDefault();
-                      void handleSend();
-                    }
-                  }}
-                  placeholder={isGateBlocked ? "Acesso bloqueado para este workspace." : "Descreva uma operação imobiliária..."}
-                  rows={1}
-                  disabled={isGateBlocked}
-                  className="max-h-40 min-h-[46px] w-full resize-y rounded-[14px] bg-transparent px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => void handleSend()}
-                  disabled={isGateBlocked || uploadingDocuments || state === "typing" || state === "executing"}
-                  className="h-[46px] shrink-0 rounded-[14px] bg-slate-900 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {uploadingDocuments || state === "typing" || state === "executing" ? "Enviando..." : "Enviar"}
-                </button>
+                <div className="flex items-center gap-2 rounded-[20px] border border-slate-200 bg-white p-2 shadow-[0_12px_30px_rgba(15,23,42,0.07)]">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
+                    multiple
+                    className="hidden"
+                    onChange={(event) => void handleDocumentUpload(event.target.files)}
+                  />
+                  <div ref={attachmentMenuRef} className="relative shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setAttachmentMenuOpen((prev) => !prev)}
+                      disabled={isGateBlocked || uploadingDocuments || state === "typing" || state === "executing"}
+                      aria-label="Abrir menu de anexos"
+                      title="Adicionar fotos e arquivos"
+                      className="flex h-[28px] w-[28px] items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-[11px] leading-none text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {uploadingDocuments ? "…" : "+"}
+                    </button>
+                    {attachmentMenuOpen && !(isGateBlocked || uploadingDocuments || state === "typing" || state === "executing") ? (
+                      <div className="absolute bottom-full left-0 z-30 mb-1 w-[180px] overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-[0_20px_60px_rgba(15,23,42,0.18)] backdrop-blur">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAttachmentMenuOpen(false);
+                            fileInputRef.current?.click();
+                          }}
+                          className="flex w-full items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-left text-[10px] text-slate-800 transition hover:bg-slate-100"
+                        >
+                          <span className="text-[10px] leading-none">📎</span>
+                          <span>Adicionar fotos e arquivos</span>
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                  <textarea
+                    value={input}
+                    onChange={(event) => setInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        void handleSend();
+                      }
+                    }}
+                    placeholder={isGateBlocked ? "Acesso bloqueado para este workspace." : "Descreva uma operação imobiliária..."}
+                    rows={1}
+                    disabled={isGateBlocked}
+                    className="max-h-40 min-h-[46px] w-full resize-y rounded-[14px] bg-transparent px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleSend()}
+                    disabled={isGateBlocked || uploadingDocuments || state === "typing" || state === "executing"}
+                    className="h-[46px] shrink-0 rounded-[14px] bg-slate-900 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {uploadingDocuments || state === "typing" || state === "executing" ? "Enviando..." : "Enviar"}
+                  </button>
+                </div>
               </div>
             </div>
         </article>

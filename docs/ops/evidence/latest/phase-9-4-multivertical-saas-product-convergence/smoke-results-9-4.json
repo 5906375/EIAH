@@ -1,0 +1,110 @@
+{
+  "timestamp": "2026-06-19T16:39:17.906Z",
+  "checks": [
+    {
+      "name": "IMOB Product Shell presente",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Resumo do intake presente",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Resumo render-only via props presente",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Shell imersivo via props presente",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Nova sidebar presente",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Context helper presente",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Empty state preservado",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Textarea visível no desktop",
+      "ok": true,
+      "details": "{\"bodyText\":\"\\n    ←Voltar ao Command CenterIMOB Product ShellDocument Intake / IMOB v2.1IMOBPiloto controladoWorkspace dedicado para intake documental, validação contextual e exportação segura sem expor dados sensíveis.Experiência SaaS clara para a vertical IMOBChat central, quick actions e painel contextual continuam orientados por payload real e contratos já existentes.ExperiênciaShell imersivoPainel lateralResumo render-onlyIMOB WorkspaceConversas do intakeAcompanhe conversas e operações sem competir com o chat central.IMOBConversas0Threads ativas0+ Nova conversaVer operaçõesBusca rápidaConversas recentes0 itensNenhuma conversa registrada.Use “Nova conversa” para iniciar um fluxo IMOB neste workspace.Workspace atualChat ativoSmoke Workspace Fase 9.2Conversa, intake e quick actions preservados no fluxo atual.Nova conversa pronta.Captar imóvelGerar propostaIniciar contratoFechar venda+EnviarContexto IMOBResumo do intakeDados mascarados e destinos seguros emitidos pelo payload atual.Piloto controladoSem intake ativoInicie uma conversa no chat para ver o resumo do intake aqui.Resumo do intakeMostrar\\n    \\n  \\n\\n\",\"cardCount\":1,\"shellWidth\":1440,\"textareaY\":501,\"viewportH\":900}"
+    },
+    {
+      "name": "Shell amplo no desktop",
+      "ok": true,
+      "details": "{\"bodyText\":\"\\n    ←Voltar ao Command CenterIMOB Product ShellDocument Intake / IMOB v2.1IMOBPiloto controladoWorkspace dedicado para intake documental, validação contextual e exportação segura sem expor dados sensíveis.Experiência SaaS clara para a vertical IMOBChat central, quick actions e painel contextual continuam orientados por payload real e contratos já existentes.ExperiênciaShell imersivoPainel lateralResumo render-onlyIMOB WorkspaceConversas do intakeAcompanhe conversas e operações sem competir com o chat central.IMOBConversas0Threads ativas0+ Nova conversaVer operaçõesBusca rápidaConversas recentes0 itensNenhuma conversa registrada.Use “Nova conversa” para iniciar um fluxo IMOB neste workspace.Workspace atualChat ativoSmoke Workspace Fase 9.2Conversa, intake e quick actions preservados no fluxo atual.Nova conversa pronta.Captar imóvelGerar propostaIniciar contratoFechar venda+EnviarContexto IMOBResumo do intakeDados mascarados e destinos seguros emitidos pelo payload atual.Piloto controladoSem intake ativoInicie uma conversa no chat para ver o resumo do intake aqui.Resumo do intakeMostrar\\n    \\n  \\n\\n\",\"cardCount\":1,\"shellWidth\":1440,\"textareaY\":501,\"viewportH\":900}"
+    },
+    {
+      "name": "[1440x900] URL = /app/imob/chat",
+      "ok": true,
+      "details": "http://localhost:5173/app/imob/chat"
+    },
+    {
+      "name": "[1440x900] textarea visível",
+      "ok": true,
+      "details": "{\"visibleAsides\":2,\"textareaY\":501,\"viewportH\":900}"
+    },
+    {
+      "name": "[1440x900] shell desktop com 2 asides",
+      "ok": true,
+      "details": "{\"visibleAsides\":2,\"textareaY\":501,\"viewportH\":900}"
+    },
+    {
+      "name": "[1280x800] URL = /app/imob/chat",
+      "ok": true,
+      "details": "http://localhost:5173/app/imob/chat"
+    },
+    {
+      "name": "[1280x800] textarea visível",
+      "ok": true,
+      "details": "{\"visibleAsides\":2,\"textareaY\":501,\"viewportH\":800}"
+    },
+    {
+      "name": "[1280x800] shell desktop com 2 asides",
+      "ok": true,
+      "details": "{\"visibleAsides\":2,\"textareaY\":501,\"viewportH\":800}"
+    },
+    {
+      "name": "[768x1024] URL = /app/imob/chat",
+      "ok": true,
+      "details": "http://localhost:5173/app/imob/chat"
+    },
+    {
+      "name": "[768x1024] textarea visível",
+      "ok": true,
+      "details": "{\"visibleAsides\":0,\"textareaY\":1022,\"viewportH\":1024}"
+    },
+    {
+      "name": "[768x1024] sidebar continua oculta abaixo de lg",
+      "ok": true,
+      "details": "{\"visibleAsides\":0,\"textareaY\":1022,\"viewportH\":1024}"
+    },
+    {
+      "name": "[390x844] URL = /app/imob/chat",
+      "ok": true,
+      "details": "http://localhost:5173/app/imob/chat"
+    },
+    {
+      "name": "[390x844] textarea visível",
+      "ok": true,
+      "details": "{\"visibleAsides\":0,\"textareaY\":767,\"viewportH\":844}"
+    },
+    {
+      "name": "[390x844] sidebar continua oculta abaixo de lg",
+      "ok": true,
+      "details": "{\"visibleAsides\":0,\"textareaY\":767,\"viewportH\":844}"
+    }
+  ]
+}

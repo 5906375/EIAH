@@ -170,9 +170,11 @@ describe("ImobWorkbenchShell", () => {
       />,
     );
     assert.match(html, /xl:grid-cols-\[280px,minmax\(0,1fr\),360px\]/);
-    assert.match(html, /Painel contextual/);
-    assert.match(html, /IMOB Conversation Workbench/);
+    assert.match(html, /Resumo do intake/);
+    assert.match(html, /IMOB Product Shell/);
     assert.match(html, /Document Intake \/ IMOB v2\.1/);
     assert.match(html, /Piloto controlado/);
+    assert.match(html, /Voltar ao Command Center/);
+    assert.match(html, /Shell imersivo/);
   });
 });
