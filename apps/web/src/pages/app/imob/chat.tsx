@@ -65,8 +65,10 @@ import {
 } from "./chatProof";
 import { ThreadPanel } from "@/features/imob/ThreadPanel";
 import { ImobChatWidgets } from "@/features/imob/ImobChatWidgets";
-import { ImobWorkbenchContextPanel } from "@/features/imob/ImobWorkbenchContextPanel";
 import { ImobWorkbenchShell } from "@/features/imob/ImobWorkbenchShell";
+import { VerticalSelectorBar } from "@/features/workbench/vertical-chat/VerticalSelectorBar";
+import { ReactiveContextPanel } from "@/features/workbench/vertical-chat/ReactiveContextPanel";
+import type { VerticalId, VerticalSelectorItem } from "@/features/workbench/vertical-chat/VerticalChatTypes";
 import { extractImobWorkbenchIntakeContext } from "@/features/imob/imobWorkbenchContext";
 import { KnowledgeCard, type KnowledgeAction } from "@/features/imob/KnowledgeCard";
 import { ImobKnowledgeViewer } from "@/features/imob/ImobKnowledgeViewer";
@@ -1745,6 +1747,7 @@ const ImobChatPage: React.FC = () => {
   const [selectedThreadId, setSelectedThreadId] = React.useState<string | null>(null);
   const [showThreadPanel, setShowThreadPanel] = React.useState(false);
   const [showWorkbenchContextPanel, setShowWorkbenchContextPanel] = React.useState(false);
+  const [activeVerticalId, setActiveVerticalId] = React.useState<VerticalId>("imob");
   const [conversationSearch, setConversationSearch] = React.useState("");
   const [historyLoading, setHistoryLoading] = React.useState(true);
   const [historyLimit, setHistoryLimit] = React.useState(HISTORY_PAGE_SIZE);
@@ -4548,6 +4551,10 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     return lines;
   }, [contractInterviewState]);
   const chatLaneClassName = "mx-auto w-full xl:max-w-[82%]";
+  const VERTICAL_SELECTOR_ITEMS: VerticalSelectorItem[] = [
+    { id: "imob",  label: "IMOB",  state: "active",  color: "#5DCAA5" },
+    { id: "legal", label: "LEGAL", state: "preview", color: "#7F77DD", tooltip: "Em breve" },
+  ];
   return (
     <>
       <ImobWorkbenchShell
@@ -4711,6 +4718,13 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                   <p className="mt-0.5 text-[11px] text-slate-500">
                     Conversa, intake e quick actions preservados no fluxo atual.
                   </p>
+                  <div className="mt-2">
+                    <VerticalSelectorBar
+                      verticals={VERTICAL_SELECTOR_ITEMS}
+                      activeVerticalId={activeVerticalId}
+                      onSelect={setActiveVerticalId}
+                    />
+                  </div>
                 </div>
               </div>
             </header>
@@ -5660,12 +5674,15 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         </article>
       }
       contextPanel={
-        <ImobWorkbenchContextPanel
-          state={workbenchContextState}
-          intakeContext={workbenchIntakeContext}
-          commandCenterHref={workbenchCommandCenterHref}
-          funnelHref={workbenchFunnelHref}
-          runArchiveHref={workbenchRunArchiveHref}
+        <ReactiveContextPanel
+          activeVerticalId={activeVerticalId}
+          imobProps={{
+            state: workbenchContextState,
+            intakeContext: workbenchIntakeContext,
+            commandCenterHref: workbenchCommandCenterHref,
+            funnelHref: workbenchFunnelHref,
+            runArchiveHref: workbenchRunArchiveHref,
+          }}
         />
       }
       isContextPanelOpen={showWorkbenchContextPanel}

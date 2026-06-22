@@ -1,0 +1,228 @@
+{
+  "date": "2026-06-20T09:39:30.254Z",
+  "total": 44,
+  "passed": 44,
+  "failed": 0,
+  "results": [
+    {
+      "name": "Desktop largo — URL permanece /app/imob/chat",
+      "ok": true,
+      "details": "http://localhost:5173/app/imob/chat"
+    },
+    {
+      "name": "Desktop largo — \"Document Intake\" presente (shell hero)",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Desktop largo — \"IMOB Product Shell\" presente",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Desktop largo — VerticalSelectorBar (role=tablist) presente",
+      "ok": true,
+      "details": "found=true"
+    },
+    {
+      "name": "Desktop largo — pill IMOB com aria-selected=true",
+      "ok": true,
+      "details": "ariaSelectedPresent=true"
+    },
+    {
+      "name": "Desktop largo — pill LEGAL com aria-disabled=true",
+      "ok": true,
+      "details": "ariaDisabledPresent=true"
+    },
+    {
+      "name": "Desktop largo — pill LEGAL tem texto \"Em breve\"",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Desktop largo — pill LEGAL tem borda tracejada (border-dashed)",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Desktop largo — pill J-360 ausente no tablist (assert negativo)",
+      "ok": true,
+      "details": "j360InTablist=false"
+    },
+    {
+      "name": "Desktop largo — painel IMOB \"Contexto IMOB\" visível",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Desktop largo — grid 3 colunas presente",
+      "ok": true,
+      "details": "found=true"
+    },
+    {
+      "name": "Desktop largo — textarea presente",
+      "ok": true,
+      "details": "exists=true y=528 viewH=900"
+    },
+    {
+      "name": "Desktop largo — sidebar com \"Conversas do intake\"",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Desktop largo — J-360 ausente no DOM em estado IMOB padrão",
+      "ok": true,
+      "details": "j360Found=false"
+    },
+    {
+      "name": "Desktop médio — URL permanece /app/imob/chat",
+      "ok": true,
+      "details": "http://localhost:5173/app/imob/chat"
+    },
+    {
+      "name": "Desktop médio — \"Document Intake\" presente (shell hero)",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Desktop médio — \"IMOB Product Shell\" presente",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Desktop médio — VerticalSelectorBar (role=tablist) presente",
+      "ok": true,
+      "details": "found=true"
+    },
+    {
+      "name": "Desktop médio — pill IMOB com aria-selected=true",
+      "ok": true,
+      "details": "ariaSelectedPresent=true"
+    },
+    {
+      "name": "Desktop médio — pill LEGAL com aria-disabled=true",
+      "ok": true,
+      "details": "ariaDisabledPresent=true"
+    },
+    {
+      "name": "Desktop médio — pill LEGAL tem texto \"Em breve\"",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Desktop médio — pill LEGAL tem borda tracejada (border-dashed)",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Desktop médio — pill J-360 ausente no tablist (assert negativo)",
+      "ok": true,
+      "details": "j360InTablist=false"
+    },
+    {
+      "name": "Desktop médio — painel IMOB \"Contexto IMOB\" visível",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Desktop médio — grid 3 colunas presente",
+      "ok": true,
+      "details": "found=true"
+    },
+    {
+      "name": "Desktop médio — textarea presente",
+      "ok": true,
+      "details": "exists=true y=512 viewH=800"
+    },
+    {
+      "name": "Desktop médio — sidebar com \"Conversas do intake\"",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Desktop médio — J-360 ausente no DOM em estado IMOB padrão",
+      "ok": true,
+      "details": "j360Found=false"
+    },
+    {
+      "name": "Mobile — URL permanece /app/imob/chat",
+      "ok": true,
+      "details": "http://localhost:5173/app/imob/chat"
+    },
+    {
+      "name": "Mobile — \"Document Intake\" presente (shell hero)",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Mobile — \"IMOB Product Shell\" presente",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Mobile — VerticalSelectorBar (role=tablist) presente",
+      "ok": true,
+      "details": "found=true"
+    },
+    {
+      "name": "Mobile — pill IMOB com aria-selected=true",
+      "ok": true,
+      "details": "ariaSelectedPresent=true"
+    },
+    {
+      "name": "Mobile — pill LEGAL com aria-disabled=true",
+      "ok": true,
+      "details": "ariaDisabledPresent=true"
+    },
+    {
+      "name": "Mobile — pill LEGAL tem texto \"Em breve\"",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Mobile — pill LEGAL tem borda tracejada (border-dashed)",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Mobile — pill J-360 ausente no tablist (assert negativo)",
+      "ok": true,
+      "details": "j360InTablist=false"
+    },
+    {
+      "name": "Mobile — textarea presente",
+      "ok": true,
+      "details": "exists=true y=673 viewH=844"
+    },
+    {
+      "name": "Mobile — accordion \"Resumo do intake\" visível",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "Mobile — sidebar colapsada em mobile",
+      "ok": true,
+      "details": "visibleAsideWidths=[]"
+    },
+    {
+      "name": "Mobile — J-360 ausente no DOM em estado IMOB padrão",
+      "ok": true,
+      "details": "j360Found=false"
+    },
+    {
+      "name": "LegalContextPanel — pill LEGAL está disabled (preview)",
+      "ok": true,
+      "details": "reason=LEGAL pill disabled or missing"
+    },
+    {
+      "name": "LegalContextPanel — painel IMOB permanece após tentativa de click em LEGAL disabled",
+      "ok": true,
+      "details": "found"
+    },
+    {
+      "name": "LegalContextPanel — sem dados hardcoded no DOM",
+      "ok": true,
+      "details": "limpo"
+    }
+  ]
+}
