@@ -4551,35 +4551,36 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     <>
       <ImobWorkbenchShell
       sidebar={
-        <div className="flex h-full min-h-[70vh] flex-col bg-[linear-gradient(180deg,#09111d_0%,#101c2b_100%)] p-4 lg:min-h-0">
-            <div className="rounded-[24px] border border-cyan-400/15 bg-[linear-gradient(180deg,rgba(16,28,43,0.98)_0%,rgba(10,18,28,0.92)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_8px_24px_rgba(0,0,0,0.28)]">
-              <div className="flex items-start justify-between gap-3">
+        <div className="flex h-full min-h-[70vh] min-w-0 flex-col overflow-hidden bg-[linear-gradient(180deg,#0a1320_0%,#101b2a_100%)] px-3 py-3 lg:min-h-0">
+            <div className="shrink-0 rounded-[28px] border border-cyan-500/18 bg-[linear-gradient(180deg,rgba(15,27,42,0.96)_0%,rgba(10,18,28,0.9)_100%)] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_12px_26px_rgba(0,0,0,0.24)]">
+              <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.24em] text-cyan-200/85">IMOB Workspace</p>
-                  <p className="mt-1 text-sm font-medium text-white">Conversas e operações</p>
+                  <p className="text-[10px] font-medium uppercase tracking-[0.28em] text-cyan-200/80">IMOB Workspace</p>
+                  <p className="mt-1 text-[15px] font-semibold tracking-[-0.02em] text-white">Conversas do intake</p>
+                  <p className="mt-1 text-[11px] leading-5 text-slate-400">Acompanhe conversas e operações sem competir com o chat central.</p>
                 </div>
-                <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-cyan-100">
+                <span className="rounded-full border border-cyan-300/25 bg-cyan-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-cyan-100">
                   IMOB
                 </span>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
-                <div className="rounded-[14px] border border-white/10 bg-white/6 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-                  <p className="text-[10px] text-slate-400">Conversas</p>
-                  <p className="mt-1 text-[13px] font-semibold text-white">{filteredConversations.length}</p>
+              <div className="mt-4 grid grid-cols-2 gap-2 text-[11px]">
+                <div className="rounded-[18px] border border-white/8 bg-white/5 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Conversas</p>
+                  <p className="mt-2 text-[15px] font-semibold text-white">{filteredConversations.length}</p>
                 </div>
-                <div className="rounded-[14px] border border-white/10 bg-white/6 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-                  <p className="text-[10px] text-slate-400">Threads ativas</p>
-                  <p className="mt-1 text-[13px] font-semibold text-white">{activeThreadCount}</p>
+                <div className="rounded-[18px] border border-white/8 bg-white/5 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Threads ativas</p>
+                  <p className="mt-2 text-[15px] font-semibold text-white">{activeThreadCount}</p>
                 </div>
               </div>
             </div>
 
-            <div className="mt-3 space-y-3 border-b border-white/10 pb-3">
+            <div className="mt-3 shrink-0 rounded-[24px] border border-white/8 bg-white/[0.03] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
               <div className="flex items-center justify-between gap-2">
                 <button
                   type="button"
                   onClick={() => void handleNewConversation()}
-                  className="rounded-[14px] border border-white/12 bg-white/8 px-3 py-2 text-[10px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition hover:border-cyan-400/30 hover:bg-white/12"
+                  className="rounded-full border border-white/20 bg-white/10 px-3.5 py-2 text-[10px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-cyan-400/30 hover:bg-white/16"
                 >
                   + Nova conversa
                 </button>
@@ -4590,21 +4591,29 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                     setShowThreadPanel(next);
                     trackUxEvent(next ? "thread_panel_opened" : "thread_panel_hidden", { activeThreads: activeThreadCount });
                   }}
-                  className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[10px] tracking-[0.12em] text-slate-300 transition hover:border-white/25 hover:text-white"
+                  className="rounded-full border border-white/10 bg-slate-950/30 px-3 py-2 text-[10px] tracking-[0.14em] text-slate-300 transition hover:border-white/20 hover:bg-white/8 hover:text-white"
                 >
                   {shouldShowThreadPanel ? "Ocultar operações" : "Ver operações"}
                 </button>
               </div>
 
+              <div className="mt-3 rounded-[18px] border border-white/8 bg-slate-950/20 px-3 py-2.5">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Busca rápida</p>
               <input
                 value={conversationSearch}
                 onChange={(event) => setConversationSearch(event.target.value)}
-                placeholder="Buscar conversa..."
-                className="w-full rounded-[14px] border border-white/10 bg-white/5 px-3 py-2 text-[10px] text-white placeholder:text-slate-500 focus:border-cyan-400/30 focus:bg-white/8 focus:outline-none"
+                  placeholder="Buscar conversa..."
+                  className="mt-2 w-full rounded-[14px] border border-white/8 bg-white/6 px-3 py-2 text-[11px] text-white placeholder:text-slate-500 focus:border-cyan-400/30 focus:bg-white/10 focus:outline-none"
               />
+              </div>
 
               {conversationId && shouldShowThreadPanel ? (
-                <div className="max-h-56 overflow-y-auto pr-1">
+                <div className="mt-3 rounded-[18px] border border-white/8 bg-slate-950/18 p-2">
+                  <div className="mb-2 flex items-center justify-between px-1">
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Operações da conversa</p>
+                    <span className="text-[10px] text-slate-400">{activeThreadCount} ativas</span>
+                  </div>
+                  <div className="max-h-56 overflow-y-auto pr-1">
                   <ThreadPanel
                     threads={threads}
                     selectedThreadId={selectedThreadId}
@@ -4635,15 +4644,21 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                       return runId ? `/app/billing?runId=${encodeURIComponent(runId)}` : null;
                     }}
                   />
+                  </div>
                 </div>
               ) : null}
             </div>
 
-            <div className="mt-3 flex-1 space-y-2 overflow-y-auto pr-1">
+            <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-hidden">
+              <div className="mb-2 flex items-center justify-between px-1">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Conversas recentes</p>
+                <span className="text-[10px] text-slate-500">{filteredConversations.length} itens</span>
+              </div>
+              <div className="flex-1 min-h-0 space-y-2 overflow-y-auto pr-1">
               {filteredConversations.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-3 py-4">
-                  <p className="text-[10px] font-medium text-white">Nenhuma conversa registrada.</p>
-                  <p className="mt-1 text-[10px] text-slate-400">Use “Nova conversa” para iniciar um fluxo IMOB neste workspace.</p>
+                <div className="rounded-[22px] border border-dashed border-white/10 bg-white/[0.03] px-3 py-4">
+                  <p className="text-[11px] font-medium text-white">Nenhuma conversa registrada.</p>
+                  <p className="mt-1 text-[10px] leading-5 text-slate-400">Use “Nova conversa” para iniciar um fluxo IMOB neste workspace.</p>
                 </div>
               ) : (
                 filteredConversations.map((conversation) => {
@@ -4653,14 +4668,21 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                       key={conversation.conversationId}
                       type="button"
                       onClick={() => void loadConversation(conversation.conversationId)}
-                      className={`w-full rounded-xl border px-3 py-2.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
+                      className={`w-full rounded-[18px] border px-3 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
                         selected
-                          ? "border-cyan-300/20 bg-cyan-400/10 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
-                          : "border-white/6 text-slate-300 hover:bg-black/25 hover:text-white"
+                          ? "border-cyan-300/24 bg-cyan-400/12 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_10px_24px_rgba(8,145,178,0.08)]"
+                          : "border-white/6 bg-white/[0.02] text-slate-300 hover:border-white/12 hover:bg-white/[0.05] hover:text-white"
                       }`}
                     >
-                      <p className="truncate text-[10px] font-medium">{conversation.title}</p>
-                      <p className="mt-1 truncate text-[10px] opacity-80">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="truncate text-[11px] font-medium">{conversation.title}</p>
+                        {selected ? (
+                          <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2 py-0.5 text-[9px] uppercase tracking-[0.16em] text-cyan-100">
+                            Ativa
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1.5 truncate text-[10px] leading-5 opacity-80">
                         {conversation.lastMessagePreview ?? "Sem mensagens ainda"}
                       </p>
                     </button>
