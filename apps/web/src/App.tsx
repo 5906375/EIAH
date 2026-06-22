@@ -93,44 +93,49 @@ function Layout({
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background" style={{ ["--brand-primary" as string]: brandPrimary }}>
-      <div className="pointer-events-none absolute inset-0 bg-hero-grid" />
-      <div className="pointer-events-none absolute -left-24 top-20 h-72 w-72 rounded-full bg-accent/30 blur-3xl" />
-      <div className="pointer-events-none absolute right-0 top-60 h-64 w-64 rounded-full bg-fuchsia-500/20 blur-3xl" />
+      {!isImobChatRoute ? <div className="pointer-events-none absolute inset-0 bg-hero-grid" /> : null}
+      {!isImobChatRoute ? <div className="pointer-events-none absolute -left-24 top-20 h-72 w-72 rounded-full bg-accent/30 blur-3xl" /> : null}
+      {!isImobChatRoute ? <div className="pointer-events-none absolute right-0 top-60 h-64 w-64 rounded-full bg-fuchsia-500/20 blur-3xl" /> : null}
+      {isImobChatRoute ? (
+        <>
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#e9f1fb_0%,#f6f9fc_38%,#f4f7fb_100%)]" />
+          <div className="pointer-events-none absolute left-0 top-0 h-[28rem] w-[28rem] rounded-full bg-cyan-200/35 blur-3xl" />
+          <div className="pointer-events-none absolute right-0 top-32 h-[24rem] w-[24rem] rounded-full bg-sky-100/70 blur-3xl" />
+        </>
+      ) : null}
 
-      <div className="relative z-10 flex min-h-screen flex-col">
-        <header className="sticky top-0 z-20 border-b border-white/10 bg-gradient-to-r from-surface-strong/80 via-surface/70 to-surface-strong/80 backdrop-blur-2xl">
-          <div className={`mx-auto flex w-full max-w-6xl items-center justify-between px-6 ${isImobChatRoute ? "py-2" : "py-4"}`}>
-            <div className="flex items-center gap-3">
-              <div className={`flex items-center justify-center overflow-hidden bg-white/10 shadow-[0_6px_18px_rgba(15,23,42,0.45)] ${isImobChatRoute ? "h-8 w-8 rounded-xl" : "h-10 w-10 rounded-2xl"}`}>
-                <img src={logoUrl || eiahLogo} alt={`${brandName} logo`} className="h-full w-full object-cover" />
+      <div className={isImobChatRoute ? "relative z-10 flex h-screen min-h-screen flex-col overflow-hidden" : "relative z-10 flex min-h-screen flex-col"}>
+        {!isImobChatRoute ? (
+          <header className="sticky top-0 z-20 border-b border-white/10 bg-gradient-to-r from-surface-strong/80 via-surface/70 to-surface-strong/80 backdrop-blur-2xl">
+            <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl bg-white/10 shadow-[0_6px_18px_rgba(15,23,42,0.45)]">
+                  <img src={logoUrl || eiahLogo} alt={`${brandName} logo`} className="h-full w-full object-cover" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.35em] text-accent">{brandName}</p>
+                  <p className="text-sm font-medium text-muted-foreground">{subtitle}</p>
+                  {showWorkspaceLabel ? (
+                    <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground/80">{workspaceLabel}</p>
+                  ) : null}
+                </div>
               </div>
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.35em] text-accent">{brandName}</p>
-                {!isImobChatRoute ? (
-                  <>
-                    <p className="text-sm font-medium text-muted-foreground">{subtitle}</p>
-                    {showWorkspaceLabel ? (
-                      <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground/80">{workspaceLabel}</p>
-                    ) : null}
-                  </>
-                ) : null}
-              </div>
+              {showNavigation ? (
+                <nav className="flex max-w-[80vw] items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/5 px-2 py-1 no-scrollbar sm:max-w-none">
+                  {visibleNavItems.map((item) => (
+                    <NavigationLink
+                      key={item.to}
+                      to={item.to}
+                      label={item.label}
+                    />
+                  ))}
+                </nav>
+              ) : null}
             </div>
-            {showNavigation ? (
-              <nav className="flex max-w-[80vw] items-center gap-1 overflow-x-auto rounded-full border border-white/10 bg-white/5 px-2 py-1 no-scrollbar sm:max-w-none">
-                {visibleNavItems.map((item) => (
-                  <NavigationLink
-                    key={item.to}
-                    to={item.to}
-                    label={item.label}
-                  />
-                ))}
-              </nav>
-            ) : null}
-          </div>
-        </header>
+          </header>
+        ) : null}
 
-        <main className={isImobChatRoute ? "flex w-full flex-1 flex-col p-0" : "mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-10 sm:px-6"}>
+        <main className={isImobChatRoute ? "flex w-full min-h-0 flex-1 flex-col overflow-hidden p-0" : "mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-10 sm:px-6"}>
           {children}
         </main>
       </div>

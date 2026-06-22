@@ -1,0 +1,100 @@
+{
+  "timestamp": "2026-06-19T16:55:15.409Z",
+  "checks": [
+    {
+      "name": "[375x667] hero compacto",
+      "ok": true,
+      "details": "{\"workspaceTop\":160,\"textareaY\":550,\"viewportH\":667,\"descriptionVisible\":false,\"hasShellLabel\":true,\"hasStatus\":true}"
+    },
+    {
+      "name": "[375x667] textarea visível cedo",
+      "ok": true,
+      "details": "{\"workspaceTop\":160,\"textareaY\":550,\"viewportH\":667,\"descriptionVisible\":false,\"hasShellLabel\":true,\"hasStatus\":true}"
+    },
+    {
+      "name": "[375x667] descrição longa oculta",
+      "ok": true,
+      "details": "{\"workspaceTop\":160,\"textareaY\":550,\"viewportH\":667,\"descriptionVisible\":false,\"hasShellLabel\":true,\"hasStatus\":true}"
+    },
+    {
+      "name": "[375x667] título e status preservados",
+      "ok": true,
+      "details": "{\"workspaceTop\":160,\"textareaY\":550,\"viewportH\":667,\"descriptionVisible\":false,\"hasShellLabel\":true,\"hasStatus\":true}"
+    },
+    {
+      "name": "[1440x900] URL = /app/imob/chat",
+      "ok": true,
+      "details": "http://localhost:5173/app/imob/chat"
+    },
+    {
+      "name": "[1440x900] textarea visível",
+      "ok": true,
+      "details": "{\"textareaY\":497,\"viewportH\":900,\"visibleAsides\":2}"
+    },
+    {
+      "name": "[1440x900] desktop preservado com 2 asides",
+      "ok": true,
+      "details": "{\"textareaY\":497,\"viewportH\":900,\"visibleAsides\":2}"
+    },
+    {
+      "name": "[1280x800] URL = /app/imob/chat",
+      "ok": true,
+      "details": "http://localhost:5173/app/imob/chat"
+    },
+    {
+      "name": "[1280x800] textarea visível",
+      "ok": true,
+      "details": "{\"textareaY\":497,\"viewportH\":800,\"visibleAsides\":2}"
+    },
+    {
+      "name": "[1280x800] desktop preservado com 2 asides",
+      "ok": true,
+      "details": "{\"textareaY\":497,\"viewportH\":800,\"visibleAsides\":2}"
+    },
+    {
+      "name": "[768x1024] URL = /app/imob/chat",
+      "ok": true,
+      "details": "http://localhost:5173/app/imob/chat"
+    },
+    {
+      "name": "[768x1024] textarea visível",
+      "ok": true,
+      "details": "{\"textareaY\":1018,\"viewportH\":1024,\"visibleAsides\":0}"
+    },
+    {
+      "name": "[768x1024] sidebar continua oculta abaixo de lg",
+      "ok": true,
+      "details": "{\"textareaY\":1018,\"viewportH\":1024,\"visibleAsides\":0}"
+    },
+    {
+      "name": "[390x844] URL = /app/imob/chat",
+      "ok": true,
+      "details": "http://localhost:5173/app/imob/chat"
+    },
+    {
+      "name": "[390x844] textarea visível",
+      "ok": true,
+      "details": "{\"textareaY\":673,\"viewportH\":844,\"visibleAsides\":0}"
+    },
+    {
+      "name": "[390x844] sidebar continua oculta abaixo de lg",
+      "ok": true,
+      "details": "{\"textareaY\":673,\"viewportH\":844,\"visibleAsides\":0}"
+    },
+    {
+      "name": "[375x667] URL = /app/imob/chat",
+      "ok": true,
+      "details": "http://localhost:5173/app/imob/chat"
+    },
+    {
+      "name": "[375x667] textarea visível",
+      "ok": true,
+      "details": "{\"textareaY\":550,\"viewportH\":667,\"visibleAsides\":0}"
+    },
+    {
+      "name": "[375x667] sidebar continua oculta abaixo de lg",
+      "ok": true,
+      "details": "{\"textareaY\":550,\"viewportH\":667,\"visibleAsides\":0}"
+    }
+  ]
+}

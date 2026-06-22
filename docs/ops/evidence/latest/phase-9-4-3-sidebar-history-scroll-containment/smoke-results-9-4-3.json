@@ -1,0 +1,165 @@
+{
+  "timestamp": "2026-06-19T17:49:34.660Z",
+  "checks": [
+    {
+      "name": "[1440x900] URL = /app/imob/chat",
+      "ok": true,
+      "details": "http://127.0.0.1:5173/app/imob/chat"
+    },
+    {
+      "name": "[1440x900] textarea visível",
+      "ok": true,
+      "details": "{\"dpr\":1,\"viewportH\":900,\"textareaY\":497,\"visibleAsides\":2,\"shell\":{\"clientHeight\":602,\"scrollHeight\":602},\"sidebarRoot\":{\"clientHeight\":602,\"scrollHeight\":602,\"minHeight\":\"0px\"},\"sidebarInner\":{\"clientHeight\":602,\"scrollHeight\":602,\"overflowY\":\"hidden\"},\"listScroller\":{\"clientHeight\":181,\"scrollHeight\":1766,\"overflowY\":\"auto\"},\"article\":{\"clientHeight\":278,\"scrollHeight\":278}}"
+    },
+    {
+      "name": "[1440x900] zoom headless 100%",
+      "ok": true,
+      "details": "{\"dpr\":1,\"viewportH\":900,\"textareaY\":497,\"visibleAsides\":2,\"shell\":{\"clientHeight\":602,\"scrollHeight\":602},\"sidebarRoot\":{\"clientHeight\":602,\"scrollHeight\":602,\"minHeight\":\"0px\"},\"sidebarInner\":{\"clientHeight\":602,\"scrollHeight\":602,\"overflowY\":\"hidden\"},\"listScroller\":{\"clientHeight\":181,\"scrollHeight\":1766,\"overflowY\":\"auto\"},\"article\":{\"clientHeight\":278,\"scrollHeight\":278}}"
+    },
+    {
+      "name": "[1440x900] histórico rola internamente",
+      "ok": true,
+      "details": "{\"dpr\":1,\"viewportH\":900,\"textareaY\":497,\"visibleAsides\":2,\"shell\":{\"clientHeight\":602,\"scrollHeight\":602},\"sidebarRoot\":{\"clientHeight\":602,\"scrollHeight\":602,\"minHeight\":\"0px\"},\"sidebarInner\":{\"clientHeight\":602,\"scrollHeight\":602,\"overflowY\":\"hidden\"},\"listScroller\":{\"clientHeight\":181,\"scrollHeight\":1766,\"overflowY\":\"auto\"},\"article\":{\"clientHeight\":278,\"scrollHeight\":278}}"
+    },
+    {
+      "name": "[1440x900] sidebar não expande o shell",
+      "ok": true,
+      "details": "{\"dpr\":1,\"viewportH\":900,\"textareaY\":497,\"visibleAsides\":2,\"shell\":{\"clientHeight\":602,\"scrollHeight\":602},\"sidebarRoot\":{\"clientHeight\":602,\"scrollHeight\":602,\"minHeight\":\"0px\"},\"sidebarInner\":{\"clientHeight\":602,\"scrollHeight\":602,\"overflowY\":\"hidden\"},\"listScroller\":{\"clientHeight\":181,\"scrollHeight\":1766,\"overflowY\":\"auto\"},\"article\":{\"clientHeight\":278,\"scrollHeight\":278}}"
+    },
+    {
+      "name": "[1440x900] painel direito permanece alinhado",
+      "ok": true,
+      "details": "{\"dpr\":1,\"viewportH\":900,\"textareaY\":497,\"visibleAsides\":2,\"shell\":{\"clientHeight\":602,\"scrollHeight\":602},\"sidebarRoot\":{\"clientHeight\":602,\"scrollHeight\":602,\"minHeight\":\"0px\"},\"sidebarInner\":{\"clientHeight\":602,\"scrollHeight\":602,\"overflowY\":\"hidden\"},\"listScroller\":{\"clientHeight\":181,\"scrollHeight\":1766,\"overflowY\":\"auto\"},\"article\":{\"clientHeight\":278,\"scrollHeight\":278}}"
+    },
+    {
+      "name": "[1600x900] URL = /app/imob/chat",
+      "ok": true,
+      "details": "http://127.0.0.1:5173/app/imob/chat"
+    },
+    {
+      "name": "[1600x900] textarea visível",
+      "ok": true,
+      "details": "{\"dpr\":1,\"viewportH\":900,\"textareaY\":497,\"visibleAsides\":2,\"shell\":{\"clientHeight\":602,\"scrollHeight\":602},\"sidebarRoot\":{\"clientHeight\":602,\"scrollHeight\":602,\"minHeight\":\"0px\"},\"sidebarInner\":{\"clientHeight\":602,\"scrollHeight\":602,\"overflowY\":\"hidden\"},\"listScroller\":{\"clientHeight\":181,\"scrollHeight\":1766,\"overflowY\":\"auto\"},\"article\":{\"clientHeight\":278,\"scrollHeight\":278}}"
+    },
+    {
+      "name": "[1600x900] zoom headless 100%",
+      "ok": true,
+      "details": "{\"dpr\":1,\"viewportH\":900,\"textareaY\":497,\"visibleAsides\":2,\"shell\":{\"clientHeight\":602,\"scrollHeight\":602},\"sidebarRoot\":{\"clientHeight\":602,\"scrollHeight\":602,\"minHeight\":\"0px\"},\"sidebarInner\":{\"clientHeight\":602,\"scrollHeight\":602,\"overflowY\":\"hidden\"},\"listScroller\":{\"clientHeight\":181,\"scrollHeight\":1766,\"overflowY\":\"auto\"},\"article\":{\"clientHeight\":278,\"scrollHeight\":278}}"
+    },
+    {
+      "name": "[1600x900] histórico rola internamente",
+      "ok": true,
+      "details": "{\"dpr\":1,\"viewportH\":900,\"textareaY\":497,\"visibleAsides\":2,\"shell\":{\"clientHeight\":602,\"scrollHeight\":602},\"sidebarRoot\":{\"clientHeight\":602,\"scrollHeight\":602,\"minHeight\":\"0px\"},\"sidebarInner\":{\"clientHeight\":602,\"scrollHeight\":602,\"overflowY\":\"hidden\"},\"listScroller\":{\"clientHeight\":181,\"scrollHeight\":1766,\"overflowY\":\"auto\"},\"article\":{\"clientHeight\":278,\"scrollHeight\":278}}"
+    },
+    {
+      "name": "[1600x900] sidebar não expande o shell",
+      "ok": true,
+      "details": "{\"dpr\":1,\"viewportH\":900,\"textareaY\":497,\"visibleAsides\":2,\"shell\":{\"clientHeight\":602,\"scrollHeight\":602},\"sidebarRoot\":{\"clientHeight\":602,\"scrollHeight\":602,\"minHeight\":\"0px\"},\"sidebarInner\":{\"clientHeight\":602,\"scrollHeight\":602,\"overflowY\":\"hidden\"},\"listScroller\":{\"clientHeight\":181,\"scrollHeight\":1766,\"overflowY\":\"auto\"},\"article\":{\"clientHeight\":278,\"scrollHeight\":278}}"
+    },
+    {
+      "name": "[1600x900] painel direito permanece alinhado",
+      "ok": true,
+      "details": "{\"dpr\":1,\"viewportH\":900,\"textareaY\":497,\"visibleAsides\":2,\"shell\":{\"clientHeight\":602,\"scrollHeight\":602},\"sidebarRoot\":{\"clientHeight\":602,\"scrollHeight\":602,\"minHeight\":\"0px\"},\"sidebarInner\":{\"clientHeight\":602,\"scrollHeight\":602,\"overflowY\":\"hidden\"},\"listScroller\":{\"clientHeight\":181,\"scrollHeight\":1766,\"overflowY\":\"auto\"},\"article\":{\"clientHeight\":278,\"scrollHeight\":278}}"
+    },
+    {
+      "name": "[1920x1080] URL = /app/imob/chat",
+      "ok": true,
+      "details": "http://127.0.0.1:5173/app/imob/chat"
+    },
+    {
+      "name": "[1920x1080] textarea visível",
+      "ok": true,
+      "details": "{\"dpr\":1,\"viewportH\":1080,\"textareaY\":497,\"visibleAsides\":2,\"shell\":{\"clientHeight\":782,\"scrollHeight\":782},\"sidebarRoot\":{\"clientHeight\":782,\"scrollHeight\":782,\"minHeight\":\"0px\"},\"sidebarInner\":{\"clientHeight\":782,\"scrollHeight\":782,\"overflowY\":\"hidden\"},\"listScroller\":{\"clientHeight\":361,\"scrollHeight\":1766,\"overflowY\":\"auto\"},\"article\":{\"clientHeight\":278,\"scrollHeight\":278}}"
+    },
+    {
+      "name": "[1920x1080] zoom headless 100%",
+      "ok": true,
+      "details": "{\"dpr\":1,\"viewportH\":1080,\"textareaY\":497,\"visibleAsides\":2,\"shell\":{\"clientHeight\":782,\"scrollHeight\":782},\"sidebarRoot\":{\"clientHeight\":782,\"scrollHeight\":782,\"minHeight\":\"0px\"},\"sidebarInner\":{\"clientHeight\":782,\"scrollHeight\":782,\"overflowY\":\"hidden\"},\"listScroller\":{\"clientHeight\":361,\"scrollHeight\":1766,\"overflowY\":\"auto\"},\"article\":{\"clientHeight\":278,\"scrollHeight\":278}}"
+    },
+    {
+      "name": "[1920x1080] histórico rola internamente",
+      "ok": true,
+      "details": "{\"dpr\":1,\"viewportH\":1080,\"textareaY\":497,\"visibleAsides\":2,\"shell\":{\"clientHeight\":782,\"scrollHeight\":782},\"sidebarRoot\":{\"clientHeight\":782,\"scrollHeight\":782,\"minHeight\":\"0px\"},\"sidebarInner\":{\"clientHeight\":782,\"scrollHeight\":782,\"overflowY\":\"hidden\"},\"listScroller\":{\"clientHeight\":361,\"scrollHeight\":1766,\"overflowY\":\"auto\"},\"article\":{\"clientHeight\":278,\"scrollHeight\":278}}"
+    },
+    {
+      "name": "[1920x1080] sidebar não expande o shell",
+      "ok": true,
+      "details": "{\"dpr\":1,\"viewportH\":1080,\"textareaY\":497,\"visibleAsides\":2,\"shell\":{\"clientHeight\":782,\"scrollHeight\":782},\"sidebarRoot\":{\"clientHeight\":782,\"scrollHeight\":782,\"minHeight\":\"0px\"},\"sidebarInner\":{\"clientHeight\":782,\"scrollHeight\":782,\"overflowY\":\"hidden\"},\"listScroller\":{\"clientHeight\":361,\"scrollHeight\":1766,\"overflowY\":\"auto\"},\"article\":{\"clientHeight\":278,\"scrollHeight\":278}}"
+    },
+    {
+      "name": "[1920x1080] painel direito permanece alinhado",
+      "ok": true,
+      "details": "{\"dpr\":1,\"viewportH\":1080,\"textareaY\":497,\"visibleAsides\":2,\"shell\":{\"clientHeight\":782,\"scrollHeight\":782},\"sidebarRoot\":{\"clientHeight\":782,\"scrollHeight\":782,\"minHeight\":\"0px\"},\"sidebarInner\":{\"clientHeight\":782,\"scrollHeight\":782,\"overflowY\":\"hidden\"},\"listScroller\":{\"clientHeight\":361,\"scrollHeight\":1766,\"overflowY\":\"auto\"},\"article\":{\"clientHeight\":278,\"scrollHeight\":278}}"
+    },
+    {
+      "name": "[2048x1152] URL = /app/imob/chat",
+      "ok": true,
+      "details": "http://127.0.0.1:5173/app/imob/chat"
+    },
+    {
+      "name": "[2048x1152] textarea visível",
+      "ok": true,
+      "details": "{\"dpr\":1,\"viewportH\":1152,\"textareaY\":497,\"visibleAsides\":2,\"shell\":{\"clientHeight\":854,\"scrollHeight\":854},\"sidebarRoot\":{\"clientHeight\":854,\"scrollHeight\":854,\"minHeight\":\"0px\"},\"sidebarInner\":{\"clientHeight\":854,\"scrollHeight\":854,\"overflowY\":\"hidden\"},\"listScroller\":{\"clientHeight\":433,\"scrollHeight\":1766,\"overflowY\":\"auto\"},\"article\":{\"clientHeight\":278,\"scrollHeight\":278}}"
+    },
+    {
+      "name": "[2048x1152] zoom headless 100%",
+      "ok": true,
+      "details": "{\"dpr\":1,\"viewportH\":1152,\"textareaY\":497,\"visibleAsides\":2,\"shell\":{\"clientHeight\":854,\"scrollHeight\":854},\"sidebarRoot\":{\"clientHeight\":854,\"scrollHeight\":854,\"minHeight\":\"0px\"},\"sidebarInner\":{\"clientHeight\":854,\"scrollHeight\":854,\"overflowY\":\"hidden\"},\"listScroller\":{\"clientHeight\":433,\"scrollHeight\":1766,\"overflowY\":\"auto\"},\"article\":{\"clientHeight\":278,\"scrollHeight\":278}}"
+    },
+    {
+      "name": "[2048x1152] histórico rola internamente",
+      "ok": true,
+      "details": "{\"dpr\":1,\"viewportH\":1152,\"textareaY\":497,\"visibleAsides\":2,\"shell\":{\"clientHeight\":854,\"scrollHeight\":854},\"sidebarRoot\":{\"clientHeight\":854,\"scrollHeight\":854,\"minHeight\":\"0px\"},\"sidebarInner\":{\"clientHeight\":854,\"scrollHeight\":854,\"overflowY\":\"hidden\"},\"listScroller\":{\"clientHeight\":433,\"scrollHeight\":1766,\"overflowY\":\"auto\"},\"article\":{\"clientHeight\":278,\"scrollHeight\":278}}"
+    },
+    {
+      "name": "[2048x1152] sidebar não expande o shell",
+      "ok": true,
+      "details": "{\"dpr\":1,\"viewportH\":1152,\"textareaY\":497,\"visibleAsides\":2,\"shell\":{\"clientHeight\":854,\"scrollHeight\":854},\"sidebarRoot\":{\"clientHeight\":854,\"scrollHeight\":854,\"minHeight\":\"0px\"},\"sidebarInner\":{\"clientHeight\":854,\"scrollHeight\":854,\"overflowY\":\"hidden\"},\"listScroller\":{\"clientHeight\":433,\"scrollHeight\":1766,\"overflowY\":\"auto\"},\"article\":{\"clientHeight\":278,\"scrollHeight\":278}}"
+    },
+    {
+      "name": "[2048x1152] painel direito permanece alinhado",
+      "ok": true,
+      "details": "{\"dpr\":1,\"viewportH\":1152,\"textareaY\":497,\"visibleAsides\":2,\"shell\":{\"clientHeight\":854,\"scrollHeight\":854},\"sidebarRoot\":{\"clientHeight\":854,\"scrollHeight\":854,\"minHeight\":\"0px\"},\"sidebarInner\":{\"clientHeight\":854,\"scrollHeight\":854,\"overflowY\":\"hidden\"},\"listScroller\":{\"clientHeight\":433,\"scrollHeight\":1766,\"overflowY\":\"auto\"},\"article\":{\"clientHeight\":278,\"scrollHeight\":278}}"
+    },
+    {
+      "name": "[390x844] URL = /app/imob/chat",
+      "ok": true,
+      "details": "http://127.0.0.1:5173/app/imob/chat"
+    },
+    {
+      "name": "[390x844] textarea visível",
+      "ok": true,
+      "details": "{\"dpr\":1,\"viewportH\":844,\"textareaY\":673,\"visibleAsides\":0,\"shell\":{\"clientHeight\":644,\"scrollHeight\":644},\"sidebarRoot\":null,\"sidebarInner\":null,\"listScroller\":{\"clientHeight\":0,\"scrollHeight\":0,\"overflowY\":\"auto\"},\"article\":{\"clientHeight\":591,\"scrollHeight\":591}}"
+    },
+    {
+      "name": "[390x844] zoom headless 100%",
+      "ok": true,
+      "details": "{\"dpr\":1,\"viewportH\":844,\"textareaY\":673,\"visibleAsides\":0,\"shell\":{\"clientHeight\":644,\"scrollHeight\":644},\"sidebarRoot\":null,\"sidebarInner\":null,\"listScroller\":{\"clientHeight\":0,\"scrollHeight\":0,\"overflowY\":\"auto\"},\"article\":{\"clientHeight\":591,\"scrollHeight\":591}}"
+    },
+    {
+      "name": "[390x844] mobile preservado",
+      "ok": true,
+      "details": "{\"dpr\":1,\"viewportH\":844,\"textareaY\":673,\"visibleAsides\":0,\"shell\":{\"clientHeight\":644,\"scrollHeight\":644},\"sidebarRoot\":null,\"sidebarInner\":null,\"listScroller\":{\"clientHeight\":0,\"scrollHeight\":0,\"overflowY\":\"auto\"},\"article\":{\"clientHeight\":591,\"scrollHeight\":591}}"
+    },
+    {
+      "name": "[375x667] URL = /app/imob/chat",
+      "ok": true,
+      "details": "http://127.0.0.1:5173/app/imob/chat"
+    },
+    {
+      "name": "[375x667] textarea visível",
+      "ok": true,
+      "details": "{\"dpr\":1,\"viewportH\":667,\"textareaY\":512,\"visibleAsides\":0,\"shell\":{\"clientHeight\":518,\"scrollHeight\":520},\"sidebarRoot\":null,\"sidebarInner\":null,\"listScroller\":{\"clientHeight\":0,\"scrollHeight\":0,\"overflowY\":\"auto\"},\"article\":{\"clientHeight\":467,\"scrollHeight\":467}}"
+    },
+    {
+      "name": "[375x667] zoom headless 100%",
+      "ok": true,
+      "details": "{\"dpr\":1,\"viewportH\":667,\"textareaY\":512,\"visibleAsides\":0,\"shell\":{\"clientHeight\":518,\"scrollHeight\":520},\"sidebarRoot\":null,\"sidebarInner\":null,\"listScroller\":{\"clientHeight\":0,\"scrollHeight\":0,\"overflowY\":\"auto\"},\"article\":{\"clientHeight\":467,\"scrollHeight\":467}}"
+    },
+    {
+      "name": "[375x667] mobile preservado",
+      "ok": true,
+      "details": "{\"dpr\":1,\"viewportH\":667,\"textareaY\":512,\"visibleAsides\":0,\"shell\":{\"clientHeight\":518,\"scrollHeight\":520},\"sidebarRoot\":null,\"sidebarInner\":null,\"listScroller\":{\"clientHeight\":0,\"scrollHeight\":0,\"overflowY\":\"auto\"},\"article\":{\"clientHeight\":467,\"scrollHeight\":467}}"
+    }
+  ]
+}

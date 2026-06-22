@@ -65,8 +65,10 @@ import {
 } from "./chatProof";
 import { ThreadPanel } from "@/features/imob/ThreadPanel";
 import { ImobChatWidgets } from "@/features/imob/ImobChatWidgets";
-import { ImobWorkbenchContextPanel } from "@/features/imob/ImobWorkbenchContextPanel";
 import { ImobWorkbenchShell } from "@/features/imob/ImobWorkbenchShell";
+import { VerticalSelectorBar } from "@/features/workbench/vertical-chat/VerticalSelectorBar";
+import { ReactiveContextPanel } from "@/features/workbench/vertical-chat/ReactiveContextPanel";
+import type { VerticalId, VerticalSelectorItem } from "@/features/workbench/vertical-chat/VerticalChatTypes";
 import { extractImobWorkbenchIntakeContext } from "@/features/imob/imobWorkbenchContext";
 import { KnowledgeCard, type KnowledgeAction } from "@/features/imob/KnowledgeCard";
 import { ImobKnowledgeViewer } from "@/features/imob/ImobKnowledgeViewer";
@@ -1745,6 +1747,7 @@ const ImobChatPage: React.FC = () => {
   const [selectedThreadId, setSelectedThreadId] = React.useState<string | null>(null);
   const [showThreadPanel, setShowThreadPanel] = React.useState(false);
   const [showWorkbenchContextPanel, setShowWorkbenchContextPanel] = React.useState(false);
+  const [activeVerticalId, setActiveVerticalId] = React.useState<VerticalId>("imob");
   const [conversationSearch, setConversationSearch] = React.useState("");
   const [historyLoading, setHistoryLoading] = React.useState(true);
   const [historyLimit, setHistoryLimit] = React.useState(HISTORY_PAGE_SIZE);
@@ -4547,39 +4550,45 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       .map((step) => `${step.question.replace(/\?$/, "")}: ${String(contractInterviewState.answers[step.id])}`);
     return lines;
   }, [contractInterviewState]);
+  const chatLaneClassName = "mx-auto w-full xl:max-w-[82%]";
+  const VERTICAL_SELECTOR_ITEMS: VerticalSelectorItem[] = [
+    { id: "imob",  label: "IMOB",  state: "active",  color: "#5DCAA5" },
+    { id: "legal", label: "LEGAL", state: "preview", color: "#7F77DD", tooltip: "Em breve" },
+  ];
   return (
     <>
       <ImobWorkbenchShell
       sidebar={
-        <div className="flex h-full min-h-[70vh] flex-col bg-[linear-gradient(180deg,#09111d_0%,#101c2b_100%)] p-4 lg:min-h-0">
-            <div className="rounded-[24px] border border-cyan-400/15 bg-[linear-gradient(180deg,rgba(16,28,43,0.98)_0%,rgba(10,18,28,0.92)_100%)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_8px_24px_rgba(0,0,0,0.28)]">
-              <div className="flex items-start justify-between gap-3">
+        <div className="flex h-full min-h-[70vh] min-w-0 flex-col overflow-hidden bg-[linear-gradient(180deg,#0a1320_0%,#101b2a_100%)] px-3 py-3 lg:min-h-0">
+            <div className="shrink-0 rounded-[28px] border border-cyan-500/18 bg-[linear-gradient(180deg,rgba(15,27,42,0.96)_0%,rgba(10,18,28,0.9)_100%)] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_12px_26px_rgba(0,0,0,0.24)]">
+              <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-[11px] uppercase tracking-[0.24em] text-cyan-200/85">IMOB Workspace</p>
-                  <p className="mt-1 text-sm font-medium text-white">Conversas e operações</p>
+                  <p className="text-[10px] font-medium uppercase tracking-[0.28em] text-cyan-200/80">IMOB Workspace</p>
+                  <p className="mt-1 text-[15px] font-semibold tracking-[-0.02em] text-white">Conversas do intake</p>
+                  <p className="mt-1 text-[11px] leading-5 text-slate-400">Acompanhe conversas e operações sem competir com o chat central.</p>
                 </div>
-                <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-cyan-100">
+                <span className="rounded-full border border-cyan-300/25 bg-cyan-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-cyan-100">
                   IMOB
                 </span>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
-                <div className="rounded-[14px] border border-white/10 bg-white/6 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-                  <p className="text-[10px] text-slate-400">Conversas</p>
-                  <p className="mt-1 text-[13px] font-semibold text-white">{filteredConversations.length}</p>
+              <div className="mt-4 grid grid-cols-2 gap-2 text-[11px]">
+                <div className="rounded-[18px] border border-white/8 bg-white/5 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Conversas</p>
+                  <p className="mt-2 text-[15px] font-semibold text-white">{filteredConversations.length}</p>
                 </div>
-                <div className="rounded-[14px] border border-white/10 bg-white/6 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-                  <p className="text-[10px] text-slate-400">Threads ativas</p>
-                  <p className="mt-1 text-[13px] font-semibold text-white">{activeThreadCount}</p>
+                <div className="rounded-[18px] border border-white/8 bg-white/5 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Threads ativas</p>
+                  <p className="mt-2 text-[15px] font-semibold text-white">{activeThreadCount}</p>
                 </div>
               </div>
             </div>
 
-            <div className="mt-3 space-y-3 border-b border-white/10 pb-3">
+            <div className="mt-3 shrink-0 rounded-[24px] border border-white/8 bg-white/[0.03] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
               <div className="flex items-center justify-between gap-2">
                 <button
                   type="button"
                   onClick={() => void handleNewConversation()}
-                  className="rounded-[14px] border border-white/12 bg-white/8 px-3 py-2 text-[10px] font-medium text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition hover:border-cyan-400/30 hover:bg-white/12"
+                  className="rounded-full border border-white/20 bg-white/10 px-3.5 py-2 text-[10px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-cyan-400/30 hover:bg-white/16"
                 >
                   + Nova conversa
                 </button>
@@ -4590,21 +4599,29 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                     setShowThreadPanel(next);
                     trackUxEvent(next ? "thread_panel_opened" : "thread_panel_hidden", { activeThreads: activeThreadCount });
                   }}
-                  className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[10px] tracking-[0.12em] text-slate-300 transition hover:border-white/25 hover:text-white"
+                  className="rounded-full border border-white/10 bg-slate-950/30 px-3 py-2 text-[10px] tracking-[0.14em] text-slate-300 transition hover:border-white/20 hover:bg-white/8 hover:text-white"
                 >
                   {shouldShowThreadPanel ? "Ocultar operações" : "Ver operações"}
                 </button>
               </div>
 
+              <div className="mt-3 rounded-[18px] border border-white/8 bg-slate-950/20 px-3 py-2.5">
+                <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Busca rápida</p>
               <input
                 value={conversationSearch}
                 onChange={(event) => setConversationSearch(event.target.value)}
-                placeholder="Buscar conversa..."
-                className="w-full rounded-[14px] border border-white/10 bg-white/5 px-3 py-2 text-[10px] text-white placeholder:text-slate-500 focus:border-cyan-400/30 focus:bg-white/8 focus:outline-none"
+                  placeholder="Buscar conversa..."
+                  className="mt-2 w-full rounded-[14px] border border-white/8 bg-white/6 px-3 py-2 text-[11px] text-white placeholder:text-slate-500 focus:border-cyan-400/30 focus:bg-white/10 focus:outline-none"
               />
+              </div>
 
               {conversationId && shouldShowThreadPanel ? (
-                <div className="max-h-56 overflow-y-auto pr-1">
+                <div className="mt-3 rounded-[18px] border border-white/8 bg-slate-950/18 p-2">
+                  <div className="mb-2 flex items-center justify-between px-1">
+                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Operações da conversa</p>
+                    <span className="text-[10px] text-slate-400">{activeThreadCount} ativas</span>
+                  </div>
+                  <div className="max-h-56 overflow-y-auto pr-1">
                   <ThreadPanel
                     threads={threads}
                     selectedThreadId={selectedThreadId}
@@ -4635,15 +4652,21 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                       return runId ? `/app/billing?runId=${encodeURIComponent(runId)}` : null;
                     }}
                   />
+                  </div>
                 </div>
               ) : null}
             </div>
 
-            <div className="mt-3 flex-1 space-y-2 overflow-y-auto pr-1">
+            <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-hidden">
+              <div className="mb-2 flex items-center justify-between px-1">
+                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Conversas recentes</p>
+                <span className="text-[10px] text-slate-500">{filteredConversations.length} itens</span>
+              </div>
+              <div className="flex-1 min-h-0 space-y-2 overflow-y-auto pr-1">
               {filteredConversations.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 px-3 py-4">
-                  <p className="text-[10px] font-medium text-white">Nenhuma conversa registrada.</p>
-                  <p className="mt-1 text-[10px] text-slate-400">Use “Nova conversa” para iniciar um fluxo IMOB neste workspace.</p>
+                <div className="rounded-[22px] border border-dashed border-white/10 bg-white/[0.03] px-3 py-4">
+                  <p className="text-[11px] font-medium text-white">Nenhuma conversa registrada.</p>
+                  <p className="mt-1 text-[10px] leading-5 text-slate-400">Use “Nova conversa” para iniciar um fluxo IMOB neste workspace.</p>
                 </div>
               ) : (
                 filteredConversations.map((conversation) => {
@@ -4653,14 +4676,21 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                       key={conversation.conversationId}
                       type="button"
                       onClick={() => void loadConversation(conversation.conversationId)}
-                      className={`w-full rounded-xl border px-3 py-2.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
+                      className={`w-full rounded-[18px] border px-3 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
                         selected
-                          ? "border-cyan-300/20 bg-cyan-400/10 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
-                          : "border-white/6 text-slate-300 hover:bg-black/25 hover:text-white"
+                          ? "border-cyan-300/24 bg-cyan-400/12 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_10px_24px_rgba(8,145,178,0.08)]"
+                          : "border-white/6 bg-white/[0.02] text-slate-300 hover:border-white/12 hover:bg-white/[0.05] hover:text-white"
                       }`}
                     >
-                      <p className="truncate text-[10px] font-medium">{conversation.title}</p>
-                      <p className="mt-1 truncate text-[10px] opacity-80">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="truncate text-[11px] font-medium">{conversation.title}</p>
+                        {selected ? (
+                          <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2 py-0.5 text-[9px] uppercase tracking-[0.16em] text-cyan-100">
+                            Ativa
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1.5 truncate text-[10px] leading-5 opacity-80">
                         {conversation.lastMessagePreview ?? "Sem mensagens ainda"}
                       </p>
                     </button>
@@ -4668,31 +4698,41 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                 })
               )}
             </div>
+            </div>
         </div>
       }
       main={
         <article className="relative flex min-h-[70vh] flex-col bg-[linear-gradient(180deg,#f8fafc_0%,#eef4fb_100%)] lg:min-h-0">
-            <header className="border-b border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f6fafe_100%)] px-4 py-4 sm:px-6">
-              <div className="flex items-center justify-between gap-3">
+            <header className="border-b border-slate-200/80 bg-white/70 px-4 py-3 backdrop-blur sm:px-6">
+              <div className={`${chatLaneClassName} flex items-center justify-between gap-3`}>
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-500">
-                      Document Intake
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
+                      Workspace atual
                     </p>
-                    <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.16em] text-cyan-900 shadow-sm">
-                      IMOB v2.1
-                    </span>
-                    <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.16em] text-amber-900 shadow-sm">
-                      Piloto controlado
+                    <span className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[10px] uppercase tracking-[0.16em] text-slate-700 shadow-sm">
+                      Chat ativo
                     </span>
                   </div>
-                  <p className="mt-0.5 text-[12px] text-slate-500">{workspaceLabel}</p>
+                  <p className="mt-1 text-[13px] font-medium text-slate-900">{workspaceLabel}</p>
+                  <p className="mt-0.5 text-[11px] text-slate-500">
+                    Conversa, intake e quick actions preservados no fluxo atual.
+                  </p>
+                  <div className="mt-2">
+                    <VerticalSelectorBar
+                      verticals={VERTICAL_SELECTOR_ITEMS}
+                      activeVerticalId={activeVerticalId}
+                      onSelect={setActiveVerticalId}
+                    />
+                  </div>
                 </div>
               </div>
             </header>
             {imobAccessGate ? (
               <div className="border-b border-slate-200 bg-white/80 px-4 py-4 sm:px-6">
-                <ImobAccessGateCard gate={imobAccessGate} />
+                <div className={chatLaneClassName}>
+                  <ImobAccessGateCard gate={imobAccessGate} />
+                </div>
               </div>
             ) : null}
             {contractInterviewState?.contractType &&
@@ -4701,57 +4741,59 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
               contractInterviewState.status === "generating" ||
               contractInterviewState.status === "generated") ? (
               <div className="border-b border-slate-200 bg-white/80 px-4 py-3 sm:px-6">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-slate-700">
-                  Rascunho de contrato • {getContractTypeLabel(contractInterviewState.contractType)}
-                </p>
-                <div className="mt-1 max-h-16 space-y-0.5 overflow-y-auto pr-1 text-[11px] text-slate-500">
-                  {contractDraftLines.slice(-8).map((line, idx) => (
-                    <p key={`draft-${idx}`} className="truncate">{line}</p>
-                  ))}
-                </div>
-                {contractInterviewState.status === "review" ? (
-                  <div className="mt-2 flex flex-col gap-2 border-t border-slate-200 pt-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex min-w-0 flex-1 items-center gap-2">
-                      <select
-                        value={draftEditFieldId}
-                        onChange={(event) => setDraftEditFieldId(event.target.value)}
-                        className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] text-slate-900 focus:border-accent/40 focus:outline-none"
-                      >
-                        {contractEditableFields.map((field) => (
-                          <option key={`draft-field-${field.id}`} value={field.id}>
-                            {field.label}
-                          </option>
-                        ))}
-                      </select>
-                      <button
-                        type="button"
-                        onClick={() => void handleDraftEditFromPanel()}
-                        disabled={reviewActionLoading !== null || !draftEditFieldId}
-                        className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-slate-800 transition hover:border-accent/40 disabled:opacity-50"
-                      >
-                        Editar
-                      </button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => void handleDraftDeclineFromPanel()}
-                        disabled={reviewActionLoading !== null}
-                        className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-slate-800 transition hover:border-rose-300/40 disabled:opacity-50"
-                      >
-                        Nao gerar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleDraftConfirmFromPanel()}
-                        disabled={reviewActionLoading !== null}
-                        className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-cyan-900 transition hover:bg-cyan-100 disabled:opacity-50"
-                      >
-                        Confirmar e gerar
-                      </button>
-                    </div>
+                <div className={chatLaneClassName}>
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-700">
+                    Rascunho de contrato • {getContractTypeLabel(contractInterviewState.contractType)}
+                  </p>
+                  <div className="mt-1 max-h-16 space-y-0.5 overflow-y-auto pr-1 text-[11px] text-slate-500">
+                    {contractDraftLines.slice(-8).map((line, idx) => (
+                      <p key={`draft-${idx}`} className="truncate">{line}</p>
+                    ))}
                   </div>
-                ) : null}
+                  {contractInterviewState.status === "review" ? (
+                    <div className="mt-2 flex flex-col gap-2 border-t border-slate-200 pt-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        <select
+                          value={draftEditFieldId}
+                          onChange={(event) => setDraftEditFieldId(event.target.value)}
+                          className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] text-slate-900 focus:border-accent/40 focus:outline-none"
+                        >
+                          {contractEditableFields.map((field) => (
+                            <option key={`draft-field-${field.id}`} value={field.id}>
+                              {field.label}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => void handleDraftEditFromPanel()}
+                          disabled={reviewActionLoading !== null || !draftEditFieldId}
+                          className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-slate-800 transition hover:border-accent/40 disabled:opacity-50"
+                        >
+                          Editar
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void handleDraftDeclineFromPanel()}
+                          disabled={reviewActionLoading !== null}
+                          className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-slate-800 transition hover:border-rose-300/40 disabled:opacity-50"
+                        >
+                          Nao gerar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleDraftConfirmFromPanel()}
+                          disabled={reviewActionLoading !== null}
+                          className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-cyan-900 transition hover:bg-cyan-100 disabled:opacity-50"
+                        >
+                          Confirmar e gerar
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
               </div>
             ) : null}
 
@@ -4766,6 +4808,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
               }}
               className="flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5"
             >
+              <div className={chatLaneClassName}>
               {hiddenMessageCount > 0 ? (
                 <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-[0_10px_28px_rgba(15,23,42,0.05)]">
                   <p className="text-[11px] text-slate-600">
@@ -5550,90 +5593,96 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                   </div>
                 </div>
               ) : null}
+              </div>
             </div>
 
             <div className="sticky bottom-0 z-20 border-t border-slate-200 bg-white/96 px-4 py-3 backdrop-blur sm:px-6">
-              <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
-                {QUICK_PROMPTS.slice(0, 4).map((prompt) => (
-                  <button
-                    key={prompt.label}
-                    type="button"
-                    onClick={() => void sendMessageText(prompt.prompt, { displayText: prompt.label })}
-                    className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] tracking-[0.04em] text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
-                  >
-                    {prompt.label}
-                  </button>
-                ))}
-              </div>
-              <div className="flex items-center gap-2 rounded-[20px] border border-slate-200 bg-white p-2 shadow-[0_12px_30px_rgba(15,23,42,0.07)]">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
-                  multiple
-                  className="hidden"
-                  onChange={(event) => void handleDocumentUpload(event.target.files)}
-                />
-                <div ref={attachmentMenuRef} className="relative shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setAttachmentMenuOpen((prev) => !prev)}
-                    disabled={isGateBlocked || uploadingDocuments || state === "typing" || state === "executing"}
-                    aria-label="Abrir menu de anexos"
-                    title="Adicionar fotos e arquivos"
-                    className="flex h-[28px] w-[28px] items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-[11px] leading-none text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {uploadingDocuments ? "…" : "+"}
-                  </button>
-                  {attachmentMenuOpen && !(isGateBlocked || uploadingDocuments || state === "typing" || state === "executing") ? (
-                    <div className="absolute bottom-full left-0 z-30 mb-1 w-[180px] overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-[0_20px_60px_rgba(15,23,42,0.18)] backdrop-blur">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAttachmentMenuOpen(false);
-                          fileInputRef.current?.click();
-                        }}
-                        className="flex w-full items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-left text-[10px] text-slate-800 transition hover:bg-slate-100"
-                      >
-                        <span className="text-[10px] leading-none">📎</span>
-                        <span>Adicionar fotos e arquivos</span>
-                      </button>
-                    </div>
-                  ) : null}
+              <div className={chatLaneClassName}>
+                <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
+                  {QUICK_PROMPTS.slice(0, 4).map((prompt) => (
+                    <button
+                      key={prompt.label}
+                      type="button"
+                      onClick={() => void sendMessageText(prompt.prompt, { displayText: prompt.label })}
+                      className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] tracking-[0.04em] text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+                    >
+                      {prompt.label}
+                    </button>
+                  ))}
                 </div>
-                <textarea
-                  value={input}
-                  onChange={(event) => setInput(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" && !event.shiftKey) {
-                      event.preventDefault();
-                      void handleSend();
-                    }
-                  }}
-                  placeholder={isGateBlocked ? "Acesso bloqueado para este workspace." : "Descreva uma operação imobiliária..."}
-                  rows={1}
-                  disabled={isGateBlocked}
-                  className="max-h-40 min-h-[46px] w-full resize-y rounded-[14px] bg-transparent px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => void handleSend()}
-                  disabled={isGateBlocked || uploadingDocuments || state === "typing" || state === "executing"}
-                  className="h-[46px] shrink-0 rounded-[14px] bg-slate-900 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {uploadingDocuments || state === "typing" || state === "executing" ? "Enviando..." : "Enviar"}
-                </button>
+                <div className="flex items-center gap-2 rounded-[20px] border border-slate-200 bg-white p-2 shadow-[0_12px_30px_rgba(15,23,42,0.07)]">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.doc,.docx,.txt,.png,.jpg,.jpeg"
+                    multiple
+                    className="hidden"
+                    onChange={(event) => void handleDocumentUpload(event.target.files)}
+                  />
+                  <div ref={attachmentMenuRef} className="relative shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setAttachmentMenuOpen((prev) => !prev)}
+                      disabled={isGateBlocked || uploadingDocuments || state === "typing" || state === "executing"}
+                      aria-label="Abrir menu de anexos"
+                      title="Adicionar fotos e arquivos"
+                      className="flex h-[28px] w-[28px] items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-[11px] leading-none text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {uploadingDocuments ? "…" : "+"}
+                    </button>
+                    {attachmentMenuOpen && !(isGateBlocked || uploadingDocuments || state === "typing" || state === "executing") ? (
+                      <div className="absolute bottom-full left-0 z-30 mb-1 w-[180px] overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-[0_20px_60px_rgba(15,23,42,0.18)] backdrop-blur">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAttachmentMenuOpen(false);
+                            fileInputRef.current?.click();
+                          }}
+                          className="flex w-full items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-left text-[10px] text-slate-800 transition hover:bg-slate-100"
+                        >
+                          <span className="text-[10px] leading-none">📎</span>
+                          <span>Adicionar fotos e arquivos</span>
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                  <textarea
+                    value={input}
+                    onChange={(event) => setInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        void handleSend();
+                      }
+                    }}
+                    placeholder={isGateBlocked ? "Acesso bloqueado para este workspace." : "Descreva uma operação imobiliária..."}
+                    rows={1}
+                    disabled={isGateBlocked}
+                    className="max-h-40 min-h-[46px] w-full resize-y rounded-[14px] bg-transparent px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void handleSend()}
+                    disabled={isGateBlocked || uploadingDocuments || state === "typing" || state === "executing"}
+                    className="h-[46px] shrink-0 rounded-[14px] bg-slate-900 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {uploadingDocuments || state === "typing" || state === "executing" ? "Enviando..." : "Enviar"}
+                  </button>
+                </div>
               </div>
             </div>
         </article>
       }
       contextPanel={
-        <ImobWorkbenchContextPanel
-          state={workbenchContextState}
-          intakeContext={workbenchIntakeContext}
-          commandCenterHref={workbenchCommandCenterHref}
-          funnelHref={workbenchFunnelHref}
-          runArchiveHref={workbenchRunArchiveHref}
+        <ReactiveContextPanel
+          activeVerticalId={activeVerticalId}
+          imobProps={{
+            state: workbenchContextState,
+            intakeContext: workbenchIntakeContext,
+            commandCenterHref: workbenchCommandCenterHref,
+            funnelHref: workbenchFunnelHref,
+            runArchiveHref: workbenchRunArchiveHref,
+          }}
         />
       }
       isContextPanelOpen={showWorkbenchContextPanel}

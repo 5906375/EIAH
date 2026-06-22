@@ -9,6 +9,7 @@ type Props = {
   children?: React.ReactNode;
   tone?: WorkbenchPanelCardTone;
   className?: string;
+  bodyClassName?: string;
 };
 
 const TONE_CLASSNAME: Record<WorkbenchPanelCardTone, string> = {
@@ -26,13 +27,14 @@ export function WorkbenchPanelCard({
   children,
   tone = "default",
   className = "",
+  bodyClassName = "",
 }: Props) {
   return (
-    <section className={`rounded-[24px] border p-4 shadow-[0_16px_36px_rgba(15,23,42,0.07),inset_0_1px_0_rgba(255,255,255,0.85)] ${TONE_CLASSNAME[tone]} ${className}`.trim()}>
-      {eyebrow ? <p className="text-[11px] uppercase tracking-[0.18em] text-slate-500">{eyebrow}</p> : null}
-      {title ? <p className="mt-2 text-sm font-semibold text-slate-900">{title}</p> : null}
+    <section className={`rounded-[26px] border p-4 shadow-[0_18px_42px_rgba(15,23,42,0.06),inset_0_1px_0_rgba(255,255,255,0.88)] ${TONE_CLASSNAME[tone]} ${className}`.trim()}>
+      {eyebrow ? <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">{eyebrow}</p> : null}
+      {title ? <p className="mt-2 text-[15px] font-semibold tracking-[-0.02em] text-slate-900">{title}</p> : null}
       {description ? <p className="mt-2 text-[12px] leading-5 text-slate-600">{description}</p> : null}
-      {children ? <div className={eyebrow || title || description ? "mt-3" : ""}>{children}</div> : null}
+      {children ? <div className={`${eyebrow || title || description ? "mt-3" : ""} ${bodyClassName}`.trim()}>{children}</div> : null}
     </section>
   );
 }

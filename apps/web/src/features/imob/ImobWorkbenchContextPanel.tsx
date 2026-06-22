@@ -86,11 +86,12 @@ export function ImobWorkbenchContextPanel({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-slate-200 bg-[linear-gradient(180deg,#fafcff_0%,#f2f7fd_100%)] px-4 py-3.5 shadow-[0_1px_0_rgba(15,23,42,0.04)]">
+      <div className="border-b border-slate-200 bg-[linear-gradient(180deg,#fbfdff_0%,#f3f8ff_100%)] px-4 py-4 shadow-[0_1px_0_rgba(15,23,42,0.04)]">
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.24em] text-slate-400">Contexto IMOB</p>
-            <p className="mt-1.5 text-[13px] font-semibold leading-snug text-slate-900">Resumo do intake</p>
+            <p className="mt-1.5 text-[15px] font-semibold leading-snug tracking-[-0.02em] text-slate-900">Resumo do intake</p>
+            <p className="mt-1 text-[12px] text-slate-500">Dados mascarados e destinos seguros emitidos pelo payload atual.</p>
           </div>
           <span className="mt-0.5 shrink-0 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-amber-900 shadow-sm">
             Piloto controlado
@@ -102,7 +103,7 @@ export function ImobWorkbenchContextPanel({
         {state === "loading" ? (
           <WorkbenchPanelCard tone="muted">
             <p className="text-sm font-medium text-slate-900">Carregando contexto do intake...</p>
-            <p className="mt-2 text-[12px] text-slate-600">
+            <p className="mt-2 text-[12px] leading-5 text-slate-600">
               Assim que o payload real estiver disponível, o painel atualiza resumo, referências mascaradas e destinos seguros.
             </p>
           </WorkbenchPanelCard>
@@ -111,7 +112,7 @@ export function ImobWorkbenchContextPanel({
         {state === "error" ? (
           <WorkbenchPanelCard tone="danger">
             <p className="text-sm font-medium text-rose-800">Falha ao carregar o contexto do intake.</p>
-            <p className="mt-2 text-[12px] text-rose-700">
+            <p className="mt-2 text-[12px] leading-5 text-rose-700">
               {errorMessage ?? "Tente continuar pelo histórico do chat ou reenviar a ação que originou o payload."}
             </p>
           </WorkbenchPanelCard>
@@ -120,7 +121,7 @@ export function ImobWorkbenchContextPanel({
         {state === "empty" ? (
           <WorkbenchPanelCard tone="muted">
             <p className="text-sm font-medium text-slate-900">Sem intake ativo</p>
-            <p className="mt-2 text-[12px] text-slate-600">
+            <p className="mt-2 text-[12px] leading-5 text-slate-600">
               Inicie uma conversa no chat para ver o resumo do intake aqui.
             </p>
           </WorkbenchPanelCard>
@@ -143,19 +144,19 @@ export function ImobWorkbenchContextPanel({
             />
 
             <WorkbenchPanelCard eyebrow="Referências seguras" tone="accent">
-              <p className="mt-2 text-[12px] text-slate-600">
+              <p className="text-[12px] leading-5 text-slate-600">
                 Identificadores exibidos de forma parcial para facilitar leitura operacional sem expor dados sensíveis.
               </p>
               <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-500">
-                {threadRef ? <span className="rounded-full border border-cyan-200 bg-white px-3 py-1.5 font-mono text-cyan-900">thread {threadRef}</span> : null}
-                {caseRef ? <span className="rounded-full border border-cyan-200 bg-white px-3 py-1.5 font-mono text-cyan-900">case {caseRef}</span> : null}
-                {runRef ? <span className="rounded-full border border-cyan-200 bg-white px-3 py-1.5 font-mono text-cyan-900">run {runRef}</span> : null}
-                {draftRef ? <span className="rounded-full border border-cyan-200 bg-white px-3 py-1.5 font-mono text-cyan-900">draft {draftRef}</span> : null}
+                {threadRef ? <span className="rounded-full border border-cyan-200 bg-white px-3 py-1.5 font-mono text-cyan-900 shadow-sm">thread {threadRef}</span> : null}
+                {caseRef ? <span className="rounded-full border border-cyan-200 bg-white px-3 py-1.5 font-mono text-cyan-900 shadow-sm">case {caseRef}</span> : null}
+                {runRef ? <span className="rounded-full border border-cyan-200 bg-white px-3 py-1.5 font-mono text-cyan-900 shadow-sm">run {runRef}</span> : null}
+                {draftRef ? <span className="rounded-full border border-cyan-200 bg-white px-3 py-1.5 font-mono text-cyan-900 shadow-sm">draft {draftRef}</span> : null}
               </div>
             </WorkbenchPanelCard>
 
-            <WorkbenchPanelCard eyebrow="Exportação" tone="default">
-              <p className="mt-2 text-[12px] text-slate-600">
+            <WorkbenchPanelCard eyebrow="Exportação" title="Saídas do intake" tone="default">
+              <p className="text-[12px] leading-5 text-slate-600">
                 Os botões abaixo reutilizam o client já existente para HTML, DOCX e orientação de PDF.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
@@ -189,8 +190,8 @@ export function ImobWorkbenchContextPanel({
               {exportStatus.docx === "error" ? <p className="mt-2 text-[12px] text-rose-700">Falha ao exportar DOCX.</p> : null}
             </WorkbenchPanelCard>
 
-            <WorkbenchPanelCard eyebrow="Navegação" tone="muted">
-              <p className="mt-2 text-[12px] text-slate-600">
+            <WorkbenchPanelCard eyebrow="Navegação" title="Superfícies relacionadas" tone="muted">
+              <p className="text-[12px] leading-5 text-slate-600">
                 Links exibidos somente quando o payload atual fornece rota e parâmetros já suportados pelas superfícies existentes.
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
