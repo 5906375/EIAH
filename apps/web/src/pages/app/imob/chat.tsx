@@ -2970,6 +2970,7 @@ const ImobChatPage: React.FC = () => {
           answers: generatingState.answers ?? {},
           conversationId: activeConversationId,
           legalVersion: "BR_CIVIL_LOCACAO_2026_v1",
+          runId: generatingState.runId,
         });
         const generatedState: ContractInterviewState = {
           ...generatingState,
@@ -2985,6 +2986,7 @@ const ImobChatPage: React.FC = () => {
           id: makeId("assistant"),
           role: "assistant",
           text: ["Contrato gerado com sucesso.", "", generated.data.contractText].join("\n"),
+          widget: generated.data.widget ?? undefined,
           thread: {
             ...threadForInterview,
             status: "done",
