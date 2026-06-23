@@ -68,6 +68,7 @@ import { ImobChatWidgets } from "@/features/imob/ImobChatWidgets";
 import { ImobWorkbenchShell } from "@/features/imob/ImobWorkbenchShell";
 import { VerticalSelectorBar } from "@/features/workbench/vertical-chat/VerticalSelectorBar";
 import { ReactiveContextPanel } from "@/features/workbench/vertical-chat/ReactiveContextPanel";
+import { ImobSlotCollectionCard } from "@/features/workbench/vertical-chat/ImobSlotCollectionCard";
 import type { VerticalId, VerticalSelectorItem } from "@/features/workbench/vertical-chat/VerticalChatTypes";
 import { extractImobWorkbenchIntakeContext } from "@/features/imob/imobWorkbenchContext";
 import { KnowledgeCard, type KnowledgeAction } from "@/features/imob/KnowledgeCard";
@@ -975,7 +976,7 @@ function printMessageCard(message: ChatMessage) {
   printWindow.print();
 }
 
-function buildPresentationFormSubmission(form: ImobPresentationForm, values: Record<string, string>) {
+export function buildPresentationFormSubmission(form: ImobPresentationForm, values: Record<string, string>) {
   const normalized: Record<string, string> = {};
   for (const field of form.fields) {
     normalized[field.name] = normalizeImobFormValue(values[field.name] ?? String(field.value ?? ""));
@@ -1030,6 +1031,14 @@ function buildPresentationFormSubmission(form: ImobPresentationForm, values: Rec
       normalized.desiredCity ? `cidade de interesse do lead ${normalized.desiredCity}` : null,
       normalized.budgetMax ? `faixa de orçamento do lead ${normalized.budgetMax}` : null,
     ],
+    proposta: [
+      normalized.propertyId ? `imóvel da proposta ${normalized.propertyId}` : null,
+      normalized.buyerName ? `nome do comprador ${normalized.buyerName}` : null,
+      normalized.buyerPhone ? `telefone do comprador ${normalized.buyerPhone}` : null,
+      normalized.buyerEmail ? `e-mail do comprador ${normalized.buyerEmail}` : null,
+      normalized.offerAmount ? `valor da proposta ${normalized.offerAmount}` : null,
+      normalized.contractType ? `tipo de proposta ${normalized.contractType}` : null,
+    ],
     anuncio: [
       normalized.propertyId ? `imóvel ${normalized.propertyId}` : null,
       normalized.listingTitle ? `título ${normalized.listingTitle}` : null,
@@ -1082,6 +1091,15 @@ function buildPresentationFormSubmission(form: ImobPresentationForm, values: Rec
     return [
       form.subjectId ? `atualizar imóvel ${form.subjectId}` : "atualizar imóvel",
       ...(linesByEntity[form.entity] ?? []),
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  if (compositeKey === "proposta:create") {
+    return [
+      "continuar proposta",
+      ...(linesByEntity.proposta ?? []),
     ]
       .filter(Boolean)
       .join("\n");
@@ -4865,6 +4883,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
 
               {renderedMessages.map((message, index) => {
                 const isUser = message.role === "user";
+                const isLastMessage = index === renderedMessages.length - 1;
                 const messageThread = message.thread ?? message.card?.thread;
                 const prevMessageThread = index > 0 ? renderedMessages[index - 1]?.thread ?? renderedMessages[index - 1]?.card?.thread : null;
                 const showThreadPill = Boolean(messageThread?.id && messageThread.id !== prevMessageThread?.id);
@@ -5338,7 +5357,28 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                         </div>
                       ) : null}
 
-                      <div className={`px-1 text-[10px] uppercase tracking-[0.15em] text-muted-foreground/80 ${inlineChoicePresentation ? "flex flex-col items-start gap-1.5" : `flex flex-wrap items-center gap-2 ${isUser ? "justify-end" : "justify-start"}`}`}>
+                      {(() => {
+                        const messageThreadId = message.thread?.id ?? message.card?.thread?.id ?? null;
+                        const isPendingTarget =
+                          Boolean(pendingExecution) &&
+                          pendingExecution?.messageId === message.id &&
+                          pendingExecution?.thread.id === messageThreadId;
+                        const slotFields = pendingExecution?.pendingFields ?? [];
+                        if (!isPendingTarget || !isLastMessage || slotFields.length === 0) return null;
+                        return (
+                          <ImobSlotCollectionCard
+                            pendingFields={slotFields}
+                            flow={pendingExecution?.flow}
+                            disabled={state === "executing" || state === "typing"}
+                            onSubmit={(structuredText) => {
+                              void sendMessageText(structuredText);
+                            }}
+                            onCancel={() => handleRejectExecution(message)}
+                          />
+                        );
+                      })()}
+
+                      <div className={`px-1 text-[10px] uppercase tracking-[0.12em] text-muted-foreground/80 ${inlineChoicePresentation ? "flex flex-col items-start gap-1.5" : `flex flex-wrap items-center gap-1.5 ${isUser ? "justify-end" : "justify-start"}`}`}>
                         {message.role === "assistant" &&
                         message.card?.ctas?.length &&
                         !message.card.knowledgeResults?.length &&
