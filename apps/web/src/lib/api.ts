@@ -1569,6 +1569,7 @@ export type ImobContractPreview = {
     eventId: string;
     createdAt: string;
   };
+  widget: ImobContractIntakeResultWidget | null;
 };
 
 export type ImobOwner = {
@@ -3172,6 +3173,7 @@ export async function apiGenerateImobContract(body: {
   answers: Record<string, unknown>;
   conversationId?: string;
   legalVersion?: string;
+  runId?: string;
 }) {
   return http<{ ok: true; data: ImobContractPreview }>(`/imob/contracts/generate`, {
     method: "POST",

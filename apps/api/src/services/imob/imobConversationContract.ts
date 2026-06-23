@@ -28,7 +28,9 @@ export type ImobChatWidgetKind =
   | "case_summary"
   | "proposal_summary"
   | "document_checklist"
-  | "print_bundle";
+  | "print_bundle"
+  | "contract_intake_draft"
+  | "contract_intake_result";
 
 export type ImobBackingSpecialistContract = {
   key: ImobBackingSpecialistKey;
@@ -700,12 +702,38 @@ export type ImobPrintBundleWidget = {
   }>;
 };
 
+export type ImobContractIntakeDraftWidget = {
+  kind: "contract_intake_draft";
+  draftId: string;
+  draftExpiresAt: string;
+  documentKind: "lease_contract" | "other";
+  contractType: "residential_lease" | "commercial_lease" | "seasonal_lease" | "unknown";
+  documentHash: string;
+  pendingItems: string[];
+  riskFlags: string[];
+  actionId: string;
+  requiresConfirmation: true;
+};
+
+export type ImobContractIntakeResultWidget = {
+  kind: "contract_intake_result";
+  runId: string;
+  stage: string;
+  status: string;
+  nextStep: string | null;
+  pendingItems: string[];
+  riskFlags: string[];
+  documentHash: string;
+};
+
 export type ImobPresentationWidget =
   | ImobCommercialHomeWidget
   | ImobInventoryShowcaseWidget
   | ImobCaseSummaryWidget
   | ImobDocumentChecklistWidget
-  | ImobPrintBundleWidget;
+  | ImobPrintBundleWidget
+  | ImobContractIntakeDraftWidget
+  | ImobContractIntakeResultWidget;
 
 export type ImobPresentationFormFieldOption = {
   value: string;

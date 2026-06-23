@@ -31,6 +31,8 @@ const IMOB_CHAT_EXPERIENCE_CONTRACT_V1: ImobChatExperienceContract = {
     "proposal_summary",
     "document_checklist",
     "print_bundle",
+    "contract_intake_draft",
+    "contract_intake_result",
   ],
   backingSpecialists: listImobBackingSpecialists(),
 };

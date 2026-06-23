@@ -2426,6 +2426,7 @@ imobRouter.post("/contracts/generate", async (req, res) => {
   const answers = asObject(body.answers);
   const conversationId = asString(body.conversationId);
   const legalVersion = asString(body.legalVersion);
+  const requestedRunId = asString(body.runId);
 
   if (!isContractType(contractType) || !answers) {
     return res.status(400).json({
@@ -2442,6 +2443,18 @@ imobRouter.post("/contracts/generate", async (req, res) => {
     answers,
     legalVersion,
   });
+
+  const scopedRun =
+    requestedRunId
+      ? await prisma.run.findFirst({
+          where: {
+            id: requestedRunId,
+            tenantId: authContext.tenantId,
+            workspaceId: authContext.workspaceId,
+          },
+          select: { id: true },
+        })
+      : null;
 
   const memory = await prisma.memoryEvent.create({
     data: {
@@ -2478,6 +2491,21 @@ imobRouter.post("/contracts/generate", async (req, res) => {
         eventId: memory.id,
         createdAt: toIso(memory.createdAt),
       },
+      widget: scopedRun
+        ? {
+            kind: "contract_intake_result",
+            runId: scopedRun.id,
+            stage: "contract_generated",
+            status: "done",
+            nextStep:
+              preview.review.warnings.length > 0
+                ? "Revise os alertas do contrato antes de exportar ou encaminhar."
+                : "Exporte o contrato gerado ou siga para revisão jurídica/operacional.",
+            pendingItems: [],
+            riskFlags: preview.review.warnings,
+            documentHash: preview.hash,
+          }
+        : null,
     },
   });
 });
