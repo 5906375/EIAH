@@ -2522,13 +2522,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     primaryPending: string | null;
   }) {
     if (params.intent === "blocked_run_resolution") {
-      return buildCompactBlockedRunResolutionBlocks({
-        caseBrief: params.caseBrief,
-        actionableChecklist: params.actionableChecklist,
-        primaryNextStep: params.primaryNextStep,
-        primaryBlocker: params.primaryBlocker,
-        primaryPending: params.primaryPending,
-      });
+      return [] as ReturnType<typeof buildCompactBlockedRunResolutionBlocks>;
     }
     return [
       {
@@ -2963,14 +2957,15 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
         `Próximo movimento: ${nextStep}.`,
       ],
       blocked_run_resolution: [
-        ...baseLines,
-        humanPhaseLabel ? `Fase: ${humanPhaseLabel}.` : null,
-        primaryBlocker ? `Bloqueio principal: ${primaryBlocker}.` : "Não há bloqueio comercial registrado agora.",
-        primaryPending ? `Pendência que pode travar o avanço: ${primaryPending}.` : "Não há pendência crítica registrada.",
-        waitingOn ? `Waiting on: ${waitingOn}.` : null,
-        nextActionOwner ? `Owner da ação: ${nextActionOwner}.` : null,
-        proofSummaryLine,
-        `Para destravar: ${nextStep}.`,
+        primaryBlocker
+          ? `Bloqueio ativo: ${primaryBlocker.replace(/\.$/, "").toLowerCase()}.`
+          : "Nenhum bloqueio comercial registrado.",
+        primaryPending ? `Pendência crítica: ${primaryPending}.` : null,
+        pendingItems.slice(1, 3).length > 0
+          ? `Também faltam: ${pendingItems.slice(1, 3).join(", ")}${pendingItems.length > 3 ? " e outros" : ""}.`
+          : null,
+        nextActionOwner ? `Owner: ${nextActionOwner}.` : null,
+        `Próximo passo: ${nextStep}.`,
       ],
       next_best_action: [
         ...baseLines,
@@ -2985,7 +2980,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     };
     const cardTitleByIntent: Record<BusinessReadIntent, string> = {
       pipeline_status: "Leitura comercial",
-      blocked_run_resolution: "Como destravar o atendimento",
+      blocked_run_resolution: "Bloqueio do atendimento",
       next_best_action: "Melhor próximo movimento",
     };
     const fallbackCtas = [{
@@ -3057,9 +3052,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
           pilotReadOnly: Boolean(pilotWorkflowState),
         },
       },
-      caseBrief,
-      preparedFollowUp,
-      actionableChecklist,
+      ...(intent !== "blocked_run_resolution" ? { caseBrief, preparedFollowUp, actionableChecklist } : {}),
       decisionRationale,
       ...(leadDiscovery ? { leadDiscovery } : {}),
       ...(leadProfileReport ? { leadProfileReport } : {}),
@@ -3073,7 +3066,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       commercialMemory,
       ...(reengagementSuggestion ? { reengagementSuggestion } : {}),
       inventoryWatch,
-      handoffPack,
+      ...(intent !== "blocked_run_resolution" ? { handoffPack } : {}),
       ...(proof ? { proof } : {}),
       blocks: buildImobBusinessPresentationBlocks({
         intent,
@@ -3087,7 +3080,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       }),
       pendingFieldLabels: pendingItems,
       suggestedNextAction: primaryNextStep,
-      widget: buildImobCaseExperienceWidget(caseContext),
+      widget: intent !== "blocked_run_resolution" ? buildImobCaseExperienceWidget(caseContext) : null,
       dedupeKey: `crm.case.${intent}:${caseContext?.caseId ?? "unknown"}`,
       workflow: {
         primaryState: primaryWorkflowState,
@@ -3310,7 +3303,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     return {
       ...data,
       caseContext: effectiveCaseContext,
-      presentation: data.presentation ? { ...data.presentation, suggestedNextAction, widget: data.presentation.widget ?? (shouldInjectWidget ? buildImobCaseExperienceWidget(effectiveCaseContext) : undefined) } : data.presentation,
+      presentation: data.presentation ? { ...data.presentation, suggestedNextAction, widget: data.presentation.widget !== undefined ? data.presentation.widget : (shouldInjectWidget ? buildImobCaseExperienceWidget(effectiveCaseContext) : undefined) } : data.presentation,
     };
   }
 

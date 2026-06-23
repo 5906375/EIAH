@@ -1947,6 +1947,35 @@ export async function resolveImobCrmOperationalConsult(params: ResolverParams) {
     }
 
     const caseContext = buildCaseContextFromRecord(item as unknown as ResolverCaseRecord);
+
+    // Deduplicação cross-turn: se a leitura é idêntica ao turno anterior, retorna delta curto.
+    const dedupeKey = `crm.case.${businessReadIntent}:${item.id}`;
+    const lastDedupeKey = asString(asObject(params.threadState)?.lastCrmReadDedupeKey);
+    const updatedState = { ...(params.threadState ?? createEmptyThreadState()), lastCrmReadDedupeKey: dedupeKey };
+    if (businessReadIntent === "blocked_run_resolution" && lastDedupeKey === dedupeKey) {
+      const pendingItems: string[] = Array.isArray(item.pendingItems) ? (item.pendingItems as string[]).filter((x) => typeof x === "string") : [];
+      const primaryPending = pendingItems[0] ?? null;
+      const nextStepRaw = asString(item.nextStep) ?? "consultar caso";
+      return {
+        mode: "consult",
+        action: `crm.case.${businessReadIntent}`,
+        threadLabel: formatCaseFlowLabel(item.flow),
+        conversationState: updatedState,
+        caseContext,
+        presentation: {
+          text: primaryPending
+            ? `Quadro não mudou. Pendência principal ainda: ${primaryPending}. Próximo passo: ${nextStepRaw}.`
+            : "Quadro não mudou. Nenhuma pendência crítica registrada no momento.",
+          nextStep: nextStepRaw,
+          dedupeKey,
+          card: {
+            title: "Sem mudança",
+            lines: [primaryPending ? `Pendência: ${primaryPending}` : "Nenhuma pendência crítica.", `Próximo passo: ${nextStepRaw}`],
+          },
+        },
+      } as any;
+    }
+
     const presentation = legacyBusinessRead.buildImobBusinessReadPresentation({
       intent: businessReadIntent,
       caseContext,
@@ -1966,7 +1995,7 @@ export async function resolveImobCrmOperationalConsult(params: ResolverParams) {
       mode: "consult",
       action: `crm.case.${businessReadIntent}`,
       threadLabel: formatCaseFlowLabel(item.flow),
-      conversationState: params.threadState ?? createEmptyThreadState(),
+      conversationState: updatedState,
       caseContext,
       presentation,
     } as any;
