@@ -499,10 +499,6 @@ const QUICK_PROMPTS = [
     label: "Iniciar contrato",
     prompt: "Quero iniciar a coleta de dados para gerar um contrato imobiliário.",
   },
-  {
-    label: "Fechar venda",
-    prompt: "Quero avançar a operação até o fechamento da venda e registrar os próximos passos.",
-  },
 ] as const;
 
 const TYPEWRITER_INTERVAL_MS = 12;
@@ -5053,7 +5049,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                         );
                                       })()
                                     ) : null}
-                                    {block.kind === "next_actions" && block.ctas?.length ? (
+                                    {block.kind === "next_actions" && block.ctas?.length && isLastMessage ? (
                                       <div className="rounded-[14px] border border-slate-200/70 bg-slate-50/72 p-2">
                                         {(() => {
                                           const items = normalizeCardCtas(block.ctas) ?? [];
@@ -5428,7 +5424,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                 if (cta.action === "export_contract_pdf") return true;
                                 if (isAttachmentCrmSuggestionAction(cta.action)) return true;
                                 if (isOpenAttachmentMenuAction(cta.action)) return true;
-                                if (isSendSuggestedMessageAction(cta.action)) return true;
+                                if (isSendSuggestedMessageAction(cta.action)) return isLastMessage;
                                 return isPendingTarget;
                               }) ?? [];
                               if (actionableCtas.length === 0) return null;
@@ -5671,7 +5667,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
             <div className="shrink-0 border-t border-white/10 bg-surface-strong/80 px-2.5 py-1.5 backdrop-blur-xl sm:px-3.5 sm:py-2">
               <div className={chatLaneClassName}>
                 <div className="mb-1 flex flex-wrap items-center gap-1 overflow-x-auto px-0.5">
-                  {QUICK_PROMPTS.slice(0, 4).map((prompt) => (
+                  {QUICK_PROMPTS.map((prompt) => (
                     <button
                       key={prompt.label}
                       type="button"
