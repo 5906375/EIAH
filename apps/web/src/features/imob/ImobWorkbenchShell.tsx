@@ -7,6 +7,7 @@ type Props = {
   contextPanel: React.ReactNode;
   isContextPanelOpen: boolean;
   onToggleContextPanel: () => void;
+  onBackClick?: () => void;
 };
 
 export function ImobWorkbenchShell({
@@ -15,6 +16,7 @@ export function ImobWorkbenchShell({
   contextPanel,
   isContextPanelOpen,
   onToggleContextPanel,
+  onBackClick,
 }: Props) {
   const shellCopy = {
     eyebrow: "IMOB Product Shell",
@@ -40,6 +42,7 @@ export function ImobWorkbenchShell({
       contextPanel={contextPanel}
       isContextPanelOpen={isContextPanelOpen}
       onToggleContextPanel={onToggleContextPanel}
+      onBackClick={onBackClick}
       eyebrow={shellCopy.eyebrow}
       title={shellCopy.title}
       description={shellCopy.description}

@@ -1707,6 +1707,13 @@ const ImobChatPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const workspaceLabel = session.branding?.workspaceLabel?.trim() || session.workspaceId;
+  const handleNavigateBack = React.useCallback(() => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate("/app/command-center");
+  }, [navigate]);
   const isGateBlocked = Boolean(imobAccessGate);
   const requestedConversationId = React.useMemo(() => {
     const raw = searchParams.get("conversationId");
@@ -4578,6 +4585,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
   return (
     <>
       <ImobWorkbenchShell
+      onBackClick={handleNavigateBack}
       sidebar={
         <div className="flex h-full min-h-[70vh] min-w-0 flex-col overflow-hidden bg-[linear-gradient(180deg,#0a1320_0%,#101b2a_100%)] px-3 py-3 lg:min-h-0">
             <div className="shrink-0 rounded-[28px] border border-cyan-500/18 bg-[linear-gradient(180deg,rgba(15,27,42,0.96)_0%,rgba(10,18,28,0.9)_100%)] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_12px_26px_rgba(0,0,0,0.24)]">
