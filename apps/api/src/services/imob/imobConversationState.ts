@@ -1117,6 +1117,12 @@ function extractPreferredWindow(raw: string): ImobVisitDraft["preferredWindow"] 
 
 function buildVisitDraft(previous: ImobVisitDraft | undefined, message: string): ImobVisitDraft {
   const propertyIdMatch = message.match(/(?:imovel|imóvel|apartamento|apto|casa)\s*#?\s*(\d{2,})/i)?.[1] ?? null;
+  // Captura candidato textual quando não há ID numérico — ex: "kitnet", "apto centro", "rua das flores 123"
+  const propertyTextCandidate: string | null = !propertyIdMatch
+    ? (
+        message.match(/(?:imovel|imóvel|apartamento|apto|casa)\s+(?:da\s+visita\s*)?[-:,]?\s*([^|;,\n]{2,40}?)(?:\s*[,;|]|\s+(?:nome|telefone|data|visitante|no\s+dia)\b|$)/i)?.[1]?.trim() ?? null
+      )
+    : null;
   const normalized = normalizeImobText(message);
   const status = normalized.includes("cancelar visita")
     ? "cancel_requested"
@@ -1141,6 +1147,7 @@ function buildVisitDraft(previous: ImobVisitDraft | undefined, message: string):
         : previous?.outcome ?? null;
   return {
     propertyId: propertyIdMatch ? `property-${propertyIdMatch}` : previous?.propertyId ?? null,
+    propertyTextCandidate: propertyIdMatch ? null : (propertyTextCandidate ?? previous?.propertyTextCandidate ?? null),
     visitorName: extractNamedParty(message, "lead") ?? previous?.visitorName ?? null,
     visitorPhone: extractPhone(message) ?? previous?.visitorPhone ?? null,
     preferredDate: extractPreferredDate(message) ?? previous?.preferredDate ?? null,

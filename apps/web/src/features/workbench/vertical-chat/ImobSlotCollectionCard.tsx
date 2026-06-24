@@ -80,14 +80,16 @@ function formatSubmitMessage(values: Record<string, string>, fields: string[]): 
 type Props = {
   pendingFields: string[];
   flow?: string | null;
+  /** Valores já conhecidos pelo engine — pré-preenchem o card; sem decisão cognitiva no frontend. */
+  prefilled?: Record<string, string>;
   onSubmit: (structuredText: string) => void;
   onCancel: () => void;
   disabled?: boolean;
 };
 
-export function ImobSlotCollectionCard({ pendingFields, onSubmit, onCancel, disabled }: Props) {
+export function ImobSlotCollectionCard({ pendingFields, prefilled, onSubmit, onCancel, disabled }: Props) {
   const [values, setValues] = React.useState<Record<string, string>>(() =>
-    Object.fromEntries(pendingFields.map((f) => [f, ""]))
+    Object.fromEntries(pendingFields.map((f) => [f, prefilled?.[f] ?? ""]))
   );
   const [submitted, setSubmitted] = React.useState(false);
 

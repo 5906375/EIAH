@@ -175,6 +175,8 @@ type ChatMessage = {
   caseContext?: ImobCaseContext;
   consultBadge?: string | null;
   dispatchBadge?: string | null;
+  /** Payload de coleta de slots emitido pelo engine — renderizado sem lógica cognitiva no frontend. */
+  slotCollection?: ImobResolveTurnResponse["presentation"]["slotCollection"];
 };
 
 type PendingExecution = {
@@ -3416,6 +3418,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         thread: { ...baseThread, status: "blocked" },
         card: mapReplyCardFromPresentation(turn.presentation, { ...baseThread, status: "blocked" }, turn.caseContext),
         caseContext: turn.caseContext ?? undefined,
+        slotCollection: turn.presentation.slotCollection,
       };
       appendMessage(blockedReply);
       void persistMessage(blockedReply, {
@@ -5402,6 +5405,27 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                               void sendMessageText(structuredText);
                             }}
                             onCancel={() => handleRejectExecution(message)}
+                          />
+                        );
+                      })()}
+
+                      {/* Card de slot collection emitido pelo engine em turns blocked (ex: visit_missing_property) */}
+                      {(() => {
+                        const sc = message.slotCollection;
+                        if (!sc || !isLastMessage || message.role !== "assistant") return null;
+                        if (state === "executing" || state === "typing") return null;
+                        return (
+                          <ImobSlotCollectionCard
+                            pendingFields={sc.fields}
+                            flow={sc.mission}
+                            prefilled={sc.prefilled}
+                            disabled={false}
+                            onSubmit={(structuredText) => {
+                              void sendMessageText(structuredText);
+                            }}
+                            onCancel={() => {
+                              setState("idle");
+                            }}
                           />
                         );
                       })()}

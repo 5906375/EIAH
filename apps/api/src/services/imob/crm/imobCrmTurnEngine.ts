@@ -493,18 +493,56 @@ function buildWorkflowBlockedResolution(params: {
   reasonCode: ImobCrmWorkflowReasonCode;
   threadState: ThreadStateLike;
 }) {
-	  const reasonCopy: Record<ImobCrmWorkflowReasonCode, string> = {
-	    property_multiple_candidates_offer_market_scan: "Encontrei múltiplas cidades ou finalidades; posso seguir com uma varredura de mercado governada antes de cadastrar um imóvel específico.",
-	    market_scan_selection_missing_item: "Ainda não há um imóvel do scan selecionado com segurança para confirmar a captação.",
+  const operational = asObject(asObject(params.threadState)?.operational);
+  const visitDraft = asObject(operational?.visitDraft);
+  const propertyCandidates = Array.isArray(operational?.propertyCandidates)
+    ? (operational.propertyCandidates as Array<{ id: string; label: string }>)
+    : [];
+
+  const isVisitMissingProperty = params.reasonCode === "visit_missing_property";
+
+  // Texto principal: orientador quando há candidatos, instrucional quando não há
+  const visitMissingPropertyText = propertyCandidates.length > 0
+    ? `Encontrei ${propertyCandidates.length} imóvel(is) com esse perfil. Confirme qual vincular à visita e preencha os dados restantes.`
+    : "Posso preparar o agendamento da visita. Preencha os dados abaixo para continuar.";
+
+  const reasonCopy: Record<ImobCrmWorkflowReasonCode, string> = {
+    property_multiple_candidates_offer_market_scan: "Encontrei múltiplas cidades ou finalidades; posso seguir com uma varredura de mercado governada antes de cadastrar um imóvel específico.",
+    market_scan_selection_missing_item: "Ainda não há um imóvel do scan selecionado com segurança para confirmar a captação.",
     owner_dedupe_missing_match: "Encontrei uma decisao de duplicidade pendente, mas o cadastro correspondente nao esta identificado com seguranca.",
     owner_dedupe_missing_matches: "Nao consegui recuperar os cadastros correspondentes para revisar esta duplicidade com seguranca.",
-    visit_missing_property: "Ainda falta vincular o imovel da visita antes de seguir com o agendamento.",
+    visit_missing_property: visitMissingPropertyText,
     visit_missing_lead_qualification: "Ainda falta qualificar o lead antes de abrir a visita com seguranca.",
     pilot_read_only: "A consulta de piloto neste contexto e somente leitura e nao pode disparar mutacao operacional.",
     lead_already_qualified: "O lead ja foi qualificado e nao deve reabrir esse fluxo sem pendencias reais.",
     documents_ownership_must_remain_imob: "A revisao documental continua sob ownership do IMOB; especialistas entram apenas como apoio.",
     transition_not_allowed: "Essa acao nao e valida para o estado operacional atual do caso.",
   };
+
+  // Valores já conhecidos para pré-preencher o card (render-only, sem decisão no frontend)
+  const visitPrefilled: Record<string, string> = {};
+  if (isVisitMissingProperty) {
+    const vn = asString(visitDraft?.visitorName);
+    const vp = asString(visitDraft?.visitorPhone);
+    const vd = asString(visitDraft?.preferredDate);
+    const ptc = asString(visitDraft?.propertyTextCandidate);
+    if (vn) visitPrefilled.visitorName = vn;
+    if (vp) visitPrefilled.visitorPhone = vp;
+    if (vd) visitPrefilled.preferredDate = vd;
+    if (ptc) visitPrefilled.propertyId = ptc; // texto candidato pré-preenche o campo, mas NÃO é propertyId resolvido
+  }
+
+  // Payload estruturado de slot collection para a visita (schema-driven, render-only no frontend)
+  const visitSlotCollection = isVisitMissingProperty
+    ? {
+        mission: "visit.schedule",
+        title: "Agendar visita",
+        description: "Preencha os dados abaixo para preparar o agendamento.",
+        fields: ["propertyId", "visitorName", "visitorPhone", "preferredDate"] as const,
+        prefilled: visitPrefilled,
+        ...(propertyCandidates.length > 0 ? { propertyCandidates } : {}),
+      }
+    : undefined;
 
   return {
     mode: "blocked",
@@ -513,12 +551,17 @@ function buildWorkflowBlockedResolution(params: {
     conversationState: params.threadState,
     presentation: {
       text: reasonCopy[params.reasonCode],
-      nextStep: params.reasonCode === "visit_missing_property"
-        ? "Completar o vinculo do imovel da visita antes de avancar."
+      nextStep: isVisitMissingProperty
+        ? (propertyCandidates.length === 0
+            ? "Informe o imovel pelo endereco, codigo ou apelido para continuar."
+            : undefined)
         : params.reasonCode === "owner_dedupe_missing_match"
           ? "Revisar os cadastros encontrados antes de atualizar existente."
           : undefined,
-      pendingFieldLabels: params.reasonCode === "visit_missing_property" ? ["propertyId"] : [],
+      pendingFieldLabels: isVisitMissingProperty
+        ? ["propertyId", "visitorName", "visitorPhone", "preferredDate"]
+        : [],
+      ...(visitSlotCollection ? { slotCollection: visitSlotCollection } : {}),
       metadata: {
         workflowState: params.state,
         workflowTransition: params.transition,
