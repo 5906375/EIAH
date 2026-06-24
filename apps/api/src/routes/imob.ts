@@ -1787,15 +1787,33 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
         },
       });
     }
-    const caseWithCanonical = await (prisma as any).imobCase.findFirst({
+    const caseForCanonical = await (prisma as any).imobCase.findFirst({
       where: {
         id: requestedCaseId,
         tenantId: authContext.tenantId,
         workspaceId: authContext.workspaceId,
       },
-      select: { id: true, flow: true, status: true, canonical: true },
-    }) as { id: string; flow: string | null; status: string | null; canonical: unknown } | null;
-    if (!caseWithCanonical) {
+      select: {
+        id: true,
+        flow: true,
+        status: true,
+        stage: true,
+        ownerResponsible: true,
+        nextStep: true,
+        blockers: true,
+        pendingItems: true,
+      },
+    }) as {
+      id: string;
+      flow: string | null;
+      status: string | null;
+      stage: string | null;
+      ownerResponsible: string | null;
+      nextStep: string | null;
+      blockers: unknown;
+      pendingItems: unknown;
+    } | null;
+    if (!caseForCanonical) {
       return res.json({
         ok: true,
         data: {
@@ -1810,7 +1828,7 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
         },
       });
     }
-    const canonical = asObject(caseWithCanonical.canonical);
+    const canonical = buildImobCanonicalCase(caseForCanonical);
     const dispatchResult = resolveImobCrmActionDispatch({
       actionId: requestedActionId,
       caseId: requestedCaseId,
@@ -2408,6 +2426,7 @@ imobRouter.post("/contracts/generate", async (req, res) => {
   const answers = asObject(body.answers);
   const conversationId = asString(body.conversationId);
   const legalVersion = asString(body.legalVersion);
+  const requestedRunId = asString(body.runId);
 
   if (!isContractType(contractType) || !answers) {
     return res.status(400).json({
@@ -2424,6 +2443,18 @@ imobRouter.post("/contracts/generate", async (req, res) => {
     answers,
     legalVersion,
   });
+
+  const scopedRun =
+    requestedRunId
+      ? await prisma.run.findFirst({
+          where: {
+            id: requestedRunId,
+            tenantId: authContext.tenantId,
+            workspaceId: authContext.workspaceId,
+          },
+          select: { id: true },
+        })
+      : null;
 
   const memory = await prisma.memoryEvent.create({
     data: {
@@ -2460,6 +2491,21 @@ imobRouter.post("/contracts/generate", async (req, res) => {
         eventId: memory.id,
         createdAt: toIso(memory.createdAt),
       },
+      widget: scopedRun
+        ? {
+            kind: "contract_intake_result",
+            runId: scopedRun.id,
+            stage: "contract_generated",
+            status: "done",
+            nextStep:
+              preview.review.warnings.length > 0
+                ? "Revise os alertas do contrato antes de exportar ou encaminhar."
+                : "Exporte o contrato gerado ou siga para revisão jurídica/operacional.",
+            pendingItems: [],
+            riskFlags: preview.review.warnings,
+            documentHash: preview.hash,
+          }
+        : null,
     },
   });
 });

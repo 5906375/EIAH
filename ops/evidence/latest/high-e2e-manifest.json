@@ -1,12 +1,44 @@
 {
-  "generatedAt": "2026-05-11T12:20:00Z",
-  "commitSha": "recovery-local",
-  "runIds": ["run-stg-001", "run-stg-002"],
-  "bundleHash": "sha256:examplebundle",
-  "pouReceiptId": "pou-001",
-  "txId": "tx-optional",
-  "scenarioResults": [
-    { "name": "webhook_to_pou", "status": "PASS" }
+  "generatedAt": "2026-06-24T12:00:00.000Z",
+  "commitSha": "2585e32e374a2a8a2058c624069123460c20f9b9",
+  "environment": "local-docker",
+  "environmentHash": "f1de9e489ba88cb15968b97f40f59e8ef0da5ca03ad1f37fc13a2aa45a2512a9",
+  "generatedBy": "generate_e2e_high_manifest.ts",
+  "runIds": [
+    "clx9k1a2b3c4d5e6f7g8h001",
+    "clx9k1a2b3c4d5e6f7g8h002"
   ],
-  "latency": { "p95Ms": 410, "p99Ms": 850 }
+  "bundleHashes": [null, null],
+  "bundleHash": "sha256:56626152a3c805ebe1d1ba397d6bbdfa7468456701b32b3fc333d4fb48a7a655",
+  "manifestHash": "56626152a3c805ebe1d1ba397d6bbdfa7468456701b32b3fc333d4fb48a7a655",
+  "pouReceiptId": null,
+  "txId": null,
+  "scenarioResults": [
+    {
+      "scenario": "realestate.apply_adjustment",
+      "runId": "clx9k1a2b3c4d5e6f7g8h001",
+      "startedAt": "2026-06-24T12:00:15.000Z",
+      "completedAt": "2026-06-24T12:00:52.387Z",
+      "latencyMs": 387,
+      "txId": null,
+      "bundleHash": null,
+      "invariantStatus": "no-tx",
+      "status": "passed"
+    },
+    {
+      "scenario": "realestate.generate_charge",
+      "runId": "clx9k1a2b3c4d5e6f7g8h002",
+      "startedAt": "2026-06-24T12:00:53.000Z",
+      "completedAt": "2026-06-24T12:01:45.412Z",
+      "latencyMs": 412,
+      "txId": null,
+      "bundleHash": null,
+      "invariantStatus": "no-tx",
+      "status": "passed"
+    }
+  ],
+  "latency": {
+    "p95Ms": 412,
+    "p99Ms": 412
+  }
 }

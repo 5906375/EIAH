@@ -998,7 +998,7 @@ test("IMOB_CRM blocked consult remains read-only while exposing blocker context"
 
   const afterSnapshot = JSON.stringify(prisma.__data);
   assert.equal(resolved?.action, "crm.case.blocked_run_resolution");
-  assert.match(resolved?.presentation?.text ?? "", /bloqueio principal|pendência que pode travar o avanço|para destravar/i);
+  assert.match(resolved?.presentation?.text ?? "", /bloqueio ativo|pendência crítica|próximo passo/i);
   assert.equal(beforeSnapshot, afterSnapshot);
 });
 
@@ -1108,10 +1108,53 @@ test("IMOB_CRM blocked consult adds visit workflow blocker when the property is 
   assert.equal(resolved?.presentation?.suggestedNextAction, resolved?.presentation?.nextStep);
   assert.equal(resolved?.presentation?.card?.ctas?.[0]?.nextMessage, resolved?.presentation?.nextStep);
   assert.equal(resolved?.presentation?.card?.ctas?.[0]?.kind, "primary");
-  assert.equal((resolved?.presentation?.blocks ?? []).length <= 2, true);
-  assert.equal((resolved?.presentation?.blocks ?? [])[0]?.title, "Como destravar agora");
+  assert.equal((resolved?.presentation?.blocks ?? []).length, 0);
   assert.doesNotMatch(resolved?.presentation?.text ?? "", /Specialist de apoio:/i);
   assert.equal((resolved?.presentation?.consultiveRead?.specialists?.length ?? 0), 0);
+});
+
+test("IMOB_CRM blocked_run_resolution: presentation has no chat-renderable detail sections (blocks, fallback fields, widget)", async () => {
+  const resolved = await resolveImobCrmOperationalConsult({
+    prisma: createMockPrisma({
+      caseOverrides: {
+        flow: "property.create",
+        stage: "collecting",
+        status: "blocked",
+        nextStep: "consultar caso",
+        blockers: ["dados do imóvel ainda estão incompletos para seguir"],
+        pendingItems: ["tipo", "endereço"],
+      },
+    }) as any,
+    tenantId: "tenant-1",
+    workspaceId: "workspace-1",
+    caseId: "case-1",
+    message: "mostrar bloqueios do caso",
+    threadState: createThreadState(),
+  });
+
+  assert.equal(resolved?.action, "crm.case.blocked_run_resolution");
+
+  const presentation = resolved?.presentation as any;
+
+  // API blocks must be empty (no forbidden kinds in chat body)
+  const blocks: any[] = presentation?.blocks ?? [];
+  const forbiddenKinds = ["case_summary", "follow_up", "checklist", "handoff_package", "business_pending_items", "unlock_steps"];
+  assert.ok(
+    !blocks.some((b: any) => forbiddenKinds.includes(b.kind)),
+    `blocks must not contain forbidden kinds for blocked_run_resolution, found: ${blocks.map((b: any) => b.kind).join(", ")}`,
+  );
+
+  // Fallback-triggering fields must be absent so buildStructuredPresentationBlocks does not produce forbidden sections
+  assert.ok(!presentation?.caseBrief, "caseBrief must be absent for blocked_run_resolution (would render 'Resumo do caso')");
+  assert.ok(!presentation?.preparedFollowUp, "preparedFollowUp must be absent for blocked_run_resolution (would render 'Follow-up preparado')");
+  assert.ok(!presentation?.actionableChecklist, "actionableChecklist must be absent for blocked_run_resolution (would render 'Checklist acionável do caso')");
+  assert.ok(!presentation?.handoffPack, "handoffPack must be absent for blocked_run_resolution (would render 'Pacote de handoff')");
+
+  // Widget must be suppressed to avoid 'Pendências do negócio' rendering
+  assert.ok(!presentation?.widget, "widget must be null/absent for blocked_run_resolution (would render 'Pendências do negócio')");
+
+  // Compact text must still be present
+  assert.match(presentation?.text ?? "", /bloqueio ativo|pendência crítica|próximo passo/i);
 });
 
 test("IMOB_CRM business read emits canonical proof surface when the case already has proof signals", async () => {

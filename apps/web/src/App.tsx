@@ -98,9 +98,10 @@ function Layout({
       {!isImobChatRoute ? <div className="pointer-events-none absolute right-0 top-60 h-64 w-64 rounded-full bg-fuchsia-500/20 blur-3xl" /> : null}
       {isImobChatRoute ? (
         <>
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#e9f1fb_0%,#f6f9fc_38%,#f4f7fb_100%)]" />
-          <div className="pointer-events-none absolute left-0 top-0 h-[28rem] w-[28rem] rounded-full bg-cyan-200/35 blur-3xl" />
-          <div className="pointer-events-none absolute right-0 top-32 h-[24rem] w-[24rem] rounded-full bg-sky-100/70 blur-3xl" />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,#07111f_0%,#0a1730_28%,#081120_100%)]" />
+          <div className="pointer-events-none absolute inset-0 bg-hero-grid opacity-80" />
+          <div className="pointer-events-none absolute -left-24 top-20 h-[32rem] w-[32rem] rounded-full bg-accent/20 blur-3xl" />
+          <div className="pointer-events-none absolute right-0 top-32 h-[26rem] w-[26rem] rounded-full bg-accent-strong/15 blur-3xl" />
         </>
       ) : null}
 

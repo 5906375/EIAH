@@ -114,4 +114,14 @@ describe("ImobContractIntakeResultCard — view", () => {
     assert.match(html, /run:/);
     assert.match(html, /run-result-/);
   });
+
+  it("RC-17: renders contract_generated stage label", () => {
+    const html = render({
+      widget: {
+        ...BASE_WIDGET,
+        stage: "contract_generated",
+      },
+    });
+    assert.match(html, /Contrato gerado/);
+  });
 });

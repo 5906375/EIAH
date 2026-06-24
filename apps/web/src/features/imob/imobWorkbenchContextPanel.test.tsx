@@ -159,7 +159,7 @@ describe("ImobWorkbenchContextPanel", () => {
 });
 
 describe("ImobWorkbenchShell", () => {
-  it("renders desktop three-column shell classes and mobile toggle", () => {
+  it("renders the current shell grid, mobile toggle and back action when provided", () => {
     const html = renderToStaticMarkup(
       <ImobWorkbenchShell
         sidebar={<div>sidebar</div>}
@@ -167,14 +167,13 @@ describe("ImobWorkbenchShell", () => {
         contextPanel={<div>context</div>}
         isContextPanelOpen={false}
         onToggleContextPanel={() => {}}
+        onBackClick={() => {}}
       />,
     );
-    assert.match(html, /xl:grid-cols-\[280px,minmax\(0,1fr\),360px\]/);
+    assert.match(html, /xl:grid-cols-\[216px,minmax\(760px,920px\),272px\]/);
+    assert.match(html, /lg:grid-cols-\[208px,minmax\(0,1fr\)\]/);
     assert.match(html, /Resumo do intake/);
-    assert.match(html, /IMOB Product Shell/);
-    assert.match(html, /Document Intake \/ IMOB v2\.1/);
-    assert.match(html, /Piloto controlado/);
-    assert.match(html, /Voltar ao Command Center/);
-    assert.match(html, /Shell imersivo/);
+    assert.match(html, />Voltar</);
+    assert.match(html, /Ocultar|Mostrar/);
   });
 });

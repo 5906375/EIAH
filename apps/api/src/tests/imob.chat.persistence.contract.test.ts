@@ -315,3 +315,75 @@ test("IMOB chat persistence keeps proof-required completions waiting until recei
   assert.equal(linkedMessage.body?.message?.bundlePath, null);
   assert.equal(linkedMessage.body?.message?.receiptPath, null);
 });
+
+test("IMOB chat persistence preserves contract_intake_result widget metadata", async () => {
+  const conversation = await request
+    .post("/api/imob/chat/conversations")
+    .set("Authorization", `Bearer ${apiToken}`)
+    .send({ title: "Contrato com widget persistido" });
+
+  assert.equal(conversation.status, 201);
+  const conversationId = conversation.body?.conversation?.conversationId as string;
+  assert.ok(conversationId);
+
+  const scopedRun = await prismaGlobal.run.create({
+    data: {
+      tenantId,
+      workspaceId,
+      userId,
+      agent: "EIAH",
+      status: "success",
+      request: {
+        prompt: "Gerar contrato",
+        metadata: {
+          conversationId,
+          threadId: "thread_contract_widget",
+          txIdRequired: false,
+        },
+      } as any,
+      response: { ok: true } as any,
+      txId: null,
+      criticalHash: null,
+    },
+  });
+
+  const created = await request
+    .post(`/api/imob/chat/conversations/${conversationId}/messages`)
+    .set("Authorization", `Bearer ${apiToken}`)
+    .send({
+      role: "assistant",
+      content: "Contrato gerado com sucesso.",
+      runId: scopedRun.id,
+      threadId: "thread_contract_widget",
+      threadLabel: "Contrato",
+      threadStatus: "done",
+      metadata: {
+        widget: {
+          kind: "contract_intake_result",
+          runId: scopedRun.id,
+          stage: "contract_generated",
+          status: "done",
+          nextStep: "Exporte o contrato gerado.",
+          pendingItems: [],
+          riskFlags: [],
+          documentHash: "hash-contract-widget-001",
+        },
+      },
+    });
+
+  assert.equal(created.status, 201);
+  assert.equal(created.body?.ok, true);
+  assert.equal(created.body?.message?.metadata?.widget?.kind, "contract_intake_result");
+  assert.equal(created.body?.message?.metadata?.widget?.runId, scopedRun.id);
+
+  const listed = await request
+    .get(`/api/imob/chat/conversations/${conversationId}/messages`)
+    .set("Authorization", `Bearer ${apiToken}`);
+
+  assert.equal(listed.status, 200);
+  const widgetMessage = (listed.body?.items ?? []).find((item: any) => item.content === "Contrato gerado com sucesso.");
+  assert.ok(widgetMessage);
+  assert.equal(widgetMessage.metadata?.widget?.kind, "contract_intake_result");
+  assert.equal(widgetMessage.metadata?.widget?.stage, "contract_generated");
+  assert.equal(widgetMessage.metadata?.widget?.runId, scopedRun.id);
+});

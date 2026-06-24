@@ -68,6 +68,7 @@ import { ImobChatWidgets } from "@/features/imob/ImobChatWidgets";
 import { ImobWorkbenchShell } from "@/features/imob/ImobWorkbenchShell";
 import { VerticalSelectorBar } from "@/features/workbench/vertical-chat/VerticalSelectorBar";
 import { ReactiveContextPanel } from "@/features/workbench/vertical-chat/ReactiveContextPanel";
+import { ImobSlotCollectionCard } from "@/features/workbench/vertical-chat/ImobSlotCollectionCard";
 import type { VerticalId, VerticalSelectorItem } from "@/features/workbench/vertical-chat/VerticalChatTypes";
 import { extractImobWorkbenchIntakeContext } from "@/features/imob/imobWorkbenchContext";
 import { KnowledgeCard, type KnowledgeAction } from "@/features/imob/KnowledgeCard";
@@ -497,10 +498,6 @@ const QUICK_PROMPTS = [
   {
     label: "Iniciar contrato",
     prompt: "Quero iniciar a coleta de dados para gerar um contrato imobiliário.",
-  },
-  {
-    label: "Fechar venda",
-    prompt: "Quero avançar a operação até o fechamento da venda e registrar os próximos passos.",
   },
 ] as const;
 
@@ -975,7 +972,7 @@ function printMessageCard(message: ChatMessage) {
   printWindow.print();
 }
 
-function buildPresentationFormSubmission(form: ImobPresentationForm, values: Record<string, string>) {
+export function buildPresentationFormSubmission(form: ImobPresentationForm, values: Record<string, string>) {
   const normalized: Record<string, string> = {};
   for (const field of form.fields) {
     normalized[field.name] = normalizeImobFormValue(values[field.name] ?? String(field.value ?? ""));
@@ -1030,6 +1027,14 @@ function buildPresentationFormSubmission(form: ImobPresentationForm, values: Rec
       normalized.desiredCity ? `cidade de interesse do lead ${normalized.desiredCity}` : null,
       normalized.budgetMax ? `faixa de orçamento do lead ${normalized.budgetMax}` : null,
     ],
+    proposta: [
+      normalized.propertyId ? `imóvel da proposta ${normalized.propertyId}` : null,
+      normalized.buyerName ? `nome do comprador ${normalized.buyerName}` : null,
+      normalized.buyerPhone ? `telefone do comprador ${normalized.buyerPhone}` : null,
+      normalized.buyerEmail ? `e-mail do comprador ${normalized.buyerEmail}` : null,
+      normalized.offerAmount ? `valor da proposta ${normalized.offerAmount}` : null,
+      normalized.contractType ? `tipo de proposta ${normalized.contractType}` : null,
+    ],
     anuncio: [
       normalized.propertyId ? `imóvel ${normalized.propertyId}` : null,
       normalized.listingTitle ? `título ${normalized.listingTitle}` : null,
@@ -1082,6 +1087,15 @@ function buildPresentationFormSubmission(form: ImobPresentationForm, values: Rec
     return [
       form.subjectId ? `atualizar imóvel ${form.subjectId}` : "atualizar imóvel",
       ...(linesByEntity[form.entity] ?? []),
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  if (compositeKey === "proposta:create") {
+    return [
+      "continuar proposta",
+      ...(linesByEntity.proposta ?? []),
     ]
       .filter(Boolean)
       .join("\n");
@@ -1689,6 +1703,14 @@ const ImobChatPage: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const workspaceLabel = session.branding?.workspaceLabel?.trim() || session.workspaceId;
+  const isBrandedWorkspaceLabel = Boolean(session.branding?.workspaceLabel?.trim());
+  const handleNavigateBack = React.useCallback(() => {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+    navigate("/app/command-center");
+  }, [navigate]);
   const isGateBlocked = Boolean(imobAccessGate);
   const requestedConversationId = React.useMemo(() => {
     const raw = searchParams.get("conversationId");
@@ -1764,6 +1786,7 @@ const ImobChatPage: React.FC = () => {
   const [formErrorsByMessageId, setFormErrorsByMessageId] = React.useState<Record<string, Record<string, string>>>({});
   const [formLookupLoadingByMessageId, setFormLookupLoadingByMessageId] = React.useState<Record<string, Record<string, boolean>>>({});
   const [isNearBottom, setIsNearBottom] = React.useState(true);
+  const [showAllConversations, setShowAllConversations] = React.useState(false);
   const [showJumpToLatest, setShowJumpToLatest] = React.useState(false);
   const [contractInterviewState, setContractInterviewState] = React.useState<ContractInterviewState | null>(null);
   const [compactTimelineMode, setCompactTimelineMode] = React.useState(true);
@@ -2952,6 +2975,7 @@ const ImobChatPage: React.FC = () => {
           answers: generatingState.answers ?? {},
           conversationId: activeConversationId,
           legalVersion: "BR_CIVIL_LOCACAO_2026_v1",
+          runId: generatingState.runId,
         });
         const generatedState: ContractInterviewState = {
           ...generatingState,
@@ -2967,6 +2991,7 @@ const ImobChatPage: React.FC = () => {
           id: makeId("assistant"),
           role: "assistant",
           text: ["Contrato gerado com sucesso.", "", generated.data.contractText].join("\n"),
+          widget: generated.data.widget ?? undefined,
           thread: {
             ...threadForInterview,
             status: "done",
@@ -4550,45 +4575,44 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       .map((step) => `${step.question.replace(/\?$/, "")}: ${String(contractInterviewState.answers[step.id])}`);
     return lines;
   }, [contractInterviewState]);
-  const chatLaneClassName = "mx-auto w-full xl:max-w-[82%]";
+  const chatLaneClassName = "mx-auto w-full max-w-[780px] xl:max-w-[860px] 2xl:max-w-[980px]";
+  // TODO(runtime): incluir LEGAL apenas quando LauncherAccessContext fornecer entitlement/preview real — não hardcodar aqui.
   const VERTICAL_SELECTOR_ITEMS: VerticalSelectorItem[] = [
-    { id: "imob",  label: "IMOB",  state: "active",  color: "#5DCAA5" },
-    { id: "legal", label: "LEGAL", state: "preview", color: "#7F77DD", tooltip: "Em breve" },
+    { id: "imob", label: "IMOB", state: "active", color: "#5DCAA5" },
   ];
   return (
     <>
       <ImobWorkbenchShell
+      onBackClick={handleNavigateBack}
       sidebar={
-        <div className="flex h-full min-h-[70vh] min-w-0 flex-col overflow-hidden bg-[linear-gradient(180deg,#0a1320_0%,#101b2a_100%)] px-3 py-3 lg:min-h-0">
-            <div className="shrink-0 rounded-[28px] border border-cyan-500/18 bg-[linear-gradient(180deg,rgba(15,27,42,0.96)_0%,rgba(10,18,28,0.9)_100%)] px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_12px_26px_rgba(0,0,0,0.24)]">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-medium uppercase tracking-[0.28em] text-cyan-200/80">IMOB Workspace</p>
-                  <p className="mt-1 text-[15px] font-semibold tracking-[-0.02em] text-white">Conversas do intake</p>
-                  <p className="mt-1 text-[11px] leading-5 text-slate-400">Acompanhe conversas e operações sem competir com o chat central.</p>
-                </div>
-                <span className="rounded-full border border-cyan-300/25 bg-cyan-400/10 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-cyan-100">
-                  IMOB
-                </span>
+        <div className="flex h-full min-h-[62vh] min-w-0 flex-col overflow-hidden bg-[linear-gradient(180deg,rgba(8,14,26,0.78)_0%,rgba(7,13,24,0.94)_100%)] px-1 py-1 lg:min-h-0 xl:px-1.5 xl:py-1.5">
+            <div className="shrink-0 rounded-[12px] bg-white/[0.018] px-2 py-1.5 xl:rounded-[13px] xl:px-2 xl:py-1.5">
+              <div>
+                <p className="text-[10px] font-medium uppercase tracking-[0.28em] text-cyan-200/80">Workspace: {workspaceLabel}</p>
               </div>
-              <div className="mt-4 grid grid-cols-2 gap-2 text-[11px]">
-                <div className="rounded-[18px] border border-white/8 bg-white/5 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Conversas</p>
-                  <p className="mt-2 text-[15px] font-semibold text-white">{filteredConversations.length}</p>
-                </div>
-                <div className="rounded-[18px] border border-white/8 bg-white/5 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-                  <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Threads ativas</p>
-                  <p className="mt-2 text-[15px] font-semibold text-white">{activeThreadCount}</p>
-                </div>
+              <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !shouldShowThreadPanel;
+                    setShowThreadPanel(next);
+                    trackUxEvent(next ? "thread_panel_opened" : "thread_panel_hidden", { activeThreads: activeThreadCount });
+                  }}
+                  title="Ver operações ativas"
+                  className="rounded-full border border-white/8 bg-white/[0.03] px-2 py-0.5 text-[8px] text-slate-300 transition hover:border-white/16 hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40 xl:px-2 xl:text-[8px]"
+                >
+                  <span className="uppercase tracking-[0.16em] text-slate-500">Threads ativas</span>
+                  <span className="ml-2 font-semibold text-white">{activeThreadCount}</span>
+                </button>
               </div>
             </div>
 
-            <div className="mt-3 shrink-0 rounded-[24px] border border-white/8 bg-white/[0.03] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+            <div className="mt-1.5 shrink-0 rounded-[12px] bg-white/[0.022] p-1.5 xl:mt-1.5 xl:rounded-[13px]">
               <div className="flex items-center justify-between gap-2">
                 <button
                   type="button"
                   onClick={() => void handleNewConversation()}
-                  className="rounded-full border border-white/20 bg-white/10 px-3.5 py-2 text-[10px] font-semibold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-cyan-400/30 hover:bg-white/16"
+                  className="rounded-full border border-cyan-300/20 bg-cyan-400/12 px-2.5 py-1 text-[9px] font-semibold text-white transition hover:border-cyan-300/30 hover:bg-cyan-400/18 xl:px-2.5 xl:text-[9px]"
                 >
                   + Nova conversa
                 </button>
@@ -4599,29 +4623,29 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                     setShowThreadPanel(next);
                     trackUxEvent(next ? "thread_panel_opened" : "thread_panel_hidden", { activeThreads: activeThreadCount });
                   }}
-                  className="rounded-full border border-white/10 bg-slate-950/30 px-3 py-2 text-[10px] tracking-[0.14em] text-slate-300 transition hover:border-white/20 hover:bg-white/8 hover:text-white"
+                  className="rounded-full border border-white/10 bg-transparent px-2.5 py-1 text-[9px] tracking-[0.14em] text-slate-300 transition hover:border-white/18 hover:bg-white/[0.04] hover:text-white xl:px-2.5 xl:text-[9px]"
                 >
                   {shouldShowThreadPanel ? "Ocultar operações" : "Ver operações"}
                 </button>
               </div>
 
-              <div className="mt-3 rounded-[18px] border border-white/8 bg-slate-950/20 px-3 py-2.5">
+              <div className="mt-1.5 px-0.5">
                 <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Busca rápida</p>
               <input
                 value={conversationSearch}
                 onChange={(event) => setConversationSearch(event.target.value)}
                   placeholder="Buscar conversa..."
-                  className="mt-2 w-full rounded-[14px] border border-white/8 bg-white/6 px-3 py-2 text-[11px] text-white placeholder:text-slate-500 focus:border-cyan-400/30 focus:bg-white/10 focus:outline-none"
+                  className="mt-1.5 w-full rounded-[10px] border border-white/10 bg-white/[0.05] px-2.5 py-1.5 text-[9px] text-white placeholder:text-slate-500 focus:border-cyan-400/30 focus:bg-white/[0.08] focus:outline-none xl:rounded-[11px] xl:px-2.5 xl:py-1.5 xl:text-[9px]"
               />
               </div>
 
               {conversationId && shouldShowThreadPanel ? (
-                <div className="mt-3 rounded-[18px] border border-white/8 bg-slate-950/18 p-2">
-                  <div className="mb-2 flex items-center justify-between px-1">
-                    <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Operações da conversa</p>
-                    <span className="text-[10px] text-slate-400">{activeThreadCount} ativas</span>
+                <div className="mt-1.5 rounded-[12px] border border-white/8 bg-black/15 p-1.5 xl:rounded-[13px]">
+                  <div className="mb-1.5 flex items-center justify-between px-0.5">
+                    <p className="text-[9px] uppercase tracking-[0.16em] text-slate-500">Operações</p>
+                    <span className="text-[9px] text-slate-400">{activeThreadCount} ativas</span>
                   </div>
-                  <div className="max-h-56 overflow-y-auto pr-1">
+                  <div className="max-h-48 overflow-y-auto pr-0.5">
                   <ThreadPanel
                     threads={threads}
                     selectedThreadId={selectedThreadId}
@@ -4657,79 +4681,101 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
               ) : null}
             </div>
 
-            <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-hidden">
-              <div className="mb-2 flex items-center justify-between px-1">
-                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Conversas recentes</p>
-                <span className="text-[10px] text-slate-500">{filteredConversations.length} itens</span>
+            <div className="mt-1.5 flex min-h-0 flex-1 flex-col overflow-hidden xl:mt-1.5">
+              <div className="mb-1 flex items-center justify-end px-0.5">
+                <button
+                  type="button"
+                  onClick={() => { setConversationSearch(""); setShowAllConversations(false); }}
+                  title="Limpar filtro e recolher lista"
+                  className="rounded-full bg-white/[0.03] px-2 py-0.5 text-[8px] text-slate-300 transition hover:bg-white/[0.06] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40"
+                >
+                  <span className="uppercase tracking-[0.16em] text-slate-500">Conversas recentes</span>
+                  <span className="ml-1.5 font-semibold text-white">{filteredConversations.length}</span>
+                </button>
               </div>
-              <div className="flex-1 min-h-0 space-y-2 overflow-y-auto pr-1">
+              <div className="flex-1 min-h-0 space-y-1 overflow-y-auto pr-0.5">
               {filteredConversations.length === 0 ? (
-                <div className="rounded-[22px] border border-dashed border-white/10 bg-white/[0.03] px-3 py-4">
+                <div className="rounded-[16px] border border-dashed border-white/10 bg-white/[0.03] px-3 py-3 xl:rounded-[18px] xl:py-3.5">
                   <p className="text-[11px] font-medium text-white">Nenhuma conversa registrada.</p>
-                  <p className="mt-1 text-[10px] leading-5 text-slate-400">Use “Nova conversa” para iniciar um fluxo IMOB neste workspace.</p>
+                  <p className="mt-1 text-[10px] leading-5 text-slate-400">Use "Nova conversa" para iniciar um fluxo IMOB neste workspace.</p>
                 </div>
               ) : (
-                filteredConversations.map((conversation) => {
-                  const selected = conversation.conversationId === conversationId;
-                  return (
+                <>
+                  {(conversationSearch.trim() ? filteredConversations : filteredConversations.slice(0, showAllConversations ? filteredConversations.length : 5)).map((conversation) => {
+                    const selected = conversation.conversationId === conversationId;
+                    return (
+                      <button
+                        key={conversation.conversationId}
+                        type="button"
+                        onClick={() => void loadConversation(conversation.conversationId)}
+                        className={`w-full rounded-[12px] px-2 py-1.5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 xl:rounded-[13px] ${
+                          selected
+                            ? "bg-cyan-400/10 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
+                            : "bg-white/[0.02] text-slate-300 hover:bg-white/[0.05] hover:text-white"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="truncate text-[9px] font-medium xl:text-[10px]">{conversation.title}</p>
+                          <div className="flex shrink-0 items-center gap-1">
+                            <span className="text-[8px] text-slate-500">
+                              {formatRelativeTime(conversation.lastMessageAt ?? conversation.updatedAt)}
+                            </span>
+                            {selected ? (
+                              <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2 py-0.5 text-[8px] uppercase tracking-[0.16em] text-cyan-100">
+                                Ativa
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                        <p className="mt-0.5 truncate text-[8px] leading-4 opacity-80">
+                          {conversation.lastMessagePreview ?? "Sem mensagens ainda"}
+                        </p>
+                      </button>
+                    );
+                  })}
+                  {!conversationSearch.trim() && filteredConversations.length > 5 ? (
                     <button
-                      key={conversation.conversationId}
                       type="button"
-                      onClick={() => void loadConversation(conversation.conversationId)}
-                      className={`w-full rounded-[18px] border px-3 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
-                        selected
-                          ? "border-cyan-300/24 bg-cyan-400/12 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_10px_24px_rgba(8,145,178,0.08)]"
-                          : "border-white/6 bg-white/[0.02] text-slate-300 hover:border-white/12 hover:bg-white/[0.05] hover:text-white"
-                      }`}
+                      onClick={() => setShowAllConversations((v) => !v)}
+                      className="w-full rounded-[12px] bg-white/[0.02] px-2 py-1.5 text-left transition hover:bg-white/[0.04] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-accent/40"
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-[11px] font-medium">{conversation.title}</p>
-                        {selected ? (
-                          <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2 py-0.5 text-[9px] uppercase tracking-[0.16em] text-cyan-100">
-                            Ativa
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="mt-1.5 truncate text-[10px] leading-5 opacity-80">
-                        {conversation.lastMessagePreview ?? "Sem mensagens ainda"}
+                      <p className="text-[9px] uppercase tracking-[0.16em] text-slate-400">
+                        {showAllConversations ? "Ocultar histórico" : `Ver histórico completo (${filteredConversations.length})`}
                       </p>
                     </button>
-                  );
-                })
+                  ) : null}
+                </>
               )}
             </div>
             </div>
         </div>
       }
       main={
-        <article className="relative flex min-h-[70vh] flex-col bg-[linear-gradient(180deg,#f8fafc_0%,#eef4fb_100%)] lg:min-h-0">
-            <header className="border-b border-slate-200/80 bg-white/70 px-4 py-3 backdrop-blur sm:px-6">
-              <div className={`${chatLaneClassName} flex items-center justify-between gap-3`}>
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-500">
-                      Workspace atual
-                    </p>
-                    <span className="rounded-full border border-slate-200 bg-white px-2.5 py-0.5 text-[10px] uppercase tracking-[0.16em] text-slate-700 shadow-sm">
-                      Chat ativo
+        <article className="relative flex h-full min-h-0 flex-col overflow-hidden bg-[linear-gradient(180deg,rgba(7,13,24,0.96)_0%,rgba(9,18,34,0.98)_100%)]">
+            <header className="border-b border-white/10 bg-surface-strong/72 px-2.5 py-1.5 backdrop-blur-xl sm:px-3.5 sm:py-2">
+              <div className={`${chatLaneClassName} flex flex-wrap items-center gap-1.5 sm:gap-2`}>
+                  <VerticalSelectorBar
+                    verticals={VERTICAL_SELECTOR_ITEMS}
+                    activeVerticalId={activeVerticalId}
+                    onSelect={setActiveVerticalId}
+                  />
+                  {isBrandedWorkspaceLabel ? (
+                    <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-muted-foreground shadow-lg shadow-black/20">
+                      {workspaceLabel}
                     </span>
-                  </div>
-                  <p className="mt-1 text-[13px] font-medium text-slate-900">{workspaceLabel}</p>
-                  <p className="mt-0.5 text-[11px] text-slate-500">
-                    Conversa, intake e quick actions preservados no fluxo atual.
-                  </p>
-                  <div className="mt-2">
-                    <VerticalSelectorBar
-                      verticals={VERTICAL_SELECTOR_ITEMS}
-                      activeVerticalId={activeVerticalId}
-                      onSelect={setActiveVerticalId}
-                    />
-                  </div>
-                </div>
+                  ) : null}
+                  <span className="hidden sm:inline-flex rounded-full border border-accent/30 bg-accent/12 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-accent shadow-lg shadow-black/20">
+                    Piloto controlado
+                  </span>
+                  {selectedThreadId ? (
+                    <span className="rounded-full border border-accent/30 bg-accent/12 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-accent shadow-lg shadow-black/20">
+                      Operação filtrada
+                    </span>
+                  ) : null}
               </div>
             </header>
             {imobAccessGate ? (
-              <div className="border-b border-slate-200 bg-white/80 px-4 py-4 sm:px-6">
+              <div className="border-b border-white/10 bg-surface/60 px-4 py-4 sm:px-6">
                 <div className={chatLaneClassName}>
                   <ImobAccessGateCard gate={imobAccessGate} />
                 </div>
@@ -4740,12 +4786,12 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
             (contractInterviewState.status === "review" ||
               contractInterviewState.status === "generating" ||
               contractInterviewState.status === "generated") ? (
-              <div className="border-b border-slate-200 bg-white/80 px-4 py-3 sm:px-6">
+              <div className="border-b border-white/10 bg-surface/60 px-4 py-3 sm:px-6">
                 <div className={chatLaneClassName}>
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-700">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-accent/80">
                     Rascunho de contrato • {getContractTypeLabel(contractInterviewState.contractType)}
                   </p>
-                  <div className="mt-1 max-h-16 space-y-0.5 overflow-y-auto pr-1 text-[11px] text-slate-500">
+                  <div className="mt-1 max-h-16 space-y-0.5 overflow-y-auto pr-1 text-[11px] text-muted-foreground">
                     {contractDraftLines.slice(-8).map((line, idx) => (
                       <p key={`draft-${idx}`} className="truncate">{line}</p>
                     ))}
@@ -4756,7 +4802,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                         <select
                           value={draftEditFieldId}
                           onChange={(event) => setDraftEditFieldId(event.target.value)}
-                          className="min-w-0 flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] text-slate-900 focus:border-accent/40 focus:outline-none"
+                          className="min-w-0 flex-1 rounded-lg border border-white/10 bg-surface-strong/70 px-2 py-1 text-[10px] text-foreground focus:border-accent/40 focus:outline-none"
                         >
                           {contractEditableFields.map((field) => (
                             <option key={`draft-field-${field.id}`} value={field.id}>
@@ -4768,7 +4814,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                           type="button"
                           onClick={() => void handleDraftEditFromPanel()}
                           disabled={reviewActionLoading !== null || !draftEditFieldId}
-                          className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-slate-800 transition hover:border-accent/40 disabled:opacity-50"
+                          className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-foreground transition hover:border-accent/40 disabled:opacity-50"
                         >
                           Editar
                         </button>
@@ -4778,7 +4824,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                           type="button"
                           onClick={() => void handleDraftDeclineFromPanel()}
                           disabled={reviewActionLoading !== null}
-                          className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-slate-800 transition hover:border-rose-300/40 disabled:opacity-50"
+                          className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-foreground transition hover:border-rose-300/40 disabled:opacity-50"
                         >
                           Nao gerar
                         </button>
@@ -4786,7 +4832,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                           type="button"
                           onClick={() => void handleDraftConfirmFromPanel()}
                           disabled={reviewActionLoading !== null}
-                          className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-cyan-900 transition hover:bg-cyan-100 disabled:opacity-50"
+                          className="rounded-full border border-accent/40 bg-accent/15 px-3 py-1 text-[10px] uppercase tracking-[0.14em] text-accent transition hover:bg-accent/20 disabled:opacity-50"
                         >
                           Confirmar e gerar
                         </button>
@@ -4806,18 +4852,18 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                 setIsNearBottom(nearBottom);
                 if (nearBottom) setShowJumpToLatest(false);
               }}
-              className="flex-1 space-y-3 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5"
+              className="min-h-0 flex-1 space-y-1.5 overflow-y-auto overscroll-contain px-2.5 py-2 sm:px-3.5 sm:py-2.5 xl:py-3"
             >
               <div className={chatLaneClassName}>
               {hiddenMessageCount > 0 ? (
-                <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-2 shadow-[0_10px_28px_rgba(15,23,42,0.05)]">
-                  <p className="text-[11px] text-slate-600">
+                <div className="flex items-center justify-between rounded-xl border border-white/10 bg-surface/70 px-3 py-2 shadow-lg shadow-black/20">
+                  <p className="text-[11px] text-muted-foreground">
                     Mostrando {compactVisibleLimit} de {visibleMessages.length} mensagens.
                   </p>
                   <button
                     type="button"
                     onClick={() => setCompactTimelineMode(false)}
-                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] uppercase tracking-[0.15em] text-slate-800 hover:border-accent/40"
+                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.15em] text-foreground hover:border-accent/40"
                   >
                     Ver histórico completo
                   </button>
@@ -4828,25 +4874,25 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                   <button
                     type="button"
                     onClick={() => setCompactTimelineMode(true)}
-                    className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[10px] uppercase tracking-[0.15em] text-slate-800 hover:border-accent/40"
+                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.15em] text-foreground hover:border-accent/40"
                   >
                     Voltar ao modo compacto
                   </button>
                 </div>
               ) : null}
               {historyLoading ? (
-                <p className="text-sm text-slate-600">Carregando histórico da conversa...</p>
+                <p className="text-sm text-muted-foreground">Carregando histórico da conversa...</p>
               ) : visibleMessages.length === 0 ? (
                 selectedThreadId ? (
-                  <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-[0_10px_28px_rgba(15,23,42,0.05)]">
-                    <p className="text-sm text-slate-900">Sem mensagens nesta thread.</p>
-                    <p className="mt-1 text-[10px] text-slate-600">
+                  <div className="rounded-xl border border-white/10 bg-surface/70 p-4 shadow-lg shadow-black/20">
+                    <p className="text-sm text-foreground">Sem mensagens nesta thread.</p>
+                    <p className="mt-1 text-[10px] text-muted-foreground">
                       Selecione outra thread ou remova o filtro para ver toda a conversa.
                     </p>
                   </div>
                 ) : (
-                  <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-[0_10px_28px_rgba(15,23,42,0.05)]">
-                    <p className="text-sm text-slate-600">Nova conversa pronta.</p>
+                  <div className="rounded-xl border border-white/10 bg-surface/70 p-4 shadow-lg shadow-black/20">
+                    <p className="text-sm text-muted-foreground">Nova conversa pronta.</p>
                   </div>
                 )
               ) : null}
@@ -4856,7 +4902,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                     type="button"
                     onClick={() => void handleLoadOlder()}
                     disabled={historyLoadingMore}
-                    className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-slate-800 transition hover:border-accent/40 disabled:opacity-50"
+                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] uppercase tracking-[0.16em] text-foreground transition hover:border-accent/40 disabled:opacity-50"
                   >
                     {historyLoadingMore ? "Carregando..." : "Carregar anteriores"}
                   </button>
@@ -4865,9 +4911,10 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
 
               {renderedMessages.map((message, index) => {
                 const isUser = message.role === "user";
+                const isLastMessage = index === renderedMessages.length - 1;
                 const messageThread = message.thread ?? message.card?.thread;
                 const prevMessageThread = index > 0 ? renderedMessages[index - 1]?.thread ?? renderedMessages[index - 1]?.card?.thread : null;
-                const showThreadPill = Boolean(messageThread?.id && messageThread.id !== prevMessageThread?.id);
+                const showThreadPill = Boolean(messageThread?.id && messageThread.id !== prevMessageThread?.id && !selectedThreadId);
                 const threadTone =
                   messageThread?.status === "blocked"
                     ? "border-rose-300/40 bg-rose-500/10 text-rose-200"
@@ -4904,18 +4951,18 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                   || Boolean(SHOW_TECHNICAL_CHAT && visibleProof);
                 return (
                   <div key={message.id} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-                    <div className={`max-w-[94%] space-y-1.5 sm:max-w-[82%] ${isUser ? "items-end" : "items-start"}`}>
+                    <div className={`max-w-[96%] space-y-0.5 sm:max-w-[86%] xl:max-w-[84%] ${isUser ? "items-end" : "items-start"}`}>
                       {showThreadPill ? (
-                        <div className={`inline-flex rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.16em] ${threadTone}`}>
+                        <div className={`inline-flex rounded-full border px-2 py-0.5 text-[8px] uppercase tracking-[0.16em] ${threadTone}`}>
                           {messageThread?.label}
                         </div>
                       ) : null}
                       {showBubble ? (
                         <div
-                          className={`rounded-2xl px-4 py-3 text-sm ${
+                          className={`rounded-[18px] px-3 py-1.5 text-[13px] leading-[1.55] sm:rounded-[20px] sm:px-3.5 sm:py-2 sm:text-[14px] xl:px-3.5 xl:py-2 ${
                             isUser
-                              ? "border border-cyan-200 bg-cyan-50 text-slate-950 shadow-[0_10px_24px_rgba(34,211,238,0.10)]"
-                              : "border border-slate-200 bg-white text-slate-900 shadow-[0_14px_30px_rgba(15,23,42,0.06)]"
+                              ? "border border-accent/25 bg-accent/12 text-foreground shadow-[0_4px_16px_rgba(34,211,238,0.10)]"
+                              : "border border-white/10 bg-white/[0.06] text-foreground shadow-[0_4px_16px_rgba(0,0,0,0.25)]"
                           } transition`}
                         >
                           {message.text.trim().length > 0 ? (
@@ -4934,19 +4981,19 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                           ) : null}
 
                           {message.consultBadge ? (
-                            <span className="mt-1.5 inline-block rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent/80">
+                            <span className="mt-1.5 inline-block rounded-full border border-accent/30 bg-accent/10 px-2 py-0.5 text-[9px] font-medium text-accent/80">
                               {message.consultBadge}
                             </span>
                           ) : null}
 
                           {message.dispatchBadge ? (
-                            <span className="mt-1.5 inline-block rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-medium text-amber-300/80">
+                            <span className="mt-1.5 inline-block rounded-full border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[9px] font-medium text-amber-300/80">
                               {message.dispatchBadge}
                             </span>
                           ) : null}
 
                           {message.blocks?.length ? (
-                            <div className="mt-3 space-y-2">
+                            <div className="mt-2 space-y-1.5">
                               {message.blocks
                                 .filter((block) => block.kind !== "confirmation")
                                 .map((block, blockIndex) => (
@@ -4962,12 +5009,12 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                         const shouldDelayBlockContent = typewriterMessageIds[message.id] === true;
                                         if (shouldDelayBlockContent) return null;
                                         return (
-                                          <div className="rounded-2xl border border-white/10 bg-black/20 p-2.5">
-                                            <div className="space-y-2">
+                                          <div className="rounded-[16px] border border-slate-200/70 bg-slate-50/72 p-2.5">
+                                            <div className="space-y-1.5">
                                               {block.agentActivities.map((activity, activityIndex) => (
                                                 <div
                                                   key={`${message.id}-agent-activity-${blockIndex}-${activityIndex}-${activity.agentId}`}
-                                                  className="rounded-xl bg-white/[0.03] px-2.5 py-2"
+                                                  className="rounded-[12px] border border-white/10 bg-white/[0.06] px-2.5 py-2"
                                                 >
                                                   <p className="text-[11px] font-medium text-foreground/95">
                                                     {(activity.displayPrefix ?? "Agente").trim()} {activity.agentLabel.trim()}
@@ -5002,8 +5049,8 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                         );
                                       })()
                                     ) : null}
-                                    {block.kind === "next_actions" && block.ctas?.length ? (
-                                      <div className="rounded-xl bg-black/20 p-2">
+                                    {block.kind === "next_actions" && block.ctas?.length && isLastMessage ? (
+                                      <div className="rounded-[14px] border border-slate-200/70 bg-slate-50/72 p-2">
                                         {(() => {
                                           const items = normalizeCardCtas(block.ctas) ?? [];
                                           if (items.length === 0) return null;
@@ -5044,7 +5091,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                         const shouldDelayBlockChoices = typewriterMessageIds[message.id] === true;
                                         if (shouldDelayBlockChoices) return null;
                                         return (
-                                          <div className="flex flex-wrap items-center gap-2">
+                                          <div className="flex flex-wrap items-center gap-1.5">
                                             <SequentialInlineChoices
                                               items={items}
                                               animateSequence={sequentialChoiceMessageIds[message.id] === true}
@@ -5077,17 +5124,17 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                           ) : null}
 
                           {messageCard ? (
-                            <div className="mt-3 rounded-xl border border-white/10 bg-surface/50 p-3">
+                            <div className="mt-2 rounded-[16px] border border-slate-200/75 bg-slate-50/82 p-2">
                             <div className="flex items-center justify-between gap-2">
-                              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-foreground">{messageCard.title}</p>
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground">{messageCard.title}</p>
                               {messageCard.type !== "action" ? (
-                                <span className="rounded-full bg-black/25 px-2 py-0.5 text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+                                <span className="rounded-full border border-white/10 bg-white/[0.06] px-2 py-0.5 text-[9px] uppercase tracking-[0.15em] text-muted-foreground">
                                   {getCardTypeChip(messageCard.type)}
                                 </span>
                               ) : null}
                             </div>
 
-                            <ul className="mt-2 space-y-1 text-[10px] text-muted-foreground">
+                            <ul className="mt-1.5 space-y-0.5 text-[10px] text-muted-foreground">
                               {messageCard.lines
                                 .filter((line, idx) => {
                                   if (idx !== 0) return true;
@@ -5099,7 +5146,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                             </ul>
 
                             {runFinance ? (
-                              <div className="mt-3 rounded-lg border border-white/10 bg-black/20 p-2">
+                              <div className="mt-2 rounded-[12px] border border-white/8 bg-white/[0.04] p-2">
                                 <p className="text-[10px] tracking-[0.18em] text-muted-foreground">Execução</p>
                                 <div className="mt-2">
                                   <ContextualCostPanel
@@ -5128,7 +5175,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                             ) : null}
 
                             {messageCard.knowledgeResults?.length ? (
-                              <div className="mt-3 space-y-3">
+                              <div className="mt-1.5 space-y-2">
                                 {messageCard.knowledgeResults.map((item) => (
                                   <KnowledgeCard
                                     key={`${message.id}-${item.id}`}
@@ -5142,7 +5189,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                             ) : null}
 
                             {SHOW_TECHNICAL_CHAT && messageCard.risk ? (
-                              <div className="mt-3 rounded-lg border border-white/10 bg-surface/40 p-2">
+                              <div className="mt-2 rounded-[12px] border border-white/8 bg-white/[0.04] p-2">
                                 <p className="text-[10px] tracking-[0.18em] text-muted-foreground">Risco</p>
                                 <p className="mt-1 text-[10px] text-foreground">
                                   Nível: <span className="uppercase">{messageCard.risk.level}</span>
@@ -5157,7 +5204,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                             ) : null}
 
                             {SHOW_TECHNICAL_CHAT && messageCard.queue ? (
-                              <div className="mt-3 rounded-lg border border-white/10 bg-surface/40 p-2">
+                              <div className="mt-2 rounded-[12px] border border-white/8 bg-white/[0.04] p-2">
                                 <p className="text-[10px] tracking-[0.18em] text-muted-foreground">Fila</p>
                                 <p className="mt-1 text-[10px] text-foreground">
                                   Status: {messageCard.queue.status ?? "—"} • Step: {messageCard.queue.step ?? "—"}
@@ -5166,7 +5213,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                             ) : null}
 
                             {SHOW_TECHNICAL_CHAT && visibleProof ? (
-                              <div className="mt-3 rounded-lg border border-white/10 bg-surface/40 p-2">
+                              <div className="mt-2 rounded-[12px] border border-white/8 bg-white/[0.04] p-2">
                                 <p className="text-[10px] tracking-[0.18em] text-muted-foreground">Bloco de prova</p>
                                 <p className="mt-1 text-[10px] text-foreground">
                                   estado: {visibleProof.state ?? (visibleProof.ready ? "ready" : "pending")}
@@ -5204,7 +5251,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                             pendingExecution &&
                             pendingExecution.messageId === message.id &&
                             pendingExecution.thread.id === (message.thread?.id ?? messageCard.thread?.id) ? (
-                              <p className="mt-3 text-[10px] tracking-[0.18em] text-muted-foreground">
+                              <p className="mt-2 text-[10px] tracking-[0.18em] text-muted-foreground">
                                 Aguardando sua decisão para seguir.
                               </p>
                             ) : null}
@@ -5237,25 +5284,25 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                             const formLabel = message.form.label?.trim() ?? "";
                             const formDescription = message.form.description?.trim() ?? "";
                             return (
-                              <div className="mt-3 space-y-3 rounded-xl border border-white/10 bg-surface/50 p-3">
+                              <div className="mt-2.5 space-y-2.5 rounded-xl border border-white/10 bg-surface/50 p-2.5">
                                 {formLabel || formDescription ? (
-                                  <div className="space-y-1">
+                                  <div className="space-y-0.5">
                                     {formLabel ? <p className="text-sm font-medium text-foreground">{formLabel}</p> : null}
                                     {formDescription ? (
                                       <p className="text-[11px] normal-case tracking-normal text-muted-foreground">{formDescription}</p>
                                     ) : null}
                                   </div>
                                 ) : null}
-                                <div className="space-y-3">
+                                <div className="space-y-2.5">
                                   {message.form.fields.map((field) => (
-                                    <div key={`${message.id}-${field.name}`} className="space-y-1.5">
+                                    <div key={`${message.id}-${field.name}`} className="space-y-1">
                                       <label className="text-[11px] normal-case tracking-normal text-foreground/90">{field.label}</label>
                                       <div className="flex gap-2">
                                         {field.type === "select" ? (
                                           <select
                                             value={formValues[field.name] ?? ""}
                                             onChange={(event) => updateFormFieldValue(message.id, field.name, event.target.value)}
-                                            className="min-h-[36px] w-full rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-[12px] normal-case tracking-normal text-foreground focus:outline-none"
+                                            className="min-h-[34px] w-full rounded-lg border border-white/10 bg-black/25 px-3 py-1.5 text-[12px] normal-case tracking-normal text-foreground focus:outline-none"
                                           >
                                             <option value="">{field.placeholder ?? ""}</option>
                                             {Array.from(new Set((field.options ?? []).map((option) => option.group ?? "")))
@@ -5295,14 +5342,14 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                               void applyCepLookupToForm(message, field.name, formValues[field.name] ?? "");
                                             }}
                                             placeholder={field.placeholder}
-                                            className="min-h-[36px] w-full rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-[12px] normal-case tracking-normal text-foreground placeholder:text-muted-foreground focus:outline-none"
+                                            className="min-h-[34px] w-full rounded-lg border border-white/10 bg-black/25 px-3 py-1.5 text-[12px] normal-case tracking-normal text-foreground placeholder:text-muted-foreground focus:outline-none"
                                           />
                                         )}
                                         {field.allowAttachment ? (
                                           <button
                                             type="button"
                                             onClick={() => setAttachmentMenuOpen(true)}
-                                            className="shrink-0 rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-[11px] normal-case tracking-normal text-foreground hover:bg-black/30"
+                                            className="shrink-0 rounded-lg border border-white/10 bg-black/25 px-3 py-1.5 text-[11px] normal-case tracking-normal text-foreground hover:bg-black/30"
                                           >
                                             {field.attachmentLabel ?? "Anexar"}
                                           </button>
@@ -5320,13 +5367,13 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                     </div>
                                   ))}
                                 </div>
-                                <div className="flex flex-wrap gap-2">
+                                <div className="flex flex-wrap gap-1.5">
                                   {(message.form.actions ?? []).map((action) => (
                                     <button
                                       key={`${message.id}-form-${action.id}`}
                                       type="button"
                                       onClick={() => void handlePresentationFormAction(message, action.id)}
-                                      className={`rounded-full px-3 py-1.5 text-[11px] normal-case tracking-normal ${action.kind === "primary" ? "bg-accent/15 text-foreground" : "bg-black/25 text-muted-foreground hover:text-foreground"}`}
+                                      className={`rounded-full px-3 py-1 text-[11px] normal-case tracking-normal ${action.kind === "primary" ? "bg-accent/15 text-foreground" : "bg-black/25 text-muted-foreground hover:text-foreground"}`}
                                     >
                                       {action.label}
                                     </button>
@@ -5338,7 +5385,28 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                         </div>
                       ) : null}
 
-                      <div className={`px-1 text-[10px] uppercase tracking-[0.15em] text-muted-foreground/80 ${inlineChoicePresentation ? "flex flex-col items-start gap-1.5" : `flex flex-wrap items-center gap-2 ${isUser ? "justify-end" : "justify-start"}`}`}>
+                      {(() => {
+                        const messageThreadId = message.thread?.id ?? message.card?.thread?.id ?? null;
+                        const isPendingTarget =
+                          Boolean(pendingExecution) &&
+                          pendingExecution?.messageId === message.id &&
+                          pendingExecution?.thread.id === messageThreadId;
+                        const slotFields = pendingExecution?.pendingFields ?? [];
+                        if (!isPendingTarget || !isLastMessage || slotFields.length === 0) return null;
+                        return (
+                          <ImobSlotCollectionCard
+                            pendingFields={slotFields}
+                            flow={pendingExecution?.flow}
+                            disabled={state === "executing" || state === "typing"}
+                            onSubmit={(structuredText) => {
+                              void sendMessageText(structuredText);
+                            }}
+                            onCancel={() => handleRejectExecution(message)}
+                          />
+                        );
+                      })()}
+
+                      <div className={`px-1 text-[10px] uppercase tracking-[0.12em] text-muted-foreground/80 ${inlineChoicePresentation ? "flex flex-col items-start gap-1.5" : `flex flex-wrap items-center gap-1.5 ${isUser ? "justify-end" : "justify-start"}`}`}>
                         {message.role === "assistant" &&
                         message.card?.ctas?.length &&
                         !message.card.knowledgeResults?.length &&
@@ -5356,7 +5424,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                 if (cta.action === "export_contract_pdf") return true;
                                 if (isAttachmentCrmSuggestionAction(cta.action)) return true;
                                 if (isOpenAttachmentMenuAction(cta.action)) return true;
-                                if (isSendSuggestedMessageAction(cta.action)) return true;
+                                if (isSendSuggestedMessageAction(cta.action)) return isLastMessage;
                                 return isPendingTarget;
                               }) ?? [];
                               if (actionableCtas.length === 0) return null;
@@ -5391,7 +5459,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                           });
                                         }
                                       }}
-                                      className="text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                                      className="text-[10px] normal-case tracking-normal text-slate-500 underline-offset-2 hover:text-slate-900 hover:underline"
                                     >
                                       {renderedLabel}
                                     </a>
@@ -5400,7 +5468,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                       key={`${message.id}-footer-cta-${cta.id}`}
                                       to={withDashboardContext(cta.href, messageThreadId)}
                                       onClick={() => setOpenOptionsMessageId(null)}
-                                      className="text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                                      className="text-[10px] normal-case tracking-normal text-slate-500 underline-offset-2 hover:text-slate-900 hover:underline"
                                     >
                                       {renderedLabel}
                                     </Link>
@@ -5463,7 +5531,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                       }
                                     }}
                                     disabled={(cta.action === "reject_execution" && isRejectLocked) || crmSuggestionLoadingId === message.id}
-                                    className="text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                                    className="text-[10px] normal-case tracking-normal text-slate-500 underline-offset-2 hover:text-slate-900 hover:underline"
                                   >
                                     {renderedLabel}
                                   </button>
@@ -5507,10 +5575,10 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                           }
                                         }}
                                       >
-                                        <summary className="cursor-pointer list-none text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+                                        <summary className="cursor-pointer list-none text-[10px] normal-case tracking-normal text-slate-500 underline-offset-2 hover:text-slate-900 hover:underline">
                                           opções
                                         </summary>
-                                        <div className="absolute left-0 top-6 z-20 min-w-[180px] rounded-xl border border-white/10 bg-surface/95 p-1.5 shadow-xl backdrop-blur">
+                                        <div className="absolute left-0 top-6 z-20 min-w-[180px] rounded-[14px] border border-slate-200 bg-white/95 p-1.5 shadow-[0_18px_40px_rgba(15,23,42,0.12)] backdrop-blur">
                                           <div className="flex flex-col gap-1">{secondary.map((cta) => renderCta(cta))}</div>
                                         </div>
                                       </details>
@@ -5588,7 +5656,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
               ) : null}
               {state === "typing" ? (
                 <div className="flex justify-start">
-                  <div className="max-w-[94%] sm:max-w-[82%]">
+                  <div className="max-w-[96%] sm:max-w-[86%] xl:max-w-[84%]">
                     <TypingIndicatorBubble />
                   </div>
                 </div>
@@ -5596,21 +5664,21 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
               </div>
             </div>
 
-            <div className="sticky bottom-0 z-20 border-t border-slate-200 bg-white/96 px-4 py-3 backdrop-blur sm:px-6">
+            <div className="shrink-0 border-t border-white/10 bg-surface-strong/80 px-2.5 py-1.5 backdrop-blur-xl sm:px-3.5 sm:py-2">
               <div className={chatLaneClassName}>
-                <div className="mb-2.5 flex flex-wrap items-center gap-1.5">
-                  {QUICK_PROMPTS.slice(0, 4).map((prompt) => (
+                <div className="mb-1 flex flex-wrap items-center gap-1 overflow-x-auto px-0.5">
+                  {QUICK_PROMPTS.map((prompt) => (
                     <button
                       key={prompt.label}
                       type="button"
                       onClick={() => void sendMessageText(prompt.prompt, { displayText: prompt.label })}
-                      className="rounded-full border border-slate-200 bg-white px-3 py-1 text-[10px] tracking-[0.04em] text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900"
+                      className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 text-[9px] uppercase tracking-[0.12em] text-muted-foreground transition hover:border-accent/30 hover:bg-accent/8 hover:text-accent"
                     >
                       {prompt.label}
                     </button>
                   ))}
                 </div>
-                <div className="flex items-center gap-2 rounded-[20px] border border-slate-200 bg-white p-2 shadow-[0_12px_30px_rgba(15,23,42,0.07)]">
+                <div className="flex items-end gap-2 rounded-[16px] border border-white/10 bg-white/[0.05] p-2 backdrop-blur-sm sm:rounded-[18px] sm:p-2.5">
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -5626,19 +5694,19 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                       disabled={isGateBlocked || uploadingDocuments || state === "typing" || state === "executing"}
                       aria-label="Abrir menu de anexos"
                       title="Adicionar fotos e arquivos"
-                      className="flex h-[28px] w-[28px] items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-[11px] leading-none text-slate-600 shadow-sm transition hover:border-slate-300 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex h-[34px] w-[34px] items-center justify-center rounded-full border border-white/10 bg-white/5 text-[11px] leading-none text-muted-foreground shadow-lg shadow-black/20 transition hover:border-accent/40 hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {uploadingDocuments ? "…" : "+"}
                     </button>
                     {attachmentMenuOpen && !(isGateBlocked || uploadingDocuments || state === "typing" || state === "executing") ? (
-                      <div className="absolute bottom-full left-0 z-30 mb-1 w-[180px] overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-[0_20px_60px_rgba(15,23,42,0.18)] backdrop-blur">
+                      <div className="absolute bottom-full left-0 z-30 mb-1 w-[180px] overflow-hidden rounded-xl border border-white/10 bg-surface-strong/95 p-1.5 shadow-[0_20px_60px_rgba(15,23,42,0.4)] backdrop-blur">
                         <button
                           type="button"
                           onClick={() => {
                             setAttachmentMenuOpen(false);
                             fileInputRef.current?.click();
                           }}
-                          className="flex w-full items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-left text-[10px] text-slate-800 transition hover:bg-slate-100"
+                          className="flex w-full items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-left text-[10px] text-foreground transition hover:bg-white/5"
                         >
                           <span className="text-[10px] leading-none">📎</span>
                           <span>Adicionar fotos e arquivos</span>
@@ -5658,13 +5726,13 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                     placeholder={isGateBlocked ? "Acesso bloqueado para este workspace." : "Descreva uma operação imobiliária..."}
                     rows={1}
                     disabled={isGateBlocked}
-                    className="max-h-40 min-h-[46px] w-full resize-y rounded-[14px] bg-transparent px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
+                    className="max-h-36 min-h-[40px] w-full resize-y rounded-[12px] bg-transparent px-2.5 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                   />
                   <button
                     type="button"
                     onClick={() => void handleSend()}
                     disabled={isGateBlocked || uploadingDocuments || state === "typing" || state === "executing"}
-                    className="h-[46px] shrink-0 rounded-[14px] bg-slate-900 px-4 text-xs font-semibold uppercase tracking-[0.2em] text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="h-[40px] shrink-0 rounded-[12px] border border-accent/40 bg-accent/15 px-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-accent transition hover:border-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {uploadingDocuments || state === "typing" || state === "executing" ? "Enviando..." : "Enviar"}
                   </button>

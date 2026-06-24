@@ -12,6 +12,7 @@ type ExportStatus = "idle" | "loading" | "error";
 
 function stageLabel(stage: string): string {
   if (stage === "documents_collecting") return "Coletando documentos";
+  if (stage === "contract_generated") return "Contrato gerado";
   return stage;
 }
 

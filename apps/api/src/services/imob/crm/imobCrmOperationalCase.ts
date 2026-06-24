@@ -90,11 +90,40 @@ export async function resolveImobCaseOperationalConsult(
       };
     }
     const caseContext = helpers.buildCaseContextFromRecord(item);
+
+    // Deduplicação cross-turn: blocked_run_resolution idêntico ao turno anterior → delta curto.
+    const dedupeKey = `crm.case.${context.businessReadIntent}:${item.id}`;
+    const lastDedupeKey = helpers.asString(helpers.asObject(params.threadState)?.lastCrmReadDedupeKey);
+    const updatedState = { ...(params.threadState ?? helpers.createEmptyThreadState()), lastCrmReadDedupeKey: dedupeKey };
+    if (context.businessReadIntent === "blocked_run_resolution" && lastDedupeKey === dedupeKey) {
+      const pendingItems = asPendingItems(item.pendingItems);
+      const primaryPending = pendingItems[0] ?? null;
+      const nextStepRaw = helpers.asString(item.nextStep) ?? "consultar caso";
+      return {
+        mode: "consult",
+        action: `crm.case.${context.businessReadIntent}`,
+        threadLabel: helpers.formatImobCaseFlowLabel(item.flow),
+        conversationState: updatedState,
+        caseContext,
+        presentation: {
+          text: primaryPending
+            ? `Quadro não mudou. Pendência principal ainda: ${primaryPending}. Próximo passo: ${nextStepRaw}.`
+            : "Quadro não mudou. Nenhuma pendência crítica registrada no momento.",
+          nextStep: nextStepRaw,
+          dedupeKey,
+          card: {
+            title: "Sem mudança",
+            lines: [primaryPending ? `Pendência: ${primaryPending}` : "Nenhuma pendência crítica.", `Próximo passo: ${nextStepRaw}`],
+          },
+        },
+      };
+    }
+
     return {
       mode: "consult",
       action: `crm.case.${context.businessReadIntent}`,
       threadLabel: helpers.formatImobCaseFlowLabel(item.flow),
-      conversationState: params.threadState ?? helpers.createEmptyThreadState(),
+      conversationState: updatedState,
       caseContext,
       presentation: helpers.buildImobBusinessReadPresentation({
         intent: context.businessReadIntent,

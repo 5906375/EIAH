@@ -7,6 +7,7 @@ type Props = {
   contextPanel: React.ReactNode;
   isContextPanelOpen: boolean;
   onToggleContextPanel: () => void;
+  onBackClick?: () => void;
 };
 
 export function ImobWorkbenchShell({
@@ -15,6 +16,7 @@ export function ImobWorkbenchShell({
   contextPanel,
   isContextPanelOpen,
   onToggleContextPanel,
+  onBackClick,
 }: Props) {
   const shellCopy = {
     eyebrow: "IMOB Product Shell",
@@ -22,15 +24,10 @@ export function ImobWorkbenchShell({
     description: "Workspace dedicado para intake documental, validação contextual e exportação segura sem expor dados sensíveis.",
     helperText: "Chat central, quick actions e painel contextual continuam orientados por payload real e contratos já existentes.",
     productTagline: "Experiência SaaS clara para a vertical IMOB",
-    backHref: "/app/imob/dashboard?cc=open#command-center",
-    backLabel: "Voltar ao Command Center",
+    backLabel: "Voltar",
     verticalLabel: "IMOB",
     statusLabel: "Piloto controlado",
     panelToggleLabel: "Resumo do intake",
-    heroHighlights: [
-      { eyebrow: "Experiência", value: "Shell imersivo" },
-      { eyebrow: "Painel lateral", value: "Resumo render-only" },
-    ],
   } as const;
 
   return (
@@ -40,17 +37,16 @@ export function ImobWorkbenchShell({
       contextPanel={contextPanel}
       isContextPanelOpen={isContextPanelOpen}
       onToggleContextPanel={onToggleContextPanel}
+      onBackClick={onBackClick}
       eyebrow={shellCopy.eyebrow}
       title={shellCopy.title}
       description={shellCopy.description}
       helperText={shellCopy.helperText}
       productTagline={shellCopy.productTagline}
-      backHref={shellCopy.backHref}
       backLabel={shellCopy.backLabel}
       verticalLabel={shellCopy.verticalLabel}
       statusLabel={shellCopy.statusLabel}
       panelToggleLabel={shellCopy.panelToggleLabel}
-      heroHighlights={shellCopy.heroHighlights}
     />
   );
 }

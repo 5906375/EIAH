@@ -27,6 +27,7 @@ function formatContextReference(value: string | null | undefined) {
 function humanStageLabel(stage: string) {
   if (stage === "documents_collecting") return "Coletando documentos";
   if (stage === "draft_ready") return "Rascunho pronto";
+  if (stage === "contract_generated") return "Contrato gerado";
   return stage;
 }
 
@@ -49,6 +50,7 @@ export function ImobWorkbenchContextPanel({
 }: Props) {
   const [exportStatus, setExportStatus] = React.useState<Partial<Record<ExportFormat, ExportStatus>>>({});
   const [pdfGuidanceMsg, setPdfGuidanceMsg] = React.useState<string | null>(null);
+  const isEmptyState = state === "empty";
   const threadRef = formatContextReference(intakeContext?.threadId);
   const caseRef = formatContextReference(intakeContext?.caseId);
   const runRef = formatContextReference(intakeContext?.runId);
@@ -86,20 +88,32 @@ export function ImobWorkbenchContextPanel({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-slate-200 bg-[linear-gradient(180deg,#fbfdff_0%,#f3f8ff_100%)] px-4 py-4 shadow-[0_1px_0_rgba(15,23,42,0.04)]">
+      <div
+        className={`border-b border-white/10 bg-[linear-gradient(180deg,rgba(8,14,26,0.92)_0%,rgba(10,18,34,0.98)_100%)] shadow-[0_1px_0_rgba(56,189,248,0.08)] ${
+          isEmptyState ? "px-2.5 py-1.5" : "px-4 py-3.5"
+        }`}
+      >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.24em] text-slate-400">Contexto IMOB</p>
-            <p className="mt-1.5 text-[15px] font-semibold leading-snug tracking-[-0.02em] text-slate-900">Resumo do intake</p>
-            <p className="mt-1 text-[12px] text-slate-500">Dados mascarados e destinos seguros emitidos pelo payload atual.</p>
+            <p className="text-[10px] uppercase tracking-[0.24em] text-accent/80">Contexto IMOB</p>
+            <p className={`mt-1 font-semibold leading-snug tracking-[-0.02em] text-foreground ${isEmptyState ? "text-[12px]" : "text-[13px]"}`}>Resumo do intake</p>
+            <p className={`mt-1 text-muted-foreground ${isEmptyState ? "text-[9px] leading-4" : "text-[11px] leading-5"}`}>
+              {isEmptyState
+                ? "Resumo exibido assim que um intake ativo emitir payload seguro."
+                : "Dados mascarados e destinos seguros emitidos pelo payload atual."}
+            </p>
           </div>
-          <span className="mt-0.5 shrink-0 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-amber-900 shadow-sm">
+          <span
+            className="mt-0.5 shrink-0 rounded-full border border-accent/30 bg-accent/12 px-1.5 py-0.5 text-[7px] uppercase tracking-[0.18em] text-accent shadow-lg shadow-black/20"
+            title="Vertical em rollout pilot — funcionalidades podem mudar conforme gates operacionais."
+            aria-label="Piloto controlado — Vertical em rollout pilot — funcionalidades podem mudar conforme gates operacionais."
+          >
             Piloto controlado
           </span>
         </div>
       </div>
 
-      <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
+      <div className={`flex-1 overflow-y-auto bg-[linear-gradient(180deg,rgba(7,13,24,0.92)_0%,rgba(9,18,34,0.98)_100%)] ${isEmptyState ? "space-y-1 px-2.5 py-1.5" : "space-y-3 px-4 py-3.5"}`}>
         {state === "loading" ? (
           <WorkbenchPanelCard tone="muted">
             <p className="text-sm font-medium text-slate-900">Carregando contexto do intake...</p>
@@ -119,11 +133,25 @@ export function ImobWorkbenchContextPanel({
         ) : null}
 
         {state === "empty" ? (
-          <WorkbenchPanelCard tone="muted">
-            <p className="text-sm font-medium text-slate-900">Sem intake ativo</p>
-            <p className="mt-2 text-[12px] leading-5 text-slate-600">
-              Inicie uma conversa no chat para ver o resumo do intake aqui.
-            </p>
+          <WorkbenchPanelCard
+            tone="muted"
+            className="rounded-[12px] border-white/10 bg-surface-strong/92 p-0 shadow-[0_10px_22px_-22px_rgba(56,189,248,0.18)]"
+            bodyClassName="mt-0"
+          >
+            <div className="space-y-1 px-2.5 py-1.5">
+              <div className="flex items-center gap-1.5">
+                <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-white/10 bg-white/5 text-[8px] text-accent shadow-lg shadow-black/20">
+                  i
+                </span>
+                <p className="text-[11px] font-medium text-foreground">Sem intake ativo</p>
+              </div>
+              <p className="text-[9px] leading-4 text-muted-foreground">
+                Inicie uma conversa no chat para ver o resumo do intake aqui.
+              </p>
+              <p className="text-[8px] text-muted-foreground/85">
+                Aguardando payload seguro do intake atual.
+              </p>
+            </div>
           </WorkbenchPanelCard>
         ) : null}
 
@@ -147,11 +175,11 @@ export function ImobWorkbenchContextPanel({
               <p className="text-[12px] leading-5 text-slate-600">
                 Identificadores exibidos de forma parcial para facilitar leitura operacional sem expor dados sensíveis.
               </p>
-              <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-500">
-                {threadRef ? <span className="rounded-full border border-cyan-200 bg-white px-3 py-1.5 font-mono text-cyan-900 shadow-sm">thread {threadRef}</span> : null}
-                {caseRef ? <span className="rounded-full border border-cyan-200 bg-white px-3 py-1.5 font-mono text-cyan-900 shadow-sm">case {caseRef}</span> : null}
-                {runRef ? <span className="rounded-full border border-cyan-200 bg-white px-3 py-1.5 font-mono text-cyan-900 shadow-sm">run {runRef}</span> : null}
-                {draftRef ? <span className="rounded-full border border-cyan-200 bg-white px-3 py-1.5 font-mono text-cyan-900 shadow-sm">draft {draftRef}</span> : null}
+              <div className="mt-3 flex flex-wrap gap-1.5 text-[11px] text-slate-500">
+                {threadRef ? <span className="rounded-full border border-cyan-200 bg-white px-2.5 py-1 font-mono text-cyan-900 shadow-sm">thread {threadRef}</span> : null}
+                {caseRef ? <span className="rounded-full border border-cyan-200 bg-white px-2.5 py-1 font-mono text-cyan-900 shadow-sm">case {caseRef}</span> : null}
+                {runRef ? <span className="rounded-full border border-cyan-200 bg-white px-2.5 py-1 font-mono text-cyan-900 shadow-sm">run {runRef}</span> : null}
+                {draftRef ? <span className="rounded-full border border-cyan-200 bg-white px-2.5 py-1 font-mono text-cyan-900 shadow-sm">draft {draftRef}</span> : null}
               </div>
             </WorkbenchPanelCard>
 
@@ -159,12 +187,12 @@ export function ImobWorkbenchContextPanel({
               <p className="text-[12px] leading-5 text-slate-600">
                 Os botões abaixo reutilizam o client já existente para HTML, DOCX e orientação de PDF.
               </p>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-3 flex flex-wrap gap-1.5">
                 <button
                   type="button"
                   onClick={() => void handleExport("html")}
                   disabled={!intakeContext.runId || exportStatus.html === "loading"}
-                  className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-900 shadow-sm transition hover:border-slate-300 hover:shadow disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-900 shadow-sm transition hover:border-slate-300 hover:shadow disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {exportStatus.html === "loading" ? "..." : "Exportar HTML"}
                 </button>
@@ -172,7 +200,7 @@ export function ImobWorkbenchContextPanel({
                   type="button"
                   onClick={() => void handleExport("docx")}
                   disabled={!intakeContext.runId || exportStatus.docx === "loading"}
-                  className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-900 shadow-sm transition hover:border-slate-300 hover:shadow disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-900 shadow-sm transition hover:border-slate-300 hover:shadow disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {exportStatus.docx === "loading" ? "..." : "Exportar DOCX"}
                 </button>
@@ -180,7 +208,7 @@ export function ImobWorkbenchContextPanel({
                   type="button"
                   onClick={() => void handlePdfGuidance()}
                   disabled={!intakeContext.runId}
-                  className="rounded-full border border-slate-100 bg-slate-50 px-3 py-1.5 text-[11px] text-slate-600 shadow-sm transition hover:border-slate-200 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-full border border-slate-100 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-600 shadow-sm transition hover:border-slate-200 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   Orientação PDF
                 </button>
@@ -194,11 +222,11 @@ export function ImobWorkbenchContextPanel({
               <p className="text-[12px] leading-5 text-slate-600">
                 Links exibidos somente quando o payload atual fornece rota e parâmetros já suportados pelas superfícies existentes.
               </p>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-3 flex flex-wrap gap-1.5">
                 {commandCenterHref ? (
                   <a
                     href={commandCenterHref}
-                    className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-900 shadow-sm transition hover:border-slate-300 hover:shadow"
+                    className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-900 shadow-sm transition hover:border-slate-300 hover:shadow"
                   >
                     {commandCenterLabel}
                   </a>
@@ -206,7 +234,7 @@ export function ImobWorkbenchContextPanel({
                 {funnelHref ? (
                   <a
                     href={funnelHref}
-                    className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-900 shadow-sm transition hover:border-slate-300 hover:shadow"
+                    className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-900 shadow-sm transition hover:border-slate-300 hover:shadow"
                   >
                     {funnelLabel}
                   </a>
@@ -214,7 +242,7 @@ export function ImobWorkbenchContextPanel({
                 {runArchiveHref ? (
                   <a
                     href={runArchiveHref}
-                    className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-900 shadow-sm transition hover:border-slate-300 hover:shadow"
+                    className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-900 shadow-sm transition hover:border-slate-300 hover:shadow"
                   >
                     {runArchiveLabel}
                   </a>

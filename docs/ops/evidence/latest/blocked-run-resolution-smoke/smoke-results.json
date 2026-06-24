@@ -1,0 +1,81 @@
+{
+  "smokeAt": "2026-06-23T14:01:07.150Z",
+  "summary": {
+    "pass": 12,
+    "fail": 1,
+    "total": 13
+  },
+  "checks": [
+    {
+      "name": "action = crm.case.blocked_run_resolution",
+      "ok": true,
+      "details": "crm.case.blocked_run_resolution"
+    },
+    {
+      "name": "text contém 'Bloqueio ativo'",
+      "ok": true,
+      "details": "Bloqueio ativo: dados do imóvel ainda estão incompletos para seguir.\nPendência crítica: tipo.\nTambém"
+    },
+    {
+      "name": "text contém 'Pendência crítica'",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "text contém 'Próximo passo'",
+      "ok": true,
+      "details": ""
+    },
+    {
+      "name": "blocks vazio",
+      "ok": true,
+      "details": "0 blocks: "
+    },
+    {
+      "name": "caseBrief ausente",
+      "ok": true,
+      "details": "absent"
+    },
+    {
+      "name": "preparedFollowUp ausente",
+      "ok": true,
+      "details": "absent"
+    },
+    {
+      "name": "actionableChecklist ausente",
+      "ok": true,
+      "details": "absent"
+    },
+    {
+      "name": "handoffPack ausente",
+      "ok": true,
+      "details": "absent"
+    },
+    {
+      "name": "widget suprimido (null)",
+      "ok": true,
+      "details": "null/absent"
+    },
+    {
+      "name": "card.title ≠ 'Como destravar'",
+      "ok": true,
+      "details": "card.title = Bloqueio do atendimento"
+    },
+    {
+      "name": "texto não contém seções proibidas",
+      "ok": true,
+      "details": "ok"
+    },
+    {
+      "name": "input encontrado",
+      "ok": false,
+      "details": "textarea/input não encontrado"
+    }
+  ],
+  "textSample": "Bloqueio ativo: dados do imóvel ainda estão incompletos para seguir.\nPendência crítica: tipo.\nTambém faltam: endereço.\nOwner: Carlos Alberto Merlo (Founder).\nPróximo passo: consultar caso.",
+  "blocksCount": 0,
+  "widgetPresent": false,
+  "widgetTitle": null,
+  "cardTitle": "Bloqueio do atendimento",
+  "note": "ok"
+}
