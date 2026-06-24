@@ -2644,12 +2644,19 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       });
     }
     if (hasPropertyPending) {
+      const isVisitScheduleFlow = helpers.asString(caseContext?.flow) === "visit.schedule";
+      const propertyLabel = isVisitScheduleFlow
+        ? "Vincular imóvel da visita"
+        : hasDocumentPending ? "Consultar caso" : "Cadastrar imóvel";
+      const propertyMessage = isVisitScheduleFlow
+        ? "vincular imóvel da visita"
+        : hasDocumentPending ? "consultar caso" : "cadastrar imóvel";
       ctas.push({
         id: `case-unblock-property-${caseContext?.caseId ?? "current"}`,
-        label: hasDocumentPending ? "Consultar caso" : "Cadastrar imóvel",
+        label: propertyLabel,
         kind: hasDocumentPending || hasOwnerPending ? "secondary" : "primary",
         action: "send_suggested_message",
-        nextMessage: hasDocumentPending ? "consultar caso" : "cadastrar imóvel",
+        nextMessage: propertyMessage,
       });
     }
     if (hasLeadPending) {
@@ -2723,7 +2730,9 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
       return "cadastrar proprietário";
     }
     if (normalizedPending.some((item) => item.includes("imovel") || item.includes("imóvel"))) {
-      return "cadastrar imóvel";
+      return helpers.asString(caseContext?.flow) === "visit.schedule"
+        ? "vincular imóvel da visita"
+        : "cadastrar imóvel";
     }
     if (normalizedPending.some((item) => item.includes("lead") || item.includes("comprador") || item.includes("locatario"))) {
       return "qualificar lead";
