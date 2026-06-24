@@ -6,6 +6,7 @@ type Props = {
   contextPanel: React.ReactNode;
   isContextPanelOpen: boolean;
   onToggleContextPanel: () => void;
+  onBackClick?: () => void;
   eyebrow: string;
   title: string;
   description: string;
@@ -34,6 +35,7 @@ export function VerticalWorkbenchShell({
   contextPanel,
   isContextPanelOpen,
   onToggleContextPanel,
+  onBackClick,
   eyebrow,
   title,
   description,
@@ -48,76 +50,55 @@ export function VerticalWorkbenchShell({
   heroHighlights = [],
 }: Props) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col px-2 py-2 sm:px-4 sm:py-4">
-      <div className="mb-2 overflow-hidden rounded-[26px] border border-white/80 bg-[linear-gradient(135deg,rgba(255,255,255,0.98)_0%,rgba(244,249,255,0.98)_45%,rgba(236,244,255,0.95)_100%)] px-3.5 py-3.5 shadow-[0_24px_60px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.96)] sm:mb-3 sm:rounded-[32px] sm:px-6 sm:py-5">
-        <div className="flex flex-col gap-3 sm:gap-5 xl:flex-row xl:items-start xl:justify-between">
-          <div className="min-w-0">
-            {backHref ? (
+    <div className="flex min-h-0 flex-1 flex-col px-0.5 py-0.5 sm:px-1.5 sm:py-1.5 lg:px-2.5 lg:py-2.5">
+      {backHref || onBackClick ? (
+        <div className="mb-1 overflow-hidden rounded-[16px] border border-accent/16 bg-[linear-gradient(135deg,rgba(8,14,26,0.88)_0%,rgba(10,23,48,0.82)_55%,rgba(8,14,26,0.92)_100%)] px-2 py-1.5 shadow-[0_0_0_1px_rgba(56,189,248,0.12),0_16px_36px_-30px_rgba(56,189,248,0.32),inset_0_1px_0_rgba(255,255,255,0.04)] sm:mb-1.5 sm:rounded-[18px] sm:px-2.5 sm:py-2">
+          <div className="flex items-center justify-between gap-2">
+            {onBackClick ? (
+              <button
+                type="button"
+                onClick={onBackClick}
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-medium uppercase tracking-[0.14em] text-foreground transition hover:border-accent/40 hover:text-accent sm:gap-2 sm:px-3 sm:text-[10px] sm:tracking-[0.16em]"
+              >
+                <span aria-hidden="true">←</span>
+                <span>{backLabel}</span>
+              </button>
+            ) : backHref ? (
               <a
                 href={backHref}
-                className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white/85 px-2.5 py-1 text-[9px] font-medium uppercase tracking-[0.14em] text-slate-600 transition hover:border-slate-300 hover:bg-white hover:text-slate-900 sm:gap-2 sm:px-3 sm:text-[10px] sm:tracking-[0.16em]"
+                className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-[9px] font-medium uppercase tracking-[0.14em] text-foreground transition hover:border-accent/40 hover:text-accent sm:gap-2 sm:px-3 sm:text-[10px] sm:tracking-[0.16em]"
               >
                 <span aria-hidden="true">←</span>
                 <span>{backLabel}</span>
               </a>
             ) : null}
-            <div className={backHref ? "mt-3 sm:mt-4" : ""}>
-              <p className="text-[9px] font-semibold uppercase tracking-[0.28em] text-cyan-700 sm:text-[10px] sm:tracking-[0.32em]">{eyebrow}</p>
-              <div className="mt-1.5 flex flex-wrap items-center gap-2 sm:mt-2 sm:gap-2.5">
-                <p className="text-[16px] font-semibold tracking-[-0.04em] text-slate-950 sm:text-[31px]">{title}</p>
-                <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-900 shadow-sm">
-                  {verticalLabel}
-                </span>
-                <span className={`rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] shadow-sm ${getStatusClasses(statusTone)}`}>
-                  {statusLabel}
-                </span>
-              </div>
-              {description ? (
-                <p className="mt-2 hidden max-w-3xl text-[12px] leading-6 text-slate-600 sm:block sm:text-[13px]">{description}</p>
-              ) : null}
-              {productTagline ? (
-                <p className="mt-3 hidden text-[12px] uppercase tracking-[0.18em] text-slate-500 sm:block">{productTagline}</p>
-              ) : null}
-              {helperText ? (
-                <p className="mt-2 hidden max-w-2xl text-[12px] leading-5 text-slate-500 sm:block">{helperText}</p>
-              ) : null}
-            </div>
+            <div className="hidden h-5 w-5 rounded-full border border-white/8 bg-white/[0.03] sm:block" aria-hidden="true" />
           </div>
-          {heroHighlights.length > 0 ? (
-            <div className="hidden shrink-0 gap-2 sm:grid sm:grid-cols-2 xl:w-[19rem]">
-              {heroHighlights.map((highlight) => (
-                <div key={`${highlight.eyebrow}-${highlight.value}`} className="rounded-[22px] border border-slate-200/80 bg-white/92 px-4 py-3.5 shadow-[0_8px_22px_rgba(15,23,42,0.04)]">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{highlight.eyebrow}</p>
-                  <p className="mt-1.5 text-[13px] font-medium text-slate-900">{highlight.value}</p>
-                </div>
-              ))}
-            </div>
-          ) : null}
         </div>
-      </div>
+      ) : null}
 
-      <div className="flex-1 min-h-[520px] overflow-hidden rounded-[38px] border border-white/75 bg-[#ecf3fb] shadow-[0_30px_80px_rgba(15,23,42,0.12),0_2px_8px_rgba(15,23,42,0.04)]">
-        <div className="grid h-full min-h-[520px] lg:grid-cols-[280px,minmax(0,1fr)] xl:grid-cols-[280px,minmax(0,1fr),360px]">
-          <aside className="hidden h-full min-h-0 flex-col border-b border-slate-200 bg-[linear-gradient(180deg,#09111d_0%,#101c2b_100%)] lg:flex lg:border-b-0 lg:border-r">
+      <div className="flex-1 min-h-[520px] overflow-hidden rounded-[22px] border border-accent/24 bg-surface/80 shadow-[0_0_0_1px_rgba(56,189,248,0.16),0_22px_56px_-34px_rgba(56,189,248,0.34)] sm:rounded-[24px] xl:rounded-[28px]">
+        <div className="grid h-full min-h-[520px] lg:grid-cols-[208px,minmax(0,1fr)] xl:justify-center xl:grid-cols-[216px,minmax(760px,920px),272px] 2xl:grid-cols-[224px,minmax(820px,980px),280px]">
+          <aside className="hidden h-full min-h-0 flex-col border-b border-white/10 bg-[linear-gradient(180deg,rgba(6,11,21,0.94)_0%,rgba(9,17,31,0.98)_100%)] lg:flex lg:border-b-0 lg:border-r">
             {sidebar}
           </aside>
-          <div className="h-full min-h-0 bg-[linear-gradient(180deg,#f8fafc_0%,#eef4fb_100%)]">{main}</div>
-          <aside className="hidden h-full min-h-0 border-l border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] xl:flex xl:flex-col">
+          <div className="flex h-full min-h-0 flex-col overflow-hidden bg-[linear-gradient(180deg,rgba(7,13,24,0.96)_0%,rgba(9,18,34,0.98)_100%)]">{main}</div>
+          <aside className="hidden h-full min-h-0 border-l border-white/10 bg-[linear-gradient(180deg,rgba(8,14,26,0.94)_0%,rgba(10,18,34,0.98)_100%)] xl:flex xl:flex-col">
             {contextPanel}
           </aside>
         </div>
       </div>
 
-      <div className="mt-2 overflow-hidden rounded-[24px] border border-white/80 bg-white shadow-[0_18px_50px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.9)] sm:mt-3 sm:rounded-[28px] xl:hidden">
+      <div className="mt-1 overflow-hidden rounded-[14px] border border-white/10 bg-surface/90 shadow-[0_14px_28px_-24px_rgba(56,189,248,0.24)] sm:mt-1.5 sm:rounded-[16px] xl:hidden">
         <button
           type="button"
           onClick={onToggleContextPanel}
-          className="flex w-full items-center justify-between px-4 py-3 text-left text-[11px] uppercase tracking-[0.18em] text-slate-700"
+          className="flex w-full items-center justify-between px-3 py-2 text-left text-[10px] uppercase tracking-[0.16em] text-foreground"
         >
           <span>{panelToggleLabel}</span>
-          <span className="text-slate-500">{isContextPanelOpen ? "Ocultar" : "Mostrar"}</span>
+          <span className="text-[9px] text-muted-foreground">{isContextPanelOpen ? "Ocultar" : "Mostrar"}</span>
         </button>
-        {isContextPanelOpen ? <div className="border-t border-slate-200">{contextPanel}</div> : null}
+        {isContextPanelOpen ? <div className="border-t border-white/10">{contextPanel}</div> : null}
       </div>
     </div>
   );

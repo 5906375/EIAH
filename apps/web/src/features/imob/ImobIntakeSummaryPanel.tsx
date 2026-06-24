@@ -35,24 +35,24 @@ export function ImobIntakeSummaryPanel({
   extractedFields = [],
 }: ImobIntakeSummaryPanelProps) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <WorkbenchPanelCard eyebrow={title} title={subtitle} tone="default">
-        <div className="mt-1 flex flex-wrap gap-2">
-          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-medium text-emerald-800 shadow-sm">
+        <div className="mt-1 flex flex-wrap gap-1.5">
+          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[10px] font-medium text-emerald-800 shadow-sm">
             {stageLabel}
           </span>
-          <span className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[10px] font-medium text-slate-700 shadow-sm">
+          <span className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-[10px] font-medium text-slate-700 shadow-sm">
             {statusLabel}
           </span>
         </div>
         {nextStep ? (
-          <div className="mt-4 rounded-[18px] border border-slate-200 bg-slate-50/80 px-3 py-2.5">
+          <div className="mt-3 rounded-[14px] border border-slate-200 bg-slate-50/75 px-3 py-2.5">
             <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">Próximo passo</p>
             <p className="mt-1 text-[12px] text-slate-700">{nextStep}</p>
           </div>
         ) : null}
         {(documentKind || draftExpiresAt) ? (
-          <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-500">
+          <div className="mt-2.5 flex flex-wrap gap-1.5 text-[11px] text-slate-500">
             {documentKind ? <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">Documento: {documentKind}</span> : null}
             {draftExpiresAt ? <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">{formatExpiry(draftExpiresAt)}</span> : null}
           </div>
@@ -60,7 +60,7 @@ export function ImobIntakeSummaryPanel({
       </WorkbenchPanelCard>
 
       <WorkbenchPanelCard eyebrow="Documento processado" tone="muted">
-        <div className="rounded-[18px] border border-white/70 bg-white/80 px-3 py-3">
+        <div className="rounded-[14px] border border-white/70 bg-white/78 px-3 py-2.5">
           <p className="font-mono text-[11px] text-slate-800">{documentHash.slice(0, 24)}…</p>
           <p className="mt-1 text-[11px] text-slate-500">Hash parcial exibido para manter a visualização mascarada.</p>
         </div>
@@ -68,9 +68,9 @@ export function ImobIntakeSummaryPanel({
 
       <WorkbenchPanelCard eyebrow="Dados extraídos mascarados" tone="default">
         {extractedFields.length > 0 ? (
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {extractedFields.map((field) => (
-              <div key={field.label} className="rounded-[18px] border border-slate-200 bg-slate-50/90 px-3 py-2.5">
+              <div key={field.label} className="rounded-[14px] border border-slate-200 bg-slate-50/82 px-3 py-2.5">
                 <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">{field.label}</p>
                 <p className="mt-1 text-[12px] text-slate-900">{field.value}</p>
               </div>
@@ -83,7 +83,7 @@ export function ImobIntakeSummaryPanel({
 
       <WorkbenchPanelCard eyebrow="Alertas e pendências" tone="default">
         {riskFlags.length > 0 ? (
-          <ul className="space-y-2 text-[12px] text-rose-700">
+          <ul className="space-y-1.5 text-[12px] text-rose-700">
             {riskFlags.map((flag) => (
               <li key={flag}>⚠ {flag}</li>
             ))}
@@ -92,7 +92,7 @@ export function ImobIntakeSummaryPanel({
           <p className="text-[12px] text-slate-500">Sem alertas de risco no payload atual.</p>
         )}
         {pendingItems.length > 0 ? (
-          <ul className="mt-3 space-y-2 text-[12px] text-slate-800">
+          <ul className="mt-2.5 space-y-1.5 text-[12px] text-slate-800">
             {pendingItems.map((item) => (
               <li key={item}>• {item}</li>
             ))}
