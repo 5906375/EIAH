@@ -3002,6 +3002,15 @@ export type ImobOperationalPresentation = {
   inventoryWatch?: ImobInventoryWatchSnapshot;
   pendingFieldLabels?: string[];
   dedupeKey?: string;
+  /** Payload estruturado de coleta de slots — emitido pelo engine, renderizado pelo frontend sem lógica cognitiva. */
+  slotCollection?: {
+    mission: string;
+    title: string;
+    description?: string;
+    fields: string[];
+    prefilled?: Record<string, string>;
+    propertyCandidates?: Array<{ id: string; label: string }>;
+  };
 };
 
 export type ImobResolveTurnResponse = {

@@ -20,6 +20,7 @@ type ProposalDraft = {
 
 type VisitDraft = {
   propertyId?: unknown;
+  propertyTextCandidate?: unknown;
   visitorName?: unknown;
   visitorPhone?: unknown;
   preferredDate?: unknown;
@@ -338,8 +339,45 @@ export async function hydrateThreadStateWithPersistedLead(params: {
     (params.helpers.asObject(nextOperational.followUpDraft) ?? {}) as FollowUpDraft,
     params.helpers,
   );
+
+  // Resolve propertyId: DB draft → case-scoped fallback
+  let resolvedPropertyId: string | null =
+    params.helpers.asString(visitDraft.propertyId) ?? scopedCasePropertyId;
+
+  // When no numeric ID is resolved, try a text candidate search in the DB
+  const propertyTextCandidate = params.helpers.asString(visitDraft.propertyTextCandidate);
+  let propertyCandidates: Array<{ id: string; label: string }> = [];
+  if (!resolvedPropertyId && propertyTextCandidate) {
+    const hits: Array<{ id: string; address: string | null; type: string | null }> =
+      await params.prisma.imobProperty.findMany({
+        where: {
+          tenantId: params.tenantId,
+          workspaceId: params.workspaceId,
+          status: { not: "archived" },
+          OR: [
+            { address: { contains: propertyTextCandidate, mode: "insensitive" } },
+            { type: { contains: propertyTextCandidate, mode: "insensitive" } },
+          ],
+        },
+        take: 3,
+        orderBy: { updatedAt: "desc" },
+        select: { id: true, address: true, type: true },
+      });
+    if (hits.length === 1) {
+      // Único resultado → auto-vincula; nenhuma ação do usuário necessária
+      resolvedPropertyId = hits[0].id;
+    } else if (hits.length > 1) {
+      // Múltiplos → armazena candidatos para o engine emitir CTAs
+      propertyCandidates = hits.map((h) => ({
+        id: h.id,
+        label: [h.type, h.address].filter(Boolean).join(" — "),
+      }));
+    }
+  }
+
   const hydratedVisitDraft = {
-    propertyId: params.helpers.asString(visitDraft.propertyId) ?? scopedCasePropertyId,
+    propertyId: resolvedPropertyId,
+    propertyTextCandidate: resolvedPropertyId ? null : (propertyTextCandidate ?? null),
     visitorName: params.helpers.asString(visitDraft.visitorName) ?? persistedLead.name ?? null,
     visitorPhone: params.helpers.asString(visitDraft.visitorPhone) ?? persistedLead.phone ?? null,
     preferredDate: params.helpers.asString(visitDraft.preferredDate),
@@ -362,7 +400,7 @@ export async function hydrateThreadStateWithPersistedLead(params: {
       || params.helpers.asString(visitDraft.outcome) === "reengagement_required"
         ? params.helpers.asString(visitDraft.outcome)
         : null,
-  } as const;
+  };
   const pendingVisitFields: string[] = [];
   if (!hydratedVisitDraft.propertyId) pendingVisitFields.push("propertyId");
   if (!hydratedVisitDraft.visitorName) pendingVisitFields.push("visitorName");
@@ -375,6 +413,7 @@ export async function hydrateThreadStateWithPersistedLead(params: {
     status: pendingVisitFields.length === 0 ? "ready_for_review" : "collecting",
     pendingFields: pendingVisitFields,
     visitDraft: hydratedVisitDraft,
+    ...(propertyCandidates.length > 0 ? { propertyCandidates } : {}),
     followUpDraft,
   };
   return nextStateObject;

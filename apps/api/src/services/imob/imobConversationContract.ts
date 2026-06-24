@@ -406,6 +406,8 @@ export type ImobMarketScanSelection = {
 
 export type ImobVisitDraft = {
   propertyId: string | null;
+  /** Texto livre informado pelo usuário quando não há ID numérico resolvido. Precisa de lookup no DB antes de liberar agendamento. */
+  propertyTextCandidate?: string | null;
   visitorName: string | null;
   visitorPhone: string | null;
   preferredDate: string | null;

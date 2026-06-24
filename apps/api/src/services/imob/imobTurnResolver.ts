@@ -218,6 +218,25 @@ function hasPendingFieldSignalForActiveFlow(
     return false;
   }
 
+  if (activeOperationalState.flow === "visit.schedule") {
+    if (pending.has("propertyId") && (
+      normalized.includes("imovel") ||
+      normalized.includes("imóvel") ||
+      normalized.includes("vincular") ||
+      normalized.includes("apartamento") ||
+      normalized.includes("casa") ||
+      normalized.includes("kitnet") ||
+      /\b\d{3,}\b/.test(normalized)
+    )) return true;
+    if (pending.has("visitorName") && normalized.includes("nome")) return true;
+    if (pending.has("visitorPhone") && hasPhone) return true;
+    if (pending.has("preferredDate") && (
+      /\d{1,2}\/\d{1,2}|\d{4}-\d{2}-\d{2}/.test(message) ||
+      /\b(segunda|terca|terça|quarta|quinta|sexta|sabado|sábado|domingo)\b/.test(normalized)
+    )) return true;
+    return false;
+  }
+
   if (activeOperationalState.flow === "property.create") {
     if (pending.has("propertyType") && Boolean(nextSlots.propertyType)) return true;
     if (pending.has("goal") && Boolean(nextSlots.goal)) return true;
