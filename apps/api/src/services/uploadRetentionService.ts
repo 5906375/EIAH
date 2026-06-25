@@ -113,7 +113,7 @@ type CleanupParams = {
 async function resolveClient(client?: UploadRetentionServiceClient) {
   if (client) return client as UploadRetentionServiceClient;
   const { prismaGlobal } = await import("@repo/db");
-  return prismaGlobal as UploadRetentionServiceClient;
+  return prismaGlobal as unknown as UploadRetentionServiceClient;
 }
 
 function resolveBooleanEnv(value: string | undefined, fallback: boolean) {

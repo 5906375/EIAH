@@ -155,7 +155,7 @@ export async function resolveImobPropertyLinkOwnerUpdate(
       summary: "Owner/property link completed from chat",
       before: {
         propertyId: scopedCase.propertyId,
-        ownerId: scopedCase.property?.ownerId ?? null,
+        ownerId: (scopedCase.property as Record<string, unknown> | null | undefined)?.ownerId ?? null,
       },
       after: {
         propertyId: linkResult.propertyId,

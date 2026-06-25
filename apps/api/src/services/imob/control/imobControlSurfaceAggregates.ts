@@ -271,7 +271,7 @@ export function buildImobApprovalContext(params: {
         specialistId: specialist.specialistId,
         reasonCode: specialist.reasonCode,
         reasonLabel: spec.label,
-        category: spec.category,
+        category: spec.category as "operations" | "commercial" | "audit" | "legal" | "financial",
         requiresApproval: spec.requiresApproval,
         requiresEvidence: spec.requiresEvidence,
         evidenceCount,

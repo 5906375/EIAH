@@ -1918,7 +1918,7 @@ billingRouter.get("/billing/tenant/workspaces", async (req, res) => {
     }),
   ]);
 
-  const grantByWorkspace = new Map(grants.map((grant: any) => [grant.workspaceId, grant]));
+  const grantByWorkspace = new Map<string, any>(grants.map((grant: any) => [grant.workspaceId, grant]));
   const usageByWorkspace = new Map<string, { runs: number; costCents: number }>();
   for (const entry of entries) {
     const workspaceId = entry.workspaceId;
@@ -1932,7 +1932,7 @@ billingRouter.get("/billing/tenant/workspaces", async (req, res) => {
   }
 
   const items = workspaces.map((workspace: any) => {
-    const grant = grantByWorkspace.get(workspace.id) ?? null;
+    const grant = (grantByWorkspace.get(workspace.id) ?? null) as { enabled: boolean; localRunLimit: number | null; localCostCentsLimit: number | null; updatedAt: Date } | null;
     const usage = usageByWorkspace.get(workspace.id) ?? { runs: 0, costCents: 0 };
     return {
       workspaceId: workspace.id,

@@ -294,7 +294,7 @@ async function ensureWorkspaceRoleCatalog(params: {
   `;
   if (params.roleLabels === undefined) {
     if (existingRows.length > 0) {
-      return normalizeWorkspaceRoleLabels(existingRows.map((row) => ({
+      return normalizeWorkspaceRoleLabels(existingRows.map((row: { label: string; default_permissions: unknown }) => ({
         label: row.label,
         permissions: safeArray(row.default_permissions),
       })));
@@ -647,7 +647,8 @@ export async function readWorkspaceManagementSummary(params: {
     listWorkspaceInvitations({ prisma, tenantId: params.tenantId, workspaceId: params.workspaceId }),
   ]);
 
-  const selectedRoleKey = membershipRow?.role_key ?? membershipRow?.roleKey ?? null;
+  const membershipRowAny = membershipRow as Record<string, unknown> | null | undefined;
+  const selectedRoleKey = (membershipRowAny?.role_key ?? membershipRowAny?.roleKey ?? null) as string | null;
   const selectedRoleLabel = roleOptions.find((item) => item.key === selectedRoleKey)?.label ?? null;
   const identityName = user?.displayName?.trim() || user?.email?.trim() || null;
   const responsibleLabel = identityName && selectedRoleLabel

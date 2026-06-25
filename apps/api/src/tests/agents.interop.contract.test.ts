@@ -8,9 +8,9 @@ import { closeRunQueueConnections } from "@eiah/core/queue/runQueue";
 import { closeRunEventsTransport } from "../services/runEvents";
 import { closeRunEventStream } from "../services/runEventStream";
 import { finalizeHttpContractCleanup } from "./support/httpContractCleanup";
-import { closeRedisPublisher } from "../../../../packages/core/src/events/redisPublisher";
+import { closeRedisPublisher } from "@eiah/core/events/redisPublisher";
 import { closeRunEventPublisherResources } from "../../../../packages/core/src/events/runEventPublisher.js";
-import { closeTenantPolicyStoreResources } from "../../../../packages/core/policy/TenantPolicyStore";
+import { closeTenantPolicyStoreResources } from "@eiah/core/policy/TenantPolicyStore";
 import { closeCriticalMetricsRedis } from "../../../../packages/core/src/metrics/criticalMetrics.js";
 import { closeCriticalKillSwitchRedis } from "../../../../packages/core/src/security/killSwitch.js";
 

@@ -9,7 +9,7 @@
     "apps/workers/*"
   ],
   "scripts": {
-    "build": "pnpm -r --filter \"./apps/*\" run build",
+    "build": "pnpm -r --filter \"./packages/*\" run --if-present build && pnpm -r --filter \"./apps/*\" run build",
     "eiah": "pnpm --filter @eiah/cli start --",
     "lint": "echo \"Run linting via individual packages\"",
     "test": "pnpm --filter @eiah/core test",

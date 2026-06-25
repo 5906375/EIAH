@@ -69,6 +69,7 @@ model Tenant {
   invoices                  TenantInvoice[]
   helpdeskSessions          HelpdeskSession[]
   productInstallations      TenantProductInstallation[]
+  runArchives               RunArchive[]
   imobOwners                ImobOwner[]
   imobProperties            ImobProperty[]
   imobLeads                 ImobLead[]
@@ -104,6 +105,7 @@ model Workspace {
   billingLedgerEntries      BillingLedger[]
   helpdeskSessions          HelpdeskSession[]
   productInstallations      TenantProductInstallation[]
+  runArchives               RunArchive[]
   imobOwners                ImobOwner[]
   imobProperties            ImobProperty[]
   imobLeads                 ImobLead[]
@@ -196,6 +198,8 @@ model Run {
   approvalStatus RunApprovalStatus @default(not_required) @map("approval_status")
   approvedBy     String?           @map("approved_by")
   approvedAt     DateTime?         @map("approved_at")
+  archivedAt     DateTime?         @map("archived_at")
+  archiveRef     String?           @unique @map("archive_ref")
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 
@@ -211,6 +215,7 @@ model Run {
   billingLedgerEntries BillingLedger[]
   usageBreakdowns      RunUsageBreakdown[]
   imobCaseEvents       ImobCaseEvent[]
+  runArchive           RunArchive?
   assignment           WorkspaceAgentAssignment? @relation(fields: [assignmentId], references: [id])
   tenant               Tenant                    @relation(fields: [tenantId], references: [id])
   user                 User?                     @relation(fields: [userId], references: [id])
@@ -222,7 +227,26 @@ model Run {
   @@index([threadId])
   @@index([status])
   @@index([costCents])
+  @@index([archivedAt])
   @@map("runs")
+}
+
+model RunArchive {
+  id          String   @id @default(cuid())
+  runId       String   @unique @map("run_id")
+  tenantId    String   @map("tenant_id")
+  workspaceId String   @map("workspace_id")
+  archiveRef  String   @unique @map("archive_ref")
+  archivedAt  DateTime @map("archived_at")
+  snapshot    Json
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  run       Run       @relation(fields: [runId], references: [id])
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@index([tenantId, workspaceId, archivedAt])
+  @@map("run_archives")
 }
 
 model RunEvent {

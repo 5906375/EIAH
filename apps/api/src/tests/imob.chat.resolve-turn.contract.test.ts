@@ -96,9 +96,9 @@ before(async () => {
   ({ closeRunEventsTransport } = await import("../services/runEvents"));
   ({ closeRunQueueConnections } = await import("@eiah/core/queue/runQueue"));
   ({ closeMemoryResources } = await import("../services/memory"));
-  ({ closeRedisPublisher } = await import("../../../../packages/core/src/events/redisPublisher"));
+  ({ closeRedisPublisher } = await import("@eiah/core/events/redisPublisher"));
   ({ closeRunEventPublisherResources } = await import("../../../../packages/core/src/events/runEventPublisher.js"));
-  ({ closeTenantPolicyStoreResources } = await import("../../../../packages/core/policy/TenantPolicyStore"));
+  ({ closeTenantPolicyStoreResources } = await import("@eiah/core/policy/TenantPolicyStore"));
   ({ closeCriticalMetricsRedis } = await import("../../../../packages/core/src/metrics/criticalMetrics.js"));
   ({ closeCriticalKillSwitchRedis } = await import("../../../../packages/core/src/security/killSwitch.js"));
 

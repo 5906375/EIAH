@@ -1378,7 +1378,7 @@ export function buildImobCaseContextV1(params: BuildImobCaseContextV1Params): Im
         readinessScore: leadReadiness.readinessScore,
         readinessBand: leadReadiness.readinessBand,
         status: asString(lead.status),
-      } : null,
+      } as never : null,
       visit,
       proposal,
       documents,

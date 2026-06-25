@@ -728,7 +728,7 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
     });
 
     await recordImobApprovalContextPresentedTelemetry({
-      prisma,
+      prisma: prisma as never,
       tenantId: authContext.tenantId,
       workspaceId: authContext.workspaceId,
       agentId: telemetryAgentId,
@@ -785,7 +785,7 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
       });
     }
 
-    const reasonSpec = IMOB_REASON_CODE_CATALOG[parsed.data.reasonCode];
+    const reasonSpec = IMOB_REASON_CODE_CATALOG[parsed.data.reasonCode as keyof typeof IMOB_REASON_CODE_CATALOG];
     if (parsed.data.action === "approve" && !reasonSpec.requiresApproval) {
       return res.status(422).json({
         ok: false,
@@ -917,7 +917,7 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
     }
 
     await recordImobApprovalActionCompletedTelemetry({
-      prisma,
+      prisma: prisma as never,
       tenantId: authContext.tenantId,
       workspaceId: authContext.workspaceId,
       agentId: telemetryAgentId,

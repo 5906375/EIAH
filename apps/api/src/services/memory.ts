@@ -131,7 +131,7 @@ function buildMemoryAdapters(
         updatedAt?: Date;
       };
     }) =>
-      prisma.embeddingChunk
+      (prisma.embeddingChunk as any)
         .upsert({
           where: args.where,
           create: {
@@ -148,7 +148,7 @@ function buildMemoryAdapters(
             updatedAt: args.update.updatedAt ?? new Date(),
           },
         })
-        .then((row) => ({
+        .then((row: any) => ({
           id: row.id,
           tenantId: row.tenantId,
           workspaceId: row.workspaceId,

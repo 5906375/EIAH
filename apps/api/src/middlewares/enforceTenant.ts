@@ -127,8 +127,8 @@ export async function enforceTenant(
     req.prisma = getPrismaForTenant(
       tokenRecord.tenantId,
       tokenRecord.workspaceId
-    );
-    const requestPrisma = req.prisma;
+    ) as unknown as PrismaClient;
+    const requestPrisma = req.prisma!;
     const currentResponseMaxListeners =
       typeof (res as unknown as { getMaxListeners?: () => number }).getMaxListeners === "function"
         ? (res as unknown as { getMaxListeners: () => number }).getMaxListeners()

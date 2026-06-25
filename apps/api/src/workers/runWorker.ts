@@ -199,14 +199,14 @@ function normalizeGuardianSummaryOutputs(params: {
       data: {
         agent: "guardian",
         run_id: params.runId,
-        guardianDecision: params.guardianReport.guardianDecision,
-        globalDecision: params.guardianReport.globalDecision,
-        stageDecision: params.guardianReport.stageDecision,
-        reasonCode: params.guardianReport.reasonCode,
-        evaluationScope: params.guardianReport.evaluationScope,
-        summary: params.guardianReport.summary,
-        nextSteps: params.guardianReport.nextSteps,
-        checklist: params.guardianReport.checklist,
+        guardianDecision: params.guardianReport!.guardianDecision,
+        globalDecision: params.guardianReport!.globalDecision,
+        stageDecision: params.guardianReport!.stageDecision,
+        reasonCode: params.guardianReport!.reasonCode,
+        evaluationScope: params.guardianReport!.evaluationScope,
+        summary: params.guardianReport!.summary,
+        nextSteps: params.guardianReport!.nextSteps,
+        checklist: params.guardianReport!.checklist,
       },
     };
   });
@@ -326,7 +326,7 @@ function buildPartialProgress(params: {
   const completedSteps = plan.filter((step) => step.status === "completed").length;
   const failedSteps = plan.filter((step) => step.status === "failed").length;
   const currentStep =
-    plan.find((step) => step.status === "running" || step.status === "in_progress") ??
+    plan.find((step) => step.status === "in-progress") ??
     plan.find((step) => step.status !== "completed" && step.status !== "failed") ??
     null;
 
@@ -415,9 +415,9 @@ async function finalizeCancelledRunPartial(params: {
     cancelledBy:
       typeof existingResponse.cancelRequestedBy === "string"
         ? existingResponse.cancelRequestedBy
-        : params.userId ?? null,
+        : params.userId ?? undefined,
     ...(outputs.length > 0 ? { outputs } : {}),
-    ...(Object.keys(recipeOrchestration).length > 0 ? { recipeOrchestration } : {}),
+    ...(recipeOrchestration != null && Object.keys(recipeOrchestration).length > 0 ? { recipeOrchestration } : {}),
     ...(params.snapshot?.usage ? { usage: params.snapshot.usage } : {}),
     partialProgress,
     partial: true,
@@ -437,7 +437,7 @@ async function finalizeCancelledRunPartial(params: {
     runId: params.runId,
     tenantId: params.tenantId,
     workspaceId: params.workspaceId,
-    userId: params.userId ?? null,
+    userId: params.userId ?? undefined,
     type: "run.cancelled",
     payload: {
       status: "blocked",
@@ -540,7 +540,7 @@ async function persistRunProgressSnapshot(params: {
       response: {
         ...existingResponse,
         ...(params.context?.outputs?.length ? { outputs: params.context.outputs } : {}),
-        ...(Object.keys(recipeOrchestration).length > 0 ? { recipeOrchestration } : {}),
+        ...(recipeOrchestration != null && Object.keys(recipeOrchestration).length > 0 ? { recipeOrchestration } : {}),
         ...(params.snapshot?.usage ? { usage: params.snapshot.usage } : {}),
         partialProgress,
         partial: true,

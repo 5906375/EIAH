@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { Router } from "express";
 import { z } from "zod";
-import { prismaGlobal } from "@repo/db";
+import { prismaGlobal, PrismaClient } from "@repo/db";
 import {
   RESERVED_DEFAULT_WORKSPACE_ALLOWED_TENANT,
   RESERVED_DEFAULT_WORKSPACE_NAME,
@@ -100,7 +100,7 @@ onboardingRouter.post("/auth/onboarding", async (req, res) => {
 
       if (shouldUseReservedDefault) {
         const defaultAlreadyExists = await tenantAlreadyHasReservedDefaultWorkspace({
-          prisma: tx,
+          prisma: tx as unknown as PrismaClient,
           tenantId,
         });
         if (defaultAlreadyExists) {
@@ -124,7 +124,7 @@ onboardingRouter.post("/auth/onboarding", async (req, res) => {
       });
 
       await ensureWorkspaceMembershipForUser({
-        prisma: tx,
+        prisma: tx as unknown as PrismaClient,
         tenantId: tenant.id,
         workspaceId: workspace.id,
         userId: user.id,

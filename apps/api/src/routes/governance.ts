@@ -129,7 +129,7 @@ function buildImobGovernanceCaseContext(item: {
     receiptPath: asString(proof?.receiptPath) ?? asString(metadata.receiptPath),
     bundlePath: asString(proof?.bundlePath) ?? asString(metadata.bundlePath),
     verifyUrl: asString(proof?.verifyUrl) ?? asString(metadata.verifyUrl),
-    proof: proof,
+    proof: proof as never,
   }, buildImobCrmLegacyCanonicalCase);
 }
 

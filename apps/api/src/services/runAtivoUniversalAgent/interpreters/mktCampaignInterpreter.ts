@@ -1,6 +1,6 @@
-import type { MktCampaignReport } from "../../../../../../packages/core/src/actions/reporting/mktCampaignReportSchema";
-import type { RecipeOrchestration } from "../../../../../../packages/core/src/actions/reporting/recipeOrchestrationSchema";
-import { MktCampaignReportSchema } from "../../../../../../packages/core/src/actions/reporting/mktCampaignReportSchema";
+import type { MktCampaignReport } from "@eiah/core/actions/reporting/mktCampaignReportSchema";
+import type { RecipeOrchestration } from "@eiah/core/actions/reporting/recipeOrchestrationSchema";
+import { MktCampaignReportSchema } from "@eiah/core/actions/reporting/mktCampaignReportSchema";
 
 type PlainObject = Record<string, unknown>;
 

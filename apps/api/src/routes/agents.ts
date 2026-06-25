@@ -601,7 +601,7 @@ agentsRouter.post("/agents/execute", async (req, res) => {
         workspaceId: request.authContext.workspaceId,
       },
       data: {
-        request: preparedRequest.request as Record<string, unknown>,
+        request: preparedRequest.request as never,
       },
     });
   }

@@ -145,7 +145,7 @@ function buildRecommendedActions(params: {
 
   if (params.nextStep) {
     if (!normalizedNextStep.includes("mostrar bloqueios do caso")) {
-      const followNextStep = isMarketScanConfirmationNextStep
+      const followNextStep: ImobCrmRecommendedAction = isMarketScanConfirmationNextStep
         ? {
             id: "confirm_market_scan_capture",
             label: "Confirmar captação do scan",
@@ -159,7 +159,7 @@ function buildRecommendedActions(params: {
             actionType: "consultive",
             inputHint: params.nextStep,
             reasonCode: "NEXT_STEP_AVAILABLE",
-          } satisfies ImobCrmRecommendedAction;
+          };
       if (normalizedFlow === "lead.qualify" && params.pendingItems.length === 0 && params.blockers.length === 0) {
         actions.unshift(followNextStep);
       } else {

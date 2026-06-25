@@ -869,7 +869,7 @@ function buildCaptureSwitchActions(caseContext?: ImobCrmCaseContext | null) {
     (caseContext?.owner && (caseContext.owner.id || caseContext.owner.name))
     || (linkedPropertyOwner && (asString(linkedPropertyOwner.id) || asString(linkedPropertyOwner.name))),
   );
-  const ownerPropertyLinkStatus = caseContext?.links?.ownerProperty?.status ?? null;
+  const ownerPropertyLinkStatus = (caseContext?.links as Record<string, any> | null | undefined)?.ownerProperty?.status ?? null;
   const ownerLinkPending = hasOwner && ownerPropertyLinkStatus !== "linked";
 
   const actions = [];
@@ -992,7 +992,7 @@ function buildPropertyPostSuccessActions(params: {
     const key = `${String((action as any).label ?? "")}::${String((action as any).nextMessage ?? "")}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    merged.push(action);
+    merged.push(action as typeof merged[number]);
   }
 
   return merged;

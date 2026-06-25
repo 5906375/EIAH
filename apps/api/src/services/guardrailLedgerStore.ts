@@ -20,7 +20,7 @@ export function createGuardrailLedgerStore(
       const { tenantId, actionType, idempotencyKey, usageCount } = entry;
       const runId =
         typeof (entry as { runId?: unknown }).runId === "string"
-          ? (entry as { runId: string }).runId
+          ? (entry as unknown as { runId: string }).runId
           : null;
       const criticalHash = crypto
         .createHash("sha256")
