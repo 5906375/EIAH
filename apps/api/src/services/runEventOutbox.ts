@@ -88,7 +88,7 @@ export async function startRunEventOutboxProcessor() {
 
       if (!response) return;
 
-      for (const [, entries] of response) {
+      for (const [, entries] of response as Array<[unknown, unknown]>) {
         for (const [entryId, fields] of entries as Array<[string, string[]]>) {
           const payloadIndex = fields.findIndex((value) => value === "event");
           const payloadValue = payloadIndex >= 0 ? fields[payloadIndex + 1] : null;

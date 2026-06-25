@@ -84,7 +84,7 @@ export function buildImobOnboardingHelpDocs(params: {
       scope: "eiah",
       question: item.question,
       answer: formatImobOnboardingAnswer(response),
-      tags: item.tags,
+      tags: [...item.tags],
       track: "P1",
       status: "canonica",
       sourceFiles,

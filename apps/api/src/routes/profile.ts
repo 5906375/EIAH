@@ -329,7 +329,7 @@ async function readProfileSummary(req: TenantAwareRequest) {
           ? (metadata.extra as Record<string, unknown>)
           : null;
       return {
-        eventType: item.eventType,
+        eventType: item.eventType as "experience.recommended_action.aligned" | "experience.recommended_action.diverged",
         message: item.message,
         createdAt: item.createdAt,
         surfaceId: typeof resolverAuditEvent?.surfaceId === "string" ? resolverAuditEvent.surfaceId : null,
@@ -359,7 +359,7 @@ async function readProfileSummary(req: TenantAwareRequest) {
       divergenceSummary,
     },
     latestEventAt: recommendedActionAuditRows[0]?.createdAt ?? null,
-    recentEvents: recommendedActionSummary.recentEvents,
+    recentEvents: recommendedActionSummary.recentEvents as never,
   });
   return {
     fullName: user.displayName ?? "",

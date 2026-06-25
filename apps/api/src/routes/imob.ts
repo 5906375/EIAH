@@ -1866,7 +1866,7 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
   });
 
   await recordImobResolveTurnSemanticTelemetry({
-    prisma,
+    prisma: prisma as never,
     tenantId: authContext.tenantId,
     workspaceId: authContext.workspaceId,
     agentId: IMOB_CHAT_AGENT_ID,
@@ -3495,9 +3495,10 @@ imobRouter.get("/chat/conversations/:conversationId/export", async (req, res) =>
   for (const message of messages) {
     if (!message.threadId) continue;
     const label = message.threadLabel ?? "Operação";
+    const rawThreadStatus = message.threadStatus as string | null;
     const status =
-      message.threadStatus === "done" || message.threadStatus === "blocked" || message.threadStatus === "waiting"
-        ? message.threadStatus
+      rawThreadStatus === "done" || rawThreadStatus === "blocked" || rawThreadStatus === "waiting"
+        ? rawThreadStatus
         : "active";
     if (!threadMap.has(message.threadId)) {
       threadMap.set(message.threadId, {

@@ -4,7 +4,7 @@ import {
   RecipeOrchestrationSchema,
   type RecipeOrchestration,
   type RecipeOrchestrationAgentKey,
-} from "../../../../packages/core/src/actions/reporting/recipeOrchestrationSchema";
+} from "@eiah/core/actions/reporting/recipeOrchestrationSchema";
 
 type PlainObject = Record<string, unknown>;
 
@@ -69,7 +69,7 @@ function extractLinkedRecipe(metadata: PlainObject): LinkedRecipeContext | null 
   const linkedRecipe = metadata.linkedRecipe;
   const content = isPlainObject(linkedRecipe.content)
     ? {
-        mode: linkedRecipe.content.mode === "staged" ? "staged" : "simple",
+        mode: (linkedRecipe.content.mode === "staged" ? "staged" : "simple") as "staged" | "simple",
         goal: asTrimmedString(linkedRecipe.content.goal),
         expectedOutcome: asTrimmedString(linkedRecipe.content.expectedOutcome),
         goCondition: asTrimmedString(linkedRecipe.content.goCondition),
@@ -137,7 +137,7 @@ function extractGovernanceContext(metadata: PlainObject) {
     costGuardEvaluated: raw.costGuardEvaluated === true,
     policyDecision:
       raw.policyDecision === "denied" || raw.policyDecision === "needs_review"
-        ? raw.policyDecision
+        ? (raw.policyDecision as "denied" | "needs_review")
         : ("allowed" as const),
     reasonCode: asTrimmedString(raw.reasonCode),
     trustScore: typeof raw.trustScore === "number" && Number.isFinite(raw.trustScore) ? raw.trustScore : null,
@@ -799,7 +799,7 @@ export function buildRecipeOrchestration(params: BuildRecipeOrchestrationParams)
     entitlementEvaluated: false,
     trustScoreEvaluated: false,
     costGuardEvaluated: typeof params.costCents === "number",
-    policyDecision: "allowed" as const,
+    policyDecision: "allowed" as "allowed" | "denied" | "needs_review",
     reasonCode: null as string | null,
   };
   const governanceContext = extractGovernanceContext(params.metadata);
@@ -822,7 +822,7 @@ export function buildRecipeOrchestration(params: BuildRecipeOrchestrationParams)
 
   const suggestedSelfServiceAgents = buildSuggestedAgents({
     availableAgents,
-    primaryKey: primaryAgent.key,
+    primaryKey: primaryAgent.key as RecipeOrchestrationAgentKey,
     classified,
     costKnown: typeof params.costCents === "number",
   });
@@ -859,7 +859,7 @@ export function buildRecipeOrchestration(params: BuildRecipeOrchestrationParams)
     classified,
     linkedRecipe,
     primaryDisplayName: primaryAgent.displayName,
-    primaryKey: primaryAgent.key,
+    primaryKey: primaryAgent.key as RecipeOrchestrationAgentKey,
     requiresGuardianReview,
   });
   const implementationFollowUp = buildImplementationFollowUp({

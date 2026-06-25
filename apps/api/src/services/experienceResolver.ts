@@ -135,7 +135,7 @@ export function resolvePlatformExperience(input: ResolverInput): ResolvedExperie
     return {
       resolverVersion: "v0",
       roleProfile,
-      landingSurface: imobResolution.landingSurface,
+      landingSurface: imobResolution.landingSurface as "runs" | "marketplace" | "agents" | "billing" | "economy" | "self_service" | "profile" | "imob_chat" | "imob_dashboard",
       landingPath: imobResolution.landingPath,
       primaryNavigation: imobResolution.primaryNavigation,
       recommendedActions: imobResolution.recommendedActions,

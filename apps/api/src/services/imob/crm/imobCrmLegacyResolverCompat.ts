@@ -238,18 +238,18 @@ function buildRecommendedActions(params: {
 
   if (params.nextStep) {
     if (!normalizedNextStep.includes("mostrar bloqueios do caso")) {
-      const followNextStep = isMarketScanConfirmationNextStep
+      const followNextStep: ImobCrmRecommendedAction = isMarketScanConfirmationNextStep
         ? {
             id: "confirm_market_scan_capture",
             label: "Confirmar captação do scan",
-            actionType: "consultive" as const,
+            actionType: "consultive",
             inputHint: "confirmar captação do scan",
             reasonCode: "NEXT_STEP_AVAILABLE",
           }
         : {
             id: "follow_next_step",
             label: "Executar próximo passo",
-            actionType: "consultive" as const,
+            actionType: "consultive",
             inputHint: params.nextStep,
             reasonCode: "NEXT_STEP_AVAILABLE",
           };

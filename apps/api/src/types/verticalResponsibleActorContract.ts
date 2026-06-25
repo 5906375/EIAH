@@ -42,7 +42,7 @@ export const responsibleActorAssignmentContractSchema = z
   })
   .superRefine((value, ctx) => {
     const allowedEntityTypes = entityTypesByVertical[value.verticalKey];
-    if (!allowedEntityTypes.includes(value.entityType)) {
+    if (!(allowedEntityTypes as readonly string[]).includes(value.entityType)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["entityType"],

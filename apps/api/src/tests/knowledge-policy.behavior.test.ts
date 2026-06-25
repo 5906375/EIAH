@@ -2,13 +2,13 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
 import { resolveKnowledgeContext } from "../services/knowledgeGate";
-import { aadvProfile } from "../../../../packages/core/src/actions/agents/aadvAction.ts";
-import { defiOneProfile } from "../../../../packages/core/src/actions/agents/defiOneAction.ts";
-import { finNexusProfile } from "../../../../packages/core/src/actions/agents/finNexusAction.ts";
-import { guardianProfile } from "../../../../packages/core/src/actions/agents/guardianAction.ts";
-import { j360Profile } from "../../../../packages/core/src/actions/agents/j360Action.ts";
-import { onchainMonitorProfile } from "../../../../packages/core/src/actions/agents/onchainMonitorAction.ts";
-import { riskAnalyzerProfile } from "../../../../packages/core/src/actions/agents/riskAnalyzerAction.ts";
+import { aadvProfile } from "@eiah/core/actions/agents/aadvAction";
+import { defiOneProfile } from "@eiah/core/actions/agents/defiOneAction";
+import { finNexusProfile } from "@eiah/core/actions/agents/finNexusAction";
+import { guardianProfile } from "@eiah/core/actions/agents/guardianAction";
+import { j360Profile } from "@eiah/core/actions/agents/j360Action";
+import { onchainMonitorProfile } from "@eiah/core/actions/agents/onchainMonitorAction";
+import { riskAnalyzerProfile } from "@eiah/core/actions/agents/riskAnalyzerAction";
 
 type ProfileUnderTest = {
   id: string;

@@ -453,7 +453,7 @@ export async function transitionBillingDispute(
       tenantId: params.tenantId,
       workspaceId: params.workspaceId,
       agentId: String(updated.agent_id),
-      outcome: params.toStatus,
+      outcome: params.toStatus as "rejected" | "resolved",
       payload: {
         disputeId: String(updated.id),
         paymentIntentId: String(updated.payment_intent_id),

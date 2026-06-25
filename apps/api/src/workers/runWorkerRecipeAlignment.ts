@@ -111,9 +111,9 @@ function extractGuardianChecklistSteps(outputs: Array<{ stepId: string; data: un
         evidenceRefs: Array.isArray(data.evidenceRefs)
           ? data.evidenceRefs.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
           : [],
-      } satisfies GuardianChecklistStep;
+      } as GuardianChecklistStep;
     })
-    .filter((item): item is GuardianChecklistStep => Boolean(item));
+    .filter((item): item is GuardianChecklistStep => item !== null);
 }
 
 function defaultGuardianExecution(): RecommendationExecution {
@@ -214,7 +214,7 @@ function buildGuardianChecklistCandidate(params: {
         nextAction: item.nextAction,
         evidenceRefs: item.evidenceRefs,
       })),
-    },
+    } as unknown as RecommendationCandidate["metadata"],
   } satisfies RecommendationCandidate;
 }
 
@@ -227,26 +227,29 @@ export function alignCandidatesToRecipe(params: {
   const { agentId, metadata, outputs, candidates } = params;
   const linkedRecipe = extractLinkedRecipe(metadata);
 
-  const candidatesWithRecipe = candidates.map((candidate) => ({
-    ...candidate,
-    metadata: {
-      ...candidate.metadata,
-      recipeId: linkedRecipe?.id ?? candidate.metadata?.recipeId,
-      recipeTitle: linkedRecipe?.title ?? candidate.metadata?.recipeTitle,
-      recipeGoal: linkedRecipe?.content?.goal ?? candidate.metadata?.recipeGoal,
-      recipeExpectedOutcome:
-        linkedRecipe?.content?.expectedOutcome ?? candidate.metadata?.recipeExpectedOutcome,
-      recipeSteps:
-        linkedRecipe?.content?.steps?.map((step) => ({
-          id: step.id,
-          title: step.title,
-          objective: step.objective,
-          checks: step.checks,
-          evidence: step.evidence,
-          blocking: step.blocking,
-        })) ?? candidate.metadata?.recipeSteps,
-    },
-  }));
+  const candidatesWithRecipe = candidates.map((candidate) => {
+    const extMeta = candidate.metadata as unknown as Record<string, unknown>;
+    return {
+      ...candidate,
+      metadata: {
+        ...candidate.metadata,
+        recipeId: linkedRecipe?.id ?? candidate.metadata?.recipeId,
+        recipeTitle: linkedRecipe?.title ?? candidate.metadata?.recipeTitle,
+        recipeGoal: linkedRecipe?.content?.goal ?? extMeta?.recipeGoal,
+        recipeExpectedOutcome:
+          linkedRecipe?.content?.expectedOutcome ?? extMeta?.recipeExpectedOutcome,
+        recipeSteps:
+          linkedRecipe?.content?.steps?.map((step) => ({
+            id: step.id,
+            title: step.title,
+            objective: step.objective,
+            checks: step.checks,
+            evidence: step.evidence,
+            blocking: step.blocking,
+          })) ?? extMeta?.recipeSteps,
+      } as unknown as RecommendationCandidate["metadata"],
+    };
+  });
 
   if (agentId.trim().toLowerCase() !== "guardian") {
     return candidatesWithRecipe;

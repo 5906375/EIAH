@@ -261,9 +261,10 @@ function defaultMissingReasonCode(step: string) {
   }
 }
 
-function buildMissingChecklistItem(step: string): ChecklistItem {
+function buildMissingChecklistItem(step: string): ObservedGuardianSignal {
   return {
     item: step,
+    sourceStep: step,
     status: "missing",
     expectedEvidence: mapStepToExpectedEvidence(step),
     collectedEvidence: null,
@@ -282,9 +283,10 @@ function buildMissingChecklistItem(step: string): ChecklistItem {
   };
 }
 
-function buildMissingStructuredChecklistItem(step: StructuredRecipeStep): ChecklistItem {
+function buildMissingStructuredChecklistItem(step: StructuredRecipeStep): ObservedGuardianSignal {
   return {
     item: step.title,
+    sourceStep: step.title,
     status: "missing",
     expectedEvidence:
       step.evidence.length > 0 ? step.evidence.join(" · ") : step.objective ?? "Evidência obrigatória da etapa.",
@@ -435,7 +437,7 @@ function buildStructuredCollectedEvidence(step: StructuredRecipeStep, matchedSig
   };
 }
 
-function mergeStructuredStepSignals(step: StructuredRecipeStep, matchedSignals: ObservedGuardianSignal[]): ChecklistItem {
+function mergeStructuredStepSignals(step: StructuredRecipeStep, matchedSignals: ObservedGuardianSignal[]): ObservedGuardianSignal {
   if (matchedSignals.length === 0) return buildMissingStructuredChecklistItem(step);
 
   const statuses = matchedSignals.map((item) => item.status);
@@ -461,6 +463,7 @@ function mergeStructuredStepSignals(step: StructuredRecipeStep, matchedSignals: 
 
   return {
     item: step.title,
+    sourceStep: step.title,
     status,
     expectedEvidence:
       step.evidence.length > 0 ? step.evidence.join(" · ") : step.objective ?? "Evidência obrigatória da etapa.",
@@ -598,13 +601,14 @@ function normalizeFinops(costCents: number | null | undefined, usage: UsageStats
   };
 }
 
+type IssueSeverity = "P0" | "P1" | "P2" | "P3" | "P4";
 function buildBlockingIssues(reasonCode: string, checklist: ReturnType<typeof extractChecklist>) {
-  const issues = checklist
+  const issues: { code: string; message: string; severity: IssueSeverity }[] = checklist
     .filter((item) => item.blocking)
     .map((item) => ({
       code: item.reasonCode ?? reasonCode,
       message: item.summary ?? item.expectedEvidence,
-      severity: item.item === "runtime_health" ? ("P0" as const) : ("P1" as const),
+      severity: (item.item === "runtime_health" ? "P0" : "P1") as IssueSeverity,
     }));
   if (issues.length === 0 && reasonCode === "HEALTHCHECK_MISSING") {
     issues.push({

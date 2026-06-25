@@ -350,8 +350,7 @@ shadowExecutionsRouter.post("/shadow-executions/:id/promote-to-production", asyn
     prisma,
     tenantId: authContext.tenantId,
     workspaceId: authContext.workspaceId,
-    projectedRunIncrement: 1,
-    projectedCostCents: runtime.snapshot.preview.estimatedCostCents,
+    estimatedRunCostCents: runtime.snapshot.preview.estimatedCostCents,
   });
 
   if (billingGuard.block) {
@@ -427,7 +426,7 @@ shadowExecutionsRouter.post("/shadow-executions/:id/promote-to-production", asyn
       approvedBy: authContext.userId ?? null,
       approvedAt: new Date(),
       requireCanonicalImobAction:
-        String(requestPayload.metadata?.domain ?? "").trim().toLowerCase() === "imob",
+        String((requestPayload.metadata as Record<string, unknown>)?.domain ?? "").trim().toLowerCase() === "imob",
     });
   } catch (error) {
     if (error instanceof WorkspaceAgentAssignmentError) {

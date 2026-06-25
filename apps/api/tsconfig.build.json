@@ -1,0 +1,20 @@
+{
+  "extends": "./tsconfig.json",
+  "exclude": ["src/tests/**/*", "src/**/*.test.ts", "src/**/*.spec.ts"],
+  "compilerOptions": {
+    "noEmitOnError": true,
+    "paths": {
+      "@repo/db": ["packages/db/dist"],
+      "@repo/db/*": ["packages/db/dist/*"],
+      "@repo/db/client": ["packages/db/dist/generated/client"],
+      "@eiah/core": ["packages/core/dist"],
+      "@eiah/core/*": ["packages/core/dist/*"],
+      "@eiah/providers": ["packages/providers/dist"],
+      "@eiah/providers/*": ["packages/providers/dist/*"],
+      "@eiah/contracts": ["packages/contracts/dist"],
+      "@eiah/contracts/*": ["packages/contracts/dist/*"],
+      "@repo/mcp-runner": ["packages/mcp-runner/dist"],
+      "@repo/mcp-runner/*": ["packages/mcp-runner/dist/*"]
+    }
+  }
+}

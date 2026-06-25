@@ -1,4 +1,5 @@
-import type { GuardianReport, RunAtivoInterpreter } from "@eiah/core";
+import type { GuardianReport } from "@eiah/core";
+import type { RunAtivoInterpreter } from "../types";
 import { buildBasePayload } from "./utils";
 
 function asGuardianReport(input: unknown): GuardianReport | null {

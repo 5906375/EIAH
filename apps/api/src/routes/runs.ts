@@ -1086,6 +1086,7 @@ runsRouter.post("/runs/:id/recommendations/adopt", async (req, res) => {
     tatica,
     adopted,
   });
+  const responseUpdateMatched = responseUpdate.matched as { key?: string; tatica?: string; score?: number } | null;
 
   if (responseUpdate.updated) {
     await prisma.run.update({
@@ -1094,15 +1095,15 @@ runsRouter.post("/runs/:id/recommendations/adopt", async (req, res) => {
         tenantId: authContext.tenantId,
         workspaceId: authContext.workspaceId,
       },
-      data: { response: responseUpdate.response as unknown },
+      data: { response: responseUpdate.response as never },
     });
   }
 
   const nowIso = new Date().toISOString();
   const resolvedKeyRaw =
     key ??
-    responseUpdate.matched?.key ??
-    responseUpdate.matched?.tatica ??
+    responseUpdateMatched?.key ??
+    responseUpdateMatched?.tatica ??
     tatica ??
     "recomendacao";
   const resolvedKey = normalizeRecommendationKey(resolvedKeyRaw);
@@ -1120,7 +1121,7 @@ runsRouter.post("/runs/:id/recommendations/adopt", async (req, res) => {
     rejects: 0,
     lastAcceptedAt: null,
     lastSuggestedAt: null,
-    score: responseUpdate.matched?.score ?? 0,
+    score: responseUpdateMatched?.score ?? 0,
     status: "PENDENTE",
   };
 
@@ -1131,8 +1132,8 @@ runsRouter.post("/runs/:id/recommendations/adopt", async (req, res) => {
     lastAcceptedAt: adopted ? nowIso : current.lastAcceptedAt,
     lastSuggestedAt: current.lastSuggestedAt ?? nowIso,
     score:
-      typeof responseUpdate.matched?.score === "number"
-        ? responseUpdate.matched.score
+      typeof responseUpdateMatched?.score === "number"
+        ? responseUpdateMatched.score
         : current.score,
     status: adopted ? "ADOTADO" : current.status,
   };
@@ -1222,6 +1223,7 @@ runsRouter.post("/runs/:id/recommendations/reject", async (req, res) => {
     status: "REJEITADO",
     feedback: reason ? { explicit: reason, status: "rejeitado" } : { status: "rejeitado" },
   });
+  const responseUpdateMatched2 = responseUpdate.matched as { key?: string; tatica?: string; score?: number } | null;
 
   if (responseUpdate.updated) {
     await prisma.run.update({
@@ -1230,15 +1232,15 @@ runsRouter.post("/runs/:id/recommendations/reject", async (req, res) => {
         tenantId: authContext.tenantId,
         workspaceId: authContext.workspaceId,
       },
-      data: { response: responseUpdate.response as unknown },
+      data: { response: responseUpdate.response as never },
     });
   }
 
   const nowIso = new Date().toISOString();
   const resolvedKeyRaw =
     key ??
-    responseUpdate.matched?.key ??
-    responseUpdate.matched?.tatica ??
+    responseUpdateMatched2?.key ??
+    responseUpdateMatched2?.tatica ??
     tatica ??
     "recomendacao";
   const resolvedKey = normalizeRecommendationKey(resolvedKeyRaw);
@@ -1257,7 +1259,7 @@ runsRouter.post("/runs/:id/recommendations/reject", async (req, res) => {
     lastAcceptedAt: null,
     lastRejectedAt: null,
     lastSuggestedAt: null,
-    score: responseUpdate.matched?.score ?? 0,
+    score: responseUpdateMatched2?.score ?? 0,
     status: "PENDENTE",
   };
 
@@ -1268,8 +1270,8 @@ runsRouter.post("/runs/:id/recommendations/reject", async (req, res) => {
     lastRejectedAt: nowIso,
     lastSuggestedAt: current.lastSuggestedAt ?? nowIso,
     score:
-      typeof responseUpdate.matched?.score === "number"
-        ? responseUpdate.matched.score
+      typeof responseUpdateMatched2?.score === "number"
+        ? responseUpdateMatched2.score
         : current.score,
     status: "REJEITADO" as const,
   };

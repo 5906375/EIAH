@@ -1,6 +1,6 @@
-import type { J360LegalReport } from "../../../../../../packages/core/src/actions/reporting/j360LegalReportSchema";
-import type { RecipeOrchestration } from "../../../../../../packages/core/src/actions/reporting/recipeOrchestrationSchema";
-import { J360LegalReportSchema } from "../../../../../../packages/core/src/actions/reporting/j360LegalReportSchema";
+import type { J360LegalReport } from "@eiah/core/actions/reporting/j360LegalReportSchema";
+import type { RecipeOrchestration } from "@eiah/core/actions/reporting/recipeOrchestrationSchema";
+import { J360LegalReportSchema } from "@eiah/core/actions/reporting/j360LegalReportSchema";
 import type { ExtractedPdfDocument } from "../../../services/documents/pdfTextExtractor";
 
 type PlainObject = Record<string, unknown>;
