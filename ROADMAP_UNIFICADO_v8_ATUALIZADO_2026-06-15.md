@@ -1,6 +1,6 @@
 # ROADMAP ATUALIZADO v8.1
 
-Data de referência desta revisão: **2026-06-15**
+Data de referência desta revisão: **2026-06-25**
 Escopo: plataforma agentic governada (core + governança + interop + economy + Track P)
 
 > Arquivo canônico vigente desta revisão: `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md`.
@@ -11,7 +11,7 @@ Escopo: plataforma agentic governada (core + governança + interop + economy + T
 
 O core da plataforma está operacional e auditável (F0-F3 concluídas), com F4/F5 já em produção parcial e foco de v8 em **hardening verificável**, **fechamento de lacunas de governança/economy** e **redução de drift documental**.
 
-## 1.1) Atualização executiva v8.1 — 2026-06-15
+## 1.1) Atualização executiva v8.1 — 2026-06-25
 
 Esta revisão não reabre o roadmap v8; ela sincroniza o documento canônico com o estado atual verificado no código e nos checklists operacionais.
 
@@ -113,6 +113,11 @@ Regra de decisão v8.1:
 - Consolidar `IMOB Knowledge Search` como capacidade documental in-chat da vertical, com `EIAH` atuando como front door e `IMOB` como dono do fluxo de busca.
 - Garantir gate fail-closed por `tenantId`/`workspaceId` e assinatura ativa da vertical antes de expor busca, chat ou ações do `IMOB`.
 - Evoluir a busca por fases: handshake no chat já implementado -> busca por metadados -> sync de Drive -> expansão para uploads/web, preservando `sourceType` e isolamento multi-tenant/workspace.
+- Formalizar taxonomia pública de produto para reduzir drift entre catálogo, verticais, runtime interno e superfícies operacionais.
+- Adotar as classes públicas oficiais: `Assistente principal`, `Especialistas`, `Verticais` e `Áreas operacionais`.
+- Tratar `EIAH` como assistente principal; agentes canônicos do registry como especialistas; `IMOB`, `LEGAL` e próximas frentes como verticais; `Runs`, `RunViewer`, `Billing`, `Economy`, `Marketplace` e `Self-service` como áreas operacionais.
+- Proibir nomenclatura pública que exponha runtimes internos como se fossem produtos do catálogo, como `IMOB_CRM` ou subagentes `IMOB_*`.
+- Manter ordem explícita das próximas frentes verticais após `LEGAL`: `MKT` -> `Financeiro` -> `URBAN` -> `Logística`.
 
 **Fluxo operacional das verticais no EIAH SaaS**
 
@@ -125,7 +130,7 @@ Regra de decisão v8.1:
 → `Permissões / Roles / Scope`
 → `Workspace`
 → `Chat Agent Launcher EIAH`
-→ `Verticais (IMOB, LEGAL, etc.)`
+→ `Verticais (IMOB, LEGAL e próximas frentes MKT, Financeiro, URBAN, Logística)`
 
 **Regra operacional**
 - as verticais não existem fora do SaaS;
@@ -133,6 +138,11 @@ Regra de decisão v8.1:
 - o `Chat Agent Launcher EIAH` funciona como front door;
 - o `engine` decide o handoff para a vertical;
 - sem entitlement ativo, o fluxo deve falhar em modo `fail-closed`.
+- a linguagem pública deve distinguir `Assistente principal`, `Especialistas`, `Verticais` e `Áreas operacionais`;
+- nenhuma vertical deve ser rebaixada a "mais um agente" no catálogo público;
+- nenhuma área operacional deve ser promovida a agente;
+- nenhum runtime interno deve ser exposto como nome principal de produto sem decisão explícita;
+- componentes internos como `IMOB_CRM` e subagentes `IMOB_*` permanecem fora da nomenclatura pública principal.
 
 **DoD P4**
 - KPI mínimo por vertical atingido.
@@ -140,6 +150,9 @@ Regra de decisão v8.1:
 - Evidências semanais de operação e rollout.
 - `IMOB Knowledge Search` roteado pelo `engine`, sem lógica nova no `ChatAgentLauncher`.
 - Busca documental da vertical operando com gating por assinatura e retorno auditável por fonte (`drive`, `upload`, `web`, `internal_doc`).
+- Taxonomia pública oficial documentada e aplicada sem ambiguidade entre `EIAH`, especialistas, verticais e áreas operacionais.
+- Ordem das próximas frentes verticais registrada explicitamente no roadmap e nas superfícies de produto: `LEGAL` -> `MKT` -> `Financeiro` -> `URBAN` -> `Logística`.
+- Componentes internos de vertical permanecem fora da nomenclatura pública principal.
 
 ## 5) Riscos principais e mitigação
 
@@ -223,6 +236,13 @@ Objetivo: concluir ponta a ponta os itens ainda parciais (governança/economy/au
 - Evoluir `IMOB Knowledge Search` em fases, partindo do handshake agent-driven já implementado no `EIAH`/`IMOB`, seguido de busca por metadados e sync pragmático do Drive antes de webhook/watch.
 - Exigir gating fail-closed por `tenantId` cadastrado e assinatura ativa da vertical para qualquer busca/chat/ação do `IMOB`.
 - Operar as verticais dentro do fluxo SaaS padrão: `Cadastro -> Tenant -> Assinatura/Plano -> Billing -> Entitlements -> Roles/Scope -> Workspace -> Chat Agent Launcher EIAH -> Vertical`.
+- Formalizar nomenclatura pública de rollout para impedir drift entre agente, vertical, surface e runtime interno.
+- Posicionamento oficial:
+  - `EIAH` = assistente principal;
+  - agentes canônicos do registry = especialistas;
+  - `IMOB`, `LEGAL`, `MKT`, `Financeiro`, `URBAN` e `Logística` = frentes verticais;
+  - `Runs`, `RunViewer`, `Billing`, `Economy`, `Marketplace` e `Self-service` = áreas operacionais.
+- Manter explícita a sequência de expansão vertical após `LEGAL`: `MKT` -> `Financeiro` -> `URBAN` -> `Logística`.
 
 **Fase 1 — Handshake e roteamento**
 - Objetivo: fazer o `EIAH`, como front door do SaaS, reconhecer busca documental IMOB e encaminhar corretamente para a vertical, respeitando `tenant`, `workspace` e `entitlements`.

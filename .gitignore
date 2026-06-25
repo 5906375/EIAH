@@ -79,6 +79,11 @@ packages/**/src/**/*.js.map
 packages/**/src/**/*.d.ts.map
 packages/**/src/**/*.tsbuildinfo
 
+# Artefatos gerados fora de src (policy/, raiz do pacote)
+packages/**/*.tsbuildinfo
+packages/**/policy/*.js
+packages/**/policy/*.js.map
+
 
 # Temporários do repo
 .tmp/
