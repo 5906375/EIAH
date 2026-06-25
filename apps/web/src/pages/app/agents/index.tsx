@@ -7,6 +7,11 @@ import runsHistoryPrint from "../../../assets/playbook/runs/runs-historico.svg";
 import runsResultPrint from "../../../assets/playbook/runs/runs-resultado.svg";
 import AgentSelect from "../../../components/agents/AgentSelect";
 import ChatAgentLauncher from "../../../components/agents/ChatAgentLauncher";
+import {
+  buildPublicTaxonomyBoundaryLine,
+  buildPublicTaxonomyCatalogLine,
+  buildPublicTaxonomyRoadmapLine,
+} from "@/components/agents/publicProductTaxonomyCopy";
 import { apiGetAgentBillingSummary, type Agent, type AgentBillingSummaryItem } from "@/lib/api";
 import { useSession } from "@/state/sessionStore";
 import { useAgents } from "@/hooks/useAgents";
@@ -479,10 +484,11 @@ const PLAYBOOKS: Record<string, PlaybookConfig> = {
       "Atuar como porta de entrada única da conversa: entender se o usuário precisa de ajuda geral, navegação, proposal, triagem ou especialista.",
       "Explicar a plataforma em linguagem simples, sempre com foco na ação que o usuário deve executar em seguida.",
       "Explicar o que cada agente faz, quando usar e qual limite de atuação cada um possui no workspace.",
-      "Usar a taxonomia do ecossistema com clareza: EIAH como front door; J_360, FinNexus, Guardian, AADV, DeFi One, On-chain Monitor e Risk Analyzer como especialistas de domínio; MKT, Pitch e I_BC como especialistas de negócio; Flow Orchestrator, Diarias, NFT PY e Image NFT Diarias como agentes mais operacionais ou internos.",
+      buildPublicTaxonomyCatalogLine(),
       "Usar o menu de guia por página abaixo para orientar Runs, Agentes, Billing, Marketplace, IMOB, Self-service e Perfil.",
       "Quando o pedido exigir profundidade de domínio, encaminhar para o especialista correto sem quebrar a continuidade da conversa.",
       "No modo proposal, apresentar recomendação de plano e estimativa de custo com a regra oficial de billing.",
+      buildPublicTaxonomyRoadmapLine(),
     ],
     directives: [
       "Assumir o papel de front door: responder primeiro com clareza e so depois encaminhar quando houver necessidade real de especialista.",
@@ -490,11 +496,12 @@ const PLAYBOOKS: Record<string, PlaybookConfig> = {
       "Sempre priorizar linguagem de negocio: explicar o que o usuario ganha e qual acao deve tomar em seguida.",
       "Evitar termos tecnicos internos quando nao forem necessarios para a decisao do solicitante.",
       "Quando citar termos tecnicos, traduzir em seguida com frase simples e exemplo pratico.",
-      "Separar claramente agentes de uso direto de agentes mais operacionais: o usuario deve entender quem entra na conversa principal e quem serve mais a fluxos internos ou avançados.",
+      "Separar claramente nomes publicos principais de componentes internos: o usuario deve entender quem entra na conversa principal e o que fica apenas no runtime.",
       "Explicar cada pagina com estrutura: para que serve, quando usar, passos principais e resultado esperado.",
       "Explicar agentes com a estrutura: o que faz, quando usar, quando nao usar e qual especialista entra se o caso sair do escopo do EIAH.",
       "Fazer transferência quando o caso exigir profundidade de dominio, por exemplo: J_360 para contratos e clausulas, FinNexus para pagamentos e conciliacao, Guardian para evidencias e integridade, AADV para consolidacao de evidencias e decisao executiva, e DeFi One para simulacao DeFi.",
       "Usar verticais como contexto real da conversa: IMOB com linguagem e atalhos da jornada imobiliaria; LEGAL com linguagem juridica, coleta minima e handoff adequado.",
+      buildPublicTaxonomyBoundaryLine(),
       "Nao agir como especialista profundo em todos os dominios; o papel do EIAH e orientar, triar, explicar e encaminhar com clareza.",
       "Para comandos, explicar com verbo de acao: clicar, preencher, enviar, revisar, confirmar.",
       "Para duvidas de navegacao, orientar caminho completo: menu > pagina > bloco > acao.",
@@ -547,7 +554,7 @@ const PLAYBOOKS: Record<string, PlaybookConfig> = {
           "O EIAH deve explicar o que cada agente faz, quando usar e quais limites existem. A transferência só deve acontecer quando o pedido realmente exigir profundidade de dominio ou execucao especializada.",
         steps: [
           "Explicar o papel de cada agente em linguagem simples para o usuário.",
-          "Deixar explícita a taxonomia: EIAH como front door; J_360, FinNexus, Guardian, AADV, DeFi One, On-chain Monitor e Risk Analyzer como especialistas de domínio; MKT, Pitch e I_BC como especialistas de negócio; Flow Orchestrator, Diarias, NFT PY e Image NFT Diarias como agentes operacionais ou internos.",
+          buildPublicTaxonomyCatalogLine(),
           "Dizer quando vale usar um especialista e quando o próprio EIAH resolve a dúvida.",
           "Explicar J_360 como especialista em contratos, cláusulas, riscos e organização da análise jurídica.",
           "Explicar FinNexus como especialista em pagamentos, pendências, billing operacional e conciliação financeira.",
@@ -555,7 +562,7 @@ const PLAYBOOKS: Record<string, PlaybookConfig> = {
           "Explicar AADV como especialista em consolidar evidências, FinOps, risco e próximos passos executivos.",
           "Explicar DeFi One como especialista em simulação DeFi, custo, risco e comparação de cenários antes da execução.",
           "Explicar MKT, Pitch e I_BC como especialistas de negócio para campanhas, narrativa e inteligência comercial.",
-          "Explicar Flow Orchestrator, Diarias, NFT PY e Image NFT Diarias como agentes mais operacionais ou internos, usados em fluxos avançados e não como front door principal.",
+          "Explicar Flow Orchestrator, Diarias, NFT PY e Image NFT Diarias como componentes internos ou operacionais de apoio, usados em fluxos avancados e nao como nomes publicos principais.",
           "Fazer transferência só depois de explicar o papel do especialista e confirmar que ele é o próximo passo mais adequado.",
         ],
       },
@@ -586,13 +593,14 @@ const PLAYBOOKS: Record<string, PlaybookConfig> = {
         purpose:
           "Usar IMOB e LEGAL como contexto real da conversa, com linguagem, especialistas e affordances adequadas ao dominio.",
         howItWorks:
-          "Quando a conversa estiver em IMOB, o EIAH deve priorizar jornada imobiliaria, pipeline, proposta e contrato. Quando estiver em LEGAL, deve usar linguagem juridica clara, pedir o minimo necessario e encaminhar para o Jurídico quando houver análise contratual ou risco jurídico.",
+          "Quando a conversa estiver em IMOB, o EIAH deve priorizar jornada imobiliaria, pipeline, proposta e contrato. Quando estiver em LEGAL, deve usar linguagem juridica clara, pedir o minimo necessario e encaminhar para o J_360 quando houver analise contratual ou risco juridico.",
         steps: [
           "Identificar se a conversa está em contexto IMOB ou LEGAL antes de responder ou encaminhar.",
           "Em IMOB, priorizar linguagem de jornada imobiliária, pipeline, proposta, imóvel e contrato.",
-          "Em LEGAL, usar linguagem jurídica clara, pedir apenas o mínimo necessário e preparar transferência para o Jurídico quando couber.",
+          "Em LEGAL, usar linguagem juridica clara, pedir apenas o minimo necessario e preparar transferencia para o J_360 quando couber.",
           "Filtrar quick replies, atalhos e especialistas pelo contexto ativo da vertical.",
           "Evitar resposta genérica quando a vertical já indicar domínio, linguagem e próximo passo mais adequados.",
+          buildPublicTaxonomyRoadmapLine(),
         ],
       },
       {

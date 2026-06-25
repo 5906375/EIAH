@@ -1,4 +1,9 @@
 import type { Agent } from "@/lib/api";
+import {
+  buildPublicTaxonomyBoundaryLine,
+  buildPublicTaxonomyRoadmapLine,
+  buildPublicTaxonomySummaryLine,
+} from "@/components/agents/publicProductTaxonomyCopy";
 
 function normalizeIntentText(value: string) {
   return value
@@ -182,12 +187,17 @@ function buildPlatformOverviewReply() {
     "",
     "O EIAH combina chat, agentes, runs, billing e verticais para te ajudar a sair de uma dúvida até uma execução com mais contexto.",
     "",
+    buildPublicTaxonomySummaryLine(),
+    "",
     "Na prática, a plataforma se divide assim:",
     "- `Runs`: executar, simular e acompanhar tarefas",
     "- `Agentes`: ver especialistas disponíveis no workspace",
     "- `Billing`: plano, uso, faturas e cobrança",
     "- `Marketplace`: ativar agentes e módulos",
     "- `IMOB`: contexto imobiliário, pipeline e acompanhamento",
+    "",
+    buildPublicTaxonomyBoundaryLine(),
+    buildPublicTaxonomyRoadmapLine(),
     "",
     "Se você quiser, eu posso te explicar só uma dessas áreas agora.",
   ].join("\n");
@@ -212,6 +222,8 @@ function buildAgentsOverviewReply() {
     "**Como pensar a área de Agentes**",
     "",
     "Use `Agentes` quando você quiser entender qual especialista faz mais sentido para o seu caso.",
+    "",
+    buildPublicTaxonomySummaryLine(),
     "",
     "Na prática, essa área te ajuda a:",
     "- ver quais especialistas estão disponíveis no workspace",
@@ -243,6 +255,8 @@ function buildEiahVsSpecialistReply() {
     "",
     "- `EIAH`: triagem, navegação, comparação de páginas e próximo passo",
     "- `Especialista`: profundidade de domínio e contexto específico",
+    "",
+    buildPublicTaxonomySummaryLine(),
     "",
     "Regra prática:",
     "- comece pelo `EIAH` quando a dúvida ainda estiver aberta",
