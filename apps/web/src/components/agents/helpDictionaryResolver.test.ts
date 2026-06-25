@@ -102,6 +102,45 @@ test("resolver routes agents guidance to agent scope", () => {
   assert.match(snapshot?.content ?? "", /Como ler os cards dos agentes/i);
 });
 
+test("resolver explains IMOB as a vertical in public taxonomy", () => {
+  const snapshot = resolveHelpDictionarySnapshot({
+    input: "IMOB é agente ou vertical?",
+    routeIntent: "help",
+    accessContext: { tenantId: "tenant-A", workspaceId: "workspace-A" },
+  });
+
+  assert.ok(snapshot);
+  assert.equal(snapshot?.intent.scopeHint, "agent");
+  assert.match(snapshot?.content ?? "", /IMOB na taxonomia publica/i);
+  assert.match(snapshot?.content ?? "", /tratado como vertical/i);
+});
+
+test("resolver explains Billing as an operational surface", () => {
+  const snapshot = resolveHelpDictionarySnapshot({
+    input: "Billing é agente ou área?",
+    routeIntent: "help",
+    accessContext: { tenantId: "tenant-A", workspaceId: "workspace-A" },
+  });
+
+  assert.ok(snapshot);
+  assert.equal(snapshot?.intent.scopeHint, "agent");
+  assert.match(snapshot?.content ?? "", /Billing na taxonomia publica/i);
+  assert.match(snapshot?.content ?? "", /area operacional/i);
+});
+
+test("resolver explains IMOB_CRM as internal component", () => {
+  const snapshot = resolveHelpDictionarySnapshot({
+    input: "IMOB_CRM é público ou interno?",
+    routeIntent: "help",
+    accessContext: { tenantId: "tenant-A", workspaceId: "workspace-A" },
+  });
+
+  assert.ok(snapshot);
+  assert.equal(snapshot?.intent.scopeHint, "agent");
+  assert.match(snapshot?.content ?? "", /IMOB_CRM na taxonomia publica/i);
+  assert.match(snapshot?.content ?? "", /componente interno/i);
+});
+
 test("resolver routes workflow guidance to workflow scope", () => {
   const snapshot = resolveHelpDictionarySnapshot({
     input: "quando usar chat versus runs?",

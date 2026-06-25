@@ -1,4 +1,10 @@
 import type { HelpDictionaryEntry } from "@/components/agents/helpDictionary";
+import {
+  buildBillingIsOperationalSurfaceReply,
+  buildImobCrmInternalReply,
+  buildImobIsVerticalReply,
+  buildPublicTaxonomySummaryLine,
+} from "@/components/agents/publicProductTaxonomyCopy";
 
 export const AGENT_HELP_DICTIONARY: HelpDictionaryEntry[] = [
   {
@@ -12,6 +18,8 @@ export const AGENT_HELP_DICTIONARY: HelpDictionaryEntry[] = [
         "**Como pensar a área de Agentes**",
         "",
         "Use `Agentes` quando você quiser entender qual especialista faz mais sentido para o seu caso.",
+        "",
+        buildPublicTaxonomySummaryLine(),
         "",
         "Na prática, essa área te ajuda a:",
         "- ver quais especialistas estão disponíveis no workspace",
@@ -61,11 +69,58 @@ export const AGENT_HELP_DICTIONARY: HelpDictionaryEntry[] = [
         "- `EIAH`: triagem, navegação, comparação de páginas e próximo passo",
         "- `Especialista`: profundidade de domínio e contexto específico",
         "",
+        buildPublicTaxonomySummaryLine(),
+        "",
         "Regra prática:",
         "- comece pelo `EIAH` quando a dúvida ainda estiver aberta",
         "- use um especialista quando o caso já estiver claramente dentro de um domínio",
       ].join("\n"),
       quickReplies: ["Explicar agentes", "Como ler os cards dos agentes", "Verificar acesso"],
+    }),
+  },
+  {
+    id: "agent.imob_is_vertical",
+    scope: "agent",
+    matcherTerms: [
+      "imob e agente ou vertical",
+      "imob é agente ou vertical",
+      "o imob e agente ou vertical",
+      "o imob é agente ou vertical",
+    ],
+    resolve: () => ({
+      intentId: "agent_imob_is_vertical",
+      content: buildImobIsVerticalReply(),
+      quickReplies: ["Quando usar o EIAH e quando usar especialista", "Billing é agente ou área?", "IMOB_CRM é público ou interno?"],
+    }),
+  },
+  {
+    id: "agent.billing_is_surface",
+    scope: "agent",
+    matcherTerms: [
+      "billing e agente ou area",
+      "billing é agente ou área",
+      "billing e agente ou area operacional",
+      "billing é agente ou área operacional",
+    ],
+    resolve: () => ({
+      intentId: "agent_billing_is_surface",
+      content: buildBillingIsOperationalSurfaceReply(),
+      quickReplies: ["IMOB é agente ou vertical?", "Quando usar o EIAH e quando usar especialista", "IMOB_CRM é público ou interno?"],
+    }),
+  },
+  {
+    id: "agent.imob_crm_internal",
+    scope: "agent",
+    matcherTerms: [
+      "imob_crm e publico ou interno",
+      "imob_crm é público ou interno",
+      "imob crm e publico ou interno",
+      "imob crm é público ou interno",
+    ],
+    resolve: () => ({
+      intentId: "agent_imob_crm_internal",
+      content: buildImobCrmInternalReply(),
+      quickReplies: ["IMOB é agente ou vertical?", "Billing é agente ou área?", "Verificar acesso"],
     }),
   },
   {
@@ -98,6 +153,9 @@ export const AGENT_HELP_DICTIONARY: HelpDictionaryEntry[] = [
         "- Guardian: evidências, integridade e verificabilidade",
         "- AADV: consolidação de evidências e próximos passos executivos",
         "- DeFi One: simulação DeFi, custo e risco",
+        "",
+        "Lembrete de taxonomia pública:",
+        buildPublicTaxonomySummaryLine(),
         "",
         "Se você ainda não souber qual agente usar, pode começar comigo no EIAH que eu direciono a conversa pelo caminho mais útil.",
       ].join("\n"),

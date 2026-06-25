@@ -146,6 +146,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
+      - name: Check Public Product Taxonomy anti-drift
+        run: pnpm check:public-product-taxonomy
+
       - name: Check Evidence Index
         run: pnpm check:evidence-index
 

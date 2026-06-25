@@ -71,3 +71,4 @@ export * from "./services/reconcileLedgerService";
 export * from "./services/sclLedger";
 export * from "./services/tenantInvoiceService";
 export * from "./guardrails";
+export * from "./taxonomy/publicProductTaxonomy";

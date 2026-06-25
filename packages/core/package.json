@@ -22,9 +22,17 @@
       "import": "./dist/logging/*.js",
       "types": "./dist/logging/*.d.ts"
     },
+    "./actions/*": {
+      "import": "./dist/actions/*.js",
+      "types": "./dist/actions/*.d.ts"
+    },
     "./services/*": {
       "import": "./dist/services/*.js",
       "types": "./dist/services/*.d.ts"
+    },
+    "./taxonomy/*": {
+      "import": "./dist/taxonomy/*.js",
+      "types": "./dist/taxonomy/*.d.ts"
     }
   },
   "scripts": {

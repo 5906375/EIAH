@@ -193,6 +193,8 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | Instruções comuns para assistentes de coding | `IA_EIAH.md` | Define a fonte operacional comum para Claude Code, Codex e assistentes equivalentes, incluindo leitura obrigatória do roadmap v8.1, regra agent-driven, fail-closed, formato final com agentes envolvidos, resumo de alterações e atualização do Evidence Index para evidências reais. |
 | Ponte Claude Code | `CLAUDE.md` | Redireciona Claude Code para `IA_EIAH.md`, evita duplicação de regras e preserva a precedência das fontes normativas do projeto. |
 | Ponte Codex IDE | `CODEX.md` | Redireciona Codex no VS Code/IDE para `IA_EIAH.md`, evita duplicação de regras e preserva a precedência das fontes normativas do projeto. |
+| Implementação contracts-first da Public Product Taxonomy | `ops/evidence/latest/public-product-taxonomy-implementation-2026-06-25.md` | Prova execução real da frente de nomenclatura pública com policy narrativa, contrato tipado, seed oficial, consumo pelo vocabulário do EIAH, check dedicado de regressão, teste web focado, build do `@eiah/core` e build da API, sem alteração do `ChatAgentLauncher`. |
+| Follow-up de cobertura anti-drift da Public Product Taxonomy | `ops/evidence/latest/public-product-taxonomy-follow-up-2026-06-25.md` | Prova a promoção real de `pnpm check:public-product-taxonomy` ao CI monorepo ao lado de `pnpm check:evidence-index`, registra que `CODEX.md` foi lido antes da alteração e delimita as próximas superfícies de copy/documentação a cobrir sem alterar `ChatAgentLauncher`, runtime de agentes, entitlements ou behavior de billing/economy. |
 
 ## IMOB Data Hardening (2026-06-12)
 
