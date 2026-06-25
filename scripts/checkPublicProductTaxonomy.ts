@@ -5,7 +5,7 @@ import {
   getPublicProductTaxonomyEntryByPublicName,
   publicProductTaxonomyContract,
   publicProductTaxonomyVerticalRoadmapOrder,
-} from "../apps/api/src/types/publicProductTaxonomyContract.ts";
+} from "../packages/core/src/taxonomy/publicProductTaxonomy.ts";
 
 const controlledFiles = [
   "apps/web/src/components/agents/helpDictionary.agents.ts",
