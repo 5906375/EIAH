@@ -31,6 +31,7 @@ test("IMOB command center renders KPIs, filters, table and action links", () => 
           {
             processId: "case-1",
             processLabel: "Captação",
+            context: "",
             caseId: "case-1",
             threadId: "thread-1",
             status: "pending_data",
@@ -41,6 +42,12 @@ test("IMOB command center renders KPIs, filters, table and action links", () => 
             priorityScore: 9,
             nextAction: "Salvar cadastro",
             journeyLabel: "Captação",
+            ownerResponsible: null,
+            eventCount: 1,
+            recommendedActions: [],
+            reasonCodes: [],
+            pendingItemsList: [],
+            blockersList: [],
           },
         ]}
         loading={false}
@@ -71,6 +78,15 @@ test("IMOB command center renders KPIs, filters, table and action links", () => 
   assert.match(html, />PDF</);
   assert.match(html, />HTML</);
   assert.match(html, /R\$\s?0/);
+  // Inactivity label: header must say "Inatividade", not "Idade"
+  assert.match(html, /Inatividade/);
+  assert.doesNotMatch(html, /· Idade/);
+  // Age value must include "sem atividade" suffix
+  assert.match(html, /sem atividade/);
+  // processId === caseId: "processo {id}" line must be hidden
+  assert.doesNotMatch(html, /processo case-1/);
+  // chat link must contain caseId
+  assert.match(html, /caseId=case-1/);
 });
 
 test("IMOB command center renders empty state and error copy", () => {
@@ -106,6 +122,7 @@ test("IMOB command center marks missing consolidated cost explicitly", () => {
           {
             processId: "case-2",
             processLabel: "Proposta",
+            context: "",
             caseId: "case-2",
             threadId: "thread-2",
             status: "pending_data",
@@ -116,6 +133,12 @@ test("IMOB command center marks missing consolidated cost explicitly", () => {
             priorityScore: 5,
             nextAction: "Montar proposta",
             journeyLabel: "Proposta",
+            ownerResponsible: null,
+            eventCount: 0,
+            recommendedActions: [],
+            reasonCodes: [],
+            pendingItemsList: [],
+            blockersList: [],
           },
         ]}
         loading={false}
@@ -133,4 +156,51 @@ test("IMOB command center marks missing consolidated cost explicitly", () => {
   );
 
   assert.match(html, /custo consolidado indisponível/);
+});
+
+test("IMOB command center shows 'processo' line when processId differs from caseId", () => {
+  const html = renderToStaticMarkup(
+    <MemoryRouter>
+      <ImobCommandCenter
+        health={null}
+        cases={[
+          {
+            processId: "process-xyz",
+            processLabel: "Captação",
+            context: "",
+            caseId: "case-abc",
+            threadId: null,
+            status: "pending_data",
+            riskLabel: "",
+            ageHours: 2,
+            updatedAt: "2026-06-11T10:00:00.000Z",
+            priorityLabel: "normal",
+            priorityScore: 0,
+            nextAction: "Revisar caso",
+            journeyLabel: "Captação",
+            ownerResponsible: null,
+            eventCount: 0,
+            recommendedActions: [],
+            reasonCodes: [],
+            pendingItemsList: [],
+            blockersList: [],
+          },
+        ]}
+        loading={false}
+        error={null}
+        statusFilter="all"
+        reasonFilter="all"
+        totalCostLabel="R$ 0"
+        onStatusFilterChange={() => undefined}
+        onReasonFilterChange={() => undefined}
+        onRefresh={() => undefined}
+        onDownloadArtifact={() => undefined}
+      />
+    </MemoryRouter>
+  );
+
+  // processId !== caseId: "processo {id}" must appear
+  assert.match(html, /processo process-xyz/);
+  // caseId link param must reference caseId, not processId
+  assert.match(html, /caseId=case-abc/);
 });

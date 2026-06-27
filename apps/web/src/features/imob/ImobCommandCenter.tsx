@@ -156,7 +156,7 @@ export function ImobCommandCenter({
               <th className="px-4 py-3">Processo</th>
               <th className="px-4 py-3">Estado</th>
               <th className="px-4 py-3">Jornada</th>
-              <th className="px-4 py-3">{riskLabel} · Idade</th>
+              <th className="px-4 py-3">{riskLabel} · Inatividade</th>
               <th className="px-4 py-3">Responsável</th>
               <th className="px-4 py-3">Evidências</th>
               <th className="px-4 py-3">Sincronização</th>
@@ -203,7 +203,7 @@ export function ImobCommandCenter({
                     <td className="px-4 py-3 text-muted-foreground">
                       <div className="space-y-1">
                         <p>{item.riskLabel || "—"}</p>
-                        <p className="text-[10px] text-muted-foreground/70">{item.ageHours.toFixed(1)}h</p>
+                        <p className="text-[10px] text-muted-foreground/70">{item.ageHours.toFixed(1)}h sem atividade</p>
                       </div>
                     </td>
                     {/* Responsável */}
@@ -228,9 +228,11 @@ export function ImobCommandCenter({
                         <p className="font-mono text-muted-foreground">
                           {item.threadId ? `thread ${formatRunId(item.threadId)}` : "thread não vinculado"}
                         </p>
-                        <p className="font-mono text-[10px] text-muted-foreground/80">
-                          processo {formatRunId(item.processId)}
-                        </p>
+                        {item.processId !== item.caseId ? (
+                          <p className="font-mono text-[10px] text-muted-foreground/80">
+                            processo {formatRunId(item.processId)}
+                          </p>
+                        ) : null}
                         <Link
                           to={buildImobChatRoute(
                             item.recommendedActions[0]
@@ -252,7 +254,7 @@ export function ImobCommandCenter({
                           )}
                           className="text-[10px] text-accent underline-offset-2 hover:text-accent/80 hover:underline"
                         >
-                          consultar no chat
+                          abrir no chat
                         </Link>
                       </div>
                     </td>
