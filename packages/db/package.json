@@ -53,6 +53,7 @@
   "devDependencies": {
     "@prisma/config": "^7.1.0",
     "@types/node": "25.0.3",
+    "@types/pg": "^8.20.0",
     "prisma": "7.2.0",
     "tsup": "8.5.1",
     "typescript": "5.9.3",
