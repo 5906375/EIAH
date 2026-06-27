@@ -122,6 +122,41 @@ export type ImobOperationalFlow =
   | "commission.settle"
   | "adjustment.apply";
 
+export type ImobPendingActionStatus =
+  | "awaiting_confirmation"
+  | "confirmed"
+  | "expired"
+  | "cancelled"
+  | "failed_closed";
+
+export type ImobPendingActionEntityType =
+  | "owner"
+  | "property"
+  | "lead"
+  | "visit"
+  | "listing"
+  | "documents"
+  | "proposal"
+  | "deal"
+  | "contract"
+  | "commission";
+
+export type ImobPendingActionSource = "command-center" | "chat";
+
+export type ImobPendingAction = {
+  actionId: string;
+  sourceActionId: string;
+  caseId: string;
+  threadId: string;
+  reasonCode?: ImobReasonCode | null;
+  status: ImobPendingActionStatus;
+  createdAt: string;
+  expiresAt?: string | null;
+  entityType: ImobPendingActionEntityType;
+  journey: ImobCaseJourneyType;
+  source: ImobPendingActionSource;
+};
+
 export type ImobOwnerPersona = "proprietario" | "vendedor" | "locador";
 
 export type ImobOwnerDraft = {
@@ -512,6 +547,7 @@ export type ImobOperationalState = {
   status: "collecting" | "ready_for_review";
   outcome?: "created" | "updated" | "deduped_update" | "blocked" | "waiting_input" | null;
   pendingFields: string[];
+  pendingAction?: ImobPendingAction | null;
   leadStatus?: "draft" | "incomplete" | "qualified" | "blocked" | null;
   nextAction?:
     | "ask_missing_lead_field"

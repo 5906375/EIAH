@@ -109,6 +109,7 @@ describe("Phase 4.0 — Dispatcher mapping (11/11 actionIds)", () => {
       const result = resolveImobCrmActionDispatch({
         actionId,
         caseId: "case-test-01",
+        threadId: "thread-test-01",
         canonical: buildCanonicalWith(actionId),
         message: `Test ${actionId}`,
         timestamp: "2026-06-16T00:00:00Z",
@@ -132,6 +133,7 @@ describe("Phase 4.0 — B5 semantic fix: listing.activate", () => {
     const result = resolveImobCrmActionDispatch({
       actionId: "listing.activate",
       caseId: "case-listing-01",
+      threadId: "thread-listing-01",
       canonical: buildCanonicalWith("listing.activate"),
       message: "ativar anúncio",
       timestamp: "2026-06-16T00:00:00Z",
@@ -145,6 +147,7 @@ describe("Phase 4.0 — B5 semantic fix: listing.activate", () => {
     const result = resolveImobCrmActionDispatch({
       actionId: "listing.activate",
       caseId: "case-listing-02",
+      threadId: "thread-listing-02",
       canonical: buildCanonicalWith("listing.activate"),
       message: "ativar anúncio",
       timestamp: "2026-06-16T00:00:00Z",
@@ -199,6 +202,7 @@ describe("Phase 4.0 — Invariante: sem mutation de ImobCase.status", () => {
     const result = resolveImobCrmActionDispatch({
       actionId: "lead.qualify",
       caseId: "case-inv-01",
+      threadId: "thread-inv-01",
       canonical: buildCanonicalWith("lead.qualify"),
       message: "qualificar lead",
       timestamp: "2026-06-16T00:00:00Z",

@@ -51,9 +51,18 @@ import type {
   ImobMarketScanContext,
   ImobMarketScanResultSnapshot,
   ImobMarketScanRunSnapshot,
+  ImobPendingAction,
   ImobOperationalOpportunity,
   ImobProofSurface,
 } from "../imobConversationContract";
+import {
+  buildImobBlockedPendingActionResolution,
+  buildImobExecuteResolutionFromPendingAction,
+  getImobPendingActionSpec,
+  isImobPendingActionConfirmationMessage,
+  parseImobPendingAction,
+  withImobPendingActionStatus,
+} from "./imobPendingActionRuntime";
 
 export type ImobCrmTurnEngineHelpers = {
   asString: (value: unknown) => string | null;
@@ -93,6 +102,124 @@ function asStringList(value: unknown): string[] {
   return Array.isArray(value)
     ? value.filter((item): item is string => typeof item === "string" && item.trim().length > 0)
     : [];
+}
+
+function pendingActionIdentityKey(pendingAction: ImobPendingAction | null) {
+  if (!pendingAction) return null;
+  return [
+    pendingAction.actionId,
+    pendingAction.sourceActionId,
+    pendingAction.caseId,
+    pendingAction.threadId,
+    pendingAction.entityType,
+    pendingAction.journey,
+    pendingAction.status,
+  ].join(":");
+}
+
+function resolvePendingActionConfirmation(params: {
+  message: string;
+  caseId?: string | null;
+  threadId?: string | null;
+  threadState: ThreadStateLike | null | undefined;
+  canonicalPendingAction: ImobPendingAction | null;
+}) {
+  if (!isImobPendingActionConfirmationMessage(params.message)) return null;
+
+  const currentOperational = asObject(asObject(params.threadState)?.operational);
+  const clientPendingAction = parseImobPendingAction(currentOperational?.pendingAction);
+  const canonicalPendingAction = params.canonicalPendingAction;
+
+  if (
+    clientPendingAction &&
+    canonicalPendingAction &&
+    pendingActionIdentityKey(clientPendingAction) !== pendingActionIdentityKey(canonicalPendingAction)
+  ) {
+    return buildImobBlockedPendingActionResolution({
+      detail: "Encontrei mais de um alvo possível para esta confirmação. Para evitar executar a operação errada, confirme pelo card da ação ou informe explicitamente qual ação deseja executar.",
+      reasonCode: "CONFIRMATION_TARGET_AMBIGUOUS",
+      pendingAction: canonicalPendingAction,
+    });
+  }
+
+  if (!canonicalPendingAction) {
+    return buildImobBlockedPendingActionResolution({
+      detail: "Não encontrei uma ação pendente para confirmar. Para evitar executar a operação errada, confirme pelo card da ação ou informe explicitamente qual ação deseja executar.",
+      reasonCode: "PENDING_ACTION_MISSING",
+    });
+  }
+  const pendingAction = canonicalPendingAction;
+
+  if (pendingAction.status === "expired") {
+    return buildImobBlockedPendingActionResolution({
+      detail: "A ação pendente expirou. Reabra a ação pelo Command Center ou solicite novamente a operação desejada.",
+      reasonCode: "PENDING_ACTION_EXPIRED",
+      pendingAction,
+    });
+  }
+
+  if (pendingAction.status !== "awaiting_confirmation") {
+    return buildImobBlockedPendingActionResolution({
+      detail: "A ação pendente não está mais disponível para confirmação. Reabra a ação original ou informe explicitamente o próximo passo.",
+      reasonCode: "PENDING_ACTION_MISMATCH",
+      pendingAction,
+    });
+  }
+
+  if (params.caseId && pendingAction.caseId !== params.caseId) {
+    return buildImobBlockedPendingActionResolution({
+      detail: "A ação pendente não pertence ao caso atual. Para evitar drift, confirme a ação no caso original.",
+      reasonCode: "PENDING_ACTION_MISMATCH",
+      pendingAction,
+    });
+  }
+
+  if (params.threadId && pendingAction.threadId !== params.threadId) {
+    return buildImobBlockedPendingActionResolution({
+      detail: "Encontrei perda de contexto da ação direcionada. Para evitar executar a operação errada, confirme pelo card da ação original.",
+      reasonCode: "DIRECTED_ACTION_CONTEXT_LOST",
+      pendingAction,
+    });
+  }
+
+  const spec = getImobPendingActionSpec(pendingAction.actionId);
+  if (!spec) {
+    return buildImobBlockedPendingActionResolution({
+      detail: "A ação pendente não possui binding canônico válido. Reabra a operação a partir do Command Center.",
+      reasonCode: "PENDING_ACTION_MISMATCH",
+      pendingAction,
+    });
+  }
+
+  if (pendingAction.entityType !== spec.entityType) {
+    return buildImobBlockedPendingActionResolution({
+      detail: "A entidade da ação pendente divergiu do contrato canônico. A execução foi bloqueada por segurança.",
+      reasonCode: "DIRECTED_ACTION_ENTITY_MISMATCH",
+      pendingAction,
+    });
+  }
+
+  if (pendingAction.journey !== spec.journey) {
+    return buildImobBlockedPendingActionResolution({
+      detail: "A jornada da ação pendente divergiu do contrato canônico. A execução foi bloqueada por segurança.",
+      reasonCode: "DIRECTED_ACTION_JOURNEY_MISMATCH",
+      pendingAction,
+    });
+  }
+
+  const activeFlow = asString(currentOperational?.flow);
+  if (activeFlow && activeFlow !== spec.operation) {
+    return buildImobBlockedPendingActionResolution({
+      detail: "O contexto operacional ativo não corresponde à ação direcionada pendente. Para evitar drift, a confirmação foi bloqueada.",
+      reasonCode: "DIRECTED_ACTION_JOURNEY_MISMATCH",
+      pendingAction,
+    });
+  }
+
+  return buildImobExecuteResolutionFromPendingAction({
+    pendingAction: withImobPendingActionStatus(pendingAction, "confirmed"),
+    label: pendingAction.sourceActionId,
+  });
 }
 
 function normalizeLeadQualifyResolution(data: Record<string, unknown>) {
@@ -1536,6 +1663,7 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
   const message = asString(params.body.message);
   const requestedCaseId = asString(params.body.caseId);
   const requestedThreadId = asString(params.body.threadId);
+  const canonicalPendingAction = parseImobPendingAction(params.body.canonicalPendingAction);
   const recipeMissionContext = asObject(params.body.recipeMissionContext) as ImobMissionContext | null;
   const threadLabel = asString(params.body.threadLabel);
   const parsedThreadState = parseImobCrmThreadState(params.body);
@@ -1626,6 +1754,34 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
       && !isExplicitOperationalCommand(effectiveMessage)
       && !isMarketScanSelectionFlowMessage
       && !isCrossStageTransitionRequest;
+    const pendingActionConfirmation = resolvePendingActionConfirmation({
+      message: effectiveMessage,
+      caseId: turn.caseId,
+      threadId: requestedThreadId,
+      threadState: hydratedThreadState,
+      canonicalPendingAction,
+    });
+    if (pendingActionConfirmation) {
+      const data = normalizeLeadQualifyResolution(
+        applyResponsibleLabelToResolvedTurn(pendingActionConfirmation as any, params.workspaceResponsibleLabel) as Record<string, unknown>,
+      );
+      const caseContext = turn.caseId
+        ? await params.helpers.upsertImobCaseFromResolvedTurn({
+            prisma: params.prisma,
+            tenantId: params.authContext.tenantId,
+            workspaceId: params.authContext.workspaceId,
+            caseId: turn.caseId,
+            threadId: requestedThreadId,
+            threadLabel,
+            resolved: data,
+          })
+        : null;
+      const resolvedCaseContext = caseContext ?? data.caseContext ?? null;
+      return {
+        data: params.helpers.applyCanonicalJourneyToResolvedData(data, resolvedCaseContext as ImobCrmCaseContext | null),
+        caseContext: resolvedCaseContext,
+      };
+    }
     const workflowGuard = isCrossStageTransitionRequest
       || shouldPrioritizeBusinessRead
       ? null
