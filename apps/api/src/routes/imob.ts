@@ -68,6 +68,10 @@ import {
 } from "../services/imob/crm/imobCrmLegacyFallbackPolicy";
 import { resolveImobCrmTurnEngine } from "../services/imob/crm/imobCrmTurnEngine";
 import { resolveImobCrmActionDispatch } from "../services/imob/crm/imobCrmActionDispatcher";
+import {
+  buildImobPendingAction,
+  parseImobPendingAction,
+} from "../services/imob/crm/imobPendingActionRuntime";
 import { registerImobCrmRoutes } from "./imobCrmRouter";
 import {
   imobApprovalActionSchema,
@@ -112,7 +116,7 @@ import {
   IMOB_INTAKE_OBSERVABILITY_COUNTER,
   recordImobIntakeObservabilityEvent,
 } from "../services/imob/intake/imobIntakeObservability";
-import { IMOB_DISPATCHER_ACTION_IDS } from "../services/imob/crm/imobCrmActionDispatcher";
+import { IMOB_DISPATCHER_ACTION_IDS } from "../services/imob/crm/imobPendingActionRuntime";
 import {
   buildExportHash,
   scanIntakeDataForPii,
@@ -1713,13 +1717,13 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
   const existingScopedCase = requestedCaseId
     ? await prisma.imobCase.findFirst({
         where: { id: requestedCaseId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
-        select: { id: true, stage: true },
+        select: { id: true, stage: true, threadId: true, metadata: true },
       })
     : requestedThreadId
       ? await prisma.imobCase.findFirst({
           where: { threadId: requestedThreadId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
           orderBy: { updatedAt: "desc" },
-          select: { id: true, stage: true },
+          select: { id: true, stage: true, threadId: true, metadata: true },
         })
       : null;
   if (
@@ -1769,10 +1773,15 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
       },
     });
   }
+  const effectiveCaseId = requestedCaseId ?? asString(existingScopedCase?.id);
+  const effectiveThreadId = requestedThreadId ?? asString(existingScopedCase?.threadId) ?? (effectiveCaseId ? `case:${effectiveCaseId}` : null);
+  const _parsedPendingAction = parseImobPendingAction(asObject(existingScopedCase?.metadata)?.pendingAction);
+  // Bug 2 mitigation: only treat awaiting_confirmation as active; confirmed/cancelled/expired are stale.
+  const canonicalPendingAction = _parsedPendingAction?.status === "awaiting_confirmation" ? _parsedPendingAction : null;
   // ActionId dispatch: validate action against canonical.recommendedActions and short-circuit
   // before the engine when a concrete operational action is requested from the Command Center.
   if (requestedActionId) {
-    if (!requestedCaseId) {
+    if (!effectiveCaseId || !effectiveThreadId) {
       return res.json({
         ok: true,
         data: {
@@ -1789,7 +1798,7 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
     }
     const caseForCanonical = await (prisma as any).imobCase.findFirst({
       where: {
-        id: requestedCaseId,
+        id: effectiveCaseId,
         tenantId: authContext.tenantId,
         workspaceId: authContext.workspaceId,
       },
@@ -1802,6 +1811,8 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
         nextStep: true,
         blockers: true,
         pendingItems: true,
+        threadId: true,
+        metadata: true,
       },
     }) as {
       id: string;
@@ -1812,6 +1823,8 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
       nextStep: string | null;
       blockers: unknown;
       pendingItems: unknown;
+      threadId: string | null;
+      metadata: unknown;
     } | null;
     if (!caseForCanonical) {
       return res.json({
@@ -1831,20 +1844,71 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
     const canonical = buildImobCanonicalCase(caseForCanonical);
     const dispatchResult = resolveImobCrmActionDispatch({
       actionId: requestedActionId,
-      caseId: requestedCaseId,
+      caseId: effectiveCaseId,
+      threadId: effectiveThreadId,
       canonical,
       message: message ?? "",
       timestamp: new Date().toISOString(),
+      source: "command-center",
     });
     if (dispatchResult !== null) {
+      // Bug 1 fix: only persist pendingAction when dispatcher authorises execution.
+      // blocked results must never create an awaiting_confirmation record.
+      if ((dispatchResult as any)?.mode === "execute") {
+        const reasonCode = asString((dispatchResult as any)?.presentation?.metadata?.reasonCode);
+        const pendingAction = buildImobPendingAction({
+          actionId: requestedActionId,
+          sourceActionId: requestedActionId,
+          caseId: effectiveCaseId,
+          threadId: effectiveThreadId,
+          reasonCode: (reasonCode ?? null) as any,
+          createdAt: new Date().toISOString(),
+          source: "command-center",
+        });
+        if (pendingAction) {
+          const caseMetadata = asObject(caseForCanonical.metadata) ?? {};
+          await prisma.imobCase.update({
+            where: { id: effectiveCaseId },
+            data: {
+              threadId: effectiveThreadId,
+              metadata: {
+                ...caseMetadata,
+                pendingAction,
+              } as any,
+            },
+          });
+        }
+      }
       return res.json({ ok: true, data: dispatchResult });
     }
     // null = consultive or unmapped action → fall through to engine
   }
 
+  const nextThreadState = asObject(body.threadState);
+  const nextOperationalState = asObject(nextThreadState?.operational);
+  const hydratedThreadState = canonicalPendingAction
+    ? {
+        ...(nextThreadState ?? {}),
+        operational: nextOperationalState
+          ? {
+              ...nextOperationalState,
+              pendingAction: nextOperationalState.pendingAction ?? canonicalPendingAction,
+            }
+          : {
+              pendingAction: canonicalPendingAction,
+            },
+      }
+    : body.threadState;
+  const engineBodyBase = {
+    ...body,
+    caseId: effectiveCaseId,
+    threadId: effectiveThreadId,
+    threadState: hydratedThreadState ?? null,
+    canonicalPendingAction,
+  };
   const engineBody = recipeMissionContext
-    ? { ...body, recipeId: requestedRecipeId, recipeMissionContext }
-    : body;
+    ? { ...engineBodyBase, recipeId: requestedRecipeId, recipeMissionContext }
+    : engineBodyBase;
   const data = await resolveImobCrmTurnEngine({
     prisma,
     authContext,
@@ -1872,8 +1936,8 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
     agentId: IMOB_CHAT_AGENT_ID,
     message,
     resolved: asObject(data) ?? {},
-    caseId: requestedCaseId,
-    threadId: requestedThreadId,
+    caseId: effectiveCaseId,
+    threadId: effectiveThreadId,
   });
 
   return res.json({
