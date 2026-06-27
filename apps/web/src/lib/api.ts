@@ -3248,6 +3248,16 @@ export async function apiResolveImobTurn(body: {
   });
 }
 
+export async function apiCancelImobPendingAction(
+  caseId: string,
+  body?: { actionId?: string | null; threadId?: string | null },
+) {
+  return http<{ ok: true; data: { status: string; reasonCode: string; actionId: string; caseId: string } }>(
+    `/imob/cases/${encodeURIComponent(caseId)}/cancel-pending-action`,
+    { method: "POST", body: JSON.stringify(body ?? {}) },
+  );
+}
+
 export type ImobCepLookupResponse = {
   cep: string;
   city: string;

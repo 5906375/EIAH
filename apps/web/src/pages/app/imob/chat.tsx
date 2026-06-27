@@ -8,6 +8,7 @@ import {
   apiCreateImobChatConversation,
   apiCreateImobChatMessage,
   apiCreateImobChatTelemetry,
+  apiCancelImobPendingAction,
   apiGetBillingReconciliationSummary,
   apiGenerateImobContract,
   apiGetImobChatInterviewState,
@@ -1814,6 +1815,7 @@ const ImobChatPage: React.FC = () => {
   const rejectedExecutionKeysRef = React.useRef<Set<string>>(new Set());
   const persistedRunStatusKeysRef = React.useRef<Set<string>>(new Set());
   const directedConfirmingRef = React.useRef(false);
+  const actionIdConsumedRef = React.useRef(false);
   const persistedContractTemplateKeysRef = React.useRef<Set<string>>(new Set());
   const loadingRunFinanceIdsRef = React.useRef<Set<string>>(new Set());
 
@@ -2781,6 +2783,7 @@ const ImobChatPage: React.FC = () => {
       setActiveAssistantMessageId(liveMessageId);
       setPendingExecution(executionPending);
       setState("awaiting_user_action");
+      actionIdConsumedRef.current = true;
       const directedCard = buildDirectedActionCard(thread);
       const directedMessage: ChatMessage = {
         id: liveMessageId,
@@ -3133,7 +3136,7 @@ const ImobChatPage: React.FC = () => {
         caseId: resolvedCaseId,
         recipeId: requestedRecipeId,
         threadState: currentThreadId ? conversationStateByThreadRef.current[currentThreadId] ?? null : null,
-        actionId: requestedActionId,
+        actionId: actionIdConsumedRef.current ? null : requestedActionId,
       });
     } catch (error) {
       const message =
@@ -4405,6 +4408,16 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     const rejectKey = `${conversationId ?? "none"}:${pendingExecution.thread.id}:${pendingExecution.plan.action}:awaiting_user_action`;
     if (rejectedExecutionKeysRef.current.has(rejectKey)) return;
     rejectedExecutionKeysRef.current.add(rejectKey);
+
+    const cancelCaseId = pendingExecution.caseContext?.caseId ?? requestedCaseId ?? null;
+    const cancelActionId = typeof pendingExecution.plan.input?.actionId === "string" ? pendingExecution.plan.input.actionId : null;
+    const cancelThreadId = pendingExecution.thread.id;
+    if (cancelCaseId) {
+      void apiCancelImobPendingAction(cancelCaseId, {
+        actionId: cancelActionId,
+        threadId: cancelThreadId,
+      });
+    }
 
     const currentThread = pendingExecution.thread ?? activeThread;
     const targetMessageId = pendingExecution.messageId;
@@ -5715,14 +5728,14 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                     <button
                       type="button"
                       onClick={() => setAttachmentMenuOpen((prev) => !prev)}
-                      disabled={isGateBlocked || uploadingDocuments || state === "typing" || state === "executing"}
+                      disabled={isGateBlocked || uploadingDocuments || state === "typing" || state === "executing" || state === "awaiting_user_action"}
                       aria-label="Abrir menu de anexos"
                       title="Adicionar fotos e arquivos"
                       className="flex h-[34px] w-[34px] items-center justify-center rounded-full border border-white/10 bg-white/5 text-[11px] leading-none text-muted-foreground shadow-lg shadow-black/20 transition hover:border-accent/40 hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {uploadingDocuments ? "…" : "+"}
                     </button>
-                    {attachmentMenuOpen && !(isGateBlocked || uploadingDocuments || state === "typing" || state === "executing") ? (
+                    {attachmentMenuOpen && !(isGateBlocked || uploadingDocuments || state === "typing" || state === "executing" || state === "awaiting_user_action") ? (
                       <div className="absolute bottom-full left-0 z-30 mb-1 w-[180px] overflow-hidden rounded-xl border border-white/10 bg-surface-strong/95 p-1.5 shadow-[0_20px_60px_rgba(15,23,42,0.4)] backdrop-blur">
                         <button
                           type="button"
@@ -5747,15 +5760,15 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                         void handleSend();
                       }
                     }}
-                    placeholder={isGateBlocked ? "Acesso bloqueado para este workspace." : "Descreva uma operação imobiliária..."}
+                    placeholder={isGateBlocked ? "Acesso bloqueado para este workspace." : state === "awaiting_user_action" ? "Confirme ou cancele a ação acima antes de enviar." : "Descreva uma operação imobiliária..."}
                     rows={1}
-                    disabled={isGateBlocked}
+                    disabled={isGateBlocked || state === "awaiting_user_action"}
                     className="max-h-36 min-h-[40px] w-full resize-y rounded-[12px] bg-transparent px-2.5 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
                   />
                   <button
                     type="button"
                     onClick={() => void handleSend()}
-                    disabled={isGateBlocked || uploadingDocuments || state === "typing" || state === "executing"}
+                    disabled={isGateBlocked || uploadingDocuments || state === "typing" || state === "executing" || state === "awaiting_user_action"}
                     className="h-[40px] shrink-0 rounded-[12px] border border-accent/40 bg-accent/15 px-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-accent transition hover:border-accent hover:bg-accent/20 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {uploadingDocuments || state === "typing" || state === "executing" ? "Enviando..." : "Enviar"}
