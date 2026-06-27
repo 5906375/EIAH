@@ -22,6 +22,7 @@ test("valid operational actionId returns mode=execute with executionRequest", ()
   const result = resolveImobCrmActionDispatch({
     actionId: "owner.register",
     caseId: "case-abc",
+    threadId: "thread-abc",
     canonical: makeCanonical(),
     message: "cadastrar proprietário",
     timestamp: TS,
@@ -34,8 +35,12 @@ test("valid operational actionId returns mode=execute with executionRequest", ()
   assert.equal((result as any).executionRequest.intent, "capture");
   assert.equal((result as any).executionRequest.input.caseId, "case-abc");
   assert.equal((result as any).executionRequest.input.actionId, "owner.register");
+  assert.equal((result as any).executionRequest.input.sourceActionId, "owner.register");
+  assert.equal((result as any).executionRequest.input.threadId, "thread-abc");
   assert.equal((result as any).executionRequest.input.reasonCode, "missing_owner");
   assert.equal((result as any).caseContext?.caseId, "case-abc");
+  assert.equal((result as any).caseContext?.threadId, "thread-abc");
+  assert.equal((result as any).conversationState?.operational?.pendingAction?.status, "awaiting_confirmation");
 });
 
 // Scenario 2: actionId is consultive → returns null (fall through to engine)
@@ -43,6 +48,7 @@ test("consultive actionId returns null so engine handles it as consult", () => {
   const result = resolveImobCrmActionDispatch({
     actionId: "case.consult",
     caseId: "case-abc",
+    threadId: "thread-abc",
     canonical: makeCanonical(),
     message: "consultar caso",
     timestamp: TS,
@@ -55,13 +61,14 @@ test("actionId not in recommendedActions returns mode=blocked", () => {
   const result = resolveImobCrmActionDispatch({
     actionId: "lead.qualify",
     caseId: "case-abc",
+    threadId: "thread-abc",
     canonical: makeCanonical(),
     message: "qualificar lead",
     timestamp: TS,
   });
   assert.ok(result !== null);
   assert.equal((result as any).mode, "blocked");
-  assert.equal((result as any).presentation?.metadata?.workflowReasonCode, "ACTION_NOT_ALLOWED_FOR_CASE");
+  assert.equal((result as any).presentation?.metadata?.workflowReasonCode, "PENDING_ACTION_MISMATCH");
   assert.ok((result as any).presentation?.text?.includes("lead.qualify"));
 });
 
@@ -70,6 +77,7 @@ test("null canonical blocks any actionId with ACTION_NOT_ALLOWED_FOR_CASE", () =
   const result = resolveImobCrmActionDispatch({
     actionId: "property.create",
     caseId: "case-abc",
+    threadId: "thread-abc",
     canonical: null,
     message: "cadastrar imóvel",
     timestamp: TS,
@@ -83,6 +91,7 @@ test("operational actionId without reasonCode still returns mode=execute", () =>
   const result = resolveImobCrmActionDispatch({
     actionId: "property.create",
     caseId: "case-xyz",
+    threadId: "thread-xyz",
     canonical: makeCanonical(),
     message: "cadastrar imóvel",
     timestamp: TS,
@@ -116,6 +125,7 @@ for (const { id, operation } of OPERATIONAL_CASES) {
     const result = resolveImobCrmActionDispatch({
       actionId: id,
       caseId: "case-map-test",
+      threadId: "thread-map-test",
       canonical,
       message: id,
       timestamp: TS,
@@ -125,3 +135,44 @@ for (const { id, operation } of OPERATIONAL_CASES) {
     assert.equal((result as any).executionRequest.operation, operation);
   });
 }
+
+// Bug 1 regression: actionId in ACTION_EXECUTION_MAP but absent from recommendedActions must return
+// mode=blocked and must NOT produce a pendingAction with status=awaiting_confirmation.
+test("Bug1: actionId in ACTION_EXECUTION_MAP mas ausente de recommendedActions retorna blocked sem awaiting_confirmation", () => {
+  // lead.qualify is in ACTION_EXECUTION_MAP but not in this canonical's recommendedActions
+  const result = resolveImobCrmActionDispatch({
+    actionId: "lead.qualify",
+    caseId: "case-b1",
+    threadId: "thread-b1",
+    canonical: makeCanonical(), // only owner.register, property.create, case.consult
+    message: "qualificar lead",
+    timestamp: TS,
+  });
+  assert.ok(result !== null, "should return non-null blocked result");
+  assert.equal((result as any).mode, "blocked", "must be blocked, not execute");
+  // The result must not carry a pendingAction with awaiting_confirmation — that would be the fail-open path
+  const opPendingAction = (result as any).conversationState?.operational?.pendingAction;
+  assert.ok(
+    opPendingAction == null || opPendingAction.status !== "awaiting_confirmation",
+    "blocked result must not expose awaiting_confirmation pendingAction",
+  );
+});
+
+// Bug 1 regression: execute result must produce awaiting_confirmation pendingAction (no regression).
+test("Bug1: actionId válido em recommendedActions produz pendingAction awaiting_confirmation no conversationState", () => {
+  const result = resolveImobCrmActionDispatch({
+    actionId: "owner.register",
+    caseId: "case-b1-ok",
+    threadId: "thread-b1-ok",
+    canonical: makeCanonical(),
+    message: "cadastrar proprietário",
+    timestamp: TS,
+  });
+  assert.ok(result !== null);
+  assert.equal((result as any).mode, "execute");
+  assert.equal(
+    (result as any).conversationState?.operational?.pendingAction?.status,
+    "awaiting_confirmation",
+    "execute result must carry awaiting_confirmation pendingAction",
+  );
+});

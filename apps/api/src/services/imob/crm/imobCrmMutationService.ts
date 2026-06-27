@@ -1360,6 +1360,7 @@ export class ImobCrmMutationService {
         leadStatus: asString(operational.leadStatus),
         nextAction: asString(operational.nextAction),
         reasonCode: asString(params.resolved?.presentation?.metadata?.reasonCode),
+        pendingAction: asObject(operational.pendingAction) ?? null,
       },
       eventType: leadEventType ?? (scopedCase ? "case.turn_resolved" : "case.created_from_turn"),
       eventEvidenceRef: replayKey,

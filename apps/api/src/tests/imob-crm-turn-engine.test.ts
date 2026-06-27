@@ -51,6 +51,23 @@ function createEngineParams(overrides?: Partial<any>) {
   };
 }
 
+function makePendingAction(overrides?: Partial<any>) {
+  return {
+    actionId: "owner.register",
+    sourceActionId: "owner.register",
+    caseId: "case-1",
+    threadId: "thread-1",
+    reasonCode: "PENDING_ITEMS_PRESENT",
+    status: "awaiting_confirmation",
+    createdAt: "2026-06-25T10:00:00.000Z",
+    expiresAt: null,
+    entityType: "owner",
+    journey: "property_capture",
+    source: "command-center",
+    ...overrides,
+  };
+}
+
 test("IMOB_CRM turn engine prioriza leitura consultiva forte antes da continuidade de intake", async () => {
   let consultCalls = 0;
   const params = createEngineParams();
@@ -69,6 +86,277 @@ test("IMOB_CRM turn engine prioriza leitura consultiva forte antes da continuida
   assert.equal(consultCalls, 1);
   assert.equal(resolved.action, "crm.case.blocked_run_resolution");
   assert.match((resolved as any).presentation?.text ?? "", /leitura consultiva/i);
+});
+
+test("IMOB_CRM turn engine confirma ação pendente canônica de proprietário com 'confirmo'", async () => {
+  let upsertCalls = 0;
+  const params = createEngineParams({
+    body: {
+      message: "confirmo",
+      caseId: "case-1",
+      threadId: "thread-1",
+      canonicalPendingAction: makePendingAction(),
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "owner.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          pendingAction: makePendingAction(),
+        },
+      },
+    },
+  });
+  params.helpers.upsertImobCaseFromResolvedTurn = async () => {
+    upsertCalls += 1;
+    return { caseId: "case-1", threadId: "thread-1" };
+  };
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal(upsertCalls, 1);
+  assert.equal(resolved.mode, "execute");
+  assert.equal(resolved.action, "realestate.register_property");
+  assert.equal((resolved as any).executionRequest?.operation, "owner.create");
+  assert.equal((resolved as any).executionRequest?.input?.actionId, "owner.register");
+  assert.equal((resolved as any).executionRequest?.input?.threadId, "thread-1");
+  assert.equal((resolved as any).conversationState?.operational?.pendingAction?.status, "confirmed");
+});
+
+test("IMOB_CRM turn engine confirma ação pendente canônica de imóvel com 'confirmo'", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "confirmo",
+      caseId: "case-2",
+      threadId: "thread-2",
+      canonicalPendingAction: makePendingAction({
+        actionId: "property.create",
+        sourceActionId: "property.create",
+        caseId: "case-2",
+        threadId: "thread-2",
+        entityType: "property",
+      }),
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "property.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          pendingAction: makePendingAction({
+            actionId: "property.create",
+            sourceActionId: "property.create",
+            caseId: "case-2",
+            threadId: "thread-2",
+            entityType: "property",
+          }),
+        },
+      },
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal(resolved.mode, "execute");
+  assert.equal(resolved.action, "realestate.register_property");
+  assert.equal((resolved as any).executionRequest?.operation, "property.create");
+  assert.equal((resolved as any).executionRequest?.input?.actionId, "property.create");
+});
+
+test("IMOB_CRM turn engine confirma ação pendente canônica de visita com 'confirmo'", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "confirmo",
+      caseId: "case-3",
+      threadId: "thread-3",
+      canonicalPendingAction: makePendingAction({
+        actionId: "visit.schedule",
+        sourceActionId: "visit.schedule",
+        caseId: "case-3",
+        threadId: "thread-3",
+        entityType: "visit",
+        journey: "visit_follow_up",
+      }),
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "visit.schedule",
+          status: "ready_for_review",
+          pendingFields: [],
+          pendingAction: makePendingAction({
+            actionId: "visit.schedule",
+            sourceActionId: "visit.schedule",
+            caseId: "case-3",
+            threadId: "thread-3",
+            entityType: "visit",
+            journey: "visit_follow_up",
+          }),
+        },
+      },
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal(resolved.mode, "execute");
+  assert.equal(resolved.action, "realestate.schedule_visit");
+  assert.equal((resolved as any).executionRequest?.operation, "visit.schedule");
+  assert.equal((resolved as any).executionRequest?.input?.actionId, "visit.schedule");
+});
+
+test("IMOB_CRM turn engine falha fechado quando 'confirmo' chega sem pendingAction", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "confirmo",
+      caseId: "case-4",
+      threadId: "thread-4",
+      threadState: {
+        mode: "consult",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: null,
+      },
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal(resolved.mode, "blocked");
+  assert.equal((resolved as any).presentation?.metadata?.workflowReasonCode, "PENDING_ACTION_MISSING");
+});
+
+test("IMOB_CRM turn engine falha fechado quando cliente injeta pendingAction sem binding canônico persistido", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "confirmo",
+      caseId: "case-4b",
+      threadId: "thread-4b",
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "owner.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          pendingAction: makePendingAction({
+            caseId: "case-4b",
+            threadId: "thread-4b",
+          }),
+        },
+      },
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal(resolved.mode, "blocked");
+  assert.equal((resolved as any).presentation?.metadata?.workflowReasonCode, "PENDING_ACTION_MISSING");
+});
+
+test("IMOB_CRM turn engine falha fechado quando pendingAction diverge do threadId atual", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "confirmo",
+      caseId: "case-5",
+      threadId: "thread-5",
+      canonicalPendingAction: makePendingAction({
+        caseId: "case-5",
+        threadId: "thread-original",
+      }),
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "owner.create",
+          status: "ready_for_review",
+          pendingFields: [],
+        },
+      },
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal(resolved.mode, "blocked");
+  assert.equal((resolved as any).presentation?.metadata?.workflowReasonCode, "DIRECTED_ACTION_CONTEXT_LOST");
+});
+
+test("IMOB_CRM turn engine falha fechado quando client pendingAction diverge da ação canônica persistida", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "confirmo",
+      caseId: "case-6",
+      threadId: "thread-6",
+      canonicalPendingAction: makePendingAction({
+        caseId: "case-6",
+        threadId: "thread-6",
+        actionId: "owner.register",
+        sourceActionId: "owner.register",
+      }),
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "owner.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          pendingAction: makePendingAction({
+            caseId: "case-6",
+            threadId: "thread-6",
+            actionId: "property.create",
+            sourceActionId: "property.create",
+            entityType: "property",
+          }),
+        },
+      },
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal(resolved.mode, "blocked");
+  assert.equal((resolved as any).presentation?.metadata?.workflowReasonCode, "CONFIRMATION_TARGET_AMBIGUOUS");
+});
+
+test("IMOB_CRM turn engine falha fechado quando fluxo ativo diverge da jornada da pendingAction", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "confirmo",
+      caseId: "case-7",
+      threadId: "thread-7",
+      canonicalPendingAction: makePendingAction({
+        caseId: "case-7",
+        threadId: "thread-7",
+      }),
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "visit.schedule",
+          status: "ready_for_review",
+          pendingFields: [],
+          pendingAction: makePendingAction({
+            caseId: "case-7",
+            threadId: "thread-7",
+          }),
+        },
+      },
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal(resolved.mode, "blocked");
+  assert.equal((resolved as any).presentation?.metadata?.workflowReasonCode, "DIRECTED_ACTION_JOURNEY_MISMATCH");
 });
 
 test("IMOB_CRM turn engine usa leitura consultiva quando não há fluxo ativo com pendências", async () => {
@@ -1607,4 +1895,99 @@ test("IMOB_CRM turn engine aceita voltar ao scan durante confirmação de seleç
 
   assert.notEqual(resolved.action, "crm.case.transition_not_allowed");
   assert.doesNotMatch((resolved as any).presentation?.text ?? "", /acao nao e valida/i);
+});
+
+// Bug 2 regression: canonicalPendingAction with status="confirmed" (stale post-execution) must not
+// be executable. The route filters these out before passing to the engine, so the engine receives
+// null. This test validates the engine behaves correctly when canonicalPendingAction=null.
+test("Bug2: 'confirmo' com canonicalPendingAction=null (stale confirmado filtrado na rota) retorna PENDING_ACTION_MISSING", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "confirmo",
+      caseId: "case-b2",
+      threadId: "thread-b2",
+      // canonicalPendingAction is absent: simulates the route filtering out a confirmed action
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: null,
+      },
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal(resolved.mode, "blocked");
+  assert.equal((resolved as any).presentation?.metadata?.workflowReasonCode, "PENDING_ACTION_MISSING");
+});
+
+// Bug 2 regression: even if the client passes a confirmed pendingAction in thread state, the engine
+// must block when canonicalPendingAction is null (no canonical backing).
+test("Bug2: 'confirmo' com pendingAction confirmed no client state e canonicalPendingAction=null é bloqueado", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "confirmo",
+      caseId: "case-b2b",
+      threadId: "thread-b2b",
+      // no canonicalPendingAction — route filtered it out because status="confirmed"
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "owner.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          pendingAction: makePendingAction({
+            caseId: "case-b2b",
+            threadId: "thread-b2b",
+            status: "confirmed",
+          }),
+        },
+      },
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal(resolved.mode, "blocked");
+  assert.equal((resolved as any).presentation?.metadata?.workflowReasonCode, "PENDING_ACTION_MISSING");
+});
+
+// Bug 1 + Bug 2 guard at engine level: even if a confirmed canonicalPendingAction somehow reaches
+// the engine (defence in depth), it must be blocked with PENDING_ACTION_MISMATCH, never executed.
+test("Bug1+Bug2: canonicalPendingAction com status='confirmed' passado ao engine é bloqueado (defence-in-depth)", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "confirmo",
+      caseId: "case-b2c",
+      threadId: "thread-b2c",
+      canonicalPendingAction: makePendingAction({
+        caseId: "case-b2c",
+        threadId: "thread-b2c",
+        status: "confirmed",
+      }),
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "owner.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          pendingAction: makePendingAction({
+            caseId: "case-b2c",
+            threadId: "thread-b2c",
+            status: "confirmed",
+          }),
+        },
+      },
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal(resolved.mode, "blocked");
+  assert.notEqual(resolved.mode, "execute", "confirmed pendingAction must never execute");
 });
