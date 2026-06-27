@@ -71,6 +71,7 @@ import { resolveImobCrmActionDispatch } from "../services/imob/crm/imobCrmAction
 import {
   buildImobPendingAction,
   parseImobPendingAction,
+  withImobPendingActionStatus,
 } from "../services/imob/crm/imobPendingActionRuntime";
 import { registerImobCrmRoutes } from "./imobCrmRouter";
 import {
@@ -2207,6 +2208,92 @@ imobRouter.post("/cases/:caseId/events", async (req, res) => {
   });
 
   return res.status(201).json({ ok: true, data: created });
+});
+
+imobRouter.post("/cases/:caseId/cancel-pending-action", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+  }
+
+  const workspaceAccess = await readImobWorkspaceAccessProfile({ prisma, authContext });
+  if (!ensureImobWorkspacePermission(res, workspaceAccess.permissions, "imob.chat.use", "Sua função atual não pode usar o IMOB neste workspace.")) {
+    return;
+  }
+
+  const caseId = req.params.caseId;
+  const body = (req.body ?? {}) as { actionId?: string; threadId?: string };
+
+  const caseItem = await (prisma as any).imobCase.findFirst({
+    where: { id: caseId, tenantId: authContext.tenantId, workspaceId: authContext.workspaceId },
+    select: { id: true, stage: true, metadata: true },
+  });
+  if (!caseItem) {
+    return res.status(404).json({ ok: false, error: { code: "CASE_NOT_FOUND", message: "Case not found" } });
+  }
+  if (!ensureImobStagePermission(res, workspaceAccess.permissions, caseItem.stage, `Sua função atual não pode operar a etapa ${caseItem.stage} neste workspace.`)) {
+    return;
+  }
+
+  const caseMetadata = asObject(caseItem.metadata) ?? {};
+  const pendingAction = parseImobPendingAction(caseMetadata.pendingAction);
+
+  if (!pendingAction || pendingAction.status !== "awaiting_confirmation") {
+    return res.status(409).json({
+      ok: false,
+      error: { code: "PENDING_ACTION_NOT_CANCELLABLE", reasonCode: "PENDING_ACTION_NOT_CANCELLABLE", message: "No active pending action to cancel" },
+    });
+  }
+
+  if (body.actionId && pendingAction.actionId !== body.actionId) {
+    return res.status(409).json({
+      ok: false,
+      error: { code: "PENDING_ACTION_MISMATCH", reasonCode: "PENDING_ACTION_MISMATCH", message: "Action mismatch" },
+    });
+  }
+
+  if (body.threadId && pendingAction.threadId !== body.threadId) {
+    return res.status(409).json({
+      ok: false,
+      error: { code: "DIRECTED_ACTION_CONTEXT_LOST", reasonCode: "DIRECTED_ACTION_CONTEXT_LOST", message: "Thread mismatch" },
+    });
+  }
+
+  const cancelled = withImobPendingActionStatus(pendingAction, "cancelled");
+
+  await (prisma as any).imobCase.update({
+    where: { id: caseId },
+    data: { metadata: { ...caseMetadata, pendingAction: cancelled } as any },
+  });
+
+  await (prisma as any).imobCaseEvent.create({
+    data: {
+      imobCase: { connect: { id: caseId } },
+      tenant: { connect: { id: authContext.tenantId } },
+      workspace: { connect: { id: authContext.workspaceId } },
+      type: "case.pending_action_cancelled",
+      actorType: "user",
+      actorRef: asString(authContext.userId) ?? null,
+      summary: `Ação direcionada cancelada pelo usuário: ${pendingAction.actionId}`,
+      evidenceRef: null,
+      payload: {
+        actionId: pendingAction.actionId,
+        threadId: pendingAction.threadId,
+        reasonCode: "PENDING_ACTION_CANCELLED_BY_USER",
+        cancelledAt: new Date().toISOString(),
+      } as any,
+    },
+  });
+
+  return res.json({
+    ok: true,
+    data: {
+      status: "cancelled",
+      reasonCode: "PENDING_ACTION_CANCELLED_BY_USER",
+      actionId: pendingAction.actionId,
+      caseId,
+    },
+  });
 });
 
 imobRouter.post("/search/inventory", async (req, res) => {

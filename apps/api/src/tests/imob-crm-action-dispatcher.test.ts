@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { resolveImobCrmActionDispatch } from "../services/imob/crm/imobCrmActionDispatcher";
+import {
+  buildImobPendingAction,
+  parseImobPendingAction,
+  withImobPendingActionStatus,
+} from "../services/imob/crm/imobPendingActionRuntime";
 
 function makeCanonical(overrides?: Record<string, unknown>) {
   return {
@@ -175,4 +180,64 @@ test("Bug1: actionId válido em recommendedActions produz pendingAction awaiting
     "awaiting_confirmation",
     "execute result must carry awaiting_confirmation pendingAction",
   );
+});
+
+// pendingAction lifecycle: withImobPendingActionStatus transitions correctly
+test("withImobPendingActionStatus sets status=cancelled on a previously awaiting_confirmation pendingAction", () => {
+  const base = buildImobPendingAction({
+    actionId: "owner.register",
+    caseId: "case-lc",
+    threadId: "thread-lc",
+    createdAt: "2026-06-27T10:00:00.000Z",
+    source: "command-center",
+  });
+  assert.ok(base !== null, "buildImobPendingAction must succeed for known actionId");
+  assert.equal(base!.status, "awaiting_confirmation");
+
+  const cancelled = withImobPendingActionStatus(base!, "cancelled");
+  assert.equal(cancelled.status, "cancelled");
+  assert.equal(cancelled.actionId, "owner.register");
+  assert.equal(cancelled.caseId, "case-lc");
+});
+
+// pendingAction lifecycle: parseImobPendingAction round-trips cancelled status correctly
+test("parseImobPendingAction parses a cancelled pendingAction without rejecting it", () => {
+  const raw = {
+    actionId: "lead.qualify",
+    sourceActionId: "lead.qualify",
+    caseId: "case-lc2",
+    threadId: "thread-lc2",
+    reasonCode: null,
+    status: "cancelled",
+    createdAt: "2026-06-27T10:00:00.000Z",
+    expiresAt: null,
+    entityType: "lead",
+    journey: "lead_qualification",
+    source: "command-center",
+  };
+  const parsed = parseImobPendingAction(raw);
+  assert.ok(parsed !== null, "cancelled pendingAction must parse successfully");
+  assert.equal(parsed!.status, "cancelled");
+  assert.equal(parsed!.actionId, "lead.qualify");
+});
+
+// pendingAction lifecycle: route guard logic — cancelled status must not become canonicalPendingAction
+test("cancelled pendingAction must not pass route guard for canonicalPendingAction", () => {
+  const raw = {
+    actionId: "owner.register",
+    sourceActionId: "owner.register",
+    caseId: "case-lc3",
+    threadId: "thread-lc3",
+    reasonCode: null,
+    status: "cancelled",
+    createdAt: "2026-06-27T10:00:00.000Z",
+    expiresAt: null,
+    entityType: "owner",
+    journey: "property_capture",
+    source: "command-center",
+  };
+  const parsed = parseImobPendingAction(raw);
+  // Simulates the route guard: only "awaiting_confirmation" becomes canonicalPendingAction
+  const canonicalPendingAction = parsed?.status === "awaiting_confirmation" ? parsed : null;
+  assert.equal(canonicalPendingAction, null, "cancelled pendingAction must not become canonical");
 });

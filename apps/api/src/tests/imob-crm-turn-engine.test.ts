@@ -1991,3 +1991,60 @@ test("Bug1+Bug2: canonicalPendingAction com status='confirmed' passado ao engine
   assert.equal(resolved.mode, "blocked");
   assert.notEqual(resolved.mode, "execute", "confirmed pendingAction must never execute");
 });
+
+// Directed action lifecycle: "confirmo" after rejection (status=cancelled) must be blocked.
+// The route filters out any pendingAction with status !== "awaiting_confirmation",
+// so the engine receives null — same path as Bug2 regression.
+test("Lifecycle: 'confirmo' após cancelamento (status=cancelled filtrado na rota) retorna PENDING_ACTION_MISSING", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "confirmo",
+      caseId: "case-lc1",
+      threadId: "thread-lc1",
+      // canonicalPendingAction absent: route filtered cancelled action (status="cancelled")
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: null,
+      },
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal(resolved.mode, "blocked");
+  assert.equal((resolved as any).presentation?.metadata?.workflowReasonCode, "PENDING_ACTION_MISSING");
+});
+
+// Directed action lifecycle: "confirmo" with cancelled pendingAction present in client state
+// but no canonical backing — must still block (no exception thrown, fail-closed).
+test("Lifecycle: 'confirmo' com pendingAction cancelled no client state e canonicalPendingAction=null é bloqueado", async () => {
+  const params = createEngineParams({
+    body: {
+      message: "confirmo",
+      caseId: "case-lc2",
+      threadId: "thread-lc2",
+      threadState: {
+        mode: "execute",
+        pendingSlot: "none",
+        resultOffset: 0,
+        slots: {},
+        operational: {
+          flow: "owner.create",
+          status: "ready_for_review",
+          pendingFields: [],
+          pendingAction: makePendingAction({
+            caseId: "case-lc2",
+            threadId: "thread-lc2",
+            status: "cancelled",
+          }),
+        },
+      },
+    },
+  });
+
+  const resolved = await resolveImobCrmTurnEngine(params);
+  assert.equal(resolved.mode, "blocked");
+  assert.equal((resolved as any).presentation?.metadata?.workflowReasonCode, "PENDING_ACTION_MISSING");
+});
