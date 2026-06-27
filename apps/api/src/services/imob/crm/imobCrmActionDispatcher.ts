@@ -5,6 +5,9 @@ import {
   getImobPendingActionSpec,
 } from "./imobPendingActionRuntime";
 
+export { IMOB_DISPATCHER_ACTION_IDS } from "./imobPendingActionRuntime";
+export type { ImobDispatcherActionId } from "./imobPendingActionRuntime";
+
 export type ImobCrmActionDispatchInput = {
   actionId: string;
   caseId: string;
