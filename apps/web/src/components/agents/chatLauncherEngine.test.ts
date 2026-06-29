@@ -16,6 +16,7 @@ import {
   createPresentationSnapshotV1,
   resolveEiahDecision,
   detectLauncherRouteIntent,
+  fallbackHelpMarkdown,
   resolveLauncherProposalDecision,
 } from "./chatLauncherEngine.ts";
 import { resolveHelpDictionarySnapshot } from "./helpDictionaryResolver.ts";
@@ -55,6 +56,22 @@ test("platform and pages help replies are distinct", () => {
   assert.notEqual(platformReply, pagesReply);
   assert.match(platformReply, /chat, agentes, runs, billing e verticais/i);
   assert.match(pagesReply, /Runs|Agentes|Billing|Marketplace/i);
+});
+
+test("governed fallback help markdown preserves current launcher copy", () => {
+  assert.equal(
+    fallbackHelpMarkdown(),
+    [
+      "**Resumo**",
+      "Não consegui montar uma resposta útil com clareza para esse pedido.",
+      "",
+      "Se quiser, você pode me pedir de um destes jeitos:",
+      "- `como usar o IMOB`",
+      "- `como criar um run`",
+      "- `quais agentes posso usar`",
+      "- `como funciona o billing`",
+    ].join("\n")
+  );
 });
 
 test("generic explanation prompts ask which platform area should be explained", () => {

@@ -31,6 +31,7 @@ import {
   createPresentationSnapshotV1,
   detectLauncherRouteIntent,
   enrichLegacyAssistantContent,
+  fallbackHelpMarkdown,
   normalizeLauncherPersistedIntentResult,
   prepareLauncherRunExecution,
   type EiahMode,
@@ -339,19 +340,6 @@ function isProposalStructuredResponse(input: Record<string, unknown>): input is 
     typeof input.estimated_cost === "string" &&
     typeof input.next_step === "string"
   );
-}
-
-function fallbackHelpMarkdown() {
-  return [
-    "**Resumo**",
-    "Não consegui montar uma resposta útil com clareza para esse pedido.",
-    "",
-    "Se quiser, você pode me pedir de um destes jeitos:",
-    "- `como usar o IMOB`",
-    "- `como criar um run`",
-    "- `quais agentes posso usar`",
-    "- `como funciona o billing`",
-  ].join("\n");
 }
 
 function toMarkdownFromStructuredResponse(

@@ -253,6 +253,19 @@ export type LauncherLocalDecision = {
   conversationState?: ConversationState | null;
 };
 
+export function fallbackHelpMarkdown() {
+  return [
+    "**Resumo**",
+    "Não consegui montar uma resposta útil com clareza para esse pedido.",
+    "",
+    "Se quiser, você pode me pedir de um destes jeitos:",
+    "- `como usar o IMOB`",
+    "- `como criar um run`",
+    "- `quais agentes posso usar`",
+    "- `como funciona o billing`",
+  ].join("\n");
+}
+
 export type LauncherAccessContext = {
   tenantId?: string | null;
   workspaceId?: string | null;
