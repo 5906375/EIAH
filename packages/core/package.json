@@ -10,6 +10,10 @@
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
     },
+    "./policy/TenantPolicyStore": {
+      "import": "./dist/policy/TenantPolicyStore.js",
+      "types": "./dist/policy/TenantPolicyStore.d.ts"
+    },
     "./queue/*": {
       "import": "./dist/queue/*.js",
       "types": "./dist/queue/*.d.ts"
