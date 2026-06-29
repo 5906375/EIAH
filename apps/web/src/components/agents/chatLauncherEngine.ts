@@ -268,6 +268,10 @@ export function fallbackHelpMarkdown() {
   ].join("\n");
 }
 
+export function resolveLauncherFallbackMarkdown() {
+  return fallbackHelpMarkdown();
+}
+
 export function resolveQuickReplyUsed(params: {
   previousAssistantSnapshot?: MessagePresentationSnapshot | null;
   input: string;
@@ -1462,7 +1466,8 @@ export function createLauncherExecutionSnapshot(params: {
 }
 
 export function createLauncherPresentationSnapshot(params: {
-  agentProfile: Agent | null;
+  agentProfile?: Agent | null;
+  selectedAgent?: Agent | null;
   routeIntent: MessagePresentationSnapshot["routeIntent"];
   eiahMode?: EiahMode | null;
   confidence?: number;
@@ -1480,7 +1485,16 @@ export function createLauncherPresentationSnapshot(params: {
   journeyContext?: MessagePresentationSnapshot["journeyContext"];
   agentSwitchRequest?: MessagePresentationSnapshot["agentSwitchRequest"];
 }): MessagePresentationSnapshot {
-  return createPresentationSnapshotV1(params);
+  const agentProfile =
+    params.agentProfile ??
+    resolveLauncherAgentProfile({
+      selectedAgent: params.selectedAgent ?? null,
+      eiahMode: params.eiahMode ?? null,
+    });
+  return createPresentationSnapshotV1({
+    ...params,
+    agentProfile,
+  });
 }
 
 export function resolveLauncherEiahUnifiedMode(params: {
@@ -1517,6 +1531,23 @@ export function selectLauncherAgentContract(agent: Agent | null, mode: EiahMode 
   };
 }
 
+export function resolveLauncherAgentProfile(params: {
+  selectedAgent: Agent | null;
+  eiahMode?: EiahMode | null;
+  isUnifiedEiah?: boolean;
+  launcherTopic?: string | null;
+  routeIntent?: LauncherRouteIntent | null;
+}) {
+  const eiahMode =
+    params.eiahMode ??
+    resolveLauncherEiahUnifiedMode({
+      isUnifiedEiah: params.isUnifiedEiah ?? false,
+      launcherTopic: params.launcherTopic,
+      routeIntent: params.routeIntent,
+    });
+  return selectLauncherAgentContract(params.selectedAgent, eiahMode);
+}
+
 export function resolveLauncherRunSummarySnapshot(params: {
   existingSnapshot?: MessagePresentationSnapshot | null;
   selectedAgent: Agent | null;
@@ -1544,7 +1575,10 @@ export function resolveLauncherRunSummarySnapshot(params: {
       launcherTopic: params.launcherTopic,
       routeIntent,
     });
-  const agentProfile = selectLauncherAgentContract(params.selectedAgent, eiahMode);
+  const agentProfile = resolveLauncherAgentProfile({
+    selectedAgent: params.selectedAgent,
+    eiahMode,
+  });
 
   return createPresentationSnapshotV1({
     agentProfile,
