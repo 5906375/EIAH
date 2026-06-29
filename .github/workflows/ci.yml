@@ -259,6 +259,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
+      - name: Run chat launcher render-only gate
+        run: pnpm check:chat-launcher-render-only
+
       - name: Run chat engine regression suite
         run: pnpm test:chat-engine
 
