@@ -31,7 +31,7 @@ function assertMissingPattern(relativePath: string, content: string, pattern: Re
 
 const tenantPolicyFiles = [
   "packages/core/src/policy/TenantPolicyStore.ts",
-  "packages/core/src/policy/TenantPolicyStore.js",
+  "packages/core/policy/TenantPolicyStore.ts",
 ];
 
 const requiredTests = [
