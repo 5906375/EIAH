@@ -1,0 +1,28 @@
+{
+  "generatedAt": "2026-06-28T14:03:30Z",
+  "status": "evidenciado",
+  "commands": [
+    "node --import tsx --test apps/api/src/tests/imob-approval-gate.test.ts",
+    "node --import tsx --test apps/api/src/tests/imob-pilot-control-runtime.test.ts"
+  ],
+  "passed": true,
+  "filesVerified": [
+    "apps/api/src/services/imob/imobApprovalGate.ts",
+    "apps/api/src/services/imob/imobFirstPilotRuntime.ts",
+    "apps/api/src/tests/imob-approval-gate.test.ts",
+    "apps/api/src/tests/imob-pilot-control-runtime.test.ts"
+  ],
+  "reasonCodesVerified": [
+    "APPROVAL_GRANTED",
+    "APPROVAL_REQUIRED",
+    "APPROVAL_EXPIRED",
+    "APPROVAL_INVALID",
+    "APPROVAL_SCOPE_MISMATCH"
+  ],
+  "notes": [
+    "Suite direta do ApprovalGate confirmou fail-closed para HIGH e CRITICAL sem approval aprovado.",
+    "A mesma suite confirmou bloqueio por approval expirado, approval invalido e mismatch de tenant ou workspace.",
+    "O runtime auditado do primeiro piloto deixou de usar humanApprovalGranted hardcoded e passou a depender de latestApproval.decision === 'approved'."
+  ],
+  "noEvidenceIndexUpdatedBeforeFilesExist": true
+}

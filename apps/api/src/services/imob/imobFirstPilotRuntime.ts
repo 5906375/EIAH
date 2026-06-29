@@ -189,7 +189,7 @@ export function startImobFirstCalendarPilot(params: {
     caseId: params.caseId ?? null,
     leadId: params.leadId ?? null,
     generatedAt,
-    humanApprovalGranted: true,
+    humanApprovalGranted: latestApproval.decision === "approved",
     evidenceRefsCount: latestApproval.evidenceRefs.length,
     policyAccepted: params.policyAccepted ?? true,
     payload: params.payload ?? null,

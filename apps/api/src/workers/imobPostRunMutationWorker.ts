@@ -29,6 +29,10 @@ import {
 } from "../services/imob/imobCanonical";
 import { IMOB_DISPATCHER_ACTION_IDS } from "../services/imob/crm/imobCrmActionDispatcher";
 import { incrementCounter, IMOB_WORKER_COUNTER } from "./imobWorkerMetrics";
+import {
+  resolveImobApprovalGate,
+  type ImobApprovalPolicyCriticality,
+} from "../services/imob/imobApprovalGate";
 
 const workerLogger = createLogger({ component: "imob-post-run-mutation-worker" });
 
@@ -158,6 +162,31 @@ export const IMOB_RUN_OUTCOME_MAP: Record<string, ImobRunOutcome> = {
   },
 };
 
+const IMOB_ACTION_POLICY_CRITICALITY: Record<string, ImobApprovalPolicyCriticality> = {
+  "owner.register": "HIGH",
+  "property.create": "HIGH",
+  "listing.activate": "MEDIUM",
+  "lead.qualify": "MEDIUM",
+  "visit.schedule": "LOW",
+  "documents.review": "MEDIUM",
+  "documents.collect": "MEDIUM",
+  "proposal.create": "HIGH",
+  "deal.review": "HIGH",
+  "contract.prepare": "HIGH",
+  "commission.settle": "HIGH",
+  "imob.contract.intake": "LOW",
+};
+
+function asRecord(input: unknown): Record<string, unknown> | null {
+  return input && typeof input === "object" && !Array.isArray(input)
+    ? (input as Record<string, unknown>)
+    : null;
+}
+
+function asString(input: unknown): string | null {
+  return typeof input === "string" && input.trim().length > 0 ? input.trim() : null;
+}
+
 // ─── Pure helpers ─────────────────────────────────────────────────────────────
 
 export function computeNextPendingItems(
@@ -266,6 +295,71 @@ export async function processImobRunCompletedJob(
     return;
   }
 
+  const requestRoot = asRecord(run.request);
+  const requestMetadata = asRecord(requestRoot?.metadata);
+  const approval = resolveImobApprovalGate({
+    tenantId,
+    workspaceId,
+    runId,
+    actorId: typeof run.userId === "string" ? run.userId : null,
+    actionType: actionId,
+    policyCriticality: IMOB_ACTION_POLICY_CRITICALITY[actionId] ?? "LOW",
+    approvalId:
+      asString(requestMetadata?.approvalId) ??
+      asString(asRecord(requestMetadata?.approval)?.id) ??
+      null,
+    approvalStatus:
+      run.approvalStatus === "not_required" ||
+      run.approvalStatus === "pending" ||
+      run.approvalStatus === "approved" ||
+      run.approvalStatus === "rejected"
+        ? run.approvalStatus
+        : null,
+    approvedBy: typeof run.approvedBy === "string" ? run.approvedBy : null,
+    approvedAt: run.approvedAt,
+    approvalExpiresAt:
+      asString(requestMetadata?.approvalExpiresAt) ??
+      asString(asRecord(requestMetadata?.approval)?.expiresAt) ??
+      null,
+    approvalScopeTenantId:
+      asString(requestMetadata?.approvalTenantId) ??
+      asString(asRecord(requestMetadata?.approvalScope)?.tenantId) ??
+      null,
+    approvalScopeWorkspaceId:
+      asString(requestMetadata?.approvalWorkspaceId) ??
+      asString(asRecord(requestMetadata?.approvalScope)?.workspaceId) ??
+      null,
+    now: new Date(),
+  });
+
+  if (!approval.allowed) {
+    logger.warn({ actionId, reasonCode: approval.reasonCode }, "imob-worker.approval_blocked");
+    incrementCounter(IMOB_WORKER_COUNTER.SKIPS, {
+      actionId,
+      reason: approval.reasonCode.toLowerCase(),
+    });
+    await recordCaseEvent(
+      _prisma,
+      caseId,
+      tenantId,
+      workspaceId,
+      runId,
+      "case.action.blocked",
+      actionId,
+      `Ação ${actionId} bloqueada por approval fail-closed`,
+      {
+        actionId,
+        reasonCode: approval.reasonCode,
+        approvalId: approval.approvalId,
+        approvalStatus: run.approvalStatus ?? null,
+        approvedBy: typeof run.approvedBy === "string" ? run.approvedBy : null,
+        approvedAt: run.approvedAt instanceof Date ? run.approvedAt.toISOString() : null,
+        policyCriticality: IMOB_ACTION_POLICY_CRITICALITY[actionId] ?? "LOW",
+      },
+    );
+    return;
+  }
+
   // Guard 6: HIGH tier actions require txId for receipt
   if (outcome.requiresTxId && !run.txId) {
     logger.warn({ actionId }, "imob-worker.receipt_required_no_tx_id");
@@ -351,6 +445,9 @@ export async function processImobRunCompletedJob(
       runId,
       outcomeStage: outcome.stage,
       outcomeStatus: outcome.status,
+      approvalId: approval.approvalId,
+      approvalDecision: approval.reasonCode,
+      approvalStatus: run.approvalStatus ?? null,
       receiptPath,
       bundlePath,
     },
