@@ -7,7 +7,7 @@
  */
 
 import { guardrailLedger } from "../audit/guardrailLedger";
-import { TenantPolicyStore } from "../policy/TenantPolicyStore";
+import { TenantPolicyStore, type ScopeDecision } from "../policy/TenantPolicyStore";
 
 /**
  * Garante que um recurso pertence ao mesmo tenant
@@ -29,28 +29,41 @@ export async function checkScopePermission({
   userId,
   tokenId,
   scope,
+  requestId,
+  runId,
 }: {
   tenantId: string;
   workspaceId: string;
   userId?: string;
   tokenId?: string;
   scope: string; // corresponde a actionName em TenantActionPolicy
-}): Promise<boolean> {
+  requestId?: string;
+  runId?: string;
+}): Promise<ScopeDecision> {
   const store = TenantPolicyStore.getInstance();
-  const allowed = await store.isScopeAllowed(tenantId, workspaceId, scope);
+  const decision = await store.resolveScopeDecision(tenantId, workspaceId, scope);
 
-  // Governança Cognitiva: loga negação no GuardrailLedger
-  if (!allowed) {
+  try {
+    // The two writes below are intentional and complementary:
+    // GuardrailLedger keeps the canonical/hash record, while GuardrailAuditLedger
+    // keeps operational metadata such as workspaceId, scope, reasonCode and requestId.
     await guardrailLedger.log({
-      type: "policy.violation",
+      type: decision.allowed ? "rbac.scope.allow" : "rbac.scope.deny",
       tenantId,
       workspaceId,
-      actor: userId || tokenId,
+      actorId: userId || tokenId,
+      scope,
       action: scope,
-      message: `Denied scope '${scope}' for tenant '${tenantId}'`,
+      decision: decision.allowed ? "allow" : "deny",
+      reasonCode: decision.reasonCode,
+      requestId,
+      runId,
+      message: `${decision.allowed ? "Allowed" : "Denied"} scope '${scope}' for tenant '${tenantId}' (${decision.reasonCode})`,
       timestamp: new Date(),
     });
+  } catch (error) {
+    console.error("guardrailLedger RBAC log failed:", error);
   }
 
-  return allowed;
+  return decision;
 }

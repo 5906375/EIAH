@@ -1,0 +1,27 @@
+{
+  "generatedAt": "2026-06-28T13:25:40Z",
+  "status": "evidenciado",
+  "commands": [
+    "pnpm check:guardrail-ledger-noop",
+    "TSX_TSCONFIG_PATH=packages/core/tsconfig.test.json node --import tsx --test packages/core/src/security/rbac.fail-closed.test.ts",
+    "pnpm --filter @eiah/core build"
+  ],
+  "passed": true,
+  "filesVerified": [
+    "packages/core/src/audit/guardrailLedger.ts",
+    "packages/core/src/services/guardrailLedgerStore.ts",
+    "packages/core/src/security/rbac.ts",
+    "packages/core/src/security/rbac.fail-closed.test.ts",
+    "packages/core/tsup.config.ts"
+  ],
+  "reasonCodesVerified": [
+    "SCOPE_ALLOWED",
+    "POLICY_NOT_FOUND"
+  ],
+  "notes": [
+    "Check anti-noop confirmou que guardrailLedger.log usa recordGuardrailLedger e recordGuardrailAudit e nao voltou a placeholder.",
+    "Suite RBAC confirmou persistencia de eventos allow e deny, com exatamente um registro por tabela para cada decisao.",
+    "Build de @eiah/core passou apos a trilha de persistencia no caminho RBAC."
+  ],
+  "noEvidenceIndexUpdatedBeforeFilesExist": true
+}

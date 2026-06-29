@@ -1,0 +1,30 @@
+{
+  "generatedAt": "2026-06-28T13:25:40Z",
+  "status": "evidenciado",
+  "commands": [
+    "pnpm check:rbac-fail-closed",
+    "pnpm check:guardrail-ledger-noop",
+    "pnpm --filter @eiah/core build"
+  ],
+  "passed": true,
+  "filesVerified": [
+    "scripts/checkRbacFailClosed.ts",
+    "scripts/checkGuardrailLedgerNoop.ts",
+    "package.json",
+    ".github/workflows/ci.yml",
+    ".github/workflows/critical-dod.yml"
+  ],
+  "ciChecksVerified": [
+    "check:rbac-fail-closed",
+    "check:guardrail-ledger-noop",
+    "build_validate job in .github/workflows/ci.yml",
+    "RbacGuardrailRegression job in .github/workflows/ci.yml",
+    "critical_dod job in .github/workflows/critical-dod.yml"
+  ],
+  "notes": [
+    "Gate dedicado bloqueia fallback permissivo em TenantPolicyStore runtime e artefato JS.",
+    "Gate dedicado bloqueia regressao de no-op no GuardrailLedger e exige cobertura explicita de ledger em rbac.fail-closed.test.ts.",
+    "Evidence Index ainda nao havia sido alterado quando estes artefatos foram gerados."
+  ],
+  "noEvidenceIndexUpdatedBeforeFilesExist": true
+}

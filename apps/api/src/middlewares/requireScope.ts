@@ -22,7 +22,7 @@ export function requireScope(requiredScope: string) {
       const { tenantId, workspaceId, userId, tokenId } = req.authContext;
 
       // 🔍 chama o RBAC Core (função base no pacote @eiah/core)
-      const allowed = await checkScopePermission({
+      const decision = await checkScopePermission({
         tenantId,
         workspaceId,
         userId,
@@ -30,14 +30,18 @@ export function requireScope(requiredScope: string) {
         scope: requiredScope,
       });
 
-      if (!allowed) {
+      if (!decision.allowed) {
         req.logger?.warn(
-          { event: "rbac.denied", scope: requiredScope },
+          { event: "rbac.denied", scope: requiredScope, reasonCode: decision.reasonCode },
           "request.forbidden"
         );
         return res.status(403).json({
           ok: false,
-          error: { code: "FORBIDDEN", message: `Missing scope: ${requiredScope}` },
+          error: {
+            code: decision.reasonCode,
+            reasonCode: decision.reasonCode,
+            message: `Scope denied: ${requiredScope}`,
+          },
         });
       }
 

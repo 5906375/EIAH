@@ -1,0 +1,31 @@
+{
+  "generatedAt": "2026-06-28T13:25:40Z",
+  "status": "evidenciado",
+  "commands": [
+    "TSX_TSCONFIG_PATH=packages/core/tsconfig.test.json node --import tsx --test packages/core/src/security/rbac.fail-closed.test.ts",
+    "TSX_TSCONFIG_PATH=apps/api/tsconfig.json node --import tsx --test --test-force-exit apps/api/src/tests/require-scope.fail-closed.test.ts",
+    "pnpm test:agents-policy-fail-closed"
+  ],
+  "passed": true,
+  "filesVerified": [
+    "packages/core/src/security/rbac.ts",
+    "packages/core/src/security/rbac.fail-closed.test.ts",
+    "apps/api/src/middlewares/requireScope.ts",
+    "apps/api/src/tests/require-scope.fail-closed.test.ts",
+    "apps/api/src/tests/agents.policy.fail-closed.test.ts"
+  ],
+  "reasonCodesVerified": [
+    "SCOPE_ALLOWED",
+    "POLICY_NOT_FOUND",
+    "SCOPE_NOT_ALLOWED",
+    "WORKSPACE_SCOPE_MISMATCH",
+    "TENANT_POLICY_DISABLED",
+    "POLICY_STORE_UNAVAILABLE"
+  ],
+  "notes": [
+    "Suite RBAC confirmou deny por policy ausente, scope ausente, workspace mismatch, policy desabilitada e store indisponivel.",
+    "Suite HTTP confirmou propagacao de 403 com body.code e body.reasonCode sem mascarar denies normais com fallback 500 RBAC_ERROR.",
+    "Suite agents-policy fail-closed permaneceu verde no mesmo ciclo."
+  ],
+  "noEvidenceIndexUpdatedBeforeFilesExist": true
+}
