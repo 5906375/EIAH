@@ -12,10 +12,13 @@ import {
   buildDeterministicHelpReply,
   buildDeterministicImobReply,
   buildEiahQuickReplies,
+  buildLauncherPersistenceTelemetry,
   buildQuickRepliesForContext,
   createPresentationSnapshotV1,
   resolveEiahDecision,
   detectLauncherRouteIntent,
+  fallbackHelpMarkdown,
+  resolveQuickReplyUsed,
   resolveLauncherProposalDecision,
 } from "./chatLauncherEngine.ts";
 import { resolveHelpDictionarySnapshot } from "./helpDictionaryResolver.ts";
@@ -55,6 +58,114 @@ test("platform and pages help replies are distinct", () => {
   assert.notEqual(platformReply, pagesReply);
   assert.match(platformReply, /chat, agentes, runs, billing e verticais/i);
   assert.match(pagesReply, /Runs|Agentes|Billing|Marketplace/i);
+});
+
+test("governed fallback help markdown preserves current launcher copy", () => {
+  assert.equal(
+    fallbackHelpMarkdown(),
+    [
+      "**Resumo**",
+      "Não consegui montar uma resposta útil com clareza para esse pedido.",
+      "",
+      "Se quiser, você pode me pedir de um destes jeitos:",
+      "- `como usar o IMOB`",
+      "- `como criar um run`",
+      "- `quais agentes posso usar`",
+      "- `como funciona o billing`",
+    ].join("\n")
+  );
+});
+
+test("resolveQuickReplyUsed returns true when input matches previous quick reply", () => {
+  assert.equal(
+    resolveQuickReplyUsed({
+      previousAssistantSnapshot: {
+        ...createProposalSnapshot(),
+        quickReplies: ["Explicar plataforma", "Como criar um run"],
+      },
+      input: "como criar um run",
+    }),
+    true
+  );
+});
+
+test("resolveQuickReplyUsed returns false when input does not match previous quick replies", () => {
+  assert.equal(
+    resolveQuickReplyUsed({
+      previousAssistantSnapshot: {
+        ...createProposalSnapshot(),
+        quickReplies: ["Explicar plataforma", "Como criar um run"],
+      },
+      input: "quero falar sobre billing",
+    }),
+    false
+  );
+});
+
+test("resolveQuickReplyUsed returns false without previous snapshot or quick replies", () => {
+  assert.equal(
+    resolveQuickReplyUsed({
+      previousAssistantSnapshot: null,
+      input: "como criar um run",
+    }),
+    false
+  );
+
+  assert.equal(
+    resolveQuickReplyUsed({
+      previousAssistantSnapshot: {
+        ...createProposalSnapshot(),
+        quickReplies: [],
+      },
+      input: "como criar um run",
+    }),
+    false
+  );
+});
+
+test("buildLauncherPersistenceTelemetry marks fallback persistence flags and transports quick reply usage", () => {
+  const telemetry = buildLauncherPersistenceTelemetry({
+    decision: {
+      kind: "contextual_fallback",
+      presentationRouteIntent: "help",
+      proposalContextRecovered: true,
+      proposalContextLost: false,
+      proposalDomainMismatch: true,
+    },
+    quickReplyUsed: true,
+  });
+
+  assert.deepEqual(telemetry, {
+    responseRejected: true,
+    fallbackUsed: true,
+    clarificationIssued: false,
+    handoffOffered: false,
+    handoffEligible: false,
+    proposalDomain: null,
+    conversationStage: null,
+    proposalContextRecovered: true,
+    proposalContextLost: false,
+    proposalDomainMismatch: true,
+    quickReplyUsed: true,
+  });
+});
+
+test("buildLauncherPersistenceTelemetry preserves non-fallback shape for clarification decisions", () => {
+  const telemetry = buildLauncherPersistenceTelemetry({
+    decision: {
+      kind: "clarification",
+      presentationRouteIntent: "help",
+    },
+  });
+
+  assert.equal(telemetry.responseRejected, false);
+  assert.equal(telemetry.fallbackUsed, false);
+  assert.equal(telemetry.quickReplyUsed, false);
+  assert.equal(telemetry.clarificationIssued, true);
+  assert.equal(telemetry.handoffOffered, false);
+  assert.equal(telemetry.handoffEligible, false);
+  assert.equal(telemetry.proposalDomain, null);
+  assert.equal(telemetry.conversationStage, null);
 });
 
 test("generic explanation prompts ask which platform area should be explained", () => {

@@ -24,15 +24,17 @@ import {
   type UploadedDocumentInfo,
 } from "@/lib/api";
 import {
-  buildLauncherDecisionTelemetry,
   buildLauncherHelpdeskSessionPayload,
+  buildLauncherPersistenceTelemetry,
   createLauncherExecutionSnapshot,
   buildInputPlaceholderForContext,
   createPresentationSnapshotV1,
   detectLauncherRouteIntent,
   enrichLegacyAssistantContent,
+  fallbackHelpMarkdown,
   normalizeLauncherPersistedIntentResult,
   prepareLauncherRunExecution,
+  resolveQuickReplyUsed,
   type EiahMode,
   resolveLauncherEiahUnifiedMode,
   resolveLauncherRunSummarySnapshot,
@@ -339,19 +341,6 @@ function isProposalStructuredResponse(input: Record<string, unknown>): input is 
     typeof input.estimated_cost === "string" &&
     typeof input.next_step === "string"
   );
-}
-
-function fallbackHelpMarkdown() {
-  return [
-    "**Resumo**",
-    "Não consegui montar uma resposta útil com clareza para esse pedido.",
-    "",
-    "Se quiser, você pode me pedir de um destes jeitos:",
-    "- `como usar o IMOB`",
-    "- `como criar um run`",
-    "- `quais agentes posso usar`",
-    "- `como funciona o billing`",
-  ].join("\n");
 }
 
 function toMarkdownFromStructuredResponse(
@@ -1202,11 +1191,10 @@ export default function ChatAgentLauncher({
             .join("\n")
         : "";
     const turnInput = [effectiveInput, intakeContext].filter(Boolean).join("\n\n");
-    const quickReplyUsed = Boolean(
-      lastAssistantSnapshot?.quickReplies?.some(
-        (reply) => normalizeIntentText(reply) === normalizeIntentText(effectiveInput)
-      )
-    );
+    const quickReplyUsed = resolveQuickReplyUsed({
+      previousAssistantSnapshot: lastAssistantSnapshot,
+      input: effectiveInput,
+    });
     const routeIntent = isUnifiedEiahMode ? detectLauncherRouteIntent(effectiveInput, proposalMode) : "help";
     const turnEiahMode = resolveLauncherEiahUnifiedMode({
       isUnifiedEiah: isUnifiedEiahMode,
@@ -1253,8 +1241,9 @@ export default function ChatAgentLauncher({
         intentResult: localIntentResult,
         decision: turnDecision,
       });
-      const decisionTelemetry = buildLauncherDecisionTelemetry({
+      const persistenceTelemetry = buildLauncherPersistenceTelemetry({
         decision: turnDecision,
+        quickReplyUsed,
       });
       const localSnapshot = createPresentationSnapshot({
         agentProfile: turnContractProfile,
@@ -1288,20 +1277,20 @@ export default function ChatAgentLauncher({
         message: turnInput,
         response: turnDecision.content,
         intentResult: persistedIntentResult,
-        responseRejected: decisionTelemetry.responseRejected,
-        fallbackUsed: decisionTelemetry.fallbackUsed,
-        quickReplyUsed,
+        responseRejected: persistenceTelemetry.responseRejected,
+        fallbackUsed: persistenceTelemetry.fallbackUsed,
+        quickReplyUsed: persistenceTelemetry.quickReplyUsed,
         quickRepliesShown: localSnapshot.quickReplies.length,
         routeIntent: localSnapshot.routeIntent,
         verticalContext: localSnapshot.verticalContext ?? null,
         proposalDomain: localSnapshot.proposalDomain ?? null,
         conversationStage: localSnapshot.conversationStage ?? null,
-        proposalContextRecovered: decisionTelemetry.proposalContextRecovered,
-        proposalContextLost: decisionTelemetry.proposalContextLost,
-        proposalDomainMismatch: decisionTelemetry.proposalDomainMismatch,
-        clarificationIssued: decisionTelemetry.clarificationIssued,
-        handoffOffered: decisionTelemetry.handoffOffered,
-        handoffEligible: decisionTelemetry.handoffEligible,
+        proposalContextRecovered: persistenceTelemetry.proposalContextRecovered,
+        proposalContextLost: persistenceTelemetry.proposalContextLost,
+        proposalDomainMismatch: persistenceTelemetry.proposalDomainMismatch,
+        clarificationIssued: persistenceTelemetry.clarificationIssued,
+        handoffOffered: persistenceTelemetry.handoffOffered,
+        handoffEligible: persistenceTelemetry.handoffEligible,
       });
       clearAttachmentComposer();
       return;

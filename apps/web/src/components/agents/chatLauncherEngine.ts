@@ -21,6 +21,7 @@ import {
 import {
   buildLauncherDecisionTelemetry,
   buildLauncherHelpdeskSessionPayload,
+  buildLauncherPersistenceTelemetry,
   normalizeLauncherPersistedIntentResult,
   type LauncherPersistedIntent,
 } from "@/components/agents/chatDecisionTelemetry";
@@ -112,6 +113,7 @@ export {
 export {
   buildLauncherDecisionTelemetry,
   buildLauncherHelpdeskSessionPayload,
+  buildLauncherPersistenceTelemetry,
   normalizeLauncherPersistedIntentResult,
 } from "@/components/agents/chatDecisionTelemetry";
 export {
@@ -252,6 +254,33 @@ export type LauncherLocalDecision = {
   agentSwitchRequest?: MessagePresentationSnapshot["agentSwitchRequest"];
   conversationState?: ConversationState | null;
 };
+
+export function fallbackHelpMarkdown() {
+  return [
+    "**Resumo**",
+    "Não consegui montar uma resposta útil com clareza para esse pedido.",
+    "",
+    "Se quiser, você pode me pedir de um destes jeitos:",
+    "- `como usar o IMOB`",
+    "- `como criar um run`",
+    "- `quais agentes posso usar`",
+    "- `como funciona o billing`",
+  ].join("\n");
+}
+
+export function resolveQuickReplyUsed(params: {
+  previousAssistantSnapshot?: MessagePresentationSnapshot | null;
+  input: string;
+}) {
+  const normalizedInput = normalizeIntentText(params.input);
+  if (!normalizedInput) return false;
+
+  return Boolean(
+    params.previousAssistantSnapshot?.quickReplies?.some(
+      (reply) => normalizeIntentText(reply) === normalizedInput
+    )
+  );
+}
 
 export type LauncherAccessContext = {
   tenantId?: string | null;
