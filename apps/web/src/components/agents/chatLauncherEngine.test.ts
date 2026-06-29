@@ -19,6 +19,7 @@ import {
   resolveEiahDecision,
   detectLauncherRouteIntent,
   fallbackHelpMarkdown,
+  resolveLauncherAgentProfile,
   resolveQuickReplyUsed,
   resolveLauncherProposalDecision,
 } from "./chatLauncherEngine.ts";
@@ -1211,6 +1212,80 @@ test("launcher snapshot helper preserves governed render-only payload without la
   assert.equal(snapshot.governedRuntime?.launcherPolicy, "render_only");
   assert.deepEqual(snapshot.quickReplies, ["revisar documentos"]);
   assert.deepEqual(resolveSnapshotQuickReplies(snapshot), ["revisar documentos"]);
+});
+
+test("launcher engine helper resolves mode-specific contract without direct launcher selection", () => {
+  const agentProfile = resolveLauncherAgentProfile({
+    selectedAgent: {
+      id: "EIAH",
+      name: "EIAH",
+      chatCopy: { quickReplies: ["fallback copy"] },
+      uxContract: { trustSignals: [], defaultCTA: "", responseShape: "brief_answer", maxCognitiveLoad: "low" },
+      knowledgePolicy: { provenancePolicy: "none" },
+      modeContracts: [
+        {
+          mode: "help",
+          chatCopy: { quickReplies: ["ajuda 1", "ajuda 2"] },
+          uxContract: {
+            trustSignals: ["help_mode"],
+            defaultCTA: "",
+            responseShape: "brief_answer",
+            maxCognitiveLoad: "low",
+          },
+        },
+      ],
+    } as any,
+    eiahMode: "help",
+  });
+
+  assert.deepEqual(agentProfile?.chatCopy?.quickReplies, ["ajuda 1", "ajuda 2"]);
+  assert.deepEqual(agentProfile?.uxContract?.trustSignals, ["help_mode"]);
+});
+
+test("launcher snapshot helper resolves contract in engine and keeps render-only snapshot free of backend proof fields", () => {
+  const snapshot = createLauncherPresentationSnapshot({
+    selectedAgent: {
+      id: "EIAH",
+      name: "EIAH",
+      chatCopy: { quickReplies: ["fallback copy"] },
+      uxContract: { trustSignals: [], defaultCTA: "", responseShape: "brief_answer", maxCognitiveLoad: "low" },
+      knowledgePolicy: { provenancePolicy: "none" },
+      modeContracts: [
+        {
+          mode: "help",
+          chatCopy: { quickReplies: ["consultar caso case-1", "revisar documentos"] },
+        },
+      ],
+    } as any,
+    routeIntent: "imob",
+    eiahMode: "help",
+    confidence: 0.8,
+    renderVariant: "guided_flow",
+    sourceInput: "mostrar bloqueios do caso",
+    isHelpCenterMode: true,
+    proposalMode: false,
+    attachmentIntake: {
+      enabled: false,
+      acceptedKinds: [],
+      intakeModes: [],
+      analysisModes: [],
+      primaryActionLabel: undefined,
+      secondaryActionLabel: undefined,
+      helpText: undefined,
+    },
+    usedReplyInputs: ["consultar caso case-1"],
+    resolvedQuickReplies: ["consultar caso case-1", "revisar documentos"],
+  });
+
+  assert.equal(snapshot.snapshotVersion, PRESENTATION_SNAPSHOT_VERSION);
+  assert.equal(snapshot.routeIntent, "imob");
+  assert.equal(snapshot.governedRuntime?.launcherPolicy, "render_only");
+  assert.deepEqual(snapshot.quickReplies, ["revisar documentos"]);
+  assert.ok(!("tenantId" in snapshot));
+  assert.ok(!("payload" in snapshot));
+  assert.ok(!("proofHash" in snapshot));
+  assert.ok(!("sourceRefs" in snapshot));
+  assert.ok(!("receiptId" in snapshot));
 });
 
 test("legacy conservative snapshot still suppresses quick replies even if payload exists", () => {

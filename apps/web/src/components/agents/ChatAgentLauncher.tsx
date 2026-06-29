@@ -31,14 +31,14 @@ import {
   buildInputPlaceholderForContext,
   detectLauncherRouteIntent,
   enrichLegacyAssistantContent,
-  fallbackHelpMarkdown,
   normalizeLauncherPersistedIntentResult,
   prepareLauncherRunExecution,
   resolveQuickReplyUsed,
+  resolveLauncherFallbackMarkdown,
   type EiahMode,
+  resolveLauncherAgentProfile,
   resolveLauncherEiahUnifiedMode,
   resolveLauncherRunSummarySnapshot,
-  selectLauncherAgentContract,
   type LegacyEnrichmentIntent,
   resolveAttachmentIntake,
   resolveLauncherTurnDecision,
@@ -376,7 +376,7 @@ function toMarkdownFromStructuredResponse(
         fallbackUsed: false,
       };
     }
-    return { content: fallbackHelpMarkdown(), rejected: true, fallbackUsed: true };
+    return { content: resolveLauncherFallbackMarkdown(), rejected: true, fallbackUsed: true };
   }
 
   if (modeHint === "proposal") {
@@ -392,7 +392,7 @@ function toMarkdownFromStructuredResponse(
         fallbackUsed: false,
       };
     }
-    return { content: fallbackHelpMarkdown(), rejected: true, fallbackUsed: true };
+    return { content: resolveLauncherFallbackMarkdown(), rejected: true, fallbackUsed: true };
   }
 
   return { content: raw, rejected: false, fallbackUsed: false };
@@ -1201,7 +1201,10 @@ export default function ChatAgentLauncher({
       launcherTopic: launcherContext?.topic,
       routeIntent,
     });
-    const turnContractProfile = selectLauncherAgentContract(selectedCatalogAgent, turnEiahMode);
+    const turnAgentProfile = resolveLauncherAgentProfile({
+      selectedAgent: selectedCatalogAgent,
+      eiahMode: turnEiahMode,
+    });
     const isEiahHelpCenter = turnEiahMode === "help";
     if (isUnifiedEiahMode) setLastRouteIntent(routeIntent);
     setInput("");
@@ -1218,7 +1221,7 @@ export default function ChatAgentLauncher({
       proposalMode,
       isUnifiedEiah: isUnifiedEiahMode,
       eiahMode: turnEiahMode,
-      agentProfile: turnContractProfile,
+      agentProfile: turnAgentProfile,
       catalogAgents,
       intentUnknown: localIntentResult.intent === "unknown",
       confidence: localIntentResult.confidence,
@@ -1246,7 +1249,7 @@ export default function ChatAgentLauncher({
         quickReplyUsed,
       });
       const localSnapshot = createLauncherPresentationSnapshot({
-        agentProfile: turnContractProfile,
+        selectedAgent: selectedCatalogAgent,
         routeIntent: turnDecision.presentationRouteIntent,
         eiahMode: turnDecision.eiahMode ?? turnEiahMode,
         confidence:
@@ -1317,7 +1320,7 @@ export default function ChatAgentLauncher({
         routeIntent,
         eiahMode: turnEiahMode,
         isEiahHelpCenter,
-        agentProfile: turnContractProfile,
+        agentProfile: turnAgentProfile,
         requiresConfirmation: Boolean(conversation.policy?.requiresConfirmation),
         planHint: launcherContext?.planHint ?? null,
         agentFallback: !activeAgentId,
@@ -1335,7 +1338,7 @@ export default function ChatAgentLauncher({
       runPromptRef.current[created.id] = turnInput;
       runIntentRef.current[created.id] = intentResult;
       runPresentationRef.current[created.id] = createLauncherExecutionSnapshot({
-        agentProfile: turnContractProfile,
+        agentProfile: turnAgentProfile,
         routeIntent,
         eiahMode: turnEiahMode,
         confidence: intentResult.confidence,
@@ -1364,7 +1367,7 @@ export default function ChatAgentLauncher({
         content: message,
         status: "done",
         presentationSnapshot: createLauncherExecutionSnapshot({
-          agentProfile: turnContractProfile,
+          agentProfile: turnAgentProfile,
           routeIntent,
           eiahMode: turnEiahMode,
           confidence: intentResult.confidence,
@@ -1615,10 +1618,13 @@ export default function ChatAgentLauncher({
     launcherTopic: launcherContext?.topic,
     routeIntent: lastRouteIntent,
   });
-  const activeContractProfile = selectLauncherAgentContract(selectedCatalogAgent, activeEiahMode);
+  const activeAgentProfile = resolveLauncherAgentProfile({
+    selectedAgent: selectedCatalogAgent,
+    eiahMode: activeEiahMode,
+  });
   const attachmentIntake = useMemo(
-    () => resolveAttachmentIntake(activeContractProfile),
-    [activeContractProfile]
+    () => resolveAttachmentIntake(activeAgentProfile),
+    [activeAgentProfile]
   );
   const usedQuickReplyKeys = useMemo(() => {
     const keys = new Set<string>();
@@ -1644,7 +1650,7 @@ export default function ChatAgentLauncher({
         "Estou em modo atendimento de proposta. Posso te recomendar o melhor plano e estimar valor mensal. Para começar, me diga: quantos usuários e quantos runs/mês você estima?",
       status: "done",
       presentationSnapshot: createLauncherPresentationSnapshot({
-        agentProfile: activeContractProfile,
+        selectedAgent: selectedCatalogAgent,
         routeIntent: "proposal",
         eiahMode: activeEiahMode,
         confidence: 0.85,
@@ -1657,7 +1663,7 @@ export default function ChatAgentLauncher({
         usedReplyInputs: [...usedQuickReplyKeys],
       }),
     });
-  }, [activeContractProfile, activeEiahMode, attachmentIntake, isUnifiedEiahMode, proposalMode, threadKey, usedQuickReplyKeys]);
+  }, [activeEiahMode, attachmentIntake, isUnifiedEiahMode, proposalMode, selectedCatalogAgent, threadKey, usedQuickReplyKeys]);
 
   const lastUserMessage = useMemo(
     () => [...messages].reverse().find((message) => message.role === "user")?.content ?? null,
@@ -1867,7 +1873,7 @@ export default function ChatAgentLauncher({
                                           technicalRaw,
                                           recs,
                                           isHelpCenterMode,
-                                          agentProfile: activeContractProfile,
+                                          agentProfile: activeAgentProfile,
                                           routeIntent: resolveSnapshotCompatibleRouteIntent(messageSnapshot),
                                           intentResult: {
                                             intent: conversation.intentResult.intent,
