@@ -298,7 +298,7 @@ governanceRouter.get("/runs/:id/governance", async (req, res) => {
     evidence: {
       auditEventIds: auditEvents.map((event) => event.id),
     },
-    canCalibrate: Boolean(canCalibrate),
+    canCalibrate: canCalibrate.allowed,
   });
 });
 
