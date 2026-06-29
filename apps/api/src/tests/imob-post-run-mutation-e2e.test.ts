@@ -100,6 +100,9 @@ async function createTestRun(overrides: Record<string, unknown> = {}) {
       workspaceId,
       agent: "EIAH",
       status: "success",
+      approvalStatus: "approved",
+      approvedBy: "director@acme.test",
+      approvedAt: new Date("2026-06-28T10:00:00.000Z"),
       txId: `tx-e2e-${suffix}`,
       request: {
         agent: "EIAH",
