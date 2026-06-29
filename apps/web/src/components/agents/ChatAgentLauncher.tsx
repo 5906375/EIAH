@@ -24,8 +24,8 @@ import {
   type UploadedDocumentInfo,
 } from "@/lib/api";
 import {
-  buildLauncherDecisionTelemetry,
   buildLauncherHelpdeskSessionPayload,
+  buildLauncherPersistenceTelemetry,
   createLauncherExecutionSnapshot,
   buildInputPlaceholderForContext,
   createPresentationSnapshotV1,
@@ -1241,8 +1241,9 @@ export default function ChatAgentLauncher({
         intentResult: localIntentResult,
         decision: turnDecision,
       });
-      const decisionTelemetry = buildLauncherDecisionTelemetry({
+      const persistenceTelemetry = buildLauncherPersistenceTelemetry({
         decision: turnDecision,
+        quickReplyUsed,
       });
       const localSnapshot = createPresentationSnapshot({
         agentProfile: turnContractProfile,
@@ -1276,20 +1277,20 @@ export default function ChatAgentLauncher({
         message: turnInput,
         response: turnDecision.content,
         intentResult: persistedIntentResult,
-        responseRejected: decisionTelemetry.responseRejected,
-        fallbackUsed: decisionTelemetry.fallbackUsed,
-        quickReplyUsed,
+        responseRejected: persistenceTelemetry.responseRejected,
+        fallbackUsed: persistenceTelemetry.fallbackUsed,
+        quickReplyUsed: persistenceTelemetry.quickReplyUsed,
         quickRepliesShown: localSnapshot.quickReplies.length,
         routeIntent: localSnapshot.routeIntent,
         verticalContext: localSnapshot.verticalContext ?? null,
         proposalDomain: localSnapshot.proposalDomain ?? null,
         conversationStage: localSnapshot.conversationStage ?? null,
-        proposalContextRecovered: decisionTelemetry.proposalContextRecovered,
-        proposalContextLost: decisionTelemetry.proposalContextLost,
-        proposalDomainMismatch: decisionTelemetry.proposalDomainMismatch,
-        clarificationIssued: decisionTelemetry.clarificationIssued,
-        handoffOffered: decisionTelemetry.handoffOffered,
-        handoffEligible: decisionTelemetry.handoffEligible,
+        proposalContextRecovered: persistenceTelemetry.proposalContextRecovered,
+        proposalContextLost: persistenceTelemetry.proposalContextLost,
+        proposalDomainMismatch: persistenceTelemetry.proposalDomainMismatch,
+        clarificationIssued: persistenceTelemetry.clarificationIssued,
+        handoffOffered: persistenceTelemetry.handoffOffered,
+        handoffEligible: persistenceTelemetry.handoffEligible,
       });
       clearAttachmentComposer();
       return;

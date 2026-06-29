@@ -91,6 +91,22 @@ export function buildLauncherDecisionTelemetry(params: {
   };
 }
 
+export type LauncherPersistenceTelemetry = ReturnType<typeof buildLauncherDecisionTelemetry> & {
+  quickReplyUsed: boolean;
+};
+
+export function buildLauncherPersistenceTelemetry(params: {
+  decision: LauncherDecisionTelemetryLike;
+  quickReplyUsed?: boolean;
+}): LauncherPersistenceTelemetry {
+  return {
+    ...buildLauncherDecisionTelemetry({
+      decision: params.decision,
+    }),
+    quickReplyUsed: params.quickReplyUsed ?? false,
+  };
+}
+
 export function buildLauncherHelpdeskSessionPayload(params: {
   tenantId?: string | null;
   workspaceId?: string | null;

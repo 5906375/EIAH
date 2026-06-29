@@ -12,6 +12,7 @@ import {
   buildDeterministicHelpReply,
   buildDeterministicImobReply,
   buildEiahQuickReplies,
+  buildLauncherPersistenceTelemetry,
   buildQuickRepliesForContext,
   createPresentationSnapshotV1,
   resolveEiahDecision,
@@ -120,6 +121,51 @@ test("resolveQuickReplyUsed returns false without previous snapshot or quick rep
     }),
     false
   );
+});
+
+test("buildLauncherPersistenceTelemetry marks fallback persistence flags and transports quick reply usage", () => {
+  const telemetry = buildLauncherPersistenceTelemetry({
+    decision: {
+      kind: "contextual_fallback",
+      presentationRouteIntent: "help",
+      proposalContextRecovered: true,
+      proposalContextLost: false,
+      proposalDomainMismatch: true,
+    },
+    quickReplyUsed: true,
+  });
+
+  assert.deepEqual(telemetry, {
+    responseRejected: true,
+    fallbackUsed: true,
+    clarificationIssued: false,
+    handoffOffered: false,
+    handoffEligible: false,
+    proposalDomain: null,
+    conversationStage: null,
+    proposalContextRecovered: true,
+    proposalContextLost: false,
+    proposalDomainMismatch: true,
+    quickReplyUsed: true,
+  });
+});
+
+test("buildLauncherPersistenceTelemetry preserves non-fallback shape for clarification decisions", () => {
+  const telemetry = buildLauncherPersistenceTelemetry({
+    decision: {
+      kind: "clarification",
+      presentationRouteIntent: "help",
+    },
+  });
+
+  assert.equal(telemetry.responseRejected, false);
+  assert.equal(telemetry.fallbackUsed, false);
+  assert.equal(telemetry.quickReplyUsed, false);
+  assert.equal(telemetry.clarificationIssued, true);
+  assert.equal(telemetry.handoffOffered, false);
+  assert.equal(telemetry.handoffEligible, false);
+  assert.equal(telemetry.proposalDomain, null);
+  assert.equal(telemetry.conversationStage, null);
 });
 
 test("generic explanation prompts ask which platform area should be explained", () => {

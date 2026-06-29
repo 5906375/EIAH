@@ -21,6 +21,7 @@ import {
 import {
   buildLauncherDecisionTelemetry,
   buildLauncherHelpdeskSessionPayload,
+  buildLauncherPersistenceTelemetry,
   normalizeLauncherPersistedIntentResult,
   type LauncherPersistedIntent,
 } from "@/components/agents/chatDecisionTelemetry";
@@ -112,6 +113,7 @@ export {
 export {
   buildLauncherDecisionTelemetry,
   buildLauncherHelpdeskSessionPayload,
+  buildLauncherPersistenceTelemetry,
   normalizeLauncherPersistedIntentResult,
 } from "@/components/agents/chatDecisionTelemetry";
 export {
