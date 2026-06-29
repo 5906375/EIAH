@@ -1,0 +1,29 @@
+{
+  "generatedAt": "2026-06-28T13:25:40Z",
+  "status": "evidenciado",
+  "commands": [
+    "pnpm check:rbac-fail-closed",
+    "TSX_TSCONFIG_PATH=packages/core/tsconfig.test.json node --import tsx --test packages/core/src/security/rbac.fail-closed.test.ts"
+  ],
+  "passed": true,
+  "filesVerified": [
+    "packages/core/src/policy/TenantPolicyStore.ts",
+    "packages/core/src/policy/TenantPolicyStore.js",
+    "packages/core/src/security/rbac.fail-closed.test.ts",
+    "apps/api/src/tests/require-scope.fail-closed.test.ts"
+  ],
+  "reasonCodesVerified": [
+    "SCOPE_ALLOWED",
+    "POLICY_NOT_FOUND",
+    "SCOPE_NOT_ALLOWED",
+    "WORKSPACE_SCOPE_MISMATCH",
+    "TENANT_POLICY_DISABLED",
+    "POLICY_STORE_UNAVAILABLE"
+  ],
+  "notes": [
+    "Check anti-regressao confirmou ausencia de 'Default allow', 'allow-all', 'allow all', 'policies are enforced' e 'return true;' nos artefatos TenantPolicyStore.",
+    "Suite core confirmou comportamento fail-closed e o metodo legado isScopeAllowed alinhado a decisao canonica.",
+    "noEvidenceIndexUpdatedBeforeFilesExist foi respeitado neste pacote."
+  ],
+  "noEvidenceIndexUpdatedBeforeFilesExist": true
+}

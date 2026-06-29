@@ -1,7 +1,7 @@
 // Phase 4.1c — ImobPostRunMutationWorker tests (T1–T10)
 //
 // INVARIANTES VERIFICADOS:
-// 1. IMOB_RUN_OUTCOME_MAP cobre exatamente os 11 actionIds canônicos
+// 1. IMOB_RUN_OUTCOME_MAP cobre exatamente os 12 actionIds canônicos
 // 2. simulated=true → processImobRunCompletedJob retorna sem mutar
 // 3. run.status !== "success" → retorna sem mutar
 // 4. requiresTxId=true && txId=null → retorna sem mutar
@@ -43,8 +43,12 @@ function makeRun(overrides: Record<string, unknown> = {}) {
     id: "run-001",
     tenantId: "t-001",
     workspaceId: "w-001",
+    userId: "user-001",
     status: "success",
     txId: "tx-abc123",
+    approvalStatus: "approved",
+    approvedBy: "director@acme.test",
+    approvedAt: new Date("2026-06-28T10:00:00.000Z"),
     response: null,
     ...overrides,
   };
@@ -126,9 +130,9 @@ function makeDeps(overrides: Partial<ImobWorkerDeps> & {
 
 // ─── T1: IMOB_RUN_OUTCOME_MAP coverage ───────────────────────────────────────
 
-describe("[T1] Phase 4.1c — IMOB_RUN_OUTCOME_MAP covers all 11 IMOB_DISPATCHER_ACTION_IDS", () => {
-  it("should have exactly 11 keys in IMOB_RUN_OUTCOME_MAP", () => {
-    assert.equal(Object.keys(IMOB_RUN_OUTCOME_MAP).length, 11);
+describe("[T1] Phase 4.1c — IMOB_RUN_OUTCOME_MAP covers all 12 IMOB_DISPATCHER_ACTION_IDS", () => {
+  it("should have exactly 12 keys in IMOB_RUN_OUTCOME_MAP", () => {
+    assert.equal(Object.keys(IMOB_RUN_OUTCOME_MAP).length, 12);
   });
 
   it("should have an outcome entry for every IMOB_DISPATCHER_ACTION_IDS member", () => {
@@ -368,6 +372,70 @@ describe("[T8] Phase 4.1c — processImobRunCompletedJob skips mutation when req
   });
 });
 
+describe("[T8b] Phase 4.1c — processImobRunCompletedJob blocks HIGH mutation when approval is absent or invalid", () => {
+  it("should NOT call updateCase for contract.prepare when approval is missing", async () => {
+    let updateCaseCalled = false;
+    const blockedPayloads: Array<Record<string, unknown>> = [];
+    const deps = makeDeps({
+      getRunFn: async () =>
+        makeRun({
+          approvalStatus: "not_required",
+          approvedBy: null,
+          approvedAt: null,
+        }),
+      findFirstResult: null,
+      existingCaseResult: makeCase(),
+      mutationServiceFactory: () => ({
+        updateCase: async () => {
+          updateCaseCalled = true;
+          return { status: "updated", data: makeUpdatedCase() };
+        },
+      }),
+    });
+    (deps.prisma as any).imobCaseEvent.create = async ({ data }: { data: Record<string, unknown> }) => {
+      blockedPayloads.push(data.payload as Record<string, unknown>);
+      return { id: "event-approval-blocked" };
+    };
+
+    await processImobRunCompletedJob(makeJob({ actionId: "contract.prepare" }), deps);
+
+    assert.equal(updateCaseCalled, false, "updateCase must NOT be called when approval is missing");
+    assert.equal(blockedPayloads[0]?.reasonCode, "APPROVAL_REQUIRED");
+  });
+
+  it("should NOT call updateCase for commission.settle when approval is expired", async () => {
+    let updateCaseCalled = false;
+    const blockedPayloads: Array<Record<string, unknown>> = [];
+    const deps = makeDeps({
+      getRunFn: async () =>
+        makeRun({
+          request: {
+            metadata: {
+              approvalExpiresAt: "2026-06-28T09:00:00.000Z",
+            },
+          },
+        }),
+      findFirstResult: null,
+      existingCaseResult: makeCase(),
+      mutationServiceFactory: () => ({
+        updateCase: async () => {
+          updateCaseCalled = true;
+          return { status: "updated", data: makeUpdatedCase() };
+        },
+      }),
+    });
+    (deps.prisma as any).imobCaseEvent.create = async ({ data }: { data: Record<string, unknown> }) => {
+      blockedPayloads.push(data.payload as Record<string, unknown>);
+      return { id: "event-approval-expired" };
+    };
+
+    await processImobRunCompletedJob(makeJob({ actionId: "commission.settle" }), deps);
+
+    assert.equal(updateCaseCalled, false, "updateCase must NOT be called when approval is expired");
+    assert.equal(blockedPayloads[0]?.reasonCode, "APPROVAL_EXPIRED");
+  });
+});
+
 // ─── T9: Guard — DB idempotency (already processed) ──────────────────────────
 
 describe("[T9] Phase 4.1c — processImobRunCompletedJob skips mutation when already processed", () => {
@@ -418,6 +486,8 @@ describe("[T10] Phase 4.1c — processImobRunCompletedJob calls updateCase on ha
 
     const payload = input.eventPayload as Record<string, unknown>;
     assert.equal(payload.actionId, "owner.register");
+    assert.equal(payload.approvalDecision, "APPROVAL_GRANTED");
+    assert.equal(payload.approvalStatus, "approved");
     assert.equal(payload.receiptPath, "/api/ledger/tx-abc");
     assert.equal(payload.bundlePath, "/api/runs/run-001/bundle");
   });

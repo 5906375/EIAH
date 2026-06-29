@@ -81,6 +81,12 @@ jobs:
       - name: Check ledger/bundle smoke contracts
         run: pnpm check:ledger-bundle-smoke
 
+      - name: Check RBAC fail-closed anti-regression gate
+        run: pnpm check:rbac-fail-closed
+
+      - name: Check GuardrailLedger anti-noop gate
+        run: pnpm check:guardrail-ledger-noop
+
       # 2. Build Hardened e Otimizado (Corrige os problemas de TMPDIR e ESBUILD)
       - name: Build Web Application (Hardened)
         # As variáveis TMPDIR e ESBUILD_TMPDIR forçam o uso de /tmp, 
@@ -307,6 +313,35 @@ jobs:
 
       - name: Verify interop policy fail-closed guard
         run: pnpm test:agents-policy-fail-closed
+
+  rbac_guardrail_regression:
+    name: RbacGuardrailRegression
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Run RBAC fail-closed gate
+        run: pnpm check:rbac-fail-closed
+
+      - name: Run GuardrailLedger anti-noop gate
+        run: pnpm check:guardrail-ledger-noop
 
   imob_lead_continuity_scoped:
     name: ImobLeadContinuityScoped

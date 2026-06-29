@@ -270,7 +270,92 @@ Como validar depois:
 
 ---
 
-## 15. Formato obrigatório de resposta final do assistente de coding
+## 15. Regra de fonte canônica TypeScript em checks críticos
+
+Em checks críticos de governança, anti-regressão, CI e gates P0/P1/P2/P3/P4, a fonte canônica de implementação é o arquivo versionado do repositório.
+
+Para código TypeScript, a fonte canônica padrão é o arquivo `.ts`, salvo quando o objetivo explícito do check for validar artefato buildado.
+
+Regras obrigatórias:
+
+1. Scripts/checks escritos em TypeScript devem rodar com runtime TS compatível, preferencialmente:
+
+```bash
+node --import tsx <script.ts>
+```
+
+ou:
+
+```bash
+pnpm exec tsx <script.ts>
+```
+
+2. Não usar `node <script.ts>` puro em CI.
+
+3. Não usar flags experimentais de Node, como `--experimental-strip-types`, sem compatibilidade explícita com a versão de Node usada no CI.
+
+4. Checks críticos não podem depender de arquivos `.js` gerados localmente dentro de `src/**` quando a fonte canônica é `.ts`.
+
+5. Todo arquivo validado por check crítico deve existir fisicamente no repositório e estar disponível em runner limpo de CI.
+
+6. Arquivos `.js` locais, não rastreados pelo git ou gerados incidentalmente por build, não podem ser usados como:
+
+   * fonte normativa;
+   * evidência;
+   * alvo de gate crítico;
+   * prova de compatibilidade;
+   * substituto de fonte `.ts`.
+
+7. Se um check precisar validar JavaScript buildado, o alvo deve ser output formal, como `dist/*.js`, e o check deve:
+
+   * declarar explicitamente que valida build output;
+   * rodar depois do build;
+   * não confundir artefato buildado com fonte canônica.
+
+8. Qualquer divergência entre `.ts`, `.js`, `package.json`, workflows de CI, package exports, runtime e evidência deve ser classificada como drift.
+
+9. Drift em RBAC, policy, approval, guardrail ledger, receipt, interop, economy, Evidence Index ou CI crítico deve ser tratado como P0/P1 conforme impacto.
+
+Exemplos corretos:
+
+```text
+node --import tsx scripts/checkRbacFailClosed.ts
+pnpm exec tsx scripts/checkGuardrailLedgerNoop.ts
+packages/core/src/policy/TenantPolicyStore.ts
+packages/core/policy/TenantPolicyStore.ts
+```
+
+Exemplos proibidos:
+
+```text
+node scripts/checkRbacFailClosed.ts
+node --experimental-strip-types scripts/checkRbacFailClosed.ts
+packages/core/src/policy/TenantPolicyStore.js
+```
+
+Exceção permitida:
+
+```text
+Validar dist/*.js somente quando:
+- o build tiver sido executado antes;
+- o check declarar que valida build output;
+- o artefato for produzido de forma reproduzível no CI.
+```
+
+DoD obrigatório para checks críticos:
+
+```text
+[ ] script roda no mesmo formato local e CI;
+[ ] script TypeScript usa `tsx` ou loader formal equivalente;
+[ ] check valida arquivos versionados e existentes;
+[ ] nenhum `.js` local não versionado é usado como fonte;
+[ ] CI falha apenas por regressão real, não por artefato ausente;
+[ ] `git status --short` não contém artefato gerado acidental.
+```
+
+---
+
+## 16. Formato obrigatório de resposta final do assistente de coding
 
 Ao concluir uma tarefa, responder com:
 
@@ -302,7 +387,7 @@ Observações:
 
 ---
 
-## 16. Critério de status
+## 17. Critério de status
 
 Use somente estes status:
 
@@ -322,7 +407,7 @@ Nunca usar `DONE`, `finalizado` ou `concluído` sem evidência indexável.
 
 ---
 
-## 17. Proibições absolutas
+## 18. Proibições absolutas
 
 Não fazer:
 
@@ -339,7 +424,7 @@ Não fazer:
 
 ---
 
-## 18. Lembrete operacional
+## 19. Lembrete operacional
 
 O objetivo não é apenas fazer o código compilar.
 

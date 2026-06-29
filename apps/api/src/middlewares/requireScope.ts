@@ -1,6 +1,14 @@
 import { Response, NextFunction } from "express";
-import { checkScopePermission } from "@eiah/core";
 import { TenantAwareRequest } from "./enforceTenant";
+
+type CheckScopePermission = typeof import("@eiah/core").checkScopePermission;
+
+export const requireScopeDeps = {
+  checkScopePermission: (async (...args) => {
+    const { checkScopePermission } = await import("@eiah/core");
+    return checkScopePermission(...args);
+  }) as CheckScopePermission,
+};
 
 
 /**
@@ -22,7 +30,7 @@ export function requireScope(requiredScope: string) {
       const { tenantId, workspaceId, userId, tokenId } = req.authContext;
 
       // 🔍 chama o RBAC Core (função base no pacote @eiah/core)
-      const allowed = await checkScopePermission({
+      const decision = await requireScopeDeps.checkScopePermission({
         tenantId,
         workspaceId,
         userId,
@@ -30,14 +38,18 @@ export function requireScope(requiredScope: string) {
         scope: requiredScope,
       });
 
-      if (!allowed) {
+      if (!decision.allowed) {
         req.logger?.warn(
-          { event: "rbac.denied", scope: requiredScope },
+          { event: "rbac.denied", scope: requiredScope, reasonCode: decision.reasonCode },
           "request.forbidden"
         );
         return res.status(403).json({
           ok: false,
-          error: { code: "FORBIDDEN", message: `Missing scope: ${requiredScope}` },
+          error: {
+            code: decision.reasonCode,
+            reasonCode: decision.reasonCode,
+            message: `Scope denied: ${requiredScope}`,
+          },
         });
       }
 

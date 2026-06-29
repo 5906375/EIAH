@@ -1,0 +1,32 @@
+{
+  "generatedAt": "2026-06-28T14:03:30Z",
+  "status": "evidenciado",
+  "commands": [
+    "node --import tsx --test --test-force-exit apps/api/src/tests/imob-post-run-mutation-worker.test.ts",
+    "pnpm check:rbac-fail-closed",
+    "pnpm check:guardrail-ledger-noop",
+    "pnpm check:evidence-index"
+  ],
+  "passed": true,
+  "filesVerified": [
+    "apps/api/src/workers/imobPostRunMutationWorker.ts",
+    "apps/api/src/tests/imob-post-run-mutation-worker.test.ts",
+    "apps/api/src/services/receiptCanonService.ts",
+    "apps/api/src/tests/ledger-bundle.contract.test.ts"
+  ],
+  "reasonCodesVerified": [
+    "APPROVAL_GRANTED",
+    "APPROVAL_REQUIRED"
+  ],
+  "receiptOrBundleSurfaceVerified": [
+    "eventPayload do case.action.completed inclui approvalDecision, approvalStatus, receiptPath e bundlePath para runs permitidos",
+    "receipt canon ja expõe ApprovalReceipt com decision APPROVED quando approval obrigatorio esta aprovado",
+    "surface publica de proof via /api/ledger/:txId e /api/runs/:id/bundle permaneceu compatível no mesmo ciclo"
+  ],
+  "notes": [
+    "A evidencia deste artefato é de surface, nao de novo runtime: o worker propaga approvalDecision no payload do caso e o receipt canon mantem ApprovalReceipt.",
+    "Os checks P0 de RBAC e GuardrailLedger permaneceram verdes no mesmo ciclo para reduzir risco de regressao na trilha de prova auditavel.",
+    "O Evidence Index so sera atualizado apos a existencia fisica deste arquivo."
+  ],
+  "noEvidenceIndexUpdatedBeforeFilesExist": true
+}

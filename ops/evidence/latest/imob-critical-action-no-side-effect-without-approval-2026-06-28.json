@@ -1,0 +1,29 @@
+{
+  "generatedAt": "2026-06-28T14:03:30Z",
+  "status": "evidenciado",
+  "commands": [
+    "node --import tsx --test --test-force-exit apps/api/src/tests/imob-post-run-mutation-worker.test.ts",
+    "node --import tsx --test apps/api/src/tests/commercial-activation-e2e.test.ts"
+  ],
+  "passed": true,
+  "filesVerified": [
+    "apps/api/src/workers/imobPostRunMutationWorker.ts",
+    "apps/api/src/tests/imob-post-run-mutation-worker.test.ts",
+    "apps/api/src/tests/commercial-activation-e2e.test.ts"
+  ],
+  "reasonCodesVerified": [
+    "APPROVAL_REQUIRED",
+    "APPROVAL_EXPIRED"
+  ],
+  "sideEffectsVerified": [
+    "contract.prepare sem approval nao chama updateCase e registra case.action.blocked com APPROVAL_REQUIRED",
+    "commission.settle com approval expirado nao chama updateCase e registra case.action.blocked com APPROVAL_EXPIRED",
+    "owner.register com approval aprovado continua mutando e preserva surface de proof no eventPayload"
+  ],
+  "notes": [
+    "O worker resolve o ApprovalGate antes de updateCase e retorna cedo quando approval.allowed = false.",
+    "Os testes do worker confirmaram ausencia de side effect de mutacao para acoes HIGH sem approval valido.",
+    "A suite comercial permaneceu verde no mesmo ciclo para reduzir risco de regressao fora do recorte direto do worker."
+  ],
+  "noEvidenceIndexUpdatedBeforeFilesExist": true
+}
