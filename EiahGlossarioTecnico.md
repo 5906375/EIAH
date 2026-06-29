@@ -8,8 +8,8 @@
 
 - **Total de termos extraídos do `DATA[]`:** 113
 - **Categorias:** 11
-- **Evidenciado:** 83
-- **Parcial / Hardening:** 10
+- **Evidenciado:** 85
+- **Parcial / Hardening:** 8
 - **Roadmap / Definido:** 19
 - **Não encontrado:** 1
 
@@ -55,7 +55,7 @@
 | Bearer token | Token de autenticação enviado no header 'Authorization: Bearer <token>'. É a principal forma de autenticação da API EIAH. Vinculado a um ApiToken no banco. | `Todas as chamadas de API` | Evidenciado |
 | Tenant Resolver (por domínio) | Mecanismo que identifica o tenant pelo domínio/subdomínio da requisição (ex: imob.eiah.com.br → tenantId=imob). Ainda não implementado — auditoria marcou como CONTRADITO. Hoje só por token. | `Roadmap · experience-resolver-contract.md` | Hardening — não evidenciado |
 | AuthContext | Objeto injetado pelo enforceTenant em cada requisição autenticada. Contém: tokenId, tenantId, workspaceId, userId. Disponível em req.authContext para todas as rotas downstream. | `enforceTenant.ts` | Evidenciado |
-| requireScope | Middleware que valida se o token tem o scope necessário para acessar uma rota. Retorna 403 FORBIDDEN. Ainda não protege todas as rotas críticas (parcial) e retorna sem reasonCode. | `apps/api/src/middlewares/requireScope.ts` | Parcial — hardening |
+| requireScope | Middleware que valida se o token tem o scope necessário para acessar uma rota. Em bloqueio 403, propaga reasonCode explícito, preservando fail-closed e auditabilidade. A cobertura global de todas as rotas críticas deve seguir a matriz P1. | `apps/api/src/middlewares/requireScope.ts` | Parcial avançado — reasonCode evidenciado; cobertura crítica em validação contínua |
 
 ## Auditoria & Evidência
 
@@ -83,10 +83,10 @@
 | Policy Engine | Motor de políticas. Avalia se uma ação é permitida para aquele tenant/workspace/user com base em regras configuradas. Bloqueia com reasonCode explícito antes de qualquer execução. | `packages/core/policy/TenantPolicyStore.ts · agentsPolicy.ts` | Evidenciado |
 | TenantPolicyStore | Repositório de políticas por tenant. Contém as regras que o Policy Engine usa para decidir quais ações são permitidas. No HEAD 62468a4 (#159), o achado histórico de allow-all para scope não se reproduz: a revalidação reportou fail-closed e check:rbac-fail-closed com ok=true. | `packages/core/src/policy/TenantPolicyStore.ts · scripts/checkRbacFailClosed.ts` | Evidenciado localmente — fail-closed no HEAD 62468a4 |
 | resolveAllowedActionNames | Função do Policy Engine que retorna a lista de ações permitidas para um tenant/workspace/user num dado contexto. Usada antes de qualquer execução sensível. | `TenantPolicyStore.ts · agentsPolicy.ts` | Evidenciado |
-| reasonCode | Código de motivo obrigatório em qualquer bloqueio ou falha de governança. Ex: TENANT_REQUIRED, SCOPE_DENIED, RECEIPT_REQUIRED. Facilita debug, auditoria e contratos de erro. | `Toda a plataforma — regra P0 do CLAUDE.md` | Evidenciado (parcial em requireScope) |
+| reasonCode | Código de motivo obrigatório em qualquer bloqueio ou falha de governança. Ex: TENANT_REQUIRED, SCOPE_DENIED, RECEIPT_REQUIRED. Facilita debug, auditoria e contratos de erro. | `Toda a plataforma — regra P0 do CLAUDE.md` | Evidenciado |
 | fail-closed | Princípio de segurança: quando há dúvida ou falha de validação, a operação é bloqueada (não permitida). Oposto de fail-open. Regra absoluta do EIAH em todas as rotas sensíveis. | `Todas as rotas sensíveis` | Evidenciado |
 | Trust Score | Pontuação de confiança do usuário/tenant usada em ações sensíveis. Ações HIGH risco são avaliadas contra o Trust Score antes de serem permitidas. Aplicado em /api/agents/execute. | `apps/api/src/routes/agents.ts` | Evidenciado |
-| Human approval | Mecanismo que exige aprovação humana explícita antes de executar ações de risco HIGH. Implementado em schema e API, mas auditoria identificou bypass hardcoded no fluxo IMOB. | `schema.prisma · runs.ts · imob.ts` | Parcial — bypass IMOB em hardening |
+| Human approval | Mecanismo que exige aprovação humana explícita antes de executar ações de risco HIGH. O fluxo IMOB foi revalidado como fail-closed: o achado histórico de humanApprovalGranted: true hardcoded não se sustenta como estado atual confirmado. Permanece sujeito à validação contínua pela cadeia P1 e checks de approval. | `schema.prisma · runs.ts · apps/api/src/services/imob/imobApprovalGate.ts · docs/EVIDENCE_INDEX.md` | Evidenciado — fail-closed revalidado; validação contínua P1 |
 | riskTier | Nível de risco de uma ação: LOW, MEDIUM ou HIGH. Define quais controles adicionais são aplicados (Trust Score, human approval, receipt obrigatório, txId). | `GovernedProviderRequest · ImobRuntimeEvent` | Evidenciado |
 | entitlement | Direito de uso de uma feature ou agente. Verificado antes de executar qualquer ação IMOB ou sensível. Compõe o fluxo: RBAC + scope + entitlement. | `lib/entitlements.ts · agentsPolicy.ts` | Evidenciado |
 | GuardrailLedger | Ledger de guardrails aplicados em cada execução. No HEAD 62468a4 (#159), o achado histórico de no-op não se reproduz: a revalidação reportou persistência via ledger/audit e check:guardrail-ledger-noop com ok=true. | `packages/core/src/audit/guardrailLedger.ts · scripts/checkGuardrailLedgerNoop.ts` | Evidenciado localmente — persistente no HEAD 62468a4 |
@@ -122,7 +122,7 @@
 | Turn Engine (IMOB) | Máquina de estados do imóvel: DISPONIVEL → VISITA → EM_CONTRATO → ENTREGUE → RESCISAO → DISPONIVEL. Cada transição exige tenantId + userId + reasonCode + evidência persistida. | `Deploy/…/16_turn_engine.md (pendente) · imob.ts` | Especificado — parcial |
 | Command Center | Painel operacional por vertical. No IMOB: visibilidade de runs, leads, contratos, bloqueios e riscos em tempo real. Fundação multi-vertical confirmada em código. | `apps/web/src/features/imob/ImobCommandCenter.tsx` | Evidenciado |
 | Legal RAG | Corpus de documentos jurídicos para busca vetorial (RAG). 7 categorias: contratos, riscos, regulatório, governança, intermediação, operacional, web3. Base para sugestão contratual do IMOB. | `legal_rag/ · EIAH_2026/` | Evidenciado — corpus montado |
-| IMOB Knowledge Search | Modo de busca semântica no corpus Legal RAG. Retorna sourceRefs obrigatórios, proofHash, receiptId. Capacidade Track P — não declarar como implementado sem endpoint/index/evidence. | `ImobKnowledgeSearchResult · agentes IMOB` | Parcial — Track P |
+| IMOB Knowledge Search | Modo de busca semântica no corpus Legal RAG. O endpoint/serviço/testes existem e retornam metadados, snippet, origem e contexto de proveniência. Não deve ser descrito como se o payload de busca já expusesse sourceRefs/proofHash/receiptId; esses campos pertencem a outros fluxos IMOB/probatórios quando aplicável. | `apps/api/src/routes/imob.ts · apps/api/src/services/imob/imobKnowledgeSearch.ts · apps/api/src/tests/imob.knowledge.search.contract.test.ts` | Parcial avançado — endpoint/testes evidenciados; superfície probatória separada |
 | EIAH LEGAL | Vertical jurídica. Usa J_360 + Guardian para análise de contratos, pareceres, provas processuais e compliance LGPD. Ainda em context_only — não vertical operacional completa evidenciada. | `self-service/j360.tsx · vertical-context-legal.md` | Parcial — context_only |
 | EIAH FINANCEIRO | Vertical financeira. UI surfaces existem (fin-nexus), mas sem engine robusto confirmado. Em roadmap com integração Santander AI Lab (12 projetos open-source em 4 camadas). | `self-service/fin-nexus.tsx · EIAH Fin/` | Roadmap |
 | vertical.manifest.v1.json | Manifesto por vertical. Define capacidades, agentes, modos, rollout phase e gates de não-regressão. Confirmado para IMOB. Template disponível em ops/verticals/. | `ops/verticals/imob/vertical.manifest.v1.json` | Evidenciado |
@@ -148,7 +148,7 @@
 |---|---|---|---|
 | check:evidence-index | Check de CI que valida que todas as referências do Evidence Index apontam para arquivos reais. Resultado: refsChecked: 327. Passou na auditoria. | `ci.yml · scripts/` | Evidenciado |
 | check:receipt-canon-compat | Check de CI que valida compatibilidade do Receipt Canon v1. Garante que nenhuma mudança quebra o contrato canônico de receipts. Passou. | `ci.yml` | Evidenciado |
-| check:interop-contract-matrix | Valida a matriz de compatibilidade entre contratos de agentes. Passou localmente, mas job específico não aparece no CI — auditoria marcou como PARCIAL. | `ci.yml · scripts/` | Parcial — não no CI |
+| check:interop-contract-matrix | Valida a matriz de compatibilidade entre contratos de agentes. O check existe e está ligado a workflow dedicado de DoD crítico; manter observação apenas de que a cobertura deve continuar monitorada entre workflows. | `.github/workflows/critical-dod.yml · scripts/checkInteropContractsMatrix.ts` | Evidenciado em workflow dedicado — monitorar cobertura no CI |
 | check:p1-critical-chain | Valida a cadeia crítica P1: human approval, schema, API e runtime consistentes. Passou na auditoria. | `ci.yml` | Evidenciado |
 | check:p3-economy-hardening | Valida hardening do sistema de economy/billing: settlement, webhooks, reputação. Passou. | `ci.yml` | Evidenciado |
 | check:p4-trackp-rollout | Valida que o protocolo de rollout shadow→pilot→small está implementado e os gates existem. Passou. | `ci.yml` | Evidenciado |
