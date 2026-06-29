@@ -17,6 +17,7 @@ import {
   resolveEiahDecision,
   detectLauncherRouteIntent,
   fallbackHelpMarkdown,
+  resolveQuickReplyUsed,
   resolveLauncherProposalDecision,
 } from "./chatLauncherEngine.ts";
 import { resolveHelpDictionarySnapshot } from "./helpDictionaryResolver.ts";
@@ -71,6 +72,53 @@ test("governed fallback help markdown preserves current launcher copy", () => {
       "- `quais agentes posso usar`",
       "- `como funciona o billing`",
     ].join("\n")
+  );
+});
+
+test("resolveQuickReplyUsed returns true when input matches previous quick reply", () => {
+  assert.equal(
+    resolveQuickReplyUsed({
+      previousAssistantSnapshot: {
+        ...createProposalSnapshot(),
+        quickReplies: ["Explicar plataforma", "Como criar um run"],
+      },
+      input: "como criar um run",
+    }),
+    true
+  );
+});
+
+test("resolveQuickReplyUsed returns false when input does not match previous quick replies", () => {
+  assert.equal(
+    resolveQuickReplyUsed({
+      previousAssistantSnapshot: {
+        ...createProposalSnapshot(),
+        quickReplies: ["Explicar plataforma", "Como criar um run"],
+      },
+      input: "quero falar sobre billing",
+    }),
+    false
+  );
+});
+
+test("resolveQuickReplyUsed returns false without previous snapshot or quick replies", () => {
+  assert.equal(
+    resolveQuickReplyUsed({
+      previousAssistantSnapshot: null,
+      input: "como criar um run",
+    }),
+    false
+  );
+
+  assert.equal(
+    resolveQuickReplyUsed({
+      previousAssistantSnapshot: {
+        ...createProposalSnapshot(),
+        quickReplies: [],
+      },
+      input: "como criar um run",
+    }),
+    false
   );
 });
 

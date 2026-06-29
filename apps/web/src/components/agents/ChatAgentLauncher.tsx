@@ -34,6 +34,7 @@ import {
   fallbackHelpMarkdown,
   normalizeLauncherPersistedIntentResult,
   prepareLauncherRunExecution,
+  resolveQuickReplyUsed,
   type EiahMode,
   resolveLauncherEiahUnifiedMode,
   resolveLauncherRunSummarySnapshot,
@@ -1190,11 +1191,10 @@ export default function ChatAgentLauncher({
             .join("\n")
         : "";
     const turnInput = [effectiveInput, intakeContext].filter(Boolean).join("\n\n");
-    const quickReplyUsed = Boolean(
-      lastAssistantSnapshot?.quickReplies?.some(
-        (reply) => normalizeIntentText(reply) === normalizeIntentText(effectiveInput)
-      )
-    );
+    const quickReplyUsed = resolveQuickReplyUsed({
+      previousAssistantSnapshot: lastAssistantSnapshot,
+      input: effectiveInput,
+    });
     const routeIntent = isUnifiedEiahMode ? detectLauncherRouteIntent(effectiveInput, proposalMode) : "help";
     const turnEiahMode = resolveLauncherEiahUnifiedMode({
       isUnifiedEiah: isUnifiedEiahMode,

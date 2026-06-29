@@ -266,6 +266,20 @@ export function fallbackHelpMarkdown() {
   ].join("\n");
 }
 
+export function resolveQuickReplyUsed(params: {
+  previousAssistantSnapshot?: MessagePresentationSnapshot | null;
+  input: string;
+}) {
+  const normalizedInput = normalizeIntentText(params.input);
+  if (!normalizedInput) return false;
+
+  return Boolean(
+    params.previousAssistantSnapshot?.quickReplies?.some(
+      (reply) => normalizeIntentText(reply) === normalizedInput
+    )
+  );
+}
+
 export type LauncherAccessContext = {
   tenantId?: string | null;
   workspaceId?: string | null;
