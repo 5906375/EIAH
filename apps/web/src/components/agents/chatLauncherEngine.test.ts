@@ -14,6 +14,7 @@ import {
   buildEiahQuickReplies,
   buildLauncherPersistenceTelemetry,
   buildQuickRepliesForContext,
+  createLauncherPresentationSnapshot,
   createPresentationSnapshotV1,
   resolveEiahDecision,
   detectLauncherRouteIntent,
@@ -1174,6 +1175,42 @@ test("IMOB snapshot marks backend-governed render-only runtime when quick replie
   assert.equal(snapshot.governedRuntime?.launcherPolicy, "render_only");
   assert.ok(hasGovernedImobSnapshotContract(snapshot));
   assert.ok(isBackendGovernedImobSnapshot(snapshot));
+});
+
+test("launcher snapshot helper preserves governed render-only payload without launcher reinterpretation", () => {
+  const snapshot = createLauncherPresentationSnapshot({
+    agentProfile: {
+      id: "EIAH",
+      name: "EIAH",
+      chatCopy: { quickReplies: ["copy A", "copy B"] },
+      uxContract: { trustSignals: [], defaultCTA: "", responseShape: "brief_answer", maxCognitiveLoad: "low" },
+      knowledgePolicy: { provenancePolicy: "none" },
+    } as any,
+    routeIntent: "imob",
+    eiahMode: "help",
+    confidence: 0.8,
+    renderVariant: "guided_flow",
+    sourceInput: "mostrar bloqueios do caso",
+    isHelpCenterMode: true,
+    proposalMode: false,
+    attachmentIntake: {
+      enabled: false,
+      acceptedKinds: [],
+      intakeModes: [],
+      analysisModes: [],
+      primaryActionLabel: undefined,
+      secondaryActionLabel: undefined,
+      helpText: undefined,
+    },
+    usedReplyInputs: ["consultar caso case-1"],
+    resolvedQuickReplies: ["consultar caso case-1", "revisar documentos"],
+  });
+
+  assert.equal(snapshot.snapshotVersion, PRESENTATION_SNAPSHOT_VERSION);
+  assert.equal(snapshot.routeIntent, "imob");
+  assert.equal(snapshot.governedRuntime?.launcherPolicy, "render_only");
+  assert.deepEqual(snapshot.quickReplies, ["revisar documentos"]);
+  assert.deepEqual(resolveSnapshotQuickReplies(snapshot), ["revisar documentos"]);
 });
 
 test("legacy conservative snapshot still suppresses quick replies even if payload exists", () => {

@@ -1461,6 +1461,28 @@ export function createLauncherExecutionSnapshot(params: {
   });
 }
 
+export function createLauncherPresentationSnapshot(params: {
+  agentProfile: Agent | null;
+  routeIntent: MessagePresentationSnapshot["routeIntent"];
+  eiahMode?: EiahMode | null;
+  confidence?: number;
+  runId?: string | null;
+  renderVariant?: MessagePresentationSnapshot["renderVariant"];
+  sourceInput?: string;
+  isHelpCenterMode: boolean;
+  proposalMode: boolean;
+  attachmentIntake: AttachmentIntakeResolution;
+  usedReplyInputs?: string[];
+  excludeReplyInputs?: string[];
+  proposalDomain?: MessagePresentationSnapshot["proposalDomain"];
+  conversationStage?: MessagePresentationSnapshot["conversationStage"];
+  resolvedQuickReplies?: string[];
+  journeyContext?: MessagePresentationSnapshot["journeyContext"];
+  agentSwitchRequest?: MessagePresentationSnapshot["agentSwitchRequest"];
+}): MessagePresentationSnapshot {
+  return createPresentationSnapshotV1(params);
+}
+
 export function resolveLauncherEiahUnifiedMode(params: {
   isUnifiedEiah: boolean;
   launcherTopic?: string | null;
