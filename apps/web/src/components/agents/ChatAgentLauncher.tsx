@@ -27,8 +27,8 @@ import {
   buildLauncherHelpdeskSessionPayload,
   buildLauncherPersistenceTelemetry,
   createLauncherExecutionSnapshot,
+  createLauncherPresentationSnapshot,
   buildInputPlaceholderForContext,
-  createPresentationSnapshotV1,
   detectLauncherRouteIntent,
   enrichLegacyAssistantContent,
   fallbackHelpMarkdown,
@@ -1245,7 +1245,7 @@ export default function ChatAgentLauncher({
         decision: turnDecision,
         quickReplyUsed,
       });
-      const localSnapshot = createPresentationSnapshot({
+      const localSnapshot = createLauncherPresentationSnapshot({
         agentProfile: turnContractProfile,
         routeIntent: turnDecision.presentationRouteIntent,
         eiahMode: turnDecision.eiahMode ?? turnEiahMode,
@@ -1261,6 +1261,10 @@ export default function ChatAgentLauncher({
         resolvedQuickReplies: turnDecision.resolvedQuickReplies,
         journeyContext: turnDecision.journeyContext ?? null,
         agentSwitchRequest: turnDecision.agentSwitchRequest,
+        isHelpCenterMode: isUnifiedEiahMode,
+        proposalMode,
+        attachmentIntake,
+        usedReplyInputs: [...usedQuickReplyKeys],
       });
       if (turnDecision.agentSwitchRequest?.switchImmediately && onAgentChangeRequest) {
         setPendingAgentReplayInput(turnDecision.agentSwitchRequest.replayInput ?? null);
@@ -1624,29 +1628,6 @@ export default function ChatAgentLauncher({
     }
     return keys;
   }, [messages]);
-  function createPresentationSnapshot(params: {
-    agentProfile: Agent | null;
-    routeIntent: MessagePresentationSnapshot["routeIntent"];
-    eiahMode?: EiahMode | null;
-    confidence?: number;
-    runId?: string | null;
-    renderVariant?: MessagePresentationSnapshot["renderVariant"];
-    excludeReplyInputs?: string[];
-    sourceInput?: string;
-    proposalDomain?: MessagePresentationSnapshot["proposalDomain"];
-    conversationStage?: MessagePresentationSnapshot["conversationStage"];
-    resolvedQuickReplies?: string[];
-    journeyContext?: MessagePresentationSnapshot["journeyContext"];
-    agentSwitchRequest?: MessagePresentationSnapshot["agentSwitchRequest"];
-  }): MessagePresentationSnapshot {
-    return createPresentationSnapshotV1({
-      ...params,
-      isHelpCenterMode: isUnifiedEiahMode,
-      proposalMode,
-      attachmentIntake,
-      usedReplyInputs: [...usedQuickReplyKeys],
-    });
-  }
 
   useEffect(() => {
     if (!proposalMode) return;
@@ -1662,7 +1643,7 @@ export default function ChatAgentLauncher({
       content:
         "Estou em modo atendimento de proposta. Posso te recomendar o melhor plano e estimar valor mensal. Para começar, me diga: quantos usuários e quantos runs/mês você estima?",
       status: "done",
-      presentationSnapshot: createPresentationSnapshot({
+      presentationSnapshot: createLauncherPresentationSnapshot({
         agentProfile: activeContractProfile,
         routeIntent: "proposal",
         eiahMode: activeEiahMode,
@@ -1670,9 +1651,13 @@ export default function ChatAgentLauncher({
         renderVariant: "proposal",
         proposalDomain: "saas",
         conversationStage: "proposal_collecting_usage",
+        isHelpCenterMode: isUnifiedEiahMode,
+        proposalMode,
+        attachmentIntake,
+        usedReplyInputs: [...usedQuickReplyKeys],
       }),
     });
-  }, [activeContractProfile, activeEiahMode, proposalMode, threadKey]);
+  }, [activeContractProfile, activeEiahMode, attachmentIntake, isUnifiedEiahMode, proposalMode, threadKey, usedQuickReplyKeys]);
 
   const lastUserMessage = useMemo(
     () => [...messages].reverse().find((message) => message.role === "user")?.content ?? null,
