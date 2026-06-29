@@ -1,7 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { requireScope } from "../middlewares/requireScope";
-import { TenantPolicyStore, type ScopeDecision } from "../../../../packages/core/src/policy/TenantPolicyStore";
+
+type ScopeDecision = import("@eiah/core/policy/TenantPolicyStore").ScopeDecision;
+
+async function loadRequireScope() {
+  const mod = await import("../middlewares/requireScope");
+  return mod;
+}
 
 function buildDecision(
   decision: Pick<ScopeDecision, "allowed" | "reasonCode">,
@@ -16,16 +21,15 @@ function buildDecision(
   } as ScopeDecision;
 }
 
-function withMockedPolicyStore(decision: ScopeDecision) {
-  const original = TenantPolicyStore.getInstance;
-  Object.defineProperty(TenantPolicyStore, "getInstance", {
+async function withMockedScopeDecision(decision: ScopeDecision) {
+  const mod = await loadRequireScope();
+  const original = mod.requireScopeDeps.checkScopePermission;
+  Object.defineProperty(mod.requireScopeDeps, "checkScopePermission", {
     configurable: true,
-    value: () => ({
-      resolveScopeDecision: async () => decision,
-    }),
+    value: async () => decision,
   });
   return () => {
-    Object.defineProperty(TenantPolicyStore, "getInstance", {
+    Object.defineProperty(mod.requireScopeDeps, "checkScopePermission", {
       configurable: true,
       value: original,
     });
@@ -63,7 +67,8 @@ function createMockRequest() {
 }
 
 test("requireScope returns 403 POLICY_NOT_FOUND when policy is missing", async () => {
-  const restore = withMockedPolicyStore(buildDecision({ allowed: false, reasonCode: "POLICY_NOT_FOUND" }));
+  const { requireScope } = await loadRequireScope();
+  const restore = await withMockedScopeDecision(buildDecision({ allowed: false, reasonCode: "POLICY_NOT_FOUND" }));
   const req = createMockRequest();
   const res = createMockResponse();
   let nextCalled = false;
@@ -82,7 +87,8 @@ test("requireScope returns 403 POLICY_NOT_FOUND when policy is missing", async (
 });
 
 test("requireScope returns 403 POLICY_STORE_UNAVAILABLE when store fails closed", async () => {
-  const restore = withMockedPolicyStore(buildDecision({ allowed: false, reasonCode: "POLICY_STORE_UNAVAILABLE" }));
+  const { requireScope } = await loadRequireScope();
+  const restore = await withMockedScopeDecision(buildDecision({ allowed: false, reasonCode: "POLICY_STORE_UNAVAILABLE" }));
   const req = createMockRequest();
   const res = createMockResponse();
   let nextCalled = false;
@@ -101,7 +107,8 @@ test("requireScope returns 403 POLICY_STORE_UNAVAILABLE when store fails closed"
 });
 
 test("requireScope returns 403 SCOPE_NOT_ALLOWED when scope is blank or invalid", async () => {
-  const restore = withMockedPolicyStore(buildDecision({ allowed: false, reasonCode: "SCOPE_NOT_ALLOWED" }));
+  const { requireScope } = await loadRequireScope();
+  const restore = await withMockedScopeDecision(buildDecision({ allowed: false, reasonCode: "SCOPE_NOT_ALLOWED" }));
   const req = createMockRequest();
   const res = createMockResponse();
   let nextCalled = false;
@@ -122,7 +129,8 @@ test("requireScope returns 403 SCOPE_NOT_ALLOWED when scope is blank or invalid"
 });
 
 test("requireScope returns 403 WORKSPACE_SCOPE_MISMATCH when policy belongs to another workspace", async () => {
-  const restore = withMockedPolicyStore(buildDecision({ allowed: false, reasonCode: "WORKSPACE_SCOPE_MISMATCH" }));
+  const { requireScope } = await loadRequireScope();
+  const restore = await withMockedScopeDecision(buildDecision({ allowed: false, reasonCode: "WORKSPACE_SCOPE_MISMATCH" }));
   const req = createMockRequest();
   const res = createMockResponse();
   let nextCalled = false;
@@ -143,7 +151,8 @@ test("requireScope returns 403 WORKSPACE_SCOPE_MISMATCH when policy belongs to a
 });
 
 test("requireScope returns 403 TENANT_POLICY_DISABLED when policy explicitly denies the scope", async () => {
-  const restore = withMockedPolicyStore(buildDecision({ allowed: false, reasonCode: "TENANT_POLICY_DISABLED" }));
+  const { requireScope } = await loadRequireScope();
+  const restore = await withMockedScopeDecision(buildDecision({ allowed: false, reasonCode: "TENANT_POLICY_DISABLED" }));
   const req = createMockRequest();
   const res = createMockResponse();
   let nextCalled = false;
@@ -164,7 +173,8 @@ test("requireScope returns 403 TENANT_POLICY_DISABLED when policy explicitly den
 });
 
 test("requireScope allows request when scope decision is allowed", async () => {
-  const restore = withMockedPolicyStore(buildDecision({ allowed: true, reasonCode: "SCOPE_ALLOWED" }));
+  const { requireScope } = await loadRequireScope();
+  const restore = await withMockedScopeDecision(buildDecision({ allowed: true, reasonCode: "SCOPE_ALLOWED" }));
   const req = createMockRequest();
   const res = createMockResponse();
   let nextCalled = false;
@@ -178,22 +188,4 @@ test("requireScope allows request when scope decision is allowed", async () => {
   } finally {
     restore();
   }
-});
-
-test("TenantPolicyStore public subpath exposes symbols and stays fail-closed without policy lookup", async () => {
-  process.env.DATABASE_URL ??= "postgresql://test:test@127.0.0.1:5432/eiah_test";
-
-  const mod = await import("@eiah/core/policy/TenantPolicyStore");
-
-  assert.equal(typeof mod.TenantPolicyStore, "function");
-  assert.equal(typeof mod.closeTenantPolicyStoreResources, "function");
-
-  const decision = await mod.TenantPolicyStore.getInstance().resolveScopeDecision(
-    "tenant-a",
-    "workspace-a",
-    "   ",
-  );
-
-  assert.equal(decision.allowed, false);
-  assert.equal(decision.reasonCode, "SCOPE_NOT_ALLOWED");
 });

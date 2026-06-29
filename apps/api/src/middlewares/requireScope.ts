@@ -1,6 +1,14 @@
 import { Response, NextFunction } from "express";
-import { checkScopePermission } from "@eiah/core";
 import { TenantAwareRequest } from "./enforceTenant";
+
+type CheckScopePermission = typeof import("@eiah/core").checkScopePermission;
+
+export const requireScopeDeps = {
+  checkScopePermission: (async (...args) => {
+    const { checkScopePermission } = await import("@eiah/core");
+    return checkScopePermission(...args);
+  }) as CheckScopePermission,
+};
 
 
 /**
@@ -22,7 +30,7 @@ export function requireScope(requiredScope: string) {
       const { tenantId, workspaceId, userId, tokenId } = req.authContext;
 
       // 🔍 chama o RBAC Core (função base no pacote @eiah/core)
-      const decision = await checkScopePermission({
+      const decision = await requireScopeDeps.checkScopePermission({
         tenantId,
         workspaceId,
         userId,
