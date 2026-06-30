@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eiah.local/contracts/presentation-snapshot.v1.schema.json",
+  "title": "Presentation Snapshot v1",
+  "type": "object",
+  "required": [
+    "snapshotVersion",
+    "compatibilityMode",
+    "quickReplySource",
+    "verticalContext",
+    "proposalDomain",
+    "conversationStage",
+    "routeIntent",
+    "eiahMode",
+    "showConfidence",
+    "provenanceMode",
+    "signals",
+    "quickReplies",
+    "journeyContext",
+    "renderVariant",
+    "attachmentEnabled",
+    "attachmentKinds",
+    "attachmentIntakeModes",
+    "attachmentAnalysisModes",
+    "governedRuntime",
+    "agentSwitchRequest"
+  ],
+  "properties": {
+    "snapshotVersion": {
+      "type": "string",
+      "const": "v1"
+    },
+    "compatibilityMode": {
+      "type": "string",
+      "const": "snapshot"
+    },
+    "quickReplySource": {
+      "type": "string",
+      "enum": ["backend_payload", "agent_contract", "frontend_copy", "none"]
+    },
+    "verticalContext": {
+      "anyOf": [
+        { "type": "string", "enum": ["IMOB", "LEGAL"] },
+        { "type": "null" }
+      ]
+    },
+    "proposalDomain": {
+      "anyOf": [
+        { "type": "string", "enum": ["saas", "imob"] },
+        { "type": "null" }
+      ]
+    },
+    "conversationStage": {
+      "anyOf": [
+        {
+          "type": "string",
+          "enum": [
+            "proposal_idle",
+            "proposal_collecting_usage",
+            "proposal_recommended",
+            "proposal_ready_to_open",
+            "proposal_opening"
+          ]
+        },
+        { "type": "null" }
+      ]
+    },
+    "routeIntent": {
+      "type": "string",
+      "enum": [
+        "proposal",
+        "imob",
+        "playbook",
+        "help",
+        "orchestrator",
+        "self_intro",
+        "capabilities_summary",
+        "legal_handoff"
+      ]
+    },
+    "eiahMode": {
+      "anyOf": [
+        { "type": "string", "enum": ["help", "orchestrator", "proposal"] },
+        { "type": "null" }
+      ]
+    },
+    "showConfidence": {
+      "type": "boolean"
+    },
+    "confidencePercent": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "provenanceMode": {
+      "type": "string",
+      "enum": ["none", "recommended", "required"]
+    },
+    "signals": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "maxItems": 4
+    },
+    "nextDecision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "quickReplies": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "maxItems": 3
+    },
+    "journeyContext": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["frontDoorLabel", "firstStepLabel"],
+          "properties": {
+            "frontDoorLabel": { "type": "string", "minLength": 1 },
+            "firstStepLabel": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        },
+        { "type": "null" }
+      ]
+    },
+    "renderVariant": {
+      "type": "string",
+      "enum": ["simple_help", "self_intro", "handoff", "guided_flow", "proposal"]
+    },
+    "responseShape": {
+      "type": "string",
+      "minLength": 1
+    },
+    "maxCognitiveLoad": {
+      "type": "string",
+      "minLength": 1
+    },
+    "inputPlaceholder": {
+      "type": "string",
+      "minLength": 1
+    },
+    "attachmentEnabled": {
+      "type": "boolean"
+    },
+    "attachmentKinds": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "attachmentIntakeModes": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "attachmentAnalysisModes": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "attachmentPrimaryActionLabel": {
+      "type": "string",
+      "minLength": 1
+    },
+    "attachmentSecondaryActionLabel": {
+      "type": "string",
+      "minLength": 1
+    },
+    "attachmentHelpText": {
+      "type": "string",
+      "minLength": 1
+    },
+    "governedRuntime": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": [
+            "domain",
+            "contractVersion",
+            "launcherPolicy",
+            "quickRepliesSource",
+            "recommendedActionsSource",
+            "agentActivitiesSource"
+          ],
+          "properties": {
+            "domain": { "type": "string", "const": "IMOB" },
+            "contractVersion": { "type": "string", "const": "imob.crm.governed.v1" },
+            "launcherPolicy": { "type": "string", "const": "render_only" },
+            "quickRepliesSource": { "type": "string", "const": "backend_payload" },
+            "recommendedActionsSource": { "type": "string", "const": "backend_payload" },
+            "agentActivitiesSource": { "type": "string", "const": "backend_payload" }
+          },
+          "additionalProperties": false
+        },
+        { "type": "null" }
+      ]
+    },
+    "agentSwitchRequest": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["targetAgentId", "trigger"],
+          "properties": {
+            "targetAgentId": { "type": "string", "minLength": 1 },
+            "replayInput": { "type": "string", "minLength": 1 },
+            "switchImmediately": { "type": "boolean" },
+            "trigger": { "type": "string", "const": "affirmative" }
+          },
+          "additionalProperties": false
+        },
+        { "type": "null" }
+      ]
+    }
+  },
+  "additionalProperties": false
+}

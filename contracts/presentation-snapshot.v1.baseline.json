@@ -1,0 +1,60 @@
+{
+  "contractName": "presentation-snapshot",
+  "version": "v1",
+  "schema": "contracts/presentation-snapshot.v1.schema.json",
+  "requiredFields": [
+    "snapshotVersion",
+    "compatibilityMode",
+    "quickReplySource",
+    "verticalContext",
+    "proposalDomain",
+    "conversationStage",
+    "routeIntent",
+    "eiahMode",
+    "showConfidence",
+    "provenanceMode",
+    "signals",
+    "quickReplies",
+    "journeyContext",
+    "renderVariant",
+    "attachmentEnabled",
+    "attachmentKinds",
+    "attachmentIntakeModes",
+    "attachmentAnalysisModes",
+    "governedRuntime",
+    "agentSwitchRequest"
+  ],
+  "optionalFields": [
+    "confidencePercent",
+    "nextDecision",
+    "responseShape",
+    "maxCognitiveLoad",
+    "inputPlaceholder",
+    "attachmentPrimaryActionLabel",
+    "attachmentSecondaryActionLabel",
+    "attachmentHelpText"
+  ],
+  "prohibitedFields": [
+    "tenantId",
+    "workspaceId",
+    "payload",
+    "proofHash",
+    "sourceRefs",
+    "receiptId",
+    "ledger",
+    "receipt",
+    "txId",
+    "runId"
+  ],
+  "invariants": [
+    "snapshotVersion = v1",
+    "governedRuntime.launcherPolicy = render_only quando governedRuntime != null",
+    "additionalProperties false",
+    "backend/proof fields prohibited"
+  ],
+  "sourceFiles": [
+    "apps/web/src/components/agents/chatPresentationSnapshot.ts",
+    "apps/web/src/components/agents/chatLauncherEngine.ts",
+    "apps/web/src/components/agents/chatLauncherEngine.test.ts"
+  ]
+}

@@ -1376,6 +1376,57 @@ test("IMOB governed snapshot does not promote defaultNextStep into an extra quic
   assert.ok(!resolveSnapshotQuickReplies(snapshot).includes("chip inventado pelo launcher"));
 });
 
+test("presentation snapshot v1 serializes as render-only contract without backend or proof fields", () => {
+  const snapshot = createPresentationSnapshotV1({
+    agentProfile: {
+      id: "EIAH",
+      name: "EIAH",
+      chatCopy: { quickReplies: ["copy A", "copy B"] },
+      uxContract: { trustSignals: ["signal_a"], defaultCTA: "", responseShape: "brief_answer", maxCognitiveLoad: "low" },
+      knowledgePolicy: { provenancePolicy: "recommended" },
+    } as any,
+    routeIntent: "imob",
+    eiahMode: "help",
+    confidence: 0.82,
+    renderVariant: "guided_flow",
+    sourceInput: "mostrar bloqueios do caso",
+    isHelpCenterMode: true,
+    proposalMode: false,
+    attachmentIntake: {
+      enabled: false,
+      acceptedKinds: [],
+      intakeModes: [],
+      analysisModes: [],
+      primaryActionLabel: undefined,
+      secondaryActionLabel: undefined,
+      helpText: undefined,
+    },
+    resolvedQuickReplies: ["consultar caso case-1", "revisar documentos"],
+  });
+
+  const serialized = JSON.parse(JSON.stringify(snapshot)) as Record<string, unknown>;
+
+  assert.equal(serialized.snapshotVersion, PRESENTATION_SNAPSHOT_VERSION);
+  assert.equal((serialized.governedRuntime as Record<string, unknown> | null)?.launcherPolicy, "render_only");
+  assert.ok(Array.isArray(serialized.quickReplies));
+  assert.ok(((serialized.quickReplies as unknown[]) ?? []).length <= 3);
+
+  for (const field of [
+    "tenantId",
+    "workspaceId",
+    "payload",
+    "proofHash",
+    "sourceRefs",
+    "receiptId",
+    "ledger",
+    "receipt",
+    "txId",
+    "runId",
+  ]) {
+    assert.ok(!(field in serialized));
+  }
+});
+
 test("governed IMOB snapshot requires imob route intent to be considered render-only", () => {
   const snapshot: MessagePresentationSnapshot = {
     snapshotVersion: PRESENTATION_SNAPSHOT_VERSION,
