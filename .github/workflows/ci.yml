@@ -262,6 +262,9 @@ jobs:
       - name: Run chat launcher render-only gate
         run: pnpm check:chat-launcher-render-only
 
+      - name: Run presentation snapshot contract gate
+        run: pnpm check:presentation-snapshot-contract
+
       - name: Run chat engine regression suite
         run: pnpm test:chat-engine
 
