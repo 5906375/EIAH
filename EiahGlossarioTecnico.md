@@ -2,14 +2,14 @@
 
 > Conversão em Markdown do arquivo `EIAH_Glossario_Tecnico_SYNC_HEAD_62468a4.html`.
 
-**Baseline:** Atualizado pós-PR #164: ChatAgentLauncher agora tem gate render-only anti-regressão em CI via `check:chat-launcher-render-only`; #160, #161 e #163 reduziram resíduos cognitivos e centralizaram contrato/snapshot no engine. `presentationSnapshot` segue parcial avançado até schema/baseline canônico.
+**Baseline:** Atualizado pós-PR #166: `ChatAgentLauncher` permanece protegido por `check:chat-launcher-render-only`, e `presentationSnapshot` passa a ser evidenciado com escopo como contrato renderizável v1 por meio de schema, baseline, gate dedicado e wiring no `chat_engine_regression`.
 
 ## Resumo
 
-- **Total de termos extraídos do `DATA[]`:** 113
+- **Total de termos extraídos do `DATA[]`:** 114
 - **Categorias:** 11
-- **Evidenciado:** 85
-- **Parcial / Hardening:** 8
+- **Evidenciado:** 88
+- **Parcial / Hardening:** 6
 - **Roadmap / Definido:** 19
 - **Não encontrado:** 1
 
@@ -22,7 +22,7 @@
 - [Agentes](#agentes) — 14 termos
 - [Verticais de Negócio](#verticais-de-neg-cio) — 11 termos
 - [Billing & Economy](#billing-economy) — 7 termos
-- [CI/CD & Qualidade](#ci-cd-qualidade) — 9 termos
+- [CI/CD & Qualidade](#ci-cd-qualidade) — 10 termos
 - [Segurança & Compliance](#seguran-a-compliance) — 8 termos
 - [Stack Tecnológico](#stack-tecnol-gico) — 11 termos
 - [Web3 / NFT (Roadmap)](#web3-nft-roadmap) — 5 termos
@@ -35,9 +35,9 @@
 | Intent Validator | Primeira camada de validação. Verifica se a intenção do usuário está dentro do escopo permitido para aquele tenantId/workspaceId antes de qualquer chamada a agente ou provider. | `apps/api/src/routes/` | Evidenciado |
 | Agent Engine | Motor que seleciona e executa o agente correto para a tarefa. Recebe o intent validado e orquestra a chamada ao agente registrado no registry. | `apps/api/src/agents/` | Evidenciado |
 | Provider Router | Roteador de modelos de IA. Decide qual provider usar por tipo de tarefa: OpenAI (code/schema), Claude/Anthropic (análise longa), Gemini (multimodal). Provider nunca responde direto ao usuário. | `packages/core/src/actions/` | Evidenciado |
-| ChatAgentLauncher | Componente React do frontend responsável por capturar input, manter estado visual, controlar transporte de sessão e renderizar mensagens/snapshots do chat com agentes. Pós-PR #160, deixou de definir localmente `fallbackHelpMarkdown`, recalcular `quickReplyUsed` e montar `decisionTelemetry`. Pós-PR #161, deixou de definir wrapper local de `presentationSnapshot`, cuja criação foi centralizada em `createLauncherPresentationSnapshot` no engine. Pós-PR #163, deixou de importar/chamar `selectLauncherAgentContract` diretamente; a seleção de contrato foi encapsulada no `chatLauncherEngine` helper. Pós-PR #164, passou a ser protegido por gate render-only anti-regressão em CI via `check:chat-launcher-render-only`, bloqueando retorno desses padrões proibidos e campos probatórios/backend em contexto de snapshot. Permanece parcial avançado enquanto `presentationSnapshot` não tiver schema/baseline canônico e a Sprint 2 não estiver fechada. | `apps/web/src/components/agents/ChatAgentLauncher.tsx` | Parcial avançado — gate render-only anti-regressão em CI; Sprint 2 presentationSnapshot pendente |
+| ChatAgentLauncher | Componente render-first do frontend que captura input, mantém estado visual e renderiza mensagens/snapshots sem introduzir regra cognitiva local. Pós-PR #160/#161/#163/#164/#166, permanece protegido por `check:chat-launcher-render-only` e pelo contrato `presentationSnapshot v1`, consumindo decisões já resolvidas pelo `engine`/helper e mantendo fora da UI regras cognitivas, campos backend/probatórios e inferência estrutural indevida. | `apps/web/src/components/agents/ChatAgentLauncher.tsx` | Evidenciado com escopo — render-first protegido por gates; não executor cognitivo |
 | chatLauncherEngine | Engine de decisão do chat: resolve qual agente usar, qual modo ativar, handoff, fallback, clarificação e quick replies. Lógica fica aqui, não no ChatAgentLauncher. | `apps/web/src/components/agents/chatLauncherEngine.ts` | Evidenciado |
-| presentationSnapshot | Contrato/estrutura de renderização entre engine/helper e launcher para congelar o resultado visual e o estado governado de um turno do chat. Pós-PR #161, a criação do snapshot do launcher foi centralizada em `createLauncherPresentationSnapshot` no engine, reduzindo composição semântica local no `ChatAgentLauncher`. O shape real preserva campos de renderização e continuidade, como `snapshotVersion`, `routeIntent`, `quickReplies`, `renderVariant`, `proposalDomain`, `conversationStage` e `governedRuntime`. Não deve ser confundido com contratos probatórios/backend como `tenantId`, `workspaceId`, `payload`, `proofHash`, `sourceRefs`, `receiptId` ou ledger. O gate render-only do launcher foi adicionado no PR #164, mas `presentationSnapshot` ainda permanece em hardening até existir schema/baseline canônico, testes contratuais/E2E e referência dedicada no Evidence Index. | `apps/web/src/components/agents/chatPresentationSnapshot.ts · apps/web/src/components/agents/chatLauncherEngine.ts · docs/architecture/presentation-snapshot-v1.md` | Parcial avançado — contrato renderizável em hardening; schema/baseline pendente |
+| presentationSnapshot | Contrato renderizável v1 entre engine/helper e launcher para congelar o resultado visual e o estado governado de um turno do chat. Pós-#166, está formalizado por type, schema versionado em `contracts/presentation-snapshot.v1.schema.json`, baseline em `contracts/presentation-snapshot.v1.baseline.json`, gate dedicado `check:presentation-snapshot-contract`, execução no job `chat_engine_regression` e testes focados. Mantém `governedRuntime.launcherPolicy = render_only`, limita `quickReplies` e proíbe campos backend/probatórios como `tenantId`, `workspaceId`, `payload`, `proofHash`, `sourceRefs`, `receiptId`, `ledger`, `receipt`, `txId` e `runId`. Não deve ser confundido com `receipt`, `ledger` ou `proof` surface backend. | `apps/web/src/components/agents/chatPresentationSnapshot.ts · apps/web/src/components/agents/chatLauncherEngine.ts · docs/architecture/presentation-snapshot-v1.md` | Evidenciado com escopo — contrato renderizável v1; evolução breaking exige v2 |
 | modeContracts | Contratos que definem os modos de operação disponíveis para cada agente em cada contexto (ex: search_knowledge, contract_suggestion). Parte do journeyContract. | `packages/core/src/actions/agents/eiahAction.ts` | Evidenciado |
 | journeyContract | Contrato principal de um agente: define os modos possíveis, handoffs permitidos, fallbacks e regras de transição. É a fonte normativa de como o agente deve se comportar. | `packages/core/src/actions/agents/eiahAction.ts` | Evidenciado |
 | resolveLauncherTurnDecision | Função do chatLauncherEngine que decide, a cada turno do chat, qual ação tomar: responder, fazer handoff, pedir clarificação ou bloquear. | `chatLauncherEngine.ts` | Evidenciado |
@@ -148,6 +148,7 @@
 |---|---|---|---|
 | check:evidence-index | Check de CI que valida que todas as referências do Evidence Index apontam para arquivos reais. Resultado: refsChecked: 327. Passou na auditoria. | `ci.yml · scripts/` | Evidenciado |
 | check:receipt-canon-compat | Check de CI que valida compatibilidade do Receipt Canon v1. Garante que nenhuma mudança quebra o contrato canônico de receipts. Passou. | `ci.yml` | Evidenciado |
+| check:presentation-snapshot-contract | Gate dedicado que valida o contrato renderizável `presentationSnapshot v1` contra schema, baseline e invariantes: `snapshotVersion=v1`, `governedRuntime.launcherPolicy=render_only`, `required/prohibited fields` e ausência de campos backend/probatórios. Executado via `pnpm check:presentation-snapshot-contract` e ligado ao job `chat_engine_regression`. | `scripts/checkPresentationSnapshotContract.ts · package.json · .github/workflows/ci.yml` | Evidenciado com escopo |
 | check:interop-contract-matrix | Valida a matriz de compatibilidade entre contratos de agentes. O check existe e está ligado a workflow dedicado de DoD crítico; manter observação apenas de que a cobertura deve continuar monitorada entre workflows. | `.github/workflows/critical-dod.yml · scripts/checkInteropContractsMatrix.ts` | Evidenciado em workflow dedicado — monitorar cobertura no CI |
 | check:p1-critical-chain | Valida a cadeia crítica P1: human approval, schema, API e runtime consistentes. Passou na auditoria. | `ci.yml` | Evidenciado |
 | check:p3-economy-hardening | Valida hardening do sistema de economy/billing: settlement, webhooks, reputação. Passou. | `ci.yml` | Evidenciado |
