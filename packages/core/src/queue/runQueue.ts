@@ -15,6 +15,7 @@ import {
   RunJobName,
   type RunJobPayload,
 } from "@eiah/contracts";
+import { requireRedisUrl } from "../config/redis";
 
 type BullModule = typeof import("bullmq");
 
@@ -65,26 +66,20 @@ function resolveDlqJobName() {
 }
 
 function resolveConnection(): ConnectionOptions | undefined {
-  const fallback: ConnectionOptions = { host: "127.0.0.1", port: 6379, db: 0 };
-  const url =
+  const url = requireRedisUrl(
     process.env.RUN_QUEUE_REDIS_URL ??
-    process.env.REDIS_URL ??
-    process.env.BULLMQ_REDIS_URL ??
-    process.env.QUEUE_REDIS_URL ??
-    "redis://127.0.0.1:6379/0";
+      process.env.REDIS_URL ??
+      process.env.BULLMQ_REDIS_URL ??
+      process.env.QUEUE_REDIS_URL,
+    "runQueue:resolveConnection"
+  );
 
   let parsed: URL;
   try {
     parsed = new URL(url);
   } catch (error) {
-    queueLogger.warn(
-      {
-        err: error,
-        url,
-      },
-      "run-queue.invalid_redis_url"
-    );
-    return fallback;
+    queueLogger.warn({ err: error, url }, "run-queue.invalid_redis_url");
+    throw new Error(`runQueue:resolveConnection: invalid Redis URL "${url}"`);
   }
 
   const isTls = parsed.protocol === "rediss:";

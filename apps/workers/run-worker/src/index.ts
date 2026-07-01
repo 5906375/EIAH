@@ -2,6 +2,7 @@ import {
   consume as consumeLegacyRunQueue,
   type RunQueuePayload
 } from "@eiah/core/queue/runQueue";
+import { requireRedisUrl } from "@eiah/core/config/redis";
 import { resolveWorkerTopology } from "@eiah/core/queue/workerTopology";
 import { acquireWorkerOwnershipLease } from "@eiah/core/queue/workerOwnershipLease";
 import { randomUUID } from "crypto";
@@ -36,7 +37,7 @@ let redisPub: Redis | null = null;
 
 function getRedisPublisher() {
   if (!redisPub) {
-    redisPub = new Redis(process.env.REDIS_URL ?? "redis://localhost:6379");
+    redisPub = new Redis(requireRedisUrl(process.env.REDIS_URL, "run-worker:redisPublisher"));
   }
   return redisPub;
 }
@@ -231,7 +232,7 @@ async function bootstrap() {
 
   // Acquire ownership lease before starting the queue consumer
   const leaseOwnerId = `run-worker-${process.pid}-${Date.now()}`;
-  const leaseRedis = new Redis(process.env.REDIS_URL ?? "redis://localhost:6379");
+  const leaseRedis = new Redis(requireRedisUrl(process.env.REDIS_URL, "run-worker:ownershipLease"));
   let workerInstance: Awaited<ReturnType<typeof consumeLegacyRunQueue>> | null = null;
 
   const lease = await acquireWorkerOwnershipLease({

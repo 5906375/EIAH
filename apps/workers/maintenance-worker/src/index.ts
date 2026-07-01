@@ -12,6 +12,7 @@ import {
   getRedisConnection,
   recordGuardrailAudit,
   resolvePreviousCalendarMonth,
+  requireRedisUrl,
 } from "@eiah/core";
 import { consumeMaintenanceJobs } from "@eiah/core";
 import { resolveWorkerTopology } from "@eiah/core/queue/workerTopology";
@@ -332,7 +333,7 @@ async function bootstrap() {
   if (topology.consumes.runAtivoUniversal) {
     // Acquire ownership lease before starting the consumer
     const leaseOwnerId = `maintenance-${process.pid}-${Date.now()}`;
-    runAtivoLeaseRedis = new Redis(process.env.REDIS_URL ?? "redis://127.0.0.1:6379");
+    runAtivoLeaseRedis = new Redis(requireRedisUrl(process.env.REDIS_URL, "maintenance-worker:runAtivoLease"));
 
     runAtivoLease = await acquireWorkerOwnershipLease({
       environmentId: topology.environmentId,

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import Redis from "ioredis";
+import { requireRedisUrl } from "@eiah/core";
 import type { ImobContractClassification } from "./imobContractClassifier";
 import type { ImobExtractedLease } from "./imobLeaseExtractor";
 import {
@@ -9,7 +10,6 @@ import {
 
 export const DRAFT_TTL_MS = Number(process.env.DRAFT_TTL_MS ?? 30 * 60 * 1000);
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
-const DEFAULT_REDIS_URL = "redis://127.0.0.1:6379/0";
 const REDIS_KEY_PREFIX = "imob:intake:draft";
 
 export type DraftStoreMode = "memory" | "redis";
@@ -158,8 +158,11 @@ class InMemoryDraftStore implements DraftStore {
   }
 }
 
-function resolveRedisUrl() {
-  return process.env.DRAFT_STORE_REDIS_URL ?? process.env.REDIS_URL ?? DEFAULT_REDIS_URL;
+function resolveRedisUrl(): string {
+  return requireRedisUrl(
+    process.env.DRAFT_STORE_REDIS_URL ?? process.env.REDIS_URL,
+    "imobContractDraftService:resolveRedisUrl"
+  );
 }
 
 function draftRedisKey(draftId: string) {

@@ -1,3 +1,4 @@
+export * from "./config/redis";
 export * from "./orchestrator/agentOrchestrator";
 export * from "./orchestrator/planManager";
 export * from "./orchestrator/runEventStore";

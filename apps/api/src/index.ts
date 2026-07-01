@@ -11,7 +11,7 @@ import { delegationsRouter } from "./routes/delegations";
 import { marketplaceRouter } from "./routes/marketplace";
 import { governanceRouter } from "./routes/governance";
 import { startRunQueueBullMqWorker } from "./workers/runWorker";
-import { createLogger } from "@eiah/core";
+import { createLogger, requireRedisUrl } from "@eiah/core";
 import { requestLogger } from "./middlewares/requestLogger";
 import { collectQueueHealth } from "./services/health";
 import { createPublicHealthHandler } from "./routes/health";
@@ -128,7 +128,7 @@ if (process.env.NODE_ENV !== "test") {
   void (async () => {
     if (workerTopology.consumes.runs) {
       const leaseOwnerId = `api-${process.pid}-${Date.now()}`;
-      const leaseRedis = new Redis(process.env.REDIS_URL ?? "redis://127.0.0.1:6379");
+      const leaseRedis = new Redis(requireRedisUrl(process.env.REDIS_URL, "api:workerOwnershipLease"));
       let runWorkerInstance: ReturnType<typeof startRunQueueBullMqWorker> | null = null;
 
       const lease = await acquireWorkerOwnershipLease({

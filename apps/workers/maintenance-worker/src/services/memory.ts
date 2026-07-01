@@ -1,4 +1,5 @@
 import Redis from "ioredis";
+import { requireRedisUrl } from "@eiah/core";
 import { Prisma, type MemoryEvent, type EmbeddingChunk, type MemorySnapshot, prisma } from "@repo/db";
 import {
   MemoryService,
@@ -8,7 +9,7 @@ import {
   PrismaMemorySnapshotStore,
 } from "@eiah/core";
 
-const DEFAULT_REDIS_URL = process.env.REDIS_URL ?? "redis://127.0.0.1:6379/0";
+const DEFAULT_REDIS_URL = requireRedisUrl(process.env.REDIS_URL, "maintenance-worker:memory");
 const DEFAULT_SHORT_TTL_SECONDS = Number(process.env.MEMORY_SHORT_TTL_SECONDS ?? 60 * 60 * 24);
 
 let redisClient: Redis | null = null;
