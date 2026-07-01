@@ -2,14 +2,7 @@ import {
   consume as consumeLegacyRunQueue,
   type RunQueuePayload
 } from "@eiah/core/queue/runQueue";
-
-import {
-  RUN_ATIVO_UNIVERSAL_QUEUE_NAME,
-  type RunAtivoUniversalJobPayload
-} from "@eiah/core/queue/runAtivoUniversalQueue";
-
-import { Worker } from "bullmq";
-import { getRedisConnection } from "@eiah/core/queue/connection";
+import { resolveWorkerTopology } from "@eiah/core/queue/workerTopology";
 import { randomUUID } from "crypto";
 import { Prisma, RunStatus, PrismaClient, getPrismaForTenant } from "@repo/db";
 import type {
@@ -26,8 +19,8 @@ import { assertTenantAccess } from "../../../../packages/core/src/security/rbac.
 import {
   rateLimit,
   createFixedWindowRateLimiter,
-  tenantRateLimitKey
-} from "@eiah/core";
+} from "../../../../packages/core/src/actions/guardrails.js";
+import { tenantRateLimitKey } from "../../../../packages/core/src/security/internalRateLimit.js";
 
 // IMPORT DIRETO (porque @eiah/core/logging não está exportado via package.json)
 import { createLogger } from "../../../../packages/core/src/logging/logger.js";
@@ -38,11 +31,14 @@ import Redis from "ioredis";
 
 const logger = createLogger({ component: "run-worker" });
 
-// 🔹 Conexão centralizada para BullMQ (vinda do core)
-const redisConnection = getRedisConnection();
+let redisPub: Redis | null = null;
 
-// 🔹 Conexão direta para publish/sub (ioredis)
-const redisPub = new Redis(process.env.REDIS_URL ?? "redis://localhost:6379");
+function getRedisPublisher() {
+  if (!redisPub) {
+    redisPub = new Redis(process.env.REDIS_URL ?? "redis://localhost:6379");
+  }
+  return redisPub;
+}
 
 const redisChannelFor = (event: { runId?: string; tenantId?: string; workspaceId?: string }) =>
   `run-events:${event.tenantId ?? "unknown"}:${event.workspaceId ?? "unknown"}:${event.runId ?? "unknown"}`;
@@ -56,7 +52,7 @@ class RedisRunEventStore implements RunEventStore {
         createdAt: new Date().toISOString()
       };
 
-      await redisPub.publish(
+      await getRedisPublisher().publish(
         redisChannelFor(event),
         JSON.stringify(eventWithTimestamp)
       );
@@ -211,54 +207,57 @@ async function executeRun(input: {
   }
 }
 
-consumeLegacyRunQueue(async (job: RunQueuePayload) => {
-  logger.info({ job }, "run-worker.consumeLegacyQueue");
+async function bootstrap() {
+  const topology = resolveWorkerTopology(process.env);
+  logger.info(
+    {
+      environmentId: topology.environmentId,
+      serviceRole: topology.serviceRole,
+      runQueueConsumerMode: topology.runQueueConsumerMode,
+      runAtivoConsumerMode: topology.runAtivoConsumerMode,
+      consumes: topology.consumes,
+    },
+    "worker.topology_resolved"
+  );
 
-  const objective = job.prompt ?? "Execução sem prompt";
-  const runId = job.runId ?? randomUUID();
-  const tenantId = job.tenantId ?? "default-tenant";
-  const workspaceId = job.workspaceId ?? "default-workspace";
-
-  const lookupDb = getPrismaForTenant(tenantId, workspaceId);
-  try {
-    const run = await lookupDb.run.findUnique({ where: { id: runId } });
-    assertTenantAccess(run?.tenantId ?? tenantId, job.tenantId ?? tenantId);
-  } finally {
-    await lookupDb.$disconnect().catch(() => undefined);
+  if (!topology.consumes.runs) {
+    logger.info(
+      { serviceRole: topology.serviceRole, mode: topology.runQueueConsumerMode },
+      "run-worker.disabled"
+    );
+    return;
   }
 
-  await executeRun({
-    objective,
-    runId,
-    tenantId,
-    workspaceId,
-    metadata: job.metadata
-  });
-});
+  await consumeLegacyRunQueue(async (job: RunQueuePayload) => {
+    logger.info({ job }, "run-worker.consumeLegacyQueue");
 
-// Health/DLQ listeners
-createRunWorkerHealth("run-queue");
+    const objective = job.prompt ?? "Execução sem prompt";
+    const runId = job.runId ?? randomUUID();
+    const tenantId = job.tenantId ?? "default-tenant";
+    const workspaceId = job.workspaceId ?? "default-workspace";
 
-// Worker principal
-new Worker<RunAtivoUniversalJobPayload>(
-  RUN_ATIVO_UNIVERSAL_QUEUE_NAME,
-  async (job) => {
-    const data = job.data;
-
-    logger.info({ data }, "run-worker.consumeUniversalQueue");
-
-    const objective = `Processar ativo ${data.ativoId}`;
-    const metadata = { agentId: data.agentId, ativoId: data.ativoId };
+    const lookupDb = getPrismaForTenant(tenantId, workspaceId);
+    try {
+      const run = await lookupDb.run.findUnique({ where: { id: runId } });
+      assertTenantAccess(run?.tenantId ?? tenantId, job.tenantId ?? tenantId);
+    } finally {
+      await lookupDb.$disconnect().catch(() => undefined);
+    }
 
     await executeRun({
       objective,
-      runId: data.runId,
-      tenantId: data.tenantId,
-      workspaceId: data.workspaceId,
-      metadata
+      runId,
+      tenantId,
+      workspaceId,
+      metadata: job.metadata
     });
-  },
-  { connection: redisConnection }
-);
+  });
 
-logger.info("run-worker online: Consumindo runQueue e run-ativo-universal");
+  createRunWorkerHealth("run-queue");
+  logger.info("run-worker online: Consumindo somente runQueue");
+}
+
+bootstrap().catch((error) => {
+  logger.error({ err: error }, "run-worker.bootstrap_failed");
+  process.exit(1);
+});

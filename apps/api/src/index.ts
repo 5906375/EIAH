@@ -39,6 +39,7 @@ import { helpRouter } from "./routes/help";
 import { startRunArchiveWorker } from "./workers/runArchiveWorker";
 import { startImobPostRunMutationWorker } from "./workers/imobPostRunMutationWorker";
 import { startUploadRetentionWorker } from "./workers/uploadRetentionWorker";
+import { resolveWorkerTopology } from "@eiah/core/queue/workerTopology";
 
 
 const app = express();
@@ -101,32 +102,42 @@ app.use("/metrics", metricsRouter);
 app.use("/metrics/prom", metricsPromRouter);
 
 const port = process.env.PORT || 8080;
-const shouldStartWorker = (() => {
-  const value = process.env.RUN_QUEUE_WORKER;
-  if (!value) return true;
-  const normalized = value.trim().toLowerCase();
-  return normalized !== "false" && normalized !== "0" && normalized !== "off";
-})();
 
 if (process.env.NODE_ENV !== "test") {
+  const workerTopology = resolveWorkerTopology(process.env);
+  bootstrapLogger.info(
+    {
+      environmentId: workerTopology.environmentId,
+      serviceRole: workerTopology.serviceRole,
+      runQueueConsumerMode: workerTopology.runQueueConsumerMode,
+      runAtivoConsumerMode: workerTopology.runAtivoConsumerMode,
+      consumes: workerTopology.consumes,
+    },
+    "worker.topology_resolved"
+  );
   assertGovernanceEnv();
   startRunEventOutboxProcessor();
   startTenantBillingReconciler();
   startRunArchiveWorker();
   startUploadRetentionWorker();
   startImobPostRunMutationWorker();
-  if (shouldStartWorker) {
-    try {
-      startRunQueueBullMqWorker();
-      console.log("Worker iniciado com sucesso");
-    } catch (error) {
-      console.error("Erro ao iniciar worker:", error);
-    }
+  if (workerTopology.consumes.runs) {
+    startRunQueueBullMqWorker();
+    bootstrapLogger.info(
+      {
+        worker: "runQueue",
+        owner: workerTopology.serviceRole,
+        mode: workerTopology.runQueueConsumerMode,
+      },
+      "worker.started"
+    );
   } else {
     bootstrapLogger.info(
       {
         worker: "runQueue",
-        reason: "disabled",
+        reason: "topology_disabled",
+        owner: workerTopology.serviceRole,
+        mode: workerTopology.runQueueConsumerMode,
       },
       "worker.skipped"
     );

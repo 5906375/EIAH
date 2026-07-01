@@ -48,6 +48,8 @@
     "check:chat-agent-onboarding": "node --import tsx scripts/checkChatAgentOnboarding.ts",
     "check:chat-launcher-render-only": "node --import tsx scripts/checkChatLauncherRenderOnly.ts",
     "check:presentation-snapshot-contract": "node --import tsx scripts/checkPresentationSnapshotContract.ts",
+    "check:worker-topology": "node --import tsx scripts/checkWorkerTopology.ts",
+    "test:worker-topology": "node --import tsx --test packages/core/src/queue/workerTopology.test.ts",
     "check:public-product-taxonomy": "node --experimental-strip-types scripts/checkPublicProductTaxonomy.ts",
     "check:provider-boundary": "pnpm --filter @eiah/api exec tsx --test src/tests/provider-boundary-enforcement.test.ts",
     "test:imob-lead-continuity": "node --import tsx --test apps/api/src/tests/imob-crm-dedupe.test.ts apps/api/src/tests/imob-crm-turn-continuity.test.ts apps/api/src/tests/imob-crm-turn-engine.test.ts apps/api/src/tests/imob-turn-resolver.test.ts",
