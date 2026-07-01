@@ -14,18 +14,20 @@ import {
   resolvePreviousCalendarMonth,
 } from "@eiah/core";
 import { consumeMaintenanceJobs } from "@eiah/core";
-import "./jobs/runAtivoUniversalJob";
+import { resolveWorkerTopology } from "@eiah/core/queue/workerTopology";
+import { startRunAtivoUniversalWorker } from "./jobs/runAtivoUniversalJob";
 import { getMemoryDeps, shutdownMemoryDeps } from "./services/memory.js";
 import { scheduleImobDriveSyncWorker } from "./imobDriveSyncWorker";
 import { getPrismaForTenant, prismaGlobal } from "@repo/db";
 import Redis from "ioredis";
-import { Queue } from "bullmq";
+import { Queue, type Worker } from "bullmq";
 import { MaintenanceJobName, QueueName } from "@eiah/contracts";
 
 
 const workerLogger = createLogger({ component: "maintenance-worker" });
 const schedulerInstanceId = `${process.pid}-${Date.now()}`;
 let schedulerRedis: Redis | null = null;
+let runAtivoUniversalWorker: Worker | null = null;
 
 type LedgerReconcileJobParams = {
   tenantId: string;
@@ -310,6 +312,25 @@ async function scheduleMonthlyInvoiceGeneration() {
 }
 
 async function bootstrap() {
+  const topology = resolveWorkerTopology(process.env);
+  workerLogger.info(
+    {
+      environmentId: topology.environmentId,
+      serviceRole: topology.serviceRole,
+      runQueueConsumerMode: topology.runQueueConsumerMode,
+      runAtivoConsumerMode: topology.runAtivoConsumerMode,
+      consumes: topology.consumes,
+    },
+    "worker.topology_resolved"
+  );
+  if (topology.consumes.runAtivoUniversal) {
+    runAtivoUniversalWorker = startRunAtivoUniversalWorker();
+    workerLogger.info(
+      { owner: topology.serviceRole, mode: topology.runAtivoConsumerMode },
+      "run-ativo-universal.worker_started"
+    );
+  }
+
   const { memoryService, snapshotStore } = getMemoryDeps();
   const memorySyncJob = new MemorySyncJob(memoryService, { snapshotStore });
   const knowledgeJob = new KnowledgeBackfillJob(memoryService);
@@ -449,7 +470,10 @@ bootstrap().catch((error) => {
     },
     "maintenance.worker_failed"
   );
-  void shutdownMemoryDeps().finally(() => process.exit(1));
+  void Promise.allSettled([
+    runAtivoUniversalWorker?.close(),
+    shutdownMemoryDeps(),
+  ]).finally(() => process.exit(1));
 });
 
 for (const signal of ["SIGINT", "SIGTERM"]) {
@@ -459,6 +483,9 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
       schedulerRedis.quit().catch(() => undefined);
       schedulerRedis = null;
     }
-    void shutdownMemoryDeps().finally(() => process.exit(0));
+    void Promise.allSettled([
+      runAtivoUniversalWorker?.close(),
+      shutdownMemoryDeps(),
+    ]).finally(() => process.exit(0));
   });
 }

@@ -87,6 +87,9 @@ jobs:
       - name: Check GuardrailLedger anti-noop gate
         run: pnpm check:guardrail-ledger-noop
 
+      - name: Check worker topology ownership
+        run: pnpm check:worker-topology
+
       # 2. Build Hardened e Otimizado (Corrige os problemas de TMPDIR e ESBUILD)
       - name: Build Web Application (Hardened)
         # As variáveis TMPDIR e ESBUILD_TMPDIR forçam o uso de /tmp, 
