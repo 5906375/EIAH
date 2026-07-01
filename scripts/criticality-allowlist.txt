@@ -1,0 +1,16 @@
+# criticality-allowlist.txt
+# Arquivos críticos rastreados por audit:criticality.
+# Cada linha é um caminho relativo à raiz do repositório.
+# Linhas vazias e linhas começando com # são ignoradas.
+
+# Checks P1 — runtime gates
+scripts/checkP1CriticalChain.ts
+scripts/checkP1ReconciliationRecurring.ts
+
+# Documentação normativa obrigatória
+docs/EVIDENCE_INDEX.md
+ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md
+
+# Runtime core — fila e Redis
+packages/core/src/queue/workerOwnershipLease.ts
+packages/core/src/config/redis.ts
