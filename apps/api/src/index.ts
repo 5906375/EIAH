@@ -40,7 +40,9 @@ import { startRunArchiveWorker } from "./workers/runArchiveWorker";
 import { startImobPostRunMutationWorker } from "./workers/imobPostRunMutationWorker";
 import { startUploadRetentionWorker } from "./workers/uploadRetentionWorker";
 import { resolveWorkerTopology } from "@eiah/core/queue/workerTopology";
-
+import { acquireWorkerOwnershipLease } from "@eiah/core/queue/workerOwnershipLease";
+import { setWorkerOwnershipState } from "./services/health";
+import Redis from "ioredis";
 
 const app = express();
 const bootstrapLogger = createLogger({ component: "api-bootstrap" });
@@ -121,27 +123,79 @@ if (process.env.NODE_ENV !== "test") {
   startRunArchiveWorker();
   startUploadRetentionWorker();
   startImobPostRunMutationWorker();
-  if (workerTopology.consumes.runs) {
-    startRunQueueBullMqWorker();
-    bootstrapLogger.info(
-      {
-        worker: "runQueue",
-        owner: workerTopology.serviceRole,
-        mode: workerTopology.runQueueConsumerMode,
-      },
-      "worker.started"
-    );
-  } else {
-    bootstrapLogger.info(
-      {
-        worker: "runQueue",
-        reason: "topology_disabled",
-        owner: workerTopology.serviceRole,
-        mode: workerTopology.runQueueConsumerMode,
-      },
-      "worker.skipped"
-    );
-  }
+
+  // Worker ownership lease — async, runs in background while HTTP server starts
+  void (async () => {
+    if (workerTopology.consumes.runs) {
+      const leaseOwnerId = `api-${process.pid}-${Date.now()}`;
+      const leaseRedis = new Redis(process.env.REDIS_URL ?? "redis://127.0.0.1:6379");
+      let runWorkerInstance: ReturnType<typeof startRunQueueBullMqWorker> | null = null;
+
+      const lease = await acquireWorkerOwnershipLease({
+        environmentId: workerTopology.environmentId,
+        queue: "runs",
+        ownerId: leaseOwnerId,
+        redis: leaseRedis,
+        onLeaseLost: () => {
+          bootstrapLogger.error(
+            { worker: "runQueue", ownerId: leaseOwnerId },
+            "worker.ownership_lease_lost — closing worker fail-closed"
+          );
+          setWorkerOwnershipState("runs", { owned: false, ownerId: null, acquiredAt: null });
+          void runWorkerInstance
+            ?.close()
+            .catch(() => undefined)
+            .finally(() => void leaseRedis.quit().catch(() => undefined));
+        },
+      });
+
+      if (!lease.acquired) {
+        bootstrapLogger.warn(
+          { worker: "runQueue", ownerId: leaseOwnerId },
+          "worker.ownership_not_acquired — another instance holds the lease; skipping consumer"
+        );
+        void leaseRedis.quit().catch(() => undefined);
+        return;
+      }
+
+      setWorkerOwnershipState("runs", {
+        owned: true,
+        ownerId: leaseOwnerId,
+        acquiredAt: new Date().toISOString(),
+      });
+      runWorkerInstance = startRunQueueBullMqWorker();
+      bootstrapLogger.info(
+        {
+          worker: "runQueue",
+          owner: workerTopology.serviceRole,
+          mode: workerTopology.runQueueConsumerMode,
+          ownerId: leaseOwnerId,
+        },
+        "worker.started"
+      );
+
+      for (const signal of ["SIGINT", "SIGTERM"]) {
+        process.once(signal as NodeJS.Signals, () => {
+          bootstrapLogger.info({ signal }, "api.worker_shutdown — releasing ownership lease");
+          setWorkerOwnershipState("runs", { owned: false, ownerId: null, acquiredAt: null });
+          void lease.release().finally(() => void leaseRedis.quit().catch(() => undefined));
+        });
+      }
+    } else {
+      bootstrapLogger.info(
+        {
+          worker: "runQueue",
+          reason: "topology_disabled",
+          owner: workerTopology.serviceRole,
+          mode: workerTopology.runQueueConsumerMode,
+        },
+        "worker.skipped"
+      );
+    }
+  })().catch((err: unknown) => {
+    bootstrapLogger.error({ err }, "api.worker_bootstrap_failed");
+    process.exit(1);
+  });
 
   app.listen(port, () =>
     bootstrapLogger.info(

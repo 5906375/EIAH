@@ -15,6 +15,10 @@ import {
 } from "@eiah/core";
 import { consumeMaintenanceJobs } from "@eiah/core";
 import { resolveWorkerTopology } from "@eiah/core/queue/workerTopology";
+import {
+  acquireWorkerOwnershipLease,
+  type WorkerOwnershipLease,
+} from "@eiah/core/queue/workerOwnershipLease";
 import { startRunAtivoUniversalWorker } from "./jobs/runAtivoUniversalJob";
 import { getMemoryDeps, shutdownMemoryDeps } from "./services/memory.js";
 import { scheduleImobDriveSyncWorker } from "./imobDriveSyncWorker";
@@ -28,6 +32,8 @@ const workerLogger = createLogger({ component: "maintenance-worker" });
 const schedulerInstanceId = `${process.pid}-${Date.now()}`;
 let schedulerRedis: Redis | null = null;
 let runAtivoUniversalWorker: Worker | null = null;
+let runAtivoLease: WorkerOwnershipLease | null = null;
+let runAtivoLeaseRedis: Redis | null = null;
 
 type LedgerReconcileJobParams = {
   tenantId: string;
@@ -324,11 +330,43 @@ async function bootstrap() {
     "worker.topology_resolved"
   );
   if (topology.consumes.runAtivoUniversal) {
-    runAtivoUniversalWorker = startRunAtivoUniversalWorker();
-    workerLogger.info(
-      { owner: topology.serviceRole, mode: topology.runAtivoConsumerMode },
-      "run-ativo-universal.worker_started"
-    );
+    // Acquire ownership lease before starting the consumer
+    const leaseOwnerId = `maintenance-${process.pid}-${Date.now()}`;
+    runAtivoLeaseRedis = new Redis(process.env.REDIS_URL ?? "redis://127.0.0.1:6379");
+
+    runAtivoLease = await acquireWorkerOwnershipLease({
+      environmentId: topology.environmentId,
+      queue: "run-ativo-universal",
+      ownerId: leaseOwnerId,
+      redis: runAtivoLeaseRedis,
+      onLeaseLost: () => {
+        workerLogger.error(
+          { ownerId: leaseOwnerId },
+          "run-ativo-universal.ownership_lease_lost — closing worker fail-closed"
+        );
+        void runAtivoUniversalWorker
+          ?.close()
+          .catch(() => undefined)
+          .finally(() => void runAtivoLeaseRedis?.quit().catch(() => undefined));
+        runAtivoUniversalWorker = null;
+      },
+    });
+
+    if (!runAtivoLease.acquired) {
+      workerLogger.warn(
+        { ownerId: leaseOwnerId },
+        "run-ativo-universal.ownership_not_acquired — another instance holds the lease; skipping consumer"
+      );
+      void runAtivoLeaseRedis.quit().catch(() => undefined);
+      runAtivoLeaseRedis = null;
+      runAtivoLease = null;
+    } else {
+      runAtivoUniversalWorker = startRunAtivoUniversalWorker();
+      workerLogger.info(
+        { owner: topology.serviceRole, mode: topology.runAtivoConsumerMode, ownerId: leaseOwnerId },
+        "run-ativo-universal.worker_started"
+      );
+    }
   }
 
   const { memoryService, snapshotStore } = getMemoryDeps();
@@ -471,6 +509,8 @@ bootstrap().catch((error) => {
     "maintenance.worker_failed"
   );
   void Promise.allSettled([
+    runAtivoLease?.release(),
+    runAtivoLeaseRedis?.quit(),
     runAtivoUniversalWorker?.close(),
     shutdownMemoryDeps(),
   ]).finally(() => process.exit(1));
@@ -484,6 +524,8 @@ for (const signal of ["SIGINT", "SIGTERM"]) {
       schedulerRedis = null;
     }
     void Promise.allSettled([
+      runAtivoLease?.release(),
+      runAtivoLeaseRedis?.quit(),
       runAtivoUniversalWorker?.close(),
       shutdownMemoryDeps(),
     ]).finally(() => process.exit(0));

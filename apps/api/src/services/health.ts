@@ -8,6 +8,24 @@ type HealthCheckStatus = {
   counts?: unknown;
 };
 
+// Worker ownership state — populated by index.ts after lease acquisition.
+// Exposed via /api/health without leaking secrets (no Redis credentials).
+type WorkerOwnershipEntry = {
+  owned: boolean;
+  ownerId: string | null;
+  acquiredAt: string | null;
+};
+
+const _workerOwnership: Record<string, WorkerOwnershipEntry> = {};
+
+export function setWorkerOwnershipState(queue: string, state: WorkerOwnershipEntry): void {
+  _workerOwnership[queue] = state;
+}
+
+export function getWorkerOwnershipState(): Record<string, WorkerOwnershipEntry> {
+  return { ..._workerOwnership };
+}
+
 export type PublicHealthDependencyStatus = "connected" | "disconnected" | "ready" | "error";
 export type PublicHealthStatus = "healthy" | "degraded" | "unhealthy";
 
@@ -20,6 +38,7 @@ export type PublicHealthReport = {
     database: Extract<PublicHealthDependencyStatus, "connected" | "disconnected">;
     agentRuntime: Extract<PublicHealthDependencyStatus, "ready" | "error">;
   };
+  workerOwnership?: Record<string, { owned: boolean; ownerId: string | null; acquiredAt: string | null }>;
 };
 
 type HealthDependencyProbeResult = {
@@ -98,6 +117,7 @@ export async function collectPublicHealth(params?: {
   const database = await (params?.databaseProbe ?? probeDatabase)();
   const agentRuntime = await (params?.agentRuntimeProbe ?? probeAgentRuntime)();
 
+  const ownership = getWorkerOwnershipState();
   return {
     status: derivePublicHealthStatus({
       databaseOk: database.ok,
@@ -110,6 +130,7 @@ export async function collectPublicHealth(params?: {
       database: database.ok ? "connected" : "disconnected",
       agentRuntime: agentRuntime.ok ? "ready" : "error",
     },
+    workerOwnership: Object.keys(ownership).length > 0 ? ownership : undefined,
   };
 }
 

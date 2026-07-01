@@ -66,6 +66,8 @@ const maintenanceFile = "apps/workers/maintenance-worker/src/index.ts";
 const universalFile = "apps/workers/maintenance-worker/src/jobs/runAtivoUniversalJob.ts";
 const topologyFile = "packages/core/src/queue/workerTopology.ts";
 const topologyDocFile = "docs/architecture/worker-topology.md";
+const leaseFile = "packages/core/src/queue/workerOwnershipLease.ts";
+const leaseTestFile = "packages/core/src/queue/workerOwnershipLease.test.ts";
 
 const envTemplate = read(envTemplateFile);
 const compose = read(composeFile);
@@ -205,6 +207,43 @@ for (const reasonCode of [
   requireText(topologyFile, topology, reasonCode, "topology_reason_codes");
 }
 
+// ── P0-B2: Redis Worker Ownership Lease ───────────────────────────────────
+const lease = read(leaseFile);
+read(leaseTestFile);
+
+for (const text of [
+  "export async function acquireWorkerOwnershipLease(",
+  "export function getLeaseState(",
+  "export function resolveLeaseKey(",
+  "export function resolveMetaKey(",
+  "eiah:worker-ownership:",
+  "RENEW_SCRIPT",
+  "RELEASE_SCRIPT",
+]) {
+  requireText(leaseFile, lease, text, "p0b2_lease_module_contract");
+}
+
+requireText(
+  apiFile,
+  api,
+  "acquireWorkerOwnershipLease",
+  "p0b2_api_lease_integration",
+);
+requireText(
+  standaloneFile,
+  standalone,
+  "acquireWorkerOwnershipLease",
+  "p0b2_standalone_lease_integration",
+);
+requireText(
+  maintenanceFile,
+  maintenance,
+  "acquireWorkerOwnershipLease",
+  "p0b2_maintenance_lease_integration",
+);
+
+// ─────────────────────────────────────────────────────────────────────────
+
 if (violations.length > 0) {
   console.error(JSON.stringify({ ok: false, check: CHECK, reasonCode: REASON_CODE, violations }, null, 2));
   process.exit(1);
@@ -219,7 +258,12 @@ console.log(
         runs: ["api-embedded", "standalone"],
         runAtivoUniversal: ["maintenance-worker"],
       },
-      p0b2Required: true,
+      p0b2: {
+        leaseModule: leaseFile,
+        integrations: [apiFile, standaloneFile, maintenanceFile],
+        leaseKey: "eiah:worker-ownership:<environmentId>:<queue>",
+        metaKey: "eiah:worker-ownership:<environmentId>:<queue>:meta",
+      },
     },
     null,
     2,
