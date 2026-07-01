@@ -1,11 +1,22 @@
 # ROADMAP ATUALIZADO v8.1
 
-Data de referência desta revisão: **2026-06-25**
+Data de referência desta revisão: **2026-07-01**
 Escopo: plataforma agentic governada (core + governança + interop + economy + Track P)
 
 > Arquivo canônico vigente desta revisão: `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md`.
 >
 > Revisão v8.1: atualização documental para alinhar o roadmap v8 à realidade do repositório após os merges IMOB #141–#146, sem rebaixar os gates normativos de P0–P4.
+
+## Cláusula anti-drift interna
+
+Se o próprio arquivo canônico contiver, em qualquer seção, referência interna a roadmap, overview, relatório, prompt ou outra documentação anterior à Data de referência desta revisão como fonte de sincronização ativa, fonte canônica, baseline atual ou instrução normativa, sem revalidação explícita pelo roadmap canônico vigente, essa referência deve ser tratada como drift documental P0. Isso inclui, mas não se limita a, referências de `2026-05-23` ou `2026-03-10`.
+
+Nesses casos:
+- não seguir a instrução interna desatualizada;
+- manter `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md` como única fonte válida de roadmap;
+- registrar a seção e a linha afetadas;
+- propor correção documental em PR separado, quando aplicável;
+- usar referências históricas somente como contexto explicitamente marcado como histórico, changelog ou legado.
 
 ## 1) Resumo executivo
 
@@ -55,7 +66,7 @@ Regra de decisão v8.1:
 ## 4) Backlog priorizado v8 (execução)
 
 ## P0 — Integridade documental e fonte da verdade
-- Definir e publicar arquivo único de roadmap canônico (`ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`).
+- Preservar como arquivo único de roadmap canônico vigente o arquivo `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md`, garantindo que referências a roadmaps anteriores sejam tratadas como históricas ou como drift documental P0 quando usadas como fonte ativa.
 - Atualizar `docs/EVIDENCE_INDEX.md` para apontar apenas fontes existentes.
 - Adicionar check de CI para falhar quando “source of truth” não existir.
 
@@ -275,7 +286,7 @@ Objetivo: concluir ponta a ponta os itens ainda parciais (governança/economy/au
 - Busca documental `IMOB` disponível in-chat sem reabrir lógica no launcher e com fonte do resultado explicitada no payload/renderização.
 
 ### 9.6) P0 transversal (obrigatório durante todas as frentes)
-- Manter `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md` e `docs/EVIDENCE_INDEX.md` sincronizados.
+- Manter `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md` e `docs/EVIDENCE_INDEX.md` sincronizados.
 - Bloquear em CI referências inválidas e drift documental.
 - Tratar qualquer divergência doc/contrato/runtime como incidente P0.
 
@@ -427,7 +438,7 @@ git add ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md docs/EVIDENCE_INDEX.md
 git commit -m "docs(roadmap): sync v8.1 with implemented IMOB and multivertical runtime"
 ```
 
-Se a decisão for manter o mesmo nome canônico de 2026-05-23, o conteúdo desta revisão deve substituir o arquivo atual e o cabeçalho deve manter uma nota de revisão v8.1 em vez de criar novo arquivo.
+Não adotar novamente nome canônico anterior. O conteúdo normativo vigente deve permanecer em `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md`; roadmaps anteriores podem ser preservados somente como histórico explicitamente identificado.
 
 ## 13) Checklist de conformidade desta revisão
 
