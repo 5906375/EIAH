@@ -11,6 +11,7 @@ import type {
   WorkerOptions,
 } from "bullmq";
 import { createLogger, bindLogger } from "../logging";
+import { requireRedisUrl } from "../config/redis";
 import type { ActionExecutionResult } from "../actions/actionRegistry";
 import {
   ActionJobName,
@@ -24,7 +25,6 @@ const DEFAULT_QUEUE_NAME = process.env.ACTION_QUEUE_NAME ?? QueueName.ACTIONS;
 const DEFAULT_JOB_NAME = process.env.ACTION_QUEUE_JOB_NAME ?? ActionJobName;
 const DLQ_SUFFIX = "-dlq";
 const DEFAULT_CONCURRENCY = Number(process.env.ACTION_QUEUE_CONCURRENCY ?? "2");
-const DEFAULT_CONNECTION_URL = "redis://127.0.0.1:6379/0";
 const actionQueueLogger = createLogger({ component: "action-queue" });
 
 export type ActionQueuePayload = ActionJobPayload;
@@ -54,14 +54,14 @@ async function loadBullMQ(): Promise<BullModule> {
   return bullmqModulePromise;
 }
 
-function getConnectionUrl() {
-  return (
+function getConnectionUrl(): string {
+  return requireRedisUrl(
     process.env.ACTION_QUEUE_REDIS_URL ??
-    process.env.RUN_QUEUE_REDIS_URL ??
-    process.env.REDIS_URL ??
-    process.env.BULLMQ_REDIS_URL ??
-    process.env.QUEUE_REDIS_URL ??
-    DEFAULT_CONNECTION_URL
+      process.env.RUN_QUEUE_REDIS_URL ??
+      process.env.REDIS_URL ??
+      process.env.BULLMQ_REDIS_URL ??
+      process.env.QUEUE_REDIS_URL,
+    "actionQueue:getConnectionUrl"
   );
 }
 
@@ -105,14 +105,8 @@ function createConnectionOptions(url: string): ConnectionOptions {
 
     return options;
   } catch (error) {
-    actionQueueLogger.warn(
-      {
-        err: error,
-        url,
-      },
-      "action-queue.invalid_redis_url"
-    );
-    return createConnectionOptions(DEFAULT_CONNECTION_URL);
+    actionQueueLogger.warn({ err: error, url }, "action-queue.invalid_redis_url");
+    throw new Error(`actionQueue:createConnectionOptions: invalid Redis URL "${url}"`);
   }
 }
 

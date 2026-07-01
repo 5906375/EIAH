@@ -12,6 +12,7 @@
 /* eslint-env node */
 
 import Redis from "ioredis";
+import { requireRedisUrl } from "@eiah/core";
 import { Prisma, PrismaClient, prismaGlobal } from "@repo/db";
 import {
   MemoryService,
@@ -30,7 +31,6 @@ type TenantPrismaClient = PrismaClient;
 
 
 
-const DEFAULT_REDIS_URL = "redis://127.0.0.1:6379";
 const DEFAULT_SHORT_TTL_SECONDS = 60 * 60 * 24;
 
 let redisClient: Redis | null = null;
@@ -272,12 +272,12 @@ function buildMemoryAdapters(
  * 🔄 Redis Client
  ************************************************************************************************/
 function resolveRedisUrl(): string {
-  return (
+  return requireRedisUrl(
     process.env.MEMORY_REDIS_URL ??
-    process.env.RUN_QUEUE_REDIS_URL ??
-    process.env.BULLMQ_REDIS_URL ??
-    process.env.REDIS_URL ??
-    DEFAULT_REDIS_URL
+      process.env.RUN_QUEUE_REDIS_URL ??
+      process.env.BULLMQ_REDIS_URL ??
+      process.env.REDIS_URL,
+    "memory:resolveRedisUrl"
   );
 }
 

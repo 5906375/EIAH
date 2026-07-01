@@ -37,6 +37,7 @@ import {
   defaultRunGuardrails,
   runGuardrails,
   recordGuardrailAudit,
+  requireRedisUrl,
 } from "@eiah/core";
 
 import { MCPExecutor, ToolRegistry } from "@repo/mcp-runner";
@@ -2790,7 +2791,7 @@ function formatUnknownContent(payload: unknown): string | null {
  * O IA_Gateway só produz jobs. Este worker consome e executa o ReAct completo.
  */
 export function startRunQueueBullMqWorker() {
-  const redisUrl = process.env.REDIS_URL || "redis://localhost:6379";
+  const redisUrl = requireRedisUrl(process.env.REDIS_URL, "runWorker:startRunQueueBullMqWorker");
   const concurrency = Number(process.env.RUN_WORKER_CONCURRENCY || 5);
 
   const worker = new Worker(
