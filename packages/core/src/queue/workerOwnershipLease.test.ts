@@ -298,27 +298,51 @@ test("getLeaseState returns owned=false for unknown (environmentId, queue)", () 
 
 // ---------------------------------------------------------------------------
 // Conditional real-Redis integration test
-// Skipped when REDIS_URL is unavailable — reports partial coverage explicitly
+// Strictly opt-in: only runs when REDIS_URL is explicitly set in env.
+// No ioredis client is created if REDIS_URL is absent.
+// Uses lazyConnect so the client only connects on explicit await redis.connect().
 // ---------------------------------------------------------------------------
 
-const REDIS_URL =
-  process.env.REDIS_URL ??
-  process.env.RUN_QUEUE_REDIS_URL ??
-  process.env.BULLMQ_REDIS_URL ??
-  null;
+// Only REDIS_URL (the primary canonical env var) is checked.
+// RUN_QUEUE_REDIS_URL / BULLMQ_REDIS_URL are intentionally excluded here to
+// prevent CI defaults from triggering the test against an unreachable Redis.
+const REDIS_URL_FOR_LEASE_TEST = process.env.REDIS_URL ?? null;
 
-const skipReason = REDIS_URL
+const skipReason = REDIS_URL_FOR_LEASE_TEST
   ? false
-  : "REDIS_URL not available — duplicateSideEffects assertion skipped; coverage is PARTIAL for this gate";
+  : "REDIS_URL not set — duplicateSideEffects assertion skipped; coverage is PARTIAL for this gate";
 
 test(
   "duplicateSideEffects=0: two concurrent instances for the same (environmentId, queue), only one acquires",
   { skip: skipReason },
   async () => {
+    // Import is deferred to test body — no ioredis client created when test is skipped.
     const { default: Redis } = await import("ioredis");
 
-    const redisA = new Redis(REDIS_URL!, { maxRetriesPerRequest: 2, enableReadyCheck: false });
-    const redisB = new Redis(REDIS_URL!, { maxRetriesPerRequest: 2, enableReadyCheck: false });
+    const url = REDIS_URL_FOR_LEASE_TEST!;
+
+    // lazyConnect: true — no eager connection attempt; connect() is called explicitly below.
+    // retryStrategy: () => null — no reconnect on failure; fail fast.
+    // maxRetriesPerRequest: 1 — single attempt per command.
+    const redisA = new Redis(url, {
+      lazyConnect: true,
+      retryStrategy: () => null,
+      maxRetriesPerRequest: 1,
+      enableReadyCheck: false,
+    });
+    const redisB = new Redis(url, {
+      lazyConnect: true,
+      retryStrategy: () => null,
+      maxRetriesPerRequest: 1,
+      enableReadyCheck: false,
+    });
+
+    // Error handlers prevent unhandled error events when connection fails.
+    // The explicit connect() below will throw in that case, failing the test.
+    const errA: Error[] = [];
+    const errB: Error[] = [];
+    redisA.on("error", (err: Error) => errA.push(err));
+    redisB.on("error", (err: Error) => errB.push(err));
 
     const testEnvId = `test-dup-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     let sideEffectCount = 0;
@@ -327,6 +351,9 @@ test(
     let leaseB: Awaited<ReturnType<typeof acquireWorkerOwnershipLease>> | null = null;
 
     try {
+      // Explicit connect — throws if Redis is unreachable (fails the test, not CI process).
+      await Promise.all([redisA.connect(), redisB.connect()]);
+
       [leaseA, leaseB] = await Promise.all([
         acquireWorkerOwnershipLease({
           environmentId: testEnvId,
@@ -363,8 +390,8 @@ test(
       await Promise.allSettled([
         leaseA?.release(),
         leaseB?.release(),
-        redisA.quit(),
-        redisB.quit(),
+        redisA.quit().catch(() => redisA.disconnect()),
+        redisB.quit().catch(() => redisB.disconnect()),
       ]);
     }
   },
