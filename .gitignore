@@ -48,8 +48,9 @@ docs/*
 !docs/operations/**/
 !docs/operations/**/*.md
 docs/ops/**/*.mb
-!docs/architecture
-!docs/architecture/**
+!docs/architecture/
+docs/architecture/*
+!docs/architecture/agent-chat-runtime.md
 
 # --------------------------------------------
 # Dados temporários e uploads
