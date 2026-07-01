@@ -51,10 +51,74 @@ Não usar o standalone como rollback do embedded antes de paridade funcional exp
 
 P0-B1 impede concorrência quando os serviços usam a matriz declarativa versionada e bloqueia regressões conhecidas no CI. Ele não detecta dois processos iniciados com arquivos de ambiente divergentes.
 
-P0-B2 permanece obrigatório para:
+---
 
-- lease Redis por ambiente e fila;
-- renovação e perda fail-closed do ownership;
-- health/telemetria do owner efetivo;
-- prova integrada de execução única;
-- `duplicateSideEffects=0` derivado de execução real, sem valor hardcoded.
+## P0-B2 — Redis Worker Ownership Lease
+
+Data normativa: `2026-07-01`.
+
+### Decisão
+
+P0-B2 adiciona um lease Redis atômico por `(environmentId, queue)`. Nenhum processo pode iniciar um consumidor crítico sem adquirir o lease. Se o lease for perdido durante a operação, o worker é fechado em modo fail-closed.
+
+### Chaves Redis
+
+| Chave | Valor | TTL |
+| --- | --- | --- |
+| `eiah:worker-ownership:<environmentId>:<queue>` | `ownerId` (ex: `api-12345-1751234567890`) | 30 000 ms (renovável) |
+| `eiah:worker-ownership:<environmentId>:<queue>:meta` | JSON `{ ownerId, acquiredAt, queue, environmentId }` | Igual ao lease (sem sobreviver ao owner) |
+
+### Semântica
+
+| Operação | Mecanismo | Garantia |
+| --- | --- | --- |
+| Acquire | `SET key ownerId PX 30000 NX` | Atômico — somente um processo adquire por `(env, queue)` |
+| Renew | Lua CAS: `if get(key)==ownerId then pexpire` | Renova somente se ainda for o owner |
+| Release | Lua CAS: `if get(key)==ownerId then del` | Libera somente se ainda for o owner |
+| Lease lost | Renewal detecta `renewed !== 1` | `onLeaseLost()` chamado → worker fechado fail-closed |
+
+Intervalo de renovação: 10 000 ms. Margem de falha: 3× o intervalo antes de expirar o TTL.
+
+### Integração por serviço
+
+| Serviço | Fila protegida | Fail-closed |
+| --- | --- | --- |
+| `api` (embedded) | `runs` | `worker.close()` via referência retornada por `startRunQueueBullMqWorker()` |
+| `run-worker` (standalone) | `runs` | `worker.close()` via referência retornada por `consumeLegacyRunQueue()` |
+| `maintenance-worker` | `run-ativo-universal` | `runAtivoUniversalWorker.close()` |
+
+SIGTERM/SIGINT em todos os três serviços chamam `lease.release()` antes de encerrar.
+
+### Health
+
+O endpoint `/api/health` expõe `workerOwnership` (sem credenciais):
+
+```json
+{
+  "workerOwnership": {
+    "runs": { "owned": true, "ownerId": "api-12345-...", "acquiredAt": "2026-07-01T..." }
+  }
+}
+```
+
+O campo é opcional — aparece apenas se o serviço tentou adquirir algum lease.
+
+### Módulo canônico
+
+`packages/core/src/queue/workerOwnershipLease.ts`
+
+Exports obrigatórios: `acquireWorkerOwnershipLease`, `getLeaseState`, `resolveLeaseKey`, `resolveMetaKey`.
+
+### Gate estático
+
+`scripts/checkWorkerTopology.ts` valida:
+- arquivo `workerOwnershipLease.ts` existe;
+- exports obrigatórios presentes;
+- API, run-worker e maintenance-worker importam `acquireWorkerOwnershipLease`.
+
+### Rollback
+
+1. Remover as chamadas `acquireWorkerOwnershipLease` dos três bootstraps.
+2. Workers voltam a consumir sem lease — estado P0-B1.
+3. O módulo `workerOwnershipLease.ts` pode permanecer no repositório; não drena filas.
+4. Reativar somente após validar Redis em staging.

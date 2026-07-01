@@ -3,6 +3,7 @@ import {
   type RunQueuePayload
 } from "@eiah/core/queue/runQueue";
 import { resolveWorkerTopology } from "@eiah/core/queue/workerTopology";
+import { acquireWorkerOwnershipLease } from "@eiah/core/queue/workerOwnershipLease";
 import { randomUUID } from "crypto";
 import { Prisma, RunStatus, PrismaClient, getPrismaForTenant } from "@repo/db";
 import type {
@@ -228,7 +229,46 @@ async function bootstrap() {
     return;
   }
 
-  await consumeLegacyRunQueue(async (job: RunQueuePayload) => {
+  // Acquire ownership lease before starting the queue consumer
+  const leaseOwnerId = `run-worker-${process.pid}-${Date.now()}`;
+  const leaseRedis = new Redis(process.env.REDIS_URL ?? "redis://localhost:6379");
+  let workerInstance: Awaited<ReturnType<typeof consumeLegacyRunQueue>> | null = null;
+
+  const lease = await acquireWorkerOwnershipLease({
+    environmentId: topology.environmentId,
+    queue: "runs",
+    ownerId: leaseOwnerId,
+    redis: leaseRedis,
+    onLeaseLost: () => {
+      logger.error({ ownerId: leaseOwnerId }, "run-worker.ownership_lease_lost — closing worker fail-closed");
+      void workerInstance
+        ?.close()
+        .catch(() => undefined)
+        .finally(() => void leaseRedis.quit().catch(() => undefined));
+    },
+  });
+
+  if (!lease.acquired) {
+    logger.warn(
+      { ownerId: leaseOwnerId },
+      "run-worker.ownership_not_acquired — another instance holds the lease; exiting"
+    );
+    void leaseRedis.quit().catch(() => undefined);
+    return;
+  }
+
+  for (const signal of ["SIGINT", "SIGTERM"]) {
+    process.once(signal as NodeJS.Signals, () => {
+      logger.info({ signal }, "run-worker.shutdown — releasing ownership lease");
+      void lease
+        .release()
+        .finally(() => void leaseRedis.quit().catch(() => undefined))
+        .finally(() => void workerInstance?.close().catch(() => undefined))
+        .finally(() => process.exit(0));
+    });
+  }
+
+  workerInstance = await consumeLegacyRunQueue(async (job: RunQueuePayload) => {
     logger.info({ job }, "run-worker.consumeLegacyQueue");
 
     const objective = job.prompt ?? "Execução sem prompt";
@@ -254,7 +294,7 @@ async function bootstrap() {
   });
 
   createRunWorkerHealth("run-queue");
-  logger.info("run-worker online: Consumindo somente runQueue");
+  logger.info({ ownerId: leaseOwnerId }, "run-worker online: Consumindo somente runQueue com ownership lease");
 }
 
 bootstrap().catch((error) => {
