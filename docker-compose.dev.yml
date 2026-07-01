@@ -33,6 +33,7 @@ services:
       - SERVICE_ROLE=api
       - RUN_QUEUE_CONSUMER_MODE=api-embedded
       - RUN_ATIVO_CONSUMER_MODE=disabled
+      - REDIS_URL=redis://eiah-redis:6379/0
       - PNPM_HOME=/pnpm
       - PNPM_STORE_DIR=/pnpm/store
       - PATH=/pnpm:$PATH
@@ -151,6 +152,7 @@ services:
       - SERVICE_ROLE=maintenance-worker
       - RUN_QUEUE_CONSUMER_MODE=disabled
       - RUN_ATIVO_CONSUMER_MODE=maintenance
+      - REDIS_URL=redis://eiah-redis:6379/0
       - PNPM_HOME=/pnpm
       - PNPM_STORE_DIR=/pnpm/store
       - PATH=/pnpm:$PATH

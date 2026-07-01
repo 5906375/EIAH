@@ -48,6 +48,8 @@ docs/*
 !docs/operations/**/
 !docs/operations/**/*.md
 docs/ops/**/*.mb
+!docs/architecture
+!docs/architecture/**
 
 # --------------------------------------------
 # Dados temporários e uploads
