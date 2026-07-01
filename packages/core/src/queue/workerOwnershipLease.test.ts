@@ -298,23 +298,27 @@ test("getLeaseState returns owned=false for unknown (environmentId, queue)", () 
 
 // ---------------------------------------------------------------------------
 // Conditional real-Redis integration test
-// Strictly opt-in: only runs when REDIS_URL is explicitly set in env.
-// No ioredis client is created if REDIS_URL is absent.
-// Uses lazyConnect so the client only connects on explicit await redis.connect().
+// Strictly opt-in: Redis-real duplicateSideEffects evidence only runs when
+// explicitly authorized by EIAH_RUN_REDIS_REAL_TESTS=true and REDIS_URL.
+// REDIS_URL alone may exist in CI/app envs and must not trigger real Redis tests.
+// RUN_QUEUE_REDIS_URL / BULLMQ_REDIS_URL are intentionally excluded here.
 // ---------------------------------------------------------------------------
 
-// Only REDIS_URL (the primary canonical env var) is checked.
-// RUN_QUEUE_REDIS_URL / BULLMQ_REDIS_URL are intentionally excluded here to
-// prevent CI defaults from triggering the test against an unreachable Redis.
+// Strictly opt-in: Redis-real duplicateSideEffects evidence only runs when
+// explicitly authorized by EIAH_RUN_REDIS_REAL_TESTS=true and REDIS_URL.
+// REDIS_URL alone may exist in CI/app envs and must not trigger real Redis tests.
+// RUN_QUEUE_REDIS_URL / BULLMQ_REDIS_URL are intentionally excluded here.
+const REDIS_REAL_TESTS_ENABLED = process.env.EIAH_RUN_REDIS_REAL_TESTS === "true";
 const REDIS_URL_FOR_LEASE_TEST = process.env.REDIS_URL ?? null;
 
-const skipReason = REDIS_URL_FOR_LEASE_TEST
-  ? false
-  : "REDIS_URL not set — duplicateSideEffects assertion skipped; coverage is PARTIAL for this gate";
+const redisRealSkipReason =
+  REDIS_REAL_TESTS_ENABLED && REDIS_URL_FOR_LEASE_TEST
+    ? false
+    : "EIAH_RUN_REDIS_REAL_TESTS=true and REDIS_URL are required — Redis-real duplicateSideEffects gate skipped; coverage is PARTIAL";
 
 test(
   "duplicateSideEffects=0: two concurrent instances for the same (environmentId, queue), only one acquires",
-  { skip: skipReason },
+  { skip: redisRealSkipReason },
   async () => {
     // Import is deferred to test body — no ioredis client created when test is skipped.
     const { default: Redis } = await import("ioredis");
