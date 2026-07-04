@@ -69,6 +69,18 @@ export type Run = {
   meta?: { traceId?: string; tookMs?: number };
 };
 
+export type ImobArtifactCapabilityDecision = {
+  allowed: boolean;
+  reasonCode?: string;
+};
+
+export type ImobArtifactCapabilities = {
+  canOpenChat: ImobArtifactCapabilityDecision;
+  canViewCaseDossier: ImobArtifactCapabilityDecision;
+  canViewCaseReceipt: ImobArtifactCapabilityDecision;
+  canViewRunBundle: ImobArtifactCapabilityDecision;
+};
+
 export type CostSemanticSnapshot = {
   kind: "execution_cost" | "workspace_consumption" | "auditable_cost";
   title: string;
@@ -1064,6 +1076,9 @@ export async function apiAgentsExecute(body: {
       txId: "required" | null;
       ledgerEndpointTemplate: string;
       runBundlePath: string;
+      artifactCapabilities: {
+        canViewRunBundle: ImobArtifactCapabilityDecision;
+      };
     };
   };
 }> {
@@ -1656,6 +1671,7 @@ export type ImobCase = {
   property?: { id: string; propertyType: string | null; city: string | null; neighborhood: string | null } | null;
   lead?: { id: string; name: string } | null;
   _count?: { events: number };
+  artifactCapabilities?: ImobArtifactCapabilities;
 };
 
 export type ImobCrmFollowUpItem = {

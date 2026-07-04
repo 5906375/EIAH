@@ -4273,8 +4273,8 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                 kind: "neutral",
                 href: withRunContext(runId, executionPending.thread.id, executionPending.caseContext?.caseId ?? null),
               },
-              ...(execution.data.verify.runBundlePath
-                ? [{ id: "open-bundle", label: "Ver dossiê", kind: "neutral" as const, href: execution.data.verify.runBundlePath }]
+              ...(execution.data.verify.runBundlePath && execution.data.verify.artifactCapabilities.canViewRunBundle.allowed
+                ? [{ id: "open-bundle", label: "Ver bundle da execução", kind: "neutral" as const, href: execution.data.verify.runBundlePath }]
                 : []),
             ],
           },

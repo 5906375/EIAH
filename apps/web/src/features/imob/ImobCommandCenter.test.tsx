@@ -48,6 +48,12 @@ test("IMOB command center renders KPIs, filters, table and action links", () => 
             reasonCodes: [],
             pendingItemsList: [],
             blockersList: [],
+            artifactCapabilities: {
+              canOpenChat: { allowed: true },
+              canViewCaseDossier: { allowed: true },
+              canViewCaseReceipt: { allowed: true },
+              canViewRunBundle: { allowed: false, reasonCode: "SCOPE_NOT_ALLOWED" },
+            },
           },
         ]}
         loading={false}
@@ -139,6 +145,12 @@ test("IMOB command center marks missing consolidated cost explicitly", () => {
             reasonCodes: [],
             pendingItemsList: [],
             blockersList: [],
+            artifactCapabilities: {
+              canOpenChat: { allowed: true },
+              canViewCaseDossier: { allowed: true },
+              canViewCaseReceipt: { allowed: true },
+              canViewRunBundle: { allowed: false, reasonCode: "SCOPE_NOT_ALLOWED" },
+            },
           },
         ]}
         loading={false}
@@ -184,6 +196,12 @@ test("IMOB command center shows 'processo' line when processId differs from case
             reasonCodes: [],
             pendingItemsList: [],
             blockersList: [],
+            artifactCapabilities: {
+              canOpenChat: { allowed: true },
+              canViewCaseDossier: { allowed: true },
+              canViewCaseReceipt: { allowed: true },
+              canViewRunBundle: { allowed: false, reasonCode: "SCOPE_NOT_ALLOWED" },
+            },
           },
         ]}
         loading={false}
@@ -203,4 +221,58 @@ test("IMOB command center shows 'processo' line when processId differs from case
   assert.match(html, /processo process-xyz/);
   // caseId link param must reference caseId, not processId
   assert.match(html, /caseId=case-abc/);
+});
+
+test("IMOB command center fails closed when artifact capabilities are denied or absent", () => {
+  const html = renderToStaticMarkup(
+    <MemoryRouter>
+      <ImobCommandCenter
+        health={null}
+        cases={[
+          {
+            processId: "case-3",
+            processLabel: "Contrato",
+            context: "",
+            caseId: "case-3",
+            threadId: null,
+            status: "blocked",
+            riskLabel: "AUDIT_BLOCKER",
+            ageHours: 8,
+            updatedAt: "2026-06-11T10:00:00.000Z",
+            priorityLabel: "alta",
+            priorityScore: 10,
+            nextAction: "Validar evidência",
+            journeyLabel: "Contrato",
+            ownerResponsible: null,
+            eventCount: 2,
+            recommendedActions: [],
+            reasonCodes: [],
+            pendingItemsList: [],
+            blockersList: [],
+            artifactCapabilities: {
+              canOpenChat: { allowed: false, reasonCode: "IMOB_CHAT_CONTEXT_MISSING" },
+              canViewCaseDossier: { allowed: false, reasonCode: "IMOB_STAGE_FORBIDDEN" },
+              canViewCaseReceipt: { allowed: false, reasonCode: "IMOB_STAGE_FORBIDDEN" },
+              canViewRunBundle: { allowed: false, reasonCode: "SCOPE_NOT_ALLOWED" },
+            },
+          },
+        ]}
+        loading={false}
+        error={null}
+        statusFilter="all"
+        reasonFilter="all"
+        totalCostLabel="R$ 0"
+        onStatusFilterChange={() => undefined}
+        onReasonFilterChange={() => undefined}
+        onRefresh={() => undefined}
+        onDownloadArtifact={() => undefined}
+      />
+    </MemoryRouter>
+  );
+
+  assert.doesNotMatch(html, /abrir no chat/);
+  assert.match(html, /chat indisponível/);
+  assert.match(html, /bloqueado/);
+  assert.doesNotMatch(html, />PDF</);
+  assert.doesNotMatch(html, />HTML</);
 });

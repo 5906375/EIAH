@@ -18,6 +18,7 @@ import {
 } from "../services/imob/control/imobControlSurfaceAggregates";
 import { IMOB_REASON_CODE_CATALOG } from "../services/imob/control/imobReasonCodeCatalog";
 import { resolveImobBackingSpecialists } from "../services/imob/imobSpecialistBridge";
+import { resolveImobArtifactCapabilities } from "../services/imob/imobArtifactCapabilities";
 import {
   recordImobApprovalActionCompletedTelemetry,
   recordImobApprovalContextPresentedTelemetry,
@@ -510,8 +511,21 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
     }, { flow, status });
 
     const filteredItems = items.filter((item) => canWorkspaceOperateImobStage(workspaceAccess.permissions, item.stage));
+    const serializedItems = await Promise.all(
+      filteredItems.map(async (item) => ({
+        ...withImobCanonicalCase(item),
+        artifactCapabilities: await resolveImobArtifactCapabilities({
+          authContext,
+          permissions: workspaceAccess.permissions,
+          stage: item.stage,
+          caseId: item.id,
+          threadId: item.threadId,
+          runId: null,
+        }),
+      })),
+    );
 
-    return res.json({ ok: true, data: { items: filteredItems.map((item) => withImobCanonicalCase(item)) } });
+    return res.json({ ok: true, data: { items: serializedItems } });
   });
 
   router.get("/cases/costs", async (req, res) => {

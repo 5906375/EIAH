@@ -81,6 +81,18 @@ after(async () => {
 });
 
 test("IMOB Command Center returns workspace-scoped funnel and blocked list", async () => {
+  const cases = await request
+    .get(`/api/imob/cases?workspaceId=${workspaceId}`)
+    .set("Authorization", `Bearer ${apiToken}`);
+
+  assert.equal(cases.status, 200);
+  assert.equal(cases.body?.ok, true);
+  const seededCase = (cases.body?.data?.items ?? []).find((item: any) => item.threadId === blockedCaseThreadId);
+  assert.ok(seededCase);
+  assert.equal(seededCase?.artifactCapabilities?.canOpenChat?.allowed, true);
+  assert.equal(seededCase?.artifactCapabilities?.canViewCaseDossier?.allowed, true);
+  assert.equal(seededCase?.artifactCapabilities?.canViewCaseReceipt?.allowed, true);
+
   const health = await request
     .get(`/api/imob/command-center/funnel-health?workspaceId=${workspaceId}&window=7d`)
     .set("Authorization", `Bearer ${apiToken}`);
@@ -105,4 +117,6 @@ test("IMOB Command Center returns workspace-scoped funnel and blocked list", asy
   assert.equal(blocked.body?.data?.meta?.proofExport?.ledgerEndpointTemplate, "/api/ledger/:txId");
   assert.equal(blockedItem?.proof?.receiptPath, `/api/ledger/${encodeURIComponent(`tx-imob-cc-${suffix}`)}`);
   assert.equal(blockedItem?.proof?.bundlePath, `/api/runs/${encodeURIComponent(blockedRunId)}/bundle`);
+  assert.equal(blockedItem?.proof?.artifactCapabilities?.canViewRunBundle?.allowed, false);
+  assert.equal(typeof blockedItem?.proof?.artifactCapabilities?.canViewRunBundle?.reasonCode, "string");
 });

@@ -1,4 +1,4 @@
-import type { ImobCase, ImobCaseRecommendedAction } from "@/lib/api";
+import type { ImobArtifactCapabilities, ImobCase, ImobCaseRecommendedAction } from "@/lib/api";
 
 function imobCaseAgeHours(updatedAt: string) {
   const parsed = Date.parse(updatedAt);
@@ -149,6 +149,7 @@ export type ImobCommandCenterCaseRow = {
   reasonCodes: string[];
   pendingItemsList: string[];
   blockersList: string[];
+  artifactCapabilities?: ImobArtifactCapabilities;
   // TODO(backend): add waitingOn when apiListImobCases exposes ?waitingOn= filter param
   // Context: WaitingOnBoard uses a dedicated grouping endpoint with all cases; CC uses
   // apiListImobCases (max 12, status-filtered) — the two datasets don't overlap, making
@@ -190,6 +191,7 @@ export function buildImobCaseList(
         reasonCodes: item.canonical?.reasonCodes ?? [],
         pendingItemsList: asStringArray(item.pendingItems),
         blockersList: asStringArray(item.blockers),
+        artifactCapabilities: item.artifactCapabilities,
       };
     })
     .filter((item) => !targetStatus || item.status === targetStatus)
