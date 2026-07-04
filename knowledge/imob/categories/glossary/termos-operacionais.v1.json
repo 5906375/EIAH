@@ -1,0 +1,36 @@
+{
+  "id": "imob.glossary.termos-operacionais.v1",
+  "title": "Glossário de termos operacionais IMOB",
+  "category": "glossary",
+  "version": "v1",
+  "summary": "Glossário curto de termos operacionais usados em atendimento e organização do fluxo IMOB.",
+  "content": {
+    "body": "Este glossário padroniza termos operacionais recorrentes da vertical IMOB para reduzir ambiguidade interna. Ele serve para alinhamento de linguagem e não para decisão sensível.",
+    "checklist": [
+      "Captação: etapa de entrada e qualificação inicial do imóvel",
+      "Visita: interação operacional para conhecer ou apresentar o imóvel",
+      "Proposta: manifestação comercial que exige revisão humana",
+      "Pendência documental: item ainda não confirmado ou não validado"
+    ],
+    "notes": [
+      "Termos comerciais sensíveis continuam sujeitos a revisão humana quando aplicável"
+    ]
+  },
+  "source": {
+    "kind": "internal_doc",
+    "ref": "apps/api/src/services/imob/imobKnowledgeSearch.ts",
+    "authority": "secondary"
+  },
+  "lastUpdated": "2026-07-02",
+  "riskLevel": "low",
+  "requiresHumanReview": true,
+  "allowedScopes": ["tenant", "workspace", "role_scoped"],
+  "disallowedUses": [
+    "automatic_contract_decision",
+    "automatic_price_decision",
+    "automatic_approval_decision"
+  ],
+  "tags": ["imob", "glossary", "operacao", "termos"],
+  "owners": ["IMOB"],
+  "status": "draft"
+}

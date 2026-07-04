@@ -1,0 +1,37 @@
+{
+  "id": "imob.template.briefing-visita.v1",
+  "title": "Template de briefing de visita",
+  "category": "templates",
+  "version": "v1",
+  "summary": "Template neutro para preparar visita de imóvel com contexto mínimo, sem inferir proposta, valor ou aprovação.",
+  "content": {
+    "body": "Use este template para estruturar o briefing de visita com data desejada, contexto do imóvel, objetivo da visita e observações operacionais. O template não deve ser usado para aprovar visita, fixar proposta, prometer condição comercial ou concluir análise documental.",
+    "checklist": [
+      "Registrar objetivo da visita",
+      "Indicar cidade, região e tipo do imóvel",
+      "Anotar responsáveis e contatos operacionais sem PII extra",
+      "Listar dúvidas que exigem retorno humano"
+    ],
+    "notes": [
+      "Sem decisão automática de agenda crítica",
+      "Sem proposta comercial automática"
+    ]
+  },
+  "source": {
+    "kind": "internal_doc",
+    "ref": "docs/architecture/agent-chat-runtime.md",
+    "authority": "advisory"
+  },
+  "lastUpdated": "2026-07-02",
+  "riskLevel": "medium",
+  "requiresHumanReview": true,
+  "allowedScopes": ["tenant", "workspace"],
+  "disallowedUses": [
+    "automatic_visit_approval",
+    "automatic_offer_generation",
+    "automatic_approval_decision"
+  ],
+  "tags": ["imob", "visita", "template", "briefing"],
+  "owners": ["IMOB"],
+  "status": "draft"
+}

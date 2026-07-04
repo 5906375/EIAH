@@ -161,6 +161,9 @@ jobs:
       - name: Check Public Product Taxonomy anti-drift
         run: pnpm check:public-product-taxonomy
 
+      - name: Check IMOB Knowledge Base integrity
+        run: pnpm check:imob-knowledge-base
+
       - name: Check Evidence Index
         run: pnpm check:evidence-index
 

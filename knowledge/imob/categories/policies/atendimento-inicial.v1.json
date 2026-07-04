@@ -1,0 +1,36 @@
+{
+  "id": "imob.policy.atendimento-inicial.v1",
+  "title": "Política de atendimento inicial IMOB",
+  "category": "policies",
+  "version": "v1",
+  "summary": "Política operacional inicial para orientar coleta de contexto sem ultrapassar limites de decisão sensível.",
+  "content": {
+    "body": "No atendimento inicial IMOB, o sistema pode ajudar a estruturar contexto, resumir próximos passos e apontar lacunas de informação. Ele não deve emitir decisão jurídica final, aprovar contrato, recomendar preço automaticamente nem substituir validação humana para itens sensíveis.",
+    "checklist": [
+      "Coletar contexto mínimo da demanda",
+      "Separar fato operacional de decisão sensível",
+      "Encaminhar itens de risco para revisão humana"
+    ],
+    "notes": [
+      "Aprovação e negociação permanecem fora do escopo desta KB v1"
+    ]
+  },
+  "source": {
+    "kind": "canonical_policy",
+    "ref": "ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md",
+    "authority": "primary"
+  },
+  "lastUpdated": "2026-07-02",
+  "riskLevel": "high",
+  "requiresHumanReview": true,
+  "allowedScopes": ["tenant", "workspace", "role_scoped"],
+  "disallowedUses": [
+    "automatic_legal_opinion",
+    "automatic_pricing_decision",
+    "automatic_approval_decision"
+  ],
+  "tags": ["imob", "policy", "atendimento", "governanca"],
+  "owners": ["IMOB", "OPERACOES"],
+  "status": "reviewed"
+}
+

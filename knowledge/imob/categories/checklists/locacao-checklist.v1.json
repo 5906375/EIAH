@@ -1,0 +1,37 @@
+{
+  "id": "imob.checklist.locacao-checklist.v1",
+  "title": "Checklist operacional de locação",
+  "category": "checklists",
+  "version": "v1",
+  "summary": "Checklist inicial para organizar atendimento de locação e documentação sensível sob revisão humana obrigatória.",
+  "content": {
+    "body": "Este checklist organiza a conferência operacional inicial de uma locação. Ele serve para verificar se a documentação mínima foi identificada, se as pendências estão registradas e se a operação está pronta para análise humana. Não substitui validação contratual, análise jurídica nem decisão final.",
+    "checklist": [
+      "Confirmar tipo de imóvel e modalidade de locação",
+      "Listar documentos apresentados pelo proprietário ou interessado",
+      "Registrar garantias mencionadas sem validá-las automaticamente",
+      "Marcar itens pendentes para revisão humana"
+    ],
+    "notes": [
+      "Documentação sensível exige checagem humana",
+      "Não consolidar cláusula final de contrato a partir deste checklist"
+    ]
+  },
+  "source": {
+    "kind": "internal_doc",
+    "ref": "docs/operations/eiah-access-matrix.md",
+    "authority": "secondary"
+  },
+  "lastUpdated": "2026-07-02",
+  "riskLevel": "high",
+  "requiresHumanReview": true,
+  "allowedScopes": ["tenant", "workspace", "role_scoped"],
+  "disallowedUses": [
+    "automatic_document_approval",
+    "automatic_contract_finalization",
+    "automatic_approval_decision"
+  ],
+  "tags": ["imob", "locacao", "checklist", "documentacao"],
+  "owners": ["IMOB"],
+  "status": "draft"
+}

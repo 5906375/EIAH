@@ -25,6 +25,7 @@ import {
 } from "./imobConversationContract";
 import { buildImobAgentRuntimeMetadata } from "./imobAgentContract";
 import { buildImobAgentActivities } from "./agents/imobAgentActivityRuntime";
+import { ImobKnowledgeEngineError, resolveImobKnowledgeContext } from "./imobKnowledgeEngine";
 import {
   buildImobGovernedIntentClarificationChoices,
   classifyImobGovernedIntent,
@@ -2406,6 +2407,27 @@ function buildMarketScanSelectionPresentation(params: {
 
 function isKnowledgeSearchQuery(message: string) {
   const text = normalizeImobText(message);
+  const hasBuscarPrefix = text.includes("buscar") || text.includes("pesquisar") || text.includes("consultar");
+  const hasKnowledgeTopic =
+    text.includes("playbook") ||
+    text.includes("checklist") ||
+    text.includes("briefing") ||
+    text.includes("glossario") ||
+    text.includes("glossário") ||
+    text.includes("termos operacionais") ||
+    text.includes("atendimento inicial") ||
+    text.includes("triagem") ||
+    text.includes("politica imob") ||
+    text.includes("política imob") ||
+    text.includes("documentos") ||
+    text.includes("documentacao") ||
+    text.includes("documentação") ||
+    text.includes("locacao") ||
+    text.includes("locação") ||
+    text.includes("preco") ||
+    text.includes("preço") ||
+    text.includes("valuation") ||
+    text.includes("contrato final");
   return (
     text.includes("acervo imob") ||
     text.includes("buscar contratos e propostas") ||
@@ -2418,6 +2440,14 @@ function isKnowledgeSearchQuery(message: string) {
     text.includes("modelos de proposta") ||
     text.includes("checklists de capta") ||
     text.includes("playbook") ||
+    text.includes("briefing") ||
+    text.includes("glossario") ||
+    text.includes("glossário") ||
+    text.includes("termos operacionais") ||
+    text.includes("atendimento inicial") ||
+    text.includes("triagem") ||
+    text.includes("politica imob") ||
+    text.includes("política imob") ||
     text.includes("base interna") ||
     text.includes("documento interno") ||
     text.includes("uploads") ||
@@ -2426,7 +2456,8 @@ function isKnowledgeSearchQuery(message: string) {
     text.includes("anexo") ||
     text.includes("site") ||
     text.includes("sites") ||
-    text.includes("web")
+    text.includes("web") ||
+    (hasBuscarPrefix && hasKnowledgeTopic)
   );
 }
 
@@ -3690,25 +3721,55 @@ export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTur
       });
     }
     const sources = buildImobSearchSources(message, region, segment);
-    return finalize({
-      mode: "search_knowledge",
-      action: "realestate.search_knowledge_base",
-      threadLabel: "Busca de imóveis",
-      conversationState: { ...nextThreadState, mode: "search_knowledge" },
-      knowledgeRequest: {
-        query: message,
-        filters: { region, segment, sourceTypes },
-      },
-      presentation: {
-        text: `Pesquisar documentos do acervo IMOB em ${region} para ${segment}.`,
-        card: {
-          title: "Busca documental IMOB",
-          lines: ["Vou consultar o acervo IMOB com este recorte."],
-          ctas: sources.map((source, index) => ({ id: source.id, label: source.label, href: source.href, kind: index === 0 ? ("primary" as const) : ("neutral" as const) })).slice(0, 2),
+    try {
+      const knowledgeContext = resolveImobKnowledgeContext({ message });
+      const safeGuidance = knowledgeContext.governance.safeGuidance;
+      return finalize({
+        mode: "search_knowledge",
+        action: "realestate.search_knowledge_base",
+        threadLabel: "Busca de imóveis",
+        conversationState: { ...nextThreadState, mode: "search_knowledge" },
+        knowledgeContext,
+        knowledgeRequest: {
+          query: message,
+          filters: { region, segment, sourceTypes },
         },
-        suggestedNextAction: "Refinar tipo documental, cidade, operação ou etapa da jornada.",
-      },
-    });
+        presentation: {
+          text: safeGuidance ?? `Pesquisar documentos do acervo IMOB em ${region} para ${segment}.`,
+          card: {
+            title: "Busca documental IMOB",
+            lines: safeGuidance
+              ? [
+                  "Vou consultar o acervo IMOB sem retornar decisão automática proibida.",
+                  "Esse tema fica marcado para revisão humana no contexto governado.",
+                ]
+              : ["Vou consultar o acervo IMOB com este recorte."],
+            ctas: sources.map((source, index) => ({ id: source.id, label: source.label, href: source.href, kind: index === 0 ? ("primary" as const) : ("neutral" as const) })).slice(0, 2),
+          },
+          suggestedNextAction: safeGuidance
+            ? "Usar o acervo como apoio documental e encaminhar a decisão sensível para revisão humana."
+            : "Refinar tipo documental, cidade, operação ou etapa da jornada.",
+        },
+      });
+    } catch (error) {
+      if (error instanceof ImobKnowledgeEngineError) {
+        return finalize({
+          mode: "blocked",
+          action: "realestate.search_knowledge_base",
+          threadLabel: "Busca de imóveis",
+          conversationState: { ...nextThreadState, mode: "blocked" },
+          presentation: {
+            text: "A IMOB Knowledge Base não está disponível neste momento. Vou falhar fechado em vez de inventar orientação documental.",
+            suggestedNextAction: "Validar manifesto/entries da KB IMOB antes de retomar a busca documental.",
+            metadata: {
+              reasonCode: error.code,
+              knowledgeContextError: error.details ?? null,
+            } as ImobPresentationMetadata,
+          },
+        });
+      }
+      throw error;
+    }
   }
 
   if (genericOperationalGuidanceIntent) {
