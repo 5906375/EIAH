@@ -84,8 +84,10 @@ Esta ADR nao redefine layout, componentes visuais nem responsividade das superfi
 
 Documentacao:
 - [agent-chat-runtime.md](./agent-chat-runtime.md)
-- [vertical-context-imob.md](./vertical-context-imob.md)
-- [imob-dedicated-chat-runtime.md](./imob-dedicated-chat-runtime.md)
+
+Backlog documental futuro:
+- `vertical-context-imob.md`
+- `imob-dedicated-chat-runtime.md`
 
 Implementacao atual:
 - `apps/api/src/services/imob/crm/imobCrmCaseContext.ts`
