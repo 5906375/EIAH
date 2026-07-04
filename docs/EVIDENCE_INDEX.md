@@ -692,6 +692,12 @@ EVIDÊNCIA: `apps/api/src/index.ts:97-103` + `apps/workers/run-worker/src/index.
 | --- | --- | --- |
 | Extração documental do design system real (tokens, tipografia, componentes, superfícies-herói) | `ops/evidence/latest/brand-kit-extraction-2026-07-02.md` | Prova por leitura real de `apps/web/tailwind.config.ts`, `apps/web/src/styles.css` e componentes de UI (RunViewer, GovernancePanel, ImobCommandCenter, ImobApprovalContextCard, ThreadPanel, VerticalSelectorBar, WorkbenchPanelCard) que toda cor/fonte/token do brand kit cita `arquivo:linha` real; confirma ausencia de assets estaticos do frontend (zero logo/favicon/icone) e de biblioteca de icones; localiza as 7 superficies-heroi pedidas com rota real; nenhum codigo de produto foi alterado (somente leitura). Status `parcial` — extracao e localizacao evidenciadas; pecas finais de campanha permanecem `proposta` ate producao/aprovacao do CEO. |
 
+## Fase 3 — dividas documentadas closure (2026-07-02)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Consolidacao conservadora dos PRs 6-9 da Fase 3 | `ops/evidence/latest/fase-3-dividas-documentadas-closure-2026-07-02.md` | Prova por releitura real das evidencias, documentos e gates das frentes F-07, F-08, F-09 e F-10 que a Fase 3 evidenciou documentacao, checks e guardrails leves, mas nao autoriza declarar compatibilidade multi-versao completa, entrypoint unico engine-side, limpeza total do legado tracked ignored ou white-label runtime governado como totalmente fechados. |
+
 ## IMOB Knowledge Base v1 (2026-07-02)
 
 | Assunto | Arquivo | O que prova |
