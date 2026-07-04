@@ -264,3 +264,52 @@ Saída: exit code 0, sem erros.
 - A falha real de CI expôs que a evidência original (`redis-fail-closed-core-barrel-2026-07-02.md`, seção anterior) estava **incompleta**: o import do barrel `@eiah/core` sem env Redis só ficou de fato seguro depois desta correção adicional em `runAtivoUniversalQueue.ts`/`runAtivoUniversalDLQ.ts`.
 - Com o `createLazyQueue`/`Proxy`, o barrel raiz agora importa sem instanciar Redis e sem lançar `REDIS_URL_REQUIRED`, preservando fail-closed no uso real.
 - Este follow-up não fecha nem declara `DONE` para F4/F5/economy, nem para qualquer frente fora de Redis fail-closed core. As falhas de `DATABASE_URL` no agregado de `packages/core` permanecem como limitação de sandbox documentada, não como pendência deste PR.
+
+## Follow-up 2 — incompatibilidade de runtime Node no CI (2026-07-04)
+
+### Falha observada
+
+A CI do PR falhou no passo `pnpm check:redis-fail-closed` com:
+
+```text
+node --experimental-strip-types scripts/checkRedisFailClosed.ts
+node: bad option: --experimental-strip-types
+ELIFECYCLE Command failed with exit code 9
+```
+
+### Causa
+
+Incompatibilidade de runtime: a versão do Node usada pelo GitHub Actions não aceita a flag `--experimental-strip-types`, usada no script `check:redis-fail-closed` do `package.json`. Não é um problema de lógica do gate.
+
+### Correção
+
+- `package.json`: `check:redis-fail-closed` passou de `node --experimental-strip-types scripts/checkRedisFailClosed.ts` para `node --import tsx scripts/checkRedisFailClosed.ts`, seguindo o mesmo padrão já usado por outros gates do repositório (`check:tracked-ignored-files`, `check:rbac-fail-closed`, `check:guardrail-ledger-noop`, entre outros).
+- Nenhuma linha de lógica do gate (`scripts/checkRedisFailClosed.ts`) foi alterada.
+
+### Saída real após o ajuste
+
+```bash
+pnpm check:redis-fail-closed
+```
+
+```text
+{
+  "ok": true,
+  "check": "check:redis-fail-closed",
+  "scannedRoots": ["packages", "apps"],
+  "scannedFiles": 718,
+  "summary": { "localhostFallbacksDetected": 0, "topLevelRedisConstructorsDetected": 0 }
+}
+```
+
+```bash
+pnpm --filter @eiah/core typecheck
+```
+
+Saída: exit code 0, sem erros.
+
+### Conclusão
+
+- Falha era exclusivamente de compatibilidade de runtime Node no CI, não de lógica Redis.
+- Nenhuma lógica Redis foi alterada neste follow-up.
+- DONE global não é declarado.
