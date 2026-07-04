@@ -20,6 +20,7 @@
     "check:manifest-integrity": "node --experimental-strip-types scripts/checkManifestIntegrity.ts",
     "check:billing-webhook-evidence": "node scripts/ci/check_billing_webhook_evidence.cjs",
     "check:interop-contract-matrix": "node --experimental-strip-types scripts/checkInteropContractsMatrix.ts",
+    "check:agent-protocol-compat-matrix": "node --import tsx scripts/checkAgentProtocolCompatibilityMatrix.ts",
     "check:interop-spec-governance": "node --experimental-strip-types scripts/checkInteropSpecGovernance.ts",
     "check:p2-audit-interop": "node --experimental-strip-types scripts/checkP2AuditInterop.ts",
     "generate:p2-interop-evidence": "node --experimental-strip-types scripts/generateP2InteropEvidence.ts",
