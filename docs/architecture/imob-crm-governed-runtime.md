@@ -54,7 +54,7 @@ Responsabilidades:
 ### 2. Capability Registry
 
 O `IMOB_CRM` possui um registry governado de capabilities em:
-- [imobCapabilityRegistry.ts](/home/jusall/projects/EIAH_BUILDER/apps/api/src/services/imob/imobCapabilityRegistry.ts)
+- [imobCapabilityRegistry.ts](../../apps/api/src/services/imob/imobCapabilityRegistry.ts)
 
 Cada capability pode declarar:
 - `capabilityId`
@@ -290,15 +290,15 @@ Surface mais explícita para o `IMOB_CRM`, descrevendo:
 
 ### Já materializado
 
-- intent governada centralizada em [imobGovernedIntent.ts](/home/jusall/projects/EIAH_BUILDER/apps/api/src/services/imob/imobGovernedIntent.ts)
-- contexto operacional governado em [imobCrmGovernedOperationalContext.ts](/home/jusall/projects/EIAH_BUILDER/apps/api/src/services/imob/crm/imobCrmGovernedOperationalContext.ts)
-- workflow classifier reutilizado pelo turn engine em [imobCrmWorkflowMachine.ts](/home/jusall/projects/EIAH_BUILDER/apps/api/src/services/imob/crm/imobCrmWorkflowMachine.ts)
-- business read emitindo blocos estruturados e CTAs case-aware em [imobCrmBusinessRead.ts](/home/jusall/projects/EIAH_BUILDER/apps/api/src/services/imob/crm/imobCrmBusinessRead.ts)
-- snapshot frontend marcando runtime render-only governado em [chatPresentationSnapshot.ts](/home/jusall/projects/EIAH_BUILDER/apps/web/src/components/agents/chatPresentationSnapshot.ts)
+- intent governada centralizada em [imobGovernedIntent.ts](../../apps/api/src/services/imob/imobGovernedIntent.ts)
+- contexto operacional governado em [imobCrmGovernedOperationalContext.ts](../../apps/api/src/services/imob/crm/imobCrmGovernedOperationalContext.ts)
+- workflow classifier reutilizado pelo turn engine em [imobCrmWorkflowMachine.ts](../../apps/api/src/services/imob/crm/imobCrmWorkflowMachine.ts)
+- business read emitindo blocos estruturados e CTAs case-aware em [imobCrmBusinessRead.ts](../../apps/api/src/services/imob/crm/imobCrmBusinessRead.ts)
+- snapshot frontend marcando runtime render-only governado em [chatPresentationSnapshot.ts](../../apps/web/src/components/agents/chatPresentationSnapshot.ts)
 
 ### Ainda em sunset / não remover agora
 
-- [imobCrmResolver.ts](/home/jusall/projects/EIAH_BUILDER/apps/api/src/services/imob/crm/imobCrmResolver.ts) continua como facade de compatibilidade.
+- [imobCrmResolver.ts](../../apps/api/src/services/imob/crm/imobCrmResolver.ts) continua como facade de compatibilidade.
 
 Critério de remoção:
 - fallback legado zerado ou restrito a cenários arquivados;

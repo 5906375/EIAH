@@ -431,7 +431,7 @@ Essa diretriz está bem implementada quando:
 ## Artefatos Operacionais
 
 Os artefatos operacionais que complementam esta diretriz são:
-- [presentation-snapshot-v1.md](/home/jusall/projects/EIAH_BUILDER/docs/architecture/presentation-snapshot-v1.md)
+- [presentation-snapshot-v1.md](./presentation-snapshot-v1.md)
 
 Backlog documental futuro:
 - `chat-drift-backlog.md`

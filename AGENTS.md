@@ -38,7 +38,7 @@ Documentação completa:
 - [docs/architecture/agent-chat-runtime.md](./docs/architecture/agent-chat-runtime.md)
 
 Artefatos operacionais:
-- [presentation-snapshot-v1.md](/home/jusall/projects/EIAH_BUILDER/docs/architecture/presentation-snapshot-v1.md)
+- [presentation-snapshot-v1.md](./docs/architecture/presentation-snapshot-v1.md)
 
 Backlog documental futuro:
 - `chat-drift-backlog.md`
