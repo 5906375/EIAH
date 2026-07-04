@@ -686,6 +686,12 @@ EVIDÊNCIA: `apps/api/src/index.ts:97-103` + `apps/workers/run-worker/src/index.
 | --- | --- | --- |
 | Formalizacao conservadora do gap de white-label runtime | `ops/evidence/latest/white-label-runtime-gap-2026-07-02.md` | Prova por leitura real de docs, rotas, middlewares, contratos e superfices web que o repositorio ja possui branding de sessao, isolamento tenant/workspace, entitlement fail-closed e vocabulario de white-label em billing, mas ainda nao possui `partnerId` em runtime, partner/domain routing verificavel, segregacao por parceiro nem gates de nao-regressao suficientes para declarar white-label runtime governado como fechado. |
 
+## Brand Kit de Marketing — Extração de Design System (2026-07-02)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Extração documental do design system real (tokens, tipografia, componentes, superfícies-herói) | `ops/evidence/latest/brand-kit-extraction-2026-07-02.md` | Prova por leitura real de `apps/web/tailwind.config.ts`, `apps/web/src/styles.css` e componentes de UI (RunViewer, GovernancePanel, ImobCommandCenter, ImobApprovalContextCard, ThreadPanel, VerticalSelectorBar, WorkbenchPanelCard) que toda cor/fonte/token do brand kit cita `arquivo:linha` real; confirma ausencia de assets estaticos do frontend (zero logo/favicon/icone) e de biblioteca de icones; localiza as 7 superficies-heroi pedidas com rota real; nenhum codigo de produto foi alterado (somente leitura). Status `parcial` — extracao e localizacao evidenciadas; pecas finais de campanha permanecem `proposta` ate producao/aprovacao do CEO. |
+
 ## IMOB Knowledge Base v1 (2026-07-02)
 
 | Assunto | Arquivo | O que prova |
