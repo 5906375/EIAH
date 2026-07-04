@@ -674,6 +674,12 @@ EVIDÊNCIA: `apps/api/src/index.ts:97-103` + `apps/workers/run-worker/src/index.
 | --- | --- | --- |
 | Regeneracao real do artefato P2 HIGH | `ops/evidence/latest/p2-high-global-coverage-regeneration-2026-07-02.md` | Prova por execucao real que `ops/evidence/latest/p2-high-global-coverage.json` passou a ser gerado por script, com `generatedAt` renovado, `coveredActions` alinhadas ao inventario HIGH atual e `uncoveredActions=[]`; e que os gates `check:p2-high-global-coverage` e `check:p2-evidence-recency` passam apos a regeneracao. |
 
+## Audit criticality by content (2026-07-02)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Gate `audit:criticality` validando conteudo minimo por arquivo critico | `ops/evidence/latest/audit-criticality-content-2026-07-02.md` | Prova por execucao real que o gate `audit:criticality` continua validando existencia e passou a validar tamanho minimo e marcadores estaveis por arquivo critico, falhando fechado para arquivo vazio, truncado ou sem sinais essenciais de approval, reconciliacao, roadmap, lease e Redis fail-closed. |
+
 ## IMOB Knowledge Base v1 (2026-07-02)
 
 | Assunto | Arquivo | O que prova |
