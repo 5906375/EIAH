@@ -26,7 +26,7 @@ export function ImobWorkbenchShell({
     productTagline: "Experiência SaaS clara para a vertical IMOB",
     backLabel: "Voltar",
     verticalLabel: "IMOB",
-    statusLabel: "Piloto controlado",
+    statusLabel: "Contexto IMOB",
     panelToggleLabel: "Resumo do intake",
   } as const;
 

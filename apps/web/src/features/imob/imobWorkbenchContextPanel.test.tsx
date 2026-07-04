@@ -151,9 +151,9 @@ describe("ImobWorkbenchContextPanel", () => {
     assert.doesNotMatch(html, /[^\s@]+@[^\s@]+\.[^\s@]+/);
   });
 
-  it("shows pilot badge and panel header", () => {
+  it("shows neutral IMOB context badge and panel header", () => {
     const html = renderPanel("ready");
-    assert.match(html, /Piloto controlado/);
+    assert.match(html, /Contexto IMOB/);
     assert.match(html, /Resumo do intake/);
   });
 });
