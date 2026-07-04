@@ -139,6 +139,33 @@ function hashPayload(value: unknown) {
   return crypto.createHash("sha256").update(JSON.stringify(value ?? {})).digest("hex");
 }
 
+export function normalizeWebhookSignatureHeader(signature: string) {
+  const normalized = signature.includes("=") ? signature.split("=").pop() ?? "" : signature;
+  return normalized.trim();
+}
+
+function isHexSignature(value: string) {
+  return value.length > 0 && value.length % 2 === 0 && /^[0-9a-f]+$/i.test(value);
+}
+
+export function verifyWebhookSignatureHeader(signature: string, expected: string) {
+  const normalized = normalizeWebhookSignatureHeader(signature);
+  if (!isHexSignature(normalized) || !isHexSignature(expected)) {
+    return { normalized, matches: false };
+  }
+
+  const providedBuffer = Buffer.from(normalized, "hex");
+  const expectedBuffer = Buffer.from(expected, "hex");
+  if (providedBuffer.length !== expectedBuffer.length) {
+    return { normalized, matches: false };
+  }
+
+  return {
+    normalized,
+    matches: crypto.timingSafeEqual(providedBuffer, expectedBuffer),
+  };
+}
+
 billingRouter.post("/webhooks/billing/:provider?", async (req, res) => {
   const secret = process.env.BILLING_WEBHOOK_SECRET ?? "";
   if (!secret) {
@@ -222,8 +249,8 @@ billingRouter.post("/webhooks/billing/:provider?", async (req, res) => {
     amountCents,
   });
   const expected = computeWebhookSignature(secret, signatureBase);
-  const normalized = signature.includes("=") ? signature.split("=").pop() ?? "" : signature;
-  if (normalized.trim() !== expected) {
+  const { normalized, matches } = verifyWebhookSignatureHeader(signature, expected);
+  if (!matches) {
     return res.status(401).json({
       ok: false,
       error: { code: "BILLING_WEBHOOK_INVALID_SIGNATURE", message: "Invalid webhook signature" },

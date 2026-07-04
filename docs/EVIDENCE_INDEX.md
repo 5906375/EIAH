@@ -645,3 +645,9 @@ EVIDÊNCIA: `apps/api/src/index.ts:97-103` + `apps/workers/run-worker/src/index.
 | Assunto | Arquivo | O que prova |
 | --- | --- | --- |
 | Gate `duplicateSideEffects=0` executado contra Redis real local | `ops/evidence/latest/p0-b2-redis-ownership-runtime-2026-07-01.md` | Prova por execucao real de `EIAH_RUN_REDIS_REAL_TESTS=true REDIS_URL=redis://127.0.0.1:6379 pnpm test:worker-ownership-lease` contra container `eiah-redis` local que: duplo opt-in (`EIAH_RUN_REDIS_REAL_TESTS=true` + `REDIS_URL`) ativa o teste; baseline sem flag skipa corretamente; 10/10 testes passam; `duplicateSideEffects=0` executa (nao skipa); `acquiredCount === 1`; `sideEffectCount === 1`; `duplicateSideEffects === 0`; SET NX PX Lua CAS garante exclusao mutua real; `check:worker-topology` ok; `@eiah/core typecheck` limpo. Classificacao: local-runtime evidence — nao staging/prod. P0-B permanece parcial ate decisao de politica ou evidencia de staging. |
+
+## Billing webhook signature constant-time (2026-07-02)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Evidencia minima do gate HTTP e do helper de assinatura do webhook billing | `ops/evidence/latest/billing-webhook-signature-2026-07-02.md` | Prova por execucao real que o webhook billing aceita assinatura valida tanto em valor cru quanto em `sha256=<assinatura>`, rejeita assinatura invalida/malformada/com tamanho divergente sem `throw`, e usa verificacao constant-time com `crypto.timingSafeEqual` no caminho real da rota. |
