@@ -151,3 +151,116 @@ Process exited with code 0
 
 - esta evidência complementa `ops/evidence/latest/redis-fail-closed-full-coverage-2026-07-02.md`;
 - o foco aqui é especificamente a remoção do side effect residual do barrel raiz `@eiah/core`.
+
+## Follow-up — falha real de CI descoberta após abertura do PR (2026-07-04)
+
+### Falha observada
+
+A CI do PR `pr-redis-01-fail-closed-core` (base `fb11599`) falhou nos dois testes de barrel:
+
+```text
+not ok: importing the core barrel without Redis env does not instantiate Redis
+not ok: importing the core barrel without Redis env does not throw after lazy queue connection
+connection:resolveRedisUrl: REDIS_URL_REQUIRED
+```
+
+Stack apontava para `packages/core/src/queue/runAtivoUniversalQueue.ts:17`.
+
+### Causa raiz
+
+A correção original deste arquivo (reordenar `export * from "./queue/connection"` no barrel) **não era suficiente**: `runAtivoUniversalQueue.ts` e `runAtivoUniversalDLQ.ts` instanciavam `new Queue(...)` diretamente no top-level do módulo, passando `connection: getRedisConnection()`. Como módulos reexportados por um barrel ES module executam seu código de top-level no momento do import — independentemente da ordem textual do export no arquivo barrel — importar `@eiah/core` sem `REDIS_URL`/variáveis equivalentes continuava chamando `getRedisConnection()` e lançando `REDIS_URL_REQUIRED` antes mesmo de qualquer uso real da fila.
+
+### Correção aplicada
+
+- `packages/core/src/queue/runAtivoUniversalQueue.ts`: adicionado `createLazyQueue<T>(factory)`, um `Proxy` que só invoca a `factory()` (e portanto `getRedisConnection()`) no primeiro acesso real a uma propriedade/método do objeto retornado (ex.: `.add(...)`). `runAtivoUniversalQueue` passou a ser `createLazyQueue(() => new Queue(...))` em vez de `new Queue(...)` direto.
+- `packages/core/src/queue/runAtivoUniversalDLQ.ts`: reutiliza o mesmo `createLazyQueue` importado de `runAtivoUniversalQueue.ts`; `runAtivoUniversalDLQ` segue o mesmo padrão lazy.
+- Nenhum consumidor externo precisou mudar: `apps/workers/maintenance-worker/src/jobs/runAtivoUniversalJob.ts` continua chamando `runAtivoUniversalDLQ.add(...)` normalmente, pois o Proxy delega métodos com `this` corretamente vinculado ao objeto real.
+- Nenhum fallback localhost/`REDIS_HOST`/`REDIS_PORT` foi reintroduzido; nenhum no-op silencioso foi introduzido — o uso real da fila (`.add(...)`) continua lançando `REDIS_URL_REQUIRED` quando a env Redis está ausente.
+
+### Saída real — teste focado do publisher (reexecução pós-fix)
+
+Comando:
+
+```bash
+node --import tsx --test --test-reporter=spec --test-force-exit packages/core/src/events/redisPublisher.test.ts
+```
+
+Saída:
+
+```text
+✔ importing the publisher module without Redis env does not instantiate Redis
+✔ importing the core barrel without Redis env does not instantiate Redis
+✔ publishEvent without Redis env fails closed
+✔ publishEvent uses explicit RUN_EVENTS_REDIS_URL before REDIS_URL
+✔ closeRedisPublisher resets the singleton
+ℹ tests 5
+ℹ pass 5
+ℹ fail 0
+```
+
+### Saída real — teste focado da connection (reexecução pós-fix)
+
+Comando:
+
+```bash
+node --import tsx --test --test-reporter=spec --test-force-exit packages/core/src/queue/connection.test.ts
+```
+
+Saída:
+
+```text
+✔ importing the queue connection module without Redis env does not throw
+✔ importing the core barrel without Redis env does not throw after lazy queue connection
+✔ using getRedisConnection without Redis env fails closed
+✔ using the lazy connection facade without Redis env fails closed on property access
+✔ getRedisConnection uses explicit Redis env when configured
+ℹ tests 5
+ℹ pass 5
+ℹ fail 0
+```
+
+### Saída real — agregado packages/core (reexecução pós-fix)
+
+Comando:
+
+```bash
+TEST_FILES="$(find packages/core/src -name '*.test.ts' -type f)" && node --import tsx --test --test-force-exit $TEST_FILES
+```
+
+Resultado: `66 tests, 61 pass, 4 fail, 1 skipped`. Os dois `not ok` de barrel Redis **desapareceram**. As 4 falhas remanescentes (`highGlobalCoverage.e2e.test.ts`, `memory.jobs.test.ts`, `postgresVectorStore.test.ts`, `rbac.fail-closed.test.ts`) são pré-existentes e **não relacionadas a Redis** — todas falham por `Error: DATABASE_URL não definido`, dependência de Postgres ausente neste sandbox. Essa limitação já é conhecida de evidências anteriores (mesma classe de bloqueio ambiental documentada nos PRs de IMOB artifact capabilities e billing webhook signature).
+
+### Saída real — gate Redis fail-closed (reexecução pós-fix)
+
+Comando:
+
+```bash
+pnpm check:redis-fail-closed
+```
+
+Saída:
+
+```text
+{
+  "ok": true,
+  "check": "check:redis-fail-closed",
+  "scannedRoots": ["packages", "apps"],
+  "scannedFiles": 718,
+  "summary": { "localhostFallbacksDetected": 0, "topLevelRedisConstructorsDetected": 0 }
+}
+```
+
+### Saída real — typecheck do core (reexecução pós-fix)
+
+Comando:
+
+```bash
+pnpm --filter @eiah/core typecheck
+```
+
+Saída: exit code 0, sem erros.
+
+### Conclusão do follow-up
+
+- A falha real de CI expôs que a evidência original (`redis-fail-closed-core-barrel-2026-07-02.md`, seção anterior) estava **incompleta**: o import do barrel `@eiah/core` sem env Redis só ficou de fato seguro depois desta correção adicional em `runAtivoUniversalQueue.ts`/`runAtivoUniversalDLQ.ts`.
+- Com o `createLazyQueue`/`Proxy`, o barrel raiz agora importa sem instanciar Redis e sem lançar `REDIS_URL_REQUIRED`, preservando fail-closed no uso real.
+- Este follow-up não fecha nem declara `DONE` para F4/F5/economy, nem para qualquer frente fora de Redis fail-closed core. As falhas de `DATABASE_URL` no agregado de `packages/core` permanecem como limitação de sandbox documentada, não como pendência deste PR.

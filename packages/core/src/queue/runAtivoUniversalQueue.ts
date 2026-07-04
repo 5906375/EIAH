@@ -11,11 +11,31 @@ export type RunAtivoUniversalJobPayload = {
 
 export const RUN_ATIVO_UNIVERSAL_QUEUE_NAME = "run-ativo-universal";
 
-export const runAtivoUniversalQueue = new Queue<RunAtivoUniversalJobPayload>(
-  RUN_ATIVO_UNIVERSAL_QUEUE_NAME,
-  {
-    connection: getRedisConnection(),
+export function createLazyQueue<T extends object>(factory: () => T): T {
+  let instance: T | null = null;
+  function ensure(): T {
+    if (!instance) {
+      instance = factory();
+    }
+    return instance;
   }
+
+  return new Proxy({} as T, {
+    get(_target, prop, receiver) {
+      const value = Reflect.get(ensure() as object, prop, receiver);
+      return typeof value === "function" ? value.bind(ensure()) : value;
+    },
+    set(_target, prop, value) {
+      return Reflect.set(ensure() as object, prop, value);
+    },
+  });
+}
+
+// Lazy: getRedisConnection() só é chamado no primeiro uso real da fila, não no import.
+export const runAtivoUniversalQueue = createLazyQueue(() =>
+  new Queue<RunAtivoUniversalJobPayload>(RUN_ATIVO_UNIVERSAL_QUEUE_NAME, {
+    connection: getRedisConnection(),
+  })
 );
 
 export async function enqueueRunAtivoUniversal(
