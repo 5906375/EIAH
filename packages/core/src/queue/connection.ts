@@ -2,6 +2,14 @@ import type { ConnectionOptions } from "bullmq";
 import { requireRedisUrl } from "../config/redis";
 
 let cachedConnection: ConnectionOptions | null = null;
+type LazyConnectionField =
+  | "host"
+  | "port"
+  | "username"
+  | "password"
+  | "db"
+  | "tls"
+  | "connectionName";
 
 function parseRedisUrl(url: string): ConnectionOptions {
   try {
@@ -46,5 +54,36 @@ export function getRedisConnection(): ConnectionOptions {
   return cachedConnection;
 }
 
-// 👇 compatibilidade com workers existentes
-export const connection = getRedisConnection();
+function defineLazyConnectionProperty(
+  target: Record<string, unknown>,
+  key: LazyConnectionField,
+) {
+  Object.defineProperty(target, key, {
+    enumerable: true,
+    configurable: false,
+    get() {
+      return (getRedisConnection() as Record<string, unknown>)[key];
+    },
+  });
+}
+
+function createLazyConnectionOptions(): ConnectionOptions {
+  const lazyConnection = {} as Record<string, unknown>;
+
+  for (const key of [
+    "host",
+    "port",
+    "username",
+    "password",
+    "db",
+    "tls",
+    "connectionName",
+  ] as const satisfies readonly LazyConnectionField[]) {
+    defineLazyConnectionProperty(lazyConnection, key);
+  }
+
+  return lazyConnection as ConnectionOptions;
+}
+
+// Compatibilidade com workers existentes sem side effect de import.
+export const connection = createLazyConnectionOptions();

@@ -84,6 +84,9 @@ jobs:
       - name: Check RBAC fail-closed anti-regression gate
         run: pnpm check:rbac-fail-closed
 
+      - name: Check Redis fail-closed anti-regression gate
+        run: pnpm check:redis-fail-closed
+
       - name: Check GuardrailLedger anti-noop gate
         run: pnpm check:guardrail-ledger-noop
 

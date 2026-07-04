@@ -1,10 +1,10 @@
 import { Worker } from "bullmq";
+import { getRedisConnection } from "@eiah/core";
+import { runAtivoUniversalDLQ } from "@eiah/core/queue/runAtivoUniversalDLQ";
 import {
-  getRedisConnection,
-  runAtivoUniversalDLQ,
   RUN_ATIVO_UNIVERSAL_QUEUE_NAME,
   type RunAtivoUniversalJobPayload,
-} from "@eiah/core";
+} from "@eiah/core/queue/runAtivoUniversalQueue";
 import { runAtivoUniversalAgentFromRunId } from "../../../../api/src/services/runAtivoUniversalAgent";
 
 const connection = getRedisConnection();

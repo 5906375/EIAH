@@ -1,20 +1,40 @@
 import Redis from "ioredis";
+import { requireRedisUrl } from "../config/redis";
 
 /**
- * Cria cliente Redis seguro, evitando os overloads inválidos do construtor.
- * - Se REDIS_URL ou RUN_EVENTS_REDIS_URL existir → usa como string direta.
- * - Caso contrário → usa localhost:6379 com opções explícitas.
+ * Publisher lazy/fail-closed:
+ * - preserva precedência RUN_EVENTS_REDIS_URL ?? REDIS_URL;
+ * - não instancia Redis em top-level;
+ * - falha fechado ao publicar se a URL não estiver configurada.
  */
-const redisUrl = process.env.RUN_EVENTS_REDIS_URL ?? process.env.REDIS_URL;
+type RedisPublisherClient = Pick<Redis, "publish" | "quit" | "disconnect">;
+type RedisPublisherFactory = (url: string) => RedisPublisherClient;
 
-export const redisPublisher = redisUrl
-  ? new Redis(redisUrl) // Caminho 1: formato redis://...
-  : new Redis({
-      host: process.env.REDIS_HOST ?? "127.0.0.1",
-      port: Number(process.env.REDIS_PORT ?? 6379),
-      maxRetriesPerRequest: 3,
-      enableReadyCheck: true,
-    });
+let redisPublisher: RedisPublisherClient | null = null;
+let redisPublisherFactory: RedisPublisherFactory = (url) => new Redis(url);
+
+function resolveRedisPublisherUrl(): string {
+  return requireRedisUrl(
+    process.env.RUN_EVENTS_REDIS_URL ?? process.env.REDIS_URL,
+    "redisPublisher"
+  );
+}
+
+export function getRedisPublisher(): RedisPublisherClient {
+  if (!redisPublisher) {
+    redisPublisher = redisPublisherFactory(resolveRedisPublisherUrl());
+  }
+  return redisPublisher;
+}
+
+export function setRedisPublisherFactoryForTests(factory: RedisPublisherFactory | null): void {
+  redisPublisherFactory = factory ?? ((url) => new Redis(url));
+  redisPublisher = null;
+}
+
+export function hasRedisPublisherInstanceForTests(): boolean {
+  return redisPublisher !== null;
+}
 
 /**
  * Publica eventos de forma tipada e segura.
@@ -26,7 +46,7 @@ export async function publishEvent(channel: string, payload: unknown) {
 
   try {
     const message = JSON.stringify(payload);
-    await redisPublisher.publish(channel, message);
+    await getRedisPublisher().publish(channel, message);
   } catch (err) {
     console.error("[RedisPublisher] Falha ao publicar evento:", err);
     throw err;
@@ -34,11 +54,18 @@ export async function publishEvent(channel: string, payload: unknown) {
 }
 
 export async function closeRedisPublisher() {
-  try {
-    await redisPublisher.quit();
-  } catch {
-    redisPublisher.disconnect();
+  if (!redisPublisher) {
     return;
   }
-  redisPublisher.disconnect();
+
+  const current = redisPublisher;
+  redisPublisher = null;
+
+  try {
+    await current.quit();
+  } catch {
+    current.disconnect();
+    return;
+  }
+  current.disconnect();
 }
