@@ -189,15 +189,23 @@ Verificação contínua:
 
 ## Artefatos Relacionados
 
-- [Drift backlog](./chat-drift-backlog.md)
-- [Chat launcher audit](./chat-launcher-audit.md)
 - [Presentation snapshot v1](./presentation-snapshot-v1.md)
-- [Vertical IMOB](./vertical-context-imob.md)
 - [IMOB CRM Governed Runtime](./imob-crm-governed-runtime.md)
-- [IMOB Dedicated Chat Runtime](./imob-dedicated-chat-runtime.md)
-- [Vertical LEGAL](./vertical-context-legal.md)
-- [Rollout e métricas](./chat-rollout-metrics.md)
-- [Attachment intake transversal](./agent-attachment-intake.md)
+- [Chat Runtime Entrypoint Debt](./chat-runtime-entrypoint-debt.md)
+
+Backlog documental futuro:
+- `chat-drift-backlog.md`
+- `chat-launcher-audit.md`
+- `vertical-context-imob.md`
+- `imob-dedicated-chat-runtime.md`
+- `vertical-context-legal.md`
+- `chat-rollout-metrics.md`
+- `agent-attachment-intake.md`
+
+Guardrails atuais do launcher/runtime:
+- `pnpm check:chat-launcher-render-only`
+- `pnpm check:chat-runtime-entrypoint-debt`
+- `pnpm check:presentation-snapshot-contract`
 
 ## Diretriz de UX da Conversa
 
@@ -423,9 +431,11 @@ Essa diretriz está bem implementada quando:
 ## Artefatos Operacionais
 
 Os artefatos operacionais que complementam esta diretriz são:
-- [chat-drift-backlog.md](/home/jusall/projects/EIAH_BUILDER/docs/architecture/chat-drift-backlog.md)
-- [chat-launcher-audit.md](/home/jusall/projects/EIAH_BUILDER/docs/architecture/chat-launcher-audit.md)
 - [presentation-snapshot-v1.md](/home/jusall/projects/EIAH_BUILDER/docs/architecture/presentation-snapshot-v1.md)
-- [vertical-context-imob.md](/home/jusall/projects/EIAH_BUILDER/docs/architecture/vertical-context-imob.md)
-- [vertical-context-legal.md](/home/jusall/projects/EIAH_BUILDER/docs/architecture/vertical-context-legal.md)
-- [chat-rollout-metrics.md](/home/jusall/projects/EIAH_BUILDER/docs/architecture/chat-rollout-metrics.md)
+
+Backlog documental futuro:
+- `chat-drift-backlog.md`
+- `chat-launcher-audit.md`
+- `vertical-context-imob.md`
+- `vertical-context-legal.md`
+- `chat-rollout-metrics.md`

@@ -161,6 +161,12 @@ jobs:
       - name: Check Public Product Taxonomy anti-drift
         run: pnpm check:public-product-taxonomy
 
+      - name: Check docs link integrity
+        run: pnpm check:docs-link-integrity
+
+      - name: Check tracked ignored files hygiene
+        run: pnpm check:tracked-ignored-files
+
       - name: Check IMOB Knowledge Base integrity
         run: pnpm check:imob-knowledge-base
 
@@ -270,6 +276,9 @@ jobs:
 
       - name: Run chat launcher render-only gate
         run: pnpm check:chat-launcher-render-only
+
+      - name: Run chat runtime entrypoint debt gate
+        run: pnpm check:chat-runtime-entrypoint-debt
 
       - name: Run presentation snapshot contract gate
         run: pnpm check:presentation-snapshot-contract
