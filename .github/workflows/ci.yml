@@ -509,6 +509,12 @@ jobs:
       - name: Check P2 high global coverage inventory
         run: pnpm check:p2-high-global-coverage
 
+      - name: Check P2 HIGH evidence recency
+        run: pnpm check:p2-evidence-recency
+
+        env:
+          P2_EVIDENCE_MAX_AGE_DAYS: 30
+
   p1_critical_chain:
     name: P1CriticalChain
     runs-on: ubuntu-latest

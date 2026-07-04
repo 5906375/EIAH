@@ -1,6 +1,6 @@
 {
   "ok": true,
-  "generatedAt": "2026-03-14T12:00:00Z",
+  "generatedAt": "2026-07-04T15:38:27.779Z",
   "scope": "p2-global-core-high-inventory-v1",
   "items": [
     {
@@ -8,35 +8,35 @@
       "source": "billing",
       "e2eCovered": true,
       "evidence": "packages/core/src/actions/__tests__/highGlobalCoverage.e2e.test.ts",
-      "notes": "Coberto no cenário e2e global de ações HIGH."
-    },
-    {
-      "action": "finance.registerPayable",
-      "source": "finance",
-      "e2eCovered": true,
-      "evidence": "packages/core/src/actions/__tests__/highGlobalCoverage.e2e.test.ts",
-      "notes": "Coberto no cenário e2e global de ações HIGH."
-    },
-    {
-      "action": "finance.reconcileBankTransactions",
-      "source": "finance",
-      "e2eCovered": true,
-      "evidence": "packages/core/src/actions/__tests__/highGlobalCoverage.e2e.test.ts",
-      "notes": "Coberto no cenário e2e global de ações HIGH."
+      "notes": "Coberto no cenario e2e global de acoes HIGH."
     },
     {
       "action": "finance.archivePaymentDocument",
       "source": "finance",
       "e2eCovered": true,
       "evidence": "packages/core/src/actions/__tests__/highGlobalCoverage.e2e.test.ts",
-      "notes": "Coberto no cenário e2e global de ações HIGH."
+      "notes": "Coberto no cenario e2e global de acoes HIGH."
+    },
+    {
+      "action": "finance.reconcileBankTransactions",
+      "source": "finance",
+      "e2eCovered": true,
+      "evidence": "packages/core/src/actions/__tests__/highGlobalCoverage.e2e.test.ts",
+      "notes": "Coberto no cenario e2e global de acoes HIGH."
+    },
+    {
+      "action": "finance.registerPayable",
+      "source": "finance",
+      "e2eCovered": true,
+      "evidence": "packages/core/src/actions/__tests__/highGlobalCoverage.e2e.test.ts",
+      "notes": "Coberto no cenario e2e global de acoes HIGH."
     },
     {
       "action": "notification.triggerPagerDuty",
       "source": "notifications",
       "e2eCovered": true,
       "evidence": "packages/core/src/actions/__tests__/highGlobalCoverage.e2e.test.ts",
-      "notes": "Coberto no cenário e2e global de ações HIGH."
+      "notes": "Coberto no cenario e2e global de acoes HIGH."
     }
   ]
 }

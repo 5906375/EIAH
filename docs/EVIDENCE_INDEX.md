@@ -662,6 +662,18 @@ EVIDÊNCIA: `apps/api/src/index.ts:97-103` + `apps/workers/run-worker/src/index.
 | --- | --- | --- |
 | Evidencia minima do gate HTTP e do helper de assinatura do webhook billing | `ops/evidence/latest/billing-webhook-signature-2026-07-02.md` | Prova por execucao real que o webhook billing aceita assinatura valida tanto em valor cru quanto em `sha256=<assinatura>`, rejeita assinatura invalida/malformada/com tamanho divergente sem `throw`, e usa verificacao constant-time com `crypto.timingSafeEqual` no caminho real da rota. |
 
+## P2 HIGH evidence recency (2026-07-02)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Gate de recencia da evidencia P2 HIGH | `ops/evidence/latest/p2-evidence-recency-2026-07-02.md` | Prova por execucao real que o inventario P2 HIGH atual continua coerente no check funcional, mas que o artefato `ops/evidence/latest/p2-high-global-coverage.json` esta stale para o limite de 30 dias; que o novo gate `check:p2-evidence-recency` falha fechado quando a evidencia envelhece; e que a CI agora bloqueia esse drift de recencia. |
+
+## P2 HIGH global coverage regeneration (2026-07-02)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Regeneracao real do artefato P2 HIGH | `ops/evidence/latest/p2-high-global-coverage-regeneration-2026-07-02.md` | Prova por execucao real que `ops/evidence/latest/p2-high-global-coverage.json` passou a ser gerado por script, com `generatedAt` renovado, `coveredActions` alinhadas ao inventario HIGH atual e `uncoveredActions=[]`; e que os gates `check:p2-high-global-coverage` e `check:p2-evidence-recency` passam apos a regeneracao. |
+
 ## IMOB Knowledge Base v1 (2026-07-02)
 
 | Assunto | Arquivo | O que prova |
