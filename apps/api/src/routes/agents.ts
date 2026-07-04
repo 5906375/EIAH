@@ -10,6 +10,7 @@ import { createRunRecord } from "../services/runs";
 import { emitRunEvent } from "../services/runEventEmitter";
 import { WorkspaceAgentAssignmentError } from "../services/workspaceAgentAssignments";
 import { evaluateTrustScore, trustScoreAllowsExecution } from "../services/trustScore";
+import { resolveRunBundleCapability } from "../services/imob/imobArtifactCapabilities";
 import {
   buildPolicyNotFoundResponseBody,
   PolicyNotFoundError,
@@ -658,6 +659,12 @@ agentsRouter.post("/agents/execute", async (req, res) => {
         txId: contract.txIdRequired ? "required" : null,
         ledgerEndpointTemplate: "/api/ledger/:txId",
         runBundlePath: `/api/runs/${run.id}/bundle`,
+        artifactCapabilities: {
+          canViewRunBundle: await resolveRunBundleCapability({
+            authContext: request.authContext,
+            runId: run.id,
+          }),
+        },
       },
     },
   });

@@ -94,6 +94,7 @@ import {
   resolveImobInstallationStatus,
   sendImobAccessDenied,
 } from "../services/imob/imobAccessGate";
+import { resolveRunBundleCapability } from "../services/imob/imobArtifactCapabilities";
 import { canWorkspaceOperateImobStage, hasWorkspacePermission, readWorkspaceResponsibleProfile } from "../services/workspaceResponsibility";
 import { buildImobCrmContinuityCoherenceReadModel } from "../services/imob/orchestrator/imobCrmContinuityCoherenceReadModel";
 import {
@@ -2475,6 +2476,10 @@ imobRouter.get("/command-center/blocked-runs", async (req, res) => {
   const reasonCode = typeof req.query.reasonCode === "string" ? req.query.reasonCode : null;
   const minAgeHours = Number(req.query.minAgeHours ?? "0");
   const limit = Math.max(1, Math.min(100, Number(req.query.limit ?? "50")));
+  const workspaceAccess = await readImobWorkspaceAccessProfile({ prisma, authContext });
+  if (!ensureImobWorkspacePermission(res, workspaceAccess.permissions, "imob.chat.use", "Sua função atual não pode usar o IMOB neste workspace.")) {
+    return;
+  }
 
   const runs = await prisma.run.findMany({
     where: {
@@ -2499,8 +2504,11 @@ imobRouter.get("/command-center/blocked-runs", async (req, res) => {
       })
     : [];
 
-  const items = scopedRuns
-    .map((run) => {
+  const items = await Promise.all(scopedRuns.map(async (run) => {
+      const canViewRunBundle = await resolveRunBundleCapability({
+        authContext,
+        runId: run.id,
+      });
       const reasons = events
         .filter((event) => event.runId === run.id)
         .flatMap((event) => extractReasonCodes(event.payload));
@@ -2518,9 +2526,12 @@ imobRouter.get("/command-center/blocked-runs", async (req, res) => {
           receiptPath: run.txId ? `/api/ledger/${encodeURIComponent(run.txId)}` : null,
           bundlePath: run.criticalHash ? `/api/runs/${encodeURIComponent(run.id)}/bundle` : null,
           verifyUrl: run.txId ? `/api/ledger/${encodeURIComponent(run.txId)}` : null,
+          artifactCapabilities: {
+            canViewRunBundle,
+          },
         },
       };
-    })
+    }))
     .filter((item) => item.ageHours >= (Number.isFinite(minAgeHours) ? minAgeHours : 0))
     .filter((item) => (reasonCode ? item.reasonCodes.includes(reasonCode) : true))
     .slice(0, limit);

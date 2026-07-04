@@ -233,29 +233,33 @@ export function ImobCommandCenter({
                             processo {formatRunId(item.processId)}
                           </p>
                         ) : null}
-                        <Link
-                          to={buildImobChatRoute(
-                            item.recommendedActions[0]
-                              ? {
-                                  conversationId,
-                                  caseId: item.caseId,
-                                  threadId: item.threadId,
-                                  status: item.status,
-                                  actionId: item.recommendedActions[0].id,
-                                  reasonCode: item.recommendedActions[0].reasonCode ?? null,
-                                  autoprompt: item.recommendedActions[0].inputHint ?? item.recommendedActions[0].label,
-                                }
-                              : {
-                                  conversationId,
-                                  caseId: item.caseId,
-                                  threadId: item.threadId,
-                                  autoprompt: "consultar caso",
-                                }
-                          )}
-                          className="text-[10px] text-accent underline-offset-2 hover:text-accent/80 hover:underline"
-                        >
-                          abrir no chat
-                        </Link>
+                        {item.artifactCapabilities?.canOpenChat?.allowed === true ? (
+                          <Link
+                            to={buildImobChatRoute(
+                              item.recommendedActions[0]
+                                ? {
+                                    conversationId,
+                                    caseId: item.caseId,
+                                    threadId: item.threadId,
+                                    status: item.status,
+                                    actionId: item.recommendedActions[0].id,
+                                    reasonCode: item.recommendedActions[0].reasonCode ?? null,
+                                    autoprompt: item.recommendedActions[0].inputHint ?? item.recommendedActions[0].label,
+                                  }
+                                : {
+                                    conversationId,
+                                    caseId: item.caseId,
+                                    threadId: item.threadId,
+                                    autoprompt: "consultar caso",
+                                  }
+                            )}
+                            className="text-[10px] text-accent underline-offset-2 hover:text-accent/80 hover:underline"
+                          >
+                            abrir no chat
+                          </Link>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground/60">chat indisponível</span>
+                        )}
                       </div>
                     </td>
                     {/* Comprovantes */}
@@ -266,20 +270,26 @@ export function ImobCommandCenter({
                             Dossiê
                           </p>
                           <div className="flex flex-wrap justify-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => void onDownloadArtifact("bundle", "pdf", item.processId)}
-                              className="rounded-full border border-white/15 bg-white/5 px-1.5 py-px text-[7px] font-medium uppercase tracking-[0.12em] text-foreground/90 transition hover:border-accent/40 hover:text-accent"
-                            >
-                              PDF
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => void onDownloadArtifact("bundle", "html", item.processId)}
-                              className="rounded-full border border-white/15 bg-white/5 px-1.5 py-px text-[7px] font-medium uppercase tracking-[0.12em] text-foreground/90 transition hover:border-accent/40 hover:text-accent"
-                            >
-                              HTML
-                            </button>
+                            {item.artifactCapabilities?.canViewCaseDossier?.allowed ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => void onDownloadArtifact("bundle", "pdf", item.processId)}
+                                  className="rounded-full border border-white/15 bg-white/5 px-1.5 py-px text-[7px] font-medium uppercase tracking-[0.12em] text-foreground/90 transition hover:border-accent/40 hover:text-accent"
+                                >
+                                  PDF
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void onDownloadArtifact("bundle", "html", item.processId)}
+                                  className="rounded-full border border-white/15 bg-white/5 px-1.5 py-px text-[7px] font-medium uppercase tracking-[0.12em] text-foreground/90 transition hover:border-accent/40 hover:text-accent"
+                                >
+                                  HTML
+                                </button>
+                              </>
+                            ) : (
+                              <span className="text-[8px] text-muted-foreground/60">bloqueado</span>
+                            )}
                           </div>
                         </div>
                         <div className="space-y-1.5 text-center">
@@ -287,20 +297,26 @@ export function ImobCommandCenter({
                             {receiptLabel}
                           </p>
                           <div className="flex flex-wrap justify-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => void onDownloadArtifact("receipt", "pdf", item.processId)}
-                              className="rounded-full border border-white/15 bg-white/5 px-1.5 py-px text-[7px] font-medium uppercase tracking-[0.12em] text-foreground/90 transition hover:border-accent/40 hover:text-accent"
-                            >
-                              PDF
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => void onDownloadArtifact("receipt", "html", item.processId)}
-                              className="rounded-full border border-white/15 bg-white/5 px-1.5 py-px text-[7px] font-medium uppercase tracking-[0.12em] text-foreground/90 transition hover:border-accent/40 hover:text-accent"
-                            >
-                              HTML
-                            </button>
+                            {item.artifactCapabilities?.canViewCaseReceipt?.allowed ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => void onDownloadArtifact("receipt", "pdf", item.processId)}
+                                  className="rounded-full border border-white/15 bg-white/5 px-1.5 py-px text-[7px] font-medium uppercase tracking-[0.12em] text-foreground/90 transition hover:border-accent/40 hover:text-accent"
+                                >
+                                  PDF
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => void onDownloadArtifact("receipt", "html", item.processId)}
+                                  className="rounded-full border border-white/15 bg-white/5 px-1.5 py-px text-[7px] font-medium uppercase tracking-[0.12em] text-foreground/90 transition hover:border-accent/40 hover:text-accent"
+                                >
+                                  HTML
+                                </button>
+                              </>
+                            ) : (
+                              <span className="text-[8px] text-muted-foreground/60">bloqueado</span>
+                            )}
                           </div>
                         </div>
                       </div>
