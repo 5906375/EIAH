@@ -442,6 +442,9 @@ jobs:
       - name: Check Agent Protocol Compatibility
         run: pnpm check:agent-protocol-compat
 
+      - name: Check Agent Protocol Compatibility Matrix
+        run: pnpm check:agent-protocol-compat-matrix
+
   p2_audit_interop:
     name: P2AuditInterop
     runs-on: ubuntu-latest
