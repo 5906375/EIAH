@@ -1,0 +1,38 @@
+{
+  "id": "imob.playbook.captacao-basics.v1",
+  "title": "Captação básica de imóvel",
+  "category": "playbooks",
+  "version": "v1",
+  "summary": "Fluxo inicial conservador para captação de imóvel sem precificar, negociar ou concluir decisão sensível automaticamente.",
+  "content": {
+    "body": "Use este playbook apenas para organizar a coleta inicial de contexto do imóvel, do proprietário e do objetivo comercial. O foco é registrar escopo, documentação pendente, região e próximos passos operacionais sem emitir avaliação final, recomendação jurídica, preço ou decisão automática.",
+    "checklist": [
+      "Confirmar objetivo da captação e tipo de operação",
+      "Registrar cidade, região e segmento do imóvel",
+      "Listar documentação inicial já disponível",
+      "Indicar pendências para revisão humana posterior"
+    ],
+    "notes": [
+      "Não usar este item para definir preço de anúncio",
+      "Negociação comercial depende de revisão humana"
+    ]
+  },
+  "source": {
+    "kind": "internal_doc",
+    "ref": "apps/api/src/services/imob/imobKnowledgeSearch.ts",
+    "authority": "primary"
+  },
+  "lastUpdated": "2026-07-02",
+  "riskLevel": "medium",
+  "requiresHumanReview": true,
+  "allowedScopes": ["tenant", "workspace"],
+  "disallowedUses": [
+    "automatic_price_decision",
+    "automatic_negotiation_decision",
+    "automatic_contract_finalization"
+  ],
+  "tags": ["imob", "captacao", "playbook", "operacao"],
+  "owners": ["IMOB"],
+  "status": "draft"
+}
+

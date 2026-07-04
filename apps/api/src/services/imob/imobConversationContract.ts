@@ -11,6 +11,8 @@ import type {
   ImobCapabilityStatus,
 } from "./imobCapabilityRegistry";
 
+import type { ImobKnowledgeContext } from "./imobKnowledgeEngine";
+
 export type ImobConversationMode = "consult" | "search" | "execute" | "search_knowledge" | "blocked";
 
 export type ImobBackingSpecialistKey =
@@ -1510,6 +1512,7 @@ export type ImobResolveTurnResponse = {
   caseContext?: ImobCaseContext;
   executionRequest?: ImobExecutionRequest;
   searchRequest?: ImobSearchInventoryRequest;
+  knowledgeContext?: ImobKnowledgeContext;
   knowledgeRequest?: {
     query: string;
     filters: {

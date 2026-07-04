@@ -1,0 +1,49 @@
+{
+  "kbId": "imob-knowledge-base",
+  "schemaVersion": "imob-kb-manifest.v1",
+  "version": "v1",
+  "title": "IMOB Knowledge Base v1",
+  "description": "Manifesto canonico da fundacao documental governada da IMOB Knowledge Base v1.",
+  "lastUpdated": "2026-07-02",
+  "entrySchemaRef": "knowledge/imob/schema/imob-knowledge-entry.v1.schema.json",
+  "categories": [
+    "playbooks",
+    "policies",
+    "templates",
+    "glossary",
+    "checklists"
+  ],
+  "entries": [
+    {
+      "id": "imob.playbook.captacao-basics.v1",
+      "path": "knowledge/imob/categories/playbooks/captacao-basics.v1.json",
+      "category": "playbooks",
+      "version": "v1"
+    },
+    {
+      "id": "imob.checklist.locacao-checklist.v1",
+      "path": "knowledge/imob/categories/checklists/locacao-checklist.v1.json",
+      "category": "checklists",
+      "version": "v1"
+    },
+    {
+      "id": "imob.template.briefing-visita.v1",
+      "path": "knowledge/imob/categories/templates/briefing-visita.v1.json",
+      "category": "templates",
+      "version": "v1"
+    },
+    {
+      "id": "imob.policy.atendimento-inicial.v1",
+      "path": "knowledge/imob/categories/policies/atendimento-inicial.v1.json",
+      "category": "policies",
+      "version": "v1"
+    },
+    {
+      "id": "imob.glossary.termos-operacionais.v1",
+      "path": "knowledge/imob/categories/glossary/termos-operacionais.v1.json",
+      "category": "glossary",
+      "version": "v1"
+    }
+  ]
+}
+

@@ -24,6 +24,8 @@
     "check:p2-audit-interop": "node --experimental-strip-types scripts/checkP2AuditInterop.ts",
     "generate:p2-interop-evidence": "node --experimental-strip-types scripts/generateP2InteropEvidence.ts",
     "check:p2-high-global-coverage": "node --experimental-strip-types scripts/checkP2HighGlobalCoverage.ts",
+    "check:imob-knowledge-base": "node --import tsx scripts/checkImobKnowledgeBase.ts",
+    "check:imob-knowledge-shadow": "node --import tsx scripts/runImobKnowledgeShadow.ts --out ops/evidence/latest/imob-knowledge-shadow-run-2026-07-02.json",
     "check:p1-critical-chain": "node --experimental-strip-types scripts/checkP1CriticalChain.ts",
     "check:p1-reconciliation-recurring": "node --experimental-strip-types scripts/checkP1ReconciliationRecurring.ts",
     "check:redis-fail-closed": "node --import tsx scripts/checkRedisFailClosed.ts",
