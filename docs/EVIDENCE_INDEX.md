@@ -680,6 +680,12 @@ EVIDÊNCIA: `apps/api/src/index.ts:97-103` + `apps/workers/run-worker/src/index.
 | --- | --- | --- |
 | Gate `audit:criticality` validando conteudo minimo por arquivo critico | `ops/evidence/latest/audit-criticality-content-2026-07-02.md` | Prova por execucao real que o gate `audit:criticality` continua validando existencia e passou a validar tamanho minimo e marcadores estaveis por arquivo critico, falhando fechado para arquivo vazio, truncado ou sem sinais essenciais de approval, reconciliacao, roadmap, lease e Redis fail-closed. |
 
+## White-label runtime gap (2026-07-02)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Formalizacao conservadora do gap de white-label runtime | `ops/evidence/latest/white-label-runtime-gap-2026-07-02.md` | Prova por leitura real de docs, rotas, middlewares, contratos e superfices web que o repositorio ja possui branding de sessao, isolamento tenant/workspace, entitlement fail-closed e vocabulario de white-label em billing, mas ainda nao possui `partnerId` em runtime, partner/domain routing verificavel, segregacao por parceiro nem gates de nao-regressao suficientes para declarar white-label runtime governado como fechado. |
+
 ## IMOB Knowledge Base v1 (2026-07-02)
 
 | Assunto | Arquivo | O que prova |
