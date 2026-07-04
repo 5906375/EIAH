@@ -105,10 +105,10 @@ export function ImobWorkbenchContextPanel({
           </div>
           <span
             className="mt-0.5 shrink-0 rounded-full border border-accent/30 bg-accent/12 px-1.5 py-0.5 text-[7px] uppercase tracking-[0.18em] text-accent shadow-lg shadow-black/20"
-            title="Vertical em rollout pilot — funcionalidades podem mudar conforme gates operacionais."
-            aria-label="Piloto controlado — Vertical em rollout pilot — funcionalidades podem mudar conforme gates operacionais."
+            title="Contexto da vertical IMOB com dados seguros do payload atual."
+            aria-label="Contexto IMOB — dados seguros do payload atual."
           >
-            Piloto controlado
+            Contexto IMOB
           </span>
         </div>
       </div>

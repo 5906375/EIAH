@@ -67,9 +67,14 @@ import {
 import { ThreadPanel } from "@/features/imob/ThreadPanel";
 import { ImobChatWidgets } from "@/features/imob/ImobChatWidgets";
 import { ImobWorkbenchShell } from "@/features/imob/ImobWorkbenchShell";
+import { IMOB_BUSINESS_QUICK_ACTIONS } from "@/features/imob/businessQuickActions";
 import { VerticalSelectorBar } from "@/features/workbench/vertical-chat/VerticalSelectorBar";
 import { ReactiveContextPanel } from "@/features/workbench/vertical-chat/ReactiveContextPanel";
 import { ImobSlotCollectionCard } from "@/features/workbench/vertical-chat/ImobSlotCollectionCard";
+import {
+  shouldRenderMessageSlotCollectionCard,
+  shouldRenderPendingExecutionSlotCollectionCard,
+} from "@/features/workbench/vertical-chat/imobChatPresentationGuards";
 import type { VerticalId, VerticalSelectorItem } from "@/features/workbench/vertical-chat/VerticalChatTypes";
 import { extractImobWorkbenchIntakeContext } from "@/features/imob/imobWorkbenchContext";
 import { KnowledgeCard, type KnowledgeAction } from "@/features/imob/KnowledgeCard";
@@ -161,6 +166,7 @@ type ChatMessage = {
   id: string;
   role: "user" | "assistant" | "system";
   text: string;
+  assistantDedupeKey?: string | null;
   hiddenFromTimeline?: boolean;
   presentationMetadata?: ImobPresentationMetadata;
   blocks?: ImobPresentationBlock[];
@@ -178,6 +184,17 @@ type ChatMessage = {
   dispatchBadge?: string | null;
   /** Payload de coleta de slots emitido pelo engine — renderizado sem lógica cognitiva no frontend. */
   slotCollection?: ImobResolveTurnResponse["presentation"]["slotCollection"];
+};
+
+type AssistantMessageDedupeInput = {
+  action?: string | null;
+  caseId?: string | null;
+  formAction?: string | null;
+  formEntity?: string | null;
+  presentationDedupeKey?: string | null;
+  stage?: string | null;
+  text?: string | null;
+  threadId?: string | null;
 };
 
 type PendingExecution = {
@@ -462,14 +479,73 @@ function resolveBestCaseIdForThread(
   return null;
 }
 
-function dedupeRunMessages(items: ChatMessage[]) {
+function stableSerializeAssistantDedupe(value: unknown): string {
+  if (value === null || value === undefined) return "null";
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableSerializeAssistantDedupe(item)).join(",")}]`;
+  }
+  if (typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, entryValue]) => entryValue !== undefined)
+      .sort(([left], [right]) => left.localeCompare(right));
+    return `{${entries.map(([key, entryValue]) => `${JSON.stringify(key)}:${stableSerializeAssistantDedupe(entryValue)}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+export function buildAssistantMessageDedupeKey(input: AssistantMessageDedupeInput): string {
+  return stableSerializeAssistantDedupe({
+    kind: "imob_assistant_message_v1",
+    action: input.action ?? null,
+    caseId: input.caseId ?? null,
+    formAction: input.formAction ?? null,
+    formEntity: input.formEntity ?? null,
+    presentationDedupeKey: input.presentationDedupeKey ?? null,
+    stage: input.stage ?? null,
+    text: input.text?.trim() ?? null,
+    threadId: input.threadId ?? null,
+  });
+}
+
+function resolveAssistantMessageDedupeKey(message: ChatMessage): string | null {
+  if (message.role !== "assistant") return null;
+  if (typeof message.assistantDedupeKey === "string" && message.assistantDedupeKey.trim().length > 0) {
+    return message.assistantDedupeKey.trim();
+  }
+  const threadId = message.thread?.id ?? message.card?.thread?.id ?? message.caseContext?.threadId ?? null;
+  const caseId = message.caseContext?.caseId ?? null;
+  const presentationDedupeKey =
+    typeof message.presentationMetadata?.dedupeKey === "string" && message.presentationMetadata.dedupeKey.trim().length > 0
+      ? message.presentationMetadata.dedupeKey.trim()
+      : null;
+  if (!threadId && !caseId && !presentationDedupeKey) return null;
+  return buildAssistantMessageDedupeKey({
+    caseId,
+    presentationDedupeKey,
+    text: message.text,
+    threadId,
+  });
+}
+
+export function dedupeRunMessages(items: ChatMessage[]) {
   const deduped: ChatMessage[] = [];
   for (const message of items) {
     const threadId = message.thread?.id ?? message.card?.thread?.id ?? null;
     const runId = message.card?.runId ?? null;
+    const assistantDedupeKey = resolveAssistantMessageDedupeKey(message);
     const last = deduped[deduped.length - 1];
     const lastThreadId = last?.thread?.id ?? last?.card?.thread?.id ?? null;
     const lastRunId = last?.card?.runId ?? null;
+    const lastAssistantDedupeKey = last ? resolveAssistantMessageDedupeKey(last) : null;
+    if (
+      message.role === "assistant" &&
+      last?.role === "assistant" &&
+      assistantDedupeKey &&
+      assistantDedupeKey === lastAssistantDedupeKey
+    ) {
+      deduped[deduped.length - 1] = message;
+      continue;
+    }
     if (
       message.role === "assistant" &&
       last?.role === "assistant" &&
@@ -502,6 +578,11 @@ const QUICK_PROMPTS = [
     label: "Iniciar contrato",
     prompt: "Quero iniciar a coleta de dados para gerar um contrato imobiliário.",
   },
+] as const;
+
+const STRUCTURED_IMOB_AUTOPROMPTS = [
+  ...QUICK_PROMPTS.map((prompt) => ({ label: prompt.label, prompt: prompt.prompt })),
+  ...IMOB_BUSINESS_QUICK_ACTIONS.map((action) => ({ label: action.title, prompt: action.autoprompt })),
 ] as const;
 
 const TYPEWRITER_INTERVAL_MS = 12;
@@ -927,7 +1008,7 @@ function resolveFieldAutofillTarget(
   return field.lookup?.kind === "cep" ? field.lookup.autoFillTargets[target] ?? null : null;
 }
 
-function buildPresentationFormDisplayText(form: ImobPresentationForm, actionId: "cancel" | "submit") {
+export function buildPresentationFormDisplayText(form: ImobPresentationForm, actionId: "cancel" | "submit") {
   const actionLabel = form.actions?.find((action) => action.id === actionId)?.label?.trim();
   const formLabel = form.label?.trim();
   const fallbackByEntity =
@@ -1260,6 +1341,24 @@ function getConversationTitleFromMessage(message: string, conversations: ImobCha
   const cleaned = message.replace(/\s+/g, " ").trim();
   if (cleaned.length < 4) return getNextConversationTitle(conversations);
   return cleaned.length > 72 ? `${cleaned.slice(0, 72)}...` : cleaned;
+}
+
+export function shouldEchoImobUserMessage(options?: { suppressUserEcho?: boolean }) {
+  return options?.suppressUserEcho !== true;
+}
+
+export function resolveStructuredImobAutopromptOptions(rawPrompt: string): {
+  displayText?: string;
+  suppressUserEcho?: boolean;
+} {
+  const prompt = rawPrompt.trim();
+  if (!prompt) return {};
+  const structuredPrompt = STRUCTURED_IMOB_AUTOPROMPTS.find((item) => item.prompt === prompt);
+  if (!structuredPrompt) return {};
+  return {
+    displayText: structuredPrompt.label,
+    suppressUserEcho: true,
+  };
 }
 
 function formatMs(value: number | null | undefined) {
@@ -1631,7 +1730,66 @@ function buildRentalContractTemplateMessage(thread: { id: string; label: string;
   };
 }
 
-function mapStoredMessageToChat(message: ImobChatMessage): ChatMessage {
+export function normalizeStoredSlotCollection(
+  candidate: unknown,
+): ImobResolveTurnResponse["presentation"]["slotCollection"] | undefined {
+  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return undefined;
+  const slotCollection = candidate as Record<string, unknown>;
+  if (typeof slotCollection.mission !== "string" || slotCollection.mission.trim().length === 0) return undefined;
+  if (typeof slotCollection.title !== "string" || slotCollection.title.trim().length === 0) return undefined;
+  if (!Array.isArray(slotCollection.fields) || slotCollection.fields.some((field) => typeof field !== "string" || field.trim().length === 0)) {
+    return undefined;
+  }
+  const prefilled =
+    slotCollection.prefilled && typeof slotCollection.prefilled === "object" && !Array.isArray(slotCollection.prefilled)
+      ? Object.fromEntries(
+          Object.entries(slotCollection.prefilled as Record<string, unknown>).filter(
+            ([key, value]) => key.trim().length > 0 && typeof value === "string",
+          ),
+        )
+      : undefined;
+  const propertyCandidates = Array.isArray(slotCollection.propertyCandidates)
+    ? slotCollection.propertyCandidates.flatMap((item) => {
+        if (!item || typeof item !== "object" || Array.isArray(item)) return [];
+        const candidateEntry = item as Record<string, unknown>;
+        if (typeof candidateEntry.id !== "string" || typeof candidateEntry.label !== "string") return [];
+        if (candidateEntry.id.trim().length === 0 || candidateEntry.label.trim().length === 0) return [];
+        return [{ id: candidateEntry.id, label: candidateEntry.label }];
+      })
+    : undefined;
+
+  return {
+    mission: slotCollection.mission,
+    title: slotCollection.title,
+    description: typeof slotCollection.description === "string" ? slotCollection.description : undefined,
+    fields: slotCollection.fields,
+    prefilled: prefilled && Object.keys(prefilled).length > 0 ? prefilled : undefined,
+    propertyCandidates: propertyCandidates && propertyCandidates.length > 0 ? propertyCandidates : undefined,
+  };
+}
+
+export function buildPersistedImobChatMessageMetadata(
+  message: Pick<
+    ChatMessage,
+    "card" | "proof" | "caseContext" | "presentationMetadata" | "blocks" | "widget" | "form" | "slotCollection" | "hiddenFromTimeline"
+  >,
+  extraMetadata?: Record<string, unknown>,
+): Record<string, unknown> {
+  return {
+    card: message.card ?? null,
+    proof: message.proof ?? null,
+    caseContext: message.caseContext ?? null,
+    presentationMetadata: message.presentationMetadata ?? null,
+    blocks: message.blocks ?? null,
+    widget: message.widget ?? null,
+    form: message.form ?? null,
+    slotCollection: message.slotCollection ?? null,
+    hiddenFromTimeline: message.hiddenFromTimeline === true ? true : undefined,
+    ...(extraMetadata ?? {}),
+  };
+}
+
+export function mapStoredMessageToChat(message: ImobChatMessage): ChatMessage {
   const metadata = (message.metadata && typeof message.metadata === "object"
     ? message.metadata
     : null) as Record<string, unknown> | null;
@@ -1676,17 +1834,37 @@ function mapStoredMessageToChat(message: ImobChatMessage): ChatMessage {
     proofCandidate && typeof proofCandidate === "object" && !Array.isArray(proofCandidate)
       ? (proofCandidate as ImobResolveTurnResponse["presentation"]["proof"])
       : undefined;
+  const slotCollection = normalizeStoredSlotCollection(metadata?.slotCollection);
   const hiddenFromTimeline = metadata?.hiddenFromTimeline === true;
+  const persistedAssistantDedupeKey =
+    typeof metadata?.assistantDedupeKey === "string" && metadata.assistantDedupeKey.trim().length > 0
+      ? metadata.assistantDedupeKey.trim()
+      : null;
+  const derivedAssistantDedupeKey =
+    message.role === "assistant"
+      ? buildAssistantMessageDedupeKey({
+          action: message.action ?? null,
+          caseId: caseContext?.caseId ?? null,
+          presentationDedupeKey:
+            typeof presentationMetadata?.dedupeKey === "string" && presentationMetadata.dedupeKey.trim().length > 0
+              ? presentationMetadata.dedupeKey.trim()
+              : null,
+          text: message.content,
+          threadId: message.threadId ?? caseContext?.threadId ?? null,
+        })
+      : null;
 
   return {
     id: message.id,
     role: message.role,
     text: message.content,
+    assistantDedupeKey: persistedAssistantDedupeKey ?? derivedAssistantDedupeKey,
     hiddenFromTimeline,
     presentationMetadata,
     blocks,
     widget,
     form,
+    slotCollection,
     proof,
     thread: message.threadId
       ? {
@@ -2062,17 +2240,7 @@ const ImobChatPage: React.FC = () => {
           txId: message.proof?.txId ?? undefined,
           receiptPath: message.proof?.receiptPath ?? undefined,
           bundlePath: message.proof?.bundlePath ?? undefined,
-          metadata: {
-            card: message.card ?? null,
-            proof: message.proof ?? null,
-            caseContext: message.caseContext ?? null,
-            presentationMetadata: message.presentationMetadata ?? null,
-            blocks: message.blocks ?? null,
-            widget: message.widget ?? null,
-            form: message.form ?? null,
-            hiddenFromTimeline: message.hiddenFromTimeline === true ? true : undefined,
-            ...(extra?.metadata ?? {}),
-          },
+          metadata: buildPersistedImobChatMessageMetadata(message, extra?.metadata),
         });
         void apiCreateImobChatTelemetry({
           conversationId: targetConversationId,
@@ -2698,12 +2866,6 @@ const ImobChatPage: React.FC = () => {
           },
         };
         appendMessage(planMessage);
-        void persistMessage(planMessage, {
-          intent: plan.intent,
-          action: plan.action,
-          conversationId: activeConversationId,
-          metadata: contractInterviewState ? { contractInterview: contractInterviewState } : undefined,
-        });
         void apiCreateImobChatTelemetry({
           conversationId: activeConversationId,
           event: "message_to_plan_ms",
@@ -2852,7 +3014,7 @@ const ImobChatPage: React.FC = () => {
     if (historyLoading || historyLoadingMore || pendingExecution) return;
     if (autopromptConsumedRef.current === requestedAutoprompt) return;
     autopromptConsumedRef.current = requestedAutoprompt;
-    void sendMessageText(requestedAutoprompt);
+    void sendMessageText(requestedAutoprompt, resolveStructuredImobAutopromptOptions(requestedAutoprompt));
   }, [historyLoading, historyLoadingMore, pendingExecution, requestedAutoprompt, requestedStartNew]);
 
   const resolveInterviewOperationThread = React.useCallback(() => {
@@ -3102,24 +3264,27 @@ const ImobChatPage: React.FC = () => {
   const sendMessageText = async (rawText: string, options?: { displayText?: string; suppressUserEcho?: boolean }) => {
     const text = rawText.trim();
     const displayText = options?.displayText?.trim() || text;
+    const shouldEchoUserMessage = shouldEchoImobUserMessage(options);
     if (!text) return;
     const selectedThread = selectedThreadId ? threads.find((item) => item.threadId === selectedThreadId) : null;
     const currentThreadId = selectedThread?.threadId ?? activeThread?.id ?? null;
     const currentThreadLabel = selectedThread?.label ?? activeThread?.label ?? null;
-    const userMessageId = makeId("user");
-    appendMessage({
-      id: userMessageId,
-      role: "user",
-      text: displayText,
-      thread:
-        currentThreadId && currentThreadLabel
-          ? {
-              id: currentThreadId,
-              label: currentThreadLabel,
-              status: "active",
-            }
-          : undefined,
-    });
+    const userMessageId = shouldEchoUserMessage ? makeId("user") : null;
+    if (shouldEchoUserMessage && userMessageId) {
+      appendMessage({
+        id: userMessageId,
+        role: "user",
+        text: displayText,
+        thread:
+          currentThreadId && currentThreadLabel
+            ? {
+                id: currentThreadId,
+                label: currentThreadLabel,
+                status: "active",
+              }
+            : undefined,
+      });
+    }
     setInput("");
     setState("typing");
     const startedAt = Date.now();
@@ -3251,13 +3416,15 @@ const ImobChatPage: React.FC = () => {
       }
     }
 
-    updateMessageById(userMessageId, {
-      thread: {
-        id: operationThread.id,
-        label: operationThread.label,
-        status: "active",
-      },
-    });
+    if (shouldEchoUserMessage && userMessageId) {
+      updateMessageById(userMessageId, {
+        thread: {
+          id: operationThread.id,
+          label: operationThread.label,
+          status: "active",
+        },
+      });
+    }
     const interviewIsActive =
       !!contractInterviewState &&
       (contractInterviewState.status === "collecting" ||
@@ -3267,23 +3434,25 @@ const ImobChatPage: React.FC = () => {
       interviewIsActive &&
       (resolvedIntent === null || resolvedIntent === "adjustment" || resolvedIntent === "contract");
 
-    void persistMessage(
-      {
-        id: userMessageId,
-        role: "user",
-        text: displayText,
-        thread: {
-          id: operationThread.id,
-          label: operationThread.label,
-          status: "active",
+    if (shouldEchoUserMessage && userMessageId) {
+      void persistMessage(
+        {
+          id: userMessageId,
+          role: "user",
+          text: displayText,
+          thread: {
+            id: operationThread.id,
+            label: operationThread.label,
+            status: "active",
+          },
         },
-      },
-      {
-      conversationId: activeConversationId,
-      contentOverride: text,
-      metadata: shouldContinueContractInterview ? { contractInterview: contractInterviewState } : undefined,
-      }
-    );
+        {
+          conversationId: activeConversationId,
+          contentOverride: text,
+          metadata: shouldContinueContractInterview ? { contractInterview: contractInterviewState } : undefined,
+        }
+      );
+    }
     if (shouldContinueContractInterview || resolvedIntent === "contract") {
       const threadForInterview = {
         id: operationThread.id,
@@ -3701,7 +3870,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
           widgetActionLabel: action.label,
         }),
       );
-      void sendMessageText(action.autoprompt, { displayText: action.label });
+      void sendMessageText(action.autoprompt, { displayText: action.label, suppressUserEcho: true });
     },
     [sendMessageText, trackUxEvent]
   );
@@ -4781,7 +4950,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                     </span>
                   ) : null}
                   <span className="hidden sm:inline-flex rounded-full border border-accent/30 bg-accent/12 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-accent shadow-lg shadow-black/20">
-                    Piloto controlado
+                    Contexto IMOB
                   </span>
                   {selectedThreadId ? (
                     <span className="rounded-full border border-accent/30 bg-accent/12 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.1em] text-accent shadow-lg shadow-black/20">
@@ -5088,7 +5257,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                                 <button
                                                   key={`${message.id}-block-next-cta-${cta.id}`}
                                                   type="button"
-                                                  onClick={() => void sendMessageText(cta.nextMessage ?? cta.label, { displayText: cta.label })}
+                                                  onClick={() => void sendMessageText(cta.nextMessage ?? cta.label, { displayText: cta.label, suppressUserEcho: true })}
                                                   className="block text-left text-[11px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
                                                 >
                                                   {visibleLabel}
@@ -5115,7 +5284,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                                 <button
                                                   key={`${message.id}-block-cta-${cta.id}`}
                                                   type="button"
-                                                  onClick={() => void sendMessageText(cta.nextMessage ?? cta.label, { displayText: cta.label })}
+                                                  onClick={() => void sendMessageText(cta.nextMessage ?? cta.label, { displayText: cta.label, suppressUserEcho: true })}
                                                   className="text-[10px] normal-case tracking-normal text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
                                                 >
                                                   {visibleLabel}
@@ -5408,7 +5577,12 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                           pendingExecution?.messageId === message.id &&
                           pendingExecution?.thread.id === messageThreadId;
                         const slotFields = pendingExecution?.pendingFields ?? [];
-                        if (!isPendingTarget || !isLastMessage || slotFields.length === 0) return null;
+                        if (!shouldRenderPendingExecutionSlotCollectionCard({
+                          hasForm: Boolean(message.form),
+                          isLastMessage,
+                          isPendingTarget,
+                          slotFieldsCount: slotFields.length,
+                        })) return null;
                         return (
                           <ImobSlotCollectionCard
                             pendingFields={slotFields}
@@ -5425,8 +5599,13 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                       {/* Card de slot collection emitido pelo engine em turns blocked (ex: visit_missing_property) */}
                       {(() => {
                         const sc = message.slotCollection;
-                        if (!sc || !isLastMessage || message.role !== "assistant") return null;
-                        if (state === "executing" || state === "typing") return null;
+                        if (!shouldRenderMessageSlotCollectionCard({
+                          hasForm: Boolean(message.form),
+                          hasSlotCollection: Boolean(sc),
+                          isAssistantMessage: message.role === "assistant",
+                          isLastMessage,
+                          isBusy: state === "executing" || state === "typing",
+                        })) return null;
                         return (
                           <ImobSlotCollectionCard
                             pendingFields={sc.fields}
@@ -5555,7 +5734,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                           }),
                                         );
                                         setOpenOptionsMessageId(null);
-                                        void sendMessageText(cta.nextMessage ?? cta.label, { suppressUserEcho: true });
+                                        void sendMessageText(cta.nextMessage ?? cta.label, { displayText: cta.label, suppressUserEcho: true });
                                         return;
                                       }
                                       if (cta.action === "print_card") {
@@ -5564,7 +5743,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                         return;
                                       }
                                       if (cta.action === "continue_inventory_search") {
-                                        void sendMessageText(cta.nextMessage ?? cta.label, { suppressUserEcho: true });
+                                        void sendMessageText(cta.nextMessage ?? cta.label, { displayText: cta.label, suppressUserEcho: true });
                                       }
                                     }}
                                     disabled={(cta.action === "reject_execution" && isRejectLocked) || crmSuggestionLoadingId === message.id}

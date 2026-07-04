@@ -42,6 +42,11 @@ const FIELD_META: Record<string, FieldMeta> = {
   amountCents:  { label: "Valor da comissão",   type: "number", placeholder: "Ex: 15000" },
   payoutChannel:{ label: "Canal de repasse",    type: "text",   placeholder: "PIX, TED..." },
   // Imóvel
+  propertyType: { label: "Tipo",                type: "text",   placeholder: "Ex: apartamento, casa, sala comercial" },
+  goal:         { label: "Finalidade",          type: "select", options: [{ value: "venda", label: "Venda" }, { value: "locacao", label: "Locação" }, { value: "aluguel_por_temporada", label: "Aluguel por temporada" }] },
+  cep:          { label: "CEP",                 type: "text",   placeholder: "00000-000" },
+  city:         { label: "Cidade",              type: "text",   placeholder: "Ex: Itapema" },
+  address:      { label: "Endereço",            type: "text",   placeholder: "Rua, número" },
   listingTitle: { label: "Título do anúncio",   type: "text",   placeholder: "Título da publicação" },
   publicationGoal:{ label: "Finalidade",        type: "select", options: [{ value: "venda", label: "Venda" }, { value: "locacao", label: "Locação" }] },
 };
