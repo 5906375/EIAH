@@ -26,6 +26,7 @@
     "check:p2-high-global-coverage": "node --experimental-strip-types scripts/checkP2HighGlobalCoverage.ts",
     "check:p1-critical-chain": "node --experimental-strip-types scripts/checkP1CriticalChain.ts",
     "check:p1-reconciliation-recurring": "node --experimental-strip-types scripts/checkP1ReconciliationRecurring.ts",
+    "check:redis-fail-closed": "node --import tsx scripts/checkRedisFailClosed.ts",
     "check:rbac-fail-closed": "node --import tsx scripts/checkRbacFailClosed.ts",
     "check:guardrail-ledger-noop": "node --import tsx scripts/checkGuardrailLedgerNoop.ts",
     "check:p3-economy-hardening": "node --experimental-strip-types scripts/checkP3EconomyHardening.ts",
