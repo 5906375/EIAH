@@ -191,7 +191,7 @@ Verificação contínua:
 
 - [Presentation snapshot v1](./presentation-snapshot-v1.md)
 - [IMOB CRM Governed Runtime](./imob-crm-governed-runtime.md)
-- [Chat Runtime Entrypoint Debt](./chat-runtime-entrypoint-debt.md)
+- [Chat Runtime Entrypoint Debt](../../ops/evidence/latest/chat-runtime-entrypoint-debt-2026-07-02.md)
 
 Backlog documental futuro:
 - `chat-drift-backlog.md`

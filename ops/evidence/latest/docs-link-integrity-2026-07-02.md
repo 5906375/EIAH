@@ -104,3 +104,36 @@ pnpm check:docs-link-integrity
 - Os 9 links reais foram corrigidos para caminho relativo portável.
 - O 1 link investigado e não corrigido permanece válido (arquivo existe e está versionado).
 - DONE global não é declarado; este follow-up cobre apenas a correção de link-integrity reportada pelo CI.
+
+## Follow-up 2 — segunda falha real de CI: link para artefato git-ignored (2026-07-04)
+
+### Falha observada
+
+O CI do PR-GOV-DOCS-02 passou a reportar apenas 1 link inválido:
+
+`docs/architecture/agent-chat-runtime.md:194 invalid link ./chat-runtime-entrypoint-debt.md -> docs/architecture/chat-runtime-entrypoint-debt.md`
+
+### Causa raiz
+
+`docs/architecture/chat-runtime-entrypoint-debt.md` existe no disco local (108 linhas) mas **não está versionado**: `docs/architecture/*` está listado em `.gitignore:52`, e esse arquivo específico nunca foi adicionado como exceção. O gate `check:docs-link-integrity` passava localmente porque o arquivo existe fisicamente na máquina de desenvolvimento, mas falha no runner do CI, cujo checkout não inclui arquivos ignorados pelo git. Distinto do follow-up anterior (caminho absoluto não portável): aqui o arquivo de destino simplesmente não existe no repositório versionado.
+
+### Correção aplicada
+
+- `docs/architecture/agent-chat-runtime.md`: o link `[Chat Runtime Entrypoint Debt](./chat-runtime-entrypoint-debt.md)` foi trocado para apontar à evidência real e versionada `[Chat Runtime Entrypoint Debt](../../ops/evidence/latest/chat-runtime-entrypoint-debt-2026-07-02.md)`, confirmada como rastreada via `git ls-files`.
+- Nenhum arquivo novo foi criado apenas para satisfazer o gate.
+- `scripts/checkDocsLinkIntegrity.ts` não foi alterado; o gate permanece fail-closed.
+
+### Saída real pós-correção
+
+```bash
+pnpm check:docs-link-integrity
+```
+
+```text
+{ "ok": true, "check": "check:docs-link-integrity", "filesChecked": 13, ... }
+```
+
+### Conclusão
+
+- O único link reportado pelo CI foi corrigido para um alvo real e versionado.
+- DONE global não é declarado; este follow-up cobre apenas a segunda correção de link-integrity reportada pelo CI.
