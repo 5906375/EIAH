@@ -93,6 +93,14 @@ jobs:
       - name: Check worker topology ownership
         run: pnpm check:worker-topology
 
+      # Warn-only: inventario inicial de 2026-07-06 encontrou 210 arquivos
+      # *.test.ts sem nenhuma referencia em package.json ou workflows.
+      # Promover a bloqueante depois que um PR dedicado (PR-CI-01) triar
+      # esse volume — ver ops/evidence/latest/orphan-tests-gate-2026-07-06.md.
+      - name: Check for orphan test files (warn-only, pending PR-CI-01 triage)
+        run: pnpm check:orphan-tests
+        continue-on-error: true
+
       # 2. Build Hardened e Otimizado (Corrige os problemas de TMPDIR e ESBUILD)
       - name: Build Web Application (Hardened)
         # As variáveis TMPDIR e ESBUILD_TMPDIR forçam o uso de /tmp, 
