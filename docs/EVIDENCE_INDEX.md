@@ -726,3 +726,9 @@ EVIDÊNCIA: `apps/api/src/index.ts:97-103` + `apps/workers/run-worker/src/index.
 | Assunto | Arquivo | O que prova |
 | --- | --- | --- |
 | Matriz conservadora de compatibilidade multi-versao do Agent Protocol | `ops/evidence/latest/agent-protocol-compatibility-matrix-2026-07-02.md` | Prova por execucao real que `agent-protocol.v1` e a unica versao publicamente evidenciada com schema, baseline, exemplo, policy, changelog, runtime e checks; que `v2` permanece apenas proposta; que compatibilidade `N-1` nao pode ser declarada como suportada sem artefatos publicos suficientes; e que a nova matriz documental possui check proprio de referencias/baselines reais em CI. |
+
+## Gitignore architecture docs tracking fix (2026-07-06)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Correcao da 3a recorrencia de drift entre `.gitignore` e `docs/architecture/` (F-09) | `ops/evidence/latest/gitignore-architecture-docs-tracking-2026-07-06.md` | Prova por commit real `520cddd6f0cabb7bd48fca286ce92bfa46b12f54` e execucao real dos gates `check:tracked-ignored-files` (`ok:true`, `newViolations:0`) e `check:docs-link-integrity` (`ok:true`, 13 arquivos escaneados) que `docs/architecture/chat-runtime-entrypoint-debt.md`, `docs/architecture/fase-3-dividas-documentadas-closure.md` e `docs/architecture/white-label-runtime-gap.md` — antes ignorados pelo `.gitignore` e nao rastreados, apesar de referenciados por PRs #182/#185/#187 — agora estao versionados junto dos 5 arquivos legado; registra explicitamente que a decisao D8 (padrao enumerado vs `!docs/architecture/*.md`) permanece pendente do CEO e que a causa estrutural do drift nao foi eliminada, apenas o sintoma atual. |
