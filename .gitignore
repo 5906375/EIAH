@@ -51,6 +51,14 @@ docs/ops/**/*.mb
 !docs/architecture/
 docs/architecture/*
 !docs/architecture/agent-chat-runtime.md
+!docs/architecture/adr-imob-journey-governed-by-case.md
+!docs/architecture/chat-runtime-entrypoint-debt.md
+!docs/architecture/fase-3-dividas-documentadas-closure.md
+!docs/architecture/imob-crm-governed-runtime.md
+!docs/architecture/p3-economy-hardening-closure.md
+!docs/architecture/presentation-snapshot-v1.md
+!docs/architecture/white-label-runtime-gap.md
+!docs/architecture/worker-topology.md
 
 # --------------------------------------------
 # Dados temporários e uploads
