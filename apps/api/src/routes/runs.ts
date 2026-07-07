@@ -1,7 +1,7 @@
 import { Buffer } from "node:buffer";
 import crypto from "node:crypto";
-import { Router } from "express";
 import { z } from "zod";
+import { createGovernedRouter } from "../middlewares/asyncHandler";
 import { enforceTenant, TenantAwareRequest } from "../middlewares/enforceTenant";
 import { getAgentProfile, resolveAgentId } from "../services/agents";
 import { publishRun } from "@eiah/core";
@@ -26,7 +26,7 @@ import {
   updateShadowExecutionApprovalByRunId,
 } from "../services/shadowExecutionStore";
 
-export const runsRouter = Router();
+export const runsRouter = createGovernedRouter();
 runsRouter.use(enforceTenant);
 
 const serializeRun = (run: any, archive?: { archiveRef: string; archivedAt: Date } | null) => ({

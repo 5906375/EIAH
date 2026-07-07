@@ -1,13 +1,13 @@
-import { Router } from "express";
 import crypto from "node:crypto";
 import { z } from "zod";
 import { prismaGlobal } from "@repo/db";
 import { recordGuardrailAudit } from "@eiah/core/services/guardrailLedgerStore";
+import { createGovernedRouter } from "../middlewares/asyncHandler";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
 import { queryEiahHelpKnowledge, seedEiahHelpKnowledge } from "../services/eiahHelpKnowledge";
 import { buildFrictionEvent, mapHelpdeskUxIssueToFrictionKind } from "../types/frictionEventContract";
 
-const helpRouter = Router();
+const helpRouter = createGovernedRouter();
 helpRouter.use(enforceTenant);
 
 const HelpQuerySchema = z.object({

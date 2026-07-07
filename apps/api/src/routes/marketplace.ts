@@ -1,9 +1,9 @@
-import { Router } from "express";
 import crypto from "node:crypto";
 import { z } from "zod";
+import { createGovernedRouter } from "../middlewares/asyncHandler";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
 
-export const marketplaceRouter = Router();
+export const marketplaceRouter = createGovernedRouter();
 marketplaceRouter.use(enforceTenant);
 
 marketplaceRouter.get("/marketplace/my-delegations", (req, res) => {
