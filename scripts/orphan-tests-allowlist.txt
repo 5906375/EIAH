@@ -1,0 +1,11 @@
+# Allowlist de testes órfãos (check:orphan-tests)
+#
+# Cada entrada precisa de justificativa em comentário na mesma linha,
+# no formato: <caminho-relativo-do-repo> # <justificativa>
+#
+# Esta allowlist deve ficar a mais enxuta possível. Não adicionar um
+# arquivo aqui apenas para silenciar o gate — a intenção é amarrar o
+# teste a algum script/CI real. Só usar quando houver decisão explícita
+# de manter um teste fora do CI por um motivo documentado (ex.: teste
+# manual, exige infraestrutura não disponível em CI, pendência de outra
+# frente já registrada em Evidence Index).
