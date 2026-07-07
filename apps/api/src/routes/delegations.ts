@@ -1,14 +1,14 @@
-import { Router } from "express";
 import crypto from "node:crypto";
 import { z } from "zod";
 import { recordGuardrailAudit } from "@eiah/core/services/guardrailLedgerStore";
+import { createGovernedRouter } from "../middlewares/asyncHandler";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
 import {
   buildDelegationRenewalPolicyContract,
   buildDelegationRenewalPreview,
 } from "../types/delegationRenewalPolicyContract";
 
-export const delegationsRouter = Router();
+export const delegationsRouter = createGovernedRouter();
 delegationsRouter.use(enforceTenant);
 
 const DelegationCreateSchema = z.object({

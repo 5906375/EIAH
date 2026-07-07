@@ -1,5 +1,6 @@
-import { Router, type Response } from "express";
+import { type Response } from "express";
 import crypto from "node:crypto";
+import { createGovernedRouter } from "../middlewares/asyncHandler";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
 import { generateContractPreview } from "../services/contracts/contractGenerator";
 import type { ContractType } from "../services/contracts/types";
@@ -128,7 +129,7 @@ import {
 } from "../services/imob/intake/imobContractIntakeRenderer";
 import { enqueueImobRunCompleted } from "../queues/imobRunCompletedQueue";
 
-export const imobRouter = Router();
+export const imobRouter = createGovernedRouter();
 imobRouter.use(enforceTenant);
 
 function parseWindowStart(windowRaw: unknown) {

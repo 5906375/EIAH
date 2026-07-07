@@ -1,14 +1,14 @@
 import crypto from "node:crypto";
 import { promisify } from "node:util";
-import { Router } from "express";
 import { z } from "zod";
 import { prismaGlobal } from "@repo/db";
 import { findApiToken } from "../auth/apiTokenRepository";
+import { createGovernedRouter } from "../middlewares/asyncHandler";
 import { acceptWorkspaceInvitation, readWorkspaceInvitationByToken } from "../services/workspaceResponsibility";
 
 const scryptAsync = promisify(crypto.scrypt);
 
-const authRouter = Router();
+const authRouter = createGovernedRouter();
 let legacyStoreInitPromise: Promise<void> | null = null;
 const walletChallenges = new Map<
   string,

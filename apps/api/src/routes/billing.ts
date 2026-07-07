@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { Router } from "express";
+import { createGovernedRouter } from "../middlewares/asyncHandler";
 import {
   calculateInvoiceAmounts,
   generateMonthlyInvoice,
@@ -58,7 +58,7 @@ import { buildOperationalInsight } from "../services/operationalInsightAggregato
 import { buildCostOverviewBlock, buildCostSemanticSnapshot } from "../types/costSemanticsContract";
 import { buildFrictionEventSummary } from "../types/frictionEventSummary";
 
-export const billingRouter = Router();
+export const billingRouter = createGovernedRouter();
 
 function getTenantBillingV2Client(prisma: unknown) {
   const client = prisma as any;

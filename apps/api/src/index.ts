@@ -1,6 +1,7 @@
 import "dotenv/config";
 import cors from "cors";
 import express from "express";
+import { governedErrorHandler } from "./middlewares/governedErrorHandler";
 import { agentsRouter } from "./routes/agents";
 import { billingRouter } from "./routes/billing";
 import { defiRouter } from "./routes/defi";
@@ -46,6 +47,24 @@ import Redis from "ioredis";
 
 const app = express();
 const bootstrapLogger = createLogger({ component: "api-bootstrap" });
+
+// Ultima rede de seguranca do processo (N-13). Rejeicoes de rota ja sao
+// capturadas por asyncHandler/createGovernedRouter antes de chegarem aqui —
+// isto cobre rejeicoes fora do ciclo de requisicao (timers, workers,
+// listeners). unhandledRejection: loga e mantem o processo (rejeicao isolada
+// nao implica estado corrompido). uncaughtException: loga e sai limpo — o
+// processo pode estar em estado inconsistente apos uma excecao sincrona nao
+// tratada; deixamos o orquestrador (systemd/pm2/k8s) reiniciar, mesmo padrao
+// de "sair para deixar o supervisor recuperar" do shutdown gracioso via
+// process.once(SIGINT/SIGTERM) mais abaixo.
+process.on("unhandledRejection", (reason) => {
+  bootstrapLogger.error({ err: reason }, "api.unhandled_rejection");
+});
+process.on("uncaughtException", (err) => {
+  bootstrapLogger.error({ err }, "api.uncaught_exception");
+  process.exit(1);
+});
+
 const allowedOrigins = (process.env.CORS_ORIGIN ?? "")
   .split(",")
   .map((origin) => origin.trim())
@@ -102,6 +121,11 @@ app.use("/api/imob", imobRouter);
 app.use("/api", helpRouter);
 app.use("/metrics", metricsRouter);
 app.use("/metrics/prom", metricsPromRouter);
+
+// Middleware de erro 4-arg — deve ser o ultimo registrado. So captura o que
+// nenhum handler/gate ja tratou (403/401/400 governados retornam antes de
+// chegar aqui); nunca reclassifica um erro ja respondido (N-13).
+app.use(governedErrorHandler);
 
 const port = process.env.PORT || 8080;
 
