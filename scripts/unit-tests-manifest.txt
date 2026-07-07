@@ -23,6 +23,7 @@
 #   - apps/api/src/tests/imob-cross-surface-regression.test.ts (falha real, pendente de triagem)
 #   - apps/api/src/tests/imob-lead-matching.e2e.test.ts (falha real, pendente de triagem)
 #   - apps/api/src/tests/imob-owner-blocker-consult.test.ts (falha real, pendente de triagem)
+#   - apps/workers/action-runner/src/index.test.ts (falha real no GitHub Actions: ERR_MODULE_NOT_FOUND para @repo/db/dist/index.js no runner limpo; excluído para manter PR-CI-02 como unit/mock sem services nem build amplo)
 apps/api/src/tests/agent-chat-runtime-readiness.test.ts
 apps/api/src/tests/billing.vertical-entitlement.contract.test.ts
 apps/api/src/tests/conversation-persistence-policy.test.ts
@@ -182,6 +183,5 @@ apps/web/src/pages/app/imob/properties.test.ts
 apps/web/src/pages/app/runs/index.test.ts
 apps/web/src/pages/self-service/recipePrefill.test.ts
 apps/web/src/pages/self-service/tenantRecipeComposer.test.ts
-apps/workers/action-runner/src/index.test.ts
 apps/workers/action-runner/src/services/mcpEnforcement.test.ts
 scripts/sloBaselineCollect.test.ts

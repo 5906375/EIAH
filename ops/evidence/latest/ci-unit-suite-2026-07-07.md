@@ -76,26 +76,56 @@ nunca coincidem pela regex de substring. **Não corrigido nesta sessão** (alter
 `checkOrphanTests.ts` está fora do escopo desta PR, que é só wiring do Grupo B); registrado como
 achado para uma frente futura de hardening do N-12.
 
-## Manifesto final incluído: 162 de 177 (15 excluídos, listados acima)
+**Excluído após a 1a execução real no GitHub Actions (1 arquivo)**:
+`apps/workers/action-runner/src/index.test.ts` passou na validação local inicial, mas falhou no
+runner limpo do Actions com `ERR_MODULE_NOT_FOUND:
+apps/workers/action-runner/node_modules/@repo/db/dist/index.js`. O teste depende, na prática, de
+um artefato buildado de `@repo/db` indisponível sem build amplo prévio. Como a missão desta PR é
+manter o job como unit/mock puro, sem `services:` e sem transformar a suíte em integração, o
+arquivo foi removido do manifesto em vez de alterar runtime, `apps/workers/action-runner/src/index.ts`
+ou o pipeline de build.
+
+## Atualização pós-1a execução real no GitHub Actions
+
+Após o merge do wiring inicial desta PR, o job `ci_unit_suite` rodou de fato no GitHub Actions
+e revelou **1 falha real que não aparecia na validação local anterior**:
+
+- `apps/workers/action-runner/src/index.test.ts`
+- erro: `ERR_MODULE_NOT_FOUND: apps/workers/action-runner/node_modules/@repo/db/dist/index.js`
+
+O arquivo vive no workspace `apps/workers/action-runner` e, no runner limpo do GitHub, puxa um
+artefato buildado de `@repo/db` que não existe sem build amplo prévio. Para preservar o contrato
+da PR-CI-02 como **unit/mock puro, sem `services:` e sem build amplo**, a correção adotada aqui é
+**excluir esse teste do manifesto**, não alterar runtime nem resolver `@repo/db` nesta PR.
+
+## Manifesto final incluído: 161 de 177 (16 excluídos, listados acima)
 
 `scripts/unit-tests-manifest.txt` — lista versionada, uma linha por arquivo, com cabeçalho
-documentando os 15 excluídos e o comando de regeneração do script de `package.json`. Esta é a
+documentando os 16 excluídos e o comando de regeneração do script de `package.json`. Esta é a
 fonte da verdade; o valor do script `test:ci-unit-suite` em `package.json` foi gerado a partir
 dela (mesmo padrão de listas inline já usado em `test:imob-orchestrator-pr6` etc., sem hardcodar
-os 162 caminhos em `ci.yml`).
+os 161 caminhos em `ci.yml`).
 
 ```
-"test:ci-unit-suite": "TSX_TSCONFIG_PATH=apps/web/tsconfig.json node --import tsx --test --test-force-exit <162 caminhos>"
+"test:ci-unit-suite": "TSX_TSCONFIG_PATH=apps/web/tsconfig.json node --import tsx --test --test-force-exit <161 caminhos>"
 ```
 
-Validado: os 162 arquivos rodados juntos, com o único env var `TSX_TSCONFIG_PATH`, sem
+Histórico de execução real:
+
+- validação local original antes do PR: `162` arquivos, `pass:711/fail:0`
+- 1a execução real no GitHub Actions: `162` arquivos, `pass:710/fail:1`
+- correção desta sessão: remover `apps/workers/action-runner/src/index.test.ts` do manifesto e do
+  script `test:ci-unit-suite`
+
+Validado após a correção: os 161 arquivos rodados juntos, com o único env var
+`TSX_TSCONFIG_PATH`, sem
 `DATABASE_URL`/`REDIS_URL`/nenhum outro:
 
 ```
-# tests 711
-# pass 711
+# tests 710
+# pass 710
 # fail 0
-# duration_ms 16702 (chamada direta node) / 28700 (via `pnpm test:ci-unit-suite`, overhead do pnpm)
+# duration_ms 16702 (baseline anterior com 162) / ver reexecução desta sessão para o valor atual
 ```
 
 ## `ci.yml` — novo job
@@ -108,11 +138,15 @@ bloco `services:`. Step único: `Run unit test suite (Grupo B, sem services)` �
 
 ```
 ANTES:  blockingOrphanCount = 210
-DEPOIS: blockingOrphanCount = 48   (delta: -162)
+DEPOIS: blockingOrphanCount = 50   (delta: -160)
 ```
 
-Os 162 arquivos removidos da lista de órfãos são exatamente os 162 do manifesto — nem mais, nem
-menos (conferido por diff de conjuntos). `ok` permanece `false` (48 órfãos remanescentes: os 15
+O `check:orphan-tests` reexecutado nesta sessão também mostra `totalTestFiles = 289` no estado
+atual da branch. O novo estado mantém `apps/workers/action-runner/src/index.test.ts` órfão por
+design nesta PR, já que o arquivo foi retirado do manifesto sem ganhar outro wiring de CI. Assim,
+os 161 arquivos do manifesto permanecem cobertos, mas o efeito líquido do branch atual contra o
+baseline `210` é `-160`, chegando a `50` órfãos bloqueantes. `ok` permanece `false` (50 órfãos
+remanescentes: os 16
 excluídos aqui + o restante do Grupo A + F-06 + outros não tocados nesta sessão) — esperado, e sem
 efeito de bloqueio de CI porque o step de `check:orphan-tests` em `ci.yml` continua `warn-only`
 (`continue-on-error: true`, decisão do N-12, não alterada aqui).
@@ -124,9 +158,9 @@ execução abaixo).
 
 ## O que ficou de fora
 
-- Os 15 arquivos excluídos do manifesto (listados acima) — nenhum foi corrigido; ficam como
+- Os 16 arquivos excluídos do manifesto (listados acima) — nenhum foi corrigido; ficam como
   pendência de triagem futura (parte do escopo de D15/PR-CI-04, ou de uma frente dedicada a esses
-  11 casos de falha real).
+  12 casos de falha real/ambiente).
 - Correção do gap de detecção transitiva de D14 (capability-execution/imob-artifact-capabilities).
 - Correção do falso positivo de N-12 para `provider-boundary-enforcement.test.ts` (path mismatch
   no scanner).
@@ -135,8 +169,11 @@ execução abaixo).
 ## Status
 
 - Reclassificação Grupo A/B: **evidenciado** (idêntica a D14, sem mudanças desde então).
-- Execução real dos 177 e identificação dos 15 excluídos: **evidenciado** (rodado individualmente
+- Execução real dos 177 e identificação dos 15 excluídos iniciais: **evidenciado** (rodado individualmente
   e revalidado, motivos confirmados por reprodução, não por suposição).
-- Job novo + manifesto + wiring: **evidenciado** (162/162 verdes via `pnpm test:ci-unit-suite`,
-  orphan-check antes/depois confirmado).
-- Correção dos 15 excluídos: **proposta** (não implementada, fora de escopo desta fase).
+- 1a execução real no GitHub Actions do job `ci_unit_suite`: **evidenciado** (`pass:710/fail:1`,
+  falha única em `apps/workers/action-runner/src/index.test.ts` por `ERR_MODULE_NOT_FOUND` de
+  `@repo/db/dist/index.js` no runner limpo).
+- Ajuste corretivo mínimo do manifesto/script para preservar o escopo unit/mock: **evidenciado**
+  (161 arquivos, `blockingOrphanCount=50`, sem `services:` e sem build amplo).
+- Correção dos 16 excluídos: **proposta** (não implementada, fora de escopo desta fase).
