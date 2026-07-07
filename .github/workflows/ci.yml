@@ -407,6 +407,34 @@ jobs:
       - name: Check evidence index after scoped suite
         run: pnpm check:evidence-index
 
+  ci_unit_suite:
+    name: CiUnitSuite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      # Lista de arquivos versionada em scripts/unit-tests-manifest.txt (fonte
+      # da verdade). Sem services: todos sao Grupo B (unit/mock puro, D14).
+      - name: Run unit test suite (Grupo B, sem services)
+        run: pnpm test:ci-unit-suite
+
   receipt_canon_compat:
     name: ReceiptCanonCompat
     runs-on: ubuntu-latest
