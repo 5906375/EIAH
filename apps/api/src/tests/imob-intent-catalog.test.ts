@@ -97,6 +97,22 @@ test("IMOB conversational catalog treats case status phrasing as pipeline status
   assert.equal(matches[0]?.nextActionPolicy, "read_pipeline_status");
 });
 
+test("IMOB conversational catalog exposes workspace case list intent for plural case listing prompts", () => {
+  const samples = [
+    "mostre-me a lista dos códigos",
+    "listar códigos",
+    "ver casos",
+    "listar meus casos",
+    "mostrar casos recentes",
+  ];
+
+  for (const sample of samples) {
+    const matches = matchImobConversationalIntents(sample);
+    assert.equal(matches[0]?.intentId, "workspace_case_list");
+    assert.equal(matches[0]?.nextActionPolicy, "read_pipeline_status");
+  }
+});
+
 test("IMOB conversational catalog exposes blocked run resolution intent", () => {
   const matches = matchImobConversationalIntents("como destravar esse caso?");
 

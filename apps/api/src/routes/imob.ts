@@ -53,6 +53,7 @@ import {
 import { applyExistingRegistrationResolution as applyImobCrmExistingRegistrationResolution } from "../services/imob/crm/imobCrmTurnRegistration";
 import { createEmptyImobCrmThreadState } from "../services/imob/crm/imobCrmTurnState";
 import { ImobCrmMutationService } from "../services/imob/crm/imobCrmMutationService";
+import { ImobCrmRepository } from "../services/imob/crm/imobCrmRepository";
 import {
   type ImobOperationalResolverParams,
   resolveImobOperationalConsultImpl,
@@ -240,12 +241,13 @@ const imobCrmBusinessRead = buildImobCrmBusinessReadHelpers({
   buildImobCanonicalCase,
   resolveBusinessReadIntent(message: string) {
     const match = matchImobConversationalIntents(message).find((intent) =>
+      intent.intentId === "workspace_case_list" ||
       intent.intentId === "pipeline_status" ||
       intent.intentId === "blocked_run_resolution" ||
       intent.intentId === "next_best_action",
     );
     if (match?.intentId) {
-      return match.intentId as "pipeline_status" | "blocked_run_resolution" | "next_best_action";
+      return match.intentId as "workspace_case_list" | "pipeline_status" | "blocked_run_resolution" | "next_best_action";
     }
     const normalized = normalizeImobRouteText(message);
     if (
@@ -1715,6 +1717,75 @@ imobRouter.post("/chat/resolve-turn", async (req, res) => {
   const workspaceAccess = await readImobWorkspaceAccessProfile({ prisma, authContext });
   if (!ensureImobWorkspacePermission(res, workspaceAccess.permissions, "imob.chat.use", "Sua função atual não pode usar o IMOB neste workspace.")) {
     return;
+  }
+  if (!authContext.tenantId) {
+    return res.json({
+      ok: true,
+      data: {
+        mode: "blocked",
+        action: "crm.case.workspace_case_list",
+        threadLabel: "Casos",
+        conversationState: createEmptyImobCrmThreadState(),
+        presentation: {
+          text: "Não consegui identificar o tenant atual para listar os casos do workspace.",
+          dedupeKey: "crm.case.workspace_case_list:tenant_missing",
+        },
+      },
+    });
+  }
+  if (!authContext.workspaceId) {
+    return res.json({
+      ok: true,
+      data: {
+        mode: "blocked",
+        action: "crm.case.workspace_case_list",
+        threadLabel: "Casos",
+        conversationState: createEmptyImobCrmThreadState(),
+        presentation: {
+          text: "Não consegui identificar o workspace atual para listar os casos.",
+          dedupeKey: "crm.case.workspace_case_list:workspace_missing",
+        },
+      },
+    });
+  }
+  const businessReadIntent = imobCrmBusinessRead.resolveImobBusinessReadIntent(message);
+  if (businessReadIntent === "workspace_case_list") {
+    try {
+      const items = await new ImobCrmRepository(prisma).listCases({
+        tenantId: authContext.tenantId,
+        workspaceId: authContext.workspaceId,
+      }, { flow: null, status: null });
+      const filteredItems = items.filter((item) => canWorkspaceOperateImobStage(workspaceAccess.permissions, item.stage));
+      return res.json({
+        ok: true,
+        data: imobCrmBusinessRead.buildWorkspaceCaseListConsult({
+          items: filteredItems,
+          threadState: createEmptyImobCrmThreadState(),
+        }),
+      });
+    } catch {
+      return res.json({
+        ok: true,
+        data: {
+          mode: "blocked",
+          action: "crm.case.workspace_case_list",
+          threadLabel: "Casos",
+          conversationState: createEmptyImobCrmThreadState(),
+          presentation: {
+            text: "Não consegui consultar a lista de casos do workspace agora.",
+            suggestedNextAction: "Tente novamente em instantes ou abra a lista de casos do IMOB.",
+            dedupeKey: "crm.case.workspace_case_list:query_error",
+            card: {
+              title: "Falha na leitura da carteira",
+              lines: [
+                "A consulta da lista de casos falhou nesta tentativa.",
+                "O runtime não abriu um fluxo paralelo; a leitura depende da mesma capability de CRM usada em GET /imob/cases.",
+              ],
+            },
+          },
+        },
+      });
+    }
   }
 
   const existingScopedCase = requestedCaseId

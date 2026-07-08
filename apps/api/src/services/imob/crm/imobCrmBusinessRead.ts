@@ -40,7 +40,7 @@ import {
   type ImobCrmWorkflowState,
 } from "./imobCrmWorkflowMachine";
 
-type BusinessReadIntent = "pipeline_status" | "blocked_run_resolution" | "next_best_action";
+type BusinessReadIntent = "pipeline_status" | "blocked_run_resolution" | "next_best_action" | "workspace_case_list";
 type BusinessReadCaseRecord = {
   id: string;
   flow?: string | null;
@@ -3134,6 +3134,91 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     };
   }
 
+  function buildWorkspaceCaseListConsult(params: {
+    items: BusinessReadCaseRecord[];
+    threadState: ImobCrmConversationState | null | undefined;
+    caseId?: string | null;
+  }) {
+    const items = params.items.slice(0, 5);
+    if (items.length === 0) {
+      return {
+        mode: "consult",
+        action: "crm.case.workspace_case_list",
+        threadLabel: "Casos",
+        conversationState: params.threadState ?? helpers.createEmptyThreadState(),
+        presentation: {
+          text: "Não encontrei casos IMOB neste workspace para listar.",
+          suggestedNextAction: "Crie ou atualize um caso antes de pedir a lista de códigos do workspace.",
+          dedupeKey: "crm.case.workspace_case_list:empty",
+          card: {
+            title: "Workspace sem casos",
+            lines: [
+              "Nenhum caso IMOB foi encontrado neste workspace.",
+              "Quando houver casos ativos, eu consigo listar os códigos mais recentes por aqui.",
+            ],
+          },
+        },
+      };
+    }
+
+    const firstItem = items[0];
+    const firstCaseContext = buildCaseContextFromRecord(firstItem);
+    const firstSubject = formatImobBusinessSubject(firstCaseContext);
+    const firstNextStep = formatImobBusinessNextStep(firstItem.nextStep, firstCaseContext);
+    const lines = items.map((item) => {
+      const caseContext = buildCaseContextFromRecord(item);
+      const subject = formatImobBusinessSubject(caseContext);
+      const stageLabel = formatImobCommercialStageLabel(caseContext);
+      return `${item.id} · ${stageLabel} · ${subject}`;
+    });
+
+    return {
+      mode: "consult",
+      action: "crm.case.workspace_case_list",
+      threadLabel: "Casos",
+      conversationState: params.threadState ?? helpers.createEmptyThreadState(),
+      caseContext: params.caseId ? firstCaseContext : undefined,
+      presentation: {
+        text: [
+          `Encontrei ${items.length} ${items.length === 1 ? "caso" : "casos"} recentes no workspace atual.`,
+          `Primeiro da fila: ${firstItem.id} em ${formatImobCommercialStageLabel(firstCaseContext)}.`,
+          `Próximo movimento mais seguro no caso mais recente: ${firstNextStep}.`,
+        ].join("\n"),
+        owner: firstItem.ownerResponsible ?? "Corretor",
+        suggestedNextAction: firstNextStep,
+        dedupeKey: `crm.case.workspace_case_list:${firstItem.id}`,
+        card: {
+          title: "Casos do workspace",
+          lines,
+          ctas: [
+            {
+              id: `case-status-${firstItem.id}`,
+              label: "Abrir caso mais recente",
+              kind: "primary" as const,
+              action: "send_suggested_message" as const,
+              nextMessage: `qual status do caso ${firstItem.id}?`,
+            },
+            {
+              id: `case-blockers-${firstItem.id}`,
+              label: "Ver bloqueios",
+              kind: "secondary" as const,
+              action: "send_suggested_message" as const,
+              nextMessage: `mostrar bloqueios do caso ${firstItem.id}`,
+            },
+          ],
+        },
+        widget: null,
+        blocks: [
+          {
+            kind: "summary",
+            title: "Lista de casos",
+            lines,
+          },
+        ],
+      },
+    };
+  }
+
   function titleCaseJourneyPhase(value: string) {
     switch (value) {
       case "captacao":
@@ -3342,6 +3427,7 @@ export function buildImobCrmBusinessReadHelpers(helpers: BusinessReadHelpers) {
     buildCaseContextFromRecord,
     resolveImobBusinessReadIntent: helpers.resolveBusinessReadIntent,
     buildImobBusinessReadPresentation,
+    buildWorkspaceCaseListConsult,
     isImobRecentRegistrationReadRequest,
     isBulkPropertyOnboardingQuestion,
     buildBulkPropertyOnboardingConsult,

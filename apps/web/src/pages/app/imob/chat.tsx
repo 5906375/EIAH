@@ -878,7 +878,10 @@ function formatCanonicalJourneyType(value: string | null | undefined) {
   return "Operação";
 }
 
-function buildCanonicalJourneyCard(caseContext?: ImobCaseContext | null): MessageCard | undefined {
+function buildCanonicalJourneyCard(
+  caseContext?: ImobCaseContext | null,
+  options?: { suppressRecommendedNextStep?: boolean }
+): MessageCard | undefined {
   const recommended = caseContext?.canonical?.recommendedActions ?? [];
   if (!caseContext?.canonical?.journeyType || recommended.length === 0) return undefined;
   return {
@@ -887,7 +890,7 @@ function buildCanonicalJourneyCard(caseContext?: ImobCaseContext | null): Messag
     lines: [
       `Jornada: ${formatCanonicalJourneyType(caseContext.canonical.journeyType)}`,
       `Etapa atual: ${caseContext.stage}`,
-      ...(caseContext.nextStep ? [`Próximo passo recomendado: ${caseContext.nextStep}`] : []),
+      ...(!options?.suppressRecommendedNextStep && caseContext.nextStep ? [`Próximo passo recomendado: ${caseContext.nextStep}`] : []),
     ],
     ctas: mergeRecommendedActionCtas(undefined, caseContext),
     actionsLayout: "inline",
@@ -897,6 +900,7 @@ function buildCanonicalJourneyCard(caseContext?: ImobCaseContext | null): Messag
 function mapReplyCard(
   card: ImobResolveTurnResponse["presentation"]["card"] | undefined,
   thread: { id: string; label: string; status?: "active" | "waiting" | "done" | "blocked" },
+  presentation: ImobResolveTurnResponse["presentation"] | undefined,
   caseContext?: ImobCaseContext | null,
 ): MessageCard | undefined {
   const mapped = mapApiPresentationCard(card, thread);
@@ -906,7 +910,9 @@ function mapReplyCard(
       ctas: mergeRecommendedActionCtas(mapped.ctas, caseContext),
     };
   }
-  return buildCanonicalJourneyCard(caseContext);
+  return buildCanonicalJourneyCard(caseContext, {
+    suppressRecommendedNextStep: Boolean(presentation?.nextStep || presentation?.suggestedNextAction),
+  });
 }
 
 function shouldSuppressLegacyCardFromPresentation(
@@ -930,7 +936,7 @@ function mapReplyCardFromPresentation(
   caseContext?: ImobCaseContext | null,
 ): MessageCard | undefined {
   if (!presentation || shouldSuppressLegacyCardFromPresentation(presentation)) return undefined;
-  return mapReplyCard(presentation.card, thread, caseContext);
+  return mapReplyCard(presentation.card, thread, presentation, caseContext);
 }
 
 function buildJourneyTelemetryMetadata(caseContext?: ImobCaseContext | null, extra?: Record<string, unknown>) {

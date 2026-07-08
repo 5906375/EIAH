@@ -14,3 +14,8 @@ test("chat.tsx does not call runBundlePath a case dossier in the CTA", () => {
   assert.match(source, /Ver bundle da execução/);
   assert.doesNotMatch(source, /label:\s*"Ver dossiê"/);
 });
+
+test("chat.tsx suppresses canonical next-step duplication when presentation already carries the governed next step", () => {
+  assert.match(source, /suppressRecommendedNextStep:\s*Boolean\(presentation\?\.nextStep \|\| presentation\?\.suggestedNextAction\)/);
+  assert.match(source, /!options\?\.suppressRecommendedNextStep && caseContext\.nextStep/);
+});
