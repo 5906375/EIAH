@@ -1449,13 +1449,14 @@ function preserveCanonicalOperationalSurface(
   const baseOperational = asObject(asObject(resolvedTurn.conversationState)?.operational) ?? {};
   const nextOperational = asObject(asObject(registrationAwareTurn.conversationState)?.operational) ?? {};
   const hasBaseForm = Boolean(asObject(basePresentation.form));
+  const hasBaseCard = Boolean(asObject(basePresentation.card));
   const hasNextForm = Boolean(asObject(nextPresentation.form));
   const hasNextCard = Boolean(asObject(nextPresentation.card));
   const hasNextBlocks = Array.isArray(nextPresentation.blocks) && nextPresentation.blocks.length > 0;
   const sameFlow = (asString(baseOperational.flow) ?? "") === (asString(nextOperational.flow) ?? "");
   const sameStatus = (asString(baseOperational.status) ?? "") === (asString(nextOperational.status) ?? "");
 
-  if (!hasBaseForm || hasNextForm || hasNextCard || hasNextBlocks || !sameFlow || !sameStatus) {
+  if ((!hasBaseForm && !hasBaseCard) || hasNextBlocks || !sameFlow || !sameStatus) {
     return registrationAwareTurn;
   }
 
@@ -1463,7 +1464,11 @@ function preserveCanonicalOperationalSurface(
     ...registrationAwareTurn,
     presentation: {
       ...nextPresentation,
-      form: basePresentation.form,
+      ...(hasBaseForm && !hasNextForm ? { form: basePresentation.form } : {}),
+      ...(hasBaseCard && !hasNextCard ? {
+        card: basePresentation.card,
+        __canonicalCardFallback: basePresentation.card,
+      } : {}),
       pendingFieldLabels: nextPresentation.pendingFieldLabels ?? basePresentation.pendingFieldLabels,
       metadata: {
         ...(asObject(basePresentation.metadata) ?? {}),
@@ -1488,6 +1493,7 @@ function applyImobCrmCopyStateToResolution(data: Record<string, unknown>): Recor
   const normalizedData = presentation === originalPresentation
     ? data
     : { ...data, presentation };
+  const canonicalCardFallback = asObject((presentation as Record<string, unknown>).__canonicalCardFallback);
   const inferredCopyState = inferImobCrmCopyStateFromResolution(normalizedData);
   const copyState = isMarketScanSelection ? null : inferredCopyState;
   const proof = isMarketScanSelection ? null : resolveImobProofSurfaceFromResolution(normalizedData);
@@ -1511,13 +1517,13 @@ function applyImobCrmCopyStateToResolution(data: Record<string, unknown>): Recor
     },
   });
   const shouldClearLegacyCard =
-    snapshotVariant === "collecting_fields"
+    (snapshotVariant === "collecting_fields" && hasForm)
     || snapshotVariant === "form_draft"
     || snapshotVariant === "success_created"
     || snapshotVariant === "success_updated"
     || snapshotVariant === "success_deduped_update";
   const nextOperational = asObject(asObject(data.conversationState)?.operational);
-  const sanitizedCard = stripLegacyCardProof(asObject(presentation.card));
+  const sanitizedCard = stripLegacyCardProof(asObject(presentation.card) ?? canonicalCardFallback);
   if (
     presentation === originalPresentation
     && !copyState
@@ -1547,6 +1553,7 @@ function applyImobCrmCopyStateToResolution(data: Record<string, unknown>): Recor
           variant: snapshotVariant,
         },
       },
+      __canonicalCardFallback: undefined,
       ...(copyState ? { copyState } : {}),
       ...(proof ? { proof } : {}),
       ...(!shouldClearLegacyCard && sanitizedCard ? { card: sanitizedCard } : {}),
@@ -1908,8 +1915,11 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
           resolved: params.helpers.injectResolvedPendingSuggestion(resolvedTurn),
         }) as Record<string, unknown>,
       );
-      const data = normalizeLeadQualifyResolution(
-        applyResponsibleLabelToResolvedTurn(registrationAwareTurn, params.workspaceResponsibleLabel) as Record<string, unknown>,
+      const data = preserveCanonicalOperationalSurface(
+        resolvedTurn,
+        normalizeLeadQualifyResolution(
+          applyResponsibleLabelToResolvedTurn(registrationAwareTurn, params.workspaceResponsibleLabel) as Record<string, unknown>,
+        ),
       );
 
       const caseContext = await params.helpers.upsertImobCaseFromResolvedTurn({
@@ -2014,9 +2024,12 @@ export async function resolveImobCrmTurnEngine(params: ImobCrmTurnEngineParams) 
         resolved: params.helpers.injectResolvedPendingSuggestion(resolvedTurn),
       }) as Record<string, unknown>,
     );
-    const data = normalizeLeadQualifyResolution(
-      applyResponsibleLabelToResolvedTurn(registrationAwareTurn, params.workspaceResponsibleLabel) as Record<string, unknown>,
-    );
+      const data = preserveCanonicalOperationalSurface(
+        resolvedTurn,
+        normalizeLeadQualifyResolution(
+          applyResponsibleLabelToResolvedTurn(registrationAwareTurn, params.workspaceResponsibleLabel) as Record<string, unknown>,
+        ),
+      );
 
     const caseContext = await params.helpers.upsertImobCaseFromResolvedTurn({
       prisma: params.prisma,
