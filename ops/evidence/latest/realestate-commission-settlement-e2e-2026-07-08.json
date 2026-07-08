@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "date": "2026-07-08",
+  "generatedAt": "2026-07-08T13:10:14.479Z",
+  "scope": "P3-commission",
+  "flow": [
+    "commission settle request",
+    "PoU/SCL gate",
+    "payment intent release",
+    "provider settlement",
+    "receipt.finalized reputation update",
+    "ledger reconciliation"
+  ],
+  "assertions": {
+    "runLinked": true,
+    "receiptLinked": true,
+    "idempotentReplay": true,
+    "duplicateSideEffects": 0
+  },
+  "test": "apps/api/src/tests/realestate.commission.settlement.e2e.test.ts"
+}
