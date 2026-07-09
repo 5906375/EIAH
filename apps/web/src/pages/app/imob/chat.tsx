@@ -96,6 +96,8 @@ type ChatState = "idle" | "typing" | "executing" | "awaiting_user_action" | "blo
 
 type CardType = "action" | "risk" | "evidence" | "queue";
 
+export type ImobFrontdoorStateKind = "loading" | "empty" | "error" | "entitlement" | "fallback";
+
 type CardCta = {
   id: string;
   label: string;
@@ -884,6 +886,92 @@ export function normalizeImobAccessGateErrorPresentation(error: unknown): {
       },
     },
   };
+}
+
+export function buildImobFrontdoorStatePresentation(input: {
+  kind: ImobFrontdoorStateKind | string;
+  error?: unknown;
+}): {
+  text: string;
+  card: Omit<MessageCard, "thread">;
+} {
+  if (input.kind === "entitlement") {
+    return normalizeImobAccessGateErrorPresentation(input.error);
+  }
+
+  if (input.kind === "loading") {
+    return {
+      text: "Carregando o contexto IMOB...",
+      card: {
+        type: "queue",
+        title: "Contexto IMOB em carregamento",
+        lines: [
+          "Estamos carregando sessão, workspace e histórico antes de continuar.",
+          "Nenhuma ação operacional será disparada até o contexto estar pronto.",
+        ],
+        queue: {
+          status: "loading",
+          step: "frontdoor_context",
+        },
+      },
+    };
+  }
+
+  if (input.kind === "empty") {
+    return {
+      text: "Ainda não há uma conversa IMOB iniciada neste workspace.",
+      card: {
+        type: "action",
+        title: "Front door IMOB pronto",
+        lines: [
+          "Comece descrevendo o imóvel, lead, proprietário ou operação que deseja tratar.",
+          "O próximo passo será decidido pelo agente a partir da sua mensagem.",
+        ],
+      },
+    };
+  }
+
+  if (input.kind === "error") {
+    const structured = extractImobStructuredError(input.error);
+    const text = structured?.message ?? "Não foi possível concluir esta ação agora.";
+    return {
+      text,
+      card: {
+        type: "risk",
+        title: "Ação IMOB não concluída",
+        lines: [
+          "O front door preservou o modo seguro e não disparou ação operacional.",
+          structured?.reasonCode ? `Código: ${structured.reasonCode}` : null,
+        ].filter((line): line is string => Boolean(line)),
+        risk: {
+          level: "medium",
+          reason: structured?.reasonCode ?? text,
+        },
+      },
+    };
+  }
+
+  return {
+    text: "Não foi possível determinar o próximo estado do atendimento IMOB.",
+    card: {
+      type: "risk",
+      title: "Estado IMOB não determinado",
+      lines: [
+        "O atendimento foi pausado em modo fail-closed.",
+        "Tente novamente depois que o contexto do workspace estiver disponível.",
+      ],
+      risk: {
+        level: "high",
+        reason: "IMOB_FRONTDOOR_UNKNOWN_STATE",
+      },
+    },
+  };
+}
+
+function resolveImobFrontdoorErrorStateKind(error: unknown): ImobFrontdoorStateKind {
+  return error instanceof ApiError && (error.status === 401 || error.status === 403)
+    ? "entitlement"
+    : "error";
 }
 
 function buildCanonicalRecommendedActionCtas(caseContext?: ImobCaseContext | null): CardCta[] {
@@ -3365,7 +3453,10 @@ const ImobChatPage: React.FC = () => {
         actionId: actionIdConsumedRef.current ? null : requestedActionId,
       });
     } catch (error) {
-      const presentationError = normalizeImobAccessGateErrorPresentation(error);
+      const presentationError = buildImobFrontdoorStatePresentation({
+        kind: resolveImobFrontdoorErrorStateKind(error),
+        error,
+      });
       appendMessage({
         id: makeId("assistant"),
         role: "assistant",
@@ -3430,7 +3521,10 @@ const ImobChatPage: React.FC = () => {
         setConversations((prev) => [created.conversation, ...prev]);
         sessionRunByThreadRef.current = {};
       } catch (error) {
-        const presentationError = normalizeImobAccessGateErrorPresentation(error);
+        const presentationError = buildImobFrontdoorStatePresentation({
+          kind: resolveImobFrontdoorErrorStateKind(error),
+          error,
+        });
         appendMessage({
           id: makeId("assistant"),
           role: "assistant",
@@ -4749,6 +4843,11 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
   const compactVisibleLimit = 34;
   const hiddenMessageCount = compactTimelineMode ? Math.max(0, visibleMessages.length - compactVisibleLimit) : 0;
   const renderedMessages = compactTimelineMode ? visibleMessages.slice(-compactVisibleLimit) : visibleMessages;
+  const frontdoorStatePresentation = historyLoading
+    ? buildImobFrontdoorStatePresentation({ kind: "loading" })
+    : visibleMessages.length === 0 && !selectedThreadId
+      ? buildImobFrontdoorStatePresentation({ kind: "empty" })
+      : null;
   const lastVisibleMessage = visibleMessages.length > 0 ? visibleMessages[visibleMessages.length - 1] : null;
   const activeThreadCount = threads.filter((item) => item.status === "active").length;
   const shouldShowThreadPanel = showThreadPanel || activeThreadCount > 1 || Boolean(selectedThreadId);
@@ -5113,8 +5212,20 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                   </button>
                 </div>
               ) : null}
-              {historyLoading ? (
-                <p className="text-sm text-muted-foreground">Carregando histórico da conversa...</p>
+              {frontdoorStatePresentation ? (
+                <div className="rounded-xl border border-white/10 bg-surface/70 p-4 shadow-lg shadow-black/20">
+                  <p className="text-sm text-foreground">{frontdoorStatePresentation.text}</p>
+                  <div className="mt-3 rounded-lg border border-white/10 bg-black/10 p-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                      {frontdoorStatePresentation.card.title}
+                    </p>
+                    <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+                      {frontdoorStatePresentation.card.lines.map((line) => (
+                        <li key={line}>{line}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
               ) : visibleMessages.length === 0 ? (
                 selectedThreadId ? (
                   <div className="rounded-xl border border-white/10 bg-surface/70 p-4 shadow-lg shadow-black/20">
@@ -5123,11 +5234,7 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                       Selecione outra thread ou remova o filtro para ver toda a conversa.
                     </p>
                   </div>
-                ) : (
-                  <div className="rounded-xl border border-white/10 bg-surface/70 p-4 shadow-lg shadow-black/20">
-                    <p className="text-sm text-muted-foreground">Nova conversa pronta.</p>
-                  </div>
-                )
+                ) : null
               ) : null}
               {!historyLoading && hasMoreHistory && !selectedThreadId ? (
                 <div className="flex justify-center">
