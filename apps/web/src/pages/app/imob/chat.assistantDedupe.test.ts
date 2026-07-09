@@ -9,6 +9,25 @@ import {
 } from "./chat";
 import { ApiError } from "@/lib/api";
 
+function renderImobFrontdoorPresentationForTest(
+  presentation: ReturnType<typeof buildImobFrontdoorStatePresentation>,
+) {
+  const rows = [
+    `message:${presentation.text}`,
+    `card.type:${presentation.card.type}`,
+    `card.title:${presentation.card.title}`,
+    ...presentation.card.lines.map((line) => `card.line:${line}`),
+    ...(presentation.card.ctas ?? []).map((cta) => [
+      `cta.label:${cta.label}`,
+      cta.href ? `cta.href:${cta.href}` : null,
+      cta.nextMessage ? `cta.nextMessage:${cta.nextMessage}` : null,
+    ].filter(Boolean).join("|")),
+    presentation.card.risk?.reason ? `risk.reason:${presentation.card.risk.reason}` : null,
+  ];
+
+  return rows.filter((row): row is string => Boolean(row)).join("\n");
+}
+
 test("dedupeRunMessages colapsa duplicata assistente legado sem runId inicial", () => {
   const dedupeKey = buildAssistantMessageDedupeKey({
     action: "realestate.register_property",
@@ -254,4 +273,97 @@ test("buildImobFrontdoorStatePresentation fails closed for unknown state", () =>
   assert.equal(presentation.card.type, "risk");
   assert.equal(presentation.card.risk?.reason, "IMOB_FRONTDOOR_UNKNOWN_STATE");
   assert.equal(presentation.card.ctas, undefined);
+});
+
+test("IMOB front door UX rendering evidence covers F0.1 and F0.2 states", () => {
+  const entitlementWithCta = renderImobFrontdoorPresentationForTest(
+    buildImobFrontdoorStatePresentation({
+      kind: "entitlement",
+      error: new ApiError(403, "Forbidden", {
+        ok: false,
+        error: {
+          message: "IMOB ainda não está instalado neste workspace.",
+          reasonCode: "IMOB_NOT_INSTALLED",
+          cta: {
+            type: "link",
+            label: "Instalar IMOB",
+            target: "/app/marketplace/imob",
+          },
+        },
+      }),
+    }),
+  );
+
+  assert.match(entitlementWithCta, /message:IMOB ainda não está instalado neste workspace\./);
+  assert.match(entitlementWithCta, /card.line:Código: IMOB_NOT_INSTALLED/);
+  assert.match(entitlementWithCta, /cta.label:Instalar IMOB/);
+  assert.match(entitlementWithCta, /cta.href:\/app\/marketplace\/imob/);
+
+  const entitlementWithoutCta = renderImobFrontdoorPresentationForTest(
+    buildImobFrontdoorStatePresentation({
+      kind: "entitlement",
+      error: new ApiError(403, "Forbidden", {
+        ok: false,
+        error: {
+          message: "Você não possui permissão para usar este recurso do IMOB neste workspace.",
+          reasonCode: "IMOB_PERMISSION_DENIED",
+        },
+      }),
+    }),
+  );
+
+  assert.match(entitlementWithoutCta, /message:Você não possui permissão/);
+  assert.match(entitlementWithoutCta, /card.line:Código: IMOB_PERMISSION_DENIED/);
+  assert.doesNotMatch(entitlementWithoutCta, /cta\.label:/);
+  assert.doesNotMatch(entitlementWithoutCta, /Instalar IMOB/);
+
+  const loading = renderImobFrontdoorPresentationForTest(
+    buildImobFrontdoorStatePresentation({ kind: "loading" }),
+  );
+
+  assert.match(loading, /message:Carregando o contexto IMOB/);
+  assert.match(loading, /card.title:Contexto IMOB em carregamento/);
+  assert.doesNotMatch(loading, /cta\.label:/);
+  assert.doesNotMatch(loading, /Instalar IMOB/);
+
+  const empty = renderImobFrontdoorPresentationForTest(
+    buildImobFrontdoorStatePresentation({ kind: "empty" }),
+  );
+
+  assert.match(empty, /message:Ainda não há uma conversa IMOB iniciada neste workspace\./);
+  assert.match(empty, /card.title:Front door IMOB pronto/);
+  assert.doesNotMatch(empty, /cta\.label:/);
+  assert.doesNotMatch(empty, /IMOB_NOT_INSTALLED/);
+
+  const genericError = renderImobFrontdoorPresentationForTest(
+    buildImobFrontdoorStatePresentation({
+      kind: "error",
+      error: new ApiError(500, "Internal Server Error", {
+        ok: false,
+        error: {
+          message: "Falha temporária ao consultar o contexto IMOB.",
+          reasonCode: "IMOB_CONTEXT_QUERY_FAILED",
+          details: {
+            stack: "Error: sensitive stack should not render",
+            token: "secret-token-should-not-render",
+          },
+        },
+      }),
+    }),
+  );
+
+  assert.match(genericError, /message:Falha temporária ao consultar o contexto IMOB\./);
+  assert.match(genericError, /card.line:Código: IMOB_CONTEXT_QUERY_FAILED/);
+  assert.doesNotMatch(genericError, /sensitive stack/);
+  assert.doesNotMatch(genericError, /secret-token/);
+  assert.doesNotMatch(genericError, /cta\.label:/);
+
+  const unknownFallback = renderImobFrontdoorPresentationForTest(
+    buildImobFrontdoorStatePresentation({ kind: "unknown_runtime_state" }),
+  );
+
+  assert.match(unknownFallback, /message:Não foi possível determinar o próximo estado/);
+  assert.match(unknownFallback, /card.line:O atendimento foi pausado em modo fail-closed\./);
+  assert.match(unknownFallback, /risk.reason:IMOB_FRONTDOOR_UNKNOWN_STATE/);
+  assert.doesNotMatch(unknownFallback, /cta\.label:/);
 });
