@@ -444,7 +444,7 @@ Não adotar novamente nome canônico anterior. O conteúdo normativo vigente dev
 
 | Prioridade | Estado v8.1 | Observação |
 | --- | --- | --- |
-| P0 — Integridade documental | Parcial até atualizar `docs/EVIDENCE_INDEX.md` | O roadmap foi atualizado; o índice precisa apontar para o arquivo canônico vigente. |
+| P0 — Integridade documental | Parcial/evidenciado quanto à sincronização roadmap ↔ Evidence Index | O roadmap e o índice apontam para o arquivo canônico vigente; permanece sujeito a regressão documental contínua e a gates de CI. |
 | P1 — Governança/execução crítica | Avançado | Responsible actor IMOB e runtime mínimo Trilha B implementados; manter fail-closed. |
 | P2 — Auditoria pública/interop | Avançado | Interop spec v1 e contratos avançados; manter baseline e CI. |
 | P3 — Economy hardening | Parcial avançado | Settlement/EconomyReceipt avançaram; SLO ratification e provider mode seguem gates. |
@@ -456,6 +456,6 @@ Não adotar novamente nome canônico anterior. O conteúdo normativo vigente dev
 - IMOB: **acima do programado originalmente**.
 - Multi-vertical: **primeira ponte runtime real implementada**.
 - Pendência crítica: **ratificação operacional de SLO targets**.
-- Risco principal atual: **drift documental se `docs/EVIDENCE_INDEX.md` não for atualizado junto com este roadmap**.
+- Risco residual: **regressão documental futura se novos roadmaps, evidências ou referências forem adicionados sem passar pelos gates de integridade documental**.
 
 **Status normativo desta revisão:** parcial avançado, não operacionalmente fechado.
