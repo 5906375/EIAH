@@ -64,6 +64,16 @@ jobs:
           APE_CANARY_STAGE: ${{ github.event.inputs.canary_stage || 'pilot' }}
         run: pnpm ape:cycle:weekly
 
+      # Relocado de ci.yml (ratificado D25, 2026-07-08): gates de saude
+      # operacional RECORRENTE, sem relacao com o conteudo de PRs
+      # individuais. Bloqueantes aqui — um NO_GO real falha o workflow
+      # semanal visivelmente. Ver ops/evidence/latest/gate-relocation-decision-2026-07-08.md.
+      - name: Check P3 recurring stability (relocated from ci.yml, ratified D25)
+        run: pnpm check:p3-stability-recurring
+
+      - name: Check P4 Track P rollout readiness (relocated from ci.yml, ratified D25)
+        run: pnpm check:p4-trackp-rollout
+
       - name: Evidence linkage
         run: pnpm check:ape-evidence-linkage
 
