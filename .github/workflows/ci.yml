@@ -93,14 +93,6 @@ jobs:
       - name: Check worker topology ownership
         run: pnpm check:worker-topology
 
-      # Warn-only: inventario inicial de 2026-07-06 encontrou 210 arquivos
-      # *.test.ts sem nenhuma referencia em package.json ou workflows.
-      # Promover a bloqueante depois que um PR dedicado (PR-CI-01) triar
-      # esse volume — ver ops/evidence/latest/orphan-tests-gate-2026-07-06.md.
-      - name: Check for orphan test files (warn-only, pending PR-CI-01 triage)
-        run: pnpm check:orphan-tests
-        continue-on-error: true
-
       # 2. Build Hardened e Otimizado (Corrige os problemas de TMPDIR e ESBUILD)
       - name: Build Web Application (Hardened)
         # As variáveis TMPDIR e ESBUILD_TMPDIR forçam o uso de /tmp, 
@@ -319,6 +311,32 @@ jobs:
 
       - name: Run IMOB front door regression gate
         run: pnpm check:imob-frontdoor-regression
+
+  orphan_tests_regression:
+    name: OrphanTestsRegression
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Run orphan tests regression gate
+        run: pnpm check:orphan-tests
 
   public_health_contract:
     name: PublicHealthContract
