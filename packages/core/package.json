@@ -14,6 +14,10 @@
       "import": "./dist/policy/TenantPolicyStore.js",
       "types": "./dist/policy/TenantPolicyStore.d.ts"
     },
+    "./events/redisPublisher": {
+      "import": "./dist/events/redisPublisher.js",
+      "types": "./dist/events/redisPublisher.d.ts"
+    },
     "./queue/*": {
       "import": "./dist/queue/*.js",
       "types": "./dist/queue/*.d.ts"

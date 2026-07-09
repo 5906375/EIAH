@@ -704,6 +704,57 @@ test("IMOB_CRM turn engine injeta market scan read-only com provider interno qua
   assert.equal((resolved as any).conversationState?.operational?.marketScanOpportunity?.recommendedAction, "pedir_autorizacao");
 });
 
+test("IMOB_CRM turn engine does not promote ambiguous market scan capture to batch only from semantic composed intents", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalApiKey = process.env.OPENAI_API_KEY;
+  process.env.OPENAI_API_KEY = "test-key";
+  globalThis.fetch = (async () => ({
+    ok: true,
+    json: async () => ({
+      output_text: JSON.stringify({
+        entity: null,
+        action: null,
+        confidence: 0.99,
+        needsClarification: false,
+        composedIntents: [
+          { entity: "comprador", action: "create" },
+          { entity: "vendedor", action: "create" },
+          { entity: "locatario", action: "create" },
+        ],
+      }),
+    }),
+  })) as typeof fetch;
+
+  try {
+    const params = createEngineParams({
+      body: {
+        message: "Quero captar um imóvel para comprar, vender, locação em Itajaí e Camboriú em Santa Catarina",
+      },
+      helpers: {
+        ...createEngineParams().helpers,
+        applyExistingRegistrationResolution: async ({ resolved }: any) => ({
+          ...resolved,
+          presentation: {
+            ...(resolved.presentation ?? {}),
+            card: undefined,
+          },
+        }),
+      },
+    });
+
+    const resolved = await resolveImobCrmTurnEngine(params);
+    assert.equal((resolved as any).action, "crm.market_scan.offer");
+    assert.equal((resolved as any).conversationState?.operational?.flow, "property.market_scan");
+    assert.notEqual((resolved as any).action, "crm.batch.intake");
+    assert.equal((resolved as any).presentation?.card?.ctas?.[0]?.label, "Fazer varredura de mercado");
+    assert.equal((resolved as any).presentation?.card?.ctas?.[0]?.nextMessage, "fazer varredura de mercado");
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalApiKey) process.env.OPENAI_API_KEY = originalApiKey;
+    else delete process.env.OPENAI_API_KEY;
+  }
+});
+
 test("IMOB_CRM turn engine retoma market scan snapshot persistido por caseId quando o threadState não carrega o snapshot", async () => {
   const params = createEngineParams({
     prisma: {

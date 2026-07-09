@@ -59,24 +59,55 @@ jobs:
         run: pnpm check:slo-target
 
       - name: Run APE cycle
+        id: run_ape_cycle
         env:
           APE_ROLLOUT_MODE: ${{ github.event.inputs.rollout_mode || 'shadow' }}
           APE_CANARY_STAGE: ${{ github.event.inputs.canary_stage || 'pilot' }}
         run: pnpm ape:cycle:weekly
 
+      # N-24 (2026-07-09): com a ordem sequencial anterior, qualquer check
+      # abaixo que falhasse (P3/P4, e ja antes deles Hard metrics — ambos
+      # avaliam hardMetricsGo/recorrencia e podem legitimamente falhar num
+      # ciclo NO_GO) derrubava o job e pulava TODOS os steps seguintes,
+      # incluindo Evidence index/Upload artifacts/Create PR — a evidencia do
+      # ciclo era gerada localmente mas nunca publicada. Um ciclo NO_GO e
+      # justamente o que mais precisa ficar registrado.
+      #
+      # Fix: cada step abaixo roda de forma independente
+      # (`!cancelled() && steps.run_ape_cycle.outcome == 'success'`) — so e
+      # pulado se a propria geracao do ciclo falhou (evidencia nunca
+      # existiu) ou se o job foi cancelado; nao e mais pulado so porque um
+      # check anterior falhou. Cada check continua falhando por si mesmo
+      # quando NO_GO — o job final continua vermelho (D25 intacta) — mas a
+      # publicacao (Evidence index, Upload artifacts, Create PR) sempre
+      # roda quando ha evidencia real para publicar. Ver
+      # ops/evidence/latest/ape-weekly-reorder-n24-2026-07-09.md.
+      - name: Check P3 recurring stability (relocated from ci.yml, ratified D25)
+        if: ${{ !cancelled() && steps.run_ape_cycle.outcome == 'success' }}
+        run: pnpm check:p3-stability-recurring
+
+      - name: Check P4 Track P rollout readiness (relocated from ci.yml, ratified D25)
+        if: ${{ !cancelled() && steps.run_ape_cycle.outcome == 'success' }}
+        run: pnpm check:p4-trackp-rollout
+
       - name: Evidence linkage
+        if: ${{ !cancelled() && steps.run_ape_cycle.outcome == 'success' }}
         run: pnpm check:ape-evidence-linkage
 
       - name: Hard metrics
+        if: ${{ !cancelled() && steps.run_ape_cycle.outcome == 'success' }}
         run: pnpm check:ape-hard-metrics
 
       - name: Provider pricing recency
+        if: ${{ !cancelled() && steps.run_ape_cycle.outcome == 'success' }}
         run: pnpm check:provider-pricing-recency
 
       - name: Evidence index
+        if: ${{ !cancelled() && steps.run_ape_cycle.outcome == 'success' }}
         run: pnpm check:evidence-index
 
       - name: Upload artifacts
+        if: ${{ !cancelled() && steps.run_ape_cycle.outcome == 'success' }}
         uses: actions/upload-artifact@v4
         with:
           name: ape-weekly-artifacts
@@ -90,6 +121,7 @@ jobs:
 
       - name: Create PR with renewed APE evidence
         id: create-evidence-pr
+        if: ${{ !cancelled() && steps.run_ape_cycle.outcome == 'success' }}
         uses: peter-evans/create-pull-request@v7
         with:
           # Branch fixa (ratificado D23): evita acumulo de PRs stale como
@@ -118,7 +150,7 @@ jobs:
       # nao contorna branch protection. Ver
       # ops/evidence/latest/ape-weekly-automerge-decision-2026-07-08.md.
       - name: Guard evidence-only diff and enable auto-merge
-        if: steps.create-evidence-pr.outputs.pull-request-number != ''
+        if: ${{ !cancelled() && steps.run_ape_cycle.outcome == 'success' && steps.create-evidence-pr.outputs.pull-request-number != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ steps.create-evidence-pr.outputs.pull-request-number }}
