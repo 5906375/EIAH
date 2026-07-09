@@ -1,0 +1,10 @@
+{
+  "ok": true,
+  "date": "2026-07-08",
+  "generatedAt": "2026-07-08T13:10:14.479Z",
+  "provider": "stripe",
+  "eventId": "evt-generated-evidence",
+  "replayRejected": true,
+  "duplicateSideEffects": 0,
+  "sourceTest": "apps/api/src/tests/billing.economy.contract.test.ts"
+}
