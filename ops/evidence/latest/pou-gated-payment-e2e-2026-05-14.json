@@ -1,0 +1,23 @@
+{
+  "ok": true,
+  "date": "2026-05-14",
+  "generatedAt": "2026-05-14T13:43:20.384Z",
+  "scope": "P3-pou-gate",
+  "flow": [
+    "create payment intent (status=pending)",
+    "release without PoU → blocked",
+    "add PoU/SCL to run",
+    "release with PoU → released"
+  ],
+  "assertions": {
+    "blockedWithoutPou": true,
+    "releasedWithPou": true,
+    "statusTransitions": [
+      "pending",
+      "blocked",
+      "released",
+      "settled"
+    ]
+  },
+  "test": "apps/api/src/tests/billing.economy.contract.test.ts"
+}
