@@ -54,6 +54,26 @@ function toCanonicalCommandFromParsedIntent(parsed: ParsedImobIntent): string | 
   return null;
 }
 
+function hasStructuralBatchSignal(message: string, normalizeText: (value: string) => string) {
+  const nonEmptyLines = message
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (nonEmptyLines.length >= 2) return true;
+  if (/^\s*\d+\.\s/m.test(message)) return true;
+  if (/^\s*[-*]\s+/m.test(message)) return true;
+  if (/[;|]/.test(message)) return true;
+
+  const normalized = normalizeText(message)
+    .replace(/\bcadstrar\b/g, "cadastrar")
+    .replace(/\bcadastar\b/g, "cadastrar")
+    .replace(/\bcadsatrar\b/g, "cadastrar");
+  const distinctOperationalCommands = normalized.match(
+    /\b(?:cadastrar|captar|qualificar)\s+(?:(?:o|a)\s+)?(?:novo\s+)?(?:proprietario|proprietaria|vendedor|vendedora|locador|locadora|lead|cliente|comprador|compradora|locatario|locataria|imovel|apartamento|apto|casa|terreno|chacara|chácara|sala|galpao|galpão)\b/g,
+  );
+  return (distinctOperationalCommands?.length ?? 0) >= 2;
+}
+
 function extractComposedCommandsFromText(message: string, normalizeText: (value: string) => string) {
   const normalized = normalizeText(message)
     .replace(/\bcadstrar\b/g, "cadastrar")
@@ -97,7 +117,7 @@ export function extractImobOperationalBatches(
       .map(toCanonicalCommandFromParsedIntent)
       .filter((item): item is string => Boolean(item))
     : [];
-  if (semanticCommands.length >= 2) {
+  if (semanticCommands.length >= 2 && hasStructuralBatchSignal(message, normalizeText)) {
     return [semanticCommands];
   }
 
