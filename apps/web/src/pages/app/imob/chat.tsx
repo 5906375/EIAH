@@ -81,7 +81,6 @@ import { KnowledgeCard, type KnowledgeAction } from "@/features/imob/KnowledgeCa
 import { ImobKnowledgeViewer } from "@/features/imob/ImobKnowledgeViewer";
 import { ImobAccessGateCard } from "@/components/imob/ImobAccessGateCard";
 import { ContextualCostPanel } from "@/components/billing/ContextualCostPanel";
-import { resolveImobAccessGateCopy } from "@/features/imob/accessGateCatalog";
 import { formatDataInputTemplate, getDataInputTemplate } from "@/domain/inputTemplates";
 import { CONTRACT_SCHEMAS } from "@/features/imob/contractSchemas";
 import { formatPct } from "@/lib/formatters";
@@ -823,6 +822,68 @@ function normalizeCardCta(cta: CardCta): CardCta {
 function normalizeCardCtas(ctas?: CardCta[]) {
   if (!ctas || ctas.length === 0) return ctas;
   return ctas.map(normalizeCardCta);
+}
+
+function asPlainObject(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function readString(value: unknown) {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+}
+
+function extractImobStructuredError(error: unknown) {
+  const body = error instanceof ApiError ? asPlainObject(error.body) : null;
+  const payload = asPlainObject(body?.error);
+  if (!payload) return null;
+
+  const ctaPayload = asPlainObject(payload.cta);
+  const ctaLabel = readString(ctaPayload?.label);
+  const ctaTarget = readString(ctaPayload?.target)
+    ?? readString(ctaPayload?.href)
+    ?? readString(ctaPayload?.url);
+  const cta = ctaLabel && ctaTarget
+    ? {
+        id: `imob-access-gate-${readString(payload.reasonCode) ?? readString(ctaPayload?.type) ?? "cta"}`,
+        label: ctaLabel,
+        href: ctaTarget,
+        kind: "primary" as const,
+      }
+    : null;
+
+  return {
+    message: readString(payload.message),
+    reasonCode: readString(payload.reasonCode),
+    cta,
+  };
+}
+
+export function normalizeImobAccessGateErrorPresentation(error: unknown): {
+  text: string;
+  card: Omit<MessageCard, "thread">;
+} {
+  const structured = extractImobStructuredError(error);
+  const text = structured?.message ?? "Não foi possível concluir esta ação neste workspace.";
+  const lines = [
+    "O backend bloqueou esta ação em modo fail-closed.",
+    structured?.reasonCode ? `Código: ${structured.reasonCode}` : null,
+  ].filter((line): line is string => Boolean(line));
+
+  return {
+    text,
+    card: {
+      type: "risk",
+      title: "Acesso ao IMOB pausado",
+      lines,
+      ...(structured?.cta ? { ctas: [structured.cta] } : {}),
+      risk: {
+        level: "high",
+        reason: structured?.reasonCode ?? text,
+      },
+    },
+  };
 }
 
 function buildCanonicalRecommendedActionCtas(caseContext?: ImobCaseContext | null): CardCta[] {
@@ -3304,26 +3365,15 @@ const ImobChatPage: React.FC = () => {
         actionId: actionIdConsumedRef.current ? null : requestedActionId,
       });
     } catch (error) {
-      const message =
-        error instanceof ApiError
-          ? `${error.message} (${error.status})`
-          : error instanceof Error
-            ? error.message
-            : "Falha ao resolver esta mensagem";
+      const presentationError = normalizeImobAccessGateErrorPresentation(error);
       appendMessage({
         id: makeId("assistant"),
         role: "assistant",
-        text: "Nao consegui preparar sua solicitacao agora. Tente novamente em instantes.",
+        text: presentationError.text,
         thread: currentThreadId && currentThreadLabel ? { id: currentThreadId, label: currentThreadLabel, status: "blocked" } : undefined,
         card: {
-          type: "risk",
-          title: "Falha no envio",
+          ...presentationError.card,
           thread: currentThreadId && currentThreadLabel ? { id: currentThreadId, label: currentThreadLabel, status: "blocked" } : undefined,
-          lines: [message],
-          risk: {
-            level: "high",
-            reason: message,
-          },
         },
       });
       setState("blocked");
@@ -3380,33 +3430,22 @@ const ImobChatPage: React.FC = () => {
         setConversations((prev) => [created.conversation, ...prev]);
         sessionRunByThreadRef.current = {};
       } catch (error) {
-        const message =
-          error instanceof ApiError
-            ? `${error.message} (${error.status})`
-            : error instanceof Error
-              ? error.message
-              : "Falha ao criar conversa";
+        const presentationError = normalizeImobAccessGateErrorPresentation(error);
         appendMessage({
           id: makeId("assistant"),
           role: "assistant",
-          text: "Nao consegui abrir a conversa operacional agora.",
+          text: presentationError.text,
           thread: {
             id: operationThread.id,
             label: operationThread.label,
             status: "blocked",
           },
           card: {
-            type: "risk",
-            title: "Conversa nao iniciada",
+            ...presentationError.card,
             thread: {
               id: operationThread.id,
               label: operationThread.label,
               status: "blocked",
-            },
-            lines: [message],
-            risk: {
-              level: "high",
-              reason: message,
             },
           },
           caseContext: turn.caseContext ?? undefined,
@@ -3689,15 +3728,24 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         setActiveThread({ id: baseThread.id, label: baseThread.label });
         setState("done");
       } catch (error) {
-        const errorMessage =
+        const presentationError =
           error instanceof ApiError && error.status === 403
-            ? resolveImobAccessGateCopy(imobAccessGate).body
-            : "Não consegui consultar o acervo IMOB agora. Tente novamente em instantes.";
+            ? normalizeImobAccessGateErrorPresentation(error)
+            : {
+                text: "Não consegui consultar o acervo IMOB agora. Tente novamente em instantes.",
+                card: undefined,
+              };
         const failureReply: ChatMessage = {
           id: makeId("assistant"),
           role: "assistant",
-          text: errorMessage,
+          text: presentationError.text,
           thread: { ...baseThread, status: "blocked" },
+          card: presentationError.card
+            ? {
+                ...presentationError.card,
+                thread: { ...baseThread, status: "blocked" },
+              }
+            : undefined,
         };
         appendMessage(failureReply);
         setState("blocked");

@@ -4,7 +4,9 @@ import assert from "node:assert/strict";
 import {
   buildAssistantMessageDedupeKey,
   dedupeRunMessages,
+  normalizeImobAccessGateErrorPresentation,
 } from "./chat";
+import { ApiError } from "@/lib/api";
 
 test("dedupeRunMessages colapsa duplicata assistente legado sem runId inicial", () => {
   const dedupeKey = buildAssistantMessageDedupeKey({
@@ -95,4 +97,71 @@ test("dedupeRunMessages mantém fallback por runId para started e terminal do me
 
   assert.equal(items.length, 1);
   assert.equal(items[0]?.id, "assistant-terminal");
+});
+
+test("normalizeImobAccessGateErrorPresentation preserves backend message, reasonCode and CTA", () => {
+  const error = new ApiError(403, "Forbidden", {
+    ok: false,
+    error: {
+      message: "IMOB não está habilitado neste workspace.",
+      reasonCode: "IMOB_ENTITLEMENT_MISSING",
+      cta: {
+        type: "INSTALL",
+        label: "Instalar IMOB",
+        target: "/app/marketplace/imob",
+      },
+      details: {
+        entitlementRequired: "IMOB_ACTIVE_INSTALLATION",
+        installationStatus: "missing",
+      },
+    },
+  });
+
+  const presentation = normalizeImobAccessGateErrorPresentation(error);
+
+  assert.equal(presentation.text, "IMOB não está habilitado neste workspace.");
+  assert.ok(presentation.card.lines.includes("Código: IMOB_ENTITLEMENT_MISSING"));
+  assert.deepEqual(presentation.card.ctas, [
+    {
+      id: "imob-access-gate-IMOB_ENTITLEMENT_MISSING",
+      label: "Instalar IMOB",
+      href: "/app/marketplace/imob",
+      kind: "primary",
+    },
+  ]);
+});
+
+test("normalizeImobAccessGateErrorPresentation does not invent CTA when backend omits it", () => {
+  const error = new ApiError(403, "Forbidden", {
+    ok: false,
+    error: {
+      message: "Você não possui permissão para usar este recurso do IMOB neste workspace.",
+      reasonCode: "IMOB_PERMISSION_DENIED",
+    },
+  });
+
+  const presentation = normalizeImobAccessGateErrorPresentation(error);
+
+  assert.equal(presentation.text, "Você não possui permissão para usar este recurso do IMOB neste workspace.");
+  assert.ok(presentation.card.lines.includes("Código: IMOB_PERMISSION_DENIED"));
+  assert.equal(presentation.card.ctas, undefined);
+});
+
+test("normalizeImobAccessGateErrorPresentation uses safe fallback without backend message", () => {
+  const error = new ApiError(403, "Forbidden", {
+    ok: false,
+    error: {
+      reasonCode: "IMOB_INSTALLATION_INACTIVE",
+      cta: {
+        label: "",
+        target: "/app/marketplace/imob",
+      },
+    },
+  });
+
+  const presentation = normalizeImobAccessGateErrorPresentation(error);
+
+  assert.equal(presentation.text, "Não foi possível concluir esta ação neste workspace.");
+  assert.ok(presentation.card.lines.includes("Código: IMOB_INSTALLATION_INACTIVE"));
+  assert.equal(presentation.card.ctas, undefined);
 });
