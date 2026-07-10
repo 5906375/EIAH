@@ -2,6 +2,9 @@
   "name": "eiah-builder",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22 <23"
+  },
   "workspaces": [
     "apps/api",
     "apps/web",
