@@ -3,10 +3,19 @@
   "compilerOptions": {
     "outDir": "dist",
     "rootDir": "src",
+    "baseUrl": ".",
     "moduleResolution": "Bundler",
     "module": "ESNext",
     "declaration": true,
-    "declarationMap": true
+    "declarationMap": true,
+    "paths": {
+      "@repo/db": ["../../packages/db/dist/index.d.ts"],
+      "@repo/db/*": ["../../packages/db/dist/*"],
+      "@eiah/core": ["../../packages/core/dist/index.d.ts"],
+      "@eiah/core/*": ["../../packages/core/dist/*"],
+      "@eiah/contracts": ["../../packages/contracts/src/index.d.ts"],
+      "@eiah/contracts/*": ["../../packages/contracts/src/*"]
+    }
   },
   "include": ["src"]
 }
