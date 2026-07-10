@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
+import crypto from "node:crypto";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -170,33 +171,41 @@ const commands: Record<string, CommandHandler> = {
           throw new Error("Nenhum tenant encontrado para registrar auditoria (FK tenant_id).");
         }
 
-        await prisma.guardrailLedger.upsert({
-          where: {
-            tenantId_actionType_idempotencyKey: {
+        const { recordGuardrailAudit, recordGuardrailLedger } = await import(
+          "@eiah/core/services/guardrailLedgerStore"
+        );
+        const criticalHash = crypto
+          .createHash("sha256")
+          .update(
+            JSON.stringify({
               tenantId: tenantIdForAudit,
               actionType: "billing.reconcile",
-              idempotencyKey: audit.generatedAt,
-            },
-          },
-          create: {
-            tenantId: tenantIdForAudit,
-            actionType: "billing.reconcile",
-            idempotencyKey: audit.generatedAt,
-            usageCount: 1,
-          },
-          update: { usageCount: { increment: 1 } },
+              generatedAt: audit.generatedAt,
+              mismatchCount: mismatches.length,
+              totalRuns: audit.totalRuns,
+            })
+          )
+          .digest("hex");
+
+        await recordGuardrailLedger({
+          prisma: prismaGlobal as never,
+          tenantId: tenantIdForAudit,
+          actionType: "billing.reconcile",
+          payload: audit,
+          criticalHash,
+          idempotencyKey: audit.generatedAt,
+          usageCount: 1,
         });
 
-        await prisma.guardrailAuditLedger.create({
-          data: {
-            tenantId: tenantIdForAudit,
-            eventType: "billing.reconcile",
-            severity: mismatches.length ? "warn" : "info",
-            message: mismatches.length
-              ? `Inconsistências detectadas (${mismatches.length})`
-              : "Reconcile OK",
-            metadata: audit,
-          },
+        await recordGuardrailAudit({
+          prisma: prismaGlobal as never,
+          tenantId: tenantIdForAudit,
+          eventType: "billing.reconcile",
+          severity: mismatches.length ? "warn" : "info",
+          message: mismatches.length
+            ? `Inconsistências detectadas (${mismatches.length})`
+            : "Reconcile OK",
+          metadata: audit,
         });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -287,7 +296,7 @@ const commands: Record<string, CommandHandler> = {
     const maxShort = parsed.flags["max-short-term"]
       ? Number(parsed.flags["max-short-term"])
       : undefined;
-    const { enqueueMemorySyncJob } = await import("@eiah/core");
+    const { enqueueMemorySyncJob } = await import("@eiah/core/queue/maintenanceQueue");
     await enqueueMemorySyncJob({
       scope,
       maxShortTermRecords: Number.isFinite(maxShort) ? maxShort : undefined,
@@ -308,7 +317,7 @@ const commands: Record<string, CommandHandler> = {
     }
     const topKRaw = parsed.flags["top-k"];
     const topK = typeof topKRaw === "string" ? Number(topKRaw) : undefined;
-    const { enqueueKnowledgeBackfillJob } = await import("@eiah/core");
+    const { enqueueKnowledgeBackfillJob } = await import("@eiah/core/queue/maintenanceQueue");
     await enqueueKnowledgeBackfillJob({
       scope,
       topK: Number.isFinite(topK) ? topK : undefined,
