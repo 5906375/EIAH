@@ -62,8 +62,13 @@ jobs:
           cache-dependency-path: pnpm-lock.yaml
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install dependencies without postinstall
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Build workspace dependencies in release order
+        run: |
+          pnpm --filter @repo/db build
+          pnpm --filter @eiah/core build
 
       - name: Run lint and build
         run: |
