@@ -13,8 +13,8 @@
       "@repo/db/*": ["../../packages/db/dist/*"],
       "@eiah/core": ["../../packages/core/dist/index.d.ts"],
       "@eiah/core/*": ["../../packages/core/dist/*"],
-      "@eiah/contracts": ["../../packages/contracts/src/index.d.ts"],
-      "@eiah/contracts/*": ["../../packages/contracts/src/*"]
+      "@eiah/contracts": ["../../packages/contracts/dist/index.d.ts"],
+      "@eiah/contracts/*": ["../../packages/contracts/dist/*"]
     }
   },
   "include": ["src"]
