@@ -78,8 +78,8 @@ jobs:
       - name: Validate Prisma schema
         shell: bash
         run: |
-          pnpm --filter @repo/db prisma validate --schema packages/db/prisma/schema.prisma
-          pnpm --filter @repo/db prisma format --schema packages/db/prisma/schema.prisma --check
+          pnpm --filter @repo/db prisma validate --schema ./prisma/schema.prisma
+          pnpm --filter @repo/db prisma format --schema ./prisma/schema.prisma --check
           pnpm --filter @repo/db prisma migrate diff \
-            --from-schema-datamodel ./packages/db/prisma/schema.prisma \
-            --to-schema-datamodel ./packages/db/prisma/schema.prisma
+            --from-schema-datamodel ./prisma/schema.prisma \
+            --to-schema-datamodel ./prisma/schema.prisma
