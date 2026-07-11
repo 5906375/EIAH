@@ -2505,7 +2505,7 @@ imobRouter.get("/command-center/blocked-runs", async (req, res) => {
       })
     : [];
 
-  const items = await Promise.all(scopedRuns.map(async (run) => {
+  const runItems = await Promise.all(scopedRuns.map(async (run) => {
       const canViewRunBundle = await resolveRunBundleCapability({
         authContext,
         runId: run.id,
@@ -2532,7 +2532,9 @@ imobRouter.get("/command-center/blocked-runs", async (req, res) => {
           },
         },
       };
-    }))
+    }));
+
+  const items = runItems
     .filter((item) => item.ageHours >= (Number.isFinite(minAgeHours) ? minAgeHours : 0))
     .filter((item) => (reasonCode ? item.reasonCodes.includes(reasonCode) : true))
     .slice(0, limit);
