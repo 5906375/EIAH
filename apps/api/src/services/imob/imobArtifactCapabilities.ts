@@ -55,8 +55,8 @@ export async function resolveRunBundleCapability(params: {
   const decision: ScopeDecision = await imobArtifactCapabilitiesDeps.checkScopePermission({
     tenantId: params.authContext.tenantId,
     workspaceId: params.authContext.workspaceId,
-    userId: params.authContext.userId ?? null,
-    tokenId: params.authContext.tokenId ?? null,
+    userId: params.authContext.userId ?? undefined,
+    tokenId: params.authContext.tokenId ?? undefined,
     scope: "reports.view",
   });
   return decision.allowed ? allow() : deny(decision.reasonCode);
