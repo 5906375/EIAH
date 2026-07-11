@@ -9,7 +9,6 @@ datasource db {
   provider = "postgresql"
 }
 
-
 // ========================================
 // 🧠 Enums — Execução e Pagamentos
 // (necessários para validação e índices)
@@ -37,120 +36,120 @@ enum PaymentStatus {
 }
 
 model Tenant {
-  id                   String                 @id @default(cuid())
-  name                 String
-  createdAt            DateTime               @default(now()) @map("created_at")
-  updatedAt            DateTime               @updatedAt @map("updated_at")
-  apiTokens            ApiToken[]
-  embeddingChunks      EmbeddingChunk[]
-  guardrailLedger      GuardrailLedger[]
-  memoryEvents         MemoryEvent[]
-  memorySnapshots      MemorySnapshot[]
-  runEvents            RunEvent[]
-  runs                 Run[]
-  uploadedDocuments    UploadedDocument[]
-  users                User[]
-  workspaces           Workspace[]
-  tenantActionPolicies TenantActionPolicy[]
-  guardrailAuditLedger GuardrailAuditLedger[]
-  sclLedger            SclLedger[]
-  toolContracts        ToolContract[]
-  marketplaceItems     MarketplaceItem[]
-  delegationsAsOwner   DelegationPolicy[]     @relation("DelegatorTenant")
-  delegationsAsGuest   DelegationPolicy[]     @relation("DelegateeTenant")
-  agentTrustScores     AgentTrustScore[]
-  billingAccount       TenantBillingAccount?
-  quotaPolicy          TenantQuotaPolicy?
-  quotaUsages          TenantQuotaUsage[]
-  workspaceQuotaUsages WorkspaceQuotaUsage[]
-  workspaceQuotaGrants WorkspaceQuotaGrant[]
+  id                        String                      @id @default(cuid())
+  name                      String
+  createdAt                 DateTime                    @default(now()) @map("created_at")
+  updatedAt                 DateTime                    @updatedAt @map("updated_at")
+  apiTokens                 ApiToken[]
+  embeddingChunks           EmbeddingChunk[]
+  guardrailLedger           GuardrailLedger[]
+  memoryEvents              MemoryEvent[]
+  memorySnapshots           MemorySnapshot[]
+  runEvents                 RunEvent[]
+  runs                      Run[]
+  uploadedDocuments         UploadedDocument[]
+  users                     User[]
+  workspaces                Workspace[]
+  tenantActionPolicies      TenantActionPolicy[]
+  guardrailAuditLedger      GuardrailAuditLedger[]
+  sclLedger                 SclLedger[]
+  toolContracts             ToolContract[]
+  marketplaceItems          MarketplaceItem[]
+  delegationsAsOwner        DelegationPolicy[]          @relation("DelegatorTenant")
+  delegationsAsGuest        DelegationPolicy[]          @relation("DelegateeTenant")
+  agentTrustScores          AgentTrustScore[]
+  billingAccount            TenantBillingAccount?
+  quotaPolicy               TenantQuotaPolicy?
+  quotaUsages               TenantQuotaUsage[]
+  workspaceQuotaUsages      WorkspaceQuotaUsage[]
+  workspaceQuotaGrants      WorkspaceQuotaGrant[]
   workspaceAgentAssignments WorkspaceAgentAssignment[]
-  runUsageBreakdowns   RunUsageBreakdown[]
-  billingLedgerEntries BillingLedger[]
-  invoices             TenantInvoice[]
-  helpdeskSessions     HelpdeskSession[]
-  productInstallations TenantProductInstallation[]
-  runArchives          RunArchive[]
-  imobOwners           ImobOwner[]
-  imobProperties       ImobProperty[]
-  imobLeads            ImobLead[]
-  imobCases            ImobCase[]
-  imobCaseEvents       ImobCaseEvent[]
-  imobMarketScanRuns   ImobMarketScanRun[]
+  runUsageBreakdowns        RunUsageBreakdown[]
+  billingLedgerEntries      BillingLedger[]
+  invoices                  TenantInvoice[]
+  helpdeskSessions          HelpdeskSession[]
+  productInstallations      TenantProductInstallation[]
+  runArchives               RunArchive[]
+  imobOwners                ImobOwner[]
+  imobProperties            ImobProperty[]
+  imobLeads                 ImobLead[]
+  imobCases                 ImobCase[]
+  imobCaseEvents            ImobCaseEvent[]
+  imobMarketScanRuns        ImobMarketScanRun[]
 
   @@map("tenants")
 }
 
 model Workspace {
-  id                   String                 @id @default(cuid())
-  tenantId             String                 @map("tenant_id")
-  name                 String
-  createdAt            DateTime               @default(now()) @map("created_at")
-  updatedAt            DateTime               @updatedAt @map("updated_at")
-  apiTokens            ApiToken[]
-  embeddingChunks      EmbeddingChunk[]
-  memoryEvents         MemoryEvent[]
-  memorySnapshots      MemorySnapshot[]
-  runEvents            RunEvent[]
-  runs                 Run[]
-  uploadedDocuments    UploadedDocument[]
-  tenant               Tenant                 @relation(fields: [tenantId], references: [id])
-  tenantActionPolicies TenantActionPolicy[]
-  guardrailAuditLedger GuardrailAuditLedger[]
-  sclLedger            SclLedger[]
-  agentTrustScores     AgentTrustScore[]
-  workspaceQuotaUsages WorkspaceQuotaUsage[]
-  workspaceQuotaGrants WorkspaceQuotaGrant[]
+  id                        String                      @id @default(cuid())
+  tenantId                  String                      @map("tenant_id")
+  name                      String
+  createdAt                 DateTime                    @default(now()) @map("created_at")
+  updatedAt                 DateTime                    @updatedAt @map("updated_at")
+  apiTokens                 ApiToken[]
+  embeddingChunks           EmbeddingChunk[]
+  memoryEvents              MemoryEvent[]
+  memorySnapshots           MemorySnapshot[]
+  runEvents                 RunEvent[]
+  runs                      Run[]
+  uploadedDocuments         UploadedDocument[]
+  tenant                    Tenant                      @relation(fields: [tenantId], references: [id])
+  tenantActionPolicies      TenantActionPolicy[]
+  guardrailAuditLedger      GuardrailAuditLedger[]
+  sclLedger                 SclLedger[]
+  agentTrustScores          AgentTrustScore[]
+  workspaceQuotaUsages      WorkspaceQuotaUsage[]
+  workspaceQuotaGrants      WorkspaceQuotaGrant[]
   workspaceAgentAssignments WorkspaceAgentAssignment[]
-  runUsageBreakdowns   RunUsageBreakdown[]
-  billingLedgerEntries BillingLedger[]
-  helpdeskSessions     HelpdeskSession[]
-  productInstallations TenantProductInstallation[]
-  runArchives          RunArchive[]
-  imobOwners           ImobOwner[]
-  imobProperties       ImobProperty[]
-  imobLeads            ImobLead[]
-  imobCases            ImobCase[]
-  imobCaseEvents       ImobCaseEvent[]
-  imobMarketScanRuns   ImobMarketScanRun[]
+  runUsageBreakdowns        RunUsageBreakdown[]
+  billingLedgerEntries      BillingLedger[]
+  helpdeskSessions          HelpdeskSession[]
+  productInstallations      TenantProductInstallation[]
+  runArchives               RunArchive[]
+  imobOwners                ImobOwner[]
+  imobProperties            ImobProperty[]
+  imobLeads                 ImobLead[]
+  imobCases                 ImobCase[]
+  imobCaseEvents            ImobCaseEvent[]
+  imobMarketScanRuns        ImobMarketScanRun[]
 
   @@index([tenantId, name])
   @@map("workspaces")
 }
 
 model User {
-  id          String     @id @default(cuid())
-  tenantId    String     @map("tenant_id")
-  email       String     @unique
-  displayName String?    @map("display_name")
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-  apiTokens   ApiToken[]
-  runEvents   RunEvent[]
-  runs        Run[]
-  workspaceAgentAssignmentsSigned WorkspaceAgentAssignment[] @relation("WorkspaceAgentAssignmentSignedBy")
-  tenant      Tenant     @relation(fields: [tenantId], references: [id])
-  productInstallationsActivated TenantProductInstallation[] @relation("ProductInstallationActivatedBy")
+  id                              String                      @id @default(cuid())
+  tenantId                        String                      @map("tenant_id")
+  email                           String                      @unique
+  displayName                     String?                     @map("display_name")
+  createdAt                       DateTime                    @default(now()) @map("created_at")
+  updatedAt                       DateTime                    @updatedAt @map("updated_at")
+  apiTokens                       ApiToken[]
+  runEvents                       RunEvent[]
+  runs                            Run[]
+  workspaceAgentAssignmentsSigned WorkspaceAgentAssignment[]  @relation("WorkspaceAgentAssignmentSignedBy")
+  tenant                          Tenant                      @relation(fields: [tenantId], references: [id])
+  productInstallationsActivated   TenantProductInstallation[] @relation("ProductInstallationActivatedBy")
 
   @@index([tenantId, email])
   @@map("users")
 }
 
 model TenantProductInstallation {
-  id                String    @id @default(cuid())
-  tenantId          String    @map("tenant_id")
-  workspaceId       String    @map("workspace_id")
+  id                String   @id @default(cuid())
+  tenantId          String   @map("tenant_id")
+  workspaceId       String   @map("workspace_id")
   product           String
-  status            String    @default("active")
-  activatedAt       DateTime  @default(now()) @map("activated_at")
-  activatedByUserId String?   @map("activated_by_user_id")
+  status            String   @default("active")
+  activatedAt       DateTime @default(now()) @map("activated_at")
+  activatedByUserId String?  @map("activated_by_user_id")
   metadata          Json?
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
-  tenant            Tenant    @relation(fields: [tenantId], references: [id])
-  workspace         Workspace @relation(fields: [workspaceId], references: [id])
-  activatedByUser   User?     @relation("ProductInstallationActivatedBy", fields: [activatedByUserId], references: [id])
+  tenant          Tenant    @relation(fields: [tenantId], references: [id])
+  workspace       Workspace @relation(fields: [workspaceId], references: [id])
+  activatedByUser User?     @relation("ProductInstallationActivatedBy", fields: [activatedByUserId], references: [id])
 
   @@unique([tenantId, workspaceId, product], name: "tenant_workspace_product_unique")
   @@index([tenantId, status])
@@ -179,48 +178,48 @@ model ApiToken {
 }
 
 model Run {
-  id           String        @id @default(cuid())
-  tenantId     String        @map("tenant_id")
-  workspaceId  String        @map("workspace_id")
-  userId       String?       @map("user_id")
-  caseId       String?       @map("case_id")
-  threadId     String?       @map("thread_id")
-  agent        String
-  agentVersion String?       @map("agent_version")
-  assignmentId String?       @map("assignment_id")
-  status       RunStatus
-  request      Json
-  response     Json?
-  costCents    Int           @default(0)
-  traceId      String?
-  startedAt    DateTime      @default(now())
-  finishedAt   DateTime?
-  errorCode    String?
+  id             String            @id @default(cuid())
+  tenantId       String            @map("tenant_id")
+  workspaceId    String            @map("workspace_id")
+  userId         String?           @map("user_id")
+  caseId         String?           @map("case_id")
+  threadId       String?           @map("thread_id")
+  agent          String
+  agentVersion   String?           @map("agent_version")
+  assignmentId   String?           @map("assignment_id")
+  status         RunStatus
+  request        Json
+  response       Json?
+  costCents      Int               @default(0)
+  traceId        String?
+  startedAt      DateTime          @default(now())
+  finishedAt     DateTime?
+  errorCode      String?
   approvalStatus RunApprovalStatus @default(not_required) @map("approval_status")
-  approvedBy   String?       @map("approved_by")
-  approvedAt   DateTime?     @map("approved_at")
-  archivedAt   DateTime?     @map("archived_at")
-  archiveRef   String?       @unique @map("archive_ref")
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  approvedBy     String?           @map("approved_by")
+  approvedAt     DateTime?         @map("approved_at")
+  archivedAt     DateTime?         @map("archived_at")
+  archiveRef     String?           @unique @map("archive_ref")
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 
   // ⚙️ Adições necessárias para reconciliar Ledger e Runs
-  criticalHash String?       @map("critical_hash")
-  sclTxId      String?       @map("scl_tx_id")
-  txId         String?       @map("tx_id")
+  criticalHash String? @map("critical_hash")
+  sclTxId      String? @map("scl_tx_id")
+  txId         String? @map("tx_id")
 
   // 🔗 Relações
-  memoryEvents MemoryEvent[]
-  events       RunEvent[]
-  guardrailLedgers GuardrailLedger[]
+  memoryEvents         MemoryEvent[]
+  events               RunEvent[]
+  guardrailLedgers     GuardrailLedger[]
   billingLedgerEntries BillingLedger[]
   usageBreakdowns      RunUsageBreakdown[]
   imobCaseEvents       ImobCaseEvent[]
   runArchive           RunArchive?
   assignment           WorkspaceAgentAssignment? @relation(fields: [assignmentId], references: [id])
-  tenant       Tenant        @relation(fields: [tenantId], references: [id])
-  user         User?         @relation(fields: [userId], references: [id])
-  workspace    Workspace     @relation(fields: [workspaceId], references: [id])
+  tenant               Tenant                    @relation(fields: [tenantId], references: [id])
+  user                 User?                     @relation(fields: [userId], references: [id])
+  workspace            Workspace                 @relation(fields: [workspaceId], references: [id])
 
   @@index([tenantId, workspaceId, agent, createdAt])
   @@index([assignmentId])
@@ -233,23 +232,22 @@ model Run {
 }
 
 model RunArchive {
-  id           String    @id @default(cuid())
-  runId        String    @unique @map("run_id")
-  tenantId     String    @map("tenant_id")
-  workspaceId  String    @map("workspace_id")
-  archiveRef   String    @unique @map("archive_ref")
-  archivedAt   DateTime  @map("archived_at")
-  snapshot     Json
-  createdAt    DateTime  @default(now()) @map("created_at")
+  id          String   @id @default(cuid())
+  runId       String   @unique @map("run_id")
+  tenantId    String   @map("tenant_id")
+  workspaceId String   @map("workspace_id")
+  archiveRef  String   @unique @map("archive_ref")
+  archivedAt  DateTime @map("archived_at")
+  snapshot    Json
+  createdAt   DateTime @default(now()) @map("created_at")
 
-  run          Run       @relation(fields: [runId], references: [id])
-  tenant       Tenant    @relation(fields: [tenantId], references: [id])
-  workspace    Workspace @relation(fields: [workspaceId], references: [id])
+  run       Run       @relation(fields: [runId], references: [id])
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
 
   @@index([tenantId, workspaceId, archivedAt])
   @@map("run_archives")
 }
-
 
 model RunEvent {
   id           String    @id @default(cuid())
@@ -410,17 +408,17 @@ model MemoryEvent {
 }
 
 model EmbeddingChunk {
-  id          String    @id @default(cuid())
-  tenantId    String    @map("tenant_id")
-  workspaceId String    @map("workspace_id")
-  agentId     String    @map("agent_id")
-  chunkKey    String    @map("chunk_key")
+  id          String                      @id @default(cuid())
+  tenantId    String                      @map("tenant_id")
+  workspaceId String                      @map("workspace_id")
+  agentId     String                      @map("agent_id")
+  chunkKey    String                      @map("chunk_key")
   embedding   Unsupported("vector(1536)")
   metadata    Json?
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-  tenant      Tenant    @relation(fields: [tenantId], references: [id])
-  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  createdAt   DateTime                    @default(now()) @map("created_at")
+  updatedAt   DateTime                    @updatedAt @map("updated_at")
+  tenant      Tenant                      @relation(fields: [tenantId], references: [id])
+  workspace   Workspace                   @relation(fields: [workspaceId], references: [id])
 
   @@unique([tenantId, workspaceId, agentId, chunkKey])
   @@index([tenantId, workspaceId, agentId])
@@ -557,9 +555,9 @@ model GuardrailLedger {
   signatureKeyId String?   @map("signature_key_id")
   signedAt       DateTime? @map("signed_at")
   timestamp      DateTime  @default(now())
-  
-  tenant         Tenant    @relation(fields: [tenantId], references: [id])
-  run            Run?      @relation(fields: [runId], references: [id])
+
+  tenant Tenant @relation(fields: [tenantId], references: [id])
+  run    Run?   @relation(fields: [runId], references: [id])
 
   @@index([tenantId, txId])
   @@index([tenantId, criticalHash])
@@ -577,7 +575,7 @@ model MarketplaceItem {
   isPublic    Boolean  @default(false) @map("is_public")
   createdAt   DateTime @default(now()) @map("created_at")
 
-  publisher   Tenant   @relation(fields: [publisherId], references: [id])
+  publisher   Tenant             @relation(fields: [publisherId], references: [id])
   delegations DelegationPolicy[]
 
   @@index([publisherId, type, name, version])
@@ -596,9 +594,9 @@ model DelegationPolicy {
   signatureHash String   @map("signature_hash")
   createdAt     DateTime @default(now()) @map("created_at")
 
-  delegator     Tenant   @relation("DelegatorTenant", fields: [delegatorId], references: [id])
-  delegatee     Tenant   @relation("DelegateeTenant", fields: [delegateeId], references: [id])
-  marketplace   MarketplaceItem? @relation(fields: [marketplaceId], references: [id])
+  delegator   Tenant           @relation("DelegatorTenant", fields: [delegatorId], references: [id])
+  delegatee   Tenant           @relation("DelegateeTenant", fields: [delegateeId], references: [id])
+  marketplace MarketplaceItem? @relation(fields: [marketplaceId], references: [id])
 
   @@index([delegatorId, delegateeId, scope])
   @@index([marketplaceId])
@@ -626,19 +624,19 @@ model AgentMetadata {
 // ================================
 
 model AgentTrustScore {
-  id           String    @id @default(cuid())
-  tenantId     String    @map("tenant_id")
-  workspaceId  String?   @map("workspace_id")
-  agentId      String    @map("agent_id")
-  currentScore Int       @default(100)          // Score ativo (0–200)
-  baseline     Int       @default(100)          // Valor inicial ou de referência
-  lastDelta    Int       @default(0)            // Última variação aplicada
-  trend        String    @default("stable")     // stable | rising | falling
-  lastUpdated  DateTime  @updatedAt @map("last_updated")
-  createdAt    DateTime  @default(now()) @map("created_at")
+  id           String   @id @default(cuid())
+  tenantId     String   @map("tenant_id")
+  workspaceId  String?  @map("workspace_id")
+  agentId      String   @map("agent_id")
+  currentScore Int      @default(100) // Score ativo (0–200)
+  baseline     Int      @default(100) // Valor inicial ou de referência
+  lastDelta    Int      @default(0) // Última variação aplicada
+  trend        String   @default("stable") // stable | rising | falling
+  lastUpdated  DateTime @updatedAt @map("last_updated")
+  createdAt    DateTime @default(now()) @map("created_at")
 
-  tenant       Tenant     @relation(fields: [tenantId], references: [id])
-  workspace    Workspace? @relation(fields: [workspaceId], references: [id])
+  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  workspace Workspace? @relation(fields: [workspaceId], references: [id])
 
   @@unique([tenantId, workspaceId, agentId], name: "unique_trustscore_agent")
   @@index([tenantId, agentId, lastUpdated])
@@ -662,14 +660,14 @@ model TenantBillingAccount {
 }
 
 model TenantQuotaPolicy {
-  id                  String   @id @default(cuid())
-  tenantId            String   @unique @map("tenant_id")
-  softLimitPct        Int      @default(80) @map("soft_limit_pct")
-  hardLimitPct        Int      @default(100) @map("hard_limit_pct")
-  monthlyRunsLimit    Int?     @map("monthly_runs_limit")
-  monthlyCostCentsLimit Int?   @map("monthly_cost_cents_limit")
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
+  id                    String   @id @default(cuid())
+  tenantId              String   @unique @map("tenant_id")
+  softLimitPct          Int      @default(80) @map("soft_limit_pct")
+  hardLimitPct          Int      @default(100) @map("hard_limit_pct")
+  monthlyRunsLimit      Int?     @map("monthly_runs_limit")
+  monthlyCostCentsLimit Int?     @map("monthly_cost_cents_limit")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
 
   tenant Tenant @relation(fields: [tenantId], references: [id])
 
@@ -709,8 +707,8 @@ model WorkspaceQuotaUsage {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  tenant      Tenant    @relation(fields: [tenantId], references: [id])
-  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
 
   @@unique([tenantId, workspaceId, cycleStart, cycleEnd], name: "workspace_quota_usage_cycle_unique")
   @@index([tenantId, workspaceId, cycleStart, cycleEnd])
@@ -718,14 +716,14 @@ model WorkspaceQuotaUsage {
 }
 
 model WorkspaceQuotaGrant {
-  id                 String   @id @default(cuid())
-  tenantId           String   @map("tenant_id")
-  workspaceId        String   @map("workspace_id")
-  enabled            Boolean  @default(true)
-  localRunLimit      Int?     @map("local_run_limit")
-  localCostCentsLimit Int?    @map("local_cost_cents_limit")
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
+  id                  String   @id @default(cuid())
+  tenantId            String   @map("tenant_id")
+  workspaceId         String   @map("workspace_id")
+  enabled             Boolean  @default(true)
+  localRunLimit       Int?     @map("local_run_limit")
+  localCostCentsLimit Int?     @map("local_cost_cents_limit")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
 
   tenant    Tenant    @relation(fields: [tenantId], references: [id])
   workspace Workspace @relation(fields: [workspaceId], references: [id])
@@ -737,26 +735,26 @@ model WorkspaceQuotaGrant {
 }
 
 model WorkspaceAgentAssignment {
-  id             String   @id @default(cuid())
-  tenantId       String   @map("tenant_id")
-  workspaceId    String   @map("workspace_id")
-  agentKey       String   @map("agent_key")
-  agentVersion   String   @map("agent_version")
-  enabled        Boolean  @default(true)
-  signedByUserId String?  @map("signed_by_user_id")
+  id             String    @id @default(cuid())
+  tenantId       String    @map("tenant_id")
+  workspaceId    String    @map("workspace_id")
+  agentKey       String    @map("agent_key")
+  agentVersion   String    @map("agent_version")
+  enabled        Boolean   @default(true)
+  signedByUserId String?   @map("signed_by_user_id")
   signedAt       DateTime? @map("signed_at")
-  signatureRef   String?  @map("signature_ref")
+  signatureRef   String?   @map("signature_ref")
   metadata       Json?
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  tenant         Tenant    @relation(fields: [tenantId], references: [id])
-  workspace      Workspace @relation(fields: [workspaceId], references: [id])
-  signedByUser   User?     @relation("WorkspaceAgentAssignmentSignedBy", fields: [signedByUserId], references: [id])
-  runs           Run[]
+  tenant       Tenant    @relation(fields: [tenantId], references: [id])
+  workspace    Workspace @relation(fields: [workspaceId], references: [id])
+  signedByUser User?     @relation("WorkspaceAgentAssignmentSignedBy", fields: [signedByUserId], references: [id])
+  runs         Run[]
 
-  @@index([tenantId, workspaceId, agentKey])
   @@unique([tenantId, workspaceId, agentKey, agentVersion], name: "workspace_agent_assignment_version_unique")
+  @@index([tenantId, workspaceId, agentKey])
   @@map("workspace_agent_assignments")
 }
 
@@ -807,14 +805,14 @@ model RunUsageBreakdown {
   estimated        Boolean  @default(false)
   createdAt        DateTime @default(now()) @map("created_at")
 
-  run              Run      @relation(fields: [runId], references: [id])
-  tenant           Tenant   @relation(fields: [tenantId], references: [id])
-  workspace        Workspace @relation(fields: [workspaceId], references: [id])
+  run       Run       @relation(fields: [runId], references: [id])
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
 
+  @@unique([runId, requestId, meterType], name: "run_usage_breakdown_idempotency_unique")
   @@index([runId])
   @@index([tenantId, workspaceId])
   @@index([requestId])
-  @@unique([runId, requestId, meterType], name: "run_usage_breakdown_idempotency_unique")
   @@map("run_usage_breakdowns")
 }
 
@@ -870,23 +868,22 @@ model HelpdeskSession {
   @@map("helpdesk_sessions")
 }
 
-
 model ImobOwner {
-  id           String       @id @default(cuid())
-  tenantId     String       @map("tenant_id")
-  workspaceId  String       @map("workspace_id")
+  id           String         @id @default(cuid())
+  tenantId     String         @map("tenant_id")
+  workspaceId  String         @map("workspace_id")
   name         String
   document     String?
   email        String?
   phone        String?
-  personType   String       @default("person") @map("person_type")
-  status       String       @default("pending_data")
-  pendingItems Json?        @map("pending_items")
+  personType   String         @default("person") @map("person_type")
+  status       String         @default("pending_data")
+  pendingItems Json?          @map("pending_items")
   metadata     Json?
-  createdAt    DateTime     @default(now()) @map("created_at")
-  updatedAt    DateTime     @updatedAt @map("updated_at")
-  tenant       Tenant       @relation(fields: [tenantId], references: [id])
-  workspace    Workspace    @relation(fields: [workspaceId], references: [id])
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+  tenant       Tenant         @relation(fields: [tenantId], references: [id])
+  workspace    Workspace      @relation(fields: [workspaceId], references: [id])
   properties   ImobProperty[]
   cases        ImobCase[]
 
@@ -896,30 +893,30 @@ model ImobOwner {
 }
 
 model ImobProperty {
-  id              String       @id @default(cuid())
-  tenantId        String       @map("tenant_id")
-  workspaceId     String       @map("workspace_id")
-  ownerId         String?      @map("owner_id")
-  propertyType    String?      @map("property_type")
-  goal            String?
-  address         String?
-  city            String?
-  neighborhood    String?
-  bedrooms        Int?
-  bathrooms       Int?
-  areaM2          Int?         @map("area_m2")
-  garageSpots     Int?         @map("garage_spots")
-  askingPriceCents Int?        @map("asking_price_cents")
-  description     String?
-  status          String       @default("pending_data")
-  pendingItems    Json?        @map("pending_items")
-  metadata        Json?
-  createdAt       DateTime     @default(now()) @map("created_at")
-  updatedAt       DateTime     @updatedAt @map("updated_at")
-  tenant          Tenant       @relation(fields: [tenantId], references: [id])
-  workspace       Workspace    @relation(fields: [workspaceId], references: [id])
-  owner           ImobOwner?   @relation(fields: [ownerId], references: [id])
-  cases           ImobCase[]
+  id               String     @id @default(cuid())
+  tenantId         String     @map("tenant_id")
+  workspaceId      String     @map("workspace_id")
+  ownerId          String?    @map("owner_id")
+  propertyType     String?    @map("property_type")
+  goal             String?
+  address          String?
+  city             String?
+  neighborhood     String?
+  bedrooms         Int?
+  bathrooms        Int?
+  areaM2           Int?       @map("area_m2")
+  garageSpots      Int?       @map("garage_spots")
+  askingPriceCents Int?       @map("asking_price_cents")
+  description      String?
+  status           String     @default("pending_data")
+  pendingItems     Json?      @map("pending_items")
+  metadata         Json?
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+  tenant           Tenant     @relation(fields: [tenantId], references: [id])
+  workspace        Workspace  @relation(fields: [workspaceId], references: [id])
+  owner            ImobOwner? @relation(fields: [ownerId], references: [id])
+  cases            ImobCase[]
 
   @@index([tenantId, workspaceId, createdAt])
   @@index([tenantId, workspaceId, status])
@@ -928,26 +925,26 @@ model ImobProperty {
 }
 
 model ImobLead {
-  id                String       @id @default(cuid())
-  tenantId          String       @map("tenant_id")
-  workspaceId       String       @map("workspace_id")
-  name              String
-  document          String?
-  email             String?
-  phone             String?
-  goal              String?
-  targetCity        String?      @map("target_city")
-  targetNeighborhood String?     @map("target_neighborhood")
-  budgetMaxCents    Int?         @map("budget_max_cents")
-  stage             String       @default("incomplete")
-  temperature       String       @default("incomplete")
-  pendingItems      Json?        @map("pending_items")
-  metadata          Json?
-  createdAt         DateTime     @default(now()) @map("created_at")
-  updatedAt         DateTime     @updatedAt @map("updated_at")
-  tenant            Tenant       @relation(fields: [tenantId], references: [id])
-  workspace         Workspace    @relation(fields: [workspaceId], references: [id])
-  cases             ImobCase[]
+  id                 String     @id @default(cuid())
+  tenantId           String     @map("tenant_id")
+  workspaceId        String     @map("workspace_id")
+  name               String
+  document           String?
+  email              String?
+  phone              String?
+  goal               String?
+  targetCity         String?    @map("target_city")
+  targetNeighborhood String?    @map("target_neighborhood")
+  budgetMaxCents     Int?       @map("budget_max_cents")
+  stage              String     @default("incomplete")
+  temperature        String     @default("incomplete")
+  pendingItems       Json?      @map("pending_items")
+  metadata           Json?
+  createdAt          DateTime   @default(now()) @map("created_at")
+  updatedAt          DateTime   @updatedAt @map("updated_at")
+  tenant             Tenant     @relation(fields: [tenantId], references: [id])
+  workspace          Workspace  @relation(fields: [workspaceId], references: [id])
+  cases              ImobCase[]
 
   @@index([tenantId, workspaceId, createdAt])
   @@index([tenantId, workspaceId, stage])
@@ -956,29 +953,29 @@ model ImobLead {
 }
 
 model ImobCase {
-  id               String          @id @default(cuid())
-  tenantId         String          @map("tenant_id")
-  workspaceId      String          @map("workspace_id")
-  threadId         String?         @map("thread_id")
+  id               String              @id @default(cuid())
+  tenantId         String              @map("tenant_id")
+  workspaceId      String              @map("workspace_id")
+  threadId         String?             @map("thread_id")
   flow             String
   stage            String
   status           String
-  ownerResponsible String?         @map("owner_responsible")
-  nextStep         String?         @map("next_step")
+  ownerResponsible String?             @map("owner_responsible")
+  nextStep         String?             @map("next_step")
   blockers         Json?
-  pendingItems     Json?           @map("pending_items")
-  ownerId          String?         @map("owner_id")
-  propertyId       String?         @map("property_id")
-  leadId           String?         @map("lead_id")
-  externalDealId   String?         @map("external_deal_id")
+  pendingItems     Json?               @map("pending_items")
+  ownerId          String?             @map("owner_id")
+  propertyId       String?             @map("property_id")
+  leadId           String?             @map("lead_id")
+  externalDealId   String?             @map("external_deal_id")
   metadata         Json?
-  createdAt        DateTime        @default(now()) @map("created_at")
-  updatedAt        DateTime        @updatedAt @map("updated_at")
-  tenant           Tenant          @relation(fields: [tenantId], references: [id])
-  workspace        Workspace       @relation(fields: [workspaceId], references: [id])
-  owner            ImobOwner?      @relation(fields: [ownerId], references: [id])
-  property         ImobProperty?   @relation(fields: [propertyId], references: [id])
-  lead             ImobLead?       @relation(fields: [leadId], references: [id])
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @updatedAt @map("updated_at")
+  tenant           Tenant              @relation(fields: [tenantId], references: [id])
+  workspace        Workspace           @relation(fields: [workspaceId], references: [id])
+  owner            ImobOwner?          @relation(fields: [ownerId], references: [id])
+  property         ImobProperty?       @relation(fields: [propertyId], references: [id])
+  lead             ImobLead?           @relation(fields: [leadId], references: [id])
   events           ImobCaseEvent[]
   marketScanRuns   ImobMarketScanRun[]
 
@@ -1030,21 +1027,21 @@ model ImobMarketScanRun {
 
 model ImobCaseEvent {
   id          String    @id @default(cuid())
-  caseId       String    @map("case_id")
-  tenantId     String    @map("tenant_id")
-  workspaceId  String    @map("workspace_id")
-  runId        String?   @map("run_id")
-  type         String
-  actorType    String    @map("actor_type")
-  actorRef     String?   @map("actor_ref")
-  summary      String
-  evidenceRef  String?   @map("evidence_ref")
-  payload      Json?
-  createdAt    DateTime  @default(now()) @map("created_at")
-  imobCase     ImobCase  @relation(fields: [caseId], references: [id])
-  tenant       Tenant    @relation(fields: [tenantId], references: [id])
-  workspace    Workspace @relation(fields: [workspaceId], references: [id])
-  run          Run?      @relation(fields: [runId], references: [id])
+  caseId      String    @map("case_id")
+  tenantId    String    @map("tenant_id")
+  workspaceId String    @map("workspace_id")
+  runId       String?   @map("run_id")
+  type        String
+  actorType   String    @map("actor_type")
+  actorRef    String?   @map("actor_ref")
+  summary     String
+  evidenceRef String?   @map("evidence_ref")
+  payload     Json?
+  createdAt   DateTime  @default(now()) @map("created_at")
+  imobCase    ImobCase  @relation(fields: [caseId], references: [id])
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  run         Run?      @relation(fields: [runId], references: [id])
 
   @@index([caseId, createdAt])
   @@index([tenantId, workspaceId, createdAt])
