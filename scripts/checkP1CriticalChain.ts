@@ -18,6 +18,12 @@ function assertContains(content: string, needle: string, key: string) {
   if (!content.includes(needle)) fail("missing_required_pattern", { key, needle });
 }
 
+function assertMatches(content: string, pattern: RegExp, key: string) {
+  if (!pattern.test(content)) {
+    fail("missing_required_pattern", { key, pattern: pattern.source });
+  }
+}
+
 function findLatestEvidenceFile(pattern: RegExp): string {
   const dir = path.resolve("ops/evidence/latest");
   if (!fs.existsSync(dir)) fail("missing_evidence_directory", { dir });
@@ -70,8 +76,8 @@ const highActions = JSON.parse(
 };
 
 assertContains(prismaSchema, "approvalStatus RunApprovalStatus", "schema.approval_status");
-assertContains(prismaSchema, 'approvedBy   String?', "schema.approved_by");
-assertContains(prismaSchema, 'approvedAt   DateTime?', "schema.approved_at");
+assertMatches(prismaSchema, /\bapprovedBy\s+String\?/, "schema.approved_by");
+assertMatches(prismaSchema, /\bapprovedAt\s+DateTime\?/, "schema.approved_at");
 assertContains(runsRoute, 'post("/runs/:id/approve"', "route.run_approve");
 assertContains(governanceRoute, 'get("/ledger/:txId"', "route.ledger_txid");
 assertContains(governanceRoute, "approvalStatus", "ledger.approval_status");
