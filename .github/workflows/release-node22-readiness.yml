@@ -81,5 +81,5 @@ jobs:
           pnpm --filter @repo/db prisma validate --schema ./prisma/schema.prisma
           pnpm --filter @repo/db prisma format --schema ./prisma/schema.prisma --check
           pnpm --filter @repo/db prisma migrate diff \
-            --from-schema-datamodel ./prisma/schema.prisma \
-            --to-schema-datamodel ./prisma/schema.prisma
+            --from-schema ./prisma/schema.prisma \
+            --to-schema ./prisma/schema.prisma
