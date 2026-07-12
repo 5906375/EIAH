@@ -1,0 +1,167 @@
+name: ReleasePublishPreflight
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versao opcional apenas para preflight. Sem publish.'
+        required: false
+
+env:
+  NODE_VERSION: '22'
+  PNPM_VERSION: '10.12.4'
+  REGISTRY: ghcr.io
+  PREFLIGHT_RELEASE_VERSION: '0.0.0-publish-preflight'
+
+jobs:
+  prepare_preflight:
+    runs-on: ubuntu-latest
+    outputs:
+      release_version: ${{ steps.out.outputs.release_version }}
+      release_version_source: ${{ steps.out.outputs.release_version_source }}
+    steps:
+      - id: out
+        shell: bash
+        run: |
+          INPUT='${{ github.event.inputs.version }}'
+          VER="${INPUT:-${{ env.PREFLIGHT_RELEASE_VERSION }}}"
+          if [[ ! "$VER" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "invalid_release_version=$VER" >&2
+            exit 1
+          fi
+          if [ -n "$INPUT" ]; then
+            SOURCE=input
+          else
+            SOURCE=fallback_preflight
+          fi
+          {
+            echo "release_version=$VER"
+            echo "release_version_source=$SOURCE"
+          } >> "$GITHUB_OUTPUT"
+
+  detect_preflight:
+    runs-on: ubuntu-latest
+    needs: prepare_preflight
+    outputs:
+      has_cli: ${{ steps.out.outputs.has_cli }}
+      has_api: ${{ steps.out.outputs.has_api }}
+      has_workers: ${{ steps.out.outputs.has_workers }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: out
+        shell: bash
+        run: |
+          test -f apps/cli/package.json && C=true || C=false
+          test -f apps/api/Dockerfile.prod && A=true || A=false
+          test -f apps/workers/action-runner/Dockerfile.prod && W=true || W=false
+
+          {
+            echo "has_cli=$C"
+            echo "has_api=$A"
+            echo "has_workers=$W"
+          } >> "$GITHUB_OUTPUT"
+
+  preflight_release_publish_layer:
+    runs-on: ubuntu-latest
+    needs:
+      - prepare_preflight
+      - detect_preflight
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Validate preflight metadata
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ needs.prepare_preflight.outputs.release_version }}
+          RELEASE_VERSION_SOURCE: ${{ needs.prepare_preflight.outputs.release_version_source }}
+          HAS_CLI: ${{ needs.detect_preflight.outputs.has_cli }}
+          HAS_API: ${{ needs.detect_preflight.outputs.has_api }}
+          HAS_WORKERS: ${{ needs.detect_preflight.outputs.has_workers }}
+        run: |
+          echo "workflow=ReleasePublishPreflight"
+          echo "event=${GITHUB_EVENT_NAME}"
+          echo "ref=${GITHUB_REF}"
+          echo "release_version=${RELEASE_VERSION}"
+          echo "release_version_source=${RELEASE_VERSION_SOURCE}"
+          echo "has_cli=${HAS_CLI}"
+          echo "has_api=${HAS_API}"
+          echo "has_workers=${HAS_WORKERS}"
+
+      - name: Validate expected artifacts and manifests
+        shell: bash
+        env:
+          HAS_CLI: ${{ needs.detect_preflight.outputs.has_cli }}
+          HAS_API: ${{ needs.detect_preflight.outputs.has_api }}
+          HAS_WORKERS: ${{ needs.detect_preflight.outputs.has_workers }}
+        run: |
+          if [ "${HAS_CLI}" = "true" ]; then
+            node -e "const pkg=require('./apps/cli/package.json'); if(!pkg.name||!pkg.version){throw new Error('apps/cli/package.json missing name/version')} console.log(JSON.stringify({surface:'cli',name:pkg.name,version:pkg.version}))"
+          fi
+
+          if [ "${HAS_API}" = "true" ]; then
+            test -f apps/api/Dockerfile.prod
+            echo '{"surface":"api","dockerfile":"apps/api/Dockerfile.prod","ok":true}'
+          fi
+
+          if [ "${HAS_WORKERS}" = "true" ]; then
+            test -f apps/workers/action-runner/Dockerfile.prod
+            echo '{"surface":"workers","dockerfile":"apps/workers/action-runner/Dockerfile.prod","ok":true}'
+          fi
+
+      - name: Validate publish permissions surfaces in release.yml
+        shell: bash
+        run: |
+          grep -q "id-token: write" .github/workflows/release.yml
+          grep -q "packages: write" .github/workflows/release.yml
+          grep -q "NPM_TOKEN" .github/workflows/release.yml
+          grep -q "REGISTRY_PAT" .github/workflows/release.yml
+          echo "release_yml_permissions_surfaces=ok"
+
+      - name: Render candidate CLI publish command dry-run only
+        if: ${{ needs.detect_preflight.outputs.has_cli == 'true' }}
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ needs.prepare_preflight.outputs.release_version }}
+        run: |
+          echo "candidate_cli_version_command=pnpm --filter ./apps/cli... pkg set version=\"${RELEASE_VERSION}\""
+          echo "candidate_cli_publish_command=pnpm --filter ./apps/cli... publish --access public --no-git-checks"
+
+      - name: Render candidate GHCR image refs dry-run only
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ needs.prepare_preflight.outputs.release_version }}
+          HAS_API: ${{ needs.detect_preflight.outputs.has_api }}
+          HAS_WORKERS: ${{ needs.detect_preflight.outputs.has_workers }}
+        run: |
+          if [ "${HAS_API}" = "true" ]; then
+            echo "candidate_api_image=${{ env.REGISTRY }}/${{ github.repository_owner }}/eiah-api:${RELEASE_VERSION}"
+            echo "candidate_api_latest=${{ env.REGISTRY }}/${{ github.repository_owner }}/eiah-api:latest"
+          fi
+
+          if [ "${HAS_WORKERS}" = "true" ]; then
+            echo "candidate_worker_image=${{ env.REGISTRY }}/${{ github.repository_owner }}/eiah-workers:${RELEASE_VERSION}"
+            echo "candidate_worker_latest=${{ env.REGISTRY }}/${{ github.repository_owner }}/eiah-workers:latest"
+          fi
+
+      - name: Assert preflight workflow has no side effects
+        shell: bash
+        run: |
+          WORKFLOW_FILE=.github/workflows/release-publish-preflight.yml
+          ! grep -Eq 'pnpm publish|npm publish|docker/login-action|docker/build-push-action|gh release|git tag|push:\s*$' "${WORKFLOW_FILE}"
+          echo "no_side_effect_patterns_detected=true"
