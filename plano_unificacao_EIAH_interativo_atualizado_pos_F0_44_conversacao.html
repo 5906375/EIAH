@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EIAH · Plano de Unificação Multicanal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F6F8F7;
+  --card:#FFFFFF;
+  --ink:#0E1B24;
+  --ink-2:#3D5260;
+  --line:#D8E0DD;
+  --gov:#123C55;        /* Core / governança */
+  --verify:#0F7B57;     /* receipt / prova */
+  --hitl:#A85B10;       /* aprovação humana */
+  --deny:#9B2C2C;       /* fail-closed */
+  --wa:#128C5E;         /* canal whatsapp */
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --disp:'Space Grotesk','Avenir Next',system-ui,sans-serif;
+  --body:'Inter',system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15.5px;line-height:1.6}
+a{color:var(--gov)}
+.wrap{max-width:1060px;margin:0 auto;padding:0 20px}
+
+/* ---------- top bar ---------- */
+nav{position:sticky;top:0;z-index:50;background:rgba(246,248,247,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav .wrap{display:flex;align-items:center;gap:14px;height:54px}
+.brand{font-family:var(--mono);font-weight:600;font-size:13px;letter-spacing:.08em;color:var(--gov)}
+.brand b{color:var(--verify)}
+nav ul{display:flex;gap:2px;list-style:none;margin-left:auto;overflow-x:auto}
+nav a{display:block;padding:7px 11px;border-radius:7px;font-size:13px;font-weight:500;color:var(--ink-2);text-decoration:none;white-space:nowrap}
+nav a:hover,nav a:focus-visible{background:#E7EEEB;color:var(--ink)}
+:focus-visible{outline:2px solid var(--gov);outline-offset:2px}
+
+/* ---------- hero ---------- */
+header{padding:58px 0 40px;border-bottom:1px solid var(--line)}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--verify);margin-bottom:14px}
+h1{font-family:var(--disp);font-weight:700;font-size:clamp(30px,5vw,50px);line-height:1.06;letter-spacing:-.02em;max-width:820px}
+h1 .u{box-shadow:inset 0 -0.28em 0 #CFE7DC}
+.lede{margin-top:18px;max-width:680px;color:var(--ink-2);font-size:17px}
+.rule-invariante{margin-top:26px;display:inline-flex;flex-wrap:wrap;gap:0;border:1.5px solid var(--ink);border-radius:10px;overflow:hidden;font-family:var(--mono);font-size:12.5px}
+.rule-invariante span{padding:9px 14px;border-right:1.5px solid var(--ink)}
+.rule-invariante span:last-child{border-right:none}
+.rule-invariante .r1{background:var(--gov);color:#fff}
+.rule-invariante .r2{background:#fff}
+.rule-invariante .r3{background:#E8F3EE}
+
+/* ---------- section scaffolding ---------- */
+section{padding:52px 0;border-bottom:1px solid var(--line)}
+.sec-tag{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2)}
+h2{font-family:var(--disp);font-size:clamp(22px,3vw,30px);font-weight:700;letter-spacing:-.01em;margin:6px 0 8px}
+.sec-sub{color:var(--ink-2);max-width:700px;margin-bottom:26px}
+
+/* ---------- channel diagram ---------- */
+.stack{display:flex;flex-direction:column;gap:0;align-items:stretch}
+.layer{border:1.5px solid var(--ink);border-radius:12px;padding:16px 18px;background:var(--card);position:relative}
+.layer h3{font-family:var(--disp);font-size:16px;font-weight:600}
+.layer p{font-size:13.5px;color:var(--ink-2);margin-top:2px}
+.layer.core{background:var(--gov);border-color:var(--gov)}
+.layer.core h3,.layer.core p{color:#fff}
+.layer.core p{color:#BCD3E2}
+.connector{align-self:center;width:2px;height:22px;background:var(--ink)}
+.channels{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.chan{border:1.5px solid var(--line);border-radius:12px;padding:14px 15px;background:var(--card);cursor:pointer;text-align:left;font:inherit;transition:border-color .15s, transform .15s}
+.chan:hover{transform:translateY(-2px)}
+.chan.active{border-color:var(--verify);box-shadow:0 0 0 3px #DCEFE6}
+.chan .cn{font-family:var(--disp);font-weight:600;font-size:15px;display:flex;align-items:center;gap:8px}
+.chan .dot{width:9px;height:9px;border-radius:50%;flex:none}
+.chan .cd{font-size:12.5px;color:var(--ink-2);margin-top:3px}
+.chan-detail{margin-top:14px;border-left:3px solid var(--verify);background:var(--card);border-radius:0 12px 12px 0;padding:16px 18px;font-size:14px}
+.chan-detail h4{font-family:var(--disp);font-size:15px;margin-bottom:6px}
+.chan-detail .kv{display:grid;grid-template-columns:150px 1fr;gap:4px 14px;font-size:13.5px}
+.chan-detail .kv dt{font-family:var(--mono);font-size:11.5px;color:var(--ink-2);text-transform:uppercase;letter-spacing:.06em;padding-top:2px}
+.chan-detail .kv dd{color:var(--ink)}
+.verticals{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.vert{border:1.5px dashed var(--line);border-radius:10px;padding:10px 8px;text-align:center;font-family:var(--mono);font-size:12px;background:var(--card)}
+.vert.mature{border-style:solid;border-color:var(--verify);background:#EAF5F0;font-weight:600}
+.vert small{display:block;font-family:var(--body);font-size:10.5px;color:var(--ink-2);margin-top:2px}
+
+/* ---------- five-layer explorer ---------- */
+.ladder{display:flex;flex-wrap:wrap;gap:0;align-items:center;font-family:var(--mono);font-size:12px;margin-bottom:22px}
+.ladder span{padding:6px 11px;border:1.5px solid var(--ink);background:#fff}
+.ladder span:first-child{border-radius:8px 0 0 8px;background:var(--gov);color:#fff;border-color:var(--gov)}
+.ladder span:last-child{border-radius:0 8px 8px 0;background:#E8F3EE}
+.ladder i{font-style:normal;padding:0 5px;color:var(--ink-2)}
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin:0 0 18px;font-size:12px;color:var(--ink-2)}
+.legend b{display:inline-flex;align-items:center;gap:5px;font-weight:500}
+.sdot{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
+.s-ev{background:var(--verify)} .s-pa{background:#2B6CB0} .s-px{background:var(--hitl)} .s-no{background:#A0AEC0}
+.core-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:30px}
+.core-cell{border:1.5px solid var(--line);border-radius:9px;background:var(--card);padding:9px 10px}
+.core-cell .cc-n{font-family:var(--mono);font-size:11.5px;font-weight:600;display:flex;align-items:center;gap:6px}
+.core-cell .cc-s{font-size:10.5px;color:var(--ink-2);margin-top:2px}
+.lyr-label{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);margin:26px 0 10px;display:flex;align-items:center;gap:10px}
+.lyr-label::after{content:"";flex:1;height:1px;background:var(--line)}
+.vsel{display:flex;flex-wrap:wrap;gap:8px}
+.vbtn{border:1.5px solid var(--line);background:var(--card);border-radius:10px;padding:10px 16px;font:inherit;font-family:var(--mono);font-size:13px;font-weight:600;cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;gap:2px;transition:all .15s}
+.vbtn small{font-family:var(--body);font-weight:400;font-size:10.5px;color:var(--ink-2)}
+.vbtn:hover{border-color:var(--gov)}
+.vbtn.on{border-color:var(--gov);background:var(--gov);color:#fff;box-shadow:0 0 0 3px #D6E2EB}
+.vbtn.on small{color:#BCD3E2}
+.agents-row{display:flex;flex-wrap:wrap;gap:8px}
+.ag{border:1.5px solid var(--line);border-radius:10px;background:var(--card);padding:8px 12px;font-size:12.5px}
+.ag b{font-family:var(--mono);font-size:12px;display:block}
+.ag.owner{border-color:var(--gov);background:#EDF3F7}
+.ag.owner b{color:var(--gov)}
+.ag small{color:var(--ink-2)}
+.ops{display:grid;grid-template-columns:repeat(2,1fr);gap:6px 16px}
+.op{display:flex;align-items:flex-start;gap:8px;font-size:13.5px;padding:5px 0;border-bottom:1px dashed var(--line)}
+.op .sdot{margin-top:6px}
+.op small{display:block;font-size:11px;color:var(--ink-2)}
+.out-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.oc{border:1.5px solid var(--line);border-radius:12px;background:var(--card);padding:13px 14px}
+.oc h5{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:7px}
+.oc.op-h h5{color:var(--gov)} .oc.dc-h h5{color:var(--hitl)} .oc.pv-h h5{color:var(--verify)}
+.oc ul{list-style:none;font-size:13px;display:flex;flex-direction:column;gap:5px}
+.oc li{padding-left:12px;position:relative}
+.oc li::before{content:"·";position:absolute;left:0;color:var(--ink-2)}
+.oc .wa-note{margin-top:10px;padding-top:9px;border-top:1px dashed var(--line);font-size:11.5px;color:var(--ink-2)}
+.oc .wa-note b{color:var(--wa);font-family:var(--mono);font-size:10px;letter-spacing:.08em}
+.gapbadge{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:600;background:#FBEAEA;color:var(--deny);border:1px solid #E7B9B9;border-radius:5px;padding:1px 6px;margin-left:5px}
+.gaps-strip{margin-top:16px;border:1.5px solid #E7B9B9;border-left:4px solid var(--deny);border-radius:10px;background:#FDF6F6;padding:13px 16px;font-size:13.5px}
+.gaps-strip b{font-family:var(--mono);font-size:11px;color:var(--deny)}
+.empty-vert{border:1.5px dashed var(--line);border-radius:12px;padding:18px;color:var(--ink-2);font-size:14px;background:var(--card)}
+@media(max-width:820px){
+  .core-grid{grid-template-columns:repeat(2,1fr)}
+  .ops{grid-template-columns:1fr}
+  .out-cols{grid-template-columns:1fr}
+}
+
+
+
+/* ===== camada de conversação (F0.45 documental) ===== */
+.conv-tbl{width:100%;border-collapse:collapse;font-size:13px;background:var(--card);border:1.5px solid var(--line);border-radius:12px;overflow:hidden}
+.conv-tbl th{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;text-align:left;color:var(--ink-2);background:#EDF3F7;padding:9px 12px;border-bottom:1.5px solid var(--line)}
+.conv-tbl td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+.conv-tbl tr:last-child td{border-bottom:none}
+.conv-tbl .m{font-family:var(--mono);font-size:11.5px;white-space:nowrap}
+.st{font-family:var(--mono);font-size:10px;letter-spacing:.08em;border-radius:5px;padding:2px 8px;white-space:nowrap}
+.st.ev{background:#EAF5F0;color:var(--verify);border:1px solid #BFE3D2}
+.st.spec{background:#EDF3F7;color:var(--gov);border:1px solid #C9DAE8}
+.st.pend{background:#F7EDDD;color:var(--hitl);border:1px solid #EAD3AE}
+.conv-note{margin-top:14px;border:1.5px solid var(--line);border-left:4px solid var(--gov);border-radius:10px;background:var(--card);padding:13px 16px;font-size:13.5px}
+.conv-note code{font-family:var(--mono);font-size:12px}
+@media(max-width:820px){.conv-tbl{font-size:12px}.conv-tbl .m{white-space:normal}}
+
+/* ---------- implementation evidence update ---------- */
+.evid-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px}
+.evid-card{border:1.5px solid var(--line);border-radius:12px;background:var(--card);padding:13px 14px}
+.evid-card h4{font-family:var(--mono);font-size:12px;color:var(--gov);margin-bottom:6px}
+.evid-card p{font-size:13px;color:var(--ink-2)}
+.evid-card.done{border-color:var(--verify);background:#EAF5F0}
+.evid-card.warn{border-color:#E7B9B9;background:#FDF6F6}
+.status-pill{display:inline-block;font-family:var(--mono);font-size:10.5px;border-radius:5px;padding:2px 7px;margin-top:8px;background:#E7EEEB;color:var(--ink-2)}
+.status-pill.ok{background:#DCEFE6;color:var(--verify)}
+.status-pill.partial{background:#F7E3D0;color:var(--hitl)}
+@media(max-width:820px){.evid-grid{grid-template-columns:1fr}}
+
+/* ---------- pipeline simulator (signature) ---------- */
+#sim{background:var(--ink);color:#E8EEF2;border-bottom:none}
+#sim .sec-tag{color:#7FB6A0}
+#sim h2{color:#fff}
+#sim .sec-sub{color:#9DB2BF}
+.sim-controls{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:22px}
+.scenario{border:1.5px solid #33505F;background:transparent;color:#C8D6DE;border-radius:99px;padding:8px 16px;font:inherit;font-size:13.5px;font-weight:500;cursor:pointer;transition:all .15s}
+.scenario:hover{border-color:#6FA28C}
+.scenario.on{background:#fff;color:var(--ink);border-color:#fff}
+.sim-body{display:grid;grid-template-columns:280px 1fr;gap:24px;align-items:start}
+.phone{background:#0B141A;border:1.5px solid #2A3942;border-radius:22px;padding:14px 12px;min-height:380px;display:flex;flex-direction:column;gap:8px}
+.phone .ph-head{font-family:var(--mono);font-size:11px;color:#8696A0;text-align:center;letter-spacing:.08em;padding-bottom:8px;border-bottom:1px solid #2A3942;margin-bottom:4px}
+.bub{max-width:92%;padding:8px 11px;border-radius:10px;font-size:13px;line-height:1.45;opacity:0;transform:translateY(6px);transition:opacity .3s,transform .3s}
+.bub.show{opacity:1;transform:none}
+.bub.user{align-self:flex-end;background:#005C4B;color:#E9FDF4;border-bottom-right-radius:3px}
+.bub.bot{align-self:flex-start;background:#202C33;color:#E8EEF2;border-bottom-left-radius:3px}
+.bub.bot .tag{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.06em;padding:1px 6px;border-radius:4px;margin-bottom:4px}
+.bub .tag.t-gov{background:#1B3A5B;color:#AACDE8}
+.bub .tag.t-imob{background:#0F4C3C;color:#9FE0C6}
+.bub .tag.t-deny{background:#5B1B1B;color:#F0B4B4}
+.bub .tag.t-hitl{background:#5B3D10;color:#F2CE97}
+.bub .vlink{display:inline-block;margin-top:6px;font-family:var(--mono);font-size:11px;color:#8FE3BC;text-decoration:underline dotted}
+.steps{display:flex;flex-direction:column;gap:0}
+.step{display:grid;grid-template-columns:34px 1fr;gap:14px;padding:11px 0;opacity:.32;transition:opacity .3s}
+.step.done,.step.now{opacity:1}
+.step .node{width:34px;height:34px;border-radius:50%;border:2px solid #33505F;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;background:var(--ink);position:relative;z-index:1}
+.step.done .node{border-color:var(--verify);background:var(--verify);color:#fff}
+.step.now .node{border-color:#fff;color:#fff}
+.step.blocked .node{border-color:#E07A7A;background:#3A1414;color:#F0B4B4}
+.step .st-title{font-family:var(--disp);font-weight:600;font-size:14.5px;color:#fff}
+.step .st-desc{font-size:12.5px;color:#9DB2BF;margin-top:1px}
+.step .st-code{font-family:var(--mono);font-size:11px;color:#6FA28C;margin-top:3px}
+.step.blocked .st-title{color:#F0B4B4}
+.steps .rail{position:relative}
+.sim-actions{display:flex;gap:10px;margin-top:18px}
+.btn{border:none;border-radius:9px;padding:10px 18px;font:inherit;font-weight:600;font-size:14px;cursor:pointer}
+.btn.primary{background:var(--verify);color:#fff}
+.btn.primary:hover{background:#0C6446}
+.btn.ghost{background:transparent;color:#C8D6DE;border:1.5px solid #33505F}
+.btn.ghost:hover{border-color:#6FA28C}
+.outcome{margin-top:16px;border-radius:10px;padding:12px 15px;font-size:13.5px;display:none}
+.outcome.ok{display:block;background:#0F3327;border:1px solid #1F6A4E;color:#BDEBD6}
+.outcome.deny{display:block;background:#3A1414;border:1px solid #7A2E2E;color:#F0C4C4}
+.outcome code{font-family:var(--mono);font-size:12px}
+
+/* ---------- phases ---------- */
+.phase{border:1.5px solid var(--line);border-radius:14px;background:var(--card);margin-bottom:14px;overflow:hidden}
+.phase>button{width:100%;display:flex;align-items:center;gap:14px;padding:16px 18px;background:none;border:none;font:inherit;cursor:pointer;text-align:left}
+.phase>button:hover{background:#F2F6F4}
+.pf{font-family:var(--mono);font-weight:600;font-size:13px;color:#fff;background:var(--gov);border-radius:7px;padding:5px 9px;flex:none}
+.phase.gate .pf{background:var(--deny)}
+.pt{font-family:var(--disp);font-weight:600;font-size:16px;flex:1}
+.pt small{display:block;font-family:var(--body);font-weight:400;font-size:12.5px;color:var(--ink-2)}
+.prog{font-family:var(--mono);font-size:12px;color:var(--ink-2);flex:none}
+.chev{flex:none;transition:transform .2s;color:var(--ink-2)}
+.phase.open .chev{transform:rotate(90deg)}
+.pbody{display:none;padding:4px 18px 18px;border-top:1px solid var(--line)}
+.phase.open .pbody{display:block}
+.pbody p{font-size:14px;color:var(--ink-2);margin:12px 0}
+.dod{list-style:none;display:flex;flex-direction:column;gap:6px}
+.dod li{display:flex;gap:10px;align-items:flex-start;font-size:14px}
+.dod input{margin-top:4px;accent-color:var(--verify);width:15px;height:15px;flex:none}
+.dod label{cursor:pointer}
+.dod .checked{color:var(--ink-2);text-decoration:line-through}
+.dod-note{font-family:var(--mono);font-size:11.5px;color:var(--hitl);margin-top:10px}
+
+/* ---------- backlog ---------- */
+.bl-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.bl{border:1.5px solid var(--line);border-radius:12px;background:var(--card);padding:13px 15px;display:flex;gap:12px;align-items:flex-start}
+.bl .n{font-family:var(--mono);font-weight:600;font-size:14px;color:var(--gov);flex:none;width:26px}
+.bl .f{font-family:var(--mono);font-size:10.5px;padding:2px 7px;border-radius:5px;background:#E7EEEB;color:var(--ink-2);flex:none;margin-top:2px}
+.bl .f.f0{background:#F7E3D0;color:var(--hitl)}
+.bl p{font-size:13.5px}
+
+/* ---------- risks ---------- */
+.risk{border:1.5px solid var(--line);border-left:4px solid var(--deny);border-radius:10px;background:var(--card);margin-bottom:10px}
+.risk>button{width:100%;display:flex;justify-content:space-between;gap:12px;align-items:center;background:none;border:none;font:inherit;text-align:left;padding:13px 16px;cursor:pointer;font-weight:500;font-size:14.5px}
+.risk>button:hover{background:#F2F6F4}
+.risk .rb{display:none;padding:0 16px 14px;font-size:14px;color:var(--ink-2)}
+.risk.open .rb{display:block}
+.risk .rb b{color:var(--verify);font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;display:block;margin-bottom:3px}
+
+/* ---------- decision ---------- */
+#decisao{border-bottom:none;padding-bottom:80px}
+.decision{border:2px solid var(--ink);border-radius:16px;background:var(--card);padding:26px 26px 22px;position:relative}
+.decision::before{content:"DECISÃO FORMALIZADA";position:absolute;top:-11px;left:22px;background:var(--paper);padding:0 10px;font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--gov);font-weight:600}
+.decision p{font-size:15.5px;max-width:820px}
+.stamp{margin-top:18px;display:inline-block;font-family:var(--mono);font-size:12px;color:var(--verify);border:1.5px dashed var(--verify);border-radius:8px;padding:7px 12px;transform:rotate(-1.2deg)}
+
+footer{padding:26px 0 46px;color:var(--ink-2);font-size:12.5px;font-family:var(--mono)}
+
+@media(max-width:820px){
+  .sim-body{grid-template-columns:1fr}
+  .bl-grid{grid-template-columns:1fr}
+  .channels{grid-template-columns:1fr}
+  .verticals{grid-template-columns:repeat(2,1fr)}
+  .chan-detail .kv{grid-template-columns:1fr}
+  nav ul{-webkit-overflow-scrolling:touch}
+}
+@media(prefers-reduced-motion:reduce){
+  *{transition:none!important;scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+
+<nav aria-label="Seções do plano">
+  <div class="wrap">
+    <span class="brand">EIAH<b>·</b>CORE v1</span>
+    <ul>
+      <li><a href="#arquitetura">Arquitetura</a></li>
+      <li><a href="#camadas">Camadas</a></li>
+      <li><a href="#sim">Simulador</a></li>
+      <li><a href="#evidencias">Evidências</a></li>
+      <li><a href="#conversacao">Conversação</a></li>
+      <li><a href="#fases">Fases</a></li>
+      <li><a href="#backlog">Backlog</a></li>
+      <li><a href="#riscos">Riscos</a></li>
+      <li><a href="#decisao">Decisão</a></li>
+    </ul>
+  </div>
+</nav>
+
+<header>
+  <div class="wrap">
+    <p class="eyebrow">Plano de Unificação · proposta v1 · atualizado pós-F0.44 · 2026-07</p>
+    <h1>Um front door.<br>Qualquer tela — <span class="u">inclusive o WhatsApp</span>.</h1>
+    <p class="lede">Desktop, mobile responsivo e WhatsApp entregam o mesmo Chat EIAH lógico. Nenhum canal executa por conta própria; nenhum adapter carrega regra de negócio; nenhuma ação crítica ocorre sem run, receipt e ledger.</p>
+    <p class="lede" style="margin-top:12px"><strong>Atualização pós-F0.44:</strong> a trilha de front door IMOB, integridade de CI, convergência Node 22 e governança do release avançou para <code style="font-family:var(--mono);font-size:13px">parcial/evidenciado</code>. F0.20–F0.34 implementaram e evidenciaram o readiness Node 22 do release; F0.35–F0.44 adicionaram auditoria do <code style="font-family:var(--mono);font-size:13px">release.yml</code>, decisão controlada em camadas, validation-build dry-run, publish preflight, gate de ativação/rollback e runs verdes reais em <code style="font-family:var(--mono);font-size:13px">main</code>. F0/P0 globais ainda não estão fechados: <code style="font-family:var(--mono);font-size:13px">release.yml</code> produtivo permanece intocado e publish, secrets produtivos, registry login, Docker/GHCR push e tags/releases seguem bloqueados até decisão dedicada.</p>
+    <div class="rule-invariante" role="text" aria-label="Regra invariante da arquitetura">
+      <span class="r1">Core governa</span><span class="r2">Chat orquestra</span><span class="r3">Vertical executa</span>
+    </div>
+  </div>
+</header>
+
+<section id="arquitetura">
+  <div class="wrap">
+    <p class="sec-tag">01 · Arquitetura de canais</p>
+    <h2>Três superfícies, um pipeline</h2>
+    <p class="sec-sub">O WhatsApp não é um novo chat: é um <em>channel adapter</em> render-only do mesmo front door — a mesma disciplina já aplicada ao <code style="font-family:var(--mono);font-size:13px">ChatAgentLauncher</code> web. Toque em cada canal para ver o que ele faz (e o que ele nunca faz).</p>
+
+    <div class="stack">
+      <div class="layer core">
+        <h3>EIAH Core</h3>
+        <p>Runtime · Agents · Billing · Ledger · RBAC — único ponto de verdade para identidade, entitlement, runs e prova.</p>
+      </div>
+      <div class="connector" aria-hidden="true"></div>
+      <div class="layer">
+        <h3>Chat EIAH — front door lógico</h3>
+        <p>Lê perfil, assinatura, tenant, workspace e entitlement · triagem de intenção · handoff controlado e anunciado.</p>
+      </div>
+      <div class="connector" aria-hidden="true"></div>
+      <div class="channels" role="tablist" aria-label="Canais">
+        <button class="chan active" role="tab" aria-selected="true" data-ch="desk">
+          <span class="cn"><span class="dot" style="background:var(--gov)"></span>Web Desktop</span>
+          <span class="cd">Launcher atual, render-only</span>
+        </button>
+        <button class="chan" role="tab" aria-selected="false" data-ch="mob">
+          <span class="cn"><span class="dot" style="background:#5C7A8F"></span>Web Mobile</span>
+          <span class="cd">Mesmo launcher, responsivo</span>
+        </button>
+        <button class="chan" role="tab" aria-selected="false" data-ch="wa">
+          <span class="cn"><span class="dot" style="background:var(--wa)"></span>WhatsApp Adapter</span>
+          <span class="cd">Webhook · sessão · texto</span>
+        </button>
+      </div>
+      <div class="chan-detail" id="chanDetail" role="tabpanel"></div>
+      <div class="connector" aria-hidden="true"></div>
+      <div class="verticals" aria-label="Verticais e maturidade">
+        <div class="vert mature">IMOB<small>parcial avançada · owner maduro</small></div>
+        <div class="vert">LEGAL<small>contexto + J_360</small></div>
+        <div class="vert">MKT<small>especialista</small></div>
+        <div class="vert">FIN<small>forte no Core</small></div>
+        <div class="vert">LOG<small>proposta</small></div>
+      </div>
+      <div class="connector" aria-hidden="true"></div>
+      <div class="layer" style="border-color:var(--verify);background:#EAF5F0">
+        <h3 style="color:var(--verify)">Run / Receipt / Bundle / Ledger Registry</h3>
+        <p>Toda ação crítica gera prova, agora com metadado <code style="font-family:var(--mono);font-size:12px">channel: whatsapp | web_desktop | web_mobile</code> e Verify_URL.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="camadas">
+  <div class="wrap">
+    <p class="sec-tag">02 · Matriz de camadas</p>
+    <h2>Da governança à saída: as cinco camadas</h2>
+    <p class="sec-sub">Todas as camadas do padrão EIAH, com o status real das matrizes v1. Escolha uma vertical para ver a cascata: quem é o owner, quais especialistas apoiam, quais operações existem de verdade e o que cada uma entrega — com a regra de renderização por canal.</p>
+
+    <div class="ladder" aria-hidden="true">
+      <span>EIAH CORE</span><i>›</i><span>VERTICAIS</span><i>›</i><span>AGENTES ESPECIALIZADOS</span><i>›</i><span>OPERAÇÕES REAIS</span><i>›</i><span>SAÍDAS</span>
+    </div>
+
+    <div class="legend" aria-label="Legenda de status">
+      <b><span class="sdot s-ev"></span>evidenciado / funcional</b>
+      <b><span class="sdot s-pa"></span>parcial avançado</b>
+      <b><span class="sdot s-px"></span>parcial / em expansão</b>
+      <b><span class="sdot s-no"></span>proposta / inexistente</b>
+    </div>
+
+    <p class="lyr-label">Camada 1 · EIAH Core v1 — status: parcial avançada</p>
+    <div class="core-grid" id="coreGrid"></div>
+
+    <p class="lyr-label">Camada 2 · Verticais — selecione</p>
+    <div class="vsel" id="vsel" role="tablist" aria-label="Verticais"></div>
+
+    <div id="cascade">
+      <p class="lyr-label">Camada 3 · Agentes especializados</p>
+      <div class="agents-row" id="agRow"></div>
+
+      <p class="lyr-label">Camada 4 · Operações reais</p>
+      <div id="opsWrap"></div>
+
+      <p class="lyr-label">Camada 5 · Saídas <span style="font-family:var(--body);text-transform:none;letter-spacing:0">— output operacional ≠ prova auditável</span></p>
+      <div id="outWrap"></div>
+    </div>
+
+    <div class="gaps-strip">
+      <b>GAPS DE SAÍDA CONFIRMADOS</b> — <strong>N-08:</strong> nenhum artefato de fechamento gerado automaticamente (o único PDF real é export manual de contrato via jsPDF <em>no cliente</em> — inviável no WhatsApp; exige geração server-side). <strong>N-07:</strong> PII masking desalinhado (7 padrões no masker de contrato vs 4 no llmExecutor). <strong>KPIs:</strong> funil, ranking e custo existem só como REST do dashboard — o chat não responde "como estão minhas vendas?". <strong>Intake:</strong> classificação de contrato cobre só locação; validação de anexo só identidade do proprietário.
+    </div>
+  </div>
+</section>
+
+<section id="sim">
+  <div class="wrap">
+    <p class="sec-tag">03 · Fluxo de referência</p>
+    <h2>Simulador do pipeline governado</h2>
+    <p class="sec-sub">A operação-piloto: captura e descarte de lead pela vertical IMOB via WhatsApp. Escolha um cenário e avance passo a passo — repare onde o fail-closed corta o fluxo e onde a aprovação humana é obrigatória.</p>
+
+    <div class="sim-controls" role="group" aria-label="Cenários">
+      <button class="scenario on" data-sc="create">Criar lead (feliz)</button>
+      <button class="scenario" data-sc="discard">Descartar lead (HITL)</button>
+      <button class="scenario" data-sc="noent">Sem entitlement IMOB</button>
+      <button class="scenario" data-sc="nobind">Número não vinculado</button>
+    </div>
+
+    <div class="sim-body">
+      <div class="phone" aria-label="Conversa simulada no WhatsApp">
+        <div class="ph-head">WhatsApp · Chat EIAH</div>
+        <div id="chat"></div>
+      </div>
+      <div>
+        <div class="steps" id="steps"></div>
+        <div class="sim-actions">
+          <button class="btn primary" id="nextBtn">Avançar passo</button>
+          <button class="btn ghost" id="resetBtn">Reiniciar</button>
+        </div>
+        <div class="outcome" id="outcome"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<section id="evidencias">
+  <div class="wrap">
+    <p class="sec-tag">04 · Atualização pós-implementação</p>
+    <h2>Evidências F0.1–F0.44 já incorporadas</h2>
+    <p class="sec-sub">Esta versão integra o que já foi implementado/mergeado desde o plano original até F0.44. O status correto permanece <strong>parcial/evidenciado</strong>: há provas, gates e runs verdes de readiness, validation-build, publish preflight e activation/rollback gate, mas o release produtivo continua intocado e a Camada B real segue bloqueada para publish, secrets, GHCR/Docker push e tags/releases.</p>
+    <div class="evid-grid">
+      <div class="evid-card done"><h4>F0.1</h4><p>Renderização estruturada de entitlement/access gate no chat IMOB, preservando message, reasonCode e CTA real do backend.</p><span class="status-pill ok">evidenciado</span></div>
+      <div class="evid-card done"><h4>F0.2</h4><p>Estados do front door IMOB padronizados: loading, empty, error, entitlement e fallback seguro.</p><span class="status-pill ok">evidenciado</span></div>
+      <div class="evid-card done"><h4>F0.3</h4><p>UX/rendering do front door IMOB provado por snapshot textual determinístico.</p><span class="status-pill ok">evidenciado</span></div>
+      <div class="evid-card done"><h4>F0.4</h4><p>Checklist consolidado de não-regressão F0.1–F0.3.</p><span class="status-pill ok">evidenciado</span></div>
+      <div class="evid-card done"><h4>F0.5</h4><p>Gate CI dedicado <code>ImobFrontdoorRegression</code> com <code>check:imob-frontdoor-regression</code>.</p><span class="status-pill ok">CI gate</span></div>
+      <div class="evid-card done"><h4>F0.6</h4><p>Command center/report consolidado do front door IMOB.</p><span class="status-pill ok">report</span></div>
+      <div class="evid-card done"><h4>F0.7</h4><p>Baseline versionada dos 50 orphan tests conhecidos, com novos órfãos voltando a bloquear.</p><span class="status-pill ok">baseline governada</span></div>
+      <div class="evid-card done"><h4>F0.8</h4><p>Gate CI <code>OrphanTestsRegression</code> para bloquear novos orphan tests e allowlist stale.</p><span class="status-pill ok">CI gate</span></div>
+      <div class="evid-card done"><h4>F0.9</h4><p>Matriz consolidada de gates/checks CI, com 24 jobs bloqueantes e zero warn-only no estado analisado.</p><span class="status-pill ok">matriz CI</span></div>
+      <div class="evid-card done"><h4>F0.10</h4><p>Auditoria de consistência Node 20/22 classificou migração parcial e identificou workflows residuais.</p><span class="status-pill ok">runtime audit</span></div>
+      <div class="evid-card done"><h4>F0.11</h4><p>Baseline Node 22 declarada em <code>package.json</code>, <code>.nvmrc</code> e <code>.node-version</code>.</p><span class="status-pill ok">baseline Node 22</span></div>
+      <div class="evid-card done"><h4>F0.12</h4><p>Comparação inicial <code>build_validate</code> Node 20 vs Node 22 ficou inconclusiva por contaminação de ambiente.</p><span class="status-pill partial">inconclusivo</span></div>
+      <div class="evid-card done"><h4>F0.13</h4><p>Comparação simétrica em containers limpos demonstrou <code>12 PASS / 1 FAIL</code> em ambos os runtimes; sem regressão Node 22.</p><span class="status-pill ok">sem regressão</span></div>
+      <div class="evid-card done"><h4>F0.14</h4><p><code>build_validate</code> migrado para Node 22 com escopo mínimo e evidência indexada.</p><span class="status-pill ok">Node 22</span></div>
+      <div class="evid-card done"><h4>F0.15</h4><p>Falha acidental de <code>core_tests/DATABASE_URL</code> corrigida via <code>TSX_TSCONFIG_PATH=packages/core/tsconfig.test.json</code>.</p><span class="status-pill ok">core_tests</span></div>
+      <div class="evid-card done"><h4>F0.16</h4><p>Auditoria dos workflows residuais classificou <code>lint.yml</code> baixo risco, <code>critical-dod.yml</code> médio e <code>release.yml</code> alto.</p><span class="status-pill ok">risk matrix</span></div>
+      <div class="evid-card done"><h4>F0.17</h4><p><code>lint.yml</code> migrado para Node 22 como workflow de baixo risco.</p><span class="status-pill ok">Node 22</span></div>
+      <div class="evid-card done"><h4>F0.18</h4><p><code>critical-dod.yml</code> migrado para Node 22 com rollback simples e sem alterar release path.</p><span class="status-pill ok">Node 22</span></div>
+      <div class="evid-card done"><h4>F0.19</h4><p><code>release.yml</code> auditado; nenhuma migração feita. Conclusão: F0.20 deve criar ensaio/dry-run antes da migração real.</p><span class="status-pill partial">readiness audit</span></div>
+      <div class="evid-card done"><h4>F0.20</h4><p><code>release-node22-readiness.yml</code> criado como dry-run manual em Node 22, sem publish, push, tags ou secrets produtivos.</p><span class="status-pill ok">readiness dry-run</span></div>
+      <div class="evid-card done"><h4>F0.21</h4><p>Primeiro run real do readiness registrado: falha por mismatch de pnpm (<code>9</code> vs <code>10.12.4</code>), sem alterar release produtivo.</p><span class="status-pill partial">falha evidenciada</span></div>
+      <div class="evid-card done"><h4>F0.22</h4><p><code>release-node22-readiness.yml</code> ajustado para <code>pnpm@10.12.4</code>, removendo o mismatch do setup.</p><span class="status-pill ok">pnpm fix</span></div>
+      <div class="evid-card done"><h4>F0.23</h4><p>Rerun evidenciado: setup de pnpm passou, novo bloqueio surgiu em install/postinstall por build order de <code>@repo/db</code>/<code>@eiah/core</code>.</p><span class="status-pill partial">falha evidenciada</span></div>
+      <div class="evid-card done"><h4>F0.24</h4><p>Install do readiness passou a usar <code>--ignore-scripts</code> e build explícito de <code>@repo/db</code> e <code>@eiah/core</code> na ordem correta.</p><span class="status-pill ok">build order</span></div>
+      <div class="evid-card done"><h4>F0.25</h4><p>Rerun pós-F0.24 registrado: novo bloqueio real em <code>apps/web</code> por export ausente de masking em <code>packages/utils</code>.</p><span class="status-pill partial">falha evidenciada</span></div>
+      <div class="evid-card done"><h4>F0.26</h4><p><code>packages/utils</code> passou a expor masking versionado por <code>src/masking/index.ts</code>; build web deixou de falhar nesse ponto.</p><span class="status-pill ok">masking fix</span></div>
+      <div class="evid-card done"><h4>F0.27</h4><p>Rerun pós-F0.26 registrado: novo bloqueio real no build do <code>apps/cli</code>, com rootDir/contracts e GuardrailLedger drift.</p><span class="status-pill partial">falha evidenciada</span></div>
+      <div class="evid-card done"><h4>F0.28</h4><p><code>apps/cli</code> corrigido para consumir declarações construídas e helpers canônicos do GuardrailLedger; build CLI passou localmente.</p><span class="status-pill ok">CLI build fix</span></div>
+      <div class="evid-card done"><h4>F0.29</h4><p>Alias residual de <code>@eiah/contracts</code> no CLI corrigido para declarações compiladas; readiness avançou além do CLI/contracts.</p><span class="status-pill ok">contracts alias</span></div>
+      <div class="evid-card done"><h4>F0.30</h4><p>Build drift da API IMOB corrigido: <code>Promise.all</code> materializado antes de filtros e <code>null</code> normalizado para <code>undefined</code> em capabilities.</p><span class="status-pill ok">API IMOB</span></div>
+      <div class="evid-card done"><h4>F0.31</h4><p>Path do schema Prisma no readiness corrigido para o cwd do pacote <code>@repo/db</code>: <code>./prisma/schema.prisma</code>.</p><span class="status-pill ok">Prisma path</span></div>
+      <div class="evid-card done"><h4>F0.32</h4><p><code>schema.prisma</code> formatado no padrão Prisma e <code>check:p1-critical-chain</code> tornado tolerante a whitespace sem enfraquecer a validação semântica.</p><span class="status-pill ok">format + P1</span></div>
+      <div class="evid-card done"><h4>F0.33</h4><p>Flags removidas do <code>prisma migrate diff</code> atualizadas para <code>--from-schema</code>/<code>--to-schema</code>, preservando o gate.</p><span class="status-pill ok">Prisma flags</span></div>
+      <div class="evid-card done"><h4>F0.34</h4><p>Primeiro run verde do <code>ReleaseNode22Readiness</code> em <code>main</code> registrado: <code>Success</code>, jobs prepare/detect/validate verdes, warnings Node 20 anotadas.</p><span class="status-pill ok">readiness green</span></div>
+      <div class="evid-card done"><h4>F0.35</h4><p>Auditoria read-only do <code>release.yml</code> pós-readiness verde: divergências com Node 22/pnpm 10, install strategy, build order, Prisma e superfícies de publish classificadas sem alteração produtiva.</p><span class="status-pill partial">audit-only</span></div>
+      <div class="evid-card done"><h4>F0.36</h4><p>Decisão controlada de migração do release formalizada em duas camadas: Camada A validação/build e Camada B publish/secrets/GHCR/tags, sem autorizar migração direta.</p><span class="status-pill partial">decisão</span></div>
+      <div class="evid-card done"><h4>F0.37</h4><p><code>release-node22-validation-build-dry-run.yml</code> criado como ponte manual de validação/build Node 22, sem publish, sem secrets produtivos e sem tags.</p><span class="status-pill ok">dry-run criado</span></div>
+      <div class="evid-card done"><h4>F0.38</h4><p>Primeiro run verde do <code>ReleaseNode22ValidationBuildDryRun</code> em <code>main</code> registrado: validation-build dry-run comprovado sem side effects.</p><span class="status-pill ok">dry-run green</span></div>
+      <div class="evid-card done"><h4>F0.39</h4><p>Modelo de risco da Camada B documentado: irreversibilidade externa, secrets, promoção por tag/release e rollback operacional classificados antes de qualquer publish real.</p><span class="status-pill partial">risk model</span></div>
+      <div class="evid-card done"><h4>F0.40</h4><p><code>release-publish-preflight.yml</code> criado para validar metadados, superfícies e candidatos de publish sem executar publish, login, push, tags ou releases.</p><span class="status-pill ok">preflight criado</span></div>
+      <div class="evid-card done"><h4>F0.41</h4><p>Primeiro run verde do <code>ReleasePublishPreflight</code> em <code>main</code> registrado: preflight da Camada B comprovado sem side effects.</p><span class="status-pill ok">preflight green</span></div>
+      <div class="evid-card done"><h4>F0.42</h4><p>Decisão pós-preflight verde formalizada: preflight não autoriza publish; próximo gate deve exigir owners, janela operacional, rollback, idempotência/retry e boundary de secrets.</p><span class="status-pill partial">gate decision</span></div>
+      <div class="evid-card done"><h4>F0.43</h4><p><code>release-activation-rollback-gate.yml</code> criado como gate manual reforçado com inputs de decisão humana, superfície, owners, janela, rollback e retry/idempotência.</p><span class="status-pill ok">gate criado</span></div>
+      <div class="evid-card done"><h4>F0.44</h4><p>Primeiro run verde do <code>ReleaseActivationRollbackGate</code> em <code>main</code> registrado: gate de ativação/rollback validado sem publish, secrets, registry login, GHCR/Docker push ou tags/releases.</p><span class="status-pill ok">gate green</span></div>
+      <div class="evid-card warn"><h4>Lacunas</h4><p>F0/P0 globais não estão fechados. Os 50 orphan tests continuam dívida conhecida governada. Readiness, validation-build dry-run, publish preflight e activation/rollback gate estão verdes, mas <code>release.yml</code> produtivo permanece intocado. Publish real, secrets produtivos, registry login, Docker/GHCR push e tags/releases seguem bloqueados para decisão futura dedicada.</p><span class="status-pill partial">parcial/evidenciado</span></div>    </div>
+  </div>
+</section>
+
+<section id="conversacao">
+  <div class="wrap">
+    <p class="sec-tag">05 · Camada de Conversação</p>
+    <h2>Biblioteca de Conversação v1.14 — o contrato do que se conversa em cada fase</h2>
+    <p class="sec-sub">Este plano define <em>o quê e quando</em>; a <b>EIAH_CONVERSATION_LIBRARY_v1.md (v1.14)</b> define <em>como se conversa</em> em cada fase — 35 regras e ~95 testes de replay construídos sobre 9 conversas reais analisadas, com o <b>simulador v1.14</b> como especificação executável. Mapeamento formal fase ↔ regras ↔ testes:</p>
+
+    <div class="conv-note">
+      <b>Status da camada Conversação:</b> especificada/parcial. Esta camada está consolidada em nível documental no plano pós-F0.44. Ela não altera runtime, não altera <code>ChatAgentLauncher</code>, não adiciona regra de comportamento diretamente à UI e deve seguir o padrão <b>agent-driven</b>: agente define, engine executa, launcher renderiza. Não está DONE e permanece pendente de implementação/evidência runtime.
+    </div>
+
+
+    <table class="conv-tbl">
+      <thead><tr><th>Fase do plano</th><th>Regras da biblioteca</th><th>Testes / prova</th><th>Status do encaixe</th></tr></thead>
+      <tbody>
+        <tr><td><b>F0.1–F0.3</b> · CTAs reais, handoff anunciado, resolver canônico</td><td class="m">Princípios 1–4 · fail-closed com CTA · handoff visível · próximo passo canônico</td><td class="m">pressupostos herdados; cobertos nos replays 1–9</td><td><span class="st ev">EVIDENCIADO (código)</span></td></tr>
+        <tr><td><b>F0.5</b> · gate ImobFrontdoorRegression no CI</td><td class="m">Regras 5, 26, 31 (anti-verbatim em todos os modos)</td><td class="m">replays das 9 conversas → fundir à suíte existente</td><td><span class="st pend">FUSÃO PENDENTE</span></td></tr>
+        <tr><td><b>Triagem do front door</b> (base de todas as fases)</td><td class="m">Regras 1–13 · triagem unificada (15) · classes: meta, demanda, confusão, negação, capacidade, hire, OOS</td><td class="m">T1–T52 · zero falso-negativo p/ comandos sugeridos</td><td><span class="st spec">ESPECIFICADO (simulador)</span></td></tr>
+        <tr><td><b>Autoexplicação</b> · meta.eiah.*</td><td class="m">Regra 20 · fonte única: Guia da Plataforma (verificado em código, v1.6)</td><td class="m">T22–T37 · aprovações reais Aprovar/Delegar/Escalar · sem promessa de canal inexistente</td><td><span class="st spec">ESPECIFICADO · guia ✓</span></td></tr>
+        <tr><td><b>F1</b> · mobile responsivo</td><td class="m">Regra 8 (canal define a forma) — sem regra nova</td><td class="m">simulador responsivo</td><td><span class="st ev">SEM CONFLITO</span></td></tr>
+        <tr><td><b>F2</b> · WhatsApp adapter (webhook, binding, sessão TTL, renderer)</td><td class="m"><b>Regra 35</b> · renderização degradada · gates por texto · menus numerados · "resumo do caso"</td><td class="m"><b>T63a–e + T64a–h</b> = contrato de aceitação · prompt de implementação pronto</td><td><span class="st spec">SPEC PRONTA → IMPLEMENTAR</span></td></tr>
+        <tr><td><b>F3</b> · mutações-piloto (lead.create + descarte)</td><td class="m">Jornada J1 · gramática de gates · guarda anti-fabricação (11) · pausas com saída (26–29)</td><td class="m">replays 1, 8 e 9 · T38–T58</td><td><span class="st spec">ESPECIFICADO · abre pós-F2</span></td></tr>
+        <tr><td><b>Entradas de canal</b> · voz e documentos</td><td class="m">Regra 33 (gravação + transcrição íntegra, revisão humana) · Regra 34 (RPA leitor: classificar→extrair→mascarar→confirmar)</td><td class="m">T60a–k · T61–T62 · STT server-side na F2/F3</td><td><span class="st spec">ESPECIFICADO</span></td></tr>
+        <tr><td><b>F4+</b> · modo contraparte</td><td class="m">Regra 14 · demanda de primeira pessoa → captação consentida (SIM/NÃO)</td><td class="m">T27 · replay 6 (Pedro/kitnet)</td><td><span class="st spec">SEMENTE ESPECIFICADA</span></td></tr>
+        <tr><td><b>Decisões do CEO</b> (backlog)</td><td class="m">Reconciliação v1.6: Aprovar/Delegar/Escalar × APROVAR/AJUSTAR/REJEITAR · provedor WhatsApp · templates 24h · allowlist docs/guides no git</td><td class="m">documentadas nos changelogs v1.6–v1.14</td><td><span class="st pend">PENDENTE (humano)</span></td></tr>
+      </tbody>
+    </table>
+
+    <div class="conv-note">
+      <b>Fluxo inverso (biblioteca → plano):</b> a análise das 9 conversas descobriu itens que este plano não previa e que entram no backlog — demanda de contraparte com captação consentida (semente do modo contraparte F4+), camada de autoexplicação meta, modo direto de agentes, e 12 métricas conversacionais (falsos negativos de triagem, promessas de cópia não honradas, fabricação — todas meta: zero). <b>Cadeia de artefatos:</b> este plano (fases) → biblioteca v1.14 (contrato) → simulador v1.14 (prova executável) → prompts de implementação (ponte para o código). Regra de sincronismo: toda mudança conversacional atualiza biblioteca + simulador na mesma entrega; toda fase implementada atualiza este mapeamento.
+    </div>
+  </div>
+</section>
+
+<section id="fases">
+  <div class="wrap">
+    <p class="sec-tag">06 · Execução</p>
+    <h2>Fases F0–F4 · menor patch seguro</h2>
+    <p class="sec-sub">Cada fase amplia canal e evidência sem alterar o runtime do Core. A F0 é <strong>gate bloqueante</strong>: as quatro dívidas de frontend já diagnosticadas precisam fechar antes de qualquer canal novo. Use os checklists de DoD para acompanhar (estado local, não persistido).</p>
+    <div id="phases"></div>
+  </div>
+</section>
+
+<section id="backlog">
+  <div class="wrap">
+    <p class="sec-tag">07 · Priorizações</p>
+    <h2>Backlog Top 10 consolidado</h2>
+    <p class="sec-sub">Ordenado por dependência: F0 destrava F2/F3; a evidência-síntese fecha o ciclo antes da ampliação F4.</p>
+    <div class="bl-grid" id="backlog"></div>
+  </div>
+</section>
+
+<section id="riscos">
+  <div class="wrap">
+    <p class="sec-tag">08 · Governança</p>
+    <h2>Riscos e mitigações</h2>
+    <p class="sec-sub">Toque em cada risco para ver a mitigação correspondente.</p>
+    <div id="risks"></div>
+  </div>
+</section>
+
+<section id="decisao">
+  <div class="wrap">
+    <p class="sec-tag">09 · Registro</p>
+    <h2>O que fica decidido</h2>
+    <div class="decision" style="margin-top:22px">
+      <p>O EIAH terá um único Chat Front Door lógico, entregue por três superfícies: desktop, mobile responsivo e WhatsApp. Esse front door lê perfil, assinatura, tenant, workspace e intenção; quando identifica demanda vertical habilitada, faz handoff controlado e <em>anunciado</em> para a experiência especializada — começando por EIAH IMOB, única vertical madura — que opera dentro das regras de tenant, workspace, entitlement e auditoria do Core.</p>
+      <p style="margin-top:12px">Nenhum canal executa por conta própria. Nenhum adapter carrega regra de negócio. Nenhuma ação crítica ocorre sem run, receipt e ledger.</p>
+      <span class="stamp">status: parcial/evidenciado · F0.1–F0.44 integrados · readiness/gates verdes · release.yml intocado</span>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">Fontes: Arquitetura Unificada · Matriz EIAH Core v1 · Diagnóstico de Saídas Verticais · Evidências F0.1–F0.44 · Evidence Index · CI gates ImobFrontdoorRegression, OrphanTestsRegression, baseline Node 22, build_validate/lint/critical-dod Node 22, ReleaseNode22Readiness verde, validation-build dry-run verde, publish preflight verde e activation/rollback gate verde.</div>
+</footer>
+
+<script>
+/* ================= channel detail ================= */
+const CH = {
+  desk:{t:"Web Desktop — launcher render-only",kv:[
+    ["Transporte","HTTP/WebSocket no navegador autenticado"],
+    ["Identidade","Sessão web existente (routes/session.ts · sessionStore)"],
+    ["Renderização","Cards, CTAs, widgets, Central IMOB completa"],
+    ["HITL","Botões de aprovação nas superfícies de controle"],
+    ["Nunca faz","Regra de negócio nova — disciplina check:chat-launcher-render-only"]]},
+  mob:{t:"Web Mobile — mesmo launcher, viewport responsivo (F1)",kv:[
+    ["Transporte","Idêntico ao desktop"],
+    ["Identidade","Mesma sessão web"],
+    ["Renderização","Layout responsivo de chat, cards e dashboard · deep links chat ↔ Central IMOB"],
+    ["HITL","Idêntico ao desktop"],
+    ["Nunca faz","Lógica própria — só apresentação"]]},
+  wa:{t:"WhatsApp Channel Adapter (F2–F3)",kv:[
+    ["Transporte","Webhook do provedor com validação de assinatura"],
+    ["Identidade","Binding número → identidade → tenant/workspace, criado no ambiente autenticado e revogável no perfil · sessão com TTL"],
+    ["Renderização","Degradada: cards → texto estruturado · CTAs → botões nativos/lista numerada · dashboard → deep link para a Central IMOB"],
+    ["HITL","Confirmação explícita na conversa (ex.: responder SIM) antes de executar ação destrutiva"],
+    ["Nunca faz","Triagem, entitlement ou handoff próprios — tudo passa pelo Core · PII sempre mascarada nos logs"]]}
+};
+const detail = document.getElementById('chanDetail');
+function renderChan(id){
+  const c = CH[id];
+  detail.innerHTML = `<h4>${c.t}</h4><dl class="kv">${c.kv.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
+}
+document.querySelectorAll('.chan').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.chan').forEach(x=>{x.classList.remove('active');x.setAttribute('aria-selected','false')});
+    b.classList.add('active');b.setAttribute('aria-selected','true');
+    renderChan(b.dataset.ch);
+  });
+});
+renderChan('desk');
+
+/* ================= five-layer explorer ================= */
+const S={ev:'s-ev',pa:'s-pa',px:'s-px',no:'s-no'};
+
+/* Camada 1 — Core v1 (matriz) */
+const CORE=[
+["Chat / Front Door","ev","funcional · agent-driven"],
+["Agent Runtime","ev","funcional · fail-closed"],
+["Agent Registry","ev","funcional"],
+["Tenant/Workspace/Session","ev","funcional"],
+["RBAC/Policy/Entitlement","ev","funcional · fail-closed"],
+["MCP","px","parcial · hardening pendente"],
+["Runs / Outbox","ev","funcional"],
+["Receipt / Bundle","ev","funcional"],
+["Ledger / Audit","ev","funcional"],
+["Billing / Economy","pa","parcial avançada"],
+["Marketplace","ev","funcional"],
+["Self-Service","ev","funcional"],
+["Profile","px","funcional · subevidenciado"],
+["Observability","pa","parcial avançada"],
+["Evidence / CI","ev","funcional"]];
+document.getElementById('coreGrid').innerHTML=CORE.map(c=>`
+  <div class="core-cell"><span class="cc-n"><span class="sdot ${S[c[1]]}"></span>${c[0]}</span><span class="cc-s">${c[2]}</span></div>`).join('');
+
+/* Camadas 2–5 — por vertical */
+const V={
+imob:{n:"IMOB",st:"parcial avançada · owner maduro",cls:'ev',
+ agents:[{n:"IMOB",r:"owner vertical · ownership do caso · criticidade high",o:1},
+  {n:"J_360",r:"jurídico — contrato, cláusulas, matrícula, risco"},
+  {n:"fin-nexus",r:"financeiro — blockers e settlement"},
+  {n:"Guardian",r:"governança — evidência, receipt, verify"},
+  {n:"I_BC",r:"inteligência comercial"},
+  {n:"Diarias",r:"operação diária — leads, visitas"}],
+ ops:[["Captação de imóvel","pa","intake → dedupe → owner/property"],
+  ["Cadastro de proprietário","ev","create + dedupe via mutation service"],
+  ["Cadastro de imóvel","ev","property.create + link_owner"],
+  ["property.market_scan","ev","evidência forte (P0/P1/batch guard)"],
+  ["Ativação de listing","px","gate de completude + HITL"],
+  ["Qualificação de lead","ev","lead.qualify + continuidade"],
+  ["Agendamento de visita","pa","visit.schedule + HITL"],
+  ["Coleta documental","pa","checklist + readiness contratual"],
+  ["Proposta","px","proposal.create · HITL obrigatório"],
+  ["Revisão de negócio","px","deal.review · diagnóstico de bloqueios"],
+  ["Preparo de contrato","pa","contractGenerator · revisão humana"],
+  ["Comissão / settlement","ev","ledger forte · commission.settle"],
+  ["Command center","ev","casos, runs, provas, funil"]],
+ out:{
+  op:["Cards / CTAs e quick replies","Widgets (case_summary, document_checklist)","nextAction do resolver canônico","Funil e bloqueios (dashboard)"],
+  doc:["Draft de contrato — locação, compra/venda, administração, temporada <span class='gapbadge'>N-08</span> (PDF só via jsPDF no cliente)","Dossiê do caso","Exportações HTML/PDF"],
+  pv:["Receipt + Verify_URL","Bundle de evidência","Ledger / audit (canal + motivo)"],
+  wa:{op:"cards → texto estruturado · CTAs → botões/lista · funil → deep link Central IMOB",
+      doc:"entregues como link de artefato gerado server-side — nunca renderizados no canal",
+      pv:"Verify_URL na mensagem de conclusão de toda ação crítica"}}},
+legal:{n:"LEGAL",st:"context_only · especialista forte",cls:'px',
+ agents:[{n:"J_360",r:"owner funcional (especialista) · receipt_canon_required · HITL obrigatório",o:1},
+  {n:"Guardian",r:"governança e compliance"}],
+ ops:[["Revisão contratual","px","intake → interpretação → relatório"],
+  ["Parecer jurídico","px","parecer estruturado + render"],
+  ["Checklist documental","px","classificação · sem runtime dedicado"]],
+ out:{
+  op:["Respostas guiadas de revisão / cláusulas / risco","Prefill de recipe no self-service"],
+  doc:["<b>j360_legal_report.v1</b> — parecer estruturado","Landing / PDF jurídico (server-side)"],
+  pv:["receipt_canon_required em toda análise"],
+  wa:{op:"até existir vertical pública com gating próprio: só orientação + CTA, nunca execução",
+      doc:"link para o report renderizado pelo Core de reporting",
+      pv:"receipt canon acompanha o artefato"}}},
+mkt:{n:"MKT",st:"especialista · vertical em expansão",cls:'px',
+ agents:[{n:"MKT",r:"owner funcional (especialista) — briefing e campanha",o:1},
+  {n:"Guardian",r:"compliance / governança"}],
+ ops:[["Campanha","px","briefing → interpretação → report"],
+  ["Calendário","px","timeline derivada do briefing"],
+  ["Anúncio / copy","px","copy guidance · HITL antes de publicar"]],
+ out:{
+  op:["Briefing guiado (self-service)"],
+  doc:["<b>mkt_campaign_report.v1</b> — plano, timeline, ICP, canais, cadência outbound, checklist de lançamento, assets, copy guidance","Landing / PDF"],
+  pv:["Report/artefato versionado · sem ledger próprio"],
+  wa:{op:"orientação + CTA (sem vertical pública)",doc:"link para o report server-side",pv:"artefato referenciável por link"}}},
+fin:{n:"FIN",st:"forte no Core · vertical em expansão",cls:'pa',
+ agents:[{n:"FinNexus",r:"owner funcional (especialista) · execution-guarded",o:1},
+  {n:"Core Billing/Economy",r:"payment intents, settlement, webhooks, disputes"},
+  {n:"Guardian",r:"auditoria da trilha financeira"}],
+ ops:[["Invoice / cobrança","ev","intent → webhook → release/disputa"],
+  ["Conciliação bancária","pa","reconcile + summary · revisão humana"],
+  ["Comissão / settlement","ev","idempotência · release · dispute"]],
+ out:{
+  op:["Priorização financeira e alertas","Status de validação de documentos"],
+  doc:["Invoices","Relatórios de conciliação","Sumários financeiros"],
+  pv:["Payment intents","<b>Settlement receipts</b> — trilha mais forte do sistema","Ledger econômico + disputes/reputation"],
+  wa:{op:"consulta pontual guiada · aprovações via confirmação explícita",doc:"documentos financeiros sempre por link seguro (PII)",pv:"receipt de settlement com Verify_URL"}}},
+log:{n:"LOG",st:"proposta · sem runtime",cls:'no',
+ agents:[],ops:[],out:null}
+};
+
+const vsel=document.getElementById('vsel'),agRow=document.getElementById('agRow'),
+      opsWrap=document.getElementById('opsWrap'),outWrap=document.getElementById('outWrap');
+Object.entries(V).forEach(([id,v],i)=>{
+  const b=document.createElement('button');
+  b.className='vbtn'+(i===0?' on':''); b.role='tab'; b.dataset.v=id;
+  b.innerHTML=`EIAH ${v.n}<small><span class="sdot ${S[v.cls]}" style="width:7px;height:7px"></span> ${v.st}</small>`;
+  b.addEventListener('click',()=>{
+    vsel.querySelectorAll('.vbtn').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); renderV(id);
+  });
+  vsel.appendChild(b);
+});
+function renderV(id){
+  const v=V[id];
+  if(!v.agents.length){
+    agRow.innerHTML=`<div class="empty-vert">Nenhum owner ou especialista comprovado. Logística permanece na taxonomia/roadmap.</div>`;
+    opsWrap.innerHTML=`<div class="empty-vert">Nenhuma operação real encontrada. Menor patch seguro: contrato mínimo de vertical + owner + primeira operação com evidência — antes de qualquer alegação operacional.</div>`;
+    outWrap.innerHTML=`<div class="empty-vert">Nenhuma saída canônica. Pelo padrão, nascerão junto com a primeira operação: card operacional, artefato server-side e receipt com Verify_URL.</div>`;
+    return;
+  }
+  agRow.innerHTML=v.agents.map(a=>`<div class="ag${a.o?' owner':''}"><b>${a.o?'★ ':''}${a.n}</b><small>${a.r}</small></div>`).join('');
+  opsWrap.innerHTML=`<div class="ops">${v.ops.map(o=>`
+    <div class="op"><span class="sdot ${S[o[1]]}"></span><span>${o[0]}<small>${o[2]}</small></span></div>`).join('')}</div>`;
+  const o=v.out;
+  outWrap.innerHTML=`<div class="out-cols">
+    <div class="oc op-h"><h5>Operacional</h5><ul>${o.op.map(x=>`<li>${x}</li>`).join('')}</ul>
+      <div class="wa-note"><b>WHATSAPP →</b> ${o.wa.op}</div></div>
+    <div class="oc dc-h"><h5>Documental (artefatos)</h5><ul>${o.doc.map(x=>`<li>${x}</li>`).join('')}</ul>
+      <div class="wa-note"><b>WHATSAPP →</b> ${o.wa.doc}</div></div>
+    <div class="oc pv-h"><h5>Prova auditável</h5><ul>${o.pv.map(x=>`<li>${x}</li>`).join('')}</ul>
+      <div class="wa-note"><b>WHATSAPP →</b> ${o.wa.pv}</div></div>
+  </div>`;
+}
+renderV('imob');
+
+/* ================= pipeline simulator ================= */
+const SCEN = {
+create:{
+  steps:[
+    {t:"Mensagem recebida",d:"Webhook validado; assinatura do provedor conferida.",c:"channel=whatsapp",
+     bub:{who:'user',txt:'Criar lead para Bruno da Silva, tel 47 9xxx-xxxx, apartamento no Centro.'}},
+    {t:"Identidade resolvida",d:"Número vinculado → userId → tenant → workspace default.",c:"binding ok · sessão TTL ativa"},
+    {t:"Front door lê contexto",d:"Perfil · assinatura · tenant · workspace · entitlements.",c:"Chat EIAH (owner do chat principal)",
+     bub:{who:'bot',tag:['t-gov','CHAT EIAH'],txt:'Entendi: cadastro de lead. Isso é domínio IMOB.'}},
+    {t:"Entitlement verificado",d:"REAL_ESTATE_CORE / IMOB_INSTALLED habilitados no workspace.",c:"gate fail-closed → aprovado"},
+    {t:"Handoff anunciado",d:"Transferência de contexto visível — nunca silenciosa.",c:"handoff controlado",
+     bub:{who:'bot',tag:['t-gov','CHAT EIAH'],txt:'Vou abrir isso no IMOB. O agente IMOB assume o caso a partir daqui.'}},
+    {t:"Chat IMOB: intake + dedupe",d:"imobCrmBusinessRead verifica duplicatas antes de gravar.",c:"imobTurnResolver · imobCrmBusinessRead",
+     bub:{who:'bot',tag:['t-imob','EIAH IMOB'],txt:'Nenhum lead duplicado para esse telefone. Confirma os dados? Bruno da Silva · 47 9xxx-xxxx · apto · Centro.'}},
+    {t:"Execução governada",d:"lead.create via serviço de mutação; run registrado.",c:"imobCrmMutationService → lead.create",
+     bub:{who:'user',txt:'Confirmo.'}},
+    {t:"Prova gerada",d:"Run + receipt + ledger com canal de origem; próximo passo do resolver canônico.",c:"receipt · Verify_URL · channel=whatsapp",
+     bub:{who:'bot',tag:['t-imob','EIAH IMOB'],txt:'Lead criado ✓ Bruno da Silva · qualificação pendente. Próximo passo: iniciar régua de qualificação.',vlink:'verify://receipt/led-4b21…'}}
+  ],
+  outcome:{ok:true,html:'<b>Fluxo completo.</b> Ação crítica executada com prova: <code>run</code> + <code>receipt</code> + <code>ledger</code>, dashboard IMOB refletindo o lead — DoD F3 itens 1–5 e 8.'}
+},
+discard:{
+  steps:[
+    {t:"Mensagem recebida",d:"Pedido de ação destrutiva detectado.",c:"channel=whatsapp",
+     bub:{who:'user',txt:'Descartar o lead do Bruno.'}},
+    {t:"Identidade + entitlement",d:"Binding ok; IMOB habilitado; sessão com caso ativo.",c:"gates aprovados"},
+    {t:"IMOB localiza o lead",d:"Resumo do lead apresentado antes de qualquer execução.",c:"imobCrmBusinessRead",
+     bub:{who:'bot',tag:['t-imob','EIAH IMOB'],txt:'Encontrei: Bruno da Silva · lead em qualificação · criado hoje via WhatsApp.'}},
+    {t:"Gate de aprovação humana",d:"Descarte é crítico e destrutivo: exige confirmação explícita, com timeout.",c:"HITL obrigatório",
+     bub:{who:'bot',tag:['t-hitl','APROVAÇÃO HUMANA'],txt:'Confirma o descarte do lead Bruno da Silva? Ele sai do funil; o histórico é preservado. Responda SIM para confirmar.'}},
+    {t:"Confirmação recebida",d:"Só agora a execução é liberada.",c:"confirmação explícita no canal",
+     bub:{who:'user',txt:'SIM'}},
+    {t:"Descarte governado + prova",d:"Motivo registrado no ledger; efeitos informados.",c:"run · receipt · ledger(motivo) · channel=whatsapp",
+     bub:{who:'bot',tag:['t-imob','EIAH IMOB'],txt:'Lead descartado ✓ Saiu do funil; histórico preservado no caso.',vlink:'verify://receipt/led-4b22…'}}
+  ],
+  outcome:{ok:true,html:'<b>HITL preservado no canal.</b> A natureza assíncrona do WhatsApp não pula aprovações: a confirmação explícita é o gate — DoD F3 itens 6–7 e 9.'}
+},
+noent:{
+  steps:[
+    {t:"Mensagem recebida",d:"Mesmo pedido, workspace sem IMOB.",c:"channel=whatsapp",
+     bub:{who:'user',txt:'Criar lead para Bruno da Silva, tel 47 9xxx-xxxx.'}},
+    {t:"Identidade resolvida",d:"Binding ok; contexto lido.",c:"tenant/workspace ativos"},
+    {t:"Entitlement verificado",d:"IMOB não habilitado no plano deste workspace.",c:"fail-closed",blocked:true},
+    {t:"Negação bem desenhada",d:"Frontend NÃO descarta o CTA: usa error.body.error.cta/message reais do backend.",c:"F0.1 — nunca \u201Ctente novamente\u201D genérico",
+     bub:{who:'bot',tag:['t-deny','ENTITLEMENT NEGADO'],txt:'Esse recurso faz parte do EIAH IMOB, que não está habilitado neste workspace. Posso te mostrar no marketplace ou iniciar a ativação.',vlink:'cta://marketplace/imob/ativar'}}
+  ],
+  outcome:{ok:false,html:'<b>Fail-closed.</b> Nada foi executado, nenhum dado gravado. Erro permanente recebe orientação permanente (CTA de ativação), não fallback genérico — exatamente a dívida F0.1 corrigida.'}
+},
+nobind:{
+  steps:[
+    {t:"Mensagem recebida",d:"Número desconhecido envia comando.",c:"channel=whatsapp",
+     bub:{who:'user',txt:'Criar lead Bruno da Silva 47 9xxx-xxxx'}},
+    {t:"Resolução de identidade",d:"Nenhum binding número → identidade encontrado.",c:"fail-closed",blocked:true},
+    {t:"CTA de vinculação",d:"Vinculação nasce no ambiente autenticado (web) e é revogável no perfil.",c:"F2 — binding governado pelo Core",
+     bub:{who:'bot',tag:['t-deny','NÚMERO NÃO VINCULADO'],txt:'Este número ainda não está vinculado a uma conta EIAH. Gere o código de vinculação no seu perfil web e envie aqui para conectar.',vlink:'cta://perfil/vincular-whatsapp'}}
+  ],
+  outcome:{ok:false,html:'<b>Sem identidade, sem execução.</b> O adapter nunca "assume" quem está falando: identidade é responsabilidade do Core, e a porta permanece fechada até a vinculação provada.'}
+}
+};
+
+let sc='create', idx=-1;
+const stepsEl=document.getElementById('steps'), chatEl=document.getElementById('chat'),
+      outEl=document.getElementById('outcome'), nextBtn=document.getElementById('nextBtn');
+
+function buildSteps(){
+  const s=SCEN[sc].steps;
+  stepsEl.innerHTML=s.map((st,i)=>`
+    <div class="step${st.blocked?' will-block':''}" data-i="${i}">
+      <div class="node">${i+1}</div>
+      <div>
+        <div class="st-title">${st.t}</div>
+        <div class="st-desc">${st.d}</div>
+        <div class="st-code">${st.c}</div>
+      </div>
+    </div>`).join('');
+}
+function reset(){
+  idx=-1; chatEl.innerHTML=''; outEl.className='outcome'; outEl.innerHTML='';
+  nextBtn.disabled=false; nextBtn.textContent='Avançar passo';
+  buildSteps();
+}
+function advance(){
+  const s=SCEN[sc].steps;
+  if(idx < s.length-1){
+    idx++;
+    const rows=stepsEl.querySelectorAll('.step');
+    rows.forEach((r,i)=>{
+      r.classList.remove('now');
+      if(i<idx) r.classList.add('done');
+      if(i===idx){ r.classList.add('now'); if(s[i].blocked) r.classList.add('blocked'); }
+    });
+    const st=s[idx];
+    if(st.bub){
+      const b=document.createElement('div');
+      b.className='bub '+st.bub.who;
+      let inner='';
+      if(st.bub.tag) inner+=`<span class="tag ${st.bub.tag[0]}">${st.bub.tag[1]}</span><br>`;
+      inner+=st.bub.txt;
+      if(st.bub.vlink) inner+=`<br><span class="vlink">${st.bub.vlink}</span>`;
+      b.innerHTML=inner;
+      chatEl.appendChild(b);
+      requestAnimationFrame(()=>requestAnimationFrame(()=>b.classList.add('show')));
+      chatEl.parentElement.scrollTop=chatEl.parentElement.scrollHeight;
+    }
+    if(idx===s.length-1){
+      const o=SCEN[sc].outcome;
+      outEl.className='outcome '+(o.ok?'ok':'deny');
+      outEl.innerHTML=o.html;
+      nextBtn.disabled=true; nextBtn.textContent=o.ok?'Fluxo concluído ✓':'Bloqueado (fail-closed)';
+      stepsEl.querySelectorAll('.step')[idx].classList.add('done');
+    }
+  }
+}
+nextBtn.addEventListener('click',advance);
+document.getElementById('resetBtn').addEventListener('click',reset);
+document.querySelectorAll('.scenario').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.scenario').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); sc=b.dataset.sc; reset();
+  });
+});
+reset();
+
+/* ================= phases ================= */
+const PHASES=[
+{f:"F0",gate:true,t:"Pré-requisitos de frontend, CI e runtime",s:"Gate bloqueante · readiness verde · release produtivo pendente",
+ p:"O plano original tratava F0 como gate bloqueante para dívidas de frontend/contrato. Pós-F0.34, o front door IMOB, os gates de CI, a baseline Node 22, build_validate/lint/critical-dod e o ReleaseNode22Readiness estão evidenciados; o readiness em main ficou verde após F0.29–F0.33. F0 global permanece parcial porque release.yml produtivo ainda não foi migrado nem autorizado: exige auditoria F0.35, decisão dedicada e proteção contra publish/secrets.",
+ dod:["F0.1 evidenciado: frontend renderiza error.body.error.cta/message reais do backend",
+ "F0.2–F0.4 evidenciados: estados, UX/rendering e checklist de não-regressão do front door IMOB",
+ "F0.5 evidenciado: ImobFrontdoorRegression bloqueante em CI",
+ "F0.6 evidenciado: command center/report do front door IMOB",
+ "F0.7–F0.8 evidenciados: orphan tests baseline + gate CI",
+ "F0.9 evidenciado: matriz consolidada de gates CI",
+ "F0.10–F0.15 evidenciados: baseline Node 22, comparação simétrica, build_validate em Node 22 e core_tests corrigido",
+ "F0.16–F0.19 evidenciados: workflows residuais auditados, lint/critical-dod migrados, release.yml auditado para readiness",
+ "F0.20–F0.24 evidenciados: readiness Node 22 criado, pnpm/setup corrigido e build order estabilizado",
+ "F0.25–F0.30 evidenciados: failures reais e correções de masking, CLI/contracts e API IMOB até o readiness avançar",
+ "F0.31–F0.33 evidenciados: Prisma path, format/check P1 e migrate diff flags corrigidos no readiness",
+ "F0.34 evidenciado: ReleaseNode22Readiness verde em main, com warnings Node.js 20 anotadas",
+ "Pendente: F0.35 auditoria do release.yml produtivo antes de qualquer migração real",
+ "Pendente: buildSpecialistSupportLine ampliada, MissionSteps/reasonCode e PII masking alinhado ao intake contratual",
+ "Zero mudança de lógica no launcher (check:chat-launcher-render-only preservado)"]},
+{f:"F1",t:"Responsividade mobile do front door",s:"Só apresentação — nenhuma lógica nova",
+ p:"O mesmo ChatAgentLauncher renderiza em viewport mobile: chat, cards e Central IMOB responsivos, com deep links funcionais entre chat e dashboard.",
+ dod:["Smoke de UI mobile evidenciado","Deep links chat ↔ Central IMOB funcionais","Checks render-only continuam verdes","Nenhuma regra nova no launcher"]},
+{f:"F2",t:"WhatsApp Adapter em modo leitura + vinculação",s:"Identidade e fail-closed antes de qualquer mutação",
+ p:"Webhook com assinatura validada; binding número → identidade → tenant/workspace criado no ambiente autenticado; sessão com TTL que reabre sempre em modo front door. Nenhuma mutação habilitada.",
+ dod:["E2E de vinculação (gerar código no web, confirmar no WhatsApp, revogar no perfil)",
+ "E2E de negação de entitlement com CTA real do backend",
+ "Fail-closed para número não vinculado comprovado",
+ "Nenhum acesso a rota de vertical sem tenant+scope (mesma disciplina do hardening MCP)",
+ "Multi-workspace: front door pergunta e fixa o workspace antes do handoff"]},
+{f:"F3",t:"Operação pontual IMOB: captura e descarte de lead",s:"Primeiras mutações governadas no canal",
+ p:"Habilita apenas lead.create (com dedupe) e descarte de lead com confirmação HITL explícita — ambos com run/receipt/ledger e channel=whatsapp.",
+ dod:["Intenção IMOB detectada e entitlement verificado",
+ "Handoff anunciado (\u201CVou abrir isso no IMOB\u201D)",
+ "Dedupe demonstrado antes do lead.create",
+ "Lead criado com receipt e Verify_URL na resposta",
+ "Descarte só após confirmação explícita, com timeout",
+ "Ledger registra canal e motivo do descarte",
+ "Dashboard IMOB reflete o resultado",
+ "Testes cobrem handoff e fail-closed",
+ "Nenhuma regra de negócio no adapter"]},
+{f:"F4",t:"Ampliação governada",s:"Só após evidência-síntese da F3",
+ p:"Qualificação de lead e agendamento de visita (operações já evidenciadas na matriz), depois demais missões conforme maturidade. Legal/MKT/Fin só ganham execução no canal quando existirem como verticais públicas com surface e gating próprios — até lá, o front door responde por elas apenas com orientação e CTA.",
+ dod:["Evidência-síntese multicanal indexada (F0–F3)",
+ "lead.qualify habilitado no canal com prova",
+ "visit.schedule habilitado com HITL",
+ "Métricas por canal na Observability (fail-closed, negação, latência webhook, falhas de outbox)",
+ "Nenhuma vertical promovida sem surface e gating próprios"]}
+];
+const phWrap=document.getElementById('phases');
+PHASES.forEach((ph,pi)=>{
+  const el=document.createElement('div');
+  el.className='phase'+(ph.gate?' gate':'')+(pi===0?' open':'');
+  el.innerHTML=`
+    <button aria-expanded="${pi===0}">
+      <span class="pf">${ph.f}</span>
+      <span class="pt">${ph.t}<small>${ph.s}</small></span>
+      <span class="prog" data-prog>0/${ph.dod.length}</span>
+      <svg class="chev" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="pbody">
+      <p>${ph.p}</p>
+      <ul class="dod">
+        ${ph.dod.map((d,i)=>`<li><input type="checkbox" id="d${pi}-${i}"><label for="d${pi}-${i}">${d}</label></li>`).join('')}
+      </ul>
+      ${ph.gate?'<p class="dod-note">▲ Gate: F2 e F3 não iniciam com itens abertos aqui.</p>':''}
+    </div>`;
+  const btn=el.querySelector('button');
+  btn.addEventListener('click',()=>{
+    const open=el.classList.toggle('open');
+    btn.setAttribute('aria-expanded',open);
+  });
+  el.querySelectorAll('.dod input').forEach(cb=>{
+    cb.addEventListener('change',()=>{
+      cb.nextElementSibling.classList.toggle('checked',cb.checked);
+      const done=el.querySelectorAll('.dod input:checked').length;
+      const prog=el.querySelector('[data-prog]');
+      prog.textContent=`${done}/${ph.dod.length}`;
+      prog.style.color = done===ph.dod.length ? 'var(--verify)' : 'var(--ink-2)';
+      if(done===ph.dod.length) prog.textContent+=' ✓';
+    });
+  });
+  phWrap.appendChild(el);
+});
+
+/* ================= backlog ================= */
+const BL=[
+["F0.35","Auditar release.yml produtivo comparando com ReleaseNode22Readiness verde, sem migração imediata"],
+["F0.36","Se autorizado, preparar migração controlada ou dry-run produtivo adicional sem publish acidental"],
+["F0.x","Fechar buildSpecialistSupportLine em intents além de pipeline_status — handoff visível com rationale"],
+["F0.x","Unificar próximo passo em MissionSteps/reasonCode canônicos"],
+["F0.x","Alinhar PII masking ao intake contratual, com evidência dedicada"],
+["F1","Front door e Central IMOB responsivos, com deep links"],
+["F2","Binding número→identidade→tenant/workspace + sessão TTL, fail-closed evidenciado"],
+["F2","Webhook do provedor com validação de assinatura e proteção tenant+scope"],
+["F3","lead.create com dedupe via WhatsApp, com run/receipt/Verify_URL e channel=whatsapp"],
+["F3→F4","Evidência-síntese multicanal indexada; só então ampliar operações e verticais"]];
+document.getElementById('backlog').innerHTML=BL.map((b,i)=>`
+  <div class="bl"><span class="n">${String(i+1).padStart(2,'0')}</span>
+  <div><span class="f ${b[0]==='F0'?'f0':''}">${b[0]}</span><p>${b[1]}</p></div></div>`).join('');
+
+/* ================= risks ================= */
+const RISKS=[
+["Adapter WhatsApp virar um segundo launcher com lógica própria","Contrato render-only + check estrutural equivalente ao check:chat-launcher-render-only para o adapter."],
+["Número compartilhado/transferido executar ações de outro usuário","Vinculação com prova iniciada em ambiente autenticado, revogável no perfil web; re-desafio periódico."],
+["Ação destrutiva disparada por mensagem ambígua","HITL obrigatório com confirmação explícita, timeout de confirmação e motivo registrado no ledger."],
+["Sessão residual ativar a vertical errada","TTL de sessão + reabertura sempre em modo front door após expiração."],
+["CTA de entitlement voltar a ser descartado em canal novo","F0 é bloqueante e testada por contrato antes de F2/F3."],
+["PII trafegando sem máscara em canal de terceiro","Item 4 do Top 10 como gate de go-live; logs do adapter sob a mesma política de masking do Core."],
+["Dupla fonte de verdade do \u201Cpróximo passo\u201D divergir entre canais","F0.3 unifica a cópia no resolver canônico antes de multiplicar canais."],
+["Usuário não perceber a troca de contexto no texto puro","Handoff sempre anunciado (\u201CVou abrir isso no IMOB\u201D) + linha de especialista exposta com rationale."]];
+document.getElementById('risks').innerHTML=RISKS.map((r,i)=>`
+  <div class="risk"><button aria-expanded="false"><span>${r[0]}</span><span aria-hidden="true" style="color:var(--ink-2)">＋</span></button>
+  <div class="rb"><b>Mitigação</b>${r[1]}</div></div>`).join('');
+document.querySelectorAll('.risk>button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    const p=b.parentElement, open=p.classList.toggle('open');
+    b.setAttribute('aria-expanded',open);
+    b.lastElementChild.textContent=open?'－':'＋';
+  });
+});
+</script>
+</body>
+</html>
