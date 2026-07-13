@@ -1,7 +1,7 @@
 {
   "ok": true,
-  "date": "2026-07-09",
-  "generatedAt": "2026-07-09T11:38:07.883Z",
+  "date": "2026-07-13",
+  "generatedAt": "2026-07-13T13:11:01.229Z",
   "scope": "P3-schema",
   "artifact": "payment_intents schema + routes",
   "table": {
