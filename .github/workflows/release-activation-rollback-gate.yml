@@ -1,0 +1,240 @@
+name: ReleaseActivationRollbackGate
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_version:
+        description: 'Versao alvo sem publish real. Obrigatoria para o gate.'
+        required: true
+      release_surface:
+        description: 'Superficie candidata de release. Sem execucao real.'
+        required: true
+        type: choice
+        options:
+          - cli
+          - api
+          - workers
+          - multi_surface
+      decision_reason:
+        description: 'Razao humana explicita para a ativacao controlada.'
+        required: true
+      technical_owner:
+        description: 'Owner tecnico responsavel pela superficie.'
+        required: true
+      operational_owner:
+        description: 'Owner operacional responsavel pela janela.'
+        required: true
+      operational_window_utc:
+        description: 'Janela operacional em UTC. Ex: 2026-07-12T14:00Z/2026-07-12T15:00Z'
+        required: true
+      rollback_reference:
+        description: 'Runbook ou referencia explicita de rollback.'
+        required: true
+      retry_strategy:
+        description: 'Politica de retry declarada para a superficie.'
+        required: true
+        type: choice
+        options:
+          - no_retry_without_reapproval
+          - retry_same_inputs_once
+          - retry_per_surface_with_reapproval
+      idempotency_strategy:
+        description: 'Politica de idempotencia declarada para a superficie.'
+        required: true
+        type: choice
+        options:
+          - immutable_version_only
+          - immutable_version_and_image_tag
+          - immutable_version_and_release_ticket
+      decision_acknowledged:
+        description: 'Confirmacao humana explicita de que este gate nao executa publish.'
+        required: true
+        type: choice
+        options:
+          - acknowledged_no_side_effects
+
+env:
+  NODE_VERSION: '22'
+  PNPM_VERSION: '10.12.4'
+  REGISTRY: ghcr.io
+
+jobs:
+  validate_activation_gate_inputs:
+    runs-on: ubuntu-latest
+    outputs:
+      target_version: ${{ steps.out.outputs.target_version }}
+      release_surface: ${{ steps.out.outputs.release_surface }}
+    steps:
+      - id: out
+        shell: bash
+        env:
+          TARGET_VERSION: ${{ github.event.inputs.target_version }}
+          RELEASE_SURFACE: ${{ github.event.inputs.release_surface }}
+          DECISION_REASON: ${{ github.event.inputs.decision_reason }}
+          TECHNICAL_OWNER: ${{ github.event.inputs.technical_owner }}
+          OPERATIONAL_OWNER: ${{ github.event.inputs.operational_owner }}
+          OPERATIONAL_WINDOW_UTC: ${{ github.event.inputs.operational_window_utc }}
+          ROLLBACK_REFERENCE: ${{ github.event.inputs.rollback_reference }}
+          RETRY_STRATEGY: ${{ github.event.inputs.retry_strategy }}
+          IDEMPOTENCY_STRATEGY: ${{ github.event.inputs.idempotency_strategy }}
+          DECISION_ACKNOWLEDGED: ${{ github.event.inputs.decision_acknowledged }}
+        run: |
+          [[ "${TARGET_VERSION}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]] || { echo "invalid_target_version=${TARGET_VERSION}" >&2; exit 1; }
+          [[ "${DECISION_REASON}" =~ [A-Za-z0-9] ]] || { echo "missing_decision_reason" >&2; exit 1; }
+          [[ "${TECHNICAL_OWNER}" =~ [A-Za-z0-9] ]] || { echo "missing_technical_owner" >&2; exit 1; }
+          [[ "${OPERATIONAL_OWNER}" =~ [A-Za-z0-9] ]] || { echo "missing_operational_owner" >&2; exit 1; }
+          [[ "${OPERATIONAL_WINDOW_UTC}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}Z/[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}Z$ ]] || { echo "invalid_operational_window_utc=${OPERATIONAL_WINDOW_UTC}" >&2; exit 1; }
+          [[ "${ROLLBACK_REFERENCE}" =~ [A-Za-z0-9/_#.-] ]] || { echo "missing_rollback_reference" >&2; exit 1; }
+          [ "${DECISION_ACKNOWLEDGED}" = "acknowledged_no_side_effects" ] || { echo "missing_decision_acknowledgement" >&2; exit 1; }
+          {
+            echo "target_version=${TARGET_VERSION}"
+            echo "release_surface=${RELEASE_SURFACE}"
+          } >> "$GITHUB_OUTPUT"
+
+  detect_release_surfaces:
+    runs-on: ubuntu-latest
+    needs: validate_activation_gate_inputs
+    outputs:
+      has_cli: ${{ steps.out.outputs.has_cli }}
+      has_api: ${{ steps.out.outputs.has_api }}
+      has_workers: ${{ steps.out.outputs.has_workers }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: out
+        shell: bash
+        run: |
+          test -f apps/cli/package.json && C=true || C=false
+          test -f apps/api/Dockerfile.prod && A=true || A=false
+          test -f apps/workers/action-runner/Dockerfile.prod && W=true || W=false
+          {
+            echo "has_cli=$C"
+            echo "has_api=$A"
+            echo "has_workers=$W"
+          } >> "$GITHUB_OUTPUT"
+
+  release_activation_rollback_gate:
+    runs-on: ubuntu-latest
+    needs:
+      - validate_activation_gate_inputs
+      - detect_release_surfaces
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Validate selected surface against repository
+        shell: bash
+        env:
+          RELEASE_SURFACE: ${{ needs.validate_activation_gate_inputs.outputs.release_surface }}
+          HAS_CLI: ${{ needs.detect_release_surfaces.outputs.has_cli }}
+          HAS_API: ${{ needs.detect_release_surfaces.outputs.has_api }}
+          HAS_WORKERS: ${{ needs.detect_release_surfaces.outputs.has_workers }}
+        run: |
+          case "${RELEASE_SURFACE}" in
+            cli)
+              [ "${HAS_CLI}" = "true" ] || { echo "cli_surface_missing" >&2; exit 1; }
+              ;;
+            api)
+              [ "${HAS_API}" = "true" ] || { echo "api_surface_missing" >&2; exit 1; }
+              ;;
+            workers)
+              [ "${HAS_WORKERS}" = "true" ] || { echo "workers_surface_missing" >&2; exit 1; }
+              ;;
+            multi_surface)
+              [ "${HAS_CLI}" = "true" ] || { echo "cli_surface_missing" >&2; exit 1; }
+              [ "${HAS_API}" = "true" ] || { echo "api_surface_missing" >&2; exit 1; }
+              [ "${HAS_WORKERS}" = "true" ] || { echo "workers_surface_missing" >&2; exit 1; }
+              ;;
+            *)
+              echo "unsupported_surface=${RELEASE_SURFACE}" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Validate release.yml publish surfaces still require explicit gate
+        shell: bash
+        run: |
+          grep -q "NODE_AUTH_TOKEN" .github/workflows/release.yml
+          grep -q "REGISTRY_PAT" .github/workflows/release.yml
+          grep -q "docker/login-action" .github/workflows/release.yml
+          grep -q "docker/build-push-action" .github/workflows/release.yml
+          grep -q "publish --access public --no-git-checks" .github/workflows/release.yml
+          grep -q "push:" .github/workflows/release.yml
+          echo "release_yml_publish_surfaces_require_controlled_gate=true"
+
+      - name: Emit activation decision summary without side effects
+        shell: bash
+        env:
+          TARGET_VERSION: ${{ needs.validate_activation_gate_inputs.outputs.target_version }}
+          RELEASE_SURFACE: ${{ needs.validate_activation_gate_inputs.outputs.release_surface }}
+          DECISION_REASON: ${{ github.event.inputs.decision_reason }}
+          TECHNICAL_OWNER: ${{ github.event.inputs.technical_owner }}
+          OPERATIONAL_OWNER: ${{ github.event.inputs.operational_owner }}
+          OPERATIONAL_WINDOW_UTC: ${{ github.event.inputs.operational_window_utc }}
+          ROLLBACK_REFERENCE: ${{ github.event.inputs.rollback_reference }}
+          RETRY_STRATEGY: ${{ github.event.inputs.retry_strategy }}
+          IDEMPOTENCY_STRATEGY: ${{ github.event.inputs.idempotency_strategy }}
+        run: |
+          echo "workflow=ReleaseActivationRollbackGate"
+          echo "target_version=${TARGET_VERSION}"
+          echo "release_surface=${RELEASE_SURFACE}"
+          echo "decision_reason=${DECISION_REASON}"
+          echo "technical_owner=${TECHNICAL_OWNER}"
+          echo "operational_owner=${OPERATIONAL_OWNER}"
+          echo "operational_window_utc=${OPERATIONAL_WINDOW_UTC}"
+          echo "rollback_reference=${ROLLBACK_REFERENCE}"
+          echo "retry_strategy=${RETRY_STRATEGY}"
+          echo "idempotency_strategy=${IDEMPOTENCY_STRATEGY}"
+
+      - name: Render candidate publish and rollback plan dry-run only
+        shell: bash
+        env:
+          TARGET_VERSION: ${{ needs.validate_activation_gate_inputs.outputs.target_version }}
+          RELEASE_SURFACE: ${{ needs.validate_activation_gate_inputs.outputs.release_surface }}
+        run: |
+          case "${RELEASE_SURFACE}" in
+            cli)
+              echo "candidate_cli_version_command=pnpm --filter ./apps/cli... pkg set version=\"${TARGET_VERSION}\""
+              echo "candidate_cli_publish_command=pnpm --filter ./apps/cli... publish --access public --no-git-checks"
+              echo "candidate_cli_rollback=block_new_installation_and_publish_corrective_version"
+              ;;
+            api)
+              echo "candidate_api_image=${{ env.REGISTRY }}/${{ github.repository_owner }}/eiah-api:${TARGET_VERSION}"
+              echo "candidate_api_latest=${{ env.REGISTRY }}/${{ github.repository_owner }}/eiah-api:latest"
+              echo "candidate_api_rollback=repoint_consumers_or_publish_corrective_image_before_latest_promotion"
+              ;;
+            workers)
+              echo "candidate_worker_image=${{ env.REGISTRY }}/${{ github.repository_owner }}/eiah-workers:${TARGET_VERSION}"
+              echo "candidate_worker_latest=${{ env.REGISTRY }}/${{ github.repository_owner }}/eiah-workers:latest"
+              echo "candidate_worker_rollback=stop_rollout_and_publish_corrective_worker_image_before_latest_promotion"
+              ;;
+            multi_surface)
+              echo "candidate_cli_version_command=pnpm --filter ./apps/cli... pkg set version=\"${TARGET_VERSION}\""
+              echo "candidate_cli_publish_command=pnpm --filter ./apps/cli... publish --access public --no-git-checks"
+              echo "candidate_api_image=${{ env.REGISTRY }}/${{ github.repository_owner }}/eiah-api:${TARGET_VERSION}"
+              echo "candidate_worker_image=${{ env.REGISTRY }}/${{ github.repository_owner }}/eiah-workers:${TARGET_VERSION}"
+              echo "candidate_multi_surface_rollback=rollback_must_be_executed_per_surface_with_reapproval"
+              ;;
+          esac
+
+      - name: Assert activation gate workflow has no side effects
+        shell: bash
+        run: |
+          WORKFLOW_FILE=.github/workflows/release-activation-rollback-gate.yml
+          ! grep -Eq 'pnpm publish|npm publish|docker/login-action|docker/build-push-action|gh release|git tag|push:\s*$' "${WORKFLOW_FILE}"
+          ! grep -Eq 'NPM_TOKEN|NODE_AUTH_TOKEN|REGISTRY_PAT' "${WORKFLOW_FILE}"
+          echo "no_side_effect_patterns_detected=true"
