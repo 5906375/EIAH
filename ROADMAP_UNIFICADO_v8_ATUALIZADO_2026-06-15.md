@@ -38,6 +38,29 @@ Regra de decisão v8.1:
 - Só voltar à Trilha B runtime mínimo se a decisão for adicionar gate real de entitlement/billing no runtime ou expandir o contrato canônico para outra vertical, como LEGAL.
 - Evidence Index só pode apontar para arquivos existentes e evidências geradas por execução real.
 
+## 1.2) Atualização executiva F0 release path e Conversação — 2026-07-13
+
+Consolidação documental pós-F0.45:
+- F0.34 registrou o primeiro run verde real do `ReleaseNode22Readiness` em `main`.
+- F0.35 auditou `release.yml` produtivo e confirmou que readiness verde não autorizava migração direta.
+- F0.36 formalizou a separação entre Camada A (validação/build) e Camada B (publish/secrets/GHCR/tags).
+- F0.37 criou a ponte manual `ReleaseNode22ValidationBuildDryRun`.
+- F0.38 registrou o primeiro run verde real dessa ponte manual.
+- F0.39 documentou o risk model da Camada B.
+- F0.40 criou o `ReleasePublishPreflight` sem side effects.
+- F0.41 registrou o primeiro run verde real do preflight da Camada B.
+- F0.42 definiu que o próximo gate mínimo deveria exigir ativação/rollback controlados, ainda sem publish real.
+- F0.43 criou o `ReleaseActivationRollbackGate` sem side effects.
+- F0.44 registrou o primeiro run verde real do gate reforçado de ativação/rollback.
+- F0.45 materializou no repositório o plano consolidado `plano_unificacao_EIAH_interativo_atualizado_pos_F0_44_conversacao.html`, preservando a seção `conversacao` como `especificada/parcial` e mantendo a disciplina `agent-driven`.
+
+Leitura normativa correta após F0.45:
+- `release.yml` produtivo permanece intocado;
+- publish real, `secrets` produtivos, login em registry, push para GHCR/Docker e tags/releases continuam bloqueados;
+- a cadeia F0.34–F0.44 comprova readiness, dry-run, preflight e gate reforçado, mas não fecha a Camada B produtiva;
+- a camada Conversação está consolidada documentalmente no plano interativo, porém continua `especificada/parcial`, não `DONE`;
+- F0/P0 transversal permanecem parciais e não devem ser declarados fechados sem decisão/evidência adicionais.
+
 ## 2) Estado consolidado por fase
 
 | Fase | Status v8.1 | Situação atual |
@@ -289,6 +312,7 @@ Objetivo: concluir ponta a ponta os itens ainda parciais (governança/economy/au
 - Manter `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md` e `docs/EVIDENCE_INDEX.md` sincronizados.
 - Bloquear em CI referências inválidas e drift documental.
 - Tratar qualquer divergência doc/contrato/runtime como incidente P0.
+- Manter a cadeia documental F0.34–F0.45 sincronizada entre roadmap, plano consolidado e Evidence Index, sem promover `release.yml` produtivo, Camada B real ou Conversação para status acima do que estiver evidenciado.
 
 **DoD P0 transversal**
 - Fonte única estável e auditável durante todo o ciclo de execução.
