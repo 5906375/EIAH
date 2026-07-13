@@ -17,8 +17,8 @@
   },
   "evidenceRefs": [
     "ops/evidence/latest/interop-e2e-agent-call-2026-05-14.json",
-    "ops/evidence/latest/pou-gated-payment-e2e-2026-05-14.json",
+    "ops/evidence/latest/pou-gated-payment-e2e-2026-07-13.json",
     "ops/evidence/latest/realestate-high-actions-e2e-2026-05-14.json",
-    "ops/evidence/latest/realestate-commission-settlement-e2e-2026-05-14.json"
+    "ops/evidence/latest/realestate-commission-settlement-e2e-2026-07-13.json"
   ]
 }
