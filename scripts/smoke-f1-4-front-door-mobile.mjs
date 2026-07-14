@@ -1,13 +1,10 @@
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
-import { pathToFileURL } from "node:url";
-
 const CHECK = "f1-4-front-door-mobile-smoke";
 const DEFAULT_BASE_URL = "http://127.0.0.1:5173";
 const DEFAULT_ROUTE = "/app/imob/chat";
 const DEFAULT_TOKEN = "seed_53670bd0a12cf8e0960b688fc402ad79";
 const DEFAULT_INSTALLED_PRODUCTS = "IMOB";
+const RUNNER_IMPORT = "formal_dependency:playwright";
+const FALLBACK_USED = false;
 
 const VIEWPORTS = [
   { name: "mobile-360", width: 360, height: 740 },
@@ -21,33 +18,8 @@ function normalizeError(error) {
   return String(error);
 }
 
-async function importPlaywrightFromCandidate(candidate) {
-  return import(pathToFileURL(candidate).href);
-}
-
 async function loadPlaywright() {
-  try {
-    return await import("playwright");
-  } catch {}
-
-  const explicit = process.env.F1_PLAYWRIGHT_MODULE;
-  if (explicit && fs.existsSync(explicit)) {
-    return importPlaywrightFromCandidate(explicit);
-  }
-
-  const npxRoot = path.join(os.homedir(), ".npm", "_npx");
-  if (fs.existsSync(npxRoot)) {
-    for (const entry of fs.readdirSync(npxRoot)) {
-      const candidate = path.join(npxRoot, entry, "node_modules", "playwright", "index.js");
-      if (fs.existsSync(candidate)) {
-        return importPlaywrightFromCandidate(candidate);
-      }
-    }
-  }
-
-  throw new Error(
-    "Playwright não encontrado via import normal nem em ~/.npm/_npx. Defina F1_PLAYWRIGHT_MODULE se necessário.",
-  );
+  return import("playwright");
 }
 
 function makeViewportFailure(base, reasons) {
@@ -251,6 +223,8 @@ async function main() {
     const result = {
       ok,
       check: CHECK,
+      runnerImport: RUNNER_IMPORT,
+      fallbackUsed: FALLBACK_USED,
       baseUrl,
       route,
       viewports,
@@ -261,6 +235,8 @@ async function main() {
     const result = {
       ok: false,
       check: CHECK,
+      runnerImport: RUNNER_IMPORT,
+      fallbackUsed: FALLBACK_USED,
       baseUrl: process.env.F1_FRONT_DOOR_BASE_URL ?? DEFAULT_BASE_URL,
       route: process.env.F1_FRONT_DOOR_ROUTE ?? DEFAULT_ROUTE,
       viewports: [],
