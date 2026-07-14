@@ -1,3 +1,5 @@
+import { createRequire } from "node:module";
+
 const CHECK = "f1-4-front-door-mobile-smoke";
 const DEFAULT_BASE_URL = "http://127.0.0.1:5173";
 const DEFAULT_ROUTE = "/app/imob/chat";
@@ -5,6 +7,8 @@ const DEFAULT_TOKEN = "seed_53670bd0a12cf8e0960b688fc402ad79";
 const DEFAULT_INSTALLED_PRODUCTS = "IMOB";
 const RUNNER_IMPORT = "formal_dependency:playwright";
 const FALLBACK_USED = false;
+const require = createRequire(import.meta.url);
+const PLAYWRIGHT_VERSION = require("playwright/package.json").version;
 
 const VIEWPORTS = [
   { name: "mobile-360", width: 360, height: 740 },
@@ -16,6 +20,22 @@ const VIEWPORTS = [
 function normalizeError(error) {
   if (error instanceof Error) return error.message;
   return String(error);
+}
+
+function classifyLaunchFailure(message) {
+  if (/Cannot find package 'playwright'|Playwright carregado sem chromium disponível/i.test(message)) {
+    return "PLAYWRIGHT_IMPORT_ERROR";
+  }
+  if (/Executable doesn't exist|browser executable/i.test(message)) {
+    return "CHROMIUM_BINARY_MISSING";
+  }
+  if (/sandbox_host_linux\.cc|Operation not permitted/i.test(message)) {
+    return "ENV_SANDBOX_BLOCKED";
+  }
+  if (/EACCES|EPERM|permission denied/i.test(message)) {
+    return "HOST_PERMISSION_BLOCKED";
+  }
+  return "UNKNOWN_CHROMIUM_LAUNCH_FAILURE";
 }
 
 async function loadPlaywright() {
@@ -223,8 +243,11 @@ async function main() {
     const result = {
       ok,
       check: CHECK,
+      classification: ok ? "PASS" : "UNKNOWN_CHROMIUM_LAUNCH_FAILURE",
       runnerImport: RUNNER_IMPORT,
       fallbackUsed: FALLBACK_USED,
+      nodeVersion: process.version,
+      playwrightVersion: PLAYWRIGHT_VERSION,
       baseUrl,
       route,
       viewports,
@@ -232,15 +255,19 @@ async function main() {
     console.log(JSON.stringify(result, null, 2));
     process.exitCode = ok ? 0 : 1;
   } catch (error) {
+    const reason = normalizeError(error);
     const result = {
       ok: false,
       check: CHECK,
+      classification: classifyLaunchFailure(reason),
       runnerImport: RUNNER_IMPORT,
       fallbackUsed: FALLBACK_USED,
+      nodeVersion: process.version,
+      playwrightVersion: PLAYWRIGHT_VERSION,
       baseUrl: process.env.F1_FRONT_DOOR_BASE_URL ?? DEFAULT_BASE_URL,
       route: process.env.F1_FRONT_DOOR_ROUTE ?? DEFAULT_ROUTE,
       viewports: [],
-      reasons: [normalizeError(error)],
+      reasons: [reason],
     };
     console.log(JSON.stringify(result, null, 2));
     process.exitCode = 1;
