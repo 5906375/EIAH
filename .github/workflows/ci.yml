@@ -315,6 +315,234 @@ jobs:
       - name: Run IMOB front door regression gate
         run: pnpm check:imob-frontdoor-regression
 
+  imob_frontdoor_mobile_smoke_informative:
+    name: ImobFrontdoorMobileSmokeInformative
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 20
+    container:
+      image: mcr.microsoft.com/playwright:v1.61.1-noble
+      options: --ipc=host
+    env:
+      NODE_VERSION: '22'
+      F1_FRONT_DOOR_BASE_URL: http://127.0.0.1:4173
+      F1_FRONT_DOOR_ROUTE: /app/imob/chat
+      F1_FRONT_DOOR_TOKEN: seed_53670bd0a12cf8e0960b688fc402ad79
+      F1_FRONT_DOOR_INSTALLED_PRODUCTS: IMOB
+      F1_MOBILE_SMOKE_IMAGE_TAG: mcr.microsoft.com/playwright:v1.61.1-noble
+      F1_MOBILE_SMOKE_ARTIFACT_DIR: .artifacts/imob-frontdoor-mobile-smoke
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Prepare artifact directory
+        run: mkdir -p "${F1_MOBILE_SMOKE_ARTIFACT_DIR}"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Build IMOB front door for preview
+        env:
+          TMPDIR: /tmp
+          TMP: /tmp
+          TEMP: /tmp
+          ESBUILD_TMPDIR: /tmp
+          NODE_ENV: production
+        run: |
+          pnpm --filter @eiah/web build \
+            | tee "${F1_MOBILE_SMOKE_ARTIFACT_DIR}/web-build.stdout.log"
+
+      - name: Start IMOB front door preview
+        run: |
+          pnpm --filter @eiah/web preview --host 0.0.0.0 --port 4173 \
+            > "${F1_MOBILE_SMOKE_ARTIFACT_DIR}/web-preview.stdout.log" \
+            2> "${F1_MOBILE_SMOKE_ARTIFACT_DIR}/web-preview.stderr.log" &
+          echo $! > "${F1_MOBILE_SMOKE_ARTIFACT_DIR}/web-preview.pid"
+
+      - name: Healthcheck IMOB front door route
+        id: healthcheck
+        run: |
+          node <<'EOF'
+          const fs = require('node:fs');
+          const artifactDir = process.env.F1_MOBILE_SMOKE_ARTIFACT_DIR;
+          const target = new URL(process.env.F1_FRONT_DOOR_ROUTE, process.env.F1_FRONT_DOOR_BASE_URL).toString();
+          const timeoutMs = 60000;
+          const intervalMs = 2000;
+          const startedAt = Date.now();
+
+          async function main() {
+            let lastStatus = 'UNREACHABLE';
+            let lastError = null;
+
+            while (Date.now() - startedAt <= timeoutMs) {
+              try {
+                const response = await fetch(target, { redirect: 'manual' });
+                lastStatus = String(response.status);
+                if (response.status === 200) {
+                  fs.writeFileSync(`${artifactDir}/healthcheck.json`, JSON.stringify({
+                    ok: true,
+                    routeStatus: response.status,
+                    target,
+                    timeoutMs,
+                  }, null, 2));
+                  fs.appendFileSync(process.env.GITHUB_OUTPUT, `route_status=${response.status}\n`);
+                  process.exit(0);
+                }
+              } catch (error) {
+                lastError = error instanceof Error ? error.message : String(error);
+              }
+              await new Promise((resolve) => setTimeout(resolve, intervalMs));
+            }
+
+            fs.writeFileSync(`${artifactDir}/healthcheck.json`, JSON.stringify({
+              ok: false,
+              routeStatus: lastStatus,
+              target,
+              timeoutMs,
+              lastError,
+            }, null, 2));
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `route_status=${lastStatus}\n`);
+            process.exit(1);
+          }
+
+          main().catch((error) => {
+            const message = error instanceof Error ? error.message : String(error);
+            fs.writeFileSync(`${artifactDir}/healthcheck.json`, JSON.stringify({
+              ok: false,
+              routeStatus: 'UNREACHABLE',
+              target,
+              timeoutMs,
+              lastError: message,
+            }, null, 2));
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, 'route_status=UNREACHABLE\n');
+            process.exit(1);
+          });
+          EOF
+
+      - name: Run informative mobile smoke
+        id: smoke
+        if: ${{ always() && steps.healthcheck.outputs.route_status == '200' }}
+        run: |
+          set +e
+          START_TS=$(date +%s)
+          F1_FRONT_DOOR_BASE_URL="${F1_FRONT_DOOR_BASE_URL}" \
+          F1_FRONT_DOOR_ROUTE="${F1_FRONT_DOOR_ROUTE}" \
+          F1_FRONT_DOOR_TOKEN="${F1_FRONT_DOOR_TOKEN}" \
+          F1_FRONT_DOOR_INSTALLED_PRODUCTS="${F1_FRONT_DOOR_INSTALLED_PRODUCTS}" \
+          node scripts/smoke-f1-4-front-door-mobile.mjs \
+            > "${F1_MOBILE_SMOKE_ARTIFACT_DIR}/smoke.stdout.json" \
+            2> "${F1_MOBILE_SMOKE_ARTIFACT_DIR}/smoke.stderr.log"
+          SMOKE_EXIT_CODE=$?
+          END_TS=$(date +%s)
+          DURATION_SECONDS=$((END_TS - START_TS))
+          echo "${SMOKE_EXIT_CODE}" > "${F1_MOBILE_SMOKE_ARTIFACT_DIR}/smoke.exit_code"
+          echo "smoke_exit_code=${SMOKE_EXIT_CODE}" >> "${GITHUB_OUTPUT}"
+          echo "duration_seconds=${DURATION_SECONDS}" >> "${GITHUB_OUTPUT}"
+          export ROUTE_STATUS="${ROUTE_STATUS}"
+          export DURATION_SECONDS="${DURATION_SECONDS}"
+          export SMOKE_EXIT_CODE="${SMOKE_EXIT_CODE}"
+          node <<'EOF'
+          const fs = require('node:fs');
+          const artifactDir = process.env.F1_MOBILE_SMOKE_ARTIFACT_DIR;
+          const routeStatus = process.env.ROUTE_STATUS;
+          const durationSeconds = Number(process.env.DURATION_SECONDS);
+          const smokeExitCode = Number(process.env.SMOKE_EXIT_CODE);
+          const imageTag = process.env.F1_MOBILE_SMOKE_IMAGE_TAG;
+          const raw = fs.readFileSync(`${artifactDir}/smoke.stdout.json`, 'utf8');
+          const parsed = JSON.parse(raw);
+          const enriched = {
+            ...parsed,
+            routeStatus,
+            route_status: routeStatus,
+            durationSeconds,
+            smokeExitCode,
+            imageTag,
+          };
+          fs.writeFileSync(`${artifactDir}/smoke-report.json`, `${JSON.stringify(enriched, null, 2)}\n`);
+          EOF
+        env:
+          ROUTE_STATUS: ${{ steps.healthcheck.outputs.route_status }}
+
+      - name: Write healthcheck failure report
+        if: ${{ always() && steps.healthcheck.outputs.route_status != '200' }}
+        run: |
+          node <<'EOF'
+          const fs = require('node:fs');
+          const artifactDir = process.env.F1_MOBILE_SMOKE_ARTIFACT_DIR;
+          const routeStatus = process.env.ROUTE_STATUS || 'UNREACHABLE';
+          const report = {
+            ok: false,
+            check: 'f1-4-front-door-mobile-smoke',
+            classification: 'HEALTHCHECK_ROUTE_NOT_READY',
+            runnerImport: 'formal_dependency:playwright',
+            fallbackUsed: false,
+            baseUrl: process.env.F1_FRONT_DOOR_BASE_URL,
+            route: process.env.F1_FRONT_DOOR_ROUTE,
+            routeStatus,
+            route_status: routeStatus,
+            durationSeconds: 0,
+            smokeExitCode: null,
+            imageTag: process.env.F1_MOBILE_SMOKE_IMAGE_TAG,
+            viewports: [],
+            reasons: [`route_status:${routeStatus}`],
+          };
+          fs.writeFileSync(`${artifactDir}/smoke-report.json`, `${JSON.stringify(report, null, 2)}\n`);
+          fs.writeFileSync(`${artifactDir}/smoke.stdout.json`, `${JSON.stringify(report, null, 2)}\n`);
+          fs.writeFileSync(`${artifactDir}/smoke.stderr.log`, `Healthcheck failed before smoke. route_status=${routeStatus}\n`);
+          fs.writeFileSync(`${artifactDir}/smoke.exit_code`, '1\n');
+          EOF
+        env:
+          ROUTE_STATUS: ${{ steps.healthcheck.outputs.route_status }}
+
+      - name: Stop IMOB front door preview
+        if: always()
+        run: |
+          if [ -f "${F1_MOBILE_SMOKE_ARTIFACT_DIR}/web-preview.pid" ]; then
+            kill "$(cat "${F1_MOBILE_SMOKE_ARTIFACT_DIR}/web-preview.pid")" || true
+          fi
+
+      - name: Upload informative mobile smoke artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: imob-frontdoor-mobile-smoke-informative
+          path: ${{ env.F1_MOBILE_SMOKE_ARTIFACT_DIR }}
+          if-no-files-found: error
+
+      - name: Evaluate informative mobile smoke result
+        if: always()
+        run: |
+          node <<'EOF'
+          const fs = require('node:fs');
+          const artifactDir = process.env.F1_MOBILE_SMOKE_ARTIFACT_DIR;
+          const report = JSON.parse(fs.readFileSync(`${artifactDir}/smoke-report.json`, 'utf8'));
+          const lines = [
+            `classification=${report.classification}`,
+            `routeStatus=${report.routeStatus ?? report.route_status ?? 'unknown'}`,
+            `durationSeconds=${report.durationSeconds ?? 'unknown'}`,
+            `fallbackUsed=${report.fallbackUsed}`,
+            `runnerImport=${report.runnerImport}`,
+            `imageTag=${report.imageTag ?? 'unknown'}`,
+          ];
+          fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join('\n')}\n`);
+          if (report.classification !== 'PASS') {
+            process.exit(1);
+          }
+          EOF
+
   orphan_tests_regression:
     name: OrphanTestsRegression
     runs-on: ubuntu-latest
