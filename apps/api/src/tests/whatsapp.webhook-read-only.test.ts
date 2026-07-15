@@ -136,6 +136,18 @@ test("WhatsApp webhook read-only: evento valido retorna 202 ACCEPTED_READ_ONLY",
 
   assert.equal(response.status, 202);
   assert.equal(response.body?.reasonCode, "ACCEPTED_READ_ONLY");
+  assert.deepEqual(response.body?.evidenceBundle, {
+    reasonCode: "ACCEPTED_READ_ONLY",
+    httpStatus: 202,
+    eventId: "evt-whatsapp-valid",
+    provider: "whatsapp",
+    messageType: "text",
+    tenantId: "tenant-imob-read-only",
+    workspaceId: "workspace-imob-read-only",
+    scope: readOnlyScope,
+    decisionClass: "accepted_read_only",
+    sideEffects: 0,
+  });
   assert.equal(response.body?.data?.readOnly, true);
   assert.equal(response.body?.data?.fallbackUsed, false);
   assert.equal(response.body?.data?.fromPhoneMasked, "+5***67");
@@ -158,6 +170,18 @@ test("WhatsApp webhook read-only: assinatura invalida falha fechado", async () =
 
   assert.equal(response.status, 401);
   assert.equal(response.body?.error?.code, "WHATSAPP_SIGNATURE_INVALID");
+  assert.deepEqual(response.body?.evidenceBundle, {
+    reasonCode: "WHATSAPP_SIGNATURE_INVALID",
+    httpStatus: 401,
+    eventId: "evt-whatsapp-invalid-signature",
+    provider: "whatsapp",
+    messageType: "text",
+    tenantId: "tenant-imob-read-only",
+    workspaceId: "workspace-imob-read-only",
+    scope: readOnlyScope,
+    decisionClass: "blocked",
+    sideEffects: 0,
+  });
 });
 
 test("WhatsApp webhook read-only: versao de assinatura nao suportada falha fechado", async () => {
@@ -246,6 +270,18 @@ test("WhatsApp webhook read-only: tenant ausente falha fechado", async () => {
 
   assert.equal(response.status, 403);
   assert.equal(response.body?.error?.code, "TENANT_NOT_RESOLVED");
+  assert.deepEqual(response.body?.evidenceBundle, {
+    reasonCode: "TENANT_NOT_RESOLVED",
+    httpStatus: 403,
+    eventId: "evt-whatsapp-missing-tenant",
+    provider: "whatsapp",
+    messageType: "text",
+    tenantId: null,
+    workspaceId: "workspace-imob-read-only",
+    scope: readOnlyScope,
+    decisionClass: "blocked",
+    sideEffects: 0,
+  });
 });
 
 test("WhatsApp webhook read-only: workspace ausente falha fechado", async () => {
@@ -352,4 +388,6 @@ test("WhatsApp webhook read-only: masking de PII preserva ausencia de telefone b
   const serialized = JSON.stringify(response.body);
   assert.equal(serialized.includes("999998767"), false);
   assert.equal(serialized.includes(phoneHash), false);
+  assert.equal(serialized.includes("whatsapp-read-only-stub-secret-test"), false);
+  assert.equal(serialized.includes("x-eiah-signature"), false);
 });
