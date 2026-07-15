@@ -151,6 +151,14 @@ test("WhatsApp webhook read-only: evento valido retorna 202 ACCEPTED_READ_ONLY",
   assert.equal(response.body?.data?.readOnly, true);
   assert.equal(response.body?.data?.fallbackUsed, false);
   assert.equal(response.body?.data?.fromPhoneMasked, "+5***67");
+  assert.equal(response.body?.bundleExport?.version, "whatsapp.read_only.bundle_export.v1");
+  assert.equal(response.body?.bundleExport?.decision, "accepted_read_only");
+  assert.equal(response.body?.bundleExport?.status, 202);
+  assert.equal(response.body?.bundleExport?.piiMasked, true);
+  assert.equal(response.body?.bundleExport?.sideEffects, 0);
+  assert.equal(response.body?.bundleExport?.receivedAt, baseTimestamp);
+  assert.equal(response.body?.bundleExport?.providerTimestamp, baseTimestamp);
+  assert.equal(typeof response.body?.bundleExport?.exportedAt, "string");
 });
 
 test("WhatsApp webhook read-only: assinatura ausente falha fechado", async () => {
@@ -182,6 +190,13 @@ test("WhatsApp webhook read-only: assinatura invalida falha fechado", async () =
     decisionClass: "blocked",
     sideEffects: 0,
   });
+  assert.equal(response.body?.bundleExport?.version, "whatsapp.read_only.bundle_export.v1");
+  assert.equal(response.body?.bundleExport?.decision, "blocked");
+  assert.equal(response.body?.bundleExport?.reasonCode, "WHATSAPP_SIGNATURE_INVALID");
+  assert.equal(response.body?.bundleExport?.status, 401);
+  assert.equal(response.body?.bundleExport?.piiMasked, true);
+  assert.equal(response.body?.bundleExport?.receivedAt, baseTimestamp);
+  assert.equal(response.body?.bundleExport?.providerTimestamp, baseTimestamp);
 });
 
 test("WhatsApp webhook read-only: versao de assinatura nao suportada falha fechado", async () => {
@@ -390,4 +405,7 @@ test("WhatsApp webhook read-only: masking de PII preserva ausencia de telefone b
   assert.equal(serialized.includes(phoneHash), false);
   assert.equal(serialized.includes("whatsapp-read-only-stub-secret-test"), false);
   assert.equal(serialized.includes("x-eiah-signature"), false);
+  assert.equal(serialized.includes("\"fromPhoneHash\""), false);
+  assert.equal(serialized.includes("\"fromPhoneMasked\":\"+5511999998767\""), false);
+  assert.equal(serialized.includes("redacted://payload/ref"), false);
 });
