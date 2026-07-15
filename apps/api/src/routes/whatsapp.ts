@@ -6,6 +6,7 @@ import {
   evaluateReplayGuard,
   resetReplayGuardStore,
 } from "../services/replayGuard";
+import { buildWhatsappBundleExport } from "../services/whatsappBundleExport";
 import { buildWhatsappEvidenceBundle } from "../services/whatsappEvidenceBundle";
 
 export const whatsappRouter = createGovernedRouter();
@@ -84,24 +85,32 @@ function failResponse(
     tenantId?: unknown;
     workspaceId?: unknown;
     scope?: unknown;
+    receivedAt?: unknown;
+    providerTimestamp?: unknown;
   } = {}
 ) {
+  const evidenceBundle = buildWhatsappEvidenceBundle({
+    reasonCode: code,
+    httpStatus: status,
+    eventId: context.eventId,
+    provider: context.provider,
+    messageType: context.messageType,
+    tenantId: context.tenantId,
+    workspaceId: context.workspaceId,
+    scope: context.scope,
+    decisionClass: "blocked",
+  });
   return res.status(status).json({
     ok: false,
     error: {
       code,
       message,
     },
-    evidenceBundle: buildWhatsappEvidenceBundle({
-      reasonCode: code,
-      httpStatus: status,
-      eventId: context.eventId,
-      provider: context.provider,
-      messageType: context.messageType,
-      tenantId: context.tenantId,
-      workspaceId: context.workspaceId,
-      scope: context.scope,
-      decisionClass: "blocked",
+    evidenceBundle,
+    bundleExport: buildWhatsappBundleExport({
+      evidenceBundle,
+      receivedAt: context.receivedAt,
+      providerTimestamp: context.providerTimestamp,
     }),
   });
 }
@@ -325,6 +334,12 @@ export async function handleWhatsappInboundWebhook(
       scope: req.body && typeof req.body === "object" && !Array.isArray(req.body)
         ? (req.body as Record<string, unknown>).scope
         : null,
+      receivedAt: req.body && typeof req.body === "object" && !Array.isArray(req.body)
+        ? (req.body as Record<string, unknown>).receivedAt
+        : null,
+      providerTimestamp: req.body && typeof req.body === "object" && !Array.isArray(req.body)
+        ? (req.body as Record<string, unknown>).providerTimestamp
+        : null,
     });
   }
 
@@ -337,6 +352,8 @@ export async function handleWhatsappInboundWebhook(
       tenantId: body.tenantId,
       workspaceId: body.workspaceId,
       scope: body.scope,
+      receivedAt: body.receivedAt,
+      providerTimestamp: body.providerTimestamp,
     });
   }
 
@@ -356,6 +373,8 @@ export async function handleWhatsappInboundWebhook(
         tenantId: body.tenantId,
         workspaceId: body.workspaceId,
         scope: body.scope,
+        receivedAt: body.receivedAt,
+        providerTimestamp: body.providerTimestamp,
       }
     );
   }
@@ -383,6 +402,8 @@ export async function handleWhatsappInboundWebhook(
       tenantId: body.tenantId,
       workspaceId: body.workspaceId,
       scope: body.scope,
+      receivedAt: body.receivedAt,
+      providerTimestamp: body.providerTimestamp,
     });
   }
 
@@ -401,6 +422,8 @@ export async function handleWhatsappInboundWebhook(
       tenantId: bindingDecision.tenantId,
       workspaceId: bindingDecision.workspaceId,
       scope: bindingDecision.scope,
+      receivedAt: body.receivedAt,
+      providerTimestamp: body.providerTimestamp,
     });
   }
 
@@ -412,6 +435,8 @@ export async function handleWhatsappInboundWebhook(
       tenantId: bindingDecision.tenantId,
       workspaceId: bindingDecision.workspaceId,
       scope: bindingDecision.scope,
+      receivedAt: body.receivedAt,
+      providerTimestamp: body.providerTimestamp,
     });
   }
   if (body.workspaceId != null && body.workspaceId !== bindingDecision.workspaceId) {
@@ -422,6 +447,8 @@ export async function handleWhatsappInboundWebhook(
       tenantId: bindingDecision.tenantId,
       workspaceId: bindingDecision.workspaceId,
       scope: bindingDecision.scope,
+      receivedAt: body.receivedAt,
+      providerTimestamp: body.providerTimestamp,
     });
   }
   if (body.scope != null && body.scope !== bindingDecision.scope) {
@@ -461,23 +488,31 @@ export async function handleWhatsappInboundWebhook(
         tenantId: bindingDecision.tenantId,
         workspaceId: bindingDecision.workspaceId,
         scope: bindingDecision.scope,
+        receivedAt: body.receivedAt,
+        providerTimestamp: body.providerTimestamp,
       }
     );
   }
 
+  const evidenceBundle = buildWhatsappEvidenceBundle({
+    reasonCode: "ACCEPTED_READ_ONLY",
+    httpStatus: 202,
+    eventId: eventIdHeader,
+    provider: WHATSAPP_PROVIDER,
+    messageType: body.messageType,
+    tenantId: bindingDecision.tenantId,
+    workspaceId: bindingDecision.workspaceId,
+    scope: bindingDecision.scope,
+    decisionClass: "accepted_read_only",
+  });
   return res.status(202).json({
     ok: true,
     reasonCode: "ACCEPTED_READ_ONLY",
-    evidenceBundle: buildWhatsappEvidenceBundle({
-      reasonCode: "ACCEPTED_READ_ONLY",
-      httpStatus: 202,
-      eventId: eventIdHeader,
-      provider: WHATSAPP_PROVIDER,
-      messageType: body.messageType,
-      tenantId: bindingDecision.tenantId,
-      workspaceId: bindingDecision.workspaceId,
-      scope: bindingDecision.scope,
-      decisionClass: "accepted_read_only",
+    evidenceBundle,
+    bundleExport: buildWhatsappBundleExport({
+      evidenceBundle,
+      receivedAt: body.receivedAt,
+      providerTimestamp: body.providerTimestamp,
     }),
     data: {
       eventId: eventIdHeader,
