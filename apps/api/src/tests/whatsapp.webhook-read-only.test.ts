@@ -12,6 +12,8 @@ import {
 const stubSecret = "whatsapp-read-only-stub-secret-test";
 const phoneHash = "4a354f4d31fe66a17265a1e72fbf40d4d9c6a445f0d3b35f0f79d8d8a34b5265";
 const baseTimestamp = new Date("2026-07-15T12:00:00.000Z").toISOString();
+const readOnlyScope = "whatsapp:inbound:read_only";
+const readOnlyEntitlement = "channel.whatsapp.inbound.read_only";
 
 before(() => {
   process.env.NODE_ENV = "test";
@@ -19,21 +21,27 @@ before(() => {
   process.env.WHATSAPP_WEBHOOK_REPLAY_WINDOW_SECONDS = "300";
   process.env.WHATSAPP_WEBHOOK_CLOCK_SKEW_SECONDS = "30";
   process.env.WHATSAPP_WEBHOOK_MAX_PAYLOAD_BYTES = "1024";
-  process.env.WHATSAPP_READ_ONLY_BINDINGS_JSON = JSON.stringify({
-    [phoneHash]: {
-      tenantId: "tenant-imob-read-only",
-      workspaceId: "workspace-imob-read-only",
-      scope: "whatsapp:inbound:read_only",
-      allowedScopes: ["whatsapp:inbound:read_only"],
-      entitlements: ["channel.whatsapp.inbound.read_only"],
-      sessionExpiresAt: "2099-07-15T12:00:00.000Z",
-    },
-  });
+  process.env.WHATSAPP_READ_ONLY_BINDINGS_JSON = JSON.stringify(buildBindings());
 });
 
 beforeEach(() => {
   resetWhatsappWebhookGuards();
+  process.env.WHATSAPP_READ_ONLY_BINDINGS_JSON = JSON.stringify(buildBindings());
 });
+
+function buildBindings(overrides: Record<string, unknown> = {}) {
+  return {
+    [phoneHash]: {
+      tenantId: "tenant-imob-read-only",
+      workspaceId: "workspace-imob-read-only",
+      scope: readOnlyScope,
+      allowedScopes: [readOnlyScope],
+      entitlements: [readOnlyEntitlement],
+      sessionExpiresAt: "2099-07-15T12:00:00.000Z",
+      ...overrides,
+    },
+  };
+}
 
 function buildBody(eventId: string, overrides: Record<string, unknown> = {}) {
   return {
@@ -152,6 +160,14 @@ test("WhatsApp webhook read-only: assinatura invalida falha fechado", async () =
   assert.equal(response.body?.error?.code, "WHATSAPP_SIGNATURE_INVALID");
 });
 
+test("WhatsApp webhook read-only: versao de assinatura nao suportada falha fechado", async () => {
+  const body = buildBody("evt-whatsapp-signature-version");
+  const response = await invokeHandler(body, buildHeaders(body, { "x-eiah-signature-version": "v2" }));
+
+  assert.equal(response.status, 401);
+  assert.equal(response.body?.error?.code, "WHATSAPP_SIGNATURE_VERSION_UNSUPPORTED");
+});
+
 test("WhatsApp webhook read-only: timestamp ausente falha fechado", async () => {
   const body = buildBody("evt-whatsapp-missing-timestamp");
   const headers = buildHeaders(body);
@@ -163,12 +179,54 @@ test("WhatsApp webhook read-only: timestamp ausente falha fechado", async () => 
   assert.equal(response.body?.error?.code, "WHATSAPP_TIMESTAMP_MISSING");
 });
 
+test("WhatsApp webhook read-only: timestamp fora da janela falha fechado sem consumir estado", async () => {
+  const body = buildBody("evt-whatsapp-out-of-window");
+  const staleTimestamp = String(Math.floor(Date.parse("2026-07-15T11:40:00.000Z") / 1000));
+  const rejected = await invokeHandler(body, buildHeaders(body, { "x-eiah-timestamp": staleTimestamp }));
+
+  assert.equal(rejected.status, 401);
+  assert.equal(rejected.body?.error?.code, "WHATSAPP_TIMESTAMP_OUT_OF_WINDOW");
+
+  const accepted = await invokeHandler(body, buildHeaders(body));
+  assert.equal(accepted.status, 202);
+  assert.equal(accepted.body?.reasonCode, "ACCEPTED_READ_ONLY");
+});
+
 test("WhatsApp webhook read-only: eventId ausente falha fechado", async () => {
   const body = buildBody("evt-whatsapp-missing-event-id", { eventId: "" });
   const response = await invokeHandler(body, buildHeaders({ ...body, eventId: "evt-whatsapp-header-event-id" }));
 
   assert.equal(response.status, 400);
   assert.equal(response.body?.error?.code, "WHATSAPP_EVENT_ID_MISSING");
+});
+
+test("WhatsApp webhook read-only: provider nao suportado falha fechado", async () => {
+  const body = buildBody("evt-whatsapp-provider-unsupported", { provider: "telegram" });
+  const response = await invokeHandler(body, buildHeaders(body, { "x-eiah-provider": "telegram" }));
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body?.error?.code, "WHATSAPP_PROVIDER_UNSUPPORTED");
+});
+
+test("WhatsApp webhook read-only: messageType nao suportado falha fechado", async () => {
+  const body = buildBody("evt-whatsapp-message-type-unsupported", { messageType: "image" });
+  const response = await invokeHandler(body, buildHeaders(body));
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body?.error?.code, "WHATSAPP_MESSAGE_TYPE_UNSUPPORTED");
+});
+
+test("WhatsApp webhook read-only: payload invalido falha fechado", async () => {
+  const response = await invokeHandler("not-an-object" as unknown as Record<string, unknown>, {
+    "x-eiah-provider": "whatsapp",
+    "x-eiah-event-id": "evt-whatsapp-invalid-payload",
+    "x-eiah-timestamp": String(Math.floor(Date.now() / 1000)),
+    "x-eiah-signature-version": "v1",
+    "x-eiah-signature": "00".repeat(32),
+  });
+
+  assert.equal(response.status, 400);
+  assert.equal(response.body?.error?.code, "WHATSAPP_PAYLOAD_INVALID");
 });
 
 test("WhatsApp webhook read-only: phone sem binding falha fechado", async () => {
@@ -181,6 +239,44 @@ test("WhatsApp webhook read-only: phone sem binding falha fechado", async () => 
   assert.equal(response.body?.error?.code, "WHATSAPP_PHONE_NOT_BOUND");
 });
 
+test("WhatsApp webhook read-only: tenant ausente falha fechado", async () => {
+  process.env.WHATSAPP_READ_ONLY_BINDINGS_JSON = JSON.stringify(buildBindings({ tenantId: null }));
+  const body = buildBody("evt-whatsapp-missing-tenant");
+  const response = await invokeHandler(body, buildHeaders(body));
+
+  assert.equal(response.status, 403);
+  assert.equal(response.body?.error?.code, "TENANT_NOT_RESOLVED");
+});
+
+test("WhatsApp webhook read-only: workspace ausente falha fechado", async () => {
+  process.env.WHATSAPP_READ_ONLY_BINDINGS_JSON = JSON.stringify(buildBindings({ workspaceId: null }));
+  const body = buildBody("evt-whatsapp-missing-workspace");
+  const response = await invokeHandler(body, buildHeaders(body));
+
+  assert.equal(response.status, 403);
+  assert.equal(response.body?.error?.code, "WORKSPACE_NOT_RESOLVED");
+});
+
+test("WhatsApp webhook read-only: entitlement ausente falha fechado", async () => {
+  process.env.WHATSAPP_READ_ONLY_BINDINGS_JSON = JSON.stringify(buildBindings({ entitlements: [] }));
+  const body = buildBody("evt-whatsapp-missing-entitlement");
+  const response = await invokeHandler(body, buildHeaders(body));
+
+  assert.equal(response.status, 403);
+  assert.equal(response.body?.error?.code, "ENTITLEMENT_REQUIRED");
+});
+
+test("WhatsApp webhook read-only: sessao expirada falha fechado", async () => {
+  process.env.WHATSAPP_READ_ONLY_BINDINGS_JSON = JSON.stringify(buildBindings({
+    sessionExpiresAt: "2026-07-14T12:00:00.000Z",
+  }));
+  const body = buildBody("evt-whatsapp-session-expired");
+  const response = await invokeHandler(body, buildHeaders(body));
+
+  assert.equal(response.status, 403);
+  assert.equal(response.body?.error?.code, "SESSION_EXPIRED");
+});
+
 test("WhatsApp webhook read-only: tentativa de acao critica e bloqueada", async () => {
   const body = buildBody("evt-whatsapp-critical-action", {
     action: "lead.create",
@@ -189,6 +285,26 @@ test("WhatsApp webhook read-only: tentativa de acao critica e bloqueada", async 
 
   assert.equal(response.status, 403);
   assert.equal(response.body?.error?.code, "CRITICAL_ACTION_BLOCKED");
+});
+
+test("WhatsApp webhook read-only: tentativa de mutacao implicita falha fechado", async () => {
+  const body = buildBody("evt-whatsapp-implicit-mutation", {
+    requestedAction: "update_owner_record",
+  });
+  const response = await invokeHandler(body, buildHeaders(body));
+
+  assert.equal(response.status, 403);
+  assert.equal(response.body?.error?.code, "CRITICAL_ACTION_BLOCKED");
+});
+
+test("WhatsApp webhook read-only: readOnly falso bloqueia mutacao implicita", async () => {
+  const body = buildBody("evt-whatsapp-not-read-only", {
+    readOnly: false,
+  });
+  const response = await invokeHandler(body, buildHeaders(body));
+
+  assert.equal(response.status, 403);
+  assert.equal(response.body?.error?.code, "READ_ONLY_MODE");
 });
 
 test("WhatsApp webhook read-only: replay e duplicidade retornam 409 sem side effect", async () => {
@@ -223,4 +339,17 @@ test("WhatsApp webhook read-only: payload acima do limite retorna 413", async ()
 
   assert.equal(response.status, 413);
   assert.equal(response.body?.error?.code, "WHATSAPP_PAYLOAD_TOO_LARGE");
+});
+
+test("WhatsApp webhook read-only: masking de PII preserva ausencia de telefone bruto", async () => {
+  const body = buildBody("evt-whatsapp-pii-masking", {
+    fromPhoneMasked: "+5511999998767",
+  });
+  const response = await invokeHandler(body, buildHeaders(body));
+
+  assert.equal(response.status, 202);
+  assert.equal(response.body?.data?.fromPhoneMasked, "+5***67");
+  const serialized = JSON.stringify(response.body);
+  assert.equal(serialized.includes("999998767"), false);
+  assert.equal(serialized.includes(phoneHash), false);
 });
