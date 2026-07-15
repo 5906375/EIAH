@@ -8,12 +8,47 @@ import {
   handleWhatsappInboundWebhook,
   resetWhatsappWebhookGuards,
 } from "../routes/whatsapp";
+import {
+  buildWhatsappBundleExport,
+  WHATSAPP_BUNDLE_EXPORT_VERSION,
+} from "../services/whatsappBundleExport";
+import { buildWhatsappEvidenceBundle } from "../services/whatsappEvidenceBundle";
 
 const stubSecret = "whatsapp-read-only-stub-secret-test";
 const phoneHash = "4a354f4d31fe66a17265a1e72fbf40d4d9c6a445f0d3b35f0f79d8d8a34b5265";
 const baseTimestamp = new Date("2026-07-15T12:00:00.000Z").toISOString();
 const readOnlyScope = "whatsapp:inbound:read_only";
 const readOnlyEntitlement = "channel.whatsapp.inbound.read_only";
+const bundleExportAllowedKeys = [
+  "decision",
+  "eventId",
+  "exportedAt",
+  "messageType",
+  "piiMasked",
+  "provider",
+  "providerTimestamp",
+  "reasonCode",
+  "receivedAt",
+  "scope",
+  "sideEffects",
+  "status",
+  "tenantId",
+  "version",
+  "workspaceId",
+].sort();
+const protectedReasonCodes = [
+  "ACCEPTED_READ_ONLY",
+  "WHATSAPP_SIGNATURE_INVALID",
+  "WHATSAPP_PHONE_NOT_BOUND",
+  "TENANT_NOT_RESOLVED",
+  "WORKSPACE_NOT_RESOLVED",
+  "ENTITLEMENT_REQUIRED",
+  "SESSION_EXPIRED",
+  "WHATSAPP_REPLAY_DETECTED",
+  "WHATSAPP_EVENT_DUPLICATE",
+  "CRITICAL_ACTION_BLOCKED",
+  "READ_ONLY_MODE",
+];
 
 before(() => {
   process.env.NODE_ENV = "test";
@@ -159,6 +194,35 @@ test("WhatsApp webhook read-only: evento valido retorna 202 ACCEPTED_READ_ONLY",
   assert.equal(response.body?.bundleExport?.receivedAt, baseTimestamp);
   assert.equal(response.body?.bundleExport?.providerTimestamp, baseTimestamp);
   assert.equal(typeof response.body?.bundleExport?.exportedAt, "string");
+});
+
+test("WhatsApp webhook read-only: bundle export v1 permanece congelado e sem campos extras", () => {
+  const exportBundle = buildWhatsappBundleExport({
+    evidenceBundle: buildWhatsappEvidenceBundle({
+      reasonCode: "ACCEPTED_READ_ONLY",
+      httpStatus: 202,
+      eventId: "evt-whatsapp-contract-freeze",
+      provider: "whatsapp",
+      messageType: "text",
+      tenantId: "tenant-imob-read-only",
+      workspaceId: "workspace-imob-read-only",
+      scope: readOnlyScope,
+      decisionClass: "accepted_read_only",
+    }),
+    receivedAt: baseTimestamp,
+    providerTimestamp: baseTimestamp,
+    exportedAt: Date.parse("2026-07-15T12:05:00.000Z"),
+  });
+
+  assert.equal(exportBundle.version, WHATSAPP_BUNDLE_EXPORT_VERSION);
+  assert.deepEqual(Object.keys(exportBundle).sort(), bundleExportAllowedKeys);
+  assert.equal(exportBundle.sideEffects, 0);
+  assert.equal(exportBundle.piiMasked, true);
+  assert.equal(exportBundle.status, 202);
+  assert.equal(exportBundle.decision, "accepted_read_only");
+  assert.equal(exportBundle.receivedAt, baseTimestamp);
+  assert.equal(exportBundle.providerTimestamp, baseTimestamp);
+  assert.equal(exportBundle.exportedAt, "2026-07-15T12:05:00.000Z");
 });
 
 test("WhatsApp webhook read-only: assinatura ausente falha fechado", async () => {
@@ -408,4 +472,23 @@ test("WhatsApp webhook read-only: masking de PII preserva ausencia de telefone b
   assert.equal(serialized.includes("\"fromPhoneHash\""), false);
   assert.equal(serialized.includes("\"fromPhoneMasked\":\"+5511999998767\""), false);
   assert.equal(serialized.includes("redacted://payload/ref"), false);
+  assert.equal(serialized.includes("Quero entender o status do meu atendimento"), false);
+  assert.equal(serialized.includes("Authorization"), false);
+});
+
+test("WhatsApp webhook read-only: gate de compatibilidade protege reasonCodes criticos do export", async () => {
+  const accepted = await invokeHandler(buildBody("evt-whatsapp-protected-accepted"), buildHeaders(buildBody("evt-whatsapp-protected-accepted")));
+  assert.ok(protectedReasonCodes.includes(String(accepted.body?.bundleExport?.reasonCode)));
+
+  const invalidSignatureBody = buildBody("evt-whatsapp-protected-invalid-signature");
+  const invalidSignature = await invokeHandler(
+    invalidSignatureBody,
+    buildHeaders(invalidSignatureBody, { "x-eiah-signature": "00".repeat(32) }),
+  );
+  assert.ok(protectedReasonCodes.includes(String(invalidSignature.body?.bundleExport?.reasonCode)));
+
+  process.env.WHATSAPP_READ_ONLY_BINDINGS_JSON = JSON.stringify(buildBindings({ tenantId: null }));
+  const missingTenantBody = buildBody("evt-whatsapp-protected-missing-tenant");
+  const missingTenant = await invokeHandler(missingTenantBody, buildHeaders(missingTenantBody));
+  assert.ok(protectedReasonCodes.includes(String(missingTenant.body?.bundleExport?.reasonCode)));
 });
