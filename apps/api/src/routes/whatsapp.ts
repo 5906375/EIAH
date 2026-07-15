@@ -6,6 +6,7 @@ import {
   evaluateReplayGuard,
   resetReplayGuardStore,
 } from "../services/replayGuard";
+import { buildWhatsappEvidenceBundle } from "../services/whatsappEvidenceBundle";
 
 export const whatsappRouter = createGovernedRouter();
 
@@ -71,13 +72,37 @@ function maskPhoneMasked(value: string) {
   return `${trimmed.slice(0, 2)}***${trimmed.slice(-2)}`;
 }
 
-function failResponse(res: { status: (code: number) => { json: (body: unknown) => unknown } }, status: number, code: string, message: string) {
+function failResponse(
+  res: { status: (code: number) => { json: (body: unknown) => unknown } },
+  status: number,
+  code: string,
+  message: string,
+  context: {
+    eventId?: unknown;
+    provider?: unknown;
+    messageType?: unknown;
+    tenantId?: unknown;
+    workspaceId?: unknown;
+    scope?: unknown;
+  } = {}
+) {
   return res.status(status).json({
     ok: false,
     error: {
       code,
       message,
     },
+    evidenceBundle: buildWhatsappEvidenceBundle({
+      reasonCode: code,
+      httpStatus: status,
+      eventId: context.eventId,
+      provider: context.provider,
+      messageType: context.messageType,
+      tenantId: context.tenantId,
+      workspaceId: context.workspaceId,
+      scope: context.scope,
+      decisionClass: "blocked",
+    }),
   });
 }
 
@@ -285,12 +310,34 @@ export async function handleWhatsappInboundWebhook(
           : payloadValidation.code === "WHATSAPP_EVENT_ID_MISSING"
             ? 400
             : 400;
-    return failResponse(res, status, payloadValidation.code, payloadValidation.message);
+    return failResponse(res, status, payloadValidation.code, payloadValidation.message, {
+      eventId: eventIdHeader,
+      provider: providerHeader,
+      messageType: req.body && typeof req.body === "object" && !Array.isArray(req.body)
+        ? (req.body as Record<string, unknown>).messageType
+        : null,
+      tenantId: req.body && typeof req.body === "object" && !Array.isArray(req.body)
+        ? (req.body as Record<string, unknown>).tenantId
+        : null,
+      workspaceId: req.body && typeof req.body === "object" && !Array.isArray(req.body)
+        ? (req.body as Record<string, unknown>).workspaceId
+        : null,
+      scope: req.body && typeof req.body === "object" && !Array.isArray(req.body)
+        ? (req.body as Record<string, unknown>).scope
+        : null,
+    });
   }
 
   const body = payloadValidation.record;
   if (body.eventId !== eventIdHeader) {
-    return failResponse(res, 400, "WHATSAPP_PAYLOAD_INVALID", "Header eventId and body eventId must match");
+    return failResponse(res, 400, "WHATSAPP_PAYLOAD_INVALID", "Header eventId and body eventId must match", {
+      eventId: eventIdHeader,
+      provider: providerHeader,
+      messageType: body.messageType,
+      tenantId: body.tenantId,
+      workspaceId: body.workspaceId,
+      scope: body.scope,
+    });
   }
 
   const resolvedAction = classifyRequestedAction(body);
@@ -301,7 +348,15 @@ export async function handleWhatsappInboundWebhook(
       resolvedAction,
       resolvedAction === "CRITICAL_ACTION_BLOCKED"
         ? "Critical WhatsApp actions are blocked in read-only mode"
-        : "WhatsApp inbound handler is read-only"
+        : "WhatsApp inbound handler is read-only",
+      {
+        eventId: eventIdHeader,
+        provider: providerHeader,
+        messageType: body.messageType,
+        tenantId: body.tenantId,
+        workspaceId: body.workspaceId,
+        scope: body.scope,
+      }
     );
   }
 
@@ -321,7 +376,14 @@ export async function handleWhatsappInboundWebhook(
     expected: expectedSignature,
   });
   if (!signatureCheck.matches) {
-    return failResponse(res, 401, "WHATSAPP_SIGNATURE_INVALID", "Invalid WhatsApp signature");
+    return failResponse(res, 401, "WHATSAPP_SIGNATURE_INVALID", "Invalid WhatsApp signature", {
+      eventId: eventIdHeader,
+      provider: providerHeader,
+      messageType: body.messageType,
+      tenantId: body.tenantId,
+      workspaceId: body.workspaceId,
+      scope: body.scope,
+    });
   }
 
   const bindingDecision = resolveChannelBinding({
@@ -332,17 +394,45 @@ export async function handleWhatsappInboundWebhook(
     requiredEntitlement: REQUIRED_ENTITLEMENT,
   });
   if (!bindingDecision.allowed) {
-    return failResponse(res, 403, bindingDecision.reasonCode!, "WhatsApp binding or entitlement resolution failed");
+    return failResponse(res, 403, bindingDecision.reasonCode!, "WhatsApp binding or entitlement resolution failed", {
+      eventId: eventIdHeader,
+      provider: providerHeader,
+      messageType: body.messageType,
+      tenantId: bindingDecision.tenantId,
+      workspaceId: bindingDecision.workspaceId,
+      scope: bindingDecision.scope,
+    });
   }
 
   if (body.tenantId != null && body.tenantId !== bindingDecision.tenantId) {
-    return failResponse(res, 400, "WHATSAPP_PAYLOAD_INVALID", "tenantId does not match the bound scope");
+    return failResponse(res, 400, "WHATSAPP_PAYLOAD_INVALID", "tenantId does not match the bound scope", {
+      eventId: eventIdHeader,
+      provider: providerHeader,
+      messageType: body.messageType,
+      tenantId: bindingDecision.tenantId,
+      workspaceId: bindingDecision.workspaceId,
+      scope: bindingDecision.scope,
+    });
   }
   if (body.workspaceId != null && body.workspaceId !== bindingDecision.workspaceId) {
-    return failResponse(res, 400, "WHATSAPP_PAYLOAD_INVALID", "workspaceId does not match the bound scope");
+    return failResponse(res, 400, "WHATSAPP_PAYLOAD_INVALID", "workspaceId does not match the bound scope", {
+      eventId: eventIdHeader,
+      provider: providerHeader,
+      messageType: body.messageType,
+      tenantId: bindingDecision.tenantId,
+      workspaceId: bindingDecision.workspaceId,
+      scope: bindingDecision.scope,
+    });
   }
   if (body.scope != null && body.scope !== bindingDecision.scope) {
-    return failResponse(res, 400, "WHATSAPP_PAYLOAD_INVALID", "scope does not match the bound scope");
+    return failResponse(res, 400, "WHATSAPP_PAYLOAD_INVALID", "scope does not match the bound scope", {
+      eventId: eventIdHeader,
+      provider: providerHeader,
+      messageType: body.messageType,
+      tenantId: bindingDecision.tenantId,
+      workspaceId: bindingDecision.workspaceId,
+      scope: bindingDecision.scope,
+    });
   }
 
   const nowMs = Date.now();
@@ -364,12 +454,31 @@ export async function handleWhatsappInboundWebhook(
       replayDecision.replay
         ? "Replay detected for WhatsApp inbound event"
         : "Duplicate WhatsApp event detected",
+      {
+        eventId: eventIdHeader,
+        provider: providerHeader,
+        messageType: body.messageType,
+        tenantId: bindingDecision.tenantId,
+        workspaceId: bindingDecision.workspaceId,
+        scope: bindingDecision.scope,
+      }
     );
   }
 
   return res.status(202).json({
     ok: true,
     reasonCode: "ACCEPTED_READ_ONLY",
+    evidenceBundle: buildWhatsappEvidenceBundle({
+      reasonCode: "ACCEPTED_READ_ONLY",
+      httpStatus: 202,
+      eventId: eventIdHeader,
+      provider: WHATSAPP_PROVIDER,
+      messageType: body.messageType,
+      tenantId: bindingDecision.tenantId,
+      workspaceId: bindingDecision.workspaceId,
+      scope: bindingDecision.scope,
+      decisionClass: "accepted_read_only",
+    }),
     data: {
       eventId: eventIdHeader,
       provider: WHATSAPP_PROVIDER,
