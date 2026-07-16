@@ -165,6 +165,27 @@ async function invokeHandler(body: Record<string, unknown>, headers: Record<stri
   return { status: statusCode, body: jsonBody as Record<string, unknown> | null };
 }
 
+function assertNoSyntheticHealthcheckSensitiveData(payload: unknown) {
+  const serialized = JSON.stringify(payload);
+  const forbiddenTokens = [
+    phoneHash,
+    stubSecret,
+    "x-eiah-signature",
+    "\"fromPhoneHash\"",
+    "999998767",
+    "\"fromPhoneMasked\":\"+5511999998767\"",
+    "redacted://payload/ref",
+    "Quero entender o status do meu atendimento",
+    "Authorization",
+    "Cookie",
+    "Bearer",
+  ];
+
+  for (const token of forbiddenTokens) {
+    assert.equal(serialized.includes(token), false, `serialized healthcheck result leaked ${token}`);
+  }
+}
+
 test("WhatsApp webhook read-only: evento valido retorna 202 ACCEPTED_READ_ONLY", async () => {
   const body = buildBody("evt-whatsapp-valid");
   const response = await invokeHandler(body, buildHeaders(body));
@@ -491,4 +512,153 @@ test("WhatsApp webhook read-only: gate de compatibilidade protege reasonCodes cr
   const missingTenantBody = buildBody("evt-whatsapp-protected-missing-tenant");
   const missingTenant = await invokeHandler(missingTenantBody, buildHeaders(missingTenantBody));
   assert.ok(protectedReasonCodes.includes(String(missingTenant.body?.bundleExport?.reasonCode)));
+});
+
+test("WhatsApp webhook read-only: synthetic healthcheck contract gate", async () => {
+  const acceptedBody = buildBody("evt-whatsapp-f2-12-accepted", {
+    fromPhoneMasked: "+5511999998767",
+  });
+  const accepted = await invokeHandler(acceptedBody, buildHeaders(acceptedBody));
+
+  const invalidSignatureBody = buildBody("evt-whatsapp-f2-12-invalid-signature");
+  const invalidSignature = await invokeHandler(
+    invalidSignatureBody,
+    buildHeaders(invalidSignatureBody, { "x-eiah-signature": "00".repeat(32) }),
+  );
+
+  const noBindingBody = buildBody("evt-whatsapp-f2-12-no-binding", {
+    fromPhoneHash: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  });
+  const noBinding = await invokeHandler(noBindingBody, buildHeaders(noBindingBody));
+
+  const criticalActionBody = buildBody("evt-whatsapp-f2-12-critical-action", {
+    action: "lead.create",
+  });
+  const criticalAction = await invokeHandler(criticalActionBody, buildHeaders(criticalActionBody));
+
+  const readOnlyViolationBody = buildBody("evt-whatsapp-f2-12-read-only-violation", {
+    readOnly: false,
+  });
+  const readOnlyViolation = await invokeHandler(readOnlyViolationBody, buildHeaders(readOnlyViolationBody));
+
+  const replayBody = buildBody("evt-whatsapp-f2-12-replay");
+  const replayHeaders = buildHeaders(replayBody);
+  const replayFirstPass = await invokeHandler(replayBody, replayHeaders);
+  const replayRejected = await invokeHandler(replayBody, replayHeaders);
+
+  resetWhatsappWebhookGuards();
+
+  const duplicateBody = buildBody("evt-whatsapp-f2-12-duplicate");
+  const duplicateHeaders = buildHeaders(duplicateBody);
+  const duplicateFirstPass = await invokeHandler(duplicateBody, duplicateHeaders);
+  const duplicateRejected = await invokeHandler(
+    duplicateBody,
+    buildHeaders(duplicateBody, { "x-eiah-timestamp": String(Number(duplicateHeaders["x-eiah-timestamp"]) + 1) }),
+  );
+
+  const failClosed = [
+    invalidSignature,
+    noBinding,
+    criticalAction,
+    readOnlyViolation,
+    replayRejected,
+    duplicateRejected,
+  ].map((response) => ({
+    status: response.status,
+    reasonCode: response.body?.bundleExport?.reasonCode,
+    decision: response.body?.bundleExport?.decision,
+    sideEffects: response.body?.bundleExport?.sideEffects,
+    piiMasked: response.body?.bundleExport?.piiMasked,
+  }));
+
+  const contractGate = {
+    fixtureVersion: "whatsapp.synthetic_healthcheck.contract.v1",
+    baseline: {
+      eventVersion: "whatsapp.adapter.event.v1",
+      bundleExportVersion: WHATSAPP_BUNDLE_EXPORT_VERSION,
+      provider: "whatsapp",
+      mode: "read_only",
+      scope: readOnlyScope,
+      entitlement: readOnlyEntitlement,
+      timestamp: baseTimestamp,
+    },
+    accepted: {
+      status: accepted.status,
+      reasonCode: accepted.body?.bundleExport?.reasonCode,
+      decision: accepted.body?.bundleExport?.decision,
+      sideEffects: accepted.body?.bundleExport?.sideEffects,
+      piiMasked: accepted.body?.bundleExport?.piiMasked,
+    },
+    failClosed,
+    providerExternalCall: 0,
+    mutationExternalSideEffect: 0,
+    criticalActionExecution: 0,
+  };
+
+  assert.equal(accepted.status, 202);
+  assert.equal(accepted.body?.bundleExport?.reasonCode, "ACCEPTED_READ_ONLY");
+  assert.equal(accepted.body?.bundleExport?.decision, "accepted_read_only");
+  assert.equal(accepted.body?.bundleExport?.sideEffects, 0);
+  assert.equal(accepted.body?.bundleExport?.piiMasked, true);
+  assert.equal(accepted.body?.data?.fromPhoneMasked, "+5***67");
+
+  assert.equal(replayFirstPass.status, 202);
+  assert.equal(duplicateFirstPass.status, 202);
+  assert.deepEqual(failClosed, [
+    {
+      status: 401,
+      reasonCode: "WHATSAPP_SIGNATURE_INVALID",
+      decision: "blocked",
+      sideEffects: 0,
+      piiMasked: true,
+    },
+    {
+      status: 403,
+      reasonCode: "WHATSAPP_PHONE_NOT_BOUND",
+      decision: "blocked",
+      sideEffects: 0,
+      piiMasked: true,
+    },
+    {
+      status: 403,
+      reasonCode: "CRITICAL_ACTION_BLOCKED",
+      decision: "blocked",
+      sideEffects: 0,
+      piiMasked: true,
+    },
+    {
+      status: 403,
+      reasonCode: "READ_ONLY_MODE",
+      decision: "blocked",
+      sideEffects: 0,
+      piiMasked: true,
+    },
+    {
+      status: 409,
+      reasonCode: "WHATSAPP_REPLAY_DETECTED",
+      decision: "blocked",
+      sideEffects: 0,
+      piiMasked: true,
+    },
+    {
+      status: 409,
+      reasonCode: "WHATSAPP_EVENT_DUPLICATE",
+      decision: "blocked",
+      sideEffects: 0,
+      piiMasked: true,
+    },
+  ]);
+  assert.equal(contractGate.providerExternalCall, 0);
+  assert.equal(contractGate.mutationExternalSideEffect, 0);
+  assert.equal(contractGate.criticalActionExecution, 0);
+  assertNoSyntheticHealthcheckSensitiveData([
+    accepted.body,
+    invalidSignature.body,
+    noBinding.body,
+    criticalAction.body,
+    readOnlyViolation.body,
+    replayRejected.body,
+    duplicateRejected.body,
+    contractGate,
+  ]);
 });
