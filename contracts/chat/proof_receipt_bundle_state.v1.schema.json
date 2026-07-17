@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eiah.local/contracts/chat/proof_receipt_bundle_state.v1.schema.json",
+  "title": "Proof Receipt Bundle State v1",
+  "type": "object",
+  "required": [
+    "version",
+    "proofKind",
+    "proofStatus",
+    "runId",
+    "verticalId",
+    "tenantId",
+    "workspaceId",
+    "scope",
+    "source",
+    "reasonCode",
+    "accessibilityLabel"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "proof_receipt_bundle_state.v1"
+    },
+    "proofKind": {
+      "type": "string",
+      "enum": ["receipt", "bundle", "ledger_ref", "external_proof", "runtime_state"]
+    },
+    "proofStatus": {
+      "type": "string",
+      "enum": ["not_required", "pending", "available", "blocked", "failed", "inconsistent"]
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "verticalId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tenantId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workspaceId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scope": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source": {
+      "type": "string",
+      "enum": [
+        "runtime",
+        "ledger",
+        "run_bundle",
+        "vertical_runtime_contract",
+        "chat.vertical_handoff.v1"
+      ]
+    },
+    "reasonCode": {
+      "type": "string",
+      "minLength": 1
+    },
+    "accessibilityLabel": {
+      "type": "string",
+      "minLength": 1
+    },
+    "proofId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "receiptId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "bundleId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ledgerRef": {
+      "type": "string",
+      "minLength": 1
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "verifiedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "receiptLink": {
+      "type": "string",
+      "pattern": "^/app/"
+    },
+    "bundleLink": {
+      "type": "string",
+      "pattern": "^/app/"
+    }
+  },
+  "additionalProperties": false
+}

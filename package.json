@@ -61,6 +61,7 @@
     "check:chat-launcher-render-only": "node --import tsx scripts/checkChatLauncherRenderOnly.ts",
     "check:chat-runtime-entrypoint-debt": "node --import tsx scripts/checkChatRuntimeEntrypointDebt.ts",
     "check:presentation-snapshot-contract": "node --import tsx scripts/checkPresentationSnapshotContract.ts",
+    "check:arch-chat-contracts": "node --import tsx scripts/checkArchChatContracts.ts",
     "check:imob-frontdoor-regression": "TSX_TSCONFIG_PATH=apps/web/tsconfig.json node --import tsx --test apps/web/src/pages/app/imob/chat.assistantDedupe.test.ts && pnpm check:chat-launcher-render-only && pnpm check:evidence-index && pnpm check:docs-link-integrity",
     "check:worker-topology": "node --import tsx scripts/checkWorkerTopology.ts",
     "test:worker-topology": "node --import tsx --test packages/core/src/queue/workerTopology.test.ts",

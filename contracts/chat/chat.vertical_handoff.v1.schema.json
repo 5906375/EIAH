@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eiah.local/contracts/chat/chat.vertical_handoff.v1.schema.json",
+  "title": "Chat Vertical Handoff v1",
+  "type": "object",
+  "required": [
+    "version",
+    "handoffId",
+    "tenantId",
+    "workspaceId",
+    "scope",
+    "userId",
+    "verticalId",
+    "intentId",
+    "handoffMessage",
+    "reasonCode",
+    "riskLevel",
+    "hitlRequired"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "chat.vertical_handoff.v1"
+    },
+    "handoffId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tenantId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workspaceId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scope": {
+      "type": "string",
+      "minLength": 1
+    },
+    "userId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "verticalId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "intentId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "handoffMessage": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reasonCode": {
+      "type": "string",
+      "minLength": 1
+    },
+    "riskLevel": {
+      "type": "string",
+      "enum": ["read_only", "assisted", "high", "critical"]
+    },
+    "hitlRequired": {
+      "type": "boolean"
+    },
+    "blueprintId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requiredEntitlement": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requiredRoles": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "renderHints": {
+      "type": "object",
+      "properties": {
+        "verticalBadgeLabel": {
+          "type": "string",
+          "minLength": 1
+        },
+        "suggestedSurface": {
+          "type": "string",
+          "enum": ["chat", "cockpit", "run", "proof"]
+        },
+        "ctaLabel": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cockpitDeepLink": {
+          "type": "string",
+          "pattern": "^/app/"
+        }
+      },
+      "additionalProperties": false
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "receiptId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "bundleId": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false
+}

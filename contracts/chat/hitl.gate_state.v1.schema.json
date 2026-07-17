@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eiah.local/contracts/chat/hitl.gate_state.v1.schema.json",
+  "title": "HITL Gate State v1",
+  "type": "object",
+  "required": [
+    "version",
+    "gateId",
+    "gateType",
+    "tenantId",
+    "workspaceId",
+    "scope",
+    "approvalState",
+    "hitlRequired",
+    "riskLevel",
+    "reasonCode",
+    "verticalId",
+    "message"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "hitl.gate_state.v1"
+    },
+    "gateId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "gateType": {
+      "type": "string",
+      "enum": [
+        "approval",
+        "policy",
+        "entitlement",
+        "rbac",
+        "source_access",
+        "proof_required",
+        "human_review"
+      ]
+    },
+    "tenantId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "workspaceId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scope": {
+      "type": "string",
+      "minLength": 1
+    },
+    "approvalState": {
+      "type": "string",
+      "enum": ["not_required", "pending", "approved", "rejected", "expired", "invalid", "blocked"]
+    },
+    "hitlRequired": {
+      "type": "boolean"
+    },
+    "riskLevel": {
+      "type": "string",
+      "enum": ["read_only", "assisted", "high", "critical"]
+    },
+    "reasonCode": {
+      "type": "string",
+      "minLength": 1
+    },
+    "verticalId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "message": {
+      "type": "string",
+      "minLength": 1
+    },
+    "runId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "handoffId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requiredRole": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requiredEntitlement": {
+      "type": "string",
+      "minLength": 1
+    },
+    "allowedUserActions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "view_details",
+          "open_cockpit",
+          "open_run",
+          "view_proof",
+          "request_review",
+          "contact_admin"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "accessibilityLabel": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "additionalProperties": false
+}
