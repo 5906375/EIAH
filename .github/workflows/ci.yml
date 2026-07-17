@@ -286,6 +286,9 @@ jobs:
       - name: Run presentation snapshot contract gate
         run: pnpm check:presentation-snapshot-contract
 
+      - name: Run ARCH chat physical contracts gate
+        run: pnpm check:arch-chat-contracts
+
       - name: Run chat engine regression suite
         run: pnpm test:chat-engine
 
