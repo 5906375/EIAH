@@ -289,6 +289,9 @@ jobs:
       - name: Run ARCH chat physical contracts gate
         run: pnpm check:arch-chat-contracts
 
+      - name: Run chat vertical handoff snapshot test
+        run: pnpm test:chat-vertical-handoff-snapshot
+
       - name: Run chat engine regression suite
         run: pnpm test:chat-engine
 
