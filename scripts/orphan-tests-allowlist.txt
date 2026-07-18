@@ -59,3 +59,4 @@ apps/web/src/features/imob/ImobBottleneckHeatmap.test.tsx # F0.7 known-debt web/
 apps/web/src/features/imob/ImobWaitingOnBoard.test.tsx # F0.7 known-debt web/imob; amarrar a script/workflow real ou remover se obsoleto
 apps/workers/action-runner/src/index.test.ts # F0.7 known-debt worker/action-runner; amarrar a script/workflow real ou remover se obsoleto
 tests/multitenant/tenant-isolation.test.ts # F0.7 known-debt multitenant; amarrar a script/workflow real ou remover se obsoleto
+scripts/tests/checkImobStaticHarnessContract.test.ts # IMOB-PILOT-6F manual-only test; package script/CI gate proibidos ate fase 6G
