@@ -38,7 +38,7 @@ export type StaticHarnessContractCheckReport = {
   networkCalls: false;
   runtimeServiceImports: false;
   packageScriptRegistered: boolean;
-  ciGateRegistered: false;
+  ciGateRegistered: boolean;
   evidenceIndexUpdated: false;
   dryRunExecuted: false;
   shadowStarted: false;
@@ -593,18 +593,19 @@ function validateContracts(sources: Source[], violations: Violation[]) {
 function validatePackageAndCiRegistration(repositoryRoot: string, sourceOverrides: Record<string, SourceOverrideValue>, violations: Violation[]) {
   const packageJsonPath = "package.json";
   const ciPath = ".github/workflows/ci.yml";
-  const scriptReferences = [
+  const forbiddenDirectCiReferences = [
     "checkImobStaticHarnessContract",
-    "check:imob-static-harness-contract",
-    "test:imob-static-harness-contract",
     "scripts/tests/checkImobStaticHarnessContract.test.ts",
   ];
   const expectedPackageScripts = {
     "check:imob-static-harness-contract": "tsx scripts/checkImobStaticHarnessContract.ts",
     "test:imob-static-harness-contract": "node --import tsx --test scripts/tests/checkImobStaticHarnessContract.test.ts",
   } as const;
+  const expectedCiStepName = "Run IMOB static harness contract gate";
+  const expectedCiCommands = ["pnpm check:imob-static-harness-contract", "pnpm test:imob-static-harness-contract"] as const;
   const checked: string[] = [];
-  let packageScriptRegistered = false;
+  let packageScriptsMatched = 0;
+  let ciGateRegistered = false;
 
   const packageText =
     packageJsonPath in sourceOverrides
@@ -620,16 +621,19 @@ function validatePackageAndCiRegistration(repositoryRoot: string, sourceOverride
 
     for (const [scriptName, expectedCommand] of Object.entries(expectedPackageScripts)) {
       const value = scripts[scriptName];
-      if (value === undefined) continue;
+      if (value === undefined) {
+        addViolation(violations, "IMOB_STATIC_CHECK_PACKAGE_SCRIPT_MISSING_IN_6I", packageJsonPath, `${scriptName} must be registered`);
+        continue;
+      }
       if (value !== expectedCommand) {
         addViolation(
           violations,
-          "IMOB_STATIC_CHECK_PACKAGE_SCRIPT_INVALID_IN_6H",
+          "IMOB_STATIC_CHECK_PACKAGE_SCRIPT_INVALID_IN_6I",
           packageJsonPath,
           `${scriptName} must be ${expectedCommand}`,
         );
       } else {
-        packageScriptRegistered = true;
+        packageScriptsMatched += 1;
       }
     }
 
@@ -644,20 +648,46 @@ function validatePackageAndCiRegistration(repositoryRoot: string, sourceOverride
         : null;
 
   if (ciText !== null) {
-    for (const reference of scriptReferences) {
+    for (const reference of forbiddenDirectCiReferences) {
       if (ciText.includes(reference)) {
         addViolation(
           violations,
-          "IMOB_STATIC_CHECK_CI_REGISTRATION_FORBIDDEN_UNTIL_6I",
+          "IMOB_STATIC_CHECK_CI_DIRECT_REFERENCE_FORBIDDEN_IN_6I",
           ciPath,
-          `CI gate must not be registered before IMOB-PILOT-6I: ${reference}`,
+          `CI gate must use package scripts only: ${reference}`,
         );
       }
     }
+    if (!ciText.includes(expectedCiStepName)) {
+      addViolation(
+        violations,
+        "IMOB_STATIC_CHECK_CI_GATE_MISSING_IN_6I",
+        ciPath,
+        `CI gate step must be named: ${expectedCiStepName}`,
+      );
+    }
+    for (const command of expectedCiCommands) {
+      if (!ciText.includes(command)) {
+        addViolation(violations, "IMOB_STATIC_CHECK_CI_GATE_INCOMPLETE_IN_6I", ciPath, `CI gate must run: ${command}`);
+      }
+    }
+    if (/IMOB Worker Mutation E2E/i.test(ciText) && expectedCiCommands.some((command) => ciText.includes(command))) {
+      addViolation(
+        violations,
+        "IMOB_STATIC_CHECK_WORKER_MUTATION_E2E_FORBIDDEN_IN_6I",
+        ciPath,
+        "IMOB static harness contract gate must not run in IMOB Worker Mutation E2E",
+      );
+    }
+    ciGateRegistered = ciText.includes(expectedCiStepName) && expectedCiCommands.every((command) => ciText.includes(command));
     checked.push(ciPath);
   }
 
-  return { checked, packageScriptRegistered };
+  return {
+    checked,
+    packageScriptRegistered: packageScriptsMatched === Object.keys(expectedPackageScripts).length,
+    ciGateRegistered,
+  };
 }
 
 export function runImobStaticHarnessContractCheck(
@@ -687,7 +717,7 @@ export function runImobStaticHarnessContractCheck(
     networkCalls: false,
     runtimeServiceImports: false,
     packageScriptRegistered: registration.packageScriptRegistered,
-    ciGateRegistered: false,
+    ciGateRegistered: registration.ciGateRegistered,
     evidenceIndexUpdated: false,
     dryRunExecuted: false,
     shadowStarted: false,
