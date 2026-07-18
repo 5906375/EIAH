@@ -575,6 +575,11 @@ jobs:
       - name: Run orphan tests regression gate
         run: pnpm check:orphan-tests
 
+      - name: Run IMOB static harness contract gate
+        run: |
+          pnpm check:imob-static-harness-contract
+          pnpm test:imob-static-harness-contract
+
   public_health_contract:
     name: PublicHealthContract
     runs-on: ubuntu-latest

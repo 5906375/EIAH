@@ -17,6 +17,8 @@ type TempRepoOptions = {
   omitReasonCode?: string;
   omitBoundary?: string;
   guardrailAppend?: string;
+  packageJsonText?: string;
+  ciText?: string;
 };
 
 const actualRoot = process.cwd();
@@ -24,6 +26,28 @@ const fixturePath = "apps/api/src/tests/fixtures/imob-pilot-2/imob-pilot-2-shado
 const handoffContractPath = "contracts/chat/chat.vertical_handoff.v1.schema.json";
 const hitlContractPath = "contracts/chat/hitl.gate_state.v1.schema.json";
 const proofContractPath = "contracts/chat/proof_receipt_bundle_state.v1.schema.json";
+const expectedPackageJson = JSON.stringify(
+  {
+    scripts: {
+      "check:imob-static-harness-contract": "tsx scripts/checkImobStaticHarnessContract.ts",
+      "test:imob-static-harness-contract": "node --import tsx --test scripts/tests/checkImobStaticHarnessContract.test.ts",
+    },
+  },
+  null,
+  2,
+);
+const expectedCiText = [
+  "name: CI Monorepo",
+  "jobs:",
+  "  orphan_tests_regression:",
+  "    name: OrphanTestsRegression",
+  "    runs-on: ubuntu-latest",
+  "    steps:",
+  "      - name: Run IMOB static harness contract gate",
+  "        run: |",
+  "          pnpm check:imob-static-harness-contract",
+  "          pnpm test:imob-static-harness-contract",
+].join("\n");
 
 function mkdirFor(filePath: string) {
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
@@ -100,8 +124,8 @@ function createTempRepo(options: TempRepoOptions = {}) {
     fs.appendFileSync(path.join(root, guardrailPath), options.guardrailAppend);
   }
 
-  writeFile(root, "package.json", JSON.stringify({ scripts: {} }, null, 2));
-  writeFile(root, ".github/workflows/ci.yml", "name: synthetic-ci\n");
+  writeFile(root, "package.json", options.packageJsonText ?? expectedPackageJson);
+  writeFile(root, ".github/workflows/ci.yml", options.ciText ?? expectedCiText);
 
   return root;
 }
@@ -119,6 +143,8 @@ test("passes when references, metrics, reasonCodes, boundaries and guardrail lan
   assert.equal(report.ok, true);
   assert.equal(report.decision, "GO_FOR_NEXT_REVIEW_ONLY");
   assert.deepEqual(report.violations, []);
+  assert.equal(report.packageScriptRegistered, true);
+  assert.equal(report.ciGateRegistered, true);
   assert.equal(report.providerExternalCall, 0);
   assert.equal(report.mutationExternalSideEffect, 0);
   assert.equal(report.dbWrite, 0);
@@ -171,4 +197,89 @@ test("fails closed when improper operational closure is declared", () => {
   assert.equal(report.ok, false);
   assert.equal(report.decision, "NO_GO");
   assert.ok(reasonCodes(report).includes("IMOB_STATIC_CHECK_OPERATIONAL_CLOSURE_FORBIDDEN"));
+});
+
+test("fails closed when expected package scripts are missing", () => {
+  const report = runTempRepo({ packageJsonText: JSON.stringify({ scripts: {} }, null, 2) });
+  assert.equal(report.ok, false);
+  assert.equal(report.packageScriptRegistered, false);
+  assert.ok(reasonCodes(report).includes("IMOB_STATIC_CHECK_PACKAGE_SCRIPT_MISSING_IN_6I"));
+});
+
+test("fails closed when expected package scripts are incomplete or changed", () => {
+  const report = runTempRepo({
+    packageJsonText: JSON.stringify(
+      {
+        scripts: {
+          "check:imob-static-harness-contract": "tsx scripts/checkImobStaticHarnessContract.ts",
+          "test:imob-static-harness-contract": "node --test scripts/tests/checkImobStaticHarnessContract.test.ts",
+        },
+      },
+      null,
+      2,
+    ),
+  });
+  assert.equal(report.ok, false);
+  assert.equal(report.packageScriptRegistered, false);
+  assert.ok(reasonCodes(report).includes("IMOB_STATIC_CHECK_PACKAGE_SCRIPT_INVALID_IN_6I"));
+});
+
+test("allows the expected IMOB-PILOT-6I CI gate", () => {
+  const report = runTempRepo();
+  assert.equal(report.ok, true);
+  assert.equal(report.ciGateRegistered, true);
+  assert.deepEqual(report.violations, []);
+});
+
+test("fails closed when the IMOB-PILOT-6I CI gate is missing", () => {
+  const report = runTempRepo({ ciText: "name: CI Monorepo\njobs:\n  orphan_tests_regression:\n    steps: []\n" });
+  assert.equal(report.ok, false);
+  assert.equal(report.ciGateRegistered, false);
+  assert.ok(reasonCodes(report).includes("IMOB_STATIC_CHECK_CI_GATE_MISSING_IN_6I"));
+  assert.ok(reasonCodes(report).includes("IMOB_STATIC_CHECK_CI_GATE_INCOMPLETE_IN_6I"));
+});
+
+test("fails closed when the IMOB-PILOT-6I CI gate is incomplete", () => {
+  const report = runTempRepo({
+    ciText: [
+      "name: CI Monorepo",
+      "jobs:",
+      "  orphan_tests_regression:",
+      "    steps:",
+      "      - name: Run IMOB static harness contract gate",
+      "        run: pnpm check:imob-static-harness-contract",
+    ].join("\n"),
+  });
+  assert.equal(report.ok, false);
+  assert.equal(report.ciGateRegistered, false);
+  assert.ok(reasonCodes(report).includes("IMOB_STATIC_CHECK_CI_GATE_INCOMPLETE_IN_6I"));
+});
+
+test("fails closed when CI references the implementation directly instead of package scripts", () => {
+  const report = runTempRepo({
+    ciText: [
+      expectedCiText,
+      "      - name: Direct implementation reference",
+      "        run: npx tsx scripts/checkImobStaticHarnessContract.ts",
+    ].join("\n"),
+  });
+  assert.equal(report.ok, false);
+  assert.ok(reasonCodes(report).includes("IMOB_STATIC_CHECK_CI_DIRECT_REFERENCE_FORBIDDEN_IN_6I"));
+});
+
+test("fails closed when CI places the gate in IMOB Worker Mutation E2E", () => {
+  const report = runTempRepo({
+    ciText: [
+      "name: IMOB Worker Mutation E2E",
+      "jobs:",
+      "  imob_worker_mutation_e2e:",
+      "    steps:",
+      "      - name: Run IMOB static harness contract gate",
+      "        run: |",
+      "          pnpm check:imob-static-harness-contract",
+      "          pnpm test:imob-static-harness-contract",
+    ].join("\n"),
+  });
+  assert.equal(report.ok, false);
+  assert.ok(reasonCodes(report).includes("IMOB_STATIC_CHECK_WORKER_MUTATION_E2E_FORBIDDEN_IN_6I"));
 });
