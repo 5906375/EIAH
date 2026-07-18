@@ -1,25 +1,68 @@
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const CHECK = "check:imob-static-harness-contract";
 const PASS_DECISION = "GO_FOR_NEXT_REVIEW_ONLY";
 const FAIL_DECISION = "NO_GO";
 
-type Severity = "blocking" | "required" | "advisory";
+export type Severity = "blocking" | "required" | "advisory";
 
-type Violation = {
+export type Violation = {
   reasonCode: string;
   severity: Severity;
   sourcePath: string;
   message: string;
 };
 
-type Source = {
+export type Source = {
   path: string;
   text: string;
 };
 
-const requiredReferences = [
+export type SourceOverrideValue = string | null;
+
+export type StaticHarnessContractCheckOptions = {
+  repositoryRoot?: string;
+  sourceOverrides?: Record<string, SourceOverrideValue>;
+};
+
+export type StaticHarnessContractCheckReport = {
+  ok: boolean;
+  check: typeof CHECK;
+  decision: typeof PASS_DECISION | typeof FAIL_DECISION;
+  localOfflineDeterministic: true;
+  stdoutOnly: true;
+  writesFiles: false;
+  readsEnvOrSecrets: false;
+  networkCalls: false;
+  runtimeServiceImports: false;
+  packageScriptRegistered: false;
+  ciGateRegistered: false;
+  evidenceIndexUpdated: false;
+  dryRunExecuted: false;
+  shadowStarted: false;
+  frontendPreviewCreated: false;
+  providerExternalCall: 0;
+  mutationExternalSideEffect: 0;
+  dbWrite: 0;
+  ledgerWrite: 0;
+  auditWrite: 0;
+  receiptGenerated: 0;
+  bundleGenerated: 0;
+  proofGenerated: 0;
+  referencesChecked: string[];
+  metricsChecked: string[];
+  reasonCodesChecked: string[];
+  boundariesChecked: string[];
+  forbiddenLanguageDocsChecked: string[];
+  fixtureChecks: { parsed: boolean; checkedFields: string[] };
+  contractChecks: string[];
+  registrationChecks: string[];
+  violations: Violation[];
+};
+
+export const requiredReferences = [
   "docs/proposals/imob-pilot-2-dry-run-fixture-pack-evidence-template.md",
   "docs/proposals/imob-pilot-4-non-operational-dry-run-harness-spec.md",
   "docs/proposals/imob-pilot-5-non-operational-harness-skeleton.md",
@@ -36,7 +79,7 @@ const requiredReferences = [
   "docs/architecture/agent-chat-runtime.md",
 ] as const;
 
-const documentationPaths = [
+export const documentationPaths = [
   "docs/proposals/imob-pilot-2-dry-run-fixture-pack-evidence-template.md",
   "docs/proposals/imob-pilot-4-non-operational-dry-run-harness-spec.md",
   "docs/proposals/imob-pilot-5-non-operational-harness-skeleton.md",
@@ -47,14 +90,14 @@ const documentationPaths = [
   "ops/evidence/templates/imob-pilot-2-shadow-dry-run-evidence-template.md",
 ] as const;
 
-const guardrailDocPaths = [
+export const guardrailDocPaths = [
   "docs/proposals/imob-pilot-6a-static-harness-contract-check.md",
   "docs/proposals/imob-pilot-6b-static-check-implementation-design.md",
   "docs/proposals/imob-pilot-6c-static-check-non-executable-pseudocode.md",
   "docs/proposals/imob-pilot-6d-static-check-implementation-plan.md",
 ] as const;
 
-const zeroMetrics = [
+export const zeroMetrics = [
   "sideEffects",
   "providerExternalCall",
   "mutationExternalSideEffect",
@@ -74,7 +117,7 @@ const zeroMetrics = [
   "checksumMismatch",
 ] as const;
 
-const requiredReasonCodes = [
+export const requiredReasonCodes = [
   "IMOB_PILOT_6A_STATIC_CHECK_ONLY",
   "IMOB_PILOT_5_SKELETON_ONLY",
   "IMOB_HARNESS_NO_GO",
@@ -193,9 +236,7 @@ const expectedContracts = [
   },
 ] as const;
 
-const repositoryRoot = process.cwd();
-
-function emit(report: Record<string, unknown>, exitCode: 0 | 1): never {
+function emit(report: StaticHarnessContractCheckReport, exitCode: 0 | 1): never {
   console.log(JSON.stringify(report, null, 2));
   process.exit(exitCode);
 }
@@ -204,22 +245,36 @@ function addViolation(violations: Violation[], reasonCode: string, sourcePath: s
   violations.push({ reasonCode, severity, sourcePath, message });
 }
 
-function resolveRepoPath(relativePath: string): string {
+function resolveRepoPath(repositoryRoot: string, relativePath: string): string {
   return path.resolve(repositoryRoot, relativePath);
 }
 
-function isInsideRepository(absolutePath: string): boolean {
+function isInsideRepository(repositoryRoot: string, absolutePath: string): boolean {
   const relative = path.relative(repositoryRoot, absolutePath);
   return relative.length === 0 || (!relative.startsWith("..") && !path.isAbsolute(relative));
 }
 
-function readRequiredSources(violations: Violation[]): Source[] {
+function readRequiredSources(
+  repositoryRoot: string,
+  sourceOverrides: Record<string, SourceOverrideValue>,
+  violations: Violation[],
+): Source[] {
   const sources: Source[] = [];
 
   for (const relativePath of requiredReferences) {
-    const absolutePath = resolveRepoPath(relativePath);
+    if (relativePath in sourceOverrides) {
+      const override = sourceOverrides[relativePath];
+      if (override === null) {
+        addViolation(violations, "IMOB_STATIC_CHECK_REFERENCE_MISSING", relativePath, "required reference is missing");
+      } else {
+        sources.push({ path: relativePath, text: override });
+      }
+      continue;
+    }
 
-    if (!isInsideRepository(absolutePath)) {
+    const absolutePath = resolveRepoPath(repositoryRoot, relativePath);
+
+    if (!isInsideRepository(repositoryRoot, absolutePath)) {
       addViolation(violations, "IMOB_STATIC_CHECK_REFERENCE_OUT_OF_SCOPE", relativePath, "required reference resolves outside repository");
       continue;
     }
@@ -535,18 +590,23 @@ function validateContracts(sources: Source[], violations: Violation[]) {
   return checked;
 }
 
-function validatePackageAndCiAbsence(sources: Source[], violations: Violation[]) {
+function validatePackageAndCiAbsence(repositoryRoot: string, sourceOverrides: Record<string, SourceOverrideValue>, violations: Violation[]) {
   const packageJsonPath = "package.json";
   const ciPath = ".github/workflows/ci.yml";
   const scriptReferences = ["checkImobStaticHarnessContract", "check:imob-static-harness-contract"];
   const checked: string[] = [];
 
   for (const sourcePath of [packageJsonPath, ciPath] as const) {
-    const absolutePath = resolveRepoPath(sourcePath);
-    if (!fs.existsSync(absolutePath)) {
+    const text =
+      sourcePath in sourceOverrides
+        ? sourceOverrides[sourcePath]
+        : fs.existsSync(resolveRepoPath(repositoryRoot, sourcePath))
+          ? fs.readFileSync(resolveRepoPath(repositoryRoot, sourcePath), "utf8")
+          : null;
+
+    if (text === null) {
       continue;
     }
-    const text = fs.readFileSync(absolutePath, "utf8");
     for (const reference of scriptReferences) {
       if (text.includes(reference)) {
         addViolation(
@@ -563,20 +623,23 @@ function validatePackageAndCiAbsence(sources: Source[], violations: Violation[])
   return checked;
 }
 
-const violations: Violation[] = [];
-const sources = readRequiredSources(violations);
-const metricChecks = validateMetrics(sources, violations);
-const reasonCodeChecks = validateReasonCodes(sources, violations);
-const boundaryChecks = validateBoundaries(sources, violations);
-const forbiddenLanguageChecks = validateForbiddenLanguage(sources, violations);
-const fixtureChecks = validateFixture(sources, violations);
-const contractChecks = validateContracts(sources, violations);
-const registrationChecks = validatePackageAndCiAbsence(sources, violations);
+export function runImobStaticHarnessContractCheck(
+  options: StaticHarnessContractCheckOptions = {},
+): StaticHarnessContractCheckReport {
+  const repositoryRoot = options.repositoryRoot ?? process.cwd();
+  const sourceOverrides = options.sourceOverrides ?? {};
+  const violations: Violation[] = [];
+  const sources = readRequiredSources(repositoryRoot, sourceOverrides, violations);
+  const metricChecks = validateMetrics(sources, violations);
+  const reasonCodeChecks = validateReasonCodes(sources, violations);
+  const boundaryChecks = validateBoundaries(sources, violations);
+  const forbiddenLanguageChecks = validateForbiddenLanguage(sources, violations);
+  const fixtureChecks = validateFixture(sources, violations);
+  const contractChecks = validateContracts(sources, violations);
+  const registrationChecks = validatePackageAndCiAbsence(repositoryRoot, sourceOverrides, violations);
+  const ok = violations.length === 0;
 
-const ok = violations.length === 0;
-
-emit(
-  {
+  return {
     ok,
     check: CHECK,
     decision: ok ? PASS_DECISION : FAIL_DECISION,
@@ -609,6 +672,14 @@ emit(
     contractChecks,
     registrationChecks,
     violations,
-  },
-  ok ? 0 : 1,
-);
+  };
+}
+
+function runCli(): never {
+  const report = runImobStaticHarnessContractCheck();
+  emit(report, report.ok ? 0 : 1);
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  runCli();
+}
