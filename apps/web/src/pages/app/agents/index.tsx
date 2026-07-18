@@ -7,11 +7,13 @@ import runsHistoryPrint from "../../../assets/playbook/runs/runs-historico.svg";
 import runsResultPrint from "../../../assets/playbook/runs/runs-resultado.svg";
 import AgentSelect from "../../../components/agents/AgentSelect";
 import ChatAgentLauncher from "../../../components/agents/ChatAgentLauncher";
+import FrontDoorImobFixturePreviewPanel from "../../../components/chat/FrontDoorImobFixturePreviewPanel";
 import {
   buildPublicTaxonomyBoundaryLine,
   buildPublicTaxonomyCatalogLine,
   buildPublicTaxonomyRoadmapLine,
 } from "@/components/agents/publicProductTaxonomyCopy";
+import { shouldRenderImobPilot2FixturePreview } from "@/features/imob/imobPilot2FixturePreview";
 import { apiGetAgentBillingSummary, type Agent, type AgentBillingSummaryItem } from "@/lib/api";
 import { useSession } from "@/state/sessionStore";
 import { useAgents } from "@/hooks/useAgents";
@@ -867,6 +869,10 @@ const AgentsPage: React.FC = () => {
     const params = new URLSearchParams(location.search);
     return params.get("plan")?.trim() ?? null;
   }, [location.search]);
+  const showImobFixturePreview = useMemo(
+    () => shouldRenderImobPilot2FixturePreview(location.search),
+    [location.search]
+  );
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -1016,6 +1022,7 @@ const AgentsPage: React.FC = () => {
                 }}
               />
             </div>
+            {showImobFixturePreview ? <FrontDoorImobFixturePreviewPanel /> : null}
           </div>
         </div>
       </div>
