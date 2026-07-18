@@ -37,7 +37,7 @@ export type StaticHarnessContractCheckReport = {
   readsEnvOrSecrets: false;
   networkCalls: false;
   runtimeServiceImports: false;
-  packageScriptRegistered: false;
+  packageScriptRegistered: boolean;
   ciGateRegistered: false;
   evidenceIndexUpdated: false;
   dryRunExecuted: false;
@@ -590,37 +590,74 @@ function validateContracts(sources: Source[], violations: Violation[]) {
   return checked;
 }
 
-function validatePackageAndCiAbsence(repositoryRoot: string, sourceOverrides: Record<string, SourceOverrideValue>, violations: Violation[]) {
+function validatePackageAndCiRegistration(repositoryRoot: string, sourceOverrides: Record<string, SourceOverrideValue>, violations: Violation[]) {
   const packageJsonPath = "package.json";
   const ciPath = ".github/workflows/ci.yml";
-  const scriptReferences = ["checkImobStaticHarnessContract", "check:imob-static-harness-contract"];
+  const scriptReferences = [
+    "checkImobStaticHarnessContract",
+    "check:imob-static-harness-contract",
+    "test:imob-static-harness-contract",
+    "scripts/tests/checkImobStaticHarnessContract.test.ts",
+  ];
+  const expectedPackageScripts = {
+    "check:imob-static-harness-contract": "tsx scripts/checkImobStaticHarnessContract.ts",
+    "test:imob-static-harness-contract": "node --import tsx --test scripts/tests/checkImobStaticHarnessContract.test.ts",
+  } as const;
   const checked: string[] = [];
+  let packageScriptRegistered = false;
 
-  for (const sourcePath of [packageJsonPath, ciPath] as const) {
-    const text =
-      sourcePath in sourceOverrides
-        ? sourceOverrides[sourcePath]
-        : fs.existsSync(resolveRepoPath(repositoryRoot, sourcePath))
-          ? fs.readFileSync(resolveRepoPath(repositoryRoot, sourcePath), "utf8")
-          : null;
+  const packageText =
+    packageJsonPath in sourceOverrides
+      ? sourceOverrides[packageJsonPath]
+      : fs.existsSync(resolveRepoPath(repositoryRoot, packageJsonPath))
+        ? fs.readFileSync(resolveRepoPath(repositoryRoot, packageJsonPath), "utf8")
+        : null;
 
-    if (text === null) {
-      continue;
-    }
-    for (const reference of scriptReferences) {
-      if (text.includes(reference)) {
+  if (packageText !== null) {
+    const packageSource = { path: packageJsonPath, text: packageText };
+    const parsedPackage = parseJson<Record<string, unknown>>(packageSource, violations);
+    const scripts = parsedPackage && isRecord(parsedPackage.scripts) ? parsedPackage.scripts : {};
+
+    for (const [scriptName, expectedCommand] of Object.entries(expectedPackageScripts)) {
+      const value = scripts[scriptName];
+      if (value === undefined) continue;
+      if (value !== expectedCommand) {
         addViolation(
           violations,
-          "IMOB_STATIC_CHECK_REGISTRATION_FORBIDDEN_IN_6E",
-          sourcePath,
-          `6E must not register package script or CI gate: ${reference}`,
+          "IMOB_STATIC_CHECK_PACKAGE_SCRIPT_INVALID_IN_6H",
+          packageJsonPath,
+          `${scriptName} must be ${expectedCommand}`,
+        );
+      } else {
+        packageScriptRegistered = true;
+      }
+    }
+
+    checked.push(packageJsonPath);
+  }
+
+  const ciText =
+    ciPath in sourceOverrides
+      ? sourceOverrides[ciPath]
+      : fs.existsSync(resolveRepoPath(repositoryRoot, ciPath))
+        ? fs.readFileSync(resolveRepoPath(repositoryRoot, ciPath), "utf8")
+        : null;
+
+  if (ciText !== null) {
+    for (const reference of scriptReferences) {
+      if (ciText.includes(reference)) {
+        addViolation(
+          violations,
+          "IMOB_STATIC_CHECK_CI_REGISTRATION_FORBIDDEN_UNTIL_6I",
+          ciPath,
+          `CI gate must not be registered before IMOB-PILOT-6I: ${reference}`,
         );
       }
     }
-    checked.push(sourcePath);
+    checked.push(ciPath);
   }
 
-  return checked;
+  return { checked, packageScriptRegistered };
 }
 
 export function runImobStaticHarnessContractCheck(
@@ -636,7 +673,7 @@ export function runImobStaticHarnessContractCheck(
   const forbiddenLanguageChecks = validateForbiddenLanguage(sources, violations);
   const fixtureChecks = validateFixture(sources, violations);
   const contractChecks = validateContracts(sources, violations);
-  const registrationChecks = validatePackageAndCiAbsence(repositoryRoot, sourceOverrides, violations);
+  const registration = validatePackageAndCiRegistration(repositoryRoot, sourceOverrides, violations);
   const ok = violations.length === 0;
 
   return {
@@ -649,7 +686,7 @@ export function runImobStaticHarnessContractCheck(
     readsEnvOrSecrets: false,
     networkCalls: false,
     runtimeServiceImports: false,
-    packageScriptRegistered: false,
+    packageScriptRegistered: registration.packageScriptRegistered,
     ciGateRegistered: false,
     evidenceIndexUpdated: false,
     dryRunExecuted: false,
@@ -670,7 +707,7 @@ export function runImobStaticHarnessContractCheck(
     forbiddenLanguageDocsChecked: forbiddenLanguageChecks,
     fixtureChecks,
     contractChecks,
-    registrationChecks,
+    registrationChecks: registration.checked,
     violations,
   };
 }
