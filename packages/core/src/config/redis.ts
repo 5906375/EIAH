@@ -6,5 +6,11 @@ export function requireRedisUrl(value: string | undefined, context: string): str
         `Localhost fallback is forbidden in runtime.`
     );
   }
+  if (/\$\{[^}]+\}/.test(value)) {
+    throw new Error(
+      `${context}: CONFIG_PLACEHOLDER_UNRESOLVED — Redis URL contains an unresolved placeholder. ` +
+        `Set REDIS_URL (or the service-specific variable) to an explicit redis:// or rediss:// URL.`
+    );
+  }
   return value;
 }

@@ -78,6 +78,18 @@ test("using getRedisConnection without Redis env fails closed", async () => {
   );
 });
 
+test("using getRedisConnection with unresolved Redis placeholder fails closed clearly", async () => {
+  clearRedisEnv();
+  process.env.REDIS_URL = "${REDIS_URL}";
+
+  const connectionModule = await importFreshConnectionModule();
+
+  assert.throws(
+    () => connectionModule.getRedisConnection(),
+    /connection:resolveRedisUrl: CONFIG_PLACEHOLDER_UNRESOLVED/
+  );
+});
+
 test("using the lazy connection facade without Redis env fails closed on property access", async () => {
   clearRedisEnv();
 
