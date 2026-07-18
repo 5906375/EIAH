@@ -4,6 +4,11 @@ import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { ChatVerticalHandoffSurface, type ChatVerticalHandoffSurfaceSnapshot } from "./ChatVerticalHandoffSurface";
+import { FrontDoorImobFixturePreviewPanel } from "./FrontDoorImobFixturePreviewPanel";
+import {
+  IMOB_FRONTDOOR_FIXTURE_PREVIEW_ROUTE,
+  shouldRenderImobPilot2FixturePreview,
+} from "../../features/imob/imobPilot2FixturePreview";
 
 const validImobSnapshot: ChatVerticalHandoffSurfaceSnapshot = {
   version: "chat.vertical_handoff.v1",
@@ -99,4 +104,74 @@ test("ARCH-IMPL-2: basic accessibility labels are rendered", () => {
 
   assert.match(html, /aria-label="Handoff vertical read-only para IMOB"/);
   assert.match(html, /<section/);
+});
+
+function renderFrontDoorImobFixturePreview() {
+  return renderToStaticMarkup(React.createElement(FrontDoorImobFixturePreviewPanel));
+}
+
+test("IMOB-PILOT-7B: /app/chat front door fixture route enables preview", () => {
+  const url = new URL(`https://example.test${IMOB_FRONTDOOR_FIXTURE_PREVIEW_ROUTE}`);
+
+  assert.equal(url.pathname, "/app/chat");
+  assert.equal(url.hash, "#chat-agent-launcher");
+  assert.equal(shouldRenderImobPilot2FixturePreview(url.search), true);
+  assert.equal(shouldRenderImobPilot2FixturePreview("?agent=eiah&domain=imob"), false);
+  assert.equal(
+    shouldRenderImobPilot2FixturePreview("?agent=imob&domain=imob&fixture=imob-pilot-2-shadow-dry-run"),
+    false
+  );
+});
+
+test("IMOB-PILOT-7B: non-operational IMOB handoff preview renders read-only visual state", () => {
+  const html = renderFrontDoorImobFixturePreview();
+
+  assert.match(html, /Preview IMOB não operacional/);
+  assert.match(html, /Front Door EIAH/);
+  assert.match(html, /Resultado visual IMOB read-only/);
+  assert.match(html, /Handoff read-only/);
+  assert.match(html, /Synthetic IMOB shadow dry-run fixture/);
+  assert.match(html, /CHAT_VERTICAL_HANDOFF_TO_COCKPIT/);
+  assert.match(html, /RiskLevel/);
+  assert.match(html, /high/);
+  assert.match(html, /IMOB/);
+});
+
+test("IMOB-PILOT-7B: fixture source and synthetic sanitized policy are visible", () => {
+  const html = renderFrontDoorImobFixturePreview();
+
+  assert.match(html, /imob-pilot-2-shadow-dry-run-fixture-v1/);
+  assert.match(html, /apps\/api\/src\/tests\/fixtures\/imob-pilot-2\/imob-pilot-2-shadow-dry-run\.fixture\.json/);
+  assert.match(html, /Fixture sintética\/sanitizada/);
+  assert.match(html, /Sintéticos e sanitizados/);
+});
+
+test("IMOB-PILOT-7B: HITL and proof receipt bundle states are read-only", () => {
+  const html = renderFrontDoorImobFixturePreview();
+
+  assert.match(html, /HITL gate read-only/);
+  assert.match(html, /APPROVAL_REQUIRED/);
+  assert.match(html, /blocked/);
+  assert.match(html, /view_details, request_review/);
+  assert.match(html, /Proof\/receipt\/bundle state read-only/);
+  assert.match(html, /PROOF_UNAVAILABLE_READ_ONLY/);
+  assert.match(html, /not_required/);
+  assert.match(html, /Nenhum receipt, bundle, proof, ledger ou referência produtiva é gerado/);
+});
+
+test("IMOB-PILOT-7B: operational boundaries are explicit and no mutational CTA is rendered", () => {
+  const html = renderFrontDoorImobFixturePreview();
+
+  assert.match(html, /Sem provider/);
+  assert.match(html, /Sem DB, ledger ou audit/);
+  assert.match(html, /Sem receipt, bundle ou proof real/);
+  assert.match(html, /Sem CTA mutacional/);
+  assert.match(html, /Sem aprovação real/);
+  assert.match(html, /Sem policy decision no frontend/);
+  assert.match(html, /Sem regra no ChatAgentLauncher/);
+  assert.doesNotMatch(html, /<button/i);
+  assert.doesNotMatch(html, /href=/i);
+  assert.doesNotMatch(html, /onClick/i);
+  assert.doesNotMatch(html, /Open IMOB cockpit/);
+  assert.doesNotMatch(html, /\/app\/imob\/chat/);
 });
