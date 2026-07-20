@@ -120,7 +120,7 @@
       "type": "object",
       "required": ["source", "variant"],
       "properties": {
-        "source": { "type": "string", "enum": ["fixture", "operational"] },
+        "source": { "type": "string", "enum": ["fixture", "shadow", "operational"] },
         "variant": { "type": "string", "enum": ["blocked", "chat_card", "result_list", "cockpit_link"] }
       },
       "additionalProperties": false
@@ -161,6 +161,25 @@
             "required": ["mode"]
           },
           "outcome": { "const": "preview_only" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "presentation": {
+            "properties": { "source": { "const": "shadow" } },
+            "required": ["source"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "capability": {
+            "properties": { "mode": { "const": "read_only" } },
+            "required": ["mode"]
+          },
+          "outcome": { "enum": ["preview_only", "blocked"] }
         }
       }
     },

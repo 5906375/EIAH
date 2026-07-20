@@ -17,6 +17,7 @@
   "invariants": [
     "Registry, RBAC, entitlement and policy not evaluated must block",
     "fixture requires read_only and preview_only",
+    "shadow requires read_only and preview_only or blocked",
     "critical_action requires approved HITL",
     "capability and mode must exist in the active scoped registry",
     "surface projection must redact tenantId and workspaceId",

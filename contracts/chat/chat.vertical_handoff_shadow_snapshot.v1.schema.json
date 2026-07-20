@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eiah.local/contracts/chat/chat.vertical_handoff_shadow_snapshot.v1.schema.json",
+  "title": "Chat Vertical Handoff Shadow Snapshot v1",
+  "type": "object",
+  "required": ["version", "vertical", "capability", "presentation", "outcome", "reasonCode"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "chat.vertical_handoff_shadow_snapshot.v1"
+    },
+    "vertical": {
+      "type": "object",
+      "required": ["id"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "anyOf": [
+            { "enum": ["core", "imob", "legal", "mkt", "bpo_financeiro", "log", "health"] },
+            { "pattern": "^custom:[a-z0-9](?:[a-z0-9_-]{0,61}[a-z0-9])?$" }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "capability": {
+      "type": "object",
+      "required": ["id", "mode"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9._-]*$" },
+        "mode": { "type": "string", "const": "read_only" }
+      },
+      "additionalProperties": false
+    },
+    "presentation": {
+      "type": "object",
+      "required": ["source", "variant"],
+      "properties": {
+        "source": { "type": "string", "enum": ["fixture", "shadow"] },
+        "variant": { "type": "string", "enum": ["blocked", "chat_card", "result_list", "cockpit_link"] }
+      },
+      "additionalProperties": false
+    },
+    "outcome": { "type": "string", "enum": ["preview_only", "blocked"] },
+    "reasonCode": {
+      "type": "string",
+      "enum": [
+        "VERTICAL_NOT_REGISTERED",
+        "VERTICAL_DISABLED",
+        "VERTICAL_ENTITLEMENT_REQUIRED",
+        "VERTICAL_SCOPE_DENIED",
+        "VERTICAL_CAPABILITY_NOT_AVAILABLE",
+        "VERTICAL_REGISTRY_VERSION_MISMATCH",
+        "VERTICAL_POLICY_DENIED",
+        "VERTICAL_HITL_REQUIRED",
+        "VERTICAL_GOVERNANCE_NOT_EVALUATED",
+        "VERTICAL_PRESENTATION_INVALID",
+        "VERTICAL_HANDOFF_ALLOWED",
+        "VERTICAL_PREVIEW_ONLY"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "outcome": { "const": "blocked" } },
+        "required": ["outcome"]
+      },
+      "then": {
+        "properties": {
+          "presentation": {
+            "properties": { "variant": { "const": "blocked" } },
+            "required": ["variant"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "outcome": { "const": "preview_only" } },
+        "required": ["outcome"]
+      },
+      "then": {
+        "properties": {
+          "presentation": {
+            "properties": {
+              "variant": { "enum": ["chat_card", "result_list", "cockpit_link"] }
+            },
+            "required": ["variant"]
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

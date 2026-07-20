@@ -126,6 +126,14 @@ const contracts: ContractSpec[] = [
     baselineFile: "contracts/chat/chat.vertical_handoff.v2.baseline.json",
     exampleFile: "contracts/examples/chat.vertical_handoff.v2.example.json",
   },
+  {
+    file: "contracts/chat/chat.vertical_handoff_shadow_snapshot.v1.schema.json",
+    version: "chat.vertical_handoff_shadow_snapshot.v1",
+    requiredFields: ["version", "vertical", "capability", "presentation", "outcome", "reasonCode"],
+    optionalFields: [],
+    baselineFile: "contracts/chat/chat.vertical_handoff_shadow_snapshot.v1.baseline.json",
+    exampleFile: "contracts/examples/chat.vertical_handoff_shadow_snapshot.v1.example.json",
+  },
 ];
 
 const VERTICAL_REASON_CODE_CATALOG = "contracts/chat/vertical.reason_codes.v1.json";
@@ -241,6 +249,16 @@ function sameStringSet(left: string[], right: string[]): boolean {
   return left.length === right.length && left.every((value) => right.includes(value));
 }
 
+function sourceFiles(root: string): string[] {
+  if (!fs.existsSync(root)) return [];
+
+  return fs.readdirSync(root, { withFileTypes: true }).flatMap((entry) => {
+    const file = path.join(root, entry.name);
+    if (entry.isDirectory()) return sourceFiles(file);
+    return /\.(ts|tsx)$/.test(entry.name) ? [file] : [];
+  });
+}
+
 const violations: Violation[] = [];
 
 for (const contract of contracts) {
@@ -330,22 +348,45 @@ for (const contract of contracts) {
 }
 
 const reasonCatalog = readJson(VERTICAL_REASON_CODE_CATALOG, violations);
-const handoffV2 = readJson("contracts/chat/chat.vertical_handoff.v2.schema.json", violations);
-if (reasonCatalog && handoffV2) {
+const reasonCodeSchemas = [
+  "contracts/chat/chat.vertical_handoff.v2.schema.json",
+  "contracts/chat/chat.vertical_handoff_shadow_snapshot.v1.schema.json",
+];
+if (reasonCatalog) {
   if (reasonCatalog.version !== "vertical.reason_codes.v1") {
     violations.push({ message: "reason_catalog_version_mismatch", file: VERTICAL_REASON_CODE_CATALOG, field: "version" });
   }
 
   const catalogCodes = asStringArray(reasonCatalog.codes);
-  const handoffProperties = isObject(handoffV2.properties) ? handoffV2.properties : {};
-  const reasonCodeProperty = isObject(handoffProperties.reasonCode) ? handoffProperties.reasonCode : {};
-  const schemaCodes = asStringArray(reasonCodeProperty.enum);
-  if (catalogCodes.length === 0 || !sameStringSet(catalogCodes, schemaCodes)) {
-    violations.push({
-      message: "handoff_reason_codes_must_match_catalog",
-      file: "contracts/chat/chat.vertical_handoff.v2.schema.json",
-      field: "properties.reasonCode.enum",
-    });
+  for (const schemaFile of reasonCodeSchemas) {
+    const schema = readJson(schemaFile, violations);
+    if (!schema) continue;
+    const properties = isObject(schema.properties) ? schema.properties : {};
+    const reasonCodeProperty = isObject(properties.reasonCode) ? properties.reasonCode : {};
+    const schemaCodes = asStringArray(reasonCodeProperty.enum);
+    if (catalogCodes.length === 0 || !sameStringSet(catalogCodes, schemaCodes)) {
+      violations.push({
+        message: "handoff_reason_codes_must_match_catalog",
+        file: schemaFile,
+        field: "properties.reasonCode.enum",
+      });
+    }
+  }
+}
+
+const operationalSources = [...sourceFiles("apps/api/src"), ...sourceFiles("apps/web/src")].filter(
+  (file) => !file.includes(`${path.sep}tests${path.sep}`) &&
+    !file.includes(`${path.sep}types${path.sep}`) &&
+    !/\.test\.(ts|tsx)$/.test(file),
+);
+for (const file of operationalSources) {
+  const content = fs.readFileSync(file, "utf8");
+  if (
+    content.includes("chat.vertical_handoff.v2") ||
+    content.includes("chatVerticalHandoffV2Contract") ||
+    content.includes("chatVerticalHandoffV2ShadowSnapshot")
+  ) {
+    violations.push({ message: "chat_vertical_handoff_v2_operational_consumer_forbidden", file });
   }
 }
 

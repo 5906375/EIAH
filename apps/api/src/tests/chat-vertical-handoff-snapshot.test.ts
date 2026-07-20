@@ -13,6 +13,10 @@ import {
   projectChatVerticalHandoffV2ForSurface,
   verticalRegistryV1Schema,
 } from "../types/chatVerticalHandoffV2Contract";
+import {
+  buildChatVerticalHandoffV2ShadowSnapshot,
+  chatVerticalHandoffV2ShadowSnapshotSchema,
+} from "../types/chatVerticalHandoffV2ShadowSnapshot";
 
 const baseInput = {
   tenantId: "tenant-imob-arch",
@@ -389,4 +393,132 @@ test("PR1A: schemas are strict and reason codes match the canonical contract cat
     fs.readFileSync("contracts/chat/vertical.reason_codes.v1.json", "utf8"),
   ) as { codes: string[] };
   assert.deepEqual(catalog.codes, [...VERTICAL_HANDOFF_REASON_CODES]);
+});
+
+test("PR1B: fixture preview_only handoff projects to a read-only shadow snapshot", () => {
+  const result = buildChatVerticalHandoffV2ShadowSnapshot(handoffV2);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.sideEffects, 0);
+  if (!result.ok) assert.fail(result.reasonCode);
+  assert.deepEqual(result.snapshot, {
+    version: "chat.vertical_handoff_shadow_snapshot.v1",
+    vertical: { id: "imob" },
+    capability: { id: "inventory.preview", mode: "read_only" },
+    presentation: { source: "fixture", variant: "result_list" },
+    outcome: "preview_only",
+    reasonCode: "VERTICAL_PREVIEW_ONLY",
+  });
+});
+
+test("PR1B: shadow preview_only handoff remains contract-only and read-only", () => {
+  const handoff = clone(handoffV2);
+  handoff.presentation.source = "shadow";
+
+  const contractResult = evaluateChatVerticalHandoffV2(registryV1, handoff);
+  const snapshotResult = buildChatVerticalHandoffV2ShadowSnapshot(handoff);
+
+  assert.equal(contractResult.ok, true);
+  assert.equal(snapshotResult.ok, true);
+  if (!snapshotResult.ok) assert.fail(snapshotResult.reasonCode);
+  assert.equal(snapshotResult.snapshot.presentation.source, "shadow");
+  assert.equal(snapshotResult.snapshot.capability.mode, "read_only");
+  assert.equal(snapshotResult.snapshot.outcome, "preview_only");
+});
+
+test("PR1B: blocked shadow handoff projects to a blocked snapshot", () => {
+  const handoff = clone(handoffV2);
+  handoff.presentation.source = "shadow";
+  handoff.presentation.variant = "blocked";
+  handoff.outcome = "blocked";
+  handoff.reasonCode = "VERTICAL_POLICY_DENIED";
+  handoff.governance.policy.decision = "denied";
+
+  const result = buildChatVerticalHandoffV2ShadowSnapshot(handoff);
+
+  assert.equal(result.ok, true);
+  if (!result.ok) assert.fail(result.reasonCode);
+  assert.equal(result.snapshot.presentation.variant, "blocked");
+  assert.equal(result.snapshot.outcome, "blocked");
+  assert.equal(result.snapshot.reasonCode, "VERTICAL_POLICY_DENIED");
+});
+
+test("PR1B: snapshot redacts governance, refs and sensitive content fields", () => {
+  const result = buildChatVerticalHandoffV2ShadowSnapshot(handoffV2);
+  assert.equal(result.ok, true);
+  if (!result.ok) assert.fail(result.reasonCode);
+
+  const serialized = JSON.stringify(result.snapshot);
+  for (const forbidden of [
+    "tenantId",
+    "workspaceId",
+    "governance",
+    "refs",
+    "tenant-contract-test",
+    "workspace-contract-test",
+    "conversation-contract-test",
+    "thread-contract-test",
+    "prompt",
+    "response",
+    "rawDocument",
+    "documentBody",
+  ]) {
+    assert.equal(serialized.includes(forbidden), false, forbidden);
+  }
+});
+
+test("PR1B: input carrying prompt, response or raw document fields is rejected", () => {
+  for (const field of ["prompt", "response", "rawDocument", "documentBody"] as const) {
+    const result = buildChatVerticalHandoffV2ShadowSnapshot({
+      ...handoffV2,
+      [field]: "synthetic content must not cross the adapter",
+    });
+
+    assert.equal(result.ok, false, field);
+    if (result.ok) assert.fail(`expected ${field} rejection`);
+    assert.equal(result.reasonCode, "VERTICAL_PRESENTATION_INVALID");
+  }
+});
+
+test("PR1B: operational, allowed and mutational handoffs cannot enter the shadow snapshot", () => {
+  const operational = clone(handoffV2);
+  operational.presentation.source = "operational";
+  const allowed = clone(handoffV2);
+  allowed.presentation.source = "shadow";
+  allowed.outcome = "allowed";
+  const mutational = clone(handoffV2);
+  mutational.presentation.source = "shadow";
+  mutational.capability.mode = "requires_write";
+  const blockedFixture = clone(handoffV2);
+  blockedFixture.presentation.variant = "blocked";
+  blockedFixture.outcome = "blocked";
+
+  for (const handoff of [operational, allowed, mutational, blockedFixture]) {
+    const result = buildChatVerticalHandoffV2ShadowSnapshot(handoff);
+    assert.equal(result.ok, false);
+    if (result.ok) assert.fail("expected failure");
+    assert.equal(result.reasonCode, "VERTICAL_PRESENTATION_INVALID");
+    assert.equal(result.sideEffects, 0);
+  }
+});
+
+test("PR1B: shadow snapshot schema is strict and rejects governance identifiers", () => {
+  const result = buildChatVerticalHandoffV2ShadowSnapshot(handoffV2);
+  assert.equal(result.ok, true);
+  if (!result.ok) assert.fail(result.reasonCode);
+
+  assert.equal(
+    chatVerticalHandoffV2ShadowSnapshotSchema.safeParse({
+      ...result.snapshot,
+      tenantId: "tenant-must-not-render",
+    }).success,
+    false,
+  );
+  assert.equal(
+    chatVerticalHandoffV2ShadowSnapshotSchema.safeParse({
+      ...result.snapshot,
+      workspaceId: "workspace-must-not-render",
+    }).success,
+    false,
+  );
 });
