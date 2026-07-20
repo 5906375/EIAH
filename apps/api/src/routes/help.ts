@@ -6,6 +6,10 @@ import { createGovernedRouter } from "../middlewares/asyncHandler";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
 import { queryEiahHelpKnowledge, seedEiahHelpKnowledge } from "../services/eiahHelpKnowledge";
 import { buildFrictionEvent, mapHelpdeskUxIssueToFrictionKind } from "../types/frictionEventContract";
+import {
+  buildChatRouteTelemetryInvalidPayloadError,
+  ChatRouteTelemetrySchema,
+} from "../types/chatRouteTelemetryContract";
 
 const helpRouter = createGovernedRouter();
 helpRouter.use(enforceTenant);
@@ -246,6 +250,38 @@ helpRouter.post("/help/eiah/reindex", async (req, res) => {
   return res.json({
     ok: true,
     data: result,
+  });
+});
+
+helpRouter.post("/helpdesk/telemetry", async (req, res) => {
+  const { authContext, prisma } = req as TenantAwareRequest;
+  if (!authContext || !prisma) {
+    return res.status(500).json({
+      ok: false,
+      error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" },
+    });
+  }
+
+  const parsed = ChatRouteTelemetrySchema.safeParse(req.body ?? {});
+  if (!parsed.success) {
+    return res.status(400).json(buildChatRouteTelemetryInvalidPayloadError());
+  }
+
+  const telemetry = await prisma.memoryEvent.create({
+    data: {
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      agentId: parsed.data.surfaceRoute === "/app/chat" ? "eiah-frontdoor" : "imob-chat",
+      runId: null,
+      key: "chat.route.telemetry",
+      content: `${parsed.data.event}:${parsed.data.surfaceRoute}`,
+      metadata: parsed.data,
+    },
+  });
+
+  return res.status(201).json({
+    ok: true,
+    data: { id: telemetry.id },
   });
 });
 

@@ -83,6 +83,7 @@ export function buildLauncherDecisionTelemetry(params: {
     handoffEligible:
       params.decision.kind === "legal_context_entry" ||
       params.decision.kind === "legal_handoff",
+    genericTutorialObserved: params.decision.kind === "orchestrator_guidance",
     proposalDomain: params.decision.proposalDomain ?? null,
     conversationStage: params.decision.conversationStage ?? null,
     proposalContextRecovered: params.decision.proposalContextRecovered ?? false,

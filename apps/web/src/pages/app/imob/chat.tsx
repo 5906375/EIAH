@@ -80,6 +80,10 @@ import { extractImobWorkbenchIntakeContext } from "@/features/imob/imobWorkbench
 import { KnowledgeCard, type KnowledgeAction } from "@/features/imob/KnowledgeCard";
 import { ImobKnowledgeViewer } from "@/features/imob/ImobKnowledgeViewer";
 import { ImobAccessGateCard } from "@/components/imob/ImobAccessGateCard";
+import {
+  buildChatRouteEntryTelemetry,
+  emitChatRouteTelemetry,
+} from "@/components/agents/chatRouteTelemetry";
 import { ContextualCostPanel } from "@/components/billing/ContextualCostPanel";
 import { formatDataInputTemplate, getDataInputTemplate } from "@/domain/inputTemplates";
 import { CONTRACT_SCHEMAS } from "@/features/imob/contractSchemas";
@@ -2145,6 +2149,34 @@ const ImobChatPage: React.FC = () => {
   const actionIdConsumedRef = React.useRef(false);
   const persistedContractTemplateKeysRef = React.useRef<Set<string>>(new Set());
   const loadingRunFinanceIdsRef = React.useRef<Set<string>>(new Set());
+  const routeEntryTelemetrySentRef = React.useRef(false);
+  const previousVerticalTelemetryRef = React.useRef<VerticalId>("imob");
+
+  React.useEffect(() => {
+    if (routeEntryTelemetrySentRef.current) return;
+    routeEntryTelemetrySentRef.current = true;
+    emitChatRouteTelemetry(buildChatRouteEntryTelemetry({
+      surfaceRoute: "/app/imob/chat",
+      search: typeof window !== "undefined" ? window.location.search : "",
+      hash: typeof window !== "undefined" ? window.location.hash : "",
+      domainHint: searchParams.get("domain") ?? session.activeDomain ?? "imob",
+      selectedVertical: activeVerticalId,
+    }));
+  }, [activeVerticalId, searchParams, session.activeDomain]);
+
+  React.useEffect(() => {
+    const previousVertical = previousVerticalTelemetryRef.current;
+    if (previousVertical === activeVerticalId) return;
+    previousVerticalTelemetryRef.current = activeVerticalId;
+    emitChatRouteTelemetry({
+      event: "vertical_context_changed",
+      surfaceRoute: "/app/imob/chat",
+      domainHint: searchParams.get("domain") ?? session.activeDomain ?? "imob",
+      selectedVertical: activeVerticalId,
+      threadContinuityObserved: Boolean(selectedThreadId ?? activeThread?.id),
+      verticalSwitchObserved: true,
+    });
+  }, [activeThread?.id, activeVerticalId, searchParams, selectedThreadId, session.activeDomain]);
 
   React.useEffect(() => {
     const handlePointerDown = (event: MouseEvent) => {
@@ -3453,6 +3485,14 @@ const ImobChatPage: React.FC = () => {
         actionId: actionIdConsumedRef.current ? null : requestedActionId,
       });
     } catch (error) {
+      emitChatRouteTelemetry({
+        event: "error_observed",
+        surfaceRoute: "/app/imob/chat",
+        domainHint: searchParams.get("domain") ?? session.activeDomain ?? "imob",
+        selectedVertical: activeVerticalId,
+        threadContinuityObserved: Boolean(currentThreadId),
+        failClosedObserved: error instanceof ApiError && (error.status === 401 || error.status === 403),
+      });
       const presentationError = buildImobFrontdoorStatePresentation({
         kind: resolveImobFrontdoorErrorStateKind(error),
         error,
@@ -3470,6 +3510,27 @@ const ImobChatPage: React.FC = () => {
       setState("blocked");
       return;
     }
+    const resolvedProof = turn.presentation.proof;
+    emitChatRouteTelemetry({
+      event: "turn_observed",
+      surfaceRoute: "/app/imob/chat",
+      domainHint: searchParams.get("domain") ?? session.activeDomain ?? "imob",
+      selectedVertical: activeVerticalId,
+      decisionKind: turn.mode,
+      feature:
+        turn.mode === "search_knowledge"
+          ? "knowledge_search"
+          : resolvedProof?.bundlePath
+            ? "bundle"
+            : resolvedProof?.receiptPath
+              ? "receipt"
+              : resolvedProof
+                ? "proof"
+                : null,
+      threadContinuityObserved: Boolean(currentThreadId),
+      verticalSwitchObserved: false,
+      failClosedObserved: turn.mode === "blocked",
+    });
     const resolvedIntent = turn.executionRequest?.intent ?? null;
     const caseContextThreadId = typeof turn.caseContext?.threadId === "string" && turn.caseContext.threadId.trim().length > 0
       ? turn.caseContext.threadId.trim()
@@ -4109,6 +4170,14 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         threadId: uploadThread.id,
         uploadedDocuments: uploadedItems.length,
         caseId: resolvedUploadCaseId,
+      });
+      emitChatRouteTelemetry({
+        event: "feature_observed",
+        surfaceRoute: "/app/imob/chat",
+        domainHint: searchParams.get("domain") ?? session.activeDomain ?? "imob",
+        selectedVertical: activeVerticalId,
+        feature: "document_intake",
+        threadContinuityObserved: Boolean(uploadThread.id),
       });
 
       try {

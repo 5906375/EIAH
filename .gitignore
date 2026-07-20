@@ -60,6 +60,7 @@ docs/architecture/*
 !docs/architecture/white-label-runtime-gap.md
 !docs/architecture/EIAH_OUTPUTS_MATRIX_v1.md
 !docs/architecture/worker-topology.md
+!docs/architecture/existing-structure-preflight.md
 
 # --------------------------------------------
 # Dados temporários e uploads
