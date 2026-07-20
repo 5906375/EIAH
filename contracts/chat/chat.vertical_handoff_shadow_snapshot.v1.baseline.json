@@ -1,0 +1,30 @@
+{
+  "contractName": "chat-vertical-handoff-shadow-snapshot",
+  "version": "chat.vertical_handoff_shadow_snapshot.v1",
+  "schema": "contracts/chat/chat.vertical_handoff_shadow_snapshot.v1.schema.json",
+  "sourceContract": "chat.vertical_handoff.v2",
+  "requiredFields": ["version", "vertical", "capability", "presentation", "outcome", "reasonCode"],
+  "invariants": [
+    "source is fixture or shadow",
+    "mode is read_only",
+    "outcome is preview_only or blocked",
+    "blocked outcome uses blocked presentation variant",
+    "surface projection contains no governance or reference identifiers",
+    "additionalProperties is false at every object boundary"
+  ],
+  "prohibitedFields": [
+    "tenantId",
+    "workspaceId",
+    "governance",
+    "refs",
+    "prompt",
+    "response",
+    "rawDocument",
+    "documentBody"
+  ],
+  "sourceFiles": [
+    "apps/api/src/types/chatVerticalHandoffV2ShadowSnapshot.ts",
+    "apps/api/src/tests/chat-vertical-handoff-snapshot.test.ts",
+    "scripts/checkArchChatContracts.ts"
+  ]
+}

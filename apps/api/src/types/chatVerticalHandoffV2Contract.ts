@@ -165,7 +165,7 @@ export const chatVerticalHandoffV2Schema = z
       .strict(),
     presentation: z
       .object({
-        source: z.enum(["fixture", "operational"]),
+        source: z.enum(["fixture", "shadow", "operational"]),
         variant: z.enum(["blocked", "chat_card", "result_list", "cockpit_link"]),
       })
       .strict(),
@@ -269,6 +269,12 @@ export function evaluateChatVerticalHandoffV2(
   if (
     handoff.presentation.source === "fixture" &&
     (handoff.capability.mode !== "read_only" || handoff.outcome !== "preview_only")
+  ) {
+    return blocked("VERTICAL_PRESENTATION_INVALID");
+  }
+  if (
+    handoff.presentation.source === "shadow" &&
+    (handoff.capability.mode !== "read_only" || handoff.outcome === "allowed")
   ) {
     return blocked("VERTICAL_PRESENTATION_INVALID");
   }

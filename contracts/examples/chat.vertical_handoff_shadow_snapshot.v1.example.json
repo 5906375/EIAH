@@ -1,0 +1,16 @@
+{
+  "version": "chat.vertical_handoff_shadow_snapshot.v1",
+  "vertical": {
+    "id": "imob"
+  },
+  "capability": {
+    "id": "inventory.preview",
+    "mode": "read_only"
+  },
+  "presentation": {
+    "source": "shadow",
+    "variant": "blocked"
+  },
+  "outcome": "blocked",
+  "reasonCode": "VERTICAL_POLICY_DENIED"
+}
