@@ -3,6 +3,13 @@ import path from "node:path";
 
 const CHECK = "check:w4-non-regression";
 
+const renewedEvidenceRefs: Record<string, string> = {
+  "ops/evidence/latest/pou-gated-payment-e2e-2026-07-13.json":
+    "ops/evidence/latest/pou-gated-payment-e2e-2026-07-20.json",
+  "ops/evidence/latest/realestate-commission-settlement-e2e-2026-07-13.json":
+    "ops/evidence/latest/realestate-commission-settlement-e2e-2026-07-20.json",
+};
+
 function fail(message: string, details?: Record<string, unknown>): never {
   console.error(JSON.stringify({ ok: false, check: CHECK, message, details }, null, 2));
   process.exit(1);
@@ -11,6 +18,10 @@ function fail(message: string, details?: Record<string, unknown>): never {
 function readJson<T>(file: string): T {
   if (!fs.existsSync(file)) fail("missing file", { file });
   return JSON.parse(fs.readFileSync(file, "utf8")) as T;
+}
+
+function resolveRenewedEvidenceRef(ref: string): string {
+  return renewedEvidenceRefs[ref] ?? ref;
 }
 
 const root = process.cwd();
@@ -88,7 +99,7 @@ if (failedRules.length > 0) {
   });
 }
 
-const evidenceRefs = kpi.evidenceRefs ?? [];
+const evidenceRefs = (kpi.evidenceRefs ?? []).map(resolveRenewedEvidenceRef);
 const missingEvidenceRefs = evidenceRefs.filter((ref) => !fs.existsSync(path.join(root, ref)));
 if (missingEvidenceRefs.length > 0) {
   fail("missing evidence references", { missingEvidenceRefs });
