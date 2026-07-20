@@ -4,6 +4,13 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## Front Door Orchestration Preflight (2026-07)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Preflight de reuso para estrutura conversacional | `docs/architecture/existing-structure-preflight.md` | Registra a regra de inventario previo, matriz reutilizar/estender/adaptar/substituir/nao aplicavel, bloqueio P0 contra estrutura paralela, launcher render-only e DoD minimo para PR funcional posterior. |
+| Auditoria de orquestracao e baseline passivo das duas rotas | `docs/ops/audit/AUDIT-FRONTDOOR-ORCHESTRATION-2026-07.md` | Registra o diagnostico local, o Caso 7, os candidatos obrigatorios de reuso, a convivencia sem redirect e o uso conservador da telemetria passiva; nao comprova paridade funcional nem unificacao fechada. |
+
 ## Domain & DNS / Go-Live Controlado
 
 | Assunto | Arquivo | O que prova |
