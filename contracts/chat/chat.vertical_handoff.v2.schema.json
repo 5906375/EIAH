@@ -1,0 +1,191 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eiah.local/contracts/chat/chat.vertical_handoff.v2.schema.json",
+  "title": "Chat Vertical Handoff v2",
+  "type": "object",
+  "required": [
+    "version",
+    "handoffId",
+    "vertical",
+    "capability",
+    "refs",
+    "governance",
+    "presentation",
+    "outcome",
+    "reasonCode"
+  ],
+  "properties": {
+    "version": { "type": "string", "const": "chat.vertical_handoff.v2" },
+    "handoffId": { "type": "string", "minLength": 1 },
+    "vertical": {
+      "type": "object",
+      "required": ["id", "registryVersion"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "anyOf": [
+            { "enum": ["core", "imob", "legal", "mkt", "bpo_financeiro", "log", "health"] },
+            { "pattern": "^custom:[a-z0-9](?:[a-z0-9_-]{0,61}[a-z0-9])?$" }
+          ]
+        },
+        "label": { "type": "string", "minLength": 1 },
+        "registryVersion": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "capability": {
+      "type": "object",
+      "required": ["id", "mode"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9._-]*$" },
+        "mode": {
+          "type": "string",
+          "enum": ["read_only", "requires_write", "critical_action"]
+        }
+      },
+      "additionalProperties": false
+    },
+    "refs": {
+      "type": "object",
+      "properties": {
+        "conversationId": { "type": "string", "minLength": 1 },
+        "threadId": { "type": "string", "minLength": 1 },
+        "caseId": { "type": "string", "minLength": 1 },
+        "entityRef": {
+          "type": "object",
+          "required": ["type", "id"],
+          "properties": {
+            "type": { "type": "string", "minLength": 1 },
+            "id": { "type": "string", "minLength": 1 }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "governance": {
+      "type": "object",
+      "required": ["tenantId", "workspaceId", "scope", "registry", "rbac", "entitlement", "policy", "hitl"],
+      "properties": {
+        "tenantId": { "type": "string", "minLength": 1 },
+        "workspaceId": { "type": "string", "minLength": 1 },
+        "scope": { "type": "string", "minLength": 1 },
+        "registry": {
+          "type": "object",
+          "required": ["decision"],
+          "properties": {
+            "decision": { "type": "string", "enum": ["allowed", "denied", "not_evaluated"] }
+          },
+          "additionalProperties": false
+        },
+        "rbac": {
+          "type": "object",
+          "required": ["decision"],
+          "properties": {
+            "decision": { "type": "string", "enum": ["allowed", "denied", "not_required", "not_evaluated"] }
+          },
+          "additionalProperties": false
+        },
+        "entitlement": {
+          "type": "object",
+          "required": ["decision"],
+          "properties": {
+            "decision": { "type": "string", "enum": ["allowed", "denied", "not_required", "not_evaluated"] }
+          },
+          "additionalProperties": false
+        },
+        "policy": {
+          "type": "object",
+          "required": ["decision"],
+          "properties": {
+            "decision": { "type": "string", "enum": ["allowed", "denied", "not_required", "not_evaluated"] }
+          },
+          "additionalProperties": false
+        },
+        "hitl": {
+          "type": "object",
+          "required": ["status"],
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": ["not_required", "required", "approved", "rejected", "expired", "not_evaluated"]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "presentation": {
+      "type": "object",
+      "required": ["source", "variant"],
+      "properties": {
+        "source": { "type": "string", "enum": ["fixture", "operational"] },
+        "variant": { "type": "string", "enum": ["blocked", "chat_card", "result_list", "cockpit_link"] }
+      },
+      "additionalProperties": false
+    },
+    "outcome": { "type": "string", "enum": ["allowed", "blocked", "preview_only"] },
+    "reasonCode": {
+      "type": "string",
+      "enum": [
+        "VERTICAL_NOT_REGISTERED",
+        "VERTICAL_DISABLED",
+        "VERTICAL_ENTITLEMENT_REQUIRED",
+        "VERTICAL_SCOPE_DENIED",
+        "VERTICAL_CAPABILITY_NOT_AVAILABLE",
+        "VERTICAL_REGISTRY_VERSION_MISMATCH",
+        "VERTICAL_POLICY_DENIED",
+        "VERTICAL_HITL_REQUIRED",
+        "VERTICAL_GOVERNANCE_NOT_EVALUATED",
+        "VERTICAL_PRESENTATION_INVALID",
+        "VERTICAL_HANDOFF_ALLOWED",
+        "VERTICAL_PREVIEW_ONLY"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "presentation": {
+            "properties": { "source": { "const": "fixture" } },
+            "required": ["source"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "capability": {
+            "properties": { "mode": { "const": "read_only" } },
+            "required": ["mode"]
+          },
+          "outcome": { "const": "preview_only" }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "capability": {
+            "properties": { "mode": { "const": "critical_action" } },
+            "required": ["mode"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "governance": {
+            "properties": {
+              "hitl": {
+                "properties": { "status": { "const": "approved" } },
+                "required": ["status"]
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

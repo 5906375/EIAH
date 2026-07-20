@@ -1,0 +1,18 @@
+{
+  "contractName": "vertical-registry",
+  "version": "vertical.registry.v1",
+  "schema": "contracts/chat/vertical.registry.v1.schema.json",
+  "requiredFields": ["version", "registryVersion", "scope", "verticals"],
+  "invariants": [
+    "Every vertical id, including core, must be present in the active tenant/workspace registry before use",
+    "Known ids and registered custom:<slug> ids are the only accepted identities",
+    "label is presentation metadata and never identity",
+    "capability and mode must be declared together",
+    "additionalProperties is false at every object boundary"
+  ],
+  "prohibitedFields": ["prompt", "response", "rawDocument", "documentBody"],
+  "sourceFiles": [
+    "apps/api/src/types/chatVerticalHandoffV2Contract.ts",
+    "scripts/checkArchChatContracts.ts"
+  ]
+}

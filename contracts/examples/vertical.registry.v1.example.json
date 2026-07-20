@@ -1,0 +1,40 @@
+{
+  "version": "vertical.registry.v1",
+  "registryVersion": "registry-synthetic-1",
+  "scope": {
+    "tenantId": "tenant-synthetic",
+    "workspaceId": "workspace-synthetic"
+  },
+  "verticals": [
+    {
+      "id": "core",
+      "label": "EIAH",
+      "status": "enabled",
+      "capabilities": [
+        {
+          "id": "chat.general",
+          "allowedModes": ["read_only"]
+        }
+      ],
+      "entitlement": { "required": false, "key": null },
+      "rbac": { "requiredRoles": [] },
+      "policyGates": [],
+      "rolloutStage": "operationalized"
+    },
+    {
+      "id": "imob",
+      "label": "IMOB",
+      "status": "enabled",
+      "capabilities": [
+        {
+          "id": "inventory.preview",
+          "allowedModes": ["read_only"]
+        }
+      ],
+      "entitlement": { "required": true, "key": "REAL_ESTATE_CORE" },
+      "rbac": { "requiredRoles": ["workspace.member"] },
+      "policyGates": ["vertical.read_only"],
+      "rolloutStage": "context_only"
+    }
+  ]
+}

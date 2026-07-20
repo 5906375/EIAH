@@ -1,0 +1,31 @@
+{
+  "contractName": "chat-vertical-handoff",
+  "version": "chat.vertical_handoff.v2",
+  "schema": "contracts/chat/chat.vertical_handoff.v2.schema.json",
+  "supersedes": "chat.vertical_handoff.v1",
+  "requiredFields": [
+    "version",
+    "handoffId",
+    "vertical",
+    "capability",
+    "refs",
+    "governance",
+    "presentation",
+    "outcome",
+    "reasonCode"
+  ],
+  "invariants": [
+    "Registry, RBAC, entitlement and policy not evaluated must block",
+    "fixture requires read_only and preview_only",
+    "critical_action requires approved HITL",
+    "capability and mode must exist in the active scoped registry",
+    "surface projection must redact tenantId and workspaceId",
+    "additionalProperties is false at every object boundary"
+  ],
+  "prohibitedFields": ["prompt", "response", "rawDocument", "documentBody"],
+  "sourceFiles": [
+    "apps/api/src/types/chatVerticalHandoffV2Contract.ts",
+    "apps/api/src/tests/chat-vertical-handoff-snapshot.test.ts",
+    "scripts/checkArchChatContracts.ts"
+  ]
+}

@@ -1,0 +1,33 @@
+{
+  "version": "chat.vertical_handoff.v2",
+  "handoffId": "handoff-synthetic-preview",
+  "vertical": {
+    "id": "imob",
+    "label": "IMOB",
+    "registryVersion": "registry-synthetic-1"
+  },
+  "capability": {
+    "id": "inventory.preview",
+    "mode": "read_only"
+  },
+  "refs": {
+    "conversationId": "conversation-synthetic",
+    "threadId": "thread-synthetic"
+  },
+  "governance": {
+    "tenantId": "tenant-synthetic",
+    "workspaceId": "workspace-synthetic",
+    "scope": "imob:inventory:read",
+    "registry": { "decision": "allowed" },
+    "rbac": { "decision": "allowed" },
+    "entitlement": { "decision": "allowed" },
+    "policy": { "decision": "allowed" },
+    "hitl": { "status": "not_required" }
+  },
+  "presentation": {
+    "source": "fixture",
+    "variant": "result_list"
+  },
+  "outcome": "preview_only",
+  "reasonCode": "VERTICAL_PREVIEW_ONLY"
+}
