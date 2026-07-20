@@ -55,6 +55,7 @@ docs/architecture/*
 !docs/architecture/chat-runtime-entrypoint-debt.md
 !docs/architecture/fase-3-dividas-documentadas-closure.md
 !docs/architecture/imob-crm-governed-runtime.md
+!docs/architecture/vertical-context-imob.md
 !docs/architecture/p3-economy-hardening-closure.md
 !docs/architecture/presentation-snapshot-v1.md
 !docs/architecture/white-label-runtime-gap.md
