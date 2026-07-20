@@ -68,3 +68,22 @@ Catálogo: `IMOB_REASON_CODE_CATALOG`
 - Novos reason codes: mudança aditiva.
 - Remoção/renomeação: breaking change.
 - Adição de `category: "governance"` ao tipo `ImobReasonCodeSpec`: mudança aditiva no enum de categoria.
+
+## Chat to Vertical v2
+
+Fonte contratual versionada: `contracts/chat/vertical.reason_codes.v1.json`.
+
+Este catálogo cobre somente o preflight `chat.vertical_handoff.v2`; ele não substitui nem amplia implicitamente os códigos operacionais legados. Códigos iniciais:
+
+- `VERTICAL_NOT_REGISTERED`
+- `VERTICAL_DISABLED`
+- `VERTICAL_ENTITLEMENT_REQUIRED`
+- `VERTICAL_SCOPE_DENIED`
+- `VERTICAL_CAPABILITY_NOT_AVAILABLE`
+- `VERTICAL_REGISTRY_VERSION_MISMATCH`
+- `VERTICAL_POLICY_DENIED`
+- `VERTICAL_HITL_REQUIRED`
+- `VERTICAL_GOVERNANCE_NOT_EVALUATED`
+- `VERTICAL_PRESENTATION_INVALID`
+- `VERTICAL_HANDOFF_ALLOWED`
+- `VERTICAL_PREVIEW_ONLY`

@@ -1,10 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import fs from "node:fs";
 
 import {
   buildChatVerticalHandoffSnapshot,
   validateChatVerticalHandoffSnapshotAgainstSchema,
 } from "../services/chatVerticalHandoffSnapshot";
+import {
+  VERTICAL_HANDOFF_REASON_CODES,
+  chatVerticalHandoffV2Schema,
+  evaluateChatVerticalHandoffV2,
+  projectChatVerticalHandoffV2ForSurface,
+  verticalRegistryV1Schema,
+} from "../types/chatVerticalHandoffV2Contract";
 
 const baseInput = {
   tenantId: "tenant-imob-arch",
@@ -144,4 +152,241 @@ test("ARCH-IMPL-1: producer is read-only and exposes zero side effects without e
   assert.equal(first.snapshot.handoffId, second.snapshot.handoffId);
   assert.equal(JSON.stringify(first).includes("providerExternalCall"), false);
   assert.equal(JSON.stringify(first).includes("mutationExternalSideEffect"), false);
+});
+
+const registryV1 = {
+  version: "vertical.registry.v1",
+  registryVersion: "registry-test-1",
+  scope: {
+    tenantId: "tenant-contract-test",
+    workspaceId: "workspace-contract-test",
+  },
+  verticals: [
+    {
+      id: "core",
+      label: "EIAH",
+      status: "enabled",
+      capabilities: [{ id: "chat.general", allowedModes: ["read_only"] }],
+      entitlement: { required: false, key: null },
+      rbac: { requiredRoles: [] },
+      policyGates: [],
+      rolloutStage: "operationalized",
+    },
+    {
+      id: "imob",
+      label: "IMOB",
+      status: "enabled",
+      capabilities: [{ id: "inventory.preview", allowedModes: ["read_only"] }],
+      entitlement: { required: true, key: "REAL_ESTATE_CORE" },
+      rbac: { requiredRoles: ["workspace.member"] },
+      policyGates: ["vertical.read_only"],
+      rolloutStage: "context_only",
+    },
+  ],
+};
+
+const handoffV2 = {
+  version: "chat.vertical_handoff.v2",
+  handoffId: "handoff-contract-test",
+  vertical: {
+    id: "imob",
+    label: "Untrusted label",
+    registryVersion: "registry-test-1",
+  },
+  capability: {
+    id: "inventory.preview",
+    mode: "read_only",
+  },
+  refs: {
+    conversationId: "conversation-contract-test",
+    threadId: "thread-contract-test",
+  },
+  governance: {
+    tenantId: "tenant-contract-test",
+    workspaceId: "workspace-contract-test",
+    scope: "imob:inventory:read",
+    registry: { decision: "allowed" },
+    rbac: { decision: "allowed" },
+    entitlement: { decision: "allowed" },
+    policy: { decision: "allowed" },
+    hitl: { status: "not_required" },
+  },
+  presentation: {
+    source: "fixture",
+    variant: "result_list",
+  },
+  outcome: "preview_only",
+  reasonCode: "VERTICAL_PREVIEW_ONLY",
+};
+
+function clone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+test("PR1A: known vertical registered in the active scope is valid", () => {
+  const result = evaluateChatVerticalHandoffV2(registryV1, handoffV2);
+
+  assert.equal(result.ok, true);
+  assert.equal(result.sideEffects, 0);
+  if (!result.ok) assert.fail(result.reasonCode);
+  assert.equal(result.handoff.vertical.id, "imob");
+  assert.equal(result.handoff.vertical.label, "IMOB");
+});
+
+test("PR1A: registered custom vertical is valid", () => {
+  const registry = clone(registryV1);
+  registry.verticals.push({
+    id: "custom:agro",
+    label: "Agro",
+    status: "enabled",
+    capabilities: [{ id: "inventory.preview", allowedModes: ["read_only"] }],
+    entitlement: { required: false, key: null },
+    rbac: { requiredRoles: [] },
+    policyGates: [],
+    rolloutStage: "context_only",
+  });
+  const handoff = clone(handoffV2);
+  handoff.vertical.id = "custom:agro";
+
+  const result = evaluateChatVerticalHandoffV2(registry, handoff);
+  assert.equal(result.ok, true);
+});
+
+test("PR1A: malformed custom slug fails closed", () => {
+  const handoff = clone(handoffV2);
+  handoff.vertical.id = "custom:Customer Email";
+
+  const result = evaluateChatVerticalHandoffV2(registryV1, handoff);
+  assert.equal(result.ok, false);
+  if (result.ok) assert.fail("expected failure");
+  assert.equal(result.reasonCode, "VERTICAL_NOT_REGISTERED");
+});
+
+test("PR1A: unregistered vertical fails closed", () => {
+  const handoff = clone(handoffV2);
+  handoff.vertical.id = "legal";
+
+  const result = evaluateChatVerticalHandoffV2(registryV1, handoff);
+  assert.equal(result.ok, false);
+  if (result.ok) assert.fail("expected failure");
+  assert.equal(result.reasonCode, "VERTICAL_NOT_REGISTERED");
+});
+
+test("PR1A: disabled vertical fails closed", () => {
+  const registry = clone(registryV1);
+  registry.verticals[1].status = "disabled";
+
+  const result = evaluateChatVerticalHandoffV2(registry, handoffV2);
+  assert.equal(result.ok, false);
+  if (result.ok) assert.fail("expected failure");
+  assert.equal(result.reasonCode, "VERTICAL_DISABLED");
+});
+
+test("PR1A: missing entitlement fails closed", () => {
+  const handoff = clone(handoffV2);
+  handoff.governance.entitlement.decision = "denied";
+
+  const result = evaluateChatVerticalHandoffV2(registryV1, handoff);
+  assert.equal(result.ok, false);
+  if (result.ok) assert.fail("expected failure");
+  assert.equal(result.reasonCode, "VERTICAL_ENTITLEMENT_REQUIRED");
+});
+
+test("PR1A: unavailable capability or invalid mode fails closed", () => {
+  const unavailableCapability = clone(handoffV2);
+  unavailableCapability.capability.id = "knowledge.search";
+  const invalidMode = clone(handoffV2);
+  invalidMode.capability.mode = "unsafe";
+
+  for (const handoff of [unavailableCapability, invalidMode]) {
+    const result = evaluateChatVerticalHandoffV2(registryV1, handoff);
+    assert.equal(result.ok, false);
+    if (result.ok) assert.fail("expected failure");
+    assert.equal(result.reasonCode, "VERTICAL_CAPABILITY_NOT_AVAILABLE");
+  }
+});
+
+test("PR1A: unevaluated registry, RBAC, entitlement or policy fails closed", () => {
+  for (const gate of ["registry", "rbac", "entitlement", "policy"] as const) {
+    const handoff = clone(handoffV2);
+    handoff.governance[gate].decision = "not_evaluated";
+
+    const result = evaluateChatVerticalHandoffV2(registryV1, handoff);
+    assert.equal(result.ok, false);
+    if (result.ok) assert.fail("expected failure");
+    assert.equal(result.reasonCode, "VERTICAL_GOVERNANCE_NOT_EVALUATED");
+  }
+});
+
+test("PR1A: fixture without preview_only fails closed", () => {
+  const wrongOutcome = clone(handoffV2);
+  wrongOutcome.outcome = "allowed";
+
+  const registryWithWrite = clone(registryV1);
+  registryWithWrite.verticals[1].capabilities[0].allowedModes.push("requires_write");
+  const wrongMode = clone(handoffV2);
+  wrongMode.capability.mode = "requires_write";
+
+  for (const [registry, handoff] of [
+    [registryV1, wrongOutcome],
+    [registryWithWrite, wrongMode],
+  ] as const) {
+    const result = evaluateChatVerticalHandoffV2(registry, handoff);
+    assert.equal(result.ok, false);
+    if (result.ok) assert.fail("expected failure");
+    assert.equal(result.reasonCode, "VERTICAL_PRESENTATION_INVALID");
+  }
+});
+
+test("PR1A: core also requires an active scoped registry entry", () => {
+  const registry = clone(registryV1);
+  registry.verticals = registry.verticals.filter((vertical) => vertical.id !== "core");
+  const handoff = clone(handoffV2);
+  handoff.vertical.id = "core";
+  handoff.capability.id = "chat.general";
+
+  const result = evaluateChatVerticalHandoffV2(registry, handoff);
+  assert.equal(result.ok, false);
+  if (result.ok) assert.fail("expected failure");
+  assert.equal(result.reasonCode, "VERTICAL_NOT_REGISTERED");
+});
+
+test("PR1A: critical_action without approved HITL fails closed", () => {
+  const registry = clone(registryV1);
+  registry.verticals[1].capabilities[0].allowedModes.push("critical_action");
+  const handoff = clone(handoffV2);
+  handoff.capability.mode = "critical_action";
+  handoff.presentation.source = "operational";
+  handoff.outcome = "allowed";
+  handoff.reasonCode = "VERTICAL_HANDOFF_ALLOWED";
+  handoff.governance.hitl.status = "required";
+
+  const result = evaluateChatVerticalHandoffV2(registry, handoff);
+  assert.equal(result.ok, false);
+  if (result.ok) assert.fail("expected failure");
+  assert.equal(result.reasonCode, "VERTICAL_HITL_REQUIRED");
+});
+
+test("PR1A: surface projection redacts governance identifiers", () => {
+  const result = evaluateChatVerticalHandoffV2(registryV1, handoffV2);
+  assert.equal(result.ok, true);
+  if (!result.ok) assert.fail(result.reasonCode);
+
+  const projection = projectChatVerticalHandoffV2ForSurface(result.handoff);
+  const serialized = JSON.stringify(projection);
+  assert.equal("governance" in projection, false);
+  assert.equal(serialized.includes("tenant-contract-test"), false);
+  assert.equal(serialized.includes("workspace-contract-test"), false);
+  assert.equal(serialized.includes("tenantId"), false);
+  assert.equal(serialized.includes("workspaceId"), false);
+});
+
+test("PR1A: schemas are strict and reason codes match the canonical contract catalog", () => {
+  assert.equal(verticalRegistryV1Schema.safeParse({ ...registryV1, prompt: "not allowed" }).success, false);
+  assert.equal(chatVerticalHandoffV2Schema.safeParse({ ...handoffV2, response: "not allowed" }).success, false);
+
+  const catalog = JSON.parse(
+    fs.readFileSync("contracts/chat/vertical.reason_codes.v1.json", "utf8"),
+  ) as { codes: string[] };
+  assert.deepEqual(catalog.codes, [...VERTICAL_HANDOFF_REASON_CODES]);
 });

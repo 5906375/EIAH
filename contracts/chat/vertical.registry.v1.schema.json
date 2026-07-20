@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eiah.local/contracts/chat/vertical.registry.v1.schema.json",
+  "title": "Vertical Registry v1",
+  "type": "object",
+  "required": ["version", "registryVersion", "scope", "verticals"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "vertical.registry.v1"
+    },
+    "registryVersion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "scope": {
+      "type": "object",
+      "required": ["tenantId", "workspaceId"],
+      "properties": {
+        "tenantId": { "type": "string", "minLength": 1 },
+        "workspaceId": { "type": "string", "minLength": 1 }
+      },
+      "additionalProperties": false
+    },
+    "verticals": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "status",
+          "capabilities",
+          "entitlement",
+          "rbac",
+          "policyGates",
+          "rolloutStage"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "anyOf": [
+              { "enum": ["core", "imob", "legal", "mkt", "bpo_financeiro", "log", "health"] },
+              { "pattern": "^custom:[a-z0-9](?:[a-z0-9_-]{0,61}[a-z0-9])?$" }
+            ]
+          },
+          "label": { "type": "string", "minLength": 1 },
+          "status": { "type": "string", "enum": ["enabled", "disabled"] },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "allowedModes"],
+              "properties": {
+                "id": { "type": "string", "pattern": "^[a-z][a-z0-9._-]*$" },
+                "allowedModes": {
+                  "type": "array",
+                  "minItems": 1,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "enum": ["read_only", "requires_write", "critical_action"]
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "entitlement": {
+            "type": "object",
+            "required": ["required", "key"],
+            "properties": {
+              "required": { "type": "boolean" },
+              "key": {
+                "anyOf": [
+                  { "type": "string", "minLength": 1 },
+                  { "type": "null" }
+                ]
+              }
+            },
+            "additionalProperties": false
+          },
+          "rbac": {
+            "type": "object",
+            "required": ["requiredRoles"],
+            "properties": {
+              "requiredRoles": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": { "type": "string", "minLength": 1 }
+              }
+            },
+            "additionalProperties": false
+          },
+          "policyGates": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "rolloutStage": {
+            "type": "string",
+            "enum": ["context_only", "installed_surface", "operationalized"]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
