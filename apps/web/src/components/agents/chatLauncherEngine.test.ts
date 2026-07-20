@@ -24,6 +24,49 @@ import {
   resolveLauncherProposalDecision,
 } from "./chatLauncherEngine.ts";
 import { resolveHelpDictionarySnapshot } from "./helpDictionaryResolver.ts";
+import {
+  buildChatRouteEntryTelemetry,
+  resolveChatRouteEntryKind,
+  sanitizeChatRouteTelemetryPayload,
+} from "./chatRouteTelemetry.ts";
+
+test("chat route telemetry distinguishes plain and deep-link entries", () => {
+  assert.equal(resolveChatRouteEntryKind({ search: "", hash: "" }), "plain");
+  assert.equal(resolveChatRouteEntryKind({ search: "?domain=imob", hash: "" }), "deep_link");
+  assert.equal(resolveChatRouteEntryKind({ search: "", hash: "#chat-agent-launcher" }), "deep_link");
+});
+
+test("chat route telemetry emits a content-free route baseline envelope", () => {
+  assert.deepEqual(
+    buildChatRouteEntryTelemetry({
+      surfaceRoute: "/app/chat",
+      search: "?domain=imob",
+      hash: "#chat-agent-launcher",
+      domainHint: " imob ",
+    }),
+    {
+      event: "route_entry",
+      surfaceRoute: "/app/chat",
+      entryKind: "deep_link",
+      domainHint: "imob",
+      selectedVertical: null,
+    },
+  );
+});
+
+test("chat route telemetry omits arbitrary domain hints containing fake PII", () => {
+  assert.deepEqual(
+    sanitizeChatRouteTelemetryPayload({
+      event: "route_entry",
+      surfaceRoute: "/app/chat",
+      domainHint: "email@example.com",
+    }),
+    {
+      event: "route_entry",
+      surfaceRoute: "/app/chat",
+    },
+  );
+});
 
 function createProposalSnapshot(
   overrides: Partial<MessagePresentationSnapshot> = {}
@@ -143,6 +186,7 @@ test("buildLauncherPersistenceTelemetry marks fallback persistence flags and tra
     clarificationIssued: false,
     handoffOffered: false,
     handoffEligible: false,
+    genericTutorialObserved: false,
     proposalDomain: null,
     conversationStage: null,
     proposalContextRecovered: true,
@@ -166,6 +210,7 @@ test("buildLauncherPersistenceTelemetry preserves non-fallback shape for clarifi
   assert.equal(telemetry.clarificationIssued, true);
   assert.equal(telemetry.handoffOffered, false);
   assert.equal(telemetry.handoffEligible, false);
+  assert.equal(telemetry.genericTutorialObserved, false);
   assert.equal(telemetry.proposalDomain, null);
   assert.equal(telemetry.conversationStage, null);
 });

@@ -3245,7 +3245,13 @@ export async function apiCreateImobChatTelemetry(
 ) {
   return http<{ ok: true; telemetry: { id: string; createdAt: string } }>(`/imob/chat/telemetry`, {
     method: "POST",
-    body: JSON.stringify(body),
+    body: JSON.stringify({
+      ...body,
+      metadata: {
+        surfaceRoute: "/app/imob/chat",
+        ...(body.metadata ?? {}),
+      },
+    }),
   });
 }
 
@@ -4235,6 +4241,25 @@ export type HelpdeskSessionCreatePayload = {
   metadata?: Record<string, unknown>;
 };
 
+export type CanonicalChatDomain = "imob" | "legal" | "mkt" | "fin" | "log" | "core";
+
+export type ChatRouteTelemetryPayload = {
+  event: "route_entry" | "turn_observed" | "feature_observed" | "vertical_context_changed" | "error_observed";
+  surfaceRoute: "/app/chat" | "/app/imob/chat";
+  entryKind?: "plain" | "deep_link" | null;
+  domainHint?: CanonicalChatDomain | null;
+  selectedVertical?: string | null;
+  routeIntent?: string | null;
+  decisionKind?: string | null;
+  feature?: "knowledge_search" | "document_intake" | "proof" | "receipt" | "bundle" | null;
+  genericFallbackObserved?: boolean;
+  genericTutorialObserved?: boolean;
+  threadContinuityObserved?: boolean;
+  verticalSwitchObserved?: boolean;
+  failClosedObserved?: boolean;
+  reasonCode?: string | null;
+};
+
 export type HelpdeskUxIssueCategory =
   | "clarification_overuse"
   | "generic_fallback"
@@ -4351,6 +4376,13 @@ export type HelpdeskContractCoverageResponse = {
 
 export async function apiCreateHelpdeskSession(payload: HelpdeskSessionCreatePayload) {
   return http<{ ok: boolean; data: { id: string } }>(`/helpdesk/session`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function apiCreateChatRouteTelemetry(payload: ChatRouteTelemetryPayload) {
+  return http<{ ok: true; data: { id: string } }>(`/helpdesk/telemetry`, {
     method: "POST",
     body: JSON.stringify(payload),
   });

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import runsOverviewPrint from "../../../assets/playbook/runs/runs-overview.svg";
 import runsCreatePrint from "../../../assets/playbook/runs/runs-criar.svg";
@@ -7,6 +7,10 @@ import runsHistoryPrint from "../../../assets/playbook/runs/runs-historico.svg";
 import runsResultPrint from "../../../assets/playbook/runs/runs-resultado.svg";
 import AgentSelect from "../../../components/agents/AgentSelect";
 import ChatAgentLauncher from "../../../components/agents/ChatAgentLauncher";
+import {
+  buildChatRouteEntryTelemetry,
+  emitChatRouteTelemetry,
+} from "@/components/agents/chatRouteTelemetry";
 import FrontDoorImobFixturePreviewPanel from "../../../components/chat/FrontDoorImobFixturePreviewPanel";
 import {
   buildPublicTaxonomyBoundaryLine,
@@ -850,6 +854,7 @@ const AgentsPage: React.FC = () => {
   const [agentId, setAgentId] = useState<string>();
   const [playbookAgent, setPlaybookAgent] = useState<string | null>(null);
   const [activeGuideTabId, setActiveGuideTabId] = useState<string | null>(null);
+  const lastRouteTelemetryKeyRef = useRef<string | null>(null);
   const { items: agentItems, status: agentsStatus, error: agentsError } = useAgents();
   const [agentBillingSummary, setAgentBillingSummary] = useState<AgentBillingSummaryItem[]>([]);
   const [billingLoading, setBillingLoading] = useState(true);
@@ -869,6 +874,10 @@ const AgentsPage: React.FC = () => {
     const params = new URLSearchParams(location.search);
     return params.get("plan")?.trim() ?? null;
   }, [location.search]);
+  const launcherDomainHint = useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get("domain")?.trim().toLowerCase() ?? null;
+  }, [location.search]);
   const showImobFixturePreview = useMemo(
     () => shouldRenderImobPilot2FixturePreview(location.search),
     [location.search]
@@ -884,6 +893,18 @@ const AgentsPage: React.FC = () => {
       });
     }
   }, [location.search]);
+
+  useEffect(() => {
+    const telemetryKey = `${location.pathname}${location.search}${location.hash}`;
+    if (lastRouteTelemetryKeyRef.current === telemetryKey) return;
+    lastRouteTelemetryKeyRef.current = telemetryKey;
+    emitChatRouteTelemetry(buildChatRouteEntryTelemetry({
+      surfaceRoute: "/app/chat",
+      search: location.search,
+      hash: location.hash,
+      domainHint: launcherDomainHint,
+    }));
+  }, [launcherDomainHint, location.hash, location.pathname, location.search]);
 
   const playbookData = useMemo(() => {
     if (!agentId) return null;
@@ -1019,6 +1040,7 @@ const AgentsPage: React.FC = () => {
                 launcherContext={{
                   topic: launcherTopic,
                   planHint: launcherPlanHint,
+                  domainHint: launcherDomainHint,
                 }}
               />
             </div>

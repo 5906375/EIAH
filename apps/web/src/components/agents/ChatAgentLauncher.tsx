@@ -49,6 +49,7 @@ import {
   resolveSnapshotQuickReplies,
   type MessagePresentationSnapshot,
 } from "@/components/agents/chatPresentationSnapshot";
+import { emitChatRouteTelemetry } from "@/components/agents/chatRouteTelemetry";
 import { extractDocAndRecs, type ExtractedRec } from "@/utils";
 import { useSession } from "@/state/sessionStore";
 import { useAgentExecution } from "@/hooks/useAgentExecution";
@@ -520,6 +521,7 @@ export default function ChatAgentLauncher({
   launcherContext?: {
     topic?: string | null;
     planHint?: string | null;
+    domainHint?: string | null;
   };
 }) {
   const agents = useMemo(
@@ -897,10 +899,29 @@ export default function ChatAgentLauncher({
       proposalContextRecovered?: boolean;
       proposalContextLost?: boolean;
       proposalDomainMismatch?: boolean;
+      decisionKind?: string | null;
+      genericTutorialObserved?: boolean;
+      threadContinuityObserved?: boolean;
+      verticalSwitchObserved?: boolean;
+      feature?: "knowledge_search" | "document_intake" | "proof" | "receipt" | "bundle" | null;
       recommendedPlan?: string | null;
       estimatedValue?: number | null;
       persist?: boolean;
     }) => {
+      emitChatRouteTelemetry({
+        event: "turn_observed",
+        surfaceRoute: "/app/chat",
+        domainHint: launcherContext?.domainHint ?? session.activeDomain ?? null,
+        selectedVertical: params.verticalContext ?? null,
+        routeIntent: params.routeIntent ?? null,
+        decisionKind: params.decisionKind ?? null,
+        feature: params.feature ?? null,
+        genericFallbackObserved: params.fallbackUsed ?? false,
+        genericTutorialObserved: params.genericTutorialObserved ?? false,
+        threadContinuityObserved: params.threadContinuityObserved ?? false,
+        verticalSwitchObserved: params.verticalSwitchObserved ?? false,
+        failClosedObserved: false,
+      });
       const payload = buildLauncherHelpdeskSessionPayload({
         tenantId: session.tenantId,
         workspaceId: effectiveWorkspaceId,
@@ -956,7 +977,9 @@ export default function ChatAgentLauncher({
       selectedCatalogAgent?.chatRuntime?.resolver,
       selectedAttachment,
       session.tenantId,
+      session.activeDomain,
       threadKey,
+      launcherContext?.domainHint,
     ]
   );
 
@@ -1298,6 +1321,15 @@ export default function ChatAgentLauncher({
         clarificationIssued: persistenceTelemetry.clarificationIssued,
         handoffOffered: persistenceTelemetry.handoffOffered,
         handoffEligible: persistenceTelemetry.handoffEligible,
+        decisionKind: turnDecision.kind,
+        genericTutorialObserved: persistenceTelemetry.genericTutorialObserved,
+        threadContinuityObserved: Boolean(lastAssistantSnapshot),
+        verticalSwitchObserved: Boolean(
+          lastAssistantSnapshot?.verticalContext &&
+          localSnapshot.verticalContext &&
+          lastAssistantSnapshot.verticalContext !== localSnapshot.verticalContext
+        ),
+        feature: selectedAttachment || pastedArtifactText.trim() ? "document_intake" : null,
       });
       clearAttachmentComposer();
       return;
