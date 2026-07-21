@@ -62,6 +62,7 @@ docs/architecture/*
 !docs/architecture/EIAH_OUTPUTS_MATRIX_v1.md
 !docs/architecture/worker-topology.md
 !docs/architecture/existing-structure-preflight.md
+!docs/architecture/chat-vertical-imob-preflight-playbook.md
 
 # --------------------------------------------
 # Dados temporários e uploads

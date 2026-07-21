@@ -4,6 +4,12 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## PR6 — Chat Vertical Handoff Preflight Playbook / IMOB (2026-07-21)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Playbook replicável do caminho contract → resolver → confidence → clarification → handoff preflight | `docs/architecture/chat-vertical-imob-preflight-playbook.md` | Evidência documental (não operacional) que consolida PR1–PR5 da cadeia IMOB (`apps/api/src/types/chatVerticalHandoffV2Contract.ts`, `apps/api/src/types/chatVerticalHandoffV2ShadowSnapshot.ts`, `apps/api/src/resolvers/chatVerticalImobCandidateResolver.ts`, `apps/api/src/resolvers/chatVerticalImobConfidence.ts`, `apps/api/src/resolvers/chatVerticalImobClarification.ts`, `apps/api/src/resolvers/chatVerticalImobHandoff.ts`) com arquivo:linha real, mapeia os gates obrigatórios (`scripts/checkArchChatContracts.ts`, `pnpm check:arch-chat-contracts`, `pnpm test:chat-vertical-handoff-snapshot`), define o checklist obrigatório e os anti-patterns proibidos para qualquer vertical futura reutilizar o mesmo padrão. Não abre LEGAL/MKT/BPO Financeiro/LOG, não altera `ChatAgentLauncher`, runtime de chat, rotas HTTP, entitlement/RBAC/policy, não conecta execução operacional e não declara PR1–PR6 como operacionalmente fechados. |
+
 ## Front Door Orchestration Preflight (2026-07)
 
 | Assunto | Arquivo | O que prova |
