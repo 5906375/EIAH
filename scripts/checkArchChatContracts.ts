@@ -144,11 +144,22 @@ const ALLOWED_V2_PREFLIGHT_CONSUMERS = new Set([
 const GUARDED_V2_PREFLIGHT_MODULES = new Set([
   ...ALLOWED_V2_PREFLIGHT_CONSUMERS,
   path.normalize("apps/api/src/resolvers/chatVerticalImobConfidence.ts"),
+  path.normalize("apps/api/src/resolvers/chatVerticalImobClarification.ts"),
 ]);
-const ALLOWED_V2_PREFLIGHT_IMPORTS = new Set([
-  "../types/chatVerticalHandoffV2Contract",
-  "../types/chatVerticalHandoffV2ShadowSnapshot",
-  "./chatVerticalImobConfidence",
+const ALLOWED_V2_PREFLIGHT_IMPORTS = new Map<string, Set<string>>([
+  [
+    path.normalize("apps/api/src/resolvers/chatVerticalImobCandidateResolver.ts"),
+    new Set([
+      "../types/chatVerticalHandoffV2Contract",
+      "../types/chatVerticalHandoffV2ShadowSnapshot",
+      "./chatVerticalImobConfidence",
+    ]),
+  ],
+  [path.normalize("apps/api/src/resolvers/chatVerticalImobConfidence.ts"), new Set()],
+  [
+    path.normalize("apps/api/src/resolvers/chatVerticalImobClarification.ts"),
+    new Set(["zod", "./chatVerticalImobConfidence"]),
+  ],
 ]);
 const PROHIBITED_V2_PREFLIGHT_RUNTIME_TOKENS = [
   "fetch(",
@@ -415,9 +426,10 @@ const operationalSources = [...sourceFiles("apps/api/src"), ...sourceFiles("apps
 for (const file of operationalSources) {
   const content = fs.readFileSync(file, "utf8");
   if (GUARDED_V2_PREFLIGHT_MODULES.has(path.normalize(file))) {
+    const allowedImports = ALLOWED_V2_PREFLIGHT_IMPORTS.get(path.normalize(file)) ?? new Set();
     const imports = [...content.matchAll(/from\s+["']([^"']+)["']/g)].map((match) => match[1]);
     for (const importedModule of imports) {
-      if (!ALLOWED_V2_PREFLIGHT_IMPORTS.has(importedModule)) {
+      if (!allowedImports.has(importedModule)) {
         violations.push({
           message: "chat_vertical_handoff_v2_preflight_import_forbidden",
           file,
