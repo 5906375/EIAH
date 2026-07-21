@@ -138,6 +138,24 @@ const contracts: ContractSpec[] = [
 
 const VERTICAL_REASON_CODE_CATALOG = "contracts/chat/vertical.reason_codes.v1.json";
 const PROHIBITED_CONTENT_FIELDS = new Set(["prompt", "response", "rawDocument", "documentBody"]);
+const ALLOWED_V2_PREFLIGHT_CONSUMERS = new Set([
+  path.normalize("apps/api/src/resolvers/chatVerticalImobCandidateResolver.ts"),
+]);
+const ALLOWED_V2_PREFLIGHT_IMPORTS = new Set([
+  "../types/chatVerticalHandoffV2Contract",
+  "../types/chatVerticalHandoffV2ShadowSnapshot",
+]);
+const PROHIBITED_V2_PREFLIGHT_RUNTIME_TOKENS = [
+  "fetch(",
+  "process.env",
+  "node:fs",
+  "node:http",
+  "node:https",
+  "prisma",
+  "redis",
+  "queue",
+  "provider",
+];
 
 function fail(violations: Violation[]): never {
   console.error(
@@ -381,10 +399,32 @@ const operationalSources = [...sourceFiles("apps/api/src"), ...sourceFiles("apps
 );
 for (const file of operationalSources) {
   const content = fs.readFileSync(file, "utf8");
+  if (ALLOWED_V2_PREFLIGHT_CONSUMERS.has(path.normalize(file))) {
+    const imports = [...content.matchAll(/from\s+["']([^"']+)["']/g)].map((match) => match[1]);
+    for (const importedModule of imports) {
+      if (!ALLOWED_V2_PREFLIGHT_IMPORTS.has(importedModule)) {
+        violations.push({
+          message: "chat_vertical_handoff_v2_preflight_import_forbidden",
+          file,
+          field: importedModule,
+        });
+      }
+    }
+    for (const token of PROHIBITED_V2_PREFLIGHT_RUNTIME_TOKENS) {
+      if (content.toLowerCase().includes(token.toLowerCase())) {
+        violations.push({
+          message: "chat_vertical_handoff_v2_preflight_runtime_token_forbidden",
+          file,
+          field: token,
+        });
+      }
+    }
+  }
   if (
-    content.includes("chat.vertical_handoff.v2") ||
-    content.includes("chatVerticalHandoffV2Contract") ||
-    content.includes("chatVerticalHandoffV2ShadowSnapshot")
+    !ALLOWED_V2_PREFLIGHT_CONSUMERS.has(path.normalize(file)) &&
+    (content.includes("chat.vertical_handoff.v2") ||
+      content.includes("chatVerticalHandoffV2Contract") ||
+      content.includes("chatVerticalHandoffV2ShadowSnapshot"))
   ) {
     violations.push({ message: "chat_vertical_handoff_v2_operational_consumer_forbidden", file });
   }
@@ -408,6 +448,7 @@ console.log(
         exampleFile: contract.exampleFile,
       })),
       reasonCodeCatalog: VERTICAL_REASON_CODE_CATALOG,
+      allowedV2PreflightConsumers: [...ALLOWED_V2_PREFLIGHT_CONSUMERS],
     },
     null,
     2,
