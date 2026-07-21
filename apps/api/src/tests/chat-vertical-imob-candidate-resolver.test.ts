@@ -43,6 +43,11 @@ const baseInput: ResolveChatVerticalImobCandidateInput = {
     label: "Untrusted intent label",
     capabilityId: "inventory.preview",
   },
+  confidenceSignals: {
+    verticalEvidence: "explicit",
+    capabilityEvidence: "explicit",
+    competingIntent: false,
+  },
   registry,
   handoffId: "handoff-imob-resolver-test",
   refs: {
@@ -78,6 +83,8 @@ test("PR2A: canonical IMOB intent produces a read-only shadow candidate", () => 
   assert.equal(result.candidate.presentation.source, "shadow");
   assert.equal(result.candidate.outcome, "preview_only");
   assert.equal(result.snapshot.outcome, "preview_only");
+  assert.deepEqual(result.confidence, { level: "high", score: 90, sideEffects: 0 });
+  assert.equal(result.clarificationNeeded, false);
 });
 
 test("PR2A: non-IMOB intent is not applicable", () => {
@@ -86,6 +93,8 @@ test("PR2A: non-IMOB intent is not applicable", () => {
 
   assert.deepEqual(resolveChatVerticalImobCandidate(input), {
     status: "not_applicable",
+    confidence: { level: "low", score: 0, sideEffects: 0 },
+    clarificationNeeded: false,
     sideEffects: 0,
   });
 });

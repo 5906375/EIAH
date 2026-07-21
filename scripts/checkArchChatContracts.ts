@@ -141,9 +141,14 @@ const PROHIBITED_CONTENT_FIELDS = new Set(["prompt", "response", "rawDocument", 
 const ALLOWED_V2_PREFLIGHT_CONSUMERS = new Set([
   path.normalize("apps/api/src/resolvers/chatVerticalImobCandidateResolver.ts"),
 ]);
+const GUARDED_V2_PREFLIGHT_MODULES = new Set([
+  ...ALLOWED_V2_PREFLIGHT_CONSUMERS,
+  path.normalize("apps/api/src/resolvers/chatVerticalImobConfidence.ts"),
+]);
 const ALLOWED_V2_PREFLIGHT_IMPORTS = new Set([
   "../types/chatVerticalHandoffV2Contract",
   "../types/chatVerticalHandoffV2ShadowSnapshot",
+  "./chatVerticalImobConfidence",
 ]);
 const PROHIBITED_V2_PREFLIGHT_RUNTIME_TOKENS = [
   "fetch(",
@@ -155,6 +160,16 @@ const PROHIBITED_V2_PREFLIGHT_RUNTIME_TOKENS = [
   "redis",
   "queue",
   "provider",
+  "axios",
+  "knowledge.search",
+  "knowledgeSearch",
+  "createRun",
+  "createConversation",
+  "createMessage",
+  "api/imob",
+  ".create(",
+  ".update(",
+  ".delete(",
 ];
 
 function fail(violations: Violation[]): never {
@@ -399,7 +414,7 @@ const operationalSources = [...sourceFiles("apps/api/src"), ...sourceFiles("apps
 );
 for (const file of operationalSources) {
   const content = fs.readFileSync(file, "utf8");
-  if (ALLOWED_V2_PREFLIGHT_CONSUMERS.has(path.normalize(file))) {
+  if (GUARDED_V2_PREFLIGHT_MODULES.has(path.normalize(file))) {
     const imports = [...content.matchAll(/from\s+["']([^"']+)["']/g)].map((match) => match[1]);
     for (const importedModule of imports) {
       if (!ALLOWED_V2_PREFLIGHT_IMPORTS.has(importedModule)) {
@@ -449,6 +464,7 @@ console.log(
       })),
       reasonCodeCatalog: VERTICAL_REASON_CODE_CATALOG,
       allowedV2PreflightConsumers: [...ALLOWED_V2_PREFLIGHT_CONSUMERS],
+      guardedV2PreflightModules: [...GUARDED_V2_PREFLIGHT_MODULES],
     },
     null,
     2,

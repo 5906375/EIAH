@@ -9,6 +9,11 @@ import {
   buildChatVerticalHandoffV2ShadowSnapshot,
   type ChatVerticalHandoffV2ShadowSnapshot,
 } from "../types/chatVerticalHandoffV2ShadowSnapshot";
+import {
+  scoreChatVerticalImobConfidence,
+  type ImobConfidenceAssessment,
+  type ImobConfidenceSignals,
+} from "./chatVerticalImobConfidence";
 
 const IMOB_VERTICAL_ID = "imob" as const;
 const IMOB_PREVIEW_CAPABILITY = "inventory.preview" as const;
@@ -23,6 +28,7 @@ type ImobIntentCandidate = {
 
 export type ResolveChatVerticalImobCandidateInput = {
   intent: ImobIntentCandidate;
+  confidenceSignals: ImobConfidenceSignals;
   registry: unknown;
   handoffId: string;
   refs?: ChatVerticalHandoffV2["refs"];
@@ -35,12 +41,24 @@ export type ResolveChatVerticalImobCandidateInput = {
 export type ChatVerticalImobCandidateResolution =
   | {
       status: "not_applicable";
+      confidence: ImobConfidenceAssessment;
+      clarificationNeeded: false;
       sideEffects: 0;
     }
   | {
       status: "candidate";
       candidate: ChatVerticalHandoffV2;
       snapshot: ChatVerticalHandoffV2ShadowSnapshot;
+      confidence: ImobConfidenceAssessment & { level: "high" };
+      clarificationNeeded: false;
+      sideEffects: 0;
+    }
+  | {
+      status: "clarification_needed";
+      candidate: ChatVerticalHandoffV2;
+      snapshot: ChatVerticalHandoffV2ShadowSnapshot;
+      confidence: ImobConfidenceAssessment & { level: "medium" };
+      clarificationNeeded: true;
       sideEffects: 0;
     }
   | {
@@ -48,6 +66,8 @@ export type ChatVerticalImobCandidateResolution =
       reasonCode: VerticalHandoffReasonCode;
       candidate: ChatVerticalHandoffV2 | null;
       snapshot: ChatVerticalHandoffV2ShadowSnapshot | null;
+      confidence: ImobConfidenceAssessment;
+      clarificationNeeded: false;
       sideEffects: 0;
     };
 
@@ -74,6 +94,7 @@ function safeCapabilityIdOf(intent: ImobIntentCandidate): string {
 function buildBlockedResolution(
   input: ResolveChatVerticalImobCandidateInput,
   reasonCode: VerticalHandoffReasonCode,
+  confidence: ImobConfidenceAssessment,
 ): ChatVerticalImobCandidateResolution {
   const candidateResult = chatVerticalHandoffV2Schema.safeParse({
     version: "chat.vertical_handoff.v2",
@@ -97,7 +118,15 @@ function buildBlockedResolution(
   });
 
   if (!candidateResult.success) {
-    return { status: "blocked", reasonCode, candidate: null, snapshot: null, sideEffects: 0 };
+    return {
+      status: "blocked",
+      reasonCode,
+      candidate: null,
+      snapshot: null,
+      confidence,
+      clarificationNeeded: false,
+      sideEffects: 0,
+    };
   }
 
   const snapshotResult = buildChatVerticalHandoffV2ShadowSnapshot(candidateResult.data);
@@ -106,6 +135,8 @@ function buildBlockedResolution(
     reasonCode,
     candidate: candidateResult.data,
     snapshot: snapshotResult.ok ? snapshotResult.snapshot : null,
+    confidence,
+    clarificationNeeded: false,
     sideEffects: 0,
   };
 }
@@ -113,8 +144,28 @@ function buildBlockedResolution(
 export function resolveChatVerticalImobCandidate(
   input: ResolveChatVerticalImobCandidateInput,
 ): ChatVerticalImobCandidateResolution {
+  const confidence = scoreChatVerticalImobConfidence({
+    verticalId: input.intent.verticalId,
+    capabilityId: requestedCapabilityIdOf(input.intent),
+    signals: input.confidenceSignals,
+  });
+
   if (input.intent.verticalId !== IMOB_VERTICAL_ID) {
-    return { status: "not_applicable", sideEffects: 0 };
+    return {
+      status: "not_applicable",
+      confidence,
+      clarificationNeeded: false,
+      sideEffects: 0,
+    };
+  }
+
+  if (confidence.level === "low") {
+    return {
+      status: "not_applicable",
+      confidence,
+      clarificationNeeded: false,
+      sideEffects: 0,
+    };
   }
 
   const outcome = input.outcome ?? "preview_only";
@@ -141,18 +192,33 @@ export function resolveChatVerticalImobCandidate(
 
   const evaluation = evaluateChatVerticalHandoffV2(input.registry, candidate);
   if (!evaluation.ok) {
-    return buildBlockedResolution(input, evaluation.reasonCode);
+    return buildBlockedResolution(input, evaluation.reasonCode, confidence);
   }
 
   const snapshotResult = buildChatVerticalHandoffV2ShadowSnapshot(evaluation.handoff);
   if (!snapshotResult.ok) {
-    return buildBlockedResolution(input, snapshotResult.reasonCode);
+    return buildBlockedResolution(input, snapshotResult.reasonCode, confidence);
   }
 
+  if (confidence.level === "medium") {
+    const mediumConfidence = { ...confidence, level: "medium" as const };
+    return {
+      status: "clarification_needed",
+      candidate: evaluation.handoff,
+      snapshot: snapshotResult.snapshot,
+      confidence: mediumConfidence,
+      clarificationNeeded: true,
+      sideEffects: 0,
+    };
+  }
+
+  const highConfidence = { ...confidence, level: "high" as const };
   return {
     status: "candidate",
     candidate: evaluation.handoff,
     snapshot: snapshotResult.snapshot,
+    confidence: highConfidence,
+    clarificationNeeded: false,
     sideEffects: 0,
   };
 }
