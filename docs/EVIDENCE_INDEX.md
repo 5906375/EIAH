@@ -4,6 +4,13 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## PR8J — chat.vertical_handoff.v1 physical read-only producer classification (2026-07-22)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Classificação explícita + guardrail estático de `chat.vertical_handoff.v1` | `docs/architecture/chat-vertical-imob-preflight-playbook.md` (seção 13) | Resolve o achado de auditoria P2 (`buildChatVerticalHandoffSnapshot` existe/testado sem call site runtime vivo). Documenta, com arquivo:linha real, que `apps/api/src/services/chatVerticalHandoffSnapshot.ts` é physical read-only producer, schema-validated contra `contracts/chat/chat.vertical_handoff.v1.schema.json`, `sideEffects=0` em todo ramo, e sem nenhum call site fora de si mesmo e de `apps/api/src/tests/chat-vertical-handoff-snapshot.test.ts`. Registra explicitamente o eco estrutural (não-wiring) em `apps/web/src/components/chat/ChatVerticalHandoffSurface.tsx`, `apps/web/src/features/imob/imobPilot2FixturePreview.ts` (fixture estática, `status: "fixture_only_not_executed"`) e `apps/api/src/services/chatGateProofAdapters.ts`. Não conecta rota/resolver/componente ao producer, não altera `ChatAgentLauncher`, runtime shadow, provider, `createRun`, write path, Receipt/Ledger, economy ou LEGAL, não declara `chat.vertical_handoff.v1` como runtime-enforced ou `DONE`, e preserva a cadeia v2 (PR1–PR6) inalterada. |
+| Guardrail estático anti-drift para o producer v1 | `scripts/checkArchChatContracts.ts` (`ALLOWED_V1_HANDOFF_SNAPSHOT_FILES`, verificação `chat_vertical_handoff_v1_runtime_call_site_requires_explicit_decision`) | Estende `pnpm check:arch-chat-contracts` (mesmo padrão já usado para v2) para falhar CI caso qualquer arquivo fora de `chatVerticalHandoffSnapshot.ts` referencie `chatVerticalHandoffSnapshot`, `buildChatVerticalHandoffSnapshot` ou `validateChatVerticalHandoffSnapshotAgainstSchema` — transforma "not runtime-enforced unless/until a live route/resolver call site exists" em gate automatizado, não apenas afirmação documental. Verificado localmente com `pnpm check:arch-chat-contracts` (`ok: true`), sem alterar o comportamento do gate v2 existente. |
+
 ## PR6 — Chat Vertical Handoff Preflight Playbook / IMOB (2026-07-21)
 
 | Assunto | Arquivo | O que prova |
