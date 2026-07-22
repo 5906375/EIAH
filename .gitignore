@@ -63,6 +63,7 @@ docs/architecture/*
 !docs/architecture/worker-topology.md
 !docs/architecture/existing-structure-preflight.md
 !docs/architecture/chat-vertical-imob-preflight-playbook.md
+!docs/architecture/mcp-contract-v1.md
 
 # --------------------------------------------
 # Dados temporários e uploads
