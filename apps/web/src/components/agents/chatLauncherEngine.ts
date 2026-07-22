@@ -4,6 +4,11 @@ import {
   type Agent,
   type EiahHelpQueryHit,
 } from "@/lib/api";
+import {
+  fetchImobRuntimeShadowState,
+  type ImobRuntimeShadowEngineRequest,
+  type ImobRuntimeShadowFetchResult,
+} from "@/features/imob/imobRuntimeShadowClient";
 import type { RoleProfile } from "@/lib/roles";
 import { PRICING_PLANS, quotePlan } from "@/config/pricing";
 import {
@@ -2575,4 +2580,51 @@ export function resolveLauncherLocalDecision(params: {
   }
 
   return null;
+}
+
+export type ImobRuntimeShadowQuickSummary = {
+  label: string;
+  stage: "handoff" | "clarification";
+} | null;
+
+/**
+ * Governed engine-layer mapping from the IMOB runtime shadow state to a
+ * short, render-only, redacted summary label. Returns null when there is
+ * nothing safe/useful to show — route disabled/unreachable, blocked,
+ * not_applicable, or an intermediate "candidate" state without a confirmed
+ * handoff. The label never interpolates any field from the shadow state
+ * other than `stage`, so it cannot leak tenant/workspace/governance/refs
+ * even if a future backend response were to include them by mistake.
+ *
+ * This function does not decide anything about vertical/handoff identity —
+ * it only translates an already-governed backend decision into a safe
+ * label. It is not called from ChatAgentLauncher.tsx in this PR: the
+ * launcher remains render-only and this wiring is not yet part of the live
+ * conversation render path.
+ */
+export function resolveImobRuntimeShadowQuickSummary(
+  result: ImobRuntimeShadowFetchResult,
+): ImobRuntimeShadowQuickSummary {
+  if (!result.available) return null;
+
+  if (result.state.stage === "handoff") {
+    return { label: "IMOB (shadow): pré-visualização de inventário disponível", stage: "handoff" };
+  }
+  if (result.state.stage === "clarification") {
+    return { label: "IMOB (shadow): aguardando confirmação para pré-visualizar inventário", stage: "clarification" };
+  }
+  return null;
+}
+
+/**
+ * Engine-layer entry point: fetches the IMOB runtime shadow state (via the
+ * fail-closed client) and governs it down to a render-only quick summary.
+ * Degrades safely to null on any failure — network error, disabled route
+ * (flag OFF), or an unexpected shadow stage.
+ */
+export async function resolveImobRuntimeShadowRenderState(
+  request: ImobRuntimeShadowEngineRequest,
+): Promise<ImobRuntimeShadowQuickSummary> {
+  const result = await fetchImobRuntimeShadowState(request);
+  return resolveImobRuntimeShadowQuickSummary(result);
 }

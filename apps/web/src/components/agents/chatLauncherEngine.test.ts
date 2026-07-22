@@ -22,7 +22,10 @@ import {
   resolveLauncherAgentProfile,
   resolveQuickReplyUsed,
   resolveLauncherProposalDecision,
+  resolveImobRuntimeShadowQuickSummary,
+  resolveImobRuntimeShadowRenderState,
 } from "./chatLauncherEngine.ts";
+import type { ImobRuntimeShadowEngineRequest } from "../../features/imob/imobRuntimeShadowClient";
 import { resolveHelpDictionarySnapshot } from "./helpDictionaryResolver.ts";
 import {
   buildChatRouteEntryTelemetry,
@@ -1599,4 +1602,173 @@ test("workspace expansion continues the commercial flow instead of resetting to 
   assert.ok(decision);
   assert.equal(decision.conversationStage, "proposal_opening");
   assert.match(decision.content ?? "", /expansão do workspace/i);
+});
+
+const imobRuntimeShadowRequest: ImobRuntimeShadowEngineRequest = {
+  intent: { verticalId: "imob", label: "Untrusted label", capabilityId: "inventory.preview" },
+  confidenceSignals: { verticalEvidence: "explicit", capabilityEvidence: "explicit", competingIntent: false },
+  registry: {
+    version: "vertical.registry.v1",
+    registryVersion: "registry-imob-runtime-shadow-engine-summary-test-1",
+    scope: { tenantId: "tenant-imob-shadow-summary-test", workspaceId: "workspace-imob-shadow-summary-test" },
+    verticals: [
+      {
+        id: "imob",
+        label: "IMOB",
+        status: "enabled",
+        capabilities: [{ id: "inventory.preview", allowedModes: ["read_only"] }],
+        entitlement: { required: true, key: "REAL_ESTATE_CORE" },
+        rbac: { requiredRoles: ["workspace.member"] },
+        policyGates: ["vertical.read_only"],
+        rolloutStage: "context_only",
+      },
+    ],
+  },
+  handoffId: "handoff-imob-shadow-summary-test",
+  refs: { conversationId: "conversation-imob-shadow-summary-test", threadId: "thread-imob-shadow-summary-test" },
+  governance: {
+    tenantId: "tenant-imob-shadow-summary-test",
+    workspaceId: "workspace-imob-shadow-summary-test",
+    scope: "imob:inventory:read",
+    registry: { decision: "allowed" },
+    rbac: { decision: "allowed" },
+    entitlement: { decision: "allowed" },
+    policy: { decision: "allowed" },
+    hitl: { status: "not_required" },
+  },
+};
+
+test("IMOB runtime shadow quick summary: handoff stage maps to a redacted label", () => {
+  const summary = resolveImobRuntimeShadowQuickSummary({
+    available: true,
+    state: {
+      kind: "chat.vertical_runtime_shadow_state.v1",
+      verticalId: "imob",
+      stage: "handoff",
+      source: "runtime_shadow",
+      sideEffects: 0,
+      handoff: {
+        kind: "chat.vertical_handoff_preflight.v1",
+        verticalId: "imob",
+        capabilityId: "inventory.preview",
+        handoffIntentKey: "imob.inventory.preview.open_context",
+        source: "high_confidence",
+        allowedNextActions: ["open_context_preview", "keep_chat_context", "cancel"],
+        defaultNextAction: "open_context_preview",
+        sideEffects: 0,
+      },
+    },
+  });
+
+  assert.deepEqual(summary, { label: "IMOB (shadow): pré-visualização de inventário disponível", stage: "handoff" });
+});
+
+test("IMOB runtime shadow quick summary: clarification stage maps to a redacted label", () => {
+  const summary = resolveImobRuntimeShadowQuickSummary({
+    available: true,
+    state: {
+      kind: "chat.vertical_runtime_shadow_state.v1",
+      verticalId: "imob",
+      stage: "clarification",
+      source: "runtime_shadow",
+      sideEffects: 0,
+      clarification: {
+        kind: "chat.vertical_clarification.v1",
+        verticalId: "imob",
+        capabilityId: "inventory.preview",
+        reason: "IMOB_INVENTORY_INTENT_AMBIGUOUS",
+        questionKey: "imob.inventory.preview.clarify_intent",
+        allowedReplies: ["confirm_inventory_preview", "refine_inventory_intent", "cancel_vertical_switch"],
+        defaultReply: "refine_inventory_intent",
+        sideEffects: 0,
+      },
+    },
+  });
+
+  assert.deepEqual(summary, {
+    label: "IMOB (shadow): aguardando confirmação para pré-visualizar inventário",
+    stage: "clarification",
+  });
+});
+
+test("IMOB runtime shadow quick summary: blocked/not_applicable/unavailable degrade to null", () => {
+  assert.equal(resolveImobRuntimeShadowQuickSummary({ available: false }), null);
+  assert.equal(
+    resolveImobRuntimeShadowQuickSummary({
+      available: true,
+      state: {
+        kind: "chat.vertical_runtime_shadow_state.v1",
+        verticalId: "imob",
+        stage: "blocked",
+        source: "runtime_shadow",
+        sideEffects: 0,
+        reasonCode: "VERTICAL_POLICY_DENIED",
+      },
+    }),
+    null,
+  );
+  assert.equal(
+    resolveImobRuntimeShadowQuickSummary({
+      available: true,
+      state: {
+        kind: "chat.vertical_runtime_shadow_state.v1",
+        verticalId: "imob",
+        stage: "not_applicable",
+        source: "runtime_shadow",
+        sideEffects: 0,
+      },
+    }),
+    null,
+  );
+});
+
+test("IMOB runtime shadow render state: degrades to null when the route is disabled (flag OFF / 404)", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response(JSON.stringify({ error: "not found" }), {
+      status: 404,
+      headers: { "content-type": "application/json" },
+    })) as typeof fetch;
+
+  try {
+    const summary = await resolveImobRuntimeShadowRenderState(imobRuntimeShadowRequest);
+    assert.equal(summary, null);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("IMOB runtime shadow render state: surfaces a redacted handoff label when the flag is ON", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        kind: "chat.vertical_runtime_shadow_state.v1",
+        verticalId: "imob",
+        stage: "handoff",
+        source: "runtime_shadow",
+        sideEffects: 0,
+        handoff: {
+          kind: "chat.vertical_handoff_preflight.v1",
+          verticalId: "imob",
+          capabilityId: "inventory.preview",
+          handoffIntentKey: "imob.inventory.preview.open_context",
+          source: "high_confidence",
+          allowedNextActions: ["open_context_preview", "keep_chat_context", "cancel"],
+          defaultNextAction: "open_context_preview",
+          sideEffects: 0,
+        },
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    )) as typeof fetch;
+
+  try {
+    const summary = await resolveImobRuntimeShadowRenderState(imobRuntimeShadowRequest);
+    assert.deepEqual(summary, {
+      label: "IMOB (shadow): pré-visualização de inventário disponível",
+      stage: "handoff",
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
