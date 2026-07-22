@@ -42,6 +42,7 @@ import {
   type LegacyEnrichmentIntent,
   resolveAttachmentIntake,
   resolveLauncherTurnDecision,
+  enrichLauncherDecisionWithImobRuntimeShadow,
 } from "@/components/agents/chatLauncherEngine";
 import {
   resolveSnapshotCompatibleRouteIntent,
@@ -1237,29 +1238,32 @@ export default function ChatAgentLauncher({
       content: [effectiveInput, attachmentSummary].filter(Boolean).join("\n"),
     });
     const localIntentResult = conversation.analyze(effectiveInput);
-    const turnDecision = await resolveLauncherTurnDecision({
-      input: turnInput,
-      trimmedInput: effectiveInput,
-      routeIntent,
-      proposalMode,
-      isUnifiedEiah: isUnifiedEiahMode,
-      eiahMode: turnEiahMode,
-      agentProfile: turnAgentProfile,
-      catalogAgents,
-      intentUnknown: localIntentResult.intent === "unknown",
-      confidence: localIntentResult.confidence,
-      previousUserMessage: lastUserMessage,
-      previousAssistantMessage: lastAssistantMessage,
-      previousAssistantSnapshot: lastAssistantSnapshot,
-      accessContext: {
-        tenantId: session.tenantId,
-        workspaceId: effectiveWorkspaceId,
-        roleProfile: session.experience?.roleProfile ?? null,
-        activeDomain: session.activeDomain ?? null,
-        installedProducts: session.installedProducts ?? null,
-        entitlements: session.entitlements ?? null,
-      },
-    });
+    const turnDecision = await enrichLauncherDecisionWithImobRuntimeShadow(
+      await resolveLauncherTurnDecision({
+        input: turnInput,
+        trimmedInput: effectiveInput,
+        routeIntent,
+        proposalMode,
+        isUnifiedEiah: isUnifiedEiahMode,
+        eiahMode: turnEiahMode,
+        agentProfile: turnAgentProfile,
+        catalogAgents,
+        intentUnknown: localIntentResult.intent === "unknown",
+        confidence: localIntentResult.confidence,
+        previousUserMessage: lastUserMessage,
+        previousAssistantMessage: lastAssistantMessage,
+        previousAssistantSnapshot: lastAssistantSnapshot,
+        accessContext: {
+          tenantId: session.tenantId,
+          workspaceId: effectiveWorkspaceId,
+          roleProfile: session.experience?.roleProfile ?? null,
+          activeDomain: session.activeDomain ?? null,
+          installedProducts: session.installedProducts ?? null,
+          entitlements: session.entitlements ?? null,
+        },
+      }),
+      { tenantId: session.tenantId, workspaceId: effectiveWorkspaceId },
+    );
     if (turnDecision?.content) {
       setLastRouteIntent(turnDecision.launcherRouteIntent);
       const confidenceFloor = turnDecision.persistIntent?.confidenceFloor;

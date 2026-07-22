@@ -2628,3 +2628,70 @@ export async function resolveImobRuntimeShadowRenderState(
   const result = await fetchImobRuntimeShadowState(request);
   return resolveImobRuntimeShadowQuickSummary(result);
 }
+
+/**
+ * Fail-closed gate for the live turn flow: only ever attempts the shadow
+ * call when the turn's own routeIntent is already "imob" (a signal the
+ * engine already computed elsewhere — this does not add a new IMOB
+ * heuristic) and when tenantId/workspaceId are present. No governance is
+ * evaluated on the frontend yet, so every request built here honestly
+ * declares "not_evaluated" for registry/rbac/entitlement/policy/hitl — the
+ * backend's own contract already fails such requests closed
+ * (VERTICAL_GOVERNANCE_NOT_EVALUATED), which is the correct behavior until
+ * a real governance evaluation exists upstream.
+ */
+export async function resolveImobRuntimeShadowSummaryForTurn(params: {
+  routeIntent: LauncherRouteIntent;
+  tenantId?: string | null;
+  workspaceId?: string | null;
+}): Promise<ImobRuntimeShadowQuickSummary> {
+  if (params.routeIntent !== "imob") return null;
+  if (!params.tenantId || !params.workspaceId) return null;
+
+  return resolveImobRuntimeShadowRenderState({
+    intent: { verticalId: "imob", capabilityId: "inventory.preview" },
+    confidenceSignals: { verticalEvidence: "explicit", capabilityEvidence: "contextual", competingIntent: false },
+    registry: {
+      version: "vertical.registry.v1",
+      registryVersion: "frontdoor-not-evaluated",
+      scope: { tenantId: params.tenantId, workspaceId: params.workspaceId },
+      verticals: [],
+    },
+    handoffId: `frontdoor-imob-shadow-${params.tenantId}-${params.workspaceId}`,
+    governance: {
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      scope: "imob:inventory:read",
+      registry: { decision: "not_evaluated" },
+      rbac: { decision: "not_evaluated" },
+      entitlement: { decision: "not_evaluated" },
+      policy: { decision: "not_evaluated" },
+      hitl: { status: "not_evaluated" },
+    },
+  });
+}
+
+/**
+ * Pure, render-only enrichment: takes an already-computed launcher decision
+ * and, only when it has renderable content, appends an already-resolved
+ * IMOB shadow summary label to it. Never mutates the decision object,
+ * never decides anything about vertical/handoff identity, never fetches
+ * directly (delegates to resolveImobRuntimeShadowSummaryForTurn). Returns
+ * the original decision unchanged whenever there is nothing safe to add.
+ */
+export async function enrichLauncherDecisionWithImobRuntimeShadow(
+  decision: LauncherLocalDecision | null,
+  context: { tenantId?: string | null; workspaceId?: string | null },
+): Promise<LauncherLocalDecision | null> {
+  if (!decision || !decision.content) return decision;
+
+  const summary = await resolveImobRuntimeShadowSummaryForTurn({
+    routeIntent: decision.launcherRouteIntent,
+    tenantId: context.tenantId,
+    workspaceId: context.workspaceId,
+  });
+
+  if (!summary) return decision;
+
+  return { ...decision, content: `${decision.content}\n\n${summary.label}` };
+}
