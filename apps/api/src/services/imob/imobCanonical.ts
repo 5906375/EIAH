@@ -2,6 +2,8 @@
 // Extracted from routes/imob.ts (Phase 4.1b) to allow worker-side access
 // without a circular import through the route layer.
 
+import { z } from "zod";
+
 export function asStringList(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.map((item) => (typeof item === "string" ? item.trim() : "")).filter(Boolean);
@@ -283,6 +285,28 @@ export function buildImobCanonicalCase(params: {
   };
 }
 
+// PR MCP-1E — contrato tipado do fallback simulado produzido em
+// apps/api/src/workers/runWorker.ts quando um ToolContract realestate.* esta
+// ausente (ver docs/architecture/mcp-contract-v1.md). So `simulated` e
+// obrigatorio: os demais campos ficam opcionais para preservar fixtures de
+// teste historicas que so populam `simulated`, mas quando presentes precisam
+// bater com o shape real do produtor (drift de tipo continua bloqueado).
+export const simulatedToolExecutionResultSchema = z.object({
+  ok: z.boolean().optional(),
+  simulated: z.literal(true),
+  action: z.string().optional(),
+  version: z.string().optional(),
+  status: z.literal("success").optional(),
+  output: z
+    .object({
+      message: z.string(),
+      payloadPreview: z.array(z.string()).nullable(),
+    })
+    .optional(),
+});
+
+export type SimulatedToolExecutionResult = z.infer<typeof simulatedToolExecutionResultSchema>;
+
 // Guard: returns true when a run's outputs contain at least one simulated tool result.
 // Simulated executions happen when a realestate.* ToolContract is missing in DB;
 // they must never trigger ImobCase mutation.
@@ -298,7 +322,6 @@ export function shouldSkipImobPostRunMutationForSimulatedOutput(run: {
   return outputs.some((entry) => {
     if (!entry || typeof entry !== "object" || Array.isArray(entry)) return false;
     const data = (entry as Record<string, unknown>).data;
-    if (!data || typeof data !== "object" || Array.isArray(data)) return false;
-    return (data as Record<string, unknown>).simulated === true;
+    return simulatedToolExecutionResultSchema.safeParse(data).success;
   });
 }
