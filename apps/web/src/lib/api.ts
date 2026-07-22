@@ -3465,6 +3465,80 @@ export async function apiSearchImobInventory(body: {
   });
 }
 
+/**
+ * IMOB runtime shadow state (chat.vertical_runtime_shadow_state.v1).
+ * Read-only, sideEffects=0. The backend route is gated by
+ * EIAH_CHAT_IMOB_RUNTIME_SHADOW_ROUTE_ENABLED (default OFF) and returns 404
+ * when disabled — callers must handle that as a normal, expected outcome,
+ * not an exceptional one. See apps/web/src/features/imob/imobRuntimeShadowClient.ts
+ * for the fail-closed wrapper.
+ */
+export type ImobRuntimeShadowEngineRequest = {
+  intent: { verticalId: string | null; label?: string | null; capabilityId?: string | null };
+  confidenceSignals: {
+    verticalEvidence: "explicit" | "contextual" | "absent";
+    capabilityEvidence: "explicit" | "contextual" | "absent";
+    competingIntent: boolean;
+  };
+  registry: unknown;
+  handoffId: string;
+  refs?: {
+    conversationId?: string;
+    threadId?: string;
+    caseId?: string;
+    entityRef?: { type: string; id: string };
+  };
+  governance: {
+    tenantId: string;
+    workspaceId: string;
+    scope: string;
+    registry: { decision: "allowed" | "denied" | "not_evaluated" };
+    rbac: { decision: "allowed" | "denied" | "not_required" | "not_evaluated" };
+    entitlement: { decision: "allowed" | "denied" | "not_required" | "not_evaluated" };
+    policy: { decision: "allowed" | "denied" | "not_required" | "not_evaluated" };
+    hitl: { status: "not_required" | "required" | "approved" | "rejected" | "expired" | "not_evaluated" };
+  };
+  reply?: string;
+};
+
+export type ImobRuntimeShadowStateResponse = {
+  kind: "chat.vertical_runtime_shadow_state.v1";
+  verticalId: "imob";
+  stage: "candidate" | "clarification" | "handoff" | "blocked" | "not_applicable";
+  source: "runtime_shadow";
+  sideEffects: 0;
+  handoff?: {
+    kind: "chat.vertical_handoff_preflight.v1";
+    verticalId: "imob";
+    capabilityId: string;
+    handoffIntentKey: string;
+    source: "high_confidence" | "clarification_confirmed";
+    allowedNextActions: string[];
+    defaultNextAction: string;
+    sideEffects: 0;
+  };
+  clarification?: {
+    kind: "chat.vertical_clarification.v1";
+    verticalId: "imob";
+    capabilityId: string;
+    reason: string;
+    questionKey: string;
+    allowedReplies: string[];
+    defaultReply: string;
+    sideEffects: 0;
+  };
+  reasonCode?: string;
+};
+
+export async function apiGetImobRuntimeShadowState(
+  body: ImobRuntimeShadowEngineRequest,
+): Promise<ImobRuntimeShadowStateResponse> {
+  return http<ImobRuntimeShadowStateResponse>(`/imob/chat/runtime-shadow-state`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
 export async function apiSearchImobKnowledge(body: {
   query: string;
   filters?: {
