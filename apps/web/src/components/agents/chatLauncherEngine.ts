@@ -112,6 +112,8 @@ import type {
   ConversationStage,
   ProposalDomain,
 } from "@/components/agents/proposalTypes";
+import type { ExtractedRec } from "@/utils";
+import type { IntentResult } from "@/hooks/useConversation";
 export {
   buildAgentOverviewReply,
 } from "@/components/agents/agentPresentationResolver";
@@ -546,6 +548,209 @@ export function enrichLegacyAssistantContent(params: {
     });
   }
   return next.trim();
+}
+
+// PR-8L — movidas 1:1 de ChatAgentLauncher.tsx: formatação/normalização de
+// conteúdo do assistente pertence ao engine, não ao launcher (render-only).
+export function sanitizeAssistantContent(content: string) {
+  return content
+    .replace(/\"run_id\"\s*:\s*\"[^\"]+\"/gi, "\"run_id\":\"[redacted]\"")
+    .replace(/\"trace_id\"\s*:\s*\"[^\"]+\"/gi, "\"trace_id\":\"[redacted]\"")
+    .replace(/\"tx_id\"\s*:\s*\"[^\"]+\"/gi, "\"tx_id\":\"[redacted]\"")
+    .replace(/\"policy_version\"\s*:\s*\"[^\"]+\"/gi, "\"policy_version\":\"[redacted]\"")
+    .replace(/\brun_id:\s*[^\s,]+/gi, "run_id:[redacted]")
+    .replace(/\btrace_id:\s*[^\s,]+/gi, "trace_id:[redacted]")
+    .replace(/\btx_id:\s*[^\s,]+/gi, "tx_id:[redacted]")
+    .replace(/\bpolicy_version:\s*[^\s,]+/gi, "policy_version:[redacted]");
+}
+
+export type HelpStructuredResponse = {
+  mode: "help";
+  summary: string;
+  steps?: string[];
+  sources: string[];
+};
+
+export type ProposalStructuredResponse = {
+  mode: "proposal";
+  scenario: string;
+  recommended_plan: "solo" | "starter" | "growth" | "scale" | "enterprise";
+  estimated_cost: string;
+  next_step: string;
+};
+
+export function tryParseJsonObject(content: string): Record<string, unknown> | null {
+  const trimmed = content.trim();
+  if (!trimmed) return null;
+  const match = trimmed.match(/\{[\s\S]*\}/);
+  if (!match) return null;
+  try {
+    const parsed = JSON.parse(match[0]);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+export function isHelpStructuredResponse(input: Record<string, unknown>): input is HelpStructuredResponse {
+  return (
+    input.mode === "help" &&
+    typeof input.summary === "string" &&
+    (input.steps === undefined || (Array.isArray(input.steps) && input.steps.every((v) => typeof v === "string"))) &&
+    Array.isArray(input.sources) &&
+    input.sources.every((v) => typeof v === "string")
+  );
+}
+
+export function isProposalStructuredResponse(input: Record<string, unknown>): input is ProposalStructuredResponse {
+  const plan = input.recommended_plan;
+  return (
+    input.mode === "proposal" &&
+    typeof input.scenario === "string" &&
+    (plan === "solo" || plan === "starter" || plan === "growth" || plan === "scale" || plan === "enterprise") &&
+    typeof input.estimated_cost === "string" &&
+    typeof input.next_step === "string"
+  );
+}
+
+export function toMarkdownFromStructuredResponse(
+  raw: string,
+  modeHint: IntentResult["intent"] | null
+): { content: string; rejected: boolean; fallbackUsed: boolean } {
+  const divider = "\n---\n";
+  if (raw.includes(divider)) {
+    const humanPart = raw.split(divider).slice(1).join(divider).trim();
+    if (humanPart) {
+      return { content: humanPart, rejected: false, fallbackUsed: false };
+    }
+  }
+  const parsed = tryParseJsonObject(raw);
+  if (!parsed) return { content: raw, rejected: false, fallbackUsed: false };
+
+  if (modeHint === "help" || modeHint === "product_explain" || modeHint === "unknown") {
+    if (isHelpStructuredResponse(parsed)) {
+      const steps =
+        parsed.steps && parsed.steps.length > 0
+          ? `\n\n**Como fazer**\n${parsed.steps.map((step) => `- ${step}`).join("\n")}`
+          : "";
+      const sources =
+        parsed.sources.length > 0
+          ? `\n\n**Base usada**\n${parsed.sources
+              .slice(0, 2)
+              .map((source) => `- ${source}`)
+              .join("\n")}`
+          : "";
+      return {
+        content: `**Resumo**\n${parsed.summary}${steps}${sources}`,
+        rejected: false,
+        fallbackUsed: false,
+      };
+    }
+    return { content: resolveLauncherFallbackMarkdown(), rejected: true, fallbackUsed: true };
+  }
+
+  if (modeHint === "proposal") {
+    if (isProposalStructuredResponse(parsed)) {
+      return {
+        content: [
+          `**Cenario**\n${parsed.scenario}`,
+          `**Plano recomendado**\n${parsed.recommended_plan}`,
+          `**Estimativa**\n${parsed.estimated_cost}`,
+          `**Proximo passo**\n${parsed.next_step}`,
+        ].join("\n\n"),
+        rejected: false,
+        fallbackUsed: false,
+      };
+    }
+    return { content: resolveLauncherFallbackMarkdown(), rejected: true, fallbackUsed: true };
+  }
+
+  return { content: raw, rejected: false, fallbackUsed: false };
+}
+
+export function buildLegacyMarkdownFromStructuredContent(params: {
+  docMarkdown: string;
+  recs: ExtractedRec[];
+}) {
+  const text = params.docMarkdown?.trim() ?? "";
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const paragraph =
+    lines.find(
+      (line) =>
+        line.length > 0 &&
+        !line.startsWith("#") &&
+        !line.startsWith("-") &&
+        !line.startsWith("•") &&
+        !/^\d+\./.test(line)
+    ) ??
+    params.recs[0]?.rationale ??
+    params.recs[0]?.tatica ??
+    "";
+
+  const bullets = lines
+    .filter((line) => line.startsWith("- ") || line.startsWith("• "))
+    .map((line) => line.replace(/^[-•]\s*/, ""))
+    .slice(0, 4);
+
+  const nextStepsRaw = params.recs[0]?.proximos_passos ?? "";
+  const nextStepsFromText = lines.find((line) => line.toLowerCase().includes("próximos passos"));
+  const nextStepsSource =
+    typeof nextStepsRaw === "string" && nextStepsRaw.trim()
+      ? nextStepsRaw
+      : nextStepsFromText ?? "";
+
+  const nextSteps = nextStepsSource
+    ? nextStepsSource
+        .split(/\d+\.\s+|;\s+/)
+        .map((step) => step.trim())
+        .filter(Boolean)
+        .slice(0, 4)
+    : [];
+
+  const bulletsBlock =
+    bullets.length > 0 ? `\n\n**Pontos-chave**\n${bullets.map((bullet) => `- ${bullet}`).join("\n")}` : "";
+  const nextStepsBlock =
+    nextSteps.length > 0 ? `\n\n**Próximos passos**\n${nextSteps.map((step) => `- ${step}`).join("\n")}` : "";
+
+  return `${paragraph || "Resposta disponivel sem resumo estruturado."}${bulletsBlock}${nextStepsBlock}`;
+}
+
+export function buildRenderableAssistantMarkdown(params: {
+  messageContent: string;
+  docMarkdown: string;
+  technicalRaw: string;
+  recs: ExtractedRec[];
+  isHelpCenterMode: boolean;
+  agentProfile: Agent | null;
+  routeIntent: "proposal" | "imob" | "playbook" | "help" | "orchestrator";
+  intentResult: LegacyEnrichmentIntent;
+  runId?: string | null;
+  presentationSnapshot?: MessagePresentationSnapshot | null;
+}) {
+  const content = params.isHelpCenterMode
+    ? (params.docMarkdown ?? "").trim() ||
+      sanitizeAssistantContent(params.messageContent).trim() ||
+      params.technicalRaw.trim() ||
+      "Ainda não encontrei conteúdo documental para essa pergunta."
+    : buildLegacyMarkdownFromStructuredContent({
+        docMarkdown: params.docMarkdown ?? "",
+        recs: params.recs,
+      });
+
+  return enrichLegacyAssistantContent({
+    content,
+    agentProfile: params.agentProfile,
+    routeIntent: params.routeIntent,
+    intentResult: params.intentResult,
+    runId: params.runId,
+    presentationSnapshot: params.presentationSnapshot,
+  });
 }
 
 function isPlaybookQuestion(input: string) {
