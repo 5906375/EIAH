@@ -26,6 +26,7 @@ import {
   resolveImobRuntimeShadowRenderState,
   resolveImobRuntimeShadowSummaryForTurn,
   enrichLauncherDecisionWithImobRuntimeShadow,
+  resolveLauncherTurnDecision,
   type LauncherLocalDecision,
 } from "./chatLauncherEngine.ts";
 import type { ImobRuntimeShadowEngineRequest } from "../../features/imob/imobRuntimeShadowClient";
@@ -2085,4 +2086,170 @@ test("enrich decision with IMOB shadow: never surfaces tenant, workspace, govern
   } finally {
     globalThis.fetch = originalFetch;
   }
+});
+
+// ---------------------------------------------------------------------------
+// PR8F — E2E controlado: /app/chat + IMOB.
+//
+// Exercita o caminho completo e real (não um fixture de decisão fabricado):
+// texto de usuário -> detectLauncherRouteIntent -> resolveLauncherTurnDecision
+// (motor real, mesma função chamada por ChatAgentLauncher.tsx) ->
+// enrichLauncherDecisionWithImobRuntimeShadow (wiring do PR8E-B). Sem
+// servidor real, sem rede real (fetch mockado), sem Playwright/browser —
+// controlado e determinístico via node:test, reutilizando a mesma estrutura
+// já usada em todo o resto deste arquivo.
+// ---------------------------------------------------------------------------
+
+const e2eImobAccessContext = {
+  tenantId: "tenant-e2e-imob-frontdoor",
+  workspaceId: "workspace-e2e-imob-frontdoor",
+  roleProfile: null,
+  activeDomain: "imob" as const,
+  installedProducts: ["IMOB"],
+  entitlements: { REAL_ESTATE_CORE: true },
+};
+
+async function resolveRealTurnDecision(input: string) {
+  const routeIntent = detectLauncherRouteIntent(input, false);
+  const decision = await resolveLauncherTurnDecision({
+    input,
+    trimmedInput: input,
+    routeIntent,
+    proposalMode: false,
+    isUnifiedEiah: true,
+    eiahMode: "help",
+    agentProfile: null,
+    catalogAgents: [],
+    intentUnknown: false,
+    confidence: 1,
+    previousUserMessage: null,
+    previousAssistantMessage: null,
+    previousAssistantSnapshot: null,
+    accessContext: e2eImobAccessContext,
+  });
+  return { routeIntent, decision };
+}
+
+test("E2E controlado (OFF/404): input real de IMOB produz decisão real com conteúdo preservado quando a shadow route está indisponível", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response(JSON.stringify({ error: "not found" }), {
+      status: 404,
+      headers: { "content-type": "application/json" },
+    })) as typeof fetch;
+
+  try {
+    const { routeIntent, decision } = await resolveRealTurnDecision("explica imob");
+    assert.equal(routeIntent, "imob");
+    assert.ok(decision, "expected a real local IMOB decision");
+    assert.ok(decision?.content, "expected the real IMOB decision to have content");
+    const originalContent = decision!.content!;
+
+    const enriched = await enrichLauncherDecisionWithImobRuntimeShadow(decision, {
+      tenantId: e2eImobAccessContext.tenantId,
+      workspaceId: e2eImobAccessContext.workspaceId,
+    });
+
+    assert.equal(enriched?.content, originalContent, "content must be preserved unchanged when the shadow route is OFF/404");
+    assert.equal(enriched?.content?.includes("(shadow)"), false, "no shadow label must leak when the route is unavailable");
+    assert.equal(enriched?.content?.includes("pré-visualização de inventário"), false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("E2E controlado (ON/200): input real de IMOB produz decisão real com label redigido quando a shadow route responde com fixture válido", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        kind: "chat.vertical_runtime_shadow_state.v1",
+        verticalId: "imob",
+        stage: "handoff",
+        source: "runtime_shadow",
+        sideEffects: 0,
+        handoff: {
+          kind: "chat.vertical_handoff_preflight.v1",
+          verticalId: "imob",
+          capabilityId: "inventory.preview",
+          handoffIntentKey: "imob.inventory.preview.open_context",
+          source: "high_confidence",
+          allowedNextActions: ["open_context_preview", "keep_chat_context", "cancel"],
+          defaultNextAction: "open_context_preview",
+          sideEffects: 0,
+        },
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    )) as typeof fetch;
+
+  try {
+    const { routeIntent, decision } = await resolveRealTurnDecision("como usar imob");
+    assert.equal(routeIntent, "imob");
+    assert.ok(decision?.content, "expected the real IMOB decision to have content");
+    const originalContent = decision!.content!;
+
+    const enriched = await enrichLauncherDecisionWithImobRuntimeShadow(decision, {
+      tenantId: e2eImobAccessContext.tenantId,
+      workspaceId: e2eImobAccessContext.workspaceId,
+    });
+
+    assert.ok(enriched?.content?.startsWith(originalContent), "original agent content must be preserved, not replaced");
+    assert.match(enriched?.content ?? "", /IMOB \(shadow\): pré-visualização de inventário disponível/);
+
+    for (const forbidden of [
+      "tenantId",
+      "workspaceId",
+      "governance",
+      "refs",
+      e2eImobAccessContext.tenantId,
+      e2eImobAccessContext.workspaceId,
+      "prompt",
+      "response",
+      "rawDocument",
+      "documentBody",
+    ]) {
+      assert.equal((enriched?.content ?? "").includes(forbidden), false, forbidden);
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("E2E controlado: input real não-IMOB nunca aciona o shadow adapter (sem fetch)", async () => {
+  const originalFetch = globalThis.fetch;
+  let fetchCalled = false;
+  globalThis.fetch = (async () => {
+    fetchCalled = true;
+    throw new Error("must not fetch for a non-imob real turn");
+  }) as typeof fetch;
+
+  try {
+    const { routeIntent, decision } = await resolveRealTurnDecision("como funciona o billing");
+    assert.notEqual(routeIntent, "imob");
+
+    const enriched = await enrichLauncherDecisionWithImobRuntimeShadow(decision, {
+      tenantId: e2eImobAccessContext.tenantId,
+      workspaceId: e2eImobAccessContext.workspaceId,
+    });
+
+    assert.equal(fetchCalled, false, "non-imob real turns must never reach the shadow client");
+    assert.equal(enriched, decision);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("E2E controlado: ChatAgentLauncher.tsx não contém fetch nem chamadas diretas ao client IMOB shadow", async () => {
+  const fs = await import("node:fs/promises");
+  const path = await import("node:path");
+  const launcherPath = path.resolve(
+    import.meta.dirname,
+    "ChatAgentLauncher.tsx",
+  );
+  const source = await fs.readFile(launcherPath, "utf8");
+
+  for (const forbidden of ["fetch(", "apiGetImobRuntimeShadowState", "fetchImobRuntimeShadowState"]) {
+    assert.equal(source.includes(forbidden), false, `ChatAgentLauncher.tsx must not contain "${forbidden}"`);
+  }
+  assert.ok(source.includes("enrichLauncherDecisionWithImobRuntimeShadow"), "launcher must consume the already-resolved engine decision, not fetch itself");
 });
