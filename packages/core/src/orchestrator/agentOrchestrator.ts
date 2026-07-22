@@ -4,6 +4,7 @@ import { RunEventStore } from "./runEventStore";
 import { TelemetryBridge } from "./telemetryBridge";
 import type { PlanStepPayload } from "../services/planStepStore";
 import type { PlanStepStore } from "../services/planStepStore";
+import { parseMcpProxyAllActionsEnv } from "../services/mcpGovernanceEnv";
 
 export type OrchestratorActionMap = Record<string, RegisteredAction>;
 
@@ -148,11 +149,8 @@ export class AgentOrchestrator {
 
   private isMcpProxyEnabled(input: OrchestratorInput) {
     if (typeof input.mcpProxyAllActions === "boolean") return input.mcpProxyAllActions;
-    const raw =
-      typeof process !== "undefined"
-        ? (process.env.MCP_PROXY_ALL_ACTIONS ?? "").trim().toLowerCase()
-        : "";
-    return raw === "1" || raw === "true" || raw === "on";
+    if (typeof process === "undefined") return false;
+    return parseMcpProxyAllActionsEnv();
   }
 
   private dynamicReplanConfig(input: OrchestratorInput) {
