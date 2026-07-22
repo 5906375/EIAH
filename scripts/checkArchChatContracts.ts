@@ -138,6 +138,15 @@ const contracts: ContractSpec[] = [
 
 const VERTICAL_REASON_CODE_CATALOG = "contracts/chat/vertical.reason_codes.v1.json";
 const PROHIBITED_CONTENT_FIELDS = new Set(["prompt", "response", "rawDocument", "documentBody"]);
+// chat.vertical_handoff.v1 (apps/api/src/services/chatVerticalHandoffSnapshot.ts) is a
+// physical, schema-validated, sideEffects=0 producer with zero live route/resolver call
+// sites today (see docs/architecture/chat-vertical-imob-preflight-playbook.md, secao 13).
+// Este allowlist e o unico arquivo autorizado a referenciar o producer; qualquer novo
+// call site fora dele exige atualizar este conjunto de forma explicita e deliberada,
+// evitando que o modulo passe a ser runtime-enforced por drift silencioso.
+const ALLOWED_V1_HANDOFF_SNAPSHOT_FILES = new Set([
+  path.normalize("apps/api/src/services/chatVerticalHandoffSnapshot.ts"),
+]);
 const ALLOWED_V2_PREFLIGHT_CONSUMERS = new Set([
   path.normalize("apps/api/src/resolvers/chatVerticalImobCandidateResolver.ts"),
 ]);
@@ -480,6 +489,14 @@ for (const file of operationalSources) {
   ) {
     violations.push({ message: "chat_vertical_handoff_v2_operational_consumer_forbidden", file });
   }
+  if (
+    !ALLOWED_V1_HANDOFF_SNAPSHOT_FILES.has(path.normalize(file)) &&
+    (content.includes("chatVerticalHandoffSnapshot") ||
+      content.includes("buildChatVerticalHandoffSnapshot") ||
+      content.includes("validateChatVerticalHandoffSnapshotAgainstSchema"))
+  ) {
+    violations.push({ message: "chat_vertical_handoff_v1_runtime_call_site_requires_explicit_decision", file });
+  }
 }
 
 if (violations.length > 0) {
@@ -502,6 +519,7 @@ console.log(
       reasonCodeCatalog: VERTICAL_REASON_CODE_CATALOG,
       allowedV2PreflightConsumers: [...ALLOWED_V2_PREFLIGHT_CONSUMERS],
       guardedV2PreflightModules: [...GUARDED_V2_PREFLIGHT_MODULES],
+      allowedV1HandoffSnapshotFiles: [...ALLOWED_V1_HANDOFF_SNAPSHOT_FILES],
     },
     null,
     2,

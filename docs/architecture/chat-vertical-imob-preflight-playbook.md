@@ -348,3 +348,131 @@ Este playbook, e o PR6 que o introduz, **não fazem**:
   entitlement, policy e HITL quando aplicável — os mesmos campos já
   presentes em `governance` no contrato v2 (`chatVerticalHandoffV2Contract.ts:146-165`),
   hoje usados apenas para avaliação read-only/preview.
+
+## 13. `chat.vertical_handoff.v1` — physical read-only producer (PR8J)
+
+> Este item resolve o achado de auditoria P2: `buildChatVerticalHandoffSnapshot`
+> existe e é testado, mas não tinha nenhum guardrail estático que impedisse
+> um call site runtime silencioso. Este é um item **documental +
+> guardrail estático**, não um item de wiring. Nenhuma rota, resolver ou
+> componente foi conectado a este producer nesta etapa.
+
+`chat.vertical_handoff.v1` é uma família **separada** de `chat.vertical_handoff.v2`
+(seções 1–12 deste playbook). Não compartilham schema, versão, nem cadeia de
+execução. Não confundir as duas ao consultar este documento.
+
+### 13.1 Classificação explícita
+
+`chat.vertical_handoff.v1` é:
+
+- **physical read-only producer** — `buildChatVerticalHandoffSnapshot()`
+  (`apps/api/src/services/chatVerticalHandoffSnapshot.ts:221`) é uma função
+  pura: recebe um input, não faz I/O, não escreve em nenhum lugar, não chama
+  rede/DB/fila/provider. `validateChatVerticalHandoffSnapshotAgainstSchema()`
+  (`:215`) apenas lê o schema físico do disco e valida estruturalmente.
+- **schema-validated** — todo snapshot `ok: true` é validado contra o schema
+  físico `contracts/chat/chat.vertical_handoff.v1.schema.json` antes de ser
+  retornado (`:283-293`); o schema também é validado estruturalmente pelo
+  gate `check:arch-chat-contracts` (`scripts/checkArchChatContracts.ts:22-49`
+  — forma do schema, `required`/`optional` fields, `additionalProperties:
+  false`, `version.const`).
+- **`sideEffects=0`** — todo ramo de retorno, sucesso ou falha, declara
+  `sideEffects: 0` explicitamente (`chatVerticalHandoffSnapshot.ts:70,77,231,
+  242,290,299`); confirmado pelo teste "producer is read-only and exposes
+  zero side effects without external/mutational calls"
+  (`apps/api/src/tests/chat-vertical-handoff-snapshot.test.ts:146-159`).
+- **fail-closed em input ausente** — `tenantId`, `workspaceId`, `scope`,
+  `userId`, `verticalId`, `intentId`, `handoffMessage`, `reasonCode`,
+  `riskLevel` são obrigatórios; ausência de qualquer um retorna `ok: false`
+  com `reasonCode` dedicado (`CHAT_VERTICAL_HANDOFF_*_REQUIRED`,
+  `chatVerticalHandoffSnapshot.ts:83-93,224-234`); `riskLevel: "critical"`
+  sem `hitlRequired: true` também falha fechado (`:236-244`).
+- **not runtime-enforced unless/until a live route/resolver call site
+  exists** — `grep -rn "buildChatVerticalHandoffSnapshot"` no repositório
+  inteiro (exceto `node_modules`/`dist`) retorna apenas a própria declaração
+  em `chatVerticalHandoffSnapshot.ts:221` e o arquivo de teste
+  `apps/api/src/tests/chat-vertical-handoff-snapshot.test.ts`. Nenhuma rota
+  (`apps/api/src/routes/**`), nenhum resolver (`apps/api/src/resolvers/**`)
+  e nenhum outro serviço importa ou chama este producer. Não há endpoint
+  HTTP, montado ou não, que o exponha.
+
+### 13.2 Eco estrutural no frontend — não é wiring
+
+Existe hoje uma superfície de apresentação e uma fixture estática que
+**reproduzem a forma** do snapshot v1 por convenção de tipo, sem importar ou
+chamar o producer:
+
+- `apps/web/src/components/chat/ChatVerticalHandoffSurface.tsx` — componente
+  React puro (`ChatVerticalHandoffSurface({ snapshot })`), redeclara
+  localmente o tipo `ChatVerticalHandoffSurfaceSnapshot` (não importa nada
+  de `chatVerticalHandoffSnapshot.ts`); apenas renderiza um `snapshot` já
+  recebido via prop.
+- `apps/web/src/features/imob/imobPilot2FixturePreview.ts` — objeto literal
+  estático (`imobPilot2FixturePreview`), com `status:
+  "fixture_only_not_executed"`, `dataPolicy.syntheticOnly: true`, e
+  `reasonCodes` incluindo explicitamente `NO_SHADOW_DRY_RUN_EXECUTION`,
+  `NO_PILOT_SMALL_ROLLOUT_EXECUTION`, `NO_DB_LEDGER_AUDIT_WRITE`,
+  `NO_RECEIPT_BUNDLE_PROOF_GENERATION`, `NO_PROVIDER_EXTERNAL_CALL`,
+  `NO_MUTATION_EXTERNAL_SIDE_EFFECT`. O campo `handoffSnapshot` desse objeto
+  usa o literal `version: "chat.vertical_handoff.v1"` apenas porque o tipo
+  `ChatVerticalHandoffSurfaceSnapshot` o exige estruturalmente — não porque
+  o producer foi chamado.
+- `apps/web/src/components/chat/FrontDoorImobFixturePreviewPanel.tsx`
+  renderiza essa fixture estática via `<ChatVerticalHandoffSurface
+  snapshot={preview.handoffSnapshot} />`, atrás de um gate de query params
+  bem específico (`shouldRenderImobPilot2FixturePreview`).
+- `apps/api/src/services/chatGateProofAdapters.ts:94` declara
+  `"chat.vertical_handoff.v1"` apenas como um valor possível do union type
+  `ProofReceiptBundleSource` — um adapter read-only e presentacional (ver
+  seção de auditoria P2 anterior) que recebe estado já resolvido como
+  input, não o produz.
+
+Nenhum desses quatro arquivos importa `chatVerticalHandoffSnapshot.ts`, chama
+`buildChatVerticalHandoffSnapshot()` ou `validateChatVerticalHandoffSnapshotAgainstSchema()`,
+nem valida contra o schema físico. É reuso de forma (shape), não reuso do
+producer nem enforcement de runtime. Por isso o guardrail da seção 13.3
+verifica os identificadores reais do producer (`chatVerticalHandoffSnapshot`,
+`buildChatVerticalHandoffSnapshot`, `validateChatVerticalHandoffSnapshotAgainstSchema`),
+não a string de versão isolada — do contrário, esses quatro arquivos
+legítimos e pré-existentes seriam falsos positivos.
+
+### 13.3 Guardrail estático (novo, PR8J)
+
+`scripts/checkArchChatContracts.ts` ganhou um guard analogous ao já existente
+para v2 (`ALLOWED_V2_PREFLIGHT_CONSUMERS`), mas para v1:
+
+```ts
+const ALLOWED_V1_HANDOFF_SNAPSHOT_FILES = new Set([
+  path.normalize("apps/api/src/services/chatVerticalHandoffSnapshot.ts"),
+]);
+```
+
+Qualquer arquivo em `apps/api/src/**` ou `apps/web/src/**` (fora de
+`tests/`, `types/` e `*.test.ts`) que referencie `chatVerticalHandoffSnapshot`,
+`buildChatVerticalHandoffSnapshot` ou `validateChatVerticalHandoffSnapshotAgainstSchema`
+sem estar nesse allowlist falha o check com
+`chat_vertical_handoff_v1_runtime_call_site_requires_explicit_decision`.
+
+Isso significa que o item "not runtime-enforced unless/until a live
+route/resolver call site exists" deixa de ser apenas uma afirmação
+documental: **`pnpm check:arch-chat-contracts` falha em CI** no momento em
+que qualquer PR futuro importar o producer fora deste arquivo, forçando uma
+decisão explícita (atualizar o allowlist) em vez de permitir wiring por
+drift silencioso.
+
+### 13.4 O que este item NÃO faz
+
+- Não conecta `buildChatVerticalHandoffSnapshot()` a nenhuma rota HTTP,
+  resolver ou componente.
+- Não altera `ChatAgentLauncher.tsx`, runtime shadow, provider, `createRun`,
+  write path, Receipt/Ledger, economy ou LEGAL.
+- Não declara `chat.vertical_handoff.v1` como operacionalmente pronto,
+  `DONE` ou runtime-enforced.
+- Não move nem substitui a cadeia v2 (seções 1–12) — v2 permanece a única
+  cadeia de handoff vertical IMOB efetivamente em uso pelos resolvers
+  guardados (`chatVerticalImobRuntimeShadow*`), e permanece, ela mesma, sem
+  runtime HTTP montado por padrão fora da flag
+  `EIAH_CHAT_IMOB_RUNTIME_SHADOW_ROUTE_ENABLED`.
+- Não decide se/quando `chat.vertical_handoff.v1` deve ganhar um call site
+  real — essa decisão permanece em aberto, exigindo autorização explícita
+  futura, exatamente como o achado de auditoria original pedia.
