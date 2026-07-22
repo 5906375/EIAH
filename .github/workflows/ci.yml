@@ -65,6 +65,15 @@ jobs:
           pnpm --filter @eiah/contracts build
           pnpm --filter @repo/db build
 
+      # apps/workers/action-runner/src/index.test.ts precisa de @repo/db
+      # buildado (import de ./index -> @repo/db) mas nao de Postgres/Redis
+      # reais (getPrismaForTenant e mockado via injecao de dependencia).
+      # Por isso vive aqui (apos o build acima), nao em test:ci-unit-suite
+      # (Grupo B, explicitamente sem build amplo — ver
+      # scripts/unit-tests-manifest.txt).
+      - name: Run action-runner MCP gate-ordering test
+        run: pnpm test:action-runner-gates
+
       - name: Run Tests
         env:
           DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/eiah_ci?schema=public
