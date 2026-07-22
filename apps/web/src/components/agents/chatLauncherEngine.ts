@@ -898,22 +898,13 @@ function isPresentationQuestion(input: string) {
   return signals.some((signal) => normalized.includes(signal));
 }
 
-function buildDefaultParticipation(agent: Agent): AgentParticipationSnapshot {
-  return {
-    agentId: agent.id,
-    status: "active",
-    visibility: "visible",
-    canBeSuggested: true,
-    canReceiveHandoff: true,
-    requiresEntitlement: false,
-    requiredModules: [],
-    requiredWorkspaceCapabilities: [],
-  };
-}
-
+// PR-8I: participation ausente = governanca ausente = fail-closed. Nenhum
+// fallback permissivo aqui — a ausencia de agent.participation nunca deve
+// implicar sugestao ou handoff. canSuggestAgent/canHandoffToAgent ja tratam
+// `null` como nao elegivel.
 export function getAgentParticipation(agent: Agent | null | undefined): AgentParticipationSnapshot | null {
   if (!agent) return null;
-  return agent.participation ?? buildDefaultParticipation(agent);
+  return agent.participation ?? null;
 }
 
 export function resolveAgentParticipation(
