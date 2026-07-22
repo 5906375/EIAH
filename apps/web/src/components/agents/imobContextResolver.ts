@@ -10,9 +10,11 @@ export type ImobFaqSeed = {
 
 export type ImobJourneyStage =
   | "captacao"
+  | "lead"
   | "compra"
   | "venda"
   | "locacao"
+  | "documentacao"
   | "proposta"
   | "leilao"
   | "negociacao"
@@ -149,7 +151,15 @@ const IMOB_FAQ_SEEDS: ImobFaqSeed[] = [
 const IMOB_JOURNEY_MAP: ImobJourneyDefinition[] = [
   {
     stage: "captacao",
-    entrySignals: ["captacao", "captação", "captar", "captar imovel", "captar imóvel"],
+    entrySignals: [
+      "captacao",
+      "captação",
+      "captar",
+      "captar imovel",
+      "captar imóvel",
+      "captar para leilao",
+      "captar para leilão",
+    ],
     answerShort:
       "Em captação, eu posso te ajudar a organizar imóvel, proposta de entrada, documentação inicial e próximos passos comerciais.",
     nextQuestion: "Você está captando para venda, locação ou leilão?",
@@ -157,8 +167,72 @@ const IMOB_JOURNEY_MAP: ImobJourneyDefinition[] = [
     pageShortcuts: ["/app/imob/dashboard", "/app/imob/chat"],
   },
   {
+    stage: "lead",
+    entrySignals: [
+      "qualificar lead comprador",
+      "qualificar lead locatario",
+      "qualificar lead locatário",
+      "lead comprador",
+      "lead locatario",
+      "lead locatário",
+      "lead para compra de imovel",
+      "lead para compra de imóvel",
+      "lead para locacao",
+      "lead para locação",
+      "recebi um lead comprador",
+      "recebi um lead de locacao",
+      "recebi um lead de locação",
+    ],
+    answerShort:
+      "Na qualificação de lead, eu posso te ajudar a organizar interesse, orçamento, cidade, urgência e próximo passo comercial sem abrir um fluxo genérico.",
+    nextQuestion: "Esse lead é de compra, venda ou locação, e você já tem orçamento e cidade de interesse?",
+    eligibleSpecialists: ["none"],
+    pageShortcuts: ["/app/imob/chat", "/app/imob/dashboard"],
+  },
+  {
+    stage: "documentacao",
+    entrySignals: [
+      "checklist de documentos",
+      "documentos necessarios",
+      "documentos necessários",
+      "pendencias documentais",
+      "pendências documentais",
+      "documentacao do imovel",
+      "documentação do imóvel",
+      "documentos do imovel",
+      "documentos do imóvel",
+      "quais documentos para locacao",
+      "quais documentos para locação",
+      "quais documentos para compra",
+      "quais documentos para venda",
+      "checklist de documentos do imovel",
+      "checklist de documentos do imóvel",
+      "pendencias documentais do imovel",
+      "pendências documentais do imóvel",
+    ],
+    answerShort:
+      "Em documentação, eu posso te ajudar a organizar o checklist inicial: partes envolvidas, dados do imóvel, condições financeiras e garantia, conforme a etapa do caso.",
+    nextQuestion: "Essa documentação é para compra, venda ou locação, e você já sabe o que falta reunir?",
+    eligibleSpecialists: ["none"],
+    pageShortcuts: ["/app/imob/chat", "/app/imob/dashboard"],
+  },
+  {
     stage: "compra",
-    entrySignals: ["comprar", "compra", "comprar apartamento", "comprar imovel", "comprar imóvel"],
+    entrySignals: [
+      "comprar",
+      "compra",
+      "comprar apartamento",
+      "comprar imovel",
+      "comprar imóvel",
+      "quero comprar uma casa",
+      "quero comprar um apartamento",
+      "financiamento imobiliario",
+      "financiamento imobiliário",
+      "financiamento do imovel",
+      "financiamento do imóvel",
+      "aprovacao de credito imobiliario",
+      "aprovação de crédito imobiliário",
+    ],
     answerShort:
       "Na jornada de compra, eu posso te ajudar a organizar busca, proposta, documentação, negociação e próximos passos.",
     nextQuestion: "Você está na etapa de busca, proposta, negociação, contrato ou fechamento?",
@@ -167,7 +241,18 @@ const IMOB_JOURNEY_MAP: ImobJourneyDefinition[] = [
   },
   {
     stage: "venda",
-    entrySignals: ["vender", "venda", "vender imovel", "vender imóvel", "anunciar imovel", "anunciar imóvel"],
+    entrySignals: [
+      "vender",
+      "vender imovel",
+      "vender imóvel",
+      "anunciar imovel",
+      "anunciar imóvel",
+      "avaliar meu imovel",
+      "avaliar meu imóvel",
+      "colocar a venda",
+      "colocar à venda",
+      "anunciar para vender",
+    ],
     answerShort:
       "Na jornada de venda, eu posso te ajudar a organizar captação, anúncio, proposta, negociação e fechamento.",
     nextQuestion: "O imóvel já está em captação, anúncio, proposta, negociação ou contrato?",
@@ -176,7 +261,18 @@ const IMOB_JOURNEY_MAP: ImobJourneyDefinition[] = [
   },
   {
     stage: "locacao",
-    entrySignals: ["locacao", "locação", "alugar", "locar", "aluguel", "administrar aluguel"],
+    entrySignals: [
+      "locacao",
+      "locação",
+      "alugar",
+      "locar",
+      "aluguel",
+      "administrar aluguel",
+      "quero alugar meu imovel",
+      "quero alugar meu imóvel",
+      "quero alugar um imovel",
+      "quero alugar um imóvel",
+    ],
     answerShort:
       "Na jornada de locação, eu posso te ajudar a organizar anúncio, proposta, garantias, contrato e acompanhamento.",
     nextQuestion: "Você quer seguir por anúncio, proposta, garantia locatícia, contrato ou administração?",
@@ -203,7 +299,16 @@ const IMOB_JOURNEY_MAP: ImobJourneyDefinition[] = [
   },
   {
     stage: "negociacao",
-    entrySignals: ["negociacao", "negociação", "negociar"],
+    entrySignals: [
+      "negociacao",
+      "negociação",
+      "negociar",
+      "negociar condicoes",
+      "negociar condições",
+      "negociar valor",
+      "abrir negociacao",
+      "abrir negociação",
+    ],
     answerShort:
       "Na negociação, eu posso te ajudar a organizar valor, condições, contraproposta e próximos passos até o contrato.",
     nextQuestion: "Você está negociando preço, prazo, condições ou documentação?",
@@ -529,10 +634,16 @@ function buildImobResolvedQuickReplies(input: string) {
       return ["Quero anunciar locação", "Preciso de garantia", "Quero revisar contrato"];
     case "captacao":
       return ["Captar para venda", "Captar para locação", "Organizar proposta"];
+    case "lead":
+      return ["É lead de compra", "É lead de locação", "Já tenho orçamento e cidade"];
+    case "documentacao":
+      return ["É documentação de compra", "É documentação de venda", "É documentação de locação"];
     case "leilao":
       return ["Quero analisar edital", "Quero entender riscos", "Quero calcular custo total"];
     case "proposta":
       return ["É proposta de compra", "É proposta de venda", "É proposta de locação"];
+    case "negociacao":
+      return ["Negociar valor", "Negociar condições", "Organizar contraproposta"];
     default:
       return ["Como funciona IMOB do início ao fim?", "Onde acompanho pipeline e etapas no IMOB?", "Quero instalar o IMOB no workspace."];
   }
@@ -549,8 +660,14 @@ export function buildImobInputPlaceholderForInput(input?: string | null) {
       return "Ex.: quero anunciar locação de apartamento e entender a garantia";
     case "captacao":
       return "Ex.: estou em captação para venda de imóvel residencial";
+    case "lead":
+      return "Ex.: recebi um lead comprador com orçamento e cidade definidos";
+    case "documentacao":
+      return "Ex.: quais documentos preciso reunir para a locação deste imóvel";
     case "leilao":
       return "Ex.: quero analisar edital de imóvel em leilão";
+    case "negociacao":
+      return "Ex.: quero negociar valor e condições com uma contraproposta";
     default:
       return "Ex.: estou na etapa de proposta para venda de apartamento";
   }
