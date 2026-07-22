@@ -606,6 +606,14 @@ jobs:
           pnpm check:imob-static-harness-contract
           pnpm test:imob-static-harness-contract
 
+      # PR MCP-1C — guard estatico puro texto/regex (sem build, sem
+      # services): drift entre ToolContract.executor e MCPExecutor switch,
+      # call sites de MCPExecutor/ToolRegistry, acoplamento simulated
+      # (runWorker.ts <-> imobCanonical.ts) e parsers de env de governanca
+      # MCP fora da allowlist explicita.
+      - name: Run MCP contract drift gate
+        run: pnpm check:mcp-contract-drift
+
   public_health_contract:
     name: PublicHealthContract
     runs-on: ubuntu-latest
