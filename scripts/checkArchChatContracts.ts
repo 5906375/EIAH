@@ -146,6 +146,7 @@ const GUARDED_V2_PREFLIGHT_MODULES = new Set([
   path.normalize("apps/api/src/resolvers/chatVerticalImobConfidence.ts"),
   path.normalize("apps/api/src/resolvers/chatVerticalImobClarification.ts"),
   path.normalize("apps/api/src/resolvers/chatVerticalImobHandoff.ts"),
+  path.normalize("apps/api/src/resolvers/chatVerticalImobRuntimeShadow.ts"),
 ]);
 const ALLOWED_V2_PREFLIGHT_IMPORTS = new Map<string, Set<string>>([
   [
@@ -164,6 +165,15 @@ const ALLOWED_V2_PREFLIGHT_IMPORTS = new Map<string, Set<string>>([
   [
     path.normalize("apps/api/src/resolvers/chatVerticalImobHandoff.ts"),
     new Set(["zod", "./chatVerticalImobClarification", "./chatVerticalImobConfidence"]),
+  ],
+  [
+    path.normalize("apps/api/src/resolvers/chatVerticalImobRuntimeShadow.ts"),
+    new Set([
+      "zod",
+      "./chatVerticalImobCandidateResolver",
+      "./chatVerticalImobClarification",
+      "./chatVerticalImobHandoff",
+    ]),
   ],
 ]);
 const PROHIBITED_V2_PREFLIGHT_RUNTIME_TOKENS = [
