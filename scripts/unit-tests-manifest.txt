@@ -187,4 +187,7 @@ apps/web/src/pages/app/runs/index.test.ts
 apps/web/src/pages/self-service/recipePrefill.test.ts
 apps/web/src/pages/self-service/tenantRecipeComposer.test.ts
 apps/workers/action-runner/src/services/mcpEnforcement.test.ts
+packages/mcp-runner/src/executor/MCPCircuitBreaker.test.ts
+packages/mcp-runner/src/validator/SchemaValidator.test.ts
+packages/mcp-runner/src/executor/MCPExecutor.test.ts
 scripts/sloBaselineCollect.test.ts
