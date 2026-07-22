@@ -1749,6 +1749,104 @@ test("workspace expansion continues the commercial flow instead of resetting to 
   assert.match(decision.content ?? "", /expansão do workspace/i);
 });
 
+// PR-8H — Vertical Context Rule v1: generic/ambiguous terms must not start a
+// SaaS proposal collection just because routeIntent="proposal" or
+// proposalMode=true. Only strong, explicit SaaS proposal intent may do that.
+
+test("PR-8H: generic negotiation text does not start SaaS proposal collection", async () => {
+  const decision = await resolveLauncherProposalDecision({
+    input: "negociar valor",
+    routeIntent: "proposal",
+    proposalMode: true,
+    eiahMode: "proposal",
+    agentProfile: null,
+  });
+
+  assert.equal(decision, null);
+});
+
+test("PR-8H: generic sales lead text does not start SaaS proposal collection", async () => {
+  const decision = await resolveLauncherProposalDecision({
+    input: "lead de vendas do time comercial",
+    routeIntent: "proposal",
+    proposalMode: true,
+    eiahMode: "proposal",
+    agentProfile: null,
+  });
+
+  assert.equal(decision, null);
+});
+
+test("PR-8H: IMOB context keeps 'negociar valor' inside IMOB negotiation, never SaaS proposal copy", () => {
+  const stage = resolveImobJourneyStage("negociar valor");
+  assert.equal(stage?.stage, "negociacao");
+
+  const decision = resolveImobLauncherSurfaceDecision({
+    input: "negociar valor",
+    hasAccess: true,
+    hasKnowledgeSearchIntent: false,
+    isContextEntryQuestion: true,
+  });
+
+  assert.ok(decision);
+  assert.doesNotMatch(decision.content ?? "", /Consigo montar sua proposta agora/);
+});
+
+test("PR-8H: strong proposal intent still works without regressing existing legitimate flows", async () => {
+  const abrirProposta = await resolveLauncherProposalDecision({
+    input: "Abrir proposta comercial",
+    routeIntent: "proposal",
+    proposalMode: true,
+    eiahMode: "proposal",
+    agentProfile: null,
+  });
+  assert.ok(abrirProposta);
+  assert.equal(abrirProposta.proposalDomain, "saas");
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        ok: true,
+        data: {
+          formula: "base + usage",
+          options: {
+            economica: { recommended: { label: "Solo", code: "solo", totalCents: 66500 } },
+            equilibrio: { recommended: { label: "Starter", code: "starter", totalCents: 149000 } },
+            escala: { recommended: { label: "Growth", code: "growth", totalCents: 399000 } },
+          },
+        },
+      }),
+      { status: 200, headers: { "content-type": "application/json" } }
+    )) as typeof fetch;
+
+  try {
+    const quotePlano = await resolveLauncherProposalDecision({
+      input: "Tenho 3 usuários e 2000 runs/mês. Qual plano?",
+      routeIntent: "proposal",
+      proposalMode: true,
+      eiahMode: "proposal",
+      agentProfile: null,
+    });
+    assert.ok(quotePlano);
+    assert.equal(quotePlano.conversationStage, "proposal_recommended");
+    assert.equal(quotePlano.proposalDomain, "saas");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  const demo = await resolveLauncherProposalDecision({
+    input: "Agendar demonstração",
+    routeIntent: "proposal",
+    proposalMode: true,
+    eiahMode: "proposal",
+    agentProfile: null,
+  });
+  assert.ok(demo);
+  assert.equal(demo.proposalDomain, "saas");
+  assert.match(demo.conversationStage ?? "", /proposal_demo_(requested|ready)/);
+});
+
 const imobRuntimeShadowRequest: ImobRuntimeShadowEngineRequest = {
   intent: { verticalId: "imob", label: "Untrusted label", capabilityId: "inventory.preview" },
   confidenceSignals: { verticalEvidence: "explicit", capabilityEvidence: "explicit", competingIntent: false },
