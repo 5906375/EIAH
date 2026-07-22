@@ -4,6 +4,15 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## MCP-1A a MCP-1D — CI gates, testes unitarios, guard estatico e doc canonica do MCP Runner (2026-07-22)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Doc canonico MCP v1 | `docs/architecture/mcp-contract-v1.md` | Documenta, com arquivo real como fonte, o contrato `ToolContract` e os 4 modos de executor, os dois call sites conhecidos de `@repo/mcp-runner` (assincrono via `mcpAdapter.ts` com Intent/Trust/Judge Gate antes de MCP; sincrono via `runWorker.ts` sob `MCP_PROXY_ALL_ACTIONS=true`, sem Trust/Judge Gate — divergencia registrada, nao resolvida), o fallback simulado nao-fail-closed para `realestate.*` no caminho sincrono e sua unica leitura conhecida, e o guard estatico MCP-1C com cobertura e limitacoes explicitas. Nao altera runtime, nao declara MCP fechado. |
+| Guard estatico de drift de contrato MCP (MCP-1C) | `scripts/checkMcpContractDrift.ts` + `package.json` (`check:mcp-contract-drift`) + `.github/workflows/ci.yml` (job `orphan_tests_regression`, step "Run MCP contract drift gate") | Falha CI se o union `executor` de `ToolContract.ts` divergir dos `case` do switch de `MCPExecutor.ts`, se um call site novo de `MCPExecutor`/`ToolRegistry` aparecer fora da allowlist (`mcpAdapter.ts`, `runWorker.ts`), se o token `simulated` sumir de um dos dois arquivos acoplados (`runWorker.ts`, `imobCanonical.ts`), ou se um parser novo de `MCP_ENFORCE_CONTRACTS`/`MCP_PROXY_ALL_ACTIONS` aparecer fora da allowlist de 4 arquivos conhecidos. Verificado localmente com `pnpm check:mcp-contract-drift` (`ok: true`). |
+| Cobertura unitaria propria de `packages/mcp-runner` (MCP-1B) | `packages/mcp-runner/src/executor/MCPCircuitBreaker.test.ts` + `packages/mcp-runner/src/validator/SchemaValidator.test.ts` + `packages/mcp-runner/src/executor/MCPExecutor.test.ts` + `package.json` (`test:mcp-runner`) | 16/16 testes cobrindo estados closed/open/half-open/reset/concorrencia do circuit breaker, validacao Ajv (payload valido/invalido/`additionalProperties`), e os executores `http` (fetch mockado)/`fs` (arquivo temporario real)/`web3` (not-implemented)/timeout/circuit-breaker do `MCPExecutor`. `execDb` e `ToolRegistry` explicitamente fora de escopo. |
+| Teste de ordenacao de gates do action-runner conectado ao CI (MCP-1A) | `.github/workflows/ci.yml` (job `build_validate`, step "Run action-runner MCP gate-ordering test") + `package.json` (`test:action-runner-gates`) | Conecta `apps/workers/action-runner/src/index.test.ts` (ate entao orfao de CI) ao pipeline, com build previo de `@repo/db`/`@eiah/core`/`@eiah/providers` e `DATABASE_URL` dummy para satisfazer inicializacao import-time sem exigir Postgres real. |
+
 ## PR8J — chat.vertical_handoff.v1 physical read-only producer classification (2026-07-22)
 
 | Assunto | Arquivo | O que prova |
