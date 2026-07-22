@@ -27,6 +27,11 @@ import {
   resolveImobRuntimeShadowSummaryForTurn,
   enrichLauncherDecisionWithImobRuntimeShadow,
   resolveLauncherTurnDecision,
+  getAgentParticipation,
+  canSuggestAgent,
+  canHandoffToAgent,
+  buildAgentParticipationRegistry,
+  resolveSpecialistAvailability,
   type LauncherLocalDecision,
 } from "./chatLauncherEngine.ts";
 import type { ImobRuntimeShadowEngineRequest } from "../../features/imob/imobRuntimeShadowClient";
@@ -78,6 +83,88 @@ test("chat route telemetry omits arbitrary domain hints containing fake PII", ()
       surfaceRoute: "/app/chat",
     },
   );
+});
+
+// PR-8I — Agent participation fail-closed hardening: absence of
+// agent.participation must never imply governance (no implicit suggestion,
+// no implicit handoff). Only an explicit, active participation contract
+// grants eligibility.
+
+test("PR-8I: agent without explicit participation fails closed", () => {
+  const agent = {
+    id: "imob-specialist",
+    name: "IMOB Specialist",
+  } as any;
+
+  assert.equal(getAgentParticipation(agent), null);
+  assert.equal(canSuggestAgent(agent), false);
+  assert.equal(canHandoffToAgent(agent), false);
+});
+
+test("PR-8I: participation registry does not register agents without explicit participation", () => {
+  const registry = buildAgentParticipationRegistry([
+    {
+      id: "imob-specialist",
+      name: "IMOB Specialist",
+    } as any,
+  ]);
+
+  assert.equal(registry.size, 0);
+});
+
+test("PR-8I: agent with explicit active participation remains eligible", () => {
+  const participation = {
+    agentId: "imob-specialist",
+    status: "active",
+    visibility: "visible",
+    canBeSuggested: true,
+    canReceiveHandoff: true,
+    requiresEntitlement: false,
+    requiredModules: [],
+    requiredWorkspaceCapabilities: [],
+  };
+
+  const agent = {
+    id: "imob-specialist",
+    name: "IMOB Specialist",
+    participation,
+  } as any;
+
+  assert.deepEqual(getAgentParticipation(agent), participation);
+  assert.equal(canSuggestAgent(agent), true);
+  assert.equal(canHandoffToAgent(agent), true);
+
+  const registry = buildAgentParticipationRegistry([agent]);
+  assert.equal(registry.get("imobspecialist")?.participation, participation);
+});
+
+test("PR-8I: specialist availability remains fail-closed without a registry match", () => {
+  const participation = {
+    agentId: "imob-specialist",
+    status: "active",
+    visibility: "visible",
+    canBeSuggested: true,
+    canReceiveHandoff: true,
+    requiresEntitlement: false,
+    requiredModules: [],
+    requiredWorkspaceCapabilities: [],
+  };
+
+  const availability = resolveSpecialistAvailability(
+    [
+      {
+        id: "imob-specialist",
+        name: "IMOB Specialist",
+        participation,
+      } as any,
+    ],
+    ["unknown-specialist"],
+  );
+
+  assert.equal(availability.agent, null);
+  assert.equal(availability.participation, null);
+  assert.equal(availability.canBeSuggested, false);
+  assert.equal(availability.canReceiveHandoff, false);
 });
 
 function createProposalSnapshot(
