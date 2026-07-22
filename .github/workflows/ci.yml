@@ -64,13 +64,14 @@ jobs:
         run: |
           pnpm --filter @eiah/contracts build
           pnpm --filter @repo/db build
+          pnpm --filter @eiah/core build
 
-      # apps/workers/action-runner/src/index.test.ts precisa de @repo/db
-      # buildado (import de ./index -> @repo/db) mas nao de Postgres/Redis
-      # reais (getPrismaForTenant e mockado via injecao de dependencia).
-      # Por isso vive aqui (apos o build acima), nao em test:ci-unit-suite
-      # (Grupo B, explicitamente sem build amplo — ver
-      # scripts/unit-tests-manifest.txt).
+      # apps/workers/action-runner/src/index.test.ts precisa de @repo/db e
+      # @eiah/core buildados (import de ./index -> @repo/db + @eiah/core)
+      # mas nao de Postgres/Redis reais (getPrismaForTenant e mockado via
+      # injecao de dependencia). Por isso vive aqui (apos o build acima),
+      # nao em test:ci-unit-suite (Grupo B, explicitamente sem build amplo
+      # — ver scripts/unit-tests-manifest.txt).
       - name: Run action-runner MCP gate-ordering test
         run: pnpm test:action-runner-gates
 

@@ -57,5 +57,4 @@ apps/api/src/tests/uploads.storage-provider.test.ts # F0.7 known-debt api/storag
 apps/api/src/tests/workspace.memberships.contract.test.ts # F0.7 known-debt api/core; amarrar a script/workflow real ou remover se obsoleto
 apps/web/src/features/imob/ImobBottleneckHeatmap.test.tsx # F0.7 known-debt web/imob; amarrar a script/workflow real ou remover se obsoleto
 apps/web/src/features/imob/ImobWaitingOnBoard.test.tsx # F0.7 known-debt web/imob; amarrar a script/workflow real ou remover se obsoleto
-apps/workers/action-runner/src/index.test.ts # F0.7 known-debt worker/action-runner; amarrar a script/workflow real ou remover se obsoleto
 tests/multitenant/tenant-isolation.test.ts # F0.7 known-debt multitenant; amarrar a script/workflow real ou remover se obsoleto
