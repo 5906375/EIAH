@@ -1,13 +1,16 @@
+import {
+  parseMcpEnforceContractsEnv,
+  parseMcpDefaultVersionEnv,
+} from "@eiah/core/services/mcpGovernanceEnv";
+
 export type McpEnforcementConfig = {
   enabled: boolean;
   defaultVersion: string;
 };
 
 export function mcpEnforcementConfigFromEnv(): McpEnforcementConfig {
-  const enabledRaw = (process.env.MCP_ENFORCE_CONTRACTS ?? "true").trim().toLowerCase();
-  const enabled = enabledRaw === "1" || enabledRaw === "true" || enabledRaw === "on";
-
-  const defaultVersion = (process.env.MCP_DEFAULT_VERSION ?? "1.0.0").trim() || "1.0.0";
+  const enabled = parseMcpEnforceContractsEnv();
+  const defaultVersion = parseMcpDefaultVersionEnv();
 
   return { enabled, defaultVersion };
 }

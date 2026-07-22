@@ -19,6 +19,7 @@ const MCP_ADAPTER_FILE = "apps/workers/action-runner/src/services/mcpAdapter.ts"
 const MCP_ENFORCEMENT_FILE = "apps/workers/action-runner/src/services/mcpEnforcement.ts";
 const AGENT_ORCHESTRATOR_FILE = "packages/core/src/orchestrator/agentOrchestrator.ts";
 const INTENT_VALIDATOR_FILE = "apps/api/src/services/intentValidator.ts";
+const MCP_GOVERNANCE_ENV_HELPER_FILE = "packages/core/src/services/mcpGovernanceEnv.ts";
 
 // PR MCP-1C — guard v1: bloqueia drift silencioso entre ToolContract, os
 // modos de MCPExecutor, os call sites de runtime de @repo/mcp-runner, o
@@ -27,6 +28,14 @@ const INTENT_VALIDATOR_FILE = "apps/api/src/services/intentValidator.ts";
 // nao introduz tipo compartilhado, nao consolida os parsers de env — apenas
 // detecta quando um desses pontos se move sem decisao explicita (allowlist
 // atualizada). Segue o mesmo padrao ja usado em checkArchChatContracts.ts.
+//
+// PR MCP-1F — os 4 call sites abaixo foram consolidados para chamar o helper
+// puro packages/core/src/services/mcpGovernanceEnv.ts em vez de ler
+// process.env diretamente. O helper e o unico arquivo autorizado a conter os
+// literais process.env.MCP_ENFORCE_CONTRACTS/MCP_PROXY_ALL_ACTIONS; os 4 call
+// sites agora sao verificados por uma checagem positiva separada (import do
+// helper presente), para nao criar falso negativo quando pararam de conter
+// esses literais.
 
 // Item 4: unico consumidor autorizado de MCPExecutor/ToolRegistry fora do
 // proprio packages/mcp-runner/src. Novo call site exige atualizar esta lista.
@@ -34,11 +43,18 @@ const ALLOWED_MCP_EXECUTOR_CONSUMERS = new Set(
   [MCP_ADAPTER_FILE, RUN_WORKER_FILE].map((file) => path.normalize(file))
 );
 
-// Item 6: unicos parsers autorizados de MCP_ENFORCE_CONTRACTS/
-// MCP_PROXY_ALL_ACTIONS. Novo parser exige atualizar esta lista — o objetivo
-// nao e consolidar os quatro existentes (fora de escopo do v1), so impedir
-// que um quinto apareca sem decisao consciente.
+// Item 6: unico arquivo autorizado a fazer parsing bruto de
+// MCP_ENFORCE_CONTRACTS/MCP_PROXY_ALL_ACTIONS via process.env. Novo parser
+// bruto exige atualizar esta lista — o objetivo nao e permitir reintroducao
+// de duplicacao, so impedir que um parser bruto apareca sem decisao
+// consciente.
 const ALLOWED_MCP_ENV_PARSERS = new Set(
+  [MCP_GOVERNANCE_ENV_HELPER_FILE].map((file) => path.normalize(file))
+);
+
+// Item 6b (MCP-1F): call sites que devem consumir o helper canonico em vez de
+// parsing bruto. Novo call site exige atualizar esta lista.
+const EXPECTED_MCP_GOVERNANCE_ENV_HELPER_CONSUMERS = new Set(
   [MCP_ENFORCEMENT_FILE, RUN_WORKER_FILE, AGENT_ORCHESTRATOR_FILE, INTENT_VALIDATOR_FILE].map((file) =>
     path.normalize(file)
   )
@@ -95,6 +111,25 @@ function isOperationalSource(file: string) {
 function sameStringSet(left: string[], right: string[]): boolean {
   return left.length === right.length && left.every((value) => right.includes(value));
 }
+
+// Remove comentarios de bloco e de linha antes de casar os padroes abaixo —
+// evita falso positivo quando "mcpGovernanceEnv" ou um nome de funcao
+// parseMcp* aparece apenas em comentario/TODO, nao em import ou uso real.
+// Nao e um parser real (nao lida com "//" dentro de strings), suficiente
+// para os 4 arquivos conhecidos escaneados aqui.
+function stripComments(content: string): string {
+  return content.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+}
+
+const MCP_GOVERNANCE_ENV_HELPER_MODULE_NAME = path.basename(
+  MCP_GOVERNANCE_ENV_HELPER_FILE,
+  path.extname(MCP_GOVERNANCE_ENV_HELPER_FILE)
+);
+const MCP_GOVERNANCE_ENV_HELPER_IMPORT_PATTERN = new RegExp(
+  `from\\s*["'][^"']*${MCP_GOVERNANCE_ENV_HELPER_MODULE_NAME}["']`
+);
+const MCP_GOVERNANCE_ENV_HELPER_FUNCTION_PATTERN =
+  /\bparseMcp(?:EnforceContractsEnv|ProxyAllActionsEnv|DefaultVersionEnv)\b/;
 
 const violations: Violation[] = [];
 
@@ -201,6 +236,38 @@ for (const file of operationalSources) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Item 6b (MCP-1F): cada call site esperado precisa (a) importar de fato o
+// helper canonico de packages/core/src/services/mcpGovernanceEnv.ts e (b)
+// usar pelo menos uma das funcoes parseMcp*Env exportadas por ele. Evita
+// falso negativo: como os call sites nao contem mais os literais
+// process.env.* diretamente, a checagem acima sozinha nao detectaria
+// regressao para parsing inline duplicado nem remocao silenciosa do uso do
+// helper. As duas condicoes sao casadas apos stripComments() para nao passar
+// quando "mcpGovernanceEnv"/"parseMcp*" aparecem so em comentario.
+// ---------------------------------------------------------------------------
+
+for (const file of EXPECTED_MCP_GOVERNANCE_ENV_HELPER_CONSUMERS) {
+  const content = readFile(file, violations);
+  if (!content) continue;
+
+  const withoutComments = stripComments(content);
+  const hasHelperImport = MCP_GOVERNANCE_ENV_HELPER_IMPORT_PATTERN.test(withoutComments);
+  const hasHelperFunctionUsage = MCP_GOVERNANCE_ENV_HELPER_FUNCTION_PATTERN.test(withoutComments);
+
+  if (!hasHelperImport || !hasHelperFunctionUsage) {
+    violations.push({
+      message: "mcp_governance_env_helper_usage_missing",
+      file,
+      details: {
+        expectedHelper: MCP_GOVERNANCE_ENV_HELPER_FILE,
+        hasHelperImport,
+        hasHelperFunctionUsage,
+      },
+    });
+  }
+}
+
 if (violations.length > 0) {
   fail(violations);
 }
@@ -214,6 +281,7 @@ console.log(
       mcpExecutorFile: MCP_EXECUTOR_FILE,
       allowedMcpExecutorConsumers: [...ALLOWED_MCP_EXECUTOR_CONSUMERS],
       allowedMcpEnvParsers: [...ALLOWED_MCP_ENV_PARSERS],
+      expectedMcpGovernanceEnvHelperConsumers: [...EXPECTED_MCP_GOVERNANCE_ENV_HELPER_CONSUMERS],
       simulatedFallbackCoupling: [RUN_WORKER_FILE, IMOB_CANONICAL_FILE],
       scanRoots: SCAN_ROOTS,
       operationalSourcesScanned: operationalSources.length,

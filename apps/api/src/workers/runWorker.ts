@@ -50,6 +50,11 @@ import { prismaGlobal } from "@repo/db";
 import type { LlmExecutorResult } from "../orchestrator/llmExecutor";
 import { executeCapability } from "../services/capabilityExecution";
 import type { SimulatedToolExecutionResult } from "../services/imob/imobCanonical";
+import {
+  parseMcpEnforceContractsEnv,
+  parseMcpProxyAllActionsEnv,
+  parseMcpDefaultVersionEnv,
+} from "@eiah/core/services/mcpGovernanceEnv";
 
 /* ──────────────────────────────────────────────
    Queue Events
@@ -820,13 +825,9 @@ function createRunEventStoreAdapter(base: {
 }
 
 function mcpConfigFromEnv() {
-  const enforceRaw = (process.env.MCP_ENFORCE_CONTRACTS ?? "true").trim().toLowerCase();
-  const enforceEnabled = enforceRaw === "1" || enforceRaw === "true" || enforceRaw === "on";
-
-  const proxyRaw = (process.env.MCP_PROXY_ALL_ACTIONS ?? "false").trim().toLowerCase();
-  const proxyAll = proxyRaw === "1" || proxyRaw === "true" || proxyRaw === "on";
-
-  const defaultVersion = (process.env.MCP_DEFAULT_VERSION ?? "1.0.0").trim() || "1.0.0";
+  const enforceEnabled = parseMcpEnforceContractsEnv();
+  const proxyAll = parseMcpProxyAllActionsEnv();
+  const defaultVersion = parseMcpDefaultVersionEnv();
   return { enforceEnabled, proxyAll, defaultVersion };
 }
 

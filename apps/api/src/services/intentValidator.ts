@@ -1,6 +1,10 @@
 import { Prisma, PrismaClient } from "@repo/db";
 import crypto from "node:crypto";
 import { z } from "zod";
+import {
+  parseMcpEnforceContractsEnv,
+  parseMcpProxyAllActionsEnv,
+} from "@eiah/core/services/mcpGovernanceEnv";
 
 const IntentSchema = z.object({
   purpose: z.string().min(3).max(500),
@@ -27,14 +31,12 @@ export function assertGovernanceEnv() {
     missing.push("INTENT_SIGNATURE_SECRET");
   }
 
-  const enforceRaw = (process.env.MCP_ENFORCE_CONTRACTS ?? "true").trim().toLowerCase();
-  const enforceEnabled = enforceRaw === "1" || enforceRaw === "true" || enforceRaw === "on";
+  const enforceEnabled = parseMcpEnforceContractsEnv();
   if (!enforceEnabled) {
     missing.push("MCP_ENFORCE_CONTRACTS");
   }
 
-  const proxyRaw = (process.env.MCP_PROXY_ALL_ACTIONS ?? "false").trim().toLowerCase();
-  const proxyEnabled = proxyRaw === "1" || proxyRaw === "true" || proxyRaw === "on";
+  const proxyEnabled = parseMcpProxyAllActionsEnv();
   if (!proxyEnabled) {
     missing.push("MCP_PROXY_ALL_ACTIONS");
   }
