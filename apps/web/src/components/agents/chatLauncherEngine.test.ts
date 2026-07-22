@@ -30,6 +30,11 @@ import {
   type LauncherLocalDecision,
 } from "./chatLauncherEngine.ts";
 import type { ImobRuntimeShadowEngineRequest } from "../../features/imob/imobRuntimeShadowClient";
+import {
+  resolveImobJourneyStage,
+  resolveImobLauncherSurfaceDecision,
+  buildImobInputPlaceholderForInput,
+} from "./imobContextResolver.ts";
 import { resolveHelpDictionarySnapshot } from "./helpDictionaryResolver.ts";
 import {
   buildChatRouteEntryTelemetry,
@@ -1109,6 +1114,142 @@ test("imob shortcut selections return the chosen shortcut as a clickable link", 
 
   assert.match(dashboardReply ?? "", /\[Dashboard IMOB\]\(\/app\/imob\/dashboard\)/);
   assert.match(chatReply ?? "", /\[Chat IMOB\]\(\/app\/imob\/chat\)/);
+});
+
+// ---------------------------------------------------------------------------
+// PR8G — ampliação da biblioteca conversacional IMOB (estende
+// imobContextResolver.ts, não cria catálogo paralelo): lead, documentação,
+// negociação e variações naturais de compra/venda/locação.
+// ---------------------------------------------------------------------------
+
+test("imob lead journey stage: qualification signals resolve to a deterministic, read-only reply", () => {
+  for (const input of [
+    "qualificar lead comprador",
+    "lead para locação",
+    "recebi um lead comprador",
+    "lead comprador",
+  ]) {
+    const stage = resolveImobJourneyStage(input);
+    assert.equal(stage?.stage, "lead", input);
+
+    const reply = buildDeterministicImobReply(input);
+    assert.ok(reply, input);
+    assert.match(reply ?? "", /qualifica..o de lead/i, input);
+    assert.match(reply ?? "", /interesse, or.amento, cidade/i, input);
+  }
+});
+
+test("imob lead journey stage exposes lead-specific quick replies and placeholder, not the generic fallback", () => {
+  const decision = resolveImobLauncherSurfaceDecision({
+    input: "qualificar lead comprador",
+    hasAccess: true,
+    hasKnowledgeSearchIntent: false,
+    isContextEntryQuestion: true,
+  });
+
+  assert.equal(decision?.launcherRouteIntent, "imob");
+  assert.deepEqual(decision?.resolvedQuickReplies, [
+    "É lead de compra",
+    "É lead de locação",
+    "Já tenho orçamento e cidade",
+  ]);
+  assert.match(
+    buildImobInputPlaceholderForInput("lead comprador"),
+    /lead comprador/i,
+  );
+});
+
+test("imob documentacao journey stage: checklist signals resolve to a deterministic, read-only reply", () => {
+  for (const input of [
+    "documentos do imóvel",
+    "checklist de documentos",
+    "checklist de documentos do imóvel",
+    "documentos necessários",
+    "pendências documentais",
+  ]) {
+    const stage = resolveImobJourneyStage(input);
+    assert.equal(stage?.stage, "documentacao", input);
+
+    const reply = buildDeterministicImobReply(input);
+    assert.ok(reply, input);
+    assert.match(reply ?? "", /checklist inicial/i, input);
+    assert.match(reply ?? "", /partes envolvidas|dados do im.vel|condi..es financeiras|garantia/i, input);
+  }
+});
+
+test("imob documentacao journey stage exposes documentation-specific quick replies and placeholder", () => {
+  const decision = resolveImobLauncherSurfaceDecision({
+    input: "checklist de documentos do imóvel",
+    hasAccess: true,
+    hasKnowledgeSearchIntent: false,
+    isContextEntryQuestion: true,
+  });
+
+  assert.equal(decision?.launcherRouteIntent, "imob");
+  assert.deepEqual(decision?.resolvedQuickReplies, [
+    "É documentação de compra",
+    "É documentação de venda",
+    "É documentação de locação",
+  ]);
+  assert.match(
+    buildImobInputPlaceholderForInput("quais documentos para locação"),
+    /documentos preciso reunir/i,
+  );
+});
+
+test("imob negociacao journey stage: expanded vocabulary (condições, valor, abrir negociação) resolves correctly", () => {
+  for (const input of ["negociar condições", "negociar valor", "abrir negociação", "quero negociar condicoes"]) {
+    const stage = resolveImobJourneyStage(input);
+    assert.equal(stage?.stage, "negociacao", input);
+  }
+
+  const decision = resolveImobLauncherSurfaceDecision({
+    input: "negociar valor",
+    hasAccess: true,
+    hasKnowledgeSearchIntent: false,
+    isContextEntryQuestion: true,
+  });
+  assert.deepEqual(decision?.resolvedQuickReplies, ["Negociar valor", "Negociar condições", "Organizar contraproposta"]);
+});
+
+test("imob compra/venda/locacao journey stages accept the expanded natural-language variants without regressing the original signals", () => {
+  const cases: Array<{ input: string; stage: string }> = [
+    { input: "quero comprar uma casa", stage: "compra" },
+    { input: "quero comprar um apartamento", stage: "compra" },
+    { input: "financiamento imobiliário", stage: "compra" },
+    { input: "aprovação de crédito imobiliário", stage: "compra" },
+    { input: "avaliar meu imóvel", stage: "venda" },
+    { input: "colocar à venda", stage: "venda" },
+    { input: "anunciar para vender", stage: "venda" },
+    { input: "quero alugar meu imóvel", stage: "locacao" },
+    { input: "quero alugar um imóvel", stage: "locacao" },
+    // sinais originais, pré-existentes, precisam continuar funcionando:
+    { input: "comprar apartamento", stage: "compra" },
+    { input: "vender imóvel", stage: "venda" },
+    { input: "aluguel", stage: "locacao" },
+  ];
+
+  for (const { input, stage } of cases) {
+    assert.equal(resolveImobJourneyStage(input)?.stage, stage, input);
+  }
+});
+
+test("imob library extension does not regress billing/proposal or non-IMOB routing", () => {
+  // "proposta" pura continua batendo no estágio "proposta", não no novo
+  // vocabulário de negociação — o novo vocabulário exige as frases compostas.
+  assert.equal(resolveImobJourneyStage("proposta")?.stage, "proposta");
+  assert.equal(resolveImobJourneyStage("negociar")?.stage, "negociacao");
+
+  // Perguntas de billing/plataforma genérica continuam fora do IMOB.
+  assert.equal(resolveImobJourneyStage("como funciona o billing")?.stage, undefined);
+  assert.equal(resolveImobJourneyStage("quais os planos disponíveis")?.stage, undefined);
+
+  // As novas etapas não capturam vocabulário genérico/de outros domínios por acidente.
+  assert.equal(resolveImobJourneyStage("quero qualificar um lead de vendas do time comercial")?.stage, undefined);
+  assert.equal(resolveImobJourneyStage("preciso do checklist de onboarding do workspace")?.stage, undefined);
+  assert.equal(resolveImobJourneyStage("quais documentos para abrir empresa")?.stage, undefined);
+  assert.equal(resolveImobJourneyStage("checklist inicial do onboarding do workspace")?.stage, undefined);
+  assert.equal(resolveImobJourneyStage("financiamento da empresa")?.stage, undefined);
 });
 
 test("proposal quick replies change by saas stage", () => {
