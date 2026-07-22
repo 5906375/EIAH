@@ -73,6 +73,15 @@ function normalizeIntentText(value: string) {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
+// PR-8K: matching fr\u00e1gil por substring (normalized.includes(signal)) casa
+// "compra" dentro de "compras", "venda" dentro de "vendas" etc. Este helper
+// exige fronteira de token nas duas pontas do sinal (in\u00edcio/fim de string ou
+// caractere n\u00e3o alfanum\u00e9rico), preservando frases compostas inteiras.
+function hasSignalToken(normalizedInput: string, signal: string) {
+  const escaped = signal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`\\b${escaped}\\b`).test(normalizedInput);
+}
+
 const IMOB_FAQ_SEEDS: ImobFaqSeed[] = [
   {
     key: "imobiliaria_o_que_faz",
@@ -563,7 +572,7 @@ export function resolveImobShortcutSelection(input: string): ImobShortcutSelecti
 export function resolveImobJourneyStage(input: string): ImobJourneyDefinition | null {
   const normalized = normalizeIntentText(input);
   for (const definition of IMOB_JOURNEY_MAP) {
-    if (definition.entrySignals.some((signal) => normalized === signal || normalized.includes(signal))) {
+    if (definition.entrySignals.some((signal) => hasSignalToken(normalized, signal))) {
       return definition;
     }
   }
