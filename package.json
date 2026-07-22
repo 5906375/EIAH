@@ -100,7 +100,7 @@
     "test:imob-intake:rc": "node --import tsx --test --test-force-exit apps/api/src/tests/imob-intake-rc.test.ts",
     "test:api-health-contract": "node --import tsx --test apps/api/src/tests/health.contract.test.ts",
     "test:agents-policy-fail-closed": "node --import tsx --test apps/api/src/tests/agents.policy.fail-closed.test.ts",
-    "test:chat-vertical-handoff-snapshot": "node --import tsx --test apps/api/src/tests/chat-vertical-handoff-snapshot.test.ts apps/api/src/tests/chat-vertical-imob-candidate-resolver.test.ts apps/api/src/tests/chat-vertical-imob-confidence.test.ts apps/api/src/tests/chat-vertical-imob-clarification.test.ts apps/api/src/tests/chat-vertical-imob-handoff.test.ts",
+    "test:chat-vertical-handoff-snapshot": "node --import tsx --test apps/api/src/tests/chat-vertical-handoff-snapshot.test.ts apps/api/src/tests/chat-vertical-imob-candidate-resolver.test.ts apps/api/src/tests/chat-vertical-imob-confidence.test.ts apps/api/src/tests/chat-vertical-imob-clarification.test.ts apps/api/src/tests/chat-vertical-imob-handoff.test.ts apps/api/src/tests/chat-vertical-imob-runtime-shadow.test.ts",
     "test:chat-vertical-handoff-surface": "TSX_TSCONFIG_PATH=apps/web/tsconfig.json node --import tsx --test apps/web/src/components/chat/ChatVerticalHandoffSurface.test.tsx",
     "test:chat-gate-proof-adapters": "node --import tsx --test apps/api/src/tests/chat-gate-proof-adapters.test.ts",
     "test:web-chat-launcher": "TSX_TSCONFIG_PATH=apps/web/tsconfig.json node --import tsx --test apps/web/src/components/agents/chatLauncherEngine.test.ts",
