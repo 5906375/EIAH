@@ -41,6 +41,7 @@ import {
   buildImobInputPlaceholderForInput,
 } from "./imobContextResolver.ts";
 import { resolveHelpDictionarySnapshot } from "./helpDictionaryResolver.ts";
+import { resolveProposalState } from "./proposalDomainResolver.ts";
 import {
   buildChatRouteEntryTelemetry,
   resolveChatRouteEntryKind,
@@ -165,6 +166,76 @@ test("PR-8I: specialist availability remains fail-closed without a registry matc
   assert.equal(availability.participation, null);
   assert.equal(availability.canBeSuggested, false);
   assert.equal(availability.canReceiveHandoff, false);
+});
+
+// PR-8K — token-safe vertical/proposal signal matching: hardens
+// hasSaasProposalSignals/hasImobProposalSignals (proposalDomainResolver.ts)
+// and resolveImobJourneyStage's entrySignals (imobContextResolver.ts)
+// against fragile substring matching (e.g. "venda" matching inside
+// "vendas", "compra" matching inside "compras"), without regressing PR8H
+// strong-intent behavior or legitimate IMOB/proposal phrases.
+
+test("PR-8K: 'venda' signal no longer leaks into 'vendas' substring in proposalDomainResolver", () => {
+  const state = resolveProposalState({
+    input: "lead de vendas do time comercial",
+    routeIntent: "proposal",
+    proposalMode: true,
+  });
+
+  assert.equal(state, null);
+});
+
+test("PR-8K: 'compra' signal no longer leaks into 'compras' substring in proposalDomainResolver", () => {
+  const state = resolveProposalState({
+    input: "lista de compras do mercado",
+    routeIntent: "proposal",
+    proposalMode: true,
+  });
+
+  assert.equal(state, null);
+});
+
+test("PR-8K: legitimate standalone 'venda'/'compra' words still resolve to IMOB domain", () => {
+  const vendaState = resolveProposalState({
+    input: "Tenho uma venda de imóvel para negociar",
+    routeIntent: "proposal",
+    proposalMode: true,
+  });
+  assert.equal(vendaState?.domain, "imob");
+
+  const compraState = resolveProposalState({
+    input: "Essa é uma compra de apartamento",
+    routeIntent: "proposal",
+    proposalMode: true,
+  });
+  assert.equal(compraState?.domain, "imob");
+});
+
+test("PR-8K: strong SaaS phrase signals still resolve to saas domain after token-safe matching", () => {
+  const state = resolveProposalState({
+    input: "Preciso saber o preco do plano",
+    routeIntent: "proposal",
+    proposalMode: true,
+  });
+
+  assert.equal(state?.domain, "saas");
+});
+
+test("PR-8K: 'compra' entrySignal no longer leaks into 'compras' substring in resolveImobJourneyStage", () => {
+  assert.equal(resolveImobJourneyStage("lista de compras do mercado")?.stage, undefined);
+  assert.equal(resolveImobJourneyStage("essa e uma compra")?.stage, "compra");
+});
+
+test("PR-8K: 'contrato' entrySignal no longer leaks into 'contratos' substring in resolveImobJourneyStage", () => {
+  assert.equal(resolveImobJourneyStage("preciso revisar contratos e propostas antigas")?.stage, undefined);
+  assert.equal(resolveImobJourneyStage("já chegamos no contrato")?.stage, "contrato");
+});
+
+test("PR-8K: existing IMOB/PR8H legitimate phrases are unaffected by token-safe matching", () => {
+  assert.equal(resolveImobJourneyStage("negociar valor")?.stage, "negociacao");
+  assert.equal(resolveImobJourneyStage("comprar apartamento")?.stage, "compra");
+  assert.equal(resolveImobJourneyStage("vender imóvel")?.stage, "venda");
+  assert.equal(resolveImobJourneyStage("quero qualificar um lead de vendas do time comercial")?.stage, undefined);
 });
 
 function createProposalSnapshot(

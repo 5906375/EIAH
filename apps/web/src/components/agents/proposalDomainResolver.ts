@@ -46,6 +46,16 @@ function extractProposalInputs(input: string): { users: number | null; runs: num
   };
 }
 
+// PR-8K: matching frágil por substring (normalized.includes(signal)) casa
+// "venda" dentro de "vendas", "compra" dentro de "compras" etc. Este helper
+// exige fronteira de token (início/fim de string ou caractere não
+// alfanumérico) nas duas pontas do sinal, preservando frases compostas
+// (o `\b` só se aplica às pontas do sinal, não a cada palavra interna).
+function hasSignalToken(normalizedInput: string, signal: string) {
+  const escaped = signal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`\\b${escaped}\\b`).test(normalizedInput);
+}
+
 function hasSaasProposalSignals(input: string) {
   const normalized = normalizeIntentText(input);
   const signals = [
@@ -67,7 +77,7 @@ function hasSaasProposalSignals(input: string) {
     "scale",
     "solo",
   ];
-  return signals.some((signal) => normalized.includes(signal));
+  return signals.some((signal) => hasSignalToken(normalized, signal));
 }
 
 // Vertical Context Rule v1: routeIntent="proposal" ou proposalMode=true não
@@ -106,7 +116,7 @@ function hasImobProposalSignals(input: string) {
     "corretagem",
     "distrato",
   ];
-  return signals.some((signal) => normalized.includes(signal));
+  return signals.some((signal) => hasSignalToken(normalized, signal));
 }
 
 export function resolveProposalUsageContext(params: {
