@@ -36,6 +36,8 @@ import { onboardingContextRouter } from "./routes/onboarding-context";
 import { tenantRecipesRouter } from "./routes/tenant-recipes";
 import { startTenantBillingReconciler } from "./services/tenantBillingReconciler";
 import { imobRouter } from "./routes/imob";
+import { chatVerticalImobRuntimeShadowRouter } from "./routes/chatVerticalImobRuntimeShadow";
+import { isChatVerticalImobRuntimeShadowRouteEnabled } from "./routes/chatVerticalImobRuntimeShadowGate";
 import { helpRouter } from "./routes/help";
 import { whatsappRouter } from "./routes/whatsapp";
 import { startRunArchiveWorker } from "./workers/runArchiveWorker";
@@ -120,6 +122,9 @@ app.use("/api", shadowExecutionsRouter);
 app.use("/api", onboardingContextRouter);
 app.use("/api", tenantRecipesRouter);
 app.use("/api/imob", imobRouter);
+if (isChatVerticalImobRuntimeShadowRouteEnabled()) {
+  app.use("/api", chatVerticalImobRuntimeShadowRouter);
+}
 app.use("/api", helpRouter);
 app.use("/metrics", metricsRouter);
 app.use("/metrics/prom", metricsPromRouter);
