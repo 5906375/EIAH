@@ -50,25 +50,40 @@ function hasSaasProposalSignals(input: string) {
   const normalized = normalizeIntentText(input);
   const signals = [
     "billing",
-    "workspace",
     "usuarios",
-    "usuários",
     "users",
     "runs",
     "trial",
     "demonstracao",
-    "demonstração",
     "plano",
-    "preco",
-    "preço",
-    "custo",
-    "comercial",
+    "pricing",
+    "preco do plano",
+    "proposta comercial",
+    "abrir proposta",
+    "qual plano",
+    "contratar eiah",
     "starter",
     "growth",
     "scale",
     "solo",
   ];
   return signals.some((signal) => normalized.includes(signal));
+}
+
+// Vertical Context Rule v1: routeIntent="proposal" ou proposalMode=true não
+// bastam sozinhos para iniciar proposta SaaS. Só há intenção forte quando o
+// turno traz ação explícita, uso completo (users+runs), domínio SaaS já
+// estabelecido no contexto anterior, ou um dos sinais fortes acima.
+function hasStrongSaasProposalIntent(params: {
+  requestedAction: ProposalRequestedAction | null;
+  usage: { users: number | null; runs: number | null };
+  previousDomain: ProposalDomain | null;
+  explicitSaas: boolean;
+}) {
+  if (params.requestedAction) return true;
+  if (params.usage.users && params.usage.runs) return true;
+  if (params.previousDomain === "saas") return true;
+  return params.explicitSaas;
 }
 
 function hasImobProposalSignals(input: string) {
@@ -153,14 +168,25 @@ export function resolveProposalState(params: {
   const normalizedInput = normalizeIntentText(params.input);
   const explicitImob = hasImobProposalSignals(params.input);
   const explicitSaas = hasSaasProposalSignals(params.input);
+  const strongSaasIntent = hasStrongSaasProposalIntent({
+    requestedAction,
+    usage,
+    previousDomain,
+    explicitSaas,
+  });
 
-  let domain: ProposalDomain =
-    previousDomain ??
-    (params.previousAssistantSnapshot?.verticalContext === "IMOB" ? "imob" : null) ??
-    (explicitImob ? "imob" : explicitSaas || params.proposalMode ? "saas" : "saas");
+  const contextualDomain: ProposalDomain | null =
+    previousDomain ?? (params.previousAssistantSnapshot?.verticalContext === "IMOB" ? "imob" : null);
+
+  let domain: ProposalDomain | null =
+    contextualDomain ?? (explicitImob && !explicitSaas ? "imob" : strongSaasIntent ? "saas" : null);
 
   if (explicitImob && !explicitSaas) domain = "imob";
   if (explicitSaas && !explicitImob) domain = "saas";
+
+  if (domain == null) {
+    return null;
+  }
 
   const domainMismatch =
     previousDomain != null &&

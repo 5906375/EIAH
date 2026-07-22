@@ -1619,9 +1619,13 @@ export async function resolveLauncherProposalDecision(params: {
     previousAssistantMessage: params.previousAssistantMessage,
     previousAssistantSnapshot: params.previousAssistantSnapshot,
   });
-  const parsed = proposalState?.usage ?? extractProposalInputs(params.input);
+  if (!proposalState) {
+    return null;
+  }
 
-  if (proposalState?.domain === "imob") {
+  const parsed = proposalState.usage;
+
+  if (proposalState.domain === "imob") {
     return null;
   }
 
