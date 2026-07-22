@@ -49,6 +49,7 @@ import { prismaGlobal } from "@repo/db";
    ────────────────────────────────────────────── */
 import type { LlmExecutorResult } from "../orchestrator/llmExecutor";
 import { executeCapability } from "../services/capabilityExecution";
+import type { SimulatedToolExecutionResult } from "../services/imob/imobCanonical";
 
 /* ──────────────────────────────────────────────
    Queue Events
@@ -1480,7 +1481,7 @@ export async function processRunPayload(payload: RunQueuePayload) {
                       ? Object.keys(effectivePayload as Record<string, unknown>).slice(0, 8)
                       : null,
                 },
-              };
+              } satisfies SimulatedToolExecutionResult;
             }
             throw new Error(`ToolContract missing: ${actionName}@${version}`);
           }

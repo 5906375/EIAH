@@ -103,6 +103,7 @@ apps/api/src/tests/imob-recipe-planner-integration.test.ts
 apps/api/src/tests/imob-responsible-actor-compat.contract.test.ts
 apps/api/src/tests/imob-scale-runtime.test.ts
 apps/api/src/tests/imob-shadow-runtime.test.ts
+apps/api/src/tests/imob-simulated-output-contract.test.ts
 apps/api/src/tests/imob-specialist-bridge.test.ts
 apps/api/src/tests/imob-specialist-runtime.test.ts
 apps/api/src/tests/imob-tenant-recipe-context.test.ts

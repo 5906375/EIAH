@@ -136,6 +136,13 @@ describe("[S3] Phase 4.1b — shouldSkipImobPostRunMutationForSimulatedOutput gu
     };
     assert.equal(shouldSkipImobPostRunMutationForSimulatedOutput(run), true);
   });
+
+  // PR MCP-1E: validacao do shape COMPLETO do fallback simulado (schema +
+  // deteccao de drift) vive em
+  // apps/api/src/tests/imob-simulated-output-contract.test.ts — arquivo leve
+  // e dedicado, sem a dependencia de Postgres/Redis que este arquivo tem via
+  // enqueueImobRunCompleted/imobRunCompletedQueue.js. Ver
+  // docs/architecture/mcp-contract-v1.md.
 });
 
 // ─── S4: imobRunCompletedQueue payload validation ───────────────────────────
