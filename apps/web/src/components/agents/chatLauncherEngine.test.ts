@@ -24,6 +24,9 @@ import {
   resolveLauncherProposalDecision,
   resolveImobRuntimeShadowQuickSummary,
   resolveImobRuntimeShadowRenderState,
+  resolveImobRuntimeShadowSummaryForTurn,
+  enrichLauncherDecisionWithImobRuntimeShadow,
+  type LauncherLocalDecision,
 } from "./chatLauncherEngine.ts";
 import type { ImobRuntimeShadowEngineRequest } from "../../features/imob/imobRuntimeShadowClient";
 import { resolveHelpDictionarySnapshot } from "./helpDictionaryResolver.ts";
@@ -1768,6 +1771,317 @@ test("IMOB runtime shadow render state: surfaces a redacted handoff label when t
       label: "IMOB (shadow): pré-visualização de inventário disponível",
       stage: "handoff",
     });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("IMOB runtime shadow summary for turn: non-IMOB routeIntent short-circuits without any fetch", async () => {
+  const originalFetch = globalThis.fetch;
+  let fetchCalled = false;
+  globalThis.fetch = (async () => {
+    fetchCalled = true;
+    throw new Error("must not be called for non-imob routeIntent");
+  }) as typeof fetch;
+
+  try {
+    const summary = await resolveImobRuntimeShadowSummaryForTurn({
+      routeIntent: "help",
+      tenantId: "tenant-turn-summary-test",
+      workspaceId: "workspace-turn-summary-test",
+    });
+    assert.equal(summary, null);
+    assert.equal(fetchCalled, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("IMOB runtime shadow summary for turn: missing tenantId/workspaceId short-circuits without any fetch", async () => {
+  const originalFetch = globalThis.fetch;
+  let fetchCalled = false;
+  globalThis.fetch = (async () => {
+    fetchCalled = true;
+    throw new Error("must not be called without tenant/workspace context");
+  }) as typeof fetch;
+
+  try {
+    const withoutTenant = await resolveImobRuntimeShadowSummaryForTurn({
+      routeIntent: "imob",
+      tenantId: null,
+      workspaceId: "workspace-turn-summary-test",
+    });
+    const withoutWorkspace = await resolveImobRuntimeShadowSummaryForTurn({
+      routeIntent: "imob",
+      tenantId: "tenant-turn-summary-test",
+      workspaceId: undefined,
+    });
+    assert.equal(withoutTenant, null);
+    assert.equal(withoutWorkspace, null);
+    assert.equal(fetchCalled, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("IMOB runtime shadow summary for turn: route disabled (404, default OFF) degrades to null", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response(JSON.stringify({ error: "not found" }), {
+      status: 404,
+      headers: { "content-type": "application/json" },
+    })) as typeof fetch;
+
+  try {
+    const summary = await resolveImobRuntimeShadowSummaryForTurn({
+      routeIntent: "imob",
+      tenantId: "tenant-turn-summary-test",
+      workspaceId: "workspace-turn-summary-test",
+    });
+    assert.equal(summary, null);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("IMOB runtime shadow summary for turn: honestly declares governance as not_evaluated (no fabricated allow)", async () => {
+  const originalFetch = globalThis.fetch;
+  let capturedBody: Record<string, unknown> | null = null;
+  globalThis.fetch = (async (_input, init) => {
+    capturedBody = JSON.parse(String(init?.body ?? "{}"));
+    return new Response(
+      JSON.stringify({
+        kind: "chat.vertical_runtime_shadow_state.v1",
+        verticalId: "imob",
+        stage: "blocked",
+        source: "runtime_shadow",
+        sideEffects: 0,
+        reasonCode: "VERTICAL_GOVERNANCE_NOT_EVALUATED",
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    );
+  }) as typeof fetch;
+
+  try {
+    const summary = await resolveImobRuntimeShadowSummaryForTurn({
+      routeIntent: "imob",
+      tenantId: "tenant-turn-summary-test",
+      workspaceId: "workspace-turn-summary-test",
+    });
+    assert.equal(summary, null);
+    const governance = (capturedBody as unknown as { governance: Record<string, { decision?: string; status?: string }> })
+      .governance;
+    assert.equal(governance.registry.decision, "not_evaluated");
+    assert.equal(governance.rbac.decision, "not_evaluated");
+    assert.equal(governance.entitlement.decision, "not_evaluated");
+    assert.equal(governance.policy.decision, "not_evaluated");
+    assert.equal(governance.hitl.status, "not_evaluated");
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("IMOB runtime shadow summary for turn: flag ON with a high-confidence shadow state surfaces a redacted label", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        kind: "chat.vertical_runtime_shadow_state.v1",
+        verticalId: "imob",
+        stage: "handoff",
+        source: "runtime_shadow",
+        sideEffects: 0,
+        handoff: {
+          kind: "chat.vertical_handoff_preflight.v1",
+          verticalId: "imob",
+          capabilityId: "inventory.preview",
+          handoffIntentKey: "imob.inventory.preview.open_context",
+          source: "high_confidence",
+          allowedNextActions: ["open_context_preview", "keep_chat_context", "cancel"],
+          defaultNextAction: "open_context_preview",
+          sideEffects: 0,
+        },
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    )) as typeof fetch;
+
+  try {
+    const summary = await resolveImobRuntimeShadowSummaryForTurn({
+      routeIntent: "imob",
+      tenantId: "tenant-turn-summary-test",
+      workspaceId: "workspace-turn-summary-test",
+    });
+    assert.deepEqual(summary, { label: "IMOB (shadow): pré-visualização de inventário disponível", stage: "handoff" });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+function buildImobDecisionFixture(overrides?: Partial<LauncherLocalDecision>): LauncherLocalDecision {
+  return {
+    kind: "imob_reply",
+    shouldCreateRun: false,
+    content: "Conteúdo determinístico do IMOB para este turno.",
+    launcherRouteIntent: "imob",
+    presentationRouteIntent: "imob",
+    renderVariant: "simple_help",
+    ...overrides,
+  };
+}
+
+test("enrich decision with IMOB shadow: null or content-less decisions pass through unchanged, no fetch", async () => {
+  const originalFetch = globalThis.fetch;
+  let fetchCalled = false;
+  globalThis.fetch = (async () => {
+    fetchCalled = true;
+    throw new Error("must not fetch for null/content-less decisions");
+  }) as typeof fetch;
+
+  try {
+    const nullResult = await enrichLauncherDecisionWithImobRuntimeShadow(null, {
+      tenantId: "tenant-enrich-test",
+      workspaceId: "workspace-enrich-test",
+    });
+    assert.equal(nullResult, null);
+
+    const contentless = buildImobDecisionFixture({ content: undefined });
+    const contentlessResult = await enrichLauncherDecisionWithImobRuntimeShadow(contentless, {
+      tenantId: "tenant-enrich-test",
+      workspaceId: "workspace-enrich-test",
+    });
+    assert.equal(contentlessResult, contentless);
+    assert.equal(fetchCalled, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("enrich decision with IMOB shadow: non-IMOB decisions pass through unchanged, no fetch", async () => {
+  const originalFetch = globalThis.fetch;
+  let fetchCalled = false;
+  globalThis.fetch = (async () => {
+    fetchCalled = true;
+    throw new Error("must not fetch for non-imob decisions");
+  }) as typeof fetch;
+
+  try {
+    const helpDecision = buildImobDecisionFixture({
+      launcherRouteIntent: "help",
+      presentationRouteIntent: "help",
+    });
+    const result = await enrichLauncherDecisionWithImobRuntimeShadow(helpDecision, {
+      tenantId: "tenant-enrich-test",
+      workspaceId: "workspace-enrich-test",
+    });
+    assert.equal(result, helpDecision);
+    assert.equal(fetchCalled, false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("enrich decision with IMOB shadow: route disabled (404, default OFF) leaves content unchanged (safe degrade)", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response(JSON.stringify({ error: "not found" }), {
+      status: 404,
+      headers: { "content-type": "application/json" },
+    })) as typeof fetch;
+
+  try {
+    const decision = buildImobDecisionFixture();
+    const result = await enrichLauncherDecisionWithImobRuntimeShadow(decision, {
+      tenantId: "tenant-enrich-test",
+      workspaceId: "workspace-enrich-test",
+    });
+    assert.deepEqual(result, decision);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("enrich decision with IMOB shadow: flag ON with a handoff shadow state appends a redacted summary to content", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        kind: "chat.vertical_runtime_shadow_state.v1",
+        verticalId: "imob",
+        stage: "handoff",
+        source: "runtime_shadow",
+        sideEffects: 0,
+        handoff: {
+          kind: "chat.vertical_handoff_preflight.v1",
+          verticalId: "imob",
+          capabilityId: "inventory.preview",
+          handoffIntentKey: "imob.inventory.preview.open_context",
+          source: "high_confidence",
+          allowedNextActions: ["open_context_preview", "keep_chat_context", "cancel"],
+          defaultNextAction: "open_context_preview",
+          sideEffects: 0,
+        },
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    )) as typeof fetch;
+
+  try {
+    const decision = buildImobDecisionFixture();
+    const result = await enrichLauncherDecisionWithImobRuntimeShadow(decision, {
+      tenantId: "tenant-enrich-test",
+      workspaceId: "workspace-enrich-test",
+    });
+    assert.notEqual(result, decision);
+    assert.equal(
+      result?.content,
+      "Conteúdo determinístico do IMOB para este turno.\n\nIMOB (shadow): pré-visualização de inventário disponível",
+    );
+    assert.equal(result?.launcherRouteIntent, "imob");
+    assert.equal(result?.kind, decision.kind);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("enrich decision with IMOB shadow: never surfaces tenant, workspace, governance or refs in the appended content", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () =>
+    new Response(
+      JSON.stringify({
+        kind: "chat.vertical_runtime_shadow_state.v1",
+        verticalId: "imob",
+        stage: "clarification",
+        source: "runtime_shadow",
+        sideEffects: 0,
+        clarification: {
+          kind: "chat.vertical_clarification.v1",
+          verticalId: "imob",
+          capabilityId: "inventory.preview",
+          reason: "IMOB_INVENTORY_INTENT_AMBIGUOUS",
+          questionKey: "imob.inventory.preview.clarify_intent",
+          allowedReplies: ["confirm_inventory_preview", "refine_inventory_intent", "cancel_vertical_switch"],
+          defaultReply: "refine_inventory_intent",
+          sideEffects: 0,
+        },
+      }),
+      { status: 200, headers: { "content-type": "application/json" } },
+    )) as typeof fetch;
+
+  try {
+    const decision = buildImobDecisionFixture();
+    const result = await enrichLauncherDecisionWithImobRuntimeShadow(decision, {
+      tenantId: "tenant-enrich-secret-test",
+      workspaceId: "workspace-enrich-secret-test",
+    });
+    for (const forbidden of [
+      "tenantId",
+      "workspaceId",
+      "governance",
+      "refs",
+      "tenant-enrich-secret-test",
+      "workspace-enrich-secret-test",
+    ]) {
+      assert.equal((result?.content ?? "").includes(forbidden), false, forbidden);
+    }
   } finally {
     globalThis.fetch = originalFetch;
   }
