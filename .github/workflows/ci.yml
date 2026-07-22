@@ -64,6 +64,32 @@ jobs:
         run: |
           pnpm --filter @eiah/contracts build
           pnpm --filter @repo/db build
+          pnpm --filter @eiah/core build
+          pnpm --filter @eiah/providers build
+
+      # apps/workers/action-runner/src/index.test.ts precisa de @repo/db,
+      # @eiah/core e @eiah/providers buildados (import de ./index -> deps
+      # de apps/api/src/services/* que por sua vez importam
+      # apps/api/src/orchestrator/llmExecutor.ts -> @eiah/providers) mas
+      # nao de Postgres/Redis reais (getPrismaForTenant e mockado via
+      # injecao de dependencia). Por isso vive aqui (apos o build acima),
+      # nao em test:ci-unit-suite (Grupo B, explicitamente sem build amplo
+      # — ver scripts/unit-tests-manifest.txt).
+      #
+      # DATABASE_URL dummy: packages/db/src/client.ts inicializa um
+      # PrismaClient/pg.Pool no nivel do modulo (import-time), entao o
+      # simples "import { getPrismaForTenant } from '@repo/db'" em
+      # action-runner/src/index.ts lanca excecao sem DATABASE_URL setado,
+      # mesmo com o teste mockando getPrismaForTenant via injecao de
+      # dependencia (o mock nao evita a avaliacao do modulo real). Nao ha
+      # query real neste teste, entao uma connection string sintaticamente
+      # valida sem Postgres real (mesmo padrao ja usado no step "Run Tests"
+      # deste job) e suficiente — pg.Pool so conecta de fato na primeira
+      # query.
+      - name: Run action-runner MCP gate-ordering test
+        env:
+          DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/eiah_ci?schema=public
+        run: pnpm test:action-runner-gates
 
       - name: Run Tests
         env:
