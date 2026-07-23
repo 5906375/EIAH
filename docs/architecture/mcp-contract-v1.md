@@ -17,7 +17,8 @@ Status: MCP parcial avancado. Guard estatico de drift ativo desde MCP-1C. Este d
 
 - `MCP_ENFORCE_CONTRACTS=false` falha fechado nos dois call sites (erro explicito, sem bypass silencioso).
 - `ToolContract` ausente falha fechado no caminho assincrono (erro + `recordGuardrailAudit` com `mcp.tool.missing_contract`).
-- No caminho sincrono, uma acao `realestate.*` sem `ToolContract` **nao** falha fechado: cai em execucao simulada (`simulated: true`, `status: "success"`) em vez de erro. O unico consumidor conhecido desse sinal e `apps/api/src/services/imob/imobCanonical.ts` (`shouldSkipImobPostRunMutationForSimulatedOutput`), que usa `simulated` para nunca disparar mutacao de `ImobCase` sobre uma execucao simulada.
+- Desde MCP-1I, `ToolContract` ativo ausente também falha fechado no caminho sincrono para qualquer acao MCP: o step assume o status canonico existente `failed`, o run assume `error` e o `errorCode`/evento `run.failed` recebem `MCP_TOOL_CONTRACT_MISSING`. O evento de auditoria e `mcp.tool.missing_contract`; falha ao persisti-lo gera log explicito `run.worker.mcp_contract_missing_audit_failed`, sem substituir a falha primaria.
+- O schema `simulatedToolExecutionResultSchema` e `shouldSkipImobPostRunMutationForSimulatedOutput` permanecem apenas como defesa em profundidade para runs historicos. O caminho sincrono atual nao produz mais `simulated: true` quando falta contrato.
 
 ## Guard estatico (MCP-1C, atualizado em MCP-1F)
 
@@ -25,11 +26,12 @@ Status: MCP parcial avancado. Guard estatico de drift ativo desde MCP-1C. Este d
 
 - drift entre o union `executor` de `ToolContract.ts` e os `case` do switch de `MCPExecutor.ts`;
 - call sites de `MCPExecutor`/`ToolRegistry` fora de uma allowlist explicita (`mcpAdapter.ts`, `runWorker.ts`);
-- presenca do token `simulated` nos dois arquivos acoplados (`runWorker.ts`, `imobCanonical.ts`);
+- presenca do fail-closed canonico no runtime (`runWorker.ts` + `runWorkerActionResolution.ts`), incluindo `MCP_TOOL_CONTRACT_MISSING` e `mcp.tool.missing_contract`;
+- preservacao do detector `simulated` em `imobCanonical.ts` para dados historicos;
 - parsing bruto de `process.env.MCP_ENFORCE_CONTRACTS`/`process.env.MCP_PROXY_ALL_ACTIONS` fora do helper canonico (ver abaixo);
 - uso do helper canonico pelos 4 call sites conhecidos (evita remocao silenciosa ou regressao para parsing inline).
 
-O guard **nao** cobre: shape estrutural do output simulado (so verifica a palavra `simulated`, nao o formato), execucao real de `execDb`/`ToolRegistry`.
+O guard **nao** cobre: propagacao completa com banco/Redis reais, Receipt Canon/bundle para a falha (MCP-1J), execucao real de `execDb`/`ToolRegistry`.
 
 ## Parsers de env de governanca (consolidado em MCP-1F)
 
@@ -45,10 +47,10 @@ Esta consolidacao **nao** alterou nenhum default, nenhum gate, nem a semantica d
 ## Limites desta fase
 
 - Sem alteracao de runtime MCP, gates, `MCP_PROXY_ALL_ACTIONS` semantics, `packages/mcp-runner/src/**` ou `MCPExecutor`/`ToolRegistry`.
-- Sem tipo compartilhado para o output simulado — o acoplamento `runWorker.ts` <-> `imobCanonical.ts` continua implicito.
-- Sem cobertura de teste para `ToolRegistry` ou para o branch `execDb` de `MCPExecutor`.
+- O tipo de output simulado permanece apenas para compatibilidade defensiva de dados historicos.
+- A cobertura de `ToolRegistry` e do branch `execDb` caracteriza o comportamento atual, sem corrigir LEG-015/LEG-017.
 - Sem declarar MCP como operacionalmente fechado ou pronto — a divergencia de gates entre os dois call sites (async com Trust/Judge Gate vs. sincrono sem) permanece em aberto e nao foi tocada por esta consolidacao.
-- Sem correcao do fallback simulado nao-fail-closed em `realestate.*` no caminho sincrono.
+- Sem mudanca em Receipt Canon/bundle/SCL para representar a falha de contrato; essa propagacao documental e MCP-1J.
 
 ## Artefatos
 

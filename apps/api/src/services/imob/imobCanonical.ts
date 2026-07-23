@@ -285,12 +285,11 @@ export function buildImobCanonicalCase(params: {
   };
 }
 
-// PR MCP-1E — contrato tipado do fallback simulado produzido em
-// apps/api/src/workers/runWorker.ts quando um ToolContract realestate.* esta
-// ausente (ver docs/architecture/mcp-contract-v1.md). So `simulated` e
-// obrigatorio: os demais campos ficam opcionais para preservar fixtures de
-// teste historicas que so populam `simulated`, mas quando presentes precisam
-// bater com o shape real do produtor (drift de tipo continua bloqueado).
+// PR MCP-1E — contrato tipado de outputs simulados historicos, preservado
+// como defesa em profundidade depois que MCP-1I removeu o produtor permissivo
+// de runWorker.ts (ver docs/architecture/mcp-contract-v1.md). So `simulated`
+// e obrigatorio: os demais campos ficam opcionais para preservar registros
+// historicos, mas quando presentes precisam bater com o shape legado.
 export const simulatedToolExecutionResultSchema = z.object({
   ok: z.boolean().optional(),
   simulated: z.literal(true),
@@ -307,9 +306,8 @@ export const simulatedToolExecutionResultSchema = z.object({
 
 export type SimulatedToolExecutionResult = z.infer<typeof simulatedToolExecutionResultSchema>;
 
-// Guard: returns true when a run's outputs contain at least one simulated tool result.
-// Simulated executions happen when a realestate.* ToolContract is missing in DB;
-// they must never trigger ImobCase mutation.
+// Guard: returns true when historical run outputs contain a simulated tool result.
+// These records must never trigger ImobCase mutation.
 export function shouldSkipImobPostRunMutationForSimulatedOutput(run: {
   response?: unknown;
 }): boolean {
