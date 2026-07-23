@@ -1,5 +1,6 @@
-// PR MCP-1E — contrato tipado do fallback simulado (ver
-// docs/architecture/mcp-contract-v1.md). Teste leve e propositalmente
+// PR MCP-1E — defesa historica para outputs simulados persistidos antes do
+// fail-closed MCP-1I (ver docs/architecture/mcp-contract-v1.md). Teste leve e
+// propositalmente
 // isolado: importa so imobCanonical.ts, sem tocar
 // apps/api/src/queues/imobRunCompletedQueue.ts (Queue do BullMQ instanciada
 // no nivel do modulo com conexao Redis real — ver imob-worker-foundation-
@@ -13,8 +14,8 @@ import {
   shouldSkipImobPostRunMutationForSimulatedOutput,
 } from "../services/imob/imobCanonical.js";
 
-// Shape exato produzido por apps/api/src/workers/runWorker.ts:1471-1484
-// quando uma acao realestate.* nao tem ToolContract registrado.
+// Shape historico produzido antes do MCP-1I quando uma acao realestate.*
+// nao tinha ToolContract registrado. O produtor atual nao emite este shape.
 const fullProducerLiteral = {
   ok: true,
   simulated: true,
@@ -28,7 +29,7 @@ const fullProducerLiteral = {
 };
 
 describe("[MCP-1E] simulatedToolExecutionResultSchema", () => {
-  it("should accept the full producer shape from runWorker.ts", () => {
+  it("should accept the historical producer shape", () => {
     const parsed = simulatedToolExecutionResultSchema.safeParse(fullProducerLiteral);
     assert.equal(parsed.success, true);
     assert.deepEqual(parsed.data, fullProducerLiteral);
@@ -44,7 +45,7 @@ describe("[MCP-1E] simulatedToolExecutionResultSchema", () => {
 });
 
 describe("[MCP-1E] shouldSkipImobPostRunMutationForSimulatedOutput", () => {
-  it("should return TRUE for a valid simulated output (full producer shape)", () => {
+  it("should return TRUE for a valid historical simulated output", () => {
     const run = {
       response: {
         outputs: [{ stepId: "step-1", data: fullProducerLiteral }],

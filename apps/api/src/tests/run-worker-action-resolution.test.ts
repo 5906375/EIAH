@@ -1,13 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { RegisteredAction } from "@eiah/core";
+import { AgentOrchestrator } from "../../../../packages/core/src/orchestrator/agentOrchestrator";
 import {
+  MissingToolContractError,
+  recordMissingToolContractAudit,
   mergeActionsForExecution,
   resolveLocallyExecutableAction,
   resolveDeclaredActionNames,
+  resolveMissingToolContractDecision,
   resolveMissingToolContractFallback,
+  resolveMissingToolContractRunFailure,
 } from "../workers/runWorkerActionResolution";
-import { simulatedToolExecutionResultSchema } from "../services/imob/imobCanonical";
 
 function createAction(name: string): RegisteredAction {
   return {
@@ -79,50 +83,167 @@ test("run worker action resolution exposes locally executable core actions for p
   assert.equal(resolveLocallyExecutableAction("guardian.unknown", catalog), null);
 });
 
-test("run worker missing ToolContract fallback preserves the current realestate success payload", () => {
+test("run worker missing ToolContract fails closed for realestate actions", () => {
   const result = resolveMissingToolContractFallback(
     "realestate.register_property",
     "1.0.0",
     { a: 1, b: 2 }
   );
 
-  // CARACTERIZAÇÃO TEMPORÁRIA LEG-001 — comportamento permissivo atual. Expectativa futura: fail-closed com reasonCode MCP_TOOL_CONTRACT_MISSING (MCP-1I). Este teste SERÁ invertido.
+  // Comportamento fail-closed canônico desde MCP-1I. Regressão para fallback simulado é violação P0.
   assert.deepEqual(result, {
-    ok: true,
-    simulated: true,
+    ok: false,
+    status: "error",
+    reasonCode: "MCP_TOOL_CONTRACT_MISSING",
     action: "realestate.register_property",
     version: "1.0.0",
-    status: "success",
-    output: {
-      message: "Simulated realestate.register_property execution",
-      payloadPreview: ["a", "b"],
+  });
+  assert.equal("simulated" in result, false);
+});
+
+test("run worker missing ToolContract fails closed for non-realestate MCP actions", () => {
+  const result = resolveMissingToolContractFallback(
+    "guardian.checkRuntimeHealth",
+    "1.0.0",
+    {}
+  );
+
+  assert.equal(result.ok, false);
+  assert.equal(result.status, "error");
+  assert.equal(result.reasonCode, "MCP_TOOL_CONTRACT_MISSING");
+  assert.equal("simulated" in result, false);
+});
+
+test("run worker keeps the valid ToolContract path outside the missing-contract block", () => {
+  const validContract = { name: "realestate.register_property", status: "active" };
+
+  assert.equal(
+    resolveMissingToolContractDecision(
+      validContract,
+      "realestate.register_property",
+      "1.0.0",
+      {}
+    ),
+    null
+  );
+});
+
+test("run worker classifies missing ToolContract as canonical run error", () => {
+  const blocked = resolveMissingToolContractFallback(
+    "realestate.register_property",
+    "1.0.0",
+    {}
+  );
+  const failure = resolveMissingToolContractRunFailure(
+    new MissingToolContractError(blocked)
+  );
+
+  assert.equal(failure?.status, "error");
+  assert.equal(failure?.reasonCode, "MCP_TOOL_CONTRACT_MISSING");
+});
+
+test("run worker emits canonical missing-contract audit", async () => {
+  const audits: unknown[] = [];
+
+  await recordMissingToolContractAudit({
+    actionName: "realestate.register_property",
+    version: "1.0.0",
+    runId: "run-1",
+    tenantId: "tenant-1",
+    stepId: "step-1",
+    record: async (audit) => {
+      audits.push(audit);
+    },
+    logFailure: () => assert.fail("audit logger must not run on success"),
+  });
+
+  assert.deepEqual(audits, [
+    {
+      eventType: "mcp.tool.missing_contract",
+      severity: "warn",
+      message: "ToolContract missing: realestate.register_property@1.0.0",
+      metadata: {
+        tool: "realestate.register_property",
+        version: "1.0.0",
+        stepId: "step-1",
+        reasonCode: "MCP_TOOL_CONTRACT_MISSING",
+      },
+    },
+  ]);
+});
+
+test("run worker logs missing-contract audit failure with explicit context", async () => {
+  const logs: unknown[] = [];
+  const auditError = new Error("audit unavailable");
+
+  await recordMissingToolContractAudit({
+    actionName: "realestate.register_property",
+    version: "1.0.0",
+    runId: "run-1",
+    tenantId: "tenant-1",
+    record: async () => {
+      throw auditError;
+    },
+    logFailure: (context) => {
+      logs.push(context);
     },
   });
+
+  assert.deepEqual(logs, [
+    {
+      err: auditError,
+      runId: "run-1",
+      tenantId: "tenant-1",
+      action: "realestate.register_property",
+      version: "1.0.0",
+      reasonCode: "MCP_TOOL_CONTRACT_MISSING",
+    },
+  ]);
 });
 
-test("run worker missing ToolContract fallback does not simulate non-realestate actions", () => {
-  assert.equal(
-    resolveMissingToolContractFallback("guardian.checkRuntimeHealth", "1.0.0", {}),
-    null
-  );
-});
-
-test("run worker missing ToolContract fallback limits payload preview to eight keys", () => {
-  const result = resolveMissingToolContractFallback(
+test("AgentOrchestrator marks missing-contract step failed and never completed", async () => {
+  const plan = [
+    {
+      id: "step-1",
+      description: "missing contract",
+      status: "pending" as const,
+      action: "realestate.register_property",
+      params: {},
+    },
+  ];
+  const events: string[] = [];
+  const blocked = resolveMissingToolContractFallback(
     "realestate.register_property",
     "1.0.0",
-    { a: 1, b: 2, c: 3, d: 4, e: 5, f: 6, g: 7, h: 8, i: 9 }
+    {}
+  );
+  const orchestrator = new AgentOrchestrator({
+    plan: async () => plan,
+    act: async () => null,
+    mcpExecutor: {
+      run: async () => {
+        throw new MissingToolContractError(blocked);
+      },
+    },
+    eventStore: {
+      async record(event) {
+        events.push(event.type);
+      },
+    },
+  });
+
+  await assert.rejects(
+    orchestrator.run({
+      objective: "test",
+      tenantId: "tenant-1",
+      workspaceId: "workspace-1",
+      runId: "run-1",
+      mcpProxyAllActions: true,
+    }),
+    /ToolContract missing/
   );
 
-  assert.deepEqual(result?.output.payloadPreview, ["a", "b", "c", "d", "e", "f", "g", "h"]);
-});
-
-test("run worker missing ToolContract fallback remains compatible with the canonical schema", () => {
-  const result = resolveMissingToolContractFallback(
-    "realestate.register_property",
-    "1.0.0",
-    null
-  );
-
-  assert.equal(simulatedToolExecutionResultSchema.safeParse(result).success, true);
+  assert.equal(plan[0].status, "failed");
+  assert.equal(events.includes("run.step.failed"), true);
+  assert.equal(events.includes("run.step.completed"), false);
 });

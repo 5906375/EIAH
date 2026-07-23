@@ -1,5 +1,23 @@
 import type { RegisteredAction } from "@eiah/core";
-import type { SimulatedToolExecutionResult } from "../services/imob/imobCanonical";
+
+export const MCP_TOOL_CONTRACT_MISSING_REASON_CODE = "MCP_TOOL_CONTRACT_MISSING" as const;
+
+export type MissingToolContractBlockedResult = {
+  ok: false;
+  status: "error";
+  reasonCode: typeof MCP_TOOL_CONTRACT_MISSING_REASON_CODE;
+  action: string;
+  version: string;
+};
+
+export class MissingToolContractError extends Error {
+  readonly reasonCode = MCP_TOOL_CONTRACT_MISSING_REASON_CODE;
+
+  constructor(readonly result: MissingToolContractBlockedResult) {
+    super(`ToolContract missing: ${result.action}@${result.version}`);
+    this.name = "MissingToolContractError";
+  }
+}
 
 function normalizeActionName(value: string) {
   return value.trim().toLowerCase();
@@ -68,22 +86,85 @@ export function resolveLocallyExecutableAction(
 export function resolveMissingToolContractFallback(
   actionName: string,
   version: string,
-  effectivePayload: unknown
-): SimulatedToolExecutionResult | null {
-  if (!actionName.startsWith("realestate.")) return null;
-
+  _effectivePayload: unknown
+): MissingToolContractBlockedResult {
   return {
-    ok: true,
-    simulated: true,
+    ok: false,
+    status: "error",
+    reasonCode: MCP_TOOL_CONTRACT_MISSING_REASON_CODE,
     action: actionName,
     version,
-    status: "success",
-    output: {
-      message: `Simulated ${actionName} execution`,
-      payloadPreview:
-        effectivePayload && typeof effectivePayload === "object"
-          ? Object.keys(effectivePayload as Record<string, unknown>).slice(0, 8)
-          : null,
+  };
+}
+
+export function resolveMissingToolContractDecision(
+  toolContract: unknown,
+  actionName: string,
+  version: string,
+  effectivePayload: unknown
+) {
+  return toolContract
+    ? null
+    : resolveMissingToolContractFallback(actionName, version, effectivePayload);
+}
+
+export function resolveMissingToolContractRunFailure(error: unknown) {
+  if (!(error instanceof MissingToolContractError)) return null;
+  return {
+    status: "error" as const,
+    reasonCode: error.reasonCode,
+    result: error.result,
+  };
+}
+
+export async function recordMissingToolContractAudit(params: {
+  actionName: string;
+  version: string;
+  runId: string;
+  tenantId: string;
+  stepId?: string;
+  record: (audit: {
+    eventType: "mcp.tool.missing_contract";
+    severity: "warn";
+    message: string;
+    metadata: {
+      tool: string;
+      version: string;
+      stepId?: string;
+      reasonCode: typeof MCP_TOOL_CONTRACT_MISSING_REASON_CODE;
+    };
+  }) => Promise<void>;
+  logFailure: (context: {
+    err: unknown;
+    runId: string;
+    tenantId: string;
+    action: string;
+    version: string;
+    reasonCode: typeof MCP_TOOL_CONTRACT_MISSING_REASON_CODE;
+  }) => void;
+}) {
+  const audit = {
+    eventType: "mcp.tool.missing_contract" as const,
+    severity: "warn" as const,
+    message: `ToolContract missing: ${params.actionName}@${params.version}`,
+    metadata: {
+      tool: params.actionName,
+      version: params.version,
+      stepId: params.stepId,
+      reasonCode: MCP_TOOL_CONTRACT_MISSING_REASON_CODE,
     },
   };
+
+  try {
+    await params.record(audit);
+  } catch (err) {
+    params.logFailure({
+      err,
+      runId: params.runId,
+      tenantId: params.tenantId,
+      action: params.actionName,
+      version: params.version,
+      reasonCode: MCP_TOOL_CONTRACT_MISSING_REASON_CODE,
+    });
+  }
 }

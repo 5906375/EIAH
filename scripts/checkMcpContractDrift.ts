@@ -14,6 +14,8 @@ type Violation = {
 const TOOL_CONTRACT_FILE = "packages/mcp-runner/src/types/ToolContract.ts";
 const MCP_EXECUTOR_FILE = "packages/mcp-runner/src/executor/MCPExecutor.ts";
 const RUN_WORKER_FILE = "apps/api/src/workers/runWorker.ts";
+const RUN_WORKER_ACTION_RESOLUTION_FILE =
+  "apps/api/src/workers/runWorkerActionResolution.ts";
 const IMOB_CANONICAL_FILE = "apps/api/src/services/imob/imobCanonical.ts";
 const MCP_ADAPTER_FILE = "apps/workers/action-runner/src/services/mcpAdapter.ts";
 const MCP_ENFORCEMENT_FILE = "apps/workers/action-runner/src/services/mcpEnforcement.ts";
@@ -23,7 +25,7 @@ const MCP_GOVERNANCE_ENV_HELPER_FILE = "packages/core/src/services/mcpGovernance
 
 // PR MCP-1C — guard v1: bloqueia drift silencioso entre ToolContract, os
 // modos de MCPExecutor, os call sites de runtime de @repo/mcp-runner, o
-// fallback simulado/permissivo (runWorker.ts <-> imobCanonical.ts) e os
+// fail-closed de contrato ausente, a defesa historica de outputs simulados e os
 // parsers duplicados dos env vars de governanca MCP. Nao cria doc canonica,
 // nao introduz tipo compartilhado, nao consolida os parsers de env — apenas
 // detecta quando um desses pontos se move sem decisao explicita (allowlist
@@ -182,24 +184,53 @@ if (toolContractSrc && mcpExecutorSrc) {
 }
 
 // ---------------------------------------------------------------------------
-// Item 5: acoplamento simulated (runWorker.ts <-> imobCanonical.ts)
+// Item 5: fail-closed de contrato ausente + defesa historica de simulated
 // ---------------------------------------------------------------------------
 
 const runWorkerSrc = readFile(RUN_WORKER_FILE, violations);
+const runWorkerActionResolutionSrc = readFile(
+  RUN_WORKER_ACTION_RESOLUTION_FILE,
+  violations
+);
 const imobCanonicalSrc = readFile(IMOB_CANONICAL_FILE, violations);
 
-if (runWorkerSrc && !runWorkerSrc.includes("simulated")) {
+if (
+  runWorkerSrc &&
+  (!runWorkerSrc.includes("MissingToolContractError") ||
+    !runWorkerSrc.includes("recordMissingToolContractAudit"))
+) {
   violations.push({
-    message: "mcp_simulated_fallback_coupling_broken",
+    message: "mcp_missing_contract_fail_closed_runtime_missing",
     file: RUN_WORKER_FILE,
-    details: { expectedToken: "simulated", pairedWith: IMOB_CANONICAL_FILE },
+    details: {
+      expectedTokens: [
+        "MissingToolContractError",
+        "recordMissingToolContractAudit",
+      ],
+    },
+  });
+}
+if (
+  runWorkerActionResolutionSrc &&
+  (!runWorkerActionResolutionSrc.includes("MCP_TOOL_CONTRACT_MISSING") ||
+    !runWorkerActionResolutionSrc.includes("mcp.tool.missing_contract"))
+) {
+  violations.push({
+    message: "mcp_missing_contract_canonical_contract_missing",
+    file: RUN_WORKER_ACTION_RESOLUTION_FILE,
+    details: {
+      expectedTokens: [
+        "MCP_TOOL_CONTRACT_MISSING",
+        "mcp.tool.missing_contract",
+      ],
+    },
   });
 }
 if (imobCanonicalSrc && !imobCanonicalSrc.includes("simulated")) {
   violations.push({
-    message: "mcp_simulated_fallback_coupling_broken",
+    message: "mcp_historical_simulated_defense_missing",
     file: IMOB_CANONICAL_FILE,
-    details: { expectedToken: "simulated", pairedWith: RUN_WORKER_FILE },
+    details: { expectedToken: "simulated" },
   });
 }
 
@@ -282,7 +313,11 @@ console.log(
       allowedMcpExecutorConsumers: [...ALLOWED_MCP_EXECUTOR_CONSUMERS],
       allowedMcpEnvParsers: [...ALLOWED_MCP_ENV_PARSERS],
       expectedMcpGovernanceEnvHelperConsumers: [...EXPECTED_MCP_GOVERNANCE_ENV_HELPER_CONSUMERS],
-      simulatedFallbackCoupling: [RUN_WORKER_FILE, IMOB_CANONICAL_FILE],
+      missingContractFailClosed: [
+        RUN_WORKER_FILE,
+        RUN_WORKER_ACTION_RESOLUTION_FILE,
+      ],
+      historicalSimulatedDefense: IMOB_CANONICAL_FILE,
       scanRoots: SCAN_ROOTS,
       operationalSourcesScanned: operationalSources.length,
     },

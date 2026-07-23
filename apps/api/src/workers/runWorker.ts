@@ -94,9 +94,12 @@ import { detectRunWorkerOutputFailure } from "./runWorkerOutputValidation";
 import { GuardianPlanManager } from "./guardianPlanManager";
 import {
   mergeActionsForExecution,
+  MissingToolContractError,
+  recordMissingToolContractAudit,
   resolveLocallyExecutableAction,
   resolveDeclaredActionNames,
-  resolveMissingToolContractFallback,
+  resolveMissingToolContractDecision,
+  resolveMissingToolContractRunFailure,
 } from "./runWorkerActionResolution";
 import { alignCandidatesToRecipe } from "./runWorkerRecipeAlignment";
 import { buildGuardianStructuredOutput } from "./runWorkerGuardianOutput";
@@ -1453,30 +1456,40 @@ export async function processRunPayload(payload: RunQueuePayload) {
 
           const tool = await ToolRegistry.get(actionName, version, tenantId);
           if (!tool) {
-            const missingToolContractFallback = resolveMissingToolContractFallback(
+            const missingToolContractBlock = resolveMissingToolContractDecision(
+              tool,
               actionName,
               version,
               effectivePayload
             );
-            if (missingToolContractFallback) {
-              await recordGuardrailAudit({
-                prisma: prismaGlobal,
-                tenantId,
-                workspaceId,
-                runId,
-                eventType: "mcp.tool.simulated",
-                severity: "warn",
-                message: `ToolContract missing for ${actionName}@${version}; simulated execution used`,
-                metadata: {
-                  tool: actionName,
-                  version,
-                  stepId: context?.currentStep?.id,
-                },
-              }).catch(() => undefined);
-
-              return missingToolContractFallback;
+            if (!missingToolContractBlock) {
+              throw new Error(`ToolContract resolution invariant failed: ${actionName}@${version}`);
             }
-            throw new Error(`ToolContract missing: ${actionName}@${version}`);
+
+            await recordMissingToolContractAudit({
+              actionName,
+              version,
+              runId,
+              tenantId,
+              stepId: context?.currentStep?.id,
+              record: async (audit) => {
+                await recordGuardrailAudit({
+                  prisma: prismaGlobal,
+                  tenantId,
+                  workspaceId,
+                  runId,
+                  ...audit,
+                });
+              },
+              logFailure: (auditFailure) => {
+                workerLogger.error(
+                  auditFailure,
+                  "run.worker.mcp_contract_missing_audit_failed"
+                );
+              },
+            });
+
+            throw new MissingToolContractError(missingToolContractBlock);
           }
 
           const executor = new MCPExecutor(tool);
@@ -2409,6 +2422,7 @@ export async function processRunPayload(payload: RunQueuePayload) {
       }
 
       const message = error instanceof Error ? error.message : "Execution failed";
+      const missingToolContractFailure = resolveMissingToolContractRunFailure(error);
       logger.error(
         {
           err: error,
@@ -2457,7 +2471,7 @@ export async function processRunPayload(payload: RunQueuePayload) {
           recipeOrchestration,
           usage: snapshot?.usage ?? null,
         },
-        errorCode: "EXECUTION_FAILED",
+        errorCode: missingToolContractFailure?.reasonCode ?? "EXECUTION_FAILED",
         txId: scl.txId,
         criticalHash: scl.criticalHash,
         sclTxId: scl.txId,
@@ -2472,6 +2486,9 @@ export async function processRunPayload(payload: RunQueuePayload) {
         payload: {
           status: "error",
           message,
+          ...(missingToolContractFailure
+            ? { reasonCode: missingToolContractFailure.reasonCode }
+            : {}),
           txId: scl.txId,
           criticalHash: scl.criticalHash,
         },
