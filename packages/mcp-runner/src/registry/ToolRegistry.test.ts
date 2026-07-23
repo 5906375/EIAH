@@ -75,24 +75,29 @@ test("ToolRegistry.get passes the requested tenant without cross-tenant fallback
   assert.equal(result, null, "tenant A contract must remain invisible to tenant B lookup");
 });
 
-test("ToolRegistry.list filters only by tenant and preserves delegate ordering/statuses", async () => {
-  const records = [
-    { name: "tool.revoked", tenantId: "tenant-a", status: "revoked" },
-    { name: "tool.active", tenantId: "tenant-a", status: "active" },
+test("ToolRegistry.list returns only active contracts in deterministic name/version order", async () => {
+  const storedRecords = [
+    { name: "beta.tool", version: "2.0.0", tenantId: "tenant-a", status: "active" },
+    { name: "revoked.tool", version: "1.0.0", tenantId: "tenant-a", status: "revoked" },
+    { name: "alpha.tool", version: "1.0.0", tenantId: "tenant-a", status: "active" },
   ];
+  const expected = [storedRecords[2], storedRecords[0]];
   let received: unknown;
   useDelegate({
     findMany: async (args: unknown) => {
       received = args;
-      return records;
+      return expected;
     },
   });
 
   const result = await ToolRegistry.list("tenant-a");
 
-  // Caracterização: ausência de filtro de status e ordenação é o comportamento atual, não o desejado.
-  assert.deepEqual(received, { where: { tenantId: "tenant-a" } });
-  assert.equal(result, records);
+  assert.deepEqual(received, {
+    where: { tenantId: "tenant-a", status: "active" },
+    orderBy: [{ name: "asc" }, { version: "asc" }],
+  });
+  assert.deepEqual(result, expected);
+  assert.equal(result.some((record) => record.status !== "active"), false);
 });
 
 test("ToolRegistry.get preserves the first record selected by the delegate", async () => {

@@ -1499,7 +1499,10 @@ export async function processRunPayload(payload: RunQueuePayload) {
           }
 
           const executor = new MCPExecutor(tool);
-          const result = await executor.run(effectivePayload);
+          const result = await executor.run(effectivePayload, {
+            tenantId,
+            workspaceId,
+          });
 
           await recordCriticalMcpAudit({
             runId,

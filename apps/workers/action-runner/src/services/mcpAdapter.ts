@@ -20,7 +20,10 @@ export async function executeWithMCP(params: ExecuteWithMcpParams) {
   }
 
   const executor = new MCPExecutor(tool);
-  const result = await executor.run(params.payload);
+  const result = await executor.run(params.payload, {
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+  });
 
   const hash = crypto.createHash("sha256").update(JSON.stringify(result)).digest("hex");
 
