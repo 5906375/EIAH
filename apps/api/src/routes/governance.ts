@@ -10,6 +10,7 @@ import { buildRunEvidenceBundle } from "../services/evidenceBundle";
 import { resolvePoUForLedger } from "../services/pouService";
 import { resolveTrustSnapshotForLedger } from "../services/trustSnapshotService";
 import { buildLedgerReceiptCanonV1, validateReceiptCanonCriticalChain } from "../services/receiptCanonService";
+import { deriveExecutionEvidence } from "../services/executionEvidence";
 import { buildImobCaseContextV1 } from "../services/imob/crm/imobCaseContextBuilder";
 import { buildImobCrmCaseContextFromRecord } from "../services/imob/crm/imobCrmCaseContext";
 import { buildImobCrmLegacyCanonicalCase } from "../services/imob/crm/imobCrmLegacyCanonical";
@@ -626,20 +627,25 @@ governanceRouter.get("/ledger/:txId", requireScope("ledger.view"), async (req, r
     validUntil,
   };
 
-  const canonValidation = runByTx
-    ? validateReceiptCanonCriticalChain({
+  const receiptCanonParams = runByTx
+    ? {
         txId,
         runId: runByTx.id,
         workspaceId: runByTx.workspaceId,
         tenantId: authContext.tenantId,
         actorId: authContext.userId ?? null,
-        actorType: authContext.userId ? "user" : "system",
+        actorType: authContext.userId ? ("user" as const) : ("system" as const),
         bundleHash,
         invariant,
         pou,
         trustSnapshot,
         approval,
         delegation,
+        execution: deriveExecutionEvidence({
+          status: runByTx.status,
+          errorCode: runByTx.errorCode,
+          response: runByTx.response,
+        }),
         reconciliation: {
           hasRun,
           hasScl,
@@ -648,7 +654,11 @@ governanceRouter.get("/ledger/:txId", requireScope("ledger.view"), async (req, r
           runHashAligned,
           matchedPoUByTxId: Boolean(pou.matchedByTxId),
         },
-      })
+      }
+    : null;
+  const receiptCanon = receiptCanonParams ? buildLedgerReceiptCanonV1(receiptCanonParams) : null;
+  const canonValidation = receiptCanonParams
+    ? validateReceiptCanonCriticalChain(receiptCanonParams)
     : { ok: true, reasonCodes: [] };
   if (!canonValidation.ok) {
     return res.status(409).json({
@@ -660,6 +670,7 @@ governanceRouter.get("/ledger/:txId", requireScope("ledger.view"), async (req, r
       },
       txId,
       runId: runByTx?.id ?? sclEntry?.runId ?? null,
+      receiptCanon,
       invariant,
       reconciliation: {
         hasRun,
@@ -713,30 +724,7 @@ governanceRouter.get("/ledger/:txId", requireScope("ledger.view"), async (req, r
       pouReceiptIds: pou.receiptsByRun.map((item) => item.id),
     },
     invariant,
-    receiptCanon: runByTx
-      ? buildLedgerReceiptCanonV1({
-          txId,
-          runId: runByTx.id,
-          workspaceId: runByTx.workspaceId,
-          tenantId: authContext.tenantId,
-          actorId: authContext.userId ?? null,
-          actorType: authContext.userId ? "user" : "system",
-          bundleHash,
-          invariant,
-          pou,
-          trustSnapshot,
-          approval,
-          delegation,
-          reconciliation: {
-            hasRun,
-            hasScl,
-            hasPoU,
-            runSclAligned,
-            runHashAligned,
-            matchedPoUByTxId: Boolean(pou.matchedByTxId),
-          },
-        })
-      : null,
+    receiptCanon,
   });
 });
 

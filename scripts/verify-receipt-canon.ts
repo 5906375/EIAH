@@ -1,6 +1,21 @@
 import fs from "node:fs";
+import { pathToFileURL } from "node:url";
 
 type JsonObject = Record<string, unknown>;
+
+export type ReceiptCanonVerification = {
+  ok: boolean;
+  state: "real" | "blocked" | "historical_simulated" | "unknown";
+  errors: string[];
+  verified: {
+    txId: string | null;
+    runId: string | null;
+    bundleHash: string | null;
+    requiredReceipts: string[];
+    receiptCount: number;
+    reasonCodes: string[];
+  };
+};
 
 function parseArgs(argv: string[]) {
   const args = new Map<string, string>();
@@ -31,27 +46,41 @@ function readJsonFile(file: string): JsonObject {
   }
 }
 
-function assertReceiptCanon(payload: JsonObject, strict = false, bundleDoc?: JsonObject | null) {
+function asObject(value: unknown): JsonObject | null {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as JsonObject) : null;
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+}
+
+export function verifyReceiptCanonPayload(
+  payload: JsonObject,
+  strict = false,
+  bundleDoc?: JsonObject | null
+): ReceiptCanonVerification {
   const errors: string[] = [];
-
-  const ok = payload.ok;
-  if (ok !== true) errors.push("payload.ok must be true");
-
-  const run = (payload.run ?? null) as JsonObject | null;
+  const run = asObject(payload.run);
   const txId = typeof payload.txId === "string" ? payload.txId : null;
-  const bundleHash = run && typeof run.bundleHash === "string" ? run.bundleHash : null;
-  const runId = run && typeof run.id === "string" ? run.id : null;
+  const runId =
+    run && typeof run.id === "string"
+      ? run.id
+      : typeof payload.runId === "string"
+        ? payload.runId
+        : null;
 
-  const invariant = (payload.invariant ?? null) as JsonObject | null;
+  const invariant = asObject(payload.invariant);
   if (!invariant || invariant.status !== "ok") errors.push("invariant.status must be ok");
   if (!invariant || invariant.txIdToRunId !== true) errors.push("invariant.txIdToRunId must be true");
   if (!invariant || invariant.runIdToBundleHash !== true) errors.push("invariant.runIdToBundleHash must be true");
 
-  const receiptCanon = (payload.receiptCanon ?? null) as JsonObject | null;
+  const receiptCanon = asObject(payload.receiptCanon);
   if (!receiptCanon) errors.push("receiptCanon missing");
-  if (receiptCanon?.specVersion !== "receipt.canon.v1") errors.push("receiptCanon.specVersion must be receipt.canon.v1");
+  if (receiptCanon?.specVersion !== "receipt.canon.v1") {
+    errors.push("receiptCanon.specVersion must be receipt.canon.v1");
+  }
 
-  const receipts = Array.isArray(receiptCanon?.receipts) ? (receiptCanon?.receipts as JsonObject[]) : [];
+  const receipts = Array.isArray(receiptCanon?.receipts) ? (receiptCanon.receipts as JsonObject[]) : [];
   const requiredReceipts = [
     "PoUReceipt",
     "TrustSnapshotReceipt",
@@ -65,7 +94,42 @@ function assertReceiptCanon(payload: JsonObject, strict = false, bundleDoc?: Jso
     }
   }
 
+  const executionReceipt = receipts.find((item) => item.receiptType === "ExecutionStateReceipt") ?? null;
+  const state =
+    executionReceipt?.state === "real" ||
+    executionReceipt?.state === "blocked" ||
+    executionReceipt?.state === "historical_simulated"
+      ? executionReceipt.state
+      : "unknown";
+  const executionReasonCodes = stringArray(executionReceipt?.reasonCodes);
+
+  if (state === "unknown") {
+    if (payload.ok !== true) {
+      errors.push("blocked or simulated evidence requires ExecutionStateReceipt");
+    }
+  } else if (state === "real") {
+    if (payload.ok !== true) errors.push("real execution requires payload.ok=true");
+    if (executionReasonCodes.length > 0) errors.push("real execution must not carry execution reasonCodes");
+  } else if (state === "blocked") {
+    if (payload.ok !== false) errors.push("blocked execution requires payload.ok=false");
+    if (executionReasonCodes.length === 0) errors.push("blocked execution requires an explicit reasonCode");
+    const responseReasonCodes = stringArray(asObject(payload.error)?.reasonCodes);
+    for (const reasonCode of executionReasonCodes) {
+      if (!responseReasonCodes.includes(reasonCode)) {
+        errors.push(`blocked reasonCode not exposed by response: ${reasonCode}`);
+      }
+    }
+  } else {
+    errors.push("SIMULATED_OUTPUT_IN_CRITICAL_CHAIN");
+  }
+
   const txLink = receipts.find((item) => item.receiptType === "TxLinkReceipt") ?? null;
+  const bundleHash =
+    run && typeof run.bundleHash === "string"
+      ? run.bundleHash
+      : txLink && typeof txLink.bundleHash === "string"
+        ? txLink.bundleHash
+        : null;
   if (!txLink) {
     errors.push("TxLinkReceipt missing");
   } else {
@@ -81,47 +145,52 @@ function assertReceiptCanon(payload: JsonObject, strict = false, bundleDoc?: Jso
     } else if (bundleDocHash !== bundleHash) {
       errors.push("bundleHash mismatch between ledger and bundle document");
     }
+    const files = asObject(bundleDoc.files);
+    const manifest = asObject(bundleDoc.manifest) ?? asObject(files?.["manifest.json"]);
+    const bundleExecution = asObject(manifest?.execution);
+    if (!bundleExecution && state !== "unknown") {
+      errors.push("bundle manifest execution marker missing");
+    } else if (bundleExecution) {
+      if (bundleExecution.state !== state) errors.push("execution state mismatch between receipt and bundle");
+      const bundleReasonCodes = stringArray(bundleExecution.reasonCodes);
+      for (const reasonCode of executionReasonCodes) {
+        if (!bundleReasonCodes.includes(reasonCode)) {
+          errors.push(`execution reasonCode missing from bundle manifest: ${reasonCode}`);
+        }
+      }
+    }
   }
 
   for (const receipt of receipts) {
     if (typeof receipt.runId !== "string") errors.push(`${String(receipt.receiptType)}.runId missing`);
     if (typeof receipt.timestamp !== "string") errors.push(`${String(receipt.receiptType)}.timestamp missing`);
     if (typeof receipt.hash !== "string") errors.push(`${String(receipt.receiptType)}.hash missing`);
-    if (!receipt.actor || typeof receipt.actor !== "object") errors.push(`${String(receipt.receiptType)}.actor missing`);
-    if (!receipt.policy || typeof receipt.policy !== "object") errors.push(`${String(receipt.receiptType)}.policy missing`);
+    if (!asObject(receipt.actor)) errors.push(`${String(receipt.receiptType)}.actor missing`);
+    if (!asObject(receipt.policy)) errors.push(`${String(receipt.receiptType)}.policy missing`);
   }
 
   if (strict) {
     for (const receipt of receipts) {
-      if (Array.isArray(receipt.reasonCodes) && receipt.reasonCodes.length > 0) {
+      if (Array.isArray(receipt.reasonCodes)) {
         const invalid = (receipt.reasonCodes as unknown[]).some((code) => typeof code !== "string");
         if (invalid) errors.push(`${String(receipt.receiptType)}.reasonCodes has non-string values`);
       }
     }
   }
 
-  if (errors.length > 0) {
-    fail("receipt_canon_verification_failed", {
-      errors,
-    });
-  }
-
-  console.log(
-    JSON.stringify(
-      {
-        ok: true,
-        verified: {
-          txId,
-          runId,
-          bundleHash,
-          requiredReceipts,
-          receiptCount: receipts.length,
-        },
-      },
-      null,
-      2
-    )
-  );
+  return {
+    ok: errors.length === 0,
+    state,
+    errors,
+    verified: {
+      txId,
+      runId,
+      bundleHash,
+      requiredReceipts,
+      receiptCount: receipts.length,
+      reasonCodes: executionReasonCodes,
+    },
+  };
 }
 
 async function fetchLedger(url: string, token?: string, tenant?: string, workspace?: string) {
@@ -138,7 +207,11 @@ async function fetchLedger(url: string, token?: string, tenant?: string, workspa
   } catch {
     fail("ledger_response_not_json", { status: response.status, bodyPreview: text.slice(0, 200) });
   }
-  if (!response.ok) {
+  const governedFailure =
+    response.status === 409 &&
+    asObject(json?.error)?.code === "RECEIPT_CANON_INCONSISTENT" &&
+    Boolean(json?.receiptCanon);
+  if (!response.ok && !governedFailure) {
     fail("ledger_request_failed", { status: response.status, body: json });
   }
   return json as JsonObject;
@@ -154,8 +227,8 @@ async function main() {
   if (!ledgerFile && !url) {
     fail("usage", {
       examples: [
-        "node --experimental-strip-types scripts/verify-receipt-canon.ts --ledger ops/evidence/latest/ledger.json --strict",
-        "node --experimental-strip-types scripts/verify-receipt-canon.ts --url http://localhost:8080/api/ledger/<txId> --token <bearer> --strict",
+        "node --import tsx scripts/verify-receipt-canon.ts --ledger ops/evidence/latest/ledger.json --strict",
+        "node --import tsx scripts/verify-receipt-canon.ts --url http://localhost:8080/api/ledger/<txId> --token <bearer> --strict",
       ],
     });
   }
@@ -163,9 +236,15 @@ async function main() {
   const payload = ledgerFile
     ? readJsonFile(ledgerFile)
     : await fetchLedger(url!, args.get("token"), args.get("tenant"), args.get("workspace"));
-
   const bundleDoc = bundleFile ? readJsonFile(bundleFile) : null;
-  assertReceiptCanon(payload, strict, bundleDoc);
+  const verification = verifyReceiptCanonPayload(payload, strict, bundleDoc);
+  if (!verification.ok) {
+    fail("receipt_canon_verification_failed", { errors: verification.errors, state: verification.state });
+  }
+  console.log(JSON.stringify(verification, null, 2));
 }
 
-void main();
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMain) {
+  void main();
+}

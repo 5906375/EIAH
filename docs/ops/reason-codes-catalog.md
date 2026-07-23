@@ -24,6 +24,20 @@
 - `scl_critical_hash_mismatch`
 - `delegation_pending_approval`
 
+### Semântica de execução MCP (MCP-1J)
+
+Fonte canônica ativa: `apps/api/src/services/executionEvidence.ts`
+(`EXECUTION_EVIDENCE_REASON_CODES`).
+
+- `EXECUTION_FAILED` — fallback já existente para run em erro sem código mais
+  específico; impede que um estado bloqueado valide como execução real.
+- `MCP_TOOL_CONTRACT_MISSING` — execução bloqueada porque o contrato da tool
+  não foi encontrado.
+- `SIMULATED_OUTPUT_IN_CRITICAL_CHAIN` — dado histórico legível contém
+  `simulated:true` e não pode validar como execução real.
+- `AUDIT_WRITE_FAILED` — persistência de audit em caminho MCP crítico falhou;
+  o run deve falhar fechado.
+
 ## Cobertura IMOB — control surface (Command Center)
 
 Fonte: `apps/api/src/services/imob/control/imobReasonCodeCatalog.ts`

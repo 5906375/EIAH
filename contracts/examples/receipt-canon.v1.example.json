@@ -1,0 +1,62 @@
+{
+  "specVersion": "receipt.canon.v1",
+  "generatedAt": "2026-07-23T00:00:00.000Z",
+  "receipts": [
+    {
+      "receiptType": "PoUReceipt",
+      "runId": "run-example",
+      "actor": { "id": "user-example", "type": "user" },
+      "timestamp": "2026-07-23T00:00:00.000Z",
+      "policy": { "id": "pou.reconciliation.v1", "decision": "observe" },
+      "reasonCodes": ["pou_txid_mismatch"],
+      "hash": "example-pou-hash"
+    },
+    {
+      "receiptType": "TrustSnapshotReceipt",
+      "runId": "run-example",
+      "actor": { "id": "user-example", "type": "user" },
+      "timestamp": "2026-07-23T00:00:00.000Z",
+      "policy": { "id": "trust.snapshot.v1", "decision": "observe" },
+      "reasonCodes": [],
+      "hash": "example-trust-hash"
+    },
+    {
+      "receiptType": "ApprovalReceipt",
+      "runId": "run-example",
+      "actor": { "id": "user-example", "type": "user" },
+      "timestamp": "2026-07-23T00:00:00.000Z",
+      "policy": { "id": "approval.policy.v1", "decision": "allow" },
+      "reasonCodes": [],
+      "hash": "example-approval-hash"
+    },
+    {
+      "receiptType": "DelegationReceipt",
+      "runId": "run-example",
+      "actor": { "id": "user-example", "type": "user" },
+      "timestamp": "2026-07-23T00:00:00.000Z",
+      "policy": { "id": "delegation.policy.v1", "decision": "allow" },
+      "reasonCodes": [],
+      "hash": "example-delegation-hash"
+    },
+    {
+      "receiptType": "TxLinkReceipt",
+      "runId": "run-example",
+      "actor": { "id": "user-example", "type": "user" },
+      "timestamp": "2026-07-23T00:00:00.000Z",
+      "policy": { "id": "tx-link.v1", "decision": "allow" },
+      "reasonCodes": [],
+      "hash": "example-tx-link-hash"
+    },
+    {
+      "receiptType": "ExecutionStateReceipt",
+      "runId": "run-example",
+      "actor": { "id": "user-example", "type": "user" },
+      "timestamp": "2026-07-23T00:00:00.000Z",
+      "policy": { "id": "execution.evidence.v1", "decision": "allow" },
+      "state": "real",
+      "containsHistoricalSimulatedOutput": false,
+      "reasonCodes": [],
+      "hash": "example-execution-hash"
+    }
+  ]
+}

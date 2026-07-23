@@ -3,7 +3,9 @@ import test from "node:test";
 import type { RegisteredAction } from "@eiah/core";
 import { AgentOrchestrator } from "../../../../packages/core/src/orchestrator/agentOrchestrator";
 import {
+  AuditWriteFailedError,
   MissingToolContractError,
+  recordCriticalMcpAudit,
   recordMissingToolContractAudit,
   mergeActionsForExecution,
   resolveLocallyExecutableAction,
@@ -176,18 +178,21 @@ test("run worker logs missing-contract audit failure with explicit context", asy
   const logs: unknown[] = [];
   const auditError = new Error("audit unavailable");
 
-  await recordMissingToolContractAudit({
-    actionName: "realestate.register_property",
-    version: "1.0.0",
-    runId: "run-1",
-    tenantId: "tenant-1",
-    record: async () => {
-      throw auditError;
-    },
-    logFailure: (context) => {
-      logs.push(context);
-    },
-  });
+  await assert.rejects(
+    recordMissingToolContractAudit({
+      actionName: "realestate.register_property",
+      version: "1.0.0",
+      runId: "run-1",
+      tenantId: "tenant-1",
+      record: async () => {
+        throw auditError;
+      },
+      logFailure: (context) => {
+        logs.push(context);
+      },
+    }),
+    (error) => error instanceof AuditWriteFailedError && error.reasonCode === "AUDIT_WRITE_FAILED"
+  );
 
   assert.deepEqual(logs, [
     {
@@ -196,9 +201,30 @@ test("run worker logs missing-contract audit failure with explicit context", asy
       tenantId: "tenant-1",
       action: "realestate.register_property",
       version: "1.0.0",
-      reasonCode: "MCP_TOOL_CONTRACT_MISSING",
+      reasonCode: "AUDIT_WRITE_FAILED",
     },
   ]);
+});
+
+test("run worker classifies critical MCP audit failure as canonical run error", async () => {
+  const auditError = new Error("audit unavailable");
+
+  await assert.rejects(
+    recordCriticalMcpAudit({
+      runId: "run-1",
+      tenantId: "tenant-1",
+      action: "realestate.register_property",
+      version: "1.0.0",
+      record: async () => {
+        throw auditError;
+      },
+      logFailure: () => undefined,
+    }),
+    (error) => {
+      const failure = resolveMissingToolContractRunFailure(error);
+      return failure?.status === "error" && failure.reasonCode === "AUDIT_WRITE_FAILED";
+    }
+  );
 });
 
 test("AgentOrchestrator marks missing-contract step failed and never completed", async () => {

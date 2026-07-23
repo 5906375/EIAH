@@ -125,6 +125,7 @@ apps/api/src/tests/legal-responsible-actor-stub.contract.test.ts
 apps/api/src/tests/pdf-text-extractor.test.ts
 apps/api/src/tests/public-product-taxonomy.contract.test.ts
 apps/api/src/tests/require-scope.fail-closed.test.ts
+apps/api/src/tests/receipt-canon-execution-evidence.test.ts
 apps/api/src/tests/run-events-redis-transport.test.ts
 apps/api/src/tests/run-worker-action-resolution.test.ts
 apps/api/src/tests/run-worker-guardian-output.test.ts

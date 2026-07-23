@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://eiah.ai/contracts/receipt-canon.v1.schema.json",
+  "title": "EIAH Receipt Canon v1",
+  "type": "object",
+  "required": ["specVersion", "generatedAt", "receipts"],
+  "properties": {
+    "specVersion": {
+      "const": "receipt.canon.v1"
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "receipts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/receipt"
+      }
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "receipt": {
+      "type": "object",
+      "required": ["receiptType", "runId", "actor", "timestamp", "policy", "hash"],
+      "properties": {
+        "receiptType": {
+          "type": "string"
+        },
+        "runId": {
+          "type": "string"
+        },
+        "actor": {
+          "type": "object"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "policy": {
+          "type": "object"
+        },
+        "hash": {
+          "type": "string"
+        },
+        "reasonCodes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "receiptType": {
+                "const": "ExecutionStateReceipt"
+              }
+            },
+            "required": ["receiptType"]
+          },
+          "then": {
+            "required": ["state", "containsHistoricalSimulatedOutput", "reasonCodes"],
+            "properties": {
+              "state": {
+                "enum": ["real", "blocked", "historical_simulated"]
+              },
+              "containsHistoricalSimulatedOutput": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": true
+    }
+  }
+}

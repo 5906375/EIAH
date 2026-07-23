@@ -95,6 +95,7 @@ import { GuardianPlanManager } from "./guardianPlanManager";
 import {
   mergeActionsForExecution,
   MissingToolContractError,
+  recordCriticalMcpAudit,
   recordMissingToolContractAudit,
   resolveLocallyExecutableAction,
   resolveDeclaredActionNames,
@@ -1424,8 +1425,12 @@ export async function processRunPayload(payload: RunQueuePayload) {
               throw new Error(localResult.error ?? `Action "${actionName}" failed`);
             }
 
-            try {
-              await recordGuardrailAudit({
+            await recordCriticalMcpAudit({
+              runId,
+              tenantId,
+              action: actionName,
+              version: localAction.version ?? version,
+              record: () => recordGuardrailAudit({
                 prisma: prismaGlobal,
                 tenantId,
                 workspaceId,
@@ -1439,10 +1444,11 @@ export async function processRunPayload(payload: RunQueuePayload) {
                   executionMode: "core_local",
                   stepId: context?.currentStep?.id,
                 },
-              });
-            } catch {
-              // best-effort
-            }
+              }),
+              logFailure: (auditFailure) => {
+                workerLogger.error(auditFailure, "run.worker.mcp_execution_audit_failed");
+              },
+            });
 
             return {
               ok: true,
@@ -1495,8 +1501,12 @@ export async function processRunPayload(payload: RunQueuePayload) {
           const executor = new MCPExecutor(tool);
           const result = await executor.run(effectivePayload);
 
-          try {
-            await recordGuardrailAudit({
+          await recordCriticalMcpAudit({
+            runId,
+            tenantId,
+            action: actionName,
+            version,
+            record: () => recordGuardrailAudit({
               prisma: prismaGlobal,
               tenantId,
               workspaceId,
@@ -1510,10 +1520,11 @@ export async function processRunPayload(payload: RunQueuePayload) {
                 trustLevel: tool.trustLevel,
                 stepId: context?.currentStep?.id,
               },
-            });
-          } catch {
-            // best-effort
-          }
+            }),
+            logFailure: (auditFailure) => {
+              workerLogger.error(auditFailure, "run.worker.mcp_execution_audit_failed");
+            },
+          });
 
           return result;
         },
@@ -2422,7 +2433,7 @@ export async function processRunPayload(payload: RunQueuePayload) {
       }
 
       const message = error instanceof Error ? error.message : "Execution failed";
-      const missingToolContractFailure = resolveMissingToolContractRunFailure(error);
+      const governedMcpFailure = resolveMissingToolContractRunFailure(error);
       logger.error(
         {
           err: error,
@@ -2471,7 +2482,7 @@ export async function processRunPayload(payload: RunQueuePayload) {
           recipeOrchestration,
           usage: snapshot?.usage ?? null,
         },
-        errorCode: missingToolContractFailure?.reasonCode ?? "EXECUTION_FAILED",
+        errorCode: governedMcpFailure?.reasonCode ?? "EXECUTION_FAILED",
         txId: scl.txId,
         criticalHash: scl.criticalHash,
         sclTxId: scl.txId,
@@ -2486,8 +2497,8 @@ export async function processRunPayload(payload: RunQueuePayload) {
         payload: {
           status: "error",
           message,
-          ...(missingToolContractFailure
-            ? { reasonCode: missingToolContractFailure.reasonCode }
+          ...(governedMcpFailure
+            ? { reasonCode: governedMcpFailure.reasonCode }
             : {}),
           txId: scl.txId,
           criticalHash: scl.criticalHash,
