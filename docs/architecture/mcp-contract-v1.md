@@ -26,6 +26,8 @@ Status: MCP parcial avancado. Guard estatico de drift ativo desde MCP-1C. Este d
   gera o evento de log `mcp.db.global_access`.
 - `ToolRegistry.get()` e `ToolRegistry.list()` enxergam apenas contratos
   `active`; `list()` ordena por `name`, depois `version`.
+- O registry persistido garante uma unica linha por
+  `(tenantId, name, version)`, independentemente de `status`.
 
 ## Call sites conhecidos
 

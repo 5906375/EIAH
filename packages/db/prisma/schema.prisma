@@ -474,7 +474,7 @@ model ToolContract {
   // 🔗 Relações
   tenant Tenant @relation(fields: [tenantId], references: [id])
 
-  @@index([tenantId, name, version])
+  @@unique([tenantId, name, version], map: "tool_contracts_tenant_id_name_version_key")
   @@map("tool_contracts")
 }
 
