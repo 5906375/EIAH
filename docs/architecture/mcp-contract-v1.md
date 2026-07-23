@@ -8,6 +8,25 @@ Status: MCP parcial avancado. Guard estatico de drift ativo desde MCP-1C. Este d
 - `executor` e um union de 4 modos: `"http" | "db" | "web3" | "fs"`.
 - `MCPExecutor.run()` (`packages/mcp-runner/src/executor/MCPExecutor.ts`) despacha por `contract.executor` num `switch` com exatamente esses 4 casos. `execWeb3` lanca erro explicito de nao implementado; os outros tres executam de fato.
 
+## Executor DB fail-closed (MCP-1L)
+
+- A fonte declarativa e `packages/mcp-runner/src/executor/dbAllowlist.ts`.
+- A allowlist de producao nasce vazia (deny-all), conforme inventario MCP-1K:
+  o banco `eiah_builder` tinha zero `ToolContract`.
+- Cada entrada aprovada declara `model`, `tenantField`, `workspaceField` e
+  `readOnly: true`. Inclusoes exigem aprovacao explicita do operador.
+- Modelo ausente falha antes do carregamento do Prisma com
+  `DB_MODEL_NOT_ALLOWLISTED`.
+- Para modelos tenantizados, `MCPExecutor` recebe o escopo autenticado do
+  caller, rejeita qualquer valor divergente com `DB_SCOPE_VIOLATION` e injeta
+  tenant/workspace no `where`. O filtro do contrato nunca prevalece sobre o
+  escopo autenticado.
+- Ausencia de escopo exigido falha com `DB_SCOPE_MISSING`.
+- Modelo global somente pode executar se estiver explicitamente allowlisted e
+  gera o evento de log `mcp.db.global_access`.
+- `ToolRegistry.get()` e `ToolRegistry.list()` enxergam apenas contratos
+  `active`; `list()` ordena por `name`, depois `version`.
+
 ## Call sites conhecidos
 
 - **Assincrono** (`apps/workers/action-runner/src/services/mcpAdapter.ts`, via BullMQ): a esteira de `apps/workers/action-runner/src/index.ts` aplica Intent Gate -> Trust Gate -> Judge Gate -> `executeWithMCP()` -> audit, nessa ordem, antes de qualquer execucao via MCP.
@@ -32,7 +51,9 @@ Status: MCP parcial avancado. Guard estatico de drift ativo desde MCP-1C. Este d
 - parsing bruto de `process.env.MCP_ENFORCE_CONTRACTS`/`process.env.MCP_PROXY_ALL_ACTIONS` fora do helper canonico (ver abaixo);
 - uso do helper canonico pelos 4 call sites conhecidos (evita remocao silenciosa ou regressao para parsing inline).
 
-O guard **nao** cobre: propagacao completa com banco/Redis reais, execucao real de `execDb`/`ToolRegistry`.
+O guard **nao** cobre: propagacao completa com banco/Redis reais nem provisao
+de contratos/entradas de allowlist. O hardening unitario de `execDb` e
+`ToolRegistry` e coberto desde MCP-1L.
 
 ## Parsers de env de governanca (consolidado em MCP-1F)
 
@@ -47,9 +68,12 @@ Esta consolidacao **nao** alterou nenhum default, nenhum gate, nem a semantica d
 
 ## Limites desta fase
 
-- Sem alteracao de runtime MCP, gates, `MCP_PROXY_ALL_ACTIONS` semantics, `packages/mcp-runner/src/**` ou `MCPExecutor`/`ToolRegistry`.
+- Sem alteracao de gates ou `MCP_PROXY_ALL_ACTIONS` semantics. MCP-1L altera
+  apenas o runtime DB do `MCPExecutor`, o filtro do `ToolRegistry` e a passagem
+  do contexto de escopo nos dois callers conhecidos.
 - O tipo de output simulado permanece apenas para compatibilidade defensiva de dados historicos.
-- A cobertura de `ToolRegistry` e do branch `execDb` caracteriza o comportamento atual, sem corrigir LEG-015/LEG-017.
+- LEG-015 e LEG-024 sao endurecidos no runtime. A constraint unica de
+  `(tenantId,name,version)` permanece para MCP-1N.
 - Sem declarar MCP como operacionalmente fechado ou pronto — a divergencia de gates entre os dois call sites (async com Trust/Judge Gate vs. sincrono sem) permanece em aberto e nao foi tocada por esta consolidacao.
 - Receipt Canon/bundle representam a semantica de execucao desde MCP-1J; SCL Canon permanece fora deste contrato.
 

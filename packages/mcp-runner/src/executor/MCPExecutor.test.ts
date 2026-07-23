@@ -1,11 +1,20 @@
-import test from "node:test";
+import test, { afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
 import { MCPExecutor, setMcpExecutorDbLoaderForTests } from "./MCPExecutor.js";
+import {
+  McpDbPolicyError,
+  setMcpDbAllowlistForTests,
+} from "./dbAllowlist.js";
 import type { ToolContract } from "../types/ToolContract.js";
+
+afterEach(() => {
+  setMcpExecutorDbLoaderForTests();
+  setMcpDbAllowlistForTests();
+});
 
 let contractCounter = 0;
 function buildContract(overrides: Partial<ToolContract> = {}): ToolContract {
@@ -135,8 +144,37 @@ test("MCPExecutor: circuit breaker opens after repeated failures and blocks the 
   }
 });
 
-test("MCPExecutor: db executor forwards the exact where clause to findMany", async () => {
+test("MCPExecutor: db executor denies every production model while the allowlist is empty", async () => {
+  let dbLoads = 0;
+  setMcpExecutorDbLoaderForTests(async () => {
+    dbLoads += 1;
+    return { prismaGlobal: {} };
+  });
+
+  const contract = buildContract({ executor: "db" });
+  const executor = new MCPExecutor(contract);
+  await assert.rejects(
+    executor.run(
+      { table: "property", where: {} },
+      { tenantId: "tenant-authenticated" }
+    ),
+    (error) =>
+      error instanceof McpDbPolicyError &&
+      error.reasonCode === "DB_MODEL_NOT_ALLOWLISTED"
+  );
+  assert.equal(dbLoads, 0, "allowlist denial must happen before loading Prisma");
+});
+
+test("MCPExecutor: allowlisted tenant model receives authenticated tenant and workspace scope", async () => {
   const received: unknown[] = [];
+  setMcpDbAllowlistForTests([
+    {
+      model: "property",
+      tenantField: "tenantId",
+      workspaceField: "workspaceId",
+      readOnly: true,
+    },
+  ]);
   setMcpExecutorDbLoaderForTests(async () => ({
     prismaGlobal: {
       property: {
@@ -148,55 +186,113 @@ test("MCPExecutor: db executor forwards the exact where clause to findMany", asy
     },
   }));
 
-  try {
-    const executor = new MCPExecutor(
-      buildContract({
-        executor: "db",
-        inputSchema: {
-          type: "object",
-          required: ["table", "where"],
-          properties: { table: { type: "string" }, where: { type: "object" } },
-        },
-      })
-    );
-    const result = await executor.run({
+  const executor = new MCPExecutor(
+    buildContract({
+      executor: "db",
+      inputSchema: {
+        type: "object",
+        required: ["table", "where"],
+        properties: { table: { type: "string" }, where: { type: "object" } },
+      },
+    })
+  );
+  const result = await executor.run(
+    {
       table: "property",
-      where: { tenantId: "tenant-a", status: "active" },
-    });
+      where: { status: "active" },
+    },
+    {
+      tenantId: "tenant-authenticated",
+      workspaceId: "workspace-authenticated",
+    }
+  );
 
-    assert.deepEqual(result, [{ id: "property-1" }]);
-    assert.deepEqual(received, [{ where: { tenantId: "tenant-a", status: "active" } }]);
-  } finally {
-    setMcpExecutorDbLoaderForTests();
-  }
+  assert.deepEqual(result, [{ id: "property-1" }]);
+  assert.deepEqual(received, [
+    {
+      where: {
+        status: "active",
+        tenantId: "tenant-authenticated",
+        workspaceId: "workspace-authenticated",
+      },
+    },
+  ]);
 });
 
-test("MCPExecutor: db executor rejects an unknown model", async () => {
-  setMcpExecutorDbLoaderForTests(async () => ({ prismaGlobal: {} }));
-  try {
-    const executor = new MCPExecutor(buildContract({ executor: "db" }));
-    await assert.rejects(
-      executor.run({ table: "modelThatDoesNotExist", where: {} }),
-      /Invalid db table\/model: modelThatDoesNotExist/
-    );
-  } finally {
-    setMcpExecutorDbLoaderForTests();
-  }
+test("MCPExecutor: divergent caller scope fails high before Prisma", async () => {
+  let dbLoads = 0;
+  setMcpDbAllowlistForTests([
+    {
+      model: "property",
+      tenantField: "tenantId",
+      workspaceField: null,
+      readOnly: true,
+    },
+  ]);
+  setMcpExecutorDbLoaderForTests(async () => {
+    dbLoads += 1;
+    return { prismaGlobal: {} };
+  });
+
+  const contract = buildContract({ executor: "db" });
+  const executor = new MCPExecutor(contract);
+  await assert.rejects(
+    executor.run(
+      {
+        table: "property",
+        where: {
+          status: "active",
+          OR: [{ tenantId: "tenant-other" }],
+        },
+      },
+      { tenantId: "tenant-authenticated" }
+    ),
+    (error) =>
+      error instanceof McpDbPolicyError &&
+      error.reasonCode === "DB_SCOPE_VIOLATION"
+  );
+  assert.equal(dbLoads, 0);
 });
 
-test("MCPExecutor: db executor rejects a Prisma member without findMany", async () => {
-  setMcpExecutorDbLoaderForTests(async () => ({
-    prismaGlobal: { $connect: async () => undefined },
-  }));
-  try {
-    const executor = new MCPExecutor(buildContract({ executor: "db" }));
-    await assert.rejects(
-      executor.run({ table: "$connect", where: {} }),
-      /Invalid db table\/model: \$connect/
-    );
-  } finally {
-    setMcpExecutorDbLoaderForTests();
-  }
+test("MCPExecutor: tenantized model without authenticated tenant fails closed", async () => {
+  setMcpDbAllowlistForTests([
+    {
+      model: "property",
+      tenantField: "tenantId",
+      workspaceField: null,
+      readOnly: true,
+    },
+  ]);
+
+  const executor = new MCPExecutor(buildContract({ executor: "db" }));
+  await assert.rejects(
+    executor.run({ table: "property", where: {} }, {}),
+    (error) =>
+      error instanceof McpDbPolicyError &&
+      error.reasonCode === "DB_SCOPE_MISSING"
+  );
+});
+
+test("MCPExecutor: workspace-scoped model without authenticated workspace fails closed", async () => {
+  setMcpDbAllowlistForTests([
+    {
+      model: "property",
+      tenantField: "tenantId",
+      workspaceField: "workspaceId",
+      readOnly: true,
+    },
+  ]);
+
+  const executor = new MCPExecutor(buildContract({ executor: "db" }));
+  await assert.rejects(
+    executor.run(
+      { table: "property", where: {} },
+      { tenantId: "tenant-authenticated" }
+    ),
+    (error) =>
+      error instanceof McpDbPolicyError &&
+      error.reasonCode === "DB_SCOPE_MISSING"
+  );
 });
 
 test("MCPExecutor: input validation fails before the db delegate is called", async () => {
@@ -212,75 +308,84 @@ test("MCPExecutor: input validation fails before the db delegate is called", asy
     },
   }));
 
-  try {
-    const executor = new MCPExecutor(
-      buildContract({
-        executor: "db",
-        inputSchema: {
-          type: "object",
-          required: ["table", "where"],
-          properties: { table: { const: "property" }, where: { type: "object" } },
-        },
-      })
-    );
+  const executor = new MCPExecutor(
+    buildContract({
+      executor: "db",
+      inputSchema: {
+        type: "object",
+        required: ["table", "where"],
+        properties: { table: { const: "property" }, where: { type: "object" } },
+      },
+    })
+  );
 
-    await assert.rejects(executor.run({ table: "property" }), /Invalid payload/);
-    assert.equal(calls, 0);
-  } finally {
-    setMcpExecutorDbLoaderForTests();
-  }
+  await assert.rejects(executor.run({ table: "property" }), /Invalid payload/);
+  assert.equal(calls, 0);
 });
 
-test("MCPExecutor: db executor currently does not inject the contract tenantId", async () => {
-  let received: any;
+test("MCPExecutor: allowlisted global model is read-only and emits an access log", async () => {
+  const logs: unknown[] = [];
+  let received: unknown;
+  setMcpDbAllowlistForTests([
+    {
+      model: "globalCatalog",
+      tenantField: null,
+      workspaceField: null,
+      readOnly: true,
+    },
+  ]);
   setMcpExecutorDbLoaderForTests(async () => ({
     prismaGlobal: {
-      property: {
+      globalCatalog: {
         findMany: async (args: unknown) => {
           received = args;
-          return [];
+          return [{ id: "global-1" }];
         },
       },
     },
   }));
 
-  try {
-    const executor = new MCPExecutor(
-      buildContract({ executor: "db", tenantId: "contract-tenant" })
-    );
-    await executor.run({ table: "property", where: { status: "active" } });
+  const contract = buildContract({ executor: "db" });
+  const executor = new MCPExecutor(contract);
+  const result = await executor.run(
+    { table: "globalCatalog", where: { status: "published" } },
+    { logGlobalDbAccess: (event) => logs.push(event) }
+  );
 
-    // CARACTERIZAÇÃO TEMPORÁRIA LEG-015 — comportamento atual SEM isolamento. Expectativa futura: allowlist + tenant injection (MCP-1L). NÃO tratar este teste como especificação desejada.
-    assert.deepEqual(received, { where: { status: "active" } });
-    assert.equal("tenantId" in received.where, false);
-  } finally {
-    setMcpExecutorDbLoaderForTests();
-  }
+  assert.deepEqual(result, [{ id: "global-1" }]);
+  assert.deepEqual(received, { where: { status: "published" } });
+  assert.deepEqual(logs, [
+    {
+      eventType: "mcp.db.global_access",
+      model: "globalCatalog",
+      tool: contract.name,
+      version: "1.0.0",
+    },
+  ]);
 });
 
-test("MCPExecutor: db executor currently forwards arbitrary caller where unchanged", async () => {
-  let received: any;
-  setMcpExecutorDbLoaderForTests(async () => ({
-    prismaGlobal: {
-      property: {
-        findMany: async (args: unknown) => {
-          received = args;
-          return [];
-        },
-      },
+test("MCPExecutor: allowlisted name must still resolve to a Prisma findMany delegate", async () => {
+  setMcpDbAllowlistForTests([
+    {
+      model: "$connect",
+      tenantField: null,
+      workspaceField: null,
+      readOnly: true,
     },
+  ]);
+  setMcpExecutorDbLoaderForTests(async () => ({
+    prismaGlobal: { $connect: async () => undefined },
   }));
 
-  try {
-    const executor = new MCPExecutor(
-      buildContract({ executor: "db", tenantId: "contract-tenant" })
-    );
-    const callerWhere = { tenantId: "other-tenant", OR: [{ secret: { not: null } }] };
-    await executor.run({ table: "property", where: callerWhere });
-
-    // CARACTERIZAÇÃO TEMPORÁRIA LEG-015 — comportamento atual SEM isolamento. Expectativa futura: allowlist + tenant injection (MCP-1L). NÃO tratar este teste como especificação desejada.
-    assert.equal(received.where, callerWhere);
-  } finally {
-    setMcpExecutorDbLoaderForTests();
-  }
+  const executor = new MCPExecutor(buildContract({ executor: "db" }));
+  await assert.rejects(
+    executor.run(
+      { table: "$connect", where: {} },
+      { logGlobalDbAccess: () => undefined }
+    ),
+    /Invalid db table\/model: \$connect/
+  );
 });
+
+// Fail-closed canônico desde MCP-1L. Regressão para acesso sem
+// allowlist/escopo é violação P0.

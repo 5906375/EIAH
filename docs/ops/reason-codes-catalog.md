@@ -38,6 +38,23 @@ Fonte canônica ativa: `apps/api/src/services/executionEvidence.ts`
 - `AUDIT_WRITE_FAILED` — persistência de audit em caminho MCP crítico falhou;
   o run deve falhar fechado.
 
+### Executor DB MCP (MCP-1L)
+
+Fonte canônica ativa:
+`packages/mcp-runner/src/executor/dbAllowlist.ts`
+(`MCP_DB_REASON_CODES`).
+
+- `DB_MODEL_NOT_ALLOWLISTED` — modelo Prisma não consta da allowlist explícita;
+  o bloqueio ocorre antes de carregar/acessar o delegate.
+- `DB_SCOPE_VIOLATION` — filtro recebido contém tenant/workspace divergente do
+  contexto autenticado, ou possui forma inválida; falha alto sem sobrescrita
+  silenciosa.
+- `DB_SCOPE_MISSING` — contexto autenticado não contém tenant/workspace exigido
+  pela entrada da allowlist.
+
+A allowlist de produção nasce vazia por decisão do MCP-1K. Qualquer inclusão
+de modelo exige aprovação explícita do operador.
+
 ## Cobertura IMOB — control surface (Command Center)
 
 Fonte: `apps/api/src/services/imob/control/imobReasonCodeCatalog.ts`

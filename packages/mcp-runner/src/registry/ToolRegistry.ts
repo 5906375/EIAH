@@ -31,7 +31,10 @@ export class ToolRegistry {
 
     static async list(tenantId: string): Promise<ToolContract[]> {
         const { prisma } = await loadDbModule();
-        const records = await prisma.toolContract.findMany({ where: { tenantId } });
+        const records = await prisma.toolContract.findMany({
+            where: { tenantId, status: "active" },
+            orderBy: [{ name: "asc" }, { version: "asc" }],
+        });
         return records as unknown as ToolContract[];
     }
 }

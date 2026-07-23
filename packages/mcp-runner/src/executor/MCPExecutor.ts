@@ -1,6 +1,11 @@
 import { ToolContract } from "../types/ToolContract.js";
 import { validateInput } from "../validator/SchemaValidator.js";
 import { MCPCircuitBreaker } from "./MCPCircuitBreaker.js";
+import {
+  MCP_DB_REASON_CODES,
+  McpDbPolicyError,
+  resolveDbModelAllowlistEntry,
+} from "./dbAllowlist.js";
 
 type ExecutorDbModule = { prismaGlobal: Record<string, unknown> };
 
@@ -13,6 +18,43 @@ export function setMcpExecutorDbLoaderForTests(
   loader?: () => Promise<ExecutorDbModule>
 ) {
   loadDbModule = loader ?? defaultDbModuleLoader;
+}
+
+export type MCPExecutionScope = {
+  tenantId?: string;
+  workspaceId?: string;
+  logGlobalDbAccess?: (event: {
+    eventType: "mcp.db.global_access";
+    model: string;
+    tool: string;
+    version: string;
+  }) => void;
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function assertNoDivergentScope(
+  value: unknown,
+  field: string,
+  expected: string
+) {
+  if (Array.isArray(value)) {
+    for (const item of value) assertNoDivergentScope(item, field, expected);
+    return;
+  }
+  if (!isRecord(value)) return;
+
+  for (const [key, nestedValue] of Object.entries(value)) {
+    if (key === field && nestedValue !== expected) {
+      throw new McpDbPolicyError(
+        MCP_DB_REASON_CODES.scopeViolation,
+        `DB scope diverges from authenticated context for field ${field}`
+      );
+    }
+    assertNoDivergentScope(nestedValue, field, expected);
+  }
 }
 
 export class MCPExecutor {
@@ -49,7 +91,7 @@ export class MCPExecutor {
     }
   }
 
-  async run(input: any): Promise<any> {
+  async run(input: any, scope: MCPExecutionScope = {}): Promise<any> {
     validateInput(this.contract, input);
 
     return this.breaker.execute(async () => {
@@ -58,7 +100,7 @@ export class MCPExecutor {
           case "http":
             return this.execHttp(input);
           case "db":
-            return this.execDb(input);
+            return this.execDb(input, scope);
           case "web3":
             return this.execWeb3(input);
           case "fs":
@@ -90,18 +132,78 @@ export class MCPExecutor {
     return await res.json();
   }
 
-  private async execDb(input: any) {
+  private async execDb(input: any, scope: MCPExecutionScope) {
     const { table, where } = input;
+    const modelName = typeof table === "string" ? table : String(table);
+    const allowlistEntry = resolveDbModelAllowlistEntry(modelName);
+    if (!allowlistEntry || allowlistEntry.readOnly !== true) {
+      throw new McpDbPolicyError(
+        MCP_DB_REASON_CODES.modelNotAllowlisted,
+        `DB model is not allowlisted: ${modelName}`
+      );
+    }
+
+    if (!isRecord(where ?? {})) {
+      throw new McpDbPolicyError(
+        MCP_DB_REASON_CODES.scopeViolation,
+        "DB where must be an object"
+      );
+    }
+
+    const governedWhere: Record<string, unknown> = { ...(where ?? {}) };
+    if (allowlistEntry.tenantField) {
+      if (!scope.tenantId) {
+        throw new McpDbPolicyError(
+          MCP_DB_REASON_CODES.scopeMissing,
+          "Authenticated tenant scope is required for this DB model"
+        );
+      }
+      assertNoDivergentScope(
+        governedWhere,
+        allowlistEntry.tenantField,
+        scope.tenantId
+      );
+      governedWhere[allowlistEntry.tenantField] = scope.tenantId;
+    }
+
+    if (allowlistEntry.workspaceField) {
+      if (!scope.workspaceId) {
+        throw new McpDbPolicyError(
+          MCP_DB_REASON_CODES.scopeMissing,
+          "Authenticated workspace scope is required for this DB model"
+        );
+      }
+      assertNoDivergentScope(
+        governedWhere,
+        allowlistEntry.workspaceField,
+        scope.workspaceId
+      );
+      governedWhere[allowlistEntry.workspaceField] = scope.workspaceId;
+    }
 
     const { prismaGlobal } = await loadDbModule();
     const db = prismaGlobal as any;
 
-    const model = db?.[table];
+    const model = db?.[modelName];
     if (!model || typeof model.findMany !== "function") {
       throw new Error(`Invalid db table/model: ${String(table)}`);
     }
 
-    return await model.findMany({ where });
+    if (!allowlistEntry.tenantField) {
+      const event = {
+        eventType: "mcp.db.global_access" as const,
+        model: modelName,
+        tool: this.contract.name,
+        version: this.contract.version,
+      };
+      if (scope.logGlobalDbAccess) {
+        scope.logGlobalDbAccess(event);
+      } else {
+        console.info(JSON.stringify(event));
+      }
+    }
+
+    return await model.findMany({ where: governedWhere });
   }
 
   private async execWeb3(_input: any) {
