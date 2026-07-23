@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import type { PrismaClient } from "@repo/db";
+import { deriveExecutionEvidence } from "./executionEvidence";
 
 function stableJson(value: unknown): string {
   return JSON.stringify(sortValue(value));
@@ -139,6 +140,11 @@ export async function buildRunEvidenceBundle(params: BuildRunEvidenceBundleParam
       })),
     },
   };
+  const execution = deriveExecutionEvidence({
+    status: run.status,
+    errorCode: run.errorCode,
+    response: run.response,
+  });
   const decisionsDoc = {
     guardrail: guardrailEntries.map((entry) => ({
       id: entry.id,
@@ -175,6 +181,7 @@ export async function buildRunEvidenceBundle(params: BuildRunEvidenceBundleParam
     version: "bundle.v2",
     runId: run.id,
     generatedAt: new Date().toISOString(),
+    execution,
     files: [
       { name: "intent.json", sha256: sha256Hex(intentRaw), sizeBytes: Buffer.byteLength(intentRaw, "utf8") },
       { name: "context.json", sha256: sha256Hex(contextRaw), sizeBytes: Buffer.byteLength(contextRaw, "utf8") },

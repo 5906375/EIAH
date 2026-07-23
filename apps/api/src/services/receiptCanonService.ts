@@ -1,5 +1,9 @@
 import crypto from "node:crypto";
 import type { PoULedgerResolution } from "./pouService";
+import {
+  EXECUTION_EVIDENCE_REASON_CODES,
+  type ExecutionEvidenceMarker,
+} from "./executionEvidence";
 
 type InvariantStatus = "ok" | "broken";
 
@@ -54,6 +58,7 @@ export type BuildReceiptCanonParams = CommonReceiptContext & {
     trustMin: number | null;
     validUntil: string | null;
   };
+  execution?: ExecutionEvidenceMarker;
 };
 
 function stableSort(value: unknown): unknown {
@@ -210,6 +215,25 @@ export function buildDelegationReceipt(params: BuildReceiptCanonParams) {
   );
 }
 
+export function buildExecutionStateReceipt(params: BuildReceiptCanonParams) {
+  if (!params.execution) return null;
+  return withMeta(
+    params,
+    {
+      receiptType: "ExecutionStateReceipt",
+      txId: params.txId,
+      state: params.execution.state,
+      containsHistoricalSimulatedOutput: params.execution.containsHistoricalSimulatedOutput,
+      reasonCodes: params.execution.reasonCodes,
+    },
+    {
+      id: "execution.evidence.v1",
+      source: "run.execution",
+      decision: params.execution.state === "real" ? "allow" : "block",
+    }
+  );
+}
+
 export function validateReceiptCanonCriticalChain(params: BuildReceiptCanonParams) {
   const reasonCodes = new Set<string>();
   if (params.invariant.status !== "ok") {
@@ -224,6 +248,14 @@ export function validateReceiptCanonCriticalChain(params: BuildReceiptCanonParam
   if (params.delegation.status === "expired") {
     reasonCodes.add("delegation_expired");
   }
+  if (params.execution?.state === "historical_simulated") {
+    reasonCodes.add(EXECUTION_EVIDENCE_REASON_CODES.simulatedOutput);
+  }
+  if (params.execution?.state === "blocked") {
+    for (const reasonCode of params.execution.reasonCodes) {
+      reasonCodes.add(reasonCode);
+    }
+  }
   return {
     ok: reasonCodes.size === 0,
     reasonCodes: [...reasonCodes],
@@ -231,6 +263,7 @@ export function validateReceiptCanonCriticalChain(params: BuildReceiptCanonParam
 }
 
 export function buildLedgerReceiptCanonV1(params: BuildReceiptCanonParams): ReceiptCanonEnvelope {
+  const executionReceipt = buildExecutionStateReceipt(params);
   return {
     specVersion: "receipt.canon.v1",
     generatedAt: new Date().toISOString(),
@@ -240,6 +273,7 @@ export function buildLedgerReceiptCanonV1(params: BuildReceiptCanonParams): Rece
       buildApprovalReceipt(params),
       buildDelegationReceipt(params),
       buildTxLinkReceipt(params),
+      ...(executionReceipt ? [executionReceipt] : []),
     ],
   };
 }

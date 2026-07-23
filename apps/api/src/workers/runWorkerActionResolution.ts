@@ -1,6 +1,10 @@
 import type { RegisteredAction } from "@eiah/core";
+import { EXECUTION_EVIDENCE_REASON_CODES } from "../services/executionEvidence";
 
-export const MCP_TOOL_CONTRACT_MISSING_REASON_CODE = "MCP_TOOL_CONTRACT_MISSING" as const;
+export const MCP_TOOL_CONTRACT_MISSING_REASON_CODE =
+  EXECUTION_EVIDENCE_REASON_CODES.missingToolContract;
+export const AUDIT_WRITE_FAILED_REASON_CODE =
+  EXECUTION_EVIDENCE_REASON_CODES.auditWriteFailed;
 
 export type MissingToolContractBlockedResult = {
   ok: false;
@@ -16,6 +20,15 @@ export class MissingToolContractError extends Error {
   constructor(readonly result: MissingToolContractBlockedResult) {
     super(`ToolContract missing: ${result.action}@${result.version}`);
     this.name = "MissingToolContractError";
+  }
+}
+
+export class AuditWriteFailedError extends Error {
+  readonly reasonCode = AUDIT_WRITE_FAILED_REASON_CODE;
+
+  constructor(readonly auditError: unknown) {
+    super("Critical MCP audit write failed");
+    this.name = "AuditWriteFailedError";
   }
 }
 
@@ -109,12 +122,49 @@ export function resolveMissingToolContractDecision(
 }
 
 export function resolveMissingToolContractRunFailure(error: unknown) {
+  if (error instanceof AuditWriteFailedError) {
+    return {
+      status: "error" as const,
+      reasonCode: error.reasonCode,
+      result: null,
+    };
+  }
   if (!(error instanceof MissingToolContractError)) return null;
   return {
     status: "error" as const,
     reasonCode: error.reasonCode,
     result: error.result,
   };
+}
+
+export async function recordCriticalMcpAudit(params: {
+  runId: string;
+  tenantId: string;
+  action: string;
+  version: string;
+  record: () => Promise<void>;
+  logFailure: (context: {
+    err: unknown;
+    runId: string;
+    tenantId: string;
+    action: string;
+    version: string;
+    reasonCode: typeof AUDIT_WRITE_FAILED_REASON_CODE;
+  }) => void;
+}) {
+  try {
+    await params.record();
+  } catch (err) {
+    params.logFailure({
+      err,
+      runId: params.runId,
+      tenantId: params.tenantId,
+      action: params.action,
+      version: params.version,
+      reasonCode: AUDIT_WRITE_FAILED_REASON_CODE,
+    });
+    throw new AuditWriteFailedError(err);
+  }
 }
 
 export async function recordMissingToolContractAudit(params: {
@@ -140,7 +190,7 @@ export async function recordMissingToolContractAudit(params: {
     tenantId: string;
     action: string;
     version: string;
-    reasonCode: typeof MCP_TOOL_CONTRACT_MISSING_REASON_CODE;
+    reasonCode: typeof AUDIT_WRITE_FAILED_REASON_CODE;
   }) => void;
 }) {
   const audit = {
@@ -155,16 +205,12 @@ export async function recordMissingToolContractAudit(params: {
     },
   };
 
-  try {
-    await params.record(audit);
-  } catch (err) {
-    params.logFailure({
-      err,
-      runId: params.runId,
-      tenantId: params.tenantId,
-      action: params.actionName,
-      version: params.version,
-      reasonCode: MCP_TOOL_CONTRACT_MISSING_REASON_CODE,
-    });
-  }
+  await recordCriticalMcpAudit({
+    runId: params.runId,
+    tenantId: params.tenantId,
+    action: params.actionName,
+    version: params.version,
+    record: () => params.record(audit),
+    logFailure: params.logFailure,
+  });
 }

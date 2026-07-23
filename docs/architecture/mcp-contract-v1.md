@@ -17,7 +17,8 @@ Status: MCP parcial avancado. Guard estatico de drift ativo desde MCP-1C. Este d
 
 - `MCP_ENFORCE_CONTRACTS=false` falha fechado nos dois call sites (erro explicito, sem bypass silencioso).
 - `ToolContract` ausente falha fechado no caminho assincrono (erro + `recordGuardrailAudit` com `mcp.tool.missing_contract`).
-- Desde MCP-1I, `ToolContract` ativo ausente também falha fechado no caminho sincrono para qualquer acao MCP: o step assume o status canonico existente `failed`, o run assume `error` e o `errorCode`/evento `run.failed` recebem `MCP_TOOL_CONTRACT_MISSING`. O evento de auditoria e `mcp.tool.missing_contract`; falha ao persisti-lo gera log explicito `run.worker.mcp_contract_missing_audit_failed`, sem substituir a falha primaria.
+- Desde MCP-1I, `ToolContract` ativo ausente também falha fechado no caminho sincrono para qualquer acao MCP: o step assume o status canonico existente `failed`, o run assume `error` e o `errorCode`/evento `run.failed` recebem `MCP_TOOL_CONTRACT_MISSING`. O evento de auditoria e `mcp.tool.missing_contract`.
+- Desde MCP-1J, falha de persistencia de audit em caminho MCP critico e governada como `AUDIT_WRITE_FAILED`: o worker registra log explicito e o run nao pode finalizar como `success`. Receipt Canon e bundle publicam estado de execucao e reason codes; output historico com `simulated:true` permanece legivel, mas falha na cadeia critica com `SIMULATED_OUTPUT_IN_CRITICAL_CHAIN`.
 - O schema `simulatedToolExecutionResultSchema` e `shouldSkipImobPostRunMutationForSimulatedOutput` permanecem apenas como defesa em profundidade para runs historicos. O caminho sincrono atual nao produz mais `simulated: true` quando falta contrato.
 
 ## Guard estatico (MCP-1C, atualizado em MCP-1F)
@@ -31,7 +32,7 @@ Status: MCP parcial avancado. Guard estatico de drift ativo desde MCP-1C. Este d
 - parsing bruto de `process.env.MCP_ENFORCE_CONTRACTS`/`process.env.MCP_PROXY_ALL_ACTIONS` fora do helper canonico (ver abaixo);
 - uso do helper canonico pelos 4 call sites conhecidos (evita remocao silenciosa ou regressao para parsing inline).
 
-O guard **nao** cobre: propagacao completa com banco/Redis reais, Receipt Canon/bundle para a falha (MCP-1J), execucao real de `execDb`/`ToolRegistry`.
+O guard **nao** cobre: propagacao completa com banco/Redis reais, execucao real de `execDb`/`ToolRegistry`.
 
 ## Parsers de env de governanca (consolidado em MCP-1F)
 
@@ -50,7 +51,7 @@ Esta consolidacao **nao** alterou nenhum default, nenhum gate, nem a semantica d
 - O tipo de output simulado permanece apenas para compatibilidade defensiva de dados historicos.
 - A cobertura de `ToolRegistry` e do branch `execDb` caracteriza o comportamento atual, sem corrigir LEG-015/LEG-017.
 - Sem declarar MCP como operacionalmente fechado ou pronto — a divergencia de gates entre os dois call sites (async com Trust/Judge Gate vs. sincrono sem) permanece em aberto e nao foi tocada por esta consolidacao.
-- Sem mudanca em Receipt Canon/bundle/SCL para representar a falha de contrato; essa propagacao documental e MCP-1J.
+- Receipt Canon/bundle representam a semantica de execucao desde MCP-1J; SCL Canon permanece fora deste contrato.
 
 ## Artefatos
 
