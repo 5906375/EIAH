@@ -2,7 +2,18 @@ import { ToolContract } from "../types/ToolContract.js";
 import { validateInput } from "../validator/SchemaValidator.js";
 import { MCPCircuitBreaker } from "./MCPCircuitBreaker.js";
 
-const loadDbModule = new Function("return import('@repo/db')") as () => Promise<any>;
+type ExecutorDbModule = { prismaGlobal: Record<string, unknown> };
+
+const defaultDbModuleLoader = new Function(
+  "return import('@repo/db')"
+) as () => Promise<ExecutorDbModule>;
+let loadDbModule = defaultDbModuleLoader;
+
+export function setMcpExecutorDbLoaderForTests(
+  loader?: () => Promise<ExecutorDbModule>
+) {
+  loadDbModule = loader ?? defaultDbModuleLoader;
+}
 
 export class MCPExecutor {
   constructor(private contract: ToolContract) {}

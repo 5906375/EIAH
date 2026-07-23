@@ -5,7 +5,9 @@ import {
   mergeActionsForExecution,
   resolveLocallyExecutableAction,
   resolveDeclaredActionNames,
+  resolveMissingToolContractFallback,
 } from "../workers/runWorkerActionResolution";
+import { simulatedToolExecutionResultSchema } from "../services/imob/imobCanonical";
 
 function createAction(name: string): RegisteredAction {
   return {
@@ -75,4 +77,52 @@ test("run worker action resolution exposes locally executable core actions for p
     "guardian.checkRuntimeHealth"
   );
   assert.equal(resolveLocallyExecutableAction("guardian.unknown", catalog), null);
+});
+
+test("run worker missing ToolContract fallback preserves the current realestate success payload", () => {
+  const result = resolveMissingToolContractFallback(
+    "realestate.register_property",
+    "1.0.0",
+    { a: 1, b: 2 }
+  );
+
+  // CARACTERIZAÇÃO TEMPORÁRIA LEG-001 — comportamento permissivo atual. Expectativa futura: fail-closed com reasonCode MCP_TOOL_CONTRACT_MISSING (MCP-1I). Este teste SERÁ invertido.
+  assert.deepEqual(result, {
+    ok: true,
+    simulated: true,
+    action: "realestate.register_property",
+    version: "1.0.0",
+    status: "success",
+    output: {
+      message: "Simulated realestate.register_property execution",
+      payloadPreview: ["a", "b"],
+    },
+  });
+});
+
+test("run worker missing ToolContract fallback does not simulate non-realestate actions", () => {
+  assert.equal(
+    resolveMissingToolContractFallback("guardian.checkRuntimeHealth", "1.0.0", {}),
+    null
+  );
+});
+
+test("run worker missing ToolContract fallback limits payload preview to eight keys", () => {
+  const result = resolveMissingToolContractFallback(
+    "realestate.register_property",
+    "1.0.0",
+    { a: 1, b: 2, c: 3, d: 4, e: 5, f: 6, g: 7, h: 8, i: 9 }
+  );
+
+  assert.deepEqual(result?.output.payloadPreview, ["a", "b", "c", "d", "e", "f", "g", "h"]);
+});
+
+test("run worker missing ToolContract fallback remains compatible with the canonical schema", () => {
+  const result = resolveMissingToolContractFallback(
+    "realestate.register_property",
+    "1.0.0",
+    null
+  );
+
+  assert.equal(simulatedToolExecutionResultSchema.safeParse(result).success, true);
 });

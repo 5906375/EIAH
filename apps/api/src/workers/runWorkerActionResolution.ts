@@ -1,4 +1,5 @@
 import type { RegisteredAction } from "@eiah/core";
+import type { SimulatedToolExecutionResult } from "../services/imob/imobCanonical";
 
 function normalizeActionName(value: string) {
   return value.trim().toLowerCase();
@@ -62,4 +63,27 @@ export function resolveLocallyExecutableAction(
 ) {
   if (!catalog) return null;
   return catalog[actionName] ?? null;
+}
+
+export function resolveMissingToolContractFallback(
+  actionName: string,
+  version: string,
+  effectivePayload: unknown
+): SimulatedToolExecutionResult | null {
+  if (!actionName.startsWith("realestate.")) return null;
+
+  return {
+    ok: true,
+    simulated: true,
+    action: actionName,
+    version,
+    status: "success",
+    output: {
+      message: `Simulated ${actionName} execution`,
+      payloadPreview:
+        effectivePayload && typeof effectivePayload === "object"
+          ? Object.keys(effectivePayload as Record<string, unknown>).slice(0, 8)
+          : null,
+    },
+  };
 }

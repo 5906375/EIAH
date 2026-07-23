@@ -4,13 +4,8 @@ import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { MCPExecutor } from "./MCPExecutor.js";
+import { MCPExecutor, setMcpExecutorDbLoaderForTests } from "./MCPExecutor.js";
 import type { ToolContract } from "../types/ToolContract.js";
-
-// PR MCP-1B: execDb nao e coberto aqui de proposito — usa import() lazy de
-// @repo/db (ver ToolRegistry.ts/MCPExecutor.ts), e testa-lo exigiria banco
-// real ou mudanca de runtime (injecao de dependencia), fora de escopo deste
-// patch minimo.
 
 let contractCounter = 0;
 function buildContract(overrides: Partial<ToolContract> = {}): ToolContract {
@@ -137,5 +132,155 @@ test("MCPExecutor: circuit breaker opens after repeated failures and blocks the 
     } else {
       process.env.MCP_CB_FAILURE_THRESHOLD = originalThreshold;
     }
+  }
+});
+
+test("MCPExecutor: db executor forwards the exact where clause to findMany", async () => {
+  const received: unknown[] = [];
+  setMcpExecutorDbLoaderForTests(async () => ({
+    prismaGlobal: {
+      property: {
+        findMany: async (args: unknown) => {
+          received.push(args);
+          return [{ id: "property-1" }];
+        },
+      },
+    },
+  }));
+
+  try {
+    const executor = new MCPExecutor(
+      buildContract({
+        executor: "db",
+        inputSchema: {
+          type: "object",
+          required: ["table", "where"],
+          properties: { table: { type: "string" }, where: { type: "object" } },
+        },
+      })
+    );
+    const result = await executor.run({
+      table: "property",
+      where: { tenantId: "tenant-a", status: "active" },
+    });
+
+    assert.deepEqual(result, [{ id: "property-1" }]);
+    assert.deepEqual(received, [{ where: { tenantId: "tenant-a", status: "active" } }]);
+  } finally {
+    setMcpExecutorDbLoaderForTests();
+  }
+});
+
+test("MCPExecutor: db executor rejects an unknown model", async () => {
+  setMcpExecutorDbLoaderForTests(async () => ({ prismaGlobal: {} }));
+  try {
+    const executor = new MCPExecutor(buildContract({ executor: "db" }));
+    await assert.rejects(
+      executor.run({ table: "modelThatDoesNotExist", where: {} }),
+      /Invalid db table\/model: modelThatDoesNotExist/
+    );
+  } finally {
+    setMcpExecutorDbLoaderForTests();
+  }
+});
+
+test("MCPExecutor: db executor rejects a Prisma member without findMany", async () => {
+  setMcpExecutorDbLoaderForTests(async () => ({
+    prismaGlobal: { $connect: async () => undefined },
+  }));
+  try {
+    const executor = new MCPExecutor(buildContract({ executor: "db" }));
+    await assert.rejects(
+      executor.run({ table: "$connect", where: {} }),
+      /Invalid db table\/model: \$connect/
+    );
+  } finally {
+    setMcpExecutorDbLoaderForTests();
+  }
+});
+
+test("MCPExecutor: input validation fails before the db delegate is called", async () => {
+  let calls = 0;
+  setMcpExecutorDbLoaderForTests(async () => ({
+    prismaGlobal: {
+      property: {
+        findMany: async () => {
+          calls += 1;
+          return [];
+        },
+      },
+    },
+  }));
+
+  try {
+    const executor = new MCPExecutor(
+      buildContract({
+        executor: "db",
+        inputSchema: {
+          type: "object",
+          required: ["table", "where"],
+          properties: { table: { const: "property" }, where: { type: "object" } },
+        },
+      })
+    );
+
+    await assert.rejects(executor.run({ table: "property" }), /Invalid payload/);
+    assert.equal(calls, 0);
+  } finally {
+    setMcpExecutorDbLoaderForTests();
+  }
+});
+
+test("MCPExecutor: db executor currently does not inject the contract tenantId", async () => {
+  let received: any;
+  setMcpExecutorDbLoaderForTests(async () => ({
+    prismaGlobal: {
+      property: {
+        findMany: async (args: unknown) => {
+          received = args;
+          return [];
+        },
+      },
+    },
+  }));
+
+  try {
+    const executor = new MCPExecutor(
+      buildContract({ executor: "db", tenantId: "contract-tenant" })
+    );
+    await executor.run({ table: "property", where: { status: "active" } });
+
+    // CARACTERIZAÇÃO TEMPORÁRIA LEG-015 — comportamento atual SEM isolamento. Expectativa futura: allowlist + tenant injection (MCP-1L). NÃO tratar este teste como especificação desejada.
+    assert.deepEqual(received, { where: { status: "active" } });
+    assert.equal("tenantId" in received.where, false);
+  } finally {
+    setMcpExecutorDbLoaderForTests();
+  }
+});
+
+test("MCPExecutor: db executor currently forwards arbitrary caller where unchanged", async () => {
+  let received: any;
+  setMcpExecutorDbLoaderForTests(async () => ({
+    prismaGlobal: {
+      property: {
+        findMany: async (args: unknown) => {
+          received = args;
+          return [];
+        },
+      },
+    },
+  }));
+
+  try {
+    const executor = new MCPExecutor(
+      buildContract({ executor: "db", tenantId: "contract-tenant" })
+    );
+    const callerWhere = { tenantId: "other-tenant", OR: [{ secret: { not: null } }] };
+    await executor.run({ table: "property", where: callerWhere });
+
+    // CARACTERIZAÇÃO TEMPORÁRIA LEG-015 — comportamento atual SEM isolamento. Expectativa futura: allowlist + tenant injection (MCP-1L). NÃO tratar este teste como especificação desejada.
+    assert.equal(received.where, callerWhere);
+  } finally {
+    setMcpExecutorDbLoaderForTests();
   }
 });
