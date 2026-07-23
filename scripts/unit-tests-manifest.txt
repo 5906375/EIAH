@@ -191,4 +191,5 @@ apps/workers/action-runner/src/services/mcpEnforcement.test.ts
 packages/mcp-runner/src/executor/MCPCircuitBreaker.test.ts
 packages/mcp-runner/src/validator/SchemaValidator.test.ts
 packages/mcp-runner/src/executor/MCPExecutor.test.ts
+packages/mcp-runner/src/registry/ToolRegistry.test.ts
 scripts/sloBaselineCollect.test.ts

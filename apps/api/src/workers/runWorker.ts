@@ -49,7 +49,6 @@ import { prismaGlobal } from "@repo/db";
    ────────────────────────────────────────────── */
 import type { LlmExecutorResult } from "../orchestrator/llmExecutor";
 import { executeCapability } from "../services/capabilityExecution";
-import type { SimulatedToolExecutionResult } from "../services/imob/imobCanonical";
 import {
   parseMcpEnforceContractsEnv,
   parseMcpProxyAllActionsEnv,
@@ -97,6 +96,7 @@ import {
   mergeActionsForExecution,
   resolveLocallyExecutableAction,
   resolveDeclaredActionNames,
+  resolveMissingToolContractFallback,
 } from "./runWorkerActionResolution";
 import { alignCandidatesToRecipe } from "./runWorkerRecipeAlignment";
 import { buildGuardianStructuredOutput } from "./runWorkerGuardianOutput";
@@ -1453,7 +1453,12 @@ export async function processRunPayload(payload: RunQueuePayload) {
 
           const tool = await ToolRegistry.get(actionName, version, tenantId);
           if (!tool) {
-            if (actionName.startsWith("realestate.")) {
+            const missingToolContractFallback = resolveMissingToolContractFallback(
+              actionName,
+              version,
+              effectivePayload
+            );
+            if (missingToolContractFallback) {
               await recordGuardrailAudit({
                 prisma: prismaGlobal,
                 tenantId,
@@ -1469,20 +1474,7 @@ export async function processRunPayload(payload: RunQueuePayload) {
                 },
               }).catch(() => undefined);
 
-              return {
-                ok: true,
-                simulated: true,
-                action: actionName,
-                version,
-                status: "success",
-                output: {
-                  message: `Simulated ${actionName} execution`,
-                  payloadPreview:
-                    effectivePayload && typeof effectivePayload === "object"
-                      ? Object.keys(effectivePayload as Record<string, unknown>).slice(0, 8)
-                      : null,
-                },
-              } satisfies SimulatedToolExecutionResult;
+              return missingToolContractFallback;
             }
             throw new Error(`ToolContract missing: ${actionName}@${version}`);
           }
