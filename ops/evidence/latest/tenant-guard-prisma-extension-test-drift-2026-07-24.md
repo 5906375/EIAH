@@ -4,6 +4,23 @@ Data: 2026-07-24
 Baseline: `main@0fb2b279224460f72aae54e46b7ab15b1b2a4ec2`
 Classificação: dívida técnica preexistente, separada do gate Neon
 
+## Registro formal do incidente
+
+| Campo | Valor |
+| --- | --- |
+| Incident ID | `INC-P1-TENANT-GUARD-PRISMA-EXTENSION-2026-07-24` |
+| Prioridade | `P1` — cobertura fail-closed de isolamento tenant degradada |
+| Estado | `open` |
+| Blocking condition | `tenant_guard_test_contract_drift_open` |
+| Reason code | `N/A` — não criar código fora do fluxo canônico |
+| Owner | mantenedores de DB/Core; atribuição humana pendente |
+| Revalidado em | `2026-07-24T14:09:01-03:00` |
+| Baseline da revalidação | `d91f274aaefa9591736ee37213e01b3e141e86e4` |
+
+O incidente registra falha da cobertura de testes, não prova bypass no runtime
+de produção. Até a causa ser corrigida e a suíte ampla ficar verde, qualquer
+conclusão sobre o `tenantGuard` deve permanecer fail-closed.
+
 ## Evidência observada
 
 O comando local:
@@ -23,6 +40,25 @@ As falhas ocorrem antes das asserções com:
 ```text
 t.$extends is not a function
 ```
+
+Revalidação neste run:
+
+```text
+pnpm --filter @repo/db test
+tests 4
+pass 1
+fail 3
+exit 1
+
+node --import tsx packages/db/src/middleware/tenantGuard.test.ts
+tests 3
+pass 0
+fail 3
+error: t.$extends is not a function
+exit 1
+```
+
+Os outputs foram sanitizados para não persistir paths absolutos do runner.
 
 ## Hipótese de causa
 
@@ -55,6 +91,20 @@ Isso não transforma a suíte ampla em verde nem encerra a dívida. Apenas
 mantém a falha conhecida fora do required check específico enquanto ela é
 tratada em frente própria.
 
+## Contenção fail-closed
+
+Enquanto o incidente estiver `open`:
+
+- é proibido declarar `pnpm --filter @repo/db test` como verde;
+- o teste focado Neon não pode ser usado para declarar a suíte DB completa
+  saudável;
+- nenhuma promoção do status Neon para `evidenciado` pode se apoiar nesta
+  suíte;
+- mudanças no contrato ou instalação do `tenantGuard` exigem PR separado,
+  revisão de isolamento multi-tenant e os três arquivos afetados verdes;
+- o required check Neon pode continuar usando o teste focado somente com a
+  limitação explícita e o status global `parcial`.
+
 ## Recomendação de correção
 
 Em PR separado:
@@ -65,6 +115,15 @@ Em PR separado:
 2. preservar testes de isolamento multi-tenant contra banco real;
 3. executar `pnpm --filter @repo/db test` até ficar integralmente verde;
 4. depois considerar promover a suíte ampla a gate adicional do preview.
+
+## Critérios de encerramento
+
+- [ ] causa confirmada, não apenas hipótese;
+- [ ] testes atualizados sem enfraquecer as asserções de tenant/workspace;
+- [ ] `pnpm --filter @repo/db test` integralmente verde;
+- [ ] teste de isolamento multi-tenant executado no ambiente aplicável;
+- [ ] evidência persistente e sanitizada indexada;
+- [ ] decisão humana de fechar o incidente registrada.
 
 Nenhuma issue remota foi criada nesta revisão porque o cliente GitHub local
 não está autenticado. Este arquivo é o registro rastreável solicitado até que
