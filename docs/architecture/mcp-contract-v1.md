@@ -26,8 +26,10 @@ Status: MCP parcial avancado. Guard estatico de drift ativo desde MCP-1C. Este d
   gera o evento de log `mcp.db.global_access`.
 - `ToolRegistry.get()` e `ToolRegistry.list()` enxergam apenas contratos
   `active`; `list()` ordena por `name`, depois `version`.
-- O registry persistido garante uma unica linha por
-  `(tenantId, name, version)`, independentemente de `status`.
+- A migration versionada no MCP-1N declara unicidade de
+  `(tenantId, name, version)`, independentemente de `status`. Essa propriedade
+  somente é efetiva em cada ambiente após a aplicação da migration; este
+  documento não comprova que ela tenha sido aplicada.
 
 ## Call sites conhecidos
 
@@ -75,9 +77,22 @@ Esta consolidacao **nao** alterou nenhum default, nenhum gate, nem a semantica d
   do contexto de escopo nos dois callers conhecidos.
 - O tipo de output simulado permanece apenas para compatibilidade defensiva de dados historicos.
 - LEG-015 e LEG-024 sao endurecidos no runtime. A constraint unica de
-  `(tenantId,name,version)` permanece para MCP-1N.
+  `(tenantId,name,version)` foi versionada no MCP-1N, mas sua aplicação por
+  ambiente permanece sem evidência neste contrato.
 - Sem declarar MCP como operacionalmente fechado ou pronto — a divergencia de gates entre os dois call sites (async com Trust/Judge Gate vs. sincrono sem) permanece em aberto e nao foi tocada por esta consolidacao.
 - Receipt Canon/bundle representam a semantica de execucao desde MCP-1J; SCL Canon permanece fora deste contrato.
+
+## Proveniência pós-merge MCP-1H..1N
+
+O snapshot
+[`mcp-1h-1n-post-merge-provenance-2026-07-23.md`](../../ops/evidence/latest/mcp-1h-1n-post-merge-provenance-2026-07-23.md)
+registra ancestralidade, arquivos presentes em `HEAD`, workflow runs
+pré-merge, classificação canônica e `evidenceRef` dos itens MCP-1H, MCP-1I,
+MCP-1J, MCP-1L e MCP-1N.
+
+Essa proveniência é documental. Ela não transforma CI de PR em execução
+pós-merge, não comprova aplicação da migration MCP-1N, não popula a allowlist
+DB do MCP-1L e não declara o MCP operacionalmente fechado.
 
 ## Artefatos
 
