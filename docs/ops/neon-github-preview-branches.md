@@ -175,13 +175,23 @@ O nome é determinístico e independente do nome da branch Git:
 preview/pr-${{ github.event.pull_request.number }}
 ```
 
-A Action oficial `neondatabase/create-branch-action@v6` cria a branch ou
-resolve a branch existente com o mesmo nome. Quando ela já existe,
-`neondatabase/reset-branch-action@v1` a restaura ao estado mais recente do
-parent antes de reaplicar as migrations. Isso evita que migrations removidas
-ou reescritas em um novo `synchronize` permaneçam acumuladas no preview. A
-concorrência é serializada por número de PR e uma execução anterior é
-cancelada quando chega um novo `synchronize`.
+O step de criação usa `fetch` nativo do Node para fazer lookup idempotente da
+branch e chama `POST /projects/{project_id}/branches` uma única vez quando o
+nome exato ainda não existe. Essa chamada direta preserva os mesmos inputs
+governados de nome, parent, projeto, database, role e `suspend_timeout`, mas
+permite capturar de forma sanitizada `response.status`,
+`response.statusText`, `body.code` e `body.message` quando a API rejeita a
+criação. Quando a branch já existe, `neondatabase/reset-branch-action@v1` a
+restaura ao estado mais recente do parent antes de reaplicar as migrations.
+Isso evita que migrations removidas ou reescritas em um novo `synchronize`
+permaneçam acumuladas no preview. A concorrência é serializada por número de
+PR e uma execução anterior é cancelada quando chega um novo `synchronize`.
+
+O diagnóstico de criação nunca persiste headers, API key, `DATABASE_URL`,
+senha ou connection string. URLs `postgres://` e `postgresql://`, tokens
+Bearer e campos sensíveis conhecidos são mascarados por duas camadas: no step
+de criação e novamente na construção do artifact. `safeMessage` é reduzida a
+uma linha e truncada em 320 caracteres.
 
 PRs originados de fork não recebem secrets no evento `pull_request`. O
 preflight reconhece esse trust boundary, não cria recursos e mantém o check
@@ -301,7 +311,23 @@ Campos mínimos:
   "migrationResult": "success|failure|skipped",
   "testResult": "success|failure|skipped",
   "schemaDiffResult": "compatible|incompatible|indeterminate|failed|skipped",
-  "blockingCondition": null
+  "blockingCondition": null,
+  "branchCreateFailure": null
+}
+```
+
+Quando `blockingCondition=neon_branch_create_failed`,
+`branchCreateFailure` contém somente:
+
+```json
+{
+  "httpStatus": 412,
+  "statusText": "Precondition Failed",
+  "code": "safe_api_code_or_null",
+  "safeMessage": "mensagem sanitizada e truncada",
+  "branchName": "preview/pr-123",
+  "parentBranch": "production",
+  "projectId": "safe-project-id"
 }
 ```
 
