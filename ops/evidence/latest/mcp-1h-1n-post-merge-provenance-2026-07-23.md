@@ -1,14 +1,15 @@
 # MCP-1H..1N — Proveniência pós-merge
 
-Versão: 3.0  
+Versão: 4.0
 Data: 2026-07-23  
 Status normativo: evidência documental; estado operacional parcial  
 Escopo do run: MCP-1H, MCP-1I, MCP-1J, MCP-1L, MCP-1N e corte APE #47  
 Ator: Codex (agente principal, sem subagentes)  
 Modo: read-only, exceto `docs/EVIDENCE_INDEX.md`, `docs/architecture/mcp-contract-v1.md` e este snapshot
 
-Preflight confirmado em 2026-07-24: worktree limpo; `HEAD` e `origin/main` em
-`aee58604bfa8bf9afd9d17add4b7dbf45d9c9220`; branch `main`.
+Preflight do follow-up confirmado em 2026-07-24T12:29:08Z: worktree limpo;
+`HEAD` e `origin/main` em
+`1096467fc72d06280788c9989471f4d58a152811`; branch `main`.
 
 ## Tabela principal
 
@@ -78,10 +79,10 @@ APE #47 (2026-07-23) — estado vigente em 2026-07-24:
 - `nonRegressionGo=false`
 - `auditGap=0`
 - `duplicateSideEffects=0`
-- `check:e2e-recency=FAIL`: manifesto com `ageDays=29.93`, limite
-  `maxAgeDays=7`, aferido em 2026-07-24.
-- `check:backup-restore=FAIL`: drill com `ageDays=29.93`, limite
-  `maxAgeDays=7`, aferido em 2026-07-24.
+- `check:e2e-recency=FAIL`: em 2026-07-24T12:29:08Z, o manifesto tinha
+  aproximadamente `ageDays=30.02`, acima do limite `maxAgeDays=7`.
+- `check:backup-restore=FAIL`: em 2026-07-24T12:29:08Z, o drill tinha
+  aproximadamente `ageDays=30.02`, acima do limite `maxAgeDays=7`.
 
 ## Corte temporal
 
@@ -104,10 +105,11 @@ anteriores.
 
 ## assumptionRegister
 
-Nenhuma estimativa foi usada para indexar MCP-1H, MCP-1I, MCP-1J, MCP-1L,
-MCP-1N, APE #47 ou o gap do gate documental. Os valores de idade dos dois
-checks APE são medições da execução de 2026-07-24, arredondadas para duas casas
-decimais; não são usados para reescrever o artefato APE #47.
+Nenhuma estimativa foi usada neste snapshot; todos os itens indexados como
+confirmado foram verificados por comandos nesta sessão ou por objetos Git
+presentes em `HEAD`. Os valores de idade dos dois checks APE são medições da
+execução de 2026-07-24T12:29:08Z, arredondadas para duas casas decimais; não
+são usados para reescrever o artefato APE #47.
 
 ## Gaps remanescentes
 
@@ -116,14 +118,15 @@ decimais; não são usados para reescrever o artefato APE #47.
   e existência das referências que já estão no índice. Não valida completude
   por omissão de evidência nova, nem validade temporal ou semântica. Resultado
   verde não prova sincronização do índice com o estado de `main`.
-- Não há, no catálogo oficial localizável, código aplicável a “gate documental
-  com cobertura insuficiente”. Solicita-se decisão humana para criar um código
-  documental em PR separado, fora deste run.
-- `reasonCode: BLOCKED — reason-code-missing-for-doc-gate-gap`
+- `catalogIntegrity`: reason codes catalog source-of-truth drift permanece
+  aberto em #386. Enquanto não houver decisão humana, gaps documentais que
+  exigiriam `reasonCode` devem usar `reasonCode: N/A` e
+  `blockingCondition`, sem criar código canônico ad-hoc.
+- `environmentTopology`: topologia versionada de ambientes/staging permanece
+  aberta em #387. MCP-1N-OPS continua bloqueado até existir alvo staging
+  confirmado e documentado sem secrets.
 - A correção do gate permanece aberta; nenhum script ou catálogo canônico foi
   alterado.
-- A escada L1→L5 não está definida nas fontes normativas lidas. O nível atual e
-  o alvo não são atribuídos para evitar fabricar uma taxonomia.
 
 ## Checks
 
@@ -140,36 +143,46 @@ Informativos:
 - `pnpm check:p1-reconciliation-recurring`: PASS — APE #45, #46 e #47 dentro
   da janela de 14 dias, todos com `auditGap=0` e
   `duplicateSideEffects=0`.
-- `pnpm check:e2e-recency`: FAIL esperado — o manifesto HIGH tem 29,93 dias
-  contra limite de 7. Reversão: gerar e versionar manifestação baseada em E2E
-  HIGH real com idade de até 7 dias.
-- `pnpm check:backup-restore`: FAIL esperado — o restore drill tem 29,93 dias
-  contra limite de 7. Reversão: executar restore drill real e publicar sua
-  evidência com idade de até 7 dias.
-- `pnpm check:p3-stability-recurring`: FAIL esperado —
-  `economy_stability_not_recurring`; APE #45, #46 e #47 têm
-  `hardMetricsGo=false`. Reversão: obter a quantidade requerida de ciclos
-  dentro da janela do gate com `hardMetricsGo=true`, `auditGap=0`,
-  `duplicateSideEffects=0` e `breakGlass=0`.
-- `pnpm check:p4-trackp-rollout`: FAIL esperado — `ape_cycles_not_green`; APE
-  #46 e #47 têm `hardMetricsGo=false`. Reversão: publicar os ciclos exigidos
-  pelo gate com `hardMetricsGo=true`, preservando os demais critérios de
-  rollout.
+- `pnpm check:e2e-recency`
+  - resultado: FAIL esperado.
+  - causaRaiz: manifest HIGH/evidência E2E sem recência suficiente em
+    2026-07-24T12:29:08Z.
+  - condicaoParaVerde: gerar evidência E2E HIGH real dentro da janela exigida
+    pelo gate.
+- `pnpm check:backup-restore`
+  - resultado: FAIL esperado.
+  - causaRaiz: drill de backup/restore sem recência suficiente em
+    2026-07-24T12:29:08Z.
+  - condicaoParaVerde: executar e registrar drill real de backup/restore dentro
+    da janela exigida pelo gate.
+- `pnpm check:p3-stability-recurring`
+  - resultado: FAIL esperado; P3 permanece NO_GO.
+  - causaRaiz: ciclos de referência não satisfazem estabilidade recorrente P3.
+  - condicaoParaVerde: obter sequência recorrente de ciclos GO que satisfaça o
+    gate P3.
+- `pnpm check:p4-trackp-rollout`
+  - resultado: FAIL esperado; P4 permanece NO_GO.
+  - causaRaiz: ciclos de referência não sustentam rollout Track P.
+  - condicaoParaVerde: obter ciclos APE GO dentro da janela do gate e evidência
+    de rollout conforme o gate P4.
 
 ## Receipt
 
 receipt:
-  runId:            PR-DOC-MCP-PROVENANCE-v3-20260724
-  timestamp:        2026-07-24T10:13:48Z
+  runId:            PR-DOC-MCP-PROVENANCE-v4-20260724
+  timestamp:        2026-07-24T12:29:08Z
   actor:            Codex (agente principal, sem subagentes)
   scope:            docs-only — docs/EVIDENCE_INDEX.md; docs/architecture/mcp-contract-v1.md; ops/evidence/latest/mcp-1h-1n-post-merge-provenance-2026-07-23.md
-  headSha:          aee58604bfa8bf9afd9d17add4b7dbf45d9c9220
-  filesChanged:     docs/EVIDENCE_INDEX.md; docs/architecture/mcp-contract-v1.md; ops/evidence/latest/mcp-1h-1n-post-merge-provenance-2026-07-23.md
+  headSha:          1096467fc72d06280788c9989471f4d58a152811
+  filesChanged:     docs/EVIDENCE_INDEX.md; ops/evidence/latest/mcp-1h-1n-post-merge-provenance-2026-07-23.md
   checksExecuted:   obrigatórios PASS; P1 PASS; E2E recency, backup/restore, P3 e P4 FAIL esperado
   decision:         GO documental / NO_GO operacional
-  reasonCode:       BLOCKED — reason-code-missing-for-doc-gate-gap
+  reasonCode:       N/A
+  blockingCondition: reason-code-missing-for-doc-gate-gap
+  blockingIssue:    "#386"
+  environmentTopologyIssue: "#387"
   maskingCheck:     PASS
-  contentHash:      79a4e453bd685775ac839f5aa400c43ab4b7fb3a6e59f2ada129cc8ecec601bf
+  contentHash:      563ce5d95e808f29066a61547643653b52de8c4bf1e23a691cbe11ffa6fb73ce
   contentHashCmd:   sed '/^## Receipt$/,$d' ops/evidence/latest/mcp-1h-1n-post-merge-provenance-2026-07-23.md \
                     | sha256sum
   snapshotBlobSha:  N/A — registrado externamente no relatório do agente (ver §14.10)
