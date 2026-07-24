@@ -5,7 +5,11 @@
   "branch": "feat/neon-preview-branches",
   "baseline": "630dfce0fd4dd9daae81f50a185bd4dc569fe372",
   "command": "pnpm test:neon-preview-schema",
+  "canonical_command": "pnpm test:neon-preview-schema",
+  "canonical_script": "node --import tsx --test scripts/tests/checkNeonPreviewSchemaCompatibility.test.ts",
   "status": "pass",
+  "runner_file_tests": 1,
+  "declared_test_cases": 5,
   "tap": {
     "tests": 1,
     "suites": 0,
@@ -17,8 +21,13 @@
   },
   "sourceDeclaredCases": 5,
   "granularity": {
-    "classification": "suspeita",
-    "detail": "O arquivo declara cinco casos, agregados pelo runner atual como um teste TAP de topo; não confirmado por caso."
+    "classification": "confirmada",
+    "detail": "O fonte declara cinco chamadas test(...). Sob o script versionado com node --test, o resumo TAP canônico é file-level: tests 1, pass 1, fail 0."
+  },
+  "environment": {
+    "node": "v22.17.1",
+    "pnpm": "10.12.4",
+    "tsx": "v4.21.0"
   },
   "remoteEvidence": false,
   "outputSanitized": [

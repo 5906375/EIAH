@@ -69,6 +69,12 @@ pass 1
 fail 0
 ```
 
+Nota de granularidade: `runner_file_tests=1` e `declared_test_cases=5`. O
+comando versionado usa `node --test` e produz o resumo TAP canônico
+file-level (`tests 1 / pass 1 / fail 0`), enquanto o fonte declara cinco
+chamadas `test(...)`. Portanto, `tests 1` não significa que apenas um
+comportamento foi exercitado.
+
 Lint focado:
 
 ```bash
