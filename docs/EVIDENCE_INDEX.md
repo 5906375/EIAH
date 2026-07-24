@@ -4,6 +4,15 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## Neon + GitHub — bancos preview governados por PR (2026-07-24)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Lifecycle governado de preview Neon por PR | `.github/workflows/neon-preview-create.yml` + `.github/workflows/neon-preview-cleanup.yml` + `.github/workflows/neon-preview-reconcile.yml` + `docs/ops/neon-github-preview-branches.md` | Materializa naming determinístico `preview/pr-<n>`, criação/reset/migration/testes/schema diff em `opened/reopened/synchronize/labeled/unlabeled`, job de criação associado ao environment `neon-preview`, cleanup idempotente em `closed`, reconciliação diária/manual em `observe` por default e remoção somente por dispatch explícito `mode=delete`, artifacts sanitizados e separação fail-closed entre preview e staging. Não prova execução externa nem configuração real de environment/secrets/vars/branch protection. |
+| Gate fail-closed de compatibilidade do schema diff | `scripts/checkNeonPreviewSchemaCompatibility.ts` + `scripts/tests/checkNeonPreviewSchemaCompatibility.test.ts` + `package.json` (`check:neon-preview-schema`, `test:neon-preview-schema`) | Classifica SQL aditivo conhecido como `compatible`, remoções/mutações destrutivas como `incompatible` e qualquer statement desconhecido — inclusive nova unicidade — como `indeterminate`; os dois últimos estados bloqueiam sem a label `neon-schema-change-approved` aplicada por login autorizado em `NEON_SCHEMA_APPROVERS`. Execução local canônica `pnpm test:neon-preview-schema`: `tests 1`, `pass 1`, `fail 0`. Nota de granularidade (`suspeita`): o arquivo declara 5 casos, agregados pelo runner atual como 1 teste TAP de topo; não promovido a `confirmado` sem captura por caso. `evidenceRef{artifactId: NEON-PREVIEW-SCHEMA-TEST-2026-07-24, location: /tmp/neon-preview-schema-test-2026-07-24.log, hash: 7cf19a7769f1e221b4735e35697eb6f0f0a5dca85f33daf08905827458f2033a}`. |
+| Evidência local da implementação de preview branches | `ops/evidence/latest/neon-github-preview-branches-implementation-2026-07-24.md` | Registra os checks realmente executados: três YAMLs carregados, `package.json` válido, teste focado verde, `check:evidence-index` e `check:docs-link-integrity` verdes e `git diff --check` limpo. Classificação `parcial`: nenhuma branch Neon, run GitHub, migration remota, comentário ou artifact operacional foi produzido nesta sessão. |
+| Drift preexistente dos testes `tenantGuard` | `ops/evidence/latest/tenant-guard-prisma-extension-test-drift-2026-07-24.md` | Registra os três arquivos afetados, o erro real `t.$extends is not a function`, a hipótese de drift middleware/Prisma extension, impacto, correção recomendada e por que a falha não pertence ao gate Neon focado. Não declara a suíte ampla como verde. |
+
 ## MCP-1H a MCP-1N — proveniência pós-merge e corte APE #47 (2026-07-24)
 
 Snapshot canônico desta indexação:
