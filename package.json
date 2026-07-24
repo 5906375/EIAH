@@ -57,7 +57,7 @@
     "check:provider-pricing-recency": "node --experimental-strip-types scripts/checkProviderPricingRecency.ts",
     "check:ape-evidence-linkage": "node --experimental-strip-types scripts/checkApeEvidenceLinkage.ts",
     "check:ape-hard-metrics": "node --experimental-strip-types scripts/checkApeCycleHardMetrics.ts",
-    "check:evidence-index": "node --experimental-strip-types scripts/checkEvidenceIndex.ts",
+    "check:evidence-index": "node --import tsx --test scripts/tests/checkEvidenceIndex.test.ts && node --import tsx scripts/checkEvidenceIndex.ts",
     "check:chat-agent-onboarding": "node --import tsx scripts/checkChatAgentOnboarding.ts",
     "check:chat-launcher-render-only": "node --import tsx scripts/checkChatLauncherRenderOnly.ts",
     "check:chat-runtime-entrypoint-debt": "node --import tsx scripts/checkChatRuntimeEntrypointDebt.ts",
