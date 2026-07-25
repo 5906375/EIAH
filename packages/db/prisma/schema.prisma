@@ -20,6 +20,7 @@ enum RunStatus {
   success
   error
   blocked
+  awaiting_approval
 }
 
 enum RunApprovalStatus {
@@ -33,6 +34,28 @@ enum PaymentStatus {
   pending
   succeeded
   failed
+}
+
+enum ApprovalDecision {
+  APPROVED
+  REJECTED
+}
+
+enum PoUFailureReason {
+  DB_WRITE_FAILED
+  VALIDATION_ERROR
+  SIGNER_ERROR
+  OUTPUT_UNAVAILABLE
+  HASH_ERROR
+  ATTESTATION_FAILED
+  UNKNOWN
+}
+
+enum PoUStatus {
+  PENDING
+  FINALIZED
+  FAILED
+  PENDING_TRUST
 }
 
 model Tenant {
@@ -76,6 +99,12 @@ model Tenant {
   imobCases                 ImobCase[]
   imobCaseEvents            ImobCaseEvent[]
   imobMarketScanRuns        ImobMarketScanRun[]
+  agentInstalls             AgentInstall[]
+  connectorInstances        ConnectorInstance[]
+  paymentIntents            PaymentIntent[]
+  memberships               TenantMembership[]
+  customRoles               TenantCustomRole[]
+  walletIdentities          WalletIdentity[]
 
   @@map("tenants")
 }
@@ -112,6 +141,9 @@ model Workspace {
   imobCases                 ImobCase[]
   imobCaseEvents            ImobCaseEvent[]
   imobMarketScanRuns        ImobMarketScanRun[]
+  agentInstalls             AgentInstall[]
+  connectorInstances        ConnectorInstance[]
+  paymentIntents            PaymentIntent[]
 
   @@index([tenantId, name])
   @@map("workspaces")
@@ -130,6 +162,10 @@ model User {
   workspaceAgentAssignmentsSigned WorkspaceAgentAssignment[]  @relation("WorkspaceAgentAssignmentSignedBy")
   tenant                          Tenant                      @relation(fields: [tenantId], references: [id])
   productInstallationsActivated   TenantProductInstallation[] @relation("ProductInstallationActivatedBy")
+  agentInstalls                   AgentInstall[]
+  connectorInstances              ConnectorInstance[]
+  memberships                     TenantMembership[]
+  walletIdentities                WalletIdentity[]
 
   @@index([tenantId, email])
   @@map("users")
@@ -145,15 +181,15 @@ model TenantProductInstallation {
   activatedByUserId String?  @map("activated_by_user_id")
   metadata          Json?
   createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  updatedAt         DateTime @default(now()) @updatedAt @map("updated_at")
 
   tenant          Tenant    @relation(fields: [tenantId], references: [id])
   workspace       Workspace @relation(fields: [workspaceId], references: [id])
   activatedByUser User?     @relation("ProductInstallationActivatedBy", fields: [activatedByUserId], references: [id])
 
-  @@unique([tenantId, workspaceId, product], name: "tenant_workspace_product_unique")
-  @@index([tenantId, status])
-  @@index([workspaceId, product, status])
+  @@unique([tenantId, workspaceId, product], name: "tenant_workspace_product_unique", map: "tenant_product_installations_tenant_workspace_product_key")
+  @@index([tenantId, status], map: "tenant_product_installations_tenant_status_idx")
+  @@index([workspaceId, product, status], map: "tenant_product_installations_workspace_product_status_idx")
   @@map("tenant_product_installations")
 }
 
@@ -216,6 +252,7 @@ model Run {
   usageBreakdowns      RunUsageBreakdown[]
   imobCaseEvents       ImobCaseEvent[]
   runArchive           RunArchive?
+  paymentIntents       PaymentIntent[]
   assignment           WorkspaceAgentAssignment? @relation(fields: [assignmentId], references: [id])
   tenant               Tenant                    @relation(fields: [tenantId], references: [id])
   user                 User?                     @relation(fields: [userId], references: [id])
@@ -245,7 +282,7 @@ model RunArchive {
   tenant    Tenant    @relation(fields: [tenantId], references: [id])
   workspace Workspace @relation(fields: [workspaceId], references: [id])
 
-  @@index([tenantId, workspaceId, archivedAt])
+  @@index([tenantId, workspaceId, archivedAt], map: "run_archives_tenant_workspace_archived_at_idx")
   @@map("run_archives")
 }
 
@@ -651,9 +688,9 @@ model TenantBillingAccount {
   status         String   @default("active")
   cycleAnchorDay Int      @default(1) @map("cycle_anchor_day")
   createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, status])
   @@map("tenant_billing_account")
@@ -667,9 +704,9 @@ model TenantQuotaPolicy {
   monthlyRunsLimit      Int?     @map("monthly_runs_limit")
   monthlyCostCentsLimit Int?     @map("monthly_cost_cents_limit")
   createdAt             DateTime @default(now()) @map("created_at")
-  updatedAt             DateTime @updatedAt @map("updated_at")
+  updatedAt             DateTime @default(now()) @updatedAt @map("updated_at")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@map("tenant_quota_policy")
@@ -685,12 +722,12 @@ model TenantQuotaUsage {
   tokens     Int      @default(0)
   storageMb  Int      @default(0) @map("storage_mb")
   createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  updatedAt  DateTime @default(now()) @updatedAt @map("updated_at")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  @@unique([tenantId, cycleStart, cycleEnd], name: "tenant_quota_usage_cycle_unique")
-  @@index([tenantId, cycleStart, cycleEnd])
+  @@unique([tenantId, cycleStart, cycleEnd], name: "tenant_quota_usage_cycle_unique", map: "tenant_quota_usage_cycle_unique")
+  @@index([tenantId, cycleStart, cycleEnd], map: "tenant_quota_usage_tenant_cycle_idx")
   @@map("tenant_quota_usage")
 }
 
@@ -705,13 +742,13 @@ model WorkspaceQuotaUsage {
   tokens      Int      @default(0)
   storageMb   Int      @default(0) @map("storage_mb")
   createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  updatedAt   DateTime @default(now()) @updatedAt @map("updated_at")
 
   tenant    Tenant    @relation(fields: [tenantId], references: [id])
   workspace Workspace @relation(fields: [workspaceId], references: [id])
 
-  @@unique([tenantId, workspaceId, cycleStart, cycleEnd], name: "workspace_quota_usage_cycle_unique")
-  @@index([tenantId, workspaceId, cycleStart, cycleEnd])
+  @@unique([tenantId, workspaceId, cycleStart, cycleEnd], name: "workspace_quota_usage_cycle_unique", map: "workspace_quota_usage_cycle_unique")
+  @@index([tenantId, workspaceId, cycleStart, cycleEnd], map: "workspace_quota_usage_cycle_idx")
   @@map("workspace_quota_usage")
 }
 
@@ -723,14 +760,14 @@ model WorkspaceQuotaGrant {
   localRunLimit       Int?     @map("local_run_limit")
   localCostCentsLimit Int?     @map("local_cost_cents_limit")
   createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
+  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at")
 
-  tenant    Tenant    @relation(fields: [tenantId], references: [id])
-  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
-  @@unique([tenantId, workspaceId], name: "workspace_quota_grant_unique")
-  @@index([tenantId, enabled])
-  @@index([workspaceId])
+  @@unique([tenantId, workspaceId], name: "workspace_quota_grant_unique", map: "workspace_quota_grant_unique")
+  @@index([tenantId, enabled], map: "workspace_quota_grant_tenant_enabled_idx")
+  @@index([workspaceId], map: "workspace_quota_grant_workspace_idx")
   @@map("workspace_quota_grant")
 }
 
@@ -746,15 +783,15 @@ model WorkspaceAgentAssignment {
   signatureRef   String?   @map("signature_ref")
   metadata       Json?
   createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
+  updatedAt      DateTime  @default(now()) @updatedAt @map("updated_at")
 
   tenant       Tenant    @relation(fields: [tenantId], references: [id])
   workspace    Workspace @relation(fields: [workspaceId], references: [id])
   signedByUser User?     @relation("WorkspaceAgentAssignmentSignedBy", fields: [signedByUserId], references: [id])
   runs         Run[]
 
-  @@unique([tenantId, workspaceId, agentKey, agentVersion], name: "workspace_agent_assignment_version_unique")
-  @@index([tenantId, workspaceId, agentKey])
+  @@unique([tenantId, workspaceId, agentKey, agentVersion], name: "workspace_agent_assignment_version_unique", map: "workspace_agent_assignment_version_unique")
+  @@index([tenantId, workspaceId, agentKey], map: "workspace_agent_assignment_lookup_idx")
   @@map("workspace_agent_assignments")
 }
 
@@ -772,13 +809,13 @@ model BillingLedger {
   model       String?
   createdAt   DateTime @default(now()) @map("created_at")
 
-  tenant    Tenant     @relation(fields: [tenantId], references: [id])
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   workspace Workspace? @relation(fields: [workspaceId], references: [id])
   run       Run?       @relation(fields: [runId], references: [id])
 
-  @@index([tenantId, createdAt])
-  @@index([tenantId, workspaceId, createdAt])
-  @@index([runId])
+  @@index([tenantId, createdAt], map: "billing_ledger_tenant_created_idx")
+  @@index([tenantId, workspaceId, createdAt], map: "billing_ledger_tenant_workspace_created_idx")
+  @@index([runId], map: "billing_ledger_run_idx")
   @@map("billing_ledger")
 }
 
@@ -809,10 +846,10 @@ model RunUsageBreakdown {
   tenant    Tenant    @relation(fields: [tenantId], references: [id])
   workspace Workspace @relation(fields: [workspaceId], references: [id])
 
-  @@unique([runId, requestId, meterType], name: "run_usage_breakdown_idempotency_unique")
-  @@index([runId])
-  @@index([tenantId, workspaceId])
-  @@index([requestId])
+  @@unique([runId, requestId, meterType], name: "run_usage_breakdown_idempotency_unique", map: "run_usage_breakdown_idempotency_unique")
+  @@index([runId], map: "run_usage_breakdowns_run_idx")
+  @@index([tenantId, workspaceId], map: "run_usage_breakdowns_scope_idx")
+  @@index([requestId], map: "run_usage_breakdowns_request_idx")
   @@map("run_usage_breakdowns")
 }
 
@@ -836,12 +873,12 @@ model TenantInvoice {
   totalCents       Int      @map("total_cents")
   metadata         Json?
   createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id])
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  @@unique([tenantId, periodStart, periodEnd], name: "tenant_invoice_period_unique")
-  @@index([tenantId, periodStart, periodEnd])
+  @@unique([tenantId, periodStart, periodEnd], name: "tenant_invoice_period_unique", map: "tenant_invoice_period_unique")
+  @@index([tenantId, periodStart, periodEnd], map: "tenant_invoices_tenant_period_idx")
   @@map("tenant_invoices")
 }
 
@@ -860,11 +897,11 @@ model HelpdeskSession {
   metadata        Json?
   createdAt       DateTime @default(now()) @map("created_at")
 
-  tenant    Tenant    @relation(fields: [tenantId], references: [id])
-  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
-  @@index([tenantId, workspaceId, createdAt])
-  @@index([intent, createdAt])
+  @@index([tenantId, workspaceId, createdAt], map: "helpdesk_sessions_tenant_workspace_created_idx")
+  @@index([intent, createdAt], map: "helpdesk_sessions_intent_created_idx")
   @@map("helpdesk_sessions")
 }
 
@@ -881,14 +918,14 @@ model ImobOwner {
   pendingItems Json?          @map("pending_items")
   metadata     Json?
   createdAt    DateTime       @default(now()) @map("created_at")
-  updatedAt    DateTime       @updatedAt @map("updated_at")
+  updatedAt    DateTime       @default(now()) @updatedAt @map("updated_at")
   tenant       Tenant         @relation(fields: [tenantId], references: [id])
   workspace    Workspace      @relation(fields: [workspaceId], references: [id])
   properties   ImobProperty[]
   cases        ImobCase[]
 
-  @@index([tenantId, workspaceId, createdAt])
-  @@index([tenantId, workspaceId, status])
+  @@index([tenantId, workspaceId, createdAt], map: "imob_owners_tenant_workspace_created_at_idx")
+  @@index([tenantId, workspaceId, status], map: "imob_owners_tenant_workspace_status_idx")
   @@map("imob_owners")
 }
 
@@ -912,14 +949,14 @@ model ImobProperty {
   pendingItems     Json?      @map("pending_items")
   metadata         Json?
   createdAt        DateTime   @default(now()) @map("created_at")
-  updatedAt        DateTime   @updatedAt @map("updated_at")
+  updatedAt        DateTime   @default(now()) @updatedAt @map("updated_at")
   tenant           Tenant     @relation(fields: [tenantId], references: [id])
   workspace        Workspace  @relation(fields: [workspaceId], references: [id])
   owner            ImobOwner? @relation(fields: [ownerId], references: [id])
   cases            ImobCase[]
 
-  @@index([tenantId, workspaceId, createdAt])
-  @@index([tenantId, workspaceId, status])
+  @@index([tenantId, workspaceId, createdAt], map: "imob_properties_tenant_workspace_created_at_idx")
+  @@index([tenantId, workspaceId, status], map: "imob_properties_tenant_workspace_status_idx")
   @@index([ownerId])
   @@map("imob_properties")
 }
@@ -941,14 +978,14 @@ model ImobLead {
   pendingItems       Json?      @map("pending_items")
   metadata           Json?
   createdAt          DateTime   @default(now()) @map("created_at")
-  updatedAt          DateTime   @updatedAt @map("updated_at")
+  updatedAt          DateTime   @default(now()) @updatedAt @map("updated_at")
   tenant             Tenant     @relation(fields: [tenantId], references: [id])
   workspace          Workspace  @relation(fields: [workspaceId], references: [id])
   cases              ImobCase[]
 
-  @@index([tenantId, workspaceId, createdAt])
-  @@index([tenantId, workspaceId, stage])
-  @@index([tenantId, workspaceId, temperature])
+  @@index([tenantId, workspaceId, createdAt], map: "imob_leads_tenant_workspace_created_at_idx")
+  @@index([tenantId, workspaceId, stage], map: "imob_leads_tenant_workspace_stage_idx")
+  @@index([tenantId, workspaceId, temperature], map: "imob_leads_tenant_workspace_temperature_idx")
   @@map("imob_leads")
 }
 
@@ -970,7 +1007,7 @@ model ImobCase {
   externalDealId   String?             @map("external_deal_id")
   metadata         Json?
   createdAt        DateTime            @default(now()) @map("created_at")
-  updatedAt        DateTime            @updatedAt @map("updated_at")
+  updatedAt        DateTime            @default(now()) @updatedAt @map("updated_at")
   tenant           Tenant              @relation(fields: [tenantId], references: [id])
   workspace        Workspace           @relation(fields: [workspaceId], references: [id])
   owner            ImobOwner?          @relation(fields: [ownerId], references: [id])
@@ -979,9 +1016,9 @@ model ImobCase {
   events           ImobCaseEvent[]
   marketScanRuns   ImobMarketScanRun[]
 
-  @@index([tenantId, workspaceId, createdAt])
-  @@index([tenantId, workspaceId, flow, status])
-  @@index([tenantId, workspaceId, stage])
+  @@index([tenantId, workspaceId, createdAt], map: "imob_cases_tenant_workspace_created_at_idx")
+  @@index([tenantId, workspaceId, flow, status], map: "imob_cases_tenant_workspace_flow_status_idx")
+  @@index([tenantId, workspaceId, stage], map: "imob_cases_tenant_workspace_stage_idx")
   @@index([threadId])
   @@index([ownerId])
   @@index([propertyId])
@@ -1012,14 +1049,14 @@ model ImobMarketScanRun {
   opportunityId    String?   @map("opportunity_id")
   failureReason    String?   @map("failure_reason")
   createdAt        DateTime  @default(now()) @map("created_at")
-  updatedAt        DateTime  @updatedAt @map("updated_at")
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at")
 
   tenant    Tenant    @relation(fields: [tenantId], references: [id])
   workspace Workspace @relation(fields: [workspaceId], references: [id])
   imobCase  ImobCase? @relation(fields: [caseId], references: [id])
 
-  @@index([tenantId, workspaceId, requestedAt])
-  @@index([tenantId, workspaceId, status])
+  @@index([tenantId, workspaceId, requestedAt], map: "imob_market_scan_runs_tenant_workspace_requested_at_idx")
+  @@index([tenantId, workspaceId, status], map: "imob_market_scan_runs_tenant_workspace_status_idx")
   @@index([caseId])
   @@index([queryHash])
   @@map("imob_market_scan_runs")
@@ -1038,13 +1075,236 @@ model ImobCaseEvent {
   evidenceRef String?   @map("evidence_ref")
   payload     Json?
   createdAt   DateTime  @default(now()) @map("created_at")
-  imobCase    ImobCase  @relation(fields: [caseId], references: [id])
+  imobCase    ImobCase  @relation(fields: [caseId], references: [id], onDelete: Cascade)
   tenant      Tenant    @relation(fields: [tenantId], references: [id])
   workspace   Workspace @relation(fields: [workspaceId], references: [id])
   run         Run?      @relation(fields: [runId], references: [id])
 
   @@index([caseId, createdAt])
-  @@index([tenantId, workspaceId, createdAt])
+  @@index([tenantId, workspaceId, createdAt], map: "imob_case_events_tenant_workspace_created_at_idx")
   @@index([runId])
   @@map("imob_case_events")
+}
+
+// ========================================
+// Historical migration contracts
+// Represented here without destructive DDL.
+// ========================================
+
+model AgentInstall {
+  id                String   @id
+  tenantId          String   @map("tenant_id")
+  workspaceId       String   @map("workspace_id")
+  agentSlug         String   @map("agent_slug")
+  installedByUserId String?  @map("installed_by_user_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @map("updated_at")
+
+  tenant      Tenant    @relation(fields: [tenantId], references: [id])
+  workspace   Workspace @relation(fields: [workspaceId], references: [id])
+  installedBy User?     @relation(fields: [installedByUserId], references: [id])
+
+  @@map("agent_installs")
+}
+
+model AgentReputation {
+  id               String   @id
+  tenantId         String   @map("tenant_id")
+  workspaceId      String   @map("workspace_id")
+  agentId          String   @map("agent_id")
+  completedRuns    Int      @default(0) @map("completed_runs")
+  disputesTotal    Int      @default(0) @map("disputes_total")
+  disputeRate      Float    @default(0) @map("dispute_rate")
+  trustScore       Int      @default(100) @map("trust_score")
+  verifiedReceipts Int      @default(0) @map("verified_receipts")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @default(now()) @map("updated_at")
+
+  @@unique([tenantId, workspaceId, agentId], map: "agent_reputation_tenant_workspace_agent_unique")
+  @@index([tenantId, workspaceId], map: "agent_reputation_tenant_workspace_idx")
+  @@map("agent_reputation")
+}
+
+model AgentReputationEvent {
+  id          String   @id
+  eventKey    String   @unique @map("event_key")
+  tenantId    String   @map("tenant_id")
+  workspaceId String   @map("workspace_id")
+  agentId     String   @map("agent_id")
+  eventType   String   @map("event_type")
+  payload     Json?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("agent_reputation_events")
+}
+
+model ApprovalRecord {
+  id              String           @id
+  runId           String?          @map("run_id")
+  tenantId        String           @map("tenant_id")
+  workspaceId     String           @map("workspace_id")
+  decidedByUserId String?          @map("decided_by_user_id")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  decision        ApprovalDecision
+
+  @@map("approval_records")
+}
+
+model BillingDispute {
+  id              String    @id
+  tenantId        String    @map("tenant_id")
+  workspaceId     String    @map("workspace_id")
+  paymentIntentId String    @map("payment_intent_id")
+  runId           String    @map("run_id")
+  agentId         String    @map("agent_id")
+  status          String    @default("open")
+  reason          String?
+  resolution      String?
+  createdByUserId String?   @map("created_by_user_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @default(now()) @map("updated_at")
+  closedAt        DateTime? @map("closed_at")
+
+  @@index([paymentIntentId], map: "billing_disputes_payment_intent_idx")
+  @@index([tenantId, workspaceId, status], map: "billing_disputes_tenant_workspace_status_idx")
+  @@map("billing_disputes")
+}
+
+model BillingWebhookEvent {
+  id              String         @id
+  provider        String
+  eventId         String         @map("event_id")
+  paymentIntentId String?        @map("payment_intent_id")
+  tenantId        String?        @map("tenant_id")
+  workspaceId     String?        @map("workspace_id")
+  status          String         @default("accepted")
+  signatureHash   String?        @map("signature_hash")
+  payloadHash     String?        @map("payload_hash")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  paymentIntent   PaymentIntent? @relation(fields: [paymentIntentId], references: [id], map: "billing_webhook_events_payment_intent_fkey")
+
+  @@unique([provider, eventId], map: "billing_webhook_events_provider_event_unique")
+  @@index([tenantId, createdAt], map: "billing_webhook_events_tenant_created_idx")
+  @@map("billing_webhook_events")
+}
+
+model ConnectorInstance {
+  id              String   @id
+  tenantId        String   @map("tenant_id")
+  workspaceId     String   @map("workspace_id")
+  connector       String
+  config          Json?
+  createdByUserId String?  @map("created_by_user_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @map("updated_at")
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  createdBy User?     @relation(fields: [createdByUserId], references: [id])
+
+  @@map("connector_instances")
+}
+
+model PaymentIntent {
+  id                String                @id
+  tenantId          String                @map("tenant_id")
+  workspaceId       String                @map("workspace_id")
+  runId             String                @map("run_id")
+  amountCents       Int                   @map("amount_cents")
+  currency          String                @default("BRL")
+  status            String                @default("pending")
+  provider          String?
+  requestId         String                @map("request_id")
+  externalId        String?               @map("external_id")
+  settlementReceipt Json?                 @map("settlement_receipt")
+  metadata          Json?
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @default(now()) @map("updated_at")
+  webhookEvents     BillingWebhookEvent[]
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  run       Run       @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, requestId], map: "payment_intents_tenant_request_unique")
+  @@index([provider, status])
+  @@index([tenantId, workspaceId, status], map: "payment_intents_tenant_workspace_status_idx")
+  @@map("payment_intents")
+}
+
+model ProofOfUsage {
+  id            String            @id
+  runId         String            @map("run_id")
+  tenantId      String            @map("tenant_id")
+  workspaceId   String            @map("workspace_id")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @default(now()) @map("updated_at")
+  status        PoUStatus         @default(PENDING)
+  failureReason PoUFailureReason? @map("failure_reason")
+
+  @@map("proof_of_usage")
+}
+
+model RolePermission {
+  id         String           @id
+  roleId     String           @map("role_id")
+  permission String
+  createdAt  DateTime         @default(now()) @map("created_at")
+  role       TenantCustomRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@map("role_permissions")
+}
+
+model RunExecutionLock {
+  id          String   @id
+  tenantId    String   @map("tenant_id")
+  workspaceId String   @map("workspace_id")
+  runId       String   @map("run_id")
+  holderId    String   @map("holder_id")
+  expiresAt   DateTime @map("expires_at")
+
+  @@unique([tenantId, workspaceId, runId])
+  @@map("run_execution_locks")
+}
+
+model TenantMembership {
+  id           String   @id
+  tenantId     String   @map("tenant_id")
+  userId       String   @map("user_id")
+  role         String   @default("member")
+  customRoleId String?  @map("custom_role_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @map("updated_at")
+
+  tenant     Tenant            @relation(fields: [tenantId], references: [id])
+  user       User              @relation(fields: [userId], references: [id])
+  customRole TenantCustomRole? @relation(fields: [customRoleId], references: [id])
+
+  @@map("tenant_memberships")
+}
+
+model TenantCustomRole {
+  id          String             @id
+  tenantId    String             @map("tenant_id")
+  name        String
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @map("updated_at")
+  permissions RolePermission[]
+  memberships TenantMembership[]
+  tenant      Tenant             @relation(fields: [tenantId], references: [id])
+
+  @@map("tenant_role_customs")
+}
+
+model WalletIdentity {
+  id            String   @id
+  userId        String   @map("user_id")
+  tenantId      String   @map("tenant_id")
+  walletAddress String   @map("wallet_address")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @map("updated_at")
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  user          User     @relation(fields: [userId], references: [id])
+
+  @@map("wallet_identities")
 }
