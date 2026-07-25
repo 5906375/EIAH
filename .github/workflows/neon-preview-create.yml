@@ -1,0 +1,633 @@
+name: "[Deprecated] Neon Preview Create (historical)"
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: neon-preview-deprecated-${{ github.run_id }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+  PNPM_VERSION: '10.12.4'
+  PREVIEW_BRANCH_NAME: preview/pr-${{ github.event.pull_request.number }}
+  EVIDENCE_DIR: artifacts/neon-preview
+
+jobs:
+  create_migrate_test:
+    name: NeonPreviewCreateMigrateTest
+    if: ${{ false }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate trust boundary and Neon configuration
+        id: preflight
+        shell: bash
+        env:
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPOSITORY: ${{ github.repository }}
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+          NEON_PREVIEW_PARENT_BRANCH: ${{ vars.NEON_PREVIEW_PARENT_BRANCH }}
+        run: |
+          set -euo pipefail
+
+          READY=true
+          BLOCKING_CONDITION=
+
+          if [ "$HEAD_REPOSITORY" != "$BASE_REPOSITORY" ]; then
+            READY=false
+            BLOCKING_CONDITION=untrusted_fork_has_no_neon_credentials
+          elif [ -z "${NEON_API_KEY:-}" ]; then
+            READY=false
+            BLOCKING_CONDITION=neon_api_key_missing
+          elif [ -z "${NEON_PROJECT_ID:-}" ]; then
+            READY=false
+            BLOCKING_CONDITION=neon_project_id_missing
+          elif [ -z "${NEON_PREVIEW_PARENT_BRANCH:-}" ]; then
+            READY=false
+            BLOCKING_CONDITION=neon_preview_parent_branch_missing
+          fi
+
+          {
+            echo "ready=$READY"
+            echo "blocking_condition=$BLOCKING_CONDITION"
+          } >> "$GITHUB_OUTPUT"
+
+          if [ "$READY" != true ]; then
+            echo "::error title=Neon preview blocked::$BLOCKING_CONDITION"
+          fi
+
+      - name: Validate schema approval label actor
+        if: contains(github.event.pull_request.labels.*.name, 'neon-schema-change-approved')
+        id: schema_approval
+        continue-on-error: true
+        uses: actions/github-script@v7
+        env:
+          AUTHORIZED_APPROVERS: ${{ vars.NEON_SCHEMA_APPROVERS }}
+        with:
+          script: |
+            const labelName = 'neon-schema-change-approved';
+            const allowed = new Set(
+              (process.env.AUTHORIZED_APPROVERS || '')
+                .split(/[\s,]+/)
+                .map((login) => login.trim().toLowerCase())
+                .filter(Boolean),
+            );
+            core.setOutput('authorized', 'false');
+            if (allowed.size === 0) {
+              core.setFailed('NEON_SCHEMA_APPROVERS is empty; approval fails closed.');
+              return;
+            }
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const events = await github.paginate(
+              github.rest.issues.listEventsForTimeline,
+              { owner, repo, issue_number, per_page: 100 },
+            );
+            const labelEvents = events.filter(
+              (event) =>
+                event.event === 'labeled' &&
+                event.label?.name === labelName &&
+                event.actor?.login,
+            );
+            const latest = labelEvents.at(-1);
+            const actor = latest?.actor?.login?.toLowerCase();
+            if (!actor || !allowed.has(actor)) {
+              core.setFailed('Schema approval label was not applied by an authorized maintainer.');
+              return;
+            }
+
+            core.setOutput('authorized', 'true');
+
+      - name: Setup PNPM
+        if: steps.preflight.outputs.ready == 'true'
+        id: setup_pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node.js
+        if: steps.preflight.outputs.ready == 'true'
+        id: setup_node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        if: steps.preflight.outputs.ready == 'true'
+        id: install
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Create or reuse deterministic Neon preview branch
+        if: steps.preflight.outputs.ready == 'true'
+        id: create_branch
+        continue-on-error: true
+        shell: bash
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+          NEON_PREVIEW_PARENT_BRANCH: ${{ vars.NEON_PREVIEW_PARENT_BRANCH }}
+          NEON_DATABASE: ${{ vars.NEON_DATABASE || 'neondb' }}
+          NEON_ROLE: ${{ vars.NEON_ROLE || 'neondb_owner' }}
+        run: |
+          node <<'EOF'
+          const fs = require('node:fs');
+
+          const API_BASE = 'https://console.neon.tech/api/v2';
+          const MAX_SAFE_MESSAGE_LENGTH = 320;
+
+          const sanitize = (value, maxLength = MAX_SAFE_MESSAGE_LENGTH) => {
+            let text = value == null ? '' : String(value);
+            const apiKey = process.env.NEON_API_KEY || '';
+            if (apiKey) {
+              text = text.split(apiKey).join('[REDACTED]');
+            }
+            return text
+              .replace(/\bpostgres(?:ql)?:\/\/[^\s"'`<>]+/gi, '[REDACTED_DATABASE_URL]')
+              .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]+/gi, 'Bearer [REDACTED]')
+              .replace(
+                /\b(Authorization|NEON_API_KEY|DATABASE_URL|password|connection(?:[_\s-]?string))\b\s*[:=]\s*[^\s,;]+/gi,
+                '$1=[REDACTED]',
+              )
+              .replace(/[\r\n\t]+/g, ' ')
+              .trim()
+              .slice(0, maxLength);
+          };
+
+          const setOutput = (name, value) => {
+            fs.appendFileSync(process.env.GITHUB_OUTPUT, `${name}=${String(value ?? '')}\n`);
+          };
+
+          class NeonHttpError extends Error {
+            constructor({ status, statusText, code, message }) {
+              super(message || statusText || 'Neon API request failed');
+              this.status = status;
+              this.statusText = statusText;
+              this.code = code;
+            }
+          }
+
+          const request = async (url, options = {}) => {
+            const response = await fetch(url, {
+              ...options,
+              headers: {
+                Accept: 'application/json',
+                Authorization: `Bearer ${process.env.NEON_API_KEY}`,
+                ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+              },
+              signal: AbortSignal.timeout(10_000),
+            });
+            const responseText = await response.text();
+            let body = null;
+            if (responseText) {
+              try {
+                body = JSON.parse(responseText);
+              } catch {
+                body = null;
+              }
+            }
+            if (!response.ok) {
+              throw new NeonHttpError({
+                status: response.status,
+                statusText: sanitize(response.statusText, 120),
+                code: sanitize(body?.code ?? body?.error?.code, 120),
+                message: sanitize(
+                  body?.message ??
+                    body?.error?.message ??
+                    (typeof body?.error === 'string' ? body.error : response.statusText),
+                ),
+              });
+            }
+            return body;
+          };
+
+          const projectId = process.env.NEON_PROJECT_ID;
+          const branchName = process.env.PREVIEW_BRANCH_NAME;
+          const parentBranch = process.env.NEON_PREVIEW_PARENT_BRANCH;
+          const database = process.env.NEON_DATABASE;
+          const role = process.env.NEON_ROLE;
+
+          const findBranch = async (identifier) => {
+            const url = new URL(`${API_BASE}/projects/${encodeURIComponent(projectId)}/branches`);
+            url.searchParams.set('search', identifier);
+            url.searchParams.set('limit', '10000');
+            const result = await request(url);
+            return result?.branches?.find(
+              (branch) => branch.name === identifier || branch.id === identifier,
+            );
+          };
+
+          const main = async () => {
+            try {
+              let branch = await findBranch(branchName);
+              let created = false;
+
+              if (!branch) {
+                const parent = await findBranch(parentBranch);
+                if (!parent) {
+                  throw new NeonHttpError({
+                    status: null,
+                    statusText: '',
+                    code: 'parent_branch_not_found',
+                    message: `Parent branch ${parentBranch} was not found`,
+                  });
+                }
+
+                const result = await request(
+                  `${API_BASE}/projects/${encodeURIComponent(projectId)}/branches`,
+                  {
+                    method: 'POST',
+                    body: JSON.stringify({
+                      endpoints: [
+                        {
+                          type: 'read_write',
+                          suspend_timeout_seconds: 300,
+                        },
+                      ],
+                      branch: {
+                        name: branchName,
+                        parent_id: parent.id,
+                      },
+                    }),
+                  },
+                );
+                branch = result?.branch;
+                created = true;
+              }
+
+              if (!branch?.id) {
+                throw new NeonHttpError({
+                  status: null,
+                  statusText: '',
+                  code: 'branch_response_invalid',
+                  message: 'Neon API response did not include a branch id',
+                });
+              }
+
+              const connectionUrl = new URL(
+                `${API_BASE}/projects/${encodeURIComponent(projectId)}/connection_uri`,
+              );
+              connectionUrl.searchParams.set('branch_id', branch.id);
+              connectionUrl.searchParams.set('database_name', database);
+              connectionUrl.searchParams.set('role_name', role);
+              connectionUrl.searchParams.set('pooled', 'false');
+              const connection = await request(connectionUrl);
+              const databaseUrl = new URL(connection?.uri);
+              databaseUrl.searchParams.set('connect_timeout', '30');
+              const databaseUrlString = databaseUrl.toString();
+
+              if (databaseUrl.password) {
+                console.log(`::add-mask::${databaseUrl.password}`);
+              }
+
+              setOutput('created', created);
+              setOutput('branch_id', branch.id);
+              setOutput('db_url', databaseUrlString);
+              setOutput('http_status', '');
+              setOutput('status_text', '');
+              setOutput('error_code', '');
+              setOutput('safe_message', '');
+            } catch (error) {
+              const status = error instanceof NeonHttpError ? error.status : null;
+              const statusText =
+                error instanceof NeonHttpError ? sanitize(error.statusText, 120) : '';
+              const code = error instanceof NeonHttpError ? sanitize(error.code, 120) : '';
+              const safeMessage = sanitize(
+                error instanceof Error ? error.message : 'Unknown Neon API failure',
+              );
+
+              setOutput('http_status', status ?? '');
+              setOutput('status_text', statusText);
+              setOutput('error_code', code);
+              setOutput('safe_message', safeMessage);
+
+              const statusLabel = status ? `HTTP ${status}` : 'request failed';
+              const codeLabel = code ? ` code=${code}` : '';
+              console.error(
+                `::error title=Neon branch create failed::${statusLabel}${codeLabel} message=${safeMessage}`,
+              );
+              process.exitCode = 1;
+            }
+          };
+
+          main();
+          EOF
+
+      - name: Reset reused preview branch to its parent
+        if: steps.create_branch.outcome == 'success' && steps.create_branch.outputs.created == 'false'
+        id: reset_branch
+        continue-on-error: true
+        uses: neondatabase/reset-branch-action@v1
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch: ${{ env.PREVIEW_BRANCH_NAME }}
+          parent: true
+          cs_database: ${{ vars.NEON_DATABASE || 'neondb' }}
+          cs_role_name: ${{ vars.NEON_ROLE || 'neondb_owner' }}
+          cs_prisma: true
+          api_key: ${{ secrets.NEON_API_KEY }}
+
+      - name: Generate Prisma client
+        if: steps.create_branch.outcome == 'success' && (steps.create_branch.outputs.created == 'true' || steps.reset_branch.outcome == 'success')
+        id: prisma_generate
+        continue-on-error: true
+        env:
+          DATABASE_URL: ${{ steps.reset_branch.outputs.db_url || steps.create_branch.outputs.db_url }}
+        run: pnpm --filter @repo/db generate
+
+      - name: Apply versioned migrations to preview
+        if: steps.prisma_generate.outcome == 'success'
+        id: migrate
+        continue-on-error: true
+        env:
+          DATABASE_URL: ${{ steps.reset_branch.outputs.db_url || steps.create_branch.outputs.db_url }}
+        run: pnpm --filter @repo/db migrate:deploy
+
+      - name: Verify migration status
+        if: steps.migrate.outcome == 'success'
+        id: migration_status
+        continue-on-error: true
+        env:
+          DATABASE_URL: ${{ steps.reset_branch.outputs.db_url || steps.create_branch.outputs.db_url }}
+        run: pnpm --filter @repo/db prisma migrate status
+
+      - name: Run governed database tests against preview
+        if: steps.migration_status.outcome == 'success'
+        id: db_tests
+        continue-on-error: true
+        env:
+          DATABASE_URL: ${{ steps.reset_branch.outputs.db_url || steps.create_branch.outputs.db_url }}
+          MCP_1N_DATABASE_URL: ${{ steps.reset_branch.outputs.db_url || steps.create_branch.outputs.db_url }}
+        run: |
+          node --import tsx --test \
+            packages/db/src/__tests__/toolContractUnique.integration.test.ts
+          pnpm test:neon-preview-schema
+
+      - name: Verify migrated database matches the versioned Prisma schema
+        if: steps.migration_status.outcome == 'success'
+        id: schema_integrity
+        continue-on-error: true
+        env:
+          DATABASE_URL: ${{ steps.reset_branch.outputs.db_url || steps.create_branch.outputs.db_url }}
+        run: |
+          pnpm --filter @repo/db prisma migrate diff \
+            --from-config-datasource \
+            --to-schema ./prisma/schema.prisma \
+            --exit-code
+
+      - name: Generate Neon parent-to-preview schema diff
+        if: steps.migration_status.outcome == 'success'
+        id: schema_diff
+        continue-on-error: true
+        uses: neondatabase/schema-diff-action@v1
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          compare_branch: ${{ env.PREVIEW_BRANCH_NAME }}
+          base_branch: ${{ vars.NEON_PREVIEW_PARENT_BRANCH }}
+          database: ${{ vars.NEON_DATABASE || 'neondb' }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+
+      - name: Persist schema diff for local classification
+        if: steps.schema_diff.outcome == 'success'
+        id: persist_schema_diff
+        shell: bash
+        env:
+          SCHEMA_DIFF: ${{ steps.schema_diff.outputs.diff }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$EVIDENCE_DIR"
+          printf '%s\n' "$SCHEMA_DIFF" > "$EVIDENCE_DIR/schema-diff.sql"
+
+      - name: Enforce fail-closed schema compatibility policy
+        if: steps.persist_schema_diff.outcome == 'success'
+        id: schema_gate
+        continue-on-error: true
+        env:
+          SCHEMA_CHANGE_APPROVED: ${{ steps.schema_approval.outputs.authorized == 'true' }}
+        run: |
+          pnpm check:neon-preview-schema \
+            --input "$EVIDENCE_DIR/schema-diff.sql" \
+            --output "$EVIDENCE_DIR/schema-gate.json" \
+            --approved "$SCHEMA_CHANGE_APPROVED"
+
+      - name: Build sanitized preview evidence
+        if: always()
+        id: evidence
+        shell: bash
+        env:
+          PREFLIGHT_READY: ${{ steps.preflight.outputs.ready }}
+          PREFLIGHT_BLOCK: ${{ steps.preflight.outputs.blocking_condition }}
+          APPROVAL_LABEL_PRESENT: ${{ contains(github.event.pull_request.labels.*.name, 'neon-schema-change-approved') }}
+          APPROVAL_OUTCOME: ${{ steps.schema_approval.outcome }}
+          SETUP_PNPM_OUTCOME: ${{ steps.setup_pnpm.outcome }}
+          SETUP_NODE_OUTCOME: ${{ steps.setup_node.outcome }}
+          INSTALL_OUTCOME: ${{ steps.install.outcome }}
+          CREATE_OUTCOME: ${{ steps.create_branch.outcome }}
+          BRANCH_CREATED: ${{ steps.create_branch.outputs.created }}
+          CREATE_HTTP_STATUS: ${{ steps.create_branch.outputs.http_status }}
+          CREATE_STATUS_TEXT: ${{ steps.create_branch.outputs.status_text }}
+          CREATE_ERROR_CODE: ${{ steps.create_branch.outputs.error_code }}
+          CREATE_SAFE_MESSAGE: ${{ steps.create_branch.outputs.safe_message }}
+          RESET_OUTCOME: ${{ steps.reset_branch.outcome }}
+          PRISMA_GENERATE_OUTCOME: ${{ steps.prisma_generate.outcome }}
+          MIGRATE_OUTCOME: ${{ steps.migrate.outcome }}
+          MIGRATION_STATUS_OUTCOME: ${{ steps.migration_status.outcome }}
+          TEST_OUTCOME: ${{ steps.db_tests.outcome }}
+          SCHEMA_INTEGRITY_OUTCOME: ${{ steps.schema_integrity.outcome }}
+          SCHEMA_DIFF_OUTCOME: ${{ steps.schema_diff.outcome }}
+          SCHEMA_GATE_OUTCOME: ${{ steps.schema_gate.outcome }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BRANCH_NAME: ${{ env.PREVIEW_BRANCH_NAME }}
+          PARENT_BRANCH: ${{ vars.NEON_PREVIEW_PARENT_BRANCH }}
+          PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+        run: |
+          node <<'EOF'
+          const fs = require('node:fs');
+          const path = require('node:path');
+
+          const evidenceDir = process.env.EVIDENCE_DIR;
+          fs.mkdirSync(evidenceDir, { recursive: true });
+          const sanitize = (value, maxLength = 320) =>
+            String(value ?? '')
+              .replace(/\bpostgres(?:ql)?:\/\/[^\s"'`<>]+/gi, '[REDACTED_DATABASE_URL]')
+              .replace(/\bBearer\s+[A-Za-z0-9._~+/=-]+/gi, 'Bearer [REDACTED]')
+              .replace(
+                /\b(Authorization|NEON_API_KEY|DATABASE_URL|password|connection(?:[_\s-]?string))\b\s*[:=]\s*[^\s,;]+/gi,
+                '$1=[REDACTED]',
+              )
+              .replace(/[\r\n\t]+/g, ' ')
+              .trim()
+              .slice(0, maxLength);
+
+          let schemaGate = null;
+          const schemaGatePath = path.join(evidenceDir, 'schema-gate.json');
+          if (fs.existsSync(schemaGatePath)) {
+            schemaGate = JSON.parse(fs.readFileSync(schemaGatePath, 'utf8'));
+          }
+
+          const resetOutcome =
+            process.env.BRANCH_CREATED === 'false'
+              ? process.env.RESET_OUTCOME
+              : 'success';
+          const approvalOutcome =
+            process.env.APPROVAL_LABEL_PRESENT === 'true'
+              ? process.env.APPROVAL_OUTCOME
+              : 'success';
+          const firstFailure = [
+            [approvalOutcome, 'schema_approval_label_unauthorized'],
+            [process.env.SETUP_PNPM_OUTCOME, 'pnpm_setup_failed'],
+            [process.env.SETUP_NODE_OUTCOME, 'node_setup_failed'],
+            [process.env.INSTALL_OUTCOME, 'dependency_install_failed'],
+            [process.env.CREATE_OUTCOME, 'neon_branch_create_failed'],
+            [resetOutcome, 'neon_branch_reset_failed'],
+            [process.env.PRISMA_GENERATE_OUTCOME, 'prisma_generate_failed'],
+            [process.env.MIGRATE_OUTCOME, 'migration_failed'],
+            [process.env.MIGRATION_STATUS_OUTCOME, 'migration_status_failed'],
+            [process.env.TEST_OUTCOME, 'database_tests_failed'],
+            [process.env.SCHEMA_INTEGRITY_OUTCOME, 'migrated_schema_drift'],
+            [process.env.SCHEMA_DIFF_OUTCOME, 'schema_diff_generation_failed'],
+            [process.env.SCHEMA_GATE_OUTCOME, schemaGate?.blockingCondition || 'schema_gate_failed'],
+          ].find(([outcome]) => outcome !== 'success');
+
+          const preflightBlocked = process.env.PREFLIGHT_READY !== 'true';
+          const blockingCondition = preflightBlocked
+            ? process.env.PREFLIGHT_BLOCK || 'neon_preview_preflight_failed'
+            : firstFailure?.[1] || null;
+          const approvalBlocked =
+            Boolean(schemaGate?.blockingCondition) &&
+            blockingCondition === schemaGate.blockingCondition;
+          const branchCreateFailure =
+            blockingCondition === 'neon_branch_create_failed'
+              ? {
+                  httpStatus: /^[1-5]\d{2}$/.test(process.env.CREATE_HTTP_STATUS || '')
+                    ? Number(process.env.CREATE_HTTP_STATUS)
+                    : null,
+                  statusText: sanitize(process.env.CREATE_STATUS_TEXT, 120) || null,
+                  code: sanitize(process.env.CREATE_ERROR_CODE, 120) || null,
+                  safeMessage: sanitize(process.env.CREATE_SAFE_MESSAGE) || null,
+                  branchName: sanitize(process.env.BRANCH_NAME, 120),
+                  parentBranch: sanitize(process.env.PARENT_BRANCH, 120),
+                  projectId: sanitize(process.env.PROJECT_ID, 120),
+                }
+              : null;
+
+          const report = {
+            status: blockingCondition
+              ? (preflightBlocked || approvalBlocked ? 'blocked' : 'failed')
+              : 'success',
+            timestamp: new Date().toISOString(),
+            branchName: process.env.BRANCH_NAME,
+            prNumber: Number(process.env.PR_NUMBER),
+            migrationResult: process.env.MIGRATION_STATUS_OUTCOME || 'skipped',
+            testResult: process.env.TEST_OUTCOME || 'skipped',
+            schemaDiffResult:
+              schemaGate?.classification ||
+              (process.env.SCHEMA_DIFF_OUTCOME === 'failure' ? 'failed' : 'skipped'),
+            blockingCondition,
+            branchCreateFailure,
+          };
+
+          fs.writeFileSync(
+            path.join(evidenceDir, 'preview-evidence.json'),
+            `${JSON.stringify(report, null, 2)}\n`,
+          );
+          EOF
+
+      - name: Create or update PR summary comment
+        if: always()
+        continue-on-error: true
+        uses: actions/github-script@v7
+        env:
+          EVIDENCE_FILE: ${{ env.EVIDENCE_DIR }}/preview-evidence.json
+        with:
+          script: |
+            const fs = require('node:fs');
+            const marker = '<!-- eiah-neon-preview-governance -->';
+            const report = JSON.parse(fs.readFileSync(process.env.EVIDENCE_FILE, 'utf8'));
+            const neonHttpLabel = report.branchCreateFailure
+              ? [
+                  report.branchCreateFailure.httpStatus
+                    ? `HTTP ${report.branchCreateFailure.httpStatus}`
+                    : null,
+                  report.branchCreateFailure.statusText,
+                ]
+                  .filter(Boolean)
+                  .join(' ')
+              : null;
+            const branchCreateDetails = report.branchCreateFailure
+              ? [
+                  `- Neon HTTP: \`${neonHttpLabel || 'unavailable'}\``,
+                  `- Neon code: \`${report.branchCreateFailure.code || 'unavailable'}\``,
+                  `- detalhe seguro: \`${report.branchCreateFailure.safeMessage || 'unavailable'}\``,
+                ]
+              : [];
+            const body = [
+              marker,
+              '## Neon preview governado',
+              '',
+              `- branch: \`${report.branchName}\``,
+              `- migrations: \`${report.migrationResult}\``,
+              `- testes DB: \`${report.testResult}\``,
+              `- schema diff: \`${report.schemaDiffResult}\``,
+              `- status: \`${report.status}\``,
+              `- bloqueio: \`${report.blockingCondition || 'none'}\``,
+              ...branchCreateDetails,
+              '',
+              'Mudanças incompatíveis ou indeterminadas exigem a label humana `neon-schema-change-approved`.',
+            ].join('\n');
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+            const comments = await github.paginate(
+              github.rest.issues.listComments,
+              { owner, repo, issue_number, per_page: 100 },
+            );
+            const existing = comments.find(
+              (comment) => comment.user?.type === 'Bot' && comment.body?.includes(marker),
+            );
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner,
+                repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number, body });
+            }
+
+      - name: Upload sanitized preview evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-preview-pr-${{ github.event.pull_request.number }}
+          path: ${{ env.EVIDENCE_DIR }}/preview-evidence.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce preview result
+        if: always()
+        run: |
+          node <<'EOF'
+          const fs = require('node:fs');
+          const report = JSON.parse(
+            fs.readFileSync(`${process.env.EVIDENCE_DIR}/preview-evidence.json`, 'utf8'),
+          );
+          if (report.status !== 'success') {
+            console.error(`::error title=Neon preview blocked::${report.blockingCondition}`);
+            process.exit(1);
+          }
+          EOF

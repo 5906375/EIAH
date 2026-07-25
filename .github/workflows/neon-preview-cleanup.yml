@@ -1,0 +1,168 @@
+name: Neon Preview Cleanup
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions: {}
+
+env:
+  PREVIEW_BRANCH_NAME: preview/pr-${{ github.event.pull_request.number }}
+  EVIDENCE_DIR: artifacts/neon-preview-cleanup
+
+jobs:
+  cleanup:
+    name: NeonPreviewCleanup
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Validate Neon configuration
+        id: preflight
+        shell: bash
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+
+          READY=true
+          BLOCKING_CONDITION=
+          if [ -z "${NEON_API_KEY:-}" ]; then
+            READY=false
+            BLOCKING_CONDITION=neon_api_key_missing
+          elif [ -z "${NEON_PROJECT_ID:-}" ]; then
+            READY=false
+            BLOCKING_CONDITION=neon_project_id_missing
+          fi
+
+          {
+            echo "ready=$READY"
+            echo "blocking_condition=$BLOCKING_CONDITION"
+          } >> "$GITHUB_OUTPUT"
+
+          if [ "$READY" != true ]; then
+            echo "::error title=Neon cleanup blocked::$BLOCKING_CONDITION"
+          fi
+
+      - name: Resolve exact preview branch
+        if: steps.preflight.outputs.ready == 'true'
+        id: lookup
+        continue-on-error: true
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ vars.NEON_PROJECT_ID }}
+          BRANCH_NAME: ${{ env.PREVIEW_BRANCH_NAME }}
+        run: |
+          node --input-type=module <<'EOF'
+          import fs from 'node:fs';
+          const params = new URLSearchParams({
+            search: process.env.BRANCH_NAME,
+            limit: '100',
+          });
+          const url =
+            `https://console.neon.tech/api/v2/projects/` +
+            `${encodeURIComponent(process.env.NEON_PROJECT_ID)}/branches?${params}`;
+          const response = await fetch(url, {
+            headers: { Authorization: `Bearer ${process.env.NEON_API_KEY}` },
+          });
+          if (!response.ok) throw new Error(`neon_branch_lookup_http_${response.status}`);
+          const payload = await response.json();
+          const branch = (payload.branches || []).find(
+            (candidate) => candidate.name === process.env.BRANCH_NAME,
+          );
+          fs.mkdirSync(process.env.EVIDENCE_DIR, { recursive: true });
+          fs.writeFileSync(
+            `${process.env.EVIDENCE_DIR}/lookup.json`,
+            `${JSON.stringify({ found: Boolean(branch), branchId: branch?.id || null })}\n`,
+          );
+          fs.appendFileSync(
+            process.env.GITHUB_OUTPUT,
+            `found=${Boolean(branch)}\nbranch_id=${branch?.id || ''}\n`,
+          );
+          EOF
+
+      - name: Delete Neon preview branch
+        if: steps.lookup.outputs.found == 'true'
+        id: delete_branch
+        continue-on-error: true
+        uses: neondatabase/delete-branch-action@v3
+        with:
+          project_id: ${{ vars.NEON_PROJECT_ID }}
+          branch: ${{ steps.lookup.outputs.branch_id }}
+          api_key: ${{ secrets.NEON_API_KEY }}
+
+      - name: Build sanitized cleanup evidence
+        if: always()
+        env:
+          PREFLIGHT_READY: ${{ steps.preflight.outputs.ready }}
+          PREFLIGHT_BLOCK: ${{ steps.preflight.outputs.blocking_condition }}
+          LOOKUP_OUTCOME: ${{ steps.lookup.outcome }}
+          BRANCH_FOUND: ${{ steps.lookup.outputs.found }}
+          DELETE_OUTCOME: ${{ steps.delete_branch.outcome }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BRANCH_NAME: ${{ env.PREVIEW_BRANCH_NAME }}
+        run: |
+          node <<'EOF'
+          const fs = require('node:fs');
+          fs.mkdirSync(process.env.EVIDENCE_DIR, { recursive: true });
+
+          let status = 'success';
+          let cleanupResult = 'already_absent';
+          let blockingCondition = null;
+
+          if (process.env.PREFLIGHT_READY !== 'true') {
+            status = 'blocked';
+            cleanupResult = 'not_attempted';
+            blockingCondition = process.env.PREFLIGHT_BLOCK || 'neon_cleanup_preflight_failed';
+          } else if (process.env.LOOKUP_OUTCOME !== 'success') {
+            status = 'failed';
+            cleanupResult = 'lookup_failed';
+            blockingCondition = 'neon_preview_branch_lookup_failed';
+          } else if (process.env.BRANCH_FOUND === 'true') {
+            if (process.env.DELETE_OUTCOME === 'success') {
+              cleanupResult = 'deleted';
+            } else {
+              status = 'failed';
+              cleanupResult = 'delete_failed';
+              blockingCondition = 'neon_preview_branch_delete_failed';
+            }
+          }
+
+          const report = {
+            status,
+            timestamp: new Date().toISOString(),
+            branchName: process.env.BRANCH_NAME,
+            prNumber: Number(process.env.PR_NUMBER),
+            cleanupResult,
+            reasonCode: 'N/A',
+            blockingCondition,
+          };
+          fs.writeFileSync(
+            `${process.env.EVIDENCE_DIR}/cleanup-evidence.json`,
+            `${JSON.stringify(report, null, 2)}\n`,
+          );
+          EOF
+
+      - name: Upload cleanup evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: neon-preview-cleanup-pr-${{ github.event.pull_request.number }}
+          path: ${{ env.EVIDENCE_DIR }}/cleanup-evidence.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce cleanup result and emit alert
+        if: always()
+        run: |
+          node <<'EOF'
+          const fs = require('node:fs');
+          const report = JSON.parse(
+            fs.readFileSync(`${process.env.EVIDENCE_DIR}/cleanup-evidence.json`, 'utf8'),
+          );
+          if (report.status !== 'success') {
+            console.error(`::error title=Neon preview cleanup failed::${report.blockingCondition}`);
+            process.exit(1);
+          }
+          EOF

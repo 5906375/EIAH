@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "neon.preview.schema_test.evidence.v1",
+  "artifactId": "NEON-PREVIEW-SCHEMA-TEST-2026-07-24",
+  "capturedAt": "2026-07-24T14:04:17-03:00",
+  "branch": "feat/neon-preview-branches",
+  "baseline": "630dfce0fd4dd9daae81f50a185bd4dc569fe372",
+  "command": "pnpm test:neon-preview-schema",
+  "canonical_command": "pnpm test:neon-preview-schema",
+  "canonical_script": "node --import tsx --test scripts/tests/checkNeonPreviewSchemaCompatibility.test.ts",
+  "status": "pass",
+  "runner_file_tests": 1,
+  "declared_test_cases": 5,
+  "tap": {
+    "tests": 1,
+    "suites": 0,
+    "pass": 1,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "todo": 0
+  },
+  "sourceDeclaredCases": 5,
+  "granularity": {
+    "classification": "confirmada",
+    "detail": "O fonte declara cinco chamadas test(...). Sob o script versionado com node --test, o resumo TAP canônico é file-level: tests 1, pass 1, fail 0."
+  },
+  "environment": {
+    "node": "v22.17.1",
+    "pnpm": "10.12.4",
+    "tsx": "v4.21.0"
+  },
+  "remoteEvidence": false,
+  "outputSanitized": [
+    "> eiah-builder@ test:neon-preview-schema <repo>",
+    "> node --import tsx --test scripts/tests/checkNeonPreviewSchemaCompatibility.test.ts",
+    "TAP version 13",
+    "# Subtest: scripts/tests/checkNeonPreviewSchemaCompatibility.test.ts",
+    "ok 1 - scripts/tests/checkNeonPreviewSchemaCompatibility.test.ts",
+    "1..1",
+    "# tests 1",
+    "# suites 0",
+    "# pass 1",
+    "# fail 0",
+    "# cancelled 0",
+    "# skipped 0",
+    "# todo 0"
+  ]
+}

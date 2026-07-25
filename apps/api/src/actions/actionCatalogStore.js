@@ -1,11 +1,4 @@
 import { prisma } from "@repo/db";
-// DEBUG: print the DB URL Prisma will use. Remove once connectivity is confirmed.
-if (process.env.DATABASE_URL) {
-    console.log("actionCatalogStore DATABASE_URL", process.env.DATABASE_URL);
-}
-else {
-    console.log("actionCatalogStore DATABASE_URL not set");
-}
 function serializeActions(contract) {
     const entries = {};
     const actions = Object.entries(contract.actions);

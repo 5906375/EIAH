@@ -4,6 +4,16 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## Validação de banco em PR — Postgres efêmero atual e Neon histórico (2026-07-25)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Gate canônico de banco para PR | `.github/workflows/db-preview-postgres.yml` + `docs/ops/neon-github-preview-branches.md` | Materializa configuração versionada de PostgreSQL efêmero `pgvector/pgvector:pg16`, `migrate deploy`, `migrate status`, teste real de unicidade e artifact JSON sanitizado. O enforcement é fail-closed para service/generate/migrations/status/teste. O `migrate diff` permanece informativo e registra `known_schema_drift` sem falso sucesso devido ao baseline P0 histórico entre migrations e `schema.prisma`. Não recebe `NEON_*`, não acessa staging/produção e não prova run remoto, branch protection configurada ou equivalência completa do schema. Classificação `parcial`. |
+| Lifecycle Neon histórico/deprecated para PR | `.github/workflows/neon-preview-create.yml` + `.github/workflows/neon-preview-cleanup.yml` + `.github/workflows/neon-preview-reconcile.yml` + `docs/ops/neon-github-preview-branches.md` | Preserva o histórico implementado em 2026-07-24. Create não responde mais a `pull_request` e seu job está desabilitado; cleanup/reconcile permanecem somente para recursos legados. Não é fonte canônica nem required gate atual. A retirada do contexto antigo da ruleset é ação manual pendente. |
+| Classificador histórico de schema diff Neon | `scripts/checkNeonPreviewSchemaCompatibility.ts` + `scripts/tests/checkNeonPreviewSchemaCompatibility.test.ts` + `package.json` (`check:neon-preview-schema`, `test:neon-preview-schema`) | Preserva o classificador e sua evidência local anterior, mas ele não participa do caminho obrigatório atual de PR. `evidenceRef{artifactId: NEON-PREVIEW-SCHEMA-TEST-2026-07-24, location: ops/evidence/latest/neon-preview-schema-test-2026-07-24.json, hash: 737465dcb47873697e1e055a6a1aef314f2529fe9dc04ca1c25fbca3b4c34885}`. |
+| Evidências históricas da implementação Neon | `ops/evidence/latest/neon-github-preview-branches-implementation-2026-07-24.md` + `ops/evidence/latest/neon-preview-branch-create-observability-2026-07-24.md` | Registram validações locais e simulação HTTP 412 da implementação anterior. Não provam execução externa, não promovem Neon a canônico e não provam o novo gate Postgres em GitHub Actions. |
+| Incidente P1 fail-closed dos testes `tenantGuard` | `ops/evidence/latest/tenant-guard-prisma-extension-test-drift-2026-07-24.md` | Registra `INC-P1-TENANT-GUARD-PRISMA-EXTENSION-2026-07-24` como `open`, os três arquivos afetados, a revalidação real `tests 4 / pass 1 / fail 3`, o erro `t.$extends is not a function`, a hipótese de drift middleware/Prisma extension, contenção fail-closed e critérios de encerramento. Não prova bypass no runtime, não corrige o `tenantGuard` e não declara a suíte ampla como verde. |
+
 ## MCP-1H a MCP-1N — proveniência pós-merge e corte APE #47 (2026-07-24)
 
 Snapshot canônico desta indexação:
@@ -47,6 +57,13 @@ Snapshot canônico desta indexação:
 | --- | --- | --- |
 | Preflight de reuso para estrutura conversacional | `docs/architecture/existing-structure-preflight.md` | Registra a regra de inventario previo, matriz reutilizar/estender/adaptar/substituir/nao aplicavel, bloqueio P0 contra estrutura paralela, launcher render-only e DoD minimo para PR funcional posterior. |
 | Auditoria de orquestracao e baseline passivo das duas rotas | `docs/ops/audit/AUDIT-FRONTDOOR-ORCHESTRATION-2026-07.md` | Registra o diagnostico local, o Caso 7, os candidatos obrigatorios de reuso, a convivencia sem redirect e o uso conservador da telemetria passiva; nao comprova paridade funcional nem unificacao fechada. |
+
+## DEV runtime hardening — Postgres/Redis local (2026-07-25)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Hardening runtime DEV local | `docs/ops/evidence/hardening-dev-runtime-2026-07-25.md` | Evidencia localmente 25 migrations aplicadas via container one-off, Postgres aceitando conexões, Redis bloqueando acesso sem autenticação, Redis autenticado respondendo PONG, AOF ativo e API health com database connected e agentRuntime ready. Escopo limitado a DEV local; não fecha staging, produção, backup externo, HA/PITR, environment label, bootstrap pré-migration ou remoção de logs sensíveis. |
+
 
 ## Domain & DNS / Go-Live Controlado
 

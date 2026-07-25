@@ -3,7 +3,10 @@ import assert from "node:assert/strict";
 import type { Request, Response } from "express";
 
 import { createPublicHealthHandler } from "../routes/health";
-import type { PublicHealthReport } from "../services/health";
+import {
+  resolveHealthEnvironment,
+  type PublicHealthReport,
+} from "../services/health";
 
 async function invokeHealthHandler(report: PublicHealthReport) {
   const handler = createPublicHealthHandler({
@@ -69,4 +72,22 @@ test("GET /api/health returns 503 when the public health contract is degraded", 
   assert.equal(typeof response.body?.version, "string");
   assert.match(String(response.body?.dependencies?.database ?? ""), /^(connected|disconnected)$/);
   assert.match(String(response.body?.dependencies?.agentRuntime ?? ""), /^(ready|error)$/);
+});
+
+test("public health maps development identifiers to the non-production tier", () => {
+  assert.equal(resolveHealthEnvironment({
+    EIAH_ENVIRONMENT_ID: "eiah-dev",
+    NODE_ENV: "development",
+  }), "staging");
+  assert.equal(resolveHealthEnvironment({
+    APP_ENV: "development",
+    NODE_ENV: "production",
+  }), "staging");
+});
+
+test("public health exposes production only when the selected tier is explicit", () => {
+  assert.equal(resolveHealthEnvironment({ APP_ENV: "production" }), "production");
+  assert.equal(resolveHealthEnvironment({ HEALTH_ENV: "production" }), "production");
+  assert.equal(resolveHealthEnvironment({ NODE_ENV: "production" }), "production");
+  assert.equal(resolveHealthEnvironment({ NODE_ENV: "unexpected" }), "staging");
 });

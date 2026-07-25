@@ -64,13 +64,17 @@ function resolvePackageVersion() {
   return "0.0.0-dev";
 }
 
-function resolveHealthEnvironment(): "production" | "staging" {
+export function resolveHealthEnvironment(
+  env: NodeJS.ProcessEnv = process.env,
+): PublicHealthReport["environment"] {
   const raw =
-    process.env.APP_ENV?.trim().toLowerCase()
-    || process.env.HEALTH_ENV?.trim().toLowerCase()
-    || process.env.NODE_ENV?.trim().toLowerCase()
+    env.APP_ENV?.trim().toLowerCase()
+    || env.HEALTH_ENV?.trim().toLowerCase()
+    || env.NODE_ENV?.trim().toLowerCase()
     || "staging";
 
+  // The versioned public contract exposes deployment tiers only. Local,
+  // development, test and unknown values fail closed to the non-production tier.
   return raw === "production" ? "production" : "staging";
 }
 
