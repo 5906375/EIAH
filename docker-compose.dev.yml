@@ -2,13 +2,16 @@
 # 🧠 EIAH_BUILDER — Docker Compose (Ambiente de Desenvolvimento)
 # Fases 0–3: Infraestrutura Unificada + Execução Assíncrona + Governança Cognitiva
 #
-# Correções aplicadas mantendo funcionalidades:
-# - Healthcheck sem curl (Node 20 fetch nativo)
-# - PNPM cache/store consistente via volume (pnpm-store:/pnpm/store)
-# - Mantém mounts do monorepo, schema do Prisma, MCP runner, etc.
+# Revisão de hardening (disciplina uniforme — dev):
+# - Secrets fora do YAML: POSTGRES_PASSWORD e REDIS_URL agora vêm do .env da raiz
+# - Redis com requirepass (autenticação) + AOF (appendonly) para durabilidade de fila
+# - Removidos os inlines REDIS_URL do api e do maintenance-worker (evita override do .env)
 #
 # Obs: network externa exige pré-criação:
 #   docker network create eiah-dev
+#
+# Variáveis esperadas no .env da raiz (ver PATCH-hardening-dev-*.md):
+#   POSTGRES_PASSWORD, REDIS_PASSWORD, REDIS_URL, DATABASE_URL
 ###################################################################
 services:
 
@@ -33,7 +36,7 @@ services:
       - SERVICE_ROLE=api
       - RUN_QUEUE_CONSUMER_MODE=api-embedded
       - RUN_ATIVO_CONSUMER_MODE=disabled
-      - REDIS_URL=redis://eiah-redis:6379/0
+      # REDIS_URL removido daqui — agora vem do .env (fonte única, com senha)
       - PNPM_HOME=/pnpm
       - PNPM_STORE_DIR=/pnpm/store
       - PATH=/pnpm:$PATH
@@ -152,7 +155,7 @@ services:
       - SERVICE_ROLE=maintenance-worker
       - RUN_QUEUE_CONSUMER_MODE=disabled
       - RUN_ATIVO_CONSUMER_MODE=maintenance
-      - REDIS_URL=redis://eiah-redis:6379/0
+      # REDIS_URL removido daqui — agora vem do .env (fonte única, com senha)
       - PNPM_HOME=/pnpm
       - PNPM_STORE_DIR=/pnpm/store
       - PATH=/pnpm:$PATH
@@ -178,7 +181,7 @@ services:
     restart: unless-stopped
     env_file: .env
     environment:
-      POSTGRES_PASSWORD: senha
+      # POSTGRES_PASSWORD saiu daqui — agora vem do .env (env_file acima o injeta)
       POSTGRES_DB: eiah_builder
     ports:
       - "5433:5432" # Evita conflito local
@@ -193,11 +196,16 @@ services:
 
   #################################################################
   # REDIS — Mensageria + Cache + Fila BullMQ
+  # requirepass (auth) + AOF (appendonly) — durabilidade de fila run/receipt
   #################################################################
   eiah-redis:
     image: redis:7
     container_name: eiah-redis
     restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
+    environment:
+      # redis-cli lê REDISCLI_AUTH automaticamente — evita senha no process list do healthcheck
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
     ports:
       - "6379:6379"
     volumes:
