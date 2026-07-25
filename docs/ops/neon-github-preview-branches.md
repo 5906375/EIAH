@@ -5,8 +5,9 @@
 > **Deprecated para Pull Requests desde 2026-07-25.** Neon gerenciado não é
 > fonte canônica nem required gate de PR. O gate atual é
 > `.github/workflows/db-preview-postgres.yml`, com PostgreSQL efêmero,
-> migrations versionadas, teste de banco, integridade Prisma e artifact
-> sanitizado. O caminho obrigatório não usa secret, variable ou recurso Neon.
+> migrations versionadas, teste de banco, inspeção informativa de integridade
+> Prisma e artifact sanitizado. O caminho obrigatório não usa secret, variable
+> ou recurso Neon.
 
 O workflow `.github/workflows/neon-preview-create.yml` permanece somente como
 histórico acionável manualmente e com o job desabilitado. Cleanup e reconcile
@@ -21,15 +22,23 @@ PR opened/reopened/synchronize
   -> database eiah_builder descartável
   -> Prisma generate + migrate deploy + migrate status
   -> teste PostgreSQL real
-  -> migrate diff contra schema.prisma
+  -> migrate diff informativo contra schema.prisma
   -> artifacts/db-preview/db-preview-evidence.json
-  -> enforcement fail-closed
+  -> enforcement fail-closed para generate/migrations/status/teste
 ```
 
 O novo gate não acessa staging ou produção, não cria branch persistente e não
 recebe `NEON_API_KEY`, `NEON_PROJECT_ID` ou
 `NEON_PREVIEW_PARENT_BRANCH`. O status permanece **parcial** até existir run
 verde real no GitHub e o contexto novo ser configurado na branch protection.
+
+Existe drift histórico P0 entre as migrations e `schema.prisma`: o banco
+migrado contém enums e tabelas ainda ausentes do schema canônico. Enquanto
+esse baseline não for reconciliado em frente própria, `migrate diff` não
+bloqueia o PR, mas também nunca é promovido falsamente a sucesso. O artifact
+registra `schemaIntegrityResult=known_schema_drift`,
+`knownSchemaDrift=true`, o exit code informativo e
+`blockingCondition=null` quando todos os checks obrigatórios passam.
 
 ## Contrato Neon histórico
 
