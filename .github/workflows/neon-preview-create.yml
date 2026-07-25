@@ -1,16 +1,13 @@
-name: Neon Preview Create
+name: "[Deprecated] Neon Preview Create (historical)"
 
 on:
-  pull_request:
-    types: [opened, reopened, synchronize, labeled, unlabeled]
+  workflow_dispatch:
 
 permissions:
   contents: read
-  issues: read
-  pull-requests: write
 
 concurrency:
-  group: neon-preview-pr-${{ github.event.pull_request.number }}
+  group: neon-preview-deprecated-${{ github.run_id }}
   cancel-in-progress: true
 
 env:
@@ -22,9 +19,9 @@ env:
 jobs:
   create_migrate_test:
     name: NeonPreviewCreateMigrateTest
+    if: ${{ false }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    environment: neon-preview
 
     steps:
       - name: Checkout repository

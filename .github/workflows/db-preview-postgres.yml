@@ -1,0 +1,170 @@
+name: DB Preview Postgres
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: db-preview-postgres-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+  PNPM_VERSION: '10.12.4'
+  EVIDENCE_DIR: artifacts/db-preview
+  DATABASE_URL: postgresql://postgres:ci-only-password@localhost:5432/eiah_builder?schema=public
+  MCP_1N_DATABASE_URL: postgresql://postgres:ci-only-password@localhost:5432/eiah_builder?schema=public
+
+jobs:
+  validate:
+    name: DbPreviewPostgresValidate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: eiah_builder
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d eiah_builder"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        id: checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        id: setup_pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node.js
+        id: setup_node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        id: install
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Generate Prisma client
+        id: prisma_generate
+        run: pnpm --filter @repo/db generate
+
+      - name: Apply versioned migrations
+        id: migrate
+        run: pnpm --filter @repo/db migrate:deploy
+
+      - name: Verify migration status
+        id: migration_status
+        run: pnpm --filter @repo/db prisma migrate status
+
+      - name: Run governed PostgreSQL schema test
+        id: database_test
+        run: |
+          node --import tsx --test \
+            packages/db/src/__tests__/toolContractUnique.integration.test.ts
+
+      - name: Verify migrated database matches versioned Prisma schema
+        id: schema_integrity
+        run: |
+          pnpm --filter @repo/db prisma migrate diff \
+            --from-config-datasource \
+            --to-schema ./prisma/schema.prisma \
+            --exit-code
+
+      - name: Build sanitized database preview evidence
+        if: always()
+        id: evidence
+        env:
+          CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
+          SETUP_PNPM_OUTCOME: ${{ steps.setup_pnpm.outcome }}
+          SETUP_NODE_OUTCOME: ${{ steps.setup_node.outcome }}
+          INSTALL_OUTCOME: ${{ steps.install.outcome }}
+          PRISMA_GENERATE_OUTCOME: ${{ steps.prisma_generate.outcome }}
+          MIGRATE_OUTCOME: ${{ steps.migrate.outcome }}
+          MIGRATION_STATUS_OUTCOME: ${{ steps.migration_status.outcome }}
+          DATABASE_TEST_OUTCOME: ${{ steps.database_test.outcome }}
+          SCHEMA_INTEGRITY_OUTCOME: ${{ steps.schema_integrity.outcome }}
+          PR_NUMBER: ${{ github.event.pull_request.number || 0 }}
+        run: |
+          node <<'EOF'
+          const fs = require('node:fs');
+          const path = require('node:path');
+
+          const checks = {
+            checkout: process.env.CHECKOUT_OUTCOME || 'skipped',
+            pnpmSetup: process.env.SETUP_PNPM_OUTCOME || 'skipped',
+            nodeSetup: process.env.SETUP_NODE_OUTCOME || 'skipped',
+            dependencyInstall: process.env.INSTALL_OUTCOME || 'skipped',
+            prismaGenerate: process.env.PRISMA_GENERATE_OUTCOME || 'skipped',
+            migrateDeploy: process.env.MIGRATE_OUTCOME || 'skipped',
+            migrationStatus: process.env.MIGRATION_STATUS_OUTCOME || 'skipped',
+            databaseTest: process.env.DATABASE_TEST_OUTCOME || 'skipped',
+            schemaIntegrity: process.env.SCHEMA_INTEGRITY_OUTCOME || 'skipped',
+          };
+          const firstFailure = Object.entries(checks).find(([, outcome]) => outcome !== 'success');
+          const report = {
+            schema: 'db.preview.evidence.v1',
+            status: firstFailure ? 'failed' : 'success',
+            timestamp: new Date().toISOString(),
+            provider: 'postgres-ephemeral',
+            image: 'pgvector/pgvector:pg16',
+            database: 'eiah_builder',
+            prNumber: Number(process.env.PR_NUMBER),
+            commitSha: process.env.GITHUB_SHA,
+            checks,
+            blockingCondition: firstFailure ? `${firstFailure[0]}_failed` : null,
+          };
+
+          fs.mkdirSync(process.env.EVIDENCE_DIR, { recursive: true });
+          fs.writeFileSync(
+            path.join(process.env.EVIDENCE_DIR, 'db-preview-evidence.json'),
+            `${JSON.stringify(report, null, 2)}\n`,
+          );
+          EOF
+
+      - name: Upload sanitized database preview evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-preview-postgres-${{ github.event.pull_request.number || github.run_id }}
+          path: ${{ env.EVIDENCE_DIR }}/db-preview-evidence.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Enforce database preview result
+        if: always()
+        run: |
+          node <<'EOF'
+          const fs = require('node:fs');
+          const report = JSON.parse(
+            fs.readFileSync(
+              `${process.env.EVIDENCE_DIR}/db-preview-evidence.json`,
+              'utf8',
+            ),
+          );
+          if (report.status !== 'success') {
+            console.error(
+              `::error title=Database preview blocked::${report.blockingCondition}`,
+            );
+            process.exit(1);
+          }
+          EOF

@@ -1,11 +1,39 @@
-# Neon + GitHub: bancos preview governados por Pull Request
+# Neon + GitHub: lifecycle histórico de bancos preview
 
 ## Objetivo e status
 
-Esta é a política canônica do repositório para criar, validar, remover e
-reconciliar branches Neon efêmeras associadas a Pull Requests.
+> **Deprecated para Pull Requests desde 2026-07-25.** Neon gerenciado não é
+> fonte canônica nem required gate de PR. O gate atual é
+> `.github/workflows/db-preview-postgres.yml`, com PostgreSQL efêmero,
+> migrations versionadas, teste de banco, integridade Prisma e artifact
+> sanitizado. O caminho obrigatório não usa secret, variable ou recurso Neon.
 
-O contrato implementado é:
+O workflow `.github/workflows/neon-preview-create.yml` permanece somente como
+histórico acionável manualmente e com o job desabilitado. Cleanup e reconcile
+podem permanecer temporariamente para observar ou remover recursos antigos,
+mas não validam nem bloqueiam PRs.
+
+## Gate canônico atual de PR
+
+```text
+PR opened/reopened/synchronize
+  -> service pgvector/pgvector:pg16
+  -> database eiah_builder descartável
+  -> Prisma generate + migrate deploy + migrate status
+  -> teste PostgreSQL real
+  -> migrate diff contra schema.prisma
+  -> artifacts/db-preview/db-preview-evidence.json
+  -> enforcement fail-closed
+```
+
+O novo gate não acessa staging ou produção, não cria branch persistente e não
+recebe `NEON_API_KEY`, `NEON_PROJECT_ID` ou
+`NEON_PREVIEW_PARENT_BRANCH`. O status permanece **parcial** até existir run
+verde real no GitHub e o contexto novo ser configurado na branch protection.
+
+## Contrato Neon histórico
+
+O contrato anteriormente implementado era:
 
 ```text
 PR opened/reopened/synchronize/labeled/unlabeled
@@ -29,28 +57,23 @@ schedule/workflow_dispatch
   -> evidência de reconciliação
 ```
 
-O status operacional permanece **parcial** até que os workflows sejam
-executados no GitHub com um projeto Neon configurado e produzam artefatos
-reais. A existência e a validação local dos arquivos não provam execução
-externa.
+## Arquivos históricos
 
-## Arquivos canônicos
-
-- criação, migration, testes e gate:
+- criação, migration, testes e gate desativado:
   `.github/workflows/neon-preview-create.yml`;
 - cleanup por fechamento:
   `.github/workflows/neon-preview-cleanup.yml`;
 - reconciliação recorrente:
   `.github/workflows/neon-preview-reconcile.yml`;
-- classificador do schema diff:
+- classificador histórico do schema diff:
   `scripts/checkNeonPreviewSchemaCompatibility.ts`;
 - teste do classificador:
   `scripts/tests/checkNeonPreviewSchemaCompatibility.test.ts`.
 
-Não criar um segundo fluxo de preview fora desses arquivos sem decisão
-explícita.
+Esses arquivos preservam proveniência e suporte à limpeza de recursos
+antigos. Não são fonte de verdade para validação atual de PR.
 
-## Configuração mínima no GitHub
+## Configuração Neon histórica — não aplicar ao gate atual
 
 ### Secret obrigatório
 
@@ -113,55 +136,46 @@ deve ser restrita aos administradores do repositório. Reviewer obrigatório e
 proteção de branch continuam necessários: a allowlist protege o override de
 schema, mas não substitui revisão do código.
 
-### Branch protection
+### Branch protection — transição manual obrigatória
 
-Primeiro executar um PR piloto para o GitHub registrar o contexto. Depois, em
-`Settings > Rules > Rulesets` (ou `Settings > Branches`, conforme a
-configuração do repositório), editar a regra aplicável a `main`, ativar
-`Require status checks to pass` e selecionar o contexto produzido por:
+Não selecionar nem manter como required o contexto histórico:
 
 ```text
 workflow: Neon Preview Create
 job: NeonPreviewCreateMigrateTest
 ```
 
-O nome exibido pelo GitHub deve ser confirmado no primeiro run antes de
-salvar a regra; não digitar um contexto aproximado. Manter também:
+Depois do primeiro run publicado do substituto, confirmar o nome exibido pelo
+GitHub e tornar required:
 
-- branch atualizada antes do merge, se essa já for a política de `main`;
-- revisão obrigatória sem bypass genérico;
-- restrição de alteração da ruleset e de `NEON_SCHEMA_APPROVERS` a
-  administradores.
+```text
+workflow: DB Preview Postgres
+job: DbPreviewPostgresValidate
+```
 
-Validar a proteção no piloto bloqueado: o check vermelho deve deixar o merge
-indisponível. Sem essa prova, o workflow falha, mas o GitHub ainda pode
-permitir merge; portanto o status operacional permanece `parcial`.
+Remover o required check antigo e adicionar o novo são ações administrativas
+remotas, fora deste patch local. Até a ruleset ser verificada, o status
+operacional permanece `parcial`.
 
 Nesta revisão local não foi possível consultar nem alterar rulesets remotas:
 o cliente `gh` disponível não está autenticado e o conector de leitura não
 expõe branch protection. Nenhum required check remoto é declarado como
 configurado.
 
-### Pendências operacionais para rollout
+### Pendências operacionais para retirada do legado
 
-Enquanto o patch não estiver publicado e a configuração remota não for
-verificável, manter:
+Após publicar o patch:
 
-- **P1 — controle de governança:** criar e proteger o environment
-  `neon-preview`, configurar required reviewers sem self-review, cadastrar
-  secret/variables, restringir `NEON_SCHEMA_APPROVERS` e tornar
-  `NeonPreviewCreateMigrateTest` obrigatório em `main`;
-- **P2 — evidência operacional:** executar os pilotos compatível e
-  indeterminado, comprovar label não autorizada/autorizada, cleanup real e
-  reconcile manual em `observe`, preservando runs e artifacts sanitizados.
+- remover `NeonPreviewCreateMigrateTest` dos required checks;
+- executar e validar `DbPreviewPostgresValidate`;
+- adicionar o novo contexto aos required checks;
+- preservar artifacts Neon históricos;
+- executar reconcile em `observe` antes de retirar cleanup/reconcile ou
+  remover recursos legados.
 
-O required check só deve ser selecionado depois que o workflow publicado
-produzir o contexto real no GitHub. Ausência de permissão administrativa,
-valores Neon ou publicação do workflow bloqueia P1 e, por consequência, P2.
+## Lifecycle histórico de criação e atualização
 
-## Lifecycle de criação e atualização
-
-O workflow `Neon Preview Create` responde somente a:
+O workflow `Neon Preview Create` respondia somente a:
 
 - `pull_request.opened`;
 - `pull_request.reopened`;
@@ -430,10 +444,10 @@ O schedule nunca escolhe `delete`. A promoção para remoção automática
 agendada exigiria decisão futura e evidência recorrente de observe sem falso
 positivo.
 
-## Pilotos de rollout
+## Pilotos Neon históricos — não executar como gate atual
 
-Os pilotos devem ser PRs separados, usar apenas seed sintético e ser fechados
-sem merge. Eles não podem apontar para staging ou produção.
+Os pilotos abaixo pertenciam ao rollout Neon retirado. Permanecem somente
+como registro de decisão e não devem ser executados como gate atual.
 
 ### Piloto A — mudança compatível
 
@@ -481,7 +495,7 @@ Executar em duas fases:
 Também testar que uma aplicação por login fora da allowlist produz
 `schema_approval_label_unauthorized`. Fechar sem merge e validar cleanup.
 
-## Separação obrigatória: preview vs staging
+## Separação histórica: preview Neon vs staging
 
 | Aspecto | Preview | Staging |
 | --- | --- | --- |
@@ -500,7 +514,7 @@ Regras fail-closed:
 - merge do PR não aplica migration em staging ou produção;
 - falha de preview não deve ser contornada apontando testes para staging.
 
-## Riscos e mitigação
+## Riscos e mitigações históricas do lifecycle Neon
 
 | Risco | Mitigação |
 | --- | --- |
@@ -516,7 +530,7 @@ Regras fail-closed:
 | Parent alterado com previews vivos | remover/recriar previews existentes antes de trocar a variable; schema diff permanece bloqueante. |
 | Supply-chain de Actions | versões major canônicas; revisar e, se a política do repositório exigir, pin por commit em follow-up. |
 
-## Rollback
+## Rollback do legado Neon
 
 Se a integração causar bloqueio indevido:
 
@@ -534,7 +548,10 @@ Se a integração causar bloqueio indevido:
 
 Nenhum passo de rollback autoriza apagar branch fora do namespace preview.
 
-## DoD operacional
+## DoD Neon histórico — retirado do caminho obrigatório
+
+Este checklist não descreve o DoD atual de PR e não deve ser configurado como
+branch protection. Ele é preservado para proveniência do lifecycle antigo.
 
 - [ ] `NEON_API_KEY` configurada como Actions secret de menor privilégio.
 - [ ] Environment `neon-preview` com required reviewers e sem self-review
