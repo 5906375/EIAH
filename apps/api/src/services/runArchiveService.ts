@@ -29,37 +29,31 @@ function cutoffDate(now: Date, days = retentionDays()) {
   return new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 }
 
-export async function ensureRunArchiveTable(prisma?: PrismaClient) {
+export async function assertRunArchiveSchemaReady(prisma?: PrismaClient) {
   const client = resolveClient(prisma);
-  await client.$executeRawUnsafe(`
-    CREATE TABLE IF NOT EXISTS run_archives (
-      id TEXT PRIMARY KEY,
-      run_id TEXT NOT NULL UNIQUE,
-      tenant_id TEXT NOT NULL,
-      workspace_id TEXT NOT NULL,
-      archive_ref TEXT NOT NULL UNIQUE,
-      archived_at TIMESTAMPTZ NOT NULL,
-      snapshot JSONB NOT NULL,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `);
-  await client.$executeRawUnsafe(`
-    ALTER TABLE runs
-    ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ,
-    ADD COLUMN IF NOT EXISTS archive_ref TEXT
-  `);
-  await client.$executeRawUnsafe(`
-    CREATE UNIQUE INDEX IF NOT EXISTS runs_archive_ref_key
-    ON runs(archive_ref)
-  `);
-  await client.$executeRawUnsafe(`
-    CREATE INDEX IF NOT EXISTS runs_archived_at_idx
-    ON runs(archived_at)
-  `);
-  await client.$executeRawUnsafe(`
-    CREATE INDEX IF NOT EXISTS run_archives_tenant_workspace_archived_at_idx
-    ON run_archives (tenant_id, workspace_id, archived_at DESC)
-  `);
+  const rows = await client.$queryRaw<Array<{ schemaReady: boolean }>>(
+    Prisma.sql`
+      SELECT
+        to_regclass('public.run_archives') IS NOT NULL
+        AND EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'runs'
+            AND column_name = 'archived_at'
+        )
+        AND EXISTS (
+          SELECT 1
+          FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'runs'
+            AND column_name = 'archive_ref'
+        ) AS "schemaReady"
+    `,
+  );
+  if (rows[0]?.schemaReady !== true) {
+    throw new Error("RUN_ARCHIVE_SCHEMA_NOT_READY");
+  }
 }
 
 export function isRunArchiveEligible(
@@ -77,7 +71,7 @@ async function getRunArchiveByRunId(params: {
   workspaceId: string;
 }) {
   const client = resolveClient(params.prisma);
-  await ensureRunArchiveTable(client);
+  await assertRunArchiveSchemaReady(client);
   const rows = await client.$queryRaw<Array<RunArchiveRecord>>(
     Prisma.sql`
       SELECT
@@ -105,7 +99,7 @@ export async function listArchivedRunIds(params: {
   workspaceId: string;
 }) {
   const client = resolveClient(params.prisma);
-  await ensureRunArchiveTable(client);
+  await assertRunArchiveSchemaReady(client);
   const rows = await client.$queryRaw<Array<{ runId: string }>>(
     Prisma.sql`
       SELECT run_id AS "runId"
@@ -124,7 +118,7 @@ export async function getRunArchiveMetadataMap(params: {
   runIds: string[];
 }) {
   const client = resolveClient(params.prisma);
-  await ensureRunArchiveTable(client);
+  await assertRunArchiveSchemaReady(client);
   if (params.runIds.length === 0) return new Map<string, { archiveRef: string; archivedAt: Date }>();
   const rows = await client.$queryRaw<Array<{ runId: string; archiveRef: string; archivedAt: Date }>>(
     Prisma.sql`
@@ -229,7 +223,7 @@ export async function archiveRun(params: {
   now?: Date;
 }) {
   const client = resolveClient(params.prisma);
-  await ensureRunArchiveTable(client);
+  await assertRunArchiveSchemaReady(client);
 
   const run = await client.run.findFirst({
     where: {
@@ -304,7 +298,7 @@ export async function archiveEligibleRunsBatch(params: {
   limit?: number;
 }) {
   const client = resolveClient(params.prisma);
-  await ensureRunArchiveTable(client);
+  await assertRunArchiveSchemaReady(client);
   const now = params.now ?? new Date();
   const limit = Math.max(1, Math.min(params.limit ?? 100, 500));
   const cutoff = cutoffDate(now);

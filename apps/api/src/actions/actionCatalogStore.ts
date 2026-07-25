@@ -2,16 +2,6 @@ import { Prisma, prismaGlobal } from "@repo/db";
 import type { VersionedActionContract } from "@eiah/core/actions/registry/VersionedActionRegistry";
 
 /**
- * DEBUG — útil para validar se o Prisma está conectado corretamente.
- * Pode ser removido após confirmação.
- */
-if (process.env.DATABASE_URL) {
-  console.log("actionCatalogStore DATABASE_URL", process.env.DATABASE_URL);
-} else {
-  console.log("actionCatalogStore DATABASE_URL not set");
-}
-
-/**
  * Representação serializada de cada ação de um contrato versionado.
  * O objetivo é armazenar o catálogo de ações em formato estruturado JSON no banco.
  */

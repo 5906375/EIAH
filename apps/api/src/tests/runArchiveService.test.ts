@@ -1,7 +1,10 @@
 import "./support/testInfraEnv";
 import test from "node:test";
 import assert from "node:assert/strict";
-import { archiveRun } from "../services/runArchiveService";
+import {
+  archiveRun,
+  assertRunArchiveSchemaReady,
+} from "../services/runArchiveService";
 
 function isoDaysAgo(days: number) {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
@@ -104,7 +107,6 @@ function createMockPrisma(params: {
     guardrailLedger: {
       findMany: async () => [],
     },
-    $executeRawUnsafe: async () => 0,
     $executeRaw: async (query: any) => {
       const values = Array.isArray(query?.values) ? query.values : [];
       if (values.length >= 7) {
@@ -124,6 +126,9 @@ function createMockPrisma(params: {
     $transaction: async (operations: any[]) => Promise.all(operations),
     $queryRaw: async (query: any) => {
       const values = Array.isArray(query?.values) ? query.values : [];
+      if (values.length === 0) {
+        return [{ schemaReady: true }];
+      }
       if (values.length >= 3) {
         return archives.filter(
           (item) =>
@@ -208,4 +213,25 @@ test("archiveRun fails closed when run has no history", async () => {
       }),
     /RUN_ARCHIVE_FAIL_CLOSED_NO_HISTORY/,
   );
+});
+
+test("run archive schema preflight is read-only and fails closed before migrations", async () => {
+  let executeCalls = 0;
+  const prisma = {
+    $queryRaw: async () => [{ schemaReady: false }],
+    $executeRaw: async () => {
+      executeCalls += 1;
+      return 0;
+    },
+    $executeRawUnsafe: async () => {
+      executeCalls += 1;
+      return 0;
+    },
+  };
+
+  await assert.rejects(
+    () => assertRunArchiveSchemaReady(prisma as any),
+    /RUN_ARCHIVE_SCHEMA_NOT_READY/,
+  );
+  assert.equal(executeCalls, 0);
 });
