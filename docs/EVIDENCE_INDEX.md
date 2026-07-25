@@ -58,6 +58,13 @@ Snapshot canônico desta indexação:
 | Preflight de reuso para estrutura conversacional | `docs/architecture/existing-structure-preflight.md` | Registra a regra de inventario previo, matriz reutilizar/estender/adaptar/substituir/nao aplicavel, bloqueio P0 contra estrutura paralela, launcher render-only e DoD minimo para PR funcional posterior. |
 | Auditoria de orquestracao e baseline passivo das duas rotas | `docs/ops/audit/AUDIT-FRONTDOOR-ORCHESTRATION-2026-07.md` | Registra o diagnostico local, o Caso 7, os candidatos obrigatorios de reuso, a convivencia sem redirect e o uso conservador da telemetria passiva; nao comprova paridade funcional nem unificacao fechada. |
 
+## DEV runtime hardening — Postgres/Redis local (2026-07-25)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Hardening runtime DEV local | `docs/ops/evidence/hardening-dev-runtime-2026-07-25.md` | Evidencia localmente 25 migrations aplicadas via container one-off, Postgres aceitando conexões, Redis bloqueando acesso sem autenticação, Redis autenticado respondendo PONG, AOF ativo e API health com database connected e agentRuntime ready. Escopo limitado a DEV local; não fecha staging, produção, backup externo, HA/PITR, environment label, bootstrap pré-migration ou remoção de logs sensíveis. |
+
+
 ## Domain & DNS / Go-Live Controlado
 
 | Assunto | Arquivo | O que prova |
