@@ -192,7 +192,7 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | --- | --- | --- |
 | Evidência de schema e rotas PaymentIntent | `ops/evidence/latest/payment-intent-schema-YYYY-MM-DD.json` | Prova da camada `PaymentIntent` com campos mínimos e índices operacionais; o gate usa sempre o artefato mais recente. |
 | Evidência e2e de PoU-gated payment release | `ops/evidence/latest/pou-gated-payment-e2e-YYYY-MM-DD.json` | Prova da bifurcação `blocked` sem PoU/SCL e `released` com PoU/SCL válido; o gate usa sempre o artefato mais recente. |
-| Evidência e2e de PoU-gated payment release (2026-07-20) | `ops/evidence/latest/pou-gated-payment-e2e-2026-07-20.json` | Artefato real renovado pelo PR #351 e referenciado pelo gate W4 de não-regressão para release de pagamento governado por PoU. |
+| Evidência e2e de PoU-gated payment release (2026-07-27) | `ops/evidence/latest/pou-gated-payment-e2e-2026-07-27.json` | Artefato real renovado pelo PR #351 e referenciado pelo gate W4 de não-regressão para release de pagamento governado por PoU. |
 | Evidência e2e de settlement providers | `ops/evidence/latest/settlement-provider-e2e-YYYY-MM-DD.json` | Prova de providers em modo suportado por ambiente (`stripe=full`, `crypto/bank=simulated`) + settlement com vínculo em ledger; o gate usa sempre o artefato mais recente. |
 | Evidência de replay/idempotência webhook billing | `ops/evidence/latest/billing-webhook-replay-YYYY-MM-DD.json` | Prova de replay rejeitado com `duplicateSideEffects=0`; o gate usa sempre o artefato mais recente. |
 | Contrato público de settlement provider | `ops/contracts/settlement-provider-contract.v1.json` | Contrato versionado de endpoints/providers/status e política de assinatura/idempotência. |
@@ -236,7 +236,7 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | IMOB Market Scan P0 — no ID leak + policy judge | `ops/evidence/latest/imob-market-scan-p0-no-id-leak-policy-judge.md` | Evidência de que a saída visível do Market Scan não expõe IDs internos e que recomendação forte passa por `marketScanPolicyJudge` com `evidenceBundleId`. |
 | IMOB Market Scan P1 — Source Data Quality Gate | `ops/evidence/latest/imob-market-scan-p1-source-data-quality-gate.md` | Evidência de fill-rate `price`/`areaM2`/`priceAreaM2`, status `pass/degraded/blocked`, bloqueio antes de scoring, penalidade de confiança e Guardian hash com qualidade de fonte. |
 | Comissão integrada ao settlement | `ops/evidence/latest/realestate-commission-settlement-e2e-YYYY-MM-DD.json` | Fluxo comissão com PoU-gate, settlement e reconciliação com reprocessamento idempotente; o gate usa sempre o artefato mais recente. |
-| Comissão integrada ao settlement (2026-07-20) | `ops/evidence/latest/realestate-commission-settlement-e2e-2026-07-20.json` | Artefato real renovado pelo PR #351 e referenciado pelo gate W4 de não-regressão para comissão imobiliária integrada ao settlement. |
+| Comissão integrada ao settlement (2026-07-27) | `ops/evidence/latest/realestate-commission-settlement-e2e-2026-07-27.json` | Artefato real renovado pelo PR #351 e referenciado pelo gate W4 de não-regressão para comissão imobiliária integrada ao settlement. |
 | Piloto comercial controlado | `ops/evidence/latest/realestate-pilot-rollout-2026-03-09.md` | Plano `shadow -> pilot -> small` com 3 tenants de referência para rollout da vertical. |
 | Rotas IMOB Command Center | `apps/api/src/routes/imob.ts` | Endpoints determinísticos de funil/bloqueios para operação imobiliária. |
 
