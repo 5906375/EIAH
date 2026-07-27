@@ -5,9 +5,9 @@ const CHECK = "check:w4-non-regression";
 
 const renewedEvidenceRefs: Record<string, string> = {
   "ops/evidence/latest/pou-gated-payment-e2e-2026-07-13.json":
-    "ops/evidence/latest/pou-gated-payment-e2e-2026-07-20.json",
+    "ops/evidence/latest/pou-gated-payment-e2e-2026-07-27.json",
   "ops/evidence/latest/realestate-commission-settlement-e2e-2026-07-13.json":
-    "ops/evidence/latest/realestate-commission-settlement-e2e-2026-07-20.json",
+    "ops/evidence/latest/realestate-commission-settlement-e2e-2026-07-27.json",
 };
 
 function fail(message: string, details?: Record<string, unknown>): never {
