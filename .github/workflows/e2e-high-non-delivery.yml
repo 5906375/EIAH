@@ -1,0 +1,143 @@
+name: E2E HIGH non-delivery notice
+
+on:
+  schedule:
+    # Monday 10:30 UTC: after the nominal 09:00 UTC E2E HIGH staging run.
+    - cron: "30 10 * * 1"
+  workflow_dispatch:
+    inputs:
+      report_date:
+        description: "Expected E2E HIGH report date (YYYY-MM-DD; defaults to today)"
+        required: false
+        type: string
+      google_provenance_confirmed:
+        description: "Human-confirmed GOOGLE_* credential provenance"
+        required: true
+        default: false
+        type: boolean
+      send_email:
+        description: "Explicit email-send request (provider remains fail-closed until available)"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: e2e-high-non-delivery-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  notice:
+    name: Surface governed non-delivery notice
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout without persisted write credential
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Evaluate report delivery and governed channels
+        id: evaluate
+        env:
+          REPORT_DATE: ${{ inputs.report_date }}
+          GOOGLE_PROVENANCE_CONFIRMED: ${{ inputs.google_provenance_confirmed }}
+          SEND_EMAIL: ${{ inputs.send_email }}
+        run: pnpm notify:e2e-high-non-delivery
+
+      - name: Create or update primary GitHub issue
+        if: steps.evaluate.outputs.should_surface_issue == 'true'
+        uses: actions/github-script@v7
+        env:
+          PLAN_FILE: ${{ steps.evaluate.outputs.plan_file }}
+        with:
+          script: |
+            const crypto = require("node:crypto");
+            const fs = require("node:fs");
+            const path = require("node:path");
+            const plan = JSON.parse(fs.readFileSync(process.env.PLAN_FILE, "utf8"));
+            if (!plan.github.surfaceIssue || !plan.notice || !plan.github.title) {
+              core.setFailed("sanitized GitHub notice plan is incomplete");
+              return;
+            }
+
+            const { owner, repo } = context.repo;
+            const issues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: "open",
+              per_page: 100,
+            });
+            const existing = issues.find(
+              (issue) => !issue.pull_request && issue.title === plan.github.title,
+            );
+            const body = [
+              plan.notice,
+              "",
+              `blockingCondition=${plan.blockingCondition}`,
+              `emailDelivery=${plan.email.transmit ? "sent" : "blocked"}`,
+              `emailBlockingCondition=${plan.email.blockingCondition}`,
+              "",
+              "A decisão deve ser registrada nesta issue autenticada. E-mail é canal secundário e não decide.",
+            ].join("\n");
+
+            let issue;
+            if (existing) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: existing.number,
+                body,
+              });
+              issue = existing;
+            } else {
+              const response = await github.rest.issues.create({
+                owner,
+                repo,
+                title: plan.github.title,
+                body,
+              });
+              issue = response.data;
+            }
+
+            const receipt = {
+              id: crypto.randomUUID(),
+              hash: crypto.createHash("sha256").update(plan.notice, "utf8").digest("hex"),
+              reasonCode: plan.reasonCode,
+              timestamp: new Date().toISOString(),
+              channel: "github-issue",
+              dryRun: false,
+              blockingCondition: plan.blockingCondition,
+            };
+            const receiptFile = path.join(
+              path.dirname(process.env.PLAN_FILE),
+              "github-issue-delivery-receipt.json",
+            );
+            fs.writeFileSync(receiptFile, `${JSON.stringify(receipt, null, 2)}\n`, {
+              mode: 0o600,
+            });
+            core.notice(`Primary non-delivery issue surfaced: #${issue.number}`);
+
+      - name: Persist sanitized notice plan and receipts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-high-non-delivery-${{ github.run_id }}
+          path: artifacts/e2e-high-escalation/
+          if-no-files-found: error
+          retention-days: 30
