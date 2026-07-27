@@ -163,6 +163,7 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | APE Weekly Cycle #45 (janela recorrente automatizada) | `ops/evidence/latest/ape-weekly-cycle-run45-2026-07-13.md` | Ciclo semanal automatizado registrando o estado atual dos gates recorrentes para acompanhamento operacional. |
 | APE Weekly Cycle #46 (janela recorrente automatizada) | `ops/evidence/latest/ape-weekly-cycle-run46-2026-07-20.md` | Ciclo semanal automatizado registrando o estado atual dos gates recorrentes para acompanhamento operacional. |
 | APE Weekly Cycle #47 (2026-07-23; estado vigente em 2026-07-24) | `ops/evidence/latest/ape-weekly-cycle-run47-2026-07-23.md` | `decision=NO_GO`, `hardMetricsGo=false`, `nonRegressionGo=false`, `auditGap=0` e `duplicateSideEffects=0`; `check:e2e-recency` e `check:backup-restore` falharam. Os ciclos #38–#46 permanecem históricos e não são reinterpretados por esta entrada. |
+| APE Weekly Cycle #48 (janela recorrente automatizada) | `ops/evidence/latest/ape-weekly-cycle-run48-2026-07-27.md` | Ciclo semanal automatizado registrando o estado atual dos gates recorrentes para acompanhamento operacional. |
 
 ## Sprint P1 (Imobiliaria Digital) — Interop Protocol Layer (2026-03-09)
 
