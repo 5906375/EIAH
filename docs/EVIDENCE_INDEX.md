@@ -4,6 +4,12 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## Main hard gates de CI — registro pós-save (2026-07-27)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Required status checks aplicados em `main` | `docs/ops/evidence/main-hard-gates-applied-2026-07-27.md` | Evidência documental pós-save de que o ruleset `main-protection-hard-gates` está `active` e contém os 20/20 checks aprovados, todos provenientes do GitHub Actions (`integration_id=15368`), sem checks faltantes. Classifica o P0 “main sem hard gates de CI” como mitigado tecnicamente. Preserva como abertos approvals/HITL técnico (`approvals=0`) e a auditoria APE #45–#48; não fecha `e2e-high-staging`, staging ou produção. |
+
 ## Validação de banco em PR — Postgres efêmero atual e Neon histórico (2026-07-25)
 
 | Assunto | Arquivo | O que prova |
