@@ -1,3 +1,6 @@
+# P0 kill-switch: schedule and auto-merge disabled while the APE generator
+# hardcodes audit metrics. See https://github.com/5906375/EIAH/issues/396.
+# Manual dispatch may open an evidence PR, but human ratification is required.
 name: APE Weekly Cycle
 
 on:
@@ -20,8 +23,6 @@ on:
         required: false
         type: boolean
         default: false
-  schedule:
-    - cron: "0 11 * * 1"
 
 permissions:
   contents: write
@@ -137,37 +138,3 @@ jobs:
             - `ops/evidence/latest/ape-weekly-cycle-run*.md`
             - `docs/EVIDENCE_INDEX.md`
           delete-branch: true
-
-      # Auto-merge (ratificado D23): so roda quando a PR foi de fato criada
-      # (peter-evans nao cria PR se nao ha diff). Estritamente condicionado a
-      # (a) diff restrito a ops/evidence/latest/** e docs/EVIDENCE_INDEX.md —
-      # qualquer outro path falha o step com mensagem clara, sem habilitar
-      # auto-merge; (b) o proprio step "Evidence index" (linha acima) ja
-      # bloqueia o job antes de chegar aqui se check:evidence-index falhar —
-      # revalidado explicitamente de novo abaixo por seguranca em camadas.
-      # Auto-merge nativo do GitHub (gh pr merge --auto) so completa o merge
-      # depois que os required status checks da branch protection passarem —
-      # nao contorna branch protection. Ver
-      # ops/evidence/latest/ape-weekly-automerge-decision-2026-07-08.md.
-      - name: Guard evidence-only diff and enable auto-merge
-        if: ${{ !cancelled() && steps.run_ape_cycle.outcome == 'success' && steps.create-evidence-pr.outputs.pull-request-number != '' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ steps.create-evidence-pr.outputs.pull-request-number }}
-        run: |
-          set -euo pipefail
-
-          CHANGED_FILES="$(gh pr diff "$PR_NUMBER" --name-only)"
-          echo "Changed files in PR #$PR_NUMBER:"
-          echo "$CHANGED_FILES"
-
-          OUT_OF_SCOPE="$(echo "$CHANGED_FILES" | grep -v -E '^(ops/evidence/latest/|docs/EVIDENCE_INDEX\.md$)' || true)"
-          if [ -n "$OUT_OF_SCOPE" ]; then
-            echo "::error::PR #$PR_NUMBER touches paths outside ops/evidence/latest/** and docs/EVIDENCE_INDEX.md — refusing to enable auto-merge:"
-            echo "$OUT_OF_SCOPE"
-            exit 1
-          fi
-
-          pnpm check:evidence-index
-
-          gh pr merge "$PR_NUMBER" --auto --squash
