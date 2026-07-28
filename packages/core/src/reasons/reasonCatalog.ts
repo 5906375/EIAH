@@ -121,6 +121,19 @@ const MCP_DB_PROPOSED_CODES = [
   "DB_SCOPE_VIOLATION",
 ] as const;
 
+const MCP_DB_INPUT_PROPOSED_CODES = [
+  "DB_INPUT_INVALID",
+] as const;
+
+const MCP_POLICY_PROPOSED_CODES = [
+  "MCP_POLICY_REFERENCE_MISSING",
+  "MCP_POLICY_TARGET_NOT_FOUND",
+  "MCP_POLICY_STORE_UNAVAILABLE",
+  "MCP_POLICY_DENIED",
+  "MCP_POLICY_CONTEXT_MISSING",
+  "MCP_POLICY_CONTEXT_VIOLATION",
+] as const;
+
 const MCP_DENY_PROPOSED_CODES = [
   "POLICY_NOT_FOUND",
 ] as const;
@@ -259,6 +272,30 @@ export const REASON_CODE_CATALOG = [
     status: "proposed",
     owner: "MCP governance",
     evidenceRef: "packages/mcp-runner/src/executor/dbAllowlist.ts#MCP_DB_REASON_CODES",
+  }),
+  ...defineReasonCodes(MCP_DB_INPUT_PROPOSED_CODES, {
+    domain: "mcp",
+    severity: "error",
+    category: "validation",
+    descriptionPrefix:
+      "Structurally invalid DB input pending canonical ratification",
+    status: "proposed",
+    owner: "MCP/Tool Security governance",
+    introducedBy: "RC-MCP-2A",
+    evidenceRef:
+      "docs/ops/reason-codes-catalog.md#rc-mcp-2a-proposals",
+  }),
+  ...defineReasonCodes(MCP_POLICY_PROPOSED_CODES, {
+    domain: "mcp",
+    severity: "critical",
+    category: "authorization",
+    descriptionPrefix:
+      "MCP policy reason code pending canonical ratification and common enforcement",
+    status: "proposed",
+    owner: "MCP/Tool Security governance",
+    introducedBy: "RC-MCP-2A",
+    evidenceRef:
+      "docs/ops/reason-codes-catalog.md#rc-mcp-2a-proposals",
   }),
   ...defineReasonCodes(MCP_DENY_PROPOSED_CODES, {
     domain: "mcp",

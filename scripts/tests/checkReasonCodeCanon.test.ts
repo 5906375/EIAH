@@ -48,7 +48,7 @@ test("accepts an active known code with owner, approver and evidenceRef", () => 
   assert.deepEqual(validateReasonCodeCatalog([activeFixture()]), []);
 });
 
-test("accepts only the three human-ratified MCP deny codes as active", () => {
+test("keeps MCP policy and DB input additions proposed", () => {
   const definitions = new Map(
     REASON_CODE_CATALOG.map((definition) => [definition.code, definition]),
   );
@@ -69,8 +69,22 @@ test("accepts only the three human-ratified MCP deny codes as active", () => {
 
   assert.equal(definitions.get("DB_SCOPE_VIOLATION")?.status, "proposed");
   assert.equal(definitions.get("POLICY_NOT_FOUND")?.status, "proposed");
+  const proposedCodes = [
+    "MCP_POLICY_REFERENCE_MISSING",
+    "MCP_POLICY_TARGET_NOT_FOUND",
+    "MCP_POLICY_STORE_UNAVAILABLE",
+    "MCP_POLICY_DENIED",
+    "MCP_POLICY_CONTEXT_MISSING",
+    "MCP_POLICY_CONTEXT_VIOLATION",
+    "DB_INPUT_INVALID",
+  ] as const;
+  for (const code of proposedCodes) {
+    assert.equal(definitions.get(code)?.status, "proposed");
+    assert.equal(definitions.get(code)?.approver, undefined);
+  }
+
   assert.equal(definitions.has("MCP_POLICY_NOT_RESOLVED"), false);
-  assert.equal(definitions.has("MCP_POLICY_DENIED"), false);
+  assert.equal(definitions.has("MCP_POLICY_CONTEXT_INVALID"), false);
 });
 
 test("rejects active without owner, approver or evidenceRef", () => {
