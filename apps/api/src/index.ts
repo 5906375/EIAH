@@ -101,6 +101,9 @@ app.use("/api/ops", opsRouter);
 // Public auth routes must come before protected routers that apply enforceTenant.
 app.use("/api", authRouter);
 app.use("/api", onboardingRouter);
+// These administrative routers enforce tenant and canonical admin scopes locally.
+app.use("/api/tools", toolsRouter);
+app.use("/api/actions", actionsRouter);
 app.use("/api", billingRouter);
 app.use("/api", whatsappRouter);
 app.use("/api", runsRouter);
@@ -110,9 +113,7 @@ app.use("/api", uploadsRouter);
 app.use("/api", marketplaceRouter);
 app.use("/api", delegationsRouter);
 app.use("/api", governanceRouter);
-app.use("/api/tools", toolsRouter);
 app.use("/api", memoryRouter);
-app.use("/api/actions", actionsRouter);
 app.use("/api", sessionRouter);
 app.use("/api", workspacesRouter);
 app.use("/api", profileRouter);
