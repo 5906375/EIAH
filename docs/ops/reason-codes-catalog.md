@@ -87,8 +87,40 @@ Permanecem fora desta promoção:
 - `POLICY_NOT_FOUND` permanece `proposed` e fora do escopo MCP;
 - `MCP_POLICY_NOT_RESOLVED` não será criado enquanto suas causas não forem
   divididas;
-- `MCP_POLICY_DENIED` não será criado ou ativado antes de existir enforcement
-  comum que o produza.
+- `MCP_POLICY_DENIED` permanece `proposed` e não será ativado antes de existir
+  enforcement comum que o produza.
+
+<a id="rc-mcp-2a-proposals"></a>
+
+## Propostas MCP policy e DB input — RC-MCP-2A — 2026-07-28
+
+Os códigos abaixo são conhecidos pelo canon como `proposed`. Esta inclusão não
+os torna enforçáveis, não altera runtime e não substitui ratificação humana
+para uma futura promoção a `active`.
+
+- `MCP_POLICY_REFERENCE_MISSING`: o contrato exige policy, mas `policyId` está
+  ausente ou vazio. O status HTTP externo esperado é `403`. Retry somente após
+  atualização do contrato.
+- `MCP_POLICY_TARGET_NOT_FOUND`: `policyId` está presente, mas o lookup
+  tenant/workspace scoped não encontra o target. O status HTTP externo
+  esperado é `403`. Retry após provisionar ou ativar a policy.
+- `MCP_POLICY_STORE_UNAVAILABLE`: timeout, indisponibilidade ou erro
+  operacional no lookup MCP. O status HTTP externo esperado é `503`. É
+  retryable com backoff limitado.
+- `MCP_POLICY_DENIED`: a policy resolvida retorna deny explícito. O status HTTP
+  externo esperado é `403`. Não é retryable sob a mesma policy e contexto.
+- `MCP_POLICY_CONTEXT_MISSING`: o contexto autenticado obrigatório está
+  ausente. O status HTTP externo esperado é `403`. Retry somente com novo
+  contexto autenticado.
+- `MCP_POLICY_CONTEXT_VIOLATION`: tenant, workspace ou scope diverge do
+  permitido. O status HTTP externo esperado é `403`. Não é retryable com o
+  mesmo contexto e payload.
+- `DB_INPUT_INVALID`: `where` ou query é estruturalmente inválido. O status
+  HTTP externo esperado é `400`. Não é retryable com o mesmo input.
+
+`DB_SCOPE_VIOLATION` permanece `proposed` e reservado para futura separação da
+violação cross-tenant/workspace real. Não foram criados os agregados ambíguos
+`MCP_POLICY_NOT_RESOLVED` ou `MCP_POLICY_CONTEXT_INVALID`.
 
 ## Catálogo sincronizado
 
@@ -151,7 +183,14 @@ fonte canônica falham em `check:reason-code-canon`.
 | `AUDIT_WRITE_FAILED` | proposed |
 | `DB_MODEL_NOT_ALLOWLISTED` | active |
 | `DB_SCOPE_VIOLATION` | proposed |
+| `DB_INPUT_INVALID` | proposed |
 | `DB_SCOPE_MISSING` | active |
+| `MCP_POLICY_REFERENCE_MISSING` | proposed |
+| `MCP_POLICY_TARGET_NOT_FOUND` | proposed |
+| `MCP_POLICY_STORE_UNAVAILABLE` | proposed |
+| `MCP_POLICY_DENIED` | proposed |
+| `MCP_POLICY_CONTEXT_MISSING` | proposed |
+| `MCP_POLICY_CONTEXT_VIOLATION` | proposed |
 | `POLICY_NOT_FOUND` | proposed |
 | `RBAC_OWNER_DEFERRAL` | proposed |
 | `RBAC_BUILD_ARTIFACT_DRIFT` | proposed |
