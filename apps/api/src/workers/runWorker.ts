@@ -98,9 +98,9 @@ import {
   recordCriticalMcpAudit,
   recordMissingToolContractAudit,
   resolveLocallyExecutableAction,
+  resolveActiveMcpDenyRunFailure,
   resolveDeclaredActionNames,
   resolveMissingToolContractDecision,
-  resolveMissingToolContractRunFailure,
 } from "./runWorkerActionResolution";
 import { alignCandidatesToRecipe } from "./runWorkerRecipeAlignment";
 import { buildGuardianStructuredOutput } from "./runWorkerGuardianOutput";
@@ -1396,7 +1396,49 @@ export async function processRunPayload(payload: RunQueuePayload) {
               metadata: runtimeMetadataResolved,
             };
           const version = resolveMcpToolVersion(payload.metadata, mcpConfig.defaultVersion);
-          const localAction = resolveLocallyExecutableAction(actionName, allowedActions);
+          const tool = await ToolRegistry.get(actionName, version, tenantId);
+          if (!tool) {
+            const missingToolContractBlock = resolveMissingToolContractDecision(
+              tool,
+              actionName,
+              version,
+              effectivePayload
+            );
+            if (!missingToolContractBlock) {
+              throw new Error(`ToolContract resolution invariant failed: ${actionName}@${version}`);
+            }
+
+            await recordMissingToolContractAudit({
+              actionName,
+              version,
+              runId,
+              tenantId,
+              stepId: context?.currentStep?.id,
+              record: async (audit) => {
+                await recordGuardrailAudit({
+                  prisma: prismaGlobal,
+                  tenantId,
+                  workspaceId,
+                  runId,
+                  ...audit,
+                });
+              },
+              logFailure: (auditFailure) => {
+                workerLogger.error(
+                  auditFailure,
+                  "run.worker.mcp_contract_missing_audit_failed"
+                );
+              },
+            });
+
+            throw new MissingToolContractError(missingToolContractBlock);
+          }
+
+          const localAction = resolveLocallyExecutableAction(
+            actionName,
+            allowedActions,
+            tool
+          );
           if (localAction) {
             const localResult = await executeRegisteredAction(actionName, {
               action: actionName,
@@ -1458,44 +1500,6 @@ export async function processRunPayload(payload: RunQueuePayload) {
               output: localResult.output ?? null,
               executionMode: "core_local",
             };
-          }
-
-          const tool = await ToolRegistry.get(actionName, version, tenantId);
-          if (!tool) {
-            const missingToolContractBlock = resolveMissingToolContractDecision(
-              tool,
-              actionName,
-              version,
-              effectivePayload
-            );
-            if (!missingToolContractBlock) {
-              throw new Error(`ToolContract resolution invariant failed: ${actionName}@${version}`);
-            }
-
-            await recordMissingToolContractAudit({
-              actionName,
-              version,
-              runId,
-              tenantId,
-              stepId: context?.currentStep?.id,
-              record: async (audit) => {
-                await recordGuardrailAudit({
-                  prisma: prismaGlobal,
-                  tenantId,
-                  workspaceId,
-                  runId,
-                  ...audit,
-                });
-              },
-              logFailure: (auditFailure) => {
-                workerLogger.error(
-                  auditFailure,
-                  "run.worker.mcp_contract_missing_audit_failed"
-                );
-              },
-            });
-
-            throw new MissingToolContractError(missingToolContractBlock);
           }
 
           const executor = new MCPExecutor(tool);
@@ -2436,7 +2440,7 @@ export async function processRunPayload(payload: RunQueuePayload) {
       }
 
       const message = error instanceof Error ? error.message : "Execution failed";
-      const governedMcpFailure = resolveMissingToolContractRunFailure(error);
+      const governedMcpFailure = resolveActiveMcpDenyRunFailure(error);
       logger.error(
         {
           err: error,

@@ -21,6 +21,20 @@ import { evaluateHallucination } from "../../../api/src/services/judgeGate";
 
 const runnerLogger = createLogger({ component: "action-runner" });
 const judgeCache = new Map<string, { ts: number; result: { confidence: number; reasons: string[]; modelVersion?: string } }>();
+const MCP_TOOL_CONTRACT_MISSING_REASON_CODE =
+  "MCP_TOOL_CONTRACT_MISSING" as const;
+const MCP_DB_ACTIVE_DENY_REASON_CODES = [
+  "DB_SCOPE_MISSING",
+  "DB_MODEL_NOT_ALLOWLISTED",
+] as const;
+
+function resolveActiveMcpDenyReasonCode(error: unknown) {
+  if (!error || typeof error !== "object" || !("reasonCode" in error)) {
+    return null;
+  }
+  const reasonCode = (error as { reasonCode?: unknown }).reasonCode;
+  return MCP_DB_ACTIVE_DENY_REASON_CODES.find((code) => code === reasonCode) ?? null;
+}
 
 function isNonRetryableMcpError(message: string) {
   return (
@@ -630,7 +644,7 @@ export function createActionRunnerHandler(deps: ActionRunnerDeps = defaultDeps) 
       if (!toolContract) {
         const message = `ToolContract missing: ${payload.action}@${toolVersion}`;
         jobLogger.error({ message }, "action.mcp.contract_missing");
-        await recordGuardrailAudit({
+        await deps.recordGuardrailAudit({
           prisma: prisma as any,
           tenantId,
           workspaceId,
@@ -642,9 +656,15 @@ export function createActionRunnerHandler(deps: ActionRunnerDeps = defaultDeps) 
             action: payload.action,
             version: toolVersion,
             stepId: payload.stepId,
+            reasonCode: MCP_TOOL_CONTRACT_MISSING_REASON_CODE,
           },
         });
-        return { status: "error" as const, error: message, retryable: false as const };
+        return {
+          status: "error" as const,
+          error: message,
+          reasonCode: MCP_TOOL_CONTRACT_MISSING_REASON_CODE,
+          retryable: false as const,
+        };
       }
 
       const intentGateResult = await enforceIntentGateBeforeMcp(
@@ -763,9 +783,13 @@ export function createActionRunnerHandler(deps: ActionRunnerDeps = defaultDeps) 
       return { status: "success" as const, output: mcpResult };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      const retryable = !isNonRetryableMcpError(message);
+      const reasonCode = resolveActiveMcpDenyReasonCode(error);
+      const retryable = reasonCode ? false : !isNonRetryableMcpError(message);
 
-      jobLogger.error({ err: error, message, retryable }, "action.mcp.failed");
+      jobLogger.error(
+        { err: error, message, reasonCode, retryable },
+        "action.mcp.failed"
+      );
 
       try {
         await deps.recordGuardrailAudit({
@@ -780,6 +804,7 @@ export function createActionRunnerHandler(deps: ActionRunnerDeps = defaultDeps) 
             action: payload.action,
             version: toolVersion,
             stepId: payload.stepId,
+            ...(reasonCode ? { reasonCode } : {}),
           },
         });
       } catch (auditError) {
@@ -790,7 +815,12 @@ export function createActionRunnerHandler(deps: ActionRunnerDeps = defaultDeps) 
         throw new Error(message);
       }
 
-      return { status: "error" as const, error: message, retryable: false as const };
+      return {
+        status: "error" as const,
+        error: message,
+        ...(reasonCode ? { reasonCode } : {}),
+        retryable: false as const,
+      };
     } finally {
       await prisma.$disconnect();
     }

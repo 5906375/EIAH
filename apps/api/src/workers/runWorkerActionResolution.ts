@@ -5,6 +5,13 @@ export const MCP_TOOL_CONTRACT_MISSING_REASON_CODE =
   EXECUTION_EVIDENCE_REASON_CODES.missingToolContract;
 export const AUDIT_WRITE_FAILED_REASON_CODE =
   EXECUTION_EVIDENCE_REASON_CODES.auditWriteFailed;
+export const MCP_RUNTIME_ACTIVE_DENY_REASON_CODES = [
+  MCP_TOOL_CONTRACT_MISSING_REASON_CODE,
+  "DB_SCOPE_MISSING",
+  "DB_MODEL_NOT_ALLOWLISTED",
+] as const;
+export type McpRuntimeActiveDenyReasonCode =
+  (typeof MCP_RUNTIME_ACTIVE_DENY_REASON_CODES)[number];
 
 export type MissingToolContractBlockedResult = {
   ok: false;
@@ -90,9 +97,10 @@ export function mergeActionsForExecution(params: {
 
 export function resolveLocallyExecutableAction(
   actionName: string,
-  catalog: Record<string, RegisteredAction> | undefined
+  catalog: Record<string, RegisteredAction> | undefined,
+  toolContract: unknown
 ) {
-  if (!catalog) return null;
+  if (!catalog || !toolContract) return null;
   return catalog[actionName] ?? null;
 }
 
@@ -134,6 +142,28 @@ export function resolveMissingToolContractRunFailure(error: unknown) {
     status: "error" as const,
     reasonCode: error.reasonCode,
     result: error.result,
+  };
+}
+
+export function resolveActiveMcpDenyRunFailure(error: unknown) {
+  const knownFailure = resolveMissingToolContractRunFailure(error);
+  if (knownFailure) return knownFailure;
+  if (!error || typeof error !== "object" || !("reasonCode" in error)) {
+    return null;
+  }
+
+  const reasonCode = (error as { reasonCode?: unknown }).reasonCode;
+  if (
+    reasonCode !== "DB_SCOPE_MISSING" &&
+    reasonCode !== "DB_MODEL_NOT_ALLOWLISTED"
+  ) {
+    return null;
+  }
+
+  return {
+    status: "error" as const,
+    reasonCode,
+    result: null,
   };
 }
 
