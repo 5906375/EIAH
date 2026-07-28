@@ -64,6 +64,8 @@
     "check:presentation-snapshot-contract": "node --import tsx scripts/checkPresentationSnapshotContract.ts",
     "check:arch-chat-contracts": "node --import tsx scripts/checkArchChatContracts.ts",
     "check:mcp-contract-drift": "node --import tsx scripts/checkMcpContractDrift.ts",
+    "check:reason-code-canon": "node --import tsx scripts/checkReasonCodeCanon.ts",
+    "test:reason-code-canon": "node --import tsx scripts/tests/checkReasonCodeCanon.test.ts",
     "check:neon-preview-schema": "node --import tsx scripts/checkNeonPreviewSchemaCompatibility.ts",
     "check:imob-frontdoor-regression": "TSX_TSCONFIG_PATH=apps/web/tsconfig.json node --import tsx --test apps/web/src/pages/app/imob/chat.assistantDedupe.test.ts && pnpm check:chat-launcher-render-only && pnpm check:evidence-index && pnpm check:docs-link-integrity",
     "check:worker-topology": "node --import tsx scripts/checkWorkerTopology.ts",
