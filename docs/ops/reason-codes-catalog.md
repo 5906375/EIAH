@@ -1,120 +1,155 @@
-# Reason Codes Catalog (Fonte Oficial)
+# Reason Code Canon v1
 
-## Fonte da verdade
-- Catálogo oficial: `packages/core/src/reasons/reasonCatalog.ts`
-- Tipagem oficial: `ReasonCode`
-- Normalização oficial: `normalizeReason()`
+## Fonte canônica
 
-## Regra de uso
-- `reasonCodes` de receipts/erros/eventos devem usar apenas valores do catálogo oficial.
-- Strings ad-hoc em `reasonCodes` são proibidas.
-- Valores dinâmicos devem passar por normalização (`normalizeReasonCode`/`normalizeReason`) antes de sair na API.
+A fonte única versionada é
+`packages/core/src/reasons/reasonCatalog.ts`. Ela define `ReasonCode`,
+`ReasonCodeDefinition`, os metadados de governança e as funções
+`isReasonCode()`, `assertReasonCode()`, `isActiveReasonCode()`,
+`assertActiveReasonCode()` e `normalizeReason()`. Conhecimento e
+enforçabilidade são separados: `assertReasonCode()` aceita entradas
+catalogadas como `proposed`, enquanto `assertActiveReasonCode()` não aceita.
 
-## Cobertura de ledger/receipt (F5.1/F5.3)
-- `invalid_txid_format`
-- `txid_not_found`
-- `pou_txid_mismatch`
-- `missing_trust_snapshot_for_pou`
-- `missing_run_for_txid`
-- `missing_bundle_hash_for_run`
-- `run_txid_mismatch`
-- `run_critical_hash_mismatch`
-- `missing_scl_for_txid`
-- `missing_scl_signature`
-- `scl_critical_hash_mismatch`
-- `delegation_pending_approval`
+O checker global inicial é `scripts/checkReasonCodeCanon.ts`, executado por
+`pnpm check:reason-code-canon`. Ele rejeita códigos desconhecidos nos
+arquivos-alvo nomeados, códigos `active` sem owner/approver/evidenceRef,
+bootstrap fora do baseline cercado e drift entre este documento, a fonte
+canônica e os validadores de domínio.
 
-### Semântica de execução MCP (MCP-1J)
+## Origem e correção do drift
 
-Fonte canônica ativa: `apps/api/src/services/executionEvidence.ts`
-(`EXECUTION_EVIDENCE_REASON_CODES`).
+Esta fonte foi **(re)criada no RC-0**; ela não foi restaurada da linhagem de
+`main`. O discovery R4 read-only confirmou:
 
-- `EXECUTION_FAILED` — fallback já existente para run em erro sem código mais
-  específico; impede que um estado bloqueado valide como execução real.
-- `MCP_TOOL_CONTRACT_MISSING` — execução bloqueada porque o contrato da tool
-  não foi encontrado.
-- `SIMULATED_OUTPUT_IN_CRITICAL_CHAIN` — dado histórico legível contém
-  `simulated:true` e não pode validar como execução real.
-- `AUDIT_WRITE_FAILED` — persistência de audit em caminho MCP crítico falhou;
-  o run deve falhar fechado.
+- `reasonCatalog.ts` existiu no commit lateral `1428a1bc`, contido em
+  `chore/publish-batches`, mas esse commit nunca foi ancestral de `main`;
+- este documento passou a apontar para o arquivo no commit `516c34b6`, quando
+  nem esse commit nem seu pai continham a fonte;
+- portanto, o ponteiro nasceu órfão na linhagem principal.
 
-### Executor DB MCP (MCP-1L)
+O RC-0 corrige o ponteiro e cria enforcement conservador. Ele não ratifica os
+códigos bloqueados de MCP, RBAC ou notification.
 
-Fonte canônica ativa:
-`packages/mcp-runner/src/executor/dbAllowlist.ts`
-(`MCP_DB_REASON_CODES`).
+## Status e bootstrap
 
-- `DB_MODEL_NOT_ALLOWLISTED` — modelo Prisma não consta da allowlist explícita;
-  o bloqueio ocorre antes de carregar/acessar o delegate.
-- `DB_SCOPE_VIOLATION` — filtro recebido contém tenant/workspace divergente do
-  contexto autenticado, ou possui forma inválida; falha alto sem sobrescrita
-  silenciosa.
-- `DB_SCOPE_MISSING` — contexto autenticado não contém tenant/workspace exigido
-  pela entrada da allowlist.
+- `active`: código já enforçado pelo baseline pré-RC-0 de um validador de
+  domínio real. Exige owner, approver e evidenceRef.
+- `proposed`: código conhecido, mas não enforçável nem ratificado.
+- `deprecated`: código mantido para compatibilidade, sem uso novo.
 
-A allowlist de produção nasce vazia por decisão do MCP-1K. Qualquer inclusão
-de modelo exige aprovação explícita do operador.
+O bootstrap `active` é uma exceção cercada e imutável para os conjuntos IMOB
+(`z.enum(IMOB_REASON_CODE_VALUES)`) e Chat→Vertical
+(`z.enum(VERTICAL_HANDOFF_REASON_CODES)` + checker de sincronização). Citação
+documental, uso runtime ou presença em teste não bastam para bootstrap.
 
-## Cobertura IMOB — control surface (Command Center)
+## Ratificação
 
-Fonte: `apps/api/src/services/imob/control/imobReasonCodeCatalog.ts`
-Tipo: `ImobReasonCode`
-Catálogo: `IMOB_REASON_CODE_CATALOG`
+Um código novo entra como `proposed`. A transição `proposed → active` exige PR
+dedicado com:
 
-### Risco operacional (Command Center dropdown)
+1. owner identificado;
+2. approver humano identificado;
+3. `evidenceRef` autenticada da aprovação;
+4. ratificação registrada de Carlos Alberto Merlo;
+5. atualização da fonte canônica, deste catálogo documental e dos validadores
+   nomeados aplicáveis.
 
-- `COMMERCIAL_PRIORITY` — Prioridade comercial
-- `FOLLOW_UP_DISCIPLINE` — Disciplina de follow-up
-- `DOCUMENT_BLOCKER` — Bloqueio documental
-- `FINANCIAL_BLOCKER` — Bloqueio financeiro (requiresApproval)
-- `AUDIT_BLOCKER` — Bloqueio de auditoria/evidência (requiresApproval, requiresEvidence)
-- `BLOCKERS_PRESENT` — Bloqueios presentes
-- `PENDING_ITEMS_PRESENT` — Pendências presentes
-- `NEXT_STEP_AVAILABLE` — Próximo passo disponível
-- `CASE_STATUS_BLOCKED` — Caso bloqueado
+Automação não pode ratificar o próprio código. Preencher os campos no mesmo PR
+que propõe o código não substitui aprovação humana autenticada.
 
-### Governança / fail-closed (DATA-03 · Etapa 8 Trilha A)
+## Catálogo sincronizado
 
-- `CASE_RESPONSIBLE_REQUIRED` — Responsável pelo caso não atribuído antes de transição terminal
-  - `nextAction: ASSIGN_RESPONSIBLE_MANUALLY`
-  - Retornado por `updateCase()` quando `status → closing/done/completed` e `ownerResponsible` null
-  - **Nota:** o code `OWNER_REQUIRED` em `imobNextActionResolver.ts` é semânticamente diferente — refere-se ao proprietário do imóvel não cadastrado na jornada de captação, não ao responsável do caso.
-- `CASE_OWNER_ASSIGNMENT_FORBIDDEN` — Atribuição de responsável bloqueada pela policy (requiresApproval, requiresEvidence)
-- `MEMBER_NOT_ELIGIBLE_AS_RESPONSIBLE` — Membro sem elegibilidade para responsável pelo caso (requiresApproval)
-- `RESPONSIBLE_ACTOR_CONTRACT_INVALID` — Contrato canônico de responsible actor inválido antes de persistir atribuição (requiresEvidence)
-  - Retornado por `assignResponsibleActor()` quando o payload mínimo multi-vertical falha na validação
-  - `tenantId/workspaceId` devem vir do `scope` backend, não do body externo
+O bloco abaixo é machine-checkable. Alterações manuais que não correspondam à
+fonte canônica falham em `check:reason-code-canon`.
 
-### Integridade de run (DATA-01 Frente B)
+<!-- reason-code-canon:start -->
+| Code | Status |
+| --- | --- |
+| `COMMERCIAL_PRIORITY` | active |
+| `FOLLOW_UP_DISCIPLINE` | active |
+| `DOCUMENT_BLOCKER` | active |
+| `FINANCIAL_BLOCKER` | active |
+| `AUDIT_BLOCKER` | active |
+| `BLOCKERS_PRESENT` | active |
+| `PENDING_ITEMS_PRESENT` | active |
+| `NEXT_STEP_AVAILABLE` | active |
+| `CASE_STATUS_BLOCKED` | active |
+| `CASE_RESPONSIBLE_REQUIRED` | active |
+| `CASE_OWNER_ASSIGNMENT_FORBIDDEN` | active |
+| `MEMBER_NOT_ELIGIBLE_AS_RESPONSIBLE` | active |
+| `RESPONSIBLE_ACTOR_CONTRACT_INVALID` | active |
+| `INVALID_ACTION_TYPE` | active |
+| `CASE_TRANSITION_EVENT_REQUIRED` | active |
+| `PENDING_ACTION_MISSING` | active |
+| `PENDING_ACTION_MISMATCH` | active |
+| `PENDING_ACTION_EXPIRED` | active |
+| `PENDING_ACTION_CANCELLED_BY_USER` | active |
+| `CONFIRMATION_TARGET_AMBIGUOUS` | active |
+| `DIRECTED_ACTION_CONTEXT_LOST` | active |
+| `DIRECTED_ACTION_ENTITY_MISMATCH` | active |
+| `DIRECTED_ACTION_JOURNEY_MISMATCH` | active |
+| `VERTICAL_NOT_REGISTERED` | active |
+| `VERTICAL_DISABLED` | active |
+| `VERTICAL_ENTITLEMENT_REQUIRED` | active |
+| `VERTICAL_SCOPE_DENIED` | active |
+| `VERTICAL_CAPABILITY_NOT_AVAILABLE` | active |
+| `VERTICAL_REGISTRY_VERSION_MISMATCH` | active |
+| `VERTICAL_POLICY_DENIED` | active |
+| `VERTICAL_HITL_REQUIRED` | active |
+| `VERTICAL_GOVERNANCE_NOT_EVALUATED` | active |
+| `VERTICAL_PRESENTATION_INVALID` | active |
+| `VERTICAL_HANDOFF_ALLOWED` | active |
+| `VERTICAL_PREVIEW_ONLY` | active |
+| `invalid_txid_format` | proposed |
+| `txid_not_found` | proposed |
+| `pou_txid_mismatch` | proposed |
+| `missing_trust_snapshot_for_pou` | proposed |
+| `missing_run_for_txid` | proposed |
+| `missing_bundle_hash_for_run` | proposed |
+| `run_txid_mismatch` | proposed |
+| `run_critical_hash_mismatch` | proposed |
+| `missing_scl_for_txid` | proposed |
+| `missing_scl_signature` | proposed |
+| `scl_critical_hash_mismatch` | proposed |
+| `delegation_pending_approval` | proposed |
+| `EXECUTION_FAILED` | proposed |
+| `MCP_TOOL_CONTRACT_MISSING` | proposed |
+| `SIMULATED_OUTPUT_IN_CRITICAL_CHAIN` | proposed |
+| `AUDIT_WRITE_FAILED` | proposed |
+| `DB_MODEL_NOT_ALLOWLISTED` | proposed |
+| `DB_SCOPE_VIOLATION` | proposed |
+| `DB_SCOPE_MISSING` | proposed |
+| `POLICY_NOT_FOUND` | proposed |
+| `RBAC_OWNER_DEFERRAL` | proposed |
+| `RBAC_BUILD_ARTIFACT_DRIFT` | proposed |
+| `NOTIFICATION_NON_DELIVERY_ESCALATION` | proposed |
+| `NOTIFICATION_BLOCKED_FREEZE` | proposed |
+| `NOTIFICATION_BLOCKED_SECRET_PROVENANCE` | proposed |
+| `NOTIFICATION_BLOCKED_REASON_CODE_MISSING` | proposed |
+| `NOTIFICATION_BLOCKED_RUN_MISSING` | proposed |
+<!-- reason-code-canon:end -->
 
-- `INVALID_ACTION_TYPE` — Run criado com `request.action` fora do mapa canônico
-  - Retornado no momento da criação do run quando `request.action` desconhecido e não normalizável
+## Alcance inicial do checker
 
-### Integridade de transição (DATA-02 Opção B)
+Os arquivos-alvo são explicitamente declarados em
+`REASON_CODE_CANON_TARGETS`:
 
-- `CASE_TRANSITION_EVENT_REQUIRED` — Transição de status requer `ImobCaseEvent` explícito com timestamp real; evento ausente (requiresEvidence)
-  - Retornado quando `status → closing/done` sem evento de closing registrado
+- `packages/core/src/reasons/reasonCatalog.ts`;
+- `docs/ops/reason-codes-catalog.md`;
+- `apps/api/src/services/imob/control/imobReasonCodeCatalog.ts`;
+- `apps/api/src/routes/imobCrmSchemas.ts`;
+- `apps/api/src/types/chatVerticalHandoffV2Contract.ts`;
+- `contracts/chat/vertical.reason_codes.v1.json`;
+- `scripts/tests/checkReasonCodeCanon.test.ts`.
 
-## Compatibilidade
-- Novos reason codes: mudança aditiva.
-- Remoção/renomeação: breaking change.
-- Adição de `category: "governance"` ao tipo `ImobReasonCodeSpec`: mudança aditiva no enum de categoria.
+O RC-0 não varre todo o runtime. Receipt Canon, ledger, execution evidence,
+MCP DB, RBAC, notification e demais testes/fontes permanecem fora do scanner
+global inicial. Ampliar esse alcance é dívida futura consciente, para evitar
+um baseline ruidoso e impossível de revisar neste PR.
 
-## Chat to Vertical v2
+## Enforcement no portão de main
 
-Fonte contratual versionada: `contracts/chat/vertical.reason_codes.v1.json`.
-
-Este catálogo cobre somente o preflight `chat.vertical_handoff.v2`; ele não substitui nem amplia implicitamente os códigos operacionais legados. Códigos iniciais:
-
-- `VERTICAL_NOT_REGISTERED`
-- `VERTICAL_DISABLED`
-- `VERTICAL_ENTITLEMENT_REQUIRED`
-- `VERTICAL_SCOPE_DENIED`
-- `VERTICAL_CAPABILITY_NOT_AVAILABLE`
-- `VERTICAL_REGISTRY_VERSION_MISMATCH`
-- `VERTICAL_POLICY_DENIED`
-- `VERTICAL_HITL_REQUIRED`
-- `VERTICAL_GOVERNANCE_NOT_EVALUATED`
-- `VERTICAL_PRESENTATION_INVALID`
-- `VERTICAL_HANDOFF_ALLOWED`
-- `VERTICAL_PREVIEW_ONLY`
+O checker nasce informativo: ele não está entre os required checks atuais.
+Após o merge do RC-0, torná-lo required no ruleset
+`main-protection-hard-gates` é decisão autenticada de Carlos Alberto Merlo.
+Este PR não altera ruleset, branch protection ou workflow.
