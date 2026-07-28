@@ -94,9 +94,11 @@ Permanecem fora desta promoção:
 
 ## Propostas MCP policy e DB input — RC-MCP-2A — 2026-07-28
 
-Os códigos abaixo são conhecidos pelo canon como `proposed`. Esta inclusão não
-os torna enforçáveis, não altera runtime e não substitui ratificação humana
-para uma futura promoção a `active`.
+Os códigos MCP policy abaixo são conhecidos pelo canon como `proposed`. Esta
+inclusão não os torna enforçáveis, não altera runtime e não substitui
+ratificação humana para uma futura promoção a `active`. `DB_INPUT_INVALID`
+entrou como `proposed` neste ciclo e foi posteriormente promovido pelo
+RC-DB-1A.
 
 - `MCP_POLICY_REFERENCE_MISSING`: o contrato exige policy, mas `policyId` está
   ausente ou vazio. O status HTTP externo esperado é `403`. Retry somente após
@@ -115,12 +117,30 @@ para uma futura promoção a `active`.
 - `MCP_POLICY_CONTEXT_VIOLATION`: tenant, workspace ou scope diverge do
   permitido. O status HTTP externo esperado é `403`. Não é retryable com o
   mesmo contexto e payload.
-- `DB_INPUT_INVALID`: `where` ou query é estruturalmente inválido. O status
-  HTTP externo esperado é `400`. Não é retryable com o mesmo input.
-
 `DB_SCOPE_VIOLATION` permanece `proposed` e reservado para futura separação da
 violação cross-tenant/workspace real. Não foram criados os agregados ambíguos
 `MCP_POLICY_NOT_RESOLVED` ou `MCP_POLICY_CONTEXT_INVALID`.
+
+## Ratificacao RC-DB-1A — 2026-07-28
+
+Carlos Alberto Merlo ratificou `DB_INPUT_INVALID` como `active`, sob ownership
+de Governance Layer / MCP DB Authorization.
+
+`DB_INPUT_INVALID` representa input DB MCP estruturalmente inválido, incluindo
+`where` ou futura `query` malformada. Deve ser emitido antes de carregar ou
+acessar Prisma, delegate, banco de dados ou qualquer side effect. Quando
+exposto por HTTP, o status externo esperado é `400`; não é retryable com o
+mesmo input.
+
+O código não representa scope ausente ou divergente, modelo fora da allowlist,
+policy deny, falha operacional, ausência de ToolContract ou erro de
+infraestrutura. Audit/receipt, quando já suportados pelo caller, devem ser
+sanitizados e não podem registrar payload sensível nem valores integrais de
+filtros.
+
+Esta ratificação altera somente o canon. Ela não autoriza emissão runtime antes
+do PR runtime separado, não ativa `DB_SCOPE_VIOLATION`, não altera
+`POLICY_NOT_FOUND` e não modifica `runWorker`, action-runner ou `MCPExecutor`.
 
 ## Catálogo sincronizado
 
@@ -183,7 +203,7 @@ fonte canônica falham em `check:reason-code-canon`.
 | `AUDIT_WRITE_FAILED` | proposed |
 | `DB_MODEL_NOT_ALLOWLISTED` | active |
 | `DB_SCOPE_VIOLATION` | proposed |
-| `DB_INPUT_INVALID` | proposed |
+| `DB_INPUT_INVALID` | active |
 | `DB_SCOPE_MISSING` | active |
 | `MCP_POLICY_REFERENCE_MISSING` | proposed |
 | `MCP_POLICY_TARGET_NOT_FOUND` | proposed |

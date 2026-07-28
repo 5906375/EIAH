@@ -121,7 +121,7 @@ const MCP_DB_PROPOSED_CODES = [
   "DB_SCOPE_VIOLATION",
 ] as const;
 
-const MCP_DB_INPUT_PROPOSED_CODES = [
+const MCP_DB_INPUT_ACTIVE_CODES = [
   "DB_INPUT_INVALID",
 ] as const;
 
@@ -273,17 +273,21 @@ export const REASON_CODE_CATALOG = [
     owner: "MCP governance",
     evidenceRef: "packages/mcp-runner/src/executor/dbAllowlist.ts#MCP_DB_REASON_CODES",
   }),
-  ...defineReasonCodes(MCP_DB_INPUT_PROPOSED_CODES, {
+  ...defineReasonCodes(MCP_DB_INPUT_ACTIVE_CODES, {
     domain: "mcp",
     severity: "error",
     category: "validation",
     descriptionPrefix:
-      "Structurally invalid DB input pending canonical ratification",
-    status: "proposed",
-    owner: "MCP/Tool Security governance",
-    introducedBy: "RC-MCP-2A",
+      "Structurally invalid MCP DB input rejected before Prisma or delegate access",
+    status: "active",
+    owner: "Governance Layer / MCP DB Authorization",
+    approver: {
+      kind: "human",
+      actor: "Carlos Alberto Merlo",
+    },
+    introducedBy: "RC-DB-1A",
     evidenceRef:
-      "docs/ops/reason-codes-catalog.md#rc-mcp-2a-proposals",
+      "docs/ops/reason-codes-catalog.md#ratificacao-rc-db-1a-2026-07-28",
   }),
   ...defineReasonCodes(MCP_POLICY_PROPOSED_CODES, {
     domain: "mcp",
@@ -331,7 +335,8 @@ export type ActiveReasonCode =
   | (typeof CHAT_VERTICAL_BOOTSTRAP_ACTIVE_CODES)[number]
   | (typeof MCP_TOOL_CONTRACT_ACTIVE_CODES)[number]
   | (typeof MCP_DB_SCOPE_ACTIVE_CODES)[number]
-  | (typeof MCP_DB_ALLOWLIST_ACTIVE_CODES)[number];
+  | (typeof MCP_DB_ALLOWLIST_ACTIVE_CODES)[number]
+  | (typeof MCP_DB_INPUT_ACTIVE_CODES)[number];
 
 const REASON_CODE_BY_CODE = new Map<string, (typeof REASON_CODE_CATALOG)[number]>(
   REASON_CODE_CATALOG.map((definition) => [definition.code, definition]),

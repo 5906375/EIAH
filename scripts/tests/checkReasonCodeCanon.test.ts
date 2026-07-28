@@ -48,7 +48,7 @@ test("accepts an active known code with owner, approver and evidenceRef", () => 
   assert.deepEqual(validateReasonCodeCatalog([activeFixture()]), []);
 });
 
-test("keeps MCP policy and DB input additions proposed", () => {
+test("keeps MCP policy additions proposed and ratified DB input active", () => {
   const definitions = new Map(
     REASON_CODE_CATALOG.map((definition) => [definition.code, definition]),
   );
@@ -56,6 +56,7 @@ test("keeps MCP policy and DB input additions proposed", () => {
     "MCP_TOOL_CONTRACT_MISSING",
     "DB_SCOPE_MISSING",
     "DB_MODEL_NOT_ALLOWLISTED",
+    "DB_INPUT_INVALID",
   ] as const;
 
   for (const code of activeCodes) {
@@ -76,7 +77,6 @@ test("keeps MCP policy and DB input additions proposed", () => {
     "MCP_POLICY_DENIED",
     "MCP_POLICY_CONTEXT_MISSING",
     "MCP_POLICY_CONTEXT_VIOLATION",
-    "DB_INPUT_INVALID",
   ] as const;
   for (const code of proposedCodes) {
     assert.equal(definitions.get(code)?.status, "proposed");
@@ -85,6 +85,17 @@ test("keeps MCP policy and DB input additions proposed", () => {
 
   assert.equal(definitions.has("MCP_POLICY_NOT_RESOLVED"), false);
   assert.equal(definitions.has("MCP_POLICY_CONTEXT_INVALID"), false);
+
+  const dbInputInvalid = definitions.get("DB_INPUT_INVALID");
+  assert.equal(
+    dbInputInvalid?.owner,
+    "Governance Layer / MCP DB Authorization",
+  );
+  assert.equal(dbInputInvalid?.introducedBy, "RC-DB-1A");
+  assert.equal(
+    dbInputInvalid?.evidenceRef,
+    "docs/ops/reason-codes-catalog.md#ratificacao-rc-db-1a-2026-07-28",
+  );
 });
 
 test("rejects active without owner, approver or evidenceRef", () => {
