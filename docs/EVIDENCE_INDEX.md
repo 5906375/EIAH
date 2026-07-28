@@ -10,6 +10,12 @@
 | --- | --- | --- |
 | Required status checks aplicados em `main` | `docs/ops/evidence/main-hard-gates-applied-2026-07-27.md` | Evidência documental pós-save de que o ruleset `main-protection-hard-gates` está `active` e contém os 20/20 checks aprovados, todos provenientes do GitHub Actions (`integration_id=15368`), sem checks faltantes. Classifica o P0 “main sem hard gates de CI” como mitigado tecnicamente. Preserva como abertos approvals/HITL técnico (`approvals=0`) e a auditoria APE #45–#48; não fecha `e2e-high-staging`, staging ou produção. |
 
+## Auditoria APE #45–#48 — proveniência e impacto P1 (2026-07-27)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Auditoria fail-closed dos ciclos APE #45–#48 | `docs/ops/evidence/ape-cycles-45-48-audit-2026-07-27.md` | Correlaciona arquivos, commits, PRs, atores, runs Actions, artifacts e a versão histórica do gerador. Confirma que `auditGap=0` e `duplicateSideEffects=0` eram hardcoded nos quatro ciclos; #45, #46 e #48 foram criados e mergeados por `github-actions[bot]`, sem review humano, enquanto #47 teve merge humano mas não possui execução APE ou métricas medidas vinculadas. Classifica os quatro ciclos como viciados para recorrência P1 e demonstra que #48 renovou o frescor técnico da seleção #48/#47/#46, produzindo verdes P1 provisórios sem fechar a integridade operacional. P1 permanece `parcial`. |
+
 ## Validação de banco em PR — Postgres efêmero atual e Neon histórico (2026-07-25)
 
 | Assunto | Arquivo | O que prova |
