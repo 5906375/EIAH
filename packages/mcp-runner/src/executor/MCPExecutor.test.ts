@@ -146,6 +146,7 @@ test("MCPExecutor: circuit breaker opens after repeated failures and blocks the 
 
 test("MCPExecutor: db executor denies every production model while the allowlist is empty", async () => {
   let dbLoads = 0;
+  const sensitiveModelName = "credential-must-not-leak";
   setMcpExecutorDbLoaderForTests(async () => {
     dbLoads += 1;
     return { prismaGlobal: {} };
@@ -155,12 +156,21 @@ test("MCPExecutor: db executor denies every production model while the allowlist
   const executor = new MCPExecutor(contract);
   await assert.rejects(
     executor.run(
-      { table: "property", where: {} },
+      { table: sensitiveModelName, where: {} },
       { tenantId: "tenant-authenticated" }
     ),
-    (error) =>
-      error instanceof McpDbPolicyError &&
-      error.reasonCode === "DB_MODEL_NOT_ALLOWLISTED"
+    (error) => {
+      assert.equal(error instanceof McpDbPolicyError, true);
+      assert.equal(
+        (error as McpDbPolicyError).reasonCode,
+        "DB_MODEL_NOT_ALLOWLISTED"
+      );
+      assert.equal(
+        (error as McpDbPolicyError).message.includes(sensitiveModelName),
+        false
+      );
+      return true;
+    }
   );
   assert.equal(dbLoads, 0, "allowlist denial must happen before loading Prisma");
 });
@@ -255,6 +265,7 @@ test("MCPExecutor: divergent caller scope fails high before Prisma", async () =>
 });
 
 test("MCPExecutor: tenantized model without authenticated tenant fails closed", async () => {
+  let dbLoads = 0;
   setMcpDbAllowlistForTests([
     {
       model: "property",
@@ -263,6 +274,10 @@ test("MCPExecutor: tenantized model without authenticated tenant fails closed", 
       readOnly: true,
     },
   ]);
+  setMcpExecutorDbLoaderForTests(async () => {
+    dbLoads += 1;
+    return { prismaGlobal: {} };
+  });
 
   const executor = new MCPExecutor(buildContract({ executor: "db" }));
   await assert.rejects(
@@ -271,9 +286,11 @@ test("MCPExecutor: tenantized model without authenticated tenant fails closed", 
       error instanceof McpDbPolicyError &&
       error.reasonCode === "DB_SCOPE_MISSING"
   );
+  assert.equal(dbLoads, 0, "scope denial must happen before loading Prisma");
 });
 
 test("MCPExecutor: workspace-scoped model without authenticated workspace fails closed", async () => {
+  let dbLoads = 0;
   setMcpDbAllowlistForTests([
     {
       model: "property",
@@ -282,6 +299,10 @@ test("MCPExecutor: workspace-scoped model without authenticated workspace fails 
       readOnly: true,
     },
   ]);
+  setMcpExecutorDbLoaderForTests(async () => {
+    dbLoads += 1;
+    return { prismaGlobal: {} };
+  });
 
   const executor = new MCPExecutor(buildContract({ executor: "db" }));
   await assert.rejects(
@@ -293,6 +314,7 @@ test("MCPExecutor: workspace-scoped model without authenticated workspace fails 
       error instanceof McpDbPolicyError &&
       error.reasonCode === "DB_SCOPE_MISSING"
   );
+  assert.equal(dbLoads, 0, "scope denial must happen before loading Prisma");
 });
 
 test("MCPExecutor: input validation fails before the db delegate is called", async () => {

@@ -8,6 +8,7 @@ import {
   recordCriticalMcpAudit,
   recordMissingToolContractAudit,
   mergeActionsForExecution,
+  resolveActiveMcpDenyRunFailure,
   resolveLocallyExecutableAction,
   resolveDeclaredActionNames,
   resolveMissingToolContractDecision,
@@ -73,16 +74,37 @@ test("run worker action resolution ignores agent-declared actions that are not i
   assert.deepEqual(declared, ["guardian.checkRuntimeHealth"]);
 });
 
-test("run worker action resolution exposes locally executable core actions for proxy fallback", () => {
+test("run worker core_local resolution requires an exact active ToolContract", () => {
   const catalog: Record<string, RegisteredAction> = {
     "guardian.checkRuntimeHealth": createAction("guardian.checkRuntimeHealth"),
   };
+  const activeContract = {
+    name: "guardian.checkRuntimeHealth",
+    version: "1.0.0",
+    tenantId: "tenant-1",
+    status: "active",
+  };
 
   assert.equal(
-    resolveLocallyExecutableAction("guardian.checkRuntimeHealth", catalog)?.name,
+    resolveLocallyExecutableAction(
+      "guardian.checkRuntimeHealth",
+      catalog,
+      activeContract
+    )?.name,
     "guardian.checkRuntimeHealth"
   );
-  assert.equal(resolveLocallyExecutableAction("guardian.unknown", catalog), null);
+  assert.equal(
+    resolveLocallyExecutableAction(
+      "guardian.checkRuntimeHealth",
+      catalog,
+      null
+    ),
+    null
+  );
+  assert.equal(
+    resolveLocallyExecutableAction("guardian.unknown", catalog, activeContract),
+    null
+  );
 });
 
 test("run worker missing ToolContract fails closed for realestate actions", () => {
@@ -142,6 +164,28 @@ test("run worker classifies missing ToolContract as canonical run error", () => 
 
   assert.equal(failure?.status, "error");
   assert.equal(failure?.reasonCode, "MCP_TOOL_CONTRACT_MISSING");
+});
+
+test("run worker preserves only active DB deny reasonCodes in run failure", () => {
+  for (const reasonCode of [
+    "DB_SCOPE_MISSING",
+    "DB_MODEL_NOT_ALLOWLISTED",
+  ] as const) {
+    const failure = resolveActiveMcpDenyRunFailure(
+      Object.assign(new Error("Governed MCP DB deny"), { reasonCode })
+    );
+    assert.equal(failure?.status, "error");
+    assert.equal(failure?.reasonCode, reasonCode);
+  }
+
+  assert.equal(
+    resolveActiveMcpDenyRunFailure(
+      Object.assign(new Error("Ambiguous scope deny"), {
+        reasonCode: "DB_SCOPE_VIOLATION",
+      })
+    ),
+    null
+  );
 });
 
 test("run worker emits canonical missing-contract audit", async () => {

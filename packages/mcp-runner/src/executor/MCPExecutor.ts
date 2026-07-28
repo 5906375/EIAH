@@ -139,7 +139,7 @@ export class MCPExecutor {
     if (!allowlistEntry || allowlistEntry.readOnly !== true) {
       throw new McpDbPolicyError(
         MCP_DB_REASON_CODES.modelNotAllowlisted,
-        `DB model is not allowlisted: ${modelName}`
+        "DB model is not allowlisted"
       );
     }
 

@@ -3,6 +3,18 @@ import { ToolRegistry, MCPExecutor } from "@repo/mcp-runner";
 import { recordGuardrailAudit } from "@eiah/core";
 type TenantPrismaClient = any;
 
+export const MCP_TOOL_CONTRACT_MISSING_REASON_CODE =
+  "MCP_TOOL_CONTRACT_MISSING" as const;
+
+export class McpToolContractMissingError extends Error {
+  readonly reasonCode = MCP_TOOL_CONTRACT_MISSING_REASON_CODE;
+
+  constructor(actionName: string, version: string) {
+    super(`ToolContract missing: ${actionName}@${version}`);
+    this.name = "McpToolContractMissingError";
+  }
+}
+
 export type ExecuteWithMcpParams = {
   prisma: TenantPrismaClient;
   tenantId: string;
@@ -16,7 +28,7 @@ export type ExecuteWithMcpParams = {
 export async function executeWithMCP(params: ExecuteWithMcpParams) {
   const tool = await ToolRegistry.get(params.actionName, params.version, params.tenantId);
   if (!tool) {
-    throw new Error(`ToolContract missing: ${params.actionName}@${params.version}`);
+    throw new McpToolContractMissingError(params.actionName, params.version);
   }
 
   const executor = new MCPExecutor(tool);
