@@ -62,6 +62,7 @@ export * from "./utils/retry";
 export * from "./utils/timeout";
 export * from "./utils/normalizeMessages";
 export * from "./security/internalRateLimit";
+export * from "./security/adminScopes";
 export * from "./security/rbac";
 export * from "./security/signerManager";
 export * from "./policies/signaturePolicy";

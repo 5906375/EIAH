@@ -39,6 +39,7 @@
     "check:docs-link-integrity": "node --import tsx scripts/checkDocsLinkIntegrity.ts",
     "check:tracked-ignored-files": "node --import tsx scripts/checkTrackedIgnoredFiles.ts",
     "check:orphan-tests": "node --import tsx scripts/checkOrphanTests.ts",
+    "check:admin-scope-canon": "node --import tsx --test packages/core/src/security/adminScopes.test.ts",
     "check:rbac-fail-closed": "node --import tsx scripts/checkRbacFailClosed.ts",
     "check:guardrail-ledger-noop": "node --import tsx scripts/checkGuardrailLedgerNoop.ts",
     "check:p3-economy-hardening": "node --experimental-strip-types scripts/checkP3EconomyHardening.ts",
