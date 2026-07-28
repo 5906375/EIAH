@@ -229,6 +229,40 @@ test("MCPExecutor: allowlisted tenant model receives authenticated tenant and wo
   ]);
 });
 
+test("MCPExecutor: structurally invalid db where uses DB_INPUT_INVALID before Prisma", async () => {
+  let dbLoads = 0;
+  setMcpDbAllowlistForTests([
+    {
+      model: "property",
+      tenantField: "tenantId",
+      workspaceField: null,
+      readOnly: true,
+    },
+  ]);
+  setMcpExecutorDbLoaderForTests(async () => {
+    dbLoads += 1;
+    return { prismaGlobal: {} };
+  });
+
+  const executor = new MCPExecutor(
+    buildContract({
+      executor: "db",
+      inputSchema: { type: "object" },
+    })
+  );
+
+  await assert.rejects(
+    executor.run(
+      { table: "property", where: "invalid" },
+      { tenantId: "tenant-authenticated" }
+    ),
+    (error) =>
+      error instanceof McpDbPolicyError &&
+      error.reasonCode === "DB_INPUT_INVALID"
+  );
+  assert.equal(dbLoads, 0, "input denial must happen before loading Prisma");
+});
+
 test("MCPExecutor: divergent caller scope fails high before Prisma", async () => {
   let dbLoads = 0;
   setMcpDbAllowlistForTests([
