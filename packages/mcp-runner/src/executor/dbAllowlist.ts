@@ -1,5 +1,6 @@
 export const MCP_DB_REASON_CODES = {
   modelNotAllowlisted: "DB_MODEL_NOT_ALLOWLISTED",
+  inputInvalid: "DB_INPUT_INVALID",
   scopeViolation: "DB_SCOPE_VIOLATION",
   scopeMissing: "DB_SCOPE_MISSING",
 } as const;

@@ -145,7 +145,7 @@ export class MCPExecutor {
 
     if (!isRecord(where ?? {})) {
       throw new McpDbPolicyError(
-        MCP_DB_REASON_CODES.scopeViolation,
+        MCP_DB_REASON_CODES.inputInvalid,
         "DB where must be an object"
       );
     }
