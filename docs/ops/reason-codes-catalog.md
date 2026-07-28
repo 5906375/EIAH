@@ -57,6 +57,39 @@ dedicado com:
 Automação não pode ratificar o próprio código. Preencher os campos no mesmo PR
 que propõe o código não substitui aprovação humana autenticada.
 
+## Ratificacao RC-MCP-1A — 2026-07-28
+
+Carlos Alberto Merlo ratificou como `active` os códigos
+`MCP_TOOL_CONTRACT_MISSING`, `DB_SCOPE_MISSING` e
+`DB_MODEL_NOT_ALLOWLISTED` para enforcement fail-closed de MCP/Tool Security.
+Quando expostos por HTTP, o status externo canônico é `403`. O deny ocorre
+antes de qualquer side effect e usa audit/receipt sanitizado quando o caller
+já possuir mecanismo de auditoria.
+
+Semântica ratificada:
+
+- `MCP_TOOL_CONTRACT_MISSING`: nenhum ToolContract ativo exato existe para
+  tenant/action/version solicitados. É emitido antes da execução e não
+  representa policy deny, DB scope inválido ou modelo fora da allowlist. Retry
+  somente após provisionamento ou ativação do contrato.
+- `DB_SCOPE_MISSING`: o contexto autenticado não contém tenant/workspace
+  obrigatório para um modelo DB scoped. É emitido antes de acessar
+  Prisma/delegate e não representa divergência de scope ou input inválido. Não
+  há retry sem novo contexto autenticado.
+- `DB_MODEL_NOT_ALLOWLISTED`: o modelo DB solicitado não pertence à allowlist
+  governada. É emitido antes do acesso ao Prisma e não representa policy deny
+  ou scope incorreto. Não há retry sem mudança da allowlist.
+
+Permanecem fora desta promoção:
+
+- `DB_SCOPE_VIOLATION` permanece `proposed` até separar input inválido de
+  violação cross-tenant real;
+- `POLICY_NOT_FOUND` permanece `proposed` e fora do escopo MCP;
+- `MCP_POLICY_NOT_RESOLVED` não será criado enquanto suas causas não forem
+  divididas;
+- `MCP_POLICY_DENIED` não será criado ou ativado antes de existir enforcement
+  comum que o produza.
+
 ## Catálogo sincronizado
 
 O bloco abaixo é machine-checkable. Alterações manuais que não correspondam à
@@ -113,12 +146,12 @@ fonte canônica falham em `check:reason-code-canon`.
 | `scl_critical_hash_mismatch` | proposed |
 | `delegation_pending_approval` | proposed |
 | `EXECUTION_FAILED` | proposed |
-| `MCP_TOOL_CONTRACT_MISSING` | proposed |
+| `MCP_TOOL_CONTRACT_MISSING` | active |
 | `SIMULATED_OUTPUT_IN_CRITICAL_CHAIN` | proposed |
 | `AUDIT_WRITE_FAILED` | proposed |
-| `DB_MODEL_NOT_ALLOWLISTED` | proposed |
+| `DB_MODEL_NOT_ALLOWLISTED` | active |
 | `DB_SCOPE_VIOLATION` | proposed |
-| `DB_SCOPE_MISSING` | proposed |
+| `DB_SCOPE_MISSING` | active |
 | `POLICY_NOT_FOUND` | proposed |
 | `RBAC_OWNER_DEFERRAL` | proposed |
 | `RBAC_BUILD_ARTIFACT_DRIFT` | proposed |

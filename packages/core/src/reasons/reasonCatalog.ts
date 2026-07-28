@@ -101,15 +101,24 @@ const LEDGER_PROPOSED_CODES = [
 
 const EXECUTION_PROPOSED_CODES = [
   "EXECUTION_FAILED",
-  "MCP_TOOL_CONTRACT_MISSING",
   "SIMULATED_OUTPUT_IN_CRITICAL_CHAIN",
   "AUDIT_WRITE_FAILED",
 ] as const;
 
-const MCP_DB_PROPOSED_CODES = [
-  "DB_MODEL_NOT_ALLOWLISTED",
-  "DB_SCOPE_VIOLATION",
+const MCP_TOOL_CONTRACT_ACTIVE_CODES = [
+  "MCP_TOOL_CONTRACT_MISSING",
+] as const;
+
+const MCP_DB_SCOPE_ACTIVE_CODES = [
   "DB_SCOPE_MISSING",
+] as const;
+
+const MCP_DB_ALLOWLIST_ACTIVE_CODES = [
+  "DB_MODEL_NOT_ALLOWLISTED",
+] as const;
+
+const MCP_DB_PROPOSED_CODES = [
+  "DB_SCOPE_VIOLATION",
 ] as const;
 
 const MCP_DENY_PROPOSED_CODES = [
@@ -194,6 +203,54 @@ export const REASON_CODE_CATALOG = [
     owner: "Execution governance",
     evidenceRef: "apps/api/src/services/executionEvidence.ts",
   }),
+  ...defineReasonCodes(MCP_TOOL_CONTRACT_ACTIVE_CODES, {
+    domain: "mcp",
+    severity: "critical",
+    category: "authorization",
+    descriptionPrefix:
+      "No exact active ToolContract exists for the requested tenant, action and version",
+    status: "active",
+    owner: "MCP/Tool Security governance",
+    approver: {
+      kind: "human",
+      actor: "Carlos Alberto Merlo",
+    },
+    introducedBy: "RC-MCP-1A",
+    evidenceRef:
+      "docs/ops/reason-codes-catalog.md#ratificacao-rc-mcp-1a-2026-07-28",
+  }),
+  ...defineReasonCodes(MCP_DB_SCOPE_ACTIVE_CODES, {
+    domain: "mcp",
+    severity: "critical",
+    category: "authorization",
+    descriptionPrefix:
+      "Authenticated context lacks tenant or workspace required by the scoped DB model",
+    status: "active",
+    owner: "MCP/Tool Security governance",
+    approver: {
+      kind: "human",
+      actor: "Carlos Alberto Merlo",
+    },
+    introducedBy: "RC-MCP-1A",
+    evidenceRef:
+      "docs/ops/reason-codes-catalog.md#ratificacao-rc-mcp-1a-2026-07-28",
+  }),
+  ...defineReasonCodes(MCP_DB_ALLOWLIST_ACTIVE_CODES, {
+    domain: "mcp",
+    severity: "critical",
+    category: "authorization",
+    descriptionPrefix:
+      "Requested DB model is absent from the governed allowlist",
+    status: "active",
+    owner: "MCP/Tool Security governance",
+    approver: {
+      kind: "human",
+      actor: "Carlos Alberto Merlo",
+    },
+    introducedBy: "RC-MCP-1A",
+    evidenceRef:
+      "docs/ops/reason-codes-catalog.md#ratificacao-rc-mcp-1a-2026-07-28",
+  }),
   ...defineReasonCodes(MCP_DB_PROPOSED_CODES, {
     domain: "mcp",
     severity: "critical",
@@ -234,7 +291,10 @@ export const REASON_CODE_CATALOG = [
 export type ReasonCode = (typeof REASON_CODE_CATALOG)[number]["code"];
 export type ActiveReasonCode =
   | (typeof IMOB_BOOTSTRAP_ACTIVE_CODES)[number]
-  | (typeof CHAT_VERTICAL_BOOTSTRAP_ACTIVE_CODES)[number];
+  | (typeof CHAT_VERTICAL_BOOTSTRAP_ACTIVE_CODES)[number]
+  | (typeof MCP_TOOL_CONTRACT_ACTIVE_CODES)[number]
+  | (typeof MCP_DB_SCOPE_ACTIVE_CODES)[number]
+  | (typeof MCP_DB_ALLOWLIST_ACTIVE_CODES)[number];
 
 const REASON_CODE_BY_CODE = new Map<string, (typeof REASON_CODE_CATALOG)[number]>(
   REASON_CODE_CATALOG.map((definition) => [definition.code, definition]),

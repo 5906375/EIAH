@@ -48,6 +48,31 @@ test("accepts an active known code with owner, approver and evidenceRef", () => 
   assert.deepEqual(validateReasonCodeCatalog([activeFixture()]), []);
 });
 
+test("accepts only the three human-ratified MCP deny codes as active", () => {
+  const definitions = new Map(
+    REASON_CODE_CATALOG.map((definition) => [definition.code, definition]),
+  );
+  const activeCodes = [
+    "MCP_TOOL_CONTRACT_MISSING",
+    "DB_SCOPE_MISSING",
+    "DB_MODEL_NOT_ALLOWLISTED",
+  ] as const;
+
+  for (const code of activeCodes) {
+    const definition = definitions.get(code);
+    assert.equal(definition?.status, "active");
+    assert.deepEqual(definition?.approver, {
+      kind: "human",
+      actor: "Carlos Alberto Merlo",
+    });
+  }
+
+  assert.equal(definitions.get("DB_SCOPE_VIOLATION")?.status, "proposed");
+  assert.equal(definitions.get("POLICY_NOT_FOUND")?.status, "proposed");
+  assert.equal(definitions.has("MCP_POLICY_NOT_RESOLVED"), false);
+  assert.equal(definitions.has("MCP_POLICY_DENIED"), false);
+});
+
 test("rejects active without owner, approver or evidenceRef", () => {
   const fixture = {
     ...activeFixture(),
