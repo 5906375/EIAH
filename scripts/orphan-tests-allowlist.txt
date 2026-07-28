@@ -9,7 +9,6 @@
 # de manter um teste fora do CI por um motivo documentado (ex.: teste
 # manual, exige infraestrutura não disponível em CI, pendência de outra
 # frente já registrada em Evidence Index).
-apps/api/src/actions/tests/actions.e2e.test.ts # F0.7 known-debt api/actions; amarrar a script/workflow real ou remover se obsoleto
 apps/api/src/tests/agents.interop.contract.test.ts # F0.7 known-debt api/governance; amarrar a script/workflow real ou remover se obsoleto
 apps/api/src/tests/api-global-error-handling.test.ts # F0.7 known-debt api/core; amarrar a script/workflow real ou remover se obsoleto
 apps/api/src/tests/billing.economy.contract.test.ts # F0.7 known-debt economy; amarrar a script/workflow real ou remover se obsoleto

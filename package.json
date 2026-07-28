@@ -40,6 +40,8 @@
     "check:tracked-ignored-files": "node --import tsx scripts/checkTrackedIgnoredFiles.ts",
     "check:orphan-tests": "node --import tsx scripts/checkOrphanTests.ts",
     "check:admin-scope-canon": "node --import tsx --test packages/core/src/security/adminScopes.test.ts",
+    "test:actions-tools-authz": "node --env-file-if-exists=packages/db/.env --import tsx --test apps/api/src/tests/actions-tools-authz.unit.test.ts",
+    "test:actions-tools-authz:integration": "node --import tsx --test --test-force-exit apps/api/src/actions/tests/actions.e2e.test.ts",
     "check:rbac-fail-closed": "node --import tsx scripts/checkRbacFailClosed.ts",
     "check:guardrail-ledger-noop": "node --import tsx scripts/checkGuardrailLedgerNoop.ts",
     "check:p3-economy-hardening": "node --experimental-strip-types scripts/checkP3EconomyHardening.ts",
