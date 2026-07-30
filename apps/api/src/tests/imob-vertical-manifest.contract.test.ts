@@ -7,6 +7,12 @@ import { fileURLToPath } from "node:url";
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../..");
 const manifestPath = path.join(repoRoot, "ops/verticals/imob/vertical.manifest.v1.json");
 const riskTieringDocPath = path.join(repoRoot, "docs/ops/risk-tiering-by-action.md");
+const riskTierPolicyPath = path.join(repoRoot, "contracts/risk-tier-policy.v1.json");
+const riskTierPolicyLoaderPath = path.join(
+  repoRoot,
+  "packages/core/src/policy/riskTierPolicy.ts",
+);
+const p1CriticalChainPath = path.join(repoRoot, "scripts/checkP1CriticalChain.ts");
 const agentProtocolSchemaPath = path.join(repoRoot, "contracts/agent-protocol.v1.schema.json");
 const receiptCanonBaselinePath = path.join(repoRoot, "contracts/receipt-canon.v1.baseline.json");
 
@@ -19,6 +25,9 @@ test("IMOB vertical manifest binds the chat vertical to the platform proof chain
   const agentProtocolSchema = readJson(agentProtocolSchemaPath);
   const receiptCanonBaseline = readJson(receiptCanonBaselinePath);
   const riskTieringDoc = fs.readFileSync(riskTieringDocPath, "utf8");
+  const riskTierPolicy = readJson(riskTierPolicyPath);
+  const riskTierPolicyLoader = fs.readFileSync(riskTierPolicyLoaderPath, "utf8");
+  const p1CriticalChain = fs.readFileSync(p1CriticalChainPath, "utf8");
 
   assert.equal(manifest.vertical, "IMOB");
   assert.equal(manifest.frontDoorAgent, "EIAH");
@@ -58,6 +67,18 @@ test("IMOB vertical manifest binds the chat vertical to the platform proof chain
     assert.match(String(action.chatSurface ?? ""), /^[a-z_]+$/);
     assert.match(String(action.governanceOwnerAgent ?? ""), /^(IMOB|J_360|FinNexus)$/);
 
-    assert.match(riskTieringDoc, new RegExp(String(action.action).replace(".", "\\.")));
+    const policyRule = (
+      riskTierPolicy.rules as Array<Record<string, unknown>>
+    ).find((rule) => rule.action === action.action);
+    assert.ok(policyRule, `missing canonical risk rule for ${String(action.action)}`);
+    assert.equal(policyRule.tier, "high");
+    assert.equal(policyRule.txIdRequired, true);
   }
+
+  assert.match(riskTieringDoc, /contracts\/risk-tier-policy\.v1\.json/);
+  assert.match(riskTieringDoc, /Documentação derivada/);
+  assert.match(riskTierPolicyLoader, /contracts\/risk-tier-policy\.v1\.json/);
+  assert.doesNotMatch(riskTierPolicyLoader, /realestate\.register_property/);
+  assert.match(p1CriticalChain, /listRiskTierRulesAtOrAbove\("high"\)/);
+  assert.doesNotMatch(p1CriticalChain, /readFile\("docs\/ops\/risk-tiering-by-action\.md"\)/);
 });

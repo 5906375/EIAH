@@ -1,10 +1,17 @@
 # Risk Tiering by Action (F5.3)
 
-Fonte canônica para `acao -> tier -> exige txId?` usada no gate de evidência HIGH em staging.
+Documentação derivada da política versionada para `acao -> tier -> exige txId?`
+usada no gate de evidência HIGH em staging.
 
-Origem de policy em runtime:
-- `apps/api/src/policies/risk-tier-policy.v1.json`
-- `apps/api/src/services/riskTierPolicy.ts`
+Fonte canônica única:
+- `contracts/risk-tier-policy.v1.json`
+
+Loader tipado e fail-closed:
+- `packages/core/src/policy/riskTierPolicy.ts`
+
+A matriz e o payload abaixo preservam a representação documental da policy v1.
+Não devem ser editados para alterar classificação; toda mudança normativa nasce
+no JSON canônico e precisa manter estes derivados sincronizados.
 
 ## Matrix (v1)
 
@@ -19,7 +26,10 @@ Origem de policy em runtime:
 | `realestate.release_commission` | `execute` | `high` | `true` |
 | `realestate.review_deal` | `execute` | `high` | `true` |
 
-## CI Gate Policy Payload
+## CI Gate Policy Payload (derivado para compatibilidade P2)
+
+O gate P1 lê diretamente a fonte canônica. Este snapshot permanece nesta fase
+para os leitores P2 legados que ainda parseiam os marcadores `HIGH_POLICY`.
 
 <!-- HIGH_POLICY:START -->
 ```json
