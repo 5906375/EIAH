@@ -1,0 +1,60 @@
+{
+  "policyVersion": "v1",
+  "maxEvidenceAgeDays": 30,
+  "unknownActionTier": "critical",
+  "rules": [
+    {
+      "action": "runs.execute",
+      "scope": "execute",
+      "tier": "medium",
+      "txIdRequired": false
+    },
+    {
+      "action": "runs.approve",
+      "scope": "admin",
+      "tier": "medium",
+      "txIdRequired": false
+    },
+    {
+      "action": "realestate.generate_monthly",
+      "scope": "execute",
+      "tier": "medium",
+      "txIdRequired": false
+    },
+    {
+      "action": "realestate.register_property",
+      "scope": "execute",
+      "tier": "high",
+      "txIdRequired": true,
+      "evidencePattern": "realestate-high-actions-e2e-*.json"
+    },
+    {
+      "action": "realestate.create_contract",
+      "scope": "execute",
+      "tier": "high",
+      "txIdRequired": true,
+      "evidencePattern": "realestate-high-actions-e2e-*.json"
+    },
+    {
+      "action": "realestate.apply_adjustment",
+      "scope": "execute",
+      "tier": "high",
+      "txIdRequired": true,
+      "evidencePattern": "realestate-high-actions-e2e-*.json"
+    },
+    {
+      "action": "realestate.release_commission",
+      "scope": "execute",
+      "tier": "high",
+      "txIdRequired": true,
+      "evidencePattern": "realestate-high-actions-e2e-*.json"
+    },
+    {
+      "action": "realestate.review_deal",
+      "scope": "execute",
+      "tier": "high",
+      "txIdRequired": true,
+      "evidencePattern": "realestate-high-actions-e2e-*.json"
+    }
+  ]
+}

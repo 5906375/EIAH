@@ -1,5 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
+import {
+  RISK_TIER_POLICY_SOURCE,
+  listRiskTierRulesAtOrAbove,
+} from "../packages/core/src/policy/riskTierPolicy.ts";
 
 const CHECK = "check:p1-critical-chain";
 
@@ -38,30 +42,10 @@ function normalizeAction(action: string): string {
   return action.trim().replace(/^action\./, "");
 }
 
-function extractHighActionsFromPolicy(markdown: string): string[] {
-  const start = "<!-- HIGH_POLICY:START -->";
-  const end = "<!-- HIGH_POLICY:END -->";
-  const startIdx = markdown.indexOf(start);
-  const endIdx = markdown.indexOf(end);
-  if (startIdx < 0 || endIdx < 0 || endIdx <= startIdx) return [];
-  const block = markdown.slice(startIdx + start.length, endIdx);
-  const jsonMatch = block.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) return [];
-  try {
-    const parsed = JSON.parse(jsonMatch[0]) as { highActions?: Array<{ action?: string }> };
-    return (parsed.highActions ?? [])
-      .map((item) => (typeof item.action === "string" ? item.action : ""))
-      .filter(Boolean);
-  } catch {
-    return [];
-  }
-}
-
 const prismaSchema = readFile("packages/db/prisma/schema.prisma");
 const runsRoute = readFile("apps/api/src/routes/runs.ts");
 const governanceRoute = readFile("apps/api/src/routes/governance.ts");
 const receiptCanonService = readFile("apps/api/src/services/receiptCanonService.ts");
-const riskPolicy = readFile("docs/ops/risk-tiering-by-action.md");
 const apeRun9 = readFile("ops/evidence/latest/ape-weekly-cycle-run9-2026-03-09.md");
 const highActions = JSON.parse(
   fs.readFileSync(findLatestEvidenceFile(/^realestate-high-actions-e2e-\d{4}-\d{2}-\d{2}\.json$/), "utf8")
@@ -105,9 +89,11 @@ if (highActions.assertions?.tierHigh !== true) {
   });
 }
 
-const policyHighActions = extractHighActionsFromPolicy(riskPolicy).map(normalizeAction);
+const policyHighActions = listRiskTierRulesAtOrAbove("high").map((rule) =>
+  normalizeAction(rule.action),
+);
 if (policyHighActions.length === 0) {
-  fail("risk_policy_high_actions_missing");
+  fail("risk_policy_high_actions_missing", { source: RISK_TIER_POLICY_SOURCE });
 }
 const evidenceHighActions = new Set((highActions.actions ?? []).map(normalizeAction));
 const missingPolicyActionsInEvidence = [...new Set(policyHighActions)].filter(
@@ -129,6 +115,7 @@ console.log(
         failClosedEvidence: true,
         receiptCanonOnHighFlows: true,
         policyHighCoverage: true,
+        riskPolicySource: RISK_TIER_POLICY_SOURCE,
       },
     },
     null,
