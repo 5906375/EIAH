@@ -111,7 +111,7 @@ Snapshot canônico desta indexação:
 
 | Assunto | Arquivo | O que prova |
 | --- | --- | --- |
-| Endpoint de origem | `apps/api/src/routes/governance.ts:222` | Endpoint público `/api/ledger/:txId` com `receiptCanon` aditivo. |
+| Endpoint de origem | `apps/api/src/routes/governance.ts:433` | Endpoint público `/api/ledger/:txId` com `receiptCanon` aditivo. |
 | Catálogo oficial de reason codes | `docs/ops/reason-codes-catalog.md` | Fonte única para reason codes de receipts/erros/eventos. |
 | Política de versionamento de contrato | `docs/ops/receipt-canon-versioning-policy.md` | Regra explícita de major para breaking e minor/patch apenas aditivo. |
 | Gate de CI de compatibilidade | `scripts/checkReceiptCanonVersioning.ts` | Falha CI para breaking changes sem bump major e drift de spec/changelog/example. |
@@ -722,7 +722,7 @@ EVIDÊNCIA: `apps/api/src/index.ts:97-103` + `apps/workers/run-worker/src/index.
 | --- | --- | --- |
 | Endpoint de aprovação humana (`/runs/:id/approve`) | `rg -n "runs/:id/approve|approve" apps packages` | ENCONTRADO: `apps/api/src/routes/runs.ts:722-775` |
 | Campos Run.approval_status/approvedBy | `rg -n "approval_status|approvedBy" packages/db` | ENCONTRADO: `packages/db/prisma/schema.prisma:197-198` |
-| Endpoint público `/ledger/:txId` | `rg -n "/ledger/:txId|ledger/:txId" apps packages` | ENCONTRADO: `apps/api/src/routes/governance.ts:222` |
+| Endpoint público `/ledger/:txId` | `rg -n "/ledger/:txId|ledger/:txId" apps packages` | ENCONTRADO: `apps/api/src/routes/governance.ts:433` |
 | TrustScoreToken / tokenização de reputação | `rg -n "TrustScoreToken|reputação|tokenização" apps packages` | ENCONTRADO apenas em `apps/api/backup-20251031-103132.sql` (texto de backup, não implementação) |
 
 ## Status do Roadmap (consolidado por evidência)
