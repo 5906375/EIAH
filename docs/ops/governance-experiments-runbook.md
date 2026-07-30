@@ -2,12 +2,12 @@
 
 ## Objetivo
 
-Operar com seguranca o fluxo de experimento de policy em shadow, com promocao condicionada por KPI/FP/FN e rollback automatico quando houver regressao.
+Descrever o fluxo pretendido de experimento de policy em shadow, com promocao condicionada por KPI/FP/FN. O rollback manual e o auto-rollback permanecem **proposta / não implementado**: não há handler correspondente em `apps/api/src/routes/governance.ts` na data de 2026-07-30.
 
 Escopo operacional:
 - `POST /api/governance/experiments/shadow-policy/start`
 - `POST /api/governance/experiments/shadow-policy/:id/decision`
-- `POST /api/governance/experiments/shadow-policy/:id/rollback`
+- `POST /api/governance/experiments/shadow-policy/:id/rollback` — **proposta / não implementado** (sem handler em `governance.ts`)
 - `GET /api/governance/experiments/shadow-policy/:id`
 - `GET /api/governance/outcome/dashboard`
 - `GET /api/governance/telemetry/fpfn`
@@ -16,7 +16,7 @@ Escopo operacional:
 ## Pre-requisitos
 
 - Token com permissao:
-  - `governance.trust.manage` para start/decision/rollback/calibrations.
+  - `governance.trust.manage` para start/decision/calibrations e, futuramente, rollback; o rollback está **proposto / não implementado**.
   - `governance.view` para leitura de status/dashboard/telemetry.
 - Contexto tenant/workspace valido no token.
 - Feature de filas e ledger ativas no ambiente alvo.
@@ -29,7 +29,7 @@ Variaveis de ambiente:
 - `EXPERIMENT_MAX_FALSE_POSITIVE_RATE` (default `0.1`)
 - `EXPERIMENT_MAX_FALSE_NEGATIVE_RATE` (default `0.1`)
 - `EXPERIMENT_MAX_SECURITY_REGRESSION_COUNT` (default `0`)
-- `EXPERIMENT_AUTO_ROLLBACK_ON_PROMOTION_FAIL` (default `true`)
+- `EXPERIMENT_AUTO_ROLLBACK_ON_PROMOTION_FAIL` — **proposta / não implementado**; não é consumida por `governance.ts` e não possui default operacional comprovado.
 
 ## Procedimento operacional
 
@@ -67,10 +67,10 @@ Variaveis de ambiente:
 - Valores:
   - `keep_shadow`
   - `promote_enforce`
-  - `rollback`
+  - `rollback` — valor documental **proposto / não implementado**, sem handler comprovado.
 - Para promocao:
   - Se gate passar: `200`, `status = "promoted"`.
-  - Se gate falhar: `409 PROMOTION_GATE_FAILED`; com auto-rollback ligado, status final `rolled_back`.
+  - O comportamento de auto-rollback após falha do gate está **proposto / não implementado**. Não presumir transição para `rolled_back` sem handler e evidência de execução.
 
 5. Validar estado e trilha
 - `GET /api/governance/experiments/shadow-policy/:id`
@@ -83,7 +83,7 @@ Variaveis de ambiente:
 - Sintoma: resposta `PROMOTION_GATE_FAILED`.
 - Acao imediata:
   1. Verificar `promotionGate.reasons`.
-  2. Confirmar se houve `auto_rollback`.
+  2. Registrar que `auto_rollback` está **proposto / não implementado** e aplicar somente contenção manual realmente disponível e autorizada.
   3. Revisar `GET /governance/telemetry/fpfn` por writeLabel.
   4. Abrir acao corretiva:
      - tuning de policy,
