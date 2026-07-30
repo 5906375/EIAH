@@ -1,5 +1,6 @@
 import { afterEach, test } from "node:test";
 import assert from "node:assert/strict";
+import { ConnectionPolicyError } from "../config/redis";
 
 type ConnectionModule = typeof import("./connection");
 type CoreBarrelModule = typeof import("../index");
@@ -74,7 +75,24 @@ test("using getRedisConnection without Redis env fails closed", async () => {
 
   assert.throws(
     () => connectionModule.getRedisConnection(),
-    /connection:resolveRedisUrl: REDIS_URL_REQUIRED/
+    (error) => {
+      assert.equal(error instanceof ConnectionPolicyError, true);
+      assert.equal(
+        (error as ConnectionPolicyError).reasonCode,
+        "REDIS_URL_REQUIRED",
+      );
+      assert.match(
+        (error as Error).message,
+        /connection:resolveRedisUrl: REDIS_URL_REQUIRED/,
+      );
+      assert.match(
+        (error as Error).message,
+        /Localhost fallback is forbidden in runtime/,
+      );
+      assert.equal((error as Error).message.includes("redis://"), false);
+      assert.equal((error as Error).message.includes("super-secret"), false);
+      return true;
+    },
   );
 });
 
@@ -98,7 +116,9 @@ test("using the lazy connection facade without Redis env fails closed on propert
 
   assert.throws(
     () => lazyConnection.host,
-    /connection:resolveRedisUrl: REDIS_URL_REQUIRED/
+    (error) =>
+      error instanceof ConnectionPolicyError &&
+      error.reasonCode === "REDIS_URL_REQUIRED",
   );
 });
 
