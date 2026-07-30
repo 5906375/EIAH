@@ -26,6 +26,7 @@ const MCP_TOOL_CONTRACT_MISSING_REASON_CODE =
 const MCP_DB_ACTIVE_DENY_REASON_CODES = [
   "DB_SCOPE_MISSING",
   "DB_MODEL_NOT_ALLOWLISTED",
+  "DB_INPUT_INVALID",
 ] as const;
 
 function resolveActiveMcpDenyReasonCode(error: unknown) {
@@ -785,9 +786,16 @@ export function createActionRunnerHandler(deps: ActionRunnerDeps = defaultDeps) 
       const message = error instanceof Error ? error.message : String(error);
       const reasonCode = resolveActiveMcpDenyReasonCode(error);
       const retryable = reasonCode ? false : !isNonRetryableMcpError(message);
+      const loggedError = reasonCode
+        ? {
+            name: error instanceof Error ? error.name : "McpError",
+            message,
+            reasonCode,
+          }
+        : error;
 
       jobLogger.error(
-        { err: error, message, reasonCode, retryable },
+        { err: loggedError, message, reasonCode, retryable },
         "action.mcp.failed"
       );
 

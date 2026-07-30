@@ -5,6 +5,7 @@ import { AgentOrchestrator } from "../../../../packages/core/src/orchestrator/ag
 import {
   AuditWriteFailedError,
   MissingToolContractError,
+  recordDbInputInvalidAudit,
   recordCriticalMcpAudit,
   recordMissingToolContractAudit,
   mergeActionsForExecution,
@@ -166,16 +167,18 @@ test("run worker classifies missing ToolContract as canonical run error", () => 
   assert.equal(failure?.reasonCode, "MCP_TOOL_CONTRACT_MISSING");
 });
 
-test("run worker preserves only active DB deny reasonCodes in run failure", () => {
+test("run worker preserves active MCP DB reasonCodes in run failure persistence", () => {
   for (const reasonCode of [
     "DB_SCOPE_MISSING",
     "DB_MODEL_NOT_ALLOWLISTED",
+    "DB_INPUT_INVALID",
   ] as const) {
     const failure = resolveActiveMcpDenyRunFailure(
       Object.assign(new Error("Governed MCP DB deny"), { reasonCode })
     );
     assert.equal(failure?.status, "error");
     assert.equal(failure?.reasonCode, reasonCode);
+    assert.equal(failure?.result, null);
   }
 
   assert.equal(
@@ -186,6 +189,44 @@ test("run worker preserves only active DB deny reasonCodes in run failure", () =
     ),
     null
   );
+});
+
+test("run worker records a sanitized DB_INPUT_INVALID failure audit", async () => {
+  const audits: unknown[] = [];
+  const sensitiveWhere = {
+    email: "private@example.test",
+    document: "123.456.789-00",
+  };
+
+  await recordDbInputInvalidAudit({
+    actionName: "db.lookup",
+    version: "1.0.0",
+    runId: "run-1",
+    tenantId: "tenant-1",
+    stepId: "step-1",
+    reasonCode: "DB_INPUT_INVALID",
+    record: async (audit) => {
+      audits.push(audit);
+    },
+    logFailure: () => assert.fail("audit logger must not run on success"),
+  });
+
+  assert.deepEqual(audits, [
+    {
+      eventType: "mcp.tool.failed",
+      severity: "warn",
+      message: "MCP tool failed: DB_INPUT_INVALID",
+      metadata: {
+        tool: "db.lookup",
+        version: "1.0.0",
+        stepId: "step-1",
+        reasonCode: "DB_INPUT_INVALID",
+      },
+    },
+  ]);
+  const serializedAudit = JSON.stringify(audits);
+  assert.equal(serializedAudit.includes(sensitiveWhere.email), false);
+  assert.equal(serializedAudit.includes(sensitiveWhere.document), false);
 });
 
 test("run worker emits canonical missing-contract audit", async () => {
