@@ -225,7 +225,7 @@ export const REASON_CODE_CATALOG = [
     severity: "critical",
     category: "governance",
     descriptionPrefix:
-      "Required Redis connection URL is absent and localhost fallback is forbidden",
+      "Required Redis connection URL is absent; Redis-dependent operations must fail closed.",
     status: "proposed",
     owner: "Tool Security / Runtime connection governance",
     introducedBy: "DB-CALLER-3",
