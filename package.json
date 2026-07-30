@@ -35,7 +35,7 @@
     "check:imob-static-harness-contract": "tsx scripts/checkImobStaticHarnessContract.ts",
     "check:p1-critical-chain": "node --experimental-strip-types scripts/checkP1CriticalChain.ts",
     "check:p1-reconciliation-recurring": "node --experimental-strip-types scripts/checkP1ReconciliationRecurring.ts",
-    "check:redis-fail-closed": "node --import tsx scripts/checkRedisFailClosed.ts",
+    "check:redis-fail-closed": "node --import tsx --test scripts/tests/checkRedisFailClosed.test.ts && node --import tsx scripts/checkRedisFailClosed.ts",
     "check:docs-link-integrity": "node --import tsx scripts/checkDocsLinkIntegrity.ts",
     "check:tracked-ignored-files": "node --import tsx scripts/checkTrackedIgnoredFiles.ts",
     "check:orphan-tests": "node --import tsx scripts/checkOrphanTests.ts",
