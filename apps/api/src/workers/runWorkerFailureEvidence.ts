@@ -45,7 +45,11 @@ export async function persistRunFailureEvidence(
     tenantId: params.tenantId,
     workspaceId: params.workspaceId,
     runId: params.runId,
-    payload: { status: "error", message: params.message },
+    payload: {
+      status: "error",
+      message: params.message,
+      ...(governedFailure ? { reasonCode: governedFailure.reasonCode } : {}),
+    },
     riskLevel: "high",
   });
 

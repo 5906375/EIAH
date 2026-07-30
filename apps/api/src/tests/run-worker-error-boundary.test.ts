@@ -69,13 +69,22 @@ test("governed action failure crosses boundary with one SCL trail", async () => 
 
   assert.equal(result.reasonCode, "DB_INPUT_INVALID");
   assert.equal(effects.scl.length, 1);
+  const persistedScl = effects.scl[0] as {
+    payload: Record<string, unknown>;
+  };
+  assert.deepEqual(persistedScl.payload, {
+    status: "error",
+    message: actionResult.error,
+    reasonCode: "DB_INPUT_INVALID",
+  });
   assert.equal(effects.finalized.length, 1);
   assert.equal(effects.finalized[0].errorCode, "DB_INPUT_INVALID");
   assert.equal(effects.events[0].payload.reasonCode, "DB_INPUT_INVALID");
   assert.deepEqual(effects.order, ["scl", "finalize", "emit"]);
-  const evidence = JSON.stringify(effects);
-  assert.equal(evidence.includes(sensitive.where.email), false);
-  assert.equal(evidence.includes(sensitive.redisUrl), false);
+  const persistedPayload = JSON.stringify(persistedScl.payload);
+  assert.equal(persistedPayload.includes(sensitive.where.email), false);
+  assert.equal(persistedPayload.includes(sensitive.redisUrl), false);
+  assert.equal(persistedPayload.includes("secret"), false);
 });
 
 test("ungoverned action failure preserves EXECUTION_FAILED fallback", async () => {
@@ -99,6 +108,14 @@ test("ungoverned action failure preserves EXECUTION_FAILED fallback", async () =
   assert.equal(effects.finalized[0].errorCode, "EXECUTION_FAILED");
   assert.equal("reasonCode" in effects.events[0].payload, false);
   assert.equal(effects.scl.length, 1);
+  const persistedScl = effects.scl[0] as {
+    payload: Record<string, unknown>;
+  };
+  assert.deepEqual(persistedScl.payload, {
+    status: "error",
+    message: "Execution failed",
+  });
+  assert.equal("reasonCode" in persistedScl.payload, false);
 });
 
 test("runWorker catch delegates once without a residual SCL write", () => {
