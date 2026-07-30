@@ -118,7 +118,6 @@ import { tenantActionResolver } from "../actions/tenantActionRegistry";
 /* ──────────────────────────────────────────────
    IMOB Post-Run Mutation Queue (P5)
    ────────────────────────────────────────────── */
-import { enqueueImobRunCompleted } from "../queues/imobRunCompletedQueue";
 import { IMOB_DISPATCHER_ACTION_IDS } from "../services/imob/crm/imobCrmActionDispatcher";
 
 /* ──────────────────────────────────────────────
@@ -2431,7 +2430,7 @@ export async function processRunPayload(payload: RunQueuePayload) {
         imobActionId &&
         (IMOB_DISPATCHER_ACTION_IDS as readonly string[]).includes(imobActionId)
       ) {
-        enqueueImobRunCompleted({
+        enqueueImobRunCompletedLazy({
           runId,
           tenantId,
           workspaceId,
@@ -2528,6 +2527,17 @@ export async function processRunPayload(payload: RunQueuePayload) {
 
 export async function startRunQueueWorker() {
   return consume(processRunPayload);
+}
+
+async function enqueueImobRunCompletedLazy(
+  job: Parameters<
+    typeof import("../queues/imobRunCompletedQueue.js").enqueueImobRunCompleted
+  >[0]
+) {
+  const { enqueueImobRunCompleted } = await import(
+    "../queues/imobRunCompletedQueue.js"
+  );
+  return enqueueImobRunCompleted(job);
 }
 
 export function createActionRunnerFailureError(
