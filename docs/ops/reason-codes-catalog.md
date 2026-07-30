@@ -146,7 +146,7 @@ do PR runtime separado, não ativa `DB_SCOPE_VIOLATION`, não altera
 
 `REDIS_URL_REQUIRED` é conhecido pelo canon como `proposed` para identificar
 programaticamente a ausência de URL Redis obrigatória. O guard permanece
-fail-closed, sem default local de conexão, e não registra URL, credencial ou segredo
+fail-closed, sem fallback localhost, e não registra URL, credencial ou segredo
 na mensagem. Esta inclusão não torna o código `active` nem substitui
 ratificação humana futura.
 
