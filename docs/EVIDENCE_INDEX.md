@@ -125,8 +125,6 @@ Snapshot canônico desta indexação:
 
 | Assunto | Arquivo | O que prova |
 | --- | --- | --- |
-| Fluxo de experimento (start/decision/rollback/status) | `apps/api/src/routes/governance.ts` | Endpoints de experimento com transições auditáveis, reason codes e timeline por experimento. |
-| Auto-rollback em falha de promoção | `apps/api/src/routes/governance.ts` | Bloqueio `PROMOTION_GATE_FAILED` e rollback automático auditável quando habilitado. |
 | Endpoint de telemetria FP/FN | `apps/api/src/routes/governance.ts` | `GET /api/governance/telemetry/fpfn` com `windowDays`, `methodVersion` e cálculo versionado. |
 | Runbook operacional de experimentos | `docs/ops/governance-experiments-runbook.md` | Procedimento de operação, incidentes e critérios de decisão para experimentos em shadow/promoção. |
 
@@ -273,6 +271,15 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | Exemplos de resposta derivados do registry | `docs/ops/agent-response-examples.md` | Exemplos canônicos de resposta/grounding por agente sem depender de LLM externa. |
 | Evidência gerada do DocOps de agentes | `ops/evidence/latest/agent-registry-docs-2026-03-16.json` | Evidência materializada da geração com contagem de agentes e fontes declaradas por perfil. |
 | Cobertura comportamental de knowledge policy | `apps/api/src/tests/knowledge-policy.behavior.test.ts` | Testes por agente para `source missing`, `source conflict`, `grounded response` e `blocked response` no `KnowledgeGate`. |
+
+## Política formal de uso de IA — artefatos documentais (2026-07-30)
+
+As entradas abaixo provam somente a existência dos artefatos documentais. Não provam execução, adoção recorrente, conformidade ou certificação.
+
+| Assunto | Arquivo | Limite da entrada |
+| --- | --- | --- |
+| Política de uso de IA | `docs/governance/ai-usage-policy.md` | Artefato documental proposto que inventaria controles reais como `evidenciado`, `parcial` ou `proposta`, define supervisão humana, rastreabilidade, incidentes e PDCA e registra gaps conhecidos. Não é evidência de execução. |
+| Código de conduta para uso de IA | `docs/governance/ai-code-of-conduct.md` | Artefato documental proposto com responsabilidades de operadores, administradores, revisores humanos e agentes. Não é evidência de adoção, enforcement ou certificação. |
 
 ## Assistentes de coding / Governança operacional
 
