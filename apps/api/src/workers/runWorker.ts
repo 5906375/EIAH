@@ -41,7 +41,6 @@ import {
 } from "@eiah/core";
 
 import { MCPExecutor, ToolRegistry } from "@repo/mcp-runner";
-import { McpDbPolicyError } from "../../../../packages/mcp-runner/src/executor/dbAllowlist.js";
 import type { MemoryRecord, MemoryScope, MemorySnapshot } from "@eiah/core";
 import { prismaGlobal } from "@repo/db";
 
@@ -109,6 +108,10 @@ import { buildGuardianStructuredOutput } from "./runWorkerGuardianOutput";
 import { buildJ360StructuredOutput, collectJ360DocumentEvidence } from "./runWorkerJ360Output";
 import { buildMktStructuredOutput } from "./runWorkerMktOutput";
 import { buildRecipeOrchestration } from "./runWorkerRecipeOrchestration";
+import {
+  createActionRunnerFailureError,
+  persistRunFailureEvidence,
+} from "./runWorkerFailureEvidence";
 
 /* ──────────────────────────────────────────────
    Action Registry / Tenant Actions
@@ -2479,15 +2482,16 @@ export async function processRunPayload(payload: RunQueuePayload) {
         "run.worker.failed"
       );
 
-      await persistRunFailureEvidence({
-        error,
-        message,
-        prisma: prismaGlobal,
-        tenantId,
-        workspaceId,
-        runId,
-        userId,
-        responseForScl: (scl) => ({
+      await persistRunFailureEvidence(
+        {
+          error,
+          message,
+          prisma: prismaGlobal,
+          tenantId,
+          workspaceId,
+          runId,
+          userId,
+          responseForScl: (scl) => ({
           error: message,
           guardianReport: buildGuardianResponsePayload({
             agentId: agent,
@@ -2510,8 +2514,10 @@ export async function processRunPayload(payload: RunQueuePayload) {
             costCents: estimate,
           }),
           usage: snapshot?.usage ?? null,
-        }),
-      });
+          }),
+        },
+        { appendSclRecord, finalizeRunRecord, emitRunEvent },
+      );
 
       await recordReplayCompletedIfNeeded({
         runId,
@@ -2538,87 +2544,6 @@ async function enqueueImobRunCompletedLazy(
     "../queues/imobRunCompletedQueue.js"
   );
   return enqueueImobRunCompleted(job);
-}
-
-export function createActionRunnerFailureError(
-  actionResult: unknown,
-  message: string
-): Error {
-  const governedFailure = resolveActiveMcpDenyRunFailure(actionResult);
-  if (
-    governedFailure?.reasonCode === "DB_SCOPE_MISSING" ||
-    governedFailure?.reasonCode === "DB_MODEL_NOT_ALLOWLISTED" ||
-    governedFailure?.reasonCode === "DB_INPUT_INVALID"
-  ) {
-    return new McpDbPolicyError(governedFailure.reasonCode, message);
-  }
-  return new Error(message);
-}
-
-type RunFailureScl = Awaited<ReturnType<typeof appendSclRecord>>;
-
-export async function persistRunFailureEvidence(
-  params: {
-    error: unknown;
-    message: string;
-    prisma: typeof prismaGlobal;
-    tenantId: string;
-    workspaceId: string;
-    runId: string;
-    userId?: string;
-    responseForScl: (scl: RunFailureScl) => unknown;
-  },
-  deps: {
-    appendSclRecord: typeof appendSclRecord;
-    finalizeRunRecord: typeof finalizeRunRecord;
-    emitRunEvent: typeof emitRunEvent;
-  } = {
-    appendSclRecord,
-    finalizeRunRecord,
-    emitRunEvent,
-  }
-) {
-  const governedFailure = resolveActiveMcpDenyRunFailure(params.error);
-  const reasonCode = governedFailure?.reasonCode ?? "EXECUTION_FAILED";
-  const scl = await deps.appendSclRecord({
-    prisma: params.prisma,
-    tenantId: params.tenantId,
-    workspaceId: params.workspaceId,
-    runId: params.runId,
-    payload: { status: "error", message: params.message },
-    riskLevel: "high",
-  });
-
-  await deps.finalizeRunRecord({
-    runId: params.runId,
-    tenantId: params.tenantId,
-    workspaceId: params.workspaceId,
-    status: "error",
-    response: params.responseForScl(scl),
-    errorCode: reasonCode,
-    txId: scl.txId,
-    criticalHash: scl.criticalHash,
-    sclTxId: scl.txId,
-  });
-
-  await deps.emitRunEvent({
-    runId: params.runId,
-    tenantId: params.tenantId,
-    workspaceId: params.workspaceId,
-    userId: params.userId,
-    type: "run.failed",
-    payload: {
-      status: "error",
-      message: params.message,
-      ...(governedFailure ? { reasonCode: governedFailure.reasonCode } : {}),
-      txId: scl.txId,
-      criticalHash: scl.criticalHash,
-    },
-    criticalHash: scl.criticalHash,
-    sclTxId: scl.txId,
-  });
-
-  return { reasonCode, scl };
 }
 
 function getEnvNumber(name: string, fallback: number) {
