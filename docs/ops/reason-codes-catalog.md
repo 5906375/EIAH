@@ -142,6 +142,14 @@ Esta ratificação altera somente o canon. Ela não autoriza emissão runtime an
 do PR runtime separado, não ativa `DB_SCOPE_VIOLATION`, não altera
 `POLICY_NOT_FOUND` e não modifica `runWorker`, action-runner ou `MCPExecutor`.
 
+## Proposta de guard de conexão — DB-CALLER-3 — 2026-07-29
+
+`REDIS_URL_REQUIRED` é conhecido pelo canon como `proposed` para identificar
+programaticamente a ausência de URL Redis obrigatória. O guard permanece
+fail-closed, sem default local de conexão, e não registra URL, credencial ou segredo
+na mensagem. Esta inclusão não torna o código `active` nem substitui
+ratificação humana futura.
+
 ## Catálogo sincronizado
 
 O bloco abaixo é machine-checkable. Alterações manuais que não correspondam à
@@ -201,6 +209,7 @@ fonte canônica falham em `check:reason-code-canon`.
 | `MCP_TOOL_CONTRACT_MISSING` | active |
 | `SIMULATED_OUTPUT_IN_CRITICAL_CHAIN` | proposed |
 | `AUDIT_WRITE_FAILED` | proposed |
+| `REDIS_URL_REQUIRED` | proposed |
 | `DB_MODEL_NOT_ALLOWLISTED` | active |
 | `DB_SCOPE_VIOLATION` | proposed |
 | `DB_INPUT_INVALID` | active |

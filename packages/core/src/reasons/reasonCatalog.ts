@@ -105,6 +105,10 @@ const EXECUTION_PROPOSED_CODES = [
   "AUDIT_WRITE_FAILED",
 ] as const;
 
+const CONNECTION_PROPOSED_CODES = [
+  "REDIS_URL_REQUIRED",
+] as const;
+
 const MCP_TOOL_CONTRACT_ACTIVE_CODES = [
   "MCP_TOOL_CONTRACT_MISSING",
 ] as const;
@@ -215,6 +219,17 @@ export const REASON_CODE_CATALOG = [
     status: "proposed",
     owner: "Execution governance",
     evidenceRef: "apps/api/src/services/executionEvidence.ts",
+  }),
+  ...defineReasonCodes(CONNECTION_PROPOSED_CODES, {
+    domain: "execution",
+    severity: "critical",
+    category: "governance",
+    descriptionPrefix:
+      "Required Redis connection URL is absent; Redis-dependent operations must fail closed.",
+    status: "proposed",
+    owner: "Tool Security / Runtime connection governance",
+    introducedBy: "DB-CALLER-3",
+    evidenceRef: "packages/core/src/config/redis.ts#ConnectionPolicyError",
   }),
   ...defineReasonCodes(MCP_TOOL_CONTRACT_ACTIVE_CODES, {
     domain: "mcp",

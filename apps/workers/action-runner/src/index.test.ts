@@ -170,3 +170,105 @@ test("action runner denies missing ToolContract with active reasonCode before ex
     false
   );
 });
+
+test("action runner preserves DB_INPUT_INVALID as nonRetryable with masked failure audit", async () => {
+  const tenantId = "tenant-test";
+  const workspaceId = "workspace-test";
+  const runId = "run-test";
+  const secret = "test-secret";
+  const sensitiveWhere = {
+    email: "private@example.test",
+    document: "123.456.789-00",
+  };
+
+  process.env.INTENT_SIGNATURE_SECRET = secret;
+  process.env.MCP_ENFORCE_CONTRACTS = "true";
+  process.env.INTENT_VALIDATOR_MODE = "observe";
+  process.env.TRUST_SCORE_THRESHOLD = "40";
+
+  const intentSignature = crypto
+    .createHmac("sha256", secret)
+    .update(`${tenantId}:${workspaceId}:${runId}`)
+    .digest("hex");
+
+  const audits: Array<{
+    eventType?: string;
+    message?: string;
+    metadata?: Record<string, unknown>;
+  }> = [];
+
+  const handler = createActionRunnerHandler({
+    consumeActions: async () => undefined as any,
+    getPrismaForTenant: () =>
+      ({
+        toolContract: {
+          findFirst: async () => ({ id: "tc-1", trustLevel: 1 }),
+        },
+        $disconnect: async () => undefined,
+      }) as any,
+    tenantActionResolver: () => ({ "tool.test": { name: "tool.test" } }),
+    executeWithMCP: async () => {
+      throw Object.assign(new Error("DB where must be an object"), {
+        reasonCode: "DB_INPUT_INVALID",
+        where: sensitiveWhere,
+      });
+    },
+    mcpEnforcementConfigFromEnv: () => ({
+      enabled: true,
+      defaultVersion: "1.0.0",
+    }),
+    resolveMcpToolVersion: () => "1.0.0",
+    evaluateTrustScore: async () => ({ score: 100, level: "high", reasons: [] }),
+    trustScoreAllowsExecution: () => true,
+    evaluateIntent: async () => ({
+      intent: null,
+      score: 0.9,
+      flags: [],
+      verdict: "observe",
+      signature: "sig",
+    }),
+    evaluateHallucination: async () => ({
+      confidence: 1,
+      reasons: [],
+    }),
+    rateLimit: () => ({ before: async () => undefined } as any),
+    createFixedWindowRateLimiter: () =>
+      ({
+        consume: async () => ({
+          allowed: true,
+          remaining: 1,
+          resetAt: Date.now(),
+        }),
+      }) as any,
+    tenantRateLimitKey: () => "rl",
+    recordGuardrailAudit: async (params) => {
+      audits.push(params as any);
+    },
+    appendSignedHash: async () => undefined as any,
+  });
+
+  const result = await handler(
+    {
+      tenantId,
+      workspaceId,
+      runId,
+      action: "tool.test",
+      metadata: { intentSignature },
+      input: { table: "user", where: sensitiveWhere },
+      stepId: "step-1",
+    },
+    { id: "job-1" }
+  );
+
+  const failedAudit = audits.find(
+    (audit) => audit.eventType === "mcp.tool.failed"
+  );
+  const serializedAudit = JSON.stringify(failedAudit);
+
+  assert.equal(result.status, "error");
+  assert.equal((result as any).reasonCode, "DB_INPUT_INVALID");
+  assert.equal((result as any).retryable, false);
+  assert.equal(failedAudit?.metadata?.reasonCode, "DB_INPUT_INVALID");
+  assert.equal(serializedAudit.includes(sensitiveWhere.email), false);
+  assert.equal(serializedAudit.includes(sensitiveWhere.document), false);
+});

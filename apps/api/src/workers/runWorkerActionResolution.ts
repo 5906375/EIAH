@@ -9,6 +9,7 @@ export const MCP_RUNTIME_ACTIVE_DENY_REASON_CODES = [
   MCP_TOOL_CONTRACT_MISSING_REASON_CODE,
   "DB_SCOPE_MISSING",
   "DB_MODEL_NOT_ALLOWLISTED",
+  "DB_INPUT_INVALID",
 ] as const;
 export type McpRuntimeActiveDenyReasonCode =
   (typeof MCP_RUNTIME_ACTIVE_DENY_REASON_CODES)[number];
@@ -155,7 +156,8 @@ export function resolveActiveMcpDenyRunFailure(error: unknown) {
   const reasonCode = (error as { reasonCode?: unknown }).reasonCode;
   if (
     reasonCode !== "DB_SCOPE_MISSING" &&
-    reasonCode !== "DB_MODEL_NOT_ALLOWLISTED"
+    reasonCode !== "DB_MODEL_NOT_ALLOWLISTED" &&
+    reasonCode !== "DB_INPUT_INVALID"
   ) {
     return null;
   }
@@ -165,6 +167,55 @@ export function resolveActiveMcpDenyRunFailure(error: unknown) {
     reasonCode,
     result: null,
   };
+}
+
+export async function recordDbInputInvalidAudit(params: {
+  actionName: string;
+  version: string;
+  runId: string;
+  tenantId: string;
+  stepId?: string;
+  reasonCode: "DB_INPUT_INVALID";
+  record: (audit: {
+    eventType: "mcp.tool.failed";
+    severity: "warn";
+    message: string;
+    metadata: {
+      tool: string;
+      version: string;
+      stepId?: string;
+      reasonCode: "DB_INPUT_INVALID";
+    };
+  }) => Promise<void>;
+  logFailure: (context: {
+    err: unknown;
+    runId: string;
+    tenantId: string;
+    action: string;
+    version: string;
+    reasonCode: typeof AUDIT_WRITE_FAILED_REASON_CODE;
+  }) => void;
+}) {
+  const audit = {
+    eventType: "mcp.tool.failed" as const,
+    severity: "warn" as const,
+    message: `MCP tool failed: ${params.reasonCode}`,
+    metadata: {
+      tool: params.actionName,
+      version: params.version,
+      stepId: params.stepId,
+      reasonCode: params.reasonCode,
+    },
+  };
+
+  await recordCriticalMcpAudit({
+    runId: params.runId,
+    tenantId: params.tenantId,
+    action: params.actionName,
+    version: params.version,
+    record: () => params.record(audit),
+    logFailure: params.logFailure,
+  });
 }
 
 export async function recordCriticalMcpAudit(params: {

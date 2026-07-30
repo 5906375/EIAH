@@ -41,6 +41,7 @@ import {
 } from "@eiah/core";
 
 import { MCPExecutor, ToolRegistry } from "@repo/mcp-runner";
+import { McpDbPolicyError } from "../../../../packages/mcp-runner/src/executor/dbAllowlist.js";
 import type { MemoryRecord, MemoryScope, MemorySnapshot } from "@eiah/core";
 import { prismaGlobal } from "@repo/db";
 
@@ -95,6 +96,7 @@ import { GuardianPlanManager } from "./guardianPlanManager";
 import {
   mergeActionsForExecution,
   MissingToolContractError,
+  recordDbInputInvalidAudit,
   recordCriticalMcpAudit,
   recordMissingToolContractAudit,
   resolveLocallyExecutableAction,
@@ -116,7 +118,6 @@ import { tenantActionResolver } from "../actions/tenantActionRegistry";
 /* ──────────────────────────────────────────────
    IMOB Post-Run Mutation Queue (P5)
    ────────────────────────────────────────────── */
-import { enqueueImobRunCompleted } from "../queues/imobRunCompletedQueue";
 import { IMOB_DISPATCHER_ACTION_IDS } from "../services/imob/crm/imobCrmActionDispatcher";
 
 /* ──────────────────────────────────────────────
@@ -1503,10 +1504,41 @@ export async function processRunPayload(payload: RunQueuePayload) {
           }
 
           const executor = new MCPExecutor(tool);
-          const result = await executor.run(effectivePayload, {
-            tenantId,
-            workspaceId,
-          });
+          let result: unknown;
+          try {
+            result = await executor.run(effectivePayload, {
+              tenantId,
+              workspaceId,
+            });
+          } catch (mcpError) {
+            const governedMcpFailure = resolveActiveMcpDenyRunFailure(mcpError);
+            if (governedMcpFailure?.reasonCode === "DB_INPUT_INVALID") {
+              await recordDbInputInvalidAudit({
+                actionName,
+                version,
+                runId,
+                tenantId,
+                stepId: context?.currentStep?.id,
+                reasonCode: governedMcpFailure.reasonCode,
+                record: async (audit) => {
+                  await recordGuardrailAudit({
+                    prisma: prismaGlobal,
+                    tenantId,
+                    workspaceId,
+                    runId,
+                    ...audit,
+                  });
+                },
+                logFailure: (auditFailure) => {
+                  workerLogger.error(
+                    auditFailure,
+                    "run.worker.mcp_failure_audit_failed"
+                  );
+                },
+              });
+            }
+            throw mcpError;
+          }
 
           await recordCriticalMcpAudit({
             runId,
@@ -1611,7 +1643,7 @@ export async function processRunPayload(payload: RunQueuePayload) {
                   },
                 });
 
-                throw new Error(message);
+                throw createActionRunnerFailureError(actionResult, message);
               }
 
               await emitRunEvent({
@@ -2398,7 +2430,7 @@ export async function processRunPayload(payload: RunQueuePayload) {
         imobActionId &&
         (IMOB_DISPATCHER_ACTION_IDS as readonly string[]).includes(imobActionId)
       ) {
-        enqueueImobRunCompleted({
+        enqueueImobRunCompletedLazy({
           runId,
           tenantId,
           workspaceId,
@@ -2440,7 +2472,6 @@ export async function processRunPayload(payload: RunQueuePayload) {
       }
 
       const message = error instanceof Error ? error.message : "Execution failed";
-      const governedMcpFailure = resolveActiveMcpDenyRunFailure(error);
       logger.error(
         {
           err: error,
@@ -2448,70 +2479,38 @@ export async function processRunPayload(payload: RunQueuePayload) {
         "run.worker.failed"
       );
 
-      const scl = await appendSclRecord({
+      await persistRunFailureEvidence({
+        error,
+        message,
         prisma: prismaGlobal,
         tenantId,
         workspaceId,
         runId,
-        payload: { status: "error", message },
-        riskLevel: "high",
-      });
-
-      const errorGuardianReport = buildGuardianResponsePayload({
-        agentId: agent,
-        tenantId,
-        workspaceId,
-        runId,
-        runStatus: "error",
-        costCents: estimate,
-        txId: scl.txId,
-        criticalHash: scl.criticalHash,
-        metadata: runtimeMetadataResolved,
-        outputs: context?.outputs ?? [],
-        snapshot,
-      });
-      const recipeOrchestration = buildRecipeOrchestration({
-        agentId: agent,
-        tenantId,
-        workspaceId,
-        metadata: runtimeMetadataResolved,
-        costCents: estimate,
-      });
-
-      await finalizeRunRecord({
-        runId,
-        tenantId,
-        workspaceId,
-        status: "error",
-        response: {
-          error: message,
-          guardianReport: errorGuardianReport,
-          recipeOrchestration,
-          usage: snapshot?.usage ?? null,
-        },
-        errorCode: governedMcpFailure?.reasonCode ?? "EXECUTION_FAILED",
-        txId: scl.txId,
-        criticalHash: scl.criticalHash,
-        sclTxId: scl.txId,
-      });
-
-      await emitRunEvent({
-        runId,
-        tenantId,
-        workspaceId,
         userId,
-        type: "run.failed",
-        payload: {
-          status: "error",
-          message,
-          ...(governedMcpFailure
-            ? { reasonCode: governedMcpFailure.reasonCode }
-            : {}),
-          txId: scl.txId,
-          criticalHash: scl.criticalHash,
-        },
-        criticalHash: scl.criticalHash,
-        sclTxId: scl.txId,
+        responseForScl: (scl) => ({
+          error: message,
+          guardianReport: buildGuardianResponsePayload({
+            agentId: agent,
+            tenantId,
+            workspaceId,
+            runId,
+            runStatus: "error",
+            costCents: estimate,
+            txId: scl.txId,
+            criticalHash: scl.criticalHash,
+            metadata: runtimeMetadataResolved,
+            outputs: context?.outputs ?? [],
+            snapshot,
+          }),
+          recipeOrchestration: buildRecipeOrchestration({
+            agentId: agent,
+            tenantId,
+            workspaceId,
+            metadata: runtimeMetadataResolved,
+            costCents: estimate,
+          }),
+          usage: snapshot?.usage ?? null,
+        }),
       });
 
       await recordReplayCompletedIfNeeded({
@@ -2528,6 +2527,98 @@ export async function processRunPayload(payload: RunQueuePayload) {
 
 export async function startRunQueueWorker() {
   return consume(processRunPayload);
+}
+
+async function enqueueImobRunCompletedLazy(
+  job: Parameters<
+    typeof import("../queues/imobRunCompletedQueue.js").enqueueImobRunCompleted
+  >[0]
+) {
+  const { enqueueImobRunCompleted } = await import(
+    "../queues/imobRunCompletedQueue.js"
+  );
+  return enqueueImobRunCompleted(job);
+}
+
+export function createActionRunnerFailureError(
+  actionResult: unknown,
+  message: string
+): Error {
+  const governedFailure = resolveActiveMcpDenyRunFailure(actionResult);
+  if (
+    governedFailure?.reasonCode === "DB_SCOPE_MISSING" ||
+    governedFailure?.reasonCode === "DB_MODEL_NOT_ALLOWLISTED" ||
+    governedFailure?.reasonCode === "DB_INPUT_INVALID"
+  ) {
+    return new McpDbPolicyError(governedFailure.reasonCode, message);
+  }
+  return new Error(message);
+}
+
+type RunFailureScl = Awaited<ReturnType<typeof appendSclRecord>>;
+
+export async function persistRunFailureEvidence(
+  params: {
+    error: unknown;
+    message: string;
+    prisma: typeof prismaGlobal;
+    tenantId: string;
+    workspaceId: string;
+    runId: string;
+    userId?: string;
+    responseForScl: (scl: RunFailureScl) => unknown;
+  },
+  deps: {
+    appendSclRecord: typeof appendSclRecord;
+    finalizeRunRecord: typeof finalizeRunRecord;
+    emitRunEvent: typeof emitRunEvent;
+  } = {
+    appendSclRecord,
+    finalizeRunRecord,
+    emitRunEvent,
+  }
+) {
+  const governedFailure = resolveActiveMcpDenyRunFailure(params.error);
+  const reasonCode = governedFailure?.reasonCode ?? "EXECUTION_FAILED";
+  const scl = await deps.appendSclRecord({
+    prisma: params.prisma,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    runId: params.runId,
+    payload: { status: "error", message: params.message },
+    riskLevel: "high",
+  });
+
+  await deps.finalizeRunRecord({
+    runId: params.runId,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    status: "error",
+    response: params.responseForScl(scl),
+    errorCode: reasonCode,
+    txId: scl.txId,
+    criticalHash: scl.criticalHash,
+    sclTxId: scl.txId,
+  });
+
+  await deps.emitRunEvent({
+    runId: params.runId,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    userId: params.userId,
+    type: "run.failed",
+    payload: {
+      status: "error",
+      message: params.message,
+      ...(governedFailure ? { reasonCode: governedFailure.reasonCode } : {}),
+      txId: scl.txId,
+      criticalHash: scl.criticalHash,
+    },
+    criticalHash: scl.criticalHash,
+    sclTxId: scl.txId,
+  });
+
+  return { reasonCode, scl };
 }
 
 function getEnvNumber(name: string, fallback: number) {
