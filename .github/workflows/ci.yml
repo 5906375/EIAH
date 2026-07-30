@@ -199,6 +199,9 @@ jobs:
       - name: Check IMOB Knowledge Base integrity
         run: pnpm check:imob-knowledge-base
 
+      - name: Check reason-code canon consistency
+        run: pnpm check:reason-code-canon
+
       - name: Check Evidence Index
         run: pnpm check:evidence-index
 
