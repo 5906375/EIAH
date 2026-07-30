@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 const CHECK = "check:redis-fail-closed";
 const ROOTS = ["packages", "apps"];
@@ -96,9 +97,20 @@ function braceDelta(line: string): number {
   return delta;
 }
 
-function scanFile(filePath: string): Violation[] {
-  const relativePath = path.relative(process.cwd(), filePath);
-  const content = fs.readFileSync(filePath, "utf8");
+function isPrescriptiveLocalhostProhibition(line: string): boolean {
+  const statesProhibition =
+    /\blocalhost\s+fallback\s+is\s+forbidden\b/i.test(line);
+  const containsExecutableFallbackSignal =
+    /redis(?:s)?:\/\/|(?:\?\?|\|\|).*\blocalhost\b|new\s+Redis\s*\(/i.test(
+      line,
+    );
+  return statesProhibition && !containsExecutableFallbackSignal;
+}
+
+export function scanRedisFailClosedSource(
+  relativePath: string,
+  content: string,
+): Violation[] {
   if (!/(Redis|redis:\/\/|RUN_EVENTS_REDIS_URL|REDIS_URL|REDIS_HOST|REDIS_PORT)/.test(content)) {
     return [];
   }
@@ -108,8 +120,15 @@ function scanFile(filePath: string): Violation[] {
   let depth = 0;
 
   lines.forEach((line, index) => {
+    const isPrescriptiveProhibition = isPrescriptiveLocalhostProhibition(line);
     for (const pattern of FORBIDDEN_PATTERNS) {
       if (!pattern.regex.test(line)) continue;
+      if (
+        pattern.reason === "redis_localhost_name_fallback" &&
+        isPrescriptiveProhibition
+      ) {
+        continue;
+      }
       violations.push({
         file: relativePath,
         line: index + 1,
@@ -135,25 +154,40 @@ function scanFile(filePath: string): Violation[] {
   return violations;
 }
 
-const violations = gatherSourceFiles().flatMap(scanFile);
-
-if (violations.length > 0) {
-  fail("redis_fail_closed_violations_detected", violations);
+function scanFile(filePath: string): Violation[] {
+  return scanRedisFailClosedSource(
+    path.relative(process.cwd(), filePath),
+    fs.readFileSync(filePath, "utf8"),
+  );
 }
 
-console.log(
-  JSON.stringify(
-    {
-      ok: true,
-      check: CHECK,
-      scannedRoots: ROOTS,
-      scannedFiles: gatherSourceFiles().length,
-      summary: {
-        localhostFallbacksDetected: 0,
-        topLevelRedisConstructorsDetected: 0,
+function main() {
+  const sourceFiles = gatherSourceFiles();
+  const violations = sourceFiles.flatMap(scanFile);
+
+  if (violations.length > 0) {
+    fail("redis_fail_closed_violations_detected", violations);
+  }
+
+  console.log(
+    JSON.stringify(
+      {
+        ok: true,
+        check: CHECK,
+        scannedRoots: ROOTS,
+        scannedFiles: sourceFiles.length,
+        summary: {
+          localhostFallbacksDetected: 0,
+          topLevelRedisConstructorsDetected: 0,
+        },
       },
-    },
-    null,
-    2
-  )
-);
+      null,
+      2,
+    ),
+  );
+}
+
+const entry = process.argv[1];
+if (entry && import.meta.url === pathToFileURL(path.resolve(entry)).href) {
+  main();
+}
