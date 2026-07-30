@@ -103,7 +103,12 @@ Leitura normativa correta após F0.45:
 - Fechar F5.2: padronizar aprovação humana no modelo e contrato (sem lacunas de schema).
 
 **Status atual**
-- ✅ Fechado por evidência/gates (`check:p1-critical-chain` + `check:p1-reconciliation-recurring`).
+- ⚙️ Parcial avançado — gates estruturais evidenciados (`check:p1-critical-chain` lendo
+  `contracts/risk-tier-policy.v1.json` desde #418; `check:reason-code-canon` bloqueante em
+  CI desde #418). Fechamento operacional BLOQUEADO por APE telemetry integrity: ciclos
+  #45/#46/#48 com `auditGap`/`duplicateSideEffects` hardcoded
+  (`docs/ops/evidence/ape-cycles-45-48-audit-2026-07-27.md`), não utilizáveis como prova
+  de recorrência. Consistente com §13 e §14 desta mesma revisão.
 
 **DoD P1**
 - Evidência recorrente de reconciliação sem gaps críticos.
