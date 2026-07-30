@@ -598,6 +598,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
+      - name: Run runWorker governed failure boundary regression
+        run: pnpm test:run-worker-error-boundary
+
       - name: Run orphan tests regression gate
         run: pnpm check:orphan-tests
 
