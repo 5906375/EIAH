@@ -4,7 +4,7 @@ import {
   analyzeRepository,
   buildGateResult,
   type RepositoryView,
-} from "../../../../scripts/checkOrphanTests";
+} from "../checkOrphanTests";
 
 function fixture(files: Record<string, string>): RepositoryView {
   const names = Object.keys(files).sort();
