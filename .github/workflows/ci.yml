@@ -739,6 +739,12 @@ jobs:
   ci_unit_suite:
     name: CiUnitSuite
     runs-on: ubuntu-latest
+    env:
+      # Suíte unitária: roda SEM banco real por design.
+      # DATABASE_URL aponta deliberadamente para porta inalcançável (127.0.0.1:1)
+      # para que testes de política provem recusa por POLÍTICA, não por falha de conexão.
+      # Teste que exija banco real NÃO pertence a esta suíte.
+      DATABASE_URL: postgresql://user:pass@127.0.0.1:1/test
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
