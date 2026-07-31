@@ -46,6 +46,7 @@ import { startUploadRetentionWorker } from "./workers/uploadRetentionWorker";
 import { resolveWorkerTopology } from "@eiah/core/queue/workerTopology";
 import { acquireWorkerOwnershipLease } from "@eiah/core/queue/workerOwnershipLease";
 import { setWorkerOwnershipState } from "./services/health";
+import { warnEnabledSecurityRelaxations } from "./services/securityRelaxationFlags";
 import Redis from "ioredis";
 
 const app = express();
@@ -138,6 +139,8 @@ app.use(governedErrorHandler);
 const port = process.env.PORT || 8080;
 
 if (process.env.NODE_ENV !== "test") {
+  warnEnabledSecurityRelaxations(bootstrapLogger);
+
   const workerTopology = resolveWorkerTopology(process.env);
   bootstrapLogger.info(
     {

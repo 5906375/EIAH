@@ -76,6 +76,7 @@ import { emitRunEvent } from "../services/runEventEmitter";
 import { judgeResult } from "../services/judge";
 import { resolveKnowledgeContext } from "../services/knowledgeGate";
 import { resolveConversationPersistenceDecision } from "../services/conversationPersistencePolicy";
+import { resolveGuardrailBlockMode } from "../services/securityRelaxationFlags";
 
 /* ──────────────────────────────────────────────
    Recommendations & Memory
@@ -1998,10 +1999,7 @@ export async function processRunPayload(payload: RunQueuePayload) {
 
       if (guardrailReport.action === "block") {
         const reason = guardrailReport.findings.map((f) => f.message).join(" | ") || "Guardrails blocked";
-        const guardrailMode = getEnvString(
-          "GUARDRAIL_BLOCK_MODE",
-          process.env.NODE_ENV === "development" ? "warn" : "block"
-        );
+        const guardrailMode = resolveGuardrailBlockMode();
         const shouldBlock = guardrailMode === "block";
 
         const auditSeverity = shouldBlock
@@ -2551,13 +2549,6 @@ function getEnvNumber(name: string, fallback: number) {
   if (!raw) return fallback;
   const parsed = Number(raw);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-}
-
-function getEnvString(name: string, fallback: string) {
-  const raw = process.env[name];
-  if (!raw) return fallback;
-  const trimmed = raw.trim();
-  return trimmed.length > 0 ? trimmed : fallback;
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
