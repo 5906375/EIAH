@@ -604,6 +604,9 @@ jobs:
       - name: Run runWorker governed failure boundary regression
         run: pnpm test:run-worker-error-boundary
 
+      - name: Run orphan tests gate unit test
+        run: pnpm check:orphan-tests:unit
+
       - name: Run orphan tests regression gate
         run: pnpm check:orphan-tests
 
