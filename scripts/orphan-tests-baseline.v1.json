@@ -1,0 +1,6 @@
+{
+  "schemaVersion": "orphan-tests-baseline.v1",
+  "initialOrphanCount": 104,
+  "frozenAt": "2026-07-31",
+  "frozenCommit": "8c24406b7d1c2ef65ad4db2f318add4f7d39e7d7"
+}
