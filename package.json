@@ -39,7 +39,7 @@
     "check:docs-link-integrity": "node --import tsx scripts/checkDocsLinkIntegrity.ts",
     "check:tracked-ignored-files": "node --import tsx scripts/checkTrackedIgnoredFiles.ts",
     "check:orphan-tests": "node --import tsx scripts/checkOrphanTests.ts",
-    "check:orphan-tests:unit": "node --import tsx --test scripts/tests/orphanGateExecutionAware.test.ts",
+    "check:orphan-tests:unit": "node --import tsx --test scripts/tests/orphanGateExecutionAware.test.ts scripts/tests/checkP3SettlementSupportByEnv.test.ts",
     "test:run-worker-error-boundary": "DATABASE_URL=postgresql://user:pass@127.0.0.1:1/test node --import tsx --test apps/api/src/tests/run-worker-error-boundary.test.ts",
     "check:admin-scope-canon": "node --import tsx --test packages/core/src/security/adminScopes.test.ts",
     "test:actions-tools-authz": "node --env-file-if-exists=packages/db/.env --import tsx --test apps/api/src/tests/actions-tools-authz.unit.test.ts",

@@ -1005,6 +1005,12 @@ jobs:
   p3_settlement_support_by_env:
     name: P3SettlementSupportByEnv
     runs-on: ubuntu-latest
+    # Rebaixado a informativo em 2026-08-01 pelo PR-01 (settlement matrix honesty).
+    # O gerador scripts/generateP3EconomyEvidence.ts ainda escreve stripe=full de forma
+    # hardcoded, entao o checker compararia a matriz honesta contra evidencia fabricada.
+    # Restaurar a required quando REPLACE-P3-EVIDENCE-HARDCODED entregar evidencia com
+    # lastro. Data de corte para revisao: 2026-10-30.
+    continue-on-error: true
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
