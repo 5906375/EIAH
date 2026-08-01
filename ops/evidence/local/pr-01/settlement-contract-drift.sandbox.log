@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "check": "check:settlement-contract-drift",
+  "contractPath": "<REPO_ROOT>/ops/contracts/settlement-provider-contract.v1.json",
+  "providers": [
+    "stripe",
+    "crypto",
+    "bank"
+  ],
+  "endpoints": [
+    "/payments/providers",
+    "/payments/providers/:provider/settle",
+    "/webhooks/billing/:provider?"
+  ]
+}
+(node:3) ExperimentalWarning: Type Stripping is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)

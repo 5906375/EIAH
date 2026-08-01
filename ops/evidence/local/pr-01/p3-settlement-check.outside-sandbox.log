@@ -1,0 +1,17 @@
+{
+  "ok": false,
+  "check": "check:p3-settlement-support-by-env",
+  "message": "provider_mode_not_allowed_for_environment",
+  "details": {
+    "environment": "staging",
+    "violations": [
+      {
+        "provider": "stripe",
+        "mode": "full",
+        "allowedModes": [
+          "simulated"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "gate-waivers.v1",
+  "waivers": [
+    {
+      "gateId": "P3SettlementSupportByEnv",
+      "workflow": ".github/workflows/ci.yml",
+      "jobId": "p3_settlement_support_by_env",
+      "reason": "scripts/generateP3EconomyEvidence.ts hardcodes stripe=full, so the gate cannot yet compare the honest support matrix with grounded evidence.",
+      "grantedAt": "2026-08-01",
+      "expiresAt": "2026-10-30",
+      "restoreFront": "REPLACE-P3-EVIDENCE-HARDCODED",
+      "approvedBy": "Carlos Alberto Merlo"
+    }
+  ]
+}

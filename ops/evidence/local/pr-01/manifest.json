@@ -1,0 +1,255 @@
+{
+  "schemaVersion": "local-evidence-manifest.v1",
+  "evidenceScope": "local-execution-only",
+  "ciExecution": false,
+  "supportsStatusPromotionToImplemented": false,
+  "declaredStatus": "Parcial",
+  "statement": "These artifacts record local execution only. They are not CI evidence and do not support promotion of PR-01 to Implementado.",
+  "capturePolicy": {
+    "method": "stdout and stderr captured mechanically from the literal command",
+    "sanitization": "absolute repository path replaced mechanically with <REPO_ROOT>",
+    "handEdited": false,
+    "anyArtifactTruncated": false,
+    "secretTokenAndPersonalPathScan": "no matches after mechanical repository-path substitution"
+  },
+  "artifacts": [
+    {
+      "name": "grounding-test.sandbox.log",
+      "command": "pnpm exec tsx --test scripts/tests/checkP3SettlementSupportByEnv.test.ts",
+      "exitCode": 1,
+      "timestamp": "2026-08-01T16:51:54Z",
+      "environment": "sandbox",
+      "sha256": "a881efa33f223c710e14962375ee9cf2a4c7cab447f0af5d55325d9035e7a071",
+      "evidenceRef": {
+        "artifactId": "PR01-LOCAL-GROUNDING-TEST-SANDBOX",
+        "location": "ops/evidence/local/pr-01/grounding-test.sandbox.log",
+        "hash": "a881efa33f223c710e14962375ee9cf2a4c7cab447f0af5d55325d9035e7a071"
+      },
+      "truncated": false
+    },
+    {
+      "name": "grounding-test.outside-sandbox.log",
+      "command": "pnpm exec tsx --test scripts/tests/checkP3SettlementSupportByEnv.test.ts",
+      "exitCode": 0,
+      "timestamp": "2026-08-01T16:51:55Z",
+      "environment": "fora-do-sandbox",
+      "sha256": "6c7b9fd980c137115ef3c51ddad84bbed3b039534042a70dc5b6e421d1a85dae",
+      "evidenceRef": {
+        "artifactId": "PR01-LOCAL-GROUNDING-TEST-OUTSIDE-SANDBOX",
+        "location": "ops/evidence/local/pr-01/grounding-test.outside-sandbox.log",
+        "hash": "6c7b9fd980c137115ef3c51ddad84bbed3b039534042a70dc5b6e421d1a85dae"
+      },
+      "truncated": false
+    },
+    {
+      "name": "orphan-gate.sandbox.log",
+      "command": "pnpm exec tsx scripts/checkOrphanTests.ts",
+      "exitCode": 1,
+      "timestamp": "2026-08-01T16:52:08Z",
+      "environment": "sandbox",
+      "sha256": "a881efa33f223c710e14962375ee9cf2a4c7cab447f0af5d55325d9035e7a071",
+      "evidenceRef": {
+        "artifactId": "PR01-LOCAL-ORPHAN-GATE-SANDBOX",
+        "location": "ops/evidence/local/pr-01/orphan-gate.sandbox.log",
+        "hash": "a881efa33f223c710e14962375ee9cf2a4c7cab447f0af5d55325d9035e7a071"
+      },
+      "truncated": false
+    },
+    {
+      "name": "orphan-gate.outside-sandbox.log",
+      "command": "pnpm exec tsx scripts/checkOrphanTests.ts",
+      "exitCode": 0,
+      "timestamp": "2026-08-01T16:52:09Z",
+      "environment": "fora-do-sandbox",
+      "sha256": "254eb71d2044bd5a813936de78bded259f0a39e67b12a4f32e08863bf9c1b58d",
+      "evidenceRef": {
+        "artifactId": "PR01-LOCAL-ORPHAN-GATE-OUTSIDE-SANDBOX",
+        "location": "ops/evidence/local/pr-01/orphan-gate.outside-sandbox.log",
+        "hash": "254eb71d2044bd5a813936de78bded259f0a39e67b12a4f32e08863bf9c1b58d"
+      },
+      "truncated": false
+    },
+    {
+      "name": "p3-settlement-check.sandbox.log",
+      "command": "pnpm exec tsx scripts/checkP3SettlementSupportByEnv.ts",
+      "exitCode": 1,
+      "timestamp": "2026-08-01T16:52:13Z",
+      "environment": "sandbox",
+      "sha256": "a881efa33f223c710e14962375ee9cf2a4c7cab447f0af5d55325d9035e7a071",
+      "evidenceRef": {
+        "artifactId": "PR01-LOCAL-P3-SETTLEMENT-CHECK-SANDBOX",
+        "location": "ops/evidence/local/pr-01/p3-settlement-check.sandbox.log",
+        "hash": "a881efa33f223c710e14962375ee9cf2a4c7cab447f0af5d55325d9035e7a071"
+      },
+      "truncated": false
+    },
+    {
+      "name": "p3-settlement-check.outside-sandbox.log",
+      "command": "pnpm exec tsx scripts/checkP3SettlementSupportByEnv.ts",
+      "exitCode": 1,
+      "timestamp": "2026-08-01T16:52:13Z",
+      "environment": "fora-do-sandbox",
+      "sha256": "0e153e57510ac7ca436bc3d2e8002956531f95abff2013715cd18d81a532fa46",
+      "evidenceRef": {
+        "artifactId": "PR01-LOCAL-P3-SETTLEMENT-CHECK-OUTSIDE-SANDBOX",
+        "location": "ops/evidence/local/pr-01/p3-settlement-check.outside-sandbox.log",
+        "hash": "0e153e57510ac7ca436bc3d2e8002956531f95abff2013715cd18d81a532fa46"
+      },
+      "truncated": false
+    },
+    {
+      "name": "gate-waiver-test.sandbox.log",
+      "command": "node --import tsx scripts/tests/checkGateWaiverExpiry.test.ts",
+      "exitCode": 0,
+      "timestamp": "2026-08-01T16:52:17Z",
+      "environment": "sandbox",
+      "sha256": "70ccc72ba03f7c600663c6a26603f174a23bb5d683137ee9a9b524e2163c9999",
+      "evidenceRef": {
+        "artifactId": "PR01-LOCAL-GATE-WAIVER-TEST-SANDBOX",
+        "location": "ops/evidence/local/pr-01/gate-waiver-test.sandbox.log",
+        "hash": "70ccc72ba03f7c600663c6a26603f174a23bb5d683137ee9a9b524e2163c9999"
+      },
+      "truncated": false
+    },
+    {
+      "name": "orphan-tests-unit.sandbox.log",
+      "command": "pnpm --silent check:orphan-tests:unit",
+      "exitCode": 0,
+      "timestamp": "2026-08-01T16:52:17Z",
+      "environment": "sandbox",
+      "sha256": "bb8900c5629bb090321c5a73308428147299401f174cdb8b97da6809033de958",
+      "evidenceRef": {
+        "artifactId": "PR01-LOCAL-ORPHAN-TESTS-UNIT-SANDBOX",
+        "location": "ops/evidence/local/pr-01/orphan-tests-unit.sandbox.log",
+        "hash": "bb8900c5629bb090321c5a73308428147299401f174cdb8b97da6809033de958"
+      },
+      "truncated": false
+    },
+    {
+      "name": "gate-waiver-check.sandbox.log",
+      "command": "GATE_WAIVER_CLOCK=2026-08-01 node --import tsx scripts/checkGateWaiverExpiry.ts",
+      "exitCode": 0,
+      "timestamp": "2026-08-01T16:52:18Z",
+      "environment": "sandbox",
+      "sha256": "06b4bad154b2609115172eeb36f2d6e5960fc04fc04b89bce789a8565254db4d",
+      "evidenceRef": {
+        "artifactId": "PR01-LOCAL-GATE-WAIVER-CHECK-SANDBOX",
+        "location": "ops/evidence/local/pr-01/gate-waiver-check.sandbox.log",
+        "hash": "06b4bad154b2609115172eeb36f2d6e5960fc04fc04b89bce789a8565254db4d"
+      },
+      "truncated": false
+    },
+    {
+      "name": "reason-code-canon.sandbox.log",
+      "command": "pnpm --silent check:reason-code-canon",
+      "exitCode": 0,
+      "timestamp": "2026-08-01T17:07:50Z",
+      "environment": "sandbox",
+      "sha256": "a619db949bcf221681b10bc768ae00906daa7251ed0ccaa0b7d3ab0dba15a5df",
+      "evidenceRef": {
+        "artifactId": "PR01-LOCAL-REASON-CODE-CANON-SANDBOX",
+        "location": "ops/evidence/local/pr-01/reason-code-canon.sandbox.log",
+        "hash": "a619db949bcf221681b10bc768ae00906daa7251ed0ccaa0b7d3ab0dba15a5df"
+      },
+      "truncated": false
+    },
+    {
+      "name": "reason-code-canon.outside-sandbox.log",
+      "command": "pnpm --silent check:reason-code-canon",
+      "exitCode": 0,
+      "timestamp": "2026-08-01T17:08:14Z",
+      "environment": "fora-do-sandbox",
+      "sha256": "a619db949bcf221681b10bc768ae00906daa7251ed0ccaa0b7d3ab0dba15a5df",
+      "evidenceRef": {
+        "artifactId": "PR01-LOCAL-REASON-CODE-CANON-OUTSIDE-SANDBOX",
+        "location": "ops/evidence/local/pr-01/reason-code-canon.outside-sandbox.log",
+        "hash": "a619db949bcf221681b10bc768ae00906daa7251ed0ccaa0b7d3ab0dba15a5df"
+      },
+      "truncated": false
+    },
+    {
+      "name": "evidence-index.sandbox.log",
+      "command": "node --import tsx scripts/checkEvidenceIndex.ts",
+      "exitCode": 0,
+      "timestamp": "2026-08-01T17:07:50Z",
+      "environment": "sandbox",
+      "sha256": "11a9f5fce803a787215c0c33ccac8d9d6b25e8a1ad882c4cd68eab434cb540ab",
+      "evidenceRef": {
+        "artifactId": "PR01-LOCAL-EVIDENCE-INDEX-SANDBOX",
+        "location": "ops/evidence/local/pr-01/evidence-index.sandbox.log",
+        "hash": "11a9f5fce803a787215c0c33ccac8d9d6b25e8a1ad882c4cd68eab434cb540ab"
+      },
+      "truncated": false
+    },
+    {
+      "name": "evidence-index.outside-sandbox.log",
+      "command": "node --import tsx scripts/checkEvidenceIndex.ts",
+      "exitCode": 0,
+      "timestamp": "2026-08-01T17:08:10Z",
+      "environment": "fora-do-sandbox",
+      "sha256": "11a9f5fce803a787215c0c33ccac8d9d6b25e8a1ad882c4cd68eab434cb540ab",
+      "evidenceRef": {
+        "artifactId": "PR01-LOCAL-EVIDENCE-INDEX-OUTSIDE-SANDBOX",
+        "location": "ops/evidence/local/pr-01/evidence-index.outside-sandbox.log",
+        "hash": "11a9f5fce803a787215c0c33ccac8d9d6b25e8a1ad882c4cd68eab434cb540ab"
+      },
+      "truncated": false
+    },
+    {
+      "name": "docs-link-integrity.sandbox.log",
+      "command": "node --import tsx scripts/checkDocsLinkIntegrity.ts",
+      "exitCode": 0,
+      "timestamp": "2026-08-01T17:07:50Z",
+      "environment": "sandbox",
+      "sha256": "cc31fb2efa5594c82cfcd4560967ff2e06f6c29c1b116249b814fc40d931f23c",
+      "evidenceRef": {
+        "artifactId": "PR01-LOCAL-DOCS-LINK-INTEGRITY-SANDBOX",
+        "location": "ops/evidence/local/pr-01/docs-link-integrity.sandbox.log",
+        "hash": "cc31fb2efa5594c82cfcd4560967ff2e06f6c29c1b116249b814fc40d931f23c"
+      },
+      "truncated": false
+    },
+    {
+      "name": "docs-link-integrity.outside-sandbox.log",
+      "command": "node --import tsx scripts/checkDocsLinkIntegrity.ts",
+      "exitCode": 0,
+      "timestamp": "2026-08-01T17:08:12Z",
+      "environment": "fora-do-sandbox",
+      "sha256": "cc31fb2efa5594c82cfcd4560967ff2e06f6c29c1b116249b814fc40d931f23c",
+      "evidenceRef": {
+        "artifactId": "PR01-LOCAL-DOCS-LINK-INTEGRITY-OUTSIDE-SANDBOX",
+        "location": "ops/evidence/local/pr-01/docs-link-integrity.outside-sandbox.log",
+        "hash": "cc31fb2efa5594c82cfcd4560967ff2e06f6c29c1b116249b814fc40d931f23c"
+      },
+      "truncated": false
+    },
+    {
+      "name": "settlement-contract-drift.sandbox.log",
+      "command": "node --experimental-strip-types scripts/checkSettlementContractDrift.ts",
+      "exitCode": 0,
+      "timestamp": "2026-08-01T17:07:50Z",
+      "environment": "sandbox",
+      "sha256": "1fc85ba47f9d6281e95097a58d15ad47863a357fbb6b5ec6ffbb199e12ed1253",
+      "evidenceRef": {
+        "artifactId": "PR01-LOCAL-SETTLEMENT-CONTRACT-DRIFT-SANDBOX",
+        "location": "ops/evidence/local/pr-01/settlement-contract-drift.sandbox.log",
+        "hash": "1fc85ba47f9d6281e95097a58d15ad47863a357fbb6b5ec6ffbb199e12ed1253"
+      },
+      "truncated": false
+    },
+    {
+      "name": "settlement-contract-drift.outside-sandbox.log",
+      "command": "node --experimental-strip-types scripts/checkSettlementContractDrift.ts",
+      "exitCode": 0,
+      "timestamp": "2026-08-01T17:08:12Z",
+      "environment": "fora-do-sandbox",
+      "sha256": "83caec6638db2d8a6f42aa9030e6850f9d78776d75ef4963056441482faad164",
+      "evidenceRef": {
+        "artifactId": "PR01-LOCAL-SETTLEMENT-CONTRACT-DRIFT-OUTSIDE-SANDBOX",
+        "location": "ops/evidence/local/pr-01/settlement-contract-drift.outside-sandbox.log",
+        "hash": "83caec6638db2d8a6f42aa9030e6850f9d78776d75ef4963056441482faad164"
+      },
+      "truncated": false
+    }
+  ]
+}
