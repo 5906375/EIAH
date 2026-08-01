@@ -765,6 +765,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
+      - name: Build @repo/db for CI unit suite
+        run: pnpm --filter @repo/db build
+
+      - name: Build @eiah/core for CI unit suite
+        run: pnpm --filter @eiah/core build
+
       # Lista de arquivos versionada em scripts/unit-tests-manifest.txt (fonte
       # da verdade). Sem services: todos sao Grupo B (unit/mock puro, D14).
       - name: Run unit test suite (Grupo B, sem services)
