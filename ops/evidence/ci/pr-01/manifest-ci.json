@@ -1,0 +1,79 @@
+{
+  "schemaVersion": "ci-evidence-manifest.v1",
+  "evidenceScope": "github-actions-run-evidence-collected-via-gh-cli-by-operator",
+  "ciExecution": true,
+  "collectionMethod": "gh-cli-by-operator",
+  "supportsStatusPromotionToImplemented": false,
+  "declaredStatus": "Parcial",
+  "statement": "These artifacts prove that check:gate-waiver-expiry executed in a required CI job using the real runner clock, and that the informational P3SettlementSupportByEnv job does not block the run. They do not prove ruleset enforcement, do not make the generated P3 evidence truthful, and do not support promotion of PR-01 or any related capability to Implementado.",
+  "runId": "30710850816",
+  "runUrl": "https://github.com/5906375/EIAH/actions/runs/30710850816",
+  "headSha": "d5efce85f6939f2a80580b14f1807c166cbb456f",
+  "workflow": "CI Monorepo",
+  "capturePolicy": {
+    "method": "stdout and stderr captured mechanically from gh CLI commands run by the operator, with command, environment, timestamp, and exit code wrappers",
+    "sanitization": "no hand editing; GitHub Actions native masking preserved credential values as ***",
+    "handEdited": false,
+    "anyArtifactTruncated": false,
+    "sensitiveValueAndPersonalPathScan": "matches are GitHub Actions permission headings, masked credential values, and test names containing the scanned term; no sensitive value or personal operator path found",
+    "integralJobLogs": true
+  },
+  "artifacts": [
+    {
+      "name": "ci-run-summary.30710850816.log",
+      "command": "gh run view 30710850816 --json headSha,conclusion,status,jobs --jq {sha: .headSha, run: .conclusion, status: .status, jobs: [.jobs[] | {id: .databaseId, name: .name, conclusion: .conclusion}]}",
+      "exitCode": 0,
+      "timestamp": "2026-08-01T15:28:18-03:00",
+      "environment": "ci-collected",
+      "sha256": "ca71203aa166098999d1954883124f322e08ef5969de284f60eaf4f31f902e85",
+      "evidenceRef": {
+        "artifactId": "PR01-CI-RUN-SUMMARY-30710850816",
+        "location": "ops/evidence/ci/pr-01/ci-run-summary.30710850816.log",
+        "hash": "ca71203aa166098999d1954883124f322e08ef5969de284f60eaf4f31f902e85"
+      },
+      "truncated": false
+    },
+    {
+      "name": "ci-p3-settlement-steps.30710850816.log",
+      "command": "gh run view 30710850816 --json jobs --jq .jobs[] | select(.name==\"P3SettlementSupportByEnv\") | {conclusion, steps: [.steps[] | {name, conclusion}]}",
+      "exitCode": 0,
+      "timestamp": "2026-08-01T15:28:20-03:00",
+      "environment": "ci-collected",
+      "sha256": "e7a736121c7943bfae4d05747f4adb8e131fd17e37d5b5b6bd393cad9112a6be",
+      "evidenceRef": {
+        "artifactId": "PR01-CI-P3-SETTLEMENT-STEPS-30710850816",
+        "location": "ops/evidence/ci/pr-01/ci-p3-settlement-steps.30710850816.log",
+        "hash": "e7a736121c7943bfae4d05747f4adb8e131fd17e37d5b5b6bd393cad9112a6be"
+      },
+      "truncated": false
+    },
+    {
+      "name": "ci-p3-settlement-job.30710850816.log",
+      "command": "gh run view 30710850816 --log --job 91397927961",
+      "exitCode": 0,
+      "timestamp": "2026-08-01T15:28:21-03:00",
+      "environment": "ci-collected",
+      "sha256": "61eed2928958a891864d970ef4b36b676f778d9d39f2debfffc33e15ca924aee",
+      "evidenceRef": {
+        "artifactId": "PR01-CI-P3-SETTLEMENT-JOB-30710850816",
+        "location": "ops/evidence/ci/pr-01/ci-p3-settlement-job.30710850816.log",
+        "hash": "61eed2928958a891864d970ef4b36b676f778d9d39f2debfffc33e15ca924aee"
+      },
+      "truncated": false
+    },
+    {
+      "name": "ci-orphan-tests-job.30710850816.log",
+      "command": "gh run view 30710850816 --log --job 91397927794",
+      "exitCode": 0,
+      "timestamp": "2026-08-01T15:28:23-03:00",
+      "environment": "ci-collected",
+      "sha256": "b271100318560ce2995896eae113c1956bac00af6f631061fdb399c471fe0fd6",
+      "evidenceRef": {
+        "artifactId": "PR01-CI-ORPHAN-TESTS-JOB-30710850816",
+        "location": "ops/evidence/ci/pr-01/ci-orphan-tests-job.30710850816.log",
+        "hash": "b271100318560ce2995896eae113c1956bac00af6f631061fdb399c471fe0fd6"
+      },
+      "truncated": false
+    }
+  ]
+}

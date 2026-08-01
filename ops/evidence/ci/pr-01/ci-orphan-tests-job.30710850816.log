@@ -1,0 +1,1125 @@
+# cmd: gh run view 30710850816 --log --job 91397927794
+# env: ci-collected
+# ts: 2026-08-01T15:28:23-03:00
+OrphanTestsRegression	Set up job	﻿2026-08-01T17:40:49.1789115Z Current runner version: '2.336.0'
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1812108Z ##[group]Runner Image Provisioner
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1813085Z Hosted Compute Agent
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1813668Z Version: 20260707.563
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1814309Z Commit: 02667638d2b423fbc733a8e32a88b44996a3ba6e
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1815047Z Build Date: 2026-07-07T19:33:50Z
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1815756Z Worker ID: {3a9789a9-c77b-4e24-a3bf-4627a852ca01}
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1816487Z Azure Region: westus3
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1817054Z ##[endgroup]
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1818648Z ##[group]Operating System
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1819320Z Ubuntu
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1819867Z 24.04.4
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1820385Z LTS
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1820914Z ##[endgroup]
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1821645Z ##[group]Runner Image
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1822287Z Image: ubuntu-24.04
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1822914Z Version: 20260720.247.2
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1823971Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260720.247/images/ubuntu/Ubuntu2404-Readme.md
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1825707Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260720.247
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1826675Z ##[endgroup]
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1829823Z ##[group]GITHUB_TOKEN Permissions
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1832278Z Actions: write
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1832880Z ArtifactMetadata: write
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1833453Z Attestations: write
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1834043Z Checks: write
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1834620Z CodeQuality: write
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1835174Z Contents: write
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1835735Z CopilotRequests: write
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1836304Z Deployments: write
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1836870Z Discussions: write
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1837423Z Drives: write
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1837936Z Issues: write
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1838492Z Metadata: read
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1839087Z Models: read
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1839597Z Packages: write
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1840160Z Pages: write
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1840670Z PullRequests: write
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1841405Z RepositoryProjects: write
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1842052Z SecurityEvents: write
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1842598Z Statuses: write
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1843268Z VulnerabilityAlerts: read
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1843856Z ##[endgroup]
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1845875Z Secret source: Actions
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.1846842Z Prepare workflow directory
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.2148256Z Prepare all required actions
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.2191679Z Getting action download info
+OrphanTestsRegression	Set up job	2026-08-01T17:40:49.5268979Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+OrphanTestsRegression	Set up job	2026-08-01T17:40:50.0984405Z Download action repository 'pnpm/action-setup@v4' (SHA:b906affcce14559ad1aafd4ab0e942779e9f58b1)
+OrphanTestsRegression	Set up job	2026-08-01T17:40:50.8590763Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+OrphanTestsRegression	Set up job	2026-08-01T17:40:51.0464296Z Complete job name: OrphanTestsRegression
+OrphanTestsRegression	Checkout repository	﻿2026-08-01T17:40:51.1198051Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.1207278Z ##[group]Run actions/checkout@v4
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.1208409Z with:
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.1209253Z   repository: 5906375/EIAH
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.1216890Z   token: ***
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.1217749Z   ssh-strict: true
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.1218611Z   ssh-user: git
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.1219443Z   persist-credentials: true
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.1220334Z   clean: true
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.1221356Z   sparse-checkout-cone-mode: true
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.1222373Z   fetch-depth: 1
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.1223219Z   fetch-tags: false
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.1224073Z   show-progress: true
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.1224890Z   lfs: false
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.1225695Z   submodules: false
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.1226658Z   set-safe-directory: true
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.1227610Z   allow-unsafe-pr-checkout: false
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.1228732Z env:
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.1229690Z   NODE_VERSION: 20
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.1230566Z   PNPM_VERSION: 10.12.4
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.1231520Z ##[endgroup]
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.2087154Z Syncing repository: 5906375/EIAH
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.2089522Z ##[group]Getting Git version info
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.2090671Z Working directory is '/home/runner/work/EIAH/EIAH'
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.2092724Z [command]/usr/bin/git version
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.2869091Z git version 2.54.0
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.2887886Z ##[endgroup]
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.2903003Z Temporarily overriding HOME='/home/runner/work/_temp/79636e66-3084-41dc-b002-bb308f55252a' before making global git config changes
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.2905493Z Adding repository directory to the temporary git global config as a safe directory
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.2907305Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/EIAH/EIAH
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.2938974Z Deleting the contents of '/home/runner/work/EIAH/EIAH'
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.2942460Z ##[group]Initializing the repository
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.2946016Z [command]/usr/bin/git init /home/runner/work/EIAH/EIAH
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.3156854Z hint: Using 'master' as the name for the initial branch. This default branch name
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.3160466Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.3163572Z hint: to use in all of your new repositories, which will suppress this warning,
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.3165970Z hint: call:
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.3167341Z hint:
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.3168966Z hint: 	git config --global init.defaultBranch <name>
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.3170920Z hint:
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.3172803Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.3175430Z hint: 'development'. The just-created branch can be renamed via this command:
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.3177099Z hint:
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.3178485Z hint: 	git branch -m <name>
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.3182412Z hint:
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.3184089Z hint: Disable this message with "git config set advice.defaultBranchName false"
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.3185898Z Initialized empty Git repository in /home/runner/work/EIAH/EIAH/.git/
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.3188814Z [command]/usr/bin/git remote add origin https://github.com/5906375/EIAH
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.3196741Z ##[endgroup]
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.3198626Z ##[group]Disabling automatic garbage collection
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.3200042Z [command]/usr/bin/git config --local gc.auto 0
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.3224845Z ##[endgroup]
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.3226185Z ##[group]Setting up auth
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.3229383Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.3254843Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.3866514Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.3892196Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.4049370Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.4074614Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.4342300Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.4484210Z ##[endgroup]
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.4485817Z ##[group]Fetching the repository
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:51.4492865Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +87c646a807041019ccd9e2d425a9dec96e058122:refs/remotes/pull/423/merge
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:53.9583843Z From https://github.com/5906375/EIAH
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:53.9587950Z  * [new ref]         87c646a807041019ccd9e2d425a9dec96e058122 -> pull/423/merge
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:53.9603462Z ##[endgroup]
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:53.9603887Z ##[group]Determining the checkout info
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:53.9605234Z ##[endgroup]
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:53.9610342Z [command]/usr/bin/git sparse-checkout disable
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:53.9640977Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:53.9665715Z ##[group]Checking out the ref
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:53.9669601Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/423/merge
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:54.3925114Z Note: switching to 'refs/remotes/pull/423/merge'.
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:54.3925772Z 
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:54.3926086Z You are in 'detached HEAD' state. You can look around, make experimental
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:54.3926775Z changes and commit them, and you can discard any commits you make in this
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:54.3927416Z state without impacting any branches by switching back to a branch.
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:54.3927830Z 
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:54.3928179Z If you want to create a new branch to retain commits you create, you may
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:54.3928783Z do so (now or later) by using -c with the switch command. Example:
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:54.3929128Z 
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:54.3929279Z   git switch -c <new-branch-name>
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:54.3929520Z 
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:54.3929671Z Or undo this operation with:
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:54.3929900Z 
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:54.3930028Z   git switch -
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:54.3930235Z 
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:54.3930518Z Turn off this advice by setting config variable advice.detachedHead to false
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:54.3930978Z 
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:54.3931622Z HEAD is now at 87c646a Merge d5efce85f6939f2a80580b14f1807c166cbb456f into 22e88b136e6761e8c7c6cf925750ee625bd04d84
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:54.3940757Z ##[endgroup]
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:54.3979480Z [command]/usr/bin/git log -1 --format=%H
+OrphanTestsRegression	Checkout repository	2026-08-01T17:40:54.4000211Z 87c646a807041019ccd9e2d425a9dec96e058122
+OrphanTestsRegression	Setup PNPM	﻿2026-08-01T17:40:54.4186286Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+OrphanTestsRegression	Setup PNPM	2026-08-01T17:40:54.4187852Z ##[group]Run pnpm/action-setup@v4
+OrphanTestsRegression	Setup PNPM	2026-08-01T17:40:54.4188089Z with:
+OrphanTestsRegression	Setup PNPM	2026-08-01T17:40:54.4188252Z   version: 10.12.4
+OrphanTestsRegression	Setup PNPM	2026-08-01T17:40:54.4188428Z   run_install: false
+OrphanTestsRegression	Setup PNPM	2026-08-01T17:40:54.4188607Z   dest: ~/setup-pnpm
+OrphanTestsRegression	Setup PNPM	2026-08-01T17:40:54.4188779Z   cache: false
+OrphanTestsRegression	Setup PNPM	2026-08-01T17:40:54.4188992Z   cache_dependency_path: pnpm-lock.yaml
+OrphanTestsRegression	Setup PNPM	2026-08-01T17:40:54.4189226Z   package_json_file: package.json
+OrphanTestsRegression	Setup PNPM	2026-08-01T17:40:54.4189430Z   standalone: false
+OrphanTestsRegression	Setup PNPM	2026-08-01T17:40:54.4189597Z env:
+OrphanTestsRegression	Setup PNPM	2026-08-01T17:40:54.4189753Z   NODE_VERSION: 20
+OrphanTestsRegression	Setup PNPM	2026-08-01T17:40:54.4189927Z   PNPM_VERSION: 10.12.4
+OrphanTestsRegression	Setup PNPM	2026-08-01T17:40:54.4190111Z ##[endgroup]
+OrphanTestsRegression	Setup PNPM	2026-08-01T17:40:54.5333359Z ##[group]Running self-installer...
+OrphanTestsRegression	Setup PNPM	2026-08-01T17:40:54.8503701Z (node:2041) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+OrphanTestsRegression	Setup PNPM	2026-08-01T17:40:54.8504884Z (Use `node --trace-deprecation ...` to show where the warning was created)
+OrphanTestsRegression	Setup PNPM	2026-08-01T17:40:55.0776249Z Progress: resolved 1, reused 0, downloaded 0, added 0
+OrphanTestsRegression	Setup PNPM	2026-08-01T17:40:55.0841478Z Packages: +1
+OrphanTestsRegression	Setup PNPM	2026-08-01T17:40:55.4104776Z +
+OrphanTestsRegression	Setup PNPM	2026-08-01T17:40:55.4105290Z Progress: resolved 1, reused 0, downloaded 1, added 1, done
+OrphanTestsRegression	Setup PNPM	2026-08-01T17:40:55.6478793Z 
+OrphanTestsRegression	Setup PNPM	2026-08-01T17:40:55.6479196Z dependencies:
+OrphanTestsRegression	Setup PNPM	2026-08-01T17:40:55.6479434Z + pnpm 10.12.4 (11.18.0 is available)
+OrphanTestsRegression	Setup PNPM	2026-08-01T17:40:55.6479602Z 
+OrphanTestsRegression	Setup PNPM	2026-08-01T17:40:55.6504996Z Done in 965ms
+OrphanTestsRegression	Setup PNPM	2026-08-01T17:40:55.6617253Z ##[endgroup]
+OrphanTestsRegression	Setup PNPM	2026-08-01T17:40:55.6617598Z Installation Completed!
+OrphanTestsRegression	Setup Node.js	﻿2026-08-01T17:40:55.6753251Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:55.6754405Z ##[group]Run actions/setup-node@v4
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:55.6754689Z with:
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:55.6754934Z   node-version: 22
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:55.6755200Z   cache: pnpm
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:55.6755458Z   cache-dependency-path: pnpm-lock.yaml
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:55.6755754Z   always-auth: false
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:55.6756014Z   check-latest: false
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:55.6758124Z   token: ***
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:55.6758381Z env:
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:55.6758602Z   NODE_VERSION: 20
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:55.6758841Z   PNPM_VERSION: 10.12.4
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:55.6759140Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:55.6759480Z ##[endgroup]
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:55.8512983Z Found in cache @ /opt/hostedtoolcache/node/22.23.1/x64
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:55.8515875Z (node:2055) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:55.8516752Z (Use `node --trace-deprecation ...` to show where the warning was created)
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:55.8518612Z ##[group]Environment details
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:56.1565418Z node: v22.23.1
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:56.1565864Z npm: 10.9.8
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:56.1566202Z yarn: 1.22.22
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:56.1566837Z ##[endgroup]
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:56.1588182Z [command]/home/runner/setup-pnpm/node_modules/.bin/pnpm store path --silent
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:56.4323453Z /home/runner/setup-pnpm/node_modules/.bin/store/v10
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:56.6965126Z Cache hit for: node-cache-Linux-x64-pnpm-0ee6521a9ae381fc9e0cde14cafe7145e266ae79f0af4f2accb1d8b6f1187db4
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:56.7053759Z (node:2055) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:57.9089002Z Received 54525952 of 105937671 (51.5%), 52.0 MBs/sec
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:58.2475828Z Received 105937671 of 105937671 (100.0%), 75.5 MBs/sec
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:58.2476674Z Cache Size: ~101 MB (105937671 B)
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:58.2536358Z [command]/usr/bin/tar -xf /home/runner/work/_temp/10e709e5-05c8-4bb0-8b3c-9cff8e460b49/cache.tzst -P -C /home/runner/work/EIAH/EIAH --use-compress-program unzstd
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:59.0577539Z Cache restored successfully
+OrphanTestsRegression	Setup Node.js	2026-08-01T17:40:59.0621362Z Cache restored from key: node-cache-Linux-x64-pnpm-0ee6521a9ae381fc9e0cde14cafe7145e266ae79f0af4f2accb1d8b6f1187db4
+OrphanTestsRegression	Install dependencies	﻿2026-08-01T17:40:59.0747155Z ##[group]Run pnpm install --frozen-lockfile --ignore-scripts
+OrphanTestsRegression	Install dependencies	2026-08-01T17:40:59.0747584Z ^[[36;1mpnpm install --frozen-lockfile --ignore-scripts^[[0m
+OrphanTestsRegression	Install dependencies	2026-08-01T17:40:59.0783355Z shell: /usr/bin/bash -e {0}
+OrphanTestsRegression	Install dependencies	2026-08-01T17:40:59.0783608Z env:
+OrphanTestsRegression	Install dependencies	2026-08-01T17:40:59.0783780Z   NODE_VERSION: 20
+OrphanTestsRegression	Install dependencies	2026-08-01T17:40:59.0783970Z   PNPM_VERSION: 10.12.4
+OrphanTestsRegression	Install dependencies	2026-08-01T17:40:59.0784208Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+OrphanTestsRegression	Install dependencies	2026-08-01T17:40:59.0784489Z ##[endgroup]
+OrphanTestsRegression	Install dependencies	2026-08-01T17:40:59.3781402Z Scope: all 12 workspace projects
+OrphanTestsRegression	Install dependencies	2026-08-01T17:40:59.4232296Z Lockfile is up to date, resolution step is skipped
+OrphanTestsRegression	Install dependencies	2026-08-01T17:40:59.4593166Z Progress: resolved 1, reused 0, downloaded 0, added 0
+OrphanTestsRegression	Install dependencies	2026-08-01T17:40:59.5441480Z Packages: +787
+OrphanTestsRegression	Install dependencies	2026-08-01T17:40:59.5442374Z ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+OrphanTestsRegression	Install dependencies	2026-08-01T17:41:00.4601964Z Progress: resolved 787, reused 786, downloaded 0, added 94
+OrphanTestsRegression	Install dependencies	2026-08-01T17:41:01.4605484Z Progress: resolved 787, reused 786, downloaded 0, added 786
+OrphanTestsRegression	Install dependencies	2026-08-01T17:41:03.0720335Z Progress: resolved 787, reused 786, downloaded 0, added 787
+OrphanTestsRegression	Install dependencies	2026-08-01T17:41:03.0721791Z Progress: resolved 787, reused 786, downloaded 0, added 787, done
+OrphanTestsRegression	Install dependencies	2026-08-01T17:41:03.4640097Z 
+OrphanTestsRegression	Install dependencies	2026-08-01T17:41:03.4641398Z dependencies:
+OrphanTestsRegression	Install dependencies	2026-08-01T17:41:03.4641884Z + @prisma/client 7.2.0
+OrphanTestsRegression	Install dependencies	2026-08-01T17:41:03.4642243Z + prisma 7.2.0
+OrphanTestsRegression	Install dependencies	2026-08-01T17:41:03.4642415Z 
+OrphanTestsRegression	Install dependencies	2026-08-01T17:41:03.4642556Z devDependencies:
+OrphanTestsRegression	Install dependencies	2026-08-01T17:41:03.4643165Z + @eslint/js 9.39.2
+OrphanTestsRegression	Install dependencies	2026-08-01T17:41:03.4643436Z + @prisma/config 7.2.0
+OrphanTestsRegression	Install dependencies	2026-08-01T17:41:03.4643740Z + @types/node 25.0.3
+OrphanTestsRegression	Install dependencies	2026-08-01T17:41:03.4644116Z + @typescript-eslint/eslint-plugin 8.50.0
+OrphanTestsRegression	Install dependencies	2026-08-01T17:41:03.4644561Z + @typescript-eslint/parser 8.50.0
+OrphanTestsRegression	Install dependencies	2026-08-01T17:41:03.4644969Z + @typescript-eslint/utils 8.50.0
+OrphanTestsRegression	Install dependencies	2026-08-01T17:41:03.4645308Z + eslint 9.39.2
+OrphanTestsRegression	Install dependencies	2026-08-01T17:41:03.4645646Z + eslint-config-prettier 10.1.8
+OrphanTestsRegression	Install dependencies	2026-08-01T17:41:03.4646021Z + eslint-plugin-import 2.32.0
+OrphanTestsRegression	Install dependencies	2026-08-01T17:41:03.4646417Z + eslint-plugin-unused-imports 4.3.0
+OrphanTestsRegression	Install dependencies	2026-08-01T17:41:03.4646813Z + playwright 1.61.1
+OrphanTestsRegression	Install dependencies	2026-08-01T17:41:03.4647095Z + tsx 4.21.0
+OrphanTestsRegression	Install dependencies	2026-08-01T17:41:03.4647367Z + typescript 5.9.3
+OrphanTestsRegression	Install dependencies	2026-08-01T17:41:03.4647560Z 
+OrphanTestsRegression	Install dependencies	2026-08-01T17:41:03.4752011Z Done in 4.3s using pnpm v10.12.4
+OrphanTestsRegression	Run runWorker governed failure boundary regression	﻿2026-08-01T17:41:03.4873554Z ##[group]Run pnpm test:run-worker-error-boundary
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.4873890Z ^[[36;1mpnpm test:run-worker-error-boundary^[[0m
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.4899118Z shell: /usr/bin/bash -e {0}
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.4899379Z env:
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.4899548Z   NODE_VERSION: 20
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.4899732Z   PNPM_VERSION: 10.12.4
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.4899966Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.4900226Z ##[endgroup]
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.6907741Z 
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.6908630Z > eiah-builder@ test:run-worker-error-boundary /home/runner/work/EIAH/EIAH
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.6910126Z > DATABASE_URL=***127.0.0.1:1/test node --import tsx --test apps/api/src/tests/run-worker-error-boundary.test.ts
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.6910752Z 
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.7276825Z TAP version 13
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.9315573Z # Subtest: governed action failure crosses boundary with one SCL trail
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.9342736Z ok 1 - governed action failure crosses boundary with one SCL trail
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.9348596Z   ---
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.9349332Z   duration_ms: 1.618859
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.9349995Z   type: 'test'
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.9350497Z   ...
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.9351392Z # Subtest: ungoverned action failure preserves EXECUTION_FAILED fallback
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.9352535Z ok 2 - ungoverned action failure preserves EXECUTION_FAILED fallback
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.9352987Z   ---
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.9353288Z   duration_ms: 0.247402
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.9353608Z   type: 'test'
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.9353902Z   ...
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.9354347Z # Subtest: runWorker catch delegates once without a residual SCL write
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.9355012Z ok 3 - runWorker catch delegates once without a residual SCL write
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.9355574Z   ---
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.9355979Z   duration_ms: 0.685528
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.9356422Z   type: 'test'
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.9356817Z   ...
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.9451427Z 1..3
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.9451753Z # tests 3
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.9452014Z # suites 0
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.9453363Z # pass 3
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.9453905Z # fail 0
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.9454384Z # cancelled 0
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.9454805Z # skipped 0
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.9455180Z # todo 0
+OrphanTestsRegression	Run runWorker governed failure boundary regression	2026-08-01T17:41:03.9455538Z # duration_ms 227.16187
+OrphanTestsRegression	Run orphan tests gate unit test	﻿2026-08-01T17:41:03.9607266Z ##[group]Run pnpm check:orphan-tests:unit
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:03.9607700Z ^[[36;1mpnpm check:orphan-tests:unit^[[0m
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:03.9648610Z shell: /usr/bin/bash -e {0}
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:03.9648980Z env:
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:03.9649219Z   NODE_VERSION: 20
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:03.9649469Z   PNPM_VERSION: 10.12.4
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:03.9649796Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:03.9650145Z ##[endgroup]
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.1731453Z 
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.1732155Z > eiah-builder@ check:orphan-tests:unit /home/runner/work/EIAH/EIAH
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.1733768Z > node --import tsx --test scripts/tests/orphanGateExecutionAware.test.ts scripts/tests/checkP3SettlementSupportByEnv.test.ts scripts/tests/checkGateWaiverExpiry.test.ts && pnpm check:gate-waiver-expiry
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.1734811Z 
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.2149005Z TAP version 13
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4692649Z # Subtest: continue-on-error true with a future waiver passes with days remaining
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4713711Z ok 1 - continue-on-error true with a future waiver passes with days remaining
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4734151Z   ---
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4752029Z   duration_ms: 2.06329
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4783094Z   type: 'test'
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4818693Z   ...
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4841966Z # Subtest: continue-on-error true with an expired waiver fails
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4856901Z ok 2 - continue-on-error true with an expired waiver fails
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4857450Z   ---
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4857798Z   duration_ms: 0.428782
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4858164Z   type: 'test'
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4858554Z   ...
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4859063Z # Subtest: continue-on-error true without a waiver fails as undeclared
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4860556Z ok 3 - continue-on-error true without a waiver fails as undeclared
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4861203Z   ---
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4861590Z   duration_ms: 0.17399
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4862247Z   type: 'test'
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4862851Z   ...
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4863475Z # Subtest: a declared waiver without continue-on-error fails as stale
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4864185Z ok 4 - a declared waiver without continue-on-error fails as stale
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4864635Z   ---
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4864903Z   duration_ms: 0.217466
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4865250Z   type: 'test'
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4865499Z   ...
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4865851Z # Subtest: no waiver and no continue-on-error passes
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4866362Z ok 5 - no waiver and no continue-on-error passes
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4866803Z   ---
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4867028Z   duration_ms: 0.809307
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4867290Z   type: 'test'
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4883564Z   ...
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4884023Z # Subtest: full without providerAdapters fails criterion 1
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4884619Z ok 6 - full without providerAdapters fails criterion 1
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4885011Z   ---
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4885265Z   duration_ms: 2.967459
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4885555Z   type: 'test'
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4885805Z   ...
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4886241Z # Subtest: full with a declared missing module fails criterion 2
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4892356Z ok 7 - full with a declared missing module fails criterion 2
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4913486Z   ---
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4913827Z   duration_ms: 0.875009
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4914262Z   type: 'test'
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4914606Z   ...
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4915139Z # Subtest: full module resolving to the local stub fails criterion 3
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4915819Z ok 8 - full module resolving to the local stub fails criterion 3
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4916263Z   ---
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4923832Z   duration_ms: 1.488605
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4924193Z   type: 'test'
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4924442Z   ...
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4925117Z # Subtest: simulated without providerAdapters passes
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4929805Z ok 9 - simulated without providerAdapters passes
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4930326Z   ---
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4930650Z   duration_ms: 0.823839
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4931216Z   type: 'test'
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4931567Z   ...
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4932169Z # Subtest: execution-aware gate separates blocking, disabled and uncalled references
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4933151Z ok 10 - execution-aware gate separates blocking, disabled and uncalled references
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4933605Z   ---
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4934009Z   duration_ms: 3.632898
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4934392Z   type: 'test'
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4934627Z   ...
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4938805Z # Subtest: tests added to a CI-invoked static suite become blocking
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4939500Z ok 11 - tests added to a CI-invoked static suite become blocking
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4939917Z   ---
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4940146Z   duration_ms: 0.67566
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4940395Z   type: 'test'
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4940764Z   ...
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4948366Z # Subtest: new orphan blocks even when absolute debt does not increase
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4952298Z ok 12 - new orphan blocks even when absolute debt does not increase
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4952760Z   ---
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4952977Z   duration_ms: 0.756017
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4953183Z   type: 'test'
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4953546Z   ...
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4953829Z # Subtest: a lower prior debt becomes the decreasing ceiling
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4954194Z ok 13 - a lower prior debt becomes the decreasing ceiling
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4954447Z   ---
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4954641Z   duration_ms: 0.396462
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4954830Z   type: 'test'
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4954996Z   ...
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4955157Z 1..13
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4955313Z # tests 13
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4955493Z # suites 0
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4955653Z # pass 13
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4955812Z # fail 0
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4955977Z # cancelled 0
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4956154Z # skipped 0
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4956318Z # todo 0
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.4956493Z # duration_ms 288.64583
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.6910190Z 
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.6911277Z > eiah-builder@ check:gate-waiver-expiry /home/runner/work/EIAH/EIAH
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.6911835Z > node --import tsx scripts/checkGateWaiverExpiry.ts
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.6912057Z 
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.8386034Z {
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.8386664Z   "ok": true,
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.8387090Z   "check": "check:gate-waiver-expiry",
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.8387447Z   "clockDate": "2026-08-01",
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.8387963Z   "contract": "ops/contracts/gate-waivers.v1.json",
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.8391679Z   "warnings": [
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.8392044Z     {
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.8392579Z       "criterion": "declared_waiver_expiry_is_in_the_future",
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.8393021Z       "code": "GATE_WAIVER_ACTIVE",
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.8393691Z       "message": "continue-on-error waiver is active with 90 day(s) remaining",
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.8394173Z       "gateId": "P3SettlementSupportByEnv",
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.8394672Z       "workflow": ".github/workflows/ci.yml",
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.8395273Z       "jobId": "p3_settlement_support_by_env",
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.8396244Z       "reason": "scripts/generateP3EconomyEvidence.ts hardcodes stripe=full, so the gate cannot yet compare the honest support matrix with grounded evidence.",
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.8397003Z       "grantedAt": "2026-08-01",
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.8397576Z       "expiresAt": "2026-10-30",
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.8398203Z       "restoreFront": "REPLACE-P3-EVIDENCE-HARDCODED",
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.8398720Z       "approvedBy": "Carlos Alberto Merlo",
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.8399262Z       "daysRemaining": 90
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.8399697Z     }
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.8400045Z   ],
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.8400469Z   "violations": []
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-01T17:41:04.8400838Z }
+OrphanTestsRegression	Run orphan tests regression gate	﻿2026-08-01T17:41:04.8646915Z ##[group]Run pnpm check:orphan-tests
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:04.8647205Z ^[[36;1mpnpm check:orphan-tests^[[0m
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:04.8672301Z shell: /usr/bin/bash -e {0}
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:04.8672537Z env:
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:04.8672711Z   NODE_VERSION: 20
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:04.8672898Z   PNPM_VERSION: 10.12.4
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:04.8673134Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:04.8673396Z ##[endgroup]
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.0782487Z 
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.0783134Z > eiah-builder@ check:orphan-tests /home/runner/work/EIAH/EIAH
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.0783636Z > node --import tsx scripts/checkOrphanTests.ts
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.0783847Z 
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7405138Z {
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7405525Z   "ok": true,
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7405884Z   "check": "check:orphan-tests",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7406228Z   "totalTestFiles": 329,
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7406544Z   "executedBlocking": 225,
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7406861Z   "executedInformational": 3,
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7407217Z   "referencedNotExecuted": 54,
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7407654Z   "notReferenced": 47,
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7407977Z   "executedBlockingFiles": [
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7408278Z     "apps/api/src/services/securityRelaxationFlags.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7408796Z     "apps/api/src/tests/agent-chat-runtime-readiness.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7409243Z     "apps/api/src/tests/agents.policy.fail-closed.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7409683Z     "apps/api/src/tests/auth-default-polarity.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7410284Z     "apps/api/src/tests/billing.vertical-entitlement.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7410868Z     "apps/api/src/tests/channel-binding.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7411595Z     "apps/api/src/tests/chat-route-telemetry-contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7412146Z     "apps/api/src/tests/chat-vertical-handoff-snapshot.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7412739Z     "apps/api/src/tests/chat-vertical-imob-candidate-resolver.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7413329Z     "apps/api/src/tests/chat-vertical-imob-clarification.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7413878Z     "apps/api/src/tests/chat-vertical-imob-confidence.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7414388Z     "apps/api/src/tests/chat-vertical-imob-handoff.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7415054Z     "apps/api/src/tests/chat-vertical-imob-runtime-shadow-engine.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7415780Z     "apps/api/src/tests/chat-vertical-imob-runtime-shadow-mount.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7416497Z     "apps/api/src/tests/chat-vertical-imob-runtime-shadow-route.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7417163Z     "apps/api/src/tests/chat-vertical-imob-runtime-shadow.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7417726Z     "apps/api/src/tests/conversation-persistence-policy.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7418388Z     "apps/api/src/tests/eiah-help-imob-onboarding-docs.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7418898Z     "apps/api/src/tests/guardian-plan-manager.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7419315Z     "apps/api/src/tests/health.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7419736Z     "apps/api/src/tests/imob-agent-contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7420190Z     "apps/api/src/tests/imob-approval-gate.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7420652Z     "apps/api/src/tests/imob-async-job-runtime.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7421256Z     "apps/api/src/tests/imob-capability-gate.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7421730Z     "apps/api/src/tests/imob-capability-registry.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7422312Z     "apps/api/src/tests/imob-continuity-coherence-baseline-real.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7422913Z     "apps/api/src/tests/imob-continuity-coherence-metrics.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7423516Z     "apps/api/src/tests/imob-continuity-coherence-read-model.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7424063Z     "apps/api/src/tests/imob-conversation-state.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7424549Z     "apps/api/src/tests/imob-crm-action-dispatcher.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7425031Z     "apps/api/src/tests/imob-crm-case-context.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7425578Z     "apps/api/src/tests/imob-crm-continuity-regression-phase1.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7426339Z     "apps/api/src/tests/imob-crm-dedupe.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7426791Z     "apps/api/src/tests/imob-crm-golden-path.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7427299Z     "apps/api/src/tests/imob-crm-legacy-fallback-policy.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7427816Z     "apps/api/src/tests/imob-crm-mutation-service.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7428402Z     "apps/api/src/tests/imob-crm-operational-property-link-owner.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7428968Z     "apps/api/src/tests/imob-crm-turn-continuity.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7429449Z     "apps/api/src/tests/imob-crm-turn-engine.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7429922Z     "apps/api/src/tests/imob-crm-turn-registration.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7430420Z     "apps/api/src/tests/imob-dedupe-context.e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7430929Z     "apps/api/src/tests/imob-document-checklist.e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7431717Z     "apps/api/src/tests/imob-document-handoff.e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7432252Z     "apps/api/src/tests/imob-enrichment-capture-runtime.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7432796Z     "apps/api/src/tests/imob-first-pilot-runtime.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7433273Z     "apps/api/src/tests/imob-geo-canonicalizer.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7433728Z     "apps/api/src/tests/imob-governed-intent.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7434183Z     "apps/api/src/tests/imob-human-questions.e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7434642Z     "apps/api/src/tests/imob-intent-catalog.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7435081Z     "apps/api/src/tests/imob-internal-agents.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7435679Z     "apps/api/src/tests/imob-inventory-provider.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7436191Z     "apps/api/src/tests/imob-lead-disqualification.e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7436723Z     "apps/api/src/tests/imob-lead-reengagement.e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7437205Z     "apps/api/src/tests/imob-lead-to-proposal.e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7437661Z     "apps/api/src/tests/imob-lead-to-visit.e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7438152Z     "apps/api/src/tests/imob-market-guardian-evidence.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7438723Z     "apps/api/src/tests/imob-market-scan-confirmation-actions.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7439275Z     "apps/api/src/tests/imob-market-scan-contracts.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7439750Z     "apps/api/src/tests/imob-market-scan-handoff.e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7440226Z     "apps/api/src/tests/imob-market-scan-intelligence.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7440675Z     "apps/api/src/tests/imob-market-scan-llm-judge.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7441054Z     "apps/api/src/tests/imob-market-scan-no-internal-id-leak.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7441783Z     "apps/api/src/tests/imob-market-scan-pipeline.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7442193Z     "apps/api/src/tests/imob-market-scan-policy-judge-final-response.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7442598Z     "apps/api/src/tests/imob-market-scan-provider.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7442945Z     "apps/api/src/tests/imob-market-scan-query-builder.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7443486Z     "apps/api/src/tests/imob-market-scan-response-writer.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7443996Z     "apps/api/src/tests/imob-market-scan-router.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7444480Z     "apps/api/src/tests/imob-market-scan-run.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7444994Z     "apps/api/src/tests/imob-market-scan-snapshot.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7445548Z     "apps/api/src/tests/imob-market-scan-source-quality-gate.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7446158Z     "apps/api/src/tests/imob-market-source-access-policy.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7446811Z     "apps/api/src/tests/imob-mission-inheritance.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7447381Z     "apps/api/src/tests/imob-mission-runtime.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7447911Z     "apps/api/src/tests/imob-onboarding-resolver.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7448490Z     "apps/api/src/tests/imob-owner-pending-suggestion.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7449163Z     "apps/api/src/tests/imob-owner-property-linking.e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7449892Z     "apps/api/src/tests/imob-pilot-approval-runtime.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7450363Z     "apps/api/src/tests/imob-pilot-control-runtime.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7450885Z     "apps/api/src/tests/imob-pilot-control-surface.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7451592Z     "apps/api/src/tests/imob-pilot-flow-case-memory.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7452116Z     "apps/api/src/tests/imob-pilot-flow-history.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7452649Z     "apps/api/src/tests/imob-pilot-flow-observability.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7453188Z     "apps/api/src/tests/imob-pilot-flow-promotion.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7453684Z     "apps/api/src/tests/imob-pilot-flow-registry.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7454166Z     "apps/api/src/tests/imob-pilot-flow-runtime.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7454636Z     "apps/api/src/tests/imob-pilot-operational-surface.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7455184Z     "apps/api/src/tests/imob-pilot-promotion-runtime.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7455641Z     "apps/api/src/tests/imob-pilot-rollout-state.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7455996Z     "apps/api/src/tests/imob-post-run-mutation-e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7456312Z     "apps/api/src/tests/imob-post-visit.e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7456642Z     "apps/api/src/tests/imob-promotion-review-surface.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7456989Z     "apps/api/src/tests/imob-proposal-handoff.e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7457333Z     "apps/api/src/tests/imob-public-web-scan-policy.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7457689Z     "apps/api/src/tests/imob-recipe-planner-integration.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7458227Z     "apps/api/src/tests/imob-responsible-actor-compat.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7458586Z     "apps/api/src/tests/imob-scale-runtime.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7458900Z     "apps/api/src/tests/imob-shadow-runtime.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7459238Z     "apps/api/src/tests/imob-simulated-output-contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7459579Z     "apps/api/src/tests/imob-specialist-bridge.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7459899Z     "apps/api/src/tests/imob-specialist-runtime.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7460236Z     "apps/api/src/tests/imob-tenant-recipe-context.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7460561Z     "apps/api/src/tests/imob-turn-resolver.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7460869Z     "apps/api/src/tests/imob-validation-engine.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7461521Z     "apps/api/src/tests/imob-vertical-manifest.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7461996Z     "apps/api/src/tests/imob-visit-context.e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7462326Z     "apps/api/src/tests/imob-visit-slot-collection.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7462643Z     "apps/api/src/tests/imob.crm-turn-batch.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7463019Z     "apps/api/src/tests/imob.drive.sync.service.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7463482Z     "apps/api/src/tests/imob.knowledge.search.service.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7463876Z     "apps/api/src/tests/imob.semantic-intent-resolver.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7464205Z     "apps/api/src/tests/imob.web.sync.service.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7464516Z     "apps/api/src/tests/imobControlSurface.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7464845Z     "apps/api/src/tests/imobControlSurfaceAggregates.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7465179Z     "apps/api/src/tests/imobRunActionCatalog.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7465486Z     "apps/api/src/tests/j360-legal-interpreter.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7465804Z     "apps/api/src/tests/knowledge-policy.behavior.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7466225Z     "apps/api/src/tests/legal-responsible-actor-stub.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7466623Z     "apps/api/src/tests/pdf-text-extractor.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7467028Z     "apps/api/src/tests/provider-boundary-enforcement.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7467582Z     "apps/api/src/tests/public-product-taxonomy.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7468048Z     "apps/api/src/tests/receipt-canon-execution-evidence.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7468477Z     "apps/api/src/tests/replay-guard.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7468992Z     "apps/api/src/tests/require-scope.fail-closed.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7469438Z     "apps/api/src/tests/run-events-redis-transport.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7469857Z     "apps/api/src/tests/run-worker-action-resolution.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7470289Z     "apps/api/src/tests/run-worker-error-boundary.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7470719Z     "apps/api/src/tests/run-worker-guardian-output.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7471234Z     "apps/api/src/tests/run-worker-j360-output.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7471935Z     "apps/api/src/tests/run-worker-mkt-output.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7472383Z     "apps/api/src/tests/run-worker-output-validation.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7472861Z     "apps/api/src/tests/run-worker-recipe-alignment.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7473338Z     "apps/api/src/tests/run-worker-recipe-orchestration.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7473773Z     "apps/api/src/tests/run-worker.observe.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7474201Z     "apps/api/src/tests/storage.provider.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7474625Z     "apps/api/src/tests/tenant-recipe-contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7475100Z     "apps/api/src/tests/tenant-recipe-workspace-selection.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7475541Z     "apps/api/src/tests/trust-score-engine.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7475863Z     "apps/api/src/tests/upload-retention-service.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7476270Z     "apps/api/src/tests/vertical-entitlement-gate.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7476787Z     "apps/api/src/tests/vertical-entity-type-registry.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7477318Z     "apps/api/src/tests/vertical-responsible-actor.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7477846Z     "apps/api/src/tests/whatsapp.webhook-read-only.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7478384Z     "apps/web/src/components/agents/chatLauncherEngine.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7478864Z     "apps/web/src/components/agents/eiahTutorContracts.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7479366Z     "apps/web/src/components/agents/helpDictionaryResolver.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7479903Z     "apps/web/src/features/imob/ImobApprovalContextCard.test.tsx",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7480414Z     "apps/web/src/features/imob/ImobChatWidgets.test.tsx",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7480981Z     "apps/web/src/features/imob/ImobCommandCenter.test.tsx",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7481740Z     "apps/web/src/features/imob/ImobDashboardHero.test.tsx",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7482308Z     "apps/web/src/features/imob/ImobPriorityQueue.test.tsx",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7482869Z     "apps/web/src/features/imob/ImobRescueIndex.test.tsx",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7483512Z     "apps/web/src/features/imob/ImobSpecialistLoadBoard.test.tsx",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7484136Z     "apps/web/src/features/imob/charts/ImobBrokerChart.test.tsx",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7484762Z     "apps/web/src/features/imob/charts/ImobCycleTimePanel.test.tsx",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7485404Z     "apps/web/src/features/imob/charts/ImobFunnelStepsChart.test.tsx",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7486085Z     "apps/web/src/features/imob/charts/ImobJourneyCostChart.test.tsx",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7486784Z     "apps/web/src/features/imob/funnel/ImobFunnelTeamSection.test.tsx",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7487387Z     "apps/web/src/features/imob/imobA1Labels.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7487948Z     "apps/web/src/features/imob/imobA3CostWindow.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7488554Z     "apps/web/src/features/imob/imobApiClient.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7489161Z     "apps/web/src/features/imob/imobChatPhase3DirectedAction.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7489920Z     "apps/web/src/features/imob/imobCommandCenterHelper.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7490625Z     "apps/web/src/features/imob/imobCommandCenterPhase1.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7491494Z     "apps/web/src/features/imob/imobDashboardTabs.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7492122Z     "apps/web/src/features/imob/imobRuntimeShadowClient.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7492791Z     "apps/web/src/features/imob/imobWorkbenchContext.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7493463Z     "apps/web/src/features/imob/imobWorkbenchContextPanel.test.tsx",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7494494Z     "apps/web/src/features/imob/kpiRefreshState.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7495397Z     "apps/web/src/features/workbench/vertical-chat/ImobSlotCollectionCard.test.tsx",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7496375Z     "apps/web/src/features/workbench/vertical-chat/LegalContextPanel.test.tsx",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7497347Z     "apps/web/src/features/workbench/vertical-chat/ReactiveContextPanel.test.tsx",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7498222Z     "apps/web/src/features/workbench/vertical-chat/VerticalSelectorBar.test.tsx",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7498927Z     "apps/web/src/lib/entitlements.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7499516Z     "apps/web/src/lib/roles.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7500114Z     "apps/web/src/pages/app/imob/chat.assistantDedupe.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7500841Z     "apps/web/src/pages/app/imob/chat.formSubmission.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7501682Z     "apps/web/src/pages/app/imob/chat.runBundleCapability.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7502499Z     "apps/web/src/pages/app/imob/chat.slotCollectionHistory.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7503236Z     "apps/web/src/pages/app/imob/chat.userEcho.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7503799Z     "apps/web/src/pages/app/imob/chatProof.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7504497Z     "apps/web/src/pages/app/imob/dashboard.a7contextCase.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7505234Z     "apps/web/src/pages/app/imob/dashboard.threads.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7505829Z     "apps/web/src/pages/app/imob/partners.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7506419Z     "apps/web/src/pages/app/imob/processes.test.tsx",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7507252Z     "apps/web/src/pages/app/imob/properties.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7507824Z     "apps/web/src/pages/app/runs/index.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7508527Z     "apps/web/src/pages/self-service/recipePrefill.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7509033Z     "apps/web/src/pages/self-service/tenantRecipeComposer.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7509451Z     "apps/workers/action-runner/src/index.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7509891Z     "apps/workers/action-runner/src/services/mcpEnforcement.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7510365Z     "packages/core/src/actions/__tests__/guardianChecklistTools.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7510832Z     "packages/core/src/actions/__tests__/guardrails.ledger.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7511748Z     "packages/core/src/actions/__tests__/highGlobalCoverage.e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7512421Z     "packages/core/src/actions/__tests__/tenantActionResolver.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7513213Z     "packages/core/src/actions/reporting/__tests__/guardianReportRenderer.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7514016Z     "packages/core/src/actions/reporting/__tests__/j360LegalReportRenderer.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7514837Z     "packages/core/src/actions/reporting/__tests__/mktCampaignReportRenderer.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7515679Z     "packages/core/src/actions/reporting/__tests__/mktCampaignReportSchema.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7516507Z     "packages/core/src/actions/reporting/__tests__/recipeOrchestrationRenderer.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7517176Z     "packages/core/src/events/redisPublisher.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7517737Z     "packages/core/src/guardrails/guardrails.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7518277Z     "packages/core/src/memory/__tests__/memory.jobs.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7518890Z     "packages/core/src/memory/__tests__/postgresVectorStore.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7519590Z     "packages/core/src/orchestrator/agentOrchestrator.reactCapabilities.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7520624Z     "packages/core/src/policy/riskTierPolicy.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7521315Z     "packages/core/src/queue/connection.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7521953Z     "packages/core/src/queue/workerOwnershipLease.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7522376Z     "packages/core/src/queue/workerTopology.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7522877Z     "packages/core/src/recommendations/__tests__/statefulRecommendationEngine.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7523364Z     "packages/core/src/security/adminScopes.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7524115Z     "packages/core/src/security/rbac.fail-closed.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7524569Z     "packages/core/src/services/mcpGovernanceEnv.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7525034Z     "packages/db/src/__tests__/toolContractUnique.integration.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7525497Z     "packages/mcp-runner/src/executor/MCPCircuitBreaker.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7525977Z     "packages/mcp-runner/src/executor/MCPExecutor.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7526439Z     "packages/mcp-runner/src/registry/ToolRegistry.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7526863Z     "packages/mcp-runner/src/validator/SchemaValidator.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7527254Z     "scripts/sloBaselineCollect.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7527598Z     "scripts/tests/checkEvidenceIndex.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7528032Z     "scripts/tests/checkGateWaiverExpiry.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7528485Z     "scripts/tests/checkImobStaticHarnessContract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7528900Z     "scripts/tests/checkP3SettlementSupportByEnv.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7529351Z     "scripts/tests/checkRedisFailClosed.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7529775Z     "scripts/tests/orphanGateExecutionAware.test.ts"
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7530180Z   ],
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7530637Z   "executedInformationalFiles": [
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7530984Z     "packages/db/src/__tests__/tenantGuard.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7531744Z     "packages/db/src/__tests__/tenantIsolation.integration.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7532188Z     "packages/db/src/middleware/tenantGuard.test.ts"
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7532624Z   ],
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7532891Z   "referencedNotExecutedFiles": [
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7533236Z     "apps/api/src/actions/tests/actions.e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7533643Z     "apps/api/src/tests/CaseReviewProof.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7533998Z     "apps/api/src/tests/ImobCaseConcurrency.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7534416Z     "apps/api/src/tests/ImobCrmAgentRegistry.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7534802Z     "apps/api/src/tests/ImobCrmCaseProjection.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7535259Z     "apps/api/src/tests/ImobCrmCommandCenterMetrics.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7535668Z     "apps/api/src/tests/ImobNextActionResolver.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7536035Z     "apps/api/src/tests/ImobRecoveryResolver.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7536477Z     "apps/api/src/tests/ImobSideEffectDispatchGuard.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7536917Z     "apps/api/src/tests/LegacyCaseCompatibility.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7537338Z     "apps/api/src/tests/MissionCompletionEvaluator.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7537748Z     "apps/api/src/tests/MissionDoneRequiresProof.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7538122Z     "apps/api/src/tests/MissionStepsContract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7538596Z     "apps/api/src/tests/MissionTransitionGraph.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7538981Z     "apps/api/src/tests/NoAgentForOperation.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7539363Z     "apps/api/src/tests/OperationRouter.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7539753Z     "apps/api/src/tests/OperationRoutingOwnership.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7540173Z     "apps/api/src/tests/ProofGate.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7540551Z     "apps/api/src/tests/RequiredProofByMission.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7540952Z     "apps/api/src/tests/actions-tools-authz.unit.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7541600Z     "apps/api/src/tests/chat-gate-proof-adapters.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7542045Z     "apps/api/src/tests/commercial-activation-e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7542476Z     "apps/api/src/tests/commission-settlement-e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7542872Z     "apps/api/src/tests/imob-agent-activity.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7543288Z     "apps/api/src/tests/imob-case-context-builder.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7543742Z     "apps/api/src/tests/imob-contract-classifier.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7544151Z     "apps/api/src/tests/imob-contract-draft-service.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7544601Z     "apps/api/src/tests/imob-contract-intake-renderer.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7545135Z     "apps/api/src/tests/imob-contract-pii-masker.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7545620Z     "apps/api/src/tests/imob-crm-case-planner.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7546161Z     "apps/api/src/tests/imob-docx-adapter.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7546662Z     "apps/api/src/tests/imob-intake-confirm.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7547180Z     "apps/api/src/tests/imob-intake-e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7547660Z     "apps/api/src/tests/imob-intake-export.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7548138Z     "apps/api/src/tests/imob-intake-lifecycle.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7548644Z     "apps/api/src/tests/imob-intake-pipeline.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7549133Z     "apps/api/src/tests/imob-intake-rc.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7549627Z     "apps/api/src/tests/imob-lease-extractor.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7550158Z     "apps/api/src/tests/imob-orchestrator-concurrency-e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7550688Z     "apps/api/src/tests/imob-orchestrator-mission-e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7551423Z     "apps/api/src/tests/imob-orchestrator-proof-e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7552125Z     "apps/api/src/tests/imob-orchestrator-recovery-e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7552844Z     "apps/api/src/tests/imob-worker-alerts.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7553457Z     "apps/api/src/tests/imob-worker-h4-runbook.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7554315Z     "apps/api/src/tests/imob-worker-metrics.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7554790Z     "apps/api/src/tests/prepare-contract-e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7555461Z     "apps/web/src/components/chat/ChatVerticalHandoffSurface.test.tsx",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7556083Z     "apps/web/src/features/imob/imobContractIntakeApiClient.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7556714Z     "apps/web/src/features/imob/imobContractIntakeDraftCard.test.tsx",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7557335Z     "apps/web/src/features/imob/imobContractIntakeResultCard.test.tsx",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7557944Z     "packages/contracts/tests/apeWeeklyCycleV2.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7558425Z     "scripts/notify/escalationNotice.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7559026Z     "scripts/tests/checkNeonPreviewSchemaCompatibility.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7559581Z     "scripts/tests/checkReasonCodeCanon.test.ts"
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7559920Z   ],
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7560284Z   "notReferencedFiles": [
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7560755Z     "apps/api/src/tests/agents.interop.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7561569Z     "apps/api/src/tests/api-global-error-handling.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7562110Z     "apps/api/src/tests/billing.economy.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7562672Z     "apps/api/src/tests/billing.reconciliation.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7563362Z     "apps/api/src/tests/billing.reputation.disputes.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7563929Z     "apps/api/src/tests/billing.webhook-signature.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7564499Z     "apps/api/src/tests/capability-execution.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7564880Z     "apps/api/src/tests/governance.e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7565413Z     "apps/api/src/tests/imob-artifact-capabilities.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7565881Z     "apps/api/src/tests/imob-assisted-integrations.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7566308Z     "apps/api/src/tests/imob-continuity-coherence.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7567036Z     "apps/api/src/tests/imob-copilot-conversation.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7567632Z     "apps/api/src/tests/imob-crm-document-service.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7568207Z     "apps/api/src/tests/imob-crm-kpi-service.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7568603Z     "apps/api/src/tests/imob-crm-resolver.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7568972Z     "apps/api/src/tests/imob-crm-router.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7569432Z     "apps/api/src/tests/imob-crm-workflow-machine.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7569831Z     "apps/api/src/tests/imob-crm-workspace-scope.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7570302Z     "apps/api/src/tests/imob-cross-surface-regression.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7570744Z     "apps/api/src/tests/imob-governance-evidence.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7571516Z     "apps/api/src/tests/imob-intake-observability.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7571943Z     "apps/api/src/tests/imob-knowledge-base-loader.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7572402Z     "apps/api/src/tests/imob-knowledge-engine-integration.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7572834Z     "apps/api/src/tests/imob-lead-matching.e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7573259Z     "apps/api/src/tests/imob-owner-blocker-consult.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7573695Z     "apps/api/src/tests/imob-post-run-mutation-worker.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7574158Z     "apps/api/src/tests/imob-realestate-action-contracts-11.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7574635Z     "apps/api/src/tests/imob-worker-foundation-phase4-1b.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7575120Z     "apps/api/src/tests/imob.attachment.validation.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7575551Z     "apps/api/src/tests/imob.chat.export.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7576014Z     "apps/api/src/tests/imob.chat.persistence.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7576475Z     "apps/api/src/tests/imob.chat.resolve-turn.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7576927Z     "apps/api/src/tests/imob.command-center.smoke.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7577366Z     "apps/api/src/tests/imob.knowledge.search.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7577777Z     "apps/api/src/tests/ledger-bundle.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7578244Z     "apps/api/src/tests/marketplace.installations.activate.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7578796Z     "apps/api/src/tests/realestate.commission.settlement.e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7579262Z     "apps/api/src/tests/realestate.high-actions.e2e.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7579695Z     "apps/api/src/tests/runArchiveService.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7580121Z     "apps/api/src/tests/runs.imob-action.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7580539Z     "apps/api/src/tests/shadow-executions.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7580941Z     "apps/api/src/tests/test-infra-env.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7581435Z     "apps/api/src/tests/uploads.storage-provider.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7581921Z     "apps/api/src/tests/workspace.memberships.contract.test.ts",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7582645Z     "apps/web/src/features/imob/ImobBottleneckHeatmap.test.tsx",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7583282Z     "apps/web/src/features/imob/ImobWaitingOnBoard.test.tsx",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7583825Z     "tests/multitenant/tenant-isolation.test.ts"
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7584261Z   ],
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7584559Z   "comparison": {
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7584953Z     "ref": "22e88b136e6761e8c7c6cf925750ee625bd04d84",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7585414Z     "previousOrphanCount": 104,
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7585826Z     "decreasingCeiling": 104,
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7586270Z     "currentOrphanCount": 104,
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7586683Z     "newOrphans": [],
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7587024Z     "removedOrphans": []
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7587389Z   },
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7587767Z   "baseline": {
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7588166Z     "schemaVersion": "orphan-tests-baseline.v1",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7588787Z     "initialOrphanCount": 104,
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7589174Z     "frozenAt": "2026-07-31",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7589739Z     "frozenCommit": "8c24406b7d1c2ef65ad4db2f318add4f7d39e7d7"
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7590278Z   },
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7590632Z   "globCoveredRoots": [
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7591218Z     "packages/core/src",
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7591644Z     "packages/db/src"
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7592015Z   ],
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7592290Z   "orphanCount": 104,
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7592695Z   "allowlistedOrphanCount": 0,
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7593069Z   "blockingOrphanCount": 0,
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7593474Z   "blockingOrphans": [],
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7593894Z   "allowlistedOrphans": [],
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7594353Z   "staleAllowlistEntries": [],
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7594773Z   "generatedAt": "2026-08-01T17:41:05.739Z"
+OrphanTestsRegression	Run orphan tests regression gate	2026-08-01T17:41:05.7595170Z }
+OrphanTestsRegression	Run IMOB static harness contract gate	﻿2026-08-01T17:41:05.7628567Z ##[group]Run pnpm check:imob-static-harness-contract
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:05.7628996Z ^[[36;1mpnpm check:imob-static-harness-contract^[[0m
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:05.7629358Z ^[[36;1mpnpm test:imob-static-harness-contract^[[0m
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:05.7654311Z shell: /usr/bin/bash -e {0}
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:05.7654629Z env:
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:05.7654971Z   NODE_VERSION: 20
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:05.7655239Z   PNPM_VERSION: 10.12.4
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:05.7655570Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:05.7655918Z ##[endgroup]
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:05.9709868Z 
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:05.9710458Z > eiah-builder@ check:imob-static-harness-contract /home/runner/work/EIAH/EIAH
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:05.9711227Z > tsx scripts/checkImobStaticHarnessContract.ts
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:05.9711603Z 
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1974436Z {
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1975106Z   "ok": true,
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1975873Z   "check": "check:imob-static-harness-contract",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1976639Z   "decision": "GO_FOR_NEXT_REVIEW_ONLY",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1977566Z   "localOfflineDeterministic": true,
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1978414Z   "stdoutOnly": true,
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1979113Z   "writesFiles": false,
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1979814Z   "readsEnvOrSecrets": false,
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1980506Z   "networkCalls": false,
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1981300Z   "runtimeServiceImports": false,
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1982100Z   "packageScriptRegistered": true,
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1982809Z   "ciGateRegistered": true,
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1983511Z   "evidenceIndexUpdated": false,
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1984343Z   "dryRunExecuted": false,
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1985153Z   "shadowStarted": false,
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1986295Z   "frontendPreviewCreated": false,
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1986804Z   "providerExternalCall": 0,
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1987327Z   "mutationExternalSideEffect": 0,
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1987724Z   "dbWrite": 0,
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1988173Z   "ledgerWrite": 0,
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1988456Z   "auditWrite": 0,
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1988720Z   "receiptGenerated": 0,
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1989009Z   "bundleGenerated": 0,
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1989299Z   "proofGenerated": 0,
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1989628Z   "referencesChecked": [
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1990059Z     "docs/proposals/imob-pilot-2-dry-run-fixture-pack-evidence-template.md",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1991193Z     "docs/proposals/imob-pilot-4-non-operational-dry-run-harness-spec.md",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1992096Z     "docs/proposals/imob-pilot-5-non-operational-harness-skeleton.md",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1992679Z     "docs/proposals/imob-pilot-6a-static-harness-contract-check.md",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1993329Z     "docs/proposals/imob-pilot-6b-static-check-implementation-design.md",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1993976Z     "docs/proposals/imob-pilot-6c-static-check-non-executable-pseudocode.md",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1994683Z     "docs/proposals/imob-pilot-6d-static-check-implementation-plan.md",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1995327Z     "ops/evidence/templates/imob-pilot-2-shadow-dry-run-evidence-template.md",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1995982Z     "apps/api/src/tests/fixtures/imob-pilot-2/imob-pilot-2-shadow-dry-run.fixture.json",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1996639Z     "contracts/chat/chat.vertical_handoff.v1.schema.json",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1997210Z     "contracts/chat/hitl.gate_state.v1.schema.json",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1997794Z     "contracts/chat/proof_receipt_bundle_state.v1.schema.json",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1998274Z     "AGENTS.md",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1998599Z     "docs/architecture/agent-chat-runtime.md"
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1999032Z   ],
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1999307Z   "metricsChecked": [
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1999642Z     "sideEffects=0",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.1999960Z     "providerExternalCall=0",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2000358Z     "mutationExternalSideEffect=0",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2000877Z     "dbWrite=0",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2001337Z     "ledgerWrite=0",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2001639Z     "auditWrite=0",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2001969Z     "receiptGenerated=0",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2002338Z     "bundleGenerated=0",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2002655Z     "proofGenerated=0",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2003309Z     "proofFabricatedInFrontend=0",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2003762Z     "frontendPolicyDecision=0",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2004167Z     "chatLauncherBusinessRule=0",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2004503Z     "criticalActionExecuted=0",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2004817Z     "criticalActionWithoutHITL=0",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2005129Z     "piiLeakageDetected=0",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2005436Z     "missingReasonCode=0",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2005745Z     "checksumMismatch=0"
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2006025Z   ],
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2006271Z   "reasonCodesChecked": [
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2006609Z     "IMOB_PILOT_6A_STATIC_CHECK_ONLY",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2006917Z     "IMOB_PILOT_5_SKELETON_ONLY",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2007247Z     "IMOB_HARNESS_NO_GO",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2007541Z     "IMOB_HARNESS_GO_FOR_NEXT_REVIEW_ONLY",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2007921Z     "IMOB_PILOT_2_FIXTURE_PACK_ONLY",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2008243Z     "CHAT_VERTICAL_HANDOFF_TO_COCKPIT",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2008527Z     "APPROVAL_REQUIRED",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2008871Z     "PROOF_UNAVAILABLE_READ_ONLY",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2009182Z     "NO_PROVIDER_EXTERNAL_CALL",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2009530Z     "NO_MUTATION_EXTERNAL_SIDE_EFFECT",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2009840Z     "NO_DB_LEDGER_AUDIT_WRITE",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2010135Z     "NO_RECEIPT_BUNDLE_PROOF_GENERATION",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2010480Z     "NO_PII_LEAKAGE",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2010808Z     "NO_SHADOW_DRY_RUN_EXECUTION",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2011497Z     "NO_PILOT_SMALL_ROLLOUT_EXECUTION",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2012240Z     "IMOB_PILOT_6B_IMPLEMENTATION_DESIGN_ONLY",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2012675Z     "IMOB_PILOT_6C_PSEUDOCODE_ONLY",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2013586Z     "IMOB_STATIC_CHECK_NON_EXECUTABLE",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2014132Z     "IMOB_STATIC_CHECK_FAIL_CLOSED"
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2014696Z   ],
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2015250Z   "boundariesChecked": [
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2015576Z     "sem provider",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2016026Z     "sem DB",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2016285Z     "sem ledger/audit",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2016585Z     "sem receipt/bundle/proof",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2016877Z     "sem frontend preview",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2017221Z     "sem ChatAgentLauncher logic",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2017532Z     "sem autorizacao produtiva"
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2017828Z   ],
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2018108Z   "forbiddenLanguageDocsChecked": [
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2018557Z     "docs/proposals/imob-pilot-6a-static-harness-contract-check.md",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2019094Z     "docs/proposals/imob-pilot-6b-static-check-implementation-design.md",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2019632Z     "docs/proposals/imob-pilot-6c-static-check-non-executable-pseudocode.md",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2020153Z     "docs/proposals/imob-pilot-6d-static-check-implementation-plan.md"
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2020566Z   ],
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2020800Z   "fixtureChecks": {
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2021254Z     "parsed": true,
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2021696Z     "checkedFields": [
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2021965Z       "syntheticOnly",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2022272Z       "sanitized",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2022554Z       "containsPii",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2022898Z       "containsSensitiveData",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2023287Z       "containsProductionSecret",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2023687Z       "containsProductionWebhook",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2024097Z       "doesNotAuthorizeShadow",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2024502Z       "doesNotAuthorizeDryRun",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2024897Z       "doesNotAuthorizePilot",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2025370Z       "doesNotAuthorizeSmallRollout",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2025787Z       "doesNotAuthorizeProvider",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2026266Z       "doesNotAuthorizeProductionWebhook",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2026767Z       "doesNotAuthorizeProductiveSecret",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2027221Z       "doesNotAuthorizeMutation",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2027714Z       "doesNotAuthorizeReceiptCanonClosure",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2028253Z       "doesNotAuthorizeImobOperationalClosure",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2028854Z       "executionPolicy.criticalActionExecuted",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2029527Z       "executionPolicy.providerExternalCall",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2030563Z       "executionPolicy.mutationExternalSideEffect",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2031052Z       "executionPolicy.dbWrite",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2031575Z       "executionPolicy.ledgerWrite",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2032067Z       "executionPolicy.auditWrite",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2032536Z       "executionPolicy.receiptGenerated",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2032998Z       "executionPolicy.bundleGenerated",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2033442Z       "executionPolicy.proofGenerated",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2033853Z       "expectedMetrics.sideEffects",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2034395Z       "expectedMetrics.providerExternalCall",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2034933Z       "expectedMetrics.mutationExternalSideEffect",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2035446Z       "expectedMetrics.dbWrite",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2035877Z       "expectedMetrics.ledgerWrite",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2036421Z       "expectedMetrics.auditWrite",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2036956Z       "expectedMetrics.receiptGenerated",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2037440Z       "expectedMetrics.bundleGenerated",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2037946Z       "expectedMetrics.proofGenerated",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2038441Z       "expectedMetrics.criticalActionExecuted",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2039000Z       "expectedMetrics.piiLeakageDetected",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2039572Z       "expectedMetrics.frontendPolicyDecision",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2040109Z       "renderExpectation.providerExternalCall",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2040668Z       "renderExpectation.frontendPolicyDecision",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2041264Z       "renderExpectation.proofFabricatedInFrontend"
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2041672Z     ]
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2042130Z   },
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2042413Z   "contractChecks": [
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2042831Z     "chat.vertical_handoff.v1:12",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2043248Z     "hitl.gate_state.v1:12",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2043742Z     "proof_receipt_bundle_state.v1:11"
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2044120Z   ],
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2044453Z   "registrationChecks": [
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2044893Z     "package.json",
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2045250Z     ".github/workflows/ci.yml"
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2045627Z   ],
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2045870Z   "violations": []
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.2046119Z }
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.4110993Z 
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.4112176Z > eiah-builder@ test:imob-static-harness-contract /home/runner/work/EIAH/EIAH
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.4112834Z > node --import tsx --test scripts/tests/checkImobStaticHarnessContract.test.ts
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.4113185Z 
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.4486808Z TAP version 13
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6295652Z # Subtest: passes when references, metrics, reasonCodes, boundaries and guardrail language are present
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6301879Z ok 1 - passes when references, metrics, reasonCodes, boundaries and guardrail language are present
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6302831Z   ---
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6305197Z   duration_ms: 6.106076
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6305875Z   type: 'test'
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6306407Z   ...
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6309009Z # Subtest: fails closed when a required reference is missing
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6310200Z ok 2 - fails closed when a required reference is missing
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6310875Z   ---
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6311749Z   duration_ms: 1.837567
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6312469Z   type: 'test'
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6313044Z   ...
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6313699Z # Subtest: fails closed when a required zero metric is missing
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6315738Z ok 3 - fails closed when a required zero metric is missing
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6339631Z   ---
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6362477Z   duration_ms: 1.516537
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6363457Z   type: 'test'
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6363893Z   ...
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6364503Z # Subtest: fails closed when a required reasonCode is missing
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6365270Z ok 4 - fails closed when a required reasonCode is missing
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6365769Z   ---
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6366165Z   duration_ms: 1.906787
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6366530Z   type: 'test'
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6367012Z   ...
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6368177Z # Subtest: fails closed when a required textual boundary is missing
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6369455Z ok 5 - fails closed when a required textual boundary is missing
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6370070Z   ---
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6370467Z   duration_ms: 1.221912
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6370935Z   type: 'test'
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6371569Z   ...
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6372232Z # Subtest: fails closed when productive authorization language is present
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6373080Z ok 6 - fails closed when productive authorization language is present
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6373769Z   ---
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6374224Z   duration_ms: 1.727467
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6374635Z   type: 'test'
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6375044Z   ...
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6375769Z # Subtest: fails closed when improper operational closure is declared
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6376521Z ok 7 - fails closed when improper operational closure is declared
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6377109Z   ---
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6377429Z   duration_ms: 1.191054
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6377835Z   type: 'test'
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6378140Z   ...
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6378624Z # Subtest: fails closed when expected package scripts are missing
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6379363Z ok 8 - fails closed when expected package scripts are missing
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6379832Z   ---
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6380172Z   duration_ms: 1.061075
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6380430Z   type: 'test'
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6380645Z   ...
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6381224Z # Subtest: fails closed when expected package scripts are incomplete or changed
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6381844Z ok 9 - fails closed when expected package scripts are incomplete or changed
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6382256Z   ---
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6382490Z   duration_ms: 1.57744
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6382941Z   type: 'test'
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6383191Z   ...
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6383523Z # Subtest: allows the expected IMOB-PILOT-6I CI gate
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6383917Z ok 10 - allows the expected IMOB-PILOT-6I CI gate
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6384211Z   ---
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6384441Z   duration_ms: 1.89431
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6384725Z   type: 'test'
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6384979Z   ...
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6385330Z # Subtest: fails closed when the IMOB-PILOT-6I CI gate is missing
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6385771Z ok 11 - fails closed when the IMOB-PILOT-6I CI gate is missing
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6386098Z   ---
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6386368Z   duration_ms: 1.069534
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6386613Z   type: 'test'
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6386848Z   ...
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6387205Z # Subtest: fails closed when the IMOB-PILOT-6I CI gate is incomplete
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6387637Z ok 12 - fails closed when the IMOB-PILOT-6I CI gate is incomplete
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6388001Z   ---
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6388226Z   duration_ms: 1.231351
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6388486Z   type: 'test'
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6388726Z   ...
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6389191Z # Subtest: fails closed when CI references the implementation directly instead of package scripts
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6389811Z ok 13 - fails closed when CI references the implementation directly instead of package scripts
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6390323Z   ---
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6390761Z   duration_ms: 1.14322
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6391040Z   type: 'test'
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6391488Z   ...
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6392289Z # Subtest: fails closed when CI places the gate in IMOB Worker Mutation E2E
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6393004Z ok 14 - fails closed when CI places the gate in IMOB Worker Mutation E2E
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6393406Z   ---
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6393776Z   duration_ms: 1.260086
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6394085Z   type: 'test'
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6394366Z   ...
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6435665Z 1..14
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6444950Z # tests 14
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6445372Z # suites 0
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6445928Z # pass 14
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6446424Z # fail 0
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6446796Z # cancelled 0
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6447328Z # skipped 0
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6447792Z # todo 0
+OrphanTestsRegression	Run IMOB static harness contract gate	2026-08-01T17:41:06.6448244Z # duration_ms 204.320182
+OrphanTestsRegression	Run MCP contract drift gate	﻿2026-08-01T17:41:06.6561060Z ##[group]Run pnpm check:mcp-contract-drift
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:06.6562070Z ^[[36;1mpnpm check:mcp-contract-drift^[[0m
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:06.6586461Z shell: /usr/bin/bash -e {0}
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:06.6586790Z env:
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:06.6587012Z   NODE_VERSION: 20
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:06.6587270Z   PNPM_VERSION: 10.12.4
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:06.6587592Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:06.6587915Z ##[endgroup]
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:06.8643292Z 
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:06.8644165Z > eiah-builder@ check:mcp-contract-drift /home/runner/work/EIAH/EIAH
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:06.8644822Z > node --import tsx scripts/checkMcpContractDrift.ts
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:06.8645110Z 
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0538843Z {
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0549214Z   "ok": true,
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0550665Z   "check": "check:mcp-contract-drift",
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0551828Z   "toolContractFile": "packages/mcp-runner/src/types/ToolContract.ts",
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0553169Z   "mcpExecutorFile": "packages/mcp-runner/src/executor/MCPExecutor.ts",
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0554378Z   "allowedMcpExecutorConsumers": [
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0555439Z     "apps/workers/action-runner/src/services/mcpAdapter.ts",
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0556546Z     "apps/api/src/workers/runWorker.ts"
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0557327Z   ],
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0557977Z   "allowedMcpEnvParsers": [
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0558829Z     "packages/core/src/services/mcpGovernanceEnv.ts"
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0559593Z   ],
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0560345Z   "expectedMcpGovernanceEnvHelperConsumers": [
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0561412Z     "apps/workers/action-runner/src/services/mcpEnforcement.ts",
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0562195Z     "apps/api/src/workers/runWorker.ts",
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0563044Z     "packages/core/src/orchestrator/agentOrchestrator.ts",
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0564151Z     "apps/api/src/services/intentValidator.ts"
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0564709Z   ],
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0565173Z   "missingContractFailClosed": [
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0565741Z     "apps/api/src/workers/runWorker.ts",
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0566634Z     "apps/api/src/workers/runWorkerActionResolution.ts"
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0567243Z   ],
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0568164Z   "historicalSimulatedDefense": "apps/api/src/services/imob/imobCanonical.ts",
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0568982Z   "scanRoots": [
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0569543Z     "apps/api/src",
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0570022Z     "apps/web/src",
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0570503Z     "apps/workers",
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0570985Z     "packages/core/src"
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0571622Z   ],
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0572186Z   "operationalSourcesScanned": 601
+OrphanTestsRegression	Run MCP contract drift gate	2026-08-01T17:41:07.0572902Z }
+OrphanTestsRegression	Post Setup Node.js	﻿2026-08-01T17:41:07.0767196Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+OrphanTestsRegression	Post Setup Node.js	2026-08-01T17:41:07.0768160Z Post job cleanup.
+OrphanTestsRegression	Post Setup Node.js	2026-08-01T17:41:07.1980384Z (node:2490) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+OrphanTestsRegression	Post Setup Node.js	2026-08-01T17:41:07.1981679Z (Use `node --trace-deprecation ...` to show where the warning was created)
+OrphanTestsRegression	Post Setup Node.js	2026-08-01T17:41:07.1983332Z Cache hit occurred on the primary key node-cache-Linux-x64-pnpm-0ee6521a9ae381fc9e0cde14cafe7145e266ae79f0af4f2accb1d8b6f1187db4, not saving cache.
+OrphanTestsRegression	Post Setup PNPM	﻿2026-08-01T17:41:07.2059965Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+OrphanTestsRegression	Post Setup PNPM	2026-08-01T17:41:07.2060991Z Post job cleanup.
+OrphanTestsRegression	Post Setup PNPM	2026-08-01T17:41:07.3356623Z Pruning is unnecessary.
+OrphanTestsRegression	Post Checkout repository	﻿2026-08-01T17:41:07.3491481Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+OrphanTestsRegression	Post Checkout repository	2026-08-01T17:41:07.3492643Z Post job cleanup.
+OrphanTestsRegression	Post Checkout repository	2026-08-01T17:41:07.4282147Z [command]/usr/bin/git version
+OrphanTestsRegression	Post Checkout repository	2026-08-01T17:41:07.4301486Z git version 2.54.0
+OrphanTestsRegression	Post Checkout repository	2026-08-01T17:41:07.4322184Z Temporarily overriding HOME='/home/runner/work/_temp/36333c09-2a1c-4624-b778-63759667c305' before making global git config changes
+OrphanTestsRegression	Post Checkout repository	2026-08-01T17:41:07.4323654Z Adding repository directory to the temporary git global config as a safe directory
+OrphanTestsRegression	Post Checkout repository	2026-08-01T17:41:07.4327089Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/EIAH/EIAH
+OrphanTestsRegression	Post Checkout repository	2026-08-01T17:41:07.5465857Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+OrphanTestsRegression	Post Checkout repository	2026-08-01T17:41:07.5511684Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+OrphanTestsRegression	Post Checkout repository	2026-08-01T17:41:07.5716986Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+OrphanTestsRegression	Post Checkout repository	2026-08-01T17:41:07.5738394Z http.https://github.com/.extraheader
+OrphanTestsRegression	Post Checkout repository	2026-08-01T17:41:07.5747457Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+OrphanTestsRegression	Post Checkout repository	2026-08-01T17:41:07.7464476Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+OrphanTestsRegression	Post Checkout repository	2026-08-01T17:41:07.7633563Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+OrphanTestsRegression	Post Checkout repository	2026-08-01T17:41:07.7659067Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+OrphanTestsRegression	Complete job	﻿2026-08-01T17:41:07.7928899Z Cleaning up orphan processes
+OrphanTestsRegression	Complete job	2026-08-01T17:41:07.8166004Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-node@v4, pnpm/action-setup@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+exit=0
