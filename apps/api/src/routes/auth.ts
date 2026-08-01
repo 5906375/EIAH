@@ -5,6 +5,11 @@ import { prismaGlobal } from "@repo/db";
 import { findApiToken } from "../auth/apiTokenRepository";
 import { createGovernedRouter } from "../middlewares/asyncHandler";
 import { acceptWorkspaceInvitation, readWorkspaceInvitationByToken } from "../services/workspaceResponsibility";
+import {
+  allowEmailPasswordReset,
+  allowPasswordBootstrap,
+  allowUnverifiedWallet,
+} from "../services/securityRelaxationFlags";
 
 const scryptAsync = promisify(crypto.scrypt);
 
@@ -252,14 +257,6 @@ function normalizeWalletAddress(value: string) {
 
 function walletEmailFromAddress(address: string) {
   return `wallet+${normalizeWalletAddress(address)}@wallet.eiah.local`;
-}
-
-function walletAuthUnsafeModeEnabled() {
-  const configured = process.env.WALLET_AUTH_ALLOW_UNVERIFIED_SIGNATURE;
-  if (configured !== undefined) {
-    return configured.trim().toLowerCase() === "true";
-  }
-  return process.env.NODE_ENV !== "production";
 }
 
 const WorkspaceInvitationPreviewSchema = z.object({
@@ -564,13 +561,13 @@ authRouter.post("/auth/wallet/login", async (req, res) => {
     });
   }
 
-  if (!walletAuthUnsafeModeEnabled()) {
+  if (!allowUnverifiedWallet()) {
     return res.status(501).json({
       ok: false,
       error: {
         code: "WALLET_VERIFY_NOT_CONFIGURED",
         message:
-          "Wallet signature verification is not configured on this environment. Set WALLET_AUTH_ALLOW_UNVERIFIED_SIGNATURE=true for development.",
+          "Wallet signature verification is not configured on this environment. Set EIAH_ALLOW_UNVERIFIED_WALLET=true to enable the development-only relaxation.",
       },
     });
   }
@@ -657,11 +654,7 @@ authRouter.post("/auth/password/set", async (req, res) => {
   }
 
   const existingCredential = await resolveLegacyCredentialByEmail(normalizedEmail);
-  const firstPasswordSelfServiceDefault = process.env.NODE_ENV !== "production";
-  const firstPasswordSelfServiceRaw =
-    process.env.LEGACY_ACCESS_ALLOW_FIRST_PASSWORD_SELF_SERVICE ??
-    String(firstPasswordSelfServiceDefault);
-  const firstPasswordSelfService = String(firstPasswordSelfServiceRaw).trim().toLowerCase() === "true";
+  const firstPasswordSelfService = allowPasswordBootstrap();
 
   let authorized = false;
   let authorizationMethod: "token" | "current_password" | "bootstrap" | "email_recovery" | null =
@@ -688,10 +681,7 @@ authRouter.post("/auth/password/set", async (req, res) => {
     authorizationMethod = "bootstrap";
   }
 
-  const emailRecoveryDefault = process.env.NODE_ENV !== "production";
-  const emailRecoveryRaw =
-    process.env.LEGACY_ACCESS_ALLOW_PASSWORD_RESET_BY_EMAIL ?? String(emailRecoveryDefault);
-  const allowPasswordResetByEmail = String(emailRecoveryRaw).trim().toLowerCase() === "true";
+  const allowPasswordResetByEmail = allowEmailPasswordReset();
   if (!authorized && allowPasswordResetByEmail) {
     authorized = true;
     authorizationMethod = "email_recovery";
@@ -703,7 +693,7 @@ authRouter.post("/auth/password/set", async (req, res) => {
       error: {
         code: "UNAUTHORIZED_PASSWORD_SET",
         message:
-          "Provide a valid token or current password. For first password enable LEGACY_ACCESS_ALLOW_FIRST_PASSWORD_SELF_SERVICE=true. For email recovery enable LEGACY_ACCESS_ALLOW_PASSWORD_RESET_BY_EMAIL=true.",
+          "Provide a valid token or current password. For first password enable EIAH_ALLOW_PASSWORD_BOOTSTRAP=true. For email recovery enable EIAH_ALLOW_EMAIL_PASSWORD_RESET=true.",
       },
     });
   }

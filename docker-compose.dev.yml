@@ -36,6 +36,11 @@ services:
       - SERVICE_ROLE=api
       - RUN_QUEUE_CONSUMER_MODE=api-embedded
       - RUN_ATIVO_CONSUMER_MODE=disabled
+      # DEV ONLY — cada relaxação exige opt-in explícito e gera warn no bootstrap.
+      - EIAH_ALLOW_UNVERIFIED_WALLET=true
+      - EIAH_ALLOW_PASSWORD_BOOTSTRAP=true
+      - EIAH_ALLOW_EMAIL_PASSWORD_RESET=true
+      - EIAH_ALLOW_GUARDRAIL_WARN_ONLY=true
       # REDIS_URL removido daqui — agora vem do .env (fonte única, com senha)
       - PNPM_HOME=/pnpm
       - PNPM_STORE_DIR=/pnpm/store
