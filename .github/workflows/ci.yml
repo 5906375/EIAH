@@ -1010,7 +1010,6 @@ jobs:
     # hardcoded, entao o checker compararia a matriz honesta contra evidencia fabricada.
     # Restaurar a required quando REPLACE-P3-EVIDENCE-HARDCODED entregar evidencia com
     # lastro. Data de corte para revisao: 2026-10-30.
-    continue-on-error: true
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
