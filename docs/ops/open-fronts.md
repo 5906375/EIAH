@@ -5,8 +5,9 @@
 - **Status normativo:** Proposta
 - **Descrição:** registro operacional versionado de pendências
 - **Fonte canônica:** `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md`
+- **Decisão de hierarquia:** `docs/adr/ADR-003-work-registry-hierarchy.md`
 
-Este documento é derivado da fonte canônica indicada acima e faz o rastreio formal de pendências identificadas no fechamento do PR-01; não estabelece status normativo próprio, não é plano de execução e não autoriza o início de nenhuma frente.
+Este documento é derivado da fonte canônica indicada acima e faz o rastreio formal de treze pendências identificadas no fechamento do PR-01 e nas auditorias documentais subsequentes. A hierarquia entre este registro e o plano de PRs de 2026-07-31 é definida pelo ADR indicado acima; este documento não estabelece status normativo próprio, não é plano de execução e não autoriza o início de nenhuma frente.
 
 ## 1. Restrição das permissões do token de CI
 
@@ -92,10 +93,137 @@ Este documento é derivado da fonte canônica indicada acima e faz o rastreio fo
 - **Bloqueio:** definição de critério discriminante para o modo de evidência P3
 - **Status:** `pendente`
 
+## 9. Reconciliação da cobertura do Evidence Index
+
+- **Frente:** `RECONCILE-EVIDENCE-INDEX-COVERAGE`
+- **Severidade:** alta — a ausência de validação nos dois sentidos permite que artefatos executados fiquem fora do índice e que entradas semanticamente incompatíveis com a norma permaneçam aceitas pelo gate.
+- **O que se sabe:** em `HEAD`, o inventário reverso de `ops/evidence/`, `docs/ops/evidence/` e `artifacts/` encontra 510 arquivos físicos, dos quais 187 não aparecem por caminho literal em `docs/EVIDENCE_INDEX.md`. Entre eles estão 23 logs e manifests sob `ops/evidence/ci/pr-01/` e `ops/evidence/local/pr-01/`, produzidos por comandos e runs já registrados. `scripts/checkEvidenceIndex.ts:133-150` extrai referências do índice e valida somente índice→disco; não percorre diretórios de evidência para validar disco→índice. A leitura semântica conservadora da frente 13 confirma também 72 entradas cuja própria redação as caracteriza como decisão, backlog, plano/proposta ou leitura documental sem execução real.
+- **O que não foi verificado:** não foi classificado quais dos 187 caminhos físicos satisfazem todos os requisitos para evidência real/indexável, nem foi auditado o conteúdo integral dos artefatos associados às 72 entradas para excluir eventual execução omitida pela redação do índice. O estado live de providers e runs externos não foi consultado.
+- **Origem da observação:** sessão de auditoria somente-leitura de 2026-08-03, sem commit ou artefato versionado próprio.
+- **Origem do registro da frente:** este commit documental.
+- **Bloqueio:** definição ratificada de cobertura conforme a norma vigente e de um inventário bidirecional com critérios semânticos verificáveis.
+- **Status:** `pendente`
+
+## 10. Resolução de referências rolling no Evidence Index
+
+- **Frente:** `RESOLVE-ROLLING-EVIDENCE-REFERENCES`
+- **Severidade:** alta — uma referência variável pode trocar silenciosamente o artefato alcançado e não oferece identidade estável para verificação por hash.
+- **O que se sabe:** `scripts/checkEvidenceIndex.ts:24-30` transforma `YYYY-MM-DD` em regex e `scripts/checkEvidenceIndex.ts:141-150` considera a referência válida quando existe pelo menos uma correspondência no diretório. O índice contém oito padrões de caminho rolling em `HEAD`; seis artefatos correspondentes — `payment-intent-schema-2026-07-27.json`, `settlement-provider-e2e-2026-07-27.json`, `billing-webhook-replay-2026-07-27.json`, `settlement-contract-check-2026-03-09.md`, `reputation-update-flow-2026-07-27.json` e `dispute-lifecycle-e2e-2026-07-27.json` — não possuem referência literal pelo caminho datado e são alcançados somente pelo padrão.
+- **O que não foi verificado:** não foi definida a política de migração para referências exatas, nem calculados ou ratificados hashes canônicos para os seis artefatos.
+- **Origem da observação:** sessão de auditoria somente-leitura de 2026-08-03, sem commit ou artefato versionado próprio.
+- **Origem do registro da frente:** este commit documental.
+- **Bloqueio:** decisão sobre referência exata, identidade por hash e tratamento histórico das entradas rolling.
+- **Status:** `pendente`
+
+## 11. Resolução da divergência de status P1
+
+- **Frente:** `RESOLVE-P1-STATUS-DIVERGENCE`
+- **Severidade:** alta — uma documentação derivada que fecha fase parcial pode orientar execução e comunicação em desacordo com a fonte canônica.
+- **O que se sabe:** `docs/ops/roadmap-v81-fases-referencia.md:91-93` declara P1 fechado por evidência/gates. O roadmap canônico, em `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md:105-111`, mantém P1 como parcial avançado e bloqueado pela integridade da telemetria APE. A leitura em `HEAD` confirma divergência docs↔docs sobre o status da fase.
+- **O que não foi verificado:** não foram inventariados todos os consumidores do documento derivado, nem definida a correção ou eventual retirada dessa declaração.
+- **Origem da observação:** sessão de auditoria somente-leitura de 2026-08-03, sem commit ou artefato versionado próprio.
+- **Origem do registro da frente:** este commit documental.
+- **Bloqueio:** decisão sobre correção do documento derivado e validação de seus consumidores.
+- **Status:** `pendente`
+
+## 12. Ratificação da contagem de amostras do baseline SLO
+
+- **Frente:** `RATIFY-SLO-BASELINE-SAMPLE-COUNT`
+- **Severidade:** média — o gate nominal pode aceitar uma amostra insuficiente, mas permanece warn-only e não ratifica targets enquanto a frente operacional está aberta.
+- **O que se sabe:** `scripts/checkSloBaseline.ts:16-23` seleciona apenas o arquivo de baseline mais recente; `scripts/checkSloBaseline.ts:39-78` valida presença de `pouFinalize.p95Ms` e recência, mas não exige contagem mínima nem três ciclos distintos. O baseline mais recente, `ops/evidence/latest/economy-slo-baseline-2026-07-27.json:12`, declara `samplesCount=2` e satisfaz o check nominal. `docs/ops/f53-slo-ratification-checklist.md:5,45-46,175-187` exige três ciclos reais antes da ratificação.
+- **O que não foi verificado:** não foram comprovados três ciclos reais distintos com variáveis de staging, nem exercitado teste negativo de contagem insuficiente para o checker.
+- **Origem da observação:** sessão de auditoria somente-leitura de 2026-08-03, sem commit ou artefato versionado próprio.
+- **Origem do registro da frente:** este commit documental.
+- **Bloqueio:** três ciclos reais elegíveis, critério mínimo ratificado e teste negativo bloqueante para amostra insuficiente.
+- **Status:** `pendente`
+
+## 13. Reconciliação do drift normativo do Evidence Index
+
+- **Frente:** `RECONCILE-EVIDENCE-INDEX-NORM-DRIFT`
+- **Severidade:** alta — `IA_EIAH.md:146-157,230-246,315-317` restringe o índice a evidência de execução real e classifica drift em Evidence Index como P0/P1 conforme impacto, enquanto o próprio índice contém decisões, backlog e planos/propostas sem execução real.
+- **O que se sabe:** a leitura das tabelas de `docs/EVIDENCE_INDEX.md` confirma conservadoramente 72 entradas enquadradas em pelo menos uma proibição da seção 13 de `IA_EIAH.md`: evidência planejada, prometida, manual sem execução, arquivo inexistente ou resultado não verificável. A contagem considera somente linhas cuja própria redação caracteriza decisão, backlog, plano/proposta, design/template/política futura ou leitura/consolidação documental sem execução real:
+  - linha 69: `docs/architecture/chat-vertical-imob-preflight-playbook.md`
+  - linha 89: `docs/adr/ADR-001-domain-runtime-stack.md`
+  - linha 281: `docs/governance/ai-usage-policy.md`
+  - linha 282: `docs/governance/ai-code-of-conduct.md`
+  - linha 291: `docs/ops/open-fronts.md`
+  - linha 298: `ops/evidence/latest/eiah-multichannel-plan-investigation-2026-07-09.md`
+  - linha 345: `ops/evidence/latest/f0-46-roadmap-release-gate-chain-consolidation-2026-07-13.md`
+  - linha 346: `ops/evidence/latest/f0-47-layer-b-readiness-decision-audit-2026-07-13.md`
+  - linha 347: `ops/evidence/latest/f0-48-layer-b-negative-path-audit-2026-07-13.md`
+  - linha 348: `ops/evidence/latest/f0-49-layer-b-future-gate-readiness-checklist-2026-07-13.md`
+  - linha 349: `ops/evidence/latest/f0-50-layer-b-controlled-negative-dry-run-plan-2026-07-13.md`
+  - linha 350: `ops/evidence/latest/f0-51-layer-b-no-side-effect-acceptance-criteria-2026-07-13.md`
+  - linha 351: `ops/evidence/latest/f0-52-layer-b-receipt-bundle-evidence-contract-2026-07-13.md`
+  - linha 352: `ops/evidence/latest/f0-53-layer-b-rollback-reference-acceptance-criteria-2026-07-13.md`
+  - linha 353: `ops/evidence/latest/f0-54-layer-b-hitl-approval-evidence-criteria-2026-07-13.md`
+  - linha 354: `ops/evidence/latest/f0-55-layer-b-promotion-preconditions-decision-matrix-2026-07-13.md`
+  - linha 355: `ops/evidence/latest/f0-56-layer-b-controlled-validation-readiness-closure-2026-07-13.md`
+  - linha 356: `ops/evidence/latest/f0-57-layer-b-controlled-validation-pr-entry-criteria-2026-07-13.md`
+  - linha 357: `ops/evidence/latest/f0-58-layer-b-controlled-validation-proposal-template-2026-07-13.md`
+  - linha 358: `ops/evidence/latest/f0-59-f0-to-f1-transition-readiness-decision-2026-07-13.md`
+  - linha 359: `ops/evidence/latest/f1-00-front-door-mobile-responsiveness-baseline-audit-2026-07-13.md`
+  - linha 360: `ops/evidence/latest/f1-01-front-door-mobile-snapshots-render-only-2026-07-14.md`
+  - linha 362: `ops/evidence/latest/f1-03-front-door-mobile-recurring-visual-gate-proposal-2026-07-14.md`
+  - linha 364: `ops/evidence/latest/f1-05-front-door-mobile-smoke-reproducibility-ci-readiness-2026-07-14.md`
+  - linha 373: `ops/evidence/latest/f1-06i-chromium-provisioning-strategy-2026-07-14.md`
+  - linha 375: `ops/evidence/latest/f1-06k-dedicated-playwright-runtime-base-image-selection-2026-07-14.md`
+  - linha 377: `ops/evidence/latest/f1-06m-manual-smoke-closure-ci-promotion-boundary-2026-07-14.md`
+  - linha 378: `ops/evidence/latest/f1-07-ci-promotion-decision-gate-design-2026-07-14.md`
+  - linha 379: `ops/evidence/latest/f1-07a-ci-informative-mobile-smoke-gate-proposal-2026-07-14.md`
+  - linha 383: `ops/evidence/latest/f1-07f-mobile-smoke-informative-recurrence-promotion-policy-2026-07-15.md`
+  - linha 384: `ops/evidence/latest/f2-00-whatsapp-adapter-read-only-binding-fail-closed-design-2026-07-15.md`
+  - linha 385: `ops/evidence/latest/f2-01-whatsapp-adapter-technical-contract-envelope-signature-plan-2026-07-15.md`
+  - linha 386: `ops/evidence/latest/f2-02-whatsapp-adapter-endpoint-webhook-specification-plan-2026-07-15.md`
+  - linha 394: `ops/evidence/latest/f2-09-read-only-adapter-operational-runbook-rollback-policy-2026-07-15.md`
+  - linha 395: `ops/evidence/latest/f2-10-read-only-adapter-observability-metrics-slo-baseline-2026-07-15.md`
+  - linha 396: `ops/evidence/latest/f2-11-read-only-adapter-synthetic-healthcheck-non-provider-dry-run-2026-07-15.md`
+  - linha 398: `ops/evidence/latest/f2-13-read-only-adapter-promotion-readiness-matrix-2026-07-15.md`
+  - linha 399: `ops/evidence/latest/f2-14-read-only-adapter-promotion-decision-record-template-2026-07-15.md`
+  - linha 400: `ops/evidence/latest/f2-15-read-only-adapter-evidence-closure-pre-provider-boundary-2026-07-15.md`
+  - linha 401: `ops/evidence/latest/f2-16-pre-provider-gap-register-provider-integration-entry-criteria-2026-07-15.md`
+  - linha 402: `ops/evidence/latest/f2-17-provider-integration-design-brief-non-execution-plan-2026-07-15.md`
+  - linha 403: `ops/evidence/latest/f2-18-provider-integration-threat-model-abuse-case-register-2026-07-15.md`
+  - linha 404: `ops/evidence/latest/f2-19-provider-integration-security-review-checklist-approval-gate-2026-07-15.md`
+  - linha 405: `ops/evidence/latest/f2-20-provider-integration-evidence-pack-executive-review-dossier-2026-07-15.md`
+  - linha 406: `ops/evidence/latest/f2-21-provider-integration-board-review-packet-meeting-agenda-2026-07-15.md`
+  - linha 407: `ops/evidence/latest/f2-22-provider-integration-final-pre-execution-hold-no-go-ledger-2026-07-15.md`
+  - linha 408: `ops/evidence/latest/f2-23-provider-integration-stop-line-final-readiness-freeze-2026-07-15.md`
+  - linha 409: `ops/evidence/latest/f2-24-provider-integration-phase-transition-proposal-board-decision-stub-2026-07-15.md`
+  - linha 410: `ops/evidence/latest/f2-25-provider-integration-next-phase-charter-non-implementation-boundary-2026-07-15.md`
+  - linha 411: `ops/evidence/latest/f2-26-provider-integration-governance-closure-end-of-track-summary-2026-07-15.md`
+  - linha 412: `ops/evidence/latest/f3-00-provider-integration-formal-phase-opening-design-only-charter-2026-07-15.md`
+  - linha 413: `ops/evidence/latest/f3-01-provider-integration-design-questions-register-decision-log-2026-07-15.md`
+  - linha 414: `ops/evidence/latest/f3-02-provider-integration-decision-matrix-options-evaluation-criteria-2026-07-15.md`
+  - linha 415: `ops/evidence/latest/f3-03-provider-integration-evidence-requirements-validation-plan-2026-07-15.md`
+  - linha 416: `ops/evidence/latest/f3-04-provider-integration-design-review-packet-evidence-checklist-2026-07-15.md`
+  - linha 417: `ops/evidence/latest/f3-05-provider-integration-review-outcome-template-no-go-decision-record-2026-07-15.md`
+  - linha 418: `ops/evidence/latest/f3-06-provider-integration-design-only-closure-pre-selection-boundary-2026-07-15.md`
+  - linha 419: `ops/evidence/latest/f4-00-provider-selection-formal-phase-opening-selection-only-charter-2026-07-15.md`
+  - linha 420: `ops/evidence/latest/f4-01-provider-candidate-intake-template-preliminary-eligibility-checklist-2026-07-15.md`
+  - linha 421: `ops/evidence/latest/f4-02-provider-candidate-evidence-mapping-intake-validation-matrix-2026-07-15.md`
+  - linha 422: `ops/evidence/latest/f4-03-provider-candidate-preliminary-review-packet-reviewer-assignment-2026-07-15.md`
+  - linha 423: `ops/evidence/latest/f4-04-provider-candidate-preliminary-review-outcome-selection-no-go-record-2026-07-15.md`
+  - linha 424: `ops/evidence/latest/f4-05-provider-selection-evidence-closure-candidate-review-boundary-2026-07-15.md`
+  - linha 425: `ops/evidence/latest/f5-00-provider-final-selection-formal-phase-opening-final-selection-only-charter-2026-07-15.md`
+  - linha 429: `ops/evidence/latest/eiah-outputs-matrix-v1-validation-2026-07-08.md`
+  - linha 805: `docs/ops/evidence/latest/imob-worker-observability/frente-kickoff.md`
+  - linha 916: `ops/evidence/latest/white-label-runtime-gap-2026-07-02.md`
+  - linha 922: `ops/evidence/latest/brand-kit-extraction-2026-07-02.md`
+  - linha 928: `ops/evidence/latest/fase-3-dividas-documentadas-closure-2026-07-02.md`
+  - linha 937: `ops/evidence/latest/imob-knowledge-rollout-plan-2026-07-02.md`
+  - linha 939: `ops/evidence/latest/imob-knowledge-pilot-readiness-2026-07-02.md`
+  - linha 940: `ops/evidence/latest/imob-knowledge-pilot-activation-gate-2026-07-02.md`
+- **O que não foi verificado:** o inventário semântico das demais entradas não foi concluído contra o conteúdo integral de cada artefato; portanto, podem existir outras divergências. Também não foi verificado se alguma das 72 entradas possui execução real omitida pela redação do índice. Nenhuma entrada foi corrigida ou removida.
+- **Origem da observação:** sessão de auditoria somente-leitura de 2026-08-03, sem commit ou artefato versionado próprio.
+- **Origem do registro da frente:** este commit documental.
+- **Bloqueio:** inventário semântico completo, decisão do owner sobre remoção ou reclassificação e checks negativos que imponham a norma vigente.
+- **Status:** `pendente`
+
 ## Contexto do PR-01
 
 O PR-01 permanece `Parcial` na cadeia `61c0c393` → `85d9d31` → `d5efce8` → `de228d3`. A NC-2 foi verificada em CI e reproduzida nas runs `30710850816` e `30713272468`: `GATE_WAIVER_ACTIVE`, 90 dias restantes e `clockDate` obtido do relógio real, em job requerido.
 
 Na run `30710850816`, `P3SettlementSupportByEnv` permanece `failure` e informativo por decisão registrada em `d5efce8`. O `continue-on-error` está no job, não no step; por isso a run conclui `success` enquanto a falha continua visível. No mesmo job, `Generate P3 economy evidence` conclui `success` e `Check P3 settlement support matrix by env` conclui `failure`, três steps adiante, tornando observável a circularidade da evidência P3 em `ops/evidence/ci/pr-01/ci-p3-settlement-steps.30710850816.log` e `ops/evidence/ci/pr-01/ci-p3-settlement-job.30710850816.log`.
 
-Na mesma run, `P3EconomyHardening` permanece verde porque `scripts/checkP3EconomyHardening.ts:107` aceita `full` e `simulated` indistintamente. Esse contraste registra dois checks sobre a mesma propriedade, um com medição discriminante e outro sem ela; ver a frente 8, `DISCRIMINATE-P3-EVIDENCE-MODE`. O contraste não promove o status do PR-01, não torna a evidência P3 verdadeira e não resolve nenhuma das oito frentes.
+Na mesma run, `P3EconomyHardening` permanece verde porque `scripts/checkP3EconomyHardening.ts:107` aceita `full` e `simulated` indistintamente. Esse contraste registra dois checks sobre a mesma propriedade, um com medição discriminante e outro sem ela; ver a frente 8, `DISCRIMINATE-P3-EVIDENCE-MODE`. O contraste não promove o status do PR-01, não torna a evidência P3 verdadeira e não resolve nenhuma das treze frentes.
