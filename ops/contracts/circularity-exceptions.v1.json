@@ -7,7 +7,7 @@
       "checkTarget": "check:p2-audit-interop",
       "reason": "Remove when the P2 interop artifacts are produced from real execution of the capturable protocol segments and no longer declare an unsupported receipt segment.",
       "grantedAt": "2026-08-04",
-      "expiresAt": "2026-11-02",
+      "expiresAt": "2026-09-02",
       "restoreFront": "RESOLVE-P2-INTEROP-DECLARATIVE-EVIDENCE",
       "approvedBy": "Carlos Alberto Merlo"
     },
@@ -56,10 +56,10 @@
       "source": "scripts/checkP2AuditInterop.ts",
       "operation": "read",
       "expression": "item.evidencePattern as string",
-      "reason": "evidencePattern comes from the HIGH_POLICY JSON block parsed from docs/ops/risk-tiering-by-action.md at runtime, not from a literal array in the script; it is genuinely dynamic and cannot be resolved statically. Remove when the P2 interop evidence generation this pattern feeds is no longer declarative.",
+      "reason": "evidencePattern comes from the HIGH_POLICY JSON block parsed from docs/ops/risk-tiering-by-action.md at runtime, not from a literal array in the script; it is genuinely dynamic and cannot be resolved statically. Remove when the policy load becomes statically resolvable.",
       "grantedAt": "2026-08-04",
-      "expiresAt": "2026-11-02",
-      "restoreFront": "RESOLVE-P2-INTEROP-DECLARATIVE-EVIDENCE",
+      "expiresAt": "2027-02-02",
+      "restoreFront": "RESOLVE-POLICY-CONFIG-STATIC-EXTRACTABILITY",
       "approvedBy": "Carlos Alberto Merlo"
     }
   ]

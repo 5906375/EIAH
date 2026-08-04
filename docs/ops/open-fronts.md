@@ -7,7 +7,7 @@
 - **Fonte canônica:** `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md`
 - **Decisão de hierarquia:** `docs/adr/ADR-003-work-registry-hierarchy.md`
 
-Este documento é derivado da fonte canônica indicada acima e faz o rastreio formal de dezesseis pendências identificadas no fechamento do PR-01 e nas auditorias documentais subsequentes. A hierarquia entre este registro e o plano de PRs de 2026-07-31 é definida pelo ADR indicado acima; este documento não estabelece status normativo próprio, não é plano de execução e não autoriza o início de nenhuma frente.
+Este documento é derivado da fonte canônica indicada acima e faz o rastreio formal de dezessete pendências identificadas no fechamento do PR-01 e nas auditorias documentais subsequentes. A hierarquia entre este registro e o plano de PRs de 2026-07-31 é definida pelo ADR indicado acima; este documento não estabelece status normativo próprio, não é plano de execução e não autoriza o início de nenhuma frente.
 
 ## 1. Restrição das permissões do token de CI
 
@@ -295,10 +295,21 @@ Este documento é derivado da fonte canônica indicada acima e faz o rastreio fo
 - **Bloqueio:** decidir entre substituir a geração declarativa por captura de execução real — o que exige ambiente executável para as rotas — ou rebaixar as afirmações do artefato e do índice ao que o gerador de fato produz, sem que essa segunda opção feche a lacuna de cobertura. Registrar a decisão antes da implementação, conforme o ADR-004.
 - **Status:** `pendente`
 
+## 17. Resolução da extratibilidade estática da configuração de policy consumida por checker
+
+- **Frente:** `RESOLVE-POLICY-CONFIG-STATIC-EXTRACTABILITY`
+- **Severidade:** baixa — não afeta correção de gate nem afirmação de evidência; limita a cobertura do detector de circularidade estrutural a um caso conhecido e excetuado.
+- **O que se sabe:** `scripts/checkP2AuditInterop.ts:234` chama `findLatestEvidenceByPattern(item.evidencePattern as string)`, onde `item` vem de `policyConfig.highActions[]` (`scripts/checkP2AuditInterop.ts:191`). `policyConfig` é produzido por `extractHighPolicyConfig()` (`scripts/checkP2AuditInterop.ts:98-127`), que faz parse do bloco `HIGH_POLICY` de `docs/ops/risk-tiering-by-action.md:34-63` em runtime. O padrão de evidência de cada ação HIGH (`evidencePattern`) é declarado nesse bloco Markdown, não no código do checker. `scripts/checkStructuralCircularity.ts` reporta essa leitura como `undetermined` — o destino não é resolvível por análise estática do script — e o caso depende de exceção nominal (`ops/contracts/circularity-exceptions.v1.json`) para não reprovar o check `check:structural-circularity`, com `expiresAt: "2027-02-02"`.
+- **O que não foi verificado:** não foi avaliada nenhuma abordagem concreta para tornar a carga da policy estaticamente resolvível (schema fixo, enum de padrões, geração de constante a partir do Markdown, ou outra); esta frente registra a lacuna, não prescreve a correção.
+- **Origem da observação:** ciclo de implementação do detector de circularidade estrutural, em 2026-08-04, parcialmente versionado nos commits `2ae6aa1` e `e602a1c`.
+- **Origem do registro da frente:** este commit documental.
+- **Bloqueio:** decidir a abordagem para tornar `evidencePattern` estaticamente resolvível pelo detector, ou aceitar formalmente que essa leitura permaneça sempre `undetermined` e dependente de exceção renovável. Nenhuma das duas está decidida.
+- **Status:** `pendente`
+
 ## Contexto do PR-01
 
 O PR-01 permanece `Parcial` na cadeia `61c0c393` → `85d9d31` → `d5efce8` → `de228d3`. A NC-2 foi verificada em CI e reproduzida nas runs `30710850816` e `30713272468`: `GATE_WAIVER_ACTIVE`, 90 dias restantes e `clockDate` obtido do relógio real, em job requerido.
 
 Na run `30710850816`, `P3SettlementSupportByEnv` permanece `failure` e informativo por decisão registrada em `d5efce8`. O `continue-on-error` está no job, não no step; por isso a run conclui `success` enquanto a falha continua visível. No mesmo job, `Generate P3 economy evidence` conclui `success` e `Check P3 settlement support matrix by env` conclui `failure`, três steps adiante, tornando observável a circularidade da evidência P3 em `ops/evidence/ci/pr-01/ci-p3-settlement-steps.30710850816.log` e `ops/evidence/ci/pr-01/ci-p3-settlement-job.30710850816.log`.
 
-Na mesma run, `P3EconomyHardening` permanece verde porque `scripts/checkP3EconomyHardening.ts:107` aceita `full` e `simulated` indistintamente. Esse contraste registra dois checks sobre a mesma propriedade, um com medição discriminante e outro sem ela; ver a frente 8, `DISCRIMINATE-P3-EVIDENCE-MODE`. O contraste não promove o status do PR-01, não torna a evidência P3 verdadeira e não resolve nenhuma das dezesseis frentes.
+Na mesma run, `P3EconomyHardening` permanece verde porque `scripts/checkP3EconomyHardening.ts:107` aceita `full` e `simulated` indistintamente. Esse contraste registra dois checks sobre a mesma propriedade, um com medição discriminante e outro sem ela; ver a frente 8, `DISCRIMINATE-P3-EVIDENCE-MODE`. O contraste não promove o status do PR-01, não torna a evidência P3 verdadeira e não resolve nenhuma das dezessete frentes.

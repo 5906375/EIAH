@@ -127,3 +127,37 @@ Cinco pares do ADR-006, todos excetuados; um `undetermined` (`checkP2AuditIntero
 - Nenhum dos cinco pares circulares foi corrigido por mérito; as exceções de par expiram em 2026-11-02, inalteradas por esta emenda.
 - A leitura de `item.evidencePattern` em `checkP2AuditInterop.ts:234` continua genuinamente dinâmica; a exceção concedida governa o risco, não o resolve. Resolver exigiria mudar como a política de risco declara padrões de evidência, fora do escopo autorizado.
 - O scanner permanece um casador de padrões sintáticos, não um analisador de fluxo geral; declarações usando sintaxe fora de `function`/`class`/`const`/`let`/`var` seguidos do nome (por exemplo, um método de classe ou um objeto literal com propriedade de mesmo nome) não foram testadas e podem não ser reconhecidas como declaração.
+
+## Emenda F15 — escalonamento de prazos e frente 17 (2026-08-04)
+
+Nota sobre a Emenda F14c: a frase "as exceções de par expiram em 2026-11-02, inalteradas por esta emenda" (seção "O que continua fora de alcance") era verdadeira no momento em que foi escrita. A Emenda F15, abaixo, altera o prazo de uma delas. A frase não foi reescrita — permanece como registro do estado em F14c — e este parágrafo marca a superação.
+
+### Três prazos em vez de um
+
+Prazo único (`expiresAt: "2026-11-02"`) para as seis exceções foi substituído por três horizontes, decisão do owner registrada no prompt deste ciclo:
+
+| Exceção | `expiresAt` anterior | `expiresAt` novo | Fundamento |
+| --- | --- | --- | --- |
+| Par `p2_audit_interop` / `check:p2-audit-interop` | `2026-11-02` | `2026-09-02` | O [ADR-005](../../../docs/adr/ADR-005-p2-interop-declarative-evidence-treatment.md), segmentos 1 e 2, já decidiu que `discovery`/`negotiate`/`execute até 202` são capturáveis por execução real: as rotas exigem apenas Postgres (já usado em outros jobs), e existe cobertura HTTP escrita em `apps/api/src/tests/agents.interop.contract.test.ts`, ainda que não invocada em CI. A dívida tem caminho executável conhecido. |
+| Quatro pares de `p3_economy_hardening`/`p3_settlement_support_by_env` | `2026-11-02` | `2026-11-02` (inalterado) | Depende do PR-05: substituir as sete famílias de artefato P3 por captura mecânica; os handlers correspondentes hoje são stub. Prazo original mantido por não haver caminho executável mais curto identificado. |
+| Undetermined `checkP2AuditInterop.ts:234` | `2026-11-02` | `2027-02-02` | Depende de tornar a carga do `HIGH_POLICY` de `docs/ops/risk-tiering-by-action.md` estaticamente resolvível pelo detector; não está em frente alguma antes deste ciclo, não tem decisão de abordagem registrada, e ninguém trabalha nisso. Prazo mais longo reflete a ausência de trabalho em andamento, não urgência menor. |
+
+Fundamento da mudança de política: data única para dívidas de tamanho muito diferente produz vencimento em bloco; a pressão de prazo comum tende a renovar as seis de uma vez, o que esvazia o propósito da exceção nominal e datada — vira formalidade em vez de compromisso a prazo real.
+
+`schemaVersion`, `jobId`, `generatorTarget`, `checkTarget`, `reason` (exceto o texto descrito abaixo) e `approvedBy` das seis exceções permanecem inalterados; nenhuma exceção foi acrescentada, removida ou reordenada.
+
+### Correção do `restoreFront` da exceção de undetermined
+
+A exceção de `checkP2AuditInterop.ts:234` apontava `restoreFront: "RESOLVE-P2-INTEROP-DECLARATIVE-EVIDENCE"` (frente 16). Essa frente trata da substituição da geração declarativa de evidência de interop P2 por captura real — sobre o que o *gerador* de evidência afirma ter executado. A dívida desta exceção é outra: se o *checker* consegue determinar estaticamente, por leitura do próprio script, qual arquivo de evidência ele vai ler — o que depende de `evidencePattern` estar em um array literal do código, não em um bloco Markdown parseado em runtime. As duas dívidas coincidem no arquivo (`checkP2AuditInterop.ts`) e no vizinho de leitura (`docs/ops/risk-tiering-by-action.md`), mas não no escopo: uma é sobre o que o gerador de evidência prova ter feito; a outra é sobre se o extrator estático do detector de circularidade consegue acompanhar de onde o checker lê. Resolver a frente 16 (substituir a geração declarativa por captura real) não torna `evidencePattern` estaticamente resolvível — o parse do Markdown em runtime permanece, e a leitura continua `undetermined`.
+
+Registrada a frente 17, `RESOLVE-POLICY-CONFIG-STATIC-EXTRACTABILITY` (`docs/ops/open-fronts.md`), severidade baixa. O `restoreFront` da exceção passa a apontar essa frente; o `reason` foi ajustado de "remove when the P2 interop evidence generation this pattern feeds is no longer declarative" para "remove when the policy load becomes statically resolvable" — descrevendo a condição de remoção correta, não mais amarrada à frente 16.
+
+Reverificação dos cinco fatos do prompt (seção 3), confirmada por leitura em `HEAD`: (1) `checkP2AuditInterop.ts:234` chama `findLatestEvidenceByPattern(item.evidencePattern as string)`, `item` de `policyConfig.highActions[]` (linha 191); (2) `policyConfig` vem de `extractHighPolicyConfig()` (linhas 98-127), parse do bloco `HIGH_POLICY` de `docs/ops/risk-tiering-by-action.md:34-63` em runtime; (3) o padrão de evidência de cada ação HIGH é declarado nesse bloco Markdown, não no código do checker; (4) o detector reporta o caso como `undetermined`, e a exceção anterior apontava a frente 16; (5) nenhuma das dezesseis frentes pré-existentes (verificado por busca textual em `docs/ops/open-fronts.md` por termos como "estátic", "extrat", "risk-tiering", "policy config", "configuração") cobria extratibilidade estática de configuração consumida por checker — confirmado, sem duplicata.
+
+### O que este ciclo não faz
+
+- Não altera `scripts/checkStructuralCircularity.ts` nem seus testes.
+- Não corrige nenhum dos cinco pares circulares nem a leitura dinâmica de `checkP2AuditInterop.ts:234`.
+- Não liga o detector a `ci.yml`.
+- Não altera `docs/EVIDENCE_INDEX.md` — o contrato de exceções e o registro de frentes não são evidência de execução real (`IA_EIAH.md` §8 e §13).
+- Não emenda nenhum ADR.
