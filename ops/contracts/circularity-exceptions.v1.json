@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "circularity-exceptions.v1",
+  "exceptions": [
+    {
+      "jobId": "p2_audit_interop",
+      "generatorTarget": "generate:p2-interop-evidence",
+      "checkTarget": "check:p2-audit-interop",
+      "reason": "Remove when the P2 interop artifacts are produced from real execution of the capturable protocol segments and no longer declare an unsupported receipt segment.",
+      "grantedAt": "2026-08-04",
+      "expiresAt": "2026-11-02",
+      "restoreFront": "RESOLVE-P2-INTEROP-DECLARATIVE-EVIDENCE",
+      "approvedBy": "Carlos Alberto Merlo"
+    },
+    {
+      "jobId": "p3_economy_hardening",
+      "generatorTarget": "generate:p3-economy-evidence",
+      "checkTarget": "check:p3-evidence-recency",
+      "reason": "Remove when P3 recency evaluates artifacts captured from real economy executions instead of payloads assembled by the generator immediately before the check.",
+      "grantedAt": "2026-08-04",
+      "expiresAt": "2026-11-02",
+      "restoreFront": "DISCRIMINATE-P3-EVIDENCE-MODE",
+      "approvedBy": "Carlos Alberto Merlo"
+    },
+    {
+      "jobId": "p3_economy_hardening",
+      "generatorTarget": "generate:p3-economy-evidence",
+      "checkTarget": "check:p3-economy-hardening",
+      "reason": "Remove when the P3 hardening gate consumes independently captured economy results and the static generator no longer prepares its asserted fields in the same job.",
+      "grantedAt": "2026-08-04",
+      "expiresAt": "2026-11-02",
+      "restoreFront": "DISCRIMINATE-P3-EVIDENCE-MODE",
+      "approvedBy": "Carlos Alberto Merlo"
+    },
+    {
+      "jobId": "p3_settlement_support_by_env",
+      "generatorTarget": "generate:p3-economy-evidence",
+      "checkTarget": "check:p3-evidence-recency",
+      "reason": "Remove when settlement recency is based on independently captured P3 executions and the job no longer regenerates the seven static artifacts before validation.",
+      "grantedAt": "2026-08-04",
+      "expiresAt": "2026-11-02",
+      "restoreFront": "DISCRIMINATE-P3-EVIDENCE-MODE",
+      "approvedBy": "Carlos Alberto Merlo"
+    },
+    {
+      "jobId": "p3_settlement_support_by_env",
+      "generatorTarget": "generate:p3-economy-evidence",
+      "checkTarget": "check:p3-settlement-support-by-env",
+      "reason": "Remove when settlement provider support is captured independently from executable adapters and the environment gate no longer checks provider modes written earlier in its own job.",
+      "grantedAt": "2026-08-04",
+      "expiresAt": "2026-11-02",
+      "restoreFront": "DISCRIMINATE-P3-EVIDENCE-MODE",
+      "approvedBy": "Carlos Alberto Merlo"
+    }
+  ]
+}
