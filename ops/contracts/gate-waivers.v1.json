@@ -1,4 +1,25 @@
 {
   "schemaVersion": "gate-waivers.v1",
-  "waivers": []
+  "waivers": [
+    {
+      "gateId": "P2HighGlobalCoverage",
+      "workflow": ".github/workflows/ci.yml",
+      "jobId": "p2_high_global_coverage",
+      "reason": "Remove when generateP2HighGlobalCoverage.ts stops inspecting the action files and the E2E test as text and setting e2eCovered=true for every item without executing the E2E scenario.",
+      "grantedAt": "2026-08-04",
+      "expiresAt": "2026-09-18",
+      "restoreFront": "RESOLVE-RECENCY-GATE-DECAY",
+      "approvedBy": "Carlos Alberto Merlo"
+    },
+    {
+      "gateId": "P1ReconciliationRecurring",
+      "workflow": ".github/workflows/ci.yml",
+      "jobId": "p1_reconciliation_recurring",
+      "reason": "Remove when scripts/ci/ape_cycle_weekly.cjs stops hardcoding auditGap=0, duplicateSideEffects=0 and breakGlass=0 in the weekly cycle evidence regardless of what the 15 executed checks actually found.",
+      "grantedAt": "2026-08-04",
+      "expiresAt": "2026-09-18",
+      "restoreFront": "RESOLVE-RECENCY-GATE-DECAY",
+      "approvedBy": "Carlos Alberto Merlo"
+    }
+  ]
 }

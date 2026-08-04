@@ -863,6 +863,7 @@ jobs:
   p2_high_global_coverage:
     name: P2HighGlobalCoverage
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -921,6 +922,7 @@ jobs:
   p1_reconciliation_recurring:
     name: P1ReconciliationRecurring
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
