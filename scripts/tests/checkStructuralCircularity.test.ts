@@ -5,6 +5,7 @@ import {
   type CircularityException,
   type CircularityExceptionContract,
   type RepositoryAnalysisInput,
+  type UndeterminedCircularityException,
   analyzeStructuralCircularity,
 } from "../checkStructuralCircularity.js";
 
@@ -273,4 +274,127 @@ test("a write destination reached via path.join(CONST, var) whose var is bound b
   assert.equal(result.pairsDetected.length, 0);
   assert.equal(result.undetermined.length, 1);
   assert.equal(result.undetermined[0]?.operation, "write");
+});
+
+// Fixtures below reproduce the auto-match defect found in F14c: the scanner
+// matched `function findLatestEvidenceFile(pattern: RegExp)` (a declaration)
+// as if it were a call, because the suppression heuristic compared the
+// parameter name without stripping the type annotation.
+function undeterminedException(overrides: Partial<UndeterminedCircularityException> = {}): UndeterminedCircularityException {
+  return {
+    target: "check:custom-fixture",
+    source: "scripts/checkCustomFixture.ts",
+    operation: "read",
+    expression: "item.dynamicPattern as string",
+    reason: "dynamicPattern comes from runtime config, not a literal array",
+    grantedAt: "2026-08-04",
+    expiresAt: "2026-11-02",
+    restoreFront: "FIXTURE-RESTORE-FRONT",
+    approvedBy: "fixture-owner",
+    ...overrides,
+  };
+}
+
+test("a function declaration is not counted as a call", () => {
+  const result = analyzeStructuralCircularity(customInput({
+    generatorSource: [
+      'const EVIDENCE_DIR = path.resolve("ops/evidence/latest");',
+    ].join("\n"),
+    checkSource: [
+      "function findLatestEvidenceFile(pattern: RegExp): string {",
+      '  return "stub";',
+      "}",
+    ].join("\n"),
+  }));
+
+  assert.equal(result.undetermined.length, 0);
+  assert.equal(result.pairsDetected.length, 0);
+});
+
+test("a real call with a type-annotated argument is still captured alongside its declaration", () => {
+  const result = analyzeStructuralCircularity(customInput({
+    generatorSource: [
+      'const EVIDENCE_DIR = path.resolve("ops/evidence/latest");',
+      "fs.writeFileSync(path.join(EVIDENCE_DIR, `report-${TODAY}.json`), \"{}\");",
+    ].join("\n"),
+    checkSource: [
+      'const EVIDENCE_DIR = path.resolve("ops/evidence/latest");',
+      "function findLatestEvidenceFile(pattern: RegExp): string {",
+      '  return "stub";',
+      "}",
+      "findLatestEvidenceFile(/^report-\\d{4}-\\d{2}-\\d{2}\\.json$/);",
+    ].join("\n"),
+  }));
+
+  assert.equal(result.undetermined.length, 0);
+  assert.equal(result.pairsDetected.length, 1);
+  assert.equal(result.pairsDetected[0]?.state, "undeclared");
+});
+
+test("a genuinely dynamic read path stays undetermined", () => {
+  const result = analyzeStructuralCircularity(customInput({
+    generatorSource: [
+      'const EVIDENCE_DIR = path.resolve("ops/evidence/latest");',
+    ].join("\n"),
+    checkSource: [
+      'const EVIDENCE_DIR = path.resolve("ops/evidence/latest");',
+      "findLatestEvidenceByPattern(item.dynamicPattern as string);",
+    ].join("\n"),
+  }));
+
+  assert.equal(result.undetermined.length, 1);
+  assert.equal(result.undetermined[0]?.expression, "item.dynamicPattern as string");
+  assert.equal(result.undeterminedExcepted.length, 0);
+});
+
+test("ok semantics: an undetermined path without a declared exception fails ok", () => {
+  const result = analyzeStructuralCircularity(customInput({
+    generatorSource: [
+      'const EVIDENCE_DIR = path.resolve("ops/evidence/latest");',
+    ].join("\n"),
+    checkSource: [
+      'const EVIDENCE_DIR = path.resolve("ops/evidence/latest");',
+      "findLatestEvidenceByPattern(item.dynamicPattern as string);",
+    ].join("\n"),
+  }));
+
+  assert.equal(result.ok, false);
+  assert.equal(result.violations.some((violation) => violation.code === "STRUCTURAL_CIRCULARITY_UNDETERMINED"), true);
+});
+
+test("ok semantics: an undetermined path with an active declared exception does not fail ok, and is listed as excepted without being removed from undetermined", () => {
+  const result = analyzeStructuralCircularity(customInput({
+    generatorSource: [
+      'const EVIDENCE_DIR = path.resolve("ops/evidence/latest");',
+    ].join("\n"),
+    checkSource: [
+      'const EVIDENCE_DIR = path.resolve("ops/evidence/latest");',
+      "findLatestEvidenceByPattern(item.dynamicPattern as string);",
+    ].join("\n"),
+    contract: contract([undeterminedException()]),
+  }));
+
+  assert.equal(result.ok, true);
+  assert.equal(result.undetermined.length, 1);
+  assert.equal(result.undeterminedExcepted.length, 1);
+  assert.equal(result.undeterminedExcepted[0]?.code, "STRUCTURAL_CIRCULARITY_UNDETERMINED_EXCEPTION_ACTIVE");
+  assert.equal(result.violations.length, 0);
+});
+
+test("ok semantics: an expired declared exception for an undetermined path still fails ok", () => {
+  const result = analyzeStructuralCircularity(customInput({
+    generatorSource: [
+      'const EVIDENCE_DIR = path.resolve("ops/evidence/latest");',
+    ].join("\n"),
+    checkSource: [
+      'const EVIDENCE_DIR = path.resolve("ops/evidence/latest");',
+      "findLatestEvidenceByPattern(item.dynamicPattern as string);",
+    ].join("\n"),
+    contract: contract([undeterminedException({ grantedAt: "2026-08-01", expiresAt: "2026-08-03" })]),
+  }));
+
+  assert.equal(result.ok, false);
+  assert.equal(result.undetermined.length, 1);
+  assert.equal(result.undeterminedExcepted.length, 0);
+  assert.equal(result.violations[0]?.code, "STRUCTURAL_CIRCULARITY_UNDETERMINED_EXCEPTION_EXPIRED");
 });

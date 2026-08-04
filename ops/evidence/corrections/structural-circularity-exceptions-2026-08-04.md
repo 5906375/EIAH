@@ -88,3 +88,42 @@ Fora de alcance, permanece `undetermined`: array vindo de chamada de função, i
 Com a correção, o detector reporta os cinco pares do ADR-006, todos com exceção ativa (`STRUCTURAL_CIRCULARITY_EXCEPTION_ACTIVE`), igual à tabela do ADR-006. Nenhum par além dos cinco foi encontrado: os outros cinco caminhos que permaneciam `undetermined` antes da correção (um em `checkP1CriticalChain.ts`, dois em `checkP2AuditInterop.ts`, um em `checkP3EconomyHardening.ts`, um em `checkP3SettlementSupportByEnv.ts`) não pertencem ao padrão corrigido — quatro são a própria declaração de função `findLatestEvidenceFile`/`findLatestEvidenceByPattern` sendo capturada como se fosse uma chamada, e um (`item.evidencePattern as string`) é genuinamente dinâmico, vindo de configuração de policy carregada em runtime. Nenhum dos cinco alimenta um par estrutural nesta correção; permanecem `undetermined`, fora do alcance autorizado deste ciclo, e são reportados, não omitidos.
 
 O `check:structural-circularity` continua saindo com código diferente de zero após a correção, porque esses cinco caminhos residuais geram violação `STRUCTURAL_CIRCULARITY_UNDETERMINED` — o contrato do detector nunca aceita caminho dinâmico em silêncio. A saída literal, os cinco pares e os cinco `undetermined` restantes estão registrados no relatório final da tarefa que aplicou esta emenda.
+
+## Emenda F14c — auto-match de declaração e semântica de undetermined (2026-08-04)
+
+### Defeito de auto-match e correção
+
+Dos cinco `undetermined` remanescentes após o F14b, quatro eram o mesmo defeito, não caminho dinâmico real:
+
+- `checkP1CriticalChain.ts:31`, `checkP2AuditInterop.ts:29`, `checkP3EconomyHardening.ts:31` e `checkP3SettlementSupportByEnv.ts:12` declaram `function findLatestEvidenceFile(pattern: RegExp): string { ... }` (ou `findLatestEvidenceByPattern(pattern: string)`). O scanner de chamadas (`callArguments`) casava `nome(` por regex simples, sem distinguir declaração de invocação, e capturava a própria lista de parâmetros da declaração como se fosse um argumento de chamada.
+- A heurística de supressão existente (`functionParameter(source, name)?.includes(expression)`) comparava o nome do parâmetro (`"pattern"`) contra o texto completo capturado (`"pattern: RegExp"`), que inclui a anotação de tipo — a comparação nunca batia, e a declaração era reportada como leitura dinâmica indeterminável.
+- Em todos os quatro casos, o valor real lido pelo check já era capturado corretamente em um ponto de chamada verdadeiro no mesmo arquivo (ex.: `checkP1CriticalChain.ts:51`, `checkP2AuditInterop.ts:132-134`, `checkP3EconomyHardening.ts:52-79`, `checkP3SettlementSupportByEnv.ts:227`) — corrigir o auto-match não altera nenhum artefato realmente lido, só remove ruído duplicado do próprio detector.
+
+Correção aplicada em `scripts/checkStructuralCircularity.ts` (`callArguments`): antes de registrar uma ocorrência de `nome(` como chamada, o texto imediatamente anterior é testado contra `DECLARATION_KEYWORD_PATTERN` (`function`, `class`, `const`, `let` ou `var` seguidos de espaço, na posição imediatamente anterior ao nome); se casar, a ocorrência é ignorada. Não foi usada lista de nomes conhecidos — a distinção é sintática (declaração vs. chamada), válida para qualquer nome passado a `callArguments`. Nenhum dos quatro `checkP*.ts` de domínio foi editado; o defeito era do scanner.
+
+Após a correção, os quatro somem da lista de `undetermined` e os cinco pares do ADR-006 permanecem exatamente cinco — nenhuma chamada real foi suprimida.
+
+### Semântica de undetermined
+
+**O que o ADR-006 decide:** o item 6 da lista de requisitos da implementação futura (linha 66) diz: *"o tratamento de caminhos dinâmicos: quando a extração não determinar o destino, o resultado deve ser diagnóstico explícito conforme o contrato, nunca aceitação silenciosa"*. Isso obriga o campo `undetermined` a listar sempre, na íntegra, todo caminho não resolvido — e proíbe qualquer semântica que o omita ou o trate como aceito sem diagnóstico. O ADR **não decide**, explicitamente, se um `undetermined` deve zerar `ok` incondicionalmente, ser apenas informativo, ou admitir exceção — as três opções da seção 4b do prompt satisfazem igualmente a exigência de "diagnóstico explícito, nunca aceitação silenciosa", desde que o campo `undetermined` nunca seja filtrado. A decisão de qual das três não estava, portanto, tomada pelo ADR-006, e coube a este ciclo.
+
+**Decisão: Exceção declarada.** Por padrão, todo `undetermined` continua zerando `ok` (`STRUCTURAL_CIRCULARITY_UNDETERMINED`), exatamente como antes desta emenda. Uma exceção nominal, datada, com motivo, frente de restauração e aprovação — na mesma forma e no mesmo arquivo `ops/contracts/circularity-exceptions.v1.json` usado para os pares estruturais — pode suspender essa falha para um caminho identificado por `target`+`source`+`operation`+`expression`. Enquanto ativa, o caminho aparece em `undeterminedExcepted` com o código `STRUCTURAL_CIRCULARITY_UNDETERMINED_EXCEPTION_ACTIVE`; ao expirar, volta a falhar com `STRUCTURAL_CIRCULARITY_UNDETERMINED_EXCEPTION_EXPIRED`; uma exceção sem caminho `undetermined` correspondente falha como `STRUCTURAL_CIRCULARITY_UNDETERMINED_EXCEPTION_STALE`. Em nenhum estado o caminho desaparece do array `undetermined`.
+
+Uma entrada foi registrada: `checkP2AuditInterop.ts:234`, `findLatestEvidenceByPattern(item.evidencePattern as string)`, onde `item` vem de `extractHighPolicyConfig()`, que faz parse do bloco `HIGH_POLICY` em `docs/ops/risk-tiering-by-action.md` em runtime — genuinamente dinâmico, não um array literal do script. `restoreFront: "RESOLVE-P2-INTEROP-DECLARATIVE-EVIDENCE"` (frente 16 de `docs/ops/open-fronts.md`), reaproveitada por ser a mesma frente que já governa `check:p2-audit-interop`/`generate:p2-interop-evidence` na exceção de par existente; `approvedBy: "Carlos Alberto Merlo"`, `grantedAt: "2026-08-04"`, `expiresAt: "2026-11-02"`, iguais às demais exceções deste contrato.
+
+**Alternativas descartadas:**
+
+- **Reprova pura** (`undetermined` zera `ok` sempre, sem exceção): descartada porque o caso de `checkP2AuditInterop.ts:234` é legitimamente indeterminável — a política é conteúdo de documentação versionada, lida e interpretada em runtime, não um array do script. Sob reprova pura, o detector nunca sairia com `ok: true` mesmo depois de toda correção possível, tornando impossível declará-lo pronto para ligar ao CI sem reescrever a leitura de política para eliminar essa indireção — fora do escopo deste ciclo.
+- **Avisa** (`undetermined` nunca afeta `ok`): descartada porque o próprio prompt já nomeia o risco — "um undetermined que esconda par real passa despercebido" — e o ADR-006 exige "nunca aceitação silenciosa"; tratar todo undetermined como mero aviso enfraquece essa garantia para qualquer caminho dinâmico futuro que de fato esconda um par circular, sem qualquer registro nominal, prazo ou aprovação exigindo revisão periódica.
+- **Exceção declarada** (adotada): preserva "reprova por padrão" (nenhum caminho novo passa despercebido) e ainda assim permite que o único caso comprovadamente indeterminável do repositório seja governado — nominal, datado, com frente de restauração — em vez de bloquear o detector indefinidamente ou de virar aviso permanente sem prazo.
+
+### Estado final do detector
+
+Cinco pares do ADR-006, todos excetuados; um `undetermined` (`checkP2AuditInterop.ts:234`), com exceção ativa; `ok: true`; exit 0. Saída literal completa no relatório final da tarefa que aplicou esta emenda.
+
+### O que continua fora de alcance
+
+- O detector segue fora de `ci.yml`; `ok: true` não o torna required, e ligá-lo permanece decisão própria.
+- Nenhum dos cinco pares circulares foi corrigido por mérito; as exceções de par expiram em 2026-11-02, inalteradas por esta emenda.
+- A leitura de `item.evidencePattern` em `checkP2AuditInterop.ts:234` continua genuinamente dinâmica; a exceção concedida governa o risco, não o resolve. Resolver exigiria mudar como a política de risco declara padrões de evidência, fora do escopo autorizado.
+- O scanner permanece um casador de padrões sintáticos, não um analisador de fluxo geral; declarações usando sintaxe fora de `function`/`class`/`const`/`let`/`var` seguidos do nome (por exemplo, um método de classe ou um objeto literal com propriedade de mesmo nome) não foram testadas e podem não ser reconhecidas como declaração.

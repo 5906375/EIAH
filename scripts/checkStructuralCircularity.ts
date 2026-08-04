@@ -29,7 +29,7 @@ const PACKAGE_TARGET_PATTERN = /\bpnpm\s+(?:run\s+)?([A-Za-z0-9:_-]+)/g;
 
 export type Clock = Readonly<{ now(): Date }>;
 
-export type CircularityException = Readonly<{
+export type PairCircularityException = Readonly<{
   jobId: string;
   generatorTarget: string;
   checkTarget: string;
@@ -40,10 +40,43 @@ export type CircularityException = Readonly<{
   approvedBy: string;
 }>;
 
+// Same governance fields as PairCircularityException (reason, grantedAt,
+// expiresAt, restoreFront, approvedBy); identity is target/source/operation/
+// expression instead of jobId/generatorTarget/checkTarget, because an
+// undetermined path is not a generator-check pair.
+export type UndeterminedCircularityException = Readonly<{
+  target: string;
+  source: string;
+  operation: "read" | "write" | "target-expansion";
+  expression: string;
+  reason: string;
+  grantedAt: string;
+  expiresAt: string;
+  restoreFront: string;
+  approvedBy: string;
+}>;
+
+export type CircularityException = PairCircularityException | UndeterminedCircularityException;
+
 export type CircularityExceptionContract = Readonly<{
   schemaVersion: "circularity-exceptions.v1";
   exceptions: readonly CircularityException[];
 }>;
+
+function isPairCircularityException(exception: CircularityException): exception is PairCircularityException {
+  const candidate = exception as Partial<PairCircularityException>;
+  return typeof candidate.jobId === "string"
+    && typeof candidate.generatorTarget === "string"
+    && typeof candidate.checkTarget === "string";
+}
+
+function isUndeterminedCircularityException(exception: CircularityException): exception is UndeterminedCircularityException {
+  const candidate = exception as Partial<UndeterminedCircularityException>;
+  return typeof candidate.target === "string"
+    && typeof candidate.source === "string"
+    && typeof candidate.operation === "string"
+    && typeof candidate.expression === "string";
+}
 
 export type RepositoryAnalysisInput = Readonly<{
   packageScripts: Readonly<Record<string, string>>;
@@ -94,6 +127,26 @@ export type ExceptedPair = Readonly<{
   reason: string;
 }>;
 
+// Undetermined semantics (decided in F14c, see ops/evidence/corrections/):
+// an undetermined path fails `ok` by default (STRUCTURAL_CIRCULARITY_UNDETERMINED),
+// same as before. A path may instead carry a declared, dated, nominal
+// exception in the same contract used for structural pairs; while active it
+// is listed here instead of failing `ok`. The `undetermined` field always
+// lists every diagnosed path in full, excepted or not — never omitted.
+export type ExceptedUndetermined = Readonly<{
+  target: string;
+  source: string;
+  operation: "read" | "write" | "target-expansion";
+  expression: string;
+  code: "STRUCTURAL_CIRCULARITY_UNDETERMINED_EXCEPTION_ACTIVE";
+  grantedAt: string;
+  expiresAt: string;
+  daysRemaining: number;
+  restoreFront: string;
+  approvedBy: string;
+  reason: string;
+}>;
+
 export type StructuralCircularityDiagnostic = Readonly<{
   criterion: string;
   code: string;
@@ -119,6 +172,7 @@ export type StructuralCircularityResult = Readonly<{
   pairsDetected: readonly StructuralPair[];
   pairsExcepted: readonly ExceptedPair[];
   undetermined: readonly UndeterminedPath[];
+  undeterminedExcepted: readonly ExceptedUndetermined[];
   violations: readonly StructuralCircularityDiagnostic[];
 }>;
 
@@ -184,11 +238,14 @@ function splitTopLevel(value: string, separator = ","): string[] {
   return entries.filter(Boolean);
 }
 
+const DECLARATION_KEYWORD_PATTERN = /(?:\bfunction\s+|\bclass\s+|\bconst\s+|\blet\s+|\bvar\s+)$/;
+
 function callArguments(source: string, names: readonly string[]): Array<{ name: string; args: string[]; raw: string }> {
   const calls: Array<{ name: string; args: string[]; raw: string }> = [];
   const pattern = new RegExp(`\\b(${names.join("|")})\\s*\\(`, "g");
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(source)) !== null) {
+    if (DECLARATION_KEYWORD_PATTERN.test(source.slice(0, match.index))) continue;
     const open = source.indexOf("(", match.index);
     let depth = 1;
     let quote = "";
@@ -650,8 +707,12 @@ export function parseWorkflowTargets(
   });
 }
 
-function pairKey(value: Pick<StructuralPair | CircularityException, "jobId" | "generatorTarget" | "checkTarget">): string {
+function pairKey(value: Pick<StructuralPair | PairCircularityException, "jobId" | "generatorTarget" | "checkTarget">): string {
   return `${value.jobId}#${value.generatorTarget}#${value.checkTarget}`;
+}
+
+function undeterminedExceptionKey(value: Pick<UndeterminedPath | UndeterminedCircularityException, "target" | "source" | "operation" | "expression">): string {
+  return `${value.target}#${value.source}#${value.operation}#${value.expression}`;
 }
 
 function pairOrder(left: Pick<StructuralPair, "workflow" | "jobId" | "generatorTarget" | "checkTarget">, right: Pick<StructuralPair, "workflow" | "jobId" | "generatorTarget" | "checkTarget">): number {
@@ -669,7 +730,7 @@ function validateContract(contract: CircularityExceptionContract): StructuralCir
       message: "contract must use schemaVersion circularity-exceptions.v1 and contain an exceptions array",
     }];
   }
-  const required: Array<keyof CircularityException> = [
+  const pairRequired: Array<keyof PairCircularityException> = [
     "jobId",
     "generatorTarget",
     "checkTarget",
@@ -679,44 +740,77 @@ function validateContract(contract: CircularityExceptionContract): StructuralCir
     "restoreFront",
     "approvedBy",
   ];
-  const seen = new Set<string>();
+  const undeterminedRequired: Array<keyof UndeterminedCircularityException> = [
+    "target",
+    "source",
+    "operation",
+    "expression",
+    "reason",
+    "grantedAt",
+    "expiresAt",
+    "restoreFront",
+    "approvedBy",
+  ];
+  const seenPairs = new Set<string>();
+  const seenUndetermined = new Set<string>();
   for (const exception of contract.exceptions) {
-    const missing = required.filter((field) => typeof exception[field] !== "string" || exception[field].trim().length === 0);
+    const isPair = isPairCircularityException(exception);
+    const isUndetermined = !isPair && isUndeterminedCircularityException(exception);
+    if (!isPair && !isUndetermined) {
+      violations.push({
+        criterion: "contract_shape",
+        code: "STRUCTURAL_CIRCULARITY_CONTRACT_INVALID",
+        message: "exception must match either the pair shape (jobId/generatorTarget/checkTarget) or the undetermined shape (target/source/operation/expression)",
+      });
+      continue;
+    }
+    const record = exception as Record<string, unknown>;
+    const required = isPair ? pairRequired : undeterminedRequired;
+    const missing = required.filter((field) => typeof record[field] !== "string" || (record[field] as string).trim().length === 0);
+    const identity = isPair
+      ? { jobId: record.jobId as string | undefined, generatorTarget: record.generatorTarget as string | undefined, checkTarget: record.checkTarget as string | undefined }
+      : {};
     if (missing.length > 0) {
       violations.push({
         criterion: "contract_required_fields",
         code: "STRUCTURAL_CIRCULARITY_CONTRACT_INVALID",
         message: `exception is missing non-empty fields: ${missing.join(", ")}`,
-        jobId: exception.jobId,
-        generatorTarget: exception.generatorTarget,
-        checkTarget: exception.checkTarget,
+        ...identity,
       });
       continue;
     }
-    const grantedAt = dateValue(exception.grantedAt);
-    const expiresAt = dateValue(exception.expiresAt);
+    const grantedAt = dateValue(record.grantedAt as string);
+    const expiresAt = dateValue(record.expiresAt as string);
     if (grantedAt === undefined || expiresAt === undefined || grantedAt > expiresAt) {
       violations.push({
         criterion: "contract_dates",
         code: "STRUCTURAL_CIRCULARITY_CONTRACT_INVALID",
         message: "grantedAt and expiresAt must be valid YYYY-MM-DD dates in chronological order",
-        jobId: exception.jobId,
-        generatorTarget: exception.generatorTarget,
-        checkTarget: exception.checkTarget,
+        ...identity,
       });
     }
-    const key = pairKey(exception);
-    if (seen.has(key)) {
-      violations.push({
-        criterion: "contract_unique_pair",
-        code: "STRUCTURAL_CIRCULARITY_CONTRACT_INVALID",
-        message: "only one exception may exist for a structural pair",
-        jobId: exception.jobId,
-        generatorTarget: exception.generatorTarget,
-        checkTarget: exception.checkTarget,
-      });
+    if (isPair) {
+      const key = pairKey(exception);
+      if (seenPairs.has(key)) {
+        violations.push({
+          criterion: "contract_unique_pair",
+          code: "STRUCTURAL_CIRCULARITY_CONTRACT_INVALID",
+          message: "only one exception may exist for a structural pair",
+          ...identity,
+        });
+      }
+      seenPairs.add(key);
+    } else {
+      const key = undeterminedExceptionKey(exception);
+      if (seenUndetermined.has(key)) {
+        violations.push({
+          criterion: "contract_unique_undetermined",
+          code: "STRUCTURAL_CIRCULARITY_CONTRACT_INVALID",
+          message: "only one exception may exist for an undetermined path",
+        });
+      }
+      seenUndetermined.add(key);
     }
-    seen.add(key);
   }
   return violations;
 }
@@ -761,7 +855,10 @@ export function analyzeStructuralCircularity(input: RepositoryAnalysisInput): St
     parseWorkflowTargets(workflow, source, input.packageScripts),
   );
   const rawPairs = detectPairs(jobs, input, memo);
-  const exceptions = new Map(input.contract.exceptions.map((exception) => [pairKey(exception), exception]));
+  const pairExceptions = input.contract.exceptions.filter(isPairCircularityException);
+  const undeterminedExceptionList = input.contract.exceptions.filter(isUndeterminedCircularityException);
+  const exceptions = new Map(pairExceptions.map((exception) => [pairKey(exception), exception]));
+  const undeterminedExceptionMap = new Map(undeterminedExceptionList.map((exception) => [undeterminedExceptionKey(exception), exception]));
   const violations = validateContract(input.contract);
   const pairsDetected: StructuralPair[] = [];
   const pairsExcepted: ExceptedPair[] = [];
@@ -813,7 +910,7 @@ export function analyzeStructuralCircularity(input: RepositoryAnalysisInput): St
   }
 
   const detectedKeys = new Set(rawPairs.map(pairKey));
-  for (const exception of input.contract.exceptions) {
+  for (const exception of pairExceptions) {
     if (detectedKeys.has(pairKey(exception))) continue;
     violations.push({
       criterion: "declared_exception_requires_structural_pair",
@@ -830,11 +927,53 @@ export function analyzeStructuralCircularity(input: RepositoryAnalysisInput): St
     .flatMap((target) => analyzeTarget(target, input, memo).undetermined)
     .filter((value, index, values) => values.findIndex((candidate) => JSON.stringify(candidate) === JSON.stringify(value)) === index)
     .sort((left, right) => `${left.target}#${left.source}#${left.expression}`.localeCompare(`${right.target}#${right.source}#${right.expression}`));
+
+  // Undetermined semantics: fails ok by default, unless a declared, dated,
+  // nominal exception (same contract/shape as structural pairs) is active.
+  // The `undetermined` field always lists every diagnosed path regardless of
+  // exception state — ADR-006 forbids silent acceptance of dynamic paths.
+  const undeterminedExcepted: ExceptedUndetermined[] = [];
   for (const value of undetermined) {
+    const exception = undeterminedExceptionMap.get(undeterminedExceptionKey(value));
+    const expiresAtValue = exception ? dateValue(exception.expiresAt) : undefined;
+    if (!exception) {
+      violations.push({
+        criterion: "undetermined_path_requires_resolution_or_exception",
+        code: "STRUCTURAL_CIRCULARITY_UNDETERMINED",
+        message: `${value.operation} path is undetermined: ${value.expression}`,
+      });
+    } else if (expiresAtValue === undefined || expiresAtValue < todayValue) {
+      violations.push({
+        criterion: "declared_undetermined_exception_must_not_be_expired",
+        code: "STRUCTURAL_CIRCULARITY_UNDETERMINED_EXCEPTION_EXPIRED",
+        message: "structural circularity undetermined exception is expired",
+        expiresAt: exception.expiresAt,
+      });
+    } else {
+      const daysRemaining = Math.round((expiresAtValue - todayValue) / DAY_MS);
+      undeterminedExcepted.push({
+        target: value.target,
+        source: value.source,
+        operation: value.operation,
+        expression: value.expression,
+        code: "STRUCTURAL_CIRCULARITY_UNDETERMINED_EXCEPTION_ACTIVE",
+        grantedAt: exception.grantedAt,
+        expiresAt: exception.expiresAt,
+        daysRemaining,
+        restoreFront: exception.restoreFront,
+        approvedBy: exception.approvedBy,
+        reason: exception.reason,
+      });
+    }
+  }
+
+  const undeterminedKeysPresent = new Set(undetermined.map(undeterminedExceptionKey));
+  for (const exception of undeterminedExceptionList) {
+    if (undeterminedKeysPresent.has(undeterminedExceptionKey(exception))) continue;
     violations.push({
-      criterion: "governed_path_must_be_determinable",
-      code: "STRUCTURAL_CIRCULARITY_UNDETERMINED",
-      message: `${value.operation} path is undetermined: ${value.expression}`,
+      criterion: "declared_undetermined_exception_requires_undetermined_path",
+      code: "STRUCTURAL_CIRCULARITY_UNDETERMINED_EXCEPTION_STALE",
+      message: "undetermined exception is stale because its diagnosed path no longer exists",
     });
   }
 
@@ -852,6 +991,7 @@ export function analyzeStructuralCircularity(input: RepositoryAnalysisInput): St
     pairsDetected,
     pairsExcepted: pairsExcepted.sort(pairOrder),
     undetermined,
+    undeterminedExcepted: undeterminedExcepted.sort((left, right) => undeterminedExceptionKey(left).localeCompare(undeterminedExceptionKey(right))),
     violations: violations.sort((left, right) => `${left.code}#${left.jobId ?? ""}`.localeCompare(`${right.code}#${right.jobId ?? ""}`)),
   };
 }

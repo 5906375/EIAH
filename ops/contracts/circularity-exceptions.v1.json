@@ -50,6 +50,17 @@
       "expiresAt": "2026-11-02",
       "restoreFront": "DISCRIMINATE-P3-EVIDENCE-MODE",
       "approvedBy": "Carlos Alberto Merlo"
+    },
+    {
+      "target": "check:p2-audit-interop",
+      "source": "scripts/checkP2AuditInterop.ts",
+      "operation": "read",
+      "expression": "item.evidencePattern as string",
+      "reason": "evidencePattern comes from the HIGH_POLICY JSON block parsed from docs/ops/risk-tiering-by-action.md at runtime, not from a literal array in the script; it is genuinely dynamic and cannot be resolved statically. Remove when the P2 interop evidence generation this pattern feeds is no longer declarative.",
+      "grantedAt": "2026-08-04",
+      "expiresAt": "2026-11-02",
+      "restoreFront": "RESOLVE-P2-INTEROP-DECLARATIVE-EVIDENCE",
+      "approvedBy": "Carlos Alberto Merlo"
     }
   ]
 }
