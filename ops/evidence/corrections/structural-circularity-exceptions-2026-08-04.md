@@ -161,3 +161,33 @@ Reverificação dos cinco fatos do prompt (seção 3), confirmada por leitura em
 - Não liga o detector a `ci.yml`.
 - Não altera `docs/EVIDENCE_INDEX.md` — o contrato de exceções e o registro de frentes não são evidência de execução real (`IA_EIAH.md` §8 e §13).
 - Não emenda nenhum ADR.
+
+## Emenda F16b — excluir arquivos de teste da análise, corrigir o órfão (2026-08-04)
+
+### O defeito: fixture de teste lida como código real
+
+A tentativa anterior (F16, revertida) incluiu `scripts/tests/checkStructuralCircularity.test.ts` no comando de `check:orphan-tests:unit` em `package.json`, para eliminar o órfão detectado por `check:orphan-tests`. Isso funcionou para o órfão, mas quebrou `check:structural-circularity`: o detector, ao expandir o alvo `check:orphan-tests:unit` (presente no mesmo job `orphan_tests_regression` de `ci.yml`), coletou `scripts/tests/checkStructuralCircularity.test.ts` como "caminho de script local" — `SCRIPT_PATH_PATTERN` casa qualquer `scripts/**/*.ts` mencionado no texto do comando, sem distinguir teste de gerador ou checker. O conteúdo do próprio arquivo de teste foi então escaneado como se fosse um script real. Duas de suas fixtures de teste — strings literais construídas precisamente para imitar os padrões que o detector procura (`path.join(EVIDENCE_DIR, process.env.OUTPUT_FILE)`, `findLatestEvidenceByPattern(item.dynamicPattern as string)`) — foram lidas como chamadas reais e reportadas como `undetermined` novos, atribuídos a um alvo (`check:orphan-tests:unit`) que nada tem a ver com P2/P3 economy.
+
+Isso não é caso isolado: o detector é um extrator sobre texto bruto, sem AST — não distingue uma string usada como dado de teste de uma chamada real. Qualquer teste futuro de qualquer analisador estático baseado em regex sobre texto de arquivo cairá no mesmo padrão, porque testar um analisador de texto exige, por construção, conter texto que o analisador reconhece.
+
+### Decisão do owner: opção A — excluir arquivos de teste da coleta
+
+Confirmada e implementada: arquivos cujo nome termina em `.test.ts` ou `.test.tsx` nunca são gerador nem checker e não devem entrar na análise, em hipótese alguma. Fecha a classe inteira do problema, não apenas esta ocorrência.
+
+**Alternativas descartadas pelo owner:**
+- **B — alvo e step próprios**: tiraria o arquivo de teste da string de comando varrida por este caso específico, mas não impede recorrência: o próximo teste de analisador estático, incluído em qualquer alvo já executado em CI, reproduziria o mesmo problema.
+- **C — exceção `undetermined` para as duas fixtures**: transformaria uma fixture de teste — que não representa dívida alguma, é conteúdo de teste por design — em uma entrada nominal e datada no contrato de exceções, ao lado de dívidas reais como os cinco pares e a leitura de `item.evidencePattern`. Confundiria fixture de teste com débito de circularidade real.
+
+### Exclusão implementada e seu limite
+
+Em `scripts/checkStructuralCircularity.ts`: constante exportada `ANALYSIS_EXCLUDED_FILE_PATTERNS` (`["*.test.ts", "*.test.tsx"]`), refletida em `scope.analysisExcludedFilePatterns` na saída do check, documentando o padrão e seu limite. `localScriptPaths()` — o único ponto de coleta de caminhos de script local, usado tanto por `analyzeTarget` quanto pela leitura de `scriptSources` em `repositoryInput` — passou a filtrar, após a extração por `SCRIPT_PATH_PATTERN`, qualquer caminho terminado em `.test.ts`/`.test.tsx` via `TEST_FILE_SUFFIX_PATTERN`. Um arquivo assim excluído nunca chega a `extractWrites`/`extractReads`: não produz par, não produz `undetermined` — sai da análise antes de qualquer extração rodar, não é tratado como caminho indeterminado.
+
+**Limite explícito**: a exclusão é por sufixo de nome de arquivo, não por diretório nem por lista de nomes conhecidos — um teste pode viver em `scripts/tests/`, `__tests__/` ou ao lado do código-fonte, e ainda assim é excluído. Isso também significa que um script gerador ou checker real cujo nome termine em `.test.ts` por engano ou por convenção diferente escaparia da análise silenciosamente — fora do alcance deste filtro, que casa apenas por sufixo.
+
+### Órfão corrigido
+
+`scripts/tests/checkStructuralCircularity.test.ts` foi incluído no comando de `check:orphan-tests:unit` em `package.json`, junto dos três arquivos já existentes, preservando ordem e o encadeamento `&&` com `check:gate-waiver-expiry`. `check:orphan-tests` voltou a `currentOrphanCount: 104`, `blockingOrphans: []`, exit 0. Os 19 testes do detector (17 pré-existentes mais os dois acrescentados por esta emenda, cobrindo a exclusão e seu caso simétrico) passam a rodar em CI. `check:structural-circularity` continua fora de `ci.yml`; ligá-lo permanece decisão separada, não tomada por esta emenda.
+
+### Observação registrada, não resolvida
+
+O step "Run orphan tests gate unit test" (`check:orphan-tests:unit`) segue sendo o objeto da frente `DECOUPLE-WAIVER-CHECK-FROM-TEST-CHAIN` (`docs/ops/open-fronts.md`): três suítes de teste e `check:gate-waiver-expiry` encadeados por `&&` em um único step, onde uma falha anterior no encadeamento poderia impedir silenciosamente o controle de vencimento do waiver — risco estrutural latente, não defeito observado. Esta emenda acrescenta um quarto arquivo de teste a esse mesmo encadeamento, agravando marginalmente a frente. A frente permanece `pendente` e não foi alterada por este ciclo.

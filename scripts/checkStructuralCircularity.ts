@@ -21,6 +21,18 @@ export const SUPPORTED_DESTINATION_TEMPLATE_PATTERNS = [
   "var bound by a for...of loop, direct or destructured, over a const array literal in the same source",
   "array element values that are template literals with a literal prefix and one or more interpolations, each interpolation treated as a single wildcard segment",
 ] as const;
+// A file matched by this suffix is a test, not a generator or checker, and is
+// dropped before any write/read extraction runs — it never produces a write,
+// a read, or an undetermined entry. Excluding by filename suffix, not by
+// directory or by a known-names list, so a test can live anywhere (scripts/tests/,
+// __tests__/, alongside its source) and still be excluded. Limit: a real
+// generator/checker script named to end in .test.ts would also be excluded —
+// out of scope for this filter, which matches on suffix only.
+export const ANALYSIS_EXCLUDED_FILE_PATTERNS = [
+  "*.test.ts",
+  "*.test.tsx",
+] as const;
+const TEST_FILE_SUFFIX_PATTERN = /\.test\.tsx?$/;
 
 const INFORMATIONAL_DATE_PATTERN = "YYYY-MM-DD";
 const DAY_MS = 24 * 60 * 60 * 1_000;
@@ -168,6 +180,7 @@ export type StructuralCircularityResult = Readonly<{
     workflows: typeof WORKFLOWS_IN_SCOPE;
     supportedShellSyntax: typeof SUPPORTED_SHELL_SYNTAX;
     supportedDestinationTemplatePatterns: typeof SUPPORTED_DESTINATION_TEMPLATE_PATTERNS;
+    analysisExcludedFilePatterns: typeof ANALYSIS_EXCLUDED_FILE_PATTERNS;
   }>;
   pairsDetected: readonly StructuralPair[];
   pairsExcepted: readonly ExceptedPair[];
@@ -585,7 +598,8 @@ function packageTargets(command: string, packageScripts: Readonly<Record<string,
 function localScriptPaths(command: string): string[] {
   return [...command.matchAll(SCRIPT_PATH_PATTERN)]
     .map((match) => normalizeSlashes(match.groups?.script ?? ""))
-    .filter(Boolean);
+    .filter(Boolean)
+    .filter((scriptPath) => !TEST_FILE_SUFFIX_PATTERN.test(scriptPath));
 }
 
 function analyzeTarget(
@@ -987,6 +1001,7 @@ export function analyzeStructuralCircularity(input: RepositoryAnalysisInput): St
       workflows: WORKFLOWS_IN_SCOPE,
       supportedShellSyntax: SUPPORTED_SHELL_SYNTAX,
       supportedDestinationTemplatePatterns: SUPPORTED_DESTINATION_TEMPLATE_PATTERNS,
+      analysisExcludedFilePatterns: ANALYSIS_EXCLUDED_FILE_PATTERNS,
     },
     pairsDetected,
     pairsExcepted: pairsExcepted.sort(pairOrder),

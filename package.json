@@ -39,7 +39,7 @@
     "check:docs-link-integrity": "node --import tsx scripts/checkDocsLinkIntegrity.ts",
     "check:tracked-ignored-files": "node --import tsx scripts/checkTrackedIgnoredFiles.ts",
     "check:orphan-tests": "node --import tsx scripts/checkOrphanTests.ts",
-    "check:orphan-tests:unit": "node --import tsx --test scripts/tests/orphanGateExecutionAware.test.ts scripts/tests/checkP3SettlementSupportByEnv.test.ts scripts/tests/checkGateWaiverExpiry.test.ts && pnpm check:gate-waiver-expiry",
+    "check:orphan-tests:unit": "node --import tsx --test scripts/tests/orphanGateExecutionAware.test.ts scripts/tests/checkP3SettlementSupportByEnv.test.ts scripts/tests/checkGateWaiverExpiry.test.ts scripts/tests/checkStructuralCircularity.test.ts && pnpm check:gate-waiver-expiry",
     "check:gate-waiver-expiry": "node --import tsx scripts/checkGateWaiverExpiry.ts",
     "check:structural-circularity": "node --import tsx scripts/checkStructuralCircularity.ts",
     "test:run-worker-error-boundary": "DATABASE_URL=postgresql://user:pass@127.0.0.1:1/test node --import tsx --test apps/api/src/tests/run-worker-error-boundary.test.ts",

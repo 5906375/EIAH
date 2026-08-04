@@ -398,3 +398,61 @@ test("ok semantics: an expired declared exception for an undetermined path still
   assert.equal(result.undeterminedExcepted.length, 0);
   assert.equal(result.violations[0]?.code, "STRUCTURAL_CIRCULARITY_UNDETERMINED_EXCEPTION_EXPIRED");
 });
+
+// Fixtures below reproduce the F16 regression: a *.test.ts file mentioned in
+// a command's text contains, by construction, strings that mimic the write/
+// read patterns this detector looks for. It must never be analyzed at all —
+// not turned into a pair, not turned into an undetermined entry.
+function testFileExclusionInput(options: {
+  generatorScriptCommand: string;
+  generatorScriptPath: string;
+  generatorSource: string;
+  contract?: CircularityExceptionContract;
+}): RepositoryAnalysisInput {
+  const generatorTarget = "generate:exclusion-fixture";
+  const checkTarget = "check:exclusion-fixture";
+  return {
+    packageScripts: {
+      [generatorTarget]: options.generatorScriptCommand,
+      [checkTarget]: "node --import tsx scripts/checkExclusionFixture.ts",
+    },
+    workflowSources: { [WORKFLOW]: workflow([`pnpm ${generatorTarget}`, `pnpm ${checkTarget}`]) },
+    scriptSources: {
+      [options.generatorScriptPath]: options.generatorSource,
+      "scripts/checkExclusionFixture.ts": [
+        'const EVIDENCE_DIR = path.resolve("ops/evidence/latest");',
+        "findLatestEvidenceFile(/^lookalike-\\d{4}-\\d{2}-\\d{2}\\.json$/);",
+      ].join("\n"),
+    },
+    contract: options.contract ?? contract(),
+    clock: clock(),
+  };
+}
+
+test("a *.test.ts file mentioned in a command's text is not analyzed: no pair, no undetermined", () => {
+  const result = analyzeStructuralCircularity(testFileExclusionInput({
+    generatorScriptCommand: "node --import tsx --test scripts/tests/fixtureLookalike.test.ts",
+    generatorScriptPath: "scripts/tests/fixtureLookalike.test.ts",
+    generatorSource: [
+      'const EVIDENCE_DIR = path.resolve("ops/evidence/latest");',
+      "fs.writeFileSync(path.join(EVIDENCE_DIR, `lookalike-${TODAY}.json`), \"{}\");",
+    ].join("\n"),
+  }));
+
+  assert.equal(result.pairsDetected.length, 0);
+  assert.equal(result.undetermined.length, 0);
+});
+
+test("a non-test file with the same content, mentioned in the same command shape, is still analyzed", () => {
+  const result = analyzeStructuralCircularity(testFileExclusionInput({
+    generatorScriptCommand: "node --import tsx scripts/generateLookalike.ts",
+    generatorScriptPath: "scripts/generateLookalike.ts",
+    generatorSource: [
+      'const EVIDENCE_DIR = path.resolve("ops/evidence/latest");',
+      "fs.writeFileSync(path.join(EVIDENCE_DIR, `lookalike-${TODAY}.json`), \"{}\");",
+    ].join("\n"),
+  }));
+
+  assert.equal(result.pairsDetected.length, 1);
+  assert.equal(result.pairsDetected[0]?.state, "undeclared");
+});
