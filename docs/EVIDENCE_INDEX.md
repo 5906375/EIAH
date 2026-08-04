@@ -189,7 +189,7 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | Política de versionamento Agent Protocol | `ops/contracts/agent-protocol-versioning-policy.md` | Regras explícitas de versionamento/compatibilidade para o protocolo. |
 | Gate de CI Agent Protocol compat | `scripts/checkAgentProtocolVersioning.ts` | Check automatizado de compatibilidade/baseline no pipeline. |
 | Smoke de rotas interop | `ops/evidence/latest/interop-routes-smoke-2026-03-09.json` | Prova de implementação das rotas `POST /api/agents/discovery|negotiate|execute`. |
-| Evidência e2e da cadeia interop | `ops/evidence/latest/interop-e2e-agent-call-2026-03-09.json` | Prova da trilha `discovery -> negotiate -> execute -> verify receipt`. |
+| Evidência e2e da cadeia interop | `ops/evidence/latest/interop-e2e-agent-call-2026-03-09.json` | Declara a trilha `discovery -> negotiate -> execute` até a aceitação na fila, derivada de inspeção textual; não prova execução HTTP nem receipt. |
 | Gate complementar global de cobertura HIGH | `scripts/checkP2HighGlobalCoverage.ts` | Inventário completo das ações HIGH do core (`billing/finance/notifications`) e status explícito de cobertura E2E. |
 | Evidência do inventário HIGH global | `ops/evidence/latest/p2-high-global-coverage.json` | Matriz inicial de cobertura HIGH global (base para fechar P2 além do recorte IMOB). |
 
@@ -240,7 +240,7 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 
 | Assunto | Arquivo | O que prova |
 | --- | --- | --- |
-| Ações críticas imobiliárias HIGH | `ops/evidence/latest/realestate-high-actions-e2e-2026-03-09.json` | Contrato/negociação com `tier=HIGH`, `txIdRequired=true` e receipt canon para ações imobiliárias críticas. |
+| Ações críticas imobiliárias HIGH | `ops/evidence/latest/realestate-high-actions-e2e-2026-03-09.json` | Declara contrato/negociação com `tier=HIGH` e `txIdRequired=true` para ações imobiliárias críticas; não prova execução terminal nem receipt. |
 | Command Center IMOB (funnel + blocked runs) | `ops/evidence/latest/realestate-command-center-smoke-2026-03-09.md` | Visualização operacional no Runs por workspace, filtros por risco/estado e export bundle/receipt por run. |
 | Chat IMOB agentic E2E por planner/recipes | `ops/evidence/latest/imob-e2e-case-planner-smoke-2026-05-16.md` | Prova focada de recipeId, missão de temporada, supressão de CTAs resolvidas, `property.link_owner` e `case.review` como recuperação válida. |
 | IMOB Lead Continuity P0 — fechamento operacional | `ops/evidence/latest/imob-lead-continuity-p0-2026-05-23.md` | Prova focada de `leadStatus`/`nextAction`, idempotência por `case.leadId`, continuidade sem reabrir pendência resolvida, compat layer sem copy contraditória e launcher IMOB `render-only` sem heurística local. |
