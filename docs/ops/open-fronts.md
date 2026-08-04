@@ -7,7 +7,7 @@
 - **Fonte canônica:** `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md`
 - **Decisão de hierarquia:** `docs/adr/ADR-003-work-registry-hierarchy.md`
 
-Este documento é derivado da fonte canônica indicada acima e faz o rastreio formal de quinze pendências identificadas no fechamento do PR-01 e nas auditorias documentais subsequentes. A hierarquia entre este registro e o plano de PRs de 2026-07-31 é definida pelo ADR indicado acima; este documento não estabelece status normativo próprio, não é plano de execução e não autoriza o início de nenhuma frente.
+Este documento é derivado da fonte canônica indicada acima e faz o rastreio formal de dezesseis pendências identificadas no fechamento do PR-01 e nas auditorias documentais subsequentes. A hierarquia entre este registro e o plano de PRs de 2026-07-31 é definida pelo ADR indicado acima; este documento não estabelece status normativo próprio, não é plano de execução e não autoriza o início de nenhuma frente.
 
 ## 1. Restrição das permissões do token de CI
 
@@ -214,7 +214,49 @@ Este documento é derivado da fonte canônica indicada acima e faz o rastreio fo
   - linha 937: `ops/evidence/latest/imob-knowledge-rollout-plan-2026-07-02.md`
   - linha 939: `ops/evidence/latest/imob-knowledge-pilot-readiness-2026-07-02.md`
   - linha 940: `ops/evidence/latest/imob-knowledge-pilot-activation-gate-2026-07-02.md`
+  Uma segunda classe, distinta do caráter documental acima, foi confirmada por nova leitura estática: 41 entradas de tabela, referentes a 39 caminhos únicos, afirmam execução, resultado operacional ou prova de fluxo para artefatos diretamente produzidos por geradores declarativos ou híbridos. As duas entradas excedentes são duplicações dos caminhos de APE #9 e #47. Os caminhos únicos apurados são:
+  - `ops/evidence/latest/p2-high-global-coverage.json`
+  - `ops/evidence/latest/interop-routes-smoke-2026-03-09.json`
+  - `ops/evidence/latest/interop-e2e-agent-call-2026-03-09.json`
+  - `ops/evidence/latest/realestate-high-actions-e2e-2026-03-09.json`
+  - `ops/evidence/latest/payment-intent-schema-YYYY-MM-DD.json`
+  - `ops/evidence/latest/pou-gated-payment-e2e-YYYY-MM-DD.json`
+  - `ops/evidence/latest/pou-gated-payment-e2e-2026-07-27.json`
+  - `ops/evidence/latest/settlement-provider-e2e-YYYY-MM-DD.json`
+  - `ops/evidence/latest/billing-webhook-replay-YYYY-MM-DD.json`
+  - `ops/evidence/latest/reputation-update-flow-YYYY-MM-DD.json`
+  - `ops/evidence/latest/dispute-lifecycle-e2e-YYYY-MM-DD.json`
+  - `ops/evidence/latest/realestate-commission-settlement-e2e-YYYY-MM-DD.json`
+  - `ops/evidence/latest/realestate-commission-settlement-e2e-2026-07-27.json`
+  - `ops/evidence/latest/ape-weekly-cycle-run7-2026-03-04.md`
+  - `ops/evidence/latest/ape-weekly-cycle-run8-2026-03-04.md`
+  - `ops/evidence/latest/ape-weekly-cycle-run9-2026-03-09.md`
+  - `ops/evidence/latest/ape-weekly-cycle-run10-2026-03-18.md`
+  - `ops/evidence/latest/ape-weekly-cycle-run11-2026-03-18.md`
+  - `ops/evidence/latest/ape-weekly-cycle-run19-2026-04-10.md`
+  - `ops/evidence/latest/ape-weekly-cycle-run20-2026-04-10.md`
+  - `ops/evidence/latest/ape-weekly-cycle-run21-2026-04-10.md`
+  - `ops/evidence/latest/ape-weekly-cycle-run22-2026-04-27.md`
+  - `ops/evidence/latest/ape-weekly-cycle-run23-2026-04-27.md`
+  - `ops/evidence/latest/ape-weekly-cycle-run24-2026-04-27.md`
+  - `ops/evidence/latest/ape-weekly-cycle-run25-2026-05-11.md`
+  - `ops/evidence/latest/ape-weekly-cycle-run26-2026-05-11.md`
+  - `ops/evidence/latest/ape-weekly-cycle-run27-2026-05-11.md`
+  - `ops/evidence/latest/ape-weekly-cycle-run28-2026-05-11.md`
+  - `ops/evidence/latest/ape-weekly-cycle-run38-2026-06-24.md`
+  - `ops/evidence/latest/ape-weekly-cycle-run39-2026-06-24.md`
+  - `ops/evidence/latest/ape-weekly-cycle-run40-2026-06-24.md`
+  - `ops/evidence/latest/ape-weekly-cycle-run41-2026-07-08.md`
+  - `ops/evidence/latest/ape-weekly-cycle-run42-2026-07-08.md`
+  - `ops/evidence/latest/ape-weekly-cycle-run43-2026-07-08.md`
+  - `ops/evidence/latest/ape-weekly-cycle-run44-2026-07-09.md`
+  - `ops/evidence/latest/ape-weekly-cycle-run45-2026-07-13.md`
+  - `ops/evidence/latest/ape-weekly-cycle-run46-2026-07-20.md`
+  - `ops/evidence/latest/ape-weekly-cycle-run47-2026-07-23.md`
+  - `ops/evidence/latest/ape-weekly-cycle-run48-2026-07-27.md`
+  Os cinco geradores declarativos identificados por leitura são `scripts/ci/llm_provider_pricing_snapshot.cjs`, `scripts/ci/infra_provider_pricing_snapshot.cjs`, `scripts/generateP2HighGlobalCoverage.ts`, `scripts/generateP2InteropEvidence.ts` e `scripts/generateP3EconomyEvidence.ts`. Os quatro produtores híbridos são o comando `check:governance` de `apps/api/package.json`, `scripts/collect-environment.sh`, `scripts/ci/ape_cycle_weekly.cjs` e `scripts/runImobKnowledgeShadow.ts`. A contagem de 41 entradas inclui somente caminhos do índice que são saídas diretas desses produtores; os registros narrativos sobre regeneração P2 HIGH e shadow IMOB não foram contados como saída direta.
 - **O que não foi verificado:** o inventário semântico das demais entradas não foi concluído contra o conteúdo integral de cada artefato; portanto, podem existir outras divergências. Também não foi verificado se alguma das 72 entradas possui execução real omitida pela redação do índice. Nenhuma entrada foi corrigida ou removida.
+  A leitura estática também não determina qual processo produziu cada instância histórica já commitada que corresponde ao padrão de nome de um gerador.
 - **Origem da observação:** sessão de auditoria somente-leitura de 2026-08-03, sem commit ou artefato versionado próprio.
 - **Origem do registro da frente:** este commit documental.
 - **Bloqueio:** inventário semântico completo, decisão do owner sobre remoção ou reclassificação e checks negativos que imponham a norma vigente.
@@ -242,10 +284,21 @@ Este documento é derivado da fonte canônica indicada acima e faz o rastreio fo
 - **Bloqueio:** determinar e ratificar a proveniência aceitável dos dois artefatos antes de qualquer regeneração; renovar sem distinguir captura de declaração repetiria em P1/P2 a falha corrigida no arco P3.
 - **Status:** `pendente`
 
+## 16. Resolução da evidência declarativa de interop P2
+
+- **Frente:** `RESOLVE-P2-INTEROP-DECLARATIVE-EVIDENCE`
+- **Severidade:** alta — um artefato que declara execução de uma trilha sem executá-la alimenta required status checks e pode fazer assertions declarativas circularem como prova operacional.
+- **O que se sabe:** `scripts/generateP2InteropEvidence.ts:35-39` lê código, contratos e policy como texto; `scripts/generateP2InteropEvidence.ts:41-108` fixa `ok=true`, status HTTP `200`/`202`, receipt canon, invariant e tiers sem chamada HTTP, subprocesso ou E2E. O gerador grava em `ops/evidence/latest/` os padrões `interop-routes-smoke-YYYY-MM-DD.json`, `interop-e2e-agent-call-YYYY-MM-DD.json` e `realestate-high-actions-e2e-YYYY-MM-DD.json` (`scripts/generateP2InteropEvidence.ts:41-118`). Os artefatos alimentam os required checks `P2AuditInterop`, `P1CriticalChain` e `W4NonRegression`: os jobs e comandos estão em `.github/workflows/ci.yml:834-861,895-919,1070-1094`; os consumidores estão em `scripts/checkP2AuditInterop.ts:131-197`, `scripts/checkP1CriticalChain.ts:45-88` e `scripts/checkW4NonRegression.ts:27-49,102-117`, com referências W4 em `ops/evidence/latest/w4-non-regression-kpis.json:18-22`. Em `p2_audit_interop`, o step das linhas 857-858 gera as assertions e o step das linhas 860-861 verifica em seguida os mesmos literais, circularidade pelo mesmo mecanismo já identificado em `p3_economy_hardening`; ver a frente 8, `DISCRIMINATE-P3-EVIDENCE-MODE`. O índice afirma, respectivamente, “Prova de implementação das rotas `POST /api/agents/discovery|negotiate|execute`.”, “Prova da trilha `discovery -> negotiate -> execute -> verify receipt`.” e “Contrato/negociação com `tier=HIGH`, `txIdRequired=true` e receipt canon para ações imobiliárias críticas.” (`docs/EVIDENCE_INDEX.md:191-192,243`).
+- **O que não foi verificado:** não foi executada a trilha HTTP/E2E, não foi comprovado o comportamento das rotas em ambiente executável e a leitura estática não determina qual processo produziu cada instância histórica já commitada que corresponde aos três padrões.
+- **Origem da observação:** inventário de geradores executado em sessão somente-leitura de 2026-08-04, sem commit ou artefato versionado próprio.
+- **Origem do registro da frente:** este commit documental.
+- **Bloqueio:** decidir entre substituir a geração declarativa por captura de execução real — o que exige ambiente executável para as rotas — ou rebaixar as afirmações do artefato e do índice ao que o gerador de fato produz, sem que essa segunda opção feche a lacuna de cobertura. Registrar a decisão antes da implementação, conforme o ADR-004.
+- **Status:** `pendente`
+
 ## Contexto do PR-01
 
 O PR-01 permanece `Parcial` na cadeia `61c0c393` → `85d9d31` → `d5efce8` → `de228d3`. A NC-2 foi verificada em CI e reproduzida nas runs `30710850816` e `30713272468`: `GATE_WAIVER_ACTIVE`, 90 dias restantes e `clockDate` obtido do relógio real, em job requerido.
 
 Na run `30710850816`, `P3SettlementSupportByEnv` permanece `failure` e informativo por decisão registrada em `d5efce8`. O `continue-on-error` está no job, não no step; por isso a run conclui `success` enquanto a falha continua visível. No mesmo job, `Generate P3 economy evidence` conclui `success` e `Check P3 settlement support matrix by env` conclui `failure`, três steps adiante, tornando observável a circularidade da evidência P3 em `ops/evidence/ci/pr-01/ci-p3-settlement-steps.30710850816.log` e `ops/evidence/ci/pr-01/ci-p3-settlement-job.30710850816.log`.
 
-Na mesma run, `P3EconomyHardening` permanece verde porque `scripts/checkP3EconomyHardening.ts:107` aceita `full` e `simulated` indistintamente. Esse contraste registra dois checks sobre a mesma propriedade, um com medição discriminante e outro sem ela; ver a frente 8, `DISCRIMINATE-P3-EVIDENCE-MODE`. O contraste não promove o status do PR-01, não torna a evidência P3 verdadeira e não resolve nenhuma das quinze frentes.
+Na mesma run, `P3EconomyHardening` permanece verde porque `scripts/checkP3EconomyHardening.ts:107` aceita `full` e `simulated` indistintamente. Esse contraste registra dois checks sobre a mesma propriedade, um com medição discriminante e outro sem ela; ver a frente 8, `DISCRIMINATE-P3-EVIDENCE-MODE`. O contraste não promove o status do PR-01, não torna a evidência P3 verdadeira e não resolve nenhuma das dezesseis frentes.
