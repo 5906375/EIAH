@@ -1,0 +1,112 @@
+OrphanTestsRegression	Run orphan tests gate unit test	﻿2026-08-04T07:14:47.6954544Z ##[group]Run pnpm check:orphan-tests:unit
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:47.6954928Z ^[[36;1mpnpm check:orphan-tests:unit^[[0m
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:47.6999708Z shell: /usr/bin/bash -e {0}
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:47.6999971Z env:
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:47.7000160Z   NODE_VERSION: 20
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:47.7000756Z   PNPM_VERSION: 10.12.4
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:47.7001053Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:47.7001391Z ##[endgroup]
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:47.9753073Z 
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:47.9753854Z > eiah-builder@ check:orphan-tests:unit /home/runner/work/EIAH/EIAH
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:47.9755478Z > node --import tsx --test scripts/tests/orphanGateExecutionAware.test.ts scripts/tests/checkP3SettlementSupportByEnv.test.ts scripts/tests/checkGateWaiverExpiry.test.ts && pnpm check:gate-waiver-expiry
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:47.9756501Z 
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.0288228Z TAP version 13
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4101260Z # Subtest: continue-on-error true with a future waiver passes with days remaining
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4111360Z ok 1 - continue-on-error true with a future waiver passes with days remaining
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4118864Z   ---
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4143020Z   duration_ms: 2.849442
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4151279Z   type: 'test'
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4152045Z   ...
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4153151Z # Subtest: continue-on-error true with an expired waiver fails
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4154682Z ok 2 - continue-on-error true with an expired waiver fails
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4155870Z   ---
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4156730Z   duration_ms: 0.459562
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4157652Z   type: 'test'
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4158400Z   ...
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4159358Z # Subtest: continue-on-error true without a waiver fails as undeclared
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4161363Z ok 3 - continue-on-error true without a waiver fails as undeclared
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4162304Z   ---
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4162890Z   duration_ms: 0.279934
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4163528Z   type: 'test'
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4164121Z   ...
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4165040Z # Subtest: a declared waiver without continue-on-error fails as stale
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4166287Z ok 4 - a declared waiver without continue-on-error fails as stale
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4167205Z   ---
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4167787Z   duration_ms: 0.272681
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4168429Z   type: 'test'
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4169025Z   ...
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4169785Z # Subtest: no waiver and no continue-on-error passes
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4171059Z ok 5 - no waiver and no continue-on-error passes
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4171940Z   ---
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4172547Z   duration_ms: 1.027306
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4173156Z   type: 'test'
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4173713Z   ...
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4321887Z # Subtest: full without providerAdapters fails criterion 1
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4331467Z ok 6 - full without providerAdapters fails criterion 1
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4342413Z   ---
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4351172Z   duration_ms: 3.619806
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4351787Z   type: 'test'
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4352288Z   ...
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4353083Z # Subtest: full with a declared missing module fails criterion 2
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4354329Z ok 7 - full with a declared missing module fails criterion 2
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4355217Z   ---
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4355762Z   duration_ms: 1.044268
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4356405Z   type: 'test'
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4356980Z   ...
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4357866Z # Subtest: full module resolving to the local stub fails criterion 3
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4359062Z ok 8 - full module resolving to the local stub fails criterion 3
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4359945Z   ---
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4360911Z   duration_ms: 2.356247
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4361607Z   type: 'test'
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4362164Z   ...
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4363047Z # Subtest: simulated without providerAdapters passes
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4364075Z ok 9 - simulated without providerAdapters passes
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4364854Z   ---
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4365437Z   duration_ms: 1.122454
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4366056Z   type: 'test'
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4366565Z   ...
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4367561Z # Subtest: execution-aware gate separates blocking, disabled and uncalled references
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4369491Z ok 10 - execution-aware gate separates blocking, disabled and uncalled references
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4371848Z   ---
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4372490Z   duration_ms: 6.092824
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4373088Z   type: 'test'
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4373560Z   ...
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4374308Z # Subtest: tests added to a CI-invoked static suite become blocking
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4375310Z ok 11 - tests added to a CI-invoked static suite become blocking
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4376029Z   ---
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4376496Z   duration_ms: 0.68298
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4376955Z   type: 'test'
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4377530Z   ...
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4378317Z # Subtest: new orphan blocks even when absolute debt does not increase
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4379321Z ok 12 - new orphan blocks even when absolute debt does not increase
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4379992Z   ---
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4380739Z   duration_ms: 0.895008
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4381280Z   type: 'test'
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4381781Z   ...
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4382512Z # Subtest: a lower prior debt becomes the decreasing ceiling
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4383763Z ok 13 - a lower prior debt becomes the decreasing ceiling
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4384447Z   ---
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4384915Z   duration_ms: 0.843511
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4385430Z   type: 'test'
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4385901Z   ...
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4386339Z 1..13
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4386775Z # tests 13
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4387250Z # suites 0
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4387707Z # pass 13
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4388160Z # fail 0
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4388656Z # cancelled 0
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4389128Z # skipped 0
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4389615Z # todo 0
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.4390104Z # duration_ms 421.97562
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.7128968Z 
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.7129995Z > eiah-builder@ check:gate-waiver-expiry /home/runner/work/EIAH/EIAH
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.7131325Z > node --import tsx scripts/checkGateWaiverExpiry.ts
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.7131791Z 
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.8953346Z {
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.8954476Z   "ok": true,
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.8955069Z   "check": "check:gate-waiver-expiry",
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.8955638Z   "clockDate": "2026-08-04",
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.8956151Z   "contract": "ops/contracts/gate-waivers.v1.json",
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.8956690Z   "warnings": [],
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.8957026Z   "violations": []
+OrphanTestsRegression	Run orphan tests gate unit test	2026-08-04T07:14:48.8957418Z }
