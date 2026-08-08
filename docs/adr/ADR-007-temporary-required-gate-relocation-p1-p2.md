@@ -138,6 +138,25 @@ O snapshot anterior, o payload aplicado, a resposta da API e o snapshot posterio
 congelados com hashes, timestamp, ator e comandos. O ADR sozinho não autoriza afirmar que o ruleset
 foi alterado.
 
+## 9-A. Permissão administrativa do ator
+
+A conta autenticada possui admin: true no repositório, condição que o GitHub documenta
+como suficiente para editar rulesets de repositório. A credencial apresenta os escopos
+observados; a capacidade efetiva da chamada REST permanece sujeita ao modelo de
+autenticação/token utilizado.
+
+`current_user_can_bypass: never` combinado com `admin: true` não é contradição: administrar a
+política e estar autorizado a ignorá-la são propriedades distintas. Bypass é configurado em
+`bypass_actors`, hoje vazio.
+
+A evidência atual demonstra admin: true no repositório, enquanto o ADR-004 inferiu
+indisponibilidade administrativa a partir dos escopos da credencial então congelada. As duas
+afirmações utilizam dimensões diferentes de autorização e devem ser reconciliadas em ciclo
+documental próprio.
+
+A captura read-only da identidade, das permissões e do snapshot está registrada em
+[`gate-relocation-p1-p2-preflight-2026-08-08.md`](../../ops/evidence/latest/gate-relocation-p1-p2-preflight-2026-08-08.md).
+
 ## 10. Relocação posterior para ape-weekly
 
 Em ciclo posterior e separado, P1 e P2 deverão ser avaliados para execução em
@@ -147,6 +166,23 @@ validada, os jobs atuais de `ci.yml` continuam sendo a superfície de execução
 A relocação de workflow deve manter os mesmos checkers e thresholds, sem invocar
 `generate:p2-high-global-coverage` para autorrenovação e sem fabricar métricas APE. Ela não é
 executada por este ADR.
+
+### Prazo máximo do estado intermediário
+
+Regra preferencial: removidos P1/P2 dos required contexts, `continue-on-error` e os waivers
+correspondentes devem ser removidos no primeiro PR mergeável da frente, preservando failure visível
+em `ci.yml` até a relocação. A remoção é segura porque, sem o context required, a falha não bloqueia
+merge.
+
+A remoção deve ser atômica. `checkGateWaiverExpiry.ts` relaciona waiver por `workflow#jobId`; por
+isso, remover `continue-on-error` e as entradas correspondentes de `gate-waivers.v1.json` deve
+ocorrer no mesmo commit. Uma alteração parcial reprova `OrphanTestsRegression` por
+`GATE_WAIVER_STALE` ou `GATE_WAIVER_UNDECLARED`.
+
+Como fallback excepcional, o estado intermediário tem prazo máximo de sete dias corridos e deve ser
+registrado como `temporarily_non_required_with_degraded_visibility`, inclusive no item 9 da seção
+20. Vencido o prazo, deve ocorrer uma destas três ações: (1) remover as supressões; (2) executar
+rollback do ruleset; ou (3) registrar nova decisão explícita. Silêncio não estende o prazo.
 
 ## 11. Tratamento condicional dos waivers/continue-on-error
 
@@ -277,6 +313,7 @@ Sem esse pacote, a alteração não pode ser classificada como evidenciada.
 | Aumentar `maxAgeDays` | Ocultaria a deterioração sem resolver proveniência ou vínculo do gate com PR. |
 | Reduzir `MIN_CYCLES` | Enfraqueceria o critério recorrente e ampliaria risco de bypass por configuração. |
 | Manter required e depender só de `continue-on-error`/waiver | Não remove os contexts do ruleset e preserva semânticas contraditórias entre workflow, contrato e plataforma. |
+| Separar o job P2 e retirar do ruleset apenas a recência | Rejeitada nesta frente. O ruleset atual recebe `P2HighGlobalCoverage` como um único check run; inventário e recência são steps internos do mesmo job, não required contexts independentes. Implementar a alternativa exigiria primeiro dividir o workflow e criar nova identidade de check, ampliando o escopo administrativo desta decisão. Além disso, o inventário ainda valida artefato cujo `e2eCovered` não deriva de execução E2E real. A separação poderá ser reavaliada após correção do producer e desenho explícito de contexts independentes. |
 | Declarar os gates saudáveis | Contradiz as falhas reais de recência e a integridade insuficiente dos producers. |
 | Alterar checkers, producers ou reason codes nesta decisão | Amplia o escopo administrativo/documental e mistura decisão com implementação da restauração. |
 | Retorno automático em 2026-09-18 | Data não prova mérito nem integridade de evidência. |
