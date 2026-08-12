@@ -57,6 +57,23 @@ dedicado com:
 Automação não pode ratificar o próprio código. Preencher os campos no mesmo PR
 que propõe o código não substitui aprovação humana autenticada.
 
+<a id="ratificacao-pr1a-assignment-fail-closed-2026-08-12"></a>
+
+## Ratificação PR1a Assignment fail-closed — 2026-08-12
+
+Carlos Alberto Merlo ratificou `AGENT_ASSIGNMENT_REQUIRED` como `active` para
+o bloqueio fail-closed da execução quando não existir uma atribuição exata,
+preexistente e habilitada para tenant, workspace, agente e versão. No PR1a,
+`enabled=true` significa somente `HABILITACAO_OPERACIONAL_ATUAL`; não representa
+aprovação formal, assinatura, identidade do aprovador, revisão humana ou
+vigência temporal. O status HTTP externo esperado é `403`. A recusa ocorre
+antes da criação do run, não pode provisionar ou reabilitar assignment e deve
+produzir registro de auditoria sanitizado.
+
+O código não substitui `AGENT_NOT_ENABLED_IN_WORKSPACE`, preservado para
+compatibilidade com o caso legado já existente. Aprovação formal, assinatura,
+identidade do aprovador e expiração permanecem `PENDING_PR1B`.
+
 ## Ratificacao RC-MCP-1A — 2026-07-28
 
 Carlos Alberto Merlo ratificou como `active` os códigos
@@ -193,6 +210,7 @@ fonte canônica falham em `check:reason-code-canon`.
 | `VERTICAL_PRESENTATION_INVALID` | active |
 | `VERTICAL_HANDOFF_ALLOWED` | active |
 | `VERTICAL_PREVIEW_ONLY` | active |
+| `AGENT_ASSIGNMENT_REQUIRED` | active |
 | `invalid_txid_format` | proposed |
 | `txid_not_found` | proposed |
 | `pou_txid_mismatch` | proposed |

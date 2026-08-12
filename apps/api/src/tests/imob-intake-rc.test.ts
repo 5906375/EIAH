@@ -20,13 +20,13 @@ import "./support/testInfraEnv.js";
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import supertest from "supertest";
 import { closePrismaResources, prismaGlobal } from "@repo/db";
 import { finalizeHttpContractCleanup } from "./support/httpContractCleanup.js";
 import { processImobRunCompletedJob } from "../workers/imobPostRunMutationWorker.js";
 import { imobRunCompletedQueue } from "../queues/imobRunCompletedQueue.js";
 import { runAtivoUniversalQueue, runAtivoUniversalDLQ } from "@eiah/core";
+import { hasCoreAgentProfile, resolveAgentId } from "../services/agents.js";
 
 // ─── Identifiers ──────────────────────────────────────────────────────────────
 
@@ -40,15 +40,24 @@ const INTAKE_SENTINEL = "INTAKE";
 // Shared across RC-01 and RC-02: export test reuses the run created in RC-01
 let sharedRunId = "";
 
-const DOCX_PATH = join(
-  new URL(".", import.meta.url).pathname,
-  "../../../../node_modules/mammoth/test/test-data/simple-list.docx",
-);
+const DOCX_PATH = new URL("./fixtures/imob/minimal-lease-contract.docx", import.meta.url);
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 let request: ReturnType<typeof supertest>;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
+
+async function resolveCanonicalEiahAssignmentIdentity() {
+  const agentKey = resolveAgentId("EIAH");
+  const metadata = await prismaGlobal.agentMetadata.findUnique({
+    where: { agent: agentKey },
+    select: { version: true },
+  });
+  const persistedVersion = metadata?.version?.trim();
+  const agentVersion = persistedVersion || (hasCoreAgentProfile(agentKey) ? "1.0.0" : null);
+  assert.ok(agentVersion, "EIAH must resolve to a persisted or core assignment version");
+  return { agentKey, agentVersion };
+}
 
 async function uploadDocx() {
   const buf = readFileSync(DOCX_PATH);
@@ -75,8 +84,9 @@ before(async () => {
   await (prismaGlobal as any).apiToken.create({
     data: { token: apiToken, tenantId, workspaceId, userId, description: "rc-test", revoked: false },
   });
+  const assignmentIdentity = await resolveCanonicalEiahAssignmentIdentity();
   await prismaGlobal.workspaceAgentAssignment.create({
-    data: { tenantId, workspaceId, agentKey: "EIAH", agentVersion: "1", enabled: true },
+    data: { tenantId, workspaceId, ...assignmentIdentity, enabled: true },
   });
 });
 
