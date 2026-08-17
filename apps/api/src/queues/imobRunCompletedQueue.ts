@@ -18,6 +18,12 @@ export type ImobRunCompletedJobPayload = {
 };
 
 export const IMOB_RUN_COMPLETED_QUEUE_NAME = "imob-run-completed";
+export const IMOB_RUN_COMPLETED_DEFAULT_JOB_OPTIONS = {
+  attempts: 3,
+  backoff: { type: "exponential", delay: 2000 },
+  removeOnComplete: true,
+  removeOnFail: false,
+} as const satisfies JobsOptions;
 
 export const imobRunCompletedQueue = new Queue<ImobRunCompletedJobPayload>(
   IMOB_RUN_COMPLETED_QUEUE_NAME,
@@ -41,10 +47,7 @@ export async function enqueueImobRunCompleted(
 
   return imobRunCompletedQueue.add("process", job, {
     jobId,
-    attempts: 3,
-    backoff: { type: "exponential", delay: 2000 },
-    removeOnComplete: true,
-    removeOnFail: false,
+    ...IMOB_RUN_COMPLETED_DEFAULT_JOB_OPTIONS,
     ...options,
   });
 }

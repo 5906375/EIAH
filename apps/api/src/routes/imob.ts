@@ -1,4 +1,4 @@
-import { type Response } from "express";
+import { type NextFunction, type Response } from "express";
 import crypto from "node:crypto";
 import { createGovernedRouter } from "../middlewares/asyncHandler";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
@@ -6,11 +6,19 @@ import { generateContractPreview } from "../services/contracts/contractGenerator
 import type { ContractType } from "../services/contracts/types";
 import { createRunRecord } from "../services/runs";
 import { emitRunEvent } from "../services/runEventEmitter";
-import { WorkspaceAgentAssignmentError } from "../services/workspaceAgentAssignments";
+import {
+  WorkspaceAgentAssignmentError,
+  assertWorkspaceAgentEnabled,
+} from "../services/workspaceAgentAssignments";
 import { searchImobKnowledge } from "../services/imob/imobKnowledgeSearch";
 import { readImobDriveSyncSnapshot } from "../services/imob/imobDriveSync";
 import { searchImobInventory } from "../services/imob/imobInventoryProvider";
 import { resolveImobTurn } from "../services/imob/imobTurnResolver";
+import {
+  recordImobContractIntakeBlocked,
+  resolveImobContractIntakeRuntimePolicy,
+  type ImobContractIntakeBlockedOperation,
+} from "../services/imob/intake/imobContractIntakeRuntime";
 import { matchImobConversationalIntents } from "../services/imob/imobIntentCatalog";
 import { resolveImobBackingSpecialists } from "../services/imob/imobSpecialistBridge";
 import { buildImobConversationSnapshot } from "../services/imob/imobCaseSnapshotService";
@@ -1092,51 +1100,13 @@ async function resolveConversationAuditRunId(params: {
   title?: string | null;
   minCreatedAt?: Date | null;
 }) {
-  const ensureAuditAgentAssignment = async () => {
-    const existingAssignment = await params.prisma.workspaceAgentAssignment.findFirst({
-      where: {
-        tenantId: params.tenantId,
-        workspaceId: params.workspaceId,
-        agentKey: IMOB_CHAT_AUDIT_AGENT_ID,
-      },
-      orderBy: [{ enabled: "desc" }, { updatedAt: "desc" }, { createdAt: "desc" }],
-      select: {
-        id: true,
-        agentVersion: true,
-        enabled: true,
-      },
-    });
-
-    if (existingAssignment?.enabled) return;
-
-    if (existingAssignment) {
-      await params.prisma.workspaceAgentAssignment.update({
-        where: { id: existingAssignment.id },
-        data: {
-          enabled: true,
-          signatureRef: existingAssignment.enabled ? undefined : "imob-chat-audit-bootstrap",
-          signedAt: new Date(),
-        },
-      });
-      return;
-    }
-
-    await params.prisma.workspaceAgentAssignment.create({
-      data: {
-        tenantId: params.tenantId,
-        workspaceId: params.workspaceId,
-        agentKey: IMOB_CHAT_AUDIT_AGENT_ID,
-        agentVersion: "1.0.0",
-        enabled: true,
-        signedAt: new Date(),
-        signatureRef: "imob-chat-audit-bootstrap",
-        metadata: {
-          source: "imob-chat-audit-bootstrap",
-          systemInternal: true,
-        },
-      },
-    });
-  };
+  await assertWorkspaceAgentEnabled({
+    prisma: params.prisma,
+    tenantId: params.tenantId,
+    workspaceId: params.workspaceId,
+    agentKey: IMOB_CHAT_AUDIT_AGENT_ID,
+    userId: params.userId,
+  });
 
   const isValidAuditRunForConversation = async (runId: string | null | undefined) => {
     const scopedRunId = await validateScopedRunId({
@@ -1198,56 +1168,27 @@ async function resolveConversationAuditRunId(params: {
 
   let auditRun = matchedRun;
   if (!auditRun) {
-    try {
-      auditRun = await createRunRecord({
-        prisma: params.prisma,
-        tenantId: params.tenantId,
-        workspaceId: params.workspaceId,
-        userId: params.userId,
-        agent: IMOB_CHAT_AUDIT_AGENT_ID,
-        status: "success",
-        request: {
-          prompt: `Audit transcript for conversation ${params.conversationId}`,
-          metadata: {
-            domain: "imob",
-            kind: "conversation_audit",
-            conversationId: params.conversationId,
-            title: params.title ?? null,
-          },
-        },
-        response: {
-          status: "audit_initialized",
+    auditRun = await createRunRecord({
+      prisma: params.prisma,
+      tenantId: params.tenantId,
+      workspaceId: params.workspaceId,
+      userId: params.userId,
+      agent: IMOB_CHAT_AUDIT_AGENT_ID,
+      status: "success",
+      request: {
+        prompt: `Audit transcript for conversation ${params.conversationId}`,
+        metadata: {
+          domain: "imob",
+          kind: "conversation_audit",
           conversationId: params.conversationId,
+          title: params.title ?? null,
         },
-      });
-    } catch (error) {
-      if (error instanceof WorkspaceAgentAssignmentError) {
-        await ensureAuditAgentAssignment();
-        auditRun = await createRunRecord({
-          prisma: params.prisma,
-          tenantId: params.tenantId,
-          workspaceId: params.workspaceId,
-          userId: params.userId,
-          agent: IMOB_CHAT_AUDIT_AGENT_ID,
-          status: "success",
-          request: {
-            prompt: `Audit transcript for conversation ${params.conversationId}`,
-            metadata: {
-              domain: "imob",
-              kind: "conversation_audit",
-              conversationId: params.conversationId,
-              title: params.title ?? null,
-            },
-          },
-          response: {
-            status: "audit_initialized",
-            conversationId: params.conversationId,
-          },
-        });
-      } else {
-        throw error;
-      }
-    }
+      },
+      response: {
+        status: "audit_initialized",
+        conversationId: params.conversationId,
+      },
+    });
   }
   if (!auditRun) return null;
 
@@ -2804,6 +2745,37 @@ imobRouter.post("/chat/conversations", async (req, res) => {
   const conversationId = `conv_${crypto.randomBytes(8).toString("hex")}`;
   const metadata = asObject(body.metadata) ?? {};
 
+  let auditRunId: string | null;
+  try {
+    auditRunId = await resolveConversationAuditRunId({
+      prisma,
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      userId: authContext.userId,
+      conversationId,
+      title,
+    });
+  } catch (error) {
+    if (error instanceof WorkspaceAgentAssignmentError) {
+      return res.status(403).json({
+        ok: false,
+        error: {
+          code: error.reasonCode,
+          reasonCode: error.reasonCode,
+          message: error.message,
+        },
+      });
+    }
+    throw error;
+  }
+
+  if (!auditRunId) {
+    return res.status(500).json({
+      ok: false,
+      error: { code: "AUDIT_RUN_MISSING", message: "Audit run could not be resolved" },
+    });
+  }
+
   const created = await prisma.memoryEvent.create({
     data: {
       tenantId: authContext.tenantId,
@@ -2817,17 +2789,9 @@ imobRouter.post("/chat/conversations", async (req, res) => {
         conversationId,
         title,
         status: "active",
+        auditRunId,
       },
     },
-  });
-
-  const auditRunId = await resolveConversationAuditRunId({
-    prisma,
-    tenantId: authContext.tenantId,
-    workspaceId: authContext.workspaceId,
-    userId: authContext.userId,
-    conversationId,
-    title,
   });
 
   return res.status(201).json({
@@ -3049,6 +3013,19 @@ imobRouter.post("/chat/conversations/:conversationId/messages", async (req, res)
     });
   }
 
+  const conversationCreated = await findConversationCreatedEvent({
+    prisma,
+    tenantId: authContext.tenantId,
+    workspaceId: authContext.workspaceId,
+    conversationId,
+  });
+  if (!conversationCreated) {
+    return res.status(404).json({
+      ok: false,
+      error: { code: "CONVERSATION_NOT_FOUND", message: "Conversation not found" },
+    });
+  }
+
   const threadId = requestedThreadId ?? linkedRun?.requestThreadId ?? linkedRun?.threadId ?? null;
   const threadLabel = asString(body.threadLabel) ?? asString(metadata.threadLabel);
   const threadStatusRaw = asString(body.threadStatus) ?? asString(metadata.threadStatus);
@@ -3088,6 +3065,37 @@ imobRouter.post("/chat/conversations/:conversationId/messages", async (req, res)
       ? "waiting"
       : requestedThreadStatus;
 
+  let auditRunId: string | null;
+  try {
+    auditRunId = await resolveConversationAuditRunId({
+      prisma,
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      userId: authContext.userId,
+      conversationId,
+      title: null,
+      minCreatedAt: linkedRun?.createdAt ?? null,
+    });
+  } catch (error) {
+    if (error instanceof WorkspaceAgentAssignmentError) {
+      return res.status(403).json({
+        ok: false,
+        error: {
+          code: error.reasonCode,
+          reasonCode: error.reasonCode,
+          message: error.message,
+        },
+      });
+    }
+    throw error;
+  }
+  if (!auditRunId) {
+    return res.status(500).json({
+      ok: false,
+      error: { code: "AUDIT_RUN_MISSING", message: "Audit run could not be resolved" },
+    });
+  }
+
   const message = await prisma.memoryEvent.create({
     data: {
       tenantId: authContext.tenantId,
@@ -3115,6 +3123,7 @@ imobRouter.post("/chat/conversations/:conversationId/messages", async (req, res)
         proofReady: proofState.proofReady,
         proofState: proofState.proofState,
         completionContractVersion: "imob.chat.completion.v1",
+        auditRunId,
         runCorrelation: {
           runId,
           caseId: linkedRun?.caseId ?? null,
@@ -3124,22 +3133,6 @@ imobRouter.post("/chat/conversations/:conversationId/messages", async (req, res)
       },
     },
   });
-
-  const auditRunId = await resolveConversationAuditRunId({
-    prisma,
-    tenantId: authContext.tenantId,
-    workspaceId: authContext.workspaceId,
-    userId: authContext.userId,
-    conversationId,
-    title: null,
-    minCreatedAt: linkedRun?.createdAt ?? null,
-  });
-  if (!auditRunId) {
-    return res.status(500).json({
-      ok: false,
-      error: { code: "AUDIT_RUN_MISSING", message: "Audit run could not be resolved" },
-    });
-  }
 
   const transcriptProof = await recordConversationMessageProof({
     prisma,
@@ -3842,10 +3835,49 @@ function computeDocumentHash(buffer: Buffer): string {
   return crypto.createHash("sha256").update(buffer).digest("hex");
 }
 
+export function buildImobContractIntakeGuard(
+  operation: ImobContractIntakeBlockedOperation,
+  resolvePolicy: typeof resolveImobContractIntakeRuntimePolicy = resolveImobContractIntakeRuntimePolicy,
+) {
+  return async (req: TenantAwareRequest, res: Response, next: NextFunction) => {
+    const auth = req.authContext;
+    if (!auth) return next();
+
+    const policy = await resolvePolicy({
+      tenantId: auth.tenantId,
+      workspaceId: auth.workspaceId,
+    });
+    if (policy.enabled) return next();
+
+    if (req.prisma) {
+      await recordImobContractIntakeBlocked({
+        prisma: req.prisma,
+        tenantId: auth.tenantId,
+        workspaceId: auth.workspaceId,
+        operation,
+        policy,
+      });
+    }
+
+    return res.status(policy.httpStatus).json({
+      ok: false,
+      blocked: true,
+      actionId: policy.actionId,
+      reasonCode: policy.reasonCode,
+      retryable: policy.retryable,
+      message: policy.message,
+    });
+  };
+}
+
 // POST /api/imob/chat/intake/upload
 // Accepts a single .docx file, extracts + masks + classifies, returns draft.
 // Does NOT mutate ImobCase. No PII in response.
-imobRouter.post("/chat/intake/upload", intakeUpload.single("file"), async (req: TenantAwareRequest, res: Response) => {
+imobRouter.post(
+  "/chat/intake/upload",
+  buildImobContractIntakeGuard("upload"),
+  intakeUpload.single("file"),
+  async (req: TenantAwareRequest, res: Response) => {
   const auth = req.authContext;
   if (!auth) {
     return res.status(403).json({ ok: false, reasonCode: "UNAUTHORIZED", message: "Auth context ausente" });
@@ -3950,12 +3982,16 @@ imobRouter.post("/chat/intake/upload", intakeUpload.single("file"), async (req: 
     extractionOk: extraction.ok,
     parserVersion: extraction.parserVersion,
   });
-});
+  },
+);
 
 // POST /api/imob/chat/intake/confirm/:draftId
 // Validates draft, creates run, returns runId.
 // Governed block if actionId not in registry or agent not assigned.
-imobRouter.post("/chat/intake/confirm/:draftId", async (req: TenantAwareRequest, res: Response) => {
+imobRouter.post(
+  "/chat/intake/confirm/:draftId",
+  buildImobContractIntakeGuard("confirm"),
+  async (req: TenantAwareRequest, res: Response) => {
   const auth = req.authContext;
   if (!auth) {
     return res.status(403).json({ ok: false, reasonCode: "UNAUTHORIZED", message: "Auth context ausente" });
@@ -4090,7 +4126,8 @@ imobRouter.post("/chat/intake/confirm/:draftId", async (req: TenantAwareRequest,
     mutationQueued: true,
     message: "Run concluído. Mutação do caso enfileirada para o worker.",
   });
-});
+  },
+);
 
 // GET /api/imob/runs/:runId/intake/export?format=html|docx|pdf
 // Builds and streams the intake export from persisted run/case/event — never from draft.

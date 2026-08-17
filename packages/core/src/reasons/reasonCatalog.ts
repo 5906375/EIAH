@@ -105,6 +105,10 @@ const EXECUTION_PROPOSED_CODES = [
   "AUDIT_WRITE_FAILED",
 ] as const;
 
+const EXECUTION_ASSIGNMENT_ACTIVE_CODES = [
+  "AGENT_ASSIGNMENT_REQUIRED",
+] as const;
+
 const CONNECTION_PROPOSED_CODES = [
   "REDIS_URL_REQUIRED",
 ] as const;
@@ -200,6 +204,22 @@ export const REASON_CODE_CATALOG = [
       actor: "checkArchChatContracts",
     },
     evidenceRef: "contracts/chat/vertical.reason_codes.v1.json#codes",
+  }),
+  ...defineReasonCodes(EXECUTION_ASSIGNMENT_ACTIVE_CODES, {
+    domain: "execution",
+    severity: "critical",
+    category: "authorization",
+    descriptionPrefix:
+      "No exact pre-existing enabled workspace agent assignment exists for the requested tenant, workspace, agent and version",
+    status: "active",
+    owner: "Execution governance",
+    approver: {
+      kind: "human",
+      actor: "Carlos Alberto Merlo",
+    },
+    introducedBy: "PR1a-assignment-fail-closed",
+    evidenceRef:
+      "docs/ops/reason-codes-catalog.md#ratificacao-pr1a-assignment-fail-closed-2026-08-12",
   }),
   ...defineReasonCodes(LEDGER_PROPOSED_CODES, {
     domain: "ledger",

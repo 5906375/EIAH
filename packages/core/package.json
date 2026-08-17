@@ -38,6 +38,10 @@
       "import": "./dist/services/*.js",
       "types": "./dist/services/*.d.ts"
     },
+    "./security/killSwitch": {
+      "import": "./dist/security/killSwitch.js",
+      "types": "./dist/security/killSwitch.d.ts"
+    },
     "./taxonomy/*": {
       "import": "./dist/taxonomy/*.js",
       "types": "./dist/taxonomy/*.d.ts"

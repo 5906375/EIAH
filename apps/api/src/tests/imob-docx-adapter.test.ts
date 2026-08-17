@@ -1,18 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
 
 import { extractTextFromDocxBuffer } from "../services/imob/intake/imobDocxAdapter";
 
-// Uses mammoth's bundled test fixtures — no PII, no real documents
-const MAMMOTH_TEST_DATA = join(
-  process.cwd(),
-  "node_modules/mammoth/test/test-data",
-);
+// Repository-owned synthetic fixture — stable across mammoth package layouts.
+const DOCX_FIXTURE = new URL("./fixtures/imob/minimal-lease-contract.docx", import.meta.url);
 
 test("T-DOCX-1: buffer .docx válido retorna ok=true e text não-vazio", async () => {
-  const buffer = readFileSync(join(MAMMOTH_TEST_DATA, "simple-list.docx"));
+  const buffer = readFileSync(DOCX_FIXTURE);
   const result = await extractTextFromDocxBuffer(buffer);
   assert.equal(result.ok, true);
   assert.ok(result.text.length > 0, "text deve ser não-vazio");
@@ -32,7 +28,7 @@ test("T-DOCX-3: buffer vazio retorna ok=false", async () => {
 });
 
 test("T-DOCX-4: resultado tem shape correto (ok, text, messages)", async () => {
-  const buffer = readFileSync(join(MAMMOTH_TEST_DATA, "simple-list.docx"));
+  const buffer = readFileSync(DOCX_FIXTURE);
   const result = await extractTextFromDocxBuffer(buffer);
   assert.ok("ok" in result);
   assert.ok("text" in result);
@@ -40,10 +36,10 @@ test("T-DOCX-4: resultado tem shape correto (ok, text, messages)", async () => {
   assert.ok(Array.isArray(result.messages));
 });
 
-test("T-DOCX-5: buffer .docx tiny-picture retorna ok=true", async () => {
-  const buffer = readFileSync(join(MAMMOTH_TEST_DATA, "tiny-picture.docx"));
+test("T-DOCX-5: fixture .docx imobiliária retorna shape estável", async () => {
+  const buffer = readFileSync(DOCX_FIXTURE);
   const result = await extractTextFromDocxBuffer(buffer);
-  // pictures are fine; text may be minimal but ok should be determined by extraction
+  // The adapter contract remains stable for the repository-owned fixture.
   assert.equal(typeof result.ok, "boolean");
   assert.equal(typeof result.text, "string");
 });
