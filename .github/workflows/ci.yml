@@ -861,6 +861,14 @@ jobs:
         run: pnpm test:imob-intake:rc
         timeout-minutes: 5
 
+      - name: Run IMOB intake kill switch regression suite
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/eiah_ci?schema=public
+          REDIS_URL: redis://localhost:6379
+          NODE_ENV: test
+        run: pnpm test:imob-intake:kill-switch
+        timeout-minutes: 5
+
   receipt_canon_compat:
     name: ReceiptCanonCompat
     runs-on: ubuntu-latest
