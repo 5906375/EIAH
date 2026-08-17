@@ -71,6 +71,12 @@ export function ensureLocalTestInfraEnv() {
     }
   }
 
+  // The capability kill switch must use the same authenticated Redis selected
+  // by the test harness, not a stale host-level override.
+  if (process.env.REDIS_URL) {
+    process.env.KILL_SWITCH_REDIS_URL = process.env.REDIS_URL;
+  }
+
   process.env.REDIS_HOST ??= "127.0.0.1";
 }
 

@@ -1,4 +1,4 @@
-import { type Response } from "express";
+import { type NextFunction, type Response } from "express";
 import crypto from "node:crypto";
 import { createGovernedRouter } from "../middlewares/asyncHandler";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
@@ -14,6 +14,11 @@ import { searchImobKnowledge } from "../services/imob/imobKnowledgeSearch";
 import { readImobDriveSyncSnapshot } from "../services/imob/imobDriveSync";
 import { searchImobInventory } from "../services/imob/imobInventoryProvider";
 import { resolveImobTurn } from "../services/imob/imobTurnResolver";
+import {
+  recordImobContractIntakeBlocked,
+  resolveImobContractIntakeRuntimePolicy,
+  type ImobContractIntakeBlockedOperation,
+} from "../services/imob/intake/imobContractIntakeRuntime";
 import { matchImobConversationalIntents } from "../services/imob/imobIntentCatalog";
 import { resolveImobBackingSpecialists } from "../services/imob/imobSpecialistBridge";
 import { buildImobConversationSnapshot } from "../services/imob/imobCaseSnapshotService";
@@ -3830,10 +3835,49 @@ function computeDocumentHash(buffer: Buffer): string {
   return crypto.createHash("sha256").update(buffer).digest("hex");
 }
 
+export function buildImobContractIntakeGuard(
+  operation: ImobContractIntakeBlockedOperation,
+  resolvePolicy: typeof resolveImobContractIntakeRuntimePolicy = resolveImobContractIntakeRuntimePolicy,
+) {
+  return async (req: TenantAwareRequest, res: Response, next: NextFunction) => {
+    const auth = req.authContext;
+    if (!auth) return next();
+
+    const policy = await resolvePolicy({
+      tenantId: auth.tenantId,
+      workspaceId: auth.workspaceId,
+    });
+    if (policy.enabled) return next();
+
+    if (req.prisma) {
+      await recordImobContractIntakeBlocked({
+        prisma: req.prisma,
+        tenantId: auth.tenantId,
+        workspaceId: auth.workspaceId,
+        operation,
+        policy,
+      });
+    }
+
+    return res.status(policy.httpStatus).json({
+      ok: false,
+      blocked: true,
+      actionId: policy.actionId,
+      reasonCode: policy.reasonCode,
+      retryable: policy.retryable,
+      message: policy.message,
+    });
+  };
+}
+
 // POST /api/imob/chat/intake/upload
 // Accepts a single .docx file, extracts + masks + classifies, returns draft.
 // Does NOT mutate ImobCase. No PII in response.
-imobRouter.post("/chat/intake/upload", intakeUpload.single("file"), async (req: TenantAwareRequest, res: Response) => {
+imobRouter.post(
+  "/chat/intake/upload",
+  buildImobContractIntakeGuard("upload"),
+  intakeUpload.single("file"),
+  async (req: TenantAwareRequest, res: Response) => {
   const auth = req.authContext;
   if (!auth) {
     return res.status(403).json({ ok: false, reasonCode: "UNAUTHORIZED", message: "Auth context ausente" });
@@ -3938,12 +3982,16 @@ imobRouter.post("/chat/intake/upload", intakeUpload.single("file"), async (req: 
     extractionOk: extraction.ok,
     parserVersion: extraction.parserVersion,
   });
-});
+  },
+);
 
 // POST /api/imob/chat/intake/confirm/:draftId
 // Validates draft, creates run, returns runId.
 // Governed block if actionId not in registry or agent not assigned.
-imobRouter.post("/chat/intake/confirm/:draftId", async (req: TenantAwareRequest, res: Response) => {
+imobRouter.post(
+  "/chat/intake/confirm/:draftId",
+  buildImobContractIntakeGuard("confirm"),
+  async (req: TenantAwareRequest, res: Response) => {
   const auth = req.authContext;
   if (!auth) {
     return res.status(403).json({ ok: false, reasonCode: "UNAUTHORIZED", message: "Auth context ausente" });
@@ -4078,7 +4126,8 @@ imobRouter.post("/chat/intake/confirm/:draftId", async (req: TenantAwareRequest,
     mutationQueued: true,
     message: "Run concluído. Mutação do caso enfileirada para o worker.",
   });
-});
+  },
+);
 
 // GET /api/imob/runs/:runId/intake/export?format=html|docx|pdf
 // Builds and streams the intake export from persisted run/case/event — never from draft.

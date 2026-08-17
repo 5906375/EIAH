@@ -26,6 +26,11 @@ import { finalizeHttpContractCleanup } from "./support/httpContractCleanup.js";
 import { processImobRunCompletedJob } from "../workers/imobPostRunMutationWorker.js";
 import { imobRunCompletedQueue } from "../queues/imobRunCompletedQueue.js";
 import { runAtivoUniversalQueue, runAtivoUniversalDLQ } from "@eiah/core";
+import {
+  clearTenantCapabilityFlag,
+  closeCriticalKillSwitchRedis,
+  setTenantCapabilityFlag,
+} from "@eiah/core/security/killSwitch";
 import { hasCoreAgentProfile, resolveAgentId } from "../services/agents.js";
 
 // ─── Identifiers ──────────────────────────────────────────────────────────────
@@ -88,9 +93,16 @@ before(async () => {
   await prismaGlobal.workspaceAgentAssignment.create({
     data: { tenantId, workspaceId, ...assignmentIdentity, enabled: true },
   });
+  await setTenantCapabilityFlag({
+    capabilityId: "imob.contract.intake",
+    tenantId,
+    workspaceId,
+    enabled: true,
+  });
 });
 
 after(async () => {
+  await clearTenantCapabilityFlag({ capabilityId: "imob.contract.intake", tenantId, workspaceId });
   await (prismaGlobal as any).imobCaseEvent.deleteMany({ where: { tenantId } });
   await (prismaGlobal as any).imobCase.deleteMany({ where: { tenantId } });
   await prismaGlobal.run.deleteMany({ where: { tenantId } });
@@ -105,6 +117,7 @@ after(async () => {
   await imobRunCompletedQueue.close();
   await runAtivoUniversalQueue.close();
   await runAtivoUniversalDLQ.close();
+  await closeCriticalKillSwitchRedis();
 });
 
 // ─── Phase 5.5 RC Tests ───────────────────────────────────────────────────────

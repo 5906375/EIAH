@@ -110,6 +110,7 @@
     "test:imob-intake:confirm": "node --import tsx --test --test-force-exit apps/api/src/tests/imob-intake-confirm.test.ts",
     "test:imob-intake:lifecycle": "node --import tsx --test --test-force-exit apps/api/src/tests/imob-intake-lifecycle.test.ts",
     "test:imob-intake:rc": "node --import tsx --test --test-force-exit apps/api/src/tests/imob-intake-rc.test.ts",
+    "test:imob-intake:kill-switch": "node --import tsx --test --test-force-exit apps/api/src/tests/imob-intake-kill-switch.test.ts",
     "test:api-health-contract": "node --import tsx --test apps/api/src/tests/health.contract.test.ts",
     "test:agents-policy-fail-closed": "node --import tsx --test apps/api/src/tests/agents.policy.fail-closed.test.ts",
     "test:chat-vertical-handoff-snapshot": "node --import tsx --test apps/api/src/tests/chat-vertical-handoff-snapshot.test.ts apps/api/src/tests/chat-vertical-imob-candidate-resolver.test.ts apps/api/src/tests/chat-vertical-imob-confidence.test.ts apps/api/src/tests/chat-vertical-imob-clarification.test.ts apps/api/src/tests/chat-vertical-imob-handoff.test.ts apps/api/src/tests/chat-vertical-imob-runtime-shadow.test.ts apps/api/src/tests/chat-vertical-imob-runtime-shadow-engine.contract.test.ts apps/api/src/tests/chat-vertical-imob-runtime-shadow-route.contract.test.ts apps/api/src/tests/chat-vertical-imob-runtime-shadow-mount.contract.test.ts",

@@ -12,6 +12,7 @@ export default defineConfig({
     "src/actions/registry/*.ts",
     "src/actions/reporting/*.ts",
     "src/services/*.ts",
+    "src/security/killSwitch.ts",
     "src/taxonomy/*.ts",
   ],
   outDir: "dist",

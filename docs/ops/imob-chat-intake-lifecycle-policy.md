@@ -114,6 +114,14 @@ O `jobId` fixo por `runId` garante que apenas um job de mutação por run seja e
 
 O worker é idempotente: mesmo sob retry (3 tentativas por default), a segunda e terceira execução do job retornam no check de idempotência por runId, sem criar entidades duplicadas.
 
+### Contenção interina PR1a.1 — jobs já enfileirados
+
+- A capacidade `imob.contract.intake` usa flag allowlist por `tenantId + workspaceId`; ausência, valor inválido ou falha do Redis significa desabilitado.
+- Jobs `waiting`, `delayed` ou `active` encontrados enquanto a capacidade estiver desabilitada falham com `UnrecoverableError`. O BullMQ encerra o job na primeira execução, sem consumir `attempts: 3`, e o mantém em `failed` porque `removeOnFail=false`.
+- Jobs que já estavam em `failed` antes desta contenção também permanecem retidos. Não há retry ou retomada automática durante a janela PR1a.1, evitando retry storm e abertura acidental do intake.
+- Após a conclusão do PR1c, a retomada exige duas ações ordenadas e explícitas: habilitar a flag do tenant/workspace e executar redrive controlado dos jobs `failed` daquele mesmo escopo. `job.retry()` é o mecanismo BullMQ previsto; o operador deve limitar lote/concurrency e acompanhar casos/eventos idempotentes.
+- Esta correção não adiciona reconciliador, scheduler de redrive, endpoint administrativo ou mudança do payload. A automação da retomada continua fora do escopo e depende da decisão operacional do PR1c.
+
 ---
 
 ## 5. Resumo de lifecycle end-to-end
