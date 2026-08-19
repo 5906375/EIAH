@@ -26,14 +26,15 @@ Nota: esses sao nomes de *context* (job), nao de *workflow*. O workflow que prod
 Para reconferir: `gh api repos/5906375/EIAH/rules/branches/main` (nao usar `/branches/main/protection` classico nem o campo `isRequired` de check-runs — ambos ignoram este ruleset e retornam falso negativo neste repositorio).
 
 ## Gate de promocao (hard metrics)
-Promocao so e permitida quando **todos** os itens abaixo forem verdadeiros no ciclo semanal:
-1. `decision = GO`
-2. `hardMetricsGo = true`
-3. `auditGap = 0`
-4. `duplicateSideEffects = 0`
-5. `breakGlass = 0`
+Promocao so e permitida quando **todos** os itens abaixo forem verdadeiros no ciclo semanal. Cada criterio e gated, mas nao pelo mesmo mecanismo — a lista a seguir atribui cada um a sua fonte real de validacao:
 
-Se qualquer item falhar, o veredito e `NO_GO` (fail-closed), exceto break-glass valido e auditado.
+1. `decision = GO` e `hardMetricsGo = true` — exigidos pelo schema `apeWeeklyCycleV2DecisionEnvelopeSchema` (`packages/contracts/src/apeWeeklyCycleV2.ts:70-76`: `decision: z.literal("GO")`, `hardMetricsGo: z.literal(true)`, `hardReasons: z.array(...).length(0)`); consumidos — nao revalidados — por `scripts/checkApeCycleHardMetrics.ts:10-16`, que le `artifacts/ape/weekly-cycle-decision.json` e falha se `hardMetricsGo` for falso ou `hardReasons` nao-vazio.
+2. `auditGap = 0` e `duplicateSideEffects = 0` — validados independentemente em dois gates recorrentes: `scripts/checkP3StabilityRecurring.ts:79-95` e `scripts/checkP1ReconciliationRecurring.ts:63-86`. Protegidos contra remocao silenciosa por `scripts/auditCriticalityCoverage.ts:27-31`.
+3. `breakGlass = 0` — validado apenas em `scripts/checkP3StabilityRecurring.ts:81,94`. Nao aparece no schema `apeWeeklyCycleV2StructureSchema` (que define `metrics` como `{auditGap, duplicateSideEffects}` apenas) nem em `checkP1ReconciliationRecurring.ts` — cobertura mais restrita que os outros dois criterios.
+
+`scripts/checkApeCycleHardMetrics.ts` **nao** revalida `auditGap`/`duplicateSideEffects`/`breakGlass` individualmente — consome um veredito ja consolidado (`hardMetricsGo` + `hardReasons`). A validacao numerica desses tres campos acontece nos gates nomeados acima, nao no gate de hard metrics.
+
+Se qualquer item falhar, o veredito e `NO_GO` (fail-closed). Nao existe hoje nenhum mecanismo de excecao a esse fail-closed: a clausula de versoes anteriores deste documento ("exceto break-glass valido e auditado") pressupunha um caminho de aprovacao humana + TTL + trilha auditavel que nao foi localizado em nenhum caminho de codigo consultado. O contador `breakGlass` em si existe e e gated a zero (ver item 3 acima) — o que nao existe e um mecanismo que permita um ciclo `NO_GO` prosseguir mesmo assim. Ver "Modelo alvo (nao implementado)".
 
 ## Janela operacional
 1. Merge window: inicio da semana antes da execucao APE Weekly.
@@ -58,6 +59,6 @@ As afirmacoes abaixo descrevem intencao declarada em versoes anteriores deste do
 
 1. **Promocao por branch de ambiente.** O modelo original previa branches `staging` e `pilot` recebendo apenas "promote" de `main`. Nenhuma das duas branches existe em `origin` (verificado contra a lista completa de branches remotas) e nenhum workflow do repositorio dispara nelas. Nao ha, hoje, nenhum caminho tecnico que implemente esse modelo.
 2. **Deploy funcional a partir de `main`.** `deploy.yml` e `workflow_dispatch`-only, gated pelos GitHub Environments `deploy-staging` e `deploy-production.`; desde o commit `fe22fbd2` (2026-08-19), o passo de rollout falha explicitamente com `DEPLOY_NOT_IMPLEMENTED` para os componentes `api`, `workers` e `cli` — e falhava silenciosamente-como-sucesso antes disso. Nenhum deployment foi registrado nos Environments `deploy-staging` ou `deploy-production.` em toda a historia do repositorio (`GET deployments?environment=...` retorna 0 para ambos). `release.yml` constroi e publica imagens reais em `ghcr.io` (`eiah-api`, `eiah-workers`) por tag de versao — isso e build/publish, nao deploy.
-3. **Break-glass com trilha `RunEvent`+ledger.** Ver secao acima — o mecanismo real (critical kill switch) nao grava nessas estruturas.
+3. **Break-glass como excecao ao gate `NO_GO`, com trilha `RunEvent`+ledger.** Ver secao acima — o mecanismo real (critical kill switch) nao grava nessas estruturas, e nenhum caminho de codigo permite que um ciclo `NO_GO` prossiga por excecao de break-glass.
 
 A escolha entre formalizar esse modelo (branches de ambiente, Environments com capability cohort, outro desenho) permanece uma decisao em aberto, fora do escopo desta reconciliacao.
