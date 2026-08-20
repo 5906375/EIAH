@@ -57,6 +57,27 @@ dedicado com:
 Automação não pode ratificar o próprio código. Preencher os campos no mesmo PR
 que propõe o código não substitui aprovação humana autenticada.
 
+<a id="ratificacao-ape-release-containment-2026-08-20"></a>
+
+## Ratificação APE release containment — 2026-08-20
+
+Carlos Alberto Merlo ratificou `APE_TELEMETRY_NOT_AVAILABLE` como `active`
+para bloquear de forma fail-closed a publicação de artefatos em `release.yml`
+enquanto não existir telemetria `ape.weekly-cycle.v3` válida, recente, completa
+e ratificada. O owner é `Release governance / APE telemetry`; a decisão
+normativa autenticada está em
+`docs/ops/ape-audit-telemetry-decision.md#12-ratificação`.
+
+Neste estágio, o código significa exclusivamente que a telemetria v3 ainda
+não está disponível. Ele não afirma que existe telemetria vencida, cobertura
+incompleta, receipt inválido ou ciclo sem ratificação. Esses estados continuam
+normativamente definidos, mas seus reason codes só poderão ser ativados quando
+o contrato v3 e os respectivos ramos de validação existirem.
+
+O enforcement ocorre antes de `publish_cli`, `publish_api_image` e
+`publish_worker_image`. Ele não bloqueia a criação de tags, não renova
+evidências e não altera os approvals dos GitHub Environments.
+
 <a id="ratificacao-pr1a-assignment-fail-closed-2026-08-12"></a>
 
 ## Ratificação PR1a Assignment fail-closed — 2026-08-12
@@ -211,6 +232,7 @@ fonte canônica falham em `check:reason-code-canon`.
 | `VERTICAL_HANDOFF_ALLOWED` | active |
 | `VERTICAL_PREVIEW_ONLY` | active |
 | `AGENT_ASSIGNMENT_REQUIRED` | active |
+| `APE_TELEMETRY_NOT_AVAILABLE` | active |
 | `invalid_txid_format` | proposed |
 | `txid_not_found` | proposed |
 | `pou_txid_mismatch` | proposed |

@@ -7,6 +7,7 @@ export const REASON_CODE_DOMAINS = [
   "mcp",
   "imob",
   "chat_vertical",
+  "release",
   "rbac",
   "notification",
 ] as const;
@@ -107,6 +108,10 @@ const EXECUTION_PROPOSED_CODES = [
 
 const EXECUTION_ASSIGNMENT_ACTIVE_CODES = [
   "AGENT_ASSIGNMENT_REQUIRED",
+] as const;
+
+const RELEASE_TELEMETRY_ACTIVE_CODES = [
+  "APE_TELEMETRY_NOT_AVAILABLE",
 ] as const;
 
 const CONNECTION_PROPOSED_CODES = [
@@ -220,6 +225,22 @@ export const REASON_CODE_CATALOG = [
     introducedBy: "PR1a-assignment-fail-closed",
     evidenceRef:
       "docs/ops/reason-codes-catalog.md#ratificacao-pr1a-assignment-fail-closed-2026-08-12",
+  }),
+  ...defineReasonCodes(RELEASE_TELEMETRY_ACTIVE_CODES, {
+    domain: "release",
+    severity: "critical",
+    category: "governance",
+    descriptionPrefix:
+      "Release publication is blocked because valid APE weekly-cycle v3 telemetry is unavailable",
+    status: "active",
+    owner: "Release governance / APE telemetry",
+    approver: {
+      kind: "human",
+      actor: "Carlos Alberto Merlo",
+    },
+    introducedBy: "APE-TELEMETRY-CONTAINMENT-PR-A",
+    evidenceRef:
+      "docs/ops/ape-audit-telemetry-decision.md#12-ratificação",
   }),
   ...defineReasonCodes(LEDGER_PROPOSED_CODES, {
     domain: "ledger",
@@ -368,6 +389,7 @@ export type ReasonCode = (typeof REASON_CODE_CATALOG)[number]["code"];
 export type ActiveReasonCode =
   | (typeof IMOB_BOOTSTRAP_ACTIVE_CODES)[number]
   | (typeof CHAT_VERTICAL_BOOTSTRAP_ACTIVE_CODES)[number]
+  | (typeof RELEASE_TELEMETRY_ACTIVE_CODES)[number]
   | (typeof MCP_TOOL_CONTRACT_ACTIVE_CODES)[number]
   | (typeof MCP_DB_SCOPE_ACTIVE_CODES)[number]
   | (typeof MCP_DB_ALLOWLIST_ACTIVE_CODES)[number]

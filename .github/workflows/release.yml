@@ -90,6 +90,19 @@ jobs:
           --from-schema-datamodel ./packages/db/prisma/schema.prisma \
           --to-schema-datamodel ./packages/db/prisma/schema.prisma
 
+  release_promotion_telemetry:
+    name: ReleasePromotionTelemetry
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Block publication until APE telemetry v3 is available
+        shell: bash
+        env:
+          REASON_CODE: APE_TELEMETRY_NOT_AVAILABLE
+        run: |
+          printf '{"ok":false,"gate":"ReleasePromotionTelemetry","reasonCode":"%s"}\n' "$REASON_CODE"
+          echo "::error title=Release promotion blocked::${REASON_CODE}: valid APE weekly-cycle v3 telemetry is unavailable; publication remains fail-closed."
+          exit 1
 
   publish_cli:
     runs-on: ubuntu-latest
@@ -97,6 +110,7 @@ jobs:
       - prepare
       - detect
       - validate_release
+      - release_promotion_telemetry
     if: ${{ needs.detect.outputs.has_cli == 'true' }}
     environment:
       name: release-cli
@@ -141,6 +155,7 @@ jobs:
       - prepare
       - detect
       - validate_release
+      - release_promotion_telemetry
     if: ${{ needs.detect.outputs.has_api == 'true' }}
     permissions:
       contents: read
@@ -177,6 +192,7 @@ jobs:
       - prepare
       - detect
       - validate_release
+      - release_promotion_telemetry
     if: ${{ needs.detect.outputs.has_workers == 'true' }}
     permissions:
       contents: read

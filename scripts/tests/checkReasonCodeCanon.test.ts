@@ -98,6 +98,24 @@ test("keeps MCP policy additions proposed and ratified DB input active", () => {
   );
 });
 
+test("keeps the ratified APE release containment code active", () => {
+  const definition = REASON_CODE_CATALOG.find(
+    (entry) => entry.code === "APE_TELEMETRY_NOT_AVAILABLE",
+  );
+
+  assert.equal(definition?.status, "active");
+  assert.equal(definition?.domain, "release");
+  assert.equal(definition?.owner, "Release governance / APE telemetry");
+  assert.deepEqual(definition?.approver, {
+    kind: "human",
+    actor: "Carlos Alberto Merlo",
+  });
+  assert.equal(
+    definition?.evidenceRef,
+    "docs/ops/ape-audit-telemetry-decision.md#12-ratificação",
+  );
+});
+
 test("rejects active without owner, approver or evidenceRef", () => {
   const fixture = {
     ...activeFixture(),
