@@ -1,4 +1,8 @@
-export const REASON_CODE_STATUSES = ["active", "proposed", "deprecated"] as const;
+export const REASON_CODE_STATUSES = [
+  "active",
+  "proposed",
+  "deprecated",
+] as const;
 export type ReasonCodeStatus = (typeof REASON_CODE_STATUSES)[number];
 
 export const REASON_CODE_DOMAINS = [
@@ -7,12 +11,18 @@ export const REASON_CODE_DOMAINS = [
   "mcp",
   "imob",
   "chat_vertical",
+  "release",
   "rbac",
   "notification",
 ] as const;
 export type ReasonCodeDomain = (typeof REASON_CODE_DOMAINS)[number];
 
-export const REASON_CODE_SEVERITIES = ["info", "warning", "error", "critical"] as const;
+export const REASON_CODE_SEVERITIES = [
+  "info",
+  "warning",
+  "error",
+  "critical",
+] as const;
 export type ReasonCodeSeverity = (typeof REASON_CODE_SEVERITIES)[number];
 
 export const REASON_CODE_CATEGORIES = [
@@ -109,29 +119,19 @@ const EXECUTION_ASSIGNMENT_ACTIVE_CODES = [
   "AGENT_ASSIGNMENT_REQUIRED",
 ] as const;
 
-const CONNECTION_PROPOSED_CODES = [
-  "REDIS_URL_REQUIRED",
-] as const;
+const RELEASE_TELEMETRY_ACTIVE_CODES = ["APE_TELEMETRY_NOT_AVAILABLE"] as const;
 
-const MCP_TOOL_CONTRACT_ACTIVE_CODES = [
-  "MCP_TOOL_CONTRACT_MISSING",
-] as const;
+const CONNECTION_PROPOSED_CODES = ["REDIS_URL_REQUIRED"] as const;
 
-const MCP_DB_SCOPE_ACTIVE_CODES = [
-  "DB_SCOPE_MISSING",
-] as const;
+const MCP_TOOL_CONTRACT_ACTIVE_CODES = ["MCP_TOOL_CONTRACT_MISSING"] as const;
 
-const MCP_DB_ALLOWLIST_ACTIVE_CODES = [
-  "DB_MODEL_NOT_ALLOWLISTED",
-] as const;
+const MCP_DB_SCOPE_ACTIVE_CODES = ["DB_SCOPE_MISSING"] as const;
 
-const MCP_DB_PROPOSED_CODES = [
-  "DB_SCOPE_VIOLATION",
-] as const;
+const MCP_DB_ALLOWLIST_ACTIVE_CODES = ["DB_MODEL_NOT_ALLOWLISTED"] as const;
 
-const MCP_DB_INPUT_ACTIVE_CODES = [
-  "DB_INPUT_INVALID",
-] as const;
+const MCP_DB_PROPOSED_CODES = ["DB_SCOPE_VIOLATION"] as const;
+
+const MCP_DB_INPUT_ACTIVE_CODES = ["DB_INPUT_INVALID"] as const;
 
 const MCP_POLICY_PROPOSED_CODES = [
   "MCP_POLICY_REFERENCE_MISSING",
@@ -142,9 +142,7 @@ const MCP_POLICY_PROPOSED_CODES = [
   "MCP_POLICY_CONTEXT_VIOLATION",
 ] as const;
 
-const MCP_DENY_PROPOSED_CODES = [
-  "POLICY_NOT_FOUND",
-] as const;
+const MCP_DENY_PROPOSED_CODES = ["POLICY_NOT_FOUND"] as const;
 
 const RBAC_PROPOSED_CODES = [
   "RBAC_OWNER_DEFERRAL",
@@ -221,11 +219,27 @@ export const REASON_CODE_CATALOG = [
     evidenceRef:
       "docs/ops/reason-codes-catalog.md#ratificacao-pr1a-assignment-fail-closed-2026-08-12",
   }),
+  ...defineReasonCodes(RELEASE_TELEMETRY_ACTIVE_CODES, {
+    domain: "release",
+    severity: "critical",
+    category: "governance",
+    descriptionPrefix:
+      "Release publication is blocked because valid APE weekly-cycle v3 telemetry is unavailable",
+    status: "active",
+    owner: "Release governance / APE telemetry",
+    approver: {
+      kind: "human",
+      actor: "Carlos Alberto Merlo",
+    },
+    introducedBy: "APE-TELEMETRY-CONTAINMENT-PR-A",
+    evidenceRef: "docs/ops/ape-audit-telemetry-decision.md#12-ratificação",
+  }),
   ...defineReasonCodes(LEDGER_PROPOSED_CODES, {
     domain: "ledger",
     severity: "error",
     category: "integrity",
-    descriptionPrefix: "Existing documented ledger reason code pending canonical ratification",
+    descriptionPrefix:
+      "Existing documented ledger reason code pending canonical ratification",
     status: "proposed",
     owner: "Ledger governance",
     evidenceRef:
@@ -235,7 +249,8 @@ export const REASON_CODE_CATALOG = [
     domain: "execution",
     severity: "critical",
     category: "execution",
-    descriptionPrefix: "Existing execution reason code pending canonical ratification",
+    descriptionPrefix:
+      "Existing execution reason code pending canonical ratification",
     status: "proposed",
     owner: "Execution governance",
     evidenceRef: "apps/api/src/services/executionEvidence.ts",
@@ -303,10 +318,12 @@ export const REASON_CODE_CATALOG = [
     domain: "mcp",
     severity: "critical",
     category: "authorization",
-    descriptionPrefix: "Existing MCP DB reason code pending canonical ratification",
+    descriptionPrefix:
+      "Existing MCP DB reason code pending canonical ratification",
     status: "proposed",
     owner: "MCP governance",
-    evidenceRef: "packages/mcp-runner/src/executor/dbAllowlist.ts#MCP_DB_REASON_CODES",
+    evidenceRef:
+      "packages/mcp-runner/src/executor/dbAllowlist.ts#MCP_DB_REASON_CODES",
   }),
   ...defineReasonCodes(MCP_DB_INPUT_ACTIVE_CODES, {
     domain: "mcp",
@@ -333,8 +350,7 @@ export const REASON_CODE_CATALOG = [
     status: "proposed",
     owner: "MCP/Tool Security governance",
     introducedBy: "RC-MCP-2A",
-    evidenceRef:
-      "docs/ops/reason-codes-catalog.md#rc-mcp-2a-proposals",
+    evidenceRef: "docs/ops/reason-codes-catalog.md#rc-mcp-2a-proposals",
   }),
   ...defineReasonCodes(MCP_DENY_PROPOSED_CODES, {
     domain: "mcp",
@@ -343,7 +359,8 @@ export const REASON_CODE_CATALOG = [
     descriptionPrefix: "Reason code requested by the blocked MCP deny front",
     status: "proposed",
     owner: "MCP governance",
-    evidenceRef: "packages/core/src/policy/TenantPolicyStore.ts#ScopeDecisionReasonCode",
+    evidenceRef:
+      "packages/core/src/policy/TenantPolicyStore.ts#ScopeDecisionReasonCode",
   }),
   ...defineReasonCodes(RBAC_PROPOSED_CODES, {
     domain: "rbac",
@@ -357,7 +374,8 @@ export const REASON_CODE_CATALOG = [
     domain: "notification",
     severity: "error",
     category: "governance",
-    descriptionPrefix: "Reason code requested by the blocked notification front",
+    descriptionPrefix:
+      "Reason code requested by the blocked notification front",
     status: "proposed",
     owner: "Notification governance",
     evidenceRef: "scripts/notify/escalationNotice.ts",
@@ -368,14 +386,16 @@ export type ReasonCode = (typeof REASON_CODE_CATALOG)[number]["code"];
 export type ActiveReasonCode =
   | (typeof IMOB_BOOTSTRAP_ACTIVE_CODES)[number]
   | (typeof CHAT_VERTICAL_BOOTSTRAP_ACTIVE_CODES)[number]
+  | (typeof RELEASE_TELEMETRY_ACTIVE_CODES)[number]
   | (typeof MCP_TOOL_CONTRACT_ACTIVE_CODES)[number]
   | (typeof MCP_DB_SCOPE_ACTIVE_CODES)[number]
   | (typeof MCP_DB_ALLOWLIST_ACTIVE_CODES)[number]
   | (typeof MCP_DB_INPUT_ACTIVE_CODES)[number];
 
-const REASON_CODE_BY_CODE = new Map<string, (typeof REASON_CODE_CATALOG)[number]>(
-  REASON_CODE_CATALOG.map((definition) => [definition.code, definition]),
-);
+const REASON_CODE_BY_CODE = new Map<
+  string,
+  (typeof REASON_CODE_CATALOG)[number]
+>(REASON_CODE_CATALOG.map((definition) => [definition.code, definition]));
 
 export function getReasonCodeDefinition(
   value: string | null | undefined,
@@ -384,7 +404,9 @@ export function getReasonCodeDefinition(
   return REASON_CODE_BY_CODE.get(value);
 }
 
-export function isReasonCode(value: string | null | undefined): value is ReasonCode {
+export function isReasonCode(
+  value: string | null | undefined,
+): value is ReasonCode {
   return Boolean(value && REASON_CODE_BY_CODE.has(value));
 }
 
@@ -412,3 +434,4 @@ export function normalizeReason(
 ): ReasonCode {
   return isReasonCode(value) ? value : fallback;
 }
+
