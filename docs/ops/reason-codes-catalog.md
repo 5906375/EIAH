@@ -155,9 +155,9 @@ RC-DB-1A.
 - `MCP_POLICY_CONTEXT_VIOLATION`: tenant, workspace ou scope diverge do
   permitido. O status HTTP externo esperado é `403`. Não é retryable com o
   mesmo contexto e payload.
-  `DB_SCOPE_VIOLATION` permanece `proposed` e reservado para futura separação da
-  violação cross-tenant/workspace real. Não foram criados os agregados ambíguos
-  `MCP_POLICY_NOT_RESOLVED` ou `MCP_POLICY_CONTEXT_INVALID`.
+`DB_SCOPE_VIOLATION` permanece `proposed` e reservado para futura separação da
+violação cross-tenant/workspace real. Não foram criados os agregados ambíguos
+`MCP_POLICY_NOT_RESOLVED` ou `MCP_POLICY_CONTEXT_INVALID`.
 
 ## Ratificacao RC-DB-1A — 2026-07-28
 
@@ -194,82 +194,80 @@ O bloco abaixo é machine-checkable. Alterações manuais que não correspondam 
 fonte canônica falham em `check:reason-code-canon`.
 
 <!-- reason-code-canon:start -->
-
-| Code                                       | Status   |
-| ------------------------------------------ | -------- |
-| `COMMERCIAL_PRIORITY`                      | active   |
-| `FOLLOW_UP_DISCIPLINE`                     | active   |
-| `DOCUMENT_BLOCKER`                         | active   |
-| `FINANCIAL_BLOCKER`                        | active   |
-| `AUDIT_BLOCKER`                            | active   |
-| `BLOCKERS_PRESENT`                         | active   |
-| `PENDING_ITEMS_PRESENT`                    | active   |
-| `NEXT_STEP_AVAILABLE`                      | active   |
-| `CASE_STATUS_BLOCKED`                      | active   |
-| `CASE_RESPONSIBLE_REQUIRED`                | active   |
-| `CASE_OWNER_ASSIGNMENT_FORBIDDEN`          | active   |
-| `MEMBER_NOT_ELIGIBLE_AS_RESPONSIBLE`       | active   |
-| `RESPONSIBLE_ACTOR_CONTRACT_INVALID`       | active   |
-| `INVALID_ACTION_TYPE`                      | active   |
-| `CASE_TRANSITION_EVENT_REQUIRED`           | active   |
-| `PENDING_ACTION_MISSING`                   | active   |
-| `PENDING_ACTION_MISMATCH`                  | active   |
-| `PENDING_ACTION_EXPIRED`                   | active   |
-| `PENDING_ACTION_CANCELLED_BY_USER`         | active   |
-| `CONFIRMATION_TARGET_AMBIGUOUS`            | active   |
-| `DIRECTED_ACTION_CONTEXT_LOST`             | active   |
-| `DIRECTED_ACTION_ENTITY_MISMATCH`          | active   |
-| `DIRECTED_ACTION_JOURNEY_MISMATCH`         | active   |
-| `VERTICAL_NOT_REGISTERED`                  | active   |
-| `VERTICAL_DISABLED`                        | active   |
-| `VERTICAL_ENTITLEMENT_REQUIRED`            | active   |
-| `VERTICAL_SCOPE_DENIED`                    | active   |
-| `VERTICAL_CAPABILITY_NOT_AVAILABLE`        | active   |
-| `VERTICAL_REGISTRY_VERSION_MISMATCH`       | active   |
-| `VERTICAL_POLICY_DENIED`                   | active   |
-| `VERTICAL_HITL_REQUIRED`                   | active   |
-| `VERTICAL_GOVERNANCE_NOT_EVALUATED`        | active   |
-| `VERTICAL_PRESENTATION_INVALID`            | active   |
-| `VERTICAL_HANDOFF_ALLOWED`                 | active   |
-| `VERTICAL_PREVIEW_ONLY`                    | active   |
-| `AGENT_ASSIGNMENT_REQUIRED`                | active   |
-| `APE_TELEMETRY_NOT_AVAILABLE`              | active   |
-| `invalid_txid_format`                      | proposed |
-| `txid_not_found`                           | proposed |
-| `pou_txid_mismatch`                        | proposed |
-| `missing_trust_snapshot_for_pou`           | proposed |
-| `missing_run_for_txid`                     | proposed |
-| `missing_bundle_hash_for_run`              | proposed |
-| `run_txid_mismatch`                        | proposed |
-| `run_critical_hash_mismatch`               | proposed |
-| `missing_scl_for_txid`                     | proposed |
-| `missing_scl_signature`                    | proposed |
-| `scl_critical_hash_mismatch`               | proposed |
-| `delegation_pending_approval`              | proposed |
-| `EXECUTION_FAILED`                         | proposed |
-| `MCP_TOOL_CONTRACT_MISSING`                | active   |
-| `SIMULATED_OUTPUT_IN_CRITICAL_CHAIN`       | proposed |
-| `AUDIT_WRITE_FAILED`                       | proposed |
-| `REDIS_URL_REQUIRED`                       | proposed |
-| `DB_MODEL_NOT_ALLOWLISTED`                 | active   |
-| `DB_SCOPE_VIOLATION`                       | proposed |
-| `DB_INPUT_INVALID`                         | active   |
-| `DB_SCOPE_MISSING`                         | active   |
-| `MCP_POLICY_REFERENCE_MISSING`             | proposed |
-| `MCP_POLICY_TARGET_NOT_FOUND`              | proposed |
-| `MCP_POLICY_STORE_UNAVAILABLE`             | proposed |
-| `MCP_POLICY_DENIED`                        | proposed |
-| `MCP_POLICY_CONTEXT_MISSING`               | proposed |
-| `MCP_POLICY_CONTEXT_VIOLATION`             | proposed |
-| `POLICY_NOT_FOUND`                         | proposed |
-| `RBAC_OWNER_DEFERRAL`                      | proposed |
-| `RBAC_BUILD_ARTIFACT_DRIFT`                | proposed |
-| `NOTIFICATION_NON_DELIVERY_ESCALATION`     | proposed |
-| `NOTIFICATION_BLOCKED_FREEZE`              | proposed |
-| `NOTIFICATION_BLOCKED_SECRET_PROVENANCE`   | proposed |
+| Code | Status |
+| --- | --- |
+| `COMMERCIAL_PRIORITY` | active |
+| `FOLLOW_UP_DISCIPLINE` | active |
+| `DOCUMENT_BLOCKER` | active |
+| `FINANCIAL_BLOCKER` | active |
+| `AUDIT_BLOCKER` | active |
+| `BLOCKERS_PRESENT` | active |
+| `PENDING_ITEMS_PRESENT` | active |
+| `NEXT_STEP_AVAILABLE` | active |
+| `CASE_STATUS_BLOCKED` | active |
+| `CASE_RESPONSIBLE_REQUIRED` | active |
+| `CASE_OWNER_ASSIGNMENT_FORBIDDEN` | active |
+| `MEMBER_NOT_ELIGIBLE_AS_RESPONSIBLE` | active |
+| `RESPONSIBLE_ACTOR_CONTRACT_INVALID` | active |
+| `INVALID_ACTION_TYPE` | active |
+| `CASE_TRANSITION_EVENT_REQUIRED` | active |
+| `PENDING_ACTION_MISSING` | active |
+| `PENDING_ACTION_MISMATCH` | active |
+| `PENDING_ACTION_EXPIRED` | active |
+| `PENDING_ACTION_CANCELLED_BY_USER` | active |
+| `CONFIRMATION_TARGET_AMBIGUOUS` | active |
+| `DIRECTED_ACTION_CONTEXT_LOST` | active |
+| `DIRECTED_ACTION_ENTITY_MISMATCH` | active |
+| `DIRECTED_ACTION_JOURNEY_MISMATCH` | active |
+| `VERTICAL_NOT_REGISTERED` | active |
+| `VERTICAL_DISABLED` | active |
+| `VERTICAL_ENTITLEMENT_REQUIRED` | active |
+| `VERTICAL_SCOPE_DENIED` | active |
+| `VERTICAL_CAPABILITY_NOT_AVAILABLE` | active |
+| `VERTICAL_REGISTRY_VERSION_MISMATCH` | active |
+| `VERTICAL_POLICY_DENIED` | active |
+| `VERTICAL_HITL_REQUIRED` | active |
+| `VERTICAL_GOVERNANCE_NOT_EVALUATED` | active |
+| `VERTICAL_PRESENTATION_INVALID` | active |
+| `VERTICAL_HANDOFF_ALLOWED` | active |
+| `VERTICAL_PREVIEW_ONLY` | active |
+| `AGENT_ASSIGNMENT_REQUIRED` | active |
+| `APE_TELEMETRY_NOT_AVAILABLE` | active |
+| `invalid_txid_format` | proposed |
+| `txid_not_found` | proposed |
+| `pou_txid_mismatch` | proposed |
+| `missing_trust_snapshot_for_pou` | proposed |
+| `missing_run_for_txid` | proposed |
+| `missing_bundle_hash_for_run` | proposed |
+| `run_txid_mismatch` | proposed |
+| `run_critical_hash_mismatch` | proposed |
+| `missing_scl_for_txid` | proposed |
+| `missing_scl_signature` | proposed |
+| `scl_critical_hash_mismatch` | proposed |
+| `delegation_pending_approval` | proposed |
+| `EXECUTION_FAILED` | proposed |
+| `MCP_TOOL_CONTRACT_MISSING` | active |
+| `SIMULATED_OUTPUT_IN_CRITICAL_CHAIN` | proposed |
+| `AUDIT_WRITE_FAILED` | proposed |
+| `REDIS_URL_REQUIRED` | proposed |
+| `DB_MODEL_NOT_ALLOWLISTED` | active |
+| `DB_SCOPE_VIOLATION` | proposed |
+| `DB_INPUT_INVALID` | active |
+| `DB_SCOPE_MISSING` | active |
+| `MCP_POLICY_REFERENCE_MISSING` | proposed |
+| `MCP_POLICY_TARGET_NOT_FOUND` | proposed |
+| `MCP_POLICY_STORE_UNAVAILABLE` | proposed |
+| `MCP_POLICY_DENIED` | proposed |
+| `MCP_POLICY_CONTEXT_MISSING` | proposed |
+| `MCP_POLICY_CONTEXT_VIOLATION` | proposed |
+| `POLICY_NOT_FOUND` | proposed |
+| `RBAC_OWNER_DEFERRAL` | proposed |
+| `RBAC_BUILD_ARTIFACT_DRIFT` | proposed |
+| `NOTIFICATION_NON_DELIVERY_ESCALATION` | proposed |
+| `NOTIFICATION_BLOCKED_FREEZE` | proposed |
+| `NOTIFICATION_BLOCKED_SECRET_PROVENANCE` | proposed |
 | `NOTIFICATION_BLOCKED_REASON_CODE_MISSING` | proposed |
-| `NOTIFICATION_BLOCKED_RUN_MISSING`         | proposed |
-
+| `NOTIFICATION_BLOCKED_RUN_MISSING` | proposed |
 <!-- reason-code-canon:end -->
 
 ## Alcance inicial do checker
@@ -296,4 +294,3 @@ O checker nasce informativo: ele não está entre os required checks atuais.
 Após o merge do RC-0, torná-lo required no ruleset
 `main-protection-hard-gates` é decisão autenticada de Carlos Alberto Merlo.
 Este PR não altera ruleset, branch protection ou workflow.
-

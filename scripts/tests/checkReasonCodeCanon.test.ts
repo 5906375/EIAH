@@ -142,10 +142,9 @@ test("rejects self-declared bootstrap outside the fenced pre-RC-0 baseline", () 
   };
   const violations = validateReasonCodeCatalog([fixture]);
 
-  assert.deepEqual(
-    violations.map((entry) => entry.code),
-    ["ACTIVE_REASON_CODE_BOOTSTRAP_FORBIDDEN"],
-  );
+  assert.deepEqual(violations.map((entry) => entry.code), [
+    "ACTIVE_REASON_CODE_BOOTSTRAP_FORBIDDEN",
+  ]);
 });
 
 test("rejects an unknown reasonCode absent from the canonical source", () => {
@@ -154,10 +153,7 @@ test("rejects an unknown reasonCode absent from the canonical source", () => {
     REASON_CODE_CATALOG,
     "fixture.ts",
   );
-  assert.deepEqual(
-    violations.map((entry) => entry.code),
-    ["UNKNOWN_REASON_CODE"],
-  );
+  assert.deepEqual(violations.map((entry) => entry.code), ["UNKNOWN_REASON_CODE"]);
 });
 
 test("accepts proposed as catalogued but never as active or ratified", () => {
@@ -187,10 +183,9 @@ test("fails when documentation points to a canonical source that does not exist"
     `Canonical source: \`${CANONICAL_REASON_CODE_SOURCE}\``,
     false,
   );
-  assert.deepEqual(
-    violations.map((entry) => entry.code),
-    ["CANONICAL_REASON_CODE_SOURCE_MISSING"],
-  );
+  assert.deepEqual(violations.map((entry) => entry.code), [
+    "CANONICAL_REASON_CODE_SOURCE_MISSING",
+  ]);
 });
 
 test("fails when the documented catalog differs from the canonical source", () => {
@@ -200,10 +195,7 @@ test("fails when the documented catalog differs from the canonical source", () =
     REASON_CODE_CATALOG,
   );
   assert.equal(
-    violations.some(
-      (entry) => entry.code === "DOCUMENTED_REASON_CODE_CATALOG_DRIFT",
-    ),
+    violations.some((entry) => entry.code === "DOCUMENTED_REASON_CODE_CATALOG_DRIFT"),
     true,
   );
 });
-
