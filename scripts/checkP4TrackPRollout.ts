@@ -1,24 +1,13 @@
 import fs from "node:fs";
 import path from "node:path";
+import {
+  STRUCTURAL_GATE_BOUNDARY_SHA,
+  STRUCTURAL_GATE_BOUNDARY_NOTE,
+} from "./apeStructuralGateBoundary";
 
 const CHECK = "check:p4-trackp-rollout";
 const CHECKLIST_FILE = "ops/verticals/vertical-onboarding-checklist.md";
-const KPI_FILE = "ops/evidence/latest/w4-non-regression-kpis.json";
-const EVIDENCE_DIR = path.resolve("ops/evidence/latest");
 const IMOB_ROUTE_FILE = "apps/api/src/routes/imob.ts";
-const MIN_APE_CYCLES = Number(process.env.P4_MIN_APE_CYCLES ?? 2);
-const MAX_AGE_DAYS = Number(process.env.P4_MAX_AGE_DAYS ?? 14);
-
-type KpiDoc = {
-  gates?: { hardMetricsGo?: boolean; nonRegressionGo?: boolean };
-  kpis?: {
-    moduleActivationSuccessRatePct?: number;
-    timeToFirstRunP95Minutes?: number;
-    receiptCoveragePct?: number;
-    crossTenantAuthFailures?: number;
-    duplicateSideEffects?: number;
-  };
-};
 
 function fail(message: string, details?: Record<string, unknown>): never {
   console.error(JSON.stringify({ ok: false, check: CHECK, message, details }, null, 2));
@@ -31,138 +20,65 @@ function readText(relativePath: string): string {
   return fs.readFileSync(file, "utf8");
 }
 
-function readJson<T>(relativePath: string): T {
-  return JSON.parse(readText(relativePath)) as T;
-}
-
-function parseDate(content: string): Date | null {
-  const fromData = content.match(/Data:\s*([0-9]{4}-[0-9]{2}-[0-9]{2})/i);
-  if (fromData) {
-    const d = new Date(`${fromData[1]}T00:00:00Z`);
-    if (!Number.isNaN(d.getTime())) return d;
-  }
-  const fromTitle = content.match(/#\s*APE Weekly Cycle #\d+\s*[—-]\s*([0-9]{4}-[0-9]{2}-[0-9]{2})/i);
-  if (fromTitle) {
-    const d = new Date(`${fromTitle[1]}T00:00:00Z`);
-    if (!Number.isNaN(d.getTime())) return d;
-  }
-  return null;
-}
-
-function parseBoolean(content: string, key: string): boolean | null {
-  const colon = new RegExp(`-\\s*${key}\\s*:\\s*(true|false)`, "i");
-  const equals = new RegExp(`${key}\\s*=\\s*(true|false)`, "i");
-  const colonMatch = content.match(colon);
-  if (colonMatch) return colonMatch[1].toLowerCase() === "true";
-  const equalsMatch = content.match(equals);
-  if (equalsMatch) return equalsMatch[1].toLowerCase() === "true";
-  return null;
-}
-
-function findLatestEvidenceFile(pattern: RegExp): string {
-  const files = fs.readdirSync(EVIDENCE_DIR).filter((name) => pattern.test(name)).sort().reverse();
-  if (files.length === 0) {
-    fail("missing_rollout_evidence_file", { pattern: pattern.source, dir: EVIDENCE_DIR });
-  }
-  return path.join(EVIDENCE_DIR, files[0]);
-}
-
-const PILOT_FILE = findLatestEvidenceFile(/^realestate-pilot-rollout-\d{4}-\d{2}-\d{2}\.md$/);
-
-const pilot = readText(PILOT_FILE).toLowerCase();
-for (const step of ["shadow", "pilot", "small"]) {
-  if (!pilot.includes(step)) {
-    fail("missing_rollout_phase", { step, file: PILOT_FILE });
-  }
-}
-for (const criterion of ["critérios", "tenants", "command center"]) {
-  if (!pilot.includes(criterion)) {
-    fail("pilot_rollout_evidence_missing_criterion", { criterion, file: PILOT_FILE });
-  }
-}
-
 const checklist = readText(CHECKLIST_FILE).toLowerCase();
-for (const item of [
+const imobRoutes = readText(IMOB_ROUTE_FILE);
+
+type Invariant = { id: string; description: string };
+const invariants: Invariant[] = [];
+function checkInvariant(id: string, description: string, run: () => void) {
+  run();
+  invariants.push({ id, description });
+}
+
+const rolloutChecklistItems = [
   "critério `shadow` explícito e documentado",
   "critério `pilot` explícito e documentado",
   "critério `small` explícito e documentado",
   "evidência semanal da vertical publicada",
   "command center da vertical expõe prova por run",
-]) {
-  if (!checklist.includes(item.toLowerCase())) {
-    fail("vertical_checklist_missing_rollout_item", { item, file: CHECKLIST_FILE });
+];
+checkInvariant(
+  "checklist.rollout_phases_documented",
+  "vertical onboarding checklist documents shadow/pilot/small criteria and Command Center proof",
+  () => {
+    const missing = rolloutChecklistItems.filter((item) => !checklist.includes(item.toLowerCase()));
+    if (missing.length > 0) {
+      fail("vertical_checklist_missing_rollout_item", { missing, file: CHECKLIST_FILE });
+    }
   }
-}
+);
 
-const imobRoutes = readText(IMOB_ROUTE_FILE);
-for (const routeNeedle of [
+const trackPRoutes = [
   'get("/command-center/funnel-health"',
   'get("/command-center/blocked-runs"',
   'get("/chat/conversations/:conversationId/export"',
   'get("/cases/:caseId/receipt"',
-]) {
-  if (!imobRoutes.includes(routeNeedle)) {
-    fail("imob_route_missing_trackp_surface", { routeNeedle, file: IMOB_ROUTE_FILE });
+];
+checkInvariant(
+  "imob.trackp_command_center_routes",
+  "IMOB routes expose Command Center funnel/blocked-runs and export/receipt endpoints",
+  () => {
+    const missing = trackPRoutes.filter((needle) => !imobRoutes.includes(needle));
+    if (missing.length > 0) {
+      fail("imob_route_missing_trackp_surface", { missing, file: IMOB_ROUTE_FILE });
+    }
   }
-}
-for (const proofNeedle of ["receiptPath", "bundlePath", "verifyUrl"]) {
-  if (!imobRoutes.includes(proofNeedle)) {
-    fail("imob_route_missing_proof_export_signal", { proofNeedle, file: IMOB_ROUTE_FILE });
+);
+
+const proofSignals = ["receiptPath", "bundlePath", "verifyUrl"];
+checkInvariant(
+  "imob.proof_export_signals",
+  "IMOB export/receipt routes carry receiptPath/bundlePath/verifyUrl proof signals",
+  () => {
+    const missing = proofSignals.filter((needle) => !imobRoutes.includes(needle));
+    if (missing.length > 0) {
+      fail("imob_route_missing_proof_export_signal", { missing, file: IMOB_ROUTE_FILE });
+    }
   }
-}
+);
 
-const kpi = readJson<KpiDoc>(KPI_FILE);
-if (kpi.gates?.hardMetricsGo !== true || kpi.gates?.nonRegressionGo !== true) {
-  fail("kpi_gates_not_green", { gates: kpi.gates ?? null });
-}
-if ((kpi.kpis?.moduleActivationSuccessRatePct ?? 0) < 95) {
-  fail("kpi_module_activation_below_threshold", { got: kpi.kpis?.moduleActivationSuccessRatePct ?? null });
-}
-if ((kpi.kpis?.receiptCoveragePct ?? 0) < 99) {
-  fail("kpi_receipt_coverage_below_threshold", { got: kpi.kpis?.receiptCoveragePct ?? null });
-}
-if ((kpi.kpis?.crossTenantAuthFailures ?? 1) !== 0) {
-  fail("kpi_cross_tenant_failures_not_zero", { got: kpi.kpis?.crossTenantAuthFailures ?? null });
-}
-if ((kpi.kpis?.duplicateSideEffects ?? 1) !== 0) {
-  fail("kpi_duplicate_side_effects_not_zero", { got: kpi.kpis?.duplicateSideEffects ?? null });
-}
-
-const cycleFiles = fs
-  .readdirSync(EVIDENCE_DIR)
-  .filter((name) => /^ape-weekly-cycle-run\d+-\d{4}-\d{2}-\d{2}\.md$/.test(name))
-  .sort((a, b) => {
-    const runA = Number(a.match(/^ape-weekly-cycle-run(\d+)-/)?.[1] ?? 0);
-    const runB = Number(b.match(/^ape-weekly-cycle-run(\d+)-/)?.[1] ?? 0);
-    return runB - runA;
-  })
-  .slice(0, MIN_APE_CYCLES);
-
-if (cycleFiles.length < MIN_APE_CYCLES) {
-  fail("insufficient_ape_cycles_for_rollout", { found: cycleFiles.length, required: MIN_APE_CYCLES });
-}
-
-const now = Date.now();
-const cycles = cycleFiles.map((file) => {
-  const content = readText(path.join("ops/evidence/latest", file));
-  const d = parseDate(content);
-  if (!d) fail("unable_to_parse_cycle_date", { file });
-  const ageDays = (now - d.getTime()) / (1000 * 60 * 60 * 24);
-  return {
-    file,
-    ageDays: Number(ageDays.toFixed(2)),
-    hardMetricsGo: parseBoolean(content, "hardMetricsGo"),
-  };
-});
-
-const tooOld = cycles.filter((item) => item.ageDays > MAX_AGE_DAYS);
-if (tooOld.length > 0) {
-  fail("rollout_evidence_too_old", { maxAgeDays: MAX_AGE_DAYS, tooOld });
-}
-
-const notGreen = cycles.filter((item) => item.hardMetricsGo !== true);
-if (notGreen.length > 0) {
-  fail("ape_cycles_not_green", { notGreen });
+if (invariants.length === 0) {
+  fail("invariant_set_empty");
 }
 
 console.log(
@@ -170,12 +86,20 @@ console.log(
     {
       ok: true,
       check: CHECK,
-      rolloutPhases: ["shadow", "pilot", "small"],
-      kpiFile: KPI_FILE,
-      pilotFile: path.relative(process.cwd(), PILOT_FILE),
+      invariants: invariants.map((item) => item.id),
+      invariantCount: invariants.length,
+      structuralGateBoundary: {
+        sha: STRUCTURAL_GATE_BOUNDARY_SHA,
+        note: STRUCTURAL_GATE_BOUNDARY_NOTE,
+      },
       checklistFile: CHECKLIST_FILE,
       routeFile: IMOB_ROUTE_FILE,
-      cycles,
+      note:
+        "Este check valida somente estrutura de código (checklist de rollout e rotas IMOB " +
+        "de Command Center/receipt/export) e depende de uma suíte de testes reais executada " +
+        "antes dele no mesmo job (pilot rollout state, Command Center smoke, receipt canon). " +
+        "Não lê mais nenhum arquivo de KPIs declarativos, relatório de rollout em Markdown, " +
+        "nem execuções do ciclo semanal de telemetria como prova operacional.",
     },
     null,
     2

@@ -1,108 +1,79 @@
 import fs from "node:fs";
 import path from "node:path";
+import {
+  STRUCTURAL_GATE_BOUNDARY_SHA,
+  STRUCTURAL_GATE_BOUNDARY_NOTE,
+} from "./apeStructuralGateBoundary";
 
 const CHECK = "check:w4-non-regression";
-
-const renewedEvidenceRefs: Record<string, string> = {
-  "ops/evidence/latest/pou-gated-payment-e2e-2026-07-13.json":
-    "ops/evidence/latest/pou-gated-payment-e2e-2026-07-27.json",
-  "ops/evidence/latest/realestate-commission-settlement-e2e-2026-07-13.json":
-    "ops/evidence/latest/realestate-commission-settlement-e2e-2026-07-27.json",
-};
 
 function fail(message: string, details?: Record<string, unknown>): never {
   console.error(JSON.stringify({ ok: false, check: CHECK, message, details }, null, 2));
   process.exit(1);
 }
 
-function readJson<T>(file: string): T {
-  if (!fs.existsSync(file)) fail("missing file", { file });
-  return JSON.parse(fs.readFileSync(file, "utf8")) as T;
-}
-
-function resolveRenewedEvidenceRef(ref: string): string {
-  return renewedEvidenceRefs[ref] ?? ref;
-}
-
 const root = process.cwd();
-
-const kpiFile = path.join(root, "ops/evidence/latest/w4-non-regression-kpis.json");
 const sessionRouteFile = path.join(root, "apps/api/src/routes/session.ts");
 const marketplaceRouteFile = path.join(root, "apps/api/src/routes/marketplace.ts");
 const templateFile = path.join(root, "ops/verticals/template/vertical-template.md");
 const onboardingFile = path.join(root, "ops/verticals/vertical-onboarding-checklist.md");
 
-const kpi = readJson<{
-  kpis?: {
-    moduleActivationSuccessRatePct?: number;
-    moduleActivationP95Seconds?: number;
-    timeToFirstRunP95Minutes?: number;
-    receiptCoveragePct?: number;
-    crossTenantAuthFailures?: number;
-    duplicateSideEffects?: number;
-  };
-  gates?: {
-    hardMetricsGo?: boolean;
-    nonRegressionGo?: boolean;
-  };
-  evidenceRefs?: string[];
-}>(kpiFile);
-
-if (!fs.existsSync(sessionRouteFile)) fail("missing session route", { sessionRouteFile });
-if (!fs.existsSync(marketplaceRouteFile)) fail("missing marketplace route", { marketplaceRouteFile });
-if (!fs.existsSync(templateFile)) fail("missing vertical template", { templateFile });
-if (!fs.existsSync(onboardingFile)) fail("missing onboarding checklist", { onboardingFile });
+for (const [label, file] of [
+  ["session route", sessionRouteFile],
+  ["marketplace route", marketplaceRouteFile],
+  ["vertical template", templateFile],
+  ["onboarding checklist", onboardingFile],
+] as const) {
+  if (!fs.existsSync(file)) fail(`missing ${label}`, { file });
+}
 
 const sessionSource = fs.readFileSync(sessionRouteFile, "utf8");
 const marketplaceSource = fs.readFileSync(marketplaceRouteFile, "utf8");
 
-const requiredSessionTokens = ["IMOB_INSTALLED", "productInstallations"];
-const missingSessionTokens = requiredSessionTokens.filter((token) => !sessionSource.includes(token));
-if (missingSessionTokens.length > 0) {
-  fail("session context missing required W4 tokens", { missingSessionTokens });
+type Invariant = { id: string; description: string };
+const invariants: Invariant[] = [];
+function checkInvariant(id: string, description: string, run: () => void) {
+  run();
+  invariants.push({ id, description });
 }
+
+checkInvariant(
+  "session.imob_installed_token",
+  "session context exposes IMOB_INSTALLED",
+  () => {
+    if (!sessionSource.includes("IMOB_INSTALLED")) {
+      fail("session context missing required W4 token", { token: "IMOB_INSTALLED" });
+    }
+  }
+);
+checkInvariant(
+  "session.product_installations_token",
+  "session context exposes productInstallations",
+  () => {
+    if (!sessionSource.includes("productInstallations")) {
+      fail("session context missing required W4 token", { token: "productInstallations" });
+    }
+  }
+);
 
 const requiredMarketplaceTokens = [
-  '/marketplace/installations/activate',
-  '/marketplace/installations',
-  'tenant_product_installations',
+  "/marketplace/installations/activate",
+  "/marketplace/installations",
+  "tenant_product_installations",
 ];
-const missingMarketplaceTokens = requiredMarketplaceTokens.filter((token) => !marketplaceSource.includes(token));
-if (missingMarketplaceTokens.length > 0) {
-  fail("marketplace routes missing required W4 tokens", { missingMarketplaceTokens });
-}
+checkInvariant(
+  "marketplace.installation_routes_and_model",
+  "marketplace routes expose install/activate endpoints and the tenant_product_installations model",
+  () => {
+    const missing = requiredMarketplaceTokens.filter((token) => !marketplaceSource.includes(token));
+    if (missing.length > 0) {
+      fail("marketplace routes missing required W4 tokens", { missing });
+    }
+  }
+);
 
-const metrics = kpi.kpis ?? {};
-const gates = kpi.gates ?? {};
-
-const rules = {
-  moduleActivationSuccessRatePct: (metrics.moduleActivationSuccessRatePct ?? 0) >= 95,
-  moduleActivationP95Seconds: (metrics.moduleActivationP95Seconds ?? Infinity) <= 120,
-  timeToFirstRunP95Minutes: (metrics.timeToFirstRunP95Minutes ?? Infinity) <= 30,
-  receiptCoveragePct: (metrics.receiptCoveragePct ?? 0) >= 99,
-  crossTenantAuthFailures: (metrics.crossTenantAuthFailures ?? 9999) === 0,
-  duplicateSideEffects: (metrics.duplicateSideEffects ?? 9999) === 0,
-  hardMetricsGo: gates.hardMetricsGo === true,
-  nonRegressionGo: gates.nonRegressionGo === true,
-};
-
-const failedRules = Object.entries(rules)
-  .filter(([, ok]) => !ok)
-  .map(([name]) => name);
-
-if (failedRules.length > 0) {
-  fail("w4 non-regression gates failed", {
-    failedRules,
-    metrics,
-    gates,
-    kpiFile: path.relative(root, kpiFile),
-  });
-}
-
-const evidenceRefs = (kpi.evidenceRefs ?? []).map(resolveRenewedEvidenceRef);
-const missingEvidenceRefs = evidenceRefs.filter((ref) => !fs.existsSync(path.join(root, ref)));
-if (missingEvidenceRefs.length > 0) {
-  fail("missing evidence references", { missingEvidenceRefs });
+if (invariants.length === 0) {
+  fail("invariant_set_empty");
 }
 
 console.log(
@@ -110,11 +81,19 @@ console.log(
     {
       ok: true,
       check: CHECK,
-      gates,
-      metrics,
+      invariants: invariants.map((item) => item.id),
+      invariantCount: invariants.length,
+      structuralGateBoundary: {
+        sha: STRUCTURAL_GATE_BOUNDARY_SHA,
+        note: STRUCTURAL_GATE_BOUNDARY_NOTE,
+      },
       template: path.relative(root, templateFile),
       onboarding: path.relative(root, onboardingFile),
-      evidenceRefs,
+      note:
+        "Este check valida somente estrutura de código (rotas de sessão/marketplace) e " +
+        "depende de uma suíte de testes reais executada antes dele no mesmo job " +
+        "(instalação de marketplace, idempotência de ativação). Não lê mais o antigo " +
+        "arquivo de KPIs declarativos consumido pela versão anterior deste check.",
     },
     null,
     2
