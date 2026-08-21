@@ -109,6 +109,17 @@ function extractJobBlock(workflowText: string, jobName: string): string {
 
 const ciWorkflowPath = ".github/workflows/ci.yml";
 const apeWeeklyWorkflowPath = ".github/workflows/ape-weekly.yml";
+const p3ExcludedTestName =
+  "economy.receipt.v1 — webhook settlement grava envelope idempotente no GuardrailLedger";
+const p3ExcludedTestFile = "apps/api/src/tests/billing.reputation.disputes.contract.test.ts";
+const p3SuiteFiles = [
+  "apps/api/src/tests/billing.economy.contract.test.ts",
+  p3ExcludedTestFile,
+  "apps/api/src/tests/billing.reconciliation.contract.test.ts",
+  "apps/api/src/tests/commission-settlement-e2e.test.ts",
+  "apps/api/src/tests/realestate.commission.settlement.e2e.test.ts",
+  "apps/api/src/tests/billing.webhook-signature.test.ts",
+] as const;
 
 test("ci.yml: p3_economy_hardening no longer generates or reads declarative P3 evidence", () => {
   const block = extractJobBlock(readActual(ciWorkflowPath), "p3_economy_hardening");
@@ -131,6 +142,55 @@ test("ci.yml: p3_economy_hardening runs the real P3 test suite before the checke
   assert.ok(testStepIndex >= 0, "real P3 test suite step must be present");
   assert.ok(checkStepIndex >= 0, "checker step must be present");
   assert.ok(testStepIndex < checkStepIndex, "real tests must run before the structural checker");
+});
+
+test("ci.yml: the P3 exclusion regex is exact, literal and anchored", () => {
+  const block = extractJobBlock(readActual(ciWorkflowPath), "p3_economy_hardening");
+  const assignment = block.match(/readonly P3_SKIP_PATTERN='([^']+)'/);
+  assert.ok(assignment, "P3_SKIP_PATTERN must be declared in the active job script");
+  assert.equal(
+    assignment[1],
+    "^economy\\.receipt\\.v1 — webhook settlement grava envelope idempotente no GuardrailLedger$"
+  );
+  assert.ok(block.includes('--test-skip-pattern="$P3_SKIP_PATTERN"'));
+  assert.equal(block.split("--test-skip-pattern=").length - 1, 1, "exactly one P3 skip filter is allowed");
+
+  const skipRegex = new RegExp(assignment[1]);
+  assert.equal(skipRegex.test(p3ExcludedTestName), true);
+  assert.equal(skipRegex.test(`prefix ${p3ExcludedTestName}`), false, "start anchor must be effective");
+  assert.equal(skipRegex.test(`${p3ExcludedTestName} suffix`), false, "end anchor must be effective");
+  assert.equal(skipRegex.test(p3ExcludedTestName.replace("receipt", "receiptX")), false, "dots must be literal");
+});
+
+test("P3 suite: the nominally excluded test exists exactly once", () => {
+  const declaration = `test("${p3ExcludedTestName}",`;
+  const occurrences = p3SuiteFiles.reduce(
+    (count, relativePath) => count + (readActual(relativePath).split(declaration).length - 1),
+    0
+  );
+  assert.equal(occurrences, 1, "the exact excluded test name must exist once across the six-file suite");
+  assert.ok(readActual(p3ExcludedTestFile).includes(declaration));
+});
+
+test("ci.yml: the P3 TAP verifier is active, exact and fail-closed", () => {
+  const block = extractJobBlock(readActual(ciWorkflowPath), "p3_economy_hardening");
+  assert.ok(block.includes("readonly EXPECTED_P3_TESTS=21"));
+  assert.ok(block.includes("readonly P3_EXCLUDED_TEST_COUNT=1"));
+  assert.ok(block.includes("verify_p3_tap_summary()"));
+  assert.ok(block.includes('verify_p3_tap_summary "$P3_TAP_OUTPUT" "actual"'));
+  for (const field of ["tests", "pass", "fail", "cancelled", "skipped", "todo"]) {
+    assert.ok(block.includes(`${field}:`), `verifier must check ${field}`);
+  }
+  assert.ok(block.includes("P3_TEST_EXCLUSION count=${P3_EXCLUDED_TEST_COUNT}"));
+  assert.ok(block.includes("P3_TEST_SUMMARY_VERIFIED tests=21 pass=21"));
+});
+
+test("ci.yml: the production P3 verifier exercises 21/22/20 synthetic branches", () => {
+  const block = extractJobBlock(readActual(ciWorkflowPath), "p3_economy_hardening");
+  assert.ok(block.includes('verify_p3_tap_summary "$P3_PROBE_21" "synthetic-21"'));
+  assert.ok(block.includes('if verify_p3_tap_summary "$P3_PROBE_22" "synthetic-22"; then'));
+  assert.ok(block.includes('if verify_p3_tap_summary "$P3_PROBE_20" "synthetic-20"; then'));
+  assert.ok(block.includes("P3_TAP_PROBES_OK accepted=21 rejected=22,20"));
 });
 
 test("ci.yml: w4_non_regression no longer depends on w4-non-regression-kpis.json and runs real tests first", () => {

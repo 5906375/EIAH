@@ -89,10 +89,10 @@ jobs:
 
       # PR B (docs/ops/ape-audit-telemetry-decision.md Seções 5.1/10.2, 2026-08-21):
       # step "Check P4 Track P rollout readiness" removido daqui e MOVIDO (não duplicado)
-      # para o job p4_trackp_rollout em .github/workflows/ci.yml. Antes: gate declarativo
-      # condicionado ao sucesso do ciclo APE (hardMetricsGo). Depois: gate estrutural real
-      # (rotas IMOB + suíte de testes reais), rodando em push/pull_request, independente do
-      # ciclo APE.
+      # para o job p4_trackp_rollout em .github/workflows/ci.yml. Antes: o step só rodava
+      # quando steps.run_ape_cycle.outcome == 'success'; depois, o checker interpretava
+      # hardMetricsGo declarativo. Agora: gate estrutural real (rotas IMOB + suíte de testes
+      # reais), rodando em push/pull_request e independente desses dois acoplamentos.
 
       - name: Evidence linkage
         if: ${{ !cancelled() && steps.run_ape_cycle.outcome == 'success' }}
