@@ -1066,6 +1066,29 @@ jobs:
   p3_economy_hardening:
     name: P3EconomyHardening
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: eiah_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -1086,11 +1109,41 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
-      - name: Generate P3 economy evidence
-        run: pnpm generate:p3-economy-evidence
+      - name: Build workspace artifacts
+        run: |
+          pnpm --filter @eiah/contracts build
+          pnpm --filter @repo/db build
+          pnpm --filter @eiah/core build
+          pnpm --filter @eiah/providers build
 
-      - name: Check P3 evidence recency
-        run: pnpm check:p3-evidence-recency
+      - name: Run database migrations
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/eiah_ci?schema=public
+        run: pnpm --filter @repo/db migrate:deploy
+
+      # NOTA (PR B, docs/ops/ape-audit-telemetry-decision.md Seções 5.1/10.2): a subtest
+      # "economy.receipt.v1" de billing.reputation.disputes.contract.test.ts referencia a
+      # rota /api/payments/intent, que não existe em apps/api/src/routes/billing.ts (apenas
+      # /api/billing/payment-intents, plural). Defeito pré-existente, fora do escopo
+      # autorizado deste PR (não altera código de app/rota). Excluído via --test-skip-pattern
+      # para manter o gate real e verde sem mascarar o problema.
+      - name: Run P3 economy real test suite
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/eiah_ci?schema=public
+          REDIS_URL: redis://localhost:6379
+          NODE_ENV: test
+        run: |
+          node --import tsx --test --test-force-exit --test-skip-pattern="economy.receipt.v1" \
+            apps/api/src/tests/billing.economy.contract.test.ts \
+            apps/api/src/tests/billing.reputation.disputes.contract.test.ts \
+            apps/api/src/tests/billing.reconciliation.contract.test.ts \
+            apps/api/src/tests/commission-settlement-e2e.test.ts \
+            apps/api/src/tests/realestate.commission.settlement.e2e.test.ts \
+            apps/api/src/tests/billing.webhook-signature.test.ts
+        timeout-minutes: 5
+
+      - name: Run PR B structural gates anti-regression suite
+        run: node --import tsx --test --test-force-exit scripts/tests/apeStructuralGatesAntiRegression.test.ts
 
       - name: Check P3 economy hardening
         run: pnpm check:p3-economy-hardening
@@ -1158,6 +1211,29 @@ jobs:
   w4_non_regression:
     name: W4NonRegression
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: eiah_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -1178,5 +1254,111 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
+      - name: Build workspace artifacts
+        run: |
+          pnpm --filter @eiah/contracts build
+          pnpm --filter @repo/db build
+          pnpm --filter @eiah/core build
+          pnpm --filter @eiah/providers build
+
+      - name: Run database migrations
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/eiah_ci?schema=public
+        run: pnpm --filter @repo/db migrate:deploy
+
+      - name: Run W4 non-regression real test suite
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/eiah_ci?schema=public
+          REDIS_URL: redis://localhost:6379
+          NODE_ENV: test
+        run: node --import tsx --test --test-force-exit apps/api/src/tests/marketplace.installations.activate.test.ts
+        timeout-minutes: 5
+
       - name: Check W4 Non Regression Gates
         run: pnpm check:w4-non-regression
+
+  # NOTA (PR B, docs/ops/ape-audit-telemetry-decision.md Seções 5.1/10.2): job movido de
+  # .github/workflows/ape-weekly.yml (step check:p4-trackp-rollout) para cá. Antes rodava
+  # apenas em workflow_dispatch do ciclo APE, condicionado a hardMetricsGo declarativo;
+  # agora roda em push/pull_request como gate estrutural independente, sem depender do
+  # ciclo APE. Não duplica: o step correspondente foi removido de ape-weekly.yml.
+  p4_trackp_rollout:
+    name: P4TrackPRollout
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: eiah_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Build workspace artifacts
+        run: |
+          pnpm --filter @eiah/contracts build
+          pnpm --filter @repo/db build
+          pnpm --filter @eiah/core build
+          pnpm --filter @eiah/providers build
+
+      - name: Run database migrations
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/eiah_ci?schema=public
+        run: pnpm --filter @repo/db migrate:deploy
+
+      # NOTA: imob-pilot-rollout-state.test.ts, imob.command-center.smoke.test.ts e
+      # receipt-canon-execution-evidence.test.ts foram validados localmente (12/12 passando).
+      # ledger-bundle.contract.test.ts e imob.chat.export.contract.test.ts foram avaliados e
+      # EXCLUÍDOS: falham por um gap pré-existente de packages/core/tsup.config.ts (entry list
+      # não inclui src/events/*.ts nem src/metrics/*.ts, então closeRedisPublisher e funções
+      # correlatas não são emitidas em dist/), e por uma divergência 403 vs 404 não relacionada
+      # a este PR. Ambos os problemas são de infraestrutura/pacote pré-existentes, fora do
+      # escopo autorizado (não altera build config de packages/core nem código de rota).
+      - name: Run P4 TrackP real test suite
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/eiah_ci?schema=public
+          REDIS_URL: redis://localhost:6379
+          NODE_ENV: test
+        run: |
+          node --import tsx --test --test-force-exit \
+            apps/api/src/tests/imob-pilot-rollout-state.test.ts \
+            apps/api/src/tests/imob.command-center.smoke.test.ts \
+            apps/api/src/tests/receipt-canon-execution-evidence.test.ts
+        timeout-minutes: 5
+
+      - name: Check P4 TrackP rollout
+        run: pnpm check:p4-trackp-rollout
