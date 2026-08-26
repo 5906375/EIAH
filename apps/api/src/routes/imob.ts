@@ -1188,6 +1188,7 @@ async function resolveConversationAuditRunId(params: {
         status: "audit_initialized",
         conversationId: params.conversationId,
       },
+      requireCanonicalImobAction: true,
     });
   }
   if (!auditRun) return null;
@@ -4061,6 +4062,7 @@ imobRouter.post(
           executionInput: { actionId },
         },
       },
+      requireCanonicalImobAction: true,
     });
     run = { id: runRecord.id, status: runRecord.status };
   } catch (err) {

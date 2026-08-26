@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import type { PrismaClient } from "@repo/db";
 import { deriveExecutionEvidence } from "./executionEvidence";
+import { projectRunGovernanceForRead } from "./runGovernanceMetadata";
 
 function stableJson(value: unknown): string {
   return JSON.stringify(sortValue(value));
@@ -42,6 +43,12 @@ export async function buildRunEvidenceBundle(params: BuildRunEvidenceBundleParam
   });
   if (!run) return null;
 
+  const projectionScope = {
+    tenantIdPresent: true,
+    workspaceIdPresent: true,
+  };
+  const runView = projectRunGovernanceForRead(run, projectionScope);
+
   const events = await params.prisma.runEvent.findMany({
     where: {
       tenantId: params.tenantId,
@@ -50,6 +57,7 @@ export async function buildRunEvidenceBundle(params: BuildRunEvidenceBundleParam
     },
     orderBy: { createdAt: "asc" },
   });
+  const eventViews = events.map((event) => projectRunGovernanceForRead(event, projectionScope));
 
   const sclEntries = await params.prisma.sclLedger.findMany({
     where: {
@@ -69,13 +77,13 @@ export async function buildRunEvidenceBundle(params: BuildRunEvidenceBundleParam
     take: 50,
   });
 
-  const intentEvent = [...events].reverse().find((event) => event.type === "run.intent.evaluated") ?? null;
-  const ragSnapshotEvent = [...events].reverse().find((event) => event.type === "run.context.rag_snapshot") ?? null;
-  const toolOutputEvents = events.filter(
+  const intentEvent = [...eventViews].reverse().find((event) => event.type === "run.intent.evaluated") ?? null;
+  const ragSnapshotEvent = [...eventViews].reverse().find((event) => event.type === "run.context.rag_snapshot") ?? null;
+  const toolOutputEvents = eventViews.filter(
     (event) => event.type === "run.action.completed" || event.type === "run.action.failed"
   );
-  const billingUsageEvents = events.filter((event) => event.type === "billing.usage.updated");
-  const billingGuardEvents = events.filter(
+  const billingUsageEvents = eventViews.filter((event) => event.type === "billing.usage.updated");
+  const billingGuardEvents = eventViews.filter(
     (event) =>
       event.type === "run.billing.shadow" ||
       event.type === "run.billing.soft_limit" ||
@@ -90,19 +98,19 @@ export async function buildRunEvidenceBundle(params: BuildRunEvidenceBundleParam
   };
   const contextDoc = {
     writeLabel:
-      typeof run.request === "object" &&
-      run.request &&
-      !Array.isArray(run.request) &&
-      "metadata" in (run.request as Record<string, unknown>) &&
-      typeof (run.request as Record<string, unknown>).metadata === "object" &&
-      (run.request as Record<string, unknown>).metadata &&
-      !Array.isArray((run.request as Record<string, unknown>).metadata)
-        ? (((run.request as Record<string, unknown>).metadata as Record<string, unknown>).writeLabel ?? null)
+      typeof runView.request === "object" &&
+      runView.request &&
+      !Array.isArray(runView.request) &&
+      "metadata" in (runView.request as Record<string, unknown>) &&
+      typeof (runView.request as Record<string, unknown>).metadata === "object" &&
+      (runView.request as Record<string, unknown>).metadata &&
+      !Array.isArray((runView.request as Record<string, unknown>).metadata)
+        ? (((runView.request as Record<string, unknown>).metadata as Record<string, unknown>).writeLabel ?? null)
         : null,
     ragSnapshot: ragSnapshotEvent?.payload ?? null,
   };
   const outputDoc = {
-    runResponse: run.response ?? null,
+    runResponse: runView.response ?? null,
     toolEvents: toolOutputEvents.map((event) => ({
       id: event.id,
       type: event.type,
@@ -141,9 +149,9 @@ export async function buildRunEvidenceBundle(params: BuildRunEvidenceBundleParam
     },
   };
   const execution = deriveExecutionEvidence({
-    status: run.status,
-    errorCode: run.errorCode,
-    response: run.response,
+    status: runView.status,
+    errorCode: runView.errorCode,
+    response: runView.response,
   });
   const decisionsDoc = {
     guardrail: guardrailEntries.map((entry) => ({
@@ -209,7 +217,7 @@ export async function buildRunEvidenceBundle(params: BuildRunEvidenceBundleParam
   );
 
   return {
-    run,
+    run: runView,
     bundleHash,
     manifest,
     hashes: {
