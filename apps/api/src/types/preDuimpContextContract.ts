@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   evaluateVerticalEntitlementGate,
   type TenantProductInstallationLike,
+  type VerticalEntitlementStatus,
 } from "./verticalEntitlementGateContract";
 
 // PRE_DUIMP — contrato minimo de contexto para o recorte Comex/DUIMP,
@@ -68,19 +69,65 @@ export function evaluatePreDuimpIsolation(
 
 // Entitlement: reutiliza o gate generico multi-vertical existente em
 // verticalEntitlementGateContract.ts em vez de reimplementar a resolucao
-// de status. PRE_DUIMP e sempre avaliado como acao de leitura/observacao
-// ("read_history"), porque nenhuma acao com efeito externo e permitida
-// enquanto os criterios de saida de PRE_DUIMP nao forem satisfeitos.
+// de status.
+//
+// Correcao (cut 3): a versao original (cut 1) avaliava PRE_DUIMP sempre
+// como acao de leitura/observacao ("read_history"), o que a tornava
+// permissiva por padrao (installation=null ainda retornava allowed=true)
+// — um mapeamento incorreto que nunca chegou a ser conectado a nenhum
+// fluxo de autorizacao real nos cuts 1-2. As duas actions do catalogo
+// PRE_DUIMP (log.duimp_context.create, log.duimp_context.review) sao
+// mutacoes de estado (ainda que shadow), nao leituras passivas, e agora
+// sao avaliadas como "start_new_execution" no gate generico. Instalacao
+// e obrigatoria; a instalacao precisa pertencer exatamente ao mesmo
+// tenant/workspace da autoridade avaliada e ao produto LOGISTICA.
+
+export type PreDuimpEntitlementDenialReason =
+  | "installation_missing"
+  | "installation_scope_mismatch"
+  | "installation_product_mismatch"
+  | "status_denied";
+
+export type PreDuimpEntitlementResult =
+  | { allowed: true; status: VerticalEntitlementStatus }
+  | {
+      allowed: false;
+      reason: PreDuimpEntitlementDenialReason;
+      status?: VerticalEntitlementStatus;
+      gateReason?: string;
+    };
 
 export function evaluatePreDuimpEntitlementGate(input: {
+  context: Pick<PreDuimpContextContract, "tenantId" | "workspaceId">;
   installation: TenantProductInstallationLike | null;
   billingPastDue?: boolean;
   gracePeriodActive?: boolean;
-}) {
-  return evaluateVerticalEntitlementGate({
+}): PreDuimpEntitlementResult {
+  if (!input.installation) {
+    return { allowed: false, reason: "installation_missing" };
+  }
+
+  if (
+    input.installation.tenantId !== input.context.tenantId ||
+    input.installation.workspaceId !== input.context.workspaceId
+  ) {
+    return { allowed: false, reason: "installation_scope_mismatch" };
+  }
+
+  if (input.installation.product !== "LOGISTICA") {
+    return { allowed: false, reason: "installation_product_mismatch" };
+  }
+
+  const gate = evaluateVerticalEntitlementGate({
     installation: input.installation,
-    action: "read_history",
+    action: "start_new_execution",
     billingPastDue: input.billingPastDue ?? false,
     gracePeriodActive: input.gracePeriodActive ?? false,
   });
+
+  if (!gate.allowed) {
+    return { allowed: false, reason: "status_denied", status: gate.status, gateReason: gate.reason };
+  }
+
+  return { allowed: true, status: gate.status };
 }

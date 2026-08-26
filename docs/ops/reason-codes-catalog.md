@@ -303,6 +303,9 @@ fonte canônica falham em `check:reason-code-canon`.
 | `PRE_DUIMP_ACTION_UNKNOWN` | proposed |
 | `PRE_DUIMP_EXTERNAL_TRANSMISSION_BLOCKED` | proposed |
 | `PRE_DUIMP_ISOLATION_VIOLATION` | proposed |
+| `PRE_DUIMP_SCOPE_DENIED` | proposed |
+| `PRE_DUIMP_ENTITLEMENT_DENIED` | proposed |
+| `PRE_DUIMP_HITL_REQUIRED` | proposed |
 <!-- reason-code-canon:end -->
 
 ## Alcance inicial do checker

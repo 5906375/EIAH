@@ -178,6 +178,12 @@ const PRE_DUIMP_AUTHORIZATION_PROPOSED_CODES = [
   "PRE_DUIMP_ISOLATION_VIOLATION",
 ] as const;
 
+const PRE_DUIMP_AUTHORIZATION_CUT3_PROPOSED_CODES = [
+  "PRE_DUIMP_SCOPE_DENIED",
+  "PRE_DUIMP_ENTITLEMENT_DENIED",
+  "PRE_DUIMP_HITL_REQUIRED",
+] as const;
+
 type DefinitionMetadata = Readonly<
   Omit<ReasonCodeDefinition, "code" | "description"> & {
     descriptionPrefix: string;
@@ -422,6 +428,16 @@ export const REASON_CODE_CATALOG = [
     status: "proposed",
     owner: "Logística governance / PRE_DUIMP",
     introducedBy: "PRE_DUIMP-CUT-2",
+    evidenceRef: "apps/api/src/services/logistica/control/preDuimpActionCatalog.ts",
+  }),
+  ...defineReasonCodes(PRE_DUIMP_AUTHORIZATION_CUT3_PROPOSED_CODES, {
+    domain: "log",
+    severity: "critical",
+    category: "authorization",
+    descriptionPrefix: "Reason code enforced by the PRE_DUIMP Actions catalog (Comex/DUIMP recorte of Logística)",
+    status: "proposed",
+    owner: "Logística governance / PRE_DUIMP",
+    introducedBy: "PRE_DUIMP-CUT-3",
     evidenceRef: "apps/api/src/services/logistica/control/preDuimpActionCatalog.ts",
   }),
 ] as const;

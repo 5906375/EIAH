@@ -1,7 +1,10 @@
 import {
   buildPreDuimpContextContract,
+  evaluatePreDuimpEntitlementGate,
   evaluatePreDuimpIsolation,
   type PreDuimpContextContract,
+  type PreDuimpEntitlementDenialReason,
+  type TenantProductInstallationLike,
   type TenantWorkspaceScope,
 } from "../../../types/preDuimpContextContract";
 
@@ -26,6 +29,12 @@ export function isKnownPreDuimpAction(action: string): action is PreDuimpAction 
   return PRE_DUIMP_ACTION_SET.has(action);
 }
 
+// Somente "review" exige aprovacao humana (HITL). "create" e criacao pura
+// de registro shadow, sem decisao a proteger.
+const PRE_DUIMP_ACTIONS_REQUIRING_HITL = new Set<PreDuimpAction>([
+  "log.duimp_context.review",
+]);
+
 export type PreDuimpExternalTransmissionSubreason =
   | "mode_not_shadow"
   | "external_transmission_requested";
@@ -33,29 +42,117 @@ export type PreDuimpExternalTransmissionSubreason =
 export type PreDuimpActionReasonCode =
   | "PRE_DUIMP_ACTION_UNKNOWN"
   | "PRE_DUIMP_EXTERNAL_TRANSMISSION_BLOCKED"
-  | "PRE_DUIMP_ISOLATION_VIOLATION";
+  | "PRE_DUIMP_ISOLATION_VIOLATION"
+  | "PRE_DUIMP_SCOPE_DENIED"
+  | "PRE_DUIMP_ENTITLEMENT_DENIED"
+  | "PRE_DUIMP_HITL_REQUIRED";
 
 export class PreDuimpActionRejectedError extends Error {
   constructor(
     message: string,
     readonly reasonCode: PreDuimpActionReasonCode,
     readonly context: Record<string, unknown>,
-    readonly subreason?: PreDuimpExternalTransmissionSubreason,
+    readonly subreason?: PreDuimpExternalTransmissionSubreason | PreDuimpEntitlementDenialReason,
   ) {
     super(message);
     this.name = "PreDuimpActionRejectedError";
   }
 }
 
-export type PreDuimpActionRequest = {
+export type PreDuimpHitlApprovalStatus = "approved" | "pending" | "rejected";
+
+export type PreDuimpHitlApproval = {
+  approvalId: string;
+  tenantId: string;
+  workspaceId: string;
   action: string;
-  context: unknown;
-  requester: TenantWorkspaceScope;
+  status: PreDuimpHitlApprovalStatus;
+  approvedBy: string;
+  approvedAt: string;
 };
 
-export type PreDuimpActionAuthorization = {
-  action: PreDuimpAction;
-  context: PreDuimpContextContract;
+// Request transportavel/nao confiavel: e a UNICA parte deste fluxo que
+// pode vir do cliente. Deliberadamente reduzida a action + context —
+// nenhum campo de identidade, escopo, instalacao ou aprovacao HITL pode
+// viver aqui, para que seja estruturalmente impossivel a um adapter
+// futuro (ex.: espalhando req.body) auto-conceder isolamento, scope,
+// entitlement ou HITL.
+export type PreDuimpAuthorizationRequest = {
+  action: string;
+  context: unknown;
+};
+
+// Forma estrutural (nao brandeada) dos dados de autoridade que um
+// chamador server-side ja resolveu e quer transformar em snapshot.
+// Contem exatamente os dados que NUNCA podem vir do payload do
+// cliente: identidade real do requester, escopos concedidos,
+// instalacao/entitlement e aprovacao HITL persistida.
+export type PreDuimpServerAuthoritySource = {
+  requester: TenantWorkspaceScope;
+  grantedScopes: readonly string[];
+  installation: TenantProductInstallationLike | null;
+  billingPastDue?: boolean;
+  gracePeriodActive?: boolean;
+  hitlApproval?: PreDuimpHitlApproval | null;
+};
+
+// Brand por unique symbol, nao exportado: nenhum codigo fora deste
+// modulo consegue construir estruturalmente um
+// PreDuimpServerAuthoritySnapshot, porque nao tem acesso ao simbolo. A
+// UNICA forma de obter uma instancia valida e chamar
+// resolvePreDuimpServerAuthoritySnapshot() abaixo — um objeto literal
+// equivalente a PreDuimpServerAuthoritySource NAO satisfaz o tipo
+// branded e nao pode ser passado como segundo argumento de
+// authorizePreDuimpAction().
+//
+// Isso e apenas higiene de compilacao dentro deste repositorio — o
+// brand NAO substitui enforcement real no servidor. Nesta task ainda
+// nao ha sessao/DB/Redis reais; a resolucao real (sessao,
+// TenantPolicyStore, tabela de instalacao, tabela de aprovacoes HITL)
+// fica para o corte de integracao.
+const PRE_DUIMP_SERVER_AUTHORITY_BRAND = Symbol("PreDuimpServerAuthoritySnapshot");
+
+export type PreDuimpServerAuthoritySnapshot = Readonly<
+  PreDuimpServerAuthoritySource & {
+    [PRE_DUIMP_SERVER_AUTHORITY_BRAND]: true;
+  }
+>;
+
+// Resolvedor dedicado: unica funcao autorizada a construir um
+// PreDuimpServerAuthoritySnapshot. O nome explicita a origem: os
+// campos de PreDuimpServerAuthoritySource devem ser montados pelo
+// chamador a partir de sessao/policy/instalacao/HITL ja resolvidos no
+// servidor — esta funcao NAO faz nenhuma resolucao real (sem
+// DB/Redis/rota) nesta task, apenas formaliza o unico ponto de
+// entrada sancionado para aplicar o brand. NUNCA deve receber os
+// campos brutos de PreDuimpAuthorizationRequest nem nada vindo
+// diretamente do payload do cliente/body da requisicao.
+export function resolvePreDuimpServerAuthoritySnapshot(
+  input: PreDuimpServerAuthoritySource,
+): PreDuimpServerAuthoritySnapshot {
+  return {
+    ...input,
+    grantedScopes: [...input.grantedScopes],
+    [PRE_DUIMP_SERVER_AUTHORITY_BRAND]: true,
+  };
+}
+
+// Brand por unique symbol, nao exportado: nenhum codigo fora deste modulo
+// consegue construir estruturalmente um PreDuimpResolvedAuthority, porque
+// nao tem acesso ao simbolo. A UNICA forma de obter uma instancia valida
+// e chamar authorizePreDuimpAction() abaixo.
+//
+// Isso e apenas higiene de compilacao dentro deste repositorio — o brand
+// NAO substitui enforcement real no servidor. Nenhuma integracao futura
+// (HTTP, worker, etc.) deve aceitar um objeto authority/resolved pronto
+// vindo do cliente (ex.: `body.authority`) como atalho para pular esta
+// resolucao.
+const PRE_DUIMP_RESOLVED_AUTHORITY_BRAND = Symbol("PreDuimpResolvedAuthority");
+
+export type PreDuimpResolvedAuthority = {
+  readonly [PRE_DUIMP_RESOLVED_AUTHORITY_BRAND]: true;
+  readonly action: PreDuimpAction;
+  readonly context: PreDuimpContextContract;
 };
 
 function asRecord(input: unknown): Record<string, unknown> | null {
@@ -64,17 +161,49 @@ function asRecord(input: unknown): Record<string, unknown> | null {
     : null;
 }
 
-// Resolve e autoriza uma action do catalogo PRE_DUIMP fail-closed, nesta ordem:
-// 1) a action precisa estar no catalogo canonico (PRE_DUIMP_ACTION_UNKNOWN);
-// 2) o contexto nao pode solicitar modo nao-shadow nem transmissao externa
-//    (PRE_DUIMP_EXTERNAL_TRANSMISSION_BLOCKED, com subreason);
-// 3) o contexto precisa satisfazer o contrato de dominio completo
-//    (buildPreDuimpContextContract, erro de forma propaga como ZodError);
-// 4) o requester precisa estar isolado no mesmo tenant/workspace do
-//    contexto (PRE_DUIMP_ISOLATION_VIOLATION).
+function assertPreDuimpHitl(
+  action: PreDuimpAction,
+  context: PreDuimpContextContract,
+  approval: PreDuimpHitlApproval | null | undefined,
+): void {
+  if (!PRE_DUIMP_ACTIONS_REQUIRING_HITL.has(action)) return;
+
+  const satisfied =
+    !!approval &&
+    approval.approvalId.trim().length > 0 &&
+    approval.tenantId === context.tenantId &&
+    approval.workspaceId === context.workspaceId &&
+    approval.action === action &&
+    approval.status === "approved" &&
+    approval.approvedBy.trim().length > 0 &&
+    approval.approvedAt.trim().length > 0;
+
+  if (!satisfied) {
+    throw new PreDuimpActionRejectedError(
+      `PRE_DUIMP HITL approval required and not satisfied for action: ${action}`,
+      "PRE_DUIMP_HITL_REQUIRED",
+      { action, approvalPresent: Boolean(approval) },
+    );
+  }
+}
+
+// Unica funcao autorizada a construir um PreDuimpResolvedAuthority.
+//
+// Toma DOIS parametros deliberadamente separados: `request` (bruto,
+// nao confiavel, so action+context) e `serverAuthority` (resolvido no
+// servidor). Isolamento, scope, entitlement e HITL usam EXCLUSIVAMENTE
+// serverAuthority — nunca leem requester/grantedScopes/installation/
+// hitlApproval de `request`, mesmo que esses campos estejam
+// estruturalmente presentes ali (ex.: um `request` construido a partir
+// de req.body inteiro). Nao ha nenhum caminho de codigo aqui que aceite
+// um objeto authority/resolved pronto do chamador como atalho.
+//
+// Ordem fail-closed: action -> bloqueio externo -> parse -> isolamento
+// -> scope -> entitlement -> HITL.
 export function authorizePreDuimpAction(
-  request: PreDuimpActionRequest,
-): PreDuimpActionAuthorization {
+  request: PreDuimpAuthorizationRequest,
+  serverAuthority: PreDuimpServerAuthoritySnapshot,
+): PreDuimpResolvedAuthority {
   if (!isKnownPreDuimpAction(request.action)) {
     throw new PreDuimpActionRejectedError(
       `Unknown PRE_DUIMP action: ${request.action}`,
@@ -105,14 +234,52 @@ export function authorizePreDuimpAction(
 
   const context = buildPreDuimpContextContract(request.context);
 
-  const isolation = evaluatePreDuimpIsolation(context, request.requester);
+  const isolation = evaluatePreDuimpIsolation(context, serverAuthority.requester);
   if (!isolation.allowed) {
     throw new PreDuimpActionRejectedError(
       `PRE_DUIMP isolation violation: ${isolation.reason}`,
       "PRE_DUIMP_ISOLATION_VIOLATION",
-      { reason: isolation.reason, requester: request.requester },
+      { reason: isolation.reason, requester: serverAuthority.requester },
     );
   }
 
-  return { action: request.action, context };
+  // Scope (RBAC): checagem pura contra escopos ja concedidos, lidos
+  // exclusivamente de serverAuthority. NAO substitui
+  // checkScopePermission/TenantPolicyStore real — este catalogo ainda
+  // nao expoe rota HTTP; enforcement RBAC vivo (DB/Redis) fica para
+  // quando a integracao real existir.
+  if (!serverAuthority.grantedScopes.includes(request.action)) {
+    throw new PreDuimpActionRejectedError(
+      `PRE_DUIMP scope denied for action: ${request.action}`,
+      "PRE_DUIMP_SCOPE_DENIED",
+      { action: request.action, requiredScope: request.action },
+    );
+  }
+
+  const entitlement = evaluatePreDuimpEntitlementGate({
+    context,
+    installation: serverAuthority.installation,
+    billingPastDue: serverAuthority.billingPastDue,
+    gracePeriodActive: serverAuthority.gracePeriodActive,
+  });
+  if (!entitlement.allowed) {
+    throw new PreDuimpActionRejectedError(
+      `PRE_DUIMP entitlement denied for action: ${request.action} (${entitlement.reason})`,
+      "PRE_DUIMP_ENTITLEMENT_DENIED",
+      {
+        action: request.action,
+        status: entitlement.status,
+        gateReason: entitlement.reason === "status_denied" ? entitlement.gateReason : undefined,
+      },
+      entitlement.reason,
+    );
+  }
+
+  assertPreDuimpHitl(request.action, context, serverAuthority.hitlApproval);
+
+  return {
+    [PRE_DUIMP_RESOLVED_AUTHORITY_BRAND]: true,
+    action: request.action,
+    context,
+  };
 }

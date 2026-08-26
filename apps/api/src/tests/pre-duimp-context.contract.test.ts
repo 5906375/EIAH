@@ -112,8 +112,11 @@ test("pre-duimp isolation denies a requester from a different workspace in the s
   assert.deepEqual(result, { allowed: false, reason: "workspace_mismatch" });
 });
 
-test("pre-duimp entitlement gate reuses the generic multi-vertical gate as a read-only action", () => {
-  const activeGate = evaluatePreDuimpEntitlementGate({
+const ENTITLEMENT_CONTEXT = { tenantId: "tenant-A", workspaceId: "workspace-A" };
+
+test("pre-duimp entitlement gate allows an active LOGISTICA installation matching the authority tenant/workspace", () => {
+  const result = evaluatePreDuimpEntitlementGate({
+    context: ENTITLEMENT_CONTEXT,
     installation: {
       tenantId: "tenant-A",
       workspaceId: "workspace-A",
@@ -121,11 +124,62 @@ test("pre-duimp entitlement gate reuses the generic multi-vertical gate as a rea
       status: "active",
     },
   });
-  assert.equal(activeGate.allowed, true);
-  assert.equal(activeGate.status, "active");
 
-  const noInstallationGate = evaluatePreDuimpEntitlementGate({ installation: null });
-  assert.equal(noInstallationGate.allowed, true);
-  assert.equal(noInstallationGate.status, "inactive");
-  assert.equal(noInstallationGate.reason, "read_only");
+  assert.equal(result.allowed, true);
+  if (result.allowed) assert.equal(result.status, "active");
+});
+
+test("pre-duimp entitlement gate denies with installation_missing when no installation is provided (cut 3 fixes cut 1's permissive default)", () => {
+  const result = evaluatePreDuimpEntitlementGate({
+    context: ENTITLEMENT_CONTEXT,
+    installation: null,
+  });
+
+  assert.deepEqual(result, { allowed: false, reason: "installation_missing" });
+});
+
+test("pre-duimp entitlement gate denies with installation_scope_mismatch when installation belongs to a different tenant/workspace", () => {
+  const result = evaluatePreDuimpEntitlementGate({
+    context: ENTITLEMENT_CONTEXT,
+    installation: {
+      tenantId: "tenant-B",
+      workspaceId: "workspace-A",
+      product: "LOGISTICA",
+      status: "active",
+    },
+  });
+
+  assert.deepEqual(result, { allowed: false, reason: "installation_scope_mismatch" });
+});
+
+test("pre-duimp entitlement gate denies with installation_product_mismatch when the installation product is not LOGISTICA", () => {
+  const result = evaluatePreDuimpEntitlementGate({
+    context: ENTITLEMENT_CONTEXT,
+    installation: {
+      tenantId: "tenant-A",
+      workspaceId: "workspace-A",
+      product: "IMOB",
+      status: "active",
+    },
+  });
+
+  assert.deepEqual(result, { allowed: false, reason: "installation_product_mismatch" });
+});
+
+test("pre-duimp entitlement gate denies with status_denied when the matching installation is not active for a state-changing action", () => {
+  const result = evaluatePreDuimpEntitlementGate({
+    context: ENTITLEMENT_CONTEXT,
+    installation: {
+      tenantId: "tenant-A",
+      workspaceId: "workspace-A",
+      product: "LOGISTICA",
+      status: "suspended",
+    },
+  });
+
+  assert.equal(result.allowed, false);
+  if (!result.allowed) {
+    assert.equal(result.reason, "status_denied");
+    assert.equal(result.status, "suspended");
+  }
 });
