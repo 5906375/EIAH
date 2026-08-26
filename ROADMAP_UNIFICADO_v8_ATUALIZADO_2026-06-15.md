@@ -488,3 +488,59 @@ Não adotar novamente nome canônico anterior. O conteúdo normativo vigente dev
 - Risco residual: **regressão documental futura se novos roadmaps, evidências ou referências forem adicionados sem passar pelos gates de integridade documental**.
 
 **Status normativo desta revisão:** parcial avançado, não operacionalmente fechado.
+
+## 15) PRE_DUIMP — Gate de preparação técnica (vertical Logística)
+
+**Status inicial: `PROPOSTA`.**
+
+Este registro formaliza `PRE_DUIMP` como gate de preparação técnica interno à vertical pública `Logística`. `Logística` permanece a vertical pública, na posição já definida na sequência de expansão vertical (`LEGAL -> MKT -> Financeiro -> URBAN -> Logística`, §4 P4 e §9.5). `Comex/DUIMP` é um recorte operacional interno da vertical `Logística`, não uma vertical pública adicional, e não altera essa ordem oficial de rollout.
+
+`PRE_DUIMP` não significa ativação, pilot, small rollout ou produção.
+
+### Objetivo
+
+Preparar os contratos e guardrails necessários para uma futura capacidade DUIMP, sem transmissão real ao Portal Único/Siscomex.
+
+### Dentro do escopo
+
+- modelo mínimo de contexto aduaneiro;
+- isolamento `tenantId + workspaceId`;
+- entitlement específico da vertical;
+- catálogo canônico de Actions;
+- RBAC e policy;
+- HITL obrigatório para ações com efeito externo;
+- idempotência e replay;
+- reason codes;
+- auditoria e evidência;
+- fixtures exclusivamente sintéticas;
+- contratos negativos fail-closed;
+- operação inicial em modo observacional/shadow.
+
+### Fora do escopo
+
+- credenciais reais;
+- dados aduaneiros pessoais ou produtivos;
+- transmissão, retificação, registro ou cancelamento real de DUIMP;
+- integração produtiva com Siscomex/Portal Único;
+- ativação de tenant real;
+- promessa pública de disponibilidade;
+- mudança na ordem oficial de rollout das verticais.
+
+### Critérios para sair de PRE_DUIMP
+
+Critérios verificáveis, ainda não satisfeitos nesta revisão:
+
+1. contrato de domínio e autoridade persistida;
+2. catálogo de Actions e reason codes;
+3. matriz RBAC/entitlement;
+4. política HITL;
+5. replay/idempotência;
+6. isolamento multi-tenant;
+7. testes negativos;
+8. plano de evidência;
+9. definição explícita do que permanece shadow;
+10. aprovação humana antes de qualquer integração externa.
+
+### Relação com CORE-01A0b / CORE-01A0
+
+Nenhum DoD versionado explícito foi localizado para `CORE-01A0b` ou `CORE-01A0` nas fontes normativas vigentes na data desta revisão. `CORE-01A0b-R` está evidenciado (`ops/evidence/latest/core-01a0b-r-run-governance-validation-2026-08-26.md`), mas essa evidência não promove `CORE-01A0b` nem `CORE-01A0` a fechados — ambos permanecem `parcial` por ausência de DoD adicional localizado. A abertura documental de `PRE_DUIMP` nesta seção não depende do fechamento de `CORE-01A0b`/`CORE-01A0` e não os declara fechados.
