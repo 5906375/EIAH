@@ -1,0 +1,14 @@
+{
+  "captureDir": "/home/jusall/validation-core-01a0b-r-t2-20260826-3YW5m7",
+  "runStart": "2026-08-26T13:29:38Z",
+  "runEnd": "2026-08-26T13:29:52Z",
+  "repo": {"path": "/home/jusall/projects/EIAH_BUILDER", "headSha": "37c162a3a0a673487eaaee1bfc4386b5afd0d713", "treeSha": "03b6dab0d52d754d2522b9e10939f6b6b8476bfb", "branch": "docs/structural-gate-boundary-sha"},
+  "gates": [{"order":1,"name":"test:run-governance-metadata","command":"pnpm test:run-governance-metadata","state":"EXECUTADO","exit":0,"start":"2026-08-26T13:29:38Z","end":"2026-08-26T13:29:43Z","log":"01-test_run-governance-metadata.log","logSha256":"d7e0d08c6002da47f987eade6b431a01d17e34c777d01a45372f38bb15cb6b9c"},{"order":2,"name":"test:run-governance-policy:integration","command":"pnpm test:run-governance-policy:integration","state":"EXECUTADO","exit":0,"start":"2026-08-26T13:29:43Z","end":"2026-08-26T13:29:49Z","log":"02-test_run-governance-policy_integration.log","logSha256":"e9294a03d65fc436265b579ab902ddc52cf5936c8d4dac269a3adc5ae8255f3d"},{"order":3,"name":"check:reason-code-canon","command":"pnpm check:reason-code-canon","state":"EXECUTADO","exit":0,"start":"2026-08-26T13:29:49Z","end":"2026-08-26T13:29:50Z","log":"03-check_reason-code-canon.log","logSha256":"99da8cb2a012d2184cf617fdfb84ddce0a439929fbe7ffef81f6ecfd203d46b5"},{"order":4,"name":"check:orphan-tests","command":"pnpm check:orphan-tests","state":"EXECUTADO","exit":0,"start":"2026-08-26T13:29:50Z","end":"2026-08-26T13:29:52Z","log":"04-check_orphan-tests.log","logSha256":"d8d7af53bd2db62a8320be7182bfd0cfee6b8b6beb0e9de9c8189b1462aacabb"}],
+  "dependenciesReinstalled": false,
+  "lockfileCorrespondence": "lockfile_unmodified_vs_head_only",
+  "lockfileCheckLog": "lockfile-check.log",
+  "lockfileCheckLogSha256": "2d1f430782c360979eb6c1c895cfa7b0e2b5ad9d68c0d9b9cf88da02b767a48c",
+  "repoStatusPostRun": "",
+  "repoStatusPostRunLog": "repo-status-post-run.log",
+  "verdict": "PASS"
+}

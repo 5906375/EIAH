@@ -1,0 +1,91 @@
+CMD: pnpm test:run-governance-policy:integration
+START: 2026-08-26T13:29:43Z
+--- OUTPUT ---
+
+> eiah-builder@ test:run-governance-policy:integration /home/jusall/projects/EIAH_BUILDER
+> TSX_TSCONFIG_PATH=tsconfig.base.json NODE_ENV=test node --env-file-if-exists=packages/db/.env --import tsx --test --test-force-exit apps/api/src/tests/run-governance-policy.integration.test.ts && TSX_TSCONFIG_PATH=tsconfig.base.json NODE_ENV=test node --env-file-if-exists=.env --import tsx --test --test-force-exit apps/api/src/tests/runs.imob-action.contract.test.ts
+
+TAP version 13
+# {"level":30,"time":"2026-08-26T13:29:44.980Z","service":"eiah","env":"test","component":"run-worker","runId":"run-policy-mta4rzer-7vo7ce","tenantId":"TENANT_003","workspaceId":"WORKSPACE_003","agentId":"EIAH","msg":"run.worker.received"}
+# {"level":40,"time":"2026-08-26T13:29:44.981Z","service":"eiah","env":"test","component":"run-worker","missing":["REDIS_URL"],"msg":"run.worker.governance_mode_unconfigured"}
+# {"level":30,"time":"2026-08-26T13:29:45.016Z","service":"eiah","env":"test","component":"run-worker","runId":"run-policy-mta4rzer-7vo7ce","tenantId":"TENANT_003","workspaceId":"WORKSPACE_003","agentId":"EIAH","msg":"run.worker.execution_started"}
+# {"level":30,"time":"2026-08-26T13:29:45.016Z","service":"eiah","env":"test","component":"run-worker","runId":"run-policy-mta4rzer-7vo7ce","tenantId":"TENANT_003","workspaceId":"WORKSPACE_003","agentId":"EIAH","msg":"run.worker.cancelled_after_start"}
+# Subtest: worker evaluates Action Policy from TenantPolicyStore and persists the decision
+ok 1 - worker evaluates Action Policy from TenantPolicyStore and persists the decision
+  ---
+  duration_ms: 1346.883853
+  type: 'test'
+  ...
+# {"level":50,"time":"2026-08-26T13:29:45.051Z","service":"eiah","env":"test","component":"run-worker","reasonCode":"RUN_SCOPE_NOT_RESOLVED","stage":"preflight","msg":"run.worker.scope_not_resolved"}
+# Subtest: worker does not persist events for a valid runId with mismatched workspace scope
+ok 2 - worker does not persist events for a valid runId with mismatched workspace scope
+  ---
+  duration_ms: 16.834199
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1710.355315
+TAP version 13
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-runs-imob-action-mta4s1rt-59wjgm/workspace-runs-imob-action-mta4s1rt-59wjgm
+# {"level":30,"time":"2026-08-26T13:29:48.931Z","service":"eiah","env":"test","traceId":"42f0b80e-5d5c-4357-973e-d1d161c51936","component":"api","httpMethod":"POST","path":"/api/runs","statusCode":400,"contentLength":"240","durationMs":190.323416,"msg":"http.request.completed"}
+# Subtest: POST /api/runs rejects invalid IMOB metadata.action when domain is imob
+ok 1 - POST /api/runs rejects invalid IMOB metadata.action when domain is imob
+  ---
+  duration_ms: 2201.050002
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-runs-imob-action-mta4s1rt-59wjgm/workspace-runs-imob-action-mta4s1rt-59wjgm
+# {"level":30,"time":"2026-08-26T13:29:49.023Z","service":"eiah","env":"test","traceId":"ade41327-5103-429b-a6c7-da89964919df","component":"api","httpMethod":"POST","path":"/api/runs","statusCode":400,"contentLength":"227","durationMs":61.336895,"msg":"http.request.completed"}
+# Subtest: POST /api/runs rejects non-audit IMOB input without action
+ok 2 - POST /api/runs rejects non-audit IMOB input without action
+  ---
+  duration_ms: 82.573413
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-runs-imob-action-mta4s1rt-59wjgm/workspace-runs-imob-action-mta4s1rt-59wjgm
+# [tenantGuard] Run:create enforced for tenant-runs-imob-action-mta4s1rt-59wjgm/workspace-runs-imob-action-mta4s1rt-59wjgm
+# [tenantGuard] RunEvent:create enforced for tenant-runs-imob-action-mta4s1rt-59wjgm/workspace-runs-imob-action-mta4s1rt-59wjgm
+# {"level":30,"time":"2026-08-26T13:29:49.220Z","service":"eiah","env":"test","traceId":"26cd9419-79a2-492f-8767-19743efa6d50","component":"api","httpMethod":"POST","path":"/api/runs","statusCode":403,"contentLength":"1652","durationMs":176.519251,"msg":"http.request.completed"}
+# Subtest: POST /api/runs keeps IMOB conversation_audit without action applicable
+ok 3 - POST /api/runs keeps IMOB conversation_audit without action applicable
+  ---
+  duration_ms: 189.460113
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for tenant-runs-imob-action-mta4s1rt-59wjgm/workspace-runs-imob-action-mta4s1rt-59wjgm
+# [tenantGuard] Run:create enforced for tenant-runs-imob-action-mta4s1rt-59wjgm/workspace-runs-imob-action-mta4s1rt-59wjgm
+# [tenantGuard] RunEvent:create enforced for tenant-runs-imob-action-mta4s1rt-59wjgm/workspace-runs-imob-action-mta4s1rt-59wjgm
+# {"level":30,"time":"2026-08-26T13:29:49.337Z","service":"eiah","env":"test","traceId":"26b86172-a331-41ae-88c0-e5229a251725","component":"api","httpMethod":"POST","path":"/api/runs","statusCode":403,"contentLength":"1632","durationMs":105.660577,"msg":"http.request.completed"}
+# Subtest: POST /api/runs persists only the server-side not_evaluated governance projection
+ok 4 - POST /api/runs persists only the server-side not_evaluated governance projection
+  ---
+  duration_ms: 114.065406
+  type: 'test'
+  ...
+# [tenantGuard] Run:findFirst enforced for tenant-runs-imob-action-mta4s1rt-59wjgm/workspace-runs-imob-action-mta4s1rt-59wjgm
+# {"level":30,"time":"2026-08-26T13:29:49.397Z","service":"eiah","env":"test","traceId":"810e9b71-20bf-4d7c-b20e-18a484706d29","component":"api","httpMethod":"POST","path":"/api/runs/run-replay-no-action-mta4s1rt-59wjgm/replay","statusCode":400,"contentLength":"227","durationMs":39.527397,"msg":"http.request.completed"}
+# Subtest: POST /api/runs/:id/replay rejects historical operational IMOB without action before publish or pending
+ok 5 - POST /api/runs/:id/replay rejects historical operational IMOB without action before publish or pending
+  ---
+  duration_ms: 79.625373
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 4556.490053
+--- END OUTPUT ---
+EXIT: 0
+END: 2026-08-26T13:29:49Z

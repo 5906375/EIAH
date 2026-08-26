@@ -4,6 +4,12 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## Run Governance — validação funcional local em checkpoint fixado (2026-08-26)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Execução real dos 4 gates canônicos autorizados (`test:run-governance-metadata`, `test:run-governance-policy:integration`, `check:reason-code-canon`, `check:orphan-tests`) contra árvore fixada em commit local `37c162a3a0a673487eaaee1bfc4386b5afd0d713` (tree `03b6dab0d52d754d2522b9e10939f6b6b8476bfb`, branch docs/structural-gate-boundary-sha) | `ops/evidence/latest/core-01a0b-r-run-governance-validation-2026-08-26.md` + `ops/evidence/latest/core-01a0b-r-t2-2026-08-26-01-test_run-governance-metadata.log.txt` + `ops/evidence/latest/core-01a0b-r-t2-2026-08-26-02-test_run-governance-policy_integration.log.txt` + `ops/evidence/latest/core-01a0b-r-t2-2026-08-26-03-check_reason-code-canon.log.txt` + `ops/evidence/latest/core-01a0b-r-t2-2026-08-26-04-check_orphan-tests.log.txt` + `ops/evidence/latest/core-01a0b-r-t2-2026-08-26-manifest.json` | Registra exit code 0 e contagens observadas nos quatro gates (31/31+17/17, 2/2+5/5, `check:reason-code-canon ok`, `orphanCount:93/blockingOrphanCount:0`), `dependenciesReinstalled:false`, worktree limpo antes e depois. Logs de teste 01/02 publicados com masking determinístico (`DATABASE_URL`, `tenantId`, `workspaceId`); logs 03/04 e manifest publicados sem alteração após confirmação de ausência de padrão sensível; hashes raw e masked/publicado registrados separadamente no receipt. Não prova critérios-pai de `CORE-01A0b`/`CORE-01A0`/`PRE_DUIMP`, não prova build global, suíte global, lint, typecheck ou correspondência completa lockfile↔node_modules, e não prova staging/produção. Classificação: `EVIDENCIADO` (escopo estrito desta validação), condicionado à aprovação do gate `check:evidence-index`.
+
 ## Main hard gates de CI — registro pós-save (2026-07-27)
 
 | Assunto | Arquivo | O que prova |
