@@ -300,6 +300,9 @@ fonte canônica falham em `check:reason-code-canon`.
 | `NOTIFICATION_BLOCKED_SECRET_PROVENANCE` | proposed |
 | `NOTIFICATION_BLOCKED_REASON_CODE_MISSING` | proposed |
 | `NOTIFICATION_BLOCKED_RUN_MISSING` | proposed |
+| `PRE_DUIMP_ACTION_UNKNOWN` | proposed |
+| `PRE_DUIMP_EXTERNAL_TRANSMISSION_BLOCKED` | proposed |
+| `PRE_DUIMP_ISOLATION_VIOLATION` | proposed |
 <!-- reason-code-canon:end -->
 
 ## Alcance inicial do checker

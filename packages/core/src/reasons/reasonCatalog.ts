@@ -10,6 +10,7 @@ export const REASON_CODE_DOMAINS = [
   "release",
   "rbac",
   "notification",
+  "log",
 ] as const;
 export type ReasonCodeDomain = (typeof REASON_CODE_DOMAINS)[number];
 
@@ -166,6 +167,15 @@ const NOTIFICATION_PROPOSED_CODES = [
   "NOTIFICATION_BLOCKED_SECRET_PROVENANCE",
   "NOTIFICATION_BLOCKED_REASON_CODE_MISSING",
   "NOTIFICATION_BLOCKED_RUN_MISSING",
+] as const;
+
+const PRE_DUIMP_VALIDATION_PROPOSED_CODES = [
+  "PRE_DUIMP_ACTION_UNKNOWN",
+] as const;
+
+const PRE_DUIMP_AUTHORIZATION_PROPOSED_CODES = [
+  "PRE_DUIMP_EXTERNAL_TRANSMISSION_BLOCKED",
+  "PRE_DUIMP_ISOLATION_VIOLATION",
 ] as const;
 
 type DefinitionMetadata = Readonly<
@@ -393,6 +403,26 @@ export const REASON_CODE_CATALOG = [
     status: "proposed",
     owner: "Notification governance",
     evidenceRef: "scripts/notify/escalationNotice.ts",
+  }),
+  ...defineReasonCodes(PRE_DUIMP_VALIDATION_PROPOSED_CODES, {
+    domain: "log",
+    severity: "warning",
+    category: "validation",
+    descriptionPrefix: "Reason code enforced by the PRE_DUIMP Actions catalog (Comex/DUIMP recorte of Logística)",
+    status: "proposed",
+    owner: "Logística governance / PRE_DUIMP",
+    introducedBy: "PRE_DUIMP-CUT-2",
+    evidenceRef: "apps/api/src/services/logistica/control/preDuimpActionCatalog.ts",
+  }),
+  ...defineReasonCodes(PRE_DUIMP_AUTHORIZATION_PROPOSED_CODES, {
+    domain: "log",
+    severity: "critical",
+    category: "authorization",
+    descriptionPrefix: "Reason code enforced by the PRE_DUIMP Actions catalog (Comex/DUIMP recorte of Logística)",
+    status: "proposed",
+    owner: "Logística governance / PRE_DUIMP",
+    introducedBy: "PRE_DUIMP-CUT-2",
+    evidenceRef: "apps/api/src/services/logistica/control/preDuimpActionCatalog.ts",
   }),
 ] as const;
 
