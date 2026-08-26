@@ -306,6 +306,7 @@ fonte canônica falham em `check:reason-code-canon`.
 | `PRE_DUIMP_SCOPE_DENIED` | proposed |
 | `PRE_DUIMP_ENTITLEMENT_DENIED` | proposed |
 | `PRE_DUIMP_HITL_REQUIRED` | proposed |
+| `PRE_DUIMP_REPLAY_REJECTED` | proposed |
 <!-- reason-code-canon:end -->
 
 ## Alcance inicial do checker

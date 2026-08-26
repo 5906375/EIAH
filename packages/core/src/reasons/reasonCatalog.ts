@@ -184,6 +184,10 @@ const PRE_DUIMP_AUTHORIZATION_CUT3_PROPOSED_CODES = [
   "PRE_DUIMP_HITL_REQUIRED",
 ] as const;
 
+const PRE_DUIMP_INTEGRITY_CUT5_PROPOSED_CODES = [
+  "PRE_DUIMP_REPLAY_REJECTED",
+] as const;
+
 type DefinitionMetadata = Readonly<
   Omit<ReasonCodeDefinition, "code" | "description"> & {
     descriptionPrefix: string;
@@ -439,6 +443,16 @@ export const REASON_CODE_CATALOG = [
     owner: "Logística governance / PRE_DUIMP",
     introducedBy: "PRE_DUIMP-CUT-3",
     evidenceRef: "apps/api/src/services/logistica/control/preDuimpActionCatalog.ts",
+  }),
+  ...defineReasonCodes(PRE_DUIMP_INTEGRITY_CUT5_PROPOSED_CODES, {
+    domain: "log",
+    severity: "warning",
+    category: "integrity",
+    descriptionPrefix: "Reason code enforced by the PRE_DUIMP pure replay/idempotency policy (Comex/DUIMP recorte of Logística)",
+    status: "proposed",
+    owner: "Logística governance / PRE_DUIMP",
+    introducedBy: "PRE_DUIMP-CUT-5",
+    evidenceRef: "apps/api/src/types/preDuimpReplayContract.ts",
   }),
 ] as const;
 
