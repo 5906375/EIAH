@@ -533,7 +533,27 @@ Critérios verificáveis, ainda não satisfeitos nesta revisão:
 1. contrato de domínio e autoridade persistida;
 2. catálogo de Actions e reason codes;
 3. matriz RBAC/entitlement;
-4. política HITL;
+4. política HITL — `PARCIAL` — política fail-closed implementada;
+   aprovação positiva, vínculo ao recurso, produtor e persistência
+   pendentes:
+
+   A. Política HITL negativa/fail-closed:
+      - implementada no cut 3;
+      - `log.duimp_context.review` exige aprovação;
+      - ausência ou aprovação inválida resulta em `PRE_DUIMP_HITL_REQUIRED`;
+      - binding atual cobre approvalId, tenant, workspace e action;
+      - referência: commit `8fcae0e07eee7f0d2d8b2bcee14aed57a6e38b21`.
+
+   B. Caminho positivo/persistido:
+      - ainda não implementado;
+      - ausência de produtor, rota e ator de aprovação;
+      - contrato atual ainda não vincula aprovação a resourceId/recordId/Run;
+      - persistência adiada ao corte de integração;
+      - nenhuma tabela nova enquanto o destino do `ApprovalRecord` genérico não for decidido;
+      - referência ao adapter fail-closed: commit `c219542985fb6b419958635c873a162af2731354`.
+
+   Esta pendência não bloqueia o desenvolvimento independente do
+   critério 5 (replay/idempotência).
 5. replay/idempotência;
 6. isolamento multi-tenant;
 7. testes negativos;
