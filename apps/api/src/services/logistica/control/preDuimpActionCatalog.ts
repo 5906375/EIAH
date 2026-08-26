@@ -4,9 +4,9 @@ import {
   evaluatePreDuimpIsolation,
   type PreDuimpContextContract,
   type PreDuimpEntitlementDenialReason,
-  type TenantProductInstallationLike,
   type TenantWorkspaceScope,
 } from "../../../types/preDuimpContextContract";
+import type { TenantProductInstallationLike } from "../../../types/verticalEntitlementGateContract";
 
 // Catalogo canonico de Actions do recorte PRE_DUIMP (Comex/DUIMP),
 // interno a vertical publica Logistica (roadmap v8.1 secao 15).

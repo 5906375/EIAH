@@ -852,6 +852,15 @@ jobs:
         run: pnpm test:run-governance-policy:integration
         timeout-minutes: 5
 
+      - name: Run PRE_DUIMP shadow authority tests
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/eiah_ci?schema=public
+          RUN_EVENTS_REDIS_URL: ""
+          REDIS_URL: ""
+          NODE_ENV: test
+        run: pnpm test:pre-duimp
+        timeout-minutes: 5
+
       - name: Run assignment fail-closed HTTP suite
         env:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/eiah_ci?schema=public
