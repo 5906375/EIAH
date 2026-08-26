@@ -95,6 +95,33 @@ O código não substitui `AGENT_NOT_ENABLED_IN_WORKSPACE`, preservado para
 compatibilidade com o caso legado já existente. Aprovação formal, assinatura,
 identidade do aprovador e expiração permanecem `PENDING_PR1B`.
 
+<a id="ratificacao-rc-a0b-01-2026-08-24"></a>
+
+## Ratificação RC-A0b-01 — 2026-08-24
+
+Carlos Alberto Merlo ratificou em `2026-08-24 17:15 -03:00` os códigos
+`POLICY_NOT_FOUND`, `ACTION_POLICY_SCOPE_DENIED`, `ACTION_POLICY_DISABLED`,
+`ACTION_POLICY_STORE_UNAVAILABLE` e `RUN_SCOPE_NOT_RESOLVED` como `active` na
+fronteira observacional de Action Policy pré-execução. O owner é
+`Execution governance / Action Policy`.
+
+O mapper público preserva `POLICY_NOT_FOUND`, projeta `SCOPE_NOT_ALLOWED` e
+`WORKSPACE_SCOPE_MISMATCH` como `ACTION_POLICY_SCOPE_DENIED`, projeta
+`TENANT_POLICY_DISABLED` como `ACTION_POLICY_DISABLED` e projeta
+`POLICY_STORE_UNAVAILABLE` como `ACTION_POLICY_STORE_UNAVAILABLE`.
+`SCOPE_ALLOWED` produz `reasonCode:null`; os códigos internos do
+`TenantPolicyStore` não são renomeados.
+
+`RUN_SCOPE_NOT_RESOLVED` interrompe o worker quando `runId + tenantId +
+workspaceId` não resolvem um Run existente ou quando a transição para
+`running` não confirma o mesmo escopo. Esse caso não autoriza a criação de
+`RunEvent` baseada somente no envelope da fila.
+
+Runs genéricos sem ação declarada e `domain=imob, kind=conversation_audit`
+permanecem `not_applicable`, sem evento de avaliação. IMOB fora dessa exceção
+continua exigindo ação canônica. Esta ratificação não implementa RBAC,
+entitlement ou enforcement geral de Action Policy.
+
 ## Ratificacao RC-MCP-1A — 2026-07-28
 
 Carlos Alberto Merlo ratificou como `active` os códigos
@@ -122,7 +149,8 @@ Permanecem fora desta promoção:
 
 - `DB_SCOPE_VIOLATION` permanece `proposed` até separar input inválido de
   violação cross-tenant real;
-- `POLICY_NOT_FOUND` permanece `proposed` e fora do escopo MCP;
+- `POLICY_NOT_FOUND` permanece fora do escopo MCP; sua promoção a `active`
+  pertence exclusivamente à fronteira Action Policy ratificada no RC-A0b-01;
 - `MCP_POLICY_NOT_RESOLVED` não será criado enquanto suas causas não forem
   divididas;
 - `MCP_POLICY_DENIED` permanece `proposed` e não será ativado antes de existir
@@ -232,6 +260,11 @@ fonte canônica falham em `check:reason-code-canon`.
 | `VERTICAL_HANDOFF_ALLOWED` | active |
 | `VERTICAL_PREVIEW_ONLY` | active |
 | `AGENT_ASSIGNMENT_REQUIRED` | active |
+| `POLICY_NOT_FOUND` | active |
+| `ACTION_POLICY_SCOPE_DENIED` | active |
+| `ACTION_POLICY_DISABLED` | active |
+| `ACTION_POLICY_STORE_UNAVAILABLE` | active |
+| `RUN_SCOPE_NOT_RESOLVED` | active |
 | `APE_TELEMETRY_NOT_AVAILABLE` | active |
 | `invalid_txid_format` | proposed |
 | `txid_not_found` | proposed |
@@ -260,7 +293,6 @@ fonte canônica falham em `check:reason-code-canon`.
 | `MCP_POLICY_DENIED` | proposed |
 | `MCP_POLICY_CONTEXT_MISSING` | proposed |
 | `MCP_POLICY_CONTEXT_VIOLATION` | proposed |
-| `POLICY_NOT_FOUND` | proposed |
 | `RBAC_OWNER_DEFERRAL` | proposed |
 | `RBAC_BUILD_ARTIFACT_DRIFT` | proposed |
 | `NOTIFICATION_NON_DELIVERY_ESCALATION` | proposed |
@@ -281,6 +313,7 @@ Os arquivos-alvo são explicitamente declarados em
 - `apps/api/src/routes/imobCrmSchemas.ts`;
 - `apps/api/src/types/chatVerticalHandoffV2Contract.ts`;
 - `contracts/chat/vertical.reason_codes.v1.json`;
+- `apps/api/src/services/runGovernanceMetadata.ts`;
 - `scripts/tests/checkReasonCodeCanon.test.ts`.
 
 O RC-0 não varre todo o runtime. Receipt Canon, ledger, execution evidence,

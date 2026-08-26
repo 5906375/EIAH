@@ -3,6 +3,8 @@ import { RecipeOrchestrationSchema } from "./recipeOrchestrationSchema";
 import type { RecipeOrchestration } from "./recipeOrchestrationSchema";
 
 type PlainObject = Record<string, unknown>;
+const LEGACY_GOVERNANCE_UNVERIFIED_BANNER = "LEGADO — ESTADO DE GOVERNANÇA NÃO VERIFICADO";
+const GOVERNANCE_NOT_EVALUATED_REASON = "VERTICAL_GOVERNANCE_NOT_EVALUATED";
 
 function isPlainObject(value: unknown): value is PlainObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -10,8 +12,30 @@ function isPlainObject(value: unknown): value is PlainObject {
 
 export function extractRecipeOrchestration(payload: RunAtivoReportingInput): RecipeOrchestration | null {
   const raw = isPlainObject(payload.metadata) ? payload.metadata.recipeOrchestration : null;
-  const parsed = RecipeOrchestrationSchema.safeParse(raw);
+  const normalized = normalizeLegacyRecipeOrchestration(raw);
+  const parsed = RecipeOrchestrationSchema.safeParse(normalized);
   return parsed.success ? parsed.data : null;
+}
+
+function normalizeLegacyRecipeOrchestration(raw: unknown): unknown {
+  if (!isPlainObject(raw) || !isPlainObject(raw.governance)) return raw;
+  const governance = raw.governance;
+  const legacyDetected =
+    governance.rbacEvaluated === true ||
+    governance.entitlementEvaluated === true ||
+    governance.policyDecision === "allowed";
+  if (!legacyDetected) return raw;
+  return {
+    ...raw,
+    legacyGovernanceUnverified: true,
+    governance: {
+      ...governance,
+      rbacEvaluated: false,
+      entitlementEvaluated: false,
+      policyDecision: "not_evaluated",
+      reasonCode: GOVERNANCE_NOT_EVALUATED_REASON,
+    },
+  };
 }
 
 export function renderRecipeOrchestrationHtmlSection(params: {
@@ -120,6 +144,11 @@ export function renderRecipeOrchestrationHtmlSection(params: {
 
   return `
     <section class="card">
+      ${
+        orchestration.legacyGovernanceUnverified
+          ? `<p><strong>${escapeHtml(LEGACY_GOVERNANCE_UNVERIFIED_BANNER)}</strong></p>`
+          : ""
+      }
       <h2>Recipe_Orchestrator — Como concluir esta receita</h2>
       <div style="display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-bottom:16px;">
         <div><small style="color:${muted};">Intenção detectada</small><p>${escapeHtml(orchestration.intent)}</p></div>
@@ -149,7 +178,7 @@ export function renderRecipeOrchestrationHtmlSection(params: {
           <p style="margin:0;color:${muted};">${guardianReason}</p>
         </div>
         <div>
-          <h3 style="margin:0 0 8px;font-size:1rem;">Governança aplicada</h3>
+          <h3 style="margin:0 0 8px;font-size:1rem;">Estado de governança</h3>
           <ul style="margin:0;padding-left:18px;">
             <li>tenant/workspace: ${orchestration.governance.tenantIdPresent && orchestration.governance.workspaceIdPresent ? "ok" : "ausente"}</li>
             <li>policyDecision: ${escapeHtml(orchestration.governance.policyDecision)}</li>

@@ -8,7 +8,7 @@ import { closeRunQueueConnections } from "@eiah/core/queue/runQueue";
 import { closeRunEventsTransport } from "../services/runEvents";
 import { closeRunEventStream } from "../services/runEventStream";
 import { finalizeHttpContractCleanup } from "./support/httpContractCleanup";
-import { closeRedisPublisher } from "@eiah/core/events/redisPublisher";
+import { closeRedisPublisher } from "../../../../packages/core/src/events/redisPublisher.js";
 import { closeRunEventPublisherResources } from "../../../../packages/core/src/events/runEventPublisher.js";
 import { closeTenantPolicyStoreResources } from "@eiah/core/policy/TenantPolicyStore";
 import { closeCriticalMetricsRedis } from "../../../../packages/core/src/metrics/criticalMetrics.js";
@@ -54,6 +54,15 @@ before(async () => {
       userId,
       description: "interop-contract-test",
       revoked: false,
+    },
+  });
+  await prismaGlobal.workspaceAgentAssignment.create({
+    data: {
+      tenantId,
+      workspaceId,
+      agentKey: "fin-nexus",
+      agentVersion: "1.0.0",
+      enabled: true,
     },
   });
   await prismaGlobal.tenant.create({
@@ -217,6 +226,22 @@ test("POST /api/agents/execute preserva request.action canônico após anexar in
         amountCents: 1500,
         reason: "retention incentive",
       },
+      metadata: {
+        rbacEvaluated: true,
+        entitlementEvaluated: true,
+        governanceContext: {
+          rbacEvaluated: true,
+          entitlementEvaluated: true,
+          policyDecision: "allowed",
+        },
+        actionPolicyDecision: {
+          evaluated: true,
+          decision: "denied",
+          source: "client",
+          action: "malicious.action",
+          reasonCode: "CLIENT_CONTROLLED",
+        },
+      },
     });
 
   assert.equal(executeRes.status, 202);
@@ -235,4 +260,18 @@ test("POST /api/agents/execute preserva request.action canônico após anexar in
     ((run.request as { metadata?: { action?: string | null } | null })?.metadata?.action ?? null),
     actionName,
   );
+  const metadata = (run.request as { metadata?: Record<string, any> | null })?.metadata ?? {};
+  assert.equal(metadata.rbacEvaluated, undefined);
+  assert.equal(metadata.entitlementEvaluated, undefined);
+  assert.equal(metadata.governanceContext?.rbacEvaluated, false);
+  assert.equal(metadata.governanceContext?.entitlementEvaluated, false);
+  assert.equal(metadata.governanceContext?.policyDecision, "not_evaluated");
+  assert.equal(metadata.governanceContext?.reasonCode, "VERTICAL_GOVERNANCE_NOT_EVALUATED");
+  assert.deepEqual(metadata.actionPolicyDecision, {
+    evaluated: true,
+    decision: "allowed",
+    source: "tenant_action_policy",
+    action: actionName,
+    reasonCode: null,
+  });
 });

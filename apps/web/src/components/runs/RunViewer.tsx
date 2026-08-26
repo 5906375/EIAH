@@ -1734,9 +1734,14 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
                     <li>custo: {formatGuardianCurrencyValue(guardianReport.finops.estimatedCost, guardianReport.finops.currency ?? "BRL")}</li>
                   </ul>
                 </div>
+                {guardianReport.legacyGovernanceUnverified ? (
+                  <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-3 text-xs font-semibold text-amber-700 md:col-span-2">
+                    LEGADO — ESTADO DE GOVERNANÇA NÃO VERIFICADO
+                  </div>
+                ) : null}
                 {guardianReport.governance ? (
                   <div className="rounded-xl border border-white/10 bg-black/20 p-3 md:col-span-2">
-                    <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">Governança aplicada</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">Estado de governança</p>
                     <div className="mt-2 grid gap-3 md:grid-cols-2">
                       <ul className="space-y-1 text-xs text-muted-foreground">
                         <li>tenant/workspace: {guardianReport.governance.tenantIdPresent && guardianReport.governance.workspaceIdPresent ? "ok" : "ausente"}</li>
@@ -2133,7 +2138,12 @@ function StructuredRecommendationView({ run, data, markdownComponents }: Structu
                 </ul>
               </div>
               <div className="rounded-xl border border-white/10 bg-black/20 p-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">Governança aplicada</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-foreground/70">Estado de governança</p>
+                {recipeOrchestration.legacyGovernanceUnverified ? (
+                  <p className="mt-2 text-xs font-semibold text-amber-700">
+                    LEGADO — ESTADO DE GOVERNANÇA NÃO VERIFICADO
+                  </p>
+                ) : null}
                 <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
                   <li>tenant/workspace: {recipeOrchestration.governance.tenantIdPresent && recipeOrchestration.governance.workspaceIdPresent ? "ok" : "ausente"}</li>
                   <li>policyDecision: {recipeOrchestration.governance.policyDecision}</li>
@@ -2915,7 +2925,8 @@ function buildRecipeOrchestrationHtmlBlock(orchestration: RecipeOrchestrationVie
           <ul>${guardianReasons}</ul>
         </div>
         <div>
-          <h3>Governança aplicada</h3>
+          <h3>Estado de governança</h3>
+          ${orchestration.legacyGovernanceUnverified ? "<p><strong>LEGADO — ESTADO DE GOVERNANÇA NÃO VERIFICADO</strong></p>" : ""}
           <ul>
             <li>tenant/workspace: ${orchestration.governance.tenantIdPresent && orchestration.governance.workspaceIdPresent ? "ok" : "ausente"}</li>
             <li>policyDecision: ${sanitizeTextContent(orchestration.governance.policyDecision)}</li>
@@ -3398,7 +3409,8 @@ function buildGuardianReportHtml(options: {
         ${
           report.governance
             ? `<section class="card">
-          <h2>Governança aplicada</h2>
+          <h2>Estado de governança</h2>
+          ${report.legacyGovernanceUnverified ? "<p><strong>LEGADO — ESTADO DE GOVERNANÇA NÃO VERIFICADO</strong></p>" : ""}
           <div class="summary-grid">
             <div><small class="muted">tenant/workspace</small><p>${report.governance.tenantIdPresent && report.governance.workspaceIdPresent ? "ok" : "ausente"}</p></div>
             <div><small class="muted">RBAC</small><p>${report.governance.rbacEvaluated ? "avaliado" : "não avaliado"}</p></div>
@@ -4892,6 +4904,7 @@ type GuardianForm = {
 };
 
 type GuardianReportView = {
+  legacyGovernanceUnverified?: boolean;
   route: string;
   runStatus: "success" | "error";
   guardianDecision: "GO" | "NO-GO" | "DEGRADED";
@@ -5063,6 +5076,7 @@ type MktCampaignReportView = {
 };
 
 type RecipeOrchestrationView = {
+  legacyGovernanceUnverified?: boolean;
   schemaVersion: "recipe_orchestration.v1";
   source: "recipe_run";
   recipeId: string | null;
