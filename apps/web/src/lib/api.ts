@@ -5126,3 +5126,35 @@ export async function apiImobIntakePdfGuidance(runId: string): Promise<ImobContr
     `/imob/runs/${encodeURIComponent(runId)}/intake/export?format=pdf`,
   );
 }
+
+// ─── Logística / PRE_DUIMP shadow front door ─────────────────────────────────
+
+export type PreDuimpActionRequest = {
+  action: "log.duimp_context.create";
+  context: {
+    tenantId: string;
+    workspaceId: string;
+    verticalId: "log";
+    recordType: "log.comex_duimp_context";
+    recordId: string;
+    mode: "shadow";
+    externalTransmissionAllowed: false;
+  };
+};
+
+export type PreDuimpAuthorizedShadowResponse = {
+  ok: true;
+  decision: "authorized_shadow";
+  action: "log.duimp_context.create";
+  mode: "shadow";
+  externalTransmissionAllowed: false;
+};
+
+export async function apiCreatePreDuimpContext(
+  request: PreDuimpActionRequest,
+): Promise<PreDuimpAuthorizedShadowResponse> {
+  return http<PreDuimpAuthorizedShadowResponse>("/logistica/pre-duimp/actions", {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
+}
