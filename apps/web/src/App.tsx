@@ -12,7 +12,12 @@ import SelfServiceRouter from "./pages/self-service/router";
 import SignupPage from "./pages/signup";
 import ProfilePage from "./pages/profile";
 import AccessPage from "./pages/access";
-import eiahLogo from "./assets/Eiah_logo.png";
+import PreDuimpPage from "./pages/app/logistica/pre-duimp";
+import { EiahBrandMark } from "./components/brand/EiahBrandMark";
+import {
+  getPreDuimpDirectAccessRedirect,
+  isPreDuimpFrontendEnabled,
+} from "./features/logistica/preDuimp";
 import { updateSession, useSession, type ImobAccessGateState } from "./state/sessionStore";
 import { ApiError, apiGetSessionContext, apiPostExperienceAudit } from "./lib/api";
 import { isImobInstalled } from "./lib/entitlements";
@@ -51,6 +56,7 @@ type ShellNavItem = {
     "workspace_member" | "workspace_admin" | "tenant_admin" | "founder_global" | "service_operator"
   >;
   requiresImob?: boolean;
+  requiresPreDuimp?: boolean;
 };
 
 const SHELL_NAV_ITEMS: ShellNavItem[] = [
@@ -59,9 +65,19 @@ const SHELL_NAV_ITEMS: ShellNavItem[] = [
   { to: "/app/billing", label: "Billing", hiddenForRoles: ["workspace_member"] },
   { to: "/app/marketplace", label: "Marketplace" },
   { to: "/app/imob/chat", label: "IMOB", requiresImob: true },
+  { to: "/app/logistica/pre-duimp", label: "Pré-DUIMP", requiresPreDuimp: true },
   { to: "/self-service", label: "Self-service" },
   { to: "/profile", label: "Perfil" },
 ];
+
+const PRE_DUIMP_FRONTEND_ENABLED = isPreDuimpFrontendEnabled();
+const PRE_DUIMP_DIRECT_ACCESS_REDIRECT = getPreDuimpDirectAccessRedirect(
+  PRE_DUIMP_FRONTEND_ENABLED,
+);
+
+export function getPreDuimpNavigationItems(enabled: boolean): ShellNavItem[] {
+  return SHELL_NAV_ITEMS.filter((item) => !item.requiresPreDuimp || enabled);
+}
 
 function Layout({
   children,
@@ -85,7 +101,7 @@ function Layout({
   const isImobChatRoute = location.pathname === "/app/imob/chat";
   const subtitle = isImobSurface ? "Imobiliaria Digital Command Center" : "Agent Operations Console";
   const roleProfile = session.experience?.roleProfile;
-  const visibleNavItems = SHELL_NAV_ITEMS.filter((item) => {
+  const visibleNavItems = getPreDuimpNavigationItems(PRE_DUIMP_FRONTEND_ENABLED).filter((item) => {
     if (item.requiresImob && !imobInstalled) return false;
     if (item.hiddenForRoles?.includes(roleProfile ?? "workspace_member")) return false;
     return true;
@@ -111,7 +127,12 @@ function Layout({
             <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl bg-white/10 shadow-[0_6px_18px_rgba(15,23,42,0.45)]">
-                  <img src={logoUrl || eiahLogo} alt={`${brandName} logo`} className="h-full w-full object-cover" />
+                  <EiahBrandMark
+                    brandName={brandName}
+                    logoUrl={logoUrl}
+                    visibleName
+                    className="h-full w-full"
+                  />
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.35em] text-accent">{brandName}</p>
@@ -363,6 +384,20 @@ function AppRoutes() {
               </RequireImobInstall>
             </RequireAuth>
           </Layout>
+        }
+      />
+      <Route
+        path="/app/logistica/pre-duimp"
+        element={
+          PRE_DUIMP_DIRECT_ACCESS_REDIRECT ? (
+            <Navigate to={PRE_DUIMP_DIRECT_ACCESS_REDIRECT} replace />
+          ) : (
+            <Layout>
+              <RequireAuth>
+                <PreDuimpPage />
+              </RequireAuth>
+            </Layout>
+          )
         }
       />
       <Route
