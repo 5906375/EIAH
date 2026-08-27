@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "packageId": "pre-duimp-runtime-shadow-v1-2026-08-27",
+  "documentDate": "2026-08-31",
+  "historicalSource": {
+    "commit": "6c1de58dcd5326dfd4deba1d8c1b573a5803801c",
+    "classification": "local_historical_original",
+    "published": false
+  },
+  "artifacts": [
+    {
+      "logicalPath": "ops/evidence/latest/pre-duimp-runtime-shadow-v1-2026-08-27-01-test_pre-duimp-runtime-shadow-route.log.txt",
+      "sourceSha256": "042f319b2d31ae64d0fe23ed1b9e1bafd60ff5889517d7117c5e16152a2850e2",
+      "publishedSha256": "d0c11fb5ed7ae590e5afd2510eea997003c780ef6425143c5db7df870c032c99",
+      "transformation": "sanitized_transformation",
+      "maskingCategories": [
+        "repo_root",
+        "repo_relative_path"
+      ]
+    },
+    {
+      "logicalPath": "ops/evidence/latest/pre-duimp-runtime-shadow-v1-2026-08-27-02-test_pre-duimp.log.txt",
+      "sourceSha256": "44dabd8908103bcaf58f4395c17e3e7114ef0ec4852adedcee2ff7b794885abf",
+      "publishedSha256": "6122db33606689615646f6b3de1f8c0d71a666d444bd2682c8e4c1c27d9f94f7",
+      "transformation": "sanitized_transformation",
+      "maskingCategories": [
+        "repo_root",
+        "repo_relative_path"
+      ]
+    },
+    {
+      "logicalPath": "ops/evidence/latest/pre-duimp-runtime-shadow-v1-2026-08-27-03-check_orphan-tests.log.txt",
+      "sourceSha256": "274a22840110ad489438d2e2a4e9913333eb29982a9f73db4dfdcbb96691e9dc",
+      "publishedSha256": "04503d59a9b8a4dea919658167efe49a215a8213094f9d57a980d776ed3c59ac",
+      "transformation": "sanitized_transformation",
+      "maskingCategories": [
+        "repo_root"
+      ]
+    },
+    {
+      "logicalPath": "ops/evidence/latest/pre-duimp-runtime-shadow-v1-2026-08-27-05-integrity_tree-check.log.txt",
+      "sourceSha256": "656cfbdd10aaa3dff613dd2b388d3e93efe341ab55de0457c84e5125aecf45e0",
+      "publishedSha256": "656cfbdd10aaa3dff613dd2b388d3e93efe341ab55de0457c84e5125aecf45e0",
+      "transformation": "byte_identical",
+      "maskingCategories": []
+    },
+    {
+      "logicalPath": "ops/evidence/latest/pre-duimp-runtime-shadow-v1-2026-08-27-manifest.json",
+      "sourceSha256": "64866b15136938fa5ef5cfe77af7b4999574ac8281b95ba5dbfb7e6d918f9679",
+      "publishedSha256": "3229bdc7d24cffa87eee021927b8abfd40fbb59a00c4755e3a7e88ad1a6d6d46",
+      "transformation": "sanitized_transformation",
+      "maskingCategories": [
+        "repo_root",
+        "external_evidence_artifact"
+      ]
+    },
+    {
+      "logicalPath": "ops/evidence/latest/pre-duimp-runtime-shadow-v1-validation-2026-08-27.md",
+      "sourceSha256": "ad5ae6faa17b7d82fdb41efd2fda90c3460efd85418bd0e01407259f20396fc5",
+      "publishedSha256": "83084a435a449dd2579cc5b101f2507638b0d28fb6c381e3fa24e042e0f9d48e",
+      "transformation": "sanitized_transformation",
+      "maskingCategories": [
+        "external_evidence_root"
+      ]
+    }
+  ],
+  "statement": "The original local source remains preserved and unpublished. This derived package changes only the declared path tokens and does not widen the evidence classification. PRE_DUIMP remains shadow and PARCIAL."
+}

@@ -1,0 +1,63 @@
+
+> eiah-builder@ test:pre-duimp-runtime-shadow-route <repo-root>
+> TSX_TSCONFIG_PATH=tsconfig.base.json NODE_ENV=test node --env-file-if-exists=packages/db/.env --import tsx --test --test-force-exit apps/api/src/tests/pre-duimp-runtime-shadow-route.contract.test.ts
+
+TAP version 13
+# Subtest: route: POST without authContext returns 401 UNAUTHORIZED
+ok 1 - route: POST without authContext returns 401 UNAUTHORIZED
+  ---
+  duration_ms: 30.762434
+  type: 'test'
+  ...
+# Subtest: route: POST with an unknown action returns 400 PRE_DUIMP_ACTION_UNKNOWN
+ok 2 - route: POST with an unknown action returns 400 PRE_DUIMP_ACTION_UNKNOWN
+  ---
+  duration_ms: 9.131329
+  type: 'test'
+  ...
+# Subtest: route: POST with scope denied returns 403 with reasonCode PRE_DUIMP_SCOPE_DENIED
+ok 3 - route: POST with scope denied returns 403 with reasonCode PRE_DUIMP_SCOPE_DENIED
+  ---
+  duration_ms: 3.382977
+  type: 'test'
+  ...
+# Subtest: route: POST with a malformed context returns 400 VALIDATION_ERROR with details, not PRE_DUIMP_ACTION_UNKNOWN/500
+ok 4 - route: POST with a malformed context returns 400 VALIDATION_ERROR with details, not PRE_DUIMP_ACTION_UNKNOWN/500
+  ---
+  duration_ms: 3.088665
+  type: 'test'
+  ...
+# Subtest: route: POST log.duimp_context.review without HITL approval returns 403 PRE_DUIMP_HITL_REQUIRED
+ok 5 - route: POST log.duimp_context.review without HITL approval returns 403 PRE_DUIMP_HITL_REQUIRED
+  ---
+  duration_ms: 2.815501
+  type: 'test'
+  ...
+# Subtest: route: POST fully authorized log.duimp_context.create returns 200 authorized_shadow
+ok 6 - route: POST fully authorized log.duimp_context.create returns 200 authorized_shadow
+  ---
+  duration_ms: 2.833984
+  type: 'test'
+  ...
+# {"level":50,"time":"2026-08-27T09:00:17.798Z","service":"eiah","env":"test","component":"api-error-handler","httpMethod":"POST","path":"/logistica/pre-duimp/actions","err":{"type":"Error","message":"simulated unexpected dependency failure","stack":"Error: simulated unexpected dependency failure\\n    at Object.resolveServerAuthority (<repo-root>/<relative-path>)\\n    at <anonymous> (<repo-root>/<relative-path>)\\n    at <anonymous> (<repo-root>/<relative-path>)\\n    at Layer.handle [as handle_request] (<repo-root>/<relative-path>)\\n    at next (<repo-root>/<relative-path>)\\n    at Route.dispatch (<repo-root>/<relative-path>)\\n    at Layer.handle [as handle_request] (<repo-root>/<relative-path>)\\n    at <repo-root>/<relative-path>\\n    at Function.process_params (<repo-root>/<relative-path>)\\n    at next (<repo-root>/<relative-path>)"},"msg":"api.unhandled_route_error"}
+# Subtest: route: POST with an unexpected dependency failure propagates to governedErrorHandler as 500 INTERNAL_ERROR, never a masked 400
+ok 7 - route: POST with an unexpected dependency failure propagates to governedErrorHandler as 500 INTERNAL_ERROR, never a masked 400
+  ---
+  duration_ms: 5.048394
+  type: 'test'
+  ...
+# Subtest: route: GET on the actions path is not registered (only POST is exposed)
+ok 8 - route: GET on the actions path is not registered (only POST is exposed)
+  ---
+  duration_ms: 3.348448
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 663.339177
