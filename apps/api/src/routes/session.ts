@@ -19,6 +19,7 @@ import {
   type ResolverAuditDecisionType,
 } from "../types/resolverAuditEvent";
 import { mapLandingSurfaceToExperienceSurface } from "../types/experienceSurfaceContract";
+import { resolvePreDuimpAccessFromCanonicalSources } from "../services/logistica/control/preDuimpAccessResolver";
 
 const sessionRouter = Router();
 const DOMAIN_ALLOWLIST = new Set(["core", "imob"] as const);
@@ -260,7 +261,7 @@ sessionRouter.get("/session/context", async (req: Request, res: Response) => {
   }
 
   const requestedDomain = resolveRequestedDomain(req);
-  const [tenant, workspace, snapshot] = await Promise.all([
+  const [tenant, workspace, snapshot, preDuimpAccess] = await Promise.all([
     prismaGlobal.tenant.findUnique({
       where: { id: tokenRecord.tenantId },
       select: { id: true, name: true },
@@ -270,6 +271,14 @@ sessionRouter.get("/session/context", async (req: Request, res: Response) => {
       select: { id: true, name: true },
     }),
     resolveExperienceSnapshot(tokenRecord, requestedDomain),
+    resolvePreDuimpAccessFromCanonicalSources({
+      identity: {
+        tenantId: tokenRecord.tenantId,
+        workspaceId: tokenRecord.workspaceId,
+        userId: tokenRecord.userId ?? undefined,
+        tokenId: tokenRecord.tokenId,
+      },
+    }),
   ]);
 
   if (requestedDomain === "imob" && !snapshot.entitlements.REAL_ESTATE_CORE) {
@@ -317,6 +326,9 @@ sessionRouter.get("/session/context", async (req: Request, res: Response) => {
       activeDomain: snapshot.activeDomain,
       availableDomains: snapshot.availableDomains,
       entitlements: snapshot.entitlements,
+      capabilities: {
+        preDuimpShadow: preDuimpAccess.capability,
+      },
       productInstallations: snapshot.productInstallations.map((entry) => ({
         product: entry.product,
         status: entry.status,

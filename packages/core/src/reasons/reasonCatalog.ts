@@ -184,6 +184,18 @@ const PRE_DUIMP_AUTHORIZATION_CUT3_PROPOSED_CODES = [
   "PRE_DUIMP_HITL_REQUIRED",
 ] as const;
 
+const PRE_DUIMP_PILOT_GATE_P0_PROPOSED_CODES = [
+  "PRE_DUIMP_RUNTIME_DISABLED",
+  "PRE_DUIMP_INSTALLATION_MISSING",
+  "PRE_DUIMP_INSTALLATION_INACTIVE",
+  "PRE_DUIMP_INSTALLATION_INVALID",
+  "PRE_DUIMP_PILOT_GRANT_MISSING",
+  "PRE_DUIMP_PILOT_GRANT_DISABLED",
+  "PRE_DUIMP_ACTION_POLICY_DENIED",
+  "PRE_DUIMP_ACCESS_UNAVAILABLE",
+  "PRE_DUIMP_PILOT_ACCESS_DENIED",
+] as const;
+
 const PRE_DUIMP_INTEGRITY_CUT5_PROPOSED_CODES = [
   "PRE_DUIMP_REPLAY_REJECTED",
 ] as const;
@@ -443,6 +455,16 @@ export const REASON_CODE_CATALOG = [
     owner: "Logística governance / PRE_DUIMP",
     introducedBy: "PRE_DUIMP-CUT-3",
     evidenceRef: "apps/api/src/services/logistica/control/preDuimpActionCatalog.ts",
+  }),
+  ...defineReasonCodes(PRE_DUIMP_PILOT_GATE_P0_PROPOSED_CODES, {
+    domain: "log",
+    severity: "critical",
+    category: "authorization",
+    descriptionPrefix: "Reason code enforced by the PRE_DUIMP tenant/workspace pilot gate",
+    status: "proposed",
+    owner: "Logística governance / PRE_DUIMP",
+    introducedBy: "PRE_DUIMP-PILOT-GATE-P0",
+    evidenceRef: "apps/api/src/services/logistica/control/preDuimpAccessResolver.ts",
   }),
   ...defineReasonCodes(PRE_DUIMP_INTEGRITY_CUT5_PROPOSED_CODES, {
     domain: "log",

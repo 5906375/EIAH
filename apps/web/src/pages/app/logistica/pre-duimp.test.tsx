@@ -32,6 +32,14 @@ test("PRE_DUIMP page keeps HITL and replay visibly unavailable without operation
   assert.equal((html.match(/type="submit"/g) ?? []).length, 1);
 });
 
+test("PRE_DUIMP submit path has a single-flight guard around its only POST", () => {
+  const pageSource = readFileSync(new URL("./pre-duimp.tsx", import.meta.url), "utf8");
+
+  assert.match(pageSource, /if \(submissionInFlightRef\.current\) return/);
+  assert.equal((pageSource.match(/apiCreatePreDuimpContext\(request\)/g) ?? []).length, 1);
+  assert.match(pageSource, /finally[\s\S]*submissionInFlightRef\.current = false/);
+});
+
 test("PRE_DUIMP page has labels, visible focus treatment and an aria-live result region", () => {
   const html = renderToStaticMarkup(<PreDuimpPage />);
 
@@ -69,4 +77,17 @@ test("global shell uses the official brand component and no longer imports the d
   assert.match(appSource, /<EiahBrandMark/);
   assert.match(appSource, /visibleName/);
   assert.doesNotMatch(appSource, /Eiah_logo\.png/);
+});
+
+test("PRE_DUIMP shell gate is server-authoritative and never hydrates capability from localStorage", () => {
+  const appSource = readFileSync(new URL("../../../App.tsx", import.meta.url), "utf8");
+  const storeSource = readFileSync(new URL("../../../state/sessionStore.ts", import.meta.url), "utf8");
+
+  assert.match(appSource, /isPreDuimpAccessAllowed/);
+  assert.match(appSource, /RequirePreDuimpAccess/);
+  assert.match(appSource, /preDuimpAccess: \{ status: "loading" \}/);
+  assert.match(appSource, /if \(!active\) return/);
+  assert.match(appSource, /active = false/);
+  assert.doesNotMatch(storeSource, /getItem\(["']pre.?duimp/i);
+  assert.doesNotMatch(storeSource, /setItem\(["']pre.?duimp/i);
 });

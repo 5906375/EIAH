@@ -7,6 +7,7 @@ import {
   type TenantWorkspaceScope,
 } from "../../../types/preDuimpContextContract";
 import type { TenantProductInstallationLike } from "../../../types/verticalEntitlementGateContract";
+import type { PreDuimpAccessDenialReasonCode } from "../../../types/preDuimpAccessContract";
 
 // Catalogo canonico de Actions do recorte PRE_DUIMP (Comex/DUIMP),
 // interno a vertical publica Logistica (roadmap v8.1 secao 15).
@@ -43,6 +44,8 @@ export type PreDuimpActionReasonCode =
   | "PRE_DUIMP_ACTION_UNKNOWN"
   | "PRE_DUIMP_EXTERNAL_TRANSMISSION_BLOCKED"
   | "PRE_DUIMP_ISOLATION_VIOLATION"
+  | "PRE_DUIMP_RUNTIME_DISABLED"
+  | "PRE_DUIMP_PILOT_ACCESS_DENIED"
   | "PRE_DUIMP_SCOPE_DENIED"
   | "PRE_DUIMP_ENTITLEMENT_DENIED"
   | "PRE_DUIMP_HITL_REQUIRED";
@@ -52,7 +55,10 @@ export class PreDuimpActionRejectedError extends Error {
     message: string,
     readonly reasonCode: PreDuimpActionReasonCode,
     readonly context: Record<string, unknown>,
-    readonly subreason?: PreDuimpExternalTransmissionSubreason | PreDuimpEntitlementDenialReason,
+    readonly subreason?:
+      | PreDuimpExternalTransmissionSubreason
+      | PreDuimpEntitlementDenialReason
+      | PreDuimpAccessDenialReasonCode,
   ) {
     super(message);
     this.name = "PreDuimpActionRejectedError";
@@ -89,6 +95,9 @@ export type PreDuimpAuthorizationRequest = {
 // instalacao/entitlement e aprovacao HITL persistida.
 export type PreDuimpServerAuthoritySource = {
   requester: TenantWorkspaceScope;
+  runtimeEnabled: boolean;
+  pilotAccessAllowed: boolean;
+  pilotAccessReasonCode: PreDuimpAccessDenialReasonCode | null;
   grantedScopes: readonly string[];
   installation: TenantProductInstallationLike | null;
   billingPastDue?: boolean;
@@ -199,7 +208,7 @@ function assertPreDuimpHitl(
 // um objeto authority/resolved pronto do chamador como atalho.
 //
 // Ordem fail-closed: action -> bloqueio externo -> parse -> isolamento
-// -> scope -> entitlement -> HITL.
+// -> runtime -> piloto workspace-exact -> scope -> entitlement -> HITL.
 export function authorizePreDuimpAction(
   request: PreDuimpAuthorizationRequest,
   serverAuthority: PreDuimpServerAuthoritySnapshot,
@@ -240,6 +249,24 @@ export function authorizePreDuimpAction(
       `PRE_DUIMP isolation violation: ${isolation.reason}`,
       "PRE_DUIMP_ISOLATION_VIOLATION",
       { reason: isolation.reason, requester: serverAuthority.requester },
+    );
+  }
+
+  if (!serverAuthority.runtimeEnabled) {
+    throw new PreDuimpActionRejectedError(
+      "PRE_DUIMP runtime shadow is disabled",
+      "PRE_DUIMP_RUNTIME_DISABLED",
+      { action: request.action },
+      "PRE_DUIMP_RUNTIME_DISABLED",
+    );
+  }
+
+  if (!serverAuthority.pilotAccessAllowed) {
+    throw new PreDuimpActionRejectedError(
+      "PRE_DUIMP pilot access denied",
+      "PRE_DUIMP_PILOT_ACCESS_DENIED",
+      { action: request.action },
+      serverAuthority.pilotAccessReasonCode ?? "PRE_DUIMP_ACCESS_UNAVAILABLE",
     );
   }
 
