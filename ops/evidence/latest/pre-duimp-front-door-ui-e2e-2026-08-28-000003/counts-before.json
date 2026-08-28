@@ -1,0 +1,15 @@
+{
+  "capturedAt": "2026-08-28T12:19:26.917Z",
+  "guardrailLedger": {
+    "allow": 2,
+    "deny": 0
+  },
+  "guardrailAuditLedger": {
+    "allow": 2,
+    "deny": 0
+  },
+  "runs": {
+    "tenantWorkspace": 0,
+    "recordId": 0
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "schema": "pre-duimp-publication-integrity-v1",
+  "generatedAt": "2026-08-28",
+  "artifacts": [
+    {
+      "name": "01-front-door-logistica.png",
+      "path": "01-front-door-logistica.png",
+      "size": 505396,
+      "sha256": "0d8718a7c7e430551e22650765b474dc419fcde7913e1e987ef0b3abbf1f96e8"
+    },
+    {
+      "name": "02-pre-duimp-cognitive-ready.png",
+      "path": "02-pre-duimp-cognitive-ready.png",
+      "size": 113952,
+      "sha256": "8916a5f4915e6f35382919701137c69f32e9af54a781291717757ed8195e3228"
+    },
+    {
+      "name": "03-pre-duimp-authorized-shadow.png",
+      "path": "03-pre-duimp-authorized-shadow.png",
+      "size": 120928,
+      "sha256": "849956de3c9a4605ca2668e7f95e2461a97a2be0ee0a2855e64a57346ee07039"
+    },
+    {
+      "name": "counts-after.json",
+      "path": "counts-after.json",
+      "size": 229,
+      "sha256": "52412763b2ae540a0d877b11a041a0108cad0153bd64fa32777c4ca7c133b81d"
+    },
+    {
+      "name": "counts-before.json",
+      "path": "counts-before.json",
+      "size": 229,
+      "sha256": "a988a46cfb5b692e5f70ae401abb720b226c8c13049f396b8614a8d12b775c1e"
+    },
+    {
+      "name": "default-off-restoration.json",
+      "path": "default-off-restoration.json",
+      "size": 242,
+      "sha256": "9b5f71f236199a227057196144fffb1c255b040246d87695ca8a2e1c482e0997"
+    },
+    {
+      "name": "integrity.json",
+      "path": "integrity.json",
+      "size": 1932,
+      "sha256": "fef989594051c68e6015ff14a23e8f4180cc48bf178d22d709e921b5d98ad3a4"
+    },
+    {
+      "name": "playwright-result.json",
+      "path": "playwright-result.json",
+      "size": 2135,
+      "sha256": "ca09c71a7f6b600591badda4b1d4ce86e73d62ca1bb5ac6fbb875620ec6c8f7b"
+    },
+    {
+      "name": "playwright-sanitized.log",
+      "path": "playwright-sanitized.log",
+      "size": 695,
+      "sha256": "eb415444b5a0a55ccc7c8a057f2e317f63bfb69017f883d52b4a5704a334c2d2"
+    },
+    {
+      "name": "sensitivity-scan.json",
+      "path": "sensitivity-scan.json",
+      "size": 957,
+      "sha256": "e5623fe6c148fd4d7cb77340c93d7e25bab0ffb9fb8f6d86f69b25116b9d1288"
+    },
+    {
+      "name": "user-journey-summary.md",
+      "path": "user-journey-summary.md",
+      "size": 115,
+      "sha256": "8d6b2df071767aa4621e3d11e59dc7fc72e5ee137baa7eb9edffc310a24c8d10"
+    }
+  ]
+}
