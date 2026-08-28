@@ -6,7 +6,10 @@ import {
   buildPreDuimpCreateRequest,
   getPreDuimpDirectAccessRedirect,
   isAuthorizedShadowResponse,
+  isPreDuimpAccessAllowed,
   isPreDuimpFrontendEnabled,
+  loadPreDuimpSessionContext,
+  parsePreDuimpShadowCapability,
   PRE_DUIMP_REASON_MESSAGES,
   presentPreDuimpError,
   type PreDuimpReasonCode,
@@ -20,9 +23,109 @@ test("PRE_DUIMP frontend flag is default-off and only literal true enables it", 
   assert.equal(isPreDuimpFrontendEnabled({ VITE_PRE_DUIMP_FRONTEND_ENABLED: "true" }), true);
 });
 
-test("direct access redirects to runs only while the frontend flag is off", () => {
-  assert.equal(getPreDuimpDirectAccessRedirect(false), "/app/runs");
-  assert.equal(getPreDuimpDirectAccessRedirect(true), null);
+const ALLOWED_CAPABILITY = {
+  version: "v1",
+  allowed: true,
+  mode: "shadow",
+  externalTransmissionAllowed: false,
+  reasonCode: null,
+} as const;
+
+test("direct access requires both the global kill switch and a ready allowed capability", () => {
+  assert.equal(getPreDuimpDirectAccessRedirect(false, { status: "ready", capability: ALLOWED_CAPABILITY }), "/app/runs");
+  assert.equal(getPreDuimpDirectAccessRedirect(true, { status: "idle" }), "/app/runs");
+  assert.equal(getPreDuimpDirectAccessRedirect(true, { status: "loading" }), "/app/runs");
+  assert.equal(getPreDuimpDirectAccessRedirect(true, { status: "error" }), "/app/runs");
+  assert.equal(
+    getPreDuimpDirectAccessRedirect(true, { status: "ready", capability: ALLOWED_CAPABILITY }),
+    null,
+  );
+});
+
+test("capability parser rejects incomplete, unknown and non-shadow contracts", () => {
+  assert.equal(parsePreDuimpShadowCapability(ALLOWED_CAPABILITY)?.allowed, true);
+  assert.equal(parsePreDuimpShadowCapability({ ...ALLOWED_CAPABILITY, version: "v2" }), null);
+  assert.equal(parsePreDuimpShadowCapability({ ...ALLOWED_CAPABILITY, mode: "live" }), null);
+  assert.equal(parsePreDuimpShadowCapability({ ...ALLOWED_CAPABILITY, reasonCode: undefined }), null);
+  assert.equal(
+    parsePreDuimpShadowCapability({
+      ...ALLOWED_CAPABILITY,
+      allowed: false,
+      reasonCode: "PRE_DUIMP_UNKNOWN_REASON",
+    }),
+    null,
+  );
+});
+
+test("frontend access remains default-deny for every non-ready or malformed state", () => {
+  assert.equal(isPreDuimpAccessAllowed(true, { status: "idle" }), false);
+  assert.equal(isPreDuimpAccessAllowed(true, { status: "loading" }), false);
+  assert.equal(isPreDuimpAccessAllowed(true, { status: "error" }), false);
+  assert.equal(
+    isPreDuimpAccessAllowed(true, {
+      status: "ready",
+      capability: {
+        version: "v1",
+        allowed: false,
+        mode: "shadow",
+        externalTransmissionAllowed: false,
+        reasonCode: "PRE_DUIMP_PILOT_GRANT_MISSING",
+      },
+    }),
+    false,
+  );
+  assert.equal(isPreDuimpAccessAllowed(false, { status: "ready", capability: ALLOWED_CAPABILITY }), false);
+});
+
+test("session capability bootstrap denies 401, 403, network, 5xx and timeout failures", async () => {
+  const failures = [
+    new ApiError(401, "unauthorized"),
+    new ApiError(403, "forbidden"),
+    new ApiError(500, "unavailable"),
+    new TypeError("network failed"),
+  ];
+  for (const failure of failures) {
+    const result = await loadPreDuimpSessionContext(async () => Promise.reject(failure), 20);
+    assert.equal(result.access.status, "error");
+    assert.equal(result.access.capability, undefined);
+  }
+
+  const timeout = await loadPreDuimpSessionContext(
+    (signal) =>
+      new Promise((_, reject) => {
+        signal.addEventListener("abort", () => reject(new Error("aborted")), { once: true });
+      }),
+    5,
+  );
+  assert.equal(timeout.access.status, "error");
+});
+
+test("session capability bootstrap accepts only a complete server-authoritative response", async () => {
+  const result = await loadPreDuimpSessionContext(async () => ({
+    ok: true,
+    data: {
+      tenantId: "tenant-a",
+      workspaceId: "workspace-a",
+      activeDomain: "core",
+      availableDomains: ["core"],
+      entitlements: {
+        REAL_ESTATE_CORE: false,
+        EXPORTS_ADDON: true,
+        BILLING_INSIGHTS_ADDON: true,
+      },
+      roles: ["service"],
+      branding: {
+        brandName: "Synthetic",
+        logoUrl: null,
+        primaryColor: "#000000",
+        workspaceLabel: "Synthetic",
+      },
+      capabilities: { preDuimpShadow: ALLOWED_CAPABILITY },
+    },
+  }));
+
+  assert.equal(result.access.status, "ready");
+  assert.equal(result.access.capability?.allowed, true);
 });
 
 test("create request has the exact action and canonical context fields", () => {

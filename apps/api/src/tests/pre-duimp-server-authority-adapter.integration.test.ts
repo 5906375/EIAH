@@ -11,6 +11,7 @@ import {
   type PreDuimpAuthenticatedIdentity,
   type PreDuimpServerAuthorityAdapterDeps,
 } from "../services/logistica/control/preDuimpServerAuthorityAdapter";
+import { resolvePreDuimpAccessFromCanonicalSources } from "../services/logistica/control/preDuimpAccessResolver";
 
 const suffix = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 const LEDGER_PREFIX = "tenant-preduimp-adapter-";
@@ -36,6 +37,7 @@ const VALID_CONTEXT_FOR = (
 
 let prismaGlobal: typeof import("@repo/db")["prismaGlobal"];
 let closePrismaResources: typeof import("@repo/db")["closePrismaResources"];
+const previousRuntimeFlag = process.env.EIAH_PRE_DUIMP_RUNTIME_SHADOW_ROUTE_ENABLED;
 
 // Medicao read-only do guardrail ledger para o prefixo sintetico deste
 // teste, capturada ANTES de qualquer execucao (before()) e comparada
@@ -54,6 +56,7 @@ before(async () => {
   );
 
   ({ prismaGlobal, closePrismaResources } = await import("@repo/db"));
+  process.env.EIAH_PRE_DUIMP_RUNTIME_SHADOW_ROUTE_ENABLED = "true";
 
   ledgerCountBefore = await prismaGlobal.guardrailLedger.count({
     where: { tenantId: { startsWith: LEDGER_PREFIX } },
@@ -82,10 +85,30 @@ before(async () => {
       status: "active",
     },
   });
+  await prismaGlobal.tenantActionPolicy.create({
+    data: {
+      id: `policy-preduimp-pilot-${suffix}`,
+      tenantId: grantedTenantId,
+      workspaceId: grantedWorkspaceId,
+      actionName: "log.pre_duimp.shadow.pilot_access",
+      allowed: true,
+      maxVersion: 1,
+    },
+  });
 
   await prismaGlobal.tenant.create({ data: { id: deniedTenantId, name: deniedTenantId } });
   await prismaGlobal.workspace.create({
     data: { id: deniedWorkspaceId, tenantId: deniedTenantId, name: deniedWorkspaceId },
+  });
+  await prismaGlobal.tenantActionPolicy.create({
+    data: {
+      id: `policy-preduimp-pilot-denied-${suffix}`,
+      tenantId: deniedTenantId,
+      workspaceId: deniedWorkspaceId,
+      actionName: "log.pre_duimp.shadow.pilot_access",
+      allowed: true,
+      maxVersion: 1,
+    },
   });
   // deniedTenant nao recebe TenantProductInstallation — ausencia por design.
 });
@@ -93,15 +116,32 @@ before(async () => {
 after(async () => {
   if (!prismaGlobal) return;
 
-  await prismaGlobal.tenantProductInstallation.deleteMany({
+  const deletedPolicies = await prismaGlobal.tenantActionPolicy.deleteMany({
     where: { tenantId: { in: [grantedTenantId, deniedTenantId] } },
   });
-  await prismaGlobal.workspace.deleteMany({
+  const deletedInstallations = await prismaGlobal.tenantProductInstallation.deleteMany({
+    where: { tenantId: { in: [grantedTenantId, deniedTenantId] } },
+  });
+  const deletedWorkspaces = await prismaGlobal.workspace.deleteMany({
     where: { id: { in: [grantedWorkspaceId, deniedWorkspaceId] } },
   });
-  await prismaGlobal.tenant.deleteMany({
+  const deletedTenants = await prismaGlobal.tenant.deleteMany({
     where: { id: { in: [grantedTenantId, deniedTenantId] } },
   });
+  assert.deepEqual(
+    {
+      policies: deletedPolicies.count,
+      installations: deletedInstallations.count,
+      workspaces: deletedWorkspaces.count,
+      tenants: deletedTenants.count,
+    },
+    { policies: 2, installations: 1, workspaces: 2, tenants: 2 },
+  );
+  if (previousRuntimeFlag === undefined) {
+    delete process.env.EIAH_PRE_DUIMP_RUNTIME_SHADOW_ROUTE_ENABLED;
+  } else {
+    process.env.EIAH_PRE_DUIMP_RUNTIME_SHADOW_ROUTE_ENABLED = previousRuntimeFlag;
+  }
   await closePrismaResources();
 });
 
@@ -146,9 +186,16 @@ function createFakeCheckScopePermission(allowed: boolean) {
   return { fake, calls };
 }
 
+function createResolver(checkScopePermission: PreDuimpServerAuthorityAdapterDeps["checkScopePermission"]) {
+  return createPreDuimpServerAuthorityResolver({
+    checkScopePermission,
+    resolveAccess: resolvePreDuimpAccessFromCanonicalSources,
+  });
+}
+
 test("createPreDuimpServerAuthorityResolver: fake grants scope, canonical installation is active -> authorizePreDuimpAction succeeds, and the fake receives identity+action", async () => {
   const { fake, calls } = createFakeCheckScopePermission(true);
-  const resolveForTest = createPreDuimpServerAuthorityResolver({ checkScopePermission: fake });
+  const resolveForTest = createResolver(fake);
 
   const identity: PreDuimpAuthenticatedIdentity = {
     tenantId: grantedTenantId,
@@ -179,7 +226,7 @@ test("createPreDuimpServerAuthorityResolver: fake grants scope, canonical instal
 
 test("createPreDuimpServerAuthorityResolver: fake denies scope -> authorizePreDuimpAction fails closed with PRE_DUIMP_SCOPE_DENIED", async () => {
   const { fake } = createFakeCheckScopePermission(false);
-  const resolveForTest = createPreDuimpServerAuthorityResolver({ checkScopePermission: fake });
+  const resolveForTest = createResolver(fake);
 
   const identity: PreDuimpAuthenticatedIdentity = {
     tenantId: grantedTenantId,
@@ -205,7 +252,7 @@ test("createPreDuimpServerAuthorityResolver: fake denies scope -> authorizePreDu
 
 test("createPreDuimpServerAuthorityResolver: a client request smuggling scope/tenant/workspace/installation/HITL/authority fields does not control the final decision", async () => {
   const { fake } = createFakeCheckScopePermission(false);
-  const resolveForTest = createPreDuimpServerAuthorityResolver({ checkScopePermission: fake });
+  const resolveForTest = createResolver(fake);
 
   const identity: PreDuimpAuthenticatedIdentity = {
     tenantId: deniedTenantId,
@@ -254,7 +301,7 @@ test("createPreDuimpServerAuthorityResolver: a client request smuggling scope/te
 
 test("createPreDuimpServerAuthorityResolver: installation always comes from the canonical TenantProductInstallation source, never from the request", async () => {
   const { fake } = createFakeCheckScopePermission(true);
-  const resolveForTest = createPreDuimpServerAuthorityResolver({ checkScopePermission: fake });
+  const resolveForTest = createResolver(fake);
 
   const identity: PreDuimpAuthenticatedIdentity = {
     tenantId: deniedTenantId,
@@ -284,7 +331,7 @@ test("createPreDuimpServerAuthorityResolver: installation always comes from the 
 
 test("createPreDuimpServerAuthorityResolver: hitlApproval is always null (no persisted mechanism yet) -> log.duimp_context.review stays fail-closed with PRE_DUIMP_HITL_REQUIRED", async () => {
   const { fake } = createFakeCheckScopePermission(true);
-  const resolveForTest = createPreDuimpServerAuthorityResolver({ checkScopePermission: fake });
+  const resolveForTest = createResolver(fake);
 
   const identity: PreDuimpAuthenticatedIdentity = {
     tenantId: grantedTenantId,

@@ -738,6 +738,9 @@ export type SessionContextResponse = {
       BILLING_INSIGHTS_ADDON: boolean;
       IMOB_INSTALLED?: boolean;
     };
+    capabilities?: {
+      preDuimpShadow?: PreDuimpShadowCapability;
+    };
     productInstallations?: Array<{
       product: string;
       status: string;
@@ -4930,9 +4933,9 @@ export async function apiSwitchWorkspaceSession(workspaceId: string) {
   }>;
 }
 
-export async function apiGetSessionContext(domain?: "core" | "imob") {
+export async function apiGetSessionContext(domain?: "core" | "imob", signal?: AbortSignal) {
   const query = domain ? `?domain=${encodeURIComponent(domain)}` : "";
-  return http<SessionContextResponse>(`/session/context${query}`, { method: "GET" });
+  return http<SessionContextResponse>(`/session/context${query}`, { method: "GET", signal });
 }
 
 export async function apiPostExperienceAudit(
@@ -5128,6 +5131,38 @@ export async function apiImobIntakePdfGuidance(runId: string): Promise<ImobContr
 }
 
 // ─── Logística / PRE_DUIMP shadow front door ─────────────────────────────────
+
+export const PRE_DUIMP_ACCESS_DENIAL_REASON_CODES = [
+  "PRE_DUIMP_RUNTIME_DISABLED",
+  "PRE_DUIMP_INSTALLATION_MISSING",
+  "PRE_DUIMP_INSTALLATION_INACTIVE",
+  "PRE_DUIMP_INSTALLATION_INVALID",
+  "PRE_DUIMP_PILOT_GRANT_MISSING",
+  "PRE_DUIMP_PILOT_GRANT_DISABLED",
+  "PRE_DUIMP_ACTION_POLICY_DENIED",
+  "PRE_DUIMP_ACCESS_UNAVAILABLE",
+] as const;
+
+export type PreDuimpAccessDenialReasonCode =
+  (typeof PRE_DUIMP_ACCESS_DENIAL_REASON_CODES)[number];
+
+export type PreDuimpShadowCapability =
+  | {
+      version: "v1";
+      allowed: true;
+      mode: "shadow";
+      externalTransmissionAllowed: false;
+      reasonCode: null;
+      pilotPolicyVersion?: string;
+      actionPolicyVersion?: string;
+    }
+  | {
+      version: "v1";
+      allowed: false;
+      mode: "shadow";
+      externalTransmissionAllowed: false;
+      reasonCode: PreDuimpAccessDenialReasonCode;
+    };
 
 export type PreDuimpActionRequest = {
   action: "log.duimp_context.create";

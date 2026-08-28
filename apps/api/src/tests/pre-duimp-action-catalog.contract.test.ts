@@ -54,6 +54,9 @@ function baseServerAuthority(
 ): PreDuimpServerAuthoritySnapshot {
   return resolvePreDuimpServerAuthoritySnapshot({
     requester: REQUESTER_MATCH,
+    runtimeEnabled: true,
+    pilotAccessAllowed: true,
+    pilotAccessReasonCode: null,
     grantedScopes: ["log.duimp_context.create"],
     installation: VALID_INSTALLATION,
     ...overrides,
@@ -153,6 +156,40 @@ test("pre-duimp action catalog rejects a server authority missing the action's s
     (error: unknown) => {
       assert.ok(error instanceof PreDuimpActionRejectedError);
       assert.equal(error.reasonCode, "PRE_DUIMP_SCOPE_DENIED");
+      return true;
+    },
+  );
+});
+
+test("pre-duimp action catalog rejects a disabled runtime before scope or entitlement", () => {
+  assert.throws(
+    () =>
+      authorizePreDuimpAction(
+        baseRequest(),
+        baseServerAuthority({ runtimeEnabled: false, grantedScopes: [], installation: null }),
+      ),
+    (error: unknown) => {
+      assert.ok(error instanceof PreDuimpActionRejectedError);
+      assert.equal(error.reasonCode, "PRE_DUIMP_RUNTIME_DISABLED");
+      return true;
+    },
+  );
+});
+
+test("pre-duimp action catalog rejects missing workspace-exact pilot access", () => {
+  assert.throws(
+    () =>
+      authorizePreDuimpAction(
+        baseRequest(),
+        baseServerAuthority({
+          pilotAccessAllowed: false,
+          pilotAccessReasonCode: "PRE_DUIMP_PILOT_GRANT_MISSING",
+        }),
+      ),
+    (error: unknown) => {
+      assert.ok(error instanceof PreDuimpActionRejectedError);
+      assert.equal(error.reasonCode, "PRE_DUIMP_PILOT_ACCESS_DENIED");
+      assert.equal(error.subreason, "PRE_DUIMP_PILOT_GRANT_MISSING");
       return true;
     },
   );
@@ -301,6 +338,8 @@ test("pre-duimp reason codes are registered in the canonical catalog with the ex
     "PRE_DUIMP_SCOPE_DENIED",
     "PRE_DUIMP_ENTITLEMENT_DENIED",
     "PRE_DUIMP_HITL_REQUIRED",
+    "PRE_DUIMP_RUNTIME_DISABLED",
+    "PRE_DUIMP_PILOT_ACCESS_DENIED",
   ] as const) {
     const entry = byCode.get(code);
     assert.ok(entry, `${code} must be registered`);

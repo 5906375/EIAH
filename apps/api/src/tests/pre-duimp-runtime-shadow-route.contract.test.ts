@@ -49,6 +49,9 @@ const withoutAuthContext: PreDuimpRuntimeShadowRouterDeps["authMiddleware"] = (_
 function fullAuthority(action: PreDuimpAction): PreDuimpServerAuthoritySnapshot {
   return resolvePreDuimpServerAuthoritySnapshot({
     requester: { tenantId: IDENTITY.tenantId, workspaceId: IDENTITY.workspaceId },
+    runtimeEnabled: true,
+    pilotAccessAllowed: true,
+    pilotAccessReasonCode: null,
     grantedScopes: [action],
     installation: {
       tenantId: IDENTITY.tenantId,
@@ -63,6 +66,9 @@ function fullAuthority(action: PreDuimpAction): PreDuimpServerAuthoritySnapshot 
 function noScopeAuthority(): PreDuimpServerAuthoritySnapshot {
   return resolvePreDuimpServerAuthoritySnapshot({
     requester: { tenantId: IDENTITY.tenantId, workspaceId: IDENTITY.workspaceId },
+    runtimeEnabled: true,
+    pilotAccessAllowed: true,
+    pilotAccessReasonCode: null,
     grantedScopes: [],
     installation: null,
     hitlApproval: null,
@@ -118,6 +124,42 @@ test("route: POST with scope denied returns 403 with reasonCode PRE_DUIMP_SCOPE_
   assert.equal(res.status, 403);
   assert.equal(res.body.error.code, "PRE_DUIMP_SCOPE_DENIED");
   assert.equal(res.body.error.reasonCode, "PRE_DUIMP_SCOPE_DENIED");
+});
+
+test("route: POST after pilot grant revocation returns 403 without executing an external effect", async () => {
+  let pilotAllowed = true;
+  const app = buildTestApp({
+    authMiddleware: withAuthContext,
+    resolveServerAuthority: async (input) => {
+      const snapshot = resolvePreDuimpServerAuthoritySnapshot({
+        requester: { tenantId: IDENTITY.tenantId, workspaceId: IDENTITY.workspaceId },
+        runtimeEnabled: true,
+        pilotAccessAllowed: pilotAllowed,
+        pilotAccessReasonCode: pilotAllowed ? null : "PRE_DUIMP_PILOT_GRANT_DISABLED",
+        grantedScopes: [input.action],
+        installation: {
+          tenantId: IDENTITY.tenantId,
+          workspaceId: IDENTITY.workspaceId,
+          product: "LOGISTICA",
+          status: "active",
+        },
+        hitlApproval: null,
+      });
+      pilotAllowed = false;
+      return snapshot;
+    },
+  });
+
+  // Bootstrap/read-model state may have been allowed; the POST receives a
+  // freshly resolved revoked state and must deny it.
+  pilotAllowed = false;
+  const res = await supertest(app)
+    .post(PRE_DUIMP_RUNTIME_SHADOW_ACTIONS_PATH)
+    .send({ action: "log.duimp_context.create", context: VALID_CONTEXT });
+
+  assert.equal(res.status, 403);
+  assert.equal(res.body.error.reasonCode, "PRE_DUIMP_PILOT_ACCESS_DENIED");
+  assert.equal(res.body.error.subreason, "PRE_DUIMP_PILOT_GRANT_DISABLED");
 });
 
 test("route: POST with a malformed context returns 400 VALIDATION_ERROR with details, not PRE_DUIMP_ACTION_UNKNOWN/500", async () => {

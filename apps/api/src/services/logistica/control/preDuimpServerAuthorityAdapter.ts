@@ -1,12 +1,14 @@
 import { checkScopePermission } from "@eiah/core";
-import { getPrismaForTenant } from "@repo/db";
 
 import {
   resolvePreDuimpServerAuthoritySnapshot,
   type PreDuimpAction,
   type PreDuimpServerAuthoritySnapshot,
 } from "./preDuimpActionCatalog";
-import type { TenantProductInstallationLike } from "../../../types/verticalEntitlementGateContract";
+import {
+  resolvePreDuimpAccessFromCanonicalSources,
+  type PreDuimpAccessResolution,
+} from "./preDuimpAccessResolver";
 
 // Adapter server-side que resolve PreDuimpServerAuthoritySnapshot a
 // partir de mecanismos canonicos ja existentes no repositorio, em vez
@@ -54,10 +56,9 @@ export type PreDuimpAuthenticatedIdentity = {
   tokenId?: string;
 };
 
-const PRE_DUIMP_INSTALLATION_PRODUCT = "LOGISTICA";
-
 export type PreDuimpServerAuthorityAdapterDeps = Readonly<{
   checkScopePermission: typeof checkScopePermission;
+  resolveAccess: typeof resolvePreDuimpAccessFromCanonicalSources;
 }>;
 
 export function createPreDuimpServerAuthorityResolver(
@@ -76,31 +77,18 @@ export function createPreDuimpServerAuthorityResolver(
     });
 
     const grantedScopes: readonly string[] = scopeDecision.allowed ? [input.action] : [];
-
-    const tenantPrisma = getPrismaForTenant(input.identity.tenantId, input.identity.workspaceId);
-    const installationRow = await tenantPrisma.tenantProductInstallation.findUnique({
-      where: {
-        tenant_workspace_product_unique: {
-          tenantId: input.identity.tenantId,
-          workspaceId: input.identity.workspaceId,
-          product: PRE_DUIMP_INSTALLATION_PRODUCT,
-        },
-      },
+    const access: PreDuimpAccessResolution = await deps.resolveAccess({
+      identity: input.identity,
+      actionDecision: scopeDecision,
     });
-
-    const installation: TenantProductInstallationLike | null = installationRow
-      ? {
-          tenantId: installationRow.tenantId,
-          workspaceId: installationRow.workspaceId,
-          product: installationRow.product,
-          status: installationRow.status,
-        }
-      : null;
 
     return resolvePreDuimpServerAuthoritySnapshot({
       requester: { tenantId: input.identity.tenantId, workspaceId: input.identity.workspaceId },
+      runtimeEnabled: access.runtimeEnabled,
+      pilotAccessAllowed: access.pilotDecision.allowed,
+      pilotAccessReasonCode: access.pilotAccessReasonCode,
       grantedScopes,
-      installation,
+      installation: access.installation,
       hitlApproval: null,
     });
   };
@@ -108,6 +96,7 @@ export function createPreDuimpServerAuthorityResolver(
 
 const PRODUCTION_DEPS: PreDuimpServerAuthorityAdapterDeps = Object.freeze({
   checkScopePermission,
+  resolveAccess: resolvePreDuimpAccessFromCanonicalSources,
 });
 
 export const resolvePreDuimpServerAuthorityFromCanonicalSources =

@@ -1,4 +1,11 @@
-import { ApiError, type PreDuimpActionRequest, type PreDuimpAuthorizedShadowResponse } from "@/lib/api";
+import {
+  ApiError,
+  PRE_DUIMP_ACCESS_DENIAL_REASON_CODES,
+  type PreDuimpActionRequest,
+  type PreDuimpAuthorizedShadowResponse,
+  type PreDuimpShadowCapability,
+  type SessionContextResponse,
+} from "@/lib/api";
 
 const VITE_ENV = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env ?? {};
 
@@ -13,6 +20,8 @@ export const PRE_DUIMP_REASON_MESSAGES = {
   PRE_DUIMP_ACTION_UNKNOWN: "A ação solicitada não faz parte do catálogo PRE_DUIMP.",
   PRE_DUIMP_HITL_REQUIRED: "Esta ação exige uma aprovação HITL persistida, ainda indisponível neste ambiente.",
   PRE_DUIMP_EXTERNAL_TRANSMISSION_BLOCKED: "A operação foi bloqueada para preservar o modo shadow sem transmissão externa.",
+  PRE_DUIMP_RUNTIME_DISABLED: "O runtime shadow do PRE_DUIMP está desabilitado.",
+  PRE_DUIMP_PILOT_ACCESS_DENIED: "Este workspace não integra o piloto PRE_DUIMP.",
   VALIDATION_ERROR: "Revise o identificador do contexto e tente novamente.",
 } as const;
 
@@ -29,8 +38,88 @@ export function isPreDuimpFrontendEnabled(
   return env[PRE_DUIMP_FRONTEND_ENV_KEY] === "true";
 }
 
-export function getPreDuimpDirectAccessRedirect(enabled: boolean): "/app/runs" | null {
-  return enabled ? null : "/app/runs";
+export type PreDuimpAccessState = {
+  status: "idle" | "loading" | "ready" | "error";
+  capability?: PreDuimpShadowCapability;
+};
+
+const PRE_DUIMP_ACCESS_DENIAL_REASON_SET = new Set<string>(
+  PRE_DUIMP_ACCESS_DENIAL_REASON_CODES,
+);
+
+export function parsePreDuimpShadowCapability(input: unknown): PreDuimpShadowCapability | null {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return null;
+  const value = input as Record<string, unknown>;
+  if (
+    value.version !== "v1" ||
+    typeof value.allowed !== "boolean" ||
+    value.mode !== "shadow" ||
+    value.externalTransmissionAllowed !== false
+  ) {
+    return null;
+  }
+
+  if (value.allowed) {
+    if (value.reasonCode !== null) return null;
+    if (
+      (value.pilotPolicyVersion !== undefined && typeof value.pilotPolicyVersion !== "string") ||
+      (value.actionPolicyVersion !== undefined && typeof value.actionPolicyVersion !== "string")
+    ) {
+      return null;
+    }
+    return value as PreDuimpShadowCapability;
+  }
+
+  if (
+    typeof value.reasonCode !== "string" ||
+    !PRE_DUIMP_ACCESS_DENIAL_REASON_SET.has(value.reasonCode)
+  ) {
+    return null;
+  }
+  return value as PreDuimpShadowCapability;
+}
+
+export function isPreDuimpAccessAllowed(
+  globalKillSwitchEnabled: boolean,
+  access: PreDuimpAccessState,
+): boolean {
+  return (
+    globalKillSwitchEnabled &&
+    access.status === "ready" &&
+    parsePreDuimpShadowCapability(access.capability)?.allowed === true
+  );
+}
+
+export function getPreDuimpDirectAccessRedirect(
+  globalKillSwitchEnabled: boolean,
+  access: PreDuimpAccessState = { status: "idle" },
+): "/app/runs" | null {
+  return isPreDuimpAccessAllowed(globalKillSwitchEnabled, access) ? null : "/app/runs";
+}
+
+export async function loadPreDuimpSessionContext(
+  load: (signal: AbortSignal) => Promise<SessionContextResponse>,
+  timeoutMs = 5_000,
+): Promise<{
+  access: PreDuimpAccessState;
+  context?: SessionContextResponse;
+  error?: unknown;
+}> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const context = await load(controller.signal);
+    const capability = parsePreDuimpShadowCapability(
+      context.ok && context.data ? context.data.capabilities?.preDuimpShadow : undefined,
+    );
+    return capability
+      ? { access: { status: "ready", capability }, context }
+      : { access: { status: "error" }, context };
+  } catch (error) {
+    return { access: { status: "error" }, error };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export function buildPreDuimpCreateRequest(input: {

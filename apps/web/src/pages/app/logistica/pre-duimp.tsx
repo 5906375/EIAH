@@ -17,9 +17,11 @@ export default function PreDuimpPage() {
   const [recordId, setRecordId] = React.useState("");
   const [submissionState, setSubmissionState] = React.useState<SubmissionState>("idle");
   const [error, setError] = React.useState<PreDuimpErrorPresentation | null>(null);
+  const submissionInFlightRef = React.useRef(false);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (submissionInFlightRef.current) return;
     setError(null);
 
     let request;
@@ -39,6 +41,7 @@ export default function PreDuimpPage() {
     }
 
     setSubmissionState("submitting");
+    submissionInFlightRef.current = true;
 
     try {
       const response = await apiCreatePreDuimpContext(request);
@@ -49,6 +52,8 @@ export default function PreDuimpPage() {
     } catch (submissionError) {
       setSubmissionState("error");
       setError(presentPreDuimpError(submissionError));
+    } finally {
+      submissionInFlightRef.current = false;
     }
   };
 
