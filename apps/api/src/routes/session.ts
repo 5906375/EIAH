@@ -20,6 +20,7 @@ import {
 } from "../types/resolverAuditEvent";
 import { mapLandingSurfaceToExperienceSurface } from "../types/experienceSurfaceContract";
 import { resolvePreDuimpAccessFromCanonicalSources } from "../services/logistica/control/preDuimpAccessResolver";
+import { asyncHandler } from "../middlewares/asyncHandler";
 
 const sessionRouter = Router();
 const DOMAIN_ALLOWLIST = new Set(["core", "imob"] as const);
@@ -237,7 +238,8 @@ sessionRouter.post("/session", async (req: Request, res: Response) => {
   });
 });
 
-sessionRouter.get("/session/context", async (req: Request, res: Response) => {
+sessionRouter.get("/session/context", asyncHandler(async (req: Request, res: Response) => {
+  res.setHeader("Cache-Control", "no-store");
   const token = resolveTokenFromRequest(req);
   if (!token) {
     return res.status(401).json({
@@ -346,7 +348,7 @@ sessionRouter.get("/session/context", async (req: Request, res: Response) => {
       },
     },
   });
-});
+}));
 
 sessionRouter.post("/session/workspace", async (req: Request, res: Response) => {
   const header = req.header("authorization") ?? req.header("Authorization");
