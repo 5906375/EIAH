@@ -1,0 +1,149 @@
+{
+  "capability": {
+    "version": "v1",
+    "allowed": true,
+    "mode": "shadow",
+    "externalTransmissionAllowed": false,
+    "reasonCode": null,
+    "pilotPolicyVersion": "v1",
+    "actionPolicyVersion": "v1",
+    "sessionScopeMatches": true
+  },
+  "sessionContext": {
+    "httpStatus": 200,
+    "cacheControl": "no-store"
+  },
+  "navigationSessionContext": {
+    "httpStatus": 200,
+    "cacheControl": "no-store",
+    "capability": {
+      "version": "v1",
+      "allowed": true,
+      "mode": "shadow",
+      "externalTransmissionAllowed": false,
+      "reasonCode": null,
+      "pilotPolicyVersion": "v1",
+      "actionPolicyVersion": "v1",
+      "sessionScopeMatches": true
+    }
+  },
+  "surfaceReadiness": {
+    "attached": true,
+    "visible": true,
+    "timedOut": false
+  },
+  "ui": {
+    "path": "/app/logistica/pre-duimp",
+    "heading": true,
+    "shadowBadge": true,
+    "noExternalNotice": true,
+    "recordId": true,
+    "createButton": true,
+    "hitlUnavailable": true,
+    "replayUnavailable": true,
+    "successVisible": true
+  },
+  "request": {
+    "topLevelKeys": [
+      "action",
+      "context"
+    ],
+    "actionMatches": true,
+    "tenantWorkspaceMatches": true,
+    "recordId": "authorized-record",
+    "modeMatches": true,
+    "externalTransmissionAllowedMatches": true
+  },
+  "response": {
+    "httpStatus": 200,
+    "decision": "authorized_shadow",
+    "mode": "shadow",
+    "externalTransmissionAllowed": false,
+    "reasonCode": null
+  },
+  "network": {
+    "endpointPostCount": 1,
+    "totalPostCount": 1,
+    "otherMutationCount": 0,
+    "externalMutationCount": 0,
+    "hitlReplayReadCount": 0,
+    "hitlReplayMutationCount": 0,
+    "clickCount": 1,
+    "requestSummaries": [
+      {
+        "topLevelKeys": [
+          "action",
+          "context"
+        ],
+        "actionMatches": true,
+        "tenantWorkspaceMatches": true,
+        "recordId": "authorized-record",
+        "modeMatches": true,
+        "externalTransmissionAllowedMatches": true
+      }
+    ]
+  },
+  "before": {
+    "capturedAt": "2026-08-29T18:07:05.277Z",
+    "guardrailLedger": {
+      "allow": 0,
+      "deny": 0
+    },
+    "guardrailAuditLedger": {
+      "allow": 0,
+      "deny": 0
+    },
+    "runs": {
+      "tenantWorkspace": 0,
+      "authorizedRecordId": 0,
+      "revokedRecordId": 0
+    }
+  },
+  "immediatelyBefore": {
+    "capturedAt": "2026-08-29T18:07:09.187Z",
+    "guardrailLedger": {
+      "allow": 0,
+      "deny": 0
+    },
+    "guardrailAuditLedger": {
+      "allow": 0,
+      "deny": 0
+    },
+    "runs": {
+      "tenantWorkspace": 0,
+      "authorizedRecordId": 0,
+      "revokedRecordId": 0
+    }
+  },
+  "after": {
+    "capturedAt": "2026-08-29T18:07:10.676Z",
+    "guardrailLedger": {
+      "allow": 1,
+      "deny": 0
+    },
+    "guardrailAuditLedger": {
+      "allow": 1,
+      "deny": 0
+    },
+    "runs": {
+      "tenantWorkspace": 0,
+      "authorizedRecordId": 0,
+      "revokedRecordId": 0
+    }
+  },
+  "delta": {
+    "guardrailLedger": {
+      "allow": 1,
+      "deny": 0
+    },
+    "guardrailAuditLedger": {
+      "allow": 1,
+      "deny": 0
+    },
+    "runs": {
+      "tenantWorkspace": 0,
+      "authorizedRecordId": 0,
+      "revokedRecordId": 0
+    }
+  }
+}

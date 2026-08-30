@@ -1,0 +1,24 @@
+{
+  "schema": "pre-duimp-quality-addendum-sensitivity-scan-v1",
+  "scannedOn": "2026-08-30",
+  "scope": ".",
+  "scannedFiles": [
+    "README.md",
+    "integrity-hashes.json",
+    "provenance.json",
+    "quality-gate-addendum.json",
+    "sensitivity-scan.json",
+    "tsconfig-change-sanitized.diff",
+    "typecheck-result.json"
+  ],
+  "categories": {
+    "localAbsolutePaths": 0,
+    "hostIdentity": 0,
+    "credentialMaterial": 0,
+    "authenticationMetadata": 0,
+    "databaseConnectionMaterial": 0,
+    "emailAddresses": 0
+  },
+  "findingCount": 0,
+  "passed": true
+}
