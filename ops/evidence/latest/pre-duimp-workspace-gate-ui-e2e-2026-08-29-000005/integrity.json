@@ -1,0 +1,150 @@
+{
+  "capturedAt": "2026-08-29T18:08:26.594Z",
+  "baseline": {
+    "branch": "docs/structural-gate-boundary-sha",
+    "head": "bbfb94e349ed8a6576b652bdf0901ac61283a1ed",
+    "tree": "d18fe22d81571358757c38b4fc0a698d49ac8684"
+  },
+  "final": {
+    "branch": "docs/structural-gate-boundary-sha",
+    "head": "bbfb94e349ed8a6576b652bdf0901ac61283a1ed",
+    "tree": "d18fe22d81571358757c38b4fc0a698d49ac8684",
+    "statusPorcelain": ""
+  },
+  "baselinePreserved": true,
+  "hashes": {
+    "canonicalCompose": {
+      "sha256": "9ce4c1082f5e68a835661e0211ae909e1e4dc18a4b63d04ac5b7d99161f685d9",
+      "preserved": true
+    },
+    "apiOverride": {
+      "sha256": "df538eb63396f0f1fd33ae09e2103a219b62f9c40f7bec180b7cf8e5621bcd48",
+      "preserved": true
+    },
+    "controller": {
+      "sha256": "55c9dbbe9ad86334df81b5c869531a773ac6a7bfd7038d57d0070faa7bb2a21c"
+    },
+    "typecheckConfig": {
+      "sha256": "d0371a5628931efa7981b6bcdfbe0ecc46e3ceca2554d8c36a3db1e4486c9c39"
+    }
+  },
+  "temporaryOverrideAbsent": true,
+  "fixedContainers": [
+    {
+      "name": "eiah-api",
+      "state": "running",
+      "health": "healthy",
+      "id": "c377c5b41a86",
+      "expectedId": "c377c5b41a86",
+      "preserved": true
+    },
+    {
+      "name": "eiah-postgres",
+      "state": "running",
+      "health": "healthy",
+      "id": "530de5c1f7a4",
+      "expectedId": "530de5c1f7a4",
+      "preserved": true
+    },
+    {
+      "name": "eiah-redis",
+      "state": "running",
+      "health": "healthy",
+      "id": "c02ed30217df",
+      "expectedId": "c02ed30217df",
+      "preserved": true
+    },
+    {
+      "name": "eiah-action-runner",
+      "state": "running",
+      "health": null,
+      "id": "b189b6b3a232",
+      "expectedId": "b189b6b3a232",
+      "preserved": true
+    },
+    {
+      "name": "eiah-maintenance-worker",
+      "state": "running",
+      "health": null,
+      "id": "cfeebf2ee441",
+      "expectedId": "cfeebf2ee441",
+      "preserved": true
+    }
+  ],
+  "web": {
+    "name": "eiah-web",
+    "state": "running",
+    "health": "healthy",
+    "id": "df2907051e8c"
+  },
+  "flags": {
+    "frontendDefaultOff": true,
+    "backendShadow": true
+  },
+  "http": {
+    "frontend": "200",
+    "apiHealth": "200"
+  },
+  "fixtures": {
+    "tenant": 1,
+    "workspace": 1,
+    "installation": 0,
+    "actionPolicies": [],
+    "pilotPolicies": [],
+    "credential": {
+      "id": "<synthetic-credential-id>",
+      "revoked": true
+    }
+  },
+  "counts": {
+    "capturedAt": "2026-08-29T18:08:26.594Z",
+    "guardrailLedger": {
+      "allow": 2,
+      "deny": 0
+    },
+    "guardrailAuditLedger": {
+      "allow": 2,
+      "deny": 0
+    },
+    "runs": {
+      "tenantWorkspace": 0,
+      "authorizedRecordId": 0,
+      "revokedRecordId": 0
+    }
+  },
+  "ledgersPreserved": true,
+  "shellsPreserved": true,
+  "gates": [
+    {
+      "name": "test:pre-duimp",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "test:pre-duimp-web",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "check:reason-code-canon",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "check:orphan-tests",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "build:web",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "typecheck:api-pre-duimp-session-graph",
+      "exitCode": 2,
+      "passed": false
+    }
+  ],
+  "dependenciesReinstalled": false
+}

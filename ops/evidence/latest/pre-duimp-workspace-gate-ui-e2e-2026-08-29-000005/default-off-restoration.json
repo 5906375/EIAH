@@ -1,0 +1,13 @@
+{
+  "capturedAt": "2026-08-29T18:07:50.176Z",
+  "applicable": true,
+  "finalPath": "/app/runs",
+  "preDuimpNavCount": 0,
+  "preDuimpHeadingCount": 0,
+  "endpointPostCount": 0,
+  "viewport": {
+    "innerWidth": 1440,
+    "scrollWidth": 1440
+  },
+  "passed": true
+}
