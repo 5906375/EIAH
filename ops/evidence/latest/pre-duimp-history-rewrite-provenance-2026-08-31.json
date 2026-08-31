@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 1,
+  "documentaryDate": "2026-08-31",
+  "classification": "historical_reconstruction_local_unpublished",
+  "mergeBase": "9ecae19695fc04800cbd190d75929943973b909d",
+  "originalChain": {
+    "head": "b2a5e905adf975cfdce94bf40eca5ff9eda83563",
+    "tree": "d021fecbeb6e49cb471460118d5e819fac32be64"
+  },
+  "candidateChainBeforeProvenance": {
+    "head": "9b210bbce8f52da33b40c5eace71dfecbef47553",
+    "tree": "763b3dadf873839bc7bde84a1f149daa59fba339"
+  },
+  "safetyReference": {
+    "name": "refs/safety/pre-duimp-before-sanitization-20260831",
+    "target": "b2a5e905adf975cfdce94bf40eca5ff9eda83563"
+  },
+  "commitMappings": [
+    {
+      "oldCommit": "14a0c8da6b377bff2fb969aeaeebca8b31db4e59",
+      "newCommit": "14a0c8da6b377bff2fb969aeaeebca8b31db4e59",
+      "relation": "reused_identical"
+    },
+    {
+      "oldCommit": "6c1de58dcd5326dfd4deba1d8c1b573a5803801c",
+      "newCommit": "22fd778338b96fbe85dffb8371c20fd737e1239f",
+      "relation": "reconstructed_sanitized"
+    },
+    {
+      "oldCommit": "81a751b55e2c950bd120e2e492f878d36043dc9e",
+      "newCommit": "917a83ed959938b5c1d49ee44420ab70bebe30a1",
+      "relation": "reconstructed_equivalent"
+    },
+    {
+      "oldCommit": "728708e292f3996f9972ff38defecad51d3fba12",
+      "newCommit": "211084c6cf74bccc1057cb334306966eecf90a5f",
+      "relation": "reconstructed_equivalent"
+    },
+    {
+      "oldCommit": "fbbc9c16e7282cae81b64ba1811504a8b856448b",
+      "newCommit": "770ca5386c42aa096267a034a73ff29c9e458038",
+      "relation": "reconstructed_equivalent"
+    },
+    {
+      "oldCommit": "bbfb94e349ed8a6576b652bdf0901ac61283a1ed",
+      "newCommit": "1ad3b03035ede8153de9393bbe2338984bf519cf",
+      "relation": "reconstructed_equivalent"
+    },
+    {
+      "oldCommit": "b2a5e905adf975cfdce94bf40eca5ff9eda83563",
+      "newCommit": "9b210bbce8f52da33b40c5eace71dfecbef47553",
+      "relation": "reconstructed_equivalent"
+    }
+  ],
+  "preservation": {
+    "authorship": true,
+    "authorDate": true,
+    "message": true,
+    "logicalOrder": true,
+    "productFunctionalContent": true
+  },
+  "sanitizationScope": {
+    "package": "pre-duimp-runtime-shadow-v1-2026-08-27",
+    "onlyHistoricallyExposedPackageSanitized": true,
+    "transformedArtifactCount": 5,
+    "sidecarCount": 3,
+    "sidecars": [
+      "pre-duimp-runtime-shadow-v1-2026-08-27-publication-provenance.json",
+      "pre-duimp-runtime-shadow-v1-2026-08-27-sensitivity-scan.json",
+      "pre-duimp-runtime-shadow-v1-2026-08-27-integrity-hashes.json"
+    ]
+  },
+  "preservedEvidencePackages": [
+    {
+      "id": "pre-duimp-front-door-ui-e2e-2026-08-28-000003",
+      "byteIdentical": true
+    },
+    {
+      "id": "pre-duimp-workspace-gate-ui-e2e-2026-08-29-000005",
+      "byteIdentical": true
+    }
+  ],
+  "historicalExecutions": {
+    "e2e000003": {
+      "executedCommit": "81a751b55e2c950bd120e2e492f878d36043dc9e",
+      "executedTree": "9ba48bda562529a72456e1a3a488c0e170c11dd8",
+      "rerunDuringReconstruction": false
+    },
+    "e2e000005": {
+      "executedCommit": "bbfb94e349ed8a6576b652bdf0901ac61283a1ed",
+      "executedTree": "d18fe22d81571358757c38b4fc0a698d49ac8684",
+      "rerunDuringReconstruction": false
+    }
+  },
+  "reconstructionActivity": {
+    "e2eExecuted": false,
+    "browserExecuted": false,
+    "fixturesCreated": false,
+    "credentialsCreated": false,
+    "containersChanged": false,
+    "pilotActivated": false,
+    "networkOperations": false
+  },
+  "status": {
+    "preDuimpMode": "shadow",
+    "preDuimpMaturity": "PARCIAL",
+    "realPilot": "NAO_AUTORIZADO"
+  }
+}

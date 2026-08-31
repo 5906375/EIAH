@@ -4,6 +4,12 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## PRE_DUIMP — proveniência da reconstrução histórica sanitizada (2026-08-31)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Reconstrução sanitizada da cadeia histórica local ainda não publicada | `ops/evidence/latest/pre-duimp-history-rewrite-provenance-2026-08-31.json` | Registra o mapeamento dos sete commits e a remoção da exposição histórica no pacote runtime-shadow. Preserva como fatos das execuções o E2E 000003 no commit `81a751b55e2c950bd120e2e492f878d36043dc9e` (tree `9ba48bda562529a72456e1a3a488c0e170c11dd8`) e o E2E 000005 no commit `bbfb94e349ed8a6576b652bdf0901ac61283a1ed` (tree `d18fe22d81571358757c38b4fc0a698d49ac8684`); os commits reconstruídos não são apresentados como commits de execução. Não houve rerun nem alteração das classificações funcionais, e esta entrada não autoriza push, deploy ou piloto. `PRE_DUIMP` permanece `shadow`/`PARCIAL`; piloto real permanece `NÃO AUTORIZADO`. |
+
 ## PRE_DUIMP — jornada local do gate workspace-exact em modo shadow (2026-08-29)
 
 | Assunto | Arquivo | O que prova |
