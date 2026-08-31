@@ -12,7 +12,14 @@ import SelfServiceRouter from "./pages/self-service/router";
 import SignupPage from "./pages/signup";
 import ProfilePage from "./pages/profile";
 import AccessPage from "./pages/access";
-import eiahLogo from "./assets/Eiah_logo.png";
+import PreDuimpPage from "./pages/app/logistica/pre-duimp";
+import { EiahBrandMark } from "./components/brand/EiahBrandMark";
+import {
+  getPreDuimpDirectAccessRedirect,
+  isPreDuimpFrontendEnabled,
+  isPreDuimpAccessAllowed,
+  loadPreDuimpSessionContext,
+} from "./features/logistica/preDuimp";
 import { updateSession, useSession, type ImobAccessGateState } from "./state/sessionStore";
 import { ApiError, apiGetSessionContext, apiPostExperienceAudit } from "./lib/api";
 import { isImobInstalled } from "./lib/entitlements";
@@ -51,6 +58,7 @@ type ShellNavItem = {
     "workspace_member" | "workspace_admin" | "tenant_admin" | "founder_global" | "service_operator"
   >;
   requiresImob?: boolean;
+  requiresPreDuimp?: boolean;
 };
 
 const SHELL_NAV_ITEMS: ShellNavItem[] = [
@@ -59,9 +67,16 @@ const SHELL_NAV_ITEMS: ShellNavItem[] = [
   { to: "/app/billing", label: "Billing", hiddenForRoles: ["workspace_member"] },
   { to: "/app/marketplace", label: "Marketplace" },
   { to: "/app/imob/chat", label: "IMOB", requiresImob: true },
+  { to: "/app/logistica/pre-duimp", label: "Pré-DUIMP", requiresPreDuimp: true },
   { to: "/self-service", label: "Self-service" },
   { to: "/profile", label: "Perfil" },
 ];
+
+const PRE_DUIMP_FRONTEND_ENABLED = isPreDuimpFrontendEnabled();
+
+export function getPreDuimpNavigationItems(enabled: boolean): ShellNavItem[] {
+  return SHELL_NAV_ITEMS.filter((item) => !item.requiresPreDuimp || enabled);
+}
 
 function Layout({
   children,
@@ -85,7 +100,11 @@ function Layout({
   const isImobChatRoute = location.pathname === "/app/imob/chat";
   const subtitle = isImobSurface ? "Imobiliaria Digital Command Center" : "Agent Operations Console";
   const roleProfile = session.experience?.roleProfile;
-  const visibleNavItems = SHELL_NAV_ITEMS.filter((item) => {
+  const preDuimpAllowed = isPreDuimpAccessAllowed(
+    PRE_DUIMP_FRONTEND_ENABLED,
+    session.preDuimpAccess,
+  );
+  const visibleNavItems = getPreDuimpNavigationItems(preDuimpAllowed).filter((item) => {
     if (item.requiresImob && !imobInstalled) return false;
     if (item.hiddenForRoles?.includes(roleProfile ?? "workspace_member")) return false;
     return true;
@@ -111,7 +130,12 @@ function Layout({
             <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl bg-white/10 shadow-[0_6px_18px_rgba(15,23,42,0.45)]">
-                  <img src={logoUrl || eiahLogo} alt={`${brandName} logo`} className="h-full w-full object-cover" />
+                  <EiahBrandMark
+                    brandName={brandName}
+                    logoUrl={logoUrl}
+                    visibleName
+                    className="h-full w-full"
+                  />
                 </div>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.35em] text-accent">{brandName}</p>
@@ -149,15 +173,41 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   React.useEffect(() => {
     if (!session.token) return;
+    let active = true;
     const targetDomain =
       location.search.includes("domain=imob") || location.pathname.startsWith("/app/imob")
         ? "imob"
         : session.activeDomain === "imob"
           ? "imob"
           : undefined;
-    void apiGetSessionContext(targetDomain)
-      .then((ctx) => {
-        if (!ctx.ok || !ctx.data) return;
+    updateSession({ preDuimpAccess: { status: "loading" } });
+    void loadPreDuimpSessionContext((signal) => apiGetSessionContext(targetDomain, signal))
+      .then(({ context: ctx, access, error }) => {
+        if (!active) return;
+        if (!ctx?.ok || !ctx.data) {
+          updateSession({ preDuimpAccess: access });
+          if (
+            targetDomain === "imob" &&
+            error instanceof ApiError &&
+            error.status === 403 &&
+            error.body &&
+            typeof error.body === "object"
+          ) {
+            const payload = error.body as {
+              error?: ImobAccessGateState;
+            };
+            updateSession({
+              accessGate: payload.error ?? {
+                code: "ENTITLEMENT_MISSING",
+                reasonCode: "IMOB_ENTITLEMENT_MISSING",
+                message: "IMOB não está habilitado neste workspace.",
+                product: "IMOB",
+                capability: "CENTRAL_OPERACIONAL",
+              },
+            });
+          }
+          return;
+        }
         updateSession({
           tenantId: ctx.data.tenantId,
           workspaceId: ctx.data.workspaceId,
@@ -166,6 +216,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
           availableDomains: ctx.data.availableDomains,
           entitlements: ctx.data.entitlements,
           installedProducts: (ctx.data.productInstallations ?? []).map((entry) => entry.product),
+          preDuimpAccess: access,
           verticals: ctx.data.verticals,
           roles: ctx.data.roles,
           experience: ctx.data.experience,
@@ -177,36 +228,33 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
           },
           accessGate: null,
         });
-      })
-      .catch((error) => {
-        if (
-          targetDomain === "imob" &&
-          error instanceof ApiError &&
-          error.status === 403 &&
-          error.body &&
-          typeof error.body === "object"
-        ) {
-          const payload = error.body as {
-            error?: ImobAccessGateState;
-          };
-          updateSession({
-            accessGate: payload.error ?? {
-              code: "ENTITLEMENT_MISSING",
-              reasonCode: "IMOB_ENTITLEMENT_MISSING",
-              message: "IMOB não está habilitado neste workspace.",
-              product: "IMOB",
-              capability: "CENTRAL_OPERACIONAL",
-            },
-          });
-          return;
-        }
       });
+    return () => {
+      active = false;
+    };
   }, [session.token, session.activeDomain, location.pathname, location.search]);
 
   if (!session.token) {
     const next = `${location.pathname}${location.search}`;
     return <Navigate to={`/access?next=${encodeURIComponent(next)}`} replace />;
   }
+  return <>{children}</>;
+}
+
+function RequirePreDuimpAccess({ children }: { children: React.ReactNode }) {
+  const session = useSession();
+  if (
+    PRE_DUIMP_FRONTEND_ENABLED &&
+    (session.preDuimpAccess.status === "idle" || session.preDuimpAccess.status === "loading")
+  ) {
+    return null;
+  }
+  const redirect = getPreDuimpDirectAccessRedirect(
+    PRE_DUIMP_FRONTEND_ENABLED,
+    session.preDuimpAccess,
+  );
+
+  if (redirect) return <Navigate to={redirect} replace />;
   return <>{children}</>;
 }
 
@@ -361,6 +409,18 @@ function AppRoutes() {
               <RequireImobInstall>
                 <ImobChatPage />
               </RequireImobInstall>
+            </RequireAuth>
+          </Layout>
+        }
+      />
+      <Route
+        path="/app/logistica/pre-duimp"
+        element={
+          <Layout>
+            <RequireAuth>
+              <RequirePreDuimpAccess>
+                <PreDuimpPage />
+              </RequirePreDuimpAccess>
             </RequireAuth>
           </Layout>
         }

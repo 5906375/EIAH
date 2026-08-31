@@ -1,0 +1,39 @@
+{
+  "pathname": "/app/logistica/pre-duimp",
+  "secondSession": {
+    "httpStatus": 200,
+    "cacheControl": "no-store",
+    "capability": {
+      "version": "v1",
+      "allowed": true,
+      "mode": "shadow",
+      "externalTransmissionAllowed": false,
+      "reasonCode": null,
+      "pilotPolicyVersion": "v1",
+      "actionPolicyVersion": "v1",
+      "sessionScopeMatches": true
+    }
+  },
+  "readiness": {
+    "attached": true,
+    "visible": true,
+    "timedOut": false
+  },
+  "checks": {
+    "path": "/app/logistica/pre-duimp",
+    "heading": true,
+    "shadowBadge": true,
+    "noExternalNotice": true,
+    "recordId": true,
+    "createButton": true,
+    "hitlUnavailable": true,
+    "replayUnavailable": true
+  },
+  "networkBeforeSurfaceReady": {
+    "endpointPostCount": 0,
+    "totalPostCount": 0,
+    "otherMutationCount": 0,
+    "externalMutationCount": 0,
+    "clickCount": 0
+  }
+}

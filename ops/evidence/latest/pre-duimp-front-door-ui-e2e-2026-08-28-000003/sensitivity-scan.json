@@ -1,0 +1,39 @@
+{
+  "schema": "pre-duimp-publication-sensitivity-scan-v1",
+  "scannedAt": "2026-08-28",
+  "scannedFiles": [
+    "counts-after.json",
+    "counts-before.json",
+    "default-off-restoration.json",
+    "integrity-hashes.json",
+    "integrity.json",
+    "manifest.json",
+    "playwright-result.json",
+    "playwright-sanitized.log",
+    "publication-provenance.json",
+    "user-journey-summary.md"
+  ],
+  "binaryFilesVisuallyReviewed": [
+    "01-front-door-logistica.png",
+    "02-pre-duimp-cognitive-ready.png",
+    "03-pre-duimp-authorized-shadow.png"
+  ],
+  "categories": [
+    "home-prefix",
+    "tmp-prefix",
+    "host-username",
+    "repository-root",
+    "external-evidence-root",
+    "file-url",
+    "windows-drive-path",
+    "token-secret-pattern",
+    "token-term",
+    "bearer-term",
+    "authorization-term",
+    "cookie-term",
+    "email-address"
+  ],
+  "retainedProductRoutePathnamesAreNotHostPaths": true,
+  "findingCount": 0,
+  "passed": true
+}

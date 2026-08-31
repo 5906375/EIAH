@@ -174,6 +174,113 @@ test("TenantPolicyStore legacy isScopeAllowed returns false when scope decision 
   assert.equal(allowed, false);
 });
 
+test("exact-workspace policy resolution allows one explicit workspace grant", async () => {
+  setPolicyRows([{ workspaceId: "workspace-a", allowed: true, maxVersion: 9 }]);
+
+  const decision = await TenantPolicyStore.getInstance().resolveExactWorkspaceScopeDecision(
+    "tenant-a",
+    "workspace-a",
+    "log.pre_duimp.shadow.pilot_access",
+  );
+
+  assert.equal(decision.allowed, true);
+  assert.equal(decision.reasonCode, "SCOPE_ALLOWED");
+  assert.equal(decision.policyVersion, "v9");
+});
+
+test("exact-workspace policy resolution constrains tenant, workspace and pilot scope without ledgers", async () => {
+  let receivedWhere: Record<string, unknown> | undefined;
+  (prismaGlobal as unknown as Record<string, unknown>).tenantActionPolicy = {
+    findMany: async ({ where }: { where: Record<string, unknown> }) => {
+      receivedWhere = where;
+      return [{ workspaceId: "workspace-a", allowed: true, maxVersion: 1 }];
+    },
+  };
+  const { counts } = setLedgerCapture();
+
+  const decision = await TenantPolicyStore.getInstance().resolveExactWorkspaceScopeDecision(
+    "tenant-a",
+    "workspace-a",
+    "log.pre_duimp.shadow.pilot_access",
+  );
+
+  assert.equal(decision.allowed, true);
+  assert.deepEqual(receivedWhere, {
+    tenantId: "tenant-a",
+    workspaceId: "workspace-a",
+    actionName: "log.pre_duimp.shadow.pilot_access",
+  });
+  assert.equal(counts.ledger, 0);
+  assert.equal(counts.audit, 0);
+});
+
+test("exact-workspace policy resolution ignores a tenant-wide grant", async () => {
+  setPolicyRows([{ workspaceId: null, allowed: true, maxVersion: 9 }]);
+
+  const decision = await TenantPolicyStore.getInstance().resolveExactWorkspaceScopeDecision(
+    "tenant-a",
+    "workspace-a",
+    "log.pre_duimp.shadow.pilot_access",
+  );
+
+  assert.equal(decision.allowed, false);
+  assert.equal(decision.reasonCode, "POLICY_NOT_FOUND");
+});
+
+test("exact-workspace policy resolution denies false, duplicate and unavailable authority", async () => {
+  setPolicyRows([{ workspaceId: "workspace-a", allowed: false, maxVersion: 1 }]);
+  const disabled = await TenantPolicyStore.getInstance().resolveExactWorkspaceScopeDecision(
+    "tenant-a",
+    "workspace-a",
+    "log.pre_duimp.shadow.pilot_access",
+  );
+  assert.equal(disabled.allowed, false);
+  assert.equal(disabled.reasonCode, "TENANT_POLICY_DISABLED");
+
+  setPolicyRows([
+    { workspaceId: "workspace-a", allowed: true, maxVersion: 1 },
+    { workspaceId: "workspace-a", allowed: true, maxVersion: 2 },
+  ]);
+  const duplicated = await TenantPolicyStore.getInstance().resolveExactWorkspaceScopeDecision(
+    "tenant-a",
+    "workspace-a",
+    "log.pre_duimp.shadow.pilot_access",
+  );
+  assert.equal(duplicated.allowed, false);
+  assert.equal(duplicated.reasonCode, "POLICY_STORE_UNAVAILABLE");
+
+  (prismaGlobal as unknown as Record<string, unknown>).tenantActionPolicy = {
+    findMany: async () => {
+      throw new Error("store unavailable");
+    },
+  };
+  const unavailable = await TenantPolicyStore.getInstance().resolveExactWorkspaceScopeDecision(
+    "tenant-a",
+    "workspace-a",
+    "log.pre_duimp.shadow.pilot_access",
+  );
+  assert.equal(unavailable.allowed, false);
+  assert.equal(unavailable.reasonCode, "POLICY_STORE_UNAVAILABLE");
+});
+
+test("exact-workspace policy resolution isolates tenants and sibling workspaces", async () => {
+  setPolicyRows([{ workspaceId: "workspace-a", allowed: true, maxVersion: 1 }]);
+
+  const otherWorkspace = await TenantPolicyStore.getInstance().resolveExactWorkspaceScopeDecision(
+    "tenant-a",
+    "workspace-b",
+    "log.pre_duimp.shadow.pilot_access",
+  );
+  const otherTenant = await TenantPolicyStore.getInstance().resolveExactWorkspaceScopeDecision(
+    "tenant-b",
+    "workspace-b",
+    "log.pre_duimp.shadow.pilot_access",
+  );
+
+  assert.equal(otherWorkspace.allowed, false);
+  assert.equal(otherTenant.allowed, false);
+});
+
 test("RBAC deny persists a guardrail ledger event with tenant/workspace/scope/reasonCode", async () => {
   setPolicyRows([]);
   const { ledgerEntries, auditEntries, counts } = setLedgerCapture();

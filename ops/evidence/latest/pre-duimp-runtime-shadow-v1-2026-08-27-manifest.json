@@ -1,0 +1,73 @@
+{
+  "capturedAt": "2026-08-27T09:00:16Z",
+  "capturedAtEnd": "2026-08-27T09:00:23Z",
+  "repositoryRoot": "<repo-root>",
+  "branch": "docs/structural-gate-boundary-sha",
+  "head": "14a0c8da6b377bff2fb969aeaeebca8b31db4e59",
+  "tree": "7e7985b6abe52b75f52e3be1894809314c653fd5",
+  "headAfterCapture": "14a0c8da6b377bff2fb969aeaeebca8b31db4e59",
+  "treeAfterCapture": "7e7985b6abe52b75f52e3be1894809314c653fd5",
+  "repoStatusBefore": "(clean)",
+  "repoStatusAfter": "(clean)",
+  "gates": [
+    {
+      "name": "test:pre-duimp-runtime-shadow-route",
+      "command": "pnpm test:pre-duimp-runtime-shadow-route",
+      "log": "<external-evidence-root>/<artifact-name>",
+      "startedAt": "2026-08-27T09:00:16Z",
+      "endedAt": "2026-08-27T09:00:17Z",
+      "exitCode": 0,
+      "state": "EXECUTADO",
+      "logSha256": "042f319b2d31ae64d0fe23ed1b9e1bafd60ff5889517d7117c5e16152a2850e2",
+      "logSizeBytes": 4067
+    },
+    {
+      "name": "test:pre-duimp",
+      "command": "pnpm test:pre-duimp",
+      "log": "<external-evidence-root>/<artifact-name>",
+      "startedAt": "2026-08-27T09:00:17Z",
+      "endedAt": "2026-08-27T09:00:21Z",
+      "exitCode": 0,
+      "state": "EXECUTADO",
+      "logSha256": "44dabd8908103bcaf58f4395c17e3e7114ef0ec4852adedcee2ff7b794885abf",
+      "logSizeBytes": 19089
+    },
+    {
+      "name": "check:orphan-tests",
+      "command": "pnpm check:orphan-tests",
+      "log": "<external-evidence-root>/<artifact-name>",
+      "startedAt": "2026-08-27T09:00:21Z",
+      "endedAt": "2026-08-27T09:00:23Z",
+      "exitCode": 0,
+      "state": "EXECUTADO",
+      "logSha256": "274a22840110ad489438d2e2a4e9913333eb29982a9f73db4dfdcbb96691e9dc",
+      "logSizeBytes": 22710
+    },
+    {
+      "name": "check:reason-code-canon",
+      "command": "pnpm check:reason-code-canon",
+      "log": null,
+      "startedAt": null,
+      "endedAt": null,
+      "exitCode": null,
+      "state": "NAO_EXECUTADO",
+      "logSha256": null,
+      "logSizeBytes": null,
+      "decisionReason": "Decisao objetiva: este corte (commit 14a0c8d) nao declara nem introduz alteracao de reason code/catalogo; nenhum arquivo em packages/core/src/reasons/ ou equivalente foi modificado por este commit. Gate nao executado por analogia, conforme instrucao da task."
+    },
+    {
+      "name": "integrity:git-diff-check+status+rev-parse",
+      "command": "git diff --check; git status --porcelain=v1 --untracked-files=all; git rev-parse HEAD; git rev-parse HEAD^{tree}",
+      "log": "<external-evidence-root>/<artifact-name>",
+      "startedAt": "2026-08-27T09:00:23Z",
+      "endedAt": "2026-08-27T09:00:23Z",
+      "exitCode": 0,
+      "state": "EXECUTADO",
+      "logSha256": "656cfbdd10aaa3dff613dd2b388d3e93efe341ab55de0457c84e5125aecf45e0",
+      "logSizeBytes": 82
+    }
+  ],
+  "dependenciesReinstalled": false,
+  "lockfileCorrespondence": "pnpm-lock.yaml sem alteracoes no working tree apos a captura (git status --porcelain=v1 -- pnpm-lock.yaml vazio); node_modules nao foi reinstalado nesta captura (dependenciesReinstalled=false); correspondencia completa lockfile<->node_modules nao foi auditada por esta captura.",
+  "persistentStateDeclaration": "Nenhum codigo, config, banco, Redis, fixture persistente ou estado versionado foi alterado por esta captura. Apenas leitura de HEAD/tree/status e execucao dos comandos de teste/gate ja existentes no repositorio, com stdout/stderr redirecionado para logs externos ao repositorio."
+}

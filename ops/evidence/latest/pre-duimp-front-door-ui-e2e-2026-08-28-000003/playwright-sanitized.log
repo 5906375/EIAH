@@ -1,0 +1,6 @@
+{"timestamp":"2026-08-28T12:19:23.154Z","event":"controller_started","credentialId":"<synthetic-credential-id>","recordId":"record-preduimp-ui-e2e-20260828-000003"}
+{"timestamp":"2026-08-28T12:19:23.962Z","event":"credential_created","credentialId":"<synthetic-credential-id>","revoked":false}
+{"timestamp":"2026-08-28T12:19:26.929Z","event":"single_click_started","recordId":"record-preduimp-ui-e2e-20260828-000003"}
+{"timestamp":"2026-08-28T12:19:28.759Z","event":"e2e_passed","endpointPostCount":1}
+{"timestamp":"2026-08-28T12:19:28.766Z","event":"finalization_started","reason":"main-finally"}
+{"timestamp":"2026-08-28T12:19:57.620Z","event":"finalization_finished","reason":"main-finally"}

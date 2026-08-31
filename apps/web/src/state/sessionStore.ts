@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import type { PreDuimpAccessState } from "../features/logistica/preDuimp";
 
 const VITE_ENV = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env ?? {};
 
@@ -16,6 +17,7 @@ type SessionState = {
     IMOB_INSTALLED?: boolean;
   };
   installedProducts?: string[];
+  preDuimpAccess: PreDuimpAccessState;
   verticals?: Array<{
     verticalId: "IMOB" | "LEGAL" | "HEALTH";
     label: string;
@@ -161,6 +163,7 @@ const DEFAULTS: SessionState = {
   tenantId: VITE_ENV.VITE_TENANT_ID || "tenant-demo",
   workspaceId: VITE_ENV.VITE_WORKSPACE_ID || "workspace-demo",
   token: VITE_ENV.VITE_API_TOKEN || undefined,
+  preDuimpAccess: { status: "idle" },
 };
 const LOGOUT_FLAG_KEY = "eiah_logged_out";
 
@@ -180,6 +183,7 @@ function loadState(): SessionState {
       tenantId: DEFAULTS.tenantId,
       workspaceId: DEFAULTS.workspaceId,
       token: DEFAULTS.token,
+      preDuimpAccess: { status: "idle" },
     };
   }
 
@@ -194,6 +198,9 @@ function loadState(): SessionState {
       DEFAULTS.workspaceId,
     userId: storage.getItem("user_id") || undefined,
     token: persistedToken || (isLoggedOut ? undefined : DEFAULTS.token || undefined),
+    // Server-authoritative capabilities are deliberately never hydrated
+    // from localStorage.
+    preDuimpAccess: { status: "idle" },
     activeDomain: (storage.getItem("active_domain") as "core" | "imob" | null) ?? "core",
     installedProducts: (storage.getItem("installed_products") || "")
       .split(",")
@@ -289,6 +296,7 @@ export function clearSession() {
     workspaceId: DEFAULTS.workspaceId,
     token: undefined,
     activeDomain: "core",
+    preDuimpAccess: { status: "idle" },
   });
 }
 

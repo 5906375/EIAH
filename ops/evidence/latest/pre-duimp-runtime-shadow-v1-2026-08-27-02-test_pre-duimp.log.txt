@@ -1,0 +1,390 @@
+
+> eiah-builder@ test:pre-duimp <repo-root>
+> pnpm test:pre-duimp-contracts && pnpm test:pre-duimp-server-authority-adapter:integration && pnpm test:pre-duimp-runtime-shadow-route
+
+
+> eiah-builder@ test:pre-duimp-contracts <repo-root>
+> node --import tsx --test apps/api/src/tests/pre-duimp-context.contract.test.ts apps/api/src/tests/pre-duimp-action-catalog.contract.test.ts apps/api/src/tests/pre-duimp-replay.contract.test.ts
+
+TAP version 13
+# Subtest: pre-duimp action catalog authorizes a known action with valid context, isolation, scope and entitlement
+ok 1 - pre-duimp action catalog authorizes a known action with valid context, isolation, scope and entitlement
+  ---
+  duration_ms: 9.481924
+  type: 'test'
+  ...
+# Subtest: pre-duimp action catalog rejects an unknown action with PRE_DUIMP_ACTION_UNKNOWN
+ok 2 - pre-duimp action catalog rejects an unknown action with PRE_DUIMP_ACTION_UNKNOWN
+  ---
+  duration_ms: 1.522034
+  type: 'test'
+  ...
+# Subtest: pre-duimp action catalog rejects a non-shadow mode request with subreason mode_not_shadow
+ok 3 - pre-duimp action catalog rejects a non-shadow mode request with subreason mode_not_shadow
+  ---
+  duration_ms: 0.799266
+  type: 'test'
+  ...
+# Subtest: pre-duimp action catalog rejects externalTransmissionAllowed=true with subreason external_transmission_requested
+ok 4 - pre-duimp action catalog rejects externalTransmissionAllowed=true with subreason external_transmission_requested
+  ---
+  duration_ms: 0.934187
+  type: 'test'
+  ...
+# Subtest: pre-duimp action catalog rejects a tenant-mismatched server authority with PRE_DUIMP_ISOLATION_VIOLATION
+ok 5 - pre-duimp action catalog rejects a tenant-mismatched server authority with PRE_DUIMP_ISOLATION_VIOLATION
+  ---
+  duration_ms: 0.969095
+  type: 'test'
+  ...
+# Subtest: pre-duimp action catalog rejects a workspace-mismatched server authority with PRE_DUIMP_ISOLATION_VIOLATION
+ok 6 - pre-duimp action catalog rejects a workspace-mismatched server authority with PRE_DUIMP_ISOLATION_VIOLATION
+  ---
+  duration_ms: 1.152883
+  type: 'test'
+  ...
+# Subtest: pre-duimp action catalog rejects a server authority missing the action's scope with PRE_DUIMP_SCOPE_DENIED
+ok 7 - pre-duimp action catalog rejects a server authority missing the action's scope with PRE_DUIMP_SCOPE_DENIED
+  ---
+  duration_ms: 0.704812
+  type: 'test'
+  ...
+# Subtest: pre-duimp action catalog rejects a missing installation with PRE_DUIMP_ENTITLEMENT_DENIED/installation_missing
+ok 8 - pre-duimp action catalog rejects a missing installation with PRE_DUIMP_ENTITLEMENT_DENIED/installation_missing
+  ---
+  duration_ms: 0.69241
+  type: 'test'
+  ...
+# Subtest: pre-duimp action catalog rejects a cross-tenant installation with PRE_DUIMP_ENTITLEMENT_DENIED/installation_scope_mismatch
+ok 9 - pre-duimp action catalog rejects a cross-tenant installation with PRE_DUIMP_ENTITLEMENT_DENIED/installation_scope_mismatch
+  ---
+  duration_ms: 1.559005
+  type: 'test'
+  ...
+# Subtest: pre-duimp action catalog rejects a non-LOGISTICA installation with PRE_DUIMP_ENTITLEMENT_DENIED/installation_product_mismatch
+ok 10 - pre-duimp action catalog rejects a non-LOGISTICA installation with PRE_DUIMP_ENTITLEMENT_DENIED/installation_product_mismatch
+  ---
+  duration_ms: 1.769893
+  type: 'test'
+  ...
+# Subtest: pre-duimp action catalog rejects a suspended installation with PRE_DUIMP_ENTITLEMENT_DENIED/status_denied
+ok 11 - pre-duimp action catalog rejects a suspended installation with PRE_DUIMP_ENTITLEMENT_DENIED/status_denied
+  ---
+  duration_ms: 0.987576
+  type: 'test'
+  ...
+# Subtest: pre-duimp action catalog rejects log.duimp_context.review without a satisfied HITL approval
+ok 12 - pre-duimp action catalog rejects log.duimp_context.review without a satisfied HITL approval
+  ---
+  duration_ms: 0.831303
+  type: 'test'
+  ...
+# Subtest: pre-duimp action catalog authorizes log.duimp_context.review with a satisfied HITL approval
+ok 13 - pre-duimp action catalog authorizes log.duimp_context.review with a satisfied HITL approval
+  ---
+  duration_ms: 0.713419
+  type: 'test'
+  ...
+# Subtest: pre-duimp action catalog does not require HITL approval for log.duimp_context.create
+ok 14 - pre-duimp action catalog does not require HITL approval for log.duimp_context.create
+  ---
+  duration_ms: 0.656157
+  type: 'test'
+  ...
+# Subtest: pre-duimp action catalog ignores identity/scope/installation/HITL/authority fields smuggled onto the client request and authorizes strictly from the separate server authority parameter
+ok 15 - pre-duimp action catalog ignores identity/scope/installation/HITL/authority fields smuggled onto the client request and authorizes strictly from the separate server authority parameter
+  ---
+  duration_ms: 0.691376
+  type: 'test'
+  ...
+# Subtest: pre-duimp reason codes are registered in the canonical catalog with the expected metadata and no approver
+ok 16 - pre-duimp reason codes are registered in the canonical catalog with the expected metadata and no approver
+  ---
+  duration_ms: 0.610502
+  type: 'test'
+  ...
+# Subtest: pre-duimp context contract accepts canonical shadow record for Logística (verticalId=log)
+ok 17 - pre-duimp context contract accepts canonical shadow record for Logística (verticalId=log)
+  ---
+  duration_ms: 8.356166
+  type: 'test'
+  ...
+# Subtest: pre-duimp context contract rejects any verticalId other than the Logística literal 'log'
+ok 18 - pre-duimp context contract rejects any verticalId other than the Logística literal 'log'
+  ---
+  duration_ms: 3.699551
+  type: 'test'
+  ...
+# Subtest: pre-duimp context contract rejects non-shadow mode
+ok 19 - pre-duimp context contract rejects non-shadow mode
+  ---
+  duration_ms: 1.493166
+  type: 'test'
+  ...
+# Subtest: pre-duimp context contract rejects externalTransmissionAllowed=true
+ok 20 - pre-duimp context contract rejects externalTransmissionAllowed=true
+  ---
+  duration_ms: 0.827713
+  type: 'test'
+  ...
+# Subtest: pre-duimp isolation allows requester in the same tenant/workspace pair
+ok 21 - pre-duimp isolation allows requester in the same tenant/workspace pair
+  ---
+  duration_ms: 1.888789
+  type: 'test'
+  ...
+# Subtest: pre-duimp isolation denies a requester from a different tenant
+ok 22 - pre-duimp isolation denies a requester from a different tenant
+  ---
+  duration_ms: 0.394978
+  type: 'test'
+  ...
+# Subtest: pre-duimp isolation denies a requester from a different workspace in the same tenant
+ok 23 - pre-duimp isolation denies a requester from a different workspace in the same tenant
+  ---
+  duration_ms: 0.641693
+  type: 'test'
+  ...
+# Subtest: pre-duimp entitlement gate allows an active LOGISTICA installation matching the authority tenant/workspace
+ok 24 - pre-duimp entitlement gate allows an active LOGISTICA installation matching the authority tenant/workspace
+  ---
+  duration_ms: 2.044373
+  type: 'test'
+  ...
+# Subtest: pre-duimp entitlement gate denies with installation_missing when no installation is provided (cut 3 fixes cut 1's permissive default)
+ok 25 - pre-duimp entitlement gate denies with installation_missing when no installation is provided (cut 3 fixes cut 1's permissive default)
+  ---
+  duration_ms: 2.532868
+  type: 'test'
+  ...
+# Subtest: pre-duimp entitlement gate denies with installation_scope_mismatch when installation belongs to a different tenant/workspace
+ok 26 - pre-duimp entitlement gate denies with installation_scope_mismatch when installation belongs to a different tenant/workspace
+  ---
+  duration_ms: 2.707431
+  type: 'test'
+  ...
+# Subtest: pre-duimp entitlement gate denies with installation_product_mismatch when the installation product is not LOGISTICA
+ok 27 - pre-duimp entitlement gate denies with installation_product_mismatch when the installation product is not LOGISTICA
+  ---
+  duration_ms: 1.265112
+  type: 'test'
+  ...
+# Subtest: pre-duimp entitlement gate denies with status_denied when the matching installation is not active for a state-changing action
+ok 28 - pre-duimp entitlement gate denies with status_denied when the matching installation is not active for a state-changing action
+  ---
+  duration_ms: 0.863715
+  type: 'test'
+  ...
+# Subtest: evaluatePreDuimpReplay: first_execution when no known execution exists
+ok 29 - evaluatePreDuimpReplay: first_execution when no known execution exists
+  ---
+  duration_ms: 6.627437
+  type: 'test'
+  ...
+# Subtest: evaluatePreDuimpReplay: safe_replay when known execution matches exactly and is completed
+ok 30 - evaluatePreDuimpReplay: safe_replay when known execution matches exactly and is completed
+  ---
+  duration_ms: 1.582901
+  type: 'test'
+  ...
+# Subtest: evaluatePreDuimpReplay: in_progress when known execution matches exactly but is still in progress
+ok 31 - evaluatePreDuimpReplay: in_progress when known execution matches exactly but is still in progress
+  ---
+  duration_ms: 1.22066
+  type: 'test'
+  ...
+# Subtest: evaluatePreDuimpReplay: conflict/fingerprint_conflict when identity matches but fingerprint differs
+ok 32 - evaluatePreDuimpReplay: conflict/fingerprint_conflict when identity matches but fingerprint differs
+  ---
+  duration_ms: 0.709581
+  type: 'test'
+  ...
+# Subtest: evaluatePreDuimpReplay: conflict/tenant_mismatch when known execution belongs to another tenant
+ok 33 - evaluatePreDuimpReplay: conflict/tenant_mismatch when known execution belongs to another tenant
+  ---
+  duration_ms: 0.978481
+  type: 'test'
+  ...
+# Subtest: evaluatePreDuimpReplay: conflict/workspace_mismatch when known execution belongs to another workspace
+ok 34 - evaluatePreDuimpReplay: conflict/workspace_mismatch when known execution belongs to another workspace
+  ---
+  duration_ms: 0.769622
+  type: 'test'
+  ...
+# Subtest: evaluatePreDuimpReplay: conflict/action_mismatch when known execution belongs to another action
+ok 35 - evaluatePreDuimpReplay: conflict/action_mismatch when known execution belongs to another action
+  ---
+  duration_ms: 0.982174
+  type: 'test'
+  ...
+# Subtest: evaluatePreDuimpReplay: conflict/resource_mismatch when known execution belongs to another resource
+ok 36 - evaluatePreDuimpReplay: conflict/resource_mismatch when known execution belongs to another resource
+  ---
+  duration_ms: 0.728399
+  type: 'test'
+  ...
+# Subtest: evaluatePreDuimpReplay: a contradictory transported idempotencyKey has no effect — the server-side snapshot always prevails
+ok 37 - evaluatePreDuimpReplay: a contradictory transported idempotencyKey has no effect — the server-side snapshot always prevails
+  ---
+  duration_ms: 3.167933
+  type: 'test'
+  ...
+# Subtest: evaluatePreDuimpReplay: invalid/invalid_key when idempotencyKey is transported but empty
+ok 38 - evaluatePreDuimpReplay: invalid/invalid_key when idempotencyKey is transported but empty
+  ---
+  duration_ms: 0.835279
+  type: 'test'
+  ...
+# Subtest: evaluatePreDuimpReplay: invalid when the action is not in the canonical PRE_DUIMP catalog
+ok 39 - evaluatePreDuimpReplay: invalid when the action is not in the canonical PRE_DUIMP catalog
+  ---
+  duration_ms: 0.293281
+  type: 'test'
+  ...
+# Subtest: evaluatePreDuimpReplay: invalid when the context fails domain contract validation
+ok 40 - evaluatePreDuimpReplay: invalid when the context fails domain contract validation
+  ---
+  duration_ms: 1.32742
+  type: 'test'
+  ...
+# Subtest: evaluatePreDuimpReplay: invalid when the context tenant/workspace do not match the server-side authority
+ok 41 - evaluatePreDuimpReplay: invalid when the context tenant/workspace do not match the server-side authority
+  ---
+  duration_ms: 0.35553
+  type: 'test'
+  ...
+# Subtest: preDuimpReplayReasonCodeFor maps proceed decisions to null and blocking decisions to PRE_DUIMP_REPLAY_REJECTED
+ok 42 - preDuimpReplayReasonCodeFor maps proceed decisions to null and blocking decisions to PRE_DUIMP_REPLAY_REJECTED
+  ---
+  duration_ms: 0.233227
+  type: 'test'
+  ...
+# Subtest: PRE_DUIMP_REPLAY_REJECTED is registered in the canonical catalog with the expected metadata and no approver
+ok 43 - PRE_DUIMP_REPLAY_REJECTED is registered in the canonical catalog with the expected metadata and no approver
+  ---
+  duration_ms: 0.280246
+  type: 'test'
+  ...
+1..43
+# tests 43
+# suites 0
+# pass 43
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 641.87894
+
+> eiah-builder@ test:pre-duimp-server-authority-adapter:integration <repo-root>
+> TSX_TSCONFIG_PATH=tsconfig.base.json NODE_ENV=test node --env-file-if-exists=packages/db/.env --import tsx --test --test-force-exit apps/api/src/tests/pre-duimp-server-authority-adapter.integration.test.ts
+
+TAP version 13
+# [pre-duimp-server-authority-adapter] guardrail residue for prefix "tenant-preduimp-adapter-": ledger=8 audit=4
+# Subtest: createPreDuimpServerAuthorityResolver: fake grants scope, canonical installation is active -> authorizePreDuimpAction succeeds, and the fake receives identity+action
+ok 1 - createPreDuimpServerAuthorityResolver: fake grants scope, canonical installation is active -> authorizePreDuimpAction succeeds, and the fake receives identity+action
+  ---
+  duration_ms: 284.186579
+  type: 'test'
+  ...
+# Subtest: createPreDuimpServerAuthorityResolver: fake denies scope -> authorizePreDuimpAction fails closed with PRE_DUIMP_SCOPE_DENIED
+ok 2 - createPreDuimpServerAuthorityResolver: fake denies scope -> authorizePreDuimpAction fails closed with PRE_DUIMP_SCOPE_DENIED
+  ---
+  duration_ms: 68.985489
+  type: 'test'
+  ...
+# Subtest: createPreDuimpServerAuthorityResolver: a client request smuggling scope/tenant/workspace/installation/HITL/authority fields does not control the final decision
+ok 3 - createPreDuimpServerAuthorityResolver: a client request smuggling scope/tenant/workspace/installation/HITL/authority fields does not control the final decision
+  ---
+  duration_ms: 38.932329
+  type: 'test'
+  ...
+# Subtest: createPreDuimpServerAuthorityResolver: installation always comes from the canonical TenantProductInstallation source, never from the request
+ok 4 - createPreDuimpServerAuthorityResolver: installation always comes from the canonical TenantProductInstallation source, never from the request
+  ---
+  duration_ms: 30.594912
+  type: 'test'
+  ...
+# Subtest: createPreDuimpServerAuthorityResolver: hitlApproval is always null (no persisted mechanism yet) -> log.duimp_context.review stays fail-closed with PRE_DUIMP_HITL_REQUIRED
+ok 5 - createPreDuimpServerAuthorityResolver: hitlApproval is always null (no persisted mechanism yet) -> log.duimp_context.review stays fail-closed with PRE_DUIMP_HITL_REQUIRED
+  ---
+  duration_ms: 30.166071
+  type: 'test'
+  ...
+# Subtest: no new rows are written to guardrailLedger or guardrailAuditLedger for the synthetic prefix while every scope decision came from the local fake
+ok 6 - no new rows are written to guardrailLedger or guardrailAuditLedger for the synthetic prefix while every scope decision came from the local fake
+  ---
+  duration_ms: 4.813349
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1173.527221
+
+> eiah-builder@ test:pre-duimp-runtime-shadow-route <repo-root>
+> TSX_TSCONFIG_PATH=tsconfig.base.json NODE_ENV=test node --env-file-if-exists=packages/db/.env --import tsx --test --test-force-exit apps/api/src/tests/pre-duimp-runtime-shadow-route.contract.test.ts
+
+TAP version 13
+# Subtest: route: POST without authContext returns 401 UNAUTHORIZED
+ok 1 - route: POST without authContext returns 401 UNAUTHORIZED
+  ---
+  duration_ms: 30.785264
+  type: 'test'
+  ...
+# Subtest: route: POST with an unknown action returns 400 PRE_DUIMP_ACTION_UNKNOWN
+ok 2 - route: POST with an unknown action returns 400 PRE_DUIMP_ACTION_UNKNOWN
+  ---
+  duration_ms: 7.654068
+  type: 'test'
+  ...
+# Subtest: route: POST with scope denied returns 403 with reasonCode PRE_DUIMP_SCOPE_DENIED
+ok 3 - route: POST with scope denied returns 403 with reasonCode PRE_DUIMP_SCOPE_DENIED
+  ---
+  duration_ms: 3.79257
+  type: 'test'
+  ...
+# Subtest: route: POST with a malformed context returns 400 VALIDATION_ERROR with details, not PRE_DUIMP_ACTION_UNKNOWN/500
+ok 4 - route: POST with a malformed context returns 400 VALIDATION_ERROR with details, not PRE_DUIMP_ACTION_UNKNOWN/500
+  ---
+  duration_ms: 3.962214
+  type: 'test'
+  ...
+# Subtest: route: POST log.duimp_context.review without HITL approval returns 403 PRE_DUIMP_HITL_REQUIRED
+ok 5 - route: POST log.duimp_context.review without HITL approval returns 403 PRE_DUIMP_HITL_REQUIRED
+  ---
+  duration_ms: 3.178962
+  type: 'test'
+  ...
+# Subtest: route: POST fully authorized log.duimp_context.create returns 200 authorized_shadow
+ok 6 - route: POST fully authorized log.duimp_context.create returns 200 authorized_shadow
+  ---
+  duration_ms: 3.3664
+  type: 'test'
+  ...
+# {"level":50,"time":"2026-08-27T09:00:21.900Z","service":"eiah","env":"test","component":"api-error-handler","httpMethod":"POST","path":"/logistica/pre-duimp/actions","err":{"type":"Error","message":"simulated unexpected dependency failure","stack":"Error: simulated unexpected dependency failure\\n    at Object.resolveServerAuthority (<repo-root>/<relative-path>)\\n    at <anonymous> (<repo-root>/<relative-path>)\\n    at <anonymous> (<repo-root>/<relative-path>)\\n    at Layer.handle [as handle_request] (<repo-root>/<relative-path>)\\n    at next (<repo-root>/<relative-path>)\\n    at Route.dispatch (<repo-root>/<relative-path>)\\n    at Layer.handle [as handle_request] (<repo-root>/<relative-path>)\\n    at <repo-root>/<relative-path>\\n    at Function.process_params (<repo-root>/<relative-path>)\\n    at next (<repo-root>/<relative-path>)"},"msg":"api.unhandled_route_error"}
+# Subtest: route: POST with an unexpected dependency failure propagates to governedErrorHandler as 500 INTERNAL_ERROR, never a masked 400
+ok 7 - route: POST with an unexpected dependency failure propagates to governedErrorHandler as 500 INTERNAL_ERROR, never a masked 400
+  ---
+  duration_ms: 5.433157
+  type: 'test'
+  ...
+# Subtest: route: GET on the actions path is not registered (only POST is exposed)
+ok 8 - route: GET on the actions path is not registered (only POST is exposed)
+  ---
+  duration_ms: 3.158415
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 778.929452

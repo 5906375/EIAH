@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "packageId": "pre-duimp-runtime-shadow-v1-2026-08-27",
+  "documentDate": "2026-08-31",
+  "scope": [
+    "ops/evidence/latest/pre-duimp-runtime-shadow-v1-2026-08-27-01-test_pre-duimp-runtime-shadow-route.log.txt",
+    "ops/evidence/latest/pre-duimp-runtime-shadow-v1-2026-08-27-02-test_pre-duimp.log.txt",
+    "ops/evidence/latest/pre-duimp-runtime-shadow-v1-2026-08-27-03-check_orphan-tests.log.txt",
+    "ops/evidence/latest/pre-duimp-runtime-shadow-v1-2026-08-27-05-integrity_tree-check.log.txt",
+    "ops/evidence/latest/pre-duimp-runtime-shadow-v1-2026-08-27-manifest.json",
+    "ops/evidence/latest/pre-duimp-runtime-shadow-v1-2026-08-27-publication-provenance.json",
+    "ops/evidence/latest/pre-duimp-runtime-shadow-v1-validation-2026-08-27.md"
+  ],
+  "excludedByConstruction": [
+    "ops/evidence/latest/pre-duimp-runtime-shadow-v1-2026-08-27-integrity-hashes.json",
+    "ops/evidence/latest/pre-duimp-runtime-shadow-v1-2026-08-27-sensitivity-scan.json"
+  ],
+  "rules": [
+    {
+      "id": "local_home_path",
+      "matchCount": 0
+    },
+    {
+      "id": "temporary_path",
+      "matchCount": 0
+    },
+    {
+      "id": "file_url",
+      "matchCount": 0
+    },
+    {
+      "id": "windows_drive_path",
+      "matchCount": 0
+    },
+    {
+      "id": "host_username",
+      "matchCount": 0
+    },
+    {
+      "id": "host_name",
+      "matchCount": 0
+    },
+    {
+      "id": "bearer_credential",
+      "matchCount": 0
+    },
+    {
+      "id": "authorization_header",
+      "matchCount": 0
+    },
+    {
+      "id": "cookie_header",
+      "matchCount": 0
+    },
+    {
+      "id": "token_secret",
+      "matchCount": 0
+    },
+    {
+      "id": "email_address",
+      "matchCount": 0
+    },
+    {
+      "id": "database_url",
+      "matchCount": 0
+    }
+  ],
+  "totalFindings": 0,
+  "passed": true
+}

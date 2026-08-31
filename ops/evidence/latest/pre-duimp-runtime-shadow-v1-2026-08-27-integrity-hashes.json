@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "packageId": "pre-duimp-runtime-shadow-v1-2026-08-27",
+  "documentDate": "2026-08-31",
+  "artifacts": [
+    {
+      "logicalPath": "ops/evidence/latest/pre-duimp-runtime-shadow-v1-2026-08-27-01-test_pre-duimp-runtime-shadow-route.log.txt",
+      "sha256": "d0c11fb5ed7ae590e5afd2510eea997003c780ef6425143c5db7df870c032c99",
+      "sizeBytes": 3233
+    },
+    {
+      "logicalPath": "ops/evidence/latest/pre-duimp-runtime-shadow-v1-2026-08-27-02-test_pre-duimp.log.txt",
+      "sha256": "6122db33606689615646f6b3de1f8c0d71a666d444bd2682c8e4c1c27d9f94f7",
+      "sizeBytes": 18186
+    },
+    {
+      "logicalPath": "ops/evidence/latest/pre-duimp-runtime-shadow-v1-2026-08-27-03-check_orphan-tests.log.txt",
+      "sha256": "04503d59a9b8a4dea919658167efe49a215a8213094f9d57a980d776ed3c59ac",
+      "sizeBytes": 22687
+    },
+    {
+      "logicalPath": "ops/evidence/latest/pre-duimp-runtime-shadow-v1-2026-08-27-05-integrity_tree-check.log.txt",
+      "sha256": "656cfbdd10aaa3dff613dd2b388d3e93efe341ab55de0457c84e5125aecf45e0",
+      "sizeBytes": 82
+    },
+    {
+      "logicalPath": "ops/evidence/latest/pre-duimp-runtime-shadow-v1-2026-08-27-manifest.json",
+      "sha256": "3229bdc7d24cffa87eee021927b8abfd40fbb59a00c4755e3a7e88ad1a6d6d46",
+      "sizeBytes": 3441
+    },
+    {
+      "logicalPath": "ops/evidence/latest/pre-duimp-runtime-shadow-v1-2026-08-27-publication-provenance.json",
+      "sha256": "b67855e1bbc2b25220c17ef0cb09e0a5ed9c77cab9df9d02920f6a8da11440c2",
+      "sizeBytes": 3085
+    },
+    {
+      "logicalPath": "ops/evidence/latest/pre-duimp-runtime-shadow-v1-2026-08-27-sensitivity-scan.json",
+      "sha256": "250b0943c33e5a8165f97a825a6da89f1dcccda2ab948820a054de2b5f0c392f",
+      "sizeBytes": 1827
+    },
+    {
+      "logicalPath": "ops/evidence/latest/pre-duimp-runtime-shadow-v1-validation-2026-08-27.md",
+      "sha256": "83084a435a449dd2579cc5b101f2507638b0d28fb6c381e3fa24e042e0f9d48e",
+      "sizeBytes": 9489
+    }
+  ]
+}

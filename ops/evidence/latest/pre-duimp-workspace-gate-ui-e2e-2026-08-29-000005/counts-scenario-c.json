@@ -1,0 +1,103 @@
+{
+  "bootstrapCapabilityBeforeRevocation": {
+    "version": "v1",
+    "allowed": true,
+    "mode": "shadow",
+    "externalTransmissionAllowed": false,
+    "reasonCode": null,
+    "pilotPolicyVersion": "v1",
+    "actionPolicyVersion": "v1",
+    "sessionScopeMatches": true
+  },
+  "liveResponse": {
+    "httpStatus": 403,
+    "reasonCode": "PRE_DUIMP_PILOT_ACCESS_DENIED"
+  },
+  "ui": {
+    "denialVisible": true,
+    "incorrectSuccessVisible": false
+  },
+  "request": {
+    "topLevelKeys": [
+      "action",
+      "context"
+    ],
+    "actionMatches": true,
+    "tenantWorkspaceMatches": true,
+    "recordId": "revoked-record",
+    "modeMatches": true,
+    "externalTransmissionAllowedMatches": true
+  },
+  "network": {
+    "endpointPostCount": 1,
+    "totalPostCount": 1,
+    "otherMutationCount": 0,
+    "externalMutationCount": 0,
+    "hitlReplayReadCount": 0,
+    "hitlReplayMutationCount": 0,
+    "clickCount": 1
+  },
+  "before": {
+    "capturedAt": "2026-08-29T18:07:10.828Z",
+    "guardrailLedger": {
+      "allow": 1,
+      "deny": 0
+    },
+    "guardrailAuditLedger": {
+      "allow": 1,
+      "deny": 0
+    },
+    "runs": {
+      "tenantWorkspace": 0,
+      "authorizedRecordId": 0,
+      "revokedRecordId": 0
+    }
+  },
+  "after": {
+    "capturedAt": "2026-08-29T18:07:12.230Z",
+    "guardrailLedger": {
+      "allow": 2,
+      "deny": 0
+    },
+    "guardrailAuditLedger": {
+      "allow": 2,
+      "deny": 0
+    },
+    "runs": {
+      "tenantWorkspace": 0,
+      "authorizedRecordId": 0,
+      "revokedRecordId": 0
+    }
+  },
+  "delta": {
+    "guardrailLedger": {
+      "allow": 1,
+      "deny": 0
+    },
+    "guardrailAuditLedger": {
+      "allow": 1,
+      "deny": 0
+    },
+    "runs": {
+      "tenantWorkspace": 0,
+      "authorizedRecordId": 0,
+      "revokedRecordId": 0
+    }
+  },
+  "actionPolicyLedgerNote": "Synthetic audit trail preserved; no auditable ledger row was deleted.",
+  "freshBootstrap": {
+    "capability": {
+      "version": "v1",
+      "allowed": false,
+      "mode": "shadow",
+      "externalTransmissionAllowed": false,
+      "reasonCode": "PRE_DUIMP_PILOT_GRANT_DISABLED",
+      "pilotPolicyVersion": null,
+      "actionPolicyVersion": null,
+      "sessionScopeMatches": true
+    },
+    "menuPresent": false,
+    "directRouteFinalPath": "/app/runs",
+    "endpointPostCount": 0
+  }
+}

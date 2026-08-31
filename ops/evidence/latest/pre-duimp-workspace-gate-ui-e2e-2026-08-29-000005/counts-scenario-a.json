@@ -1,0 +1,78 @@
+{
+  "capability": {
+    "version": "v1",
+    "allowed": false,
+    "mode": "shadow",
+    "externalTransmissionAllowed": false,
+    "reasonCode": "PRE_DUIMP_PILOT_GRANT_MISSING",
+    "pilotPolicyVersion": null,
+    "actionPolicyVersion": null,
+    "sessionScopeMatches": true
+  },
+  "sessionContext": {
+    "httpStatus": 200,
+    "cacheControl": "no-store"
+  },
+  "ui": {
+    "menuPresent": false,
+    "directRouteFinalPath": "/app/runs",
+    "headingPresent": false
+  },
+  "network": {
+    "endpointPostCount": 0,
+    "totalPostCount": 0,
+    "otherMutationCount": 0,
+    "externalMutationCount": 0,
+    "hitlReplayReadCount": 0,
+    "hitlReplayMutationCount": 0,
+    "clickCount": 0,
+    "requestSummaries": []
+  },
+  "before": {
+    "capturedAt": "2026-08-29T18:06:59.392Z",
+    "guardrailLedger": {
+      "allow": 0,
+      "deny": 0
+    },
+    "guardrailAuditLedger": {
+      "allow": 0,
+      "deny": 0
+    },
+    "runs": {
+      "tenantWorkspace": 0,
+      "authorizedRecordId": 0,
+      "revokedRecordId": 0
+    }
+  },
+  "after": {
+    "capturedAt": "2026-08-29T18:07:05.117Z",
+    "guardrailLedger": {
+      "allow": 0,
+      "deny": 0
+    },
+    "guardrailAuditLedger": {
+      "allow": 0,
+      "deny": 0
+    },
+    "runs": {
+      "tenantWorkspace": 0,
+      "authorizedRecordId": 0,
+      "revokedRecordId": 0
+    }
+  },
+  "delta": {
+    "guardrailLedger": {
+      "allow": 0,
+      "deny": 0
+    },
+    "guardrailAuditLedger": {
+      "allow": 0,
+      "deny": 0
+    },
+    "runs": {
+      "tenantWorkspace": 0,
+      "authorizedRecordId": 0,
+      "revokedRecordId": 0
+    }
+  }
+}

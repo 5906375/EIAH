@@ -307,6 +307,15 @@ fonte canônica falham em `check:reason-code-canon`.
 | `PRE_DUIMP_ENTITLEMENT_DENIED` | proposed |
 | `PRE_DUIMP_HITL_REQUIRED` | proposed |
 | `PRE_DUIMP_REPLAY_REJECTED` | proposed |
+| `PRE_DUIMP_RUNTIME_DISABLED` | proposed |
+| `PRE_DUIMP_INSTALLATION_MISSING` | proposed |
+| `PRE_DUIMP_INSTALLATION_INACTIVE` | proposed |
+| `PRE_DUIMP_INSTALLATION_INVALID` | proposed |
+| `PRE_DUIMP_PILOT_GRANT_MISSING` | proposed |
+| `PRE_DUIMP_PILOT_GRANT_DISABLED` | proposed |
+| `PRE_DUIMP_ACTION_POLICY_DENIED` | proposed |
+| `PRE_DUIMP_ACCESS_UNAVAILABLE` | proposed |
+| `PRE_DUIMP_PILOT_ACCESS_DENIED` | proposed |
 <!-- reason-code-canon:end -->
 
 ## Alcance inicial do checker
