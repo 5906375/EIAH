@@ -9,7 +9,6 @@ import { closeRunEventsTransport } from "../services/runEvents";
 import { closeRunEventStream } from "../services/runEventStream";
 import { finalizeHttpContractCleanup } from "./support/httpContractCleanup";
 import { closeRedisPublisher } from "../../../../packages/core/src/events/redisPublisher.js";
-import { closeRunEventPublisherResources } from "../../../../packages/core/src/events/runEventPublisher.js";
 import { closeTenantPolicyStoreResources } from "@eiah/core/policy/TenantPolicyStore";
 import { closeCriticalMetricsRedis } from "../../../../packages/core/src/metrics/criticalMetrics.js";
 import { closeCriticalKillSwitchRedis } from "../../../../packages/core/src/security/killSwitch.js";
@@ -102,7 +101,6 @@ before(async () => {
 
 after(async () => {
   await closeRedisPublisher();
-  await closeRunEventPublisherResources();
   await closeTenantPolicyStoreResources();
   await closeCriticalMetricsRedis();
   await closeCriticalKillSwitchRedis();
