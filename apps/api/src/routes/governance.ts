@@ -469,6 +469,8 @@ governanceRouter.get("/ledger/:txId", requireScope("ledger.view"), async (req, r
       approvedAt: true,
       createdAt: true,
       finishedAt: true,
+      errorCode: true,
+      response: true,
     },
   });
 
