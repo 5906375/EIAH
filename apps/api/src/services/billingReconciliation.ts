@@ -1,4 +1,9 @@
 import { PrismaClient } from "@repo/db";
+import {
+  BILLING_RUN_COST_DEBIT_OPERATION_ID,
+  getGovernedOperation,
+  type GovernedOperationBlockedCategory,
+} from "@eiah/core/catalog/governedOperationCatalog";
 
 type BillingReconciliationScope = {
   tenantId: string;
@@ -18,7 +23,28 @@ type BillingReconciliationRunGap = {
   runCostCents: number;
   breakdownCostCents: number;
   ledgerCostCents: number;
+  /**
+   * "missing_breakdown" is kept in the union for wire compatibility with
+   * existing consumers (apps/web) but is never emitted anymore: per the
+   * ratified P1-A semantics, breakdown absence means not_applicable, not a
+   * gap — it is only reflected in totals.missingBreakdownCount.
+   */
   issue: "missing_breakdown" | "missing_ledger" | "run_vs_breakdown_mismatch" | "breakdown_vs_ledger_mismatch";
+};
+
+type BillingReconciliationAuthorityUnresolved = {
+  runId: string;
+  workspaceId: string;
+  agent: string;
+  errorCode: string | null;
+  /**
+   * Why the collector could not resolve whether a valid governance decision
+   * legitimately prevented the expected billing effect. Per the ratified
+   * P1-B semantics (docs/ops/ape-audit-telemetry-decision.md §13.4) and the
+   * catalog's authorityResolutionRequired invariant, this is never silently
+   * treated as "no gap" nor as "gap" — it is reported fail-closed for review.
+   */
+  reason: "GUARDRAIL_AUTHORITY_EVIDENCE_NOT_FOUND" | "UNKNOWN_BLOCK_CATEGORY";
 };
 
 type BillingReconciliationDuplicateCharge = {
@@ -61,6 +87,7 @@ export type BillingReconciliationSummary = {
     breakdownRows: number;
     ledgerRows: number;
     auditGapCount: number;
+    authorityUnresolvedCount: number;
     orphanUsageCount: number;
     duplicateChargesCount: number;
     ledgerGapCount: number;
@@ -70,6 +97,7 @@ export type BillingReconciliationSummary = {
   };
   items: {
     auditGaps: BillingReconciliationRunGap[];
+    authorityUnresolved: BillingReconciliationAuthorityUnresolved[];
     orphanUsage: BillingReconciliationOrphanUsage[];
     duplicateCharges: BillingReconciliationDuplicateCharge[];
     ledgerGaps: BillingReconciliationLedgerGap[];
@@ -91,6 +119,22 @@ function buildCreatedAtRange(from?: Date | null, to?: Date | null) {
   };
 }
 
+/**
+ * Maps the real Run.errorCode values written by apps/api/src/workers/runWorker.ts
+ * to the governed operation catalog's blocked categories. This is deliberately a
+ * fixed, explicit mapping over real runtime fields — never an inference from the
+ * catalog's category name string itself.
+ */
+const BLOCKED_ERROR_CODE_TO_CATEGORY: Record<string, GovernedOperationBlockedCategory> = {
+  USER_CANCELLED: "USER_CANCELLED",
+  GUARDRAILS_BLOCKED: "GUARDRAIL_BLOCK",
+};
+
+function resolveBlockedCategory(errorCode: string | null): GovernedOperationBlockedCategory | null {
+  if (!errorCode) return null;
+  return BLOCKED_ERROR_CODE_TO_CATEGORY[errorCode] ?? null;
+}
+
 export async function getBillingReconciliationSummary(
   prisma: PrismaClient,
   params: BillingReconciliationScope
@@ -98,8 +142,19 @@ export async function getBillingReconciliationSummary(
   const limit = resolveLimit(params.limit);
   const createdAt = buildCreatedAtRange(params.from, params.to);
 
+  const operation = getGovernedOperation(BILLING_RUN_COST_DEBIT_OPERATION_ID);
+  const knownBlockedCategories = new Set(Object.keys(operation.blockedSemantics.categories));
+  for (const category of Object.values(BLOCKED_ERROR_CODE_TO_CATEGORY)) {
+    if (!knownBlockedCategories.has(category)) {
+      throw new Error(`billing_reconciliation_category_not_in_catalog: ${category}`);
+    }
+  }
+
   const runWhere = {
     tenantId: params.tenantId,
+    // P1-T (terminalidade): Run.finishedAt IS NOT NULL — mesmo predicado
+    // declarado em operation.terminality.rule.
+    finishedAt: { not: null },
     ...(params.workspaceId ? { workspaceId: params.workspaceId } : {}),
     ...(params.runId ? { id: params.runId } : {}),
     ...(params.agent ? { agent: params.agent } : {}),
@@ -122,7 +177,19 @@ export async function getBillingReconciliationSummary(
     ...(createdAt ? { createdAt } : {}),
   };
 
-  const [runs, breakdowns, ledgerRowsRaw] = await Promise.all([
+  const guardrailLedgerWhere = {
+    tenantId: params.tenantId,
+    // Match exato ao valor real gravado por runWorker.ts quando
+    // guardrailReport.action === "block" AND shouldBlock (mecanismo de
+    // guardrail). "blocked.trustscore" (routes/runs.ts) é mecanismo
+    // distinto e não deve resolver authority de GUARDRAIL_BLOCK; qualquer
+    // outro "blocked.*" também não deve.
+    actionType: "blocked.guardrails",
+    ...(params.runId ? { runId: params.runId } : {}),
+    ...(createdAt ? { timestamp: createdAt } : {}),
+  };
+
+  const [runs, breakdowns, ledgerRowsRaw, guardrailLedgerRowsRaw] = await Promise.all([
     prisma.run.findMany({
       where: runWhere,
       select: {
@@ -131,6 +198,8 @@ export async function getBillingReconciliationSummary(
         agent: true,
         traceId: true,
         costCents: true,
+        status: true,
+        errorCode: true,
       },
       orderBy: { createdAt: "desc" },
       take: limit,
@@ -155,10 +224,17 @@ export async function getBillingReconciliationSummary(
         runId: true,
         workspaceId: true,
         requestId: true,
+        entryType: true,
         amountCents: true,
       },
       orderBy: { createdAt: "desc" },
       take: limit * 20,
+    }),
+    prisma.guardrailLedger.findMany({
+      where: guardrailLedgerWhere,
+      select: {
+        runId: true,
+      },
     }),
   ]);
 
@@ -166,6 +242,16 @@ export async function getBillingReconciliationSummary(
   const ledgerRows = params.agent
     ? ledgerRowsRaw.filter((item) => item.runId && runIds.has(item.runId))
     : ledgerRowsRaw;
+
+  // Evidência real (não inferida da string "GUARDRAIL_BLOCK") de que uma
+  // decisão de governança válida foi registrada para o run: uma linha em
+  // GuardrailLedger com actionType "blocked.*" vinculada ao runId.
+  const guardrailAuthorityRunIds = new Set(
+    guardrailLedgerRowsRaw
+      .map((item) => item.runId)
+      .filter((runId): runId is string => !!runId && runIds.has(runId))
+  );
+
   const breakdownByRun = new Map<string, number>();
   const ledgerByRun = new Map<string, number>();
 
@@ -178,30 +264,61 @@ export async function getBillingReconciliationSummary(
   }
 
   const auditGaps: BillingReconciliationRunGap[] = [];
-  let missingBreakdownCount = 0;
+  const authorityUnresolved: BillingReconciliationAuthorityUnresolved[] = [];
+  let missingBreakdownCount = 0; // P1-A: not_applicable (RunUsageBreakdown ausente) — não é gap
   let missingLedgerCount = 0;
   let costMismatchCount = 0;
 
   for (const run of runs) {
-    const breakdownCostCents = breakdownByRun.get(run.id) ?? 0;
-    const ledgerCostCents = ledgerByRun.get(run.id) ?? 0;
-
-    if (breakdownCostCents === 0) {
+    // P1-A (applicability): sem RunUsageBreakdown, não há expectativa
+    // verificável de efeito financeiro. not_applicable, não auditGap.
+    if (!breakdownByRun.has(run.id)) {
       missingBreakdownCount += 1;
-      auditGaps.push({
-        runId: run.id,
-        workspaceId: run.workspaceId,
-        agent: run.agent,
-        traceId: run.traceId,
-        runCostCents: Number(run.costCents ?? 0),
-        breakdownCostCents,
-        ledgerCostCents,
-        issue: "missing_breakdown",
-      });
       continue;
     }
 
-    if (ledgerCostCents === 0) {
+    const breakdownCostCents = breakdownByRun.get(run.id) ?? 0;
+
+    // P1-Z (zero-cost): breakdown existe (ainda que somando zero) é
+    // aplicável — nunca reclassificado como not_applicable.
+    if (!ledgerByRun.has(run.id)) {
+      const blockedCategory = run.status === "blocked" ? resolveBlockedCategory(run.errorCode) : null;
+
+      if (blockedCategory === "GUARDRAIL_BLOCK") {
+        // catalog: authorityResolutionRequired=true — o catálogo nunca
+        // conclui isso sozinho; resolvemos com evidência real (GuardrailLedger).
+        if (guardrailAuthorityRunIds.has(run.id)) {
+          // Efeito legitimamente impedido por decisão de governança válida
+          // e comprovada. Ausência de BillingLedger correspondente não é
+          // auditGap.
+          continue;
+        }
+        authorityUnresolved.push({
+          runId: run.id,
+          workspaceId: run.workspaceId,
+          agent: run.agent,
+          errorCode: run.errorCode,
+          reason: "GUARDRAIL_AUTHORITY_EVIDENCE_NOT_FOUND",
+        });
+        continue;
+      }
+
+      if (run.status === "blocked" && blockedCategory === null) {
+        // Categoria de bloqueio desconhecida: fail-closed — nunca presumir
+        // gap nem no-gap sem evidência classificável.
+        authorityUnresolved.push({
+          runId: run.id,
+          workspaceId: run.workspaceId,
+          agent: run.agent,
+          errorCode: run.errorCode,
+          reason: "UNKNOWN_BLOCK_CATEGORY",
+        });
+        continue;
+      }
+
+      // USER_CANCELLED (runtime_attempt != independent_authority, mas sem
+      // narrativa de prevenção legítima de governança) ou execução terminal
+      // não bloqueada: ausência de BillingLedger é auditGap real.
       missingLedgerCount += 1;
       auditGaps.push({
         runId: run.id,
@@ -210,11 +327,13 @@ export async function getBillingReconciliationSummary(
         traceId: run.traceId,
         runCostCents: Number(run.costCents ?? 0),
         breakdownCostCents,
-        ledgerCostCents,
+        ledgerCostCents: 0,
         issue: "missing_ledger",
       });
       continue;
     }
+
+    const ledgerCostCents = ledgerByRun.get(run.id) ?? 0;
 
     if (Number(run.costCents ?? 0) !== breakdownCostCents) {
       costMismatchCount += 1;
@@ -257,9 +376,14 @@ export async function getBillingReconciliationSummary(
       amountCents: Number(item.amountCents ?? 0),
     }));
 
+  // Grupo semântico ratificado (docs/ops/ape-audit-telemetry-decision.md §3.2):
+  // tenantId + workspaceId + requestId + entryType. tenantId já é fixado pelo
+  // escopo da query (ledgerWhere.tenantId); runId não participa da chave —
+  // requestId já é run-scoped (`run:{runId}:debit`) e é o identificador de
+  // idempotência real.
   const duplicateGroups = new Map<string, BillingReconciliationDuplicateCharge>();
   for (const item of ledgerRows) {
-    const key = [item.runId ?? "null", item.workspaceId ?? "null", item.requestId ?? "null"].join(":");
+    const key = [params.tenantId, item.workspaceId ?? "null", item.requestId ?? "null", item.entryType ?? "null"].join(":");
     const current = duplicateGroups.get(key) ?? {
       runId: item.runId,
       workspaceId: item.workspaceId ?? null,
@@ -271,9 +395,16 @@ export async function getBillingReconciliationSummary(
     current.amountCents += Number(item.amountCents ?? 0);
     duplicateGroups.set(key, current);
   }
-  const duplicateCharges = Array.from(duplicateGroups.values())
-    .filter((item) => item.count > 1 && item.requestId)
-    .slice(0, limit);
+  const duplicateEligibleGroups = Array.from(duplicateGroups.values()).filter(
+    (item) => item.count > 1 && item.requestId
+  );
+  // Σ max(0, n - 1) por grupo, calculado ANTES de qualquer truncamento por
+  // limit — o limit só afeta os itens retornados para exibição.
+  const duplicateChargesCount = duplicateEligibleGroups.reduce(
+    (sum, item) => sum + Math.max(0, item.count - 1),
+    0
+  );
+  const duplicateCharges = duplicateEligibleGroups.slice(0, limit);
 
   const ledgerGaps = ledgerRows
     .flatMap((item): BillingReconciliationLedgerGap[] => {
@@ -317,8 +448,9 @@ export async function getBillingReconciliationSummary(
       breakdownRows: breakdowns.length,
       ledgerRows: ledgerRows.length,
       auditGapCount: auditGaps.length,
+      authorityUnresolvedCount: authorityUnresolved.length,
       orphanUsageCount: orphanUsage.length,
-      duplicateChargesCount: duplicateCharges.length,
+      duplicateChargesCount,
       ledgerGapCount: ledgerGaps.length,
       missingBreakdownCount,
       missingLedgerCount,
@@ -326,6 +458,7 @@ export async function getBillingReconciliationSummary(
     },
     items: {
       auditGaps,
+      authorityUnresolved,
       orphanUsage,
       duplicateCharges,
       ledgerGaps,
