@@ -20,6 +20,12 @@ const runMissingLedgerId = `run-missing-ledger-${suffix}`;
 const runMismatchId = `run-mismatch-${suffix}`;
 const runDuplicateId = `run-duplicate-${suffix}`;
 const runOtherWorkspaceId = `run-other-workspace-${suffix}`;
+// P1-T (terminality, docs/ops/ape-audit-telemetry-decision.md §13.2): the
+// reconciler's runWhere filters on Run.finishedAt IS NOT NULL. These fixtures
+// represent completed runs, so they must carry an explicit finishedAt to be
+// counted — status alone does not prove terminality. One shared reference
+// keeps all five runs deterministically terminal at the same instant.
+const finishedAt = new Date();
 
 before(async () => {
   process.env.NODE_ENV = "test";
@@ -80,6 +86,7 @@ before(async () => {
         request: { action: "ok" },
         response: { ok: true },
         costCents: 123,
+        finishedAt,
       },
       {
         id: runMissingLedgerId,
@@ -91,6 +98,7 @@ before(async () => {
         request: { action: "missing-ledger" },
         response: { ok: true },
         costCents: 50,
+        finishedAt,
       },
       {
         id: runMismatchId,
@@ -102,6 +110,7 @@ before(async () => {
         request: { action: "mismatch" },
         response: { ok: true },
         costCents: 999,
+        finishedAt,
       },
       {
         id: runDuplicateId,
@@ -113,6 +122,7 @@ before(async () => {
         request: { action: "duplicate" },
         response: { ok: true },
         costCents: 40,
+        finishedAt,
       },
       {
         id: runOtherWorkspaceId,
@@ -124,6 +134,7 @@ before(async () => {
         request: { action: "other-workspace" },
         response: { ok: true },
         costCents: 70,
+        finishedAt,
       },
     ],
   });
