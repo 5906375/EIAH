@@ -4,6 +4,12 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## P1 Billing Governed Reconciliation — evidência pós-merge (2026-09-04)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Fechamento pós-merge do escopo billing do PR #437 | `docs/ops/evidence/p1-billing-governed-reconciliation-post-merge-2026-09-04.md` | Registra a incorporação em `main` (merge commit `3d78de56da6fdfe76d3ec255f66d4ef9c071a284`) da ratificação P1 Billing v1.1, do Governed Operation Catalog inicial (`billing.run_cost_debit`, billing-only, `outcomeAuthority=INTERNAL_CONFIRMED`, `isGovernedOperationCatalogSystemComplete()=false`), do binding do reconciliador ao catálogo, do packaging runtime, do alinhamento de fixtures à terminalidade P1-T e do registro canônico do novo unit test na suíte de CI. Confirma 19/19 required checks verdes antes do merge. Não prova deploy, produção, autoridade externa/independente, idempotência atômica ou recorrência sistêmica do P1 — `P1ReconciliationRecurring` e `P2HighGlobalCoverage` permanecem vermelhos, não-required, por recência de evidência pré-existente e alheia a esta pilha. Escopo billing da PR #437: `evidenciado`. P1 sistêmico/recorrente: `parcial`. |
+
 ## Main hard gates de CI — registro pós-save (2026-07-27)
 
 | Assunto | Arquivo | O que prova |
