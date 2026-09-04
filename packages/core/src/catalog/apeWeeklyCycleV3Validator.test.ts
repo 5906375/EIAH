@@ -275,6 +275,39 @@ test("a legacy v2-shaped object (no schemaVersion, hardcoded zeros, no raw recei
   assert.ok(result.failureReasons.includes("unsupported_schema_version"));
 });
 
+// ── Scope (P1-R3-CYCLE-H, Decision 4) ─────────────────────────────────────
+
+test("evidence with no declared scope validates exactly as before (backward compatible)", () => {
+  const result = validate();
+  assert.equal(result.validationStatus, "passed");
+});
+
+test("evidence scope matching the raw receipt's own scope passes", () => {
+  const receipt = rawReceipt({ tenantId: "tenant-a", workspaceId: "workspace-a" });
+  const result = validate({ tenantId: "tenant-a", workspaceId: "workspace-a" }, [receipt]);
+  assert.equal(result.validationStatus, "passed", `expected passed, got: ${result.failureReasons.join(",")}`);
+});
+
+test("evidence tenantId disagreeing with the raw receipt's tenantId is rejected (scope_mismatch)", () => {
+  const receipt = rawReceipt({ tenantId: "tenant-a", workspaceId: "workspace-a" });
+  const result = validate({ tenantId: "tenant-b", workspaceId: "workspace-a" }, [receipt]);
+  assert.equal(result.validationStatus, "rejected");
+  assert.ok(result.failureReasons.includes("scope_mismatch"));
+});
+
+test("evidence workspaceId disagreeing with the raw receipt's workspaceId is rejected (scope_mismatch)", () => {
+  const receipt = rawReceipt({ tenantId: "tenant-a", workspaceId: "workspace-a" });
+  const result = validate({ tenantId: "tenant-a", workspaceId: "workspace-b" }, [receipt]);
+  assert.equal(result.validationStatus, "rejected");
+  assert.ok(result.failureReasons.includes("scope_mismatch"));
+});
+
+test("evidence scope declared but raw receipt has no scope: skipped, not rejected (backward compatible with older receipts)", () => {
+  const receipt = rawReceipt(); // no tenantId/workspaceId
+  const result = validate({ tenantId: "tenant-a", workspaceId: "workspace-a" }, [receipt]);
+  assert.equal(result.validationStatus, "passed", `expected passed, got: ${result.failureReasons.join(",")}`);
+});
+
 test("the validator module performs no filesystem I/O (structural guarantee against legacy artifact reads and Evidence Index writes)", async () => {
   const fs = await import("node:fs");
   const source = fs.readFileSync(new URL("./apeWeeklyCycleV3Validator.ts", import.meta.url), "utf8");

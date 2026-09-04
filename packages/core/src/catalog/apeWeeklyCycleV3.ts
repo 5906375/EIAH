@@ -81,6 +81,17 @@ export type CycleEvidenceV3Input = Readonly<{
   generatedAt: string;
   domain: GovernedOperationDomain;
   evidenceClass: ApeWeeklyCycleEvidenceClass;
+  /**
+   * Optional explicit scope, added in P1-R3-CYCLE-H/I for tenant-scoped
+   * operational cycles (e.g. billing). Absent for scope-agnostic evidence —
+   * every pre-existing test that omits these fields remains structurally
+   * valid; the independent validator only cross-checks them against a raw
+   * receipt's own tenantId/workspaceId when BOTH sides declare a value.
+   */
+  tenantId?: string;
+  workspaceId?: string;
+  /** Set only when this evidence supersedes an earlier, incorrect one (IMMUTABLE_SUPERSEDED correction model, P1-R3-H/CYCLE-H). */
+  supersedesEvidenceRef?: string;
   operationIds: readonly string[];
   /**
    * The universe of operations this cycle claims to cover. This field is
@@ -123,6 +134,8 @@ export type CycleRatificationV3 = Readonly<{
   ratifiedAt: string;
   reasonCode?: string;
   evidenceRef?: string;
+  /** Set only when this ratification supersedes an earlier, incorrect one (IMMUTABLE_SUPERSEDED correction model, P1-R3-H/CYCLE-H). */
+  supersedesRatificationRef?: string;
 }>;
 
 function omitEvidenceDigest(evidence: CycleEvidenceV3): Record<string, unknown> {
@@ -179,6 +192,7 @@ export function buildCycleRatificationV3(params: {
   ratifiedAt?: string;
   reasonCode?: string;
   evidenceRef?: string;
+  supersedesRatificationRef?: string;
 }): CycleRatificationV3 {
   if (!params.ratifiedBy || !params.ratifiedBy.trim()) {
     throw new Error("cycle_ratification_v3_invalid: ratifiedBy is required and must be a human identity");
@@ -192,6 +206,7 @@ export function buildCycleRatificationV3(params: {
     ratifiedAt: params.ratifiedAt ?? new Date().toISOString(),
     ...(params.reasonCode ? { reasonCode: params.reasonCode } : {}),
     ...(params.evidenceRef ? { evidenceRef: params.evidenceRef } : {}),
+    ...(params.supersedesRatificationRef ? { supersedesRatificationRef: params.supersedesRatificationRef } : {}),
   };
 }
 
