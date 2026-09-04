@@ -23,8 +23,13 @@ export type PersistedFile = StorageObjectRef;
 export type { StorageScope };
 export { assertSafeStorageKey, buildScopedStorageKey, createLocalStorageProvider, createObjectStorageProvider };
 
-export async function persistBuffer(buffer: Buffer, originalName: string, scope?: StorageScope): Promise<PersistedFile> {
-  return resolveProvider().putObject({ buffer, originalName, scope });
+export async function persistBuffer(
+  buffer: Buffer,
+  originalName: string,
+  scope?: StorageScope,
+  objectId?: string
+): Promise<PersistedFile> {
+  return resolveProvider().putObject({ buffer, originalName, scope, objectId });
 }
 
 export async function loadStoredObject(storageKey: string): Promise<Buffer | null> {
