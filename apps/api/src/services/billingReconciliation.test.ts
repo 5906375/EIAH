@@ -370,3 +370,45 @@ test("R18: an unrecognized blocked.* ledger row does not resolve GUARDRAIL_BLOCK
   assert.equal(summary.totals.authorityUnresolvedCount, 1, "unknown blocked.* value must not resolve guardrail authority");
   assert.equal(summary.items.authorityUnresolved[0]?.reason, "GUARDRAIL_AUTHORITY_EVIDENCE_NOT_FOUND");
 });
+
+// R19 — coverageMode: "full" removes the default 50-row take cap so totals
+// reflect the whole matched population (P1-R3-F, Finding 1).
+test("R19: coverageMode=full counts a gap in run 51+ that the default take:50 cap would silently drop", async () => {
+  const runs: ReturnType<typeof run>[] = [];
+  const breakdowns: ReturnType<typeof breakdown>[] = [];
+  const ledgerRows: ReturnType<typeof ledger>[] = [];
+  for (let i = 1; i <= 55; i++) {
+    const id = `run-${String(i).padStart(3, "0")}`;
+    const createdAt = new Date(NOW.getTime() + i * 60_000);
+    runs.push(run({ id, createdAt, finishedAt: createdAt, costCents: 100 }));
+    breakdowns.push(breakdown({ id: `bd-${id}`, runId: id, requestId: `req-${id}`, amountCents: 100, createdAt }));
+    // i === 1 is the OLDEST run; every other run gets a matching ledger row.
+    if (i !== 1) {
+      ledgerRows.push(ledger({ id: `ledger-${id}`, runId: id, requestId: `req-${id}`, amountCents: 100, createdAt }));
+    }
+  }
+  const prisma = createMockPrisma({ runs, breakdowns, ledgerRows, guardrailRows: [] });
+
+  const capped = await getBillingReconciliationSummary(prisma, { tenantId: TENANT });
+  assert.equal(capped.totals.runsChecked, 50, "default presentation mode keeps existing take:50 behavior unchanged");
+  assert.equal(capped.totals.auditGapCount, 0, "the gap in the oldest run is outside the default 50 most-recent rows");
+
+  const full = await getBillingReconciliationSummary(prisma, { tenantId: TENANT, coverageMode: "full" });
+  assert.equal(full.totals.runsChecked, 55, "coverageMode=full must reflect the complete 55-run population");
+  assert.equal(full.totals.auditGapCount, 1, "coverageMode=full must never drop a real gap outside the display-limit default");
+});
+
+// R20 — omitting coverageMode (or passing "presentation" explicitly) must be
+// byte-for-byte the same as before this parameter existed.
+test("R20: coverageMode default (presentation) is unchanged from the pre-P1-R3-F behavior", async () => {
+  const prisma = createMockPrisma({
+    runs: [run({ costCents: 100 })],
+    breakdowns: [breakdown({ amountCents: 100 })],
+    ledgerRows: [ledger({ amountCents: 100 })],
+    guardrailRows: [],
+  });
+  const implicitDefault = await getBillingReconciliationSummary(prisma, { tenantId: TENANT });
+  const explicitPresentation = await getBillingReconciliationSummary(prisma, { tenantId: TENANT, coverageMode: "presentation" });
+  assert.deepEqual(implicitDefault, explicitPresentation);
+  assert.equal(implicitDefault.totals.auditGapCount, 0);
+});

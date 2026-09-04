@@ -13,6 +13,24 @@ type BillingReconciliationScope = {
   from?: Date | null;
   to?: Date | null;
   limit?: number | null;
+  /**
+   * "presentation" (default): existing behavior, unchanged — the
+   * runs/breakdowns/ledger rows this function reads are capped by `limit`
+   * (a display/pagination concern for human-facing consumers of this
+   * summary).
+   *
+   * "full": `totals` (and the un-sliced `items.auditGaps`/
+   * `items.authorityUnresolved`) reflect the COMPLETE population matching
+   * tenantId/workspaceId/window — no `take` cap on the underlying reads.
+   * For evidence-grade callers (P1-R3) that must never silently
+   * under-report a population larger than `limit` as if it were the whole
+   * window. `items.orphanUsage`/`items.duplicateCharges`/`items.ledgerGaps`
+   * remain sliced to `limit` for display even in "full" mode — the totals
+   * they are counted from (`duplicateChargesCount` etc.) are already
+   * computed over the complete, un-sliced row set regardless of mode; only
+   * the DB `take` cap this option controls could ever make them incomplete.
+   */
+  coverageMode?: "presentation" | "full";
 };
 
 type BillingReconciliationRunGap = {
@@ -140,6 +158,14 @@ export async function getBillingReconciliationSummary(
   params: BillingReconciliationScope
 ): Promise<BillingReconciliationSummary> {
   const limit = resolveLimit(params.limit);
+  const coverageMode = params.coverageMode ?? "presentation";
+  // "full" removes the DB-level take cap on the population queries below so
+  // totals/auditGaps/duplicateCharges reflect the complete window-scoped
+  // population, not just the `limit` most recent rows. Prisma treats
+  // `take: undefined` as no limit.
+  const runsTake = coverageMode === "full" ? undefined : limit;
+  const breakdownsTake = coverageMode === "full" ? undefined : limit * 20;
+  const ledgerTake = coverageMode === "full" ? undefined : limit * 20;
   const createdAt = buildCreatedAtRange(params.from, params.to);
 
   const operation = getGovernedOperation(BILLING_RUN_COST_DEBIT_OPERATION_ID);
@@ -202,7 +228,7 @@ export async function getBillingReconciliationSummary(
         errorCode: true,
       },
       orderBy: { createdAt: "desc" },
-      take: limit,
+      take: runsTake,
     }),
     prisma.runUsageBreakdown.findMany({
       where: breakdownWhere,
@@ -215,7 +241,7 @@ export async function getBillingReconciliationSummary(
         amountCents: true,
       },
       orderBy: { createdAt: "desc" },
-      take: limit * 20,
+      take: breakdownsTake,
     }),
     prisma.billingLedger.findMany({
       where: ledgerWhere,
@@ -228,7 +254,7 @@ export async function getBillingReconciliationSummary(
         amountCents: true,
       },
       orderBy: { createdAt: "desc" },
-      take: limit * 20,
+      take: ledgerTake,
     }),
     prisma.guardrailLedger.findMany({
       where: guardrailLedgerWhere,

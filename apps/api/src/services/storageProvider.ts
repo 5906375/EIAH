@@ -22,6 +22,15 @@ export type PutObjectInput = {
   originalName: string;
   scope?: StorageScope | null;
   contentType?: string | null;
+  /**
+   * Optional deterministic object id (e.g. a content digest), forwarded to
+   * buildScopedStorageKey() in place of a random UUID. Only takes effect
+   * when `scope` is also set. Lets a caller produce a content-addressed
+   * key without a new storage abstraction — added for the raw receipt
+   * collector (P1-R3-I); every existing caller that omits it keeps the
+   * previous random-UUID behavior unchanged.
+   */
+  objectId?: string;
 };
 
 export interface StorageProvider {
@@ -146,6 +155,7 @@ export function createLocalStorageProvider(options: LocalStorageProviderOptions)
             tenantId: input.scope.tenantId,
             workspaceId: input.scope.workspaceId,
             originalName: input.originalName,
+            objectId: input.objectId,
           })
         : `${randomUUID()}${normalizeExtension(input.originalName)}`;
       const { absolutePath } = resolveLocalPath(rootDir, storageKey);
@@ -207,6 +217,7 @@ export function createObjectStorageProvider(options: ObjectStorageProviderOption
           tenantId: input.scope.tenantId,
           workspaceId: input.scope.workspaceId,
           originalName: input.originalName,
+          objectId: input.objectId,
         })
       : `${randomUUID()}${normalizeExtension(input.originalName)}`;
     return prefix ? `${prefix}/${baseKey}` : baseKey;

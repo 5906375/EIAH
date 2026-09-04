@@ -69,11 +69,27 @@ export type RawMeasurementFact = Readonly<{
   sampleSize: number;
 }>;
 
-/** A raw independent receipt: content-addressed by `digest`, read-only from the validator's point of view. */
+/**
+ * A raw independent receipt: content-addressed by `digest`, read-only from the validator's point of view.
+ *
+ * The metadata fields below (`tenantId` through `supersedesRawReceiptRef`) were added in P1-R3-I,
+ * ratified in P1-R3-H, to carry the granularity/provenance a real domain collector must attach
+ * (docs/ops/ape-audit-telemetry-decision.md context, P1-R3-D discovery). They are optional and
+ * inert to this module: the validator does not read, require, or check them — it only recomputes
+ * aggregates from `facts[]` and checks `ref`/`digest`, exactly as before. A `RawReceiptV3` built
+ * without them (as every pre-existing test in this file does) remains structurally valid.
+ */
 export type RawReceiptV3 = Readonly<{
   ref: string;
   digest: string;
   facts: readonly RawMeasurementFact[];
+  tenantId?: string;
+  workspaceId?: string;
+  observationWindow?: Readonly<{ from: string; to: string }>;
+  producerIdentity?: string;
+  generatedAt?: string;
+  /** Set only when this receipt supersedes an earlier, incorrect one (IMMUTABLE_SUPERSEDED correction model, P1-R3-H). */
+  supersedesRawReceiptRef?: string;
 }>;
 
 export const APE_WEEKLY_CYCLE_V3_FAILURE_REASONS = [

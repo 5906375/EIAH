@@ -49,6 +49,10 @@
     "./catalog/*": {
       "import": "./dist/catalog/*.js",
       "types": "./dist/catalog/*.d.ts"
+    },
+    "./utils/*": {
+      "import": "./dist/utils/*.js",
+      "types": "./dist/utils/*.d.ts"
     }
   },
   "scripts": {
