@@ -105,6 +105,12 @@ export const APE_WEEKLY_CYCLE_V3_FAILURE_REASONS = [
   "raw_receipt_digest_mismatch",
   "recomputed_metric_mismatch",
   "coverage_status_mismatch",
+  /**
+   * Added in P1-R3-CYCLE-I: the evidence declares a tenantId/workspaceId
+   * that disagrees with a raw receipt's own tenantId/workspaceId. Local to
+   * this module (not a global reason code) per P1-R3-CYCLE-H, Decision 4.
+   */
+  "scope_mismatch",
 ] as const;
 export type ApeWeeklyCycleV3FailureReason = (typeof APE_WEEKLY_CYCLE_V3_FAILURE_REASONS)[number];
 
@@ -255,6 +261,17 @@ export function validateCycleEvidenceV3(params: {
     }
     if (receipt.digest !== measurement.rawReceiptDigest) {
       failureReasons.push("raw_receipt_digest_mismatch");
+      continue;
+    }
+    // Scope cross-check (P1-R3-CYCLE-H, Decision 4): only enforced when BOTH
+    // sides declare a value, so evidence/receipts built before this field
+    // existed remain valid. A declared scope that disagrees with the raw
+    // receipt's own scope is a real inconsistency, not a display concern.
+    if (
+      (evidence.tenantId && receipt.tenantId && evidence.tenantId !== receipt.tenantId) ||
+      (evidence.workspaceId && receipt.workspaceId && evidence.workspaceId !== receipt.workspaceId)
+    ) {
+      failureReasons.push("scope_mismatch");
       continue;
     }
     const fact = receipt.facts.find((f) => f.operationId === measurement.operationId);
