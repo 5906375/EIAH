@@ -6,7 +6,7 @@
   "providers": [
     {
       "id": "stripe",
-      "mode": "full"
+      "mode": "simulated"
     },
     {
       "id": "crypto",
