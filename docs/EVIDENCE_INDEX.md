@@ -4,6 +4,12 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## ADR-002 v2-r3 — Publicação documental (2026-09-05)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Checks documentais do ADR-002 v2-r3 e registro AUTHZ-RUNS | `ops/evidence/latest/adr-002-v2-r3-docs-validation-2026-09-05.md` | Validação parcial: links canônicos e testes do validador passaram; o validador do índice falhou em duas referências preexistentes a node_modules ausente no worktree isolado. Conferência adicional de links novos, notas de seção, hash do ADR e oito caminhos POST passou. Preserva o checkout estrutural. Não comprova ratificação arquitetural, implementação de scopes, testes de worker/Guardian ou liberação de piloto. |
+
 ## Main hard gates de CI — registro pós-save (2026-07-27)
 
 | Assunto | Arquivo | O que prova |
