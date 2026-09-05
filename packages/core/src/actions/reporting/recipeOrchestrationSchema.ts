@@ -68,8 +68,8 @@ export const RecipeOrchestrationSuggestedAgentSchema = z.object({
 export const RecipeOrchestrationGovernanceSchema = z.object({
   tenantIdPresent: z.boolean(),
   workspaceIdPresent: z.boolean(),
-  rbacEvaluated: z.boolean(),
-  entitlementEvaluated: z.boolean(),
+  rbacEvaluated: z.literal(false).describe("Deprecated compatibility field; non-authoritative."),
+  entitlementEvaluated: z.literal(false).describe("Deprecated compatibility field; non-authoritative."),
   trustScoreEvaluated: z.boolean(),
   costGuardEvaluated: z.boolean(),
   policyDecision: z.enum(["allowed", "denied", "approval_required", "not_evaluated"]),
@@ -122,6 +122,7 @@ export const RecipeOrchestrationSchema = z.object({
   nextBestImplementationAction: z.string().nullable().default(null),
   practicalSteps: z.array(z.string()).default([]),
   readyForRerunWhen: z.array(z.string()).default([]),
+  legacyGovernanceUnverified: z.boolean().optional(),
   governance: RecipeOrchestrationGovernanceSchema,
   audit: RecipeOrchestrationAuditSchema,
 });

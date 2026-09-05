@@ -11,6 +11,7 @@ import { emitRunEvent } from "../services/runEventEmitter";
 import { WorkspaceAgentAssignmentError } from "../services/workspaceAgentAssignments";
 import { evaluateTrustScore, trustScoreAllowsExecution } from "../services/trustScore";
 import { resolveRunBundleCapability } from "../services/imob/imobArtifactCapabilities";
+import { sanitizeRunGovernanceMetadata } from "../services/runGovernanceMetadata";
 import {
   buildPolicyNotFoundResponseBody,
   PolicyNotFoundError,
@@ -529,7 +530,7 @@ agentsRouter.post("/agents/execute", async (req, res) => {
       });
     }
   }
-  const metadataBase = {
+  const metadataBase = sanitizeRunGovernanceMetadata({
     ...(parsed.data.metadata ?? {}),
     protocol: AGENT_PROTOCOL_VERSION,
     domain: parsed.data.domain ?? DEFAULT_DOMAIN,
@@ -539,7 +540,20 @@ agentsRouter.post("/agents/execute", async (req, res) => {
     contractVersion: contract.version,
     executionInput,
     ...(parentRunId ? { parentRunId } : {}),
-  };
+  }, {
+    tenantIdPresent: true,
+    workspaceIdPresent: true,
+    trustScoreEvaluated: true,
+    trustScore: trust.score,
+    trustLevel: trust.level,
+    actionPolicyDecision: {
+      evaluated: true,
+      decision: "allowed",
+      source: "tenant_action_policy",
+      action: actionName,
+      reasonCode: null,
+    },
+  });
   const requestPayloadBase = { prompt, metadata: metadataBase };
 
   let run;

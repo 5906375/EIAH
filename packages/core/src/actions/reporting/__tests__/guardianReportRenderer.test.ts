@@ -62,8 +62,8 @@ const basePayload = {
       governance: {
         tenantIdPresent: true,
         workspaceIdPresent: true,
-        rbacEvaluated: true,
-        entitlementEvaluated: true,
+        rbacEvaluated: false,
+        entitlementEvaluated: false,
         trustScoreEvaluated: true,
         costGuardEvaluated: true,
         policyDecision: "allowed",
@@ -111,7 +111,10 @@ test("guardian landing page renderer avoids prohibited commercial terms", () => 
   assert.match(html, /Decisão Guardian: DEGRADED/);
   assert.match(html, /REVIEW_REQUIRED/);
   assert.match(html, /Risco: high/);
-  assert.match(html, /Governança aplicada/);
+  assert.match(html, /Estado de governança/);
+  assert.match(html, /LEGADO — ESTADO DE GOVERNANÇA NÃO VERIFICADO/);
+  assert.match(html, /needs_review/);
+  assert.match(html, /não avaliado/);
   assert.match(html, /RBAC/);
   assert.match(html, /Evidência esperada/);
   assert.match(html, /Evidência coletada/);

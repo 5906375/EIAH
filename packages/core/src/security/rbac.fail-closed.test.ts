@@ -105,6 +105,38 @@ test("TenantPolicyStore fails closed when store access is unavailable", async ()
   assert.equal(decision.reasonCode, "POLICY_STORE_UNAVAILABLE");
 });
 
+test("TenantPolicyStore fails closed when workspace policy authority is duplicated", async () => {
+  setPolicyRows([
+    { workspaceId: "workspace-a", allowed: true, maxVersion: 1 },
+    { workspaceId: "workspace-a", allowed: false, maxVersion: 2 },
+  ]);
+
+  const decision = await TenantPolicyStore.getInstance().resolveScopeDecision(
+    "tenant-a",
+    "workspace-a",
+    "reports.view",
+  );
+
+  assert.equal(decision.allowed, false);
+  assert.equal(decision.reasonCode, "POLICY_STORE_UNAVAILABLE");
+});
+
+test("TenantPolicyStore fails closed when tenant-wide policy authority is duplicated", async () => {
+  setPolicyRows([
+    { workspaceId: null, allowed: true, maxVersion: 1 },
+    { workspaceId: null, allowed: false, maxVersion: 2 },
+  ]);
+
+  const decision = await TenantPolicyStore.getInstance().resolveScopeDecision(
+    "tenant-a",
+    "workspace-a",
+    "reports.view",
+  );
+
+  assert.equal(decision.allowed, false);
+  assert.equal(decision.reasonCode, "POLICY_STORE_UNAVAILABLE");
+});
+
 test("TenantPolicyStore fails closed when scope is blank", async () => {
   setPolicyRows([{ workspaceId: "workspace-a", allowed: true, maxVersion: 1 }]);
 

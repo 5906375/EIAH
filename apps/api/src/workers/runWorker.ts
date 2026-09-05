@@ -43,6 +43,7 @@ import {
 import { MCPExecutor, ToolRegistry } from "@repo/mcp-runner";
 import type { MemoryRecord, MemoryScope, MemorySnapshot } from "@eiah/core";
 import { prismaGlobal } from "@repo/db";
+import { TenantPolicyStore } from "@eiah/core/policy/TenantPolicyStore";
 
 /* ──────────────────────────────────────────────
    LLM Execution (Gateway executor unificado)
@@ -77,6 +78,18 @@ import { judgeResult } from "../services/judge";
 import { resolveKnowledgeContext } from "../services/knowledgeGate";
 import { resolveConversationPersistenceDecision } from "../services/conversationPersistencePolicy";
 import { resolveGuardrailBlockMode } from "../services/securityRelaxationFlags";
+import {
+  RUN_WORKER_SCOPE_REASON_CODES,
+  RUN_ACTION_POLICY_EVALUATED_EVENT_TYPE,
+  evaluateRunActionPolicy,
+  sanitizeRunGovernanceMetadataForWorker,
+} from "../services/runGovernanceMetadata";
+import {
+  projectPersistedRunActionMetadata,
+  resolvePersistedRunActionAuthority,
+  runActionsCanonicallyMatch,
+  RunActionValidationError,
+} from "../services/imob/control/imobRunActionCatalog";
 
 /* ──────────────────────────────────────────────
    Recommendations & Memory
@@ -1057,7 +1070,48 @@ function getIntentKeyHints(prompt: string) {
   return [];
 }
 
-export async function processRunPayload(payload: RunQueuePayload) {
+export type RunWorkerGovernanceDeps = {
+  getRun: typeof getRun;
+  isRunUserCancelled: typeof isRunUserCancelled;
+  finalizeCancelledRunPartial: typeof finalizeCancelledRunPartial;
+  getAgentProfile: typeof getAgentProfile;
+  getRegisteredActionDefinitions: typeof getRegisteredActionDefinitions;
+  resolveScopeDecision: (
+    tenantId: string,
+    workspaceId: string,
+    action: string,
+  ) => ReturnType<TenantPolicyStore["resolveScopeDecision"]>;
+  emitRunEvent: typeof emitRunEvent;
+  updateRunStatus: typeof updateRunStatus;
+};
+
+function createDefaultRunWorkerGovernanceDeps(): RunWorkerGovernanceDeps {
+  return {
+    getRun,
+    isRunUserCancelled,
+    finalizeCancelledRunPartial,
+    getAgentProfile,
+    getRegisteredActionDefinitions,
+    resolveScopeDecision: (tenantId, workspaceId, action) =>
+      TenantPolicyStore.getInstance().resolveScopeDecision(tenantId, workspaceId, action),
+    emitRunEvent,
+    updateRunStatus,
+  };
+}
+
+export class RunWorkerScopeError extends Error {
+  readonly reasonCode = RUN_WORKER_SCOPE_REASON_CODES[0];
+
+  constructor(readonly stage: "preflight" | "running_transition") {
+    super(`Run scope could not be resolved during ${stage}`);
+    this.name = "RunWorkerScopeError";
+  }
+}
+
+export async function processRunPayload(
+  payload: RunQueuePayload,
+  deps: RunWorkerGovernanceDeps = createDefaultRunWorkerGovernanceDeps(),
+) {
     const { runId, tenantId, workspaceId, userId, prompt, metadata } = payload;
     const agent = resolveAgentId(payload.agent ?? "");
     if (!runId || !tenantId || !workspaceId || !agent || !prompt) {
@@ -1068,6 +1122,51 @@ export async function processRunPayload(payload: RunQueuePayload) {
       return;
     }
 
+    let sanitizedQueueMetadata = sanitizeRunGovernanceMetadataForWorker(metadata, {
+      tenantIdPresent: true,
+      workspaceIdPresent: true,
+    });
+
+    const scopedRun = await deps.getRun({
+      id: runId,
+      tenantId,
+      workspaceId,
+    });
+    if (!scopedRun) {
+      workerLogger.error(
+        { reasonCode: RUN_WORKER_SCOPE_REASON_CODES[0], stage: "preflight" },
+        "run.worker.scope_not_resolved",
+      );
+      throw new RunWorkerScopeError("preflight");
+    }
+
+    const persistedActionAuthority = resolvePersistedRunActionAuthority({
+      request: scopedRun.request,
+      requireCanonicalImobAction: true,
+    });
+    const transportedAction =
+      typeof sanitizedQueueMetadata.action === "string"
+        ? sanitizedQueueMetadata.action.trim()
+        : "";
+    if (
+      persistedActionAuthority.action
+      && transportedAction
+      && !runActionsCanonicallyMatch(persistedActionAuthority.action, transportedAction)
+    ) {
+      throw new RunActionValidationError("Queue action does not match the persisted Run action.", {
+        attemptedAction: transportedAction,
+        domain: persistedActionAuthority.domain,
+        kind: persistedActionAuthority.kind,
+      });
+    }
+    sanitizedQueueMetadata = sanitizeRunGovernanceMetadataForWorker(
+      projectPersistedRunActionMetadata(sanitizedQueueMetadata, persistedActionAuthority),
+      {
+        tenantIdPresent: true,
+        workspaceIdPresent: true,
+      },
+    );
+
     const logger = bindLogger(workerLogger, {
       runId,
       tenantId,
@@ -1077,18 +1176,15 @@ export async function processRunPayload(payload: RunQueuePayload) {
     logger.info("run.worker.received");
     logGovernanceStatus(workerLogger);
 
-    if (await isRunUserCancelled({ runId, tenantId, workspaceId })) {
+    if (await deps.isRunUserCancelled({ runId, tenantId, workspaceId })) {
       logger.info("run.worker.cancelled_before_start");
-      await finalizeCancelledRunPartial({
+      await deps.finalizeCancelledRunPartial({
         agentId: agent,
         runId,
         tenantId,
         workspaceId,
         userId,
-        metadata:
-          metadata && typeof metadata === "object" && !Array.isArray(metadata)
-            ? { ...(metadata as Record<string, unknown>) }
-            : {},
+        metadata: sanitizedQueueMetadata,
         context: null,
         snapshot: null,
         estimate: null,
@@ -1096,7 +1192,7 @@ export async function processRunPayload(payload: RunQueuePayload) {
       return;
     }
 
-    const profile = await getAgentProfile(tenantId, workspaceId, agent);
+    const profile = await deps.getAgentProfile(tenantId, workspaceId, agent);
     if (!profile) {
       logger.warn(
         {
@@ -1127,27 +1223,63 @@ export async function processRunPayload(payload: RunQueuePayload) {
       return;
     }
 
-    await updateRunStatus({
+    const actionPolicyEvaluation = await evaluateRunActionPolicy({
+      metadata: sanitizedQueueMetadata,
+      registeredActionNames: Object.keys(deps.getRegisteredActionDefinitions()),
+      resolveScopeDecision: (action) =>
+        deps.resolveScopeDecision(tenantId, workspaceId, action),
+    });
+    if (
+      persistedActionAuthority.domain === "imob"
+      && actionPolicyEvaluation.eventPayload?.reasonCode === "INVALID_ACTION_TYPE"
+    ) {
+      throw new RunActionValidationError("Persisted Run action is not registered for execution.", {
+        attemptedAction: persistedActionAuthority.action,
+        domain: persistedActionAuthority.domain,
+        kind: persistedActionAuthority.kind,
+      });
+    }
+    if (actionPolicyEvaluation.applicability === "applicable") {
+      sanitizedQueueMetadata = sanitizeRunGovernanceMetadataForWorker(sanitizedQueueMetadata, {
+        tenantIdPresent: true,
+        workspaceIdPresent: true,
+        actionPolicyDecision: actionPolicyEvaluation.actionPolicyDecision,
+      });
+      await deps.emitRunEvent({
+        runId,
+        tenantId,
+        workspaceId,
+        userId,
+        type: RUN_ACTION_POLICY_EVALUATED_EVENT_TYPE,
+        payload: actionPolicyEvaluation.eventPayload,
+      });
+    }
+
+    const runningRun = await deps.updateRunStatus({
       runId,
       tenantId,
       workspaceId,
       status: "running",
       startedAt: new Date(),
     });
+    if (!runningRun) {
+      logger.error(
+        { reasonCode: RUN_WORKER_SCOPE_REASON_CODES[0], stage: "running_transition" },
+        "run.worker.scope_not_resolved",
+      );
+      throw new RunWorkerScopeError("running_transition");
+    }
     logger.info("run.worker.execution_started");
 
-    if (await isRunUserCancelled({ runId, tenantId, workspaceId })) {
+    if (await deps.isRunUserCancelled({ runId, tenantId, workspaceId })) {
       logger.info("run.worker.cancelled_after_start");
-      await finalizeCancelledRunPartial({
+      await deps.finalizeCancelledRunPartial({
         agentId: agent,
         runId,
         tenantId,
         workspaceId,
         userId,
-        metadata:
-          metadata && typeof metadata === "object" && !Array.isArray(metadata)
-            ? { ...(metadata as Record<string, unknown>) }
-            : {},
+        metadata: sanitizedQueueMetadata,
         context: null,
         snapshot: null,
         estimate: null,
@@ -1166,10 +1298,7 @@ export async function processRunPayload(payload: RunQueuePayload) {
     };
     let retryConfigLogged = false;
 
-    const baseMetadata =
-      metadata && typeof metadata === "object" && !Array.isArray(metadata)
-        ? { ...(metadata as Record<string, unknown>) }
-        : {};
+    const baseMetadata = sanitizedQueueMetadata;
     const replayInfo = extractReplayInfo(baseMetadata);
 
     const memoryScope: MemoryScope = { tenantId, workspaceId, agentId: agent };
@@ -2533,6 +2662,37 @@ export async function startRunQueueWorker() {
   return consume(processRunPayload);
 }
 
+async function emitScopedJobLifecycleEvent(params: {
+  jobPayload: Partial<RunQueuePayload> | undefined;
+  type: string;
+  payload: unknown;
+}) {
+  const { jobPayload } = params;
+  if (!jobPayload?.runId || !jobPayload.tenantId || !jobPayload.workspaceId) return;
+
+  const scopedRun = await getRun({
+    id: jobPayload.runId,
+    tenantId: jobPayload.tenantId,
+    workspaceId: jobPayload.workspaceId,
+  });
+  if (!scopedRun) {
+    workerLogger.error(
+      { reasonCode: RUN_WORKER_SCOPE_REASON_CODES[0], stage: "job_lifecycle_event" },
+      "run.worker.job_event_scope_not_resolved",
+    );
+    return;
+  }
+
+  await emitRunEvent({
+    runId: jobPayload.runId,
+    tenantId: jobPayload.tenantId,
+    workspaceId: jobPayload.workspaceId,
+    userId: jobPayload.userId,
+    type: params.type,
+    payload: params.payload,
+  });
+}
+
 async function enqueueImobRunCompletedLazy(
   job: Parameters<
     typeof import("../queues/imobRunCompletedQueue.js").enqueueImobRunCompleted
@@ -2879,11 +3039,8 @@ export function startRunQueueBullMqWorker() {
       error: err instanceof Error ? err.message : String(err),
     };
 
-    void emitRunEvent({
-      runId: payload.runId,
-      tenantId: payload.tenantId,
-      workspaceId: payload.workspaceId,
-      userId: payload.userId,
+    void emitScopedJobLifecycleEvent({
+      jobPayload: payload,
       type: willRetry ? "job.retry_scheduled" : "job.failed",
       payload: eventPayload,
     }).catch(() => undefined);
@@ -2896,11 +3053,8 @@ export function startRunQueueBullMqWorker() {
 
     const payload = job?.data as Partial<RunQueuePayload> | undefined;
     if (!payload?.runId || !payload.tenantId || !payload.workspaceId) return;
-    void emitRunEvent({
-      runId: payload.runId,
-      tenantId: payload.tenantId,
-      workspaceId: payload.workspaceId,
-      userId: payload.userId,
+    void emitScopedJobLifecycleEvent({
+      jobPayload: payload,
       type: "job.completed",
       payload: {
         attemptsMade: job?.attemptsMade ?? 0,

@@ -9,7 +9,12 @@ import { evaluateTrustScore, trustScoreAllowsExecution } from "../services/trust
 import { evaluateIntent } from "../services/intentValidator";
 import { createGuardrailLedgerStore } from "../services/guardrailLedgerStore";
 import { estimateCostCents } from "../services/billing";
-import { prepareRunRequestAction, RunActionValidationError } from "../services/imob/control/imobRunActionCatalog";
+import {
+  prepareRunRequestAction,
+  projectPersistedRunActionMetadata,
+  resolvePersistedRunActionAuthority,
+  RunActionValidationError,
+} from "../services/imob/control/imobRunActionCatalog";
 import { createRunRecord, getRun, listRunsWithArchiveMetadata } from "../services/runs";
 import { getRunArchiveMetadataMap } from "../services/runArchiveService";
 import { getAgentRecommendationState, saveAgentRecommendationState } from "../services/recommendations";
@@ -25,12 +30,24 @@ import {
   createShadowExecutionSnapshot,
   updateShadowExecutionApprovalByRunId,
 } from "../services/shadowExecutionStore";
+import {
+  projectRunGovernanceForRead,
+  sanitizeRunGovernanceMetadata,
+} from "../services/runGovernanceMetadata";
 
 export const runsRouter = createGovernedRouter();
 runsRouter.use(enforceTenant);
 
 const serializeRun = (run: any, archive?: { archiveRef: string; archivedAt: Date } | null) => ({
   ...run,
+  request: projectRunGovernanceForRead(run?.request, {
+    tenantIdPresent: Boolean(run?.tenantId),
+    workspaceIdPresent: Boolean(run?.workspaceId),
+  }),
+  response: projectRunGovernanceForRead(run?.response, {
+    tenantIdPresent: Boolean(run?.tenantId),
+    workspaceIdPresent: Boolean(run?.workspaceId),
+  }),
   projectId: run?.workspaceId,
   archived: Boolean(archive),
   archivedAt: archive?.archivedAt ?? null,
@@ -43,15 +60,53 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> =>
 function requiresCanonicalImobActionValidation(metadata: Record<string, unknown> | undefined) {
   if (!metadata) return false;
   const domain = typeof metadata.domain === "string" ? metadata.domain.trim().toLowerCase() : "";
-  const action = typeof metadata.action === "string" ? metadata.action.trim() : "";
-  return domain === "imob" && action.length > 0;
+  return domain === "imob";
+}
+
+export async function executePersistedRunReplay(params: {
+  run: { id: string; request: unknown };
+  requestedAt: Date;
+  emitRequested: () => Promise<unknown>;
+  publish: (input: { prompt: string; metadata: Record<string, unknown> }) => Promise<unknown>;
+  markPending: () => Promise<unknown>;
+  emitEnqueued: () => Promise<unknown>;
+}) {
+  const authority = resolvePersistedRunActionAuthority({
+    request: params.run.request,
+    requireCanonicalImobAction: true,
+  });
+  const requestRoot = isPlainObject(params.run.request) ? params.run.request : {};
+  const replayMetadata = projectPersistedRunActionMetadata(
+    {
+      ...authority.metadata,
+      replay: {
+        sourceRunId: params.run.id,
+        requestedAt: params.requestedAt.toISOString(),
+      },
+    },
+    authority,
+  );
+  const sanitizedReplayMetadata = sanitizeRunGovernanceMetadata(replayMetadata, {
+    tenantIdPresent: true,
+    workspaceIdPresent: true,
+  });
+
+  await params.emitRequested();
+  await params.publish({
+    prompt: typeof requestRoot.prompt === "string" ? requestRoot.prompt : "",
+    metadata: sanitizedReplayMetadata,
+  });
+  await params.markPending();
+  await params.emitEnqueued();
+
+  return sanitizedReplayMetadata;
 }
 
 const serializeRunEvent = (event: any) => ({
   id: event.id,
   runId: event.runId,
   type: event.type,
-  payload: event.payload ?? null,
+  payload: projectRunGovernanceForRead(event.payload ?? null),
   criticalHash: event.criticalHash ?? null,
   sclTxId: event.sclTxId ?? null,
   createdAt: event.createdAt,
@@ -477,6 +532,11 @@ runsRouter.post("/runs", async (req, res) => {
     }
   }
 
+  resolvedMetadata = sanitizeRunGovernanceMetadata(resolvedMetadata, {
+    tenantIdPresent: true,
+    workspaceIdPresent: true,
+  });
+
   const profile = await getAgentProfile(authContext.tenantId, authContext.workspaceId, agent, prisma);
   if (!profile) {
     return res.status(404).json({
@@ -563,7 +623,14 @@ runsRouter.post("/runs", async (req, res) => {
       userId: authContext.userId,
       agent,
       status: "blocked",
-      request: requestPayload,
+      request: {
+        prompt,
+        metadata: sanitizeRunGovernanceMetadata(resolvedMetadata, {
+          tenantIdPresent: true,
+          workspaceIdPresent: true,
+          costGuardEvaluated: true,
+        }),
+      },
       traceId: null,
       finishedAt: new Date(),
       errorCode: "BILLING_GUARD_BLOCKED",
@@ -615,7 +682,17 @@ runsRouter.post("/runs", async (req, res) => {
       userId: authContext.userId,
       agent,
       status: "blocked",
-      request: requestPayload,
+      request: {
+        prompt,
+        metadata: sanitizeRunGovernanceMetadata(resolvedMetadata, {
+          tenantIdPresent: true,
+          workspaceIdPresent: true,
+          trustScoreEvaluated: true,
+          trustScore: trust.score,
+          trustLevel: trust.level,
+          costGuardEvaluated: true,
+        }),
+      },
       traceId: null,
       finishedAt: new Date(),
       requireCanonicalImobAction: shouldRequireCanonicalImobAction,
@@ -649,21 +726,14 @@ runsRouter.post("/runs", async (req, res) => {
     });
   }
 
-  resolvedMetadata = {
-    ...(resolvedMetadata ?? {}),
-    governanceContext: {
-      tenantIdPresent: true,
-      workspaceIdPresent: true,
-      rbacEvaluated: true,
-      entitlementEvaluated: true,
-      trustScoreEvaluated: true,
-      trustScore: trust.score,
-      trustLevel: trust.level,
-      costGuardEvaluated: true,
-      policyDecision: "allowed",
-      reasonCode: null,
-    },
-  };
+  resolvedMetadata = sanitizeRunGovernanceMetadata(resolvedMetadata, {
+    tenantIdPresent: true,
+    workspaceIdPresent: true,
+    trustScoreEvaluated: true,
+    trustScore: trust.score,
+    trustLevel: trust.level,
+    costGuardEvaluated: true,
+  });
 
   let run;
   try {
@@ -674,7 +744,7 @@ runsRouter.post("/runs", async (req, res) => {
       userId: authContext.userId,
       agent,
       status: "pending",
-      request: requestPayload,
+      request: { prompt, metadata: resolvedMetadata },
       traceId: null,
       finishedAt: null,
       approvalStatus: inferApprovalStatusFromMetadata(resolvedMetadata),
@@ -776,7 +846,7 @@ runsRouter.post("/runs", async (req, res) => {
     const mode = modeRaw === "observe" ? "observe" : "enforce";
     const intent = await evaluateIntent({
       prompt,
-      metadata,
+      metadata: resolvedMetadata,
       tenantId: authContext.tenantId,
       workspaceId: authContext.workspaceId,
       runId: run.id,
@@ -1572,58 +1642,60 @@ runsRouter.post("/runs/:id/replay", async (req, res) => {
     return res.status(404).json({ ok: false, error: { code: "NOT_FOUND", message: "run" } });
   }
 
-  await emitRunEvent({
-    prisma,
-    runId: existing.id,
-    tenantId: authContext.tenantId,
-    workspaceId: authContext.workspaceId,
-    userId: authContext.userId,
-    type: "run.replay.requested",
-    payload: { agent: existing.agent },
-  });
-
-  const requestMetadata =
-    typeof existing.request === "object" && existing.request !== null
-      ? ((existing.request as Record<string, unknown>).metadata as Record<string, unknown> | undefined)
-      : undefined;
-  const replayMetadata = {
-    ...(requestMetadata ?? {}),
-    replay: {
-      sourceRunId: existing.id,
-      requestedAt: new Date().toISOString(),
-    },
-  };
-
-  await publishRun({
-    runId: existing.id,
-    tenantId: authContext.tenantId,
-    workspaceId: authContext.workspaceId,
-    userId: authContext.userId,
-    agent: existing.agent,
-    prompt: typeof existing.request === "object" && existing.request !== null && "prompt" in (existing.request as Record<string, unknown>)
-      ? String((existing.request as Record<string, unknown>).prompt ?? "")
-      : "",
-    metadata: replayMetadata,
-  });
-
-  await prisma.run.update({
-    where: {
-      id: existing.id,
-      tenantId: authContext.tenantId,
-      workspaceId: authContext.workspaceId,
-    },
-    data: { status: "pending", updatedAt: new Date() },
-  });
-
-  await emitRunEvent({
-    prisma,
-    runId: existing.id,
-    tenantId: authContext.tenantId,
-    workspaceId: authContext.workspaceId,
-    userId: authContext.userId,
-    type: "run.replay.enqueued",
-    payload: {},
-  });
+  try {
+    await executePersistedRunReplay({
+      run: existing,
+      requestedAt: new Date(),
+      emitRequested: () => emitRunEvent({
+        prisma,
+        runId: existing.id,
+        tenantId: authContext.tenantId,
+        workspaceId: authContext.workspaceId,
+        userId: authContext.userId,
+        type: "run.replay.requested",
+        payload: { agent: existing.agent },
+      }),
+      publish: ({ prompt, metadata }) => publishRun({
+        runId: existing.id,
+        tenantId: authContext.tenantId,
+        workspaceId: authContext.workspaceId,
+        userId: authContext.userId,
+        agent: existing.agent,
+        prompt,
+        metadata,
+      }),
+      markPending: () => prisma.run.update({
+        where: {
+          id: existing.id,
+          tenantId: authContext.tenantId,
+          workspaceId: authContext.workspaceId,
+        },
+        data: { status: "pending", updatedAt: new Date() },
+      }),
+      emitEnqueued: () => emitRunEvent({
+        prisma,
+        runId: existing.id,
+        tenantId: authContext.tenantId,
+        workspaceId: authContext.workspaceId,
+        userId: authContext.userId,
+        type: "run.replay.enqueued",
+        payload: {},
+      }),
+    });
+  } catch (error) {
+    if (error instanceof RunActionValidationError) {
+      return res.status(400).json({
+        ok: false,
+        error: {
+          code: error.reasonCode,
+          reasonCode: error.reasonCode,
+          message: error.message,
+          context: error.context,
+        },
+      });
+    }
+    throw error;
+  }
 
   return res.json({ ok: true, data: serializeRun({ ...existing, status: "pending" }), replayed: true });
 });

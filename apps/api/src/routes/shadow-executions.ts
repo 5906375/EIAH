@@ -19,6 +19,10 @@ import { prepareRunRequestAction, RunActionValidationError } from "../services/i
 import { createRunRecord } from "../services/runs";
 import { emitRunEvent } from "../services/runEventEmitter";
 import { WorkspaceAgentAssignmentError } from "../services/workspaceAgentAssignments";
+import {
+  projectRunGovernanceForRead,
+  sanitizeRunGovernanceMetadata,
+} from "../services/runGovernanceMetadata";
 import { buildShadowPromotionAuditEvent } from "../types/shadowPromotionAuditEvent";
 import {
   shadowExecutionApprovalStatusSchema,
@@ -123,7 +127,10 @@ shadowExecutionsRouter.post("/shadow-executions/preview", async (req, res) => {
   }
 
   const workspaceId = parsed.data.workspaceId ?? authContext.workspaceId;
-  const metadata = parsed.data.metadata ?? {};
+  const metadata = sanitizeRunGovernanceMetadata(parsed.data.metadata, {
+    tenantIdPresent: true,
+    workspaceIdPresent: true,
+  });
   try {
     prepareRunRequestAction({
       request: {
@@ -237,7 +244,10 @@ shadowExecutionsRouter.get("/shadow-executions", async (req, res) => {
   return res.json({
     ok: true,
     data: {
-      items,
+      items: items.map((item) => projectRunGovernanceForRead(item, {
+        tenantIdPresent: true,
+        workspaceIdPresent: true,
+      })),
       count: items.length,
       workspaceId: parsed.data.workspaceId ?? authContext.workspaceId,
       filters: {
@@ -271,7 +281,13 @@ shadowExecutionsRouter.get("/shadow-executions/:id", async (req, res) => {
     });
   }
 
-  return res.json({ ok: true, data: snapshot });
+  return res.json({
+    ok: true,
+    data: projectRunGovernanceForRead(snapshot, {
+      tenantIdPresent: true,
+      workspaceIdPresent: true,
+    }),
+  });
 });
 
 shadowExecutionsRouter.post("/shadow-executions/:id/promote-to-production", async (req, res) => {
@@ -337,13 +353,16 @@ shadowExecutionsRouter.post("/shadow-executions/:id/promote-to-production", asyn
     });
   }
 
-  const requestPayload = {
+  let requestPayload = {
     prompt: runtime.executionPayload.prompt,
-    metadata: {
+    metadata: sanitizeRunGovernanceMetadata({
       ...(runtime.executionPayload.metadata ?? {}),
       mode: "execute",
       promotedFromShadowExecutionId: runtime.snapshot.shadowExecutionId,
-    },
+    }, {
+      tenantIdPresent: true,
+      workspaceIdPresent: true,
+    }),
   };
 
   const billingGuard = await evaluateTenantBillingExecutionGuard({
@@ -409,6 +428,18 @@ shadowExecutionsRouter.post("/shadow-executions/:id/promote-to-production", asyn
       error: { code: "TRUST_BLOCKED", message: "Trust score too low for production promotion" },
     });
   }
+
+  requestPayload = {
+    ...requestPayload,
+    metadata: sanitizeRunGovernanceMetadata(requestPayload.metadata, {
+      tenantIdPresent: true,
+      workspaceIdPresent: true,
+      trustScoreEvaluated: true,
+      trustScore: trust.score,
+      trustLevel: trust.level,
+      costGuardEvaluated: true,
+    }),
+  };
 
   let run;
   try {

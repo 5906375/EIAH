@@ -47,6 +47,7 @@ export const GuardianReportSchema = z.object({
   checklist: z.array(GuardianReportChecklistItemSchema).default([]),
   coverageMatrix: z.array(GuardianReportCoverageMatrixItemSchema).default([]),
   nextSteps: z.array(z.string()).default([]),
+  legacyGovernanceUnverified: z.boolean().optional(),
   finops: z.object({
     model: z.string().nullable(),
     promptTokens: z.number().nullable(),
@@ -66,8 +67,8 @@ export const GuardianReportSchema = z.object({
     .object({
       tenantIdPresent: z.boolean(),
       workspaceIdPresent: z.boolean(),
-      rbacEvaluated: z.boolean(),
-      entitlementEvaluated: z.boolean(),
+      rbacEvaluated: z.literal(false).describe("Deprecated compatibility field; non-authoritative."),
+      entitlementEvaluated: z.literal(false).describe("Deprecated compatibility field; non-authoritative."),
       trustScoreEvaluated: z.boolean(),
       costGuardEvaluated: z.boolean(),
       policyDecision: z.enum(["allowed", "denied", "needs_review"]),

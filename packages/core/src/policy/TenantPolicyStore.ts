@@ -102,9 +102,24 @@ export class TenantPolicyStore {
         },
       })) as TenantActionPolicyRow[];
 
-      const exactWorkspacePolicy = rows.find((row) => row.workspaceId === workspaceId) ?? null;
-      const tenantWidePolicy = rows.find((row) => row.workspaceId === null) ?? null;
+      const exactWorkspacePolicies = rows.filter((row) => row.workspaceId === workspaceId);
+      const tenantWidePolicies = rows.filter((row) => row.workspaceId === null);
       const otherWorkspacePolicy = rows.find((row) => row.workspaceId !== null && row.workspaceId !== workspaceId) ?? null;
+
+      // The schema does not currently enforce uniqueness for tenant/workspace/action.
+      // Conflicting authority must not be selected by nondeterministic row order.
+      if (exactWorkspacePolicies.length > 1 || (exactWorkspacePolicies.length === 0 && tenantWidePolicies.length > 1)) {
+        return buildDecision({
+          allowed: false,
+          reasonCode: "POLICY_STORE_UNAVAILABLE",
+          tenantId,
+          workspaceId,
+          scope: normalizedScope,
+        });
+      }
+
+      const exactWorkspacePolicy = exactWorkspacePolicies[0] ?? null;
+      const tenantWidePolicy = tenantWidePolicies[0] ?? null;
 
       if (exactWorkspacePolicy) {
         if (!exactWorkspacePolicy.allowed) {
