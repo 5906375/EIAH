@@ -3,17 +3,17 @@
   "version": "1.0.0",
   "environments": {
     "dev": {
-      "stripe": ["full", "simulated"],
+      "stripe": ["simulated"],
       "crypto": ["simulated"],
       "bank": ["simulated"]
     },
     "staging": {
-      "stripe": ["full"],
+      "stripe": ["simulated"],
       "crypto": ["simulated"],
       "bank": ["simulated"]
     },
     "production": {
-      "stripe": ["full"],
+      "stripe": ["simulated"],
       "crypto": ["simulated"],
       "bank": ["simulated"]
     }

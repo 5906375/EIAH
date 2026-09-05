@@ -21,10 +21,13 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 function collectDocumentCandidates(metadata: Record<string, unknown>) {
+  // `name` não é consumido por collectJ360DocumentEvidence (só id/mimeType são usados
+  // para resolver o documento real via banco) — mantido apenas como metadado descritivo,
+  // por isso nunca deve fabricar um nome de documento inexistente.
   const fromEntry = (item: unknown) => {
     if (!isPlainObject(item)) return null;
     const id = typeof item.id === "string" ? item.id : null;
-    const name = typeof item.name === "string" ? item.name : "Documento jurídico anexado";
+    const name = typeof item.name === "string" ? item.name : null;
     const mimeType = typeof item.mimeType === "string" ? item.mimeType : null;
     return id ? { id, name, mimeType } : null;
   };
@@ -33,7 +36,7 @@ function collectDocumentCandidates(metadata: Record<string, unknown>) {
   const form = isPlainObject(metadata.form) ? metadata.form : null;
   const supportingDocs = Array.isArray(form?.supportingDocs) ? form.supportingDocs.map(fromEntry).filter(Boolean) : [];
   const seen = new Set<string>();
-  return [...documents, ...supportingDocs].filter((item): item is { id: string; name: string; mimeType: string | null } => {
+  return [...documents, ...supportingDocs].filter((item): item is { id: string; name: string | null; mimeType: string | null } => {
     if (!item || seen.has(item.id)) return false;
     seen.add(item.id);
     return true;

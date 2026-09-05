@@ -67,13 +67,17 @@ writeJson(`interop-e2e-agent-call-${TODAY}.json`, {
     "agentA -> discovery",
     "agentA -> negotiate",
     "agentA -> execute",
-    "agentB -> verify receipt",
   ],
   assertions: {
     discovery: { status: 200, containsAction: "realestate.apply_adjustment" },
     negotiate: { status: 200, contractVersion: "1.2.0", receiptSpecVersion: "receipt.canon.v1" },
     execute: { status: 202, returnsRunId: true },
-    verifyReceipt: { status: 200, invariantStatus: "ok", receiptCanonSpecVersion: "receipt.canon.v1" },
+  },
+  executionGap: {
+    flowEndsAt: "execute_accepted_in_queue",
+    blockedSegment: "execute_202_to_receipt",
+    status: "handler_not_implemented",
+    reasonCode: "HANDLER_PENDING_PHASE_4_3",
   },
   links: {
     router: "apps/api/src/routes/agents.ts",
@@ -101,7 +105,6 @@ writeJson(`realestate-high-actions-e2e-${TODAY}.json`, {
   assertions: {
     tierHigh: true,
     txIdRequired: true,
-    receiptCanonSpec: "receipt.canon.v1",
     tenantPolicyGuarded: true,
   },
   test: "apps/api/src/tests/realestate.high-actions.e2e.test.ts",

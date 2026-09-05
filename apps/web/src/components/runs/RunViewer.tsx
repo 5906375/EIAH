@@ -17,6 +17,8 @@ import { maskPII } from "@repo/utils";
 import {
   buildJ360LandingPageHtml as buildCoreJ360LandingPageHtml,
   buildJ360PdfHtml as buildCoreJ360PdfHtml,
+  J360_LEGAL_SOURCE_NOT_PROVIDED_MESSAGE,
+  J360_LEGAL_SOURCE_UNKNOWN_MESSAGE,
 } from "@eiah/core/actions/reporting/j360LegalReportRenderer";
 import {
   buildMktLandingPageHtml as buildCoreMktLandingPageHtml,
@@ -2965,7 +2967,7 @@ function buildRecipeOrchestrationHtmlBlock(orchestration: RecipeOrchestrationVie
     </section>`;
 }
 
-function buildJ360LegalReportHtmlBlock(report: J360LegalReportView | null) {
+export function buildJ360LegalReportHtmlBlock(report: J360LegalReportView | null) {
   if (!report) return "";
 
   const strengths = report.strengths.length
@@ -3007,14 +3009,27 @@ function buildJ360LegalReportHtmlBlock(report: J360LegalReportView | null) {
             <td>${sanitizeTextContent(item.severity)}</td>
             <td>${sanitizeTextContent(item.impact)}</td>
             <td>${sanitizeTextContent(item.mitigation)}</td>
-            <td>${(item.evidenceRefs ?? [])
-              .map(
-                (ref) =>
-                  `${sanitizeTextContent(ref.document)}${ref.page ? ` · p. ${sanitizeTextContent(ref.page)}` : ""}${
-                    ref.section ? ` · ${sanitizeTextContent(ref.section)}` : ""
-                  }${ref.excerpt ? `<br /><small>${sanitizeTextContent(ref.excerpt)}</small>` : ""}`
-              )
-              .join("<br />") || "Documento jurídico anexado"}</td>
+            <td>${
+              (item.evidenceRefs ?? []).length === 0
+                ? "Nenhuma evidência estruturada."
+                : (item.evidenceRefs ?? [])
+                    .map((ref) =>
+                      ref.sourceStatus === "provided"
+                        ? `${sanitizeTextContent(ref.document)}${
+                            ref.page ? ` · p. ${sanitizeTextContent(ref.page)}` : ""
+                          }${ref.section ? ` · ${sanitizeTextContent(ref.section)}` : ""}${
+                            ref.excerpt ? `<br /><small>${sanitizeTextContent(ref.excerpt)}</small>` : ""
+                          }`
+                        : ref.sourceStatus === "not_provided"
+                        ? `${J360_LEGAL_SOURCE_NOT_PROVIDED_MESSAGE}${
+                            ref.section ? ` · ${sanitizeTextContent(ref.section)}` : ""
+                          }${ref.excerpt ? `<br /><small>${sanitizeTextContent(ref.excerpt)}</small>` : ""}`
+                        : `${J360_LEGAL_SOURCE_UNKNOWN_MESSAGE}${
+                            ref.section ? ` · ${sanitizeTextContent(ref.section)}` : ""
+                          }${ref.excerpt ? `<br /><small>${sanitizeTextContent(ref.excerpt)}</small>` : ""}`
+                    )
+                    .join("<br />")
+            }</td>
           </tr>`
         )
         .join("")
@@ -4953,7 +4968,7 @@ type GuardianReportView = {
   nextAction?: string | null;
 };
 
-type J360LegalReportView = {
+export type J360LegalReportView = {
   schemaVersion: "j360_legal_report.v1";
   documentType: string | null;
   analysisScope: string;
@@ -4972,7 +4987,8 @@ type J360LegalReportView = {
     impact: string;
     mitigation: string;
     evidenceRefs: Array<{
-      document: string;
+      document: string | null;
+      sourceStatus?: "provided" | "not_provided" | "unknown";
       page: string | null;
       section: string | null;
       excerpt?: string | null;

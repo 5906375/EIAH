@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["apps/web/src/*"],
+      "@eiah/core": ["packages/core/src/index.ts"],
+      "@eiah/core/*": ["packages/core/src/*"],
+      "@repo/utils": ["packages/utils/src/index.ts"]
+    }
+  }
+}
