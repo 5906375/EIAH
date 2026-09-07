@@ -1,0 +1,12 @@
+
+> @repo/db@1.0.0 prisma [WORKSPACE_ROOT]/EIAH_R0A/packages/db
+> prisma migrate status
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "r0a", schema "public" at "127.0.0.1:55447"
+
+25 migrations found in prisma/migrations
+
+Database schema is up to date!

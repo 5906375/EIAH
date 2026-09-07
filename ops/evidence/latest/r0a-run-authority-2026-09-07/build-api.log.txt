@@ -1,0 +1,7 @@
+
+> @eiah/api@ prebuild [WORKSPACE_ROOT]/EIAH_R0A/apps/api
+> bash ../../scripts/prebuild-check.sh
+
+
+> @eiah/api@ build [WORKSPACE_ROOT]/EIAH_R0A/apps/api
+> node ./node_modules/typescript/lib/tsc.js -p tsconfig.build.json

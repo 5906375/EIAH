@@ -1,0 +1,96 @@
+
+> @repo/db@1.0.0 migrate:deploy [WORKSPACE_ROOT]/EIAH_R0A/packages/db
+> pnpm prisma migrate deploy
+
+
+> @repo/db@1.0.0 prisma [WORKSPACE_ROOT]/EIAH_R0A/packages/db
+> prisma migrate deploy
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+Datasource "db": PostgreSQL database "r0a", schema "public" at "127.0.0.1:55447"
+
+25 migrations found in prisma/migrations
+
+Applying migration `20251205150019_registry_policies_guardrails`
+Applying migration `20251218090000_scl_signature_gate`
+Applying migration `20251227140942_add_run_critical_hash`
+Applying migration `20260113180359`
+Applying migration `20260116140205_guardrail_ledger_txid`
+Applying migration `20260119125244_guardrail_ledger_append_only`
+Applying migration `20260119131249_drop_guardrail_ledger_backup`
+Applying migration `20260119133736_add_immutable_trigger_to_ledger`
+Applying migration `20260120000000_bootstrap_missing_tables`
+Applying migration `20260213141438`
+Applying migration `20260306123000_tenant_billing_v1`
+Applying migration `20260309170000_payment_intents_settlement_v1`
+Applying migration `20260309182000_reputation_disputes_v1`
+Applying migration `20260309193000_tenant_product_installations_v1`
+Applying migration `20260312120000_tenant_invoices_v1`
+Applying migration `20260312164000_helpdesk_sessions_v1`
+Applying migration `20260313113000_run_approval_status_v1`
+Applying migration `20260325120000_imob_operational_entities_v1`
+Applying migration `20260330051147_p0_workspace_agent_billing`
+Applying migration `20260330051225_p0_workspace_agent_billing`
+Applying migration `20260330051329_p0_workspace_agent_billing`
+Applying migration `20260330114500_run_context_on_runs`
+Applying migration `20260518120000_imob_market_scan_runs`
+Applying migration `20260612193000_run_archives_v1`
+Applying migration `20260723120000_tool_contract_tenant_name_version_unique`
+
+The following migration(s) have been applied:
+
+migrations/
+  └─ 20251205150019_registry_policies_guardrails/
+    └─ migration.sql
+  └─ 20251218090000_scl_signature_gate/
+    └─ migration.sql
+  └─ 20251227140942_add_run_critical_hash/
+    └─ migration.sql
+  └─ 20260113180359/
+    └─ migration.sql
+  └─ 20260116140205_guardrail_ledger_txid/
+    └─ migration.sql
+  └─ 20260119125244_guardrail_ledger_append_only/
+    └─ migration.sql
+  └─ 20260119131249_drop_guardrail_ledger_backup/
+    └─ migration.sql
+  └─ 20260119133736_add_immutable_trigger_to_ledger/
+    └─ migration.sql
+  └─ 20260120000000_bootstrap_missing_tables/
+    └─ migration.sql
+  └─ 20260213141438/
+    └─ migration.sql
+  └─ 20260306123000_tenant_billing_v1/
+    └─ migration.sql
+  └─ 20260309170000_payment_intents_settlement_v1/
+    └─ migration.sql
+  └─ 20260309182000_reputation_disputes_v1/
+    └─ migration.sql
+  └─ 20260309193000_tenant_product_installations_v1/
+    └─ migration.sql
+  └─ 20260312120000_tenant_invoices_v1/
+    └─ migration.sql
+  └─ 20260312164000_helpdesk_sessions_v1/
+    └─ migration.sql
+  └─ 20260313113000_run_approval_status_v1/
+    └─ migration.sql
+  └─ 20260325120000_imob_operational_entities_v1/
+    └─ migration.sql
+  └─ 20260330051147_p0_workspace_agent_billing/
+    └─ migration.sql
+  └─ 20260330051225_p0_workspace_agent_billing/
+    └─ migration.sql
+  └─ 20260330051329_p0_workspace_agent_billing/
+    └─ migration.sql
+  └─ 20260330114500_run_context_on_runs/
+    └─ migration.sql
+  └─ 20260518120000_imob_market_scan_runs/
+    └─ migration.sql
+  └─ 20260612193000_run_archives_v1/
+    └─ migration.sql
+  └─ 20260723120000_tool_contract_tenant_name_version_unique/
+    └─ migration.sql
+
+All migrations have been successfully applied.

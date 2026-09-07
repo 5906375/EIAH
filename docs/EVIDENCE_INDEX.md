@@ -4,6 +4,12 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## R0-A — Reconciliação de autoridade de Run (2026-09-07)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Reconciliação dos deltas 26bef43 e 37c162a e adaptação dos testes para checkout limpo | `ops/evidence/latest/r0a-run-authority-reconciliation-2026-09-07.md` + `ops/evidence/latest/r0a-run-authority-2026-09-07/manifest.json` | Builds e testes locais reais, incluindo 14 testes de integração no commit ef9cb1c, fonte oficial preservada e seis arquivos pendentes intactos. Typecheck web tem 63 erros idênticos ao baseline; lint da raiz é apenas mensagem. Action Policy permanece observacional. Não comprova AUTHZ-RUNS completo, liberação de piloto, staging/produção ou CI remoto. Status parcial. |
+
 ## Main hard gates de CI — registro pós-save (2026-07-27)
 
 | Assunto | Arquivo | O que prova |

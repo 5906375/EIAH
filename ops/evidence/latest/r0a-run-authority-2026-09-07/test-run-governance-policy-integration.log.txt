@@ -1,0 +1,173 @@
+
+> eiah-builder@ test:run-governance-policy:integration [WORKSPACE_ROOT]/EIAH_R0A
+> TSX_TSCONFIG_PATH=tsconfig.base.json NODE_ENV=test node --env-file-if-exists=packages/db/.env --import tsx --test --test-force-exit --test-concurrency=1 apps/api/src/tests/run-governance-policy.integration.test.ts && TSX_TSCONFIG_PATH=tsconfig.base.json NODE_ENV=test node --env-file-if-exists=.env --import tsx --test --test-force-exit --test-concurrency=1 apps/api/src/tests/runs.imob-action.contract.test.ts apps/api/src/tests/agents.interop.contract.test.ts apps/api/src/tests/shadow-executions.contract.test.ts
+
+packages/db/.env not found. Continuing without it.
+TAP version 13
+# packages/db/.env not found. Continuing without it.
+# {"level":30,"time":"2026-09-07T18:22:10.447Z","service":"eiah","env":"test","component":"run-worker","runId":"run-policy-mtrki9zy-7dqyal","tenantId":"[SYNTHETIC_ID]","workspaceId":"[SYNTHETIC_ID]","agentId":"EIAH","msg":"run.worker.received"}
+# {"level":40,"time":"2026-09-07T18:22:10.448Z","service":"eiah","env":"test","component":"run-worker","missing":["INTENT_SIGNATURE_SECRET","MCP_PROXY_ALL_ACTIONS","RUN_EVENTS_USE_OUTBOX"],"msg":"run.worker.governance_mode_unconfigured"}
+# {"level":30,"time":"2026-09-07T18:22:10.465Z","service":"eiah","env":"test","component":"run-worker","runId":"run-policy-mtrki9zy-7dqyal","tenantId":"[SYNTHETIC_ID]","workspaceId":"[SYNTHETIC_ID]","agentId":"EIAH","msg":"run.worker.execution_started"}
+# {"level":30,"time":"2026-09-07T18:22:10.465Z","service":"eiah","env":"test","component":"run-worker","runId":"run-policy-mtrki9zy-7dqyal","tenantId":"[SYNTHETIC_ID]","workspaceId":"[SYNTHETIC_ID]","agentId":"EIAH","msg":"run.worker.cancelled_after_start"}
+# Subtest: worker evaluates Action Policy from TenantPolicyStore and persists the decision
+ok 1 - worker evaluates Action Policy from TenantPolicyStore and persists the decision
+  ---
+  duration_ms: 774.294503
+  type: 'test'
+  ...
+# {"level":50,"time":"2026-09-07T18:22:10.481Z","service":"eiah","env":"test","component":"run-worker","reasonCode":"RUN_SCOPE_NOT_RESOLVED","stage":"preflight","msg":"run.worker.scope_not_resolved"}
+# Subtest: worker does not persist events for a valid runId with mismatched workspace scope
+ok 2 - worker does not persist events for a valid runId with mismatched workspace scope
+  ---
+  duration_ms: 9.295394
+  type: 'test'
+  ...
+1..2
+# tests 2
+# suites 0
+# pass 2
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1077.684358
+.env not found. Continuing without it.
+TAP version 13
+# .env not found. Continuing without it.
+# [tenantGuard] TenantActionPolicy:findMany enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# {"level":30,"time":"2026-09-07T18:22:12.188Z","service":"eiah","env":"test","traceId":"cd728da0-774c-498b-89d9-e11445202417","component":"api","httpMethod":"POST","path":"/api/agents/discovery","statusCode":200,"contentLength":"800","durationMs":49.929774,"msg":"http.request.completed"}
+# Subtest: POST /api/agents/discovery retorna ações disponíveis por tenant
+ok 1 - POST /api/agents/discovery retorna ações disponíveis por tenant
+  ---
+  duration_ms: 1134.983857
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# {"level":30,"time":"2026-09-07T18:22:12.220Z","service":"eiah","env":"test","traceId":"024fb7aa-4b0d-4769-8726-c0b25ec2784b","component":"api","httpMethod":"POST","path":"/api/agents/discovery","statusCode":403,"contentLength":"159","durationMs":25.167942,"msg":"http.request.completed"}
+# Subtest: POST /api/agents/discovery falha fechado sem policy explícita
+ok 2 - POST /api/agents/discovery falha fechado sem policy explícita
+  ---
+  duration_ms: 29.931144
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# {"level":30,"time":"2026-09-07T18:22:12.244Z","service":"eiah","env":"test","traceId":"90a9ced9-8b24-41ca-bbc0-71446b95f895","component":"api","httpMethod":"POST","path":"/api/agents/negotiate","statusCode":200,"contentLength":"864","durationMs":19.553754,"msg":"http.request.completed"}
+# Subtest: POST /api/agents/negotiate negocia versão e contrato
+ok 3 - POST /api/agents/negotiate negocia versão e contrato
+  ---
+  duration_ms: 23.018897
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] GuardrailLedger:count enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] GuardrailLedger:count enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] GuardrailLedger:count enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] Run:count enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] Run:count enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] GuardrailLedger:create enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] Run:create enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] RunEvent:create enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] RunEvent:create enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# {"level":30,"time":"2026-09-07T18:22:12.334Z","service":"eiah","env":"test","traceId":"07a05b3a-df56-4d92-8d60-cb95a226d77e","component":"api","httpMethod":"POST","path":"/api/agents/execute","statusCode":202,"contentLength":"380","durationMs":86.338007,"msg":"http.request.completed"}
+# {"level":30,"time":"2026-09-07T18:22:12.365Z","service":"eiah","env":"test","traceId":"b9c26819-de4c-4a77-ab7e-b0231a02b88e","component":"api","httpMethod":"GET","path":"/api/ledger/tx-interop-mtrkib1m-hgxg0u-0001","statusCode":403,"contentLength":"118","durationMs":21.621603,"msg":"http.request.completed"}
+# [tenantGuard] Run:findFirst enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] SclLedger:findFirst enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] Run:findFirst enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] RunEvent:findMany enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] SclLedger:findMany enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] GuardrailLedger:findMany enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] GuardrailLedger:findFirst enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] RunEvent:findMany enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# {"level":30,"time":"2026-09-07T18:22:12.417Z","service":"eiah","env":"test","traceId":"eb69dee0-2375-42ce-b61a-aca6cce44bd2","component":"api","httpMethod":"GET","path":"/api/ledger/tx-interop-mtrkib1m-hgxg0u-0001","statusCode":200,"contentLength":"4296","durationMs":48.362693,"msg":"http.request.completed"}
+# Subtest: POST /api/agents/execute enfileira run e permite verificação via ledger após reconciliação
+ok 4 - POST /api/agents/execute enfileira run e permite verificação via ledger após reconciliação
+  ---
+  duration_ms: 171.962755
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] GuardrailLedger:count enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] GuardrailLedger:count enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] GuardrailLedger:count enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] Run:count enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] Run:count enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] GuardrailLedger:create enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] Run:create enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] RunEvent:create enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] RunEvent:create enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# {"level":30,"time":"2026-09-07T18:22:12.472Z","service":"eiah","env":"test","traceId":"0f547a15-b055-4a1f-acc1-a30f1b4cfb7d","component":"api","httpMethod":"POST","path":"/api/agents/execute","statusCode":202,"contentLength":"380","durationMs":51.88854,"msg":"http.request.completed"}
+# Subtest: POST /api/agents/execute preserva request.action canônico após anexar intentSignature
+ok 5 - POST /api/agents/execute preserva request.action canônico após anexar intentSignature
+  ---
+  duration_ms: 57.901357
+  type: 'test'
+  ...
+# .env not found. Continuing without it.
+# [tenantGuard] TenantActionPolicy:findMany enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# {"level":30,"time":"2026-09-07T18:22:14.378Z","service":"eiah","env":"test","traceId":"2ac15b16-0818-4eac-8ebf-2177498f587c","component":"api","httpMethod":"POST","path":"/api/runs","statusCode":400,"contentLength":"240","durationMs":72.606173,"msg":"http.request.completed"}
+# Subtest: POST /api/runs rejects invalid IMOB metadata.action when domain is imob
+ok 6 - POST /api/runs rejects invalid IMOB metadata.action when domain is imob
+  ---
+  duration_ms: 1040.665523
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# {"level":30,"time":"2026-09-07T18:22:14.422Z","service":"eiah","env":"test","traceId":"88514762-aad0-4ab8-818f-f0153d7c3b1c","component":"api","httpMethod":"POST","path":"/api/runs","statusCode":400,"contentLength":"227","durationMs":30.108372,"msg":"http.request.completed"}
+# Subtest: POST /api/runs rejects non-audit IMOB input without action
+ok 7 - POST /api/runs rejects non-audit IMOB input without action
+  ---
+  duration_ms: 37.526407
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] Run:create enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] RunEvent:create enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# {"level":30,"time":"2026-09-07T18:22:14.515Z","service":"eiah","env":"test","traceId":"3b84c613-4dca-4d07-90f2-bca76c9ae886","component":"api","httpMethod":"POST","path":"/api/runs","statusCode":403,"contentLength":"1652","durationMs":86.524137,"msg":"http.request.completed"}
+# Subtest: POST /api/runs keeps IMOB conversation_audit without action applicable
+ok 8 - POST /api/runs keeps IMOB conversation_audit without action applicable
+  ---
+  duration_ms: 94.412154
+  type: 'test'
+  ...
+# [tenantGuard] TenantActionPolicy:findMany enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] Run:create enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# [tenantGuard] RunEvent:create enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# {"level":30,"time":"2026-09-07T18:22:14.582Z","service":"eiah","env":"test","traceId":"5591ef83-593e-45a4-9e6c-e34e0169eb48","component":"api","httpMethod":"POST","path":"/api/runs","statusCode":403,"contentLength":"1632","durationMs":58.558797,"msg":"http.request.completed"}
+# Subtest: POST /api/runs persists only the server-side not_evaluated governance projection
+ok 9 - POST /api/runs persists only the server-side not_evaluated governance projection
+  ---
+  duration_ms: 63.38207
+  type: 'test'
+  ...
+# [tenantGuard] Run:findFirst enforced for [SYNTHETIC_ID]/[SYNTHETIC_ID]
+# {"level":30,"time":"2026-09-07T18:22:14.615Z","service":"eiah","env":"test","traceId":"c1cca33c-a129-4835-b806-77e66ad3ae8a","component":"api","httpMethod":"POST","path":"/api/runs/run-replay-no-action-mtrkict7-hfhazi/replay","statusCode":400,"contentLength":"227","durationMs":23.015313,"msg":"http.request.completed"}
+# Subtest: POST /api/runs/:id/replay rejects historical operational IMOB without action before publish or pending
+ok 10 - POST /api/runs/:id/replay rejects historical operational IMOB without action before publish or pending
+  ---
+  duration_ms: 34.440052
+  type: 'test'
+  ...
+# .env not found. Continuing without it.
+# {"level":30,"time":"2026-09-07T18:22:16.363Z","service":"eiah","env":"test","traceId":"dde7e95e-ad6b-4453-8251-efd2a605b7ee","component":"api","httpMethod":"POST","path":"/api/shadow-executions/preview","statusCode":400,"contentLength":"240","durationMs":70.669866,"msg":"http.request.completed"}
+# Subtest: POST /api/shadow-executions/preview rejects invalid IMOB action before persisting preview
+ok 11 - POST /api/shadow-executions/preview rejects invalid IMOB action before persisting preview
+  ---
+  duration_ms: 1195.788772
+  type: 'test'
+  ...
+# {"level":30,"time":"2026-09-07T18:22:16.438Z","service":"eiah","env":"test","traceId":"27bbcffb-3d6e-4db5-991e-dad7e2e8763a","component":"api","httpMethod":"POST","path":"/api/shadow-executions/preview","statusCode":201,"contentLength":"814","durationMs":61.61852,"msg":"http.request.completed"}
+# Subtest: POST /api/shadow-executions/preview strips malicious governance metadata before persistence
+ok 12 - POST /api/shadow-executions/preview strips malicious governance metadata before persistence
+  ---
+  duration_ms: 69.811931
+  type: 'test'
+  ...
+1..12
+# tests 12
+# suites 0
+# pass 12
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 5923.396088
