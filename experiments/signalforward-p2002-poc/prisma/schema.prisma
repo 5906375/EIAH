@@ -1,0 +1,55 @@
+// Schema EXPERIMENTAL, isolado, apenas para a prova técnica autorizada.
+// Não faz parte do schema de produção (packages/db/prisma/schema.prisma) e não deve
+// ser copiado para lá. Usa banco descartável dedicado (POC_DATABASE_URL).
+
+generator client {
+  provider = "prisma-client"
+  output   = "./generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Reprodução experimental de SignalForwardRequest (não existe no baseline de produção).
+model SignalForwardRequest {
+  id                 String   @id @default(cuid())
+  tenantId           String   @map("tenant_id")
+  workspaceId        String   @map("workspace_id")
+  sourceRunId        String   @map("source_run_id")
+  destinationAgent   String   @map("destination_agent")
+  idempotencyKey     String   @map("idempotency_key")
+  requestFingerprint String   @map("request_fingerprint")
+  requestedByUserId  String?  @map("requested_by_user_id")
+  destinationRunId   String?  @map("destination_run_id")
+  status             String   @default("pending_dispatch")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, workspaceId, destinationAgent, idempotencyKey], name: "signalForwardIdempotencyKey")
+  @@map("signal_forward_requests_poc")
+}
+
+// Fixture mínima para representar o "run de destino" (não é o model Run real de produção).
+model RunFixture {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  workspaceId String   @map("workspace_id")
+  agent       String
+  status      String
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("run_fixture_poc")
+}
+
+// Fixture criada exclusivamente para provocar, de propósito, uma violação de unicidade
+// DIFERENTE da chave idempotente (cenário C da prova: "other_unique_violation").
+model OtherUniqueFixture {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  externalRef String   @map("external_ref")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([tenantId, externalRef], name: "otherUniqueRef")
+  @@map("other_unique_fixture_poc")
+}
