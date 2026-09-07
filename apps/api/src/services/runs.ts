@@ -1,10 +1,23 @@
-import { Prisma, PrismaClient, RunStatus, prismaGlobal } from "@repo/db";
+import { Prisma, PrismaClient, RunStatus, prismaGlobal, type TransactableClient } from "@repo/db";
 import { randomUUID } from "node:crypto";
 import { prepareRunRequestAction } from "./imob/control/imobRunActionCatalog";
 import { assertWorkspaceAgentEnabled } from "./workspaceAgentAssignments";
 import { getRunArchiveMetadataMap, listArchivedRunIds } from "./runArchiveService";
 
 function resolveClient(tenantId: string, workspaceId: string, client?: PrismaClient) {
+  return client ?? prismaGlobal;
+}
+
+// Resolução dedicada para o único chamador (createRunRecord) que pode
+// participar de uma transação interativa (prisma.$transaction(async tx => ...)).
+// Isolada de resolveClient() acima para não alargar o tipo de client aceito
+// pelos demais 7 chamadores deste arquivo (listRuns, getRun, finalizeRunRecord,
+// etc.), que continuam exigindo PrismaClient normal, sem mudança.
+function resolveTransactableClient(
+  tenantId: string,
+  workspaceId: string,
+  client?: TransactableClient
+): TransactableClient {
   return client ?? prismaGlobal;
 }
 
@@ -178,7 +191,7 @@ export async function listRunsWithArchiveMetadata(opts: {
 }
 
 export async function createRunRecord(params: {
-  prisma?: PrismaClient;
+  prisma?: TransactableClient;
   tenantId: string;
   workspaceId: string;
   userId?: string;
@@ -196,7 +209,7 @@ export async function createRunRecord(params: {
   approvedAt?: Date | null;
   requireCanonicalImobAction?: boolean;
 }) {
-  const client = resolveClient(params.tenantId, params.workspaceId, params.prisma);
+  const client = resolveTransactableClient(params.tenantId, params.workspaceId, params.prisma);
   const now = new Date();
   const assignment = await assertWorkspaceAgentEnabled({
     prisma: client,

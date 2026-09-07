@@ -102,6 +102,7 @@ model Tenant {
   agentInstalls             AgentInstall[]
   connectorInstances        ConnectorInstance[]
   paymentIntents            PaymentIntent[]
+  signalForwardRequests     SignalForwardRequest[]
   memberships               TenantMembership[]
   customRoles               TenantCustomRole[]
   walletIdentities          WalletIdentity[]
@@ -144,6 +145,7 @@ model Workspace {
   agentInstalls             AgentInstall[]
   connectorInstances        ConnectorInstance[]
   paymentIntents            PaymentIntent[]
+  signalForwardRequests     SignalForwardRequest[]
 
   @@index([tenantId, name])
   @@map("workspaces")
@@ -245,18 +247,20 @@ model Run {
   txId         String? @map("tx_id")
 
   // 🔗 Relações
-  memoryEvents         MemoryEvent[]
-  events               RunEvent[]
-  guardrailLedgers     GuardrailLedger[]
-  billingLedgerEntries BillingLedger[]
-  usageBreakdowns      RunUsageBreakdown[]
-  imobCaseEvents       ImobCaseEvent[]
-  runArchive           RunArchive?
-  paymentIntents       PaymentIntent[]
-  assignment           WorkspaceAgentAssignment? @relation(fields: [assignmentId], references: [id])
-  tenant               Tenant                    @relation(fields: [tenantId], references: [id])
-  user                 User?                     @relation(fields: [userId], references: [id])
-  workspace            Workspace                 @relation(fields: [workspaceId], references: [id])
+  memoryEvents                      MemoryEvent[]
+  events                            RunEvent[]
+  guardrailLedgers                  GuardrailLedger[]
+  billingLedgerEntries              BillingLedger[]
+  usageBreakdowns                   RunUsageBreakdown[]
+  imobCaseEvents                    ImobCaseEvent[]
+  runArchive                        RunArchive?
+  paymentIntents                    PaymentIntent[]
+  signalForwardRequestsAsSource     SignalForwardRequest[]    @relation("SignalForwardSource")
+  signalForwardRequestAsDestination SignalForwardRequest?     @relation("SignalForwardDestination")
+  assignment                        WorkspaceAgentAssignment? @relation(fields: [assignmentId], references: [id])
+  tenant                            Tenant                    @relation(fields: [tenantId], references: [id])
+  user                              User?                     @relation(fields: [userId], references: [id])
+  workspace                         Workspace                 @relation(fields: [workspaceId], references: [id])
 
   @@index([tenantId, workspaceId, agent, createdAt])
   @@index([assignmentId])
@@ -266,6 +270,34 @@ model Run {
   @@index([costCents])
   @@index([archivedAt])
   @@map("runs")
+}
+
+// Encaminhamento autorizado de um sinal (ex.: Radar) para a criação de um run
+// em outro agente (ex.: MKT), preservando o vínculo com a origem e uma
+// intenção durável de publicação, criados atomicamente com o run de destino
+// (ver apps/api/src/services/signalForwarding.ts).
+model SignalForwardRequest {
+  id                 String   @id @default(cuid())
+  tenantId           String   @map("tenant_id")
+  workspaceId        String   @map("workspace_id")
+  sourceRunId        String   @map("source_run_id")
+  destinationAgent   String   @map("destination_agent")
+  idempotencyKey     String   @map("idempotency_key")
+  requestFingerprint String   @map("request_fingerprint")
+  requestedByUserId  String?  @map("requested_by_user_id")
+  destinationRunId   String?  @unique @map("destination_run_id")
+  status             String   @default("pending_dispatch")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  tenant         Tenant    @relation(fields: [tenantId], references: [id])
+  workspace      Workspace @relation(fields: [workspaceId], references: [id])
+  sourceRun      Run       @relation("SignalForwardSource", fields: [sourceRunId], references: [id])
+  destinationRun Run?      @relation("SignalForwardDestination", fields: [destinationRunId], references: [id])
+
+  @@unique([tenantId, workspaceId, destinationAgent, idempotencyKey], name: "signalForwardIdempotencyKey")
+  @@index([tenantId, workspaceId, sourceRunId])
+  @@map("signal_forward_requests")
 }
 
 model RunArchive {
