@@ -9,9 +9,7 @@ import { closeRunEventsTransport } from "../services/runEvents";
 import { closeRunEventStream } from "../services/runEventStream";
 import { finalizeHttpContractCleanup } from "./support/httpContractCleanup";
 import { closeRedisPublisher } from "../../../../packages/core/src/events/redisPublisher.js";
-import { closeRunEventPublisherResources } from "../../../../packages/core/src/events/runEventPublisher.js";
 import { closeTenantPolicyStoreResources } from "@eiah/core/policy/TenantPolicyStore";
-import { closeCriticalMetricsRedis } from "../../../../packages/core/src/metrics/criticalMetrics.js";
 import { closeCriticalKillSwitchRedis } from "../../../../packages/core/src/security/killSwitch.js";
 
 let request: ReturnType<typeof supertest>;
@@ -102,9 +100,7 @@ before(async () => {
 
 after(async () => {
   await closeRedisPublisher();
-  await closeRunEventPublisherResources();
   await closeTenantPolicyStoreResources();
-  await closeCriticalMetricsRedis();
   await closeCriticalKillSwitchRedis();
   await closeRunEventStream();
   await closeRunEventsTransport();
@@ -200,6 +196,12 @@ test("POST /api/agents/execute enfileira run e permite verificação via ledger 
       signature: "sig-interop-contract-test",
       payload: { source: "interop-contract-test" },
     },
+  });
+
+  const deniedLedgerRes = await request.get(`/api/ledger/${txId}`).set("Authorization", `Bearer ${apiToken}`);
+  assert.equal(deniedLedgerRes.status, 403, "ledger access requires its own explicit scope");
+  await prismaGlobal.tenantActionPolicy.create({
+    data: { tenantId, workspaceId, actionName: "ledger.view", allowed: true, maxVersion: 1 },
   });
 
   const ledgerRes = await request.get(`/api/ledger/${txId}`).set("Authorization", `Bearer ${apiToken}`);
