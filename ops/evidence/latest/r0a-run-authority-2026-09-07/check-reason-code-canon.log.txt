@@ -1,0 +1,5 @@
+
+> eiah-builder@ check:reason-code-canon [WORKSPACE_ROOT]/EIAH_R0A
+> node --import tsx scripts/checkReasonCodeCanon.ts
+
+{"ok":true,"check":"reason-code-canon-v1","catalogSize":76,"targets":["packages/core/src/reasons/reasonCatalog.ts","docs/ops/reason-codes-catalog.md","apps/api/src/services/imob/control/imobReasonCodeCatalog.ts","apps/api/src/routes/imobCrmSchemas.ts","apps/api/src/types/chatVerticalHandoffV2Contract.ts","contracts/chat/vertical.reason_codes.v1.json","apps/api/src/services/runGovernanceMetadata.ts","scripts/tests/checkReasonCodeCanon.test.ts"],"enforcement":"informational-until-ruleset-ratification"}

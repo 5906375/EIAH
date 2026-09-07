@@ -1,0 +1,328 @@
+{
+  "generatedAtUtc": "2026-09-07T18:25:03.412494Z",
+  "base": "11805d1934573281e2787c2442b546c172b76947",
+  "validatedImplementationHead": "ef9cb1c12faf661d9799bae53e4f34ed051fc064",
+  "validatedImplementationTree": "1c3911dfd467a72e9e6e7d9079e45e9da6f708d5",
+  "sourceCommits": [
+    "26bef43b63387356d3aed30b2264a5f77ccaa85b",
+    "37c162a3a0a673487eaaee1bfc4386b5afd0d713"
+  ],
+  "integrationCommits": [
+    "8622756",
+    "4d24198"
+  ],
+  "testAdaptationCommit": "ef9cb1c12faf661d9799bae53e4f34ed051fc064",
+  "records": [
+    {
+      "name": "build-contracts",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@eiah/contracts",
+        "build"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 2.87,
+      "logSha256": "b39d0fb28e3dc8cd797917ba1e822879ca6a09a8692d6a7da29de3e181ab97c0",
+      "head": "4d24198065439938ddfd3ac71858baa464feed38",
+      "publishedLog": "build-contracts.log.txt",
+      "publishedSha256": "bbe38aa1ccb973be0ef953b8350decf18b03fa6aa5997b19035ca5d34ea76e83"
+    },
+    {
+      "name": "build-db",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@repo/db",
+        "build"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 8.58,
+      "logSha256": "bbd80ee9c8974561e7533e9713177b5755b710b49714972c2d62dafeb4db24d6",
+      "head": "4d24198065439938ddfd3ac71858baa464feed38",
+      "publishedLog": "build-db.log.txt",
+      "publishedSha256": "7f03f1f31607d196f4489e33229957dd309d77e91dbbc1ad734aef697cd3a6ff"
+    },
+    {
+      "name": "build-core",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@eiah/core",
+        "build"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 7.14,
+      "logSha256": "74ce63549730b9a76a1d00c1e7ba627ab5f6bc3f153dddae7b0f32edd94fa199",
+      "head": "4d24198065439938ddfd3ac71858baa464feed38",
+      "publishedLog": "build-core.log.txt",
+      "publishedSha256": "003d7480c72ad7d59a7c139ae0bb1564fd65dc35dc260d6d2cb10dbaf9c5bb99"
+    },
+    {
+      "name": "build-providers",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@eiah/providers",
+        "build"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 1.2,
+      "logSha256": "54a0d9991e62b1b17f895979bf6f664c00668bdb1b37742ef69949e53b672f69",
+      "head": "4d24198065439938ddfd3ac71858baa464feed38",
+      "publishedLog": "build-providers.log.txt",
+      "publishedSha256": "180b031e8bfb4e4ae455b53bd8bfe5e9afdac1c8bfdde409842822e6492e4053"
+    },
+    {
+      "name": "build-api",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@eiah/api",
+        "build"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 14.31,
+      "logSha256": "24a2c3656c93f51838a1859e8ee0f04fcad8e53dbb40e1d3e5f275f69f604f97",
+      "head": "4d24198065439938ddfd3ac71858baa464feed38",
+      "publishedLog": "build-api.log.txt",
+      "publishedSha256": "b95fd438db500e19b39912b46d6edd06f6f76e4c182c46ac0055e301f856e075"
+    },
+    {
+      "name": "build-web",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@eiah/web",
+        "build"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 15.39,
+      "logSha256": "f184c48b6c6294f66bfd43f6e36847e595d64cefdd7d3e61371ce3f3ba833782",
+      "head": "4d24198065439938ddfd3ac71858baa464feed38",
+      "publishedLog": "build-web.log.txt",
+      "publishedSha256": "fbd03a4d0fc3f82d2227531a519e0902ee27266ff1ec64d1804119801670ab85"
+    },
+    {
+      "name": "typecheck-web",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@eiah/web",
+        "exec",
+        "tsc",
+        "--noEmit"
+      ],
+      "exitCode": 1,
+      "elapsedSeconds": 12.61,
+      "logSha256": "b418a924c39fbcefaad8384643b50dd56531a8c23f5eb8aede0a98fff79cba8d",
+      "head": "4d24198065439938ddfd3ac71858baa464feed38",
+      "publishedLog": "typecheck-web.log.txt",
+      "publishedSha256": "dce9545b28ee63202865d19d4086f1e3887098359c5c04af678395ab1abe3ed3"
+    },
+    {
+      "name": "test-run-governance-metadata",
+      "command": [
+        "pnpm",
+        "test:run-governance-metadata"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 5.63,
+      "logSha256": "59d1cc1319f1b5c56477e1cc7c9bc32565fcbc164a50f335238b75bde24281ce",
+      "head": "4d24198065439938ddfd3ac71858baa464feed38",
+      "publishedLog": "test-run-governance-metadata.log.txt",
+      "publishedSha256": "5374144caec8a5fdd08658f16eee5e8467d254eb4dfb6a7a957be4a8026404e3"
+    },
+    {
+      "name": "test-run-worker-error-boundary",
+      "command": [
+        "pnpm",
+        "test:run-worker-error-boundary"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 0.79,
+      "logSha256": "aabd4216c51c753e336f38254253086e35bb649510ff846e005122652d5ac1b4",
+      "head": "4d24198065439938ddfd3ac71858baa464feed38",
+      "publishedLog": "test-run-worker-error-boundary.log.txt",
+      "publishedSha256": "022810fc3df937f82e9a6fde83ecdf25548a6b623f94d5a57f8e7e2a4bc65a79"
+    },
+    {
+      "name": "test-reason-code-canon",
+      "command": [
+        "pnpm",
+        "test:reason-code-canon"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 0.69,
+      "logSha256": "9aec1dd231302ddb7f5e9b5fff413129c958f7de168657f101dfe5bc4e8ab05d",
+      "head": "4d24198065439938ddfd3ac71858baa464feed38",
+      "publishedLog": "test-reason-code-canon.log.txt",
+      "publishedSha256": "41010e2778479750b627d46fb8dd440f2d5092b1fd3029151f845dcda2b7e4c2"
+    },
+    {
+      "name": "check-reason-code-canon",
+      "command": [
+        "pnpm",
+        "check:reason-code-canon"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 0.58,
+      "logSha256": "22d146974b3f797923394076eea352b4aea6de2ddec64ec56c875cddca80879c",
+      "head": "4d24198065439938ddfd3ac71858baa464feed38",
+      "publishedLog": "check-reason-code-canon.log.txt",
+      "publishedSha256": "e494df8468ae63be8802ee797a1bdb44a2612415270eaeeb0aca9e94b3bed79f"
+    },
+    {
+      "name": "check-orphan-tests",
+      "command": [
+        "pnpm",
+        "check:orphan-tests"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 0.95,
+      "logSha256": "9d8035fbb580156928c4e9f98b06533e29e2e291a00724d429284d1757c3cb7c",
+      "head": "4d24198065439938ddfd3ac71858baa464feed38",
+      "publishedLog": "check-orphan-tests.log.txt",
+      "publishedSha256": "5be8389172ab4e70870af6c9e9b399dcb2391ed0b12e3a1482cb9108c8ea4a65"
+    },
+    {
+      "name": "check-docs-link-integrity",
+      "command": [
+        "pnpm",
+        "check:docs-link-integrity"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 0.59,
+      "logSha256": "a38e9919511268e6e2bb81e775b4748c555879c3904ece467f416256bec4bb99",
+      "head": "4d24198065439938ddfd3ac71858baa464feed38",
+      "publishedLog": "check-docs-link-integrity.log.txt",
+      "publishedSha256": "6ecee0d961022271322e8a798d751bab72cdaffb1d9c4f4e4d5c8744c7565b8a"
+    },
+    {
+      "name": "check-evidence-index",
+      "command": [
+        "pnpm",
+        "check:evidence-index"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 0.94,
+      "logSha256": "71bb19313fb2da0de6f966bc87ebc1011af7ac9aa9eb427c1369f8931c13a13b",
+      "head": "4d24198065439938ddfd3ac71858baa464feed38",
+      "publishedLog": "check-evidence-index.log.txt",
+      "publishedSha256": "c6dbed43407217329d3fb16315f40197d9c9bc92567cefebef5c0c0854c89cd6"
+    },
+    {
+      "name": "lint",
+      "command": [
+        "pnpm",
+        "lint"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 0.39,
+      "logSha256": "d4248e572128ac0f73188dd5e8b6171c6d393a900f4878260bd6be2475f1b6cb",
+      "head": "4d24198065439938ddfd3ac71858baa464feed38",
+      "publishedLog": "lint.log.txt",
+      "publishedSha256": "00348cb9cd1fb83ccd598bdb91744d60bc68cde28605b22375a9c41875da97d1"
+    },
+    {
+      "name": "report-worker-billing-regression",
+      "command": [
+        "node",
+        "--import",
+        "tsx",
+        "--test",
+        "--test-force-exit",
+        "apps/api/src/tests/run-worker-guardian-output.test.ts",
+        "apps/api/src/tests/run-worker-recipe-orchestration.test.ts",
+        "packages/core/src/actions/reporting/__tests__/guardianReportRenderer.test.ts",
+        "packages/core/src/actions/reporting/__tests__/recipeOrchestrationRenderer.test.ts",
+        "apps/api/src/services/billingReconciliation.test.ts",
+        "packages/core/src/catalog/governedOperationCatalog.test.ts"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 0.81,
+      "logSha256": "61b9ecad4d8f29eee59d7bb3b953d8827a0deb152d7a40d36ef2452acdf28a5e",
+      "head": "4d24198065439938ddfd3ac71858baa464feed38",
+      "publishedLog": "report-worker-billing-regression.log.txt",
+      "publishedSha256": "61b9ecad4d8f29eee59d7bb3b953d8827a0deb152d7a40d36ef2452acdf28a5e"
+    },
+    {
+      "name": "test-run-governance-policy-integration",
+      "command": [
+        "pnpm",
+        "test:run-governance-policy:integration"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 7.55,
+      "logSha256": "7f22ba4b70b1268902e2ec902a8976c413a9557757f0e932458e94b586855f26",
+      "head": "ef9cb1c12faf661d9799bae53e4f34ed051fc064",
+      "publishedLog": "test-run-governance-policy-integration.log.txt",
+      "publishedSha256": "64a89e8cf47eb8eb1d466cd042a05edc7b1841b749bc561fc8b6586989119e74"
+    },
+    {
+      "name": "migrate",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@repo/db",
+        "migrate:deploy"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 2.45,
+      "logSha256": "d5e40a5fa69a98679035fb58640780f6bdf270c506be3348b2c0a7268ad011d3",
+      "head": "4d24198065439938ddfd3ac71858baa464feed38",
+      "publishedLog": "migrate.log.txt",
+      "publishedSha256": "12a6d77451b0befd651b1ecad2b67d56e99143ead892e1f082b6aa0f86e0cb4c"
+    },
+    {
+      "name": "migration-status",
+      "command": [
+        "pnpm",
+        "--filter",
+        "@repo/db",
+        "prisma",
+        "migrate",
+        "status"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 1.6,
+      "logSha256": "98f7f5916f6f972216dc5733a0a2be0a3139b094df75ec84f6d7df2e66cfc794",
+      "head": "4d24198065439938ddfd3ac71858baa464feed38",
+      "publishedLog": "migration-status.log.txt",
+      "publishedSha256": "9b0a702199a7ef69882b25debd0e9fb2529a5dd6a4b0eb4dbbe7017cd06efe59"
+    }
+  ],
+  "baselineTypecheckComparison": {
+    "baselineErrors": 63,
+    "r0aErrors": 63,
+    "identicalDiagnostics": true,
+    "addedDiagnostics": [],
+    "removedDiagnostics": []
+  },
+  "baselineTypecheckLogSha256": "6152826cb1cbe7ad5f4c980cc498d171c9fa8e9861d71f5e7ca1a812083dd49b",
+  "originalCheckoutPreserved": {
+    "head": "b2a5e905adf975cfdce94bf40eca5ff9eda83563",
+    "pendingFileCount": 6,
+    "allHashesMatched": true
+  },
+  "environment": {
+    "node": "22.17.1",
+    "pnpm": "10.12.4",
+    "postgres": "pgvector/pgvector:pg16; localhost:55447; ephemeral tmpfs",
+    "redis": "redis:7; localhost:56389; task-specific container",
+    "operationalDatabaseAccessed": false
+  },
+  "publicationMasking": [
+    "ANSI removed",
+    "workspace parent path masked",
+    "database URL masked",
+    "selected synthetic fixture identifiers masked",
+    "Trailing whitespace and blank lines at EOF normalized"
+  ],
+  "limitations": [
+    "Web typecheck has 63 identical preexisting main diagnostics",
+    "Root lint command only prints a message; not effective source lint",
+    "Action Policy remains observational",
+    "No staging, production, pilot release or merge"
+  ]
+}

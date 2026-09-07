@@ -11,11 +11,11 @@
  * Nenhuma afirmação de telemetria operacional (auditGap, duplicateSideEffects,
  * breakGlass, hardMetricsGo, nonRegressionGo) é feita por eles.
  *
- * O valor abaixo é um placeholder deliberado. Um micro-PR pós-merge o
- * substituirá pelo merge SHA real deste PR B assim que ele for mergeado —
- * esse follow-up não é executado aqui.
+ * O valor abaixo fixa o merge SHA do PR #432, que introduziu esta
+ * fronteira semântica.
  */
-export const STRUCTURAL_GATE_BOUNDARY_SHA = "PENDING_POST_MERGE";
+export const STRUCTURAL_GATE_BOUNDARY_SHA =
+  "70ce66f41675c08e283948c0209b1cb55026121f";
 
 export const STRUCTURAL_GATE_BOUNDARY_NOTE =
   "before this boundary: context consumed declarative telemetry; " +

@@ -1,0 +1,74 @@
+
+> eiah-builder@ test:reason-code-canon [WORKSPACE_ROOT]/EIAH_R0A
+> node --import tsx scripts/tests/checkReasonCodeCanon.test.ts
+
+TAP version 13
+# Subtest: accepts an active known code with owner, approver and evidenceRef
+ok 1 - accepts an active known code with owner, approver and evidenceRef
+  ---
+  duration_ms: 2.076698
+  type: 'test'
+  ...
+# Subtest: keeps MCP policy additions proposed and ratified DB input active
+ok 2 - keeps MCP policy additions proposed and ratified DB input active
+  ---
+  duration_ms: 0.310987
+  type: 'test'
+  ...
+# Subtest: keeps the ratified Action Policy boundary mapped to active canonical codes
+ok 3 - keeps the ratified Action Policy boundary mapped to active canonical codes
+  ---
+  duration_ms: 1.053025
+  type: 'test'
+  ...
+# Subtest: keeps the ratified APE release containment code active
+ok 4 - keeps the ratified APE release containment code active
+  ---
+  duration_ms: 0.108829
+  type: 'test'
+  ...
+# Subtest: rejects active without owner, approver or evidenceRef
+ok 5 - rejects active without owner, approver or evidenceRef
+  ---
+  duration_ms: 0.136949
+  type: 'test'
+  ...
+# Subtest: rejects self-declared bootstrap outside the fenced pre-RC-0 baseline
+ok 6 - rejects self-declared bootstrap outside the fenced pre-RC-0 baseline
+  ---
+  duration_ms: 0.221996
+  type: 'test'
+  ...
+# Subtest: rejects an unknown reasonCode absent from the canonical source
+ok 7 - rejects an unknown reasonCode absent from the canonical source
+  ---
+  duration_ms: 0.15618
+  type: 'test'
+  ...
+# Subtest: accepts proposed as catalogued but never as active or ratified
+ok 8 - accepts proposed as catalogued but never as active or ratified
+  ---
+  duration_ms: 0.108465
+  type: 'test'
+  ...
+# Subtest: fails when documentation points to a canonical source that does not exist
+ok 9 - fails when documentation points to a canonical source that does not exist
+  ---
+  duration_ms: 0.319369
+  type: 'test'
+  ...
+# Subtest: fails when the documented catalog differs from the canonical source
+ok 10 - fails when the documented catalog differs from the canonical source
+  ---
+  duration_ms: 0.80936
+  type: 'test'
+  ...
+1..10
+# tests 10
+# suites 0
+# pass 10
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 21.938383

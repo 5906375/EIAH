@@ -601,8 +601,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
+      - name: Build @repo/db for governed worker regression
+        run: pnpm --filter @repo/db build
+
       - name: Run runWorker governed failure boundary regression
         run: pnpm test:run-worker-error-boundary
+
+      - name: Run CORE-01A0b governed metadata and worker regression
+        run: pnpm test:run-governance-metadata
 
       - name: Run orphan tests gate unit test
         run: pnpm check:orphan-tests:unit
@@ -836,6 +842,15 @@ jobs:
         env:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/eiah_ci?schema=public
         run: pnpm --filter @repo/db migrate:deploy
+
+      - name: Run CORE-01A0b governed worker database integration
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/eiah_ci?schema=public
+          RUN_EVENTS_REDIS_URL: ""
+          REDIS_URL: ""
+          NODE_ENV: test
+        run: pnpm test:run-governance-policy:integration
+        timeout-minutes: 5
 
       - name: Run assignment fail-closed HTTP suite
         env:

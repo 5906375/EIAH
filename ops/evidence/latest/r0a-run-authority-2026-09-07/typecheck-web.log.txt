@@ -1,0 +1,81 @@
+src/App.tsx(15,22): error TS2307: Cannot find module './assets/Eiah_logo.png' or its corresponding type declarations.
+src/components/agents/eiahTutorContracts.ts(2386,38): error TS2339: Property 'vertical' does not exist on type 'IntentLibraryEntryV1'.
+src/hooks/useAgentExecution.ts(99,38): error TS2345: Argument of type 'ExecutePayload' is not assignable to parameter of type 'CreateRunBody'.
+  Types of property 'agent' are incompatible.
+    Type 'string | undefined' is not assignable to type 'string'.
+      Type 'undefined' is not assignable to type 'string'.
+src/pages/app/agents/index.tsx(3,31): error TS2307: Cannot find module '../../../assets/playbook/runs/runs-overview.svg' or its corresponding type declarations.
+src/pages/app/agents/index.tsx(4,29): error TS2307: Cannot find module '../../../assets/playbook/runs/runs-criar.svg' or its corresponding type declarations.
+src/pages/app/agents/index.tsx(5,29): error TS2307: Cannot find module '../../../assets/playbook/runs/runs-status.svg' or its corresponding type declarations.
+src/pages/app/agents/index.tsx(6,30): error TS2307: Cannot find module '../../../assets/playbook/runs/runs-historico.svg' or its corresponding type declarations.
+src/pages/app/agents/index.tsx(7,29): error TS2307: Cannot find module '../../../assets/playbook/runs/runs-resultado.svg' or its corresponding type declarations.
+src/pages/app/imob/chat.tsx(270,17): error TS2339: Property 'proof' does not exist on type 'ImobPresentationCard'.
+src/pages/app/imob/chat.tsx(523,42): error TS2339: Property 'dedupeKey' does not exist on type 'ImobPresentationMetadata'.
+src/pages/app/imob/chat.tsx(523,97): error TS2339: Property 'dedupeKey' does not exist on type 'ImobPresentationMetadata'.
+src/pages/app/imob/chat.tsx(524,38): error TS2339: Property 'dedupeKey' does not exist on type 'ImobPresentationMetadata'.
+src/pages/app/imob/chat.tsx(1919,5): error TS2322: Type '{ [k: string]: unknown; } | undefined' is not assignable to type 'Record<string, string> | undefined'.
+  Type '{ [k: string]: unknown; }' is not assignable to type 'Record<string, string>'.
+    'string' index signatures are incompatible.
+      Type 'unknown' is not assignable to type 'string'.
+src/pages/app/imob/chat.tsx(2002,42): error TS2339: Property 'dedupeKey' does not exist on type 'ImobPresentationMetadata'.
+src/pages/app/imob/chat.tsx(2002,89): error TS2339: Property 'dedupeKey' does not exist on type 'ImobPresentationMetadata'.
+src/pages/app/imob/chat.tsx(2003,38): error TS2339: Property 'dedupeKey' does not exist on type 'ImobPresentationMetadata'.
+src/pages/app/imob/chat.tsx(5835,44): error TS18048: 'sc' is possibly 'undefined'.
+src/pages/app/imob/chat.tsx(5836,35): error TS18048: 'sc' is possibly 'undefined'.
+src/pages/app/imob/chat.tsx(5837,40): error TS18048: 'sc' is possibly 'undefined'.
+src/pages/app/imob/chatProof.ts(9,40): error TS2339: Property 'presentationMetadata' does not exist on type 'ImobChatMessage'.
+src/pages/app/imob/chatProof.ts(21,110): error TS2339: Property 'proof' does not exist on type 'ImobPresentationCard'.
+src/pages/app/imob/chatProof.ts(24,52): error TS2339: Property 'runId' does not exist on type 'ImobPresentationCard'.
+src/pages/app/imob/chatProof.ts(44,34): error TS2344: Type '"proof" | "presentationMetadata"' does not satisfy the constraint 'keyof ImobChatMessage'.
+  Type '"presentationMetadata"' is not assignable to type 'keyof ImobChatMessage'.
+src/pages/app/imob/chatProof.ts(46,40): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'Pick<ImobPresentationMetadata, "canonicalSnapshot"> | Pick<any, "canonicalSnapshot"> | null | undefined'.
+src/pages/app/imob/dashboard.tsx(639,55): error TS2345: Argument of type '{ message?: string | undefined; reasonCode?: string | undefined; } | undefined' is not assignable to parameter of type 'Partial<{ code?: string | undefined; reasonCode?: "IMOB_ENTITLEMENT_MISSING" | "IMOB_INSTALLATION_INACTIVE" | "IMOB_PERMISSION_DENIED" | undefined; message?: string | undefined; ... 5 more ...; details?: { ...; } | undefined; }> | null | undefined'.
+  Type '{ message?: string | undefined; reasonCode?: string | undefined; }' is not assignable to type 'Partial<{ code?: string | undefined; reasonCode?: "IMOB_ENTITLEMENT_MISSING" | "IMOB_INSTALLATION_INACTIVE" | "IMOB_PERMISSION_DENIED" | undefined; message?: string | undefined; traceId?: string | undefined; ... 4 more ...; details?: { ...; } | undefined; }>'.
+    Types of property 'reasonCode' are incompatible.
+      Type 'string | undefined' is not assignable to type '"IMOB_ENTITLEMENT_MISSING" | "IMOB_INSTALLATION_INACTIVE" | "IMOB_PERMISSION_DENIED" | undefined'.
+        Type 'string' is not assignable to type '"IMOB_ENTITLEMENT_MISSING" | "IMOB_INSTALLATION_INACTIVE" | "IMOB_PERMISSION_DENIED" | undefined'.
+src/pages/app/imob/dashboard.tsx(1046,23): error TS18047: 'kpiFunnel.averageDurationHours' is possibly 'null'.
+src/pages/app/imob/processes.tsx(210,51): error TS2345: Argument of type '{ message?: string | undefined; reasonCode?: string | undefined; } | undefined' is not assignable to parameter of type 'Partial<{ code?: string | undefined; reasonCode?: "IMOB_ENTITLEMENT_MISSING" | "IMOB_INSTALLATION_INACTIVE" | "IMOB_PERMISSION_DENIED" | undefined; message?: string | undefined; ... 5 more ...; details?: { ...; } | undefined; }> | null | undefined'.
+  Type '{ message?: string | undefined; reasonCode?: string | undefined; }' is not assignable to type 'Partial<{ code?: string | undefined; reasonCode?: "IMOB_ENTITLEMENT_MISSING" | "IMOB_INSTALLATION_INACTIVE" | "IMOB_PERMISSION_DENIED" | undefined; message?: string | undefined; traceId?: string | undefined; ... 4 more ...; details?: { ...; } | undefined; }>'.
+    Types of property 'reasonCode' are incompatible.
+      Type 'string | undefined' is not assignable to type '"IMOB_ENTITLEMENT_MISSING" | "IMOB_INSTALLATION_INACTIVE" | "IMOB_PERMISSION_DENIED" | undefined'.
+        Type 'string' is not assignable to type '"IMOB_ENTITLEMENT_MISSING" | "IMOB_INSTALLATION_INACTIVE" | "IMOB_PERMISSION_DENIED" | undefined'.
+src/pages/profile.tsx(1007,17): error TS2339: Property 'totalSessions' does not exist on type '{ totalEvents: number; contractEvents: number; fallbackEvents: number; contractCoveragePct: number; fallbackRatePct: number; netContractCoveragePct: number; }'.
+src/pages/profile.tsx(1008,17): error TS2339: Property 'contractSessions' does not exist on type '{ totalEvents: number; contractEvents: number; fallbackEvents: number; contractCoveragePct: number; fallbackRatePct: number; netContractCoveragePct: number; }'.
+src/pages/profile.tsx(1009,17): error TS2339: Property 'fallbackSessions' does not exist on type '{ totalEvents: number; contractEvents: number; fallbackEvents: number; contractCoveragePct: number; fallbackRatePct: number; netContractCoveragePct: number; }'.
+src/pages/profile.tsx(1010,17): error TS2339: Property 'unknownSourceSessions' does not exist on type '{ totalEvents: number; contractEvents: number; fallbackEvents: number; contractCoveragePct: number; fallbackRatePct: number; netContractCoveragePct: number; }'.
+src/pages/profile.tsx(1024,15): error TS2339: Property 'workspaceName' does not exist on type '{ workspaceId: string; totalEvents: number; contractEvents: number; fallbackEvents: number; contractCoveragePct: number; fallbackRatePct: number; netContractCoveragePct: number; }'.
+src/pages/profile.tsx(1025,15): error TS2339: Property 'totalSessions' does not exist on type '{ workspaceId: string; totalEvents: number; contractEvents: number; fallbackEvents: number; contractCoveragePct: number; fallbackRatePct: number; netContractCoveragePct: number; }'.
+src/pages/profile.tsx(1026,15): error TS2339: Property 'contractSessions' does not exist on type '{ workspaceId: string; totalEvents: number; contractEvents: number; fallbackEvents: number; contractCoveragePct: number; fallbackRatePct: number; netContractCoveragePct: number; }'.
+src/pages/profile.tsx(1027,15): error TS2339: Property 'fallbackSessions' does not exist on type '{ workspaceId: string; totalEvents: number; contractEvents: number; fallbackEvents: number; contractCoveragePct: number; fallbackRatePct: number; netContractCoveragePct: number; }'.
+src/pages/profile.tsx(1028,15): error TS2339: Property 'unknownSourceSessions' does not exist on type '{ workspaceId: string; totalEvents: number; contractEvents: number; fallbackEvents: number; contractCoveragePct: number; fallbackRatePct: number; netContractCoveragePct: number; }'.
+src/pages/profile.tsx(1039,15): error TS2339: Property 'bucketStart' does not exist on type '{ date: string; totalEvents: number; contractEvents: number; fallbackEvents: number; contractCoveragePct: number; fallbackRatePct: number; netContractCoveragePct: number; }'.
+src/pages/profile.tsx(1040,15): error TS2339: Property 'bucketStart' does not exist on type '{ date: string; totalEvents: number; contractEvents: number; fallbackEvents: number; contractCoveragePct: number; fallbackRatePct: number; netContractCoveragePct: number; }'.
+src/pages/profile.tsx(1044,15): error TS2339: Property 'totalSessions' does not exist on type '{ date: string; totalEvents: number; contractEvents: number; fallbackEvents: number; contractCoveragePct: number; fallbackRatePct: number; netContractCoveragePct: number; }'.
+src/pages/profile.tsx(1045,15): error TS2339: Property 'contractSessions' does not exist on type '{ date: string; totalEvents: number; contractEvents: number; fallbackEvents: number; contractCoveragePct: number; fallbackRatePct: number; netContractCoveragePct: number; }'.
+src/pages/profile.tsx(1046,15): error TS2339: Property 'fallbackSessions' does not exist on type '{ date: string; totalEvents: number; contractEvents: number; fallbackEvents: number; contractCoveragePct: number; fallbackRatePct: number; netContractCoveragePct: number; }'.
+src/pages/profile.tsx(1047,15): error TS2339: Property 'unknownSourceSessions' does not exist on type '{ date: string; totalEvents: number; contractEvents: number; fallbackEvents: number; contractCoveragePct: number; fallbackRatePct: number; netContractCoveragePct: number; }'.
+src/pages/profile.tsx(1987,42): error TS2339: Property 'bucketStart' does not exist on type '{ date: string; totalEvents: number; contractEvents: number; fallbackEvents: number; contractCoveragePct: number; fallbackRatePct: number; netContractCoveragePct: number; }'.
+src/pages/profile.tsx(1988,62): error TS2339: Property 'bucketStart' does not exist on type '{ date: string; totalEvents: number; contractEvents: number; fallbackEvents: number; contractCoveragePct: number; fallbackRatePct: number; netContractCoveragePct: number; }'.
+src/pages/profile.tsx(1989,62): error TS2339: Property 'totalSessions' does not exist on type '{ date: string; totalEvents: number; contractEvents: number; fallbackEvents: number; contractCoveragePct: number; fallbackRatePct: number; netContractCoveragePct: number; }'.
+src/pages/profile.tsx(2011,62): error TS2339: Property 'workspaceName' does not exist on type '{ workspaceId: string; totalEvents: number; contractEvents: number; fallbackEvents: number; contractCoveragePct: number; fallbackRatePct: number; netContractCoveragePct: number; }'.
+src/pages/profile.tsx(2012,62): error TS2339: Property 'totalSessions' does not exist on type '{ workspaceId: string; totalEvents: number; contractEvents: number; fallbackEvents: number; contractCoveragePct: number; fallbackRatePct: number; netContractCoveragePct: number; }'.
+src/pages/profile.tsx(2015,62): error TS2339: Property 'unknownSourceSessions' does not exist on type '{ workspaceId: string; totalEvents: number; contractEvents: number; fallbackEvents: number; contractCoveragePct: number; fallbackRatePct: number; netContractCoveragePct: number; }'.
+src/pages/self-service/index.tsx(22,29): error TS2307: Cannot find module '../../assets/eiah-agentes.mp4' or its corresponding type declarations.
+src/pages/self-service/index.tsx(23,32): error TS2307: Cannot find module '../../assets/eiah-marketing.mp4' or its corresponding type declarations.
+src/pages/self-service/index.tsx(24,27): error TS2307: Cannot find module '../../assets/eiah-j360.mp4' or its corresponding type declarations.
+src/pages/self-service/index.tsx(25,39): error TS2307: Cannot find module '../../assets/eiah-flow-orchestrator.mp4' or its corresponding type declarations.
+src/pages/self-service/index.tsx(26,35): error TS2307: Cannot find module '../../assets/eiah-risk-analyzer.mp4' or its corresponding type declarations.
+src/pages/self-service/index.tsx(27,37): error TS2307: Cannot find module '../../assets/eiah-onchain-monitor.mp4' or its corresponding type declarations.
+src/pages/self-service/index.tsx(28,26): error TS2307: Cannot find module '../../assets/eiah-i-bc.mp4' or its corresponding type declarations.
+src/pages/self-service/index.tsx(29,30): error TS2307: Cannot find module '../../assets/eiah-diarias.mp4' or its corresponding type declarations.
+src/pages/self-service/index.tsx(30,28): error TS2307: Cannot find module '../../assets/eiah-nft-py.mp4' or its corresponding type declarations.
+src/pages/self-service/index.tsx(31,38): error TS2307: Cannot find module '../../assets/eiah-imagenftdiarias.mp4' or its corresponding type declarations.
+src/pages/self-service/index.tsx(32,27): error TS2307: Cannot find module '../../assets/eiah-defi.mp4' or its corresponding type declarations.
+src/pages/self-service/index.tsx(33,28): error TS2307: Cannot find module '../../assets/eiah-pitch.mp4' or its corresponding type declarations.
+src/pages/self-service/index.tsx(34,27): error TS2307: Cannot find module '../../assets/eiah-core.mp4' or its corresponding type declarations.
+src/pages/self-service/index.tsx(35,28): error TS2307: Cannot find module '../../assets/eiah-geral.mp4' or its corresponding type declarations.
+src/pages/self-service/pitch.tsx(11,18): error TS2367: This comparison appears to be unintentional because the types '"custom"' and '"generic"' have no overlap.
+undefined
+[WORKSPACE_ROOT]/EIAH_R0A/apps/web:
+ ERR_PNPM_RECURSIVE_EXEC_FIRST_FAIL  Command failed with exit code 2: tsc --noEmit

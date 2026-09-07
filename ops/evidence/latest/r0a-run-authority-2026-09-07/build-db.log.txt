@@ -1,0 +1,44 @@
+
+> @repo/db@1.0.0 prebuild [WORKSPACE_ROOT]/EIAH_R0A/packages/db
+> bash ../../scripts/prebuild-check.sh
+
+
+> @repo/db@1.0.0 build [WORKSPACE_ROOT]/EIAH_R0A/packages/db
+> pnpm run generate && tsup --config tsup.config.ts && pnpm run build:dts
+
+
+> @repo/db@1.0.0 generate [WORKSPACE_ROOT]/EIAH_R0A/packages/db
+> pnpm prisma generate
+
+
+> @repo/db@1.0.0 prisma [WORKSPACE_ROOT]/EIAH_R0A/packages/db
+> prisma generate
+
+Loaded Prisma config from prisma.config.ts.
+
+Prisma schema loaded from prisma/schema.prisma.
+
+✔ Generated Prisma Client (v7.2.0) to ./src/generated/client in 397ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Interested in query caching in just a few lines of code? Try Accelerate today! https://pris.ly/tip-3-accelerate
+
+CLI Building entry: src/client.ts, src/index.ts, src/middleware/tenantGuard.ts
+CLI Using tsconfig: tsconfig.json
+CLI tsup v8.5.1
+CLI Using tsup config: [WORKSPACE_ROOT]/EIAH_R0A/packages/db/tsup.config.ts
+CLI Target: es2022
+CLI Cleaning output folder
+ESM Build start
+ESM dist/middleware/tenantGuard.js 3.48 KB
+ESM dist/client.js                 2.21 KB
+ESM dist/index.js                  407.00 B
+ESM ⚡️ Build success in 12ms
+
+> @repo/db@1.0.0 build:dts [WORKSPACE_ROOT]/EIAH_R0A/packages/db
+> tsc --build tsconfig.json --force
+
+
+> @repo/db@1.0.0 postbuild [WORKSPACE_ROOT]/EIAH_R0A/packages/db
+> node ./scripts/copy-publish-artifacts.mjs

@@ -1,0 +1,364 @@
+TAP version 13
+# Subtest: R1: non-terminal run does not enter the P1 population
+ok 1 - R1: non-terminal run does not enter the P1 population
+  ---
+  duration_ms: 2.836219
+  type: 'test'
+  ...
+# Subtest: R2: terminal run without breakdown is not_applicable, not a gap
+ok 2 - R2: terminal run without breakdown is not_applicable, not a gap
+  ---
+  duration_ms: 2.288817
+  type: 'test'
+  ...
+# Subtest: R3: terminal run with a zero-sum breakdown is legitimate zero-cost, not missing_breakdown
+ok 3 - R3: terminal run with a zero-sum breakdown is legitimate zero-cost, not missing_breakdown
+  ---
+  duration_ms: 0.633847
+  type: 'test'
+  ...
+# Subtest: R4: terminal run with breakdown but no ledger is an audit gap
+ok 4 - R4: terminal run with breakdown but no ledger is an audit gap
+  ---
+  duration_ms: 0.514192
+  type: 'test'
+  ...
+# Subtest: R5: terminal run with inconsistent breakdown/ledger values is an audit gap
+ok 5 - R5: terminal run with inconsistent breakdown/ledger values is an audit gap
+  ---
+  duration_ms: 0.343761
+  type: 'test'
+  ...
+# Subtest: R6: USER_CANCELLED with usage and no ledger stays measurable as an audit gap
+ok 6 - R6: USER_CANCELLED with usage and no ledger stays measurable as an audit gap
+  ---
+  duration_ms: 0.376852
+  type: 'test'
+  ...
+# Subtest: R7: GUARDRAIL_BLOCK with proven governance authority is not an audit gap
+ok 7 - R7: GUARDRAIL_BLOCK with proven governance authority is not an audit gap
+  ---
+  duration_ms: 0.673994
+  type: 'test'
+  ...
+# Subtest: R8: GUARDRAIL_BLOCK without resolvable authority is reported unresolved, never silently healthy
+ok 8 - R8: GUARDRAIL_BLOCK without resolvable authority is reported unresolved, never silently healthy
+  ---
+  duration_ms: 0.385091
+  type: 'test'
+  ...
+# Subtest: R9: a duplicate group of 2 rows contributes count=1
+ok 9 - R9: a duplicate group of 2 rows contributes count=1
+  ---
+  duration_ms: 0.699685
+  type: 'test'
+  ...
+# Subtest: R10: a duplicate group of 5 rows contributes count=4
+ok 10 - R10: a duplicate group of 5 rows contributes count=4
+  ---
+  duration_ms: 0.852107
+  type: 'test'
+  ...
+# Subtest: R11: two duplicate groups (n=3, n=2) sum to total=3
+ok 11 - R11: two duplicate groups (n=3, n=2) sum to total=3
+  ---
+  duration_ms: 0.449065
+  type: 'test'
+  ...
+# Subtest: R12: limit truncates displayed items but never the duplicateChargesCount metric
+ok 12 - R12: limit truncates displayed items but never the duplicateChargesCount metric
+  ---
+  duration_ms: 0.424486
+  type: 'test'
+  ...
+# Subtest: R13: grouping key is the full semantic tuple, not requestId alone
+ok 13 - R13: grouping key is the full semantic tuple, not requestId alone
+  ---
+  duration_ms: 0.500965
+  type: 'test'
+  ...
+# Subtest: R14: tenant scope is preserved, other tenants never leak into totals
+ok 14 - R14: tenant scope is preserved, other tenants never leak into totals
+  ---
+  duration_ms: 0.350485
+  type: 'test'
+  ...
+# Subtest: R15: reconciliation blocked-category handling stays in sync with the governed operation catalog
+ok 15 - R15: reconciliation blocked-category handling stays in sync with the governed operation catalog
+  ---
+  duration_ms: 1.927957
+  type: 'test'
+  ...
+# Subtest: R16: a blocked.trustscore ledger row does not resolve GUARDRAIL_BLOCK authority
+ok 16 - R16: a blocked.trustscore ledger row does not resolve GUARDRAIL_BLOCK authority
+  ---
+  duration_ms: 0.66668
+  type: 'test'
+  ...
+# Subtest: R17: an exact blocked.guardrails ledger row resolves GUARDRAIL_BLOCK authority
+ok 17 - R17: an exact blocked.guardrails ledger row resolves GUARDRAIL_BLOCK authority
+  ---
+  duration_ms: 0.285176
+  type: 'test'
+  ...
+# Subtest: R18: an unrecognized blocked.* ledger row does not resolve GUARDRAIL_BLOCK authority
+ok 18 - R18: an unrecognized blocked.* ledger row does not resolve GUARDRAIL_BLOCK authority
+  ---
+  duration_ms: 0.322221
+  type: 'test'
+  ...
+# Subtest: R19: coverageMode=full counts a gap in run 51+ that the default take:50 cap would silently drop
+ok 19 - R19: coverageMode=full counts a gap in run 51+ that the default take:50 cap would silently drop
+  ---
+  duration_ms: 2.022438
+  type: 'test'
+  ...
+# Subtest: R20: coverageMode default (presentation) is unchanged from the pre-P1-R3-F behavior
+ok 20 - R20: coverageMode default (presentation) is unchanged from the pre-P1-R3-F behavior
+  ---
+  duration_ms: 0.513944
+  type: 'test'
+  ...
+# Subtest: buildGuardianStructuredOutput derives fail-closed decision and evidence table
+ok 21 - buildGuardianStructuredOutput derives fail-closed decision and evidence table
+  ---
+  duration_ms: 4.084086
+  type: 'test'
+  ...
+# Subtest: buildGuardianStructuredOutput materializes missing runtime health as checklist item and blocking issue
+ok 22 - buildGuardianStructuredOutput materializes missing runtime health as checklist item and blocking issue
+  ---
+  duration_ms: 0.656158
+  type: 'test'
+  ...
+# Subtest: buildGuardianStructuredOutput preserves GO when evidence is complete
+ok 23 - buildGuardianStructuredOutput preserves GO when evidence is complete
+  ---
+  duration_ms: 0.701738
+  type: 'test'
+  ...
+# Subtest: buildGuardianStructuredOutput reads step data from action output envelope
+ok 24 - buildGuardianStructuredOutput reads step data from action output envelope
+  ---
+  duration_ms: 16.330069
+  type: 'test'
+  ...
+# Subtest: buildGuardianStructuredOutput treats staged recipe plans as plan overview instead of final go-live gate
+ok 25 - buildGuardianStructuredOutput treats staged recipe plans as plan overview instead of final go-live gate
+  ---
+  duration_ms: 1.212429
+  type: 'test'
+  ...
+# Subtest: buildGuardianStructuredOutput reconciles guardian signals into structured recipe steps
+ok 26 - buildGuardianStructuredOutput reconciles guardian signals into structured recipe steps
+  ---
+  duration_ms: 1.61406
+  type: 'test'
+  ...
+# Subtest: buildGuardianStructuredOutput dedupes next steps for complete staged plan
+ok 27 - buildGuardianStructuredOutput dedupes next steps for complete staged plan
+  ---
+  duration_ms: 2.837221
+  type: 'test'
+  ...
+# Subtest: buildGuardianStructuredOutput marks finops as not_calculated when only partial usage or cost is available
+ok 28 - buildGuardianStructuredOutput marks finops as not_calculated when only partial usage or cost is available
+  ---
+  duration_ms: 0.760771
+  type: 'test'
+  ...
+# Subtest: recipe orchestration follows consultative IMOB-like pattern for go-live recipes
+ok 29 - recipe orchestration follows consultative IMOB-like pattern for go-live recipes
+  ---
+  duration_ms: 11.791366
+  type: 'test'
+  ...
+# Subtest: recipe orchestration ignores malicious positive governance metadata
+ok 30 - recipe orchestration ignores malicious positive governance metadata
+  ---
+  duration_ms: 0.500481
+  type: 'test'
+  ...
+# Subtest: recipe orchestration emits ordered follow-up recipes for full web go-live plans
+ok 31 - recipe orchestration emits ordered follow-up recipes for full web go-live plans
+  ---
+  duration_ms: 0.669928
+  type: 'test'
+  ...
+# Subtest: recipe orchestration chooses IMOB when available, otherwise falls back to EIAH
+ok 32 - recipe orchestration chooses IMOB when available, otherwise falls back to EIAH
+  ---
+  duration_ms: 0.757464
+  type: 'test'
+  ...
+# Subtest: recipe orchestration selects pitch and legal leaders by recipe domain
+ok 33 - recipe orchestration selects pitch and legal leaders by recipe domain
+  ---
+  duration_ms: 3.136876
+  type: 'test'
+  ...
+# Subtest: recipe orchestration preserves the selected MKT agent for campaign recipes
+ok 34 - recipe orchestration preserves the selected MKT agent for campaign recipes
+  ---
+  duration_ms: 0.585335
+  type: 'test'
+  ...
+# Subtest: recipe orchestration flags guardian review for PII or high risk
+ok 35 - recipe orchestration flags guardian review for PII or high risk
+  ---
+  duration_ms: 0.905039
+  type: 'test'
+  ...
+# Subtest: recipe orchestration does not allow delegate_assisted without tenant/workspace context
+ok 36 - recipe orchestration does not allow delegate_assisted without tenant/workspace context
+  ---
+  duration_ms: 0.499879
+  type: 'test'
+  ...
+# Subtest: guardian landing page renderer avoids prohibited commercial terms
+ok 37 - guardian landing page renderer avoids prohibited commercial terms
+  ---
+  duration_ms: 64.394387
+  type: 'test'
+  ...
+# Subtest: guardian pdf renderer stays printable and fail-closed on missing payload
+ok 38 - guardian pdf renderer stays printable and fail-closed on missing payload
+  ---
+  duration_ms: 0.357706
+  type: 'test'
+  ...
+# Subtest: guardian payload fixture matches schema v1
+ok 39 - guardian payload fixture matches schema v1
+  ---
+  duration_ms: 1.223664
+  type: 'test'
+  ...
+# Subtest: generic landing/pdf render recipe orchestrator section when recipe payload exists
+ok 40 - generic landing/pdf render recipe orchestrator section when recipe payload exists
+  ---
+  duration_ms: 5.511277
+  type: 'test'
+  ...
+# Subtest: guardian landing renderer also includes recipe orchestrator section
+ok 41 - guardian landing renderer also includes recipe orchestrator section
+  ---
+  duration_ms: 1.473546
+  type: 'test'
+  ...
+# Subtest: T1: billing reference operation can be resolved
+ok 42 - T1: billing reference operation can be resolved
+  ---
+  duration_ms: 1.491876
+  type: 'test'
+  ...
+# Subtest: T2: unknown operationId fails closed instead of returning a default
+ok 43 - T2: unknown operationId fails closed instead of returning a default
+  ---
+  duration_ms: 0.598243
+  type: 'test'
+  ...
+# Subtest: T3: reference operation domain is billing
+ok 44 - T3: reference operation domain is billing
+  ---
+  duration_ms: 0.331022
+  type: 'test'
+  ...
+# Subtest: T4: reference operation effectType is debit
+ok 45 - T4: reference operation effectType is debit
+  ---
+  duration_ms: 0.207679
+  type: 'test'
+  ...
+# Subtest: T5: terminality is represented via Run.finishedAt IS NOT NULL
+ok 46 - T5: terminality is represented via Run.finishedAt IS NOT NULL
+  ---
+  duration_ms: 0.166801
+  type: 'test'
+  ...
+# Subtest: T6: effect expectation source is RunUsageBreakdown
+ok 47 - T6: effect expectation source is RunUsageBreakdown
+  ---
+  duration_ms: 1.785551
+  type: 'test'
+  ...
+# Subtest: T7: breakdown-absent and breakdown-present-summing-zero are distinct
+ok 48 - T7: breakdown-absent and breakdown-present-summing-zero are distinct
+  ---
+  duration_ms: 0.337693
+  type: 'test'
+  ...
+# Subtest: T8: idempotency classification stays SEMANTIC_IDEMPOTENCY_KEY_PARTIAL
+ok 49 - T8: idempotency classification stays SEMANTIC_IDEMPOTENCY_KEY_PARTIAL
+  ---
+  duration_ms: 0.16957
+  type: 'test'
+  ...
+# Subtest: T9: outcome authority is INTERNAL_CONFIRMED, not EXTERNAL_CONFIRMED
+ok 50 - T9: outcome authority is INTERNAL_CONFIRMED, not EXTERNAL_CONFIRMED
+  ---
+  duration_ms: 0.371528
+  type: 'test'
+  ...
+# Subtest: T10: blocked lifecycle-terminal does not auto-declare an audit gap
+ok 51 - T10: blocked lifecycle-terminal does not auto-declare an audit gap
+  ---
+  duration_ms: 0.467663
+  type: 'test'
+  ...
+# Subtest: T11: no blocked category declares runtime-proven independent authority
+ok 52 - T11: no blocked category declares runtime-proven independent authority
+  ---
+  duration_ms: 0.180264
+  type: 'test'
+  ...
+# Subtest: T12: definition scope is GLOBAL, no concrete tenant/workspace values
+ok 53 - T12: definition scope is GLOBAL, no concrete tenant/workspace values
+  ---
+  duration_ms: 1.846329
+  type: 'test'
+  ...
+# Subtest: T13: catalog coverage is billing-only, never system-complete
+ok 54 - T13: catalog coverage is billing-only, never system-complete
+  ---
+  duration_ms: 0.196138
+  type: 'test'
+  ...
+# Subtest: T14: reference operation effectiveFrom is 2026-09-03
+ok 55 - T14: reference operation effectiveFrom is 2026-09-03
+  ---
+  duration_ms: 0.066917
+  type: 'test'
+  ...
+# Subtest: catalog version is a positive integer
+ok 56 - catalog version is a positive integer
+  ---
+  duration_ms: 0.065674
+  type: 'test'
+  ...
+# Subtest: T15: GUARDRAIL_BLOCK does not statically prove valid governance authority
+ok 57 - T15: GUARDRAIL_BLOCK does not statically prove valid governance authority
+  ---
+  duration_ms: 0.062038
+  type: 'test'
+  ...
+# Subtest: T16: GUARDRAIL_BLOCK requires authority resolution before deciding no-gap
+ok 58 - T16: GUARDRAIL_BLOCK requires authority resolution before deciding no-gap
+  ---
+  duration_ms: 0.080892
+  type: 'test'
+  ...
+# Subtest: T17: catalog semantics alone cannot produce a healthy/no-gap conclusion for any blocked category
+ok 59 - T17: catalog semantics alone cannot produce a healthy/no-gap conclusion for any blocked category
+  ---
+  duration_ms: 0.129937
+  type: 'test'
+  ...
+1..59
+# tests 59
+# suites 0
+# pass 59
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 674.129005

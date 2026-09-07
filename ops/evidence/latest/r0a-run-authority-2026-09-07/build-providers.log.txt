@@ -1,0 +1,7 @@
+
+> @eiah/providers@0.1.0 prebuild [WORKSPACE_ROOT]/EIAH_R0A/packages/providers
+> bash ../../scripts/prebuild-check.sh
+
+
+> @eiah/providers@0.1.0 build [WORKSPACE_ROOT]/EIAH_R0A/packages/providers
+> tsc -p tsconfig.json
