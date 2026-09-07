@@ -4,6 +4,12 @@
 > Roadmap anterior (historico): `ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-05-23.md`
 > ADR de stack oficial para domain/go-live: `docs/adr/ADR-001-domain-runtime-stack.md`
 
+## ADR-002 v2-r3 — Registro de ratificação (2026-09-07)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Verificação documental do registro da manifestação humana | `ops/evidence/latest/adr-002-v2-r3-ratification-validation-2026-09-07.md` | Execução real de conferência do SHA-256 preservado, transcrição literal, links da ficha e diff sem erro de whitespace. A ficha registra a ratificação explícita e os metadados não fornecidos. Não comprova autenticação externa, testes de runtime, liberação de piloto ou merge. |
+
 ## ADR-002 v2-r3 — Publicação documental (2026-09-05)
 
 | Assunto | Arquivo | O que prova |
