@@ -269,6 +269,11 @@ model Run {
   @@index([status])
   @@index([costCents])
   @@index([archivedAt])
+  // Aditiva, sem custo funcional: id já é único sozinho; esta constraint
+  // composta existe apenas para permitir que outras tabelas (ex.:
+  // SignalForwardRequest) referenciem Run por FK composta (id+tenant+workspace),
+  // impedindo no banco um vínculo para um Run de outro tenant/workspace.
+  @@unique([id, tenantId, workspaceId], name: "run_id_tenant_workspace_unique")
   @@map("runs")
 }
 
@@ -283,19 +288,33 @@ model SignalForwardRequest {
   sourceRunId        String   @map("source_run_id")
   destinationAgent   String   @map("destination_agent")
   idempotencyKey     String   @map("idempotency_key")
+  // Calculado no servidor a partir da origem validada (ver
+  // apps/api/src/services/signalForward/originContract.ts) — nunca aceito
+  // do chamador. Não é a preservação do conteúdo em si (ver originSnapshot).
   requestFingerprint String   @map("request_fingerprint")
+  // Cópia imutável do conteúdo da origem efetivamente usado no momento do
+  // encaminhamento (não uma referência que pode mudar depois). Escrito uma
+  // única vez na criação; nenhum código deste módulo o atualiza depois.
+  originSnapshot     Json     @map("origin_snapshot")
   requestedByUserId  String?  @map("requested_by_user_id")
-  destinationRunId   String?  @unique @map("destination_run_id")
+  destinationRunId   String?  @map("destination_run_id")
   status             String   @default("pending_dispatch")
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
-  tenant         Tenant    @relation(fields: [tenantId], references: [id])
-  workspace      Workspace @relation(fields: [workspaceId], references: [id])
-  sourceRun      Run       @relation("SignalForwardSource", fields: [sourceRunId], references: [id])
-  destinationRun Run?      @relation("SignalForwardDestination", fields: [destinationRunId], references: [id])
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  // FK composta: garante no banco que a origem/destino pertencem ao MESMO
+  // tenant/workspace deste registro — uma FK simples para Run.id não bastava
+  // (não impedia referenciar um Run de outro tenant). Aditiva sobre Run.
+  sourceRun      Run  @relation("SignalForwardSource", fields: [sourceRunId, tenantId, workspaceId], references: [id, tenantId, workspaceId])
+  destinationRun Run? @relation("SignalForwardDestination", fields: [destinationRunId, tenantId, workspaceId], references: [id, tenantId, workspaceId])
 
   @@unique([tenantId, workspaceId, destinationAgent, idempotencyKey], name: "signalForwardIdempotencyKey")
+  // Unicidade de destinationRunId preservada (equivalente à @unique simples
+  // anterior, já que tenantId/workspaceId são fixos por linha) — a forma
+  // composta é exigida pelo Prisma para a relação 1:1 com FK composta acima.
+  @@unique([destinationRunId, tenantId, workspaceId], name: "signalForwardDestinationRunUnique")
   @@index([tenantId, workspaceId, sourceRunId])
   @@map("signal_forward_requests")
 }

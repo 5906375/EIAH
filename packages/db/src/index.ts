@@ -16,6 +16,7 @@ export const prisma = prismaGlobal;
 
 // 🔹 Exports principais
 export { Prisma, RunStatus } from "./generated/client/index.js";
+export type { Run } from "./generated/client/index.js";
 export * from "./middleware/tenantGuard.js";
 export { PrismaClient };
 export { closePrismaResources, prismaGlobal, getPrismaForTenant };

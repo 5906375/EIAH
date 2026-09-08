@@ -13,7 +13,7 @@ test("createRunRecord real: atribuição válida, solicitação+run+vínculo per
 
     const input = {
       tenantId, workspaceId, requestedByUserId: userId, sourceRunId,
-      destinationAgent: "mkt", idempotencyKey: "key-a", requestFingerprint: "fp-a",
+      destinationAgent: "mkt", idempotencyKey: "key-a",
     };
 
     const result = await forwardSignalToMkt(input, {}, client.prisma);
@@ -28,6 +28,11 @@ test("createRunRecord real: atribuição válida, solicitação+run+vínculo per
     assert.equal(forward?.destinationRunId, result.destinationRunId);
     assert.equal(forward?.status, "run_created");
     assert.equal(forward?.sourceRunId, sourceRunId);
+    // fingerprint calculado no servidor (64 hex chars = sha256) — não é o
+    // que o chamador forneceria (chamador nem fornece mais esse campo).
+    assert.match(forward?.requestFingerprint ?? "", /^[a-f0-9]{64}$/);
+    // snapshot da origem preservado, correspondente ao response real do run de origem
+    assert.deepEqual(forward?.originSnapshot, { signalAnalysis: { summary: "sinal sintético de teste" } });
 
     // createRunRecord REAL: confirma assignmentId/agentVersion resolvidos de
     // verdade (não nulos), prova de que assertWorkspaceAgentEnabled real rodou.

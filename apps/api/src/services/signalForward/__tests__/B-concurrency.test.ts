@@ -17,7 +17,7 @@ test("concorrência real (cadeia real): duas transações disputam a mesma chave
 
     const input = {
       tenantId, workspaceId, requestedByUserId: userId, sourceRunId,
-      destinationAgent: "mkt", idempotencyKey: "key-concurrent", requestFingerprint: "fp-concurrent",
+      destinationAgent: "mkt", idempotencyKey: "key-concurrent",
     };
 
     let releaseA: () => void;

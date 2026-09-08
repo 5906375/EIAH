@@ -17,7 +17,7 @@ test("recusa de atribuição real: sem run, sem solicitação parcial, auditoria
 
     const input = {
       tenantId, workspaceId, requestedByUserId: userId, sourceRunId,
-      destinationAgent: "mkt", idempotencyKey: "key-d", requestFingerprint: "fp-d",
+      destinationAgent: "mkt", idempotencyKey: "key-d",
     };
 
     await assert.rejects(

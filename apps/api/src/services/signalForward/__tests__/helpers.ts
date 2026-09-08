@@ -76,11 +76,19 @@ export async function seedRealScenario(
     create: { id: userId, tenantId: opts.tenantId, email: `${userId}@example.test` },
     update: {},
   });
-  await prisma.agentMetadata.upsert({
-    where: { agent: "mkt" },
-    create: { agent: "mkt", displayName: "MKT (teste real)", version: "1.0.0" },
-    update: {},
-  });
+  // AgentMetadata.agent é único GLOBALMENTE (não por tenant) — arquivos de
+  // teste distintos rodam em paralelo e podem colidir num upsert não-atômico
+  // sob concorrência real (achado desta unidade). "mkt" é idempotente por
+  // natureza (mesmo conteúdo sempre), então P2002 aqui significa apenas que
+  // outro teste já criou a mesma linha — seguro ignorar.
+  try {
+    await prisma.agentMetadata.create({
+      data: { agent: "mkt", displayName: "MKT (teste real)", version: "1.0.0" },
+    });
+  } catch (e) {
+    const code = (e as { code?: string })?.code;
+    if (code !== "P2002") throw e;
+  }
   if (opts.mktEnabled !== false) {
     await prisma.workspaceAgentAssignment.upsert({
       where: {
@@ -106,6 +114,25 @@ export async function seedRealScenario(
   });
 
   return { userId, sourceRunId: sourceRun.id };
+}
+
+// Cria um Run de origem avulso, com estado/conteúdo controlados pelo teste —
+// usado pelos cenários de validação de escopo/estado da origem.
+export async function createOriginRun(
+  prisma: PrismaClient,
+  opts: { tenantId: string; workspaceId: string; status?: keyof typeof RunStatus; response?: unknown }
+) {
+  const run = await prisma.run.create({
+    data: {
+      tenantId: opts.tenantId, workspaceId: opts.workspaceId,
+      agent: "radar", status: RunStatus[opts.status ?? "success"],
+      request: { metadata: { simulatedOrigin: true } },
+      response: opts.response === undefined
+        ? { signalAnalysis: { summary: "sinal sintético de teste" } }
+        : (opts.response as any),
+    },
+  });
+  return run.id;
 }
 
 export async function grantScope(

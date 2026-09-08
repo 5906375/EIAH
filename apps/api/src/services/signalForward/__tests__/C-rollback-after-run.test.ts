@@ -14,7 +14,7 @@ test("rollback após criar o run real, antes do vínculo: nenhum run órfão, ne
 
     const input = {
       tenantId, workspaceId, requestedByUserId: userId, sourceRunId,
-      destinationAgent: "mkt", idempotencyKey: "key-c", requestFingerprint: "fp-c",
+      destinationAgent: "mkt", idempotencyKey: "key-c",
     };
 
     await assert.rejects(

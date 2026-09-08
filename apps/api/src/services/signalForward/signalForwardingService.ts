@@ -21,7 +21,11 @@ import { checkScopePermission, recordGuardrailAudit } from "@eiah/core";
 import { createRunRecord } from "../runs";
 import { WorkspaceAgentAssignmentError } from "../workspaceAgentAssignments";
 import { classifySignalForwardUniqueViolation } from "./classifier";
+import { readAndValidateOrigin, buildOriginSnapshot, computeRequestFingerprint } from "./originContract";
 
+// requestFingerprint NÃO é mais um campo de entrada — nunca é aceito do
+// chamador (achado de revisão corrigido). É sempre calculado no servidor a
+// partir da origem validada, dentro de forwardSignalToMkt/recoverExisting...
 export interface SignalForwardRequestInput {
   tenantId: string;
   workspaceId: string;
@@ -29,7 +33,6 @@ export interface SignalForwardRequestInput {
   sourceRunId: string;
   destinationAgent: string;
   idempotencyKey: string;
-  requestFingerprint: string;
 }
 
 export interface SignalForwardResult {
@@ -148,6 +151,20 @@ export async function forwardSignalToMkt(
 
   try {
     return await db.$transaction(async (tx) => {
+      // Leitura da origem ESCOPADA por tenant/workspace + validação estrutural
+      // mínima, dentro da MESMA transação que cria a solicitação — evita uma
+      // corrida entre validar e persistir. Lança SignalForwardOriginError se
+      // a origem não existir neste escopo ou não satisfizer o mínimo exigido;
+      // esse erro não é P2002/P2034, propaga como está (nenhuma criação
+      // compensatória, nenhuma classificação indevida).
+      const sourceRun = await readAndValidateOrigin(tx, {
+        tenantId: input.tenantId, workspaceId: input.workspaceId, sourceRunId: input.sourceRunId,
+      });
+      const originSnapshot = buildOriginSnapshot(sourceRun);
+      const requestFingerprint = computeRequestFingerprint({
+        sourceRunId: input.sourceRunId, destinationAgent: input.destinationAgent, originSnapshot,
+      });
+
       const forward = await tx.signalForwardRequest.create({
         data: {
           tenantId: input.tenantId,
@@ -155,7 +172,8 @@ export async function forwardSignalToMkt(
           sourceRunId: input.sourceRunId,
           destinationAgent: input.destinationAgent,
           idempotencyKey: input.idempotencyKey,
-          requestFingerprint: input.requestFingerprint,
+          requestFingerprint,
+          originSnapshot: originSnapshot as Prisma.InputJsonValue,
           requestedByUserId: input.requestedByUserId,
           status: "pending_dispatch",
         },
@@ -254,7 +272,20 @@ export async function recoverExistingSignalForwardRequest(
     sourceRunId: existing.sourceRunId,
   });
 
-  if (existing.requestFingerprint !== input.requestFingerprint) {
+  // Fingerprint recalculado a partir da origem informada NESTA tentativa
+  // (input.sourceRunId), não do que foi armazenado — detecta tanto mudança
+  // de conteúdo da mesma origem quanto uma origem diferente sob a mesma
+  // chave. Reaplica a validação de escopo/estado da origem no reuso.
+  const currentSourceRun = await readAndValidateOrigin(db, {
+    tenantId: input.tenantId, workspaceId: input.workspaceId, sourceRunId: input.sourceRunId,
+  });
+  const currentFingerprint = computeRequestFingerprint({
+    sourceRunId: input.sourceRunId,
+    destinationAgent: input.destinationAgent,
+    originSnapshot: buildOriginSnapshot(currentSourceRun),
+  });
+
+  if (existing.requestFingerprint !== currentFingerprint) {
     throw new ConflictError("idempotency_key_reused_incompatible_payload");
   }
 

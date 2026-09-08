@@ -13,7 +13,7 @@ test("sem concessão de escopo: bloqueado por padrão (fail-closed), nenhum regi
 
     const input = {
       tenantId, workspaceId, requestedByUserId: userId, sourceRunId,
-      destinationAgent: "mkt", idempotencyKey: "key-e1", requestFingerprint: "fp-e1",
+      destinationAgent: "mkt", idempotencyKey: "key-e1",
     };
 
     await assert.rejects(
@@ -41,7 +41,7 @@ test("reuso não dispensa autorização: escopo revogado após criação bloquei
 
     const input = {
       tenantId, workspaceId, requestedByUserId: userId, sourceRunId,
-      destinationAgent: "mkt", idempotencyKey: "key-e2", requestFingerprint: "fp-e2",
+      destinationAgent: "mkt", idempotencyKey: "key-e2",
     };
 
     const first = await forwardSignalToMkt(input, {}, client.prisma);

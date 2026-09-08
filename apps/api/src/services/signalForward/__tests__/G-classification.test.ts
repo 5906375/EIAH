@@ -3,11 +3,11 @@
 // já validada na prova experimental, agora contra o classificador REAL do produto).
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createNamedClient, seedRealScenario, grantScope, newTenantWorkspace } from "./helpers.ts";
+import { createNamedClient, seedRealScenario, createOriginRun, grantScope, newTenantWorkspace } from "./helpers.ts";
 import { forwardSignalToMkt, ConflictError } from "../signalForwardingService.ts";
 import { classifySignalForwardUniqueViolation } from "../classifier.ts";
 
-test("duplicidade esperada real: segunda chamada com mesma chave/fingerprint reutiliza", async () => {
+test("duplicidade esperada real: segunda chamada com mesma chave/origem reutiliza", async () => {
   const client = createNamedClient("poc-real-g1");
   try {
     const { tenantId, workspaceId } = newTenantWorkspace("real-g1");
@@ -16,7 +16,7 @@ test("duplicidade esperada real: segunda chamada com mesma chave/fingerprint reu
 
     const input = {
       tenantId, workspaceId, requestedByUserId: userId, sourceRunId,
-      destinationAgent: "mkt", idempotencyKey: "key-g1", requestFingerprint: "fp-g1",
+      destinationAgent: "mkt", idempotencyKey: "key-g1",
     };
 
     const first = await forwardSignalToMkt(input, {}, client.prisma);
@@ -30,29 +30,35 @@ test("duplicidade esperada real: segunda chamada com mesma chave/fingerprint reu
   }
 });
 
-test("fingerprint incompatível real: 409, nenhum registro adicional", async () => {
+test("conflito de conteúdo real: mesma chave, origem diferente (fingerprint diverge) -> 409, nenhum registro adicional", async () => {
   const client = createNamedClient("poc-real-g2");
   try {
     const { tenantId, workspaceId } = newTenantWorkspace("real-g2");
-    const { userId, sourceRunId } = await seedRealScenario(client.prisma, { tenantId, workspaceId });
+    const { userId, sourceRunId: sourceRunA } = await seedRealScenario(client.prisma, { tenantId, workspaceId });
+    const sourceRunB = await createOriginRun(client.prisma, {
+      tenantId, workspaceId, response: { signalAnalysis: { summary: "sinal DIFERENTE" } },
+    });
     await grantScope(client.prisma, { tenantId, workspaceId, scope: "runs.execute" });
 
-    const base = {
-      tenantId, workspaceId, requestedByUserId: userId, sourceRunId, destinationAgent: "mkt",
-      idempotencyKey: "key-g2",
-    };
+    const base = { tenantId, workspaceId, requestedByUserId: userId, destinationAgent: "mkt", idempotencyKey: "key-g2" };
 
-    await forwardSignalToMkt({ ...base, requestFingerprint: "fp-original" }, {}, client.prisma);
+    const first = await forwardSignalToMkt({ ...base, sourceRunId: sourceRunA }, {}, client.prisma);
+    assert.equal(first.reused, false);
 
     await assert.rejects(
-      forwardSignalToMkt({ ...base, requestFingerprint: "fp-DIFFERENT" }, {}, client.prisma),
+      forwardSignalToMkt({ ...base, sourceRunId: sourceRunB }, {}, client.prisma),
       (err: unknown) => err instanceof ConflictError
     );
 
     const count = await client.prisma.signalForwardRequest.count({
       where: { tenantId, workspaceId, idempotencyKey: base.idempotencyKey },
     });
-    assert.equal(count, 1);
+    assert.equal(count, 1, "nenhum registro adicional; o original permanece");
+
+    const preserved = await client.prisma.signalForwardRequest.findFirst({
+      where: { tenantId, workspaceId, idempotencyKey: base.idempotencyKey },
+    });
+    assert.equal(preserved?.sourceRunId, sourceRunA, "vínculo original preservado, não sobrescrito pela tentativa em conflito");
   } finally {
     await client.close();
   }
