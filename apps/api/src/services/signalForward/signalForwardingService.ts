@@ -21,7 +21,12 @@ import { checkScopePermission, recordGuardrailAudit } from "@eiah/core";
 import { createRunRecord } from "../runs";
 import { WorkspaceAgentAssignmentError } from "../workspaceAgentAssignments";
 import { classifySignalForwardUniqueViolation } from "./classifier";
-import { readAndValidateOrigin, buildOriginSnapshot, computeRequestFingerprint } from "./originContract";
+import {
+  readAndValidateOrigin,
+  buildOriginSnapshot,
+  computeRequestFingerprint,
+  FINGERPRINT_CONTRACT_VERSION,
+} from "./originContract";
 
 // requestFingerprint NÃO é mais um campo de entrada — nunca é aceito do
 // chamador (achado de revisão corrigido). É sempre calculado no servidor a
@@ -173,6 +178,10 @@ export async function forwardSignalToMkt(
           destinationAgent: input.destinationAgent,
           idempotencyKey: input.idempotencyKey,
           requestFingerprint,
+          // Definida pelo servidor, sempre a partir da mesma constante usada
+          // para calcular requestFingerprint acima — nunca aceita do chamador
+          // (SignalForwardRequestInput não tem esse campo).
+          fingerprintVersion: FINGERPRINT_CONTRACT_VERSION,
           originSnapshot: originSnapshot as Prisma.InputJsonValue,
           requestedByUserId: input.requestedByUserId,
           status: "pending_dispatch",

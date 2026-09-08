@@ -20,7 +20,13 @@ export class SignalForwardOriginError extends Error {
 }
 
 const REQUIRED_ORIGIN_STATUS = "success" as const;
-const FINGERPRINT_CONTRACT_VERSION = "signal-forward-fingerprint.v1";
+
+// Exportada deliberadamente: é a fonte única de verdade tanto para o cálculo
+// do fingerprint (abaixo) quanto para o valor persistido em
+// SignalForwardRequest.fingerprintVersion (signalForwardingService.ts) — usar
+// a mesma constante nos dois pontos evita que a versão persistida divirja da
+// versão realmente usada no cálculo.
+export const FINGERPRINT_CONTRACT_VERSION = "signal-forward-fingerprint.v1";
 
 /**
  * Lê a origem ESCOPADA por tenant/workspace (nunca por id isolado) e valida

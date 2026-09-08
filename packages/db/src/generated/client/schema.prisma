@@ -292,6 +292,18 @@ model SignalForwardRequest {
   // apps/api/src/services/signalForward/originContract.ts) — nunca aceito
   // do chamador. Não é a preservação do conteúdo em si (ver originSnapshot).
   requestFingerprint String   @map("request_fingerprint")
+  // Versão do algoritmo/contrato usado para calcular requestFingerprint (ver
+  // FINGERPRINT_CONTRACT_VERSION em originContract.ts — fonte única, nunca
+  // duplicada aqui). NÃO deriva do parsing do hash. Propositalmente SEM
+  // @default: linhas pré-existentes à migration foram preenchidas uma única
+  // vez no backfill (ver migration 20260908094140), com evidência de que
+  // "signal-forward-fingerprint.v1" foi a única versão já usada
+  // (originContract.ts introduzido uma vez em 768e1b2, constante nunca
+  // mudou). Todo código novo DEVE gravar este campo explicitamente — a
+  // ausência de @default faz o cliente Prisma exigir o campo em toda
+  // criação, para que uma omissão futura seja um erro de tipo, não um
+  // valor "v1" silencioso.
+  fingerprintVersion String   @map("fingerprint_version")
   // Cópia imutável do conteúdo da origem efetivamente usado no momento do
   // encaminhamento (não uma referência que pode mudar depois). Escrito uma
   // única vez na criação; nenhum código deste módulo o atualiza depois.

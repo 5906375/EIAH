@@ -4,7 +4,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createNamedClient, seedRealScenario, grantScope, newTenantWorkspace } from "./helpers.ts";
 import { forwardSignalToMkt, ConflictError, type SignalForwardRequestInput } from "../signalForwardingService.ts";
-import { computeRequestFingerprint } from "../originContract.ts";
+import { computeRequestFingerprint, FINGERPRINT_CONTRACT_VERSION } from "../originContract.ts";
 
 test("fingerprint é recalculado no servidor mesmo se o chamador tentar fornecer um valor (campo extra ignorado)", async () => {
   const client = createNamedClient("poc-real-i1");
@@ -18,14 +18,21 @@ test("fingerprint é recalculado no servidor mesmo se o chamador tentar fornecer
       destinationAgent: "mkt", idempotencyKey: "key-i1",
     };
     // Simula um chamador que não respeita o tipo (ex.: cliente HTTP antigo
-    // reenviando o campo removido) tentando influenciar o fingerprint.
-    const tampered = { ...base, requestFingerprint: "attacker-controlled-value" } as unknown as SignalForwardRequestInput;
+    // reenviando campos removidos) tentando influenciar o fingerprint E sua versão.
+    const tampered = {
+      ...base,
+      requestFingerprint: "attacker-controlled-value",
+      fingerprintVersion: "attacker-controlled-version",
+    } as unknown as SignalForwardRequestInput;
 
     const result = await forwardSignalToMkt(tampered, {}, client.prisma);
 
     const forward = await client.prisma.signalForwardRequest.findUnique({ where: { id: result.forwardRequestId } });
     assert.notEqual(forward?.requestFingerprint, "attacker-controlled-value");
     assert.match(forward?.requestFingerprint ?? "", /^[a-f0-9]{64}$/, "fingerprint real, calculado no servidor");
+    // O cliente não controla fingerprintVersion — é sempre a constante do servidor.
+    assert.notEqual(forward?.fingerprintVersion, "attacker-controlled-version");
+    assert.equal(forward?.fingerprintVersion, FINGERPRINT_CONTRACT_VERSION);
   } finally {
     await client.close();
   }
@@ -47,6 +54,8 @@ test("preservação do conteúdo: alterar a origem DEPOIS do encaminhamento não
     const forwardBefore = await client.prisma.signalForwardRequest.findUnique({ where: { id: first.forwardRequestId } });
     const originalSnapshot = forwardBefore?.originSnapshot;
     const originalFingerprint = forwardBefore?.requestFingerprint;
+    const originalFingerprintVersion = forwardBefore?.fingerprintVersion;
+    assert.equal(originalFingerprintVersion, FINGERPRINT_CONTRACT_VERSION);
 
     // Origem MUDA depois do encaminhamento (ex.: alguém reprocessou o run do Radar).
     await client.prisma.run.update({
@@ -64,6 +73,7 @@ test("preservação do conteúdo: alterar a origem DEPOIS do encaminhamento não
     const forwardAfter = await client.prisma.signalForwardRequest.findUnique({ where: { id: first.forwardRequestId } });
     assert.deepEqual(forwardAfter?.originSnapshot, originalSnapshot, "snapshot original preservado, não sobrescrito pela origem alterada");
     assert.equal(forwardAfter?.requestFingerprint, originalFingerprint, "fingerprint original preservado");
+    assert.equal(forwardAfter?.fingerprintVersion, originalFingerprintVersion, "versão do fingerprint estável — não recalculada nem trocada por uma tentativa que resultou em conflito");
     assert.equal(forwardAfter?.destinationRunId, first.destinationRunId, "run de destino original preservado, nenhum novo run criado");
   } finally {
     await client.close();

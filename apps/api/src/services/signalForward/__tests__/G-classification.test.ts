@@ -6,6 +6,7 @@ import assert from "node:assert/strict";
 import { createNamedClient, seedRealScenario, createOriginRun, grantScope, newTenantWorkspace } from "./helpers.ts";
 import { forwardSignalToMkt, ConflictError } from "../signalForwardingService.ts";
 import { classifySignalForwardUniqueViolation } from "../classifier.ts";
+import { FINGERPRINT_CONTRACT_VERSION } from "../originContract.ts";
 
 test("duplicidade esperada real: segunda chamada com mesma chave/origem reutiliza", async () => {
   const client = createNamedClient("poc-real-g1");
@@ -25,6 +26,13 @@ test("duplicidade esperada real: segunda chamada com mesma chave/origem reutiliz
     assert.equal(first.reused, false);
     assert.equal(second.reused, true);
     assert.equal(first.destinationRunId, second.destinationRunId);
+
+    // versão do fingerprint estável na reutilização idempotente (nenhuma
+    // segunda gravação/recalculo altera a versão persistida na criação).
+    const forward = await client.prisma.signalForwardRequest.findUnique({
+      where: { id: first.forwardRequestId },
+    });
+    assert.equal(forward?.fingerprintVersion, FINGERPRINT_CONTRACT_VERSION);
   } finally {
     await client.close();
   }

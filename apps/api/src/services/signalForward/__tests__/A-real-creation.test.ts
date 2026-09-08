@@ -3,6 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createNamedClient, seedRealScenario, grantScope, newTenantWorkspace } from "./helpers.ts";
 import { forwardSignalToMkt } from "../signalForwardingService.ts";
+import { FINGERPRINT_CONTRACT_VERSION } from "../originContract.ts";
 
 test("createRunRecord real: atribuição válida, solicitação+run+vínculo persistidos", async () => {
   const client = createNamedClient("poc-real-a");
@@ -31,6 +32,10 @@ test("createRunRecord real: atribuição válida, solicitação+run+vínculo per
     // fingerprint calculado no servidor (64 hex chars = sha256) — não é o
     // que o chamador forneceria (chamador nem fornece mais esse campo).
     assert.match(forward?.requestFingerprint ?? "", /^[a-f0-9]{64}$/);
+    // versão do fingerprint persistida explicitamente pelo servidor, igual à
+    // constante realmente usada para calcular requestFingerprint (mesma fonte,
+    // originContract.ts) — não derivada de parsing do hash.
+    assert.equal(forward?.fingerprintVersion, FINGERPRINT_CONTRACT_VERSION);
     // snapshot da origem preservado, correspondente ao response real do run de origem
     assert.deepEqual(forward?.originSnapshot, { signalAnalysis: { summary: "sinal sintético de teste" } });
 
