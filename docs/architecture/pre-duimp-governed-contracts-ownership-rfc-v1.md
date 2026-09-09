@@ -145,6 +145,7 @@ export type ImmutableArtifactRefV1 = {
 
 export type SourceSnapshotRefV1 = {
   schemaVersion: "source-snapshot-ref.v1";
+  snapshotId: string;
   sourceId: string;
   sourceRole:
     | "CASE_INPUT"
@@ -165,6 +166,7 @@ export type ProvenanceV1 = {
     method: "DIRECT" | "DETERMINISTIC_TRANSFORM" | "HUMAN_ATTESTED";
     methodVersion: string;
     inputFactIds: readonly string[];
+    authorityDecisionIds: readonly string[];
   };
 };
 
@@ -193,7 +195,8 @@ Regras:
 - contentHash é SHA-256 lowercase; não autoriza publicar conteúdo;
 - locator não contém segredo, token, header ou PII não mascarada;
 - DIRECT exige snapshot; DETERMINISTIC_TRANSFORM exige versão e inputs;
-- HUMAN_ATTESTED exige decisão humana referenciada;
+- HUMAN_ATTESTED exige authorityDecisionIds não vazio e decisões humanas
+  válidas, vinculadas ao mesmo caso, scope e input;
 - MISSING sempre tem value null;
 - confiança probabilística é risco, não provenance ou autoridade.
 
