@@ -1,8 +1,14 @@
 # PRE-DUIMP-CASE-04 — persistência e lifecycle governados
 
-Status: PROPOSTA TÉCNICA; MIGRATION NÃO AUTORIZADA
+Status: IMPLEMENTAÇÃO LOCAL VALIDADA; PRE-DUIMP AINDA PARCIAL AVANÇADO
 
 Data do discovery: 2026-09-09
+
+Atualização de implementação: 2026-09-11
+
+> Nota de rastreabilidade: as seções 0 a 16 preservam a fotografia do desenho
+> anterior à autorização da migration e do repository. A seção 17 registra o
+> estado as built e substitui aquelas seções somente quanto ao status atual.
 
 ## 0. Governança aplicada
 
@@ -397,3 +403,77 @@ Status:
 PRE-DUIMP-CASE-04: PARCIAL — desenho de persistência e lifecycle documentado;
 schema Prisma, migration, repository e validação com banco permanecem
 deliberadamente não executados.
+
+## 17. Estado as built — PRE-DUIMP-CASE-04B
+
+Em 2026-09-11, a camada interna de aplicação da persistência foi implementada
+e validada localmente. O status histórico acima permanece registrado, mas não
+representa mais o estado executável.
+
+Fundação reaproveitada:
+
+- `GovernedCase` e `GovernedCaseRevision`, criados pela migration local
+  `20260909200000_pre_duimp_governed_cases_v1`;
+- proteção tenant+workspace já existente no `tenantGuard`;
+- `PreDuimpCaseV1` como fronteira canônica de validação;
+- `getPrismaForTenant` como única fábrica do cliente usado pela implementação
+  produtiva;
+- padrão transacional existente, sem reutilizar ou alterar `ImobCase`.
+
+Arquivos de aplicação criados:
+
+- `apps/api/src/services/logistica/preDuimpGovernedCaseCanonicalization.ts`;
+- `apps/api/src/services/logistica/preDuimpGovernedCaseLifecycle.ts`;
+- `apps/api/src/services/logistica/preDuimpGovernedCaseRepository.ts`.
+
+Cobertura criada:
+
+- `preDuimpGovernedCaseCanonicalization.test.ts`;
+- `preDuimpGovernedCaseLifecycle.test.ts`;
+- `preDuimpGovernedCaseRepository.integration.test.ts`.
+
+Garantias implementadas e comprovadas:
+
+- canonicalização recursiva com chaves ordenadas e arrays preservados;
+- rejeição de `undefined`, `NaN`, `Infinity` e valores fora de JSON V1;
+- `snapshotHash` SHA-256 lowercase com prefixo `sha256:`;
+- matriz fail-closed completa do lifecycle e `CLOSED` terminal;
+- criação do caso e da revisão 1 na mesma transação;
+- transição com compare-and-swap por `expectedRevision` e sem retry automático;
+- uma revisão append-only por mudança persistida;
+- validação de integridade entre projeção, snapshot, revisão e hash;
+- isolamento obrigatório por tenant e workspace;
+- rollback da projeção quando a inserção da revisão falha;
+- zero criação implícita de `Run`, `RunEvent` ou `ApprovalRecord`;
+- zero chamada de rede durante os testes do repository;
+- `READY` preservado como prontidão, com `readinessOnly=true`,
+  `authorizationState=NOT_REQUESTED` e transmissão externa desabilitada.
+
+Gates executados nesta implementação:
+
+- testes puros de canonicalização e lifecycle: 11/11 PASS;
+- build TypeScript da API: PASS;
+- `check:orphan-tests`: PASS, sem órfão novo ou bloqueante;
+- testes frontend acionados pelo orphan gate: 30/30 PASS;
+- testes PostgreSQL do repository: 3/3 PASS.
+
+O teste PostgreSQL da fundação
+`packages/db/src/__tests__/governedCasePersistence.integration.test.ts` foi
+registrado como gate bloqueante explícito no `package.json`; ele deixa de ser
+classificado apenas como cobertura informativa pelo orphan gate.
+
+Limites preservados:
+
+- nenhuma rota HTTP ou integração com o front door foi criada nesta task;
+- nenhum frontend foi alterado;
+- `Run`, `ApprovalRecord`, receipts, evidence e eventos não foram vinculados;
+- nenhuma aprovação humana ou autorização de execução foi criada;
+- nenhum adapter, credencial, chamada ou transmissão ao Siscomex/Portal Único;
+- nenhum deploy, Evidence Index, staging ou commit.
+
+Status atualizado:
+
+`PRE-DUIMP-CASE-04B`: IMPLEMENTADO E VALIDADO LOCALMENTE dentro do escopo de
+repository e lifecycle. `PRE-DUIMP`: PARCIAL AVANÇADO, porque authority/HITL,
+evidence/receipts/eventos, fontes read-only e revalidação posterior de runtime
+permanecem em tasks separadas.
