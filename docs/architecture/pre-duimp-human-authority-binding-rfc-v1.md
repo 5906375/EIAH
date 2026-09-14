@@ -7,8 +7,9 @@
 | Baseline consultado | `6c3a6e9a8879a1bcd6d7ea626ed23158220e264e` |
 | Unidade anterior | PRE-DUIMP-CASE-04B — repository e lifecycle |
 | Decisão técnica proposta | extensão aditiva de `ApprovalRecord`, sem tabela paralela |
-| Ratificação de ownership | pendente; este RFC não nomeia custodiante humano |
-| Ambiente | nenhum runtime ou banco acessado para validação nesta unidade |
+| Ratificação de ownership | Carlos Alberto Merlo — Founder; ratificação documental limitada aos testes sintéticos, §14 |
+| Binding operacional | pendente; nenhum userId/tenantId/workspaceId autorizado por inferência |
+| Ambiente | elaboração inicial sem consulta ao banco; identificação posterior somente READ ONLY, §14 |
 
 ## 1. Escopo e precedência
 
@@ -67,8 +68,12 @@ Proposta de ownership técnico, a ratificar:
 - CASE-04B: persistência do caso e revisão; não decide competência humana;
 - UI, chat, agente, token técnico e sugestão: nunca emissores de autoridade humana.
 
-Não há nome humano, matriz de papéis ou prazo de validade ratificado neste RFC.
-São precondições obrigatórias da futura ativação, não defaults a inventar.
+Na elaboração inicial não havia nome humano, competência ou TTL ratificados.
+A ratificação posterior no §14 define o owner do contrato, único revisor humano,
+autoaprovação exclusivamente sintética e validade máxima de 24 horas. Não nomeia
+automaticamente custodiante DB transversal nem ratifica os reason codes globais.
+O vínculo ao usuário autenticado e ao scope exato permanece precondição da futura
+ativação; não há defaults de permissão a inventar.
 Sem política versionada que resolva quem pode revisar, segregação exigida e TTL,
 o resolver responde BLOCK. Um apiToken sem usuário humano não pode aprovar.
 
@@ -766,9 +771,10 @@ Consultas de código fundamentam a proposta; não comprovam estado operacional d
 PostgreSQL, da API ou da UI. As suítes anteriores não validam o SQL deste RFC.
 
 PRE-DUIMP-AUTHORITY-05A: **PROPOSTA**. PRE_DUIMP permanece **PARCIAL** no escopo
-global, sem autorização de execução externa. Owner, política humana/TTL,
-compatibilidade legada, validação Prisma/SQL e testes positivos/negativos são
-pendências explícitas. Agentes envolvidos: somente Codex, sem subagentes.
+global, sem autorização de execução externa. A ratificação documental limitada
+está no §14; binding operacional, compatibilidade legada, validação Prisma/SQL e
+testes positivos/negativos permanecem pendentes. Agentes envolvidos: somente
+Codex, sem subagentes.
 
 Nota de versionamento: no baseline, `.gitignore:52` ignora novos arquivos em
 `docs/architecture/*`. Na criação documental, este RFC ficou fisicamente salvo,
@@ -777,3 +783,163 @@ local isolado. Essa autorização permite inclusão seletiva deste arquivo no Gi
 sem alterar a regra global de ignore e sem autorizar implementação, migration ou
 ação remota. A validação do documento deve incluir o diff staged, não somente
 o diff dos arquivos já rastreados antes dessa inclusão.
+
+## 14. Ratificação humana limitada e identificação read-only — 2026-09-11
+
+### 14.1 Origem e alcance
+
+Fonte da decisão: mensagens explícitas do usuário nesta conversa, posteriores ao
+commit documental `92f248997de2581a05788d97422bdc7d44789978`. O usuário identificou
+o owner como Carlos Alberto Merlo, Founder, restringiu a competência a si mesmo,
+permitiu autoaprovação exclusivamente nos testes sintéticos e confirmou 24 horas
+para cada aprovação individual. Em seguida autorizou identificação somente em
+leitura e registro documental, ainda sem implementar.
+
+Esse registro é ratificação documental declarada pelo usuário, não autenticação
+de identidade na aplicação, ApprovalRecord persistido, assinatura digital,
+ratificação do catálogo global de reason codes ou autorização de migration.
+
+| Dimensão | Decisão ratificada |
+| --- | --- |
+| Owner humano do contrato neste escopo | Carlos Alberto Merlo — Founder |
+| Competência para aprovar/rejeitar revisão interna | somente Carlos Alberto Merlo; vínculo ao usuário autenticado ainda pendente |
+| Autoaprovação | SIM, exclusivamente para casos e ambiente sintéticos; não estendida à produção |
+| Vigência da política | somente enquanto o uso permanecer em testes sintéticos; sem extensão automática à produção ou a clientes reais |
+| Validade individual | no máximo 24 horas após decidedAt; no limite now >= validUntil, EXPIRED |
+| Invalidação antecipada | mudança dos inputs ou da política, perda de competência ou saída do escopo sintético |
+| Produção/clientes reais | exigem nova política, cadastro e permissões próprios; cadastro isolado não concede autoridade |
+| Efeito da aprovação | somente revisão interna; não significa READY nem autorização de execução/transmissão |
+| Integridade | decisões/revisões imutáveis; ausência de autoridade/política válida bloqueia |
+
+Na implementação futura, validUntil deve ser calculado pelo servidor como
+decidedAt + 24 horas, sem renovação por retry. Cessação da política de testes
+impede uso futuro mesmo se essa janela ainda não tiver terminado. O gatilho de
+saída de testes deverá ser verificável server-side; campo de ambiente do payload,
+nome contendo "teste" ou calendário informal não provam elegibilidade.
+
+Não foi concedida permissão geral sobre qualquer tenant de desenvolvimento.
+O scope deve ser escolhido por IDs exatos e vinculado explicitamente antes da
+ativação. Não transformar esta decisão em wildcard tenant/workspace, role global,
+policy real ou acesso produtivo.
+
+### 14.2 Identificação observada — sem provisionamento
+
+Baseline Git da consulta: `92f248997de2581a05788d97422bdc7d44789978`; estado
+inicial sem alterações staged/unstaged/untracked reportadas. Consultas realizadas
+por docker exec/psql -X, ON_ERROR_STOP, no container local eiah-postgres, banco
+eiah_builder, role postgres, em duas transações BEGIN TRANSACTION READ ONLY,
+statement_timeout de 5 segundos e ROLLBACK final. A primeira confirmou
+transaction_read_only=on. Nenhuma credencial foi criada ou lida; colunas de token
+e senha não foram selecionadas. A role postgres usada para inspeção não é proposta
+de credencial da aplicação nem prova de privilégios mínimos.
+
+| Item observado | Resultado | Limite da conclusão |
+| --- | --- | --- |
+| Tenants cujo ID ou nome corresponde ao padrão PRE/DUIMP | 7, dos quais 5 possuem workspace | descoberta por nome não certifica conteúdo sintético |
+| Usuários ligados diretamente a esses tenants | 0 | nenhum vínculo humano local disponível nesses registros |
+| TenantMembership desses tenants | 0 | nenhum membership localizado; não criar automaticamente |
+| Candidato pelo nome declarado | 1 cadastro fora dos scopes PRE-DUIMP encontrados | coincidência nominal não comprova identidade autenticada |
+| Workspace do tenant desse candidato | 1; sem TenantMembership do candidato nesse tenant | User.tenantId existe, mas não equivale a membership nem permissão de revisão |
+| Sessão autenticada de aplicação | não verificada | não houve chamada HTTP, login ou extração/reuso de token |
+
+Um par exato localizado, correspondente à fixture histórica de smoke citada na
+conversa, é:
+
+```text
+tenantId: tenant-preduimp-positive-smoke-20260827
+workspaceId: workspace-preduimp-positive-smoke-20260827
+```
+
+Nesse par foram observados zero GovernedCase e uma instalação LOGISTICA active,
+mas nenhum usuário ou membership no tenant. É **candidato histórico, não scope
+selecionado/ratificado para AUTHORITY-05**. Instalação active não prova entitlement,
+permissão, pureza dos dados ou prontidão de autoridade. As demais tabelas desse
+scope não foram auditadas integralmente; não afirmar ausência de dados reais.
+
+O cadastro nominal encontrado foi cotejado também com uma referência de e-mail
+de captura anterior da conversa, sem retornar o endereço: não houve correspondência
+com essa referência. Isso reforça a necessidade de confirmação por sessão, sem
+concluir que o cadastro esteja incorreto. IDs pessoais, e-mails e o tenant do
+candidato não são reproduzidos neste documento versionável; os resultados mínimos
+da inspeção ficaram na saída local da ferramenta, não em artefato público.
+
+O teste canônico
+`apps/api/src/services/logistica/preDuimpGovernedCaseRepository.integration.test.ts`
+constrói scopes sintéticos de repository com sufixos por execução. Esses helpers
+não constituem provisionamento persistente de um humano autorizado e não foram
+executados nesta consulta. Também não se reutilizaram fixtures remanescentes por
+inferência.
+
+### 14.3 Disposição fail-closed e próxima decisão
+
+- Política humana: **ratificada documentalmente, somente no escopo acima**.
+- Identificação de scopes/cadastro candidato: **parcial por consultas read-only**.
+- Binding operacional humano + tenant + workspace: **não confirmado**.
+- Implementação/ativação: **não autorizada por esta ratificação**.
+
+Antes de uma aprovação positiva, confirmar o usuário por mecanismo autenticado
+canônico e escolher expressamente um par de IDs sintéticos. Se for necessário
+criar ambiente dedicado ou vínculo de usuário/membership, solicitar autorização
+separada de provisionamento com efeitos e retenção descritos; não deslocar usuário
+existente, reativar token antigo ou promover fixture histórica automaticamente.
+Sem isso, permanecer bloqueado. API/web não foram iniciadas para identificar sessão.
+
+Nenhum INSERT, UPDATE, DELETE, migration, build/teste de aplicação, restart,
+staging, commit ou operação remota foi realizado nesta identificação. O único
+alvo de edição é este RFC; Prisma, SQL proposto, repository, tenantGuard, frontend,
+Compose e Evidence Index não são alterados por este adendo. As observações não
+constituem novo pacote de evidência operacional indexado nem prova de HITL ativo.
+
+### 14.4 Escolha nominal MerloImóveis / MiniTower e pacote proposto
+
+O usuário escolheu explicitamente tenant **MerloImóveis** e workspace **MiniTower**
+para uso sintético. Isso substitui a indefinição dos nomes, mas não seleciona
+automaticamente IDs de fixtures históricas nem cria cadastros ou permissões.
+
+Consulta posterior no mesmo banco local, em transação READ ONLY com ROLLBACK,
+não encontrou tenant com esse nome nem workspace MiniTower. A busca normalizou
+maiúsculas, espaços/pontuação e o acento de Imóveis: matching_tenants=0,
+matching_workspaces=0. Não é conclusão sobre bancos remotos ou outros ambientes.
+O inventário Docker mostrou API e web parados; não foram iniciados. Portanto,
+o usuário autenticado continua **não confirmado**, sem login HTTP, coleta de
+cookies ou reaproveitamento de credencial do banco.
+
+Pacote mínimo **PROPOSTO, AINDA NÃO AUTORIZADO**, limitado à criação do scope:
+
+| Registro | ID proposto | Campos de negócio |
+| --- | --- | --- |
+| Tenant | tenant-preduimp-authority-merloimoveis-synthetic-v1 | name=MerloImóveis |
+| Workspace | workspace-preduimp-authority-minitower-synthetic-v1 | name=MiniTower; tenantId igual ao ID acima |
+
+Preflight read-only dos dois IDs retornou zero conflitos. Isso não reserva os
+IDs: repetir o preflight antes da execução futura. Se nomes/IDs já existirem,
+parar sem upsert, merge, reaproveitamento ou renomeação automática.
+
+Efeitos exatos do pacote de scope, caso autorizado separadamente:
+
+1. Uma transação Prisma local para dois inserts: Tenant e Workspace.
+2. createdAt/updatedAt conforme contrato canônico; nenhuma migration.
+3. Nenhum User, TenantMembership, ApiToken, instalação LOGISTICA, entitlement,
+   policy de ação, ApprovalRecord, GovernedCase ou revisão criado/alterado.
+4. Nenhum token emitido/reativado, login automatizado ou permissão concedida.
+5. Falha em qualquer insert: rollback integral; não corrigir fora do escopo.
+6. Sucesso: reter os dois registros sintéticos; nenhuma limpeza destrutiva implícita.
+7. Inspecionar antes o mecanismo canônico de provisionamento e seus efeitos;
+   parar se ele exigir grants, credenciais ou outros efeitos além desses dois inserts.
+
+Os IDs propostos identificam a finalidade sintética documentalmente; o schema
+atual de Tenant/Workspace não possui marcador formal de ambiente sintético.
+Não usar somente esses nomes/IDs como controle de autorização. A futura política
+de autoridade precisará validar scope exato e condição sintética server-side.
+
+Esse pacote cria apenas o espaço vazio: **não completa o binding humano**. Antes
+de propor membership/permissões, confirmar Carlos Alberto Merlo por sessão
+autenticada canônica e conferir o modelo de vínculo entre User, tenant e workspace.
+Não transferir o cadastro nominal encontrado, copiar identidade ou inventar papel
+de aprovação. Se iniciar API/web for necessário para a confirmação, apresentar
+separadamente os serviços e efeitos para autorização; não reiniciá-los nesta consulta.
+
+O pacote de binding humano será outra decisão, com IDs de usuário confirmados,
+registros exatos, competência limitada, retenção e testes especificados. A
+ratificação de 24 horas e autoaprovação sintética permanece válida documentalmente,
+mas nenhum serviço de autoridade foi implementado ou habilitado.
