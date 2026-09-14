@@ -6,7 +6,6 @@ import { closePrismaResources, prismaGlobal } from "@repo/db";
 import { closeRunQueueConnections } from "@eiah/core/queue/runQueue";
 import { closeRunEventsTransport } from "../services/runEvents";
 import { closeRunEventStream } from "../services/runEventStream";
-import { closeRunEventPublisherResources } from "../../../../packages/core/src/events/runEventPublisher.js";
 import { finalizeHttpContractCleanup } from "./support/httpContractCleanup";
 
 let request: ReturnType<typeof supertest>;
@@ -64,7 +63,6 @@ after(async () => {
   await prismaGlobal.tenant.deleteMany({
     where: { id: tenantId },
   });
-  await closeRunEventPublisherResources();
   await closeRunEventStream();
   await closeRunEventsTransport();
   await closeRunQueueConnections();

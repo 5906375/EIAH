@@ -14,7 +14,6 @@ let closeRunEventsTransport: () => Promise<unknown>;
 let closeRunQueueConnections: () => Promise<unknown>;
 let closeMemoryResources: () => Promise<unknown>;
 let closeRedisPublisher: () => Promise<unknown>;
-let closeRunEventPublisherResources: () => Promise<unknown>;
 let closeTenantPolicyStoreResources: () => Promise<unknown>;
 let closeCriticalMetricsRedis: () => Promise<unknown>;
 let closeCriticalKillSwitchRedis: () => Promise<unknown>;
@@ -97,7 +96,6 @@ before(async () => {
   ({ closeRunQueueConnections } = await import("@eiah/core/queue/runQueue"));
   ({ closeMemoryResources } = await import("../services/memory"));
   ({ closeRedisPublisher } = await import("@eiah/core/events/redisPublisher"));
-  ({ closeRunEventPublisherResources } = await import("../../../../packages/core/src/events/runEventPublisher.js"));
   ({ closeTenantPolicyStoreResources } = await import("@eiah/core/policy/TenantPolicyStore"));
   ({ closeCriticalMetricsRedis } = await import("../../../../packages/core/src/metrics/criticalMetrics.js"));
   ({ closeCriticalKillSwitchRedis } = await import("../../../../packages/core/src/security/killSwitch.js"));
@@ -153,8 +151,6 @@ after(async () => {
   debugCleanupStep("after-closeMemoryResources");
   await closeRedisPublisher();
   debugCleanupStep("after-closeRedisPublisher");
-  await closeRunEventPublisherResources();
-  debugCleanupStep("after-closeRunEventPublisherResources");
   await closeTenantPolicyStoreResources();
   debugCleanupStep("after-closeTenantPolicyStoreResources");
   await closeCriticalMetricsRedis();
