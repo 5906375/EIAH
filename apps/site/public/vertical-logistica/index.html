@@ -1,0 +1,737 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <link rel="canonical" href="https://www.eiah.ia.br/vertical-logistica/">
+  <meta name="description" content="Logística & Comex EIAH — inteligência governada para operações portuárias, cadeia logística, credenciais verificáveis e decisões auditáveis.">
+  <meta name="theme-color" content="#020617">
+  <meta property="og:title" content="Vertical Logística · EIAH">
+  <meta property="og:description" content="Portos, dados e inteligência conectados em uma operação governada e auditável.">
+  <meta property="og:url" content="https://www.eiah.ia.br/vertical-logistica/">
+  <meta property="og:image" content="vertical-logistica-social.png">
+  <title>Logística &amp; Comex · EIAH — Pré-DUIMP SHADOW</title>
+  <link rel="icon" type="image/png" href="eiah-symbol.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #020617;
+      --bg-soft: #071426;
+      --panel: rgba(15, 23, 42, .78);
+      --panel-strong: #0b1428;
+      --line: rgba(148, 163, 184, .16);
+      --line-blue: rgba(56, 189, 248, .28);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --soft: #cbd5e1;
+      --blue: #38bdf8;
+      --blue-soft: #7dd3fc;
+      --green: #10b981;
+      --green-soft: #5eead4;
+      --danger: #fb7185;
+      --warn: #fbbf24;
+      --max: 1180px;
+      --radius: 24px;
+      --shadow: 0 30px 90px rgba(0, 0, 0, .36);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 8% 3%, rgba(56, 189, 248, .12), transparent 28%),
+        radial-gradient(circle at 92% 8%, rgba(16, 185, 129, .09), transparent 24%),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    a { color: inherit; }
+    button, input, select { font: inherit; }
+    img { max-width: 100%; }
+    .container { width: min(calc(100% - 40px), var(--max)); margin-inline: auto; }
+    .section { padding: 88px 0; position: relative; }
+    .section-tight { padding: 58px 0; }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 9px 13px;
+      border: 1px solid rgba(56, 189, 248, .24);
+      border-radius: 999px;
+      background: rgba(56, 189, 248, .08);
+      color: #bae6fd;
+      font-size: .74rem;
+      font-weight: 800;
+      letter-spacing: .09em;
+      text-transform: uppercase;
+    }
+    .eyebrow::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 18px rgba(16, 185, 129, .9);
+    }
+    .section-title {
+      margin: 18px 0 12px;
+      max-width: 760px;
+      font-size: clamp(2rem, 4.2vw, 3.55rem);
+      line-height: 1.04;
+      letter-spacing: -.045em;
+    }
+    .section-lead {
+      max-width: 700px;
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(.96rem, 1.4vw, 1.08rem);
+      line-height: 1.75;
+    }
+
+    /* Header */
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      border-bottom: 1px solid rgba(30, 41, 59, .86);
+      background: rgba(2, 6, 23, .82);
+      backdrop-filter: blur(16px);
+    }
+    .nav-wrap {
+      min-height: 76px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      text-decoration: none;
+      min-width: max-content;
+    }
+    .brand img { width: 42px; height: 42px; border-radius: 12px; box-shadow: 0 12px 26px rgba(0, 0, 0, .3); }
+    .brand strong { display: block; font-size: .93rem; letter-spacing: .02em; }
+    .brand span { display: block; margin-top: 3px; color: var(--muted); font-size: .7rem; }
+    .nav-links { display: flex; align-items: center; gap: 22px; }
+    .nav-links a { color: var(--soft); text-decoration: none; font-size: .81rem; font-weight: 600; transition: color .2s; }
+    .nav-links a:hover { color: var(--blue); }
+    .nav-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 15px;
+      border-radius: 12px;
+      background: var(--blue);
+      color: #062033 !important;
+      font-weight: 900 !important;
+    }
+    .menu-button { display: none; background: transparent; color: white; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+
+    /* Hero */
+    .hero { padding: 88px 0 54px; min-height: 760px; display: grid; align-items: center; }
+    .hero-grid { display: grid; grid-template-columns: minmax(0, 1.02fr) minmax(420px, .98fr); gap: 58px; align-items: center; }
+    .hero-kicker { color: var(--green-soft); font-size: .78rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .hero h1 {
+      margin: 18px 0 20px;
+      max-width: 760px;
+      font-size: clamp(3rem, 6.2vw, 5.65rem);
+      line-height: .96;
+      letter-spacing: -.06em;
+    }
+    .hero h1 span { display: block; background: linear-gradient(100deg, #fff 18%, var(--blue) 62%, var(--green-soft)); -webkit-background-clip: text; color: transparent; }
+    .hero-copy { margin: 0; max-width: 640px; color: var(--soft); font-size: clamp(1rem, 1.45vw, 1.12rem); line-height: 1.75; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      min-height: 50px;
+      padding: 0 20px;
+      border-radius: 13px;
+      border: 1px solid transparent;
+      text-decoration: none;
+      font-size: .86rem;
+      font-weight: 850;
+      transition: transform .2s, border-color .2s, background .2s;
+      cursor: pointer;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn-primary { background: var(--blue); color: #052033; box-shadow: 0 14px 36px rgba(56, 189, 248, .2); }
+    .btn-secondary { border-color: rgba(125, 211, 252, .32); background: rgba(56, 189, 248, .06); color: #d8f3ff; }
+    .hero-note { display: flex; align-items: center; gap: 10px; margin-top: 22px; color: var(--muted); font-size: .72rem; }
+    .hero-note svg { color: var(--green-soft); flex: 0 0 auto; }
+
+    .control-tower {
+      position: relative;
+      border: 1px solid var(--line-blue);
+      border-radius: 30px;
+      background: linear-gradient(160deg, rgba(11, 31, 57, .96), rgba(4, 11, 27, .98));
+      box-shadow: 0 38px 100px rgba(0, 0, 0, .46), inset 0 1px rgba(255, 255, 255, .04);
+      overflow: hidden;
+      transform: perspective(1100px) rotateY(-3deg) rotateX(1deg);
+    }
+    .control-tower::before {
+      content: "";
+      position: absolute;
+      inset: -40% -20% auto;
+      height: 60%;
+      background: radial-gradient(circle, rgba(56, 189, 248, .15), transparent 64%);
+      pointer-events: none;
+    }
+    .tower-head { display: flex; justify-content: space-between; gap: 12px; padding: 18px 20px; border-bottom: 1px solid var(--line); }
+    .tower-brand { display: flex; align-items: center; gap: 11px; }
+    .tower-brand img { width: 34px; height: 34px; border-radius: 10px; }
+    .tower-brand strong { display: block; font-size: .79rem; }
+    .tower-brand small { display: block; margin-top: 2px; color: var(--muted); font-size: .61rem; }
+    .status-pill { height: fit-content; padding: 7px 10px; border-radius: 999px; background: rgba(16, 185, 129, .1); border: 1px solid rgba(16, 185, 129, .34); color: #8ff7d3; font-size: .58rem; font-weight: 900; letter-spacing: .06em; }
+    .tower-map {
+      min-height: 152px;
+      padding: 22px 22px 12px;
+      background:
+        linear-gradient(rgba(56, 189, 248, .035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(56, 189, 248, .035) 1px, transparent 1px);
+      background-size: 26px 26px;
+    }
+    .route-line { display: flex; align-items: center; margin: 26px 5px 16px; }
+    .route-node { width: 14px; height: 14px; border: 3px solid #071426; border-radius: 50%; background: var(--blue); box-shadow: 0 0 16px rgba(56, 189, 248, .85); }
+    .route-node.ok { background: var(--green); box-shadow: 0 0 16px rgba(16, 185, 129, .75); }
+    .route-segment { height: 2px; flex: 1; background: linear-gradient(90deg, var(--blue), var(--green)); }
+    .route-labels { display: flex; justify-content: space-between; color: #93c5d8; font-size: .58rem; text-transform: uppercase; letter-spacing: .07em; }
+    .tower-body { display: grid; grid-template-columns: .86fr 1.14fr; border-top: 1px solid var(--line); }
+    .timeline { padding: 18px; border-right: 1px solid var(--line); }
+    .timeline-title, .decision-title { margin: 0 0 14px; color: var(--muted); font-size: .59rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .timeline-item { display: grid; grid-template-columns: 14px 1fr; gap: 9px; padding-bottom: 15px; position: relative; }
+    .timeline-item:not(:last-child)::after { content: ""; position: absolute; left: 5px; top: 12px; bottom: 0; width: 1px; background: rgba(56, 189, 248, .22); }
+    .timeline-dot { width: 11px; height: 11px; border: 2px solid rgba(56, 189, 248, .5); border-radius: 50%; background: #0b2038; z-index: 1; }
+    .timeline-dot.done { border-color: var(--green); background: var(--green); }
+    .timeline-item strong { display: block; font-size: .64rem; }
+    .timeline-item span { display: block; color: var(--muted); font-size: .56rem; margin-top: 3px; line-height: 1.4; }
+    .decision { padding: 18px; }
+    .decision-card { padding: 16px; border-radius: 16px; border: 1px solid rgba(16, 185, 129, .28); background: rgba(16, 185, 129, .07); }
+    .decision-card small { color: #9de9ce; font-size: .58rem; text-transform: uppercase; letter-spacing: .06em; }
+    .decision-card strong { display: block; margin-top: 8px; font-size: 1.2rem; color: #d8fff2; }
+    .receipt { margin-top: 12px; padding: 10px; border-radius: 10px; background: rgba(2, 6, 23, .54); color: #82a8bd; font-family: ui-monospace, monospace; font-size: .52rem; line-height: 1.55; overflow-wrap: anywhere; }
+
+    /* Proof strip */
+    .proof-strip { border-block: 1px solid var(--line); background: rgba(7, 20, 38, .55); }
+    .proof-grid { display: grid; grid-template-columns: repeat(4, 1fr); }
+    .proof-item { padding: 24px; border-right: 1px solid var(--line); }
+    .proof-item:last-child { border-right: 0; }
+    .proof-item strong { display: block; font-size: 1rem; }
+    .proof-item span { display: block; margin-top: 7px; color: var(--muted); font-size: .72rem; line-height: 1.5; }
+
+    /* Problem / flow */
+    .problem-grid { display: grid; grid-template-columns: .86fr 1.14fr; gap: 54px; align-items: start; }
+    .problem-list { display: grid; gap: 12px; margin-top: 28px; }
+    .problem-row { display: flex; gap: 13px; padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: rgba(15, 23, 42, .48); }
+    .problem-icon { width: 32px; height: 32px; flex: 0 0 32px; display: grid; place-items: center; border-radius: 10px; background: rgba(251, 113, 133, .1); color: #fda4af; }
+    .problem-row strong { display: block; font-size: .82rem; }
+    .problem-row span { display: block; margin-top: 5px; color: var(--muted); font-size: .73rem; line-height: 1.5; }
+    .flow-card { border: 1px solid var(--line-blue); border-radius: var(--radius); padding: 26px; background: linear-gradient(180deg, rgba(10, 28, 51, .88), rgba(7, 16, 34, .9)); box-shadow: var(--shadow); }
+    .flow-step { display: grid; grid-template-columns: 42px 1fr auto; gap: 14px; align-items: center; padding: 15px 0; border-bottom: 1px solid var(--line); }
+    .flow-step:last-child { border-bottom: 0; }
+    .flow-number { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 50%; background: rgba(56, 189, 248, .1); color: var(--blue-soft); font-size: .76rem; font-weight: 900; }
+    .flow-step strong { display: block; font-size: .83rem; }
+    .flow-step span { display: block; margin-top: 4px; color: var(--muted); font-size: .7rem; }
+    .flow-state { padding: 6px 9px; border-radius: 999px; color: #9af3d5; background: rgba(16, 185, 129, .09); font-size: .56rem; font-weight: 900; }
+
+    /* Demo */
+    .demo-shell { margin-top: 38px; border: 1px solid rgba(96, 165, 250, .3); border-radius: 28px; overflow: hidden; background: linear-gradient(180deg, #08182d, #030b1d); box-shadow: var(--shadow); }
+    .demo-top { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 20px 22px; border-bottom: 1px solid var(--line); }
+    .demo-title { display: flex; align-items: center; gap: 12px; }
+    .demo-title img { width: 38px; height: 38px; border-radius: 11px; }
+    .demo-title strong { display: block; font-size: .84rem; }
+    .demo-title span { display: block; color: var(--muted); margin-top: 3px; font-size: .65rem; }
+    .live-indicator { display: inline-flex; align-items: center; gap: 8px; color: #a7f3d0; font-size: .61rem; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
+    .live-indicator::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 14px var(--green); }
+    .demo-tabs { display: flex; gap: 8px; padding: 16px 22px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+    .demo-tab { border: 1px solid var(--line); background: rgba(15, 23, 42, .58); color: var(--soft); border-radius: 10px; padding: 10px 13px; cursor: pointer; font-size: .7rem; font-weight: 800; white-space: nowrap; }
+    .demo-tab.active { border-color: rgba(56, 189, 248, .5); background: rgba(56, 189, 248, .12); color: #d9f4ff; }
+    .demo-grid { display: grid; grid-template-columns: .9fr 1.1fr; min-height: 420px; }
+    .demo-pipeline { padding: 26px; border-right: 1px solid var(--line); }
+    .pipeline-row { display: grid; grid-template-columns: 18px 1fr; gap: 12px; min-height: 78px; position: relative; }
+    .pipeline-row:not(:last-child)::after { content: ""; position: absolute; left: 7px; top: 16px; bottom: 0; width: 2px; background: #10263e; }
+    .pipeline-marker { width: 16px; height: 16px; border-radius: 50%; border: 2px solid #29435c; background: #08182d; z-index: 1; transition: .35s; }
+    .pipeline-row.complete .pipeline-marker { border-color: var(--green); background: var(--green); box-shadow: 0 0 16px rgba(16, 185, 129, .5); }
+    .pipeline-row.active .pipeline-marker { border-color: var(--blue); background: var(--blue); box-shadow: 0 0 16px rgba(56, 189, 248, .55); }
+    .pipeline-row strong { display: block; color: #7890a5; font-size: .76rem; transition: color .3s; }
+    .pipeline-row.complete strong, .pipeline-row.active strong { color: white; }
+    .pipeline-row span { display: block; color: #657d91; font-size: .66rem; margin-top: 5px; line-height: 1.5; }
+    .demo-output { padding: 26px; display: flex; flex-direction: column; }
+    .output-window { flex: 1; border: 1px solid var(--line); border-radius: 18px; background: rgba(2, 8, 20, .54); padding: 18px; }
+    .output-label { color: var(--muted); font-size: .59rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+    .output-main { margin: 20px 0; padding: 18px; border-radius: 15px; border: 1px solid var(--line-blue); background: rgba(56, 189, 248, .06); }
+    .output-main strong { display: block; font-size: 1.15rem; }
+    .output-main p { margin: 8px 0 0; color: var(--muted); font-size: .72rem; line-height: 1.6; }
+    .output-receipt { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .output-stat { padding: 13px; border-radius: 12px; background: rgba(15, 23, 42, .78); }
+    .output-stat span { display: block; color: var(--muted); font-size: .57rem; }
+    .output-stat strong { display: block; margin-top: 5px; font-family: ui-monospace, monospace; font-size: .66rem; color: #b8dcee; overflow-wrap: anywhere; }
+    .demo-controls { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding-top: 18px; }
+    .demo-disclaimer { color: var(--muted); font-size: .59rem; line-height: 1.45; }
+    .run-button { border: 0; border-radius: 11px; padding: 12px 17px; background: var(--blue); color: #062033; font-weight: 900; cursor: pointer; min-width: 126px; }
+    .run-button:disabled { opacity: .6; cursor: wait; }
+
+    /* Capabilities */
+    .cap-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 38px; }
+    .cap-card { position: relative; min-height: 238px; padding: 24px; border: 1px solid var(--line); border-radius: 22px; background: linear-gradient(180deg, rgba(15, 23, 42, .88), rgba(8, 15, 31, .9)); overflow: hidden; transition: transform .25s, border-color .25s; }
+    .cap-card:hover { transform: translateY(-5px); border-color: var(--line-blue); }
+    .cap-icon { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 13px; background: rgba(56, 189, 248, .09); color: var(--blue-soft); font-size: 1.1rem; }
+    .cap-card h3 { margin: 20px 0 9px; font-size: .96rem; }
+    .cap-card p { margin: 0; color: var(--muted); font-size: .75rem; line-height: 1.65; }
+    .cap-tag { position: absolute; right: 18px; top: 18px; padding: 5px 8px; border-radius: 999px; background: rgba(16, 185, 129, .08); color: #8ff7d3; font-size: .53rem; font-weight: 900; text-transform: uppercase; }
+
+    /* Agents */
+    .agents-wrap { margin-top: 40px; display: grid; grid-template-columns: .82fr 1.18fr; gap: 42px; align-items: center; }
+    .agent-orbit { position: relative; min-height: 480px; display: grid; place-items: center; }
+    .orbit-ring { position: absolute; width: 370px; height: 370px; border: 1px solid rgba(56, 189, 248, .16); border-radius: 50%; }
+    .orbit-ring::after { content: ""; position: absolute; inset: 46px; border: 1px dashed rgba(16, 185, 129, .16); border-radius: 50%; }
+    .orchestrator { width: 150px; height: 150px; display: grid; place-items: center; text-align: center; border: 1px solid rgba(56, 189, 248, .36); border-radius: 50%; background: radial-gradient(circle, #0e3153, #071426 68%); box-shadow: 0 0 70px rgba(56, 189, 248, .16); z-index: 2; }
+    .orchestrator strong { font-size: .76rem; }
+    .orchestrator span { display: block; margin-top: 5px; color: var(--muted); font-size: .57rem; }
+    .agent-node { position: absolute; width: 112px; padding: 12px 8px; border-radius: 14px; border: 1px solid var(--line); background: #0b1428; text-align: center; box-shadow: 0 18px 44px rgba(0, 0, 0, .32); }
+    .agent-node strong { display: block; font-size: .65rem; }
+    .agent-node span { display: block; margin-top: 4px; color: var(--muted); font-size: .52rem; }
+    .agent-node.n1 { top: 16px; left: 50%; transform: translateX(-50%); }
+    .agent-node.n2 { right: 2%; top: 42%; transform: translateY(-50%); }
+    .agent-node.n3 { bottom: 24px; right: 12%; }
+    .agent-node.n4 { bottom: 24px; left: 12%; }
+    .agent-node.n5 { left: 2%; top: 42%; transform: translateY(-50%); }
+    .agent-copy { display: grid; gap: 13px; }
+    .agent-feature { display: flex; gap: 14px; padding: 17px; border: 1px solid var(--line); border-radius: 16px; background: rgba(15, 23, 42, .48); }
+    .agent-feature b { width: 28px; height: 28px; flex: 0 0 28px; display: grid; place-items: center; border-radius: 50%; background: rgba(56, 189, 248, .12); color: var(--blue-soft); font-size: .65rem; }
+    .agent-feature strong { display: block; font-size: .78rem; }
+    .agent-feature span { display: block; margin-top: 4px; color: var(--muted); font-size: .69rem; line-height: 1.5; }
+
+    /* Governance */
+    .governance { background: linear-gradient(180deg, rgba(4, 14, 29, .15), rgba(7, 20, 38, .68), rgba(4, 14, 29, .15)); }
+    .gov-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 36px; }
+    .gov-card { padding: 22px; border: 1px solid rgba(45, 212, 191, .17); border-radius: 18px; background: rgba(6, 25, 35, .48); }
+    .gov-card strong { display: block; color: #ccfbf1; font-size: .82rem; }
+    .gov-card p { margin: 8px 0 0; color: #86a7a4; font-size: .69rem; line-height: 1.6; }
+
+    /* Event / CTA */
+    .event-card { display: grid; grid-template-columns: .72fr 1.28fr; gap: 0; border: 1px solid var(--line-blue); border-radius: 30px; overflow: hidden; background: #071426; box-shadow: var(--shadow); }
+    .event-image { min-height: 470px; background: url("vertical-logistica-social.png") center/cover no-repeat; position: relative; }
+    .event-image::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent 54%, #071426 100%); }
+    .event-content { padding: clamp(32px, 5vw, 62px); display: flex; flex-direction: column; justify-content: center; }
+    .event-date { color: var(--green-soft); font-weight: 900; font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; }
+    .event-content h2 { margin: 14px 0 12px; font-size: clamp(2rem, 3.4vw, 3.2rem); line-height: 1.05; letter-spacing: -.04em; }
+    .event-content p { margin: 0; color: var(--muted); line-height: 1.7; font-size: .84rem; }
+    .event-meta { display: flex; flex-wrap: wrap; gap: 10px; margin: 22px 0 28px; }
+    .event-meta span { padding: 8px 10px; border-radius: 10px; background: rgba(56, 189, 248, .07); border: 1px solid var(--line); color: #c9eafa; font-size: .65rem; font-weight: 700; }
+    .pilot-card { display: grid; grid-template-columns: 1fr auto; gap: 28px; align-items: center; margin-top: 28px; padding: 34px; border-radius: 24px; background: linear-gradient(105deg, rgba(56, 189, 248, .12), rgba(16, 185, 129, .1)); border: 1px solid rgba(56, 189, 248, .25); }
+    .pilot-card h3 { margin: 0; font-size: 1.4rem; }
+    .pilot-card p { margin: 8px 0 0; color: var(--soft); line-height: 1.6; font-size: .78rem; }
+
+    /* Footer */
+    .footer { padding: 42px 0 30px; border-top: 1px solid var(--line); background: rgba(1, 5, 17, .64); }
+    .footer-grid { display: grid; grid-template-columns: 1.25fr .75fr .75fr; gap: 38px; }
+    .footer-brand { display: flex; align-items: center; gap: 13px; }
+    .footer-brand img { width: 44px; height: 44px; border-radius: 12px; }
+    .footer-brand strong { display: block; }
+    .footer-brand span { display: block; margin-top: 4px; color: var(--muted); font-size: .68rem; }
+    .footer p { max-width: 470px; color: var(--muted); font-size: .7rem; line-height: 1.65; }
+    .footer h4 { margin: 0 0 12px; color: #dce8f0; font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; }
+    .footer a { display: block; margin: 8px 0; color: var(--muted); text-decoration: none; font-size: .7rem; }
+    .footer a:hover { color: var(--blue); }
+    .footer-bottom { display: flex; justify-content: space-between; gap: 18px; margin-top: 34px; padding-top: 22px; border-top: 1px solid var(--line); color: #64748b; font-size: .62rem; }
+
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+    @keyframes pulse { 0%, 100% { opacity: .5; } 50% { opacity: 1; } }
+    .reveal { opacity: 1; transform: none; transition: transform .25s ease, border-color .25s ease; }
+    .reveal.visible { opacity: 1; transform: none; }
+
+    @media (max-width: 960px) {
+      .nav-links { display: none; position: absolute; top: 68px; left: 20px; right: 20px; padding: 18px; flex-direction: column; align-items: stretch; background: #071426; border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); }
+      .nav-links.open { display: flex; }
+      .menu-button { display: block; }
+      .hero { min-height: auto; }
+      .hero-grid, .problem-grid, .agents-wrap, .event-card { grid-template-columns: 1fr; }
+      .hero-grid { gap: 42px; }
+      .control-tower { transform: none; max-width: 650px; margin: auto; }
+      .proof-grid { grid-template-columns: repeat(2, 1fr); }
+      .proof-item:nth-child(2) { border-right: 0; }
+      .proof-item:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+      .cap-grid { grid-template-columns: repeat(2, 1fr); }
+      .gov-grid { grid-template-columns: repeat(2, 1fr); }
+      .event-image { min-height: 420px; }
+      .event-image::after { background: linear-gradient(180deg, transparent 60%, #071426 100%); }
+    }
+
+    @media (max-width: 680px) {
+      .container { width: min(calc(100% - 28px), var(--max)); }
+      .section { padding: 66px 0; }
+      .hero { padding-top: 62px; }
+      .hero h1 { font-size: clamp(2.65rem, 15vw, 4.2rem); }
+      .hero-grid { grid-template-columns: 1fr; }
+      .tower-body, .demo-grid { grid-template-columns: 1fr; }
+      .timeline, .demo-pipeline { border-right: 0; border-bottom: 1px solid var(--line); }
+      .proof-grid, .cap-grid, .gov-grid, .footer-grid { grid-template-columns: 1fr; }
+      .proof-item { border-right: 0; border-bottom: 1px solid var(--line); }
+      .proof-item:last-child { border-bottom: 0; }
+      .cap-card { min-height: 210px; }
+      .demo-top { align-items: flex-start; }
+      .demo-grid { min-height: auto; }
+      .output-receipt { grid-template-columns: 1fr; }
+      .demo-controls { align-items: flex-start; flex-direction: column; }
+      .run-button { width: 100%; }
+      .agent-orbit { min-height: 410px; transform: scale(.86); margin-inline: -32px; }
+      .orbit-ring { width: 330px; height: 330px; }
+      .pilot-card { grid-template-columns: 1fr; }
+      .pilot-card .btn { width: 100%; }
+      .event-image { min-height: 360px; }
+      .footer-bottom { flex-direction: column; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+      .reveal { opacity: 1; transform: none; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav-wrap">
+      <a class="brand" href="https://eiah.ia.br/" aria-label="Voltar para EIAH">
+        <img src="eiah-symbol.png" alt="Símbolo EIAH">
+        <div><strong>EIAH</strong><span>Vertical Logística</span></div>
+      </a>
+      <button class="menu-button" id="menuButton" type="button" aria-expanded="false" aria-controls="navLinks">Menu</button>
+      <nav class="nav-links" id="navLinks" aria-label="Navegação principal">
+        <a href="#desafio">Desafio</a>
+        <a href="#demonstracao">Demonstração</a>
+        <a href="#capacidades">Capacidades</a>
+        <a href="#agentes">Agentes</a>
+        <a href="#governanca">Governança</a>
+        <a class="nav-cta" href="https://oraculosc.vercel.app/" target="_blank" rel="noopener">Abrir demonstração Oráculo SC ↗</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" id="topo">
+      <div class="container hero-grid">
+        <div>
+          <div class="hero-kicker">EIAH · Logística &amp; Comex · SHADOW</div>
+          <h1>Logística &amp; Comex com <span>governança antes da ação.</span></h1>
+          <p class="hero-copy">A vertical organiza cenários de logística e comércio exterior com contexto, policies, revisão humana e evidências. O módulo Pré-DUIMP Governada está em validação SHADOW e não transmite dados ao Siscomex ou Portal Único neste estágio.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="https://oraculosc.vercel.app/" target="_blank" rel="noopener">Explorar demonstração <span>↗</span></a>
+            <a class="btn btn-secondary" href="#demonstracao">Ver como funciona <span>↓</span></a>
+          </div>
+          <div class="hero-note">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 4 6v5c0 5 3.4 8.8 8 10 4.6-1.2 8-5 8-10V6l-8-3Z" stroke="currentColor" stroke-width="1.7"/><path d="m8.5 12 2.2 2.2 4.8-5" stroke="currentColor" stroke-width="1.7"/></svg>
+            Ambiente demonstrativo e SHADOW. Decisões críticas permanecem sob autoridade humana e ações externas ficam bloqueadas quando não explicitamente autorizadas.
+          </div>
+        </div>
+
+        <aside class="control-tower" aria-label="Prévia da torre de controle Oráculo SC">
+          <div class="tower-head">
+            <div class="tower-brand"><img src="eiah-symbol.png" alt=""><div><strong>Oráculo SC</strong><small>Preview · operação logística governada</small></div></div>
+            <span class="status-pill">OPERACIONAL</span>
+          </div>
+          <div class="tower-map">
+            <div class="route-line"><span class="route-node ok"></span><span class="route-segment"></span><span class="route-node ok"></span><span class="route-segment"></span><span class="route-node"></span></div>
+            <div class="route-labels"><span>Origem</span><span>Terminal</span><span>Destino</span></div>
+          </div>
+          <div class="tower-body">
+            <div class="timeline">
+              <p class="timeline-title">Jornada da operação</p>
+              <div class="timeline-item"><span class="timeline-dot done"></span><div><strong>Credenciais verificadas</strong><span>Assinatura, validade e revogação</span></div></div>
+              <div class="timeline-item"><span class="timeline-dot done"></span><div><strong>GateIn registrado</strong><span>Placa ABC1D23 · 14:32</span></div></div>
+              <div class="timeline-item"><span class="timeline-dot"></span><div><strong>GateOut previsto</strong><span>Janela operacional · 18:10</span></div></div>
+            </div>
+            <div class="decision">
+              <p class="decision-title">Decisão governada</p>
+              <div class="decision-card"><small>Resultado do gate</small><strong>Entrada liberada</strong><div class="receipt">receipt: gate_in<br>hash: 9f42…a71c<br>policy: vc_bundle_v1<br>human_review: available</div></div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="proof-strip" aria-label="Princípios da solução">
+      <div class="container proof-grid">
+        <div class="proof-item"><strong>Uma jornada</strong><span>Eventos conectados do documento ao GateOut.</span></div>
+        <div class="proof-item"><strong>Múltiplos atores</strong><span>Cada parte vê o que precisa, no momento certo.</span></div>
+        <div class="proof-item"><strong>Evidência verificável</strong><span>Assinaturas, hashes e trilha de decisão.</span></div>
+        <div class="proof-item"><strong>IA governada</strong><span>Escopo, ferramentas e supervisão explícitos.</span></div>
+      </div>
+    </section>
+
+    <section class="section" id="desafio">
+      <div class="container problem-grid">
+        <div class="reveal">
+          <span class="eyebrow">O desafio</span>
+          <h2 class="section-title">A carga se move. A informação ainda espera.</h2>
+          <p class="section-lead">Operações críticas continuam fragmentadas entre portais, planilhas, mensagens e documentos difíceis de comprovar.</p>
+          <div class="problem-list">
+            <div class="problem-row"><span class="problem-icon">!</span><div><strong>Baixa rastreabilidade</strong><span>É difícil reconstruir quem decidiu, quando e com base em qual evidência.</span></div></div>
+            <div class="problem-row"><span class="problem-icon">↗</span><div><strong>Custo por atraso</strong><span>Free time, demurrage e janelas operacionais dependem de alertas no momento certo.</span></div></div>
+            <div class="problem-row"><span class="problem-icon">×</span><div><strong>Dados sem contexto comum</strong><span>Transportadora, terminal, despachante e embarcador enxergam versões diferentes da operação.</span></div></div>
+          </div>
+        </div>
+        <div class="flow-card reveal">
+          <span class="eyebrow">A resposta EIAH</span>
+          <div class="flow-step"><span class="flow-number">01</span><div><strong>Capturar eventos e documentos</strong><span>QR, VC-JWT, API, webhook, WhatsApp, RFID e OCR.</span></div><span class="flow-state">ENTRADA</span></div>
+          <div class="flow-step"><span class="flow-number">02</span><div><strong>Aplicar políticas e agentes</strong><span>Contexto isolado, ferramentas permitidas e gates de decisão.</span></div><span class="flow-state">RUNTIME</span></div>
+          <div class="flow-step"><span class="flow-number">03</span><div><strong>Preparar com supervisão</strong><span>Gate, alertas, revisão e encaminhamento humano antes de qualquer efeito externo.</span></div><span class="flow-state">REVISÃO</span></div>
+          <div class="flow-step"><span class="flow-number">04</span><div><strong>Registrar evidências</strong><span>Receipts, timestamps, hashes e histórico operacional.</span></div><span class="flow-state">AUDITORIA</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section governance" id="demonstracao">
+      <div class="container">
+        <span class="eyebrow">Demonstração interativa</span>
+        <h2 class="section-title">Veja uma decisão logística ganhar contexto.</h2>
+        <p class="section-lead">Escolha um cenário e acompanhe uma simulação institucional da jornada governada. Nenhuma ação externa é executada nesta página.</p>
+
+        <div class="demo-shell reveal">
+          <div class="demo-top">
+            <div class="demo-title"><img src="eiah-symbol.png" alt=""><div><strong>EIAH Logistics Runtime</strong><span>Preview governado · ambiente demonstrativo</span></div></div>
+            <span class="live-indicator">Pronto</span>
+          </div>
+          <div class="demo-tabs" role="tablist" aria-label="Cenários da demonstração">
+            <button class="demo-tab active" type="button" data-scenario="gate">Gate inteligente</button>
+            <button class="demo-tab" type="button" data-scenario="demurrage">Risco de demurrage</button>
+            <button class="demo-tab" type="button" data-scenario="siscomex">Mudança de canal DI</button>
+          </div>
+          <div class="demo-grid">
+            <div class="demo-pipeline" id="pipeline"></div>
+            <div class="demo-output">
+              <div class="output-window">
+                <span class="output-label">Resultado da simulação</span>
+                <div class="output-main"><strong id="outputTitle">Cenário aguardando simulação</strong><p id="outputDescription">Clique em “Simular cenário” para acompanhar a jornada demonstrativa.</p></div>
+                <div class="output-receipt">
+                  <div class="output-stat"><span>Decision receipt</span><strong id="receiptValue">—</strong></div>
+                  <div class="output-stat"><span>Próxima ação</span><strong id="nextAction">—</strong></div>
+                </div>
+              </div>
+              <div class="demo-controls"><span class="demo-disclaimer">Simulação sem dados reais, PII ou integrações externas.</span><button class="run-button" id="runDemo" type="button">Simular cenário</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="capacidades">
+      <div class="container">
+        <span class="eyebrow">Capacidades</span>
+        <h2 class="section-title">Uma camada operacional para toda a cadeia.</h2>
+        <p class="section-lead">O Oráculo SC organiza uma jornada comum e abre pontos de integração com sistemas já existentes.</p>
+        <div class="cap-grid">
+          <article class="cap-card reveal"><span class="cap-tag">MVP</span><span class="cap-icon">⌁</span><h3>Cadeia ponta a ponta</h3><p>Timeline compartilhada de importação e exportação com responsáveis, evidências, bloqueios e próximas ações.</p></article>
+          <article class="cap-card reveal"><span class="cap-tag">Criptografia</span><span class="cap-icon">✓</span><h3>Credenciais verificáveis</h3><p>Validação de assinatura, esquema, validade e revogação de credenciais digitais antes da decisão de gate.</p></article>
+          <article class="cap-card reveal"><span class="cap-tag">Alertas</span><span class="cap-icon">◷</span><h3>Demurrage e detention</h3><p>Acompanhamento de free time, faixas de custo e alertas preventivos para reduzir surpresa operacional.</p></article>
+          <article class="cap-card reveal"><span class="cap-tag">Comex</span><span class="cap-icon">◇</span><h3>NCM e Canal DI</h3><p>Validação contextual, monitoramento de mudanças e impacto visível na sequência logística.</p></article>
+          <article class="cap-card reveal"><span class="cap-tag">Por papel</span><span class="cap-icon">◎</span><h3>Visão multiator</h3><p>Links temporários e visões filtradas para importador, exportador, despachante, transportadora e terminal.</p></article>
+          <article class="cap-card reveal"><span class="cap-tag">Auditável</span><span class="cap-icon">#</span><h3>Receipts de decisão</h3><p>Registro estruturado de eventos, políticas, ferramentas usadas e encaminhamento para supervisão humana.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section governance" id="agentes">
+      <div class="container">
+        <span class="eyebrow">Arquitetura agêntica</span>
+        <h2 class="section-title">Especialização sem perder o controle.</h2>
+        <p class="section-lead">Agentes especializados colaboram dentro de um runtime com limites, ferramentas e evidências definidos.</p>
+        <div class="agents-wrap">
+          <div class="agent-orbit reveal" aria-label="Diagrama de agentes">
+            <div class="orbit-ring"></div>
+            <div class="orchestrator"><div><strong>Orquestrador</strong><span>coordena contexto<br>e políticas</span></div></div>
+            <div class="agent-node n1"><strong>Verificador</strong><span>documentos e VCs</span></div>
+            <div class="agent-node n2"><strong>Gate</strong><span>entrada e saída</span></div>
+            <div class="agent-node n3"><strong>Pagamento</strong><span>PIX e fiscal</span></div>
+            <div class="agent-node n4"><strong>Auditoria</strong><span>receipts e anomalias</span></div>
+            <div class="agent-node n5"><strong>Monitor</strong><span>prazos e mudanças</span></div>
+          </div>
+          <div class="agent-copy reveal">
+            <div class="agent-feature"><b>1</b><div><strong>Contratos antes da interface</strong><span>Identidade, escopo, política e ferramentas pertencem ao agente e ao engine.</span></div></div>
+            <div class="agent-feature"><b>2</b><div><strong>Ferramentas explicitamente permitidas</strong><span>Cada agente recebe somente os recursos necessários para sua responsabilidade.</span></div></div>
+            <div class="agent-feature"><b>3</b><div><strong>Falha segura</strong><span>Na dúvida, a execução bloqueia, explica o motivo e solicita revisão humana.</span></div></div>
+            <div class="agent-feature"><b>4</b><div><strong>Evidência durante a execução</strong><span>O runtime registra o caminho da decisão, não apenas o resultado final.</span></div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="governanca">
+      <div class="container">
+        <span class="eyebrow">Governança EIAH</span>
+        <h2 class="section-title">Automação com boundary operacional explícito.</h2>
+        <p class="section-lead">A vertical nasce sobre os mesmos princípios de controle da plataforma EIAH.</p>
+        <div class="gov-grid">
+          <div class="gov-card reveal"><strong>Contexto isolado</strong><p>Cada operação recebe escopo, dados e permissões próprios.</p></div>
+          <div class="gov-card reveal"><strong>Supervisão humana</strong><p>Decisões críticas podem exigir aprovação antes de produzir efeito externo.</p></div>
+          <div class="gov-card reveal"><strong>LGPD por desenho</strong><p>Minimização de dados e preferência por hashes e metadados operacionais.</p></div>
+          <div class="gov-card reveal"><strong>Trilha auditável</strong><p>Eventos, ações e resultados recebem receipts verificáveis.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="logistique">
+      <div class="container">
+        <div class="event-card reveal">
+          <div class="event-image" role="img" aria-label="Arte EIAH Vertical Logística"></div>
+          <div class="event-content">
+            <span class="event-date">VALIDAÇÃO CONTROLADA · 2026</span>
+            <h2>Pilotos controlados em Logística &amp; Comex.</h2>
+            <p>Buscamos operações com problema bem delimitado, evidências disponíveis e responsável humano definido para validar pilotos controlados e mensuráveis.</p>
+            <div class="event-meta"><span>Pré-DUIMP SHADOW</span><span>Gates &amp; evidências</span><span>Comércio exterior</span><span>Integrações</span></div>
+            <div class="hero-actions">
+              <a class="btn btn-primary" href="https://wa.me/5547999674434?text=Ol%C3%A1!%20Quero%20conversar%20sobre%20a%20Vertical%20Log%C3%ADstica%20EIAH." target="_blank" rel="noopener">Agendar conversa</a>
+              <a class="btn btn-secondary" href="https://eiah.ia.br/">Voltar à EIAH ↗</a>
+            </div>
+          </div>
+        </div>
+
+        <div class="pilot-card reveal" id="contato">
+          <div><h3>Tem uma operação candidata a piloto?</h3><p>Começamos por um fluxo, um conjunto de evidências e um resultado mensurável. O diagnóstico inicial define escopo, integrações e critérios de sucesso.</p></div>
+          <a class="btn btn-primary" href="mailto:contato@eiah.ia.br?subject=Piloto%20Vertical%20Log%C3%ADstica%20EIAH">Propor um piloto</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <div class="footer-brand"><img src="eiah-symbol.png" alt="Símbolo EIAH"><div><strong>EIAH · Vertical Logística</strong><span>Agentic AI governada para operações críticas.</span></div></div>
+          <p>Uma vertical em desenvolvimento para conectar evidências, decisões e execução na cadeia logística brasileira.</p>
+        </div>
+        <div><h4>Explore</h4><a href="#demonstracao">Demonstração</a><a href="#capacidades">Capacidades</a><a href="#governanca">Governança</a><a href="https://oraculosc.vercel.app/" target="_blank" rel="noopener">Oráculo SC ↗</a></div>
+        <div><h4>Contato</h4><a href="mailto:contato@eiah.ia.br">contato@eiah.ia.br</a><a href="https://wa.me/5547999674434" target="_blank" rel="noopener">WhatsApp</a><a href="https://eiah.ia.br/" target="_blank" rel="noopener">eiah.ia.br</a></div>
+      </div>
+      <div class="footer-bottom"><span>© 2026 EIAH. Conteúdo institucional.</span><span>MVP demonstrativo · integrações podem operar em modo simulado.</span></div>
+    </div>
+  </footer>
+
+  <script>
+    const scenarios = {
+      gate: {
+        steps: [
+          ["Receber pacote de credenciais", "DriverLicense, VehicleInspection e CompanyLicense"],
+          ["Verificar assinatura e revogação", "Política fail-closed aplicada ao pacote"],
+          ["Avaliar janela de agendamento", "Placa e schedulingId correlacionados"],
+          ["Registrar decisão de gate", "Receipt e histórico operacional gerados"]
+        ],
+        title: "Entrada liberada com evidência",
+        description: "O pacote foi validado, não há revogações e o veículo está associado à janela operacional.",
+        receipt: "gate_9f42a71c",
+        next: "OPEN_GATE_IN"
+      },
+      demurrage: {
+        steps: [
+          ["Ler free time contratado", "Prazo e faixas de tarifa correlacionados"],
+          ["Calcular exposição atual", "Tempo restante e custo potencial estimados"],
+          ["Verificar responsabilidade", "Evidências e bloqueios analisados"],
+          ["Preparar alerta preventivo", "Destinatário e visão por ator definidos"]
+        ],
+        title: "Risco detectado antes do custo",
+        description: "O free time vence em 36 horas. A operação foi sinalizada para importador e despachante.",
+        receipt: "risk_72bc108e",
+        next: "HUMAN_REVIEW"
+      },
+      siscomex: {
+        steps: [
+          ["Consultar estado da DI", "Canal e timestamp registrados"],
+          ["Comparar mudança de status", "Verde → Vermelho identificado"],
+          ["Calcular impacto na cadeia", "Etapas dependentes colocadas em espera"],
+          ["Notificar atores responsáveis", "Despachante e terminal priorizados"]
+        ],
+        title: "Mudança de canal propagada",
+        description: "A vistoria tornou-se obrigatória e as etapas dependentes foram bloqueadas até nova evidência.",
+        receipt: "di_4a91c3d2",
+        next: "REQUEST_INSPECTION"
+      }
+    };
+
+    let selectedScenario = "gate";
+    let running = false;
+    const pipeline = document.getElementById("pipeline");
+    const outputTitle = document.getElementById("outputTitle");
+    const outputDescription = document.getElementById("outputDescription");
+    const receiptValue = document.getElementById("receiptValue");
+    const nextAction = document.getElementById("nextAction");
+    const runButton = document.getElementById("runDemo");
+
+    function renderPipeline(activeIndex = -1, completeUntil = -1) {
+      pipeline.innerHTML = scenarios[selectedScenario].steps.map((step, index) => {
+        const state = index <= completeUntil ? "complete" : index === activeIndex ? "active" : "";
+        return `<div class="pipeline-row ${state}"><span class="pipeline-marker"></span><div><strong>${step[0]}</strong><span>${step[1]}</span></div></div>`;
+      }).join("");
+    }
+
+    function resetOutput() {
+      renderPipeline();
+      outputTitle.textContent = "Cenário aguardando simulação";
+      outputDescription.textContent = "Clique em “Simular cenário” para acompanhar a jornada demonstrativa.";
+      receiptValue.textContent = "—";
+      nextAction.textContent = "—";
+      runButton.textContent = "Executar cenário";
+    }
+
+    document.querySelectorAll(".demo-tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        if (running) return;
+        selectedScenario = tab.dataset.scenario;
+        document.querySelectorAll(".demo-tab").forEach(item => item.classList.toggle("active", item === tab));
+        resetOutput();
+      });
+    });
+
+    runButton.addEventListener("click", async () => {
+      if (running) return;
+      running = true;
+      runButton.disabled = true;
+      runButton.textContent = "Executando…";
+      const stepCount = scenarios[selectedScenario].steps.length;
+      for (let index = 0; index < stepCount; index++) {
+        renderPipeline(index, index - 1);
+        await new Promise(resolve => setTimeout(resolve, 520));
+      }
+      renderPipeline(-1, stepCount - 1);
+      const result = scenarios[selectedScenario];
+      outputTitle.textContent = result.title;
+      outputDescription.textContent = result.description;
+      receiptValue.textContent = result.receipt;
+      nextAction.textContent = result.next;
+      runButton.textContent = "Executar novamente";
+      runButton.disabled = false;
+      running = false;
+    });
+
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => entry.target.classList.toggle("visible", entry.isIntersecting));
+    }, { threshold: .12 });
+    document.querySelectorAll(".reveal").forEach(element => observer.observe(element));
+
+    const menuButton = document.getElementById("menuButton");
+    const navLinks = document.getElementById("navLinks");
+    menuButton.addEventListener("click", () => {
+      const open = navLinks.classList.toggle("open");
+      menuButton.setAttribute("aria-expanded", String(open));
+    });
+    navLinks.querySelectorAll("a").forEach(link => link.addEventListener("click", () => {
+      navLinks.classList.remove("open");
+      menuButton.setAttribute("aria-expanded", "false");
+    }));
+
+    renderPipeline();
+  </script>
+</body>
+</html>
