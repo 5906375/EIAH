@@ -1,0 +1,27 @@
+{
+  "$schema": "https://developers.cloudflare.com/workers/wrangler/config-schema.json",
+
+  "name": "eiah-site",
+  "compatibility_date": "2026-09-02",
+
+  "workers_dev": true,
+  "preview_urls": true,
+
+  "routes": [
+    {
+      "pattern": "eiah.ia.br",
+      "custom_domain": true
+    },
+    {
+      "pattern": "www.eiah.ia.br",
+      "custom_domain": true
+    }
+  ],
+
+  "assets": {
+    "directory": "./public",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "none",
+    "run_worker_first": false
+  }
+}
