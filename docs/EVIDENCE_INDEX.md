@@ -120,6 +120,7 @@ Snapshot canônico desta indexação:
 | Smoke DNS/TLS de produção | `ops/evidence/latest/domain-go-live/production-dns-tls-smoke.md` | Consolida a prontidão de produção com base nas evidências existentes de TLS, origem protegida e WAF. |
 | Fail-closed de policy ausente | `ops/evidence/latest/domain-go-live/tenant-policy-fail-closed-403.md` | Prova o bloqueio `403 POLICY_NOT_FOUND` por teste automatizado local. |
 | Plano de rollback | `ops/evidence/latest/domain-go-live/rollback-plan.md` | Define os gatilhos e passos mínimos de reversão para borda pública, app e API. |
+| Deploy institucional EIAH Site v6.2 | `ops/evidence/latest/domain-go-live/eiah-site-v6.2-deploy-2026-09-14.md` | Registra commit promovido, deployment Cloudflare, smoke de produção, cutover de `/levoutec/`, integridade SHA-256 e rollback preservado. |
 
 ## Sprint 1 (F5.3) — Evidencias operacionais
 
