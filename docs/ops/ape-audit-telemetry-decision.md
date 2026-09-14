@@ -221,3 +221,94 @@ Quando a medição for real, valor diferente de zero é **resultado esperado, n�
 > Ratifico as definições da Seção 3, o enforcement e a decisão de reviewers da Seção 4, a contenção da Seção 5, o catálogo da Seção 6, o contrato v3 da Seção 7, a classificação da Seção 8 e a sequência da Seção 10.
 >
 > — Carlos Alberto Merlo, data: `2026-08-20`
+
+---
+
+## 13. Adendo v1.1 — Applicability, Terminalidade, Zero-cost e `blocked` para P1 Billing v1
+
+> v1.1 · Adendo aditivo a v1.0 (2026-08-20) · Ratificado em 2026-09-03
+> Escopo: **P1 Billing v1**, domínio billing, operação de referência = débito de custo de run (`requestId = run:{runId}:debit`)
+> Não altera nenhuma seção anterior deste documento (§1–§12) — este adendo é aditivo, não substitutivo.
+> Não promove estas decisões para outros domínios (IMOB, LEGAL, MKT, LOGISTICA, ou sistêmico).
+
+### 13.1 P1-A — Applicability
+
+Uma execução é aplicável à população P1 Billing quando sua execução estiver terminal, houver expectativa verificável de efeito financeiro e ela estiver contida na janela de medição declarada. A existência do efeito financeiro observado (`BillingLedger`) **não** é condição de aplicabilidade — isso criaria circularidade entre a condição de terminalidade e a própria métrica sendo medida.
+
+```
+execution_terminal = Run.finishedAt IS NOT NULL
+effect_expected    = exists(RunUsageBreakdown WHERE runId = run.id)
+applicable(run)    = execution_terminal AND effect_expected AND run within measurement window
+```
+
+Ausência de `RunUsageBreakdown` → `not_applicable`. Não é `auditGap`. Não é `zero`. Não prova saúde do sistema — apenas remove a execução da população medida.
+
+### 13.2 P1-T — Terminalidade
+
+Para fins de elegibilidade temporal e medição P1 Billing, uma execução é considerada terminal quando `Run.finishedAt IS NOT NULL`. Este predicado é preferido a uma enumeração de valores de `Run.status` porque `finalizeRunRecord` seta `finishedAt` incondicionalmente para qualquer status que finalize a execução, tornando-o o sinal estrutural mais forte disponível — inclusive correto para o valor `awaiting_approval` do enum `Run.status`, nunca escrito por código real.
+
+Terminalidade da execução **não** implica confirmação do efeito financeiro — são dimensões distintas, tratadas separadamente por P1-A/P1-B.
+
+### 13.3 P1-Z — Zero-cost
+
+A existência da cadeia de usage e o valor econômico calculado são dimensões distintas:
+
+- **Ausência** de `RunUsageBreakdown` → ausência de expectativa de efeito (`not_applicable`, §13.1).
+- **Existência** de `RunUsageBreakdown` cuja soma de `amountCents` seja zero → execução aplicável com custo zero legítimo. **Não** pode ser classificada como `missing_breakdown`.
+
+Essas duas situações são hoje colapsadas na mesma condição em `billingReconciliation.ts` (`breakdownCostCents === 0`); este adendo ratifica a semântica correta, sem alterar o código nesta rodada.
+
+### 13.4 P1-B — Semântica de `blocked`
+
+O estado `blocked` é terminal para fins de lifecycle (§13.2) porque encerra a execução e possui `Run.finishedAt`. Sua terminalidade **não** implica automaticamente elegibilidade para `auditGap`.
+
+A ausência de efeito financeiro só constitui `auditGap` quando, cumulativamente:
+1. a execução é aplicável (§13.1);
+2. havia expectativa verificável de efeito;
+3. nenhuma decisão válida de governança impediu legitimamente esse efeito;
+4. a cadeia de auditoria obrigatória permanece incompleta.
+
+**`USER_CANCELLED` com uso real incorrido:** o runtime atual (`runWorker.ts` → `deriveRunCostFromBreakdown` → `chargeRun`, condicionado a `derivedCostCents > 0`) considera o efeito financeiro esperado e tenta produzi-lo mesmo após cancelamento pelo usuário. **Este comportamento de runtime prova expectativa e tentativa do efeito — não prova, por si só, autorização independente.** Nenhum gate de política/entitlement (`TenantActionPolicy`, `requireScope`, `entitlement`) foi localizado no caminho `chargeRun → chargeRunFromBreakdown → BillingLedgerService.insertEntry`; a única verificação presente é correspondência de `tenantId`/`workspaceId` (escopo/identidade do run, não decisão de política). A authority aplicável a esse débito permanece a mesma authority que já governa qualquer débito de billing, e não é criada nem substituída pelo fato de o bloqueio ter ocorrido.
+
+**Bloqueio por decisão válida de governança (guardrail/policy):** quando o próprio `blocked` representa a decisão que impede o efeito, a ausência do efeito financeiro correspondente **não** constitui `auditGap`.
+
+**Quando a categoria do bloqueio ou a authority aplicável não puder ser determinada de forma verificável:** `measurementStatus = not_measured/error` — nunca `0`, nunca `auditGap` presumido.
+
+```
+IF applicable
+AND execution terminal
+AND effect expected
+AND no valid governance decision legitimately prevented the effect
+AND required audit chain incomplete
+THEN auditGap += 1
+```
+
+### 13.5 Fail-closed (as quatro dimensões)
+
+| Situação desconhecida | Resultado |
+|---|---|
+| Applicability não determinável | `not_measured`/`error`, nunca `0` |
+| Terminalidade não determinável | execução não incluída como terminal, nunca declarada `0` |
+| Zero-cost não distinguível de ausência de breakdown | `not_measured` para esse run, nunca `missing_breakdown=0` como verdade |
+| Categoria/authority de `blocked` não determinável | `not_measured`/`error`, nunca `0` nem `auditGap` presumido |
+
+`auditGap = 0` só é uma afirmação válida quando `sampleSize > 0 AND measurementStatus = measured AND coverageStatus = complete` e a cadeia obrigatória foi de fato checada — consistente com §7.2 deste documento.
+
+### 13.6 Compatibilidade com `duplicateSideEffects`
+
+Este adendo não altera a fórmula de `duplicateSideEffects` (§3.2) nem introduz conflito com ela — as decisões P1-A/T/Z/B tratam exclusivamente de população e terminalidade para `auditGap`; `duplicateSideEffects` opera sobre efeitos já observados.
+
+### 13.7 Escopo e não-implementação
+
+```
+scope: P1 Billing v1 — domínio billing, operação de referência = débito de custo de run
+system_wide_applicability: NAO
+```
+
+Este adendo é uma decisão normativa. Ele **não**: cria o catálogo de operações governadas; altera `billingReconciliation.ts`; corrige a fórmula de `duplicateChargesCount`; adiciona constraint a `BillingLedger`; cria `ape.weekly-cycle.v3`; altera o gerador P1; reativa o schedule de `ape-weekly.yml`. Essas permanecem etapas futuras, condicionadas a esta ratificação.
+
+### 13.8 Ratificação
+
+> Ratifico as definições de applicability (§13.1), terminalidade (§13.2), zero-cost (§13.3) e a semântica de `blocked` (§13.4) para P1 Billing v1, incluindo a ressalva expressa de que tentativa de efeito pelo runtime não constitui prova independente de authority, e o comportamento fail-closed da Seção 13.5.
+>
+> — Carlos Alberto Merlo, data: `2026-09-03`
