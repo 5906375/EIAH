@@ -1,0 +1,153 @@
+{
+  "schema": "pre-duimp-workspace-gate-publication-integrity-v1",
+  "generatedOn": "2026-08-30",
+  "algorithm": "sha256",
+  "artifactCount": 24,
+  "selfExcluded": true,
+  "artifacts": [
+    {
+      "name": "01-no-grant-front-door.png",
+      "path": "01-no-grant-front-door.png",
+      "size": 354946,
+      "sha256": "45d76fa9314a5e217fce820ea913beea01a2af34a2022a430d18a81740345861"
+    },
+    {
+      "name": "02-workspace-grant-front-door.png",
+      "path": "02-workspace-grant-front-door.png",
+      "size": 343467,
+      "sha256": "4d811dbd1abbd764d95ec1469076a2265a1561d505fdee9a4240218c301cc099"
+    },
+    {
+      "name": "03-pre-duimp-ready.png",
+      "path": "03-pre-duimp-ready.png",
+      "size": 116494,
+      "sha256": "3dc359e7885c84606bd785404a0eea2329fd4c2b45d6d5614138e506628445c8"
+    },
+    {
+      "name": "04-pre-duimp-authorized-shadow.png",
+      "path": "04-pre-duimp-authorized-shadow.png",
+      "size": 123475,
+      "sha256": "e2892487bc38bdb04038ea963c392934be5b9fafee9b6ea0a951103249e279a9"
+    },
+    {
+      "name": "05-pre-duimp-live-revoked.png",
+      "path": "05-pre-duimp-live-revoked.png",
+      "size": 125151,
+      "sha256": "19ebb3ca9ef00a7246912544aec9b21f3dd67b3e40fbc7ac968a4317137ddbdf"
+    },
+    {
+      "name": "counts-scenario-a.json",
+      "path": "counts-scenario-a.json",
+      "size": 1594,
+      "sha256": "a438d91dfcc3cb312b2edc67402c344cf47941b8d4b1b5120b91badefc9406ad"
+    },
+    {
+      "name": "counts-scenario-b.json",
+      "path": "counts-scenario-b.json",
+      "size": 3207,
+      "sha256": "c9c40dd3311a4d00ec55b3b1945aeaad8e7db00696fab1afe33f8c95966a8e21"
+    },
+    {
+      "name": "counts-scenario-c.json",
+      "path": "counts-scenario-c.json",
+      "size": 2320,
+      "sha256": "1c4a29264183ffef37a5810ccbf8dd5a9bdd006b3d2013cf2489fa93212bfe1b"
+    },
+    {
+      "name": "default-off-restoration.json",
+      "path": "default-off-restoration.json",
+      "size": 264,
+      "sha256": "dcb10e2801a398583c5b7034d02dbced02a63905657fe3abd0c847373eb00cf4"
+    },
+    {
+      "name": "integrity.json",
+      "path": "integrity.json",
+      "size": 3418,
+      "sha256": "1cf71c6c2e5a5018fbc7d3aa13e303ca10afcdb2ba4816383004d5a531f81d6a"
+    },
+    {
+      "name": "manifest.json",
+      "path": "manifest.json",
+      "size": 17465,
+      "sha256": "ecae483d8392e09134874fd5962c496447d97368804f045dda19042c3cda8dc4"
+    },
+    {
+      "name": "playwright-result.json",
+      "path": "playwright-result.json",
+      "size": 9940,
+      "sha256": "da2f8a53653ee705aad8784771b5b99ce32909cdc1048a4db8adfac92ce1672a"
+    },
+    {
+      "name": "playwright-sanitized.log",
+      "path": "playwright-sanitized.log",
+      "size": 553,
+      "sha256": "c92da9cd61a45c9e67fb8295d634339a792ffd89c2cb50fa827b5b972162c668"
+    },
+    {
+      "name": "publication-provenance.json",
+      "path": "publication-provenance.json",
+      "size": 10037,
+      "sha256": "9229e857dd335a78dd824e4641ea5861f8e8ad3b7bc7fd6ad53bb4c24a8f5e3f"
+    },
+    {
+      "name": "quality-addendum/README.md",
+      "path": "quality-addendum/README.md",
+      "size": 963,
+      "sha256": "2c93f4695fb91f58fc4c483dfe3c23a3f66f421d92e14415d7741e6658dbfc9a"
+    },
+    {
+      "name": "quality-addendum/integrity-hashes.json",
+      "path": "quality-addendum/integrity-hashes.json",
+      "size": 1059,
+      "sha256": "67ef4b0c61f010309d1cf0a26f9cd7eec4bd9f739f649fa824b754a88a6d6e09"
+    },
+    {
+      "name": "quality-addendum/provenance.json",
+      "path": "quality-addendum/provenance.json",
+      "size": 1555,
+      "sha256": "daf89042f5cb950a777d38acee11b842ed068c637d6cf5dac25348034094e97b"
+    },
+    {
+      "name": "quality-addendum/quality-gate-addendum.json",
+      "path": "quality-addendum/quality-gate-addendum.json",
+      "size": 1741,
+      "sha256": "20cf4a665010721653f800b63fc08de53b043ba1b4e1fb66b96e5225f7348614"
+    },
+    {
+      "name": "quality-addendum/sensitivity-scan.json",
+      "path": "quality-addendum/sensitivity-scan.json",
+      "size": 570,
+      "sha256": "336a2fe5c46f175847c64af42a8185486577b309cd842311878d1396e71e7168"
+    },
+    {
+      "name": "quality-addendum/tsconfig-change-sanitized.diff",
+      "path": "quality-addendum/tsconfig-change-sanitized.diff",
+      "size": 399,
+      "sha256": "e93e4a14073dede528252f9a5a876dbd7ad19864765a25fc71dd3478cdf21153"
+    },
+    {
+      "name": "quality-addendum/typecheck-result.json",
+      "path": "quality-addendum/typecheck-result.json",
+      "size": 1145,
+      "sha256": "32411c83171d0b7025020366291edc1493a8f066bb656bd8e9e409890be291f6"
+    },
+    {
+      "name": "sensitivity-scan.json",
+      "path": "sensitivity-scan.json",
+      "size": 2803,
+      "sha256": "ff60b8a0f37719ba65fe3038d045c29e1e51ddc4b13d4a372eaf3c9e280601e0"
+    },
+    {
+      "name": "surface-scenario-b.json",
+      "path": "surface-scenario-b.json",
+      "size": 896,
+      "sha256": "fc1e339c60f87a584fc4f41b34bbf4e1835860b223062ced765f823ccdceba0a"
+    },
+    {
+      "name": "user-journey-summary.md",
+      "path": "user-journey-summary.md",
+      "size": 346,
+      "sha256": "f447cc2ebe3fde1909466b3bd2e31c0491d653cd59db82f55eba942277210fb6"
+    }
+  ]
+}

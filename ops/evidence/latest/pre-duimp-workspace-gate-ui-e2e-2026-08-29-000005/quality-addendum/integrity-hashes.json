@@ -1,0 +1,37 @@
+{
+  "schema": "pre-duimp-quality-addendum-integrity-v1",
+  "generatedOn": "2026-08-30",
+  "algorithm": "SHA-256",
+  "artifacts": [
+    {
+      "name": "README.md",
+      "size": 963,
+      "sha256": "2c93f4695fb91f58fc4c483dfe3c23a3f66f421d92e14415d7741e6658dbfc9a"
+    },
+    {
+      "name": "provenance.json",
+      "size": 1555,
+      "sha256": "daf89042f5cb950a777d38acee11b842ed068c637d6cf5dac25348034094e97b"
+    },
+    {
+      "name": "quality-gate-addendum.json",
+      "size": 1741,
+      "sha256": "20cf4a665010721653f800b63fc08de53b043ba1b4e1fb66b96e5225f7348614"
+    },
+    {
+      "name": "sensitivity-scan.json",
+      "size": 570,
+      "sha256": "336a2fe5c46f175847c64af42a8185486577b309cd842311878d1396e71e7168"
+    },
+    {
+      "name": "tsconfig-change-sanitized.diff",
+      "size": 399,
+      "sha256": "e93e4a14073dede528252f9a5a876dbd7ad19864765a25fc71dd3478cdf21153"
+    },
+    {
+      "name": "typecheck-result.json",
+      "size": 1145,
+      "sha256": "32411c83171d0b7025020366291edc1493a8f066bb656bd8e9e409890be291f6"
+    }
+  ]
+}

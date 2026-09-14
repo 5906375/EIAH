@@ -1,0 +1,528 @@
+{
+  "schema": "pre-duimp-pilot-gate-e2e-local-capture-v1",
+  "createdAt": "2026-08-29T18:08:26.598Z",
+  "captureDirectory": "<capture-root>",
+  "baseline": {
+    "branch": "docs/structural-gate-boundary-sha",
+    "head": "bbfb94e349ed8a6576b652bdf0901ac61283a1ed",
+    "tree": "d18fe22d81571358757c38b4fc0a698d49ac8684"
+  },
+  "classification": "synthetic-local-validation-only",
+  "invariants": {
+    "preDuimpMode": "shadow",
+    "preDuimpStatus": "PARCIAL",
+    "realPilotAuthorized": false,
+    "externalTransmissionAllowed": false,
+    "guardrailLedgersDeleted": false,
+    "auditShellsPreserved": true
+  },
+  "masking": {
+    "credentialSecretPersistedInArtifacts": false,
+    "requestBodyPersisted": false,
+    "headersPersisted": false,
+    "cookiesPersisted": false,
+    "storagePersisted": false,
+    "screenshotsContainRealIdentity": false,
+    "failureScreenshotScope": "pre-duimp-section-only"
+  },
+  "scenarioPlan": {
+    "A": "no pilot grant; zero click and zero POST",
+    "B": "exact workspace pilot grant; one click and one authorized shadow POST",
+    "C": "live exact-grant revocation; one click and one denied POST"
+  },
+  "commands": [
+    {
+      "label": "validate-postgres-published-port",
+      "command": "docker port eiah-postgres 5432/tcp",
+      "startedAt": "2026-08-29T18:06:58.459Z",
+      "finishedAt": "2026-08-29T18:06:58.492Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "git-branch-preflight",
+      "command": "git branch --show-current",
+      "startedAt": "2026-08-29T18:06:59.171Z",
+      "finishedAt": "2026-08-29T18:06:59.176Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "git-head-preflight",
+      "command": "git rev-parse HEAD",
+      "startedAt": "2026-08-29T18:06:59.176Z",
+      "finishedAt": "2026-08-29T18:06:59.181Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "git-tree-preflight",
+      "command": "git rev-parse HEAD^{tree}",
+      "startedAt": "2026-08-29T18:06:59.181Z",
+      "finishedAt": "2026-08-29T18:06:59.188Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "git-status-preflight",
+      "command": "git status --porcelain=v1 --untracked-files=all",
+      "startedAt": "2026-08-29T18:06:59.189Z",
+      "finishedAt": "2026-08-29T18:06:59.201Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "web-health-preflight",
+      "command": "docker inspect --format {{.State.Status}}|{{.State.Health.Status}} eiah-web",
+      "startedAt": "2026-08-29T18:06:59.261Z",
+      "finishedAt": "2026-08-29T18:06:59.301Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "frontend-flag-preflight",
+      "command": "docker inspect --format {{range .Config.Env}}{{if eq . \"VITE_PRE_DUIMP_FRONTEND_ENABLED=true\"}}true{{end}}{{end}} eiah-web",
+      "startedAt": "2026-08-29T18:06:59.301Z",
+      "finishedAt": "2026-08-29T18:06:59.330Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "backend-shadow-preflight",
+      "command": "docker inspect --format {{range .Config.Env}}{{if eq . \"EIAH_PRE_DUIMP_RUNTIME_SHADOW_ROUTE_ENABLED=true\"}}true{{end}}{{end}} eiah-api",
+      "startedAt": "2026-08-29T18:06:59.330Z",
+      "finishedAt": "2026-08-29T18:06:59.368Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "restore-web-default-off",
+      "command": "docker compose -f docker-compose.dev.yml -f <external-evidence-root>/pre-duimp-front-door-2026-08-27/docker-compose.pre-duimp-shadow.override.yml up -d --no-deps --force-recreate web",
+      "startedAt": "2026-08-29T18:07:17.603Z",
+      "finishedAt": "2026-08-29T18:07:32.216Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "inspect-web-health",
+      "command": "docker inspect --format {{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{end}} eiah-web",
+      "startedAt": "2026-08-29T18:07:32.216Z",
+      "finishedAt": "2026-08-29T18:07:32.246Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "inspect-web-health",
+      "command": "docker inspect --format {{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{end}} eiah-web",
+      "startedAt": "2026-08-29T18:07:34.248Z",
+      "finishedAt": "2026-08-29T18:07:34.286Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "inspect-web-health",
+      "command": "docker inspect --format {{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{end}} eiah-web",
+      "startedAt": "2026-08-29T18:07:36.288Z",
+      "finishedAt": "2026-08-29T18:07:36.317Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "inspect-web-health",
+      "command": "docker inspect --format {{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{end}} eiah-web",
+      "startedAt": "2026-08-29T18:07:38.319Z",
+      "finishedAt": "2026-08-29T18:07:38.347Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "inspect-web-health",
+      "command": "docker inspect --format {{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{end}} eiah-web",
+      "startedAt": "2026-08-29T18:07:40.350Z",
+      "finishedAt": "2026-08-29T18:07:40.385Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "inspect-web-health",
+      "command": "docker inspect --format {{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{end}} eiah-web",
+      "startedAt": "2026-08-29T18:07:42.387Z",
+      "finishedAt": "2026-08-29T18:07:42.442Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "inspect-web-health",
+      "command": "docker inspect --format {{.State.Status}}|{{if .State.Health}}{{.State.Health.Status}}{{end}} eiah-web",
+      "startedAt": "2026-08-29T18:07:44.444Z",
+      "finishedAt": "2026-08-29T18:07:44.514Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "revoke-and-tombstone-credential",
+      "command": "docker exec -i eiah-postgres psql -U postgres -d eiah_builder -X -v ON_ERROR_STOP=1 -Atq",
+      "startedAt": "2026-08-29T18:07:50.292Z",
+      "finishedAt": "2026-08-29T18:07:50.472Z",
+      "exitCode": 0,
+      "stdinUsed": true
+    },
+    {
+      "label": "remove-exact-operational-fixtures-preserve-ledgers-and-shells",
+      "command": "docker exec -i eiah-postgres psql -U postgres -d eiah_builder -X -v ON_ERROR_STOP=1 -Atq",
+      "startedAt": "2026-08-29T18:07:50.472Z",
+      "finishedAt": "2026-08-29T18:07:50.685Z",
+      "exitCode": 0,
+      "stdinUsed": true
+    },
+    {
+      "label": "test:pre-duimp",
+      "command": "pnpm run test:pre-duimp",
+      "startedAt": "2026-08-29T18:07:50.687Z",
+      "finishedAt": "2026-08-29T18:07:56.099Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "test:pre-duimp-web",
+      "command": "pnpm run test:pre-duimp-web",
+      "startedAt": "2026-08-29T18:07:56.099Z",
+      "finishedAt": "2026-08-29T18:07:56.860Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "check:reason-code-canon",
+      "command": "pnpm run check:reason-code-canon",
+      "startedAt": "2026-08-29T18:07:56.860Z",
+      "finishedAt": "2026-08-29T18:07:57.361Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "check:orphan-tests",
+      "command": "pnpm run check:orphan-tests",
+      "startedAt": "2026-08-29T18:07:57.361Z",
+      "finishedAt": "2026-08-29T18:07:59.568Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "build:web",
+      "command": "pnpm --filter @eiah/web build",
+      "startedAt": "2026-08-29T18:07:59.568Z",
+      "finishedAt": "2026-08-29T18:08:15.726Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "typecheck:api-pre-duimp-session-graph",
+      "command": "pnpm exec tsc -p <temporary-path>/pre-duimp-pilot-gate-e2e-000005.tsconfig.json",
+      "startedAt": "2026-08-29T18:08:15.726Z",
+      "finishedAt": "2026-08-29T18:08:26.007Z",
+      "exitCode": 2,
+      "stdinUsed": false
+    },
+    {
+      "label": "git-branch-final",
+      "command": "git branch --show-current",
+      "startedAt": "2026-08-29T18:08:26.008Z",
+      "finishedAt": "2026-08-29T18:08:26.018Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "git-head-final",
+      "command": "git rev-parse HEAD",
+      "startedAt": "2026-08-29T18:08:26.018Z",
+      "finishedAt": "2026-08-29T18:08:26.026Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "git-tree-final",
+      "command": "git rev-parse HEAD^{tree}",
+      "startedAt": "2026-08-29T18:08:26.026Z",
+      "finishedAt": "2026-08-29T18:08:26.034Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "git-status-final",
+      "command": "git status --porcelain=v1 --untracked-files=all",
+      "startedAt": "2026-08-29T18:08:26.034Z",
+      "finishedAt": "2026-08-29T18:08:26.057Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "inspect-eiah-api-final",
+      "command": "docker inspect --format {{.State.Status}}|{{.State.Health.Status}}|{{.Id}} eiah-api",
+      "startedAt": "2026-08-29T18:08:26.060Z",
+      "finishedAt": "2026-08-29T18:08:26.144Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "inspect-eiah-postgres-final",
+      "command": "docker inspect --format {{.State.Status}}|{{.State.Health.Status}}|{{.Id}} eiah-postgres",
+      "startedAt": "2026-08-29T18:08:26.144Z",
+      "finishedAt": "2026-08-29T18:08:26.207Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "inspect-eiah-redis-final",
+      "command": "docker inspect --format {{.State.Status}}|{{.State.Health.Status}}|{{.Id}} eiah-redis",
+      "startedAt": "2026-08-29T18:08:26.207Z",
+      "finishedAt": "2026-08-29T18:08:26.266Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "inspect-eiah-action-runner-final",
+      "command": "docker inspect --format {{.State.Status}}|{{.Id}} eiah-action-runner",
+      "startedAt": "2026-08-29T18:08:26.266Z",
+      "finishedAt": "2026-08-29T18:08:26.310Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "inspect-eiah-maintenance-worker-final",
+      "command": "docker inspect --format {{.State.Status}}|{{.Id}} eiah-maintenance-worker",
+      "startedAt": "2026-08-29T18:08:26.310Z",
+      "finishedAt": "2026-08-29T18:08:26.353Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "inspect-eiah-web-final",
+      "command": "docker inspect --format {{.State.Status}}|{{.State.Health.Status}}|{{.Id}} eiah-web",
+      "startedAt": "2026-08-29T18:08:26.354Z",
+      "finishedAt": "2026-08-29T18:08:26.392Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "frontend-flag-final",
+      "command": "docker inspect --format {{range .Config.Env}}{{if eq . \"VITE_PRE_DUIMP_FRONTEND_ENABLED=true\"}}true{{end}}{{end}} eiah-web",
+      "startedAt": "2026-08-29T18:08:26.392Z",
+      "finishedAt": "2026-08-29T18:08:26.431Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "backend-shadow-final",
+      "command": "docker inspect --format {{range .Config.Env}}{{if eq . \"EIAH_PRE_DUIMP_RUNTIME_SHADOW_ROUTE_ENABLED=true\"}}true{{end}}{{end}} eiah-api",
+      "startedAt": "2026-08-29T18:08:26.431Z",
+      "finishedAt": "2026-08-29T18:08:26.471Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "frontend-http-final",
+      "command": "curl -sS -o /dev/null -w %{http_code} http://127.0.0.1:5173/",
+      "startedAt": "2026-08-29T18:08:26.471Z",
+      "finishedAt": "2026-08-29T18:08:26.520Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    },
+    {
+      "label": "api-health-http-final",
+      "command": "curl -sS -o /dev/null -w %{http_code} http://127.0.0.1:8080/api/health",
+      "startedAt": "2026-08-29T18:08:26.520Z",
+      "finishedAt": "2026-08-29T18:08:26.540Z",
+      "exitCode": 0,
+      "stdinUsed": false
+    }
+  ],
+  "gates": [
+    {
+      "name": "test:pre-duimp",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "test:pre-duimp-web",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "check:reason-code-canon",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "check:orphan-tests",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "build:web",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "typecheck:api-pre-duimp-session-graph",
+      "exitCode": 2,
+      "passed": false
+    }
+  ],
+  "cleanup": {
+    "closeBrowser": {
+      "ok": true,
+      "closed": true
+    },
+    "restoreDefaultOff": {
+      "ok": true,
+      "composeExitCode": 0,
+      "healthy": true
+    },
+    "defaultOffSmoke": {
+      "ok": true,
+      "passed": true
+    },
+    "revokeCredential": {
+      "ok": true,
+      "applicable": true,
+      "credentialId": "<synthetic-credential-id>",
+      "revoked": true,
+      "tombstoned": true
+    },
+    "removeOperationalFixtures": {
+      "ok": true,
+      "grantRemoved": true,
+      "actionPolicyRemoved": true,
+      "installationRemoved": true,
+      "tenantShellPreserved": true,
+      "workspaceShellPreserved": true,
+      "ledgersDeleted": false
+    },
+    "removeTemporaryOverride": {
+      "ok": true,
+      "resolvedPath": "<temporary-path>/docker-compose.pre-duimp-pilot-gate-e2e-000005.override.yml",
+      "removed": true
+    }
+  },
+  "final": {
+    "head": "bbfb94e349ed8a6576b652bdf0901ac61283a1ed",
+    "tree": "d18fe22d81571358757c38b4fc0a698d49ac8684",
+    "statusPorcelain": ""
+  },
+  "artifacts": [
+    {
+      "name": "01-no-grant-front-door.png",
+      "path": "01-no-grant-front-door.png",
+      "size": 445201,
+      "sha256": "1997ac666c37e30d3633acd9df6268a4662e779084f99158c788daca895f945d"
+    },
+    {
+      "name": "02-workspace-grant-front-door.png",
+      "path": "02-workspace-grant-front-door.png",
+      "size": 442765,
+      "sha256": "021c9a2477fa1f4057cf6705b5623bcd1c43e8429a13313ca52ca9e76b2c9f8c"
+    },
+    {
+      "name": "03-pre-duimp-ready.png",
+      "path": "03-pre-duimp-ready.png",
+      "size": 116494,
+      "sha256": "3dc359e7885c84606bd785404a0eea2329fd4c2b45d6d5614138e506628445c8"
+    },
+    {
+      "name": "04-pre-duimp-authorized-shadow.png",
+      "path": "04-pre-duimp-authorized-shadow.png",
+      "size": 123475,
+      "sha256": "e2892487bc38bdb04038ea963c392934be5b9fafee9b6ea0a951103249e279a9"
+    },
+    {
+      "name": "05-pre-duimp-live-revoked.png",
+      "path": "05-pre-duimp-live-revoked.png",
+      "size": 125151,
+      "sha256": "19ebb3ca9ef00a7246912544aec9b21f3dd67b3e40fbc7ac968a4317137ddbdf"
+    },
+    {
+      "name": "counts-scenario-a.json",
+      "path": "counts-scenario-a.json",
+      "size": 1594,
+      "sha256": "a438d91dfcc3cb312b2edc67402c344cf47941b8d4b1b5120b91badefc9406ad"
+    },
+    {
+      "name": "counts-scenario-b.json",
+      "path": "counts-scenario-b.json",
+      "size": 3207,
+      "sha256": "c9c40dd3311a4d00ec55b3b1945aeaad8e7db00696fab1afe33f8c95966a8e21"
+    },
+    {
+      "name": "counts-scenario-c.json",
+      "path": "counts-scenario-c.json",
+      "size": 2356,
+      "sha256": "012d35bfa08c2339d1db518074bf595a6019460ff8852e66ac77a68c032dc40f"
+    },
+    {
+      "name": "default-off-restoration.json",
+      "path": "default-off-restoration.json",
+      "size": 264,
+      "sha256": "dcb10e2801a398583c5b7034d02dbced02a63905657fe3abd0c847373eb00cf4"
+    },
+    {
+      "name": "integrity-hashes.json",
+      "path": "integrity-hashes.json",
+      "size": 4060,
+      "sha256": "19da6b785cc78b6a140f2517d0aa2d891724bfdd1d200f1b4b22af81ebcc1552"
+    },
+    {
+      "name": "integrity.json",
+      "path": "integrity.json",
+      "size": 3438,
+      "sha256": "8c2f50d3febbaba156728a19716dcc185e465bbf1d9068675a363b6ee67af2e9"
+    },
+    {
+      "name": "playwright-result.json",
+      "path": "playwright-result.json",
+      "size": 10004,
+      "sha256": "a504f37f4a0cc9c8cefb29aac490102aa572bc39418be4932894dfa33ab41fc4"
+    },
+    {
+      "name": "playwright-sanitized.log",
+      "path": "playwright-sanitized.log",
+      "size": 593,
+      "sha256": "1e186ab2beb4bc9a13cce31971218c24f21d40132c34dd27d4262b3beb87df96"
+    },
+    {
+      "name": "sensitivity-scan.json",
+      "path": "sensitivity-scan.json",
+      "size": 437,
+      "sha256": "fd7474c7538167c87f26e4729a94e78f88aeb794aadba2b60d6f0a8482842926"
+    },
+    {
+      "name": "surface-scenario-b.json",
+      "path": "surface-scenario-b.json",
+      "size": 896,
+      "sha256": "fc1e339c60f87a584fc4f41b34bbf4e1835860b223062ced765f823ccdceba0a"
+    },
+    {
+      "name": "user-journey-summary.md",
+      "path": "user-journey-summary.md",
+      "size": 346,
+      "sha256": "f447cc2ebe3fde1909466b3bd2e31c0491d653cd59db82f55eba942277210fb6"
+    }
+  ],
+  "sensitivityScan": {
+    "scannedAt": "2026-08-29T18:08:26.604Z",
+    "scannedFiles": [
+      "counts-scenario-a.json",
+      "counts-scenario-b.json",
+      "counts-scenario-c.json",
+      "default-off-restoration.json",
+      "integrity.json",
+      "manifest.json",
+      "playwright-result.json",
+      "playwright-sanitized.log",
+      "surface-scenario-b.json",
+      "user-journey-summary.md"
+    ],
+    "screenshotScopeGoverned": true,
+    "findingCount": 0,
+    "passed": true
+  }
+}

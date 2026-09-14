@@ -1,0 +1,47 @@
+{
+  "schema": "pre-duimp-quality-addendum-provenance-v1",
+  "generatedOn": "2026-08-30",
+  "sources": [
+    {
+      "name": "controller-000005",
+      "locator": "<temporary-path>/pre-duimp-pilot-gate-e2e-controller-000005.mjs",
+      "sha256": "55c9dbbe9ad86334df81b5c869531a773ac6a7bfd7038d57d0070faa7bb2a21c",
+      "immutable": true
+    },
+    {
+      "name": "manifest-000005",
+      "locator": "<capture-root>/manifest.json",
+      "sha256": "8bd25fee1efce5f2fd0f27f420b15ef67710c075e598b01721c4807e97757bca",
+      "immutable": true
+    },
+    {
+      "name": "original-typecheck-config",
+      "locator": "<temporary-path>/pre-duimp-pilot-gate-e2e-000005.tsconfig.json",
+      "sha256": "d0371a5628931efa7981b6bcdfbe0ecc46e3ceca2554d8c36a3db1e4486c9c39",
+      "immutable": true
+    },
+    {
+      "name": "derived-typecheck-config",
+      "locator": "<temporary-path>/pre-duimp-pilot-gate-e2e-000005-typecheck-fixed.tsconfig.json",
+      "sha256": "0e60825e4f2cd2eb597635bf2a1589f1971756ffe2180e361e00bc28487fae21",
+      "immutable": true
+    }
+  ],
+  "relationship": {
+    "sourceCapture": "<capture-root>",
+    "sourceCapturePreserved": true,
+    "originalControllerAggregatePreserved": "FAIL_POST_E2E_QUALITY_GATE",
+    "addendumKind": "derived_sanitized_local",
+    "repositoryChanged": false,
+    "published": false
+  },
+  "outputs": [
+    "quality-gate-addendum.json",
+    "typecheck-result.json",
+    "tsconfig-change-sanitized.diff",
+    "provenance.json",
+    "README.md",
+    "sensitivity-scan.json",
+    "integrity-hashes.json"
+  ]
+}

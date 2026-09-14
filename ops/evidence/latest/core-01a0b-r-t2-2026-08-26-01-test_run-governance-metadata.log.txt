@@ -1,0 +1,341 @@
+CMD: pnpm test:run-governance-metadata
+START: 2026-08-26T13:29:38Z
+--- OUTPUT ---
+
+> eiah-builder@ test:run-governance-metadata /home/jusall/projects/EIAH_BUILDER
+> TSX_TSCONFIG_PATH=tsconfig.base.json DATABASE_URL=[REDACTED_TEST_DATABASE_URL] node --import tsx --test apps/api/src/tests/run-governance-metadata.test.ts apps/api/src/tests/imobRunActionCatalog.test.ts && TSX_TSCONFIG_PATH=tsconfig.base.json DATABASE_URL=[REDACTED_TEST_DATABASE_URL] node --import tsx --test packages/core/src/security/rbac.fail-closed.test.ts
+
+TAP version 13
+# Subtest: prepareRunRequestAction normalizes metadata.action into canonical request.action
+ok 1 - prepareRunRequestAction normalizes metadata.action into canonical request.action
+  ---
+  duration_ms: 5.19084
+  type: 'test'
+  ...
+# Subtest: prepareRunRequestAction preserves the registered IMOB intake action
+ok 2 - prepareRunRequestAction preserves the registered IMOB intake action
+  ---
+  duration_ms: 0.798888
+  type: 'test'
+  ...
+# Subtest: prepareRunRequestAction rejects invalid IMOB action when strict validation is enabled
+ok 3 - prepareRunRequestAction rejects invalid IMOB action when strict validation is enabled
+  ---
+  duration_ms: 1.618993
+  type: 'test'
+  ...
+# Subtest: prepareRunRequestAction rejects non-audit IMOB runs without action
+ok 4 - prepareRunRequestAction rejects non-audit IMOB runs without action
+  ---
+  duration_ms: 3.941552
+  type: 'test'
+  ...
+# Subtest: prepareRunRequestAction allows IMOB audit runs without action
+ok 5 - prepareRunRequestAction allows IMOB audit runs without action
+  ---
+  duration_ms: 0.915653
+  type: 'test'
+  ...
+# Subtest: persisted Run authority rejects conflicting root and metadata actions
+ok 6 - persisted Run authority rejects conflicting root and metadata actions
+  ---
+  duration_ms: 0.821964
+  type: 'test'
+  ...
+# Subtest: persisted Run authority overwrites transport domain, kind and action
+ok 7 - persisted Run authority overwrites transport domain, kind and action
+  ---
+  duration_ms: 0.612012
+  type: 'test'
+  ...
+# Subtest: Action Policy reason codes are projected through the ratified public mapper
+ok 8 - Action Policy reason codes are projected through the ratified public mapper
+  ---
+  duration_ms: 3.988467
+  type: 'test'
+  ...
+# Subtest: sanitizeRunGovernanceMetadata strips client governance and does not mutate input
+ok 9 - sanitizeRunGovernanceMetadata strips client governance and does not mutate input
+  ---
+  duration_ms: 9.271003
+  type: 'test'
+  ...
+# Subtest: sanitizeRunGovernanceMetadata preserves a real server-side Action Policy separately
+ok 10 - sanitizeRunGovernanceMetadata preserves a real server-side Action Policy separately
+  ---
+  duration_ms: 1.621007
+  type: 'test'
+  ...
+# Subtest: sanitizeRunGovernanceMetadata handles absent metadata and ignores client trust and cost claims
+ok 11 - sanitizeRunGovernanceMetadata handles absent metadata and ignores client trust and cost claims
+  ---
+  duration_ms: 1.143887
+  type: 'test'
+  ...
+# Subtest: sanitizeRunGovernanceMetadata is idempotent and wins after a malicious spread
+ok 12 - sanitizeRunGovernanceMetadata is idempotent and wins after a malicious spread
+  ---
+  duration_ms: 0.914119
+  type: 'test'
+  ...
+# Subtest: worker ignores self-attested A0 marker and Action Policy from queue metadata
+ok 13 - worker ignores self-attested A0 marker and Action Policy from queue metadata
+  ---
+  duration_ms: 0.703531
+  type: 'test'
+  ...
+# Subtest: Action Policy without a declared direct action is explicitly not_applicable
+ok 14 - Action Policy without a declared direct action is explicitly not_applicable
+  ---
+  duration_ms: 1.08117
+  type: 'test'
+  ...
+# Subtest: worker attaches only an explicit server-evaluated Action Policy
+ok 15 - worker attaches only an explicit server-evaluated Action Policy
+  ---
+  duration_ms: 1.257609
+  type: 'test'
+  ...
+# Subtest: worker derives Action Policy from the canonical registry and fresh policy decision
+ok 16 - worker derives Action Policy from the canonical registry and fresh policy decision
+  ---
+  duration_ms: 1.563296
+  type: 'test'
+  ...
+# Subtest: worker does not query policy for an action absent from the canonical registry
+ok 17 - worker does not query policy for an action absent from the canonical registry
+  ---
+  duration_ms: 1.431792
+  type: 'test'
+  ...
+# {"level":30,"time":"2026-08-26T13:29:42.212Z","service":"eiah","env":"development","component":"run-worker","runId":"run-core-unregistered-action","tenantId":"TENANT_001","workspaceId":"WORKSPACE_001","agentId":"EIAH","msg":"run.worker.received"}
+# Subtest: Core persisted action outside the registry remains observational through processRunPayload
+ok 18 - Core persisted action outside the registry remains observational through processRunPayload
+  ---
+  duration_ms: 1900.431459
+  type: 'test'
+  ...
+# Subtest: worker records a fresh denied Action Policy without promoting overall governance
+ok 19 - worker records a fresh denied Action Policy without promoting overall governance
+  ---
+  duration_ms: 0.624907
+  type: 'test'
+  ...
+# {"level":30,"time":"2026-08-26T13:29:42.213Z","service":"eiah","env":"development","component":"run-worker","runId":"run-core-unregistered-action","tenantId":"TENANT_001","workspaceId":"WORKSPACE_001","agentId":"EIAH","msg":"run.worker.execution_started"}
+# {"level":30,"time":"2026-08-26T13:29:42.213Z","service":"eiah","env":"development","component":"run-worker","runId":"run-core-unregistered-action","tenantId":"TENANT_001","workspaceId":"WORKSPACE_001","agentId":"EIAH","msg":"run.worker.cancelled_after_start"}
+# Subtest: processRunPayload replaces a forged Action Policy through the worker path
+ok 20 - processRunPayload replaces a forged Action Policy through the worker path
+  ---
+  duration_ms: 4.90871
+  type: 'test'
+  ...
+# {"level":30,"time":"2026-08-26T13:29:42.218Z","service":"eiah","env":"development","component":"run-worker","runId":"run-policy-worker-1","tenantId":"TENANT_002","workspaceId":"WORKSPACE_002","agentId":"EIAH","msg":"run.worker.received"}
+# {"level":30,"time":"2026-08-26T13:29:42.218Z","service":"eiah","env":"development","component":"run-worker","runId":"run-policy-worker-1","tenantId":"TENANT_002","workspaceId":"WORKSPACE_002","agentId":"EIAH","msg":"run.worker.execution_started"}
+# {"level":30,"time":"2026-08-26T13:29:42.218Z","service":"eiah","env":"development","component":"run-worker","runId":"run-policy-worker-1","tenantId":"TENANT_002","workspaceId":"WORKSPACE_002","agentId":"EIAH","msg":"run.worker.cancelled_after_start"}
+# Subtest: processRunPayload rejects an unresolved Run scope before policy, events or status
+ok 21 - processRunPayload rejects an unresolved Run scope before policy, events or status
+  ---
+  duration_ms: 3.067224
+  type: 'test'
+  ...
+# {"level":50,"time":"2026-08-26T13:29:42.221Z","service":"eiah","env":"development","component":"run-worker","reasonCode":"RUN_SCOPE_NOT_RESOLVED","stage":"preflight","msg":"run.worker.scope_not_resolved"}
+# Subtest: processRunPayload stops before running when Action Policy event persistence fails
+ok 22 - processRunPayload stops before running when Action Policy event persistence fails
+  ---
+  duration_ms: 3.193962
+  type: 'test'
+  ...
+# {"level":30,"time":"2026-08-26T13:29:42.225Z","service":"eiah","env":"development","component":"run-worker","runId":"run-event-failure","tenantId":"TENANT_001","workspaceId":"WORKSPACE_001","agentId":"EIAH","msg":"run.worker.received"}
+# Subtest: processRunPayload rejects a null running transition result
+ok 23 - processRunPayload rejects a null running transition result
+  ---
+  duration_ms: 2.784143
+  type: 'test'
+  ...
+# {"level":30,"time":"2026-08-26T13:29:42.227Z","service":"eiah","env":"development","component":"run-worker","runId":"run-status-null","tenantId":"TENANT_001","workspaceId":"WORKSPACE_001","agentId":"EIAH","msg":"run.worker.received"}
+# {"level":50,"time":"2026-08-26T13:29:42.228Z","service":"eiah","env":"development","component":"run-worker","runId":"run-status-null","tenantId":"TENANT_001","workspaceId":"WORKSPACE_001","agentId":"EIAH","reasonCode":"RUN_SCOPE_NOT_RESOLVED","stage":"running_transition","msg":"run.worker.scope_not_resolved"}
+# Subtest: generic and IMOB conversation_audit runs without action are not applicable
+ok 24 - generic and IMOB conversation_audit runs without action are not applicable
+  ---
+  duration_ms: 3.524303
+  type: 'test'
+  ...
+# {"level":30,"time":"2026-08-26T13:29:42.231Z","service":"eiah","env":"development","component":"run-worker","runId":"run-not-applicable-0","tenantId":"TENANT_001","workspaceId":"WORKSPACE_001","agentId":"EIAH","msg":"run.worker.received"}
+# {"level":30,"time":"2026-08-26T13:29:42.231Z","service":"eiah","env":"development","component":"run-worker","runId":"run-not-applicable-0","tenantId":"TENANT_001","workspaceId":"WORKSPACE_001","agentId":"EIAH","msg":"run.worker.execution_started"}
+# {"level":30,"time":"2026-08-26T13:29:42.231Z","service":"eiah","env":"development","component":"run-worker","runId":"run-not-applicable-0","tenantId":"TENANT_001","workspaceId":"WORKSPACE_001","agentId":"EIAH","msg":"run.worker.cancelled_after_start"}
+# {"level":30,"time":"2026-08-26T13:29:42.232Z","service":"eiah","env":"development","component":"run-worker","runId":"run-not-applicable-1","tenantId":"TENANT_001","workspaceId":"WORKSPACE_001","agentId":"EIAH","msg":"run.worker.received"}
+# {"level":30,"time":"2026-08-26T13:29:42.232Z","service":"eiah","env":"development","component":"run-worker","runId":"run-not-applicable-1","tenantId":"TENANT_001","workspaceId":"WORKSPACE_001","agentId":"EIAH","msg":"run.worker.execution_started"}
+# {"level":30,"time":"2026-08-26T13:29:42.232Z","service":"eiah","env":"development","component":"run-worker","runId":"run-not-applicable-1","tenantId":"TENANT_001","workspaceId":"WORKSPACE_001","agentId":"EIAH","msg":"run.worker.cancelled_after_start"}
+# Subtest: IMOB operational Run without a persisted action fails before policy, event or running
+ok 25 - IMOB operational Run without a persisted action fails before policy, event or running
+  ---
+  duration_ms: 3.564098
+  type: 'test'
+  ...
+# {"level":30,"time":"2026-08-26T13:29:42.242Z","service":"eiah","env":"development","component":"run-worker","runId":"run-imob-invalid-action","tenantId":"TENANT_001","workspaceId":"WORKSPACE_001","agentId":"EIAH","msg":"run.worker.received"}
+# Subtest: IMOB operational Run with an invalid persisted action fails before every worker side effect
+ok 26 - IMOB operational Run with an invalid persisted action fails before every worker side effect
+  ---
+  duration_ms: 6.851436
+  type: 'test'
+  ...
+# Subtest: worker rejects a transported action that diverges from the persisted Run
+ok 27 - worker rejects a transported action that diverges from the persisted Run
+  ---
+  duration_ms: 1.751315
+  type: 'test'
+  ...
+# Subtest: replay rejects historical operational IMOB without action before every side effect
+ok 28 - replay rejects historical operational IMOB without action before every side effect
+  ---
+  duration_ms: 269.840198
+  type: 'test'
+  ...
+# Subtest: replay allows conversation_audit without action and derives transport from the persisted Run
+ok 29 - replay allows conversation_audit without action and derives transport from the persisted Run
+  ---
+  duration_ms: 1.98276
+  type: 'test'
+  ...
+# Subtest: replay publishes the persisted canonical registry action and strips self-attested governance
+ok 30 - replay publishes the persisted canonical registry action and strips self-attested governance
+  ---
+  duration_ms: 1.349584
+  type: 'test'
+  ...
+# Subtest: historic Guardian and Recipe projections are conservative and marked as legacy
+ok 31 - historic Guardian and Recipe projections are conservative and marked as legacy
+  ---
+  duration_ms: 0.479023
+  type: 'test'
+  ...
+1..31
+# tests 31
+# suites 0
+# pass 31
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 3210.717061
+TAP version 13
+# Subtest: TenantPolicyStore allows scope when workspace policy is explicitly enabled
+ok 1 - TenantPolicyStore allows scope when workspace policy is explicitly enabled
+  ---
+  duration_ms: 9.128517
+  type: 'test'
+  ...
+# Subtest: TenantPolicyStore fails closed when policy is missing for tenant/workspace
+ok 2 - TenantPolicyStore fails closed when policy is missing for tenant/workspace
+  ---
+  duration_ms: 4.765199
+  type: 'test'
+  ...
+# Subtest: TenantPolicyStore fails closed on workspace mismatch
+ok 3 - TenantPolicyStore fails closed on workspace mismatch
+  ---
+  duration_ms: 1.437184
+  type: 'test'
+  ...
+# Subtest: TenantPolicyStore fails closed when scope is explicitly disabled
+ok 4 - TenantPolicyStore fails closed when scope is explicitly disabled
+  ---
+  duration_ms: 1.489933
+  type: 'test'
+  ...
+# Subtest: TenantPolicyStore fails closed when store access is unavailable
+ok 5 - TenantPolicyStore fails closed when store access is unavailable
+  ---
+  duration_ms: 1.780765
+  type: 'test'
+  ...
+# Subtest: TenantPolicyStore fails closed when workspace policy authority is duplicated
+ok 6 - TenantPolicyStore fails closed when workspace policy authority is duplicated
+  ---
+  duration_ms: 1.481561
+  type: 'test'
+  ...
+# Subtest: TenantPolicyStore fails closed when tenant-wide policy authority is duplicated
+ok 7 - TenantPolicyStore fails closed when tenant-wide policy authority is duplicated
+  ---
+  duration_ms: 1.406933
+  type: 'test'
+  ...
+# Subtest: TenantPolicyStore fails closed when scope is blank
+ok 8 - TenantPolicyStore fails closed when scope is blank
+  ---
+  duration_ms: 0.200839
+  type: 'test'
+  ...
+# Subtest: TenantPolicyStore legacy isScopeAllowed returns true when scope decision is allowed
+ok 9 - TenantPolicyStore legacy isScopeAllowed returns true when scope decision is allowed
+  ---
+  duration_ms: 1.575148
+  type: 'test'
+  ...
+# Subtest: TenantPolicyStore legacy isScopeAllowed returns false when scope decision is denied
+ok 10 - TenantPolicyStore legacy isScopeAllowed returns false when scope decision is denied
+  ---
+  duration_ms: 1.52467
+  type: 'test'
+  ...
+# Subtest: RBAC deny persists a guardrail ledger event with tenant/workspace/scope/reasonCode
+ok 11 - RBAC deny persists a guardrail ledger event with tenant/workspace/scope/reasonCode
+  ---
+  duration_ms: 8.922227
+  type: 'test'
+  ...
+# Subtest: RBAC deny writes exactly one GuardrailLedger record for a single decision
+ok 12 - RBAC deny writes exactly one GuardrailLedger record for a single decision
+  ---
+  duration_ms: 3.071299
+  type: 'test'
+  ...
+# Subtest: RBAC deny writes exactly one GuardrailAuditLedger record for a single decision
+ok 13 - RBAC deny writes exactly one GuardrailAuditLedger record for a single decision
+  ---
+  duration_ms: 3.213108
+  type: 'test'
+  ...
+# Subtest: RBAC allow persists a guardrail ledger event when scope is granted
+ok 14 - RBAC allow persists a guardrail ledger event when scope is granted
+  ---
+  duration_ms: 2.762455
+  type: 'test'
+  ...
+# Subtest: RBAC allow writes exactly one GuardrailLedger record for a single decision
+ok 15 - RBAC allow writes exactly one GuardrailLedger record for a single decision
+  ---
+  duration_ms: 2.29255
+  type: 'test'
+  ...
+# Subtest: RBAC allow writes exactly one GuardrailAuditLedger record for a single decision
+ok 16 - RBAC allow writes exactly one GuardrailAuditLedger record for a single decision
+  ---
+  duration_ms: 2.380865
+  type: 'test'
+  ...
+# guardrailLedger RBAC log failed: Error: ledger unavailable
+#     at Object.guardrailLedger.log (/home/jusall/projects/EIAH_BUILDER/packages/core/src/security/rbac.fail-closed.test.ts:294:11)
+#     at checkScopePermission (/home/jusall/projects/EIAH_BUILDER/packages/core/src/security/rbac.ts:50:27)
+#     at async TestContext.<anonymous> (/home/jusall/projects/EIAH_BUILDER/packages/core/src/security/rbac.fail-closed.test.ts:298:22)
+#     at async Test.run (node:internal/test_runner/test:1054:7)
+#     at async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
+# Subtest: RBAC deny remains deny when guardrail ledger persistence fails
+ok 17 - RBAC deny remains deny when guardrail ledger persistence fails
+  ---
+  duration_ms: 4.980077
+  type: 'test'
+  ...
+1..17
+# tests 17
+# suites 0
+# pass 17
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 395.625658
+--- END OUTPUT ---
+EXIT: 0
+END: 2026-08-26T13:29:43Z

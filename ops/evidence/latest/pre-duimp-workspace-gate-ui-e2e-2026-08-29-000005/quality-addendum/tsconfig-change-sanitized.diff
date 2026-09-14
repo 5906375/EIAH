@@ -1,0 +1,10 @@
+--- <temporary-path>/pre-duimp-pilot-gate-e2e-000005.tsconfig.json
++++ <temporary-path>/pre-duimp-pilot-gate-e2e-000005-typecheck-fixed.tsconfig.json
+@@ -9,6 +9,7 @@
+     ]
+   },
+   "files": [
++    "apps/api/src/types/express.d.ts",
+     "apps/api/src/routes/session.ts",
+     "apps/api/src/routes/preDuimpRuntimeShadow.ts",
+     "apps/api/src/services/logistica/control/preDuimpAccessResolver.ts",
