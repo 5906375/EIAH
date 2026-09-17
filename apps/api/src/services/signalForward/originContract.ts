@@ -1,16 +1,17 @@
 // Validação da origem e derivação do fingerprint no servidor.
 //
-// IMPORTANTE — "contrato Radar": não existe hoje, em nenhum lugar deste
-// repositório, um agente ou contrato ratificado chamado "Radar" (busca
-// exaustiva nesta unidade: nenhuma ocorrência real de um agente "radar" em
-// apps/api/src/services/agents.ts nem em packages/core/src). Não invento essa
-// validação — aplico apenas os invariantes estruturais mínimos e genéricos
-// que QUALQUER origem precisa satisfazer para ser encaminhada com segurança
-// (estado terminal de sucesso + resposta estruturada). Quando um contrato
-// Radar real existir, esta validação deve ser reconciliada com ele, não
-// substituída silenciosamente.
+// D5 estrutural (implementado nesta unidade, ver CONSULTATION_ORIGIN_AUTHZ_v2.md
+// seção 9 — "Aprovação de contrato técnico", 2026-09-11): o único `agentKey`
+// aceito como produtor de origem é exatamente "radar" (comparação exata, sem
+// trim/lowercase/heurística/alias), e o `response` desse Run deve satisfazer
+// integralmente o contrato `RadarSignalResultV1` (radarSignalResultValidator.ts).
+// D5-A (allowlist) e D5-B (validador de conteúdo) juntos — nenhuma implementação
+// parcial isolada é declarada aqui. Isto NÃO implementa D4, D6, TTL, resolução
+// autorizada do sujeito, outbox, publicação em fila ou chamada ao LLM — nenhum
+// desses efeitos é produzido por este módulo.
 import crypto from "node:crypto";
 import type { Run, TransactableClient } from "@repo/db";
+import { validateRadarSignalResult } from "./radarSignalResultValidator";
 
 export class SignalForwardOriginError extends Error {
   constructor(readonly reasonCode: string, readonly context: Record<string, unknown> = {}) {
@@ -21,6 +22,11 @@ export class SignalForwardOriginError extends Error {
 
 const REQUIRED_ORIGIN_STATUS = "success" as const;
 
+// D5 — único produtor de origem ratificado. Comparação sempre exata contra
+// este literal; nenhuma variação de caixa/espaço, alias ou consulta a agentes
+// dinâmicos amplia esta lista.
+export const RATIFIED_RADAR_AGENT_KEY = "radar" as const;
+
 // Exportada deliberadamente: é a fonte única de verdade tanto para o cálculo
 // do fingerprint (abaixo) quanto para o valor persistido em
 // SignalForwardRequest.fingerprintVersion (signalForwardingService.ts) — usar
@@ -29,10 +35,12 @@ const REQUIRED_ORIGIN_STATUS = "success" as const;
 export const FINGERPRINT_CONTRACT_VERSION = "signal-forward-fingerprint.v1";
 
 /**
- * Lê a origem ESCOPADA por tenant/workspace (nunca por id isolado) e valida
- * o mínimo estrutural exigido para encaminhamento. Retorna a mesma
- * mensagem/reasonCode tanto para "não existe" quanto para "existe em outro
- * tenant/workspace" — não expõe se um run de outro tenant existe.
+ * Lê a origem ESCOPADA por tenant/workspace (nunca por id isolado) e valida,
+ * nesta ordem: existência no escopo; estado terminal de sucesso; `response`
+ * estruturado; produtor exatamente "radar" (D5-A); e o contrato de conteúdo
+ * `RadarSignalResultV1` completo (D5-B). Retorna a mesma mensagem/reasonCode
+ * tanto para "não existe" quanto para "existe em outro tenant/workspace" —
+ * não expõe se um run de outro tenant existe.
  */
 export async function readAndValidateOrigin(
   client: TransactableClient,
@@ -58,6 +66,18 @@ export async function readAndValidateOrigin(
   if (!response || typeof response !== "object" || Array.isArray(response)) {
     throw new SignalForwardOriginError("source_run_missing_structured_response");
   }
+
+  // D5-A — identidade exata do produtor, depois do escopo/estado já
+  // confirmados acima, antes de qualquer validação detalhada de conteúdo.
+  if (sourceRun.agent !== RATIFIED_RADAR_AGENT_KEY) {
+    throw new SignalForwardOriginError("source_agent_not_ratified", { agent: sourceRun.agent });
+  }
+
+  // D5-B — contrato de conteúdo completo (RadarSignalResultV1). Validação
+  // pura, sem I/O: não resolve subjectId, não verifica classificação
+  // semântica, não busca URLs. Lança SignalForwardOriginError na primeira
+  // violação encontrada; não normaliza nem modifica `response`.
+  validateRadarSignalResult(response);
 
   return sourceRun;
 }

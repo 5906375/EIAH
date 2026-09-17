@@ -3,7 +3,7 @@
 // já validada na prova experimental, agora contra o classificador REAL do produto).
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createNamedClient, seedRealScenario, createOriginRun, grantScope, newTenantWorkspace } from "./helpers.ts";
+import { createNamedClient, seedRealScenario, createOriginRun, grantScope, newTenantWorkspace, defaultRadarSignalResult } from "./helpers.ts";
 import { forwardSignalToMkt, ConflictError } from "../signalForwardingService.ts";
 import { classifySignalForwardUniqueViolation } from "../classifier.ts";
 import { FINGERPRINT_CONTRACT_VERSION } from "../originContract.ts";
@@ -25,7 +25,10 @@ test("duplicidade esperada real: segunda chamada com mesma chave/origem reutiliz
 
     assert.equal(first.reused, false);
     assert.equal(second.reused, true);
+    // D6: ambos null (encaminhamento não cria Run) — igualdade continua
+    // válida como checagem de que o reenvio não introduziu um Run diferente.
     assert.equal(first.destinationRunId, second.destinationRunId);
+    assert.equal(first.destinationRunId, null);
 
     // versão do fingerprint estável na reutilização idempotente (nenhuma
     // segunda gravação/recalculo altera a versão persistida na criação).
@@ -44,7 +47,11 @@ test("conflito de conteúdo real: mesma chave, origem diferente (fingerprint div
     const { tenantId, workspaceId } = newTenantWorkspace("real-g2");
     const { userId, sourceRunId: sourceRunA } = await seedRealScenario(client.prisma, { tenantId, workspaceId });
     const sourceRunB = await createOriginRun(client.prisma, {
-      tenantId, workspaceId, response: { signalAnalysis: { summary: "sinal DIFERENTE" } },
+      // Payload V1 válido, mas com conteúdo DIFERENTE do de sourceRunA — o
+      // teste verifica divergência de conteúdo (fingerprint diferente), não
+      // invalidade de schema; por isso o payload alternativo continua
+      // conforme RadarSignalResultV1.
+      tenantId, workspaceId, response: defaultRadarSignalResult({ summary: "Sinal sintetico DIFERENTE do cenario A, ainda conforme o contrato V1." }),
     });
     await grantScope(client.prisma, { tenantId, workspaceId, scope: "runs.execute" });
 

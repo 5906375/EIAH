@@ -64,6 +64,7 @@ docs/architecture/*
 !docs/architecture/existing-structure-preflight.md
 !docs/architecture/chat-vertical-imob-preflight-playbook.md
 !docs/architecture/mcp-contract-v1.md
+!docs/architecture/radar-social-construction-plan-v1.md
 
 # --------------------------------------------
 # Dados temporários e uploads

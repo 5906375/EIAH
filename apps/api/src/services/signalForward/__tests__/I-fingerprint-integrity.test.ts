@@ -2,7 +2,7 @@
 // externamente; preservação do conteúdo (snapshot) após a origem mudar.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createNamedClient, seedRealScenario, grantScope, newTenantWorkspace } from "./helpers.ts";
+import { createNamedClient, seedRealScenario, grantScope, newTenantWorkspace, defaultRadarSignalResult } from "./helpers.ts";
 import { forwardSignalToMkt, ConflictError, type SignalForwardRequestInput } from "../signalForwardingService.ts";
 import { computeRequestFingerprint, FINGERPRINT_CONTRACT_VERSION } from "../originContract.ts";
 
@@ -57,10 +57,13 @@ test("preservação do conteúdo: alterar a origem DEPOIS do encaminhamento não
     const originalFingerprintVersion = forwardBefore?.fingerprintVersion;
     assert.equal(originalFingerprintVersion, FINGERPRINT_CONTRACT_VERSION);
 
-    // Origem MUDA depois do encaminhamento (ex.: alguém reprocessou o run do Radar).
+    // Origem MUDA depois do encaminhamento (ex.: alguém reprocessou o run do
+    // Radar) — payload V1 válido, mas com conteúdo diferente do original,
+    // preservando a intenção do teste (detectar divergência de conteúdo via
+    // fingerprint, não invalidade de schema).
     await client.prisma.run.update({
       where: { id: sourceRunId },
-      data: { response: { signalAnalysis: { summary: "conteúdo alterado depois" } } },
+      data: { response: defaultRadarSignalResult({ summary: "Conteudo alterado depois do encaminhamento original." }) },
     });
 
     // Retry com a MESMA chave: não deve trocar silenciosamente o conteúdo do
@@ -74,7 +77,10 @@ test("preservação do conteúdo: alterar a origem DEPOIS do encaminhamento não
     assert.deepEqual(forwardAfter?.originSnapshot, originalSnapshot, "snapshot original preservado, não sobrescrito pela origem alterada");
     assert.equal(forwardAfter?.requestFingerprint, originalFingerprint, "fingerprint original preservado");
     assert.equal(forwardAfter?.fingerprintVersion, originalFingerprintVersion, "versão do fingerprint estável — não recalculada nem trocada por uma tentativa que resultou em conflito");
-    assert.equal(forwardAfter?.destinationRunId, first.destinationRunId, "run de destino original preservado, nenhum novo run criado");
+    // D6: destinationRunId é null em ambos (encaminhamento não cria Run) —
+    // a checagem confirma que a tentativa em conflito também não o altera.
+    assert.equal(forwardAfter?.destinationRunId, first.destinationRunId);
+    assert.equal(forwardAfter?.destinationRunId, null);
   } finally {
     await client.close();
   }

@@ -103,6 +103,13 @@ model Tenant {
   connectorInstances        ConnectorInstance[]
   paymentIntents            PaymentIntent[]
   signalForwardRequests     SignalForwardRequest[]
+  humanConfirmations        HumanConfirmation[]
+  radarKnownEntities        RadarKnownEntity[]
+  radarMaterials            RadarMaterial[]
+  radarAnalysisRequests     RadarAnalysisRequest[]
+  radarAnalysisAttempts     RadarAnalysisAttempt[]
+  radarRecommendations      RadarRecommendation[]
+  radarEntityAccessGrants   RadarEntityAccessGrant[]
   memberships               TenantMembership[]
   customRoles               TenantCustomRole[]
   walletIdentities          WalletIdentity[]
@@ -146,6 +153,13 @@ model Workspace {
   connectorInstances        ConnectorInstance[]
   paymentIntents            PaymentIntent[]
   signalForwardRequests     SignalForwardRequest[]
+  humanConfirmations        HumanConfirmation[]
+  radarKnownEntities        RadarKnownEntity[]
+  radarMaterials            RadarMaterial[]
+  radarAnalysisRequests     RadarAnalysisRequest[]
+  radarAnalysisAttempts     RadarAnalysisAttempt[]
+  radarRecommendations      RadarRecommendation[]
+  radarEntityAccessGrants   RadarEntityAccessGrant[]
 
   @@index([tenantId, name])
   @@map("workspaces")
@@ -257,6 +271,9 @@ model Run {
   paymentIntents       PaymentIntent[]
   signalForwardRequestsAsSource      SignalForwardRequest[] @relation("SignalForwardSource")
   signalForwardRequestAsDestination  SignalForwardRequest?  @relation("SignalForwardDestination")
+  // Nulo até a execução real (fora desta unidade) publicar este Run — ver
+  // RadarAnalysisAttempt.runId, Atualização 1.12/1.15.
+  radarAnalysisAttempt RadarAnalysisAttempt?
   assignment           WorkspaceAgentAssignment? @relation(fields: [assignmentId], references: [id])
   tenant               Tenant                    @relation(fields: [tenantId], references: [id])
   user                 User?                     @relation(fields: [userId], references: [id])
@@ -311,6 +328,15 @@ model SignalForwardRequest {
   requestedByUserId  String?  @map("requested_by_user_id")
   destinationRunId   String?  @map("destination_run_id")
   status             String   @default("pending_dispatch")
+  // D6 — dois ponteiros para HumanConfirmation (registro associado, não uma
+  // relação Prisma formal, mesmo padrão de requestedByUserId acima: string
+  // simples, sem FK declarada). activeHumanConfirmationId é liberado/
+  // substituído ao longo do tempo (nunca write-once); concludedHumanConfirmationId
+  // é preenchido uma única vez, nunca reescrito depois — ver
+  // CONSULTATION_ORIGIN_AUTHZ_v2.md seção 22.1/22.2 para o protocolo completo
+  // de concorrência que sustenta essas duas garantias.
+  activeHumanConfirmationId    String? @map("active_human_confirmation_id")
+  concludedHumanConfirmationId String? @map("concluded_human_confirmation_id")
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
@@ -321,14 +347,374 @@ model SignalForwardRequest {
   // (não impedia referenciar um Run de outro tenant). Aditiva sobre Run.
   sourceRun      Run  @relation("SignalForwardSource", fields: [sourceRunId, tenantId, workspaceId], references: [id, tenantId, workspaceId])
   destinationRun Run? @relation("SignalForwardDestination", fields: [destinationRunId, tenantId, workspaceId], references: [id, tenantId, workspaceId])
+  humanConfirmations HumanConfirmation[]
 
   @@unique([tenantId, workspaceId, destinationAgent, idempotencyKey], name: "signalForwardIdempotencyKey")
   // Unicidade de destinationRunId preservada (equivalente à @unique simples
   // anterior, já que tenantId/workspaceId são fixos por linha) — a forma
   // composta é exigida pelo Prisma para a relação 1:1 com FK composta acima.
   @@unique([destinationRunId, tenantId, workspaceId], name: "signalForwardDestinationRunUnique")
+  // Aditiva, sem custo funcional: id já é único sozinho; esta constraint
+  // composta existe apenas para permitir que HumanConfirmation referencie
+  // SignalForwardRequest por FK composta (id+tenant+workspace), mesmo padrão
+  // já usado por run_id_tenant_workspace_unique.
+  @@unique([id, tenantId, workspaceId], name: "signal_forward_request_id_tenant_workspace_unique")
   @@index([tenantId, workspaceId, sourceRunId])
   @@map("signal_forward_requests")
+}
+
+// D6 — janela de confirmação humana associada a um encaminhamento
+// (SignalForwardRequest). Um encaminhamento pode ter várias, ao longo do
+// tempo, mas no máximo uma ativa (SignalForwardRequest.activeHumanConfirmationId)
+// e no máximo uma concluída (SignalForwardRequest.concludedHumanConfirmationId)
+// — ver CONSULTATION_ORIGIN_AUTHZ_v2.md seção 22 para o desenho completo.
+model HumanConfirmation {
+  id                               String    @id @default(cuid())
+  tenantId                         String    @map("tenant_id")
+  workspaceId                      String    @map("workspace_id")
+  signalForwardRequestId           String    @map("signal_forward_request_id")
+  status                           String    @default("awaiting_human_completion")
+  // Monotônica, começa em 0, incrementada a cada gravação de rascunho.
+  // Não há histórico de revisões intermediárias — só o contador e o
+  // conteúdo atual do rascunho são persistidos (seção 22.1).
+  revision                         Int       @default(0)
+  // Gerado uma única vez na criação da janela, por função determinística
+  // (suggestedPromptGenerator.ts) — imutável depois.
+  suggestedPrompt                  String    @map("suggested_prompt")
+  suggestedPromptRuleVersion       String    @map("suggested_prompt_rule_version")
+  humanConfirmationContractVersion String    @map("human_confirmation_contract_version")
+  draftFinalPrompt                 String?   @map("draft_final_prompt")
+  draftObjective                   String?   @map("draft_objective")
+  draftAudience                    String?   @map("draft_audience")
+  draftChannels                    Json?     @map("draft_channels")
+  draftBudget                      String?   @map("draft_budget")
+  draftToneProfile                 String?   @map("draft_tone_profile")
+  draftToneNotes                   String?   @map("draft_tone_notes")
+  draftLaunchDate                  String?   @map("draft_launch_date")
+  draftDeadline                    String?   @map("draft_deadline")
+  expiresAt                        DateTime  @map("expires_at")
+  confirmedAt                      DateTime? @map("confirmed_at")
+  confirmedByUserId                String?   @map("confirmed_by_user_id")
+  // Cópia imutável de tudo exibido + preenchido no instante da confirmação
+  // (radarSignal via originSnapshot do encaminhamento, suggestedPrompt+versão,
+  // finalPrompt+campos de negócio, versões de contrato, confirmedByUserId,
+  // confirmedAt, operationKey) — escrita uma única vez, na conclusão.
+  confirmedPayloadSnapshot         Json?     @map("confirmed_payload_snapshot")
+  createdAt                        DateTime  @default(now()) @map("created_at")
+  updatedAt                        DateTime  @updatedAt @map("updated_at")
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id])
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  // FK composta: garante no banco que esta janela pertence ao MESMO
+  // tenant/workspace do encaminhamento referenciado.
+  signalForwardRequest SignalForwardRequest @relation(fields: [signalForwardRequestId, tenantId, workspaceId], references: [id, tenantId, workspaceId])
+
+  @@index([tenantId, workspaceId, signalForwardRequestId, status])
+  @@map("human_confirmations")
+}
+
+// Radar Social — primeira unidade autorizada (entidade conhecida +
+// recebimento autorizado de material em texto). Ver
+// docs/architecture/radar-social-construction-plan-v1.md, Atualização 1.9.
+// Não implementa análise, Run, fila ou chamada a modelo — só cadastro,
+// consulta, recebimento e correção governados. RadarEntityAccessResolver
+// real de produção está FORA desta unidade (radarEntityAccessResolver.ts
+// só declara a interface); sua ausência bloqueia, por padrão, toda operação
+// que dependa de acesso individual à entidade.
+model RadarKnownEntity {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  workspaceId String   @map("workspace_id")
+  // Preservado exatamente como recebido (sem trim/normalização Unicode) —
+  // 1–200 bytes UTF-8, ver radarKnownEntityContract.ts.
+  displayName String   @map("display_name")
+  // Opaco, literal, case-sensitive — não valida CNPJ nem qualquer esquema
+  // de negócio (radarKnownEntityContract.ts). Ausência/null = sem
+  // referência. Único por (tenantId, workspaceId) quando preenchido —
+  // UNIQUE PADRÃO abaixo, NÃO índice parcial: o Postgres já trata NULLs
+  // como distintos entre si nativamente, então múltiplas linhas sem
+  // externalRef convivem sem violar esta constraint.
+  externalRef String?  @map("external_ref")
+  // "active" | "inactive". Inativa bloqueia NOVOS materiais (guarda de
+  // nova escrita em radarMaterialService.ts), mas não bloqueia consulta ou
+  // replay idempotente histórico já autorizado.
+  status      String   @default("active")
+  // Monotônica, incrementada pelo servidor a cada alteração bem-sucedida.
+  // expectedRevision é um PARÂMETRO de chamada da operação "alterar"
+  // (radarKnownEntityService.ts), não uma coluna — nunca aceito como valor
+  // arbitrário deste campo.
+  revision    Int      @default(0)
+  createdByUserId String @map("created_by_user_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant    Tenant          @relation(fields: [tenantId], references: [id])
+  workspace Workspace       @relation(fields: [workspaceId], references: [id])
+  materials RadarMaterial[]
+  analysisRequests RadarAnalysisRequest[]
+  accessGrants RadarEntityAccessGrant[]
+
+  // Chave composta referenciável — permite que RadarMaterial se vincule à
+  // MESMA entidade/tenant/workspace por FK composta (mesmo padrão já usado
+  // por signal_forward_request_id_tenant_workspace_unique).
+  @@unique([id, tenantId, workspaceId], name: "radar_known_entity_id_tenant_workspace_unique")
+  @@unique([tenantId, workspaceId, externalRef], name: "radar_known_entity_external_ref_unique")
+  @@index([tenantId, workspaceId, status])
+  @@map("radar_known_entities")
+}
+
+// Material em texto vinculado a uma RadarKnownEntity. Imutável depois de
+// criado: uma correção nunca sobrescreve — cria uma sucessora nova que
+// aponta de volta via supersedesMaterialId (no máximo uma sucessora por
+// predecessor).
+model RadarMaterial {
+  id          String @id @default(cuid())
+  tenantId    String @map("tenant_id")
+  workspaceId String @map("workspace_id")
+  entityId    String @map("entity_id")
+  // Preservado byte a byte como recebido — sem trim, sem normalização
+  // Unicode, sem alteração de quebra de linha. 1–16.384 bytes UTF-8
+  // (radarMaterialContract.ts).
+  conteudo    String
+  // SHA-256 hex sobre os bytes UTF-8 exatos de `conteudo`, calculado pelo
+  // servidor — nunca aceito do corpo. Não autentica a fonte nem substitui
+  // a comparação completa da identidade da solicitação (só identifica o
+  // conteúdo em si, para fins de diagnóstico/dedup por conteúdo).
+  hashDoMaterial String @map("hash_do_material")
+  fonteDeclarada String @map("fonte_declarada")
+  // DATE real (YYYY-MM-DD, calendário válido), granularidade de dia, sem
+  // horário. Ausência/null são equivalentes; string vazia é rejeitada
+  // antes de chegar aqui (radarMaterialContract.ts).
+  capturadoEm DateTime? @map("capturado_em") @db.Date
+  // Predecessor corrigido por este material, quando este é uma correção.
+  // null = criação nova (não uma correção) — participa da comparação de
+  // identidade da solicitação como qualquer outro campo, nunca ignorado
+  // (correção da Atualização 1.9 do plano).
+  supersedesMaterialId String? @map("supersedes_material_id")
+  // Token de deduplicação do CHAMADOR, único por (tenantId, workspaceId) —
+  // decisão deliberada de NÃO incluir entityId nesta chave: uma tentativa
+  // com o mesmo operationKey mas entityId diferente colide na constraint e
+  // é então classificada como CONFLITO pela comparação de identidade
+  // completa (radarMaterialService.ts), nunca como duas linhas
+  // independentes silenciosamente aceitas.
+  operationKey String @map("operation_key")
+  // Identidade autenticada de quem forneceu/associou o material a esta
+  // entidade nesta unidade — ver radarMaterialContract.ts: nesta unidade
+  // providedByUserId e "associatedByUserId" são sempre o mesmo usuário; uma
+  // coluna separada para a segunda seria capacidade nova não autorizada.
+  providedByUserId String @map("provided_by_user_id")
+  // Gerado pelo servidor a cada tentativa, inclusive replays — nunca entra
+  // na comparação de identidade da solicitação.
+  recebidoEm DateTime @default(now()) @map("recebido_em")
+
+  tenant    Tenant           @relation(fields: [tenantId], references: [id])
+  workspace Workspace        @relation(fields: [workspaceId], references: [id])
+  // FK composta: garante que o material pertence à MESMA entidade/tenant/
+  // workspace referenciados — não apenas a um id de entidade solto.
+  entity    RadarKnownEntity @relation(fields: [entityId, tenantId, workspaceId], references: [id, tenantId, workspaceId])
+  // Auto-relação 1:1: o predecessor só pode estar na MESMA
+  // entidade/tenant/workspace (FK composta de 4 colunas) — nunca apenas no
+  // mesmo tenant/workspace.
+  predecessor RadarMaterial? @relation("RadarMaterialSuccession", fields: [supersedesMaterialId, tenantId, workspaceId, entityId], references: [id, tenantId, workspaceId, entityId])
+  successor   RadarMaterial? @relation("RadarMaterialSuccession")
+  analysisRequests RadarAnalysisRequest[]
+
+  // Chave composta referenciável (inclui entityId) para a FK do predecessor
+  // acima — reforça no banco que sucessora e predecessora nunca trocam de
+  // entidade.
+  @@unique([id, tenantId, workspaceId, entityId], name: "radar_material_id_tenant_workspace_entity_unique")
+  @@unique([tenantId, workspaceId, operationKey], name: "radar_material_operation_key_unique")
+  // UNIQUE PADRÃO (não índice parcial), nos mesmos 4 campos da FK acima —
+  // garante no máximo uma sucessora por predecessor. Múltiplas linhas com
+  // supersedesMaterialId=NULL (criações novas) convivem porque o Postgres
+  // trata NULLs como distintos entre si.
+  @@unique([supersedesMaterialId, tenantId, workspaceId, entityId], name: "radar_material_predecessor_successor_unique")
+  @@index([tenantId, workspaceId, entityId])
+  @@map("radar_materials")
+}
+
+// Radar Social — segunda unidade: solicitação de análise, tentativa de
+// execução governada e recomendação fundamentada persistida. Ver
+// docs/architecture/radar-social-construction-plan-v1.md, Atualizações
+// 1.11 a 1.18. Executor/provedor são substitutos controlados nesta
+// unidade — nenhuma chamada real a modelo, nenhum Run publicado em fila.
+model RadarAnalysisRequest {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  workspaceId String   @map("workspace_id")
+  entityId    String   @map("entity_id")
+  materialId  String   @map("material_id")
+  // Preservado exatamente como recebido — 1–2.000 bytes UTF-8
+  // (radarAnalysisRequestContract.ts).
+  objective   String
+  // Opcional. Ausência e null equivalentes ("sem contexto adicional");
+  // quando presente, 1–8.000 bytes UTF-8, mesmas rejeições de `objective`.
+  additionalContext String? @map("additional_context")
+  // Do contexto confiável, nunca do corpo.
+  requestedByUserId String @map("requested_by_user_id")
+  // Chave de idempotência da SOLICITAÇÃO — identidade completa comparada
+  // sob a mesma chave: {entityId, materialId, objective, additionalContext,
+  // requestedByUserId} (Atualização 1.11/1.14).
+  operationKey String   @map("operation_key")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  tenant    Tenant                 @relation(fields: [tenantId], references: [id])
+  workspace Workspace              @relation(fields: [workspaceId], references: [id])
+  // FK composta: garante que a entidade referenciada pertence ao MESMO
+  // tenant/workspace.
+  entity    RadarKnownEntity       @relation(fields: [entityId, tenantId, workspaceId], references: [id, tenantId, workspaceId])
+  // FK composta de 4 colunas: garante que o material referenciado pertence
+  // à MESMA entidade/tenant/workspace desta solicitação — não apenas a um
+  // id de material solto (mesmo padrão de RadarMaterial.predecessor).
+  material  RadarMaterial          @relation(fields: [materialId, tenantId, workspaceId, entityId], references: [id, tenantId, workspaceId, entityId])
+  attempts  RadarAnalysisAttempt[]
+
+  @@unique([id, tenantId, workspaceId], name: "radar_analysis_request_id_tenant_workspace_unique")
+  @@unique([tenantId, workspaceId, operationKey], name: "radar_analysis_request_operation_key_unique")
+  @@index([tenantId, workspaceId, entityId])
+  @@map("radar_analysis_requests")
+}
+
+// Tentativa de execução de uma RadarAnalysisRequest. Estados:
+// pending -> running -> provider_responded_pending_persistence -> completed,
+// com saída para failed a partir de running/provider_responded_pending_persistence,
+// e cancelled só por decisão humana explícita a partir de pending/running
+// (Atualização 1.12/1.15/1.18). claimToken protege a EXECUÇÃO de uma linha
+// já existente; attemptOperationKey protege a CRIAÇÃO da linha em si —
+// lacunas distintas, nunca confundidas (Atualização 1.18).
+model RadarAnalysisAttempt {
+  id                String  @id @default(cuid())
+  tenantId          String  @map("tenant_id")
+  workspaceId       String  @map("workspace_id")
+  analysisRequestId String  @map("analysis_request_id")
+  // Único sob (tenantId, workspaceId, analysisRequestId,
+  // attemptOperationKey) — protege a criação da tentativa contra reenvio
+  // duplicado e contra duas criações concorrentes (Atualização 1.18).
+  attemptOperationKey String @map("attempt_operation_key")
+  attemptNumber       Int    @map("attempt_number")
+  status              String @default("pending")
+  // Posse de execução — claimedAt + TTL do serviço determina expiração,
+  // verificada sempre via clock_timestamp() no banco (Atualização 1.18),
+  // nunca pelo relógio da aplicação.
+  claimedByWorkerId String?   @map("claimed_by_worker_id")
+  claimToken        String?   @map("claim_token")
+  claimedAt         DateTime? @map("claimed_at")
+  // Nulo até a execução real (fora desta unidade) publicar um Run de fato.
+  runId             String?   @map("run_id")
+  cancelRequestedAt DateTime? @map("cancel_requested_at")
+  failureReasonCode String?   @map("failure_reason_code")
+  // Configuração SOLICITADA, de origem exclusiva do servidor, congelada no
+  // nascimento da tentativa — nunca recalculada depois (Atualização
+  // 1.16/1.17/1.18). Campos fechados definidos em
+  // radarAnalysisAttemptContract.ts, validados antes de gravar aqui.
+  generationConfig  Json      @map("generation_config")
+  // Resultado estruturado intermediário (candidato a RadarRecommendation,
+  // antes da validação de referências) — preservação durável própria do
+  // Radar, não RunEvent (Atualização 1.15). Limite de 32.768 bytes UTF-8
+  // sobre a serialização não-canônica (ordem de inserção), medido antes de
+  // gravar (Atualização 1.16/1.17/1.18).
+  preservedResultPayload Json?   @map("preserved_result_payload")
+  // SHA-256 hex sobre a serialização determinística (chaves ordenadas) do
+  // payload acima — nunca sobre a linha inteira, nunca circular.
+  preservedResultHash    String? @map("preserved_result_hash")
+  preservedResultVersion String? @map("preserved_result_version")
+  preservedResultProvider          String? @map("preserved_result_provider")
+  preservedResultModel             String? @map("preserved_result_model")
+  preservedResultProviderRequestId String? @map("preserved_result_provider_request_id")
+  preservedAt DateTime? @map("preserved_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  tenant          Tenant                @relation(fields: [tenantId], references: [id])
+  workspace       Workspace             @relation(fields: [workspaceId], references: [id])
+  analysisRequest RadarAnalysisRequest  @relation(fields: [analysisRequestId, tenantId, workspaceId], references: [id, tenantId, workspaceId])
+  // FK composta opcional para o Run real, quando/se a execução real vier a
+  // publicá-lo (fora desta unidade). 1:1 — um Run pertence, no máximo, a
+  // uma tentativa.
+  run            Run?                  @relation(fields: [runId, tenantId, workspaceId], references: [id, tenantId, workspaceId])
+  recommendation RadarRecommendation?
+
+  @@unique([id, tenantId, workspaceId], name: "radar_analysis_attempt_id_tenant_workspace_unique")
+  @@unique([tenantId, workspaceId, analysisRequestId, attemptOperationKey], name: "radar_analysis_attempt_operation_key_unique")
+  @@unique([runId, tenantId, workspaceId], name: "radar_analysis_attempt_run_unique")
+  @@index([tenantId, workspaceId, analysisRequestId, status])
+  @@map("radar_analysis_attempts")
+}
+
+// Recomendação fundamentada, 1:1 com a tentativa que a produziu. Imutável
+// depois de criada — uma nova tentativa (nunca uma edição) produziria uma
+// RadarRecommendation nova, vinculada a si mesma (Atualização 1.12/1.15).
+model RadarRecommendation {
+  id          String @id @default(cuid())
+  tenantId    String @map("tenant_id")
+  workspaceId String @map("workspace_id")
+  attemptId   String @map("attempt_id")
+  // "actionable" | "insufficient_evidence" | "do_not_act" — os três são
+  // resultados VÁLIDOS, nenhum equivalente a falha técnica (Atualização
+  // 1.11/1.12).
+  recommendationType String @map("recommendation_type")
+  summary            String
+  // Array de {content, natureza, referenceIds[], confidenceLevel?} — ver
+  // radarRecommendationContract.ts. natureza e confidenceLevel são
+  // dimensões INDEPENDENTES, nunca fundidas (Atualização 1.11 seção B).
+  statements Json
+  // Array de referências já validadas deterministicamente contra o
+  // material/contexto antes de esta linha existir — localização/estrutura
+  // confirmadas, NUNCA prova de veracidade ou sustentação semântica
+  // completa (Atualização 1.12/1.17).
+  references Json
+  limitations               String?
+  suggestedAction           String? @map("suggested_action")
+  insufficientEvidenceReason String? @map("insufficient_evidence_reason")
+  doNotActReason            String? @map("do_not_act_reason")
+  // {generatedByAgent, model, provider, requestId, generatedAt} — valores
+  // REAIS devolvidos pelo executor, nunca inventados.
+  provenance Json
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  tenant    Tenant               @relation(fields: [tenantId], references: [id])
+  workspace Workspace            @relation(fields: [workspaceId], references: [id])
+  attempt   RadarAnalysisAttempt @relation(fields: [attemptId, tenantId, workspaceId], references: [id, tenantId, workspaceId])
+
+  @@unique([attemptId, tenantId, workspaceId], name: "radar_recommendation_attempt_unique")
+  @@index([tenantId, workspaceId])
+  @@map("radar_recommendations")
+}
+
+// Concessão/revogação de acesso individual a uma RadarKnownEntity, por
+// operação (read|write|manage|analyze — mesmos quatro valores de
+// RadarEntityAccessInput.operation, radarEntityAccessResolver.ts, nenhum
+// novo introduzido). Uma linha por (entidade, usuário, operação); "enabled"
+// é o estado ATUAL (toggle idempotente, mesmo padrão de
+// WorkspaceAgentAssignment) — reconceder depois de revogar reativa a MESMA
+// linha, nunca cria uma segunda. Histórico de transições passadas vive em
+// GuardrailAuditLedger (reaproveitado, sem tabela nova além desta), nunca
+// nesta linha (Atualização 1.22 Decisão 3a / 1.25).
+//
+// Sem bypass implícito para o criador da entidade (Atualização 1.22 Decisão
+// 1, corrigindo a Atualização 1.21): os grants do criador são linhas reais,
+// criadas atomicamente com a entidade por createRadarKnownEntity, revogáveis
+// como quaisquer outras.
+model RadarEntityAccessGrant {
+  id             String  @id @default(cuid())
+  tenantId       String  @map("tenant_id")
+  workspaceId    String  @map("workspace_id")
+  entityId       String  @map("entity_id")
+  granteeUserId  String  @map("grantee_user_id")
+  operation      String
+  enabled        Boolean @default(true)
+  grantedByUserId String @map("granted_by_user_id")
+  grantedAt       DateTime @map("granted_at")
+  revokedByUserId String?  @map("revoked_by_user_id")
+  revokedAt       DateTime? @map("revoked_at")
+
+  tenant    Tenant           @relation(fields: [tenantId], references: [id])
+  workspace Workspace        @relation(fields: [workspaceId], references: [id])
+  entity    RadarKnownEntity @relation(fields: [entityId, tenantId, workspaceId], references: [id, tenantId, workspaceId])
+
+  @@unique([tenantId, workspaceId, entityId, granteeUserId, operation], name: "radar_entity_access_grant_unique")
+  @@index([tenantId, workspaceId, entityId, granteeUserId, enabled])
+  @@map("radar_entity_access_grants")
 }
 
 model RunArchive {

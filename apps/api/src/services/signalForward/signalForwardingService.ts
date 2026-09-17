@@ -1,7 +1,11 @@
 // Encaminhamento autorizado Radar -> MKT (etapa: adaptação da cadeia REAL).
 //
+// D6 — o Run de destino não é mais criado aqui (ver seção 22.7 do
+// documento): forwardSignalToMkt só cria o SignalForwardRequest, aguardando
+// confirmação humana. createRunRecord/assertWorkspaceAgentEnabled passam a
+// ser usados em humanConfirmationService.ts, não neste arquivo.
+//
 // FUNÇÕES REAIS REUTILIZADAS (importadas do produto, não reimplementadas):
-//   - createRunRecord / assertWorkspaceAgentEnabled (../runs, ../workspaceAgentAssignments)
 //   - checkScopePermission (@eiah/core -> packages/core/src/security/rbac.ts),
 //     backed por TenantPolicyStore real (fail-closed, tabela tenant_action_policy real)
 //   - prismaGlobal (@repo/db)
@@ -16,10 +20,8 @@
 //     antes de qualquer uso real — este caminho permanece bloqueado por padrão
 //     (fail-closed: nenhuma concessão é feita aqui, apenas consultada).
 
-import { Prisma, PrismaClient, prismaGlobal, type TransactableClient } from "@repo/db";
-import { checkScopePermission, recordGuardrailAudit } from "@eiah/core";
-import { createRunRecord } from "../runs";
-import { WorkspaceAgentAssignmentError } from "../workspaceAgentAssignments";
+import { Prisma, PrismaClient, prismaGlobal } from "@repo/db";
+import { checkScopePermission } from "@eiah/core";
 import { classifySignalForwardUniqueViolation } from "./classifier";
 import {
   readAndValidateOrigin,
@@ -98,27 +100,19 @@ export async function reauthorizeSignalForward(params: {
   }
 }
 
-async function createDestinationRun(
-  client: TransactableClient,
-  params: { tenantId: string; workspaceId: string; userId: string; agent: string; sourceRunId: string; forwardId: string }
-) {
-  return createRunRecord({
-    prisma: client,
-    tenantId: params.tenantId,
-    workspaceId: params.workspaceId,
-    userId: params.userId,
-    agent: params.agent,
-    status: "pending",
-    request: { metadata: { signalForwardRequestId: params.forwardId, sourceRunId: params.sourceRunId } },
-  });
-}
+// D6 — createDestinationRun foi removida daqui: o Run de destino não é mais
+// criado no encaminhamento (forwardSignalToMkt), e sim na conclusão de uma
+// confirmação humana válida (humanConfirmationService.ts,
+// confirmHumanConfirmation) — ver CONSULTATION_ORIGIN_AUTHZ_v2.md seção 22.7.
 
 export interface ForwardSignalTestHooks {
-  // Pontos de instrumentação EXCLUSIVOS de teste (concorrência e rollback
+  // Ponto de instrumentação EXCLUSIVO de teste (concorrência e rollback
   // deliberado). No fluxo real, `hooks` é sempre omitido — sem efeito sobre
-  // comportamento ou tempo de vida da transação em produção.
+  // comportamento ou tempo de vida da transação em produção. `afterRunCreate`
+  // não existe mais aqui (D6) — o hook equivalente para a criação do Run
+  // vive em `HumanConfirmationTestHooks` (humanConfirmationService.ts),
+  // porque é lá que o Run passa a ser criado.
   afterInsert?: () => Promise<void>;
-  afterRunCreate?: () => Promise<void>;
 }
 
 export async function dispatchAfterTransactionError(
@@ -154,6 +148,11 @@ export async function forwardSignalToMkt(
     sourceRunId: input.sourceRunId,
   });
 
+  // D6 — a atribuição do agente de destino (assertWorkspaceAgentEnabled,
+  // via createRunRecord) não é mais verificada aqui: o Run de destino não é
+  // mais criado neste momento. Essa verificação passa a ocorrer dentro de
+  // humanConfirmationService.ts::confirmHumanConfirmation, na conclusão da
+  // confirmação — WorkspaceAgentAssignmentError só pode ser lançado lá agora.
   try {
     return await db.$transaction(async (tx) => {
       // Leitura da origem ESCOPADA por tenant/workspace + validação estrutural
@@ -193,60 +192,24 @@ export async function forwardSignalToMkt(
         await hooks.afterInsert();
       }
 
-      // createRunRecord REAL — inclui assertWorkspaceAgentEnabled REAL
-      // (atribuição do agente MKT), participando do MESMO tx.
-      const run = await createDestinationRun(tx, {
-        tenantId: input.tenantId,
-        workspaceId: input.workspaceId,
-        userId: input.requestedByUserId,
-        agent: input.destinationAgent,
-        sourceRunId: input.sourceRunId,
-        forwardId: forward.id,
-      });
-
-      if (hooks.afterRunCreate) {
-        await hooks.afterRunCreate();
-      }
-
-      const linked = await tx.signalForwardRequest.update({
-        where: { id: forward.id },
-        data: { destinationRunId: run.id, status: "run_created" },
-      });
-
+      // D6 — o Run de destino NÃO é mais criado aqui. Encaminhar só cria o
+      // SignalForwardRequest, aguardando confirmação humana
+      // (humanConfirmationService.ts). destinationRunId permanece null até
+      // uma confirmação concluir — o tipo SignalForwardResult já comporta
+      // isso sem alteração. Ver seção 22.7.
       return {
-        forwardRequestId: linked.id,
-        destinationRunId: run.id,
-        status: "run_created",
+        forwardRequestId: forward.id,
+        destinationRunId: null,
+        status: forward.status,
         reused: false,
       };
     }, { maxWait: 5000, timeout: 10000 });
   } catch (e) {
     // captura FORA do await db.$transaction(...), após o encerramento com
     // rollback. Nenhuma instrução abaixo usa `tx` — não existe mais aqui.
-
-    if (e instanceof WorkspaceAgentAssignmentError) {
-      // A auditoria de recusa que assertWorkspaceAgentEnabled tentou gravar
-      // DENTRO da transação (via recordAssignmentRefusal -> recordGuardrailAudit)
-      // foi revertida junto com o rollback. Reemitimos aqui, fora da transação
-      // encerrada, usando prismaGlobal (nunca `tx`), para que a evidência de
-      // recusa sobreviva independentemente do resultado da operação.
-      try {
-        await recordGuardrailAudit({
-          prisma: prismaGlobal,
-          tenantId: input.tenantId,
-          workspaceId: input.workspaceId,
-          eventType: "signal_forward.agent_assignment_refused",
-          severity: "warn",
-          message: e.message,
-          metadata: { reasonCode: e.reasonCode, rolledBack: true },
-        });
-      } catch {
-        // Falha na gravação da auditoria NUNCA transforma a recusa em
-        // autorização — o erro original é relançado de qualquer forma.
-      }
-      throw e;
-    }
-
+    // D6 — WorkspaceAgentAssignmentError não pode mais ocorrer aqui (ver
+    // comentário acima); esse tratamento foi movido para
+    // humanConfirmationService.ts::confirmHumanConfirmation.
     return await dispatchAfterTransactionError(db, input, e);
   }
 }
@@ -298,10 +261,15 @@ export async function recoverExistingSignalForwardRequest(
     throw new ConflictError("idempotency_key_reused_incompatible_payload");
   }
 
-  if (!existing.destinationRunId) {
+  // D6 — correção: destinationRunId nulo deixa de ser sempre inconsistência.
+  // Um encaminhamento aguardando confirmação humana (status "pending_dispatch")
+  // tem destinationRunId nulo por design (seção 22.7) — não é mais um erro.
+  // A checagem fica restrita aos estados que DEVERIAM ter Run associado.
+  const STATUSES_REQUIRING_DESTINATION_RUN = ["dispatch_pending", "run_created"];
+  if (STATUSES_REQUIRING_DESTINATION_RUN.includes(existing.status) && !existing.destinationRunId) {
     throw new SignalForwardInconsistencyError(
       "existing_request_without_destination_run",
-      { forwardRequestId: existing.id }
+      { forwardRequestId: existing.id, status: existing.status }
     );
   }
 

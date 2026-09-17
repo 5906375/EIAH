@@ -44,8 +44,12 @@ test("concorrência real (cadeia real): duas transações disputam a mesma chave
     const results = [resultA, resultB];
     assert.equal(results.filter((r) => r.reused === false).length, 1);
     assert.equal(results.filter((r) => r.reused === true).length, 1);
-    assert.equal(resultA.destinationRunId, resultB.destinationRunId);
-    assert.ok(resultA.destinationRunId);
+    // D6: forwardSignalToMkt não cria mais Run — destinationRunId é null até
+    // uma confirmação humana concluir (seção 22.7). A concorrência de D5
+    // continua sendo sobre o SignalForwardRequest (idempotencyKey), não
+    // mais sobre a criação de um Run.
+    assert.equal(resultA.destinationRunId, null);
+    assert.equal(resultB.destinationRunId, null);
 
     const requestCount = await clientA.prisma.signalForwardRequest.count({
       where: { tenantId, workspaceId, idempotencyKey: input.idempotencyKey },
@@ -55,7 +59,7 @@ test("concorrência real (cadeia real): duas transações disputam a mesma chave
     const runCount = await clientA.prisma.run.count({
       where: { tenantId, workspaceId, agent: "mkt" },
     });
-    assert.equal(runCount, 1, "nenhum run órfão da tentativa que perdeu a corrida");
+    assert.equal(runCount, 0, "encaminhamento não cria Run (D6) — nenhum run órfão possível aqui");
   } finally {
     await clientA.close();
     await clientB.close();

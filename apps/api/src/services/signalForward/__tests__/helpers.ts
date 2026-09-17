@@ -1,9 +1,29 @@
-import { PrismaClient, RunStatus } from "@repo/db";
+import { Prisma, PrismaClient, RunStatus } from "@repo/db";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
 import { randomUUID } from "node:crypto";
+import { RADAR_SIGNAL_RESULT_CONTRACT_VERSION } from "../radarSignalResultValidator";
+import type { SubjectAuthorizationOutcome, SubjectAuthorizationResolver } from "../humanConfirmationContract";
 
 const { Pool } = pg;
+
+// Payload mínimo válido de RadarSignalResultV1 (seção 9 de
+// CONSULTATION_ORIGIN_AUTHZ_v2.md), usado como `response` padrão dos runs de
+// origem sintéticos — desde a integração de D5, `readAndValidateOrigin`
+// exige que todo Run com agent="radar" tenha um `response` conforme este
+// contrato; um objeto arbitrário (usado antes de D5 existir) não passa mais.
+export function defaultRadarSignalResult(overrides: Record<string, unknown> = {}) {
+  return {
+    contractVersion: RADAR_SIGNAL_RESULT_CONTRACT_VERSION,
+    signalType: "lead_intent_signal",
+    subject: { subjectType: "internal_reference", subjectId: "lead-fic-default-0001" },
+    title: "Sinal sintetico de teste",
+    summary: "Sinal sintetico gerado para teste automatizado, sem dados reais de cliente.",
+    detectedAt: "2026-09-08T00:00:00Z",
+    confidenceLevel: "low",
+    ...overrides,
+  };
+}
 
 function baseUrl() {
   const url = process.env.DATABASE_URL;
@@ -109,26 +129,34 @@ export async function seedRealScenario(
       tenantId: opts.tenantId, workspaceId: opts.workspaceId,
       agent: "radar", status: RunStatus.success,
       request: { metadata: { simulatedOrigin: true } },
-      response: { signalAnalysis: { summary: "sinal sintético de teste" } },
+      response: defaultRadarSignalResult(),
     },
   });
 
   return { userId, sourceRunId: sourceRun.id };
 }
 
-// Cria um Run de origem avulso, com estado/conteúdo controlados pelo teste —
-// usado pelos cenários de validação de escopo/estado da origem.
+// Cria um Run de origem avulso, com estado/conteúdo/produtor controlados
+// pelo teste — usado pelos cenários de validação de escopo/estado/produtor
+// da origem. `agent` default "radar" (produtor ratificado); testes de D5-A
+// passam um valor diferente para exercitar a rejeição.
 export async function createOriginRun(
   prisma: PrismaClient,
-  opts: { tenantId: string; workspaceId: string; status?: keyof typeof RunStatus; response?: unknown }
+  opts: {
+    tenantId: string;
+    workspaceId: string;
+    status?: keyof typeof RunStatus;
+    response?: unknown;
+    agent?: string;
+  }
 ) {
   const run = await prisma.run.create({
     data: {
       tenantId: opts.tenantId, workspaceId: opts.workspaceId,
-      agent: "radar", status: RunStatus[opts.status ?? "success"],
+      agent: opts.agent ?? "radar", status: RunStatus[opts.status ?? "success"],
       request: { metadata: { simulatedOrigin: true } },
       response: opts.response === undefined
-        ? { signalAnalysis: { summary: "sinal sintético de teste" } }
+        ? defaultRadarSignalResult()
         : (opts.response as any),
     },
   });
@@ -151,4 +179,39 @@ export function uniqueScope(tenantId: string) {
 export function newTenantWorkspace(prefix: string) {
   const suffix = `${prefix}-${randomUUID().slice(0, 8)}`;
   return { tenantId: `t-${suffix}`, workspaceId: `w-${suffix}` };
+}
+
+// --- D6: substitutos controlados da interface de autorização do sujeito ---
+// Implementados EXCLUSIVAMENTE aqui, em código de teste (seção 22.5) — o
+// código de produção (humanConfirmationService.ts) só conhece a interface,
+// nunca uma implementação-padrão. Nenhum caminho de produção monta esses
+// substitutos.
+
+export function alwaysAuthorizedSubjectResolver(): SubjectAuthorizationResolver {
+  return async () => "authorized";
+}
+
+export function fixedOutcomeSubjectResolver(outcome: SubjectAuthorizationOutcome): SubjectAuthorizationResolver {
+  return async () => outcome;
+}
+
+// Rascunho mínimo válido para confirmar (finalPrompt/objective obrigatórios,
+// seção 10) — usado por testes que precisam só chegar à conclusão sem
+// exercitar o conteúdo de negócio em si.
+export function defaultConfirmationDraft(overrides: Record<string, unknown> = {}) {
+  return {
+    finalPrompt: "Prompt final revisado pelo humano para a tarefa MKT.",
+    objective: "Reengajar o lead identificado pelo sinal Radar.",
+    ...overrides,
+  };
+}
+
+// D6, exclusivo de teste: força expires_at de uma janela para o passado, sem
+// esperar 168h reais — manipulação direta do banco descartável, não um
+// parâmetro do serviço real (que não expõe nenhum jeito de encurtar o TTL).
+export async function backdateConfirmationWindowExpiry(prisma: PrismaClient, humanConfirmationId: string) {
+  await prisma.$executeRaw(Prisma.sql`
+    UPDATE human_confirmations SET expires_at = clock_timestamp() - interval '1 second'
+    WHERE id = ${humanConfirmationId}
+  `);
 }
