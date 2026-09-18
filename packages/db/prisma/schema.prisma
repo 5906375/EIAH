@@ -110,6 +110,7 @@ model Tenant {
   radarAnalysisAttempts     RadarAnalysisAttempt[]
   radarRecommendations      RadarRecommendation[]
   radarEntityAccessGrants   RadarEntityAccessGrant[]
+  radarProviderCallSlots    RadarProviderCallSlot[]
   memberships               TenantMembership[]
   customRoles               TenantCustomRole[]
   walletIdentities          WalletIdentity[]
@@ -160,6 +161,7 @@ model Workspace {
   radarAnalysisAttempts     RadarAnalysisAttempt[]
   radarRecommendations      RadarRecommendation[]
   radarEntityAccessGrants   RadarEntityAccessGrant[]
+  radarProviderCallSlots    RadarProviderCallSlot[]
 
   @@index([tenantId, name])
   @@map("workspaces")
@@ -633,6 +635,7 @@ model RadarAnalysisAttempt {
   // uma tentativa.
   run            Run?                  @relation(fields: [runId, tenantId, workspaceId], references: [id, tenantId, workspaceId])
   recommendation RadarRecommendation?
+  providerCallSlot RadarProviderCallSlot?
 
   @@unique([id, tenantId, workspaceId], name: "radar_analysis_attempt_id_tenant_workspace_unique")
   @@unique([tenantId, workspaceId, analysisRequestId, attemptOperationKey], name: "radar_analysis_attempt_operation_key_unique")
@@ -715,6 +718,32 @@ model RadarEntityAccessGrant {
   @@unique([tenantId, workspaceId, entityId, granteeUserId, operation], name: "radar_entity_access_grant_unique")
   @@index([tenantId, workspaceId, entityId, granteeUserId, enabled])
   @@map("radar_entity_access_grants")
+}
+
+// Controle de CONCORRÊNCIA das chamadas reais do Radar por
+// (tenantId, workspaceId) — NUNCA reserva financeira, de tokens ou de
+// orçamento; só conta vagas ocupadas por tentativas em voo. Uma linha por
+// RadarAnalysisAttempt (nunca duas para a mesma tentativa — idempotente).
+// "released" é o único jeito de liberar uma vaga, e só acontece quando o
+// desfecho é CONHECIDO (resposta durável obtida, ou falha comprovadamente
+// anterior ao envio) — nunca por timeout nem por perda de posse do
+// trabalhador (Atualização 1.32 do plano).
+model RadarProviderCallSlot {
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
+  workspaceId String   @map("workspace_id")
+  attemptId   String   @map("attempt_id")
+  status      String   @default("occupied")
+  occupiedAt  DateTime @map("occupied_at")
+  releasedAt  DateTime? @map("released_at")
+
+  tenant    Tenant               @relation(fields: [tenantId], references: [id])
+  workspace Workspace            @relation(fields: [workspaceId], references: [id])
+  attempt   RadarAnalysisAttempt @relation(fields: [attemptId, tenantId, workspaceId], references: [id, tenantId, workspaceId])
+
+  @@unique([attemptId, tenantId, workspaceId], name: "radar_provider_call_slot_attempt_unique")
+  @@index([tenantId, workspaceId, status])
+  @@map("radar_provider_call_slots")
 }
 
 model RunArchive {

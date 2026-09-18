@@ -268,6 +268,36 @@ export async function holdEntityRowLock(
   await client.close();
 }
 
+/** Mesma técnica de `holdEntityRowLock`, agora sobre a trava CONSULTIVA de
+ * `occupyProviderCallSlot` (radarGovernedExecutionService.ts) —
+ * `pg_advisory_xact_lock(hashtext('radar_provider_call_slot'),
+ * hashtext(tenantId:workspaceId))`, EXATAMENTE a mesma chave usada em
+ * produção. Usada para bloquear deterministicamente o ponto de espera real
+ * do caminho governado (a vaga, nunca a posse), sem sleeps. Chama
+ * `lockAcquired()` só depois que a trava foi de fato obtida por esta
+ * conexão — barreira real para quem chama, não uma suposição de tempo. */
+export async function holdProviderCallSlotAdvisoryLock(
+  applicationName: string,
+  opts: { tenantId: string; workspaceId: string },
+  lockAcquired: () => void,
+  release: Promise<void>
+) {
+  const client = createNamedClient(applicationName);
+  const lockKey = `${opts.tenantId}:${opts.workspaceId}`;
+  await client.prisma.$transaction(
+    async (tx) => {
+      await tx.$executeRawUnsafe(
+        `SELECT pg_advisory_xact_lock(hashtext('radar_provider_call_slot'), hashtext($1))`,
+        lockKey
+      );
+      lockAcquired();
+      await release;
+    },
+    { maxWait: 20000, timeout: 30000 }
+  );
+  await client.close();
+}
+
 /** Fábrica de executor SUBSTITUTO controlado — nunca chama rede/modelo
  * real. `respond` decide o candidato (ou lança, simulando falha do
  * provedor). */
@@ -286,4 +316,58 @@ export function fakeExecutor(
     };
   };
   return { executor, calls };
+}
+
+/** Fábrica de transporte SUBSTITUTO para o motor de linguagem — nunca
+ * importa HTTP real, SDK de provedor ou credencial; nunca acessa rede.
+ * `respond` decide a resposta (objeto qualquer, serializado como `output`
+ * JSON; ou um `ChatCompletionResponse` parcial, para testar
+ * `finishReason`/`usage`/`requestId`; ou pode lançar, simulando falha de
+ * transporte/resultado desconhecido). Registra `calls` para contagem exata
+ * de envios (Atualização 1.30/1.32 do plano — "um único envio"). */
+export function createSubstituteCompletionEngine(
+  respond: (req: {
+    model: string;
+    messages: Array<{ role: string; content: string }>;
+    maxTokens?: number;
+    retries?: number;
+  }) => Promise<unknown> | unknown
+) {
+  const calls: Array<{ model: string; messages: unknown; maxTokens?: number; retries?: number }> = [];
+  const callCompletion = async (req: {
+    model: string;
+    messages: Array<{ role: string; content: string }>;
+    maxTokens?: number;
+    retries?: number;
+  }) => {
+    calls.push(req);
+    const result = await respond(req);
+    if (result && typeof result === "object" && "output" in (result as Record<string, unknown>)) {
+      const partial = result as Partial<{
+        id: string; output: string; raw: unknown; finishReason: string; provider: string; model: string;
+        requestId: string; usage: { promptTokens?: number; completionTokens?: number; totalTokens?: number } | null;
+      }>;
+      return {
+        id: partial.id ?? `sub-${randomUUID().slice(0, 8)}`,
+        output: partial.output ?? "",
+        raw: partial.raw ?? null,
+        finishReason: partial.finishReason ?? "stop",
+        provider: partial.provider ?? "radar-test-provider",
+        model: partial.model ?? req.model,
+        requestId: partial.requestId,
+        usage: partial.usage ?? null,
+      };
+    }
+    return {
+      id: `sub-${randomUUID().slice(0, 8)}`,
+      output: JSON.stringify(result),
+      raw: null,
+      finishReason: "stop",
+      provider: "radar-test-provider",
+      model: req.model,
+      requestId: `req-${randomUUID().slice(0, 8)}`,
+      usage: { promptTokens: 10, completionTokens: 10, totalTokens: 20 },
+    };
+  };
+  return { callCompletion, calls };
 }

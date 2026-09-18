@@ -1,11 +1,25 @@
 # Plano de construção do Radar Social
-Versão documental: 1.28 — 17/09/2026
-Status: plano em evolução; pacote A implementado, revisado e corrigido localmente (Atualizações 1.19-1.20); resolvedor real de acesso desenhado (Atualizações 1.21-1.25), implementado (Atualização 1.26) e com integração confirmada por teste real (Atualização 1.27); caminho seguro de execução real desenhado em detalhe na Atualização 1.28 — proposta de execução futura, não implementação entregue —, com resultado ambíguo corrigido para nunca liberar nova tentativa e precisado quanto a recuperação/consumo e ao significado de `failed`/`running`; nada disso implementado; ativação operacional real permanece não autorizada.
+Versão documental: 1.33 — 17/09/2026
+Status: plano em evolução; pacote A implementado, revisado e corrigido localmente (Atualizações 1.19-1.20); resolvedor real de acesso desenhado (Atualizações 1.21-1.25), implementado (Atualização 1.26) e com integração confirmada por teste real (Atualização 1.27); caminho seguro de execução real desenhado (Atualizações 1.28-1.32) e IMPLEMENTADO/TESTADO localmente na Atualização 1.33 (controle de concorrência real, checkpoint pré-envio, retries por chamada, log saneado — 137/137 radarSocial e 129/129 signalForward, typecheck 431 estável), sempre com transporte substituído — nenhuma chamada real a modelo; marco local anterior commitado em `1d5a3910dc9d9de87fb935b84b5f256f3bac8a1d`, mudanças desta rodada ainda não commitadas; ativação operacional real permanece não autorizada.
 
 Nota de correção (16/09/2026): o cabeçalho ficou divergente da última atualização
 efetivamente consolidada por várias rodadas (permaneceu "1.9" enquanto a Atualização 1.10 já
 estava gravada). Corrigido nesta rodada para refletir a Atualização 1.11, a mais recente. O
 histórico abaixo (1.0 a 1.10) permanece intacto e não foi renumerado.
+
+Nota de correção (18/09/2026): o cabeçalho acima ficou divergente das revisões gravadas depois da
+Atualização 1.33 — descrevia a execução governada como só "implementada/testada", sem mencionar
+duas correções de defeitos reais encontrados e resolvidos em rodadas de revisão subsequentes,
+registradas nas seções "Revisão curta pós-entrega", "Fechamento verificado da execução governada
+local", "Correção da autorização pós-espera" e no esclarecimento do procedimento de baseline por
+hardlink: (1) atomicidade Run↔tentativa — a escrita de vínculo do `runId` na tentativa não conferia
+linhas afetadas, corrigida extraindo `createAndLinkGovernedRun` com revalidação condicionada; (2)
+revalidação de autorização após espera — a re-checagem introduzida pela correção (1) cobria só
+posse (`claimToken`/`status`/TTL), não autorização (acesso à entidade/membership/escopo/habilitação
+do agente); uma revogação real durante a espera real pela vaga não era detectada, corrigida
+chamando de novo o checkpoint completo (`assertReadyForGovernedDispatch`) depois da espera. Nenhuma
+entrega funcional nova é registrada por esta nota — só a correção da descrição, para refletir o que
+já estava efetivamente gravado no corpo do documento. O histórico abaixo permanece intacto.
 
 ## Objetivo e regra de continuidade
 Transformar sinais em recomendações úteis, fundamentadas e decisões registráveis, mantendo Radar transversal e MKT como consumidor opcional.
@@ -4223,3 +4237,1720 @@ separada e explícita.
 
 Nenhuma implementação foi feita sob esta atualização. Nenhuma chamada real a modelo ocorreu.
 Nenhuma busca ampla do Core foi reaberta.
+
+## Atualização 1.29 — desenho da execução governada, com evidência pontual do Core (17/09/2026)
+
+Fonte: leitura pontual do Core nesta sessão (dois levantamentos dirigidos, citados abaixo com
+arquivo:linha), a partir do marco já commitado (`1d5a3910dc9d9de87fb935b84b5f256f3bac8a1d`, branch
+`experiment/signalforward-origin-fingerprint-fix`). Só documentação — nenhum código, schema,
+migration ou teste alterado; nenhuma chamada real a modelo. Os dois achados de segurança
+registrados na entrega do commit-base (bytes NUL literais nos testes de contrato,
+byte-a-byte intencionais; linha em branco final na migração de Human Confirmation, estilo do
+gerador Prisma) permanecem registrados como limitações conhecidas, não corrigidos aqui — preservar
+o commit-base significa não fazer `amend` nem tocar nesses arquivos.
+
+### 1. Cadeia real existente, com arquivo:linha
+
+`RadarAnalysisRequest` → `RadarAnalysisAttempt` (`claimAttempt`/`preserveResult`/`concludeAttempt`,
+`radarAnalysisAttemptService.ts`) é o trecho já implementado e testado (substituto). A cadeia REAL
+do Core, hoje, para qualquer outro agente, é:
+
+```
+routes/agents.ts:547 createRunRecord (Run status="pending")
+  → routes/agents.ts:598-610 emitRunEvent("run.requested")
+  → routes/agents.ts:625 publishRun (enfileira via BullMQ, packages/core/src/queue/runQueue.ts)
+  → apps/api/src/workers/runWorker.ts consome o job
+  → executeCapability → executeLlmStep (apps/api/src/orchestrator/llmExecutor.ts:195-252)
+  → runCompletion (packages/core/src/llm/completionEngine.ts:17)
+  → provedor real
+  → runWorker.ts finaliza (finalizeRunRecord, response no Run) + emitRunEvent("run.completed")
+```
+
+`assertWorkspaceAgentEnabled` (`apps/api/src/services/workspaceAgentAssignments.ts:230-248`,
+contra `WorkspaceAgentAssignment`) já é chamada dentro de `createRunRecord`
+(`apps/api/src/services/runs.ts:214`) — confirmado que o fluxo simulado do Radar Social não passa
+por `createRunRecord` em nenhum ponto hoje (achado já registrado nas Atualizações 1.10/1.11/1.12,
+agora com a linha exata).
+
+**Ponto mínimo de integração proposto**: NÃO a fila BullMQ inteira (`publishRun`/`runWorker.ts`) —
+essa fila aplica `attempts: 3` com backoff exponencial por padrão
+(`packages/core/src/queue/runQueue.ts:150-153`), sobrescrevível por chamador mas nenhum chamador
+observado o faz, e o worker não verifica idempotência contra reexecução de uma chamada já em voo
+(só verifica cancelamento pelo usuário, `runWorker.ts:484-498`) — usar essa fila sem modificação
+reintroduziria exatamente o retry oculto que a Decisão 3 (Atualização 1.28) já proibiu. Proposta:
+um executor real do Radar chama DIRETAMENTE, de forma síncrona (mesmo formato de hoje com o
+substituto), na ordem: `assertWorkspaceAgentEnabled` → verificação de consumo (seção 5) →
+`createRunRecord` (com payload redigido, seção 4) → `runCompletion` → gravação do resultado
+(`preserveResult`, já existente) → `finalizeRunRecord`/`emitRunEvent("run.completed")` (metadados
+apenas). Isso reaproveita as MESMAS funções que os outros agentes usam, sem reaproveitar a fila
+genérica — decisão explícita, não uma omissão.
+
+| Elemento | Classificação | Evidência |
+|---|---|---|
+| `runCompletion`/`completionEngine.ts` | Componente existente | `packages/core/src/llm/completionEngine.ts:17-66` |
+| `assertWorkspaceAgentEnabled` | Componente existente, não chamado hoje pelo Radar | `apps/api/src/services/workspaceAgentAssignments.ts:230-248` |
+| `createRunRecord`/`finalizeRunRecord` | Componente existente, uso padrão precisa ser adaptado (seção 4) | `apps/api/src/services/runs.ts:193-260,295-308` |
+| Fila BullMQ (`runQueue.ts`/`runWorker.ts`) | Componente existente, **não reaproveitado** nesta proposta | `packages/core/src/queue/runQueue.ts:140-158` |
+| Parâmetro de retry por chamada em `ChatCompletionRequest` | Extensão necessária — não existe hoje | `packages/core/src/llm/types.ts:10-17` (sem esse campo) |
+| Campo de agente (`agentKey`/`agentVersion`) em `GenerationConfig` | Extensão necessária — não existe hoje | `radarAnalysisAttemptContract.ts` (`GenerationConfig` atual não tem esses campos) |
+| Payload redigido de `Run.request` para o Radar | Extensão necessária (seção 4) | Ver achado da seção 4 |
+| Guarda de consumo real aplicada fora de rota HTTP | Decisão operacional pendente | Ver seção 5 |
+| Síncrono vs. fila para o executor real | Decisão operacional, proposta acima, pendente de ratificação | — |
+
+Não presumo que `WorkspaceAgentAssignment`, orçamento ou fila já estejam prontos para o Radar só
+porque as estruturas existem — cada linha acima já diz explicitamente o que falta.
+
+### 2. Autorização pré-envio — checkpoint completo
+
+| Controle | Fonte autoritativa | Momento | Bloqueante? |
+|---|---|---|---|
+| Identidade confiável do solicitante | `RadarAnalysisRequest.requestedByUserId` (nunca uma identidade do processo) | Lido junto com a tentativa, revalidado no checkpoint | Sim |
+| Membership e escopo vigentes | `assertRadarSocialOperationAuthorized` (`TenantMembership` + `checkScopePermission`) | Imediatamente antes do envio, nunca reaproveitado do `claim` | Sim |
+| Acesso à entidade e ao material | `createRadarEntityAccessResolver`, `operation="analyze"` (real, já implementado e testado) | Idem | Sim |
+| Habilitação do agente | `assertWorkspaceAgentEnabled` contra `WorkspaceAgentAssignment` | Idem — hoje não chamado pelo Radar, extensão necessária | Sim |
+| Posse e estado da tentativa | `claimToken` + `status='running'` + `clock_timestamp() < claimedAt+TTL` (mesma condição de `preserveResult`) | Leitura de confirmação no checkpoint; a escrita condicionada continua sendo o gate final na volta | Sim |
+| Permissão para enviar o conteúdo | `GenerationConfig.knowledgePolicySnapshot.llmUsageMode` **re-resolvido agora** (não o congelado na criação) — deve permitir despacho; nunca `"none"`/`"disallowed_for_critical_execution"` | Idem | Sim |
+| Autorização de consumo | Guarda de orçamento (seção 5), chamada diretamente do serviço (sem rota HTTP) | Idem | Sim |
+
+**Duas precisões exigidas, registradas explicitamente**:
+- O prazo de posse (`claimToken`/TTL) NUNCA é reaproveitado como autorização — são checagens
+  distintas, sempre as duas, nunca uma no lugar da outra.
+- Existe uma janela residual entre a última verificação acima e o envio efetivo do pacote de
+  rede — nenhum desenho fecha essa janela por completo (a mesma limitação já reconhecida para a
+  trava de entidade, Atualização 1.24/1.25, se aplica aqui de novo, agora ao envio de rede). Se uma
+  revogação comitar exatamente nesse intervalo, o conteúdo já pode ter saído — não há revogação
+  retroativa de conteúdo já transmitido ao provedor. O checkpoint reduz a janela ao mínimo tecnicamente
+  possível; não promete eliminá-la.
+
+### 3. Conteúdo e confidencialidade
+
+**Composição exata da entrada**: material original (`RadarMaterial.conteudo`, imutável, referenciado
+por `materialId` — nunca uma cópia à parte), `objective` e `additionalContext` de
+`RadarAnalysisRequest`, `promptTemplateVersion` e o restante de `GenerationConfig` (já frozen na
+criação da tentativa). Limites já reais e existentes: `CONTEUDO_MAX_BYTES = 16.384`
+(`radarMaterialContract.ts:30`), `OBJECTIVE_MAX_BYTES = 2.000`, `ADDITIONAL_CONTEXT_MAX_BYTES =
+8.000` (já citados em rodadas anteriores). Todo esse conteúdo é validado byte-exato na entrada
+(rejeita NUL, substituto isolado, controle) — já comprovado no próprio commit-base.
+
+**Tratamento como dado não confiável**: material e contexto vêm de fontes externas ao operador —
+nenhuma validação atual impede conteúdo de injeção de instrução dentro do texto do material.
+Decisão pendente, não resolvida aqui: a função que monta o array de mensagens para
+`runCompletion` (ainda não escrita) precisa isolar estruturalmente o material como DADO
+delimitado, nunca concatenado de forma que possa ser lido como instrução nova pelo modelo — isso é
+responsabilidade do template referenciado por `promptTemplateVersion`, cujo conteúdo real ainda
+não foi definido nesta unidade.
+
+**Achado real que precisa ser corrigido antes da integração — exposição por `Run.request`**:
+confirmado por leitura de código que `Run.request` (`packages/db/prisma/schema.prisma:243`, `Json`
+**obrigatório**) é usado, em todo o resto do Core, para armazenar o prompt/mensagens REAIS enviados
+(`apps/api/src/routes/agents.ts:511-543`, `apps/api/src/routes/runs.ts:488`) — e a leitura de um
+`Run` (`GET /runs/:id`, eventos, SSE, `evidenceBundle.ts`, `runArchiveService.ts`) é autorizada só
+por tenant/workspace (`apps/api/src/middlewares/enforceTenant.ts:103-108`), sem checagem de
+propriedade por usuário ou vínculo de entidade — exatamente a autorização mais grosseira já
+identificada nas Atualizações 1.15/1.28, agora confirmada com evidência direta. Se o executor real
+do Radar seguisse o padrão convencional de preencher `Run.request` com o prompt/material reais, o
+controle de acesso por entidade que esta unidade inteira construiu seria contornado por essa via
+genérica. **Este é um bloqueio técnico real a resolver antes de qualquer integração**, registrado
+aqui como tal — não como exceção implícita, e não corrigido nesta atualização (só documentação):
+`Run.request`/`Run.response`, quando criados pelo Radar, devem conter só um payload OPACO
+(`attemptId`, referência, sem material/objetivo/resposta) — o conteúdo real continua exclusivamente
+em `RadarAnalysisAttempt.preservedResultPayload`/`RadarRecommendation`, sob o resolvedor por
+entidade, nunca espelhado no `Run`. `emitRunEvent("run.requested")` no padrão hoje já inclui
+`promptPreview` truncado e `metadata.executionInput` em alguns chamadores
+(`apps/api/src/routes/runs.ts:709-723`) — o Radar NÃO pode reaproveitar esse padrão de payload
+tal como está; precisa de uma chamada equivalente com metadados mínimos, sem preview de conteúdo.
+
+### 4. Consumo
+
+Achado confirmado (corrige a cautela "candidato, não confirmado" da Atualização 1.28):
+`WorkspaceQuotaGrant` (`schema.prisma:1204-1221`) **é usado em produção**, não só schema —
+`QuotaPolicyService.resolveWorkspaceGrant` (`apps/api/src/services/tenantBilling.ts:168-200`) e
+`evaluateTenantBillingExecutionGuard` (`tenantBilling.ts:948-1074`), chamados por
+`routes/runs.ts:551` e `routes/shadow-executions.ts:349`, **antes** de `createRunRecord`. Por
+padrão roda em modo `"shadow"` (não bloqueia, só relata) a menos que
+`TENANT_BILLING_V2_ENFORCE`/`TENANT_BILLING_V2_GUARD_MODE` estejam configuradas — decisão
+operacional de ambiente, não deste desenho. **Não chamado hoje** por `routes/agents.ts`, nem por
+nenhum caminho do Radar, nem de dentro de `completionEngine.ts` — o guard só existe na borda HTTP
+dessas duas rotas específicas. Como o Radar não tem rota HTTP, a integração precisa chamar essa
+mesma lógica diretamente do serviço, não herdá-la de um middleware de rota.
+
+**Separação exigida, nunca fundida**:
+- Autorização de ACESSO: o resolvedor real (`analyze`), já implementado.
+- Permissão de CONSUMO: `evaluateTenantBillingExecutionGuard`-equivalente, chamado explicitamente
+  pelo serviço do Radar antes do envio.
+- Limite/reserva: uma escrita condicionada atômica (mesmo padrão já usado em toda esta unidade),
+  nunca "ler saldo, decidir, gastar" em passos separados.
+- Medição: acontece depois da resposta (ou da falha confirmada), nunca antes.
+- Cobrança: sistema de billing existente (`tenantBilling.ts`) — **não** um sistema paralelo; nenhuma
+  necessidade demonstrada de criar um novo.
+
+**Comportamento proposto por cenário**:
+- Duas tentativas disputando o mesmo limite: a reserva é uma escrita condicionada — exatamente uma
+  reserva o saldo, a outra é recusada por falta de orçamento, nunca as duas gastando o mesmo
+  espaço (mesma disciplina de `claimToken`/grants já usada em toda a unidade).
+- Falha antes do envio (qualquer controle da seção 2 reprova): nenhuma reserva é feita — a
+  autorização de consumo é a ÚLTIMA checagem antes do envio, exatamente para não reservar orçamento
+  de uma chamada que nunca sairá.
+- Resposta recebida: a reserva é convertida em medição real (custo efetivo, se conhecido) — nunca
+  presumida como "provavelmente o valor reservado".
+- Timeout com processamento desconhecido: a reserva NÃO é liberada automaticamente — liberar uma
+  reserva por timeout presumiria que não houve consumo do lado do provedor, o que a Decisão 5
+  (Atualização 1.28) já proíbe presumir. A reserva permanece até reconciliação explícita (mesma
+  rota de recuperação já desenhada: reclaim + nova decisão, nunca automática).
+
+Contador de chamadas não é tratado como teto financeiro garantido — é só um limite adicional,
+auditável, não uma substituição da medição de custo real.
+
+### 5. Retries e resultado ambíguo
+
+Camadas efetivamente envolvidas, mapeadas com evidência: (1) `completionEngine.ts:36-66` — retry
+próprio (`packages/core/src/utils/retry.ts`) configurado GLOBALMENTE por variável de ambiente
+(`LLM_RETRIES`, `LLM_RETRY_DELAY_MS`, etc., `completionEngine.ts:10-15`) — **não existe hoje** nenhum
+campo em `ChatCompletionRequest` (`packages/core/src/llm/types.ts:10-17`) para override por
+chamada; (2) a fila BullMQ, já descartada na seção 1 para esta integração, exatamente por causa do
+`attempts: 3` padrão; (3) não há wrapper/SDK adicional identificado entre `llmExecutor.ts` e
+`completionEngine.ts`.
+
+**Extensão mínima necessária, proposta sem implementar**: acrescentar um campo opcional em
+`ChatCompletionRequest` (ex.: `retries?: number`) que, quando presente, sobrescreve
+`LLM_RETRIES`/`LLM_RETRY_*` só para aquela chamada — nunca alterando o comportamento padrão de
+outros agentes que não passarem esse campo (preserva "não altere defaults globais de outros
+agentes como solução silenciosa"). O Radar chamaria sempre com `retries: 0` — controle explícito
+por chamada, não herdado.
+
+**Representação da ambiguidade no contrato existente**: nenhuma extensão de schema é necessária. O
+contrato já suporta exatamente o comportamento exigido: se a chamada a `runCompletion` lançar
+(timeout, erro de transporte) antes de `preserveResult` gravar algo, a tentativa permanece em
+`running` (estado já existente, comportamento já real desde o pacote A — não uma extensão). O
+índice único parcial já existente (`radar_analysis_attempts_one_active_per_request`, Atualização
+1.20) já bloqueia uma nova tentativa enquanto o estado for `pending`/`running`/
+`provider_responded_pending_persistence`. Recuperação de solicitação/recomendação já são leituras
+puras, comprovadamente sem re-execução (Atualizações 1.26/1.27). Retomar `concludeAttempt` a
+partir de um resultado já preservado já não dispara nova chamada (mecanismo existente, sem
+mudança). Nenhuma extensão de estado é necessária para representar a ambiguidade — só a extensão
+de `retries` acima, e a decisão operacional de nunca liberar automaticamente uma reserva de
+consumo (seção 4).
+
+### 6. Vínculo com Run e persistência
+
+- **Momento de criação do Run**: na MESMA operação que revalida o checkpoint da seção 2 e
+  imediatamente antes do envio real — não antes (evita `Run`s "pendentes" órfãos para tentativas
+  que nunca chegam a ser autorizadas) e não depois (garante rastro auditável mesmo se o processo
+  cair durante a chamada).
+- **Identidade e escopo derivados do servidor**: `tenantId`/`workspaceId` da própria
+  `RadarAnalysisAttempt`/`RadarAnalysisRequest`, nunca de um parâmetro de chamador nesta etapa.
+- **Metadados mínimos permitidos no `Run`**: `attemptId`, timestamps, status, identificador de
+  modelo/proveedor — nunca material, objetivo, prompt montado ou resposta (achado da seção 4).
+- **Cardinalidade**: 1 `RadarAnalysisAttempt` : 0..1 `Run` (campo `runId` já existe no schema,
+  nulo até este momento) — sem mudança de cardinalidade em relação ao já desenhado (Atualização
+  1.12/1.15).
+- **Autoridade por estado**: `RadarAnalysisAttempt` continua autoritativa para o estado de execução
+  do Radar (`status`, `claimToken`); `Run` é autoritativo só para o que aconteceu na chamada em si
+  do ponto de vista do Core (auditoria genérica, sem conteúdo) — nenhum dos dois duplica o outro.
+- **Recuperação de falhas entre os registros**: se o `Run` for criado mas a tentativa cair antes de
+  `preserveResult`, a tentativa permanece `running` (seção 5) — a reconciliação (`reclaimExpiredAttempt`)
+  já existente cuida disso sem tocar o `Run`; o `Run`, por sua vez, seguiria as próprias regras de
+  finalização do Core (não modificadas por esta unidade).
+
+**Resultado intermediário protegido, sem reintrodução em `RunEvent`**: reafirmado — o payload
+estruturado intermediário continua exclusivamente em
+`RadarAnalysisAttempt.preservedResultPayload`, nunca em `RunEvent`, pelas mesmas razões já
+registradas (Atualização 1.15) e agora confirmadas com evidência concreta de que a leitura de
+`RunEvent` é mais grosseira que o resolvedor por entidade.
+
+**Bloqueio técnico explícito** (não uma exceção implícita): enquanto a decisão de payload opaco em
+`Run.request`/`Run.response` (seção 4) não for implementada e verificada, nenhuma integração real
+deve criar um `Run` de fato para o Radar — fazer isso hoje, com o padrão convencional de
+preenchimento, vazaria conteúdo através de uma superfície de autorização mais ampla que a já
+construída.
+
+### 7. Testes de aceite propostos (nenhum escrito ou executado)
+
+1. Fluxo local completo com grants persistidos e provedor substituto, incluindo o novo checkpoint
+   pré-envio (todas as sete checagens da seção 2), antes de qualquer autorização para rede real.
+2. Revogação durante a espera pelo checkpoint pré-envio (mesma técnica de corrida determinística já
+   usada nas Atualizações 1.26/1.27).
+3. Bloqueio pré-envio quando `assertWorkspaceAgentEnabled` reprova, mesmo com todo o resto válido.
+4. Limite de consumo concorrente: duas tentativas disputando a mesma reserva, exatamente uma
+   sucede.
+5. Ausência de retry oculto: configuração de `retries: 0` por chamada verificada explicitamente
+   (checagem de configuração, não de rede real).
+6. Resposta ambígua (executor substituto lança antes de preservar): tentativa permanece `running`,
+   reserva de consumo não é liberada, nenhuma nova chamada automática.
+7. Recuperação sem nova chamada: retomar `concludeAttempt` a partir de resultado já preservado não
+   invoca o executor de novo (já comprovado para o caminho simulado; teste equivalente para o
+   caminho real, ainda sem rede).
+8. Ausência de vazamento por caminhos genéricos: `Run.request`/`Run.response`/`RunEvent` do Radar,
+   inspecionados diretamente, nunca contêm material/objetivo/resposta — só metadados opacos.
+
+### 8. Condições para um futuro piloto real (só proposta, não autorização)
+
+Fontes: um único tenant/workspace/entidade de teste interno, nunca dado real de cliente. Conteúdo:
+material sintético, sem informação real de terceiros. Provedor/modelo: um único, fixado por nome,
+sem seleção dinâmica. Responsável: uma pessoa humana nomeada, com autoridade de `manage` sobre a
+entidade de teste. Limites de consumo: teto de chamadas totais auditável, `retries: 0`,
+`requestedMaxTokens` reduzido. Disparo: manual, por operação humana específica, nunca
+automático/agendado, nunca via fila. Mecanismo de interrupção: um flag/registro que bloqueia novo
+despacho sem depender de reiniciar processo, verificado no checkpoint pré-envio.
+
+Nenhum valor acima constitui autorização de operação — são só as condições que um pedido de
+autorização precisaria satisfazer.
+
+### Pacote local candidato à próxima aprovação
+
+Se e quando autorizado separadamente, como unidade de implementação LOCAL (ainda sem rede real,
+com o mesmo executor/provedor substituto de sempre, exercitando o checkpoint e a integração
+recém-desenhados): extensão de `ChatCompletionRequest`/`completionEngine.ts` para `retries` por
+chamada; novo checkpoint pré-envio em `radarAnalysisAttemptService.ts`; chamada direta (sem fila) a
+`assertWorkspaceAgentEnabled` e ao guard de consumo; criação de `Run` com payload opaco;
+`agentKey`/`agentVersion` em `GenerationConfig`; os oito testes de aceite acima, todos com
+substituto controlado. Rede real, piloto e clientes continuam fora deste possível próximo pacote.
+
+Nenhuma implementação foi feita sob esta atualização. Nenhuma chamada real a modelo ocorreu.
+Nenhuma busca ampla do Core foi reaberta — os dois levantamentos desta rodada foram pontuais,
+citados com arquivo:linha.
+
+## Atualização 1.30 — pacote concreto da integração local de execução governada (17/09/2026)
+
+Fonte: leitura focalizada adicional desta sessão (dois arquivos lidos por completo,
+`packages/core/src/utils/retry.ts` e `packages/core/src/llm/completionEngine.ts` +
+`packages/core/src/llm/types.ts`), a partir do commit-base
+`1d5a3910dc9d9de87fb935b84b5f256f3bac8a1d`. Só documentação — nenhum código, schema, migration,
+teste ou cliente gerado alterado; nenhuma chamada real a modelo. O pacote A, o resolvedor e as
+políticas de grant não foram reabertos. Convenção usada abaixo: **[FATO]** = confirmado por leitura
+direta de código, com arquivo:linha; **[PROPOSTA]** = desenho técnico desta atualização, não
+implementado; **[PENDENTE]** = decisão ou verificação que falta antes de implementar.
+
+### 2. Serviço de execução do Radar
+
+**[PROPOSTA]** Novo arquivo `apps/api/src/services/radarSocial/radarGovernedExecutionService.ts`,
+paralelo a `radarAnalysisAttemptService.ts` (não substituindo `runSimulatedAnalysis`, que continua
+existindo para testes com substituto). Símbolo principal: `runGovernedAnalysis`, mesma forma de
+parâmetros de `runSimulatedAnalysis` (tenantId/workspaceId/attemptId/workerId/resolver), trocando
+`executor: SubstituteAnalysisExecutor` por `callCompletion: typeof runCompletion = runCompletion`
+(default real, sobrescrevível em teste — mesmo padrão de `db: PrismaClient = prismaGlobal` usado
+em toda a unidade, diferente do resolvedor, que nunca tem default).
+
+**Quem pode iniciar**: **[PENDENTE]** nenhuma rota HTTP, worker ou disparo automático existe ou é
+proposto nesta rodada (proibido pelo escopo) — a única forma de chamar `runGovernedAnalysis` hoje
+seria um teste ou uma invocação administrativa direta ainda não desenhada. Isso é uma lacuna real,
+não uma omissão do documento: sem uma decisão futura sobre "quem" dispara isso em produção, o
+pacote fica utilizável só localmente.
+
+**Vínculo com a tentativa**: idêntico ao caminho simulado — `attemptId` como parâmetro, mesma
+tabela `RadarAnalysisAttempt`, mesmos estados.
+
+**Aquisição e verificação de posse**: reaproveita `claimAttempt` **[FATO, existente, sem
+alteração]** para `pending → running`. Um NOVO checkpoint, `assertReadyForGovernedDispatch`
+**[PROPOSTA]**, faz uma leitura de CONFIRMAÇÃO (não uma escrita) de `claimToken`/`status='running'`/
+`clock_timestamp() < claimedAt+TTL` imediatamente antes do envio — nunca reaproveitando o resultado
+do `claim`.
+
+**Controles do Core utilizados, com evidência**:
+- `assertWorkspaceAgentEnabled` **[FATO]** (`apps/api/src/services/workspaceAgentAssignments.ts:230-248`,
+  contra `WorkspaceAgentAssignment`) — chamado diretamente pelo novo checkpoint, não hoje usado
+  pelo Radar.
+- `runCompletion` **[FATO]** (`packages/core/src/llm/completionEngine.ts:17`) — chamado com
+  `retries: 1` (seção 4).
+- `createRunRecord`/`finalizeRunRecord` **[FATO]** (`apps/api/src/services/runs.ts:193-260,295-308`)
+  — chamados com payload opaco (seção 3), não o padrão convencional.
+- Guarda de consumo — ver seção 5, com a precisão de que hoje ela só existe amarrada a duas rotas
+  HTTP (`routes/runs.ts:551`, `routes/shadow-executions.ts:349`), nunca chamada isoladamente por um
+  serviço; a integração exige extrair/reaproveitar a lógica de decisão, não a rota em si.
+
+**Adaptações por não usar a fila genérica**:
+- A fila BullMQ (`packages/core/src/queue/runQueue.ts:140-158`) aplica `attempts: 3` com backoff
+  por padrão **[FATO]**, e o worker (`apps/api/src/workers/runWorker.ts`) não verifica idempotência
+  contra reexecução de uma chamada já em voo, só cancelamento pelo usuário (`runWorker.ts:484-498`)
+  **[FATO]** — por isso esta proposta NÃO reaproveita `publishRun`/o worker; chama `runCompletion`
+  de forma síncrona, no mesmo processo que já faz `claim`/`preserve`/`conclude`. Isso não é
+  substituir a fila por uma chamada direta que contorne controles — os controles
+  (`assertWorkspaceAgentEnabled`, guarda de consumo) continuam sendo chamados explicitamente, só
+  não através do caminho de enfileiramento.
+- Normalmente `createRunRecord` cria o `Run` em `"pending"` e é a fila/worker que o move para
+  estados seguintes. **[PENDENTE]**: não confirmado nesta rodada se existe uma função irmã que
+  permita criar o `Run` já como "em execução", ou se a transição precisa ser replicada manualmente
+  pelo Radar via `client.run.update`. Precisa ser mapeado antes de implementar.
+- Sem o worker, não há detecção de job "travado" (stall) vigiando esse `Run`. **[PROPOSTA]**:
+  tratar o `Run` do Radar como rastro de auditoria PURO, nunca como fonte de controle de fluxo —
+  nenhuma decisão operacional do Radar lê o `status` do `Run` de volta; só `RadarAnalysisAttempt` é
+  autoritativa para isso (já era a intenção da Atualização 1.29, agora explícita como necessidade,
+  não só preferência).
+
+**Como falhas deixam estado recuperável**: sem mudança em relação à Atualização 1.28/1.29 — a
+tentativa permanece `running` numa falha de transporte (mecanismo já existente); o `Run`, se criado
+e não finalizado, fica num estado que ninguém do lado do Radar precisa interpretar para decidir o
+que fazer a seguir (por isso o tratamento como auditoria pura acima).
+
+**Tabela solicitada**:
+
+| Etapa | Arquivo/símbolo existente | Alteração proposta | Garantia |
+|---|---|---|---|
+| Claim da tentativa | `radarAnalysisAttemptService.ts:claimAttempt` | Nenhuma | Posse exclusiva, `claimToken` novo |
+| Checkpoint pré-envio | novo `radarGovernedExecutionService.ts:assertReadyForGovernedDispatch` | Criar | As sete checagens da Atualização 1.29 §2, revalidadas agora |
+| Habilitação do agente | `workspaceAgentAssignments.ts:assertWorkspaceAgentEnabled` | Chamar (hoje não chamado pelo Radar) | Bloqueia se agente desabilitado |
+| Autorização de consumo | `tenantBilling.ts` (lógica a extrair, seção 5) | Chamar diretamente, fora de rota HTTP | Ver limite real na seção 5 (não é reserva atômica hoje) |
+| Criação do `Run` | `runs.ts:createRunRecord` | Chamar com payload opaco (uso não convencional) | Rastro auditável sem conteúdo |
+| Chamada real | `completionEngine.ts:runCompletion` | Chamar com `retries: 1` (extensão da seção 4) | Nenhum retry oculto |
+| Preservação do resultado | `radarAnalysisAttemptService.ts:preserveResult` | Nenhuma | Mesma condição de posse já existente |
+| Finalização do `Run` | `runs.ts:finalizeRunRecord` | Chamar com payload opaco | Fecha o rastro sem conteúdo |
+| Conclusão | `radarAnalysisAttemptService.ts:concludeAttempt` | Nenhuma adicional (já revalida `analyze` sob trava de entidade, Atualização 1.26) | Sem novo consumo nesta etapa |
+
+### 3. Carregamento e proteção do conteúdo
+
+**Identidade confiável**: `RadarAnalysisRequest.requestedByUserId` **[FATO, existente]** — nunca
+uma identidade do processo/chamador atual.
+
+**Entidade e material**: carregados via `materialId`/`entityId` já em `RadarAnalysisRequest`
+**[FATO, mesmo padrão de `runSimulatedAnalysis` hoje]**. Ordem proposta: resolver o acesso
+(`operation="analyze"`) usando só `entityId` — SEM antes carregar o conteúdo do material — e só
+DEPOIS, com acesso confirmado, ler `RadarMaterial.conteudo`. Defesa em profundidade: nunca ter o
+conteúdo sensível em memória antes de confirmar autorização.
+
+**Objetivo e contexto**: `RadarAnalysisRequest.objective`/`additionalContext` **[FATO, existente]**.
+
+**Template e configuração**: `GenerationConfig` já congelado na criação da tentativa **[FATO,
+existente]** — `promptTemplateVersion`, `requestedModel`, `requestedMaxTokens`,
+`knowledgePolicySnapshot`.
+
+**Metadados exatos propostos para `Run.request`** (substituindo o padrão convencional do resto do
+Core, que grava o prompt real — `apps/api/src/routes/agents.ts:511-543`,
+`apps/api/src/routes/runs.ts:488` **[FATO]**):
+```
+{
+  radarAnalysisAttemptId: string,
+  radarAnalysisRequestId: string,
+  requestedModel: string,
+  promptTemplateVersion: string,
+  requestedMaxTokens: number
+}
+```
+Justificativa de cada campo: os dois IDs são referências opacas (correlação, não conteúdo); modelo,
+template e teto de tokens são rótulos de CONFIGURAÇÃO, não texto de negócio — mesma distinção já
+usada para `RadarRecommendation.provenance`. Nenhum `objective`, `additionalContext`, material ou
+prompt montado entra aqui.
+
+**Metadados exatos propostos para `Run.response`** (o Core usa `response Json?`
+**[FATO, `schema.prisma:244`]**; `ChatCompletionResponse` real tem `output: string` e `raw: any`
+**[FATO, `packages/core/src/llm/types.ts:26-35`]** — ambos são conteúdo, NUNCA copiados):
+```
+{
+  outcome: "delivered" | "error",
+  providerRequestId: string | null,
+  finishReason: string | null,
+  usage: { promptTokens?, completionTokens?, cachedTokens?, totalTokens? } | null
+}
+```
+`usage` é contagem de tokens (medição), não o texto — seguro por definição.
+
+**`RunEvent`**: mesma disciplina — nenhum evento do Radar usa o padrão `promptPreview` truncado já
+observado em `apps/api/src/routes/runs.ts:709-723` **[FATO]** (200 caracteres de um material de
+negócio ainda é exposição real, não uma redução segura). Payload proposto:
+`{ radarAnalysisAttemptId, phase: "dispatch"|"completed"|"error" }` — nada além disso.
+
+**Logs e mensagens de erro — achado que precisa de verificação, não resolvido aqui**:
+`completionEngine.ts:80-89` **[FATO]** loga `{provider, model, latencyMs, traceId, err}` no
+caminho de erro — `err` é o que o SDK/HTTP do provedor lançar; **[PENDENTE]** não confirmado nesta
+rodada se algum SDK usado ecoa o corpo da requisição dentro da mensagem de erro (padrão comum em
+alguns provedores, ex. "invalid request: <corpo>"). Isso é um comportamento do Core compartilhado
+por todos os agentes, não algo que o Radar pode corrigir sozinho — registrado como bloqueio a
+verificar antes de qualquer chamada real, não uma exceção implícita.
+
+**SSE, bundles e histórico**: como `Run.request`/`Run.response`/`RunEvent` do Radar nunca carregam
+conteúdo (acima), a superfície de SSE (`routes/runs.ts:169-224`), `evidenceBundle.ts` e
+`runArchiveService.ts` **[FATO, autorização confirmada só por tenant/workspace,
+`enforceTenant.ts:103-108`]** herda essa segurança automaticamente — mas **[PENDENTE]**: não
+verifiquei nesta rodada se `evidenceBundle.ts`/`runArchiveService.ts` agregam algum OUTRO campo
+(ex. parâmetros de chamada de ferramenta) que não seja `Run.request`/`response`/`RunEvent` — o
+desenho atual do Radar não usa chamada de ferramenta (tool calling), então isso é hipotético hoje,
+mas fica registrado para quando/se essa capacidade for adicionada.
+
+**Referência opaca não é autorização**: os IDs em `Run.request` (`radarAnalysisAttemptId` etc.) são
+só correlação. Nenhum consumidor futuro pode usar esses IDs para "buscar o conteúdo completo da
+tentativa" sem passar, de novo, pelo resolvedor de acesso por entidade — isso precisa ser uma regra
+explícita para qualquer código futuro que leia `Run.request`, não uma garantia automática.
+
+**Preservação já garantida, sem mudança**: `RadarAnalysisAttempt.preservedResultPayload` e
+`RadarRecommendation` continuam sendo os únicos lugares com conteúdo real, sob o resolvedor por
+entidade — nada nesta unidade move ou duplica esse armazenamento.
+
+### 4. Retries por chamada
+
+**[FATO, confirmado por leitura completa]**: `packages/core/src/utils/retry.ts:33`
+(`for (let i = 0; i < retries; i++)`) — `retries` é o número TOTAL de tentativas de envio, não o
+número de tentativas ALÉM da primeira. `retries: 3` (o default hoje, `completionEngine.ts:37`,
+`readNumberFromEnv("LLM_RETRIES", 3)`) significa até 3 envios no total, nunca 4. Isso é
+contraintuitivo dado o nome do parâmetro — qualquer implementação futura precisa de um comentário
+explícito alertando sobre essa semântica, para não confundir com "retries adicionais".
+
+**Consequência direta, corrigindo a Atualização 1.29**: para o Radar limitar a execução a UM ÚNICO
+envio, o valor correto é `retries: 1`, não `retries: 0` — `retries: 0` faria o laço nunca executar
+`fn()` nem uma vez, lançando `RetryExhaustedError` imediatamente sem jamais tentar (`retry.ts:33,45`).
+
+**Extensão mínima proposta**: acrescentar `retries?: number` a `ChatCompletionRequest`
+(`packages/core/src/llm/types.ts:10-17`, uma linha) e, em `completionEngine.ts:37`, trocar
+`const retries = readNumberFromEnv("LLM_RETRIES", 3);` por
+`const retries = req.retries ?? readNumberFromEnv("LLM_RETRIES", 3);` (uma linha). Nenhuma outra
+mudança em `completionEngine.ts` é necessária — o valor já flui para `retry(...)` na chamada
+existente (linhas 57-66).
+
+**Comportamento quando ausente**: preserva o default atual (`LLM_RETRIES`, ou 3) para TODOS os
+demais chamadores de `runCompletion` — nenhum outro agente muda de comportamento, porque nenhum
+outro chamador passaria esse campo.
+
+**Propagação ao transporte**: direta — `retry()` envolve exatamente a chamada
+`provider.chatCompletion(...)` (`completionEngine.ts:58`), então `retries: 1` vindo do Radar chega
+inalterado até a chamada real ao provedor.
+
+**Ausência de retry adicional no caminho Radar**: confirmado por construção — o Radar não usa a
+fila (que teria `attempts: 3` próprios) nem envolve `runCompletion` num laço próprio; `retries: 1`
+é a única camada de controle, e ela é suficiente porque é a única camada presente.
+
+### 5. Integração com consumo
+
+**Classificação exata das funções já encontradas** (nenhuma reclassificada além do que o código
+realmente faz):
+- `QuotaPolicyService.resolveWorkspaceGrant` (`apps/api/src/services/tenantBilling.ts:168-200`)
+  **[FATO]**: LEITURA/resolução do `WorkspaceQuotaGrant` configurado — não reserva nada.
+- `evaluateTenantBillingExecutionGuard` (`tenantBilling.ts:948-1074`) **[FATO]**: compara uso
+  PROJETADO contra limites e devolve uma decisão de permitir/bloquear — isto é **verificação de
+  limite baseada em projeção**, não uma reserva atômica. Não há evidência de que decremente um
+  contador compartilhado de forma atômica — é uma leitura e uma comparação, chamada de fora
+  (`routes/runs.ts:551`, `routes/shadow-executions.ts:349`).
+- **Não encontrado** nesta ou em rodadas anteriores: nenhuma função de reserva atômica, medição
+  pós-chamada automática ou liberação de reserva.
+
+**Correção explícita em relação à Atualização 1.29**: aquela atualização descreveu "uma escrita
+condicionada atômica" para a reserva como se já fosse a forma natural de reaproveitar o guard
+existente. Não é — `evaluateTenantBillingExecutionGuard` sozinho tem uma corrida clássica de
+"checar-depois-agir": duas chamadas concorrentes podem ambas ler "dentro do limite" antes de
+qualquer uma delas se comprometer, ultrapassando o limite agregado. **Isto não está implementado
+hoje nem é uma reserva já existente** — é uma extensão mínima necessária, proposta abaixo.
+
+**Extensão mínima necessária, com persistência, proposta sem implementar**: **[PENDENTE — decisão]**
+entre duas formas:
+1. Acrescentar um contador atômico ao próprio `WorkspaceQuotaGrant`
+   (`consumedRunsCount Int @default(0)`), reservado via UPDATE condicionado
+   (`SET consumed_runs_count = consumed_runs_count + 1 WHERE enabled=true AND
+   consumed_runs_count < local_run_limit`, mesmo idioma já usado em toda esta unidade). Menor
+   mudança, reaproveita o modelo existente — MAS **não confirmado nesta rodada** se
+   `localRunLimit` já é ou deveria ser compartilhado entre TODOS os consumidores do Core no mesmo
+   workspace (outros agentes, IMOB, etc.) — se for compartilhado, o Radar disputaria o mesmo
+   orçamento de outros agentes, o que pode não ser a intenção.
+2. Uma reserva dedicada do Radar (nova tabela ou campo em `RadarAnalysisAttempt`), com seu próprio
+   limite — evita a disputa entre agentes, mas duplica conceito em vez de reaproveitar.
+Recomendação preliminar: opção 1, condicionada a confirmar o escopo de `localRunLimit` antes de
+implementar — não decidido aqui.
+
+**Vínculo idempotente com a tentativa**: a reserva (qualquer que seja a forma escolhida) precisa
+ser identificada por `attemptId` (ou `attemptId + attemptOperationKey`), de forma que reexecutar o
+PASSO de reserva (não a chamada ao provedor) seja idempotente — mesmo princípio já usado em toda a
+unidade.
+
+**Fluxo proposto por cenário**:
+- Duas tentativas disputando o mesmo limite: exatamente uma reserva sucede via a escrita
+  condicionada (opção 1 ou 2 acima); a outra recebe zero linhas afetadas → recusada por falta de
+  orçamento.
+- Falha comprovadamente ANTES do envio (qualquer checagem da seção 2 reprova antes da reserva):
+  nenhuma reserva é feita — a autorização de consumo é a ÚLTIMA checagem antes do envio.
+- Resposta recebida: a reserva vira medição real (`usage` da resposta, se o provedor devolver) —
+  nunca presumida como igual ao valor reservado.
+- Envio possível com resultado desconhecido: a reserva NÃO é liberada — liberar por timeout
+  presumiria ausência de consumo do lado do provedor, o que a Decisão 5 (Atualização 1.28) já
+  proíbe presumir.
+- Recuperação de conteúdo já preservado (`concludeAttempt` a partir de
+  `provider_responded_pending_persistence`): NENHUMA nova reserva, NENHUMA nova cobrança —
+  garantido por construção, porque essa retomada nunca passa pelo checkpoint pré-envio (que é onde
+  a reserva aconteceria).
+
+**Diferenciação exigida, sem prometer o que não existe**: consumo ESTIMADO =
+`evaluateTenantBillingExecutionGuard` (projeção, não atômico); consumo MEDIDO = `usage.*` da
+resposta real (tokens, não dinheiro); custo FINANCEIRO = requer conversão tokens→centavos, cuja
+existência e correção **não foram confirmadas nesta rodada** — `localCostCentsLimit` existe no
+schema, mas não há evidência de enforcement atômico de custo em lugar nenhum encontrado até agora.
+Contador de chamadas (proposta acima) NUNCA é apresentado como teto financeiro — só como limite de
+quantidade, auditável, sem mecanismo de custo correspondente ainda confirmado.
+
+### 6. Transporte substituído
+
+**[PROPOSTA]** Fábrica de teste `createSubstituteCompletionEngine(respond)` em
+`apps/api/src/services/radarSocial/__tests__/helpers.ts` (mesmo arquivo dos demais substitutos),
+espelhando exatamente `fakeExecutor` já existente: registra `calls` (array, contagem exata de
+envios), `respond` decide a resposta (sucesso, atraso via `Promise` controlada pelo teste, exceção
+simulando falha de transporte, ou nunca resolver — simulando resultado desconhecido/timeout).
+Nunca importa HTTP real, SDK de provedor ou credencial — é uma função assíncrona pura, mesma
+classe de duplo já usada em toda a unidade. `runGovernedAnalysis` aceita
+`callCompletion: typeof runCompletion = runCompletion` como parâmetro — testes injetam o
+substituto; produção usaria o real por default (única função desta unidade com default real, não
+substituto, porque `runCompletion` em si não pula nenhum controle do Radar — quem pula controles é
+NÃO chamar o checkpoint, não a implementação do transporte em si).
+
+### 7. Cenários de aceite (nenhum escrito ou executado)
+
+- **A. Confidencialidade**: cria tentativa, executa com transporte substituído, lê o `Run`
+  resultante como um usuário com token de tenant/workspace mas SEM grant de `analyze`/`read` sobre
+  a entidade (mesma técnica de `fixedOutcomeResolver("access_denied")` já usada) — verifica que
+  nem `Run.request`, nem `Run.response`, nem nenhum `RunEvent` contém o texto do material, do
+  objetivo ou da resposta (busca de substring, não só ausência de chave).
+- **B. Autorização**: revoga `analyze` depois do `claim`, antes do checkpoint — `callCompletion`
+  nunca é invocado (contagem de chamadas = 0); confirma que a posse (`claimToken` válido) sozinha
+  não basta.
+- **C. Consumo concorrente**: duas tentativas disputando uma reserva com limite 1 — exatamente uma
+  consegue reservar (garantia da extensão proposta na seção 5, não de código hoje inexistente).
+- **D. Retries**: transporte substituído configurado para falhar uma vez — `callCompletion` é
+  chamado exatamente 1 vez no caminho Radar (`retries: 1`); teste separado confirma que uma chamada
+  comum a `runCompletion` (sem o campo `retries`) preserva o comportamento padrão de hoje.
+- **E. Resultado desconhecido**: transporte substituído lança (simulando falha de transporte) —
+  tentativa permanece `running`, reserva de consumo não é liberada, nenhuma nova chamada
+  automática.
+- **F. Recuperação**: `preserveResult` seguido de `concludeAttempt` a partir do resultado
+  preservado — `callCompletion` não é chamado de novo, nenhuma nova reserva/cobrança é criada
+  (contagem de reservas antes/depois idêntica).
+- **G. Persistência**: simula queda entre a criação do `Run` e `preserveResult` (não chama
+  `preserveResult`) — confirma que não há associação órfã presumida como sucesso: a tentativa
+  permanece `running`, nenhuma `RadarRecommendation` existe, o `Run` permanece no seu último estado
+  real, nunca promovido a "concluído" por presunção.
+- **H. Integração**: fluxo completo com grants reais (resolvedor real, não substituto de
+  autorização) e transporte substituído (não substituto de autorização) — as duas coisas nunca são
+  a mesma no teste, para não confundir "testado com duplo" com "autorização real exercitada".
+
+### 8. Pacote exato para aprovação
+
+| Arquivo | Símbolo | Criar/alterar | Mudança | Dependência | Teste de aceite |
+|---|---|---|---|---|---|
+| `apps/api/src/services/radarSocial/radarGovernedExecutionService.ts` | `assertReadyForGovernedDispatch`, `runGovernedAnalysis` | Criar (novo arquivo) | Checkpoint pré-envio + orquestração real síncrona | claimAttempt, resolvedor real, `assertWorkspaceAgentEnabled`, guarda de consumo, `runCompletion`, `createRunRecord` | A, B, D, E, F, G, H |
+| `packages/core/src/llm/types.ts` | `ChatCompletionRequest` | Alterar (1 campo) | `retries?: number` | Nenhuma | D |
+| `packages/core/src/llm/completionEngine.ts` | `runCompletion` | Alterar (1 linha) | `req.retries ?? readNumberFromEnv(...)` | types.ts acima | D |
+| `apps/api/src/services/tenantBilling.ts` OU novo símbolo em `radarGovernedExecutionService.ts` | reserva atômica de consumo (nome a definir) | Criar | Escrita condicionada, decisão pendente de local/forma (seção 5) | `WorkspaceQuotaGrant` (existente ou estendido) | C, E, F |
+| `apps/api/src/services/radarSocial/radarAnalysisAttemptContract.ts` | `GenerationConfig` | Alterar (campos novos) | `agentKey`/`agentVersion`, para alimentar `assertWorkspaceAgentEnabled` | Nenhuma | B |
+| `packages/db/prisma/schema.prisma` | `WorkspaceQuotaGrant` (ou tabela nova) | Alterar/criar, **só se a opção 1 da seção 5 for ratificada** | Contador atômico de consumo | Decisão pendente | C |
+| `apps/api/src/services/radarSocial/__tests__/helpers.ts` | `createSubstituteCompletionEngine` | Alterar (novo helper) | Duplo de transporte, nunca produção | Nenhuma | A–H |
+| `apps/api/src/services/radarSocial/__tests__/J-governed-execution.test.ts` | — | Criar | Os 8 cenários de aceite | Todos os anteriores | A–H |
+| `docs/architecture/radar-social-construction-plan-v1.md` | — | Alterar (esta atualização) | Registro do pacote | Nenhuma | — |
+
+**Pode ser implementado e testado localmente, sem rede, com o pacote acima**: checkpoint pré-envio
+completo; extensão de `retries`; payload opaco de `Run`; fluxo síncrono sem fila; todos os 8
+cenários de aceite com transporte substituído.
+
+**Continua dependente de decisão, não resolvido aqui**: forma exata da reserva de consumo (seção
+5, opção 1 vs 2, e o escopo de `localRunLimit`); quem/o quê inicia `runGovernedAnalysis` em
+produção (nenhuma rota/worker proposta); mapeamento de `agentKey`/`agentVersion` para uma
+`WorkspaceAgentAssignment` real (provisionamento, fora do escopo desta rodada); se `Run` pode
+nascer já "em execução" sem a fila (função irmã de `createRunRecord` não confirmada).
+
+**Só poderão ser comprovadas em integração operacional futura**: exatidão de medição de custo
+real; comportamento real de timeout/erro do provedor; se mensagens de erro do SDK real vazam
+conteúdo (achado da seção 3, não verificável com substituto); comportamento sob carga concorrente
+real (não simulada).
+
+**Bloqueio essencial nomeado, sem disfarce**: a extensão de reserva de consumo (seção 5) não pode
+ser implementada com garantia de atomicidade sem a decisão pendente sobre `localRunLimit` — sem
+essa decisão, qualquer implementação da reserva seria uma suposição, não um desenho aprovado.
+
+### Texto único de autorização sugerida para implementação local (isto NÃO é uma autorização)
+
+"Está autorizada a implementação local do pacote de execução governada: o novo serviço
+`radarGovernedExecutionService.ts` com o checkpoint pré-envio; a extensão de `retries` por chamada
+em `ChatCompletionRequest`/`runCompletion`; os campos `agentKey`/`agentVersion` em
+`GenerationConfig`; o payload opaco de `Run`; e os oito testes de aceite descritos, todos com
+transporte substituído (`createSubstituteCompletionEngine`) e grants reais em PostgreSQL
+descartável. Ficam fora: a extensão de reserva de consumo (seção 5), até que a decisão sobre
+`localRunLimit` seja ratificada separadamente; qualquer rota, worker, fila ou disparo de produção;
+qualquer chamada real a modelo; qualquer provisionamento de `WorkspaceAgentAssignment` real."
+
+Esta atualização não concede a autorização acima — apresenta o pacote para aprovação humana.
+Nenhum código, schema, migration, teste ou cliente gerado foi alterado sob ela; o pacote A, o
+resolvedor e as políticas de grant não foram reabertos.
+
+**Superado pela Atualização 1.31**: a seção 5 desta atualização classificava
+`evaluateTenantBillingExecutionGuard` corretamente como não-atômico, mas deixava a extensão de
+reserva como decisão pendente enquanto já listava o cenário de teste "C — consumo concorrente"
+como parte do pacote, sem um mecanismo real para sustentá-lo — uma inconsistência interna. A
+Atualização 1.31 escolhe uma estratégia concreta e corrige essa dependência. Este registro é
+preservado como histórico, não apagado.
+
+## Atualização 1.31 — escolha da estratégia de reserva, proteção de erros na origem (17/09/2026)
+
+Fonte: leitura completa de `apps/api/src/services/tenantBilling.ts` (linhas 150-1078) e
+`apps/api/src/services/billing.ts` (trecho de gravação de cobrança), a partir do commit-base
+`1d5a3910dc9d9de87fb935b84b5f256f3bac8a1d`. Só documentação — nenhum código, schema, migration,
+teste ou cliente gerado alterado; nenhuma chamada real a modelo. Pacote A, resolvedor, contratos
+aprovados e investigação geral do Core não foram reabertos — a leitura desta rodada foi só dos
+componentes já identificados. Mesma convenção da Atualização 1.30: **[FATO]** confirmado por
+leitura direta com arquivo:linha; **[PROPOSTA]** desenho desta atualização, não implementado;
+**[PENDENTE]** decisão que falta.
+
+### 2. Escopo real do orçamento
+
+**Quem consulta o limite**: `evaluateTenantBillingExecutionGuard`
+(`apps/api/src/services/tenantBilling.ts:948-1078`), chamado hoje só por
+`apps/api/src/routes/runs.ts:551` e `apps/api/src/routes/shadow-executions.ts:349` **[FATO,
+reconfirmado]**.
+
+**Quais agentes/operações compartilham o limite**: **[FATO]** a função não recebe nenhum
+identificador de agente — assinatura é `{prisma, tenantId, workspaceId, estimatedRunCostCents,
+mode?}` (`tenantBilling.ts:948-954`). O limite é compartilhado por QUALQUER consumidor que passe
+pelas duas rotas acima, no mesmo `tenantId`/`workspaceId` — hoje isso inclui pelo menos os fluxos
+de `routes/runs.ts` e `routes/shadow-executions.ts`; **não confirmado** se `routes/agents.ts` ou
+`routes/imob.ts` também passam por este guard (a leitura da Atualização 1.29 já registrou que não
+foram encontrados lá). Corrige a cautela da Atualização 1.29/1.30 ("não confirmado se é
+compartilhado"): **está confirmado que é compartilhado por tenant/workspace, sem nenhuma
+partição por agente em lugar nenhum do mecanismo**.
+
+**Chave de escopo — duas camadas, não uma**:
+- `WorkspaceQuotaGrant` (`schema.prisma`, único por `tenantId+workspaceId`,
+  `tenantBilling.ts:187-194`) — limites locais (`localRunLimit`, `localCostCentsLimit`).
+- `TenantQuotaPolicy` (`schema.prisma:1148`, único por `tenantId`, resolvido em
+  `tenantBilling.ts:154-166`) — limites mensais (`monthlyRunsLimit`, `monthlyCostCentsLimit`) com
+  dois patamares (`softLimitPct=80`, `hardLimitPct=100` por padrão).
+
+**Unidade**: DUAS, não uma — contagem de execuções (`runs`) E valor em centavos (`costCents`),
+avaliadas em paralelo (`tenantBilling.ts:982-1064`).
+
+**Período e regra de reinício**: ciclo mensal ancorado por `TenantBillingAccount.cycleAnchorDay`
+(`schema.prisma:1132`, resolvido via `resolveCycle`/`computeCycleWindow`,
+`tenantBilling.ts:278-293`) — **as DUAS camadas de limite (workspace local e tenant mensal) usam o
+MESMO snapshot de uso do mesmo ciclo** (`usageSnapshot`, `tenantBilling.ts:979,982-983`), não
+janelas separadas.
+
+**Origem do consumo já contabilizado**: `BillingLedger` (`schema.prisma:1247`), agregado por
+`QuotaUsageService.refreshFromLedger` (`tenantBilling.ts:295-360`) — conta `entryType="debit"` com
+`amountCents>0` para `runs`, soma `amountCents` de TODAS as entradas do ciclo para `costCents`. A
+gravação real do débito acontece só DEPOIS que uma execução termina, a partir de
+`runUsageBreakdown` (`apps/api/src/services/billing.ts:222-260`, `deriveRunCostCents` +
+`client.run.update({costCents})`), com inserção idempotente por `requestId`
+(`tenantBilling.ts:243-253`, `findFirst` antes de `create`).
+
+**Momento da atualização**: `refreshFromLedger` é chamado DENTRO de
+`evaluateTenantBillingExecutionGuard` (`tenantBilling.ts:979`, parte do `Promise.all`) — o
+snapshot é recalculado a cada avaliação, nunca cacheado entre chamadas. Isso NÃO elimina a corrida:
+duas avaliações concorrentes podem ler o mesmo `currentRuns`/`currentCost` (ambos ainda sem o
+débito da execução um do outro, que só é gravado depois de cada uma terminar).
+
+**Tratamento de operações em andamento**: **[FATO, lacuna confirmada]** nenhum — uma execução que
+já começou mas ainda não terminou não aparece em `BillingLedger`, logo não conta para
+`currentRuns`/`currentCost` em nenhuma avaliação concorrente feita enquanto ela está em voo. Isto
+não é uma suposição desta atualização — é o comportamento real do código lido.
+
+**Diferenciação exigida, sem fundir**:
+- Verificação de PREVISÃO: a comparação `projectedRuns`/`projectedCost` contra os limites
+  (`tenantBilling.ts:1000-1064`).
+- AUTORIZAÇÃO: o campo `block` do retorno, só `true` quando `mode==="hard"` e há razão hard
+  (`tenantBilling.ts:1066-1073`) — em modo `shadow`/`soft`, a função sempre devolve `block=false`.
+- RESERVA: **não existe** — nenhuma escrita acontece dentro de
+  `evaluateTenantBillingExecutionGuard`; é uma função de leitura e decisão, não de reserva.
+- CONSUMO MEDIDO: `runUsageBreakdown`/`deriveRunCostCents`, só depois que a execução termina
+  (`billing.ts:222-236`).
+- COBRANÇA: `BillingLedgerService.insertDebit` (`tenantBilling.ts:210-212,222-272`), idempotente
+  por `requestId`, chamada de `billing.ts:281` depois da medição.
+
+Nenhuma lacuna acima ficou sem registro; nenhuma foi presumida.
+
+### 3. Estratégia de reserva escolhida
+
+**Comparação e recomendação**: a Atualização 1.30 propunha (opção 1) estender `WorkspaceQuotaGrant`
+com um contador atômico, ou (opção 2) uma reserva dedicada do Radar. Com o escopo do orçamento
+agora confirmado (compartilhado por tenant/workspace, sem partição por agente,
+`routes/runs.ts`/`routes/shadow-executions.ts` como únicos consumidores confirmados do guard),
+adicionar um contador atômico a `WorkspaceQuotaGrant` NÃO criaria uma garantia global: os
+consumidores hoje confirmados desse guard não passariam a usar esse contador só porque ele passou
+a existir — seria necessário alterá-los também, fora do escopo desta unidade. **Recomendação: opção
+2, uma reserva de CONCORRÊNCIA própria do Radar**, explicitamente delimitada a proteger só as
+tentativas do próprio Radar entre si — nunca apresentada como proteção do orçamento compartilhado
+como um todo.
+
+**[PROPOSTA] Registro e chave da reserva**: nova tabela `RadarProviderCallReservation` — campos
+`id`, `tenantId`, `workspaceId`, `attemptId` (único — `@@unique([tenantId, workspaceId, attemptId])`),
+`status` (`"reserved"|"confirmed"|"released"`), `reservedAt`, `resolvedAt`. Escopo de concorrência:
+`(tenantId, workspaceId)` — mesma chave do `WorkspaceQuotaGrant`, mas tabela própria, sem herdar
+semântica compartilhada.
+
+**Vínculo idempotente com a tentativa**: `attemptId` único — reexecutar o PASSO de reserva para a
+mesma tentativa nunca cria uma segunda linha; encontra a existente e a trata como já reservada
+(mesmo padrão de recuperação-primeiro já usado em toda a unidade).
+
+**Quantidade reservada e fundamentação**: 1 (uma) unidade de concorrência por tentativa — não um
+valor em tokens/centavos. Fundamentação: o objetivo desta reserva é impedir que MAIS chamadas reais
+simultâneas do Radar aconteçam do que o valor de referência permite; não é uma estimativa de custo
+(essa continua sendo `estimatedRunCostCents`, passada ao guard existente para a checagem de
+PREVISÃO, sem mudança).
+
+**Transação/trava/escrita condicionada**: dentro de uma transação, `SELECT count(*) FROM
+radar_provider_call_reservations WHERE tenant_id=$1 AND workspace_id=$2 AND status='reserved' FOR
+UPDATE` (trava as reservas ativas existentes, mesmo idioma já usado para a proteção do último
+gestor, Atualização 1.25) — se a contagem já travada for `< limite` (lido de
+`WorkspaceQuotaGrant.localRunLimit`, **valor de referência já existente, nunca um novo número
+inventado pelo Radar** — se `localRunLimit` for nulo, nenhum limite de concorrência é aplicado,
+mesma semântica de "sem limite" já usada pelo guard existente), insere a nova linha
+`status='reserved'`; senão, recusa. `COMMIT` libera a trava para a próxima disputa.
+
+**Reserva concorrente (disputa)**: exatamente como a proteção do último gestor — a trava serializa;
+quem adquire primeiro decide com a contagem correta; quem espera reavalia sob a contagem já
+atualizada.
+
+**Confirmação do consumo**: depois da resposta real, `status` muda para `"confirmed"` — a linha
+permanece (não é removida), como rastro; NÃO decrementa nem libera o slot de concorrência antes
+disso.
+
+**Liberação — só quando justificável**: `status` muda para `"released"` SÓ se a falha ocorrer
+comprovadamente ANTES de qualquer byte sair para o provedor (o checkpoint pré-envio reprova DEPOIS
+da reserva ter sido feita, mas antes de `runCompletion` ser chamado — janela estreita, mas real).
+Uma vez que `runCompletion` é chamado, a reserva NUNCA é liberada automaticamente por timeout ou
+erro de transporte — permanece `"reserved"` (resultado desconhecido, seção 5) até reconciliação
+humana/explícita, mesma disciplina já estabelecida para o estado `running` da tentativa.
+
+**Resultado desconhecido mantendo a reserva**: reafirmado — liberar por timeout presumiria ausência
+de consumo do lado do provedor, proibido desde a Atualização 1.28.
+
+**Recuperação sem reservar ou cobrar de novo**: retomar `concludeAttempt` a partir de resultado já
+preservado nunca passa pelo checkpoint pré-envio — logo nunca cria nova linha de reserva nem novo
+débito no `BillingLedger`. Garantido por construção (a função de reserva só é chamada dentro do
+novo checkpoint, nunca dentro de `concludeAttempt`).
+
+**Mudança de período**: não se aplica a esta tabela — ela não é medida por ciclo mensal, é um
+contador de CONCORRÊNCIA instantânea (quantas chamadas do Radar estão em voo agora), ortogonal ao
+ciclo de faturamento. O ciclo mensal continua sendo responsabilidade exclusiva do mecanismo já
+existente (`BillingLedger`/`TenantQuotaUsage`), sem duplicação.
+
+**Consumo medido superior à estimativa**: a reserva é por CONTAGEM (1 unidade), não por valor —
+não há "estimativa" nessa reserva para ser superada. Para o valor real em centavos, medido depois
+via `runUsageBreakdown`, a proposta é o Radar reaproveitar `BillingLedgerService.insertDebit`
+(existente, idempotente por `requestId`) após uma resposta real — assim o consumo do Radar passa a
+contar para a projeção mensal compartilhada (`TenantQuotaUsage`) que outros consumidores também
+veem, mesmo sem uma reserva atômica cross-agente.
+
+**Consumidores que precisariam participar para uma garantia global**: `routes/runs.ts` e
+`routes/shadow-executions.ts` (os dois chamadores confirmados do guard) precisariam adotar o MESMO
+protocolo de reserva atômica para que o teto por `tenantId`/`workspaceId` fosse global. **Isso está
+fora do escopo desta unidade** — alterar esses dois arquivos não foi autorizado e não é proposto
+aqui. **Alternativa de escopo restrito, tecnicamente válida e é a que está sendo proposta**: a
+reserva do Radar protege só a concorrência ENTRE tentativas do Radar — não o orçamento agregado do
+workspace como um todo. **Decisão humana indispensável, registrada, não resolvida aqui**: se uma
+garantia cross-agente for exigida no futuro, alguém precisa decidir estender
+`routes/runs.ts`/`routes/shadow-executions.ts` para o mesmo protocolo — decisão de produto/arquitetura
+que ultrapassa esta unidade.
+
+Nenhum exactly-once é prometido. Nenhum teto financeiro é prometido a partir só da contagem —
+custo financeiro continua exigindo o mecanismo de `BillingLedger`/`runUsageBreakdown`, medido, não
+reservado.
+
+### 4. Proteção de erros
+
+**Ponto de origem confirmado**: `packages/core/src/llm/completionEngine.ts:79-91` — o `catch`
+loga `{provider, model, latencyMs, traceId, err}` via `logger.error(...)` e depois `throw err` —
+`err` é o que o SDK/HTTP do provedor lançar, sem qualquer filtro **[FATO]**. Este é o ponto ANTES
+de qualquer código do Radar — proteger só no lado do Radar (um `catch` posterior) não impediria que
+o log já tivesse sido escrito aqui, de forma compartilhada por todos os agentes.
+
+**[PROPOSTA] Lista fechada de campos permitidos**, aplicada NA ORIGEM (dentro de
+`completionEngine.ts`, para todos os consumidores) e novamente na fronteira do Radar (defesa em
+profundidade — nunca confiar só numa camada):
+```
+{
+  errorName: string,        // nome da classe/tipo de exceção do SDK, ex. "APIError" — não a mensagem
+  httpStatus: number | null,
+  providerErrorCode: string | null,  // código ESTRUTURADO do provedor (ex. "rate_limit_exceeded"), nunca texto livre
+  providerRequestId: string | null,  // id de correlação do provedor, se exposto
+}
+```
+Explicitamente NUNCA incluído, em nenhuma camada: `message`/`err.message` (texto livre pode ecoar
+corpo da requisição, prática documentada em alguns provedores), `stack`, o objeto `err` bruto,
+corpo de requisição/resposta, prompt/material, cabeçalhos, credenciais. Cada campo permitido tem
+tipo fechado e validação: `errorName`/`providerErrorCode` são strings curtas de um conjunto
+conhecido de exceções/códigos (nunca texto arbitrário do provedor sem validação); `httpStatus` é
+número; `providerRequestId` é um identificador opaco, sem interpretação de conteúdo.
+
+**Arquivos/símbolos afetados**:
+- `packages/core/src/llm/completionEngine.ts:80-89` — trocar o objeto logado por uma função
+  `toSafeErrorFields(err)` (nova, mesmo arquivo ou `packages/core/src/llm/errorSanitizer.ts`) que
+  extrai só os quatro campos acima. O `throw err` (linha 90) **permanece inalterado** — o objeto
+  original ainda é lançado ao chamador imediato (quem já está no mesmo processo, não é uma fronteira
+  de exposição); só o REGISTRO (log) é que passa a ser seguro. Isso preserva o comportamento de
+  outros consumidores: eles continuam recebendo a exceção completa para tratamento próprio, e o
+  log deles passa a ser mais seguro, sem perder as informações mais úteis para triagem
+  (código/status já são, na prática, o que mais se usa para diagnosticar — não a mensagem livre).
+- **[PROPOSTA]** `radarGovernedExecutionService.ts` (novo, já previsto na Atualização 1.30) —
+  quando capturar um erro de `runCompletion`, aplica a MESMA extração de campos fechados antes de
+  gravar em `RadarAnalysisAttempt.failureReasonCode`, no payload de erro do `Run` (seção 3 da
+  Atualização 1.29/1.30) ou em qualquer `RunEvent` — nunca repassa `err.message`/`err` bruto para
+  fora de si mesma. O erro que `runGovernedAnalysis` eventualmente propaga ao SEU chamador (ex.:
+  um teste) também usa essa forma saneada — nenhuma camada do Radar deixa escapar o erro bruto do
+  provedor.
+
+**Informação suficiente para diagnóstico preservada**: `providerRequestId` (correlação com o painel
+do provedor, se existir), `httpStatus`/`providerErrorCode` (classe do problema),
+`radarAnalysisAttemptId` (correlação interna) — suficiente para triagem sem nunca precisar do texto
+da mensagem.
+
+**Teste proposto** (descrito, não escrito): o transporte substituto (seção 6, Atualização 1.30)
+lança um erro cujo `message` contém um marcador sintético único (nunca conteúdo real, ex. uma
+string aleatória gerada pelo próprio teste); depois da execução, o teste verifica a AUSÊNCIA
+literal desse marcador em: qualquer log capturado, `RunEvent` gravado, `Run.response`, o
+`failureReasonCode`/contexto da `RadarAnalysisAttemptConflictError` eventualmente lançada por
+`runGovernedAnalysis`, e a mensagem do erro final observado pelo chamador do teste.
+
+### 5. Execução e retries
+
+Execução síncrona mantida, sem fila — reafirmado, sem mudança em relação à Atualização 1.30.
+
+**Parâmetro exato e semântica, transcritos**: `packages/core/src/utils/retry.ts:33`,
+`for (let i = 0; i < retries; i++)` — `retries` é o número TOTAL de tentativas de envio da função
+protegida, incluindo a primeira — NÃO o número de tentativas adicionais além da primeira. Valor
+para exatamente um envio: **`retries: 1`** (não `0` — `retries: 0` faz o laço nunca executar,
+lançando `RetryExhaustedError` sem nunca chamar a função protegida, `retry.ts:33,45`).
+
+**Comportamento quando ausente**: **[PROPOSTA]** em `completionEngine.ts:37`, trocar
+`const retries = readNumberFromEnv("LLM_RETRIES", 3);` por
+`const retries = req.retries ?? readNumberFromEnv("LLM_RETRIES", 3);` — ausência do campo preserva
+o default global atual (`LLM_RETRIES`, ou 3) para todo consumidor que não passar o campo.
+
+**Limites e validação propostos**: `retries?: number` em `ChatCompletionRequest`
+(`packages/core/src/llm/types.ts:10-17`) — inteiro positivo, mínimo 1 (nunca 0, pelo motivo acima);
+sem teto superior imposto pelo tipo (o teto operacional continua sendo decisão de quem chama —
+o Radar sempre chamaria com `1`).
+
+**Garantias no desenho**:
+- Radar realiza no máximo um envio por execução autorizada: `retries: 1` sempre, sem laço adicional
+  do lado do Radar, sem fila (que teria seu próprio `attempts: 3`, já descartada na Atualização
+  1.30).
+- Consumidores sem o parâmetro preservam o comportamento anterior: confirmado pela forma do
+  fallback (`req.retries ?? readNumberFromEnv(...)`) — nenhum consumidor existente passa esse
+  campo hoje, logo nenhum muda de comportamento.
+- Falha após possível envio mantém ambiguidade: tentativa permanece `running` (sem mudança,
+  Atualizações 1.28/1.29); reserva de concorrência (seção 3) permanece `"reserved"`, não liberada.
+- Recuperação de resultado durável não chama o provedor: `concludeAttempt` não invoca
+  `callCompletion`/`runCompletion` em nenhum caminho (sem mudança).
+- Timeout não libera reserva automaticamente: reafirmado da seção 3.
+
+Nenhuma variável global nem o comportamento de outros agentes é alterado como solução para o
+Radar — a mudança é sempre condicionada à presença explícita do campo `retries` na requisição.
+
+### 6. Pacote e critérios de aceite alinhados
+
+| Garantia | Mecanismo incluído | Arquivo/símbolo | Teste | Limitação |
+|---|---|---|---|---|
+| Reserva concorrente (só entre tentativas do Radar) | `RadarProviderCallReservation` + trava/contagem condicionada | Novo modelo + `radarGovernedExecutionService.ts:reserveProviderCall` (nome proposto) | C | Não protege o orçamento compartilhado contra OUTROS consumidores (seção 3) |
+| Idempotência da reserva | `@@unique([tenantId, workspaceId, attemptId])` | Mesmo modelo acima | C (via reexecução do passo) | — |
+| Falha comprovadamente anterior ao envio | Liberação condicionada só nesse caso | `radarGovernedExecutionService.ts` | B, C | Janela estreita entre reserva e chamada real |
+| Envio possível com resultado desconhecido | Reserva permanece `"reserved"`, tentativa permanece `running` | `radarGovernedExecutionService.ts`, mecanismo já existente da tentativa | E | Nenhuma automação decide o desfecho — exige reconciliação explícita |
+| Confirmação de consumo medido | `status="confirmed"` na reserva + `BillingLedgerService.insertDebit` reaproveitado | `radarGovernedExecutionService.ts` + `tenantBilling.ts` (existente) | F (parcial — ver limitação) | Contribui para a projeção mensal compartilhada, mas essa projeção continua não-atômica para OUTROS consumidores |
+| Recuperação sem novo envio | `concludeAttempt` nunca chama `callCompletion` | `radarAnalysisAttemptService.ts:concludeAttempt` (existente, sem mudança) | F | — |
+| Erros sem vazamento | Campos fechados na origem (`completionEngine.ts`) e na fronteira do Radar | `completionEngine.ts`, `radarGovernedExecutionService.ts` | Teste da seção 4 | Não cobre SDKs/provedores ainda não integrados — validação por provedor real fica para integração futura |
+| Um único envio no Radar | `retries: 1` sempre, sem fila | `radarGovernedExecutionService.ts` chamando `runCompletion` | D | — |
+| Compatibilidade dos demais consumidores | Fallback `req.retries ?? env` | `completionEngine.ts:37` | D (segunda metade) | — |
+| Confidencialidade nos caminhos genéricos de `Run` | Payload opaco (Atualização 1.30 §3) | `runs.ts:createRunRecord`/`finalizeRunRecord`, chamados com payload opaco | A | Depende de nenhuma extensão futura reintroduzir conteúdo nesses campos — não é uma garantia de tipo, é disciplina de uso |
+
+**Diferenciação final, explícita**: a reserva de concorrência (acima) é controle de ORÇAMENTO
+(quantas chamadas simultâneas), nunca idempotência de BILLING — a idempotência de cobrança já
+existe e é do `BillingLedgerService.insertDebit` (por `requestId`), reaproveitada sem mudança. O
+pacote comprova ausência de novo ENVIO e ausência de nova RESERVA na recuperação — nunca "sem nova
+cobrança" como frase isolada, porque cobrança é responsabilidade do ledger existente, medido depois
+da resposta, e este pacote não introduz nem modifica esse mecanismo.
+
+### Componentes reutilizados (consolidado)
+
+`assertWorkspaceAgentEnabled`, `runCompletion`, `createRunRecord`/`finalizeRunRecord`,
+`evaluateTenantBillingExecutionGuard` (para a checagem de PREVISÃO, não para reserva),
+`BillingLedgerService.insertDebit` (para medição/cobrança real, reaproveitado sem mudança),
+`claimAttempt`/`preserveResult`/`concludeAttempt`, `createRadarEntityAccessResolver`. Nenhum
+componente novo além do já listado na Atualização 1.30, mais a tabela de reserva desta atualização.
+
+### Arquivos, modelos e migrations futuras (nenhum criado nesta atualização)
+
+- Novo: `apps/api/src/services/radarSocial/radarGovernedExecutionService.ts` (já previsto,
+  detalhado agora com `reserveProviderCall`/`confirmProviderCall`/`releaseProviderCallIfPreDispatch`).
+- Novo modelo: `RadarProviderCallReservation` (schema.prisma) + migração aditiva própria, **só se
+  a estratégia desta atualização for ratificada**.
+- Alterar (1 campo): `packages/core/src/llm/types.ts` (`ChatCompletionRequest.retries?`).
+- Alterar (1 linha): `packages/core/src/llm/completionEngine.ts:37` (fallback de `retries`).
+- Alterar (saneamento de log, sem mudar `throw`): `completionEngine.ts:80-89`.
+- Alterar (campos novos): `radarAnalysisAttemptContract.ts` (`GenerationConfig.agentKey`/`agentVersion`,
+  já previsto na Atualização 1.30).
+- Novo teste: `apps/api/src/services/radarSocial/__tests__/J-governed-execution.test.ts`.
+- Alterar: `apps/api/src/services/radarSocial/__tests__/helpers.ts` (substituto de transporte, já
+  previsto).
+
+### Decisões ainda indispensáveis
+
+1. Se/quando estender `routes/runs.ts`/`routes/shadow-executions.ts` ao mesmo protocolo de reserva,
+   para uma garantia cross-agente — decisão de produto/arquitetura fora desta unidade.
+2. Ratificar a tabela `RadarProviderCallReservation` (ou uma forma alternativa) antes de
+   implementar — sem isso, o cenário de aceite C não tem mecanismo real para se apoiar.
+3. `agentKey`/`agentVersion` reais para `WorkspaceAgentAssignment` — provisionamento, fora do
+   escopo de qualquer rodada de documentação.
+4. Confirmar se `evidenceBundle.ts`/`runArchiveService.ts` agregam algo além de
+   `Run.request`/`response`/`RunEvent` que precise do mesmo tratamento (registrado como pendência
+   desde a Atualização 1.30, não resolvido aqui).
+
+### Texto único de autorização sugerida para implementação local (isto NÃO é uma autorização)
+
+"Está autorizada a implementação local do pacote de execução governada com reserva de concorrência:
+`radarGovernedExecutionService.ts` (checkpoint pré-envio, reserva/confirmação/liberação
+condicionada via `RadarProviderCallReservation`, chamada síncrona a `runCompletion` com
+`retries: 1`); a migração aditiva do novo modelo; a extensão de `retries` em
+`ChatCompletionRequest`/`completionEngine.ts`; o saneamento de log na origem em
+`completionEngine.ts`; os campos `agentKey`/`agentVersion` em `GenerationConfig`; o payload opaco
+de `Run`; e os testes de aceite A–H (Atualização 1.30) mais o teste de vazamento de erro (seção 4
+desta atualização) — tudo com transporte substituído (`createSubstituteCompletionEngine`) e grants
+reais em PostgreSQL local descartável. Fica fora: qualquer extensão a
+`routes/runs.ts`/`routes/shadow-executions.ts`; qualquer rota, fila, worker ou disparo de produção;
+qualquer chamada real a modelo; qualquer provisionamento de `WorkspaceAgentAssignment` real; e
+qualquer alegação de teto global de orçamento entre agentes, que este pacote não implementa."
+
+Esta atualização não concede a autorização acima — apresenta o pacote para aprovação humana. Se
+houver decisão essencial em aberto (as quatro listadas acima), o pacote não deve ser lido como
+pronto para implementação sem que pelo menos a de número 2 seja resolvida. Nenhum código, schema,
+migration, teste ou cliente gerado foi alterado sob esta atualização; pacote A, resolvedor e
+políticas de grant não foram reabertos.
+
+**Superado pela Atualização 1.32**: o nome "reserva" (`RadarProviderCallReservation`,
+`reserveProviderCall`/`confirmProviderCall`) e a proposta de reaproveitar
+`WorkspaceQuotaGrant.localRunLimit` como origem do valor de concorrência são substituídos —
+`localRunLimit` mede acúmulo MENSAL por ciclo, uma pergunta diferente de "quantas chamadas
+simultâneas agora", e reaproveitá-lo para concorrência seria um uso indevido de uma configuração
+com outro propósito. O mecanismo passa a se chamar controle de CONCORRÊNCIA, nunca reserva, com
+fonte de valor própria. Este registro é preservado como histórico, não apagado.
+
+## Atualização 1.32 — controle de concorrência (não reserva), vagas e proteção de erros revisada (17/09/2026)
+
+Fonte: leitura focalizada adicional desta sessão (`apps/api/src/orchestrator/llmExecutor.ts:194-256`,
+`apps/api/src/services/capabilityExecution.ts:298-324`), a partir do commit-base
+`1d5a3910dc9d9de87fb935b84b5f256f3bac8a1d`. Só documentação — nenhum código, schema, migration,
+teste ou cliente gerado alterado; nenhuma chamada real a modelo. Pacote A, resolvedor e
+investigação geral do Core não foram reabertos. Mesma convenção: **[FATO]** com arquivo:linha;
+**[PROPOSTA]**; **[PENDENTE]**.
+
+### 1. Definição exata do controle de concorrência
+
+**Nome corrigido**: "controle de concorrência do Radar" — nunca "reserva". Declarações expressas,
+sem ambiguidade:
+- Limita quantas chamadas reais ao provedor, das TENTATIVAS DO RADAR, podem estar em voo ao mesmo
+  tempo, por `(tenantId, workspaceId)`.
+- NÃO reserva tokens, dinheiro ou orçamento — não guarda nenhum valor monetário nem de tokens, só
+  uma contagem de vagas ocupadas.
+- NÃO controla o consumo de nenhum outro agente/rota do Core — só conta linhas que o próprio Radar
+  cria para si mesmo.
+- NÃO impede gasto acumulado em chamadas SUCESSIVAS: uma vaga é liberada assim que o desfecho de
+  uma chamada fica conhecido (sucesso ou falha clara — seção 3), permitindo uma chamada seguinte
+  ocupar a mesma vaga depois. O limite é de CONCORRÊNCIA instantânea, nunca de total acumulado ao
+  longo do tempo — quem quiser um teto cumulativo continua dependendo do mecanismo de orçamento já
+  existente (`TenantQuotaPolicy`/ciclo mensal, Atualização 1.31), que este controle não substitui.
+- NÃO comprova idempotência de cobrança — isso continua sendo `BillingLedgerService.insertDebit`
+  (por `requestId`, existente, Atualização 1.31), sem relação com este mecanismo.
+
+**Escopo do limite**: `(tenantId, workspaceId)` — mesma chave usada em toda a unidade.
+
+**Unidade contada**: vagas — um número inteiro de ocupações simultâneas, nunca tokens nem
+centavos.
+
+**Origem do valor configurado — corrigida**: **[PROPOSTA]** um valor PRÓPRIO do controle de
+concorrência, não reaproveitado de `WorkspaceQuotaGrant.localRunLimit` (achado desta rodada: esse
+campo mede runs acumulados no ciclo mensal, `tenantBilling.ts:1000-1008`, uma pergunta diferente).
+**[PENDENTE]**: nenhuma fonte de configuração de produção foi ratificada — este documento não
+inventa uma política nova. Para testes locais, **valor específico proposto: 2** (duas vagas),
+definido diretamente no teste, nunca lido de configuração real nem apresentado como valor de
+produção.
+
+**Comportamento quando a configuração está ausente ou inválida**: **fail-closed, ao contrário do
+guard de orçamento existente** (que trata limite nulo como "sem limite", `tenantBilling.ts:1000`).
+Aqui, ausência de valor configurado, valor não numérico, zero ou negativo devem RECUSAR a ocupação
+de vaga por padrão — nunca interpretar "sem configuração" como "concorrência ilimitada". Decisão
+deliberada, consistente com a disciplina já usada em toda a unidade de nunca liberar acesso por
+ausência de dado.
+
+**Identidade da ocupação vinculada à tentativa**: uma linha por `attemptId` (chave única) — nunca
+por `claimToken` (que muda a cada posse/reclaim) nem por `workerId` (que muda a cada trabalhador).
+
+### 2. Protocolo de aquisição e liberação de vagas
+
+**Quatro conceitos diferentes, nunca fundidos**:
+- **Posse do trabalhador** (`claimToken`, já existente): quem, agora, pode operar sobre esta
+  tentativa.
+- **Vaga de concorrência** (este mecanismo): quantas chamadas reais estão em voo agora, por
+  tenant/workspace, independente de qual trabalhador as iniciou.
+- **Bloqueio de tentativa ativa** (índice único parcial, já existente, Atualização 1.20): impede
+  duas tentativas simultâneas para a MESMA solicitação — escopo por `analysisRequestId`.
+- **Autorização para nova chamada** (checkpoint pré-envio, Atualização 1.29): decisão revalidada a
+  cada nova chamada real, nunca inferida de nenhum dos três itens acima sozinho.
+
+**Por que não duplica a guarda de tentativa ativa**: aquela guarda protege UMA solicitação contra
+duas tentativas concorrentes para ELA MESMA. O controle de concorrência protege o tenant/workspace
+como um todo contra MUITAS solicitações diferentes, cada uma com sua própria tentativa ativa
+legítima, todas tentando despachar ao mesmo tempo — um limite agregado que o índice por solicitação
+não cobre e não tem como cobrir, porque ele nunca olha para outras solicitações.
+
+**Tabela solicitada**:
+
+| Situação | Ocupa vaga? | Pode liberar? | Evidência necessária | Permite novo envio? |
+|---|---|---|---|---|
+| Antes de qualquer envio (checkpoint ainda não chegou à ocupação) | Não | N/A | N/A | N/A — nada foi decidido ainda |
+| Chamada simulada iniciada (vaga ocupada, `callCompletion` em andamento) | Sim | Não, enquanto em andamento | N/A | Não — esta é a única chamada desta tentativa em curso |
+| Resposta recebida (desfecho conhecido, sucesso) | — | Sim, libera | Resposta real obtida e preservável | Não é sobre esta tentativa (concluída); libera capacidade para OUTRAS |
+| Resultado durável aguardando conclusão (`provider_responded_pending_persistence`) | — | Sim, libera já aqui | `preserveResult` bem-sucedido — a ambiguidade "o provedor respondeu?" já está resolvida, mesmo antes de `concludeAttempt` decidir se o conteúdo é válido | Não — liberar a vaga não autoriza reenviar; `concludeAttempt` nunca dispara nova chamada |
+| Falha comprovadamente anterior ao envio (checkpoint reprova depois de ocupar, antes de `callCompletion`) | Sim, brevemente | Sim, único caso de liberação automática por falha | Confirmação de que `callCompletion` nunca foi invocado | Sim, mas como NOVA decisão/tentativa — nunca automático |
+| Timeout com possível processamento (resultado desconhecido) | Sim | NÃO automaticamente | Nenhuma evidência automática resolve isso — só reconciliação explícita | Não — nem depois de reconciliar isso vira automático |
+| Perda de posse (`reclaimExpiredAttempt`, novo `claimToken`) | Sim, sem mudança | Não, por si só | A perda de posse NÃO é evidência de término da chamada — precisa da MESMA evidência das linhas acima | Não — reclaim autoriza um novo trabalhador a operar a tentativa, nunca uma nova chamada ao provedor |
+| Cancelamento solicitado (`cancelRequestedAt` preenchido) | Sim, até o checkpoint do executor observar | Só quando o desfecho ficar conhecido (resposta chegou e é descartada, ou cancelamento efetivado antes do envio) | Mesma disciplina das linhas de desfecho conhecido | Não — cancelamento não vira "livre para nova tentativa" automaticamente |
+| Recuperação idempotente (reexecutar o passo de ocupar vaga para o MESMO `attemptId`) | Encontra a linha existente, não ocupa uma segunda | N/A | Constraint única por `attemptId` | Não — é recuperação da MESMA operação de ocupação, nunca uma nova chamada |
+
+Nenhuma reconciliação automática "segura" é inventada para resultado desconhecido — a única
+liberação automática é a de falha comprovadamente pré-envio; todo o resto exige decisão explícita.
+
+### 3. Mapa de exposição e tratamento de erros
+
+**Caminhos efetivamente atravessados pela integração proposta** (Radar chama `runCompletion`
+diretamente — achado reforçado nesta rodada):
+- `packages/core/src/llm/completionEngine.ts:17-91` — motor, único ponto de log de erro na cadeia
+  que o Radar de fato atravessa.
+- Transporte: dentro de `completionEngine.ts:58` (`provider.chatCompletion`), substituído nos
+  testes (Atualização 1.30 §6).
+- `radarGovernedExecutionService.ts` (proposto) — fronteira do Radar, onde o erro é capturado pela
+  primeira vez do lado do Radar.
+- `Run`/`RunEvent` — destino final do erro saneado (payload opaco, Atualização 1.30 §3).
+- Logs — só `completionEngine.ts:80-89` na cadeia que o Radar atravessa.
+
+**Achado desta rodada, confirmando que a proteção na origem é suficiente PARA O CAMINHO DO RADAR
+especificamente**: `executeLlmStep` (`apps/api/src/orchestrator/llmExecutor.ts:194-256`) chama
+`runCompletion` sem nenhum `try/catch` próprio (linhas 242-248) — não há re-log nesse nível.
+`executeCapability` (`apps/api/src/services/capabilityExecution.ts:298-324`) **[FATO]** tem um
+laço que, ao capturar um erro de uma rota, tenta a PRÓXIMA rota de provedor de fallback
+(`capabilityExecution.ts:304-320`) — isto é uma CAMADA ADICIONAL de múltiplos envios (para
+provedores/modelos diferentes, não só retries do mesmo provedor) que o Radar NÃO atravessa, porque
+não chama `executeCapability`/`executeLlmStep` — reforça, com evidência nova, a decisão já tomada
+de chamar `runCompletion` diretamente (Atualização 1.30): usar o caminho genérico exporia o Radar a
+uma terceira camada de reenvio implícito, além da fila (já descartada) e do retry interno do motor
+(já controlado pela extensão de `retries`). Esse laço de `capabilityExecution.ts` não loga o erro
+capturado (`lastError = error`, sem chamada de log) — não é um ponto de vazamento adicional, mas
+confirma que o Radar precisa continuar fora desse caminho.
+
+**Limite honesto desta verificação**: a sanitização na origem (`completionEngine.ts`) cobre o
+caminho INTEIRO que o Radar atravessa, porque há só um salto entre a origem do erro e a fronteira
+do Radar. Para OUTROS agentes (que atravessam `executeLlmStep`→`executeCapability`→o restante do
+worker), **não foi auditado nesta rodada** se existe algum ponto adicional de log que ecoe
+`error.message` mais adiante — fora do escopo desta unidade, porque esses agentes não lidam com
+conteúdo protegido do Radar; a sanitização na origem já é uma melhoria estrita para eles também,
+sem remover nenhuma informação que hoje usem programaticamente (o `throw` não muda).
+
+**Objeto de erro seguro na fronteira do Radar — lista fechada, com validação, não confiança pelo
+nome do campo**:
+```
+{
+  errorName: string | null,       // valida: ate 100 chars, /^[A-Za-z][A-Za-z0-9_.]*$/ — senão null
+  httpStatus: number | null,      // valida: inteiro entre 100 e 599 — senão null
+  providerErrorCode: string | null, // valida: ate 100 chars, /^[a-z][a-z0-9_]*$/ — senão null
+  providerRequestId: string | null, // valida: ate 200 chars, alfanumérico/hífen/underscore — senão null
+}
+```
+Nenhum desses campos é aceito só porque o provedor o rotulou com esse nome — cada um passa por uma
+validação de FORMATO antes de ser aceito; qualquer valor fora do formato esperado vira `null`, nunca
+é repassado como está. Nunca incluídos, em nenhum destino: `message`, `stack`, o objeto `err` bruto,
+corpo de requisição/resposta, prompt/material, cabeçalhos, credenciais — em NENHUM dos destinos
+genéricos (`Run.response`, `RunEvent`, logs, erro devolvido ao chamador do Radar).
+
+**Arquivos afetados, alteração compartilhada explícita**: `completionEngine.ts:80-89` (log
+saneado, `throw err` inalterado — afeta o LOG de todos os consumidores, não o comportamento de
+exceção de nenhum). **Teste de compatibilidade proposto**: confirmar que uma chamada comum a
+`runCompletion` (sem nada do Radar) que falhe continua lançando o MESMO objeto de erro original ao
+seu chamador (só o log muda) — nenhuma suíte de outro agente deveria quebrar por causa desta
+mudança, porque nenhuma depende do formato do log.
+
+**Confidencialidade nos caminhos genéricos — não comprovada ainda**: reafirmado da Atualização
+1.30 — `Run.request`/`Run.response`/`RunEvent` do Radar nunca conterão material, objetivo, prompt
+montado, resposta intermediária ou recomendação. Isto continua sendo uma GARANTIA DE DESENHO, não
+uma garantia comprovada — só os testes de aceite (seção seguinte), quando escritos e executados,
+comprovam isso de fato.
+
+### 4. Retries e identidade de teste
+
+Sem mudança de fundo em relação à Atualização 1.31 — reafirmado com a evidência nova da seção 3
+acima (a razão adicional para nunca usar `executeCapability`/a fila).
+
+- Radar realiza no máximo um envio por execução autorizada: `retries: 1` em
+  `ChatCompletionRequest`, chamada direta a `runCompletion` (nunca `executeCapability`).
+- Sem retry oculto: nem fila (`attempts:3`, descartada), nem laço de fallback de provedor
+  (`capabilityExecution.ts`, agora confirmado e também descartado), nem laço próprio do Radar.
+- Consumidores sem o parâmetro preservam comportamento: fallback
+  `req.retries ?? readNumberFromEnv("LLM_RETRIES", 3)` em `completionEngine.ts:37`.
+- Recuperação de resultado durável sem novo envio: `concludeAttempt` nunca chama
+  `callCompletion`/`runCompletion`, sem mudança.
+- Ambiguidade sem repetição automática: reafirmado, tabela da seção 2.
+
+**Identidade e provedor continuam controlados em teste**: `createSubstituteCompletionEngine`
+(Atualização 1.30 §6) permanece exclusivo de `__tests__/`; nenhum `agentKey`/`agentVersion` real é
+provisionado nesta ou em nenhuma rodada de documentação — a ausência de identidade operacional real
+não é motivo para inventar um registro de produção; permanece pendência explícita (Atualização
+1.30, decisão 3).
+
+### 5. Pacote e testes para aprovação
+
+| Garantia | Mecanismo | Arquivo/símbolo | Teste | Limitação |
+|---|---|---|---|---|
+| Disputa pela última vaga | Trava + contagem condicionada (mesmo idioma da proteção do último gestor, Atualização 1.25) | `radarGovernedExecutionService.ts:occupyProviderCallSlot` | Disputa pela última vaga | Só entre tentativas do Radar — não protege orçamento compartilhado |
+| Repetição idempotente sem ocupar duas vagas | `@@unique([tenantId, workspaceId, attemptId])` | Mesmo símbolo, novo modelo `RadarProviderCallSlot` | Repetição idempotente da ocupação | — |
+| Liberação sem duplicação | `releaseProviderCallSlot` idempotente (no-op se já liberado) | `radarGovernedExecutionService.ts:releaseProviderCallSlot` | Liberação sem duplicação | — |
+| Perda de posse sem liberação indevida | `reclaimExpiredAttempt` não toca a vaga | Sem alteração em `reclaimExpiredAttempt` | Perda de posse sem liberação indevida | — |
+| Resposta desconhecida bloqueando repetição | Vaga permanece ocupada; tentativa permanece `running` | `radarGovernedExecutionService.ts` + mecanismo já existente | Resposta desconhecida bloqueando repetição | Exige reconciliação explícita, nunca automática |
+| Recuperação sem novo envio | `concludeAttempt` nunca chama `callCompletion` | `radarAnalysisAttemptService.ts:concludeAttempt` (existente) | Recuperação sem novo envio | — |
+| Exatamente um envio ao transporte | `retries: 1`, chamada direta, sem fila/fallback | `radarGovernedExecutionService.ts` chamando `runCompletion` | Um único envio no Radar | — |
+| Compatibilidade dos demais consumidores | Fallback `req.retries ?? env` | `completionEngine.ts:37` | Compatibilidade dos demais consumidores | — |
+| Marcador sensível ausente em logs/eventos/erros | Campos fechados e validados na origem e na fronteira do Radar | `completionEngine.ts:80-89`, `radarGovernedExecutionService.ts` | Marcador sensível ausente | Não audita pontos de log de OUTROS agentes fora do caminho do Radar |
+| Usuário sem acesso à entidade impedido via consulta genérica ao `Run` | Payload opaco de `Run.request`/`response`/`RunEvent` | `runs.ts:createRunRecord`/`finalizeRunRecord` (uso não convencional) | Confidencialidade | Garantia de DESENHO — só comprovada quando o teste for escrito e executado |
+
+Renomeado conforme pedido: "teste de disputa de consumo" (Atualização 1.31) passa a ser "**teste
+de disputa pela última vaga**", porque a garantia efetiva é de concorrência, não de orçamento.
+
+**Arquivos, modelos e migrations futuros — nenhum criado nesta atualização**:
+- Novo modelo: `RadarProviderCallSlot` (`id`, `tenantId`, `workspaceId`, `attemptId` único,
+  `status: "occupied"|"released"`, `occupiedAt`, `releasedAt`) + migração aditiva própria.
+- Novo arquivo: `apps/api/src/services/radarSocial/radarGovernedExecutionService.ts`
+  (`assertReadyForGovernedDispatch`, `occupyProviderCallSlot`, `releaseProviderCallSlot`,
+  `runGovernedAnalysis`).
+- Alterar (1 campo): `packages/core/src/llm/types.ts` (`ChatCompletionRequest.retries?`).
+- Alterar (1 linha): `packages/core/src/llm/completionEngine.ts:37`.
+- Alterar (log saneado, compartilhado): `completionEngine.ts:80-89`.
+- Alterar (campos novos): `radarAnalysisAttemptContract.ts` (`GenerationConfig.agentKey`/`agentVersion`).
+- Novo teste: `apps/api/src/services/radarSocial/__tests__/J-governed-execution.test.ts`.
+- Alterar: `apps/api/src/services/radarSocial/__tests__/helpers.ts` (`createSubstituteCompletionEngine`).
+
+**Dependência de orçamento compartilhado — separada explicitamente**: continua aberta para
+operação real, não resolvida nem parcialmente resolvida pelo controle de concorrência. Uma garantia
+GLOBAL de teto por tenant/workspace entre TODOS os agentes exigiria estender
+`routes/runs.ts`/`routes/shadow-executions.ts` ao mesmo protocolo — decisão fora desta unidade,
+registrada, não decidida.
+
+### 6. Texto único de autorização sugerida para implementação local (isto NÃO é uma autorização)
+
+"Está autorizada a implementação local do pacote de execução governada com controle de
+concorrência: `radarGovernedExecutionService.ts` (checkpoint pré-envio, `RadarProviderCallSlot`
+com ocupação/liberação condicionada, chamada síncrona e direta a `runCompletion` com `retries: 1`,
+nunca via fila ou `executeCapability`); a migração aditiva do novo modelo; a extensão de `retries`
+em `ChatCompletionRequest`/`completionEngine.ts`; o saneamento de log na origem, com validação de
+formato dos quatro campos permitidos; os campos `agentKey`/`agentVersion` em `GenerationConfig`; o
+payload opaco de `Run`; e os testes de aceite listados na seção 5 — todos com transporte
+substituído (`createSubstituteCompletionEngine`) e grants reais em PostgreSQL local descartável.
+Valor de teste da concorrência: 2 vagas, nunca configuração de produção. Fica fora: qualquer
+extensão a `routes/runs.ts`/`routes/shadow-executions.ts`; qualquer alegação de teto de orçamento
+protegido entre agentes; qualquer rota, fila, worker ou disparo de produção; qualquer chamada real
+a modelo; qualquer provisionamento de `WorkspaceAgentAssignment` real."
+
+Esta atualização não concede a autorização acima — apresenta o pacote para aprovação humana. A
+confidencialidade nos caminhos genéricos de `Run` continua sendo garantia de desenho, não
+comprovada, até que a implementação e os testes de aceite sejam de fato executados. Nenhum código,
+schema, migration, teste ou cliente gerado foi alterado sob esta atualização; pacote A, resolvedor
+e investigação geral do Core não foram reabertos.
+
+## Atualização 1.33 — pacote de execução governada implementado e testado localmente (17/09/2026)
+
+Fonte: implementação real nesta sessão, sob autorização expressa do usuário conforme o texto da
+Atualização 1.32, a partir do commit-base `1d5a3910dc9d9de87fb935b84b5f256f3bac8a1d`. Entrega
+exatamente o pacote delimitado: controle de CONCORRÊNCIA (nunca reserva financeira/orçamento),
+serviço de execução integrado aos controles existentes, controle de `retries` por chamada, e
+proteção de erros/conteúdo — tudo com grants persistidos e transporte substituído. Nenhuma chamada
+real a modelo, nenhuma fila, nenhum provisionamento, nenhuma rota HTTP.
+
+### Comportamento entregue
+
+`RadarProviderCallSlot` real, com ocupação/liberação atômicas por `(tenantId, workspaceId)` via
+`pg_advisory_xact_lock` (fecha o "phantom insert" que uma simples `SELECT...FOR UPDATE` sobre
+linhas já existentes não fecharia). `radarGovernedExecutionService.ts` novo, com
+`assertReadyForGovernedDispatch` (checkpoint pré-envio completo: identidade, membership/escopo,
+acesso à entidade, habilitação do agente via `assertWorkspaceAgentEnabled`, posse vigente
+revalidada por leitura fresca, permissão de conteúdo) e `runGovernedAnalysis` (orquestração
+síncrona: claim → checkpoint → ocupar vaga → `Run` com payload opaco → `runCompletion` direto,
+`retries: 1`, nunca via fila/`executeCapability` → preservar → liberar vaga → concluir).
+`ChatCompletionRequest.retries` real no Core, com fallback preservando o comportamento de todo
+consumidor que não o usar. Log de erro saneado na origem (`completionEngine.ts`), com quatro
+campos fechados e validados por formato — nunca aceitos só pelo nome.
+
+### Arquivos criados e alterados
+
+Novos: `apps/api/src/services/radarSocial/radarGovernedExecutionService.ts`,
+`apps/api/src/services/radarSocial/__tests__/J-governed-execution.test.ts`.
+
+Alterados, de forma pontual: `packages/core/src/llm/types.ts` (`ChatCompletionRequest.retries?`);
+`packages/core/src/llm/completionEngine.ts` (fallback de `retries` na linha 37; log saneado com
+`toSafeErrorFields`, agora exportada); `apps/api/src/services/radarSocial/radarAnalysisAttemptContract.ts`
+(`GenerationConfig.agentKey`/`agentVersion`); `apps/api/src/services/radarSocial/radarAnalysisRequestService.ts`
+(extensão pontual necessária, achada durante a implementação — ver "achado" abaixo — para
+`agentKey`/`agentVersion` chegarem de fato ao `GenerationConfig` resolvido);
+`apps/api/src/services/radarSocial/__tests__/helpers.ts` (`createSubstituteCompletionEngine`, novo
+substituto de transporte). Confirmado por hash: nenhum outro arquivo dos 103 verificados (D5/D6,
+fingerprint, resto do pacote A, resolvedor, e os demais arquivos do Core já mapeados —
+`llmExecutor.ts`, `capabilityExecution.ts`, `workspaceAgentAssignments.ts`, `tenantBilling.ts`,
+`runs.ts`, `retry.ts`) mudou um único byte.
+
+`packages/db/prisma/schema.prisma`: modelo `RadarProviderCallSlot` + relações reversas em
+`Tenant`/`Workspace`/`RadarAnalysisAttempt`, aditivo. Migração
+`packages/db/prisma/migrations/20260917213612_add_radar_provider_call_slot/` — só
+`CREATE TABLE`/`CREATE INDEX`/`ADD CONSTRAINT`, sem edição manual. Cliente Prisma regenerado.
+`packages/core` — `pnpm run build` executado (tsc + tsup, ferramentas já instaladas, nenhuma
+dependência nova) para que a extensão de `retries`/saneamento de log ficasse visível via
+`@eiah/core` (resolvido para `dist/`, não para o código-fonte diretamente) — confirmado por `git
+status` que só os dois arquivos-fonte já listados mudaram; `dist/` é inteiramente ignorado pelo
+Git, sem risco de introduzir alterações rastreadas indesejadas.
+
+### Achado real durante a implementação
+
+`createRadarAnalysisRequest` (`radarAnalysisRequestService.ts`) resolvia `generationConfigInput`
+extraindo campos NOMEADOS um a um, sem repassar `agentKey`/`agentVersion` — a extensão do
+`GenerationConfig` sozinha (contrato) não bastava; sem esse ajuste pontual no ÚNICO call site real
+de `resolveGenerationConfig` para criação de solicitação, `agentKey` chegava sempre `null`,
+bloqueando o checkpoint pré-envio para toda tentativa. Corrigido no mesmo arquivo, mesmo padrão de
+extensão já usado em todo o pacote A/resolvedor (repassar cada campo novo explicitamente, nunca um
+spread genérico). Também foi necessário, em teste, criar um `AgentMetadata` sintético além do
+`WorkspaceAgentAssignment` — `createRunRecord` resolve a versão do agente por essa tabela quando
+nenhuma versão explícita é passada ao seu próprio `assertWorkspaceAgentEnabled` interno
+(`apps/api/src/services/runs.ts:214-220`, que não recebe `agentVersion`) — achado de leitura do
+Core, não uma suposição.
+
+### Testes, comandos e resultados reais
+
+| Suíte | Comando | Resultado |
+|---|---|---|
+| `J-governed-execution.test.ts` (novo, isolado) | `tsx --test .../J-governed-execution.test.ts` | **10/10 passaram**, exit 0 |
+| radarSocial completo (A–J) | `tsx --test apps/api/src/services/radarSocial/__tests__/*.test.ts` | **137/137 passaram**, exit 0 (127 prévios + 10 novos) — reexecutado duas vezes seguidas, estável |
+| signalForward (D5/D6/fingerprint), regressão | `tsx --test apps/api/src/services/signalForward/__tests__/*.test.ts` | **129/129 passaram**, exit 0 — nenhuma regressão |
+
+Os 10 testes novos cobrem: envio único ao transporte com conclusão completa; repetição idempotente
+de ocupação de vaga; disputa pela última vaga entre duas solicitações distintas do mesmo
+workspace (índice único parcial de tentativa ativa não cobre este caso — o controle de
+concorrência sim); liberação idempotente (já liberada e nunca ocupada); perda de posse via
+`reclaimExpiredAttempt` sem liberar/ocupar a vaga; resultado desconhecido (transporte lança) —
+tentativa permanece `running`, vaga permanece ocupada, `Run` finalizado com erro saneado, marcador
+sintético sensível ausente do `Run.response`; saneamento de erro isolado (`toSafeErrorFields`,
+incluindo um código de provedor com formato suspeito sendo descartado); recuperação sem novo
+envio (`concludeAttempt` a partir de resultado preservado); ausência de fallback de provedor no
+caminho Radar; e confidencialidade — material/objetivo/resposta ausentes de `Run.request`,
+`Run.response` e `RunEvent.payload` numa leitura genérica.
+
+**Achado de infraestrutura de teste, não um defeito de produto**: a primeira execução da suíte
+completa (137 testes) produziu 9 falhas não determinísticas, todas com a mesma causa raiz:
+"too many database connections opened" — o Postgres descartável padrão (`max_connections=100`) foi
+excedido pela soma de conexões nomeadas de 10 arquivos de teste rodando juntos, agravada pelo
+arquivo novo. Corrigido recriando o container com `max_connections=300` (config do container
+descartável, não do produto) — confirmado estável em duas execuções completas depois disso.
+
+### Comparação de typecheck
+
+Mesmo comando (`tsc --noEmit -p apps/api/tsconfig.json`), TypeScript 5.9.3. Baseline reconstruída
+revertendo, via `git checkout --` (todos os arquivos já eram rastreados, parte do commit-base —
+reversão exata, não uma reconstrução manual), os cinco arquivos-fonte alterados, movendo os dois
+arquivos novos para fora, e reconstruindo `packages/core/dist` a partir do código-fonte revertido
+(`pnpm run build`) para que o typecheck de `apps/api` (que resolve `@eiah/core` via
+`dist/index.d.ts`) refletisse de fato o estado anterior — não só o texto-fonte.
+
+- Antes: 431 erros. Depois: 431 erros.
+- Diff textual bruto: duas linhas auxiliares a mais, mesmo padrão já visto nas Atualizações 1.26 e
+  1.30 — entradas adicionais no rastro do mesmo diagnóstico `TS6059` pré-existente ("File ... is
+  not under rootDir"), porque os dois arquivos novos passaram a alcançar, via `@eiah/core`/`@repo/db`,
+  um arquivo já fora do `rootDir` que já disparava esse diagnóstico antes desta rodada. Nenhum
+  diagnóstico novo, nenhum código de erro novo, nenhum resolvido.
+
+### Preservação confirmada
+
+Hashes SHA-256 de 103 arquivos (D5/D6 e fingerprint de signalForward, todo o pacote A, o
+resolvedor real, `schema.prisma`, cliente gerado, as cinco migrações, e os arquivos do Core já
+identificados em rodadas anteriores — `llmExecutor.ts`, `capabilityExecution.ts`,
+`workspaceAgentAssignments.ts`, `tenantBilling.ts`, `runs.ts`, `retry.ts`), coletados antes de
+qualquer alteração desta rodada e comparados depois: **exatamente 8 mudaram** — os cinco arquivos
+alterados pontualmente listados acima, mais schema/cliente gerado (3 arquivos) — todo o resto
+permanece byte a byte idêntico.
+
+### Limitações remanescentes
+
+Nenhum agente real foi provisionado — `WorkspaceAgentAssignment`/`AgentMetadata` usados em teste
+são sintéticos, criados só no banco descartável. O controle de concorrência protege só as
+tentativas do Radar entre si, nunca o orçamento compartilhado do workspace contra outros agentes
+(Atualização 1.31/1.32, decisão fora de escopo). `evaluateTenantBillingExecutionGuard` não foi
+integrado nesta unidade — a extensão de "consumo" desta rodada é estritamente o controle de
+concorrência, não uma integração com o billing existente. A montagem do prompt (`messages`) é
+mínima e direta (objetivo + material + contexto), sem isolamento estrutural contra conteúdo
+malicioso no material (achado já registrado, Atualização 1.32 §3, não resolvido). Auditoria de
+pontos de log em OUTROS agentes (fora do caminho síncrono do Radar) não foi feita — só o ponto de
+origem compartilhado (`completionEngine.ts`) foi saneado.
+
+### Recursos temporários criados e removidos
+
+Container Docker `radar-governed-unit-pg` (Postgres descartável, porta 5437, recriado uma vez com
+`max_connections=300` após o achado de infraestrutura): criado, usado, removido ao final. Symlinks
+`__tests__/node_modules` (radarSocial e signalForward): criados, usados, removidos ao final.
+`eiah-postgres` (serviço preexistente) permaneceu intocado. `packages/core/dist` foi reconstruído
+duas vezes (baseline revertida, depois estado final) — artefato inteiramente ignorado pelo Git,
+sem risco de alteração rastreada indesejada.
+
+### Classificação
+
+- **Implementado e testado**: `RadarProviderCallSlot`, migração, `radarGovernedExecutionService.ts`
+  completo, extensão de `retries` no Core, saneamento de log na origem, extensão de
+  `GenerationConfig`, todos os 10 testes de aceite com transporte substituído.
+- **Simulado, nunca real**: toda chamada "ao provedor" continua sendo o duplo de teste — nenhuma
+  chamada de rede em nenhum teste.
+- **Dependência operacional futura**: agente real provisionado; integração com o billing
+  compartilhado para uma garantia global de orçamento; isolamento estrutural de conteúdo no
+  prompt; qualquer rota/fila/worker de produção; piloto real (Atualização 1.32 §"proposta de
+  piloto real").
+
+Esta atualização não amplia a autorização concedida — só documenta o que foi efetivamente
+entregue sob o texto da Atualização 1.32. As duas políticas pendentes desde a Atualização 1.25
+(recuperação administrativa; garantia global de orçamento entre agentes) continuam pendentes, não
+resolvidas por este pacote.
+
+### Revisão curta pós-entrega (18/09/2026) — dois achados comprovados, corrigidos
+
+Sem repetir as suítes completas nem criar commit novo (ainda em cima do mesmo marco
+`1d5a3910dc9d9de87fb935b84b5f256f3bac8a1d`). Dois achados reais, encontrados por releitura crítica
+do código já entregue, ambos corrigidos:
+
+1. **Janela não atômica real**: `runGovernedAnalysis` criava o `Run` e só DEPOIS vinculava
+   `runId` à tentativa, em duas escritas separadas — se a segunda falhasse isoladamente (ex.: erro
+   de rede pontual entre as duas chamadas), o `Run` ficaria órfão, criado mas nunca vinculado, e a
+   vaga de concorrência seria liberada sem esse vínculo existir. Corrigido: as duas escritas agora
+   acontecem na mesma transação em `radarGovernedExecutionService.ts`.
+2. **Asserção vazia por vacuidade, não por verificação**: o teste de confidencialidade checava
+   ausência de conteúdo em `RunEvent.payload` iterando sobre uma lista que esta implementação
+   nunca popula (`runGovernedAnalysis` não chama `emitRunEvent` em nenhum ponto — só
+   `apps/api/src/routes/agents.ts`, que este caminho não atravessa, faz isso). A checagem passava
+   sempre, mas não provava nada. Corrigido: o teste agora afirma explicitamente
+   `events.length === 0` e documenta por quê, tornando a ausência de `RunEvent` uma verificação
+   real, não um acidente de teste vazio.
+
+Verificação: reexecutado só `J-governed-execution.test.ts` (10/10, sem regressão) e o typecheck
+incremental (431, diff vazio contra o estado anterior) — não as suítes completas de `radarSocial`
+nem de `signalForward`, por não haver necessidade concreta demonstrada de tocar nada fora do
+arquivo corrigido. Também considerado e DESCARTADO como defeito: `occupyProviderCallSlot`, ao
+encontrar uma vaga já `"released"` para a mesma tentativa, não a reativa — comportamento
+fail-closed, e inalcançável pelo fluxo real (`claimAttempt` já exige `status='pending'` antes,
+o que uma tentativa com vaga liberada nunca mais é) — só documentado com mais precisão no código,
+sem mudança de comportamento.
+
+### Fechamento verificado da execução governada local (18/09/2026) — quatro garantias conferidas, um achado adicional comprovado e corrigido
+
+Rodada de fechamento curto, sem ampliar escopo, sem commit, sobre o mesmo marco
+`1d5a3910dc9d9de87fb935b84b5f256f3bac8a1d` (branch `experiment/signalforward-origin-fingerprint-fix`,
+worktree `/home/jusall/projects/EIAH_SIGNALFORWARD_ORIGIN_FIX`). Objetivo: verificar quatro
+garantias específicas com evidência real, corrigindo só defeito comprovado.
+
+**Garantia A — criação do Run e associação à tentativa são atômicas.**
+Arquivo/símbolo: `radarGovernedExecutionService.ts`, `createAndLinkGovernedRun` (extraída nesta
+rodada de dentro de `runGovernedAnalysis`). Achado real: a escrita de vínculo
+(`tx.radarAnalysisAttempt.updateMany({..., data: {runId}})`) nunca conferia `count` — diferente do
+padrão já estabelecido no mesmo pacote (`preserveResult`/`concludeAttempt` em
+`radarAnalysisAttemptService.ts`, que sempre condicionam a escrita a `claim_token`+`status`+TTL e
+tratam `affected === 0` como motivo de abortar a transação inteira). Sob uma posse invalidada entre
+o checkpoint e esta escrita (ex.: reclaim concorrente após expiração de lease durante a espera da
+trava consultiva de `occupyProviderCallSlot`), a versão anterior deste código teria COMMITADO um
+`Run` criado sem vínculo confirmado, sem detectar nada. Corrigido: `createAndLinkGovernedRun` agora
+usa `$executeRaw` condicionado a `claim_token = ... AND status = 'running' AND clock_timestamp() <
+claimed_at + TTL`, e lança `RadarAnalysisAttemptConflictError("governed_dispatch_run_link_lost_claim")`
+se `affected !== 1`, desfazendo a transação inteira (o `Run` recém-criado também é revertido pelo
+ROLLBACK). Teste novo (não existia antes desta rodada): "associação Run↔tentativa é atômica: posse
+obsoleta na escrita de vínculo desfaz a transação inteira, zero Run órfão" — reclama a tentativa
+com um segundo `workerId` depois de expirar a lease do primeiro claim (mesma técnica de backdating
+já usada no teste "perda de posse sem liberação indevida"), chama `createAndLinkGovernedRun`
+diretamente com o `claimToken` agora obsoleto, confirma a rejeição pelo `reasonCode` exato, confirma
+`attempt.runId === null` depois, e varre todos os `Run` do tenant/workspace por
+`radarAnalysisAttemptId` para confirmar que nenhum ficou órfão. Resultado: PASS. Limitação: o teste
+força a posse obsoleta por manipulação direta do banco (mesma técnica já usada no pacote), não por
+uma espera real cronometrada — não há teste de carga que produza a janela naturalmente.
+
+**Garantia B — conteúdo protegido não aparece nas superfícies genéricas envolvidas.**
+Arquivo/símbolo: `radarGovernedExecutionService.ts` (payload opaco do `Run.request`/`Run.response`,
+`toSafeErrorFields` de `completionEngine.ts`). Testes existentes (sem necessidade de teste novo):
+"resultado desconhecido bloqueando repetição" (marcador sintético sensível ausente de
+`Run.response` após erro do transporte) e "confidencialidade" (material, objetivo e
+resumo/recomendação ausentes de `Run.request`/`Run.response` numa leitura genérica, e — desde a
+revisão anterior — `RunEvent` explicitamente confirmado como vazio, não uma checagem vazia por
+acidente). Superfícies cobertas: `Run.request`, `Run.response`, `RunEvent.payload` (vazio, coberto
+por construção), e o log de origem do erro (`completionEngine.ts`, via `toSafeErrorFields`, testado
+isoladamente no teste "saneamento de erro"). Superfícies **não** cobertas por nenhum teste desta
+unidade, registradas como ausência, não como ausência de risco: logs de aplicação fora do ponto de
+origem do Core (nenhuma auditoria feita nesta ou em rodadas anteriores); qualquer rota HTTP
+genérica de leitura de `Run` (`GET /runs/:id` em si não foi exercitada — o teste lê via Prisma
+diretamente, forma equivalente mas não idêntica à rota real); mensagens de erro não capturadas por
+`toSafeErrorFields` (ex.: se `runCompletion` lançar algo que não seja um objeto com as chaves
+esperadas, o comportamento de fallback-para-`null` já é testado, mas não há teste com um erro que
+tente poluir campos com JSON aninhado profundo). **Correção de redação (18/09/2026):** "zero
+`RunEvent`" comprova só a ausência de eventos NESTE caminho específico (`runGovernedAnalysis` nunca
+chama `emitRunEvent`) — não comprova, e nunca comprovou, confidencialidade de todas as superfícies
+do sistema. Resultado: PASS estritamente nos campos e superfícies efetivamente testados
+(`Run.request`, `Run.response`, ausência de `RunEvent` neste caminho, `toSafeErrorFields` isolado).
+Não testados, apenas inspecionados por leitura de código (o desenho do payload opaco foi lido, não
+exercitado por um teste que tente extrair conteúdo por um campo não previsto): qualquer campo de
+`Run`/`RunEvent` fora dos citados. Não exercitados de forma alguma: a rota HTTP genérica de leitura
+de `Run` (`GET /runs/:id` real) e logs de aplicação fora do ponto de origem do Core. Este resultado
+não deve ser lido como "confidencialidade comprovada" em sentido amplo — é uma conclusão limitada
+às superfícies e aos testes citados.
+
+**Garantia C — autorização e posse são verificadas após eventual espera, antes do envio.**
+**CORRIGIDO na rodada seguinte (18/09/2026) — ver a seção "Correção da autorização pós-espera"
+abaixo. O texto original desta garantia, preservado a seguir para histórico, tratou "posse
+revalidada" como equivalente a "autorização revalidada" — são dimensões distintas, e a rodada
+seguinte comprovou que só a primeira estava de fato coberta pela correção de então.**
+
+Texto original (rodada de 18/09/2026, "fechamento verificado"): Arquivo/símbolo:
+`assertReadyForGovernedDispatch` (checkpoint original) + `createAndLinkGovernedRun` (re-checagem
+nova daquela rodada). Ordem real confirmada por leitura de `runGovernedAnalysis`: `claimAttempt` →
+`assertReadyForGovernedDispatch` (autorização de identidade/escopo, acesso à entidade, habilitação
+do agente, posse via leitura de confirmação, permissão de conteúdo) → busca do material →
+`occupyProviderCallSlot` (única espera potencialmente longa do caminho: `pg_advisory_xact_lock` sob
+contenção de outro tenant/workspace, `maxWait: 5000`) → `createAndLinkGovernedRun` (RE-verifica
+`claim_token`+`status`+TTL, condicionando a própria escrita de vínculo do Run) → `callCompletion`
+(envio). Concluído então: "PASS para o intervalo entre claim e envio" — **conclusão incompleta**:
+`claim_token`/`status`/TTL medem só POSSE (quem seguraria o trabalho e até quando), nunca
+AUTORIZAÇÃO (se a operação continua permitida — acesso à entidade, membership, escopo, habilitação
+do agente). A re-checagem de então cobria exclusivamente posse; uma revogação real do grant
+`analyze` durante a espera de `occupyProviderCallSlot` não era detectada, e o transporte ainda era
+chamado — comprovado por teste na rodada seguinte, com a posse permanecendo válida o cenário
+inteiro (ver abaixo). Nunca prometido, e isso permanece verdadeiro: revogação retroativa depois que
+o envio já começou.
+
+**Garantia D — a vaga só é liberada após desfecho durável ou falha comprovadamente anterior ao envio.**
+Arquivo/símbolo: `occupyProviderCallSlot`/`releaseProviderCallSlot` em
+`radarGovernedExecutionService.ts`. Pontos de liberação no código, ambos já existentes (nenhuma
+mudança nesta rodada): (1) `catch (preDispatchError)` ao redor de `createAndLinkGovernedRun` — só
+alcançável quando `callCompletion` nunca foi chamado (a chamada acontece depois, fora deste bloco);
+teste "resultado desconhecido bloqueando repetição" confirma o caminho SIMÉTRICO — quando o erro
+vem DEPOIS do envio (dentro do try do `callCompletion`), a vaga NÃO é liberada, a tentativa
+permanece `running`, e uma tentativa de concluir diretamente é rejeitada sem nova chamada ao
+transporte. (2) Depois de `preserveResult` bem-sucedido (resultado durável persistido) — teste
+"exatamente um envio ao transporte" confirma `status === "released"` só depois disso, e teste
+"recuperação sem novo envio" confirma que retomar a conclusão a partir do resultado já preservado
+não ocupa nova vaga nem chama o transporte de novo. Timeout/perda de posse nunca libera: teste
+"perda de posse sem liberação indevida" confirma que um `reclaimExpiredAttempt` (perda de posse por
+expiração) não altera o status da vaga. Memória isolada não é suficiente: não há caminho no código
+que libere a vaga sem uma escrita persistida antes (`preserveResult` ou o
+`RadarAnalysisAttemptConflictError` pré-envio) — não há liberação baseada em variável em memória.
+Resultado: PASS, sem teste novo necessário (cobertura já suficiente da rodada anterior).
+
+**Tabela-resumo:**
+
+| Garantia | Arquivo/símbolo | Teste existente | Resultado | Limitação |
+|---|---|---|---|---|
+| A — atomicidade Run↔tentativa | `createAndLinkGovernedRun` (novo, extraído nesta rodada) | Novo: "associação Run↔tentativa é atômica..." | PASS (achado real corrigido) | Posse obsoleta simulada por manipulação direta do banco, não por espera cronometrada real |
+| B — confidencialidade nas superfícies genéricas | `Run.request`/`Run.response`/`RunEvent`, `toSafeErrorFields` | "resultado desconhecido...", "confidencialidade", "saneamento de erro" | PASS nas superfícies testadas | Logs fora da origem do Core e a rota HTTP genérica de leitura não foram exercitados |
+| C — posse revalidada após espera, antes do envio | `assertReadyForGovernedDispatch` + `createAndLinkGovernedRun` | Novo teste da Garantia A (mesma rejeição) | **SUPERADO — via só posse, não autorização; ver correção de 18/09/2026 abaixo** | Sem cancelamento retroativo de um envio já em curso (limitação preexistente, não desta unidade) |
+| D — liberação só após desfecho durável/falha pré-envio | `occupyProviderCallSlot`/`releaseProviderCallSlot` | "exatamente um envio...", "recuperação sem novo envio", "perda de posse...", "resultado desconhecido..." | PASS | Nenhuma — cobertura já suficiente, sem teste novo necessário |
+
+**Testes executados nesta rodada:** só `J-governed-execution.test.ts` (não as suítes completas de
+`radarSocial`/`signalForward`, sem necessidade concreta demonstrada de tocar código fora deste
+arquivo) — 11/11 (10 anteriores + 1 novo), banco descartável PostgreSQL efêmero
+(`radar-closure-review-pg`, `pgvector/pgvector:pg16`, porta 5439, `max_connections=300`, removido
+ao final), dados sintéticos, sem chamada real a modelo em nenhum teste.
+
+**Typecheck:** `tsc --noEmit -p apps/api/tsconfig.json`, TypeScript 5.9.3, mesma instalação local.
+Baseline reconstruída SEM alterar os arquivos originais do worktree — cópia temporária via
+`cp -al` (hardlink, ~699 MB, ~15s) do worktree inteiro para `/tmp/.../scratchpad/before-copy-parent`,
+os dois arquivos alterados nesta rodada sobrescritos SÓ na cópia com o conteúdo exatamente anterior
+a esta rodada, typecheck rodado dentro da cópia, cópia removida ao final — o worktree original nunca
+foi tocado (confirmado por inode distinto entre live e cópia antes da sobrescrita, e por
+`git status --short` idêntico antes/depois). 431 diagnósticos antes, 431 depois; listas completas
+(incluindo linhas de contexto "The file is in the program because") byte a byte IDÊNTICAS após
+normalizar só o prefixo de caminho absoluto de cada execução (a cópia e o worktree ficam em
+caminhos absolutos diferentes; os textos de diagnóstico ficam idênticos depois de remover esse
+prefixo). Classificação: 431 preexistentes, 0 novos, 0 resolvidos, 0 com contexto alterado, 0
+indeterminados. `packages/core` não precisou de rebuild nesta rodada (nenhuma mudança de fonte no
+Core desde a rodada anterior).
+
+**Arquivos alterados desde o marco** (`1d5a3910dc9d9de87fb935b84b5f256f3bac8a1d`, 12 caminhos, iguais
+aos já listados na Atualização 1.33) **e especificamente nesta rodada de fechamento** (2 caminhos):
+`apps/api/src/services/radarSocial/radarGovernedExecutionService.ts` (nova função exportada
+`createAndLinkGovernedRun`, chamada substituindo a transação antes inline em `runGovernedAnalysis`)
+e `apps/api/src/services/radarSocial/__tests__/J-governed-execution.test.ts` (um teste novo, um
+import novo). Evidência Git literal (branch, HEAD, status, diff --stat, diff --check, ls-files
+--others, diff --cached --stat) coletada e conferida: HEAD permanece
+`1d5a3910dc9d9de87fb935b84b5f256f3bac8a1d`; `git diff --check` sai com código 0 (nenhum erro de
+espaço em branco); `git diff --cached --stat` vazio (nada staged). Nenhum commit criado nesta
+rodada — essa decisão permanece separada, não solicitada nem executada aqui.
+
+**Limitações remanescentes** (sem mudança em relação à Atualização 1.33, reafirmadas): nenhum
+agente real provisionado; controle de concorrência protege só as tentativas do Radar entre si,
+nunca o orçamento compartilhado do workspace; sem isolamento estrutural do prompt contra conteúdo
+malicioso no material; sem cancelamento retroativo de um envio em curso; auditoria de log restrita
+ao ponto de origem do Core, não a outros agentes.
+
+**Veredito (18/09/2026, PARCIALMENTE SUPERADO — ver a seção seguinte):** as quatro garantias pedidas
+nesta rodada estão verificadas com evidência real e testes que as exercitam diretamente (um achado
+adicional comprovado e corrigido na Garantia A, com efeito colateral positivo sobre a Garantia C). A
+unidade local de execução governada com transporte substituído — checkpoint pré-envio, controle de
+concorrência persistido, atomicidade Run↔tentativa, proteção de conteúdo nas superfícies testadas —
+pode ser considerada FECHADA nestes termos, sob as limitações explicitamente listadas acima (nenhuma
+delas nova; nenhuma alegação de proteção de orçamento compartilhado, qualidade de modelo real, ou
+operação para clientes). Um novo commit cobrindo esta rodada de fechamento é uma decisão separada,
+não solicitada aqui.
+
+**Nota da rodada seguinte (18/09/2026):** este veredito tratou a Garantia C como fechada com base
+exclusivamente na re-checagem de POSSE (`claim_token`/`status`/TTL) feita em
+`createAndLinkGovernedRun`. Uma rodada de conferência seguinte, focada especificamente em distinguir
+posse de autorização, comprovou por teste que essa re-checagem NÃO detecta uma revogação real do
+grant de acesso à entidade durante a mesma espera — o transporte ainda era chamado. A Garantia C só
+passou a estar de fato coberta depois da correção descrita na seção abaixo. As Garantias A, B e D
+permanecem como descritas nesta seção (B com uma correção de redação, não de comportamento — ver
+abaixo).
+
+### Correção da autorização pós-espera (18/09/2026) — achado real comprovado e corrigido, distinto de posse
+
+Rodada de conferência curta, sem reabrir desenho, controle financeiro ou outras unidades, sobre o
+mesmo marco `1d5a3910dc9d9de87fb935b84b5f256f3bac8a1d`. Objetivo único: conferir se "posse
+revalidada após espera" (Garantia C anterior) também cobria "autorização revalidada após espera" —
+a rodada anterior tratou as duas como a mesma coisa; não são.
+
+**Achado real, reproduzido antes da correção.** `claim_token`/`status`/TTL medem exclusivamente
+POSSE — quem detém o direito de agir sobre a tentativa e até quando. Não substituem AUTORIZAÇÃO:
+acesso à entidade (`RadarEntityAccessGrant`), membership (`TenantMembership`), escopo
+(`checkScopePermission`) e habilitação do agente (`WorkspaceAgentAssignment`). Em
+`runGovernedAnalysis`, a única espera potencialmente longa do caminho é a trava consultiva de
+`occupyProviderCallSlot` (`pg_advisory_xact_lock`, sob contenção real de outro tenant/workspace). A
+correção da rodada anterior (`createAndLinkGovernedRun`) revalida posse IMEDIATAMENTE depois dessa
+espera — mas nunca revalidava autorização. Reproduzido antes de qualquer correção: com a posse
+válida o cenário inteiro (mesmo `claimToken`, sem expiração, sem reclaim), revogando o grant
+`analyze` do solicitante DURANTE a espera real da vaga, o transporte substituto ainda era chamado
+(`calls.length === 1`) — a análise prosseguia como se nada tivesse mudado. Teste de regressão
+rodado contra o código anterior a esta correção, falhando exatamente nesse ponto (evidência abaixo).
+
+**Correção mínima e localizada.** `radarGovernedExecutionService.ts`, dentro de
+`runGovernedAnalysis`: depois de `occupyProviderCallSlot` (a espera real) e antes de
+`createAndLinkGovernedRun`/`callCompletion` (qualquer efeito colateral real), passou a chamar de
+novo — a mesma função, sem lógica nova — `assertReadyForGovernedDispatch` (a função já usada ANTES
+da espera). Essa função, por construção já existente, revalida em conjunto: `assertRadarSocialOperationAuthorized`
+(membership + escopo), o resolvedor de acesso à entidade (`operation: "analyze"`),
+`assertWorkspaceAgentEnabled` (habilitação do agente), a posse (leitura de confirmação de
+`claim_token`/`status`/TTL) e a permissão de conteúdo (`llmUsageMode`). O resultado dessa segunda
+chamada (`readyBeforeDispatch`) passou a ser o usado para criar/vincular o Run e montar a mensagem
+enviada ao transporte — nunca mais o resultado da checagem anterior à espera. Nenhuma lógica de
+autorização nova foi escrita: a correção é reaproveitar a função inteira de novo, no ponto certo.
+
+**Teste de regressão.** "autorização revogada durante a espera REAL pela vaga é recusada antes do
+envio: zero chamadas ao transporte, zero recomendação, vaga liberada, nenhum Run"
+(`J-governed-execution.test.ts`). Usa grants PERSISTIDOS reais (o grant `analyze` é concedido de
+verdade na criação da entidade, revogado de verdade por `revokeRadarEntityAccess`, cuja transação é
+confirmada pelo retorno resolvido `{revoked: true}` antes de prosseguir) e transporte substituto
+(nunca rede real). Coordenação SEM sleeps como prova de sincronização, com duas barreiras reais: (1)
+`holdProviderCallSlotAdvisoryLock` (novo helper de teste) adquire a MESMA trava consultiva
+(`pg_advisory_xact_lock(hashtext('radar_provider_call_slot'), hashtext(tenantId:workspaceId))`, chave
+idêntica à de produção) numa conexão dedicada, e só libera a chamada de teste depois de confirmar
+por SQL que a trava foi de fato obtida; (2) o teste então dispara `runGovernedAnalysis` numa
+segunda conexão e usa `waitFor`/`observeConnectionState` (idioma já estabelecido no pacote, via
+`pg_stat_activity.wait_event_type`) para esperar deterministicamente até essa segunda conexão estar
+genuinamente bloqueada por uma trava — só então revoga o grant e só então libera a trava do
+bloqueador. O teste falha por autorização revogada (`RadarKnownEntityNotFoundError`, `reasonCode
+"radar_entity_access_access_denied"`), nunca por expiração de TTL ou perda de posse — a posse
+(`claimToken`) permanece válida o cenário inteiro, nunca tocada.
+
+Evidência antes/depois: reproduzido primeiro contra o código sem a correção —
+`calls.length === 1` (falha: `1 !== 0` no assert "zero chamadas ao transporte"), confirmando o
+achado. Depois da correção: `ok` — `calls.length === 0`, nenhuma `RadarRecommendation` criada,
+`radar_analysis_attempts.run_id` permanece `null` (nenhum Run criado — a falha ocorre ANTES de
+`createAndLinkGovernedRun`), `radar_analysis_attempts.status` permanece `"running"` (recusa
+pré-envio não escreve desfecho), e `RadarProviderCallSlot.status === "released"` (tratada pelo MESMO
+`catch (preDispatchError)` já existente — falha comprovadamente anterior ao envio, único caso de
+liberação automática). Executado isoladamente 4 vezes seguidas depois da correção, sem flakiness.
+Suíte completa do arquivo reexecutada: 12/12 (11 anteriores + 1 novo), sem regressão.
+
+**Controles do checkpoint reavaliados após a espera — o que tem teste direto e o que não tem.** Por
+leitura focalizada de `assertReadyForGovernedDispatch`, a segunda chamada reavalida TODOS os
+controles que a função já fazia: membership+escopo, acesso à entidade, habilitação do agente, posse
+e permissão de conteúdo. Só o acesso à entidade (`analyze`) tem um teste dedicado que força uma
+revogação REAL durante a espera real — os outros três (membership, escopo, habilitação do agente)
+são reavaliados PELA MESMA chamada de função, por construção, mas não têm um cenário de teste
+próprio que revogue especificamente cada um deles durante a espera. Isso é registrado aqui como o
+que é: reavaliação comprovada por leitura de código e por uma chamada de função idêntica à já
+testada antes da espera, não uma alegação de cobertura de teste para os três controles não
+exercitados diretamente.
+
+**O que esta correção NÃO promete.** Não elimina toda janela entre a última verificação e o envio de
+rede — entre o retorno de `createAndLinkGovernedRun` (que já embute a revalidação) e a chamada real
+de `callCompletion` não há nenhum outro `await` com efeito colateral, mas o envio de rede em si não
+é instantâneo; uma revogação exatamente durante o envio de rede não é, e não poderia ser,
+interrompida retroativamente por esta arquitetura (mesma limitação já registrada para o pacote A,
+Atualização 1.24, seção 4 — revogação é sempre prospectiva, nunca desfaz o que já foi produzido).
+
+### Esclarecimento do procedimento de baseline por hardlink (rodada de 18/09/2026, sobre o procedimento da rodada anterior)
+
+A rodada anterior ("Fechamento verificado...") reconstruiu a baseline "antes desta rodada" assim:
+`cp -al` do worktree inteiro para um diretório temporário (hardlinks — mesmos inodes do worktree ao
+vivo para TODOS os arquivos, incluindo os dois que seriam sobrescritos), depois usou a ferramenta de
+escrita para sobrescrever, SÓ NA CÓPIA, o conteúdo dos dois arquivos alterados naquela rodada com o
+conteúdo anterior a ela. A verificação feita então comparou o inode do arquivo ao vivo com o da
+cópia DEPOIS da sobrescrita, encontrando inodes diferentes, e concluiu isolamento a partir disso.
+
+**Lacuna real desse procedimento, reconhecida aqui:** o inode da cópia não foi capturado ANTES da
+sobrescrita — só depois. Um inode diferente observado só ao final é consistente com uma escrita
+segura (arquivo novo criado e o hardlink substituído), mas TAMBÉM seria consistente, em tese, com uma
+ferramenta que escrevesse em posição (truncate + write) no MESMO inode compartilhado e só depois
+recriasse o arquivo — nesse caso, o arquivo ao vivo teria sido brevemente ou definitivamente mutado
+pelo hardlink compartilhado, e o inode "diferente ao final" não teria detectado isso. Não há, na
+evidência daquela rodada, uma captura do inode/hash do arquivo AO VIVO imediatamente antes e
+imediatamente depois da sobrescrita na cópia — só a comparação entre os dois caminhos (vivo vs
+cópia) depois do fato. Evidência indireta de que nada deu errado: o conteúdo do arquivo ao vivo, lido
+no início desta rodada, era exatamente o esperado (a correção da rodada anterior estava presente,
+intacta, sem sinal de reversão), e nenhuma anomalia apareceu em `git status`/`git diff` entre as
+rodadas. Isso é uma evidência razoável, mas não é a prova direta que o método deveria ter produzido
+desde o início — por isso esta rodada usa um procedimento diferente e mais rigoroso, descrito abaixo,
+e esta lacuna fica registrada como limitação metodológica da rodada anterior, não como um incidente
+comprovado.
+
+Nenhum comando de build (`pnpm run build`, `prisma generate`, etc.) foi executado dentro daquela
+cópia — só o teste desta verificação (`tsc --noEmit`), que não escreve nenhum artefato. Não há,
+portanto, risco de um comando de build ter escrito em `dist/` ou em qualquer artefato ainda
+compartilhado por hardlink entre a cópia e o worktree ao vivo naquela rodada especificamente
+(rodadas anteriores, mais antigas, que reconstruíam a baseline do Core via `git checkout --`
+diretamente no worktree — método diferente, já documentado — de fato reconstruíam `packages/core/dist`
+no próprio worktree ao vivo, mas sempre restaurando o estado final antes de prosseguir, nunca via
+hardlink).
+
+**Procedimento corrigido, usado nesta rodada para a comparação de typecheck acima:** (1) capturado
+inode + SHA-256 dos três arquivos tocados nesta rodada, no worktree AO VIVO, ANTES de qualquer cópia;
+(2) `cp -al` do worktree inteiro para uma cópia nova; (3) confirmado que os três arquivos na cópia
+têm o MESMO inode do vivo (hardlink real); (4) `rm` explícito de cada um desses três caminhos DENTRO
+DA CÓPIA, com `stat` confirmando `ENOENT` — o hardlink fica genuinamente quebrado, o caminho deixa de
+existir, antes de qualquer escrita; (5) conteúdo "anterior a esta rodada" gravado nesses três
+caminhos agora vazios, reconstruído por REVERSÃO EXATA das próprias edições desta rodada (não por
+transcrição manual — um script aplicou a substituição inversa exata de cada trecho alterado,
+conferida por `diff` linha a linha contra o arquivo ao vivo); (6) inode da cópia, depois da escrita,
+confirmado DIFERENTE do inode do vivo (novo arquivo, sem relação de hardlink); (7) inode + SHA-256
+dos três arquivos AO VIVO capturados de novo, DEPOIS de todo o procedimento, e comparados byte a byte
+com a captura do passo (1) — IDÊNTICOS. Este último passo é a diferença metodológica central: em vez
+de inferir isolamento a partir de inodes diferentes vistos só ao final na cópia, este procedimento
+PROVA diretamente, pelo lado do arquivo ao vivo, que ele nunca mudou — independentemente de como a
+ferramenta de escrita implementa internamente a gravação na cópia. Nenhum comando de build foi
+executado em nenhuma das duas árvores nesta comparação.
+
+**Typecheck desta rodada:** `tsc --noEmit -p apps/api/tsconfig.json`, TypeScript 5.9.3. 431
+diagnósticos antes (cópia, conteúdo pré-correção desta rodada), 431 depois (worktree ao vivo, com a
+correção). Listas completas byte a byte IDÊNTICAS após normalizar o prefixo de caminho absoluto de
+cada execução (cópia vs vivo ficam em raízes absolutas diferentes). Classificação: 431 preexistentes,
+0 novos, 0 resolvidos, 0 com contexto alterado, 0 indeterminados. Este resultado é específico às
+mudanças desta rodada — permanece separado, como sempre, de uma "aprovação global" do typecheck do
+monorepo (431 diagnósticos preexistentes continuam lá, não avaliados nem reclassificados por esta
+rodada).
+
+**Testes executados nesta rodada:** só o teste de regressão novo e, por precaução, o arquivo
+`J-governed-execution.test.ts` inteiro (12/12) — não as suítes completas de `radarSocial`/
+`signalForward`, sem risco concreto identificado que justificasse tocar código fora deste arquivo.
+Banco descartável PostgreSQL efêmero (`radar-authz-review-pg`, `pgvector/pgvector:pg16`, porta 5440,
+`max_connections=300`, removido ao final), dados sintéticos, sem chamada real a modelo, sem rede.
+Symlinks `__tests__/node_modules` (radarSocial e signalForward) recriados juntos e removidos ao
+final.
+
+**Arquivos alterados nesta rodada especificamente** (3 caminhos, além da própria documentação):
+`apps/api/src/services/radarSocial/radarGovernedExecutionService.ts` (segunda chamada a
+`assertReadyForGovernedDispatch` depois da espera, resultado renomeado `readyBeforeDispatch` e usado
+daí em diante); `apps/api/src/services/radarSocial/__tests__/J-governed-execution.test.ts` (um teste
+novo, três imports novos); `apps/api/src/services/radarSocial/__tests__/helpers.ts` (um helper de
+teste novo, `holdProviderCallSlotAdvisoryLock`, mesma técnica de `holdEntityRowLock`/
+`holdAttemptRowLock` já existentes).
+
+**Limitações remanescentes** (sem mudança de fundo, reafirmadas): nenhum agente real provisionado;
+controle de concorrência protege só as tentativas do Radar entre si; sem isolamento estrutural do
+prompt; sem cancelamento retroativo de um envio em curso; auditoria de log restrita à origem do
+Core; membership/escopo/habilitação do agente reavaliados após a espera por construção (mesma
+função), não por teste dedicado a cada um.
+
+**Veredito desta rodada:** o achado é real, reproduzido antes da correção e resolvido depois dela,
+com evidência de teste antes/depois e execução estável. A Garantia C, tal como definida nesta
+frente ("autorização E posse verificadas após espera, antes do envio"), agora está de fato coberta
+para a dimensão de acesso à entidade, com as três dimensões restantes (membership, escopo,
+habilitação do agente) reavaliadas pela mesma chamada mas sem teste dedicado individual — registrado
+como tal, não como lacuna oculta. A correção do baseline por hardlink desta rodada é estritamente
+mais rigorosa que a da rodada anterior, com prova direta (não inferida) de que o worktree ao vivo
+nunca foi alterado. Nenhum commit foi criado — decisão separada, não solicitada aqui.

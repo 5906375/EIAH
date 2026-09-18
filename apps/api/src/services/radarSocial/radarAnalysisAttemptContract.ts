@@ -128,6 +128,13 @@ export interface GenerationConfig {
   requestedMaxTokens: number;
   promptTemplateVersion: string;
   knowledgePolicySnapshot: KnowledgePolicySnapshot;
+  // Identidade do agente para assertWorkspaceAgentEnabled no checkpoint
+  // pré-envio da execução governada (Atualização 1.29-1.32 do plano) —
+  // ausentes/null quando a análise não passa (ainda) pelo caminho real.
+  // Nenhum agente real é provisionado por esta unidade; presença aqui é só
+  // um rótulo de configuração, nunca uma concessão de acesso.
+  agentKey: string | null;
+  agentVersion: string | null;
 }
 
 const GENERATION_CONFIG_FIELDS = [
@@ -136,6 +143,8 @@ const GENERATION_CONFIG_FIELDS = [
   "requestedMaxTokens",
   "promptTemplateVersion",
   "knowledgePolicySnapshot",
+  "agentKey",
+  "agentVersion",
 ] as const;
 const KNOWLEDGE_POLICY_SNAPSHOT_FIELDS = ["llmUsageMode", "provenancePolicy", "maskingPolicy"] as const;
 
@@ -164,6 +173,8 @@ const GENERATION_CONFIG_INPUT_FIELDS = [
   "requestedMaxTokens",
   "promptTemplateVersion",
   "knowledgePolicySnapshot",
+  "agentKey",
+  "agentVersion",
 ] as const;
 
 export function resolveGenerationConfig(input: {
@@ -171,6 +182,8 @@ export function resolveGenerationConfig(input: {
   requestedMaxTokens?: unknown;
   promptTemplateVersion: unknown;
   knowledgePolicySnapshot: unknown;
+  agentKey?: unknown;
+  agentVersion?: unknown;
 }): GenerationConfig {
   if (!isPlainObject(input)) {
     throw new RadarAnalysisAttemptError("generation_config_field_wrong_type", { field: "generationConfigInput" });
@@ -219,6 +232,21 @@ export function resolveGenerationConfig(input: {
     throw new RadarAnalysisAttemptError("generation_config_field_wrong_type", { field: "knowledgePolicySnapshot.maskingPolicy" });
   }
 
+  let agentKey: string | null = null;
+  if (input.agentKey !== undefined && input.agentKey !== null) {
+    if (typeof input.agentKey !== "string" || input.agentKey.trim().length === 0) {
+      throw new RadarAnalysisAttemptError("generation_config_field_wrong_type", { field: "agentKey" });
+    }
+    agentKey = input.agentKey;
+  }
+  let agentVersion: string | null = null;
+  if (input.agentVersion !== undefined && input.agentVersion !== null) {
+    if (typeof input.agentVersion !== "string" || input.agentVersion.trim().length === 0) {
+      throw new RadarAnalysisAttemptError("generation_config_field_wrong_type", { field: "agentVersion" });
+    }
+    agentVersion = input.agentVersion;
+  }
+
   return {
     contractVersion: GENERATION_CONFIG_CONTRACT_VERSION,
     requestedModel: input.requestedModel,
@@ -229,6 +257,8 @@ export function resolveGenerationConfig(input: {
       provenancePolicy: provenancePolicy as KnowledgePolicySnapshot["provenancePolicy"],
       maskingPolicy: maskingPolicy as KnowledgePolicySnapshot["maskingPolicy"],
     },
+    agentKey,
+    agentVersion,
   };
 }
 
@@ -246,6 +276,8 @@ export function parseGenerationConfig(value: unknown): GenerationConfig {
     requestedMaxTokens: value.requestedMaxTokens,
     promptTemplateVersion: value.promptTemplateVersion,
     knowledgePolicySnapshot: value.knowledgePolicySnapshot,
+    agentKey: value.agentKey,
+    agentVersion: value.agentVersion,
   });
 }
 

@@ -79,6 +79,8 @@ export interface GenerationConfigInput {
   requestedMaxTokens?: unknown;
   promptTemplateVersion: unknown;
   knowledgePolicySnapshot: unknown;
+  agentKey?: unknown;
+  agentVersion?: unknown;
 }
 
 export interface CreateRadarAnalysisRequestParams extends OperationContext {
@@ -158,6 +160,8 @@ export async function createRadarAnalysisRequest(
         requestedMaxTokens: params.generationConfigInput.requestedMaxTokens,
         promptTemplateVersion: params.generationConfigInput.promptTemplateVersion,
         knowledgePolicySnapshot: params.generationConfigInput.knowledgePolicySnapshot,
+        agentKey: params.generationConfigInput.agentKey,
+        agentVersion: params.generationConfigInput.agentVersion,
       });
 
       const createdRequest = await tx.radarAnalysisRequest.create({
