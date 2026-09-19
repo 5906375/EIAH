@@ -59,109 +59,111 @@ enum PoUStatus {
 }
 
 model Tenant {
-  id                        String                      @id @default(cuid())
-  name                      String
-  createdAt                 DateTime                    @default(now()) @map("created_at")
-  updatedAt                 DateTime                    @updatedAt @map("updated_at")
-  apiTokens                 ApiToken[]
-  embeddingChunks           EmbeddingChunk[]
-  guardrailLedger           GuardrailLedger[]
-  memoryEvents              MemoryEvent[]
-  memorySnapshots           MemorySnapshot[]
-  runEvents                 RunEvent[]
-  runs                      Run[]
-  uploadedDocuments         UploadedDocument[]
-  users                     User[]
-  workspaces                Workspace[]
-  tenantActionPolicies      TenantActionPolicy[]
-  guardrailAuditLedger      GuardrailAuditLedger[]
-  sclLedger                 SclLedger[]
-  toolContracts             ToolContract[]
-  marketplaceItems          MarketplaceItem[]
-  delegationsAsOwner        DelegationPolicy[]          @relation("DelegatorTenant")
-  delegationsAsGuest        DelegationPolicy[]          @relation("DelegateeTenant")
-  agentTrustScores          AgentTrustScore[]
-  billingAccount            TenantBillingAccount?
-  quotaPolicy               TenantQuotaPolicy?
-  quotaUsages               TenantQuotaUsage[]
-  workspaceQuotaUsages      WorkspaceQuotaUsage[]
-  workspaceQuotaGrants      WorkspaceQuotaGrant[]
-  workspaceAgentAssignments WorkspaceAgentAssignment[]
-  runUsageBreakdowns        RunUsageBreakdown[]
-  billingLedgerEntries      BillingLedger[]
-  invoices                  TenantInvoice[]
-  helpdeskSessions          HelpdeskSession[]
-  productInstallations      TenantProductInstallation[]
-  runArchives               RunArchive[]
-  imobOwners                ImobOwner[]
-  imobProperties            ImobProperty[]
-  imobLeads                 ImobLead[]
-  imobCases                 ImobCase[]
-  imobCaseEvents            ImobCaseEvent[]
-  imobMarketScanRuns        ImobMarketScanRun[]
-  agentInstalls             AgentInstall[]
-  connectorInstances        ConnectorInstance[]
-  paymentIntents            PaymentIntent[]
-  signalForwardRequests     SignalForwardRequest[]
-  humanConfirmations        HumanConfirmation[]
-  radarKnownEntities        RadarKnownEntity[]
-  radarMaterials            RadarMaterial[]
-  radarAnalysisRequests     RadarAnalysisRequest[]
-  radarAnalysisAttempts     RadarAnalysisAttempt[]
-  radarRecommendations      RadarRecommendation[]
-  radarEntityAccessGrants   RadarEntityAccessGrant[]
-  radarProviderCallSlots    RadarProviderCallSlot[]
-  memberships               TenantMembership[]
-  customRoles               TenantCustomRole[]
-  walletIdentities          WalletIdentity[]
+  id                             String                          @id @default(cuid())
+  name                           String
+  createdAt                      DateTime                        @default(now()) @map("created_at")
+  updatedAt                      DateTime                        @updatedAt @map("updated_at")
+  apiTokens                      ApiToken[]
+  embeddingChunks                EmbeddingChunk[]
+  guardrailLedger                GuardrailLedger[]
+  memoryEvents                   MemoryEvent[]
+  memorySnapshots                MemorySnapshot[]
+  runEvents                      RunEvent[]
+  runs                           Run[]
+  uploadedDocuments              UploadedDocument[]
+  users                          User[]
+  workspaces                     Workspace[]
+  tenantActionPolicies           TenantActionPolicy[]
+  guardrailAuditLedger           GuardrailAuditLedger[]
+  sclLedger                      SclLedger[]
+  toolContracts                  ToolContract[]
+  marketplaceItems               MarketplaceItem[]
+  delegationsAsOwner             DelegationPolicy[]              @relation("DelegatorTenant")
+  delegationsAsGuest             DelegationPolicy[]              @relation("DelegateeTenant")
+  agentTrustScores               AgentTrustScore[]
+  billingAccount                 TenantBillingAccount?
+  quotaPolicy                    TenantQuotaPolicy?
+  quotaUsages                    TenantQuotaUsage[]
+  workspaceQuotaUsages           WorkspaceQuotaUsage[]
+  workspaceQuotaGrants           WorkspaceQuotaGrant[]
+  workspaceAgentAssignments      WorkspaceAgentAssignment[]
+  runUsageBreakdowns             RunUsageBreakdown[]
+  billingLedgerEntries           BillingLedger[]
+  invoices                       TenantInvoice[]
+  helpdeskSessions               HelpdeskSession[]
+  productInstallations           TenantProductInstallation[]
+  runArchives                    RunArchive[]
+  imobOwners                     ImobOwner[]
+  imobProperties                 ImobProperty[]
+  imobLeads                      ImobLead[]
+  imobCases                      ImobCase[]
+  imobCaseEvents                 ImobCaseEvent[]
+  imobMarketScanRuns             ImobMarketScanRun[]
+  agentInstalls                  AgentInstall[]
+  connectorInstances             ConnectorInstance[]
+  paymentIntents                 PaymentIntent[]
+  signalForwardRequests          SignalForwardRequest[]
+  humanConfirmations             HumanConfirmation[]
+  radarKnownEntities             RadarKnownEntity[]
+  radarMaterials                 RadarMaterial[]
+  radarAnalysisRequests          RadarAnalysisRequest[]
+  radarAnalysisAttempts          RadarAnalysisAttempt[]
+  radarRecommendations           RadarRecommendation[]
+  radarEntityAccessGrants        RadarEntityAccessGrant[]
+  radarProviderCallSlots         RadarProviderCallSlot[]
+  radarRecommendationEvaluations RadarRecommendationEvaluation[]
+  memberships                    TenantMembership[]
+  customRoles                    TenantCustomRole[]
+  walletIdentities               WalletIdentity[]
 
   @@map("tenants")
 }
 
 model Workspace {
-  id                        String                      @id @default(cuid())
-  tenantId                  String                      @map("tenant_id")
-  name                      String
-  createdAt                 DateTime                    @default(now()) @map("created_at")
-  updatedAt                 DateTime                    @updatedAt @map("updated_at")
-  apiTokens                 ApiToken[]
-  embeddingChunks           EmbeddingChunk[]
-  memoryEvents              MemoryEvent[]
-  memorySnapshots           MemorySnapshot[]
-  runEvents                 RunEvent[]
-  runs                      Run[]
-  uploadedDocuments         UploadedDocument[]
-  tenant                    Tenant                      @relation(fields: [tenantId], references: [id])
-  tenantActionPolicies      TenantActionPolicy[]
-  guardrailAuditLedger      GuardrailAuditLedger[]
-  sclLedger                 SclLedger[]
-  agentTrustScores          AgentTrustScore[]
-  workspaceQuotaUsages      WorkspaceQuotaUsage[]
-  workspaceQuotaGrants      WorkspaceQuotaGrant[]
-  workspaceAgentAssignments WorkspaceAgentAssignment[]
-  runUsageBreakdowns        RunUsageBreakdown[]
-  billingLedgerEntries      BillingLedger[]
-  helpdeskSessions          HelpdeskSession[]
-  productInstallations      TenantProductInstallation[]
-  runArchives               RunArchive[]
-  imobOwners                ImobOwner[]
-  imobProperties            ImobProperty[]
-  imobLeads                 ImobLead[]
-  imobCases                 ImobCase[]
-  imobCaseEvents            ImobCaseEvent[]
-  imobMarketScanRuns        ImobMarketScanRun[]
-  agentInstalls             AgentInstall[]
-  connectorInstances        ConnectorInstance[]
-  paymentIntents            PaymentIntent[]
-  signalForwardRequests     SignalForwardRequest[]
-  humanConfirmations        HumanConfirmation[]
-  radarKnownEntities        RadarKnownEntity[]
-  radarMaterials            RadarMaterial[]
-  radarAnalysisRequests     RadarAnalysisRequest[]
-  radarAnalysisAttempts     RadarAnalysisAttempt[]
-  radarRecommendations      RadarRecommendation[]
-  radarEntityAccessGrants   RadarEntityAccessGrant[]
-  radarProviderCallSlots    RadarProviderCallSlot[]
+  id                             String                          @id @default(cuid())
+  tenantId                       String                          @map("tenant_id")
+  name                           String
+  createdAt                      DateTime                        @default(now()) @map("created_at")
+  updatedAt                      DateTime                        @updatedAt @map("updated_at")
+  apiTokens                      ApiToken[]
+  embeddingChunks                EmbeddingChunk[]
+  memoryEvents                   MemoryEvent[]
+  memorySnapshots                MemorySnapshot[]
+  runEvents                      RunEvent[]
+  runs                           Run[]
+  uploadedDocuments              UploadedDocument[]
+  tenant                         Tenant                          @relation(fields: [tenantId], references: [id])
+  tenantActionPolicies           TenantActionPolicy[]
+  guardrailAuditLedger           GuardrailAuditLedger[]
+  sclLedger                      SclLedger[]
+  agentTrustScores               AgentTrustScore[]
+  workspaceQuotaUsages           WorkspaceQuotaUsage[]
+  workspaceQuotaGrants           WorkspaceQuotaGrant[]
+  workspaceAgentAssignments      WorkspaceAgentAssignment[]
+  runUsageBreakdowns             RunUsageBreakdown[]
+  billingLedgerEntries           BillingLedger[]
+  helpdeskSessions               HelpdeskSession[]
+  productInstallations           TenantProductInstallation[]
+  runArchives                    RunArchive[]
+  imobOwners                     ImobOwner[]
+  imobProperties                 ImobProperty[]
+  imobLeads                      ImobLead[]
+  imobCases                      ImobCase[]
+  imobCaseEvents                 ImobCaseEvent[]
+  imobMarketScanRuns             ImobMarketScanRun[]
+  agentInstalls                  AgentInstall[]
+  connectorInstances             ConnectorInstance[]
+  paymentIntents                 PaymentIntent[]
+  signalForwardRequests          SignalForwardRequest[]
+  humanConfirmations             HumanConfirmation[]
+  radarKnownEntities             RadarKnownEntity[]
+  radarMaterials                 RadarMaterial[]
+  radarAnalysisRequests          RadarAnalysisRequest[]
+  radarAnalysisAttempts          RadarAnalysisAttempt[]
+  radarRecommendations           RadarRecommendation[]
+  radarEntityAccessGrants        RadarEntityAccessGrant[]
+  radarProviderCallSlots         RadarProviderCallSlot[]
+  radarRecommendationEvaluations RadarRecommendationEvaluation[]
 
   @@index([tenantId, name])
   @@map("workspaces")
@@ -675,13 +677,111 @@ model RadarRecommendation {
   provenance                 Json
   createdAt                  DateTime @default(now()) @map("created_at")
 
-  tenant    Tenant               @relation(fields: [tenantId], references: [id])
-  workspace Workspace            @relation(fields: [workspaceId], references: [id])
-  attempt   RadarAnalysisAttempt @relation(fields: [attemptId, tenantId, workspaceId], references: [id, tenantId, workspaceId])
+  tenant      Tenant                          @relation(fields: [tenantId], references: [id])
+  workspace   Workspace                       @relation(fields: [workspaceId], references: [id])
+  attempt     RadarAnalysisAttempt            @relation(fields: [attemptId, tenantId, workspaceId], references: [id, tenantId, workspaceId])
+  evaluations RadarRecommendationEvaluation[]
 
   @@unique([attemptId, tenantId, workspaceId], name: "radar_recommendation_attempt_unique")
+  // Aditivo (avaliação humana persistida) — necessário como lado referenciado
+  // da FK composta de RadarRecommendationEvaluation.recommendation; `id`
+  // isolado já era único, esta constraint só formaliza a tripla exigida pelo
+  // Postgres para uma FK composta (mesma técnica já usada em
+  // RadarAnalysisAttempt/RadarMaterial). Nenhuma coluna nova, nenhum dado
+  // existente afetado.
+  @@unique([id, tenantId, workspaceId], name: "radar_recommendation_id_tenant_workspace_unique")
   @@index([tenantId, workspaceId])
   @@map("radar_recommendations")
+}
+
+// Avaliação humana persistida de uma RadarRecommendation — nunca uma decisão
+// operacional. Vínculo com o objeto avaliado é só `recommendationId`: a
+// cadeia RadarRecommendation -> attemptId -> generationConfig é imutável por
+// construção (nenhuma chamada a `.update()`/`.upsert()` sobre
+// RadarRecommendation existe em todo `radarSocial`), então nenhum hash ou
+// snapshot adicional é necessário. Essa imutabilidade é uma propriedade do
+// CÓDIGO da aplicação, não uma proibição imposta pelo banco (não há trigger
+// nem CHECK constraint aqui) — nunca escrever nesta tabela via UPDATE é
+// requisito desta unidade, não uma garantia estrutural do Postgres.
+//
+// Imutável do mesmo jeito: uma correção é sempre uma linha NOVA ligada por
+// `supersedesEvaluationId`, nunca uma reescrita da linha original — mesma
+// técnica de RadarMaterial.supersedesMaterialId. `criteriaVersion` é fixada
+// no servidor na criação e NUNCA recalculada num reenvio (ver
+// radarRecommendationEvaluationContract.ts / radarRecommendationEvaluationService.ts) —
+// uma atualização da rubrica vigente depois da criação nunca, sozinha,
+// invalida ou entra em conflito com um reenvio idempotente da mesma
+// avaliação.
+model RadarRecommendationEvaluation {
+  id                     String   @id @default(cuid())
+  tenantId               String   @map("tenant_id")
+  workspaceId            String   @map("workspace_id")
+  // Versão do FORMATO deste registro (radarRecommendationEvaluationContract.ts,
+  // RADAR_RECOMMENDATION_EVALUATION_CONTRACT_VERSION) — nunca o significado
+  // dos valores de enum, versionado separadamente por criteriaVersion.
+  contractVersion        String   @map("contract_version")
+  recommendationId       String   @map("recommendation_id")
+  // Identidade AUTENTICADA de quem avaliou — nunca aceita do corpo
+  // (radarRecommendationEvaluationService.ts sempre usa actorUserId do
+  // contexto de operação, nunca um campo livre do chamador).
+  evaluatorUserId        String   @map("evaluator_user_id")
+  // Chave do mapa RADAR_RECOMMENDATION_EVALUATION_RUBRICS vigente NO MOMENTO
+  // DA CRIAÇÃO desta linha — fixada uma única vez, nunca recalculada num
+  // reenvio idempotente. Entradas do mapa são aditivas (nunca editadas em
+  // código depois de publicadas): uma avaliação antiga permanece
+  // interpretável pela sua própria versão, mesmo que rubricas futuras mudem
+  // o significado dos mesmos rótulos de enum.
+  criteriaVersion        String   @map("criteria_version")
+  // bem_fundamentada | parcialmente_fundamentada | nao_fundamentada | nao_avaliavel
+  fundamentacao          String
+  // clara | parcialmente_clara | confusa | nao_avaliavel
+  clareza                String
+  // util | parcialmente_util | nao_util | nao_avaliavel
+  utilidade              String
+  // Obrigatória quando fundamentacao/clareza/utilidade não são
+  // simultaneamente o valor totalmente positivo, ou quando qualquer um é
+  // nao_avaliavel — regra pertence à rubrica (criteriaVersion), nunca
+  // recalculada com uma rubrica diferente da que gerou esta linha.
+  justificativa          String?
+  comentario             String?
+  // Predecessor corrigido por esta linha, quando esta é uma correção. null =
+  // avaliação raiz (não uma correção) — participa da comparação de
+  // identidade da solicitação como qualquer outro campo, nunca ignorado.
+  supersedesEvaluationId String?  @map("supersedes_evaluation_id")
+  // Token de deduplicação do CHAMADOR, único por (tenantId, workspaceId,
+  // recommendationId, evaluatorUserId) — cada par (recomendação, avaliador)
+  // tem seu próprio namespace, não um namespace global por workspace.
+  operationKey           String   @map("operation_key")
+  // Gerado pelo servidor SÓ na inserção — nunca reescrito por um reenvio
+  // idempotente nem por uma correção (a correção cria uma linha nova, com
+  // seu próprio createdAt; a linha original mantém o dela para sempre).
+  createdAt              DateTime @default(now()) @map("created_at")
+
+  tenant         Tenant                         @relation(fields: [tenantId], references: [id])
+  workspace      Workspace                      @relation(fields: [workspaceId], references: [id])
+  recommendation RadarRecommendation            @relation(fields: [recommendationId, tenantId, workspaceId], references: [id, tenantId, workspaceId])
+  // Auto-relação 1:1: predecessora e sucessora nunca trocam de recomendação
+  // ou de avaliador (FK composta de 5 colunas) — mesma técnica de
+  // RadarMaterial.predecessor/successor.
+  predecessor    RadarRecommendationEvaluation? @relation("RadarRecommendationEvaluationSuccession", fields: [supersedesEvaluationId, tenantId, workspaceId, recommendationId, evaluatorUserId], references: [id, tenantId, workspaceId, recommendationId, evaluatorUserId])
+  successor      RadarRecommendationEvaluation? @relation("RadarRecommendationEvaluationSuccession")
+
+  // Chave composta referenciável (inclui recommendationId e evaluatorUserId)
+  // para a FK do predecessor acima — reforça no banco que sucessora e
+  // predecessora nunca trocam de recomendação nem de avaliador.
+  @@unique([id, tenantId, workspaceId, recommendationId, evaluatorUserId], name: "radar_recommendation_evaluation_id_full_unique")
+  @@unique([tenantId, workspaceId, recommendationId, evaluatorUserId, operationKey], name: "radar_recommendation_evaluation_operation_key_unique")
+  // UNIQUE PADRÃO (não índice parcial), nos mesmos 4 campos da FK acima —
+  // garante no máximo uma sucessora por predecessora. Múltiplas linhas com
+  // supersedesEvaluationId=NULL (avaliações raiz) convivem porque o
+  // Postgres trata NULLs como distintos entre si — a restrição de "no
+  // máximo uma RAIZ por (recomendação, avaliador)" é um índice único
+  // PARCIAL adicional, editado manualmente na migration gerada (mesma
+  // técnica de radar_analysis_attempts_one_active_per_request), não
+  // expressável neste schema.prisma.
+  @@unique([supersedesEvaluationId, tenantId, workspaceId, recommendationId, evaluatorUserId], name: "radar_recommendation_evaluation_succession_unique")
+  @@index([tenantId, workspaceId, recommendationId])
+  @@map("radar_recommendation_evaluations")
 }
 
 // Concessão/revogação de acesso individual a uma RadarKnownEntity, por
