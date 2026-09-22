@@ -1,0 +1,33 @@
+{
+  "mode": "SIMULATION",
+  "bundleId": "pure-v2",
+  "canonicalizationVersion": "oraculo.canonical-json.v1",
+  "files": [
+    {
+      "path": "cases.json",
+      "sha256": "5a06b1a2bb5601e040d1e3fcb8945c2ef6d4e95600894de5c40cab323aea6f76"
+    }
+  ],
+  "limits": [
+    "synthetic only",
+    "not persisted authority",
+    "not a trust root"
+  ],
+  "sources": [
+    {
+      "snapshotId": "sim-snapshot-0",
+      "content": "Synthetic source snapshot sim-snapshot-0 at 2026-09-16T12:00:00.000Z",
+      "contentHash": "sha256:a7dd18725d2037729ddd727c43a8ef53c77c90868ac8bba4a22d163c393958ac"
+    },
+    {
+      "snapshotId": "sim-snapshot-1",
+      "content": "Synthetic source snapshot sim-snapshot-1 at 2026-09-16T12:00:00.000Z",
+      "contentHash": "sha256:26eb2a6a852cd65d3d90b94078b9568197cf4622b4c2322ca303b60634973f1e"
+    },
+    {
+      "snapshotId": "sim-snapshot-2",
+      "content": "Synthetic source snapshot sim-snapshot-2 at 2026-09-16T12:00:00.000Z",
+      "contentHash": "sha256:ec409569584ac58b7109ec35832f100854e2933a6d5de022ba9944c1d90ca1f7"
+    }
+  ]
+}

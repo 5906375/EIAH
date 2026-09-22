@@ -1198,6 +1198,9 @@ model AgentReputationEvent {
 }
 
 model ApprovalRecord {
+  recordFormat    String           @default("LEGACY") @map("record_format")
+  contextHash     String?          @map("context_hash")
+  governedPayload Json?            @map("governed_payload")
   id              String           @id
   runId           String?          @map("run_id")
   tenantId        String           @map("tenant_id")
