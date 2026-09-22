@@ -7299,3 +7299,878 @@ lacunas se confirmaram infundadas (código já correto) ou foram fechadas por co
 adicional, sem qualquer alteração de produção. Nenhum bloqueio concreto identificado para um
 terceiro commit local, do ponto de vista desta unidade — essa autorização continua separada, não
 concedida aqui.
+
+---
+
+## Proposta de demonstração interna (19/09/2026) — tornar o Radar Social navegável no frontend
+
+**Status: PROPOSTA DOCUMENTAL de demonstração interna, não aprovada para implementação.** Esta
+rodada é exclusivamente leitura focalizada (frontend, rotas, autenticação, cliente HTTP) e desenho
+— nenhum código, teste, schema ou serviço foi criado ou alterado. Objetivo: permitir que uma
+pessoa percorra `selecionar empresa conhecida → fornecer material sintético → solicitar análise
+simulada → consultar recomendação → registrar avaliação humana → recuperar o histórico`, com
+grants persistidos e transporte substituído, identificada claramente como "Demonstração interna —
+análise simulada". Sem modelo real, Instagram, MKT ou ação externa.
+
+### A. Estrutura existente encontrada (evidência real, arquivo:símbolo)
+
+**Aplicação e framework**: `apps/web` — React 18 + Vite 5 + `react-router-dom` v6 + Tailwind
+([apps/web/package.json](../../apps/web/package.json)). Sem framework de testes de componente
+(nenhum React Testing Library/jsdom encontrado); os 52 arquivos `*.test.ts(x)` existentes usam
+`node:test`/`node:assert` fazendo asserções ESTRUTURAIS sobre o texto-fonte do próprio arquivo
+(ex.: [apps/web/src/pages/app/imob/properties.test.ts](../../apps/web/src/pages/app/imob/properties.test.ts)),
+não renderização real — é o padrão de teste de interface disponível hoje, não um a inventar.
+
+**Rotas, layout e navegação**: roteamento central em
+[apps/web/src/App.tsx](../../apps/web/src/App.tsx) — array `SHELL_NAV_ITEMS`
+([App.tsx:56-64](../../apps/web/src/App.tsx#L56-L64)) com itens `{to, label, hiddenForRoles?,
+requiresImob?}`, filtrado em `Layout` ([App.tsx:88-92](../../apps/web/src/App.tsx#L88-L92)); rotas
+registradas via `<Route path="..." element={...} />` a partir de
+[App.tsx:297](../../apps/web/src/App.tsx#L297). Vertical mais próxima estruturalmente do que o
+Radar precisa é IMOB: `/app/imob/dashboard`, `/app/imob/chat`, `/app/imob/properties` etc., cada
+uma um arquivo próprio em [apps/web/src/pages/app/imob/](../../apps/web/src/pages/app/imob/).
+**Não existe** hoje nenhuma rota, página ou componente com "radar" no nome em `apps/web/src`
+(busca `grep -ri radar apps/web/src` sem resultado) — ausência real, não presumida.
+
+**Autenticação e origem confiável de tenant/workspace/usuário**: middleware
+[apps/api/src/middlewares/enforceTenant.ts](../../apps/api/src/middlewares/enforceTenant.ts) —
+extrai um Bearer token, resolve `tenantId`/`workspaceId`/`userId` via `findApiToken` (token já
+carrega esses três campos, [enforceTenant.ts:86,103-108](../../apps/api/src/middlewares/enforceTenant.ts#L86-L108)),
+popula `req.authContext` — **essa é a ÚNICA origem confiável**, nunca o corpo/query da requisição.
+Escopo por RBAC: [apps/api/src/middlewares/requireScope.ts](../../apps/api/src/middlewares/requireScope.ts),
+uso `requireScope("algum:escopo")` após `enforceTenant`. Wrapper de rota assíncrona:
+[apps/api/src/middlewares/asyncHandler.ts](../../apps/api/src/middlewares/asyncHandler.ts)
+(`createGovernedRouter()`). **Achado de atenção, não um bug a corrigir aqui**: o cliente HTTP do
+frontend ([apps/web/src/lib/api.ts:934-950](../../apps/web/src/lib/api.ts#L934-L950)) também envia
+`x-eiah-tenant`/`x-tenant-id`/`x-eiah-workspace`/`x-workspace-id` a partir do estado de sessão do
+NAVEGADOR — as rotas do Radar propostas abaixo devem ignorar esses headers para fins de
+autorização, usando exclusivamente `req.authContext` (mesma disciplina já usada em `runs.ts`,
+`imob.ts` etc., nenhuma exceção nova).
+
+**Cliente HTTP**: [apps/web/src/lib/api.ts](../../apps/web/src/lib/api.ts) — arquivo único (~5000+
+linhas) com uma função exportada por endpoint (`apiListRuns`, `apiGetRun`, ...), helper central
+`http<T>()` que injeta `Authorization: Bearer` e os headers de tenant/workspace do estado de sessão
+([sessionStore.ts](../../apps/web/src/state/sessionStore.ts)), lança em `res.ok === false`. Padrão
+a seguir: uma função `apiXxx` por endpoint novo, mesmo arquivo.
+
+**Componentes reaproveitáveis**:
+- [apps/web/src/pages/self-service/components/AgentFormShell.tsx](../../apps/web/src/pages/self-service/components/AgentFormShell.tsx)
+  (822 linhas) — padrão de submissão + POLLING (`setTimeout` recursivo a cada 2.5s/4s até status
+  terminal, [AgentFormShell.tsx:447-469](../../apps/web/src/pages/self-service/components/AgentFormShell.tsx#L447-L469))
+  contra `apiGetRun`. **Reaproveitável como PADRÃO, não como componente pronto** — ele consulta o
+  modelo genérico `Run`, não `RadarAnalysisAttempt`; o polling do Radar precisa de uma função nova
+  (`apiGetRadarAttempt`) e um hook próprio, copiando a MESMA técnica de backoff.
+- [apps/web/src/pages/self-service/components/RunStatusCard.tsx](../../apps/web/src/pages/self-service/components/RunStatusCard.tsx)
+  (75 linhas) — states loading/error/vazio bem definidos, mas renderiza `run.request`/`run.response`
+  via [RunViewer.tsx](../../apps/web/src/components/runs/RunViewer.tsx) (5493 linhas) — **não
+  aplicável ao Radar**: a recomendação do Radar não é um `Run` genérico (é lida via
+  `getRadarRecommendation`, formato próprio com `statements`/`references`), e o `Run` opaco criado
+  pela execução governada não deve ser mostrado por um visualizador genérico de qualquer forma
+  (conteúdo protegido, ver seção D). **Reaproveitar só o PADRÃO de card de estado, nunca o
+  componente**.
+- [apps/web/src/pages/app/imob/properties.tsx](../../apps/web/src/pages/app/imob/properties.tsx)
+  (227 linhas) — página de listagem autocontida (loading/erro/vazio/filtro local, fetch em
+  `useEffect`) — bom modelo de TAMANHO/ESTRUTURA para uma lista de entidades conhecidas do Radar.
+- [apps/web/src/components/ui/select.tsx](../../apps/web/src/components/ui/select.tsx) — único
+  componente de UI genuinamente compartilhado (`select`); não há biblioteca de formulário/lista/
+  detalhe/erro reaproveitável além disso — cada página constrói o próprio layout com Tailwind.
+  **Não presumir** que uma biblioteca de componentes mais rica existe noutra parte do produto além
+  do que foi encontrado.
+
+**Telas existentes relacionadas a empresas, materiais, Runs ou avaliações**: `Runs` genérico em
+[apps/web/src/pages/app/runs/index.tsx](../../apps/web/src/pages/app/runs/index.tsx) (lista/detalhe
+de `Run`, não de `RadarAnalysisAttempt`/`RadarRecommendation`). Nenhuma tela de "empresa conhecida",
+"material" ou "avaliação humana" existe hoje em nenhuma vertical — IMOB tem conceitos análogos
+(`ImobOwner`/`ImobProperty`) mas são modelos e rotas inteiramente distintos, sem relação de código
+com `RadarKnownEntity`/`RadarMaterial`.
+
+**Backend HTTP do Radar**: **AUSENTE por completo**. `grep -ri radar apps/api/src/routes` não
+retorna nenhum arquivo — todos os serviços construídos até aqui
+([apps/api/src/services/radarSocial/*.ts](../../apps/api/src/services/radarSocial)) só têm
+chamadores em testes (`__tests__/*.test.ts`), nunca uma rota Express. Isso é esperado: nenhuma
+rodada anterior autorizou rota HTTP.
+
+**Serviços de execução disponíveis para a demonstração** (ambos já implementados e testados, ver
+Atualizações anteriores deste plano):
+- `runSimulatedAnalysis` ([radarAnalysisAttemptService.ts:605](../../apps/api/src/services/radarSocial/radarAnalysisAttemptService.ts#L605))
+  — caminho do PACOTE A: claim → executor SUBSTITUTO injetado pelo chamador → preservar → concluir.
+  Não usa `RadarProviderCallSlot` nem cria `Run`. **Este é o caminho recomendado para a
+  demonstração** — é o mais simples, já testado desde as rodadas mais antigas, e "análise simulada"
+  é literalmente o nome do parâmetro do objetivo desta rodada.
+- `runGovernedAnalysis` ([radarGovernedExecutionService.ts:314](../../apps/api/src/services/radarSocial/radarGovernedExecutionService.ts#L314))
+  — caminho mais recente, cria `Run` opaco, controla concorrência, aceita `callCompletion` como
+  duplo de teste. Mais adequado para uma demonstração que também queira mostrar o controle de
+  concorrência/atomicidade — mas é mais pesado (precisa de `AgentMetadata`/`WorkspaceAgentAssignment`
+  sintéticos) e não é necessário para a jornada mínima pedida.
+- **Decisão proposta — SUPERADA pelo "Fechamento documental da demonstração interna (19/09/2026)"
+  ao final deste plano**: o texto original desta rodada escolhia `runSimulatedAnalysis` "por ser
+  mais simples". Essa escolha foi corrigida: a demonstração deve exercitar o caminho GOVERNADO
+  (`runGovernedAnalysis`) — autorização revalidada após espera, controle persistido de
+  concorrência, envio único sem fallback, atomicidade Run↔tentativa — porque é exatamente esse
+  caminho, já implementado e corrigido nas rodadas anteriores, que a demonstração existe para
+  mostrar. Ver a seção de fechamento para o desenho corrigido completo.
+
+### B. Ponto de entrada recomendado
+
+| Item | Classificação | Valor |
+|---|---|---|
+| Rota já existente que o Radar reaproveitaria | Não há nenhuma — nem como base nem como redirecionamento | — |
+| Rota proposta (nova) | PROPOSTA, não criada nesta rodada | `/app/radar` (lista de entidades) com sub-rotas `/app/radar/:entityId`, `/app/radar/:entityId/requests/:requestId` |
+| Item de navegação proposto | PROPOSTA | novo item em `SHELL_NAV_ITEMS` ([App.tsx:56](../../apps/web/src/App.tsx#L56)): `{ to: "/app/radar", label: "Radar Social (demo)" }` — sem gate de entitlement real (não existe um "RADAR_INSTALLED" hoje); a proteção de verdade é o grant de leitura no servidor, não a visibilidade do link |
+| Endereço configurado (não verificado em execução) | CONFIGURADO, NÃO VERIFICADO | Vite dev server na porta padrão `5173` ([vite.config.ts](../../apps/web/vite.config.ts), sem override de porta); proxy `/api` → `VITE_API_PROXY_TARGET` ou `http://localhost:8080` ([vite.config.ts:7](../../apps/web/vite.config.ts#L7)); API ouve em `process.env.PORT \|\| 8080` ([apps/api/src/index.ts:139](../../apps/api/src/index.ts#L139)) |
+| Endereço efetivamente verificado em execução | AUSENTE nesta rodada | Nenhum serviço foi iniciado — nenhuma URL foi confirmada respondendo |
+
+Nenhuma porta/URL foi inventada acima do que os arquivos de configuração realmente declaram.
+
+### C. Pacote mínimo de interface (telas)
+
+| Tela | Rota proposta | Cobre da jornada | Componentes reaproveitados (padrão) | Classificação |
+|---|---|---|---|---|
+| Lista de entidades conhecidas | `/app/radar` | seleção de entidade acessível + estado (ativa/inativa) | Estrutura de [properties.tsx](../../apps/web/src/pages/app/imob/properties.tsx) (loading/erro/vazio/filtro) | NOVO (arquivo), padrão EXISTENTE |
+| Detalhe da entidade + materiais | `/app/radar/:entityId` | receber texto/fonte/data; ver material original e correções; listar solicitações | Sem componente de formulário genérico reaproveitável — novo formulário simples (textarea + input texto + date picker nativo) | NOVO |
+| Nova solicitação de análise | dentro da tela de detalhe (não precisa de rota própria) | solicitar análise simulada explicitamente | Botão + confirmação modal simples (não existe `Dialog` genérico — `NeedMoreInfoDialog.tsx` é específico do self-service, não reaproveitável diretamente) | NOVO |
+| Acompanhamento da tentativa | `/app/radar/:entityId/requests/:requestId` | acompanhar estado da tentativa; apresentar recomendação, razões, referências, limites | PADRÃO de polling de [AgentFormShell.tsx:447-469](../../apps/web/src/pages/self-service/components/AgentFormShell.tsx#L447-L469), adaptado para `RadarAnalysisAttempt`; PADRÃO de card de [RunStatusCard.tsx](../../apps/web/src/pages/self-service/components/RunStatusCard.tsx), nunca o componente em si | NOVO |
+| Formulário de avaliação humana | mesma tela de acompanhamento, seção própria | fundamentação/clareza/utilidade + justificativa/comentário | Nenhum componente de formulário de rubrica existe — três `<select>` (reaproveitando [select.tsx](../../apps/web/src/components/ui/select.tsx)) + dois `<textarea>` | NOVO |
+| Histórico de avaliações | mesma tela, seção "Histórico" | ler avaliações e correções conforme políticas existentes | Lista simples ordenada por `createdAt`, mesma técnica de renderização de lista de `properties.tsx` | NOVO |
+
+**Faixa "Demonstração interna" obrigatória**: um banner fixo, renderizado no `Layout` só quando a
+rota começa com `/app/radar`, texto literal "Demonstração interna — análise simulada" — proposto
+como uma condição a mais no `Layout` de [App.tsx](../../apps/web/src/App.tsx), no mesmo padrão já
+usado para `isImobSurface`/`isImobChatRoute` ([App.tsx:82-86](../../apps/web/src/App.tsx#L82-L86)).
+
+**Comportamentos exigidos, mapeados ao que o backend já garante**:
+
+| Cenário | Comportamento na UI | Já garantido pelo backend (arquivo:símbolo) |
+|---|---|---|
+| Acesso negado ou revogado | Mensagem genérica "Entidade não encontrada ou sem acesso" — nunca distinguir "não existe" de "existe mas negado" (a UI não deve saber mais que a API responde) | `RadarKnownEntityNotFoundError`/`RadarRecommendationEvaluationNotFoundError`, mesmo reasonCode para ambos os casos em todo o pacote |
+| Entidade inativa | Mostrar status, desabilitar botão de nova solicitação, com texto explicando por quê | `RadarKnownEntityRecord.status` ([radarKnownEntityContract.ts:158](../../apps/api/src/services/radarSocial/radarKnownEntityContract.ts#L158)); `entity_not_active` já bloqueia `receiveRadarMaterial` |
+| Operação duplicada/conflitante | Mostrar mensagem de conflito específica (ex.: "já existe uma avaliação sua — use corrigir"), nunca tentar de novo automaticamente | `RadarAnalysisRequestConflictError`/`RadarRecommendationEvaluationConflictError`, reasonCodes já existentes (`operation_key_reused_incompatible_*`, `root_already_exists_use_correction`, `evaluation_already_corrected`) |
+| Ausência de evidência suficiente | Renderizar `recommendationType === "insufficient_evidence"` com `insufficientEvidenceReason`, nunca como erro técnico | Já modelado em `radarRecommendationContract.ts`, um dos três tipos VÁLIDOS |
+| Falha e resultado desconhecido | Mostrar "resultado desconhecido, tentativa permanece em processamento" — nunca oferecer "tentar de novo" enquanto a tentativa está `running` sem resultado preservado | `runSimulatedAnalysis`/`runGovernedAnalysis` nunca marcam `failed` num resultado desconhecido — status observável via `getRadarAnalysisAttempt` |
+| Reenvio após perda da resposta | Botão "recuperar" chama só `concludeAttempt` (via um endpoint de leitura/recuperação, nunca `runSimulatedAnalysis` de novo) | Já comprovado por teste ("recuperação sem novo envio") |
+| Atualizar página / consultar resultado | NUNCA deve disparar nova análise — toda leitura é GET puro contra endpoints de consulta | Endpoints propostos na seção D são estritamente separados: só o endpoint de CRIAÇÃO (POST) chama `runSimulatedAnalysis`; todo o resto é leitura |
+| Avaliação favorável | Não deve exibir nenhum botão de "executar"/"publicar"/"encaminhar" — nenhum campo do contrato de avaliação permite isso | `RadarRecommendationEvaluation` não tem campo de ação executável ([radarRecommendationEvaluationContract.ts](../../apps/api/src/services/radarSocial/radarRecommendationEvaluationContract.ts)) |
+
+### D. Pacote mínimo de API (endpoints propostos)
+
+Nenhuma rota existe hoje — todas as linhas abaixo são NOVAS. Todas usam
+`enforceTenant` (identidade derivada do token, nunca do corpo/query) e `requireScope`.
+
+| Método/caminho | Serviço chamado | Entrada mínima | Resposta mínima | Escopo exigido | Idempotência | Erros tratados |
+|---|---|---|---|---|---|---|
+| `GET /api/radar/entities` | `listRadarKnownEntities` | query opcional de paginação | lista de `{id, displayName, status}` | `radar_social.read` | N/A (leitura) | 401/403 padrão |
+| `GET /api/radar/entities/:id` | `getRadarKnownEntity` + `listRadarMaterials` | — | entidade + materiais (sem `hashDoMaterial` cru se não necessário à UI) | `radar_social.read` + `"read"` do resolvedor na entidade | N/A | 404 unificado (não existe / sem acesso) |
+| `POST /api/radar/entities/:id/materials` | `receiveRadarMaterial` | `{conteudo, fonteDeclarada, capturadoEm?, operationKey, supersedesMaterialId?}` | material criado/recuperado + `recovered` | `radar_social.materials.write` + `"write"` do resolvedor | Sim — `operationKey` do chamador, já implementado | `entity_not_active`, `field_*` (validação), `predecessor_already_superseded` |
+| `POST /api/radar/entities/:id/analysis-requests` | `createRadarAnalysisRequest` | `{materialId, objective, additionalContext?, operationKey, generationConfigInput}` | solicitação + primeira tentativa (`firstAttempt.id`) | `radar_social.analysis.request` + `"analyze"` | Sim — `operationKey`, já implementado | `operation_key_reused_incompatible_request` |
+| `POST /api/radar/attempts/:attemptId/run` | `runSimulatedAnalysis` (com o executor SUBSTITUTO fixo do servidor) | `{}` (nenhum parâmetro livre do navegador) | tentativa concluída ou erro | `radar_social.analysis.execute` + `"analyze"` | Não idempotente por natureza (protocolo de posse já impede reexecução — `claim_lost_race`/`attempt_not_pending`) | `attempt_not_pending`, `claim_lost_race`, resultado desconhecido (ver seção C) |
+| `GET /api/radar/attempts/:attemptId` | `getRadarAnalysisAttempt` | — | status da tentativa (sem `preservedResultPayload` cru) | `radar_social.read` + `"read"` | N/A | 404 unificado |
+| `GET /api/radar/analysis-requests/:id/recommendation` | `getRadarRecommendation` (via `attemptId` já resolvido) | — | recomendação completa (`summary`, `statements`, `references`, `limitations`, `suggestedAction`/`insufficientEvidenceReason`/`doNotActReason`) | `radar_social.read` + `"read"` | N/A | 404 se ainda não concluída |
+| `POST /api/radar/recommendations/:id/evaluations` | `submitRadarRecommendationEvaluation` | `{fundamentacao, clareza, utilidade, justificativa?, comentario?, operationKey, supersedesEvaluationId?}` | avaliação criada/recuperada + `recovered` | `radar_social.recommendation.evaluate` + `"read"` | Sim — `operationKey`, já implementado (com a correção de `criteriaVersion`/`createdAt` desta unidade) | `justificativa_required_when_not_fully_positive`, `field_invalid_enum`, `supersedes_evaluation_not_found`, `evaluation_already_corrected`, `root_already_exists_use_correction`, `operation_key_reused_incompatible_evaluation` |
+| `GET /api/radar/recommendations/:id/evaluations` | `listRadarRecommendationEvaluationsForRecommendation` | — | lista de avaliações (todas as cadeias, todos os avaliadores) | `radar_social.read` + `"read"` | N/A | 404 unificado |
+
+**Identidade**: em todos os endpoints, `tenantId`/`workspaceId`/`actorUserId` vêm exclusivamente de
+`req.authContext` (populado por `enforceTenant`) — nunca de `req.body`/`req.query`/headers
+`x-tenant-id`/`x-workspace-id` enviados pelo navegador, mesmo que o cliente HTTP já os envie hoje
+por hábito (ver seção A). O `resolver` passado a cada chamada de serviço é sempre
+`createRadarEntityAccessResolver(req.prisma ?? prismaGlobal)` real — nunca um substituto de teste.
+
+**Campos protegidos nunca expostos**: `preservedResultPayload` (interno, só usado por
+`concludeAttempt`), `RadarAnalysisAttempt.claimToken`, o conteúdo bruto de `Run.request`/
+`Run.response` de qualquer `Run` eventualmente criado (a UI do Radar nunca lê `Run` via os
+endpoints genéricos `/api/runs/*` para mostrar conteúdo do Radar — só os endpoints acima).
+
+### E. Ambiente de demonstração (descrito, nada criado/ativado)
+
+- **Identidades e grants sintéticos**: um tenant/workspace/usuário de demonstração dedicados,
+  criados via os MESMOS serviços já testados (`seedTenantWorkspaceUser`-equivalente em produção
+  seria simplesmente `prisma.tenant/workspace/user/tenantMembership.create`), com um
+  `RadarKnownEntity` e grants `read`/`write`/`manage`/`analyze` concedidos ao usuário de
+  demonstração via `createRadarKnownEntity` (que já concede as 4 operações ao criador
+  automaticamente) — nenhum bypass de autenticação, um usuário real com token real, só com dados
+  sintéticos.
+- **Empresa acessível inicialmente**: uma `RadarKnownEntity` de demonstração ("Empresa Fictícia
+  Demo"), criada uma única vez antes da demonstração, nunca pelo próprio fluxo de UI (a UI não
+  propõe criação de entidade nesta rodada — só leitura/seleção de uma já existente).
+- **Executor/transporte substituído, selecionado explicitamente**: o endpoint
+  `POST /api/radar/attempts/:attemptId/run` deve, no SERVIDOR, injetar um `executor`/`callCompletion`
+  fixo (mesmo padrão de `fakeExecutor`/`createSubstituteCompletionEngine` já usados nos testes) —
+  nunca aceitar um parâmetro do navegador que escolha o transporte. Isso IMPEDE, por construção, que
+  a demonstração chame um modelo real, sem precisar de nenhuma variável de ambiente para
+  "desligar" o real — o caminho real nunca é alcançável a partir dessa rota.
+  Uma flag de processo explícita (por exemplo, `RADAR_DEMO_MODE=1`, só para clareza operacional, não
+  para desviar autorização) pode ser usada para impedir que esse endpoint sequer inicialize fora de
+  um ambiente de demonstração — não decidido nesta rodada, registrado como proposta.
+- **Isolamento de ambientes compartilhados**: banco descartável dedicado (mesmo padrão de todas as
+  rodadas anteriores — container Postgres efêmero, nunca `eiah-postgres`/Neon/produção); nenhuma
+  credencial real; a demonstração nunca compartilha `DATABASE_URL` com nenhum outro ambiente.
+- **Provisionamento e remoção de dados sintéticos**: numa execução futura autorizada, os dados de
+  demonstração (tenant/workspace/usuário/entidade/materiais/tentativas/avaliações de demo) devem
+  ser identificáveis por um prefixo/convenção clara (ex.: `tenantId` começando com `demo-`) para
+  permitir remoção seletiva (`DELETE` em cascata pelos próprios relacionamentos já existentes no
+  schema) sem risco de atingir dados reais — nenhum mecanismo de remoção automática existe hoje;
+  seria um script novo, fora do escopo desta rodada.
+- **Nenhum bypass de autenticação, nenhum fallback permissivo, nenhuma credencial real** — a
+  demonstração usa o MESMO `enforceTenant`/`requireScope` de produção, só com dados de teste atrás
+  deles.
+
+### F. Arquivos exatos a criar/alterar (proposta, nada criado nesta rodada)
+
+| Arquivo | Ação | Justificativa |
+|---|---|---|
+| `apps/api/src/routes/radarSocial.ts` | NOVO | Router Express com os 9 endpoints da seção D, `enforceTenant` + `requireScope` por rota, mesmo padrão de `runs.ts` |
+| `apps/api/src/index.ts` | ALTERAR (1 linha de `app.use`) | Montar o novo router, mesmo padrão dos demais em `apps/api/src/routes/index.ts`/`index.ts` |
+| `apps/web/src/pages/app/radar/index.tsx` | NOVO | Lista de entidades |
+| `apps/web/src/pages/app/radar/entity.tsx` | NOVO | Detalhe da entidade + materiais + nova solicitação |
+| `apps/web/src/pages/app/radar/request.tsx` | NOVO | Acompanhamento da tentativa + recomendação + avaliação + histórico |
+| `apps/web/src/pages/app/radar/components/RadarAttemptStatusCard.tsx` | NOVO | Card de status da tentativa (padrão de `RunStatusCard.tsx`, dados próprios) |
+| `apps/web/src/pages/app/radar/components/RadarEvaluationForm.tsx` | NOVO | Formulário de avaliação (3 selects + 2 textareas) |
+| `apps/web/src/lib/api.ts` | ALTERAR (aditivo) | 9 funções novas `apiRadarXxx`, mesmo padrão das ~200 já existentes no arquivo |
+| `apps/web/src/App.tsx` | ALTERAR (aditivo) | 1 item em `SHELL_NAV_ITEMS`, 4 `<Route>`, 1 condição de banner de demonstração |
+
+**Mudança de persistência**: **nenhuma indispensável**. Todos os campos e relacionamentos
+necessários já existem (schema fechado no terceiro commit `416e13f`). Não é necessária nenhuma
+migration para esta rodada de UI/API.
+
+### G. Dependências e bloqueios concretos
+
+- **Bloqueio real**: nenhuma rota HTTP existe — TUDO em "F" é trabalho novo, não uma pequena
+  adaptação.
+- **Dependência real**: um usuário/token de demonstração precisa existir na tabela `ApiToken`
+  (`apps/api/src/auth/apiTokenRepository.ts`) apontando para o tenant/workspace/usuário sintéticos —
+  isso não tem um script pronto hoje (achado, não inventado: nenhum `seed*.ts` cobre `ApiToken` para
+  o Radar).
+- **Dependência real**: `createRadarEntityAccessResolver` precisa de um Prisma client por
+  requisição — `req.prisma` já é populado por `enforceTenant` ([enforceTenant.ts:127-130](../../apps/api/src/middlewares/enforceTenant.ts#L127-L130)),
+  então as rotas do Radar podem reaproveitar `req.prisma` diretamente, sem trabalho extra.
+- **Sem bloqueio**: nenhuma migration, nenhuma dependência nova de pacote — `react-router-dom`,
+  `express`, os serviços do Radar já existem e estão testados.
+
+### H. Testes mínimos propostos (não executados nesta rodada)
+
+- **Integração (backend)**: um arquivo novo `apps/api/src/tests/radar-routes.test.ts` (padrão
+  `node:test` já usado em `apps/api/src/tests/*`), cobrindo: 200 com grant válido; 404 unificado
+  sem grant; 409 em `operationKey` reutilizado com conteúdo divergente; GET nunca aciona
+  `runSimulatedAnalysis` (contagem de chamadas do executor substituto, mesma técnica já usada em
+  `K-recommendation-evaluation.test.ts`).
+- **Interface (frontend)**: seguindo o padrão estrutural já existente
+  (`properties.test.ts`-like) — asserções sobre o texto-fonte das novas páginas confirmando: banner
+  de demonstração presente; nenhuma chamada a `apiRadarRunAttempt` fora do botão explícito de nova
+  solicitação; nenhum campo de "executar ação" no formulário de avaliação.
+
+### I. Roteiro de demonstração ponta a ponta (proposto, não executado)
+
+1. Usuário de demonstração autenticado (token real, grants reais) abre `/app/radar`, vê a entidade
+   de demonstração listada.
+2. Abre a entidade, envia um material sintético (`POST /api/radar/entities/:id/materials`), vê o
+   material listado.
+3. Solicita uma análise (`POST .../analysis-requests`), depois aciona explicitamente "Rodar análise
+   simulada" (`POST /api/radar/attempts/:id/run`) — a tela de acompanhamento faz polling só por GET.
+4. Recomendação aparece com `summary`/`statements`/`references`/limites; usuário preenche a
+   avaliação (fundamentação/clareza/utilidade/justificativa/comentário) e envia.
+5. Atualiza a página (F5) — a recomendação e a avaliação continuam lá, SEM nova chamada ao
+   executor substituto (contador de chamadas do servidor de demonstração permanece em 1).
+6. Um SEGUNDO usuário, sem grant de leitura na entidade, tenta abrir a mesma URL — recebe "Entidade
+   não encontrada ou sem acesso", nunca o conteúdo.
+7. O primeiro usuário corrige a própria avaliação — histórico mostra as duas linhas (original +
+   correção), nunca substitui a original.
+
+## 5. Proposta única de implementação local (NÃO executada nesta rodada)
+
+> Autorizo, para uma rodada futura separada, a implementação local do pacote mínimo de interface e
+> API do Radar Social descrito nesta seção do plano: o router
+> `apps/api/src/routes/radarSocial.ts` com os 9 endpoints listados, sua montagem em
+> `apps/api/src/index.ts`, as páginas e componentes novos em `apps/web/src/pages/app/radar/`, as 9
+> funções novas em `apps/web/src/lib/api.ts`, e as alterações aditivas em `apps/web/src/App.tsx`
+> (navegação, rotas, banner de demonstração). Nenhuma migration é necessária. Testes com dados
+> sintéticos em PostgreSQL descartável. Preserva D5/D6, fingerprint, pacote A, grants, execução
+> governada e avaliação humana persistida, sem alteração funcional em nenhum deles. Exclui modelo
+> real, Instagram, MKT, ação externa, provisionamento operacional, fila/worker, staging e commit
+> automáticos.
+
+Esta proposta não foi executada — implementação, inicialização de serviços e deploy permanecem não
+autorizados nesta rodada.
+
+## Fechamento documental da demonstração interna (19/09/2026)
+
+**Status: fechamento exclusivamente documental.** Esta rodada não repete a busca pelo frontend (já
+concluída na atualização anterior, seção A) e não cria código, teste, schema ou serviço, não
+executa teste, não prepara banco e não inicia serviço. Estado confirmado ao início desta rodada:
+worktree `/home/jusall/projects/EIAH_SIGNALFORWARD_ORIGIN_FIX`, branch
+`experiment/signalforward-origin-fingerprint-fix`, `HEAD = 416e13fbfabeb5fc390c9be02f66c72a9840b9e2`
+(inalterado — os três commits locais e o texto documental das rodadas anteriores permanecem
+intactos); único arquivo com alteração de working tree é este próprio plano.
+
+### 1. Caminho de execução corrigido
+
+A escolha de `runSimulatedAnalysis` registrada na atualização anterior (marcada SUPERADA no ponto
+específico, seção "Serviços de execução disponíveis", acima) está corrigida: a demonstração propõe
+`runGovernedAnalysis` ([radarGovernedExecutionService.ts:296-305](../../apps/api/src/services/radarSocial/radarGovernedExecutionService.ts#L296-L305)),
+com transporte substituído, identidade controlada e grants persistidos. Cada garantia exigida tem
+um ponto concreto e já implementado no código lido nesta rodada (nenhuma mudança de produção
+necessária):
+
+| Garantia exigida | Onde já existe (evidência lida nesta rodada) |
+|---|---|
+| Autorização e revalidação após espera | `prepareGovernedDispatch` autoriza a operação (`assertRadarSocialOperationAuthorized` + resolver `"analyze"`), então aguarda `parseGenerationConfig`/`assertWorkspaceAgentEnabled` (I/O de banco), e só então RE-VERIFICA posse com `SELECT` de confirmação contra `claim_token`/`claimed_at` ([radarGovernedExecutionService.ts:99-136](../../apps/api/src/services/radarSocial/radarGovernedExecutionService.ts#L99-L136)) — a "espera" é o próprio intervalo entre a primeira autorização e essa reconfirmação |
+| Controle persistido de concorrência | `occupyProviderCallSlot`/`releaseProviderCallSlot` — trava consultiva (`pg_advisory_xact_lock`) + linha persistida em `RadarProviderCallSlot`, limite `params.limit` sempre fornecido pelo chamador, nunca lido de orçamento ([radarGovernedExecutionService.ts:170-215](../../apps/api/src/services/radarSocial/radarGovernedExecutionService.ts#L170-L215)) |
+| Envio único, sem fallback | Comentário de cabeçalho do próprio arquivo: chamada direta e síncrona a `runCompletion`, nunca via fila/`executeCapability` — decisão deliberada para evitar o retry de fallback de provedor ([radarGovernedExecutionService.ts:6-11](../../apps/api/src/services/radarSocial/radarGovernedExecutionService.ts#L6-L11)) |
+| Persistência/recuperação da recomendação | `createRunRecord`/`finalizeRunRecord` (Run opaco) + `preserveResult`/`concludeAttempt` já testados; leitura via `getRadarAnalysisAttempt`/`getRadarRecommendation`, nunca reexecuta |
+| Avaliação humana com histórico | Unidade `RadarRecommendationEvaluation` já implementada e corrigida nesta branch (commit `416e13f`), sem alteração necessária |
+
+**Nenhum impedimento de código** foi encontrado para usar este caminho na demonstração — a
+assinatura de `RunGovernedAnalysisParams` já aceita `callCompletion` injetado
+([radarGovernedExecutionService.ts:296-305](../../apps/api/src/services/radarSocial/radarGovernedExecutionService.ts#L296-L305)), exatamente o ponto de
+substituição que a demonstração precisa.
+
+**Complexidade nova que o caminho governado introduz** (ausente na leitura anterior, que presumia o
+caminho mais simples) — nenhuma é um impedimento, todas têm adaptação mínima descrita:
+
+1. `generationConfigInput.agentKey`/`agentVersion`/`knowledgePolicySnapshot` são lidos do corpo da
+   solicitação de análise hoje ([radarAnalysisAttemptContract.ts:184-261](../../apps/api/src/services/radarSocial/radarAnalysisAttemptContract.ts#L184-L261)). Para não violar "identidade
+   controlada", a rota `POST /api/radar/entities/:id/analysis-requests` da demonstração NUNCA deve
+   aceitar esses três campos do navegador — deve fixá-los no servidor com um valor único de
+   demonstração, ignorando/rejeitando qualquer valor enviado pelo cliente para esses campos.
+2. `assertWorkspaceAgentEnabled` ([radarGovernedExecutionService.ts:114-121](../../apps/api/src/services/radarSocial/radarGovernedExecutionService.ts#L114-L121)) exige um
+   `WorkspaceAgentAssignment` já existente e habilitado para o par `agentKey`/`agentVersion`
+   fixado — se ausente, falha fechado com `AGENT_ASSIGNMENT_REQUIRED`/`AGENT_NOT_ENABLED_IN_WORKSPACE`
+   ([workspaceAgentAssignments.ts:5-6](../../apps/api/src/services/workspaceAgentAssignments.ts#L5-L6)). Isso exige provisionar um `AgentMetadata` +
+   `WorkspaceAgentAssignment` sintéticos antes da demonstração (seção 3 abaixo) — ausência
+   deliberada até aqui, nenhuma rodada anterior havia previsto isso porque assumia o pacote A.
+3. `concurrencyLimit` de `occupyProviderCallSlot` deve ser uma constante fixa no servidor (ex.: `1`,
+   para tornar o cenário de concorrência da demonstração fácil de observar), nunca aceita do
+   navegador.
+4. `RunGovernedAnalysisParams.workerId` não tem, no contexto de uma rota HTTP síncrona, um processo
+   de worker separado do usuário que a chamou — a adaptação mínima é usar
+   `req.authContext.userId` como `workerId`, sem criar nenhuma abstração nova de "worker" só para a
+   demonstração.
+5. O `callCompletion` substituto deve ser uma função fixa, definida no próprio arquivo de rota
+   (nunca injetável via requisição), mesmo padrão de `createSubstituteCompletionEngine` já usado
+   nos testes da unidade.
+
+Nenhuma dessas adaptações altera o comportamento de produção de `runGovernedAnalysis`,
+`occupyProviderCallSlot` ou `assertWorkspaceAgentEnabled` — todas ficam inteiramente na rota HTTP
+nova (arquivo que ainda não existe) e nos dados sintéticos preparados antes da demonstração.
+
+### 2. Endpoints — transcrição corrigida (seguem sendo 9; nenhuma contagem alterada artificialmente)
+
+A troca para execução governada não exige adicionar nem remover endpoint: os mesmos 9 pontos da
+seção D cobrem a jornada inteira. Só a ENTRADA e os ERROS de dois deles mudam, porque passam a
+compor com as garantias governadas. A tabela abaixo é a transcrição completa e definitiva,
+substituindo a da seção D onde diverge (marcado **[corrigido]**).
+
+| Método/caminho | Tela servida | Serviço chamado | Identidade (de `req.authContext`) | Escopo + grant exigido | Entrada | Resposta | Idempotência | Erros/estados |
+|---|---|---|---|---|---|---|---|---|
+| `GET /api/radar/entities` | Lista de entidades | `listRadarKnownEntities` | `tenantId`, `workspaceId` | `radar_social.read` | query opcional de paginação | lista `{id, displayName, status}` | N/A (leitura) | 401/403 padrão |
+| `GET /api/radar/entities/:id` | Detalhe da entidade | `getRadarKnownEntity` + `listRadarMaterials` | `tenantId`, `workspaceId`, `actorUserId` | `radar_social.read` + resolver `"read"` | — | entidade + materiais (sem hash cru) | N/A | 404 unificado |
+| `POST /api/radar/entities/:id/materials` | Detalhe da entidade | `receiveRadarMaterial` | idem | `radar_social.materials.write` + resolver `"write"` | `{conteudo, fonteDeclarada, capturadoEm?, operationKey, supersedesMaterialId?}` | material criado/recuperado + `recovered` | Sim, `operationKey` | `entity_not_active`, `field_*`, `predecessor_already_superseded` |
+| `POST /api/radar/entities/:id/analysis-requests` **[corrigido]** | Detalhe da entidade | `createRadarAnalysisRequest` | idem | `radar_social.analysis.request` + resolver `"analyze"` | `{materialId, objective, additionalContext?, operationKey}` — **`agentKey`/`agentVersion`/`knowledgePolicySnapshot` NUNCA aceitos do corpo; a rota os fixa com a constante de demonstração antes de chamar o serviço** | solicitação + `firstAttempt.id` | Sim, `operationKey` | `operation_key_reused_incompatible_request`; corpo com `agentKey`/`agentVersion`/`knowledgePolicySnapshot` preenchidos é rejeitado com 400 antes de chegar ao serviço (campo não permitido nesta rota) |
+| `POST /api/radar/attempts/:attemptId/run` **[corrigido]** | Acompanhamento da tentativa | `runGovernedAnalysis` (não mais `runSimulatedAnalysis`) | `tenantId`, `workspaceId`, `workerId = actorUserId` | `radar_social.analysis.execute` + resolver `"analyze"` (revalidado internamente após espera, ver seção 1) | `{}` — `concurrencyLimit` e `callCompletion` são constantes fixas do servidor, nunca do corpo | tentativa concluída ou erro | Não idempotente por natureza — protocolo de posse (`claim_lost_race`/`attempt_not_pending`) já impede reexecução | `attempt_not_pending`, `claim_lost_race`, `governed_dispatch_rejected_stale_or_expired_claim`, `provider_call_slot_unavailable` (capacidade da demonstração ocupada), `AGENT_ASSIGNMENT_REQUIRED`/`AGENT_NOT_ENABLED_IN_WORKSPACE` (config de demonstração incompleta — 5xx, nunca atribuído ao usuário), resultado desconhecido (ver seção C) |
+| `GET /api/radar/attempts/:attemptId` | Acompanhamento da tentativa | `getRadarAnalysisAttempt` | idem | `radar_social.read` + resolver `"read"` | — | status da tentativa (sem `preservedResultPayload`/`claimToken` crus) | N/A | 404 unificado |
+| `GET /api/radar/analysis-requests/:id/recommendation` | Acompanhamento da tentativa | `getRadarRecommendation` | idem | `radar_social.read` + resolver `"read"` | — | recomendação completa (nunca o `Run` opaco cru) | N/A | 404 se ainda não concluída |
+| `POST /api/radar/recommendations/:id/evaluations` | Formulário de avaliação | `submitRadarRecommendationEvaluation` | idem | `radar_social.recommendation.evaluate` + resolver `"read"` | `{fundamentacao, clareza, utilidade, justificativa?, comentario?, operationKey, supersedesEvaluationId?}` | avaliação criada/recuperada + `recovered` | Sim, `operationKey` | `justificativa_required_when_not_fully_positive`, `field_invalid_enum`, `supersedes_evaluation_not_found`, `evaluation_already_corrected`, `root_already_exists_use_correction`, `operation_key_reused_incompatible_evaluation` |
+| `GET /api/radar/recommendations/:id/evaluations` | Histórico de avaliações | `listRadarRecommendationEvaluationsForRecommendation` | idem | `radar_social.read` + resolver `"read"` | — | lista de avaliações (todas as cadeias) | N/A | 404 unificado |
+
+Confirmação de cobertura: os 9 endpoints cobrem a jornada inteira (selecionar → material →
+solicitar → rodar governado → consultar → avaliar → recuperar histórico); nenhuma etapa da jornada
+ficou sem endpoint, e nenhuma etapa exige um décimo endpoint. Identidade em TODOS: exclusivamente
+`req.authContext` (populado por `enforceTenant`), nunca corpo/query/headers `x-tenant-id`/
+`x-workspace-id` enviados pelo navegador. Estado/leitura/atualização de página (GET) nunca inicia
+análise nova — só a rota `POST .../run` aciona `runGovernedAnalysis`, exatamente como antes.
+Nenhum endpoint genérico `/api/runs/*` é usado para expor conteúdo do Radar — mantido da seção D.
+
+### 3. Isolamento da demonstração (descrito, nada decidido como definitivo)
+
+- **Seleção de transporte substituto — mecanismo concreto**: a função `callCompletion` fica
+  hardcoded no próprio arquivo `apps/api/src/routes/radarSocial.ts` (nome proposto:
+  `demoSubstituteCallCompletion`, mesma técnica de `createSubstituteCompletionEngine` já usada nos
+  testes), passada como literal para `runGovernedAnalysis({ ..., callCompletion: demoSubstituteCallCompletion })`. O corpo de `POST .../run` é `{}` — não existe campo por onde o navegador possa
+  indicar provedor, transporte ou credencial.
+- **Configuração ausente/incompatível bloqueia a execução, não contorna**: se `AgentMetadata`/
+  `WorkspaceAgentAssignment` sintéticos não existirem ou estiverem desabilitados,
+  `assertWorkspaceAgentEnabled` já falha fechado (`AGENT_ASSIGNMENT_REQUIRED`/
+  `AGENT_NOT_ENABLED_IN_WORKSPACE`) — a rota deve apenas propagar esse erro como 503/500 genérico
+  ("demonstração indisponível — configuração incompleta"), nunca criar um caminho alternativo que
+  pule essa checagem.
+- **Nenhum fallback pode alcançar um provedor real**: verificável estaticamente — o arquivo
+  `apps/api/src/routes/radarSocial.ts` nunca deve importar `runCompletion` de `@eiah/core`
+  diretamente (só `runGovernedAnalysis` o faz, internamente, e só recebe o `callCompletion`
+  substituto passado por essa rota); a ÚNICA forma de alcançar o provedor real seria a própria rota
+  chamar `runCompletion` diretamente, o que ela nunca faz por construção. **Precisão registrada na
+  rodada "Precisões de isolamento — rodada 2" (19/09/2026), no ponto específico**: essa frase estava
+  incompleta, não errada — `runGovernedAnalysis` tem `const callCompletion = params.callCompletion ?? runCompletion;`
+  ([radarGovernedExecutionService.ts:318](../../apps/api/src/services/radarSocial/radarGovernedExecutionService.ts#L318)),
+  ou seja, o próprio SERVIÇO cai para o `runCompletion` real quando `callCompletion` não é
+  informado. A garantia de isolamento não vem de o serviço "não ter" o caminho real (ele tem, é o
+  default), vem de a rota da demonstração **sempre** informar `callCompletion` explicitamente, sem
+  exceção — ver o mecanismo de verificação detalhado na seção de precisões ao final deste plano.
+- **Restrição a ambiente local**: proposta (não decidida nesta rodada) de só montar o router em
+  `apps/api/src/index.ts` quando uma flag explícita de processo estiver definida (ex.:
+  `RADAR_DEMO_MODE=1`) — se ausente, a rota nem existe no roteador; a decisão exata de gate
+  (flag isolada vs. combinada com `NODE_ENV`) fica para a rodada de aprovação, não fechada aqui.
+  Um "aviso visual de simulação" (banner na UI) **não substitui** esse isolamento — é só
+  informação para quem usa, não controle.
+- **Prova de ausência de chamada externa em teste**: (a) teste estrutural sobre o texto-fonte de
+  `radarSocial.ts` confirmando que `runCompletion`/qualquer cliente HTTP externo nunca é importado
+  ali (mesma técnica textual já usada nos 52 testes de frontend existentes) — prova indireta,
+  registrada como tal, não uma varredura de rede ao vivo; (b) contador de chamadas da função
+  substituta (`demoSubstituteCallCompletion`) incrementado a cada invocação, testado para igualar
+  exatamente 1 por tentativa rodada, nunca mais.
+
+### 4. Acesso inicial e dados sintéticos (descrito para rodada futura, nada criado aqui)
+
+Preserva tudo já descrito na seção E (tenant/workspace/usuário/membership dedicados, grants via
+`createRadarKnownEntity`, entidade "Empresa Fictícia Demo", banco descartável dedicado, nenhum
+bypass de autenticação) e acrescenta, exigido especificamente pelo caminho governado:
+
+- **Identidade sintética de agente**: um `AgentMetadata` (via `prisma.agentMetadata.upsert`, mesma
+  chamada já usada em `apps/api/scripts/seedAgentMetadata.ts`) com uma chave fixa de demonstração
+  (ex.: `agent: "radar-social-demo-agent"`), e um `WorkspaceAgentAssignment` (via
+  `prisma.workspaceAgentAssignment.create`, `enabled: true`, `agentVersion` correspondente) para o
+  workspace de demonstração — mesmo padrão do helper `setupGovernedRequest` já usado em
+  `J-governed-execution.test.ts`, reaproveitado, não inventado.
+- **Fixação do par agentKey/agentVersion no servidor**: a mesma constante usada para criar o
+  `WorkspaceAgentAssignment` sintético é a constante que a rota `POST .../analysis-requests` grava
+  em `generationConfigInput.agentKey`/`agentVersion` — as duas pontas (dado sintético e valor
+  fixado na rota) devem ser a MESMA constante, nunca duas fontes independentes que possam divergir.
+- Tudo isso em PostgreSQL descartável dedicado, nunca `eiah-postgres`/Neon/produção; nenhuma
+  credencial real; nenhum token universal/administrador; nenhum middleware desabilitado. Se algum
+  mecanismo de autenticação real hoje dependesse de um serviço externo indisponível localmente,
+  isso seria declarado aqui como bloqueio — não é o caso: `findApiToken`/`ApiToken` já resolvem
+  contra o próprio Postgres, sem dependência externa.
+- Diferenciação explícita: esta é configuração SINTÉTICA de ambiente descartável para demonstração,
+  não é provisionamento operacional de agente real (que envolveria capabilities de produção,
+  billing, catálogo público) — fora do escopo desta proposta em qualquer rodada.
+
+### 5. Arquivos e testes — transcrição corrigida
+
+Arquivos da seção F permanecem os mesmos 8 (nenhum arquivo adicional é necessário só pela troca de
+caminho de execução — a diferença fica inteiramente no CONTEÚDO do router novo, não na lista de
+arquivos). Ajuste: `apps/api/src/routes/radarSocial.ts` agora também define, internamente,
+`demoSubstituteCallCompletion`, a constante `RADAR_DEMO_AGENT_KEY`/`RADAR_DEMO_AGENT_VERSION` e a
+constante `RADAR_DEMO_CONCURRENCY_LIMIT` — tudo dentro do mesmo arquivo já listado, sem arquivo
+novo.
+
+| Teste | Cobre | Tipo |
+|---|---|---|
+| Jornada completa (selecionar → material → solicitar → rodar → consultar → avaliar → histórico) | fluxo ponta a ponta descrito na seção I | **Manual, no navegador** — não há framework de renderização de componente no repositório (seção A) |
+| Acesso negado/revogado | 404 unificado ao remover grant no meio do fluxo | Automatizado (`apps/api/src/tests/radar-routes.test.ts`, `node:test`) |
+| Execução governada com transporte substituído | `demoSubstituteCallCompletion` chamada exatamente 1 vez; `radarSocial.ts` nunca importa `runCompletion` (estrutural) | Automatizado |
+| Recuperação sem novo envio | rodar 1 vez, consultar (GET) N vezes, contador de chamada do substituto permanece 1 | Automatizado |
+| Concorrência conforme o limite da demonstração | com `RADAR_DEMO_CONCURRENCY_LIMIT=1`, uma segunda tentativa concorrente recebe `provider_call_slot_unavailable`, ordem de fila comprovada (mesma técnica de trava+polling já usada na unidade de avaliação) | Automatizado |
+| Avaliação + correção com histórico | reaproveita a cobertura já existente de `K-recommendation-evaluation.test.ts`; teste da rota só confirma o encaminhamento HTTP correto, sem reimplementar a unidade | Automatizado |
+| Proteção de campo sensível | resposta JSON de nenhum endpoint contém `preservedResultPayload`, `claimToken` ou `Run.request`/`Run.response` cru | Automatizado |
+| Ausência de chamada de rede a provedor real | teste estrutural sobre o texto-fonte de `radarSocial.ts` (ver seção 3) | Automatizado (prova indireta, declarada como tal) |
+
+### 6. Proposta única de autorização (texto para decisão do usuário — substitui a da seção "## 5" acima para a demonstração)
+
+> Autorizo, para uma rodada futura separada, EXCLUSIVAMENTE: (1) a implementação das telas e rotas
+> delimitadas nas seções C/D/2 deste fechamento — router `apps/api/src/routes/radarSocial.ts` com
+> os 9 endpoints usando `runGovernedAnalysis`, sua montagem em `apps/api/src/index.ts`, as páginas e
+> componentes novos em `apps/web/src/pages/app/radar/`, as funções novas em
+> `apps/web/src/lib/api.ts`, as alterações aditivas em `apps/web/src/App.tsx`; (2) as adaptações
+> mínimas identificadas na seção 1 (fixação server-side de `agentKey`/`agentVersion`/
+> `knowledgePolicySnapshot`/`concurrencyLimit`, uso de `req.authContext.userId` como `workerId`,
+> função substituta de transporte hardcoded na rota); (3) os testes da seção 5 e a comparação
+> incremental de typecheck (mesma metodologia de cópia com hardlinks quebrados já usada nas rodadas
+> anteriores desta unidade); (4) o preparo sintético descrito na seção 4, em PostgreSQL descartável
+> dedicado; (5) a inicialização local do frontend (Vite) e da API para a verificação; (6) a
+> verificação manual da jornada no navegador; (7) a atualização de documentação registrando o que
+> foi efetivamente feito.
+>
+> **Endereços**: distingue-se (a) endereço CONFIGURADO — Vite em `5173`, API em `8080`, conforme
+> arquivos de configuração já citados na seção A/B, ainda não verificado em execução; (b) endereço
+> efetivamente TESTADO no ambiente do executor, a ser reportado literalmente (host:porta reais)
+> somente após a inicialização local ser de fato executada nessa rodada futura; (c) endereço
+> ACESSÍVEL ao usuário — não há promessa de que `localhost` do executor seja alcançável no navegador
+> do usuário; se for necessário expor a porta (ex.: encaminhamento SSH/túnel), isso será descrito
+> como opção específica, com seus limites (validade temporária, exposição limitada ao encaminhamento
+> escolhido), nunca como exposição pública automática.
+>
+> **Ciclo de vida dos processos**: a rodada futura deve declarar explicitamente quais processos
+> precisam permanecer ativos durante a demonstração (o servidor da API e o servidor de
+> desenvolvimento do Vite, ambos apontando ao Postgres descartável) e como encerrá-los ao final
+> (interrupção dos dois processos iniciados por esta demonstração, sem tocar em nenhum serviço
+> pré-existente do ambiente do executor — em particular, sem afetar qualquer Postgres ou processo
+> de API/worker já em execução para outras finalidades).
+>
+> **Fora do escopo, nesta e em qualquer rodada até nova autorização expressa**: instalação de
+> dependência, banco compartilhado, Neon, dado real, modelo real, provisionamento operacional de
+> agente, fila/worker operacional, cliente real, Instagram, publicação pública, staging, commit,
+> fetch, push, PR, merge, rebase, tag, deploy.
+>
+> Esta proposta, por si só, não constitui autorização para executar nada do que descreve — permanece
+> pendente de decisão explícita do usuário em rodada futura.
+
+### 7. Evidência literal desta rodada
+
+```
+$ git branch --show-current
+experiment/signalforward-origin-fingerprint-fix
+
+$ git rev-parse HEAD
+416e13fbfabeb5fc390c9be02f66c72a9840b9e2
+
+$ git status --short
+ M docs/architecture/radar-social-construction-plan-v1.md
+```
+
+`git diff --stat` e `git diff --check` para o diff ACUMULADO desta e das rodadas documentais
+anteriores (todas ainda não commitadas) só mostram o mesmo arquivo único, em um único bloco de
+acréscimo — como já registrado nas rodadas anteriores, o git não distingue por si só qual parágrafo
+foi escrito em qual rodada dentro de um mesmo arquivo não commitado; essa distinção só existe no
+registro desta conversa. Nenhum outro arquivo do repositório foi tocado nesta rodada — nenhum
+código, teste, schema ou serviço foi criado, alterado ou executado.
+
+## Precisões de isolamento da demonstração interna — rodada 2 (19/09/2026)
+
+**Status: precisões exclusivamente documentais, sobre o desenho já fechado acima.** Não reabre o
+caminho de execução (`runGovernedAnalysis` permanece), não altera o pacote de telas/endpoints/
+arquivos além do que as próprias precisões exigem (nenhuma exigiu), não cria código, teste,
+migration; não prepara banco; não executa teste; não inicia serviço. Estado confirmado ao início:
+`HEAD = 416e13fbfabeb5fc390c9be02f66c72a9840b9e2`, branch e três commits preservados, único arquivo
+tocado é este plano.
+
+### A. Habilitação da demonstração — condição explícita
+
+Proposta de nomes/valores (config, não implementada):
+
+| Variável | Valor exigido | Efeito se ausente/incorreto |
+|---|---|---|
+| `RADAR_DEMO_MODE` | `"1"` (string literal, comparação exata) | Ausente ou qualquer outro valor → router de demonstração NUNCA é montado em `apps/api/src/index.ts` (a rota não existe, não é "403", é "não registrada") |
+| `NODE_ENV` | qualquer valor diferente de `"production"` | Se `NODE_ENV === "production"`, a montagem é recusada mesmo com `RADAR_DEMO_MODE=1` — a flag de demo nunca sobrepõe o ambiente |
+| `RADAR_DEMO_DB_MARKER` | string não vazia, gerada uma única vez por instância descartável (ver B) | Ausente ou vazia → recusa de montagem, mesmo com as duas condições acima satisfeitas — nunca prossegue com verificação "melhor esforço" |
+
+**As três condições são exigidas em conjunto (E lógico), avaliadas nesta ordem, antes de qualquer
+`app.use()` do router novo** em `apps/api/src/index.ts`. Nenhuma delas, isolada, habilita a
+demonstração — em particular, a mera existência de `AgentMetadata`/`WorkspaceAgentAssignment`
+sintéticos (exigidos pelo caminho governado) ou do `callCompletion` substituto não habilita nada
+por si só; eles são necessários para a EXECUÇÃO de uma tentativa, não para a EXISTÊNCIA da rota. Se
+qualquer uma das três condições falhar, o processo da API deve logar o motivo (qual condição
+falhou) e simplesmente não registrar o router — sem tentar uma configuração alternativa, sem modo
+degradado. Isso é uma PROPOSTA de nomes/comportamento para a rodada de implementação futura, não
+uma configuração já existente hoje no repositório (`grep -r RADAR_DEMO_MODE` não retorna nada —
+confirmado nesta rodada).
+
+### B. Banco descartável dedicado — comprovação de vínculo
+
+Hostname local, nome contendo "test" ou presença de dado sintético NÃO comprovam, isoladamente, que
+o Postgres conectado é o descartável preparado para esta demonstração (um Postgres local comum, ou
+até um restaurado por engano de outro contexto, pode satisfazer essas três condições sem ser o
+recurso certo). Mecanismo proposto — vínculo POSITIVO entre o recurso criado e a configuração
+efetivamente usada:
+
+1. Ao criar o container/instância Postgres descartável para a demonstração, gerar um valor aleatório
+   novo (ex.: um UUID) e, ANTES de qualquer `prisma migrate`/preparo de dado/montagem de rota, gravar
+   esse valor numa tabela própria fora do controle do Prisma (ex.:
+   `CREATE TABLE IF NOT EXISTS _radar_demo_marker (token TEXT PRIMARY KEY); INSERT INTO _radar_demo_marker (token) VALUES ('<uuid-gerado>');`),
+   executado diretamente contra o banco recém-criado, nunca via migration versionada do schema
+   principal (não deve poluir o histórico de migrations reais).
+2. O MESMO valor é exportado como `RADAR_DEMO_DB_MARKER` para o processo da API (a mesma variável de
+   A, reaproveitada aqui como o vínculo, não como uma segunda flag independente).
+3. No arranque, ANTES de rodar qualquer migration, preparar qualquer dado sintético ou montar
+   qualquer rota, a API consulta `SELECT 1 FROM _radar_demo_marker WHERE token = '<RADAR_DEMO_DB_MARKER>'`
+   contra o `DATABASE_URL` efetivamente configurado. Se a tabela não existir, a linha não existir, ou
+   o valor não bater, a inicialização da demonstração é recusada IMEDIATAMENTE — sem tentar outro
+   `DATABASE_URL`, sem criar a tabela/linha por conta própria (isso destruiria a própria prova — a
+   API só LÊ o marcador, nunca o escreve), sem prosseguir em modo parcial.
+4. Este vínculo é específico da instância: cada nova subida do Postgres descartável gera um novo
+   UUID, então reaproveitar por engano um `DATABASE_URL` de uma instância anterior (mesmo que
+   também descartável) falha a checagem, porque o valor em `RADAR_DEMO_DB_MARKER` não vai bater com
+   o marcador gravado numa instância diferente.
+5. Nenhum acesso a banco compartilhado, Neon ou credencial real é necessário para essa checagem — ela
+   roda inteiramente dentro do Postgres descartável já conectado.
+
+Isso é proposta de mecanismo para a rodada de implementação futura — nenhuma tabela, script ou
+variável foi criada nesta rodada.
+
+### C. Ausência de chamadas reais — mecanismo de bloqueio em teste
+
+Achado necessário para esta precisão (leitura desta rodada, nenhuma mudança de produção): os quatro
+provedores reais (`packages/providers/src/{OpenAI,Anthropic,Gemini,DeepSeek}Provider.ts`) usam
+`node-fetch` (dependência já presente, nenhuma instalação necessária) para chamar hosts reais (ex.:
+`https://api.openai.com/...`); `node-fetch` v2, por sua vez, é implementado sobre os módulos nativos
+`http`/`https` do Node. Como já registrado na correção pontual da seção 3 acima,
+`runGovernedAnalysis` tem um default interno (`params.callCompletion ?? runCompletion`,
+[radarGovernedExecutionService.ts:318](../../apps/api/src/services/radarSocial/radarGovernedExecutionService.ts#L318)) que alcançaria esse
+caminho real se a rota da demonstração deixasse de passar `callCompletion` — por isso o teste de
+integração deve provar a ausência de rede real como uma segunda camada de defesa, não confiar só na
+leitura do código-fonte da rota.
+
+**Mecanismo proposto, compatível com o transporte existente, sem instalar dependência**: no `setup`
+do arquivo de teste de integração (antes de importar o router/API sob teste), interceptar
+`http.request`/`https.request` dos módulos nativos do Node (`node:http`/`node:https`) — é o ponto
+comum por onde `node-fetch` (usado pelos quatro provedores) passa, então o bloqueio funciona mesmo
+que o código sob teste chegue ao caminho real por engano, sem depender de conhecer os detalhes
+internos de cada biblioteca de provedor. A interceptação:
+- permite (não intercepta) requisições cujo host de destino seja `127.0.0.1`/`localhost` — essas são
+  as conexões da própria demonstração ao Postgres descartável (via `pg`, que usa `net` diretamente,
+  não `http`/`https` — portanto nem participa desta interceptação) e, se o teste de integração
+  chamar a própria API via HTTP local, também loopback;
+- para qualquer outro host, lança um erro explícito e síncrono ANTES de a requisição sair do
+  processo (nunca deixa a tentativa seguir e falhar "silenciosamente" por timeout/DNS — o teste deve
+  falhar de forma imediata e legível, identificando o host que tentou ser alcançado);
+- é restaurada (módulos nativos devolvidos ao estado original) ao final de cada teste, para não
+  vazar para outros arquivos de teste executados no mesmo processo `node:test`.
+
+Confirmações exigidas pela precisão, com o mecanismo acima:
+- **A jornada usa exclusivamente o transporte substituído**: comprovado porque a interceptação
+  bloquearia qualquer tentativa de sair para um host externo durante o teste — se o teste passar
+  (sem lançar o erro de host bloqueado), nenhuma chamada saiu além do loopback.
+- **Não há fallback para outro provedor**: a interceptação é agnóstica a QUAL provedor seria
+  chamado (bloqueia por host, não por biblioteca) — cobre os quatro provedores e qualquer futuro
+  provedor que também use `http`/`https`/`node-fetch`.
+- **Nenhuma credencial real é necessária**: decorre de a rota nunca chamar um provedor real (nem em
+  teste, nem em execução) — nenhuma variável de API key precisa existir no ambiente de demonstração.
+- **O contador do substituto é evidência COMPLEMENTAR, não suficiente sozinha**: um contador em
+  `demoSubstituteCallCompletion` prova quantas vezes o SUBSTITUTO foi chamado, mas não prova, por si
+  só, que nenhuma OUTRA chamada de rede ocorreu por um caminho paralelo — só a interceptação de
+  `http`/`https` (que vê qualquer tentativa de saída, não só as que passam pelo substituto) fecha
+  essa lacuna. Os dois já eram propostos; esta precisão deixa explícito qual prova o quê.
+- **Conexões locais necessárias não são inadvertidamente bloqueadas**: a interceptação atua só sobre
+  `http`/`https`, nunca sobre `net` (usado por `pg`/Postgres) — e mesmo dentro de `http`/`https`, só
+  bloqueia hosts fora do loopback, preservando qualquer chamada HTTP local que o próprio teste
+  precise fazer contra a API em `127.0.0.1`.
+
+Nenhum pacote novo é necessário (`node:http`/`node:https` são nativos); nenhuma mudança de produção
+— a interceptação vive inteiramente no arquivo de teste, ativa só durante sua execução.
+
+### D. Identidade e posse — precisão sobre `workerId`
+
+Leitura desta rodada, confirmando ausência de incompatibilidade: `claimAttempt`
+([radarAnalysisAttemptService.ts:282-320](../../apps/api/src/services/radarSocial/radarAnalysisAttemptService.ts#L282-L320)) grava
+`claimed_by_worker_id = params.workerId` só como campo DESCRITIVO/auditável — a exclusão mútua real
+é feita por `SELECT ... FOR UPDATE` + condição `status = 'pending'` no `UPDATE` + um `claim_token`
+novo (`randomUUID()`) gerado a cada tentativa de claim, nenhum dos quais depende de `workerId` ser
+único por execução, processo ou sessão. Duas chamadas de claim concorrentes para o MESMO
+`attemptId`, mesmo com o `workerId` idêntico nas duas (ex.: o mesmo usuário com duas abas abertas),
+já são corretamente serializadas pela trava de linha e decididas por `attempt_not_pending`/
+`claim_lost_race` — o valor de `workerId` não participa dessa decisão.
+
+Portanto: `workerId = req.authContext.userId` identifica o ATOR que solicitou a execução nesse
+contexto (útil para auditoria — "quem clicou em rodar"), não é nem precisa ser um identificador
+exclusivo de processo ou execução. **Nenhuma incompatibilidade de código foi encontrada** — não há
+adaptação a propor além da já registrada na seção 1 (usar `req.authContext.userId` como `workerId`
+por não existir um conceito de worker de processo separado nessa rota HTTP síncrona). Não se atribui
+a essa identidade nenhuma garantia de exclusão — quem garante exclusão é `claim_token` + `status` +
+os controles persistidos já existentes (incluindo a trava adicionada nesta unidade para
+`submitRadarRecommendationEvaluation`, sobre `radar_known_entities`).
+
+### E. Pacote completo reproduzido nesta rodada (sem alteração de contagem)
+
+As quatro precisões acima afetam INICIALIZAÇÃO (habilitação, verificação de banco) e ISOLAMENTO
+(bloqueio de rede em teste) — nenhuma delas altera o contrato de um endpoint, então os nove
+endpoints e os oito arquivos permanecem exatamente os já definidos, reproduzidos abaixo na íntegra
+para esta resposta (não é preciso consultar outra seção para tê-los completos).
+
+**E.1 — Os nove endpoints**
+
+| Método/caminho | Serviço chamado | Autorização | Entrada essencial | Saída essencial | Idempotência | Erros relevantes |
+|---|---|---|---|---|---|---|
+| `GET /api/radar/entities` | `listRadarKnownEntities` | `req.authContext` + escopo `radar_social.read` | paginação opcional | `{id, displayName, status}[]` | N/A (leitura) | 401/403 padrão |
+| `GET /api/radar/entities/:id` | `getRadarKnownEntity` + `listRadarMaterials` | idem + resolver `"read"` na entidade | — | entidade + materiais | N/A | 404 unificado (não existe / sem acesso) |
+| `POST /api/radar/entities/:id/materials` | `receiveRadarMaterial` | escopo `radar_social.materials.write` + resolver `"write"` | `{conteudo, fonteDeclarada, capturadoEm?, operationKey, supersedesMaterialId?}` | material criado/recuperado + `recovered` | Sim, por `operationKey` | `entity_not_active`, `field_*`, `predecessor_already_superseded` |
+| `POST /api/radar/entities/:id/analysis-requests` | `createRadarAnalysisRequest` | escopo `radar_social.analysis.request` + resolver `"analyze"` | `{materialId, objective, additionalContext?, operationKey}` — `agentKey`/`agentVersion`/`knowledgePolicySnapshot` fixados no servidor, nunca do corpo | solicitação + `firstAttempt.id` | Sim, por `operationKey` | `operation_key_reused_incompatible_request`; corpo com identidade de agente é rejeitado (400) antes do serviço |
+| `POST /api/radar/attempts/:attemptId/run` | `runGovernedAnalysis` | escopo `radar_social.analysis.execute` + resolver `"analyze"` (revalidado após espera) | `{}` — `concurrencyLimit`/`callCompletion`/`workerId` fixados no servidor | tentativa concluída ou erro | Não idempotente por natureza — protocolo de posse já impede reexecução | `attempt_not_pending`, `claim_lost_race`, `governed_dispatch_rejected_stale_or_expired_claim`, `provider_call_slot_unavailable`, `AGENT_ASSIGNMENT_REQUIRED`/`AGENT_NOT_ENABLED_IN_WORKSPACE`, resultado desconhecido |
+| `GET /api/radar/attempts/:attemptId` | `getRadarAnalysisAttempt` | escopo `radar_social.read` + resolver `"read"` | — | status da tentativa (sem campo cru) | N/A | 404 unificado |
+| `GET /api/radar/analysis-requests/:id/recommendation` | `getRadarRecommendation` | escopo `radar_social.read` + resolver `"read"` | — | recomendação completa | N/A | 404 se ainda não concluída |
+| `POST /api/radar/recommendations/:id/evaluations` | `submitRadarRecommendationEvaluation` | escopo `radar_social.recommendation.evaluate` + resolver `"read"` | `{fundamentacao, clareza, utilidade, justificativa?, comentario?, operationKey, supersedesEvaluationId?}` | avaliação criada/recuperada + `recovered` | Sim, por `operationKey` | `justificativa_required_when_not_fully_positive`, `field_invalid_enum`, `supersedes_evaluation_not_found`, `evaluation_already_corrected`, `root_already_exists_use_correction`, `operation_key_reused_incompatible_evaluation` |
+| `GET /api/radar/recommendations/:id/evaluations` | `listRadarRecommendationEvaluationsForRecommendation` | escopo `radar_social.read` + resolver `"read"` | — | lista de avaliações (todas as cadeias) | N/A | 404 unificado |
+
+Nota adicional trazida pela precisão A: se `RADAR_DEMO_MODE`/`NODE_ENV`/`RADAR_DEMO_DB_MARKER` não
+satisfizerem a condição de habilitação, NENHUM desses nove caminhos existe no roteador — o erro
+observável é "rota não encontrada" (404 do Express por ausência de rota), não um erro específico de
+um destes endpoints.
+
+**E.2 — Os oito arquivos**
+
+| Arquivo | Novo/Alterado | Finalidade |
+|---|---|---|
+| `apps/api/src/routes/radarSocial.ts` | NOVO | Router com os 9 endpoints, `enforceTenant`+`requireScope` por rota, `demoSubstituteCallCompletion` hardcoded, constantes de `agentKey`/`agentVersion`/`concurrencyLimit` de demonstração |
+| `apps/api/src/index.ts` | ALTERAR | Monta o router acima **somente se** a condição de habilitação da precisão A e a verificação de banco da precisão B forem satisfeitas antes do `app.use()` |
+| `apps/web/src/pages/app/radar/index.tsx` | NOVO | Lista de entidades |
+| `apps/web/src/pages/app/radar/entity.tsx` | NOVO | Detalhe da entidade + materiais + nova solicitação |
+| `apps/web/src/pages/app/radar/request.tsx` | NOVO | Acompanhamento da tentativa + recomendação + avaliação + histórico |
+| `apps/web/src/pages/app/radar/components/RadarAttemptStatusCard.tsx` | NOVO | Card de status da tentativa |
+| `apps/web/src/pages/app/radar/components/RadarEvaluationForm.tsx` | NOVO | Formulário de avaliação |
+| `apps/web/src/lib/api.ts` | ALTERAR (aditivo) | 9 funções novas `apiRadarXxx` |
+| `apps/web/src/App.tsx` | ALTERAR (aditivo) | 1 item de navegação, 4 rotas, 1 banner de demonstração |
+
+A lista tem 8 arquivos, sem alteração de contagem: as quatro precisões (habilitação, verificação de
+banco, bloqueio de rede em teste, esclarecimento de `workerId`) mudam o CONTEÚDO de
+`apps/api/src/index.ts` (justificativa acima, refinada) e acrescentam um arquivo de teste (já
+previsto na lista de testes, nunca contado como arquivo de produto) — nenhum arquivo de produto novo
+é necessário.
+
+**E.3 — Testes e verificações**
+
+| Teste/verificação | O que prova | Tipo |
+|---|---|---|
+| Jornada completa com grants persistidos | fluxo ponta a ponta (selecionar → material → solicitar → rodar governado → consultar → avaliar → histórico) com grants concedidos ao usuário sintético | Automatizado (backend, `node:test`) + roteiro manual equivalente |
+| Bloqueio de acesso e revogação | 404 unificado ao remover grant no meio do fluxo, nunca distingue "não existe" de "sem acesso" | Automatizado |
+| Recuperação sem novo envio | rodar 1 vez, consultar (GET) N vezes, contador do substituto permanece 1 | Automatizado |
+| Avaliação e correção com histórico | reaproveita a cobertura já existente da unidade de avaliação; teste da rota confirma só o encaminhamento HTTP | Automatizado |
+| **Habilitação local bloqueada por padrão** | sem `RADAR_DEMO_MODE=1` (ou com `NODE_ENV=production`, ou sem `RADAR_DEMO_DB_MARKER`), a rota não existe no roteador — 404 de rota ausente | Automatizado (novo, exigido pela precisão A) |
+| **Recusa de banco incompatível** | com `RADAR_DEMO_DB_MARKER` presente mas sem a tabela/linha correspondente no banco conectado (ou com um valor que não bate), a inicialização é recusada, sem tentar outro banco | Automatizado (novo, exigido pela precisão B) |
+| Ausência de rede para provedores | interceptação de `http`/`https` nativos (precisão C) não registra nenhuma tentativa a host fora do loopback durante toda a jornada de teste | Automatizado |
+| Verificação manual no navegador | mesma jornada, observada por uma pessoa, incluindo o banner "Demonstração interna — análise simulada" | **Manual** — não há framework de renderização de componente no repositório |
+
+Preservados da rodada anterior (não removidos, apenas não repetidos nesta lista porque a precisão
+desta rodada não os afeta): teste de concorrência conforme o limite fixo da demonstração
+(`RADAR_DEMO_CONCURRENCY_LIMIT`) e teste de proteção de campo sensível (`preservedResultPayload`/
+`claimToken`/`Run` cru nunca na resposta) — ambos continuam parte do pacote mínimo de testes,
+descritos na seção 5 do "Fechamento documental" acima.
+
+### F. Texto único de autorização proposto (substitui o da seção 6 do "Fechamento documental" acima, incorporando as quatro precisões)
+
+> Autorizo, para uma rodada futura separada, EXCLUSIVAMENTE:
+> 1. A implementação das telas e rotas delimitadas — router `apps/api/src/routes/radarSocial.ts`
+>    com os 9 endpoints usando `runGovernedAnalysis` (caminho preservado, não reaberto), sua
+>    montagem condicionada em `apps/api/src/index.ts`, as páginas/componentes novos em
+>    `apps/web/src/pages/app/radar/`, as funções novas em `apps/web/src/lib/api.ts`, as alterações
+>    aditivas em `apps/web/src/App.tsx`.
+> 2. As adaptações mínimas já delimitadas: fixação server-side de `agentKey`/`agentVersion`/
+>    `knowledgePolicySnapshot`/`concurrencyLimit`; `workerId = req.authContext.userId` (sem
+>    incompatibilidade encontrada, precisão D); função substituta de transporte hardcoded na rota,
+>    sempre passada explicitamente a `runGovernedAnalysis` (nunca omitida, precisão C); condição de
+>    habilitação por `RADAR_DEMO_MODE`+`NODE_ENV`+`RADAR_DEMO_DB_MARKER` antes de montar o router
+>    (precisão A); verificação do vínculo com o banco descartável via tabela `_radar_demo_marker`
+>    antes de qualquer migration/preparo de dado/montagem de rota (precisão B).
+> 3. Os testes e verificações da seção E.3 (incluindo os dois novos desta rodada — habilitação
+>    bloqueada por padrão e recusa de banco incompatível — e os dois preservados da rodada anterior
+>    — concorrência e proteção de campo sensível) e a comparação incremental de typecheck, mesma
+>    metodologia de cópia com hardlinks quebrados já usada nas rodadas anteriores desta unidade.
+> 4. O preparo sintético em PostgreSQL descartável dedicado, incluindo a geração do marcador único
+>    da precisão B, tenant/workspace/usuário/entidade/material/grants e `AgentMetadata`/
+>    `WorkspaceAgentAssignment` sintéticos.
+> 5. A inicialização local do frontend (Vite) e da API para a verificação, com
+>    `RADAR_DEMO_MODE=1`/`RADAR_DEMO_DB_MARKER` definidos apontando ao banco descartável já
+>    verificado.
+> 6. A verificação manual da jornada no navegador, incluindo o cenário de acesso negado/revogado.
+> 7. A atualização de documentação registrando o que foi efetivamente feito.
+>
+> **Endereços**: (a) CONFIGURADO — Vite em `5173`, API em `8080`, conforme configuração já citada,
+> ainda não verificado em execução; (b) TESTADO no ambiente do executor — a ser reportado
+> literalmente (host:porta reais) somente após a inicialização local ser de fato executada nessa
+> rodada futura; (c) ACESSÍVEL ao usuário — sem promessa de que `localhost` do executor seja
+> alcançável no navegador do usuário; se for necessário expor a porta (ex.: encaminhamento
+> SSH/túnel), isso será descrito como opção específica, com seus limites, nunca como exposição
+> pública automática — **nenhuma exposição pública é autorizada por este texto**.
+>
+> **Ciclo de vida dos processos**: a rodada futura deve declarar quais processos permanecem ativos
+> durante a demonstração (servidor da API e servidor de desenvolvimento do Vite, ambos apontando ao
+> Postgres descartável verificado pela precisão B) e como encerrá-los ao final (interrupção dos dois
+> processos iniciados por esta demonstração, sem tocar em nenhum serviço pré-existente do ambiente
+> do executor — em particular, sem afetar qualquer Postgres ou processo de API/worker já em
+> execução para outras finalidades).
+>
+> **A preparação de identidades e configurações sintéticas fica limitada ao ambiente descartável**
+> — nenhum dado, credencial ou provisionamento sai dele.
+>
+> **Fora do escopo, nesta e em qualquer rodada até nova autorização expressa**: instalação de
+> dependência; banco compartilhado, Neon, credenciais ou dados reais; chamadas reais a modelos;
+> provisionamento operacional; fila/worker operacional; clientes reais; Instagram e ações externas;
+> publicação pública; staging, commit, amend, fetch, push, PR, merge, rebase, tag ou deploy.
+>
+> Esta proposta, por si só, **não constitui autorização para executar nada do que descreve** —
+> permanece pendente de decisão explícita do usuário em rodada futura.
+
+### G. Evidência literal desta rodada
+
+```
+$ git branch --show-current
+experiment/signalforward-origin-fingerprint-fix
+
+$ git rev-parse HEAD
+416e13fbfabeb5fc390c9be02f66c72a9840b9e2
+
+$ git status --short
+ M docs/architecture/radar-social-construction-plan-v1.md
+```
+
+Diff documental desta rodada: duas alterações neste mesmo arquivo — (1) uma inserção pontual na
+seção "Isolamento da demonstração" (correção não destrutiva, texto anterior preservado, ver acima);
+(2) a nova seção "Precisões de isolamento da demonstração interna — rodada 2" completa, ao final do
+arquivo. Nenhum outro arquivo do repositório foi tocado; nenhum código, teste, schema ou serviço foi
+criado, alterado ou executado nesta rodada.
+
+## Registro de implementação — demonstração interna (19/09/2026)
+
+**Status: implementado e testado localmente, com um achado real corrigido sob autorização pontual.**
+HEAD permanece `416e13fbfabeb5fc390c9be02f66c72a9840b9e2` (nenhum commit criado nesta rodada).
+
+### Arquivos criados/alterados
+
+Os 9 arquivos já delimitados (router, gate, 5 páginas/componentes React, `apps/web/src/lib/api.ts`,
+`apps/web/src/App.tsx`, `apps/api/src/index.ts`) foram implementados exatamente como desenhado nas
+rodadas anteriores. Adicionais, todos "controle local estritamente necessário" (item 4 da
+autorização, sem necessidade de nova aprovação):
+`apps/api/src/services/radarSocial/radarDemoDbMarker.ts` (verificação do marcador),
+`apps/api/src/tests/radar-routes.test.ts` (testes de integração), `apps/api/scripts/seedRadarSocialDemo.ts`
+(preparo sintético) e `apps/api/scripts/startRadarSocialDemoApi.ts` (host HTTP mínimo — ver achado
+abaixo).
+
+### Achado real, autorizado e corrigido: `finalizeRunRecord`
+
+Ao ligar `runGovernedAnalysis` a uma rota HTTP real pela primeira vez, `finalizeRunRecord`
+(`apps/api/src/services/runs.ts`) revelou um defeito preexistente: seu `client.run.update({where:
+{id: scopedRunId}, ...})` nunca incluía `tenantId`/`workspaceId` no `where`. Isso nunca falhava
+porque todo chamador de produção até então usava `prismaGlobal` (sem `tenantGuard`) a partir de
+workers em background — nenhuma rota HTTP jamais chamava `finalizeRunRecord`. A rota do Radar
+Social é a primeira a expor essa chamada ao client tenant-guarded real (`req.prisma`, via
+`getPrismaForTenant`), que rejeita o update por faltar `tenantId` no `where`. Autorizado
+pontualmente pelo usuário; corrigido acrescentando `tenantId: params.tenantId, workspaceId:
+params.workspaceId` ao `where` — `assertRunScope`, na mesma função, já garantia que `scopedRunId`
+pertence a esse tenant/workspace antes de chegar ali, então a correção não muda o conjunto de linhas
+afetadas para nenhum chamador existente (workers incluídos), só torna explícito o que já era
+verdade. Testado nas duas pontas (conclusão bem-sucedida por client tenant-guarded; recusa silenciosa
+em escopo incompatível) em `radar-routes.test.ts`.
+
+### Por que existe `startRadarSocialDemoApi.ts`
+
+`apps/api/src/index.ts` só chama `app.listen(...)` quando `NODE_ENV !== "test"` — e esse mesmo
+caminho exige `resolveWorkerTopology` (variáveis de topologia operacional como
+`EIAH_ENVIRONMENT_ID`/`SERVICE_ROLE`), inicia o worker de fila de Runs, o reconciliador de billing e
+outros processos de fundo, isto é, provisionamento/fila operacional — explicitamente fora do escopo
+desta demonstração. Com `NODE_ENV=test`, esse bloco inteiro (incluindo `app.listen`) é pulado, então
+`index.ts` nunca abre uma porta real nesse modo. `startRadarSocialDemoApi.ts` monta exatamente o
+mesmo `radarSocialRouter`/`enforceTenant`/`requireScope`/`governedErrorHandler` de produção, sem
+nenhuma lógica nova, e liga explicitamente em `127.0.0.1` (nunca `0.0.0.0`).
+
+### Testes (`apps/api/src/tests/radar-routes.test.ts`, contra Postgres descartável real)
+
+16/16 aprovados: prova estrutural de ausência de import de `runCompletion`; gate síncrono
+desabilitado por padrão; recusa de banco incompatível; `finalizeRunRecord` tenant-guarded
+(positivo+negativo); jornada completa (listagem, material idempotente, solicitação idempotente,
+identidade de agente rejeitada do corpo, execução governada com substituto, recuperação sem novo
+envio, avaliação+correção com histórico, proteção de campo sensível, acesso revogado); limite de
+concorrência (2 tentativas concorrentes, 200+409). Comando exato:
+```
+DATABASE_URL=postgresql://radardemo:radardemo@127.0.0.1:55432/radardemo \
+node --import tsx --test --test-force-exit apps/api/src/tests/radar-routes.test.ts
+```
+
+### Typecheck incremental
+
+`tsc --noEmit -p apps/api/tsconfig.json`: baseline reconstruída (arquivos novos movidos para fora,
+`index.ts`/`runs.ts` revertidos via `git checkout`) = 439 erros; com os arquivos restaurados = 439
+erros, mesmo conjunto exato (só deslocamento de linha em `index.ts` pelas 2 linhas de import novas).
+`tsc --noEmit -p apps/web/tsconfig.json`: baseline = 63; com as alterações = 63, diff vazio após
+normalizar números de linha. Nenhuma regressão em nenhum dos dois pacotes.
+
+### Execução local real (Postgres descartável + API + frontend)
+
+Postgres descartável: container Docker `radar-social-demo-postgres` (`pgvector/pgvector:pg16`),
+porta `55432`, credenciais `radardemo`/`radardemo`, banco `radardemo` — migrations aplicadas via
+`prisma migrate deploy`. Marcador `_radar_demo_marker` criado pelo seed com token
+`radar-demo-marker-fixed-for-this-session`. Seed executado
+(`apps/api/scripts/seedRadarSocialDemo.ts`) — tenant/workspace/usuário/token/entidade sintéticos
+gerados com sucesso. API real iniciada via `startRadarSocialDemoApi.ts`, `127.0.0.1:58080`,
+`NODE_ENV=development`, `RADAR_DEMO_MODE=1`. Frontend real iniciado via Vite,
+`127.0.0.1:5183`, `VITE_API_URL` apontando à API acima. Jornada completa (material → solicitação →
+execução governada → recomendação → avaliação → histórico) verificada via `curl` contra os
+processos REAIS em execução (não só o harness de teste), com resultado idêntico ao dos testes
+automatizados. Verificação por navegador interativo real **não foi realizada nesta rodada** —
+nenhuma ferramenta de automação de navegador estava disponível; a verificação foi estrutural
+(HTML servido pelo Vite, transformação sem erro dos arquivos `.tsx` novos via esbuild, texto "Radar
+Social" presente no bundle) e funcional via HTTP direto — declarado aqui como limitação, conforme
+exigido, não substituído por prova de serviço.

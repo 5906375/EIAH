@@ -5126,3 +5126,158 @@ export async function apiImobIntakePdfGuidance(runId: string): Promise<ImobContr
     `/imob/runs/${encodeURIComponent(runId)}/intake/export?format=pdf`,
   );
 }
+
+// --- Radar Social — demonstração interna (análise simulada governada) -----
+//
+// Identidade (tenant/workspace/usuário) sempre vem de req.authContext no
+// servidor — nada aqui é usado para autorização, só para exibição. Cada
+// função corresponde a um dos 9 endpoints em
+// apps/api/src/routes/radarSocial.ts (montados só quando a demonstração
+// está habilitada — ver RADAR_DEMO_MODE em radarSocialDemoGate.ts).
+
+export function radarNewOperationKey(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `op-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+export type RadarKnownEntity = {
+  id: string;
+  displayName: string;
+  status: "active" | "inactive";
+  externalRef: string | null;
+  revision: number;
+};
+
+export type RadarMaterial = {
+  id: string;
+  entityId: string;
+  conteudo: string;
+  fonteDeclarada: string;
+  capturadoEm: string | null;
+  supersedesMaterialId: string | null;
+  providedByUserId: string;
+  recebidoEm: string;
+};
+
+export type RadarAnalysisRequest = {
+  id: string;
+  entityId: string;
+  materialId: string;
+  objective: string;
+  additionalContext: string | null;
+  createdAt: string;
+};
+
+export type RadarAnalysisAttemptStatus =
+  | "pending"
+  | "running"
+  | "provider_responded_pending_persistence"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export type RadarAnalysisAttempt = {
+  id: string;
+  analysisRequestId: string;
+  attemptOperationKey: string;
+  attemptNumber: number;
+  status: RadarAnalysisAttemptStatus;
+  claimedByWorkerId: string | null;
+  claimedAt: string | null;
+  runId: string | null;
+  cancelRequestedAt: string | null;
+  failureReasonCode: string | null;
+  preservedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type RadarRecommendation = {
+  id: string;
+  attemptId: string;
+  recommendationType: "actionable" | "insufficient_evidence" | "do_not_act";
+  summary: string;
+  statements: Array<{ content: string; natureza: string; referenceIds: string[]; confidenceLevel?: string }>;
+  references: Array<{ id: string; quote: string }>;
+  limitations: string | null;
+  suggestedAction: string | null;
+  insufficientEvidenceReason: string | null;
+  doNotActReason: string | null;
+  createdAt: string;
+};
+
+export type RadarRecommendationEvaluation = {
+  id: string;
+  recommendationId: string;
+  evaluatorUserId: string;
+  criteriaVersion: string;
+  fundamentacao: string;
+  clareza: string;
+  utilidade: string;
+  justificativa: string | null;
+  comentario: string | null;
+  supersedesEvaluationId: string | null;
+  createdAt: string;
+};
+
+export async function apiRadarListEntities(): Promise<{ ok: boolean; items: RadarKnownEntity[]; nextCursor: string | null }> {
+  return http(`/radar/entities`);
+}
+
+export async function apiRadarGetEntity(entityId: string): Promise<{ ok: boolean; entity: RadarKnownEntity; materials: RadarMaterial[] }> {
+  return http(`/radar/entities/${encodeURIComponent(entityId)}`);
+}
+
+export async function apiRadarReceiveMaterial(
+  entityId: string,
+  body: { conteudo: string; fonteDeclarada: string; capturadoEm?: string | null; operationKey: string }
+): Promise<{ ok: boolean; recovered: boolean; material: RadarMaterial }> {
+  return http(`/radar/entities/${encodeURIComponent(entityId)}/materials`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function apiRadarCreateAnalysisRequest(
+  entityId: string,
+  body: { materialId: string; objective: string; additionalContext?: string | null; operationKey: string }
+): Promise<{ ok: boolean; recovered: boolean; request: RadarAnalysisRequest; firstAttempt: RadarAnalysisAttempt }> {
+  return http(`/radar/entities/${encodeURIComponent(entityId)}/analysis-requests`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function apiRadarRunAttempt(
+  attemptId: string
+): Promise<{ ok: boolean; attempt: RadarAnalysisAttempt; recommendation: RadarRecommendation | null }> {
+  return http(`/radar/attempts/${encodeURIComponent(attemptId)}/run`, { method: "POST", body: JSON.stringify({}) });
+}
+
+export async function apiRadarGetAttempt(attemptId: string): Promise<{ ok: boolean; attempt: RadarAnalysisAttempt }> {
+  return http(`/radar/attempts/${encodeURIComponent(attemptId)}`);
+}
+
+export async function apiRadarGetRecommendation(requestId: string): Promise<{ ok: boolean; recommendation: RadarRecommendation }> {
+  return http(`/radar/analysis-requests/${encodeURIComponent(requestId)}/recommendation`);
+}
+
+export async function apiRadarSubmitEvaluation(
+  recommendationId: string,
+  body: {
+    fundamentacao: string; clareza: string; utilidade: string;
+    justificativa?: string | null; comentario?: string | null;
+    operationKey: string; supersedesEvaluationId?: string | null;
+  }
+): Promise<{ ok: boolean; recovered: boolean; evaluation: RadarRecommendationEvaluation }> {
+  return http(`/radar/recommendations/${encodeURIComponent(recommendationId)}/evaluations`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function apiRadarListEvaluations(recommendationId: string): Promise<{ ok: boolean; evaluations: RadarRecommendationEvaluation[] }> {
+  return http(`/radar/recommendations/${encodeURIComponent(recommendationId)}/evaluations`);
+}

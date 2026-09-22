@@ -293,7 +293,19 @@ export async function finalizeRunRecord(params: {
   });
 
   return client.run.update({
-    where: { id: scopedRunId },
+    // tenantId/workspaceId incluídos explicitamente no where (achado desta
+    // rodada, autorizado pontualmente): assertRunScope, acima, já garante
+    // que scopedRunId pertence a este tenant/workspace antes de chegar
+    // aqui — adicioná-los ao where não muda o conjunto de linhas afetadas
+    // para nenhum chamador existente (todos passam pelo mesmo assertRunScope
+    // antes), só torna explícito o que já era garantido. Necessário para
+    // que esta chamada funcione através de um client tenant-guarded real
+    // (getPrismaForTenant, packages/db/src/middleware/tenantGuard.ts, modo
+    // "tenant+workspace" para o model Run) — antes desta correção, todo
+    // chamador de produção usava prismaGlobal (sem guarda) a partir de
+    // workers em background; nenhuma rota HTTP chamava finalizeRunRecord
+    // até a demonstração do Radar Social (runGovernedAnalysis).
+    where: { id: scopedRunId, tenantId: params.tenantId, workspaceId: params.workspaceId },
     data: {
       status: params.status,
       response: responseData,
