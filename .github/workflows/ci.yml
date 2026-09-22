@@ -581,6 +581,20 @@ jobs:
   orphan_tests_regression:
     name: OrphanTestsRegression
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: eiah_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -601,8 +615,23 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
-      - name: Build @repo/db for governed worker regression
-        run: pnpm --filter @repo/db build
+      - name: Prepare workspace artifacts for Radar/SignalForward regression
+        run: |
+          pnpm --filter @eiah/contracts build
+          pnpm --filter @repo/db build
+          pnpm --filter @eiah/core build
+
+      - name: Run database migrations for Radar/SignalForward regression
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/eiah_ci?schema=public
+        run: pnpm --filter @repo/db migrate:deploy
+
+      - name: Run Radar/SignalForward governed regression suite
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/eiah_ci?schema=public
+          NODE_ENV: test
+        run: pnpm test:radar-signalforward-ci
+        timeout-minutes: 5
 
       - name: Run runWorker governed failure boundary regression
         run: pnpm test:run-worker-error-boundary
