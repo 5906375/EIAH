@@ -1,0 +1,83 @@
+{
+  "capturedAt": "2026-08-28T12:20:16.634Z",
+  "head": "81a751b55e2c950bd120e2e492f878d36043dc9e",
+  "tree": "9ba48bda562529a72456e1a3a488c0e170c11dd8",
+  "statusPorcelain": "",
+  "baselinePreserved": true,
+  "apiOverride": {
+    "path": "<external-evidence-root>/pre-duimp-front-door-2026-08-27/docker-compose.pre-duimp-shadow.override.yml",
+    "sha256": "df538eb63396f0f1fd33ae09e2103a219b62f9c40f7bec180b7cf8e5621bcd48",
+    "preserved": true
+  },
+  "temporaryOverrideAbsent": true,
+  "fixedContainers": [
+    {
+      "name": "eiah-api",
+      "state": "running",
+      "health": "healthy",
+      "id": "c377c5b41a86",
+      "expectedId": "c377c5b41a86",
+      "preserved": true
+    },
+    {
+      "name": "eiah-postgres",
+      "state": "running",
+      "health": "healthy",
+      "id": "530de5c1f7a4",
+      "expectedId": "530de5c1f7a4",
+      "preserved": true
+    },
+    {
+      "name": "eiah-redis",
+      "state": "running",
+      "health": "healthy",
+      "id": "c02ed30217df",
+      "expectedId": "c02ed30217df",
+      "preserved": true
+    },
+    {
+      "name": "eiah-action-runner",
+      "state": "running",
+      "health": null,
+      "id": "b189b6b3a232",
+      "expectedId": "b189b6b3a232",
+      "preserved": true
+    },
+    {
+      "name": "eiah-maintenance-worker",
+      "state": "running",
+      "health": null,
+      "id": "cfeebf2ee441",
+      "expectedId": "cfeebf2ee441",
+      "preserved": true
+    }
+  ],
+  "web": {
+    "state": "running",
+    "health": "healthy",
+    "id": "ee853cdedb7e"
+  },
+  "gates": [
+    {
+      "name": "test:pre-duimp-web",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "build:web",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "check:orphan-tests",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "name": "git-diff-check",
+      "exitCode": 0,
+      "passed": true
+    }
+  ],
+  "dependenciesReinstalled": false
+}

@@ -40,6 +40,8 @@ import { chatVerticalImobRuntimeShadowRouter } from "./routes/chatVerticalImobRu
 import { isChatVerticalImobRuntimeShadowRouteEnabled } from "./routes/chatVerticalImobRuntimeShadowGate";
 import { radarSocialRouter } from "./routes/radarSocial";
 import { isRadarSocialDemoModeSyncEnabled } from "./routes/radarSocialDemoGate";
+import { preDuimpRuntimeShadowRouter } from "./routes/preDuimpRuntimeShadow";
+import { isPreDuimpRuntimeShadowRouteEnabled } from "./routes/preDuimpRuntimeShadowGate";
 import { helpRouter } from "./routes/help";
 import { whatsappRouter } from "./routes/whatsapp";
 import { startRunArchiveWorker } from "./workers/runArchiveWorker";
@@ -129,15 +131,13 @@ app.use("/api/imob", imobRouter);
 if (isChatVerticalImobRuntimeShadowRouteEnabled()) {
   app.use("/api", chatVerticalImobRuntimeShadowRouter);
 }
-// Demonstração interna do Radar Social — desabilitada por padrão. O gate
-// síncrono só cobre presença/forma das variáveis de ambiente; a verificação
-// do vínculo com o banco descartável (RADAR_DEMO_DB_MARKER) acontece a cada
-// requisição, dentro do próprio router, ANTES de qualquer leitura/escrita
-// do Radar (ver radarSocialDemoGate.ts e radarDemoDbMarker.ts). Quando
-// desabilitada, o router nem é montado — nenhum comportamento normal da
-// aplicação muda.
+// Demonstração interna do Radar Social — desabilitada por padrão.
 if (isRadarSocialDemoModeSyncEnabled()) {
   app.use("/api/radar", radarSocialRouter);
+}
+
+if (isPreDuimpRuntimeShadowRouteEnabled()) {
+  app.use("/api", preDuimpRuntimeShadowRouter);
 }
 app.use("/api", helpRouter);
 app.use("/metrics", metricsRouter);

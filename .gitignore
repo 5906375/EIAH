@@ -65,6 +65,9 @@ docs/architecture/*
 !docs/architecture/chat-vertical-imob-preflight-playbook.md
 !docs/architecture/mcp-contract-v1.md
 !docs/architecture/radar-social-construction-plan-v1.md
+!docs/architecture/pre-duimp-governed-contracts-ownership-rfc-v1.md
+!docs/architecture/pre-duimp-case-persistence-lifecycle-v1.md
+!docs/architecture/pre-duimp-case-migration-approval-package-v1.md
 
 # --------------------------------------------
 # Dados temporários e uploads

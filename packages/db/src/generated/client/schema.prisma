@@ -30,6 +30,15 @@ enum RunApprovalStatus {
   rejected
 }
 
+enum GovernedCaseLifecycle {
+  DISCOVERY
+  ASSESSING
+  AWAITING_REVIEW
+  READY
+  BLOCKED
+  CLOSED
+}
+
 enum PaymentStatus {
   pending
   succeeded
@@ -99,6 +108,7 @@ model Tenant {
   imobCases                      ImobCase[]
   imobCaseEvents                 ImobCaseEvent[]
   imobMarketScanRuns             ImobMarketScanRun[]
+  governedCases                  GovernedCase[]
   agentInstalls                  AgentInstall[]
   connectorInstances             ConnectorInstance[]
   paymentIntents                 PaymentIntent[]
@@ -151,6 +161,7 @@ model Workspace {
   imobCases                      ImobCase[]
   imobCaseEvents                 ImobCaseEvent[]
   imobMarketScanRuns             ImobMarketScanRun[]
+  governedCases                  GovernedCase[]
   agentInstalls                  AgentInstall[]
   connectorInstances             ConnectorInstance[]
   paymentIntents                 PaymentIntent[]
@@ -231,6 +242,54 @@ model ApiToken {
   @@index([tenantId, workspaceId])
   @@index([userId])
   @@map("api_tokens")
+}
+
+model GovernedCase {
+  id            String                @id @default(cuid())
+  tenantId      String                @map("tenant_id")
+  workspaceId   String                @map("workspace_id")
+  schemaVersion String                @map("schema_version")
+  caseType      String                @map("case_type")
+  revision      Int                   @default(1)
+  lifecycle     GovernedCaseLifecycle
+  subject       Json
+  domainState   Json                  @map("domain_state")
+  snapshot      Json
+  snapshotHash  String                @map("snapshot_hash")
+  createdAt     DateTime              @default(now()) @map("created_at")
+  updatedAt     DateTime              @default(now()) @updatedAt @map("updated_at")
+
+  tenant    Tenant                 @relation(fields: [tenantId], references: [id])
+  workspace Workspace              @relation(fields: [workspaceId], references: [id])
+  revisions GovernedCaseRevision[]
+
+  @@unique([id, tenantId, workspaceId], map: "governed_cases_id_scope_key")
+  @@index([tenantId, workspaceId, caseType, lifecycle, updatedAt], map: "governed_cases_scope_type_lifecycle_updated_idx")
+  @@map("governed_cases")
+}
+
+model GovernedCaseRevision {
+  id             String                 @id @default(cuid())
+  caseId         String                 @map("case_id")
+  tenantId       String                 @map("tenant_id")
+  workspaceId    String                 @map("workspace_id")
+  revision       Int
+  schemaVersion  String                 @map("schema_version")
+  lifecycle      GovernedCaseLifecycle
+  snapshot       Json
+  snapshotHash   String                 @map("snapshot_hash")
+  fromLifecycle  GovernedCaseLifecycle? @map("from_lifecycle")
+  toLifecycle    GovernedCaseLifecycle  @map("to_lifecycle")
+  actorType      String                 @map("actor_type")
+  actorRef       String?                @map("actor_ref")
+  transitionCode String                 @map("transition_code")
+  createdAt      DateTime               @default(now()) @map("created_at")
+
+  governedCase GovernedCase @relation(fields: [caseId, tenantId, workspaceId], references: [id, tenantId, workspaceId], onDelete: Restrict)
+
+  @@unique([caseId, revision], map: "governed_case_revisions_case_revision_key")
+  @@index([tenantId, workspaceId, caseId, createdAt], map: "governed_case_revisions_scope_case_created_idx")
+  @@map("governed_case_revisions")
 }
 
 model Run {

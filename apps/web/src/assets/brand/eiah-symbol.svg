@@ -1,0 +1,10 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="EIAH — símbolo: traço de trilha, da ação ao comprovante">
+  <!-- EIAH símbolo provisório v1 — avatar, favicon, app icon -->
+  <!-- a marca É o diferencial: ação (nó azul) → trilha → comprovante (nó verde com check) -->
+  <rect width="200" height="200" rx="44" fill="#020617"/>
+
+  <circle cx="46" cy="100" r="9" fill="#38bdf8"/>
+  <path d="M60 100 H110" stroke="#38bdf8" stroke-width="9" stroke-linecap="round"/>
+  <circle cx="146" cy="100" r="30" fill="#10b981"/>
+  <path d="M131 100 L142 111 L162 88" stroke="#020617" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>

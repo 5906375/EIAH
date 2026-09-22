@@ -270,11 +270,12 @@ test("buildGuardianStructuredOutput reads step data from action output envelope"
   assert.equal(report?.auditTrail.receiptId, "tx-guardian-4");
   assert.equal(report?.auditTrail.verifyUrl, "/api/ledger/tx-guardian-4");
   assert.equal(report?.auditTrail.evidenceBundleId, "/api/runs/run-4/bundle");
-  assert.equal(report?.governance?.rbacEvaluated, true);
-  assert.equal(report?.governance?.entitlementEvaluated, true);
+  assert.equal(report?.governance?.rbacEvaluated, false);
+  assert.equal(report?.governance?.entitlementEvaluated, false);
   assert.equal(report?.governance?.trustScoreEvaluated, true);
   assert.equal(report?.governance?.costGuardEvaluated, true);
-  assert.equal(report?.governance?.policyDecision, "allowed");
+  assert.equal(report?.governance?.policyDecision, "needs_review");
+  assert.equal(report?.governance?.reasonCode, "VERTICAL_GOVERNANCE_NOT_EVALUATED");
   assert.equal(report?.governance?.trustLevel, "high");
   assert.equal(report?.governance?.trustScore, 0.97);
   assert.match(report?.summary ?? "", /pode avançar/i);

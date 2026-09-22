@@ -101,6 +101,8 @@ test("generic landing/pdf render recipe orchestrator section when recipe payload
   const pdf = buildPdfHtml(payload);
 
   assert.match(landing, /Recipe_Orchestrator — Como concluir esta receita/);
+  assert.match(landing, /LEGADO — ESTADO DE GOVERNANÇA NÃO VERIFICADO/);
+  assert.match(landing, /not_evaluated/);
   assert.match(landing, /Agente líder recomendado/);
   assert.match(landing, /Apoio sugerido agora/);
   assert.match(landing, /Etapas estruturadas da recipe/);

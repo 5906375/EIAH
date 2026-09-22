@@ -1,0 +1,5 @@
+{"timestamp":"2026-08-29T18:06:58.441Z","event":"controller_started","credentialId":"<synthetic-credential-id>","attempt":"000005"}
+{"timestamp":"2026-08-29T18:06:59.382Z","event":"credential_created","credentialId":"<synthetic-credential-id>","revoked":false}
+{"timestamp":"2026-08-29T18:07:17.078Z","event":"e2e_passed","clickCount":2,"endpointPostCount":2}
+{"timestamp":"2026-08-29T18:07:17.078Z","event":"finalization_started","reason":"main-finally"}
+{"timestamp":"2026-08-29T18:07:50.687Z","event":"finalization_finished","reason":"main-finally"}

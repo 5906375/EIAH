@@ -1,0 +1,17 @@
+{
+  "module": "eiah-governed-sessions",
+  "prototypeVersion": "7.2.0",
+  "protocolVersion": "gov-eiah-mtg.v3",
+  "evidenceSchema": "eiah.governed-session-evidence.v3",
+  "status": "prototype_partial",
+  "capabilities": [
+    "session_decision",
+    "controlled_pilot_plan",
+    "vertical_context_workbenches",
+    "full_vertical_agenda_visibility",
+    "pilot_acceptance_coverage_gate",
+    "local_consent_based_media_capture"
+  ],
+  "externalConnectorsConfigured": false,
+  "serverPersistenceConfigured": false
+}

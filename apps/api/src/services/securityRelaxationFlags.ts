@@ -1,6 +1,7 @@
 import { env as processEnv } from "node:process";
 import type { StructuredLogger } from "@eiah/core/logging/logger";
 
+
 export const SECURITY_RELAXATION_ENV_KEYS = [
   "EIAH_ALLOW_UNVERIFIED_WALLET",
   "EIAH_ALLOW_PASSWORD_BOOTSTRAP",
