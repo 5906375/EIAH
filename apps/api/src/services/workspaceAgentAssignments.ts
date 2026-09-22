@@ -1,4 +1,4 @@
-import { PrismaClient, prismaGlobal } from "@repo/db";
+import { PrismaClient, prismaGlobal, type TransactableClient } from "@repo/db";
 import { recordGuardrailAudit } from "@eiah/core/services/guardrailLedgerStore";
 import { hasCoreAgentProfile, resolveAgentId } from "./agents";
 
@@ -47,7 +47,7 @@ export class WorkspaceAgentAssignmentError extends Error {
   }
 }
 
-function resolveClient(client?: PrismaClient) {
+function resolveClient(client?: TransactableClient) {
   return client ?? prismaGlobal;
 }
 
@@ -55,7 +55,7 @@ function normalizeAgentKey(value: string) {
   return value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-async function resolveCanonicalAgentKey(client: PrismaClient, agentKey: string) {
+async function resolveCanonicalAgentKey(client: TransactableClient, agentKey: string) {
   const trimmed = agentKey.trim();
   if (!trimmed) return trimmed;
 
@@ -105,7 +105,7 @@ function toRecord(
 }
 
 async function findAssignmentCandidates(
-  client: PrismaClient,
+  client: TransactableClient,
   params: WorkspaceAgentScope,
   canonicalAgentKey: string,
   requestedVersion: string | null
@@ -128,7 +128,7 @@ async function findAssignmentCandidates(
 }
 
 async function resolveRequestedAgentVersion(
-  client: PrismaClient,
+  client: TransactableClient,
   canonicalAgentKey: string,
   requestedVersion?: string
 ) {
@@ -144,7 +144,7 @@ async function resolveRequestedAgentVersion(
 }
 
 async function resolveAssignment(
-  client: PrismaClient,
+  client: TransactableClient,
   params: WorkspaceAgentScope
 ) {
   const canonicalAgentKey = await resolveCanonicalAgentKey(client, params.agentKey);
@@ -187,7 +187,7 @@ async function resolveAssignment(
 }
 
 async function recordAssignmentRefusal(
-  client: PrismaClient,
+  client: TransactableClient,
   params: WorkspaceAgentScope,
   resolved: Awaited<ReturnType<typeof resolveAssignment>>,
   failure: WorkspaceAgentAssignmentFailure
@@ -228,7 +228,7 @@ export async function getActiveWorkspaceAgentAssignment(params: {
 }
 
 export async function assertWorkspaceAgentEnabled(params: {
-  prisma?: PrismaClient;
+  prisma?: TransactableClient;
   tenantId: string;
   workspaceId: string;
   agentKey: string;

@@ -17,8 +17,8 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@eiah/core": "workspace:*",
     "@eiah/contracts": "workspace:*",
+    "@eiah/core": "workspace:*",
     "@eiah/providers": "workspace:*",
     "@prisma/client": "^7.2.0",
     "@repo/db": "workspace:*",
@@ -34,11 +34,14 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@prisma/adapter-pg": "7.2.0",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/multer": "^1.4.7",
+    "@types/pg": "^8.20.0",
     "@types/supertest": "^6.0.3",
     "nodemon": "^3.1.7",
+    "pg": "^8.16.3",
     "supertest": "^6.3.4",
     "tsx": "^4.19.1",
     "typescript": "^5.6.3"

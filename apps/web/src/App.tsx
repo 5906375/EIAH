@@ -7,6 +7,9 @@ import MarketplacePage from "./pages/app/marketplace";
 import ImobMarketplacePage from "./pages/app/marketplace/imob";
 import ImobChatPage from "./pages/app/imob/chat";
 import ImobDashboardPage from "./pages/app/imob/dashboard";
+import RadarIndexPage from "./pages/app/radar";
+import RadarEntityPage from "./pages/app/radar/entity";
+import RadarRequestPage from "./pages/app/radar/request";
 import SelfServiceIndexPage from "./pages/self-service";
 import SelfServiceRouter from "./pages/self-service/router";
 import SignupPage from "./pages/signup";
@@ -67,6 +70,7 @@ const SHELL_NAV_ITEMS: ShellNavItem[] = [
   { to: "/app/billing", label: "Billing", hiddenForRoles: ["workspace_member"] },
   { to: "/app/marketplace", label: "Marketplace" },
   { to: "/app/imob/chat", label: "IMOB", requiresImob: true },
+  { to: "/app/radar", label: "Radar Social (demo)" },
   { to: "/app/logistica/pre-duimp", label: "Pré-DUIMP", requiresPreDuimp: true },
   { to: "/self-service", label: "Self-service" },
   { to: "/profile", label: "Perfil" },
@@ -98,6 +102,7 @@ function Layout({
     location.pathname.startsWith("/app/imob") ||
     location.pathname.startsWith("/app/marketplace/imob");
   const isImobChatRoute = location.pathname === "/app/imob/chat";
+  const isRadarSurface = location.pathname.startsWith("/app/radar");
   const subtitle = isImobSurface ? "Imobiliaria Digital Command Center" : "Agent Operations Console";
   const roleProfile = session.experience?.roleProfile;
   const preDuimpAllowed = isPreDuimpAccessAllowed(
@@ -161,6 +166,11 @@ function Layout({
         ) : null}
 
         <main className={isImobChatRoute ? "flex w-full min-h-0 flex-1 flex-col overflow-hidden p-0" : "mx-auto flex w-full max-w-6xl flex-1 flex-col gap-10 px-4 py-10 sm:px-6"}>
+          {isRadarSurface ? (
+            <div className="rounded-2xl border border-amber-400/40 bg-amber-500/10 px-4 py-2 text-center text-xs font-semibold uppercase tracking-[0.2em] text-amber-200">
+              Demonstração interna — análise simulada
+            </div>
+          ) : null}
           {children}
         </main>
       </div>
@@ -441,6 +451,36 @@ function AppRoutes() {
         path="/app/imob/partners"
         element={
           <Navigate to="/app/imob/dashboard?section=parceiros&cc=open#command-center" replace />
+        }
+      />
+      <Route
+        path="/app/radar"
+        element={
+          <Layout>
+            <RequireAuth>
+              <RadarIndexPage />
+            </RequireAuth>
+          </Layout>
+        }
+      />
+      <Route
+        path="/app/radar/:entityId"
+        element={
+          <Layout>
+            <RequireAuth>
+              <RadarEntityPage />
+            </RequireAuth>
+          </Layout>
+        }
+      />
+      <Route
+        path="/app/radar/:entityId/requests/:requestId"
+        element={
+          <Layout>
+            <RequireAuth>
+              <RadarRequestPage />
+            </RequireAuth>
+          </Layout>
         }
       />
       <Route

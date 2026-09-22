@@ -38,6 +38,8 @@ import { startTenantBillingReconciler } from "./services/tenantBillingReconciler
 import { imobRouter } from "./routes/imob";
 import { chatVerticalImobRuntimeShadowRouter } from "./routes/chatVerticalImobRuntimeShadow";
 import { isChatVerticalImobRuntimeShadowRouteEnabled } from "./routes/chatVerticalImobRuntimeShadowGate";
+import { radarSocialRouter } from "./routes/radarSocial";
+import { isRadarSocialDemoModeSyncEnabled } from "./routes/radarSocialDemoGate";
 import { preDuimpRuntimeShadowRouter } from "./routes/preDuimpRuntimeShadow";
 import { isPreDuimpRuntimeShadowRouteEnabled } from "./routes/preDuimpRuntimeShadowGate";
 import { helpRouter } from "./routes/help";
@@ -129,6 +131,11 @@ app.use("/api/imob", imobRouter);
 if (isChatVerticalImobRuntimeShadowRouteEnabled()) {
   app.use("/api", chatVerticalImobRuntimeShadowRouter);
 }
+// Demonstração interna do Radar Social — desabilitada por padrão.
+if (isRadarSocialDemoModeSyncEnabled()) {
+  app.use("/api/radar", radarSocialRouter);
+}
+
 if (isPreDuimpRuntimeShadowRouteEnabled()) {
   app.use("/api", preDuimpRuntimeShadowRouter);
 }
