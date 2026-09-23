@@ -1,3 +1,4 @@
+import { buildNegativeFinalization } from "./negativeMapping.js";
 import { randomUUID } from "node:crypto";
 import {
   oraculoGateIntentV1Schema, oraculoGateResultV1Schema, oraculoCredentialEvaluationV1Schema,
@@ -117,9 +118,27 @@ export async function executeCi1(db: Ci1Connection, who: Ci1Identity, intentId: 
         previousRevision: snapshot.visit.revision, nextRevision: snapshot.visit.revision + 1,
       });
     }
-    // Unratified mappers stay held with a durable assessment, never a fabricated final C5.
+    if (!result) {
+      const negative = buildNegativeFinalization(snapshot, assessment);
+      if (negative) { result = negative.result; evaluations.push(...negative.evaluations); }
+    }
+    // Unknown/non-final causes remain durable holds; authority/transport errors never fabricate C5.
     await db.query("SELECT public.oraculo_finish($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7::jsonb)",
       [who.tenantId, who.workspaceId, who.tokenRef, intentId, JSON.stringify(assessment), result && JSON.stringify(result), JSON.stringify(evaluations)]);
+  });
+  return readCi1(db, who, intentId);
+}
+
+/** Explicit recovery of legacy holds from the immutable audited assessment only. */
+export async function recoverCi1Negative(db: Ci1Connection, who: Ci1Identity, intentId: string) {
+  await inCi1Transaction(db, intentId, async () => {
+    const { rows } = await db.query("SELECT public.oraculo_hold($1,$2,$3,$4) AS value", [who.tenantId, who.workspaceId, who.tokenRef, intentId]);
+    const current = rows[0].value;
+    if (current.result) return;
+    const snapshot = s1SnapshotSchema.parse(current.snapshot);
+    const negative = buildNegativeFinalization(snapshot, current.assessment);
+    if (!negative) throw new Error("NEGATIVE_MAPPING_UNAVAILABLE");
+    await db.query("SELECT public.oraculo_resolve_hold($1,$2,$3,$4,$5::jsonb,$6::jsonb)", [who.tenantId, who.workspaceId, who.tokenRef, intentId, JSON.stringify(negative.result), JSON.stringify(negative.evaluations)]);
   });
   return readCi1(db, who, intentId);
 }
