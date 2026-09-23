@@ -1058,3 +1058,13 @@ EVIDÊNCIA: `apps/api/src/index.ts:97-103` + `apps/workers/run-worker/src/index.
 | Rechecagem direcionada | `ops/evidence/latest/oraculo-ci1-validation/review-recheck.json` | Checkers corrigidos e 8 testes de referência. |
 | Hashes da revisão | `ops/evidence/latest/oraculo-ci1-validation/review-file-hashes.json` | Arquivos de implementação revisados. |
 | PostgreSQL isolado | `ops/evidence/latest/oraculo-ci1-validation/7ba82d00-fb62-4de8-99f0-32a0fd186fd1/results.json` | 32 testes integrados e descarte da instância. |
+
+## Oráculo SC CI1 — negativas e recuperação local 2026-09-23
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Corte negativo simulado | `ops/evidence/latest/oraculo-ci1-negative-results-2026-09-23.md` | Limites, execução local, 79 testes puros e 44 integrados; não atesta promoção operacional. |
+| Checks do corte | `ops/evidence/latest/oraculo-ci1-validation/negative-checks-20260923T155359.json` | Typechecks, testes e catálogo executados. |
+| PostgreSQL descartável | `ops/evidence/latest/oraculo-ci1-validation/51324fa4-21aa-490c-a1c0-f98a4e8f97da/results.json` | Negativas, auditoria, isolamento, recuperação concorrente, rollback e limpeza. |
+| Schema/client | `ops/evidence/latest/oraculo-ci1-validation/negative-schema-checks.json` | Prisma validate/generate sem conexão real. |
+| Hashes do corte | `ops/evidence/latest/oraculo-ci1-validation/negative-file-hashes.json` | Identidade dos arquivos revisados. |

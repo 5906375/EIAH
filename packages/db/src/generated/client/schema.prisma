@@ -2005,18 +2005,19 @@ model OraculoObservation {
 }
 
 model OraculoIntent {
-  tenantId    String              @map("tenant_id")
-  workspaceId String              @map("workspace_id")
-  intentId    String              @map("intent_id")
-  hi          String
-  actorRef    Json                @map("actor_ref")
-  payload     Json
-  acceptedAt  DateTime            @default(dbgenerated("clock_timestamp()")) @map("accepted_at") @db.Timestamptz(6)
-  updatedAt   DateTime            @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(6)
-  result      Json?
-  assessment  Json?
-  audit       OraculoAudit?
-  evaluations OraculoEvaluation[]
+  tenantId         String                   @map("tenant_id")
+  workspaceId      String                   @map("workspace_id")
+  intentId         String                   @map("intent_id")
+  hi               String
+  actorRef         Json                     @map("actor_ref")
+  payload          Json
+  acceptedAt       DateTime                 @default(dbgenerated("clock_timestamp()")) @map("accepted_at") @db.Timestamptz(6)
+  updatedAt        DateTime                 @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(6)
+  result           Json?
+  assessment       Json?
+  audit            OraculoAudit?
+  negativeRecovery OraculoNegativeRecovery?
+  evaluations      OraculoEvaluation[]
 
   @@id([tenantId, workspaceId, intentId])
   @@map("oraculo_intents")
@@ -2068,4 +2069,15 @@ model OraculoEvaluation {
 
   @@id([tenantId, workspaceId, evaluationId])
   @@map("oraculo_evaluations")
+}
+
+model OraculoNegativeRecovery {
+  tenantId    String        @map("tenant_id")
+  workspaceId String        @map("workspace_id")
+  intentId    String        @map("intent_id")
+  payload     Json
+  intent      OraculoIntent @relation(fields: [tenantId, workspaceId, intentId], references: [tenantId, workspaceId, intentId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([tenantId, workspaceId, intentId])
+  @@map("oraculo_negative_recoveries")
 }
