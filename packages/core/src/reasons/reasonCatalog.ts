@@ -218,6 +218,39 @@ function defineReasonCodes<const Codes extends readonly string[]>(
   }));
 }
 
+export const ORACULO_CI1_PROPOSED_CODES = [
+  "ORACULO_INPUT_INVALID",
+  "ORACULO_SCOPE_DENIED",
+  "ORACULO_EXTERNAL_EFFECT_BLOCKED",
+  "ORACULO_VISIT_NOT_RESOLVED",
+  "ORACULO_CONTENT_INTEGRITY_MISMATCH",
+  "ORACULO_ARTIFACT_INTEGRITY_MISMATCH",
+  "ORACULO_INSPECTION_REJECTED",
+  "ORACULO_VALIDITY_EXPIRED",
+  "ORACULO_VALIDITY_NOT_STARTED",
+  "ORACULO_TEMPORAL_POLICY_UNRESOLVED",
+  "ORACULO_STATUS_REVOKED",
+  "ORACULO_STATUS_SUSPENDED",
+  "ORACULO_STATUS_UNKNOWN",
+  "ORACULO_STATUS_STALE",
+  "ORACULO_STATUS_CONFLICT",
+  "ORACULO_SOURCE_AUTHORITY_UNRESOLVED",
+  "ORACULO_HITL_REQUIRED",
+  "ORACULO_APPROVAL_CONTEXT_MISMATCH",
+  "ORACULO_APPROVAL_EXPIRED",
+  "ORACULO_APPROVAL_REJECTED",
+  "ORACULO_INTENT_PAYLOAD_CONFLICT",
+  "ORACULO_VISIT_REVISION_CONFLICT",
+  "ORACULO_VISIT_TRANSITION_DENIED",
+  "ORACULO_EVIDENCE_REQUIRED",
+  "ORACULO_SNAPSHOT_MISMATCH",
+  "ORACULO_COMMIT_OUTCOME_UNKNOWN",
+  "ORACULO_COMMIT_FAILED_NO_EFFECT",
+  "ORACULO_EXECUTION_AUTHORITY_LOST",
+  "ORACULO_VERIFICATION_NOT_SATISFIED",
+  "ORACULO_TEMPORAL_INCOHERENCE"
+] as const;
+
 export const REASON_CODE_CATALOG = [
   ...defineReasonCodes(IMOB_BOOTSTRAP_ACTIVE_CODES, {
     domain: "imob",
@@ -475,6 +508,16 @@ export const REASON_CODE_CATALOG = [
     owner: "Logística governance / PRE_DUIMP",
     introducedBy: "PRE_DUIMP-CUT-5",
     evidenceRef: "apps/api/src/types/preDuimpReplayContract.ts",
+  }),
+  ...defineReasonCodes(ORACULO_CI1_PROPOSED_CODES, {
+    domain: "log",
+    severity: "warning",
+    category: "governance",
+    descriptionPrefix: "Proposed Oráculo SC synthetic negative-result mapping; not activated",
+    status: "proposed",
+    owner: "Carlos Alberto Merlo / Oráculo SC",
+    introducedBy: "ORACULO-CI1-REVIEW",
+    evidenceRef: "docs/ops/oraculo-negative-mapper-proposal.md",
   }),
 ] as const;
 
