@@ -44,3 +44,7 @@ Tests cover basic and HITL positive flow, persisted rejection/hold, material rep
 Operational writers and administration outside this dedicated instance remain unintegrated. Authentication transport, external source adapters, negative reason mapper, complete historic-migration rehearsal, retention operations, runtime role provisioning outside the harness and full CI/rollout remain pending. No production readiness, general authority coverage or G3/G5 closure is implied by green local tests.
 
 The initial S1/CI1 work was preserved in 2b1cdf4 on wip/oraculo-s1-preserve-20260922. This isolated worktree applies it over 7cf108b0d68383d2d50cc0beb31f6fac6f03eae9 without changing main. Historical S1 evidence refers to its original file hashes; new evidence must identify the current tree.
+
+## Review of 24bba5a (2026-09-23)
+
+The harness now applies the additional 20260923090000_oraculo_ci1_context_guard migration. Executor E1 access requires the matching requester and an unconsumed execution on the same transaction/connection. The original migration is unchanged. Current validation: 77 pure/proposal/regression tests, 32 integrated tests, two typechecks, 8 evidence checker tests and 10 reason catalog tests passed. Both catalog/index checks pass. See ops/evidence/latest/oraculo-ci1-review-2026-09-23.md for evidence and limitations. The 30 negative mapper candidates remain proposed and disconnected from the executor; docs/ops/oraculo-negative-mapper-proposal.md awaits human ratification.

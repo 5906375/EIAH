@@ -1,0 +1,23 @@
+[
+  {
+    "command": [
+      "node",
+      "--import",
+      "tsx",
+      "scripts/checkEvidenceIndex.ts"
+    ],
+    "exitCode": 0,
+    "stdout": "{\n  \"ok\": true,\n  \"check\": \"check:evidence-index\",\n  \"file\": \"docs/EVIDENCE_INDEX.md\",\n  \"sizeChars\": 271762,\n  \"roadmap\": \"ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md\",\n  \"refsChecked\": 610\n}\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exitCode": 0,
+    "stdout": "",
+    "stderr": ""
+  }
+]

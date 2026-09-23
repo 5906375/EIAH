@@ -255,3 +255,13 @@ test("CI1 C3 insert failure rolls back the simulated visit effect",()=>using(fal
     assert.equal((await x.admin.query("SELECT count(*)::int AS n FROM public.oraculo_evaluations WHERE tenant_id=$1",[x.who.tenantId])).rows[0].n,0);}
   finally {await x.admin.query("DROP TRIGGER ci1_fail_c3 ON public.oraculo_evaluations; DROP FUNCTION public.ci1_fail_c3()");}
 }));
+
+test("CI1 E1 access requires this requester and an active execution context",()=>using(true,async x=>{
+  await x.admit();const {buildS1ApprovalContext}=await import("./evaluation.js");
+  const {hashApprovalContext}=await import("./canonicalization.js");const e=buildS1ApprovalContext(x.s);
+  const args=[x.who.tenantId,x.who.workspaceId,x.who.tokenRef,x.s.intent.intentId,hashApprovalContext(e),JSON.stringify(e)];
+  await assert.rejects(x.executor.query("SELECT public.oraculo_context($1,$2,$3,$4,$5,$6::jsonb)",args),/EXECUTION_CONTEXT_REQUIRED/);
+  await x.authority("other","other");args[2]="other";
+  await assert.rejects(x.executor.query("SELECT public.oraculo_context($1,$2,$3,$4,$5,$6::jsonb)",args),/EXECUTION_CONTEXT_REQUIRED/);
+  await x.approve();assert.equal((await x.execute()).state,"FINAL");
+}));

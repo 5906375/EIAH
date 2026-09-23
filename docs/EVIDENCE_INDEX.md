@@ -1048,3 +1048,13 @@ EVIDÊNCIA: `apps/api/src/index.ts:97-103` + `apps/workers/run-worker/src/index.
 | Assunto | Arquivo | O que prova |
 | --- | --- | --- |
 | Persistência/HITL/recuperação CI1 local | `ops/evidence/latest/oraculo-ci1-validation-2026-09-23.md` e `ops/evidence/latest/oraculo-ci1-validation/final-checks.json` | 31 testes PostgreSQL e 73 puros aprovados, dois typechecks, isolamento/cleanup e hashes. Protocolo positivo sintético; negativas ainda sem mapper/C5. Não prova ativação nem fecha G3/G5. |
+
+## Oráculo SC CI1 — revisão local 2026-09-23
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Revisão do commit CI1 | `ops/evidence/latest/oraculo-ci1-review-2026-09-23.md` | Correção do vínculo E1 e checker; proposta do mapper sem ativação; gates abertos. |
+| Execução da revisão | `ops/evidence/latest/oraculo-ci1-validation/review-checks.json` | 77 testes puros, 32 integrados, typechecks e falhas intermediárias preservadas. |
+| Rechecagem direcionada | `ops/evidence/latest/oraculo-ci1-validation/review-recheck.json` | Checkers corrigidos e 8 testes de referência. |
+| Hashes da revisão | `ops/evidence/latest/oraculo-ci1-validation/review-file-hashes.json` | Arquivos de implementação revisados. |
+| PostgreSQL isolado | `ops/evidence/latest/oraculo-ci1-validation/7ba82d00-fb62-4de8-99f0-32a0fd186fd1/results.json` | 32 testes integrados e descarte da instância. |
