@@ -4,3 +4,4 @@ export * from "./types.js";
 export * from "./apeWeeklyCycleV2.js";
 export * from "./governance.js";
 export * from "./preDuimp.js";
+export * from "./oraculo.js";

@@ -1776,6 +1776,9 @@ model AgentReputationEvent {
 }
 
 model ApprovalRecord {
+  recordFormat    String           @default("LEGACY") @map("record_format")
+  contextHash     String?          @map("context_hash")
+  governedPayload Json?            @map("governed_payload")
   id              String           @id
   runId           String?          @map("run_id")
   tenantId        String           @map("tenant_id")
@@ -1944,4 +1947,125 @@ model WalletIdentity {
   user          User     @relation(fields: [userId], references: [id])
 
   @@map("wallet_identities")
+}
+
+// CI1 storage. Runtime accesses controlled SQL functions, never these delegates.
+// CHECK constraints, partial approval index and grants live in the SQL migration.
+model OraculoFence {
+  id      String  @id
+  enabled Boolean @default(true)
+
+  @@map("oraculo_fences")
+}
+
+model OraculoAuthority {
+  tenantId     String   @map("tenant_id")
+  workspaceId  String   @map("workspace_id")
+  tokenRef     String   @map("token_ref")
+  actorRef     Json     @map("actor_ref")
+  active       Boolean
+  expiresAt    DateTime @map("expires_at") @db.Timestamptz(6)
+  capabilities String[]
+
+  @@id([tenantId, workspaceId, tokenRef])
+  @@map("oraculo_authorities")
+}
+
+model OraculoScope {
+  tenantId    String  @map("tenant_id")
+  workspaceId String  @map("workspace_id")
+  enabled     Boolean
+  installed   Boolean
+  policy      String
+
+  @@id([tenantId, workspaceId])
+  @@map("oraculo_scopes")
+}
+
+model OraculoVisit {
+  tenantId    String @map("tenant_id")
+  workspaceId String @map("workspace_id")
+  visitId     String @map("visit_id")
+  revision    Int
+  state       String
+  snapshot    Json
+
+  @@id([tenantId, workspaceId, visitId])
+  @@map("oraculo_visits")
+}
+
+model OraculoObservation {
+  tenantId      String @map("tenant_id")
+  workspaceId   String @map("workspace_id")
+  observationId String @map("observation_id")
+  payload       Json
+
+  @@id([tenantId, workspaceId, observationId])
+  @@map("oraculo_observations")
+}
+
+model OraculoIntent {
+  tenantId    String              @map("tenant_id")
+  workspaceId String              @map("workspace_id")
+  intentId    String              @map("intent_id")
+  hi          String
+  actorRef    Json                @map("actor_ref")
+  payload     Json
+  acceptedAt  DateTime            @default(dbgenerated("clock_timestamp()")) @map("accepted_at") @db.Timestamptz(6)
+  updatedAt   DateTime            @default(dbgenerated("clock_timestamp()")) @map("updated_at") @db.Timestamptz(6)
+  result      Json?
+  assessment  Json?
+  audit       OraculoAudit?
+  evaluations OraculoEvaluation[]
+
+  @@id([tenantId, workspaceId, intentId])
+  @@map("oraculo_intents")
+}
+
+model OraculoContext {
+  tenantId    String @map("tenant_id")
+  workspaceId String @map("workspace_id")
+  hd          String
+  payload     Json
+
+  @@id([tenantId, workspaceId, hd])
+  @@map("oraculo_contexts")
+}
+
+model OraculoExecution {
+  backendPid       Int     @map("backend_pid")
+  transactionId    BigInt  @map("transaction_id")
+  tenantId         String  @map("tenant_id")
+  workspaceId      String  @map("workspace_id")
+  intentId         String  @map("intent_id")
+  tokenRef         String  @map("token_ref")
+  hd               String?
+  consumed         Boolean @default(false)
+  resolvedSnapshot Json    @map("resolved_snapshot")
+
+  @@id([backendPid, transactionId, tenantId, workspaceId, intentId])
+  @@map("oraculo_executions")
+}
+
+model OraculoAudit {
+  tenantId    String        @map("tenant_id")
+  workspaceId String        @map("workspace_id")
+  intentId    String        @map("intent_id")
+  payload     Json
+  intent      OraculoIntent @relation(fields: [tenantId, workspaceId, intentId], references: [tenantId, workspaceId, intentId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([tenantId, workspaceId, intentId])
+  @@map("oraculo_audits")
+}
+
+model OraculoEvaluation {
+  tenantId     String        @map("tenant_id")
+  workspaceId  String        @map("workspace_id")
+  evaluationId String        @map("evaluation_id")
+  intentId     String        @map("intent_id")
+  payload      Json
+  intent       OraculoIntent @relation(fields: [tenantId, workspaceId, intentId], references: [tenantId, workspaceId, intentId], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([tenantId, workspaceId, evaluationId])
+  @@map("oraculo_evaluations")
 }
