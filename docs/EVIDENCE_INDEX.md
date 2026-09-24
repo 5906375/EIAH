@@ -1070,3 +1070,11 @@ EVIDÊNCIA: `apps/api/src/index.ts:97-103` + `apps/workers/run-worker/src/index.
 | Reaplicação e validação | `ops/evidence/latest/oraculo-main-separation-2026-09-24.md` | Quatro commits Oráculo reaplicados em main, sem dependência do PR #446; limites explícitos. |
 | Execução e identidade do corte | `ops/evidence/latest/oraculo-main-separation-2026-09-24.json` | 79 testes puros, 18 dos checkers, typechecks e comparações de arquivos/hashes. |
 | Integração no novo checkout | `ops/evidence/latest/oraculo-ci1-validation/3172d6cd-99d0-4e61-87c7-3ccfc8b9c870/results.json` | 44 testes PostgreSQL reais isolados e limpeza da instância. |
+
+## Oráculo SC — publicação e ajuste do CI em 2026-09-24
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Publicação em rascunho | `ops/evidence/latest/oraculo-pr-publication-2026-09-24.json` | PRs, bases, status observado e gate local de testes órfãos; não equivale a CI remoto aprovado. |
+| Harness ligado ao CI | `ops/evidence/latest/oraculo-ci-wiring-2026-09-24.json` | Checks locais executados após ajuste do workflow e CLI. |
+| Teste do harness explícito | `ops/evidence/latest/oraculo-ci1-validation/21fc559b-9fd5-4c55-a37f-66886e57dc7e/results.json` | 32 integrados da base e limpeza PostgreSQL. |
