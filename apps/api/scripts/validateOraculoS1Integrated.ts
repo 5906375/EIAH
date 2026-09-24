@@ -6,6 +6,8 @@ import { resolve } from "node:path";
 import { Client } from "../../../packages/db/src/oraculo/connection.js";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
+const integratedTest = "apps/api/src/services/logistica/oraculo/ci1.integration.test.ts";
+if (process.argv.length > 3 || (process.argv[2] && process.argv[2] !== integratedTest)) throw new Error("Only the dedicated CI1 test is allowed");
 for (const key of ["DATABASE_URL", "SHADOW_DATABASE_URL", "PGHOST", "PGPORT", "PGDATABASE", "PGUSER", "PGPASSWORD", "CI1_TEST_CONFIG"]) {
   if (process.env[key]) throw new Error(`Refusing inherited connection setting: ${key}`);
 }
@@ -79,7 +81,7 @@ try {
   await admin.query("RESET ROLE");
   report.roles = (await admin.query("SELECT rolname,rolsuper,rolcreaterole,rolcreatedb,rolinherit,rolbypassrls FROM pg_roles WHERE rolname LIKE 'oraculo_ci1_%' ORDER BY rolname")).rows;
   report.grants = grants;
-  const child = spawnSync(process.execPath, ["--import", "tsx", "--test", "apps/api/src/services/logistica/oraculo/ci1.integration.test.ts"], {
+  const child = spawnSync(process.execPath, ["--import", "tsx", "--test", process.argv[2] ?? integratedTest], {
     cwd: root, encoding: "utf8", timeout: 120_000,
     env: { PATH: process.env.PATH, HOME: process.env.HOME, NODE_ENV: "test", TSX_TSCONFIG_PATH: "tsconfig.base.json",
       CI1_TEST_CONFIG: JSON.stringify({ ...config, runId }) },
