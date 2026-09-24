@@ -170,6 +170,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Evidence Index validates commit-pinned historical artifacts.
 
       - name: Setup PNPM
         uses: pnpm/action-setup@v4
@@ -330,6 +332,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Evidence Index validates commit-pinned historical artifacts.
 
       - name: Setup PNPM
         uses: pnpm/action-setup@v4
@@ -716,6 +720,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Evidence Index validates commit-pinned historical artifacts.
 
       - name: Setup PNPM
         uses: pnpm/action-setup@v4
@@ -1454,3 +1460,39 @@ jobs:
 
       - name: Check P4 TrackP rollout
         run: pnpm check:p4-trackp-rollout
+
+  oraculo_simulation:
+    name: OraculoSimulation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TSX_TSCONFIG_PATH: tsconfig.base.json
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup PNPM
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Validate Oraculo types and pure contracts
+        run: |
+          pnpm typecheck:oraculo-ci1
+          pnpm test:oraculo-s1
+      - name: Prepare disposable PostgreSQL image
+        run: docker pull postgres:16
+      - name: Validate isolated persistence and recovery
+        run: pnpm test:oraculo-ci1
+      - name: Upload isolated validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oraculo-ci1-validation
+          path: ops/evidence/latest/oraculo-ci1-validation/
