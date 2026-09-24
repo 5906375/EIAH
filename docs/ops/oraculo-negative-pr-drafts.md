@@ -1,3 +1,5 @@
+**Atualização 24/09/2026:** sequência baseada em main, sem dependência do PR #446. Ver relatório de separação em ops/evidence/latest/oraculo-main-separation-2026-09-24.md. As minutas abaixo são o conteúdo proposto, não comprovante de publicação.
+
 # Minutas locais de PR — não publicadas
 
 ## PR dedicado 1: Ratificar códigos de resultado negativo do Oráculo SC para SIMULATION

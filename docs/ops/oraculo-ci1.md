@@ -1,5 +1,7 @@
 # Oráculo CI1 — local synthetic persistence
 
+**Current base (2026-09-24):** replayed onto main e75cf19 with only Oráculo commits. No PR #446 dependency. See ops/evidence/latest/oraculo-main-separation-2026-09-24.md and its JSON validation. Earlier baseline references below remain historical.
+
 Status: implemented synthetic slice; G3/G5 remain open. No routes, workers, real authorities, physical effects or deployment are connected. CI1 is not operational activation.
 
 ## Boundary and trust

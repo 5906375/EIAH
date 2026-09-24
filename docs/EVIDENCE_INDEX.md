@@ -1062,3 +1062,11 @@ EVIDÊNCIA: `apps/api/src/index.ts:97-103` + `apps/workers/run-worker/src/index.
 | PostgreSQL descartável | `ops/evidence/latest/oraculo-ci1-validation/51324fa4-21aa-490c-a1c0-f98a4e8f97da/results.json` | Negativas, auditoria, isolamento, recuperação concorrente, rollback e limpeza. |
 | Schema/client | `ops/evidence/latest/oraculo-ci1-validation/negative-schema-checks.json` | Prisma validate/generate sem conexão real. |
 | Hashes do corte | `ops/evidence/latest/oraculo-ci1-validation/negative-file-hashes.json` | Identidade dos arquivos revisados. |
+
+## Oráculo SC — separação de main em 2026-09-24
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Reaplicação e validação | `ops/evidence/latest/oraculo-main-separation-2026-09-24.md` | Quatro commits Oráculo reaplicados em main, sem dependência do PR #446; limites explícitos. |
+| Execução e identidade do corte | `ops/evidence/latest/oraculo-main-separation-2026-09-24.json` | 79 testes puros, 18 dos checkers, typechecks e comparações de arquivos/hashes. |
+| Integração no novo checkout | `ops/evidence/latest/oraculo-ci1-validation/3172d6cd-99d0-4e61-87c7-3ccfc8b9c870/results.json` | 44 testes PostgreSQL reais isolados e limpeza da instância. |
