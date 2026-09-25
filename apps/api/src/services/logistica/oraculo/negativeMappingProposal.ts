@@ -1,6 +1,6 @@
 import { getReasonCodeDefinition } from "../../../../../../packages/core/src/reasons/reasonCatalog.js";
 
-// Proposal-only: not imported by the executor and never returns a C5 or authorizes enforcement.
+// Ratified SIMULATION mapping, prepared locally for dedicated activation review.
 export const S1_NEGATIVE_MAPPING_PROPOSALS = [
   {
     "finding": "RV01",
@@ -218,6 +218,6 @@ export function proposeS1NegativeMapping(finding: string) {
   const mapping = S1_NEGATIVE_MAPPING_PROPOSALS.find(row => row.finding === finding);
   if (!mapping) return { status: "UNMAPPED" as const, finding };
   const definition = getReasonCodeDefinition(mapping.candidateCode);
-  if (definition?.status !== "proposed") throw new Error("Proposal requires explicit review when catalog status changes");
-  return { status: "PROPOSED_NOT_AUTHORIZED" as const, ...mapping };
+  if (definition?.status !== "active") throw new Error("Ratified simulation requires active catalog status");
+  return { status: "RATIFIED_SIMULATION_ONLY" as const, ...mapping };
 }

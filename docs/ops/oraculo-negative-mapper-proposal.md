@@ -1,4 +1,6 @@
-# Oráculo SC — mapper de negativas para ratificação
+# Oráculo SC — mapper de negativas, matriz ratificada na sessão
+
+**Atualização:** ratificação recebida; implementação local candidata em andamento. Ver [origem e limites](oraculo-negative-ratification.md). A seção abaixo preserva a proposta do commit d1f1024, anterior à ratificação; não descreve o estado atual do catálogo.
 
 23/09/2026. Status proposta. Nenhum código ativado; executor CI1 permanece conservador. Owner: Carlos Alberto Merlo, conforme responsabilidade declarada na conversa. Aprovação humana de ativação ainda não registrada. Fonte canônica: packages/core/src/reasons/reasonCatalog.ts, entradas proposed.
 

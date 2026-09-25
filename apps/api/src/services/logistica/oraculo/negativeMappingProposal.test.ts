@@ -2,11 +2,11 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { S1_NEGATIVE_MAPPING_PROPOSALS, proposeS1NegativeMapping } from "./negativeMappingProposal.js";
 import { assertActiveReasonCode, getReasonCodeDefinition } from "../../../../../../packages/core/src/reasons/reasonCatalog.js";
-test("all proposal codes are known but forbidden for active enforcement",()=>{
+test("ratified simulation matrix matches active candidate catalog",()=>{
   for(const item of S1_NEGATIVE_MAPPING_PROPOSALS){
-    assert.equal(getReasonCodeDefinition(item.candidateCode)?.status,"proposed");
-    assert.throws(()=>assertActiveReasonCode(item.candidateCode),/not active/);
-    assert.equal(proposeS1NegativeMapping(item.finding).status,"PROPOSED_NOT_AUTHORIZED");
+    assert.equal(getReasonCodeDefinition(item.candidateCode)?.status,"active");
+    assert.doesNotThrow(()=>assertActiveReasonCode(item.candidateCode));
+    assert.equal(proposeS1NegativeMapping(item.finding).status,"RATIFIED_SIMULATION_ONLY");
   }
 });
 test("payload conflict and uncertain commit cannot overwrite a final result",()=>{
