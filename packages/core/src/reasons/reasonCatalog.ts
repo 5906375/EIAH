@@ -218,7 +218,7 @@ function defineReasonCodes<const Codes extends readonly string[]>(
   }));
 }
 
-export const ORACULO_CI1_PROPOSED_CODES = [
+export const ORACULO_CI1_SIMULATION_CODES = [
   "ORACULO_INPUT_INVALID",
   "ORACULO_SCOPE_DENIED",
   "ORACULO_EXTERNAL_EFFECT_BLOCKED",
@@ -509,15 +509,16 @@ export const REASON_CODE_CATALOG = [
     introducedBy: "PRE_DUIMP-CUT-5",
     evidenceRef: "apps/api/src/types/preDuimpReplayContract.ts",
   }),
-  ...defineReasonCodes(ORACULO_CI1_PROPOSED_CODES, {
+  ...defineReasonCodes(ORACULO_CI1_SIMULATION_CODES, {
     domain: "log",
     severity: "warning",
     category: "governance",
-    descriptionPrefix: "Proposed Oráculo SC synthetic negative-result mapping; not activated",
-    status: "proposed",
+    descriptionPrefix: "Oráculo SC simulation-only negative result",
+    status: "active",
     owner: "Carlos Alberto Merlo / Oráculo SC",
-    introducedBy: "ORACULO-CI1-REVIEW",
-    evidenceRef: "docs/ops/oraculo-negative-mapper-proposal.md",
+    approver: { kind: "human", actor: "Carlos Alberto Merlo" },
+    introducedBy: "ORACULO-CI1-NEGATIVE-RATIFICATION",
+    evidenceRef: "docs/ops/oraculo-negative-ratification.md",
   }),
 ] as const;
 

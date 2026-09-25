@@ -316,36 +316,36 @@ fonte canônica falham em `check:reason-code-canon`.
 | `PRE_DUIMP_ACTION_POLICY_DENIED` | proposed |
 | `PRE_DUIMP_ACCESS_UNAVAILABLE` | proposed |
 | `PRE_DUIMP_PILOT_ACCESS_DENIED` | proposed |
-| `ORACULO_INPUT_INVALID` | proposed |
-| `ORACULO_SCOPE_DENIED` | proposed |
-| `ORACULO_EXTERNAL_EFFECT_BLOCKED` | proposed |
-| `ORACULO_VISIT_NOT_RESOLVED` | proposed |
-| `ORACULO_CONTENT_INTEGRITY_MISMATCH` | proposed |
-| `ORACULO_ARTIFACT_INTEGRITY_MISMATCH` | proposed |
-| `ORACULO_INSPECTION_REJECTED` | proposed |
-| `ORACULO_VALIDITY_EXPIRED` | proposed |
-| `ORACULO_VALIDITY_NOT_STARTED` | proposed |
-| `ORACULO_TEMPORAL_POLICY_UNRESOLVED` | proposed |
-| `ORACULO_STATUS_REVOKED` | proposed |
-| `ORACULO_STATUS_SUSPENDED` | proposed |
-| `ORACULO_STATUS_UNKNOWN` | proposed |
-| `ORACULO_STATUS_STALE` | proposed |
-| `ORACULO_STATUS_CONFLICT` | proposed |
-| `ORACULO_SOURCE_AUTHORITY_UNRESOLVED` | proposed |
-| `ORACULO_HITL_REQUIRED` | proposed |
-| `ORACULO_APPROVAL_CONTEXT_MISMATCH` | proposed |
-| `ORACULO_APPROVAL_EXPIRED` | proposed |
-| `ORACULO_APPROVAL_REJECTED` | proposed |
-| `ORACULO_INTENT_PAYLOAD_CONFLICT` | proposed |
-| `ORACULO_VISIT_REVISION_CONFLICT` | proposed |
-| `ORACULO_VISIT_TRANSITION_DENIED` | proposed |
-| `ORACULO_EVIDENCE_REQUIRED` | proposed |
-| `ORACULO_SNAPSHOT_MISMATCH` | proposed |
-| `ORACULO_COMMIT_OUTCOME_UNKNOWN` | proposed |
-| `ORACULO_COMMIT_FAILED_NO_EFFECT` | proposed |
-| `ORACULO_EXECUTION_AUTHORITY_LOST` | proposed |
-| `ORACULO_VERIFICATION_NOT_SATISFIED` | proposed |
-| `ORACULO_TEMPORAL_INCOHERENCE` | proposed |
+| `ORACULO_INPUT_INVALID` | active |
+| `ORACULO_SCOPE_DENIED` | active |
+| `ORACULO_EXTERNAL_EFFECT_BLOCKED` | active |
+| `ORACULO_VISIT_NOT_RESOLVED` | active |
+| `ORACULO_CONTENT_INTEGRITY_MISMATCH` | active |
+| `ORACULO_ARTIFACT_INTEGRITY_MISMATCH` | active |
+| `ORACULO_INSPECTION_REJECTED` | active |
+| `ORACULO_VALIDITY_EXPIRED` | active |
+| `ORACULO_VALIDITY_NOT_STARTED` | active |
+| `ORACULO_TEMPORAL_POLICY_UNRESOLVED` | active |
+| `ORACULO_STATUS_REVOKED` | active |
+| `ORACULO_STATUS_SUSPENDED` | active |
+| `ORACULO_STATUS_UNKNOWN` | active |
+| `ORACULO_STATUS_STALE` | active |
+| `ORACULO_STATUS_CONFLICT` | active |
+| `ORACULO_SOURCE_AUTHORITY_UNRESOLVED` | active |
+| `ORACULO_HITL_REQUIRED` | active |
+| `ORACULO_APPROVAL_CONTEXT_MISMATCH` | active |
+| `ORACULO_APPROVAL_EXPIRED` | active |
+| `ORACULO_APPROVAL_REJECTED` | active |
+| `ORACULO_INTENT_PAYLOAD_CONFLICT` | active |
+| `ORACULO_VISIT_REVISION_CONFLICT` | active |
+| `ORACULO_VISIT_TRANSITION_DENIED` | active |
+| `ORACULO_EVIDENCE_REQUIRED` | active |
+| `ORACULO_SNAPSHOT_MISMATCH` | active |
+| `ORACULO_COMMIT_OUTCOME_UNKNOWN` | active |
+| `ORACULO_COMMIT_FAILED_NO_EFFECT` | active |
+| `ORACULO_EXECUTION_AUTHORITY_LOST` | active |
+| `ORACULO_VERIFICATION_NOT_SATISFIED` | active |
+| `ORACULO_TEMPORAL_INCOHERENCE` | active |
 <!-- reason-code-canon:end -->
 
 ## Alcance inicial do checker
@@ -374,7 +374,7 @@ Após o merge do RC-0, torná-lo required no ruleset
 `main-protection-hard-gates` é decisão autenticada de Carlos Alberto Merlo.
 Este PR não altera ruleset, branch protection ou workflow.
 
-## Oráculo SC CI1 — propostas, sem ativação (2026-09-23)
+## Oráculo SC CI1 — histórico de propostas no commit d1f1024 (2026-09-23)
 
 | Finding | Token proposto | Destino | Resultado candidato |
 | --- | --- | --- | --- |
@@ -409,4 +409,8 @@ Este PR não altera ruleset, branch protection ou workflow.
 | FT03_NOT_VERIFIED_MAPPING_PENDING | ORACULO_VERIFICATION_NOT_SATISFIED | C5 | DENIED |
 | FT03_TEMPORAL_MAPPING_PENDING | ORACULO_TEMPORAL_INCOHERENCE | C5 | REVIEW_REQUIRED |
 
-Todos os tokens desta seção têm status `proposed`. Owner: Carlos Alberto Merlo / Oráculo SC. Não há approver/evidenceRef de ativação preenchidos. A [matriz para ratificação](oraculo-negative-mapper-proposal.md) descreve escopo e limites. Nenhuma entrada active foi alterada.
+No commit d1f1024, todos os tokens desta seção tinham status `proposed`. Owner: Carlos Alberto Merlo / Oráculo SC. Naquele commit não havia approver/evidenceRef de ativação preenchidos. A [matriz para ratificação](oraculo-negative-mapper-proposal.md) descreve escopo e limites. Naquela proposta, nenhuma entrada active foi alterada.
+
+## Oráculo CI1 — candidato local de ativação para PR dedicado
+
+A matriz foi ratificada na sessão; owner/approver: Carlos Alberto Merlo. A promoção local a active é restrita à simulação e está preparada para PR dedicado, ainda não publicado/mesclado. A fonte e os limites da aprovação estão em [registro da ratificação](oraculo-negative-ratification.md). A seção de propostas anterior descreve o estado histórico do commit d1f1024.
