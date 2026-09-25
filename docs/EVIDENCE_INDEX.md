@@ -1024,3 +1024,31 @@ EVIDÊNCIA: `apps/api/src/index.ts:97-103` + `apps/workers/run-worker/src/index.
 | Assunto | Arquivo | O que prova |
 | --- | --- | --- |
 | `id: run_ape_cycle` no step de geracao + `if: !cancelled() && steps.run_ape_cycle.outcome == 'success'` em todos os 8 steps entre `Run APE cycle` e `Create PR with renewed APE evidence` em `ape-weekly.yml`, sem reordenar nenhum step (N-24, achado na 1a execucao real de 2026-07-09, commit `6bdca45`) | `ops/evidence/latest/ape-weekly-reorder-n24-2026-07-09.md` | Prova por leitura direta do run real de 2026-07-09 (falha em `check:p3-stability-recurring` com evidencia fresca `run44` gerada mas nunca publicada porque todos os steps seguintes, incluindo `Evidence index`/`Upload artifacts`/`Create PR`, foram pulados por padrao apos a falha) e por leitura de `scripts/checkApeCycleHardMetrics.ts` que o step `Hard metrics` (pre-existente, anterior a D25) tem o mesmo padrao de falha condicionada a `hardMetricsGo:false` que P3/P4 — confirmando que o bug de "NO_GO derruba publicacao" ja existia estruturalmente antes de D25, que so adicionou mais dois pontos de falha na mesma cadeia; confirma tambem, por leitura de `checkApeEvidenceLinkage.ts`/`checkProviderPricingRecency.ts`, que nenhum outro step da cadeia tem esse comportamento; documenta a escolha da Opcao 2 estendida (if condicional em 8 steps, sem mover nenhum de posicao) sobre a Opcao 1 (reordenar), por resolver de uma vez tanto a publicacao quanto o efeito colateral descoberto de P3 pular P4 em cascata (perda de observabilidade independente que existia como jobs paralelos em `ci.yml` antes de D25); valida via `yaml.safe_load` que o YAML final tem 18 steps, `id`/`if` corretos nos 8 steps visados, e confirma por inspecao que D25 (job termina vermelho em NO_GO) permanece intacta — um step que roda e falha ainda marca o job como falho ao final, `if:` so controla se o step roda, nao se ele pode falhar; registra como nao verificavel nesta sessao (sem acesso a execucao real do GitHub Actions) o comportamento exato na proxima execucao, recomendando um disparo manual pos-merge. |
+
+## Oráculo SC — corte puro S1 (2026-09-22)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Contratos, canonicalização e avaliação pura sintética | `ops/evidence/latest/oraculo-s1-pure-validation-2026-09-22.md` e `ops/evidence/latest/oraculo-s1-pure-validation-2026-09-22/results.json` | Dois typechecks sem emissão e 59 testes locais aprovados, incluindo regressões selecionadas PRE_DUIMP. Não prova persistência/HITL real/concorrência; G3/G5 abertos. |
+
+## Oráculo SC — correções da revisão S1 (2026-09-22)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| R-S1-01–03: contexto integral, observações únicas e reasonCodes | `ops/evidence/latest/oraculo-s1-review-fixes-2026-09-22.md` e `ops/evidence/latest/oraculo-s1-review-fixes-2026-09-22/results.json` | 73 testes e dois typechecks passaram na árvore corrigida; 11 hashes reconferidos. Sucede a evidência histórica de 59 testes. Não prova integração; G3/G5 abertos. |
+
+## Oráculo SC — CI1 sintético (2026-09-23)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Persistência/HITL/recuperação CI1 local | `ops/evidence/latest/oraculo-ci1-validation-2026-09-23.md` e `ops/evidence/latest/oraculo-ci1-validation/final-checks.json` | 31 testes PostgreSQL e 73 puros aprovados, dois typechecks, isolamento/cleanup e hashes. Protocolo positivo sintético; negativas ainda sem mapper/C5. Não prova ativação nem fecha G3/G5. |
+
+## Oráculo SC CI1 — revisão local 2026-09-23
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Revisão do commit CI1 | `ops/evidence/latest/oraculo-ci1-review-2026-09-23.md` | Correção do vínculo E1 e checker; proposta do mapper sem ativação; gates abertos. |
+| Execução da revisão | `ops/evidence/latest/oraculo-ci1-validation/review-checks.json` | 77 testes puros, 32 integrados, typechecks e falhas intermediárias preservadas. |
+| Rechecagem direcionada | `ops/evidence/latest/oraculo-ci1-validation/review-recheck.json` | Checkers corrigidos e 8 testes de referência. |
+| Hashes da revisão | `ops/evidence/latest/oraculo-ci1-validation/review-file-hashes.json` | Arquivos de implementação revisados. |
+| PostgreSQL isolado | `ops/evidence/latest/oraculo-ci1-validation/7ba82d00-fb62-4de8-99f0-32a0fd186fd1/results.json` | 32 testes integrados e descarte da instância. |

@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true
+  },
+  "include": [
+    "packages/contracts/src/**/*.ts",
+    "apps/api/src/services/logistica/oraculo/**/*.ts",
+    "apps/api/scripts/validateOraculoS1Integrated.ts",
+    "packages/db/src/oraculo/connection.ts"
+  ]
+}
