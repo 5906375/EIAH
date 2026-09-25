@@ -76,10 +76,22 @@ function createMockPrisma(fixtures: { runs: any[]; breakdowns: any[]; ledgerRows
 
 const TENANT = "tenant-cycle";
 const WORKSPACE = "workspace-cycle";
-// A fixed "now" inside a known week so the pipeline's internally-computed
-// closed window is deterministic for the test.
-const FIXED_NOW = () => new Date("2026-09-09T12:00:00.000Z"); // Wednesday
-const EXPECTED_WINDOW = { from: "2026-08-31T00:00:00.000Z", to: "2026-09-07T00:00:00.000Z" };
+// FIXED_NOW must stay well inside the validator's freshness window
+// (packages/core/src/catalog/apeWeeklyCycleV3Validator.ts, maxAgeDays
+// default 14) relative to the REAL wall clock: the validator's
+// stale_evidence check is intentionally never overridden by the pipeline's
+// injected clock (see test L2 below, and the __testing__ comment in
+// apeWeeklyCycleV3BillingCycle.ts). An absolute calendar literal here
+// silently bit-rots into a false stale_evidence rejection once real time
+// drifts more than 14 days past it. Same Date.now()-relative pattern as
+// apps/api/src/tests/runArchiveService.test.ts's isoDaysAgo().
+const FIXED_NOW = () => new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+const EXPECTED_WINDOW = computeLastClosedWeek(FIXED_NOW());
+// 2 days into EXPECTED_WINDOW (was a hardcoded 2026-09-02 literal, i.e.
+// EXPECTED_WINDOW.from + 2 days, before EXPECTED_WINDOW became relative).
+function daysIntoExpectedWindow(days: number): Date {
+  return new Date(new Date(EXPECTED_WINDOW.from).getTime() + days * 24 * 60 * 60 * 1000);
+}
 
 function healthyRun(id: string, createdAt: Date) {
   return {
@@ -130,7 +142,7 @@ test("A: closed-week window — Sunday (end of the still-open week)", () => {
 
 test("A: closed-week window — mid-week (Wednesday)", () => {
   const w = computeLastClosedWeek(new Date("2026-09-09T12:00:00.000Z"));
-  assert.deepEqual(w, EXPECTED_WINDOW);
+  assert.deepEqual(w, { from: "2026-08-31T00:00:00.000Z", to: "2026-09-07T00:00:00.000Z" });
 });
 
 test("A: closed-week window — month boundary", () => {
@@ -268,7 +280,7 @@ test("J: validator identity is a canonical constant, distinct from the producer 
 });
 
 test("K: a healthy real-shaped scenario reaches awaiting_human_ratification", async () => {
-  const createdAt = new Date("2026-09-02T00:00:00.000Z"); // inside EXPECTED_WINDOW
+  const createdAt = daysIntoExpectedWindow(2); // inside EXPECTED_WINDOW
   const run = healthyRun("run-healthy-1", createdAt);
   setFixtures({
     runs: [run],
@@ -280,7 +292,7 @@ test("K: a healthy real-shaped scenario reaches awaiting_human_ratification", as
 });
 
 test("L: a real audit gap does not, by itself, prevent reaching awaiting_human_ratification (honest NO_GO candidate stays valid)", async () => {
-  const createdAt = new Date("2026-09-02T00:00:00.000Z");
+  const createdAt = daysIntoExpectedWindow(2);
   const run = healthyRun("run-gap-1", createdAt);
   setFixtures({
     runs: [run],
@@ -394,7 +406,7 @@ test("O: correction/supersession is additive-only — persisting the same ratifi
 });
 
 test("P: PII boundary — sentinel traceId/requestId never reach the persisted CycleEvidenceV3 or ValidationResult", async () => {
-  const createdAt = new Date("2026-09-02T00:00:00.000Z");
+  const createdAt = daysIntoExpectedWindow(2);
   const run = healthyRun("run-pii-1", createdAt);
   const sentinelTrace = "SENTINEL_TRACE_SHOULD_NOT_LEAK_INTO_CYCLE_ARTIFACTS";
   const sentinelRequest = "SENTINEL_REQUEST_SHOULD_NOT_LEAK_INTO_CYCLE_ARTIFACTS";
