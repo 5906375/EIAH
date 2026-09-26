@@ -1,0 +1,5 @@
+# cmd: gh run view 30710850816 --json jobs --jq .jobs[] | select(.name=="P3SettlementSupportByEnv") | {conclusion, steps: [.steps[] | {name, conclusion}]}
+# env: ci-collected
+# ts: 2026-08-01T15:28:20-03:00
+{"conclusion":"failure","steps":[{"conclusion":"success","name":"Set up job"},{"conclusion":"success","name":"Checkout repository"},{"conclusion":"success","name":"Setup PNPM"},{"conclusion":"success","name":"Setup Node.js"},{"conclusion":"success","name":"Install dependencies"},{"conclusion":"success","name":"Generate P3 economy evidence"},{"conclusion":"success","name":"Check P3 evidence recency"},{"conclusion":"failure","name":"Check P3 settlement support matrix by env"},{"conclusion":"skipped","name":"Post Setup Node.js"},{"conclusion":"success","name":"Post Setup PNPM"},{"conclusion":"success","name":"Post Checkout repository"},{"conclusion":"success","name":"Complete job"}]}
+exit=0

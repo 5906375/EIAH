@@ -33,7 +33,7 @@ function createSettlementId(prefix: string) {
 
 const stripeAdapter: SettlementProviderAdapter = {
   id: "stripe",
-  mode: "full",
+  mode: "simulated",
   async settle(input) {
     const settlementId = createSettlementId("stl");
     return {
@@ -42,7 +42,7 @@ const stripeAdapter: SettlementProviderAdapter = {
       providerSettlementId: settlementId,
       status: "succeeded",
       receipt: {
-        adapterMode: "full",
+        adapterMode: "simulated",
         settledAt: new Date().toISOString(),
         amountCents: input.amountCents,
         currency: input.currency,
@@ -103,7 +103,7 @@ const adapters = new Map<SettlementProviderId, SettlementProviderAdapter>([
 ]);
 
 const DEFAULT_PROVIDER_MODE: Record<SettlementProviderId, SettlementProviderMode> = {
-  stripe: "full",
+  stripe: "simulated",
   crypto: "simulated",
   bank: "simulated",
 };

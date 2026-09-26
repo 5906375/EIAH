@@ -44,7 +44,7 @@ function generateSettlementProviderEvidence(): EvidencePayload {
     generatedAt: new Date().toISOString(),
     scope: "P3-settlement",
     providers: [
-      { id: "stripe", mode: "full" },
+      { id: "stripe", mode: "simulated" },
       { id: "crypto", mode: "simulated" },
       { id: "bank", mode: "simulated" },
     ],

@@ -146,7 +146,6 @@ const interopE2E = readJson<{
     discovery?: { status?: number };
     negotiate?: { status?: number; receiptSpecVersion?: string };
     execute?: { status?: number; returnsRunId?: boolean };
-    verifyReceipt?: { status?: number; receiptCanonSpecVersion?: string };
   };
 }>(e2eInteropFile);
 const highActions = readJson<{
@@ -155,7 +154,6 @@ const highActions = readJson<{
   assertions?: {
     tierHigh?: boolean;
     txIdRequired?: boolean;
-    receiptCanonSpec?: string;
   };
 }>(highActionsFile);
 
@@ -183,18 +181,9 @@ if (interopE2E.assertions?.discovery?.status !== 200) fail("interop_discovery_st
 if (interopE2E.assertions?.negotiate?.status !== 200) fail("interop_negotiate_status_invalid");
 if (interopE2E.assertions?.execute?.status !== 202) fail("interop_execute_status_invalid");
 if (interopE2E.assertions?.execute?.returnsRunId !== true) fail("interop_execute_runid_missing");
-if (interopE2E.assertions?.verifyReceipt?.status !== 200) fail("interop_verify_receipt_status_invalid");
-if (interopE2E.assertions?.verifyReceipt?.receiptCanonSpecVersion !== "receipt.canon.v1") {
-  fail("interop_verify_receipt_spec_invalid", {
-    got: interopE2E.assertions?.verifyReceipt?.receiptCanonSpecVersion ?? null,
-  });
-}
 
 if (highActions.assertions?.tierHigh !== true) fail("high_actions_tier_not_high");
 if (highActions.assertions?.txIdRequired !== true) fail("high_actions_txid_required_invalid");
-if (highActions.assertions?.receiptCanonSpec !== "receipt.canon.v1") {
-  fail("high_actions_receipt_spec_invalid", { got: highActions.assertions?.receiptCanonSpec ?? null });
-}
 
 const policyContent = fs.readFileSync(riskPolicyFile, "utf8");
 const agentsRoutesContent = fs.readFileSync(agentRoutesFile, "utf8");

@@ -1,0 +1,399 @@
+# cmd: gh run view 30710850816 --log --job 91397927961
+# env: ci-collected
+# ts: 2026-08-01T15:28:21-03:00
+P3SettlementSupportByEnv	Set up job	﻿2026-08-01T17:41:14.6061086Z Current runner version: '2.336.0'
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6079439Z ##[group]Runner Image Provisioner
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6080160Z Hosted Compute Agent
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6080733Z Version: 20260707.563
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6081272Z Commit: 02667638d2b423fbc733a8e32a88b44996a3ba6e
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6081882Z Build Date: 2026-07-07T19:33:50Z
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6082448Z Worker ID: {27477bb8-7e64-406e-8302-1d48d7cfeb36}
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6083032Z Azure Region: centralus
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6083511Z ##[endgroup]
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6084844Z ##[group]Operating System
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6085352Z Ubuntu
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6085821Z 24.04.4
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6086243Z LTS
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6086674Z ##[endgroup]
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6087374Z ##[group]Runner Image
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6087874Z Image: ubuntu-24.04
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6088357Z Version: 20260720.247.2
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6089210Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20260720.247/images/ubuntu/Ubuntu2404-Readme.md
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6090622Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20260720.247
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6091447Z ##[endgroup]
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6093940Z ##[group]GITHUB_TOKEN Permissions
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6095751Z Actions: write
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6096286Z ArtifactMetadata: write
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6096800Z Attestations: write
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6097458Z Checks: write
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6097888Z CodeQuality: write
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6098344Z Contents: write
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6098845Z CopilotRequests: write
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6099333Z Deployments: write
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6099775Z Discussions: write
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6100244Z Drives: write
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6100680Z Issues: write
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6101122Z Metadata: read
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6101643Z Models: read
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6102075Z Packages: write
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6102521Z Pages: write
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6102950Z PullRequests: write
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6103412Z RepositoryProjects: write
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6103968Z SecurityEvents: write
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6104429Z Statuses: write
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6104893Z VulnerabilityAlerts: read
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6105382Z ##[endgroup]
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6107145Z Secret source: Actions
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6108029Z Prepare workflow directory
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6413864Z Prepare all required actions
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.6453929Z Getting action download info
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:14.8981865Z Download action repository 'actions/checkout@v4' (SHA:11d5960a326750d5838078e36cf38b85af677262)
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:15.5481280Z Download action repository 'pnpm/action-setup@v4' (SHA:b906affcce14559ad1aafd4ab0e942779e9f58b1)
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:16.2826346Z Download action repository 'actions/setup-node@v4' (SHA:49933ea5288caeca8642d1e84afbd3f7d6820020)
+P3SettlementSupportByEnv	Set up job	2026-08-01T17:41:16.4573424Z Complete job name: P3SettlementSupportByEnv
+P3SettlementSupportByEnv	Checkout repository	﻿2026-08-01T17:41:16.5223986Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.5231240Z ##[group]Run actions/checkout@v4
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.5232146Z with:
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.5232871Z   repository: 5906375/EIAH
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.5235688Z   token: ***
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.5236332Z   ssh-strict: true
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.5237177Z   ssh-user: git
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.5237905Z   persist-credentials: true
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.5238619Z   clean: true
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.5239281Z   sparse-checkout-cone-mode: true
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.5240004Z   fetch-depth: 1
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.5240653Z   fetch-tags: false
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.5241330Z   show-progress: true
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.5241962Z   lfs: false
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.5242606Z   submodules: false
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.5243382Z   set-safe-directory: true
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.5244115Z   allow-unsafe-pr-checkout: false
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.5244945Z env:
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.5245753Z   NODE_VERSION: 20
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.5246430Z   PNPM_VERSION: 10.12.4
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.5247197Z ##[endgroup]
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6119486Z Syncing repository: 5906375/EIAH
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6122382Z ##[group]Getting Git version info
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6123263Z Working directory is '/home/runner/work/EIAH/EIAH'
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6124617Z [command]/usr/bin/git version
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6180659Z git version 2.54.0
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6198141Z ##[endgroup]
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6210932Z Temporarily overriding HOME='/home/runner/work/_temp/914ed51e-ff5a-467b-b6dd-d6566530e173' before making global git config changes
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6213567Z Adding repository directory to the temporary git global config as a safe directory
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6215486Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/EIAH/EIAH
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6246057Z Deleting the contents of '/home/runner/work/EIAH/EIAH'
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6252718Z ##[group]Initializing the repository
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6269960Z [command]/usr/bin/git init /home/runner/work/EIAH/EIAH
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6355288Z hint: Using 'master' as the name for the initial branch. This default branch name
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6378603Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6380409Z hint: to use in all of your new repositories, which will suppress this warning,
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6381915Z hint: call:
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6382958Z hint:
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6384110Z hint: 	git config --global init.defaultBranch <name>
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6385739Z hint:
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6387088Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6388738Z hint: 'development'. The just-created branch can be renamed via this command:
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6390154Z hint:
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6391235Z hint: 	git branch -m <name>
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6392343Z hint:
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6393665Z hint: Disable this message with "git config set advice.defaultBranchName false"
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6395237Z Initialized empty Git repository in /home/runner/work/EIAH/EIAH/.git/
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6398644Z [command]/usr/bin/git remote add origin https://github.com/5906375/EIAH
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6427821Z ##[endgroup]
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6429798Z ##[group]Disabling automatic garbage collection
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6431253Z [command]/usr/bin/git config --local gc.auto 0
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6470811Z ##[endgroup]
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6479119Z ##[group]Setting up auth
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6481025Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6510610Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6819316Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.6848474Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.7013646Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.7040367Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.7192202Z [command]/usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION: basic ***
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.7217162Z ##[endgroup]
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.7218399Z ##[group]Fetching the repository
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:16.7224554Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin +87c646a807041019ccd9e2d425a9dec96e058122:refs/remotes/pull/423/merge
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:18.9923757Z From https://github.com/5906375/EIAH
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:18.9924487Z  * [new ref]         87c646a807041019ccd9e2d425a9dec96e058122 -> pull/423/merge
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:18.9943627Z ##[endgroup]
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:18.9944190Z ##[group]Determining the checkout info
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:18.9945268Z ##[endgroup]
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:18.9951469Z [command]/usr/bin/git sparse-checkout disable
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:19.0172969Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:19.0351477Z ##[group]Checking out the ref
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:19.0357933Z [command]/usr/bin/git checkout --progress --force refs/remotes/pull/423/merge
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:19.5147829Z Note: switching to 'refs/remotes/pull/423/merge'.
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:19.5148667Z 
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:19.5149727Z You are in 'detached HEAD' state. You can look around, make experimental
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:19.5151149Z changes and commit them, and you can discard any commits you make in this
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:19.5152673Z state without impacting any branches by switching back to a branch.
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:19.5153510Z 
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:19.5154175Z If you want to create a new branch to retain commits you create, you may
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:19.5155222Z do so (now or later) by using -c with the switch command. Example:
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:19.5155915Z 
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:19.5156316Z   git switch -c <new-branch-name>
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:19.5157105Z 
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:19.5157544Z Or undo this operation with:
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:19.5158422Z 
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:19.5158933Z   git switch -
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:19.5160561Z 
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:19.5160960Z Turn off this advice by setting config variable advice.detachedHead to false
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:19.5161419Z 
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:19.5161914Z HEAD is now at 87c646a Merge d5efce85f6939f2a80580b14f1807c166cbb456f into 22e88b136e6761e8c7c6cf925750ee625bd04d84
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:19.5163455Z ##[endgroup]
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:19.5181635Z [command]/usr/bin/git log -1 --format=%H
+P3SettlementSupportByEnv	Checkout repository	2026-08-01T17:41:19.5202511Z 87c646a807041019ccd9e2d425a9dec96e058122
+P3SettlementSupportByEnv	Setup PNPM	﻿2026-08-01T17:41:19.5397708Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+P3SettlementSupportByEnv	Setup PNPM	2026-08-01T17:41:19.5399295Z ##[group]Run pnpm/action-setup@v4
+P3SettlementSupportByEnv	Setup PNPM	2026-08-01T17:41:19.5399535Z with:
+P3SettlementSupportByEnv	Setup PNPM	2026-08-01T17:41:19.5399704Z   version: 10.12.4
+P3SettlementSupportByEnv	Setup PNPM	2026-08-01T17:41:19.5399882Z   run_install: false
+P3SettlementSupportByEnv	Setup PNPM	2026-08-01T17:41:19.5400065Z   dest: ~/setup-pnpm
+P3SettlementSupportByEnv	Setup PNPM	2026-08-01T17:41:19.5400239Z   cache: false
+P3SettlementSupportByEnv	Setup PNPM	2026-08-01T17:41:19.5400446Z   cache_dependency_path: pnpm-lock.yaml
+P3SettlementSupportByEnv	Setup PNPM	2026-08-01T17:41:19.5400727Z   package_json_file: package.json
+P3SettlementSupportByEnv	Setup PNPM	2026-08-01T17:41:19.5400949Z   standalone: false
+P3SettlementSupportByEnv	Setup PNPM	2026-08-01T17:41:19.5401120Z env:
+P3SettlementSupportByEnv	Setup PNPM	2026-08-01T17:41:19.5401277Z   NODE_VERSION: 20
+P3SettlementSupportByEnv	Setup PNPM	2026-08-01T17:41:19.5401452Z   PNPM_VERSION: 10.12.4
+P3SettlementSupportByEnv	Setup PNPM	2026-08-01T17:41:19.5401635Z ##[endgroup]
+P3SettlementSupportByEnv	Setup PNPM	2026-08-01T17:41:19.6567737Z ##[group]Running self-installer...
+P3SettlementSupportByEnv	Setup PNPM	2026-08-01T17:41:19.9774350Z (node:2045) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+P3SettlementSupportByEnv	Setup PNPM	2026-08-01T17:41:19.9775939Z (Use `node --trace-deprecation ...` to show where the warning was created)
+P3SettlementSupportByEnv	Setup PNPM	2026-08-01T17:41:20.2057639Z Progress: resolved 1, reused 0, downloaded 0, added 0
+P3SettlementSupportByEnv	Setup PNPM	2026-08-01T17:41:20.2143631Z Packages: +1
+P3SettlementSupportByEnv	Setup PNPM	2026-08-01T17:41:20.2144048Z +
+P3SettlementSupportByEnv	Setup PNPM	2026-08-01T17:41:20.5438373Z Progress: resolved 1, reused 0, downloaded 1, added 1, done
+P3SettlementSupportByEnv	Setup PNPM	2026-08-01T17:41:20.5821740Z 
+P3SettlementSupportByEnv	Setup PNPM	2026-08-01T17:41:20.5822085Z dependencies:
+P3SettlementSupportByEnv	Setup PNPM	2026-08-01T17:41:20.5822416Z + pnpm 10.12.4 (11.18.0 is available)
+P3SettlementSupportByEnv	Setup PNPM	2026-08-01T17:41:20.5822661Z 
+P3SettlementSupportByEnv	Setup PNPM	2026-08-01T17:41:20.5844314Z Done in 771ms
+P3SettlementSupportByEnv	Setup PNPM	2026-08-01T17:41:20.5942417Z ##[endgroup]
+P3SettlementSupportByEnv	Setup PNPM	2026-08-01T17:41:20.5942800Z Installation Completed!
+P3SettlementSupportByEnv	Setup Node.js	﻿2026-08-01T17:41:20.6093296Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:20.6094354Z ##[group]Run actions/setup-node@v4
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:20.6094569Z with:
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:20.6094788Z   node-version: 22
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:20.6095023Z   cache: pnpm
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:20.6095275Z   cache-dependency-path: pnpm-lock.yaml
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:20.6095643Z   always-auth: false
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:20.6095926Z   check-latest: false
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:20.6098411Z   token: ***
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:20.6098666Z env:
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:20.6098898Z   NODE_VERSION: 20
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:20.6099168Z   PNPM_VERSION: 10.12.4
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:20.6099495Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:20.6099802Z ##[endgroup]
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:20.7226613Z Found in cache @ /opt/hostedtoolcache/node/22.23.1/x64
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:20.7229582Z (node:2059) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:20.7230566Z (Use `node --trace-deprecation ...` to show where the warning was created)
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:20.7231871Z ##[group]Environment details
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:21.3493045Z node: v22.23.1
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:21.3493354Z npm: 10.9.8
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:21.3493603Z yarn: 1.22.22
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:21.3494462Z ##[endgroup]
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:21.3510344Z [command]/home/runner/setup-pnpm/node_modules/.bin/pnpm store path --silent
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:21.6186696Z /home/runner/setup-pnpm/node_modules/.bin/store/v10
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:21.7466448Z Cache hit for: node-cache-Linux-x64-pnpm-0ee6521a9ae381fc9e0cde14cafe7145e266ae79f0af4f2accb1d8b6f1187db4
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:22.0263998Z (node:2059) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:23.1203783Z Received 105937671 of 105937671 (100.0%), 109.6 MBs/sec
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:23.1204390Z Cache Size: ~101 MB (105937671 B)
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:23.1257506Z [command]/usr/bin/tar -xf /home/runner/work/_temp/d9b88aca-ae58-4874-b04a-63fbee08a1ee/cache.tzst -P -C /home/runner/work/EIAH/EIAH --use-compress-program unzstd
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:23.8709045Z Cache restored successfully
+P3SettlementSupportByEnv	Setup Node.js	2026-08-01T17:41:23.8751291Z Cache restored from key: node-cache-Linux-x64-pnpm-0ee6521a9ae381fc9e0cde14cafe7145e266ae79f0af4f2accb1d8b6f1187db4
+P3SettlementSupportByEnv	Install dependencies	﻿2026-08-01T17:41:23.8861256Z ##[group]Run pnpm install --frozen-lockfile --ignore-scripts
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:23.8861744Z ^[[36;1mpnpm install --frozen-lockfile --ignore-scripts^[[0m
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:23.8896815Z shell: /usr/bin/bash -e {0}
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:23.8897412Z env:
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:23.8897593Z   NODE_VERSION: 20
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:23.8897788Z   PNPM_VERSION: 10.12.4
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:23.8898032Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:23.8898293Z ##[endgroup]
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:24.1149197Z Scope: all 12 workspace projects
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:24.1661859Z Lockfile is up to date, resolution step is skipped
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:24.2056107Z Progress: resolved 1, reused 0, downloaded 0, added 0
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:24.2916597Z Packages: +787
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:24.2917204Z ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:25.2070543Z Progress: resolved 787, reused 786, downloaded 0, added 786
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:26.8238465Z Progress: resolved 787, reused 786, downloaded 0, added 787
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:26.8240759Z Progress: resolved 787, reused 786, downloaded 0, added 787, done
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:27.2905891Z 
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:27.2906598Z dependencies:
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:27.2907413Z + @prisma/client 7.2.0
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:27.2907822Z + prisma 7.2.0
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:27.2908057Z 
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:27.2908222Z devDependencies:
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:27.2908607Z + @eslint/js 9.39.2
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:27.2908978Z + @prisma/config 7.2.0
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:27.2909338Z + @types/node 25.0.3
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:27.2909815Z + @typescript-eslint/eslint-plugin 8.50.0
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:27.2910611Z + @typescript-eslint/parser 8.50.0
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:27.2911123Z + @typescript-eslint/utils 8.50.0
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:27.2911508Z + eslint 9.39.2
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:27.2911939Z + eslint-config-prettier 10.1.8
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:27.2912377Z + eslint-plugin-import 2.32.0
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:27.2913043Z + eslint-plugin-unused-imports 4.3.0
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:27.2913430Z + playwright 1.61.1
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:27.2913707Z + tsx 4.21.0
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:27.2914005Z + typescript 5.9.3
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:27.2914170Z 
+P3SettlementSupportByEnv	Install dependencies	2026-08-01T17:41:27.3038681Z Done in 3.3s using pnpm v10.12.4
+P3SettlementSupportByEnv	Generate P3 economy evidence	﻿2026-08-01T17:41:27.3181407Z ##[group]Run pnpm generate:p3-economy-evidence
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.3181890Z ^[[36;1mpnpm generate:p3-economy-evidence^[[0m
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.3214647Z shell: /usr/bin/bash -e {0}
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.3214989Z env:
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.3215247Z   NODE_VERSION: 20
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.3215519Z   PNPM_VERSION: 10.12.4
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.3215880Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.3216301Z ##[endgroup]
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.5337577Z 
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.5338636Z > eiah-builder@ generate:p3-economy-evidence /home/runner/work/EIAH/EIAH
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.5339724Z > node --experimental-strip-types scripts/generateP3EconomyEvidence.ts
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.5340353Z 
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6084823Z {
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6093247Z   "ok": true,
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6094839Z   "generated": {
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6137184Z     "timestamp": "2026-08-01",
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6137834Z     "count": 7,
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6138315Z     "directory": "/home/runner/work/EIAH/EIAH/ops/evidence/latest",
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6138884Z     "files": [
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6139142Z       {
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6139495Z         "file": "settlement-provider-e2e-2026-08-01.json",
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6139874Z         "ok": true,
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6140180Z         "scope": "P3-settlement"
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6140482Z       },
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6140698Z       {
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6141060Z         "file": "billing-webhook-replay-2026-08-01.json",
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6141453Z         "ok": true,
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6141726Z         "scope": "unknown"
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6142004Z       },
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6142228Z       {
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6142603Z         "file": "dispute-lifecycle-e2e-2026-08-01.json",
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6143019Z         "ok": true,
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6143342Z         "scope": "P3-disputes"
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6143644Z       },
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6143871Z       {
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6144223Z         "file": "reputation-update-flow-2026-08-01.json",
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6144627Z         "ok": true,
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6144948Z         "scope": "P3-reputation"
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6145262Z       },
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6145493Z       {
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6145930Z         "file": "realestate-commission-settlement-e2e-2026-08-01.json",
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6146406Z         "ok": true,
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6146704Z         "scope": "P3-commission"
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6147337Z       },
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6147566Z       {
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6147927Z         "file": "payment-intent-schema-2026-08-01.json",
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6148317Z         "ok": true,
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6148592Z         "scope": "P3-schema"
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6148885Z       },
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6149124Z       {
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6149473Z         "file": "pou-gated-payment-e2e-2026-08-01.json",
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6149874Z         "ok": true,
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6150189Z         "scope": "P3-pou-gate"
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6150486Z       }
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6150706Z     ]
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6150944Z   }
+P3SettlementSupportByEnv	Generate P3 economy evidence	2026-08-01T17:41:27.6151172Z }
+P3SettlementSupportByEnv	Check P3 evidence recency	﻿2026-08-01T17:41:27.6266212Z ##[group]Run pnpm check:p3-evidence-recency
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.6266672Z ^[[36;1mpnpm check:p3-evidence-recency^[[0m
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.6297189Z shell: /usr/bin/bash -e {0}
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.6297456Z env:
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.6297708Z   NODE_VERSION: 20
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.6297987Z   PNPM_VERSION: 10.12.4
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.6298500Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.6298910Z ##[endgroup]
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8336707Z 
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8347917Z > eiah-builder@ check:p3-evidence-recency /home/runner/work/EIAH/EIAH
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8348943Z > node --experimental-strip-types scripts/checkP3EvidenceRecency.ts
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8349650Z 
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8938252Z {
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8938718Z   "ok": true,
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8939263Z   "check": "check:p3-evidence-recency",
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8939732Z   "maxAgeDays": 3,
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8940088Z   "evaluated": {
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8940593Z     "^settlement-provider-e2e-\\d{4}-\\d{2}-\\d{2}\\.json$": {
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8941275Z       "file": "settlement-provider-e2e-2026-08-01.json",
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8941810Z       "ageDays": 0.74
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8942198Z     },
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8942657Z     "^billing-webhook-replay-\\d{4}-\\d{2}-\\d{2}\\.json$": {
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8943259Z       "file": "billing-webhook-replay-2026-08-01.json",
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8943803Z       "ageDays": 0.74
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8944264Z     },
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8957719Z     "^dispute-lifecycle-e2e-\\d{4}-\\d{2}-\\d{2}\\.json$": {
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8958541Z       "file": "dispute-lifecycle-e2e-2026-08-01.json",
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8959050Z       "ageDays": 0.74
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8959362Z     },
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8959829Z     "^reputation-update-flow-\\d{4}-\\d{2}-\\d{2}\\.json$": {
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8960649Z       "file": "reputation-update-flow-2026-08-01.json",
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8961159Z       "ageDays": 0.74
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8961527Z     },
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8962025Z     "^realestate-commission-settlement-e2e-\\d{4}-\\d{2}-\\d{2}\\.json$": {
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8962820Z       "file": "realestate-commission-settlement-e2e-2026-08-01.json",
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8963491Z       "ageDays": 0.74
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8963847Z     },
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8964287Z     "^payment-intent-schema-\\d{4}-\\d{2}-\\d{2}\\.json$": {
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8964777Z       "file": "payment-intent-schema-2026-08-01.json",
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8965228Z       "ageDays": 0.74
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8965472Z     },
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8965807Z     "^pou-gated-payment-e2e-\\d{4}-\\d{2}-\\d{2}\\.json$": {
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8966282Z       "file": "pou-gated-payment-e2e-2026-08-01.json",
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8966653Z       "ageDays": 0.74
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8967033Z     }
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8967271Z   }
+P3SettlementSupportByEnv	Check P3 evidence recency	2026-08-01T17:41:27.8967495Z }
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	﻿2026-08-01T17:41:27.9067284Z ##[group]Run pnpm check:p3-settlement-support-by-env
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:27.9067646Z ^[[36;1mpnpm check:p3-settlement-support-by-env^[[0m
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:27.9088154Z shell: /usr/bin/bash -e {0}
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:27.9088415Z env:
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:27.9088593Z   NODE_VERSION: 20
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:27.9088778Z   PNPM_VERSION: 10.12.4
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:27.9089011Z   PNPM_HOME: /home/runner/setup-pnpm/node_modules/.bin
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:27.9089275Z   SETTLEMENT_ENV: staging
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:27.9089472Z ##[endgroup]
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1137303Z 
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1138151Z > eiah-builder@ check:p3-settlement-support-by-env /home/runner/work/EIAH/EIAH
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1138968Z > node --experimental-strip-types scripts/checkP3SettlementSupportByEnv.ts
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1139356Z 
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1899611Z {
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1900078Z   "ok": false,
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1900648Z   "check": "check:p3-settlement-support-by-env",
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1903426Z   "message": "provider_mode_not_allowed_for_environment",
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1904116Z   "details": {
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1904498Z     "environment": "staging",
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1904917Z     "violations": [
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1905297Z       {
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1905655Z         "provider": "stripe",
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1906050Z         "mode": "full",
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1906431Z         "allowedModes": [
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1906813Z           "simulated"
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1907396Z         ]
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1907713Z       }
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1908020Z     ]
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1908550Z   }
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.1917606Z }
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.2062740Z  ELIFECYCLE  Command failed with exit code 1.
+P3SettlementSupportByEnv	Check P3 settlement support matrix by env	2026-08-01T17:41:28.2330563Z ##[error]Process completed with exit code 1.
+P3SettlementSupportByEnv	Post Setup PNPM	﻿2026-08-01T17:41:28.2421711Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+P3SettlementSupportByEnv	Post Setup PNPM	2026-08-01T17:41:28.2422650Z Post job cleanup.
+P3SettlementSupportByEnv	Post Setup PNPM	2026-08-01T17:41:28.3598338Z Pruning is unnecessary.
+P3SettlementSupportByEnv	Post Checkout repository	﻿2026-08-01T17:41:28.3742128Z Node 20 is being deprecated. This workflow is running with Node 24 by default. If you need to temporarily use Node 20, you can set the ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION=true environment variable. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+P3SettlementSupportByEnv	Post Checkout repository	2026-08-01T17:41:28.3743697Z Post job cleanup.
+P3SettlementSupportByEnv	Post Checkout repository	2026-08-01T17:41:28.4617487Z [command]/usr/bin/git version
+P3SettlementSupportByEnv	Post Checkout repository	2026-08-01T17:41:28.4677599Z git version 2.54.0
+P3SettlementSupportByEnv	Post Checkout repository	2026-08-01T17:41:28.4723211Z Temporarily overriding HOME='/home/runner/work/_temp/f8a0e0eb-803c-46e4-b698-c8ec5b2d39bc' before making global git config changes
+P3SettlementSupportByEnv	Post Checkout repository	2026-08-01T17:41:28.4724385Z Adding repository directory to the temporary git global config as a safe directory
+P3SettlementSupportByEnv	Post Checkout repository	2026-08-01T17:41:28.4735111Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/EIAH/EIAH
+P3SettlementSupportByEnv	Post Checkout repository	2026-08-01T17:41:28.4761085Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+P3SettlementSupportByEnv	Post Checkout repository	2026-08-01T17:41:28.4816278Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+P3SettlementSupportByEnv	Post Checkout repository	2026-08-01T17:41:28.5045115Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+P3SettlementSupportByEnv	Post Checkout repository	2026-08-01T17:41:28.5068882Z http.https://github.com/.extraheader
+P3SettlementSupportByEnv	Post Checkout repository	2026-08-01T17:41:28.5079643Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+P3SettlementSupportByEnv	Post Checkout repository	2026-08-01T17:41:28.5111561Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+P3SettlementSupportByEnv	Post Checkout repository	2026-08-01T17:41:28.5318740Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+P3SettlementSupportByEnv	Post Checkout repository	2026-08-01T17:41:28.5367690Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+P3SettlementSupportByEnv	Complete job	﻿2026-08-01T17:41:28.5721886Z Cleaning up orphan processes
+P3SettlementSupportByEnv	Complete job	2026-08-01T17:41:28.5950472Z ##[warning]Node.js 20 is deprecated. The following actions target Node.js 20 but are being forced to run on Node.js 24: actions/checkout@v4, actions/setup-node@v4, pnpm/action-setup@v4. For more information see: https://github.blog/changelog/2025-09-19-deprecation-of-node-20-on-github-actions-runners/
+exit=0

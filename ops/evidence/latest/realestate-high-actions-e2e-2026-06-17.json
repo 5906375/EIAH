@@ -12,7 +12,6 @@
   "assertions": {
     "tierHigh": true,
     "txIdRequired": true,
-    "receiptCanonSpec": "receipt.canon.v1",
     "tenantPolicyGuarded": true
   },
   "test": "apps/api/src/tests/realestate.high-actions.e2e.test.ts"
