@@ -1,4 +1,4 @@
-import { McpDbPolicyError } from "../../../../packages/mcp-runner/src/executor/dbAllowlist.js";
+import { McpDbPolicyError } from "@repo/mcp-runner";
 import { resolveActiveMcpDenyRunFailure } from "./runWorkerActionResolution";
 
 export function createActionRunnerFailureError(

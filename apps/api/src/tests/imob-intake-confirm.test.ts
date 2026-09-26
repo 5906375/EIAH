@@ -18,14 +18,19 @@ import "./support/testInfraEnv.js";
 import { after, before, describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import supertest from "supertest";
 import { closePrismaResources, prismaGlobal } from "@repo/db";
 import { finalizeHttpContractCleanup } from "./support/httpContractCleanup.js";
 import { processImobRunCompletedJob } from "../workers/imobPostRunMutationWorker.js";
 import { imobRunCompletedQueue } from "../queues/imobRunCompletedQueue.js";
 import { runAtivoUniversalQueue, runAtivoUniversalDLQ } from "@eiah/core";
+import {
+  clearTenantCapabilityFlag,
+  closeCriticalKillSwitchRedis,
+  setTenantCapabilityFlag,
+} from "@eiah/core/security/killSwitch";
 import { closeDraftStoreResources } from "../services/imob/intake/imobContractDraftService.js";
+import { hasCoreAgentProfile, resolveAgentId } from "../services/agents.js";
 
 // ─── Identifiers ──────────────────────────────────────────────────────────────
 
@@ -36,14 +41,23 @@ const userId = `user-conf-${suffix}`;
 const apiToken = `tok-conf-${suffix}`;
 const INTAKE_SENTINEL = "INTAKE";
 
-// Real DOCX buffer for upload (mammoth test fixture — known valid DOCX)
-const DOCX_PATH = join(
-  new URL(".", import.meta.url).pathname,
-  "../../../../node_modules/mammoth/test/test-data/simple-list.docx",
-);
+// Repository-owned synthetic DOCX fixture for upload.
+const DOCX_PATH = new URL("./fixtures/imob/minimal-lease-contract.docx", import.meta.url);
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 let request: ReturnType<typeof supertest>;
+
+async function resolveCanonicalEiahAssignmentIdentity() {
+  const agentKey = resolveAgentId("EIAH");
+  const metadata = await prismaGlobal.agentMetadata.findUnique({
+    where: { agent: agentKey },
+    select: { version: true },
+  });
+  const persistedVersion = metadata?.version?.trim();
+  const agentVersion = persistedVersion || (hasCoreAgentProfile(agentKey) ? "1.0.0" : null);
+  assert.ok(agentVersion, "EIAH must resolve to a persisted or core assignment version");
+  return { agentKey, agentVersion };
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -76,9 +90,21 @@ before(async () => {
   await (prismaGlobal as any).apiToken.create({
     data: { token: apiToken, tenantId, workspaceId, userId, description: "conf-test", revoked: false },
   });
+  const assignmentIdentity = await resolveCanonicalEiahAssignmentIdentity();
+  await prismaGlobal.workspaceAgentAssignment.create({
+    data: { tenantId, workspaceId, ...assignmentIdentity, enabled: true },
+  });
+  await setTenantCapabilityFlag({
+    capabilityId: "imob.contract.intake",
+    tenantId,
+    workspaceId,
+    enabled: true,
+  });
 });
 
 after(async () => {
+  await clearTenantCapabilityFlag({ capabilityId: "imob.contract.intake", tenantId, workspaceId });
+  await (prismaGlobal as any).guardrailAuditLedger.deleteMany({ where: { tenantId } });
   await (prismaGlobal as any).imobCaseEvent.deleteMany({ where: { tenantId } });
   await (prismaGlobal as any).imobCase.deleteMany({ where: { tenantId } });
   await prismaGlobal.run.deleteMany({ where: { tenantId } });
@@ -94,6 +120,7 @@ after(async () => {
   await imobRunCompletedQueue.close();
   await runAtivoUniversalQueue.close();
   await runAtivoUniversalDLQ.close();
+  await closeCriticalKillSwitchRedis();
 });
 
 // ─── Tests ────────────────────────────────────────────────────────────────────

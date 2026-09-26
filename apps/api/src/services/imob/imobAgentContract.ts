@@ -1,4 +1,8 @@
-import type { ImobAgentRuntimeMetadata, ImobChatExperienceContract } from "./imobConversationContract";
+import type {
+  ImobAgentRuntimeMetadata,
+  ImobChatExperienceContract,
+  ImobContractIntakeRuntimePolicy,
+} from "./imobConversationContract";
 import { imobCapabilityRegistry, listAllImobCapabilities } from "./imobCapabilityRegistry";
 import { IMOB_CONVERSATIONAL_INTENT_CATALOG } from "./imobIntentCatalog";
 import { buildImobPromotionReviewSurface } from "./imobPromotionReviewSurface";
@@ -6,6 +10,19 @@ import { listImobBackingSpecialists } from "./imobSpecialistBridge";
 
 const IMOB_AGENT_CONTRACT_ID = "imob.case_concierge.v1" as const;
 const IMOB_AGENT_CONTRACT_VERSION = 1 as const;
+
+export const IMOB_CONTRACT_INTAKE_RUNTIME_POLICY: ImobContractIntakeRuntimePolicy = Object.freeze({
+  actionId: "imob.contract.intake",
+  operationalState: "kill_switch_controlled",
+  defaultEnabled: false,
+  flagScope: "tenant_workspace",
+  failMode: "closed",
+  reasonCode: "VERTICAL_CAPABILITY_NOT_AVAILABLE",
+  blockingCondition: "pending_pr1c_atomic_dispatch",
+  retryable: false,
+  httpStatus: 503,
+  message: "O intake documental IMOB está temporariamente indisponível.",
+});
 
 export const IMOB_AGENT_INITIAL_INTENT_IDS = [
   "daily.leads_today",
@@ -74,6 +91,9 @@ export function buildImobAgentContractV1() {
       total: listAllImobCapabilities().length,
       ...capabilities,
     },
+    runtimePolicies: {
+      contractIntake: { ...IMOB_CONTRACT_INTAKE_RUNTIME_POLICY },
+    },
   };
 }
 
@@ -98,6 +118,9 @@ export function buildImobAgentRuntimeMetadata(): ImobAgentRuntimeMetadata {
       runtimeExtensions: contract.capabilities.runtimeExtensions.map((item) => ({ ...item, dependsOn: [...item.dependsOn] })),
       externalIntegrations: contract.capabilities.externalIntegrations.map((item) => ({ ...item, dependsOn: [...item.dependsOn] })),
       workerOrchestration: contract.capabilities.workerOrchestration.map((item) => ({ ...item, dependsOn: [...item.dependsOn] })),
+    },
+    runtimePolicies: {
+      contractIntake: { ...contract.runtimePolicies.contractIntake },
     },
     promotionReviewSurface,
   };

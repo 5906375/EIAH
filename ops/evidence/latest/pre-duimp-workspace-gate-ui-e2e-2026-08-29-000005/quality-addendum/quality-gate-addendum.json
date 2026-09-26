@@ -1,0 +1,52 @@
+{
+  "schema": "pre-duimp-quality-gate-addendum-v1",
+  "generatedOn": "2026-08-30",
+  "source": {
+    "attempt": "000005",
+    "captureRoot": "<capture-root>",
+    "immutable": true,
+    "controllerSha256": "55c9dbbe9ad86334df81b5c869531a773ac6a7bfd7038d57d0070faa7bb2a21c",
+    "manifestSha256": "8bd25fee1efce5f2fd0f27f420b15ef67710c075e598b01721c4807e97757bca",
+    "originalTsconfigSha256": "d0371a5628931efa7981b6bcdfbe0ecc46e3ceca2554d8c36a3db1e4486c9c39",
+    "derivedTsconfigSha256": "0e60825e4f2cd2eb597635bf2a1589f1971756ffe2180e361e00bc28487fae21"
+  },
+  "baseline": {
+    "branch": "docs/structural-gate-boundary-sha",
+    "head": "bbfb94e349ed8a6576b652bdf0901ac61283a1ed",
+    "tree": "d18fe22d81571358757c38b4fc0a698d49ac8684"
+  },
+  "historicalResult": {
+    "functionalE2E": "PASS",
+    "originalControllerAggregate": "FAIL_POST_E2E_QUALITY_GATE",
+    "originalTypecheckExitCode": 2,
+    "originalDiagnosticCount": 19,
+    "originalDiagnosticCodes": [
+      "TS2339"
+    ],
+    "preservedWithoutReclassification": true
+  },
+  "diagnosis": {
+    "cause": "HARNESS_TSCONFIG",
+    "missingTypeAugmentation": "apps/api/src/types/express.d.ts",
+    "productRegression": "NAO_COMPROVADA"
+  },
+  "complementaryValidation": {
+    "typecheck": "PASS",
+    "exitCode": 0,
+    "diagnosticCount": 0,
+    "diagnosticCodes": [],
+    "gitDiffCheck": "PASS",
+    "productOrVersionedFilesChanged": false,
+    "e2eRepeated": false
+  },
+  "classification": {
+    "functionalE2E": "PASS",
+    "complementaryTypecheck": "PASS",
+    "originalCause": "HARNESS_TSCONFIG",
+    "productRegression": "NAO_COMPROVADA",
+    "newE2E": "DESNECESSARIO",
+    "realPilot": "NAO_AUTORIZADO",
+    "preDuimpMode": "shadow",
+    "preDuimpStatus": "PARCIAL"
+  }
+}

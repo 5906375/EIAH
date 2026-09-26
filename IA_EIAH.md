@@ -160,12 +160,14 @@ Adicionar comportamento novo diretamente no ChatAgentLauncher.
 
 ## 9. Trabalho em andamento — IMOB
 
-Antes de implementar qualquer mudança relacionada ao IMOB, consultar:
+Antes de implementar qualquer mudança relacionada ao IMOB, identificar as frentes afetadas e consultar os checklists canônicos correspondentes:
 
-- `docs/ops/imob-data-pr-execution-checklist.md`
-- `docs/ops/imob-cost-pr-execution-checklist.md`
-- `docs/ops/imob-run-archive-pr-execution-checklist.md`
-- `docs/ops/imob-funnel-pr-execution-checklist.md`
+- IMOB Data: `docs/ops/imob-data-pr-execution-checklist.md`
+- IMOB Data — Trilha B runtime mínimo: `docs/ops/imob-data-trilha-b-runtime-minimo-execution-checklist.md`
+- IMOB Run Archive: `docs/ops/imob-run-archive-pr-execution-checklist.md`
+- IMOB Funil + Equipe: `docs/ops/imob-funnel-team-pr-execution-checklist.md`
+
+Mudanças transversais devem consultar todos os checklists das frentes que comprovadamente afetem. O checklist da frente IMOB Cost ainda está ausente; nenhuma mudança nessa frente pode avançar até que seu checklist seja criado e ratificado. Essa ausência não bloqueia automaticamente mudanças que comprovadamente não afetem IMOB Cost.
 
 Regras específicas:
 

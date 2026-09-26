@@ -70,8 +70,8 @@ jobs:
                 echo "::error title=ADMIN_API_TOKEN ausente::Configure ADMIN_API_TOKEN no environment deploy-$TARGET_ENV"
                 exit 1
               fi
-              echo ">> Executar aqui o script/helm/ssh que faz rollout da API"
-              echo ">> Exemplo: ./infra/deploy/api.sh \"$TARGET_ENV\" \"$RELEASE_VERSION\""
+              echo "::error title=DEPLOY_NOT_IMPLEMENTED::Rollout real da API ainda não implementado; este workflow é um scaffold. Nenhuma mudança foi aplicada ao ambiente $TARGET_ENV."
+              exit 1
               ;;
             workers)
               if [ -z "${DATABASE_URL:-}" ]; then
@@ -83,15 +83,15 @@ jobs:
                 echo "::error title=REDIS/BULLMQ ausente::Configure BULLMQ_REDIS_URL ou REDIS_URL no environment deploy-$TARGET_ENV"
                 exit 1
               fi
-              echo ">> Executar aqui o deploy dos workers (fila, DLQ etc.)"
+              echo "::error title=DEPLOY_NOT_IMPLEMENTED::Rollout real dos workers ainda não implementado; este workflow é um scaffold. Nenhuma mudança foi aplicada ao ambiente $TARGET_ENV."
+              exit 1
               ;;
             cli)
-              echo ">> Executar aqui o rollout/distribuição da CLI (ex.: publicar pacote interno, atualizar runners)"
+              echo "::error title=DEPLOY_NOT_IMPLEMENTED::Rollout/distribuição da CLI ainda não implementado; este workflow é um scaffold. Nenhuma mudança foi aplicada ao ambiente $TARGET_ENV."
+              exit 1
               ;;
             *)
               echo "::error title=Componente inválido::Valor recebido: $COMPONENT"
               exit 1
               ;;
           esac
-
-          echo "Deploy finalizado (customize os comandos acima conforme sua infraestrutura)."

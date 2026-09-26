@@ -7,8 +7,10 @@ export const REASON_CODE_DOMAINS = [
   "mcp",
   "imob",
   "chat_vertical",
+  "release",
   "rbac",
   "notification",
+  "log",
 ] as const;
 export type ReasonCodeDomain = (typeof REASON_CODE_DOMAINS)[number];
 
@@ -105,6 +107,22 @@ const EXECUTION_PROPOSED_CODES = [
   "AUDIT_WRITE_FAILED",
 ] as const;
 
+const EXECUTION_ASSIGNMENT_ACTIVE_CODES = [
+  "AGENT_ASSIGNMENT_REQUIRED",
+] as const;
+
+const ACTION_POLICY_ACTIVE_CODES = [
+  "POLICY_NOT_FOUND",
+  "ACTION_POLICY_SCOPE_DENIED",
+  "ACTION_POLICY_DISABLED",
+  "ACTION_POLICY_STORE_UNAVAILABLE",
+  "RUN_SCOPE_NOT_RESOLVED",
+] as const;
+
+const RELEASE_TELEMETRY_ACTIVE_CODES = [
+  "APE_TELEMETRY_NOT_AVAILABLE",
+] as const;
+
 const CONNECTION_PROPOSED_CODES = [
   "REDIS_URL_REQUIRED",
 ] as const;
@@ -138,10 +156,6 @@ const MCP_POLICY_PROPOSED_CODES = [
   "MCP_POLICY_CONTEXT_VIOLATION",
 ] as const;
 
-const MCP_DENY_PROPOSED_CODES = [
-  "POLICY_NOT_FOUND",
-] as const;
-
 const RBAC_PROPOSED_CODES = [
   "RBAC_OWNER_DEFERRAL",
   "RBAC_BUILD_ARTIFACT_DRIFT",
@@ -153,6 +167,37 @@ const NOTIFICATION_PROPOSED_CODES = [
   "NOTIFICATION_BLOCKED_SECRET_PROVENANCE",
   "NOTIFICATION_BLOCKED_REASON_CODE_MISSING",
   "NOTIFICATION_BLOCKED_RUN_MISSING",
+] as const;
+
+const PRE_DUIMP_VALIDATION_PROPOSED_CODES = [
+  "PRE_DUIMP_ACTION_UNKNOWN",
+] as const;
+
+const PRE_DUIMP_AUTHORIZATION_PROPOSED_CODES = [
+  "PRE_DUIMP_EXTERNAL_TRANSMISSION_BLOCKED",
+  "PRE_DUIMP_ISOLATION_VIOLATION",
+] as const;
+
+const PRE_DUIMP_AUTHORIZATION_CUT3_PROPOSED_CODES = [
+  "PRE_DUIMP_SCOPE_DENIED",
+  "PRE_DUIMP_ENTITLEMENT_DENIED",
+  "PRE_DUIMP_HITL_REQUIRED",
+] as const;
+
+const PRE_DUIMP_PILOT_GATE_P0_PROPOSED_CODES = [
+  "PRE_DUIMP_RUNTIME_DISABLED",
+  "PRE_DUIMP_INSTALLATION_MISSING",
+  "PRE_DUIMP_INSTALLATION_INACTIVE",
+  "PRE_DUIMP_INSTALLATION_INVALID",
+  "PRE_DUIMP_PILOT_GRANT_MISSING",
+  "PRE_DUIMP_PILOT_GRANT_DISABLED",
+  "PRE_DUIMP_ACTION_POLICY_DENIED",
+  "PRE_DUIMP_ACCESS_UNAVAILABLE",
+  "PRE_DUIMP_PILOT_ACCESS_DENIED",
+] as const;
+
+const PRE_DUIMP_INTEGRITY_CUT5_PROPOSED_CODES = [
+  "PRE_DUIMP_REPLAY_REJECTED",
 ] as const;
 
 type DefinitionMetadata = Readonly<
@@ -172,6 +217,39 @@ function defineReasonCodes<const Codes extends readonly string[]>(
     ...definitionMetadata,
   }));
 }
+
+export const ORACULO_CI1_SIMULATION_CODES = [
+  "ORACULO_INPUT_INVALID",
+  "ORACULO_SCOPE_DENIED",
+  "ORACULO_EXTERNAL_EFFECT_BLOCKED",
+  "ORACULO_VISIT_NOT_RESOLVED",
+  "ORACULO_CONTENT_INTEGRITY_MISMATCH",
+  "ORACULO_ARTIFACT_INTEGRITY_MISMATCH",
+  "ORACULO_INSPECTION_REJECTED",
+  "ORACULO_VALIDITY_EXPIRED",
+  "ORACULO_VALIDITY_NOT_STARTED",
+  "ORACULO_TEMPORAL_POLICY_UNRESOLVED",
+  "ORACULO_STATUS_REVOKED",
+  "ORACULO_STATUS_SUSPENDED",
+  "ORACULO_STATUS_UNKNOWN",
+  "ORACULO_STATUS_STALE",
+  "ORACULO_STATUS_CONFLICT",
+  "ORACULO_SOURCE_AUTHORITY_UNRESOLVED",
+  "ORACULO_HITL_REQUIRED",
+  "ORACULO_APPROVAL_CONTEXT_MISMATCH",
+  "ORACULO_APPROVAL_EXPIRED",
+  "ORACULO_APPROVAL_REJECTED",
+  "ORACULO_INTENT_PAYLOAD_CONFLICT",
+  "ORACULO_VISIT_REVISION_CONFLICT",
+  "ORACULO_VISIT_TRANSITION_DENIED",
+  "ORACULO_EVIDENCE_REQUIRED",
+  "ORACULO_SNAPSHOT_MISMATCH",
+  "ORACULO_COMMIT_OUTCOME_UNKNOWN",
+  "ORACULO_COMMIT_FAILED_NO_EFFECT",
+  "ORACULO_EXECUTION_AUTHORITY_LOST",
+  "ORACULO_VERIFICATION_NOT_SATISFIED",
+  "ORACULO_TEMPORAL_INCOHERENCE"
+] as const;
 
 export const REASON_CODE_CATALOG = [
   ...defineReasonCodes(IMOB_BOOTSTRAP_ACTIVE_CODES, {
@@ -200,6 +278,54 @@ export const REASON_CODE_CATALOG = [
       actor: "checkArchChatContracts",
     },
     evidenceRef: "contracts/chat/vertical.reason_codes.v1.json#codes",
+  }),
+  ...defineReasonCodes(EXECUTION_ASSIGNMENT_ACTIVE_CODES, {
+    domain: "execution",
+    severity: "critical",
+    category: "authorization",
+    descriptionPrefix:
+      "No exact pre-existing enabled workspace agent assignment exists for the requested tenant, workspace, agent and version",
+    status: "active",
+    owner: "Execution governance",
+    approver: {
+      kind: "human",
+      actor: "Carlos Alberto Merlo",
+    },
+    introducedBy: "PR1a-assignment-fail-closed",
+    evidenceRef:
+      "docs/ops/reason-codes-catalog.md#ratificacao-pr1a-assignment-fail-closed-2026-08-12",
+  }),
+  ...defineReasonCodes(ACTION_POLICY_ACTIVE_CODES, {
+    domain: "execution",
+    severity: "critical",
+    category: "authorization",
+    descriptionPrefix:
+      "Canonical public reason code for the observational pre-execution Action Policy boundary",
+    status: "active",
+    owner: "Execution governance / Action Policy",
+    approver: {
+      kind: "human",
+      actor: "Carlos Alberto Merlo",
+    },
+    introducedBy: "CORE-01A0b-R-D1/RC-A0b-01/FIX-02",
+    evidenceRef:
+      "docs/ops/reason-codes-catalog.md#ratificacao-rc-a0b-01-2026-08-24",
+  }),
+  ...defineReasonCodes(RELEASE_TELEMETRY_ACTIVE_CODES, {
+    domain: "release",
+    severity: "critical",
+    category: "governance",
+    descriptionPrefix:
+      "Release publication is blocked because valid APE weekly-cycle v3 telemetry is unavailable",
+    status: "active",
+    owner: "Release governance / APE telemetry",
+    approver: {
+      kind: "human",
+      actor: "Carlos Alberto Merlo",
+    },
+    introducedBy: "APE-TELEMETRY-CONTAINMENT-PR-A",
+    evidenceRef:
+      "docs/ops/ape-audit-telemetry-decision.md#12-ratificação",
   }),
   ...defineReasonCodes(LEDGER_PROPOSED_CODES, {
     domain: "ledger",
@@ -316,15 +442,6 @@ export const REASON_CODE_CATALOG = [
     evidenceRef:
       "docs/ops/reason-codes-catalog.md#rc-mcp-2a-proposals",
   }),
-  ...defineReasonCodes(MCP_DENY_PROPOSED_CODES, {
-    domain: "mcp",
-    severity: "critical",
-    category: "authorization",
-    descriptionPrefix: "Reason code requested by the blocked MCP deny front",
-    status: "proposed",
-    owner: "MCP governance",
-    evidenceRef: "packages/core/src/policy/TenantPolicyStore.ts#ScopeDecisionReasonCode",
-  }),
   ...defineReasonCodes(RBAC_PROPOSED_CODES, {
     domain: "rbac",
     severity: "critical",
@@ -342,12 +459,75 @@ export const REASON_CODE_CATALOG = [
     owner: "Notification governance",
     evidenceRef: "scripts/notify/escalationNotice.ts",
   }),
+  ...defineReasonCodes(PRE_DUIMP_VALIDATION_PROPOSED_CODES, {
+    domain: "log",
+    severity: "warning",
+    category: "validation",
+    descriptionPrefix: "Reason code enforced by the PRE_DUIMP Actions catalog (Comex/DUIMP recorte of Logística)",
+    status: "proposed",
+    owner: "Logística governance / PRE_DUIMP",
+    introducedBy: "PRE_DUIMP-CUT-2",
+    evidenceRef: "apps/api/src/services/logistica/control/preDuimpActionCatalog.ts",
+  }),
+  ...defineReasonCodes(PRE_DUIMP_AUTHORIZATION_PROPOSED_CODES, {
+    domain: "log",
+    severity: "critical",
+    category: "authorization",
+    descriptionPrefix: "Reason code enforced by the PRE_DUIMP Actions catalog (Comex/DUIMP recorte of Logística)",
+    status: "proposed",
+    owner: "Logística governance / PRE_DUIMP",
+    introducedBy: "PRE_DUIMP-CUT-2",
+    evidenceRef: "apps/api/src/services/logistica/control/preDuimpActionCatalog.ts",
+  }),
+  ...defineReasonCodes(PRE_DUIMP_AUTHORIZATION_CUT3_PROPOSED_CODES, {
+    domain: "log",
+    severity: "critical",
+    category: "authorization",
+    descriptionPrefix: "Reason code enforced by the PRE_DUIMP Actions catalog (Comex/DUIMP recorte of Logística)",
+    status: "proposed",
+    owner: "Logística governance / PRE_DUIMP",
+    introducedBy: "PRE_DUIMP-CUT-3",
+    evidenceRef: "apps/api/src/services/logistica/control/preDuimpActionCatalog.ts",
+  }),
+  ...defineReasonCodes(PRE_DUIMP_PILOT_GATE_P0_PROPOSED_CODES, {
+    domain: "log",
+    severity: "critical",
+    category: "authorization",
+    descriptionPrefix: "Reason code enforced by the PRE_DUIMP tenant/workspace pilot gate",
+    status: "proposed",
+    owner: "Logística governance / PRE_DUIMP",
+    introducedBy: "PRE_DUIMP-PILOT-GATE-P0",
+    evidenceRef: "apps/api/src/services/logistica/control/preDuimpAccessResolver.ts",
+  }),
+  ...defineReasonCodes(PRE_DUIMP_INTEGRITY_CUT5_PROPOSED_CODES, {
+    domain: "log",
+    severity: "warning",
+    category: "integrity",
+    descriptionPrefix: "Reason code enforced by the PRE_DUIMP pure replay/idempotency policy (Comex/DUIMP recorte of Logística)",
+    status: "proposed",
+    owner: "Logística governance / PRE_DUIMP",
+    introducedBy: "PRE_DUIMP-CUT-5",
+    evidenceRef: "apps/api/src/types/preDuimpReplayContract.ts",
+  }),
+  ...defineReasonCodes(ORACULO_CI1_SIMULATION_CODES, {
+    domain: "log",
+    severity: "warning",
+    category: "governance",
+    descriptionPrefix: "Oráculo SC simulation-only negative result",
+    status: "active",
+    owner: "Carlos Alberto Merlo / Oráculo SC",
+    approver: { kind: "human", actor: "Carlos Alberto Merlo" },
+    introducedBy: "ORACULO-CI1-NEGATIVE-RATIFICATION",
+    evidenceRef: "docs/ops/oraculo-negative-ratification.md",
+  }),
 ] as const;
 
 export type ReasonCode = (typeof REASON_CODE_CATALOG)[number]["code"];
 export type ActiveReasonCode =
   | (typeof IMOB_BOOTSTRAP_ACTIVE_CODES)[number]
   | (typeof CHAT_VERTICAL_BOOTSTRAP_ACTIVE_CODES)[number]
+  | (typeof ACTION_POLICY_ACTIVE_CODES)[number]
+  | (typeof RELEASE_TELEMETRY_ACTIVE_CODES)[number]
   | (typeof MCP_TOOL_CONTRACT_ACTIVE_CODES)[number]
   | (typeof MCP_DB_SCOPE_ACTIVE_CODES)[number]
   | (typeof MCP_DB_ALLOWLIST_ACTIVE_CODES)[number]

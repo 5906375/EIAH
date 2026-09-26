@@ -70,6 +70,19 @@ export type ImobChatExperienceContract = {
   backingSpecialists: ImobBackingSpecialistContract[];
 };
 
+export type ImobContractIntakeRuntimePolicy = {
+  actionId: "imob.contract.intake";
+  operationalState: "kill_switch_controlled";
+  defaultEnabled: false;
+  flagScope: "tenant_workspace";
+  failMode: "closed";
+  reasonCode: "VERTICAL_CAPABILITY_NOT_AVAILABLE";
+  blockingCondition: "pending_pr1c_atomic_dispatch";
+  retryable: false;
+  httpStatus: 503;
+  message: string;
+};
+
 export type ImobConversationIntent =
   | "discover_rent"
   | "discover_sale"
@@ -1002,6 +1015,9 @@ export type ImobAgentRuntimeMetadata = {
     runtimeExtensions: ImobCapabilityRegistrySnapshot[];
     externalIntegrations: ImobCapabilityRegistrySnapshot[];
     workerOrchestration: ImobCapabilityRegistrySnapshot[];
+  };
+  runtimePolicies: {
+    contractIntake: ImobContractIntakeRuntimePolicy;
   };
   promotionReviewSurface?: ImobPromotionReviewSurfaceSnapshot;
 };

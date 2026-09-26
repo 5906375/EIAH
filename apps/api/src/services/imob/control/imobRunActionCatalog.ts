@@ -11,6 +11,7 @@ function normalizeKey(input: string) {
 }
 
 const IMOB_RUN_ACTION_ALIASES = new Map<string, string>([
+  ["imob.contract.intake", "imob.contract.intake"],
   ["owner.create", "owner.create"],
   ["realestate.owner.create", "owner.create"],
   ["property.create", "property.create"],
@@ -67,6 +68,85 @@ export function normalizeImobRunAction(input: string | null | undefined) {
   return IMOB_RUN_ACTION_ALIASES.get(normalizeKey(input)) ?? null;
 }
 
+export type PersistedRunActionAuthority = {
+  domain: string | null;
+  kind: string | null;
+  action: string | null;
+  canonicalImobAction: string | null;
+  metadata: Record<string, unknown>;
+};
+
+export function runActionsCanonicallyMatch(left: string, right: string) {
+  const leftImobAction = normalizeImobRunAction(left);
+  const rightImobAction = normalizeImobRunAction(right);
+  if (leftImobAction || rightImobAction) {
+    return leftImobAction !== null && leftImobAction === rightImobAction;
+  }
+  return normalizeKey(left) === normalizeKey(right);
+}
+
+export function resolvePersistedRunActionAuthority(params: {
+  request: unknown;
+  requireCanonicalImobAction?: boolean;
+}): PersistedRunActionAuthority {
+  const root = asRecord(params.request);
+  const metadata = asRecord(root?.metadata) ?? {};
+  const domain = normalizeKey(asNonEmptyString(root?.domain) ?? asNonEmptyString(metadata.domain) ?? "");
+  const kind = asNonEmptyString(root?.kind) ?? asNonEmptyString(metadata.kind);
+  const rootAction = asNonEmptyString(root?.action);
+  const metadataAction = asNonEmptyString(metadata.action);
+  const action = metadataAction ?? rootAction;
+  const canonicalRootAction = normalizeImobRunAction(rootAction);
+  const canonicalMetadataAction = normalizeImobRunAction(metadataAction);
+  const canonicalImobAction = canonicalMetadataAction ?? canonicalRootAction;
+  const isImobDomain = domain === "imob";
+  const actionOptional = kind ? IMOB_ACTION_OPTIONAL_KINDS.has(kind) : false;
+
+  if (params.requireCanonicalImobAction && isImobDomain) {
+    const conflictingPersistedActions =
+      rootAction !== null
+      && metadataAction !== null
+      && !runActionsCanonicallyMatch(rootAction, metadataAction);
+    const invalidDeclaredAction =
+      (rootAction !== null && canonicalRootAction === null)
+      || (metadataAction !== null && canonicalMetadataAction === null);
+    const requiredActionMissing = action === null && !actionOptional;
+
+    if (conflictingPersistedActions || invalidDeclaredAction || requiredActionMissing) {
+      throw new RunActionValidationError("IMOB run requires one valid canonical persisted action.", {
+        attemptedAction: metadataAction ?? rootAction,
+        domain: domain || null,
+        kind,
+      });
+    }
+  }
+
+  return {
+    domain: domain || null,
+    kind,
+    action,
+    canonicalImobAction,
+    metadata,
+  };
+}
+
+export function projectPersistedRunActionMetadata(
+  transportMetadata: unknown,
+  authority: PersistedRunActionAuthority,
+) {
+  const transport = asRecord(transportMetadata) ?? {};
+  const rest = { ...transport };
+  delete rest.domain;
+  delete rest.kind;
+  delete rest.action;
+  return {
+    ...rest,
+    ...(authority.domain ? { domain: authority.domain } : {}),
+    ...(authority.kind ? { kind: authority.kind } : {}),
+    ...(authority.action ? { action: authority.action } : {}),
+  };
+}
+
 export function prepareRunRequestAction(params: {
   request: unknown;
   requireCanonicalImobAction?: boolean;
@@ -88,13 +168,8 @@ export function prepareRunRequestAction(params: {
     };
   }
 
-  const metadata = asRecord(root.metadata);
-  const domain = normalizeKey(asNonEmptyString(root.domain) ?? asNonEmptyString(metadata?.domain) ?? "");
-  const kind = asNonEmptyString(root.kind) ?? asNonEmptyString(metadata?.kind);
-  const rawAction = asNonEmptyString(root.action) ?? asNonEmptyString(metadata?.action);
-  const canonicalAction = normalizeImobRunAction(rawAction);
-  const isImobDomain = domain === "imob";
-  const actionOptional = kind ? IMOB_ACTION_OPTIONAL_KINDS.has(kind) : false;
+  const authority = resolvePersistedRunActionAuthority(params);
+  const canonicalAction = authority.canonicalImobAction;
 
   if (canonicalAction) {
     return {
@@ -103,23 +178,15 @@ export function prepareRunRequestAction(params: {
         action: canonicalAction,
       },
       action: canonicalAction,
-      domain: domain || null,
-      kind,
+      domain: authority.domain,
+      kind: authority.kind,
     };
-  }
-
-  if (params.requireCanonicalImobAction && isImobDomain && !actionOptional) {
-    throw new RunActionValidationError("IMOB run requires a valid canonical request.action.", {
-      attemptedAction: rawAction,
-      domain: domain || null,
-      kind,
-    });
   }
 
   return {
     request: params.request,
     action: null,
-    domain: domain || null,
-    kind,
+    domain: authority.domain,
+    kind: authority.kind,
   };
 }

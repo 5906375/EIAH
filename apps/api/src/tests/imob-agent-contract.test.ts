@@ -29,6 +29,18 @@ test("IMOB agent contract v1 exposes canonical visible identity and surfaces", (
   assert.equal(contract.surfaces.activation, "marketplace");
   assert.equal(contract.ownershipModel.visibleAgentKeepsCaseOwnership, true);
   assert.equal(contract.ownershipModel.backingSpecialistsVisibleByDefault, false);
+  assert.deepEqual(contract.runtimePolicies.contractIntake, {
+    actionId: "imob.contract.intake",
+    operationalState: "kill_switch_controlled",
+    defaultEnabled: false,
+    flagScope: "tenant_workspace",
+    failMode: "closed",
+    reasonCode: "VERTICAL_CAPABILITY_NOT_AVAILABLE",
+    blockingCondition: "pending_pr1c_atomic_dispatch",
+    retryable: false,
+    httpStatus: 503,
+    message: "O intake documental IMOB está temporariamente indisponível.",
+  });
 });
 
 test("IMOB agent contract v1 reuses backing specialists and initial intents", () => {
@@ -52,6 +64,11 @@ test("IMOB runtime metadata exposes promotion review surface in backend contract
   assert.equal(runtime.promotionReviewSurface?.visibleAgentId, "IMOB");
   assert.equal(runtime.promotionReviewSurface?.flows.length, 4);
   assert.equal(runtime.promotionReviewSurface?.flows[0]?.flowType, "assisted_calendar_flow");
+  assert.equal(runtime.runtimePolicies.contractIntake.operationalState, "kill_switch_controlled");
+  assert.equal(runtime.runtimePolicies.contractIntake.defaultEnabled, false);
+  assert.equal(runtime.runtimePolicies.contractIntake.flagScope, "tenant_workspace");
+  assert.equal(runtime.runtimePolicies.contractIntake.failMode, "closed");
+  assert.equal(runtime.runtimePolicies.contractIntake.reasonCode, "VERTICAL_CAPABILITY_NOT_AVAILABLE");
 });
 
 test("IMOB runtime attaches canonical agent metadata to presentation payloads", () => {

@@ -18,6 +18,7 @@ type PrismaRun = {
   userId?: string | null;
 };
 import { emitRunEvent } from "../runEventEmitter";
+import { projectRunGovernanceForRead } from "../runGovernanceMetadata";
 import { interpretPayload } from "./interpreters";
 import {
   RunAtivoUniversalInputSchema,
@@ -282,8 +283,15 @@ function extractInsights(response: unknown) {
 }
 
 function buildInputFromRun(run: PrismaRun): RunAtivoUniversalInput {
-  const requestPayload = run.request as Record<string, unknown> | null;
-  const responsePayload = run.response as Record<string, unknown> | null;
+  const projectionScope = { tenantIdPresent: true, workspaceIdPresent: true };
+  const requestPayload = projectRunGovernanceForRead(
+    run.request as Record<string, unknown> | null,
+    projectionScope
+  );
+  const responsePayload = projectRunGovernanceForRead(
+    run.response as Record<string, unknown> | null,
+    projectionScope
+  );
   const metadata = extractMetadata(requestPayload ?? {});
   const form = extractForm(metadata);
   const recommendations = extractRecommendations(

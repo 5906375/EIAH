@@ -38,6 +38,8 @@ import { startTenantBillingReconciler } from "./services/tenantBillingReconciler
 import { imobRouter } from "./routes/imob";
 import { chatVerticalImobRuntimeShadowRouter } from "./routes/chatVerticalImobRuntimeShadow";
 import { isChatVerticalImobRuntimeShadowRouteEnabled } from "./routes/chatVerticalImobRuntimeShadowGate";
+import { preDuimpRuntimeShadowRouter } from "./routes/preDuimpRuntimeShadow";
+import { isPreDuimpRuntimeShadowRouteEnabled } from "./routes/preDuimpRuntimeShadowGate";
 import { helpRouter } from "./routes/help";
 import { whatsappRouter } from "./routes/whatsapp";
 import { startRunArchiveWorker } from "./workers/runArchiveWorker";
@@ -126,6 +128,9 @@ app.use("/api", tenantRecipesRouter);
 app.use("/api/imob", imobRouter);
 if (isChatVerticalImobRuntimeShadowRouteEnabled()) {
   app.use("/api", chatVerticalImobRuntimeShadowRouter);
+}
+if (isPreDuimpRuntimeShadowRouteEnabled()) {
+  app.use("/api", preDuimpRuntimeShadowRouter);
 }
 app.use("/api", helpRouter);
 app.use("/metrics", metricsRouter);

@@ -1,0 +1,11 @@
+CMD: pnpm check:reason-code-canon
+START: 2026-08-26T13:29:49Z
+--- OUTPUT ---
+
+> eiah-builder@ check:reason-code-canon /home/jusall/projects/EIAH_BUILDER
+> node --import tsx scripts/checkReasonCodeCanon.ts
+
+{"ok":true,"check":"reason-code-canon-v1","catalogSize":76,"targets":["packages/core/src/reasons/reasonCatalog.ts","docs/ops/reason-codes-catalog.md","apps/api/src/services/imob/control/imobReasonCodeCatalog.ts","apps/api/src/routes/imobCrmSchemas.ts","apps/api/src/types/chatVerticalHandoffV2Contract.ts","contracts/chat/vertical.reason_codes.v1.json","apps/api/src/services/runGovernanceMetadata.ts","scripts/tests/checkReasonCodeCanon.test.ts"],"enforcement":"informational-until-ruleset-ratification"}
+--- END OUTPUT ---
+EXIT: 0
+END: 2026-08-26T13:29:50Z

@@ -1,11 +1,26 @@
 import { PrismaClient, prismaGlobal } from "@repo/db";
+import { recordGuardrailAudit } from "@eiah/core/services/guardrailLedgerStore";
 import { hasCoreAgentProfile, resolveAgentId } from "./agents";
-import { readWorkspaceManagementSummary } from "./workspaceResponsibility";
+
+export const AGENT_ASSIGNMENT_REQUIRED = "AGENT_ASSIGNMENT_REQUIRED" as const;
+export const AGENT_NOT_ENABLED_IN_WORKSPACE = "AGENT_NOT_ENABLED_IN_WORKSPACE" as const;
+
+type WorkspaceAgentAssignmentReasonCode =
+  | typeof AGENT_ASSIGNMENT_REQUIRED
+  | typeof AGENT_NOT_ENABLED_IN_WORKSPACE;
+
+type WorkspaceAgentAssignmentFailure =
+  | "missing"
+  | "agent_mismatch"
+  | "version_mismatch"
+  | "disabled"
+  | "ambiguous";
 
 type WorkspaceAgentScope = {
   tenantId: string;
   workspaceId: string;
   agentKey: string;
+  agentVersion?: string;
   userId?: string;
 };
 
@@ -16,20 +31,16 @@ export type WorkspaceAgentAssignmentRecord = {
   agentKey: string;
   agentVersion: string;
   enabled: boolean;
+  signedByUserId: string | null;
   signedAt: Date | null;
   signatureRef: string | null;
 };
 
 export class WorkspaceAgentAssignmentError extends Error {
-  readonly reasonCode = "AGENT_NOT_ENABLED_IN_WORKSPACE";
-
   constructor(
     message: string,
-    readonly context: {
-      tenantId: string;
-      workspaceId: string;
-      agentKey: string;
-    }
+    readonly context: Record<string, never>,
+    readonly reasonCode: WorkspaceAgentAssignmentReasonCode = AGENT_NOT_ENABLED_IN_WORKSPACE
   ) {
     super(message);
     this.name = "WorkspaceAgentAssignmentError";
@@ -42,75 +53,6 @@ function resolveClient(client?: PrismaClient) {
 
 function normalizeAgentKey(value: string) {
   return value.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
-}
-
-function isGlobalPlatformEiahAgent(agentKey: string) {
-  return normalizeAgentKey(agentKey) === "eiah";
-}
-
-async function canProvisionGlobalFounderAssignment(
-  client: PrismaClient,
-  params: WorkspaceAgentScope
-) {
-  if (!params.userId || !isGlobalPlatformEiahAgent(params.agentKey)) {
-    return false;
-  }
-
-  const workspaceSummary = await readWorkspaceManagementSummary({
-    prisma: client,
-    tenantId: params.tenantId,
-    workspaceId: params.workspaceId,
-    userId: params.userId,
-  });
-  const normalizedRoleKey = (workspaceSummary.selectedRoleKey ?? "").trim().toLowerCase();
-  return normalizedRoleKey === "founder" || normalizedRoleKey === "global_admin";
-}
-
-async function provisionGlobalFounderAssignment(
-  client: PrismaClient,
-  params: WorkspaceAgentScope
-) {
-  if (!(await canProvisionGlobalFounderAssignment(client, params))) {
-    return null;
-  }
-
-  const canonicalAgentKey = await resolveCanonicalAgentKey(client, params.agentKey);
-  const workspace = await client.workspace.findUnique({
-    where: { id: params.workspaceId },
-    select: { id: true, tenantId: true },
-  });
-  if (!workspace || workspace.tenantId !== params.tenantId) {
-    return null;
-  }
-
-  const metadata = await client.agentMetadata.findUnique({
-    where: { agent: canonicalAgentKey },
-    select: { version: true },
-  });
-  const profile = await client.agentProfile.findUnique({
-    where: { agent: canonicalAgentKey },
-    select: { updatedAt: true },
-  });
-
-  if (!metadata && !profile && !hasCoreAgentProfile(canonicalAgentKey)) {
-    return null;
-  }
-
-  return client.workspaceAgentAssignment.create({
-    data: {
-      tenantId: params.tenantId,
-      workspaceId: params.workspaceId,
-      agentKey: canonicalAgentKey,
-      agentVersion: metadata?.version ?? "1.0.0",
-      enabled: true,
-      signedAt: profile?.updatedAt ?? new Date(),
-      signatureRef: "global-founder-access",
-      metadata: {
-        source: "global-founder-access",
-        profileSource: metadata || profile ? "persisted" : "core-runtime",
-      },
-    },
-  });
 }
 
 async function resolveCanonicalAgentKey(client: PrismaClient, agentKey: string) {
@@ -154,6 +96,7 @@ function toRecord(
     agentKey: string;
     agentVersion: string;
     enabled: boolean;
+    signedByUserId: string | null;
     signedAt: Date | null;
     signatureRef: string | null;
   }
@@ -161,61 +104,115 @@ function toRecord(
   return assignment;
 }
 
-async function findLatestAssignment(
+async function findAssignmentCandidates(
   client: PrismaClient,
-  params: WorkspaceAgentScope
+  params: WorkspaceAgentScope,
+  canonicalAgentKey: string,
+  requestedVersion: string | null
 ) {
-  const normalizedInput = normalizeAgentKey(params.agentKey);
+  const normalizedInput = normalizeAgentKey(canonicalAgentKey);
   const assignments = await client.workspaceAgentAssignment.findMany({
     where: {
       tenantId: params.tenantId,
       workspaceId: params.workspaceId,
     },
-    orderBy: [{ enabled: "desc" }, { updatedAt: "desc" }, { createdAt: "desc" }],
+    orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }, { id: "desc" }],
   });
-  return assignments.find(assignment => normalizeAgentKey(assignment.agentKey) === normalizedInput) ?? null;
+  const agentMatches = assignments.filter(
+    assignment => normalizeAgentKey(assignment.agentKey) === normalizedInput
+  );
+  const exactMatches = requestedVersion
+    ? agentMatches.filter(assignment => assignment.agentVersion === requestedVersion)
+    : [];
+  return { assignments, agentMatches, exactMatches };
 }
 
-async function bootstrapAssignment(
+async function resolveRequestedAgentVersion(
   client: PrismaClient,
-  params: WorkspaceAgentScope
+  canonicalAgentKey: string,
+  requestedVersion?: string
 ) {
-  const canonicalAgentKey = await resolveCanonicalAgentKey(client, params.agentKey);
-  const workspace = await client.workspace.findUnique({
-    where: { id: params.workspaceId },
-    select: { id: true, tenantId: true },
-  });
-  if (!workspace || workspace.tenantId !== params.tenantId) {
-    return null;
-  }
-
+  const explicitVersion = requestedVersion?.trim();
+  if (explicitVersion) return explicitVersion;
   const metadata = await client.agentMetadata.findUnique({
     where: { agent: canonicalAgentKey },
     select: { version: true },
   });
-  const profile = await client.agentProfile.findUnique({
-    where: { agent: canonicalAgentKey },
-    select: { updatedAt: true },
-  });
+  const persistedVersion = metadata?.version?.trim();
+  if (persistedVersion) return persistedVersion;
+  return hasCoreAgentProfile(canonicalAgentKey) ? "1.0.0" : null;
+}
 
-  if (!metadata && !profile && !hasCoreAgentProfile(canonicalAgentKey)) {
-    return null;
+async function resolveAssignment(
+  client: PrismaClient,
+  params: WorkspaceAgentScope
+) {
+  const canonicalAgentKey = await resolveCanonicalAgentKey(client, params.agentKey);
+  const requestedVersion = await resolveRequestedAgentVersion(
+    client,
+    canonicalAgentKey,
+    params.agentVersion
+  );
+  const candidates = await findAssignmentCandidates(
+    client,
+    params,
+    canonicalAgentKey,
+    requestedVersion
+  );
+  let failure: WorkspaceAgentAssignmentFailure | null = null;
+  if (candidates.exactMatches.length > 1) {
+    failure = "ambiguous";
+  } else if (candidates.exactMatches.length === 0) {
+    failure = candidates.agentMatches.length > 0
+      ? "version_mismatch"
+      : candidates.assignments.length > 0
+        ? "agent_mismatch"
+        : "missing";
+  } else if (!candidates.exactMatches[0]?.enabled) {
+    failure = "disabled";
   }
 
-  return client.workspaceAgentAssignment.create({
-    data: {
+  const assignment = failure === null ? candidates.exactMatches[0] : null;
+  const diagnosticCandidates = candidates.exactMatches.length > 0
+    ? candidates.exactMatches
+    : candidates.agentMatches;
+
+  return {
+    assignment: assignment ? toRecord(assignment) : null,
+    canonicalAgentKey,
+    requestedVersion,
+    failure,
+    diagnosticCandidates,
+  };
+}
+
+async function recordAssignmentRefusal(
+  client: PrismaClient,
+  params: WorkspaceAgentScope,
+  resolved: Awaited<ReturnType<typeof resolveAssignment>>,
+  failure: WorkspaceAgentAssignmentFailure
+) {
+  try {
+    await recordGuardrailAudit({
+      prisma: client,
       tenantId: params.tenantId,
       workspaceId: params.workspaceId,
-      agentKey: canonicalAgentKey,
-      agentVersion: metadata?.version ?? "1.0.0",
-      enabled: true,
-      signedAt: profile?.updatedAt ?? new Date(),
-      signatureRef: metadata || profile ? "bootstrap-legacy-compat" : "bootstrap-core-agent-catalog",
+      eventType: "agent.assignment.required",
+      severity: "warn",
+      message: "Execution blocked because an exact enabled workspace agent assignment is required.",
       metadata: {
-        source: metadata || profile ? "bootstrap-legacy-compat" : "bootstrap-core-agent-catalog",
+        reasonCode: AGENT_ASSIGNMENT_REQUIRED,
+        failure,
+        agentKey: resolved.canonicalAgentKey,
+        requestedAgentVersion: resolved.requestedVersion,
+        candidateCount: resolved.diagnosticCandidates.length,
+        candidateIds: resolved.diagnosticCandidates.map(candidate => candidate.id),
+        candidateVersions: resolved.diagnosticCandidates.map(candidate => candidate.agentVersion),
       },
-    },
-  });
+    });
+  } catch {
+    // Audit unavailability must never turn a denial into authorization.
+  }
 }
 
 export async function getActiveWorkspaceAgentAssignment(params: {
@@ -223,17 +220,11 @@ export async function getActiveWorkspaceAgentAssignment(params: {
   tenantId: string;
   workspaceId: string;
   agentKey: string;
+  agentVersion?: string;
 }): Promise<WorkspaceAgentAssignmentRecord | null> {
   const client = resolveClient(params.prisma);
-  const current =
-    (await findLatestAssignment(client, params)) ??
-    (await bootstrapAssignment(client, params));
-
-  if (!current || !current.enabled) {
-    return null;
-  }
-
-  return toRecord(current);
+  const resolved = await resolveAssignment(client, params);
+  return resolved.failure ? null : resolved.assignment;
 }
 
 export async function assertWorkspaceAgentEnabled(params: {
@@ -241,30 +232,19 @@ export async function assertWorkspaceAgentEnabled(params: {
   tenantId: string;
   workspaceId: string;
   agentKey: string;
+  agentVersion?: string;
   userId?: string;
 }): Promise<WorkspaceAgentAssignmentRecord> {
   const client = resolveClient(params.prisma);
-  const current =
-    (await findLatestAssignment(client, params)) ??
-    (await bootstrapAssignment(client, params));
+  const resolved = await resolveAssignment(client, params);
+  if (!resolved.failure && resolved.assignment) return resolved.assignment;
 
-  if (!current || !current.enabled) {
-    const provisioned = await provisionGlobalFounderAssignment(client, params);
-    if (provisioned?.enabled) {
-      return toRecord(provisioned);
-    }
-
-    throw new WorkspaceAgentAssignmentError(
-      `Agent ${params.agentKey.trim()} is not enabled in workspace ${params.workspaceId}`,
-      {
-        tenantId: params.tenantId,
-        workspaceId: params.workspaceId,
-        agentKey: params.agentKey.trim(),
-      }
-    );
-  }
-
-  return toRecord(current);
+  await recordAssignmentRefusal(client, params, resolved, resolved.failure ?? "missing");
+  throw new WorkspaceAgentAssignmentError(
+    "Agent execution requires an exact enabled workspace assignment.",
+    {},
+    AGENT_ASSIGNMENT_REQUIRED
+  );
 }
 
 export async function listWorkspaceAgentAssignments(params: {

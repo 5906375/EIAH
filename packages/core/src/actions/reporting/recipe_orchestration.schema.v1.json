@@ -102,6 +102,7 @@
     "limitations": { "type": "array", "items": { "type": "string" } },
     "practicalSteps": { "type": "array", "items": { "type": "string" } },
     "readyForRerunWhen": { "type": "array", "items": { "type": "string" } },
+    "legacyGovernanceUnverified": { "type": "boolean" },
     "governance": {
       "type": "object",
       "additionalProperties": false,
@@ -118,8 +119,14 @@
       "properties": {
         "tenantIdPresent": { "type": "boolean" },
         "workspaceIdPresent": { "type": "boolean" },
-        "rbacEvaluated": { "type": "boolean" },
-        "entitlementEvaluated": { "type": "boolean" },
+        "rbacEvaluated": {
+          "const": false,
+          "description": "Deprecated compatibility field; non-authoritative."
+        },
+        "entitlementEvaluated": {
+          "const": false,
+          "description": "Deprecated compatibility field; non-authoritative."
+        },
         "trustScoreEvaluated": { "type": "boolean" },
         "costGuardEvaluated": { "type": "boolean" },
         "policyDecision": { "enum": ["allowed", "denied", "approval_required", "not_evaluated"] },

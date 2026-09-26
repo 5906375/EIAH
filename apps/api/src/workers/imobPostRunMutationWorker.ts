@@ -33,6 +33,11 @@ import {
   resolveImobApprovalGate,
   type ImobApprovalPolicyCriticality,
 } from "../services/imob/imobApprovalGate";
+import {
+  ImobContractIntakeTemporarilyBlockedError,
+  recordImobContractIntakeBlocked,
+  resolveImobContractIntakeRuntimePolicy,
+} from "../services/imob/intake/imobContractIntakeRuntime";
 
 const workerLogger = createLogger({ component: "imob-post-run-mutation-worker" });
 
@@ -221,6 +226,7 @@ export type ImobWorkerDeps = {
   getRunFn: typeof getRun;
   prisma: typeof prismaGlobal;
   mutationServiceFactory: (p: typeof prismaGlobal) => Pick<ImobCrmMutationService, "updateCase">;
+  resolveIntakeRuntimePolicyFn: typeof resolveImobContractIntakeRuntimePolicy;
 };
 
 // ─── Core job processor (exported for testing) ────────────────────────────────
@@ -233,6 +239,7 @@ export async function processImobRunCompletedJob(
 
   const _getRunFn = deps?.getRunFn ?? getRun;
   const _prisma = deps?.prisma ?? prismaGlobal;
+  const _resolveIntakeRuntimePolicy = deps?.resolveIntakeRuntimePolicyFn ?? resolveImobContractIntakeRuntimePolicy;
   const _mutationService =
     deps?.mutationServiceFactory
       ? deps.mutationServiceFactory(_prisma)
@@ -267,8 +274,30 @@ export async function processImobRunCompletedJob(
 
   // Intake branch: imob.contract.intake creates a new ImobCase — handled separately
   if (actionId === "imob.contract.intake") {
-    await processIntakeRun(job, logger, { getRunFn: _getRunFn, prisma: _prisma });
-    return;
+    const policy = await _resolveIntakeRuntimePolicy({ tenantId, workspaceId });
+    if (policy.enabled) {
+      return processIntakeRun(job, logger, { getRunFn: _getRunFn, prisma: _prisma });
+    }
+    await recordImobContractIntakeBlocked({
+      prisma: _prisma,
+      tenantId,
+      workspaceId,
+      runId,
+      operation: "worker",
+      policy,
+    });
+    logger.warn(
+      {
+        reasonCode: policy.reasonCode,
+        blockingCondition: policy.blockingCondition,
+      },
+      "imob-intake.temporarily_blocked",
+    );
+    incrementCounter(IMOB_WORKER_COUNTER.SKIPS, {
+      actionId,
+      reason: policy.reasonCode,
+    });
+    throw new ImobContractIntakeTemporarilyBlockedError(policy);
   }
 
   // Fetch run from DB (scoped by tenantId+workspaceId — cross-workspace protection)
