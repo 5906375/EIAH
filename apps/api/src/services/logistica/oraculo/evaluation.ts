@@ -31,12 +31,13 @@ export const s1SnapshotSchema = z.object({
 }).strict();
 
 export type S1Snapshot = z.infer<typeof s1SnapshotSchema>;
-export type S1Assessment = { mode: "SIMULATION"; disposition: "ELIGIBLE_FOR_SIMULATION" | "DENIED" | "INDETERMINATE" | "REVIEW_REQUIRED" | "CONFLICT"; applied: false; findings: string[]; };
+export type S1Assessment = { mode: "SIMULATION"; disposition: "ELIGIBLE_FOR_SIMULATION" | "DENIED" | "INDETERMINATE" | "REVIEW_REQUIRED" | "CONFLICT"; applied: false; findings: string[]; credentialRef?: S1Snapshot["intent"]["credentialRefs"][number]; };
 const same = (a: unknown, b: unknown) => canonicalize(a) === canonicalize(b);
 const source = (id: string) => ({ kind: "SOURCE", id, revision: 1 });
 /** Pure, internal synthetic assessment. Never a C5 commit result or operational authorization. */
 export function evaluateResolvedS1(input: unknown): S1Assessment {
-  const result = (disposition: S1Assessment["disposition"], ...findings: string[]): S1Assessment => ({ mode: "SIMULATION", disposition, applied: false, findings });
+  let evaluatedCredential: S1Assessment["credentialRef"];
+  const result = (disposition: S1Assessment["disposition"], ...findings: string[]): S1Assessment => ({ mode: "SIMULATION", disposition, applied: false, findings, ...(evaluatedCredential ? { credentialRef: evaluatedCredential } : {}) });
   const parsed = s1SnapshotSchema.safeParse(input);
   if (!parsed.success) return result("DENIED", "RV01");
   const s = parsed.data; const i = s.intent; const v = s.visit; const now = s.evaluatedAt;
@@ -54,11 +55,13 @@ export function evaluateResolvedS1(input: unknown): S1Assessment {
   ] as const;
   if (s.credentials.length !== 3 || i.credentialRefs.length !== 3) return result("INDETERMINATE", "RV16");
   for (const [type, subject, sourceId] of requirements) {
+    evaluatedCredential = undefined;
     const matches = s.credentials.filter(c => c.credentialType === type);
     if (matches.length !== 1) return result("INDETERMINATE", "RV16");
     const c = matches[0];
     const selected = i.credentialRefs.find(r => r.credentialId === c.credentialId && r.revision === c.revision);
     if (!selected || !same(c.subjectRef, subject)) return result("DENIED", "RV25");
+    evaluatedCredential = selected;
     let digest: string;
     try { digest = hashContent(c); } catch { return result("DENIED", "RV01"); }
     if (digest !== c.contentHash || selected.contentHash !== digest) return result("DENIED", "RV05");
@@ -90,6 +93,7 @@ export function evaluateResolvedS1(input: unknown): S1Assessment {
     if (o.observedAt !== now) return result("INDETERMINATE", "RV14");
     if (o.declaredStatus !== "ACTIVE") return result(o.declaredStatus === "UNKNOWN" ? "INDETERMINATE" : "DENIED", o.declaredStatus === "REVOKED" ? "RV11" : o.declaredStatus === "SUSPENDED" ? "RV12" : "RV13");
   }
+  evaluatedCredential = undefined;
   if (s.observations.some(o => !i.credentialRefs.some(r => same(r, o.credentialRef)))) return result("INDETERMINATE", "RV25");
   if (i.direction === "OUT") {
     const p = s.returnProof;

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { Client } from "../../../../../../packages/db/src/oraculo/connection.js";
-import { admitCi1, approveCi1, executeCi1, readCi1, inCi1Transaction, Ci1ReconciliationRequired, type Ci1Connection } from "./transactionExecutor.js";
+import { recoverCi1Negative, admitCi1, approveCi1, executeCi1, readCi1, inCi1Transaction, Ci1ReconciliationRequired, type Ci1Connection } from "./transactionExecutor.js";
 import { evaluateS1, type S1Snapshot } from "./evaluation.js";
 
 const config = JSON.parse(process.env.CI1_TEST_CONFIG ?? "null");
@@ -63,8 +63,8 @@ test("CI1 HITL: persisted current review unlocks only integrated simulation",()=
   await x.admit(); const a=await x.approve(); assert.equal(a.decidedByUserId,"synthetic-reviewer");
   assert.equal((await x.execute()).result?.outcome,"APPLIED");
 }));
-test("CI1 no A1: durable hold without inventing a final reasonCode",()=>using(true,async x=>{
-  await x.admit(); const result=await x.execute(); assert.equal(result.state,"PROCESSING"); assert.equal(result.result,undefined);
+test("CI1 no A1: final review requirement never retries into approval",()=>using(true,async x=>{
+  await x.admit(); const result=await x.execute(); assert.equal(result.state,"FINAL"); assert.equal(result.result?.outcome,"REVIEW_REQUIRED");
   assert.deepEqual((await x.stored()).assessment.findings,["RV17"]);
   await x.approve(); assert.deepEqual(await x.execute(),result); // not a hidden retry of a held decision
   x.s.intent.intentId="next-intent"; x.s.intent.previousIntentRef="sim-intent";
@@ -138,9 +138,10 @@ test("CI1 finishing requires same transaction and connection; pool reuse is iner
 test("CI1 two intentions at one revision yield one effect",()=>using(false,async x=>{
   await x.admit();const other=await x.open("executor");const i={...x.s.intent,intentId:"competitor"};await admitCi1(other,x.who,i);
   const values=await Promise.all([x.execute(),executeCi1(other,x.who,i.intentId)]);
-  assert.equal(values.filter(v=>v.state==="FINAL").length,1);
+  assert.equal(values.filter(v=>v.result?.outcome==="APPLIED").length,1);
+  assert.equal(values.filter(v=>v.result?.outcome==="CONFLICT").length,1);
   assert.equal((await x.stored()).revision,2);
-  const held=(await x.admin.query("SELECT assessment FROM public.oraculo_intents WHERE tenant_id=$1 AND result IS NULL",[x.who.tenantId])).rows;
+  const held=(await x.admin.query("SELECT assessment FROM public.oraculo_intents WHERE tenant_id=$1 AND result->>'outcome'='CONFLICT'",[x.who.tenantId])).rows;
   assert.deepEqual(held[0].assessment.findings,["RV22"]);
 }));
 test("CI1 failure after visit update rolls back visit, C5, audit and assessment",()=>using(false,async x=>{
@@ -265,3 +266,106 @@ test("CI1 E1 access requires this requester and an active execution context",()=
   await assert.rejects(x.executor.query("SELECT public.oraculo_context($1,$2,$3,$4,$5,$6::jsonb)",args),/EXECUTION_CONTEXT_REQUIRED/);
   await x.approve();assert.equal((await x.execute()).state,"FINAL");
 }));
+
+
+async function legacyHold(x: Awaited<ReturnType<typeof scenario>>, finding = "RV11") {
+  if(finding === "RV11") x.s.origins[0].status="REVOKED";
+  await x.admit();
+  const assessment = { mode: "SIMULATION", disposition: "DENIED", applied: false, findings: [finding] };
+  const audit = { assessment, result: null, hd: null, actor: x.s.intent.actorRef, snapshot: x.s, approval: null };
+  await x.admin.query("UPDATE public.oraculo_intents SET assessment=$4::jsonb WHERE tenant_id=$1 AND workspace_id=$2 AND intent_id=$3", [x.who.tenantId,x.who.workspaceId,x.s.intent.intentId,JSON.stringify(assessment)]);
+  await x.admin.query("INSERT INTO public.oraculo_audits VALUES($1,$2,$3,$4::jsonb)", [x.who.tenantId,x.who.workspaceId,x.s.intent.intentId,JSON.stringify(audit)]);
+  return structuredClone(audit);
+}
+test("CI1 negative C3 attributes only the failed credential and final result is immutable",()=>using(false,async x=>{
+  x.s.origins[0].status="REVOKED";await x.save();await x.admit();const first=await x.execute();
+  assert.equal(first.result?.outcome,"DENIED");assert.deepEqual(first.result.reasonCodes,["ORACULO_STATUS_REVOKED"]);
+  assert.equal(first.result.evaluationRefs.length,1);assert.equal(first.result.nextRevision,undefined);
+  const ev=(await x.admin.query("SELECT payload FROM public.oraculo_evaluations WHERE tenant_id=$1",[x.who.tenantId])).rows;
+  assert.equal(ev.length,1);assert.equal(ev[0].payload.credentialRef.credentialId,x.s.origins[0].credentialId);assert.equal(ev[0].payload.result,"REJECTED");
+  assert.equal((await x.stored()).revision,1);assert.equal((await x.stored()).audits,1);
+  x.s.origins[0].status="ACTIVE";await x.save();assert.deepEqual(await x.execute(),first);
+}));
+test("CI1 negative SQL rejects transitions and divergent reasonCodes",()=>using(true,async x=>{
+  await x.admit();
+  for(const tamper of ["transition","reason"]){
+    const db:Ci1Connection={async query(sql,values){
+      if(sql.includes("oraculo_finish")){
+        const v=[...values!];const c=JSON.parse(v[5]);if(tamper==="transition")c.nextRevision=99;else c.reasonCodes=["ORACULO_STATUS_REVOKED"];v[5]=JSON.stringify(c);return x.executor.query(sql,v);
+      }return x.executor.query(sql,values);
+    }};
+    await assert.rejects(executeCi1(db,x.who,x.s.intent.intentId),/INVALID_NEGATIVE_FINALIZATION/);
+    assert.equal((await x.stored()).result,null);assert.equal((await x.stored()).audits,0);
+  }
+}));
+test("CI1 legacy recovery uses immutable history, never current snapshot, and preserves original audit",()=>using(false,async x=>{
+  const original=await legacyHold(x);x.s.origins[0].status="ACTIVE";x.s.evaluatedAt="2026-09-17T12:00:00.000Z";await x.save();
+  const first=await recoverCi1Negative(x.executor,x.who,x.s.intent.intentId);
+  assert.equal(first.result?.outcome,"DENIED");assert.deepEqual(first.result.reasonCodes,["ORACULO_STATUS_REVOKED"]);
+  assert.deepEqual(first.result.evaluationRefs,[]); // old aggregate assessment has no per-credential attribution
+  assert.deepEqual(await recoverCi1Negative(x.executor,x.who,x.s.intent.intentId),first);
+  assert.deepEqual((await x.admin.query("SELECT payload FROM public.oraculo_audits WHERE tenant_id=$1",[x.who.tenantId])).rows[0].payload,original);
+  assert.equal((await x.admin.query("SELECT count(*)::int AS n FROM public.oraculo_negative_recoveries WHERE tenant_id=$1",[x.who.tenantId])).rows[0].n,1);
+  assert.equal((await x.stored()).revision,1);
+}));
+test("CI1 legacy recovery refuses unknown causes, uncertain commit, and unproven no-effect",async()=>{
+  for(const finding of ["future-code","RV26","RV27","RV28"]){await using(false,async x=>{
+    await legacyHold(x,finding);await assert.rejects(recoverCi1Negative(x.executor,x.who,x.s.intent.intentId),/NEGATIVE_MAPPING_UNAVAILABLE/);
+    assert.equal((await x.stored()).result,null);assert.equal((await x.stored()).revision,1);
+  });}
+});
+test("CI1 recovery requires matching audit and fails closed for unavailable authority",()=>using(false,async x=>{
+  await legacyHold(x);await x.authority(x.who.tokenRef,x.s.intent.actorRef.id,false);
+  await assert.rejects(recoverCi1Negative(x.executor,x.who,x.s.intent.intentId),/AUTHORITY_DENIED/);
+  await x.authority(x.who.tokenRef,x.s.intent.actorRef.id);await x.admin.query("UPDATE public.oraculo_audits SET payload=payload-'assessment' WHERE tenant_id=$1",[x.who.tenantId]);
+  await assert.rejects(recoverCi1Negative(x.executor,x.who,x.s.intent.intentId),/RECOVERY_EVIDENCE_REQUIRED/);
+  assert.equal((await x.stored()).result,null);
+}));
+test("CI1 simultaneous hold recovery records exactly one immutable result",()=>using(false,async x=>{
+  await legacyHold(x);const other=await x.open("executor");
+  const [a,b]=await Promise.all([recoverCi1Negative(x.executor,x.who,x.s.intent.intentId),recoverCi1Negative(other,x.who,x.s.intent.intentId)]);
+  assert.deepEqual(a,b);assert.equal((await x.stored()).revision,1);
+  assert.equal((await x.admin.query("SELECT count(*)::int AS n FROM public.oraculo_negative_recoveries WHERE tenant_id=$1",[x.who.tenantId])).rows[0].n,1);
+}));
+test("CI1 recovery audit failure rolls back C5 and preserves legacy assessment",()=>using(false,async x=>{
+  const original=await legacyHold(x);
+  await x.admin.query("CREATE FUNCTION public.ci1_fail_recovery() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'INJECTED_RECOVERY_FAILURE'; END $$; CREATE TRIGGER ci1_fail_recovery BEFORE INSERT ON public.oraculo_negative_recoveries FOR EACH ROW EXECUTE FUNCTION public.ci1_fail_recovery()");
+  try{await assert.rejects(recoverCi1Negative(x.executor,x.who,x.s.intent.intentId),/INJECTED_RECOVERY_FAILURE/);assert.equal((await x.stored()).result,null);assert.deepEqual((await x.stored()).assessment,original.assessment);}
+  finally{await x.admin.query("DROP TRIGGER ci1_fail_recovery ON public.oraculo_negative_recoveries; DROP FUNCTION public.ci1_fail_recovery()");}
+}));
+test("CI1 lost negative recovery COMMIT response reconciles by authorized read",()=>using(false,async x=>{
+  await legacyHold(x);
+  const lost:Ci1Connection={async query(sql,values){const result=await x.executor.query(sql,values);if(sql==="COMMIT")throw new Error("lost response");return result;}};
+  await assert.rejects(recoverCi1Negative(lost,x.who,x.s.intent.intentId),Ci1ReconciliationRequired);
+  const recovered=await readCi1(x.reader,x.who,x.s.intent.intentId);assert.equal(recovered.result?.outcome,"DENIED");
+  assert.deepEqual(await recoverCi1Negative(x.executor,x.who,x.s.intent.intentId),recovered);
+}));
+test("CI1 recovery rejects another requester and grants no direct recovery DML",()=>using(false,async x=>{
+  await legacyHold(x);await x.authority("other","other");
+  await assert.rejects(recoverCi1Negative(x.executor,{...x.who,tokenRef:"other"},x.s.intent.intentId),/SCOPE_DENIED/);
+  await assert.rejects(recoverCi1Negative(x.executor,{...x.who,tenantId:"other"},x.s.intent.intentId),/SCOPE_DENIED/);
+  await assert.rejects(x.executor.query("DELETE FROM public.oraculo_negative_recoveries"),/permission denied/);
+  await assert.rejects(x.reader.query("SELECT public.oraculo_hold($1,$2,$3,$4)",[x.who.tenantId,x.who.workspaceId,x.who.tokenRef,x.s.intent.intentId]),/permission denied/);
+}));
+
+test("CI1 persisted human rejection remains linked in negative audit",()=>using(true,async x=>{
+ await x.admit();const decision=await x.approve("REJECTED");const result=await x.execute();assert.equal(result.result?.outcome,"DENIED");
+ const audit=(await x.admin.query("SELECT payload FROM public.oraculo_audits WHERE tenant_id=$1",[x.who.tenantId])).rows[0].payload;
+ assert.equal(audit.approval.decision.authorityDecisionId,decision.authorityDecisionId);assert.equal(audit.approval.decision.decision,"REJECTED");
+}));
+test("CI1 negative C3 insert fault rolls back assessment result and audit",()=>using(false,async x=>{
+ x.s.origins[0].status="REVOKED";await x.save();await x.admit();
+ await x.admin.query("CREATE FUNCTION public.ci1_fail_negative() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'NEGATIVE_C3_FAULT'; END $$; CREATE TRIGGER ci1_fail_negative BEFORE INSERT ON public.oraculo_evaluations FOR EACH ROW EXECUTE FUNCTION public.ci1_fail_negative()");
+ try{await assert.rejects(x.execute(),/NEGATIVE_C3_FAULT/);const stored=await x.stored();assert.equal(stored.result,null);assert.equal(stored.assessment,null);assert.equal(stored.revision,1);assert.equal(stored.audits,0);}
+ finally{await x.admin.query("DROP TRIGGER ci1_fail_negative ON public.oraculo_evaluations; DROP FUNCTION public.ci1_fail_negative()");}
+}));
+test("CI1 SQL and canonical mapper agree on every finalizable ratified finding",async()=>{
+ const { S1_NEGATIVE_MAPPING_PROPOSALS }=await import("./negativeMappingProposal.js");
+ for(const mapping of S1_NEGATIVE_MAPPING_PROPOSALS){
+  if(mapping.target!=="C5"||mapping.requiresNoEffectProof)continue;
+  await using(false,async x=>{
+   await legacyHold(x,mapping.finding);const result=await recoverCi1Negative(x.executor,x.who,x.s.intent.intentId);
+   assert.equal(result.result?.outcome,mapping.outcome);assert.deepEqual(result.result.reasonCodes,[mapping.candidateCode]);assert.equal((await x.stored()).revision,1);
+  });
+ }
+});

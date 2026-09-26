@@ -64,8 +64,10 @@ try {
   await admin.query(readFileSync(resolve(root, migration), "utf8"));
   const contextGuardMigration = "packages/db/prisma/migrations/20260923090000_oraculo_ci1_context_guard/migration.sql";
   await admin.query(readFileSync(resolve(root, contextGuardMigration), "utf8"));
+  const negativeMigration = "packages/db/prisma/migrations/20260923120000_oraculo_ci1_negative_results/migration.sql";
+  await admin.query(readFileSync(resolve(root, negativeMigration), "utf8"));
   const grants: Record<string, string[]> = {
-    oraculo_ci1_executor: ["oraculo_admit", "oraculo_begin", "oraculo_context", "oraculo_finish", "oraculo_read"],
+    oraculo_ci1_executor: ["oraculo_admit", "oraculo_begin", "oraculo_context", "oraculo_finish", "oraculo_read", "oraculo_hold", "oraculo_resolve_hold"],
     oraculo_ci1_approver: ["oraculo_begin", "oraculo_context", "oraculo_approve"],
     oraculo_ci1_writer: ["oraculo_write_scope", "oraculo_write_authority", "oraculo_write_global", "oraculo_write_snapshot"],
     oraculo_ci1_reader: ["oraculo_read"],
@@ -89,7 +91,7 @@ try {
   console.log(child.stdout); if (child.stderr) console.error(child.stderr);
   report.legacyPreserved = (await admin.query("SELECT record_format,context_hash,governed_payload FROM public.approval_records WHERE id='legacy'")).rows[0];
   report.noRoleMemberships = (await admin.query("SELECT count(*)::int AS n FROM pg_auth_members m JOIN pg_roles r ON m.member=r.oid WHERE r.rolname LIKE 'oraculo_ci1_%'")).rows[0].n === 0;
-  const files = [migration,contextGuardMigration,"apps/api/src/services/logistica/oraculo/transactionExecutor.ts","apps/api/src/services/logistica/oraculo/evaluation.ts","apps/api/src/services/logistica/oraculo/ci1.integration.test.ts","apps/api/scripts/validateOraculoS1Integrated.ts","packages/db/src/oraculo/connection.ts","packages/db/prisma/schema.prisma","apps/api/src/services/logistica/oraculo/canonicalization.ts","packages/contracts/src/oraculo.ts","packages/contracts/src/governance.ts","packages/db/prisma.oraculo-ci1.config.ts","tsconfig.oraculo-ci1.json","package.json"];
+  const files = [migration,contextGuardMigration,negativeMigration,"apps/api/src/services/logistica/oraculo/negativeMapping.ts","apps/api/src/services/logistica/oraculo/negativeMappingProposal.ts","packages/core/src/reasons/reasonCatalog.ts","apps/api/src/services/logistica/oraculo/transactionExecutor.ts","apps/api/src/services/logistica/oraculo/evaluation.ts","apps/api/src/services/logistica/oraculo/ci1.integration.test.ts","apps/api/scripts/validateOraculoS1Integrated.ts","packages/db/src/oraculo/connection.ts","packages/db/prisma/schema.prisma","apps/api/src/services/logistica/oraculo/canonicalization.ts","packages/contracts/src/oraculo.ts","packages/contracts/src/governance.ts","packages/db/prisma.oraculo-ci1.config.ts","tsconfig.oraculo-ci1.json","package.json"];
   report.fileHashes = Object.fromEntries(files.map(p => [p,createHash("sha256").update(readFileSync(resolve(root,p))).digest("hex")]));
   if (child.status !== 0) process.exitCode = 1;
 } catch (error) {
