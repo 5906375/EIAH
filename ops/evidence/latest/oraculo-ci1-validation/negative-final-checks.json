@@ -1,0 +1,37 @@
+{
+  "executedAt": "2026-09-23T15:58:56.262877+00:00",
+  "results": [
+    {
+      "command": [
+        "node",
+        "--import",
+        "tsx",
+        "scripts/checkEvidenceIndex.ts"
+      ],
+      "exitCode": 0,
+      "stdout": "{\n  \"ok\": true,\n  \"check\": \"check:evidence-index\",\n  \"file\": \"docs/EVIDENCE_INDEX.md\",\n  \"sizeChars\": 272690,\n  \"roadmap\": \"ROADMAP_UNIFICADO_v8_ATUALIZADO_2026-06-15.md\",\n  \"refsChecked\": 615\n}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "node",
+        "--import",
+        "tsx",
+        "scripts/checkReasonCodeCanon.ts"
+      ],
+      "exitCode": 0,
+      "stdout": "{\"ok\":true,\"check\":\"reason-code-canon-v1\",\"catalogSize\":122,\"targets\":[\"packages/core/src/reasons/reasonCatalog.ts\",\"docs/ops/reason-codes-catalog.md\",\"apps/api/src/services/imob/control/imobReasonCodeCatalog.ts\",\"apps/api/src/routes/imobCrmSchemas.ts\",\"apps/api/src/types/chatVerticalHandoffV2Contract.ts\",\"contracts/chat/vertical.reason_codes.v1.json\",\"apps/api/src/services/runGovernanceMetadata.ts\",\"scripts/tests/checkReasonCodeCanon.test.ts\"],\"enforcement\":\"informational-until-ruleset-ratification\"}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  ]
+}

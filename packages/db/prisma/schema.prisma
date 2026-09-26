@@ -1428,6 +1428,7 @@ model OraculoIntent {
   result Json?
   assessment Json?
   audit OraculoAudit?
+  negativeRecovery OraculoNegativeRecovery?
   evaluations OraculoEvaluation[]
   @@id([tenantId,workspaceId,intentId])
   @@map("oraculo_intents")
@@ -1472,4 +1473,14 @@ model OraculoEvaluation {
   intent OraculoIntent @relation(fields:[tenantId,workspaceId,intentId],references:[tenantId,workspaceId,intentId],onDelete:NoAction,onUpdate:NoAction)
   @@id([tenantId,workspaceId,evaluationId])
   @@map("oraculo_evaluations")
+}
+
+model OraculoNegativeRecovery {
+  tenantId String @map("tenant_id")
+  workspaceId String @map("workspace_id")
+  intentId String @map("intent_id")
+  payload Json
+  intent OraculoIntent @relation(fields:[tenantId,workspaceId,intentId],references:[tenantId,workspaceId,intentId],onDelete:NoAction,onUpdate:NoAction)
+  @@id([tenantId,workspaceId,intentId])
+  @@map("oraculo_negative_recoveries")
 }

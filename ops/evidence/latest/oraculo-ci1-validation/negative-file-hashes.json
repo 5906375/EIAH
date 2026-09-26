@@ -1,0 +1,25 @@
+{
+  "baseline": "d1f102433ee56803ba8f278c481d7bab3b5e8709",
+  "sha256": {
+    "apps/api/scripts/validateOraculoS1Integrated.ts": "1819e100c2e67e7c245c57f3ea26b909638b9159963bfc24f7893cb1e187b730",
+    "apps/api/src/services/logistica/oraculo/ci1.integration.test.ts": "d1c813e069b77e65aced13c5695d1c0398ccd405a90246572a78b52f122e6663",
+    "apps/api/src/services/logistica/oraculo/evaluation.ts": "3afda39fff49171d3d0079ade92da5ba1dce65f6b8c088530ac24b1900fe2e98",
+    "apps/api/src/services/logistica/oraculo/negativeMapping.test.ts": "fd2add021cbf470ff23cc92ad74bc3468573ebc51de704db92ae512b9ee24bb8",
+    "apps/api/src/services/logistica/oraculo/negativeMapping.ts": "5e907410eaf0e00f6b1ced6dd4d9658f96b24505c1ef4b1a980367df7541269f",
+    "apps/api/src/services/logistica/oraculo/negativeMappingProposal.test.ts": "6b492fb4054a047338b722f9bb074e07e6e1ac0a2baf6880ff1e2c37c564e4b4",
+    "apps/api/src/services/logistica/oraculo/negativeMappingProposal.ts": "0fc5eb8b64132b4a905f0f6d3282f7f8261b39a081c28715147b775af9e8aa51",
+    "apps/api/src/services/logistica/oraculo/transactionExecutor.ts": "8d0db700af8008764c22c642e7e8f1fa99f21df4304a3c34d8230b5c27c1d44a",
+    "docs/ops/oraculo-ci1.md": "4dddb0e89157d168ed3040ac4a9f6ddbb29bb8f4d38432bb1805c75389701a4f",
+    "docs/ops/oraculo-negative-mapper-proposal.md": "be6e2ddd953c0c0a53090f5912562b46c59639a9d4f6efced8ee99e1bce692d6",
+    "docs/ops/oraculo-negative-pr-drafts.md": "768c828c1e4082c6549ff11671028852e1c23c0436ff6d78906e6790c62a6aed",
+    "docs/ops/oraculo-negative-ratification.md": "016317187b21696f9fa339d9c4cba0fe80395c7e8db7daa126ab78f10134108e",
+    "docs/ops/oraculo-negative-review-prompt.md": "21bc34a92e493da319ae1d22f82a9c41850ba64744bf9aac4f6f445222c7aca2",
+    "docs/ops/reason-codes-catalog.md": "582578674f7533bb387660029d378d2ab8b003a6f65e9d63191dad2d0fc28c66",
+    "package.json": "77fd6e855cba48401c0862f6b15a3a2b2c17175e5e80f7c46e06bc48547e6701",
+    "packages/core/src/reasons/reasonCatalog.ts": "5f5ef1322618479f715ebcf7a67097729593a10cc9ee5c474c725817d7cc772f",
+    "packages/db/prisma/migrations/20260923120000_oraculo_ci1_negative_results/migration.sql": "3da376a0603a15ef11f54518f81e71d7595f1c8f823459f4e9d401fb1d0c49c6",
+    "packages/db/prisma/schema.prisma": "983c56b32b3af7aa1d7d25ddd9581d207ae1f812317fc9f4b0e3ca6c585bee8f",
+    "packages/db/src/generated/client/package.json": "8cc8d50e9593a374e620888adb9aa9c5c3798627073858cfecf51e554537f1d1",
+    "packages/db/src/generated/client/schema.prisma": "f807b977948220c26d73a1d94d50f165ab5073352f37d1fd94bab6700ed12534"
+  }
+}
