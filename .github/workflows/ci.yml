@@ -104,6 +104,9 @@ jobs:
             echo "No @eiah/core tests found. Skipping root test step."
           fi
 
+      - name: Check LEGAL truthful evidence invariant
+        run: pnpm check:legal-truthful-evidence
+
       - name: Check src/dist route parity
         run: pnpm check:src-dist-route-parity
 
