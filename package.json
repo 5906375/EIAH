@@ -56,6 +56,7 @@
     "test:pre-duimp-web": "TSX_TSCONFIG_PATH=apps/web/tsconfig.json node --import tsx --test apps/web/src/features/logistica/preDuimp.test.ts apps/web/src/features/logistica/preDuimpApiClient.test.ts apps/web/src/pages/app/logistica/pre-duimp.test.tsx",
     "check:admin-scope-canon": "node --import tsx --test packages/core/src/security/adminScopes.test.ts",
     "test:actions-tools-authz": "node --env-file-if-exists=packages/db/.env --import tsx --test apps/api/src/tests/actions-tools-authz.unit.test.ts",
+    "test:workspace-agent-provisioning": "TSX_TSCONFIG_PATH=tsconfig.base.json DATABASE_URL=postgresql://user:pass@127.0.0.1:1/test node --import tsx --test apps/api/src/tests/workspace-agent-provisioning.test.ts packages/core/src/catalog/workspaceAgentProvisioning.test.ts",
     "test:assignment-fail-closed": "TSX_TSCONFIG_PATH=tsconfig.base.json DATABASE_URL=postgresql://user:pass@127.0.0.1:1/test node --import tsx apps/api/src/tests/workspace-agent-assignments.fail-closed.test.ts",
     "test:assignment-fail-closed:http": "TSX_TSCONFIG_PATH=tsconfig.base.json node --import tsx --test --test-force-exit apps/api/src/tests/imob-assignment-gate-fail-closed.test.ts",
     "test:actions-tools-authz:integration": "node --import tsx --test --test-force-exit apps/api/src/actions/tests/actions.e2e.test.ts",

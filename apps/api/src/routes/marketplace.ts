@@ -1,7 +1,13 @@
 import crypto from "node:crypto";
 import { z } from "zod";
+import type { PrismaClient } from "@repo/db";
 import { createGovernedRouter } from "../middlewares/asyncHandler";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
+import { provisionWorkspaceAgentAssignments } from "../services/workspaceAgentProvisioning";
+import {
+  getProductProvisionedAgents,
+  WORKSPACE_AGENT_PROVISIONING_VERSION,
+} from "@eiah/core/catalog/workspaceAgentProvisioning";
 
 export const marketplaceRouter = createGovernedRouter();
 marketplaceRouter.use(enforceTenant);
@@ -601,36 +607,62 @@ marketplaceRouter.post("/marketplace/installations/activate", async (req, res) =
   const now = new Date();
   const activatedByUserId = request.authContext.userId ?? null;
 
-  await request.prisma.$executeRaw`
-    INSERT INTO tenant_product_installations (
-      id,
-      tenant_id,
-      workspace_id,
-      product,
-      status,
-      activated_at,
-      activated_by_user_id,
-      created_at,
-      updated_at
-    )
-    VALUES (
-      ${crypto.randomUUID()},
-      ${request.authContext.tenantId},
-      ${request.authContext.workspaceId},
-      ${parsed.data.product},
-      'active',
-      ${now},
-      ${activatedByUserId},
-      ${now},
-      ${now}
-    )
-    ON CONFLICT (tenant_id, workspace_id, product)
-    DO UPDATE SET
-      status = 'active',
-      activated_at = EXCLUDED.activated_at,
-      activated_by_user_id = EXCLUDED.activated_by_user_id,
-      updated_at = EXCLUDED.updated_at;
-  `;
+  // ADR-010 (PR A): installation and agent provisioning are atomic; a product
+  // without an approved agent map, or any provisioning failure, fails the activation.
+  const tenantId = request.authContext.tenantId;
+  const workspaceId = request.authContext.workspaceId;
+  try {
+    const productAgents = getProductProvisionedAgents(parsed.data.product);
+    await request.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`
+        INSERT INTO tenant_product_installations (
+          id,
+          tenant_id,
+          workspace_id,
+          product,
+          status,
+          activated_at,
+          activated_by_user_id,
+          created_at,
+          updated_at
+        )
+        VALUES (
+          ${crypto.randomUUID()},
+          ${tenantId},
+          ${workspaceId},
+          ${parsed.data.product},
+          'active',
+          ${now},
+          ${activatedByUserId},
+          ${now},
+          ${now}
+        )
+        ON CONFLICT (tenant_id, workspace_id, product)
+        DO UPDATE SET
+          status = 'active',
+          activated_at = EXCLUDED.activated_at,
+          activated_by_user_id = EXCLUDED.activated_by_user_id,
+          updated_at = EXCLUDED.updated_at;
+      `;
+      await provisionWorkspaceAgentAssignments({
+        prisma: tx as unknown as PrismaClient,
+        tenantId,
+        workspaceId,
+        agents: productAgents,
+        trigger: `product_activation:${parsed.data.product}`,
+        catalogVersion: WORKSPACE_AGENT_PROVISIONING_VERSION,
+      });
+    });
+  } catch (error) {
+    request.logger?.error({ error, product: parsed.data.product }, "marketplace.activation_provisioning_failed");
+    return res.status(500).json({
+      ok: false,
+      error: {
+        code: "WORKSPACE_AGENT_PROVISIONING_FAILED",
+        message: "Unable to provision workspace agents for this product; activation was not applied",
+      },
+    });
+  }
 
   type InstallationRow = {
     tenantId: string;
