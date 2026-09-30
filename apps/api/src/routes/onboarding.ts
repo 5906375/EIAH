@@ -8,6 +8,11 @@ import {
   tenantAlreadyHasReservedDefaultWorkspace,
 } from "../services/workspaceNamingPolicy";
 import { ensureWorkspaceMembershipForUser } from "../services/workspaceResponsibility";
+import { provisionWorkspaceAgentAssignments } from "../services/workspaceAgentProvisioning";
+import {
+  FRONT_DOOR_AGENTS,
+  WORKSPACE_AGENT_PROVISIONING_VERSION,
+} from "@eiah/core/catalog/workspaceAgentProvisioning";
 
 const onboardingRouter = Router();
 
@@ -129,6 +134,16 @@ onboardingRouter.post("/auth/onboarding", async (req, res) => {
         workspaceId: workspace.id,
         userId: user.id,
         roleKey: shouldUseReservedDefault ? "founder" : "gestor",
+      });
+
+      // ADR-010 (PR A): the EIAH front door must work from the first access.
+      await provisionWorkspaceAgentAssignments({
+        prisma: tx as unknown as PrismaClient,
+        tenantId: tenant.id,
+        workspaceId: workspace.id,
+        agents: FRONT_DOOR_AGENTS,
+        trigger: "onboarding",
+        catalogVersion: WORKSPACE_AGENT_PROVISIONING_VERSION,
       });
 
       let tokenValue: string | null = null;

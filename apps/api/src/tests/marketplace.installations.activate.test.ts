@@ -35,6 +35,7 @@ before(async () => {
 });
 
 after(async () => {
+  await prismaGlobal.workspaceAgentAssignment.deleteMany({ where: { tenantId, workspaceId } });
   await prismaGlobal.$executeRaw`
     DELETE FROM tenant_product_installations
     WHERE tenant_id = ${tenantId}
@@ -57,6 +58,17 @@ test("POST /api/marketplace/installations/activate ativa IMOB e retorna rotas li
   assert.equal(res.body?.installation?.status, "active");
   assert.ok(Array.isArray(res.body?.releasedRoutes));
   assert.ok(res.body?.releasedRoutes.includes("/app/imob/chat"));
+
+  // ADR-010 (PR A): activation provisions the agents the IMOB vertical requires.
+  const assignments = await prismaGlobal.workspaceAgentAssignment.findMany({
+    where: { tenantId, workspaceId },
+    select: { agentKey: true, enabled: true },
+  });
+  assert.deepEqual(
+    assignments.map((item) => item.agentKey).sort(),
+    ["EIAH", "imob-chat-audit"],
+  );
+  assert.ok(assignments.every((item) => item.enabled));
 
   const list = await request
     .get("/api/marketplace/installations")
@@ -93,6 +105,9 @@ test("POST /api/marketplace/installations/activate é idempotente por tenant/wor
   const countValue = rows[0]?.count;
   const count = typeof countValue === "bigint" ? Number(countValue) : Number(countValue ?? 0);
   assert.equal(count, 1);
+
+  const assignmentCount = await prismaGlobal.workspaceAgentAssignment.count({ where: { tenantId, workspaceId } });
+  assert.equal(assignmentCount, 2, "re-activation must not duplicate agent assignments");
 });
 
 test("POST /api/marketplace/installations/activate rejeita produto inválido", async () => {

@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { Router } from "express";
 import { z } from "zod";
-import { prismaGlobal } from "@repo/db";
+import { prismaGlobal, PrismaClient } from "@repo/db";
 import { enforceTenant, type TenantAwareRequest } from "../middlewares/enforceTenant";
 import {
   canTenantUseReservedDefaultWorkspaceName,
@@ -10,6 +10,11 @@ import {
   tenantAlreadyHasReservedDefaultWorkspace,
 } from "../services/workspaceNamingPolicy";
 import { ensureWorkspaceMembershipForUser } from "../services/workspaceResponsibility";
+import { provisionWorkspaceAgentAssignments } from "../services/workspaceAgentProvisioning";
+import {
+  FRONT_DOOR_AGENTS,
+  WORKSPACE_AGENT_PROVISIONING_VERSION,
+} from "@eiah/core/catalog/workspaceAgentProvisioning";
 
 export const workspacesRouter = Router();
 workspacesRouter.use(enforceTenant);
@@ -90,13 +95,25 @@ workspacesRouter.post("/workspaces", async (req, res) => {
   }
 
   try {
-    const created = await prismaGlobal.workspace.create({
-      data: {
-        id: workspaceId,
+    // ADR-010 (PR A): workspace creation and front-door provisioning are atomic.
+    const created = await prismaGlobal.$transaction(async (tx) => {
+      const workspace = await tx.workspace.create({
+        data: {
+          id: workspaceId,
+          tenantId,
+          name,
+        },
+        select: { id: true, name: true, createdAt: true },
+      });
+      await provisionWorkspaceAgentAssignments({
+        prisma: tx as unknown as PrismaClient,
         tenantId,
-        name,
-      },
-      select: { id: true, name: true, createdAt: true },
+        workspaceId: workspace.id,
+        agents: FRONT_DOOR_AGENTS,
+        trigger: "workspace_create",
+        catalogVersion: WORKSPACE_AGENT_PROVISIONING_VERSION,
+      });
+      return workspace;
     });
 
     if (authContext.userId) {

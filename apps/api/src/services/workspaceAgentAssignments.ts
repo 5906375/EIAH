@@ -215,6 +215,35 @@ async function recordAssignmentRefusal(
   }
 }
 
+/**
+ * Read-only: resolves the canonical agent key, the version the gate requires and
+ * any existing exact assignment. Used by provisioning so it writes exactly what
+ * `assertWorkspaceAgentEnabled` requires. Performs no writes.
+ */
+export async function resolveWorkspaceAgentProvisioningTarget(params: {
+  prisma?: PrismaClient;
+  tenantId: string;
+  workspaceId: string;
+  agentKey: string;
+}): Promise<{
+  canonicalAgentKey: string;
+  agentVersion: string | null;
+  existing: WorkspaceAgentAssignmentRecord | null;
+}> {
+  const client = resolveClient(params.prisma);
+  const canonicalAgentKey = await resolveCanonicalAgentKey(client, params.agentKey);
+  const agentVersion = await resolveRequestedAgentVersion(client, canonicalAgentKey);
+  if (!agentVersion) return { canonicalAgentKey, agentVersion: null, existing: null };
+  const candidates = await findAssignmentCandidates(
+    client,
+    { tenantId: params.tenantId, workspaceId: params.workspaceId, agentKey: canonicalAgentKey, agentVersion },
+    canonicalAgentKey,
+    agentVersion
+  );
+  const existing = candidates.exactMatches[0];
+  return { canonicalAgentKey, agentVersion, existing: existing ? toRecord(existing) : null };
+}
+
 export async function getActiveWorkspaceAgentAssignment(params: {
   prisma?: PrismaClient;
   tenantId: string;
