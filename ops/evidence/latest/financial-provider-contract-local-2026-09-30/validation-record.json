@@ -1,0 +1,60 @@
+{
+  "schemaVersion": "financial-provider-local-validation-record.v1",
+  "date": "2026-09-30",
+  "agent": "Codex",
+  "executionActor": "user",
+  "executionEnvironment": "WSL",
+  "evidenceBasis": "terminal_results_presented_in_conversation",
+  "independentLogsProvided": false,
+  "separateExitCodesProvided": false,
+  "checks": [
+    {
+      "command": "node --import tsx --test scripts/tests/financialProviderContract.test.ts",
+      "result": "pass",
+      "tests": 14,
+      "passed": 14,
+      "failed": 0,
+      "skipped": 0,
+      "cancelled": 0,
+      "todo": 0
+    },
+    {
+      "command": "pnpm exec tsc --noEmit --target ES2024 --module ESNext --moduleResolution Bundler --strict --esModuleInterop --skipLibCheck --allowImportingTsExtensions --types node scripts/tests/financialProviderContract.test.ts",
+      "result": "no_diagnostics_presented"
+    },
+    {
+      "command": "git diff --no-index --check /dev/null scripts/lib/financialProviderContract.ts",
+      "result": "no_diagnostics_presented"
+    },
+    {
+      "command": "git diff --no-index --check /dev/null scripts/tests/financialProviderContract.test.ts",
+      "result": "no_diagnostics_presented"
+    },
+    {
+      "command": "git diff --no-index --check /dev/null docs/ops/drafts/financial-provider-registry-contract.draft.md",
+      "result": "no_diagnostics_presented"
+    }
+  ],
+  "receivedSources": [
+    {
+      "path": "scripts/lib/financialProviderContract.ts",
+      "sha256": "a8bf6c0a920249b4ebc4e0fafb53cb3a76a9574aaa2be13e9bb088736c9d8b26",
+      "sizeBytes": 7328
+    },
+    {
+      "path": "scripts/tests/financialProviderContract.test.ts",
+      "sha256": "87cca54b2bd3af68a1bf997a99c243b48a4aca03d6a027d2b356d33631683aa3",
+      "sizeBytes": 6778
+    },
+    {
+      "path": "docs/ops/drafts/financial-provider-registry-contract.draft.md",
+      "sha256": "f001eeb2edd48873421638b3f17ddccf4938731614ecd3e8cbd01c63f46bfd99",
+      "sizeBytes": 4919
+    }
+  ],
+  "sourceBindingLimit": "Hashes identify received bytes; they do not independently attest the executed WSL tree.",
+  "status": "parcial",
+  "adr009": "Proposta",
+  "operationalEligibility": "blocked",
+  "independentSourceVerification": "not_demonstrated"
+}

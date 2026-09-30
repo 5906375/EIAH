@@ -215,7 +215,7 @@ Sem novos artefatos adicionais nesta revisão; manter rastreabilidade pelos runb
 | Exemplo oficial do contrato v1 | `contracts/examples/agent-protocol.v1.example.json` | Exemplo validável para `realestate.apply_adjustment` v1.2.0. |
 | Política de versionamento Agent Protocol | `ops/contracts/agent-protocol-versioning-policy.md` | Regras explícitas de versionamento/compatibilidade para o protocolo. |
 | Gate de CI Agent Protocol compat | `scripts/checkAgentProtocolVersioning.ts` | Check automatizado de compatibilidade/baseline no pipeline. |
-| Smoke de rotas interop | `ops/evidence/latest/interop-routes-smoke-2026-03-09.json` | Prova de implementação das rotas `POST /api/agents/discovery|negotiate|execute`. |
+| Smoke de rotas interop | `ops/evidence/latest/interop-routes-smoke-2026-03-09.json` | Verificação estática da presença de trechos associados às rotas no código-fonte (`agentRoutes.includes('post("/agents/discovery"')` etc., em `scripts/generateP2InteropEvidence.ts`). Não comprova registro efetivo das rotas, comportamento funcional, execução HTTP ou geração de receipt. |
 | Evidência e2e da cadeia interop | `ops/evidence/latest/interop-e2e-agent-call-2026-03-09.json` | Declara a trilha `discovery -> negotiate -> execute` até a aceitação na fila, derivada de inspeção textual; não prova execução HTTP nem receipt. |
 | Gate complementar global de cobertura HIGH | `scripts/checkP2HighGlobalCoverage.ts` | Inventário completo das ações HIGH do core (`billing/finance/notifications`) e status explícito de cobertura E2E. |
 | Evidência do inventário HIGH global | `ops/evidence/latest/p2-high-global-coverage.json` | Matriz inicial de cobertura HIGH global (base para fechar P2 além do recorte IMOB). |
@@ -1083,3 +1083,33 @@ EVIDÊNCIA: `apps/api/src/index.ts:97-103` + `apps/workers/run-worker/src/index.
 | Publicação em rascunho | `ops/evidence/latest/oraculo-pr-publication-2026-09-24.json` | PRs, bases, status observado e gate local de testes órfãos; não equivale a CI remoto aprovado. |
 | Harness ligado ao CI | `ops/evidence/latest/oraculo-ci-wiring-2026-09-24.json` | Checks locais executados após ajuste do workflow e CLI. |
 | Teste do harness explícito | `ops/evidence/latest/oraculo-ci1-validation/21fc559b-9fd5-4c55-a37f-66886e57dc7e/results.json` | 32 integrados da base e limpeza PostgreSQL. |
+
+## M1 — contratos de origem e diagnóstico local v2 (2026-09-28)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Validação sintética local da primeira etapa de contratos M1 | `ops/evidence/latest/m1-source-contracts-local-2026-09-28/README.md` + `ops/evidence/latest/m1-source-contracts-local-2026-09-28/final-tests.log` + `ops/evidence/latest/m1-source-contracts-local-2026-09-28/typecheck.log` + `ops/evidence/latest/m1-source-contracts-local-2026-09-28/diff-check.log` + `ops/evidence/latest/m1-source-contracts-local-2026-09-28/validation-commands.json` + `ops/evidence/latest/m1-source-contracts-local-2026-09-28/source-hashes.json` | Execução local com 103/103 testes sintéticos, typecheck focado e diff-check aprovados. Confirma material de origem versionado, diagnóstico v2 sem promoção por presença de snapshot, rejeição de claims de execução, validação interna de identidades/referências/digests/contagens/datas e manutenção dos bloqueios do gate. Não demonstra recomputação de métricas, completude da fonte, operação real ou retorno P1/P2. Os 72/72 anteriores permanecem históricos. ADR-009 Proposta; M1 operacional parcial. |
+
+## PRE_DUIMP — status literal de instalação (2026-09-30)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Paridade entre capability e autorização final para cinco status de instalação | `ops/evidence/latest/pre-duimp-installation-status-local-2026-09-30/README.md` + `ops/evidence/latest/pre-duimp-installation-status-local-2026-09-30/results.json` + logs `before.log.gz`, `after.log.gz`, `contracts.log.gz` e `http.log.gz` no mesmo diretório | Regressão local de 27/29 antes (divergências em `ACTIVE` e ` active `) para 29/29 depois; contratos 15/15 e 67/67; HTTP shadow 9/9. Confirma requisito `active` literal no gate PRE_DUIMP e preservação de suspensão, billing/grace e normalização do gate genérico nos casos testados. Diff-check aprovado conforme transcript do usuário. Não prova conexão da fonte financeira, typecheck integral, novo E2E com banco ou operação real. ADR-009 permanece Proposta. |
+
+## Situação financeira do tenant — fixtures locais (2026-09-30)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Contrato v1 e avaliador puro de situação financeira | `ops/evidence/latest/tenant-financial-standing-local-2026-09-30/README.md` + `ops/evidence/latest/tenant-financial-standing-local-2026-09-30/validation-record.json` | Registro dos resultados apresentados pelo usuário no terminal: 13/13 testes com fixtures, typecheck focado e whitespace dos três arquivos sem diagnósticos. Hashes identificam as fontes recebidas, coincidentes com o patch preparado. Não há logs independentes anexados nem códigos de saída separados. Distingue em dia, atraso confirmado e verificação indisponível nos casos simulados. Não prova fonte financeira real, origem operacional verificada ou integração ao PRE_DUIMP. Status parcial; ADR-009 Proposta e elegibilidade operacional bloqueada. |
+
+## Providers financeiros — fixtures locais (2026-09-30)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Cadastro extensível e avaliação de confirmação v1 | `ops/evidence/latest/financial-provider-contract-local-2026-09-30/README.md` + `ops/evidence/latest/financial-provider-contract-local-2026-09-30/validation-record.json` | Registro dos resultados apresentados pelo usuário no terminal: 14/14 testes com fixtures de Pix, cartão, transferência bancária e crypto; typecheck focado e whitespace dos três arquivos sem diagnósticos. SHA-256 identificam as fontes recebidas, sem atestar independentemente a árvore executada. Não há logs independentes nem códigos de saída separados. Não prova cadastro persistente, verificador ou provider real, quitação de obrigação, integração ao PRE_DUIMP ou conversão crypto/BRL. Providers reais em aberto; status parcial, ADR-009 Proposta e elegibilidade operacional bloqueada. |
+
+## Persistência de transições P1 — PostgreSQL local (2026-09-30)
+
+| Assunto | Arquivo | O que prova |
+| --- | --- | --- |
+| Protótipo de persistência com PostgreSQL descartável | `ops/evidence/latest/p1-transition-persistence-local-2026-09-30/README.md` + `ops/evidence/latest/p1-transition-persistence-local-2026-09-30/03-passed/result.json` | Preserva logs comprimidos, resultados e hashes das três tentativas, incluindo falhas de prontidão e typecheck. A tentativa final valida schema, aplica 31 migrations, passa no typecheck focado e aprova 9/9 testes com fixtures sintéticas; exitCode 0 e container removido. Não demonstra fonte financeira real, ligação dos writers operacionais ou publicação em fila. sourceVerification permanece not_demonstrated; ADR-009 Proposta. |

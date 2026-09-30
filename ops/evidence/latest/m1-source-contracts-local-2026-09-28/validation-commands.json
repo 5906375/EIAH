@@ -1,0 +1,54 @@
+[
+  {
+    "name": "final-tests",
+    "argv": [
+      "node",
+      "--import",
+      "tsx",
+      "--test",
+      "scripts/tests/p1SourceMaterial.test.ts",
+      "scripts/tests/p1OperationalPackage.test.ts",
+      "scripts/tests/p1ApprovedPolicy.test.ts",
+      "scripts/tests/p1IntegratedRecurrence.test.ts",
+      "scripts/tests/p1CycleSelection.test.ts",
+      "scripts/tests/checkP1ApeWeeklyCycleV3.test.ts"
+    ],
+    "exit": 0
+  },
+  {
+    "name": "typecheck",
+    "argv": [
+      "node_modules/.bin/tsc",
+      "--noEmit",
+      "--target",
+      "ES2022",
+      "--module",
+      "ESNext",
+      "--moduleResolution",
+      "Bundler",
+      "--esModuleInterop",
+      "--skipLibCheck",
+      "--strict",
+      "scripts/checkP1ApeWeeklyCycleV3.ts",
+      "scripts/lib/p1CycleSelection.ts",
+      "scripts/lib/p1OperationalPackage.ts",
+      "scripts/lib/p1SourceMaterial.ts",
+      "scripts/tests/p1SourceMaterial.test.ts",
+      "scripts/tests/p1OperationalPackage.test.ts",
+      "scripts/tests/p1ApprovedPolicy.test.ts",
+      "scripts/tests/p1IntegratedRecurrence.test.ts",
+      "scripts/tests/p1CycleSelection.test.ts",
+      "scripts/tests/checkP1ApeWeeklyCycleV3.test.ts"
+    ],
+    "exit": 0
+  },
+  {
+    "name": "diff-check",
+    "argv": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exit": 0
+  }
+]

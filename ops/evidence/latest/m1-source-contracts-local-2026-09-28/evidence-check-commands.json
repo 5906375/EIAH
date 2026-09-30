@@ -1,0 +1,32 @@
+[
+  {
+    "name": "evidence-index-unit",
+    "argv": [
+      "node",
+      "--import",
+      "tsx",
+      "--test",
+      "scripts/tests/checkEvidenceIndex.test.ts"
+    ],
+    "exit": 0
+  },
+  {
+    "name": "evidence-index",
+    "argv": [
+      "node",
+      "--import",
+      "tsx",
+      "scripts/checkEvidenceIndex.ts"
+    ],
+    "exit": 0
+  },
+  {
+    "name": "final-diff-check",
+    "argv": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exit": 0
+  }
+]

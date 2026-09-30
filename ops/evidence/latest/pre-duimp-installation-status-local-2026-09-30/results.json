@@ -1,0 +1,83 @@
+{
+  "schemaVersion": "pre-duimp-status-local-evidence.v1",
+  "date": "2026-09-30",
+  "execution": "user WSL; logs supplied to Codex",
+  "results": {
+    "before": {
+      "tests": [
+        29
+      ],
+      "pass": [
+        27
+      ],
+      "fail": [
+        2
+      ],
+      "skipped": [
+        0
+      ]
+    },
+    "after": {
+      "tests": [
+        29
+      ],
+      "pass": [
+        29
+      ],
+      "fail": [
+        0
+      ],
+      "skipped": [
+        0
+      ]
+    },
+    "contracts": {
+      "tests": [
+        15,
+        67
+      ],
+      "pass": [
+        15,
+        67
+      ],
+      "fail": [
+        0,
+        0
+      ],
+      "skipped": [
+        0,
+        0
+      ]
+    },
+    "http": {
+      "tests": [
+        9
+      ],
+      "pass": [
+        9
+      ],
+      "fail": [
+        0
+      ],
+      "skipped": [
+        0
+      ]
+    }
+  },
+  "logSha256": {
+    "before.log": "d051b4adec9b573e77403b36e66d8b0f724713b2610d29aa333be7a32402604f",
+    "after.log": "962182d30612dadc7afb305123e964b42f1bade5bbf327a0a71a47eda63267da",
+    "contracts.log": "4e4a2192789c481db31d653eaafff21bf9d41c41a2dba5ee822734cbad849606",
+    "http.log": "51c145fbc2534dced910c63685df7ac5bda0d0e4b7f570efc71171ff07cc5dd2"
+  },
+  "exitCodes": "not separately recorded",
+  "diffCheck": "passed in user terminal transcript; no standalone log in supplied archive",
+  "limits": [
+    "No full-tree typecheck",
+    "No new database E2E",
+    "No production or external transmission validation",
+    "Billing adapter source connection remains pending",
+    "ADR-009 remains Proposta"
+  ],
+  "logStorage": "gzip lossless; logSha256 refers to decompressed original log bytes"
+}
