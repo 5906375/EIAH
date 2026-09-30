@@ -109,3 +109,29 @@ Esta decisão não constitui evidência de execução e não exige entrada no Ev
 - Registro de `providerAdapters` para algum provider.
 - Obtenção de credencial com escopo administrativo, que reabriria a viabilidade operacional das alternativas descartadas por essa restrição, sem revogar automaticamente P1 ou P2.
 - Resolução da frente 8, `DISCRIMINATE-P3-EVIDENCE-MODE`.
+
+## Estado de implementação (verificado em 2026-09-26)
+
+Esta seção registra o que está tecnicamente implementado, distinguindo de aceitação/ratificação formal — que não é declarada aqui sem registro explícito.
+
+### Etapa 1 — Registro do ADR
+
+Executada por definição: este documento existe e foi versionado.
+
+### Etapa 2 — Alinhamento de `generateP3EconomyEvidence.ts` ao contrato
+
+**Implementada tecnicamente.** Confirmado nesta sessão: `scripts/generateP3EconomyEvidence.ts` declara hoje `{ id: "stripe", mode: "simulated" }`, `{ id: "crypto", mode: "simulated" }` e `{ id: "bank", mode: "simulated" }` — sem nenhuma ocorrência de `mode: "full"` para esses providers. Commit: `c4d5db5` ("fix(p3): align settlement provider mode declaration with versioned contract"), 2026-08-03T14:52:15-03:00, presente em `origin/main`.
+
+### Etapa 3 — Remoção de `continue-on-error` de `P3SettlementSupportByEnv`
+
+**Implementada tecnicamente.** Confirmado nesta sessão: `.github/workflows/ci.yml` hoje contém exatamente um `continue-on-error: true`, no job `ImobFrontdoorMobileSmokeInformative` (informativo por nome e por desenho, não relacionado a esta decisão) — não mais no job `P3SettlementSupportByEnv`. Commit: `729c791` ("ci(p3): stop suppressing failures of required job P3SettlementSupportByEnv"), 2026-08-03T14:56:53-03:00, presente em `origin/main`.
+
+### Execução real confirmada em CI
+
+Run `36231136158` (branch `main`, evento `push`, `headSha` = `c26593052f2ebbe2938f35eb3384160bf334d897`, criada em 2026-09-26T08:53:31Z): o job `P3SettlementSupportByEnv` (job id `108374387746`) concluiu `success`, com todos os seus steps reais executados e bem-sucedidos ("Generate P3 economy evidence", "Check P3 evidence recency", "Check P3 settlement support matrix by env") — sucesso por mérito, sem supressão. A run como um todo concluiu `failure`, mas por causa não relacionada a este ADR: o job `P1ReconciliationRecurring` falhou nessa mesma run (achado já documentado em `ADR-007`/issue #426, fora do escopo desta decisão).
+
+**Ressalva explícita:** este resultado verde confirma que a declaração de evidência está alinhada ao contrato e que o gate bloqueia por mérito quando saudável — não confirma operação real de integração com Stripe, cripto ou banco. O modo declarado e admitido pelo contrato é `simulated` para os três providers em todos os ambientes; nenhuma etapa desta decisão altera ou demonstra comportamento real de staging ou produção (ver "Escopo não coberto" acima).
+
+### Implementação técnica × aceitação formal
+
+As três etapas estão **tecnicamente implementadas e evidenciadas** por commits reais mesclados em `main` e por uma execução de CI real e recente. Isso é diferente de **aceitação ou ratificação formal**: nenhum registro (comentário de PR, ADR de ratificação, ou decisão datada de Carlos Alberto Merlo) foi localizado nesta sessão declarando esta ADR aceita ou ratificada. O campo `Status` permanece `Proposta` até que tal registro exista — implementação técnica não é, por si só, ratificação.

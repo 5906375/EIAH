@@ -129,5 +129,11 @@ export function evaluatePreDuimpEntitlementGate(input: {
     return { allowed: false, reason: "status_denied", status: gate.status, gateReason: gate.reason };
   }
 
+  // Match the capability's literal installation requirement. Keep the generic
+  // gate's denied classifications and billing/grace decisions above unchanged.
+  if (input.installation.status !== "active") {
+    return { allowed: false, reason: "status_denied", status: "inactive", gateReason: "inactive_block" };
+  }
+
   return { allowed: true, status: gate.status };
 }

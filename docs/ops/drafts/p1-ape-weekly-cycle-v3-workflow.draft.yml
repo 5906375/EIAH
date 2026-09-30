@@ -1,0 +1,94 @@
+# RASCUNHO — NÃO É UM WORKFLOW ATIVO.
+#
+# Este arquivo vive fora de .github/workflows deliberadamente e não é lido
+# nem executado pelo GitHub Actions. Ele existe só para dar forma concreta à
+# proposta de integração operacional da Entrega 2 de M1 (ADR-009 §14) e não
+# deve ser movido para .github/workflows sem decisão explícita de Carlos
+# Alberto Merlo sobre: mecanismo de transporte real (ver comparação na ADR),
+# escopo canônico de tenant/workspace, tolerância de captura, política de
+# recorrência (A/B/C) e exigência de ratificação.
+#
+# Não contém segredos reais. `packageSource` é um placeholder — nenhum
+# provedor de armazenamento foi escolhido ou provisionado por este rascunho.
+# `permissions` é deliberadamente somente-leitura: este rascunho nunca
+# escreve de volta no repositório, nunca move required checks, nunca ratifica
+# nada.
+
+name: "[RASCUNHO] P1 ape.weekly-cycle.v3 — checker local (não ativo)"
+
+on:
+  # Só workflow_dispatch, mesmo como rascunho — nunca schedule, nunca push/PR.
+  workflow_dispatch:
+    inputs:
+      package_source:
+        description: >
+          Placeholder — de onde o pacote operacional seria obtido (ex.:
+          artifact de uma run anterior, ou chave de objeto num storage
+          persistente ainda não provisionado). Não resolvido nesta proposta.
+        required: true
+        type: string
+      policy_path:
+        description: "Caminho do arquivo de política explícita (JSON) a usar — nunca um valor padrão implícito."
+        required: true
+        type: string
+      checker_now_override:
+        description: "Opcional. ISO timestamp para avaliação simulada. Ausente = relógio real do runner."
+        required: false
+        type: string
+
+permissions:
+  contents: read # somente leitura — este rascunho nunca escreve no repositório
+
+jobs:
+  evaluate_p1_package_draft:
+    name: "[rascunho] Avaliar pacote P1 (gate, somente leitura)"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout (só para obter o checker já commitado)
+        uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: "[PLACEHOLDER] Obter o pacote operacional"
+        run: |
+          echo "::warning::Rascunho — mecanismo de obtenção do pacote ainda não decidido."
+          echo "Opções comparadas na ADR-009 §14 (não escolhidas aqui):"
+          echo "  (a) actions/download-artifact de uma run anterior que subiu o pacote;"
+          echo "  (b) storage de objetos já suportado pelo código (STORAGE_PROVIDER=object), com credencial read-only dedicada a este job."
+          echo "package_source recebido: ${{ inputs.package_source }}"
+          exit 1 # rascunho: falha deliberadamente aqui até a decisão real existir
+
+      - name: Rodar o checker local em modo gate (nunca aprova sozinho)
+        if: false # nunca executa de fato neste rascunho
+        run: |
+          node --import tsx scripts/checkP1ApeWeeklyCycleV3.ts \
+            --mode gate \
+            --package "$DOWNLOADED_PACKAGE_PATH" \
+            --policy "${{ inputs.policy_path }}" \
+            ${{ inputs.checker_now_override && format('--checker-now {0}', inputs.checker_now_override) || '' }} \
+            > p1-gate-result.json || true
+
+      - name: Publicar resultado como artifact (nunca como required check)
+        if: false # nunca executa de fato neste rascunho
+        uses: actions/upload-artifact@v4
+        with:
+          name: p1-ape-weekly-cycle-v3-gate-result
+          path: p1-gate-result.json
+          retention-days: 30
+
+# O que este rascunho deliberadamente NÃO faz:
+# - não é required check (não está referenciado em nenhum ruleset);
+# - não escreve em docs/EVIDENCE_INDEX.md;
+# - não ratifica nada, não restaura P1/P2;
+# - não escolhe mecanismo de transporte nem provisiona infraestrutura;
+# - não roda de verdade (os dois últimos steps têm `if: false`) até que as
+#   decisões pendentes acima sejam tomadas e este arquivo seja revisado e
+#   movido para .github/workflows por decisão explícita.

@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "tenant-financial-standing-local-validation.v1",
+  "date": "2026-09-30",
+  "status": "partial",
+  "evidenceKind": "user-supplied terminal results; no standalone execution logs attached",
+  "executedBy": "user in WSL",
+  "reviewedBy": "Codex",
+  "checks": [
+    {
+      "command": "node --import tsx --test scripts/tests/tenantFinancialStanding.test.ts",
+      "result": "13 tests; 13 pass; 0 fail; 0 skipped",
+      "source": "user terminal transcript in this conversation"
+    },
+    {
+      "command": "pnpm exec tsc --noEmit --target ES2024 --module ESNext --moduleResolution Bundler --strict --esModuleInterop --skipLibCheck --allowImportingTsExtensions --types node scripts/tests/tenantFinancialStanding.test.ts",
+      "result": "no diagnostics; returned to shell prompt",
+      "source": "user terminal transcript in this conversation"
+    },
+    {
+      "command": "git diff --no-index --check /dev/null scripts/lib/tenantFinancialStanding.ts",
+      "result": "no diagnostics; returned to shell prompt",
+      "source": "user terminal transcript in this conversation"
+    },
+    {
+      "command": "git diff --no-index --check /dev/null scripts/tests/tenantFinancialStanding.test.ts",
+      "result": "no diagnostics; returned to shell prompt",
+      "source": "user terminal transcript in this conversation"
+    },
+    {
+      "command": "git diff --no-index --check /dev/null docs/ops/drafts/tenant-financial-standing-contract.draft.md",
+      "result": "no diagnostics; returned to shell prompt",
+      "source": "user terminal transcript in this conversation"
+    }
+  ],
+  "sourceSha256": {
+    "scripts/lib/tenantFinancialStanding.ts": "57cb75579657c7a952aa7cbf8a83229785e715d64109d30ff6e79555b79b6973",
+    "scripts/tests/tenantFinancialStanding.test.ts": "af9c2adbec3972fb15216e6b53594468b17e57a6fb8c039c06ec86bfbf5b4db6",
+    "docs/ops/drafts/tenant-financial-standing-contract.draft.md": "42d5297068be79c65c13c9239b81e5f5359a820352ae183692d551efe4fc7b7f"
+  },
+  "standaloneExecutionLogs": false,
+  "exitCodes": "not separately captured",
+  "limitations": [
+    "Source verifier simulated in fixtures",
+    "No real financial source connected",
+    "No PRE_DUIMP adapter integration",
+    "No operational source attestation",
+    "No full repository typecheck",
+    "No commit, push or deploy evidenced",
+    "ADR-009 remains Proposta; operational eligibility blocked"
+  ]
+}

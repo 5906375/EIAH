@@ -239,6 +239,8 @@ as condições atuais do workflow.
 5. o estado remoto do ruleset for novamente fotografado e uma decisão administrativa explícita
    autorizar o retorno.
 
+**Anotação normativa restrita — decisão parcial de Carlos Alberto Merlo em 27/09/2026 (America/Sao_Paulo), declaração explícita do usuário registrada literalmente na ADR-009 §14:** para o caminho **M1 v3**, o critério de recência dos itens 2–3 passa a ser até **14 dias para a janela mais recente exigida pelo relógio** e até **28 dias para as duas históricas**, desde a primeira geração, sem renovação por correção. `MIN_CYCLES=3` e as demais condições de retorno permanecem. O checker legado não foi alterado e continua aplicando 14 dias uniformes; esta anotação distingue a decisão normativa da implementação legada. O escopo canônico segue pendente. Não registra reavaliação concluída, prorrogação, ratificação integral da ADR-009, autorização de execução operacional/CI ou restauração de P1/P2.
+
 Uma passagem isolada, a chegada da data de reavaliação ou a renovação de timestamp não satisfazem
 essas condições.
 
@@ -341,10 +343,34 @@ por este documento.
 
 **ADR-007 documentado localmente; proposta para ratificação.**
 
-**F-1 ainda não ativa.**
+**F-1 foi aplicada em 2026-08-08.** A remoção de `P1ReconciliationRecurring` e `P2HighGlobalCoverage`
+dos required contexts do ruleset `main-protection-hard-gates` (ID `13498700`) está comprovada por
+`ops/evidence/ci/f1-gate-relocation-applied-2026-08-08/`:
 
-**Ruleset não alterado.**
+- Snapshot anterior (`f1-ruleset-pre-mutation.json`): 20 required contexts, incluindo os dois acima.
+- Resposta do `PUT` (`f1-put-response.json`) e snapshot posterior (`f1-ruleset-post-mutation.json`):
+  18 required contexts, sem os dois acima.
+- Ator da mutação (`f1-actor.json`): usuário `5906375` (id `51407107`).
+- Timestamps (`f1-mutation-timestamp.txt`, `f1-post-mutation-timestamp.txt`): 2026-08-08T18:14–18:15Z.
 
-P1/P2 permanecem não saudáveis quanto às falhas e limitações descritas. Até a futura alteração
-administrativa ser aplicada e comprovada, o estado remoto de required contexts não é antecipado por
-este ADR.
+**O ruleset consultado ao vivo em 2026-09-26 tem 19 required contexts**, um a mais que o snapshot
+posterior de F-1 (18). O context adicional é `AssignmentFailClosedHttp`, ausente do snapshot posterior
+de 2026-08-08 e presente na leitura de 2026-09-26. A origem e a data exata da inclusão desse context
+seguem não comprovadas por este ADR: o `updated_at` do ruleset (`2026-09-02T14:09:13.830-03:00`, lido
+ao vivo em 2026-09-26) não coincide com a data de F-1 nem com nenhuma data registrada neste documento, e
+`updated_at` não prova, sozinho, quando um context específico foi adicionado — apenas que o objeto
+ruleset foi salvo alguma vez naquele instante. Nenhuma investigação adicional sobre esse context foi
+feita nesta rodada.
+
+**A reavaliação obrigatória de 2026-09-18 (seção 17) está pendente.** Ela não foi realizada, prorrogada
+ou encerrada por este registro nem por qualquer outra ação até 2026-09-26. Conforme a seção 17, essa
+pendência não autoriza, por si só, reintroduzir os contexts, renovar waivers ou declarar P1/P2
+saudáveis.
+
+**Este registro não altera o ruleset, não restaura nem remove required checks, e não constitui a
+reavaliação exigida em 2026-09-18** — é apenas a atualização factual do que já havia sido comprovado
+administrativamente em 2026-08-08, mantida separada da reavaliação de mérito ainda pendente.
+
+P1/P2 permanecem não saudáveis quanto às falhas e limitações descritas nas seções 4–5. A relocação dos
+dois contexts para fora do conjunto required é o único fato administrativo coberto por esta seção; o
+mérito de sua restauração (seções 15–16) continua em aberto.
