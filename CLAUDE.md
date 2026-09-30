@@ -32,7 +32,7 @@ Sem evidência indexável, classifique como parcial.
 
 
 Observação operacional:
-- a resposta final deve seguir o formato do item 15 de `IA_EIAH.md`;
+- a resposta final deve seguir o formato do item 16 de `IA_EIAH.md`;
 - listar agentes envolvidos;
 - incluir resumo das alterações;
 - registrar no Evidence Index toda evidência real/indexável gerada pela tarefa.
