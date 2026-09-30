@@ -617,6 +617,34 @@ jobs:
       - name: Run orphan tests gate unit test
         run: pnpm check:orphan-tests:unit
 
+      - name: Run P1 local contract fixtures
+        run: |
+          node --import tsx --test \
+            apps/api/src/services/p1InternalSourcePagination.test.ts \
+            apps/api/src/services/p1InternalSourceReadPort.test.ts \
+            scripts/tests/checkP1ApeWeeklyCycleV3.test.ts \
+            scripts/tests/financialProviderContract.test.ts \
+            scripts/tests/p1ApprovedPolicy.test.ts \
+            scripts/tests/p1AtomicRunTransition.test.ts \
+            scripts/tests/p1BillingLegacyCharacterization.test.ts \
+            scripts/tests/p1CycleSelection.test.ts \
+            scripts/tests/p1FinancialRecomputation.test.ts \
+            scripts/tests/p1IntegratedRecurrence.test.ts \
+            scripts/tests/p1InternalCaptureComparison.test.ts \
+            scripts/tests/p1InternalRunPopulation.test.ts \
+            scripts/tests/p1InternalSourceCapture.test.ts \
+            scripts/tests/p1OperationalPackage.test.ts \
+            scripts/tests/p1PopulationCapture.test.ts \
+            scripts/tests/p1RunTransitionHistory.test.ts \
+            scripts/tests/p1SourceMaterial.test.ts \
+            scripts/tests/tenantFinancialStanding.test.ts
+
+      - name: Prepare disposable P1 PostgreSQL image
+        run: docker pull pgvector/pgvector:pg16
+
+      - name: Run P1 persistence in disposable PostgreSQL
+        run: bash scripts/testP1RunTransitionPersistence.sh packages/db/src/p1RunTransitionPersistence.integration.test.ts
+
       - name: Run orphan tests regression gate
         run: pnpm check:orphan-tests
 

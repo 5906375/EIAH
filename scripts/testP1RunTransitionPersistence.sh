@@ -2,6 +2,10 @@
 # Run from repository root. Dedicated disposable database; no fallback to configured URLs.
 set -euo pipefail
 
+integration_test="${1:-packages/db/src/p1RunTransitionPersistence.integration.test.ts}"
+test "$#" -le 1
+test "$integration_test" = "packages/db/src/p1RunTransitionPersistence.integration.test.ts"
+
 test -f packages/db/prisma.config.ts
 test -f packages/db/src/p1RunTransitionPersistence.integration.test.ts
 name="eiah_p1_transition_${RANDOM}_$$"
@@ -54,4 +58,4 @@ pnpm --dir packages/db exec prisma migrate deploy
 pnpm --dir packages/db exec tsc --noEmit --target ES2024 --module ESNext \
   --moduleResolution Bundler --strict --esModuleInterop --skipLibCheck --types node \
   src/p1RunTransitionPersistence.integration.test.ts
-pnpm --dir packages/db exec node --import tsx --test src/p1RunTransitionPersistence.integration.test.ts
+pnpm exec node --import tsx --test "$integration_test"
