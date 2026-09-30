@@ -20,6 +20,8 @@ Os schemas usam `additionalProperties: false` e nao admitem prompt, resposta ou 
 
 Nao ha alteracao no `ChatAgentLauncher`, resolver operacional, API, frontend, Knowledge Search, provider, run ou persistencia. Redirect e PRs funcionais posteriores permanecem bloqueados ate aprovacao explicita, testes E2E e rollout governado.
 
+**Atualização 2026-09-30:** a implementação em PRs sequenciais, para todas as verticais e produtos, foi autorizada pela [ADR-010](../adr/ADR-010-unificacao-chat-front-door-verticais.md); o redirect das rotas dedicadas continua bloqueado até decisão própria após paridade comprovada por E2E.
+
 ## Definition of Done do preflight
 
 - schemas, baselines, exemplos e reason codes versionados e estritos;
