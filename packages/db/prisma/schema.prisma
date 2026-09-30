@@ -311,12 +311,14 @@ model Run {
   usageBreakdowns      RunUsageBreakdown[]
   imobCaseEvents       ImobCaseEvent[]
   runArchive           RunArchive?
+  stateTransitions     RunStateTransition[]
   paymentIntents       PaymentIntent[]
   assignment           WorkspaceAgentAssignment? @relation(fields: [assignmentId], references: [id])
   tenant               Tenant                    @relation(fields: [tenantId], references: [id])
   user                 User?                     @relation(fields: [userId], references: [id])
   workspace            Workspace                 @relation(fields: [workspaceId], references: [id])
 
+  @@unique([id, tenantId, workspaceId], map: "runs_id_tenant_id_workspace_id_key")
   @@index([tenantId, workspaceId, agent, createdAt])
   @@index([assignmentId])
   @@index([caseId])
@@ -1483,4 +1485,51 @@ model OraculoNegativeRecovery {
   intent OraculoIntent @relation(fields:[tenantId,workspaceId,intentId],references:[tenantId,workspaceId,intentId],onDelete:NoAction,onUpdate:NoAction)
   @@id([tenantId,workspaceId,intentId])
   @@map("oraculo_negative_recoveries")
+}
+
+// Proposed additive P1 storage. No existing run is automatically certified.
+model RunStateTransition {
+  id                 String    @id
+  runId              String    @map("run_id")
+  tenantId           String    @map("tenant_id")
+  workspaceId        String    @map("workspace_id")
+  commandId          String    @unique(map: "run_state_transitions_command_id_key") @map("command_id")
+  schemaVersion      String    @map("schema_version")
+  sequence           BigInt
+  previousStatus     RunStatus? @map("previous_status")
+  previousFinishedAt DateTime? @map("previous_finished_at")
+  status             RunStatus
+  finishedAt         DateTime? @map("finished_at")
+  declaredAt         DateTime  @map("declared_at")
+  producerId         String    @map("producer_id")
+  operationRef       String    @map("operation_ref")
+  commandDigest      String    @map("command_digest")
+  recordedAt         DateTime  @default(now()) @map("recorded_at")
+  run                Run       @relation(fields: [runId, tenantId, workspaceId], references: [id, tenantId, workspaceId])
+  publishIntent      RunPublishOutbox?
+
+  @@unique([runId, sequence], map: "run_state_transitions_run_id_sequence_key")
+  @@unique([runId, tenantId, workspaceId, commandId], map: "run_state_transitions_scope_command_key")
+  @@index([tenantId, workspaceId, recordedAt], map: "run_state_transitions_scope_recorded_idx")
+  @@map("run_state_transitions")
+}
+
+model RunPublishOutbox {
+  id           String    @id
+  commandId    String    @unique(map: "run_publish_outbox_command_id_key") @map("command_id")
+  runId        String    @map("run_id")
+  tenantId     String    @map("tenant_id")
+  workspaceId  String    @map("workspace_id")
+  destination  String
+  payloadRef   String    @map("payload_ref")
+  payload      Json
+  state        String    @default("pending")
+  attempts     Int       @default(0)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  publishedAt  DateTime? @map("published_at")
+  transition   RunStateTransition @relation(fields: [runId, tenantId, workspaceId, commandId], references: [runId, tenantId, workspaceId, commandId])
+
+  @@unique([runId, tenantId, workspaceId, commandId], map: "run_publish_outbox_scope_command_key")
+  @@index([state, createdAt], map: "run_publish_outbox_state_created_at_idx")
+  @@map("run_publish_outbox")
 }
