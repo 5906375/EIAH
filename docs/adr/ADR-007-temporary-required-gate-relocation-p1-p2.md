@@ -14,7 +14,8 @@ Proposta para ratificação
 
 ## Reavaliação obrigatória
 
-2026-09-18
+2026-12-31 (definida na reavaliação registrada em 2026-09-30, §24; a data original de 2026-09-18 é
+histórica e foi reavaliada com atraso)
 
 ## 1. Contexto
 
@@ -374,3 +375,58 @@ administrativamente em 2026-08-08, mantida separada da reavaliação de mérito 
 P1/P2 permanecem não saudáveis quanto às falhas e limitações descritas nas seções 4–5. A relocação dos
 dois contexts para fora do conjunto required é o único fato administrativo coberto por esta seção; o
 mérito de sua restauração (seções 15–16) continua em aberto.
+
+**Atualização de 2026-09-30:** a reavaliação pendente acima foi registrada na seção 24. O texto desta
+seção permanece como retrato histórico do estado em 2026-09-26.
+
+## 24. Reavaliação de 2026-09-18 — decisão registrada em 2026-09-30
+
+**Decisão de Carlos Alberto Merlo — 30/09/2026, America/Sao_Paulo.** Origem: declaração explícita do
+usuário nesta conversa, confirmada por aprovação do texto antes do registro. Registro textual, sem
+atribuição de assinatura digital ou verificação independente de identidade.
+
+> “Eu, Carlos Alberto Merlo, reavalio em 30/09/2026 a ADR-007, vencida em 18/09/2026, e decido
+> manter F-1: P1ReconciliationRecurring e P2HighGlobalCoverage permanecem temporarily_non_required,
+> com execução e falhas visíveis no CI. As condições de retorno das §15 e §16 permanecem inalteradas,
+> inclusive a anotação 14/28 restrita ao caminho M1 v3. Nova reavaliação obrigatória em 31/12/2026.
+> Esta decisão não altera o ruleset, não ratifica a ADR-007 nem a ADR-009, não autoriza execução
+> operacional ou ativação de CI e não restaura P1/P2 como required checks.”
+
+### 24.1 Atraso da reavaliação
+
+A reavaliação ocorreu com 12 dias de atraso em relação a 2026-09-18. Entre essa data e 2026-09-30
+vigorou o estado F-1 sem decisão registrada. Esse intervalo não é convalidado retroativamente como
+prorrogação; a decisão desta seção vale a partir de 2026-09-30.
+
+### 24.2 Estado verificado na data da decisão (checkout `f7e5761`)
+
+| Item | Estado | Fonte |
+| --- | --- | --- |
+| F-1 | Aplicada em 2026-08-08; P1/P2 fora dos required contexts | §23; `ops/evidence/ci/f1-gate-relocation-applied-2026-08-08/` |
+| Execução e visibilidade | Jobs continuam em `ci.yml` (`P2HighGlobalCoverage`, `P1ReconciliationRecurring`), sem `continue-on-error` próprio | `.github/workflows/ci.yml` |
+| Waivers P1/P2 (§10–§11) | Nenhuma entrada P1/P2 em `ops/contracts/gate-waivers.v1.json` | `ops/contracts/gate-waivers.v1.json` |
+| Relocação para `ape-weekly.yml` (§10) | Não executada | `.github/workflows/ape-weekly.yml` |
+| Condições de retorno P1 (§15) | Não satisfeitas: caminho M1 v3 implementado apenas localmente, escopo canônico pendente (`scope=null`) e gate em `GUARANTEE_NOT_DEMONSTRATED` | `scripts/policies/p1-m1-partially-approved.v1.json`; `scripts/checkP1ApeWeeklyCycleV3.ts`; ADR-009 §14 |
+| Condições de retorno P2 (§16) | Não satisfeitas: `e2eCovered` ainda é atribuído pelo gerador, sem execução E2E real | `scripts/generateP2HighGlobalCoverage.ts` |
+
+Em 2026-09-30 o usuário executou localmente a suíte M1 (72/72) e `pnpm check:evidence-index` (8/8
+testes, 642 refs). Essas execuções locais confirmam o comportamento fail-closed do caminho M1 v3, mas
+não são evidência operacional, não satisfazem nenhuma condição da §15 e não foram indexadas.
+
+### 24.3 Novo prazo e marcos
+
+- **Próxima reavaliação obrigatória: 2026-12-31**, sob a mesma regra da §17: a data é gatilho de
+  decisão, não retorno nem extensão automática; silêncio não autoriza reintroduzir os contexts,
+  renovar waivers ou declarar saúde.
+- Marcos esperados até lá, sem constituir autorização: designação do escopo canônico M1
+  (ADR-009 §14.3) e proposta de captura E2E real para P2 (§16, itens 1–2).
+
+### 24.4 O que esta seção não faz
+
+- Não altera o ruleset `main-protection-hard-gates`, `.github/workflows/*.yml`, checkers, thresholds,
+  producers, waivers ou `docs/EVIDENCE_INDEX.md`.
+- Não ratifica a ADR-007 nem a ADR-009 e não altera o Status de nenhuma delas.
+- Não autoriza execução operacional, ativação de CI ou retorno de P1/P2 como required checks.
+- Não trata a lacuna de rastreabilidade de `AssignmentFailClosedHttp` (§23; ADR-009 §2.1), que
+  continua pendente de decisão própria.
+- Não constitui evidência de execução e não é adicionada a `docs/EVIDENCE_INDEX.md`.
