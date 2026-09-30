@@ -1,8 +1,13 @@
 # Persistência de transições de Run e publicação durável — contrato proposto
 
-Status: **proposta técnica**, sem migration, adaptador Prisma, wiring, CI ou
-execução operacional. Complementa `p1-run-transition-writer-inventory.draft.md`
-e `scripts/lib/p1AtomicRunTransition.ts`; não substitui decisões da ADR-009.
+Status: **proposta técnica com implementação local parcial** (desde #458): existem o adaptador
+`apps/api/src/services/p1RunTransitionPersistence.ts`, as migrations
+`packages/db/prisma/migrations/20260929170000_p1_run_transition_storage/` e
+`packages/db/prisma/migrations/20260929180000_p1_transition_immutability/` e o teste
+`packages/db/src/p1RunTransitionPersistence.integration.test.ts`, configurado no CI. Não há wiring
+dos writers operacionais, aplicação das migrations em produção nem execução operacional.
+Complementa `p1-run-transition-writer-inventory.draft.md` e `scripts/lib/p1AtomicRunTransition.ts`;
+não substitui decisões da ADR-009.
 
 ## Transação local ao banco
 
