@@ -617,6 +617,9 @@ jobs:
       - name: Run orphan tests gate unit test
         run: pnpm check:orphan-tests:unit
 
+      - name: Build core for P1 billing characterization
+        run: pnpm --filter @eiah/core build
+
       - name: Run P1 local contract fixtures
         run: |
           node --import tsx --test \
