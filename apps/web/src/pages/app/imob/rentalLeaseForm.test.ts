@@ -46,7 +46,8 @@ test("builds the structured request with digits-only document and phone", () => 
     guaranteeType: "caucao",
     guaranteeAmount: "2.400,00",
     iptu: "inquilino",
-    condominio: "nao_existe",
+    condominio: "inquilino",
+    condominioAmount: "350,00",
   });
   assert.equal(result.ok, true);
   if (!result.ok) return;
@@ -66,7 +67,8 @@ test("builds the structured request with digits-only document and phone", () => 
     guaranteeType: "caucao",
     guaranteeAmountCents: 240000,
     iptu: "inquilino",
-    condominio: "nao_existe",
+    condominio: "inquilino",
+    condominioAmountCents: 35000,
   });
 });
 
@@ -123,4 +125,15 @@ test("property options skip archived items and use the unit label without person
     { value: "p1", label: "Kitnet — Rua A, 1" },
     { value: "p2", label: "Sala 01 — Rua B, 2 · Itapema" },
   ]);
+});
+
+test("condominium amount is optional and refused when condominium does not exist", () => {
+  const blank = buildRentalLeaseRequest({ propertyId: "p", tenantName: "A", condominio: "dispensado" });
+  assert.equal(blank.ok, true);
+  if (blank.ok) assert.equal(blank.request.condominioAmountCents, null);
+  const conflict = buildRentalLeaseRequest({ propertyId: "p", tenantName: "A", condominio: "nao_existe", condominioAmount: "100,00" });
+  assert.equal(conflict.ok, false);
+  if (!conflict.ok) assert.match(conflict.errors.condominioAmount, /Não existe/);
+  const invalid = buildRentalLeaseRequest({ propertyId: "p", tenantName: "A", condominioAmount: "trezentos" });
+  assert.equal(invalid.ok, false);
 });

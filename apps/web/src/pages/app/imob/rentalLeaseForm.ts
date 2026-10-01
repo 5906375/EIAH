@@ -92,6 +92,12 @@ export function buildRentalLeaseRequest(values: Record<string, string>): RentalL
   if (Number.isNaN(rentCents) || rentCents === 0) errors.rent = "Informe o valor no formato 1.200,00.";
   const guaranteeAmountCents = parseBrlToCents(values.guaranteeAmount);
   if (Number.isNaN(guaranteeAmountCents)) errors.guaranteeAmount = "Informe o valor no formato 1.200,00.";
+  const condominioAmountCents = parseBrlToCents(values.condominioAmount);
+  if (Number.isNaN(condominioAmountCents) || condominioAmountCents === 0) {
+    errors.condominioAmount = "Informe o valor no formato 350,00.";
+  } else if (condominioAmountCents && clean(values.condominio) === "nao_existe") {
+    errors.condominioAmount = "Condomínio marcado como \"Não existe\": deixe o valor em branco.";
+  }
 
   const dueDay = parseIntInRange(values.dueDay, 1, 31);
   if (Number.isNaN(dueDay)) errors.dueDay = "Informe um dia entre 1 e 31.";
@@ -127,6 +133,7 @@ export function buildRentalLeaseRequest(values: Record<string, string>): RentalL
       guaranteeAmountCents: guaranteeAmountCents as number | null,
       iptu: pick(values.iptu, chargePayers, "desconhecido"),
       condominio: pick(values.condominio, chargePayers, "desconhecido"),
+      condominioAmountCents: condominioAmountCents as number | null,
     },
   };
 }

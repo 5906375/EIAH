@@ -36,6 +36,7 @@ export type RentalLeaseInput = {
   guaranteeAmountCents?: number | null;
   iptu: ChargePayer;
   condominio: ChargePayer;
+  condominioAmountCents?: number | null;
   notes?: string | null;
 };
 
@@ -103,6 +104,7 @@ export function buildRentalLeaseMetadata(input: RentalLeaseInput, stableAgreemen
     charges: {
       iptu: informed(input.iptu),
       condominio: informed(input.condominio),
+      condominioAmountCents: informed(input.condominioAmountCents),
     },
     notes: input.notes ?? null,
   };

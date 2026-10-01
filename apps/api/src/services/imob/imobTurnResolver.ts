@@ -1445,6 +1445,7 @@ export function buildRentalLeaseCreateForm(leadDraft?: {
       { name: "guaranteeAmount", label: "Valor da caução prevista (R$)", type: "text" as const, placeholder: "2.400,00", inputMode: "numeric" as const, value: "" },
       { name: "iptu", label: "IPTU", type: "select" as const, value: "desconhecido", options: RENTAL_CHARGE_PAYER_OPTIONS },
       { name: "condominio", label: "Condomínio", type: "select" as const, value: "desconhecido", options: RENTAL_CHARGE_PAYER_OPTIONS },
+      { name: "condominioAmount", label: "Valor do condomínio (R$/mês)", type: "text" as const, placeholder: "350,00", inputMode: "numeric" as const, value: "" },
     ],
     actions: [
       { id: "cancel" as const, label: "Cancelar", kind: "secondary" as const },

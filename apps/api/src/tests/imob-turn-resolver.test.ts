@@ -1392,7 +1392,7 @@ test("IMOB turn resolver builds guided form for locatário on lead.qualify", () 
     [
       "propertyId", "tenantName", "tenantDocument", "tenantPhone", "tenantEmail", "agreementType",
       "startDate", "endDate", "rent", "dueDay", "adjustmentIndex", "adjustmentMonth",
-      "guaranteeType", "guaranteeAmount", "iptu", "condominio",
+      "guaranteeType", "guaranteeAmount", "iptu", "condominio", "condominioAmount",
     ],
   );
   const propertyField = result.presentation.form?.fields.find((field) => field.name === "propertyId");

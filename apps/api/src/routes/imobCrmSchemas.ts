@@ -83,10 +83,14 @@ export const imobRentalLeaseCreateSchema = z.object({
   guaranteeAmountCents: z.union([z.number().int().min(0).max(1_000_000_000), z.null()]).optional(),
   iptu: rentalChargePayerSchema.default("desconhecido"),
   condominio: rentalChargePayerSchema.default("desconhecido"),
+  condominioAmountCents: z.union([z.number().int().min(1).max(1_000_000_000), z.null()]).optional(),
   notes: optionalShortString(1000),
 }).superRefine((value, ctx) => {
   if (value.startDate && value.endDate && value.endDate < value.startDate) {
     ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["endDate"], message: "endDate must not be before startDate" });
+  }
+  if (value.condominio === "nao_existe" && value.condominioAmountCents) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["condominioAmountCents"], message: "condominio amount given but condominio does not exist" });
   }
 });
 

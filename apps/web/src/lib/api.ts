@@ -3352,6 +3352,7 @@ export type ImobRentalLeaseCreateRequest = {
   guaranteeAmountCents: number | null;
   iptu: ImobRentalChargePayer;
   condominio: ImobRentalChargePayer;
+  condominioAmountCents: number | null;
 };
 
 export type ImobRentalLeaseCreateResponse = {

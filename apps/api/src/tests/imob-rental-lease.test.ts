@@ -84,7 +84,8 @@ function leaseInput(overrides: Row = {}) {
     guaranteeType: "caucao",
     guaranteeAmountCents: 240000,
     iptu: "inquilino",
-    condominio: "nao_existe",
+    condominio: "inquilino",
+    condominioAmountCents: 35000,
     ...overrides,
   });
 }
@@ -101,6 +102,7 @@ test("schema: rejects end before start, bad dates and malformed documents", () =
   assert.equal(imobRentalLeaseCreateSchema.safeParse({ propertyId: "p", tenantName: "A", startDate: "2026-01-01", endDate: "2025-01-01" }).success, false);
   assert.equal(imobRentalLeaseCreateSchema.safeParse({ propertyId: "p", tenantName: "A", startDate: "01/03/2025" }).success, false);
   assert.equal(imobRentalLeaseCreateSchema.safeParse({ propertyId: "p", tenantName: "A", tenantDocument: "123" }).success, false);
+  assert.equal(imobRentalLeaseCreateSchema.safeParse({ propertyId: "p", tenantName: "A", condominio: "nao_existe", condominioAmountCents: 100 }).success, false);
   const minimal = imobRentalLeaseCreateSchema.parse({ propertyId: "p", tenantName: "A" });
   assert.equal(minimal.agreementType, "desconhecido");
   assert.equal(minimal.guaranteeType, "desconhecido");
@@ -124,6 +126,8 @@ test("registers a lease as a rental.lease case linked to the property, without c
   assert.equal(created.metadata.rentCents.value, 120000);
   assert.equal(created.metadata.adjustmentIndex.value, "IGPM");
   assert.equal(created.metadata.guarantee.receivedStatus, "not_tracked");
+  assert.deepEqual(created.metadata.charges.condominio, { value: "inquilino", origin: "informed_by_manager" });
+  assert.deepEqual(created.metadata.charges.condominioAmountCents, { value: 35000, origin: "informed_by_manager" });
   assert.deepEqual(created.pendingItems, ["vincular_contrato_pdf"]);
   assert.equal(fixture.caseEvents[0]?.type, "rental.lease.registered");
   assert.deepEqual(fixture.properties[0]?.metadata.occupancy, { value: "locado", origin: "informed_by_manager" });
