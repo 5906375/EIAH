@@ -812,6 +812,8 @@ export type ImobPresentationFormField = {
   inputMode?: "text" | "numeric";
   maxLength?: number;
   options?: ImobPresentationFormFieldOption[];
+  /** Opções carregadas no cliente a partir do CRM do workspace (ex.: imóveis cadastrados). */
+  optionsSource?: "imob_properties" | "imob_owners";
   lookup?: ImobPresentationFormFieldLookup;
 };
 
@@ -827,6 +829,11 @@ export type ImobPresentationForm = {
   label: string;
   description?: string;
   subjectId?: string;
+  /**
+   * Formulário estruturado: o cliente envia os campos direto para a rota
+   * indicada, sem execução de agente e sem transformar em texto de conversa.
+   */
+  submitTarget?: "imob.owners.create" | "imob.properties.create" | "imob.rentals.create";
   fields: ImobPresentationFormField[];
   actions?: ImobPresentationFormAction[];
 };

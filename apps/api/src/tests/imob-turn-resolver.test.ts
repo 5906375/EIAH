@@ -526,11 +526,15 @@ test("IMOB turn resolver builds explicit owner.create operational state", () => 
   assert.equal(result.presentation.text, "");
   assert.deepEqual(
     result.presentation.form?.fields.map((field) => field.name),
-    ["ownerName", "ownerPhone", "ownerEmail", "ownerDocument"],
+    ["personType", "ownerName", "ownerDocument", "ownerPhone", "ownerEmail"],
   );
-  const ownerDocumentField = result.presentation.form?.fields.find((field) => field.name === "ownerDocument");
-  assert.equal(ownerDocumentField?.allowAttachment, true);
-  assert.equal(ownerDocumentField?.attachmentLabel, "Anexar documento");
+  // Formulário estruturado: grava direto em POST /imob/owners; só o nome é obrigatório.
+  assert.equal(result.presentation.form?.submitTarget, "imob.owners.create");
+  assert.deepEqual(
+    result.presentation.form?.fields.filter((field) => field.required).map((field) => field.name),
+    ["ownerName"],
+  );
+  assert.equal(result.presentation.form?.fields.find((field) => field.name === "ownerName")?.value, "Joao Silva");
 });
 
 test("IMOB turn resolver keeps generic new-conversation owner phrasing from becoming a real owner name", () => {
@@ -563,7 +567,7 @@ test("IMOB turn resolver builds guided form for vendedor on owner.create", () =>
   assert.equal(result.conversationState.operational?.ownerDraft?.ownerPersona, "vendedor");
   assert.equal(result.presentation.form?.entity, "vendedor");
   assert.equal(result.presentation.form?.label, "Cadastrar vendedor");
-  assert.equal(result.presentation.form?.fields.find((field) => field.name === "ownerDocument")?.allowAttachment, true);
+  assert.equal(result.presentation.form?.submitTarget, "imob.owners.create");
 });
 
 test("IMOB turn resolver builds guided form for locador on owner.create", () => {
@@ -591,9 +595,18 @@ test("IMOB turn resolver builds guided form for property.create", () => {
   assert.equal(result.presentation.form?.label, "Cadastrar imóvel");
   assert.deepEqual(
     result.presentation.form?.fields.map((field) => field.name),
-    ["propertyType", "goal", "cep", "city", "address"],
+    [
+      "propertyType", "goal", "unitLabel", "ownerId", "occupancy", "cep", "city", "neighborhood", "address",
+      "areaM2", "bedrooms", "bathrooms", "garageSpots",
+    ],
   );
   assert.equal(result.presentation.form?.fields.find((field) => field.name === "cep")?.lookup?.kind, "cep");
+  assert.equal(result.presentation.form?.submitTarget, "imob.properties.create");
+  assert.equal(result.presentation.form?.fields.find((field) => field.name === "ownerId")?.optionsSource, "imob_owners");
+  assert.deepEqual(
+    result.presentation.form?.fields.filter((field) => field.required).map((field) => field.name),
+    ["propertyType", "goal", "city", "address"],
+  );
 });
 
 test("IMOB turn resolver keeps chips and free-text capture prompts behaviorally equivalent", () => {
@@ -1376,8 +1389,24 @@ test("IMOB turn resolver builds guided form for locatário on lead.qualify", () 
 
   assert.equal(result.mode, "execute");
   assert.equal(result.executionRequest?.operation, "lead.qualify");
-  assert.equal(result.presentation.form?.entity, "locatario");
-  assert.equal(result.presentation.form?.label, "Cadastrar locatário");
+  assert.equal(result.presentation.form?.entity, "locacao");
+  assert.equal(result.presentation.form?.label, "Cadastrar locação");
+  assert.equal(result.threadLabel, "Locação");
+  assert.deepEqual(
+    result.presentation.form?.fields.map((field) => field.name),
+    [
+      "propertyId", "tenantName", "tenantDocument", "tenantPhone", "tenantEmail", "agreementType",
+      "startDate", "endDate", "rent", "dueDay", "adjustmentIndex", "adjustmentMonth",
+      "guaranteeType", "guaranteeAmount", "iptu", "condominio", "condominioAmount",
+    ],
+  );
+  const propertyField = result.presentation.form?.fields.find((field) => field.name === "propertyId");
+  assert.equal(propertyField?.optionsSource, "imob_properties");
+  assert.equal(propertyField?.required, true);
+  assert.deepEqual(
+    result.presentation.form?.fields.filter((field) => field.required).map((field) => field.name),
+    ["propertyId", "tenantName"],
+  );
 });
 
 test("IMOB turn resolver accepts form-style lead budget labels", () => {

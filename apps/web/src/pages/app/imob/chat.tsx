@@ -23,6 +23,11 @@ import {
   apiListImobChatConversations,
   apiListImobChatMessages,
   apiListImobChatThreads,
+  apiListImobProperties,
+  apiListImobOwners,
+  apiCreateImobOwner,
+  apiCreateImobProperty,
+  apiCreateImobRentalLease,
   apiUpsertImobChatInterviewState,
   type ImobCaseContext,
   type ImobCaseRecommendedAction,
@@ -36,8 +41,30 @@ import {
   type ImobPresentationMetadata,
   type ImobPresentationBlock,
   type ImobPresentationForm,
+  type ImobPresentationFormField,
+  type ImobPresentationFormFieldOption,
   type ImobPresentationWidget,
 } from "@/lib/api";
+import {
+  buildImobPropertyOptions,
+  buildRentalLeaseConfirmationText,
+  buildRentalLeaseRequest,
+  isRentalLeaseForm,
+} from "./rentalLeaseForm";
+import {
+  OCCUPANCY_LABELS,
+  buildImobOwnerOptions,
+  buildPropertyCreateConfirmationText,
+  buildPropertyCreateRequest,
+  findDuplicateProperty,
+  isPropertyCreateForm,
+} from "./propertyCreateForm";
+import {
+  buildOwnerCreateConfirmationText,
+  buildOwnerCreateRequest,
+  findOwnerDuplicate,
+  isOwnerCreateForm,
+} from "./ownerCreateForm";
 import { useSession } from "@/state/sessionStore";
 import {
   resolveImobTurn,
@@ -571,16 +598,35 @@ const SHOW_TECHNICAL_CHAT = false;
 const SHOW_CHAT_FEEDBACK = false;
 const HISTORY_PAGE_SIZE = 30;
 const QUICK_PROMPTS = [
+  // Formulários estruturados: abrem na hora e gravam direto (sem texto livre).
+  {
+    label: "Cadastrar proprietário",
+    shortLabel: "Proprietário",
+    prompt: "cadastrar proprietário",
+  },
+  {
+    label: "Cadastrar imóvel",
+    shortLabel: "Imóvel",
+    prompt: "cadastrar imóvel",
+  },
+  {
+    label: "Cadastrar locação",
+    shortLabel: "Locação",
+    prompt: "cadastrar locatário",
+  },
   {
     label: "Captar imóvel",
+    shortLabel: "Captar",
     prompt: "Quero iniciar uma captação no IMOB. Me mostre opções de próximos passos no chat.",
   },
   {
     label: "Gerar proposta",
+    shortLabel: "Proposta",
     prompt: "Quero gerar uma proposta comercial para um cliente.",
   },
   {
     label: "Iniciar contrato",
+    shortLabel: "Contrato",
     prompt: "Quero iniciar a coleta de dados para gerar um contrato imobiliário.",
   },
 ] as const;
@@ -2119,6 +2165,12 @@ const ImobChatPage: React.FC = () => {
   const [formValuesByMessageId, setFormValuesByMessageId] = React.useState<Record<string, Record<string, string>>>({});
   const [formErrorsByMessageId, setFormErrorsByMessageId] = React.useState<Record<string, Record<string, string>>>({});
   const [formLookupLoadingByMessageId, setFormLookupLoadingByMessageId] = React.useState<Record<string, Record<string, boolean>>>({});
+  const [imobPropertyOptions, setImobPropertyOptions] = React.useState<ImobPresentationFormFieldOption[] | null>(null);
+  const [imobOwnerOptions, setImobOwnerOptions] = React.useState<ImobPresentationFormFieldOption[] | null>(null);
+  const propertyOptionsLoadedForRef = React.useRef<Set<string>>(new Set());
+  const formSubmittingRef = React.useRef<Set<string>>(new Set());
+  // Nome igual a um proprietário existente: o segundo clique confirma o cadastro.
+  const ownerNameConfirmedRef = React.useRef<Record<string, string>>({});
   const [isNearBottom, setIsNearBottom] = React.useState(true);
   const [showAllConversations, setShowAllConversations] = React.useState(false);
   const [showJumpToLatest, setShowJumpToLatest] = React.useState(false);
@@ -2230,6 +2282,39 @@ const ImobChatPage: React.FC = () => {
       setSequentialChoiceMessageIds((prev) => ({ ...prev, [message.id]: true }));
     }
   }, []);
+
+  const resolveFormFieldOptions = React.useCallback(
+    (field: ImobPresentationFormField): ImobPresentationFormFieldOption[] =>
+      field.optionsSource === "imob_properties"
+        ? imobPropertyOptions ?? []
+        : field.optionsSource === "imob_owners"
+          ? imobOwnerOptions ?? []
+          : field.options ?? [],
+    [imobOwnerOptions, imobPropertyOptions],
+  );
+
+  React.useEffect(() => {
+    const pending = messages.filter(
+      (message) =>
+        message.form?.fields.some((field) => Boolean(field.optionsSource))
+        && !propertyOptionsLoadedForRef.current.has(message.id),
+    );
+    if (pending.length === 0) return;
+    for (const message of pending) propertyOptionsLoadedForRef.current.add(message.id);
+    const sources = new Set(pending.flatMap((message) => message.form?.fields.map((field) => field.optionsSource) ?? []));
+    // Sem cancelamento no cleanup: `messages` muda a cada nova mensagem e a
+    // lista precisa chegar mesmo assim (o form já foi marcado como carregado).
+    if (sources.has("imob_properties")) {
+      void apiListImobProperties()
+        .then((response) => setImobPropertyOptions(buildImobPropertyOptions(response.data.items ?? [])))
+        .catch(() => setImobPropertyOptions((prev) => prev ?? []));
+    }
+    if (sources.has("imob_owners")) {
+      void apiListImobOwners()
+        .then((response) => setImobOwnerOptions(buildImobOwnerOptions(response.data.items ?? [])))
+        .catch(() => setImobOwnerOptions((prev) => prev ?? []));
+    }
+  }, [messages]);
 
   const resolveFormValuesForMessage = React.useCallback(
     (message: ChatMessage) => {
@@ -3628,8 +3713,9 @@ const ImobChatPage: React.FC = () => {
       interviewIsActive &&
       (resolvedIntent === null || resolvedIntent === "adjustment" || resolvedIntent === "contract");
 
+    let userMessagePersisted: Promise<unknown> = Promise.resolve();
     if (shouldEchoUserMessage && userMessageId) {
-      void persistMessage(
+      userMessagePersisted = persistMessage(
         {
           id: userMessageId,
           role: "user",
@@ -3936,6 +4022,40 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
         });
       }
       setActiveThread({ id: baseThread.id, label: baseThread.label });
+      setState("done");
+      return;
+    }
+
+    if (
+      isRentalLeaseForm(turn.presentation.form)
+      || isPropertyCreateForm(turn.presentation.form)
+      || isOwnerCreateForm(turn.presentation.form)
+    ) {
+      // Formulários estruturados gravam direto na API (POST /imob/rentals ou
+      // /imob/properties): não há execução de agente a negociar, então só
+      // exibimos o formulário.
+      const isLease = isRentalLeaseForm(turn.presentation.form);
+      const isOwner = isOwnerCreateForm(turn.presentation.form);
+      const threadLabel = isLease ? "Locação" : "Captação";
+      const formReply: ChatMessage = {
+        id: makeId("assistant"),
+        role: "assistant",
+        text: isLease
+          ? "Preencha os dados da locação. Só imóvel e nome do inquilino são obrigatórios."
+          : isOwner
+            ? "Preencha os dados do proprietário. Só o nome é obrigatório."
+            : "Preencha os dados do imóvel. Tipo, finalidade, cidade e endereço são obrigatórios.",
+        form: turn.presentation.form,
+        thread: { ...baseThread, label: threadLabel },
+      };
+      appendMessage(formReply);
+      // Persiste só o texto (sem o formulário nem valores) para o histórico
+      // não mostrar o pedido do usuário sem resposta ao recarregar.
+      // Depois da mensagem do usuário, para manter a ordem no histórico.
+      void userMessagePersisted
+        .catch(() => undefined)
+        .then(() => persistMessage({ ...formReply, form: undefined }, { conversationId: activeConversationId }));
+      setActiveThread({ id: baseThread.id, label: threadLabel });
       setState("done");
       return;
     }
@@ -4467,9 +4587,223 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
   }, [setFormLookupLoading, updateFormFieldValue]);
 
 
+  function clearThreadOperationalState(message: ChatMessage) {
+    const threadIds = [message.thread?.id, message.card?.thread?.id, activeThread?.id].filter((id): id is string => Boolean(id));
+    for (const threadId of threadIds) {
+      const state = conversationStateByThreadRef.current[threadId];
+      if (state) conversationStateByThreadRef.current[threadId] = { ...state, operational: null };
+    }
+  }
+
+  async function handleRentalLeaseFormAction(message: ChatMessage, actionId: "cancel" | "submit") {
+    if (actionId === "cancel") {
+      updateMessageById(message.id, { form: undefined });
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+      clearThreadOperationalState(message);
+      appendMessage({
+        id: makeId("assistant"),
+        role: "assistant",
+        text: "Cadastro de locação cancelado. Nada foi gravado.",
+        thread: message.thread,
+      });
+      return;
+    }
+
+    if (formSubmittingRef.current.has(message.id)) return;
+    const built = buildRentalLeaseRequest(resolveFormValuesForMessage(message));
+    if (!built.ok) {
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: built.errors }));
+      return;
+    }
+
+    formSubmittingRef.current.add(message.id);
+    setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+    try {
+      const response = await apiCreateImobRentalLease(built.request);
+      updateMessageById(message.id, { form: undefined });
+      clearThreadOperationalState(message);
+      const confirmation: ChatMessage = {
+        id: makeId("assistant"),
+        role: "assistant",
+        text: buildRentalLeaseConfirmationText(response.data),
+        thread: message.thread,
+      };
+      appendMessage(confirmation);
+      void persistMessage(confirmation, { intent: "rental.lease.registered", action: "imob.rentals.create" });
+    } catch (error) {
+      const body = error instanceof ApiError ? (error.body as { error?: { code?: string } } | undefined) : undefined;
+      const code = body?.error?.code;
+      const status = error instanceof ApiError ? error.status : 0;
+      const errors: Record<string, string> =
+        code === "RENTAL_LEASE_ALREADY_ACTIVE"
+          ? { propertyId: "Este imóvel já tem uma locação ativa." }
+          : code === "INVALID_TENANT_DOCUMENT"
+            ? { tenantDocument: "CPF inválido: confira os dígitos." }
+            : code === "PROPERTY_NOT_FOUND"
+              ? { propertyId: "Imóvel não encontrado neste workspace. Atualize a lista e tente de novo." }
+              : status === 403
+                ? { _form: "Sua função atual não pode cadastrar locações neste workspace. Nada foi gravado." }
+                : { _form: `Não foi possível salvar a locação agora${status ? ` (HTTP ${status})` : ""}. Nada foi gravado; tente de novo.` };
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: errors }));
+    } finally {
+      formSubmittingRef.current.delete(message.id);
+    }
+  }
+
+  async function handlePropertyCreateFormAction(message: ChatMessage, actionId: "cancel" | "submit") {
+    if (actionId === "cancel") {
+      updateMessageById(message.id, { form: undefined });
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+      clearThreadOperationalState(message);
+      appendMessage({
+        id: makeId("assistant"),
+        role: "assistant",
+        text: "Cadastro de imóvel cancelado. Nada foi gravado.",
+        thread: message.thread,
+      });
+      return;
+    }
+
+    if (formSubmittingRef.current.has(message.id)) return;
+    const values = resolveFormValuesForMessage(message);
+    const built = buildPropertyCreateRequest(values);
+    if (!built.ok) {
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: built.errors }));
+      return;
+    }
+
+    formSubmittingRef.current.add(message.id);
+    setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+    try {
+      const existing = await apiListImobProperties();
+      const duplicate = findDuplicateProperty(built.request, existing.data.items ?? []);
+      if (duplicate) {
+        setFormErrorsByMessageId((prev) => ({
+          ...prev,
+          [message.id]: { address: "Já existe um imóvel com este endereço e esta identificação de unidade." },
+        }));
+        return;
+      }
+      const response = await apiCreateImobProperty(built.request);
+      updateMessageById(message.id, { form: undefined });
+      clearThreadOperationalState(message);
+      const created = response.data;
+      const [label] = buildImobPropertyOptions([created]).map((option) => option.label);
+      const occupancy = typeof values.occupancy === "string" ? values.occupancy.trim() : "";
+      const confirmation: ChatMessage = {
+        id: makeId("assistant"),
+        role: "assistant",
+        text: buildPropertyCreateConfirmationText({
+          label: label ?? created.id,
+          ownerName: created.owner?.name ?? null,
+          occupancyLabel: OCCUPANCY_LABELS[occupancy] ?? null,
+        }),
+        thread: message.thread,
+      };
+      appendMessage(confirmation);
+      void persistMessage(confirmation, { intent: "property.registered", action: "imob.properties.create" });
+    } catch (error) {
+      const body = error instanceof ApiError ? (error.body as { error?: { code?: string } } | undefined) : undefined;
+      const status = error instanceof ApiError ? error.status : 0;
+      const errors: Record<string, string> =
+        body?.error?.code === "OWNER_NOT_FOUND"
+          ? { ownerId: "Proprietário não encontrado neste workspace. Atualize a lista e tente de novo." }
+          : status === 400
+            ? { _form: "Algum campo foi recusado pelo servidor. Confira os valores e tente de novo. Nada foi gravado." }
+            : { _form: `Não foi possível salvar o imóvel agora${status ? ` (HTTP ${status})` : ""}. Nada foi gravado; tente de novo.` };
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: errors }));
+    } finally {
+      formSubmittingRef.current.delete(message.id);
+    }
+  }
+
+  async function handleOwnerCreateFormAction(message: ChatMessage, actionId: "cancel" | "submit") {
+    if (actionId === "cancel") {
+      updateMessageById(message.id, { form: undefined });
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+      clearThreadOperationalState(message);
+      appendMessage({
+        id: makeId("assistant"),
+        role: "assistant",
+        text: "Cadastro de proprietário cancelado. Nada foi gravado.",
+        thread: message.thread,
+      });
+      return;
+    }
+
+    if (formSubmittingRef.current.has(message.id)) return;
+    const built = buildOwnerCreateRequest(resolveFormValuesForMessage(message));
+    if (!built.ok) {
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: built.errors }));
+      return;
+    }
+
+    formSubmittingRef.current.add(message.id);
+    setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+    try {
+      const existing = await apiListImobOwners();
+      const duplicate = findOwnerDuplicate(built.request, existing.data.items ?? []);
+      if (duplicate?.kind === "strong") {
+        setFormErrorsByMessageId((prev) => ({
+          ...prev,
+          [message.id]: { _form: `Este proprietário já está cadastrado: ${duplicate.owner.name} (mesmo documento, telefone ou e-mail). Nada foi gravado.` },
+        }));
+        return;
+      }
+      if (duplicate?.kind === "name" && ownerNameConfirmedRef.current[message.id] !== built.request.name) {
+        ownerNameConfirmedRef.current[message.id] = built.request.name;
+        setFormErrorsByMessageId((prev) => ({
+          ...prev,
+          [message.id]: { ownerName: `Já existe um proprietário chamado ${duplicate.owner.name}. Se for outra pessoa, clique em Salvar de novo para cadastrar.` },
+        }));
+        return;
+      }
+      const response = await apiCreateImobOwner(built.request);
+      updateMessageById(message.id, { form: undefined });
+      clearThreadOperationalState(message);
+      const confirmation: ChatMessage = {
+        id: makeId("assistant"),
+        role: "assistant",
+        text: buildOwnerCreateConfirmationText({
+          name: response.data.name,
+          personType: built.request.personType,
+          document: built.request.document,
+          pendingItems: built.request.pendingItems,
+        }),
+        thread: message.thread,
+      };
+      appendMessage(confirmation);
+      void persistMessage(confirmation, { intent: "owner.registered", action: "imob.owners.create" });
+    } catch (error) {
+      const status = error instanceof ApiError ? error.status : 0;
+      setFormErrorsByMessageId((prev) => ({
+        ...prev,
+        [message.id]: {
+          _form: status === 400
+            ? "Algum campo foi recusado pelo servidor. Confira os valores e tente de novo. Nada foi gravado."
+            : `Não foi possível salvar o proprietário agora${status ? ` (HTTP ${status})` : ""}. Nada foi gravado; tente de novo.`,
+        },
+      }));
+    } finally {
+      formSubmittingRef.current.delete(message.id);
+    }
+  }
+
   async function handlePresentationFormAction(message: ChatMessage, actionId: "cancel" | "submit") {
     const form = message.form;
     if (!form) return;
+    if (isOwnerCreateForm(form)) {
+      await handleOwnerCreateFormAction(message, actionId);
+      return;
+    }
+    if (isRentalLeaseForm(form)) {
+      await handleRentalLeaseFormAction(message, actionId);
+      return;
+    }
+    if (isPropertyCreateForm(form)) {
+      await handlePropertyCreateFormAction(message, actionId);
+      return;
+    }
     if (actionId === "cancel") {
       setFormValuesByMessageId((prev) => ({
         ...prev,
@@ -5714,9 +6048,9 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                             className="min-h-[34px] w-full rounded-lg border border-white/10 bg-black/25 px-3 py-1.5 text-[12px] normal-case tracking-normal text-foreground focus:outline-none"
                                           >
                                             <option value="">{field.placeholder ?? ""}</option>
-                                            {Array.from(new Set((field.options ?? []).map((option) => option.group ?? "")))
+                                            {Array.from(new Set(resolveFormFieldOptions(field).map((option) => option.group ?? "")))
                                               .map((group) => {
-                                                const groupedOptions = (field.options ?? []).filter((option) => (option.group ?? "") === group);
+                                                const groupedOptions = resolveFormFieldOptions(field).filter((option) => (option.group ?? "") === group);
                                                 if (!group) {
                                                   return groupedOptions.map((option) => (
                                                     <option key={`${message.id}-${field.name}-${option.value}`} value={option.value}>
@@ -5767,6 +6101,11 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                       {field.helperText ? (
                                         <p className="text-[10px] normal-case tracking-normal text-muted-foreground">{field.helperText}</p>
                                       ) : null}
+                                      {field.optionsSource === "imob_properties" && imobPropertyOptions !== null && imobPropertyOptions.length === 0 ? (
+                                        <p className="text-[10px] normal-case tracking-normal text-amber-200">
+                                          Nenhum imóvel cadastrado neste workspace. Cadastre o imóvel antes da locação.
+                                        </p>
+                                      ) : null}
                                       {formLookupLoading[field.name] ? (
                                         <p className="text-[10px] normal-case tracking-normal text-muted-foreground">Consultando CEP...</p>
                                       ) : null}
@@ -5776,6 +6115,9 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                     </div>
                                   ))}
                                 </div>
+                                {formErrors._form ? (
+                                  <p role="alert" className="text-[11px] normal-case tracking-normal text-rose-200">{formErrors._form}</p>
+                                ) : null}
                                 <div className="flex flex-wrap gap-1.5">
                                   {(message.form.actions ?? []).map((action) => (
                                     <button
@@ -6111,10 +6453,14 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                     <button
                       key={prompt.label}
                       type="button"
+                      title={prompt.label}
+                      aria-label={prompt.label}
                       onClick={() => void sendMessageText(prompt.prompt, { displayText: prompt.label })}
                       className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 text-[9px] uppercase tracking-[0.12em] text-muted-foreground transition hover:border-accent/30 hover:bg-accent/8 hover:text-accent"
                     >
-                      {prompt.label}
+                      {/* Celular: rótulo curto; o nome completo fica na dica (title) e no aria-label. */}
+                      <span className="sm:hidden">{prompt.shortLabel}</span>
+                      <span className="hidden sm:inline">{prompt.label}</span>
                     </button>
                   ))}
                 </div>

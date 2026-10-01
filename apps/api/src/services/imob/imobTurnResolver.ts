@@ -1073,43 +1073,52 @@ function buildOwnerCreateForm(ownerDraft?: {
   return {
     entity: ownerCopy.entity,
     action: "create",
+    // Enviado pelo cliente direto para POST /imob/owners (sem execução de
+    // agente nem texto de conversa).
+    submitTarget: "imob.owners.create" as const,
     label: ownerCopy.label,
-    description: ownerCopy.description,
+    description: "Só o nome é obrigatório; o que ficar em branco vira pendência do cadastro.",
     fields: [
+      {
+        name: "personType",
+        label: "Tipo de pessoa",
+        type: "select" as const,
+        value: "person",
+        options: [
+          { value: "person", label: "Pessoa física (CPF)" },
+          { value: "company", label: "Pessoa jurídica (CNPJ)" },
+        ],
+      },
       {
         name: "ownerName",
         label: ownerCopy.nameLabel,
         type: "text" as const,
         required: true,
-        placeholder: "Ex.: João da Silva",
+        placeholder: "Nome completo ou razão social",
         value: ownerDraft?.ownerName ?? "",
+      },
+      {
+        name: "ownerDocument",
+        label: "CPF ou CNPJ",
+        type: "text" as const,
+        placeholder: "000.000.000-00 ou 00.000.000/0000-00",
+        inputMode: "numeric" as const,
+        maxLength: 18,
+        value: ownerDraft?.ownerDocument ?? "",
       },
       {
         name: "ownerPhone",
         label: ownerCopy.phoneLabel,
         type: "tel" as const,
-        required: true,
-        placeholder: "Ex.: (11) 99999-9999",
+        placeholder: "Ex.: (47) 99999-9999",
         value: ownerDraft?.ownerPhone ?? "",
       },
       {
         name: "ownerEmail",
         label: ownerCopy.emailLabel,
         type: "email" as const,
-        required: true,
         placeholder: "Ex.: joao@email.com",
         value: ownerDraft?.ownerEmail ?? "",
-      },
-      {
-        name: "ownerDocument",
-        label: ownerCopy.documentLabel,
-        type: "text" as const,
-        required: true,
-        placeholder: "Ex.: CPF ou CNPJ",
-        value: ownerDraft?.ownerDocument ?? "",
-        helperText: "Informe CPF/CNPJ ou anexe o documento.",
-        allowAttachment: true,
-        attachmentLabel: "Anexar documento",
       },
     ],
     actions: [
@@ -1144,6 +1153,9 @@ function buildPropertyCreateForm(propertyDraft?: {
   return {
     entity: "imovel",
     action: "create",
+    // Enviado pelo cliente direto para POST /imob/properties (sem execução de
+    // agente nem texto de conversa).
+    submitTarget: "imob.properties.create" as const,
     label: "Cadastrar imóvel",
     description: inheritedContext
       ? `A captação já foi aberta com contexto de ${inheritedContext}. Confirme ou ajuste os campos abaixo e complete só o que faltar.`
@@ -1175,6 +1187,35 @@ function buildPropertyCreateForm(propertyDraft?: {
         })),
       },
       {
+        name: "unitLabel",
+        label: "Identificação da unidade",
+        type: "text" as const,
+        placeholder: "Ex.: Kitnet 01, Sala 02, Apto 301",
+        value: "",
+        helperText: "Como você chama esta unidade; aparece nas listas e na locação.",
+      },
+      {
+        name: "ownerId",
+        label: "Proprietário",
+        type: "select" as const,
+        placeholder: "Sem proprietário vinculado",
+        value: "",
+        optionsSource: "imob_owners" as const,
+        options: [],
+      },
+      {
+        name: "occupancy",
+        label: "Situação",
+        type: "select" as const,
+        placeholder: "Não informada",
+        value: "",
+        options: [
+          { value: "locado", label: "Locado" },
+          { value: "vago", label: "Vago" },
+          { value: "em_obra", label: "Em obra / construção" },
+        ],
+      },
+      {
         name: "cep",
         label: "CEP",
         type: "text" as const,
@@ -1186,6 +1227,7 @@ function buildPropertyCreateForm(propertyDraft?: {
           autoFillTargets: {
             city: "city",
             address: "address",
+            neighborhood: "neighborhood",
           },
         },
       },
@@ -1197,12 +1239,22 @@ function buildPropertyCreateForm(propertyDraft?: {
         value: propertyDraft?.city ?? "",
       },
       {
+        name: "neighborhood",
+        label: "Bairro",
+        type: "text" as const,
+        value: "",
+      },
+      {
         name: "address",
         label: "Endereço",
         type: "text" as const,
         required: true,
         value: propertyDraft?.address ?? "",
       },
+      { name: "areaM2", label: "Área (m²)", type: "text" as const, inputMode: "numeric" as const, maxLength: 6, placeholder: "Ex.: 25", value: "" },
+      { name: "bedrooms", label: "Quartos", type: "text" as const, inputMode: "numeric" as const, maxLength: 2, value: "" },
+      { name: "bathrooms", label: "Banheiros", type: "text" as const, inputMode: "numeric" as const, maxLength: 2, value: "" },
+      { name: "garageSpots", label: "Vagas de garagem", type: "text" as const, inputMode: "numeric" as const, maxLength: 2, value: "" },
     ],
     actions: [
       {
@@ -1243,6 +1295,9 @@ function buildLeadCreateForm(leadDraft?: {
   desiredCity?: string | null;
   budgetMax?: number | null;
 } | null) {
+  if (leadDraft?.leadPersona === "locatario") {
+    return buildRentalLeaseCreateForm(leadDraft);
+  }
   const leadCopy = getLeadPersonaCopy(leadDraft);
   return {
     entity: leadCopy.entity,
@@ -1309,6 +1364,101 @@ function buildLeadCreateForm(leadDraft?: {
         label: "Salvar cadastro",
         kind: "primary" as const,
       },
+    ],
+  };
+}
+
+const RENTAL_CHARGE_PAYER_OPTIONS = [
+  { value: "inquilino", label: "Inquilino paga" },
+  { value: "proprietario", label: "Proprietário paga" },
+  { value: "dispensado", label: "Dispensado" },
+  { value: "nao_existe", label: "Não existe" },
+  { value: "desconhecido", label: "Não sei" },
+];
+
+const RENTAL_MONTH_OPTIONS = [
+  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+].map((label, index) => ({ value: String(index + 1), label }));
+
+/**
+ * "Cadastrar locatário" = locação vigente (inquilino com contrato assinado ou
+ * acordo verbal). Enviado pelo cliente direto para POST /imob/rentals, sem
+ * virar texto de conversa; o inquilino não entra no funil de leads.
+ */
+export function buildRentalLeaseCreateForm(leadDraft?: {
+  leadName?: string | null;
+  leadPhone?: string | null;
+  leadEmail?: string | null;
+} | null) {
+  return {
+    entity: "locacao",
+    action: "create",
+    submitTarget: "imob.rentals.create" as const,
+    label: "Cadastrar locação",
+    description: "Locação vigente: imóvel, inquilino e condições do contrato. Só imóvel e nome são obrigatórios; o que ficar em branco vira pendência.",
+    fields: [
+      {
+        name: "propertyId",
+        label: "Imóvel locado",
+        type: "select" as const,
+        required: true,
+        placeholder: "Selecione o imóvel",
+        value: "",
+        optionsSource: "imob_properties" as const,
+        options: [],
+        helperText: "Só aparecem imóveis já cadastrados neste workspace.",
+      },
+      { name: "tenantName", label: "Nome do inquilino", type: "text" as const, required: true, placeholder: "Nome completo ou razão social", value: leadDraft?.leadName ?? "" },
+      { name: "tenantDocument", label: "CPF ou CNPJ do inquilino", type: "text" as const, placeholder: "000.000.000-00", inputMode: "numeric" as const, maxLength: 18, value: "" },
+      { name: "tenantPhone", label: "Telefone do inquilino", type: "tel" as const, placeholder: "(47) 99999-9999", value: leadDraft?.leadPhone ?? "" },
+      { name: "tenantEmail", label: "E-mail do inquilino", type: "email" as const, placeholder: "inquilino@email.com", value: leadDraft?.leadEmail ?? "" },
+      {
+        name: "agreementType",
+        label: "Contrato",
+        type: "select" as const,
+        value: "escrito",
+        options: [
+          { value: "escrito", label: "Escrito (assinado)" },
+          { value: "verbal", label: "Verbal" },
+          { value: "desconhecido", label: "Não sei" },
+        ],
+      },
+      { name: "startDate", label: "Início da locação", type: "text" as const, placeholder: "DD/MM/AAAA", inputMode: "numeric" as const, maxLength: 10, value: "" },
+      { name: "endDate", label: "Fim do contrato", type: "text" as const, placeholder: "DD/MM/AAAA", inputMode: "numeric" as const, maxLength: 10, value: "" },
+      { name: "rent", label: "Aluguel mensal (R$)", type: "text" as const, placeholder: "1.200,00", inputMode: "numeric" as const, value: "" },
+      { name: "dueDay", label: "Dia do vencimento", type: "text" as const, placeholder: "10", inputMode: "numeric" as const, maxLength: 2, value: "" },
+      {
+        name: "adjustmentIndex",
+        label: "Índice de reajuste",
+        type: "select" as const,
+        placeholder: "Não informado",
+        value: "",
+        options: ["IGPM", "IPCA", "INPC", "IVAR"].map((value) => ({ value, label: value })),
+      },
+      { name: "adjustmentMonth", label: "Mês do reajuste", type: "select" as const, placeholder: "Não informado", value: "", options: RENTAL_MONTH_OPTIONS },
+      {
+        name: "guaranteeType",
+        label: "Garantia",
+        type: "select" as const,
+        value: "desconhecido",
+        options: [
+          { value: "caucao", label: "Caução" },
+          { value: "fiador", label: "Fiador" },
+          { value: "seguro_fianca", label: "Seguro-fiança" },
+          { value: "titulo_capitalizacao", label: "Título de capitalização" },
+          { value: "nenhuma", label: "Sem garantia" },
+          { value: "desconhecido", label: "Não sei" },
+        ],
+      },
+      { name: "guaranteeAmount", label: "Valor da caução prevista (R$)", type: "text" as const, placeholder: "2.400,00", inputMode: "numeric" as const, value: "" },
+      { name: "iptu", label: "IPTU", type: "select" as const, value: "desconhecido", options: RENTAL_CHARGE_PAYER_OPTIONS },
+      { name: "condominio", label: "Condomínio", type: "select" as const, value: "desconhecido", options: RENTAL_CHARGE_PAYER_OPTIONS },
+      { name: "condominioAmount", label: "Valor do condomínio (R$/mês)", type: "text" as const, placeholder: "350,00", inputMode: "numeric" as const, value: "" },
+    ],
+    actions: [
+      { id: "cancel" as const, label: "Cancelar", kind: "secondary" as const },
+      { id: "submit" as const, label: "Salvar locação", kind: "primary" as const },
     ],
   };
 }
@@ -3399,7 +3549,10 @@ function buildOperationalExecution(intent: ImobIntent, message: string, timestam
 }
 
 export function resolveImobTurn(request: ImobResolveTurnRequest): ImobResolveTurnResponse {
-  const finalize = (response: ImobResolveTurnResponse) => withImobAgentPresentationMetadata(response);
+  const finalize = (response: ImobResolveTurnResponse) => withImobAgentPresentationMetadata(
+    // A locação vigente não é lead: o fio da conversa leva o rótulo certo.
+    response.presentation?.form?.entity === "locacao" ? { ...response, threadLabel: "Locação" } : response,
+  );
   const message = request.message.trim();
   const normalizedMessage = normalizeImobText(message);
   const parsedCatalogIntent = request.semanticIntent ?? parseImobIntent(message);

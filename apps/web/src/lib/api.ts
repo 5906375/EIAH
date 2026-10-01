@@ -2658,6 +2658,8 @@ export type ImobPresentationFormField = {
   inputMode?: "text" | "numeric";
   maxLength?: number;
   options?: ImobPresentationFormFieldOption[];
+  /** Opções carregadas no cliente a partir do CRM do workspace (ex.: imóveis cadastrados). */
+  optionsSource?: "imob_properties" | "imob_owners";
   lookup?: ImobPresentationFormFieldLookup;
 };
 
@@ -2673,6 +2675,11 @@ export type ImobPresentationForm = {
   label: string;
   description?: string;
   subjectId?: string;
+  /**
+   * Formulário estruturado: o cliente envia os campos direto para a rota
+   * indicada, sem execução de agente e sem transformar em texto de conversa.
+   */
+  submitTarget?: "imob.owners.create" | "imob.properties.create" | "imob.rentals.create";
   fields: ImobPresentationFormField[];
   actions?: ImobPresentationFormAction[];
 };
@@ -3301,6 +3308,84 @@ export async function apiLookupImobCep(cep: string) {
 export async function apiListImobOwners() {
   return http<{ ok: true; data: { items: ImobOwner[] } }>(`/imob/owners`, {
     method: "GET",
+  });
+}
+
+export type ImobOwnerCreateRequest = {
+  name: string;
+  personType: "person" | "company";
+  document: string | null;
+  phone: string | null;
+  email: string | null;
+  status: string;
+  pendingItems: string[];
+  metadata: Record<string, unknown>;
+};
+
+export async function apiCreateImobOwner(body: ImobOwnerCreateRequest) {
+  return http<{ ok: true; data: ImobOwner }>(`/imob/owners`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export type ImobPropertyCreateRequest = {
+  ownerId?: string;
+  propertyType: string;
+  goal: string;
+  address: string;
+  city: string;
+  neighborhood: string | null;
+  areaM2?: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  garageSpots?: number;
+  status: string;
+  metadata: Record<string, unknown>;
+};
+
+export async function apiCreateImobProperty(body: ImobPropertyCreateRequest) {
+  return http<{ ok: true; data: ImobProperty }>(`/imob/properties`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export type ImobRentalChargePayer = "inquilino" | "proprietario" | "dispensado" | "nao_existe" | "desconhecido";
+
+export type ImobRentalLeaseCreateRequest = {
+  propertyId: string;
+  tenantName: string;
+  tenantDocument: string | null;
+  tenantPhone: string | null;
+  tenantEmail: string | null;
+  agreementType: "escrito" | "verbal" | "desconhecido";
+  startDate: string | null;
+  endDate: string | null;
+  rentCents: number | null;
+  dueDay: number | null;
+  adjustmentIndex: string | null;
+  adjustmentMonth: number | null;
+  guaranteeType: "caucao" | "fiador" | "seguro_fianca" | "titulo_capitalizacao" | "nenhuma" | "desconhecido";
+  guaranteeAmountCents: number | null;
+  iptu: ImobRentalChargePayer;
+  condominio: ImobRentalChargePayer;
+  condominioAmountCents: number | null;
+};
+
+export type ImobRentalLeaseCreateResponse = {
+  caseId: string;
+  propertyId: string;
+  propertyLabel: string;
+  tenantName: string;
+  tenantDocumentMasked: string | null;
+  pendingItems: string[];
+};
+
+export async function apiCreateImobRentalLease(body: ImobRentalLeaseCreateRequest) {
+  return http<{ ok: true; data: ImobRentalLeaseCreateResponse }>(`/imob/rentals`, {
+    method: "POST",
+    body: JSON.stringify(body),
   });
 }
 
