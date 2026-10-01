@@ -83,7 +83,7 @@ test("duplicate check matches address, city and unit label ignoring case and acc
 test("confirmation text and owner options", () => {
   assert.equal(
     buildPropertyCreateConfirmationText({ label: "Kitnet 01 — Rua A, 100 · Itapema", ownerName: "Fulano", occupancyLabel: "Locado" }),
-    'Imóvel cadastrado: Kitnet 01 — Rua A, 100 · Itapema. Proprietário: Fulano. Situação: Locado. Para registrar o contrato, peça "cadastrar locatário".',
+    'Imóvel cadastrado: Kitnet 01 — Rua A, 100 · Itapema. Proprietário: Fulano. Situação: Locado.',
   );
   assert.deepEqual(
     buildImobOwnerOptions([

@@ -272,8 +272,11 @@ type ChatMessage = {
   dispatchBadge?: string | null;
   /** Payload de coleta de slots emitido pelo engine — renderizado sem lógica cognitiva no frontend. */
   slotCollection?: ImobResolveTurnResponse["presentation"]["slotCollection"];
-  /** Respostas clicáveis (só na última mensagem): cada uma envia o texto que o usuário digitaria. */
-  quickReplies?: Array<{ id: string; label: string; reply: string }>;
+  /**
+   * Respostas clicáveis (só na última mensagem): enviam o texto que o usuário
+   * digitaria (`reply`) ou abrem o próximo formulário já existente (`onSelect`).
+   */
+  quickReplies?: Array<{ id: string; label: string; reply?: string; onSelect?: () => void }>;
 };
 
 type AssistantMessageDedupeInput = {
@@ -2240,6 +2243,8 @@ const ImobChatPage: React.FC = () => {
   const ownerArchiveConfirmedRef = React.useRef<Record<string, string>>({});
   /** Arquivos escolhidos nos formulários "Anexar documento", por mensagem. */
   const formFilesRef = React.useRef<Record<string, File[]>>({});
+  /** Valores a aplicar no próximo formulário com este destino (ex.: proprietário recém-cadastrado no "Cadastrar imóvel"). */
+  const pendingFormPrefillRef = React.useRef<{ submitTarget: string; values: Record<string, string> } | null>(null);
   const propertyRecordsRef = React.useRef<ImobProperty[]>([]);
   const [isNearBottom, setIsNearBottom] = React.useState(true);
   const [showAllConversations, setShowAllConversations] = React.useState(false);
@@ -2328,6 +2333,11 @@ const ImobChatPage: React.FC = () => {
   );
 
   const appendMessage = React.useCallback((message: ChatMessage) => {
+    const pendingPrefill = pendingFormPrefillRef.current;
+    if (pendingPrefill && message.form?.submitTarget === pendingPrefill.submitTarget) {
+      pendingFormPrefillRef.current = null;
+      setFormValuesByMessageId((prev) => ({ ...prev, [message.id]: { ...(prev[message.id] ?? {}), ...pendingPrefill.values } }));
+    }
     setMessages((prev) => [
       // Um formulário por vez: ao abrir outro, o anterior não salvo fecha (nada é gravado).
       // Quando o usuário segue para outro pedido, o formulário estruturado aberto também fecha.
@@ -4710,11 +4720,16 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
       const response = await apiCreateImobRentalLease(built.request);
       updateMessageById(message.id, { form: undefined });
       clearThreadOperationalState(message);
+      const leasePropertyId = response.data.propertyId;
       const confirmation: ChatMessage = {
         id: makeId("assistant"),
         role: "assistant",
         text: buildRentalLeaseConfirmationText(response.data),
         thread: message.thread,
+        quickReplies: [
+          { id: "next-contract", label: "Gerar contrato desta locação", onSelect: () => openRentalContractForm(leasePropertyId) },
+          { id: "next-documents", label: "Anexar documento", onSelect: () => openDocumentAttachForm("rentals", leasePropertyId) },
+        ],
       };
       appendMessage(confirmation);
       void persistMessage(confirmation, { intent: "rental.lease.registered", action: "imob.rentals.create" });
@@ -4787,6 +4802,10 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
           occupancyLabel: OCCUPANCY_LABELS[occupancy] ?? null,
         }),
         thread: message.thread,
+        quickReplies: [
+          { id: "next-rental", label: "Locar (cadastrar locação)", onSelect: () => startRentalFor(created.id) },
+          { id: "next-documents", label: "Anexar documento", onSelect: () => openDocumentAttachForm("properties", created.id) },
+        ],
       };
       appendMessage(confirmation);
       void persistMessage(confirmation, { intent: "property.registered", action: "imob.properties.create" });
@@ -4859,6 +4878,10 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
           pendingItems: built.request.pendingItems,
         }),
         thread: message.thread,
+        quickReplies: [
+          { id: "next-property", label: "Cadastrar imóvel deste proprietário", onSelect: () => startPropertyCreateFor(response.data.id) },
+          { id: "next-documents", label: "Anexar documento", onSelect: () => openDocumentAttachForm("owners", response.data.id) },
+        ],
       };
       appendMessage(confirmation);
       void persistMessage(confirmation, { intent: "owner.registered", action: "imob.owners.create" });
@@ -4917,15 +4940,28 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     }
   }
 
-  function openRentalContractForm() {
+  function openRentalContractForm(propertyId?: string) {
     const threadId = activeThread?.id ?? makeId("thread");
+    const messageId = makeId("assistant");
     appendMessage({
-      id: makeId("assistant"),
+      id: messageId,
       role: "assistant",
       text: "Escolha o imóvel da locação: os dados do contrato vêm dos cadastros.",
       form: buildRentalContractForm(),
       thread: { id: threadId, label: "Contrato", status: "active" },
     });
+    if (propertyId) void prefillRentalContractForm(messageId, propertyId);
+  }
+
+  /** Próximo passo com o formulário que já existe, já ligado ao cadastro anterior. */
+  function startPropertyCreateFor(ownerId: string) {
+    pendingFormPrefillRef.current = { submitTarget: "imob.properties.create", values: { ownerId } };
+    void sendMessageText("cadastrar imóvel", { displayText: "Cadastrar imóvel" });
+  }
+
+  function startRentalFor(propertyId: string) {
+    pendingFormPrefillRef.current = { submitTarget: "imob.rentals.create", values: { propertyId } };
+    void sendMessageText("cadastrar locatário", { displayText: "Cadastrar locação" });
   }
 
   async function prefillRentalContractForm(messageId: string, propertyId: string) {
@@ -5007,10 +5043,14 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     }
   }
 
-  function openDocumentAttachForm(subject: DocumentAttachSubject) {
+  function openDocumentAttachForm(subject: DocumentAttachSubject, subjectId?: string) {
     const threadId = activeThread?.id ?? makeId("thread");
+    const messageId = makeId("assistant");
+    if (subjectId) {
+      setFormValuesByMessageId((prev) => ({ ...prev, [messageId]: { [subject === "owners" ? "ownerId" : "propertyId"]: subjectId } }));
+    }
     appendMessage({
-      id: makeId("assistant"),
+      id: messageId,
       role: "assistant",
       text: subject === "rentals"
         ? "Escolha o imóvel da locação, o tipo de documento e o arquivo."
@@ -6582,7 +6622,13 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                   key={`${message.id}-reply-${option.id}`}
                                   type="button"
                                   disabled={state === "typing" || state === "executing"}
-                                  onClick={() => void sendMessageText(option.reply, { displayText: option.label.replace(/^\d+\)\s*/, "") })}
+                                  onClick={() => {
+                                    if (option.onSelect) {
+                                      option.onSelect();
+                                      return;
+                                    }
+                                    if (option.reply) void sendMessageText(option.reply, { displayText: option.label.replace(/^\d+\)\s*/, "") });
+                                  }}
                                   className="min-w-[180px] rounded-lg border border-accent/30 bg-accent/10 px-3 py-1.5 text-left text-[13px] normal-case tracking-normal text-foreground transition hover:border-accent/60 hover:bg-accent/20 hover:text-accent disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                   {option.label}

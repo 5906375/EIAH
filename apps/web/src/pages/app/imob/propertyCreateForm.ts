@@ -118,7 +118,6 @@ export function buildPropertyCreateConfirmationText(data: { label: string; owner
     `Imóvel cadastrado: ${data.label}.`,
     data.ownerName ? `Proprietário: ${data.ownerName}.` : "Sem proprietário vinculado.",
     data.occupancyLabel ? `Situação: ${data.occupancyLabel}.` : null,
-    data.occupancyLabel === "Locado" ? "Para registrar o contrato, peça \"cadastrar locatário\"." : null,
   ]
     .filter(Boolean)
     .join(" ");
