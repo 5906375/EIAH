@@ -591,6 +591,15 @@ const SHOW_TECHNICAL_CHAT = false;
 const SHOW_CHAT_FEEDBACK = false;
 const HISTORY_PAGE_SIZE = 30;
 const QUICK_PROMPTS = [
+  // Formulários estruturados: abrem na hora e gravam direto (sem texto livre).
+  {
+    label: "Cadastrar imóvel",
+    prompt: "cadastrar imóvel",
+  },
+  {
+    label: "Cadastrar locação",
+    prompt: "cadastrar locatário",
+  },
   {
     label: "Captar imóvel",
     prompt: "Quero iniciar uma captação no IMOB. Me mostre opções de próximos passos no chat.",
