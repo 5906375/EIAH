@@ -2664,7 +2664,7 @@ export type ImobPresentationFormField = {
 };
 
 export type ImobPresentationFormAction = {
-  id: "cancel" | "submit";
+  id: "cancel" | "submit" | "archive";
   label: string;
   kind?: "primary" | "secondary" | "neutral";
 };
@@ -2679,7 +2679,7 @@ export type ImobPresentationForm = {
    * Formulário estruturado: o cliente envia os campos direto para a rota
    * indicada, sem execução de agente e sem transformar em texto de conversa.
    */
-  submitTarget?: "imob.owners.create" | "imob.properties.create" | "imob.rentals.create";
+  submitTarget?: "imob.owners.create" | "imob.owners.update" | "imob.properties.create" | "imob.rentals.create";
   fields: ImobPresentationFormField[];
   actions?: ImobPresentationFormAction[];
 };
@@ -3326,6 +3326,21 @@ export async function apiCreateImobOwner(body: ImobOwnerCreateRequest) {
   return http<{ ok: true; data: ImobOwner }>(`/imob/owners`, {
     method: "POST",
     body: JSON.stringify(body),
+  });
+}
+
+export type ImobOwnerUpdateRequest = Omit<ImobOwnerCreateRequest, "metadata">;
+
+export async function apiUpdateImobOwner(ownerId: string, body: ImobOwnerUpdateRequest) {
+  return http<{ ok: true; data: ImobOwner }>(`/imob/owners/${encodeURIComponent(ownerId)}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
+export async function apiArchiveImobOwner(ownerId: string) {
+  return http<{ ok: true; data: ImobOwner }>(`/imob/owners/${encodeURIComponent(ownerId)}`, {
+    method: "DELETE",
   });
 }
 
