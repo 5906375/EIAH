@@ -591,9 +591,18 @@ test("IMOB turn resolver builds guided form for property.create", () => {
   assert.equal(result.presentation.form?.label, "Cadastrar imóvel");
   assert.deepEqual(
     result.presentation.form?.fields.map((field) => field.name),
-    ["propertyType", "goal", "cep", "city", "address"],
+    [
+      "propertyType", "goal", "unitLabel", "ownerId", "occupancy", "cep", "city", "neighborhood", "address",
+      "areaM2", "bedrooms", "bathrooms", "garageSpots",
+    ],
   );
   assert.equal(result.presentation.form?.fields.find((field) => field.name === "cep")?.lookup?.kind, "cep");
+  assert.equal(result.presentation.form?.submitTarget, "imob.properties.create");
+  assert.equal(result.presentation.form?.fields.find((field) => field.name === "ownerId")?.optionsSource, "imob_owners");
+  assert.deepEqual(
+    result.presentation.form?.fields.filter((field) => field.required).map((field) => field.name),
+    ["propertyType", "goal", "city", "address"],
+  );
 });
 
 test("IMOB turn resolver keeps chips and free-text capture prompts behaviorally equivalent", () => {

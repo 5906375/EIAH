@@ -2659,7 +2659,7 @@ export type ImobPresentationFormField = {
   maxLength?: number;
   options?: ImobPresentationFormFieldOption[];
   /** Opções carregadas no cliente a partir do CRM do workspace (ex.: imóveis cadastrados). */
-  optionsSource?: "imob_properties";
+  optionsSource?: "imob_properties" | "imob_owners";
   lookup?: ImobPresentationFormFieldLookup;
 };
 
@@ -2675,6 +2675,11 @@ export type ImobPresentationForm = {
   label: string;
   description?: string;
   subjectId?: string;
+  /**
+   * Formulário estruturado: o cliente envia os campos direto para a rota
+   * indicada, sem execução de agente e sem transformar em texto de conversa.
+   */
+  submitTarget?: "imob.properties.create" | "imob.rentals.create";
   fields: ImobPresentationFormField[];
   actions?: ImobPresentationFormAction[];
 };
@@ -3303,6 +3308,28 @@ export async function apiLookupImobCep(cep: string) {
 export async function apiListImobOwners() {
   return http<{ ok: true; data: { items: ImobOwner[] } }>(`/imob/owners`, {
     method: "GET",
+  });
+}
+
+export type ImobPropertyCreateRequest = {
+  ownerId?: string;
+  propertyType: string;
+  goal: string;
+  address: string;
+  city: string;
+  neighborhood: string | null;
+  areaM2?: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  garageSpots?: number;
+  status: string;
+  metadata: Record<string, unknown>;
+};
+
+export async function apiCreateImobProperty(body: ImobPropertyCreateRequest) {
+  return http<{ ok: true; data: ImobProperty }>(`/imob/properties`, {
+    method: "POST",
+    body: JSON.stringify(body),
   });
 }
 

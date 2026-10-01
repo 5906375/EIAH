@@ -193,3 +193,22 @@ test("opening the lease form in the chat persists nothing (no empty lead or case
   assert.equal(fixture.leads.length, 0);
   assert.equal(fixture.cases.length, 0);
 });
+
+test("opening the structured property form persists nothing (no draft property or case)", async () => {
+  const { resolveImobTurn } = await import("../services/imob/imobTurnResolver");
+  const resolved = resolveImobTurn({
+    message: "cadastrar imóvel",
+    access: { tenantId: scope.tenantId, workspaceId: scope.workspaceId, entitlements: { REAL_ESTATE_CORE: true } },
+  });
+  assert.equal(resolved.presentation.form?.submitTarget, "imob.properties.create");
+
+  const fixture = createPrisma();
+  const { ImobCrmMutationService } = await import("../services/imob/crm/imobCrmMutationService");
+  const persisted = await new ImobCrmMutationService(fixture.prisma).upsertCaseFromResolvedTurn(scope, {
+    threadId: "thread-2",
+    resolved: resolved as any,
+  });
+  assert.equal(persisted, null);
+  assert.equal(fixture.properties.length, 0);
+  assert.equal(fixture.cases.length, 0);
+});

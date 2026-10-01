@@ -1052,9 +1052,11 @@ export class ImobCrmMutationService {
     const shouldPersistConsultiveMarketScan = params.resolved?.mode === "consult"
       && operational?.flow === "property.market_scan";
     if (!operational || (params.resolved?.mode !== "execute" && !shouldPersistConsultiveMarketScan)) return null;
-    // O formulário de locação vigente grava só no envio (POST /imob/rentals):
-    // abrir o formulário não pode criar lead nem caso vazio.
-    if (asString((params.resolved as { presentation?: { form?: { entity?: unknown } } })?.presentation?.form?.entity) === "locacao") {
+    // Formulários estruturados (imóvel, locação) gravam só no envio, direto na
+    // rota indicada em submitTarget: abrir o formulário não cria registro vazio.
+    const presentedForm = (params.resolved as { presentation?: { form?: { entity?: unknown; submitTarget?: unknown } } })
+      ?.presentation?.form;
+    if (asString(presentedForm?.submitTarget) || asString(presentedForm?.entity) === "locacao") {
       return null;
     }
 

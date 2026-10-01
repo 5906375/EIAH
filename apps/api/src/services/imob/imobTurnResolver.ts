@@ -1144,6 +1144,9 @@ function buildPropertyCreateForm(propertyDraft?: {
   return {
     entity: "imovel",
     action: "create",
+    // Enviado pelo cliente direto para POST /imob/properties (sem execução de
+    // agente nem texto de conversa).
+    submitTarget: "imob.properties.create" as const,
     label: "Cadastrar imóvel",
     description: inheritedContext
       ? `A captação já foi aberta com contexto de ${inheritedContext}. Confirme ou ajuste os campos abaixo e complete só o que faltar.`
@@ -1175,6 +1178,35 @@ function buildPropertyCreateForm(propertyDraft?: {
         })),
       },
       {
+        name: "unitLabel",
+        label: "Identificação da unidade",
+        type: "text" as const,
+        placeholder: "Ex.: Kitnet 01, Sala 02, Apto 301",
+        value: "",
+        helperText: "Como você chama esta unidade; aparece nas listas e na locação.",
+      },
+      {
+        name: "ownerId",
+        label: "Proprietário",
+        type: "select" as const,
+        placeholder: "Sem proprietário vinculado",
+        value: "",
+        optionsSource: "imob_owners" as const,
+        options: [],
+      },
+      {
+        name: "occupancy",
+        label: "Situação",
+        type: "select" as const,
+        placeholder: "Não informada",
+        value: "",
+        options: [
+          { value: "locado", label: "Locado" },
+          { value: "vago", label: "Vago" },
+          { value: "em_obra", label: "Em obra / construção" },
+        ],
+      },
+      {
         name: "cep",
         label: "CEP",
         type: "text" as const,
@@ -1186,6 +1218,7 @@ function buildPropertyCreateForm(propertyDraft?: {
           autoFillTargets: {
             city: "city",
             address: "address",
+            neighborhood: "neighborhood",
           },
         },
       },
@@ -1197,12 +1230,22 @@ function buildPropertyCreateForm(propertyDraft?: {
         value: propertyDraft?.city ?? "",
       },
       {
+        name: "neighborhood",
+        label: "Bairro",
+        type: "text" as const,
+        value: "",
+      },
+      {
         name: "address",
         label: "Endereço",
         type: "text" as const,
         required: true,
         value: propertyDraft?.address ?? "",
       },
+      { name: "areaM2", label: "Área (m²)", type: "text" as const, inputMode: "numeric" as const, maxLength: 6, placeholder: "Ex.: 25", value: "" },
+      { name: "bedrooms", label: "Quartos", type: "text" as const, inputMode: "numeric" as const, maxLength: 2, value: "" },
+      { name: "bathrooms", label: "Banheiros", type: "text" as const, inputMode: "numeric" as const, maxLength: 2, value: "" },
+      { name: "garageSpots", label: "Vagas de garagem", type: "text" as const, inputMode: "numeric" as const, maxLength: 2, value: "" },
     ],
     actions: [
       {
@@ -1342,6 +1385,7 @@ export function buildRentalLeaseCreateForm(leadDraft?: {
   return {
     entity: "locacao",
     action: "create",
+    submitTarget: "imob.rentals.create" as const,
     label: "Cadastrar locação",
     description: "Locação vigente: imóvel, inquilino e condições do contrato. Só imóvel e nome são obrigatórios; o que ficar em branco vira pendência.",
     fields: [
