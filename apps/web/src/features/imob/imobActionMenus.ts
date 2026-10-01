@@ -2,8 +2,8 @@
  * Menus da barra do chat IMOB, agrupados por assunto. Cada item ou envia um
  * pedido já conhecido do chat (`prompt`) ou abre um formulário local por ação
  * explícita do usuário (`localForm`) — nenhum item interpreta texto livre.
- * Só entram ações que funcionam hoje; as próximas (anexar documento,
- * histórico, editar/encerrar locação) entram quando existirem. "Tokenização
+ * Só entram ações que funcionam hoje; as próximas (histórico, editar/encerrar
+ * locação) entram quando existirem. "Tokenização
  * de ativos" é informativa e só registra interesse (não está disponível).
  */
 
@@ -12,6 +12,9 @@ export type ImobLocalFormKind =
   | "owner_archive"
   | "property_edit"
   | "property_archive"
+  | "documents_owners"
+  | "documents_properties"
+  | "documents_rentals"
   | "tokenization_owners"
   | "tokenization_properties"
   | "tokenization_rentals"
@@ -35,6 +38,7 @@ export const IMOB_ACTION_MENUS: ImobActionMenu[] = [
       { id: "owner-create", label: "Cadastrar proprietário", kind: "prompt", prompt: "cadastrar proprietário" },
       { id: "owner-edit", label: "Editar proprietário", kind: "local", form: "owner_edit" },
       { id: "owner-archive", label: "Arquivar proprietário", kind: "local", form: "owner_archive" },
+      { id: "owner-documents", label: "Anexar documento", kind: "local", form: "documents_owners" },
       { id: "owner-tokenization", label: "Tokenização de ativos", kind: "local", form: "tokenization_owners" },
     ],
   },
@@ -45,6 +49,7 @@ export const IMOB_ACTION_MENUS: ImobActionMenu[] = [
       { id: "property-create", label: "Cadastrar imóvel", kind: "prompt", prompt: "cadastrar imóvel" },
       { id: "property-edit", label: "Editar imóvel", kind: "local", form: "property_edit" },
       { id: "property-archive", label: "Arquivar imóvel", kind: "local", form: "property_archive" },
+      { id: "property-documents", label: "Anexar documento", kind: "local", form: "documents_properties" },
       {
         id: "property-capture",
         label: "Captar imóvel",
@@ -59,6 +64,7 @@ export const IMOB_ACTION_MENUS: ImobActionMenu[] = [
     label: "Locações",
     items: [
       { id: "rental-create", label: "Cadastrar locação", kind: "prompt", prompt: "cadastrar locatário" },
+      { id: "rental-documents", label: "Anexar documento", kind: "local", form: "documents_rentals" },
       { id: "rental-tokenization", label: "Tokenização de ativos", kind: "local", form: "tokenization_rentals" },
     ],
   },

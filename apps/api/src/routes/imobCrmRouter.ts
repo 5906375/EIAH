@@ -4,6 +4,7 @@ import type { ImobCrmCaseContext } from "../services/imob/crm/imobCrmAgentContra
 import { ImobCrmRepository } from "../services/imob/crm/imobCrmRepository";
 import { ImobCrmMutationService } from "../services/imob/crm/imobCrmMutationService";
 import { ImobRentalLeaseService } from "../services/imob/crm/imobRentalLeaseService";
+import { ImobDocumentLinkService } from "../services/imob/crm/imobDocumentLinkService";
 import { ImobCrmDocumentService } from "../services/imob/crm/imobCrmDocumentService";
 import { ImobCrmFollowUpService } from "../services/imob/crm/imobCrmFollowUpService";
 import { ImobCrmKpiService } from "../services/imob/crm/imobCrmKpiService";
@@ -73,6 +74,7 @@ export type RegisterImobCrmRoutesParams = {
     imobLeadUpdateSchema: SafeParseSchema;
     imobCaseCreateSchema: SafeParseSchema;
     imobRentalLeaseCreateSchema: SafeParseSchema;
+    imobDocumentLinkSchema: SafeParseSchema;
     imobCaseUpdateSchema: SafeParseSchema;
     imobCaseAssignOwnerSchema: SafeParseSchema;
     imobFollowUpRunSchema: SafeParseSchema;
@@ -995,6 +997,53 @@ export function registerImobCrmRoutes(params: RegisterImobCrmRoutesParams) {
     }
     if (result.status !== "created") {
       return res.status(422).json({ ok: false, error: { code: "RENTAL_LEASE_NOT_CREATED", message: `Locação não criada: ${result.status}` } });
+    }
+
+    return res.status(201).json({ ok: true, data: result.data });
+  });
+
+  router.post("/documents/link", async (req, res) => {
+    const { authContext, prisma } = req as TenantAwareRequest;
+    if (!authContext || !prisma) {
+      return res.status(500).json({ ok: false, error: { code: "AUTH_CONTEXT_MISSING", message: "Authentication context missing" } });
+    }
+
+    const workspaceAccess = await readImobWorkspaceAccessProfile({ prisma, authContext });
+    if (!ensureImobWorkspacePermission(res, workspaceAccess.permissions, "imob.chat.use", "Sua função atual não pode usar o IMOB neste workspace.")) {
+      return;
+    }
+
+    const parsed = schemas.imobDocumentLinkSchema.safeParse(req.body ?? {});
+    if (!parsed.success) {
+      return res.status(400).json({ ok: false, error: { code: "INVALID_PAYLOAD", details: parsed.error.flatten() } });
+    }
+    if (parsed.data.subjectType === "rental"
+      && !ensureImobStagePermission(res, workspaceAccess.permissions, "active", "Sua função atual não pode alterar locações neste workspace.")) {
+      return;
+    }
+
+    const result = await new ImobDocumentLinkService(prisma).link({
+      tenantId: authContext.tenantId,
+      workspaceId: authContext.workspaceId,
+      userId: authContext.userId ?? null,
+    }, parsed.data);
+    if (result.status === "invalid_category") {
+      return res.status(400).json({ ok: false, error: { code: "INVALID_DOCUMENT_CATEGORY", message: "Tipo de documento inválido para este cadastro" } });
+    }
+    if (result.status === "upload_not_found") {
+      return res.status(404).json({ ok: false, error: { code: "UPLOAD_NOT_FOUND", message: "One or more uploaded documents were not found" } });
+    }
+    if (result.status === "subject_not_found") {
+      return res.status(404).json({
+        ok: false,
+        error: {
+          code: parsed.data.subjectType === "rental" ? "RENTAL_LEASE_NOT_FOUND" : "SUBJECT_NOT_FOUND",
+          message: parsed.data.subjectType === "rental" ? "Nenhuma locação ativa neste imóvel" : "Cadastro não encontrado neste workspace",
+        },
+      });
+    }
+    if (result.status === "too_many_documents") {
+      return res.status(409).json({ ok: false, error: { code: "TOO_MANY_DOCUMENTS", message: "Limite de documentos deste cadastro atingido" } });
     }
 
     return res.status(201).json({ ok: true, data: result.data });

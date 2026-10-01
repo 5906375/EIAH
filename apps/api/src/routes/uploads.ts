@@ -4,6 +4,8 @@ import type { TenantAwareRequest } from "../middlewares/enforceTenant";
 import { enforceTenant } from "../middlewares/enforceTenant";
 import { loadStoredObject, persistBuffer } from "../services/storage";
 import { createUploadedDocument, findDocumentById, updateDocumentUrl } from "../services/uploads";
+import { canAccessImobUploads } from "../services/imobUploadAccess";
+import { hasWorkspacePermission, readWorkspaceResponsibleProfile } from "../services/workspaceResponsibility";
 
 const MAX_FILE_SIZE_BYTES = Number(process.env.MAX_UPLOAD_BYTES ?? 5 * 1024 * 1024); // 5 MB default
 const ALLOWED_MIME_TYPES = (process.env.ALLOWED_UPLOAD_MIMES ?? "application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,image/png,image/jpeg")
@@ -34,6 +36,19 @@ function normalizeUploadedFileName(fileName: string) {
   }
 }
 
+async function hasImobChatPermission(
+  prisma: NonNullable<TenantAwareRequest["prisma"]>,
+  auth: NonNullable<TenantAwareRequest["authContext"]>,
+) {
+  const profile = await readWorkspaceResponsibleProfile({
+    prisma,
+    tenantId: auth.tenantId,
+    workspaceId: auth.workspaceId,
+    userId: auth.userId!,
+  });
+  return hasWorkspacePermission(profile.permissions, "imob.chat.use");
+}
+
 export const uploadsRouter = Router();
 
 uploadsRouter.use(enforceTenant);
@@ -56,6 +71,18 @@ uploadsRouter.post(
       return res.status(400).json({
         ok: false,
         error: { code: "INVALID_REQUEST", message: "agentSlug is required" },
+      });
+    }
+
+    const allowed = await canAccessImobUploads({
+      agentSlug,
+      userId: auth.userId ?? null,
+      hasImobChatPermission: () => hasImobChatPermission(client, auth),
+    });
+    if (!allowed) {
+      return res.status(403).json({
+        ok: false,
+        error: { code: "UPLOAD_FORBIDDEN", message: "Sua função atual não pode enviar documentos do IMOB neste workspace." },
       });
     }
 
@@ -140,6 +167,18 @@ uploadsRouter.get("/uploads/:id", async (req: TenantAwareRequest, res) => {
   });
   if (!doc) {
     return res.status(404).json({ ok: false, error: { code: "NOT_FOUND", message: "Document not found" } });
+  }
+
+  const allowed = await canAccessImobUploads({
+    agentSlug: doc.agentSlug,
+    userId: auth.userId ?? null,
+    hasImobChatPermission: () => hasImobChatPermission(client, auth),
+  });
+  if (!allowed) {
+    return res.status(403).json({
+      ok: false,
+      error: { code: "UPLOAD_DOWNLOAD_FORBIDDEN", message: "Sua função atual não pode baixar documentos do IMOB neste workspace." },
+    });
   }
 
   const buffer = await loadStoredObject(doc.storageKey);

@@ -2648,7 +2648,8 @@ export type ImobPresentationFormFieldLookup = {
 export type ImobPresentationFormField = {
   name: string;
   label: string;
-  type: "text" | "tel" | "email" | "select";
+  /** "file": seletor de arquivo local; o valor guardado é só o nome do arquivo. */
+  type: "text" | "tel" | "email" | "select" | "file";
   required?: boolean;
   placeholder?: string;
   value?: string | null;
@@ -2685,7 +2686,8 @@ export type ImobPresentationForm = {
     | "imob.properties.create"
     | "imob.properties.update"
     | "imob.rentals.create"
-    | "imob.tokenization.interest";
+    | "imob.tokenization.interest"
+    | "imob.documents.link";
   fields: ImobPresentationFormField[];
   actions?: ImobPresentationFormAction[];
 };
@@ -3455,6 +3457,42 @@ export type ImobCaseCreateRequest = {
 
 export async function apiCreateImobCase(body: ImobCaseCreateRequest) {
   return http<{ ok: true; data: ImobCase }>(`/imob/cases`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export type ImobDocumentLinkRequest = {
+  subjectType: "owner" | "property" | "rental";
+  /** owner → ownerId; property e rental → propertyId (a locação é a ativa do imóvel). */
+  subjectId: string;
+  category: string;
+  documentIds: string[];
+  notes?: string | null;
+};
+
+export type ImobLinkedDocument = {
+  documentId: string;
+  category: string;
+  fileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  url: string;
+  linkedAt: string;
+};
+
+export async function apiLinkImobDocuments(body: ImobDocumentLinkRequest) {
+  return http<{
+    ok: true;
+    data: {
+      subjectType: "owner" | "property" | "rental";
+      subjectId: string;
+      added: ImobLinkedDocument[];
+      total: number;
+      pendingItems?: string[];
+      contractPendingCleared?: boolean;
+    };
+  }>(`/imob/documents/link`, {
     method: "POST",
     body: JSON.stringify(body),
   });

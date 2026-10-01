@@ -122,6 +122,14 @@ export const imobCaseCreateSchema = z.object({
   initialEvent: imobCaseEventInputSchema.optional(),
 });
 
+export const imobDocumentLinkSchema = z.object({
+  subjectType: z.enum(["owner", "property", "rental"]),
+  subjectId: z.string().trim().min(1).max(80),
+  category: z.string().trim().min(1).max(60),
+  documentIds: z.array(z.string().trim().min(1).max(80)).min(1).max(8),
+  notes: z.union([z.string().trim().max(300), z.null()]).optional(),
+});
+
 export const imobAttachmentResolveSchema = z.object({
   caseId: optionalShortString(80),
   threadId: optionalShortString(120),

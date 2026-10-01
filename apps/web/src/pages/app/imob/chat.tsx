@@ -16,6 +16,7 @@ import {
   apiGetRunCostBreakdown,
   apiSearchImobKnowledge,
   apiUploadDocuments,
+  apiLinkImobDocuments,
   apiResolveImobAttachment,
   apiApplyImobAttachmentCrmSuggestion,
   apiFetchUploadBlob,
@@ -92,6 +93,16 @@ import {
   isTokenizationForm,
   type TokenizationSubject,
 } from "./tokenizationForm";
+import {
+  DOCUMENT_ATTACH_ACCEPT,
+  buildDocumentAttachConfirmationText,
+  buildDocumentAttachForm,
+  buildDocumentLinkRequest,
+  describeDocumentAttachError,
+  isDocumentAttachForm,
+  validateDocumentAttachValues,
+  type DocumentAttachSubject,
+} from "./documentAttachForm";
 import { ImobActionMenuBar } from "@/features/imob/ImobActionMenuBar";
 import {
   IMOB_ACTION_MENUS,
@@ -2207,6 +2218,8 @@ const ImobChatPage: React.FC = () => {
   const ownerNameConfirmedRef = React.useRef<Record<string, string>>({});
   const ownerRecordsRef = React.useRef<ImobOwner[]>([]);
   const ownerArchiveConfirmedRef = React.useRef<Record<string, string>>({});
+  /** Arquivos escolhidos nos formulários "Anexar documento", por mensagem. */
+  const formFilesRef = React.useRef<Record<string, File[]>>({});
   const propertyRecordsRef = React.useRef<ImobProperty[]>([]);
   const [isNearBottom, setIsNearBottom] = React.useState(true);
   const [showAllConversations, setShowAllConversations] = React.useState(false);
@@ -4873,6 +4886,92 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     else if (item.form === "property_archive") openPropertyEditForm("archive");
     else if (item.form.startsWith("tokenization_")) {
       openTokenizationForm(item.form.slice("tokenization_".length) as TokenizationSubject);
+    } else if (item.form.startsWith("documents_")) {
+      openDocumentAttachForm(item.form.slice("documents_".length) as DocumentAttachSubject);
+    }
+  }
+
+  function openDocumentAttachForm(subject: DocumentAttachSubject) {
+    const threadId = activeThread?.id ?? makeId("thread");
+    appendMessage({
+      id: makeId("assistant"),
+      role: "assistant",
+      text: subject === "rentals"
+        ? "Escolha o imóvel da locação, o tipo de documento e o arquivo."
+        : subject === "owners"
+          ? "Escolha o proprietário, o tipo de documento e o arquivo."
+          : "Escolha o imóvel, o tipo de documento e o arquivo.",
+      form: buildDocumentAttachForm(subject),
+      thread: { id: threadId, label: subject === "rentals" ? "Locação" : "Cadastro", status: "active" },
+    });
+  }
+
+  async function handleDocumentAttachFormAction(message: ChatMessage, actionId: "cancel" | "submit" | "archive") {
+    const subject = (message.form?.action ?? "properties") as DocumentAttachSubject;
+    if (actionId !== "submit") {
+      delete formFilesRef.current[message.id];
+      updateMessageById(message.id, { form: undefined });
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+      appendMessage({ id: makeId("assistant"), role: "assistant", text: "Nada foi anexado.", thread: message.thread });
+      return;
+    }
+    if (formSubmittingRef.current.has(message.id)) return;
+    const values = resolveFormValuesForMessage(message);
+    const files = formFilesRef.current[message.id] ?? [];
+    const errors = validateDocumentAttachValues(subject, values, files.length);
+    if (Object.keys(errors).length > 0) {
+      setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: errors }));
+      return;
+    }
+    const subjectId = subject === "owners" ? values.ownerId : values.propertyId;
+    const subjectLabel = (subject === "owners" ? imobOwnerOptions : imobPropertyOptions)?.find((option) => option.value === subjectId)?.label
+      ?? (subject === "owners" ? "o proprietário" : "o imóvel");
+
+    formSubmittingRef.current.add(message.id);
+    setFormErrorsByMessageId((prev) => ({ ...prev, [message.id]: {} }));
+    try {
+      const formData = new FormData();
+      for (const file of files) formData.append("files", file);
+      const uploaded = await apiUploadDocuments(formData, "imob");
+      const documentIds = (uploaded.data ?? []).map((item) => item.id);
+      const linked = await apiLinkImobDocuments(buildDocumentLinkRequest(subject, values, documentIds));
+      delete formFilesRef.current[message.id];
+      updateMessageById(message.id, { form: undefined });
+      const done: ChatMessage = {
+        id: makeId("assistant"),
+        role: "assistant",
+        text: buildDocumentAttachConfirmationText({
+          subject,
+          subjectLabel,
+          category: values.category ?? "",
+          fileNames: linked.data.added.map((item) => item.fileName),
+          alreadyLinked: documentIds.length - linked.data.added.length,
+          contractPendingCleared: linked.data.contractPendingCleared,
+        }),
+        thread: message.thread,
+        ...(linked.data.added.length > 0
+          ? {
+              card: {
+                type: "evidence" as const,
+                title: linked.data.added.length === 1 ? "Documento anexado" : "Documentos anexados",
+                thread: message.thread,
+                lines: linked.data.added.map((item) => `${item.fileName} | ${formatUploadSize(item.sizeBytes)}`),
+                ctas: linked.data.added.slice(0, 2).map((item) => ({ id: `doc-${item.documentId}`, label: item.fileName, kind: "neutral" as const, href: item.url })),
+              },
+            }
+          : {}),
+      };
+      appendMessage(done);
+      void persistMessage(done, { intent: "documents.linked", action: "imob.documents.link" });
+    } catch (error) {
+      const status = error instanceof ApiError ? error.status : 0;
+      const body = error instanceof ApiError ? (error.body as { error?: { code?: string } } | undefined) : undefined;
+      setFormErrorsByMessageId((prev) => ({
+        ...prev,
+        [message.id]: { _form: describeDocumentAttachError(subject, status, body?.error?.code) },
+      }));
+    } finally {
+      formSubmittingRef.current.delete(message.id);
     }
   }
 
@@ -5121,6 +5220,10 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
     }
     if (isTokenizationForm(form)) {
       await handleTokenizationFormAction(message, actionId);
+      return;
+    }
+    if (isDocumentAttachForm(form)) {
+      await handleDocumentAttachFormAction(message, actionId);
       return;
     }
     if (actionId === "archive") return;
@@ -6373,7 +6476,20 @@ ${getStepQuestionText(contractInterviewState) ?? "Informe novamente este campo."
                                     <div key={`${message.id}-${field.name}`} className="space-y-1">
                                       <label className="text-[11px] normal-case tracking-normal text-foreground/90">{field.label}</label>
                                       <div className="flex gap-2">
-                                        {field.type === "select" ? (
+                                        {field.type === "file" ? (
+                                          <input
+                                            type="file"
+                                            multiple
+                                            accept={DOCUMENT_ATTACH_ACCEPT}
+                                            aria-label={field.label}
+                                            onChange={(event) => {
+                                              const files = Array.from(event.target.files ?? []);
+                                              formFilesRef.current[message.id] = files;
+                                              updateFormFieldValue(message.id, field.name, files.map((file) => file.name).join(", "));
+                                            }}
+                                            className="min-h-[34px] w-full rounded-lg border border-white/10 bg-black/25 px-3 py-1.5 text-[12px] normal-case tracking-normal text-foreground file:mr-3 file:rounded-md file:border-0 file:bg-white/10 file:px-2 file:py-1 file:text-[11px] file:text-foreground"
+                                          />
+                                        ) : field.type === "select" ? (
                                           <select
                                             value={formValues[field.name] ?? ""}
                                             onChange={(event) => {
