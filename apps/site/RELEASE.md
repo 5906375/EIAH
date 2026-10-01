@@ -5,6 +5,7 @@
 - `/vertical-logistica/` — extensão específica por URL direta; não listada na landing e marcada `noindex,nofollow`. O conteúdo permanece alinhado ao status PRE-DUIMP SHADOW.
 - `/sessoes-governadas/` — extensão específica por URL direta; não listada na landing e marcada `noindex,nofollow`.
 - `/levoutec/` — extensão específica por URL direta; não listada na landing e marcada `noindex,nofollow`.
+- `/imobiliarias/` — apresentação da vertical Imóveis para imobiliárias e corretores, no mesmo formato de deck da `/levoutec/`; por URL direta, não listada na landing e marcada `noindex,nofollow`. Descreve só o que está disponível na vertical (cadastros, locações, contratos de locação e de compra e venda, documentos) e marca vitrine, leads da vitrine e ciclo da locação como próximas fases e tokenização como em estudo.
 
 ## O que continua público na landing
 - A vertical **Logística & Comex · Pré-DUIMP** continua apresentada no conjunto de verticais com status **SHADOW** e permanece disponível no simulador institucional.
