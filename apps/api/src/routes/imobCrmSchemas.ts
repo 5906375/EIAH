@@ -27,10 +27,11 @@ export const imobPropertyCreateSchema = z.object({
   address: optionalShortString(240),
   city: optionalShortString(120),
   neighborhood: optionalShortString(120),
-  bedrooms: z.number().int().min(0).max(50).optional(),
-  bathrooms: z.number().int().min(0).max(50).optional(),
-  areaM2: z.number().int().min(0).max(100000).optional(),
-  garageSpots: z.number().int().min(0).max(100).optional(),
+  // null = apagar o valor na edição.
+  bedrooms: z.union([z.number().int().min(0).max(50), z.null()]).optional(),
+  bathrooms: z.union([z.number().int().min(0).max(50), z.null()]).optional(),
+  areaM2: z.union([z.number().int().min(0).max(100000), z.null()]).optional(),
+  garageSpots: z.union([z.number().int().min(0).max(100), z.null()]).optional(),
   askingPriceCents: z.number().int().min(0).max(1_000_000_000).optional(),
   description: optionalShortString(4000),
   status: optionalShortString(80),
@@ -119,6 +120,14 @@ export const imobCaseCreateSchema = z.object({
   externalDealId: optionalShortString(120),
   metadata: z.unknown().optional(),
   initialEvent: imobCaseEventInputSchema.optional(),
+});
+
+export const imobDocumentLinkSchema = z.object({
+  subjectType: z.enum(["owner", "property", "rental"]),
+  subjectId: z.string().trim().min(1).max(80),
+  category: z.string().trim().min(1).max(60),
+  documentIds: z.array(z.string().trim().min(1).max(80)).min(1).max(8),
+  notes: z.union([z.string().trim().max(300), z.null()]).optional(),
 });
 
 export const imobAttachmentResolveSchema = z.object({
